@@ -121,6 +121,12 @@ def generate_master_phil_with_inputs(
         .type = bool
         .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
       """
+  else:
+    phil_extra_dict["phases_flag"] = """
+      use_experimental_phases = False
+        .type = bool
+        .short_caption = Use experimental phases (Hendrickson-Lattman coefficients)
+      """
   if (enable_unmerged_data):
     phil_extra_dict["unmerged"] = """
       unmerged_data {
@@ -389,7 +395,8 @@ class load_model_and_data(object):
       self.miller_arrays = hkl_in.file_server.miller_arrays
       self.hl_coeffs = None
       target_name = "ml"
-      if(data_and_flags.experimental_phases is not None):
+      if(data_and_flags.experimental_phases is not None) and (
+          params.input.use_experimental_phases):
         target_name = "mlhl"
         self.hl_coeffs = data_and_flags.experimental_phases
       hkl_symm = self.raw_data.crystal_symmetry()

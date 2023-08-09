@@ -224,7 +224,7 @@ def get_bond_pairs(code, alternate=False, heavy_atom_only=False, use_tuple=False
   return tmp
 
 def generate_chemical_components_codes(sort_reverse_by_smiles=False,
-                                       only_non_polyer=False,
+                                       only_non_polymer=False,
                                        ):
   def _cmp_smiles_length(f1, f2):
     c1 = f1[5:-4]
@@ -254,7 +254,7 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False,
   for filename in filenames:
     if filename.find("data_")!=0: continue
     code = filename[5:-4]
-    if only_non_polyer and get_group(code)!='non-polymer': continue
+    if only_non_polymer and get_group(code)!='non-polymer': continue
     yield code
 
 def get_header(code):

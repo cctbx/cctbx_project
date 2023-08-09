@@ -37,14 +37,6 @@ class MillerArrayDataManager(DataManagerBase):
   _unrecognized_type_error_str = 'Unrecognized %s type, "%s," possible choices are %s.'
 
   # ---------------------------------------------------------------------------
-  # custom constructor for handling fmodel parameters
-  def __init__(self, **kwargs):
-    super(MillerArrayDataManager, self).__init__(**kwargs)
-    if self.supports('model'):
-      # keep the full DataManager PHIL scope and select fmodel when needed
-      self._fmodel_phil_scope = None
-
-  # ---------------------------------------------------------------------------
   # Miller arrays
 
   def add_miller_array_phil_str(self):
@@ -287,6 +279,7 @@ class MillerArrayDataManager(DataManagerBase):
   def get_reflection_file_server(self, filenames=None, labels=None,
                                  array_type=None,
                                  crystal_symmetry=None, force_symmetry=None,
+                                 ignore_intensities_if_amplitudes_present=False,
                                  logger=None):
     '''
     Return the file server for a single miller_array file or mulitple files
@@ -296,6 +289,7 @@ class MillerArrayDataManager(DataManagerBase):
     :param array_type:        "x_ray", "neutron", "electron", or None
     :param crystal_symmetry:  cctbx.crystal.symmetry object or None
     :param force_symmetry:    bool or None
+    :param ignore_intensities_if_amplitudes_present: bool
     :param logger:            defaults to self.logger (multi_out)
 
     The order in filenames and labels should match, e.g. labels[0] should be the
@@ -304,6 +298,14 @@ class MillerArrayDataManager(DataManagerBase):
     to None, e.g. labels[0] = None.
 
     If array_type is None, files of any type are allowed.
+
+    If ignore_intensities_if_amplitudes_present is set to True, intensity
+    arrays are not automatically added to the reflection_file_server if
+    amplitude arrays have been selected (as user_selected_arrays). This
+    is to avoid fmodel from prioritizing intensity arrays if both are
+    present. If both intensity and amplitude arrays are selected,
+    setting this parameter to True will not ignore the selected intensity
+    arrays.
 
     None is returned if the file_server has no arrays
     '''
@@ -325,6 +327,17 @@ class MillerArrayDataManager(DataManagerBase):
     if len(filenames) > len(labels):
       labels += [None]*(len(filenames) - len(labels))
     assert len(filenames) == len(labels)
+    # determine types of selected arrays across all files and decide
+    # whether to ignore intensity arrays that are not explicitly selected
+    selected_types = set()
+    for i, filename in enumerate(filenames):
+      current_selected_labels = self.get_miller_array_user_selected_labels(filename)
+      if len(current_selected_labels) > 0:
+        for j, label in enumerate(current_selected_labels):
+          label = self._match_label(label, self.get_miller_arrays(filename=filename))
+          selected_types.add(self.get_miller_array_array_types(filename)[label])
+    if 'amplitude' in selected_types and ignore_intensities_if_amplitudes_present:
+      selected_types.add('intensity')
     # check for user selected labels
     selected_labels = deepcopy(labels)
     for i, filename in enumerate(filenames):
@@ -333,11 +346,9 @@ class MillerArrayDataManager(DataManagerBase):
       if labels[i] is None:
         current_all_labels = self.get_miller_array_all_labels(filename)
       if len(current_selected_labels) > 0:
-        selected_types = set()
         # add selected labels
         for j, label in enumerate(current_selected_labels):
           label = self._match_label(label, self.get_miller_arrays(filename=filename))
-          selected_types.add(self.get_miller_array_array_types(filename)[label])
           current_selected_labels[j] = label
         # add remaining labels that are a different type
         for label in current_all_labels:
@@ -383,7 +394,7 @@ class MillerArrayDataManager(DataManagerBase):
         if label_name in file_labels:
           # check array type
           if (array_type is None
-              or array_type == self.get_miller_array_type(filename, label_name)):
+              or array_type in self.get_miller_array_type(filename, label_name)):
             miller_arrays.append(miller_array)
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
@@ -406,7 +417,7 @@ class MillerArrayDataManager(DataManagerBase):
     # self._miller_array_arrays = {}                # [filename] = array dict
     # self._user_selected_miller_array_labels = {}  # [filename] = array dict
     setattr(self, self._type_str % datatype, {})
-    setattr(self, self._default_type_str % datatype, 'x_ray')
+    setattr(self, self._default_type_str % datatype, ['x_ray'])
     setattr(self, self._possible_types_str % datatype,
             ['x_ray', 'neutron', 'electron'])
     setattr(self, self._array_type_str % datatype, {})
@@ -438,7 +449,7 @@ class MillerArrayDataManager(DataManagerBase):
     name = None
       .type = str
     type = *%s
-      .type = choice(multi=False)
+      .type = choice(multi=True)
     array_type = *%s
       .type = choice(multi=False)
   }
@@ -451,13 +462,12 @@ class MillerArrayDataManager(DataManagerBase):
 ''' % (datatype,
        ' '.join(getattr(self, self._possible_types_str % datatype)),
        ' '.join(getattr(self, self._possible_array_types_str % datatype)))
-
     # add fmodel PHIL
     if self.supports('model'):
       custom_phil_str += '''
 fmodel {
-  include scope iotbx.extract_xtal_data.xray_data_str
-  include scope iotbx.extract_xtal_data.neutron_data_str
+  include scope iotbx.extract_xtal_data.xray_data_str_no_filenames
+  include scope iotbx.extract_xtal_data.neutron_data_str_no_filenames
 }
 '''
 
@@ -564,10 +574,11 @@ fmodel {
               label_name = label_match
           phil_labels.append(label_name)
           if hasattr(label, 'type'):
-            if label.type not in getattr(self, self._possible_types_str % datatype):
+            if not self._is_valid_miller_array_type(datatype, label.type):
               raise Sorry(self._unrecognized_type_error_str %
-                          (datatype, label.type, ', '.join(
-                            getattr(self, self._possible_types_str % datatype))))
+                          (datatype,
+                           ', '.join(label.type),
+                           ', '.join(getattr(self, self._possible_types_str % datatype))))
             phil_types[label_name] = label.type
           if hasattr(label, 'array_type'):
             if label.array_type not in getattr(self, self._possible_array_types_str % datatype):
@@ -598,10 +609,38 @@ fmodel {
           if label not in user_selected_labels_storage:
             user_selected_labels_storage.append(label)
 
+  def _is_valid_miller_array_type(self, datatype, array_type):
+    """
+    Convenience function for checking if the array type is valid
+    This will also check that model_type is a list to conform with the
+    PHIL parameter
+
+    Parameters
+    ----------
+    datatype: str
+      The datatype (i.e. miller_array)
+    array_type: list
+      The model_type(s) to check.
+
+    Returns
+    -------
+    bool:
+    """
+    if not isinstance(array_type, list):
+      raise Exception('oh no')
+      raise Sorry('The type argument must be a list.')
+    if len(array_type) == 0:
+      return False
+    valid = True
+    for at in array_type:
+      valid = valid and (at in getattr(self, self._possible_types_str % datatype))
+    return valid
+
   def _set_default_miller_array_type(self, datatype, array_type):
-    if array_type not in getattr(self, self._possible_types_str % datatype):
+    if not self._is_valid_miller_array_type(datatype, array_type):
       raise Sorry(self._unrecognized_type_error_str %
-                  (datatype, array_type,
+                  (datatype,
+                   ', '.join(array_type),
                    ', '.join(getattr(self, self._possible_types_str % datatype))))
     setattr(self, self._default_type_str % datatype, array_type)
 
@@ -625,12 +664,12 @@ fmodel {
     if label is None:
       label = self._get_all_array_labels(datatype, filename)[0]
     if array_type is None:
-      array_type = getattr(self, self._default_type_str % datatype)
-    elif array_type not in getattr(self, self._possible_types_str % datatype):
+      array_type = [getattr(self, self._default_type_str % datatype)]
+    if not self._is_valid_miller_array_type(datatype, array_type):
       raise Sorry(self._unrecognized_type_error_str %
                   (datatype,
-                   array_type,
-                   ', '.join(getattr(self, self._possible_types_str % datatype))))
+                  ', '.join(array_type),
+                  ', '.join(getattr(self, self._possible_types_str % datatype))))
     getattr(self, self._type_str % datatype)[filename][label] = array_type
 
   def _get_miller_array_type(self, datatype, filename=None, label=None):

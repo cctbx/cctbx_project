@@ -49,16 +49,10 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                            verbose=False):
     outl = ''
     for i, atom in enumerate(self.atoms):
-      ligand_atom = self.ligand_atoms_array[i]
-      if optimise_ligand:
-        if ligand_atom:
-          opt=1
-        else:
-          opt=0
-      else:
-        opt=0
-      if optimise_h and atom.element in ['H', 'D']:
-        opt=1
+      opt = self._is_atom_for_opt(i,
+                                  atom,
+                                  optimise_ligand=optimise_ligand,
+                                  optimise_h=optimise_h)
       tmp = ''
       if constrain_torsions:
         if opt and atom.element not in ['H', 'D']:
@@ -92,8 +86,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
           opt,
           atom.xyz[2],
           opt,
-          # atom.id_str(),
-          # i,
           )
       if verbose and ligand_atom: print(atom.quote())
     outl += '\n'
@@ -172,8 +164,9 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     self.times.append(time.time()-t0)
 
 
-  def read_energy(self):
-    filename = self.get_log_filename()
+  def read_energy(self, filename=None):
+    if filename is None:
+      filename = self.get_log_filename()
     f=open(filename, 'r')
     lines=f.read()
     del f

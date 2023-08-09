@@ -56,6 +56,7 @@ def run(args=(), params=None, out=sys.stdout):
     raise Usage("iotbx.pdb.add_conformations model.pdb [selection=...]\n"+
       "Full parameters:\n" + master_phil.as_str())
   from iotbx import file_reader
+  import iotbx.pdb
   pdb_in = None
   if (params is None):
     user_phil = []
@@ -65,7 +66,8 @@ def run(args=(), params=None, out=sys.stdout):
       if os.path.isfile(arg):
         f = file_reader.any_file(os.path.abspath(arg))
         if (f.file_type == "pdb"):
-          pdb_in = f.file_object
+          pdb_in = f.file_object.input
+          hierarchy = f.file_object.hierarchy
           user_phil.append(libtbx.phil.parse(
             "add_conformations.pdb_file=\"%s\"" % f.file_name))
         elif (f.file_type == "phil"):
@@ -83,14 +85,12 @@ def run(args=(), params=None, out=sys.stdout):
   validate_params(params)
   params = params.add_conformations
   if (pdb_in is None):
-    f = file_reader.any_file(params.pdb_file)
-    f.assert_file_type("pdb")
-    pdb_in = f.file_object
+    pdb_in = iotbx.pdb.input(params.pdb_file)
+    hierarchy = pdb_in.construct_hierarchy()
   if (params.new_occ is None):
     params.new_occ = 1.0 / params.n_confs
     print("Setting new occupancy to %.2f" % params.new_occ, file=out)
   from scitbx.array_family import flex
-  hierarchy = pdb_in.construct_hierarchy()
   all_atoms = hierarchy.atoms()
   all_atoms.reset_i_seq()
   n_atoms = all_atoms.size()
@@ -164,7 +164,7 @@ def run(args=(), params=None, out=sys.stdout):
     base_name = os.path.basename(params.pdb_file)
     params.output = os.path.splitext(base_name)[0] + "_split.pdb"
   f = open(params.output, "w")
-  f.write("\n".join(pdb_in.input.crystallographic_section()) + "\n")
+  f.write("\n".join(pdb_in.crystallographic_section()) + "\n")
   f.write(hierarchy.as_pdb_string())
   f.close()
   print("Old model: %d atoms" % n_atoms, file=out)

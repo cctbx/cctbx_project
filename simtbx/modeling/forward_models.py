@@ -235,7 +235,8 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       mosaicity_random_seeds=None,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
-                      det_thicksteps=None, eta_abc=None, Ncells_def=None):
+                      det_thicksteps=None, eta_abc=None, Ncells_def=None,
+                      num_phi_steps=1, delta_phi=None):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -295,6 +296,9 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
         S.D.gamma_miller_units = diffuse_params["gamma_miller_units"]
         S.D.diffuse_gamma = diffuse_params["gamma"]
         S.D.diffuse_sigma = diffuse_params["sigma"]
+
+    if delta_phi is not None:
+        utils.update_SIM_with_gonio(S, delta_phi=delta_phi, num_phi_steps=num_phi_steps )
     S.D.add_diffBragg_spots_full()
     if show_timings:
         S.D.show_timings()

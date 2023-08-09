@@ -1,6 +1,6 @@
 {
   "modules_required_for_build": ["boost"],
   "modules_required_for_use": ["boost_adaptbx", "omptbx"],
-  "optional_modules": ["fable"],
+  "optional_modules": ["cma_es", "fable"],
   "optional_modules_only_if_explicit_request": ["fast_linalg"],
 }

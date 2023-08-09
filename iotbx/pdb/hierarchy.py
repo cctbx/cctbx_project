@@ -347,6 +347,8 @@ class __hash_eq_mixin(object):
     return hash(self.memory_id())
 
   def __eq__(self, other):
+    if other == None:
+      return False
     if (isinstance(other, self.__class__)):
       return (self.memory_id() == other.memory_id())
     return False
@@ -390,18 +392,22 @@ class _():
 
   def __setstate__(self, state):
     assert len(state) >= 3
+    if sys.version_info.major >= 3:
+      from libtbx.easy_pickle import fix_py2_pickle
+      state = fix_py2_pickle(state)
     version = state[0]
     if   (version == 1): assert len(state) == 3
     elif (version == 2): assert len(state) == 4
     else: raise RuntimeError("Unknown version of pickled state.")
     self.info = state[-2]
     import iotbx.pdb
-    models = iotbx.pdb.input(
-      source_info="pickle",
-      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False).models()
-    self.pre_allocate_models(number_of_additional_models=len(models))
-    for model in models:
-      self.append_model(model=model)
+    ph = iotbx.pdb.input(
+      source_info="string",
+      lines=flex.split_lines(state[-1])).construct_hierarchy(sort_atoms=False)
+
+    self.pre_allocate_models(number_of_additional_models=len(ph.models()))
+    for model in ph.models():
+      self.append_model(model=model.detached_copy())
 
   def chains(self):
     """
@@ -1018,9 +1024,10 @@ class _():
     assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
     return self.get_auth_asym_id(self.atoms()[iseq].parent().parent().parent())
 
-  def get_auth_asym_id(self, chain):
+  def get_auth_asym_id(self, chain, segid_as_auth_segid = False):
     auth_asym_id = chain.id
-    if len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
+    if (not segid_as_auth_segid) and \
+       len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
       auth_asym_id = chain.atoms()[0].segid.strip()
     if auth_asym_id.strip() == '':
       # chain id is empty, segid is empty, just duplicate label_asym_id
@@ -1078,7 +1085,11 @@ class _():
     return self.get_auth_seq_id(self.atoms()[iseq].parent().parent())
 
   def get_auth_seq_id(self, rg):
-    return rg.resseq.strip()
+    resseq_strip = rg.resseq.strip()
+    if len(resseq_strip) == 4:
+      return str(hy36decode(4, rg.resseq.strip()))
+    else:
+      return resseq_strip
 
   def get_label_seq_id_iseq(self, iseq):
     assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
@@ -1111,7 +1122,8 @@ class _():
       coordinate_precision=5,
       occupancy_precision=3,
       b_iso_precision=5,
-      u_aniso_precision=5):
+      u_aniso_precision=5,
+      segid_as_auth_segid=False):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
@@ -1122,7 +1134,7 @@ class _():
     b_iso_fmt_str = "%%.%if" %b_iso_precision
     u_aniso_fmt_str = "%%.%if" %u_aniso_precision
 
-    atom_site_loop = iotbx.cif.model.loop(header=(
+    atom_site_header = [
       '_atom_site.group_PDB',
       '_atom_site.id',
       '_atom_site.label_atom_id',
@@ -1146,7 +1158,11 @@ class _():
       #'_atom_site.auth_comp_id',
       #'_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
-    ))
+     ]
+    if segid_as_auth_segid:
+      atom_site_header.append('_atom_site.auth_segid',)
+
+    atom_site_loop = iotbx.cif.model.loop(header=tuple(atom_site_header))
 
     aniso_loop = iotbx.cif.model.loop(header=(
       '_atom_site_anisotrop.id',
@@ -1190,6 +1206,8 @@ class _():
     #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
     #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
     atom_site_pdbx_PDB_model_num = atom_site_loop['_atom_site.pdbx_PDB_model_num']
+    if segid_as_auth_segid:
+      atom_site_auth_segid = atom_site_loop['_atom_site.auth_segid']
     atom_site_anisotrop_id = aniso_loop['_atom_site_anisotrop.id']
     atom_site_anisotrop_pdbx_auth_atom_id = \
       aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id']
@@ -1229,7 +1247,8 @@ class _():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
-        auth_asym_id = self.get_auth_asym_id(chain)
+        auth_asym_id = self.get_auth_asym_id(chain,
+           segid_as_auth_segid = segid_as_auth_segid)
         for residue_group in chain.residue_groups():
           label_asym_id = self.get_label_asym_id(residue_group)
           seq_id = self.get_auth_seq_id(residue_group)
@@ -1283,6 +1302,8 @@ class _():
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
+              if segid_as_auth_segid:
+                atom_site_auth_segid.append(atom.segid)
 
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
@@ -1320,15 +1341,31 @@ class _():
     #
     return h_cif_block
 
-  def write_mmcif_file(self,
-                       file_name,
+  def as_mmcif_string(self,
                        crystal_symmetry=None,
-                       data_block_name=None):
+                       data_block_name=None,
+                       segid_as_auth_segid=False):
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
-      crystal_symmetry=crystal_symmetry)
+      crystal_symmetry=crystal_symmetry,
+      segid_as_auth_segid = segid_as_auth_segid)
+    f = StringIO()
+    cif_object.show(out = f)
+    return f.getvalue()
+
+  def write_mmcif_file(self,
+                       file_name,
+                       crystal_symmetry=None,
+                       data_block_name=None,
+                       segid_as_auth_segid=False):
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block(
+      crystal_symmetry=crystal_symmetry,
+      segid_as_auth_segid = segid_as_auth_segid)
     with open(file_name, "w") as f:
       print(cif_object, file=f)
 
@@ -1540,7 +1577,7 @@ class _():
     ''' Apply atom selection string and return deep copy with selected atoms'''
     asc=self.atom_selection_cache()
     sel = asc.selection(string = atom_selection)
-    return self.deep_copy().select(sel)  # deep copy is required
+    return self.select(sel, copy_atoms=True)  # independent copy is required
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
                               always_group_adjacent=True,
@@ -1707,38 +1744,47 @@ class _():
     }
     data["TYR"]=data["PHE"]
 
+    for code, item in data.items():
+      current = item.get('pairs', [])
+      adds = []
+      for a1, a2 in current:
+        if a1[0]=='H' and a2[0]=='H':
+          adds.append(['D%s'%a1[1:], 'D%s'%a2[1:]])
+      item['pairs']+=adds
+
     sites_cart = self.atoms().extract_xyz()
     t0=time.time()
     info = ""
     for rg in self.residue_groups():
+      flip_it=False
       for ag in rg.atom_groups():
         flip_data = data.get(ag.resname, None)
         if flip_data is None: continue
         assert not ('dihedral' in flip_data and 'chiral' in flip_data)
-        flip_it=False
-        if 'dihedral' in flip_data:
-          sites = []
-          for d in flip_data["dihedral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          dihedral = dihedral_angle(sites=sites, deg=True)
-          if abs(dihedral)>360./flip_data["value"][1]/4:
-            flip_it=True
-        elif 'chiral' in flip_data:
-          sites = []
-          for d in flip_data["chiral"]:
-            atom = ag.get_atom(d)
-            if atom is None: break
-            sites.append(atom.xyz)
-          if len(sites)!=4: continue
-          delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
-                                  volume_ideal=flip_data["value"][0],
-                                  both_signs=flip_data['value'][1],
-                                  )
-          if abs(delta)>2.:
-            flip_it=True
+        if not flip_it:
+          if 'dihedral' in flip_data:
+            sites = []
+            for d in flip_data["dihedral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            dihedral = dihedral_angle(sites=sites, deg=True)
+            if abs(dihedral)>360./flip_data["value"][1]/4:
+              flip_it=True
+          elif 'chiral' in flip_data:
+            sites = []
+            for d in flip_data["chiral"]:
+              atom = ag.get_atom(d)
+              if atom is None: break
+              sites.append(atom.xyz)
+            if len(sites)!=4: continue
+            delta = chirality_delta(sites=[flex.vec3_double([xyz]) for xyz in sites],
+                                    volume_ideal=flip_data["value"][0],
+                                    both_signs=flip_data['value'][1],
+                                    )
+            if abs(delta)>2.:
+              flip_it=True
         if flip_it:
           info += '    Residue "%s %s %s":' % (
             rg.parent().id,
@@ -2929,6 +2975,8 @@ class input_hierarchy_pair(object):
     Returns a reference to the existing hierarchy.  For backwards compatibility
     only, and issues a :py:class:`warnings.DeprecationWarning`.
     """
+    # import traceback
+    # traceback.print_stack()
     warnings.warn("Please access input.hierarchy directly.",
       DeprecationWarning)
     return self.hierarchy

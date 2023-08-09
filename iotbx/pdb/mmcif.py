@@ -20,6 +20,15 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
 
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
+  #   https://www.ebi.ac.uk/pdbe/docs/exchange/pdb-correspondence/pdb2mmcif.html#ATOM
+
+  #  Note: pdb_hierarchy allows the same chain ID to be used in multiple chains.
+  #    This is indicated in PDB format with a TER record indicating the end of a chain
+  #    The corresponding information in mmCIF is the label_asym_id changes for each
+  #    new chain (the auth_asym_id matches the chain ID).
+  #    Catch cases where one chain id is split into multiple chains in the following way:
+  #    If label_asym_id changes and previous residue was protein or rna/dna or modified
+  #    (or auth_asym_id or model_id changes), create a chain break.
 
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
@@ -33,6 +42,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     alt_id = self._wrap_loop_if_needed(cif_block,"_atom_site.label_alt_id") # alternate conformer id
     label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
     auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")
+    auth_segid = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_segid")
     if label_asym_id is None: label_asym_id = auth_asym_id
     if auth_asym_id is None: auth_asym_id = label_asym_id
     comp_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_comp_id")
@@ -113,7 +123,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         "record with empty auth_asym_id, which is wrong."
       assert current_label_asym_id is not None
       if (current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id):
+          or current_model_id != last_model_id
+          or (current_label_asym_id != last_label_asym_id and
+             i_atom > 0 and is_aa_or_rna_dna(comp_id[i_atom-1]))
+         ): # insert chain breaks
         chain = hierarchy.chain(id=current_auth_asym_id)
         model.append_chain(chain)
       else:
@@ -150,7 +163,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       current_resname = comp_id[i_atom]
       if (current_altloc, current_resname) not in atom_groups:
         atom_group = hierarchy.atom_group(
-          altloc=current_altloc, resname=current_resname)
+          altloc=current_altloc, resname="%3s" % current_resname)
         atom_groups[(current_altloc, current_resname)] = atom_group
         if current_altloc == "":
           residue_group.insert_atom_group(0, atom_group)
@@ -174,7 +187,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       atom.set_serial(
         hy36encode(width=5, value=int(atom_site_id[i_atom])))
       # some code relies on an empty segid being 4 spaces
-      atom.set_segid("    ")
+      if auth_segid:
+        atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
+      else:
+        atom.set_segid("    ")
       if group_PDB is not None and group_PDB[i_atom] == "HETATM":
         atom.hetero = True
       if formal_charge is not None:
@@ -212,6 +228,16 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       data = flex.std_string([data])
     return data
 
+
+def is_aa_or_rna_dna(resname):
+   from iotbx.pdb import common_residue_names_get_class
+   resname = resname.strip()
+   residue_class = common_residue_names_get_class(resname)
+   if residue_class in ['common_amino_acid', 'modified_amino_acid',
+                'common_rna_dna', 'modified_rna_dna']:
+     return True
+   else:
+     return False
 
 def format_pdb_atom_name(atom_name, atom_type):
   # The PDB-format atom name is 4 characters long (columns 13 - 16):

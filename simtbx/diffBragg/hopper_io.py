@@ -83,6 +83,10 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         diff_gam_b = diff_gam_c = diff_gam_a
     if params.isotropic.diffuse_sigma:
         diff_sig_b = diff_sig_c = diff_sig_a
+
+    if params.simulator.crystal.has_isotropic_ncells:
+        Nb = Nc = Na
+
     eta_a, eta_b, eta_c = hopper_utils.get_mosaicity_from_x(x, Mod, SIM)
     a_init, b_init, c_init, al_init, be_init, ga_init = SIM.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
@@ -131,6 +135,7 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
     new_expt.crystal = new_cryst
     new_expt.detector = expt.detector
     new_expt.beam = expt.beam
+    new_expt.identifier = expt.identifier
     new_expt.imageset = expt.imageset
     # expt.detector = refiner.get_optimized_detector()
     new_exp_list = ExperimentList()
@@ -166,6 +171,8 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         df['sigz'] = [Mod.sigz]
     if hasattr(Mod, "niter"):
         df['niter'] = [Mod.niter]
+    df['phi_deg'] = SIM.D.phi_deg
+    df['osc_deg'] = SIM.D.osc_deg
     df.to_pickle(pandas_path)
     return df
 

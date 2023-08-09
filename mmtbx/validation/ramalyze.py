@@ -15,6 +15,7 @@ from mmtbx.rotamer import ramachandran_eval
 from mmtbx.validation.fav_lists import fav_tables
 from six.moves import range
 from iotbx.pdb.hybrid_36 import hy36decode
+import json
 
 # XXX Use these constants internally, never strings!
 RAMA_GENERAL = 0
@@ -82,6 +83,14 @@ class ramachandran(residue):
       self.ramalyze_type(), self.score,
       ",".join([ "%.1f" % x for x in [self.phi, self.psi] ]))
 
+  def as_csv(self):
+    rc = [self.chain_id.strip(), self.resseq.strip(),
+      # self.icode, self.altloc,
+      self.resname.strip()]
+    rc += [self.residue_type(), self.ramalyze_type(), '%0.1f' % (self.score)]
+    rc += [ "%.1f" % x for x in [self.phi, self.psi]]
+    return ','.join(rc)
+
   # Backwards compatibility
   def id_str_old(self):
     return "%s%4s%1s %1s%s" % (self.chain_id, self.resseq, self.icode,
@@ -102,6 +111,20 @@ class ramachandran(residue):
 #      self.c_alphas[2].xyz)
 #    return ram_out
     return self.markup
+
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if s != 'markup' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict["rama_type"] = rama_types[slots_as_dict["rama_type"]]
+    res_type_index = slots_as_dict['res_type']
+    slots_as_dict['res_type'] = res_types[res_type_index]
+    slots_as_dict['res_type_label'] = res_type_labels[res_type_index]
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   # GUI output
   def as_table_row_phenix(self):
@@ -137,7 +160,7 @@ class ramalyze(validation):
   generate the corresponding plots.
   """
   __slots__ = validation.__slots__ + ["out_percent", "fav_percent",
-    "n_allowed", "n_favored", "n_type", "_outlier_i_seqs" ]
+    "n_allowed", "n_favored", "n_allowed_by_model", "n_favored_by_model", "n_type", "_outlier_i_seqs" ]
   program_description = "Analyze protein backbone ramachandran"
   output_header = "residue:score%:phi:psi:evaluation:type"
   gui_list_headers = ["Chain","Residue","Residue type","Score","Phi","Psi"]
@@ -159,6 +182,8 @@ class ramalyze(validation):
     validation.__init__(self)
     self.n_allowed = 0
     self.n_favored = 0
+    self.n_allowed_by_model = {}
+    self.n_favored_by_model = {}
     self.n_type = [ 0 ] * 6
     self._outlier_i_seqs = flex.size_t()
     pdb_atoms = pdb_hierarchy.atoms()
@@ -188,6 +213,12 @@ class ramalyze(validation):
       coords = get_center(main_residue) #should find the CA of the center residue
 
       if (phi is not None and psi is not None):
+        model_id = main_residue.parent().parent().parent().id
+        if model_id not in self.n_total_by_model:
+          self.n_total_by_model[model_id] = 0
+          self.n_outliers_by_model[model_id] = 0
+          self.n_allowed_by_model[model_id] = 0
+          self.n_favored_by_model[model_id] = 0
         res_type = RAMA_GENERAL
         #self.n_total += 1
         if (main_residue.resname[0:3] == "GLY"):
@@ -238,7 +269,8 @@ class ramalyze(validation):
         if result.altloc in ['','A'] and result_key not in count_keys:
           self.n_total += 1
           self.n_type[res_type] += 1
-          self.add_to_validation_counts(ramaType)
+          self.n_total_by_model[model_id] += 1
+          self.add_to_validation_counts(ramaType, model_id)
           count_keys.append(result_key)
         if (not outliers_only or is_outlier):
           if (result.altloc != '' or
@@ -380,13 +412,25 @@ class ramalyze(validation):
     #  self.n_outliers += 1
     return ev
 
-  def add_to_validation_counts(self, ev):
+  def add_to_validation_counts(self, ev, model_id=""):
     if ev == RAMALYZE_FAVORED:
       self.n_favored += 1
+      if model_id in self.n_favored_by_model:
+        self.n_favored_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in ramalyze favored count dictionary, make sure you are calling this function with the correct model ID")
     elif ev == RAMALYZE_ALLOWED:
       self.n_allowed += 1
+      if model_id in self.n_allowed_by_model:
+        self.n_allowed_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in ramalyze allowed count dictionary, make sure you are calling this function with the correct model ID")
     elif ev == RAMALYZE_OUTLIER:
       self.n_outliers += 1
+      if model_id in self.n_outliers_by_model:
+        self.n_outliers_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in ramalyze outliers count dictionary, make sure you are calling this function with the correct model ID")
 
   def get_outliers_goal(self):
     return "< 0.2%"
@@ -474,6 +518,37 @@ class ramalyze(validation):
         data.append((result.chain_id, result.resid, result.resname,
           result.score, result.xyz))
     return data
+
+  def as_JSON(self):
+    data = {"validation_type": "ramalyze"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    data['summary_results'] = summary_results
+    for model_id in self.n_total_by_model.keys():
+      summary_results[model_id] = {"num_favored" : self.n_favored_by_model[model_id],
+        "num_allowed" : self.n_allowed_by_model[model_id],
+        "num_outliers" : self.n_outliers_by_model[model_id],
+        "num_residues" : self.n_total_by_model[model_id],
+        "outlier_percentage" : self.n_outliers_by_model[model_id]/self.n_total_by_model[model_id]*100,
+        "outlier_goal" : self.get_outliers_goal(),
+        "favored_percentage" : self.n_favored_by_model[model_id]/self.n_total_by_model[model_id]*100,
+        "favored_goal" : self.get_favored_goal()
+      }
+    data['summary_results'] = summary_results
+    #{summary: {"summary_text": "74 Favored, 0 Allowed, 0 Outlier out of 74 residues (altloc A where applicable)"}
+    #           "info": {"res_count": 74,
+    #                    "favored": 74,}
+                #}
+    #filebase = os.path.basename(self.data_manager.get_model_names()[0])
+    return json.dumps(data, indent=2)
 
 def get_matching_atom_group(residue_group, altloc):
   match = None
@@ -565,22 +640,28 @@ def get_altloc_from_three(three):
   #  from adjacent residues to find if any have altlocs
   ##mc_atoms = (" N  ", " CA ", " C  ", " O  ")
   for atom in three[1].atoms():
-    altchar = atom.id_str()[9:10]
+    altchar = get_altloc_from_id_str(atom.id_str())
     if altchar != ' ':
       return altchar
   for atom in three[0].atoms():
     if atom.name != ' C  ':
       continue
-    altchar = atom.id_str()[9:10]
+    altchar = get_altloc_from_id_str(atom.id_str())
     if altchar != ' ':
       return altchar
   for atom in three[2].atoms():
     if atom.name != ' N  ':
       continue
-    altchar = atom.id_str()[9:10]
+    altchar = get_altloc_from_id_str(atom.id_str())
     if altchar != ' ':
       return altchar
   return ''
+
+def get_altloc_from_id_str(id_str):
+  # checks to see if the atom id_str contains model info, and adjusts if needed.
+  if id_str.startswith("model"):
+    id_str = id_str.partition("pdb=")[1]+id_str.partition("pdb=")[2]
+  return id_str[9:10]
 
 def construct_complete_residues(res_group):
   if (res_group is not None):

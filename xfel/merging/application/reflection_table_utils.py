@@ -27,16 +27,16 @@ class reflection_table_utils(object):
     yield reflections[i_begin:i+1]
 
   @staticmethod
-  def select_odd_experiment_reflections(reflections):
+  def select_odd_experiment_reflections(reflections, col='id'):
     'Select reflections from experiments with odd ids.'
-    sel = reflections['id'] % 2 == 1
+    sel = reflections[col] % 2 == 1
     reflections["is_odd_experiment"] = sel  # store this for later use, NOTE this is un-prunable if expanded_bookkeeping=True
     return reflections.select(sel)
 
   @staticmethod
-  def select_even_experiment_reflections(reflections):
+  def select_even_experiment_reflections(reflections, col='id'):
     'Select reflections from experiments with even ids'
-    sel = reflections['id'] % 2 == 0
+    sel = reflections[col] % 2 == 0
     return reflections.select(sel)
 
   @staticmethod

@@ -256,6 +256,56 @@ master_phil = iotbx.phil.parse("""
 """, process_includes=True)
 master_params = master_phil
 
+######## Methods for getting selection strings from a model ############
+def get_selection_string_from_model(model = None,
+   hierarchy = None, minimum_segment_length = None):
+   ''' Get selection string based on the residues present in selected_model
+    If minimum_segment_length is set, remove segments shorter than this '''
+   from phenix.model_building.ssm import get_selection_from_chain_dict
+   if not hierarchy:
+     hierarchy = model.get_hierarchy()
+   chain_dict = get_chain_dict(hierarchy)
+   return get_selection_from_chain_dict(chain_dict,
+     minimum_segment_length = minimum_segment_length)
+
+def get_chain_dict(ph):
+    ''' Get dict of chains and all residue numbers in the chains'''
+    chain_dict = {}
+    for model in ph.models()[:1]:
+      for chain in model.chains():
+        if not chain.id in list(list(chain_dict.keys())):
+          chain_dict[chain.id] = []
+        for rg in chain.residue_groups():
+          resseq = rg.resseq_as_int()
+          if not resseq in chain_dict[chain.id]:
+            chain_dict[chain.id].append(resseq)
+    for chain_id in list(list(chain_dict.keys())):
+      chain_dict[chain.id].sort()
+    return chain_dict
+def compress_indices(values):
+  # Take sorted list of values and compress sequential indices
+  compressed_values = []
+  # Save list of ranges or lists of individual values (if not sequential)
+  n = len(values)
+  n1 = n - 1
+  working_group = None
+  for i in range(n):
+    if working_group and working_group[1] + 1  == values[i]:
+      working_group[1] = values[i]
+    else:
+      working_group = [values[i],values[i]]
+      compressed_values.append(working_group)
+  new_compressed_values = []
+  for c1,c2 in compressed_values:
+    if c1==c2:
+      new_compressed_values.append(c1)
+    else:
+      new_compressed_values.append([c1,c2])
+  return new_compressed_values
+
+######## END Methods for getting selection strings from a model ############
+
+
 def get_pdb_hierarchy(text=None):
   return iotbx.pdb.input(
      source_info=None,lines=flex.split_lines(text)).construct_hierarchy()
@@ -662,13 +712,12 @@ def reorder_residues(hierarchy, merge_chains = False, chain_id = None):
       cc.append_residue_group(rg)
   return new_hierarchy
 
-def set_chain_id(hierarchy, chain_id = None):
+def set_chain_id(hierarchy, chain_id = None, original_id = None):
   assert chain_id
   for model in hierarchy.models():
-    n_chains = 0
     for chain in model.chains():
-      n_chains+=1
-      chain.id = chain_id
+      if (original_id is None) or (chain.id == original_id):
+        chain.id = chain_id
 
 def get_atom_list(hierarchy):
   atom_list=[]
@@ -892,7 +941,7 @@ def evaluate_sheet_topology(annotation, hierarchy = None,
   print("\nEvaluating sheet topology", file = out)
   ca_ph=hierarchy.apply_atom_selection("name ca")
   if chain_id:
-    ca_ph=ca_ph.apply_atom_selection("chain %s" %(chain_id))
+    ca_ph=ca_ph.apply_atom_selection("chain '%s'" %(chain_id))
   unique_chain_ids = ca_ph.chain_ids(unique_only = True)
   if len(unique_chain_ids) != 1:
     raise Sorry("Need just 1 chain for evaluate_sheet_topology (found %s)" %(
@@ -1454,13 +1503,13 @@ class segment:  # object for holding a helix or a strand or other
       self.sites=flex.vec3_double()
     else:
       # extract coordinates
-      self.sites=sele.extract_xray_structure().sites_cart()
+      self.sites=sele.atoms().extract_xyz()
 
     if sele.overall_counts().n_residues==0:
       self.sites=flex.vec3_double()
     else:
       # extract coordinates
-      self.sites=sele.extract_xray_structure().sites_cart()
+      self.sites=sele.atoms().extract_xyz()
 
   def get_start_resno(self):
     return self.start_resno

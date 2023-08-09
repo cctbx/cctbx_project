@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import six
-import sys, time
+import os, sys, time
 import mmtbx.model
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
@@ -19,11 +19,97 @@ print_time = False
 
 # ==============================================================================
 
-def mon_lib_query(residue, mon_lib_srv):
-    md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
-      residue_name=residue.resname,
-      atom_names=residue.atoms().extract_name())
-    return md
+def get_h_restraints(resname, strict=True):
+  from mmtbx.monomer_library import cif_types
+  from mmtbx.chemical_components import get_cif_dictionary
+  from mmtbx.chemical_components import get_cif_filename
+  from mmtbx.ligands.rdkit_utils import read_chemical_component_filename
+  filename = get_cif_filename(resname)
+  if not os.path.exists(filename): return None
+  molecule = read_chemical_component_filename(filename)
+  cc_cif = get_cif_dictionary(resname)
+  cc = cc_cif['_chem_comp'][0]
+  hs = []
+  hsi = []
+  chem_comp = cif_types.chem_comp(
+    id=cc.id,
+    three_letter_code=cc.three_letter_code,
+    name=cc.name,
+    group=cc.type,
+    # number_atoms_all=cc.number_atoms_all,
+    # number_atoms_nh=cc.number_atoms_nh,
+    desc_level="")
+  comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
+  lookup = {}
+  for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
+    lookup[a.atom_id]=i
+    lookup[i]=a.atom_id
+    if a.type_symbol in ['H', 'D']:
+      hs.append(a.atom_id)
+      hsi.append(i)
+    comp_comp_id.atom_list.append(cif_types.chem_comp_atom(
+      atom_id=a.atom_id,
+      type_symbol=a.type_symbol,
+      # type_energy=a.type_energy,
+      # partial_charge=a.partial_charge,
+      ))
+  conf =  molecule.GetConformer()
+  from rdkit import Chem # needed import
+  from rdkit.Chem import rdMolTransforms
+  for b in cc_cif.get('_chem_comp_bond',[]):
+    if strict:
+      if (b.atom_id_1 not in hs and
+          b.atom_id_2 not in hs): continue
+    atom_idx1=lookup[b.atom_id_1]
+    atom_idx2=lookup[b.atom_id_2]
+    bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
+    comp_comp_id.bond_list.append(cif_types.chem_comp_bond(
+      atom_id_1=b.atom_id_1,
+      atom_id_2=b.atom_id_2,
+      type=b.value_order,
+      value_dist='%0.3f' % (bl*.9),
+      value_dist_esd=".1"))
+
+  from mmtbx.ligands.rdkit_utils import enumerate_angles
+  for angle in enumerate_angles(molecule):
+    if angle[0] in hsi or angle[2] in hsi:
+      av = rdMolTransforms.GetAngleDeg(conf, angle[0], angle[1], angle[2])
+    else: continue
+    comp_comp_id.angle_list.append(cif_types.chem_comp_angle(
+      atom_id_1=lookup[angle[0]],
+      atom_id_2=lookup[angle[1]],
+      atom_id_3=lookup[angle[2]],
+      value_angle='%0.1f' % av,
+      value_angle_esd="1"))
+
+  from mmtbx.ligands.rdkit_utils import enumerate_torsions
+  for i, angle in enumerate(enumerate_torsions(molecule)):
+    if angle[0] in hsi or angle[3] in hsi:
+      av = rdMolTransforms.GetDihedralDeg(conf, angle[0], angle[1], angle[2], angle[3])
+    else: continue
+    comp_comp_id.tor_list.append(cif_types.chem_comp_tor(
+      id='Var_%03d' % i,
+      atom_id_1=lookup[angle[0]],
+      atom_id_2=lookup[angle[1]],
+      atom_id_3=lookup[angle[2]],
+      atom_id_4=lookup[angle[3]],
+      value_angle='%0.1f' % av,
+      value_angle_esd='1',
+      period='1'))
+  return comp_comp_id
+
+def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
+  # if get_class(residue.resname) in ['common_rna_dna']:
+  #   md = get_h_restraints(residue.resname)
+  #   return md
+  # if print_time: print(residue.resname, get_class(residue.resname))
+  md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
+    residue_name=residue.resname,
+    atom_names=residue.atoms().extract_name())
+  if md is None:
+    md = get_h_restraints(residue.resname)
+    # md.show()
+  return md
 
 # ==============================================================================
 
@@ -105,22 +191,25 @@ class place_hydrogens():
 #    f.write(self.model.model_as_pdb())
 
     # place N-terminal propeller hydrogens
-#    if self.n_terminal_charge != 'no_charge':
-#      for m in pdb_hierarchy.models():
-#        for chain in m.chains():
-#          rgs = chain.residue_groups()[0]
-#          # by default, place NH3 only at residue with resseq 1
-#          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-#            continue
-#          elif (self.n_terminal_charge == 'first_in_chain'):
-#            pass
-#          for ag in rgs.atom_groups():
-#            if (get_class(name=ag.resname) in
-#                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-#              if ag.get_atom('H'):
-#                ag.remove_atom(ag.get_atom('H'))
-#            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-#            # rc is always empty list?
+    #
+    # FYI PRO is not placed optimally according to the restraints with this routine
+    #
+    if self.n_terminal_charge != 'no_charge':
+      for m in pdb_hierarchy.models():
+        for chain in m.chains():
+          rgs = chain.residue_groups()[0]
+          # by default, place NH3 only at residue with resseq 1
+          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+            continue
+          elif (self.n_terminal_charge == 'first_in_chain'):
+            pass
+          for ag in rgs.atom_groups():
+            if (get_class(name=ag.resname) in
+                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+              if ag.get_atom('H'):
+                ag.remove_atom(ag.get_atom('H'))
+            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+            # rc is always empty list?
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
@@ -202,41 +291,41 @@ class place_hydrogens():
       print("all links:", round(time.time()-t0, 2))
 
     # place N-terminal propeller hydrogens
-    if self.n_terminal_charge != 'no_charge':
-      hierarchy = self.model.get_hierarchy()
-      for m in hierarchy.models():
-        for chain in m.chains():
-          rgs = chain.residue_groups()[0]
-          # by default, place NH3 only at residue with resseq 1
-          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-            continue
-          elif (self.n_terminal_charge == 'first_in_chain'):
-            pass
-          add_charge = True
-          for ag in rgs.atom_groups():
-            if (get_class(name=ag.resname) in
-                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-              if ag.get_atom('N'):
-                N = ag.get_atom('N')
-                if N.i_seq in self.exclusion_iseqs:
-                  add_charge = False
-              if ag.get_atom('H'):
-                H = ag.get_atom('H')
-                ag.remove_atom(H)
-                H_label = H.id_str().replace('pdb=','').replace('"','')
-                if H_label in self.site_labels_no_para:
-                  self.site_labels_no_para.remove(H_label)
-            if add_charge:
-              rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-      hierarchy.sort_atoms_in_place()
-      hierarchy.atoms().reset_serial()
-      self.model = mmtbx.model.manager(
-        model_input       = None,
-        pdb_hierarchy     = hierarchy,
-        stop_for_unknowns = self.stop_for_unknowns,
-        crystal_symmetry  = self.model.crystal_symmetry(),
-        restraint_objects = ro,
-        log               = null_out())
+#    if self.n_terminal_charge != 'no_charge':
+#      hierarchy = self.model.get_hierarchy()
+#      for m in hierarchy.models():
+#        for chain in m.chains():
+#          rgs = chain.residue_groups()[0]
+#          # by default, place NH3 only at residue with resseq 1
+#          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+#            continue
+#          elif (self.n_terminal_charge == 'first_in_chain'):
+#            pass
+#          add_charge = True
+#          for ag in rgs.atom_groups():
+#            if (get_class(name=ag.resname) in
+#                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+#              if ag.get_atom('N'):
+#                N = ag.get_atom('N')
+#                if N.i_seq in self.exclusion_iseqs:
+#                  add_charge = False
+#              if ag.get_atom('H'):
+#                H = ag.get_atom('H')
+#                ag.remove_atom(H)
+#                H_label = H.id_str().replace('pdb=','').replace('"','')
+#                if H_label in self.site_labels_no_para:
+#                  self.site_labels_no_para.remove(H_label)
+#            if add_charge:
+#              rc = add_n_terminal_hydrogens_to_residue_group(rgs)
+#      hierarchy.sort_atoms_in_place()
+#      hierarchy.atoms().reset_serial()
+#      self.model = mmtbx.model.manager(
+#        model_input       = None,
+#        pdb_hierarchy     = hierarchy,
+#        stop_for_unknowns = self.stop_for_unknowns,
+#        crystal_symmetry  = self.model.crystal_symmetry(),
+#        restraint_objects = ro,
+#        log               = null_out())
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 
@@ -266,7 +355,6 @@ class place_hydrogens():
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
-    #get_class = iotbx.pdb.common_residue_names_get_class
     #no_H_placed_resnames = list()
     for m in pdb_hierarchy.models():
       for chain in m.chains():

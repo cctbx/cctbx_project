@@ -447,6 +447,18 @@ namespace boost_python { namespace {
         return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes);
   }
 
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+  void finalize_kokkos(){
+    Kokkos::finalize();
+  }
+
+  void initialize_kokkos(int dev){
+    Kokkos::InitArguments kokkos_init;
+    kokkos_init.device_id = dev;
+    Kokkos::initialize(kokkos_init);
+  }
+#endif
+
   void diffBragg_init_module() {
     Py_Initialize();
     boost::python::numpy::initialize();
@@ -455,12 +467,21 @@ namespace boost_python { namespace {
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
     typedef return_internal_reference<> rir;
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+    def("finalize_kokkos", finalize_kokkos,
+        "calls Kokkos::finalize()");
+
+    def("initialize_kokkos", initialize_kokkos,
+        "the sole argument `dev` (an int from 0 to Ngpu-1) is passed to Kokkos::initialize()");
+#endif
+
     class_<simtbx::nanoBragg::diffBragg, bases<simtbx::nanoBragg::nanoBragg> >
             ("diffBragg", no_init)
       /* constructor that takes a dxtbx detector and beam model */
       .def(init<const dxtbx::model::Detector&,
                 const dxtbx::model::Beam&,
-                int >(
+                int>(
         (arg_("detector"),
          arg_("beam"),
          arg_("verbose")=0),
@@ -589,8 +610,12 @@ namespace boost_python { namespace {
 
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
-#ifdef NANOBRAGG_HAVE_CUDA
-      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+#ifdef DIFFBRAGG_HAVE_CUDA
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
+#endif
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+      .def("kokkos_gpu_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
 #endif
 
       .def("set_mosaic_blocks_prime",

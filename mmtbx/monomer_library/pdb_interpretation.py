@@ -1442,7 +1442,9 @@ class monomer_mapping(slots_getstate_setstate):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
-    caa = get_class(name=self.monomer.chem_comp.id[:3])=='common_amino_acid'
+    caa = get_class(name=self.monomer.chem_comp.id[:3]) in ['common_amino_acid',
+                                                            'modified_amino_acid',
+                                                            ]
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -1908,9 +1910,8 @@ def evaluate_registry_process_result(
       show_residue_names=False,
       lines=lines))
   pdb_atoms = m_i.pdb_atoms
-  atoms = [pdb_atoms[i_seq] for i_seq in i_seqs]
   if (not registry_process_result.is_new
-      and not all_atoms_are_in_main_conf(atoms=atoms)):
+      and not all_atoms_are_in_main_conf(atoms=[pdb_atoms[i_seq] for i_seq in i_seqs])):
     raise Sorry(format_exception_message(
       m_i=m_i,
       m_j=m_j,
@@ -4831,10 +4832,7 @@ class build_all_chain_proxies(linking_mixins):
             "atom_selection", planarity.atom_selection), file=log)
       if (planarity.sigma is None) or (planarity.sigma <= 0):
         print("    Warning: Ignoring planarity with with sigma <= 0:", file=log)
-        print(show_atom_selections(), file=log)
         continue
-        # raise Sorry("Custom planarity sigma is undefined or zero/negative - "+
-        #   "this must be a positive decimal number.")
       i_seqs = self.phil_atom_selections_as_i_seqs(
           cache=sel_cache,
           scope_extract=planarity,
@@ -4866,7 +4864,7 @@ class build_all_chain_proxies(linking_mixins):
     for parallelity in params.parallelity:
       if (parallelity.atom_selection_1 is None or
           parallelity.atom_selection_2 is None):
-        print("Warning: Ignoring parallelity with empty atom selection.", file=log)
+        print("    Warning: Ignoring parallelity with empty atom selection.", file=log)
         continue
       if (parallelity.sigma is None) or (parallelity.sigma <= 0):
         raise Sorry("Custom parallelity sigma is undefined or zero/negative - "+

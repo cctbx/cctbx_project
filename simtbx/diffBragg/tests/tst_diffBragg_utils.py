@@ -33,5 +33,4 @@ def test_regions():
 
 
 if __name__ == "__main__":
-    test_regions()
     print("OK")

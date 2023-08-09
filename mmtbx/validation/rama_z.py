@@ -206,6 +206,8 @@ class rama_z(object):
 
   def _get_z_score_point(self, entry):
     fname, rama_type, resname, ss_type, phi, psi = entry
+    phi = round(phi, 10)
+    psi = round(psi, 10)
     resname = self._get_resname(rama_type, resname)
     if resname == 'cisPRO':
       ss_type = 'L'

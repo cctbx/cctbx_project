@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+from simtbx.kokkos import gpu_instance
+kokkos_run = gpu_instance(deviceId = 0)
 from simtbx.diffBragg import utils, hopper_utils
 from simtbx.nanoBragg.tst_nanoBragg_multipanel import beam as dxtbx_beam
 from simtbx.nanoBragg.tst_nanoBragg_multipanel import whole_det as dxtbx_det

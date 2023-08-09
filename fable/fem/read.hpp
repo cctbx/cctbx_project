@@ -194,17 +194,18 @@ namespace fem {
       int
       inp_get()
       {
-        int result = inp->get();
+        int result = 0;
+        result = inp->get();
         if (utils::is_stream_err(result)) {
           inp.reset();
-          if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
+          if (this->iostat_ptr != 0) *iostat_ptr = IOSTAT_ERROR;
           throw io_err("Error during read");
         }
         if (first_inp_get || io_mode == io_unformatted) {
           first_inp_get = false;
           if (utils::is_stream_end(result)) {
             inp.reset();
-            if(this -> iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
+            if (this->iostat_ptr != 0) *iostat_ptr = IOSTAT_END;
             throw read_end("End of input during read");
           }
         }
@@ -520,14 +521,14 @@ namespace fem {
       {
         while (true) {
           int c = inp_get();
-          if (   utils::is_stream_end(c)
-              || utils::is_end_of_line(c)) {
+          if (utils::is_stream_end(c)
+            || utils::is_end_of_line(c)) {
             break;
           }
         }
       }
 
-      ~read_loop()
+      ~read_loop() NOEXCEPT_FALSE
       {
         if (inp.get() == 0) return;
         if (io_mode == io_unformatted) {

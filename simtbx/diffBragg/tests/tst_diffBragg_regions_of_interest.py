@@ -1,13 +1,12 @@
 from __future__ import division
+##from simtbx.kokkos import gpu_instance
+#kokkos_run = gpu_instance(deviceId = 0)
 
 def main():
 
     import numpy as np
     from simtbx.diffBragg.utils import get_diffBragg_instance
-    import sys
-    if "--cuda" in sys.argv:
-        import os
-        os.environ["DIFFBRAGG_USE_CUDA"]="1"
+    from simtbx.diffBragg.utils import find_diffBragg_instances
 
     D = get_diffBragg_instance()
     D.nopolar = False
@@ -31,8 +30,16 @@ def main():
         diff_roi_pixels = D.raw_pixels_roi.as_numpy_array()[:npix_sim].reshape((y2-y1, x2-x1))
 
         assert np.allclose(diff_roi_pixels, nano_roi_pixels, atol=1e-9)
+        for name in find_diffBragg_instances(globals()): del globals()[name]
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if "--kokkos" in sys.argv:
+        import os
+        os.environ["DIFFBRAGG_USE_KOKKOS"]="1"
+    from simtbx.diffBragg.device import DeviceWrapper
+
+    with DeviceWrapper(0) as _:
+        main()
     print ("OK!")

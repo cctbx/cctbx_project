@@ -16,6 +16,7 @@ Options:
   nontrans_only=True    only print nontrans residues (does not affect kinemage)
   text=True          verbose colon-delimited text output (default)
   kinemage=False        Create kinemage markup (overrides text output)
+  json=False            Outputs results as JSON compatible dictionary
   help = False          Prints this help message if true
 
   text output is colon-delimited and follows the format:
@@ -55,6 +56,9 @@ Example:
     kinemage = False
       .type = bool
       .help = "Prints kinemage markup for cis-peptides"
+    json = False
+      .type = bool
+      .help = "Prints results as JSON format dictionary"
     oneline = False
       .type = bool
       .help = "Prints oneline-style summary statistics"
@@ -64,6 +68,17 @@ Example:
 """
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
+
+  def get_results_as_JSON(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+
+    result = omegalyze(
+      pdb_hierarchy=hierarchy,
+      nontrans_only=self.params.nontrans_only,
+      out=self.logger,
+      quiet=False)
+    return result.as_JSON()
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
@@ -88,6 +103,8 @@ Example:
       print(result.as_kinemage(), file=self.logger)
     elif self.params.oneline:
       result.summary_only(out=self.logger, pdbid=self.data_manager.get_default_model_name())#params.model)
+    elif self.params.json:
+      print(result.as_JSON(), file=self.logger)
     elif self.params.text:
       result.show_old_output(out=self.logger, verbose=True)
     if f:

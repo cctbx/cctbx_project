@@ -20,7 +20,7 @@
 #include <boost/math/special_functions/erf.hpp>
 #include <boost/math/special_functions/fpclassify.hpp>
 #include <boost_adaptbx/python_streambuf.h>
-#include <omptbx/omp_or_stubs.h>
+// #include <omptbx/omp_or_stubs.h>
 #include <simtbx/nanoBragg/nanotypes.h>
 
 using boost::math::erf;
@@ -579,6 +579,7 @@ class nanoBragg {
 
     /* member function for triggering noise calculation */
     void add_noise();
+    af::flex_double add_noise(af::flex_double) const;
 
     /* utility function for outputting an image to examine */
     void to_smv_format(std::string const& fileout, double intfile_scale, int debug_x, int debug_y);
@@ -586,6 +587,111 @@ class nanoBragg {
     void to_smv_format_streambuf(boost_adaptbx::python::streambuf &, double, int const&, int const&) const;
 };
 
+class encapsulated_twodev
+{
+/* Convert gaussdev from a function to a class.
+ * Implemented as a function, the state variable iset
+ * valued at 0 or 1, unintentionally stored global state, thus
+ * producing different gaussian deviates depending on the order in
+ * which images are simulated within a parallel-computing environment.
+ * Despite random seeds being the same, resulting deviates differed.
+ * Switching to a class now forces iset to be initialized for each new
+ * class instance.
+ * Furthermore, implement poidev() within the same new class, since
+ * gaussdev() is a dependency of poidev().
+ */
+  private:
+    // instance variables for gaussdev
+    int iset;
+    double gset; //set value to avoid compiler warnings, but the 0 value must not be used.
+    double fac,rsq,v1,v2;
+    // instance variables for poidev
+    /* oldm is a flag for whether xm has changed since last call */
+    double sq,alxm,g,oldm; //formerly static when poidev was a function
+    double em,t,y;
+
+  public:
+    inline
+    encapsulated_twodev() : iset(0), gset(0.), sq(0), alxm(0), g(0), oldm(-1.0) {}
+
+    /* return gaussian deviate with rms=1 and FWHM = 2/sqrt(log(2)) */
+    inline
+    double gaussdev(long *idum){
+    if (iset == 0) {
+        /* no extra deviats handy ... */
+
+        /* so pick two uniform deviates on [-1:1] */
+        do {
+            v1=2.0*ran1(idum)-1.0;
+            v2=2.0*ran1(idum)-1.0;
+            rsq=v1*v1+v2*v2;
+        } while (rsq >= 1.0 || rsq == 0);
+        /* restrained to the unit circle */
+
+        /* apply Box-Muller transformation to convert to a normal deviate */
+        fac=sqrt(-2.0*log(rsq)/rsq);
+        gset=v1*fac;
+        iset=1;         /* we now have a spare deviate */
+        return v2*fac;
+    } else {
+        /* there is an extra deviate in gset */
+        iset=0;
+        return gset;
+    }
+    }
+
+    /* Poisson deviate given expectation value of photon count (xm) */
+    inline
+    double poidev(double xm, long *idum){
+
+    /* routine below locks up for > 1e6 photons? */
+    if (xm > 1.0e6) {
+        return xm+sqrt(xm)*gaussdev(idum);
+    }
+
+    if (xm < 12.0) {
+        /* use direct method: simulate exponential delays between events */
+        if(xm != oldm) {
+            /* xm is new, compute the exponential */
+            oldm=xm;
+            g=exp(-xm);
+        }
+        /* adding exponential deviates is equivalent to multiplying uniform deviates */
+        /* final comparison is to the pre-computed exponential */
+        em = -1;
+        t = 1.0;
+        do {
+            ++em;
+            t *= ran1(idum);
+        } while (t > g);
+    } else {
+        /* Use rejection method */
+        if(xm != oldm) {
+            /* xm has changed, pre-compute a few things... */
+            oldm=xm;
+            sq=sqrt(2.0*xm);
+            alxm=log(xm);
+            g=xm*alxm-gammln(xm+1.0);
+        }
+        do {
+            do {
+                /* y is a deviate from a lorentzian comparison function */
+                y=tan(M_PI*ran1(idum));
+                /* shift and scale */
+                em=sq*y+xm;
+            } while (em < 0.0);         /* there are no negative Poisson deviates */
+            /* round off to nearest integer */
+            em=floor(em);
+            /* ratio of Poisson distribution to comparison function */
+            /* scale it back by 0.9 to make sure t is never > 1.0 */
+            t=0.9*(1.0+y*y)*exp(em*alxm-gammln(em+1.0)-g);
+        } while (ran1(idum) > t);
+    }
+
+    return em;
+    }
+
+};
 
 }}// namespace simtbx::nanoBragg
 #endif //SIMTBX_NANOBRAGG_H

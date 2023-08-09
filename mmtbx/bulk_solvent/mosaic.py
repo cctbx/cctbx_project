@@ -248,7 +248,7 @@ class refinery(object):
     self.f_calc          = fmodel.f_calc()
     phase_source_init    = fmodel.f_model()
     k_total              = fmodel.k_total()
-    self.F               = [self.f_calc.deep_copy()] + fv.keys()
+    self.F               = [self.f_calc.deep_copy()] + list(fv.keys())
     n_zones_start        = len(self.F)
     r4_start             = fmodel.r_work4()
     r4_best              = r4_start

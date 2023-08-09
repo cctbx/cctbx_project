@@ -2,10 +2,11 @@
 #define SIMTBX_KOKKOS_SIMULATION_H
 
 #include "scitbx/array_family/shared.h"
+#include "scitbx/array_family/flex_types.h"
 #include "simtbx/nanoBragg/nanoBragg.h"
 #include "simtbx/kokkos/structure_factors.h"
 #include "simtbx/kokkos/detector.h"
-#include "kokkos_types.h"
+#include "kokkostbx/kokkos_types.h"
 
 namespace simtbx { namespace Kokkos {
 
@@ -39,6 +40,7 @@ struct exascale_api {
   );
 
   void add_background(simtbx::Kokkos::kokkos_detector &, int const&);
+  af::flex_double add_noise(simtbx::Kokkos::kokkos_detector &);
   void allocate();
   //~exascale_api();
 

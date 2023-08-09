@@ -160,7 +160,7 @@ def flexBeam_sim_colors(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
 
 
 def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, pidx=0, beam_size_mm=0.001,
-                   Fbg_vs_stol=None, sample_thick_mm=100, density_gcm3=1, molecular_weight=18):
+                   Fbg_vs_stol=None, sample_thick_mm=100, density_gcm3=1, molecular_weight=18, roi=None):
   """
   :param DETECTOR:
   :param BEAM: see sim_spots
@@ -173,6 +173,9 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   :param sample_thick_mm: path length of background that is exposed by the beam
   :param density_gcm3: density of background  (defaults to water)
   :param molecular_weight: molecular weight of background (defaults to water)
+  :param roi: region of interst on detector ((fast_min, fast_max), (slow_min, slow_max)),
+              e.g., ((10,20), (30,35)) would simulate in the 10x5 pixel region of interest
+              starting at pixel 10,30 (fast, slow). See also region_of_interest in nanoBragg_ext.cpp
   :return: raw_pixels as flex array, these can be passed to sim_spots function below
   """
   wavelength_weights = np.array(wavelength_weights)
@@ -192,6 +195,8 @@ def sim_background(DETECTOR, BEAM, wavelengths, wavelength_weights, total_flux, 
   SIM.amorphous_density_gcm3 = density_gcm3
   SIM.amorphous_molecular_weight_Da = molecular_weight
   SIM.progress_meter = False
+  if roi is not None:
+    SIM.region_of_interest=roi
   SIM.add_background()
   background_raw_pixels = SIM.raw_pixels.deep_copy()
   SIM.free_all()

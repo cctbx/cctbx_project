@@ -53,12 +53,12 @@ ATOM   34  H HG22 B THR A 1 2 11.027 9.120  5.405  0.30 10.62 2  THR A HG22 1
 ATOM   35  H HG23 A THR A 1 2 11.693 11.979 3.928  0.70 9.26  2  THR A HG23 1
 ATOM   36  H HG23 B THR A 1 2 11.801 9.381  6.801  0.30 8.15  2  THR A HG23 1
 # ...trunacted...
-HETATM 679 C C1   A EOH B 2 . 16.083 0.909  12.713 0.60 15.95 66 EOH A C1   1
-HETATM 680 C C1   B EOH B 2 . 15.565 1.042  13.226 0.40 14.21 66 EOH A C1   1
-HETATM 681 C C2   A EOH B 2 . 15.130 -0.269 13.016 0.60 14.85 66 EOH A C2   1
-HETATM 682 C C2   B EOH B 2 . 14.830 -0.303 13.058 0.40 15.17 66 EOH A C2   1
-HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH A O    1
-HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH A O    1
+HETATM 679 C C1   A EOH B 2 . 16.083 0.909  12.713 0.60 15.95 66 EOH B C1   1
+HETATM 680 C C1   B EOH B 2 . 15.565 1.042  13.226 0.40 14.21 66 EOH B C1   1
+HETATM 681 C C2   A EOH B 2 . 15.130 -0.269 13.016 0.60 14.85 66 EOH B C2   1
+HETATM 682 C C2   B EOH B 2 . 14.830 -0.303 13.058 0.40 15.17 66 EOH B C2   1
+HETATM 683 O O    A EOH B 2 . 15.378 1.984  12.104 0.60 12.07 66 EOH B O    1
+HETATM 684 O O    B EOH B 2 . 14.811 2.078  12.602 0.40 5.53  66 EOH B O    1
 """
 
 def exercise_cif_show():
@@ -82,8 +82,8 @@ def exercise_pdb_hierachy_builder():
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=1
-  chain id="A" #residue_groups=2
+model id="" #chains=2
+  chain id="A" #residue_groups=1
     resid="   2 " #atom_groups=3
       altloc="" resname="THR" #atoms=4
         " C  "
@@ -108,6 +108,7 @@ model id="" #chains=1
         "HG21"
         "HG22"
         "HG23"
+  chain id="B" #residue_groups=1
     resid="  66 " #atom_groups=2
       altloc="A" resname="EOH" #atoms=3
         " C1 "
@@ -118,6 +119,7 @@ model id="" #chains=1
         " C2 "
         " O  "
 """)
+
   cif_block = hierarchy.as_cif_block()
   builder = pdb_hierarchy_builder(cif_block)
   hierarchy_recycled = builder.hierarchy
@@ -187,7 +189,7 @@ ATOM   3    C  C     . SER A 1 1 23.173  -67.799 17.805  1.00 21.13 108 SER A C 
 ATOM   4    O  O     . SER A 1 1 23.251  -67.594 16.595  1.00 19.34 108 SER A O     1
 ATOM   5    C  CB    . SER A 1 1 22.882  -70.080 18.766  1.00 22.68 108 SER A CB    1
 ATOM   6    O  OG    . SER A 1 1 23.683  -70.569 17.703  1.00 24.00 108 SER A OG    1
-HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  A MN    1
+HETATM 2650 MN MN    . MN  F 4 . 9.296   -44.783 -6.320  1.00 44.18 505 MN  B MN    1
 #
 loop_
 _atom_site_anisotrop.id
@@ -222,8 +224,8 @@ _atom_site_anisotrop.U[2][3]
   s = StringIO()
   hierarchy.show(out=s)
   assert not show_diff(s.getvalue(), """\
-model id="" #chains=1
-  chain id="A" #residue_groups=2
+model id="" #chains=2
+  chain id="A" #residue_groups=1
     resid=" 108 " #atom_groups=1
       altloc="" resname="SER" #atoms=6
         " N  "
@@ -232,8 +234,9 @@ model id="" #chains=1
         " O  "
         " CB "
         " OG "
+  chain id="B" #residue_groups=1
     resid=" 505 " #atom_groups=1
-      altloc="" resname="MN" #atoms=1
+      altloc="" resname=" MN" #atoms=1
         "MN  "
 """)
   cif_block = hierarchy.as_cif_block(crystal_symmetry=builder.crystal_symmetry)
@@ -392,7 +395,7 @@ _atom_site.pdbx_PDB_model_num
 model id="" #chains=2
   chain id="C" #residue_groups=1
     resid="1123 " #atom_groups=1
-      altloc="" resname="CA" #atoms=1
+      altloc="" resname=" CA" #atoms=1
         "CA  "
   chain id="F" #residue_groups=1
     resid="1653 " #atom_groups=1

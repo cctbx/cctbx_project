@@ -5,19 +5,10 @@ import errno
 import glob
 import os
 import shutil
+import subprocess
 import sys
 from optparse import SUPPRESS_HELP, OptionParser
 from six.moves import range
-
-try:
-  import procrunner
-except ImportError:
-  try:
-    import libtbx.pkg_utils
-    libtbx.pkg_utils.require("procrunner")
-    import procrunner
-  except Exception:
-    sys.exit("libtbx.install requires procrunner. Please run: libtbx.python -m pip install procrunner")
 
 import libtbx.load_env
 from libtbx.auto_build.bootstrap import Toolbox
@@ -103,19 +94,26 @@ def run(args):
   if packages_to_configure:
     packages_to_configure = sorted(packages_to_configure)
     print("Configuring package[s] %s..." % ", ".join(packages_to_configure))
-    os.chdir(abs(libtbx.env.build_path))
-    result = procrunner.run(['libtbx.configure'] + packages_to_configure,
-                                    print_stdout=False, print_stderr=False)
-    if result['exitcode']:
+
+    proc = subprocess.Popen(['libtbx.configure'] + packages_to_configure,
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+      cwd=abs(libtbx.env.build_path)
+      )
+    out, err = proc.communicate()
+    if err:
       errors = True
-      print(result['stdout'])
-      print(result['stderr'])
+      print(out.decode())
+      print(err.decode())
       print("Configuration failed. Run 'libtbx.configure %s' "
             "once underlying problem solved, then 'make'"
             % " ".join(packages_to_configure))
     else:
-      result = procrunner.run(['make'])
-      if result['exitcode']:
+      proc = subprocess.Popen(['make'],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cwd=abs(libtbx.env.build_path)
+        )
+      out, err = proc.communicate()
+      if err:
         errors = True
   if errors:
     sys.exit(1)
@@ -129,19 +127,23 @@ def install_git(**kwargs):
       print("using reference repository...", end="")
       sys.stdout.flush()
   try:
-    result = procrunner.run(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
-                                    print_stdout=False)
-    if result['exitcode']:
+    proc = subprocess.Popen(['git', 'clone', '--recursive', kwargs['source'], kwargs['location']] + reference,
+      stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+      )
+    out, err = proc.communicate()
+    if err:
       if os.path.exists(kwargs['location']) and not os.listdir(kwargs['location']):
         # git-auth can leave an empty directory behind
         os.rmdir(kwargs['location'])
       return False
     if reference:
-      oldcwd = os.getcwd()
-      os.chdir(kwargs['location'])
-      result = procrunner.run(['git', 'repack', '-a', '-d'], print_stderr=True)
-      os.chdir(oldcwd)
-      assert result['exitcode'] == 0, "Repack operation failed. Delete repository and try again."
+      proc = subprocess.Popen(['git', 'repack', '-a', '-d'],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        cwd=kwargs['location']
+        )
+      out, err = proc.communicate()
+      print(out.decode())
+      assert proc.returncode == 0, "Repack operation failed. Delete repository and try again."
       os.remove(os.path.join(kwargs['location'], '.git', 'objects', 'info', 'alternates'))
     Toolbox.set_git_repository_config_to_rebase(os.path.join(kwargs['location'], '.git', 'config'))
     return True
@@ -196,8 +198,12 @@ def install_pip(**kwargs):
   git_installation = install_git(**kwargs)
   if not git_installation:
     return False
-  result = procrunner.run(['libtbx.pip', 'install', '-e', kwargs['location']], print_stderr=True)
-  if result['exitcode']:
+  proc = subprocess.Popen(['libtbx.pip', 'install', '-e', kwargs['location']],
+    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+    )
+  out, err = proc.communicate()
+  print(out.decode())
+  if err:
     return False
   return True
 

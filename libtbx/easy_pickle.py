@@ -130,9 +130,10 @@ def dump_args(*args, **keyword_args):
   """
   dump("args.pickle", (args, keyword_args))
 
-def fix_py2_pickle(p):
+def fix_py2_pickle_orig(p):
   '''
   Fix pickles from Python 2
+  Original version
 
   Parameters
   ----------
@@ -143,6 +144,11 @@ def fix_py2_pickle(p):
   p: the fixed pickle
   '''
   from collections.abc import Mapping, MutableSequence
+  from cctbx.crystal import symmetry
+  from cctbx.sgtbx import empty, space_group
+  from cctbx.xray.structure import structure
+  from iotbx.pdb.hierarchy import root
+  skip_types = (empty, root, space_group, structure, symmetry)
   if isinstance(p, Mapping):
     for key in list(p.keys()):
       if isinstance(key, bytes):
@@ -150,18 +156,99 @@ def fix_py2_pickle(p):
         p[str_key] = p[key]
         del p[key]
         key = str_key
-      p[key] = fix_py2_pickle(p[key])
+      if isinstance(p[key], skip_types) or callable(p[key]):
+        pass
+      else:
+        # print(key, type(p[key]), p[key])
+        p[key] = fix_py2_pickle_orig(p[key])
   if isinstance(p, MutableSequence):
     for i in range(len(p)):
-      p[i] = fix_py2_pickle(p[i])
+      p[i] = fix_py2_pickle_orig(p[i])
 
-  if hasattr(p, '__dict__'):
-    p.__dict__ = fix_py2_pickle(p.__dict__)
+  if hasattr(p, '__dict__') and '__dict__' in dir(p):
+    p.__dict__ = fix_py2_pickle_orig(p.__dict__)
   # miller array object
   if hasattr(p, '_info') and hasattr(p._info, 'labels'):
-    p._info.labels = fix_py2_pickle(p._info.labels)
+    p._info.labels = fix_py2_pickle_orig(p._info.labels)
 
   if isinstance(p, bytes):
     p = p.decode('utf8')
 
+  return p
+
+def fix_py2_pickle(p):
+  '''
+  Fix pickles from Python 2
+  Version 3
+
+  Parameters
+  ----------
+  p: pickle
+
+  Returns
+  -------
+  p: the fixed pickle
+
+  Comments:
+  ---------
+
+  '''
+  from mmtbx.model.model import get_hierarchy_and_run_hierarchy_method
+  from collections.abc import Mapping, MutableSequence
+  from libtbx import group_args
+  from scitbx_array_family_flex_ext import std_string
+  if isinstance(p, get_hierarchy_and_run_hierarchy_method):
+    return p
+  if isinstance(p, group_args):
+    p = p() # now it is a dict
+    for key in list(p.keys()):    # fix the key
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key])
+    # convert to dict, fix, convert back to group args
+    p = group_args(**p)
+
+  elif isinstance(p, bytes):
+    p = p.decode('utf8')
+
+  elif isinstance(p, MutableSequence):
+    for i in range(len(p)):
+      p[i] = fix_py2_pickle(p[i])
+
+  elif isinstance(p, Mapping):
+    for key in list(p.keys()):    # fix the key
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p[str_key] = p[key]
+        del p[key]
+        key = str_key
+      p[key] = fix_py2_pickle(p[key])
+
+
+  elif isinstance(p,tuple):
+    p = tuple(fix_py2_pickle(list(p)))
+
+  elif isinstance(p, std_string):
+    new_p = std_string()
+    for x in p:
+      new_p.append(fix_py2_pickle(x))
+    p = new_p
+
+  # Classes like mmtbx.monomer_library.cif_types.chem_mod_angle remain here
+  elif hasattr(p, '__dict__'):
+    for key in list(p.__dict__.keys()):    # fix the key
+      if isinstance(key, bytes):
+        str_key = key.decode('utf8')
+        p.__dict__[str_key] = p.__dict__[key]
+        del p.__dict__[key]
+        key = str_key
+      if not key.startswith("__"):
+        p.__dict__[key] = fix_py2_pickle(p.__dict__[key])
+
+  else:
+    # We have no idea...skip conversion (should never be here)
+    pass
   return p

@@ -1408,6 +1408,81 @@ private:
   FloatType k_best;
 };
 
+
+/*
+Find best fit of F1+k*exp(-B*s**2/4)*F2 to F0 w.r.t. k and B.
+*/
+
+template <typename FloatType=double, typename ComplexType=std::complex<double> >
+class add_complex_f_kb_scaled
+{
+public:
+  add_complex_f_kb_scaled() {}
+
+  add_complex_f_kb_scaled(
+    af::const_ref<FloatType>   const& f0,
+    af::const_ref<ComplexType> const& f1,
+    af::const_ref<ComplexType> const& f2,
+    af::const_ref<FloatType>   const& k_range,
+    af::const_ref<FloatType>   const& b_range,
+    af::const_ref<FloatType>   const& ss)
+  {
+    MMTBX_ASSERT(f0.size() == f1.size());
+    MMTBX_ASSERT(f1.size() == f2.size());
+    MMTBX_ASSERT(f1.size() == ss.size());
+    b_best = -1;
+    r_best = r_factor(f0, f1, 1.0);
+    k_best = 1.0;
+    result.resize(ss.size(), 0.);
+    af::shared<ComplexType> f12(ss.size());
+    for(std::size_t j=0; j < b_range.size(); j++) {
+      FloatType mb = -b_range[j];
+      for(std::size_t i=0; i < k_range.size(); i++) {
+        FloatType k = k_range[i];
+        for(std::size_t m=0; m < ss.size(); m++) {
+          FloatType kbs = k*std::exp(mb * ss[m]);
+          f12[m] = f1[m]+kbs*f2[m];
+        }
+        FloatType r = r_factor(f0, f12.const_ref());
+        if(r < r_best) {
+          r_best = r;
+          b_best = b_range[j];
+          k_best = k;
+        }
+      }
+    }
+    for(std::size_t i=0; i < ss.size(); i++) {
+      FloatType scale = k_best*std::exp(-1.*b_best*ss[i]);
+      result[i] = scale*f2[i];
+    }
+  }
+
+  af::shared<ComplexType> scaled() { return result; }
+  FloatType b() { return b_best; }
+  FloatType k() { return k_best; }
+  FloatType r() { return r_best; }
+
+private:
+  af::shared<ComplexType> result;
+  FloatType b_best;
+  FloatType k_best;
+  FloatType r_best;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 template <typename FloatType=double, typename ComplexType=std::complex<double> >
 class complex_f_kb_scaled
 {

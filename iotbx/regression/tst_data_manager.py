@@ -108,6 +108,19 @@ data_manager {
   os.remove('c.dat')
   os.remove('e.dat')
 
+  # check datatypes with parent
+  datatypes = ['miller_array', 'map_coefficients']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['miller_array', 'map_coefficients', 'phil', 'model']
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
+  datatypes = ['phil', 'model', 'miller_array', 'map_coefficients',]
+  dm = DataManager(datatypes=datatypes)
+  assert len(dm.datatypes) == len(datatypes)
+
 # -----------------------------------------------------------------------------
 def test_model_datatype():
   import mmtbx.monomer_library.server
@@ -557,25 +570,24 @@ def test_miller_array_datatype():
   os.remove('test.phil')
 
   # test type
-  assert dm.get_miller_array_type() == 'x_ray'
+  assert dm.get_miller_array_type() == ['x_ray']
   dm.set_miller_array_user_selected_labels()
   label = labels[3]
-  dm.set_miller_array_type(data_mtz, label, 'electron')
-  assert dm.get_miller_array_type(label=label) == 'electron'
+  dm.set_miller_array_type(data_mtz, label, ['electron'])
+  assert dm.get_miller_array_type(label=label) == ['electron']
   dm.write_phil_file(dm.export_phil_scope().as_str(),
                      filename='test_phil', overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test_phil')
   new_dm.load_phil_scope(loaded_phil)
-  assert new_dm.get_miller_array_type(label=label) == 'electron'
+  assert new_dm.get_miller_array_type(label=label) == ['electron']
   new_dm = DataManager(['miller_array'])
   try:
-    new_dm.set_default_miller_array_type('q')
+    new_dm.set_default_miller_array_type(['q'])
   except Sorry as s:
     assert 'Unrecognized miller_array type, "q,"' in str(s)
-  new_dm.set_default_miller_array_type('neutron')
+  new_dm.set_default_miller_array_type(['neutron'])
   new_dm.process_miller_array_file(data_mtz)
-  assert new_dm.get_miller_array_type(label=label) == 'neutron'
-
+  assert new_dm.get_miller_array_type(label=label) == ['neutron']
   os.remove('test_phil')
 
   # test array_type
@@ -641,7 +653,7 @@ def test_miller_array_datatype():
   assert miller_array.info().label_string() == 'I,as_amplitude_array,merged'
 
   for label in dm.get_miller_array_all_labels():
-    dm.set_miller_array_type(label=label, array_type='electron')
+    dm.set_miller_array_type(label=label, array_type=['electron'])
   fs = dm.get_reflection_file_server(array_type='x_ray')
   assert len(fs.get_miller_arrays(None)) == 2
   fs = dm.get_reflection_file_server(array_type='electron')
@@ -650,7 +662,7 @@ def test_miller_array_datatype():
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='neutron')
   assert fs is None
   for label in ['I,SIGI,merged', 'IPR,SIGIPR,merged']:
-    dm.set_miller_array_type(label=label, array_type='x_ray')
+    dm.set_miller_array_type(label=label, array_type=['x_ray'])
   fs = dm.get_reflection_file_server(filenames=[data_mtz],
     labels=[['I,SIGI,merged', 'IPR,SIGIPR,merged']], array_type='x_ray')
   assert len(fs.get_miller_arrays(data_mtz)) == 2
@@ -664,14 +676,14 @@ def test_miller_array_datatype():
   dm = DataManager(['miller_array', 'phil'])
   dm.process_miller_array_file(data_mtz)
   dm.set_miller_array_user_selected_labels(labels=label_subset)
-  dm.set_miller_array_type(label=label_subset[2], array_type='electron')
-  assert dm.get_miller_array_type(label=label_subset[2]) == 'electron'
+  dm.set_miller_array_type(label=label_subset[2], array_type=['electron'])
+  assert dm.get_miller_array_type(label=label_subset[2]) == ['electron']
   dm.write_phil_file(dm.export_phil_scope().as_str(), filename='test.phil',
                      overwrite=True)
   loaded_phil = iotbx.phil.parse(file_name='test.phil')
   new_dm = DataManager(['miller_array', 'phil'])
   new_dm.load_phil_scope(loaded_phil)
-  assert new_dm.get_miller_array_type(label=label_subset[2]) == 'electron'
+  assert new_dm.get_miller_array_type(label=label_subset[2]) == ['electron']
   fs = new_dm.get_reflection_file_server(array_type='x_ray', labels=[label_subset])
   assert len(fs.get_miller_arrays(None)) == 4
   fs = new_dm.get_reflection_file_server(array_type='electron', labels=[label_subset])
@@ -898,6 +910,24 @@ def test_fmodel_params():
   params = dm.get_fmodel_params()
   assert params.xray_data.french_wilson.max_bins == 1
 
+  new_params = dm.get_fmodel_params()
+  new_params.xray_data.r_free_flags.test_flag_value = 2
+  dm.set_fmodel_params(new_params)
+  params = dm.get_fmodel_params()
+  assert params.xray_data.r_free_flags.test_flag_value == 2
+
+  new_params = dm.export_phil_scope(as_extract=True)
+  new_params.data_manager.fmodel.xray_data.twin_law = 'h, k, l'
+  dm.set_fmodel_params(new_params)
+  params = dm.get_fmodel_params()
+  assert params.xray_data.twin_law == 'h, k, l'
+  assert params.xray_data.r_free_flags.test_flag_value == 2
+  assert params.xray_data.french_wilson.max_bins == 1
+  full_params = dm.export_phil_scope(as_extract=True)
+  assert full_params.data_manager.fmodel.xray_data.twin_law == 'h, k, l'
+  assert full_params.data_manager.fmodel.xray_data.r_free_flags.test_flag_value == 2
+  assert full_params.data_manager.fmodel.xray_data.french_wilson.max_bins == 1
+
   # test updated defaults
   dm = DataManager(['model', 'miller_array'])
   data_dir = os.path.dirname(os.path.abspath(__file__))
@@ -915,28 +945,28 @@ def test_fmodel_params():
   assert dm.get_default_model_type() == ['x_ray']
   for filename in dm.get_model_names():
     assert dm.get_model_type(filename) == ['x_ray']
-  assert dm.get_default_miller_array_type() == 'x_ray'
+  assert dm.get_default_miller_array_type() == ['x_ray']
   for filename in dm.get_miller_array_names():
     for label in dm.get_miller_array_labels(filename):
-      assert dm.get_miller_array_type(filename, label) == 'x_ray'
+      assert dm.get_miller_array_type(filename, label) == ['x_ray']
 
   dm.update_all_defaults('electron')
   assert dm.get_default_model_type() == ['electron']
   for filename in dm.get_model_names():
     assert dm.get_model_type(filename) == ['electron']
-  assert dm.get_default_miller_array_type() == 'electron'
+  assert dm.get_default_miller_array_type() == ['electron']
   for filename in dm.get_miller_array_names():
     for label in dm.get_miller_array_labels(filename):
-      assert dm.get_miller_array_type(filename, label) == 'electron'
+      assert dm.get_miller_array_type(filename, label) == ['electron']
 
   for x_ray_type in ['wk1995', 'it1992', 'n_gaussian']:
     dm.update_all_defaults(x_ray_type)
     for filename in dm.get_model_names():
       assert dm.get_model_type(filename) == ['x_ray']
-    assert dm.get_default_miller_array_type() == 'x_ray'
+    assert dm.get_default_miller_array_type() == ['x_ray']
     for filename in dm.get_miller_array_names():
       for label in dm.get_miller_array_labels(filename):
-        assert dm.get_miller_array_type(filename, label) == 'x_ray'
+        assert dm.get_miller_array_type(filename, label) == ['x_ray']
 
 # -----------------------------------------------------------------------------
 def test_user_selected_labels():

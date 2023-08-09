@@ -208,22 +208,15 @@ class base_manager():
     assert len(selection_array)==len(self.atoms)
     self.ligand_atoms_array = selection_array
 
-  # def set_frozen_atoms(self, selection_array):
-  #   """Summary
+  def get_energy(self, *args, **kwds): return 0, 'dirac'
 
-  #   Args:
-  #       selection_array (TYPE): Description
-  #   """
-  #   assert len(selection_array)==len(self.atoms)
-  #   self.freeze_a_ray = selection_array
+  def read_energy(self, *args, **kwds): return 0, 'dirac'
 
-  def get_opt(self,
-              cleanup=False,
-              file_read=False,
-              coordinate_filename_ext='.xyz',
-              log_filename_ext='.log',
-              redirect_output=True,
-              log=None):
+  def get_strain(self, *args, **kwds): return 0, 'dirac'
+
+  def get_bound(self, *args, **kwds): return 0, 'dirac'
+
+  def get_opt(self, *args, **kwds):
     import random
     rc = []
     for atom in self.atoms:
@@ -387,6 +380,22 @@ class base_qm_manager(base_manager):
     self.preamble = old_preamble
     return self.strain, self.units
 
+  def get_bound(self,
+                cleanup=False,
+                file_read=True,
+                redirect_output=False,
+                log=StringIO(),
+                **kwds
+                ):
+    old_preamble = self.preamble
+    self.preamble += '_bound'
+    energy, units = self.get_energy(optimise_h=True,
+                                    redirect_output=redirect_output,
+                                    cleanup=cleanup,
+                                    log=log)
+    self.preamble = old_preamble
+    return energy, units
+
   def get_timings(self, energy=None):
     if not self.times: return '-'
     f='  Timings : %0.2fs (%ss)' % (
@@ -395,6 +404,19 @@ class base_qm_manager(base_manager):
     if energy:
       f+=' Energy : %0.6f' % energy
     return f
+
+  def _is_atom_for_opt(self, i, atom, optimise_ligand=True, optimise_h=True):
+    ligand_atom = self.ligand_atoms_array[i]
+    if optimise_ligand:
+      if ligand_atom:
+        opt=1
+      else:
+        opt=0
+    else:
+      opt=0
+    if optimise_h and atom.element in ['H', 'D']:
+      opt=1
+    return opt
 
   def guess_bonds(self):
     bonds = []

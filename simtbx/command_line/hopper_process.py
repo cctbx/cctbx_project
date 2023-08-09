@@ -132,12 +132,8 @@ class Hopper_Processor(Processor):
 
     @property
     def device_id(self):
-        if self.params.diffBragg.refiner.randomize_devices:
-            dev = np.random.choice(self.params.diffBragg.refiner.num_devices)
-            print("Rank %d will use random device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
-        else:
-            dev = COMM.rank % self.params.diffBragg.refiner.num_devices
-            print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        dev = COMM.rank % self.params.diffBragg.refiner.num_devices
+        print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
         return dev
 
     def find_spots(self, experiments):

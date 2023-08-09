@@ -1,10 +1,10 @@
-from __future__ import absolute_import, print_function, division
+from __future__ import division
 import abc
-import functools
-import itertools
 from collections import OrderedDict, UserList
-from json.decoder import JSONDecodeError
+import functools
 import glob
+import itertools
+from json.decoder import JSONDecodeError
 import os
 import pickle
 import six
@@ -35,7 +35,7 @@ This script collects and visualizes the spatial drift of a detector and unit
 cell parameters as a function of experimental progress. It requires
 the directory structure to follow the one resulting from data processing
 (i.e. ensemble refinement) performed by cctbx.xfel.
-Data scraping can take a lot of time, especially for large datasets.
+Data scraping can take some time, especially for large datasets.
 For this reason, scraping results can be saved and loaded from a pickle cache.
 End result is a plot with detector origin position and unit cell lengths
 (vertical position) as a function of run & chunk number (horizontal position).
@@ -48,32 +48,30 @@ position in laboratory reference system.
 Example usage 1:
 Read common detector origin position and average unit cell parameters for all
 expts merged in "batch*" datasets / directories, excluding "batch5":
-excluding those :
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.input.exclude=batch5/
+    cctbx.xfel.drift scrap.input.glob=batch* scrap.input.exclude=batch5
 
 Example usage 2:
 Not only read, but also cache "batch*" results in a "name.pkl" pickle:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=batch*/ scrap.cache.action=write scrap.cache.glob=name.pkl
+    cctbx.xfel.drift
+    scrap.input.glob=batch* scrap.cache.action=write scrap.cache.glob=name.pkl
 
 Example usage 3:
 Read cached "batch*" results from all "*.pkl" files and save the plot:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
+    cctbx.xfel.drift
     scrap.cache.action=read scrap.cache.glob=*.pkl plot.save=True
 
 Example usage 4:
 Read distribution of detector origin position, detector origin uncertainty,
 and unit cell parameters from selected TDER task209 directories:
-    libtbx.python `libtbx.find_in_repositories xfel`/util/drift.py
-    scrap.input.glob=r0*/039_rg084/task209 input.kind=tder_task_directory
-"""
+    cctbx.xfel.drift
+    scrap.input.glob=r0*/039_rg084/task209 scrap.input.kind=tder_task_directory
+""".strip()
 
 
 ################################ PHIL HANDLING ################################
 
 
-phil_scope = parse("""
+phil_scope_str = """
   scrap {
     input {
       glob = None
@@ -96,7 +94,7 @@ phil_scope = parse("""
         .type = str
         .help = Path to cache(s) with pickled scrap results to write/read
     }
-    origin = *first average distribution
+    origin = *first average distribution panel_com_first panel_com_average panel_com_distribution
       .type = choice
       .help = Use origin of first experiment only or average/distribution of all?
     uncertainties = True
@@ -112,6 +110,15 @@ phil_scope = parse("""
       by = chunk *merge run rungroup task trial
         .type = choice
         .help = Variable to color individual points on drift plot by;
+      correlation = seismic
+        .type = str
+        .help = Name of matplotlib colormap to be used on correlation plot
+      distribution = magma_r
+        .type = str
+        .help = Name of matplotlib colormap to be used on distribution heatmap
+      distribution_bg = white
+        .type = str
+        .help = Bg color of distribution plot. 'auto' to derive from gradient.
     }
     show = True
       .type = bool
@@ -129,7 +136,8 @@ phil_scope = parse("""
       .type = float
       .help = Width of saved plot in inches
   }
-""")
+"""
+phil_scope = parse(phil_scope_str)
 
 
 def params_from_phil(args):
@@ -178,14 +186,22 @@ def average(xs: Sequence, weights: Sequence = None) -> float:
 def correlation(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
   """Calculate weighted Pearson's correlation coefficient between sequences"""
   weights = np.ones((len(xs))) if weights is None else np.array(weights)
-  x_variance = variance(xs, xs, weights=weights)
-  y_variance = variance(ys, ys, weights=weights)
-  covariance = variance(xs, ys, weights=weights)
-  return covariance / (x_variance * y_variance) ** 0.5
+  x_variance = variance(xs, weights=weights)
+  y_variance = variance(ys, weights=weights)
+  xy_covariance = covariance(xs, ys, weights=weights)
+  return xy_covariance / (x_variance * y_variance) ** 0.5
 
 
-def variance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
-  """Calculate weighted variance between sequences"""
+def variance(xs: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted variance of a sequence"""
+  weights = np.ones((len(xs))) if weights is None else np.array(weights)
+  x_average = average(xs, weights=weights)
+  x_deviations = np.array(xs) - x_average
+  return sum(weights * x_deviations * x_deviations) / sum(weights)
+
+
+def covariance(xs: Sequence, ys: Sequence, weights: Sequence = None) -> float:
+  """Calculate weighted covariance between two sequences"""
   weights = np.ones((len(xs))) if weights is None else np.array(weights)
   x_average = average(xs, weights=weights)
   y_average = average(ys, weights=weights)
@@ -225,7 +241,7 @@ class CorrelationMatrix(object):
           self.corr[k1][k2] = self.corr[k2][k1] = corr
 
   def __str__(self) -> str:
-    s = 'Correl. ' + ' '.join('{:>7}'.format(k) for k in self.keys)
+    s = 'wPPC    ' + ' '.join('{:>7}'.format(k) for k in self.keys)
     for k1 in self.keys:
       s += '\n{:7}'.format(k1)
       for k2 in self.keys:
@@ -278,352 +294,17 @@ def read_reflections(*refl_paths: str) -> flex.reflection_table:
   return flex.reflection_table.concat(r)
 
 
-def represent_range_as_str(sorted_iterable: Sequence) -> str:
-  """Return str in only one in iterable, range e.g. "r00[81-94]" otherwise"""
+def represent_range_as_str(sorted_iterable: Sequence, sep: str = None) -> str:
+  """Return range of str in iterable, e.g. "r081-94" for ["r081", "r094"]"""
   fs, ls = str(sorted_iterable[0]), str(sorted_iterable[-1])
   d = min([i for i, (fl, ll) in enumerate(zip(fs, ls)) if fl != ll] or [None])
-  return fs if not d else fs[:d] + '[' + fs[d:] + '-' + ls[d:] + ']'
+  sep0, sep1 = (sep[0], sep[-1]) if sep is not None else ('', '')
+  return fs if not d else fs[:d] + sep0 + fs[d:] + '-' + ls[d:] + sep1
 
 
 def unique_elements(sequence: Sequence) -> List:
   """Return list of unique elements in sequence while preserving its order"""
   return list(OrderedDict.fromkeys(sequence))
-
-
-############################### DRIFT SCRAPPING ###############################
-
-
-class ScrapResults(UserList):
-  """Responsible for storing and pickling DriftScraper results."""
-  def __init__(self, parameters) -> None:
-    super().__init__()
-    self.parameters = parameters
-
-  def read(self) -> None:
-    scrap_paths, scrap_results = [], []
-    for scg in path_lookup(self.parameters.scrap.cache.glob):
-      scrap_paths.extend(glob.glob(scg))
-    for scrap_path in scrap_paths:
-      with open(scrap_path, 'rb') as pickle_file:
-        self.extend(pickle.load(pickle_file))
-
-  def write(self) -> None:
-    write_path = self.parameters.scrap.cache.glob
-    with open(write_path, 'wb') as pickle_file:
-      pickle.dump(self, pickle_file)
-
-
-def handle_scrap_cache(scrap: Callable) -> Callable:
-  @functools.wraps(scrap)
-  def scrap_wrapper(self: 'BaseDriftScraper', *args: Any, **kwargs: Any):
-    if self.parameters.scrap.cache.action == 'read':
-      self.scrap_results.read()
-    scrap(self, *args, **kwargs)
-    if self.parameters.scrap.cache.action == 'write':
-      self.scrap_results.write()
-    for scrap_dict in self.scrap_results:
-      self.table.add(scrap_dict)
-  return scrap_wrapper
-
-
-class DriftScraperRegistrar(abc.ABCMeta):
-  """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
-  REGISTRY = {}
-  def __new__(mcs, name, bases, attrs):
-    new_cls = super().__new__(mcs, name, bases, attrs)
-    if hasattr(new_cls, 'input_kind') and new_cls.input_kind:
-      mcs.REGISTRY[new_cls.input_kind] = new_cls
-    return new_cls
-
-
-@six.add_metaclass(DriftScraperRegistrar)
-class BaseDriftScraper(object):
-  """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
-  with automatic registration into the `DriftScraperRegistrar`."""
-
-  def __init__(self, table: 'DriftTable', parameters) -> None:
-    self.table = table
-    self.parameters = parameters
-    self.scrap_results = ScrapResults(parameters)
-
-  @staticmethod
-  def calc_expt_refl_len(expts: ExperimentList, refls: flex.reflection_table) \
-          -> Tuple[int, flex.int]:
-    expts_len = len(expts)
-    refls_lens = flex.int()
-    for expt_id, expt in enumerate(expts):
-      refls_lens.append((expt_id == refls['id']).count(True))
-    return expts_len, refls_lens
-
-  @staticmethod
-  def extract_db_metadata(combine_phil_path: str) -> dict:
-    """Get trial, task, rungroup, chunk, run info based on combining phil"""
-    parsed_combine_phil = parse(file_name=combine_phil_path)
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
-    index_dirs = [path_join(pie, '..') for pie in phil.input.experiments]
-    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
-    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
-    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
-    return {'chunk': int(path_split(combine_phil_path)[-1][16:19]),
-            'run': represent_range_as_str(runs),
-            'rungroup': represent_range_as_str(rungroups),
-            'task': path_split(combine_phil_path)[-4],
-            'trial': represent_range_as_str(trials)}
-
-  def locate_input_paths(self) -> List:
-    """Return all paths (either common files or directories, relative to
-    working directory) of specified kind to be processed"""
-    input_paths, exclude_paths = [], []
-    for ig in self.parameters.scrap.input.glob:
-      input_paths.extend(glob.glob(ig))
-    for ie in self.parameters.scrap.input.exclude:
-      exclude_paths.extend(glob.glob(ie))
-    return [it for it in input_paths if it not in exclude_paths]
-
-  @staticmethod
-  def locate_combining_phil_paths(scaling_phil_paths: Iterable[str]) -> List:
-    """Return paths to all phil files used to combine later-scaled expts"""
-    parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
-    combine_dirs = [path_join(ip, '..') for ip in phil.input.path]
-    combine_phil_paths = []
-    for cd in combine_dirs:
-      combine_phil_paths.extend(path_lookup(cd, '*chunk*_combine_*.phil'))
-    return sorted(set(combine_phil_paths))
-
-  @staticmethod
-  def locate_scaling_directories(merging_phil_paths: Iterable[str]) -> List:
-    """Return paths to all directories specified as scrap.input.glob in phil"""
-    merging_phils = [parse(file_name=mpp) for mpp in merging_phil_paths]
-    phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
-    return sorted(set(phil.input.path))
-
-  @staticmethod
-  def locate_refined_expts_refls(combine_phil_path: str) \
-          -> Tuple[ExperimentList, flex.reflection_table]:
-    """Return all refined expts and refls down-stream from combine_phil_path"""
-    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
-    expts_paths = path_lookup(path_stem + '_refined.expt')
-    refls_paths = path_lookup(path_stem + '_refined.refl')
-    expts = read_experiments(*expts_paths)
-    refls = read_reflections(*refls_paths)
-    return expts, refls
-
-  @abc.abstractmethod
-  @handle_scrap_cache
-  def scrap(self) -> None:
-    """Prepare `ScrapResults` list used by `handle_scrap_cache` to create
-    `self.table`, instance of `DriftTable`, based on `self.parameters`."""
-    pass
-
-
-class TderTaskDirectoryDriftScraper(BaseDriftScraper):
-  """Drift scraper which looks for all TDER downstream from merging"""
-  input_kind = 'tder_task_directory'
-
-  @handle_scrap_cache
-  def scrap(self) -> None:
-    combining_phil_paths = []
-    for tder_task_directory in self.locate_input_paths():
-      cpp = path_lookup(tder_task_directory, 'combine_experiments_t*',
-                        'intermediates', '*chunk*_combine_*.phil')
-      combining_phil_paths.extend(cpp)
-    for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
-      try:
-        scrap_dict = {'merge': "None"}
-        scrap_dict.update(self.extract_db_metadata(cpp))
-        print('Processing run {}'.format(scrap_dict['run']))
-        refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-        elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
-        print(f'Found {elen} expts and {sum(rlen)} refls')
-        scrap_dict.update({'expts': elen, 'refls': rlen})
-        scrap_dict.update(self.get_origin(refined_expts))
-        scrap_dict.update(self.get_unit_cell(refined_expts))
-        scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
-      except (KeyError, IndexError, JSONDecodeError) as e:
-        print(e)
-      else:
-        self.scrap_results.append(scrap_dict)
-
-
-
-class MergingDirectoryDriftScraper(BaseDriftScraper):
-  """Drift scraper which directly looks for TDER task directories"""
-  input_kind = 'merging_directory'
-
-  @handle_scrap_cache
-  def scrap(self) -> None:
-    for merge in self.locate_input_paths():
-      merging_phil_paths = path_lookup(merge, '**', '*.phil')
-      merging_phil_paths.sort(key=os.path.getmtime)
-      for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
-        scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
-        scaled_expts = read_experiments(*scaled_expt_paths)
-        scaled_identifiers = list(scaled_expts.identifiers())
-        scaling_phil_paths = []
-        for sep in scaled_expt_paths:
-          scaling_phil_paths.extend(path_lookup(sep, '..', '..', '*.phil'))
-        comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
-        for cpp in unique_elements(comb_phil_paths):
-          try:
-            scrap_dict = {'merge': merge}
-            scrap_dict.update(self.extract_db_metadata(cpp))
-            print('Processing run {} in merge {}'.format(scrap_dict['run'], merge))
-            refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
-            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
-            print(f'Found {elen} expts and {sum(rlen)} refls')
-            refined_expts.select_on_experiment_identifiers(scaled_identifiers)
-            refined_refls = refined_refls.select(refined_expts)
-            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
-            print(f'Accepted {elen} expts and {sum(rlen)} refls')
-            scrap_dict.update({'expts': elen, 'refls': rlen})
-            scrap_dict.update(self.get_origin(refined_expts))
-            scrap_dict.update(self.get_unit_cell(refined_expts))
-            scrap_dict.update(self.get_origin_deltas(refined_expts, refined_refls))
-          except (KeyError, IndexError, JSONDecodeError) as e:
-            print(e)
-          else:
-            self.scrap_results.append(scrap_dict)
-
-
-class FirstOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
-    """Read detector origin (x, y, z) from the first expt file only"""
-    x, y, z = expts[0].detector.hierarchy().get_origin()
-    return {'x': x, 'y': y, 'z': z}
-
-
-class AverageOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, float]:
-    """Read detector origin (x, y, z) from all files & return their average"""
-    xs, ys, zs = flex.double(), flex.double(), flex.double()
-    for expt in expts:
-      x, y, z = expt.detector.hierarchy().get_origin()
-      xs.append(x)
-      ys.append(y)
-      zs.append(z)
-    return {'x': flex.mean(xs), 'y': flex.mean(ys), 'z': flex.mean(zs)}
-
-
-class DistributionOriginMixin(object):
-  @staticmethod
-  def get_origin(expts: ExperimentList) -> Dict[str, flex.double]:
-    """Read detector origin (x, y, z) from all files & return flex with all"""
-    xs, ys, zs = flex.double(), flex.double(), flex.double()
-    for expt in expts:
-      x, y, z = expt.detector.hierarchy().get_origin()
-      xs.append(x)
-      ys.append(y)
-      zs.append(z)
-    return {'x': xs, 'y': ys, 'z': zs}
-
-
-class FalseUncertaintiesMixin(object):
-  @staticmethod
-  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
-          -> Dict[str, float]:
-    """If uncertainties=False, return dummy zero origin uncertainties"""
-    return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
-
-
-class TrueUncertaintiesMixin(object):
-  @staticmethod
-  def get_origin_deltas(expts: ExperimentList, refls: flex.reflection_table) \
-          -> Dict[str, float]:
-    """Get uncertainties of origin positions from refl. position deviations"""
-    deltas_flex = flex.vec3_double()
-    for panel in expts[0].detector:
-      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
-      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
-      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
-      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
-      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
-      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
-    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
-    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
-
-
-class BaseUnitCellMixin(object):
-  @staticmethod
-  def _write_tdata(expts: ExperimentList, tdata_path: str) -> None:
-    """Read all expt_paths and write a tdata file with unit cells in lines"""
-    s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
-    tdata_lines = []
-    for expt in expts:
-      uc_params = expt.crystal.get_unit_cell().parameters()
-      sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
-      tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
-    with open(tdata_path, 'w') as tdata_file:
-      tdata_file.write('\n'.join(tdata_lines))
-
-
-class AverageUnitCellMixin(BaseUnitCellMixin):
-  def get_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
-    """Retrieve average a, b, c and their deltas using expt paths"""
-    af, bf, cf = flex.double(), flex.double(), flex.double()
-    with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(expts, tdata_file.name)
-      with open(tdata_file.name, 'r') as tdata:
-        for line in tdata.read().splitlines():
-          a, b, c = line.strip().split(' ')[:3]
-          af.append(float(a))
-          bf.append(float(b))
-          cf.append(float(c))
-    return {'a': flex.mean(af), 'b': flex.mean(bf), 'c': flex.mean(cf),
-            'delta_a': af.standard_deviation_of_the_sample(),
-            'delta_b': bf.standard_deviation_of_the_sample(),
-            'delta_c': cf.standard_deviation_of_the_sample()}
-
-
-class DistributionUnitCellMixin(BaseUnitCellMixin):
-  def get_unit_cell(self, expts: ExperimentList) \
-          -> Dict[str, Union[flex.double, float]]:
-    """Retrieve distribution of a, b, c and their deltas using expt paths"""
-    af, bf, cf = flex.double(), flex.double(), flex.double()
-    with tempfile.NamedTemporaryFile() as tdata_file:
-      self._write_tdata(expts, tdata_file.name)
-      with open(tdata_file.name, 'r') as tdata:
-        for line in tdata.read().splitlines():
-          a, b, c = line.strip().split(' ')[:3]
-          af.append(float(a))
-          bf.append(float(b))
-          cf.append(float(c))
-    return {'a': af, 'b': bf, 'c': cf,
-            'delta_a': af.standard_deviation_of_the_sample(),
-            'delta_b': bf.standard_deviation_of_the_sample(),
-            'delta_c': cf.standard_deviation_of_the_sample()}
-
-
-class DriftScraperFactory(object):
-  """Produces appropriate DriftScraper class based on phil `parameters`."""
-  ORIGIN_MIXINS = {
-    'first': FirstOriginMixin,
-    'average': AverageOriginMixin,
-    'distribution': DistributionOriginMixin,
-  }
-  UNCERTAINTIES_MIXINS = {
-    True: TrueUncertaintiesMixin,
-    False: FalseUncertaintiesMixin,
-  }
-  UNIT_CELL_MIXINS = {
-    'average': AverageUnitCellMixin,
-    'distribution': DistributionUnitCellMixin,
-  }
-
-  @classmethod
-  def get_drift_scraper(cls, table: 'DriftTable', parameters) \
-          -> BaseDriftScraper:
-    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
-    mixins = [
-      cls.ORIGIN_MIXINS[parameters.scrap.origin],
-      cls.UNCERTAINTIES_MIXINS[parameters.scrap.uncertainties],
-      cls.UNIT_CELL_MIXINS[parameters.scrap.unit_cell],
-    ]
-    class DriftScraper(base, *mixins):
-      pass
-    return DriftScraper(table=table, parameters=parameters)
 
 
 ################################ DRIFT STORAGE ################################
@@ -667,10 +348,14 @@ class DriftTable(object):
     return self[key] if key in self.data.columns else default
 
   def sort(self, by: Union[str, Sequence[str]]) -> None:
-    self.data.sort_values(by=by, ignore_index=True)
+    self.data.sort_values(by=by, ignore_index=True, inplace=True)
 
   def column_is_flat(self, key: str) -> bool:
     return not is_iterable(self[key][0])
+
+  def assert_not_empty(self):
+    if len(self.data) == 0:
+      raise ValueError(f"{self.__class__} has no rows. Did you read any data?")
 
   @property
   def flat(self) -> pd.DataFrame:
@@ -699,12 +384,421 @@ class DriftTable(object):
     return flat_table
 
   def recalculate_dynamic_column(self, key: str) -> None:
+    self.assert_not_empty()
     if key == 'density':
       refls = self.data['refls'] if self.column_is_flat('refls') \
         else pd.Series([sum(refl) for refl in self.data['refls']])
       self.data['density'] = refls / self.data['expts']
     else:
       raise KeyError(f'Unknown dynamic column key: {key}')
+
+
+############################### DRIFT SCRAPPING ###############################
+
+
+class ScrapResults(UserList):
+  """Responsible for storing and pickling DriftScraper results."""
+  def __init__(self, parameters) -> None:
+    super().__init__()
+    self.parameters = parameters
+
+  def read(self) -> None:
+    scrap_paths, scrap_results = [], []
+    for scg in path_lookup(self.parameters.scrap.cache.glob):
+      scrap_paths.extend(glob.glob(scg))
+    for scrap_path in scrap_paths:
+      with open(scrap_path, 'rb') as pickle_file:
+        self.extend(pickle.load(pickle_file))
+
+  def write(self) -> None:
+    write_path = self.parameters.scrap.cache.glob
+    with open(write_path, 'wb') as pickle_file:
+      pickle.dump(self, pickle_file)
+
+
+def autoupdate_scrap_dict_with_return(scrap_method: Callable) -> Callable:
+  @functools.wraps(scrap_method)
+  def scrap_wrapper(self: Union['BaseDriftScraper', 'DriftScraperMixin'],
+                    *args: Any, **kwargs: Any):
+    scraped = scrap_method(self, *args, **kwargs)
+    self.scrap_dict.update(scraped)
+    return scraped
+  return scrap_wrapper
+
+
+def handle_scrap_cache(scrap: Callable) -> Callable:
+  @functools.wraps(scrap)
+  def scrap_wrapper(self: 'BaseDriftScraper', *args: Any, **kwargs: Any):
+    if self.parameters.scrap.cache.action == 'read':
+      self.scrap_results.read()
+    scrap(self, *args, **kwargs)
+    if self.parameters.scrap.cache.action == 'write':
+      self.scrap_results.write()
+    for scrap_dict in self.scrap_results:
+      self.table.add(scrap_dict)
+  return scrap_wrapper
+
+
+class DriftScraperRegistrar(abc.ABCMeta):
+  """Metaclass for `DriftScraper`s, auto-registers them by `input_kind`."""
+  REGISTRY = {}
+  def __new__(mcs, name, bases, attrs):
+    new_cls = super().__new__(mcs, name, bases, attrs)
+    if hasattr(new_cls, 'input_kind') and new_cls.input_kind:
+      mcs.REGISTRY[new_cls.input_kind] = new_cls
+    return new_cls
+
+
+@six.add_metaclass(DriftScraperRegistrar)
+class BaseDriftScraper(object):
+  """Base class for scraping cctbx.xfel output into instance of `DriftTable`,
+  with automatic registration into the `DriftScraperRegistrar`."""
+
+  def __init__(self, table: DriftTable, parameters) -> None:
+    self.table = table
+    self.parameters = parameters
+    self.scrap_dict: Dict[str, Union[str, float, Sequence]] = {}  # scraped now
+    self.scrap_results = ScrapResults(parameters)                 # all scraped
+
+  @staticmethod
+  def calc_expt_refl_len(expts: ExperimentList, refls: flex.reflection_table) \
+          -> Tuple[int, flex.int]:
+    expts_len = len(expts)
+    refls_lens = flex.int()
+    for expt_id, expt in enumerate(expts):
+      refls_lens.append((expt_id == refls['id']).count(True))
+    return expts_len, refls_lens
+
+  def locate_input_paths(self) -> List:
+    """Return all paths (either common files or directories, relative to
+    working directory) of specified kind to be processed"""
+    input_paths, exclude_paths = [], []
+    for ig in self.parameters.scrap.input.glob:
+      input_paths.extend(glob.glob(ig))
+    for ie in self.parameters.scrap.input.exclude:
+      exclude_paths.extend(glob.glob(ie))
+    return [it for it in input_paths if it not in exclude_paths]
+
+  @staticmethod
+  def locate_combining_phil_paths(scaling_phil_paths: Iterable[str]) -> List:
+    """Return paths to all phil files used to combine later-scaled expts"""
+    parsed_scaling_phil = [parse(file_name=spp) for spp in scaling_phil_paths]
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=parsed_scaling_phil).extract()
+    combine_dirs = [path_join(ip, '..') for ip in phil.input.path]
+    combine_phil_paths = []
+    for cd in combine_dirs:
+      combine_phil_paths.extend(path_lookup(cd, '*chunk*_combine_*.phil'))
+    return sorted(set(combine_phil_paths))
+
+  @staticmethod
+  def locate_scaling_directories(merging_phil_paths: Iterable[str]) -> List:
+    """Return paths to all directories specified as scrap.input.glob in phil"""
+    merging_phils = [parse(file_name=mpp) for mpp in merging_phil_paths]
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=merging_phils).extract()
+    return sorted(set(phil.input.path))
+
+  @staticmethod
+  def locate_refined_expts_refls(combine_phil_path: str) \
+          -> Tuple[ExperimentList, flex.reflection_table]:
+    """Return all refined expts and refls down-stream from combine_phil_path"""
+    path_stem = combine_phil_path.replace('_combine_experiments.phil', '')
+    expts_paths = path_lookup(path_stem + '_refined.expt')
+    refls_paths = path_lookup(path_stem + '_refined.refl')
+    expts = read_experiments(*expts_paths)
+    refls = read_reflections(*refls_paths)
+    return expts, refls
+
+  @autoupdate_scrap_dict_with_return
+  def scrap_db_metadata(self, combine_phil_path: str) -> dict:
+    """Get trial, task, rungroup, chunk, run info based on combining phil"""
+    parsed_combine_phil = parse(file_name=combine_phil_path)
+    phil = DEFAULT_INPUT_SCOPE.fetch(sources=[parsed_combine_phil]).extract()
+    index_dirs = [path_join(pie, '..') for pie in phil.input.experiments]
+    rungroups = sorted(set(index_dir[-7:-4] for index_dir in index_dirs))
+    trials = sorted(set(index_dir[-13:-10] for index_dir in index_dirs))
+    runs = sorted(set(index_dir[-19:-14] for index_dir in index_dirs))
+    return {'chunk': int(path_split(combine_phil_path)[-1][16:19]),
+            'run': represent_range_as_str(runs),
+            'rungroup': represent_range_as_str(rungroups),
+            'task': path_split(combine_phil_path)[-4],
+            'trial': represent_range_as_str(trials)}
+
+  @abc.abstractmethod
+  @handle_scrap_cache
+  def scrap(self) -> None:
+    """Prepare `ScrapResults` list used by `handle_scrap_cache` to create
+    `self.table`, instance of `DriftTable`, based on `self.parameters`."""
+    pass
+
+
+class TderTaskDirectoryDriftScraper(BaseDriftScraper):
+  """Drift scraper which looks for all TDER downstream from merging"""
+  input_kind = 'tder_task_directory'
+
+  @handle_scrap_cache
+  def scrap(self) -> None:
+    combining_phil_paths = []
+    for tder_task_directory in self.locate_input_paths():
+      cpp = path_lookup(tder_task_directory, 'combine_experiments_t*',
+                        'intermediates', '*chunk*_combine_*.phil')
+      combining_phil_paths.extend(cpp)
+    for cpp in unique_elements(combining_phil_paths):  # combine.phil paths
+      try:
+        self.scrap_dict = {'merge': "None"}
+        self.scrap_db_metadata(cpp)
+        print(f'Processing run {self.scrap_dict["run"]}')
+        refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+        elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+        print(f'Found {elen} expts and {sum(rlen)} refls')
+        self.scrap_dict.update({'expts': elen, 'refls': rlen})
+        self.scrap_origin(refined_expts)
+        self.scrap_unit_cell(refined_expts)
+        self.scrap_origin_deltas(refined_expts, refined_refls)
+      except (KeyError, IndexError, JSONDecodeError) as e:
+        print(e)
+      else:
+        self.scrap_results.append(self.scrap_dict)
+
+
+class MergingDirectoryDriftScraper(BaseDriftScraper):
+  """Drift scraper which directly looks for TDER task directories"""
+  input_kind = 'merging_directory'
+
+  @handle_scrap_cache
+  def scrap(self) -> None:
+    for merge in self.locate_input_paths():
+      merging_phil_paths = path_lookup(merge, '**', '*.phil')
+      merging_phil_paths.sort(key=os.path.getmtime)
+      for scaling_dir in self.locate_scaling_directories(merging_phil_paths):
+        scaled_expt_paths = path_lookup(scaling_dir, 'scaling_*.expt')
+        scaled_expts = read_experiments(*scaled_expt_paths)
+        scaled_identifiers = list(scaled_expts.identifiers())
+        scaling_phil_paths = []
+        for sep in scaled_expt_paths:
+          scaling_phil_paths.extend(path_lookup(sep, '..', '..', '*.phil'))
+        comb_phil_paths = self.locate_combining_phil_paths(scaling_phil_paths)
+        for cpp in unique_elements(comb_phil_paths):
+          try:
+            self.scrap_dict = {'merge': merge}
+            self.scrap_db_metadata(cpp)
+            print(f'Processing run {self.scrap_dict["run"]} in merge {merge}')
+            refined_expts, refined_refls = self.locate_refined_expts_refls(cpp)
+            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+            print(f'Found {elen} expts and {sum(rlen)} refls')
+            refined_expts.select_on_experiment_identifiers(scaled_identifiers)
+            refined_refls = refined_refls.select(refined_expts)
+            elen, rlen = self.calc_expt_refl_len(refined_expts, refined_refls)
+            print(f'Accepted {elen} expts and {sum(rlen)} refls')
+            self.scrap_dict.update({'expts': elen, 'refls': rlen})
+            self.scrap_origin(refined_expts)
+            self.scrap_unit_cell(refined_expts)
+            self.scrap_origin_deltas(refined_expts, refined_refls)
+          except (KeyError, IndexError, JSONDecodeError) as e:
+            print(e)
+          else:
+            self.scrap_results.append(self.scrap_dict)
+
+
+class DriftScraperMixin(object):
+  scrap_dict: Dict[str, Union[str, float, Sequence]]
+
+
+class FirstOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read detector origin (x, y, z) from the first expt file only"""
+    x, y, z = expts[0].detector.hierarchy().get_origin()
+    return {'x': x, 'y': y, 'z': z}
+
+
+class AverageOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read detector origin (x, y, z) from all files & return their average"""
+    xs, ys, zs = flex.double(), flex.double(), flex.double()
+    for expt in expts:
+      x, y, z = expt.detector.hierarchy().get_origin()
+      xs.append(x)
+      ys.append(y)
+      zs.append(z)
+    weights = self.scrap_dict['refls']
+    return {k: average(v, weights) for k, v in zip('xyz', (xs, ys, zs))}
+
+
+class DistributionOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
+    """Read detector origin (x, y, z) from all files & return flex with all"""
+    xs, ys, zs = flex.double(), flex.double(), flex.double()
+    for expt in expts:
+      x, y, z = expt.detector.hierarchy().get_origin()
+      xs.append(x)
+      ys.append(y)
+      zs.append(z)
+    return {'x': xs, 'y': ys, 'z': zs}
+
+
+class FirstPanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in first expt"""
+    center_of_mass = np.array((0, 0, 0), dtype=float)
+    detector = expts[0].detector
+    for panel in detector:
+      fast, slow = panel.get_image_size()
+      for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+        center_of_mass += np.array(panel.get_pixel_lab_coord(point))
+    center_of_mass /= 4 * len(detector)
+    return {xyz: com_xyz for xyz, com_xyz in zip('xyz', center_of_mass)}
+
+
+class AveragePanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, float]:
+    """Read average (x, y, z) position of all detector panels in all expts"""
+    centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
+    for i, expt in enumerate(expts):
+      detector = expt.detector
+      for panel in detector:
+        fast, slow = panel.get_image_size()
+        for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+          centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
+      centers_of_mass[i] /= 4 * len(expt.detector)
+    weights = self.scrap_dict['refls']
+    return {'x': average(centers_of_mass[:, 0], weights),
+            'y': average(centers_of_mass[:, 1], weights),
+            'z': average(centers_of_mass[:, 2], weights)}
+
+
+class DistributionPanelCOMOriginMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin(self, expts: ExperimentList) -> Dict[str, flex.double]:
+    """Read average (x, y, z) position of all detector panels in every expt"""
+    centers_of_mass = np.zeros(shape=(len(expts), 3), dtype=float)
+    for i, expt in enumerate(expts):
+      detector = expt.detector
+      for panel in detector:
+        fast, slow = panel.get_image_size()
+        for point in (0, 0), (fast - 1, 0), (0, slow - 1), (fast - 1, slow - 1):
+          centers_of_mass[i] += np.array(panel.get_pixel_lab_coord(point))
+      centers_of_mass[i] /= 4 * len(expt.detector)
+    return {'x': flex.double(np.copy(centers_of_mass[:, 0])),
+            'y': flex.double(np.copy(centers_of_mass[:, 1])),
+            'z': flex.double(np.copy(centers_of_mass[:, 2]))}
+
+
+class FalseUncertaintiesMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin_deltas(self, *_) -> Dict[str, float]:
+    """If uncertainties=False, return dummy zero origin uncertainties"""
+    return {'delta_x': 0., 'delta_y': 0., 'delta_z': 0.}
+
+
+class TrueUncertaintiesMixin(DriftScraperMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_origin_deltas(self, expts: ExperimentList,
+                          refls: flex.reflection_table) -> Dict[str, float]:
+    """Get uncertainties of origin positions from refl. position deviations"""
+    deltas_flex = flex.vec3_double()
+    for panel in expts[0].detector:
+      pr = refls.select(refls['panel'] == panel.index())      # pr: panel refls
+      pr_obs_det = pr['xyzobs.mm.value'].parts()[0:2]  # det: in detector space
+      pr_cal_det = pr['xyzcal.mm'].parts()[0:2]        # lab: in labor. space
+      pr_obs_lab = panel.get_lab_coord(flex.vec2_double(*pr_obs_det))
+      pr_cal_lab = panel.get_lab_coord(flex.vec2_double(*pr_cal_det))
+      deltas_flex.extend(pr_obs_lab - pr_cal_lab)
+    d = [flex.mean(flex.abs(deltas_flex.parts()[i])) for i in range(3)]
+    return {'delta_x': d[0], 'delta_y': d[1], 'delta_z': d[2]}
+
+
+class BaseUnitCellMixin(DriftScraperMixin):
+  @staticmethod
+  def _write_tdata(expts: ExperimentList, tdata_path: str) -> None:
+    """Read all expt_paths and write a tdata file with unit cells in lines"""
+    s = '{:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {:.4f} {}'
+    tdata_lines = []
+    for expt in expts:
+      uc_params = expt.crystal.get_unit_cell().parameters()
+      sg = expt.crystal.get_space_group().type().universal_hermann_mauguin_symbol()
+      tdata_lines.append(s.format(*uc_params, sg.replace(' ', '')))
+    with open(tdata_path, 'w') as tdata_file:
+      tdata_file.write('\n'.join(tdata_lines))
+
+
+class AverageUnitCellMixin(BaseUnitCellMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_unit_cell(self, expts: ExperimentList) -> Dict[str, float]:
+    """Retrieve average a, b, c and their deltas using expt paths"""
+    af, bf, cf = flex.double(), flex.double(), flex.double()
+    with tempfile.NamedTemporaryFile() as tdata_file:
+      self._write_tdata(expts, tdata_file.name)
+      with open(tdata_file.name, 'r') as tdata:
+        for line in tdata.read().splitlines():
+          a, b, c = line.strip().split(' ')[:3]
+          af.append(float(a))
+          bf.append(float(b))
+          cf.append(float(c))
+    weights = self.scrap_dict['refls']  # weights
+    return {'a': average(af, weights),
+            'b': average(bf, weights),
+            'c': average(cf, weights),
+            'delta_a': np.sqrt(variance(af, weights)),
+            'delta_b': np.sqrt(variance(bf, weights)),
+            'delta_c': np.sqrt(variance(cf, weights))}
+
+
+class DistributionUnitCellMixin(BaseUnitCellMixin):
+  @autoupdate_scrap_dict_with_return
+  def scrap_unit_cell(self, expts: ExperimentList) \
+          -> Dict[str, Union[flex.double, float]]:
+    """Retrieve distribution of a, b, c and their deltas using expt paths"""
+    af, bf, cf = flex.double(), flex.double(), flex.double()
+    with tempfile.NamedTemporaryFile() as tdata_file:
+      self._write_tdata(expts, tdata_file.name)
+      with open(tdata_file.name, 'r') as tdata:
+        for line in tdata.read().splitlines():
+          a, b, c = line.strip().split(' ')[:3]
+          af.append(float(a))
+          bf.append(float(b))
+          cf.append(float(c))
+    weights = self.scrap_dict['refls']
+    return {'a': af, 'b': bf, 'c': cf,
+            'delta_a': np.sqrt(variance(af, weights)),
+            'delta_b': np.sqrt(variance(bf, weights)),
+            'delta_c': np.sqrt(variance(cf, weights))}
+
+
+class DriftScraperFactory(object):
+  """Produces appropriate DriftScraper class based on phil `parameters`."""
+  ORIGIN_MIXINS = {
+    'first': FirstOriginMixin,
+    'average': AverageOriginMixin,
+    'distribution': DistributionOriginMixin,
+    'panel_com_first': FirstPanelCOMOriginMixin,
+    'panel_com_average': AveragePanelCOMOriginMixin,
+    'panel_com_distribution': DistributionPanelCOMOriginMixin,
+  }
+  UNCERTAINTIES_MIXINS = {
+    True: TrueUncertaintiesMixin,
+    False: FalseUncertaintiesMixin,
+  }
+  UNIT_CELL_MIXINS = {
+    'average': AverageUnitCellMixin,
+    'distribution': DistributionUnitCellMixin,
+  }
+
+  @classmethod
+  def get_drift_scraper(cls, table: DriftTable, parameters) \
+          -> BaseDriftScraper:
+    base = DriftScraperRegistrar.REGISTRY[parameters.scrap.input.kind]
+    mixins = [
+      cls.ORIGIN_MIXINS[parameters.scrap.origin],
+      cls.UNCERTAINTIES_MIXINS[parameters.scrap.uncertainties],
+      cls.UNIT_CELL_MIXINS[parameters.scrap.unit_cell],
+    ]
+    class DriftScraper(base, *mixins):
+      """The actual data scraping class generated based on phil parameters"""
+    return DriftScraper(table=table, parameters=parameters)
 
 
 ############################## DRIFT VISUALIZING ##############################
@@ -715,7 +809,10 @@ class DriftArtist(object):
   def __init__(self, table: DriftTable, parameters):
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.cov_colormap = plt.get_cmap('seismic')
+    self.corr_colormap = plt.get_cmap(parameters.plot.color.correlation)
+    self.dist_colormap = plt.get_cmap(parameters.plot.color.distribution)
+    dbc = str(parameters.plot.color.distribution_bg)
+    self.dist_bg_col = self.dist_colormap(0) if dbc.lower() == 'auto' else dbc
     self.order_by = ['run', 'chunk']
     self.table = table
     self.table_flat: pd.DataFrame
@@ -777,7 +874,8 @@ class DriftArtist(object):
 
   @property
   def x_tick_labels(self) -> pd.Series:
-    return self.table.data[self.x_keys].agg(':'.join, axis=1)
+    return self.table.data[self.x_keys].apply(
+      lambda x: ':'.join(x.astype(str)), axis=1)
 
   def _get_handles_and_labels(self) -> Tuple[List, List]:
     handles, unique_keys = [], []
@@ -817,7 +915,7 @@ class DriftArtist(object):
           self.axw.text(x=ix+0.5, y=len(keys)-iy-0.5, s=kx,
                         ha='center', va='center')
         if ix > iy:
-          color = self.cov_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
+          color = self.corr_colormap(normalize([cm.corr[kx][ky], -1, 1])[0])
           r = Rectangle(xy=(ix, len(keys) - iy), width=1, height=-1, fill=True,
                         ec='white', fc=color, linewidth=2)
           self.axw.add_patch(r)
@@ -846,11 +944,14 @@ class DriftArtist(object):
     axes.errorbar(self.x, y, yerr=y_err, ecolor='black', ls='')
 
   def _plot_drift_distribution(self, axes: plt.Axes, values_key: str) -> None:
+    axes.set_facecolor(self.dist_bg_col)
     x = self.table_flat['original_index']
     y = self.table_flat[values_key]
-    b = (len(self.x), 100)
-    r = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
-    axes.hist2d(x, y, bins=b, range=r, cmap=plt.cm.magma_r, cmin=0.5)  # noqa
+    weights = self.table_flat['refls']
+    bins = (len(self.x), 100)
+    ranges = [[-0.5, len(self.x) - 0.5], [min(y), max(y)]]
+    axes.hist2d(x, y, weights=weights, bins=bins, range=ranges,
+                cmap=self.dist_colormap, cmin=1E-10)
     axes.scatter(self.x, [average(val) for val in self.table[values_key]],
                  c=self.color_array, edgecolors='white')
 
@@ -907,4 +1008,4 @@ if __name__ == '__main__':
     print(message)
     exit()
   params = params_from_phil(sys.argv[1:])
-run(params)
+  run(params)

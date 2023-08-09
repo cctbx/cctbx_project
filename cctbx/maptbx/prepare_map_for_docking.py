@@ -1013,7 +1013,7 @@ def add_ordered_volume_mask(
     raise Sorry("At least one of protein_mw and nucleic_mw must be defined")
   if (not mmm.map_manager_1().is_full_size()) or  (
       not mmm.map_manager_2().is_full_size()):
-    raise Sorry("Please supply half-maps that are full-size")
+    raise Sorry("Please supply half-maps that are full-size, not cut out from a larger box")
 
   if d_min is None or d_min <= 0:
     spacings = get_grid_spacings(mmm.map_manager().unit_cell(),
@@ -1222,7 +1222,7 @@ def next_allowed_grid_size(i, largest_prime=5):
     j += 2
   return j
 
-def get_sharpening_b(miller_intensities):
+def get_sharpening_b(intensities):
 
   # Initialise data for Wilson plot
   sumw = 0.
@@ -1232,9 +1232,11 @@ def get_sharpening_b(miller_intensities):
   sumwx2 = 0.
 
   # Assume that binning has been defined and get data in bins
-  for i_bin in miller_intensities.binner().range_used():
-    sel = miller_intensities.binner().selection(i_bin)
-    int_sel = miller_intensities.select(sel)
+  int_binned = intensities.customized_copy(data = intensities.data())
+  int_binned.setup_binner_d_star_sq_bin_size()
+  for i_bin in int_binned.binner().range_used():
+    sel = int_binned.binner().selection(i_bin)
+    int_sel = int_binned.select(sel)
     ssqr = int_sel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
     mean_int_sel_data = flex.mean_default(int_sel.data(),0)
@@ -1323,7 +1325,7 @@ def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map
   miller_array = marray.customized_copy(data = miller_data)
   return miller_array
 
-def local_mean_intensities(mm, d_min, intensities, r_star):
+def local_mean_intensities(mm, d_min, intensities, r_star, b_sharpen):
   """
   Compute local means of input intensities (or amplitudes) using a convolution
   followed optionally by a resolution-dependent renormalisation
@@ -1340,10 +1342,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   assert d_star_sq_max > 1/d_min**2
 
   # Sharpen intensities to reduce dynamic range for numerical stability
-  # Save the overall B to put back at end
+  # Put the overall B back at end
   int_sharp = intensities.customized_copy(data = intensities.data())
-  int_sharp.setup_binner_d_star_sq_bin_size()
-  b_sharpen = get_sharpening_b(int_sharp)
   all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   int_sharp = int_sharp.customized_copy(data = intensities.data()*b_terms_miller.data())
@@ -1428,7 +1428,6 @@ def local_mean_density(mm, radius):
 
 def assess_cryoem_errors(
     mmm, d_min,
-    map_1_id="map_manager_1", map_2_id="map_manager_2",
     determine_ordered_volume=True,
     ordered_mask_id='ordered_volume_mask', sphere_points=500,
     sphere_cent=None, radius=None,
@@ -1444,9 +1443,6 @@ def assess_cryoem_errors(
     target region
 
   Optional arguments:
-  map_1_id: identifier of first half-map, if different from default of
-    map_manager_1
-  map_2_id: same for second half-map
   determine_ordered_volume: flag for whether ordered volume should be assessed
   ordered_mask_id: identifier for mask defining ordered volume
   sphere_cent: center of sphere defining target region for analysis
@@ -1479,6 +1475,7 @@ def assess_cryoem_errors(
     raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
+
   # Keep track of shifted origin
   origin_shift = mmm.map_manager().origin_shift_grid_units
   if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
@@ -1590,8 +1587,8 @@ def assess_cryoem_errors(
   minimum_possible_d_min = 2.*max(spacings)
   d_min = max(d_min, minimum_possible_d_min)
   d_min_extended = 1./(1./d_min + r_star)
-  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+  mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+  mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   success = False
   while guess_d_min and not success:
@@ -1607,8 +1604,8 @@ def assess_cryoem_errors(
       else:
         success = True # d_min is already highest possible value
     d_min_extended = 1./(1./d_min + r_star)
-    mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-    mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+    mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+    mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   f1 = flex.abs(mc1.data())
   f2 = flex.abs(mc2.data())
@@ -1622,8 +1619,11 @@ def assess_cryoem_errors(
   # but return results to desired resolution
   # Calculating sumfsqr_local_mean from f1f2cos and deltafsqr local means turns out to have
   # improved numerical stability, i.e. don't end up with negative or zero deltafsqr_local_mean
-  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos, r_star)
-  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr, r_star)
+  b_sharpen = get_sharpening_b(sumfsqr)
+  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos,
+                                              r_star, b_sharpen)
+  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr,
+                                                r_star, b_sharpen)
   sumfsqr_local_mean = f1f2cos_local_mean.customized_copy(data = 2*f1f2cos_local_mean.data() + deltafsqr_local_mean.data())
 
   # Trim starting sumfsqr back to desired resolution limit, setup binning
@@ -1704,14 +1704,14 @@ def assess_cryoem_errors(
     study_params = False      # flag for calling studyparams procedure
   else:
     study_params = True
-  output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
+  level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
   refine_cryoem_signal = RefineCryoemSignal(
     sumfsqr_lm = sumfsqr_local_mean, f1f2cos_lm = f1f2cos_local_mean,
     deltafsqr_lm = deltafsqr_local_mean, r_star = r_star, ssqr_bins = ssqr_bins,
     target_spectrum = target_spectrum, start_x = start_params)
-  minimizer = Minimizer(output_level=output_level)
+  minimizer = Minimizer(output_level=level)
 
   # Run minimizer
   minimizer.run(refine_cryoem_signal, protocol, ncyc, minimizer_type, study_params)
@@ -1858,9 +1858,14 @@ def assess_cryoem_errors(
   # Return a map_model_manager with the weighted map
   wEmean = dobs*expectE
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  sigmaA = 0.9 # Default for likelihood-weighted map
+  dosa = sigmaA*dobs.data()
+  lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
+  wEmean2 = lweight*expectE
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
-  working_mmm.remove_map_manager_by_id(map_1_id)
-  working_mmm.remove_map_manager_by_id(map_2_id)
+  working_mmm.remove_map_manager_by_id('map_manager_1')
+  working_mmm.remove_map_manager_by_id('map_manager_2')
 
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:

@@ -16,6 +16,8 @@ try:
 except ImportError:
     LineProfiler = None
 
+from simtbx.diffBragg.device import DeviceWrapper
+
 ROTX_ID = 0
 ROTY_ID = 1
 ROTZ_ID = 2
@@ -79,6 +81,9 @@ class Script:
                 o.write(self.parser.diff_phil.as_str())
         self.params = COMM.bcast(self.params)
 
+        self.dev = COMM.rank % self.params.refiner.num_devices
+        logging.info("Rank %d will use device %d on host %s" % (COMM.rank, self.dev, socket.gethostname()))
+
         if self.params.logging.logname is None:
             self.params.logging.logname = "main_stage1.log"
         if self.params.profile_name is None:
@@ -121,6 +126,7 @@ class Script:
             refl_names_already = COMM.bcast(refl_names_already)
 
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
+        trefs = []
         for i_exp, line in enumerate(input_lines):
             if i_exp == self.params.max_process:
                 break
@@ -237,23 +243,35 @@ class Script:
                 Modeler.all_data = Modeler.all_data.astype(np.float32)
                 Modeler.all_background = Modeler.all_background.astype(np.float32)
 
-            if self.params.refiner.randomize_devices:
-                dev = np.random.choice(self.params.refiner.num_devices)
-                logging.info("Rank %d will use randomly chosen device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
-            else:
-                dev = COMM.rank % self.params.refiner.num_devices
-                logging.info("Rank %d will use device %d on host %s" % (COMM.rank, dev, socket.gethostname()))
-
-            SIM.D.device_Id = dev
+            SIM.D.device_Id = self.dev
 
             nparam = len(Modeler.P)
             if SIM.refining_Fhkl:
                 nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
             x0 = [1] * nparam
+            tref = time.time()
+            MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_exp+1, len(input_lines)))
             try:
-                x = Modeler.Minimize(x0, SIM)
+                x = Modeler.Minimize(x0, SIM, i_exp=i_exp)
             except StopIteration:
                 x = Modeler.target.x0
+            tref = time.time()-tref
+            sigz = niter = None
+            try:
+                niter = len(Modeler.target.all_hop_id)
+                sigz = np.mean(Modeler.target.all_sigZ)
+            except Exception:
+                pass
+
+            trefs.append(tref)
+            print_s = "Finished refinement of shot %d / %d in %.4f sec. (rank mean t/im=%.4f sec.)" \
+                        % (i_exp+1, len(input_lines), tref, np.mean(trefs))
+            if sigz is not None and niter is not None:
+                print_s += " Ran %d iterations. Final sigmaZ = %.1f," % (niter, sigz)
+            if COMM.rank==0:
+                MAIN_LOGGER.info(print_s)
+            else:
+                MAIN_LOGGER.debug(print_s)
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 
@@ -263,6 +281,7 @@ class Script:
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
             Modeler.clean_up(SIM)
+            del SIM.D  # TODO: is this necessary ?
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
             exp_gatheredRef_spec = COMM.reduce(exp_gatheredRef_spec)
@@ -291,7 +310,8 @@ if __name__ == '__main__':
         elif script.params.profile:
             print("Install line_profiler in order to use logging: libtbx.python -m pip install line_profiler")
 
-        RUN()
+        with DeviceWrapper(script.dev) as _:
+            RUN()
 
         if lp is not None:
             stats = lp.get_stats()

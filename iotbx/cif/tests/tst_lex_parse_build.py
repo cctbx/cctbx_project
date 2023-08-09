@@ -1221,7 +1221,103 @@ loop_
     'c' 0.1 0.2 0.3 0 0 0
 """
 
+def exercise_inconsistent_symmetry():
+  cif_str="""data_r6bbrsf
+#
+_audit.revision_id     1_0
+_audit.creation_date   2018-02-28
+_audit.update_record   "Initial release"
+#
+_cell.entry_id      6bbr
+_cell.length_a      51.6000
+_cell.length_b      86.1000
+_cell.length_c      78.8000
+_cell.angle_alpha   90.0000
+_cell.angle_beta    94.0000
+_cell.angle_gamma   90.0000
+#
+_diffrn.id                  1
+_diffrn.crystal_id          1
+_diffrn.ambient_temp        ?
+_diffrn.crystal_treatment   ?
+_diffrn.details             ?
+#
+_diffrn_radiation_wavelength.id           1
+_diffrn_radiation_wavelength.wavelength   1.5418
+#
+_diffrn_reflns.diffrn_id         1
+_diffrn_reflns.pdbx_d_res_high   2.002
+_diffrn_reflns.pdbx_d_res_low    30.944
+_diffrn_reflns.limit_h_max       25
+_diffrn_reflns.limit_h_min       -25
+_diffrn_reflns.limit_k_max       41
+_diffrn_reflns.limit_k_min       0
+_diffrn_reflns.limit_l_max       39
+_diffrn_reflns.limit_l_min       0
+_diffrn_reflns.number            22584
+_diffrn_reflns.pdbx_number_obs   11172
+#
+_entry.id   6bbr
+#
+_exptl_crystal.id   1
+#
+_reflns_scale.group_code   1
+#
+_symmetry.entry_id               6bbr
+_symmetry.space_group_name_H-M   "I 1 2 1"
+_symmetry.Int_Tables_number      5
+#
+loop_
+_symmetry_equiv.id
+_symmetry_equiv.pos_as_xyz
+1 "X,  Y,  Z"
+2 "-X,  Y,  -Z"
+3 "X+1/2,  Y+1/2,  Z"
+4 "-X+1/2,  Y+1/2,  -Z"
+#
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.intensity_meas
+_refln.intensity_sigma
+1 1 1 -25 0  1  - 34.600    8.600
+1 1 1 -25 0  3  - 3.800     8.200
+1 1 1 -25 0  5  - -4.600    7.700
+1 1 1 -25 0  7  - 19.900    8.600
+1 1 1 -25 0  9  - 6.200     8.200
+1 1 1 -25 0  11 - 16.000    8.500
+1 1 1 -25 1  2  o -2.297    6.180
+1 1 1 -25 1  4  o 12.346    6.577
+"""
+  with open("exercise_inconsistent_symmetry-sf.cif", "w") as fo:
+    fo.write(cif_str)
+  expected = """Inconsistent symmetry information found:
+-x+1/2,y+1/2,-z+1/2
+-x,y,-z
+x+1/2,y+1/2,z+1/2
+x,y,z
+ ---vs---
+-x+1/2,y+1/2,-z
+-x,y,-z
+x+1/2,y+1/2,z
+x,y,z
+"""
+  exception_happened = False
+  try:
+    miller_arrays = any_reflection_file(file_name =
+      "exercise_inconsistent_symmetry-sf.cif").as_miller_arrays()
+  except CifBuilderError as e:
+    exception_happened=True
+    assert str(e).splitlines() == expected.splitlines()
+  assert exception_happened
+
 def exercise():
+  exercise_inconsistent_symmetry()
   exercise_missing_atom_site_type_symbol()
   exercise_syntax_errors()
   exercise_detect_binary()

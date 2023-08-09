@@ -104,6 +104,15 @@ hbond {
   output_skew_kurtosis_plot = False
     .type = bool
     .short_caption = Output skew-kurtosis plot with result in png format
+  plot_colorblind_friendly = True
+    .type = bool
+    .short_caption = Use colorblind friendly palette for skew-kurtosis plot
+  add_hydrogens_if_absent = False
+    .type = bool
+    .short_caption = Add hydrogens if they are not present in the model(s)
+  min_data_size = 10
+    .type = int
+    .style = hidden
 }
 '''
 

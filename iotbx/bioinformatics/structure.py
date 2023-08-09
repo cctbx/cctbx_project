@@ -68,10 +68,8 @@ def summarize_blast_output(blast_out=None, blast_file=None,
   blast = next(parsed)
   if (len(blast.alignments) == 0):
     if stop_if_no_alignment:
-      raise StopIteration("No matching sequences!")
+      raise Sorry("No matching sequences!")
     else: return list()
-  #if (len(blast.alignments) == 0):
-  #  raise StopIteration("No matching sequences!")
   results = []
   for i_hit, hit in enumerate(blast.alignments):
     pdb_chain_id = str(hit.accession)

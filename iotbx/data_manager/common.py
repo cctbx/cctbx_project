@@ -5,12 +5,14 @@ from __future__ import absolute_import, division, print_function
 from iotbx.data_manager.map_coefficients import MapCoefficientsDataManager
 from iotbx.data_manager.real_map import RealMapDataManager
 from iotbx.map_model_manager import map_model_manager
+from libtbx import Auto
 from libtbx.utils import Sorry
-import mmtbx.f_model
+import mmtbx.utils
 from cctbx import crystal
 from iotbx import crystal_symmetry_from_any
 from iotbx import extract_xtal_data
 import libtbx.phil
+from copy import deepcopy
 
 # =============================================================================
 # general functions for scattering type (applies to model and/or miller_array)
@@ -96,7 +98,7 @@ class fmodel_mixins(object):
       self.set_model_type(filename, model_type)
 
     # miller_array
-    array_type = checked_type
+    array_type = [checked_type]
     self.set_default_miller_array_type(array_type)
     for filename in self.get_miller_array_names():
       for label in self.get_miller_array_labels(filename):
@@ -109,6 +111,17 @@ class fmodel_mixins(object):
     if self._fmodel_phil_scope is None:
       return self.export_phil_scope(as_extract=True).data_manager.fmodel
     return self._fmodel_phil_scope.extract().data_manager.fmodel
+
+  def set_fmodel_params(self, phil_extract):
+    '''
+    Set the fmodel parameters. The phil_extract can be the full DataManager
+    PHIL extract or the output from get_fmodel_params
+    '''
+    full_extract = phil_extract
+    if not hasattr(full_extract, 'data_manager'):
+      full_extract = self.master_phil.extract()
+      full_extract.data_manager.fmodel = phil_extract
+    self._fmodel_phil_scope = self.master_phil.format(python_object=full_extract)
 
   def _resolve_symmetry_conflicts(self, model, reflection_file_server,
                                   params=None):
@@ -143,10 +156,9 @@ class fmodel_mixins(object):
 
   def get_fmodel(self,
                  crystal_symmetry = None,
-                 parameters = None,                # XXX Replace with what DataManager uses
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
-                 free_r_flags_scope = None,
+                 free_r_flags_scope = 'xray_data',
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
@@ -158,8 +170,6 @@ class fmodel_mixins(object):
     """
     array_type = self.map_scattering_table_type(scattering_table)
     scattering_table = self.check_scattering_table_type(scattering_table)
-    #
-
     crystal_symmetry_phil = crystal_symmetry
     if(crystal_symmetry is not None):
       if(isinstance(crystal_symmetry, libtbx.phil.scope_extract)):
@@ -171,7 +181,7 @@ class fmodel_mixins(object):
     # Gather models of appropriate type
     models = []
     for filename in self.get_model_names(model_type=array_type):
-      models.append(self.get_model(filename))
+      models.append(self.get_model(filename, model_type=array_type))
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
     if(len(models) > 1):
@@ -180,20 +190,50 @@ class fmodel_mixins(object):
     # Get reflection file server
     rfs = self.get_reflection_file_server(
       array_type       = array_type,
-      crystal_symmetry = crystal_symmetry)
+      crystal_symmetry = crystal_symmetry,
+      ignore_intensities_if_amplitudes_present = True)
     # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
       params                 = crystal_symmetry_phil,
       model                  = model,
       reflection_file_server = rfs)
+    #
+    fmodel_params = self.get_fmodel_params()
+    if array_type == 'neutron':
+      parameters = fmodel_params.neutron_data
+    else:
+      parameters = fmodel_params.xray_data
+    #
+    # XXX
+    # XXX Temporary hack/work-around (REMOVE later) start
+    # XXX
+    tmp_p = deepcopy(parameters)
+    tmp_p.__inject__("file_name", None)
+    tmp_p.__inject__("labels", None)
+    tmp_p.r_free_flags.__inject__("file_name", None)
+    tmp_p.r_free_flags.__inject__("label", None)
+    # XXX
+    # XXX Temporary hack/work-around (REMOVE later) end
+    # XXX
     # Get reflection data
     data = extract_xtal_data.run(
       reflection_file_server            = rfs,
-      parameters                        = parameters,
+      parameters                        = tmp_p,
       experimental_phases_params        = experimental_phases_params,
       working_point_group               = model.crystal_symmetry().space_group().build_derived_point_group(),
-      free_r_flags_scope = free_r_flags_scope,
+      free_r_flags_scope                = free_r_flags_scope,
       remark_r_free_flags_md5_hexdigest = model.get_header_r_free_flags_md5_hexdigest()).result()
+    #
+    # Set DataManager parameters extracted from inputs
+    #
+    # Extract and set twin_law
+    if parameters.twin_law is None or parameters.twin_law is Auto:
+      parameters.twin_law = model.twin_law_from_model_input()
+    # Set test flag value
+    parameters.r_free_flags.test_flag_value = data.test_flag_value
+    # Load all back
+    self.set_fmodel_params(fmodel_params)
+    #
     if(len(data.err)>0):
       raise Sorry("\n".join(data.err))
     if(data.f_obs is None):
@@ -203,12 +243,16 @@ class fmodel_mixins(object):
       scattering_table = scattering_table,
       d_min            = data.f_obs.d_min())
     # Create and return fmodel
-    fmodel = mmtbx.f_model.manager(
-      f_obs          = data.f_obs,
-      r_free_flags   = data.r_free_flags,
-      abcd           = data.experimental_phases,
-      xray_structure = model.get_xray_structure(),
-      origin         = data.mtz_object)
+    twin_law = fmodel_params.xray_data.twin_law
+    fmodel = mmtbx.utils.fmodel_manager2(
+      f_obs               = data.f_obs,
+      r_free_flags        = data.r_free_flags,
+      abcd                = data.experimental_phases,
+      xray_structure      = model.get_xray_structure(),
+      twin_law            = twin_law,
+      ignore_r_free_flags = parameters.r_free_flags.ignore_r_free_flags,
+      mtz_object          = data.mtz_object,
+      data_type           = array_type)
     return fmodel
 
 # -----------------------------------------------------------------------------
@@ -300,6 +344,12 @@ class map_model_mixins(object):
       if full_map is not None:
         map_files.append(full_map)
       half_maps = getattr(map_model, 'half_map', None)
+
+      # Catch case where full_map is also present in half_maps as the only
+      #   half map
+      if full_map and (len(half_maps) == 1) and (half_maps[0] == full_map):
+        half_maps = []
+
       if half_maps:
         if len(half_maps) != 2:
           raise Sorry('Please provide 2 half-maps or one full map.')
@@ -362,6 +412,16 @@ class map_model_mixins(object):
     else:
       model = None
 
+    # Check to make sure all map_managers are similar
+    managers = [mm, mm_1,mm_2]
+    comp_mm = None
+    for m in managers:
+      if not m: continue
+      if m and (not comp_mm):
+        comp_mm = m
+      else:
+        if (not comp_mm.is_similar(m)):
+          raise Sorry("Input map files need to all have the same origin, gridding, and dimensions")
     mmm = map_model_manager(model=model, map_manager=mm, map_manager_1=mm_1,
       map_manager_2=mm_2, **kwargs)
 

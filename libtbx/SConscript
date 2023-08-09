@@ -438,6 +438,7 @@ libtbx.scons: Warning: compiling with /MDd:
 
     if (libtbx.env.build_options.debug_symbols):
       env_etc.shlinkflags.append("/DEBUG")
+      env_base.Prepend(LINKFLAGS=["/DEBUG"]) # write program database files with debug symbols
     env_etc.shlinkflags_bpl = list(env_etc.shlinkflags)
     env_etc.libm = []
     # handle std::snprintf for some dependencies that may need this macro
@@ -1167,7 +1168,7 @@ if libtbx.env.build_options.enable_cxx11:
     cxx11_flags = ["-std=c++11"]
   elif ver(env_etc.icc_version) >= ver((10,0)):
     cxx11_flags = ["-std=c++0x"]
-  elif env_etc.msvc_version and  env_etc.msvc_version >= 11 :
+  elif env_etc.msvc_version and env_etc.msvc_version >= 11 :
     cxx11_flags = [] # no options are needed
   else:
     raise RuntimeError("Unknown C++11 flag for compiler: %s" % env_etc.compiler)
@@ -1497,6 +1498,8 @@ def enable_cuda_if_possible():
 def enable_kokkos_if_possible():
   env_etc.enable_kokkos = False
   if (libtbx.env.build_options.enable_kokkos):
+    if sys.version_info.major == 2:
+      raise RuntimeError('Kokkos is not available on Python 2')
     env_etc.enable_kokkos = True
 
 enable_openmp_if_possible()

@@ -22,6 +22,8 @@ COMM = MPI.COMM_WORLD
 
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
+F32 = np.finfo(np.float32)
+
 
 class TargetFuncEnsemble:
 
@@ -276,12 +278,8 @@ class DataModelers:
 
     def set_device_id(self):
         assert self.SIM is not None
-        if self.params.refiner.randomize_devices:
-            dev = np.random.choice(self.params.refiner.num_devices)
-            MAIN_LOGGER.info("will use randomly chosen device %d on host %s" % (dev, socket.gethostname()))
-        else:
-            dev = COMM.rank % self.params.refiner.num_devices
-            MAIN_LOGGER.info("will use device %d on host %s" % (dev, socket.gethostname()))
+        dev = COMM.rank % self.params.refiner.num_devices
+        MAIN_LOGGER.info("will use device %d on host %s" % (dev, socket.gethostname()))
         self.SIM.D.device_Id = dev
 
     def mpi_set_x_slices(self):
@@ -526,7 +524,10 @@ class DataModelers:
                 with np.errstate(all='ignore'):
                     channel_scales_var = 1 / channel_hessian
 
-                is_finite = ~np.isinf(channel_scales_var.astype(np.float32))  # should be finite float32
+                safe_vals = np.logical_and( channel_scales_var >= F32.min, channel_scales_var <= F32.max)
+                is_finite = np.logical_and(safe_vals, ~np.isinf(channel_scales_var))
+
+                #is_finite = ~np.isinf(channel_scales_var.astype(np.float32))  # should be finite float32
                 is_reasonable = channel_scales_var < self.max_sigma
                 is_positive = channel_hessian > 0
                 sel = is_positive & is_finite & is_reasonable

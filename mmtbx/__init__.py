@@ -16,14 +16,12 @@ class fmodels(object):
   xray_scattering_dict :
   neutron_scattering_dict :
   neutron_refinement :
-  twin_law :
   """
   def __init__(self, fmodel_xray = None,
                      fmodel_neutron = None,
                      xray_scattering_dict = None,
                      neutron_scattering_dict = None,
                      neutron_refinement = None,
-                     twin_law = None, # XXX used below in ONE place to avoid running into a BUG in twin_f_model
                      log = None):
     self.fmodel_x = fmodel_xray
     self.fmodel_n = fmodel_neutron
@@ -31,16 +29,6 @@ class fmodels(object):
     self.neutron_scattering_dict = neutron_scattering_dict
     self.neutron_refinement = neutron_refinement
     self.log = log
-    # pre-scale
-    if(self.fmodel_n is not None and twin_law is None): # XXX This is broken if twin_f_model is used
-      scale_k1_x = self.fmodel_x.scale_k1()
-      scale_k1_n = self.fmodel_n.scale_k1()
-      xn_scale = scale_k1_x / scale_k1_n
-      f_obs_n_new = self.fmodel_n.f_obs().array(
-        data = self.fmodel_n.f_obs().data()*xn_scale)
-      f_obs_n_new.set_observation_type_xray_amplitude()
-      self.fmodel_n.update(f_obs = f_obs_n_new)
-    #
     self.create_target_functors()
 
   def pseudo_deep_copy(self):

@@ -128,7 +128,9 @@ def generate_residue_tuples(hierarchy,
     assert length<=2
     LinkedResidues = TwoNucleicResidues
     residue_lookup = ['common_rna_dna']
-    assert not include_non_standard_residues
+    #assert not include_non_standard_residues
+    if include_non_standard_residues:
+      residue_lookup.append('modified_rna_dna')
   else:
     assert length<=10
     if length==3:
@@ -364,6 +366,7 @@ def update_restraints(hierarchy,
       # print('cdl_svl %s %s' % (threes,restraint_values))
     else:
       if threes.cis_group():
+        if threes[1].resname!='PRO': continue
         if cis_pro_eh99:
           # returns cis-PRO EH99 values if asked
           restraint_values = get_restraint_values(threes, interpolate=interpolate)

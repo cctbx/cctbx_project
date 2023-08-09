@@ -89,6 +89,18 @@ Inputs: Model file (PDB, mmCIF)
               already removed, so in most cases this keyword has no effect.
        .short_caption = Maximum output B
 
+     remove_hydrogen = True
+       .type = bool
+       .help = Remove hydrogen atoms from model on input
+       .short_caption = Remove hydrogen
+
+     single_letter_chain_ids = False
+       .type = bool
+       .help = Write output files with all chain IDS as single characters.\
+                Default is to use original chain ID and to add digits (1-9)\
+                for domains.
+       .short_caption = Use only single-letter chain ID
+
   }
 
   include scope mmtbx.process_predicted_model.master_phil_str
@@ -124,6 +136,7 @@ Inputs: Model file (PDB, mmCIF)
     self.starting_model = self.model
     self.model_list = []
     self.processed_model = None
+    self.processed_model_text = None
     self.processed_model_file_name = None
     self.processed_model_file_name_list = []
 
@@ -149,7 +162,7 @@ Inputs: Model file (PDB, mmCIF)
       return  # done
 
     starting_residues = self.model.get_hierarchy().overall_counts().n_residues
-    print("Starting residues: %s" %(starting_residues), file = self.logger)
+    print("\nStarting residues: %s" %(starting_residues), file = self.logger)
 
     if self.params.output_files.processed_model_prefix:
       prefix = self.params.output_files.processed_model_prefix
@@ -158,6 +171,9 @@ Inputs: Model file (PDB, mmCIF)
       prefix = "%s_processed" %(prefix)
       prefix = os.path.basename(prefix)
     self.processed_model_file_name = "%s.pdb" %(prefix)
+    if not info.model or info.model.overall_counts().n_residues < 1:
+      print("No residues obtained after processing...", file = self.logger)
+      return None
     if (self.params.output_files.maximum_output_b is not None) and (
        info.model.get_b_iso().min_max_mean().max >
        self.params.output_files.maximum_output_b):
@@ -165,23 +181,40 @@ Inputs: Model file (PDB, mmCIF)
         self.params.output_files.maximum_output_b), file = self.logger)
     mm = limit_output_b(info.model,
          maximum_output_b = self.params.output_files.maximum_output_b)
+
+    if self.params.output_files.single_letter_chain_ids:
+      # convert all chain_ids to single character (A)
+      mm_to_split = convert_chain_ids_to_single_character(mm, chain_id = "A")
+    else:
+      mm_to_split = mm
+
+    # original (multi-char chain IDs)
     self.data_manager.write_model_file(mm, self.processed_model_file_name)
 
+    final_residues = mm.get_hierarchy().overall_counts().n_residues
+    print("Final residues: %s\n" %(final_residues), file = self.logger)
+
     # Split up processed model and write each chain as well
-    if len(info.model.chain_ids()) > 1:
-      model_list = info.model.as_model_manager_each_chain()
+    if len(mm_to_split.chain_ids()) > 1 or \
+         self.params.output_files.single_letter_chain_ids:
+      model_list = mm_to_split.as_model_manager_each_chain()
     else:
-      model_list = [info.model]
+      model_list = [mm_to_split]
+    count = 0
     for m in model_list:
+      count += 1
       chain_id = m.first_chain_id().strip()
       if not chain_id:
         if len(model_list) > 1:
           raise Sorry(
            "Input model cannot have a blank chain ID and non-blank chain IDS")
         chain_id = "A"
-      fn = "%s_%s.pdb" %(prefix,chain_id)
-      print("Copying predicted model chain %s to %s" %(
-           chain_id,fn), file = self.logger)
+      fn = "%s_%s_%s.pdb" %(prefix,chain_id, count)
+      print("Copying predicted model chain %s (#%s)to %s" %(
+           chain_id,count,fn), file = self.logger)
+      if not m or not m.overall_counts().n_residues:
+        print("Skipping #%s (no residues)" %(count), file = self.logger)
+        continue
       mm = limit_output_b(m,
            maximum_output_b = self.params.output_files.maximum_output_b)
       self.data_manager.write_model_file(mm,fn)
@@ -275,9 +308,9 @@ Inputs: Model file (PDB, mmCIF)
       raise Sorry("Unable to guess model file name...please specify")
     if not os.path.isfile(file_name):
       raise Sorry("Missing the model file '%s'" %(file_name))
-    if 1: #try:
+    try:
       self.model=self.data_manager.get_model(filename=file_name)
-    if 0:#except Exception as e:
+    except Exception as e:
       raise Sorry("Failed to read model file '%s'" %(file_name))
 
     print("Read model from %s" %(file_name), file = self.logger)
@@ -286,9 +319,15 @@ Inputs: Model file (PDB, mmCIF)
       raise Sorry("Missing model")
 
     self.model.add_crystal_symmetry_if_necessary()
+
+    # Remove hydrogens and apply user selection
+    selections = []
+    if self.params.output_files.remove_hydrogen:
+      selections.append("(not (element H))")
     if self.params.input_files.selection:
-      self.model = self.model.apply_selection_string(
-        self.params.input_files.selection)
+      selections.append("(%s)" %(self.params.input_files.selection))
+    if selections:
+      self.model = self.model.apply_selection_string(" and ".join(selections))
 
     if self.params.process_predicted_model.weight_by_ca_ca_distance:
       if not self.params.input_files.distance_model_file:
@@ -330,6 +369,29 @@ Inputs: Model file (PDB, mmCIF)
     print ("Working directory: ",os.getcwd(),"\n",file=self.logger)
     print ("PHENIX VERSION: ",os.environ.get('PHENIX_VERSION','svn'),"\n",
      file=self.logger)
+
+def convert_chain_ids_to_single_character(m, chain_id = "A"):
+
+  from mmtbx.secondary_structure.find_ss_from_ca import set_chain_id
+  # rename all chains to "A" but keep separate chains for different segments
+  mm = m.deep_copy()
+  set_chain_id(mm.get_hierarchy(), chain_id)
+  mm.reset_after_changing_hierarchy()
+  return mm
+
+def get_available_letter(c, all_letters, used_ids):
+
+  if len(c) == 1 and not c in used_ids:
+    return c
+  if c and (not (c[0] in used_ids)):
+    return c[0]
+
+  for a in all_letters:
+    if not (a in used_ids):
+      return a
+  return None
+
+
 
 def limit_output_b(m, maximum_output_b = None):
   """ create deep copy of model m in which all isotropic

@@ -21,6 +21,7 @@ Options:
   condensed_probe=False     Run probe with -CON parameter
   keep_hydrogens=False      keep input hydrogen atoms if True, regenerate if False
   nuclear=False             use nuclear x-H distances and vdW radii
+  json=False                Outputs results as JSON compatible dictionary
   verbose=True              verbose text output
   b_factor_cutoff=40        B factor cutoff for clash analysis
   do_flips=False            Do flips when adding Hs, overides keep_hydrogens
@@ -43,6 +44,10 @@ Example:
   condensed_probe = False
     .type = bool
     .help = ''' Run probe with -CON parameter '''
+
+  json = False
+    .type = bool
+    .help = "Prints results as JSON format dictionary"
 
   verbose = True
     .type = bool
@@ -78,6 +83,22 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
+  def get_results_as_JSON(self):
+    if self.params.do_flips : self.params.keep_hydrogens = False
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+
+    result = clashscore(
+      pdb_hierarchy=hierarchy,
+      fast = self.params.fast,
+      condensed_probe = self.params.condensed_probe,
+      keep_hydrogens=self.params.keep_hydrogens,
+      nuclear=self.params.nuclear,
+      out=self.logger,
+      verbose=self.params.verbose and not quiet,
+      b_factor_cutoff=self.params.b_factor_cutoff,
+      do_flips=self.params.do_flips)
+    return result.as_JSON()
+
   def run(self, quiet=None): #preserved how quiet was passed to the old run, not sure why
     """
   Calculates nonbonded clashscore using MolProbity (PROBE)
@@ -99,7 +120,9 @@ Example:
       verbose=self.params.verbose and not quiet,
       b_factor_cutoff=self.params.b_factor_cutoff,
       do_flips=self.params.do_flips)
-    if self.params.verbose:
+    if self.params.json:
+      print(self.result.as_JSON())
+    elif self.params.verbose:
       self.result.show_old_output(out=self.logger)
     else:
       print(round(self.result.get_clashscore(),2), file=self.logger)

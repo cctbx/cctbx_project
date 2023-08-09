@@ -24,7 +24,6 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 import libtbx
 from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
-from iotbx import file_reader
 import mmtbx.command_line.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
@@ -285,8 +284,8 @@ ATOM      5  O   HOH A   5      46.896  37.790  41.629  1.00 20.00           O
 ATOM      6 SED  MSE A   6       1.000   2.000   3.000  1.00 20.00          SE
 END
 """
-    from iotbx import pdb
-    pdb_inp = pdb.input(source_info=None, lines=pdb_lines)
+    import iotbx.pdb
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_lines)
     xray_structure = pdb_inp.xray_structure_simple()
     if ucell is not None:
         assert symbol is not None
@@ -642,7 +641,7 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     try:
         AWA_inv = np.linalg.inv(AWA)
     except np.linalg.LinAlgError:
-        MAIN_LOGGER.warning("WARNING: Fit did not work.. investigate reflection, number of pixels used in fit=%d" % len(fast))
+        MAIN_LOGGER.debug("WARNING: Fit did not work.. investigate reflection, number of pixels used in fit=%d" % len(fast))
         return None
     AtW = np.dot(A.T, W)
     t1, t2, t3 = np.dot(np.dot(AWA_inv, AtW), rho_bg)
@@ -651,7 +650,8 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     # vector of residuals
     r = rho_bg - np.dot(A, (t1, t2, t3))
     Nbg = len(rho_bg)
-    r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
+    with np.errstate(invalid='ignore'):
+        r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
     var_covar = AWA_inv * r_fact  # TODO: check for correlations in the off diagonal elems
 
     return (t1, t2, t3), var_covar
@@ -732,9 +732,10 @@ def simulator_from_expt(expt, oversample=0, device_id=0, init_scale=1, total_flu
 def simulator_for_refinement(expt, params):
     # TODO: choose a phil param and remove support for the other: crystal.anositropic_mosaicity, or init.eta_abc
     MAIN_LOGGER.info(
-        "Setting initial anisotropic mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
+        "Setting initial mosaicity from params.init.eta_abc: %f %f %f" % tuple(params.init.eta_abc))
     if params.simulator.crystal.has_isotropic_mosaicity:
         params.simulator.crystal.anisotropic_mosaicity = None
+        params.simulator.crystal.mosaicity = params.init.eta_abc[0]
     else:
         params.simulator.crystal.anisotropic_mosaicity = params.init.eta_abc
     MAIN_LOGGER.info("Number of mosaic domains from params: %d" % params.simulator.crystal.num_mosaicity_samples)
@@ -861,7 +862,30 @@ def simulator_from_expt_and_params(expt, params=None):
         kern_size = SIM.psf_args["psf_radius"]*2 + 1
         SIM.PSF = psf.makeMoffat_integPSF(fwhm_pix, kern_size, kern_size)
 
+    update_SIM_with_gonio(SIM, params)
+
     return SIM
+
+
+def update_SIM_with_gonio(SIM, params=None, delta_phi=None, num_phi_steps=5):
+    """
+
+    :param SIM: sim_data instance
+    :param params: diffBragg phil parameters instance
+    :param delta_phi: how much to rotate gonio during model
+    :param num_phi_steps: number of phi steps
+    :return:
+    """
+    if not hasattr(SIM, "D"):
+        raise AttributeError("Need to instantiate diffBragg first")
+    if params is not None:
+        delta_phi = params.simulator.gonio.delta_phi
+        num_phi_steps = params.simulator.gonio.phi_steps
+
+    if delta_phi is not None:
+        SIM.D.phi_deg = 0
+        SIM.D.osc_deg = delta_phi
+        SIM.D.phisteps = num_phi_steps
 
 
 def get_complex_fcalc_from_pdb(
@@ -874,10 +898,9 @@ def get_complex_fcalc_from_pdb(
     produce a structure factor from PDB coords, see mmtbx/command_line/fmodel.py for formulation
     k_sol, b_sol form the solvent component of the Fcalc: Fprotein + k_sol*exp(-b_sol*s^2/4) (I think)
     """
-
-    pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
-    xray_structure = pdb_in.file_object.xray_structure_simple()
+    import iotbx.pdb
+    pdb_in = iotbx.pdb.input(pdb_file)
+    xray_structure = pdb_in.xray_structure_simple()
     if show_pdb_summary:
         xray_structure.show_summary()
     for sc in xray_structure.scatterers():
@@ -927,7 +950,8 @@ def open_mtz(mtzfname, mtzlabel=None, verbose=False):
             break
 
     assert foundlabel, "MTZ Label not found... \npossible choices: %s" % (" ".join(possible_labels))
-    ma = ma.as_amplitude_array()
+    if not ma.is_xray_amplitude_array():
+        ma = ma.as_amplitude_array()
     return ma
 
 
@@ -1690,3 +1714,16 @@ def load_Fhkl_model_from_params_and_expt(params, expt):
         miller_data = open_mtz(sf.mtz_name, sf.mtz_column)
 
     return miller_data
+
+
+def find_diffBragg_instances(globe_objs):
+    """find any instances of diffbragg in globals
+        globe_objs is a return value of globals() (dict)
+    """
+    inst_names = []
+    for name,obj in globe_objs.items():
+        if "simtbx.nanoBragg.sim_data.SimData" in str(obj):
+            inst_names.append(name)
+        if "simtbx_diffBragg_ext.diffBragg" in str(obj):
+            inst_names.append(name)
+    return inst_names

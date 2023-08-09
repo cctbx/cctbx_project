@@ -1251,7 +1251,7 @@ def get_aniso_info(
   ssqr(s) = (1/CC_half(s) - 1)  ...along any direction s
   Ao(|s|)**2 = rmsFobs(s*)**2 * (1 + 0.5*ssqr(s*))    ...along s*
 
-  A(s) = (rmsFo(s)/rmsFo(|s|))*sqrt((1 +  0.5* ssqr(|s|))/(1 +  0.5* ssqr(s)))
+  A(s) = (rmsFo(s)/rmsFc(|s|))*sqrt((1 +  0.5* ssqr(|s|))/(1 +  0.5* ssqr(s)))
   B(s) = A(s) * sqrt (ssqr(s) /ssqr(|s|))
   Target scale factors:
   Q(s) = (rmsFc(|s|)/rmsFo(s)) * sqrt(1 + 0.5* ssqr(s))/ (1 + ssqr(s))

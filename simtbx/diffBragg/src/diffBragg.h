@@ -1,18 +1,23 @@
-
 #ifndef SIMTBX_DIFFBRAGG_H
 #define SIMTBX_DIFFBRAGG_H
+
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <simtbx/diffBragg/src/util.h>
 #include <vector>
+#include <memory>
 #include <boost/ptr_container/ptr_vector.hpp>
 #include <Eigen/Dense>
 #include <boost/python.hpp>
 #include <boost/python/numpy.hpp>
-#include<Eigen/StdVector>
+#include <Eigen/StdVector>
 #include <boost/python/numpy.hpp>
 
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
 #include "diffBraggCUDA.h"
+#endif
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+#include "diffBraggKOKKOS.h"
 #endif
 
 //#include <boost/python/numpy.hpp>
@@ -150,13 +155,19 @@ class diffBragg: public nanoBragg{
   cuda_flags db_cu_flags;
   detector db_det;
 
-
-#ifdef NANOBRAGG_HAVE_CUDA
+#ifdef DIFFBRAGG_HAVE_CUDA
     diffBragg_cudaPointers device_pointers;
-    inline void gpu_free(){
+    inline void cuda_free(){
         freedom(device_pointers);
     }
+#endif
 
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+    // diffBragg_cudaPointers cuda_pointers;
+    void kokkos_free() { diffBragg_runner.reset(); }
+    // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
+    std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
+    // diffBraggKOKKOS diffBragg_runner;
 #endif
 
   // methods

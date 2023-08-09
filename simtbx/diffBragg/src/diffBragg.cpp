@@ -1778,10 +1778,12 @@ np::ndarray diffBragg::add_Fhkl_gradients(const af::shared<size_t>& panels_fasts
     np::dtype dt = np::dtype::get_builtin<double>();
     np::ndarray output = np::empty(shape,dt);
 
-    if (errors)
+    if (errors) {
         output = np::from_data(&first_deriv_imgs.Fhkl_hessian[0], dt, shape, stride, boost::python::object());
-    else
+    }
+    else {
         output = np::from_data(&first_deriv_imgs.Fhkl_scale_deriv[0], dt, shape, stride, boost::python::object());
+    }
     return output.copy();
 }
 
@@ -2020,7 +2022,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
 
     //fudge = 1.1013986013; // from manuscript computation
     gettimeofday(&t1,0 );
-    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL) || force_cpu){
+    if ((! use_cuda && getenv("DIFFBRAGG_USE_CUDA")==NULL && getenv("DIFFBRAGG_USE_KOKKOS")==NULL ) || force_cpu){
         diffBragg_sum_over_steps(
             Npix_to_model, panels_fasts_slows_vec,
             image,
@@ -2033,8 +2035,8 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_flags);
         last_kernel_on_GPU=false;
         }
-    else { // we are using cuda
-#ifdef NANOBRAGG_HAVE_CUDA
+    else { // we are using cuda or kokkos
+#if defined DIFFBRAGG_HAVE_CUDA || defined DIFFBRAGG_HAVE_KOKKOS
         db_cu_flags.device_Id = device_Id;
         db_cu_flags.update_step_positions = update_step_positions_on_device;
         db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
@@ -2048,7 +2050,35 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
+      if (use_cuda || getenv("DIFFBRAGG_USE_CUDA")!=NULL){
+#ifdef DIFFBRAGG_HAVE_CUDA
         diffBragg_sum_over_steps_cuda(
+             Npix_to_model, panels_fasts_slows_vec,
+             image,
+             first_deriv_imgs,
+             second_deriv_imgs,
+             db_steps,
+             db_det,
+             db_beam,
+             db_cryst,
+             db_flags,
+             db_cu_flags,
+             device_pointers,
+             TIMERS);
+        if(verbose)
+           printf("Ran the CUDA kernel\n");
+#else
+        bool DIFFBRAGG_USE_CUDA_flag_unsupported=false;
+        SCITBX_ASSERT(DIFFBRAGG_USE_CUDA_flag_unsupported);
+#endif
+      }
+      else {
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+        if (!diffBragg_runner) {
+          diffBragg_runner = std::make_shared<diffBraggKOKKOS>();
+        }
+
+        diffBragg_runner->diffBragg_sum_over_steps_kokkos(
             Npix_to_model, panels_fasts_slows_vec,
             image,
             first_deriv_imgs,
@@ -2059,12 +2089,18 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
             db_cryst,
             db_flags,
             db_cu_flags,
-            device_pointers,
             TIMERS);
-        last_kernel_on_GPU=true;
-
+        if (verbose)
+            printf("Ran the Kokkos kernel\n");
 #else
-       // no statement
+    bool DIFFBRAGG_USE_KOKKOS_flag_unsupported=false;
+    SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_flag_unsupported);
+#endif
+    }
+    last_kernel_on_GPU=true;
+#else
+    bool DIFFBRAGG_USE_KOKKOS_and_DIFFBRAGG_USE_CUDA_flags_unsupported=false;
+    SCITBX_ASSERT(DIFFBRAGG_USE_KOKKOS_and_DIFFBRAGG_USE_CUDA_flags_unsupported);
 #endif
     }
     gettimeofday(&t2, 0);
@@ -2179,7 +2215,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     if(verbose) printf("done with pixel loop\n");
 } // END  of add_diffBragg_spots
 
-
 void diffBragg::diffBragg_rot_mats(){
     for (int i_rot=0; i_rot < 3; i_rot++){
         //if (rot_managers[i_rot]->refine_me){
@@ -2260,7 +2295,17 @@ std::string get_hkl_key(int h, int k , int l){
 }
 
 void diffBragg::linearize_Fhkl(bool compute_dists){
+//      TODO assert eig_O and hall_symbol are properly set before proceeding
         cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
+        Eigen::Matrix3d O_inv = db_cryst.eig_O.inverse();
+        if (verbose>1){
+            printf("Hall symbol %s\n", db_cryst.hall_symbol.c_str());
+            printf("O_inv:\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n",
+                O_inv(0,0), O_inv(0,1), O_inv(0,2),
+                O_inv(1,0), O_inv(1,1), O_inv(1,2),
+                O_inv(2,0), O_inv(2,1), O_inv(2,2));
+        }
+
         cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
 
         cctbx::uctbx::unit_cell ucell;
@@ -2292,13 +2337,16 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
                                 int k0 = k+ k_min;
                                 int l0 = l+ l_min;
 
-                                // TODO: add change of basis operation
+                                Eigen::Vector3d HKL((double)h0, (double)k0, (double)l0);
+                                HKL = O_inv*HKL;
+                                h0 = (int)HKL[0];
+                                k0 = (int)HKL[1];
+                                l0 = (int)HKL[2];
 
                                 cctbx::miller::index<int> hkl0(h0,k0,l0);
                                 cctbx::miller::asym_index ai(sg, asu, hkl0);
                                 cctbx::miller::index_table_layout_adaptor ila = ai.one_column(true);
                                 cctbx::miller::index<int> hkl0_asu = ila.h();
-
 
                                 int h_asu = hkl0_asu[0];
                                 int k_asu = hkl0_asu[1];

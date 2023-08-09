@@ -342,12 +342,12 @@ class detached_process_client(detached_base):
       self.callback_abort()
     elif os.path.exists(self.result_file):
       max_retries = 5
+      error_text = None
       for retry in range(max_retries):
         try:
           result = easy_pickle.load(self.result_file)
         except Exception:
-          print("Error trying to load result file '%s' on attempt %d." %
-            (self.result_file, retry+1))
+          pass
         else:
           time.sleep(1)
           self.check_stdout()

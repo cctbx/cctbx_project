@@ -69,6 +69,7 @@ class HKLViewFrame() :
     ]
     self.zmqsleeptime = 0.1
     self.update_handler_sem = threading.BoundedSemaphore()
+    self.run_external_sem = threading.BoundedSemaphore()
     self.initiated_gui_sem = threading.Semaphore()
     self.start_time = time.time()
     kwds['send_info_to_gui'] = self.SendInfoToGUI # function also used by HKLjsview_3d
@@ -92,20 +93,12 @@ class HKLViewFrame() :
       self.SendInfoToGUI(pyversion )
       self.SendInfoToGUI({"copyrights": self.copyrightpaths,
                           "cctbxversion": version.get_version()} )
+      from .preset_buttons import buttonsdeflist
       try:
-        from .preset_buttons import cctbx_buttonsdeflist
-        buttonsdeflist = cctbx_buttonsdeflist
-        try:
-          from phasertng.scripts import xtricorder # then we are in phenix and can load phasertng
-          from .preset_buttons import phenix_buttonsdeflist
-          buttonsdeflist.extend(phenix_buttonsdeflist) # add phenix buttons to Quick View list
-        except Exception as e: # otherwise we only have cctbx
-          from .preset_buttons import cctbx_buttonsdeflist
-          buttonsdeflist = cctbx_buttonsdeflist
-      except Exception as e: # don't even have cctbx! Should never get here!
-        buttonsdeflist = []
-      if "phenix_buttonsdeflist" in dir():
-        self.SendInfoToGUI({"AddPhenixButtons": True})
+        from phasertng.scripts import xtricorder # then we can run xtricorder from phasertng
+        self.SendInfoToGUI({"AddXtricorderButton": True}) # show the button next to the xtriage button
+      except Exception as e: # no phasertng present, just a cctbx installation
+        pass # only xtriage button is shown
     else:
       now = time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime())
       self.mprint("%s, CCTBX version: %s" %(now, version.get_version()), verbose=1, with_elapsed_secs=False)
@@ -146,6 +139,7 @@ class HKLViewFrame() :
     if 'useGuiSocket' in kwds:
       self.msgqueuethrd.start()
     self.validate_preset_buttons()
+    #time.sleep(12) # for attaching debugger
     if 'show_master_phil' in args:
       self.mprint("Default PHIL parameters:\n" + "-"*80 + "\n" + master_phil.as_str(attributes_level=2) + "-"*80)
     self.thrd2 = threading.Thread(target = self.thread_process_arguments, kwargs=kwds )
@@ -164,8 +158,8 @@ class HKLViewFrame() :
     try:
       if 'hklin' in kwds or 'HKLIN' in kwds:
         self.hklin = kwds.get('hklin', kwds.get('HKLIN', "") )
-      self.LoadReflectionsFile(self.hklin)
-      self.validate_preset_buttons()
+        self.LoadReflectionsFile(self.hklin)
+        self.validate_preset_buttons()
       if 'phil_file' in kwds: # enact settings in a phil file for quickly displaying a specific configuration
         fname = kwds.get('phil_file', "" )
         if not self.initiated_gui_sem.acquire(timeout=300): # wait until GUI is ready before executing philstring commands
@@ -174,11 +168,16 @@ class HKLViewFrame() :
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
-          self.update_from_philstr(philstr)
+          self.update_from_philstr(philstr, msgtype="preset_philstr", postrender=True)
+          self.mprint("thread_process_arguments() waiting for run_external_sem.acquire", verbose="threadingmsg")
+          if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
+            self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+          self.run_external_sem.release()
+          self.mprint("thread_process_arguments() releasing run_external_sem", verbose="threadingmsg")
         if 'image_file' in kwds: # save displayed reflections to an image file
           time.sleep(1)
           fname = kwds.get('image_file', "testimage.png" )
-          self.update_from_philstr('save_image_name = "%s"' %fname)
+          self.update_from_philstr('save_image_name = "%s"' %fname, msgtype="preset_philstr", postrender=True)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(10)
@@ -463,11 +462,11 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
-  def update_from_philstr(self, philstr):
+  def update_from_philstr(self, philstr, msgtype="philstr", postrender=False):
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
+    self.guarded_process_PHIL_parameters(new_phil, msgtype=msgtype, postrender=postrender)
 
 
   def guarded_process_PHIL_parameters(self, new_phil=None, msgtype="philstr",
@@ -530,7 +529,7 @@ class HKLViewFrame() :
       self.mprint("diff phil:\n" + diff_phil.as_str(), verbose=1 )
 
       if jsview_3d.has_phil_path(diff_phil, "external_cmd"):
-        self.run_external_cmd()
+        self.run_external_cmd(diff_phil)
       #phl.external_cmd = "None" # ensure we can do this again
 
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
@@ -626,9 +625,7 @@ class HKLViewFrame() :
         if not ret:
           return
 
-      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
-        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
-      phl.savefilename = None # ensure the same action in succession can be executed
+      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
 
       if jsview_3d.has_phil_path(diff_phil, "visible_dataset_label"):
         self.addCurrentVisibleMillerArray(phl.visible_dataset_label)
@@ -643,11 +640,13 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "hkls"):
         self.HKLsettings = phl.hkls
 
+      if jsview_3d.has_phil_path(diff_phil, "savefilename"):
+        self.SaveReflectionsFile(phl.savefilename, phl.datasets_to_save)
+      phl.savefilename = None # ensure the same action in succession can be executed
+
       if jsview_3d.has_phil_path(diff_phil, "openfilename", "commit_subgroup_datasets"):
         self.list_vectors()
         self.validated_preset_buttons = False
-
-      self.params = self.viewer.process_PHIL_parameters(diff_phil, phl)
       # parameters might have been changed. So update self.currentphil accordingly
 
       self.SendCurrentPhilValues()
@@ -878,6 +877,7 @@ class HKLViewFrame() :
   def update_arrayinfos(self):
     self.viewer.array_info_format_tpl = []
     colnames_select_lst = []
+    arrayinfo = []
     for array in self.procarrays:
       if type(array.data()) == flex.std_string: # in case of status array from a cif file
         uniquestrings = list(set(array.data()))
@@ -969,28 +969,35 @@ Borrowing them from the first miller array""" %i)
     self.SendInfoToGUI({ "include_tooltip_lst": self.viewer.include_tooltip_lst })
 
 
-  def run_external_cmd(self):
+  def run_external_cmd(self, diff_phil):
     # Run some python script like xtricorder with the exec function. Script can manipulate HKLViewFrame
-    # by accessing functions and attributes on 'self' that is exported as a local variable.
-    # Get logfile name and tabname assigned
-    # by the script and send these to the HKLviewer GUI. Also expecting retval and errormsg to be defined
-    # in the script
-    from pathlib import PurePath
+    # by accessing functions and attributes on 'self' that is exported as a local variable in the
+    # exec() function.
+    # Get logfile name and tabname assigned by the script and send these to the HKLviewer GUI. Also
+    # expecting retval and errormsg to be assigned within the script
     firstpart = os.path.splitext(os.path.basename(self.loaded_file_name))[0]# i.e. '4e8u' of '4e8u.mtz'
     firstpart =  firstpart.replace(".", "_") # dots in firstpart are renamed to underscores by phasertng
-    # Provide a temp directory for xtricorder in current working directory and
-    # replace any backslashes on Windows with forwardslashes for the sake of phasertng
-    tempdir = PurePath(os.path.join( os.getcwd(), "HKLviewerTemp")).as_posix()
     if self.params.external_cmd == "runXtricorder":
       from crys3d.hklviewer.xtricorder_runner import external_cmd as external_cmd
     if self.params.external_cmd == "runXtriage":
       from crys3d.hklviewer.xtriage_runner import external_cmd as external_cmd
     try:
       def thrdfunc():
-        ret = external_cmd(self, master_phil, firstpart, tempdir)
+        self.mprint("run_external_cmd.thrdfunc() waiting for run_external_sem.acquire", verbose="threadingmsg")
+        if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
+            self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
+        parcpy = diff_phil.extract()
+        parcpy.external_cmd = "None"
+        diff2 = master_phil.fetch_diff(source =diff_phil.format(parcpy))
+        ret = external_cmd(self, master_phil, firstpart)
         self.SendInfoToGUI( {"show_log_file_from_external_cmd": [ret.tabname, ret.logfname ]  } )
         self.validated_preset_buttons = False
         self.validate_preset_buttons()
+        # reapply the phil paramaters that may have been reset by external_cmd doing an openfilename call
+        self.guarded_process_PHIL_parameters(new_phil=diff2)
+        self.run_external_sem.release()
+        self.mprint("run_external_cmd.thrdfunc() releasing run_external_sem", verbose="threadingmsg")
+
       # Since process_PHIL_parameters() might be called by update_from_philstr() in external_cmd()
       # we run thrdfunc separately to avoid semaphore deadlock if entering process_PHIL_parameters() twice
       threading.Thread(target = thrdfunc, daemon=True).start()
@@ -1132,6 +1139,8 @@ Borrowing them from the first miller array""" %i)
         self.prepare_dataloading()
         hkl_file = any_reflection_file(file_name)
         arrays = hkl_file.as_miller_arrays(merge_equivalents=False, reconstruct_amplitudes=False)
+        if hkl_file._file_type is None:
+          raise Sorry(file_name + " seems not to be a reflection data file")
         self.origarrays = {}
         if hkl_file._file_type == 'cif':
           # use new cif label parser for reflections
@@ -2176,11 +2185,17 @@ master_phil_str = """
     .type = choice
   tabulate_miller_array_ids = "[]"
     .type = str
+    .help = "Data used internally between QT GUI and CCTBX"
   tooltip_data = "[]"
     .type = str
+    .help = "Data used internally between QT GUI and CCTBX"
   use_wireframe = False
     .type = bool
     .help = "Draw objects using wireframe mesh"
+  max_reflections_in_frustum = 0
+    .type = int
+    .help = "Maximum number of reflections to count in frustum. Larger than around 30 or 50 may cause " \
+            "significant slow down of HKLviewer when displaying a large dataset"
 
 """ %(ArrayInfo.arrayinfo_phil_str, display.philstr, jsview_3d.ngl_philstr)
 

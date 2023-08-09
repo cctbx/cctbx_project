@@ -189,13 +189,11 @@ class filter_pdb_file(object):
                 quiet=False,
                 set_se_occ=True,
                 remove_atoms_with_zero_occupancy=False):
-    from iotbx.file_reader import any_file
     import iotbx.pdb
     if (log is None):
       log = null_out()
-    pdb_in = any_file(pdb_file, force_type="pdb")
-    pdb_in.assert_file_type("pdb")
-    hierarchy = pdb_in.file_object.hierarchy
+    pdb_in = iotbx.pdb.input(pdb_file)
+    hierarchy = pdb_in.construct_hierarchy()
     if (len(hierarchy.models()) > 1):
       raise Sorry("Multi-MODEL PDB files are not supported.")
     n_unknown = 0
@@ -242,9 +240,9 @@ class filter_pdb_file(object):
       f = open(output_file, "w")
       # if the input file is actually from the PDB, we need to preserve the
       # header information for downstream code.
-      print("\n".join(pdb_in.file_object.input.title_section()), file=f)
-      print("\n".join(pdb_in.file_object.input.remark_section()), file=f)
+      print("\n".join(pdb_in.title_section()), file=f)
+      print("\n".join(pdb_in.remark_section()), file=f)
       print(iotbx.pdb.format_cryst1_record(
-        crystal_symmetry=pdb_in.file_object.crystal_symmetry()), file=f)
+        crystal_symmetry=pdb_in.crystal_symmetry()), file=f)
       print(hierarchy_filtered.as_pdb_string(), file=f)
       f.close()

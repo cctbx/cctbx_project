@@ -359,9 +359,9 @@ def run_post_refinement(
   if (params is None):
     params = get_master_phil().fetch().extract().prune
   from iotbx import file_reader
-  pdb_in = file_reader.any_file(pdb_file, force_type="pdb")
-  pdb_in.assert_file_type("pdb")
-  pdb_hierarchy = pdb_in.file_object.hierarchy
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(pdb_file)
+  pdb_hierarchy = pdb_in.construct_hierarchy()
   pdb_hierarchy.atoms().reset_i_seq()
   # XXX this probably shouldn't be necessary
   pdb_hierarchy.atoms().set_chemical_element_simple_if_necessary()
@@ -397,7 +397,7 @@ def run_post_refinement(
       output_file = os.path.splitext(base_name)[0] + "_pruned.pdb"
     f = open(output_file, "w")
     f.write("%s\n" % "\n".join(
-      pdb_in.file_object.input.crystallographic_section()))
+      pdb_in.crystallographic_section()))
     f.write(pdb_hierarchy.as_pdb_string())
     f.close()
     result.output_file = output_file

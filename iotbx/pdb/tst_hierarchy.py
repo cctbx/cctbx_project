@@ -478,7 +478,11 @@ def exercise_atom_group():
   ag.resname = None
   assert ag.altloc == ""
   assert ag.resname == ""
-  assert ag.confid() == "    "
+  assert ag.confid() == "  ", "'%s'" % ag.confid()
+  ag = pdb.hierarchy.atom_group(altloc="", resname="5char")
+  assert ag.altloc == ""
+  assert ag.resname == "5char"
+  assert ag.confid() == " 5char", "'%s'" % ag.confid()
   #
   ag.altloc = "l"
   ag.resname = "res"
@@ -769,10 +773,16 @@ def exercise_residue_group():
 def exercise_chain():
   c = pdb.hierarchy.chain()
   assert c.id == ""
+  c = pdb.hierarchy.chain(id=None)
+  assert c.id == ""
   c = pdb.hierarchy.chain(id="a")
   assert c.id == "a"
+  c = pdb.hierarchy.chain(id="long_chain_id")
+  assert c.id == "long_chain_id"
   c.id = "x"
   assert c.id == "x"
+  c.id = None
+  assert c.id == ""
   #
   m1 = pdb.hierarchy.model(id="1")
   m2 = pdb.hierarchy.model(id="2")
@@ -1032,8 +1042,12 @@ def exercise_model():
   assert m.id == ""
   m = pdb.hierarchy.model(id="42")
   assert m.id == "42"
+  m = pdb.hierarchy.model(id=None)
+  assert m.id == ""
   m.id = "-23"
   assert m.id == "-23"
+  m.id = None
+  assert m.id == ""
   #
   m = pdb.hierarchy.model(id="17")
   assert m.parent() is None
@@ -4494,6 +4508,65 @@ ENDMDL
       .is_similar_hierarchy(
         other=h2.models()[0].only_chain().residue_groups()[0]) == (an == "N ")
 
+def exercise_is_similar_hierarchy_long():
+  s0 = """\
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.Cartn_x_esd
+_atom_site.Cartn_y_esd
+_atom_site.Cartn_z_esd
+_atom_site.occupancy_esd
+_atom_site.B_iso_or_equiv_esd
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   9414   C CA   . %s A-2  1 1   ? 71.805  71.447  63.447  1.00 78.79  ? ? ? ? ? ? 2   SER A-2  CA   1
+ATOM   9414   C CA   . %s A-2  2 2   ? 71.805  71.447  63.447  1.00 78.79  ? ? ? ? ? ? 2   SER A-2  CA   1
+ATOM   9414   C CA   . %s A-2  3 3   ? 71.805  71.447  63.447  1.00 78.79  ? ? ? ? ? ? 2   SER A-2  CA   1
+"""
+
+  i1 = pdb.input(source_info=None, lines=flex.split_lines(
+    s0 % ("SERine", "SERine", "SERine")))
+  h1 = i1.construct_hierarchy()
+  assert h1.is_similar_hierarchy(other=h1)
+  assert h1.is_similar_hierarchy(other=h1.deep_copy())
+  assert h1.models()[0].is_similar_hierarchy(
+    other=h1.models()[1])
+  assert h1.models()[0].only_chain().is_similar_hierarchy(
+    other=h1.models()[1].only_chain())
+  assert h1.models()[0].only_chain().residue_groups()[0].is_similar_hierarchy(
+    other=h1.models()[1].only_chain().residue_groups()[0])
+  for rn in ["SER","Alanine"]:
+    i2 = pdb.input(source_info=None, lines=flex.split_lines(
+      s0 % (rn, rn, rn)))
+    h2 = i2.construct_hierarchy()
+    assert not h1.is_similar_hierarchy(other=h2)
+    assert not h2.is_similar_hierarchy(other=h1)
+    assert not h1.models()[0].is_similar_hierarchy(
+      other=h2.models()[0]) == (rn == "GLY")
+    assert h1.models()[0].only_chain().is_similar_hierarchy(
+      other=h2.models()[0].only_chain()) == (an == "N ")
+    assert h1.models()[0].only_chain().residue_groups()[0] \
+      .is_similar_hierarchy(
+        other=h2.models()[0].only_chain().residue_groups()[0]) == (an == "N ")
+
 def exercise_atoms():
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      1  N   GLN A   3      35.299  11.075  19.070  1.00 36.89           N
@@ -6546,7 +6619,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
 """))
   h = pdb_inp.construct_hierarchy()
   h.atoms().reset_i_seq()
-  sites_cart = h.extract_xray_structure().sites_cart()
+  sites_cart = h.atoms().extract_xyz()
   #
   css = h.chunk_selections(residues_per_chunk=0)
   assert len(css)==0
@@ -6558,7 +6631,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==3
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   css = h.chunk_selections(residues_per_chunk=2)
   assert list(css[0]) == [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19, 20]
@@ -6566,7 +6639,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==2
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   css = h.chunk_selections(residues_per_chunk=3)
   assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -6574,7 +6647,7 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.00 36.05           N
   assert len(css)==1
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   # multiple chains
   pdb_inp = pdb.input(source_info=None, lines=flex.split_lines("""\
 ATOM      0  N   ASP A   1      49.347 -62.804  60.380  1.00 34.60           N
@@ -6618,12 +6691,12 @@ TER
 """))
   h = pdb_inp.construct_hierarchy()
   h.atoms().reset_i_seq()
-  sites_cart = h.extract_xray_structure().sites_cart()
+  sites_cart = h.atoms().extract_xyz()
   #
   css = h.chunk_selections(residues_per_chunk=3)
   for cs in css:
     assert approx_equal(sites_cart.select(cs),
-      h.select(cs).extract_xray_structure().sites_cart())
+      h.select(cs).atoms().extract_xyz())
   #
   assert list(css[0]) == [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
   assert list(css[1]) == [12, 13, 14, 15]
@@ -7020,6 +7093,8 @@ END
   ph_in = pi.construct_hierarchy()
   ph_in.rename_chain_id(old_id="C", new_id="A")
   assert [c.id.strip() for c in ph_in.chains()] == ["B","A"]
+  ph_in.rename_chain_id(old_id="A", new_id="long_id")
+  assert [c.id.strip() for c in ph_in.chains()] == ["B","long_id"]
 
 def exercise_shift_to_origin():
   pdb_inp = pdb.input(source_info=None, lines="""\
@@ -7158,6 +7233,7 @@ def exercise(args):
     exercise_residue()
     exercise_is_identical_hierarchy()
     exercise_is_similar_hierarchy()
+    # exercise_is_similar_hierarchy_long()
     exercise_atoms()
     exercise_atoms_interleaved_conf()
     exercise_as_pdb_string(

@@ -36,7 +36,6 @@ namespace {
   {
     std::map<str4, std::vector<unsigned> > name_s;
     std::map<str1, std::vector<unsigned> > altloc_s;
-    std::map<str3, std::vector<unsigned> > resname_s;
     std::map<str4, std::vector<unsigned> > resseq_s;
     std::map<str1, std::vector<unsigned> > icode_s;
     std::map<str5, std::vector<unsigned> > resid_s;
@@ -84,7 +83,7 @@ namespace {
                 resid_list.push_back(resid);
                 chain_break_list.push_back(chain_id_seq);
               }
-              append_range(resname_s[ag.data->resname], ag_i_seq_start, i_seq);
+              append_range(resname[ag.data->resname], ag_i_seq_start, i_seq);
             }
             else {
               i_seq += n_ats;
@@ -114,7 +113,6 @@ namespace {
         altloc_s.erase(str1(""));
       }
       map_array_transfer(name_s, name);
-      map_array_transfer(resname_s, resname);
       map_array_transfer(resseq_s, resseq);
       map_array_transfer(icode_s, icode);
       map_array_transfer(resid_s, resid);

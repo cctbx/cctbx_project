@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import sys, os
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, Abort
 from cctbx import maptbx
 from cctbx import crystal
 from cctbx import uctbx
@@ -110,6 +110,7 @@ class map_model_manager(object):
                absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry
                absolute_length_tolerance = 0.01,  # length tolerance
                log              = None,
+               stop_file = None,  # if present in working directory, stop
                make_cell_slightly_different_in_abc  = False,
                name = 'map_model_manager',
                verbose = False):
@@ -126,6 +127,7 @@ class map_model_manager(object):
 
     # Set the log stream and name
     self.set_log(log = log)
+    self.set_stop_file(file_name = stop_file)
     self.set_name(name)
     self.set_verbose(verbose)
 
@@ -285,6 +287,7 @@ class map_model_manager(object):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
+    mmmn.set_log(self.log)
     mmmn.add_map_manager(any_map_manager)
     for m in extra_model_list: # Check all extra models
       mmmn.add_model(m.deep_copy(),
@@ -465,6 +468,12 @@ class map_model_manager(object):
     self.name = name
 
 
+  def set_stop_file(self, file_name = None):
+    '''
+      Define file name that means "STOP"
+    '''
+    self._stop_file = file_name
+
   def set_verbose(self, verbose = None):
     '''
        Set verbose
@@ -488,6 +497,12 @@ class map_model_manager(object):
   def add_to_info(self, item_name = None, item = None):
     setattr(self._info,item_name, item)
 
+  # Methods for job control
+
+  def check_stop_file(self):
+    if self._stop_file and os.path.isfile(self._stop_file):
+      raise Abort("Stopping as the stop_file %s is present" %(
+        os.path.abspath(self._stop_file)))
   # Methods for printing
 
   def set_log(self, log = sys.stdout):
@@ -499,7 +514,7 @@ class map_model_manager(object):
     else:
       self.log = log
 
-  def _print(self, m):
+  def _print(self, m, force = False):
     '''
       Print to log if it is present
     '''
@@ -507,6 +522,8 @@ class map_model_manager(object):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
       print(m, file = self.log)
+    elif force:
+      print(m)
 
   # Methods for obtaining models, map_managers, symmetry, ncs_objects
 
@@ -4884,6 +4901,8 @@ class map_model_manager(object):
     setup_info = working_mmm._get_box_setup_info(map_id_1, map_id_2,
       resolution,
       d_min,
+      n_boxes = n_boxes,
+      core_box_size = core_box_size,
       smoothing_radius = smoothing_radius,
       )
     if spectral_scaling and (not expected_rms_fc_list):
@@ -5285,6 +5304,7 @@ class map_model_manager(object):
     other._queue_run_command = self._queue_run_command
     other._force_wrapping = deepcopy(self._force_wrapping)
     other._warning_message = self._warning_message
+    other._stop_file = self._stop_file
 
     other.set_log(self.log)
 
@@ -6765,6 +6785,7 @@ class map_model_manager(object):
       d_min,
       smoothing_radius = smoothing_radius,
       n_boxes = n_boxes,
+      core_box_size = core_box_size,
        )
 
     resolution = setup_info.resolution
@@ -7158,6 +7179,7 @@ class map_model_manager(object):
       map_id = 'map_manager',
       map_id_1 = 'map_manager_1',
       map_id_2 = 'map_manager_2',
+      model_id = None,
       map_id_to_be_scaled_list = None, # NOTE: not used, just allows it in call
       map_id_scaled_list = None, # NOTE: not used, just allows it in call
       mask_id = None,
@@ -7218,10 +7240,23 @@ class map_model_manager(object):
 
     # Checks
     assert self.get_map_manager_by_id(map_id)
-    assert (
-    (self.get_map_manager_by_id(map_id_1) or
-        is_model_based or is_external_based) and
-       self.get_map_manager_by_id(map_id_2))
+    if ( (is_model_based is None) and (is_external_based is None) and
+       self.model() and (not
+              (self.get_map_manager_by_id(map_id_1) and
+              self.get_map_manager_by_id(map_id_2)) )):
+         is_model_based = True # default to model-based if no info
+         if model_id is not None:
+           model = self.get_model_by_id(model_id)
+         else:
+           model = self.model()
+         assert model is not None
+         self.generate_map(map_id = 'model_map')
+         map_id_1 = 'map_manager'
+         map_id_2 = 'model_map'
+
+    assert ( ( is_model_based or is_external_based) or
+      (self.get_map_manager_by_id(map_id_1) and
+       self.get_map_manager_by_id(map_id_2)))
 
     if n_bins is None:
       n_bins = n_bins_default
@@ -7417,16 +7452,18 @@ class map_model_manager(object):
       core_box_size=None,
       smoothing_radius=None,
       box_size_ratio = 6, # full box never smaller than this ratio to resolution
+      maximum_default_boxes = 2000,
       ):
     volume = self.crystal_symmetry().unit_cell().volume()
     if not resolution:
       resolution = self.resolution()
 
-    if (n_boxes is not None) or (not core_box_size):  # n_boxes overrides
-      if n_boxes:
-        core_box_size=int(0.5+ volume/n_boxes)**0.33
-      else:
-        core_box_size = int(0.5+ 3 * resolution)
+    if (n_boxes is not None) and (n_boxes > 0):  # n_boxes overrides
+      core_box_size=int((0.5+ volume/n_boxes)**0.33)
+    elif (not core_box_size):
+      min_core_box_size=int((0.5+ volume/maximum_default_boxes)**0.33)
+      core_box_size = max(min_core_box_size,
+        int(0.5+ 3 * resolution))
 
     if not box_cushion:
       box_cushion = max(2.5 * resolution,
@@ -8058,6 +8095,48 @@ class map_model_manager(object):
     self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
 
 
+
+  def remove_origin_shift_and_unit_cell_crystal_symmetry(self):
+    '''
+       Set the origin of the current map to be (0,0,0) and reset the
+       unit_cell_crystal_symmetry to match the current crystal_symmetry.
+
+       Do not use this method if you want to use the map_model_manager or any
+       of its maps and models in the usual way.  This is a method to create
+       a set of maps and model that have no reference to their original
+       locations.
+
+       Typical use:
+         box_mmm = mmm.extract_all_maps_around_model()
+         box_mmm.remove_origin_shift_and_unit_cell_crystal_symmetry()
+         data_manager.write_model_file(box_mmm.model(), model_file)
+         data_manager.write_real_map_file(box_mmm.map_manager(), map_file)
+       Now model_file and map_file have no origin shift and the model CRYST1
+       matches the crystal_symmetry and map_file unit_cell_crystal_symmetry of
+       map_file
+
+    '''
+
+    assert self.map_data() is not None
+    # Target origin (zero)
+    zero_origin = (0,0,0)
+    # Gridding of full unit cell (same as current map data)
+    box_gridding = self.map_manager().map_data().all()
+
+    # Reset origin and gridding for each map_manager
+    for mm in self.map_managers():
+      mm.set_original_origin_and_gridding(
+       original_origin = zero_origin,
+       gridding = box_gridding)
+
+    # Any map_manager
+    mm = self.map_manager()
+    # Reset origin for each model
+    for m in self.models():
+      mm.set_model_symmetries_and_shift_cart_to_match_map(m)
+    # All done
+
+
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an
@@ -8650,10 +8729,12 @@ class match_map_model_ncs(object):
     else:
       self.log = log
 
-  def _print(self, m):
+  def _print(self, m, force = False):
     if (self.log is not None) and hasattr(self.log, 'closed') and (
         not self.log.closed):
-      self._print(m, file = self.log)
+      print(m, file = self.log)
+    elif force:
+      print(m)
 
   def write_map(self, file_name = None):
     if not self._map_manager:
@@ -8853,8 +8934,11 @@ class match_map_model_ncs(object):
 
     # Apply shift to model, map and ncs object
 
-    # Shift origin of map_manager
+    # Shift origin of map_manager. Note if there was any problem
+    self._map_manager._warning_message = ''
     self._map_manager.shift_origin(desired_origin = desired_origin)
+    if self._map_manager.warning_message():
+      self._print("\n%s\n" %(self._map_manager.warning_message()), force=True)
 
     # Shift origin of model  Note this sets model shift_cart
     if self._model:
@@ -9980,6 +10064,8 @@ class run_anisotropic_scaling_as_class:
       overall_scale: radial part of overall correction factor
     """
 
+    #Check for stop_file
+    self.map_model_manager.check_stop_file()
 
     xyz_list = scale_factor_info.xyz_list
     d_min = scale_factor_info.d_min
@@ -10108,6 +10194,7 @@ class run_fsc_as_class:
     expected_rms_fc_list = None
 
     for i in range(first_to_use, last_to_use + 1):
+      self.map_model_manager.check_stop_file()
       new_box_info = get_split_maps_and_models(
         map_model_manager = self.map_model_manager,
         box_info = self.box_info,

@@ -10,6 +10,7 @@ import re
 import sys
 
 from collections import OrderedDict
+from copy import copy
 from six.moves import range
 
 import iotbx.phil
@@ -139,7 +140,7 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
   # check inheritance and add datatypes if necessary
   class_datatypes = set()
   parent_classes = []
-  for manager_class in manager_classes:
+  for manager_class in copy(manager_classes):
     if hasattr(manager_class, 'datatype'):
       class_datatypes.add(manager_class.datatype)
     # get full inheritance order and check
@@ -268,6 +269,9 @@ options are {options}.\
     # set program
     self._program = None
 
+    if self.supports('model') and self.supports('miller_array'):
+      self._fmodel_phil_scope = None
+
     # logger (currently used for models)
     self.logger = logger
     if self.logger is None:
@@ -355,6 +359,8 @@ options are {options}.\
       phil_extract.data_manager, 'default_output_filename', None)
     self._overwrite = getattr(
       phil_extract.data_manager, 'overwrite', False)
+    if self.supports('model') and self.supports('miller_array'):
+      self.set_fmodel_params(phil_extract)
 
   # ---------------------------------------------------------------------------
   def supports(self, datatype):

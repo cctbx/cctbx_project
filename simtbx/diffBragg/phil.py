@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+nominal_Fhkl_only = True
+  .type = bool
+  .help = if refining Fhkls, only refine the ones that are assigned to a reflection table...
 use_geometric_mean_Fhkl = False
   .type = bool
   .help = whether to use the geometric mean for Fhkl restraint (when betasFhkl is not None, restratin Fhkl to the mean in each res bin)
@@ -668,7 +671,7 @@ disp = False
   .expert_level = 10
 use_restraints = False
   .type = bool
-  .help = disable the parameter restraints
+  .help = enable the parameter restraints
   .expert_level = 0
 min_multi = 2
   .type = int
@@ -777,6 +780,14 @@ simulator {
       .help = three missetting angles (about X,Y,Z axes), followed by
       .help = unit cell parameters. The crystal will be rotated according to
       .help = the matrix RotX*RotY*RotZ, and then the unit cell will be updated
+  }
+  gonio {
+    delta_phi = None
+      .type = float
+      .help = Angular amount in degrees by which goniometer is rotated during shot
+    phi_steps = 50
+      .type = int
+      .help = number of discrete angular positions to model
   }
   structure_factors {
     from_pdb {
@@ -939,9 +950,6 @@ refiner {
   force_unit_cell = None
     .type = ints(size=6)
     .help = a unit cell tuple to use
-  randomize_devices = True
-    .type = bool
-    .help = randomly select a device Id
   num_devices = 1
     .type = int
     .help = number of cuda devices on current node
@@ -1109,7 +1117,7 @@ roi {
     .type = str
     .help = panel list for refinement as a string, e.g. "0-8,10,32-40" . The ranges are inclusive,
     .help = e.g. 0-8 means panels 0,1,2,3,4,5,6,7,8
-  fit_tilt_using_weights = True
+  fit_tilt_using_weights = False
     .type = bool
     .help = if not using robust estimation for background, and instead using tilt plane fit,
     .help = then this parameter will toggle the use of weights. Weights are the estimated

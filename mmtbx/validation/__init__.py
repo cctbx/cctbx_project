@@ -4,6 +4,7 @@ from libtbx import slots_getstate_setstate
 from libtbx.str_utils import format_value
 import sys
 import six
+import json
 
 class entity(slots_getstate_setstate):
   """
@@ -84,6 +85,13 @@ class entity(slots_getstate_setstate):
 
   def format_old(self):
     raise NotImplementedError()
+
+  def as_JSON(self):
+    """
+    Returns a (empty) JSON object representing a single validation object.
+    Should be overwritten by each validation script to actually output the data.
+    """
+    return json.dumps({})
 
   def __eq__(self, other):
     """
@@ -216,6 +224,16 @@ class residue(entity):
     assert (len(sel) > 0)
     self.xyz = pdb_hierarchy.atoms().select(sel).extract_xyz().mean()
 
+  # for creating the hierarchical json output
+  def nest_dict(self, level_list, upper_dict):
+    inner_dict = {}
+    if len(level_list) > 0:
+      next_level = level_list[0]
+      upper_dict[getattr(self, next_level)] = self.nest_dict(level_list[1:], inner_dict)
+    else:
+      return json.loads(self.as_JSON())
+    return upper_dict
+
 class atoms(entity):
   """
   Base class for validation results involving a specific set of atoms, such
@@ -257,6 +275,24 @@ class atoms(entity):
         return True
     return False
 
+  def nest_dict(self, level_list, upper_dict):
+    inner_dict = {}
+    if len(level_list) > 0:
+      next_level = level_list[0]
+      try:
+        upper_dict[getattr(self, next_level)] = self.nest_dict(level_list[1:], inner_dict)
+      except AttributeError:
+        upper_dict[getattr(self.atoms_info[0], next_level)] = self.nest_dict(level_list[1:], inner_dict)
+    else:
+      return [json.loads(self.as_JSON())]
+    return upper_dict
+
+  def merge_two_dicts(self, x, y):
+    """Given two dictionaries, merge them into a new dict as a shallow copy, for json output."""
+    z = x.copy()
+    z.update(y)
+    return z
+
 class atom_base(slots_getstate_setstate):
   """
   Container for metadata for a single atom, in the context of validation
@@ -270,6 +306,7 @@ class atom_base(slots_getstate_setstate):
     "symop",
     "occupancy",
     "b_iso",
+    "model_id"
   ]
   __atom_slots__ = __residue_attr__ + __atom_attr__
   # XXX __slots__ should be left empty here
@@ -286,6 +323,7 @@ class atom_base(slots_getstate_setstate):
 
     if (pdb_atom is not None):
       labels = pdb_atom.fetch_labels()
+      self.model_id = labels.model_id
       self.chain_id = labels.chain_id
       self.resseq = labels.resseq
       self.icode = labels.icode
@@ -297,6 +335,10 @@ class atom_base(slots_getstate_setstate):
       self.occupancy = pdb_atom.occ
       self.b_iso = pdb_atom.b
       self.element = pdb_atom.element
+
+  @property
+  def resid(self):
+    return "%4s%1s" % (self.resseq, self.icode)
 
   def __cmp__(self, other):
     return cmp(self.id_str(), other.id_str())
@@ -359,6 +401,7 @@ def get_atoms_info(pdb_atoms, iselection,
     info = atom_info(
       name=atom.name,
       element=atom.element,
+      model_id=labels.model_id,
       chain_id=chain_id,
       resseq=labels.resseq,
       icode=labels.icode,
@@ -389,7 +432,7 @@ class validation(slots_getstate_setstate):
   associated statistics.  Individual modules will subclass this and override
   the unimplemented methods.
   """
-  __slots__ = ["n_outliers", "n_total", "results", "_cache"]
+  __slots__ = ["n_outliers", "n_total", "results", "_cache", "n_outliers_by_model", "n_total_by_model"]
   program_description = None
   output_header = None
   gui_list_headers = [] # for Phenix GUI ListCtrl widgets
@@ -399,6 +442,8 @@ class validation(slots_getstate_setstate):
   def __init__(self):
     self.n_outliers = 0
     self.n_total = 0
+    self.n_outliers_by_model = {}
+    self.n_total_by_model = {}
     self.results = []
     self._cache = None
     assert (len(self.gui_list_headers) == len(self.gui_formats) ==
@@ -410,6 +455,13 @@ class validation(slots_getstate_setstate):
       assert fraction <= 1.0
       return self.n_outliers, fraction
     return 0, 0.
+
+  def get_outliers_fraction_for_model(self, model_id):
+    if (self.n_total_by_model[model_id] != 0):
+      fraction = float(self.n_outliers_by_model[model_id]) / self.n_total_by_model[model_id]
+      assert fraction <= 1.0
+      return fraction
+    return 0.
 
   @property
   def percent_outliers(self):
@@ -504,6 +556,27 @@ class validation(slots_getstate_setstate):
         return True
     return False
 
+  def merge_dict(self, a, b, path=None):
+    """
+    Recursive function for merging two dicts, merges b into a
+    Mainly used to build hierarchical JSON outputs
+    """
+    if path is None: path = []
+    for key in b:
+        if key in a:
+            if isinstance(a[key], dict) and isinstance(b[key], dict):
+                self.merge_dict(a[key], b[key], path + [str(key)])
+            elif a[key] == b[key]:
+                pass # same leaf value
+            else:
+                #raise Exception('Conflict at %s' % '.'.join(path + [str(key)]))
+                # should only get called for JSONs that have a list
+                # of different validations for a residue (e.g. clashes)
+                a[key] = a[key]+b[key]
+        else:
+            a[key] = b[key]
+    return a
+
   def find_residue(self, other=None, residue_id_str=None):
     assert ([other, residue_id_str].count(None) == 1)
     if (other is not None):
@@ -544,6 +617,34 @@ class validation(slots_getstate_setstate):
     if (i_res is not None):
       return self.results[i_res]
     return None
+
+class rna_geometry(validation):
+  #__slots__ = validation.__slots__ + ["n_outliers_small_by_model", "n_outliers_large_by_model"]
+
+  def show(self, out=sys.stdout, prefix="  ", verbose=True):
+    if (len(self.results) > 0):
+      print(prefix + self.get_result_class().header(), file=out)
+      for result in self.results :
+        print(result.as_string(prefix=prefix), file=out)
+    self.show_summary(out=out, prefix=prefix)
+
+class test_utils(object):
+
+  def count_dict_values(prod, count_key, c=0):
+    """
+    for counting hierarchical values for testing hierarchical jsons
+    """
+    for mykey in prod:
+      if prod[mykey] == count_key:
+        c += 1
+      if isinstance(prod[mykey], dict):
+        # calls repeatedly
+        c = test_utils.count_dict_values(prod[mykey], count_key, c)
+      elif isinstance(prod[mykey], list):
+        for d in prod[mykey]:
+          if isinstance(d, dict):
+            c = test_utils.count_dict_values(d, count_key, c)
+    return c
 
 class dummy_validation(object):
   """

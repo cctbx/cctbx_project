@@ -80,7 +80,7 @@ secondary_structure
       .type = bool
       .style = noauto
       .help = Turn on secondary structure restraints for protein
-    search_method = *ksdssp mmtbx_dssp from_ca cablam
+    search_method = *ksdssp from_ca cablam
       .type = choice
       .help = Particular method to search protein secondary structure.
     distance_ideal_n_o = 2.9
@@ -384,13 +384,6 @@ class manager(object):
       return iotbx.pdb.secondary_structure.annotation.from_records(
           records=records,
           log=self.log)
-    elif self.params.secondary_structure.protein.search_method == "mmtbx_dssp":
-      from mmtbx.secondary_structure import dssp
-      print("  running mmtbx.dssp...", file=self.log)
-      return dssp.dssp(
-        pdb_hierarchy=pdb_hierarchy,
-        pdb_atoms=self.pdb_atoms,
-        out=null_out()).get_annotation()
     elif self.params.secondary_structure.protein.search_method == "from_ca":
       from mmtbx.secondary_structure import find_ss_from_ca
       from_ca_args = []

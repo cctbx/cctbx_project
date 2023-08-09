@@ -51,8 +51,9 @@ class map_reader:
      NOTE phenix calls "origin" the position of the lower left corner
        of the map.
      mrcfile calls "origin" the value of the field "origin" which is 3
-       real numbers indicating the placement of the grid point (0,0,0) relative
-       to an external reference frame (typically that of a model)
+       real numbers (A units, not grid units) indicating the placement
+       of the grid point (0,0,0) relative to an external reference frame
+       (typically that of a big map that this map is cut out from).
 
      Here we will use "external_origin" to refer to the mrc origin and
      "origin" for nxstart_nystart_nzstart.
@@ -134,7 +135,6 @@ class map_reader:
     self.unit_cell_grid=tuple((mrc.header.mx.tolist(),
                                mrc.header.my.tolist(),
                                mrc.header.mz.tolist(),))
-
     # NOTE: the values of nxstart,nystart,nzstart refer to columns, rows,
     #    sections, not to X,Y,Z.  The must be mapped using mapc,mapr,maps
     #    to get the value of "origin" that phenix uses to indicate the
@@ -174,6 +174,11 @@ class map_reader:
     unit_cell_parameters=tuple(
           mrc.header.cella.tolist()+
           mrc.header.cellb.tolist())
+    # Be permissive on cell angles. If all 0, set them to 90
+    if list(unit_cell_parameters)[3:6] == [0,0,0]:
+      print("Cell angles in %s are all zero...setting to 90,90,90" %(
+        str(file_name)), file = out)
+      unit_cell_parameters=tuple( list(unit_cell_parameters)[:3] + [90,90,90])
 
     # Space group number (1 for cryo-EM data)
     space_group_number=mrc.header.ispg.tolist()
@@ -181,9 +186,16 @@ class map_reader:
       space_group_number=1
 
     from cctbx import crystal
-    self._unit_cell_crystal_symmetry=crystal.symmetry(
-      unit_cell_parameters,
-      space_group_number)
+    try:
+      self._unit_cell_crystal_symmetry=crystal.symmetry(
+        unit_cell_parameters,
+        space_group_number)
+    except Exception as e:
+      print("\nUnable to process cell parameters in %s:\n %s\n" %(
+       str(file_name),str(
+        unit_cell_parameters)), file = out)
+      raise Sorry("Unable to process cell parameters : %s" %(str(
+        unit_cell_parameters)))
 
     self._crystal_symmetry=None # Set this below after reading data
 

@@ -195,7 +195,7 @@ https://conda.anaconda.org/cctbx202211/noarch/flask-2.2.2-pyhd8ed1ab_0.tar.bz2#8
 https://conda.anaconda.org/cctbx202211/win-64/gst-plugins-base-1.20.3-h001b923_2.tar.bz2#86d27bed1422db2e98540a9945079b36
 https://conda.anaconda.org/cctbx202211/win-64/hdf5plugin-3.3.1-py39h8170cf2_2.tar.bz2#82417f3a95d7010b5f0592c3088b2788
 https://conda.anaconda.org/cctbx202211/noarch/jsonpickle-2.2.0-pyhd8ed1ab_0.tar.bz2#35f19fabdfd44c8b53889be95333848c
-https://conda.anaconda.org/phenix-project/noarch/libsvm-official-3.25.0-pyhb8e05e6_0.tar.bz2#e39a94aca9c3b04a51a80d6bc9432712
+https://conda.anaconda.org/phenix-project/noarch/libsvm-official-3.25.0-pyha317c84_0.conda#725307c6faba4c4d7a61c58351f6afa6
 https://conda.anaconda.org/cctbx202211/win-64/matplotlib-base-3.6.2-py39haf65ace_0.tar.bz2#d420f1357dfb5815828cf6f1f1b26f6f
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
 https://conda.anaconda.org/cctbx202211/noarch/pyopenssl-22.1.0-pyhd8ed1ab_0.tar.bz2#fbfa0a180d48c800f922a10a114a8632

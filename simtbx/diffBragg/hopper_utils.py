@@ -150,7 +150,6 @@ class DataModeler:
         self.pids=None  # panel id (per spot)
         self.tilt_abc=None  # background plane constants (per spot), a,b are fast,slow scan components, c is offset
         self.selection_flags=None  # whether the spot was selected for refinement (sometimes poorly conditioned spots are rejected)
-        self.background=None  # background for entire image (same shape as the detector)
         self.tilt_cov = None  # covariance estimates from background fitting (not used)
         self.simple_weights = None  # not used
         self.refls_idx = None  # position of modeled spot in original refl array
@@ -211,10 +210,14 @@ class DataModeler:
         self.target.hop_iter += 1
         #self.target.minima.append((f,self.target.x0,accept))
         self.target.lowest_x = x
-        if f < self.target.lowest_f:
-            self.target.lowest_f = f
-            MAIN_LOGGER.info("New minimum found!")
-            self.save_up(self.target.x0, self.rank)
+        try:
+            # TODO get SIM and i_exp in here so we can save_up each new global minima!
+            if f < self.target.lowest_f:
+                 self.target.lowest_f = f
+                 MAIN_LOGGER.info("New minimum found!")
+                 self.save_up(self.target.x0, SIM, self.rank, i_exp=i_exp)
+        except NameError:
+            pass
 
     def _abs_path_params(self):
         """adds absolute path to certain params"""
@@ -428,7 +431,7 @@ class DataModeler:
         if roi_packet is None:
             return False
 
-        self.rois, self.pids, self.tilt_abc, self.selection_flags, self.background, self.tilt_cov = roi_packet
+        self.rois, self.pids, self.tilt_abc, self.selection_flags, background, self.tilt_cov = roi_packet
 
         if remove_duplicate_hkl and not self.no_rlp_info:
             is_not_a_duplicate = ~self.is_duplicate_hkl(refls)
@@ -471,7 +474,7 @@ class DataModeler:
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
 
-        self.data_to_one_dim(img_data, is_trusted, self.background)
+        self.data_to_one_dim(img_data, is_trusted, background)
         return True
 
     def data_to_one_dim(self, img_data, is_trusted, background):
@@ -920,7 +923,7 @@ class DataModeler:
 
         return ret_subimgs
 
-    def Minimize(self, x0, SIM):
+    def Minimize(self, x0, SIM, i_exp=0):
         self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
@@ -954,7 +957,8 @@ class DataModeler:
             assert self.params.hopper_save_freq is None
             at_min = self.at_minimum
 
-        callback = lambda x: self.callback(x, verbose=self.params.logging.parameters, save_freq=self.params.hopper_save_freq)
+        callback_kwargs = {"SIM":SIM, "i_exp": i_exp, "save_freq": self.params.hopper_save_freq}
+        callback = lambda x: self.callback(x, callback_kwargs)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
         if method in ["L-BFGS-B", "BFGS", "CG", "dogleg", "SLSQP", "Newton-CG", "trust-ncg", "trust-krylov", "trust-exact", "trust-ncg"]:
@@ -1029,13 +1033,15 @@ class DataModeler:
 
         return target.x0
 
-    def callback(self, x, verbose=True, save_freq=None):
-
+    def callback(self, x, kwargs):
+        save_freq = kwargs["save_freq"]
+        i_exp = kwargs["i_exp"]
+        SIM = kwargs["SIM"]
         target = self.target
         if save_freq is not None and target.iteration % save_freq==0 and target.iteration> 0:
             xall = target.x0.copy()
             xall[target.vary] = x
-            self.save_up(xall,rank=self.rank)
+            self.save_up(xall, SIM, rank=self.rank, i_exp=i_exp)
         return
 
         rescaled_vals = np.zeros_like(xall)
@@ -1397,6 +1403,9 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
 
     Ndef_params = [Mod.P["Ndef%d" % (i_n,)] for i_n in range(3)]
     Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
+    if SIM.D.isotropic_ncells:
+        Ne = Nd
+        Nf = Nd
     SIM.D.Ncells_def = Nd, Ne, Nf
 
     # diffuse signals

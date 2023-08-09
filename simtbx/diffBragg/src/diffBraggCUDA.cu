@@ -40,8 +40,9 @@ void diffBragg_sum_over_steps_cuda(
         timer_variables& TIMERS){
 
 
-    if (db_cryst.phi0 != 0 || db_cryst.phisteps > 1){
-        printf("PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%d\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
+    if (db_cryst.phisteps > 1){
+        printf("PHI (goniometer rotations) not supported in GPU code: phi0=%f phisteps=%d, phistep=%f\n", db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
+        printf("SPINDLE VEC: %f %f %f\n",db_cryst.spindle_vec[0], db_cryst.spindle_vec[1], db_cryst.spindle_vec[2]);
         exit(-1);
     }
 

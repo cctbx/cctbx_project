@@ -41,7 +41,9 @@ import getpass
 user = getpass.getuser()
 
 import libtbx.load_env
-license = os.path.join(libtbx.env.find_in_repositories('cctbx_project'), 'LICENSE.txt')
+license = libtbx.env.under_root(os.path.join("modules","cctbx_project","LICENSE.txt"))
+if not os.path.exists(license):
+  license = libtbx.env.under_root(os.path.join("cctbx", "LICENSE.txt")) # conda installations
 
 description = 'The cctbx.xfel UI is developed for use during data collection ' \
               'and initial processing of serial crystallographic data from' \
@@ -2574,14 +2576,14 @@ class UnitCellTab(BaseTab):
     # self.selection_columns_sizer = wx.BoxSizer(wx.HORIZONTAL)
     # self.selection_columns_panel.SetSizer(self.selection_columns_sizer)
 
-    self.trial_number = gctr.ChoiceCtrl(self,
+    self.trial_number = gctr.ChoiceCtrl(self.selection_columns_panel,
                                         label='Trial:',
                                         label_size=(90, -1),
                                         label_style='normal',
                                         ctrl_size=(100, -1),
                                         choices=[])
 
-    self.tag_checklist = gctr.CheckListCtrl(self,
+    self.tag_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
                                             label='Available tags:',
                                             label_size=(200, -1),
                                             label_style='normal',
@@ -2589,7 +2591,7 @@ class UnitCellTab(BaseTab):
                                             direction='vertical',
                                             choices=[])
 
-    self.selection_type_radio = gctr.RadioCtrl(self,
+    self.selection_type_radio = gctr.RadioCtrl(self.selection_columns_panel,
                                                name='uc_selection_type',
                                                label='',
                                                label_style='normal',
@@ -2602,7 +2604,7 @@ class UnitCellTab(BaseTab):
                                      label='Add selection',
                                      size=(200, -1))
 
-    self.tag_set_checklist = gctr.CheckListCtrl(self,
+    self.tag_set_checklist = gctr.CheckListCtrl(self.selection_columns_panel,
                                                 label='Tag sets to display:',
                                                 label_size=(200, -1),
                                                 label_style='normal',

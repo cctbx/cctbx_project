@@ -1,5 +1,5 @@
 from __future__ import division
-from math import log, exp
+from math import log, exp, tanh
 import sys
 
 class Auxiliary:
@@ -193,11 +193,10 @@ class Auxiliary:
     for i in range(self.nmp):
       thisdist = a if (dist[i]<0.) else min(a,dist[i]) # neg dist (-1.) means outside of bound (should never happen) or unbounded.
       rawshift = thisdist*p[i] # Undamped shift
-      relshift = max(abs(rawshift),ls[i])/ls[i] # the max(abs(rawshift),ls) looks redundant given the next line
-                                                # but we don't want to get rid of it at this point due to conservatism
-      dampfac = 1. if (relshift <= 1.) else (1.+log(relshift))/relshift
+      relshift = abs(rawshift)/ls[i]
+      dampfac = 1. if (relshift <= 0.005) else 2.*tanh(relshift/2.)/relshift
       shift = dampfac*rawshift
-      x[i] = old_x[i] + shift # Shift parameter only up to its bound, damped if > largeShift
+      x[i] = old_x[i] + shift # Shift parameter only up to its bound, damped to max of 2*largeShift
 
     if len(bounds) != 0:
       # correct for the possibility of minutely stepping over a boundary

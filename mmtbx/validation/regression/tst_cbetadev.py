@@ -4,7 +4,11 @@ from libtbx.test_utils import approx_equal, show_diff
 import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
+import iotbx.pdb
+from iotbx.data_manager import DataManager
 import os.path
+import json
+import time
 
 def exercise_cbetadev():
   regression_pdb = libtbx.env.find_in_repositories(
@@ -14,9 +18,8 @@ def exercise_cbetadev():
     print("Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available")
     return
   from mmtbx.validation import cbetadev
-  from iotbx import file_reader
-  pdb_in = file_reader.any_file(file_name=regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = iotbx.pdb.input(file_name=regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   validation = cbetadev.cbetadev(
     pdb_hierarchy=hierarchy,
     outliers_only=True)
@@ -273,8 +276,66 @@ HETATM 3185  CB  LYZ D   3      -4.176  -5.939  53.836  1.00 34.68           C''
       assert cb.deviation<1.
   print('OK')
 
+def exercise_cbetadev_unknown_peptide():
+  #testing that a nonstandard animo acid defaults to the general case
+  #LYZ is hydroxylysine
+  from iotbx import pdb
+  from mmtbx.validation import cbetadev
+  hierarchy = pdb.input(source_info=None, lines='''
+HETATM 3181  N   LY? D   3      -1.842  -5.028  54.291  1.00 35.06           N
+HETATM 3182  CA  LY? D   3      -3.207  -4.726  53.880  1.00 36.27           C
+HETATM 3183  C   LY? D   3      -3.841  -3.660  54.771  1.00 41.71           C
+HETATM 3184  O   LY? D   3      -4.669  -2.842  54.381  1.00 52.20           O
+HETATM 3185  CB  LY? D   3      -4.176  -5.939  53.836  1.00 34.68           C''').construct_hierarchy()
+  validation = cbetadev.cbetadev(
+    pdb_hierarchy=hierarchy,
+    outliers_only=False)
+  # assert approx_equal(validation.get_weighted_outlier_percent(), 4.40420846587)
+  for unpickle in [False, True] :
+    if unpickle :
+      validation = loads(dumps(validation))
+    assert (len(validation.results) == 1)
+    assert (validation.n_outliers == 0)
+    for cb in validation.results: print(cb.id_str())
+    assert ([ cb.id_str() for cb in validation.results ] ==
+      [' D   3  LY?'])
+    assert approx_equal([ cb.deviation for cb in validation.results ],
+      [0.14107909562037108])
+    print(validation.percent_outliers)
+    assert validation.percent_outliers == 0.
+    out = StringIO()
+    validation.show_old_output(out=out, verbose=True)
+    print(out.getvalue())
+    for cb in validation.results:
+      print(cb.id_str(), cb.deviation)
+      assert cb.deviation<1.
+  print('OK')
+
+def exercise_cbetadev_json():
+  regression_pdb = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/pdb1jxt.ent",
+    test=os.path.isfile)
+  if (regression_pdb is None):
+    print("Skipping exercise_cbetadev(): input pdb (pdb1jxt.ent) not available")
+    return
+  from mmtbx.validation import cbetadev
+  dm = DataManager()
+  m = dm.get_model(regression_pdb)
+  cbeta_json = cbetadev.cbetadev(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
+  cbeta_dict = json.loads(cbeta_json)
+  assert len(cbeta_dict['flat_results'])==6, "tst_cbetadev json output not returning correct number of outliers, now: "+str(len(cbeta_dict['flat_results']))
+  assert approx_equal(cbeta_dict['flat_results'][0]['deviation'], 0.25977096732623106), "tst_cbetadev json output first deviation not approx_equal, now: "+str(cbeta_dict['flat_results'][0]['deviation'])
+  assert approx_equal(cbeta_dict['flat_results'][-1]['deviation'], 0.5001892640352836), "tst_cbetadev json output last deviation not approx_equal, now: "+str(cbeta_dict['flat_results'][-1]['deviation'])
+  assert approx_equal(cbeta_dict['hierarchical_results']['']["A"]["   8 "]['B']["dihedral_NABB"], 80.92016704402938), "tst_cbetadev json output hierarchical result changed dihedral_NABB result, now: "+str(cbeta_dict['hierarchical_results']['']["A"]["   8 "]['B']["dihedral_NABB"])
+  assert cbeta_dict['summary_results'][""]['num_outliers']==6, "tst_cbetadev json output summary results num_outliers changed, now: "+str(cbeta_dict['summary_results'][""]['num_outliers'])
+  assert cbeta_dict['summary_results'][""]['num_cbeta_residues']==51, "tst_cbetadev json output summary results num_cbeta_residues changed, now: "+str(cbeta_dict['summary_results'][""]['num_cbeta_residues'])
+
 if (__name__ == "__main__"):
+  t0 = time.time()
   exercise_cbetadev()
   exercise_cbetadev_d_peptide()
   exercise_cbetadev_misnamed_peptides()
   exercise_cbetadev_nonstandard_peptide()
+  exercise_cbetadev_unknown_peptide()
+  exercise_cbetadev_json()
+  print("OK. Time: %8.3f"%(time.time()-t0))

@@ -81,7 +81,6 @@ def get_prefix(params):
     prefix = params.output.prefix
   else:
     prefix = 'qmr'
-    # print('changing prefix to %s' % prefix)
   return prefix
 
 def write_pdb_file(model, filename, log=None):
@@ -320,24 +319,41 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
-  buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
+  buffer_model.process(make_restraints=True)
   add_additional_hydrogen_atoms_to_model(buffer_model,
                                          use_capping_hydrogens=qmr.capping_groups)
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
-  buffer_model.process(make_restraints=True)
   if write_steps: write_pdb_file(buffer_model, 'post_add_terminii.pdb', None)
+  buffer_model.process(make_restraints=True)
   ligand_atoms = ligand_model.get_atoms()
   buffer_atoms = buffer_model.get_atoms()
+  def compare_id_str(s1,s2):
+    ptr=9
+    if s1[:ptr]==s2[:ptr] and s1[ptr+1:]==s2[ptr+1:]:
+      return True
+    return False
   for atom1 in ligand_atoms:
     for atom2 in buffer_atoms:
-      if atom1.id_str()==atom2.id_str():
+      if compare_id_str(atom1.id_str(), atom2.id_str()):
         break
     else:
       raise Sorry('''Bug alert
   Atom %s from ligand does not appear in buffer. Contact Phenix with input files.
   ''' % atom1.quote())
+  #
+  # necessary for amino acid selections to calculate energies
+  #
+  # ligand_model.unset_restraints_manager()
+  # ligand_model.log=null_out()
+  # ligand_model.process(make_restraints=True)
+  # add_additional_hydrogen_atoms_to_model(ligand_model,
+  #                                        use_capping_hydrogens=qmr.capping_groups)
+  # ligand_model.unset_restraints_manager()
+  # ligand_model.log=null_out()
+  # ligand_model.process(make_restraints=True)
+  #
   # reverse_shift(original_model, buffer_model_p1)
   ph=buffer_model.get_hierarchy()
   sites_cart=ph.atoms().extract_xyz()
@@ -364,6 +380,13 @@ def show_ligand_buffer_models(ligand_model, buffer_model):
     outl += '      %s\n' % agi
   return outl
 
+def get_specific_atom_charges(qmr):
+  rc=[]
+  sacs = qmr.specific_atom_charges
+  for sac in sacs:
+    rc.append(sac)
+  return rc
+
 def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()):
   program = qmr.package.program
   if program=='test':
@@ -377,11 +400,20 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   qmr = quantum_interface.populate_qmr_defaults(qmr)
 
   electron_model = None
+  solvent_model = qmr.package.solvent_model
   if program_goal in ['energy', 'strain']:
     electron_model = ligand_model
-  elif program_goal in ['opt']:
+    solvent_model = 'EPS=78.4 PRECISE NSPA=92'
+  elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
-  total_charge = quantum_interface.electrons(electron_model, log=log)
+  else:
+    assert 0, 'program_goal %s not in list' % program_goal
+  # specific_atom_charges = get_specific_atom_charges(qmr)
+  specific_atom_charges = qmr.specific_atom_charges
+  total_charge = quantum_interface.electrons(
+    electron_model,
+    specific_atom_charges=specific_atom_charges,
+    log=log)
   if total_charge!=qmr.package.charge:
     print(u'  Update charge %s ~> %s' % (qmr.package.charge, total_charge),
           file=log)
@@ -389,9 +421,10 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   qmm = qmm(electron_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
-            qmr.package.solvent_model,
+            solvent_model,
             qmr.package.charge,
             qmr.package.multiplicity,
+            qmr.package.nproc,
             # preamble='%02d' % (i+1),
             )
   qmm.program=program
@@ -421,28 +454,6 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   qmm.set_ligand_atoms(ligand_selection)
   return qmm
 
-def get_all_xyz(inputs, nproc):
-  from libtbx import easy_mp
-  argss = []
-  for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(inputs):
-    argss.append([qmm,
-                  qmr.cleanup,
-                  qmr.package.read_output_to_skip_opt_if_available,
-                  not(qmr.package.ignore_input_differences),
-                  log])
-  print(argss)
-  for args, res, err_str in easy_mp.multi_core_run(qm_manager.qm_runner,
-                                                   tuple(argss),
-                                                   nproc,
-                                                   ):
-    if res:
-      print (args, res)
-      # results.update(res)
-      # results[args[0]]=res
-    assert not err_str, 'Error %s' % err_str
-  xyzs = []
-  return xyzs
-
 def qm_restraints_initialisation(params, log=StringIO()):
   for i, qmr in enumerate(params.qi.qm_restraints):
     if not i: print('  QM restraints selections', file=log)
@@ -460,17 +471,22 @@ def running_this_macro_cycle(qmr,
                              ):
   if qmr.run_in_macro_cycles=='all':
     return True
-  elif qmr.run_in_macro_cycles=='first_only' and macro_cycle==1:
+  elif qmr.run_in_macro_cycles in ['first_only', 'first_and_last'] and macro_cycle==1:
+    return True
+  elif ( qmr.run_in_macro_cycles in ['first_and_last'] and
+        macro_cycle==number_of_macro_cycles):
     return True
   elif qmr.run_in_macro_cycles=='test' and macro_cycle in [0, None]:
     return True
   if energy_only:
     # if macro_cycle in [0, None]: return False
     if pre_refinement:
-      if qmr.calculate_starting_energy or qmr.calculate_starting_strain:
+      checks = 'starting_strain starting_energy starting_bound'
+      if any(item in checks for item in qmr.calculate):
         return True
     else:
-      if qmr.calculate_final_energy or qmr.calculate_final_strain:
+      checks = 'final_strain final_energy final_bound'
+      if any(item in checks for item in qmr.calculate):
         if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
           return True
   return False
@@ -484,8 +500,7 @@ def update_bond_restraints(ligand_model,
   ligand_grm = ligand_model.get_restraints_manager()
   ligand_atoms = ligand_model.get_atoms()
   ligand_i_seqs = []
-  for atom in ligand_atoms:
-    ligand_i_seqs.append(atom.tmp)
+  for atom in ligand_atoms: ligand_i_seqs.append(atom.tmp)
   buffer_grm = buffer_model.get_restraints_manager()
   atoms = buffer_model.get_atoms()
   bond_proxies_simple, asu = buffer_grm.geometry.get_all_bond_proxies(
@@ -567,19 +582,196 @@ def update_bond_restraints_simple(model):
     bond=grm.geometry.bond_params_table.lookup(*list(i_seqs))
     bond.distance_ideal=distance_model
 
+def update_angle_restraints(ligand_model,
+                            buffer_model,
+                            model_grm=None, # flag for update vs checking
+                            ignore_x_h_distance_protein=False,
+                            include_inter_residue_restraints=False,
+                            log=StringIO()):
+  ligand_grm = ligand_model.get_restraints_manager()
+  ligand_atoms = ligand_model.get_atoms()
+  ligand_i_seqs = []
+  for atom in ligand_atoms: ligand_i_seqs.append(atom.tmp)
+  buffer_grm = buffer_model.get_restraints_manager()
+  atoms = buffer_model.get_atoms()
+  # ligand_i_seq_min=None
+  # for atom in atoms:
+  #   if atom.tmp in ligand_i_seqs:
+  #     ligand_i_seq_min=atom.i_seq
+  #     break
+  sorted_table, n_not_shown = buffer_grm.geometry.angle_proxies.get_sorted(
+    'delta',
+    buffer_model.get_sites_cart())
+  # ligand_lookup = {}
+  # model_lookup = {}
+  i=0
+  if sorted_table is None: sorted_table=[]
+  for info in sorted_table:
+    (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
+    i_atom=atoms[int(i_seqs[0])]
+    j_atom=atoms[int(i_seqs[1])]
+    k_atom=atoms[int(i_seqs[2])]
+    key = [i_atom.tmp, j_atom.tmp, k_atom.tmp]
+    intersect = set(ligand_i_seqs).intersection(set(key))
+    if include_inter_residue_restraints:
+      if not len(intersect): continue
+    else:
+      if len(intersect)!=3: continue
+    # key = (int(i_seqs[0])-ligand_i_seq_min,
+    #        int(i_seqs[1])-ligand_i_seq_min,
+    #        int(i_seqs[2])-ligand_i_seq_min)
+    # key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
+    # ligand_lookup[key]=angle_model
+    # key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
+    i+=1
+    print('    %-2d %s - %s - %s %5.1f ~> %5.1f' % (
+      i,
+      i_atom.id_str().replace('pdb=',''),
+      j_atom.id_str().replace('pdb=',''),
+      k_atom.id_str().replace('pdb=',''),
+      angle_ideal,
+      angle_model), file=log)
+    assert len(intersect)!=0, '%s' % intersect
+    # key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp)
+    # model_lookup[key]=angle_model
+    # # key = (int(i_seqs[2])-ligand_i_seq_min,
+    #        int(i_seqs[1])-ligand_i_seq_min,
+    #        int(i_seqs[0])-ligand_i_seq_min)
+    # ligand_lookup[key]=angle_model
+    # key = (atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
+    # model_lookup[key]=angle_model
+  # for angle_proxy in ligand_grm.geometry.angle_proxies:
+  #   angle = ligand_lookup.get(angle_proxy.i_seqs, None)
+  #   print('angle',angle_proxy.i_seqs, angle)
+  #   tmp=ligand_model.get_atoms()
+  #   print(atoms[angle_proxy.i_seqs[0]].quote())
+  #   print(atoms[angle_proxy.i_seqs[1]].quote())
+  #   print(atoms[angle_proxy.i_seqs[2]].quote())
+  #   if angle is None: continue
+  #   angle_proxy.angle_ideal=angle
+  # for angle_proxy in model_grm.geometry.angle_proxies:
+  #   angle = model_lookup.get(angle_proxy.i_seqs, None)
+  #   if angle is None: continue
+  #   angle_proxy.angle_ideal=angle
+
+  # assert 0
+
+def update_angle_restraints_simple(model):
+  """Update angle restraints in model to match the actual model values
+
+  Args:
+      model (model): model!
+  """
+  grm = model.get_restraints_manager()
+  atoms = model.get_atoms()
+  sorted_table, n_not_shown = grm.geometry.angle_proxies.get_sorted(
+    'delta',
+    model.get_sites_cart())
+  if sorted_table is None: return
+  lookup={}
+  for info in sorted_table:
+    (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
+    for i in range(len(i_seqs)):
+      i_seqs[i]=int(i_seqs[i])
+    lookup[tuple(i_seqs)]=angle_model
+  for angle_proxy in grm.geometry.angle_proxies:
+    angle = lookup.get(angle_proxy.i_seqs, None)
+    # tmp=model.get_atoms()
+    # print(atoms[angle_proxy.i_seqs[0]].quote())
+    # print(atoms[angle_proxy.i_seqs[1]].quote())
+    # print(atoms[angle_proxy.i_seqs[2]].quote())
+    if angle is None: assert 0
+    angle_proxy.angle_ideal=angle
+
+def update_dihedral_restraints( ligand_model,
+                                buffer_model,
+                                model_grm=None, # flag for update vs checking
+                                ignore_x_h_distance_protein=False,
+                                include_inter_residue_restraints=False,
+                                log=StringIO()):
+  ligand_grm = ligand_model.get_restraints_manager()
+  ligand_atoms = ligand_model.get_atoms()
+  ligand_i_seqs = []
+  for atom in ligand_atoms: ligand_i_seqs.append(atom.tmp)
+  buffer_grm = buffer_model.get_restraints_manager()
+  atoms = buffer_model.get_atoms()
+  # ligand_i_seq_min=None
+  # for atom in atoms:
+  #   if atom.tmp in ligand_i_seqs:
+  #     ligand_i_seq_min=atom.i_seq
+  #     break
+  sorted_table, n_not_shown = buffer_grm.geometry.dihedral_proxies.get_sorted(
+    'delta',
+    buffer_model.get_sites_cart())
+  # ligand_lookup = {}
+  # model_lookup = {}
+  i=0
+  if sorted_table is None: sorted_table=[]
+  for info in sorted_table:
+    (i_seqs, angle_ideal, angle_model, delta, period, sigma, weight, residual) = info
+    i_atom=atoms[int(i_seqs[0])]
+    j_atom=atoms[int(i_seqs[1])]
+    k_atom=atoms[int(i_seqs[2])]
+    l_atom=atoms[int(i_seqs[3])]
+    key = [i_atom.tmp, j_atom.tmp, k_atom.tmp, l_atom.tmp]
+    intersect = set(ligand_i_seqs).intersection(set(key))
+    if include_inter_residue_restraints:
+      if not len(intersect): continue
+    else:
+      if len(intersect)!=4: continue
+    i+=1
+    print('    %-2d %s - %s - %s - %s %5.1f ~> %5.1f' % (
+      i,
+      i_atom.id_str().replace('pdb=',''),
+      j_atom.id_str().replace('pdb=',''),
+      k_atom.id_str().replace('pdb=',''),
+      l_atom.id_str().replace('pdb=',''),
+      angle_ideal,
+      angle_model), file=log)
+    assert len(intersect)!=0, '%s' % intersect
+
+def update_dihedral_restraints_simple(model):
+  """Update dihedral restraints in model to match the actual model values
+
+  Args:
+      model (model): model!
+  """
+  grm = model.get_restraints_manager()
+  atoms = model.get_atoms()
+  sorted_table, n_not_shown = grm.geometry.dihedral_proxies.get_sorted(
+    'delta',
+    model.get_sites_cart())
+  if sorted_table is None: return
+  lookup={}
+  for info in sorted_table:
+    (i_seqs, angle_ideal, angle_model, delta, period, sigma, weight, residual) = info
+    for i in range(len(i_seqs)):
+      i_seqs[i]=int(i_seqs[i])
+    lookup[tuple(i_seqs)]=angle_model
+  for angle_proxy in grm.geometry.dihedral_proxies:
+    angle = lookup.get(angle_proxy.i_seqs, None)
+    if angle is None: assert 0
+    angle_proxy.angle_ideal=angle
+
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
-  program_goal='opt' # can be 'opt', 'energy', 'strain'
-  if not energy_only: return program_goal
+  program_goal=[] # can be 'opt', 'energy', 'strain'
+  if not energy_only:
+    program_goal=['opt']
+    return program_goal
   if macro_cycle==1:
-    if qmr.calculate_starting_energy:
-      program_goal='energy'
-    if qmr.calculate_starting_strain:
-      program_goal='strain'
+    if qmr.calculate.count('starting_energy'):
+      program_goal.append('energy')
+    if qmr.calculate.count('starting_strain'):
+      program_goal.append('strain')
+    if qmr.calculate.count('starting_bound'):
+      program_goal.append('bound')
   else: # only called with final energy on final macro cycle
-    if qmr.calculate_final_energy:
-      program_goal='energy'
-    if qmr.calculate_final_strain:
-      program_goal='strain'
+    if qmr.calculate.count('final_energy'):
+      program_goal.append('energy')
+    if qmr.calculate.count('final_strain'):
+      program_goal.append('strain')
+    if qmr.calculate.count('final_bound'):
+      program_goal.append('bound')
   return program_goal
 
 def setup_qm_jobs(model,
@@ -610,42 +802,60 @@ def setup_qm_jobs(model,
     #
     # get appropriate QM manager
     #
-    program_goal = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
-    qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
-    preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
-    if not energy_only: # only write PDB files for restraints update
-      if qmr.write_pdb_core:
-        write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
-      if qmr.write_pdb_buffer:
-        write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
-    if not energy_only and qmr.do_not_even_calculate_qm_restraints:
-      print('    Skipping QM calculation : %s' % qmr.selection)
-      continue
-    qmm.preamble='%s_%s' % (prefix, preamble)
-    for attr in ['exclude_torsions_from_optimisation']:
-      setattr(qmm, attr, getattr(qmr, attr))
-    objects.append([ligand_model, buffer_model, qmm, qmr])
+    program_goals = get_program_goal(qmr, macro_cycle, energy_only=energy_only)
+    for program_goal in program_goals:
+      qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
+      preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
+      if not energy_only: # only write PDB files for restraints update
+        print(qmr.write_files)
+        if 'pdb_core' in qmr.write_files:
+          write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
+        if 'pdb_buffer' in qmr.write_files:
+          write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
+      if not energy_only and qmr.do_not_even_calculate_qm_restraints:
+        print('    Skipping QM calculation : %s' % qmr.selection)
+        continue
+      qmm.preamble='%s_%s' % (prefix, preamble)
+      for attr in ['exclude_torsions_from_optimisation']:
+        setattr(qmm, attr, getattr(qmr, attr))
+      objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   return objects
 
 def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
-  if nproc==1:
+  from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
+  argstuples=[]
+  for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
+    argstuples.append((qmm,
+                       qmr.cleanup,
+                       qmr.package.read_output_to_skip_opt_if_available,
+                       not(qmr.package.ignore_input_differences),
+                       log,
+                       ))
+  results = run_serial_or_parallel(qm_manager.qm_runner, argstuples, nproc)
+  if results:
     xyzs = []
     xyzs_buffer = []
     energies = []
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
-      #
-      # run QM program
-      #
-      xyz, xyz_buffer = qm_manager.qm_runner(
-        qmm,
-        cleanup=qmr.cleanup,
-        file_read=qmr.package.read_output_to_skip_opt_if_available,
-        check_file_read_safe=not(qmr.package.ignore_input_differences),
-        log=log,
-        )
-      energy, units = qmm.read_energy()
-      energies.append(energy)
+      xyz, xyz_buffer = results[i]
+      units=''
+      if qmm.program_goal in ['opt']:
+        energy, units = qmm.read_energy()
+      elif qmm.program_goal in ['energy', 'strain', 'bound']:
+        energy=xyz
+        units=xyz_buffer
+        xyz=None
+        xyz_buffer=None
+      else:
+        assert 0, 'program_goal %s not in list' % qmm.program_goal
+      energies.append([qmm.program_goal,
+                      energy,
+                      ligand_model.get_number_of_atoms(),
+                      buffer_model.get_number_of_atoms()
+                      ])
+      xyzs.append(xyz)
+      xyzs_buffer.append(xyz_buffer)
       print('  Time for calculation of "%s" using %s %s %s: %s' % (
         qmr.selection,
         qmr.package.method,
@@ -653,14 +863,6 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         qmr.package.solvent_model,
         qmm.get_timings().split(':')[-1],
         ), file=log)
-      xyzs.append(xyz)
-      xyzs_buffer.append(xyz_buffer)
-      # if qmm.program_goal in ['energy', 'strain']:
-        # print('  Energy = %f' % xyz, file=log)
-  else:
-    print('nproc',nproc)
-    assert 0
-    xyzs, junk = get_all_xyz(objects, nproc)
   print('',file=log)
   return xyzs, xyzs_buffer, energies, units
 
@@ -678,7 +880,7 @@ def run_energies(model,
     model.log=null_out()
     model.process(make_restraints=True)
   if macro_cycle in [None, 0]: run_program=False
-  qi_array = quantum_interface.get_qi_macro_cycle_array(params)
+  # qi_array = quantum_interface.get_qi_macro_cycle_array(params)
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,
                                                                     energy_only=energy_only,
@@ -700,9 +902,17 @@ def run_energies(model,
   #
   # run jobs
   #
-  xyzs, xyzs_buffer, energies, units = run_jobs(objects, macro_cycle=macro_cycle, nproc=nproc, log=log)
+  xyzs, xyzs_buffer, energies, units = run_jobs(objects,
+                                                macro_cycle=macro_cycle,
+                                                nproc=nproc,
+                                                log=log)
   print('  Total time for QM energies: %0.1fs' % (time.time()-t0), file=log)
   print('%s%s' % ('<'*40, '>'*40), file=log)
+  return group_args(energies=energies,
+                    units=units,
+                    # rmsds=rmsds,
+                    # times=times,
+                    )
 
 def update_restraints(model,
                       params,
@@ -742,12 +952,16 @@ def update_restraints(model,
   # update model restraints
   #
   rmsds=[]
+  final_pdbs = []
   prefix = get_prefix(params)
   for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
     zip(objects,
         xyzs,
         xyzs_buffer,
         )):
+    final_pdbs.append([])
+    # print(ligand_model.get_number_of_atoms(),len(xyz))
+    # print(buffer_model.get_number_of_atoms(),len(xyz_buffer))
     if qmr.package.view_output: qmm.view(qmr.package.view_output)
     if i: print(' ',file=log)
     print('  Updating QM restraints: "%s"' % qmr.selection, file=log)
@@ -795,10 +1009,12 @@ def update_restraints(model,
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle_and_dihedral(), file=log)
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
-    if qmr.write_final_pdb_core:
+    if 'pdb_final_core' in qmr.write_files:
       write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
-    if qmr.write_final_pdb_buffer:
+      final_pdbs[-1].append('%s_ligand_final_%s.pdb' % (prefix, preamble))
+    if 'pdb_final_buffer' in qmr.write_files:
       write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
+      final_pdbs[-1].append('%s_cluster_final_%s.pdb' % (prefix, preamble))
     if qmr.do_not_update_restraints:
       print('  Skipping updating restaints')
       continue
@@ -816,98 +1032,34 @@ def update_restraints(model,
     update_bond_restraints(ligand_model,
                            buffer_model,
                            model_grm=model_grm,
-                           include_inter_residue_restraints=qmr.include_nearest_neighbours_in_optimisation,
+                           include_inter_residue_restraints=qmr.include_inter_residue_restraints,
                            log=log)
     update_bond_restraints_simple(ligand_model)
     #
-    #    - angles
+    #  - angles
     #
-    ligand_grm = ligand_model.get_restraints_manager()
-    atoms = ligand_model.get_atoms()
-    sorted_table, n_not_shown = ligand_grm.geometry.angle_proxies.get_sorted(
-      'delta',
-      ligand_model.get_sites_cart())
-    ligand_lookup = {}
-    model_lookup = {}
-    i=0
-    if sorted_table is None: sorted_table=[]
-    for info in sorted_table:
-      (i_seqs, angle_ideal, angle_model, delta, sigma, weight, residual) = info
-      i_atom=atoms[int(i_seqs[0])]
-      j_atom=atoms[int(i_seqs[1])]
-      k_atom=atoms[int(i_seqs[2])]
-      key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
-      ligand_lookup[key]=angle_model
-      i+=1
-      print('    %-2d %s - %s - %s %5.1f ~> %5.1f' % (
-        i,
-        atoms[key[0]].id_str().replace('pdb=',''),
-        atoms[key[1]].id_str().replace('pdb=',''),
-        atoms[key[2]].id_str().replace('pdb=',''),
-        angle_ideal,
-        angle_model), file=log)
-      key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp)
-      model_lookup[key]=angle_model
-      key = (int(i_seqs[2]), int(i_seqs[1]), int(i_seqs[0]))
-      ligand_lookup[key]=angle_model
-      key = (atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
-      model_lookup[key]=angle_model
-    for angle_proxy in ligand_grm.geometry.angle_proxies:
-      angle = ligand_lookup.get(angle_proxy.i_seqs, None)
-      if angle is None: continue
-      angle_proxy.angle_ideal=angle
-    for angle_proxy in model_grm.geometry.angle_proxies:
-      angle = model_lookup.get(angle_proxy.i_seqs, None)
-      if angle is None: continue
-      angle_proxy.angle_ideal=angle
+    update_angle_restraints(ligand_model,
+                            buffer_model,
+                            model_grm=model_grm,
+                            include_inter_residue_restraints=qmr.include_inter_residue_restraints,
+                            log=log)
+    update_angle_restraints_simple(ligand_model)
     #
-    #    - torsions
+    #  - torsions
     #
-    sorted_table, n_not_shown = ligand_grm.geometry.dihedral_proxies.get_sorted(
-      'delta',
-      ligand_model.get_sites_cart())
-    ligand_lookup = {}
-    model_lookup = {}
-    if sorted_table is None: sorted_table=[]
-    i=0
-    for info in sorted_table:
-      (i_seqs, angle_ideal, angle_model, delta, period, sigma, weight, residual) = info
-      i_atom=atoms[int(i_seqs[0])]
-      j_atom=atoms[int(i_seqs[1])]
-      k_atom=atoms[int(i_seqs[2])]
-      l_atom=atoms[int(i_seqs[3])]
-      key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]), int(i_seqs[3]))
-      ligand_lookup[key]=angle_model
-      i+=1
-      print('    %-2d %s - %s - %s - %s %6.1f ~> %6.1f' % (
-        i,
-        atoms[key[0]].id_str().replace('pdb=',''),
-        atoms[key[1]].id_str().replace('pdb=',''),
-        atoms[key[2]].id_str().replace('pdb=',''),
-        atoms[key[3]].id_str().replace('pdb=',''),
-        angle_ideal,
-        angle_model), file=log)
-      key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp, atoms[key[3]].tmp)
-      model_lookup[key]=angle_model
-      key = (int(i_seqs[3]), int(i_seqs[2]), int(i_seqs[1]), int(i_seqs[0]))
-      ligand_lookup[key]=angle_model
-      key = (atoms[key[3]].tmp, atoms[key[2]].tmp, atoms[key[1]].tmp, atoms[key[0]].tmp)
-      model_lookup[key]=angle_model
-    for angle_proxy in ligand_grm.geometry.dihedral_proxies:
-      angle = ligand_lookup.get(angle_proxy.i_seqs, None)
-      if angle is None: continue
-      angle_proxy.angle_ideal=angle
-    for angle_proxy in model_grm.geometry.dihedral_proxies:
-      angle = model_lookup.get(angle_proxy.i_seqs, None)
-      if angle is None: continue
-      angle_proxy.angle_ideal=angle
-
+    update_dihedral_restraints( ligand_model,
+                                buffer_model,
+                                model_grm=model_grm,
+                                include_inter_residue_restraints=qmr.include_inter_residue_restraints,
+                                log=log)
+    update_dihedral_restraints_simple(ligand_model)
     print('', file=log)
     #
     # final stats
     #
     gs = ligand_model.geometry_statistics()
-    print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(assert_zero=True),
+    print('  Finished stats : %s' % gs.show_bond_and_angle_and_dihedral(
+            assert_zero=not qmr.include_inter_residue_restraints),
           file=log)
     print('%s%s' % (' '*19, gs.show_planarity_details()), file=log)
     r=gs.result()
@@ -917,7 +1069,7 @@ def update_restraints(model,
             '-'*71,
             ),
             file=log)
-    if qmr.write_restraints and not never_write_restraints:
+    if 'restraints' in qmr.write_files and not never_write_restraints:
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()
@@ -939,6 +1091,7 @@ Restraints written by QMR process in phenix.refine
                     units=units,
                     rmsds=rmsds,
                     times=times,
+                    final_pdbs=final_pdbs,
                     )
 
 if __name__ == '__main__':
