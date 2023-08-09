@@ -513,10 +513,11 @@ merging {
     ev11_mll
       .help = Updated EV11 with MLL target function
       {
-      verify_derivatives = False
+      do_diagnostics = False
         .type = bool
-        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
-      n_degrees = 3
+        .help = If True show the finite vs. analytical differences, \
+                plot normalized deviations, and plot s_add and correlation coefficients. 
+      n_degrees = 1
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
       tuning_param = 5
@@ -528,7 +529,7 @@ merging {
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the tuning parameter
-      likelihood = 'original'
+      likelihood = 'normal'
         .help = Choice for likelihood function. Either 't-dist', 'normal'.\
                 'Original' implements the original Ev11 from Brewster 2019
         .type = str

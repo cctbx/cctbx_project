@@ -466,11 +466,10 @@ class error_modifier_ev11_mll(worker):
     
     if self.likelihood != 'original':
       self.scale_sfac()
-    if self.params.merging.error.ev11_mll.verify_derivatives:
-      if self.mpi_helper.rank == 0:
-        self.plot_sadd()
+    if self.params.merging.error.ev11_mll.do_diagnostics:
+      self.plot_normalized_deviations()
+      self.plot_sadd()
       self.verify_derivatives()
-      self.get_deltas()
   
   def scale_sfac(self):
     global_sum_squares = 0
@@ -512,20 +511,33 @@ class error_modifier_ev11_mll(worker):
     return None
 
   def plot_sadd(self):
-    import matplotlib.pyplot as plt
-    import os
-    c = flex.double(np.linspace(0, 1, 101))
-    sadd, _ = self._get_sadd(c)
-    fig, axes = plt.subplots(1, 1, figsize=(6, 4))
-    axes.plot(c, sadd)
-    axes.set_xlabel('correlation')
-    axes.set_ylabel('$s_{add}$')
-    fig.tight_layout()
-    fig.savefig(os.path.join(
-      self.params.output.output_dir,
-      self.params.output.prefix + '_sadd.png'
-      ))
-    plt.close()
+    cc_rank = self.work_table[self.cc_key].as_numpy_array()
+    cc_all = self.mpi_helper.comm.gather(cc_rank, root=0)
+    if self.mpi_helper.rank == 0:
+      import matplotlib.pyplot as plt
+      cc_all = np.concatenate(cc_all)
+      cc_unique = np.unique(cc_all)
+      bins = np.linspace(cc_unique.min(), cc_unique.max(), 101)
+      dbin = bins[1] - bins[0]
+      centers = (bins[1:] + bins[:-1]) / 2
+      hist_all, _ = np.histogram(cc_unique, bins=bins)
+
+      hist_color = np.array([0, 49, 60]) / 256
+      line_color = np.array([213, 120, 0]) / 256
+      sadd, _ = self._get_sadd(flex.double(centers))
+      fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
+      axes_sadd = axes_hist.twinx()
+      axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
+      axes_sadd.plot(centers, (self.sfac * sadd)**2, color=line_color)
+      axes_hist.set_xlabel('Correlation Coefficient')
+      axes_hist.set_ylabel('Lattices (x1,000)')
+      axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
+      fig.tight_layout()
+      fig.savefig(os.path.join(
+        self.params.output.output_dir,
+        self.params.output.prefix + '_sadd.png'
+        ))
+      plt.close()
     return None
 
   def compute_functional_and_gradients(self):
@@ -615,17 +627,24 @@ class error_modifier_ev11_mll(worker):
         print(f'der_wrt_sadd - degree {degree_index} numerical: {check_der_wrt_sadd} analytical {der_wrt_sadd[degree_index]}')
     return None
 
-  def get_deltas(self):
-    import pandas as pd
+  def plot_normalized_deviations(self):
+    def get_rankits_normal(n, down_sample):
+      prob_level = (np.arange(1, n+1) - 0.5) / n
+      standard_normal_quantiles = scipy.stats.norm.ppf(prob_level[::down_sample])
+      return standard_normal_quantiles
+
+    def normal(x, x0, s):
+        z = (x - x0) / s
+        prefactor = 1 / np.sqrt(2 * np.pi * s**2)
+        fun = np.exp(-1/2 * z**2)
+        return prefactor * fun
+  
     output_keys = ['deviations', 'biased_mean', 'var', 'var_ev11', 'I', 'multiplicity']
     output_rank = {}
     for key in output_keys:
       output_rank[key] = flex.double()
     for reflections in self.intensity_bins:
       number_of_reflections_in_bin = reflections.size()
-      global_reflections_in_bin = self.mpi_helper.comm.reduce(
-        number_of_reflections_in_bin, self.mpi_helper.MPI.SUM, root=0
-        )
       if number_of_reflections_in_bin > 0:
         sfac = self.sfac
         sb = self.sb
@@ -646,12 +665,78 @@ class error_modifier_ev11_mll(worker):
       output_all[key] = self.mpi_helper.comm.gather(output_rank[key].as_numpy_array(), root=0)
     
     if self.mpi_helper.rank == 0:
+      import matplotlib.pyplot as plt
+      import pandas as pd
+      import scipy.stats
       for key in output_keys:
         output_all[key] = np.concatenate(output_all[key])
-      pd.DataFrame(output_all).to_json(os.path.join(
+      
+      lim = 5
+      downsample = 10
+      normalized_deviations = output_all['deviations'] / np.sqrt(output_all['var_ev11'])
+      sorted_normalized_deviations = np.sort(normalized_deviations)
+      normalized_deviations_bins = np.linspace(-lim, lim, 101)
+      normalized_deviations_db = normalized_deviations_bins[1] - normalized_deviations_bins[0]
+      normalized_deviations_centers = (normalized_deviations_bins[1:] + normalized_deviations_bins[:-1]) / 2
+      normalized_deviations_hist, _ = np.histogram(
+        sorted_normalized_deviations, bins=normalized_deviations_bins, density=True
+        )
+      rankits = get_rankits_normal(sorted_normalized_deviations.size, downsample)
+
+      intensity_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
+      sigma_bin = np.zeros(number_of_intensity_bins)
+      for index in range(number_of_intensity_bins):
+          indices = np.logical_and(
+            output_all['biased_mean'] >= self.intensity_bin_limits[index], 
+            output_all['biased_mean'] < self.intensity_bin_limits[index + 1]
+            )
+          sigma_bin[index] = normalized_deviations[indices].std()
+      
+      fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+      I_scale = 100000
+      grey = np.array([99, 102, 106]) / 256
+      axes[0].bar(
+        normalized_deviations_centers, normalized_deviations_hist, 
+        width=normalized_deviations_db, label='Normalized Deviations'
+        )
+      axes[0].plot(
+        normalized_deviations_centers, normal(normalized_deviations_centers, 0, 1),
+        color=grey, label='Standard Normal'
+        )
+      axes[0].set_ylabel('Distribution of $\delta_{hbk}$')
+      axes[0].set_xlabel('Normalized Deviations ($\delta_{hbk}$)')
+      axes[0].set_xlim([-4.5, 4.5])
+      axes[0].set_xticks([-4, -2, 0, 2, 4])
+
+      axes[1].plot([-lim, lim], [-lim, lim], color=grey)
+      axes[1].plot(sorted_normalized_deviations[::downsample], rankits)
+      axes[1].set_ylim([-lim, lim])
+      axes[1].set_ylabel('Normal Rankits')
+      axes[1].set_xlabel('Sorted Normalized Deviations ($\delta_{hbk}$)')
+      axes[1].set_box_aspect(1)
+      axes[1].set_xticks([-4, -2, 0, 2, 4])
+      axes[1].set_yticks([-4, -2, 0, 2, 4])
+      axes[1].set_xlim([-4.5, 4.5])
+      axes[1].set_ylim([-4.5, 4.5])
+
+      x = intensity_centers / I_scale
+      axes[2].plot([x[0], x[-1]], [1, 1], color=grey)
+      axes[2].plot(x, sigma_bin**2)
+      axes[2].set_ylabel('Variance of $\delta_{hbk}$')
+      axes[2].set_xlabel('Mean Intensity X 100,000')
+      
+      fig.tight_layout()
+      fig.savefig(os.path.join(
         self.params.output.output_dir,
-        self.params.output.prefix + f'_deltas.npy'
+        self.params.output.prefix + '_NormalizedDeviations.png'
         ))
+      plt.close()
+
+      #df = pd.DataFrame(output_all)
+      #df.to_json(os.path.join(
+      #  self.params.output.output_dir,
+      #  self.params.output.prefix + f'_deltas.json'
+      #  ))
     return None
   
   def _get_expectations(self):
