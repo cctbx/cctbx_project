@@ -238,7 +238,7 @@ namespace smtbx { namespace ED {
         miller::index<> h = indices[i - 1];
         cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
         FloatType s_2k = Kl * Kl - K_g.length_sq();
-        A(i, i) += s_2k;
+        A(i, i) = s_2k;
         ExpDen[i] = K_g * N;
       }
     }
@@ -327,6 +327,27 @@ namespace smtbx { namespace ED {
       }
     }
 
+    static complex_t calc_amps_2013_1(
+      cmat_t& A,
+      af::shared<FloatType> const& ExpDen,
+      FloatType thickness,
+      size_t idx)
+    {
+      using namespace fast_linalg;
+      const size_t n_beams = A.accessor().n_columns();
+      af::shared<FloatType> ev(n_beams);
+      // heev replaces A with column-wise eigenvectors
+      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
+        A.begin(), n_beams, ev.begin());
+      SMTBX_ASSERT(!info)(info);
+      const complex_t exp_k(0, scitbx::constants::pi * thickness);
+      complex_t res;
+      for (size_t i = 0; i < n_beams; i++) {
+        res += A(idx+1, i) * std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(A(0, i));
+      } 
+      return res;
+    }
+
     static af::shared<complex_t> calc_amps_2013(
       cmat_t& A,
       af::shared<FloatType> const& ExpDen,
@@ -346,12 +367,10 @@ namespace smtbx { namespace ED {
       for (size_t i = 0; i < n_beams; i++) {
         im[i] = std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(A(0, i));
       }
-      af::shared<complex_t> res = af::matrix_multiply(A.const_ref(), im.const_ref());
-      af::shared<complex_t> rv;
-      for (size_t i = 1; i < n_beams; i++) {
-        rv.push_back(res[i]);
-        if (rv.size() >= num) {
-          break;
+      af::shared<complex_t> rv(num);
+      for (size_t i = 0; i < num; i++) {
+        for (size_t j = 0; j < n_beams; j++) {
+          rv[i] += A(i + 1, j) * im[j];
         }
       }
       return rv;
@@ -442,6 +461,96 @@ namespace smtbx { namespace ED {
           D_dyn(i, pi) = 2 * (rv[i].real() * dp.real() +
             rv[i].imag() * dp.imag());
         }
+      }
+      return rv;
+    }
+    /* computes only I and dI_dp fo idx. Derivatives will be written to the first
+    row of the D_dyn
+    Bernoulli 9(5), 2003, 895–919
+    */
+    static complex_t calc_amps_2013_ext_1(
+      cmat_t& A,
+      af::shared<cmat_t> const& Ds_kin,
+      af::shared<FloatType> const& ExpDen,
+      FloatType thickness,
+      bool grad_thickness,
+      mat_t& D_dyn,
+      size_t idx)
+    {
+      using namespace fast_linalg;
+      const size_t n_beams = A.accessor().n_columns();
+      af::shared<FloatType> ev(n_beams);
+      // heev replaces A with column-wise eigenvectors
+      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
+        A.begin(), n_beams, ev.begin());
+      SMTBX_ASSERT(!info)(info);
+      cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
+      const complex_t exp_k(0, scitbx::constants::pi * thickness),
+        k_dt(0, scitbx::constants::pi);
+      af::shared<complex_t> exps(n_beams), im(n_beams),
+        im_dt(n_beams);
+      for (size_t i = 0; i < n_beams; i++) {
+        A_cjt(i, i) = std::conj(A(i, i));
+        for (size_t j = i + 1; j < n_beams; j++) {
+          A_cjt(i, j) = std::conj(A(j, i));
+          A_cjt(j, i) = std::conj(A(i, j));
+        }
+      }
+      for (size_t i = 0; i < n_beams; i++) {
+        exps[i] = std::exp(ev[i] * exp_k / ExpDen[i]);
+        // diagonal by first row of A*
+        im[i] = exps[i] * A_cjt(i, 0);
+        if (grad_thickness) {
+          // diagonal_dt by first row of A* (dI/dThickness)
+          im_dt[i] = exps[i] * ev[i] * (k_dt / ExpDen[i]) * A_cjt(i, 0);
+        }
+      }
+      // !need only num rows!
+      cmat_t G(af::mat_grid(n_beams, n_beams));
+      for (size_t i = 0; i < n_beams; i++) {
+        //G(i, i) = exps[i];
+        G(i, i) = exps[i] * exp_k / ExpDen[i];
+        for (size_t j = i + 1; j < n_beams; j++) {
+          G(i, j) = (exps[i] - exps[j]) / (ev[i] - ev[j]);
+          G(j, i) = G(i, j);
+        }
+      }
+      // last column - dI_dT
+      size_t d_T_off = Ds_kin.size();
+      D_dyn.resize(af::mat_grid(1, d_T_off + (grad_thickness ? 1 : 0)));
+
+      complex_t rv; // complex amplitudes
+      {
+        complex_t dt = 0;
+        for (size_t j = 0; j < n_beams; j++) {
+          rv += A(idx+1, j) * im[j];
+          if (grad_thickness) {
+            dt += A(idx+1, j) * im_dt[j];
+          }
+        }
+        if (grad_thickness) {
+          D_dyn[d_T_off] = 2 * (rv.real() * dt.real() + rv.imag() * dt.imag());
+        }
+      }
+
+      for (size_t pi = 0; pi < d_T_off; pi++) {
+        cmat_t V = af::matrix_multiply(
+          af::matrix_multiply(A_cjt.const_ref(), Ds_kin[pi].const_ref()).const_ref(),
+          A.const_ref());
+
+        // Hadamard product of G x V by A* first column into dI_dP
+        af::shared<complex_t> df(n_beams);
+        for (size_t i = 0; i < n_beams; i++) {
+          for (size_t j = 0; j < n_beams; j++) {
+            df[i] += G(i, j) * V(i, j) * A_cjt(j, 0);
+          }
+        }
+        complex_t dp;
+        for (size_t j = 0; j < n_beams; j++) {
+          dp += A(idx + 1, j) * df[j];
+        }
+        // copy result to output (dI/dp - > |CI|^2)
+        D_dyn(0, pi) = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
       }
       return rv;
     }
@@ -589,23 +698,8 @@ namespace smtbx { namespace ED {
       A[2] = A01 / v2l;  A[3] = ev[1] / v2l;
     }
 
-    static complex_t calc_amp_2beam_I_(FloatType Ug_sq,
-      FloatType s_2k,
-      complex_t exp_k, FloatType Kn, FloatType K_gn)
-    {
-      FloatType h11 = s_2k / 2;
-      FloatType s = std::sqrt(h11 * h11 + Ug_sq);
-      FloatType l1 = h11 + s,
-        l2 = h11 - s;
-      FloatType v1l = std::sqrt(Ug_sq + l1*l1);
-      FloatType v2l = std::sqrt(Ug_sq + l2*l2),
-        vlp = v1l*v2l;
-      return std::exp(l1 * exp_k / Kn) * Ug_sq / vlp +
-        std::exp(l2 * exp_k / K_gn) * l1 * l2 / vlp;
-    }
-
     static complex_t calc_amp_2beam(
-      const miller::index<>& h, const complex_t Ug,
+      const miller::index<>& h, complex_t Ug,
       FloatType thickness,
       cart_t const& K,
       mat3_t const& RMf,
@@ -614,51 +708,115 @@ namespace smtbx { namespace ED {
       FloatType Kn = N * K, Kl = K.length();
       cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
       FloatType K_gn = K_g * N;
-      FloatType s_2k = Kl * Kl - K_g.length_sq();
-      complex_t exp_k(0, scitbx::constants::pi * thickness);
+      FloatType Sg = (Kl * Kl - K_g.length_sq()) / (2 * Kl);
 
-      complex_t A[4] = { 0,std::conj(Ug), Ug, s_2k };
+      complex_t exp_k(0, 2 * scitbx::constants::pi * thickness);
+      Ug /= (2 * K_gn);
+      complex_t A[4] = { 0,std::conj(Ug), Ug, Sg };
       FloatType v[2];
 
       //using namespace fast_linalg;
       //lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, 2,
       //  &A[0][0], 2, &ev[0]);
       //SMTBX_ASSERT(!info)(info);
-
+      // A[1] and A[3] are real numbers
       two_beam_eigen(&A[0], &v[0]);
-      return A[2] * std::exp(v[0] * exp_k / Kn) * std::conj(A[0]) +
-        A[3].real() * std::exp(v[1] * exp_k / K_gn) * A[1].real();
+      return A[2] * std::exp(v[0] * exp_k) * std::conj(A[0]) +
+        A[3].real() * std::exp(v[1] * exp_k) * A[1].real();
     }
 
-    static FloatType calc_amp_2beam_dI_dFsq(
+    /*
+    * Computes 2-beam intensities and derivatives.
+    * dFcs is overwritten with the dynamic derivatives and if grad_thickness is
+    * true - the dI_d_thickness is also appended
+    */
+    
+    static complex_t calc_2beam_ext(
       const miller::index<>& h,
-      FloatType Ug_sq,
+      complex_t Ug,
+      af::shared<complex_t> &dFcs,
       FloatType thickness,
       cart_t const& K,
       mat3_t const& RMf,
       cart_t const& N,
-      FloatType eps = 1e-6)
+      bool grad_thickness)
     {
       FloatType Kn = N * K, Kl = K.length();
       cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
       FloatType K_gn = K_g * N;
-      FloatType s_2k = Kl * Kl - K_g.length_sq();
-      complex_t exp_k(0, scitbx::constants::pi * thickness);
-      if (Ug_sq < eps) { //!important should be on positive side as sq
-        eps = Ug_sq / 5;
+      FloatType Sg = (Kl * Kl - K_g.length_sq()) / (2 * Kl);
+      complex_t exp_k(0, 2 * scitbx::constants::pi * thickness);
+
+      Ug /= (2 * K_gn);
+      complex_t A[4] = { 0,std::conj(Ug), Ug, Sg };
+      FloatType v[2];
+
+      two_beam_eigen(&A[0], &v[0]);
+
+      complex_t exps[2] = {
+        std::exp(v[0] * exp_k),
+        std::exp(v[1] * exp_k)
+      };
+
+      complex_t rv = A[2] * exps[0] * std::conj(A[0]) + A[3].real() * exps[1] * A[1].real();
+      for (size_t i = 0; i < dFcs.size(); i++) {
+        complex_t dFc = dFcs[i] / (2 * K_gn);
+        complex_t Gl[4] = { // A^-1 by dFc
+          std::conj(A[2]) * dFc,
+          std::conj(A[0] * dFc),
+          A[3] * dFc,
+          A[1] * std::conj(dFc)
+        };
+        complex_t G[4] = { // G1 by A = A^-1 * dFc * A
+          Gl[0] * A[0] + Gl[1] * A[2],
+          Gl[0] * A[1].real() + Gl[1] * A[3].real(),
+          Gl[2] * A[0] + Gl[3] * A[2],
+          Gl[2] * A[1].real() + Gl[3] * A[3].real(),
+        };
+        complex_t X[4] = {
+          exps[0] * exp_k,
+          (exps[0] - exps[1]) / (v[0] - v[1]),
+          0,
+          exps[1] * exp_k
+        };
+        X[2] = X[1];
+        complex_t V[4] = { G[0] * X[0], G[1] * X[1], G[2] * X[2], G[3] * X[3] };
+        // V by first col of A* - A[1] and A[3] are real
+        complex_t df[2] = {
+          V[0] * std::conj(A[0]) + V[1] * A[1].real(),
+          V[2] * std::conj(A[0]) + V[3] * A[1].real(),
+        };
+        // result - second row of A by df
+        complex_t dp = A[2] * df[0] + A[3].real() * df[1];
+        dFcs[i] = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
       }
-      FloatType Ip = std::norm(
-        calc_amp_2beam_I_(Ug_sq + eps, s_2k, exp_k, Kn, K_gn));
-      FloatType In = std::norm(
-        calc_amp_2beam_I_(Ug_sq - eps, s_2k, exp_k, Kn, K_gn));
-      return (Ip - In) / (2 * eps);
+      if (grad_thickness) {
+        const complex_t k_dt(0, 2 * scitbx::constants::pi);
+        // diagonal_dt by first row of A* (dI/dThickness)
+        complex_t im_dt[2] = {
+          exps[0] * (v[0] * k_dt) * std::conj(A[0]),
+          exps[1] * (v[1] * k_dt) * A[1].real()
+        };
+        complex_t dt = A[2] * im_dt[0] + A[3].real() * im_dt[1];
+        dFcs.push_back(2 * (rv.real() * dt.real() + rv.imag() * dt.imag()));
+      }
+      return rv;
     }
+
     static FloatType calc_Sg(cart_t const& g,
       cart_t const& K)
     {
       FloatType Kl = K.length();
       cart_t Kg = K + g;
       return (Kl * Kl - Kg.length_sq()) / (2 * Kl);
+    }
+
+    // considers K being at (0, 0, -Kl)
+    static FloatType calc_Sg(cart_t const& g,
+      FloatType Kl)
+    {
+      FloatType Kg_sql = cart_t(g[0], g[1], g[2] - Kl).length_sq();
+      return (Kl * Kl - Kg_sql) / (2 * Kl);
     }
 
     static bool is_excited_g(cart_t const& g,
@@ -709,7 +867,7 @@ namespace smtbx { namespace ED {
 
       index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
         true,
-        min_d, true);
+        min_d, false);
 
       miller::index<> h;
       af::shared<ExcitedBeam> all;

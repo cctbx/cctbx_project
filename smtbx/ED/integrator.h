@@ -64,45 +64,44 @@ namespace smtbx {
         size_t n_cols = D_dyn.accessor().n_columns();
         int steps = round(angle / step);
         const FrameInfo<FloatType>& frame = processor->frame;
-        af::shared<FloatType> Is1(beam_n), K_g_ls(beam_n);
         mat_t D_dyn1;
-        bool second_step = false;
-        for (int st = -steps; st <= steps; st++) {
-          std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-            frame.alpha + st * step);
-          processor->process(r.first, r.second);
-          if (processor->exception_) {
-            exception_.swap(processor->exception_);
-            break;
-          }
-          // sum up intensities and derivatives
-          if (second_step) {
-            for (size_t ai = 0; ai < beam_n; ai++) {
-              miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
+        for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+          size_t beam_idx = frame.strong_measured_beams[i];
+          miller::index<> h = frame.indices[beam_idx];
+          FloatType da = frame.get_diffraction_angle(h, -K[2]);
+          FloatType sg_a = frame.Sg_to_angle(0.01, h, -K[2]);
+          //int steps = std::abs(round((da - sg_a) / step));
+          FloatType I1 = -1, K_g_l1;
+          for (int st = -steps; st <= steps; st++) {
+            std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
+              da + st * step);
+            processor->process_1(i, r.first, r.second);
+            if (processor->exception_) {
+              exception_.swap(processor->exception_);
+              break;
+            }
+            // sum up intensities and derivatives
+            if (I1 >= 0) {
               cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
               FloatType K_g_l = K_g.length();
-              FloatType I = std::norm(processor->CIs[ai]);
-              FloatType d_st = std::abs(K_g_ls[ai] - K_g_l) / 2;
-              Is[ai] += (Is1[ai] + I) * d_st;
-              Is1[ai] = I;
-              K_g_ls[ai] = K_g_l;
-
+              FloatType I = std::norm(processor->CIs[0]);
+              FloatType d_st = std::abs(K_g_l1 - K_g_l) / 2;
+              Is[i] += (I1 + I) * d_st;
+              I1 = I;
+              K_g_l1 = K_g_l;
               if (processor->calc_grad) {
                 for (size_t j = 0; j < n_cols; j++) {
-                  D_dyn(ai, j) += (D_dyn(ai, j) + processor->D_dyn(ai, j)) * d_st;
+                  D_dyn(i, j) += (D_dyn1(0, j) + processor->D_dyn(0, j)) * d_st;
                 }
               }
+              D_dyn1 = processor->D_dyn.deep_copy();
             }
-          }
-          else {
-            D_dyn1 = processor->D_dyn.deep_copy();
-            for (size_t ai = 0; ai < beam_n; ai++) {
-              miller::index<> h = frame.indices[frame.strong_measured_beams[ai]];
+            else {
+              D_dyn1 = processor->D_dyn.deep_copy();
               cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-              K_g_ls[ai] = K_g.length();
-              Is1[ai] = std::norm(processor->CIs[ai]);
+              K_g_l1 = K_g.length();
+              I1 = std::norm(processor->CIs[0]);
             }
-            second_step = true;
           }
         }
       }
