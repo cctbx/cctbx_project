@@ -126,6 +126,7 @@ void kokkos_sum_over_steps(
     bool use_nominal_hkl,
     KOKKOS_MAT3 anisoU,
     KOKKOS_MAT3 anisoG,
+    KOKKOS_MAT3 rotate_principal_axes,
     bool use_diffuse,
     vector_cudareal_t d_diffuse_gamma_images,
     vector_cudareal_t d_diffuse_sigma_images,
