@@ -84,9 +84,71 @@ def test_label_parsing():
   except Sorry as s:
     assert 'The label, SIG' in str(s)
 
+# -----------------------------------------------------------------------------
+def test_user_selected_labels():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+
+  class testProgram(ProgramTemplate):
+    program_name = 'tst_cli_parser'
+    datatypes = ['miller_array', 'phil']
+    master_phil_str = '''
+other_file = None
+  .type = path
+'''
+    def validate(self):
+      pass
+    def run(self):
+      self.result = self.data_manager.get_miller_array_user_selected_labels(data_mtz)
+      params = self.data_manager.export_phil_scope(as_extract=True)
+      assert params.data_manager.miller_array[0].user_selected_labels == self.result
+    def get_results(self):
+      return self.result
+
+  phil_name = 'user_selected.eff'
+
+  # phil file with just the DataManager scope
+  phil_one = '''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = IPR,SIGIPR,merged
+    user_selected_labels = FRACTIONCALC
+  }
+}
+''' % data_mtz
+
+  # phil file with the same file as a separate parameter
+  phil_two = '''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = IPR,SIGIPR,merged
+    user_selected_labels = FRACTIONCALC
+  }
+}
+other_file = %s
+''' % (data_mtz, data_mtz)
+
+  for phil in [phil_one, phil_two]:
+    with open(phil_name, 'w') as f:
+      f.write(phil)
+
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', phil_name])
+
+    assert len(result) == 2
+    for label in result:
+      assert label in ['FRACTIONCALC' ,'IPR,SIGIPR,merged']
+
+  os.remove(phil_name)
+
 # =============================================================================
 if __name__ == '__main__':
   test_dry_run()
   test_label_parsing()
+  test_user_selected_labels()
 
   print("OK")
