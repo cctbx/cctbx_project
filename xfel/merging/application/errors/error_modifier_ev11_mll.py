@@ -27,7 +27,7 @@ class error_modifier_ev11_mll(worker):
       self.cc_key = 'correlation'
 
   def __repr__(self):
-    return 'Adjust intensity errors -- ev11_mll'
+    return 'Adjust intensity errors -- ev11'
 
   def run(self, experiments, reflections):
     '''Modify intensity errors according to EV11 -- Brewster2019 / Mittan-Moreau 202X'''

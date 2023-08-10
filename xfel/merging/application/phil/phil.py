@@ -475,7 +475,6 @@ postrefinement {
     .help = Spot radius for lower plot reflects partiality. Only implemented for rs_hybrid
 }
 """
-
 merging_phil = """
 merging {
   minimum_multiplicity = 2
@@ -490,34 +489,14 @@ merging {
       .help = errors_from_sample_residuals, use the distribution of intensities in a given miller index
       .help = to compute the error for each merged reflection
     ev11
-      .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011.
+      .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011. \
+              Updated EV11 with MLL target function
       {
-      random_seed = None
-        .help = Random seed. May be int or None. Only used for the simplex minimizer
-        .type = int
-        .expert_level = 1
-      minimizer = *lbfgs LevMar
-        .type = choice
-        .help = Which minimizer to use while refining the Sdfac terms
-      refine_propagated_errors = False
-        .type = bool
-        .help = If True then during sdfac refinement, also \
-                refine the estimated error used for error propagation.
-      show_finite_differences = False
-        .type = bool
-        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
-      plot_refinement_steps = False
-        .type = bool
-        .help = If True, plot refinement steps during refinement.
-    }
-    ev11_mll
-      .help = Updated EV11 with MLL target function
-      {
-      do_diagnostics = False
-        .type = bool
-        .help = If True show the finite vs. analytical differences, \
-                plot normalized deviations, and plot s_add and correlation coefficients.
-      n_degrees = 1
+      algorithm = 'ev11'
+        .type = str
+        .help = 'ev11' implements the original Ev11 from Brewster 2019 \
+                'ev11_mll' implements the maximum log-likelihood from Mittan-Moreau 202X
+      n_degrees = 0
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
       tuning_param = 5
@@ -530,14 +509,17 @@ merging {
         .type = bool
         .help = If True, optimize the tuning parameter
       likelihood = 'normal'
-        .help = Choice for likelihood function. Either 't-dist', 'normal'.\
-                'Original' implements the original Ev11 from Brewster 2019
         .type = str
+        .help = Choice for likelihood function. Either 't-dist', 'normal'.
       cc_after_pr = True
         .type = bool
         .help = If True - use correlation coefficient determined after post-refinement.\
                 If False - use correlation coefficient determined before. \
                 If post-refinement is not performed, must be False.
+      do_diagnostics = False
+        .type = bool
+        .help = If True show the finite vs. analytical differences, \
+                plot normalized deviations, and plot s_add and correlation coefficients.
     }
   }
   plot_single_index_histograms = False
