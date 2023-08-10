@@ -1,6 +1,7 @@
 from __future__ import absolute_import,division, print_function
 from io import StringIO
 import time
+import os
 
 from libtbx import Auto
 from libtbx.str_utils import make_header
@@ -468,27 +469,33 @@ def running_this_macro_cycle(qmr,
                              number_of_macro_cycles=-1,
                              energy_only=False,
                              pre_refinement=True,
+                             verbose=False,
                              ):
-  if qmr.run_in_macro_cycles=='all':
-    return True
-  elif qmr.run_in_macro_cycles in ['first_only', 'first_and_last'] and macro_cycle==1:
-    return True
-  elif ( qmr.run_in_macro_cycles in ['first_and_last'] and
-        macro_cycle==number_of_macro_cycles):
-    return True
-  elif qmr.run_in_macro_cycles=='test' and macro_cycle in [0, None]:
-    return True
-  if energy_only:
-    # if macro_cycle in [0, None]: return False
+  from mmtbx.geometry_restraints.quantum_interface import get_qi_macro_cycle_array
+  if not energy_only:
+    if 'in_situ_opt' not in qmr.calculate: return False
+    if qmr.run_in_macro_cycles=='all':
+      return 'restraints'
+    elif qmr.run_in_macro_cycles in ['first_only', 'first_and_last'] and macro_cycle==1:
+      return 'restraints'
+    elif ( qmr.run_in_macro_cycles in ['first_and_last', 'last_only'] and
+          macro_cycle==number_of_macro_cycles):
+      return 'restraints'
+    elif qmr.run_in_macro_cycles=='test' and macro_cycle in [0, None]:
+      return 'restraints'
+  else:
     if pre_refinement:
       checks = 'starting_strain starting_energy starting_bound'
-      if any(item in checks for item in qmr.calculate):
-        return True
+      tmp = set(checks.split())
+      inter = tmp.intersection(set(qmr.calculate))
+      if macro_cycle==1:
+        return list(inter)
     else:
       checks = 'final_strain final_energy final_bound'
-      if any(item in checks for item in qmr.calculate):
-        if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
-          return True
+      tmp = set(checks.split())
+      inter = tmp.intersection(set(qmr.calculate))
+      if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
+        return list(inter)
   return False
 
 def update_bond_restraints(ligand_model,
@@ -772,6 +779,7 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('strain')
     if qmr.calculate.count('final_bound'):
       program_goal.append('bound')
+  print('program_goal',program_goal)
   return program_goal
 
 def setup_qm_jobs(model,
@@ -782,6 +790,15 @@ def setup_qm_jobs(model,
                   log=StringIO()):
   prefix = get_prefix(params)
   objects = []
+  # if params.qi.working_directory:
+  #   if params.qi.working_directory is Auto:
+  #     working_directory = prefix
+  #   else:
+  #     working_directory = params.qi.working_directory
+  #   if not os.path.exists(working_directory):
+  #     os.mkdir(working_directory)
+  #   print('  Changing to %s' % working_directory, file=log)
+  #   os.chdir(working_directory)
   for i, qmr in enumerate(params.qi.qm_restraints):
     number_of_macro_cycles = 1
     if hasattr(params, 'main'):
@@ -792,7 +809,8 @@ def setup_qm_jobs(model,
         energy_only=energy_only,
         number_of_macro_cycles=number_of_macro_cycles,
         pre_refinement=pre_refinement):
-      print('    Skipping this selection in this macro_cycle : %s' % qmr.selection)
+      # print('    Skipping this selection in this macro_cycle : %s' % qmr.selection,
+      #       file=log)
       continue
     #
     # get ligand and buffer region models
@@ -807,14 +825,10 @@ def setup_qm_jobs(model,
       qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
       preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
       if not energy_only: # only write PDB files for restraints update
-        print(qmr.write_files)
         if 'pdb_core' in qmr.write_files:
           write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
         if 'pdb_buffer' in qmr.write_files:
           write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
-      if not energy_only and qmr.do_not_even_calculate_qm_restraints:
-        print('    Skipping QM calculation : %s' % qmr.selection)
-        continue
       qmm.preamble='%s_%s' % (prefix, preamble)
       for attr in ['exclude_torsions_from_optimisation']:
         setattr(qmm, attr, getattr(qmr, attr))
@@ -823,6 +837,7 @@ def setup_qm_jobs(model,
   return objects
 
 def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
+  assert objects
   from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
   argstuples=[]
   for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
@@ -836,7 +851,7 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
   if results:
     xyzs = []
     xyzs_buffer = []
-    energies = []
+    energies = {}
     for i, (ligand_model, buffer_model, qmm, qmr) in enumerate(objects):
       xyz, xyz_buffer = results[i]
       units=''
@@ -849,11 +864,12 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         xyz_buffer=None
       else:
         assert 0, 'program_goal %s not in list' % qmm.program_goal
-      energies.append([qmm.program_goal,
-                      energy,
-                      ligand_model.get_number_of_atoms(),
-                      buffer_model.get_number_of_atoms()
-                      ])
+      energies.setdefault(qmr.selection,[])
+      energies[qmr.selection].append([qmm.program_goal,
+                                      energy,
+                                      ligand_model.get_number_of_atoms(),
+                                      buffer_model.get_number_of_atoms()
+                                      ])
       xyzs.append(xyz)
       xyzs_buffer.append(xyz_buffer)
       print('  Time for calculation of "%s" using %s %s %s: %s' % (
@@ -886,8 +902,7 @@ def run_energies(model,
                                                                     energy_only=energy_only,
                                                                     # pre_refinement=pre_refinement,
                                                                     ) and run_program:
-    print('  QM energy calculations for macro cycle %s' % macro_cycle,
-      file=log)
+    print('  QM energy calculations for macro cycle %s' % macro_cycle, file=log)
   #
   # setup QM jobs
   #
@@ -943,6 +958,8 @@ def update_restraints(model,
   #
   # run jobs
   #
+  assert objects
+  if not objects: return None
   xyzs, xyzs_buffer, energies, units = run_jobs(objects,
                                                 macro_cycle=macro_cycle,
                                                 nproc=nproc,
@@ -960,8 +977,6 @@ def update_restraints(model,
         xyzs_buffer,
         )):
     final_pdbs.append([])
-    # print(ligand_model.get_number_of_atoms(),len(xyz))
-    # print(buffer_model.get_number_of_atoms(),len(xyz_buffer))
     if qmr.package.view_output: qmm.view(qmr.package.view_output)
     if i: print(' ',file=log)
     print('  Updating QM restraints: "%s"' % qmr.selection, file=log)

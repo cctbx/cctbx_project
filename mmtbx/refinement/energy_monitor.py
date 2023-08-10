@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function
+from libtbx import group_args
 
 to_kcal_mol = {'ev':23.0609,
   }
 
 def _print_energy_in_kcal(e, units):
-    if units.lower() in to_kcal_mol:
-      return '%15.3f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
-    else:
-      return '%15.3f %s' % (e, units)
+  if units.lower() in to_kcal_mol:
+    return '%15.3f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
+  else:
+    return '%15.3f %s' % (e, units)
 
 def print_energy_in_kcal(ga):
   s=[]
@@ -27,14 +28,14 @@ class energies(list):
   def as_string(self, verbose=False):
     # from libtbx import easy_pickle
     # easy_pickle.dump('ga.pickle', self)
-    s='QM energies\n'
+    s=''
     for i, gas in enumerate(self):
       t=''
       for j, ga in enumerate(gas):
         rc = print_energy_in_kcal(ga)
         if rc:
           for line in rc:
-            t += '    %s\n' % line
+            t += '%s%s\n' % (' '*6, line)
       if verbose: print('macro_cycle %d %s' % (i+1,t))
       if i:
         def _add_dE(e1, e2, units):
@@ -47,8 +48,9 @@ class energies(list):
                 b1=e1[2]==e2[2]
               if b1:
                 de = e2[1]-e1[1]
-                s+='    %-12s %s\n' % ('%s dE' % e2[0],
-                                      _print_energy_in_kcal(e2[1]-e1[1],units))
+                s+='%s%-12s %s\n' % (' '*6,
+                                     '%s dE' % e2[0],
+                                     _print_energy_in_kcal(e2[1]-e1[1],units))
           return s
         e1=e2=None
         for k in range(2):
@@ -61,9 +63,38 @@ class energies(list):
       else:
         first=gas
       if t:
-        s+='  Macro cycle %d\n' % (i+1)
+        s+='%sMacro cycle %d\n' % (' '*4, i+1)
         s+=t
     return s
+
+class all_energies(dict):
+  def __init__(self):
+    pass
+
+  def as_string(self):
+    s='QM energies\n'
+    for selection, energies in self.items():
+      s+='\n  "%s"\n' % selection
+      s+='%s' % energies.as_string()
+    return s
+
+def digest_return_energy_object(ga, macro_cycle, energy_only, rc=None):
+  if rc is None:
+    rc = all_energies()
+  if ga is None: return rc
+  for selection, es in ga.energies.items():
+    rc.setdefault(selection, energies())
+    while len(rc[selection])<macro_cycle:
+      rc[selection].append([None,None,None])
+    if energy_only:
+      rc[selection][-1][0]=group_args(energies=es,
+                                      units=ga.units,
+                                      )
+    else:
+      rc[selection][-1][1]=group_args(energies=es,
+                                      units=ga.units,
+                                      )
+  return rc
 
 if __name__ == '__main__':
   from libtbx import easy_pickle

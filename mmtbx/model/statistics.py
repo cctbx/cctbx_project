@@ -290,7 +290,7 @@ class geometry(object):
     return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
       r.ramachandran.favored, r.ramachandran.outliers, r.rama_z.whole.value, r.c_beta.outliers)
 
-  def show(self, log=None, prefix="", uppercase=True):
+  def show(self, log=None, prefix="", uppercase=True, nucleotide_only=False):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
@@ -326,6 +326,9 @@ class geometry(object):
        prefix, fmt(d.mean, d.max, d.n),
        prefix, fmt2(n.min).strip(),
        prefix)
+    if nucleotide_only:
+      print(result, file=log)
+      return
     result += """
 %sMolprobity Statistics.
 %s  All-atom Clashscore : %s

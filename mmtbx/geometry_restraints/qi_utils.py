@@ -38,10 +38,10 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
   if nproc==1:
     for i, args in enumerate(argstuples):
       t0=time.time()
-      print('  Running "%s" job %d' % (name, i+1), file=log)
+      # print('  Running "%s" job %d' % (name, i+1), file=log)
       res = func(*args)
       rc.append(res)
-      print('    Time : %0.1fs' % (time.time()-t0))
+      # print('    Time for job %d: %0.1fs' % (i+1, time.time()-t0), file=log)
   elif nproc>1:
     print('  Running %d jobs on %d procs' % (len(argstuples), nproc), file=log)
     i=0

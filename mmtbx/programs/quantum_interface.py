@@ -822,9 +822,11 @@ Usage examples:
     print(pymols)
 
   def run_qmr(self, format, log=None):
+    from mmtbx.refinement.energy_monitor import digest_return_energy_object
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
     checks = 'starting_strain starting_energy starting_bound'
+    energies = None
     if any(item in checks for item in qmr.calculate):
       rc = run_energies(
         model,
@@ -834,9 +836,8 @@ Usage examples:
         nproc=self.params.qi.nproc,
         log=log,
         )
-      energies=energy_monitor()
-      energies.append([None,None,None])
-      energies[-1][0]=rc
+      energies = digest_return_energy_object(rc, 1, energy_only=True)
+
       outl = energies.as_string()
       print(outl, file=log)
     #
@@ -846,9 +847,10 @@ Usage examples:
                             self.params,
                             log=log,
                             )
-    energies=energy_monitor()
-    energies.append([None,None,None])
-    energies[-1][1]=rc
+    if energies is None:
+      energies = digest_return_energy_object(rc, 1, energy_only=False)
+    else:
+      digest_return_energy_object(rc, 1, False, energies)
     outl = energies.as_string()
     print(outl, file=log)
     return rc
