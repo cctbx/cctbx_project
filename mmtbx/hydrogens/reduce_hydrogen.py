@@ -249,7 +249,7 @@ class place_hydrogens():
     #For example when heavy atom is missing, H needs not to be placed
     sel_isolated = self.model.isolated_atoms_selection()
     self.sel_lone_H = sel_h & sel_isolated
-    if not self.sel_lone_H.all_eq(False) > 0:
+    if not self.sel_lone_H.all_eq(False):
       self.model = self.model.select(~self.sel_lone_H)
 
     t0 = time.time()
