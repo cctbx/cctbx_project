@@ -60,11 +60,11 @@ bool PairsOverlap(boost::python::object mover1,
           double limitSquared = limit * limit;
           if (dSquared <= limitSquared) {
             // Add the two movers to each other's set of movers that they overlap with.
-            boost::python::object set_obj = atomMoverSets[atoms1[ai1]];
+            boost::python::object set_obj = atomMoverSets[atoms1[ai1].data->i_seq];
             boost::python::object set_type = set_obj.attr("__class__");
             set_type.attr("add")(set_obj, mover2);
 
-            set_obj = atomMoverSets[atoms2[ai2]];
+            set_obj = atomMoverSets[atoms2[ai2].data->i_seq];
             set_type = set_obj.attr("__class__");
             set_type.attr("add")(set_obj, mover1);
 

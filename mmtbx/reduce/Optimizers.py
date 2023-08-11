@@ -18,8 +18,6 @@ from __future__ import absolute_import
 
 import argparse, itertools, re
 
-from mmtbx.reduce import Movers
-from mmtbx.reduce import InteractionGraph
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
 
@@ -29,13 +27,15 @@ from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
 
-from mmtbx.probe import Helpers
-import mmtbx_probe_ext as probeExt
-
 # To enable addition of Hydrogens
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
+
+from mmtbx.probe import Helpers
+import mmtbx_probe_ext as probeExt
+from mmtbx.reduce import Movers
+from mmtbx.reduce import InteractionGraph
 
 ##################################################################################
 # This file includes a set of functions and classes that implement placement and optimization of
@@ -1673,7 +1673,7 @@ class FastOptimizer(_CliqueOptimizer):
       # that this atom depends on, using the _atomMoverSets to determine which ones to look up.
       # See if this result is already in the dictionary for that atom.  If so, use it.  If not,
       # compute and store it and then return that value.
-      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
+      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom.i_seq]])
       try:
         self._numCached += 1
         return self._scoreCache[atom][state]

@@ -23,11 +23,6 @@ import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
 
-#import boost_adaptbx.boost.python as bp
-#bp.import_ext("mmtbx_reduce_ext")
-#from mmtbx_reduce_ext import PositionReturn
-
-
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
 # atoms that have more than one potential set of locations.
@@ -116,6 +111,8 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 # Movers have overlaps between movable atoms.
 
 ##################################################################################
+#import boost_adaptbx.boost.python as bp
+#bp.import_ext("mmtbx_reduce_ext")
 #from mmtbx_reduce_ext import PositionReturn
 class PositionReturn(object):
   # Return type from CoarsePosition() and FinePosition() calls.

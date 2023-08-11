@@ -53,7 +53,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   # takes too long.
   myGraph = _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
 
-  # Dictionary looked up by atom that returns the set of Movers that atom interacts
+  # Dictionary looked up by atom i_seq that returns the set of Movers that atom interacts
   # with.
   atomMoverSets = {}
 
@@ -77,7 +77,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
     atoms[m] = coarses.atoms
     positions[m] = total
     for a in coarses.atoms:
-      atomMoverSets[a] = {m}
+      atomMoverSets[a.i_seq] = {m}
 
   # For each pair of movers that are connected by an edge in the graph produced
   # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.
@@ -210,7 +210,7 @@ obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
 :param ProbeRad: Probe radius
 :param atomMoverSets: Parameter that is modified in place to record all Movers that
 a particular atom interacts with.  An entry is created whenever there is overlap
-with an atom in another Mover.
+with an atom in another Mover.  Indexed by i_seq number of the atom.
 :returns True if a pair of atoms with one from each overlap, False if not.
 def _PairsOverlap(mover1, atoms1, positions1,
                   mover2, atoms2, positions2, extraAtomInfoMap, probeRad, atomMoverSets):
@@ -243,8 +243,8 @@ def _PairsOverlap(mover1, atoms1, positions1,
           limitSquared = limit*limit
           if dSquared <= limitSquared:
             # Add the opposite Mover to each atom; they interact
-            atomMoverSets[atoms1[ai1]].add(mover2)
-            atomMoverSets[atoms2[ai2]].add(mover1)
+            atomMoverSets[atoms1[ai1].i_seq].add(mover2)
+            atomMoverSets[atoms2[ai2].i_seq].add(mover1)
             # Set the return value to True but do not quit looking
             # because we need to catalog all of the atomMoverSets
             # interactions, not just the first one found.
@@ -365,7 +365,7 @@ def Test():
     # Check atom/Mover overlaps by finding the set of lengths that are present across all atoms.
     lengths = set()
     for a in atoms:
-      lengths.add(len(am[a]))
+      lengths.add(len(am[a.i_seq]))
     if lengths != e[3]:
       return "Expected set of overlap counts "+str(e[3])+", found "+str(lengths)+" for case "+str(i)
 
