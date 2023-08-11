@@ -326,12 +326,12 @@ class _SingletonOptimizer(object):
       ################################################################################
       # Store the states (position and extra atom info) of all of the atoms in this model
       # so that we can restore it for atoms in a given alternate configuration before optimizing
-      # each new alternate.
+      # each new alternate. Looked up by i_seq.
       initialAtomPositions = {}
       initialExtraAtomInfos = {}
       for a in myModel.atoms():
-        initialAtomPositions[a] = a.xyz;
-        initialExtraAtomInfos[a] = probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a))
+        initialAtomPositions[a.i_seq] = a.xyz;
+        initialExtraAtomInfos[a.i_seq] = probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a))
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
@@ -360,8 +360,8 @@ class _SingletonOptimizer(object):
         else:
           for a in myModel.atoms():
             if a.parent().altloc in ['', ' ', alt]:
-              a.xyz = initialAtomPositions[a]
-              self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a])
+              a.xyz = initialAtomPositions[a.i_seq]
+              self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a.i_seq])
 
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(self._verbosity, 1,"Running Reduce optimization on model index "+str(mi)+
@@ -469,9 +469,10 @@ class _SingletonOptimizer(object):
 
         # Get the excluded list for each atom in the set, making a dictionary.
         # We go at most 3 hops unless one end of the chain has a hydrogen.
+        # Look up excluded atoms by i_seq.
         self._excludeDict = {}
         for a in moverAtoms:
-          self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
+          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
             bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
@@ -561,10 +562,11 @@ class _SingletonOptimizer(object):
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
         # This must be done after the phantom Hydrogens have been added so that they will be included.
+        # Look up dot-spheres by i_seq.
         dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
         self._dotSpheres = {}
         for a in self._atoms:
-          self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+          self._dotSpheres[a.i_seq] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
         self._infoString += _ReportTiming(self._verbosity, "compute dot spheres")
 
         ################################################################################
@@ -627,7 +629,7 @@ class _SingletonOptimizer(object):
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
-              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq], self._dotSpheres[atom.i_seq].dots(),
               self._probeDensity, False)
             score += res.totalScore()
             if res.hasBadBump:
@@ -797,7 +799,7 @@ class _SingletonOptimizer(object):
   def _scoreAtom(self, atom):
     maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
     return self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
-      maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+      maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq], self._dotSpheres[atom.i_seq].dots(),
       self._probeDensity, False).totalScore()
 
   def _scorePosition(self, positions, index):
@@ -1659,11 +1661,11 @@ class FastOptimizer(_CliqueOptimizer):
     # results.  The entries will be empty to start with and will be filled in as they are computed.
     # We build entries for all atoms, even those not in the Movers to avoid having to traverse
     # the Movers.
-    # This structure is a dictionary (looked up by atom) of dictionaries (looked up by tuple)
+    # This structure is a dictionary (looked up by atom i_seq) of dictionaries (looked up by tuple)
     # of values (scores).
     self._scoreCache = {}
     for a in self._atoms:
-      self._scoreCache[a] = {}
+      self._scoreCache[a.i_seq] = {}
     return
 
   def _scoreAtom(self, atom):
@@ -1676,12 +1678,12 @@ class FastOptimizer(_CliqueOptimizer):
       state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom.i_seq]])
       try:
         self._numCached += 1
-        return self._scoreCache[atom][state]
+        return self._scoreCache[atom.i_seq][state]
       except Exception:
         self._numCached -= 1      # Undo the increment above
         self._numCalculated += 1
-        self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
-        return self._scoreCache[atom][state]
+        self._scoreCache[atom.i_seq][state] = super(FastOptimizer, self)._scoreAtom(atom)
+        return self._scoreCache[atom.i_seq][state]
     else:
       self._numCalculated += 1
       return super(FastOptimizer, self)._scoreAtom(atom)
