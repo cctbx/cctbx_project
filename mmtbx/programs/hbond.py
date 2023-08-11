@@ -3,7 +3,7 @@ from libtbx.program_template import ProgramTemplate
 import mmtbx.nci.hbond
 import mmtbx.nci.skew_kurt_plot
 from libtbx.utils import null_out
-import os, time
+import os
 
 # =============================================================================
 
@@ -72,7 +72,6 @@ Usage example:
         fn += "_cbf"
       theta1_c = [(x.skew, x.kurtosis) for x in theta1_data]
       Rha_c = [(x.skew, x.kurtosis) for x in Rha_data]
-      t0 = time.time()
       mmtbx.nci.skew_kurt_plot.make_figure(
           file_name=fn,
           theta1_coords=theta1_c,
@@ -80,8 +79,6 @@ Usage example:
           dot_size = self.params.hbond.dot_size,
           type='all',
           colorblind_friendly=self.params.hbond.plot_colorblind_friendly)
-      print("TIME1:", time.time()-t0)
-
 
   # ---------------------------------------------------------------------------
   def get_results(self):
