@@ -2786,6 +2786,7 @@ class manager(object):
         self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
     if self._neutralized:
+      xrs.discard_scattering_type_registry()
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
