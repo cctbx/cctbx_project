@@ -1809,9 +1809,9 @@ def _vertexCut(clique):
   vertex cut is found, this will be a copy of the original graph.
   """
 
-  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must)
+  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must
   # have at least 2 vertices left to have a disconnected graph).
-  for n in range(1, len(list(clique.vertices()))+1-2):
+  for n in range(1, len(list(clique.vertices()))-2):
     # Iterate over all sets of vertices of size n that might be removed
     for removed in itertools.combinations(clique.vertices(),n):
       movers = [clique.vertex_label(v) for v in removed]
