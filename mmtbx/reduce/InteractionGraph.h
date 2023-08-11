@@ -35,8 +35,8 @@ namespace molprobity {
           obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
         @param ProbeRad : Probe radius
         @param atomMoverSets : Parameter that is modified in place to record all Movers that
-          a particular atom interacts with.An entry is created whenever there is overlap
-          with an atom in another Mover.
+          a particular atom interacts with. An entry is created whenever there is overlap
+          with an atom in another Mover. Indexed by i_seq of the atom.
         @return True if a pair of atoms with one from each overlap, False if not.
     */
     bool PairsOverlap(
