@@ -51,17 +51,6 @@ namespace molprobity {
       boost::python::dict atomMoverSets
     );
 
-    typedef boost::adjacency_list <
-      boost::setS, boost::listS, boost::undirectedS,
-      boost::property<boost::vertex_name_t, boost::python::object>,
-      boost::property<boost::edge_weight_t, double> > PythonObjectList;
-    /** @brief For each pair of movers that are connected by an edge in the graph produced
-        by the AABB algorithm to see if they actually overlap. If not, remove that edge.
-        @todo Need to pass in the other objects needed to call PairsOverlap.
-    */
-    void RemoveFalseEdges(PythonObjectList& graph);
-
-
     //=====================================================================================================
 
     /// @brief Test function to verify that all classes are behaving as intended.
