@@ -113,6 +113,9 @@ hbond {
   min_data_size = 10
     .type = int
     .style = hidden
+  dot_size = 100
+    .type = int
+    .help = Dot size
 }
 '''
 
