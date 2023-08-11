@@ -45,15 +45,17 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     double, scitbx::af::shared<double> >::wrap(wd);
   std::cout << "XXX Done mapping the double" << std::endl;
-  /*
+  */
   /// @todo This does not make the type available to Python
   //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
 
+  std::cout << "XXX Mapping bool" << std::endl;
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
   class_<wwbool::w_t> wwb = wwbool::wrap("af_shared_af_shared_bool");
   scitbx::af::boost_python::select_wrappers<
     afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
+  std::cout << "XXX Done mapping bool" << std::endl;
 
   std::cout << "XXX Mapping the Point" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
@@ -63,21 +65,22 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
   std::cout << "XXX Done mapping the Point" << std::endl;
 
+  std::cout << "XXX Mapping extra" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
   typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
   class_<wwei::w_t> wwExtraInfo = wwei::wrap("af_shared_af_shared_ExtraAtomInfo");
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
-    */
+  std::cout << "XXX Done mapping extra" << std::endl;
 
   // Define the flex array wrapping for these classes because we take them as parameters.
   std::cout << "XXX Adding container conversions" << std::endl;
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
-  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-    scitbx::af::shared< scitbx::af::shared<bool> > >();
+  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+  //  scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
+  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+  //  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
+  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+  //  scitbx::af::shared< scitbx::af::shared<bool> > >();
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
