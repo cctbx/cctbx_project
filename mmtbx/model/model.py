@@ -199,6 +199,7 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
+      process_biomt             = True,
       skip_ss_annotations       = False,
       reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
@@ -290,7 +291,7 @@ class manager(object):
       self.expand_with_MTRIX_records()
     # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
-    if(self._model_input is not None):
+    if(self._model_input is not None and process_biomt):
       try: # ugly work-around for limited support of BIOMT
         self.biomt_operators = self._model_input.process_BIOMT_records()
       except RuntimeError: pass
