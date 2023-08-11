@@ -34,11 +34,11 @@ bool PairsOverlap(boost::python::object mover1,
   // in the loop below.
   std::vector<double> atomRadii1(atoms1.size());
   for (int i = 0; i < atoms1.size(); i++) {
-    atomRadii1[i] = probeRad + extraAtomInfoMap.getMappingFor(atoms1[i]).getVdwRadius();
+    atomRadii1[i] = extraAtomInfoMap.getMappingFor(atoms1[i]).getVdwRadius();
   }
   std::vector<double> atomRadii2(atoms2.size());
   for (int i = 0; i < atoms2.size(); i++) {
-    atomRadii2[i] = probeRad + extraAtomInfoMap.getMappingFor(atoms2[i]).getVdwRadius();
+    atomRadii2[i] = extraAtomInfoMap.getMappingFor(atoms2[i]).getVdwRadius();
   }
 
   bool ret = false;
