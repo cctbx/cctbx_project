@@ -81,6 +81,87 @@ def run_tst_grm_after_neutralize_scatterers():
   assert(vdw_distance1 != vdw_distance2)
 
 
+def tst_003():
+  '''
+  Make sure that scattering registry is really dropped after neutralizing
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_2, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  assert ('O1-' in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  charges = [a.charge for a in model.get_hierarchy().atoms()]
+  assert ('1-' in charges)
+  model.neutralize_scatterers()
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  charges = [a.charge for a in model.get_hierarchy().atoms()]
+  assert ('1-' not in charges)
+  model.setup_scattering_dictionaries(scattering_table="electron")
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  model.setup_scattering_dictionaries(
+    scattering_table  = "electron",
+    d_min             = 1.0,
+    log               = null_out())
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+
+def tst_004():
+  '''
+  model.process() drops xrs, so neutralization is forgotten if only performed
+  for scatterers. This tests makes sure that neutralization is propagated
+  into model._model_input (pdb_inp).
+  sort_atoms=False --> hierarchy is dropped
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_2, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  assert ('O1-' in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  model.neutralize_scatterers()
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.sort_atoms = False
+  model.process(make_restraints=True, grm_normalization=True,
+    pdb_interpretation_params = params)
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  model.setup_scattering_dictionaries(
+    scattering_table  = "electron",
+    d_min             = 1.0,
+    log               = null_out())
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+
+def tst_005():
+  '''
+  model.process() drops xrs, so neutralization is forgotten if only performed
+  for scatterers. This tests makes sure that neutralization is propagated
+  into model._model_input (pdb_inp).
+  sort_atoms=False --> hierarchy is kept
+  '''
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_2, source_info=None)
+  model = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+  assert ('O1-' in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  model.neutralize_scatterers()
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.sort_atoms = True
+  model.process(make_restraints=True, grm_normalization=True,
+    pdb_interpretation_params = params)
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  model.setup_scattering_dictionaries(
+    scattering_table  = "electron",
+    d_min             = 1.0,
+    log               = null_out())
+  assert ('O1-' not in
+    model.get_xray_structure().scattering_type_registry().type_count_dict())
+  charges = [a.charge for a in model.get_hierarchy().atoms()]
+  assert ('1-' not in charges)
+
 pdb_str = """
 CRYST1   36.960  124.370   41.010  90.00 116.55  90.00 P 1 21 1
 SCALE1      0.027056  0.000000  0.013519        0.00000
@@ -317,4 +398,7 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run_tst_xrs_and_hierarchy()
   run_tst_grm_after_neutralize_scatterers()
+  tst_003()
+  tst_004()
+  tst_005()
   print("OK. Time:", round(time.time()-t0, 2))

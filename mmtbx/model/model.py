@@ -2788,11 +2788,11 @@ class manager(object):
         self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
         # propagate into hierarchy
-        atoms[i_seq].charge = ''
+        atoms[i_seq].charge = '  '
         # propagate into pdb_inp
         # necessary if grm is constructed as it may drop xrs
         if self._model_input:
-          self._model_input.atoms()[i_seq].charge=''
+          self._model_input.atoms()[i_seq].charge='  '
     if self._neutralized:
       xrs.discard_scattering_type_registry()
       self.set_xray_structure(xray_structure = xrs)
