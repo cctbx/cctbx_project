@@ -65,7 +65,8 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   for m in movers:
 
     # Find all possible positions, coarse and fine, for each atom
-    # in this mover.
+    # in this mover. Make a copy so that we don't extend the original
+    # positions.
     coarses = m.CoarsePositions()
     coarsePositions = coarses.positions
     total = coarsePositions[:]
@@ -132,6 +133,8 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
     verts.append(ret.add_vertex(m))
 
     # Find all possible positions, coarse and fine.
+    # Make a copy so that we don't extend the original
+    # positions.
     coarses = m.CoarsePositions()
     atoms = coarses.atoms
     coarsePositions = coarses.positions
