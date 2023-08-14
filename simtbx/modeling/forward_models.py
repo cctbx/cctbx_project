@@ -75,14 +75,17 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         assert gpu_energy_channels is not None, "cant use exascale api if not in a GPU build"
         assert multipanel_sim is not None, "cant use exascale api if LS49: https://github.com/nksauter/LS49.git  is not configured\n install in the modules folder"
 
-    df = pandas_frame
+    df = pandas_frame.reset_index(drop=True)
 
     if not quiet: LOGGER.info("Loading experiment models")
     expt_name = df.exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
-    expt = El[0]
+    exp_idx = 0
+    if "exp_idx" in list(df):
+        exp_idx = int(df.exp_idx.values[0])  # cast to int because has to be 32-bit
+    expt = El[exp_idx]
     crystal = expt.crystal
-    crystal.set_A(df.Amats[0])
+    crystal.set_A(df.Amats.values[0])
     expt.crystal = crystal
     columns = list(df)
     if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly

@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
 import os
+import socket
 import sys
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
@@ -31,8 +32,9 @@ def global_refiner_from_parameters(params):
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
-    if params.prep_time > 0:
-        work_distribution = prep_dataframe(pandas_table)
+    if "exp_idx" not in list(pandas_table):
+        pandas_table["exp_idx"] = 0
+    work_distribution = prep_dataframe(pandas_table)
     LOGGER.info("EVENT: DONE prep dataframe")
     return launcher.launch_refiner(pandas_table, work_distribution=work_distribution)
 
@@ -147,6 +149,8 @@ class RefineLauncher:
         """
         COMM.Barrier()
         num_exp = len(pandas_table)
+        if "exp_idx" not in list(pandas_table):
+            pandas_table["exp_idx"] = 0
         first_exper_file = pandas_table.exp_name.values[0]
         detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
         if detector is None and self.params.refiner.reference_geom is None:
@@ -171,7 +175,9 @@ class RefineLauncher:
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
         exper_names = pandas_table.exp_name
-        assert len(exper_names) == len(set(exper_names))
+        exper_ids = pandas_table.exp_idx.values
+        shot_ids = list(zip(exper_names, exper_ids))
+        assert len(shot_ids) == len(set(shot_ids))
         # TODO assert all exper are single-file, probably way before this point
         if work_distribution is None:
             worklist = range(COMM.rank, len(exper_names), COMM.size)
@@ -189,22 +195,23 @@ class RefineLauncher:
         Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
         Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
 
-        for i_work, i_exp in enumerate(worklist):
-            exper_name = exper_names[i_exp]
+        for i_work, i_df in enumerate(worklist):
+            exper_name = exper_names[i_df]
+            exper_id = int(exper_ids[i_df])
             LOGGER.info("EVENT: BEGIN loading experiment list")
-            expt_list = ExperimentListFactory.from_json_file(exper_name, check_format=self.params.refiner.check_expt_format)
+            # TODO: test that the diffBragg_benchmarks is not broken
+            expt = hopper_utils.DataModeler.exper_json_single_file(exper_name, exper_id)
+            expt_list = ExperimentList()
+            expt_list.append(expt)
             LOGGER.info("EVENT: DONE loading experiment list")
-            if len(expt_list) != 1:
-                print("Input experiments need to have length 1, %s does not" % exper_name)
-            expt = expt_list[0]
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
-            exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name)
+            exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name).query("exp_idx==%d" % exper_id)
 
             refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)
-            # FIXME need to remove (0,0,0) bboxes
+            refls = refls.select(refls['id'] == exper_id)
 
             try:
                 miller_inds = list(refls["miller_index"])
@@ -235,11 +242,13 @@ class RefineLauncher:
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
             shot_modeler.exper_name = exper_name
+            shot_modeler.exper_idx = exper_id
             shot_modeler.refl_name = refl_name
             shot_modeler.rank = COMM.rank
             if self.params.refiner.load_data_from_refl:
                 gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=self.symbol)
             else:
+                # Note: no need to pass exper_id here because expt and refls have already been sliced out
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
                 raise IOError("Failed to gather data from experiment %s", exper_name)
@@ -310,20 +319,21 @@ class RefineLauncher:
                 shot_modeler.originZ_init = exper_dataframe.detz_shift_mm.values[0]*1e-3
             else:
                 shot_modeler.originZ_init = 0
+            # TODO: is there a reason these 3 attribs are set once more after being set above?
             shot_modeler.exper_name = exper_name
+            shot_modeler.exper_idx = exper_id
             shot_modeler.refl_name = refl_name
 
             shot_panel_groups_refined = self.determine_refined_panel_groups(shot_modeler.pids)
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
             shot_idx += 1
-            if COMM.rank == 0:
-                self._mem_usage()
-                print("Finished loading image %d / %d (%d / %d)"
-                      % (i_exp+1, len(exper_names), i_work+1, len(worklist)), flush=True)
+            self._mem_usage("Process memory usage")
+            LOGGER.info("Finished loading image %d / %d (%d / %d)"
+                  % (i_df+1, len(exper_names), i_work+1, len(worklist))) #, flush=True)
 
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
-            self.Modelers[i_exp] = shot_modeler
+            self.Modelers[i_df] = shot_modeler  # TODO: verify that i_df as a key is ok everywhere
 
         LOGGER.info("DONE LOADING DATA; ENTER BARRIER")
         COMM.Barrier()
@@ -338,6 +348,7 @@ class RefineLauncher:
             for set_of_panels in all_refined_groups:
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
+        self._mem_usage("Mem after panel groups")
 
         LOGGER.info("EVENT: Gathering global HKL information")
         try:
@@ -348,6 +359,7 @@ class RefineLauncher:
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
+        self._mem_usage("Mem after gather Hi info")
 
         # in case of GPU
         LOGGER.info("BEGIN DETERMINE MAX PIX")
@@ -358,15 +370,15 @@ class RefineLauncher:
             n = max(n)
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         LOGGER.info("DONE DETERMINE MAX PIX")
+        self._mem_usage("Mem after determine max num pix")
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
-        self._mem_usage()
+        self._mem_usage("Mem after load_inputs")
 
-    def _mem_usage(self):
+    def _mem_usage(self, msg="Memory usage"):
         memMB = get_memory_usage()
-        import socket
         host = socket.gethostname()
-        print("Rank 0 reporting memory usage: %f GB on Rank 0 node %s" % (memMB / 1e3, host))
+        LOGGER.info("%s: %f GB on node %s" % (msg, memMB / 1024, host))
 
     def determine_refined_panel_groups(self, pids):
         refined_groups = []
@@ -383,8 +395,8 @@ class RefineLauncher:
             x1, x2, y1, y2 = map(np.array, zip(*modeler.rois))
             npix = np.sum((x2-x1)*(y2-y1))
             max_npix = max(npix, max_npix)
-            print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
-        print("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
+            #print("Rank %d, shot %d has %d pixels" % (COMM.rank, i_shot+1, npix))
+        LOGGER.info("Rank %d, max pix to be modeled: %d" % (COMM.rank, max_npix))
         return max_npix
 
     def _try_loading_spectrum_filelist(self):
@@ -396,32 +408,38 @@ class RefineLauncher:
         return file_list
 
     def _gather_Hi_information(self):
-        nshots_on_this_rank = len(self.Hi)
         # aggregate all miller indices
-        self.Hi_all_ranks, self.Hi_asu_all_ranks = [], []
+
+        #self.Hi_asu_all_ranks = []
         # TODO assert list types are stored in Hi and Hi_asu
-        for i_shot in self.Hi: #range(nshots_on_this_rank):
-            self.Hi_all_ranks += self.Hi[i_shot]
-            self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
-        self.Hi_all_ranks = COMM.reduce(self.Hi_all_ranks)
-        self.Hi_all_ranks = COMM.bcast(self.Hi_all_ranks)
+        #for i_shot in self.Hi: #range(nshots_on_this_rank):
+        #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
 
-        self.Hi_asu_all_ranks = COMM.reduce(self.Hi_asu_all_ranks)
-        self.Hi_asu_all_ranks = COMM.bcast(self.Hi_asu_all_ranks)
+        Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
+        unique_asu_all_ranks = None
+        if COMM.rank==0:
+            temp = []
+            for Hi_asu in Hi_asu_all_ranks:
+                for i_shot in Hi_asu:
+                    temp += Hi_asu[i_shot]
+            Hi_asu_all_ranks = temp
+            unique_asu_all_ranks = set(Hi_asu_all_ranks)
+        unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
 
-        marr_unique_h = self._get_unique_Hi()
+        # Hi_asu_all_ranks should be None on all ranks except rank0
+        marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
 
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-        self.idx_from_asu = {h: i for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+        self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        self.asu_from_idx = {i: h for i, h in enumerate(set(self.Hi_asu_all_ranks))}
+        self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
 
         self.num_hkl_global = len(self.idx_from_asu)
 
         fres = marr_unique_h.d_spacings()
         self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
 
-    def _get_unique_Hi(self):
+    def _get_unique_Hi(self, Hi_asu_all_ranks):
         COMM.barrier()
         if COMM.rank == 0:
             from cctbx.crystal import symmetry
@@ -434,7 +452,7 @@ class RefineLauncher:
             if self.params.refiner.force_unit_cell is not None:
                 params = self.params.refiner.force_unit_cell
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
-            hi_asu_flex = cctbx_flex.miller_index(self.Hi_asu_all_ranks)
+            hi_asu_flex = cctbx_flex.miller_index(Hi_asu_all_ranks)
             mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
             marr = miller.array(mset)
             binner = marr.setup_binner(d_max=self.params.refiner.stage_two.d_max, d_min=self.params.refiner.stage_two.d_min,
@@ -451,15 +469,16 @@ class RefineLauncher:
                     print("\t %d refls with multi %d" % (sum(multi_in_bin == ii), ii))
 
             print("Overall completeness\n<><><><><><><><>")
+            unique_Hi_asu = set(Hi_asu_all_ranks)
             symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
-            hi_flex_unique = cctbx_flex.miller_index(list(set(self.Hi_asu_all_ranks)))
+            hi_flex_unique = cctbx_flex.miller_index(list(unique_Hi_asu))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
             self.binner = mset.setup_binner(d_min=self.params.refiner.stage_two.d_min,
                                             d_max=self.params.refiner.stage_two.d_max,
                                             n_bins=self.params.refiner.stage_two.n_bin)
             mset.completeness(use_binning=True).show()
             marr_unique_h = miller.array(mset)
-            print("Rank %d: total miller vars=%d" % (COMM.rank, len(set(self.Hi_asu_all_ranks))))
+            print("Rank %d: total miller vars=%d" % (COMM.rank, len(unique_Hi_asu)))
         else:
             marr_unique_h = None
 
@@ -517,7 +536,9 @@ class RefineLauncher:
                 self.RUC.S.update_nanoBragg_instance('verbose', self.params.refiner.verbose)
 
             LOGGER.info("_launch run setup")
+            self._mem_usage("Mem usage before _setup")
             self.RUC.run(setup_only=True)
+            self._mem_usage("Mem usage after _setup")
             LOGGER.info("_launch done run setup")
             # for debug purposes:
             #if not self.params.refiner.quiet:

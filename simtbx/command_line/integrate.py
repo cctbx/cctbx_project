@@ -29,7 +29,7 @@ def print0(*args, **kwargs):
         print(*args, **kwargs)
 
 import numpy as np
-from simtbx.diffBragg import utils
+from simtbx.diffBragg import hopper_utils, utils
 from simtbx.modeling import predictions
 from simtbx.diffBragg.hopper_utils import downsamp_spec_from_params
 import glob
@@ -339,54 +339,81 @@ if __name__=="__main__":
             os.makedirs(args.outdir)
     COMM.barrier()
 
-    rank_outdir = os.path.join( args.outdir, "rank%d" % COMM.rank)
-    if not os.path.exists(rank_outdir):
-        os.makedirs(rank_outdir)
-
+    #rank_outdir = os.path.join( args.outdir, "rank%d" % COMM.rank)
+    #if not os.path.exists(rank_outdir):
+    #    os.makedirs(rank_outdir)
 
     params = utils.get_extracted_params_from_phil_sources(args.predPhil, args.cmdlinePhil)
+
+    # inputGlob can be a glob in strings, a single pandas file, or a hopper output folder
     if os.path.isfile(args.inputGlob) or os.path.isdir(args.inputGlob):
         if os.path.isfile(args.inputGlob):
-            input_file = args.inputGlob
+            fnames = [args.inputGlob]
         else:
-            input_file = os.path.join( args.inputGlob, "hopper_results.pkl")
-        df_all = pandas.read_pickle(input_file)
-        df_all.reset_index(inplace=True, drop=True)
-        def df_iter():
-            for i_f in range(len(df_all)):
-                if i_f % COMM.size != COMM.rank:
-                    continue
-                df_i = df_all.iloc[i_f:i_f+1].copy().reset_index(drop=True)
-                yield i_f, df_i
-        Nf = len(df_all)
+            dirname = args.inputGlob
+            fnames = glob.glob( os.path.join(dirname, "pandas/hopper_results_rank*.pkl"))
     else:
         fnames = glob.glob(args.inputGlob)
-        def df_iter():
-            for i_f,f in enumerate(fnames):
-                if i_f % COMM.size != COMM.rank:
-                    continue
-                df = pandas.read_pickle(f)
-                yield i_f, df
-        Nf = len(fnames)
+
+    if not fnames:
+        raise OSError("Found no filenames to load!")
+    Nf = 0
+    shots_per_df = []
+    print0("getting total number of shots")
+    for i_f, f in enumerate(fnames):
+        if i_f % COMM.size != COMM.rank:
+            continue
+        n = len(pandas.read_pickle(f))
+        shots_per_df += [(f, str(x)) for x in range(n)]  # note we cast to string because of mpi reduce
+        Nf += n
+
+    shots_per_df = COMM.bcast(COMM.reduce( shots_per_df))
+    Nf = COMM.bcast(COMM.reduce(Nf))
+    print0("total num shots is %d" % Nf)
+    df_rows_per_rank = np.array_split(shots_per_df, COMM.size)[COMM.rank]
+
+    print0("getting dataframe handles")
+    df_handles = {}
+    dfs, _ = zip(*df_rows_per_rank)
+    for f in set(dfs):
+        df_handles[f] = pandas.read_pickle(f).reset_index(drop=True)
+
+    def df_iter():
+        for i_df, (df_name, row_idx) in enumerate(df_rows_per_rank):
+            row_idx = int(row_idx)
+            printR("Opening shot %d / %d" % (i_df+1, len(df_rows_per_rank)))
+            df = df_handles[df_name].iloc[row_idx: row_idx+1].copy()
+            yield i_df, df
 
     if params.predictions.verbose:
         params.predictions.verbose = COMM.rank==0
 
     dev = COMM.rank % args.numdev
 
+    EXPT_DIRS = os.path.join(args.outdir, "expts_and_refls")
+    if COMM.rank==0:
+        utils.safe_makedirs(EXPT_DIRS)
+
     print0("Found %d input files" % Nf)
     with DeviceWrapper(dev) as _:
         all_dfs = []
         all_pred_names = []
         exp_ref_spec_lines = []
+        all_rank_pred = None
+        all_rank_expt = ExperimentList()
+        rank_shot_count = 0
+        rank_pred_file = os.path.join(EXPT_DIRS, "rank%d_preds.refl" % COMM.rank)
+        rank_pred_file = os.path.abspath(rank_pred_file)
+        rank_expt_file = rank_pred_file.replace(".refl", ".expt")
         for i_f, df in df_iter():
-            printR("Shot %d / %d" % (i_f+1, Nf), flush=True)
 
             expt_name = df.exp_name.values[0]
+            expt_idx = df.exp_idx.values[0]
             tag = os.path.splitext(os.path.basename(expt_name))[0]
 
-            data_exptList = ExperimentList.from_file(expt_name)
-            data_expt = data_exptList[0]
+            data_expt = hopper_utils.DataModeler.exper_json_single_file(expt_name, expt_idx)
+            data_exptList = ExperimentList()
+            data_exptList.append(data_expt)
 
             try:
                 spectrum_override = None
@@ -427,8 +454,12 @@ if __name__=="__main__":
             pred = pred.select(flex.bool(keeps))
             nstrong = np.sum(strong_sel)
             printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
-            pred_file = os.path.abspath("%s/%s_%d_predicted.refl" % ( rank_outdir, tag, i_f))
-            pred.as_file(pred_file)
+            pred['id'] = flex.int(len(pred), rank_shot_count)
+            if all_rank_pred is None:
+                all_rank_pred = deepcopy(pred)
+            else:
+                all_rank_pred.extend(pred)
+            all_rank_expt.append(data_expt)
 
             Rindexed = Rstrong.select(Rstrong['indexed'])
             if len(Rindexed)==0:
@@ -437,6 +468,7 @@ if __name__=="__main__":
 
             utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
             if args.dialsInteg:
+                # TODO: save these files as multi-shot experiment/refls
                 try:
                     int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
                     int_expt_name = "%s/%s_%d_integrated.expt" % (rank_outdir, tag, i_f)
@@ -445,22 +477,33 @@ if __name__=="__main__":
                     int_refl_name = int_expt_name.replace(".expt", ".refl")
                     int_refl.as_file(int_refl_name)
                 except RuntimeError:
-                    print("Integration failed for %s" % pred_file)
+                    print("Integration failed" )
+
+            df['old_exp_name'] = expt_name
+            df['old_exp_idx'] = expt_idx
+            df['exp_name'] = rank_expt_file
+            df['exp_idx'] = rank_shot_count
+            df['predictions'] = rank_pred_file
+            df['predicted_refs'] = rank_pred_file
             all_dfs.append(df)
-            all_pred_names.append(pred_file)
+            rank_shot_count += 1
+
             spec_name = df.spectrum_filename.values[0]
             if spec_name is None:
                 spec_name = ""
-            exp_ref_spec_lines.append("%s %s %s\n" % (expt_name, pred_file, spec_name))
+            exp_ref_spec_lines.append("%s %s %s %d\n" % (rank_expt_file, rank_pred_file, spec_name, rank_shot_count))
 
+        all_rank_pred.as_file(rank_pred_file)
+        all_rank_expt.as_file(rank_expt_file)
+        print0("Done with predictions, combining dataframes")
         if all_dfs:
             all_dfs = pandas.concat(all_dfs)
-            all_dfs["predicted_refls"] = all_pred_names
-            all_dfs["predictions"] = all_pred_names
         else:
             all_dfs = None
 
+        print0("MPI gather all_dfs")
         all_dfs = COMM.gather(all_dfs)
+        print0("MPI reduce lines")
         exp_ref_spec_lines = COMM.reduce(exp_ref_spec_lines)
         if COMM.rank==0:
             hopper_input_name = os.path.abspath(os.path.join(args.outdir , "%s.txt" % args.hopInputName))
@@ -472,11 +515,12 @@ if __name__=="__main__":
             if not all_dfs:
                 raise ValueError("No dataframes to concat: prediction/integration failed for all shots..")
 
+            print("Concat frames")
             all_dfs = pandas.concat([df for df in all_dfs if df is not None])
             all_dfs.reset_index(inplace=True, drop=True)
             best_pkl_name = os.path.abspath(os.path.join(args.outdir , "%s.pkl" % args.hopInputName))
             all_dfs.to_pickle(best_pkl_name)
-            print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper. Use the centroid=cal option to specify the predictions" % (best_pkl_name, hopper_input_name))
+            print("Wrote %s (best_pickle option for simtbx.diffBragg.hopper) and %s (exp_ref_spec option for simtbx.diffBragg.hopper). Use them to run the predictions through hopper (use phil centroid=cal) or simtbx.diffBragg.stage_two." % (best_pkl_name, hopper_input_name))
 
             cmd_log_file = os.path.join(args.outdir, "cmdline_execution.txt")
             with open(cmd_log_file, "w") as o:

@@ -11,6 +11,7 @@ parser.add_argument("--splitDir", default=None, type=str, help="optional folder 
                                                                "split files will be written in same folders as their sources")
 parser.add_argument("--exptSuffix", type=str, default="refined.expt", help="find experiments with this suffix")
 parser.add_argument("--reflSuffix", type=str, default="indexed.refl", help="find reflection files with this suffix")
+parser.add_argument("--write", action="store_true")
 
 
 args = parser.parse_args()
@@ -25,10 +26,11 @@ from dials.array_family import flex
 from simtbx.diffBragg import hopper_io
 import hashlib
 
+
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 
-if COMM.rank==0:
+if COMM.rank==0 and args.write:
     if args.splitDir is not None and not os.path.exists(args.splitDir):
         os.makedirs(args.splitDir)
 
@@ -48,7 +50,7 @@ def get_idx_path(El):
     return idx, path
 
 
-def split_stills_expts(expt_f, refl_f, split_dir):
+def split_stills_expts(expt_f, refl_f, split_dir, write=False):
     El = ExperimentList.from_file(expt_f, False)
     R = flex.reflection_table.from_file(refl_f)
     expt_names = []
@@ -65,14 +67,15 @@ def split_stills_expts(expt_f, refl_f, split_dir):
             seen_isets[iset_id] += 1
         tag = "%s-%d" % (os.path.basename(os.path.splitext(path)[0]), idx)
         new_expt_name = os.path.splitext(expt_f)[0] + "_%s_xtal%d.expt" % (tag, seen_isets[iset_id])
-        if split_dir is not None:
+        if write and split_dir is not None:
             unique_tag = "shot_%s" % hash_name(new_expt_name) + ".expt"
             new_expt_name = os.path.join(split_dir, unique_tag)
         new_refl_name = new_expt_name.replace(".expt", ".refl")
         refls = R.select(R['id'] == i_expt)
 
-        one_exp_El.as_file(new_expt_name)
-        refls.as_file(new_refl_name)
+        if write:
+            one_exp_El.as_file(new_expt_name)
+            refls.as_file(new_refl_name)
         expt_names.append(new_expt_name)
         refl_names.append(new_refl_name)
         orig_expt_names.append((apath(new_expt_name), (apath(expt_f), i_expt)))
@@ -118,12 +121,20 @@ orig_ref_names = COMM.reduce(orig_ref_names)
 
 if COMM.rank==0:
 
-    print("Saving the input file for diffBragg")
-    hopper_io.save_expt_refl_file(args.filename, exp_names, ref_names, check_exists=True)
-    print("Saved %s" % args.filename)
-
-    jname = args.filename + ".json"
-    jdat = {"expt": dict(orig_exp_names), "refl": dict(orig_ref_names)}
-    with open(jname, "w") as fp:
-        json.dump(jdat,  fp, indent=1)
-    print("Wrote json %s, which maps the hashnames to the original expt files" % jname)
+    if args.write:
+        print("Saving the input file for diffBragg")
+        hopper_io.save_expt_refl_file(args.filename, exp_names, ref_names, check_exists=True)
+        print("Saved %s" % args.filename)
+        jname = args.filename + ".json"
+        jdat = {"expt": dict(orig_exp_names), "refl": dict(orig_ref_names)}
+        with open(jname, "w") as fp:
+            json.dump(jdat, fp, indent=1)
+        print("Wrote json %s, which maps the hashnames to the original expt files" % jname)
+    else:
+        _, exp_and_idx = zip(*orig_exp_names)
+        _, ref_and_idx = zip(*orig_ref_names)
+        exp, exp_idx = zip(*exp_and_idx)
+        ref, ref_idx = zip(*ref_and_idx)
+        assert exp_idx == ref_idx
+        hopper_io.save_expt_refl_file(args.filename, exp, ref, check_exists=True,
+                                      indices=exp_idx)
