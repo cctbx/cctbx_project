@@ -32,11 +32,9 @@ Usage example:
     inp_models = []
     for model_name in self.data_manager.get_model_names():
       inp_models.append((model_name, self.data_manager.get_model(model_name)))
-
     theta1_data = []
     Rha_data = []
     for m_name, model in inp_models:
-      # model = self.data_manager.get_model()
       model.set_log(log = null_out())
       if self.params.hbond.add_hydrogens_if_absent and not model.has_hd():
         from elbow.command_line.ready_set import model_interface as ready_set_model_interface
@@ -50,7 +48,7 @@ Usage example:
       if self.params.hbond.show_hbonds:
         self.results.show(log = self.logger)
       print("-"*79, file=self.logger)
-      self.results.show_summary(log = self.logger)
+      #self.results.show_summary(log = self.logger)
       prefix=self.params.output.prefix
       if not prefix:
         prefix='%s_hbond' % os.path.basename(m_name).split('.')[0]
@@ -59,11 +57,14 @@ Usage example:
       if self.params.hbond.output_restraint_file:
         self.results.as_restraints(file_name='%s.eff' % prefix)
       #
-      if self.params.hbond.output_stats_pdf:
-        mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix)
+      stats = mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix,
+        output_stats_pdf = self.params.hbond.output_stats_pdf)
       min_data_size=self.params.hbond.min_data_size
-      theta1_data.append(self.results.get_counts(min_data_size=min_data_size).theta_1)
-      Rha_data.append(self.results.get_counts(min_data_size=min_data_size).d_HA)
+      # These are the values to be used for the plot!
+      stats.all.show_summary(log = self.logger)
+      theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
+      Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
+
     if self.params.hbond.output_skew_kurtosis_plot and self.results.get_counts():
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
       # like in stats().
