@@ -38,6 +38,12 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
+  std::cout << "XXX Mapping the float" << std::endl;
+  typedef scitbx::af::boost_python::shared_wrapper<float> wflt;
+  class_<wflt::w_t> wf = wflt::wrap("af_shared_float");
+  scitbx::af::boost_python::select_wrappers<
+    float, scitbx::af::shared<float> >::wrap(wf);
+  std::cout << "XXX Done mapping the float" << std::endl;
   /*
   std::cout << "XXX Mapping the double" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<double> wdbl;

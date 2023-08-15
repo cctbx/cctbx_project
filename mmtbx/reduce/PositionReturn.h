@@ -47,17 +47,23 @@ namespace molprobity {
       ///     each set of positions.
       /// @return A PositionReturn object with the given values.
       PositionReturn(
-        scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const &p_atoms
-        , scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> >  const &p_positions
-        , scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > const &p_extraInfos
-        , scitbx::af::shared< scitbx::af::shared<bool> > const &p_deleteMes
-        , scitbx::af::shared<double>  const &p_preferenceEnergies
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const& p_atoms
+        , scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> >  const& p_positions
+        , scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > const& p_extraInfos
+        , scitbx::af::shared< scitbx::af::shared<bool> > const& p_deleteMes
+        , scitbx::af::shared<double>  const& p_preferenceEnergies
       ) : atoms(p_atoms)
         , positions(p_positions)
         , extraInfos(p_extraInfos)
         , deleteMes(p_deleteMes)
-        , preferenceEnergies(p_preferenceEnergies)
-      { };
+        /// @todo preferenceEnergies(p_preferenceEnergies)
+      {
+        /// @todo Remove once we are using doubles rather than floats
+        preferenceEnergies.resize(p_preferenceEnergies.size());
+        for (size_t i = 0; i < p_preferenceEnergies.size(); ++i) {
+          preferenceEnergies[i] = p_preferenceEnergies[i];
+        }
+      };
 
       /// A list of all of the atoms to be adjusted.
       scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms;
@@ -80,7 +86,8 @@ namespace molprobity {
       /// The preferenceEnergies entry holds an additional bias term that should be
       /// added to the Probe score for each set of positions before comparing them
       /// with each other.
-      scitbx::af::shared<double>  preferenceEnergies;
+      /// @todo We use a float here to avoid double-wrapping the af::shared:double.
+      scitbx::af::shared<float>  preferenceEnergies;
     };
 
     //=====================================================================================================

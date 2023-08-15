@@ -199,6 +199,8 @@ def _AABBOverlap(box1, box2):
 
 # This function has been moved into C++ for speed. The original Python function
 # is below it and commented out.
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_reduce_ext")
 from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
 """Helper function that tells whether any pair of atoms from two Movers overlap.
 :param mover1: The first Mover
