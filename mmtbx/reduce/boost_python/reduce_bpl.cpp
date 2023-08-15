@@ -23,8 +23,28 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 
+#include <scitbx/vec3.h>
+#include <scitbx/math/rotate_around_axis.h>
+
 using namespace boost::python;
 using namespace molprobity::reduce;
+
+// This reformats the parameters to match the values expected by the C++ function
+// in the library and then calls it.
+scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
+  scitbx::vec3<double> const& axis_point_1,
+  scitbx::vec3<double> const& axis_direction,
+  scitbx::vec3<double> const& point,
+  double angle_degrees
+) {
+  scitbx::vec3<double> const& axis_point_2 = axis_point_1 + axis_direction;
+  return scitbx::math::rotate_point_around_axis(
+    axis_point_1,
+    axis_point_2,
+    point,
+    angle_degrees * scitbx::constants::pi_180
+  );
+}
 
 BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
@@ -107,4 +127,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
   def("PairsOverlap", PairsOverlap, "Test for overlap between two pairs of atoms.");
+
+  def("RotatePointDegreesAroundAxisDir", RotatePointDegreesAroundAxisDir,
+    "Rotate a point around an axis direction in degrees.");
 }
