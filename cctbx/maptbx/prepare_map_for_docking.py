@@ -1020,7 +1020,7 @@ def add_ordered_volume_mask(
   mc1_in = mm1.map_as_fourier_coefficients(d_min=d_work)
   mm2 = mmm.map_manager_2()
   mc2_in = mm2.map_as_fourier_coefficients(d_min=d_work)
-  if d_min < 5.: # Auto-sharpen if approaching Wilson plot domain of resolution
+  if d_min < 10.: # Auto-sharpen unless very low resolution
     mc1s, mc2s = auto_sharpen_isotropic(mc1_in, mc2_in)
   else:
     mc1s = mc1_in
