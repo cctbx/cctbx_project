@@ -172,9 +172,7 @@ class _SingletonOptimizer(object):
 
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -209,11 +207,9 @@ class _SingletonOptimizer(object):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -245,9 +241,9 @@ class _SingletonOptimizer(object):
     # Store the parameters that will be accessed by other methods
     self._probePhil = probePhil
     self._bondedNeighborDepth = bondedNeighborDepth
-    self._probeRadius = probeRadius
+    self._probeRadius = probePhil.probe_radius
     self._useNeutronDistances = useNeutronDistances
-    self._probeDensity = probeDensity
+    self._probeDensity = probePhil.density
     self._minOccupancy = minOccupancy
     self._preferenceMagnitude = preferenceMagnitude
     self._nonFlipPreference = nonFlipPreference
@@ -384,7 +380,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
-        self._spatialQuery = probeExt.SpatialQuery(self._atoms)
+        self._spatialQuery = Helpers.createSpatialQuery(self._atoms, self._probePhil)
         self._infoString += _ReportTiming(self._verbosity, "construct spatial query")
 
         ################################################################################
@@ -438,7 +434,7 @@ class _SingletonOptimizer(object):
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
         self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers,
-          self._extraAtomInfo, probeRadius=probeRadius)
+          self._extraAtomInfo, probeRadius=self._probeRadius)
         components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
@@ -473,7 +469,7 @@ class _SingletonOptimizer(object):
         self._excludeDict = {}
         for a in moverAtoms:
           self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth, 3)
+            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -563,7 +559,7 @@ class _SingletonOptimizer(object):
         # Construct dot-spheres for each atom that we may need to find interactions for.
         # This must be done after the phantom Hydrogens have been added so that they will be included.
         # Look up dot-spheres by i_seq.
-        dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
+        dotSphereCache = Helpers.createDotSphereCache(self._probePhil)
         self._dotSpheres = {}
         for a in self._atoms:
           self._dotSpheres[a.i_seq] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
@@ -571,7 +567,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Contruct the DotScorer object we'll use to score the dots.
-        self._dotScorer = probeExt.DotScorer(self._extraAtomInfo)
+        self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self._probePhil)
         self._infoString += _ReportTiming(self._verbosity, "construct dot scorer")
 
         ################################################################################
@@ -1255,9 +1251,7 @@ class _SingletonOptimizer(object):
 class _BruteForceOptimizer(_SingletonOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -1289,11 +1283,9 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1321,7 +1313,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """
     super(_BruteForceOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1390,9 +1382,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 class _CliqueOptimizer(_BruteForceOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -1429,11 +1419,9 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1461,7 +1449,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     """
     super(_CliqueOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1563,9 +1551,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
 class FastOptimizer(_CliqueOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
-                probeRadius = 0.25,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -1600,11 +1586,9 @@ class FastOptimizer(_CliqueOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
     neighbors and their bonded neighbors).
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1643,7 +1627,7 @@ class FastOptimizer(_CliqueOptimizer):
 
     super(FastOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1879,6 +1863,24 @@ def _generateAllStates(numStates):
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
 
+# Class to pass default Probe parameters as if they were in a probePhil structure
+class _philLike:
+  def __init__(self, useImplicitHydrogenDistances = False):
+    self.probe_radius = 0.25
+    self.density = 16.0
+    self.worse_clash_cutoff = 0.5
+    self.clash_cutoff = 0.4
+    self.contact_cutoff = 0.25
+    self.uncharged_hydrogen_cutoff = 0.6
+    self.charged_hydrogen_cutoff = 0.8
+    self.bump_weight = 10.0
+    self.hydrogen_bond_weight = 4.0
+    self.gap_weight = 0.25
+    self.allow_weak_hydrogen_bonds = False
+    self.implicit_hydrogens = useImplicitHydrogenDistances
+    self.ignore_ion_interactions = False
+    self.set_polar_hydrogen_radius = True
+
 def _optimizeFragment(pdb_raw):
   """Returns an optimizer constructed based on the raw PDB data snippet passed in.
   :param pdb_raw: A string that includes a snippet of a PDB file. Should have no alternates.
@@ -1929,13 +1931,9 @@ def _optimizeFragment(pdb_raw):
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
-      useNeutronDistances=False,probePhil=probePhil)
+      useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
@@ -1945,7 +1943,7 @@ def _optimizeFragment(pdb_raw):
 
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   return FastOptimizer(probePhil, True, model)
 
 def Test(inFileName = None, dumpAtoms = False):
@@ -2241,13 +2239,9 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
-      useNeutronDistances=False,probePhil=probePhil)
+      useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
@@ -2267,7 +2261,7 @@ END
 
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   opt = FastOptimizer(probePhil, True, model)
   movers = opt._movers
   if len(movers) != 0:
@@ -2368,11 +2362,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -2386,13 +2376,12 @@ END
   # Make sure that the orientation for all of the movers is correct.
   # Test with each type of optimizer, from the base to the more derived, so
   # that we find out about failures on the base classes first.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
 
   print('Testing _BruteForceOptimizer')
-  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2408,10 +2397,9 @@ END
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
 
   print('Testing _CliqueOptimizer')
-  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2427,10 +2415,9 @@ END
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer multi-ACT test"
 
   print('Testing FastOptimizer')
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = FastOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2513,11 +2500,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -2529,11 +2512,10 @@ END
 
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
-  probePhil = philLike(False)
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  probePhil = _philLike(False)
+  opt = FastOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2580,27 +2562,25 @@ END
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
   # Run each type of optimizer on the model to make sure they don't crash.
-  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25)
+  opt = FastOptimizer(probePhil, True, model)
 
   # Write debugging output if we've been asked to
   if dumpAtoms:
