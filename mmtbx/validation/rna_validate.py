@@ -180,7 +180,7 @@ class rna_bonds(rna_geometry):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
@@ -273,7 +273,7 @@ class rna_angles(rna_geometry):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
