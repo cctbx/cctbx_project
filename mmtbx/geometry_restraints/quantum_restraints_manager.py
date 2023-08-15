@@ -17,6 +17,9 @@ from mmtbx.geometry_restraints import orca_manager
 
 from mmtbx.model.restraints import get_restraints_from_model_via_grm
 
+import iotbx
+get_class = iotbx.pdb.common_residue_names_get_class
+
 from scitbx.matrix import col
 
 WRITE_STEPS_GLOBAL=False
@@ -298,6 +301,11 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
     if (residue_group.atom_groups_size() != 1):
       raise Sorry("Not implemented: cannot run QI on buffer "+
                   "molecules with alternate conformations")
+  for atom_group in buffer_model.get_hierarchy().atom_groups():
+    if get_class(atom_group.resname) in ["common_rna_dna",
+                                         "modified_rna_dna",
+                                         "ccp4_mon_lib_rna_dna"]:
+      raise Sorry('QI cannot protonate RNA/DNA : "%s"' % atom_group.id_str())
   if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
   do_not_prune = qmr.buffer_selection
   super_cell_and_prune(buffer_model,
