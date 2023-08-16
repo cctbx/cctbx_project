@@ -224,11 +224,13 @@ class rotalyze(validation):
     out_count, out_percent = self.get_outliers_count_and_fraction()
     self.out_percent = out_percent * 100.0
     assert abs(self.percent_outliers - self.out_percent) < 1.e-6
-    self.percent_favored  = self.n_favored * 100. / self.n_total
-    self.percent_allowed  = self.n_allowed * 100. / self.n_total
-    # Checksum assert
-    assert abs(self.percent_favored+self.percent_allowed+
-               self.percent_outliers-100.) < 1.e-6
+    self.percent_favored, self.percent_allowed = None, None
+    if(self.n_total>0):
+      self.percent_favored  = self.n_favored * 100. / self.n_total
+      self.percent_allowed  = self.n_allowed * 100. / self.n_total
+      # Checksum assert
+      assert abs(self.percent_favored+self.percent_allowed+
+                 self.percent_outliers-100.) < 1.e-6
 
   def evaluateScore(self, value, model_id=""):
     if value >= ALLOWED_THRESHOLD :
