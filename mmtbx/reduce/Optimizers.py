@@ -1372,8 +1372,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     for i,m in enumerate(movers):
       self._setMoverState(states[i], bestState[i])
       self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-      self._highScores[m] += self._scorePosition(states[i], curStateValues[i])
+      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
+      self._highScores[m] += self._scorePosition(states[i], bestState[i])
       self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
         ", max score = {:.2f}\n".format(self._highScores[m]))
       ret += self._highScores[m]
