@@ -941,6 +941,8 @@ Borrowing them from the first miller array""" %i)
     # Make temporary data array the size of hkls. This will be filled with datavalues
     # from procarray matching the order of indices in hkls
     datarr = flex.double(len(hkls), float("nan"))
+    if isinstance( procarray.data(), flex.complex_double):
+      datarr = flex.complex_double(len(hkls), float("nan"))
     # assign data values corresponding to matching indices to datarr
     m = miller.match_indices(procarray.indices(), hkls )
     # get single indices in hkls matching procarray.indices()
