@@ -1548,6 +1548,9 @@ class manager(object):
       self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
 
+  def can_be_outputted_as_pdb(self):
+    return True
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
