@@ -23,6 +23,7 @@
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
 #include <scitbx/array_family/boost_python/selections_wrapper.h>
 
+#include <scitbx/math/modulo.h>
 #include <scitbx/vec3.h>
 #include <scitbx/math/rotate_around_axis.h>
 
