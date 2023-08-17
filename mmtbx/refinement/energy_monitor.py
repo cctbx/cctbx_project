@@ -49,6 +49,8 @@ class energies(list):
             t += '%s%s\n' % (' '*6, line)
       if verbose: print('macro_cycle %d %s' % (i+1,t))
       for k1, k2 in pairs:
+        if not (t_atoms[i].get(k1, False) and t_atoms[i].get(k2, False)):
+          continue
         if t_atoms[i][k1]!=t_atoms[i][k2]: continue
         if k1 in tmp[i] and k2 in tmp[i]:
           e = tmp[i][k1]-tmp[i][k2]
