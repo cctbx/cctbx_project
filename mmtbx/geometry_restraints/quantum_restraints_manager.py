@@ -1006,7 +1006,7 @@ def update_restraints(model,
               file=log)
         print('  Check the QM minimisation for errors or incorrect protonation.',
               file=log)
-        if rmsd>20:
+        if ligand_rmsd>20:
           print('  Movement of cartesian coordinates is very large.', file=log)
       ligand_model.get_hierarchy().atoms().set_xyz(xyz)
     old = buffer_model.get_hierarchy().atoms().extract_xyz()
