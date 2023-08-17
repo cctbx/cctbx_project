@@ -12,6 +12,7 @@ from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
 from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
+from scitbx.array_family import flex
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -195,16 +196,8 @@ class rna_bonds(rna_geometry):
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
-          xyz=self.mean_xyz([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]),
+          xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
           outlier=is_outlier))
-
-  def mean_xyz(self, atom_xyzs):
-    sums = [0]*3
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
-    return mean
 
   def get_result_class(self) : return rna_bond
 
@@ -414,10 +407,7 @@ class rna_puckers(rna_geometry):
       if sug_atom is not None:
         atom_xyzs.append(sug_atom.xyz)
     assert len(atom_xyzs) > 0, "RNA sugar pucker validation found zero sugar atoms, probably due to non-standard atom names"
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
+    mean = flex.vec3_double(atom_xyzs).mean()
     return mean
 
   def get_result_class(self) : return rna_pucker

@@ -1,7 +1,5 @@
 
 # TODO reduce to one outlier per residue
-# ideal values return
-# return measured value
 # CDL on by default?
 
 from __future__ import absolute_import, division, print_function
@@ -12,6 +10,7 @@ from mmtbx.validation import validation
 from mmtbx.validation import residue
 from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
+from scitbx.array_family import flex
 from cctbx import geometry_restraints
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
@@ -145,16 +144,8 @@ class mp_bonds(validation):
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
-          xyz=self.mean_xyz([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]),
+          xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
           outlier=is_outlier))
-
-  def mean_xyz(self, atom_xyzs):
-    sums = [0]*3
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
-    return mean
 
   def get_result_class(self) : return mp_bond
 
