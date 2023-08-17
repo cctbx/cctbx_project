@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
+from itertools import chain
 import os
 import socket
 import sys
@@ -415,16 +416,31 @@ class RefineLauncher:
         #for i_shot in self.Hi: #range(nshots_on_this_rank):
         #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
 
-        Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
-        unique_asu_all_ranks = None
-        if COMM.rank==0:
-            temp = []
-            for Hi_asu in Hi_asu_all_ranks:
-                for i_shot in Hi_asu:
-                    temp += Hi_asu[i_shot]
-            Hi_asu_all_ranks = temp
-            unique_asu_all_ranks = set(Hi_asu_all_ranks)
-        unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
+        Hi_possible = self._get_possible_Hi()
+        Hi_on_this_rank = list(chain.from_iterable(self.Hi_asu.values()))
+        Hi_possible_count_rank = [Hi_on_this_rank.count(p) for p in Hi_possible]
+        Hi_possible_count_rank = np.array(Hi_possible_count_rank, dtype=int)
+        Hi_possible_count = np.zeros_like(Hi_possible_count_rank, dtype=int)
+        COMM.Allreduce(Hi_possible_count_rank, Hi_possible_count, op=MPI.SUM)
+        unique_asu_all_ranks = []
+        Hi_asu_all_ranks = []
+        for p, c in Hi_possible, Hi_possible_count:
+            if c:
+                unique_asu_all_ranks.append(p)
+                Hi_asu_all_ranks.extend([p] * c)
+
+        # TODO: Unused Derek's code, too MPI-intensive - reference, to be removed
+        # Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
+        # unique_asu_all_ranks = None
+        # if COMM.rank==0:
+        #     temp = []
+        #     for Hi_asu in Hi_asu_all_ranks:
+        #         for i_shot in Hi_asu:
+        #             temp += Hi_asu[i_shot]
+        #     Hi_asu_all_ranks = temp
+        #     unique_asu_all_ranks = set(Hi_asu_all_ranks)
+        # unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
+        # TODO: END of Old Derek's code to be removed - Daniel Tchon
 
         # Hi_asu_all_ranks should be None on all ranks except rank0
         marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
@@ -439,19 +455,31 @@ class RefineLauncher:
         fres = marr_unique_h.d_spacings()
         self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
 
+    def _get_first_modeller_symmetry(self):
+        ii = list(self.Modelers.keys())[0]
+        uc = self.Modelers[ii].ucell_man
+        params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
+        if self.params.refiner.force_unit_cell is not None:
+            params = self.params.refiner.force_unit_cell
+        return crystal.symmetry(unit_cell=params, space_group_symbol=self.symbol)
+
+    def _get_possible_Hi(self):
+        if COMM.rank == 0:
+            symm = self._get_first_modeller_symmetry()
+            res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
+            d_min = min([d_min for d_min, _ in res_ranges]) * 0.8  # accomodate variations in unit cell
+            mset_full = symm.build_miller_set(anomalous_flag=True, d_min=d_min)
+            Hi_possible = list(mset_full.indices())
+        else:
+            Hi_possible = None
+        return COMM.bcast(Hi_possible, root=0)
+
     def _get_unique_Hi(self, Hi_asu_all_ranks):
         COMM.barrier()
         if COMM.rank == 0:
-            from cctbx.crystal import symmetry
-            from cctbx import miller
             from cctbx.array_family import flex as cctbx_flex
 
-            ii = list(self.Modelers.keys())[0]
-            uc = self.Modelers[ii].ucell_man
-            params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
-            if self.params.refiner.force_unit_cell is not None:
-                params = self.params.refiner.force_unit_cell
-            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
+            symm = self._get_first_modeller_symmetry()
             hi_asu_flex = cctbx_flex.miller_index(Hi_asu_all_ranks)
             mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
             marr = miller.array(mset)
@@ -470,7 +498,6 @@ class RefineLauncher:
 
             print("Overall completeness\n<><><><><><><><>")
             unique_Hi_asu = set(Hi_asu_all_ranks)
-            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
             hi_flex_unique = cctbx_flex.miller_index(list(unique_Hi_asu))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
             self.binner = mset.setup_binner(d_min=self.params.refiner.stage_two.d_min,
