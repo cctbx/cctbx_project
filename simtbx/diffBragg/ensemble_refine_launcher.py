@@ -486,7 +486,6 @@ class RefineLauncher:
             marr = miller.array(mset)
             binner = marr.setup_binner(d_max=self.params.refiner.stage_two.d_max, d_min=self.params.refiner.stage_two.d_min,
                                        n_bins=self.params.refiner.stage_two.n_bin)
-            from collections import Counter
             print("Average multiplicities:")
             print("<><><><><><><><><><><><>")
             for i_bin in range(self.params.refiner.stage_two.n_bin - 1):
