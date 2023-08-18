@@ -11,6 +11,9 @@
 // See the License for the specific language governing permissionsand
 // limitations under the License.
 
+// Contains functions and classes to support the InteractionGraph.py classes.
+// They are linked into the mmtbx_reduce_ext library by boost_python/reduce_bpl.cpp.
+
 #pragma once
 
 #include <string>

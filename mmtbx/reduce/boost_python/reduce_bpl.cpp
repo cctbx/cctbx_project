@@ -18,6 +18,7 @@
 #include <scitbx/boost_python/container_conversions.h>
 #include <mmtbx/reduce/PositionReturn.h>
 #include <mmtbx/reduce/InteractionGraph.h>
+#include <mmtbx/reduce/Optimizers.h>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <scitbx/array_family/boost_python/flex_wrapper.h>
@@ -32,7 +33,7 @@ using namespace molprobity::reduce;
 
 // This reformats the parameters to match the values expected by the C++ function
 // in the library and then calls it.
-scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
+static scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
   scitbx::vec3<double> const& axis_point_1,
   scitbx::vec3<double> const& axis_direction,
   scitbx::vec3<double> const& point,
@@ -102,8 +103,10 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 
   // Define the flex array wrapping for these classes because we take them as parameters.
   std::cout << "XXX Adding container conversions" << std::endl;
-  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-  //  scitbx::af::shared< scitbx::af::shared<molprobity::probe::ExtraAtomInfo> > >();
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared<boost::python::object> >();
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared<molprobity::reduce::PositionReturn> >();
   //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
   //  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
   //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
@@ -127,7 +130,15 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   // Export the global functions
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
-  def("PairsOverlap", PairsOverlap, "Test for overlap between two pairs of atoms.");
+  def("PairsOverlap", PairsOverlap,
+    "Test for overlap between two pairs of atoms.");
+  def("InteractionGraph_test", InteractionGraph_test,
+    "Test all classes and functions defined in InteractionGraph.h.");
+
+  def("OptimizeCliqueCoarseBruteForceC", OptimizeCliqueCoarseBruteForceC,
+    "Brute-force optimization of a clique.");
+  def("Optimizers_test", Optimizers_test,
+    "Test all classes and functions defined in Optimizers.h.");
 
   def("RotatePointDegreesAroundAxisDir", RotatePointDegreesAroundAxisDir,
     "Rotate a point around an axis direction in degrees.");

@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022 Richardson Lab at Duke University
+#                Copyright 2021-2023 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,9 +37,16 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.reduce import Movers
 from mmtbx.reduce import InteractionGraph
 
+from mmtbx_reduce_ext import OptimizeCliqueCoarseBruteForceC, Optimizers_test
+
 ##################################################################################
 # This file includes a set of functions and classes that implement placement and optimization of
 # Reduce's "Movers".
+
+##################################################################################
+# Module variables that affect the way computations are handled
+
+_DoCliqueOptimizationInC = False
 
 ##################################################################################
 # Helper functions
@@ -752,15 +759,20 @@ class _SingletonOptimizer(object):
       by removing the old and adding the new location.
     """
     for i, a in enumerate(positionReturn.atoms):
+
       self._spatialQuery.remove(a)
       # Make a slice here so that we get a copy of the location rather than a reference to it
       a.xyz = positionReturn.positions[index][i][:]
       self._spatialQuery.add(a)
-    # Update the extra atom information associated with the atom.
+
+    # Update the extra atom information associated with each atom.
+    # Note that there may be fewer entries than atoms, but they all correspond.
     for i, e in enumerate(positionReturn.extraInfos[index]):
       self._extraAtomInfo.setMappingFor(positionReturn.atoms[i], e)
+
     # Manage the deletion status of each atom, including ensuring
     # consistency with the spatial-query structure.
+    # Note that there may be fewer entries than atoms, but they all correspond.
     for i, doDelete in enumerate(positionReturn.deleteMes[index]):
       if doDelete:
         self._spatialQuery.remove(positionReturn.atoms[i])
@@ -1332,52 +1344,66 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """
     self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
 
-    # Find the value for the current set of states, compare it against the max, and store it if
-    # it is the best so far.
-    # We will cycle the states[] list through all possible states for each Mover;
-    # use the generating function to cycle through all possible states, keeping track of the best.
-    bestState = None
-    bestScore = -1e100  # Any score will be better than this
     states = []         # Coarse position state return for each Mover
     numStates = []      # Number of positions for each Mover
     movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
     for m in movers:
       states.append(m.CoarsePositions())
       numStates.append(len(states[-1].positions))
-    for curStateValues in _generateAllStates(numStates):
 
-      # Set all movers to match the state list.
+    if _DoCliqueOptimizationInC:
+      (bestScore, infoString) = OptimizeCliqueCoarseBruteForceC(
+                self, self._verbosity, self._preferenceMagnitude,
+                movers, states, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                self._coarseLocations, self._highScores)
+      self._infoString += infoString
+      return bestScore
+
+    else:
+      ########## Doing optimization in Python, which was the orginal approach.
+      # The C++ approach is faster but this is the gold-standard result against which it must
+      # be compared.
+
+      # Find the value for the current set of states, compare it against the max, and store it if
+      # it is the best so far.
+      # We will cycle the states[] list through all possible states for each Mover;
+      # use the generating function to cycle through all possible states, keeping track of the best.
+      bestState = None
+      bestScore = -1e100  # Any score will be better than this
+      for curStateValues in _generateAllStates(numStates):
+
+        # Set all movers to match the state list.
+        for i,m in enumerate(movers):
+          # Only change this Mover if it is different from the last time.
+          if self._coarseLocations[m] != curStateValues[i]:
+            self._setMoverState(states[i], curStateValues[i])
+            self._coarseLocations[m] = curStateValues[i]
+
+        # Compute the score over all atoms in all Movers and see if it is the best.  If so,
+        # update the best.
+        score = 0
+        for i in range(len(movers)):
+          score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
+          score += self._scorePosition(states[i], curStateValues[i])
+        self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
+        if score > bestScore or bestState is None:
+          self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
+          bestScore = score
+          bestState = curStateValues[:]
+
+      # Put each Mover into its state in the best configuration and compute its high-score value.
+      # Store the individual scores for these Movers in the best config for use in later fine-motion
+      # processing.  Return the total score.
+      ret = 0.0
       for i,m in enumerate(movers):
-        # Only change this Mover if it is different from the last time.
-        if self._coarseLocations[m] != curStateValues[i]:
-          self._setMoverState(states[i], curStateValues[i])
-          self._coarseLocations[m] = curStateValues[i]
-
-      # Compute the score over all atoms in all Movers and see if it is the best.  If so,
-      # update the best.
-      score = 0
-      for i in range(len(movers)):
-        score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-        score += self._scorePosition(states[i], curStateValues[i])
-      self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
-      if score > bestScore or bestState is None:
-        self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
-        bestScore = score
-        bestState = curStateValues[:]
-
-    # Put each Mover into its state in the best configuration and compute its high-score value.
-    # Store the individual scores for these Movers in the best config for use in later fine-motion
-    # processing.  Return the total score.
-    ret = 0.0
-    for i,m in enumerate(movers):
-      self._setMoverState(states[i], bestState[i])
-      self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
-      self._highScores[m] += self._scorePosition(states[i], bestState[i])
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
-        ", max score = {:.2f}\n".format(self._highScores[m]))
-      ret += self._highScores[m]
-    return ret
+        self._setMoverState(states[i], bestState[i])
+        self._coarseLocations[m] = bestState[i]
+        self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
+        self._highScores[m] += self._scorePosition(states[i], bestState[i])
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+          ", max score = {:.2f}\n".format(self._highScores[m]))
+        ret += self._highScores[m]
+      return ret
 
 class _CliqueOptimizer(_BruteForceOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
@@ -1691,6 +1717,7 @@ class FastOptimizer(_CliqueOptimizer):
     # Call the parent-class optimizer, turning on and off the cache behavior before
     # and after.
     self._doScoreCaching = True
+    print('XXX Optimizing clique of size', len(list(clique.vertices())))
     ret = super(FastOptimizer, self)._optimizeCliqueCoarse(clique)
     self._doScoreCaching = False
     return ret
@@ -1947,10 +1974,18 @@ def _optimizeFragment(pdb_raw):
   return FastOptimizer(probePhil, True, model)
 
 def Test(inFileName = None, dumpAtoms = False):
+
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
   :return: Empty string on success, string describing the problem on failure.
   """
+
+  #========================================================================
+  # Test the imported C++ functions
+  ret = Optimizers_test()
+  if len(ret) > 0:
+    return "Optimizers.Test(): " + ret
+
 
   #========================================================================
   # Test model to use for validating the alternate/conformer-selection functions.
