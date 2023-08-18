@@ -236,14 +236,19 @@ class PopUpCharts(object):
       gamma = flex.double([i['gamma'] for i in info])
       if ranges is not None:
         axis_sel = (a >= alim[0]) & (a <= alim[1]) & (b >= blim[0]) & (b <= blim[1]) & (c >= clim[0]) & (c <= clim[1])
+      else:
+        axis_sel = flex.bool(len(a), True)
+      if angle_ranges is not None:
         angle_sel = (alpha >= allim[0]) & (alpha <= allim[1]) & (beta >= belim[0]) & (beta <= belim[1]) & (gamma >= galim[0]) & (gamma <= galim[1])
-        sel = axis_sel & angle_sel
-        a = a.select(sel)
-        b = b.select(sel)
-        c = c.select(sel)
-        alpha = alpha.select(sel)
-        beta = beta.select(sel)
-        gamma = gamma.select(sel)
+      else:
+        angle_sel = flex.bool(len(a), True)
+      sel = axis_sel & angle_sel
+      a = a.select(sel)
+      b = b.select(sel)
+      c = c.select(sel)
+      alpha = alpha.select(sel)
+      beta = beta.select(sel)
+      gamma = gamma.select(sel)
 
       accepted = flex.bool(len(a), True)
       for d in [a, b, c, alpha, beta, gamma]:
