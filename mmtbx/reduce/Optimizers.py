@@ -46,7 +46,7 @@ from mmtbx_reduce_ext import OptimizeCliqueCoarseBruteForceC, Optimizers_test
 ##################################################################################
 # Module variables that affect the way computations are handled
 
-_DoCliqueOptimizationInC = False
+_DoCliqueOptimizationInC = True
 
 ##################################################################################
 # Helper functions
@@ -2413,7 +2413,8 @@ END
   # that we find out about failures on the base classes first.
   probePhil = _philLike(False)
 
-  print('Testing _BruteForceOptimizer')
+  print('Testing _BruteForceOptimizer Python')
+  _DoCliqueOptimizationInC = False
   opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
@@ -2425,11 +2426,30 @@ END
                 verbosity = 1)
   movers = opt._movers
   if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer multi-ACT test: " + str(len(movers))
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer Python multi-ACT test: " + str(len(movers))
   res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
-      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer Python multi-ACT test"
+
+  print('Testing _BruteForceOptimizer C++')
+  _DoCliqueOptimizationInC = True
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer C++ multi-ACT test: " + str(len(movers))
+  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer C++ multi-ACT test"
 
   print('Testing _CliqueOptimizer')
   opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
