@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
+from collections import Counter
 from itertools import chain
 import os
 import socket
@@ -416,15 +417,16 @@ class RefineLauncher:
         #for i_shot in self.Hi: #range(nshots_on_this_rank):
         #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
 
-        Hi_possible = self._get_possible_Hi()
-        Hi_on_this_rank = list(chain.from_iterable(self.Hi_asu.values()))
-        Hi_possible_count_rank = [Hi_on_this_rank.count(p) for p in Hi_possible]
-        Hi_possible_count_rank = np.array(Hi_possible_count_rank, dtype=int)
-        Hi_possible_count = np.zeros_like(Hi_possible_count_rank, dtype=int)
-        COMM.Allreduce(Hi_possible_count_rank, Hi_possible_count, op=MPI.SUM)
+        Hi_asu_possible = self._get_possible_Hi_asu()
+        Hi_asu = chain.from_iterable(self.Hi_asu.values())
+        Hi_asu_counter = Counter(Hi_asu)
+        Hi_asu_possible_counts = [Hi_asu_counter[k] for k in Hi_asu_possible]
+        Hi_asu_possible_counts = np.array(Hi_asu_possible_counts, dtype=int)
+        Hi_asu_possible_counts_global = np.zeros_like(Hi_asu_possible_counts, dtype=int)
+        COMM.Allreduce(Hi_asu_possible_counts, Hi_asu_possible_counts_global, op=MPI.SUM)
         unique_asu_all_ranks = []
         Hi_asu_all_ranks = []
-        for p, c in Hi_possible, Hi_possible_count:
+        for p, c in Hi_asu_possible, Hi_asu_possible_counts_global:
             if c:
                 unique_asu_all_ranks.append(p)
                 Hi_asu_all_ranks.extend([p] * c)
@@ -463,16 +465,16 @@ class RefineLauncher:
             params = self.params.refiner.force_unit_cell
         return crystal.symmetry(unit_cell=params, space_group_symbol=self.symbol)
 
-    def _get_possible_Hi(self):
+    def _get_possible_Hi_asu(self):
         if COMM.rank == 0:
             symm = self._get_first_modeller_symmetry()
             res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
             d_min = min([d_min for d_min, _ in res_ranges]) * 0.8  # accomodate variations in unit cell
             mset_full = symm.build_miller_set(anomalous_flag=True, d_min=d_min)
-            Hi_possible = list(mset_full.indices())
+            Hi_asu_possible = list(mset_full.indices())
         else:
-            Hi_possible = None
-        return COMM.bcast(Hi_possible, root=0)
+            Hi_asu_possible = None
+        return COMM.bcast(Hi_asu_possible, root=0)
 
     def _get_unique_Hi(self, Hi_asu_all_ranks):
         COMM.barrier()
