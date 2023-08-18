@@ -426,7 +426,7 @@ class RefineLauncher:
         COMM.Allreduce(Hi_asu_possible_counts, Hi_asu_possible_counts_global, op=MPI.SUM)
         unique_asu_all_ranks = []
         Hi_asu_all_ranks = []
-        for p, c in Hi_asu_possible, Hi_asu_possible_counts_global:
+        for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
             if c:
                 unique_asu_all_ranks.append(p)
                 Hi_asu_all_ranks.extend([p] * c)
