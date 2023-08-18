@@ -16,13 +16,10 @@ if (not env_etc.no_boost_python):
     target=["#reduce/lib/reduce2lib"],
     source=[
       "PositionReturn.cpp", "InteractionGraph.cpp", "Optimizers.cpp"
-      # @todo Can we link to these rather than compiling them in twice?
-      , "../probe/SpatialQuery.cpp"
-      , "../probe/Scoring.cpp"
     ])
 
-  env_bpl.Append(LIBPATH=["#reduce/lib"])
-  env_bpl.Prepend(LIBS=["reduce2lib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])
+  env_bpl.Append(LIBPATH=["#reduce/lib","#probe/lib"])
+  env_bpl.Prepend(LIBS=["reduce2lib", "probelib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])
 
   env_bpl.SharedLibrary(
     target="#lib/mmtbx_reduce_ext",
