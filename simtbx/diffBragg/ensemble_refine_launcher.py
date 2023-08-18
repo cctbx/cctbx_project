@@ -477,7 +477,6 @@ class RefineLauncher:
         return COMM.bcast(Hi_asu_possible, root=0)
 
     def _get_unique_Hi(self, Hi_asu_all_ranks):
-        COMM.barrier()
         if COMM.rank == 0:
             from cctbx.array_family import flex as cctbx_flex
 
