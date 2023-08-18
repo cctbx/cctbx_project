@@ -30,9 +30,6 @@ namespace molprobity {
         @param [in] preferenceMagnitude: Multiples the preference energies, so that we
                 can scale down their importance if we want.
         @param [in] movers: A list of Movers to jointly optimize.
-        @param [in] states: List of responses to calling CoarsePositions() on
-                each of the movers, with each entry corresponding to its mover. These are
-                easier to fill in via Python than to determine here.
         @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
         @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
         @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
@@ -49,7 +46,6 @@ namespace molprobity {
       int verbosity,
       double preferenceMagnitude,
       scitbx::af::shared<boost::python::object> movers,
-      scitbx::af::shared<molprobity::reduce::PositionReturn> states,
       molprobity::probe::SpatialQuery &spatialQuery,
       molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
       boost::python::object &deleteMes,

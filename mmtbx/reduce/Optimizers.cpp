@@ -145,7 +145,6 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
   int verbosity,
   double preferenceMagnitude,
   scitbx::af::shared<boost::python::object> movers,
-  scitbx::af::shared<molprobity::reduce::PositionReturn> states,
   molprobity::probe::SpatialQuery &spatialQuery,
   molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
   boost::python::object &deleteMes,
@@ -153,6 +152,12 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
   boost::python::dict &highScores
 )
 {
+  // Fill in a vector with the states of each mover.
+  scitbx::af::shared<molprobity::reduce::PositionReturn> states;
+  for (auto m : movers) {
+    states.push_back(boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")()));
+  }
+
   // Keep track of the best score and the state where we found it.
   double bestScore = -1e100;
   std::vector<unsigned> bestState;

@@ -1344,17 +1344,12 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """
     self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
 
-    states = []         # Coarse position state return for each Mover
-    numStates = []      # Number of positions for each Mover
     movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
-    for m in movers:
-      states.append(m.CoarsePositions())
-      numStates.append(len(states[-1].positions))
 
     if _DoCliqueOptimizationInC:
       (bestScore, infoString) = OptimizeCliqueCoarseBruteForceC(
                 self, self._verbosity, self._preferenceMagnitude,
-                movers, states, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                movers, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
                 self._coarseLocations, self._highScores)
       self._infoString += infoString
       return bestScore
@@ -1363,6 +1358,12 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       ########## Doing optimization in Python, which was the orginal approach.
       # The C++ approach is faster but this is the gold-standard result against which it must
       # be compared.
+
+      states = []         # Coarse position state return for each Mover
+      numStates = []      # Number of positions for each Mover
+      for m in movers:
+        states.append(m.CoarsePositions())
+        numStates.append(len(states[-1].positions))
 
       # Find the value for the current set of states, compare it against the max, and store it if
       # it is the best so far.
