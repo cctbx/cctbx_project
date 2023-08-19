@@ -454,7 +454,9 @@ class RefineLauncher:
         # TODO: END of Old Derek's code to be removed - Daniel Tchon
 
         # Hi_asu_all_ranks should be None on all ranks except rank0
-        marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
+        # TODO this step seems to be diagnostics only and takes super long
+        # marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
+        # TODO end of step seems to be diagnostics only and takes super long
 
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
         self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
