@@ -253,29 +253,30 @@ class StageTwoRefiner(BaseRefiner):
 
         LOGGER.info("--Setting up per shot parameters - before loop")
         LOGGER.info(memory_report())
-        # self.hkl_totals = []
-        # if self.refine_Fcell:
-        #     for i_shot in self.shot_ids:
-        #         for i_h, h in enumerate(self.Modelers[i_shot].Hi_asu):
-        #             self.hkl_totals.append(self.idx_from_asu[h])
-        #     # FIXME this calculates sums of indices' indexes and I am fairly
-        #     # FIXME sure it is supposed to count miller indices (again) later
-        #     # FIXME This is very important because it influences refinement
-        #     self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
-
-        LOGGER.info("compute HKL multiplicity")
-        Hi_asu_counter = Counter()
+        self.hkl_totals = []
         if self.refine_Fcell:
             for i_shot in self.shot_ids:
-                Hi_asu_counter += Counter(self.Modelers[i_shot].Hi_asu)
-        hkl_frequency = Counter({self.idx_from_asu[h]: c
-                                 for h, c in Hi_asu_counter.items()})
-        hkl_frequencies = COMM.gather(hkl_frequency, root=0)
-        hkl_total_frequency = Counter()
-        if COMM.rank == 0:
-            for hkl_rank_frequency in hkl_frequencies:
-                hkl_total_frequency += hkl_rank_frequency
-        self.hkl_frequency = COMM.bcast(hkl_total_frequency, root=0)
+                for i_h, h in enumerate(self.Modelers[i_shot].Hi_asu):
+                    self.hkl_totals.append(self.idx_from_asu[h])
+            # FIXME this calculates sums of indices' indexes and I am fairly
+            # FIXME sure it is supposed to count miller indices (again) later
+            # FIXME This is very important because it influences refinement
+            self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
+
+        # TODO this might be better, but needs gather -> reduce (mpi<0)
+        # LOGGER.info("compute HKL multiplicity")
+        # Hi_asu_counter = Counter()
+        # if self.refine_Fcell:
+        #     for i_shot in self.shot_ids:
+        #         Hi_asu_counter += Counter(self.Modelers[i_shot].Hi_asu)
+        # hkl_frequency = Counter({self.idx_from_asu[h]: c
+        #                          for h, c in Hi_asu_counter.items()})
+        # hkl_frequencies = COMM.gather(hkl_frequency, root=0)
+        # hkl_total_frequency = Counter()
+        # if COMM.rank == 0:
+        #     for hkl_rank_frequency in hkl_frequencies:
+        #         hkl_total_frequency += hkl_rank_frequency
+        # self.hkl_frequency = COMM.bcast(hkl_total_frequency, root=0)
 
         LOGGER.info("--Setting up per shot parameters - before setups")
         LOGGER.info(memory_report())
@@ -413,9 +414,10 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             LOGGER.info("---- -- counting hkl totes")
-            # TODO: The next two lines are now done elsewhere
-            # LOGGER.info("compute HKL multiplicity")
-            # self.hkl_frequency = Counter(self.hkl_totals)
+            # TODO: The next two lines can be done elsewhere more efficiently
+            LOGGER.info("compute HKL multiplicity")
+            self.hkl_frequency = Counter(self.hkl_totals)
+            del self.hkl_totals  # don't risk, this can be very large
             LOGGER.info("save HKL multiplicity")
             np.save(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
             LOGGER.info("Done ")
