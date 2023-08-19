@@ -425,16 +425,16 @@ class RefineLauncher:
         LOGGER.info("EVENT: Gathering global HKL information - post reduce")
         LOGGER.info(utils.memory_report())
         unique_asu_all_ranks = []
-        Hi_asu_all_ranks = []
-        if COMM.rank == 0:
-            for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
-                if c:
-                    unique_asu_all_ranks.append(p)
-                    Hi_asu_all_ranks.extend([p] * c)
-        else:
-            for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
-                if c:
-                    unique_asu_all_ranks.append(p)
+        # Hi_asu_all_ranks = []
+        # if COMM.rank == 0:
+        #     for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
+        #         if c:
+        #             unique_asu_all_ranks.append(p)
+        #             Hi_asu_all_ranks.extend([p] * c)
+        # else:
+        for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
+            if c:
+                unique_asu_all_ranks.append(p)
         LOGGER.info("EVENT: Gathering global HKL information - post loops")
         LOGGER.info(utils.memory_report())
 
