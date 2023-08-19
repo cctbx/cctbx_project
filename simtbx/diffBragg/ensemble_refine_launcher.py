@@ -420,16 +420,25 @@ class RefineLauncher:
         Hi_asu_possible = self._get_possible_Hi_asu()
         Hi_asu = chain.from_iterable(self.Hi_asu.values())
         Hi_asu_counter = Counter(Hi_asu)
+        LOGGER.info("EVENT: Gathering global HKL information - post counter")
         Hi_asu_possible_counts = [Hi_asu_counter[k] for k in Hi_asu_possible]
         Hi_asu_possible_counts = np.array(Hi_asu_possible_counts, dtype=int)
         Hi_asu_possible_counts_global = np.zeros_like(Hi_asu_possible_counts, dtype=int)
+        LOGGER.info("EVENT: Gathering global HKL information - pre reduce")
         COMM.Allreduce(Hi_asu_possible_counts, Hi_asu_possible_counts_global, op=MPI.SUM)
+        LOGGER.info("EVENT: Gathering global HKL information - post reduce")
         unique_asu_all_ranks = []
         Hi_asu_all_ranks = []
-        for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
-            if c:
-                unique_asu_all_ranks.append(p)
-                Hi_asu_all_ranks.extend([p] * c)
+        if COMM.rank == 0:
+            for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
+                if c:
+                    unique_asu_all_ranks.append(p)
+                    Hi_asu_all_ranks.extend([p] * c)
+        else:
+            for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
+                if c:
+                    unique_asu_all_ranks.append(p)
+        LOGGER.info("EVENT: Gathering global HKL information - post loops")
 
         # TODO: Unused Derek's code, too MPI-intensive - reference, to be removed
         # Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
@@ -451,11 +460,13 @@ class RefineLauncher:
         self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
         self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
-
+        LOGGER.info("EVENT: Gathering global HKL information - post dicts")
         self.num_hkl_global = len(self.idx_from_asu)
 
-        fres = marr_unique_h.d_spacings()
-        self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
+        # TODO: I believe this code does absolutely nothing
+        # fres = marr_unique_h.d_spacings()
+        # self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
+        # TODO: End of code I believe does absolutely nothing
 
     def _get_first_modeller_symmetry(self):
         ii = list(self.Modelers.keys())[0]
@@ -508,8 +519,9 @@ class RefineLauncher:
             print("Rank %d: total miller vars=%d" % (COMM.rank, len(unique_Hi_asu)))
         else:
             marr_unique_h = None
-
-        marr_unique_h = COMM.bcast(marr_unique_h)
+        # TODO: I believe this code does absolutely nothing
+        # marr_unique_h = COMM.bcast(marr_unique_h)
+        # TODO: End of I believe this code does absolutely nothing
         return marr_unique_h
 
     def _launch(self):
