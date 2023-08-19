@@ -3,7 +3,6 @@ from simtbx.diffBragg.stage_two_utils import PAR_from_params
 from collections import Counter
 from itertools import chain
 import os
-import socket
 import sys
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
@@ -14,7 +13,6 @@ try:
 except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
-from xfel.merging.application.utils.memory_usage import get_memory_usage
 from simtbx.diffBragg.refiners.stage_two_refiner import StageTwoRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
@@ -330,7 +328,7 @@ class RefineLauncher:
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
             shot_idx += 1
-            self._mem_usage("Process memory usage")
+            LOGGER.info(utils.memory_report('Process memory usage'))
             LOGGER.info("Finished loading image %d / %d (%d / %d)"
                   % (i_df+1, len(exper_names), i_work+1, len(worklist))) #, flush=True)
 
@@ -350,7 +348,7 @@ class RefineLauncher:
             for set_of_panels in all_refined_groups:
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
-        self._mem_usage("Mem after panel groups")
+        LOGGER.info(utils.memory_report('Mem after panel groups'))
 
         LOGGER.info("EVENT: Gathering global HKL information")
         try:
@@ -361,7 +359,7 @@ class RefineLauncher:
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
-        self._mem_usage("Mem after gather Hi info")
+        LOGGER.info(utils.memory_report('Mem after gather Hi info'))
 
         # in case of GPU
         LOGGER.info("BEGIN DETERMINE MAX PIX")
@@ -372,15 +370,10 @@ class RefineLauncher:
             n = max(n)
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         LOGGER.info("DONE DETERMINE MAX PIX")
-        self._mem_usage("Mem after determine max num pix")
+        LOGGER.info(utils.memory_report('Mem after determine max num pix'))
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
-        self._mem_usage("Mem after load_inputs")
-
-    def _mem_usage(self, msg="Memory usage"):
-        memMB = get_memory_usage()
-        host = socket.gethostname()
-        LOGGER.info("%s: %f GB on node %s" % (msg, memMB / 1024, host))
+        LOGGER.info(utils.memory_report('Mem after load_inputs'))
 
     def determine_refined_panel_groups(self, pids):
         refined_groups = []
@@ -577,9 +570,9 @@ class RefineLauncher:
                 self.RUC.S.update_nanoBragg_instance('verbose', self.params.refiner.verbose)
 
             LOGGER.info("_launch run setup")
-            self._mem_usage("Mem usage before _setup")
+            LOGGER.info(utils.memory_report('Mem usage before _setup'))
             self.RUC.run(setup_only=True)
-            self._mem_usage("Mem usage after _setup")
+            LOGGER.info(utils.memory_report('Mem usage after _setup'))
             LOGGER.info("_launch done run setup")
             # for debug purposes:
             #if not self.params.refiner.quiet:

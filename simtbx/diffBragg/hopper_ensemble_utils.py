@@ -15,7 +15,6 @@ from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 from cctbx import miller, crystal, sgtbx
 from dials.array_family import flex
 from dxtbx.model import ExperimentList
-from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 
 COMM = MPI.COMM_WORLD
@@ -564,13 +563,6 @@ class DataModelers:
                 mod.params.tag = temp
 
 
-def mem_usage(rank):
-    if COMM.rank == rank:
-        memMB = get_memory_usage()
-        host = socket.gethostname()
-        MAIN_LOGGER.info("Rank %d reporting memory usage: %f GB on Rank 0 node %s" % (COMM.rank, memMB / 1e3, host))
-
-
 def get_gather_name(exper_name, gather_dir):
     gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
     gathered_name += "_withData.refl"
@@ -685,7 +677,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         # verify this
         shot_modeler.Umatrices = [shot_modeler.E.crystal.get_U()]
 
-        mem_usage(0)
+        MAIN_LOGGER.info(utils.memory_report('Rank 0 reporting memory usage'))
         if COMM.rank==0:
             print("Finished loading image %d / %d" % (ii + 1, len(worklist)), flush=True)
 

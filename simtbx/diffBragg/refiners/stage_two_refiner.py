@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.mpi4py import MPI
 from simtbx.diffBragg import stage_two_utils
+from simtbx.diffBragg.utils import memory_report
 
 COMM = MPI.COMM_WORLD
 if not hasattr(COMM, "rank"):
@@ -236,20 +237,31 @@ class StageTwoRefiner(BaseRefiner):
 
         self.x = flex.double(np.ones(self.n_total_params))
         LOGGER.info("--Setting up per shot parameters")
+        LOGGER.info(memory_report())
 
         self.fcell_xstart = self.n_total_shots*N_PARAM_PER_SHOT
         self.regions_xstart = self.fcell_xstart + self.n_global_fcell
-
+        LOGGER.info("--Setting up per shot parameters - before setup regions")
+        LOGGER.info(memory_report())
         self._setup_region_refinement_parameters()
+        LOGGER.info("--Setting up per shot parameters - before setup ncels")
+        LOGGER.info(memory_report())
         self._setup_ncells_refinement_parameters()
+        LOGGER.info("--Setting up per shot parameters - before track num")
+        LOGGER.info(memory_report())
         self._track_num_times_pixel_was_modeled()
 
+        LOGGER.info("--Setting up per shot parameters - before loop")
+        LOGGER.info(memory_report())
         self.hkl_totals = []
         if self.refine_Fcell:
             for i_shot in self.shot_ids:
                 for i_h, h in enumerate(self.Modelers[i_shot].Hi_asu):
                     self.hkl_totals.append(self.idx_from_asu[h])
             self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
+
+        LOGGER.info("--Setting up per shot parameters - before setups")
+        LOGGER.info(memory_report())
 
         self._setup_nominal_hkl_p1()
         self._MPI_setup_global_params()

@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
+import socket
 import sys
 import re
 from io import StringIO
@@ -29,6 +30,8 @@ import mmtbx.utils
 from cctbx.eltbx import henke
 from simtbx.diffBragg import psf
 from dials.algorithms.shoebox import MaskCode
+from xfel.merging.application.utils.memory_usage import get_memory_usage
+
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
@@ -1759,3 +1762,10 @@ def find_diffBragg_instances(globe_objs):
         if "simtbx_diffBragg_ext.diffBragg" in str(obj):
             inst_names.append(name)
     return inst_names
+
+
+def memory_report(prefix='Memory usage'):
+    """Return a string documenting memory usage; to be used with LOGGER.info"""
+    memory_usage_in_gb = get_memory_usage() / 1024.
+    host = socket.gethostname()
+    return "%s: %f GB on node %s" % (prefix, memory_usage_in_gb, host)
