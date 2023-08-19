@@ -356,6 +356,7 @@ class RefineLauncher:
         except TypeError:
             pass
         LOGGER.info("EVENT: FINISHED gather global HKL information")
+        LOGGER.info(utils.memory_report())
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
@@ -414,12 +415,15 @@ class RefineLauncher:
         Hi_asu = chain.from_iterable(self.Hi_asu.values())
         Hi_asu_counter = Counter(Hi_asu)
         LOGGER.info("EVENT: Gathering global HKL information - post counter")
+        LOGGER.info(utils.memory_report())
         Hi_asu_possible_counts = [Hi_asu_counter[k] for k in Hi_asu_possible]
         Hi_asu_possible_counts = np.array(Hi_asu_possible_counts, dtype=int)
         Hi_asu_possible_counts_global = np.zeros_like(Hi_asu_possible_counts, dtype=int)
         LOGGER.info("EVENT: Gathering global HKL information - pre reduce")
+        LOGGER.info(utils.memory_report())
         COMM.Allreduce(Hi_asu_possible_counts, Hi_asu_possible_counts_global, op=MPI.SUM)
         LOGGER.info("EVENT: Gathering global HKL information - post reduce")
+        LOGGER.info(utils.memory_report())
         unique_asu_all_ranks = []
         Hi_asu_all_ranks = []
         if COMM.rank == 0:
@@ -432,6 +436,7 @@ class RefineLauncher:
                 if c:
                     unique_asu_all_ranks.append(p)
         LOGGER.info("EVENT: Gathering global HKL information - post loops")
+        LOGGER.info(utils.memory_report())
 
         # TODO: Unused Derek's code, too MPI-intensive - reference, to be removed
         # Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
@@ -455,8 +460,8 @@ class RefineLauncher:
         self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
         self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
-        LOGGER.info('Asu/idx dict sizes: ' + str(sys.getsizeof(self.asu_from_idx) / 10**20) + 'MB')
         LOGGER.info("EVENT: Gathering global HKL information - post dicts")
+        LOGGER.info(utils.memory_report())
         self.num_hkl_global = len(self.idx_from_asu)
 
         # TODO: I believe this code does absolutely nothing
