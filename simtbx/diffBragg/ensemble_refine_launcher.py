@@ -455,6 +455,7 @@ class RefineLauncher:
         self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
         self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
+        LOGGER.info('Asu/idx dict sizes: ' + str(sys.getsizeof(self.asu_from_idx) / 10**20) + 'MB')
         LOGGER.info("EVENT: Gathering global HKL information - post dicts")
         self.num_hkl_global = len(self.idx_from_asu)
 
