@@ -655,6 +655,6 @@ class HiAsu(object):
     def get_dicts(self):
         """from_idx maps miller indices to index in LBFGS par. array self.x;
         to_ids is an inverse map during refinement to update diffBragg m.arr"""
-        from_idx = {i: h for i, h in enumerate(self.possible_counts)}
-        to_idx = {h: i for i, h in enumerate(self.possible_counts)}
+        from_idx = {i: h for i, h in enumerate(self.possible)}
+        to_idx = {h: i for i, h in enumerate(self.possible)}
         return from_idx, to_idx
