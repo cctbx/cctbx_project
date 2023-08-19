@@ -411,30 +411,7 @@ class RefineLauncher:
         #for i_shot in self.Hi: #range(nshots_on_this_rank):
         #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
 
-        Hi_asu_possible = self._get_possible_Hi_asu()
-        Hi_asu = chain.from_iterable(self.Hi_asu.values())
-        Hi_asu_counter = Counter(Hi_asu)
-        LOGGER.info("EVENT: Gathering global HKL information - post counter")
-        LOGGER.info(utils.memory_report())
-        Hi_asu_possible_counts = [Hi_asu_counter[k] for k in Hi_asu_possible]
-        Hi_asu_possible_counts = np.array(Hi_asu_possible_counts, dtype=int)
-        Hi_asu_possible_counts_global = np.zeros_like(Hi_asu_possible_counts, dtype=int)
-        LOGGER.info("EVENT: Gathering global HKL information - pre reduce")
-        LOGGER.info(utils.memory_report())
-        COMM.Allreduce(Hi_asu_possible_counts, Hi_asu_possible_counts_global, op=MPI.SUM)
-        LOGGER.info("EVENT: Gathering global HKL information - post reduce")
-        LOGGER.info(utils.memory_report())
-        unique_asu_all_ranks = []
-        # Hi_asu_all_ranks = []
-        # if COMM.rank == 0:
-        #     for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
-        #         if c:
-        #             unique_asu_all_ranks.append(p)
-        #             Hi_asu_all_ranks.extend([p] * c)
-        # else:
-        for p, c in zip(Hi_asu_possible, Hi_asu_possible_counts_global):
-            if c:
-                unique_asu_all_ranks.append(p)
+        self.hiasu = HiAsu(self)
         LOGGER.info("EVENT: Gathering global HKL information - post loops")
         LOGGER.info(utils.memory_report())
 
@@ -457,19 +434,18 @@ class RefineLauncher:
         # TODO end of step seems to be diagnostics only and takes super long
 
         # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-        self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
+        # self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
         # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
+        # self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
         LOGGER.info("EVENT: Gathering global HKL information - post dicts")
         LOGGER.info(utils.memory_report())
-        self.num_hkl_global = len(self.idx_from_asu)
 
         # TODO: I believe this code does absolutely nothing
         # fres = marr_unique_h.d_spacings()
         # self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
         # TODO: End of code I believe does absolutely nothing
 
-    def _get_first_modeller_symmetry(self):
+    def get_first_modeller_symmetry(self):
         ii = list(self.Modelers.keys())[0]
         uc = self.Modelers[ii].ucell_man
         params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
@@ -477,22 +453,11 @@ class RefineLauncher:
             params = self.params.refiner.force_unit_cell
         return crystal.symmetry(unit_cell=params, space_group_symbol=self.symbol)
 
-    def _get_possible_Hi_asu(self):
-        if COMM.rank == 0:
-            symm = self._get_first_modeller_symmetry()
-            res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
-            d_min = min([d_min for d_min, _ in res_ranges]) * 0.8  # accomodate variations in unit cell
-            mset_full = symm.build_miller_set(anomalous_flag=True, d_min=d_min)
-            Hi_asu_possible = list(mset_full.indices())
-        else:
-            Hi_asu_possible = None
-        return COMM.bcast(Hi_asu_possible, root=0)
-
     def _get_unique_Hi(self, Hi_asu_all_ranks):
         if COMM.rank == 0:
             from cctbx.array_family import flex as cctbx_flex
 
-            symm = self._get_first_modeller_symmetry()
+            symm = self.get_first_modeller_symmetry()
             hi_asu_flex = cctbx_flex.miller_index(Hi_asu_all_ranks)
             mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
             marr = miller.array(mset)
@@ -560,8 +525,7 @@ class RefineLauncher:
             self.RUC.log_fcells = True
             self.RUC.request_diag_once = False
             self.RUC.trad_conv = True
-            self.RUC.idx_from_asu = self.idx_from_asu
-            self.RUC.asu_from_idx = self.asu_from_idx
+            self.RUC.hiasu = self.hiasu
 
             self.RUC.S = self.SIM
             self.RUC.restart_file = self.params.refiner.io.restart_file
@@ -633,3 +597,64 @@ class RefineLauncher:
 
     def will_refine(self, param):
         return param is not None and any(param)
+
+
+class HiAsu(object):
+    """Object which stores possible & present Miller Indices, their counts,
+    counters, maps between them and their integer indexes etc.
+    Parameters without trailing _ are global: total / same for all ranks.
+    Parameters with trailing _ are local: unique for each rank."""
+    def __init__(self, refine_launcher):
+        self.rl = refine_launcher
+        self.possible = self.get_possible()
+        self.possible_len = len(self.possible)
+        self.possible_counts = self.get_counts()
+        self.from_idx, self.to_idx = self.get_dicts()
+
+    def get_possible(self):
+        if COMM.rank == 0:
+            symm = self.rl.get_first_modeller_symmetry()
+            res_ranges = utils.parse_reso_string(self.rl.params.refiner.res_ranges)
+            # accommodate variations in unit cell
+            d_min = min([d_min for d_min, _ in res_ranges]) * 0.8
+            mset_full = symm.build_miller_set(anomalous_flag=True, d_min=d_min)
+            possible = list(mset_full.indices())
+        else:
+            possible = None
+        return COMM.bcast(possible, root=0)
+
+    def get_counts(self):
+        hi_asu = chain.from_iterable(self.rl.Hi_asu.values())
+        hi_asu_counter = Counter(hi_asu)
+        hi_asu_possible_counts = [hi_asu_counter[k] for k in self.possible]
+        hi_asu_possible_counts = np.array(hi_asu_possible_counts, dtype=int)
+        hi_asu_possible_counts_global = np.zeros_like(hi_asu_possible_counts, dtype=int)
+        COMM.Allreduce(hi_asu_possible_counts, hi_asu_possible_counts_global, op=MPI.SUM)
+        return hi_asu_possible_counts_global
+
+    @property
+    def present(self):
+        return (p for p, c in zip(self.possible, self.possible_counts) if c)
+
+    @property
+    def present_counts(self):
+        return (c for p, c in zip(self.possible, self.possible_counts) if c)
+
+    @property
+    def present_counter(self):
+        return Counter({p: c for p, c in self.present_zip})
+
+    @property
+    def present_idx_counter(self):
+        return Counter({self.to_idx[p]: c for p, c in self.present_zip})
+
+    @property
+    def present_zip(self):
+        return ((p, c) for p, c in zip(self.possible, self.possible_counts) if c)
+
+    def get_dicts(self):
+        """from_idx maps miller indices to index in LBFGS par. array self.x;
+        to_ids is an inverse map during refinement to update diffBragg m.arr"""
+        from_idx = {i: h for i, h in enumerate(self.possible_counts)}
+        to_idx = {h: i for i, h in enumerate(self.possible_counts)}
+        return from_idx, to_idx
