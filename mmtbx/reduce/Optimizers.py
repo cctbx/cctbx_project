@@ -1842,10 +1842,7 @@ def _vertexCut(clique):
         return movers, newGraph
 
   # We didn't find an answer.  Return a complete copy of the graph and an empty set of movers.
-  movers = []
-  newGraph = _subsetGraph(clique, [clique.vertex_label(v) for v in clique.vertices()])
-
-  return movers, newGraph
+  return movers, clique
 
 def _generateAllStates(numStates):
   """ This is a generator function that will yield all combinations of states within the
