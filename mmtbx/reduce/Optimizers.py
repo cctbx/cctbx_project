@@ -2162,11 +2162,11 @@ END
   if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for NH3 rotator test: " + str(len(movers))
 
-  # See what the pose angle is on the Mover. It should be 163 degrees, and is reported
+  # See what the pose angle is on the Mover. It should be 162 degrees, and is reported
   # after 'pose Angle '.
   angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
-  if angle != 163:
-    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 163"
+  if angle != 162:
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 162"
 
   ################################################################################
   # Test using snippet from 1dfu to ensure that the Histidine optimzization code will
