@@ -137,6 +137,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 
   def("OptimizeCliqueCoarseBruteForceC", OptimizeCliqueCoarseBruteForceC,
     "Brute-force optimization of a clique.");
+  def("OptimizeCliqueCoarseVertexCutC", OptimizeCliqueCoarseVertexCutC,
+    "Vertex-cut recursive optimization of a clique.");
   def("Optimizers_test", Optimizers_test,
     "Test all classes and functions defined in Optimizers.h.");
 
