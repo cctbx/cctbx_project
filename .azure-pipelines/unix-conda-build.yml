@@ -81,6 +81,12 @@ steps:
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
 
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    mamba update --all -y -n base
+  displayName: Update miniforge
+
 # create conda environment
 # fresh downloads for "Update build cache" and "Full" pipelines
 - task: DownloadPipelineArtifact@2
