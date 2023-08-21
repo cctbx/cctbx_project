@@ -92,18 +92,13 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Defaults to "no overlap" type
   CheckDotResult ret;
 
-  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
-
   // If the source atom is an ion and we are ignoring ions, we're done.
   if (sourceAtom.element_is_ion() && m_ignoreIonInteractions) {
     return ret;
   }
 
   // Find the world-space location of the dot by adding it to the location of the source atom.
-  // The probe location is in the same direction as d from the source but is further away by the
-  // probe radius.
   Point absoluteDotLocation = sourceAtom.data->xyz + dotOffset;
-  Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
 
   // Check to see if the dot should be removed from consideration because it is inside an excluded atom.
   // Doing this test ahead of the neighbor-interaction test makes things faster for the long-running
@@ -117,6 +112,13 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       return ret;
     }
   }
+
+  // The probe location is in the same direction as d from the source but is further away by the
+  // probe radius.
+  Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
+
+  // Find the extra-atom information for the source atom.
+  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
 
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
@@ -135,7 +137,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     }
 
     ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
-    Point locb = b->data->xyz;
+    Point const &locb = b->data->xyz;
     double vdwb = bExtra.getVdwRadius();
 
     // See if we are too far away to interact, bail if so.
@@ -214,8 +216,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       ret.overlapType = DotScorer::Clash;
     }
 
-    /// @todo We may be able to speed things up by only computing this for NoOverlap dots because
-    /// the client code only seems to check it in this case.
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
       ret.cause.data->xyz, m_extraInfoMap.getMappingFor(ret.cause).getVdwRadius(), probeRadius);
   }
@@ -331,13 +331,6 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // It is passed only the dots that it should score rather than excluding them
   // internally like that function does.
 
-  // If we're looking for other contacts besides bumps, we need to add twice the
-  // probe radius to the neighbor list to ensure that we include atoms where the
-  // probe spans from the source to the target.
-  if (!onlyBumps) {
-    nearbyRadius += 2 * probeRadius;
-  }
-
   // Default return has 0 value for all subscores.
   ScoreDotsResult ret;
 
@@ -351,6 +344,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   if (std::abs(sourceAtom.data->occ) < minOccupancy) {
     ret.valid = true;
     return ret;
+  }
+
+  // If we're looking for other contacts besides bumps, we need to add twice the
+  // probe radius to the neighbor list to ensure that we include atoms where the
+  // probe spans from the source to the target.
+  if (!onlyBumps) {
+    nearbyRadius += 2 * probeRadius;
   }
 
   // Find the neighboring atoms that are potentially interacting.
