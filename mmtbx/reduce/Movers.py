@@ -172,7 +172,7 @@ class MoverNull(object):
     # No fixups for any coarse index.
     return FixUpReturn([], [], [], [])
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
     else:
@@ -180,7 +180,7 @@ class MoverNull(object):
 
 ##################################################################################
 class _MoverRotator(object):
-  def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 30.0,
+  def __init__(self, atoms, axis, dihedral, offset, coarseRange, coarseStepDegrees = 15.0,
                 doFineRotations = True, fineStepDegrees = 1.0,
                 preferenceFunction = None, preferredOrientationScale = 1.0):
     """Constructs a Rotator, to be called by a derived class or test program but
@@ -364,11 +364,14 @@ class _MoverRotator(object):
     return FixUpReturn([], [], [], [])
 
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state . ."
     else:
-      angle = self._offset + self._coarseAngles[coarseIndex] + self._fineAngles[fineIndex]
+      fineOffset = 0
+      if fineIndex is not None:
+        fineOffset = self._fineAngles[fineIndex]
+      angle = self._offset + self._coarseAngles[coarseIndex] + fineOffset
       while angle > 180: angle -= 360
       while angle < -180: angle += 360
       return "Angle {:.1f} deg .".format(angle)
@@ -426,6 +429,9 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         friends.append(b)
 
     # Determine the preference function (180 or 120) based on friends bonding structure
+    # NOTE: We replace the preferenceFunction with None below to match original reduce
+    # behavior. We leave the math in here so that if we later decide to have a preference
+    # it will be correctly determined based on the number of neighbors.
     # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
     if len(friends) == 2:
       # There are two neighbors, so our function repeats every 180 degrees
@@ -436,6 +442,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     else:
       raise ValueError("MoverSingleHydrogenRotator(): Atom's bonded neighbor's neighbor does not have 2-3 other bonds "+
       "it has "+str(len(friends)))
+    # Original Reduce did not have a preference, so we remove that here.
+    preferenceFunction = None
 
     # Determine the axis to rotate around, which starts at the partner atom and points at the neighbor.
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
@@ -484,7 +492,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 30.0,
+  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 15.0,
                 fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Nitrogen neighbor
        to the single bonded partner of its partner.  This is designed for use with NH3+,
@@ -534,13 +542,19 @@ class MoverNH3Rotator(_MoverRotator):
     for b in bonded:
       if b.i_seq != neighbor.i_seq:
         friends.append(b)
-    if len(friends) != 3:
-      raise ValueError("MoverNH3Rotator(): Partner does not have three bonded friends")
+    if len(friends) < 3:
+      raise ValueError("MoverNH3Rotator(): Partner does not have at least three bonded friends")
 
-    # Set the preference function to like 120-degree rotations away from the starting location.
-    # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
-    # (for example, we might use preferredOrientationScale for this and not set a separate one?)
-    def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
+    preferenceFunction = None
+
+    # If we have exactly three neighbors, then we set a preference function that prefers
+    # the staggered orientation. If there are more, we just leave things alone.
+    if len(friends) == 3:
+
+      # Set the preference function to prefer 120-degree rotations away from the starting location.
+      # @todo Consider parameterizing the magic constant of 0.1 for the preference magnitude
+      # (for example, we might use preferredOrientationScale for this and not set a separate one?)
+      def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Determine the axis to rotate around, which starts at the partner and points at the neighbor.
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
@@ -562,7 +576,7 @@ class MoverNH3Rotator(_MoverRotator):
     atoms.extend(hydrogens)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
-    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 180, coarseStepDegrees,
+    _MoverRotator.__init__(self, atoms, axis, dihedral, offset, 60, coarseStepDegrees,
       fineStepDegrees = fineStepDegrees, preferenceFunction = preferenceFunction,
       preferredOrientationScale = preferredOrientationScale)
 
@@ -643,7 +657,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
 
 ##################################################################################
 class MoverTetrahedralMethylRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 30.0,
+  def __init__(self, atom, bondedNeighborLists, hParameters, coarseStepDegrees = 15.0,
                   fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates three Hydrogens around an axis from their bonded Carbon neighbor
        to the single bonded partner of its partner.  This is designed for use with tetrahedral
@@ -912,7 +926,7 @@ class MoverAmideFlip(object):
         fString = 'AnglesNotAdjusted'
     else:
       fString = '.'
-    if coarseIndex >= len(self.CoarsePositions().positions) or (
+    if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
         fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
       return "Unrecognized state ."
     elif coarseIndex == 0:
@@ -1178,6 +1192,11 @@ class MoverHisFlip(object):
 
     #########################
     # Compute the preference energies.
+    # There is an energy penalty of -nonFlipPreference
+    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
+    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
     self._preferenceEnergies = []
     if self._enabledFlipStates & 1:
       self._preferenceEnergies.extend([ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0])
@@ -1189,11 +1208,7 @@ class MoverHisFlip(object):
         -self._nonFlipPreference - 1.0])
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference
-    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
-    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
-    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
-    # score is this much better we leave it alone.
+    # returns: The potential coarse positions.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes, self._preferenceEnergies)
 
@@ -1208,7 +1223,7 @@ class MoverHisFlip(object):
 
   def PoseDescription(self, coarseIndex, fineIndex, fixedUp):
     if self._enabledFlipStates == 3:
-      if coarseIndex >= len(self.CoarsePositions().positions) or (
+      if coarseIndex >= len(self.CoarsePositions().positions) or fineIndex is not None and (
           fineIndex > 0 and fineIndex >= len(self.FinePositions(0).positions)):
         return "Unrecognized state . ."
       elif coarseIndex < 4:
@@ -1283,9 +1298,9 @@ def _rotateAroundAxis(atom, axis, degrees):
      :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
      scitbx.matrix.rec(xyz, (3,1)) to be moved.
      :param axis: flex array with two scitbx::vec3<double> points, the first
-     of which is the origin and the second is a vector pointing in the direction
-     of the axis of rotation.  Positive rotations will be right-handed rotations
-     around this axis.
+     of which is the origin in space around which to rotate and the second is
+     a vector pointing from the origin in the direction of the axis of rotation.
+     Positive rotations will be right-handed rotations around this axis.
      :param degrees: How much to rotate the atom around the axis.
      Positive rotation is right-handed around the axis.
      :returns the new location for the atom.
@@ -1297,27 +1312,12 @@ def _rotateAroundAxis(atom, axis, degrees):
   except Exception:
     pos = rvec3(atom)
 
-  # Project the atom position onto the axis, finding its closest point on the axis.
-  # The position lies on a plane whose normal points along the axis vector.  The
-  # point we seek is the intersection of the axis with this plane.
-  # The plane equation will be the normalized axis direction vector and the offset
-  # from the origin such that N.point + d = 0 defines the plane.
-  # Solve for the time at which the line's ray crosses the plane and then solve for
-  # the location along the line at that time.  t = - (d + (lineOrigin * planeNormal)) /
-  # (lineDirection * planeNormal).  Because the line direction and normal are the
-  # same, the divisor is 1.
-  normal = lvec3(axis[1]).normalize()
-  d = -normal*pos
-  t = - (d + (normal * rvec3(axis[0])))
-  nearPoint = lvec3(axis[0]) + t * normal
-
-  # Find the vector from the closest point towards the atom, which is its offset
-  offset = lvec3(pos) - nearPoint
-
-  # Rotate the offset vector around the axis by the specified angle.  Add the new
-  # offset to the closest point. Store this as the new location for this atom and angle.
-  newOffset = offset.rotate_around_origin(lvec3(axis[1]), degrees*math.pi/180)
-  return nearPoint + newOffset
+  # The axis of rotation for this function is specified as the two ends of the axis.
+  # The axis passed in has the point around which to rotate and the direction vector
+  # from the origin, so we need to add those.
+  return lvec3(scitbx.matrix.rotate_point_around_axis(
+      axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
+      point = pos, angle = degrees, deg = True))
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
@@ -1567,8 +1567,8 @@ def Test():
     # Test coarseStepDegrees default behavior.
     rot = _MoverRotator(atoms,axis, 0, 0, 180)
     coarse = rot.CoarsePositions()
-    if len(coarse.positions) != 12:
-      return "Movers.Test() _MoverRotator Default coarse step: Expected 12, got "+str(len(coarse.positions))
+    if len(coarse.positions) != 24:
+      return "Movers.Test() _MoverRotator Default coarse step: Expected 24, got "+str(len(coarse.positions))
 
     # Test doFineRotations = False and 180 degree coarseStepDegrees.
     rot = _MoverRotator(atoms,axis, 0, 0, 180, 180, False)
@@ -1582,18 +1582,18 @@ def Test():
     # Test fineStepDegrees setting.
     rot = _MoverRotator(atoms,axis, 0, 0, 180, fineStepDegrees = 2)
     fine = rot.FinePositions(0)
-    # +/- 15 degrees in 1-degree steps, but we don't do the +15 because it will be handled by the next
-    # rotation up.
-    if len(fine.positions) != 14:
-      return "Movers.Test() _MoverRotator setting fine step: Expected 14, got "+str(len(fine.positions))
+    # +/- 7.5 degrees in 2-degree steps, but we wouldn't do the +7.5 because it will be handled by the next
+    # rotation up. So we get +/- 2, 4, and 6
+    if len(fine.positions) != 6:
+      return "Movers.Test() _MoverRotator setting fine step: Expected 6, got "+str(len(fine.positions))
 
     # Test the PoseDescription
-    if rot.PoseDescription(1,1, False) != "Angle -28.0 deg .":
+    if rot.PoseDescription(1,1, False) != "Angle -13.0 deg .":
       return "Movers.Test() _MoverRotator: Unexpected results for PoseDescription, got "+rot.PoseDescription(1,1, False)
 
     # Test setting an offset and counterbalancing dihedral.
     rot = _MoverRotator(atoms,axis, -10, 10, 180, fineStepDegrees = 2)
-    if rot.PoseDescription(1,1, False) != "Angle -18.0 deg .":
+    if rot.PoseDescription(1,1, False) != "Angle -3.0 deg .":
       return "Movers.Test() _MoverRotator: Unexpected results for offset, got "+rot.PoseDescription(1,1, False)
 
     # Verify that the coarse and fine results don't change when the atom position is moved after
@@ -1677,6 +1677,7 @@ def Test():
     if h.xyz[2] != 1 or abs(-h.xyz[0]-math.sqrt(2)) > 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad H placement"
 
+    ''' Preference function has been removed from this class
     # Check fitness function preferring 0 and 180 rotations
     zero = mover._preferenceFunction(0)
     ninety = mover._preferenceFunction(90)
@@ -1685,6 +1686,7 @@ def Test():
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
     if zero - ninety < 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator pair: bad preference function"
+    '''
 
     # Check that one of the orientations has a dihedral angle of 0 compared to the original
     # 13-degree-off potential acceptor atom.
@@ -1779,6 +1781,7 @@ def Test():
     if not (h.xyz[2] == 1 and h.xyz[0]+math.sqrt(2) < 1e-5):
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad H placement"
 
+    ''' Preference function has been removed from this class
     # Check fitness function preferring 180 and +/- 120 from there rotations away from
     # the angle away from 180 degrees.
     zero = mover._preferenceFunction(angle+0)
@@ -1791,6 +1794,7 @@ def Test():
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
     if zero - oneEighty < 1e-5:
       return "Movers.Test() MoverSingleHydrogenRotator triple: bad preference function"
+    '''
 
   except Exception as e:
     return "Movers.Test() MoverSingleHydrogenRotator triple: Exception during test: "+str(e)+"\n"+traceback.format_exc()
@@ -2759,13 +2763,6 @@ def Test():
       return "Movers.Test() MoverHisFlip: Unexpected angle description Flipped, got "+mover.PoseDescription(0, 0, True)
     if 'AnglesNotAdjusted' != mover.PoseDescription(0, 0, False).split()[-1]:
       return "Movers.Test() MoverHisFlip: Unexpected angle description Flipped, got "+mover.PoseDescription(0, 0, False)
-
-    # Test whether Hydrogen placement optimization is happening when we do only flipped or only
-    # not flipped.
-    # @todo
-
-    # Test whether we can control fixup behavior when locking down in flipped state.
-    # @todo
 
   except Exception as e:
     return "Movers.Test() MoverHisFlip: Exception during test: "+str(e)+"\n"+traceback.format_exc()

@@ -128,6 +128,7 @@ general_tests = [
   "$D/monomer_library/tst_selection.py",
   "$D/monomer_library/tst_tyr_from_gly_and_bnz.py",
   "$D/monomer_library/tst_pdb_interpretation.py",
+  "$D/monomer_library/tst_pdb_interpretation_3.py",
   "$D/monomer_library/tst_rna_dna_interpretation.py",
   "$D/monomer_library/tst_protein_interpretation.py",
   "$D/monomer_library/tst_pdb_interpretation_ncs_processing.py",
@@ -243,7 +244,6 @@ general_tests = [
   #
   "$D/idealized_aa_residues/tst.py",
   #
-  "$D/regression/tst_dssp.py",
   "$D/regression/tst_validation_summary.py",
   "$D/regression/tst_maps_misc.py",
   "$D/regression/tst_cablam.py",

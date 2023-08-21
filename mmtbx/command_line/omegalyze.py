@@ -12,10 +12,12 @@ import sys
 
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time #, null_out
+
+from iotbx.cli_parser import run_program
 from mmtbx.programs import omegalyze
 
 # =============================================================================
-def run(args):
+def old_run(args):
 
   # create parser
   #logger = multi_out() #logging.getLogger('main')
@@ -53,4 +55,5 @@ def run(args):
 
 # =============================================================================
 if __name__ == '__main__':
-  run(sys.argv[1:])
+  # old_run(sys.argv[1:])
+  run_program(program_class=omegalyze.Program, hide_parsing_output=True)

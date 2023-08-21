@@ -8,6 +8,7 @@ from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
 from libtbx import easy_run
+import iotbx.pdb
 import os
 
 def exercise():
@@ -134,8 +135,8 @@ anomalous_scatterers {
   map_coeffs.as_mtz_dataset(column_root_label="ANOM").mtz_object().write("anom.mtz")
   fft_map = map_coeffs.fft_map(resolution_factor=0.25).apply_sigma_scaling()
   real_map = fft_map.real_map_unpadded()
-  pdb_in = file_reader.any_file("tst_fmodel_misc.pdb")
-  for atom in pdb_in.file_object.hierarchy.atoms():
+  hierarchy = iotbx.pdb.input("tst_fmodel_misc.pdb").construct_hierarchy()
+  for atom in hierarchy.atoms():
     if (atom.element == "SE"):
       site = f_model.unit_cell().fractionalize(site_cart=atom.xyz)
       map_val = real_map.eight_point_interpolation(site)

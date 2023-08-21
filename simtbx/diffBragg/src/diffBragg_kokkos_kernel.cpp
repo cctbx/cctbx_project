@@ -247,8 +247,8 @@ void kokkos_sum_over_steps(
     KOKKOS_MAT3 anisoU_local;
     KOKKOS_MAT3 laue_mats[24];
     KOKKOS_MAT3 dG_dgam[3];
-    int num_laue_mats;
-    int dhh, dkk, dll;
+    int num_laue_mats = 0;
+    int dhh = 0, dkk = 0, dll = 0;
     KOKKOS_VEC3 Hmin, Hmax, dHH, Hrange;
     // s_Na = Na;
     // s_Nb = Nb;
@@ -341,7 +341,7 @@ void kokkos_sum_over_steps(
             }
 
             // int fcell_idx=1;
-            int nom_h, nom_k, nom_l;
+            int nom_h = 0, nom_k = 0, nom_l = 0;
             if (use_nominal_hkl) {
                 nom_h = nominal_hkl(pixIdx * 3);
                 nom_k = nominal_hkl(pixIdx * 3 + 1);

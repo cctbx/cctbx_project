@@ -569,6 +569,9 @@ output {
 
 statistics_phil = """
 statistics {
+  shuffle_ids = False
+    .type = bool
+    .help = shuffle the IDs when dividing into even/odd. This adds variation to half dataset stats like CC1/2
   n_bins = 10
     .type = int(value_min=1)
     .help = Number of resolution bins in statistics table
@@ -581,11 +584,14 @@ statistics {
   cciso {
     mtz_file = None
       .type = str
-      .help = for Riso/ CCiso, the reference structure factors, must have data type F
+      .help = The isomorphous reference structure factors for Riso/ CCiso.
       .help = a fake file is written out to this file name if model is None
+      .help = The experimental reference file can be old type *.mtz or new *sf.cif
     mtz_column_F = fobs
       .type = str
-      .help = for Riso/ CCiso, the column name containing reference structure factors
+      .help = For Riso/ CCiso, the array name containing reference structure factors
+      .help = As an example, could be intensity from *sf.cif
+      .help = Specifically this is a tag searched for in the array name, could be 'tensity' from 'intensity'
   }
   predictions_to_edge {
     apply = False

@@ -11,6 +11,7 @@
 #include <cctbx/maptbx/histogram.h>
 #include <cctbx/maptbx/resolution.h>
 #include <cctbx/maptbx/fsc.h>
+#include <cctbx/maptbx/loft.h>
 #include <cctbx/maptbx/sphericity.h>
 #include <cctbx/maptbx/mask.h>
 #include <cctbx/maptbx/utils.h>
@@ -427,6 +428,23 @@ namespace {
                      arg("n_bins"))))
         .def("map_data", &w_t::map_data)
         .def("v_values", &w_t::v_values)
+      ;
+    }
+
+    {
+      typedef loft w_t;
+
+      class_<w_t>("loft", no_init)
+        .def(init<af::const_ref<cctbx::miller::index<> > const&,
+                  af::const_ref<int, af::c_grid<3> > const&,
+                  af::shared<double> const&,
+                  double const& >(
+                    (arg("miller_indices"),
+                     arg("map_data"),
+                     arg("abc"),
+                     arg("d_min"))))
+        .def("structure_factors", &w_t::structure_factors)
+        .def("indices", &w_t::indices)
       ;
     }
 

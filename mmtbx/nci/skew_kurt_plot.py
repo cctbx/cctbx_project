@@ -46,15 +46,16 @@ def make_figure(
     file_name,
     theta1_coords,
     Rha_coords,
+    dot_size,
     type='all',
     colorblind_friendly=True,
     resolution=300):
   """ Plots skew-kurtosis plot and saves it to .png file
 
   Args:
-      file_name (str): file name without extension
-      theta1_coords (iterabe): skew-kurtosis coordinates of theta1
-      Rha_coords (iterable): skew-kurtosis coordinates of Rha
+      file_name (str): file name for the produced figure without extension
+      theta1_coords (iterabe): list of skew-kurtosis coordinates of theta1 [(),(),..]
+      Rha_coords (iterable): list of skew-kurtosis coordinates of Rha [(),(),..]
       type (str, optional): Type of contours to plot. Defaults to 'all'. Allowed 'all', 'alpha', 'beta'.
       colorblind_friendly (bool, optional): Use color-blind friendly palette. Defaults to True.
       resolution (int, optional): Resolution of outputted figure. Defaults to 300.
@@ -120,8 +121,10 @@ def make_figure(
       extent=[xmin, xmax, ymin, ymax],
       )
 
-  ax.scatter([theta1_coords[0]], [theta1_coords[1]], s=100, c=color_palette['theta_color'], edgecolor=color_palette['theta_contour'])
-  ax.scatter([Rha_coords[0]], [Rha_coords[1]], s=100, c=color_palette['Rha_color'], edgecolor=color_palette['Rha_contour'])
+  for theta1_c in theta1_coords:
+    ax.scatter([theta1_c[0]], [theta1_c[1]], s=dot_size, c=color_palette['theta_color'], edgecolor=color_palette['theta_contour'])
+  for Rha_c in Rha_coords:
+    ax.scatter([Rha_c[0]], [Rha_c[1]], s=dot_size, c=color_palette['Rha_color'], edgecolor=color_palette['Rha_contour'])
   ax.set_xlabel('Skew')
   ax.set_ylabel('Kurtosis')
   fig.savefig("%s.png" % file_name, dpi=resolution)

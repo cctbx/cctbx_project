@@ -90,8 +90,8 @@ the refls using a Mahalanobis cutoff.
       mahal_emp_cov = mahal_emp_cov.reshape(xx.shape)
       emp_cov_contour = ax.contour(xx, yy, np.sqrt(mahal_emp_cov),
                                   levels=[1.,2.,3.,4.,5.],
-                                  #cmap=plt.cm.PuBu_r,
-                                  cmap=plt.cm.cool_r,
+                                  #cmap=plt.get_cmap('PuBu_r'),
+                                  cmap=plt.get_cmap('cool_r'),
                                   linestyles='dashed')
 
     COV = self.rob_cov
@@ -111,8 +111,8 @@ the refls using a Mahalanobis cutoff.
       mahal_robust_cov = mahal_robust_cov.reshape(xx.shape)
       robust_contour = ax.contour(xx, yy, np.sqrt(mahal_robust_cov),
                                  levels=[1.,2.,3.,4.,5.],
-                                 #cmap=plt.cm.YlOrBr_r,
-                                 cmap=plt.cm.spring_r,
+                                 #cmap=plt.get_cmap('YlOrBr_r'),
+                                 cmap=plt.get_cmap('spring_r'),
                                  linestyles='dotted')
 
 class three_feature_fit(Panel_MCD_Filter):

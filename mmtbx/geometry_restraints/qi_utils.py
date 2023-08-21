@@ -5,11 +5,6 @@ def classify_histidine(hierarchy, resname='HIS'):
   from mmtbx.validation.rotalyze import rotalyze
   result = rotalyze(
       pdb_hierarchy=hierarchy,
-      # data_version="8000",#was 'params.data_version', no options currently
-      # show_errors=self.params.show_errors,
-      # outliers_only=self.params.outliers_only,
-      # use_parent=self.params.use_parent,
-      # out=self.logger,
       quiet=False)
   names = []
   for rot in result.results:
@@ -37,14 +32,16 @@ def run_hbond(args):
 def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
   import time
   from libtbx import easy_mp
+  if nproc==-1: assert 0, 'testing using %s' % nproc
   rc = []
+  name = func.__name__.replace('_',' ')
   if nproc==1:
     for i, args in enumerate(argstuples):
       t0=time.time()
-      print('  Running job %d' % (i+1), file=log)
+      # print('  Running "%s" job %d' % (name, i+1), file=log)
       res = func(*args)
       rc.append(res)
-      print('    Time : %0.1fs' % (time.time()-t0))
+      # print('    Time for job %d: %0.1fs' % (i+1, time.time()-t0), file=log)
   elif nproc>1:
     print('  Running %d jobs on %d procs' % (len(argstuples), nproc), file=log)
     i=0
@@ -54,12 +51,13 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
                                                       nproc,
                                                       keep_input_order=True):
       assert not err_str, '\n\nDebug in serial :\n%s' % err_str
-      print('  Running job %d : %0.1fs' % (i+1, time.time()-t0), file=log)
+      print('  Running "%s" job %d : %0.1fs' % (name, i+1, time.time()-t0), file=log)
       rc.append(res)
       i+=1
   return rc
 
-def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
+def get_hbonds_via_filenames(filenames, nq_or_h, nproc=1, restraint_filenames=None):
+  assert nproc>0
   argstuples = []
   for i, filename in enumerate(filenames):
     assert os.path.exists(filename), '"%s"' % filename
@@ -68,13 +66,13 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
                        'output_pymol_file=True',
                        'output_restraint_file=False',
                        'output_skew_kurtosis_plot=False',
+                       'min_data_size=0',
                        'prefix=%s' % filename.replace('.pdb',''),
                        ]])
     if restraint_filenames:
       argstuples[-1][-1]+=self.restraint_filenames
-  # print('  Running %d jobs in %d procs' % (len(argstuples), nproc), file=log)
 
-  rc = run_serial_or_parallel(run_hbond, argstuples, nproc=6)
+  rc = run_serial_or_parallel(run_hbond, argstuples, nproc=nproc)
 
   i=0
   hbondss=[]
@@ -90,7 +88,7 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
     pymols += '  phenix.pymol %s &\n' % pf
   return hbondss, pymols
 
-def get_rotamers_via_filenames(filenames, selection):
+def get_rotamers_via_filenames(filenames, selection, resname='HIS'):
   from iotbx import pdb
   rotamers=[]
   for i, filename in enumerate(filenames):
@@ -98,7 +96,7 @@ def get_rotamers_via_filenames(filenames, selection):
     asc1 = hierarchy.atom_selection_cache()
     sel = asc1.selection(selection)
     hierarchy = hierarchy.select(sel)
-    rc = classify_histidine(hierarchy)
+    rc = classify_histidine(hierarchy, resname=resname)
     rotamers.append(rc[0])
     i+=1
   return rotamers

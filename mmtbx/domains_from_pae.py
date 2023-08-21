@@ -196,7 +196,7 @@ def domains_from_pae_matrix_igraph(pae_matrix, pae_power=1, pae_cutoff=5,
         import igraph
     except ImportError:
         raise Sorry(
-            'ERROR: This method requires python-igraph to be installed. Please install it using "pip install python-igraph" '
+            'ERROR: This method requires python-igraph to be installed. Please install it using "pip install igraph" '
             'in a Python >=3.6 environment and try again.')
     import numpy
     weights = 1 / pae_matrix ** pae_power

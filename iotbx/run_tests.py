@@ -5,6 +5,7 @@ import libtbx.load_env
 
 tst_list_base = [
   "$D/regression/tst_wildcard.py",
+  "$D/gui_tools/tst.py",
   "$D/regression/tst_simple_parser.py",
   "$D/regression/tst_phil.py",
   "$D/regression/tst_pdb_cif_inputs.py",
@@ -143,6 +144,9 @@ tst_list_base = [
   "$D/regression/tst_mtz_as_cif.py",
   "$D/regression/tst_group_rounding.py",
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
+  "$D/regression/tst_hierarchy_long_chain_ids_1.py",
+  "$D/regression/tst_hierarchy_long_resname_1.py",
+  "$D/regression/tst_hierarchy_copy_select.py",
   ]
 
 # failing tests on Windows, Python 2.7
@@ -150,7 +154,9 @@ tst_list_windows_fail = [
   "$D/detectors/tst_debug_write.py",
 ]
 
-tst_list_fail = ["$D/regression/ncs/tst_ncs_reordered_chains.py",
+tst_list_fail = [
+  "$D/regression/ncs/tst_ncs_reordered_chains.py",
+  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail

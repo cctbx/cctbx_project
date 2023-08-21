@@ -31,7 +31,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
           for(unsigned i_ag=0;i_ag<n_ags;i_ag++) { \
             atom_group const& ag = ags[i_ag]; \
             unsigned n_ats = ag.atoms_size(); \
-            atom_group r_ag(ag.data->altloc.elems, ag.data->resname.elems); \
+            atom_group r_ag(ag.data->altloc.elems, ag.data->resname.c_str()); \
             std::vector<atom> const& atoms = ag.atoms(); \
             boost::scoped_array<atom> r_atoms(new atom[n_ats]); \
             unsigned r_n_ats = 0;

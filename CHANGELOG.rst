@@ -1,3 +1,37 @@
+2023.7
+======
+
+* Initial support for handling longer residue names in mmCIF
+* Improved handling of real-space maps with unexpected metadata for the
+  origin and cell angles
+* Improvements to reduce2 and probe2
+* Reorganization of quantum mechanical restraints
+
+2023.6
+======
+
+* Basic space group check when reading mmCIF
+* Fix hybrid36 output in mmCIF
+* Updates to lists of modified amino and nucleic acids
+* DataManager updates for handling multiple uses (types) for generating fmodel
+
+2023.5
+======
+
+* DataManager updates for handling multiple uses (types) of models and Miller arrays
+* DataManager updates for handling priority of amplitudes and intensities
+* Migration from using any_file when file type is already known
+* Start checking atom names of non-standard amino acids
+
+2023.4
+======
+
+* Prevent potenially large memory usage when trying to read reflection data
+* CCTBXParser fix to properly re-raise an error when parsing PHIL
+* DataManager fix for handling datatypes with parent classes
+* Improved water picking
+* Improved atom selections to handle more than 10k atoms
+
 2023.3
 ======
 

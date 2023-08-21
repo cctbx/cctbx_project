@@ -5,7 +5,7 @@ from cctbx import crystal
 
 def exercise():
   import mmtbx.regression
-  from iotbx import file_reader
+  import iotbx.pdb
   from six.moves import cStringIO as StringIO
   pdb_file = "tmp_em_rscc.pdb"
   map_file = "tmp_em_rscc.map"
@@ -14,11 +14,11 @@ def exercise():
     if line.startswith("ATOM"):
       f.write(line + "\n")
   f.close()
-  pdb_in = file_reader.any_file(pdb_file).file_object
+  pdb_in = iotbx.pdb.input(pdb_file)
   symm = crystal.symmetry(
     space_group_symbol="P1",
     unit_cell=(30, 30, 30, 90, 90, 90))
-  xrs = pdb_in.input.xray_structure_simple(crystal_symmetry=symm)
+  xrs = pdb_in.xray_structure_simple(crystal_symmetry=symm)
   xrs.scattering_type_registry(
     d_min=3.0,
     table="electron")

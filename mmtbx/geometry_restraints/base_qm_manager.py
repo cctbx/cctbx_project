@@ -208,22 +208,15 @@ class base_manager():
     assert len(selection_array)==len(self.atoms)
     self.ligand_atoms_array = selection_array
 
-  # def set_frozen_atoms(self, selection_array):
-  #   """Summary
+  def get_energy(self, *args, **kwds): return 0, 'dirac'
 
-  #   Args:
-  #       selection_array (TYPE): Description
-  #   """
-  #   assert len(selection_array)==len(self.atoms)
-  #   self.freeze_a_ray = selection_array
+  def read_energy(self, *args, **kwds): return 0, 'dirac'
 
-  def get_opt(self,
-              cleanup=False,
-              file_read=False,
-              coordinate_filename_ext='.xyz',
-              log_filename_ext='.log',
-              redirect_output=True,
-              log=None):
+  def get_strain(self, *args, **kwds): return 0, 'dirac'
+
+  def get_bound(self, *args, **kwds): return 0, 'dirac'
+
+  def get_opt(self, *args, **kwds):
     import random
     rc = []
     for atom in self.atoms:
@@ -311,7 +304,7 @@ class base_qm_manager(base_manager):
         lf = self.get_log_filename()
         if os.path.exists(lf):
           process_qm_log_file(lf, log=log)
-        print('  Reading coordinates from %s\n' % filename, file=log)
+        # print('  Reading coordinates from %s\n' % filename, file=log)
         coordinates = self.read_xyz_output()
     if coordinates is None:
       self.opt_setup(optimise_ligand=optimise_ligand,
@@ -350,7 +343,7 @@ class base_qm_manager(base_manager):
       if os.path.exists(filename):
         if os.path.exists(filename):
           process_qm_log_file(filename, log=log)
-        print('  Reading energy from %s\n' % filename, file=log)
+        # print('  Reading energy from %s\n' % filename, file=log)
         energy, units = self.read_energy()
     if energy is None:
       outl = self.get_input_lines(optimise_ligand=optimise_ligand,
@@ -361,7 +354,7 @@ class base_qm_manager(base_manager):
       self.run_cmd(redirect_output=redirect_output)
       energy, units = self.read_energy()
     if cleanup: self.cleanup(level=cleanup)
-    print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
+    # print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
     self.preamble = old_preamble
     return energy, units
 
@@ -383,9 +376,25 @@ class base_qm_manager(base_manager):
     final_energy, units = self.read_energy()
     self.strain = start_energy-final_energy
     self.units = units
-    print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
+    # print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
     self.preamble = old_preamble
     return self.strain, self.units
+
+  def get_bound(self,
+                cleanup=False,
+                file_read=True,
+                redirect_output=False,
+                log=StringIO(),
+                **kwds
+                ):
+    old_preamble = self.preamble
+    self.preamble += '_bound'
+    energy, units = self.get_energy(optimise_h=True,
+                                    redirect_output=redirect_output,
+                                    cleanup=cleanup,
+                                    log=log)
+    self.preamble = old_preamble
+    return energy, units
 
   def get_timings(self, energy=None):
     if not self.times: return '-'
@@ -395,6 +404,19 @@ class base_qm_manager(base_manager):
     if energy:
       f+=' Energy : %0.6f' % energy
     return f
+
+  def _is_atom_for_opt(self, i, atom, optimise_ligand=True, optimise_h=True):
+    ligand_atom = self.ligand_atoms_array[i]
+    if optimise_ligand:
+      if ligand_atom:
+        opt=1
+      else:
+        opt=0
+    else:
+      opt=0
+    if optimise_h and atom.element in ['H', 'D']:
+      opt=1
+    return opt
 
   def guess_bonds(self):
     bonds = []

@@ -13,8 +13,8 @@ def exercise():
       print("%s not available, skipping" % module)
       return
   from mmtbx.command_line import validation_summary
-  from iotbx import file_reader
   import iotbx.pdb.hierarchy
+  import iotbx.pdb
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
@@ -29,8 +29,8 @@ def exercise():
   summary.show(out=out_1)
   sss.show(out=out_2)
   assert out_1.getvalue() == out_2.getvalue()
-  pdb_in = file_reader.any_file(regression_pdb)
-  hierarchy = pdb_in.file_object.hierarchy
+  pdb_in = iotbx.pdb.input(regression_pdb)
+  hierarchy = pdb_in.construct_hierarchy()
   new_hierarchy = iotbx.pdb.hierarchy.root()
   for i in range(5):
     model = hierarchy.only_model().detached_copy()
@@ -39,7 +39,7 @@ def exercise():
   import mmtbx.model
   model_object = mmtbx.model.manager(
           model_input = new_hierarchy.as_pdb_input(),
-          crystal_symmetry = pdb_in.file_object.crystal_symmetry())
+          crystal_symmetry = pdb_in.crystal_symmetry())
   open("tst_validation_summary.pdb", "w").write(model_object.model_as_pdb())
   out2 = StringIO()
   summary = validation_summary.run(args=["tst_validation_summary.pdb"],

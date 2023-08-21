@@ -474,7 +474,7 @@ class ResidualsPlotter(object):
 
     # initialize the color map
     norm = Normalize(vmin=vmin, vmax=vmax)
-    cmap = plt.cm.get_cmap(self.params.colormap)
+    cmap = plt.get_cmap(self.params.colormap)
     sm = cm.ScalarMappable(norm=norm, cmap=cmap)
     color_vals = np.linspace(vmin, vmax, 11)
     sm.set_array(color_vals) # needed for colorbar

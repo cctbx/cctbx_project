@@ -22,6 +22,8 @@ COMM = MPI.COMM_WORLD
 
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
 
+F32 = np.finfo(np.float32)
+
 
 class TargetFuncEnsemble:
 
@@ -522,7 +524,10 @@ class DataModelers:
                 with np.errstate(all='ignore'):
                     channel_scales_var = 1 / channel_hessian
 
-                is_finite = ~np.isinf(channel_scales_var.astype(np.float32))  # should be finite float32
+                safe_vals = np.logical_and( channel_scales_var >= F32.min, channel_scales_var <= F32.max)
+                is_finite = np.logical_and(safe_vals, ~np.isinf(channel_scales_var))
+
+                #is_finite = ~np.isinf(channel_scales_var.astype(np.float32))  # should be finite float32
                 is_reasonable = channel_scales_var < self.max_sigma
                 is_positive = channel_hessian > 0
                 sel = is_positive & is_finite & is_reasonable

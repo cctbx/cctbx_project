@@ -46,8 +46,8 @@ As mentioned above, the C++ classes can be imported using the **mmtbx_probe_ext*
 There are also a set of Python classes that provide support for applications that want to use the C++ classes.
 
 * **AtomTypes.py:** This contains classes and functions that help determine the characteristics of atoms, which is needed
-to know how to handle them during Probe2 calculations.  The **IsAromatic()** function tells whether
-a specified atom from a specified residue is part of an aromatic ring in a standard residue.
+to know how to handle them during Probe2 calculations.  The **IsAromaticAcceptor()** function tells whether
+a specified atom from a specified residue is an acceptor because it is part of an aromatic ring in a standard residue.
 
 * **Helpers.py.** This contains helper functions needed by both Probe2 and Reduce2.  See the file itself for a complete
 list of functions and parameters.  Notable ones include:

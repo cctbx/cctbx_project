@@ -356,7 +356,8 @@ class run_one(object):
     if(self.sphericity_filter):
       self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
-    if(self.cc_mask_filter):
+    if(self.cc_mask_filter and
+       self.model.solvent_selection().iselection().size()>0):
       self._call(self._refine_water_adp     , "Refine ADP")
       self._call(self._filter_by_map_model_cc, "Filter peaks by CC_mask")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
@@ -623,7 +624,6 @@ class run_one(object):
       chain_id               = "S",
       refine_adp             = "isotropic")
     m_w = m.select( m.selection(string="water") )
-
     self.ma.add("  B (min/max/mean) start: %8.3f %8.3f %8.3f"%
       m_w.get_b_iso().min_max_mean().as_tuple())
     m_w.setup_scattering_dictionaries(scattering_table = self.scattering_table)

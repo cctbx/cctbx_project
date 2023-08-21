@@ -49,15 +49,15 @@ modify.reindex_to_reference.dataframe=test_reindex_dataframe.pickle
 modify.cosym.space_group=P6
 modify.cosym.dataframe=test_cosym_dataframe.pickle
 modify.cosym.anchor=True
+modify.cosym.tranch_size=600
 modify.cosym.min_reflections=15
 modify.cosym.normalisation=None
 modify.cosym.d_min=2.5
 modify.cosym.dimensions=2
-modify.cosym.cluster.n_clusters=2
 modify.cosym.min_pairs=3
-modify.cosym.nproc=1
 modify.cosym.weights=count
 modify.cosym.plot.interactive=True
+modify.cosym.plot.n_max=1
 scaling.model=<path to pdb file containing the reference structure.pdb>
 scaling.resolution_scalar=0.95
 scaling.mtz.mtz_column_F=I-obs
@@ -76,10 +76,10 @@ Line-by-line discussion of these options:
 mpirun -n 60 cctbx.xfel.merge
 ```
 There is a critical tradeoff involving the number of MPI ranks (-n).  Analysis of a large dataset (N=8000) would be prohibitive if the full NxN matrix
-were to be analyzed.  Instead, we break the data into tranches of T = N//n shots, so in this case we analyze matrices of approximately 133 x 133
-experiments within each MPI rank.  Useful tranch sizes T range from about 100 to 200.  Smaller T produces drastically shorter wall clock time, while larger T
+were to be analyzed.  Instead, we break the data into tranches of size `modify.cosym.plot.tranch_size` T  (T >= N//n), so in this case we analyze matrices of approximately 133 x 133
+experiments within each MPI rank.  Useful tranche sizes T range from about 100 to 1000.  Smaller T produces drastically shorter wall clock time, while larger T
 produces dramatically superior Brehm-Diederichs embedding plots, as in Figure 4 of their paper.  The embedding plot (see `modify.cosym.plot.interactive`) must
-be checked to ensure blue/red clusters are well separated from the 45-degree diagonal, and that the cluster centers are at a good distance from the origin
+be checked to ensure the clusters are well separated from the 45-degree diagonal, and that the cluster centers are at a good distance from the origin
 (0.4-0.8 is good).  If the clusters look bad, the tranch size should be increased.  Note, the algorithm will not work unless n>=5.
 ```
 dispatch.step_list=input balance model_scaling modify filter modify_cosym errors_premerge scale postrefine statistics_unitcell statistics_beam model_statistics statistics_resolution group errors_merge statistics_intensity merge statistics_intensity_cxi
@@ -116,7 +116,13 @@ modify.cosym.space_group=P6
 ```
 If the correct space group of the crystal is known, we supply a symmorphic space group
 in the same point group, e.g. P6(3) -> P6 for hexagonal photosystem I. This applies
-algorithm 2 in Ref. 1. If no space group is supplied, then the clustering analysis is
+algorithm 2 in Ref. 1.  The symmorphic space groups relevant to protein crystallography are:  
+P1, P2, C2, P222, C222, I222, F222, P4, I4, P422, I422, P3, R3:H, P312, P321, R32:H, 
+P6, P622, P23, F23, I23, P432, F432, and I432.  
+Of these, the subset relevant to resolving
+indexing ambiguity from merohedral twin laws is P4, I4, P3, R3:H, P312, P321, P6, P23, F23, and I23.
+
+If no space group is supplied, then the clustering analysis is
 as described in Ref. 2 with the goal of assigning the Laue group.
 
 ```
@@ -138,7 +144,9 @@ These options from the Gildea program should probably never be changed.
 ```
 modify.cosym.d_min=2.5
 ```
-The user can specify the resolution range specifically for the `cosym` process, independent of which data to eventually merge.
+The user can specify the resolution range specifically for the `cosym` process, independent of which data to eventually merge.  The effect of this parameter is illustrated by the following four cosym analyses performed with differing cutoffs:
+![composite-01](https://github.com/cctbx/cctbx_project/assets/14790230/0c58659d-9c73-407e-a6ae-589e6ee525ec)
+It can be critical to choose the outermost resolution cutoff (1.6 A here) that still includes well-measured data.  At low-resolution (4 A here) it is found that pairs of diffraction images have on average only 1.8 Miller indices in common to evaluate the image-to-image correlation coefficient, while at 1.6 A there are 5.9 common pairs.  The effect is to improve the separation between clusters.  The interpretation of the plots is discussed in detail in reference 3.    
 ```
 modify.cosym.dimensions=2
 ```
@@ -146,23 +154,11 @@ This is absolutely critical.  We set this to 2 dimensions for space group P63, a
 in the final sort.  Setting this to the default (auto determine) has the unfortunate consequence of performing the embedding
 analysis in a higher dimensional space (6) where the clusters cannot be found!  So for the present use case, keep this at 2.
 ```
-modify.cosym.cluster.n_clusters=2
-```
-The number of clusters should match the number of dimensions.
-```
 modify.cosym.min_pairs=3
 ```
 Per-experiment, per-symmetry-operator minimum number of mutual Miller indices to form a correlation-coefficient cross-term with another
 expt/symop combination.  Takes the default from Gildea; increasing this will drastically reduce the data used for alignment, probably
 to our detriment.
-```
-modify.cosym.nproc=1
-```
-`nproc > 1` permits Python multiprocessing for the calculation of the rij matrix.  Note, rij is a time-consuming process, but the next step, LBFGS, is
-probably rate limiting, so it is not clear if `nproc` will really help.  Details:  `nproc` enables a hybrid parallelization model, where MPI ranks handle
-separate data tranches, while Python multiprocessing speeds up work within each MPI rank.  Therefore, `nproc` should not be set
-to the number of cores on the machine, but rather to the number of hyperthreads available to each rank.  For example, on Cori, one would use 68 ranks per
-node, and 4 nproc hyperthreads per core. Knowledge of the specific machine architecture is needed.
 ```
 modify.cosym.weights=count
 ```
@@ -185,3 +181,6 @@ Acta Crystallogr. D Biol. Crystallogr. 70, 101-109 (2014).
 
 2. R.J. Gildea and G. Winter, ["Determination of Patterson group symmetry from sparse multi-crystal data sets in the presence of an indexing ambiguity,"](https://doi.org/10.1107/S2059798318002978) Acta
 Crystallogr. D Struct. Biol. 74, 405-410 (2018).
+
+3. K. Diederichs, ["Dissecting random and systematic differences between noisy composite data sets,"](https://doi.org/10.1107/S2059798317000699)
+Acta Crystallogr. D Biol. Crystallogr. 73, 286-293 (2017).

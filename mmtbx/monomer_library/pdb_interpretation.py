@@ -1442,7 +1442,9 @@ class monomer_mapping(slots_getstate_setstate):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
-    caa = get_class(name=self.monomer.chem_comp.id[:3])=='common_amino_acid'
+    caa = get_class(name=self.monomer.chem_comp.id[:3]) in ['common_amino_acid',
+                                                            'modified_amino_acid',
+                                                            ]
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -1908,9 +1910,8 @@ def evaluate_registry_process_result(
       show_residue_names=False,
       lines=lines))
   pdb_atoms = m_i.pdb_atoms
-  atoms = [pdb_atoms[i_seq] for i_seq in i_seqs]
   if (not registry_process_result.is_new
-      and not all_atoms_are_in_main_conf(atoms=atoms)):
+      and not all_atoms_are_in_main_conf(atoms=[pdb_atoms[i_seq] for i_seq in i_seqs])):
     raise Sorry(format_exception_message(
       m_i=m_i,
       m_j=m_j,

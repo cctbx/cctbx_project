@@ -1098,12 +1098,12 @@ def runRefineScalesErrors(mmm, d_min,
   ncyc = 50                   # maximum number of microcycles per macrocycle
   minimizer_type = "bfgs"     # minimizer, bfgs or newton
   study_params = False        # flag for calling studyparams procedure
-  output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
+  level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
   refineScalesErrors = RefineScalesErrors(mc1=mc1, mc2=mc2,
                        ssqr_bins = ssqr_bins, start_x=start_params)
-  minimizer = Minimizer(output_level=output_level)
+  minimizer = Minimizer(output_level=level)
 
   # Run minimizer
   minimizer.run(refineScalesErrors, protocol, ncyc, minimizer_type, study_params)

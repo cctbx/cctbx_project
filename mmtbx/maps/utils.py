@@ -31,11 +31,9 @@ def create_map_from_pdb_and_mtz(
     (which would crash otherwise).
   """
   if (out is None) : out = sys.stdout
-  from iotbx import file_reader
+  import iotbx.pdb
   from scitbx.array_family import flex
-  pdb_in = file_reader.any_file(pdb_file,
-    force_type="pdb",
-    raise_sorry_if_errors=True).file_object
+  pdb_in = iotbx.pdb.input(pdb_file)
   xrs = pdb_in.xray_structure_simple(enable_scattering_type_unknown=True)
   selection = xrs.scatterers().extract_scattering_types()!="unknown"
   if(selection.size()!=selection.count(True)):

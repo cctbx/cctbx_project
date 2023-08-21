@@ -126,6 +126,7 @@ class Script:
             refl_names_already = COMM.bcast(refl_names_already)
 
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
+        trefs = []
         for i_exp, line in enumerate(input_lines):
             if i_exp == self.params.max_process:
                 break
@@ -248,10 +249,29 @@ class Script:
             if SIM.refining_Fhkl:
                 nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
             x0 = [1] * nparam
+            tref = time.time()
+            MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_exp+1, len(input_lines)))
             try:
                 x = Modeler.Minimize(x0, SIM, i_exp=i_exp)
             except StopIteration:
                 x = Modeler.target.x0
+            tref = time.time()-tref
+            sigz = niter = None
+            try:
+                niter = len(Modeler.target.all_hop_id)
+                sigz = np.mean(Modeler.target.all_sigZ)
+            except Exception:
+                pass
+
+            trefs.append(tref)
+            print_s = "Finished refinement of shot %d / %d in %.4f sec. (rank mean t/im=%.4f sec.)" \
+                        % (i_exp+1, len(input_lines), tref, np.mean(trefs))
+            if sigz is not None and niter is not None:
+                print_s += " Ran %d iterations. Final sigmaZ = %.1f," % (niter, sigz)
+            if COMM.rank==0:
+                MAIN_LOGGER.info(print_s)
+            else:
+                MAIN_LOGGER.debug(print_s)
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 

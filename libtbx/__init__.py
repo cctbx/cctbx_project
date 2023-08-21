@@ -273,8 +273,11 @@ class group_args(dda):
 
   def __repr__(self):
     outl = "group_args"
+    from libtbx.utils import to_str,sys
     for attr in sorted(self.__dict__.keys()):
       tmp=getattr(self, attr)
+      if (sys.version_info.major < 3) and (isinstance(tmp,unicode)):
+        tmp = to_str(tmp)
       if str(tmp).find("ext.atom ")>-1:
         outl += "\n  %-30s : %s" % (attr, tmp.quote())
       else:

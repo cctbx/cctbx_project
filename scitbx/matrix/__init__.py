@@ -39,7 +39,7 @@ class rec(object):
 
   Examples
   --------
-  >>> from scitbx.matix import rec
+  >>> from scitbx.matrix import rec
   >>> m = rec((1, 2, 3, 4), (2, 2))
   >>> print m.trace()
   5

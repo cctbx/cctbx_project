@@ -18,6 +18,7 @@ Options:
 
   model=input_file      input PDB file
   output=text, kin, or bullseye    select type of output
+  json=False            Outputs results as JSON compatible dictionary
   outliers_only=False   suppress non-outlier results
 
 Example:
@@ -27,6 +28,9 @@ Example:
 
   master_phil_str = """
   include scope mmtbx.validation.molprobity_cmdline_phil_str
+    json = False
+      .type = bool
+      .help = "Prints results as JSON format dictionary"
     cbetadev {
       output = *text kin bullseye
         .type = choice
@@ -50,6 +54,16 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
+  def get_results_as_JSON(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+
+    result = cbetadev(
+      pdb_hierarchy = hierarchy,
+      outliers_only = self.params.outliers_only,
+      out           = self.logger)
+    return result.as_JSON()
+
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
     hierarchy.atoms().reset_i_seq()
@@ -66,6 +80,8 @@ Example:
     elif self.params.cbetadev.output == "bullseye":
       filebase = os.path.basename(self.data_manager.get_model_names()[0])
       self.logger.write(result.as_bullseye_kinemage(pdbid=filebase))
+    elif self.params.json:
+      print(self.get_results_as_JSON())
     elif self.params.verbose:
       #pdb_file_str = os.path.basename(self.params.model)[:-4]
       #get input file name from data manager, strip file extension

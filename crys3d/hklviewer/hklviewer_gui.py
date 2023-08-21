@@ -7,7 +7,6 @@
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
-
 from __future__ import absolute_import, division, print_function
 
 from .qt import QWebEngineView
@@ -21,6 +20,7 @@ from .qt import ( QCoreApplication, QMetaObject, QRect, QSize, Qt,  # implicit i
  QDoubleSpinBox, QFrame, QGridLayout, QGroupBox, QLabel, QPlainTextEdit,
  QPushButton, QRadioButton, QScrollArea, QSlider, QSplitter, QSizePolicy, QSpinBox,
  QTableWidget, QTabWidget, QTextEdit, QWidget, QIcon, QAbstractScrollArea, )
+
 
 
 class Ui_MainWindow(object):
@@ -159,7 +159,7 @@ class Ui_MainWindow(object):
         self.scrollArea_2.setWidgetResizable(True)
         self.scrollAreaWidgetContents_2 = QWidget()
         self.scrollAreaWidgetContents_2.setObjectName(u"scrollAreaWidgetContents_2")
-        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 460, 544))
+        self.scrollAreaWidgetContents_2.setGeometry(QRect(0, 0, 460, 547))
         self.gridLayout_29 = QGridLayout(self.scrollAreaWidgetContents_2)
         self.gridLayout_29.setSpacing(4)
         self.gridLayout_29.setContentsMargins(3, 3, 3, 3)
@@ -733,7 +733,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_12.addWidget(self.OpaqueAllCheckbox, 1, 0, 1, 1)
 
-        self.binstable = QTableWidget(self.widget_6)
+        self.binstable = HeaderDataTableWidget(self.widget_6)
         if (self.binstable.columnCount() < 4):
             self.binstable.setColumnCount(4)
         if (self.binstable.rowCount() < 5):
@@ -1154,7 +1154,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.actiondebug.setText(QCoreApplication.translate("MainWindow", u"Debug", None))
         self.actionExit.setText(QCoreApplication.translate("MainWindow", u"Exit", None))
-        self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save reflection file...", None))
+        self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save highligted datasets as a reflection file...", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image...", None))
         self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX Documentation", None))
@@ -1171,6 +1171,9 @@ class Ui_MainWindow(object):
         self.XtricorderBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtricorder", None))
         self.XtriageBtn.setText(QCoreApplication.translate("MainWindow", u"Run Xtriage", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tabPresetbuttons), QCoreApplication.translate("MainWindow", u"Quick View", None))
+#if QT_CONFIG(tooltip)
+        self.millertable.setToolTip(QCoreApplication.translate("MainWindow", u"Highlighted datasets can be saved into a single datafile", None))
+#endif // QT_CONFIG(tooltip)
         self.label.setText(QCoreApplication.translate("MainWindow", u"Display a dataset with a double-click. Right-click table for more options.", None))
 #if QT_CONFIG(tooltip)
         self.ExpandReflsGroupBox.setToolTip(QCoreApplication.translate("MainWindow", u"<html><head/><body><p>Quick expansion of reflections utilising GPU of the computer</p></body></html>", None))
@@ -1323,4 +1326,3 @@ class Ui_MainWindow(object):
         self.tabText.setTabText(self.tabText.indexOf(self.tabInfo), QCoreApplication.translate("MainWindow", u"Info", None))
         self.tabText.setTabText(self.tabText.indexOf(self.tabWarnings), QCoreApplication.translate("MainWindow", u"Verbose Info", None))
     # retranslateUi
-

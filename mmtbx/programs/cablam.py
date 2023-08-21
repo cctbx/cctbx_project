@@ -19,6 +19,7 @@ Options:
   output=          text : default output.  Prints machine-readable
                           columnated and colon-separated validation text to
                           screen.
+                        json : prints results as JSON compatible dictionary
                         kin : prints kinemage markup for validation to screen
                         full_kin : prints kinemage markup and struture kinamge
                           to screen
@@ -45,6 +46,9 @@ Example:
 
   master_phil_str = """
   include scope mmtbx.validation.molprobity_cmdline_phil_str
+  json = False
+    .type = bool
+    .help = "Prints results as JSON format dictionary"
   pdb_infile = None
     .type = path
     .help = input PDB file
@@ -65,6 +69,17 @@ Example:
 
 #TODO: get cablam.interpretation() to print again
 
+  def get_results_as_JSON(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+
+    result = cablamalyze(
+      pdb_hierarchy = hierarchy,
+      outliers_only = self.params.outliers_only,
+      out           = self.logger,
+      quiet         = False)
+    return result.as_JSON()
+
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
@@ -77,7 +92,9 @@ Example:
       quiet=False)
 
     #output_type = *text kin full_kin points_kin records records_and_pdb oneline
-    if self.params.output_type=='oneline':
+    if self.params.json:
+      print(self.get_results_as_JSON())
+    elif self.params.output_type=='oneline':
       pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])
       cablam.as_oneline(pdbid=pdb_file_str)
     elif self.params.output_type=='kin':

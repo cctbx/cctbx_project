@@ -199,6 +199,7 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
+      process_biomt             = True,
       skip_ss_annotations       = False,
       reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
@@ -290,7 +291,7 @@ class manager(object):
       self.expand_with_MTRIX_records()
     # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
-    if(self._model_input is not None):
+    if(self._model_input is not None and process_biomt):
       try: # ugly work-around for limited support of BIOMT
         self.biomt_operators = self._model_input.process_BIOMT_records()
       except RuntimeError: pass
@@ -1454,9 +1455,12 @@ class manager(object):
     self.unset_ncs_constraints_groups()
 
   def adopt_xray_structure(self, xray_structure=None):
-    if(xray_structure is None):
-      xray_structure = self.get_xray_structure()
+    if xray_structure is None:
+      return
     self.get_hierarchy().adopt_xray_structure(xray_structure)
+    self._xray_structure = xray_structure
+    self._atom_selection_cache = None
+    self.model_statistics_info = None
 
   def set_xray_structure(self, xray_structure):
     # XXX Delete as a method or make sure all TLS, NCS, refinement flags etc
@@ -1543,6 +1547,9 @@ class manager(object):
     if (self._shift_cart is not None) and (not do_not_shift_back):
       self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
+
+  def can_be_outputted_as_pdb(self):
+    return True
 
   def model_as_pdb(self,
       output_cs = True,
@@ -1675,7 +1682,10 @@ class manager(object):
       additional_blocks = None,
       align_columns = False,
       do_not_shift_back = False,
-      try_unique_with_biomt = False):
+      try_unique_with_biomt = False,
+      skip_restraints=False,
+      segid_as_auth_segid = False,
+      ):
     if try_unique_with_biomt:
       if not self.can_be_unique_with_biomt():
         return ""
@@ -1693,7 +1703,8 @@ class manager(object):
           additional_blocks = ab,
           align_columns = align_columns,
           do_not_shift_back = do_not_shift_back,
-          try_unique_with_biomt = False)
+          try_unique_with_biomt = False,
+          segid_as_auth_segid = segid_as_auth_segid)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -1707,9 +1718,11 @@ class manager(object):
     if hierarchy_to_output is not None:
       if cif_block is not None:
         hierarchy_to_output.round_occupancies_in_place(3)
-        cif_block.update(hierarchy_to_output.as_cif_block())
+        cif_block.update(hierarchy_to_output.as_cif_block(
+          segid_as_auth_segid = segid_as_auth_segid))
       else:
-        cif_block = hierarchy_to_output.as_cif_block()
+        cif_block = hierarchy_to_output.as_cif_block(
+          segid_as_auth_segid = segid_as_auth_segid)
 
     if self.restraints_manager_available():
       ias_selection = self.get_ias_selection()
@@ -1766,8 +1779,9 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
 
-    restraints = self.extract_restraints_as_cif_blocks()
-    cif.update(restraints)
+    if not skip_restraints:
+      restraints = self.extract_restraints_as_cif_blocks()
+      cif.update(restraints)
 
     if self.restraints_manager_available():
       links = grm_geometry.get_cif_link_entries(self.get_mon_lib_srv())
@@ -2769,13 +2783,21 @@ class manager(object):
   def neutralize_scatterers(self):
     if(self._neutralized): return
     xrs = self.get_xray_structure()
+    atoms = self.get_hierarchy().atoms()
     scatterers = xrs.scatterers()
-    for scatterer in scatterers:
+    for i_seq, scatterer in enumerate(scatterers):
       neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
+        # propagate into hierarchy
+        atoms[i_seq].charge = '  '
+        # propagate into pdb_inp
+        # necessary if grm is constructed as it may drop xrs
+        if self._model_input:
+          self._model_input.atoms()[i_seq].charge='  '
     if self._neutralized:
+      xrs.discard_scattering_type_registry()
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
@@ -2962,7 +2984,7 @@ class manager(object):
     self.get_hierarchy().atoms().reset_i_seq()
     self._sync_xrs_labels()
 
-  def add_hydrogens(self, correct_special_position_tolerance,
+  def add_hydrogens(self, correct_special_position_tolerance=1.0,
         element = "H", neutron = False, occupancy=0.01):
     result = []
     xs = self.get_xray_structure()
@@ -3070,7 +3092,8 @@ class manager(object):
         sites_individual = True,
         s_occupancies    = neutron)
     self.reprocess_pdb_hierarchy_inefficient()
-    self.idealize_h_minimization()
+    self.idealize_h_minimization(
+        correct_special_position_tolerance=correct_special_position_tolerance)
 
   def pairs_within(self, radius):
     cs = self.crystal_symmetry()
@@ -3095,7 +3118,7 @@ class manager(object):
     """
     raw_records = self.model_as_pdb()
     pdb_inp = iotbx.pdb.input(source_info=None, lines=raw_records)
-    pip = self._pdb_interpretation_params
+    pip = self.get_current_pdb_interpretation_params()
     pip.pdb_interpretation.clash_guard.max_number_of_distances_below_threshold = 100000000
     pip.pdb_interpretation.clash_guard.max_fraction_of_distances_below_threshold = 1.0
     pip.pdb_interpretation.proceed_with_excessive_length_bonds=True
@@ -3334,7 +3357,7 @@ class manager(object):
     )
     return result
 
-  def solvent_selection(self, include_ions=False):
+  def solvent_selection(self, include_ions=False, offset=None):
     result = flex.bool()
     get_class = iotbx.pdb.common_residue_names_get_class
     for a in self.get_hierarchy().atoms():
@@ -3344,6 +3367,9 @@ class manager(object):
       elif (a.segid.strip() == "ION") and (include_ions):
         result.append(True)
       else: result.append(False)
+    if(offset is not None):
+      for i in offset:
+        result[i] = False
     return result
 
   def xray_structure_macromolecule(self):

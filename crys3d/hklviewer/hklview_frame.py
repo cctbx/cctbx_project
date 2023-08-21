@@ -168,7 +168,7 @@ class HKLViewFrame() :
         self.mprint("Processing PHIL file: %s" %fname)
         with open(fname, "r") as f:
           philstr = f.read()
-          self.update_from_philstr(philstr)
+          self.update_from_philstr(philstr, msgtype="preset_philstr", postrender=True)
           self.mprint("thread_process_arguments() waiting for run_external_sem.acquire", verbose="threadingmsg")
           if not self.run_external_sem.acquire(timeout=jsview_3d.lock_timeout):
             self.mprint("Timed out getting run_external_sem semaphore within %s seconds" %jsview_3d.lock_timeout, verbose=1)
@@ -177,7 +177,7 @@ class HKLViewFrame() :
         if 'image_file' in kwds: # save displayed reflections to an image file
           time.sleep(1)
           fname = kwds.get('image_file', "testimage.png" )
-          self.update_from_philstr('save_image_name = "%s"' %fname)
+          self.update_from_philstr('save_image_name = "%s"' %fname, msgtype="preset_philstr", postrender=True)
       # if we are invoked using Qtgui close us gracefully if requested
       if 'closing_time' in kwds:
         time.sleep(10)
@@ -462,11 +462,11 @@ class HKLViewFrame() :
     return "\nCurrent non-default phil parameters:\n\n" + diffphil.as_str()
 
 
-  def update_from_philstr(self, philstr):
+  def update_from_philstr(self, philstr, msgtype="philstr", postrender=False):
     # Convenience function for scripting HKLviewer that mostly superseedes other functions for
     # scripting such as ExpandAnomalous(True), SetScene(0) etc.
     new_phil = libtbx.phil.parse(philstr)
-    self.guarded_process_PHIL_parameters(new_phil, msgtype="preset_philstr", postrender=True)
+    self.guarded_process_PHIL_parameters(new_phil, msgtype=msgtype, postrender=postrender)
 
 
   def guarded_process_PHIL_parameters(self, new_phil=None, msgtype="philstr",
@@ -941,6 +941,8 @@ Borrowing them from the first miller array""" %i)
     # Make temporary data array the size of hkls. This will be filled with datavalues
     # from procarray matching the order of indices in hkls
     datarr = flex.double(len(hkls), float("nan"))
+    if isinstance( procarray.data(), flex.complex_double):
+      datarr = flex.complex_double(len(hkls), float("nan"))
     # assign data values corresponding to matching indices to datarr
     m = miller.match_indices(procarray.indices(), hkls )
     # get single indices in hkls matching procarray.indices()

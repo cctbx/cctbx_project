@@ -41,6 +41,9 @@ wxplot = False
 outliers_only = False
   .type = bool
   .help = "Only display outliers"
+json = False
+  .type = bool
+  .help = "Prints results as JSON format dictionary"
 verbose = True
   .type = bool
   .help = '''Verbose'''
@@ -92,6 +95,8 @@ def compute(hierarchies, params, log, quiet=False, plot_file_base_default=None):
       app = wxtbx.app.CCTBXApp(0)
       result.display_wx_plots()
       app.MainLoop()
+  else:
+    return result
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -102,6 +107,7 @@ Options:
 
   model=input_file      input PDB file
   outliers_only=False   only print outliers
+  json=False            Outputs results as JSON compatible dictionary
   verbose=False         verbose text output
   plot=False            Create graphics of plots (if Matplotlib is installed)
 
@@ -122,17 +128,33 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
+  def get_results_as_JSON(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+
+    result = ramalyze(
+      pdb_hierarchy = hierarchy,
+      outliers_only = self.params.outliers_only,
+      out           = self.logger)
+    return result.as_JSON()
+
   def run(self):
-    hierarchies = []
-    for model_name in self.data_manager.get_model_names():
-      hierarchy = self.data_manager.get_model(model_name).get_hierarchy()
-      hierarchy.atoms().reset_i_seq()
-      hierarchies.append(hierarchy)
-    fb = os.path.splitext(os.path.basename(
-      self.data_manager.get_model_names()[0]))[0]
-    compute(
-      hierarchies            = hierarchies,
-      params                 = self.params,
-      log                    = self.logger,
-      quiet                  = False,
-      plot_file_base_default = fb)
+    if self.params.json:
+      print(self.get_results_as_JSON())
+    else:
+      hierarchies = []
+      for model_name in self.data_manager.get_model_names():
+        hierarchy = self.data_manager.get_model(model_name).get_hierarchy()
+        hierarchy.atoms().reset_i_seq()
+        hierarchies.append(hierarchy)
+      fb = os.path.splitext(os.path.basename(
+        self.data_manager.get_model_names()[0]))[0]
+      self.results = compute(
+        hierarchies            = hierarchies,
+        params                 = self.params,
+        log                    = self.logger,
+        quiet                  = False,
+        plot_file_base_default = fb)
+
+  def get_results(self):
+    return self.results

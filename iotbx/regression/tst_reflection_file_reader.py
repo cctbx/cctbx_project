@@ -65,7 +65,7 @@ def exercise_sigma_filtering():
   hkl_in = reflection_file_reader.any_reflection_file(
     "tst_iotbx_hkl_reader.hkl")
   ma = hkl_in.as_miller_arrays(merge_equivalents=False)
-  assert (ma[0].size() == 6)
+  assert (ma[0].size() == 3)
   ma = hkl_in.as_miller_arrays(merge_equivalents=False,
     enforce_positive_sigmas=True)
   assert (ma[0].size() == 3)

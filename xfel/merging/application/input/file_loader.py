@@ -4,7 +4,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.array_family import flex
 from six.moves import range
 import json
-from xfel.merging.application.input.file_lister import file_lister
+from xfel.merging.application.input.file_lister import list_input_pairs
 from xfel.merging.application.input.file_load_calculator import file_load_calculator
 from xfel.merging.application.utils.memory_usage import get_memory_usage
 
@@ -73,6 +73,17 @@ def is_odd_numbered(file_name, use_hash = False):
 #if __name__=="__main__":
 #  print is_odd_numbered("int_fake_19989.img")
 
+
+def identifiers_void(*identifiers):
+  """True only if all identifiers evaluate to False (eg. '', None)"""
+  return not any(identifiers)
+
+
+def identifiers_match(*identifiers):
+  """True only if all identifiers match"""
+  return len(set(identifiers)) <= 1
+
+
 from xfel.merging.application.worker import worker
 class simple_file_loader(worker):
   '''A class for running the script.'''
@@ -82,12 +93,6 @@ class simple_file_loader(worker):
 
   def __repr__(self):
     return 'Read experiments and data'
-
-  def get_list(self):
-    """ Returns the list of experiments/reflections file pairs """
-    lister = file_lister(self.params)
-    file_list = list(lister.filepair_generator())
-    return file_list
 
   def run(self, all_experiments, all_reflections):
     """ Load all the data using MPI """
@@ -108,7 +113,7 @@ class simple_file_loader(worker):
 
     # Generate and send a list of file paths to each worker
     if self.mpi_helper.rank == 0:
-      file_list = self.get_list()
+      file_list = list_input_pairs(self.params)
       self.logger.log("Built an input list of %d json/pickle file pairs"%(len(file_list)))
       self.params.input.path = None # Rank 0 has already parsed the input parameters
 
@@ -159,6 +164,7 @@ class simple_file_loader(worker):
 
         new_ids = flex.int(len(reflections), -1)
         eid = reflections.experiment_identifiers()
+        eid_copy = dict(eid)
         for k in eid.keys():
           del eid[k]
 
@@ -170,8 +176,16 @@ class simple_file_loader(worker):
 
           if refls_sel.count(True) == 0: continue
 
-          if experiment.identifier is None or len(experiment.identifier) == 0 or self.params.input.override_identifiers:
-            experiment.identifier = create_experiment_identifier(experiment, experiments_filename, experiment_id)
+          refls_identifier = eid_copy.get(experiment_id, '')
+          if identifiers_void(experiment.identifier, refls_identifier) \
+                  or self.params.input.override_identifiers:
+            new_identifier = create_experiment_identifier(
+              experiment, experiments_filename, experiment_id)
+            experiment.identifier = new_identifier
+          elif not identifiers_match(experiment.identifier, refls_identifier):
+            m = 'Expt and refl identifier mismatch: "{}" in {} vs "{}" in {}'
+            raise KeyError(m.format(experiment.identifier, experiments_filename,
+                                    refls_identifier, reflections_filename))
 
           if not self.params.input.keep_imagesets:
             experiment.imageset = None

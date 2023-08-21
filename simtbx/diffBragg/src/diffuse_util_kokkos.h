@@ -8,6 +8,9 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
   if ( laue_group_num < 1 or laue_group_num > 14) {
     return 0;
   }
+
+  const double one_over_root2 = 1./sqrt(2.);
+
   if ( laue_group_num == 1 ) {
   // P -1
 
@@ -168,11 +171,11 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
 
               // -y,x-y,z
     lmats[1] <<  0,-1, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0, 1;
 
               // -x+y,-x,z
-    lmats[2] << -1, 1, 0,
+    lmats[2] << -one_over_root2, one_over_root2, 0,
                 -1, 0, 0,
                  0, 0, 1;
 
@@ -188,22 +191,22 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
 
               // -y,x-y,z
     lmats[1] <<  0,-1, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0, 1;
 
               // -x+y,-x,z
-    lmats[2] << -1, 1, 0,
+    lmats[2] << -one_over_root2, one_over_root2, 0,
                 -1, 0, 0,
                  0, 0, 1;
 
               // x-y,-y,-z
-    lmats[3] <<  1,-1, 0,
+    lmats[3] <<  one_over_root2,-one_over_root2, 0,
                  0,-1, 0,
                  0, 0,-1;
 
               // -x,-x+y,-z
     lmats[4] << -1, 0, 0,
-                -1, 1, 0,
+                -one_over_root2, one_over_root2, 0,
                  0, 0,-1;
 
               // y,x,-z
@@ -223,11 +226,11 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
 
               // -y,x-y,z
     lmats[1] <<  0,-1, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0, 1;
 
               // -x+y,-x,z
-    lmats[2] << -1, 1, 0,
+    lmats[2] << -one_over_root2, one_over_root2, 0,
                 -1, 0, 0,
                  0, 0, 1;
 
@@ -237,13 +240,13 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
                  0, 0,-1;
 
               // -x+y,y,-z
-    lmats[4] << -1, 1, 0,
+    lmats[4] << -one_over_root2, one_over_root2, 0,
                  0, 1, 0,
                  0, 0,-1;
 
               // x,x-y,-z
     lmats[5] <<  1, 0, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0,-1;
 
     return 6;
@@ -257,22 +260,22 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
                  0, 0, 1;
 
               // x-y,x,z
-    lmats[1] <<  1,-1, 0,
+    lmats[1] <<  one_over_root2,-one_over_root2, 0,
                  1, 0, 0,
                  0, 0, 1;
 
               // y,-x+y,z
     lmats[2] <<  0, 1, 0,
-                -1, 1, 0,
+                -one_over_root2, one_over_root2, 0,
                  0, 0, 1;
 
               // -y,x-y,z
     lmats[3] <<  0,-1, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0, 1;
 
               // -x+y,-x,z
-    lmats[4] << -1, 1, 0,
+    lmats[4] << -one_over_root2, one_over_root2, 0,
                 -1, 0, 0,
                  0, 0, 1;
 
@@ -292,33 +295,33 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
                  0, 0, 1;
 
               // x-y,x,z
-    lmats[1] <<  1,-1, 0,
+    lmats[1] <<  one_over_root2,-one_over_root2, 0,
                  1, 0, 0,
                  0, 0, 1;
 
               // y,-x+y,z
     lmats[2] <<  0, 1, 0,
-                -1, 1, 0,
+                -one_over_root2, one_over_root2, 0,
                  0, 0, 1;
 
               // -y,x-y,z
     lmats[3] <<  0,-1, 0,
-                 1,-1, 0,
+                 one_over_root2,-one_over_root2, 0,
                  0, 0, 1;
 
               // -x+y,-x,z
-    lmats[4] << -1, 1, 0,
+    lmats[4] << -one_over_root2, one_over_root2, 0,
                 -1, 0, 0,
                  0, 0, 1;
 
               // x-y,-y,-z
-    lmats[5] <<  1,-1, 0,
+    lmats[5] <<  one_over_root2,-one_over_root2, 0,
                  0,-1, 0,
                  0, 0,-1;
 
               // -x,-x+y,-z
     lmats[6] << -1, 0, 0,
-                -1, 1, 0,
+                -one_over_root2, one_over_root2, 0,
                  0, 0,-1;
 
               // -x,-y,z
@@ -337,13 +340,13 @@ int gen_laue_mats(int laue_group_num, KOKKOS_MAT3 *lmats) {
                  0, 0,-1;
 
               // -x+y,y,-z
-    lmats[10] << -1, 1, 0,
+    lmats[10] << -one_over_root2, one_over_root2, 0,
                   0, 1, 0,
                   0, 0,-1;
 
               // x,x-y,-z
     lmats[11] <<  1, 0, 0,
-                  1,-1, 0,
+                  one_over_root2,-one_over_root2, 0,
                   0, 0,-1;
 
     return 12;
@@ -548,6 +551,7 @@ KOKKOS_FUNCTION
 void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOKKOS_VEC3 Hmin, KOKKOS_VEC3 Hmax, KOKKOS_VEC3 Hrange, KOKKOS_MAT3 Ainv, const vector_cudareal_t FhklLinear, int num_laue_mats, const KOKKOS_MAT3 *laue_mats, KOKKOS_MAT3 anisoG_local, KOKKOS_MAT3 anisoU_local, const KOKKOS_MAT3 *dG_dgam, bool refine_diffuse, CUDAREAL *I0, CUDAREAL *step_diffuse_param){
   CUDAREAL four_mpi_sq = 4.*M_PI*M_PI;
   // loop over laue matrices
+  int num_stencil_points = (2*dHH[0] + 1) * (2*dHH[1] + 1) * (2*dHH[2] + 1);
   bool h_bounded= (H0[0]+dHH[0]<=Hmax[0]) && (H0[0]-dHH[0]>=Hmin[0]) ;
   bool k_bounded= (H0[1]+dHH[1]<=Hmax[1]) && (H0[1]-dHH[1]>=Hmin[1]) ;
   bool l_bounded= (H0[2]+dHH[2]<=Hmax[2]) && (H0[2]-dHH[2]>=Hmin[2]) ;
@@ -571,19 +575,21 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, KOK
           else
             _this_diffuse_scale = 1.0;
 
-          _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats;
-          // TODO: Apply discrete transformations to H0 and delta_H_offset
-          //    like the following to reorient G and recover calmodulin diffuse
-          // KOKKOS_MAT3 xform;
-          // xform << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
-
+          _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats/
+            (CUDAREAL)num_stencil_points;
+          // Use (a-b, a+b, c) as the principal axes of the diffuse model
+          // TODO: Add an option to select (a, b, c) as the principal axes
+          KOKKOS_MAT3 rotate_principal_axes;
+          rotate_principal_axes << 0.70710678,-0.70710678,0.,
+                                   0.70710678, 0.70710678,0.,
+                                   0.,0.,1.;
           for ( int iL = 0; iL < num_laue_mats; iL++ ){
-            KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*H0;
+            KOKKOS_VEC3 Q0 =Ainv*laue_mats[iL]*rotate_principal_axes*H0;
             CUDAREAL exparg = four_mpi_sq*Q0.dot(anisoU_local*Q0);
             CUDAREAL dwf = exp(-exparg);
             KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
             KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;
-            KOKKOS_VEC3 delta_Q = Ainv*laue_mats[iL]*delta_H_offset;
+            KOKKOS_VEC3 delta_Q = Ainv*laue_mats[iL]*rotate_principal_axes*delta_H_offset;
             KOKKOS_VEC3 anisoG_q = anisoG_local*delta_Q;
 
             CUDAREAL V_dot_V = anisoG_q.dot(anisoG_q);

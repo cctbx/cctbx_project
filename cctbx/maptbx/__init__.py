@@ -1699,93 +1699,66 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
     labels = flex.std_string([""]))
   return fo_sharp, map_data
 
-def loc_res(map,
-            model,  #pdb_hierarchy,
-            crystal_symmetry,
+def loc_res(map_model_manager,
             chunk_size = 10,
-            soft_mask_radius = 3.,
             method = "fsc",
-            hard_d_min = 1.5,
-            b_range_low = -200,
-            b_range_high = 500,
-            fsc_cutoff = 0.143,
-            wrapping = False,
-            verbose = False,
-            log = sys.stdout):
-  assert method in ["fsc", "rscc", "rscc_d_min_b"]
-  from cctbx import maptbx
+            b_min = 0,
+            b_max = 500,
+            b_step = 5,
+            res_min = 1.5,
+            res_max = 10.0,
+            res_step = 0.1,
+            fsc_cutoff = 0.143):
+  assert method in ["fsc", "rscc", "rscc_d_min_b", "d99"]
   from cctbx import miller
-  import mmtbx.utils
-  from iotbx.map_model_manager import map_model_manager
-
-
-  mmm = map.as_1d().min_max_mean().as_tuple()
-  map = map-mmm[2]
-  map = map/map.sample_standard_deviation()
-  cg = maptbx.crystal_gridding(
-    unit_cell             = crystal_symmetry.unit_cell(),
-    space_group_info      = crystal_symmetry.space_group_info(),
-    pre_determined_n_real = map.accessor().all())
-  #
-  pdb_hierarchy = model.get_hierarchy()
-  ph_dc = pdb_hierarchy.deep_copy()
-  xrs = pdb_hierarchy.extract_xray_structure(crystal_symmetry = crystal_symmetry)
-  mmtbx.utils.setup_scattering_dictionaries(
-    scattering_table = "electron",
-    xray_structure   = xrs,
-    d_min            = 1.0)
-  #
-  bs = pdb_hierarchy.atoms().extract_b()
-  if method == "rscc_d_min_b":
-    occs = pdb_hierarchy.atoms().extract_occ()
-  else:
-    occs = None
-  results_b = flex.double()
-  results = flex.double()
-  chunk_selections = pdb_hierarchy.chunk_selections(
+  mmm = map_model_manager
+  mmm.map_manager().set_mean_zero_sd_one()
+  mmm.model().setup_scattering_dictionaries(scattering_table = "electron")
+  result = flex.double(mmm.model().size())
+  chunk_selections = mmm.model().get_hierarchy().chunk_selections(
     residues_per_chunk = chunk_size)
-  #
-  from iotbx.map_manager import map_manager
-  mm = map_manager(map_data = map,
-    unit_cell_crystal_symmetry = crystal_symmetry,
-    unit_cell_grid = map.all(),
-    wrapping = wrapping)
-
   for chunk_sel in chunk_selections:
-    ph_sel  = pdb_hierarchy.select(chunk_sel).deep_copy()
-    xrs_sel = xrs.select(chunk_sel)
-    model_sel = model.select(chunk_sel)
-    mmm = map_model_manager(
-      model            = model_sel,
-      map_manager      = mm)
-    mmm.box_all_maps_around_model_and_shift_origin(
-      box_cushion      = 3,
-    )
+    box_mmm = mmm.extract_all_maps_around_model(
+       selection = chunk_sel,  box_cushion=3)
+    box_mmm.remove_origin_shift_and_unit_cell_crystal_symmetry()
 
-    mmm.map_manager().create_mask_around_atoms(model = mmm.model(),
-      mask_atoms_atom_radius = 3.)
-    mmm.map_manager().soft_mask(soft_mask_radius = soft_mask_radius)
-    mmm.map_manager().apply_mask()
+    # <<<<<<<<<<<<<<<
+    if 0: ######## WHY THIS:
+      box_mmm.mask_all_maps_around_atoms(soft_mask = True,
+        mask_atoms_atom_radius=3, soft_mask_radius = 3)
+    else: ######## IS NOT THE SAME AS THIS:
+      box_mmm.map_manager().create_mask_around_atoms(model = box_mmm.model(),
+        mask_atoms_atom_radius = 3.)
+      box_mmm.map_manager().soft_mask(soft_mask_radius = 3)
+      box_mmm.map_manager().apply_mask()
+    # <<<<<<<<<<<<<<<
 
-    #####
-    fo = miller.structure_factor_box_from_map(
-      crystal_symmetry = mmm.model().get_xray_structure().crystal_symmetry(),
-      map              = mmm.map_manager().map_data())
-    if method == "rscc_d_min_b":
-      fo = fo.resolution_filter(d_min = hard_d_min)
-      mmm.model().get_xray_structure().set_b_iso(value = 0.0)
-    fc = fo.structure_factors_from_scatterers(
-      xray_structure = mmm.model().get_xray_structure()).f_calc()
-    b_iso = 0
-    d_min = 0
-    cc = 0
-    if(method == "fsc"):
+    # <<<<<<<<<<<<<<<
+    if 1: ######## WHY THIS:
+      fo = miller.structure_factor_box_from_map(
+        crystal_symmetry = box_mmm.model().get_xray_structure().crystal_symmetry(),
+        map              = box_mmm.map_manager().map_data())
+    else: ######## IS NOT THE SAME AS THIS:
+      fo = box_mmm.map_as_fourier_coefficients()
+    # <<<<<<<<<<<<<<<
+
+    if method in ["rscc_d_min_b", "rscc"]:
+      box_mmm.model().get_xray_structure().set_b_iso(value = 0.0)
+      d_spacings = fo.d_spacings().data()
+      ss = 1./flex.pow2(d_spacings) / 4.
+      def rcast(x): return int(x*10)
+      resolutions = flex.double(
+        [i/10. for i in range(rcast(res_min), rcast(res_max), rcast(res_step))])
+    if method != "d99":
+      fc = fo.structure_factors_from_scatterers(
+        xray_structure = box_mmm.model().get_xray_structure()).f_calc()
+    if(method == "d99"):
+      d_min = d99(f_map=fo).result.d99
+    elif(method == "fsc"):
       d_min = fc.d_min_from_fsc(other = fo, bin_width = 100,
         fsc_cutoff = fsc_cutoff).d_min
     elif(method == "rscc"):
-      d_spacings = fc.d_spacings().data()
-      ss = 1./flex.pow2(d_spacings) / 4.
-      d_min, cc = maptbx.cc_complex_complex(
+      d_min, cc = cc_complex_complex(
         f_1        = fo.data(),
         f_2        = fc.data(),
         d_spacings = d_spacings,
@@ -1793,49 +1766,23 @@ def loc_res(map,
         d_mins     = flex.double([i/10. for i in range(15, 100)]),
         b_iso      = 0)
     elif(method == "rscc_d_min_b"):
-      d_spacings = fc.d_spacings().data()
-      ss = 1./flex.pow2(d_spacings) / 4.
       d_min_best = None
-      cc_best = None
-      b_best = None
-      scale = 20
-      low_value = int(b_range_low/scale)
-      high_value = max(low_value+1, int(b_range_high/scale))
-      for b_iso in  [ i*scale for i in range(low_value, high_value)]:
-        d_min, cc = maptbx.cc_complex_complex(
-        f_1        = fc.data(), # note swapped from rscc f_1 is fixed
-        f_2        = fo.data(),
-        d_spacings = d_spacings,
-        ss         = ss,
-        d_mins     = flex.double([i/10. for i in range(int(hard_d_min*10), 100)]),
-        b_iso      = b_iso)
-
-        if cc_best is None or cc>cc_best:
+      cc_best = -1
+      for b_iso in  [ i for i in range(b_min, b_max, b_step)]:
+        d_min, cc = cc_complex_complex(
+          f_1        = fo.data(),
+          f_2        = fc.data(),
+          d_spacings = d_spacings,
+          ss         = ss,
+          d_mins     = flex.double([i/10. for i in range(15, 100)]),
+          b_iso      = b_iso)
+        if cc>cc_best:
           cc_best = cc
           d_min_best = d_min
-          b_best = b_iso
       cc = cc_best
       d_min = d_min_best
-      b_iso = b_best
-
-    if verbose:
-      print("CHUNK d_min %s b %s cc %s" %(d_min, b_iso, cc), file = log)
-    results.append(d_min)
-    results_b.append(b_iso)
-
-    ph_sel.adopt_xray_structure(mmm.model().get_xray_structure())
-    if (method == "rscc_d_min_b"):
-      bs = bs.set_selected(chunk_sel, b_iso)  # b value in B
-      occs = occs.set_selected(chunk_sel, d_min) # d_min in occ
-    else:
-      bs = bs.set_selected(chunk_sel, d_min)  # d_min in B value
-
-  print(flex.min(results), flex.max(results), flex.mean(results), file = log)
-  print(flex.min(bs), flex.max(bs), flex.mean(bs), file = log)
-  pdb_hierarchy.atoms().set_b(bs)
-  if (method == "rscc_d_min_b"):
-     pdb_hierarchy.atoms().set_occ(occs)
-  return pdb_hierarchy
+    result.set_selected(chunk_sel, d_min)
+  return group_args(result = result, selections = chunk_selections)
 
 def is_bounded_by_constant(map_data,
      relative_sd_tol = 0.1):

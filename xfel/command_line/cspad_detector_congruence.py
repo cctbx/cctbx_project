@@ -111,10 +111,7 @@ def detector_plot_dict(params, detector, data, title, units_str, show=True, reve
   # initialize the color map
   values = flex.double(list(data.values()))
   norm = Normalize(vmin=flex.min(values), vmax=flex.max(values))
-  if reverse_colormap:
-    cmap = plt.cm.get_cmap(params.colormap + "_r")
-  else:
-    cmap = plt.cm.get_cmap(params.colormap)
+  cmap = plt.get_cmap(params.colormap + ("_r" if reverse_colormap else ''))
   sm = cm.ScalarMappable(norm=norm, cmap=cmap)
   if len(values) == 0:
     print("no values")

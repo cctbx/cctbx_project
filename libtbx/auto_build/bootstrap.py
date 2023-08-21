@@ -2076,13 +2076,13 @@ class PhaserBuilder(CCIBuilder):
       self.skip_base = "hdf5,lz4_plugin,py2app,wxpython,docutils,pyopengl,pillow,tiff," + \
         "cairo,fonts,render,fontconfig,pixman,png,sphinx,freetype,gtk,matplotlib," + \
         "cython,h5py,gettext,numpy,pythonextra,pytest,junitxml,libsvm,pyrtf,six,send2trash," + \
-         "jinja2,orderedset,procrunner,tabulate,scipy,scikit_learn,biopython,expat,glib,mrcfile"
+         "jinja2,orderedset,tabulate,scipy,scikit_learn,biopython,expat,glib,mrcfile"
     else:
       self.skip_base = ','.join(self.skip_base.split(',') + ['hdf5','lz4_plugin','py2app',
          'wxpython','docutils','pyopengl','pillow','tiff','cairo','fonts','pyrtf','six','send2trash',
          'fontconfig','render','pixman','png','sphinx','freetype','gtk', 'matplotlib',
          'cython', 'h5py', 'gettext', 'numpy', 'pythonextra', 'pytest', 'junitxml','libsvm',
-         'jinja2', 'orderedset', 'procrunner', 'tabulate', 'scipy', 'scikit_learn', 'biopython',
+         'jinja2', 'orderedset', 'tabulate', 'scipy', 'scikit_learn', 'biopython',
          'expat', 'glib', 'mrcfile'
          ])
     super(PhaserBuilder, self).add_base(
@@ -2810,7 +2810,8 @@ def set_builder_defaults(options):
       # restore default for CentOS 7
       if sys.platform.startswith('linux') and '.el7.' in platform.platform():
         options.no_boost_src = False
-  if options.builder == 'phenix_voyager' or options.builder == 'phenix':
+  if options.builder == 'phenix_voyager' or options.builder == 'phenix' \
+    or options.builder == 'molprobity':
     # Apple Silicon uses Boost 1.78 in environment, Python 3.9
     if platform.mac_ver()[-1] == 'arm64':
       options.no_boost_src = True

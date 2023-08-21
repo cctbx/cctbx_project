@@ -68,7 +68,7 @@ class RefineCryoemSignal(RefineBase):
     self.large_shifts_beta = list(cell_tensor*math.log(2.)*d_min**2)
 
     # Apply a relatively weak restraint to sphericity of beta
-    self.sigmaSphericityBeta = cell_tensor * 5*d_min**2
+    self.sigmaSphericityBeta = cell_tensor * 2*d_min**2
     # sigmaSphericityBiso = adptbx.u_as_b(adptbx.beta_as_u_cart(self.unit_cell, tuple(self.sigmaSphericityBeta)))
     # print("sigmaSphericityBiso: ",tuple(sigmaSphericityBiso))
 
@@ -907,13 +907,7 @@ def auto_sharpen_by_FSC(mc1, mc2):
   mapCC = mc1.map_correlation(other=mc2)
   if mapCC >= 1.:
     raise Sorry("Half-maps must be non-identical")
-  nref = mc1.size()
-  nref_check = 0
-  num_per_bin = 500
-  max_bins = 50
-  min_bins = 10
-  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
-  mc1.setup_binner(n_bins=n_bins)
+  mc1.setup_binner_d_star_sq_bin_size()
   mc2.use_binner_of(mc1)
   mc1s = mc1.customized_copy(data = mc1.data())
   mc2s = mc2.customized_copy(data = mc2.data())
@@ -921,7 +915,6 @@ def auto_sharpen_by_FSC(mc1, mc2):
   for i_bin in mc1.binner().range_used():
     sel = mc1.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
-    nref_check += mc1sel.size()
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
     mapCC = max(mapCC,0.001) # Avoid zero or negative values
@@ -931,8 +924,6 @@ def auto_sharpen_by_FSC(mc1, mc2):
     mc1s.data().set_selected(sel, mc1.data().select(sel) * FSCref/math.sqrt(meanfsq))
     mc2s.data().set_selected(sel, mc2.data().select(sel) * FSCref/math.sqrt(meanfsq))
 
-  assert (nref == nref_check) # Check no Fourier terms lost outside bins
-
   return mc1s, mc2s
 
 def auto_sharpen_isotropic(mc1, mc2):
@@ -940,13 +931,10 @@ def auto_sharpen_isotropic(mc1, mc2):
   # downweights data with poor FSC. Results of fit to Wilson plot could be
   # odd if stated d_min goes much beyond real signal.
 
-  nref = mc1.size()
-  nref_check = 0
-  num_per_bin = 1000
-  max_bins = 50
-  min_bins = 6
-  n_bins = int(round(max(min(nref / num_per_bin, max_bins), min_bins)))
-  mc1.setup_binner(n_bins=n_bins)
+  mapCC = mc1.map_correlation(other=mc2)
+  if mapCC >= 1.:
+    raise Sorry("Half-maps must be non-identical")
+  mc1.setup_binner_d_star_sq_bin_size()
   mc2.use_binner_of(mc1)
 
   sumw = 0
@@ -958,9 +946,9 @@ def auto_sharpen_isotropic(mc1, mc2):
     sel = mc1.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
     mc2sel = mc2.select(sel)
+    if mc1sel.size() < 2:
+      continue
     mapCC = mc1sel.map_correlation(other=mc2sel)
-    if mapCC >= 1.:
-      raise Sorry("Half-maps must be non-identical")
     mapCC = max(mapCC,0.001) # Avoid zero or negative values
     FSCref = math.sqrt(2./(1.+1./mapCC))
     ssqr = mc1sel.d_star_sq().data()
@@ -969,14 +957,12 @@ def auto_sharpen_isotropic(mc1, mc2):
     meanfsq = flex.mean_default(fsq, 0)
     y = math.log(meanfsq/(FSCref*FSCref))
     w = fsq.size() * FSCref
-    nref_check += fsq.size()
     sumw += w
     sumwx += w * x
     sumwy += w * y
     sumwx2 += w * x**2
     sumwxy += w * x * y
 
-  assert (nref == nref_check) # Check no Fourier terms lost outside bins
   slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
   b_sharpen = 2 * slope # Divided by 2 to apply to amplitudes
   all_ones = mc1.customized_copy(data = flex.double(mc1.size(), 1))
@@ -1025,15 +1011,20 @@ def add_ordered_volume_mask(
   # 4*Pi/3 * (2*2)^3 or about 270 independent points for the average; fewer
   # if the higher resolution data barely contribute. Larger values give less
   # noise but lower resolution for producing a mask. A minimum radius of 5
-  # is enforced to explore next-nearest-neighbour density.
-  radius = max(d_min*rad_factor, 5.)
+  # is enforced to explore next-nearest-neighbour density. A maximum of 20
+  # is enforced to keep some data at very low resolution
+  radius = min(max(d_min*rad_factor, 5.),20.)
 
   d_work = (d_min + radius) # Save some time by lowering resolution
   mm1 = mmm.map_manager_1()
   mc1_in = mm1.map_as_fourier_coefficients(d_min=d_work)
   mm2 = mmm.map_manager_2()
   mc2_in = mm2.map_as_fourier_coefficients(d_min=d_work)
-  mc1s, mc2s = auto_sharpen_isotropic(mc1_in, mc2_in)
+  if d_min < 10.: # Auto-sharpen unless very low resolution
+    mc1s, mc2s = auto_sharpen_isotropic(mc1_in, mc2_in)
+  else:
+    mc1s = mc1_in
+    mc2s = mc2_in
   mcs_mean  = mc1s.customized_copy(data = (mc1s.data() + mc2s.data())/2)
 
   add_local_squared_deviation_map(mmm, mcs_mean, radius, d_work,
@@ -1222,7 +1213,7 @@ def next_allowed_grid_size(i, largest_prime=5):
     j += 2
   return j
 
-def get_sharpening_b(miller_intensities):
+def get_sharpening_b(intensities):
 
   # Initialise data for Wilson plot
   sumw = 0.
@@ -1232,9 +1223,11 @@ def get_sharpening_b(miller_intensities):
   sumwx2 = 0.
 
   # Assume that binning has been defined and get data in bins
-  for i_bin in miller_intensities.binner().range_used():
-    sel = miller_intensities.binner().selection(i_bin)
-    int_sel = miller_intensities.select(sel)
+  int_binned = intensities.customized_copy(data = intensities.data())
+  int_binned.setup_binner_d_star_sq_bin_size()
+  for i_bin in int_binned.binner().range_used():
+    sel = int_binned.binner().selection(i_bin)
+    int_sel = int_binned.select(sel)
     ssqr = int_sel.d_star_sq().data()
     x = flex.mean_default(ssqr, 0) # Mean 1/d^2 for bin
     mean_int_sel_data = flex.mean_default(int_sel.data(),0)
@@ -1323,7 +1316,7 @@ def expanded_map_as_intensities(rmm, marray, h_map_indices, k_map_indices, l_map
   miller_array = marray.customized_copy(data = miller_data)
   return miller_array
 
-def local_mean_intensities(mm, d_min, intensities, r_star):
+def local_mean_intensities(mm, d_min, intensities, r_star, b_sharpen):
   """
   Compute local means of input intensities (or amplitudes) using a convolution
   followed optionally by a resolution-dependent renormalisation
@@ -1340,10 +1333,8 @@ def local_mean_intensities(mm, d_min, intensities, r_star):
   assert d_star_sq_max > 1/d_min**2
 
   # Sharpen intensities to reduce dynamic range for numerical stability
-  # Save the overall B to put back at end
+  # Put the overall B back at end
   int_sharp = intensities.customized_copy(data = intensities.data())
-  int_sharp.setup_binner_d_star_sq_bin_size()
-  b_sharpen = get_sharpening_b(int_sharp)
   all_ones = int_sharp.customized_copy(data = flex.double(int_sharp.size(), 1))
   b_terms_miller = all_ones.apply_debye_waller_factors(b_iso = b_sharpen)
   int_sharp = int_sharp.customized_copy(data = intensities.data()*b_terms_miller.data())
@@ -1428,7 +1419,6 @@ def local_mean_density(mm, radius):
 
 def assess_cryoem_errors(
     mmm, d_min,
-    map_1_id="map_manager_1", map_2_id="map_manager_2",
     determine_ordered_volume=True,
     ordered_mask_id='ordered_volume_mask', sphere_points=500,
     sphere_cent=None, radius=None,
@@ -1444,9 +1434,6 @@ def assess_cryoem_errors(
     target region
 
   Optional arguments:
-  map_1_id: identifier of first half-map, if different from default of
-    map_manager_1
-  map_2_id: same for second half-map
   determine_ordered_volume: flag for whether ordered volume should be assessed
   ordered_mask_id: identifier for mask defining ordered volume
   sphere_cent: center of sphere defining target region for analysis
@@ -1479,6 +1466,7 @@ def assess_cryoem_errors(
     raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
+
   # Keep track of shifted origin
   origin_shift = mmm.map_manager().origin_shift_grid_units
   if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
@@ -1590,8 +1578,8 @@ def assess_cryoem_errors(
   minimum_possible_d_min = 2.*max(spacings)
   d_min = max(d_min, minimum_possible_d_min)
   d_min_extended = 1./(1./d_min + r_star)
-  mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-  mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+  mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+  mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   success = False
   while guess_d_min and not success:
@@ -1607,8 +1595,8 @@ def assess_cryoem_errors(
       else:
         success = True # d_min is already highest possible value
     d_min_extended = 1./(1./d_min + r_star)
-    mc1 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_1_id)
-    mc2 = working_mmm.map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max, map_id=map_2_id)
+    mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+    mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   f1 = flex.abs(mc1.data())
   f2 = flex.abs(mc2.data())
@@ -1622,8 +1610,11 @@ def assess_cryoem_errors(
   # but return results to desired resolution
   # Calculating sumfsqr_local_mean from f1f2cos and deltafsqr local means turns out to have
   # improved numerical stability, i.e. don't end up with negative or zero deltafsqr_local_mean
-  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos, r_star)
-  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr, r_star)
+  b_sharpen = get_sharpening_b(sumfsqr)
+  f1f2cos_local_mean = local_mean_intensities(work_mm, d_min, f1f2cos,
+                                              r_star, b_sharpen)
+  deltafsqr_local_mean = local_mean_intensities(work_mm, d_min, deltafsqr,
+                                                r_star, b_sharpen)
   sumfsqr_local_mean = f1f2cos_local_mean.customized_copy(data = 2*f1f2cos_local_mean.data() + deltafsqr_local_mean.data())
 
   # Trim starting sumfsqr back to desired resolution limit, setup binning
@@ -1639,6 +1630,9 @@ def assess_cryoem_errors(
   f1f2cos_local_mean.use_binner_of(mc1)
 
   # Prepare starting parameters for signal refinement
+  mapCC = mc1.map_correlation(other=mc2)
+  if mapCC >= 1.:
+    raise Sorry("Half-maps must be non-identical")
   mapCC_bins = flex.double()
   ssqr_bins = flex.double()
   target_spectrum = flex.double()
@@ -1654,8 +1648,6 @@ def assess_cryoem_errors(
     if mc1sel.size() == 0:
       continue
     mapCC = mc1sel.map_correlation(other=mc2sel)
-    if mapCC >= 1.:
-      raise Sorry("Half-maps must be non-identical")
     mapCC_bins.append(mapCC) # Store for before/after comparison
     sumfsqsel = sumfsqr.select(sel)
     meanfsq = flex.mean_default(sumfsqsel.data(),0.) / 2
@@ -1664,9 +1656,11 @@ def assess_cryoem_errors(
     ssqr_bins.append(x)  # Save for later
     target_power = default_target_spectrum(x) # Could have a different target
     target_spectrum.append(target_power)
-    if mapCC < 0.143: # Only fit initial signal estimate where clear overall
+    if mapCC < 0.143 and i_bin > 3: # Only fit initial signal estimate where clear overall
       continue
     signal = meanfsq * mapCC / target_power
+    if signal <= 0.:
+      continue
     y = math.log(signal)
     w = mc1sel.size()
     sumw += w
@@ -1704,14 +1698,14 @@ def assess_cryoem_errors(
     study_params = False      # flag for calling studyparams procedure
   else:
     study_params = True
-  output_level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
+  level=verbosity      # 0/1/2/3/4 for mute/log/verbose/debug/testing
 
   # create instances of refine and minimizer
   refine_cryoem_signal = RefineCryoemSignal(
     sumfsqr_lm = sumfsqr_local_mean, f1f2cos_lm = f1f2cos_local_mean,
     deltafsqr_lm = deltafsqr_local_mean, r_star = r_star, ssqr_bins = ssqr_bins,
     target_spectrum = target_spectrum, start_x = start_params)
-  minimizer = Minimizer(output_level=output_level)
+  minimizer = Minimizer(output_level=level)
 
   # Run minimizer
   minimizer.run(refine_cryoem_signal, protocol, ncyc, minimizer_type, study_params)
@@ -1763,7 +1757,7 @@ def assess_cryoem_errors(
   weighted_map_noise = 0.
   if verbosity > 0:
     print("MapCC before and after rescaling as a function of resolution", file=log)
-    print("Bin   <ssqr>   mapCC_before   mapCC_after", file=log)
+    print("Bin   <ssqr>   Nterms   mapCC_before   mapCC_after", file=log)
   for i_bin in mc1.binner().range_used():
     sel = expectE.binner().selection(i_bin)
     eEsel = expectE.select(sel)
@@ -1816,7 +1810,7 @@ def assess_cryoem_errors(
     mc2sel = mc2.select(sel)
     mapCC = mc1sel.map_correlation(other=mc2sel)
     if verbosity > 0:
-      print(i_bin_used+1, ssqr_bins[i_bin_used], mapCC_bins[i_bin_used], mapCC, file=log)
+      print(i_bin_used+1, ssqr_bins[i_bin_used], mc1sel.size(), mapCC_bins[i_bin_used], mapCC, file=log)
     mapCC_bins[i_bin_used] = mapCC # Update for returned output
     i_bin_used += 1
 
@@ -1864,8 +1858,8 @@ def assess_cryoem_errors(
   wEmean2 = lweight*expectE
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
   # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
-  working_mmm.remove_map_manager_by_id(map_1_id)
-  working_mmm.remove_map_manager_by_id(map_2_id)
+  working_mmm.remove_map_manager_by_id('map_manager_1')
+  working_mmm.remove_map_manager_by_id('map_manager_2')
 
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:

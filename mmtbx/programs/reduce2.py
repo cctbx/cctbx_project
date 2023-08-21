@@ -1,5 +1,5 @@
 ##################################################################################
-# Copyright(c) 2021, Richardson Lab at Duke
+# Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -28,20 +28,25 @@ from iotbx import pdb
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
-from libtbx.development.timers import work_clock
 from scitbx.array_family import flex
-from iotbx.pdb import common_residue_names_get_class
+from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
 from mmtbx.programs import probe2
 import copy
 import tempfile
+from iotbx.data_manager import DataManager
+import csv
 
-version = "0.6.0"
+version = "1.2.4"
 
 master_phil_str = '''
 approach = *add remove
   .type = choice
   .short_caption = Add or remove Hydrogens
   .help = Determines whether Reduce will add (and optimize) or remove Hydrogens from the model
+keep_existing_H = False
+  .type = bool
+  .short_caption = Do not remove Hydrogens in the original model
+  .help = Keep existing H atoms in the model
 n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .short_caption = N terminal charge approach
@@ -82,6 +87,22 @@ profile = False
   .type = bool
   .short_caption = Profile the entire run
   .help = Profile the performance of the entire run
+comparison_file = None
+  .type = str
+  .short_caption = Compare the Mover scores from this run with those in comparison_file
+  .help = Points to a comparison_file that is the result of running Hydrogenate or Reduce or Reduce2 or some other hydrogen-placement program. The Probe2 scores for the Movers found in the current run are compared against the scores for comparison_file and stored in a file with the same name as output.file_name with _comparison.csv appended. If None, no comparison is done.
+verbosity = 3
+  .type = int
+  .short_caption = Level of detail in description file
+  .help = Level of detail in description file.
+bonded_neighbor_depth = 4
+  .type = int
+  .short_caption = How many neighbors to consider bonded (>3 accepted only if hydrogen)
+  .help = When looking for interactions between atoms, this specifies how many hops we should take when looking for atoms that are excluded because we share a common chain of bonds. Lengths more than 3 only happen when one end is a hydrogen. This value should not be changed from the default except for regression tests against earlier versions.
+stop_on_any_missing_hydrogen = False
+  .type = bool
+  .short_caption = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints.
+  .help = Emit a Sorry and stop when any hydrogen in the model has insufficient restraints. It will always emit when there are one or more residues without restraints.
 
 output
   .style = menu_item auto_align
@@ -89,7 +110,7 @@ output
   description_file_name = None
     .type = str
     .short_caption = Description output file name
-    .help = Description output file name
+    .help = This file holds a description of the operations that Reduce2 performed when placing and optimize hydrogens. Its creation is required because it can contain important warnings that must be attended to by the person running the program. It also includes a REPORT section that lists the final orientation along with initial and final score for each Mover that can be parsed to determine the results. The REPORT information and some additional information used to be included in the resulting PDB file produced by Reduce.
   flipkin_directory = None
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
@@ -242,20 +263,24 @@ def _AddPosition(a, tag, group, partner=None):
   else:
     tagString = ''
   if a.parent().altloc in ['', ' ']:
+    altLoc = ''
     altTag = ''
   else:
+    altLoc = a.parent().altloc.lower()
     altTag = " '{}'".format(a.parent().altloc.lower())
   if (partner is not None) and not (partner.parent().altloc in ['', ' ']):
+    altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
-  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.strip().lower(),               # Atom name
+  return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
+    a.name.lower(),               # Atom name
+    altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
     a.parent().parent().resseq_as_int(),  # Residue number
     a.b,                                  # B factor
     group,                                # Dominant group name
     tagString,                            # Tag (P or L)
-    altTag,                               # Alternate, if any
+    altTag,                               # Tag for alternate, if any
     a.xyz[0],                             # location
     a.xyz[1],
     a.xyz[2]
@@ -281,6 +306,25 @@ def _DescribeMainchainLink(a0s, a1s, group):
         ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
+def _IsStandardResidue(resname):
+  amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
+  return resname.strip().upper() in amino_acid_resnames
+
+def _IsNucleicAcidResidue(resname):
+  nucleic_acids = [
+        "A", "C", "G", "T",  # DNA bases
+        "U", "I",            # RNA bases (I for inosine, a modified RNA base)
+  ]
+  return resname.strip().upper() in nucleic_acids
+
+def _MainChainAtomsWithHydrogen(resname):
+  # Find the main chain atoms with hydrogen bonds
+  if _IsStandardResidue(resname):
+    return ['N', 'CA', 'C', 'O']
+  elif _IsNucleicAcidResidue(resname):
+    return ["OP2", "OP3", "C5'", "C4'", "C3'", "C2'", "C1'", "O3'", "O2'"]
+  return []
+
 
 def _DescribeMainchainResidue(r, group, prevCs):
   '''Return a string that describes the mainchain for a specified residue.
@@ -288,25 +332,66 @@ def _DescribeMainchainResidue(r, group, prevCs):
   (none for the first) and lines to the N, Ca, C, and O.
   :param r: Residue to describe.
   :param group: The dominant group name the point or line is part of.
-  :param prevCs: Atom(s) that is the mainchain C in all conformations
-  of the previous residue.
+  :param prevCs: Atom(s) that is the mainchain last connection in all conformations
+  of the previous residue. For protein, this is C and for nucleic acid, this is O3'.
   '''
 
   ret = ''
 
-  # Find the lists of atoms that we might need.
-  Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
-  CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
-  Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
-  Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
-  OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
 
-  # Make all of the connections.
-  ret += _DescribeMainchainLink(prevCs, Ns, group)
-  ret += _DescribeMainchainLink(Ns, CAs, group)
-  ret += _DescribeMainchainLink(CAs, Cs, group)
-  ret += _DescribeMainchainLink(Cs, Os, group)
-  ret += _DescribeMainchainLink(Cs, OXTs, group)
+    # Find the lists of atoms that we might need.
+    Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
+    CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
+    Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
+    Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
+    OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ns, group)
+    ret += _DescribeMainchainLink(Ns, CAs, group)
+    ret += _DescribeMainchainLink(CAs, Cs, group)
+    ret += _DescribeMainchainLink(Cs, Os, group)
+    ret += _DescribeMainchainLink(Cs, OXTs, group)
+
+  ############################################################
+  # Nucleic acid main chain
+  if _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Find the lists of atoms that we might need.
+    Ps = [a for a in r.atoms() if a.name.strip().upper() == "P"]
+    OP3s = [a for a in r.atoms() if a.name.strip().upper() == "OP3"]
+    OP2s = [a for a in r.atoms() if a.name.strip().upper() == "OP2"]
+    OP1s = [a for a in r.atoms() if a.name.strip().upper() == "OP1"]
+    O5Ps = [a for a in r.atoms() if a.name.strip().upper() == "O5'"]
+    O4Ps = [a for a in r.atoms() if a.name.strip().upper() == "O4'"]
+    O3Ps = [a for a in r.atoms() if a.name.strip().upper() == "O3'"]
+    O2Ps = [a for a in r.atoms() if a.name.strip().upper() == "O2'"]
+    C5Ps = [a for a in r.atoms() if a.name.strip().upper() == "C5'"]
+    C4Ps = [a for a in r.atoms() if a.name.strip().upper() == "C4'"]
+    C3Ps = [a for a in r.atoms() if a.name.strip().upper() == "C3'"]
+    C2Ps = [a for a in r.atoms() if a.name.strip().upper() == "C2'"]
+    C1Ps = [a for a in r.atoms() if a.name.strip().upper() == "C1'"]
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ps, group)
+    ret += _DescribeMainchainLink(Ps, OP1s, group)
+    ret += _DescribeMainchainLink(Ps, OP2s, group)
+    ret += _DescribeMainchainLink(Ps, OP3s, group)
+    ret += _DescribeMainchainLink(Ps, O5Ps, group)
+    ret += _DescribeMainchainLink(O5Ps, C5Ps, group)
+    ret += _DescribeMainchainLink(C5Ps, C4Ps, group)
+    ret += _DescribeMainchainLink(C4Ps, C3Ps, group)
+    ret += _DescribeMainchainLink(C3Ps, C2Ps, group)
+    ret += _DescribeMainchainLink(C2Ps, O2Ps, group)
+
+    ret += _DescribeMainchainLink(C4Ps, O4Ps, group)
+    ret += _DescribeMainchainLink(O4Ps, C1Ps, group)
+    ret += _DescribeMainchainLink(C1Ps, C2Ps, group)
+
+    ret += _DescribeMainchainLink(C3Ps, O3Ps, group)
 
   return ret
 
@@ -327,7 +412,7 @@ def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -345,20 +430,42 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
   '''
   ret = ''
 
-  # Start with the CA atom and mark as handled all links that go back to the main chain
-  # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
   described = []   # A list of sets of two atoms that we have already described bonds between
   queued = []
-  try:
-    # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
-    # Do this for all CAs found because there may be multiple atom groups (alts)
-    for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
-      queued.append(aCA)
-      known = [a for a in bondedNeighborLists[aCA] if a.name.strip().upper() in ['N','C']]
-      for a in known:
-        described.append({aCA, a})
-  except Exception as e:
-    pass
+
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
+
+    # Start with the CA atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
+      # Do this for all CAs found because there may be multiple atom groups (alts)
+      for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
+        queued.append(aCA)
+        known = [a for a in bondedNeighborLists[aCA]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ['N','C']]
+        for a in known:
+          described.append({aCA, a})
+    except Exception:
+      pass
+
+  elif _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Start with the C1' atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the C1' to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not C2' or O4'.  Queue them for testing.
+      # Do this for all Cs found because there may be multiple atom groups (alts)
+      for aC in [a for a in r.atoms() if a.name.strip().upper() == "C1'"]:
+        queued.append(aC)
+        known = [a for a in bondedNeighborLists[aC]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ["C2'","O4'"]]
+        for a in known:
+          described.append({aC, a})
+    except Exception:
+      pass
 
   # Cycle through the list of queued atoms until we run out of them.
   # For each, look for a non-hydrogen neighbor that we've not yet described a bond
@@ -387,8 +494,8 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       described.append({last,curr})
       ret += _AddPosition(curr, 'L', group, last) + '\n'
       links = [a for a in bondedNeighborLists[curr]
-                if (not {curr, a} in described) and not a.element_is_hydrogen()
-                and curr.parent().parent() == a.parent().parent()
+                if (not {curr, a} in described) and (not a.element_is_hydrogen())
+                and (curr.parent().parent() == a.parent().parent())
               ]
       last = curr
   return ret
@@ -410,7 +517,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if not n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if not n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -525,11 +632,11 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
 
     # Find out the type of the residue, used to determine the type of flip.
     type = '?'
-    if s.resName == 'ASN':
+    if s.resName[-3:] == 'ASN':
       type = 'N'
-    elif s.resName == 'GLN':
+    elif s.resName[-3:] == 'GLN':
       type = 'Q'
-    elif s.resName == 'HIS':
+    elif s.resName[-3:] == 'HIS':
       type = 'H'
 
     if i > 0:
@@ -579,6 +686,9 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _DescribeMainchainResidue(rg, fileBaseName, prevCs)
       try:
         prevCs = [a for a in rg.atoms() if a.name.strip().upper() == 'C']
+        # If not protein, check nucleic acid
+        if len(prevCs) == 0:
+          prevCs = [a for a in rg.atoms() if a.name.strip().upper() == "O3'"]
       except Exception:
         pass
 
@@ -730,7 +840,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
           described.append({a,n})
 
   # Add bonded structures for het groups that are Movers
-  ret += '@vectorlist {het} color= cyan  master= {hets}\n'
+  ret += '@vectorlist {het} color= orange  master= {hets}\n'
   for c in model.chains():
     for rg in c.residue_groups():
       if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
@@ -865,7 +975,7 @@ NOTES:
     newParams.__inject__('source_selection', source_selection)      # Not default
     newParams.__inject__('target_selection', target_selection)      # Not default
     newParams.approach = 'both'                                     # Not default
-    newParams.__inject__('excluded_bond_chain_length', 4)
+    newParams.__inject__('excluded_bond_chain_length', self._bondedNeighborDepth) # Not default
     newParams.__inject__('minimum_water_hydrogen_occupancy', 0.66)  # Not default
     newParams.__inject__('maximum_water_hydrogen_b', 40.0)          # Not default
     newParams.__inject__('include_mainchain_mainchain', True)
@@ -913,8 +1023,8 @@ NOTES:
       use_neutron_distances=self.params.use_neutron_distances,
       n_terminal_charge=self.params.n_terminal_charge,
       exclude_water=True,
-      stop_for_unknowns=True,
-      keep_existing_H=False
+      stop_for_unknowns=False,
+      keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
     reduce_add_h_obj.show(None)
@@ -924,6 +1034,12 @@ NOTES:
       for res in missed_residues:
         bad += " " + res
       raise Sorry("Restraints were not found for the following residues:"+bad)
+    insufficient_restraints = list(reduce_add_h_obj.site_labels_no_para)
+    if self.params.stop_on_any_missing_hydrogen and len(insufficient_restraints) > 0:
+      bad = insufficient_restraints[0]
+      for res in insufficient_restraints[1:]:
+        bad += "," + res
+      raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
     self.model = reduce_add_h_obj.get_model()
 
 # ------------------------------------------------------------------------------
@@ -993,16 +1109,31 @@ NOTES:
       flipStateString = 'Flipped'
     else:
       flipStateString = 'Unflipped'
+    # Look up the residue that is described and find Nitrogens in it whose names are
+    # longer than one character. These will be part of the flipping part of the residue.
+    # See if any of these atoms residue groups have the same altid as the flipMover; if
+    # so, use that one.  If not, use ''.  If we use '', replace it with '.' so that we
+    # can properly parse the string.
+    # @todo Atom selection here is will not necessarily work for future flip Movers.
     # @todo How to handle cases where the different alternates resulted in different placement
     # for the flip Movers?  Presumably, we want to do them in backwards order and replace all of
     # the alternates with '.' so that they always get handled and the last one is the one that
     # is set.
-    '''
-    altId = flipMover.altId
+    altId = ''
+    flipAlt = flipMover.altId.strip()
+    resAlt = ''
+    for chain in self.model.chains():
+      if flipMover.chain.strip() == chain.id.strip():
+        for rg in chain.residue_groups():
+          if int(flipMover.resId) == rg.resseq_as_int():
+            for a in rg.atoms():
+              if (a.element == 'N') and (len(a.name.strip()) > 1):
+                if a.parent().altloc.lower() == flipAlt.lower():
+                  resAlt = flipAlt
+    if flipAlt == resAlt:
+      altId = flipAlt
     if altId.strip() == '':
       altId = '.'
-    '''
-    altId = '.'
     return '{} {} {} {} {}{} {} {}'.format(flipMover.modelId+1, altId.lower(), flipMover.chain,
       flipMover.resName, flipMover.resId, flipMover.iCode, flipStateString, adjustedString)
 
@@ -1019,7 +1150,7 @@ NOTES:
         pad = 'H'
       base = os.path.splitext(os.path.basename(inName))[0] + pad
       self.params.output.filename = base + suffix
-      print('Writing model output to', self.params.output.filename)
+      print('Writing model output to', self.params.output.filename, file=self.logger)
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
@@ -1038,6 +1169,9 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def run(self):
+
+    # Set our bonded-neighbor depth
+    self._bondedNeighborDepth = self.params.bonded_neighbor_depth
 
     # String describing the run that will be output to the specified file.
     outString = 'reduce2 v.{}, run {}\n'.format(version, datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
@@ -1062,35 +1196,36 @@ NOTES:
     if self.params.approach == 'add':
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
-      startAdd = work_clock()
+      startAdd = time.time()
       self._AddHydrogens()
-      doneAdd = work_clock()
+      doneAdd = time.time()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
       # all of the needed fields are filled in when we use them below.
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = work_clock()
+      startInt = time.time()
       self._ReinterpretModel()
-      doneInt = work_clock()
+      doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
-      startOpt = work_clock()
+      startOpt = time.time()
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
         self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
+        bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
-        verbosity=3)
-      doneOpt = work_clock()
+        verbosity=self.params.verbosity)
+      doneOpt = time.time()
       outString += opt.getInfo()
-      outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
-      outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
-      outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
+      outString += 'Time to Interpret = {:.3f} sec'.format(doneInt-startInt)+'\n'
+      outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
-        print('Atom information used during calculations:')
-        print(opt.getAtomDump())
+        print('Atom information used during calculations:', file=self.logger)
+        print(opt.getAtomDump(), file=self.logger)
 
     else: # Removing Hydrogens from the model rather than adding them.
       make_sub_header('Removing Hydrogens', out=self.logger)
@@ -1122,8 +1257,117 @@ NOTES:
     print('Wrote', self.params.output.filename,'and',
       self.params.output.description_file_name, file = self.logger)
 
+    # If we've been asked to do a comparison with another program's output, do it.
+    if self.params.comparison_file is not None:
+      make_sub_header('Comparing with other model', out=self.logger)
+
+      # Construct the file names we'll be using.
+      compareOutName = self.params.output.filename + "_comparison.csv"
+
+      # Find the list of all Movers in the model, which will be used to select
+      # each in turn for evaluation.
+      moverLocations = _FindMoversInOutputString(outString)
+
+      # Make the first line in our table be the header line
+      table = [ ["Mover",
+                 "Score from Reduce2",
+                 "Score from {}".format(self.params.comparison_file),
+                 "Difference",
+                 "Star if other is higher"] ]
+
+      # Run Probe2 on each of the Movers for our current model and for
+      # comparison_file and determine the summary score of the Mover against
+      # the rest of the model in each case. Accumulate these into a table.
+      for i, m in enumerate(moverLocations):
+        print ('Computing scores for Mover',i,'of',len(moverLocations))
+
+        #============================================================
+        # Find the score for our output.
+
+        # Make the Probe2 Phil parameters, then overwrite the ones that were
+        # filled in with values that we want for our summaries.
+        source = [ m ]
+        tempName = tempfile.mktemp()
+        newParams = self._MakeProbePhil(source, tempName)
+        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
+        newParams.output.format = 'raw'
+        newParams.output.contact_summary = True
+        newParams.output.condensed = True
+        newParams.output.count_dots = True
+
+        # Run Probe2
+        p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
+          logger=self.logger)
+        p2.overrideModel(self.model)
+        dots, output = p2.run()
+
+        # Parse the output to find the scores for each of the two directions
+        # and sum them up. There is one per line and the number ends with #.
+        lines = output.strip().split('\n')
+        values = []
+        for line in lines:
+          stripped_line = line.strip()
+          if stripped_line:
+            number = float(stripped_line.split('#')[0].strip())
+            values.append(number)
+        myScore = sum(values)
+
+        print('My values for Mover', str(m), 'are', values, 'sum is', myScore, file=self.logger)
+        os.unlink(tempName)
+
+        #============================================================
+        # Find the score for the comparison file.
+
+        # Read the file using a new datamanager
+        dm = DataManager()
+        dm.process_model_file(self.params.comparison_file)
+        #otherModel = dm.get_model(self.params.comparison_file)
+
+        # Make the Probe2 Phil parameters, then overwrite the ones that were
+        # filled in with values that we want for our summaries.
+        tempName = tempfile.mktemp()
+        newParams = self._MakeProbePhil(source, tempName)
+        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
+        newParams.output.format = 'raw'
+        newParams.output.contact_summary = True
+        newParams.output.condensed = True
+        newParams.output.count_dots = True
+
+        # Run Probe2
+        p2 = probe2.Program(dm, newParams, master_phil=probe2.master_phil_str,
+          logger=self.logger)
+        p2.overrideModel(dm.get_model(self.params.comparison_file))
+        dots, output = p2.run()
+
+        # Parse the output to find the scores for each of the two directions
+        # and sum them up. There is one per line and the number ends with #.
+        lines = output.strip().split('\n')
+        values = []
+        for line in lines:
+          stripped_line = line.strip()
+          if stripped_line:
+            number = float(stripped_line.split('#')[0].strip())
+            values.append(number)
+        otherScore = sum(values)
+
+        print('Other values for Mover', str(m), 'are', values, 'sum is', otherScore, file=self.logger)
+        os.unlink(tempName)
+
+        #============================================================
+        # Add the line to the table, indicating if the other is better.
+        mark = ''
+        if otherScore > myScore:
+          mark = '*'
+        table.append( [str(m), myScore, otherScore, myScore - otherScore, mark] )
+
+      # Write the table to our output CSV file
+      with open(compareOutName, 'w', newline='') as csvfile:
+          writer = csv.writer(csvfile)
+          writer.writerows(table)
+
     # If we've been asked to make Flipkins, then make each of them.
     if self.params.add_flip_movers and self.params.output.flipkin_directory is not None:
+      make_sub_header('Producing flipkins', out=self.logger)
 
       # Find the base name of the two output files we will produce.
       inName = self.data_manager.get_default_model_name()
@@ -1226,6 +1470,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
+          print('Results of optimization:', file=self.logger)
+          print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -1293,7 +1539,7 @@ NOTES:
 
         # Write the base information in the Flipkin, not including the moving atoms in
         # the Movers that will be placed, or atoms bonded to the moving atoms.
-        flipkinText = _AddFlipkinBase(amides, views, self.params.output.filename, base, self.model,
+        flipkinText = _AddFlipkinBase(hists, views, self.params.output.filename, base, self.model,
           alts, bondedNeighborLists, moverLocations, inSideChain, inWater, inHet)
 
         # Make two configurations, the one that Reduce picked and the one
@@ -1315,7 +1561,7 @@ NOTES:
           # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
           self._ReinterpretModel()
 
-          # Run optimization, locking the specified Amides into each configuration.
+          # Run optimization, locking the specified Histidines into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
           # avoid adding a comma on the first flip state that is added.
           flipStates = self.params.set_flip_states
@@ -1347,6 +1593,8 @@ NOTES:
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
             verbosity=3)
+          print('Results of optimization:', file=self.logger)
+          print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
 
           # Get the other characteristics we need to know about each atom to do our work.
@@ -1392,7 +1640,7 @@ NOTES:
 
     # Report profiling info if we've been asked to in the Phil parameters
     if self.params.profile:
-      print('Profile results:')
+      print('Profile results:', file=self.logger)
       import pstats
       profile_params = {'sort_by': 'time', 'num_entries': 20}
       self._pr.disable()

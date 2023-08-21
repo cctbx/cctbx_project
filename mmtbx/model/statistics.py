@@ -158,6 +158,8 @@ class geometry(object):
           outliers_only = False)
     return group_args(
       outliers = self.cached_rota.percent_outliers,
+      favored  = self.cached_rota.percent_favored,
+      allowed  = self.cached_rota.percent_allowed,
       rotalyze = self.cached_rota #XXX Bulky object -- REMOVE!
       )
 
@@ -274,9 +276,9 @@ class geometry(object):
     r = self.result()
     f="bond: %6.3f angle: %6.2f dihedral: %6.2f"
     if assert_zero:
-      assert abs(r.bond.mean)<1e-3, 'bond rmsd is not zero'
-      assert abs(r.angle.mean)<1e-3, 'angle rmsd is not zero'
-      assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero'
+      assert abs(r.bond.mean)<1e-3, 'bond rmsd is not zero : %0.5f' % r.bond.mean
+      assert abs(r.angle.mean)<1e-3, 'angle rmsd is not zero : %0.5f' % r.angle.mean
+      assert abs(r.dihedral.mean)<1e-3, 'dihedral rmsd is not zero : %0.5f' % r.dihedral.mean
     return f%(r.bond.mean, r.angle.mean, r.dihedral.mean)
 
   def show_planarity_details(self):
@@ -290,7 +292,7 @@ class geometry(object):
     return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
       r.ramachandran.favored, r.ramachandran.outliers, r.rama_z.whole.value, r.c_beta.outliers)
 
-  def show(self, log=None, prefix="", uppercase=True):
+  def show(self, log=None, prefix="", uppercase=True, nucleotide_only=False):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
@@ -326,6 +328,9 @@ class geometry(object):
        prefix, fmt(d.mean, d.max, d.n),
        prefix, fmt2(n.min).strip(),
        prefix)
+    if nucleotide_only:
+      print(result, file=log)
+      return
     result += """
 %sMolprobity Statistics.
 %s  All-atom Clashscore : %s
@@ -333,7 +338,10 @@ class geometry(object):
 %s    Outliers : %5.2f %%
 %s    Allowed  : %5.2f %%
 %s    Favored  : %5.2f %%
-%s  Rotamer Outliers : %5.2f %%
+%s  Rotamer:
+%s    Outliers : %5.2f %%
+%s    Allowed  : %5.2f %%
+%s    Favored  : %5.2f %%
 %s  Cbeta Deviations : %5.2f %%
 %s  Peptide Plane:
 %s    Cis-proline     : %s %%
@@ -346,7 +354,10 @@ class geometry(object):
         prefix, res.ramachandran.outliers,
         prefix, res.ramachandran.allowed,
         prefix, res.ramachandran.favored,
+        prefix,
         prefix, res.rotamer.outliers,
+        prefix, res.rotamer.allowed,
+        prefix, res.rotamer.favored,
         prefix, res.c_beta.outliers,
         prefix,
         prefix, format_value("%5.2f", res.omega.cis_proline).strip(),

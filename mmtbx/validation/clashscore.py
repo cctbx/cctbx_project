@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import six
+import json
 
 class clash(atoms):
   __clash_attr__ = [
@@ -36,8 +37,32 @@ class clash(atoms):
     return "%s %s" % (self.atoms_info[0].id_str()[0:11],
       self.atoms_info[1].id_str()[0:11])
 
+  def id_str_src_atom_no_atom_name(self):
+    return self.atoms_info[0].id_str()[0:11]
+
   def format_old(self):
     return "%s :%.3f" % (self.id_str(), abs(self.overlap))
+
+  def as_JSON(self):
+    atom0_slots_list = [s for s in self.atoms_info[0].__slots__]
+    atom0_slots_as_dict = ({s: getattr(self.atoms_info[0], s) for s in atom0_slots_list if s != 'xyz' })
+    atom1_slots_list = [s for s in self.atoms_info[1].__slots__]
+    atom1_slots_as_dict = ({"target_"+s: getattr(self.atoms_info[1], s) for s in atom1_slots_list if s != 'xyz' })
+    atoms_dict = self.merge_two_dicts(atom0_slots_as_dict, atom1_slots_as_dict)
+    #atom0_slots_as_dict["resid"] = atom0_slots_as_dict['resseq']+atom0_slots_as_dict['icode']
+    #print("atom0_dict: " + str(atom0_slots_as_dict))
+    serializable_slots = [s for s in self.__slots__ if s != 'atoms_info' and hasattr(self, s) ]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    #print("slots_dict: " + str(slots_as_dict))
+    #print("combo:")
+    #print({**slots_as_dict, **atom0_slots_as_dict})
+    return json.dumps(self.merge_two_dicts(slots_as_dict, atoms_dict), indent=2)
+    #return json.dumps({**slots_as_dict, **atom0_slots_as_dict, **atom1_slots_as_dict}, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
 
   def as_string(self):
     return "%-20s %-20s  %7.3f" % (self.atoms_info[0].id_str(),
@@ -149,7 +174,9 @@ class clashscore(validation):
         largest_occupancy=occ_max,
         b_factor_cutoff=b_factor_cutoff,
         use_segids=use_segids,
-        verbose=verbose)
+        verbose=verbose,
+        model_id=model.id)
+      self.probe_clashscore_manager.run_probe_clashscore(input_str)
       if (save_modified_hierarchy):
         self.pdb_hierarchy = iotbx.pdb.input(
           pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
@@ -218,6 +245,27 @@ class clashscore(validation):
           print(prefix + str(result), file=out)
     self.show_summary(out=out, prefix=prefix)
 
+  def as_JSON(self):
+    data = {"validation_type": "clashscore"}
+    flat_results = []
+    hierarchical_results = {}
+    residue_clash_list = []
+    summary_results = {}
+    for k in sorted(self.list_dict.keys()):
+      for result in self.list_dict[k]:
+        flat_results.append(json.loads(result.as_JSON()))
+        hier_result = json.loads(result.as_hierarchical_JSON())
+        hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+
+    for k in sorted(self.clash_dict.keys()):
+      summary_results[k] = {"clashscore": self.clash_dict[k],
+                            "num_clashes": len(self.list_dict[k])}
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
+
   def as_coot_data(self):
     data = []
     for result in self.results :
@@ -227,8 +275,9 @@ class clashscore(validation):
     return data
 
 class probe_line_info(object): # this is parent
-  def __init__(self, line):
+  def __init__(self, line, model_id=""):
     self.overlap_value = None
+    self.model_id = model_id
 
   def is_similar(self, other):
     assert type(self) is type(other)
@@ -236,8 +285,8 @@ class probe_line_info(object): # this is parent
 
   def as_clash_obj(self, use_segids):
     assert self.overlap_value is not None
-    atom1 = decode_atom_string(self.srcAtom,  use_segids)
-    atom2 = decode_atom_string(self.targAtom, use_segids)
+    atom1 = decode_atom_string(self.srcAtom,  use_segids, self.model_id)
+    atom2 = decode_atom_string(self.targAtom, use_segids, self.model_id)
     if (self.srcAtom < self.targAtom):
       atoms = [ atom1, atom2 ]
     else:
@@ -252,8 +301,8 @@ class probe_line_info(object): # this is parent
     return clash_obj
 
 class condensed_probe_line_info(probe_line_info):
-  def __init__(self, line):
-    super(condensed_probe_line_info, self).__init__(line)
+  def __init__(self, line, model_id=""):
+    super(condensed_probe_line_info, self).__init__(line, model_id)
     # What is in line:
     # name:pat:type:srcAtom:targAtom:dot-count:mingap:gap:spX:spY:spZ:spikeLen:score:stype:ttype:x:y:z:sBval:tBval:
     sp = line.split(":")
@@ -270,8 +319,8 @@ class condensed_probe_line_info(probe_line_info):
     self.overlap_value = self.gap
 
 class raw_probe_line_info(probe_line_info):
-  def __init__(self, line):
-    super(raw_probe_line_info, self).__init__(line)
+  def __init__(self, line, model_id=""):
+    super(raw_probe_line_info, self).__init__(line, model_id)
     self.name, self.pat, self.type, self.srcAtom, self.targAtom, self.min_gap, \
     self.gap, self.kissEdge2BullsEye, self.dot2BE, self.dot2SC, self.spike, \
     self.score, self.stype, self.ttype, self.x, self.y, self.z, self.sBval, \
@@ -294,7 +343,8 @@ class probe_clashscore_manager(object):
                largest_occupancy=10,
                b_factor_cutoff=None,
                use_segids=False,
-               verbose=False):
+               verbose=False,
+               model_id=""):
     """
     Calculate probe (MolProbity) clashscore
 
@@ -306,6 +356,7 @@ class probe_clashscore_manager(object):
       b_factor_cutoff (float)
       use_segids (bool)
       verbose (bool): verbosity of printout
+      model_id (str): model ID number, used in json output
     """
     assert libtbx.env.has_module(name="probe")
     if fast and not condensed_probe:
@@ -316,6 +367,7 @@ class probe_clashscore_manager(object):
     self.fast = fast
     self.condensed_probe = condensed_probe
     self.use_segids=use_segids
+    self.model_id = model_id
     ogt = 10
     blt = self.b_factor_cutoff
     if largest_occupancy < ogt:
@@ -328,6 +380,7 @@ class probe_clashscore_manager(object):
       if (os.path.isfile(ccp4_probe) and not os.path.isfile(probe_command)):
         probe_command = ccp4_probe
     probe_command = '"%s"' % probe_command   # in case of spaces in path
+    self.probe_command = probe_command
     nuclear_flag = ""
     condensed_flag = ""
     if nuclear:
@@ -351,7 +404,7 @@ class probe_clashscore_manager(object):
           ' "blt%d ogt%d not water" -' % (blt, ogt)
 
     self.h_pdb_string = h_pdb_string
-    self.run_probe_clashscore(self.h_pdb_string)
+    #self.run_probe_clashscore(self.h_pdb_string)
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
@@ -387,7 +440,7 @@ class probe_clashscore_manager(object):
     if self.condensed_probe:
       for line in probe_unformatted:
         try:
-          line_storage = condensed_probe_line_info(line)
+          line_storage = condensed_probe_line_info(line, self.model_id)
         except KeyboardInterrupt: raise
         except ValueError:
           continue # something else (different from expected) got into output
@@ -397,7 +450,7 @@ class probe_clashscore_manager(object):
       for line in probe_unformatted:
         processed=False
         try:
-          line_storage = raw_probe_line_info(line)
+          line_storage = raw_probe_line_info(line, self.model_id)
         except KeyboardInterrupt: raise
         except ValueError:
           continue # something else (different from expected) got into output
@@ -542,11 +595,12 @@ class probe_clashscore_manager(object):
         self.clashscore_b_cutoff = \
           (self.n_clashes_b_cutoff*1000) / self.natoms_b_cutoff
 
-def decode_atom_string(atom_str, use_segids=False):
+def decode_atom_string(atom_str, use_segids=False, model_id=""):
   # Example:
   # ' A  49 LEU HD11B'
   if (not use_segids) or (len(atom_str) == 16):
     return atom_info(
+      model_id=model_id,
       chain_id=atom_str[0:2],
       resseq=atom_str[2:6],
       icode=atom_str[6],
@@ -555,6 +609,7 @@ def decode_atom_string(atom_str, use_segids=False):
       name=atom_str[11:15])
   else:
     return atom_info(
+      model_id=model_id,
       chain_id=atom_str[0:4],
       resseq=atom_str[4:8],
       icode=atom_str[8],

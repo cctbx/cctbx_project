@@ -3496,6 +3496,7 @@ class ncs:
 
   def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
       new_unit_cell=None):
+    # NOTE: Returns new object, self is unchanged.
     if coordinate_offset is None:
        raise Sorry("For coordinate_offset an offset is required.")
     return self.deep_copy(coordinate_offset=coordinate_offset)

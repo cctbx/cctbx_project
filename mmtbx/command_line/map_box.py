@@ -183,7 +183,7 @@ master_phil = libtbx.phil.parse("""
   increase_box_cushion_and_atom_radius_for_soft_mask = True
     .type = bool
     .help = Expand cushion and atom radii by soft_mask_radius
-    .short_caption = Increase box cusion and atom radius for soft mask
+    .short_caption = Increase box cushion and atom radius for soft mask
 
   soft_mask_extract_unique = True
     .type = bool

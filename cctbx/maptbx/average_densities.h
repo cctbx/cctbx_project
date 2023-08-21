@@ -3,6 +3,7 @@
 
 #include <cctbx/uctbx.h>
 #include <scitbx/array_family/accessors/c_grid.h>
+#include <scitbx/math/fast_approx_math.h>
 #include <scitbx/math/utils.h>
 #include <cctbx/maptbx/interpolation.h>
 #include <scitbx/math/linear_correlation.h>

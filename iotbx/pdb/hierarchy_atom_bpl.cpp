@@ -455,7 +455,7 @@ namespace {
     IOTBX_LOC_GET(resseq)
     IOTBX_LOC_GET_SET(icode)
     IOTBX_LOC_GET_SET(altloc)
-    IOTBX_LOC_GET_SET(resname)
+    // IOTBX_LOC_GET_SET(resname)
 
 #undef IOTBX_LOC_GET
 #undef IOTBX_LOC_SET
@@ -483,6 +483,7 @@ namespace {
 
     IOTBX_LOC_GET_SET_STD_STRING(model_id)
     IOTBX_LOC_GET_SET_STD_STRING(chain_id)
+    IOTBX_LOC_GET_SET_STD_STRING(resname)
 
 #undef IOTBX_LOC_GET_STD_STRING
 #undef IOTBX_LOC_SET_STD_STRING

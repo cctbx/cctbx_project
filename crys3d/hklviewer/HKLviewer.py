@@ -745,12 +745,12 @@ newarray._sigmas = sigs
   def onSaveReflectionFile(self):
     if len(self.millertable.selectedrows) ==0:
       QMessageBox.warning(self.window, "HKLviewer",
-        "First highlight one or more datasets in the table of datasets to save them as a new datafile", buttons=QMessageBox.Ok)
+        "First highlight one or more datasets in the table of datasets on the details tab to save them as a new datafile", buttons=QMessageBox.Ok)
       return
-
+    datasets2savestr = "', '".join([ self.millertable.item(i, 0).text() for i in self.millertable.selectedrows ] )
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
-            "Save datasets to a new reflection file", "",
+            "Save datasets '%s' to a reflection file" %datasets2savestr, "",
             "MTZ Files (*.mtz);;CIF Files (*.cif);;All Files (*)", "", options)
     if fileName:
       self.send_message('''
@@ -980,12 +980,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
                 # only allow changing the last column with opacity values
                 if col == 0:
                   item = QTableWidgetItem(str(elm))
-                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 if col==1:
                   self.lowerbinvals.append(elm)
                 if col==2:
                   item = QTableWidgetItem(str(elm))
-                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                   self.upperbinvals.append(elm)
                 if col == 1: # allow changing bin thresholds
                   item = QTableWidgetItem(str(elm))

@@ -104,6 +104,18 @@ hbond {
   output_skew_kurtosis_plot = False
     .type = bool
     .short_caption = Output skew-kurtosis plot with result in png format
+  plot_colorblind_friendly = True
+    .type = bool
+    .short_caption = Use colorblind friendly palette for skew-kurtosis plot
+  add_hydrogens_if_absent = False
+    .type = bool
+    .short_caption = Add hydrogens if they are not present in the model(s)
+  min_data_size = 10
+    .type = int
+    .style = hidden
+  dot_size = 100
+    .type = int
+    .help = Dot size
 }
 '''
 
@@ -177,7 +189,7 @@ def get_ss_selections(hierarchy, filter_short=True):
   #
   return group_args(ksdssp=ksdssp, from_ca=from_ca, both=both)
 
-def stats(model, prefix, no_ticks=True):
+def stats(model, prefix, output_stats_pdf, no_ticks=True):
   # Get rid of H, multi-model, no-protein and single-atom residue models
   if(model.percent_of_single_atom_residues()>20):
     return None
@@ -216,101 +228,100 @@ def stats(model, prefix, no_ticks=True):
   #
   SS = get_ss_selections(hierarchy=model.get_hierarchy())
   HB_all = find(model = model.select(flex.bool(model.size(), True)),
-    h_bond_params=h_bond_params
-    ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_alpha = find(model = model.select(SS.both.h_sel), h_bond_params=h_bond_params
-    ).get_params_as_arrays(replace_with_empty_threshold=N)
-  HB_beta = find(model = model.select(SS.both.s_sel), h_bond_params=h_bond_params
-    ).get_params_as_arrays(replace_with_empty_threshold=N)
-  # print (HB_all.d_HA.size())
-  result_dict = {}
-  result_dict["all"]   = HB_all
-  result_dict["alpha"] = HB_alpha
-  result_dict["beta"]  = HB_beta
-#  result_dict["loop"]  = get_selected(sel=loop_sel)
-  # Load histograms for reference high-resolution d_HA and a_DHA
-  pkl_fn = libtbx.env.find_in_repositories(
-    relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res_p3.pkl"
-  assert os.path.isfile(pkl_fn)
-  ref = easy_pickle.load(pkl_fn)
+    h_bond_params=h_bond_params)
+  HB_alpha = find(model = model.select(SS.both.h_sel), h_bond_params=h_bond_params)
+  HB_beta = find(model = model.select(SS.both.s_sel), h_bond_params=h_bond_params)
   #
-  import matplotlib as mpl
-  mpl.use('Agg')
-  import matplotlib.pyplot as plt
-  fig = plt.figure(figsize=(10,10))
-  kwargs = dict(histtype='bar', bins=20, range=[1.6,3.0], alpha=.8)
-  for j, it in enumerate([["alpha",1], ["beta",3], ["all",5]]):
-    key, i = it
-    ax = plt.subplot(int("32%d"%i))
+  if(output_stats_pdf):
+    result_dict = {}
+    result_dict["all"]   = HB_all.get_params_as_arrays(replace_with_empty_threshold=N)
+    result_dict["alpha"] = HB_alpha.get_params_as_arrays(replace_with_empty_threshold=N)
+    result_dict["beta"]  = HB_beta.get_params_as_arrays(replace_with_empty_threshold=N)
+    # Load histograms for reference high-resolution d_HA and a_DHA
+    pkl_fn = libtbx.env.find_in_repositories(
+      relative_path="mmtbx")+"/nci/d_HA_and_a_DHA_high_res_p3.pkl"
+    assert os.path.isfile(pkl_fn)
+    ref = easy_pickle.load(pkl_fn)
+    #
+    import matplotlib as mpl
+    mpl.use('Agg')
+    import matplotlib.pyplot as plt
+    fig = plt.figure(figsize=(10,10))
+    kwargs = dict(histtype='bar', bins=20, range=[1.6,3.0], alpha=.8)
+    for j, it in enumerate([["alpha",1], ["beta",3], ["all",5]]):
+      key, i = it
+      ax = plt.subplot(int("32%d"%i))
+      if(no_ticks):
+        #ax.set_xticks([])
+        ax.set_yticks([])
+      if(j in [0,1]):
+        ax.tick_params(bottom=False)
+        ax.set_xticklabels([])
+      ax.tick_params(axis="x", labelsize=12)
+      ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
+      ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+        transform=ax.transAxes)
+      HB = result_dict[key]
+      if HB is None: continue
+      w1 = np.ones_like(HB.d_HA)/HB.d_HA.size()
+      ax.hist(HB.d_HA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
+      #
+      start, end1, end2 = 0, max(ref.distances[key].vals), \
+        round(max(ref.distances[key].vals),2)
+      if(not no_ticks):
+        plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+
+      if  (key=="alpha"): plt.ylim(0, end2+0.02)
+      elif(key=="beta"):  plt.ylim(0, end2+0.02)
+      elif(key=="all"):  plt.ylim(0, end2+0.02)
+      else: assert 0
+      #
+      if(j==0): ax.set_title("Distance", size=15)
+      bins = list(flex.double(ref.distances[key].bins))
+      ax.bar(bins, ref.distances[key].vals, alpha=.3, width=0.07)
+    #
+    kwargs = dict(histtype='bar', bins=20, range=[90,180], alpha=.8)
+    for j, it in enumerate([["alpha",2], ["beta",4], ["all",6]]):
+      key, i = it
+      ax = plt.subplot(int("32%d"%i))
+      if(j in [0,1]):
+        ax.tick_params(bottom=False)
+        ax.set_xticklabels([])
+      if(no_ticks):
+        #ax.set_xticks([])
+        ax.set_yticks([])
+      ax.tick_params(axis="x", labelsize=12)
+      ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
+      ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+        transform=ax.transAxes)
+
+      ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
+        transform=ax.transAxes)
+      #if(j in [0,1]): ax.plot_params(bottom=False)
+      HB = result_dict[key]
+      if HB is None: continue
+      w1 = np.ones_like(HB.a_DHA)/HB.a_DHA.size()
+      ax.hist(HB.a_DHA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
+      #
+      start, end1, end2 = 0, max(ref.angles[key].vals), \
+        round(max(ref.angles[key].vals),2)
+      if(not no_ticks):
+        plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
+
+      if  (key=="alpha"): plt.ylim(0, end2+0.02)
+      elif(key=="beta"):  plt.ylim(0, end2+0.02)
+      elif(key=="all"):  plt.ylim(0, end2+0.02)
+      else: assert 0
+      #
+      if(j==0): ax.set_title("Angle", size=15)
+      ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
+    plt.subplots_adjust(wspace=0.12, hspace=0.025)
     if(no_ticks):
-      #ax.set_xticks([])
-      ax.set_yticks([])
-    if(j in [0,1]):
-      ax.tick_params(bottom=False)
-      ax.set_xticklabels([])
-    ax.tick_params(axis="x", labelsize=12)
-    ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
-    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
-      transform=ax.transAxes)
-    HB = result_dict[key]
-    if HB is None: continue
-    w1 = np.ones_like(HB.d_HA)/HB.d_HA.size()
-    ax.hist(HB.d_HA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
-    #
-    start, end1, end2 = 0, max(ref.distances[key].vals), \
-      round(max(ref.distances[key].vals),2)
-    if(not no_ticks):
-      plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
-
-    if  (key=="alpha"): plt.ylim(0, end2+0.02)
-    elif(key=="beta"):  plt.ylim(0, end2+0.02)
-    elif(key=="all"):  plt.ylim(0, end2+0.02)
-    else: assert 0
-    #
-    if(j==0): ax.set_title("Distance", size=15)
-    bins = list(flex.double(ref.distances[key].bins))
-    ax.bar(bins, ref.distances[key].vals, alpha=.3, width=0.07)
-  #
-  kwargs = dict(histtype='bar', bins=20, range=[90,180], alpha=.8)
-  for j, it in enumerate([["alpha",2], ["beta",4], ["all",6]]):
-    key, i = it
-    ax = plt.subplot(int("32%d"%i))
-    if(j in [0,1]):
-      ax.tick_params(bottom=False)
-      ax.set_xticklabels([])
-    if(no_ticks):
-      #ax.set_xticks([])
-      ax.set_yticks([])
-    ax.tick_params(axis="x", labelsize=12)
-    ax.tick_params(axis="y", labelsize=12, left=False, pad=-2)
-    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
-      transform=ax.transAxes)
-
-    ax.text(0.98,0.92,key, size=12, horizontalalignment='right',
-      transform=ax.transAxes)
-    #if(j in [0,1]): ax.plot_params(bottom=False)
-    HB = result_dict[key]
-    if HB is None: continue
-    w1 = np.ones_like(HB.a_DHA)/HB.a_DHA.size()
-    ax.hist(HB.a_DHA, color="orangered", weights=w1, rwidth=0.3, **kwargs)
-    #
-    start, end1, end2 = 0, max(ref.angles[key].vals), \
-      round(max(ref.angles[key].vals),2)
-    if(not no_ticks):
-      plt.yticks([0.01,end1], ["0", end2], visible=True, rotation="horizontal")
-
-    if  (key=="alpha"): plt.ylim(0, end2+0.02)
-    elif(key=="beta"):  plt.ylim(0, end2+0.02)
-    elif(key=="all"):  plt.ylim(0, end2+0.02)
-    else: assert 0
-    #
-    if(j==0): ax.set_title("Angle", size=15)
-    ax.bar(ref.angles[key].bins, ref.angles[key].vals, width=4.5, alpha=.3)
-  plt.subplots_adjust(wspace=0.12, hspace=0.025)
-  if(no_ticks):
-    plt.subplots_adjust(wspace=0.025, hspace=0.025)
-  #fig.savefig("%s.png"%prefix, dpi=1000)
-  fig.savefig("%s.pdf"%prefix)
+      plt.subplots_adjust(wspace=0.025, hspace=0.025)
+    #fig.savefig("%s.png"%prefix, dpi=1000)
+    fig.savefig("%s.pdf"%prefix)
+    # end save as PDF part
+  return group_args(all = HB_all, alpha = HB_alpha, beta = HB_beta)
 
 
 def precheck(atoms, i, j, Hs, As, Ds, fsc0):

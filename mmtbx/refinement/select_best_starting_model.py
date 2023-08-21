@@ -115,16 +115,14 @@ class select_model(object):
       params = master_phil.extract()
     self.model_names = model_names
     if (model_data is None):
-      from iotbx.file_reader import any_file
+      import iotbx.pdb
       model_data = []
       for file_name in model_names :
         if (not os.path.isfile(file_name)):
           raise RuntimeError("model_data is None, but %s is not a file." %
             file_name)
-        model_in = any_file(file_name,
-          force_type="pdb",
-          raise_sorry_if_errors=True).file_object
-        pdb_hierarchy = model_in.hierarchy
+        model_in = iotbx.pdb.input(file_name)
+        pdb_hierarchy = model_in.construct_hierarchy()
         xray_structure = model_in.xray_structure_simple()
         model_data.append((pdb_hierarchy, xray_structure))
     self.model_symmetries = []

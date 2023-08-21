@@ -399,6 +399,12 @@ def process_predicted_model(
     n_after = new_ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
+    from mmtbx.secondary_structure.find_ss_from_ca import \
+     get_selection_string_from_model
+    selection_for_b_factor_filtering = get_selection_string_from_model(
+      hierarchy = new_ph)
+    print("\nSelection string for B-factor filtering: %s" %(
+      selection_for_b_factor_filtering), file = log)
     keep_all = False
     remainder_sequence_str = None
     if n_after == 0:
@@ -861,6 +867,15 @@ def split_model_with_pae(
     else:
       full_new_model = new_m
   m = full_new_model
+
+  from mmtbx.secondary_structure.find_ss_from_ca import \
+     get_selection_string_from_model
+  selection_for_full_model = get_selection_string_from_model(model = m)
+  print("\nSelection string for final model: %s" %(selection_for_full_model),
+    file = log)
+  print("Total residues in final model: %s" %(
+     m.overall_counts().n_residues), file = log)
+
 
   # All done
   return group_args(

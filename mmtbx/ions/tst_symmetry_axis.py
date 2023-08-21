@@ -3,13 +3,13 @@ from __future__ import absolute_import, division, print_function
 import os
 from libtbx.utils import null_out
 from libtbx import group_args
+import iotbx.pdb
 from six.moves import cStringIO as StringIO
 
 def exercise():
   from mmtbx.regression import make_fake_anomalous_data
   import mmtbx.command_line.water_screen
   import mmtbx.ions.utils
-  from iotbx.file_reader import any_file
   pdb_in = """\
 CRYST1   51.491   51.491   35.389  90.00  90.00 120.00 P 31 2 1
 SCALE1      0.019421  0.011213  0.000000        0.00000
@@ -110,9 +110,9 @@ TER
   file_base = "tst_symmetry_axis"
   with open(file_base + ".pdb", "w") as f:
     f.write(pdb_in)
-  f = any_file(file_base + ".pdb")
-  hierarchy = f.file_object.hierarchy
-  xrs = f.file_object.xray_structure_simple()
+  pdb_inp = iotbx.pdb.input(file_base + ".pdb")
+  hierarchy = pdb_inp.construct_hierarchy()
+  xrs = pdb_inp.xray_structure_simple()
   hierarchy, n = mmtbx.ions.utils.anonymize_ions(hierarchy, log=null_out())
   assert (n == 3)
   with open(file_base + "_in.pdb", "w") as f:

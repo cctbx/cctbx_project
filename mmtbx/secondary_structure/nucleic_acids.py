@@ -624,6 +624,10 @@ def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
   new_hbonds = []
   r1, r2, r1n, r2n = unify_residue_names_and_order(
       atoms[0].parent(), atoms[1].parent())
+  if bondlength_defaults.basepairs_lengths.get(saenger_class, None) == None:
+    raise Sorry("""
+Bad or unknown Saenger class. Presently we don't have enough
+data to support Saenger class #16. """)
   if bondlength_defaults.basepairs_lengths[saenger_class][0] != (r1n, r2n):
     print(bondlength_defaults.basepairs_lengths[saenger_class][0], r1n, r2n,saenger_class)
     print(r1.id_str(), r2.id_str())

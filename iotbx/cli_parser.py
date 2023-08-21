@@ -594,14 +594,14 @@ class CCTBXParser(ParserBase):
     diff_phil = self.master_phil.fetch_diff(self.working_phil)
     paths = self.check_phil_for_paths(diff_phil)
     if len(paths) > 0:
-      files = []
-      dirs = []
+      files = set()
+      dirs = set()
       for path in paths:
         if path is not None:
           if os.path.isfile(path):
-            files.append(path)
+            files.add(path)
           elif os.path.isdir(path):
-            dirs.append(path)
+            dirs.add(path)
       if self.parse_files:
         self.process_files(files, message='Processing files from PHIL:')
       if self.parse_dir:
@@ -790,7 +790,8 @@ or with pip run
 
 # =============================================================================
 def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arguments=None,
-                unused_phil_raises_sorry=True, args=None, json=False, logger=None):
+                unused_phil_raises_sorry=True, args=None, json=False, logger=None,
+                hide_parsing_output=False):
   '''
   Function for running programs using CCTBXParser and the program template
 
@@ -810,6 +811,8 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
     If True, get_results_as_JSON is called for the return value instead of get_results
   logger: multi_out
     For logging output (optional)
+  hide_parsing_output: bool
+    If True, hides the output from parsing the command-line arguments
 
   Returns
   -------
@@ -839,6 +842,12 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
     logger.register('stdout', sys.stdout)
     logger.register('parser_log', StringIO())
 
+  program_logger = logger
+  if hide_parsing_output:
+    logger = multi_out()
+    logger.register('stderr', sys.stderr)
+    logger.register('parser_log', StringIO())
+
   # start timer
   t = show_times(out=logger)
 
@@ -857,7 +866,7 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   print('='*79, file=logger)
   task = program_class(parser.data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil,
-                       logger=logger)
+                       logger=program_logger)
 
   # validate inputs
   task.validate()

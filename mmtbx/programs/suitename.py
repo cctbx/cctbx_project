@@ -12,225 +12,147 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import nested_scopes, generators, absolute_import
-from __future__ import with_statement, print_function
-import sys, os
+from __future__ import absolute_import, division, print_function
 
-from mmtbx.suitename import dualparse, suites
-from mmtbx.suitename.suitename import main, version
-
-from iotbx.cli_parser import CCTBXParser
+import os
+from mmtbx.suitename.suitealyze import suitealyze
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import multi_out, show_total_time
-
-#import libtbx.load_env
-#from libtbx.utils import Usage
-
-import os, sys
-
-def run(args):
-  "The main program, if run from CCTBX / PHENIX."
-  logger = multi_out()
-  logger.register('stderr', sys.stderr)
-  logger2 = multi_out()
-  logger2.register('stdout', sys.stdout)
-  logger3 = multi_out()
-  # TO DIAGNOSE OPTIONS TROUBLES:
-  # logger3.register('verbiage', open("suitename.stderr.log", "w"))
-
-  parser = dualparse.parseArgs(Program, logger3)
-  working_phil = parser.working_phil
-  options = working_phil.extract().suitename
-
-  # now we call into the core of suitename itself
-  if options.version:
-      print(version, file=logger2)
-      return
-  if options.infile == "" or options.infile =="-" or options.residuein or options.suitein:
-      # let the core figure out the input
-      main(optionsIn=options, outFile=logger2, errorFile=logger)
-  else:
-      type, ext = analyzeFileType(options.infile)
-      if type=="":
-        logger.write("File extension "+str(ext)+" not recognized\n")
-        return
-      if type == "pdb":
-          suites.main(options=options, outFile=logger2, errorFile=logger)
-      else:
-        # help the core figure out the input file type
-        if type == "kinemage":
-          options.suitein = True
-        elif type == "dangle":
-          options.residuein = True
-        main(optionsIn=options, outFile=logger2, errorFile=logger)
-
-
-extensionList={
-    "pdb": "pdb",
-    "cif": "pdb",
-    "kin": "kinemage",
-    "dangle": "dangle",
-    "suitegeom": "dangle",
-}
-
-def analyzeFileType(filename):
-    base, extension = os.path.splitext(filename)
-    extension = extension[1:]
-    type = extensionList.get(extension, "")
-    return type, extension
-
+#from libtbx.utils import Sorry
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
-  program_name = "suitename"
   description="""
-   < insert help text here>
+  %(prog)s file.pdb [params.eff] [options ...]
+
+Commandline interface for suitename validation
+Supply a PDB or mmCIF file; get suitename validation
+
+Options:
+
+  model=input_file      input PDB file
+  output=text, kin, or bullseye    select type of output
+  outliers_only=False   suppress non-outlier results
+
+Example:
+
+  %(prog)s model=1ubq.pdb
 """ % locals()
 
-  # The substructure below has been commented out because it would make it more
-  # difficult to integrate with suitename's ability to run independently
-  # of CCTBX
   master_phil_str = """
+  include scope mmtbx.validation.molprobity_cmdline_phil_str
     suitename {
-      # input
-        infile=""
-          .type=str
-          .help="the file to process"
-        anglefields = 9
-          .type=int
-          .help="number of angle fields provided, for textual input only"
-        pointidfields = 7
-          .type=int
-          .help="number of point id fields before the angle fields"
-        ptid=0
-          .type=int
-          .help="number of point id fields before the angle fields"
-        residuein=false
-          .type=bool
-          .help="expect dangle format giving residues"
-        suitein=false
-          .type=bool
-          .help="expect kinemage format giving suites directly"
-      # output
-        string=False
-          .type=bool
-          .help="output in string format, 3 characters per suite"
-        kinemage=False
-          .type=bool
-          .help="output in kinemage format, useful for visualization"
-        report=true
-          .type=bool
-          .help="output as a report, giving statistical details"
-        chart=False
-          .type=bool
-          .help="modifier to standard report, output without statistical summary"
-        nosequence = False
-          .type=bool
-          .help="modifier to string format, do not include base letters"
-        causes=False
-          .type=bool
-          .help="output extra details concerning the causes of each assignment made"
-        test=False
-          .type=bool
-          .help="display a lat of additional information about program internals"
-      # compute
-        satellites=False
-          .type=bool
-          .help="use the special satelliteWidths values for satellites"
-        nowannabe=False
-          .type=bool
-          .help="do not consider 'wannabe' clusters"
-        noinc=False
-          .type=bool
-          .help="do not display incomplete suites"
-        etatheta=False
-          .type=bool
-        altid="A"
-          .type=str
-          .help="which alternate conformer to use (A, B, etc)"
-        altidfield = 6
-          .type=int
-          .help="which field (1-based) gives the alternate conformer code"
-        version=False
-          .type=bool
-          .help="give the version number of suite name"
-      # deprecated
-        oneline=False
-          .type=bool
-      }
+    # input
+      infile=""
+        .type=str
+        .help="the file to process"
+      anglefields = 9
+        .type=int
+        .help="number of angle fields provided, for textual input only"
+      pointidfields = 7
+        .type=int
+        .help="number of point id fields before the angle fields"
+      ptid=0
+        .type=int
+        .help="number of point id fields before the angle fields"
+      residuein=false
+        .type=bool
+        .help="expect dangle format giving residues"
+      suitein=false
+        .type=bool
+        .help="expect kinemage format giving suites directly"
+    # output
+      string=False
+        .type=bool
+        .help="output in string format, 3 characters per suite"
+      json=False
+        .type=bool
+        .help="output in JSON format, useful for machine parsing"
+      kinemage=False
+        .type=bool
+        .help="output in kinemage format, useful for visualization"
+      markup=False
+        .type=bool
+        .help="visual markup of suites and outliers for kinemage format"
+      report=true
+        .type=bool
+        .help="output as a report, giving statistical details"
+      chart=False
+        .type=bool
+        .help="modifier to standard report, output without statistical summary"
+      nosequence = False
+        .type=bool
+        .help="modifier to string format, do not include base letters"
+      causes=False
+        .type=bool
+        .help="output extra details concerning the causes of each assignment made"
+      test=False
+        .type=bool
+        .help="display a lat of additional information about program internals"
+    # compute
+      satellites=False
+        .type=bool
+        .help="use the special satelliteWidths values for satellites"
+      nowannabe=False
+        .type=bool
+        .help="do not consider 'wannabe' clusters"
+      noinc=False
+        .type=bool
+        .help="do not display incomplete suites"
+      etatheta=False
+        .type=bool
+      altid="A"
+        .type=str
+        .help="which alternate conformer to use (A, B, etc)"
+      altidfield = 6
+        .type=int
+        .help="which field (1-based) gives the alternate conformer code"
+      version=false
+        .type=bool
+        .help="give the version number of suite name"
+    # deprecated and automatically true:
+      oneline=false
+        .type=bool
+    }
 """
-
-# might add:
-        # altidval="A"
-        #   .type=str
-        #   .help="which alternate conformer to use (A, B, etc)"
-#
-  datatypes = ['model', 'phil']  # also
+  datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
   def validate(self):
-    pass
+    self.data_manager.has_models(raise_sorry=True)
 
-  def run(self, args):
-    pass
+  def run(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    suite_results = suitealyze(pdb_hierarchy=hierarchy, options=self.params)
+    if self.params.suitename.string or self.params.suitename.oneline:# == "string":
+      suite_results.display_suitestrings(blockform=True)
+    elif self.params.suitename.markup:# == "markup":
+      print(suite_results.as_kinemage_markup())
+    elif self.params.suitename.json:
+      print(suite_results.as_JSON())
+    elif self.params.suitename.report:# == "report":
+      suite_results.show_old_output(verbose=True)
+    else:
+      suite_results.show_old_output(verbose=True)
+    #print(suite_results.as_kinemage())
+    #suite_results.show_summary()
 
-
-  # end of class Program
-
-
-# def rest_of_old_run(args):  -- an intermediate state, outdated technique
-#   namespace, others = parser.parse_args(sys.argv[1:])
-#   # whatever the old fashioned parser won't use becomes part of <others>
-#   # and will be given to the phil parser
-#
-#   parser = CCTBXParser(
-#     program_class=Program,
-#     logger=logger)
-#   namespace = parser.parse_args(others)
-#
-#   # start program
-#   print('Starting job', file=logger)
-#   print('='*79, file=logger)
-#   phil1 = parser.working_phil.extract()
-#   args2 = parseCommandLine()
-#   task = Program(
-#     parser.data_manager, phil1, logger=logger2)
-#   main()
-
-#=============================================================================
-# def run(args):
-#
-#   # create parser
-#   logger = multi_out()
-#   logger.register('stderr', sys.stderr)
-#   logger2 = multi_out()
-#   logger2.register('stdout', sys.stdout)
-#
-#   parser = CCTBXParser(
-#     program_class=cablam.Program,
-#     logger=logger)
-#   namespace = parser.parse_args(sys.argv[1:])
-#
-#   # start program
-#   print('Starting job', file=logger)
-#   print('='*79, file=logger)
-#   task = cablam.Program(
-#     parser.data_manager, parser.working_phil.extract(), logger=logger2)
-#
-#   # validate inputs
-#   task.validate()
-#
-#   # run program
-#   task.run()
-#
-#   # stop timer
-#   print('', file=logger)
-#   print('='*79, file=logger)
-#   print('Job complete', file=logger)
-#   show_total_time(out=logger)
-
-# =============================================================================
-if __name__ == '__main__':
-  run(sys.argv[1:])
+    #hierarchy.atoms().reset_i_seq()
+    #result = cbetadev(
+    #  pdb_hierarchy=hierarchy,
+    #  outliers_only=self.params.outliers_only,
+    #  apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
+    #  display_phi_psi_correction=self.params.cbetadev.display_phi_psi_correction,
+    #  exclude_d_peptides=self.params.cbetadev.exclude_d_peptides,
+    #  out=self.logger,
+    #  quiet=False)
+    #if self.params.cbetadev.output == "kin":
+    #  self.logger.write(result.as_kinemage())
+    #elif self.params.cbetadev.output == "bullseye":
+    #  filebase = os.path.basename(self.data_manager.get_model_names()[0])
+    #  self.logger.write(result.as_bullseye_kinemage(pdbid=filebase))
+    #elif self.params.verbose:
+    #  #pdb_file_str = os.path.basename(self.params.model)[:-4]
+    #  #get input file name from data manager, strip file extension
+    #  pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])[:-4]
+    #  result.show_old_output(out=self.logger, prefix=pdb_file_str, verbose=True)
