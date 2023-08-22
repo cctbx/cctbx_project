@@ -600,45 +600,52 @@ class RefineLauncher:
 
 
 class HiAsu(object):
-    """Object which stores possible & present Miller Indices, their counts,
+    """
+    Object which stores possible & present Miller Indices, their counts,
     counters, maps between them and their integer indexes etc.
-    Parameters without trailing _ are global: total / same for all ranks.
-    Parameters with trailing _ are local: unique for each rank."""
+
+    Within `HiAsu`, the following notation is used for parameter names:
+    * no trailing `_`: global parameter - total or the same for all ranks.
+    * with trailing `_`: local parameter – value is unique for each rank.
+    Example: `counts_` would be specific to rank, but `counts` would be global.
+    """
     def __init__(self, refine_launcher):
         self.rl = refine_launcher
         self.possible = self.get_possible()
         self.possible_len = len(self.possible)
         self.possible_counts = self.get_counts()
-        self.from_idx, self.to_idx = self.get_dicts()
+        self.present_len = len(list(self.present_zip))
+        self.from_idx, self.to_idx = self._get_dicts()
 
     def get_possible(self):
         if COMM.rank == 0:
-            symm = self.rl.get_first_modeller_symmetry()
-            res_ranges = utils.parse_reso_string(self.rl.params.refiner.res_ranges)
+            sym = self.rl.get_first_modeller_symmetry()
+            res_ranges_str = self.rl.params.refiner.res_ranges
+            res_ranges = utils.parse_reso_string(res_ranges_str)
             # accommodate variations in unit cell
             d_min = min([d_min for d_min, _ in res_ranges]) * 0.8
-            mset_full = symm.build_miller_set(anomalous_flag=True, d_min=d_min)
+            mset_full = sym.build_miller_set(anomalous_flag=True, d_min=d_min)
             possible = list(mset_full.indices())
         else:
             possible = None
         return COMM.bcast(possible, root=0)
 
     def get_counts(self):
-        hi_asu = chain.from_iterable(self.rl.Hi_asu.values())
-        hi_asu_counter = Counter(hi_asu)
-        hi_asu_possible_counts = [hi_asu_counter[k] for k in self.possible]
-        hi_asu_possible_counts = np.array(hi_asu_possible_counts, dtype=int)
-        hi_asu_possible_counts_global = np.zeros_like(hi_asu_possible_counts, dtype=int)
-        COMM.Allreduce(hi_asu_possible_counts, hi_asu_possible_counts_global, op=MPI.SUM)
-        return hi_asu_possible_counts_global
+        hi_asu_ = chain.from_iterable(self.rl.Hi_asu.values())
+        hi_asu_counter_ = Counter(hi_asu_)
+        hi_asu_possible_counts_ = [hi_asu_counter_[k] for k in self.possible]
+        hi_asu_possible_counts_ = np.array(hi_asu_possible_counts_, dtype=np.uint16)
+        hi_asu_possible_counts = np.zeros_like(hi_asu_possible_counts_, dtype=np.uint16)
+        COMM.Allreduce(hi_asu_possible_counts_, hi_asu_possible_counts, op=MPI.SUM)
+        return hi_asu_possible_counts
 
     @property
     def present(self):
-        return (p for p, c in zip(self.possible, self.possible_counts) if c)
+        return (p for p, c in self.present_zip)
 
     @property
     def present_counts(self):
-        return (c for p, c in zip(self.possible, self.possible_counts) if c)
+        return (c for p, c in self.present_zip)
 
     @property
     def present_counter(self):
@@ -652,7 +659,7 @@ class HiAsu(object):
     def present_zip(self):
         return ((p, c) for p, c in zip(self.possible, self.possible_counts) if c)
 
-    def get_dicts(self):
+    def _get_dicts(self):
         """from_idx maps miller indices to index in LBFGS par. array self.x;
         to_ids is an inverse map during refinement to update diffBragg m.arr"""
         from_idx = {i: h for i, h in enumerate(self.possible)}
