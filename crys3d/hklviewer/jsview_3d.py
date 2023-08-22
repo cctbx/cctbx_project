@@ -2507,8 +2507,9 @@ in the space group %s\nwith unit cell %s""" \
       (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
 
       fomsarrays_idx = [(None, None)]
-      if infolst[1] in ['Map coeffs']:
-        fomsarrays_idx.extend( self.mapcoef_fom_dict.get(infolst[0]))
+      mextnd = self.mapcoef_fom_dict.get(infolst[0])
+      if infolst[1] in ['Map coeffs'] and mextnd is not None:
+        fomsarrays_idx.extend( mextnd )
       for (fomsarray, fidx) in fomsarrays_idx:
         lbl = arrayinfo.labelstr
         fomslabel = None

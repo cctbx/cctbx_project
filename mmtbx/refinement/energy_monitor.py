@@ -28,15 +28,37 @@ class energies(list):
   def as_string(self, verbose=False):
     # from libtbx import easy_pickle
     # easy_pickle.dump('ga.pickle', self)
+    pairs = [['bound', 'opt']]
     s=''
+    tmp = {}
+    t_atoms = {}
     for i, gas in enumerate(self):
+      tmp.setdefault(i, {})
+      t_atoms.setdefault(i, {})
       t=''
+      units = None
       for j, ga in enumerate(gas):
+        if ga:
+          units=ga.units
+          for d, e, l, b in ga.energies:
+            tmp[i][d]=e
+            t_atoms[i][d]=b
         rc = print_energy_in_kcal(ga)
         if rc:
           for line in rc:
             t += '%s%s\n' % (' '*6, line)
       if verbose: print('macro_cycle %d %s' % (i+1,t))
+      for k1, k2 in pairs:
+        if not (t_atoms[i].get(k1, False) and t_atoms[i].get(k2, False)):
+          continue
+        if t_atoms[i][k1]!=t_atoms[i][k2]: continue
+        if k1 in tmp[i] and k2 in tmp[i]:
+          e = tmp[i][k1]-tmp[i][k2]
+          t+='%s%-12s %s (atoms %4d)' % (' '*6,
+                             '%s-%s' % (k1,k2),
+                             _print_energy_in_kcal(e, units),
+                             t_atoms[i][k1],
+                             )
       if i:
         def _add_dE(e1, e2, units):
           s=''
@@ -99,5 +121,5 @@ def digest_return_energy_object(ga, macro_cycle, energy_only, rc=None):
 if __name__ == '__main__':
   from libtbx import easy_pickle
   e=easy_pickle.load('ga.pickle')
-  rc=e.as_string()
+  rc=e.as_string(verbose=0)
   print(rc)

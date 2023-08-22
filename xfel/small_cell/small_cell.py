@@ -26,7 +26,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 from dials.algorithms.shoebox import MaskCode
 mask_peak = MaskCode.Valid|MaskCode.Foreground
 
-""" Calculates the euclidian distance between two 2D points """
+""" Calculates the Euclidean distance between two 2D points """
 def measure_distance (a,b): return math.sqrt((math.pow(b[0]-a[0],2)+math.pow(b[1]-a[1],2)))
 
 def d_in_pixels (d_spacing, wavelength, distance, pixel_size):
@@ -133,8 +133,8 @@ class small_cell_connection(object):
 
 def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
   """ Given two hkls and two xyzs, determine if the reflections are 'connected', meaning
-  the observed distance between the refelctions is similar to the calculated distance
-  to the refelctions.
+  the observed distance between the reflections is similar to the calculated distance
+  to the reflections.
   See Brewster et. al. (2015), equation 4
   @param hklA small_cell_hkl object A
   @param hklB small_cell_hkl object B
@@ -152,8 +152,8 @@ def test_spot_connection(hklA,hklB,xyzA,xyzB,metrical_matrix,phil):
 
   return approx_equal(delta_calc, delta_obv, out=None, eps=phil.small_cell.spot_connection_epsilon), delta_obv, delta_calc
 
-def filter_indicies(ori,beam,resolution,phil):
-  """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosiaicity
+def filter_indices(ori,beam,resolution,phil):
+  """ Given a unit cell, determine reflections in the diffracting condition, assuming the mosaicity
   passed in the target phil file. Include their locations in reciprocal space given a crystal
   orientation.
   @param ori crystal orientation
@@ -163,24 +163,14 @@ def filter_indicies(ori,beam,resolution,phil):
   @return list of original indices, list of asymmetric indices
   """
   sym = symmetry(unit_cell=ori.unit_cell(),space_group=phil.small_cell.spacegroup)
-  ops = []
-  for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops(): # this gets the spots related by inversion, aka Bijvoet mates
-    r = op.r().as_hkl()
-    subops = r.split(',')
-    tmpop = [1,1,1]
-    if '-' in subops[0]: tmpop[0] = -1
-    if '-' in subops[1]: tmpop[1] = -1
-    if '-' in subops[2]: tmpop[2] = -1
-
-    if tmpop not in ops:
-      ops.append(tmpop)
+  ops = [op.r() for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops()] # this gets the spots related by inversion, aka Bijvoet mates
 
   asu_indices = sym.build_miller_set(anomalous_flag=False, d_min = resolution)
   asu_indices_with_dups = []
   original_indicies = []
   for idx in asu_indices.indices():
     for op in ops:
-      orig_idx = (idx[0]*op[0],idx[1]*op[1],idx[2]*op[2])
+      orig_idx = op * idx
       if orig_idx not in original_indicies:
         original_indicies.append(orig_idx)
         asu_indices_with_dups.append(idx)
@@ -214,7 +204,7 @@ def write_cell (ori,beam,max_clique,phil):
   cbasis = A * col((0,0,1))
 
   f = open("spots.dat",'w')
-  for index in filter_indicies(ori,beam,phil.small_cell.high_res_limit,phil)[0]:
+  for index in filter_indices(ori,beam,phil.small_cell.high_res_limit,phil)[0]:
     v = A * col(index)
     f.write(" % 6.3f % 6.3f % 6.3f\n"%(v[0],v[1],v[2]))
   f.close()
@@ -261,7 +251,7 @@ def write_cell (ori,beam,max_clique,phil):
 
 def hkl_to_xy (ori,hkl,detector,beam):
   """ Given an hkl, crystal orientation, and sufficient experimental parameters, compute
-  the refelction's predicted xy position on a given image
+  the reflection's predicted xy position on a given image
   @param ori crystal orientation
   @param detector dxtbx detector object
   @param beam dxtbx beam object
@@ -275,14 +265,14 @@ def hkl_to_xy (ori,hkl,detector,beam):
   s0_unit = s0.normalize();
   assert s0_length > 0.
 
-  s = (A * hkl) #s, the reciprocal space coordinates, lab frame, of the oriented Miller index
+  s = (A * hkl) # s, the reciprocal space coordinates, lab frame, of the oriented Miller index
   s_rad_sq = s.length_sq()
   assert s_rad_sq > 0.
-  rotax = s.normalize().cross(s0_unit) #The axis that most directly brings the Bragg spot onto Ewald sphere
+  rotax = s.normalize().cross(s0_unit) # The axis that most directly brings the Bragg spot onto Ewald sphere
   chord_direction = (rotax.cross(s0)).normalize()
 
   a = s.length_sq()/(2.*s0_length) # see diagram
-  b = math.sqrt(s.length_sq() - (a*a))#  Calculate half-length of the chord of intersection
+  b = math.sqrt(s.length_sq() - (a*a))# Calculate half-length of the chord of intersection
 
   intersection = (-a * s0_unit) - (b * chord_direction)
   q = intersection + s0
@@ -301,8 +291,8 @@ def ori_to_crystal(ori, spacegroup):
   real_b = direct_matrix[3:6]
   real_c = direct_matrix[6:9]
   crystal = MosaicCrystalSauter2014(real_a, real_b, real_c, spacegroup)
-  crystal.set_domain_size_ang(100) # hardcoded here, but could be refiend using nave_parameters
-  crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refiend using nave_parameters
+  crystal.set_domain_size_ang(100) # hardcoded here, but could be refined using nave_parameters
+  crystal.set_half_mosaicity_deg(0.05) # hardcoded here, but could be refined using nave_parameters
   return crystal
 
 def small_cell_index(path, horiz_phil):
@@ -330,8 +320,8 @@ def small_cell_index(path, horiz_phil):
   experiments = ExperimentListFactory.from_imageset_and_crystal(imageset, None)[0]
   reflections = find_spots(experiments)
 
-  # filter the reflections for those near asic boundries
-  print("Filtering %s reflections by proximity to asic boundries..."%len(reflections), end=' ')
+  # filter the reflections for those near asic boundaries
+  print("Filtering %s reflections by proximity to asic boundaries..."%len(reflections), end=' ')
 
   sel = flex.bool()
   for sb in reflections['shoebox']:
@@ -357,9 +347,10 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   assert len(imagesets) == 1
   imageset = imagesets[0]
   path = imageset.paths()[0]
+  assert len(experiments) == 1
 
-  detector = imageset.get_detector()
-  beam = imageset.get_beam()
+  detector = experiments[0].detector
+  beam = experiments[0].beam
 
   if horiz_phil.small_cell.override_wavelength is not None:
     beam.set_wavelength(horiz_phil.small_cell.override_wavelength)
@@ -373,7 +364,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   azimuthal_sizes = flex.double()
   s0_projs = flex.vec3_double()
   for ref in reflections.rows():
-    # calculate reciprical space coordinates
+    # calculate reciprocal space coordinates
     x, y, z = ref['xyzobs.px.value']
     panel = detector[ref['panel']]
     xyz_lab = col(panel.get_pixel_lab_coord((x,y)))
@@ -428,7 +419,8 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   reflections['s0_proj'] = s0_projs
 
   from dials.algorithms.indexing.assign_indices import AssignIndicesGlobal
-  reflections['imageset_id'] = reflections['id']
+  if 'imageset_id' not in reflections:
+    reflections['imageset_id'] = reflections['id']
   reflections.centroid_px_to_mm(experiments)
   reflections.map_centroids_to_reciprocal_space(experiments)
 
@@ -458,17 +450,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
 
   # for every combination of spots examined, test possible translation and inversions
   # based on the symmetry of cell in question
-  ops = []
-  for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops(): # this gets the spots related by inversion, aka Bijvoet mates
-    r = op.r().as_hkl()
-    subops = r.split(',')
-    tmpop = [1,1,1]
-    if '-' in subops[0]: tmpop[0] = -1
-    if '-' in subops[1]: tmpop[1] = -1
-    if '-' in subops[2]: tmpop[2] = -1
-
-    if tmpop not in ops:
-      ops.append(tmpop)
+  ops = [op.r() for op in sym.space_group().expand_inv(sgtbx.tr_vec((0,0,0))).all_ops()] # this gets the spots related by inversion, aka Bijvoet mates
 
   # make a list of the spots and the d-spacings they fall on
   spots_on_drings = []
@@ -478,7 +460,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     inner = dist - (spot.spot_dict['radial_size']/2)
     outer = dist + (spot.spot_dict['radial_size']/2)
 
-    #L = 2dsinT
+    # L = 2dsinT
     inner_angle = math.atan2(inner, col(spot.spot_dict['s0_proj']).length())
     outer_angle = math.atan2(outer, col(spot.spot_dict['s0_proj']).length())
     outer_d = wavelength/2/math.sin(inner_angle/2) # inner becomes outer
@@ -528,10 +510,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
       tested_B = []
       for hklB_a in spotB.hkls:
         for op in ops:
-          hklB = small_cell_hkl(hklB_a.ahkl, col([hklB_a.ahkl[0]*op[0],
-                                                  hklB_a.ahkl[1]*op[1],
-                                                  hklB_a.ahkl[2]*op[2]]))
-
+          hklB = small_cell_hkl(hklB_a.ahkl, col(op * hklB_a.ahkl))
           if hklA == hklB or hklB in tested_B:
             continue
           tested_B.append(hklB)
@@ -546,7 +525,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
                     #spotB.ID, hklB.ohkl[0], hklB.ohkl[1], hklB.ohkl[2],
                     #delta_obv, delta_calc)
 
-  # if I want to print out the full graph, i would do it here using spots_on_drings and test the connections attribute of each spot
+  # if I want to print out the full graph, I would do it here using spots_on_drings and test the connections attribute of each spot
   for spot in spots_on_drings:
     for hkl in spot.hkls:
       for con in hkl.connections:
@@ -588,10 +567,10 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
           dists.append(dist)
           print("%32.32f"%dist)
         else:
-          print("DUP") #assume the same dist wouldn't occur twice, unless it's a symmetry operation of the same asu hkl
+          print("DUP") # assume the same dist wouldn't occur twice, unless it's a symmetry operation of the same asu hkl
       avg_dist = sum(dists) / len(dists)
       print(spot.ID, "avgdist", avg_dist)
-      #assert avg_dist != best_dist  # i mean, i guess this could happen, but not really prepared to deal with it
+      # assert avg_dist != best_dist  # I mean, I guess this could happen, but not really prepared to deal with it
       if avg_dist < best_dist:
         best_dist = avg_dist
         most_connected_spot = spot
@@ -655,7 +634,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   degrees = flex.size_t(sorted(degrees))
 
 
-  #build the clique graph
+  # build the clique graph
   graph = []
   for e1 in mapping:
     row = []
@@ -706,12 +685,12 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     for i in range(len(graph)):
       graph_flex[i,j] = bool(graph[i][j])
 
-  #calcuate maximum size cliques using the Bron-Kerbosch algorithm:
-  #http://en.wikipedia.org/wiki/Bron-Kerbosch_algorithm
-  #code re-written from here (originally by Andy Hayden at #organizationName):
-  #http://stackoverflow.com/questions/13904636/implementing-bronkerbosch-algorithm-in-python
-  #choose the pivot to be the node with highest degree in the union of P and X, based on this paper:
-  #http://www.sciencedirect.com/science/article/pii/S0304397508003903
+  # calcuate maximum size cliques using the Bron-Kerbosch algorithm:
+  # http://en.wikipedia.org/wiki/Bron-Kerbosch_algorithm
+  # code re-written from here (originally by Andy Hayden at #organizationName):
+  # http://stackoverflow.com/questions/13904636/implementing-bronkerbosch-algorithm-in-python
+  # choose the pivot to be the node with highest degree in the union of P and X, based on this paper:
+  # http://www.sciencedirect.com/science/article/pii/S0304397508003903
 
   print("starting to find max clique of ", path)
 
@@ -806,7 +785,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
       matched[key] = []
     matched[key].append(spot)
 
-  # an ambiguous entry will have multiple spots for the same index.  likely the spots are very close in reciprocal space.
+  # an ambiguous entry will have multiple spots for the same index.  Likely the spots are very close in reciprocal space.
   ambig_keys = []
   for key in matched:
     assert len(matched[key]) > 0
@@ -829,7 +808,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
           num_conns = num_conns + 1
       avg_dist = avg_dist / num_conns
       print(spot.ID, "avgdist", avg_dist)
-      assert avg_dist != best_dist  # i mean, i guess this could happen, but not really prepared to deal with it
+      assert avg_dist != best_dist  # I mean, I guess this could happen, but not really prepared to deal with it
       if avg_dist < best_dist:
         best_dist = avg_dist
         best_spot = spot
@@ -861,7 +840,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
   loop_count = 0
   while True:
 
-    #calculate the basis vectors
+    # calculate the basis vectors
     loop_count = loop_count + 1
     ori = get_crystal_orientation(working_set, sym, False, loop_count)
     if ori is None:
@@ -922,7 +901,7 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
     #  print _dist
     #print "**** SHOWED DISTS ****"
 
-    if len(working_set) < len(indexed):# and working_rmsd * 1.1 < indexed_rmsd: # allow a small increase in RMSD
+    if len(working_set) < len(indexed): # and working_rmsd * 1.1 < indexed_rmsd: # allow a small increase in RMSD
       working_set = indexed
       print("Doing another round of unit cell refinement")
     else:
@@ -1090,7 +1069,7 @@ def small_cell_index_detail(experiments, reflections, horiz_phil, write_output =
           sa_parameters = [None],
           max_signal = [max_signal],
           current_orientation = [ori],
-          current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], #identity.  only support primitive lattices.
+          current_cb_op_to_primitive = [sgtbx.change_of_basis_op()], # identity.  only support primitive lattices.
           pixel_size = pixel_size,
         )
         G = open("int-" + os.path.splitext(os.path.basename(path))[0] +".pickle","wb")
@@ -1164,7 +1143,7 @@ def hkl_to_xyz(hkl,abasis,bbasis,cbasis):
   return (hkl[0]*abasis) + (hkl[1]*bbasis) + (hkl[2]*cbasis)
 
 def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
-  """ given a set of refelctions and input geometry, determine a crystal orientation using a set
+  """ given a set of reflections and input geometry, determine a crystal orientation using a set
   of linear equations, then refine it.
   @param spots list of small cell spot objects
   @param sym cctbx symmetry object
@@ -1181,7 +1160,7 @@ def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
   ori = solver.unrestrained_setting()
 
   det = sqr(ori.crystal_rotation_matrix()).determinant()
-  print("Got crystal rotation matrix, deteriminant", det)
+  print("Got crystal rotation matrix, determinant", det)
   if det <= 0:
     ori = ori.make_positive()
     for spot in spots: # fix the signs of the hkls in the clique using this new basis
@@ -1258,8 +1237,7 @@ def get_crystal_orientation(spots, sym, use_minimizer=True, loop_count = 0):
 
 def grow_by(pixels, amt):
   """
-  Given a list of pixels, grow it contiguously by the given
-  number of pixels
+  Given a list of pixels, grow it contiguously by the given number of pixels
   """
   ret = []
   tested = []
@@ -1332,8 +1310,8 @@ def reject_background_outliers(bg_pixels, bg_vals):
     return reject_background_outliers(culled_bg,culled_bg_vals)
 
 def get_background_plane_parameters(bgvals,bgpixels):
-  """ Given a set of pixels, determine the best fit plane assuming they are background
-  see http://journals.iucr.org/d/issues/1999/10/00/ba0027/index.html
+  """ Given a set of pixels, determine the best fit plane assuming they are
+  background, see http://journals.iucr.org/d/issues/1999/10/00/ba0027/index.html
   @param bg_pixels list of 2D pixel values
   @param bg_values corresponding pixel values
   @return the background plane parameters

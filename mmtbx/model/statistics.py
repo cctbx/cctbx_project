@@ -158,6 +158,8 @@ class geometry(object):
           outliers_only = False)
     return group_args(
       outliers = self.cached_rota.percent_outliers,
+      favored  = self.cached_rota.percent_favored,
+      allowed  = self.cached_rota.percent_allowed,
       rotalyze = self.cached_rota #XXX Bulky object -- REMOVE!
       )
 
@@ -336,7 +338,10 @@ class geometry(object):
 %s    Outliers : %5.2f %%
 %s    Allowed  : %5.2f %%
 %s    Favored  : %5.2f %%
-%s  Rotamer Outliers : %5.2f %%
+%s  Rotamer:
+%s    Outliers : %5.2f %%
+%s    Allowed  : %5.2f %%
+%s    Favored  : %5.2f %%
 %s  Cbeta Deviations : %5.2f %%
 %s  Peptide Plane:
 %s    Cis-proline     : %s %%
@@ -349,7 +354,10 @@ class geometry(object):
         prefix, res.ramachandran.outliers,
         prefix, res.ramachandran.allowed,
         prefix, res.ramachandran.favored,
+        prefix,
         prefix, res.rotamer.outliers,
+        prefix, res.rotamer.allowed,
+        prefix, res.rotamer.favored,
         prefix, res.c_beta.outliers,
         prefix,
         prefix, format_value("%5.2f", res.omega.cis_proline).strip(),

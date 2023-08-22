@@ -121,10 +121,9 @@ jobs:
       if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp pytest
       if %errorlevel% neq 0 exit /b %errorlevel%
-      call %CONDA%\condabin\conda.bat install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-      if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      pip install pytest==7.0.1
+      pip install junit-xml pytest==7.0.1
+      if %errorlevel% neq 0 exit /b %errorlevel%
     displayName: Create conda environment
     retryCountOnTaskFailure: 3
 

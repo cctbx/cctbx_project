@@ -7,6 +7,7 @@ from iotbx.phil import parse
 from libtbx.program_template import ProgramTemplate
 from libtbx.test_utils import approx_equal
 from libtbx.utils import Sorry
+from libtbx.test_utils import show_diff
 
 def test_01():
 
@@ -173,8 +174,8 @@ def test_01():
   mmm_sites.model_from_hierarchy(
    hierarchy = mmm_sites.model().get_hierarchy(),
    model_id='model_from_hierarchy')
-  assert mmm_sites.get_model_by_id('model_from_hierarchy').model_as_pdb() \
-     == mmm_sites.get_model_by_id('model').model_as_pdb()
+  assert not show_diff(mmm_sites.get_model_by_id('model_from_hierarchy').model_as_pdb(),
+     mmm_sites.get_model_by_id('model').model_as_pdb())
 
 
   # Check on wrapping
