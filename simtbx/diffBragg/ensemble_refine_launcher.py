@@ -446,8 +446,7 @@ class RefineLauncher:
         # TODO: End of code I believe does absolutely nothing
 
     def get_first_modeller_symmetry(self):
-        ii = list(self.Modelers.keys())[0]
-        uc = self.Modelers[ii].ucell_man
+        uc = next(iter(self.Modelers.values())).ucell_man
         params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
         if self.params.refiner.force_unit_cell is not None:
             params = self.params.refiner.force_unit_cell
@@ -620,11 +619,15 @@ class HiAsu(object):
     def get_possible(self):
         if COMM.rank == 0:
             sym = self.rl.get_first_modeller_symmetry()
-            res_ranges_str = self.rl.params.refiner.res_ranges  # FIXME hardcoded range
-            res_ranges_str = res_ranges_str if res_ranges_str else '1.9-999'
-            res_ranges = utils.parse_reso_string(res_ranges_str)
-            # accommodate variations in unit cell
-            d_min = min([d_min for d_min, _ in res_ranges]) * 0.8
+            res_ranges_str = self.rl.params.refiner.res_ranges
+            if res_ranges_str:
+                res_ranges = utils.parse_reso_string(res_ranges_str)
+                d_min = min([d_min for d_min, _ in res_ranges])
+            else:
+                expt = next(iter(self.rl.Modelers.values())).E
+                det, s0 = expt.detector, expt.beam.get_s0()
+                d_min = min([p.get_max_resolution_at_corners(s0) for p in det])
+            d_min *= 0.8  # accommodate variations in uc or det across expts
             mset_full = sym.build_miller_set(anomalous_flag=True, d_min=d_min)
             possible = list(mset_full.indices())
         else:
