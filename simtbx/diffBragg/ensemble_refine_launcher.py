@@ -620,7 +620,8 @@ class HiAsu(object):
     def get_possible(self):
         if COMM.rank == 0:
             sym = self.rl.get_first_modeller_symmetry()
-            res_ranges_str = self.rl.params.refiner.res_ranges
+            res_ranges_str = self.rl.params.refiner.res_ranges  # FIXME hardcoded range
+            res_ranges_str = res_ranges_str if res_ranges_str else '1.9-999'
             res_ranges = utils.parse_reso_string(res_ranges_str)
             # accommodate variations in unit cell
             d_min = min([d_min for d_min, _ in res_ranges]) * 0.8
@@ -662,6 +663,6 @@ class HiAsu(object):
     def _get_dicts(self):
         """from_idx maps miller indices to index in LBFGS par. array self.x;
         to_ids is an inverse map during refinement to update diffBragg m.arr"""
-        from_idx = {i: h for i, h in enumerate(self.possible)}
-        to_idx = {h: i for i, h in enumerate(self.possible)}
+        from_idx = {i: h for i, h in enumerate(self.present)}
+        to_idx = {h: i for i, h in enumerate(self.present)}
         return from_idx, to_idx
