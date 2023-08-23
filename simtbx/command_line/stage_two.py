@@ -28,6 +28,10 @@ script_phil = """
 pandas_table = None
   .type = str
   .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
+max_sigz = None
+  .type = float
+  .help = Maximum allowed value ot sigz in the input pandas table  (dataframe)
+  .help = (high sigz above 10 usually indicates failed stage 1 refinement)
 """
 
 philz = script_phil + philz + hopper_phil

@@ -29,6 +29,12 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    if params.max_sigz is not None and "sigz" in list(pandas_table):
+        Nframe = len(pandas_table)
+        pandas_table = pandas_table.query("sigz < %f" % params.max_sigz)
+        pandas_table.reset_index(drop=True, inplace=True)
+        LOGGER.info("Removed %d / %d dataframes due to max_sigz=%.2f filter"
+                    % (Nframe - len(pandas_table), Nframe, params.max_sigz))
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
