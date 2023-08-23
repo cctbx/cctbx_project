@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from simtbx.diffBragg.stage_two_utils import PAR_from_params
+from collections import Counter
+from itertools import chain
 import os
-import socket
 import sys
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
@@ -12,7 +13,6 @@ try:
 except ImportError:
     print("Pandas is required. Install using 'libtbx.python -m pip install pandas'")
     exit()
-from xfel.merging.application.utils.memory_usage import get_memory_usage
 from simtbx.diffBragg.refiners.stage_two_refiner import StageTwoRefiner
 from simtbx.diffBragg import utils
 from simtbx.diffBragg import hopper_utils
@@ -29,6 +29,12 @@ def global_refiner_from_parameters(params):
     # TODO read on each rank, or read and broadcast ?
     LOGGER.info("EVENT: read input pickle")
     pandas_table = pandas.read_pickle(params.pandas_table)
+    if params.max_sigz is not None and "sigz" in list(pandas_table):
+        Nframe = len(pandas_table)
+        pandas_table = pandas_table.query("sigz < %f" % params.max_sigz)
+        pandas_table.reset_index(drop=True, inplace=True)
+        LOGGER.info("Removed %d / %d dataframes due to max_sigz=%.2f filter"
+                    % (Nframe - len(pandas_table), Nframe, params.max_sigz))
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
@@ -328,7 +334,7 @@ class RefineLauncher:
             rank_panel_groups_refined = rank_panel_groups_refined.union(set(shot_panel_groups_refined))
 
             shot_idx += 1
-            self._mem_usage("Process memory usage")
+            LOGGER.info(utils.memory_report('Process memory usage'))
             LOGGER.info("Finished loading image %d / %d (%d / %d)"
                   % (i_df+1, len(exper_names), i_work+1, len(worklist))) #, flush=True)
 
@@ -348,7 +354,7 @@ class RefineLauncher:
             for set_of_panels in all_refined_groups:
                 panel_groups_refined = panel_groups_refined.union(set_of_panels)
         self.panel_groups_refined = list(COMM.bcast(panel_groups_refined))
-        self._mem_usage("Mem after panel groups")
+        LOGGER.info(utils.memory_report('Mem after panel groups'))
 
         LOGGER.info("EVENT: Gathering global HKL information")
         try:
@@ -359,7 +365,7 @@ class RefineLauncher:
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
-        self._mem_usage("Mem after gather Hi info")
+        LOGGER.info(utils.memory_report('Mem after gather Hi info'))
 
         # in case of GPU
         LOGGER.info("BEGIN DETERMINE MAX PIX")
@@ -370,15 +376,10 @@ class RefineLauncher:
             n = max(n)
         self.NPIX_TO_ALLOC = COMM.bcast(n)
         LOGGER.info("DONE DETERMINE MAX PIX")
-        self._mem_usage("Mem after determine max num pix")
+        LOGGER.info(utils.memory_report('Mem after determine max num pix'))
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
-        self._mem_usage("Mem after load_inputs")
-
-    def _mem_usage(self, msg="Memory usage"):
-        memMB = get_memory_usage()
-        host = socket.gethostname()
-        LOGGER.info("%s: %f GB on node %s" % (msg, memMB / 1024, host))
+        LOGGER.info(utils.memory_report('Mem after load_inputs'))
 
     def determine_refined_panel_groups(self, pids):
         refined_groups = []
@@ -410,54 +411,35 @@ class RefineLauncher:
     def _gather_Hi_information(self):
         # aggregate all miller indices
 
-        #self.Hi_asu_all_ranks = []
-        # TODO assert list types are stored in Hi and Hi_asu
-        #for i_shot in self.Hi: #range(nshots_on_this_rank):
-        #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
+        self.hiasu = HiAsu(self)
 
-        Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
-        unique_asu_all_ranks = None
-        if COMM.rank==0:
-            temp = []
-            for Hi_asu in Hi_asu_all_ranks:
-                for i_shot in Hi_asu:
-                    temp += Hi_asu[i_shot]
-            Hi_asu_all_ranks = temp
-            unique_asu_all_ranks = set(Hi_asu_all_ranks)
-        unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
+        # TODO Restore this diagnostics step within the scope of `HiAsu` class
+        # Hi_asu_all_ranks used to be a list of all Hi_asu from all ranks,
+        # (None of ranks > 0) but was removed when moving to new `HiAsu` class.
+        # marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
 
-        # Hi_asu_all_ranks should be None on all ranks except rank0
-        marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
+        # TODO: I think this code does absolutely nothing, but might be useful
+        # fres = marr_unique_h.d_spacings()
+        # self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
+        # TODO: End of code I think does absolutely nothing
 
-        # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-        self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
-        # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
-
-        self.num_hkl_global = len(self.idx_from_asu)
-
-        fres = marr_unique_h.d_spacings()
-        self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
+    def get_first_modeller_symmetry(self):
+        uc = next(iter(self.Modelers.values())).ucell_man
+        params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
+        if self.params.refiner.force_unit_cell is not None:
+            params = self.params.refiner.force_unit_cell
+        return crystal.symmetry(unit_cell=params, space_group_symbol=self.symbol)
 
     def _get_unique_Hi(self, Hi_asu_all_ranks):
-        COMM.barrier()
         if COMM.rank == 0:
-            from cctbx.crystal import symmetry
-            from cctbx import miller
             from cctbx.array_family import flex as cctbx_flex
 
-            ii = list(self.Modelers.keys())[0]
-            uc = self.Modelers[ii].ucell_man
-            params = uc.a, uc.b, uc.c, uc.al * 180 / np.pi, uc.be * 180 / np.pi, uc.ga * 180 / np.pi
-            if self.params.refiner.force_unit_cell is not None:
-                params = self.params.refiner.force_unit_cell
-            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
+            symm = self.get_first_modeller_symmetry()
             hi_asu_flex = cctbx_flex.miller_index(Hi_asu_all_ranks)
             mset = miller.set(symm, hi_asu_flex, anomalous_flag=True)
             marr = miller.array(mset)
             binner = marr.setup_binner(d_max=self.params.refiner.stage_two.d_max, d_min=self.params.refiner.stage_two.d_min,
                                        n_bins=self.params.refiner.stage_two.n_bin)
-            from collections import Counter
             print("Average multiplicities:")
             print("<><><><><><><><><><><><>")
             for i_bin in range(self.params.refiner.stage_two.n_bin - 1):
@@ -470,7 +452,6 @@ class RefineLauncher:
 
             print("Overall completeness\n<><><><><><><><>")
             unique_Hi_asu = set(Hi_asu_all_ranks)
-            symm = symmetry(unit_cell=params, space_group_symbol=self.symbol)
             hi_flex_unique = cctbx_flex.miller_index(list(unique_Hi_asu))
             mset = miller.set(symm, hi_flex_unique, anomalous_flag=True)
             self.binner = mset.setup_binner(d_min=self.params.refiner.stage_two.d_min,
@@ -520,8 +501,7 @@ class RefineLauncher:
             self.RUC.log_fcells = True
             self.RUC.request_diag_once = False
             self.RUC.trad_conv = True
-            self.RUC.idx_from_asu = self.idx_from_asu
-            self.RUC.asu_from_idx = self.asu_from_idx
+            self.RUC.hiasu = self.hiasu
 
             self.RUC.S = self.SIM
             self.RUC.restart_file = self.params.refiner.io.restart_file
@@ -536,9 +516,9 @@ class RefineLauncher:
                 self.RUC.S.update_nanoBragg_instance('verbose', self.params.refiner.verbose)
 
             LOGGER.info("_launch run setup")
-            self._mem_usage("Mem usage before _setup")
+            LOGGER.info(utils.memory_report('Mem usage before _setup'))
             self.RUC.run(setup_only=True)
-            self._mem_usage("Mem usage after _setup")
+            LOGGER.info(utils.memory_report('Mem usage after _setup'))
             LOGGER.info("_launch done run setup")
             # for debug purposes:
             #if not self.params.refiner.quiet:
@@ -593,3 +573,76 @@ class RefineLauncher:
 
     def will_refine(self, param):
         return param is not None and any(param)
+
+
+class HiAsu(object):
+    """
+    Object which stores possible & present Miller Indices, their counts,
+    counters, maps between them and their integer indexes etc.
+
+    Within `HiAsu`, the following notation is used for parameter names:
+    * no trailing `_`: global parameter - total or the same for all ranks.
+    * with trailing `_`: local parameter – value is unique for each rank.
+    Example: `counts_` would be specific to rank, but `counts` would be global.
+    """
+    def __init__(self, refine_launcher):
+        self.rl = refine_launcher
+        self.possible = self.get_possible()
+        self.possible_len = len(self.possible)
+        self.possible_counts = self.get_counts()
+        self.present_len = len(list(self.present_zip))
+        self.from_idx, self.to_idx = self._get_dicts()
+
+    def get_possible(self):
+        if COMM.rank == 0:
+            sym = self.rl.get_first_modeller_symmetry()
+            res_ranges_str = self.rl.params.refiner.res_ranges
+            if res_ranges_str:
+                res_ranges = utils.parse_reso_string(res_ranges_str)
+                d_min = min([d_min for d_min, _ in res_ranges])
+            else:
+                expt = next(iter(self.rl.Modelers.values())).E
+                det, s0 = expt.detector, expt.beam.get_s0()
+                d_min = min([p.get_max_resolution_at_corners(s0) for p in det])
+            d_min *= 0.8  # accommodate variations in uc or det across expts
+            mset_full = sym.build_miller_set(anomalous_flag=True, d_min=d_min)
+            possible = list(mset_full.indices())
+        else:
+            possible = None
+        return COMM.bcast(possible, root=0)
+
+    def get_counts(self):
+        hi_asu_ = chain.from_iterable(self.rl.Hi_asu.values())
+        hi_asu_counter_ = Counter(hi_asu_)
+        hi_asu_possible_counts_ = [hi_asu_counter_[k] for k in self.possible]
+        hi_asu_possible_counts_ = np.array(hi_asu_possible_counts_, dtype=np.uint16)
+        hi_asu_possible_counts = np.zeros_like(hi_asu_possible_counts_, dtype=np.uint16)
+        COMM.Allreduce(hi_asu_possible_counts_, hi_asu_possible_counts, op=MPI.SUM)
+        return hi_asu_possible_counts
+
+    @property
+    def present(self):
+        return (p for p, c in self.present_zip)
+
+    @property
+    def present_counts(self):
+        return (c for p, c in self.present_zip)
+
+    @property
+    def present_counter(self):
+        return Counter({p: c for p, c in self.present_zip})
+
+    @property
+    def present_idx_counter(self):
+        return Counter({self.to_idx[p]: c for p, c in self.present_zip})
+
+    @property
+    def present_zip(self):
+        return ((p, c) for p, c in zip(self.possible, self.possible_counts) if c)
+
+    def _get_dicts(self):
+        """from_idx maps miller indices to index in LBFGS par. array self.x;
+        to_ids is an inverse map during refinement to update diffBragg m.arr"""
+        from_idx = {i: h for i, h in enumerate(self.present)}
+        to_idx = {h: i for i, h in enumerate(self.present)}
+        return from_idx, to_idx
