@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.mpi4py import MPI
 from simtbx.diffBragg import stage_two_utils
-from simtbx.diffBragg.utils import memory_report
 
 COMM = MPI.COMM_WORLD
 if not hasattr(COMM, "rank"):
@@ -54,7 +53,6 @@ import os
 from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
-from collections import Counter
 from cctbx import miller, sgtbx
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 

@@ -456,7 +456,9 @@ class RefineLauncher:
             print("Rank %d: total miller vars=%d" % (COMM.rank, len(unique_Hi_asu)))
         else:
             marr_unique_h = None
-        return COMM.bcast(marr_unique_h)
+
+        marr_unique_h = COMM.bcast(marr_unique_h)
+        return marr_unique_h
 
     def _launch(self):
         """
