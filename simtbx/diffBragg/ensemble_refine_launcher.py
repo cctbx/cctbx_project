@@ -356,7 +356,6 @@ class RefineLauncher:
         except TypeError:
             pass
         LOGGER.info("EVENT: FINISHED gather global HKL information")
-        LOGGER.info(utils.memory_report())
         if self.params.roi.cache_dir_only:
             print("Done creating cache directory and cache_dir_only=True, so goodbye.")
             sys.exit()
@@ -406,44 +405,17 @@ class RefineLauncher:
     def _gather_Hi_information(self):
         # aggregate all miller indices
 
-        #self.Hi_asu_all_ranks = []
-        # TODO assert list types are stored in Hi and Hi_asu
-        #for i_shot in self.Hi: #range(nshots_on_this_rank):
-        #    self.Hi_asu_all_ranks += self.Hi_asu[i_shot]
-
         self.hiasu = HiAsu(self)
-        LOGGER.info("EVENT: Gathering global HKL information - post loops")
-        LOGGER.info(utils.memory_report())
 
-        # TODO: Unused Derek's code, too MPI-intensive - reference, to be removed
-        # Hi_asu_all_ranks = COMM.gather(self.Hi_asu)
-        # unique_asu_all_ranks = None
-        # if COMM.rank==0:
-        #     temp = []
-        #     for Hi_asu in Hi_asu_all_ranks:
-        #         for i_shot in Hi_asu:
-        #             temp += Hi_asu[i_shot]
-        #     Hi_asu_all_ranks = temp
-        #     unique_asu_all_ranks = set(Hi_asu_all_ranks)
-        # unique_asu_all_ranks = COMM.bcast(unique_asu_all_ranks)
-        # TODO: END of Old Derek's code to be removed - Daniel Tchon
-
-        # Hi_asu_all_ranks should be None on all ranks except rank0
-        # TODO this step seems to be diagnostics only and takes super long
+        # TODO Restore this diagnostics step within the scope of `HiAsu` class
+        # Hi_asu_all_ranks used to be a list of all Hi_asu from all ranks,
+        # (None of ranks > 0) but was removed when moving to new `HiAsu` class.
         # marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
-        # TODO end of step seems to be diagnostics only and takes super long
 
-        # this will map the measured miller indices to their index in the LBFGS parameter array self.x
-        # self.idx_from_asu = {h: i for i, h in enumerate(unique_asu_all_ranks)}
-        # we will need the inverse map during refinement to update the miller array in diffBragg, so we cache it here
-        # self.asu_from_idx = {i: h for i, h in enumerate(unique_asu_all_ranks)}
-        LOGGER.info("EVENT: Gathering global HKL information - post dicts")
-        LOGGER.info(utils.memory_report())
-
-        # TODO: I believe this code does absolutely nothing
+        # TODO: I think this code does absolutely nothing, but might be useful
         # fres = marr_unique_h.d_spacings()
         # self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
-        # TODO: End of code I believe does absolutely nothing
+        # TODO: End of code I think does absolutely nothing
 
     def get_first_modeller_symmetry(self):
         uc = next(iter(self.Modelers.values())).ucell_man
@@ -484,10 +456,7 @@ class RefineLauncher:
             print("Rank %d: total miller vars=%d" % (COMM.rank, len(unique_Hi_asu)))
         else:
             marr_unique_h = None
-        # TODO: I believe this code does absolutely nothing
-        # marr_unique_h = COMM.bcast(marr_unique_h)
-        # TODO: End of I believe this code does absolutely nothing
-        return marr_unique_h
+        return COMM.bcast(marr_unique_h)
 
     def _launch(self):
         """
