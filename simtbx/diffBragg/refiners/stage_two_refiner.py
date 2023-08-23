@@ -53,7 +53,6 @@ import os
 from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
-from collections import Counter
 from cctbx import miller, sgtbx
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 
@@ -77,8 +76,7 @@ class StageTwoRefiner(BaseRefiner):
         self.saveZ_freq = self.params.refiner.stage_two.save_Z_freq  # save Z-score data every N iterations
         self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module) TODO: make work with MPI
         self.save_model = False  # whether to save the model
-        self.idx_from_asu = {}  # maps global fcell index to asu hkl
-        self.asu_from_idx = {}  # maps asu hkl to global fcell index
+        self.hiasu = None  # stores Hi_asu, counts, maps to and from fcell indices
         self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
         self.request_diag_once = False  # LBFGS refiner property
         self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
@@ -151,7 +149,7 @@ class StageTwoRefiner(BaseRefiner):
 
     @property
     def n_global_fcell(self):
-        return len(self.idx_from_asu)
+        return self.hiasu.present_len
 
     @property
     def image_shape(self):
@@ -201,9 +199,9 @@ class StageTwoRefiner(BaseRefiner):
             self.saveZ_freq = None
             self.save_model_freq = None
         LOGGER.info("Setup begins!")
-        if self.refine_Fcell and not self.asu_from_idx:
+        if self.refine_Fcell and not self.hiasu.from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
-        if self.refine_Fcell and not self.idx_from_asu:  # # TODO just derive from its inverse
+        if self.refine_Fcell and not self.hiasu.to_idx:
             raise ValueError("Need to supply a non empty idx from asu map")
 
         self.make_output_dir()
@@ -244,19 +242,12 @@ class StageTwoRefiner(BaseRefiner):
         self._setup_ncells_refinement_parameters()
         self._track_num_times_pixel_was_modeled()
 
-        self.hkl_totals = []
-        if self.refine_Fcell:
-            for i_shot in self.shot_ids:
-                for i_h, h in enumerate(self.Modelers[i_shot].Hi_asu):
-                    self.hkl_totals.append(self.idx_from_asu[h])
-            self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
-
         self._setup_nominal_hkl_p1()
         self._MPI_setup_global_params()
         self._MPI_sync_fcell_parameters()
         # reduce then broadcast fcell
         LOGGER.info("--combining parameters across ranks")
-        self._MPI_sync_hkl_freq()
+        self._MPI_sync_hkl_freq()  # FIXME does this do absolutely anything?
 
         if self.x_init is not None:
             LOGGER.info("Initializing with provided x_init array")
@@ -275,7 +266,7 @@ class StageTwoRefiner(BaseRefiner):
 
         for sid in self.shot_ids:
             Modeler = self.Modelers[sid]
-            Modeler.all_fcell_global_idx = np.array([self.idx_from_asu[h] for h in Modeler.hi_asu_perpix])
+            Modeler.all_fcell_global_idx = np.array([self.hiasu.to_idx[h] for h in Modeler.hi_asu_perpix])
             Modeler.unique_i_fcell = set(Modeler.all_fcell_global_idx)
             Modeler.i_fcell_slices = self._get_i_fcell_slices(Modeler)
             self.Modelers[sid] = Modeler  # TODO: VERIFY IF THIS IS NECESSARY ?
@@ -354,7 +345,7 @@ class StageTwoRefiner(BaseRefiner):
         self.num_equivs_for_i_fcell = {}
         self.update_indices = []
         for i_fcell in range(self.n_global_fcell):
-            hkl_asu = self.asu_from_idx[i_fcell]
+            hkl_asu = self.hiasu.from_idx[i_fcell]
 
             equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()]
             self.num_equivs_for_i_fcell[i_fcell] = len(equivs)
@@ -365,7 +356,7 @@ class StageTwoRefiner(BaseRefiner):
         if self.I_AM_ROOT:
             LOGGER.info("--2 Setting up global parameters")
             if self.output_dir is not None:
-                np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
+                np.save(os.path.join(self.output_dir, "f_asu_map"), self.hiasu.from_idx)
 
             self._setup_fcell_params()
 
@@ -384,7 +375,7 @@ class StageTwoRefiner(BaseRefiner):
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             LOGGER.info("---- -- counting hkl totes")
             LOGGER.info("compute HKL multiplicity")
-            self.hkl_frequency = Counter(self.hkl_totals)
+            self.hkl_frequency = self.hiasu.present_idx_counter
             LOGGER.info("save HKL multiplicity")
             np.save(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
             LOGGER.info("Done ")
@@ -398,7 +389,7 @@ class StageTwoRefiner(BaseRefiner):
 
             # TODO: Vectorize
             for i_fcell in range(self.n_global_fcell):
-                asu_hkl = self.asu_from_idx[i_fcell] # high symmetry
+                asu_hkl = self.hiasu.from_idx[i_fcell]  # high symmetry
                 P1_hkl = tuple(np.dot(Omatrix, asu_hkl).astype(int))
                 fcell_val = ma_map[P1_hkl]
                 self.fcell_init_from_i_fcell.append(fcell_val)
