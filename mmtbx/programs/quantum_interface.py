@@ -1030,12 +1030,9 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
-      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
-                                              'exclude_protein_main_chain_to_delta_from_optimisation = True')
-      qi_phil_string = qi_phil_string.replace('exclude_torsions_from_optimisation = False',
-                                              'exclude_torsions_from_optimisation = True')
-      # qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
-      #                                         'exclude_protein_main_chain_from_optimisation = True')
+      qi_phil_string = qi_phil_string.replace(
+        'protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions',
+        'protein_optimisation_freeze = all None main_chain main_chain_to_beta *main_chain_to_delta *torsions')
 
     if iterate_metals:
       qi_phil_string = qi_phil_string.replace('refinement.', '')

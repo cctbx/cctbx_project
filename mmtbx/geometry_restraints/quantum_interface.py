@@ -133,12 +133,6 @@ starting_higher_single_point final_higher_single_point
     .help = Choose which parts of protein residues are frozen
     .caption = all None N_CA_C_O N_CA_CB_C_O N_CA_CB_CD_C_O all_torsions
 
-  exclude_protein_main_chain_from_optimisation = False
-    .type = bool
-  exclude_protein_main_chain_to_delta_from_optimisation = False
-    .type = bool
-  exclude_torsions_from_optimisation = False
-    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
     .short_caption = Include protein side chain in ligand optimisation
@@ -264,11 +258,13 @@ def get_preamble(macro_cycle, i, qmr, old_style=False, compact_selection_syntax=
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
     s+='_N'
-  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+  if 'main_chain_to_delta' in qmr.protein_optimisation_freeze:
     s+='_D'
-  elif qmr.exclude_protein_main_chain_from_optimisation:
+  elif 'main_chain_to_beta' in qmr.protein_optimisation_freeze:
+    s+='_B'
+  elif 'main_chain' in qmr.protein_optimisation_freeze:
     s+='_S'
-  if qmr.exclude_torsions_from_optimisation:
+  if 'torsions' in qmr.protein_optimisation_freeze:
     s+='_T'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)

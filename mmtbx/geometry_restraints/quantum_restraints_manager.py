@@ -456,11 +456,15 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']: continue
       ligand_selection[i]=True
-  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+  if 'main_chain_to_delta' in qmr.protein_optimisation_freeze:
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT', 'CB', 'CG']: # mostly for HIS...
         ligand_selection[i]=False
-  elif qmr.exclude_protein_main_chain_from_optimisation:
+  elif 'main_chain_to_beta' in qmr.protein_optimisation_freeze:
+    for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
+      if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT', 'CB']:
+        ligand_selection[i]=False
+  elif 'main_chain' in qmr.protein_optimisation_freeze:
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']:
         ligand_selection[i]=False
@@ -860,8 +864,11 @@ def setup_qm_jobs(model,
         if 'pdb_buffer' in qmr.write_files:
           write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
       qmm.preamble='%s_%s' % (prefix, preamble)
-      for attr in ['exclude_torsions_from_optimisation']:
-        setattr(qmm, attr, getattr(qmr, attr))
+      # for attr in ['exclude_torsions_from_optimisation']:
+      #   setattr(qmm, attr, getattr(qmr, attr))
+      attr = 'exclude_torsions_from_optimisation'
+      setattr(qmm, attr, qmr.protein_optimisation_freeze.count('torsions'))
+      #
       objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   return objects
@@ -971,10 +978,11 @@ def update_restraints(model,
                       ):
   def is_ligand_going_to_be_same_size(qmr):
     rc=True
-    if (qmr.include_nearest_neighbours_in_optimisation or
-        qmr.exclude_protein_main_chain_to_delta_from_optimisation or
-        qmr.exclude_protein_main_chain_from_optimisation or
-        qmr.exclude_torsions_from_optimisation):
+    inter = set(qmr.protein_optimisation_freeze).intersection(set(['main_chain_to_delta',
+                                                                  'main_chain_to_beta',
+                                                                  'main_chain',
+                                                                  'torsions']))
+    if (qmr.include_nearest_neighbours_in_optimisation or inter):
       rc=False
     if len(qmr.freeze_specific_atoms)>0: rc=False
     return rc
