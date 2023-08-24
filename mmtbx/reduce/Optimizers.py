@@ -2089,7 +2089,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 62:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 62"
 
@@ -2123,7 +2123,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 109:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected 109"
 
@@ -2166,7 +2166,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 162 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 162:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 162"
 
@@ -2461,7 +2461,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer Python multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer Python multi-ACT test"
@@ -2480,7 +2480,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer C++ multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer C++ multi-ACT test"
@@ -2499,7 +2499,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer Python multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer Python multi-ACT test"
@@ -2518,7 +2518,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer C++ multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer C++ multi-ACT test"
@@ -2537,7 +2537,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer Python multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer Python multi-ACT test"
@@ -2556,7 +2556,7 @@ END
   movers = opt._movers
   if len(movers) != 6:
     return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer C++ multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer C++ multi-ACT test"
@@ -2654,7 +2654,7 @@ END
   movers = opt._movers
   if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
