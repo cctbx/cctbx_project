@@ -32,11 +32,13 @@ from scitbx.array_family import flex
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 
-from mmtbx.probe import Helpers
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
-from mmtbx.reduce import Movers
-from mmtbx.reduce import InteractionGraph
+from mmtbx.probe import Helpers
+from mmtbx.reduce import Movers, InteractionGraph
 
+bp.import_ext("mmtbx_reduce_ext")
 from mmtbx_reduce_ext import OptimizeCliqueCoarseBruteForceC, OptimizeCliqueCoarseVertexCutC, Optimizers_test
 
 ##################################################################################

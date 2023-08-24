@@ -23,6 +23,8 @@ from __future__ import absolute_import
 
 from boost_adaptbx import graph
 import mmtbx.reduce.Movers as Movers
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
 
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
@@ -199,7 +201,6 @@ def _AABBOverlap(box1, box2):
 
 # This function has been moved into C++ for speed. The original Python function
 # is below it and commented out.
-import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_reduce_ext")
 from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
 """Helper function that tells whether any pair of atoms from two Movers overlap.
