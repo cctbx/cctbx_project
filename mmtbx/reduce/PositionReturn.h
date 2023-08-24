@@ -14,6 +14,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include "../probe/Scoring.h"
 #include <iotbx/pdb/hierarchy.h>
 #include <scitbx/boost_python/container_conversions.h>
@@ -58,7 +59,7 @@ namespace molprobity {
         , deleteMes(p_deleteMes)
         /// @todo preferenceEnergies(p_preferenceEnergies)
       {
-        /// @todo Remove once we are using doubles rather than floats
+        /// @todo Remove once we are using af::shared rather than std::vector.
         preferenceEnergies.resize(p_preferenceEnergies.size());
         for (size_t i = 0; i < p_preferenceEnergies.size(); ++i) {
           preferenceEnergies[i] = p_preferenceEnergies[i];
@@ -86,8 +87,8 @@ namespace molprobity {
       /// The preferenceEnergies entry holds an additional bias term that should be
       /// added to the Probe score for each set of positions before comparing them
       /// with each other.
-      /// @todo We use a float here to avoid double-wrapping the af::shared:double.
-      scitbx::af::shared<float>  preferenceEnergies;
+      /// @todo We use a std::vector here to avoid double-wrapping the af::shared:double.
+      std::vector<double>  preferenceEnergies;
     };
 
     //=====================================================================================================

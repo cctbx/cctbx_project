@@ -52,21 +52,18 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
   // Dependencies
   //boost::python::object pdb_hierarchy_ext = boost::python::import( "iotbx_pdb_hierarchy_ext" );
-  //boost::python::object pdb_ext = boost::python::import( "iotbx_pdb_ext" );
-  //boost::python::object rstbx_ext = boost::python::import("rstbx_array_family_flex_ext");
-  //boost::python::object scitbx_flex_ext = boost::python::import("scitbx_array_family_flex_ext");
-  //boost::python::object scitbx_shared_ext = boost::python::import("scitbx_array_family_shared_ext");
 
   // Describe and name compound classes that we need access to beyond those that are
   // already defined for us by scitbx arrays that are defined elsewhere.
 
+  /* @todo Trying to map these here produced warnings about double wrappings and then,
+  * in the case of the double, incorrect behavior. Switching to std::vector fixed this.
   std::cout << "XXX Mapping the float" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<float> wflt;
   class_<wflt::w_t> wf = wflt::wrap("af_shared_float");
   scitbx::af::boost_python::select_wrappers<
     float, scitbx::af::shared<float> >::wrap(wf);
   std::cout << "XXX Done mapping the float" << std::endl;
-  /*
   std::cout << "XXX Mapping the double" << std::endl;
   typedef scitbx::af::boost_python::shared_wrapper<double> wdbl;
   class_<wdbl::w_t> wd = wdbl::wrap("af_shared_double");
@@ -77,40 +74,29 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   /// @todo This does not make the type available to Python
   //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
 
-  std::cout << "XXX Mapping bool" << std::endl;
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
   class_<wwbool::w_t> wwb = wwbool::wrap("af_shared_af_shared_bool");
   scitbx::af::boost_python::select_wrappers<
     afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
-  std::cout << "XXX Done mapping bool" << std::endl;
 
-  std::cout << "XXX Mapping the Point" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
   typedef scitbx::af::boost_python::shared_wrapper<afsPoint> wwPoint;
   class_<wwPoint::w_t> wwd = wwPoint::wrap("af_shared_af_shared_Point");
   scitbx::af::boost_python::select_wrappers<
     afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
-  std::cout << "XXX Done mapping the Point" << std::endl;
 
-  std::cout << "XXX Mapping extra" << std::endl;
   typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
   typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
   class_<wwei::w_t> wwExtraInfo = wwei::wrap("af_shared_af_shared_ExtraAtomInfo");
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
-  std::cout << "XXX Done mapping extra" << std::endl;
 
   // Define the flex array wrapping for these classes because we take them as parameters.
-  std::cout << "XXX Adding container conversions" << std::endl;
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<boost::python::object> >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<molprobity::reduce::PositionReturn> >();
-  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-  //  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > >();
-  //scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
-  //  scitbx::af::shared< scitbx::af::shared<bool> > >();
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
