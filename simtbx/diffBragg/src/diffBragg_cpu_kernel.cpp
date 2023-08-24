@@ -936,11 +936,6 @@ void diffBragg_sum_over_steps(
                     if (nom_h==h0 && nom_k==k0 && nom_l==l0 ){
                         fcell_manager_dI += value;
                         fcell_manager_dI2 += value2;
-                        printf("good\n");
-                    }
-                    else{
-                        if(i_pix==0)
-                            printf("bad\n");
                     }
                 }
                 else{
