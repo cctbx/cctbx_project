@@ -1154,7 +1154,9 @@ NOTES:
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
-      raise Sorry("Must specify output.description_file_name")
+      self.params.output.description_file_name=self.params.output.filename.replace('.pdb',
+                                                                                   '.txt')
+      # raise Sorry("Must specify output.description_file_name")
 
     # Check the model ID to make sure they didn't set it to 0
     if self.params.model_id == 0:
