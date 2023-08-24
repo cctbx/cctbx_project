@@ -741,7 +741,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('ASN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('ASN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_GLN(self, log=None):
     def classify_NQ(args): pass
@@ -752,7 +753,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('GLN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('GLN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_histidine(self, log=None):
     rc=self.iterate_NQH('HIS',
@@ -768,7 +770,8 @@ Usage examples:
                     'HD1 only flipped',
                     'HE2 only flipped',
     ]
-    self.process_flipped_jobs('HIS', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('HIS', rc, protonation=protonation, nproc=nproc, log=log)
 
   def process_flipped_jobs(self, resname, rc, protonation=None, id_str=None, nproc=-1, log=None):
     energies = []

@@ -114,16 +114,38 @@ starting_higher_single_point final_higher_single_point
     .type = bool
   capping_groups = True
     .type = bool
+
+  freeze_specific_atoms
+    .optional = True
+    .multiple = True
+    .short_caption = Specify that atoms are frozen in optimisation
+    .caption = Can be used to freeze a ligand from moving too far. Use Auto \
+               to freeze the atom closest to the centre of mass.
+    .style = auto_align
+  {
+    atom_selection = None
+      .type = atom_selection
+      .input_size = 400
+  }
+
+  protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions
+    .type = choice(multi=True)
+    .help = Choose which parts of protein residues are frozen
+    .caption = all None N_CA_C_O N_CA_CB_C_O N_CA_CB_CD_C_O all_torsions
+
   exclude_protein_main_chain_from_optimisation = False
     .type = bool
   exclude_protein_main_chain_to_delta_from_optimisation = False
     .type = bool
   exclude_torsions_from_optimisation = False
     .type = bool
-  include_inter_residue_restraints = False
-    .type = bool
   include_nearest_neighbours_in_optimisation = False
     .type = bool
+    .short_caption = Include protein side chain in ligand optimisation
+
+  include_inter_residue_restraints = False
+    .type = bool
+
   do_not_update_restraints = False
     .type = bool
     .style = hidden
