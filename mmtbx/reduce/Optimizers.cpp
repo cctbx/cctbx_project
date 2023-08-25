@@ -15,6 +15,8 @@
 #include <vector>
 #include <list>
 #include <string>
+#include <iostream>
+#include <sstream>
 #include <map>
 #include <algorithm>
 #include <chrono>
@@ -159,7 +161,9 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
   std::string infoString;
 
   if (verbosity >= 3) {
-    infoString += "   Optimizing clique of size " + std::to_string(movers.size()) + " using brute force\n";
+    std::ostringstream oss;
+    oss << "   Optimizing clique of size " << movers.size() << " using brute force\n";
+    infoString = oss.str();
   }
 
   // Fill in vectors with the states of each mover.
@@ -211,9 +215,13 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
       score += scorePosition(self, states[m], curStateValues[m]);
     }
     if (verbosity >= 5) {
-      infoString += "      Score is " + std::to_string(score) + " at [";
+      std::ostringstream oss;
+      oss << "    Score is " << score << " at [";
+      infoString += oss.str();
       for (unsigned i = 0; i < curStateValues.size(); i++) {
-        infoString += std::to_string(curStateValues[i]);
+        std::ostringstream oss2;
+        oss2 << curStateValues[i];
+        infoString += oss2.str();
         if (i < curStateValues.size() - 1) {
           infoString += ", ";
         }
@@ -224,9 +232,13 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
     // See if it is the best score.  If so, update the best.
     if ((score > bestScore) || (bestState.size() == 0)) {
       if (verbosity >= 4) {
-        infoString += "    New best score is " + std::to_string(score) + " at [";
+        std::ostringstream oss;
+        oss << "    New best score is " << score << " at [";
+        infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
-          infoString += std::to_string(curStateValues[i]);
+          std::ostringstream oss2;
+          oss2 << curStateValues[i];
+          infoString += oss2.str();
           if (i < curStateValues.size() - 1) {
             infoString += ", ";
           }
@@ -249,8 +261,10 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
     score += scorePosition(self, states[m], bestState[m]);
     highScores[movers[m]] = score;
     if (verbosity >= 3) {
-      infoString += "    Setting Mover in clique to coarse orientation " + std::to_string(bestState[m])
-        + ", max score = " + std::to_string(score) + "\n";
+      std::ostringstream oss;
+      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
+        << ", max score = " << score << "\n";
+      infoString += oss.str();
     }
   }
 
@@ -313,9 +327,10 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
     // Add a vertex for this mover, and keep track of its descriptor.
     vertexMap[mover] = boost::add_vertex(mover, ret);
   }
-  for (auto e : boost::make_iterator_range(boost::edges(graph))) {
-    CliqueGraph::vertex_descriptor v1 = boost::source(e, graph);
-    CliqueGraph::vertex_descriptor v2 = boost::target(e, graph);
+  boost::iterator_range<CliqueGraph::edge_iterator> edges = boost::edges(graph);
+  for (CliqueGraph::edge_iterator e = edges.begin(); e != edges.end(); e++) {
+    CliqueGraph::vertex_descriptor v1 = boost::source(*e, graph);
+    CliqueGraph::vertex_descriptor v2 = boost::target(*e, graph);
     boost::python::object* mover1 = graph[v1];
     boost::python::object* mover2 = graph[v2];
     if ( (std::find(keepMovers.begin(), keepMovers.end(), mover1) != keepMovers.end()) &&
@@ -394,14 +409,18 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   std::string infoString;
 
   if (verbosity >= 3) {
-    infoString += "   Optimizing clique of size " + std::to_string(movers.size()) + " using recursion\n";
+    std::ostringstream oss;
+    oss << "   Optimizing clique of size " << movers.size() << " using recursion\n";
+    infoString += oss.str();
   }
 
   // If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
   // because we can never split this into two connected components.
   if (movers.size() <= 2) {
     if (verbosity >= 3) {
-      infoString += "   Recursion terminated at clique of size " + std::to_string(movers.size()) + "\n";
+      std::ostringstream oss;
+      oss << "   Recursion terminated at clique of size " << movers.size() << "\n";
+      infoString += oss.str();
     }
     boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
       spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
@@ -440,7 +459,9 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   if (cutMovers.size() == 0) {
     // No vertex cut found, so we call the brute-force method to solve this subgraph.
     if (verbosity >= 3) {
-      infoString += "   No vertex cut for clique of size " + std::to_string(movers.size()) + ", calling parent\n";
+      std::ostringstream oss;
+      oss << "   No vertex cut for clique of size " << movers.size() << ", calling parent\n";
+      infoString += oss.str();
     }
     boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
            spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
@@ -453,7 +474,9 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   // the connected components, followed by the score for the vertex cut. Keep track of the best state
   // and score across all of them and set back to that at the end.
   if (verbosity >= 3) {
-    infoString += "   Found vertex cut of size " + std::to_string(cutMovers.size()) + "\n";
+    std::ostringstream oss;
+    oss << "   Found vertex cut of size " << cutMovers.size() << "\n";
+    infoString += oss.str();
   }
 
   // Keep track of the best score and the state where we found it. We can use a
@@ -531,9 +554,13 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       score += scorePosition(self, states[cutMovers[i]], curStateValues[i]);
     }
     if (verbosity >= 5) {
-      infoString += "      Cut score is " + std::to_string(score) + " at [";
+      std::ostringstream oss;
+      oss << "    Cut score is " + std::to_string(score) + " at [";
+      infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
-        infoString += std::to_string(curStateValues[i]);
+        std::ostringstream oss2;
+        oss2 << curStateValues[i];
+        infoString += oss2.str();
         if (i < curStateValues.size() - 1) {
           infoString += ", ";
         }
@@ -542,9 +569,13 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     }
     if ((score > bestScore) || (bestState.size() == 0)) {
       if (verbosity >= 4) {
-        infoString += "    New best score is " + std::to_string(score) + " at [";
+        std::ostringstream oss;
+        oss << "    New best score is " + std::to_string(score) + " at [";
+        infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
-          infoString += std::to_string(curStateValues[i]);
+          std::ostringstream oss2;
+          oss2 << curStateValues[i];
+          infoString += oss2.str();
           if (i < curStateValues.size() - 1) {
             infoString += ", ";
           }
@@ -554,7 +585,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       bestScore = score;
       // Get the current state for all Movers in the Clique, not just the vertex-cut Movers
       bestState.clear();
-      for (auto& m : movers) {
+      for (boost::python::object& m : movers) {
         boost::python::extract<unsigned> value(coarseLocations.get(m));
         bestState.push_back(value);
       }
