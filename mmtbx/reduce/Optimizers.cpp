@@ -623,10 +623,30 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   return boost::python::make_tuple(bestScore, infoString);
 }
 
+// Helper functions to let us initialize vectors conveniently in C++98
+static std::vector<unsigned> init_uVec(unsigned const* values, size_t size)
+{
+  std::vector<unsigned> ret;
+  for (size_t i = 0; i < size; i++) {
+    ret.push_back(values[i]);
+  }
+  return ret;
+}
+
+static std::vector<int> init_intVec(int const* values, size_t size)
+{
+  std::vector<int> ret;
+  for (size_t i = 0; i < size; i++) {
+    ret.push_back(values[i]);
+  }
+  return ret;
+}
+
 std::string Optimizers_test()
 {
   // Test generateAllStates()
-  std::vector<unsigned> numStates = { 2, 3, 5 };
+  unsigned ns[] = { 2, 3, 5 };
+  std::vector<unsigned> numStates = init_uVec(ns, sizeof(ns)/sizeof(unsigned));
   size_t product = 1;
   for (size_t it = 0; it < numStates.size(); it++) {
     product *= numStates[it];
@@ -667,26 +687,69 @@ std::string Optimizers_test()
   // Test subsetGraph()
   {
     std::vector<boost::python::object> objs(10);
-    std::vector< std::vector<boost::python::object*> > verts = {
-      { &objs[0], &objs[1]},
-      { &objs[0], &objs[1], &objs[2] },
-      { &objs[0], &objs[1], &objs[2], &objs[3] },
-      { &objs[0], &objs[1], &objs[2], &objs[3] }
-    };
-    std::vector< std::vector< std::vector<unsigned> > > edges = {
-      { { 0, 1 } },
-      { { 0, 1 }, { 1, 2 } },
-      { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 } },
-      { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 } }
-    };
-    std::vector< std::vector<unsigned> > keepIndices = {
-      { 0 },
-      { 0, 1 },
-      { 0, 1, 2, 3 },
-      { 0, 2 }
-    };
-    std::vector<int> expectedVertexCounts = { 1, 2, 4, 2 };
-    std::vector<int> expectedEdgeCounts = { 0, 1, 4, 0 };
+    std::vector< std::vector<boost::python::object*> > verts;
+    /* = {
+          { &objs[0],& objs[1]},
+          { &objs[0],& objs[1],& objs[2] },
+          { &objs[0],& objs[1],& objs[2],& objs[3] },
+          { &objs[0],& objs[1],& objs[2],& objs[3] }
+         }; */
+
+    std::vector<boost::python::object*> s0;
+    s0.push_back(&objs[0]); s0.push_back(&objs[1]);
+    verts.push_back(s0);
+    std::vector<boost::python::object*> s1;
+    s1.push_back(&objs[0]); s1.push_back(&objs[1]); s1.push_back(&objs[2]);
+    verts.push_back(s1);
+    std::vector<boost::python::object*> s2;
+    s2.push_back(&objs[0]); s2.push_back(&objs[1]); s2.push_back(&objs[2]); s2.push_back(&objs[3]);
+    verts.push_back(s2);
+    std::vector<boost::python::object*> s3;
+    s3.push_back(&objs[0]); s3.push_back(&objs[1]); s3.push_back(&objs[2]); s3.push_back(&objs[3]);
+    verts.push_back(s3);
+    std::vector< std::vector< std::vector<unsigned> > > edges;
+    /* = {
+       { { 0, 1 } },
+       { { 0, 1 }, { 1, 2 } },
+       { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 } },
+       { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 } }
+     }; */
+    unsigned e01[] = { 0, 1 };
+    unsigned e12[] = { 1, 2 };
+    unsigned e23[] = { 2, 3 };
+    unsigned e30[] = { 3, 0 };
+    std::vector< std::vector<unsigned> > e0;
+    e0.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    edges.push_back(e0);
+    std::vector< std::vector<unsigned> > e1;
+    e1.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    e1.push_back(init_uVec(e12, sizeof(e12) / sizeof(unsigned)));
+    edges.push_back(e1);
+    std::vector< std::vector<unsigned> > e2;
+    e2.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e12, sizeof(e12) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e23, sizeof(e23) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e30, sizeof(e30) / sizeof(unsigned)));
+    edges.push_back(e2);
+    std::vector< std::vector<unsigned> > e3;
+    e3.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    e3.push_back(init_uVec(e12, sizeof(e12) / sizeof(unsigned)));
+    e3.push_back(init_uVec(e23, sizeof(e23) / sizeof(unsigned)));
+    e3.push_back(init_uVec(e30, sizeof(e30) / sizeof(unsigned)));
+    edges.push_back(e3);
+    unsigned ki0[] = { 0 };
+    unsigned ki1[] = { 0, 1 };
+    unsigned ki2[] = { 0, 1, 2, 3 };
+    unsigned ki3[] = { 0, 2 };
+    std::vector< std::vector<unsigned> > keepIndices;
+    keepIndices.push_back(init_uVec(ki0, sizeof(ki0) / sizeof(unsigned)));
+    keepIndices.push_back(init_uVec(ki1, sizeof(ki1) / sizeof(unsigned)));
+    keepIndices.push_back(init_uVec(ki2, sizeof(ki2) / sizeof(unsigned)));
+    keepIndices.push_back(init_uVec(ki3, sizeof(ki3) / sizeof(unsigned)));
+    int evc[] = { 1, 2, 4, 2 };
+    std::vector<int> expectedVertexCounts = init_intVec(evc, sizeof(evc)/sizeof(int));
+    int eec[] = { 0, 1, 4, 0 };
+    std::vector<int> expectedEdgeCounts = init_intVec(eec, sizeof(eec) / sizeof(int));
 
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
@@ -713,18 +776,48 @@ std::string Optimizers_test()
   // Test findVertexCut()
   {
     std::vector<boost::python::object> objs(10);
-    std::vector< std::vector<boost::python::object*> > verts = {
-      { &objs[0], &objs[1]},
-      { &objs[0], &objs[1], &objs[2] },
-      { &objs[0], &objs[1], &objs[2], &objs[3] }
-    };
-    std::vector< std::vector< std::vector<unsigned> > > edges = {
+    std::vector< std::vector<boost::python::object*> > verts;
+    /* = {
+       { &objs[0], &objs[1]},
+       { &objs[0], &objs[1], &objs[2] },
+       { &objs[0], &objs[1], &objs[2], &objs[3] }
+     }; */
+    std::vector<boost::python::object*> s0;
+    s0.push_back(&objs[0]); s0.push_back(&objs[1]);
+    verts.push_back(s0);
+    std::vector<boost::python::object*> s1;
+    s1.push_back(&objs[0]); s1.push_back(&objs[1]); s1.push_back(&objs[2]);
+    verts.push_back(s1);
+    std::vector<boost::python::object*> s2;
+    s2.push_back(&objs[0]); s2.push_back(&objs[1]); s2.push_back(&objs[2]); s2.push_back(&objs[3]);
+    verts.push_back(s2);
+    std::vector< std::vector< std::vector<unsigned> > > edges;
+    /*= {
       { { 0, 1 } },
       { { 0, 1 }, { 1, 2 } },
       { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 } }
-    };
-    std::vector<int> expectedCutCounts = { 0, 1, 2 };
-    std::vector<int> expectedVertexCounts = { 2, 2, 2 };
+    };*/
+    unsigned e01[] = { 0, 1 };
+    unsigned e12[] = { 1, 2 };
+    unsigned e23[] = { 2, 3 };
+    unsigned e30[] = { 3, 0 };
+    std::vector< std::vector<unsigned> > e0;
+    e0.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    edges.push_back(e0);
+    std::vector< std::vector<unsigned> > e1;
+    e1.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    e1.push_back(init_uVec(e12, sizeof(e12) / sizeof(unsigned)));
+    edges.push_back(e1);
+    std::vector< std::vector<unsigned> > e2;
+    e2.push_back(init_uVec(e01, sizeof(e01) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e12, sizeof(e12) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e23, sizeof(e23) / sizeof(unsigned)));
+    e2.push_back(init_uVec(e30, sizeof(e30) / sizeof(unsigned)));
+    edges.push_back(e2);
+    int evc[] = { 0, 1, 2 };
+    std::vector<int> expectedCutCounts = init_intVec(evc, sizeof(evc) / sizeof(int));
+    int eec[] = { 2, 2, 2 };
+    std::vector<int> expectedVertexCounts = init_intVec(eec, sizeof(eec) / sizeof(int));
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
       for (std::vector<boost::python::object*>::iterator it = verts[i].begin(); it != verts[i].end(); ++it) {
