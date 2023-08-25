@@ -42,14 +42,16 @@ bool PairsOverlap(boost::python::object mover1,
   }
 
   bool ret = false;
-  for (auto p1 : positions1) {
+  for (size_t p1i = 0; p1i < positions1.size(); ++p1i) {
+    scitbx::af::shared<molprobity::probe::Point> const &p1 = positions1[p1i];
     for (size_t ai1 = 0; ai1 < p1.size(); ai1++) {
       double r1 = atomRadii1[ai1];
       double x1 = p1[ai1][0];
       double y1 = p1[ai1][1];
       double z1 = p1[ai1][2];
       double limit1 = 2 * probeRad + r1;
-      for (auto p2 : positions2) {
+      for (size_t p2i = 0; p2i < positions2.size(); ++p2i) {
+        scitbx::af::shared<molprobity::probe::Point> const& p2 = positions2[p2i];
         for (size_t ai2 = 0; ai2 < p2.size(); ai2++) {
           double r2 = atomRadii2[ai2];
           double dx = x1 - p2[ai2][0];
