@@ -27,7 +27,18 @@ class b_factor_data(dict):
           rc[chain_id].append(i_seq)
     return rc
 
-def generate_selections(hierarchy):
+def is_interest_atom_group(ag, probe_ion=None):
+  if probe_ion:
+    if get_class(name=ag.resname)=='common_element':
+      name=probe_ion.strip().upper()
+      if ag.resname.strip().upper()==probe_ion.strip().upper():
+        return name
+  else:
+    if (get_class(name=ag.resname)=="common_water"):
+        return 'O'
+  return False
+
+def generate_selections(hierarchy, probe_ion=None):
   for sel_str in [#"all",
                   "protein",
                   #"nucleotide",
@@ -37,11 +48,13 @@ def generate_selections(hierarchy):
                   ]:
     yield None, sel_str
   for ag in hierarchy.atom_groups():
-    if (get_class(name=ag.resname) != "common_water"): continue
-    yield ag.id_str(), 'within(5, chain %s and resseq %s and name O)' % (
-      ag.parent().parent().id,
-      ag.parent().resseq,
-      )
+    name = is_interest_atom_group(ag, probe_ion=probe_ion)
+    if name:
+      yield ag.id_str(), 'within(5, chain %s and resseq %s and name %s)' % (
+        ag.parent().parent().id,
+        ag.parent().resseq,
+        name,
+        )
 
 def get_bs(model, sel_str):
   sel = model.selection(sel_str)
@@ -51,7 +64,7 @@ def get_bs(model, sel_str):
   bs = atoms.extract_b()
   return bs
 
-def process_water_b_factors(model):
+def process_water_b_factors(model, probe_ion=None):
   model.process(make_restraints=True)
   hierarchy = model.get_hierarchy()
   atoms = model.get_atoms()
@@ -62,12 +75,12 @@ def process_water_b_factors(model):
   bsZ.as_z_scores()
 
   rc = {}
-  for id_str, sel_str in generate_selections(hierarchy):
+  for id_str, sel_str in generate_selections(hierarchy, probe_ion=probe_ion):
     bs_selected = get_bs(model, sel_str)
     mean = bs_selected.min_max_mean().mean
     ssd = bs_selected.sample_standard_deviation()
     for ag in hierarchy.atom_groups():
-      if (get_class(name=ag.resname) != "common_water"): continue
+      if not is_interest_atom_group(ag, probe_ion=probe_ion): continue
       if id_str is not None:
         if ag.id_str()!=id_str: continue
       atom = ag.atoms()[0]
@@ -88,6 +101,7 @@ def process_water_b_factors(model):
     return outl
 
   print(' Debugging ')
+  print(rc)
   for attr in ['within', 'water']:
     d = dict(sorted(rc.items(), key=lambda item: item[1][attr]))
     for i, (key, item) in enumerate(d.items()):
@@ -100,7 +114,8 @@ def process_water_b_factors(model):
     b.setdefault(chain.id, {})
     for residue_group in chain.residue_groups():
       atom_group = residue_group.atom_groups()[0]
-      if get_class(atom_group.resname) not in ['common_water']: continue
+      if not is_interest_atom_group(atom_group, probe_ion=probe_ion): continue
+      # if get_class(atom_group.resname) not in ['common_water']: continue
       atom = atom_group.atoms()[0]
       b[chain.id][atom.i_seq]=atom.b
   return b
@@ -120,6 +135,8 @@ Usage examples:
   water_b_factors {
     fraction_limit = .25
       .type = float
+    probe_ion = None
+      .type = str
   }
 """
 
@@ -135,7 +152,8 @@ Usage examples:
     hierarchy = model.get_hierarchy()
     hd_selection = model.get_hd_selection()
     model = model.select(~hd_selection)
-    self.results = process_water_b_factors(model)
+    self.results = process_water_b_factors(model,
+                                           probe_ion=self.params.water_b_factors.probe_ion)
     #
     means = self.results.mean()
     i_seqs = self.results.find_low(self.params.water_b_factors.fraction_limit)
@@ -154,12 +172,16 @@ that refine to lower than average B-factors are often actually ion sites.
       print('-'*80)
       print('\n  Displaying %d results\n' % len(i_seqs), file=log)
     else:
-      print('\n  No low waters found', file=log)
+      name = 'water'
+      if self.params.water_b_factors.probe_ion:
+        name = self.params.water_b_factors.probe_ion.upper()
+      print('\n  No low %s found' % name, file=log)
     table = [['i_seq', 'chain', 'resid', 'name', 'B-factor', 'mean', 'fraction of mean']]
     for chain_id, t_i_seqs in i_seqs.items():
-      print('  Low waters in chain %s : %s mean=%5.2f' % (chain_id,
-                                                          len(t_i_seqs),
-                                                          means[chain_id]),
+      print('  Low %s in chain %s : %s mean=%5.2f' % (name,
+                                                      chain_id,
+                                                      len(t_i_seqs),
+                                                      means[chain_id]),
             file=log)
       for i_seq in t_i_seqs:
         atom = atoms[i_seq]
