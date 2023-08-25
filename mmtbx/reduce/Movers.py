@@ -1,4 +1,3 @@
-
 ##################################################################################
 #                Copyright 2021-2022 Richardson Lab at Duke University
 #
@@ -451,8 +450,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     normal = (rvec3(neighbor.xyz) - rvec3(partner.xyz)).normalize()
     axis = flex.vec3_double([partner.xyz, normal])
 
-    # Make a list that contains the hydrogen.
-    atoms = [atom]
+    # Make a list that contains the hydrogen and its bonded neighbor so that its neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ atom, neighbor ]
 
     # Move the atom so that it is in one of the preferred locations.  The preferred location depends on
     # whether there are two or three friends, it wants to be in the plane if there are two of them and it
@@ -569,8 +570,10 @@ class MoverNH3Rotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180
 
-    # Make a list that contains the hydrogens.
-    atoms = []
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
     atoms.extend(hydrogens)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
@@ -642,8 +645,10 @@ class MoverAromaticMethylRotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180 + 90
 
-    # Make a list that contains the hydrogens.
-    atoms = [ ]
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
     atoms.extend(hydrogens)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
@@ -728,8 +733,10 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     dihedral = scitbx.math.dihedral_angle(sites=sites, deg=True)
     offset = 180
 
-    # Make a list that contains the hydrogens.
-    atoms = [ ]
+    # Make a list that contains the hydrogens and their bonded neighbor so that the neighbor will
+    # be included in energy calculations.  The neighbor will be rotating about an axis that
+    # includes it, so will not be moved.
+    atoms = [ neighbor ]
     atoms.extend(hydrogens)
 
     # Construct our parent class, which will do all of the actual work based on our inputs.
