@@ -947,7 +947,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               mstr = ""
               with open(fname, 'r') as f:
                 mstr += f.read() + '\\n'
-              self.add_another_text_tab(tabname, mstr)
+              self.add_another_text_tab(fname, mstr, os.path.abspath(fname))
             self.waiting = False
             self.XtricorderBtn.setEnabled(True)
             self.XtriageBtn.setEnabled(True)
@@ -1329,7 +1329,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.__dict__[tabname].setParent(None)
 
 
-  def add_another_text_tab(self, tabname, mstr):
+  def add_another_text_tab(self, tabname, mstr, ttip):
     self.removeNamedTab(tabname)
     self.__dict__[tabname] = QWidget()
     gridLayout = QGridLayout(self.__dict__[tabname])
@@ -1350,7 +1350,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     newtabedit.finddlg = self.finddlg
     gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
     self.tabText.addTab(self.__dict__[tabname], tabname)
-    self.tabText.setCurrentIndex( self.tabText.indexOf(self.__dict__[tabname]) )
+    idx = self.tabText.indexOf(self.__dict__[tabname])
+    self.tabText.setCurrentIndex( idx )
+    self.tabText.setTabToolTip(idx, ttip)
 
 
   def make_new_millertable(self):

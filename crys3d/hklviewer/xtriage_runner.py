@@ -33,7 +33,7 @@ def external_cmd(parent, master_phil, firstpart):
     if patterson_height > 10:
       philstr += '''
       viewer.user_vector {
-                  label = "TNCS_xtriage"
+                  label = "tNCS_xtriage"
                   abc = ''' + f"({tncsvec[0]:.5}, {tncsvec[1]:.5}, {tncsvec[2]:.5})" + '''
               }
       '''
