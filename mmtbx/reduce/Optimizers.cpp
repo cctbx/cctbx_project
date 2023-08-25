@@ -164,7 +164,7 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
 
   // Fill in vectors with the states of each mover.
   scitbx::af::shared<molprobity::reduce::PositionReturn> states;
-  for (auto m : movers) {
+  for (boost::python::object const &m : movers) {
     states.push_back(boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")()));
   }
 
@@ -175,7 +175,7 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
 
   // Find the length of each state and record it into a vector
   std::vector<unsigned> numStates;
-  for (auto const& s : states) {
+  for (molprobity::reduce::PositionReturn const& s : states) {
     numStates.push_back(s.positions.size());
   }
 
@@ -186,7 +186,7 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
 
   // Cycle through all states and find the one with the largest score.
-  for (auto const& curStateValues : allStates) {
+  for (std::vector<unsigned> const& curStateValues : allStates) {
 
     // Set all movers to match the state list
     for (unsigned m = 0; m < movers.size(); m++) {
@@ -309,7 +309,7 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
 
   // Construct a subgraph that consists only of vertices to be kept and
   // edges both of whose ends are on these vertices.
-  for (auto mover : keepMovers) {
+  for (boost::python::object* mover : keepMovers) {
     // Add a vertex for this mover, and keep track of its descriptor.
     vertexMap[mover] = boost::add_vertex(mover, ret);
   }
@@ -403,7 +403,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     if (verbosity >= 3) {
       infoString += "   Recursion terminated at clique of size " + std::to_string(movers.size()) + "\n";
     }
-    auto ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
+    boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
       spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
     double doubleValue = boost::python::extract<double>(ret[0]);
     std::string stringValue = boost::python::extract<std::string>(ret[1]);
@@ -414,7 +414,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   // This must be a map because we're going to deal with subsets of Movers so
   // the indices will change.
   std::map<boost::python::object*, molprobity::reduce::PositionReturn> states;
-  for (auto& m : movers) {
+  for (boost::python::object & m : movers) {
     states[&m] = boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")());
   }
 
@@ -426,7 +426,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     return boost::python::make_tuple(-1e100, infoString);
   }
   CliqueGraph clique;
-  for (auto & m : movers) {
+  for (boost::python::object & m : movers) {
     boost::add_vertex(&m, clique);
   }
   for (size_t i = 0; i < nInteractions; i++) {
@@ -440,9 +440,9 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   if (cutMovers.size() == 0) {
     // No vertex cut found, so we call the brute-force method to solve this subgraph.
     if (verbosity >= 3) {
-      infoString + "   No vertex cut for clique of size " + std::to_string(movers.size()) + ", calling parent\n";
+      infoString += "   No vertex cut for clique of size " + std::to_string(movers.size()) + ", calling parent\n";
     }
-    auto ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
+    boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
            spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
     double doubleValue = boost::python::extract<double>(ret[0]);
     std::string stringValue = boost::python::extract<std::string>(ret[1]);
@@ -464,7 +464,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
 
   // Find the number of options for each Mover and record it into a vector
   std::vector<unsigned> numStates;
-  for (auto & m : cutMovers) {
+  for (boost::python::object* m : cutMovers) {
     numStates.push_back(states[m].positions.size());
   }
 
@@ -473,7 +473,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   /// @todo Consider pulling this generation into here as a loop rather than using up
   // memory to store this.
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
-  for (auto const& curStateValues : allStates) {
+  for (std::vector<unsigned> const& curStateValues : allStates) {
 
     // Set all cutMovers to match the state list
     for (unsigned m = 0; m < cutMovers.size(); m++) {
@@ -516,7 +516,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       }
 
       // Recursively call this function to find the best score for this subgraph.
-      auto ret = OptimizeCliqueCoarseVertexCutC(self, verbosity, preferenceMagnitude, afSubMovers,
+      boost::python::tuple ret = OptimizeCliqueCoarseVertexCutC(self, verbosity, preferenceMagnitude, afSubMovers,
         subInteractions, spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
       double doubleValue = boost::python::extract<double>(ret[0]);
       std::string stringValue = boost::python::extract<std::string>(ret[1]);
@@ -586,12 +586,12 @@ std::string Optimizers_test()
   // Test generateAllStates()
   std::vector<unsigned> numStates = { 2, 3, 5 };
   size_t product = 1;
-  for (auto n : numStates) {
+  for (unsigned n : numStates) {
     product *= n;
   }
   std::vector<unsigned> zeroes(numStates.size(), 0);
   std::vector<unsigned> lastState;
-  for (auto n : numStates) {
+  for (unsigned n : numStates) {
     lastState.push_back(n - 1);
   }
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
@@ -648,10 +648,10 @@ std::string Optimizers_test()
 
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
-      for (auto v : verts[i]) {
+      for (boost::python::object* v : verts[i]) {
         boost::add_vertex(v, g);
       }
-      for (auto e : edges[i]) {
+      for (std::vector<unsigned> const&e : edges[i]) {
         boost::add_edge(boost::vertex(e[0], g), boost::vertex(e[1], g), g);
       }
       std::vector<boost::python::object*> keepers;
@@ -685,10 +685,10 @@ std::string Optimizers_test()
     std::vector<int> expectedVertexCounts = { 2, 2, 2 };
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
-      for (auto v : verts[i]) {
+      for (boost::python::object* v : verts[i]) {
         boost::add_vertex(v, g);
       }
-      for (auto e : edges[i]) {
+      for (std::vector<unsigned>  &e : edges[i]) {
         boost::add_edge(boost::vertex(e[0], g), boost::vertex(e[1], g), g);
       }
       std::vector<boost::python::object*> cut;
