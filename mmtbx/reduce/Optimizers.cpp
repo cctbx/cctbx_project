@@ -168,7 +168,8 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
 
   // Fill in vectors with the states of each mover.
   scitbx::af::shared<molprobity::reduce::PositionReturn> states;
-  for (boost::python::object const &m : movers) {
+  for (scitbx::af::shared<boost::python::object>::const_iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object const&m = *it;
     states.push_back(boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")()));
   }
 
@@ -179,7 +180,9 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
 
   // Find the length of each state and record it into a vector
   std::vector<unsigned> numStates;
-  for (molprobity::reduce::PositionReturn const& s : states) {
+  for (scitbx::af::shared<molprobity::reduce::PositionReturn>::const_iterator it = states.begin();
+       it != states.end(); ++it) {
+    molprobity::reduce::PositionReturn const& s = *it;
     numStates.push_back(s.positions.size());
   }
 
@@ -190,7 +193,8 @@ boost::python::tuple OptimizeCliqueCoarseBruteForceC(
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
 
   // Cycle through all states and find the one with the largest score.
-  for (std::vector<unsigned> const& curStateValues : allStates) {
+  for (std::vector< std::vector<unsigned> >::const_iterator it = allStates.begin(); it != allStates.end(); ++it) {
+    std::vector<unsigned> const& curStateValues = *it;
 
     // Set all movers to match the state list
     for (unsigned m = 0; m < movers.size(); m++) {
@@ -288,9 +292,9 @@ std::vector< std::vector<int> > nChooseM(int n, int m) {
 
   while (true) {
     std::vector<int> currentCombination;
-    for (int index : indices) {
+    for (size_t it = 0; it < indices.size(); ++it) {
       // Use zero-based indexing for the results
-      currentCombination.push_back(index - 1);
+      currentCombination.push_back(indices[it] - 1);
     }
     result.push_back(currentCombination);
 
@@ -323,8 +327,9 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
 
   // Construct a subgraph that consists only of vertices to be kept and
   // edges both of whose ends are on these vertices.
-  for (boost::python::object* mover : keepMovers) {
+  for (std::vector<boost::python::object*>::iterator it = keepMovers.begin(); it != keepMovers.end(); ++it) {
     // Add a vertex for this mover, and keep track of its descriptor.
+    boost::python::object* mover = *it;
     vertexMap[mover] = boost::add_vertex(mover, ret);
   }
   boost::iterator_range<CliqueGraph::edge_iterator> edges = boost::edges(graph);
@@ -358,7 +363,8 @@ static void findVertexCut(CliqueGraph const& graph,
   for (size_t n = 0; n < numVerts; n++) {
     // Iterate over all sets of vertices of size n that might be removed
     std::vector< std::vector<int> > vertexSets = nChooseM(numVerts, n);
-    for (std::vector<int> const& vertexSet : vertexSets) {
+    for (std::vector< std::vector<int> >::const_iterator it = vertexSets.begin(); it != vertexSets.end(); ++it) {
+      std::vector<int> const& vertexSet = *it;
 
       // Get a list of the vertices to keep by removing the ones in the removal set.
       std::vector<boost::python::object*> keepMovers;
@@ -433,7 +439,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   // This must be a map because we're going to deal with subsets of Movers so
   // the indices will change.
   std::map<boost::python::object*, molprobity::reduce::PositionReturn> states;
-  for (boost::python::object & m : movers) {
+  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object& m = *it;
     states[&m] = boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")());
   }
 
@@ -445,7 +452,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     return boost::python::make_tuple(-1e100, infoString);
   }
   CliqueGraph clique;
-  for (boost::python::object & m : movers) {
+  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object& m = *it;
     boost::add_vertex(&m, clique);
   }
   for (size_t i = 0; i < nInteractions; i++) {
@@ -487,7 +495,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
 
   // Find the number of options for each Mover and record it into a vector
   std::vector<unsigned> numStates;
-  for (boost::python::object* m : cutMovers) {
+  for (std::vector<boost::python::object*>::iterator it = cutMovers.begin(); it != cutMovers.end(); ++it) {
+    boost::python::object* m = *it;
     numStates.push_back(states[m].positions.size());
   }
 
@@ -496,7 +505,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
   /// @todo Consider pulling this generation into here as a loop rather than using up
   // memory to store this.
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
-  for (std::vector<unsigned> const& curStateValues : allStates) {
+  for (std::vector< std::vector<unsigned> >::const_iterator it = allStates.begin(); it != allStates.end(); ++it) {
+    std::vector<unsigned> const& curStateValues = *it;
 
     // Set all cutMovers to match the state list
     for (unsigned m = 0; m < cutMovers.size(); m++) {
@@ -585,7 +595,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       bestScore = score;
       // Get the current state for all Movers in the Clique, not just the vertex-cut Movers
       bestState.clear();
-      for (boost::python::object& m : movers) {
+      for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
+        boost::python::object& m = *it;
         boost::python::extract<unsigned> value(coarseLocations.get(m));
         bestState.push_back(value);
       }
@@ -617,13 +628,13 @@ std::string Optimizers_test()
   // Test generateAllStates()
   std::vector<unsigned> numStates = { 2, 3, 5 };
   size_t product = 1;
-  for (unsigned n : numStates) {
-    product *= n;
+  for (size_t it = 0; it < numStates.size(); it++) {
+    product *= numStates[it];
   }
   std::vector<unsigned> zeroes(numStates.size(), 0);
   std::vector<unsigned> lastState;
-  for (unsigned n : numStates) {
-    lastState.push_back(n - 1);
+  for (size_t it = 0; it < numStates.size(); it++) {
+    lastState.push_back(numStates[it] - 1);
   }
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
   if (allStates.size() != product) {
@@ -679,11 +690,11 @@ std::string Optimizers_test()
 
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
-      for (boost::python::object* v : verts[i]) {
-        boost::add_vertex(v, g);
+      for (std::vector<boost::python::object*>::iterator it = verts[i].begin(); it != verts[i].end(); ++it) {
+        boost::add_vertex(*it, g);
       }
-      for (std::vector<unsigned> const&e : edges[i]) {
-        boost::add_edge(boost::vertex(e[0], g), boost::vertex(e[1], g), g);
+      for (std::vector< std::vector<unsigned> >::const_iterator it = edges[i].begin(); it != edges[i].end(); ++it) {
+        boost::add_edge(boost::vertex((*it)[0], g), boost::vertex((*it)[1], g), g);
       }
       std::vector<boost::python::object*> keepers;
       for (size_t v = 0; v < keepIndices[i].size(); v++) {
@@ -716,11 +727,11 @@ std::string Optimizers_test()
     std::vector<int> expectedVertexCounts = { 2, 2, 2 };
     for (size_t i = 0; i < verts.size(); i++) {
       CliqueGraph g;
-      for (boost::python::object* v : verts[i]) {
-        boost::add_vertex(v, g);
+      for (std::vector<boost::python::object*>::iterator it = verts[i].begin(); it != verts[i].end(); ++it) {
+        boost::add_vertex(*it, g);
       }
-      for (std::vector<unsigned>  &e : edges[i]) {
-        boost::add_edge(boost::vertex(e[0], g), boost::vertex(e[1], g), g);
+      for (std::vector< std::vector<unsigned> >::const_iterator it = edges[i].begin(); it != edges[i].end(); ++it) {
+        boost::add_edge(boost::vertex((*it)[0], g), boost::vertex((*it)[1], g), g);
       }
       std::vector<boost::python::object*> cut;
       CliqueGraph cutGraph;
