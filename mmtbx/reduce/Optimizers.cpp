@@ -565,7 +565,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     }
     if (verbosity >= 5) {
       std::ostringstream oss;
-      oss << "    Cut score is << score << " at[";
+      oss << "    Cut score is " << score << " at[";
       infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -614,8 +614,10 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     score += scorePosition(self, states[&movers[m]], bestState[m]);
     highScores[movers[m]] = score;
     if (verbosity >= 3) {
-      infoString += "    Setting Mover in clique to coarse orientation " << bestState[m]
+      std::ostringstream oss;
+      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
         << ", max score = " << score << "\n";
+      infoString += oss.str();
     }
   }
 
