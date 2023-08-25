@@ -283,7 +283,7 @@ typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boo
 /// @brief Return a vector of vectors of integers representing all combinations of m integers
 ///        from 0 to n-1, inclusive.
 std::vector< std::vector<int> > nChooseM(int n, int m) {
-  std::vector<std::vector<int>> result;
+  std::vector<std::vector<int> > result;
 
   std::vector<int> indices(m);
   for (int i = 0; i < m; ++i) {
@@ -565,7 +565,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     }
     if (verbosity >= 5) {
       std::ostringstream oss;
-      oss << "    Cut score is " + std::to_string(score) + " at [";
+      oss << "    Cut score is << score << " at[";
       infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -580,7 +580,7 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     if ((score > bestScore) || (bestState.size() == 0)) {
       if (verbosity >= 4) {
         std::ostringstream oss;
-        oss << "    New best score is " + std::to_string(score) + " at [";
+        oss << "    New best score is " << score << " at [";
         infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
           std::ostringstream oss2;
@@ -614,8 +614,8 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     score += scorePosition(self, states[&movers[m]], bestState[m]);
     highScores[movers[m]] = score;
     if (verbosity >= 3) {
-      infoString += "    Setting Mover in clique to coarse orientation " + std::to_string(bestState[m])
-        + ", max score = " + std::to_string(score) + "\n";
+      infoString += "    Setting Mover in clique to coarse orientation " << bestState[m]
+        << ", max score = " << score << "\n";
     }
   }
 
