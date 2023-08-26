@@ -224,6 +224,15 @@ namespace molprobity {
         , m_ignoreIonInteractions(ignoreIonInteractions)
       {}
 
+      /// @brief Tells whether the specified location is inside any of a list of atoms.
+      ///
+      /// The original Probe code does internal checks for Phantom Hydrogens, but we handle that
+      /// in the calling routine by properly adjusting the list of atoms to be excluded.
+      /// @param [in] location The location to check
+      /// @param [in] atoms The list of atoms to check
+      /// @return True if the location is inside any of the atoms, false otherwise
+      bool point_inside_atoms(Point const &location, scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms);
+
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
       /// The values mean: NoOverlap => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside

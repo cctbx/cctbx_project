@@ -82,6 +82,19 @@ int atom_charge(iotbx::pdb::hierarchy::atom const& atom)
   return ret;
 }
 
+bool DotScorer::point_inside_atoms(Point const& location,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms)
+{
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = atoms.begin();
+    e != atoms.end(); e++) {
+    double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+    if ((location - e->data->xyz).length_sq() < vdwe * vdwe) {
+      return true;
+    }
+  }
+  return false;
+}
+
 DotScorer::CheckDotResult DotScorer::check_dot(
   iotbx::pdb::hierarchy::atom sourceAtom,
   Point const& dotOffset, double probeRadius,
@@ -103,14 +116,8 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Check to see if the dot should be removed from consideration because it is inside an excluded atom.
   // Doing this test ahead of the neighbor-interaction test makes things faster for the long-running
   // 4fen test case.
-  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
-    e != exclude.end(); e++) {
-    // The original Probe code does internal checks for Phantom Hydrogens, but we handle that
-    // in the calling routine by properly adjusting the list of atoms to be excluded.
-    double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-    if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
-      return ret;
-    }
+  if (point_inside_atoms(absoluteDotLocation, exclude)) {
+    return ret;
   }
 
   // The probe location is in the same direction as d from the source but is further away by the
