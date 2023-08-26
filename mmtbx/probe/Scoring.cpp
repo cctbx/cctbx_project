@@ -95,6 +95,20 @@ bool DotScorer::point_inside_atoms(Point const& location,
   return false;
 }
 
+scitbx::af::shared<Point> DotScorer::trim_dots(Point const& center,
+  scitbx::af::shared<Point> const& dots,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
+{
+  scitbx::af::shared<Point> ret;
+  for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
+    Point dotLoc = center + *d;
+    if (!point_inside_atoms(dotLoc, exclude)) {
+      ret.push_back(*d);
+    }
+  }
+  return ret;
+}
+
 DotScorer::CheckDotResult DotScorer::check_dot(
   iotbx::pdb::hierarchy::atom sourceAtom,
   Point const& dotOffset, double probeRadius,
@@ -495,6 +509,63 @@ static bool closeTo(double a, double b) {
 std::string DotScorer::test()
 {
   /// @todo Check the annular-dots behavior.
+
+  // Check trim_dots(), which along with check_dot() will also check point_inside_atoms().
+  {
+    double targetRad = 1.5, sourceRad = 1.0;
+    DotSphere ds(sourceRad, 200);
+    unsigned int atomSeq = 0;
+    scitbx::af::shared<Point> kept;
+
+    // Construct a single target atom, including its extra info
+    iotbx::pdb::hierarchy::atom a;
+    a.set_xyz(vec3(0, 0, 0));
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    SpatialQuery sq(atoms);
+    ExtraAtomInfo e(targetRad, true);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct the scorer to be used with the specified bond gaps.
+    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+    // Construct an exclusion list and add the target atom.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+    exclude.push_back(a);
+
+    // Check the source atom not overlapping with the target.
+    source.set_xyz(vec3(targetRad + sourceRad + 0.1, 0, 0));
+    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    if (kept.size() != ds.dots().size()) {
+      return "DotScorer::test(): Unexpected non-excluded dot count for non-overlapping case";
+    }
+
+    // Check the source atom completely overlapping with the target.
+    source.set_xyz(vec3(0, 0, 0));
+    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    if (kept.size() != 0) {
+      return "DotScorer::test(): Unexpected nonzero non-excluded dot count for fully-overlapping case";
+    }
+
+    // Check the source atom partially overlapping with the target.
+    source.set_xyz(vec3(targetRad, 0, 0));
+    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    if ((kept.size() == 0) || (kept.size() >= ds.dots().size())) {
+      return "DotScorer::test(): Unexpected non-excluded dot count for partially-overlapping case";
+    }
+  }
 
   // Test the check_dot() function to make sure that it gets correct interaction types for
   // all ranges of interaction.  Also check the cause.

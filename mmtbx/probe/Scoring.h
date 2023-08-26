@@ -233,6 +233,14 @@ namespace molprobity {
       /// @return True if the location is inside any of the atoms, false otherwise
       bool point_inside_atoms(Point const &location, scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms);
 
+      /// @brief Trim down a list of dots to only those that are not inside any of a list of atoms.
+      /// @param [in] center The center of the source atom to check
+      /// @param [in] dots Vector of dot offsets from the center
+      /// @param [in] exclude The list of atoms to check
+      /// @return A vector of dots that are not inside any of the atoms
+      scitbx::af::shared<Point> trim_dots(Point const &center, scitbx::af::shared<Point> const &dots,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude);
+
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
       /// The values mean: NoOverlap => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
