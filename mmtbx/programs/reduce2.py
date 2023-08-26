@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.4"
+version = "1.3.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -91,7 +91,7 @@ comparison_file = None
   .type = str
   .short_caption = Compare the Mover scores from this run with those in comparison_file
   .help = Points to a comparison_file that is the result of running Hydrogenate or Reduce or Reduce2 or some other hydrogen-placement program. The Probe2 scores for the Movers found in the current run are compared against the scores for comparison_file and stored in a file with the same name as output.file_name with _comparison.csv appended. If None, no comparison is done.
-verbosity = 3
+verbosity = 1
   .type = int
   .short_caption = Level of detail in description file
   .help = Level of detail in description file.
@@ -1213,7 +1213,7 @@ NOTES:
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+        self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
@@ -1466,7 +1466,7 @@ NOTES:
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
           opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
@@ -1589,7 +1589,7 @@ NOTES:
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
           opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,

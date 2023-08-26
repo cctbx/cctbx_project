@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022 Richardson Lab at Duke University
+#                Copyright 2021-2023 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ from __future__ import absolute_import
 
 import argparse, itertools, re
 
-from mmtbx.reduce import Movers
-from mmtbx.reduce import InteractionGraph
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
 
@@ -29,17 +27,28 @@ from iotbx.pdb import common_residue_names_get_class
 import mmtbx
 from scitbx.array_family import flex
 
-from mmtbx.probe import Helpers
-import mmtbx_probe_ext as probeExt
-
 # To enable addition of Hydrogens
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
+import mmtbx_probe_ext as probeExt
+from mmtbx.probe import Helpers
+from mmtbx.reduce import Movers, InteractionGraph
+
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import OptimizeCliqueCoarseBruteForceC, OptimizeCliqueCoarseVertexCutC, Optimizers_test
+
 ##################################################################################
 # This file includes a set of functions and classes that implement placement and optimization of
 # Reduce's "Movers".
+
+##################################################################################
+# Module variables that affect the way computations are handled
+
+_DoCliqueOptimizationInC = True
 
 ##################################################################################
 # Helper functions
@@ -172,9 +181,7 @@ class _SingletonOptimizer(object):
 
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -209,11 +216,9 @@ class _SingletonOptimizer(object):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -245,9 +250,9 @@ class _SingletonOptimizer(object):
     # Store the parameters that will be accessed by other methods
     self._probePhil = probePhil
     self._bondedNeighborDepth = bondedNeighborDepth
-    self._probeRadius = probeRadius
+    self._probeRadius = probePhil.probe_radius
     self._useNeutronDistances = useNeutronDistances
-    self._probeDensity = probeDensity
+    self._probeDensity = probePhil.density
     self._minOccupancy = minOccupancy
     self._preferenceMagnitude = preferenceMagnitude
     self._nonFlipPreference = nonFlipPreference
@@ -326,12 +331,12 @@ class _SingletonOptimizer(object):
       ################################################################################
       # Store the states (position and extra atom info) of all of the atoms in this model
       # so that we can restore it for atoms in a given alternate configuration before optimizing
-      # each new alternate.
+      # each new alternate. Looked up by i_seq.
       initialAtomPositions = {}
       initialExtraAtomInfos = {}
       for a in myModel.atoms():
-        initialAtomPositions[a] = a.xyz;
-        initialExtraAtomInfos[a] = probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a))
+        initialAtomPositions[a.i_seq] = a.xyz;
+        initialExtraAtomInfos[a.i_seq] = probeExt.ExtraAtomInfo(self._extraAtomInfo.getMappingFor(a))
 
       # Get the list of alternate conformation names present in all chains for this model.
       # If there is more than one result, remove the empty results and then sort them
@@ -360,8 +365,8 @@ class _SingletonOptimizer(object):
         else:
           for a in myModel.atoms():
             if a.parent().altloc in ['', ' ', alt]:
-              a.xyz = initialAtomPositions[a]
-              self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a])
+              a.xyz = initialAtomPositions[a.i_seq]
+              self._extraAtomInfo.setMappingFor(a, initialExtraAtomInfos[a.i_seq])
 
         # Tell about the run we are currently doing.
         self._infoString += _VerboseCheck(self._verbosity, 1,"Running Reduce optimization on model index "+str(mi)+
@@ -384,7 +389,7 @@ class _SingletonOptimizer(object):
 
         ################################################################################
         # Construct the spatial-query information needed to quickly determine which atoms are nearby
-        self._spatialQuery = probeExt.SpatialQuery(self._atoms)
+        self._spatialQuery = Helpers.createSpatialQuery(self._atoms, self._probePhil)
         self._infoString += _ReportTiming(self._verbosity, "construct spatial query")
 
         ################################################################################
@@ -438,7 +443,7 @@ class _SingletonOptimizer(object):
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
         self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers,
-          self._extraAtomInfo, probeRadius=probeRadius)
+          self._extraAtomInfo, probeRadius=self._probeRadius)
         components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
         singletonCliques = []   # Each entry is a list of integer indices into models with one entry
@@ -469,10 +474,11 @@ class _SingletonOptimizer(object):
 
         # Get the excluded list for each atom in the set, making a dictionary.
         # We go at most 3 hops unless one end of the chain has a hydrogen.
+        # Look up excluded atoms by i_seq.
         self._excludeDict = {}
         for a in moverAtoms:
-          self._excludeDict[a] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, probeRadius, self._bondedNeighborDepth, 3)
+          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
+            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
         self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
@@ -561,15 +567,16 @@ class _SingletonOptimizer(object):
         ################################################################################
         # Construct dot-spheres for each atom that we may need to find interactions for.
         # This must be done after the phantom Hydrogens have been added so that they will be included.
-        dotSphereCache = probeExt.DotSphereCache(self._probeDensity)
+        # Look up dot-spheres by i_seq.
+        dotSphereCache = Helpers.createDotSphereCache(self._probePhil)
         self._dotSpheres = {}
         for a in self._atoms:
-          self._dotSpheres[a] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
+          self._dotSpheres[a.i_seq] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
         self._infoString += _ReportTiming(self._verbosity, "compute dot spheres")
 
         ################################################################################
         # Contruct the DotScorer object we'll use to score the dots.
-        self._dotScorer = probeExt.DotScorer(self._extraAtomInfo)
+        self._dotScorer = Helpers.createDotScorer(self._extraAtomInfo, self._probePhil)
         self._infoString += _ReportTiming(self._verbosity, "construct dot scorer")
 
         ################################################################################
@@ -627,7 +634,7 @@ class _SingletonOptimizer(object):
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
-              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq], self._dotSpheres[atom.i_seq].dots(),
               self._probeDensity, False)
             score += res.totalScore()
             if res.hasBadBump:
@@ -754,15 +761,20 @@ class _SingletonOptimizer(object):
       by removing the old and adding the new location.
     """
     for i, a in enumerate(positionReturn.atoms):
+
       self._spatialQuery.remove(a)
       # Make a slice here so that we get a copy of the location rather than a reference to it
       a.xyz = positionReturn.positions[index][i][:]
       self._spatialQuery.add(a)
-    # Update the extra atom information associated with the atom.
+
+    # Update the extra atom information associated with each atom.
+    # Note that there may be fewer entries than atoms, but they all correspond.
     for i, e in enumerate(positionReturn.extraInfos[index]):
       self._extraAtomInfo.setMappingFor(positionReturn.atoms[i], e)
+
     # Manage the deletion status of each atom, including ensuring
     # consistency with the spatial-query structure.
+    # Note that there may be fewer entries than atoms, but they all correspond.
     for i, doDelete in enumerate(positionReturn.deleteMes[index]):
       if doDelete:
         self._spatialQuery.remove(positionReturn.atoms[i])
@@ -797,7 +809,7 @@ class _SingletonOptimizer(object):
   def _scoreAtom(self, atom):
     maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
     return self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
-      maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom], self._dotSpheres[atom].dots(),
+      maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq], self._dotSpheres[atom.i_seq].dots(),
       self._probeDensity, False).totalScore()
 
   def _scorePosition(self, positions, index):
@@ -1253,9 +1265,7 @@ class _SingletonOptimizer(object):
 class _BruteForceOptimizer(_SingletonOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -1287,11 +1297,9 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1319,7 +1327,7 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     """
     super(_BruteForceOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1336,61 +1344,76 @@ class _BruteForceOptimizer(_SingletonOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
 
-    # Find the value for the current set of states, compare it against the max, and store it if
-    # it is the best so far.
-    # We will cycle the states[] list through all possible states for each Mover;
-    # use the generating function to cycle through all possible states, keeping track of the best.
-    bestState = None
-    bestScore = -1e100  # Any score will be better than this
-    states = []         # Coarse position state return for each Mover
-    numStates = []      # Number of positions for each Mover
     movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
-    for m in movers:
-      states.append(m.CoarsePositions())
-      numStates.append(len(states[-1].positions))
-    for curStateValues in _generateAllStates(numStates):
 
-      # Set all movers to match the state list.
+    global _DoCliqueOptimizationInC
+    if _DoCliqueOptimizationInC:
+      (bestScore, infoString) = OptimizeCliqueCoarseBruteForceC(
+                self, self._verbosity, self._preferenceMagnitude,
+                movers, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                self._coarseLocations, self._highScores)
+      self._infoString += infoString
+      return bestScore
+
+    else:
+      ########## Doing optimization in Python, which was the orginal approach.
+      # The C++ approach is faster but this is the gold-standard result against which it must
+      # be compared.
+
+      self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
+
+      states = []         # Coarse position state return for each Mover
+      numStates = []      # Number of positions for each Mover
+      for m in movers:
+        states.append(m.CoarsePositions())
+        numStates.append(len(states[-1].positions))
+
+      # Find the value for the current set of states, compare it against the max, and store it if
+      # it is the best so far.
+      # We will cycle the states[] list through all possible states for each Mover;
+      # use the generating function to cycle through all possible states, keeping track of the best.
+      bestState = None
+      bestScore = -1e100  # Any score will be better than this
+      for curStateValues in _generateAllStates(numStates):
+
+        # Set all movers to match the state list.
+        for i,m in enumerate(movers):
+          # Only change this Mover if it is different from the last time.
+          if self._coarseLocations[m] != curStateValues[i]:
+            self._setMoverState(states[i], curStateValues[i])
+            self._coarseLocations[m] = curStateValues[i]
+
+        # Compute the score over all atoms in all Movers and see if it is the best.  If so,
+        # update the best.
+        score = 0
+        for i in range(len(movers)):
+          score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
+          score += self._scorePosition(states[i], curStateValues[i])
+        self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
+        if score > bestScore or bestState is None:
+          self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
+          bestScore = score
+          bestState = curStateValues[:]
+
+      # Put each Mover into its state in the best configuration and compute its high-score value.
+      # Store the individual scores for these Movers in the best config for use in later fine-motion
+      # processing.  Return the total score.
+      ret = 0.0
       for i,m in enumerate(movers):
-        # Only change this Mover if it is different from the last time.
-        if self._coarseLocations[m] != curStateValues[i]:
-          self._setMoverState(states[i], curStateValues[i])
-          self._coarseLocations[m] = curStateValues[i]
-
-      # Compute the score over all atoms in all Movers and see if it is the best.  If so,
-      # update the best.
-      score = 0
-      for i in range(len(movers)):
-        score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-        score += self._scorePosition(states[i], curStateValues[i])
-      self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
-      if score > bestScore or bestState is None:
-        self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
-        bestScore = score
-        bestState = curStateValues[:]
-
-    # Put each Mover into its state in the best configuration and compute its high-score value.
-    # Store the individual scores for these Movers in the best config for use in later fine-motion
-    # processing.  Return the total score.
-    ret = 0.0
-    for i,m in enumerate(movers):
-      self._setMoverState(states[i], bestState[i])
-      self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-      self._highScores[m] += self._scorePosition(states[i], curStateValues[i])
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
-        ", max score = {:.2f}\n".format(self._highScores[m]))
-      ret += self._highScores[m]
-    return ret
+        self._setMoverState(states[i], bestState[i])
+        self._coarseLocations[m] = bestState[i]
+        self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
+        self._highScores[m] += self._scorePosition(states[i], bestState[i])
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+          ", max score = {:.2f}\n".format(self._highScores[m]))
+        ret += self._highScores[m]
+      return ret
 
 class _CliqueOptimizer(_BruteForceOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
                 bondedNeighborDepth,
-                probeRadius,
                 useNeutronDistances,
-                probeDensity,
                 minOccupancy,
                 preferenceMagnitude,
                 nonFlipPreference,
@@ -1427,11 +1450,9 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     A depth of 3 will ignore my bonded neighbors and their bonded
     neighbors and their bonded neighbors.
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: False will use X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1459,7 +1480,7 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     """
     super(_CliqueOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1480,90 +1501,118 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :side_effect: self._coarseLocations is set to the Mover's best state.
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
-    self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using recursion\n".format(len(list(clique.vertices()))))
 
-    # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
-    # because we can never split this into two connected components.
-    if len(list(clique.vertices())) <= 2:
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Recursion terminated at clique of size {}\n".format(len(list(clique.vertices()))))
+    global _DoCliqueOptimizationInC
+    if _DoCliqueOptimizationInC:
+
+      # Find all of the Movers in the clique so that we know which ones to capture the state for.
+      movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
+
+      # Turn the graph edges into a versa array that holds the edges. The first index is the
+      # number of edge and the second is 2D, listing the index of each mover.
+      vertexList = list(clique.vertices())
+      edges = flex.int(flex.grid(len(list(clique.edges())), 2))
+      for i,e in enumerate(clique.edges()):
+        edges[(i,0)] = vertexList.index(clique.source(e))
+        edges[(i,1)] = vertexList.index(clique.target(e))
+
+      (bestScore, infoString) = OptimizeCliqueCoarseVertexCutC(
+                self, self._verbosity, self._preferenceMagnitude,
+                movers, edges, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                self._coarseLocations, self._highScores)
+      self._infoString += infoString
+      return bestScore
+
+    else:
+      ########## Doing optimization in Python, which was the orginal approach.
+      # The C++ approach is faster but this is the gold-standard result against which it must
+      # be compared.
+
+      self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using recursion\n".format(len(list(clique.vertices()))))
+
+      # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
+      # because we can never split this into two connected components.
+      if len(list(clique.vertices())) <= 2:
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Recursion terminated at clique of size {}\n".format(len(list(clique.vertices()))))
+        ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
+        return ret
+
+      # Find all of the Movers in the clique so that we know which ones to capture the state for.
+      movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
+
+      # The following must be a dictionary because we sometimes run over a subset of the
+      # Movers, so the indices won't always match if it is a list.
+      states = {}         # Coarse position state return for each Mover in the entire Clique
+      for m in movers:
+        states[m]= m.CoarsePositions()
+
+      # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
+      # and for each recursively find the best score for all of the connected components, followed by the score
+      # for the vertex cut.  Keep track of the best state and score across all of them and set back
+      # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
+      cutMovers, cutGraph = _vertexCut(clique)
+      if len(cutMovers) > 0:
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Found vertex cut of size {}\n".format(len(cutMovers)))
+
+        bestState = None
+        bestScore = -1e100
+        numStates = []      # Number of positions for each Mover
+        for m in cutMovers:
+          numStates.append(len(states[m].positions))
+        for curStateValues in _generateAllStates(numStates):
+
+          # Set all cutMovers to match the state list.
+          for i,m in enumerate(cutMovers):
+            # Only change this Mover if it is different from the last time.
+            if self._coarseLocations[m] != curStateValues[i]:
+              self._setMoverState(states[m], curStateValues[i])
+              self._coarseLocations[m] = curStateValues[i]
+
+          # Recursively compute the best score across all connected components in the cutGraph.
+          # This will leave each subgraph in its best state for this set of cutMovers states.
+          score = 0.0
+          components = cca.connected_components( graph = cutGraph )
+          for g in components:
+            subMovers = [cutGraph.vertex_label(i) for i in g]
+            subset = _subsetGraph(cutGraph, subMovers)
+            # Call this exact same method, not a derived class method
+            score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
+
+          # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
+          # update the best.
+          for i, m in enumerate(cutMovers):
+            score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
+            score += self._scorePosition(states[m], curStateValues[i])
+          self._infoString += _VerboseCheck(self._verbosity, 5,"Cut score is {:.2f} at {}\n".format(score, curStateValues))
+          if score > bestScore or bestState is None:
+            self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
+            bestScore = score
+            # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
+            bestState = [self._coarseLocations[m] for m in movers]
+
+        # Put each Mover in the entire Clique into its best state and compute its high-score value.
+        # Compute the best individual scores for these Movers for use in later fine-motion
+        # processing.  Return the total score.
+        ret = 0.0
+        for i,m in enumerate(movers):
+          self._setMoverState(states[m], bestState[i])
+          self._coarseLocations[m] = bestState[i]
+          self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
+          self._highScores[m] += self._scorePosition(states[m], bestState[i])
+          self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+            ", max score = {:.2f}\n".format(self._highScores[m]))
+          ret += self._highScores[m]
+        return ret
+
+      # Give up and use our parent's method.
+      self._infoString += _VerboseCheck(self._verbosity, 3,"No vertex cut for clique of size {}, calling parent\n".format(len(list(clique.vertices()))))
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
-
-    # Find all of the Movers in the clique so that we know which ones to capture the state for.
-    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
-    states = {}         # Coarse position state return for each Mover in the entire Clique
-    for m in movers:
-      states[m]= m.CoarsePositions()
-
-    # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
-    # and for each recursively find the best score for all of the connected components, followed by the score
-    # for the vertex cut.  Keep track of the best state and score across all of them and set back
-    # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
-    cutMovers, cutGraph = _vertexCut(clique)
-    if len(cutMovers) > 0:
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Found vertex cut of size {}\n".format(len(cutMovers)))
-
-      score = 0.0
-      bestState = None
-      bestScore = -1e100
-      numStates = []      # Number of positions for each Mover
-      for m in cutMovers:
-        numStates.append(len(states[m].positions))
-      for curStateValues in _generateAllStates(numStates):
-        # Set all cutMovers to match the state list.
-        for i,m in enumerate(cutMovers):
-          # Only change this Mover if it is different from the last time.
-          if self._coarseLocations[m] != curStateValues[i]:
-            self._setMoverState(states[m], curStateValues[i])
-            self._coarseLocations[m] = curStateValues[i]
-
-        # Recursively compute the best score across all connected components in the cutGraph.
-        # This will leave each subgraph in its best state for this set of cutMovers states.
-        score = 0
-        components = cca.connected_components( graph = cutGraph )
-        for g in components:
-          subMovers = [cutGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(cutGraph, subMovers)
-          # Call this exact same method, not a derived class method
-          score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
-
-        # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
-        # update the best.
-        for i, m in enumerate(cutMovers):
-          score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
-          score += self._scorePosition(states[m], curStateValues[i])
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
-        if score > bestScore or bestState is None:
-          self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
-          bestScore = score
-          # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
-          bestState = [self._coarseLocations[m] for m in movers]
-
-      # Put each Mover in the entire Clique into its best state and compute its high-score value.
-      # Compute the best individual scores for these Movers for use in later fine-motion
-      # processing.  Return the total score.
-      ret = 0.0
-      for i,m in enumerate(movers):
-        self._setMoverState(states[m], bestState[i])
-        self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
-        self._highScores[m] += self._scorePosition(states[m], bestState[i])
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
-          ", max score = {:.2f}\n".format(self._highScores[m]))
-        ret += self._highScores[m]
-      return ret
-
-    # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(self._verbosity, 3,"No vertex cut for clique of size {}, calling parent\n".format(len(list(clique.vertices()))))
-    ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
-    return ret
 
 class FastOptimizer(_CliqueOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 3,
-                probeRadius = 0.25,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -1598,11 +1647,9 @@ class FastOptimizer(_CliqueOptimizer):
     :param bondedNeighborDepth: How many hops to ignore bonding when doing Probe calculations.
     The default is to ignore interactions to a depth of 3 (my bonded neighbors and their bonded
     neighbors and their bonded neighbors).
-    :param probeRadius: Radius of the probe to be used in Probe calculations (Angstroms).
     :param useNeutronDistances: Defaults to using X-ray/electron cloud distances.  If set to
     True, it will use neutron (nuclear) distances.  This must be set consistently with the
     values used to generate the hydrogens and to run PDB interpretation.
-    :param probeDensity: How many dots per sq Angstroms in VDW calculations.
     :param minOccupancy: Minimum occupancy for an atom to be considered in the Probe score.
     :param preferenceMagnitude: Multiplier for the preference energies expressed
     by some Movers for particular orientations.
@@ -1641,7 +1688,7 @@ class FastOptimizer(_CliqueOptimizer):
 
     super(FastOptimizer, self).__init__(probePhil, addFlipMovers, model, modelIndex = modelIndex, altID = altID,
                 bondedNeighborDepth = bondedNeighborDepth,
-                probeRadius = probeRadius, useNeutronDistances = useNeutronDistances, probeDensity = probeDensity,
+                useNeutronDistances = useNeutronDistances,
                 minOccupancy = minOccupancy, preferenceMagnitude = preferenceMagnitude,
                 nonFlipPreference = nonFlipPreference, skipBondFixup = skipBondFixup,
                 flipStates = flipStates, verbosity = verbosity)
@@ -1659,11 +1706,11 @@ class FastOptimizer(_CliqueOptimizer):
     # results.  The entries will be empty to start with and will be filled in as they are computed.
     # We build entries for all atoms, even those not in the Movers to avoid having to traverse
     # the Movers.
-    # This structure is a dictionary (looked up by atom) of dictionaries (looked up by tuple)
+    # This structure is a dictionary (looked up by atom i_seq) of dictionaries (looked up by tuple)
     # of values (scores).
     self._scoreCache = {}
     for a in self._atoms:
-      self._scoreCache[a] = {}
+      self._scoreCache[a.i_seq] = {}
     return
 
   def _scoreAtom(self, atom):
@@ -1673,15 +1720,15 @@ class FastOptimizer(_CliqueOptimizer):
       # that this atom depends on, using the _atomMoverSets to determine which ones to look up.
       # See if this result is already in the dictionary for that atom.  If so, use it.  If not,
       # compute and store it and then return that value.
-      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom]])
+      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom.i_seq]])
       try:
         self._numCached += 1
-        return self._scoreCache[atom][state]
+        return self._scoreCache[atom.i_seq][state]
       except Exception:
         self._numCached -= 1      # Undo the increment above
         self._numCalculated += 1
-        self._scoreCache[atom][state] = super(FastOptimizer, self)._scoreAtom(atom)
-        return self._scoreCache[atom][state]
+        self._scoreCache[atom.i_seq][state] = super(FastOptimizer, self)._scoreAtom(atom)
+        return self._scoreCache[atom.i_seq][state]
     else:
       self._numCalculated += 1
       return super(FastOptimizer, self)._scoreAtom(atom)
@@ -1807,12 +1854,14 @@ def _vertexCut(clique):
   vertex cut is found, this will be a copy of the original graph.
   """
 
-  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must)
-  # have at least 2 vertices left to have a disconnected graph).
-  for n in range(1, len(list(clique.vertices()))+1-2):
+  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must
+  # have at least 2 vertices left to have a disconnected graph). The range must go one
+  # past the end because the second argument to range() is exclusive.
+  for n in range(1, 1+len(list(clique.vertices()))-2):
     # Iterate over all sets of vertices of size n that might be removed
     for removed in itertools.combinations(clique.vertices(),n):
       movers = [clique.vertex_label(v) for v in removed]
+
       # Find the list of remaining vertices, which is all but the ones to be removed.
       remain = set(clique.vertex_label(v) for v in clique.vertices())
       for m in movers:
@@ -1827,9 +1876,7 @@ def _vertexCut(clique):
 
   # We didn't find an answer.  Return a complete copy of the graph and an empty set of movers.
   movers = []
-  newGraph = _subsetGraph(clique, [clique.vertex_label(v) for v in clique.vertices()])
-
-  return movers, newGraph
+  return movers, clique
 
 def _generateAllStates(numStates):
   """ This is a generator function that will yield all combinations of states within the
@@ -1874,6 +1921,24 @@ def _generateAllStates(numStates):
 
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
+
+# Class to pass default Probe parameters as if they were in a probePhil structure
+class _philLike:
+  def __init__(self, useImplicitHydrogenDistances = False):
+    self.probe_radius = 0.25
+    self.density = 16.0
+    self.worse_clash_cutoff = 0.5
+    self.clash_cutoff = 0.4
+    self.contact_cutoff = 0.25
+    self.uncharged_hydrogen_cutoff = 0.6
+    self.charged_hydrogen_cutoff = 0.8
+    self.bump_weight = 10.0
+    self.hydrogen_bond_weight = 4.0
+    self.gap_weight = 0.25
+    self.allow_weak_hydrogen_bonds = False
+    self.implicit_hydrogens = useImplicitHydrogenDistances
+    self.ignore_ion_interactions = False
+    self.set_polar_hydrogen_radius = True
 
 def _optimizeFragment(pdb_raw):
   """Returns an optimizer constructed based on the raw PDB data snippet passed in.
@@ -1925,13 +1990,9 @@ def _optimizeFragment(pdb_raw):
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
-      useNeutronDistances=False,probePhil=probePhil)
+      useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
@@ -1941,14 +2002,22 @@ def _optimizeFragment(pdb_raw):
 
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   return FastOptimizer(probePhil, True, model)
 
 def Test(inFileName = None, dumpAtoms = False):
+
   """Test function for all functions provided above.
   :param inFileName: Name of a PDB or CIF file to load (default makes a small molecule)
   :return: Empty string on success, string describing the problem on failure.
   """
+
+  #========================================================================
+  # Test the imported C++ functions
+  ret = Optimizers_test()
+  if len(ret) > 0:
+    return "Optimizers.Test(): " + ret
+
 
   #========================================================================
   # Test model to use for validating the alternate/conformer-selection functions.
@@ -2020,7 +2089,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 62:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator, expected 62"
 
@@ -2054,7 +2123,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 111 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 109:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected 109"
 
@@ -2097,7 +2166,7 @@ END
 
   # See what the pose angle is on the Mover. It should be 163 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search('(?<=pose Angle )\d+', opt.getInfo()).group(0))
+  angle = int(re.search(r'(?<=pose Angle )\d+', opt.getInfo()).group(0))
   if angle != 163:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 163"
 
@@ -2237,13 +2306,9 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
-      useNeutronDistances=False,probePhil=probePhil)
+      useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
 
   # Also compute the maximum VDW radius among all atoms.
@@ -2263,7 +2328,7 @@ END
 
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   opt = FastOptimizer(probePhil, True, model)
   movers = opt._movers
   if len(movers) != 0:
@@ -2364,11 +2429,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -2382,13 +2443,15 @@ END
   # Make sure that the orientation for all of the movers is correct.
   # Test with each type of optimizer, from the base to the more derived, so
   # that we find out about failures on the base classes first.
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
 
-  print('Testing _BruteForceOptimizer')
-  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  global _DoCliqueOptimizationInC
+
+  print('Testing _BruteForceOptimizer Python')
+  _DoCliqueOptimizationInC = False
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2397,17 +2460,17 @@ END
                 verbosity = 1)
   movers = opt._movers
   if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer Python multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
-      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer Python multi-ACT test"
 
-  print('Testing _CliqueOptimizer')
-  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  print('Testing _BruteForceOptimizer C++')
+  _DoCliqueOptimizationInC = True
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2416,17 +2479,55 @@ END
                 verbosity = 1)
   movers = opt._movers
   if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer C++ multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
-      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer multi-ACT test"
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer C++ multi-ACT test"
 
-  print('Testing FastOptimizer')
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  print('Testing _CliqueOptimizer Python')
+  _DoCliqueOptimizationInC = False
+  opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 5)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer Python multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer Python multi-ACT test"
+
+  print('Testing _CliqueOptimizer C++')
+  _DoCliqueOptimizationInC = True
+  opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 5)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _CliqueOptimizer C++ multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _CliqueOptimizer C++ multi-ACT test"
+
+  print('Testing FastOptimizer Python')
+  _DoCliqueOptimizationInC = False
+  opt = FastOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2435,11 +2536,30 @@ END
                 verbosity = 1)
   movers = opt._movers
   if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer multi-ACT test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+    return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer Python multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
-      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer multi-ACT test"
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer Python multi-ACT test"
+
+  print('Testing FastOptimizer C++')
+  _DoCliqueOptimizationInC = True
+  opt = FastOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for FastOptimizer C++ multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for FastOptimizer C++ multi-ACT test"
 
   #========================================================================
   # Check a case where an AmideFlip would be locked down and have its Hydrogen removed.
@@ -2509,11 +2629,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  class philLike:
-    def __init__(self, useImplicitHydrogenDistances = False):
-      self.implicit_hydrogens = useImplicitHydrogenDistances
-      self.set_polar_hydrogen_radius = True
-  probePhil = philLike(False)
+  probePhil = _philLike(False)
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -2525,11 +2641,10 @@ END
 
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
-  probePhil = philLike(False)
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  probePhil = _philLike(False)
+  opt = FastOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
@@ -2539,7 +2654,7 @@ END
   movers = opt._movers
   if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for B-factor test: " + str(len(movers))
-  res = re.findall('pose Angle [-+]?\d+', opt.getInfo())
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
       return "Optimizers.Test(): Unexpected angle ("+str(r)+") for B-factor test"
@@ -2576,27 +2691,25 @@ END
   model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
 
   # Run each type of optimizer on the model to make sure they don't crash.
-  opt = _BruteForceOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  opt = _CliqueOptimizer(probePhil, True, model, probeRadius=0.25, modelIndex = 0, altID = None,
+  opt = _CliqueOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
-                probeDensity = 16.0,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1)
-  opt = FastOptimizer(probePhil, True, model, probeRadius=0.25)
+  opt = FastOptimizer(probePhil, True, model)
 
   # Write debugging output if we've been asked to
   if dumpAtoms:

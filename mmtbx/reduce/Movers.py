@@ -23,7 +23,6 @@ import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
 
-
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
 # atoms that have more than one potential set of locations.
@@ -54,14 +53,14 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
 #       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
-#     This array may be shorter in length than the number of atoms (any may be empty) because
-#     some Movers to not need to change the information for any or all atoms.  The index in
+#     This array may be shorter in length than the number of atoms (and may be empty) because
+#     some Movers do not need to change the information for any or all atoms.  The index in
 #     this array will match the index in the atoms array so the earliest atoms will be
 #     changed if a subset is present.
 #       The deleteMes element tells whether each atom in each set of positions should be
 #     deleted.  This means that it should be ignored in all calculations and also should be
 #     deleted from the model if this configuration is chosen.  This array may be shorter in
-#     length than the number of atoms (any may be empty) because some Movers to not need to
+#     length than the number of atoms (and may be empty) because some Movers do not need to
 #     change the information for any or all atoms.  The index in this array will match the
 #     index in the atoms array so the earliest atoms will be deleted if a subset is present.
 #       The preferenceEnergies entry holds an additional bias term that should be added to
@@ -110,17 +109,19 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #
 # The InteractionGraph.py script provides functions for determining which pairs of
 # Movers have overlaps between movable atoms.
-#
 
 ##################################################################################
-class PositionReturn(object):
-  # Return type from CoarsePosition() and FinePosition() calls.
-  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
-    self.atoms = atoms
-    self.positions = positions
-    self.extraInfos = extraInfos
-    self.deleteMes = deleteMes
-    self.preferenceEnergies = preferenceEnergies
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import PositionReturn
+#class PositionReturn(object):
+#  # Return type from CoarsePosition() and FinePosition() calls.
+#  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
+#    self.atoms = atoms
+#    self.positions = positions
+#    self.extraInfos = extraInfos
+#    self.deleteMes = deleteMes
+#    self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
 class FixUpReturn(object):
@@ -1293,6 +1294,7 @@ def _rotateOppositeFriend(atom, axis, partner, friend):
 
   return nearPoint + distFromNearPoint * normalizedOffset
 
+from mmtbx_reduce_ext import RotatePointDegreesAroundAxisDir
 def _rotateAroundAxis(atom, axis, degrees):
   '''Rotate the atom about the specified axis by the specified number of degrees.
      :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
@@ -1314,10 +1316,12 @@ def _rotateAroundAxis(atom, axis, degrees):
 
   # The axis of rotation for this function is specified as the two ends of the axis.
   # The axis passed in has the point around which to rotate and the direction vector
-  # from the origin, so we need to add those.
-  return lvec3(scitbx.matrix.rotate_point_around_axis(
-      axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
-      point = pos, angle = degrees, deg = True))
+  # from the origin, so we need to add those together to get the other end of the axis.
+  # (This is done in the C++ code by the RotatePointDegreesAroundAxisDir function.)
+  return lvec3(RotatePointDegreesAroundAxisDir(axis[0], axis[1], pos, degrees))
+  #return lvec3(scitbx.matrix.rotate_point_around_axis(
+  #    axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
+  #    point = pos, angle = degrees, deg = True))
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
