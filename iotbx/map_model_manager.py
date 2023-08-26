@@ -6305,10 +6305,14 @@ class map_model_manager(object):
     n_bins = len(sthol2_list)
 
     if not overall_values:
+      nn = 0
       overall_values = flex.double(n_bins,0.)
       for si in si_list:
-        overall_values += si.get(key)
-      overall_values /= n
+        values = si.get(key)
+        if values is not None:
+          overall_values += values
+          nn += 1
+      overall_values /= max(1,nn)
 
     print("\n D-min                %s by direction vector %s: " %(
        text,extra_text)+
