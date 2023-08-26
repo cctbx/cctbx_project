@@ -95,13 +95,13 @@ bool DotScorer::point_inside_atoms(Point const& location,
   return false;
 }
 
-scitbx::af::shared<Point> DotScorer::trim_dots(Point const& center,
+scitbx::af::shared<Point> DotScorer::trim_dots(iotbx::pdb::hierarchy::atom const& atom,
   scitbx::af::shared<Point> const& dots,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
 {
   scitbx::af::shared<Point> ret;
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
-    Point dotLoc = center + *d;
+    Point dotLoc = atom.data->xyz + *d;
     if (!point_inside_atoms(dotLoc, exclude)) {
       ret.push_back(*d);
     }
@@ -110,7 +110,7 @@ scitbx::af::shared<Point> DotScorer::trim_dots(Point const& center,
 }
 
 DotScorer::CheckDotResult DotScorer::check_dot(
-  iotbx::pdb::hierarchy::atom sourceAtom,
+  iotbx::pdb::hierarchy::atom const &sourceAtom,
   Point const& dotOffset, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &interacting,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
@@ -343,7 +343,7 @@ std::string DotScorer::interaction_type_short_name(InteractionType t)
 }
 
 DotScorer::ScoreDotsResult DotScorer::score_dots(
-  iotbx::pdb::hierarchy::atom sourceAtom, double minOccupancy,
+  iotbx::pdb::hierarchy::atom const &sourceAtom, double minOccupancy,
   SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
   scitbx::af::shared<Point> const &dots, double density, bool onlyBumps)
@@ -466,7 +466,8 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   return ret;
 }
 
-unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, scitbx::af::shared<Point> const& dots,
+unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom const &sourceAtom,
+  scitbx::af::shared<Point> const& dots,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
 {
   unsigned ret = 0;
@@ -547,21 +548,21 @@ std::string DotScorer::test()
 
     // Check the source atom not overlapping with the target.
     source.set_xyz(vec3(targetRad + sourceRad + 0.1, 0, 0));
-    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    kept = as.trim_dots(source, ds.dots(), exclude);
     if (kept.size() != ds.dots().size()) {
       return "DotScorer::test(): Unexpected non-excluded dot count for non-overlapping case";
     }
 
     // Check the source atom completely overlapping with the target.
     source.set_xyz(vec3(0, 0, 0));
-    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    kept = as.trim_dots(source, ds.dots(), exclude);
     if (kept.size() != 0) {
       return "DotScorer::test(): Unexpected nonzero non-excluded dot count for fully-overlapping case";
     }
 
     // Check the source atom partially overlapping with the target.
     source.set_xyz(vec3(targetRad, 0, 0));
-    kept = as.trim_dots(source.data->xyz, ds.dots(), exclude);
+    kept = as.trim_dots(source, ds.dots(), exclude);
     if ((kept.size() == 0) || (kept.size() >= ds.dots().size())) {
       return "DotScorer::test(): Unexpected non-excluded dot count for partially-overlapping case";
     }
