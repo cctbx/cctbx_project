@@ -315,17 +315,6 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
                        write_steps=write_steps)
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
 
-  ph=buffer_model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  mc = sites_cart.min()
-  buffer_model_p1 = shift_and_box_model(model=buffer_model)
-  ph=buffer_model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  box = sites_cart.min()
-  if write_steps: write_pdb_file(buffer_model, 'post_shift.pdb', None)
-  for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
-    atom1.tmp=atom2.tmp
-  buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
@@ -346,7 +335,6 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   for atom1 in ligand_atoms:
     for atom2 in buffer_atoms:
       if compare_id_str(atom1.id_str(), atom2.id_str()):
-        atom1.xyz=atom2.xyz
         break
     else:
       raise Sorry('''Bug alert
@@ -370,8 +358,8 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
     sites_cart=ph.atoms().extract_xyz()
     sites_cart=sites_cart-col(box)+col(mc)
     ph.atoms().set_xyz(sites_cart)
-  move_atoms(buffer_model)
-  move_atoms(ligand_model)
+  # move_atoms(buffer_model)
+  # move_atoms(ligand_model)
   if write_steps: write_pdb_file(buffer_model, 'post_reverse_shift.pdb', None)
   use_neutron_distances_in_model_in_place(ligand_model)
   use_neutron_distances_in_model_in_place(buffer_model)
