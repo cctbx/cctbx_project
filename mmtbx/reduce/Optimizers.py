@@ -1507,8 +1507,10 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         edges[(i,1)] = vertexList.index(clique.target(e))
 
       optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
-                  self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                  self._coarseLocations, self._highScores)
+                        self._maximumVDWRadius, self._minOccupancy, self._probeDensity,
+                        self._excludeDict, self._dotSpheres,
+                        self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                        self._coarseLocations, self._highScores)
 
       (bestScore, infoString) = optC.OptimizeCliqueCoarse(movers, edges)
       self._infoString += infoString

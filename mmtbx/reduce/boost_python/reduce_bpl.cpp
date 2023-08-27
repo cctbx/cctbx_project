@@ -123,6 +123,11 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   class_<OptimizerC>("OptimizerC", init< boost::python::object&
       , int
       , double
+      , double
+      , double
+      , double
+      , boost::python::dict&
+      , boost::python::dict&
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
       , boost::python::object&

@@ -37,6 +37,10 @@ namespace molprobity {
           @param [in] verbosity: Controls how much information is added to the string.
           @param [in] preferenceMagnitude: Multiples the preference energies, so that we
                   can scale down their importance if we want.
+          @param [in] minOccupancy: The minimum occupancy for an atom to be considered.
+          @param [in] probeDensity: The density of the probe sphere, in A^-3.
+          @param [in] exclude: Dictionary of atoms to exclude from collisions, looked up by i_seq.
+          @param [in] dotSpheres: Dictionary of dot spheres, looked up by i_seq.
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
@@ -49,6 +53,11 @@ namespace molprobity {
         boost::python::object& self,
         int verbosity,
         double preferenceMagnitude,
+        double maxVDWRadius,
+        double minOccupancy,
+        double probeDensity,
+        boost::python::dict& exclude,
+        boost::python::dict& dotSpheres,
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes,
@@ -83,7 +92,12 @@ namespace molprobity {
     protected:
       boost::python::object m_self;           //< Make a copy so it will persist
       int m_verbosity;
+      double m_maxVDWRadius;
       double m_preferenceMagnitude;
+      double m_minOccupancy;
+      double m_probeDensity;
+      boost::python::dict m_exclude;          //< Make a copy so it will persist
+      boost::python::dict m_dotSpheres;       //< Make a copy so it will persist
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist

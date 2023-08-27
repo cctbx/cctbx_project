@@ -179,6 +179,9 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
 }
 
 OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double preferenceMagnitude,
+  double maxVDWRadius, double minOccupancy, double probeDensity,
+  boost::python::dict& exclude,
+  boost::python::dict& dotSpheres,
   molprobity::probe::SpatialQuery& spatialQuery,
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
   boost::python::object& deleteMes,
@@ -187,6 +190,11 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   : m_self(self)
   , m_verbosity(verbosity)
   , m_preferenceMagnitude(preferenceMagnitude)
+  , m_maxVDWRadius(maxVDWRadius)
+  , m_minOccupancy(minOccupancy)
+  , m_probeDensity(probeDensity)
+  , m_exclude(exclude)
+  , m_dotSpheres(dotSpheres)
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
