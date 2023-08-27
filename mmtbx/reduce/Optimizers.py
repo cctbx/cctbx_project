@@ -608,33 +608,10 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
-        global _DoCliqueOptimizationInC
-        if _DoCliqueOptimizationInC:
-          optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
-                      self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                      self._coarseLocations, self._highScores)
         for g in groupCliques:
           movers = [self._interactionGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(self._interactionGraph, movers)
-
-          if _DoCliqueOptimizationInC:
-            # Find all of the Movers in the clique so that we know which ones to capture the state for.
-            movers = [self._interactionGraph.vertex_label(v) for v in subset.vertices()]
-
-            # Turn the graph edges into a versa array that holds the edges. The first index is the
-            # number of edge and the second is 2D, listing the index of each mover.
-            vertexList = list(subset.vertices())
-            edges = flex.int(flex.grid(len(list(subset.edges())), 2))
-            for i,e in enumerate(subset.edges()):
-              edges[(i,0)] = vertexList.index(subset.source(e))
-              edges[(i,1)] = vertexList.index(subset.target(e))
-
-            (bestScore, infoString) = optC.OptimizeCliqueCoarseVertexCut(movers, edges)
-            self._infoString += infoString
-            ret = bestScore
-          else:
-            ret = self._optimizeCliqueCoarse(subset)
-
+          ret = self._optimizeCliqueCoarse(subset)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Clique optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming(self._verbosity, "optimize cliques (coarse)")
 
@@ -1370,58 +1347,68 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 
     movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
 
-    ########## Doing optimization in Python, which was the orginal approach.
-    # The C++ approach is faster but this is the gold-standard result against which it must
-    # be compared.
+    global _DoCliqueOptimizationInC
+    if _DoCliqueOptimizationInC:
+      optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+                        self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                        self._coarseLocations, self._highScores)
+      (bestScore, infoString) = optC.OptimizeCliqueCoarseBruteForce(movers)
+      self._infoString += infoString
+      return bestScore
 
-    self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
+    else:
+      ########## Doing optimization in Python, which was the orginal approach.
+      # The C++ approach is faster but this is the gold-standard result against which it must
+      # be compared.
 
-    states = []         # Coarse position state return for each Mover
-    numStates = []      # Number of positions for each Mover
-    for m in movers:
-      states.append(m.CoarsePositions())
-      numStates.append(len(states[-1].positions))
+      self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using brute force\n".format(len(list(clique.vertices()))))
 
-    # Find the value for the current set of states, compare it against the max, and store it if
-    # it is the best so far.
-    # We will cycle the states[] list through all possible states for each Mover;
-    # use the generating function to cycle through all possible states, keeping track of the best.
-    bestState = None
-    bestScore = -1e100  # Any score will be better than this
-    for curStateValues in _generateAllStates(numStates):
+      states = []         # Coarse position state return for each Mover
+      numStates = []      # Number of positions for each Mover
+      for m in movers:
+        states.append(m.CoarsePositions())
+        numStates.append(len(states[-1].positions))
 
-      # Set all movers to match the state list.
+      # Find the value for the current set of states, compare it against the max, and store it if
+      # it is the best so far.
+      # We will cycle the states[] list through all possible states for each Mover;
+      # use the generating function to cycle through all possible states, keeping track of the best.
+      bestState = None
+      bestScore = -1e100  # Any score will be better than this
+      for curStateValues in _generateAllStates(numStates):
+
+        # Set all movers to match the state list.
+        for i,m in enumerate(movers):
+          # Only change this Mover if it is different from the last time.
+          if self._coarseLocations[m] != curStateValues[i]:
+            self._setMoverState(states[i], curStateValues[i])
+            self._coarseLocations[m] = curStateValues[i]
+
+        # Compute the score over all atoms in all Movers and see if it is the best.  If so,
+        # update the best.
+        score = 0
+        for i in range(len(movers)):
+          score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
+          score += self._scorePosition(states[i], curStateValues[i])
+        self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
+        if score > bestScore or bestState is None:
+          self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
+          bestScore = score
+          bestState = curStateValues[:]
+
+      # Put each Mover into its state in the best configuration and compute its high-score value.
+      # Store the individual scores for these Movers in the best config for use in later fine-motion
+      # processing.  Return the total score.
+      ret = 0.0
       for i,m in enumerate(movers):
-        # Only change this Mover if it is different from the last time.
-        if self._coarseLocations[m] != curStateValues[i]:
-          self._setMoverState(states[i], curStateValues[i])
-          self._coarseLocations[m] = curStateValues[i]
-
-      # Compute the score over all atoms in all Movers and see if it is the best.  If so,
-      # update the best.
-      score = 0
-      for i in range(len(movers)):
-        score += self._preferenceMagnitude * states[i].preferenceEnergies[curStateValues[i]]
-        score += self._scorePosition(states[i], curStateValues[i])
-      self._infoString += _VerboseCheck(self._verbosity, 5,"Score is {:.2f} at {}\n".format(score, curStateValues))
-      if score > bestScore or bestState is None:
-        self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
-        bestScore = score
-        bestState = curStateValues[:]
-
-    # Put each Mover into its state in the best configuration and compute its high-score value.
-    # Store the individual scores for these Movers in the best config for use in later fine-motion
-    # processing.  Return the total score.
-    ret = 0.0
-    for i,m in enumerate(movers):
-      self._setMoverState(states[i], bestState[i])
-      self._coarseLocations[m] = bestState[i]
-      self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
-      self._highScores[m] += self._scorePosition(states[i], bestState[i])
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
-        ", max score = {:.2f}\n".format(self._highScores[m]))
-      ret += self._highScores[m]
-    return ret
+        self._setMoverState(states[i], bestState[i])
+        self._coarseLocations[m] = bestState[i]
+        self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
+        self._highScores[m] += self._scorePosition(states[i], bestState[i])
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+          ", max score = {:.2f}\n".format(self._highScores[m]))
+        ret += self._highScores[m]
+      return ret
 
 class _CliqueOptimizer(_BruteForceOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex, altID,
@@ -1515,90 +1502,113 @@ class _CliqueOptimizer(_BruteForceOptimizer):
     :side_effect: self._highScores is set to the individual score for each of the Movers.
     """
 
-    ########## Doing optimization in Python, which was the orginal approach.
-    # The C++ approach is faster but this is the gold-standard result against which it must
-    # be compared.
+    global _DoCliqueOptimizationInC
+    if _DoCliqueOptimizationInC:
 
-    self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using recursion\n".format(len(list(clique.vertices()))))
+      # Find all of the Movers in the clique so that we know which ones to capture the state for.
+      movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
 
-    # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
-    # because we can never split this into two connected components.
-    if len(list(clique.vertices())) <= 2:
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Recursion terminated at clique of size {}\n".format(len(list(clique.vertices()))))
+      # Turn the graph edges into a versa array that holds the edges. The first index is the
+      # number of edge and the second is 2D, listing the index of each mover.
+      vertexList = list(clique.vertices())
+      edges = flex.int(flex.grid(len(list(clique.edges())), 2))
+      for i,e in enumerate(clique.edges()):
+        edges[(i,0)] = vertexList.index(clique.source(e))
+        edges[(i,1)] = vertexList.index(clique.target(e))
+
+      optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+                  self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                  self._coarseLocations, self._highScores)
+
+      (bestScore, infoString) = optC.OptimizeCliqueCoarseVertexCut(movers, edges)
+      self._infoString += infoString
+      return bestScore
+
+    else:
+      ########## Doing optimization in Python, which was the orginal approach.
+      # The C++ approach is faster but this is the gold-standard result against which it must
+      # be compared.
+
+      self._infoString += _VerboseCheck(self._verbosity, 3,"Optimizing clique of size {} using recursion\n".format(len(list(clique.vertices()))))
+
+      # If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
+      # because we can never split this into two connected components.
+      if len(list(clique.vertices())) <= 2:
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Recursion terminated at clique of size {}\n".format(len(list(clique.vertices()))))
+        ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
+        return ret
+
+      # Find all of the Movers in the clique so that we know which ones to capture the state for.
+      movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
+
+      # The following must be a dictionary because we sometimes run over a subset of the
+      # Movers, so the indices won't always match if it is a list.
+      states = {}         # Coarse position state return for each Mover in the entire Clique
+      for m in movers:
+        states[m]= m.CoarsePositions()
+
+      # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
+      # and for each recursively find the best score for all of the connected components, followed by the score
+      # for the vertex cut.  Keep track of the best state and score across all of them and set back
+      # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
+      cutMovers, cutGraph = _vertexCut(clique)
+      if len(cutMovers) > 0:
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Found vertex cut of size {}\n".format(len(cutMovers)))
+
+        bestState = None
+        bestScore = -1e100
+        numStates = []      # Number of positions for each Mover
+        for m in cutMovers:
+          numStates.append(len(states[m].positions))
+        for curStateValues in _generateAllStates(numStates):
+
+          # Set all cutMovers to match the state list.
+          for i,m in enumerate(cutMovers):
+            # Only change this Mover if it is different from the last time.
+            if self._coarseLocations[m] != curStateValues[i]:
+              self._setMoverState(states[m], curStateValues[i])
+              self._coarseLocations[m] = curStateValues[i]
+
+          # Recursively compute the best score across all connected components in the cutGraph.
+          # This will leave each subgraph in its best state for this set of cutMovers states.
+          score = 0.0
+          components = cca.connected_components( graph = cutGraph )
+          for g in components:
+            subMovers = [cutGraph.vertex_label(i) for i in g]
+            subset = _subsetGraph(cutGraph, subMovers)
+            # Call this exact same method, not a derived class method
+            score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
+
+          # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
+          # update the best.
+          for i, m in enumerate(cutMovers):
+            score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
+            score += self._scorePosition(states[m], curStateValues[i])
+          self._infoString += _VerboseCheck(self._verbosity, 5,"Cut score is {:.2f} at {}\n".format(score, curStateValues))
+          if score > bestScore or bestState is None:
+            self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
+            bestScore = score
+            # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
+            bestState = [self._coarseLocations[m] for m in movers]
+
+        # Put each Mover in the entire Clique into its best state and compute its high-score value.
+        # Compute the best individual scores for these Movers for use in later fine-motion
+        # processing.  Return the total score.
+        ret = 0.0
+        for i,m in enumerate(movers):
+          self._setMoverState(states[m], bestState[i])
+          self._coarseLocations[m] = bestState[i]
+          self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
+          self._highScores[m] += self._scorePosition(states[m], bestState[i])
+          self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+            ", max score = {:.2f}\n".format(self._highScores[m]))
+          ret += self._highScores[m]
+        return ret
+
+      # Give up and use our parent's method.
+      self._infoString += _VerboseCheck(self._verbosity, 3,"No vertex cut for clique of size {}, calling parent\n".format(len(list(clique.vertices()))))
       ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
       return ret
-
-    # Find all of the Movers in the clique so that we know which ones to capture the state for.
-    movers = [self._interactionGraph.vertex_label(v) for v in clique.vertices()]
-
-    # The following must be a dictionary because we sometimes run over a subset of the
-    # Movers, so the indices won't always match if it is a list.
-    states = {}         # Coarse position state return for each Mover in the entire Clique
-    for m in movers:
-      states[m]= m.CoarsePositions()
-
-    # Find a vertex cut for the graph we were given.  Run through all states of the vertex cut
-    # and for each recursively find the best score for all of the connected components, followed by the score
-    # for the vertex cut.  Keep track of the best state and score across all of them and set back
-    # to that at the end.  If we have no Movers in the vertex cut, none was found so we don't recur.
-    cutMovers, cutGraph = _vertexCut(clique)
-    if len(cutMovers) > 0:
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Found vertex cut of size {}\n".format(len(cutMovers)))
-
-      bestState = None
-      bestScore = -1e100
-      numStates = []      # Number of positions for each Mover
-      for m in cutMovers:
-        numStates.append(len(states[m].positions))
-      for curStateValues in _generateAllStates(numStates):
-
-        # Set all cutMovers to match the state list.
-        for i,m in enumerate(cutMovers):
-          # Only change this Mover if it is different from the last time.
-          if self._coarseLocations[m] != curStateValues[i]:
-            self._setMoverState(states[m], curStateValues[i])
-            self._coarseLocations[m] = curStateValues[i]
-
-        # Recursively compute the best score across all connected components in the cutGraph.
-        # This will leave each subgraph in its best state for this set of cutMovers states.
-        score = 0.0
-        components = cca.connected_components( graph = cutGraph )
-        for g in components:
-          subMovers = [cutGraph.vertex_label(i) for i in g]
-          subset = _subsetGraph(cutGraph, subMovers)
-          # Call this exact same method, not a derived class method
-          score += _CliqueOptimizer._optimizeCliqueCoarse(self, subset)
-
-        # Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
-        # update the best.
-        for i, m in enumerate(cutMovers):
-          score += self._preferenceMagnitude * states[m].preferenceEnergies[curStateValues[i]]
-          score += self._scorePosition(states[m], curStateValues[i])
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Cut score is {:.2f} at {}\n".format(score, curStateValues))
-        if score > bestScore or bestState is None:
-          self._infoString += _VerboseCheck(self._verbosity, 4,"New best score is {:.2f} at {}\n".format(score, curStateValues))
-          bestScore = score
-          # Get the current state for all Movers in the Clique, not just the vertex-cut Movers
-          bestState = [self._coarseLocations[m] for m in movers]
-
-      # Put each Mover in the entire Clique into its best state and compute its high-score value.
-      # Compute the best individual scores for these Movers for use in later fine-motion
-      # processing.  Return the total score.
-      ret = 0.0
-      for i,m in enumerate(movers):
-        self._setMoverState(states[m], bestState[i])
-        self._coarseLocations[m] = bestState[i]
-        self._highScores[m] = self._preferenceMagnitude * states[m].preferenceEnergies[bestState[i]]
-        self._highScores[m] += self._scorePosition(states[m], bestState[i])
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
-          ", max score = {:.2f}\n".format(self._highScores[m]))
-        ret += self._highScores[m]
-      return ret
-
-    # Give up and use our parent's method.
-    self._infoString += _VerboseCheck(self._verbosity, 3,"No vertex cut for clique of size {}, calling parent\n".format(len(list(clique.vertices()))))
-    ret = super(_CliqueOptimizer, self)._optimizeCliqueCoarse(clique)
-    return ret
 
 class FastOptimizer(_CliqueOptimizer):
   def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
@@ -2438,7 +2448,7 @@ END
 
   global _DoCliqueOptimizationInC
 
-  print('Testing _BruteForceOptimizer')
+  print('Testing _BruteForceOptimizer Python')
   _DoCliqueOptimizationInC = False
   opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
@@ -2451,11 +2461,30 @@ END
                 verbosity = 1)
   movers = opt._movers
   if len(movers) != 6:
-    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer multi-ACT test: " + str(len(movers))
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer Python multi-ACT test: " + str(len(movers))
   res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
   for r in res:
     if not 'pose Angle 90' in r:
-      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer multi-ACT test"
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer Python multi-ACT test"
+
+  print('Testing _BruteForceOptimizer C++')
+  _DoCliqueOptimizationInC = True
+  opt = _BruteForceOptimizer(probePhil, True, model, modelIndex = 0, altID = None,
+                bondedNeighborDepth = 4,
+                useNeutronDistances = False,
+                minOccupancy = 0.02,
+                preferenceMagnitude = 1.0,
+                nonFlipPreference = 0.5,
+                skipBondFixup = False,
+                flipStates = '',
+                verbosity = 1)
+  movers = opt._movers
+  if len(movers) != 6:
+    return "Optimizers.Test(): Incorrect number of Movers for _BruteForceOptimizer C++ multi-ACT test: " + str(len(movers))
+  res = re.findall(r'pose Angle [-+]?\d+', opt.getInfo())
+  for r in res:
+    if not 'pose Angle 90' in r:
+      return "Optimizers.Test(): Unexpected angle ("+str(r)+") for _BruteForceOptimizer C++ multi-ACT test"
 
   print('Testing _CliqueOptimizer Python')
   _DoCliqueOptimizationInC = False
