@@ -55,16 +55,11 @@ namespace molprobity {
         boost::python::dict& coarseLocations,
         boost::python::dict& highScores);
 
-      /** @brief Function to perform brute-force optimization on a clique of Movers.
-          @param [in] movers: A list of Movers to jointly optimize.
-          @return A tuple, where the first is the score at the best position for all movers
-                  and the second is a string describing what was done, which may be empty
-                  if verbosity is too small.
-      */
-      boost::python::tuple OptimizeCliqueCoarseBruteForce(
-        scitbx::af::shared<boost::python::object> movers);
-
-      /** @brief Function to perform vertex-cut optimization on a clique of Movers.
+      /** @brief Function to perform fast optimization on a clique of Movers.
+      * 
+      *   This is the main function that is called from Python. It unwraps the
+      *   Python objects to C++ and rewraps the return to Python, enabling us to
+      *   run faster in the recursive calls.
           @param [in] movers: A list of Movers to jointly optimize.
           @param [in] interactions: A list of edges between movers, as a 2D array where the first
                   index is the number of edges and the second is 2. It stores the index
@@ -74,7 +69,7 @@ namespace molprobity {
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
       */
-      boost::python::tuple OptimizeCliqueCoarseVertexCut(
+      boost::python::tuple OptimizeCliqueCoarse(
         scitbx::af::shared<boost::python::object> movers,
         scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
 
@@ -122,6 +117,30 @@ namespace molprobity {
       /// whose vertices have been removed.
       static void findVertexCut(CliqueGraph const& graph,
         std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph);
+
+      /** @brief Function to perform brute-force optimization on a clique of Movers.
+          @param [in] movers: A list of Movers to jointly optimize.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+      */
+      std::pair<double, std::string> OptimizeCliqueCoarseBruteForce(
+        std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
+        CliqueGraph& clique);
+
+      /** @brief Function to perform vertex-cut optimization on a clique of Movers.
+          @param [in] movers: A list of Movers to jointly optimize.
+          @param [in] interactions: A list of edges between movers, as a 2D array where the first
+                  index is the number of edges and the second is 2. It stores the index
+                  into the movers array of the mover at each end of the edge. This lists
+                  the pairs of movers that interact with each other.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+      */
+      std::pair<double, std::string> OptimizeCliqueCoarseVertexCut(
+        std::map<boost::python::object*, molprobity::reduce::PositionReturn> &states,
+        CliqueGraph &clique);
     };
 
     //=====================================================================================================

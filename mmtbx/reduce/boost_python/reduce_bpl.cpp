@@ -130,8 +130,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , boost::python::dict&
       >()
     )
-    .def("OptimizeCliqueCoarseBruteForce", &OptimizerC::OptimizeCliqueCoarseBruteForce)
-    .def("OptimizeCliqueCoarseVertexCut", &OptimizerC::OptimizeCliqueCoarseVertexCut)
+    .def("OptimizeCliqueCoarse", &OptimizerC::OptimizeCliqueCoarse)
     ;
   def("Optimizers_test", Optimizers_test,
     "Test all classes and functions defined in Optimizers.h.");
