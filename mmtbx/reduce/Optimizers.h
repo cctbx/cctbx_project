@@ -126,8 +126,8 @@ namespace molprobity {
       typedef std::map< unsigned, ScoreCache > ScoreCacheMap;
 
       /// tracks how many cached vs. calculated scores we have.
-      size_t m_cachedScores = 0;
-      size_t m_calculatedScores = 0;
+      size_t m_cachedScores;
+      size_t m_calculatedScores;
 
       /// This is a pointer to the ScoreCacheMap for the current clique, if it exists.
       /// When it is a nullptr, we do not use caching. This is set to non-nullptr
