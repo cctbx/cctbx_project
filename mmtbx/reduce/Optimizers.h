@@ -18,9 +18,11 @@
 
 #include <scitbx/array_family/accessors/flex_grid.h>
 #include <scitbx/array_family/versa.h>
+#include <vector>
 #include <string>
 #include <utility>
 #include <boost/python.hpp>
+#include <boost/graph/adjacency_list.hpp>
 #include "../probe/Scoring.h"
 #include "../probe/SpatialQuery.h"
 #include "PositionReturn.h"
@@ -76,6 +78,13 @@ namespace molprobity {
         scitbx::af::shared<boost::python::object> movers,
         scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
 
+      /// @brief Test function that checks our privcate static methods.
+      ///
+      /// Does not do a complete behavior test of the class -- that must be done
+      /// from Python code that can generate models and run the methods.
+      /// @return Empty string if all tests pass, otherwise a string describing the failure.
+      static std::string Test();
+
     protected:
       boost::python::object m_self;           //< Make a copy so it will persist
       int m_verbosity;
@@ -91,11 +100,36 @@ namespace molprobity {
       double scorePosition(molprobity::reduce::PositionReturn& states, size_t index);
 
       std::string setMoverState(molprobity::reduce::PositionReturn& positionReturn, unsigned index);
+
+      // Must use vector style for second (vertex) entry for connected_components to work
+      typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boost::python::object*>
+        CliqueGraph;
+
+      static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsigned> const& numStates);
+
+      /// @brief Return a vector of vectors of integers representing all combinations of m integers
+      ///        from 0 to n-1, inclusive.
+      static std::vector< std::vector<int> > nChooseM(int n, int m);
+
+      /// @brief Find the subset of a clique graph that contains a given set of movers and edges between them.
+      static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers);
+
+      /// @brief Find one of the smallest vertex cuts in a clique graph.
+      /// @param [in] graph: The clique graph to find the vertex cut in.
+      /// @param [out] cutMovers: The movers that correspond to the vertices
+      /// that are removed.
+      /// @param [out] cutGraph: The graph that stores the subset of clique
+      /// whose vertices have been removed.
+      static void findVertexCut(CliqueGraph const& graph,
+        std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph);
     };
 
     //=====================================================================================================
 
     /// @brief Test function to verify that all classes are behaving as intended.
+    ///
+    /// Does not do a complete behavior test of the class -- that must be done
+    /// from Python code that can generate models and run the methods.
     /// @return Empty string on success, string telling what went wrong on failure.
     std::string Optimizers_test();
   }

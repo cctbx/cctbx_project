@@ -12,20 +12,20 @@
 // limitations under the License.
 
 #include "Optimizers.h"
-#include <vector>
 #include <list>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <map>
 #include <algorithm>
-#include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
-typedef scitbx::vec3<double> vec3;
+namespace molprobity {
+  namespace reduce {
 
-static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsigned> const &numStates)
+std::vector< std::vector<unsigned> > OptimizerC::generateAllStates(
+  std::vector<unsigned> const &numStates)
 {
   std::vector< std::vector<unsigned> > ret;
 
@@ -68,9 +68,7 @@ static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsign
   }
 }
 
-/// @brief Return a vector of vectors of integers representing all combinations of m integers
-///        from 0 to n-1, inclusive.
-static std::vector< std::vector<int> > nChooseM(int n, int m)
+std::vector< std::vector<int> > OptimizerC::nChooseM(int n, int m)
 {
   std::vector<std::vector<int> > result;
 
@@ -105,12 +103,8 @@ static std::vector< std::vector<int> > nChooseM(int n, int m)
   return result;
 }
 
-// Must use vector style for second (vertex) entry for connected_components to work
-typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boost::python::object*>
-CliqueGraph;
-
-/// @brief Find the subset of a clique graph that contains a given set of movers and edges between them.
-static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers)
+OptimizerC::CliqueGraph OptimizerC::subsetGraph(CliqueGraph const& graph,
+  std::vector<boost::python::object*>& keepMovers)
 {
   CliqueGraph ret;
 
@@ -141,13 +135,7 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
   return ret;
 }
 
-/// @brief Find one of the smallest vertex cuts in a clique graph.
-/// @param [in] graph: The clique graph to find the vertex cut in.
-/// @param [out] cutMovers: The movers that correspond to the vertices
-/// that are removed.
-/// @param [out] cutGraph: The graph that stores the subset of clique
-/// whose vertices have been removed.
-static void findVertexCut(CliqueGraph const& graph,
+void OptimizerC::findVertexCut(CliqueGraph const& graph,
   std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph)
 {
   // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
@@ -189,9 +177,6 @@ static void findVertexCut(CliqueGraph const& graph,
   cutGraph = graph;
   cutMovers.clear();
 }
-
-namespace molprobity {
-  namespace reduce {
 
 OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double preferenceMagnitude,
   molprobity::probe::SpatialQuery& spatialQuery,
@@ -630,7 +615,7 @@ static std::vector<int> init_intVec(int const* values, size_t size)
   return ret;
 }
 
-std::string Optimizers_test()
+std::string OptimizerC::Test()
 {
   // Test generateAllStates()
   unsigned ns[] = { 2, 3, 5 };
@@ -646,13 +631,13 @@ std::string Optimizers_test()
   }
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
   if (allStates.size() != product) {
-    return "mmtbx_reduce_ext.Optimizers_test(): Number of states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): Number of states not as expected";
   }
   if (allStates.front() != zeroes) {
-    return "mmtbx_reduce_ext.Optimizers_test(): First states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): First states not as expected";
   }
   if (allStates.back() != lastState) {
-    return "mmtbx_reduce_ext.Optimizers_test(): Last states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): Last states not as expected";
   }
 
   // setMoverState() is tested as part of testing OptimizeCliqueCoarseBruteForce()
@@ -661,15 +646,15 @@ std::string Optimizers_test()
   // Test nChooseM()
   std::vector < std::vector<int> > choices = nChooseM(5, 3);
   if (choices.size() != 10) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(5, 3) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(5, 3) failed";
   }
   choices = nChooseM(10, 1);
   if ((choices.size() != 10) || (0 != choices[0][0])) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(10, 1) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(10, 1) failed";
   }
   choices = nChooseM(3, 2);
   if (choices.size() != 3) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(3, 2) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(3, 2) failed";
   }
 
   // Test subsetGraph()
@@ -753,10 +738,10 @@ std::string Optimizers_test()
       }
       CliqueGraph subset = subsetGraph(g, keepers);
       if (boost::num_vertices(subset) != expectedVertexCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): subsetGraph() failed with unexpected vertex counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): subsetGraph() failed with unexpected vertex counts";
       }
       if (boost::num_edges(subset) != expectedEdgeCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): subsetGraph() failed with unexpected edge counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): subsetGraph() failed with unexpected edge counts";
       }
     }
   }
@@ -818,10 +803,10 @@ std::string Optimizers_test()
       CliqueGraph cutGraph;
       findVertexCut(g, cut, cutGraph);
       if (boost::num_vertices(cutGraph) != expectedVertexCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): findVertexCut() failed with unexpected vertex counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): findVertexCut() failed with unexpected vertex counts";
       }
       if (cut.size() != expectedCutCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): findVertexCut() failed with unexpected cut sizes";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): findVertexCut() failed with unexpected cut sizes";
       }
     }
   }
@@ -832,6 +817,11 @@ std::string Optimizers_test()
 
   // All tests passed.
   return "";
+}
+
+std::string Optimizers_test()
+{
+  return OptimizerC::Test();
 }
 
   } // end namespace reduce
