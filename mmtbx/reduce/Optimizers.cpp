@@ -68,21 +68,126 @@ static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsign
   }
 }
 
-// Score all atoms that have not been marked for deletion, calling the Python object's
-// scoring function (which may or may not use caching to do the scoring).
-static double scorePosition(boost::python::object& self,
-  molprobity::reduce::PositionReturn& states, size_t index)
+/// @brief Return a vector of vectors of integers representing all combinations of m integers
+///        from 0 to n-1, inclusive.
+static std::vector< std::vector<int> > nChooseM(int n, int m)
 {
-  double ret = 0;
-  for (size_t a = 0; a < states.atoms.size(); a++) {
-    // There may not be as many deleteMes as there are atoms, so we need to check for that.
-    if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
-      boost::python::object result = self.attr("_scoreAtom")(states.atoms[a]);
-      double resultValue = boost::python::extract<double>(result);
-      ret += resultValue;
+  std::vector<std::vector<int> > result;
+
+  std::vector<int> indices(m);
+  for (int i = 0; i < m; ++i) {
+    indices[i] = i + 1;
+  }
+
+  while (true) {
+    std::vector<int> currentCombination;
+    for (size_t it = 0; it < indices.size(); ++it) {
+      // Use zero-based indexing for the results
+      currentCombination.push_back(indices[it] - 1);
+    }
+    result.push_back(currentCombination);
+
+    int i = m - 1;
+    while (i >= 0 && indices[i] == n - m + i + 1) {
+      --i;
+    }
+
+    if (i < 0) {
+      break;
+    }
+
+    ++indices[i];
+    for (int j = i + 1; j < m; ++j) {
+      indices[j] = indices[j - 1] + 1;
     }
   }
+
+  return result;
+}
+
+// Must use vector style for second (vertex) entry for connected_components to work
+typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boost::python::object*>
+CliqueGraph;
+
+/// @brief Find the subset of a clique graph that contains a given set of movers and edges between them.
+static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers)
+{
+  CliqueGraph ret;
+
+  // We keep a from labels to the vertex in the new graph that points to
+  // that label so that we can construct edges in the new graph.
+  std::map<boost::python::object*, CliqueGraph::vertex_descriptor> vertexMap;
+
+  // Construct a subgraph that consists only of vertices to be kept and
+  // edges both of whose ends are on these vertices.
+  for (std::vector<boost::python::object*>::iterator it = keepMovers.begin(); it != keepMovers.end(); ++it) {
+    // Add a vertex for this mover, and keep track of its descriptor.
+    boost::python::object* mover = *it;
+    vertexMap[mover] = boost::add_vertex(mover, ret);
+  }
+  boost::iterator_range<CliqueGraph::edge_iterator> edges = boost::edges(graph);
+  for (CliqueGraph::edge_iterator e = edges.begin(); e != edges.end(); e++) {
+    CliqueGraph::vertex_descriptor v1 = boost::source(*e, graph);
+    CliqueGraph::vertex_descriptor v2 = boost::target(*e, graph);
+    boost::python::object* mover1 = graph[v1];
+    boost::python::object* mover2 = graph[v2];
+    if ((std::find(keepMovers.begin(), keepMovers.end(), mover1) != keepMovers.end()) &&
+      (std::find(keepMovers.begin(), keepMovers.end(), mover2) != keepMovers.end())) {
+      // Both ends of this edge are in the subset, so add it to the subset graph.
+      boost::add_edge(vertexMap[mover1], vertexMap[mover2], ret);
+    }
+  }
+
   return ret;
+}
+
+/// @brief Find one of the smallest vertex cuts in a clique graph.
+/// @param [in] graph: The clique graph to find the vertex cut in.
+/// @param [out] cutMovers: The movers that correspond to the vertices
+/// that are removed.
+/// @param [out] cutGraph: The graph that stores the subset of clique
+/// whose vertices have been removed.
+static void findVertexCut(CliqueGraph const& graph,
+  std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph)
+{
+  // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
+  // have at least 2 vertices left to have a disconnected graph).
+  size_t numVerts = boost::num_vertices(graph);
+  for (size_t n = 0; n < numVerts; n++) {
+    // Iterate over all sets of vertices of size n that might be removed
+    std::vector< std::vector<int> > vertexSets = nChooseM(numVerts, n);
+    for (std::vector< std::vector<int> >::const_iterator it = vertexSets.begin(); it != vertexSets.end(); ++it) {
+      std::vector<int> const& vertexSet = *it;
+
+      // Get a list of the vertices to keep by removing the ones in the removal set.
+      std::vector<boost::python::object*> keepMovers;
+      for (size_t i = 0; i < numVerts; i++) {
+        if (std::find(vertexSet.begin(), vertexSet.end(), i) == vertexSet.end()) {
+          keepMovers.push_back(graph[i]);
+        }
+      }
+
+      // Get the subset of the graph that contains only the vertices to keep.
+      CliqueGraph currentGraph = subsetGraph(graph, keepMovers);
+
+      // Check if the graph is disconnected
+      std::vector<int> componentMap(boost::num_vertices(currentGraph));
+      int numComponents = boost::connected_components(currentGraph, &componentMap[0]);
+      if (numComponents > 1) {
+        // The graph is disconnected, so we have found a vertex cut.
+        // Make a list of the movers that correspond to the vertices that were removed.
+        for (size_t i = 0; i < vertexSet.size(); i++) {
+          cutMovers.push_back(graph[vertexSet[i]]);
+        }
+        cutGraph = currentGraph;
+        return;
+      }
+    }
+  }
+
+  // We didn't find an answer. Return a complete copy of the graph and an empty list of movers.
+  cutGraph = graph;
+  cutMovers.clear();
 }
 
 namespace molprobity {
@@ -103,6 +208,20 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_coarseLocations(coarseLocations)
   , m_highScores(highScores)
 {}
+
+double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, size_t index)
+{
+  double ret = 0;
+  for (size_t a = 0; a < states.atoms.size(); a++) {
+    // There may not be as many deleteMes as there are atoms, so we need to check for that.
+    if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
+      boost::python::object result = m_self.attr("_scoreAtom")(states.atoms[a]);
+      double resultValue = boost::python::extract<double>(result);
+      ret += resultValue;
+    }
+  }
+  return ret;
+}
 
 std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positionReturn,
   unsigned index)
@@ -217,7 +336,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseBruteForce(
 
       // Score all atoms that have not been marked for deletion, calling the Python object's
       // scoring function (which may or may not use caching to do the scoring).
-      score += scorePosition(m_self, states[m], curStateValues[m]);
+      score += scorePosition(states[m], curStateValues[m]);
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
@@ -262,7 +381,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseBruteForce(
     infoString += setMoverState(states[m], bestState[m]);
     m_coarseLocations[movers[m]] = bestState[m];
     double score = m_preferenceMagnitude * states[m].preferenceEnergies[bestState[m]];
-    score += scorePosition(m_self, states[m], bestState[m]);
+    score += scorePosition(states[m], bestState[m]);
     m_highScores[movers[m]] = score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
@@ -275,128 +394,6 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseBruteForce(
   // Return the result
   return boost::python::make_tuple(bestScore, infoString);
 }
-
-// Must use vector style for second (vertex) entry for connected_components to work
-typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boost::python::object*>
-  CliqueGraph;
-
-/// @brief Return a vector of vectors of integers representing all combinations of m integers
-///        from 0 to n-1, inclusive.
-std::vector< std::vector<int> > nChooseM(int n, int m) {
-  std::vector<std::vector<int> > result;
-
-  std::vector<int> indices(m);
-  for (int i = 0; i < m; ++i) {
-    indices[i] = i + 1;
-  }
-
-  while (true) {
-    std::vector<int> currentCombination;
-    for (size_t it = 0; it < indices.size(); ++it) {
-      // Use zero-based indexing for the results
-      currentCombination.push_back(indices[it] - 1);
-    }
-    result.push_back(currentCombination);
-
-    int i = m - 1;
-    while (i >= 0 && indices[i] == n - m + i + 1) {
-      --i;
-    }
-
-    if (i < 0) {
-      break;
-    }
-
-    ++indices[i];
-    for (int j = i + 1; j < m; ++j) {
-      indices[j] = indices[j - 1] + 1;
-    }
-  }
-
-  return result;
-}
-
-/// @brief Find the subset of a clique graph that contains a given set of movers and edges between them.
-static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers)
-{
-  CliqueGraph ret;
-
-  // We keep a from labels to the vertex in the new graph that points to
-  // that label so that we can construct edges in the new graph.
-  std::map<boost::python::object*, CliqueGraph::vertex_descriptor> vertexMap;
-
-  // Construct a subgraph that consists only of vertices to be kept and
-  // edges both of whose ends are on these vertices.
-  for (std::vector<boost::python::object*>::iterator it = keepMovers.begin(); it != keepMovers.end(); ++it) {
-    // Add a vertex for this mover, and keep track of its descriptor.
-    boost::python::object* mover = *it;
-    vertexMap[mover] = boost::add_vertex(mover, ret);
-  }
-  boost::iterator_range<CliqueGraph::edge_iterator> edges = boost::edges(graph);
-  for (CliqueGraph::edge_iterator e = edges.begin(); e != edges.end(); e++) {
-    CliqueGraph::vertex_descriptor v1 = boost::source(*e, graph);
-    CliqueGraph::vertex_descriptor v2 = boost::target(*e, graph);
-    boost::python::object* mover1 = graph[v1];
-    boost::python::object* mover2 = graph[v2];
-    if ( (std::find(keepMovers.begin(), keepMovers.end(), mover1) != keepMovers.end()) &&
-         (std::find(keepMovers.begin(), keepMovers.end(), mover2) != keepMovers.end())) {
-      // Both ends of this edge are in the subset, so add it to the subset graph.
-      boost::add_edge(vertexMap[mover1], vertexMap[mover2], ret);
-    }
-  }
-
-  return ret;
-}
-
-/// @brief Find one of the smallest vertex cuts in a clique graph.
-/// @param [in] graph: The clique graph to find the vertex cut in.
-/// @param [out] cutMovers: The movers that correspond to the vertices
-/// that are removed.
-/// @param [out] cutGraph: The graph that stores the subset of clique
-/// whose vertices have been removed.
-static void findVertexCut(CliqueGraph const& graph,
-  std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph)
-{
-  // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
-  // have at least 2 vertices left to have a disconnected graph).
-  size_t numVerts = boost::num_vertices(graph);
-  for (size_t n = 0; n < numVerts; n++) {
-    // Iterate over all sets of vertices of size n that might be removed
-    std::vector< std::vector<int> > vertexSets = nChooseM(numVerts, n);
-    for (std::vector< std::vector<int> >::const_iterator it = vertexSets.begin(); it != vertexSets.end(); ++it) {
-      std::vector<int> const& vertexSet = *it;
-
-      // Get a list of the vertices to keep by removing the ones in the removal set.
-      std::vector<boost::python::object*> keepMovers;
-      for (size_t i = 0; i < numVerts; i++) {
-        if (std::find(vertexSet.begin(), vertexSet.end(), i) == vertexSet.end()) {
-          keepMovers.push_back(graph[i]);
-        }
-      }
-
-      // Get the subset of the graph that contains only the vertices to keep.
-      CliqueGraph currentGraph = subsetGraph(graph, keepMovers);
-
-      // Check if the graph is disconnected
-      std::vector<int> componentMap(boost::num_vertices(currentGraph));
-      int numComponents = boost::connected_components(currentGraph, &componentMap[0]);
-      if (numComponents > 1) {
-        // The graph is disconnected, so we have found a vertex cut.
-        // Make a list of the movers that correspond to the vertices that were removed.
-        for (size_t i = 0; i < vertexSet.size(); i++) {
-          cutMovers.push_back(graph[vertexSet[i]]);
-        }
-        cutGraph = currentGraph;
-        return;
-      }
-    }
-  }
-
-  // We didn't find an answer. Return a complete copy of the graph and an empty list of movers.
-  cutGraph = graph;
-  cutMovers.clear();
-}
-
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarseVertexCut(
   scitbx::af::shared<boost::python::object> movers,
@@ -548,7 +545,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseVertexCut(
     // update the best.
     for (size_t i = 0; i < cutMovers.size(); i++) {
       score += m_preferenceMagnitude * states[cutMovers[i]].preferenceEnergies[curStateValues[i]];
-      score += scorePosition(m_self, states[cutMovers[i]], curStateValues[i]);
+      score += scorePosition(states[cutMovers[i]], curStateValues[i]);
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
@@ -597,7 +594,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseVertexCut(
     infoString += setMoverState(states[&movers[m]], bestState[m]);
     m_coarseLocations[movers[m]] = bestState[m];
     double score = m_preferenceMagnitude * states[&movers[m]].preferenceEnergies[bestState[m]];
-    score += scorePosition(m_self, states[&movers[m]], bestState[m]);
+    score += scorePosition(states[&movers[m]], bestState[m]);
     m_highScores[movers[m]] = score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
@@ -611,7 +608,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseVertexCut(
   return boost::python::make_tuple(bestScore, infoString);
 }
 
-// Helper functions to let us initialize vectors conveniently in C++98
+// Test-generation helper functions to let us initialize vectors conveniently in C++98
 static std::vector<unsigned> init_uVec(unsigned const* values, size_t size)
 {
   std::vector<unsigned> ret;

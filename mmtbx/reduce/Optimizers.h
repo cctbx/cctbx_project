@@ -77,14 +77,18 @@ namespace molprobity {
         scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
 
     protected:
-      boost::python::object m_self; //< Make a copy so it will persist
+      boost::python::object m_self;           //< Make a copy so it will persist
       int m_verbosity;
       double m_preferenceMagnitude;
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
-      boost::python::object& m_deleteMes;
+      boost::python::object m_deleteMes;      //< Make a copy so it will persist
       boost::python::dict m_coarseLocations;  //< Make a copy so it will persist
-      boost::python::dict m_highScores; //< Make a copy so it will persist
+      boost::python::dict m_highScores;       //< Make a copy so it will persist
+
+      // Score all atoms that have not been marked for deletion, calling the Python object's
+      // scoring function (which may or may not use caching to do the scoring).
+      double scorePosition(molprobity::reduce::PositionReturn& states, size_t index);
 
       std::string setMoverState(molprobity::reduce::PositionReturn& positionReturn, unsigned index);
     };
