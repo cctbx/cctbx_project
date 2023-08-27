@@ -524,6 +524,9 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarseVertexCut(
       CliqueGraph subGraph = subsetGraph(cutGraph, subMovers);
 
       // Fill in the interactions (edges) for this subgraph, which we'll need for the recursive call.
+      /// @todo Find a way to make the recursively-called function not need this.  Perhaps make a separate
+      /// generic OptimizeCluqueCoarse() function that formats things and then calls the recursive function
+      /// and then formats the results back into the expected format.
       scitbx::af::versa<int, scitbx::af::flex_grid<> > subInteractions(scitbx::af::flex_grid<>(boost::num_edges(subGraph), 2));
       boost::iterator_range<CliqueGraph::edge_iterator> edgeIterator = boost::edges(subGraph);
       size_t e = 0;
