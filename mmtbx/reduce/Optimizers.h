@@ -28,66 +28,66 @@
 namespace molprobity {
   namespace reduce {
 
-    /** @brief Function to perform brute-force optimization on a clique of Movers.
-        @param [in] verbosity: Controls how much information is added to the string.
-        @param [in] preferenceMagnitude: Multiples the preference energies, so that we
-                can scale down their importance if we want.
-        @param [in] movers: A list of Movers to jointly optimize.
-        @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
-        @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
-        @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
-        @param [out] coarseLocations: Dictionary looked up by mover that records the
-                coarse locations of the movers once they are optimized. These are modified
-                to point to the result.
-        @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
-        @return A tuple, where the first is the score at the best position for all movers
-                and the second is a string describing what was done, which may be empty
-                if verbosity is too small.
-    */
-    boost::python::tuple OptimizeCliqueCoarseBruteForceC(
-      boost::python::object &self,
-      int verbosity,
-      double preferenceMagnitude,
-      scitbx::af::shared<boost::python::object> movers,
-      molprobity::probe::SpatialQuery &spatialQuery,
-      molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
-      boost::python::object &deleteMes,
-      boost::python::dict &coarseLocations,
-      boost::python::dict &highScores
-    );
+    class OptimizerC {
+    public:
+      /** @brief Constructor.
+          @param [in] self: The Python object that constructed us. /// @todo Pass all values and remove this.
+          @param [in] verbosity: Controls how much information is added to the string.
+          @param [in] preferenceMagnitude: Multiples the preference energies, so that we
+                  can scale down their importance if we want.
+          @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
+          @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
+          @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
+          @param [out] coarseLocations: Dictionary looked up by mover that records the
+                  coarse locations of the movers once they are optimized. These are modified
+                  to point to the result.
+          @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
+      */
+      OptimizerC(
+        boost::python::object& self,
+        int verbosity,
+        double preferenceMagnitude,
+        molprobity::probe::SpatialQuery& spatialQuery,
+        molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+        boost::python::object& deleteMes,
+        boost::python::dict& coarseLocations,
+        boost::python::dict& highScores);
 
-    /** @brief Function to perform vertex-cut optimization on a clique of Movers.
-        @param [in] verbosity: Controls how much information is added to the string.
-        @param [in] preferenceMagnitude: Multiples the preference energies, so that we
-                can scale down their importance if we want.
-        @param [in] movers: A list of Movers to jointly optimize.
-        @param [in] interactions: A list of edges between movers, as a 2D array where the first
-                index is the number of edges and the second is 2. It stores the index
-                into the movers array of the mover at each end of the edge. This lists
-                the pairs of movers that interact with each other.
-        @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
-        @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
-        @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
-        @param [out] coarseLocations: Dictionary looked up by mover that records the
-                coarse locations of the movers once they are optimized. These are modified
-                to point to the result.
-        @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
-        @return A tuple, where the first is the score at the best position for all movers
-                and the second is a string describing what was done, which may be empty
-                if verbosity is too small.
-    */
-    boost::python::tuple OptimizeCliqueCoarseVertexCutC(
-      boost::python::object& self,
-      int verbosity,
-      double preferenceMagnitude,
-      scitbx::af::shared<boost::python::object> movers,
-      scitbx::af::versa<int, scitbx::af::flex_grid<> >&interactions,
-      molprobity::probe::SpatialQuery& spatialQuery,
-      molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-      boost::python::object& deleteMes,
-      boost::python::dict& coarseLocations,
-      boost::python::dict& highScores
-    );
+      /** @brief Function to perform brute-force optimization on a clique of Movers.
+          @param [in] movers: A list of Movers to jointly optimize.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+      */
+      boost::python::tuple OptimizeCliqueCoarseBruteForce(
+        scitbx::af::shared<boost::python::object> movers);
+
+      /** @brief Function to perform vertex-cut optimization on a clique of Movers.
+          @param [in] movers: A list of Movers to jointly optimize.
+          @param [in] interactions: A list of edges between movers, as a 2D array where the first
+                  index is the number of edges and the second is 2. It stores the index
+                  into the movers array of the mover at each end of the edge. This lists
+                  the pairs of movers that interact with each other.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+      */
+      boost::python::tuple OptimizeCliqueCoarseVertexCut(
+        scitbx::af::shared<boost::python::object> movers,
+        scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
+
+    protected:
+      boost::python::object m_self; //< Make a copy so it will persist
+      int m_verbosity;
+      double m_preferenceMagnitude;
+      molprobity::probe::SpatialQuery& m_spatialQuery;
+      molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
+      boost::python::object& m_deleteMes;
+      boost::python::dict m_coarseLocations;  //< Make a copy so it will persist
+      boost::python::dict m_highScores; //< Make a copy so it will persist
+
+      std::string setMoverState(molprobity::reduce::PositionReturn& positionReturn, unsigned index);
+    };
 
     //=====================================================================================================
 

@@ -39,7 +39,7 @@ from mmtbx.probe import Helpers
 from mmtbx.reduce import Movers, InteractionGraph
 
 bp.import_ext("mmtbx_reduce_ext")
-from mmtbx_reduce_ext import OptimizeCliqueCoarseBruteForceC, OptimizeCliqueCoarseVertexCutC, Optimizers_test
+from mmtbx_reduce_ext import OptimizerC, Optimizers_test
 
 ##################################################################################
 # This file includes a set of functions and classes that implement placement and optimization of
@@ -1349,10 +1349,10 @@ class _BruteForceOptimizer(_SingletonOptimizer):
 
     global _DoCliqueOptimizationInC
     if _DoCliqueOptimizationInC:
-      (bestScore, infoString) = OptimizeCliqueCoarseBruteForceC(
-                self, self._verbosity, self._preferenceMagnitude,
-                movers, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                self._coarseLocations, self._highScores)
+      optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+                        self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                        self._coarseLocations, self._highScores)
+      (bestScore, infoString) = optC.OptimizeCliqueCoarseBruteForce(movers)
       self._infoString += infoString
       return bestScore
 
@@ -1516,10 +1516,11 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         edges[(i,0)] = vertexList.index(clique.source(e))
         edges[(i,1)] = vertexList.index(clique.target(e))
 
-      (bestScore, infoString) = OptimizeCliqueCoarseVertexCutC(
-                self, self._verbosity, self._preferenceMagnitude,
-                movers, edges, self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                self._coarseLocations, self._highScores)
+      optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+                  self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                  self._coarseLocations, self._highScores)
+
+      (bestScore, infoString) = optC.OptimizeCliqueCoarseVertexCut(movers, edges)
       self._infoString += infoString
       return bestScore
 

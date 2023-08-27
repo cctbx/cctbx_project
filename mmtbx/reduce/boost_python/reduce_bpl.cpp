@@ -113,7 +113,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     .add_property("deleteMes", &PositionReturn::deleteMes)
     .add_property("preferenceEnergies", &PositionReturn::preferenceEnergies)
     ;
-  // Export the global functions
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
   def("PairsOverlap", PairsOverlap,
@@ -121,10 +120,19 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   def("InteractionGraph_test", InteractionGraph_test,
     "Test all classes and functions defined in InteractionGraph.h.");
 
-  def("OptimizeCliqueCoarseBruteForceC", OptimizeCliqueCoarseBruteForceC,
-    "Brute-force optimization of a clique.");
-  def("OptimizeCliqueCoarseVertexCutC", OptimizeCliqueCoarseVertexCutC,
-    "Vertex-cut recursive optimization of a clique.");
+  class_<OptimizerC>("OptimizerC", init< boost::python::object&
+      , int
+      , double
+      , molprobity::probe::SpatialQuery&
+      , molprobity::probe::ExtraAtomInfoMap&
+      , boost::python::object&
+      , boost::python::dict&
+      , boost::python::dict&
+      >()
+    )
+    .def("OptimizeCliqueCoarseBruteForce", &OptimizerC::OptimizeCliqueCoarseBruteForce)
+    .def("OptimizeCliqueCoarseVertexCut", &OptimizerC::OptimizeCliqueCoarseVertexCut)
+    ;
   def("Optimizers_test", Optimizers_test,
     "Test all classes and functions defined in Optimizers.h.");
 
