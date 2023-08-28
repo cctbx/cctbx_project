@@ -438,12 +438,14 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   // Put each Mover into its state in the best configuration and compute its high-score value.
   // Store the individual scores for these Movers in the best config for use in later fine - motion
   // processing.
+  double ret = 0.0;
   for (size_t m = 0; m < movers.size(); m++) {
     infoString += setMoverState(states[movers[m]], bestState[m]);
     m_coarseLocations[*movers[m]] = bestState[m];
     double score = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     score += scorePosition(states[movers[m]], bestState[m]);
     m_highScores[*movers[m]] = score;
+    ret += score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
@@ -453,7 +455,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   }
 
   // Return the result
-  return std::pair<double, std::string>(bestScore, infoString);
+  return std::pair<double, std::string>(ret, infoString);
 }
 
 std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
@@ -615,12 +617,14 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   // Put each Mover in the entire Clique into its best state and compute its high-score value.
   // Compute the best individual scores for these Movers for use in later fine - motion
   // processing.
+  double ret = 0.0;
   for (size_t m = 0; m < movers.size(); m++) {
     infoString += setMoverState(states[movers[m]], bestState[m]);
     m_coarseLocations[*movers[m]] = bestState[m];
     double score = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     score += scorePosition(states[movers[m]], bestState[m]);
     m_highScores[*movers[m]] = score;
+    ret += score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
@@ -630,7 +634,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   }
 
   // Return the result
-  return std::pair<double, std::string>(bestScore, infoString);
+  return std::pair<double, std::string>(ret, infoString);
 }
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
