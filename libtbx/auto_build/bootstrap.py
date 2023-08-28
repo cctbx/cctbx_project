@@ -2146,6 +2146,7 @@ class CCTBXLiteBuilder(CCIBuilder):
     'cctbx',
     'cctbx_website',
     'scitbx',
+    'serialtbx',
     'libtbx',
     'iotbx',
     'mmtbx',
