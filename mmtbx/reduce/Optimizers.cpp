@@ -207,6 +207,8 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_deleteMes(deleteMes)
   , m_coarseLocations(coarseLocations)
   , m_highScores(highScores)
+  , m_cachedScores(0)
+  , m_calculatedScores(0)
 {
   // Look up the self._dotScorer object and store a pointer to it.
   boost::python::object dotScorerObj = m_self.attr("_dotScorer");
