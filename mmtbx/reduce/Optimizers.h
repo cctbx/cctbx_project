@@ -20,6 +20,7 @@
 #include <scitbx/array_family/versa.h>
 #include <vector>
 #include <string>
+#include <map>
 #include <utility>
 #include <boost/python.hpp>
 #include <boost/graph/adjacency_list.hpp>
@@ -38,9 +39,11 @@ namespace molprobity {
           @param [in] preferenceMagnitude: Multiples the preference energies, so that we
                   can scale down their importance if we want.
           @param [in] minOccupancy: The minimum occupancy for an atom to be considered.
+          @param [in] probeRadius: The radius of the probe sphere, in A.
           @param [in] probeDensity: The density of the probe sphere, in A^-3.
           @param [in] exclude: Dictionary of atoms to exclude from collisions, looked up by i_seq.
           @param [in] dotSpheres: Dictionary of dot spheres, looked up by i_seq.
+          @param [in] atomMoverLists: Dictionary of list of movers, looked up by i_seq.
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
@@ -55,9 +58,11 @@ namespace molprobity {
         double preferenceMagnitude,
         double maxVDWRadius,
         double minOccupancy,
+        double probeRadius,
         double probeDensity,
         boost::python::dict& exclude,
         boost::python::dict& dotSpheres,
+        boost::python::dict& atomMoverLists,
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes,
@@ -82,6 +87,12 @@ namespace molprobity {
         scitbx::af::shared<boost::python::object> movers,
         scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
 
+      /// @brief Returns the number of calculated atom scores within cliques
+      size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
+
+      /// @brief Returns the number of cached atom scores within cliques
+      size_t GetNumCachedAtoms() const { return m_cachedScores; }
+
       /// @brief Test function that checks our privcate static methods.
       ///
       /// Does not do a complete behavior test of the class -- that must be done
@@ -95,17 +106,44 @@ namespace molprobity {
       double m_maxVDWRadius;
       double m_preferenceMagnitude;
       double m_minOccupancy;
+      double m_probeRadius;
       double m_probeDensity;
       boost::python::dict m_exclude;          //< Make a copy so it will persist
       boost::python::dict m_dotSpheres;       //< Make a copy so it will persist
+      boost::python::dict m_atomMoverLists;    //< Make a copy so it will persist
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
       boost::python::dict m_coarseLocations;  //< Make a copy so it will persist
       boost::python::dict m_highScores;       //< Make a copy so it will persist
+      molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object
 
-      // Score all atoms that have not been marked for deletion, calling the Python object's
-      // scoring function (which may or may not use caching to do the scoring).
+      /// Caches scores for atoms that have already been calculated based on the
+      /// values of the Movers that they depend on.
+      /// This is the map stored for a particular atom, based on its relevant Mover positions.
+      typedef std::map< std::vector<unsigned>, double > ScoreCache;
+      /// This is the map stored for all atoms, looked up by i_seq.
+      typedef std::map< unsigned, ScoreCache > ScoreCacheMap;
+
+      /// tracks how many cached vs. calculated scores we have.
+      size_t m_cachedScores = 0;
+      size_t m_calculatedScores = 0;
+
+      /// This is a pointer to the ScoreCacheMap for the current clique, if it exists.
+      /// When it is a nullptr, we do not use caching. This is set to non-nullptr
+      /// when we are optimizing a clique, and set back to nullptr when we are done.
+      ScoreCacheMap *m_scoreCacheMap = nullptr;
+
+      /// @brief Score an atom, not using the cache.
+      double scoreAtom(iotbx::pdb::hierarchy::atom const& a);
+
+      /// @brief Score an atom, using the cache.
+      ///
+      /// The m_scoreCacheMap must be non-nullptr when this is called.
+      double scoreAtomCached(iotbx::pdb::hierarchy::atom const& a);
+
+      /// @brief Score all atoms that have not been marked for deletion, calling the Python object's
+      /// scoring function (which may or may not use caching to do the scoring).
       double scorePosition(molprobity::reduce::PositionReturn& states, size_t index);
 
       std::string setMoverState(molprobity::reduce::PositionReturn& positionReturn, unsigned index);

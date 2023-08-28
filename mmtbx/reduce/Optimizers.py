@@ -442,7 +442,7 @@ class _SingletonOptimizer(object):
         # Compute the interaction graph, of which each connected component is a Clique.
         # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
         # of the singletons and the groups.
-        self._interactionGraph, self._atomMoverSets = InteractionGraph.InteractionGraphAllPairs(self._movers,
+        self._interactionGraph, self._atomMoverLists = InteractionGraph.InteractionGraphAllPairs(self._movers,
           self._extraAtomInfo, probeRadius=self._probeRadius)
         components = cca.connected_components( graph = self._interactionGraph )
         maxLen = 0
@@ -1507,8 +1507,8 @@ class _CliqueOptimizer(_BruteForceOptimizer):
         edges[(i,1)] = vertexList.index(clique.target(e))
 
       optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
-                        self._maximumVDWRadius, self._minOccupancy, self._probeDensity,
-                        self._excludeDict, self._dotSpheres,
+                        self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
+                        self._excludeDict, self._dotSpheres, self._atomMoverLists,
                         self._spatialQuery, self._extraAtomInfo, self._deleteMes,
                         self._coarseLocations, self._highScores)
 
@@ -1710,10 +1710,10 @@ class FastOptimizer(_CliqueOptimizer):
 
     if self._doScoreCaching:
       # Construct a tuple that holds the entries for the coarse position of all of the Movers
-      # that this atom depends on, using the _atomMoverSets to determine which ones to look up.
+      # that this atom depends on, using the _atomMoverLists to determine which ones to look up.
       # See if this result is already in the dictionary for that atom.  If so, use it.  If not,
       # compute and store it and then return that value.
-      state = tuple([self._coarseLocations[m] for m in self._atomMoverSets[atom.i_seq]])
+      state = tuple([self._coarseLocations[m] for m in self._atomMoverLists[atom.i_seq]])
       try:
         self._numCached += 1
         return self._scoreCache[atom.i_seq][state]

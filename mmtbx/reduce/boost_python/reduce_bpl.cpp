@@ -126,6 +126,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , double
       , double
       , double
+      , double
+      , boost::python::dict&
       , boost::python::dict&
       , boost::python::dict&
       , molprobity::probe::SpatialQuery&
@@ -136,6 +138,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       >()
     )
     .def("OptimizeCliqueCoarse", &OptimizerC::OptimizeCliqueCoarse)
+    .def("GetNumCalculatedAtoms", &OptimizerC::GetNumCalculatedAtoms)
+    .def("GetNumCachedAtoms", &OptimizerC::GetNumCachedAtoms)
     ;
   def("Optimizers_test", Optimizers_test,
     "Test all classes and functions defined in Optimizers.h.");

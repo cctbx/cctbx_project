@@ -12,6 +12,7 @@
 // limitations under the License.
 
 #include "Optimizers.h"
+#include "../probe/DotSpheres.h"
 #include <list>
 #include <string>
 #include <iostream>
@@ -179,9 +180,13 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
 }
 
 OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double preferenceMagnitude,
-  double maxVDWRadius, double minOccupancy, double probeDensity,
+  double maxVDWRadius,
+  double minOccupancy,
+  double probeRadius,
+  double probeDensity,
   boost::python::dict& exclude,
   boost::python::dict& dotSpheres,
+  boost::python::dict& atomMoverLists,
   molprobity::probe::SpatialQuery& spatialQuery,
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
   boost::python::object& deleteMes,
@@ -192,15 +197,74 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_preferenceMagnitude(preferenceMagnitude)
   , m_maxVDWRadius(maxVDWRadius)
   , m_minOccupancy(minOccupancy)
+  , m_probeRadius(probeRadius)
   , m_probeDensity(probeDensity)
   , m_exclude(exclude)
   , m_dotSpheres(dotSpheres)
+  , m_atomMoverLists(atomMoverLists)
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
   , m_coarseLocations(coarseLocations)
   , m_highScores(highScores)
-{}
+{
+  // Look up the self._dotScorer object and store a pointer to it.
+  boost::python::object dotScorerObj = m_self.attr("_dotScorer");
+  molprobity::probe::DotScorer& temp = boost::python::extract<molprobity::probe::DotScorer&>(dotScorerObj);
+  m_dotScorer = &temp;
+
+  /// @todo We can look up a lot of the parameters above from the self object.
+}
+
+double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a)
+{
+  // Keep track of calculated scores whether or not we're doing caching
+  m_calculatedScores++;
+
+  // Find the maximum radius of the pair of atoms, to limit our neightbor search.
+  double maxRadiusWithoutProbe = m_maxVDWRadius + m_extraAtomInfoMap.getMappingFor(a).getVdwRadius();
+
+  // Find the excluded atoms for this atom. This is a dictionary looked up by i_seq that has a list of atoms.
+  /// @todo We'd like to do this without a copy but we can't get a reference.
+  /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
+  boost::python::list excludeList = boost::python::extract<boost::python::list>(m_exclude[a.data->i_seq]);
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude =
+    boost::python::extract<scitbx::af::shared<iotbx::pdb::hierarchy::atom> >(excludeList);
+
+  // Find the dots for this atom. This is a dictionary looked up by i_seq that returns a DotSphere.
+  /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
+  boost::python::object dotSpheresObj = m_dotSpheres[a.data->i_seq];
+  molprobity::probe::DotSphere& ds = boost::python::extract<molprobity::probe::DotSphere&>(dotSpheresObj);
+
+  // Score the dots for this atom.
+  return m_dotScorer->score_dots(a, m_minOccupancy, m_spatialQuery, maxRadiusWithoutProbe,
+    m_probeRadius, exclude, ds.dots(), m_probeDensity, false).totalScore();
+}
+
+double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a)
+{
+  // Find the vector that is the state of all Movers related to this atom.
+  /// @todo We may want to cache this vector as well.
+  std::vector<unsigned> state;
+  boost::python::list listObj = boost::python::extract<boost::python::list>(m_atomMoverLists[a.data->i_seq])();
+  for (int i = 0; i < boost::python::len(listObj); ++i) {
+    // Find each mover.
+    boost::python::object moverObj = listObj[i];
+    // Go through and look up the state of each mover.
+    boost::python::extract<unsigned> value(m_coarseLocations.get(moverObj));
+    state.push_back(value);
+  }
+
+  // See if we have a cached score for this state.  If so, use it. If not, calculate it and store it.
+  if ((*m_scoreCacheMap)[a.data->i_seq].find(state) != (*m_scoreCacheMap)[a.data->i_seq].end()) {
+    m_cachedScores++;
+    return (*m_scoreCacheMap)[a.data->i_seq][state];
+  } else {
+    double score = scoreAtom(a);
+    (*m_scoreCacheMap)[a.data->i_seq][state] = score;
+    return score;
+  }
+}
 
 double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, size_t index)
 {
@@ -208,9 +272,11 @@ double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, siz
   for (size_t a = 0; a < states.atoms.size(); a++) {
     // There may not be as many deleteMes as there are atoms, so we need to check for that.
     if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
-      boost::python::object result = m_self.attr("_scoreAtom")(states.atoms[a]);
-      double resultValue = boost::python::extract<double>(result);
-      ret += resultValue;
+      if (m_scoreCacheMap) {
+        ret += scoreAtomCached(states.atoms[a]);
+      } else {
+        ret += scoreAtom(states.atoms[a]);
+      }
     }
   }
   return ret;
@@ -597,7 +663,12 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
     boost::add_edge(boost::vertex(interactions(i, 0), clique), boost::vertex(interactions(i, 1), clique), clique);
   }
 
+  // Construct the ScoreCacheMap for the clique before calling and then remove it when done.
+  // This will mean that we only use score caching, and only on our new map, for this clique.
+  m_scoreCacheMap = new ScoreCacheMap();
   std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique);
+  delete m_scoreCacheMap;
+  m_scoreCacheMap = nullptr;
   infoString += ret.second;
 
   // Format and return the result

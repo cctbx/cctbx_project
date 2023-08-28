@@ -46,7 +46,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   the mover list must not be modified after the graph has been constructed because
   that will change the index of its elements, making the graph point to the wrong
   elements (or to elements that no longer exist). (2) A dictionary with atoms as the
-  key that returns the set of Movers that the atom interacts with; each has at least
+  key that returns the list of Movers that the atom interacts with; each has at least
   the Mover that it is a part of and may contain additional ones when they overlap.
   """
 
@@ -92,6 +92,10 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
         extraAtomInfoMap, probeRadius,
         atomMoverSets):
       myGraph.remove_edge( e )
+
+  # Turn the Mover sets into lists to make them easier to traverse
+  for a in atomMoverSets:
+    atomMoverSets[a] = list(atomMoverSets[a])
 
   return myGraph, atomMoverSets
 
