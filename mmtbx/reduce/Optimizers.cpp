@@ -401,7 +401,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
-      oss << "    Score is " << score << " at [";
+      oss << "     Score is " << score << " at [";
       infoString += oss.str();
       for (unsigned i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -446,7 +446,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     m_highScores[*movers[m]] = score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
-      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
+      oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
         << ", max score = " << score << "\n";
       infoString += oss.str();
     }
@@ -574,7 +574,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
-      oss << "    Cut score is " << score << " at[";
+      oss << "     Cut score is " << score << " at[";
       infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -623,7 +623,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     m_highScores[*movers[m]] = score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
-      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
+      oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
         << ", max score = " << score << "\n";
       infoString += oss.str();
     }
@@ -639,6 +639,13 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
 {
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
+
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Optimizing clique of size " << movers.size()
+      << " using atom-score cache\n";
+    infoString += oss.str();
+  }
 
   // Map from pointers to Movers (Python objects) to PositionReturn objects.
   // This must be a map because we're going to deal with subsets of Movers so
