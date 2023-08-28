@@ -22,6 +22,14 @@
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
+static std::string roundToTwoDigits(double d)
+{
+  std::ostringstream oss;
+  oss.precision(2);
+  oss << std::fixed << d;
+  return oss.str();
+}
+
 namespace molprobity {
   namespace reduce {
 
@@ -401,7 +409,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
-      oss << "     Score is " << score << " at [";
+      oss << "     Score is " << roundToTwoDigits(score) << " at [";
       infoString += oss.str();
       for (unsigned i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -418,7 +426,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     if ((score > bestScore) || (bestState.size() == 0)) {
       if (m_verbosity >= 4) {
         std::ostringstream oss;
-        oss << "    New best score is " << score << " at [";
+        oss << "    New best score is " << roundToTwoDigits(score) << " at [";
         infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
           std::ostringstream oss2;
@@ -449,7 +457,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
-        << ", max score = " << score << "\n";
+        << ", max score = " << roundToTwoDigits(score) << "\n";
       infoString += oss.str();
     }
   }
@@ -576,7 +584,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     }
     if (m_verbosity >= 5) {
       std::ostringstream oss;
-      oss << "     Cut score is " << score << " at[";
+      oss << "     Cut score is " << roundToTwoDigits(score) << " at[";
       infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -591,7 +599,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     if ((score > bestScore) || (bestState.size() == 0)) {
       if (m_verbosity >= 4) {
         std::ostringstream oss;
-        oss << "    New best score is " << score << " at [";
+        oss << "    New best score is " << roundToTwoDigits(score) << " at [";
         infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
           std::ostringstream oss2;
@@ -628,7 +636,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
-        << ", max score = " << score << "\n";
+        << ", max score = " << roundToTwoDigits(score) << "\n";
       infoString += oss.str();
     }
   }
