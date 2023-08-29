@@ -734,6 +734,12 @@ class _SingletonOptimizer(object):
             self._doFixup(m.FixUp(loc))
           self._infoString += _ReportTiming(self._verbosity, "fix up Movers")
 
+        #################################################################################
+        # Record the fraction of atoms that were calculated and the fraction that were cached.
+        if _DoCliqueOptimizationInC:
+          self._numCalculated += optC.GetNumCalculatedAtoms()
+          self._numCached += optC.GetNumCachedAtoms()
+
       ################################################################################
       # Deletion of atoms (Hydrogens) that were requested by Histidine FixUp()s,
       # both in the initial setup and determined during optimization.  Phantom Hydrogens
@@ -753,10 +759,7 @@ class _SingletonOptimizer(object):
       self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
 
       #################################################################################
-      # Record the fraction of atoms that were calculated and the fraction that were cached.
-      if _DoCliqueOptimizationInC:
-        self._numCalculated += optC.GetNumCalculatedAtoms()
-        self._numCached += optC.GetNumCachedAtoms()
+      # Report the fraction of atoms that were calculated and the fraction that were cached.
       if self._numCalculated > 0:
         self._infoString += _VerboseCheck(self._verbosity, 1,
             'Calculated : cached atom scores: {} : {}; fraction calculated {:.2f}\n'.format(
