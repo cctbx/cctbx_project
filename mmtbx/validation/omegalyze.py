@@ -434,13 +434,16 @@ class omegalyze(validation):
         data.append((result.chain_id, result.resid, result.resname, result.score, result.xyz))
     return data
 
-  def as_JSON(self):
+  def as_JSON(self, addon_json={}):
     # self.chain_id, "%1s%s %4s%1s to %1s%s %s" % (self.prev_altloc, self.prev_resname, self.prev_resseq, self.prev_icode, self.altloc, self.resname, self.resid),
     #         res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
     # keep names roughly the same
     #check name in program template
     # {model: {1: {chain: {A: {residue_group: {1A: results}}}}}}
-    data = {"validation_type": "omegalyze"}
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "omegalyze"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
