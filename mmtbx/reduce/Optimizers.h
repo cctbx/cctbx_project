@@ -50,6 +50,9 @@ namespace molprobity {
           @param [out] coarseLocations: Dictionary looked up by mover that records the
                   coarse locations of the movers once they are optimized. These are modified
                   to point to the result.
+          @param [out] fineLocations: Dictionary looked up by mover that records the
+                  fine locations of the movers once they are optimized. These are modified
+                  to point to the result.
           @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
       */
       OptimizerC(
@@ -67,15 +70,39 @@ namespace molprobity {
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes,
         boost::python::dict& coarseLocations,
+        boost::python::dict& fineLocations,
         boost::python::dict& highScores);
 
-      /** @brief Function to perform fast optimization on a singleton Mover.
+      /** @brief Initialize the Movers to their 0 coarse states and record initial scores.
+          @param [in] movers: A list of Movers that will be processed.
+          @return: A string describing what was done, which may be empty if verbosity is too small.
+      */
+      std::string Initialize(scitbx::af::shared<boost::python::object> movers);
+
+      /** @brief Function to perform coarse optimization on a singleton Mover.
           @param [in] mover: The Mover to optimize.
           @return A tuple, where the first is the score at the best position for all movers
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
+          side effect: Changes the value of self._highScores[mover] to the score at the fine position
+          selected if one is selected.
       */
       boost::python::tuple OptimizeSingleMoverCoarse(boost::python::object const &mover);
+
+      /** @brief Function to perform fine optimization on a singleton Mover.
+   
+          Find the score for the Mover in all fine orientations by moving each atom into the
+          specified position and summing the scores over all of them.  Determine the best
+          orientation by selecting the highest scorer.
+          Add the preference energy to the sum for each orientation scaled by our preference
+          @param [in] mover: The Mover to optimize.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+          side effect: Changes the value of self._highScores[mover] to the score at the fine position
+          selected if one is selected.
+      */
+      boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover);
 
       /** @brief Function to perform fast optimization on a clique of Movers.
       * 
@@ -123,6 +150,7 @@ namespace molprobity {
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
       boost::python::dict m_coarseLocations;  //< Make a copy so it will persist
+      boost::python::dict m_fineLocations;    //< Make a copy so it will persist
       boost::python::dict m_highScores;       //< Make a copy so it will persist
       molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object
 

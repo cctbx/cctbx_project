@@ -47,9 +47,8 @@ It is used to determine a graph of Movers that may interact, which is used to de
 that must be jointly optimized and "Singletons" which can be independenly optimized.
 
 * **Optimizers.py:** This contains classes to optimize a set of Movers, including adding them
-to a model and determining their optimal states. User code should use the **FastOptimizer** class,
-which is derived from other classes that provide more basic, but slower, approaches to optimization
-so that the different accelerations can be tested independently.
+to a model and determining their optimal states. User code should use the **Optimizer** class,
+which wraps the C++ OptimizerC class.
 
 ## Testing
 

@@ -259,6 +259,7 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
   boost::python::object& deleteMes,
   boost::python::dict& coarseLocations,
+  boost::python::dict& fineLocations,
   boost::python::dict& highScores)
   : m_self(self)
   , m_verbosity(verbosity)
@@ -274,6 +275,7 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
   , m_coarseLocations(coarseLocations)
+  , m_fineLocations(fineLocations)
   , m_highScores(highScores)
   , m_cachedScores(0)
   , m_calculatedScores(0)
@@ -400,6 +402,25 @@ std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positi
   }
 
   return ret;
+}
+
+std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> movers)
+{
+  std::string infoString;
+
+  for (size_t i = 0; i < movers.size(); i++) {
+    boost::python::object const& mover = movers[i];
+
+    molprobity::reduce::PositionReturn coarse =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+    double score = m_preferenceMagnitude * coarse.preferenceEnergies[0];
+    setMoverState(coarse, 0);
+    score += scorePosition(coarse, 0);
+    m_coarseLocations[mover] = 0;
+    m_highScores[mover] = score;
+  }
+
+  return infoString;
 }
 
 std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
@@ -735,7 +756,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object
     }
   }
 
-  // Put the Mover into its final positioin (which may be the same as its initial position).
+  // Put the Mover into its final position (which may be the same as its initial position).
   if (m_verbosity >= 3) {
     std::ostringstream oss;
     oss << "   Setting single Mover to coarse orientation " << maxIndex
@@ -749,6 +770,77 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object
 
   // Record and return the best score for this Mover.
   m_highScores[mover] = maxScore;
+  return boost::python::make_tuple(maxScore, infoString);
+}
+
+boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object const& mover)
+{
+  std::string infoString;
+
+  // Record this in case we need to put it back.
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+
+  boost::python::extract<double> initialScore(m_highScores.get(mover));
+  double maxScore = initialScore;
+  boost::python::extract<unsigned> cl(m_coarseLocations.get(mover));
+  unsigned coarseLoc = cl;
+  molprobity::reduce::PositionReturn fine =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(coarseLoc));
+  if (fine.positions.size() > 0) {
+
+    std::vector<double> scores = fine.preferenceEnergies;
+    for (size_t i = 0; i < scores.size(); i++) {
+      scores[i] *= m_preferenceMagnitude;
+    }
+
+    for (size_t i = 0; i < fine.positions.size(); i++) {
+      infoString += setMoverState(fine, i);
+      scores[i] += scorePosition(fine, i);
+      if (m_verbosity >= 5) {
+        std::ostringstream oss;
+        oss << "     Mover score at fine orientation " << i << " = " << roundToTwoDigits(scores[i]) << "\n";
+        infoString += oss.str();
+      }
+    }
+
+    // Find the maximum score, keeping track of the index of the maximum score.
+    maxScore = scores[0];
+    unsigned maxIndex = 0;
+    for (size_t i = 1; i < scores.size(); i++) {
+      if (scores[i] > maxScore) {
+        maxScore = scores[i];
+        maxIndex = i;
+      }
+    }
+
+    // Put the Mover into its final position (which may be back to its initial position)
+    // and update the high score.
+    if (maxScore > m_highScores[mover]) {
+      m_fineLocations[mover] = maxIndex;
+      if (m_verbosity >= 3) {
+        std::ostringstream oss;
+        oss << "   Setting Mover to fine orientation " << maxIndex
+          << ", max score = " << roundToTwoDigits(maxScore)
+          << " (coarse score " << roundToTwoDigits(initialScore)
+          << ")\n";
+        infoString += oss.str();
+      }
+      setMoverState(fine, maxIndex);
+
+      // Record the high score for this Mover.
+      m_highScores[mover] = maxScore;
+    } else {
+      // Put us back into the initial coarse location and don't change the high score
+      setMoverState(coarse, coarseLoc);
+      if (m_verbosity >= 3) {
+        infoString += "   Leaving Mover at coarse orientation\n";
+      }
+      // Leave the m_fineLocations at its original None value.
+    }
+  }
+
+  // Return the result
   return boost::python::make_tuple(maxScore, infoString);
 }
 

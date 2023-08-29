@@ -1212,7 +1212,7 @@ NOTES:
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
-      opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+      opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
         self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
@@ -1465,7 +1465,7 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
@@ -1588,7 +1588,7 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
             self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
