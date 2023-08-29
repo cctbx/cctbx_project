@@ -54,7 +54,7 @@ SpatialQuery::SpatialQuery(Point lowerBounds, Point upperBounds, Point binSize)
   initialize(lowerBounds, upperBounds, binSize);
 }
 
-SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms)
+SpatialQuery::SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms)
 {
   // Compute the parameters needed and initialize the grid
   Point lowerBounds(1e10, 1e10, 1e10);
