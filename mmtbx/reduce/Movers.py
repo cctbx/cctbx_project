@@ -482,9 +482,13 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     def atomID(a):
       # Return the ID of the atom, which includes its chain, residue name,
       # residue number, atom name, and alternate separated by spaces. This
-      # is used to sort the atoms.
-      return ( a.parent().parent().parent().id + a.parent().resname +
-        str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+      # is used to sort the atoms. This must work in the case where we have
+      # test atoms that are not completely fleshed out.
+      try:
+        return ( a.parent().parent().parent().id + a.parent().resname +
+          str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+      except Exception:
+        return ""
     #
     ###########################
 
