@@ -591,6 +591,19 @@ class _SingletonOptimizer(object):
           self._moverInfo[m] += " Initial score: {:.2f}".format(score)
 
         ################################################################################
+        # Construct C++ optimizer if we're going to use it.
+        self._coarseLocations = {}
+        for m in self._movers:
+          self._coarseLocations[m] = 0
+        global _DoCliqueOptimizationInC
+        if _DoCliqueOptimizationInC:
+          optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+                            self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
+                            self._excludeDict, self._dotSpheres, self._atomMoverLists,
+                            self._spatialQuery, self._extraAtomInfo, self._deleteMes,
+                            self._coarseLocations, self._highScores)
+
+        ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
         # the multi-element Cliques and then to do independent fine adjustment of all
         # Cliques.  Subclasses should overload the called routines, but the global approach
@@ -600,9 +613,6 @@ class _SingletonOptimizer(object):
 
         # Do coarse optimization on the singleton Movers.  Record the selected coarse
         # index.
-        self._coarseLocations = {}
-        for m in self._movers:
-          self._coarseLocations[m] = 0
         for s in singletonCliques:
           mover = self._interactionGraph.vertex_label(s[0])
           ret = self._optimizeSingleMoverCoarse(mover)
@@ -610,13 +620,6 @@ class _SingletonOptimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 
         # Do coarse optimization on the multi-Mover Cliques.
-        global _DoCliqueOptimizationInC
-        if _DoCliqueOptimizationInC:
-          optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
-                            self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
-                            self._excludeDict, self._dotSpheres, self._atomMoverLists,
-                            self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                            self._coarseLocations, self._highScores)
         for g in groupCliques:
           movers = [self._interactionGraph.vertex_label(i) for i in g]
           subset = _subsetGraph(self._interactionGraph, movers)
@@ -1437,7 +1440,8 @@ class _BruteForceOptimizer(_SingletonOptimizer):
       self._coarseLocations[m] = bestState[i]
       self._highScores[m] = self._preferenceMagnitude * states[i].preferenceEnergies[bestState[i]]
       self._highScores[m] += self._scorePosition(states[i], bestState[i])
-      self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover in clique to coarse orientation {}".format(bestState[i])+
+      self._infoString += _VerboseCheck(self._verbosity, 3,
+        "Setting Mover in clique to coarse orientation {}".format(bestState[i])+
         ", max score = {:.2f}\n".format(self._highScores[m]))
       ret += self._highScores[m]
     return ret
