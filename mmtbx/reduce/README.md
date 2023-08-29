@@ -28,7 +28,7 @@ subcliques and optimizes them independently, then combines the results.
 
 * **boost_python/reduce_bpl.cpp:** As is usual for CCTBX projects, this file contains the wrapper
 code for the above functions that uses Boost Python to wrap them to be called from Python. It also
-declares a wrapper for the **RotatePointDegreesAroundAxisDir** function, which wraps
+defines a wrapper for the **RotatePointDegreesAroundAxisDir** function, which wraps
 **scitbx::math::rotate_point_around_axis()** to quickly rotate a point around an axis.
 
 ## Python Modules
