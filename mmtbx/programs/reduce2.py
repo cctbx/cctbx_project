@@ -272,7 +272,7 @@ def _AddPosition(a, tag, group, partner=None):
     altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
   return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.lower(),               # Atom name
+    a.name.lower(),                       # Atom name
     altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
