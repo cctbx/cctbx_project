@@ -5,6 +5,25 @@ from libtbx.program_template import ProgramTemplate
 
 from iotbx.pdb import common_residue_names_get_class as get_class
 
+class json_exchange(list):
+  def set_style(self, style=None):
+    assert style
+
+  def add_title(self, title):
+    self.append({'title': title})
+
+  def add_paragraph(self, paragraph):
+    self.append({'paragraph' : paragraph})
+
+  def add_table(self, table):
+    '''
+    Do some checking
+    Add features for caption and Coot interactions
+    Styles?
+    list of centres for coot/chimeraX
+    '''
+    self.append({'table':table})
+
 class b_factor_data(dict):
   def mean(self):
     rc = {}
@@ -64,7 +83,7 @@ def get_bs(model, sel_str):
   bs = atoms.extract_b()
   return bs
 
-def process_water_b_factors(model, probe_ion=None):
+def process_water_b_factors(model, probe_ion=None, log=None):
   model.process(make_restraints=True)
   hierarchy = model.get_hierarchy()
   atoms = model.get_atoms()
@@ -77,8 +96,14 @@ def process_water_b_factors(model, probe_ion=None):
   rc = {}
   for id_str, sel_str in generate_selections(hierarchy, probe_ion=probe_ion):
     bs_selected = get_bs(model, sel_str)
+    if bs_selected is None:
+      print('\n\tNo %s molecules found' % sel_str, file=log)
+      continue
     mean = bs_selected.min_max_mean().mean
     ssd = bs_selected.sample_standard_deviation()
+    if ssd==0:
+      print('\n\tNo atoms selected')
+      continue
     for ag in hierarchy.atom_groups():
       if not is_interest_atom_group(ag, probe_ion=probe_ion): continue
       if id_str is not None:
@@ -103,7 +128,7 @@ def process_water_b_factors(model, probe_ion=None):
   print(' Debugging ')
   print(rc)
   for attr in ['within', 'water']:
-    d = dict(sorted(rc.items(), key=lambda item: item[1][attr]))
+    d = dict(sorted(rc.items(), key=lambda item: item[1].get(attr,1e9)))
     for i, (key, item) in enumerate(d.items()):
       if item.get(attr, 1e9)>-1.: break
       print('  %s :: %s' % (key,_format_item(item, attr)))
@@ -153,30 +178,32 @@ Usage examples:
     hd_selection = model.get_hd_selection()
     model = model.select(~hd_selection)
     self.results = process_water_b_factors(model,
-                                           probe_ion=self.params.water_b_factors.probe_ion)
+                                           probe_ion=self.params.water_b_factors.probe_ion,
+                                           log=log,
+                                           )
     #
     means = self.results.mean()
     i_seqs = self.results.find_low(self.params.water_b_factors.fraction_limit)
     #
     # transfer to results
     #
-    summary=[]
-    summary.append({'title':'Table of water centres with low B-factors'})
-    summary.append({'paragraph' : '''
+    summary=json_exchange()
+    summary.add_title('Table of water centres with low B-factors')
+    summary.add_paragraph('''
 In <i>macromolecular</i> crystallographic structure refinement, water molecule
 that refine to lower than average B-factors are often actually ion sites.
-'''})
-    summary.append({'paragraph' : 'The waters listed below are candidates.'})
+''')
+    summary.add_paragraph('The waters listed below are candidates.')
     atoms = hierarchy.atoms()
+    name = 'water'
+    if self.params.water_b_factors.probe_ion:
+      name = self.params.water_b_factors.probe_ion.upper()
     if i_seqs:
       print('-'*80)
       print('\n  Displaying %d results\n' % len(i_seqs), file=log)
     else:
-      name = 'water'
-      if self.params.water_b_factors.probe_ion:
-        name = self.params.water_b_factors.probe_ion.upper()
       print('\n  No low %s found' % name, file=log)
-    table = [['i_seq', 'chain', 'resid', 'name', 'B-factor', 'mean', 'fraction of mean']]
+    table = []
     for chain_id, t_i_seqs in i_seqs.items():
       print('  Low %s in chain %s : %s mean=%5.2f' % (name,
                                                       chain_id,
@@ -196,7 +223,9 @@ that refine to lower than average B-factors are often actually ion sites.
         resname = atom.parent().resname
         mean = '%5.2f' % means[chain_id]
         table.append([i_seq, chain_id, resseq, resname, b, mean, fb])
-    summary.append({'table':table})
+    if table:
+      table.insert(0,['i_seq', 'chain', 'resid', 'name', 'B-factor', 'mean', 'fraction of mean'])
+    summary.add_table(table)
 
     self.results['summary']=summary
     self.get_json()

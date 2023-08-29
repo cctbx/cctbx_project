@@ -278,7 +278,6 @@ def reverse_shift(original_model, moved_model):
   ph.atoms().set_xyz(sites_cart)
 
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
-  from cctbx.maptbx.box import shift_and_box_model
   if WRITE_STEPS_GLOBAL: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
   #
