@@ -237,14 +237,13 @@ double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a)
   // Find the excluded atoms for this atom. This is a dictionary looked up by i_seq that has a list of atoms.
   /// @todo We'd like to do this without a copy but we can't get a reference.
   /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
-  boost::python::list excludeList = boost::python::extract<boost::python::list>(m_exclude[a.data->i_seq]);
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude =
-    boost::python::extract<scitbx::af::shared<iotbx::pdb::hierarchy::atom> >(excludeList);
+    boost::python::extract<scitbx::af::shared<iotbx::pdb::hierarchy::atom> >(m_exclude[a.data->i_seq]);
 
   // Find the dots for this atom. This is a dictionary looked up by i_seq that returns a DotSphere.
   /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
-  boost::python::object dotSpheresObj = m_dotSpheres[a.data->i_seq];
-  molprobity::probe::DotSphere& ds = boost::python::extract<molprobity::probe::DotSphere&>(dotSpheresObj);
+  molprobity::probe::DotSphere& ds =
+    boost::python::extract<molprobity::probe::DotSphere&>(m_dotSpheres[a.data->i_seq]);
 
   // Score the dots for this atom.
   return m_dotScorer->score_dots(a, m_minOccupancy, m_spatialQuery, maxRadiusWithoutProbe,

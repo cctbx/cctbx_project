@@ -1044,7 +1044,7 @@ class _SingletonOptimizer(object):
             maxDist = 4.0
             nearby = self._spatialQuery.neighbors(neighbor.xyz, self._extraAtomInfo.getMappingFor(neighbor).vdwRadius, maxDist)
 
-            # Check each nearby atom to see if it distance from the neighbor is within
+            # Check each nearby atom to see if its distance from the neighbor is within
             # the sum of the hydrogen-bond length of the neighbor atom, the radius of
             # a polar Hydrogen, and the radius of the nearby atom, indicating potential
             # overlap.
