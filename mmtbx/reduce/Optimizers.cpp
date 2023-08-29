@@ -313,8 +313,8 @@ std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positi
   // Note that there may be fewer entries than atoms, but they all correspond
   // so we can look up the atom by index in the atoms array just like above.
   for (size_t i = 0; i < positionReturn.extraInfos[index].size(); i++) {
-    iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
-    m_extraAtomInfoMap.setMappingFor(a, positionReturn.extraInfos[index][i]);
+    m_extraAtomInfoMap.setMappingFor(positionReturn.atoms[i],
+      positionReturn.extraInfos[index][i]);
   }
 
   // Manage the deletion status of each atom, including ensuring
@@ -323,19 +323,18 @@ std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positi
   // so we can look up the atom by index in the atoms array just like above.
   for (size_t i = 0; i < positionReturn.deleteMes[index].size(); i++) {
     iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
-    bool doDelete = boost::python::extract<bool>(m_deleteMes.contains(a));
+    bool doDelete = positionReturn.deleteMes[index][i];
     if (doDelete) {
       m_spatialQuery.remove(a);
       m_deleteMes.attr("add")(a);
       if (m_verbosity >= 10) {
         ret += "          Deleting atom\n";
       }
-    }
-    else {
+    } else {
       m_spatialQuery.add(a);
       m_deleteMes.attr("discard")(a);
       if (m_verbosity >= 10) {
-        ret += "           Ensuring deletable atom is present\n";
+        ret += "          Ensuring deletable atom is present\n";
       }
     }
   }
@@ -449,14 +448,14 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   for (size_t m = 0; m < movers.size(); m++) {
     infoString += setMoverState(states[movers[m]], bestState[m]);
     m_coarseLocations[*movers[m]] = bestState[m];
-    double score = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
-    score += scorePosition(states[movers[m]], bestState[m]);
-    m_highScores[*movers[m]] = score;
-    ret += score;
+    double myScore = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
+    myScore += scorePosition(states[movers[m]], bestState[m]);
+    m_highScores[*movers[m]] = myScore;
+    ret += myScore;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
-        << ", max score = " << roundToTwoDigits(score) << "\n";
+        << ", max score = " << roundToTwoDigits(myScore) << "\n";
       infoString += oss.str();
     }
   }
