@@ -949,7 +949,7 @@ class _SingletonOptimizer(object):
         self._setMoverState(fine, i)
 
         scores[i] += self._scorePosition(fine, i)
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Single Mover score at orientation {} = {:.2f}\n".format(i,scores[i]))
+        self._infoString += _VerboseCheck(self._verbosity, 5,"Mover score at fine orientation {} = {:.2f}\n".format(i,scores[i]))
 
       # Find the maximum score, keeping track of the best score and its index.
       maxScore = scores[0]
@@ -963,7 +963,7 @@ class _SingletonOptimizer(object):
       # and update the high score.
       if maxScore > self._highScores[mover]:
         self._fineLocations[mover] = maxIndex
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting single Mover to fine orientation {}".format(maxIndex)+
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover to fine orientation {}".format(maxIndex)+
           ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
         self._setMoverState(fine, maxIndex)
 
@@ -972,7 +972,7 @@ class _SingletonOptimizer(object):
       else:
         # Put us back to the initial coarse location and don't change the high score.
         self._fineLocations[mover] = None
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Leaving single Mover at coarse orientation\n")
+        self._infoString += _VerboseCheck(self._verbosity, 3,"Leaving Mover at coarse orientation\n")
         self._setMoverState(coarse, self._coarseLocations[mover])
     return maxScore
 
