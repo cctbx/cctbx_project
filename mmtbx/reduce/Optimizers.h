@@ -69,6 +69,14 @@ namespace molprobity {
         boost::python::dict& coarseLocations,
         boost::python::dict& highScores);
 
+      /** @brief Function to perform fast optimization on a singleton Mover.
+          @param [in] mover: The Mover to optimize.
+          @return A tuple, where the first is the score at the best position for all movers
+                  and the second is a string describing what was done, which may be empty
+                  if verbosity is too small.
+      */
+      boost::python::tuple OptimizeSingleMoverCoarse(boost::python::object const &mover);
+
       /** @brief Function to perform fast optimization on a clique of Movers.
       * 
       *   This is the main function that is called from Python. It unwraps the

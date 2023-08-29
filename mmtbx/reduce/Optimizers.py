@@ -615,7 +615,12 @@ class _SingletonOptimizer(object):
         # index.
         for s in singletonCliques:
           mover = self._interactionGraph.vertex_label(s[0])
-          ret = self._optimizeSingleMoverCoarse(mover)
+          if _DoCliqueOptimizationInC:
+            (bestScore, infoString) = optC.OptimizeSingleMoverCoarse(mover)
+            self._infoString += infoString
+            ret = bestScore
+          else:
+            ret = self._optimizeSingleMoverCoarse(mover)
           self._infoString += _VerboseCheck(self._verbosity, 1,"Singleton optimized with score {:.2f}\n".format(ret))
         self._infoString += _ReportTiming(self._verbosity, "optimize singletons (coarse)")
 

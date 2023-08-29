@@ -137,6 +137,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , boost::python::dict&
       >()
     )
+    .def("OptimizeSingleMoverCoarse", &OptimizerC::OptimizeSingleMoverCoarse)
     .def("OptimizeCliqueCoarse", &OptimizerC::OptimizeCliqueCoarse)
     .def("GetNumCalculatedAtoms", &OptimizerC::GetNumCalculatedAtoms)
     .def("GetNumCachedAtoms", &OptimizerC::GetNumCachedAtoms)

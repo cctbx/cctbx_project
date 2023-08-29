@@ -30,6 +30,66 @@ static std::string roundToTwoDigits(double d)
   return oss.str();
 }
 
+static std::string stripWhitespace(const std::string& input) {
+  std::string result = input;
+
+  // Remove leading whitespace
+  result.erase(result.begin(), std::find_if(result.begin(), result.end(), [](unsigned char ch) {
+    return !std::isspace(ch);
+    }));
+
+  // Remove trailing whitespace
+  result.erase(std::find_if(result.rbegin(), result.rend(), [](unsigned char ch) {
+    return !std::isspace(ch);
+    }).base(), result.end());
+
+  return result;
+}
+
+static std::string toUpperCase(const std::string& input) {
+  std::string result = input;
+  std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+  return result;
+}
+
+static std::string fromSmall(const char* buf, unsigned maxLen)
+{
+  std::string ret;
+
+  // Scan through the buffer. As long as we do not find null termination, continue
+  // copying into the string.
+  for (unsigned i = 0; i < maxLen; i++) {
+    if (buf[i] == '\0') {
+      break;
+    }
+    ret += buf[i];
+  }
+  return ret;
+}
+
+static std::string resNameAndID(iotbx::pdb::hierarchy::atom const& a)
+{
+  std::string chainID = a.parent().get().parent().get().parent().get().data->id;
+  std::string resName = toUpperCase(stripWhitespace(a.parent().get().data->resname));
+  std::string resID = stripWhitespace(fromSmall(a.parent().get().parent().get().data->resseq.elems, 4));
+  std::string altLoc = stripWhitespace(fromSmall(a.parent().get().data->altloc.elems,1));
+  // Don't print the code if it is a space (blank).
+  std::string insertionCode = stripWhitespace(fromSmall(a.parent().get().parent().get().data->icode.elems,1));
+  return "chain " + chainID + " " + altLoc + resName + " " + resID + insertionCode;
+}
+
+static std::string describeMover(boost::python::object const& mover,
+  iotbx::pdb::hierarchy::atom const& atom)
+{
+  // Extract the type name between the quotes and then the last class name from
+  // the module path.
+  boost::python::object objectType = mover.attr("__class__");
+  std::string typeName =
+    boost::python::extract<std::string>(objectType.attr("__name__"));
+
+  return typeName + ' ' + resNameAndID(atom);
+}
+
 namespace molprobity {
   namespace reduce {
 
@@ -641,6 +701,55 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
 
   // Return the result
   return std::pair<double, std::string>(ret, infoString);
+}
+
+boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object const& mover)
+{
+  // Information to pass back about what we did, if verbosity is high enough.
+  std::string infoString;
+
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+  std::vector<double> scores = coarse.preferenceEnergies;
+  for (size_t i = 0; i < scores.size(); i++) {
+    scores[i] *= m_preferenceMagnitude;
+  }
+  for (size_t i = 0; i < coarse.positions.size(); i++) {
+    infoString += setMoverState(coarse, i);
+    scores[i] += scorePosition(coarse, i);
+    if (m_verbosity >= 5) {
+      std::ostringstream oss;
+      oss << "     Single Mover " << describeMover(mover, coarse.atoms[0]) << " score at orientation " << i
+        << " = " << roundToTwoDigits(scores[i]) << "\n";
+      infoString += oss.str();
+    }
+  }
+
+  // Find the maximum score, keeping track of the index of the maximum score.
+  double maxScore = scores[0];
+  unsigned maxIndex = 0;
+  for (size_t i = 1; i < scores.size(); i++) {
+    if (scores[i] > maxScore) {
+      maxScore = scores[i];
+      maxIndex = i;
+    }
+  }
+
+  // Put the Mover into its final positioin (which may be the same as its initial position).
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Setting single Mover to coarse orientation " << maxIndex
+      << ", max score = " << roundToTwoDigits(maxScore)
+      << " (initial score " << roundToTwoDigits(scores[0])
+      << ")\n";
+    infoString += oss.str();
+  }
+  infoString += setMoverState(coarse, maxIndex);
+  m_coarseLocations[mover] = maxIndex;
+
+  // Record and return the best score for this Mover.
+  m_highScores[mover] = maxScore;
+  return boost::python::make_tuple(maxScore, infoString);
 }
 
 boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
