@@ -476,9 +476,21 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # number of elements in each clique, but for now we try all coarse orientations and all
     # acceptor directions.
 
+    ###########################
+    # Helper utility function to sort atoms consistently from run to run so that we get
+    # the same ordering on coarse angles.
+    def atomID(a):
+      # Return the ID of the atom, which includes its chain, residue name,
+      # residue number, atom name, and alternate separated by spaces. This
+      # is used to sort the atoms.
+      return ( a.parent().parent().parent().id + a.parent().resname +
+        str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+    #
+    ###########################
+
     # Compute the dihedral angle from the Hydrogen to the potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
-    for a in potentialAcceptors:
+    for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
       # The degrees can be None in degenerate cases.  We avoid adding an entry in that case.
