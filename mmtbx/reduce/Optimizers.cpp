@@ -12,7 +12,6 @@
 // limitations under the License.
 
 #include "Optimizers.h"
-#include "../probe/DotSpheres.h"
 #include <list>
 #include <string>
 #include <iostream>
@@ -247,26 +246,31 @@ void OptimizerC::findVertexCut(CliqueGraph const& graph,
   cutMovers.clear();
 }
 
-OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double preferenceMagnitude,
-  double maxVDWRadius,
-  double minOccupancy,
-  double probeRadius,
-  double probeDensity,
-  boost::python::dict& exclude,
-  boost::python::dict& dotSpheres,
-  boost::python::dict& atomMoverLists,
-  molprobity::probe::SpatialQuery& spatialQuery,
-  molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-  boost::python::object& deleteMes)
-  : m_self(self)
-  , m_verbosity(verbosity)
+OptimizerC::OptimizerC(
+    int verbosity,
+    double preferenceMagnitude,
+    double maxVDWRadius,
+    double minOccupancy,
+    double probeRadius,
+    double probeDensity,
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms,
+    boost::python::dict& exclude,
+    boost::python::object& dotScorer,
+    boost::python::object& dotSphereCache,
+    boost::python::dict& atomMoverLists,
+    molprobity::probe::SpatialQuery& spatialQuery,
+    molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+    boost::python::object& deleteMes)
+  : m_verbosity(verbosity)
   , m_preferenceMagnitude(preferenceMagnitude)
   , m_maxVDWRadius(maxVDWRadius)
   , m_minOccupancy(minOccupancy)
   , m_probeRadius(probeRadius)
   , m_probeDensity(probeDensity)
+  , m_atoms(atoms)
   , m_exclude(exclude)
-  , m_dotSpheres(dotSpheres)
+  , m_dotScorer(boost::python::extract<molprobity::probe::DotScorer&>(dotScorer))
+  , m_dotSphereCache(boost::python::extract<molprobity::probe::DotSphereCache&>(dotSphereCache))
   , m_atomMoverLists(atomMoverLists)
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
@@ -274,12 +278,11 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_cachedScores(0)
   , m_calculatedScores(0)
 {
-  // Look up the self._dotScorer object and store a pointer to it.
-  boost::python::object dotScorerObj = m_self.attr("_dotScorer");
-  molprobity::probe::DotScorer& temp = boost::python::extract<molprobity::probe::DotScorer&>(dotScorerObj);
-  m_dotScorer = &temp;
-
-  /// @todo We can look up a lot of the parameters above from the self object.
+  // Fill in the dot-sphere map for all of the atoms.
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    m_dotSpheres[m_atoms[i].data->i_seq] =
+      m_dotSphereCache.get_sphere( m_extraAtomInfoMap.getMappingFor(m_atoms[i]).getVdwRadius() ).dots();
+  }
 }
 
 double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a)
@@ -296,14 +299,9 @@ double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a)
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude =
     boost::python::extract<scitbx::af::shared<iotbx::pdb::hierarchy::atom> >(m_exclude[a.data->i_seq]);
 
-  // Find the dots for this atom. This is a dictionary looked up by i_seq that returns a DotSphere.
-  /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
-  molprobity::probe::DotSphere& ds =
-    boost::python::extract<molprobity::probe::DotSphere&>(m_dotSpheres[a.data->i_seq]);
-
   // Score the dots for this atom.
-  return m_dotScorer->score_dots(a, m_minOccupancy, m_spatialQuery, maxRadiusWithoutProbe,
-    m_probeRadius, exclude, ds.dots(), m_probeDensity, false).totalScore();
+  return m_dotScorer.score_dots(a, m_minOccupancy, m_spatialQuery, maxRadiusWithoutProbe,
+    m_probeRadius, exclude, m_dotSpheres[a.data->i_seq], m_probeDensity, false).totalScore();
 }
 
 double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a)

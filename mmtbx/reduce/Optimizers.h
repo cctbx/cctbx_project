@@ -24,7 +24,9 @@
 #include <utility>
 #include <boost/python.hpp>
 #include <boost/graph/adjacency_list.hpp>
+#include "../probe/Common.h"
 #include "../probe/Scoring.h"
+#include "../probe/DotSpheres.h"
 #include "../probe/SpatialQuery.h"
 #include "PositionReturn.h"
 
@@ -34,30 +36,32 @@ namespace molprobity {
     class OptimizerC {
     public:
       /** @brief Constructor.
-          @param [in] self: The Python object that constructed us. /// @todo Pass all values and remove this.
           @param [in] verbosity: Controls how much information is added to the string.
           @param [in] preferenceMagnitude: Multiples the preference energies, so that we
                   can scale down their importance if we want.
           @param [in] minOccupancy: The minimum occupancy for an atom to be considered.
           @param [in] probeRadius: The radius of the probe sphere, in A.
           @param [in] probeDensity: The density of the probe sphere, in A^-3.
+          @param [in] atoms: List of atoms.
           @param [in] exclude: Dictionary of atoms to exclude from collisions, looked up by i_seq.
-          @param [in] dotSpheres: Dictionary of dot spheres, looked up by i_seq.
+          @param [in] dotScorer: Dot scorer to use.
+          @param [in] dotSphereCache: Dot sphere cache to use to generate spheres for atoms.
           @param [in] atomMoverLists: Dictionary of list of movers, looked up by i_seq.
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
       */
       OptimizerC(
-        boost::python::object& self,
         int verbosity,
         double preferenceMagnitude,
         double maxVDWRadius,
         double minOccupancy,
         double probeRadius,
         double probeDensity,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms,
         boost::python::dict& exclude,
-        boost::python::dict& dotSpheres,
+        boost::python::object& dotScorer,
+        boost::python::object& dotSphereCache,
         boost::python::dict& atomMoverLists,
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
@@ -127,6 +131,11 @@ namespace molprobity {
         return m_highScores[mover.ptr()];
       }
 
+      /// @brief Returns the dots for a specified atom i_seq.
+      scitbx::af::shared<molprobity::probe::Point> GetDots(unsigned atom_i_seq) {
+        return m_dotSpheres[atom_i_seq];
+      }
+
       /// @brief Returns the number of calculated atom scores within cliques
       size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
 
@@ -141,23 +150,25 @@ namespace molprobity {
       static std::string Test();
 
     protected:
-      boost::python::object m_self;           //< Make a copy so it will persist
       int m_verbosity;
       double m_maxVDWRadius;
       double m_preferenceMagnitude;
       double m_minOccupancy;
       double m_probeRadius;
       double m_probeDensity;
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& m_atoms;
       boost::python::dict m_exclude;          //< Make a copy so it will persist
-      boost::python::dict m_dotSpheres;       //< Make a copy so it will persist
-      boost::python::dict m_atomMoverLists;    //< Make a copy so it will persist
+      molprobity::probe::DotScorer& m_dotScorer;
+      molprobity::probe::DotSphereCache& m_dotSphereCache;
+      boost::python::dict m_atomMoverLists;   //< Make a copy so it will persist
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
       std::map<PyObject*, unsigned> m_coarseLocations;
       std::map<PyObject*, int> m_fineLocations;
       std::map<PyObject*, double> m_highScores;
-      molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object
+
+      std::map<unsigned, scitbx::af::shared<molprobity::probe::Point> > m_dotSpheres;
 
       /// Caches scores for atoms that have already been calculated based on the
       /// values of the Movers that they depend on.

@@ -120,15 +120,17 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   def("InteractionGraph_test", InteractionGraph_test,
     "Test all classes and functions defined in InteractionGraph.h.");
 
-  class_<OptimizerC>("OptimizerC", init< boost::python::object&
-      , int
+  class_<OptimizerC>("OptimizerC", init<
+        int
       , double
       , double
       , double
       , double
       , double
+      , scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &
       , boost::python::dict&
-      , boost::python::dict&
+      , boost::python::object&
+      , boost::python::object&
       , boost::python::dict&
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
@@ -142,6 +144,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     .def("GetCoarseLocation", &OptimizerC::GetCoarseLocation)
     .def("GetFineLocation", &OptimizerC::GetFineLocation)
     .def("GetHighScore", &OptimizerC::GetHighScore)
+    .def("GetDots", &OptimizerC::GetDots)
     .def("GetNumCalculatedAtoms", &OptimizerC::GetNumCalculatedAtoms)
     .def("GetNumCachedAtoms", &OptimizerC::GetNumCachedAtoms)
     ;

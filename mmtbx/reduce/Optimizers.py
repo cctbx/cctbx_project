@@ -533,14 +533,9 @@ class Optimizer(object):
         atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
 
         ################################################################################
-        # Construct dot-spheres for each atom that we may need to find interactions for.
+        # Construct dot-sphere cache.
         # This must be done after the phantom Hydrogens have been added so that they will be included.
-        # Look up dot-spheres by i_seq.
         dotSphereCache = Helpers.createDotSphereCache(self._probePhil)
-        self._dotSpheres = {}
-        for a in self._atoms:
-          self._dotSpheres[a.i_seq] = dotSphereCache.get_sphere(self._extraAtomInfo.getMappingFor(a).vdwRadius)
-        self._infoString += _ReportTiming(self._verbosity, "compute dot spheres")
 
         ################################################################################
         # Contruct the DotScorer object we'll use to score the dots.
@@ -549,10 +544,12 @@ class Optimizer(object):
 
         ################################################################################
         # Construct C++ optimizer.
-        optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
+        optC = OptimizerC(self._verbosity, self._preferenceMagnitude,
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
-                          self._excludeDict, self._dotSpheres, self._atomMoverLists,
+                          self._atoms,
+                          self._excludeDict, self._dotScorer, dotSphereCache, self._atomMoverLists,
                           self._spatialQuery, self._extraAtomInfo, self._deleteMes)
+        self._infoString += _ReportTiming(self._verbosity, "construct OptimizerC")
 
         ################################################################################
         # Compute and record the initial score for each Mover in its info
@@ -618,8 +615,8 @@ class Optimizer(object):
           for atom in coarse.atoms:
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
-              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq], self._dotSpheres[atom.i_seq].dots(),
-              self._probeDensity, False)
+              maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq],
+              optC.GetDots(atom.i_seq), self._probeDensity, False)
             score += res.totalScore()
             if res.hasBadBump:
               clash = True
