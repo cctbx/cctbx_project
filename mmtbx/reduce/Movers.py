@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022 Richardson Lab at Duke University
+#                Copyright 2021-2023 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -370,7 +370,7 @@ class _MoverRotator(object):
       return "Unrecognized state . ."
     else:
       fineOffset = 0
-      if fineIndex is not None:
+      if fineIndex is not None and fineIndex >= 0:
         fineOffset = self._fineAngles[fineIndex]
       angle = self._offset + self._coarseAngles[coarseIndex] + fineOffset
       while angle > 180: angle -= 360

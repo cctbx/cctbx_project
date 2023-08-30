@@ -258,7 +258,6 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   molprobity::probe::SpatialQuery& spatialQuery,
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
   boost::python::object& deleteMes,
-  boost::python::dict& fineLocations,
   boost::python::dict& highScores)
   : m_self(self)
   , m_verbosity(verbosity)
@@ -273,7 +272,6 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
-  , m_fineLocations(fineLocations)
   , m_highScores(highScores)
   , m_cachedScores(0)
   , m_calculatedScores(0)
@@ -407,6 +405,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
   std::string infoString;
 
   m_coarseLocations.clear();
+  m_fineLocations.clear();
 
   for (size_t i = 0; i < movers.size(); i++) {
     boost::python::object const& mover = movers[i];
@@ -417,6 +416,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
     setMoverState(coarse, 0);
     score += scorePosition(coarse, 0);
     m_coarseLocations[mover.ptr()] = 0;
+    m_fineLocations[mover.ptr()] = -1;
     m_highScores[mover] = score;
   }
 
@@ -816,7 +816,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
     // Put the Mover into its final position (which may be back to its initial position)
     // and update the high score.
     if (maxScore > m_highScores[mover]) {
-      m_fineLocations[mover] = maxIndex;
+      m_fineLocations[mover.ptr()] = maxIndex;
       if (m_verbosity >= 3) {
         std::ostringstream oss;
         oss << "   Setting Mover to fine orientation " << maxIndex
@@ -835,7 +835,8 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
       if (m_verbosity >= 3) {
         infoString += "   Leaving Mover at coarse orientation\n";
       }
-      // Leave the m_fineLocations at its original None value.
+      // No fine location
+      m_fineLocations[mover.ptr()] = -1;
     }
   }
 

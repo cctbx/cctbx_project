@@ -47,9 +47,6 @@ namespace molprobity {
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
-          @param [out] fineLocations: Dictionary looked up by mover that records the
-                  fine locations of the movers once they are optimized. These are modified
-                  to point to the result.
           @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
       */
       OptimizerC(
@@ -66,7 +63,6 @@ namespace molprobity {
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes,
-        boost::python::dict& fineLocations,
         boost::python::dict& highScores);
 
       /** @brief Initialize the Movers to their 0 coarse states and record initial scores.
@@ -123,6 +119,11 @@ namespace molprobity {
         return m_coarseLocations[mover.ptr()];
       }
 
+      /// @brief Returns the fine location of the specified mover, -1 if none.
+      int GetFineLocation(boost::python::object const& mover) {
+        return m_fineLocations[mover.ptr()];
+      }
+
       /// @brief Returns the number of calculated atom scores within cliques
       size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
 
@@ -151,7 +152,7 @@ namespace molprobity {
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
       std::map<PyObject*, unsigned> m_coarseLocations;
-      boost::python::dict m_fineLocations;    //< Make a copy so it will persist
+      std::map<PyObject*, int> m_fineLocations;
       boost::python::dict m_highScores;       //< Make a copy so it will persist
       molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object
 

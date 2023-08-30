@@ -555,14 +555,10 @@ class Optimizer(object):
 
         ################################################################################
         # Construct C++ optimizer.
-        self._fineLocations = {}
-        for m in self._movers:
-          self._fineLocations[m] = None
         optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                           self._excludeDict, self._dotSpheres, self._atomMoverLists,
-                          self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                          self._fineLocations, self._highScores)
+                          self._spatialQuery, self._extraAtomInfo, self._deleteMes, self._highScores)
 
         ################################################################################
         # Compute and record the initial score for each Mover in its info
@@ -636,7 +632,8 @@ class Optimizer(object):
           return score, clash
 
         def _printPose(self, m):
-          description = m.PoseDescription(optC.GetCoarseLocation(m), self._fineLocations[m], not self._skipBondFixup)
+          description = m.PoseDescription(optC.GetCoarseLocation(m), optC.GetFineLocation(m),
+                                          not self._skipBondFixup)
 
           # If the Mover is a flip of some kind, then the substring "Flip " will be present
           # in the description (AmideFlip and HisFlip both have this subtring, but HisPlace does not).
