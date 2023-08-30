@@ -47,9 +47,6 @@ namespace molprobity {
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
-          @param [out] coarseLocations: Dictionary looked up by mover that records the
-                  coarse locations of the movers once they are optimized. These are modified
-                  to point to the result.
           @param [out] fineLocations: Dictionary looked up by mover that records the
                   fine locations of the movers once they are optimized. These are modified
                   to point to the result.
@@ -69,7 +66,6 @@ namespace molprobity {
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes,
-        boost::python::dict& coarseLocations,
         boost::python::dict& fineLocations,
         boost::python::dict& highScores);
 
@@ -122,6 +118,11 @@ namespace molprobity {
         scitbx::af::shared<boost::python::object> movers,
         scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions);
 
+      /// @brief Returns the coarse location of the specified mover.
+      unsigned GetCoarseLocation(boost::python::object const& mover) {
+        return m_coarseLocations[mover.ptr()];
+      }
+
       /// @brief Returns the number of calculated atom scores within cliques
       size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
 
@@ -149,7 +150,7 @@ namespace molprobity {
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
-      boost::python::dict m_coarseLocations;  //< Make a copy so it will persist
+      std::map<PyObject*, unsigned> m_coarseLocations;
       boost::python::dict m_fineLocations;    //< Make a copy so it will persist
       boost::python::dict m_highScores;       //< Make a copy so it will persist
       molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object

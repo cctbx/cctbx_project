@@ -258,7 +258,6 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   molprobity::probe::SpatialQuery& spatialQuery,
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
   boost::python::object& deleteMes,
-  boost::python::dict& coarseLocations,
   boost::python::dict& fineLocations,
   boost::python::dict& highScores)
   : m_self(self)
@@ -274,7 +273,6 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
-  , m_coarseLocations(coarseLocations)
   , m_fineLocations(fineLocations)
   , m_highScores(highScores)
   , m_cachedScores(0)
@@ -322,7 +320,7 @@ double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a)
     // Find each mover.
     boost::python::object moverObj = listObj[i];
     // Go through and look up the state of each mover.
-    boost::python::extract<unsigned> value(m_coarseLocations.get(moverObj));
+    unsigned value = m_coarseLocations[moverObj.ptr()];
     state.push_back(value);
   }
 
@@ -408,6 +406,8 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
 {
   std::string infoString;
 
+  m_coarseLocations.clear();
+
   for (size_t i = 0; i < movers.size(); i++) {
     boost::python::object const& mover = movers[i];
 
@@ -416,7 +416,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
     double score = m_preferenceMagnitude * coarse.preferenceEnergies[0];
     setMoverState(coarse, 0);
     score += scorePosition(coarse, 0);
-    m_coarseLocations[mover] = 0;
+    m_coarseLocations[mover.ptr()] = 0;
     m_highScores[mover] = score;
   }
 
@@ -468,11 +468,11 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     // Set all movers to match the state list
     for (unsigned m = 0; m < movers.size(); m++) {
       // Only change this mover if it is different from the last time
-      boost::python::extract<unsigned> value(m_coarseLocations.get(*movers[m]));
+      unsigned value = m_coarseLocations[movers[m]->ptr()];
       if (value != curStateValues[m]) {
         // Set the mover to this state
         infoString += setMoverState(states[movers[m]], curStateValues[m]);
-        m_coarseLocations[*movers[m]] = curStateValues[m];
+        m_coarseLocations[movers[m]->ptr()] = curStateValues[m];
       }
     }
 
@@ -528,7 +528,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
   double ret = 0.0;
   for (size_t m = 0; m < movers.size(); m++) {
     infoString += setMoverState(states[movers[m]], bestState[m]);
-    m_coarseLocations[*movers[m]] = bestState[m];
+    m_coarseLocations[movers[m]->ptr()] = bestState[m];
     double myScore = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     myScore += scorePosition(states[movers[m]], bestState[m]);
     m_highScores[*movers[m]] = myScore;
@@ -625,11 +625,11 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     // Set all cutMovers to match the state list
     for (unsigned m = 0; m < cutMovers.size(); m++) {
       // Only change this mover if it is different from the last time
-      boost::python::extract<unsigned> value(m_coarseLocations.get(*cutMovers[m]));
+      unsigned value = m_coarseLocations[cutMovers[m]->ptr()];
       if (value != curStateValues[m]) {
         // Set the mover to this state
         infoString += setMoverState(states[cutMovers[m]], curStateValues[m]);
-        m_coarseLocations[*cutMovers[m]] = curStateValues[m];
+        m_coarseLocations[cutMovers[m]->ptr()] = curStateValues[m];
       }
     }
 
@@ -695,7 +695,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
       bestState.clear();
       for (std::vector<boost::python::object*>::iterator it = movers.begin(); it != movers.end(); ++it) {
         boost::python::object* m = *it;
-        boost::python::extract<unsigned> value(m_coarseLocations.get(*m));
+        unsigned value = m_coarseLocations[m->ptr()];
         bestState.push_back(value);
       }
     }
@@ -707,7 +707,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
   double ret = 0.0;
   for (size_t m = 0; m < movers.size(); m++) {
     infoString += setMoverState(states[movers[m]], bestState[m]);
-    m_coarseLocations[*movers[m]] = bestState[m];
+    m_coarseLocations[movers[m]->ptr()] = bestState[m];
     double score = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     score += scorePosition(states[movers[m]], bestState[m]);
     m_highScores[*movers[m]] = score;
@@ -766,7 +766,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object
     infoString += oss.str();
   }
   infoString += setMoverState(coarse, maxIndex);
-  m_coarseLocations[mover] = maxIndex;
+  m_coarseLocations[mover.ptr()] = maxIndex;
 
   // Record and return the best score for this Mover.
   m_highScores[mover] = maxScore;
@@ -783,8 +783,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
 
   boost::python::extract<double> initialScore(m_highScores.get(mover));
   double maxScore = initialScore;
-  boost::python::extract<unsigned> cl(m_coarseLocations.get(mover));
-  unsigned coarseLoc = cl;
+  unsigned coarseLoc = m_coarseLocations[mover.ptr()];
   molprobity::reduce::PositionReturn fine =
     boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(coarseLoc));
   if (fine.positions.size() > 0) {

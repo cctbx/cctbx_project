@@ -555,9 +555,6 @@ class Optimizer(object):
 
         ################################################################################
         # Construct C++ optimizer.
-        self._coarseLocations = {}
-        for m in self._movers:
-          self._coarseLocations[m] = 0
         self._fineLocations = {}
         for m in self._movers:
           self._fineLocations[m] = None
@@ -565,7 +562,7 @@ class Optimizer(object):
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                           self._excludeDict, self._dotSpheres, self._atomMoverLists,
                           self._spatialQuery, self._extraAtomInfo, self._deleteMes,
-                          self._coarseLocations, self._fineLocations, self._highScores)
+                          self._fineLocations, self._highScores)
 
         ################################################################################
         # Compute and record the initial score for each Mover in its info
@@ -639,7 +636,7 @@ class Optimizer(object):
           return score, clash
 
         def _printPose(self, m):
-          description = m.PoseDescription(self._coarseLocations[m], self._fineLocations[m], not self._skipBondFixup)
+          description = m.PoseDescription(optC.GetCoarseLocation(m), self._fineLocations[m], not self._skipBondFixup)
 
           # If the Mover is a flip of some kind, then the substring "Flip " will be present
           # in the description (AmideFlip and HisFlip both have this subtring, but HisPlace does not).
@@ -651,7 +648,7 @@ class Optimizer(object):
           if "Flip " in description:
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
-            final = self._coarseLocations[m]
+            final = optC.GetCoarseLocation(m)
             other = (final + numPositions//2) % numPositions
             self._setMoverState(coarse, other)
             otherScore, otherBump = _scoreMoverReportClash(self, m, other)
@@ -698,7 +695,7 @@ class Optimizer(object):
         if not self._skipBondFixup:
           self._infoString += _VerboseCheck(self._verbosity, 1,"FixUp on all Movers\n")
           for m in self._movers:
-            loc = self._coarseLocations[m]
+            loc = optC.GetCoarseLocation(m)
             self._infoString += _VerboseCheck(self._verbosity, 3,"FixUp on {} coarse location {}\n".format(
             self._moverInfo[m],loc))
             self._doFixup(m.FixUp(loc))
@@ -808,56 +805,6 @@ class Optimizer(object):
         self._deleteMes.add(myAtoms[i])
       else:
         self._deleteMes.discard(myAtoms[i])
-
-
-  # @todo Delete this, we don't need it any more
-  def _optimizeSingleMoverFine(self, mover):
-    """
-    Find the score for the Mover in all fine orientations by moving each atom into the
-    specified position and summing the scores over all of them.  Determine the best
-    orientation by selecting the highest scorer.
-    Add the preference energy to the sum for each orientation scaled by our preference
-    :return: the score for the Mover in its optimal state.
-    :side effect: Changes the value of self._highScores[mover] to the score at the fine position
-    selected if one is selected.
-    """
-    maxScore = self._highScores[mover]
-    coarse = mover.CoarsePositions()  # Record in case we need to put it back
-    fine = mover.FinePositions(self._coarseLocations[mover])
-    if len(fine.positions) > 0:
-      scores = fine.preferenceEnergies[:]
-      for i in range(len(scores)):
-        scores[i] *= self._preferenceMagnitude
-      for i in range(len(fine.positions)):
-        self._setMoverState(fine, i)
-
-        scores[i] += self._scorePosition(fine, i)
-        self._infoString += _VerboseCheck(self._verbosity, 5,"Mover score at fine orientation {} = {:.2f}\n".format(i,scores[i]))
-
-      # Find the maximum score, keeping track of the best score and its index.
-      maxScore = scores[0]
-      maxIndex = 0
-      for i in range(1,len(fine.positions)):
-        if scores[i] > maxScore:
-          maxScore = scores[i]
-          maxIndex = i;
-
-      # Put the Mover into its final position (which may be back to its initial position)
-      # and update the high score.
-      if maxScore > self._highScores[mover]:
-        self._fineLocations[mover] = maxIndex
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Setting Mover to fine orientation {}".format(maxIndex)+
-          ", max score = {:.2f} (coarse score {:.2f})\n".format(maxScore,self._highScores[mover]))
-        self._setMoverState(fine, maxIndex)
-
-        # Record the best score for this Mover.
-        self._highScores[mover] = maxScore
-      else:
-        # Put us back to the initial coarse location and don't change the high score.
-        self._fineLocations[mover] = None
-        self._infoString += _VerboseCheck(self._verbosity, 3,"Leaving Mover at coarse orientation\n")
-        self._setMoverState(coarse, self._coarseLocations[mover])
-    return maxScore
 
   ##################################################################################
   # Placement
