@@ -173,16 +173,19 @@ class crystal_symmetry_builder(builder_base):
     if hm_symbol not in (None, '?'):
       try: space_group_from_other = sgtbx.space_group_info(symbol=hm_symbol).group()
       except Exception: pass
-    # Check consistency
-    if(space_group_from_other is not None and space_group_from_ops is not None):
+    # Check consistency.
+    # Use space group equivalence operation in cctbx.sgtbx.space_group
+
+    if (space_group_from_other is not None) and (
+       space_group_from_ops is not None) and (
+         space_group_from_other != space_group_from_ops):
       ops1 = [o.as_xyz() for o in space_group_from_other.all_ops()]
       ops2 = [o.as_xyz() for o in space_group_from_ops.all_ops()]
       ops1.sort()
       ops2.sort()
       msg1 = "\n"+"\n".join(ops1)+"\n"
       msg2 = "\n"+"\n".join(ops2)
-      if(ops1 != ops2):
-        raise CifBuilderError(
+      raise CifBuilderError(
           "Inconsistent symmetry information found:%s ---vs---%s"%(msg1, msg2))
     for sg in [space_group_from_other, space_group_from_ops]:
       if(sg is not None):
