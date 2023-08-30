@@ -577,7 +577,7 @@ def update_bond_restraints(ligand_model,
   The QM optimisation has caused a X-H covalent bond to exceed 1.5 Angstrom.
   This may be because the input geometry was not appropriate or the QM method
   is not providing the biological answer. Check the QM result for issues. This
-  check can be skipped by using ignore_x_h_distance_protein.
+  check can be skipped by using ignore_x_h_distance_protein=True.
   ''')
 
 def update_bond_restraints_simple(model):
