@@ -257,8 +257,7 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   boost::python::dict& atomMoverLists,
   molprobity::probe::SpatialQuery& spatialQuery,
   molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-  boost::python::object& deleteMes,
-  boost::python::dict& highScores)
+  boost::python::object& deleteMes)
   : m_self(self)
   , m_verbosity(verbosity)
   , m_preferenceMagnitude(preferenceMagnitude)
@@ -272,7 +271,6 @@ OptimizerC::OptimizerC(boost::python::object& self, int verbosity, double prefer
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
-  , m_highScores(highScores)
   , m_cachedScores(0)
   , m_calculatedScores(0)
 {
@@ -406,6 +404,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
 
   m_coarseLocations.clear();
   m_fineLocations.clear();
+  m_highScores.clear();
 
   for (size_t i = 0; i < movers.size(); i++) {
     boost::python::object const& mover = movers[i];
@@ -417,7 +416,7 @@ std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> mov
     score += scorePosition(coarse, 0);
     m_coarseLocations[mover.ptr()] = 0;
     m_fineLocations[mover.ptr()] = -1;
-    m_highScores[mover] = score;
+    m_highScores[mover.ptr()] = score;
   }
 
   return infoString;
@@ -531,7 +530,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     m_coarseLocations[movers[m]->ptr()] = bestState[m];
     double myScore = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     myScore += scorePosition(states[movers[m]], bestState[m]);
-    m_highScores[*movers[m]] = myScore;
+    m_highScores[movers[m]->ptr()] = myScore;
     ret += myScore;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
@@ -710,7 +709,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
     m_coarseLocations[movers[m]->ptr()] = bestState[m];
     double score = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
     score += scorePosition(states[movers[m]], bestState[m]);
-    m_highScores[*movers[m]] = score;
+    m_highScores[movers[m]->ptr()] = score;
     ret += score;
     if (m_verbosity >= 3) {
       std::ostringstream oss;
@@ -769,7 +768,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object
   m_coarseLocations[mover.ptr()] = maxIndex;
 
   // Record and return the best score for this Mover.
-  m_highScores[mover] = maxScore;
+  m_highScores[mover.ptr()] = maxScore;
   return boost::python::make_tuple(maxScore, infoString);
 }
 
@@ -781,7 +780,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
   molprobity::reduce::PositionReturn coarse =
     boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
 
-  boost::python::extract<double> initialScore(m_highScores.get(mover));
+  double initialScore = m_highScores[mover.ptr()];
   double maxScore = initialScore;
   unsigned coarseLoc = m_coarseLocations[mover.ptr()];
   molprobity::reduce::PositionReturn fine =
@@ -815,7 +814,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
 
     // Put the Mover into its final position (which may be back to its initial position)
     // and update the high score.
-    if (maxScore > m_highScores[mover]) {
+    if (maxScore > m_highScores[mover.ptr()]) {
       m_fineLocations[mover.ptr()] = maxIndex;
       if (m_verbosity >= 3) {
         std::ostringstream oss;
@@ -828,7 +827,7 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
       setMoverState(fine, maxIndex);
 
       // Record the high score for this Mover.
-      m_highScores[mover] = maxScore;
+      m_highScores[mover.ptr()] = maxScore;
     } else {
       // Put us back into the initial coarse location and don't change the high score
       setMoverState(coarse, coarseLoc);

@@ -133,7 +133,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
       , boost::python::object&
-      , boost::python::dict&
       >()
     )
     .def("Initialize", &OptimizerC::Initialize)
@@ -142,6 +141,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     .def("OptimizeCliqueCoarse", &OptimizerC::OptimizeCliqueCoarse)
     .def("GetCoarseLocation", &OptimizerC::GetCoarseLocation)
     .def("GetFineLocation", &OptimizerC::GetFineLocation)
+    .def("GetHighScore", &OptimizerC::GetHighScore)
     .def("GetNumCalculatedAtoms", &OptimizerC::GetNumCalculatedAtoms)
     .def("GetNumCachedAtoms", &OptimizerC::GetNumCachedAtoms)
     ;

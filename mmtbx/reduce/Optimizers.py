@@ -548,23 +548,17 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "construct dot scorer")
 
         ################################################################################
-        # Initialize high score for each Mover, filling in a None value for each.
-        self._highScores = {}
-        for m in self._movers:
-          self._highScores[m] = None
-
-        ################################################################################
         # Construct C++ optimizer.
         optC = OptimizerC(self, self._verbosity, self._preferenceMagnitude,
                           self._maximumVDWRadius, self._minOccupancy, self._probeRadius, self._probeDensity,
                           self._excludeDict, self._dotSpheres, self._atomMoverLists,
-                          self._spatialQuery, self._extraAtomInfo, self._deleteMes, self._highScores)
+                          self._spatialQuery, self._extraAtomInfo, self._deleteMes)
 
         ################################################################################
         # Compute and record the initial score for each Mover in its info
         optC.Initialize(self._movers)
         for m in self._movers:
-          self._moverInfo[m] += " Initial score: {:.2f}".format(self._highScores[m])
+          self._moverInfo[m] += " Initial score: {:.2f}".format(optC.GetHighScore(m))
 
         ################################################################################
         # Call internal methods to optimize the single-element Cliques and then to optimize
@@ -661,7 +655,7 @@ class Optimizer(object):
             description += " ."
 
           self._infoString += _VerboseCheck(self._verbosity, 1,"  {} final score: {:.2f} pose {}\n".format(
-            self._moverInfo[m], self._highScores[m], description))
+            self._moverInfo[m], optC.GetHighScore(m), description))
 
         self._infoString += _VerboseCheck(self._verbosity, 1,"BEGIN REPORT: Model "+str(mi)+" Alt '"+alt+"':\n")
         sortedGroups = sorted(groupCliques, key=len, reverse=True)
@@ -674,7 +668,7 @@ class Optimizer(object):
           final = 0.0
           for m in movers:
             initial += float(self._moverInfo[m].split()[9])
-            final += self._highScores[m]
+            final += optC.GetHighScore(m)
           self._infoString += _VerboseCheck(self._verbosity, 1," Totals: initial score {:.2f}, final score {:.2f}\n".format(initial, final))
           for m in movers:
             _printPose(self, m)

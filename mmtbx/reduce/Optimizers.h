@@ -47,7 +47,6 @@ namespace molprobity {
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
-          @param [out] highScores: Dictionary looked up by mover with the scores at best locations.
       */
       OptimizerC(
         boost::python::object& self,
@@ -62,8 +61,7 @@ namespace molprobity {
         boost::python::dict& atomMoverLists,
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-        boost::python::object& deleteMes,
-        boost::python::dict& highScores);
+        boost::python::object& deleteMes);
 
       /** @brief Initialize the Movers to their 0 coarse states and record initial scores.
           @param [in] movers: A list of Movers that will be processed.
@@ -76,7 +74,7 @@ namespace molprobity {
           @return A tuple, where the first is the score at the best position for all movers
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
-          side effect: Changes the value of self._highScores[mover] to the score at the fine position
+          side effect: Changes the value of GetHighScore(mover) to the score at the coarse position
           selected if one is selected.
       */
       boost::python::tuple OptimizeSingleMoverCoarse(boost::python::object const &mover);
@@ -91,7 +89,7 @@ namespace molprobity {
           @return A tuple, where the first is the score at the best position for all movers
                   and the second is a string describing what was done, which may be empty
                   if verbosity is too small.
-          side effect: Changes the value of self._highScores[mover] to the score at the fine position
+          side effect: Changes the value of GetHighScore(mover) to the score at the fine position
           selected if one is selected.
       */
       boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover);
@@ -124,6 +122,11 @@ namespace molprobity {
         return m_fineLocations[mover.ptr()];
       }
 
+      /// @brief Returns the high score of the specified mover, 0 if none.
+      double GetHighScore(boost::python::object const& mover) {
+        return m_highScores[mover.ptr()];
+      }
+
       /// @brief Returns the number of calculated atom scores within cliques
       size_t GetNumCalculatedAtoms() const { return m_calculatedScores; }
 
@@ -153,7 +156,7 @@ namespace molprobity {
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
       std::map<PyObject*, unsigned> m_coarseLocations;
       std::map<PyObject*, int> m_fineLocations;
-      boost::python::dict m_highScores;       //< Make a copy so it will persist
+      std::map<PyObject*, double> m_highScores;
       molprobity::probe::DotScorer *m_dotScorer = nullptr;  //< Pointer to the DotScorer object
 
       /// Caches scores for atoms that have already been calculated based on the
