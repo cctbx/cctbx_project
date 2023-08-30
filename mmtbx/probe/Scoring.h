@@ -1,4 +1,4 @@
-// Copyright(c) 2021, Richardson Lab at Duke
+// Copyright(c) 2021-2023, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -348,11 +348,16 @@ namespace molprobity {
       /// @param [in] density Density of the dots on the probe sphere, used to normalize results.
       ///             If this is <= 0, an invalid result will be returned.
       /// @param [in] onlyBumps If true, ignore near touches and count even hydrogen bonds as bumps.
+      /// @param [in] preTrimmedDots If true, the dots have already been trimmed to only those that
+      ///             are not inside excluded atoms. The excluded atoms are still used to determine
+      ///             which neighboring atoms should be excluded, but they are not passed on to
+      ///             the check_dot() function.
       /// @return Normalized sum of scores, also broken down by hydrogen bond vs. bump scores.
       ScoreDotsResult score_dots(iotbx::pdb::hierarchy::atom const &sourceAtom, double minOccupancy,
         SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
-        scitbx::af::shared<Point> const &dots, double density, bool onlyBumps);
+        scitbx::af::shared<Point> const &dots, double density, bool onlyBumps,
+        bool preTrimmedDots = false);
 
       /// @brief Count how many surface dots on an atom are not within an excluded atom.
       /// @param [in] sourceAtom Atom that the dot is offset with respect to.

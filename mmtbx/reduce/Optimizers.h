@@ -168,38 +168,73 @@ namespace molprobity {
       std::map<PyObject*, int> m_fineLocations;
       std::map<PyObject*, double> m_highScores;
 
+      //=========================================================================
+      // Section dealing with reducing the number of dots that must be checked
+      // for each atom.
+
+      /// Stores the full list of dots for each atom, indexed by i_seq. This may also
+      /// include dots that are inside excluded atoms.
       std::map<unsigned, scitbx::af::shared<molprobity::probe::Point> > m_dotSpheres;
+
+      /// Stores the list of dots for each atom that are not inside excluded atoms,
+      /// indexed by both i_seq and the coarse position of the Mover that the atom
+      /// is part of. This is cleared during Initialize() and filled in lazily as they
+      /// are encountered within scoreAtom().
+      /// The set of dots that are excluded varies as this atom's Mover changes coarse
+      /// location but it does not depend on other Movers.
+      std::map< std::pair<unsigned, unsigned>, scitbx::af::shared<molprobity::probe::Point> > m_excludedDots;
 
       //=========================================================================
       // Section dealing with caching of computed atom scores
 
-      /// Caches scores for atoms that have already been calculated based on the
-      /// values of the Movers that they depend on.
+      /// Cached scores for atoms that have already been calculated based on the
+      /// coarse positions of the Movers that they depend on.
       /// This is the map stored for a particular atom, based on its relevant Mover positions.
       typedef std::map< std::vector<unsigned>, double > ScoreCache;
-      /// This is the map stored for all atoms, looked up by i_seq.
+      /// This is the type of a map that stores cached scores for all atoms, looked up by i_seq.
       typedef std::map< unsigned, ScoreCache > ScoreCacheMap;
-
-      /// tracks how many cached vs. calculated scores we have.
-      size_t m_cachedScores;
-      size_t m_calculatedScores;
 
       /// This is a pointer to the ScoreCacheMap for the current clique, if it exists.
       /// When it is a nullptr, we do not use caching. This is set to non-nullptr
       /// when we are optimizing a clique, and set back to nullptr when we are done.
       ScoreCacheMap *m_scoreCacheMap = nullptr;
 
-      /// @brief Score an atom, not using the cache.
-      double scoreAtom(iotbx::pdb::hierarchy::atom const& a);
+      /// Tracks how many cached vs. calculated scores we have over the course of our calculations.
+      /// These are used for reporting purposes and are accumulated over the entire life of
+      /// the OptimizeC object.
+      size_t m_cachedScores;
+      size_t m_calculatedScores;
+
+      /// @brief Score an atom, not using the atom-score cache.
+      /// @param [in] a: The atom to score.
+      /// @param [in] locationIndex: The index for the location of the Mover that the
+      ///         atom is part of. This must be different for every location, with a
+      ///         separate range for coarse and fine locations. It is used to cache
+      ///         dots.
+      /// @return The score for the atom.
+      double scoreAtom(iotbx::pdb::hierarchy::atom const& a, unsigned locationIndex);
 
       /// @brief Score an atom, using the cache.
       ///
       /// The m_scoreCacheMap must be non-nullptr when this is called.
-      double scoreAtomCached(iotbx::pdb::hierarchy::atom const& a);
+      /// @param [in] a: The atom to score.
+      /// @param [in] locationIndex: The index for the location of the Mover that the
+      ///         atom is part of. This must be different for every location, with a
+      ///         separate range for coarse and fine locations. It is used to cache
+      ///         dots.
+      /// @return The score for the atom.
+      double scoreAtomCached(iotbx::pdb::hierarchy::atom const& a, unsigned locationIndex);
 
-      /// @brief Score all atoms that have not been marked for deletion, calling the Python object's
-      /// scoring function (which may or may not use caching to do the scoring).
-      double scorePosition(molprobity::reduce::PositionReturn& states, size_t index);
+      /// @brief Score all atoms that have not been marked for deletion, calling appropriate
+      /// scoring function (use caching to do the scoring if we have an atom-score cache).
+      /// @param [in] states: The set of positions that we are scoring (may be coarse, may be
+      ///         fine).
+      /// @param [in] index: The index of the state that we are scoring.
+      /// @param [in] dotCacheOffset: This is added to the index of the state to get
+      ///         the parameter to pass to the atom-scoring code. This lets us make
+      ///         separate ranges for the coarse and fine scoring.
+      double scorePosition(molprobity::reduce::PositionReturn& states, unsigned index,
+        unsigned dotCacheOffset);
 
       //=========================================================================
       // Section dealing with optimization of a clique

@@ -1,4 +1,4 @@
-// Copyright(c) 2021, Richardson Lab at Duke
+// Copyright(c) 2021-2023, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -346,7 +346,8 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   iotbx::pdb::hierarchy::atom const &sourceAtom, double minOccupancy,
   SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
-  scitbx::af::shared<Point> const &dots, double density, bool onlyBumps)
+  scitbx::af::shared<Point> const &dots, double density, bool onlyBumps,
+  bool preTrimmedDots)
 {
   // This method is based on AtomPositions::atomScore() from Reduce.
   // It is passed only the dots that it should score rather than excluding them
@@ -410,7 +411,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
     // Find out which atom (if any) had the closest interaction, and the type of interaction.
-    CheckDotResult score = check_dot(sourceAtom, *d, probeRadius, interacting, exclude);
+    // If the dots have been pre-trimmed, we don't need to pass the excluded list.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const* excludeToUse = &exclude;
+    if (preTrimmedDots) {
+      excludeToUse = &emptyExclude;
+    }
+    CheckDotResult score = check_dot(sourceAtom, *d, probeRadius, interacting, *excludeToUse);
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
