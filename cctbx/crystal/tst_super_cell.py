@@ -1063,4 +1063,7 @@ def exercise_02():
 if(__name__ == "__main__"):
   exercise_00()
   exercise_01()
-  exercise_02()
+  if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
+    print("Skipping exercise_02(): chem_data directory not available")
+  else:
+    exercise_02()
