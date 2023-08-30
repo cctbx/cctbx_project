@@ -301,7 +301,7 @@ OptimizerC::OptimizerC(
 
 double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a)
 {
-  // Keep track of calculated scores whether or not we're doing caching
+  // Keep track of calculated scores whether or not we're doing score caching
   m_calculatedScores++;
 
   // Find the maximum radius of the pair of atoms, to limit our neightbor search.

@@ -170,6 +170,9 @@ namespace molprobity {
 
       std::map<unsigned, scitbx::af::shared<molprobity::probe::Point> > m_dotSpheres;
 
+      //=========================================================================
+      // Section dealing with caching of computed atom scores
+
       /// Caches scores for atoms that have already been calculated based on the
       /// values of the Movers that they depend on.
       /// This is the map stored for a particular atom, based on its relevant Mover positions.
@@ -198,6 +201,9 @@ namespace molprobity {
       /// scoring function (which may or may not use caching to do the scoring).
       double scorePosition(molprobity::reduce::PositionReturn& states, size_t index);
 
+      //=========================================================================
+      // Section dealing with optimization of a clique
+
       std::string setMoverState(molprobity::reduce::PositionReturn& positionReturn, unsigned index);
 
       // Must use vector style for second (vertex) entry for connected_components to work
@@ -214,34 +220,48 @@ namespace molprobity {
       static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers);
 
       /// @brief Find one of the smallest vertex cuts in a clique graph.
+      ///
+      /// This finds a set of Movers that, if removed, would disconnect the graph.
+      /// It starts looking for a cut of size 1, then 2, etc. until it finds one
+      /// or finds that the graph cannot be cut.
       /// @param [in] graph: The clique graph to find the vertex cut in.
-      /// @param [out] cutMovers: The movers that correspond to the vertices
-      /// that are removed.
+      /// @param [out] cutMovers: The Movers that correspond can be removed to cause a cut.
       /// @param [out] cutGraph: The graph that stores the subset of clique
-      /// whose vertices have been removed.
+      /// whose vertices have not been removed. If there is more than one Mover
+      /// in cutMovers, then this graph will have two or more connected components.
+      /// If there are no Movers, then this will be the original graph.
       static void findVertexCut(CliqueGraph const& graph,
         std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph);
 
-      /** @brief Function to perform brute-force optimization on a clique of Movers.
-          @param [in] movers: A list of Movers to jointly optimize.
-          @return A tuple, where the first is the score at the best position for all movers
-                  and the second is a string describing what was done, which may be empty
-                  if verbosity is too small.
-      */
+      /// @brief Function to perform brute-force optimization on a clique of Movers.
+      ///
+      /// This function will try all combinations of states for the Movers in the clique
+      /// and return the best one. It will be called when a subgraph cannot be cut into
+      /// more than one connected component.
+      /// @param [in] states: A map from Movers to the potential states for each. This
+      ///         holds the result of calling CoarsePositions() on each Mover.
+      /// @param [in] clique: The clique graph to optimize.
+      /// @return A tuple, where the first is the score at the best position for all movers
+      ///         and the second is a string describing what was done, which may be empty
+      ///         if verbosity is too small.
       std::pair<double, std::string> OptimizeCliqueCoarseBruteForce(
         std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
         CliqueGraph& clique);
 
-      /** @brief Function to perform vertex-cut optimization on a clique of Movers.
-          @param [in] movers: A list of Movers to jointly optimize.
-          @param [in] interactions: A list of edges between movers, as a 2D array where the first
-                  index is the number of edges and the second is 2. It stores the index
-                  into the movers array of the mover at each end of the edge. This lists
-                  the pairs of movers that interact with each other.
-          @return A tuple, where the first is the score at the best position for all movers
-                  and the second is a string describing what was done, which may be empty
-                  if verbosity is too small.
-      */
+      /// @brief Function to perform vertex-cut optimization on a clique of Movers.
+      ///
+      /// This attempts to find a vertex cut in the clique graph, and if it does, it
+      /// optimizes each connected component separately. If it cannot find a vertex
+      /// cut, it calls OptimizeCliqueCoarseBruteForce.
+      ///
+      /// When it finds a vertex cut, it will recursively call itself on each connected
+      /// component and jointly optimize the cut vertices, then combine the results.
+      /// @param [in] states: A map from Movers to the potential states for each. This
+      ///         holds the result of calling CoarsePositions() on each Mover.
+      /// @param [in] clique: The clique graph to optimize.
+      /// @return A tuple, where the first is the score at the best position for all movers
+      ///         and the second is a string describing what was done, which may be empty
+      ///         if verbosity is too small.
       std::pair<double, std::string> OptimizeCliqueCoarseVertexCut(
         std::map<boost::python::object*, molprobity::reduce::PositionReturn> &states,
         CliqueGraph &clique);
