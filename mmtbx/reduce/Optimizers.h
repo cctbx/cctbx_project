@@ -160,7 +160,7 @@ namespace molprobity {
       boost::python::dict m_exclude;          //< Make a copy so it will persist
       molprobity::probe::DotScorer& m_dotScorer;
       molprobity::probe::DotSphereCache& m_dotSphereCache;
-      boost::python::dict m_atomMoverLists;   //< Make a copy so it will persist
+      std::map<unsigned, std::vector<PyObject*> > m_atomMoverLists;   // Converted in constructor
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist
