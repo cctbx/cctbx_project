@@ -177,8 +177,8 @@ class crystal_symmetry_builder(builder_base):
     # Use space group equivalence operation in cctbx.sgtbx.space_group
 
     if (space_group_from_other is not None) and (
-       space_group_from_ops is not None) and (
-         space_group_from_other != space_group_from_ops):
+       space_group_from_ops is not None) and (not
+         space_group_from_other == space_group_from_ops):
       ops1 = [o.as_xyz() for o in space_group_from_other.all_ops()]
       ops2 = [o.as_xyz() for o in space_group_from_ops.all_ops()]
       ops1.sort()
