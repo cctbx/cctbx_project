@@ -22,6 +22,7 @@ from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
+from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -246,7 +247,7 @@ class _MoverRotator(object):
     # specified offset from a 0 dihedral angle.  The other atoms maintain their relative rotations
     # with the conventional atom.
     for atom in atoms:
-      atom.xyz = _rotateAroundAxis(atom, axis, offset + dihedral)
+      atom.xyz = RotateAtomDegreesAroundAxisDir(axis[0], axis[1], atom, offset + dihedral)
 
     # Make a list of coarse angles to try based on the coarse range (inclusive
     # for negative and exclusive for positive) and the step size.  We always
@@ -310,7 +311,7 @@ class _MoverRotator(object):
     for agl in angles:
       atoms = flex.vec3_double()
       for atm in self._atoms:
-        atoms.append(_rotateAroundAxis(atm, self._axis, agl))
+        atoms.append(RotateAtomDegreesAroundAxisDir(self._axis[0], self._axis[1], atm, agl))
       poses.append(atoms)
     return poses;
 

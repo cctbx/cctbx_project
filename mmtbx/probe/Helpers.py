@@ -179,8 +179,8 @@ def getBondedNeighborLists(atoms, bondProxies):
     it should be a flex array of atom positions for the atoms that are in the first parameter.
     It can include atoms that are not in the first parameter, but they will not be added
     to the lists.
-    :returns a dictionary with one entry for each atom that contains a list of all of
-    the atoms (within the atoms list) that are bonded to it.
+    :returns a dictionary with one entry for each atom, indexed by i_seq, that contains a
+    list of all of the atoms (within the atoms list) that are bonded to it.
   """
   atomDict = {}
   for a in atoms:

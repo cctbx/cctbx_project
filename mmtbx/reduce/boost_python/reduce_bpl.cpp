@@ -48,6 +48,23 @@ static scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
   );
 }
 
+// This reformats the parameters to match the values expected by the C++ function
+// in the library and then calls it.
+static scitbx::vec3<double> RotateAtomDegreesAroundAxisDir(
+  scitbx::vec3<double> const& axis_point_1,
+  scitbx::vec3<double> const& axis_direction,
+  iotbx::pdb::hierarchy::atom const& atom,
+  double angle_degrees
+) {
+  scitbx::vec3<double> const& axis_point_2 = axis_point_1 + axis_direction;
+  return scitbx::math::rotate_point_around_axis(
+    axis_point_1,
+    axis_point_2,
+    atom.data->xyz,
+    angle_degrees * scitbx::constants::pi_180
+  );
+}
+
 BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
   // Dependencies
@@ -152,5 +169,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     "Test all classes and functions defined in Optimizers.h.");
 
   def("RotatePointDegreesAroundAxisDir", RotatePointDegreesAroundAxisDir,
-    "Rotate a point around an axis direction in degrees.");
+    "Rotate a point around an axis direction in degrees, returning new location.");
+
+  def("RotateAtomDegreesAroundAxisDir", RotateAtomDegreesAroundAxisDir,
+    "Rotate an atom in place around an axis direction in degrees.");
 }
