@@ -1,8 +1,9 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
-env.Prepend(LIBS=["smtbx_refinement_constraints", "scitbx_boost_python"])
+env.Prepend(LIBS=["smtbx_refinement_constraints", "scitbx_boost_python", "smtbx_ed_ext"])
 env.SharedLibrary(target="#lib/smtbx_refinement_least_squares_ext", source=[
   "least_squares_ext.cpp",
   "weighting_schemes.cpp",
   "least_squares.cpp",
+  "../../ED/dyn_calculator.cpp",
 ])

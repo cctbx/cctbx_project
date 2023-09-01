@@ -201,8 +201,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             bool,
             af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // Kvac, Kl, Fc2Ug, reserved, mat_type, threads_n
-            af::shared<FloatType> const&,
+            RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("Jt_matching_grad_fc"),
                 arg("f_calc_function"),
@@ -236,8 +235,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             bool,
             af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // Kvac, Kl, Fc2Ug, reserved, mat_type, threads_n
-            af::shared<FloatType> const&,
+            RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("Jt_matching_grad_fc"),
                 arg("f_calc_function"),
@@ -276,8 +274,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             bool,
             af::shared<FrameInfo<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
-            // Kvac, Kl, Fc2Ug, epsilon, mat_type, threads_n
-            af::shared<FloatType> const&,
+            RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("reparametrisation"),
                 arg("f_calc_function"), arg("fc_correction"),

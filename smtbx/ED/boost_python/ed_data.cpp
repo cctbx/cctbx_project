@@ -96,10 +96,31 @@ namespace boost_python {
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("peak_profile_point");
     }
 
+    static void wrap_refinement_params() {
+      using namespace boost::python;
+      typedef return_internal_reference<> rir_t;
+      typedef RefinementParams<FloatType> wt;
+
+      class_<wt, std::auto_ptr<wt> >("refinement_params", no_init)
+        .def(init<const af::shared<FloatType> &>
+          ((arg("values"))))
+        .add_property("Kl_val", &wt::getKl_vac)
+        .add_property("Kl", &wt::getKl)
+        .add_property("Fc2Ug", &wt::getFc2Ug)
+        .add_property("epsilon", &wt::getEpsilon)
+        .add_property("matrix_type", &wt::getMatrixType)
+        .add_property("beam_n", &wt::getBeamN)
+        .add_property("thread_n", &wt::getThreadN)
+        .add_property("int_span", &wt::getIntSpan)
+        .add_property("int_step", &wt::getIntStep)
+        ;
+    }
+
     static void wrap() {
       wrap_frame();
       wrap_beam();
       wrap_peak_profile_point();
+      wrap_refinement_params();
     }
   };
 
@@ -122,17 +143,9 @@ namespace boost_python {
       using namespace boost::python;
       typedef utils<FloatType> wt;
       class_<wt>("utils", no_init)
-        .def("build_eigen_matrix_2013", &wt::build_eigen_matrix_2013)
-        .staticmethod("build_eigen_matrix_2013")
-        .def("build_eigen_matrix_2015", &wt::build_eigen_matrix_2015)
-        .staticmethod("build_eigen_matrix_2015")
         .def("build_eigen_matrix_recipro", &wt::build_eigen_matrix_recipro)
         .staticmethod("build_eigen_matrix_recipro")
 
-        .def("calc_amps_2013", &wt::calc_amps_2013)
-        .staticmethod("calc_amps_2013")
-        .def("calc_amps_2015", &wt::calc_amps_2015)
-        .staticmethod("calc_amps_2015")
         .def("calc_amps_recipro", &wt::calc_amps_recipro)
         .staticmethod("calc_amps_recipro")
 
