@@ -8,7 +8,6 @@
 #include <smtbx/ED/integrator.h>
 #include <smtbx/ED/kinematic.h>
 #include <smtbx/refinement/constraints/reparametrisation.h>
-#include <scitbx/array_family/selections.h>
 
 namespace smtbx {
   namespace refinement {
@@ -35,21 +34,20 @@ namespace smtbx {
           bool anomalous_flag,
           af::shared<FrameInfo<FloatType> > frames,
           cctbx::xray::thickness<FloatType> const& thickness,
-          // Kl, Fc2Ug, epsilon
-          af::shared<FloatType> const& params,
+          const RefinementParams<FloatType>& params,
           bool compute_grad,
           bool do_build = true)
           : Jt_matching_grad_fc(Jt_matching_grad_fc),
           f_calc_function(f_calc_function),
           space_group(space_group),
-          Kvac(params[0]),
-          Kl(params[1]),
-          Fc2Ug(params[2]),
-          mat_type(static_cast<int>(params[4])),
+          params(params),
+          Kl(params.getKl()),
+          Fc2Ug(params.getFc2Ug()),
+          mat_type(params.getMatrixType()),
           frames(frames),
           thickness(thickness),
           compute_grad(compute_grad),
-          thread_n(static_cast<int>(params[5]))
+          thread_n(params.getThreadN())
         {
           K = cart_t(0, 0, -Kl);
           // build lookups for each frame + collect all indices and they diffs
@@ -62,6 +60,7 @@ namespace smtbx {
             frames_map.insert(std::make_pair(frame.id, &frame));
             frame.offset = offset;
             offset += frame.strong_measured_beams.size();
+            // need only strong beams here??
             for (size_t hi = 0; hi < frame.indices.size(); hi++) {
               all_indices.push_back(frame.indices[hi]);
               for (size_t hj = hi + 1; hj < frame.indices.size(); hj++) {
@@ -130,25 +129,30 @@ namespace smtbx {
 
           boost::thread_group pool;
           typedef frame_integrator<FloatType> integrator_t;
-          typedef typename boost::shared_ptr<integrator_t> frame_processor_t;
-          FloatType angle = scitbx::deg_as_rad(0.75),
-            step = scitbx::deg_as_rad(0.1);
+          typedef typename boost::shared_ptr<integrator_t> frame_integrator_ptr_t;
+          FloatType angle = scitbx::deg_as_rad(params.getIntSpan()),
+            step = scitbx::deg_as_rad(params.getIntStep());
           size_t to = 0,
             n_param = design_matrix.accessor().n_columns();
+
+          dyn_calculator_factory<FloatType> dc_f(DYN_CALCULATOR_2013);
+
           for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
             size_t t_end = std::min(thread_n, (int)(frames.size() - fi));
             if (t_end == 0) {
               break;
             }
-            std::vector<frame_processor_t> accumulators;
+            std::vector<frame_integrator_ptr_t> accumulators;
             for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
               cmat_t Ugs;
               af::shared<cmat_t> Ds_kin;
               build_Ug_matrix(frames[to], Ugs, Ds_kin);
               
-              frame_processor_t pf(
+              frame_integrator_ptr_t pf(
                 new integrator_t(
-                  new process_frame_2013<FloatType>(frames[to],
+                  new frame_processor<FloatType>(
+                    dc_f,
+                    frames[to],
                     Ugs, K, thickness,
                     Ds_kin,
                     compute_grad),
@@ -229,7 +233,8 @@ namespace smtbx {
         f_calc_function_base_t& f_calc_function;
         sgtbx::space_group const& space_group;
         af::shared<miller::index<> > indices;
-        FloatType Kvac, Kl, Fc2Ug;
+        RefinementParams<FloatType> params;
+        FloatType Kl, Fc2Ug;
         int mat_type;
         cart_t K;
         size_t beam_n;
