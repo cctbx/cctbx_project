@@ -115,6 +115,10 @@ output
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
     .help = Where to place the Flipkin Kinemages. If None, no Flipkin files are made.
+  clique_outline_file_name = None
+    .type = str
+    .short_caption = Where to save a Kinemage showing all positions for atoms in each Mover in each clique
+    .help = Where to save a Kinemage showing all positions for atoms in each Mover for each clique. This enable exploration of the reasons for the cliques. Each clique has the atoms expanded by the probe radius and as each is turned off, the Movers inside are revealed. Clicking on each Mover shows its description. If None, no such Kinemage is made.
   print_atom_info = False
     .type = bool
     .short_caption = Print extra atom info
@@ -1219,7 +1223,8 @@ NOTES:
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
-        verbosity=self.params.verbosity)
+        verbosity=self.params.verbosity,
+        clique_outline_file_name=self.params.output.clique_outline_file_name)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'

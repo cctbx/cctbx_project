@@ -121,13 +121,6 @@ def _ResNameAndID(a):
   insertionCode = a.parent().parent().icode.strip()
   return "chain "+str(chainID)+" "+altLoc+resName+" "+resID+insertionCode
 
-def _DescribeMover(m):
-  type_str = str(type(m))
-  type_str = type_str.split("'")[1]  # Extract the type name between the quotes
-  type_str = type_str.split(".")[-1]  # Extract the class name from the module path
-  info = _ResNameAndID(m.CoarsePositions().atoms[0])
-  return type_str + ' ' + info
-
 ##################################################################################
 # Helper classes
 
@@ -168,7 +161,8 @@ class Optimizer(object):
                 nonFlipPreference = 0.5,
                 skipBondFixup = False,
                 flipStates = '',
-                verbosity = 1
+                verbosity = 1,
+                clique_outline_file_name = None
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -221,6 +215,11 @@ class Optimizer(object):
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
     Setting it above 1 provides additional debugging information.
+    :param clique_outline_file_name: Name of file to write Kinemage with outlines of Movers to.
+    This file holds spheres showing all possible locations for each atom in each Mover in different
+    colors as one master. It shows the outlines expanded by the probe radius, with a single color
+    for each clique, as another master. These are useful for determining why the cliques are as
+    they are.
     """
 
     ################################################################################
@@ -236,6 +235,7 @@ class Optimizer(object):
     self._skipBondFixup = skipBondFixup
     self._flipStates = flipStates
     self._verbosity = verbosity
+    self._clique_outline_file_name = clique_outline_file_name
 
     ################################################################################
     # Initialize internal variables.
@@ -427,6 +427,11 @@ class Optimizer(object):
             str(len(singletonCliques))+" are singletons); largest Clique size = "+
             str(maxLen)+"\n")
         self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
+
+        # If we've been asked to write an interaction graph file, do so.
+        if self._clique_outline_file_name:
+          with open(self._clique_outline_file_name, 'w') as f:
+            f.write(self._InteractionKinemage(groupCliques))
 
         ################################################################################
         # Determine excluded atoms to a specified hop count for each atom that will
@@ -719,7 +724,6 @@ class Optimizer(object):
             'Calculated : cached atom scores: {} : {}; fraction calculated {:.2f}\n'.format(
             self._numCalculated, self._numCached,
             self._numCalculated/(self._numCalculated + self._numCached)))
-
 
   def getInfo(self):
     """
@@ -1122,6 +1126,65 @@ class Optimizer(object):
     return deleteAtoms
 
 
+  def _DescribeMover(self, m):
+    type_str = str(type(m))
+    type_str = type_str.split("'")[1]  # Extract the type name between the quotes
+    type_str = type_str.split(".")[-1]  # Extract the class name from the module path
+    info = _ResNameAndID(m.CoarsePositions().atoms[0])
+    return type_str + ' ' + info
+
+
+  def _MoverSpheres(self, m, extraRadius=0.0):
+    """Returns a Kinemage string listing all of the positions of the movable atoms
+    in the specified mover over all possible locations. The radius of each is as
+    specified in the atom plus the specified extraRadius.
+    """
+    ret = ''
+    for a in m.CoarsePositions().atoms:
+      rad = str(extraRadius + self._extraAtomInfo.getMappingFor(a).vdwRadius)
+      for i, cp in enumerate(m.CoarsePositions().positions):
+        for loc in cp:
+          ret += ' r= '+str(rad)+' '+str(loc[0])+' '+str(loc[1])+' '+str(loc[2])+'\n'
+        for fp in m.FinePositions(i).positions:
+          for loc in fp:
+            ret += ' r= '+str(rad)+' '+str(loc[0])+' '+str(loc[1])+' '+str(loc[2])+'\n'
+    return ret
+
+
+  def _InteractionKinemage(self, components):
+      # Used to round-robin among a set of differentiable colors
+      COLORS = ['gray', 'pink', 'sea', 'sky', 'cyan', 'magenta', 'yellow']
+      curColor = 0
+
+      # Write all of the Movers in all of the cliques, with a different color per Mover
+      # using the actual atom radius.
+      ret = '@kinemage 1\n'
+      ret += '@master {movers}\n'
+      for c in components:
+        movers = [self._interactionGraph.vertex_label(i) for i in c]
+        for m in movers:
+          color = COLORS[curColor]
+          curColor = (curColor + 1) % len(COLORS)
+          # Radius will be overridden per atom
+          ret += '@spherelist {'+self._DescribeMover(m)+'} color= '+color+' nobutton radius= 0.5 master= {movers}\n'
+          ret += self._MoverSpheres(m)
+
+      # Write all of the cliques, with a different color per clique
+      # using the atom radius plus the probe radius.
+      for i, c in enumerate(components):
+        cliqueName = 'clique '+str(i)+' size '+str(len(c))
+        ret += '@master {'+cliqueName+'}\n'
+        color = COLORS[curColor]
+        curColor = (curColor + 1) % len(COLORS)
+        movers = [self._interactionGraph.vertex_label(i) for i in c]
+        for m in movers:
+          # Radius will be overridden per atom
+          ret += '@spherelist {'+self._DescribeMover(m)+'} color= '+color+' nobutton radius= 0.5 master= {'+cliqueName+'}\n'
+          ret += self._MoverSpheres(m, self._probeRadius)
+
+      return ret
+
+
 ##################################################################################
 # Private helper functions.
 
@@ -1205,84 +1268,6 @@ def _subsetGraph(g, keepLabels):
 
   return ret
 
-def _vertexCut(clique):
-  """
-  Return a "vertex cut" of clique such that removal of a subset of the vertices
-  causes the remainder of the vertices to become disconnected.
-  :param clique: Boost graph of Movers that describes a Clique (or a subset of a Clique) and
-  includes only vertices and edges within the subset for which a vertex cut is to be found.
-  This must not be self._interactionGraph() or any other graph that already has multiple
-  connected components.
-  :return: A tuple: (1) List of Movers that were removed.  If this list is empty, no vertex
-  cut was found. (2) New graph with the vertices and edges associated with the removed Movers
-  removed from the graph.  This graph will have at least two connected components.  If no
-  vertex cut is found, this will be a copy of the original graph.
-  """
-
-  # Check all vertex cut sizes from 1 to 2 less than the number of vertices (we must
-  # have at least 2 vertices left to have a disconnected graph). The range must go one
-  # past the end because the second argument to range() is exclusive.
-  for n in range(1, 1+len(list(clique.vertices()))-2):
-    # Iterate over all sets of vertices of size n that might be removed
-    for removed in itertools.combinations(clique.vertices(),n):
-      movers = [clique.vertex_label(v) for v in removed]
-
-      # Find the list of remaining vertices, which is all but the ones to be removed.
-      remain = set(clique.vertex_label(v) for v in clique.vertices())
-      for m in movers:
-        remain.remove(m)
-      # Make a copy of the clique with those vertices removed.
-      newGraph = _subsetGraph(clique, remain)
-
-      # If the graph has 2 or more connected components, we've found our answer.
-      components = cca.connected_components( graph = newGraph )
-      if len(components) > 1:
-        return movers, newGraph
-
-  # We didn't find an answer.  Return a complete copy of the graph and an empty set of movers.
-  movers = []
-  return movers, clique
-
-def _generateAllStates(numStates):
-  """ This is a generator function that will yield all combinations of states within the
-  counts specified in the state vector.  For example, if numStates is [2, 2] then this will
-  produce the following outputs, one at a time: [0, 0], [1, 0], [0, 1], [1, 1].
-  :param numStates: List of integers specifying the number of states for each element.
-  :return: Yields all combinations of all elements in the state vector.
-  """
-
-  # Cycle the curStateValues[] list through all possible states for each element,
-  # incremementing each until it rolls over and then jumping up to the next.
-  # This is similar to doing +1 arithmetic with carry on a multi-digit number.
-  curStateValues = [0] * len(numStates) # Cycles through available counts, one per element
-  curState = 0
-
-  # Increment the state.  We do this by increasing the current element until it reaches its
-  # number of values, then we bump it and all of its neighbors to the right back to 0 and, if
-  # we're not at the left end, bump the next one up.  If we are at the left end, we're done.
-  # When done, leave all states at 0.
-  while True:
-    # Yield the current value
-    yield curStateValues
-
-    # Go to the next value, if there is one.
-    curStateValues[curState] += 1
-    rippled = False
-    while curStateValues[curState] == numStates[curState]:  # Ripple to the left if we overflow more than one
-      # Clear all of the values to the right, and ours, because we're rolling over
-      for i in range(curState+1):
-        curStateValues[i] = 0
-      # If we're the left-most state, we're done
-      if curState+1 >= len(numStates):
-        return
-      else:
-        curState += 1
-        curStateValues[curState] += 1
-        rippled = True
-    # If we rippled, bump back to the right-most column and start counting there again in
-    # the next iteration.
-    if rippled:
-      curState = 0
 
 ##################################################################################
 # Test function and associated data and helpers to verify that all functions behave properly.
