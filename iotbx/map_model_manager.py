@@ -5128,14 +5128,17 @@ class map_model_manager(object):
     f = StringIO()
     print("\nSummary of anisotropic scaling applied for %s" %(
       self.get_map_manager_by_id(map_id).file_name), file = f)
-    print("Original B-cart:    (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(prev_b_cart)), file = f)
-    print("New B-cart:         (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(new_b_cart)), file = f)
-    print("Effective B-sharpen:(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(b_sharpen)), file = f)
-    print("Effective average B-sharpen: %.2f A**2" %(
-      flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
+    if prev_b_cart is not None:
+      print("Original B-cart:    (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(prev_b_cart)), file = f)
+    if new_b_cart is not None:
+      print("New B-cart:         (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(new_b_cart)), file = f)
+    if b_sharpen and b_sharpen is not None:
+      print("Effective B-sharpen:(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(b_sharpen)), file = f)
+      print("Effective average B-sharpen: %.2f A**2" %(
+        flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
 
     result = group_args(
      group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
