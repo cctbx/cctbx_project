@@ -1,34 +1,21 @@
 #pragma once
 #include <cctbx/miller.h>
 #include <cctbx/miller/index_generator.h>
-#include <cctbx/miller/lookup_utils.h>
-#include <scitbx/vec3.h>
-#include <scitbx/mat3.h>
-#include <scitbx/array_family/versa_matrix.h>
-#include <smtbx/error.h>
-#include <smtbx/import_scitbx_af.h>
-#include <fast_linalg/lapacke.h>
+#include <smtbx/ED/math_utils.h>
 
-#define ED_UTIL_TYPEDEFS                                           \
-  typedef std::complex<FloatType> complex_t;                       \
-  typedef scitbx::vec3<FloatType> cart_t;                          \
-  typedef scitbx::mat3<FloatType> mat3_t;                          \
-  typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t; \
-  typedef typename af::versa<FloatType, af::mat_grid> mat_t;       \
-  typedef typename af::versa<complex_t, af::mat_grid> cmat_t;      
-
-namespace smtbx { namespace ED {
+namespace smtbx { namespace ED
+{
   using namespace cctbx;
-
+    
   template <typename FloatType>
   struct utils {
     ED_UTIL_TYPEDEFS;
 
     static void build_Ug_matrix(
       cmat_t& A,
-      af::shared<complex_t> const& Fcs_k,
-      lookup_t const& mi_lookup,
-      af::shared<miller::index<> > indices) // implicit {0,0,0} at 0
+      const af::shared<complex_t> &Fcs_k,
+      const lookup_t &mi_lookup,
+      const af::shared<miller::index<> > &indices) // implicit {0,0,0} at 0
     {
       const size_t n_beams = indices.size() + 1; // g0+
       A.resize(af::mat_grid(n_beams, n_beams));
@@ -61,11 +48,52 @@ namespace smtbx { namespace ED {
       }
     }
 
+    static bool sort_beams(const std::pair<size_t, FloatType>& a,
+      const std::pair<size_t, FloatType>& b)
+    {
+      return (a.second < b.second);
+    }
+
+    static af::shared<miller::index<> > build_Ug_matrix_N(cmat_t& A,
+      const af::shared<complex_t>& Fcs_k,
+      const lookup_t& mi_lookup,
+      const af::shared<miller::index<> >& index_selection,
+      FloatType Kl,
+      const miller::index<> &h,
+      const mat3_t &RMf,
+      size_t num)
+    {
+      typedef std::pair<size_t, FloatType> se_t;
+      std::vector<se_t> beams;
+      for (size_t i = 0; i < index_selection.size(); i++) {
+        miller::index<> h_ = index_selection[i];
+        if (h_ == h) {
+          continue;
+        }
+        long idx = mi_lookup.find_hkl(h_);
+        cart_t g = RMf * cart_t(h_[0], h_[1], h_[2]);
+        beams.push_back(
+          std::make_pair(i,
+            std::abs(
+              std::abs(Fcs_k[idx]) / (calc_Sg(g, Kl) + 0.001))
+          )
+        );
+      }
+      std::sort(beams.begin(), beams.end(), sort_beams);
+      af::shared<miller::index<> > indices;
+      indices.push_back(h);
+      for (size_t i = 0; i < std::min(num, beams.size()) - 1; i++) {
+        indices.push_back(index_selection[beams[beams.size() - i - 1].first]);
+      }
+      build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
+      return indices;
+    }
+
     static void build_D_matrices(
       const lookup_t& mi_lookup,
       const af::shared<miller::index<> >& indices,
-      const cmat_t &DM_kin,
-      af::shared<cmat_t> &Ds_kin)
+      const cmat_t& DM_kin,
+      af::shared<cmat_t>& Ds_kin)
     {
       const size_t n_beams = indices.size() + 1; // g0+
       size_t n_param = DM_kin.accessor().n_columns();
@@ -94,95 +122,6 @@ namespace smtbx { namespace ED {
         }
         Ds_kin.push_back(D);
       }
-    }
-
-    static void multily_diagonal_inplace(
-      af::shared<FloatType> &d,
-      af::shared<FloatType> const&c)
-    {
-      for (size_t i = 0; i < d.size(); i++) {
-        d[i] *= c[i];
-      }
-    }
-
-    static af::shared<FloatType> multily_diagonal(
-      af::shared<FloatType> const& d,
-      af::shared<FloatType> const& c)
-    {
-      af::shared<FloatType> rv(d.size());
-      for (size_t i = 0; i < d.size(); i++) {
-        rv[i] = d[i] * c[i];
-      }
-      return rv;
-    }
-
-    static cmat_t multily_diagonal(
-      cmat_t const& m,
-      af::shared<FloatType> const& d)
-    {
-      size_t sz = m.accessor().n_columns();
-      cmat_t rv(af::mat_grid(sz, sz));
-      for (size_t i = 0; i < sz; i++) {
-        for (size_t j = 0; j < sz; j++) {
-          rv(i, j) = m(i,j) * d[j];
-        }
-      }
-      return rv;
-    }
-
-    static cmat_t multily_diagonal(
-      af::shared<FloatType> const& d,
-      cmat_t const& m)
-    {
-      size_t sz = m.accessor().n_columns();
-      cmat_t rv(af::mat_grid(sz, sz));
-      for (size_t i = 0; i < sz; i++) {
-        for (size_t j = 0; j < sz; j++) {
-          rv(i, j) = m(i, j) * d[i];
-        }
-      }
-      return rv;
-    }
-
-    // derivatifes of A = V * D * V^-1
-    static cmat_t calc_dS_dx(
-      // derivatives of the Eigen matrix by params
-      cmat_t const& S,
-      // diagonal matrix
-      af::shared<complex_t> const& D,
-      // eigen values
-      af::shared<complex_t> const& L,
-      // eigen vectors
-      cmat_t const& V,
-      // inverse of eigen vectors
-      cmat_t const& V_1,
-      // derivatives of the diagonal matrix by eigen values
-      af::shared<complex_t> const& dD_dL)
-    {
-      size_t sz = S.accessor().n_columns();
-      cmat_t X = af::matrix_multiply(V_1, S);
-      cmat_t dV = af::matrix_multiply(X, V);
-      af::shared<FloatType> dD(sz);
-      for (size_t i = 0; i < sz; i++) {
-        dD[i] = dV(i, i) * dD_dL[i];
-      }
-
-      for (size_t i = 0; i < sz; i++) {
-        dV(i, i) = 0;
-        for (size_t j = i+1; j < sz; j++) {
-          FloatType k = 1. / (L[j] - L[i]);
-          dV(i, j) *= k;
-          dV(j, i) *= -k;
-        }
-      }
-      X = multiply_diagonal(D, V_1);
-      cmat_t res = af::matrix_multiply(dV, X) +
-        af::matrix_multiply(
-          multiply_diagonal(V, dD), V_1) +
-        af::matrix_multiply(
-          af::matrix_multiply(
-            af::matrix_multiply(V, X), dV), V_1);
-      return res;
     }
 
     // considers the original matrix Hermitian
@@ -218,66 +157,6 @@ namespace smtbx { namespace ED {
         }
         A(i, i) -= d_mod;
         A(i, 0) -= u_mod;
-      }
-    }
-
-    /* Acta Cryst. (2013). A69, 171–188 */
-    static void build_eigen_matrix_2013(
-      cmat_t& A, // Ug matrix
-      af::shared<miller::index<> > indices, // implicit {0,0,0} at 0
-      cart_t const& K,
-      mat3_t const& RMf,
-      cart_t const& N,
-      af::shared<FloatType>& ExpDen)
-    {
-      const FloatType Kn = N * K, Kl = K.length();
-      const size_t n_beams = indices.size() + 1; // g0+
-      ExpDen.resize(n_beams);
-      ExpDen[0] = Kn; //for g0
-      for (size_t i = 1; i < n_beams; i++) {
-        miller::index<> h = indices[i - 1];
-        cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
-        FloatType s_2k = Kl * Kl - K_g.length_sq();
-        A(i, i) = s_2k;
-        ExpDen[i] = K_g * N;
-      }
-    }
-
-    /* Acta Cryst. (2015). A71, 235–244 */
-    static void build_eigen_matrix_2015(
-      cmat_t& A, // Ug matrix
-      af::shared<miller::index<> > indices, // implicit {0,0,0} at 0
-      cart_t const& K,
-      mat3_t const& RMf,
-      cart_t const& N,
-      af::shared<FloatType>& M)
-    {
-      const FloatType Kn = N * K,
-        Kl = K.length();
-      const size_t n_beams = indices.size() + 1; // g0+
-      M.resize(n_beams);
-      M[0] = 1; //for g0
-      af::shared<cart_t> gs(n_beams);
-      af::shared<FloatType> dens(n_beams);
-      dens[0] = 1;
-      for (size_t i = 1; i < n_beams; i++) {
-        miller::index<> h = indices[i - 1];
-        cart_t g = RMf * cart_t(h[0], h[1], h[2]);
-        gs[i] = g;
-        dens[i] = std::sqrt(1. / (1 + g * N / Kn));
-      }
-      for (size_t i = 1; i < n_beams; i++) {
-        FloatType s_2k = (Kl * Kl - (K + gs[i]).length_sq());
-        FloatType i_den = dens[i];
-        A(0, i) *= i_den;
-        A(i, i) *= i_den;
-        A(i, i) += s_2k * i_den * i_den;
-        M[i] = i_den;
-        for (size_t j = i + 1; j < n_beams; j++) {
-          FloatType den = dens[j] * i_den;
-          A(i, j) *= den;
-          A(j, i) *= den;
-        }
       }
     }
 
@@ -325,264 +204,6 @@ namespace smtbx { namespace ED {
         A(i, i) += excitation_errors[i - 1];
         ExpDen[i] = (K + gs[i - 1]) * N;
       }
-    }
-
-    static complex_t calc_amps_2013_1(
-      cmat_t& A,
-      af::shared<FloatType> const& ExpDen,
-      FloatType thickness,
-      size_t idx)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
-      // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
-      const complex_t exp_k(0, scitbx::constants::pi * thickness);
-      complex_t res;
-      for (size_t i = 0; i < n_beams; i++) {
-        res += A(idx+1, i) * std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(A(0, i));
-      } 
-      return res;
-    }
-
-    static af::shared<complex_t> calc_amps_2013(
-      cmat_t& A,
-      af::shared<FloatType> const& ExpDen,
-      FloatType thickness,
-      size_t num)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
-      // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
-      const complex_t exp_k(0, scitbx::constants::pi * thickness);
-      af::shared<complex_t> im(n_beams);
-      // diagonal by first row of A*
-      for (size_t i = 0; i < n_beams; i++) {
-        im[i] = std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(A(0, i));
-      }
-      af::shared<complex_t> rv(num);
-      for (size_t i = 0; i < num; i++) {
-        for (size_t j = 0; j < n_beams; j++) {
-          rv[i] += A(i + 1, j) * im[j];
-        }
-      }
-      return rv;
-    }
-
-    static af::shared<complex_t> calc_amps_2013_ext(
-      cmat_t& A,
-      af::shared<cmat_t> const& Ds_kin,
-      af::shared<FloatType> const& ExpDen,
-      FloatType thickness,
-      bool grad_thickness,
-      mat_t& D_dyn,
-      size_t num)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
-      // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
-      cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
-      const complex_t exp_k(0, scitbx::constants::pi * thickness),
-        k_dt(0, scitbx::constants::pi);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
-        im_dt(n_beams);
-      for (size_t i = 0; i < n_beams; i++) {
-        A_cjt(i, i) = std::conj(A(i, i));
-        for (size_t j = i + 1; j < n_beams; j++) {
-          A_cjt(i, j) = std::conj(A(j, i));
-          A_cjt(j, i) = std::conj(A(i, j));
-        }
-      }
-      for (size_t i = 0; i < n_beams; i++) {
-        exps[i] = std::exp(ev[i] * exp_k / ExpDen[i]);
-        // diagonal by first row of A*
-        im[i] = exps[i] * A_cjt(i, 0);
-        if (grad_thickness) {
-          // diagonal_dt by first row of A* (dI/dThickness)
-          im_dt[i] = exps[i] * ev[i] * (k_dt / ExpDen[i]) * A_cjt(i, 0);
-        }
-      }
-      // !need only num rows!
-      cmat_t G(af::mat_grid(n_beams, n_beams));
-      for (size_t i = 0; i < n_beams; i++) {
-        //G(i, i) = exps[i];
-        G(i, i) = exps[i] * exp_k / ExpDen[i];
-        for (size_t j = i + 1; j < n_beams; j++) {
-          G(i, j) = (exps[i] - exps[j])/(ev[i] - ev[j]);
-          G(j, i) = G(i, j);
-        }
-      }
-      // last column - dI_dT
-      size_t d_T_off = Ds_kin.size();
-      D_dyn.resize(af::mat_grid(num, d_T_off + (grad_thickness ? 1 : 0)));
-
-      af::shared<complex_t> rv(num); // complex amplitudes
-      for (size_t i = 1; i <= num; i++) {
-        complex_t ci = 0, dt = 0;
-        for (size_t j = 0; j < n_beams; j++) {
-          ci += A(i, j) * im[j];
-          if (grad_thickness) {
-            dt += A(i, j) * im_dt[j];
-          }
-        }
-        rv[i - 1] = ci;
-        if (grad_thickness) {
-          D_dyn(i - 1, d_T_off) = 2 * (ci.real() * dt.real() + ci.imag() * dt.imag());
-        }
-      }
-
-      for (size_t pi = 0; pi < d_T_off; pi++) {
-        cmat_t V = af::matrix_multiply(
-          af::matrix_multiply(A_cjt.const_ref(), Ds_kin[pi].const_ref()).const_ref(),
-          A.const_ref());
-
-        // Hadamard product of G x V by A* first column into dI_dP
-        af::shared<complex_t> df(n_beams);
-        for (size_t i = 0; i < n_beams; i++) {
-          for (size_t j = 0; j < n_beams; j++) {
-            df[i] += G(i, j) * V(i, j) * A_cjt(j, 0);
-          }
-        }
-        df = af::matrix_multiply(A.const_ref(), df.const_ref());
-        // copy result to output (dI/dp - > |CI|^2)
-        for (size_t i = 0; i < num; i++) {
-          complex_t dp = df[i + 1];
-          D_dyn(i, pi) = 2 * (rv[i].real() * dp.real() +
-            rv[i].imag() * dp.imag());
-        }
-      }
-      return rv;
-    }
-    /* computes only I and dI_dp fo idx. Derivatives will be written to the first
-    row of the D_dyn
-    Bernoulli 9(5), 2003, 895–919
-    */
-    static complex_t calc_amps_2013_ext_1(
-      cmat_t& A,
-      af::shared<cmat_t> const& Ds_kin,
-      af::shared<FloatType> const& ExpDen,
-      FloatType thickness,
-      bool grad_thickness,
-      mat_t& D_dyn,
-      size_t idx)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
-      // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
-      cmat_t A_cjt(af::mat_grid(n_beams, n_beams));
-      const complex_t exp_k(0, scitbx::constants::pi * thickness),
-        k_dt(0, scitbx::constants::pi);
-      af::shared<complex_t> exps(n_beams), im(n_beams),
-        im_dt(n_beams);
-      for (size_t i = 0; i < n_beams; i++) {
-        A_cjt(i, i) = std::conj(A(i, i));
-        for (size_t j = i + 1; j < n_beams; j++) {
-          A_cjt(i, j) = std::conj(A(j, i));
-          A_cjt(j, i) = std::conj(A(i, j));
-        }
-      }
-      for (size_t i = 0; i < n_beams; i++) {
-        exps[i] = std::exp(ev[i] * exp_k / ExpDen[i]);
-        // diagonal by first row of A*
-        im[i] = exps[i] * A_cjt(i, 0);
-        if (grad_thickness) {
-          // diagonal_dt by first row of A* (dI/dThickness)
-          im_dt[i] = exps[i] * ev[i] * (k_dt / ExpDen[i]) * A_cjt(i, 0);
-        }
-      }
-      // !need only num rows!
-      cmat_t G(af::mat_grid(n_beams, n_beams));
-      for (size_t i = 0; i < n_beams; i++) {
-        //G(i, i) = exps[i];
-        G(i, i) = exps[i] * exp_k / ExpDen[i];
-        for (size_t j = i + 1; j < n_beams; j++) {
-          G(i, j) = (exps[i] - exps[j]) / (ev[i] - ev[j]);
-          G(j, i) = G(i, j);
-        }
-      }
-      // last column - dI_dT
-      size_t d_T_off = Ds_kin.size();
-      D_dyn.resize(af::mat_grid(1, d_T_off + (grad_thickness ? 1 : 0)));
-
-      complex_t rv; // complex amplitudes
-      {
-        complex_t dt = 0;
-        for (size_t j = 0; j < n_beams; j++) {
-          rv += A(idx+1, j) * im[j];
-          if (grad_thickness) {
-            dt += A(idx+1, j) * im_dt[j];
-          }
-        }
-        if (grad_thickness) {
-          D_dyn[d_T_off] = 2 * (rv.real() * dt.real() + rv.imag() * dt.imag());
-        }
-      }
-
-      for (size_t pi = 0; pi < d_T_off; pi++) {
-        cmat_t V = af::matrix_multiply(
-          af::matrix_multiply(A_cjt.const_ref(), Ds_kin[pi].const_ref()).const_ref(),
-          A.const_ref());
-
-        // Hadamard product of G x V by A* first column into dI_dP
-        af::shared<complex_t> df(n_beams);
-        for (size_t i = 0; i < n_beams; i++) {
-          for (size_t j = 0; j < n_beams; j++) {
-            df[i] += G(i, j) * V(i, j) * A_cjt(j, 0);
-          }
-        }
-        complex_t dp;
-        for (size_t j = 0; j < n_beams; j++) {
-          dp += A(idx + 1, j) * df[j];
-        }
-        // copy result to output (dI/dp - > |CI|^2)
-        D_dyn(0, pi) = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
-      }
-      return rv;
-    }
-
-    static af::shared<complex_t> calc_amps_2015(
-      cmat_t& A,
-      af::shared<FloatType> const& M,
-      FloatType thickness,
-      FloatType Kn,
-      size_t num)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-      af::shared<FloatType> ev(n_beams);
-      // heev replaces A with column-wise eigenvectors
-      lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
-        A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
-      af::shared<complex_t> im(n_beams);
-      const complex_t exp_k(0, scitbx::constants::pi * thickness / Kn);
-      for (size_t i = 0; i < n_beams; i++) {
-        im[i] = std::exp(ev[i] * exp_k) * std::conj(A(0, i));
-      }
-      af::shared<complex_t> res = af::matrix_multiply(A.const_ref(), im.const_ref());
-      af::shared<complex_t> rv;
-      for (size_t i = 1; i < n_beams; i++) {
-        rv.push_back(res[i] * M[i]);
-        if (rv.size() >= num) {
-          break;
-        }
-      }
-      return rv;
     }
 
     static af::shared<complex_t> calc_amps_recipro(
@@ -681,25 +302,8 @@ namespace smtbx { namespace ED {
       return rv;
     }
 
-    // Assumes A(0,0)=0, replaces A with column eigen vecs
-    //https://quantumcomputing.stackexchange.com/questions/22222/how-to-find-the-eigenstates-of-a-general-2-times-2-hermitian-matrix
-    static void two_beam_eigen(complex_t* A,
-      FloatType* ev)
-    {
-      FloatType h11 = A[3].real() / 2;
-      FloatType A01_sq = std::norm(A[1]);
-      FloatType s = std::sqrt(h11 * h11 + A01_sq);
-      ev[0] = h11 + s;
-      ev[1] = h11 - s;
-      FloatType v1l = std::sqrt(A01_sq + ev[0] * ev[0]);
-      FloatType v2l = std::sqrt(A01_sq + ev[1] * ev[1]);
-      complex_t A01 = A[1];
-      A[0] = A01 / v1l;  A[1] = ev[0] / v1l;
-      A[2] = A01 / v2l;  A[3] = ev[1] / v2l;
-    }
-
     static complex_t calc_amp_2beam(
-      const miller::index<>& h, complex_t Ug,
+      const miller::index<>& h, complex_t Ug_,
       FloatType thickness,
       cart_t const& K,
       mat3_t const& RMf,
@@ -708,10 +312,11 @@ namespace smtbx { namespace ED {
       FloatType Kn = N * K, Kl = K.length();
       cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
       FloatType K_gn = K_g * N;
+      FloatType two_K_cos = 2 * Kl * K_gn / K_g.length();
       FloatType Sg = (Kl * Kl - K_g.length_sq()) / (2 * Kl);
 
       complex_t exp_k(0, 2 * scitbx::constants::pi * thickness);
-      Ug /= (2 * K_gn);
+      complex_t Ug = Ug_ / two_K_cos;
       complex_t A[4] = { 0,std::conj(Ug), Ug, Sg };
       FloatType v[2];
 
@@ -720,87 +325,9 @@ namespace smtbx { namespace ED {
       //  &A[0][0], 2, &ev[0]);
       //SMTBX_ASSERT(!info)(info);
       // A[1] and A[3] are real numbers
-      two_beam_eigen(&A[0], &v[0]);
+      math_utils<FloatType>::two_beam_eigen(&A[0], &v[0]);
       return A[2] * std::exp(v[0] * exp_k) * std::conj(A[0]) +
         A[3].real() * std::exp(v[1] * exp_k) * A[1].real();
-    }
-
-    /*
-    * Computes 2-beam intensities and derivatives.
-    * dFcs is overwritten with the dynamic derivatives and if grad_thickness is
-    * true - the dI_d_thickness is also appended
-    */
-    
-    static complex_t calc_2beam_ext(
-      const miller::index<>& h,
-      complex_t Ug,
-      af::shared<complex_t> &dFcs,
-      FloatType thickness,
-      cart_t const& K,
-      mat3_t const& RMf,
-      cart_t const& N,
-      bool grad_thickness)
-    {
-      FloatType Kn = N * K, Kl = K.length();
-      cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
-      FloatType K_gn = K_g * N;
-      FloatType Sg = (Kl * Kl - K_g.length_sq()) / (2 * Kl);
-      complex_t exp_k(0, 2 * scitbx::constants::pi * thickness);
-
-      Ug /= (2 * K_gn);
-      complex_t A[4] = { 0,std::conj(Ug), Ug, Sg };
-      FloatType v[2];
-
-      two_beam_eigen(&A[0], &v[0]);
-
-      complex_t exps[2] = {
-        std::exp(v[0] * exp_k),
-        std::exp(v[1] * exp_k)
-      };
-
-      complex_t rv = A[2] * exps[0] * std::conj(A[0]) + A[3].real() * exps[1] * A[1].real();
-      for (size_t i = 0; i < dFcs.size(); i++) {
-        complex_t dFc = dFcs[i] / (2 * K_gn);
-        complex_t Gl[4] = { // A^-1 by dFc
-          std::conj(A[2]) * dFc,
-          std::conj(A[0] * dFc),
-          A[3] * dFc,
-          A[1] * std::conj(dFc)
-        };
-        complex_t G[4] = { // G1 by A = A^-1 * dFc * A
-          Gl[0] * A[0] + Gl[1] * A[2],
-          Gl[0] * A[1].real() + Gl[1] * A[3].real(),
-          Gl[2] * A[0] + Gl[3] * A[2],
-          Gl[2] * A[1].real() + Gl[3] * A[3].real(),
-        };
-        complex_t X[4] = {
-          exps[0] * exp_k,
-          (exps[0] - exps[1]) / (v[0] - v[1]),
-          0,
-          exps[1] * exp_k
-        };
-        X[2] = X[1];
-        complex_t V[4] = { G[0] * X[0], G[1] * X[1], G[2] * X[2], G[3] * X[3] };
-        // V by first col of A* - A[1] and A[3] are real
-        complex_t df[2] = {
-          V[0] * std::conj(A[0]) + V[1] * A[1].real(),
-          V[2] * std::conj(A[0]) + V[3] * A[1].real(),
-        };
-        // result - second row of A by df
-        complex_t dp = A[2] * df[0] + A[3].real() * df[1];
-        dFcs[i] = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
-      }
-      if (grad_thickness) {
-        const complex_t k_dt(0, 2 * scitbx::constants::pi);
-        // diagonal_dt by first row of A* (dI/dThickness)
-        complex_t im_dt[2] = {
-          exps[0] * (v[0] * k_dt) * std::conj(A[0]),
-          exps[1] * (v[1] * k_dt) * A[1].real()
-        };
-        complex_t dt = A[2] * im_dt[0] + A[3].real() * im_dt[1];
-        dFcs.push_back(2 * (rv.real() * dt.real() + rv.imag() * dt.imag()));
-      }
-      return rv;
     }
 
     static FloatType calc_Sg(cart_t const& g,
@@ -858,7 +385,7 @@ namespace smtbx { namespace ED {
     */
     static af::shared<ExcitedBeam> generate_index_set(
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
-      cart_t const &K,
+      cart_t const& K,
       FloatType min_d,
       FloatType MaxG, FloatType MaxSg,
       uctbx::unit_cell const& unit_cell)
@@ -871,7 +398,7 @@ namespace smtbx { namespace ED {
 
       miller::index<> h;
       af::shared<ExcitedBeam> all;
-      
+
       const FloatType max_f_sq = MaxG * MaxG,
         Kl = K.length(),
         Kl_sq = Kl * Kl;

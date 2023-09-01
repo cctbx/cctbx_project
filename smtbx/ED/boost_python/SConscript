@@ -1,4 +1,4 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
 env.SharedLibrary(target="#lib/smtbx_ed_data_ext",
-                  source=Glob("*.cpp"))
+                  source=["ed_data.cpp"])

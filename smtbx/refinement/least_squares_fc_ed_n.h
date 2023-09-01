@@ -4,9 +4,8 @@
 #include <cctbx/xray/thickness.h>
 
 #include <smtbx/refinement/least_squares_fc.h>
-#include <smtbx/ED/ed_data.h>
 #include <smtbx/refinement/constraints/reparametrisation.h>
-#include <scitbx/array_family/selections.h>
+#include <smtbx/ED/ed_data.h>
 
 namespace smtbx {  namespace refinement {
 namespace least_squares {
@@ -32,24 +31,23 @@ namespace least_squares {
       bool anomalous_flag,
       af::shared<FrameInfo<FloatType> > frames,
       cctbx::xray::thickness<FloatType> const& thickness,
-      // Kl, Fc2Ug, epsilon
-      af::shared<FloatType> const& params,
+      const RefinementParams<FloatType> &params,
       bool compute_grad,
       bool do_build = true)
       : reparamn(reparamn),
       f_calc_function(f_calc_function),
       space_group(space_group),
       fc_cr(fc_cr),
-      Kvac(params[0]),
-      Kl(params[1]),
-      Fc2Ug(params[2]),
-      eps(params[3]),
-      mat_type(static_cast<int>(params[4])),
+      params(params),
+      Kvac(params.getKl_vac()),
+      Kl(params.getKl()),
+      Fc2Ug(params.getFc2Ug()),
+      eps(params.getEpsilon()),
+      mat_type(params.getMatrixType()),
       frames(frames),
       thickness(thickness),
       compute_grad(compute_grad),
-      thread_n(static_cast<int>(params[5])),
-      use_diff_angle(params[6] > 0)
+      thread_n(params.getThreadN())
     {
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
@@ -110,25 +108,33 @@ namespace least_squares {
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> Fcs_k,
         af::shared<FloatType>& Is,
-        af::shared<complex_t>& CIs, bool use_offset,
-        bool use_diff_angle)
+        af::shared<complex_t>& CIs, bool use_offset)
         : parent(parent),
         frame(frame),
         thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Is(Is),
         CIs(CIs),
-        offset(use_offset ? frame.offset : 0),
-        use_diff_angle(use_diff_angle)
+        offset(use_offset ? frame.offset : 0)
       {}
 
       void operator()() {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.mat_type == 3) { // 2-beam
-            FloatType angle = scitbx::deg_as_rad(1.0),
-              step = scitbx::deg_as_rad(0.075);
+            FloatType angle = scitbx::deg_as_rad(parent.params.getIntSpan()),
+              step = scitbx::deg_as_rad(parent.params.getIntStep());
             int steps = round(angle / step);
+            int beam_n = parent.params.getBeamN();
+            cmat_t A;
+            af::shared<miller::index<> > indices, strong_indices;
+            boost::shared_ptr<a_dyn_calculator<FloatType> > dc;
+            if (beam_n > 2) {
+              strong_indices = af::select(frame.indices.const_ref(),
+                frame.strong_beams.const_ref());
+              dc = dyn_calculator_factory<FloatType>(DYN_CALCULATOR_DEFAULT)
+                .make(indices, K, thickness);
+            }
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
               miller::index<> h = frame.indices[beam_idx];
@@ -136,6 +142,12 @@ namespace least_squares {
               complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
               FloatType I1 = -1, g1 = -1;
               FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+              if (beam_n > 2) {
+                std::pair<mat3_t, cart_t> FI = frame.compute_RMf_N(da);
+                indices = utils<FloatType>::build_Ug_matrix_N(A,
+                  parent.Fcs_k, parent.mi_lookup,
+                  strong_indices, parent.Kl, h, FI.first, beam_n);
+              }
               //FloatType sg_a = frame.Sg_to_angle(0.01, h, parent.Kl);
               //int steps = std::abs(round((da-sg_a) / step));
               for (int st = -steps; st <= steps; st++) {
@@ -143,10 +155,16 @@ namespace least_squares {
                   da + st * step);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
 
-                FloatType I = std::norm(utils<FloatType>::calc_amp_2beam(
-                  h, Fc,
-                  thickness,
-                  K, r.first, r.second));
+                FloatType I;
+                
+                if (beam_n == 2) {
+                  I = std::norm(utils<FloatType>::calc_amp_2beam(
+                    h, Fc, thickness, K,
+                    r.first, r.second));
+                }
+                else {
+                  I = std::norm(dc->reset(A, r.first, r.second).calc_amps_1(0));
+                }
                 FloatType g = K_g.length();
                 if (g1 > 0) {
                   Is[offset + i] += (I + I1)*std::abs(g-g1)/2;
@@ -206,9 +224,12 @@ namespace least_squares {
           af::shared<complex_t> amps;
           // 2013
           if (parent.mat_type == 0) {
-            FloatType angle = scitbx::deg_as_rad(0.75),
-              step = scitbx::deg_as_rad(0.1);
+            FloatType angle = scitbx::deg_as_rad(parent.params.getIntSpan()),
+              step = scitbx::deg_as_rad(parent.params.getIntStep());
             int steps = round(angle / step);
+            boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
+              dyn_calculator_factory<FloatType>(DYN_CALCULATOR_2013)
+              .make(strong_indices, K, thickness);
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
               miller::index<> h = frame.indices[beam_idx];
@@ -220,13 +241,7 @@ namespace least_squares {
                 std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
                   da + st * step);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-                af::shared<FloatType> ExpDen;
-                cmat_t A1 = A.deep_copy();
-                utils<FloatType>::build_eigen_matrix_2013(A1, strong_indices, K,
-                  r.first, r.second, ExpDen
-                );
-                FloatType I = std::norm(utils<FloatType>::calc_amps_2013_1(A1, ExpDen,
-                  thickness, i));
+                FloatType I = std::norm(dc->reset(A, r.first, r.second).calc_amps_1(i));
                 FloatType g = K_g.length();
                 if (g1 >= 0) {
                   Is[offset + i] += (I + I1) * std::abs(g - g1) / 2;
@@ -238,13 +253,10 @@ namespace least_squares {
             return;
           }
           else if (parent.mat_type == 1) { // 2015
-            af::shared<FloatType> M;
-            utils<FloatType>::build_eigen_matrix_2015(A, strong_indices, K,
-              frame.RMf, frame.normal, M
-            );
-            const FloatType Kn = -frame.normal[2] * parent.Kl;
-            amps = utils<FloatType>::calc_amps_2015(A, M,
-              thickness, Kn, frame.strong_measured_beams.size());
+            boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
+              dyn_calculator_factory<FloatType>(DYN_CALCULATOR_2015)
+              .make(strong_indices, A, K, frame.RMf, frame.normal, thickness);
+            amps = dc->build().calc_amps(frame.strong_measured_beams.size());
           }
           else if (parent.mat_type == 2) { // ReciPro
             af::shared<FloatType> Pgs;
@@ -275,7 +287,6 @@ namespace least_squares {
       af::shared<FloatType>& Is;
       af::shared<complex_t>& CIs;
       size_t offset;
-      bool use_diff_angle;
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
@@ -283,18 +294,33 @@ namespace least_squares {
       process_frame_profile(ed_n_shared_data const& parent,
         FrameInfo<FloatType>& frame,
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
-        const af::shared<complex_t> Fcs_k,
+        const af::shared<complex_t> &Fcs_k,
         af::shared<FloatType>& Is)
         : parent(parent),
+        Fcs_k(Fcs_k),
         frame(frame),
         thickness(parent.thickness.value),
-        Fcs_k(Fcs_k),
         Is(Is)
-      {}
+      {
+        strong_indices = af::select(frame.indices.const_ref(),
+            frame.strong_beams.const_ref());
+        utils<FloatType>::build_Ug_matrix(
+          A, Fcs_k,
+          parent.mi_lookup,
+          strong_indices
+        );
+      }
 
       void process(const mat3_t& RMf, const cart_t& N) {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
+          boost::shared_ptr<a_dyn_calculator<FloatType> > dc;
+          if (parent.mat_type == 0 || parent.mat_type == 1) {
+            dc = dyn_calculator_factory<FloatType>(
+              parent.mat_type ? DYN_CALCULATOR_2013 : DYN_CALCULATOR_2015)
+              .make(strong_indices, K, thickness);
+
+          }
           if (parent.mat_type == 3) { // 2-beam
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
@@ -308,33 +334,9 @@ namespace least_squares {
             }
             return;
           }
-          cmat_t A;
-          af::shared<miller::index<> >
-            strong_indices = af::select(frame.indices.const_ref(),
-              frame.strong_beams.const_ref());
-          utils<FloatType>::build_Ug_matrix(
-            A, Fcs_k,
-            parent.mi_lookup,
-            strong_indices
-          );
           af::shared<complex_t> amps;
-          // 2013
-          if (parent.mat_type == 0) {
-            af::shared<FloatType> ExpDen;
-            utils<FloatType>::build_eigen_matrix_2013(A, strong_indices, K,
-              RMf, N, ExpDen
-            );
-            amps = utils<FloatType>::calc_amps_2013(A, ExpDen,
-              thickness, frame.strong_measured_beams.size());
-          }
-          else if (parent.mat_type == 1) { // 2015
-            af::shared<FloatType> M;
-            utils<FloatType>::build_eigen_matrix_2015(A, strong_indices, K,
-              RMf, N, M
-            );
-            const FloatType Kn = -frame.normal[2] * parent.Kl;
-            amps = utils<FloatType>::calc_amps_2015(A, M,
-              thickness, Kn, frame.strong_measured_beams.size());
+          if (parent.mat_type == 0 || parent.mat_type == 1) {
+            amps = dc->reset(A, RMf, N).calc_amps(frame.strong_measured_beams.size());
           }
           for (size_t i = 0; i < amps.size(); i++) {
             Is[i] = std::norm(amps[i]);
@@ -347,16 +349,18 @@ namespace least_squares {
           exception_.reset(new smtbx::error(e.what()));
         }
       }
-      ed_n_shared_data const& parent;
+      cmat_t A;
+      af::shared<miller::index<> > strong_indices;
+      const ed_n_shared_data &parent;
+      const af::shared<complex_t>& Fcs_k;
       FrameInfo<FloatType>& frame;
       FloatType thickness;
-      const af::shared<complex_t>& Fcs_k;
       af::shared<FloatType>& Is;
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
     af::shared<FloatType> process_frame_id(int frame_id,
-      af::shared<complex_t> const& Fcs_k)
+      const af::shared<complex_t> &Fcs_k)
     {
       typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(frame_id);
@@ -365,7 +369,7 @@ namespace least_squares {
       af::shared<FloatType> Is_(frame.beams.size());
       af::shared<complex_t> CIs_;
       process_frame(*this, frame, Fcs_k, Is_, CIs_,
-        false, false)(); // no offset - write to Is_ at 0;
+        false)(); // no offset - write to Is_ at 0;
       return Is_;
     }
 
@@ -420,7 +424,7 @@ namespace least_squares {
               frames[to],
               Fcs_k,
               Is_,
-              CIs_, true, use_diff_angle)
+              CIs_, true)
           );
           accumulators.push_back(pf);
           pool.create_thread(boost::ref(*pf));
@@ -541,6 +545,7 @@ namespace least_squares {
     cctbx::xray::fc_correction<FloatType> const& fc_cr;
     sgtbx::space_group const& space_group;
     af::shared<miller::index<> > indices;
+    RefinementParams<FloatType> params;
     FloatType Kvac, Kl, Fc2Ug, eps;
     int mat_type;
     size_t beam_n;
@@ -559,7 +564,6 @@ namespace least_squares {
     af::versa<FloatType, af::mat_grid> design_matrix;
     lookup_t mi_lookup;
     int thread_n;
-    bool use_diff_angle;
   };
 
   template <typename FloatType>
