@@ -4,7 +4,6 @@ from scitbx.array_family import flex
 from cctbx import uctbx
 import cctbx.crystal
 from libtbx import group_args
-import math
 import iotbx.pdb.utils
 import boost_adaptbx.boost.python as bp
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
