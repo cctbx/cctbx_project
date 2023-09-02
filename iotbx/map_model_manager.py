@@ -5368,7 +5368,7 @@ class map_model_manager(object):
       else:
         n_bins = 200
 
-    min_n_bins = n_bins//3
+    min_n_bins = 3
     original_n_bins = n_bins
     while n_bins > min_n_bins:
       f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
