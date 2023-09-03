@@ -617,7 +617,9 @@ class Optimizer(object):
           coarse = m.CoarsePositions()
           score = self._preferenceMagnitude * coarse.preferenceEnergies[index]
           clash = False
-          for atom in coarse.atoms:
+          # There may not be as many atoms moved as there are atoms, so use the proper length
+          for i in range(len(coarse.positions[index])):
+            atom = coarse.atoms[i]
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
               maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq],
@@ -752,7 +754,10 @@ class Optimizer(object):
       Move the atoms to their new positions, updating the spatial query structure
       by removing the old and adding the new location.
     """
-    for i, a in enumerate(positionReturn.atoms):
+    # there may be fewer moved atoms than there are total atoms
+    numMoved = len(positionReturn.positions[index])
+    for i in range(numMoved):
+      a = positionReturn.atoms[i]
 
       self._spatialQuery.remove(a)
       # Make a slice here so that we get a copy of the location rather than a reference to it

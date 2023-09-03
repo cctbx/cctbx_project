@@ -356,7 +356,9 @@ double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, uns
   unsigned dotCacheOffset)
 {
   double ret = 0;
-  for (size_t a = 0; a < states.atoms.size(); a++) {
+  // There may not be as many coarse atoms moved as there are atoms, so use the proper length
+  size_t numMoved = states.positions[index].size();
+  for (size_t a = 0; a < numMoved; a++) {
     // There may not be as many deleteMes as there are atoms, so we need to check for that.
     if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
       if (m_scoreCacheMap) {
@@ -376,7 +378,9 @@ std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positi
 
   // Move the atoms to their new positions, updating the spatial query structure
   // by removing the old and adding the new location.
-  for (size_t i = 0; i < positionReturn.atoms.size(); i++) {
+  // There may not be as many deleteMes as there are atoms, so we need to check for that.
+  size_t numMoved = positionReturn.positions[index].size();
+  for (size_t i = 0; i < numMoved; i++) {
     iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
 
     m_spatialQuery.remove(a);
@@ -555,7 +559,7 @@ std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
     }
   }
 
-  // Put each Mover in the entire Clique into its best state and (once that has been done, in a
+  // Put each Mover into its best state and (once that has been done, in a
   // second pass) compute the high-score value for each.
   // Compute the best individual scores for these Movers for use in later fine - motion
   // processing.
