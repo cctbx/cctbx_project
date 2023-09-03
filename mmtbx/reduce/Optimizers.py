@@ -623,7 +623,7 @@ class Optimizer(object):
             maxRadiusWithoutProbe = self._extraAtomInfo.getMappingFor(atom).vdwRadius + self._maximumVDWRadius
             res = self._dotScorer.score_dots(atom, self._minOccupancy, self._spatialQuery,
               maxRadiusWithoutProbe, self._probeRadius, self._excludeDict[atom.i_seq],
-              optC.GetDots(atom.i_seq), self._probeDensity, False)
+              optC.GetDots(atom.i_seq), self._probeDensity, False, False)
             score += res.totalScore()
             if res.hasBadBump:
               clash = True
@@ -633,14 +633,14 @@ class Optimizer(object):
           description = m.PoseDescription(optC.GetCoarseLocation(m), optC.GetFineLocation(m),
                                           not self._skipBondFixup)
 
-          # If the Mover is a flip of some kind, then the substring "Flip " will be present
-          # in the description (AmideFlip and HisFlip both have this subtring, but HisPlace does not).
+          # If the Mover is a flip of some kind, then the substring "lipped " will be present
+          # in the description.
           # When that happens, we check the final state and the other flip state
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
           # easier for a program to parse.
-          if "Flip " in description:
+          if "lipped " in description:
             coarse = m.CoarsePositions()
             numPositions = len(coarse.positions)
             final = optC.GetCoarseLocation(m)
@@ -651,7 +651,8 @@ class Optimizer(object):
             finalScore, finalBump = _scoreMoverReportClash(self, m, final)
             if otherBump and finalBump:
               description += " BothClash"
-            elif "Unflipped" in description and finalScore - otherScore <= self._nonFlipPreference:
+            elif "Unflipped" in description and (
+                (otherScore > finalScore) and (otherScore - finalScore <= self._nonFlipPreference)):
               description += " Uncertain"
             else:
               description += " ."
