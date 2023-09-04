@@ -69,5 +69,3 @@ assert len(pr2.atoms) == 0, "Unexpected atoms in list for argument-constructed P
 assert len(pr2.positions[0]) == 0, "Unexpected positions in list for argument-constructed PositionReturn"
 assert len(pr2.extraInfos[0]) == 0, "Unexpected extra-atom info in list for argument-constructed PositionReturn"
 assert pr2.deleteMes[0][0] == False, "Unexpected deleteme value in list for argument-constructed PositionReturn"
-
-
