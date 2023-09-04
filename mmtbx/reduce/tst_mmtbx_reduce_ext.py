@@ -23,6 +23,11 @@ bp.import_ext("mmtbx_probe_ext")
 bp.import_ext("mmtbx_reduce_ext")
 import mmtbx_reduce_ext as reduceExt
 
+# Explicitly call methods from imports even though they are used
+# implicitly below so that the import-test script won't fail
+unused = flex.double()
+unused = pdb.hierarchy.atom()
+
 #========================================================================
 # Call the test functions for the libraries we test.
 
