@@ -45,7 +45,7 @@ from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 #       flex<flex<vec3>> positions,
 #       flex<flex<probe.ExtraAtomInfo>> extraInfos,
 #       flex<flex<bool>> deleteMes,
-#       flex<float> preferenceEnergies
+#       std::vector<double> preferenceEnergies
 #    )
 #       The atoms element has a list of all of the atoms to be adjusted.
 #       The other elements each have a list of entries, where there is one entry
@@ -53,6 +53,11 @@ from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 #     outer list is per entry and the inner list is per atom in the atoms element,
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
+#     This array may be shorter in length than the number of atoms because
+#     some Movers do not need to change the position for all atoms (for flips, all atoms
+#     are involved in fixup but not moved during optimization).  The index in
+#     this array will match the index in the atoms array so the earliest atoms will be
+#     changed if a subset is present.
 #       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
 #     This array may be shorter in length than the number of atoms (and may be empty) because
 #     some Movers do not need to change the information for any or all atoms.  The index in
@@ -907,7 +912,8 @@ class MoverAmideFlip(object):
     newPos[2] = oxygen.xyz
     newPos[3] = nh2Atom.xyz
 
-    self._coarsePositions = [ startPos, newPos ]
+    # Only consider the first 5 atoms when optimizing, the four that move and the one they may shield
+    self._coarsePositions = [ startPos[:5], newPos[:5] ]
 
     #########################
     # Compute the list of Fixup returns.
@@ -959,8 +965,8 @@ class MoverHisFlip(object):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
-       for its testing, but during FixUp it adjusts the bond lengths per
-       Protein Science Vol 27:293-315.
+       for its testing, but during FixUp it adjusts the bond lengths and angles for
+       additional atoms per Protein Science Vol 27:293-315.
        :param ne2Atom: NE2 atom within the Histidine ring.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
@@ -1156,10 +1162,12 @@ class MoverHisFlip(object):
     self._coarsePositions = []
     if self._enabledFlipStates & 1:
       for i in range(4):
-        self._coarsePositions.append(startPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(startPos[:9])
     if self._enabledFlipStates & 2:
       for i in range(4):
-        self._coarsePositions.append(newPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(newPos[:9])
 
     #########################
     # Compute the list of Fixup returns.
