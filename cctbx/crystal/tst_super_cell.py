@@ -5,8 +5,9 @@ import mmtbx.model
 import libtbx.load_env
 from libtbx.utils import null_out
 import math
+from scitbx.array_family import flex
 
-pdb_str = """
+pdb_str_1yjp = """
 CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1      2
 ATOM      1  N   GLY A   1      -9.009   4.612   6.102  1.00 16.77           N
 ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
@@ -873,6 +874,79 @@ HETATM  787  O   HOH A 129      35.203  -2.342   4.420  1.00 47.07           O
 END
 """
 
+pdb_str_fraction = """
+CRYST1   26.653    4.824   29.048  90.00 101.02  90.00 P 1 21 1
+SCALE1      0.037519  0.000000  0.007307        0.00000
+SCALE2      0.000000  0.207297  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.035072        0.00000
+ATOM      1  N   ASN A   1      -1.695   1.735  15.868  1.00  4.33           N
+ATOM      2  CA  ASN A   1      -0.410   1.041  15.831  1.00  3.38           C
+ATOM      3  C   ASN A   1       0.646   1.801  16.594  1.00  5.38           C
+ATOM      4  O   ASN A   1       0.646   3.030  16.628  1.00  4.56           O
+ATOM      5  CB  ASN A   1       0.086   0.844  14.397  1.00  1.95           C
+ATOM      6  CG  ASN A   1      -0.744  -0.143  13.631  1.00  5.60           C
+ATOM      7  OD1 ASN A   1      -1.623  -0.818  14.193  1.00  4.60           O
+ATOM      8  ND2 ASN A   1      -0.449  -0.270  12.345  1.00  3.71           N
+ATOM      9  H1  ASN A   1      -2.362   1.198  16.458  0.00  4.33           H
+ATOM     10  H2  ASN A   1      -1.564   2.685  16.269  0.00  4.33           H
+ATOM     11  H3  ASN A   1      -2.073   1.815  14.903  0.00  4.33           H
+ATOM     12  HA  ASN A   1      -0.557   0.062  16.287  0.00  3.38           H
+ATOM     13  HB2 ASN A   1       0.046   1.798  13.872  0.00  1.95           H
+ATOM     14  HB3 ASN A   1       1.111   0.475  14.423  0.00  1.95           H
+ATOM     15 HD21 ASN A   1      -0.974  -0.924  11.764  0.00  3.71           H
+ATOM     16 HD22 ASN A   1       0.303   0.286  11.937  0.00  3.71           H
+ATOM     17  N   VAL A   2       1.575   1.065  17.191  1.00  2.21           N
+ATOM     18  CA  VAL A   2       2.779   1.651  17.739  1.00  2.56           C
+ATOM     19  C   VAL A   2       3.948   1.033  16.990  1.00  1.90           C
+ATOM     20  O   VAL A   2       4.136  -0.192  17.019  1.00  2.64           O
+ATOM     21  CB  VAL A   2       2.893   1.411  19.247  1.00  4.05           C
+ATOM     22  CG1 VAL A   2       4.189   2.028  19.774  1.00  2.63           C
+ATOM     23  CG2 VAL A   2       1.651   2.005  19.922  1.00  2.47           C
+ATOM     24  H   VAL A   2       1.515   0.053  17.308  0.00  2.21           H
+ATOM     25  HA  VAL A   2       2.784   2.728  17.573  0.00  2.56           H
+ATOM     26  HB  VAL A   2       2.935   0.347  19.479  0.00  4.05           H
+ATOM     27 HG11 VAL A   2       4.256   1.850  20.847  0.00  2.63           H
+ATOM     28 HG12 VAL A   2       5.035   1.564  19.266  0.00  2.63           H
+ATOM     29 HG13 VAL A   2       4.178   3.100  19.575  0.00  2.63           H
+ATOM     30 HG21 VAL A   2       1.719   1.841  20.997  0.00  2.47           H
+ATOM     31 HG22 VAL A   2       1.609   3.074  19.711  0.00  2.47           H
+ATOM     32 HG23 VAL A   2       0.763   1.513  19.526  0.00  2.47           H
+TER
+ATOM    101  N   ASN B   1      12.281   4.857  -1.733  1.00  2.85           N
+ATOM    102  CA  ASN B   1      11.027   4.097  -1.673  1.00  3.81           C
+ATOM    103  C   ASN B   1       9.965   4.796  -2.471  1.00  2.59           C
+ATOM    104  O   ASN B   1       9.976   6.019  -2.588  1.00  2.85           O
+ATOM    105  CB  ASN B   1      10.515   3.935  -0.253  1.00  1.67           C
+ATOM    106  CG  ASN B   1      11.327   2.968   0.550  1.00  3.35           C
+ATOM    107  OD1 ASN B   1      12.142   2.222   0.011  1.00  4.04           O
+ATOM    108  ND2 ASN B   1      11.108   2.964   1.860  1.00  3.17           N
+ATOM    109  H1  ASN B   1      12.987   4.318  -2.274  0.00  2.85           H
+ATOM    110  H2  ASN B   1      12.111   5.771  -2.199  0.00  2.85           H
+ATOM    111  H3  ASN B   1      12.634   5.020  -0.768  0.00  2.85           H
+ATOM    112  HA  ASN B   1      11.223   3.102  -2.073  0.00  3.81           H
+ATOM    113  HB2 ASN B   1      10.549   4.902   0.249  0.00  1.67           H
+ATOM    114  HB3 ASN B   1       9.489   3.568  -0.285  0.00  1.67           H
+ATOM    115 HD21 ASN B   1      11.630   2.327   2.462  0.00  3.17           H
+ATOM    116 HD22 ASN B   1      10.418   3.597   2.264  0.00  3.17           H
+ATOM    117  N   VAL B   2       9.020   4.021  -2.990  1.00  1.69           N
+ATOM    118  CA  VAL B   2       7.839   4.566  -3.646  1.00  0.82           C
+ATOM    119  C   VAL B   2       6.641   4.104  -2.842  1.00  1.98           C
+ATOM    120  O   VAL B   2       6.357   2.903  -2.783  1.00  1.64           O
+ATOM    121  CB  VAL B   2       7.725   4.115  -5.114  1.00  1.73           C
+ATOM    122  CG1 VAL B   2       6.390   4.611  -5.733  1.00  1.72           C
+ATOM    123  CG2 VAL B   2       8.903   4.658  -5.900  1.00  2.63           C
+ATOM    124  H   VAL B   2       9.046   3.002  -2.971  0.00  1.69           H
+ATOM    125  HA  VAL B   2       7.881   5.655  -3.629  0.00  0.82           H
+ATOM    126  HB  VAL B   2       7.734   3.026  -5.162  0.00  1.73           H
+ATOM    127 HG11 VAL B   2       6.335   4.279  -6.770  0.00  1.72           H
+ATOM    128 HG12 VAL B   2       5.559   4.194  -5.164  0.00  1.72           H
+ATOM    129 HG13 VAL B   2       6.362   5.700  -5.689  0.00  1.72           H
+ATOM    130 HG21 VAL B   2       8.816   4.335  -6.938  0.00  2.63           H
+ATOM    131 HG22 VAL B   2       8.893   5.747  -5.847  0.00  2.63           H
+ATOM    132 HG23 VAL B   2       9.826   4.273  -5.467  0.00  2.63           H
+TER
+"""
+
 def exercise_00(nonbonded_distance_cutoff=4.5, write_files=False):
   """
   Exercise supercell. General.
@@ -882,8 +956,8 @@ def exercise_00(nonbonded_distance_cutoff=4.5, write_files=False):
     return
   if(write_files):
     with open("input.pdb","w") as fo:
-      fo.write(pdb_str)
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+      fo.write(pdb_str_1yjp)
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str_1yjp)
   m = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
   p = m.get_default_pdb_interpretation_params()
   p.pdb_interpretation.nonbonded_distance_cutoff = nonbonded_distance_cutoff
@@ -920,7 +994,7 @@ def exercise_01():
     return math.sqrt((r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2)
   coords = []
   for Rss in range(0,11):
-    print(Rss)
+    #print(Rss)
     pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_3q2c)
     h = pdb_inp.construct_hierarchy()
     h.atoms().reset_i_seq()
@@ -928,9 +1002,6 @@ def exercise_01():
       pdb_hierarchy = h,
       crystal_symmetry = pdb_inp.crystal_symmetry(),
       select_within_radius=Rss,
-      box_buffer_layer=10,
-      link_min=1.0,
-      link_max=2.0,
       siiu=None)
     coords.append(ss.hierarchy.atoms().extract_xyz())
   for i, ri in enumerate(coords):
@@ -945,6 +1016,54 @@ def exercise_01():
               break
           assert found
 
+def exercise_02():
+  """
+  Check expansion via gradients.
+  """
+  for pdb_str in [pdb_str_1yjp, pdb_str_3q2c, pdb_str_fraction]:
+    # gradients usual way
+    pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
+    h = pdb_inp.construct_hierarchy()
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = h,
+      crystal_symmetry  = pdb_inp.crystal_symmetry(),
+      log               = null_out())
+    model.process(make_restraints=True, grm_normalization=True)
+    rm = model.get_restraints_manager()
+    es = rm.geometry.energies_sites(
+      sites_cart        = model.get_sites_cart(),
+      compute_gradients = True)
+    g1 = es.gradients
+    # gradients via expansion
+    expansion = super_cell.run(
+      pdb_hierarchy        = model.get_hierarchy(),
+      crystal_symmetry     = model.crystal_symmetry(),
+      select_within_radius = 5,
+      box_buffer_layer     = 3)
+    pdb_hierarchy_super = expansion.hierarchy
+    ss_crystal_symmetry = expansion.crystal_symmetry
+    selection = flex.bool(pdb_hierarchy_super.atoms().size(), False)
+    selection = selection.set_selected(flex.size_t(range(model.size())), True)
+    model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = pdb_hierarchy_super,
+      crystal_symmetry  = ss_crystal_symmetry,
+      log               = null_out())
+    model.process(make_restraints=True, grm_normalization=True)
+    rm = model.get_restraints_manager()
+    es = rm.geometry.energies_sites(
+      sites_cart        = model.get_sites_cart(),
+      compute_gradients =True)
+    g2 = es.gradients.select(selection)
+    # Compare gradinets by means of distance
+    dist = flex.sqrt((g1 - g2).dot())
+    assert flex.max(dist) < 1.e-6
+
 if(__name__ == "__main__"):
   exercise_00()
   exercise_01()
+  if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
+    print("Skipping exercise_02(): chem_data directory not available")
+  else:
+    exercise_02()

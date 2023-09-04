@@ -254,7 +254,7 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
     print('    %2d : "%s"' % (i+1,sel))
   if len(opts)==1:
     print('\n  Automatically selecting')
-    i=1
+    rc=opts[0]
   else:
     rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
   try:
