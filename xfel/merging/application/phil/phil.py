@@ -481,7 +481,7 @@ merging {
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {
-    model = ha14 *ev11 ev11_mll errors_from_sample_residuals
+    model = ha14 *ev11 errors_from_sample_residuals
       .type = choice
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
@@ -492,10 +492,11 @@ merging {
       .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011. \
               Updated EV11 with MLL target function
       {
-      algorithm = 'ev11'
-        .type = str
+      algorithm = *ev11 ev11_mll
         .help = 'ev11' implements the original Ev11 from Brewster 2019 \
                 'ev11_mll' implements the maximum log-likelihood from Mittan-Moreau 202X
+        .type = choice
+        .multiple = False
       n_degrees = 0
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
@@ -503,14 +504,20 @@ merging {
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
       expectation_scaling = 1
-        .help = expectation scaling
+        .help = Value to scale the expectation of the absolute normalized deviation\
+                before optimization.
         .type = float
+      overall_scaling_method = *standard_deviation interquartile_range normalized_mad pairwise_difference
+        .help = Calculation of the overall scaling ...
+        .type = choice
+        .multiple = False
       tuning_param_opt = False
         .type = bool
-        .help = If True, optimize the tuning parameter
-      likelihood = 'normal'
-        .type = str
+        .help = If True, optimize the t-distribution's tuning parameter
+      likelihood = *normal t-dist
         .help = Choice for likelihood function. Either 't-dist', 'normal'.
+        .type = choice
+        .multiple = False
       cc_after_pr = True
         .type = bool
         .help = If True - use correlation coefficient determined after post-refinement.\
@@ -518,8 +525,7 @@ merging {
                 If post-refinement is not performed, must be False.
       do_diagnostics = False
         .type = bool
-        .help = If True show the finite vs. analytical differences, \
-                plot normalized deviations, and plot s_add and correlation coefficients.
+        .help = plot normalized deviations, s_add and correlation coefficients, and I/sigma vs I.
     }
   }
   plot_single_index_histograms = False

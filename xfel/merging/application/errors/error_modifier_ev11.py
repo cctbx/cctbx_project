@@ -8,7 +8,7 @@ import os
 import sys
 from scipy.special import gamma
 from scipy.special import polygamma
-
+import scipy.stats
 
 number_of_intensity_bins = 100
 
@@ -55,6 +55,8 @@ class error_modifier_ev11(worker):
     all_biased_mean = flex.double()
     correlation     = flex.double()
     multiplicity    = flex.double()
+    # Need miller indices to scale by pairwise differences
+    miller_index_asymmetric = flex.miller_index()
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
@@ -82,15 +84,17 @@ class error_modifier_ev11(worker):
         else:
           correlation.extend(flex.double(number_of_measurements, 0))
         multiplicity.extend(flex.double(number_of_measurements, number_of_measurements))
+        miller_index_asymmetric.extend(refls['miller_index_asymmetric'])
 
     self.work_table[self.cc_key]    = correlation
     self.work_table["delta_sq"]     = delta_sq
     self.work_table["delta_all"]    = delta_all
     self.work_table["mean"]         = mean
     self.work_table["biased_mean"]  = biased_mean
-    self.work_table["var"]          = var
+    self.work_table["intensity.sum.variance"] = var
     self.work_table["I"]            = I_wt
     self.work_table["multiplicity"] = multiplicity
+    self.work_table["miller_index_asymmetric"] = miller_index_asymmetric
     reflections['biased_mean']      = all_biased_mean
 
     self.logger.log("Number of work reflections selected: %d"%self.deltas.size())
@@ -468,24 +472,145 @@ class error_modifier_ev11(worker):
         log_out += f'nu: {tuning_param}'
       self.logger.main_log(log_out)
 
-    if self.algorithm != 'ev11':
+    if self.algorithm == 'ev11_mll':
       self.scale_sfac()
     if self.params.merging.error.ev11.do_diagnostics:
-      self.plot_normalized_deviations()
-      self.plot_sadd()
-      self.verify_derivatives()
+      #self.verify_derivatives()
+      self.plot_diagnostics()
 
   def scale_sfac(self):
+    if self.params.merging.error.ev11.overall_scaling_method == 'standard_deviation':
+      scale = self._get_scale_std()
+    elif self.params.merging.error.ev11.overall_scaling_method == 'interquartile_range':
+      scale = self._get_scale_iqr()
+    elif self.params.merging.error.ev11.overall_scaling_method == 'normalized_mad':
+      scale = self._get_scale_nmad()
+    elif self.params.merging.error.ev11.overall_scaling_method == 'pairwise_difference':
+      scale = self._get_scale_pairwise_difference()
+    if self.mpi_helper.rank == 0:
+      sfac_old = self.sfac
+      self.sfac = self.sfac * scale
+      log_out = 'SCALING SFAC  '\
+        + f'Unscaled standard deviation: {scale:0.3f} '\
+        + f'Optimized sfac: {sfac_old:0.3f} '\
+        + f'Scaled sfac: {self.sfac:0.3f} '
+      self.logger.main_log(log_out)
+    self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
+
+  def _get_scale_pairwise_difference(self, return_in_bins=False):
+    def min_fun_t(c, df):
+      term0 = scipy.stats.t.ppf(3/4, df=df)
+      term1 = scipy.stats.t.cdf(term0 + 1/c, df=df)
+      term2 = scipy.stats.t.cdf(term0 - 1/c, df=df)
+      term3 = 1/2
+      diff = term1 - term2 - term3
+      return diff**2
+
+    if self.mpi_helper.rank == 0:
+      if self.likelihood == 'normal':
+        conversion_factor = 1.1926
+      elif self.likelihood == 't-dist':
+        results = scipy.optimize.minimize_scalar(
+          min_fun_t,
+          bounds=(0.1, 2),
+          args=(self.tuning_param)
+          )
+        conversion_factor = results.x
+
+    median_differences = []
+    if return_in_bins:
+      median_differences_bin = np.zeros(number_of_intensity_bins)
+    for bin_index, bin_reflections in enumerate(self.intensity_bins):
+      if len(bin_reflections) > 0:
+        for same_reflections in reflection_table_utils.get_next_hkl_reflection_table(bin_reflections):
+          number_of_reflections = same_reflections.size()
+          if number_of_reflections > 0:
+            var_ev11 = self._get_var_ev11(same_reflections)
+            normalized_deviations = (same_reflections['delta_all'] / flex.sqrt(var_ev11)).as_numpy_array()
+            differences = normalized_deviations[np.newaxis] - normalized_deviations[:, np.newaxis]
+            median_differences.append(np.median(np.abs(differences), axis=1))
+      if return_in_bins:
+        if len(median_differences) > 0:
+          median_differences = np.concatenate(median_differences)
+        all_median_differences_bin = self.mpi_helper.comm.gather(median_differences, root=0)
+        median_differences = []
+        if self.mpi_helper.rank == 0:
+          all_median_differences_bin = np.concatenate(all_median_differences_bin)
+          median_differences_bin[bin_index] = np.median(all_median_differences_bin) * conversion_factor
+
+    if return_in_bins:
+      return median_differences_bin
+    else:
+      all_median_differences = self.mpi_helper.comm.gather(np.concatenate(median_differences), root=0)
+      if self.mpi_helper.rank == 0:
+        all_median_differences = np.concatenate(all_median_differences)
+        scale = np.median(all_median_differences) * conversion_factor
+        return float(scale)
+      else:
+        return None
+
+  def _get_scale_nmad(self):
+    normalized_deviations = flex.double()
+    for reflections in self.intensity_bins:
+      number_of_reflections_in_bin = reflections.size()
+      if number_of_reflections_in_bin > 0:
+        var_ev11 = self._get_var_ev11(reflections)
+        normalized_deviations.extend(reflections['delta_all'] / flex.sqrt(var_ev11))
+    all_normalized_deviations = self.mpi_helper.comm.gather(normalized_deviations.as_numpy_array(), root=0)
+    if self.mpi_helper.rank == 0:
+      if self.likelihood in ['normal', 'normal_notransform']:
+        conversion_factor = scipy.stats.norm.ppf(0.75)
+      elif self.likelihood in ['t-dist', 't-dist_notransform']:
+        conversion_factor = scipy.stats.t.ppf(0.75, df=self.tuning_param)
+      all_normalized_deviations = np.concatenate(all_normalized_deviations)
+      nmad = np.median(np.abs(
+        all_normalized_deviations - np.median(all_normalized_deviations)
+        )) / conversion_factor
+      return float(nmad)
+    else:
+      return None
+
+  def _get_scale_iqr(self):
+    normalized_deviations = flex.double()
+    global_count = 0
+    for reflections in self.intensity_bins:
+      number_of_reflections_in_bin = reflections.size()
+      if number_of_reflections_in_bin > 0:
+        var_ev11 = self._get_var_ev11(reflections)
+        normalized_deviations.extend(reflections['delta_all'] / flex.sqrt(var_ev11))
+      global_count_in_bin = self.mpi_helper.comm.reduce(number_of_reflections_in_bin, self.mpi_helper.MPI.SUM, root=0)
+      if self.mpi_helper.rank == 0:
+        global_count += global_count_in_bin
+
+    global_count = self.mpi_helper.comm.bcast(global_count, root=0)
+    bins = np.linspace(-5, 5, 1001)
+    hist_rank, _ = np.histogram(normalized_deviations.as_numpy_array(), bins=bins)
+    cdf_rank = hist_rank.cumsum() / global_count
+    cdf_all = self.mpi_helper.comm.reduce(cdf_rank, self.mpi_helper.MPI.SUM, root=0)
+    if self.mpi_helper.rank == 0:
+      if self.likelihood in ['normal', 'normal_notransform']:
+        conversion_factor = 2 * scipy.stats.norm.ppf(0.75)
+      elif self.likelihood in ['t-dist', 't-dist_notransform']:
+        conversion_factor = 2 * scipy.stats.t.ppf(0.75, df=self.tuning_param)
+      centers = (bins[1:] + bins[:-1]) / 2
+      lower = centers[np.argwhere(cdf_all > 0.25)[0][0]]
+      upper = centers[np.argwhere(cdf_all > 0.75)[0][0]]
+      iqr = (upper - lower) / conversion_factor
+      # without this float(), scale is of type <class 'numpy.float64'>
+      # and leads to a later numpy / flex mismatch
+      return float(iqr)
+    else:
+      return None
+
+  def _get_scale_std(self):
     global_sum_squares = 0
     global_sum = 0
     global_count = 0
     for reflections in self.intensity_bins:
       number_of_reflections_in_bin = reflections.size()
       if number_of_reflections_in_bin > 0:
-        mi = reflections['biased_mean']
-        sadd, dsadd_dsaddi = self._get_sadd(reflections[self.cc_key])
-        var = self.sfac**2 * (reflections['var'] + self.sb**2 * mi + sadd**2 * mi**2)
-        z = reflections['delta_all'] / flex.sqrt(var)
+        var_ev11 = self._get_var_ev11(reflections)
+        z = reflections['delta_all'] / flex.sqrt(var_ev11)
         sum_squares_in_bin = flex.sum(z**2)
         sum_in_bin = flex.sum(z)
       else:
@@ -498,51 +623,11 @@ class error_modifier_ev11(worker):
         global_sum_squares += global_sum_squares_in_bin
         global_sum += global_sum_in_bin
         global_count += global_count_in_bin
-
     if self.mpi_helper.rank == 0:
-      std = math.sqrt(global_sum_squares/global_count - (global_sum/global_count)**2)
-      sfac_old = self.sfac
-      sfac_new = self.sfac * std
-      self.sfac = sfac_new
-      log_out = 'SCALING SFAC  '\
-        + f'Unscaled standard deviation: {std:0.3f} '\
-        + f'Optimized sfac: {sfac_old:0.3f} '\
-        + f'Scaled sfac: {sfac_new:0.3f} '
-      self.logger.main_log(log_out)
+      scale = math.sqrt(global_sum_squares/global_count - (global_sum/global_count)**2)
     else:
-      sfac_new = None
-    self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
-    return None
-
-  def plot_sadd(self):
-    cc_rank = self.work_table[self.cc_key].as_numpy_array()
-    cc_all = self.mpi_helper.comm.gather(cc_rank, root=0)
-    if self.mpi_helper.rank == 0:
-      import matplotlib.pyplot as plt
-      cc_all = np.concatenate(cc_all)
-      cc_unique = np.unique(cc_all)
-      bins = np.linspace(cc_unique.min(), cc_unique.max(), 101)
-      dbin = bins[1] - bins[0]
-      centers = (bins[1:] + bins[:-1]) / 2
-      hist_all, _ = np.histogram(cc_unique, bins=bins)
-
-      hist_color = np.array([0, 49, 60]) / 256
-      line_color = np.array([213, 120, 0]) / 256
-      sadd, _ = self._get_sadd(flex.double(centers))
-      fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
-      axes_sadd = axes_hist.twinx()
-      axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
-      axes_sadd.plot(centers, (self.sfac * sadd)**2, color=line_color)
-      axes_hist.set_xlabel('Correlation Coefficient')
-      axes_hist.set_ylabel('Lattices (x1,000)')
-      axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
-      fig.tight_layout()
-      fig.savefig(os.path.join(
-        self.params.output.output_dir,
-        self.params.output.prefix + '_sadd.png'
-        ))
-      plt.close()
-    return None
+      scale = None
+    return scale
 
   def compute_functional_and_gradients(self):
     self.calculate_functional_ev11()
@@ -631,47 +716,41 @@ class error_modifier_ev11(worker):
         print(f'der_wrt_sadd - degree {degree_index} numerical: {check_der_wrt_sadd} analytical {der_wrt_sadd[degree_index]}')
     return None
 
-  def plot_normalized_deviations(self):
+  def plot_diagnostics(self):
     def get_rankits_normal(n, down_sample):
       prob_level = (np.arange(1, n+1) - 0.5) / n
       standard_normal_quantiles = scipy.stats.norm.ppf(prob_level[::down_sample])
       return standard_normal_quantiles
 
-    def normal(x, x0, s):
-        z = (x - x0) / s
-        prefactor = 1 / np.sqrt(2 * np.pi * s**2)
-        fun = np.exp(-1/2 * z**2)
-        return prefactor * fun
+    def get_rankits_t_dist(n, down_sample):
+      prob_level = (np.arange(1, n+1) - 0.5) / n
+      standard_t_quantiles = scipy.stats.t.ppf(prob_level[::down_sample], df=self.tuning_param)
+      return standard_t_quantiles
 
-    output_keys = ['deviations', 'biased_mean', 'var', 'var_ev11', 'I', 'multiplicity']
+    cc_rank = self.work_table[self.cc_key].as_numpy_array()
+    cc_all = self.mpi_helper.comm.gather(cc_rank, root=0)
+    output_keys = ['deviations', 'biased_mean', 'intensity.sum.variance', 'var_ev11', 'I', 'multiplicity']
     output_rank = {}
     for key in output_keys:
       output_rank[key] = flex.double()
     for reflections in self.intensity_bins:
       number_of_reflections_in_bin = reflections.size()
       if number_of_reflections_in_bin > 0:
-        sfac = self.sfac
-        sb = self.sb
-        v = reflections['var']
-        mi = reflections['biased_mean']
-        sadd, _ = self._get_sadd(reflections[self.cc_key])
-        var_ev11 = sfac**2 * (v + sb**2 * mi + sadd**2 * mi**2)
-
+        var_ev11 = self._get_var_ev11(reflections)
         output_rank['multiplicity'].extend(reflections['multiplicity'])
         output_rank['deviations'].extend(reflections['delta_all'])
-        output_rank['biased_mean'].extend(mi)
-        output_rank['var'].extend(v)
+        output_rank['biased_mean'].extend(reflections['biased_mean'])
+        output_rank['intensity.sum.variance'].extend(reflections['intensity.sum.variance'])
         output_rank['var_ev11'].extend(var_ev11)
         output_rank['I'].extend(reflections['I'])
 
     output_all = {}
     for key in output_keys:
       output_all[key] = self.mpi_helper.comm.gather(output_rank[key].as_numpy_array(), root=0)
-
+    sigma_pairwise_differences = self._get_scale_pairwise_difference(return_in_bins=True)
     if self.mpi_helper.rank == 0:
       import matplotlib.pyplot as plt
       import pandas as pd
-      import scipy.stats
       for key in output_keys:
         output_all[key] = np.concatenate(output_all[key])
 
@@ -685,37 +764,76 @@ class error_modifier_ev11(worker):
       normalized_deviations_hist, _ = np.histogram(
         sorted_normalized_deviations, bins=normalized_deviations_bins, density=True
         )
-      rankits = get_rankits_normal(sorted_normalized_deviations.size, downsample)
+      rankits_normal = get_rankits_normal(sorted_normalized_deviations.size, downsample)
+      rankits_t_dist = get_rankits_t_dist(sorted_normalized_deviations.size, downsample)
+
+      if self.likelihood in ['normal', 'normal_notransform']:
+        conversion_factor_iqr = 2 * scipy.stats.norm.ppf(0.75)
+        conversion_factor_mad = scipy.stats.norm.ppf(0.75)
+      elif self.likelihood in ['t-dist', 't-dist_notransform']:
+        conversion_factor_iqr = 2 * scipy.stats.t.ppf(0.75, df=self.tuning_param)
+        conversion_factor_mad = scipy.stats.t.ppf(0.75, df=self.tuning_param)
 
       intensity_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
-      sigma_bin = np.zeros(number_of_intensity_bins)
+      sigma_bin = np.zeros((number_of_intensity_bins, 5))
+      sigma_bin[:, 3] = sigma_pairwise_differences
+      sigma_bin[:, 4] = intensity_centers
       for index in range(number_of_intensity_bins):
           indices = np.logical_and(
             output_all['biased_mean'] >= self.intensity_bin_limits[index],
             output_all['biased_mean'] < self.intensity_bin_limits[index + 1]
             )
-          sigma_bin[index] = normalized_deviations[indices].std()
-
+          if np.count_nonzero(indices) > 0:
+            nd = np.sort(normalized_deviations[indices])
+            sigma_bin[index, 0] = nd.std()
+            sigma_bin[index, 1] = np.median(np.abs(nd - np.median(nd))) / conversion_factor_mad
+            sigma_bin[index, 2] = (nd[int(0.75 * nd.size)] - nd[int(0.25 * nd.size)]) / conversion_factor_iqr
+          else:
+            sigma_bin[index, :] = np.nan
+      np.save(
+        os.path.join(self.params.output.output_dir, self.params.output.prefix + f'_sigma_bin.npy'),
+        sigma_bin
+        )
+      # Normalized Deviations Plots
       fig, axes = plt.subplots(1, 3, figsize=(8, 3))
       I_scale = 100000
-      grey = np.array([99, 102, 106]) / 256
+      grey1 = np.array([99, 102, 106]) / 255
+      grey2 = np.array([177, 179, 179]) / 255
       axes[0].bar(
         normalized_deviations_centers, normalized_deviations_hist,
-        width=normalized_deviations_db, label='Normalized Deviations'
+        width=normalized_deviations_db, label='$\delta_{hkl}$'
         )
       axes[0].plot(
-        normalized_deviations_centers, normal(normalized_deviations_centers, 0, 1),
-        color=grey, label='Standard Normal'
+        normalized_deviations_centers,
+        scipy.stats.norm.pdf(normalized_deviations_centers),
+        color=grey1, label='Normal'
         )
+      if self.likelihood in ['t-dist', 't-dist_notransform']:
+        axes[0].plot(
+          normalized_deviations_centers,
+          scipy.stats.t.pdf(normalized_deviations_centers, df=self.tuning_param),
+          color=grey2, label=f't-dist\n$\\nu: ${self.tuning_param:0.1f}'
+          )
+      axes[0].legend(frameon=False, fontsize=8, handlelength=1)
       axes[0].set_ylabel('Distribution of $\delta_{hbk}$')
       axes[0].set_xlabel('Normalized Deviations ($\delta_{hbk}$)')
       axes[0].set_xlim([-4.5, 4.5])
       axes[0].set_xticks([-4, -2, 0, 2, 4])
 
-      axes[1].plot([-lim, lim], [-lim, lim], color=grey)
-      axes[1].plot(sorted_normalized_deviations[::downsample], rankits)
+      axes[1].plot([-lim, lim], [-lim, lim], color=[0, 0, 0], linewidth=1, linestyle=':')
+      axes[1].plot(
+        sorted_normalized_deviations[::downsample],
+        rankits_normal,
+        color=grey1
+        )
+      if self.likelihood in ['t-dist', 't-dist_notransform']:
+        axes[1].plot(
+          sorted_normalized_deviations[::downsample],
+          rankits_t_dist,
+          color=grey2
+          )
       axes[1].set_ylim([-lim, lim])
-      axes[1].set_ylabel('Normal Rankits')
+      axes[1].set_ylabel('Rankits')
       axes[1].set_xlabel('Sorted Normalized Deviations ($\delta_{hbk}$)')
       axes[1].set_box_aspect(1)
       axes[1].set_xticks([-4, -2, 0, 2, 4])
@@ -724,11 +842,14 @@ class error_modifier_ev11(worker):
       axes[1].set_ylim([-4.5, 4.5])
 
       x = intensity_centers / I_scale
-      axes[2].plot([x[0], x[-1]], [1, 1], color=grey)
-      axes[2].plot(x, sigma_bin**2)
-      axes[2].set_ylabel('Variance of $\delta_{hbk}$')
+      axes[2].plot([x[0], x[-1]], [1, 1], color=[0, 0, 0])
+      axes[2].plot(x, sigma_bin[:, 0], label='STD')
+      axes[2].plot(x, sigma_bin[:, 1], label='nMAD')
+      axes[2].plot(x, sigma_bin[:, 2], label='IQR')
+      axes[2].plot(x, sigma_bin[:, 3], label='Pairwise')
+      axes[2].set_ylabel('Standard Deviation of $\delta_{hbk}$')
       axes[2].set_xlabel('Mean Intensity X 100,000')
-
+      axes[2].legend(frameon=False, labelspacing=0.1, handlelength=1)
       fig.tight_layout()
       fig.savefig(os.path.join(
         self.params.output.output_dir,
@@ -736,11 +857,65 @@ class error_modifier_ev11(worker):
         ))
       plt.close()
 
-      #df = pd.DataFrame(output_all)
-      #df.to_json(os.path.join(
-      #  self.params.output.output_dir,
-      #  self.params.output.prefix + f'_deltas.json'
-      #  ))
+      df = pd.DataFrame(output_all)
+      df.to_json(os.path.join(
+        self.params.output.output_dir,
+        self.params.output.prefix + f'_deltas.json'
+        ))
+
+      # CC & sadd plots #
+      cc_all = np.concatenate(cc_all)
+      cc_unique = np.unique(cc_all)
+      bins = np.linspace(cc_unique.min(), cc_unique.max(), 101)
+      dbin = bins[1] - bins[0]
+      centers = (bins[1:] + bins[:-1]) / 2
+      hist_all, _ = np.histogram(cc_unique, bins=bins)
+
+      hist_color = np.array([0, 49, 60]) / 256
+      line_color = np.array([213, 120, 0]) / 256
+      sadd, _ = self._get_sadd(flex.double(centers))
+      fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
+      axes_sadd = axes_hist.twinx()
+      axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
+      axes_sadd.plot(centers, (self.sfac * sadd)**2, color=line_color)
+      axes_hist.set_xlabel('Correlation Coefficient')
+      axes_hist.set_ylabel('Lattices (x1,000)')
+      axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
+      fig.tight_layout()
+      fig.savefig(os.path.join(
+        self.params.output.output_dir,
+        self.params.output.prefix + '_sadd.png'
+        ))
+      plt.close()
+
+      # I/sigma plots
+      fig, axes = plt.subplots(1, 2, figsize=(7, 3), sharex=True, sharey=True)
+      x = output_rank['I']
+      y0 = output_rank['I'] / np.sqrt(output_rank['intensity.sum.variance'])
+      y1 = output_rank['I'] / np.sqrt(output_rank['var_ev11'])
+      I_s_asy =  1 / (self.sfac * flex.abs(sadd))
+      for index in range(sadd.size()):
+        axes[1].plot(
+          [flex.min(x), flex.max(x)], [I_s_asy[index], I_s_asy[index]],
+          alpha=hist_all[index] / hist_all.max(),
+          color=[0.8, 0, 0],
+          linewidth=0.2
+          )
+      axes[0].plot(x[::10], y0[::10], marker='.', linestyle='none', markersize=0.1, alpha=0.5, color=[0, 0, 0])
+      axes[1].plot(x[::10], y1[::10], marker='.', linestyle='none', markersize=0.1, alpha=0.5, color=[0, 0, 0])
+      axes[0].set_xscale('log')
+      axes[0].set_yscale('log')
+      axes[0].set_xlabel('Intensity')
+      axes[1].set_xlabel('Intensity')
+      axes[0].set_ylabel('Intensity / $\sigma$')
+      axes[0].set_title('Only Counting Statistics Error')
+      axes[1].set_title('Ev11 Error')
+      fig.tight_layout()
+      fig.savefig(os.path.join(
+        self.params.output.output_dir,
+        self.params.output.prefix + '_I_sigma_plots.png'
+        ))
+      plt.close()
     return None
 
   def _get_expectations(self):
@@ -749,7 +924,7 @@ class error_modifier_ev11(worker):
     return E, S
 
   def _loss_function_gaus(self, delta_sq, var):
-    # Delta_sq = I_hj - <I_h>
+    # Delta_sq = (I_hj - <I_h>)**2
     E, S = self._get_expectations()
     norm = 0.5 * (1 + math.erf(E/S))
     z = (E - flex.sqrt(delta_sq / var)) / S
@@ -757,6 +932,12 @@ class error_modifier_ev11(worker):
     L = math.log(norm) + 1/2 * math.log(2*math.pi) + 1/2 * z**2
     dL_dz = z
     dL_dvar = dL_dz * dz_dvar
+    return L, dL_dvar
+
+  def _loss_function_gaus_notransform(self, delta_sq, var):
+    # Delta_sq = (I_hj - <I_h>)**2
+    L = math.log(2*math.pi) + 0.5*flex.log(var) + 0.5*delta_sq/var
+    dL_dvar = 0.5/var - 0.5*delta_sq/var**2
     return L, dL_dvar
 
   def t_dist_normalization(self, nu):
@@ -820,6 +1001,52 @@ class error_modifier_ev11(worker):
     dL_dvar = dL_darg * darg_dz * dz_dvar
     return flex.double(L), flex.double(dL_dvar)
 
+  def _loss_function_t_notransform(self, delta_sq_flex, var_flex):
+    nu = self.tuning_param
+    delta_sq = delta_sq_flex.as_numpy_array()
+    var = var_flex.as_numpy_array()
+
+    arg = 1 + 1/nu * delta_sq/var
+    darg_dvar = -1/nu * delta_sq/var**2
+
+    L0 = -np.log(gamma((nu+1)/2))
+    L1 = 1/2 * np.log(np.pi)
+    L2 = 1/2 * np.log(nu)
+    L3 = np.log(gamma(nu/2))
+    L4 = 1/2 * np.log(var)
+    dL4_dvar = 1/2 * 1/var
+    L5 = (nu+1)/2 * np.log(arg)
+    dL5_dvar = (nu+1)/2 * 1/arg * darg_dvar
+    L = L0 + L1 + L2 + L3 + L4 + L5
+    dL_dvar = dL4_dvar + dL5_dvar
+    return flex.double(L), flex.double(dL_dvar)
+
+  def _loss_function_t_opt_notransform(self, delta_sq_flex, var_flex):
+    nu = self.tuning_param
+    delta_sq = delta_sq_flex.as_numpy_array()
+    var = var_flex.as_numpy_array()
+
+    arg = 1 + 1/nu * delta_sq/var
+    darg_dvar = -1/nu * delta_sq/var**2
+    darg_dnu = -1/nu**2 * delta_sq/var
+
+    L0 = -np.log(gamma((nu+1)/2))
+    dL0_dnu = -polygamma(0, (nu+1)/2) * 1/2
+    L1 = 1/2 * np.log(np.pi)
+    L2 = 1/2 * np.log(nu)
+    dL2_dnu = 1 / (2*nu)
+    L3 = np.log(gamma(nu/2))
+    dL3_dnu = polygamma(0, nu/2) * 1/2
+    L4 = 1/2 * np.log(var)
+    dL4_dvar = 1/2 * 1/var
+    L5 = (nu+1)/2 * np.log(arg)
+    dL5_dvar = (nu+1)/2 * 1/arg * darg_dvar
+    dL5_dnu = 1/2 * np.log(arg) + (nu+1)/2 * 1/arg * darg_dnu
+    L = L0 + L1 + L2 + L3 + L4 + L5
+    dL_dvar = dL4_dvar + dL5_dvar
+    dL_dnu = dL0_dnu + dL2_dnu + dL3_dnu + dL5_dnu
+    return flex.double(L), flex.double(dL_dvar), flex.double(dL_dnu)
+
   def _loss_function_t_opt(self, delta_sq_flex, var_flex):
     v = self.tuning_param
     delta_sq = delta_sq_flex.as_numpy_array()
@@ -862,6 +1089,19 @@ class error_modifier_ev11(worker):
       dsadd_dsaddi[degree_index] = correlation**degree_index
     return sadd, dsadd_dsaddi
 
+  def _get_var_ev11(self, reflections, return_der=False):
+    counting_err = reflections['intensity.sum.variance']
+    biased_mean = reflections['biased_mean']
+    sadd, dsadd_dsaddi = self._get_sadd(reflections[self.cc_key])
+    var = self.sfac**2 * (counting_err + self.sb**2 * biased_mean + sadd**2 * biased_mean**2)
+    if return_der:
+      dvar_dsfac = 2 * self.sfac * (counting_err + self.sb**2 * biased_mean + sadd**2 * biased_mean**2)
+      dvar_dsb = self.sfac**2 * 2 * self.sb * biased_mean
+      dvar_dsadd = self.sfac**2 * 2 * sadd * biased_mean**2
+      return var, dvar_dsfac, dvar_dsb, dvar_dsadd, dsadd_dsaddi
+    else:
+      return var
+
   def calculate_functional_ev11(self):
     # Results of calculation (on rank 0):
     TF        = 0
@@ -889,16 +1129,9 @@ class error_modifier_ev11(worker):
         dTF_dnu_in_bin = flex.double(number_of_reflections_in_bin, 0)
 
       if number_of_reflections_in_bin > 0:
-        sfac = self.sfac
-        sb = self.sb
-        v = reflections['var']
-        mi = reflections['biased_mean']
-        sadd, dsadd_dsaddi = self._get_sadd(reflections[self.cc_key])
-        var = sfac**2 * (v + sb**2 * mi + sadd**2 * mi**2)
-        dvar_dsfac_in_bin = 2 * sfac * (v + sb**2 * mi + sadd**2 * mi**2)
-        dvar_dsb_in_bin = sfac**2 * 2 * sb * mi
-        dvar_dsadd_in_bin = sfac**2 * 2 * sadd * mi**2
-        
+        var, dvar_dsfac_in_bin, dvar_dsb_in_bin, dvar_dsadd_in_bin, dsadd_dsaddi = \
+          self._get_var_ev11(reflections, return_der=True)
+
         if self.algorithm == 'ev11':
           TF_in_bin, dL_dvar = self._loss_function_original(reflections['delta_sq'], var)
         elif self.likelihood == 'normal':
@@ -908,7 +1141,14 @@ class error_modifier_ev11(worker):
             TF_in_bin, dL_dvar, dTF_dnu_in_bin = self._loss_function_t_opt(reflections['delta_sq'], var)
           else:
             TF_in_bin, dL_dvar = self._loss_function_t(reflections['delta_sq'], var)
-        
+        elif self.likelihood == 'normal_notransform':
+          TF_in_bin, dL_dvar = self._loss_function_gaus_notransform(reflections['delta_sq'], var)
+        elif self.likelihood == 't-dist_notransform':
+          if self.tuning_param_opt:
+            TF_in_bin, dL_dvar, dTF_dnu_in_bin = self._loss_function_t_opt_notransform(reflections['delta_sq'], var)
+          else:
+            TF_in_bin, dL_dvar = self._loss_function_t_notransform(reflections['delta_sq'], var)
+
         dTF_dsfac_in_bin = dL_dvar * dvar_dsfac_in_bin
         dTF_dsb_in_bin = dL_dvar * dvar_dsb_in_bin
         for degree_index in range(self.n_coefs):
@@ -996,17 +1236,7 @@ class error_modifier_ev11(worker):
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
-    
-    if self.algorithm == 'ev11_mll':
-      sadd, _ = self._get_sadd(reflections[self.cc_key])
-    elif self.algorithm == 'ev11':
-      sadd = self.sadd[0]
-    reflections['intensity.sum.variance'] = \
-      self.sfac**2 * ( \
-        reflections['intensity.sum.variance'] \
-        + self.sb**2 * reflections['biased_mean']
-        + sadd**2 * reflections['biased_mean']**2
-      )
+    reflections['intensity.sum.variance'] = self._get_var_ev11(reflections)
     del reflections['biased_mean']
     return reflections
 
