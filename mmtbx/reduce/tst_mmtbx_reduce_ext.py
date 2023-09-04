@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import
+
 # These other imports are needed within the Scons build environment.
 from scitbx.array_family import flex
 from iotbx import pdb
