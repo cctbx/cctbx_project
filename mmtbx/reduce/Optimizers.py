@@ -16,7 +16,7 @@
 from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
-import argparse, itertools, re
+import argparse, re
 
 from boost_adaptbx import graph
 from boost_adaptbx.graph import connected_component_algorithm as cca
