@@ -84,7 +84,7 @@ namespace molprobity {
       boost::python::tuple OptimizeSingleMoverCoarse(boost::python::object const &mover);
 
       /** @brief Function to perform fine optimization on a singleton Mover.
-   
+
           Find the score for the Mover in all fine orientations by moving each atom into the
           specified position and summing the scores over all of them.  Determine the best
           orientation by selecting the highest scorer.
@@ -99,7 +99,7 @@ namespace molprobity {
       boost::python::tuple OptimizeSingleMoverFine(boost::python::object const& mover);
 
       /** @brief Function to perform fast optimization on a clique of Movers.
-      * 
+      *
       *   This is the main function that is called from Python. It unwraps the
       *   Python objects to C++ and rewraps the return to Python, enabling us to
       *   run faster in the recursive calls.

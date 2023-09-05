@@ -36,8 +36,8 @@ output.file_name= (optional, prints to sys.stdout by default)
 
 Examples:
 phenix.barbed_wire_analysis your_prediction.pdb
-phenix.barbed_wire_analysis your_prediction.pdb output_type=kin output.file_name=your_prediction_markup.kin
-phenix.barbed_wire_analysis your_prediction.pdb output_type=selection_file output.file_name=your_prediction_pruned.pdb
+phenix.barbed_wire_analysis your_prediction.pdb output.type=kin output.file_name=your_prediction_markup.kin
+phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file output.file_name=your_prediction_pruned.pdb
 '''
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str

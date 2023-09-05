@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import print_function, nested_scopes, generators, division
+from __future__ import absolute_import
+
 # These other imports are needed within the Scons build environment.
 from scitbx.array_family import flex
 from iotbx import pdb
@@ -22,6 +25,11 @@ import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 bp.import_ext("mmtbx_reduce_ext")
 import mmtbx_reduce_ext as reduceExt
+
+# Explicitly call methods from imports even though they are used
+# implicitly below so that the import-test script won't fail
+unused = flex.double()
+unused = pdb.hierarchy.atom()
 
 #========================================================================
 # Call the test functions for the libraries we test.
@@ -61,5 +69,3 @@ assert len(pr2.atoms) == 0, "Unexpected atoms in list for argument-constructed P
 assert len(pr2.positions[0]) == 0, "Unexpected positions in list for argument-constructed PositionReturn"
 assert len(pr2.extraInfos[0]) == 0, "Unexpected extra-atom info in list for argument-constructed PositionReturn"
 assert pr2.deleteMes[0][0] == False, "Unexpected deleteme value in list for argument-constructed PositionReturn"
-
-

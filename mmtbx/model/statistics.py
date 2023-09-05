@@ -292,7 +292,7 @@ class geometry(object):
     return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
       r.ramachandran.favored, r.ramachandran.outliers, r.rama_z.whole.value, r.c_beta.outliers)
 
-  def show(self, log=None, prefix="", uppercase=True, nucleotide_only=False):
+  def show(self, log=None, prefix="", exclude_protein_only_stats=False, uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
@@ -309,16 +309,17 @@ class geometry(object):
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
     az, bz = res.angle_z, res.bond_z
-    result = """
+    result = """%s
 %sGeometry Restraints Library: %s
-%sDeviations from Ideal Values - rmsd. rmsZ for bonds and angles.
+%sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
 %s  Bond      : %s
 %s  Angle     : %s
 %s  Chirality : %s
 %s  Planarity : %s
 %s  Dihedral  : %s
 %s  Min Nonbonded Distance : %s
-%s"""%(prefix,
+%s"""%(prefix.strip(),
+       prefix,
        self.restraints_source,
        prefix,
        prefix, fmt(b.mean, b.max, b.n, bz.mean),
@@ -328,10 +329,8 @@ class geometry(object):
        prefix, fmt(d.mean, d.max, d.n),
        prefix, fmt2(n.min).strip(),
        prefix)
-    if nucleotide_only:
-      print(result, file=log)
-      return
-    result += """
+    if not exclude_protein_only_stats:
+      result += """
 %sMolprobity Statistics.
 %s  All-atom Clashscore : %s
 %s  Ramachandran Plot:
@@ -364,9 +363,9 @@ class geometry(object):
         prefix, format_value("%5.2f", res.omega.cis_general).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_proline).strip(),
         prefix, format_value("%5.2f", res.omega.twisted_general).strip())
-    result += """
+      result += """
 %s"""%prefix
-    result += res.rama_z.as_string(prefix=prefix)
+      result += res.rama_z.as_string(prefix=prefix)
     if( uppercase ):
       result = result.upper()
     print(result, file=log)
