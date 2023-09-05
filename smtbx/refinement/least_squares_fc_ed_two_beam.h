@@ -219,22 +219,20 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     // Acta Cryst. (2013). A69, 171–188
     FloatType get_observable_pltns_2013() const {
-      FloatType angle = scitbx::deg_as_rad(data.params.getIntSpan()),
-        step = scitbx::deg_as_rad(data.params.getIntStep());
-      int steps = round(angle / step);
       FloatType da = frame->get_diffraction_angle(h, data.Kl);
       size_t n_param = data.Jt_matching_grad_fc.n_rows();
       size_t coln = data.design_matrix_kin.accessor().n_columns();
       af::shared<FloatType> grads_sum(coln);
       FloatType I1 = -1, g1 = -1, grad_fsq1 = 0, grad_t1 = 0, I_sum = 0,
         dT_sum = 0;
-
-      for (int st = -steps; st <= steps; st++) {
-        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(
-          da + st * step);
+    af::shared<FloatType> angles = frame->get_angles(da,
+      data.params.getIntSpan(),
+      data.params.getIntStep());
+    for (size_t ai = 0; ai < angles.size(); ai++) {
+        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
         cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
         FloatType g = K_g.length();
-        af::shared<FloatType> res = get_observable_pltns_2013_(da + st * step);
+        af::shared<FloatType> res = get_observable_pltns_2013_(angles[ai]);
         if (g1 >= 0) {
           FloatType d = std::abs(g - g1) / 2;
           I_sum += (res[0] + I1) * d;
@@ -318,16 +316,16 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     FloatType get_observable_N() const {
-      FloatType angle = scitbx::deg_as_rad(data.params.getIntSpan()),
-        step = scitbx::deg_as_rad(data.params.getIntStep());
-      int steps = round(angle / step);
       FloatType da = frame->get_diffraction_angle(h, data.Kl);
+      af::shared<FloatType> angles = frame->get_angles(da,
+        data.params.getIntSpan(),
+        data.params.getIntStep());
 
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
         DYN_CALCULATOR_2013,
         *frame, data.K, data.thickness.value);
 
-      n_beam_dc.init(h, angle, data.Fcs_kin, data.mi_lookup);
+      n_beam_dc.init(h, da, data.Fcs_kin, data.mi_lookup);
 
       af::shared<cmat_t> Ds_kin;
       mat_t D_dyn;
@@ -342,9 +340,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         grads1;
       FloatType I1 = -1, g1 = -1, I_sum = 0;
 
-      for (int st = -steps; st <= steps; st++) {
-        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(
-          da + st * step);
+      for (size_t ai=0; ai < angles.size(); ai++) {
+        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
         cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
         FloatType g = K_g.length();
         FloatType I;

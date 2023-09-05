@@ -122,9 +122,6 @@ namespace least_squares {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.mat_type == 3) { // 2-beam
-            FloatType angle = scitbx::deg_as_rad(parent.params.getIntSpan()),
-              step = scitbx::deg_as_rad(parent.params.getIntStep());
-            int steps = round(angle / step);
             int beam_n = parent.params.getBeamN();
             cmat_t A;
             af::shared<miller::index<> > indices, strong_indices;
@@ -135,6 +132,11 @@ namespace least_squares {
               dc = dyn_calculator_factory<FloatType>(DYN_CALCULATOR_DEFAULT)
                 .make(indices, K, thickness);
             }
+            af::shared<FloatType> angles = frame.get_int_angles(
+              parent.Kl,
+              parent.params.getIntSpan(),
+              parent.params.getIntStep(),
+              parent.params.getIntPoints());
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
               miller::index<> h = frame.indices[beam_idx];
@@ -148,15 +150,13 @@ namespace least_squares {
                   parent.Fcs_k, parent.mi_lookup,
                   strong_indices, parent.Kl, h, FI.first, beam_n);
               }
+
               //FloatType sg_a = frame.Sg_to_angle(0.01, h, parent.Kl);
               //int steps = std::abs(round((da-sg_a) / step));
-              for (int st = -steps; st <= steps; st++) {
-                std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-                  da + st * step);
+              for (size_t ai = 0; ai < angles.size(); ai++) {
+                std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-
                 FloatType I;
-                
                 if (beam_n == 2) {
                   I = std::norm(utils<FloatType>::calc_amp_2beam(
                     h, Fc, thickness, K,
@@ -374,8 +374,8 @@ namespace least_squares {
     }
 
     af::shared<PeakProfilePoint<FloatType> > build_profile(int frame_id,
-      af::shared<complex_t> const& Fcs_k, FloatType angle,
-      FloatType step)
+      af::shared<complex_t> const& Fcs_k,
+      const af::shared<FloatType> &angles)
     {
       typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
         frames_map.find(frame_id);
@@ -384,9 +384,8 @@ namespace least_squares {
       af::shared<FloatType> Is_(frame.beams.size());
       af::shared<PeakProfilePoint<FloatType> > rv;
       const cart_t K = cart_t(0, 0, -Kl);
-      int steps = round(angle / step);
-      for (int st = -steps; st <= steps; st++) {
-        FloatType ang = frame.alpha + st * step;
+      for (size_t ai = 0; ai < angles.size(); ai++) {
+        FloatType ang = angles[ai];
         std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(ang);
         std::fill(Is_.begin(), Is_.end(), 0);
         process_frame_profile(*this, frame, Fcs_k, Is_)
