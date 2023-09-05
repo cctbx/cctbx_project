@@ -1,5 +1,5 @@
 ##################################################################################
-# Copyright(c) 2021-2022, Richardson Lab at Duke
+# Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.3.0"
+version = "2.4.0"
 
 master_phil_str = '''
 profile = False

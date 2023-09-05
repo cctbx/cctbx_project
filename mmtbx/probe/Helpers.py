@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022  Richardson Lab at Duke University
+#                Copyright 2021-2023  Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License"],
 # you may not use this file except in compliance with the License.
@@ -400,7 +400,10 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # and we'll just use the CCTBX radius.
                 if a.element_is_ion():
                   extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
-                  warnings += "Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+                  warnings += ("Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+
+                               " (rather than "+
+                               str(model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances))+
+                               ")\n")
                 else:
                   extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
 
@@ -431,7 +434,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                       extra.isAcceptor = True
                       warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
 
-                # Mark all Carbonyl's with the Probe radius while the Richarsons and
+                # Mark all Carbonyl's with the Probe radius while the Richardsons and
                 # the CCTBX decide how to handle this.
                 # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
                 # for Carbonyls and remove this if so.  It needs to stay with these values
@@ -445,14 +448,16 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                   else:
                     expected = 1.65
                   if extra.vdwRadius != expected:
+                    warnings += ("Overriding radius for "+a.name.strip()+": "+str(expected)+
+                                 " (was "+str(extra.vdwRadius)+")\n")
                     extra.vdwRadius = expected
-                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 # If we've been asked to ensure polar hydrogen radius, do so here.
                 if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
                   if extra.vdwRadius != 1.05:
+                    warnings += ("Overriding radius for "+a.name.strip()+": 1.05 (was "+
+                                 str(extra.vdwRadius)+")\n")
                     extra.vdwRadius = 1.05
-                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 extras.setMappingFor(a, extra)
 
