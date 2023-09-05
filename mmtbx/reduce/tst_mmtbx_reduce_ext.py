@@ -19,17 +19,12 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import
 
 # These other imports are needed within the Scons build environment.
-from scitbx.array_family import flex
-from iotbx import pdb
+from scitbx.array_family import flex    # import dependency
+from iotbx import pdb                   # import dependency
 import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 bp.import_ext("mmtbx_reduce_ext")
 import mmtbx_reduce_ext as reduceExt
-
-# Explicitly call methods from imports even though they are used
-# implicitly below so that the import-test script won't fail
-unused = flex.double()
-unused = pdb.hierarchy.atom()
 
 #========================================================================
 # Call the test functions for the libraries we test.
