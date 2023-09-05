@@ -19,15 +19,15 @@ typedef scitbx::vec3<double> vec3;
 namespace molprobity {
   namespace reduce {
 
-bool PairsOverlap(boost::python::object mover1,
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms1,
-  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions1,
-  boost::python::object mover2,
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms2,
-  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions2,
-  molprobity::probe::ExtraAtomInfoMap extraAtomInfoMap,
+bool PairsOverlap(boost::python::object const &mover1,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const& atoms1,
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const& positions1,
+  boost::python::object const& mover2,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const& atoms2,
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const& positions2,
+  molprobity::probe::ExtraAtomInfoMap & extraAtomInfoMap,
   double probeRad,
-  boost::python::dict atomMoverSets)
+  boost::python::dict &atomMoverSets)
 {
   // Make a vector the stores the radius for each atom in the two lists, matched based
   // on index in the list. This keeps us from having to redo these lookups multiple times

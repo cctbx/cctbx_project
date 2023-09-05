@@ -436,7 +436,7 @@ std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positi
   return ret;
 }
 
-std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> movers)
+std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> const &movers)
 {
   std::string infoString;
 

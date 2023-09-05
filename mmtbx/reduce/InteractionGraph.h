@@ -43,15 +43,15 @@ namespace molprobity {
         @return True if a pair of atoms with one from each overlap, False if not.
     */
     bool PairsOverlap(
-      boost::python::object mover1,
-      scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms1,
-      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions1,
-      boost::python::object mover2,
-      scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms2,
-      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions2,
-      molprobity::probe::ExtraAtomInfoMap extraAtomInfoMap,
+      boost::python::object const &mover1,
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms1,
+      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const &positions1,
+      boost::python::object const &mover2,
+      scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms2,
+      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const &positions2,
+      molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
       double probeRad,
-      boost::python::dict atomMoverSets
+      boost::python::dict &atomMoverSets
     );
 
     //=====================================================================================================

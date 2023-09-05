@@ -71,7 +71,7 @@ namespace molprobity {
           @param [in] movers: A list of Movers that will be processed.
           @return: A string describing what was done, which may be empty if verbosity is too small.
       */
-      std::string Initialize(scitbx::af::shared<boost::python::object> movers);
+      std::string Initialize(scitbx::af::shared<boost::python::object> const &movers);
 
       /** @brief Function to perform coarse optimization on a singleton Mover.
           @param [in] mover: The Mover to optimize.
