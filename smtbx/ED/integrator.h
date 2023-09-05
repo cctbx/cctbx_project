@@ -11,13 +11,10 @@ namespace smtbx { namespace ED
     ED_UTIL_TYPEDEFS;
     typedef frame_processor<FloatType> frame_processor_t;
     frame_integrator(frame_processor_t *p,
-      FloatType angle, FloatType step, int mode=0)
-      : processor_(p),
-      processor(p),
-      beam_n(processor->frame.strong_measured_beams.size()),
-      angle(angle),
-      step(step),
-      mode(mode)
+      const af::shared<FloatType>& angles)
+      : processor(p),
+      angles(angles),
+      beam_n(processor->frame.strong_measured_beams.size())
     {
       Is.resize(beam_n);
       if (processor->calc_grad) {
@@ -27,54 +24,20 @@ namespace smtbx { namespace ED
       }
     }
 
-    void compute1(bool align) {
-      size_t n_cols = D_dyn.accessor().n_columns();
-      if (align) {
-        const FrameInfo<FloatType>& frame = processor->frame;
-        for (size_t i = 0; i < beam_n; i++) {
-          size_t beam_idx = frame.strong_measured_beams[i];
-          std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-            frame.beams[beam_idx].diffraction_angle);
-          processor->process(r.first, r.second);
-          Is[i] = std::norm(processor->CIs[i]);
-          if (processor->calc_grad) {
-            std::copy(&processor->D_dyn(i, 0), &processor->D_dyn(i, n_cols), &D_dyn(i, 0));
-          }
-        }
-      }
-      else {
-        (*processor)();
-        if (processor->exception_) {
-          exception_.swap(processor->exception_);
-          return;
-        }
-        for (size_t i = 0; i < beam_n; i++) {
-          Is[i] = std::norm(processor->CIs[i]);
-          if (processor->calc_grad) {
-            for (size_t j = 0; j < n_cols; j++) {
-              D_dyn(i, j) = processor->D_dyn(i, j);
-            }
-          }
-        }
-      }
-    }
-
     void integrate() {
       const cart_t K = processor->getK();
       size_t n_cols = D_dyn.accessor().n_columns();
-      int steps = round(angle / step);
       const FrameInfo<FloatType>& frame = processor->frame;
       mat_t D_dyn1;
       for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
         size_t beam_idx = frame.strong_measured_beams[i];
         miller::index<> h = frame.indices[beam_idx];
-        FloatType da = frame.get_diffraction_angle(h, -K[2]);
+        //FloatType da = frame.get_diffraction_angle(h, -K[2]);
         //FloatType sg_a = frame.Sg_to_angle(0.01, h, -K[2]);
         //int steps = std::abs(round((da - sg_a) / step));
         FloatType I1 = -1, K_g_l1;
-        for (int st = -steps; st <= steps; st++) {
-          std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(
-            da + st * step);
+        for (size_t ai = 0;  ai < angles.size(); ai++) {
+          std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
           processor->process_1(i, r.first, r.second);
           if (processor->exception_) {
             exception_.swap(processor->exception_);
@@ -107,19 +70,12 @@ namespace smtbx { namespace ED
     }
 
     void operator ()() {
-      if (mode == 0) {
-        integrate();
-      }
-      else {
-        compute1(mode > 1);
-      }
+      integrate();
     }
-
     frame_processor_t* processor;
+    af::shared<FloatType> angles;
     boost::shared_ptr<frame_processor_t> processor_;
     size_t beam_n;
-    FloatType angle, step;
-    int mode;
     // output
     af::shared<FloatType> Is;
     mat_t D_dyn;

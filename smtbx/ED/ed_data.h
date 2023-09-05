@@ -131,6 +131,14 @@ namespace smtbx { namespace ED
       FloatType MaxG,
       FloatType MaxSg,
       FloatType MinP);
+    /* computes integration angles making sure that the diffraction angles are
+    in the list. Using threshold to merge near-by points
+    * */
+    af::shared<FloatType> get_int_angles(FloatType Kl, FloatType span,
+      FloatType step, size_t N) const;
+    /* returns all angles for span with step */
+    static af::shared<FloatType> get_angles(FloatType  ang,
+      FloatType span, FloatType step);
 
     int id, tag;
     cart_t normal, original_normal;
@@ -310,6 +318,85 @@ namespace smtbx { namespace ED
     return cnt;
 
   }
+  /* input span and step are in degrees */
+  template <typename FloatType>
+  af::shared<FloatType> FrameInfo<FloatType>::get_angles(FloatType ang,
+    FloatType sn, FloatType st)
+  {
+    FloatType angle = scitbx::deg_as_rad(sn),
+      step = scitbx::deg_as_rad(st);
+    int steps = round(angle / step);
+    af::shared<FloatType> rv(af::reserve(std::abs(steps * 2) + 1));
+    for (int st = -steps; st <= steps; st++) {
+      rv.push_back(ang + st * step);
+    }
+    return rv;
+  }
+
+  /* input span and step are in degrees */
+  template <typename FloatType>
+  af::shared<FloatType> FrameInfo<FloatType>::get_int_angles(
+    FloatType Kl, FloatType span_, FloatType step_, size_t N) const
+  {
+    FloatType span = scitbx::deg_as_rad(span_),
+      step = scitbx::deg_as_rad(step_);
+    af::shared<FloatType> angles, d_angles, res;
+    int steps = round(span / step);
+    for (size_t i = 0; i < strong_measured_beams.size(); i++) {
+      const miller::index<>& h = indices[strong_measured_beams[i]];
+      FloatType da = this->get_diffraction_angle(h, Kl);
+      d_angles.push_back(da);
+      for (int st = -steps; st <= steps; st++) {
+        angles.push_back(da + st * step);
+      }
+    }
+
+    std::sort(angles.begin(), angles.end());
+    std::sort(d_angles.begin(), d_angles.end());
+    FloatType ang_span = (angles[angles.size() - 1] - angles[0]);
+    FloatType threshold = ang_span / N;
+    res.push_back(angles[0]);
+    FloatType crv = angles[0];
+    bool last_in = false;
+    for (size_t i = 1; i < angles.size(); i++) {
+      if (angles[i]-crv > threshold) {
+        res.push_back(angles[i]);
+        crv = angles[i];
+        if (i == angles.size() - 1) {
+          last_in = true;
+        }
+      }
+    }
+    if (!last_in) {
+      res.push_back(angles[angles.size()-1]);
+    }
+
+    size_t st = 0, sz = res.size();
+    for (size_t i = 0; i < sz; i++) {
+      FloatType ang = res[i];
+      for (size_t j = st; j < d_angles.size(); j++) {
+        if (ang > d_angles[j]) {
+          if (i > 0) {
+            if (std::abs(ang - d_angles[j]) < threshold) {
+              res[i] = d_angles[j];
+            }
+            else if (i - 1 < res.size()) {
+              if (std::abs(res[i - 1] - d_angles[j]) < threshold) {
+                res[i - 1] = d_angles[j];
+              }
+            }
+          }
+          else {
+            res.push_back(d_angles[j]);
+          }
+          st = j;
+        }
+      }
+    }
+    std::sort(res.begin(), res.end());
+    return res;
+  }
+
 
   template <typename FloatType>
   struct PeakProfilePoint {
@@ -328,7 +415,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() >= 9);
+      SMTBX_ASSERT(values.size() >= 10);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -343,6 +430,7 @@ namespace smtbx { namespace ED
     int getThreadN() const { return static_cast<int>(values[6]); }
     FloatType getIntSpan() const { return values[7]; }
     FloatType getIntStep() const { return values[8]; }
+    size_t getIntPoints() const { return static_cast<size_t>(values[9]); }
   };
 
 }}
