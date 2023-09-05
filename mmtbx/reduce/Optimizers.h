@@ -197,7 +197,7 @@ namespace molprobity {
       /// This is a pointer to the ScoreCacheMap for the current clique, if it exists.
       /// When it is a nullptr, we do not use caching. This is set to non-nullptr
       /// when we are optimizing a clique, and set back to nullptr when we are done.
-      ScoreCacheMap *m_scoreCacheMap = nullptr;
+      ScoreCacheMap *m_scoreCacheMap;
 
       /// Tracks how many cached vs. calculated scores we have over the course of our calculations.
       /// These are used for reporting purposes and are accumulated over the entire life of

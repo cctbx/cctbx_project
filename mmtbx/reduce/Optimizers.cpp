@@ -18,6 +18,7 @@
 #include <sstream>
 #include <map>
 #include <algorithm>
+#include <cctype>
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
@@ -29,18 +30,28 @@ static std::string roundToTwoDigits(double d)
   return oss.str();
 }
 
+// Functor for removing leading whitespace
+struct IsNotSpace {
+  bool operator()(char ch) const {
+    return !std::isspace(static_cast<unsigned char>(ch));
+  }
+};
+
+// Functor for removing trailing whitespace
+struct IsNotSpaceReverse {
+  bool operator()(char ch) const {
+    return !std::isspace(static_cast<unsigned char>(ch));
+  }
+};
+
 static std::string stripWhitespace(const std::string& input) {
   std::string result = input;
 
   // Remove leading whitespace
-  result.erase(result.begin(), std::find_if(result.begin(), result.end(), [](unsigned char ch) {
-    return !std::isspace(ch);
-    }));
+  result.erase(result.begin(), std::find_if(result.begin(), result.end(), IsNotSpace()));
 
   // Remove trailing whitespace
-  result.erase(std::find_if(result.rbegin(), result.rend(), [](unsigned char ch) {
-    return !std::isspace(ch);
-    }).base(), result.end());
+  result.erase(std::find_if(result.rbegin(), result.rend(), IsNotSpaceReverse()).base(), result.end());
 
   return result;
 }
@@ -274,6 +285,7 @@ OptimizerC::OptimizerC(
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
+  , m_scoreCacheMap(0)
   , m_cachedScores(0)
   , m_calculatedScores(0)
 {
@@ -933,7 +945,7 @@ boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
   m_scoreCacheMap = new ScoreCacheMap();
   std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique);
   delete m_scoreCacheMap;
-  m_scoreCacheMap = nullptr;
+  m_scoreCacheMap = NULL;
   infoString += ret.second;
 
   // Format and return the result
