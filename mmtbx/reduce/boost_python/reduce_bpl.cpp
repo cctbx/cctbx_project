@@ -48,6 +48,23 @@ static scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
   );
 }
 
+// This reformats the parameters to match the values expected by the C++ function
+// in the library and then calls it.
+static scitbx::vec3<double> RotateAtomDegreesAroundAxisDir(
+  scitbx::vec3<double> const& axis_point_1,
+  scitbx::vec3<double> const& axis_direction,
+  iotbx::pdb::hierarchy::atom const& atom,
+  double angle_degrees
+) {
+  scitbx::vec3<double> const& axis_point_2 = axis_point_1 + axis_direction;
+  return scitbx::math::rotate_point_around_axis(
+    axis_point_1,
+    axis_point_2,
+    atom.data->xyz,
+    angle_degrees * scitbx::constants::pi_180
+  );
+}
+
 BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
   // Dependencies
@@ -113,7 +130,6 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     .add_property("deleteMes", &PositionReturn::deleteMes)
     .add_property("preferenceEnergies", &PositionReturn::preferenceEnergies)
     ;
-  // Export the global functions
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
   def("PairsOverlap", PairsOverlap,
@@ -121,13 +137,40 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   def("InteractionGraph_test", InteractionGraph_test,
     "Test all classes and functions defined in InteractionGraph.h.");
 
-  def("OptimizeCliqueCoarseBruteForceC", OptimizeCliqueCoarseBruteForceC,
-    "Brute-force optimization of a clique.");
-  def("OptimizeCliqueCoarseVertexCutC", OptimizeCliqueCoarseVertexCutC,
-    "Vertex-cut recursive optimization of a clique.");
+  class_<OptimizerC>("OptimizerC", init<
+        int
+      , double
+      , double
+      , double
+      , double
+      , double
+      , scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &
+      , boost::python::dict&
+      , boost::python::object&
+      , boost::python::object&
+      , boost::python::dict&
+      , molprobity::probe::SpatialQuery&
+      , molprobity::probe::ExtraAtomInfoMap&
+      , boost::python::object&
+      >()
+    )
+    .def("Initialize", &OptimizerC::Initialize)
+    .def("OptimizeSingleMoverCoarse", &OptimizerC::OptimizeSingleMoverCoarse)
+    .def("OptimizeSingleMoverFine", &OptimizerC::OptimizeSingleMoverFine)
+    .def("OptimizeCliqueCoarse", &OptimizerC::OptimizeCliqueCoarse)
+    .def("GetCoarseLocation", &OptimizerC::GetCoarseLocation)
+    .def("GetFineLocation", &OptimizerC::GetFineLocation)
+    .def("GetHighScore", &OptimizerC::GetHighScore)
+    .def("GetDots", &OptimizerC::GetDots)
+    .def("GetNumCalculatedAtoms", &OptimizerC::GetNumCalculatedAtoms)
+    .def("GetNumCachedAtoms", &OptimizerC::GetNumCachedAtoms)
+    ;
   def("Optimizers_test", Optimizers_test,
     "Test all classes and functions defined in Optimizers.h.");
 
   def("RotatePointDegreesAroundAxisDir", RotatePointDegreesAroundAxisDir,
-    "Rotate a point around an axis direction in degrees.");
+    "Rotate a point around an axis direction in degrees, returning new location.");
+
+  def("RotateAtomDegreesAroundAxisDir", RotateAtomDegreesAroundAxisDir,
+    "Rotate an atom in place around an axis direction in degrees.");
 }

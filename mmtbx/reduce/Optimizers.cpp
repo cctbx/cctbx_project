@@ -12,20 +12,99 @@
 // limitations under the License.
 
 #include "Optimizers.h"
-#include <vector>
 #include <list>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <map>
 #include <algorithm>
-#include <boost/graph/adjacency_list.hpp>
+#include <cctype>
 #include <boost/graph/connected_components.hpp>
 #include <boost/graph/subgraph.hpp>
 
-typedef scitbx::vec3<double> vec3;
+static std::string roundToTwoDigits(double d)
+{
+  std::ostringstream oss;
+  oss.precision(2);
+  oss << std::fixed << d;
+  return oss.str();
+}
 
-static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsigned> const &numStates)
+// Functor for removing leading whitespace
+struct IsNotSpace {
+  bool operator()(char ch) const {
+    return !std::isspace(static_cast<unsigned char>(ch));
+  }
+};
+
+// Functor for removing trailing whitespace
+struct IsNotSpaceReverse {
+  bool operator()(char ch) const {
+    return !std::isspace(static_cast<unsigned char>(ch));
+  }
+};
+
+static std::string stripWhitespace(const std::string& input) {
+  std::string result = input;
+
+  // Remove leading whitespace
+  result.erase(result.begin(), std::find_if(result.begin(), result.end(), IsNotSpace()));
+
+  // Remove trailing whitespace
+  result.erase(std::find_if(result.rbegin(), result.rend(), IsNotSpaceReverse()).base(), result.end());
+
+  return result;
+}
+
+static std::string toUpperCase(const std::string& input) {
+  std::string result = input;
+  std::transform(result.begin(), result.end(), result.begin(), ::toupper);
+  return result;
+}
+
+static std::string fromSmall(const char* buf, unsigned maxLen)
+{
+  std::string ret;
+
+  // Scan through the buffer. As long as we do not find null termination, continue
+  // copying into the string.
+  for (unsigned i = 0; i < maxLen; i++) {
+    if (buf[i] == '\0') {
+      break;
+    }
+    ret += buf[i];
+  }
+  return ret;
+}
+
+static std::string resNameAndID(iotbx::pdb::hierarchy::atom const& a)
+{
+  std::string chainID = a.parent().get().parent().get().parent().get().data->id;
+  std::string resName = toUpperCase(stripWhitespace(a.parent().get().data->resname));
+  std::string resID = stripWhitespace(fromSmall(a.parent().get().parent().get().data->resseq.elems, 4));
+  std::string altLoc = stripWhitespace(fromSmall(a.parent().get().data->altloc.elems,1));
+  // Don't print the code if it is a space (blank).
+  std::string insertionCode = stripWhitespace(fromSmall(a.parent().get().parent().get().data->icode.elems,1));
+  return "chain " + chainID + " " + altLoc + resName + " " + resID + insertionCode;
+}
+
+static std::string describeMover(boost::python::object const& mover,
+  iotbx::pdb::hierarchy::atom const& atom)
+{
+  // Extract the type name between the quotes and then the last class name from
+  // the module path.
+  boost::python::object objectType = mover.attr("__class__");
+  std::string typeName =
+    boost::python::extract<std::string>(objectType.attr("__name__"));
+
+  return typeName + ' ' + resNameAndID(atom);
+}
+
+namespace molprobity {
+  namespace reduce {
+
+std::vector< std::vector<unsigned> > OptimizerC::generateAllStates(
+  std::vector<unsigned> const &numStates)
 {
   std::vector< std::vector<unsigned> > ret;
 
@@ -68,220 +147,8 @@ static std::vector< std::vector<unsigned> > generateAllStates(std::vector<unsign
   }
 }
 
-static std::string setMoverState(molprobity
-  ::reduce::PositionReturn & positionReturn,
-  unsigned index,
-  molprobity::probe::SpatialQuery& spatialQuery,
-  molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-  boost::python::object& deleteMes,
-  int verbosity)
+std::vector< std::vector<int> > OptimizerC::nChooseM(int n, int m)
 {
-  std::string ret;
-
-  // Move the atoms to their new positions, updating the spatial query structure
-  // by removing the old and adding the new location.
-  for (size_t i = 0; i < positionReturn.atoms.size(); i++) {
-    iotbx::pdb::hierarchy::atom &a = positionReturn.atoms[i];
-
-    spatialQuery.remove(a);
-    // Overwrite the location of the atom
-    for (size_t j = 0; j < 3; j++) {
-      a.data->xyz[j] = positionReturn.positions[index][i][j];
-    }
-    spatialQuery.add(a);
-  }
-
-  // Update the extraAtomInfo associated with each atom.
-  // Note that there may be fewer entries than atoms, but they all correspond
-  // so we can look up the atom by index in the atoms array just like above.
-  for (size_t i = 0; i < positionReturn.extraInfos[index].size(); i++) {
-    iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
-    extraAtomInfoMap.setMappingFor(a, positionReturn.extraInfos[index][i]);
-  }
-
-  // Manage the deletion status of each atom, including ensuring
-  // consistency with the spatial - query structure.
-  // Note that there may be fewer entries than atoms, but they all correspond
-  // so we can look up the atom by index in the atoms array just like above.
-  for (size_t i = 0; i < positionReturn.deleteMes[index].size(); i++) {
-    iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
-    bool doDelete = boost::python::extract<bool>(deleteMes.contains(a));
-    if (doDelete) {
-      spatialQuery.remove(a);
-      deleteMes.attr("add")(a);
-      if (verbosity >= 10) {
-        ret += "          Deleting atom\n";
-      }
-    } else {
-      spatialQuery.add(a);
-      deleteMes.attr("discard")(a);
-      if (verbosity >= 10) {
-        ret += "           Ensuring deletable atom is present\n";
-      }
-    }
-  }
-
-  return ret;
-}
-
-// Score all atoms that have not been marked for deletion, calling the Python object's
-// scoring function (which may or may not use caching to do the scoring).
-static double scorePosition(boost::python::object& self,
-  molprobity::reduce::PositionReturn& states, size_t index)
-{
-  double ret = 0;
-  for (size_t a = 0; a < states.atoms.size(); a++) {
-    // There may not be as many deleteMes as there are atoms, so we need to check for that.
-    if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
-      boost::python::object result = self.attr("_scoreAtom")(states.atoms[a]);
-      double resultValue = boost::python::extract<double>(result);
-      ret += resultValue;
-    }
-  }
-  return ret;
-}
-
-namespace molprobity {
-  namespace reduce {
-
-boost::python::tuple OptimizeCliqueCoarseBruteForceC(
-  boost::python::object &self,
-  int verbosity,
-  double preferenceMagnitude,
-  scitbx::af::shared<boost::python::object> movers,
-  molprobity::probe::SpatialQuery &spatialQuery,
-  molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
-  boost::python::object &deleteMes,
-  boost::python::dict &coarseLocations,
-  boost::python::dict &highScores
-)
-{
-  // Information to pass back about what we did, if verbosity is high enough.
-  std::string infoString;
-
-  if (verbosity >= 3) {
-    std::ostringstream oss;
-    oss << "   Optimizing clique of size " << movers.size() << " using brute force\n";
-    infoString = oss.str();
-  }
-
-  // Fill in vectors with the states of each mover.
-  scitbx::af::shared<molprobity::reduce::PositionReturn> states;
-  for (scitbx::af::shared<boost::python::object>::const_iterator it = movers.begin(); it != movers.end(); ++it) {
-    boost::python::object const&m = *it;
-    states.push_back(boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")()));
-  }
-
-  // Keep track of the best score and the state where we found it.
-  // It starts out empty, letting us know to fill it.
-  double bestScore = -1e100;
-  std::vector<unsigned> bestState;
-
-  // Find the length of each state and record it into a vector
-  std::vector<unsigned> numStates;
-  for (scitbx::af::shared<molprobity::reduce::PositionReturn>::const_iterator it = states.begin();
-       it != states.end(); ++it) {
-    molprobity::reduce::PositionReturn const& s = *it;
-    numStates.push_back(s.positions.size());
-  }
-
-  // Generate a vector of state combinations, storing the index of the selected
-  // element from each state. We will iterate over these to find the best state.
-  /// @todo Consider pulling this generation into here as a loop rather than using up
-  // memory to store this.
-  std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
-
-  // Cycle through all states and find the one with the largest score.
-  for (std::vector< std::vector<unsigned> >::const_iterator it = allStates.begin(); it != allStates.end(); ++it) {
-    std::vector<unsigned> const& curStateValues = *it;
-
-    // Set all movers to match the state list
-    for (unsigned m = 0; m < movers.size(); m++) {
-      // Only change this mover if it is different from the last time
-      boost::python::extract<unsigned> value(coarseLocations.get(movers[m]));
-      if (value != curStateValues[m]) {
-        // Set the mover to this state
-        infoString += setMoverState(states[m], curStateValues[m], spatialQuery, extraAtomInfoMap, deleteMes,
-          verbosity);
-        coarseLocations[movers[m]] = curStateValues[m];
-      }
-    }
-
-    // Compute the score over all atoms in all Movers.
-    double score = 0;
-    for (size_t m = 0; m < movers.size(); m++) {
-
-      score += preferenceMagnitude * states[m].preferenceEnergies[curStateValues[m]];
-
-      // Score all atoms that have not been marked for deletion, calling the Python object's
-      // scoring function (which may or may not use caching to do the scoring).
-      score += scorePosition(self, states[m], curStateValues[m]);
-    }
-    if (verbosity >= 5) {
-      std::ostringstream oss;
-      oss << "    Score is " << score << " at [";
-      infoString += oss.str();
-      for (unsigned i = 0; i < curStateValues.size(); i++) {
-        std::ostringstream oss2;
-        oss2 << curStateValues[i];
-        infoString += oss2.str();
-        if (i < curStateValues.size() - 1) {
-          infoString += ", ";
-        }
-      }
-      infoString += "]\n";
-    }
-
-    // See if it is the best score.  If so, update the best.
-    if ((score > bestScore) || (bestState.size() == 0)) {
-      if (verbosity >= 4) {
-        std::ostringstream oss;
-        oss << "    New best score is " << score << " at [";
-        infoString += oss.str();
-        for (unsigned i = 0; i < curStateValues.size(); i++) {
-          std::ostringstream oss2;
-          oss2 << curStateValues[i];
-          infoString += oss2.str();
-          if (i < curStateValues.size() - 1) {
-            infoString += ", ";
-          }
-        }
-        infoString += "]\n";
-      }
-      bestScore = score;
-      bestState = curStateValues;
-    }
-  }
-
-  // Put each Mover into its state in the best configuration and compute its high-score value.
-  // Store the individual scores for these Movers in the best config for use in later fine - motion
-  // processing.
-  for (size_t m = 0; m < movers.size(); m++) {
-    infoString += setMoverState(states[m], bestState[m], spatialQuery, extraAtomInfoMap, deleteMes,
-      verbosity);
-    coarseLocations[movers[m]] = bestState[m];
-    double score = preferenceMagnitude * states[m].preferenceEnergies[bestState[m]];
-    score += scorePosition(self, states[m], bestState[m]);
-    highScores[movers[m]] = score;
-    if (verbosity >= 3) {
-      std::ostringstream oss;
-      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
-        << ", max score = " << score << "\n";
-      infoString += oss.str();
-    }
-  }
-
-  // Return the result
-  return boost::python::make_tuple(bestScore, infoString);
-}
-
-// Must use vector style for second (vertex) entry for connected_components to work
-typedef boost::adjacency_list<boost::listS, boost::vecS, boost::undirectedS, boost::python::object*>
-  CliqueGraph;
-
-/// @brief Return a vector of vectors of integers representing all combinations of m integers
-///        from 0 to n-1, inclusive.
-std::vector< std::vector<int> > nChooseM(int n, int m) {
   std::vector<std::vector<int> > result;
 
   std::vector<int> indices(m);
@@ -315,8 +182,8 @@ std::vector< std::vector<int> > nChooseM(int n, int m) {
   return result;
 }
 
-/// @brief Find the subset of a clique graph that contains a given set of movers and edges between them.
-static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::python::object*>& keepMovers)
+OptimizerC::CliqueGraph OptimizerC::subsetGraph(CliqueGraph const& graph,
+  std::vector<boost::python::object*>& keepMovers)
 {
   CliqueGraph ret;
 
@@ -337,8 +204,8 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
     CliqueGraph::vertex_descriptor v2 = boost::target(*e, graph);
     boost::python::object* mover1 = graph[v1];
     boost::python::object* mover2 = graph[v2];
-    if ( (std::find(keepMovers.begin(), keepMovers.end(), mover1) != keepMovers.end()) &&
-         (std::find(keepMovers.begin(), keepMovers.end(), mover2) != keepMovers.end())) {
+    if ((std::find(keepMovers.begin(), keepMovers.end(), mover1) != keepMovers.end()) &&
+      (std::find(keepMovers.begin(), keepMovers.end(), mover2) != keepMovers.end())) {
       // Both ends of this edge are in the subset, so add it to the subset graph.
       boost::add_edge(vertexMap[mover1], vertexMap[mover2], ret);
     }
@@ -347,13 +214,7 @@ static CliqueGraph subsetGraph(CliqueGraph const& graph, std::vector<boost::pyth
   return ret;
 }
 
-/// @brief Find one of the smallest vertex cuts in a clique graph.
-/// @param [in] graph: The clique graph to find the vertex cut in.
-/// @param [out] cutMovers: The movers that correspond to the vertices
-/// that are removed.
-/// @param [out] cutGraph: The graph that stores the subset of clique
-/// whose vertices have been removed.
-static void findVertexCut(CliqueGraph const& graph,
+void OptimizerC::findVertexCut(CliqueGraph const& graph,
   std::vector<boost::python::object*>& cutMovers, CliqueGraph& cutGraph)
 {
   // Check all vertex cut sizes from 1 to 2 less than the number of vertices(we must
@@ -396,91 +257,397 @@ static void findVertexCut(CliqueGraph const& graph,
   cutMovers.clear();
 }
 
+OptimizerC::OptimizerC(
+    int verbosity,
+    double preferenceMagnitude,
+    double maxVDWRadius,
+    double minOccupancy,
+    double probeRadius,
+    double probeDensity,
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms,
+    boost::python::dict& exclude,
+    boost::python::object& dotScorer,
+    boost::python::object& dotSphereCache,
+    boost::python::dict& atomMoverLists,
+    molprobity::probe::SpatialQuery& spatialQuery,
+    molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+    boost::python::object& deleteMes)
+  : m_verbosity(verbosity)
+  , m_preferenceMagnitude(preferenceMagnitude)
+  , m_maxVDWRadius(maxVDWRadius)
+  , m_minOccupancy(minOccupancy)
+  , m_probeRadius(probeRadius)
+  , m_probeDensity(probeDensity)
+  , m_atoms(atoms)
+  , m_exclude(exclude)
+  , m_dotScorer(boost::python::extract<molprobity::probe::DotScorer&>(dotScorer))
+  , m_dotSphereCache(boost::python::extract<molprobity::probe::DotSphereCache&>(dotSphereCache))
+  , m_spatialQuery(spatialQuery)
+  , m_extraAtomInfoMap(extraAtomInfoMap)
+  , m_deleteMes(deleteMes)
+  , m_scoreCacheMap(0)
+  , m_cachedScores(0)
+  , m_calculatedScores(0)
+{
+  // Fill in the dot-sphere map for all of the atoms.
+  for (size_t i = 0; i < m_atoms.size(); i++) {
+    m_dotSpheres[m_atoms[i].data->i_seq] =
+      m_dotSphereCache.get_sphere( m_extraAtomInfoMap.getMappingFor(m_atoms[i]).getVdwRadius() ).dots();
+  }
 
-boost::python::tuple OptimizeCliqueCoarseVertexCutC(
-  boost::python::object& self,
-  int verbosity,
-  double preferenceMagnitude,
-  scitbx::af::shared<boost::python::object> movers,
-  scitbx::af::versa<int, scitbx::af::flex_grid<> > &interactions,
-  molprobity::probe::SpatialQuery& spatialQuery,
-  molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
-  boost::python::object& deleteMes,
-  boost::python::dict& coarseLocations,
-  boost::python::dict& highScores
-)
+  // Convert the atom-mover lists to a map from unsigned int (i_seq) to a vector of pointers to movers.
+  // This will speed up our internal processing when looking for cached atom scores.
+  boost::python::list keys = atomMoverLists.keys();
+  for (size_t i = 0; i < boost::python::len(keys); i++) {
+    boost::python::object key = keys[i];
+    boost::python::list movers = boost::python::extract<boost::python::list>(atomMoverLists[key]);
+
+    std::vector<PyObject*> moverPtrs;
+    for (size_t j = 0; j < boost::python::len(movers); j++) {
+      boost::python::object mover = movers[j];
+      moverPtrs.push_back(mover.ptr());
+    }
+    m_atomMoverLists[boost::python::extract<unsigned int>(key)] = moverPtrs;
+  }
+}
+
+double OptimizerC::scoreAtom(iotbx::pdb::hierarchy::atom const& a, unsigned locationIndex)
+{
+  // Keep track of calculated scores whether or not we're doing score caching
+  m_calculatedScores++;
+
+  // Find the maximum radius of the pair of atoms, to limit our neightbor search.
+  double maxRadiusWithoutProbe = m_maxVDWRadius + m_extraAtomInfoMap.getMappingFor(a).getVdwRadius();
+
+  // Find the excluded atoms for this atom. This is a dictionary looked up by i_seq that has a list of atoms.
+  /// @todo We'd like to do this without a copy but we can't get a reference.
+  /// @todo Consider building a C++ map for all of the atoms in the current clique and using it.
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude =
+    boost::python::extract<scitbx::af::shared<iotbx::pdb::hierarchy::atom> >(m_exclude[a.data->i_seq]);
+
+  // See if we already have a cached list of dots for this atom at this configuration.
+  // If so, use it. If not, calculate it and cache it.
+  scitbx::af::shared<molprobity::probe::Point> dots;
+  std::map< std::pair<unsigned, unsigned>, scitbx::af::shared<molprobity::probe::Point> >::iterator it =
+    m_excludedDots.find(std::pair<unsigned, unsigned>(a.data->i_seq, locationIndex));
+  if (it != m_excludedDots.end()) {
+    dots = it->second;
+  } else {
+    dots = m_dotScorer.trim_dots(a, m_dotSpheres[a.data->i_seq], exclude);
+    m_excludedDots[std::pair<unsigned, unsigned>(a.data->i_seq, locationIndex)] = dots;
+  }
+
+  // Score the dots for this atom. We pass an empty exclude list because we've already removed the
+  // dots that are inside them.
+  return m_dotScorer.score_dots(a, m_minOccupancy, m_spatialQuery, maxRadiusWithoutProbe,
+    m_probeRadius, exclude, dots, m_probeDensity, false, true).totalScore();
+}
+
+double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a, unsigned locationIndex)
+{
+  // Find the vector that is the state of all Movers related to this atom.
+  std::vector<unsigned> state;
+  std::vector<PyObject*> movers = m_atomMoverLists[a.data->i_seq];
+  for (int i = 0; i < movers.size(); ++i) {
+    // Go through and look up the state of each mover.
+    state.push_back(m_coarseLocations[movers[i]]);
+  }
+
+  // See if we have a cached score for this state.  If so, use it. If not, calculate it and store it.
+  if ((*m_scoreCacheMap)[a.data->i_seq].find(state) != (*m_scoreCacheMap)[a.data->i_seq].end()) {
+    m_cachedScores++;
+    return (*m_scoreCacheMap)[a.data->i_seq][state];
+  } else {
+    double score = scoreAtom(a, locationIndex);
+    (*m_scoreCacheMap)[a.data->i_seq][state] = score;
+    return score;
+  }
+}
+
+double OptimizerC::scorePosition(molprobity::reduce::PositionReturn& states, unsigned index,
+  unsigned dotCacheOffset)
+{
+  double ret = 0;
+  // There may not be as many coarse atoms moved as there are atoms, so use the proper length
+  size_t numMoved = states.positions[index].size();
+  for (size_t a = 0; a < numMoved; a++) {
+    // There may not be as many deleteMes as there are atoms, so we need to check for that.
+    if ((a >= states.deleteMes[index].size()) || !states.deleteMes[index][a]) {
+      if (m_scoreCacheMap) {
+        ret += scoreAtomCached(states.atoms[a], index + dotCacheOffset);
+      } else {
+        ret += scoreAtom(states.atoms[a], index + dotCacheOffset);
+      }
+    }
+  }
+  return ret;
+}
+
+std::string OptimizerC::setMoverState(molprobity::reduce::PositionReturn& positionReturn,
+  unsigned index)
+{
+  std::string ret;
+
+  // Move the atoms to their new positions, updating the spatial query structure
+  // by removing the old and adding the new location.
+  // There may not be as many deleteMes as there are atoms, so we need to check for that.
+  size_t numMoved = positionReturn.positions[index].size();
+  for (size_t i = 0; i < numMoved; i++) {
+    iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
+
+    m_spatialQuery.remove(a);
+    // Overwrite the location of the atom
+    for (size_t j = 0; j < 3; j++) {
+      a.data->xyz[j] = positionReturn.positions[index][i][j];
+    }
+    m_spatialQuery.add(a);
+  }
+
+  // Update the extraAtomInfo associated with each atom.
+  // Note that there may be fewer entries than atoms, but they all correspond
+  // so we can look up the atom by index in the atoms array just like above.
+  for (size_t i = 0; i < positionReturn.extraInfos[index].size(); i++) {
+    m_extraAtomInfoMap.setMappingFor(positionReturn.atoms[i],
+      positionReturn.extraInfos[index][i]);
+  }
+
+  // Manage the deletion status of each atom, including ensuring
+  // consistency with the spatial - query structure.
+  // Note that there may be fewer entries than atoms, but they all correspond
+  // so we can look up the atom by index in the atoms array just like above.
+  for (size_t i = 0; i < positionReturn.deleteMes[index].size(); i++) {
+    iotbx::pdb::hierarchy::atom& a = positionReturn.atoms[i];
+    bool doDelete = positionReturn.deleteMes[index][i];
+    if (doDelete) {
+      m_spatialQuery.remove(a);
+      m_deleteMes.attr("add")(a);
+      if (m_verbosity >= 10) {
+        ret += "          Deleting atom\n";
+      }
+    } else {
+      m_spatialQuery.add(a);
+      m_deleteMes.attr("discard")(a);
+      if (m_verbosity >= 10) {
+        ret += "          Ensuring deletable atom is present\n";
+      }
+    }
+  }
+
+  return ret;
+}
+
+std::string OptimizerC::Initialize(scitbx::af::shared<boost::python::object> const &movers)
+{
+  std::string infoString;
+
+  // Forget the excluded atoms and dots from before
+  m_excludedDots.clear();
+
+  // In the first pass, zero all of the coarse and fine locations and position the
+  // Movers in their initial locations
+  m_coarseLocations.clear();
+  m_fineLocations.clear();
+  for (size_t i = 0; i < movers.size(); i++) {
+    boost::python::object const& mover = movers[i];
+
+    molprobity::reduce::PositionReturn coarse =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+    setMoverState(coarse, 0);
+    m_coarseLocations[mover.ptr()] = 0;
+    m_fineLocations[mover.ptr()] = -1;
+  }
+
+  // In the second pass, score the initial coarse positions
+  m_highScores.clear();
+  for (size_t i = 0; i < movers.size(); i++) {
+    boost::python::object const& mover = movers[i];
+
+    molprobity::reduce::PositionReturn coarse =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+    double score = m_preferenceMagnitude * coarse.preferenceEnergies[0];
+    score += scorePosition(coarse, 0, 0);
+    m_highScores[mover.ptr()] = score;
+  }
+
+  return infoString;
+}
+
+std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseBruteForce(
+  std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
+  CliqueGraph& clique)
 {
   // Information to pass back about what we did, if verbosity is high enough.
   std::string infoString;
 
-  if (verbosity >= 3) {
+  // Get the list of movers from the graph
+  /// @todo Speed this up by just getting a vertex iterator and using it?
+  std::vector<boost::python::object*> movers;
+  for (size_t i = 0; i < boost::num_vertices(clique); i++) {
+    movers.push_back(clique[i]);
+  }
+
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Optimizing clique of size " << movers.size() << " using brute force\n";
+    infoString = oss.str();
+  }
+
+  // Keep track of the best score and the state where we found it.
+  // It starts out empty, letting us know to fill it.
+  double bestScore = -1e100;
+  std::vector<unsigned> bestState;
+
+  // Find the number of options for each Mover and record it into a vector
+  std::vector<unsigned> numStates;
+  for (std::vector<boost::python::object*>::iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object* m = *it;
+    numStates.push_back(states[m].positions.size());
+  }
+
+  // Generate a vector of state combinations, storing the index of the selected
+  // element from each state. We will iterate over these to find the best state.
+  /// @todo Consider pulling this generation into here as a loop rather than using up
+  // memory to store this.
+  std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
+
+  // Cycle through all states and find the one with the largest score.
+  for (std::vector< std::vector<unsigned> >::const_iterator it = allStates.begin(); it != allStates.end(); ++it) {
+    std::vector<unsigned> const& curStateValues = *it;
+
+    // Set all movers to match the state list
+    for (unsigned m = 0; m < movers.size(); m++) {
+      // Only change this mover if it is different from the last time
+      unsigned value = m_coarseLocations[movers[m]->ptr()];
+      if (value != curStateValues[m]) {
+        // Set the mover to this state
+        infoString += setMoverState(states[movers[m]], curStateValues[m]);
+        m_coarseLocations[movers[m]->ptr()] = curStateValues[m];
+      }
+    }
+
+    // Compute the score over all atoms in all Movers.
+    double score = 0;
+    for (size_t m = 0; m < movers.size(); m++) {
+
+      score += m_preferenceMagnitude * states[movers[m]].preferenceEnergies[curStateValues[m]];
+
+      // Score all atoms that have not been marked for deletion, calling the Python object's
+      // scoring function (which may or may not use caching to do the scoring).
+      score += scorePosition(states[movers[m]], curStateValues[m], 0);
+    }
+    if (m_verbosity >= 5) {
+      std::ostringstream oss;
+      oss << "     Score is " << roundToTwoDigits(score) << " at [";
+      infoString += oss.str();
+      for (unsigned i = 0; i < curStateValues.size(); i++) {
+        std::ostringstream oss2;
+        oss2 << curStateValues[i];
+        infoString += oss2.str();
+        if (i < curStateValues.size() - 1) {
+          infoString += ", ";
+        }
+      }
+      infoString += "]\n";
+    }
+
+    // See if it is the best score.  If so, update the best.
+    if ((score > bestScore) || (bestState.size() == 0)) {
+      if (m_verbosity >= 4) {
+        std::ostringstream oss;
+        oss << "    New best score is " << roundToTwoDigits(score) << " at [";
+        infoString += oss.str();
+        for (unsigned i = 0; i < curStateValues.size(); i++) {
+          std::ostringstream oss2;
+          oss2 << curStateValues[i];
+          infoString += oss2.str();
+          if (i < curStateValues.size() - 1) {
+            infoString += ", ";
+          }
+        }
+        infoString += "]\n";
+      }
+      bestScore = score;
+      bestState = curStateValues;
+    }
+  }
+
+  // Put each Mover into its best state and (once that has been done, in a
+  // second pass) compute the high-score value for each.
+  // Compute the best individual scores for these Movers for use in later fine - motion
+  // processing.
+  for (size_t m = 0; m < movers.size(); m++) {
+    infoString += setMoverState(states[movers[m]], bestState[m]);
+    m_coarseLocations[movers[m]->ptr()] = bestState[m];
+  }
+  double ret = 0.0;
+  for (size_t m = 0; m < movers.size(); m++) {
+    double myScore = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
+    myScore += scorePosition(states[movers[m]], bestState[m], 0);
+    m_highScores[movers[m]->ptr()] = myScore;
+    ret += myScore;
+    if (m_verbosity >= 3) {
+      std::ostringstream oss;
+      oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
+        << ", max score = " << roundToTwoDigits(myScore) << "\n";
+      infoString += oss.str();
+    }
+  }
+
+  // Return the result
+  return std::pair<double, std::string>(ret, infoString);
+}
+
+std::pair<double, std::string> OptimizerC::OptimizeCliqueCoarseVertexCut(
+  std::map<boost::python::object*, molprobity::reduce::PositionReturn>& states,
+  CliqueGraph& clique)
+{
+  // Information to pass back about what we did, if verbosity is high enough.
+  std::string infoString;
+
+  // Get the list of movers from the graph
+  /// @todo Speed this up by just getting a vertex iterator and using it?
+  std::vector<boost::python::object*> movers;
+  for (size_t i = 0; i < boost::num_vertices(clique); i++) {
+    movers.push_back(clique[i]);
+  }
+
+  if (m_verbosity >= 3) {
     std::ostringstream oss;
     oss << "   Optimizing clique of size " << movers.size() << " using recursion\n";
     infoString += oss.str();
   }
 
-  // If we've gotten down to a clique of size 2, we terminate recursion and call our parent's method
+  // If we've gotten down to a clique of size 2, we terminate recursion and call the brute-force
   // because we can never split this into two connected components.
   if (movers.size() <= 2) {
-    if (verbosity >= 3) {
+    if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   Recursion terminated at clique of size " << movers.size() << "\n";
       infoString += oss.str();
     }
-    boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
-      spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
-    double doubleValue = boost::python::extract<double>(ret[0]);
-    std::string stringValue = boost::python::extract<std::string>(ret[1]);
-    return boost::python::make_tuple(doubleValue, infoString + stringValue);
+    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique);
+    return std::pair<double, std::string>(ret.first, infoString + ret.second);
   }
 
-  // Map from pointers to Movers (Python objects) to PositionReturn objects.
-  // This must be a map because we're going to deal with subsets of Movers so
-  // the indices will change.
-  std::map<boost::python::object*, molprobity::reduce::PositionReturn> states;
-  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
-    boost::python::object& m = *it;
-    states[&m] = boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")());
-  }
-
-  // Construct a graph of the movers and their interactions.
-  size_t nInteractions = interactions.accessor().all()[0];
-  size_t nIndices = interactions.accessor().all()[1];
-  if ((nInteractions > 0) && (nIndices != 2)) {
-    infoString += "ERROR: OptimizeCliqueCoarseVertexCutC(): Internal error: invalid array size\n";
-    return boost::python::make_tuple(-1e100, infoString);
-  }
-  CliqueGraph clique;
-  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
-    boost::python::object& m = *it;
-    boost::add_vertex(&m, clique);
-  }
-  for (size_t i = 0; i < nInteractions; i++) {
-    boost::add_edge(boost::vertex(interactions(i, 0),clique), boost::vertex(interactions(i, 1), clique), clique);
-  }
-
-  // Find a vertex cut for the graph we were given.
+  // Find a vertex cut for the clique we were given.
   std::vector<boost::python::object*> cutMovers;
   CliqueGraph cutGraph;
   findVertexCut(clique, cutMovers, cutGraph);
   if (cutMovers.size() == 0) {
     // No vertex cut found, so we call the brute-force method to solve this subgraph.
-    if (verbosity >= 3) {
+    if (m_verbosity >= 3) {
       std::ostringstream oss;
       oss << "   No vertex cut for clique of size " << movers.size() << ", calling parent\n";
       infoString += oss.str();
     }
-    boost::python::tuple ret = OptimizeCliqueCoarseBruteForceC(self, verbosity, preferenceMagnitude, movers,
-           spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
-    double doubleValue = boost::python::extract<double>(ret[0]);
-    std::string stringValue = boost::python::extract<std::string>(ret[1]);
-    return boost::python::make_tuple(doubleValue, infoString + stringValue);
+    std::pair<double, std::string> ret = OptimizeCliqueCoarseBruteForce(states, clique);
+    return std::pair<double, std::string>(ret.first, infoString + ret.second);
   }
 
   // Run through all states of the vertex cut and for each recursively find the best score for all of
   // the connected components, followed by the score for the vertex cut. Keep track of the best state
   // and score across all of them and set back to that at the end.
-  if (verbosity >= 3) {
+  if (m_verbosity >= 3) {
     std::ostringstream oss;
     oss << "   Found vertex cut of size " << cutMovers.size() << "\n";
     infoString += oss.str();
@@ -510,12 +677,11 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     // Set all cutMovers to match the state list
     for (unsigned m = 0; m < cutMovers.size(); m++) {
       // Only change this mover if it is different from the last time
-      boost::python::extract<unsigned> value(coarseLocations.get(*cutMovers[m]));
+      unsigned value = m_coarseLocations[cutMovers[m]->ptr()];
       if (value != curStateValues[m]) {
         // Set the mover to this state
-        infoString += setMoverState(states[cutMovers[m]], curStateValues[m],
-          spatialQuery, extraAtomInfoMap, deleteMes, verbosity);
-        coarseLocations[*cutMovers[m]] = curStateValues[m];
+        infoString += setMoverState(states[cutMovers[m]], curStateValues[m]);
+        m_coarseLocations[cutMovers[m]->ptr()] = curStateValues[m];
       }
     }
 
@@ -528,43 +694,28 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
     for (int i = 0; i < numComponents; i++) {
 
       std::vector<boost::python::object*> subMovers;
-      scitbx::af::shared<boost::python::object> afSubMovers;
       for (size_t m = 0; m < boost::num_vertices(cutGraph); m++) {
         if (componentMap[m] == i) {
           subMovers.push_back(cutGraph[m]);
-          afSubMovers.push_back(*cutGraph[m]);
         }
       }
       CliqueGraph subGraph = subsetGraph(cutGraph, subMovers);
 
-      // Fill in the interactions (edges) for this subgraph, which we'll need for the recursive call.
-      scitbx::af::versa<int, scitbx::af::flex_grid<> > subInteractions(scitbx::af::flex_grid<>(boost::num_edges(subGraph), 2));
-      boost::iterator_range<CliqueGraph::edge_iterator> edgeIterator = boost::edges(subGraph);
-      size_t e = 0;
-      for (CliqueGraph::edge_iterator edgeIt = edgeIterator.begin(); edgeIt != edgeIterator.end(); ++edgeIt) {
-        subInteractions(e, 0) = boost::source(*edgeIt, subGraph);
-        subInteractions(e, 1) = boost::target(*edgeIt, subGraph);
-        e++;
-      }
-
       // Recursively call this function to find the best score for this subgraph.
-      boost::python::tuple ret = OptimizeCliqueCoarseVertexCutC(self, verbosity, preferenceMagnitude, afSubMovers,
-        subInteractions, spatialQuery, extraAtomInfoMap, deleteMes, coarseLocations, highScores);
-      double doubleValue = boost::python::extract<double>(ret[0]);
-      std::string stringValue = boost::python::extract<std::string>(ret[1]);
-      score += doubleValue;
-      infoString += stringValue;
+      std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, subGraph);
+      score += ret.first;
+      infoString += ret.second;
     }
 
     // Add the score over all atoms in the vertex-cut Movers and see if it is the best.  If so,
     // update the best.
     for (size_t i = 0; i < cutMovers.size(); i++) {
-      score += preferenceMagnitude * states[cutMovers[i]].preferenceEnergies[curStateValues[i]];
-      score += scorePosition(self, states[cutMovers[i]], curStateValues[i]);
+      score += m_preferenceMagnitude * states[cutMovers[i]].preferenceEnergies[curStateValues[i]];
+      score += scorePosition(states[cutMovers[i]], curStateValues[i], 0);
     }
-    if (verbosity >= 5) {
+    if (m_verbosity >= 5) {
       std::ostringstream oss;
-      oss << "    Cut score is " << score << " at[";
+      oss << "     Cut score is " << roundToTwoDigits(score) << " at[";
       infoString += oss.str();
       for (size_t i = 0; i < curStateValues.size(); i++) {
         std::ostringstream oss2;
@@ -577,9 +728,9 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       infoString += "]\n";
     }
     if ((score > bestScore) || (bestState.size() == 0)) {
-      if (verbosity >= 4) {
+      if (m_verbosity >= 4) {
         std::ostringstream oss;
-        oss << "    New best score is " << score << " at [";
+        oss << "    New best score is " << roundToTwoDigits(score) << " at [";
         infoString += oss.str();
         for (unsigned i = 0; i < curStateValues.size(); i++) {
           std::ostringstream oss2;
@@ -594,37 +745,214 @@ boost::python::tuple OptimizeCliqueCoarseVertexCutC(
       bestScore = score;
       // Get the current state for all Movers in the Clique, not just the vertex-cut Movers
       bestState.clear();
-      for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
-        boost::python::object& m = *it;
-        boost::python::extract<unsigned> value(coarseLocations.get(m));
+      for (std::vector<boost::python::object*>::iterator it = movers.begin(); it != movers.end(); ++it) {
+        boost::python::object* m = *it;
+        unsigned value = m_coarseLocations[m->ptr()];
         bestState.push_back(value);
       }
     }
   }
 
-  // Put each Mover in the entire Clique into its best state and compute its high-score value.
+  // Put each Mover in the entire Clique into its best state and (once that has been done, in a
+  // second pass) compute the high-score value for each.
   // Compute the best individual scores for these Movers for use in later fine - motion
   // processing.
   for (size_t m = 0; m < movers.size(); m++) {
-    infoString += setMoverState(states[&movers[m]], bestState[m], spatialQuery, extraAtomInfoMap, deleteMes,
-      verbosity);
-    coarseLocations[movers[m]] = bestState[m];
-    double score = preferenceMagnitude * states[&movers[m]].preferenceEnergies[bestState[m]];
-    score += scorePosition(self, states[&movers[m]], bestState[m]);
-    highScores[movers[m]] = score;
-    if (verbosity >= 3) {
+    infoString += setMoverState(states[movers[m]], bestState[m]);
+    m_coarseLocations[movers[m]->ptr()] = bestState[m];
+  }
+  double ret = 0.0;
+  for (size_t m = 0; m < movers.size(); m++) {
+    double myScore = m_preferenceMagnitude * states[movers[m]].preferenceEnergies[bestState[m]];
+    myScore += scorePosition(states[movers[m]], bestState[m], 0);
+    m_highScores[movers[m]->ptr()] = myScore;
+    ret += myScore;
+    if (m_verbosity >= 3) {
       std::ostringstream oss;
-      oss << "    Setting Mover in clique to coarse orientation " << bestState[m]
-        << ", max score = " << score << "\n";
+      oss << "   Setting Mover in clique to coarse orientation " << bestState[m]
+        << ", max score = " << roundToTwoDigits(myScore) << "\n";
       infoString += oss.str();
     }
   }
 
   // Return the result
-  return boost::python::make_tuple(bestScore, infoString);
+  return std::pair<double, std::string>(ret, infoString);
 }
 
-// Helper functions to let us initialize vectors conveniently in C++98
+boost::python::tuple OptimizerC::OptimizeSingleMoverCoarse(boost::python::object const& mover)
+{
+  // Information to pass back about what we did, if verbosity is high enough.
+  std::string infoString;
+
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+  std::vector<double> scores = coarse.preferenceEnergies;
+  for (size_t i = 0; i < scores.size(); i++) {
+    scores[i] *= m_preferenceMagnitude;
+  }
+  for (size_t i = 0; i < coarse.positions.size(); i++) {
+    infoString += setMoverState(coarse, i);
+    scores[i] += scorePosition(coarse, i, 0);
+    if (m_verbosity >= 5) {
+      std::ostringstream oss;
+      oss << "     Single Mover " << describeMover(mover, coarse.atoms[0]) << " score at orientation " << i
+        << " = " << roundToTwoDigits(scores[i]) << "\n";
+      infoString += oss.str();
+    }
+  }
+
+  // Find the maximum score, keeping track of the index of the maximum score.
+  double maxScore = scores[0];
+  unsigned maxIndex = 0;
+  for (size_t i = 1; i < scores.size(); i++) {
+    if (scores[i] > maxScore) {
+      maxScore = scores[i];
+      maxIndex = i;
+    }
+  }
+
+  // Put the Mover into its final position (which may be the same as its initial position).
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Setting single Mover to coarse orientation " << maxIndex
+      << ", max score = " << roundToTwoDigits(maxScore)
+      << " (initial score " << roundToTwoDigits(scores[0])
+      << ")\n";
+    infoString += oss.str();
+  }
+  infoString += setMoverState(coarse, maxIndex);
+  m_coarseLocations[mover.ptr()] = maxIndex;
+
+  // Record and return the best score for this Mover.
+  m_highScores[mover.ptr()] = maxScore;
+  return boost::python::make_tuple(maxScore, infoString);
+}
+
+boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object const& mover)
+{
+  std::string infoString;
+
+  // Record this in case we need to put it back.
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+
+  double initialScore = m_highScores[mover.ptr()];
+  double maxScore = initialScore;
+  unsigned coarseLoc = m_coarseLocations[mover.ptr()];
+  molprobity::reduce::PositionReturn fine =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(coarseLoc));
+  if (fine.positions.size() > 0) {
+
+    std::vector<double> scores = fine.preferenceEnergies;
+    for (size_t i = 0; i < scores.size(); i++) {
+      scores[i] *= m_preferenceMagnitude;
+    }
+
+    for (size_t i = 0; i < fine.positions.size(); i++) {
+      infoString += setMoverState(fine, i);
+      // Add a 1000 offset to the index to distinguish fine scores from coarse scores.
+      // No coarse object should have more than 100 orientations, so this should be safe.
+      scores[i] += scorePosition(fine, i, 100000);
+      if (m_verbosity >= 5) {
+        std::ostringstream oss;
+        oss << "     Mover score at fine orientation " << i << " = " << roundToTwoDigits(scores[i]) << "\n";
+        infoString += oss.str();
+      }
+    }
+
+    // Find the maximum score, keeping track of the index of the maximum score.
+    maxScore = scores[0];
+    unsigned maxIndex = 0;
+    for (size_t i = 1; i < scores.size(); i++) {
+      if (scores[i] > maxScore) {
+        maxScore = scores[i];
+        maxIndex = i;
+      }
+    }
+
+    // Put the Mover into its final position (which may be back to its initial position)
+    // and update the high score.
+    if (maxScore > m_highScores[mover.ptr()]) {
+      if (m_verbosity >= 3) {
+        std::ostringstream oss;
+        oss << "   Setting Mover to fine orientation " << maxIndex
+          << ", max score = " << roundToTwoDigits(maxScore)
+          << " (coarse score " << roundToTwoDigits(initialScore)
+          << ")\n";
+        infoString += oss.str();
+      }
+      setMoverState(fine, maxIndex);
+      m_fineLocations[mover.ptr()] = maxIndex;
+
+      // Record the high score for this Mover.
+      m_highScores[mover.ptr()] = maxScore;
+    } else {
+      // Put us back into the initial coarse location and don't change the high score
+      setMoverState(coarse, coarseLoc);
+      if (m_verbosity >= 3) {
+        infoString += "   Leaving Mover at coarse orientation\n";
+      }
+      // No fine location
+      m_fineLocations[mover.ptr()] = -1;
+    }
+  }
+
+  // Return the result
+  return boost::python::make_tuple(maxScore, infoString);
+}
+
+boost::python::tuple OptimizerC::OptimizeCliqueCoarse(
+  scitbx::af::shared<boost::python::object> movers,
+  scitbx::af::versa<int, scitbx::af::flex_grid<> >& interactions)
+{
+  // Information to pass back about what we did, if verbosity is high enough.
+  std::string infoString;
+
+  if (m_verbosity >= 3) {
+    std::ostringstream oss;
+    oss << "   Optimizing clique of size " << movers.size()
+      << " using atom-score cache\n";
+    infoString += oss.str();
+  }
+
+  // Map from pointers to Movers (Python objects) to PositionReturn objects.
+  // This must be a map because we're going to deal with subsets of Movers so
+  // the indices will change.
+  std::map<boost::python::object*, molprobity::reduce::PositionReturn> states;
+  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object& m = *it;
+    states[&m] = boost::python::extract<molprobity::reduce::PositionReturn>(m.attr("CoarsePositions")());
+  }
+
+  // Construct a graph of the movers and their interactions.
+  size_t nInteractions = interactions.accessor().all()[0];
+  size_t nIndices = interactions.accessor().all()[1];
+  if ((nInteractions > 0) && (nIndices != 2)) {
+    infoString += "ERROR: OptimizeCliqueCoarseVertexCutC(): Internal error: invalid array size\n";
+    return boost::python::make_tuple(-1e100, infoString);
+  }
+  CliqueGraph clique;
+  for (scitbx::af::shared<boost::python::object>::iterator it = movers.begin(); it != movers.end(); ++it) {
+    boost::python::object& m = *it;
+    boost::add_vertex(&m, clique);
+  }
+  for (size_t i = 0; i < nInteractions; i++) {
+    boost::add_edge(boost::vertex(interactions(i, 0), clique), boost::vertex(interactions(i, 1), clique), clique);
+  }
+
+  // Construct the ScoreCacheMap for the clique before calling and then remove it when done.
+  // This will mean that we only use score caching, and only on our new map, for this clique.
+  m_scoreCacheMap = new ScoreCacheMap();
+  std::pair<double, std::string> ret = OptimizeCliqueCoarseVertexCut(states, clique);
+  delete m_scoreCacheMap;
+  m_scoreCacheMap = NULL;
+  infoString += ret.second;
+
+  // Format and return the result
+  return boost::python::make_tuple(ret.first, infoString);
+}
+
+// Test-generation helper functions to let us initialize vectors conveniently in C++98
 static std::vector<unsigned> init_uVec(unsigned const* values, size_t size)
 {
   std::vector<unsigned> ret;
@@ -643,7 +971,7 @@ static std::vector<int> init_intVec(int const* values, size_t size)
   return ret;
 }
 
-std::string Optimizers_test()
+std::string OptimizerC::Test()
 {
   // Test generateAllStates()
   unsigned ns[] = { 2, 3, 5 };
@@ -659,13 +987,13 @@ std::string Optimizers_test()
   }
   std::vector< std::vector<unsigned> > allStates = generateAllStates(numStates);
   if (allStates.size() != product) {
-    return "mmtbx_reduce_ext.Optimizers_test(): Number of states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): Number of states not as expected";
   }
   if (allStates.front() != zeroes) {
-    return "mmtbx_reduce_ext.Optimizers_test(): First states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): First states not as expected";
   }
   if (allStates.back() != lastState) {
-    return "mmtbx_reduce_ext.Optimizers_test(): Last states not as expected";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): Last states not as expected";
   }
 
   // setMoverState() is tested as part of testing OptimizeCliqueCoarseBruteForce()
@@ -674,15 +1002,15 @@ std::string Optimizers_test()
   // Test nChooseM()
   std::vector < std::vector<int> > choices = nChooseM(5, 3);
   if (choices.size() != 10) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(5, 3) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(5, 3) failed";
   }
   choices = nChooseM(10, 1);
   if ((choices.size() != 10) || (0 != choices[0][0])) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(10, 1) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(10, 1) failed";
   }
   choices = nChooseM(3, 2);
   if (choices.size() != 3) {
-    return "mmtbx_reduce_ext.Optimizers_test(): nChooseM(3, 2) failed";
+    return "mmtbx_reduce_ext.OptimizerC::Test(): nChooseM(3, 2) failed";
   }
 
   // Test subsetGraph()
@@ -766,10 +1094,10 @@ std::string Optimizers_test()
       }
       CliqueGraph subset = subsetGraph(g, keepers);
       if (boost::num_vertices(subset) != expectedVertexCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): subsetGraph() failed with unexpected vertex counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): subsetGraph() failed with unexpected vertex counts";
       }
       if (boost::num_edges(subset) != expectedEdgeCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): subsetGraph() failed with unexpected edge counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): subsetGraph() failed with unexpected edge counts";
       }
     }
   }
@@ -831,10 +1159,10 @@ std::string Optimizers_test()
       CliqueGraph cutGraph;
       findVertexCut(g, cut, cutGraph);
       if (boost::num_vertices(cutGraph) != expectedVertexCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): findVertexCut() failed with unexpected vertex counts";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): findVertexCut() failed with unexpected vertex counts";
       }
       if (cut.size() != expectedCutCounts[i]) {
-        return "mmtbx_reduce_ext.Optimizers_test(): findVertexCut() failed with unexpected cut sizes";
+        return "mmtbx_reduce_ext.OptimizerC::Test(): findVertexCut() failed with unexpected cut sizes";
       }
     }
   }
@@ -845,6 +1173,11 @@ std::string Optimizers_test()
 
   // All tests passed.
   return "";
+}
+
+std::string Optimizers_test()
+{
+  return OptimizerC::Test();
 }
 
   } // end namespace reduce

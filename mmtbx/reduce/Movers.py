@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022 Richardson Lab at Duke University
+#                Copyright 2021-2023 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
+from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -44,7 +45,7 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #       flex<flex<vec3>> positions,
 #       flex<flex<probe.ExtraAtomInfo>> extraInfos,
 #       flex<flex<bool>> deleteMes,
-#       flex<float> preferenceEnergies
+#       std::vector<double> preferenceEnergies
 #    )
 #       The atoms element has a list of all of the atoms to be adjusted.
 #       The other elements each have a list of entries, where there is one entry
@@ -52,6 +53,11 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #     outer list is per entry and the inner list is per atom in the atoms element,
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
+#     This array may be shorter in length than the number of atoms because
+#     some Movers do not need to change the position for all atoms (for flips, all atoms
+#     are involved in fixup but not moved during optimization).  The index in
+#     this array will match the index in the atoms array so the earliest atoms will be
+#     changed if a subset is present.
 #       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
 #     This array may be shorter in length than the number of atoms (and may be empty) because
 #     some Movers do not need to change the information for any or all atoms.  The index in
@@ -246,7 +252,7 @@ class _MoverRotator(object):
     # specified offset from a 0 dihedral angle.  The other atoms maintain their relative rotations
     # with the conventional atom.
     for atom in atoms:
-      atom.xyz = _rotateAroundAxis(atom, axis, offset + dihedral)
+      atom.xyz = RotateAtomDegreesAroundAxisDir(axis[0], axis[1], atom, offset + dihedral)
 
     # Make a list of coarse angles to try based on the coarse range (inclusive
     # for negative and exclusive for positive) and the step size.  We always
@@ -310,7 +316,7 @@ class _MoverRotator(object):
     for agl in angles:
       atoms = flex.vec3_double()
       for atm in self._atoms:
-        atoms.append(_rotateAroundAxis(atm, self._axis, agl))
+        atoms.append(RotateAtomDegreesAroundAxisDir(self._axis[0], self._axis[1], atm, agl))
       poses.append(atoms)
     return poses;
 
@@ -370,7 +376,7 @@ class _MoverRotator(object):
       return "Unrecognized state . ."
     else:
       fineOffset = 0
-      if fineIndex is not None:
+      if fineIndex is not None and fineIndex >= 0:
         fineOffset = self._fineAngles[fineIndex]
       angle = self._offset + self._coarseAngles[coarseIndex] + fineOffset
       while angle > 180: angle -= 360
@@ -476,9 +482,25 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     # number of elements in each clique, but for now we try all coarse orientations and all
     # acceptor directions.
 
+    ###########################
+    # Helper utility function to sort atoms consistently from run to run so that we get
+    # the same ordering on coarse angles.
+    def atomID(a):
+      # Return the ID of the atom, which includes its chain, residue name,
+      # residue number, atom name, and alternate separated by spaces. This
+      # is used to sort the atoms. This must work in the case where we have
+      # test atoms that are not completely fleshed out.
+      try:
+        return ( a.parent().parent().parent().id + a.parent().resname +
+          str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+      except Exception:
+        return ""
+    #
+    ###########################
+
     # Compute the dihedral angle from the Hydrogen to the potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
-    for a in potentialAcceptors:
+    for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
       # The degrees can be None in degenerate cases.  We avoid adding an entry in that case.
@@ -890,7 +912,8 @@ class MoverAmideFlip(object):
     newPos[2] = oxygen.xyz
     newPos[3] = nh2Atom.xyz
 
-    self._coarsePositions = [ startPos, newPos ]
+    # Only consider the first 5 atoms when optimizing, the four that move and the one they may shield
+    self._coarsePositions = [ startPos[:5], newPos[:5] ]
 
     #########################
     # Compute the list of Fixup returns.
@@ -942,8 +965,8 @@ class MoverHisFlip(object):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
-       for its testing, but during FixUp it adjusts the bond lengths per
-       Protein Science Vol 27:293-315.
+       for its testing, but during FixUp it adjusts the bond lengths and angles for
+       additional atoms per Protein Science Vol 27:293-315.
        :param ne2Atom: NE2 atom within the Histidine ring.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
@@ -1139,10 +1162,12 @@ class MoverHisFlip(object):
     self._coarsePositions = []
     if self._enabledFlipStates & 1:
       for i in range(4):
-        self._coarsePositions.append(startPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(startPos[:9])
     if self._enabledFlipStates & 2:
       for i in range(4):
-        self._coarsePositions.append(newPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(newPos[:9])
 
     #########################
     # Compute the list of Fixup returns.
