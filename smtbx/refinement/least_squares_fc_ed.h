@@ -145,9 +145,12 @@ namespace smtbx {
             std::vector<frame_integrator_ptr_t> accumulators;
             for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
               cmat_t Ugs;
+              af::shared<FloatType> angles =
+                frames[to].get_int_angles(params.getKl(), params.getIntSpan(),
+                  params.getIntStep(),
+                  params.getIntPoints());
               af::shared<cmat_t> Ds_kin;
               build_Ug_matrix(frames[to], Ugs, Ds_kin);
-              
               frame_integrator_ptr_t pf(
                 new integrator_t(
                   new frame_processor<FloatType>(
@@ -156,8 +159,8 @@ namespace smtbx {
                     Ugs, K, thickness,
                     Ds_kin,
                     compute_grad),
-                  angle, step)
-              );
+                angles
+              ));
               accumulators.push_back(pf);
               pool.create_thread(boost::ref(*pf));
               to++;
