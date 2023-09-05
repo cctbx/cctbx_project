@@ -1139,6 +1139,9 @@ class Optimizer(object):
     info = _ResNameAndID(m.CoarsePositions().atoms[0])
     return type_str + ' ' + info
 
+  def _DescribeMoverAtom(self, m, a, rad, loc):
+    return ( ' {' + self._DescribeMover(m) + " " + a.name.strip().upper() + '}' +
+            ' r= '+str(rad)+' {:0.3f} {:0.3f} {:0.3f}\n'.format(loc[0], loc[1], loc[2]))
 
   def _MoverSpheres(self, m, extraRadius=0.0):
     """Returns a Kinemage string listing all of the positions of the movable atoms
@@ -1146,14 +1149,16 @@ class Optimizer(object):
     specified in the atom plus the specified extraRadius.
     """
     ret = ''
-    for a in m.CoarsePositions().atoms:
-      rad = str(extraRadius + self._extraAtomInfo.getMappingFor(a).vdwRadius)
-      for i, cp in enumerate(m.CoarsePositions().positions):
-        for loc in cp:
-          ret += ' r= '+str(rad)+' '+str(loc[0])+' '+str(loc[1])+' '+str(loc[2])+'\n'
-        for fp in m.FinePositions(i).positions:
-          for loc in fp:
-            ret += ' r= '+str(rad)+' '+str(loc[0])+' '+str(loc[1])+' '+str(loc[2])+'\n'
+    for i, cp in enumerate(m.CoarsePositions().positions):
+      for j, loc in enumerate(cp):
+        a = m.CoarsePositions().atoms[j]
+        rad = str(extraRadius + self._extraAtomInfo.getMappingFor(a).vdwRadius)
+        ret += self._DescribeMoverAtom(m, a, rad, loc)
+      for fp in m.FinePositions(i).positions:
+        for j, loc in enumerate(fp):
+          a = m.CoarsePositions().atoms[j]
+          rad = str(extraRadius + self._extraAtomInfo.getMappingFor(a).vdwRadius)
+          ret += self._DescribeMoverAtom(m, a, rad, loc)
     return ret
 
 
@@ -1172,7 +1177,7 @@ class Optimizer(object):
           color = COLORS[curColor]
           curColor = (curColor + 1) % len(COLORS)
           # Radius will be overridden per atom
-          ret += '@spherelist {'+self._DescribeMover(m)+'} color= '+color+' nobutton radius= 0.5 master= {movers}\n'
+          ret += '@spherelist color= '+color+' nobutton master= {movers}\n'
           ret += self._MoverSpheres(m)
 
       # Write all of the cliques, with a different color per clique
@@ -1185,7 +1190,7 @@ class Optimizer(object):
         movers = [self._interactionGraph.vertex_label(i) for i in c]
         for m in movers:
           # Radius will be overridden per atom
-          ret += '@spherelist {'+self._DescribeMover(m)+'} color= '+color+' nobutton radius= 0.5 master= {'+cliqueName+'}\n'
+          ret += '@spherelist color= '+color+' nobutton master= {'+cliqueName+'}\n'
           ret += self._MoverSpheres(m, self._probeRadius)
 
       return ret
