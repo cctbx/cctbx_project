@@ -134,7 +134,7 @@ class experiment_scaler(worker):
         self.logger.main_log('Average experiment correlation with reference: %f +/- %f'%(
             stats_correlation.mean(), stats_correlation.unweighted_sample_standard_deviation()))
 
-      if self.params.postrefinement.enable:
+      if self.params.postrefinement.enable and 'postrefine' in self.params.dispatch.step_list:
         self.logger.main_log("Note: scale factors were not applied, because postrefinement is enabled")
 
     self.logger.log_step_time("SCALE_FRAMES", True)
