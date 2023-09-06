@@ -294,8 +294,7 @@ class Optimizer(object):
       pass
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
-    allRotatableHydrogens = model.rotatable_hd_selection(iselection=True)
-    self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
+
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
     if modelIndex is not None:
@@ -306,6 +305,10 @@ class Optimizer(object):
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
+
+      # Find the single rotatable hydrogens in this model, which we'll use to place Movers.
+      allRotatableHydrogens = self._getRotatableSingleHydrogens(myModel, bondedNeighborLists)
+      self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
 
       ################################################################################
       # Store the states (position and extra atom info) of all of the atoms in this model
@@ -806,6 +809,23 @@ class Optimizer(object):
 
   ##################################################################################
   # Placement
+
+  def _getRotatableSingleHydrogens(self, model, bondedNeighborLists):
+    """Produce a list of the i_seq numbers of hydrogens that are rotatable. These
+    are defined as hydrogens that are bonded to a single neighbor that is itself
+    bonded to only a single other neighbor and the other neighbor is not a hydrogen.
+    :return: a list of i_seq numbers for hydrogens that are rotatable.
+    """
+    rotatableHydrogenIDs = []
+    for a in model.atoms():
+      if a.element_is_hydrogen():
+        if len(bondedNeighborLists[a]) == 1:
+          neighbor = bondedNeighborLists[a][0]
+          if len(bondedNeighborLists[neighbor]) == 2:
+            if ( (not bondedNeighborLists[neighbor][0].element_is_hydrogen()) or
+                 (not bondedNeighborLists[neighbor][1].element_is_hydrogen()) ):
+              rotatableHydrogenIDs.append(a.i_seq)
+    return rotatableHydrogenIDs
 
   def _PlaceMovers(self, atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters,
                     addFlipMovers):
