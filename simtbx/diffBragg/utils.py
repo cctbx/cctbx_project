@@ -469,7 +469,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     selection_flags = []
     num_roi_negative_bg = 0
     num_roi_nan_bg = 0
-    background = np.ones(imgs.shape)*-1
+    background = np.full_like(imgs, -1, dtype=float)
     i_roi = 0
     while i_roi < len(rois):
         roi = rois[i_roi]
@@ -490,6 +490,14 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
             if num_hotpix > min_trusted_pix_per_roi:
                 MAIN_LOGGER.debug("reflection %d has too many (%d) hot pixels (%d allowed)!" % (i_roi, num_hotpix, min_trusted_pix_per_roi))
                 is_selected = False
+
+        # Before padding and fitting, test for overlaps and shrink if needed
+        is_overlapping = not np.all(background[pid, j1:j2, i1:i2] == -1)
+        if not allow_overlaps and is_overlapping:
+            MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2-i1, j2-j1))
+            rois[i_roi] = (i1 + 1, i2, j1 + 1, j2) if (i1 + i2) % 2 \
+                else (i1, i2 - 1, j1, j2 - 1)  # shrink alternately from corners
+            continue
 
         dimY, dimX = imgs[pid].shape
         j1_nopad = j1
@@ -564,14 +572,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     num_roi_negative_bg += 1
                     MAIN_LOGGER.debug("reflection %d has tilt plane that dips below 0" % i_roi)
                     is_selected = False
-
-        is_overlapping = not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1)
-
-        if not allow_overlaps and is_overlapping:
-            # NOTE : move away from this option, it potentially moves the pixel centroid outside of the ROI (in very rare instances)
-            MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
-            rois[i_roi] = i1_nopad+1,i2_nopad,j1_nopad+1,j2_nopad
-            continue
 
         # unpadded ROI dimension
         roi_dimY = j2_nopad-j1_nopad
