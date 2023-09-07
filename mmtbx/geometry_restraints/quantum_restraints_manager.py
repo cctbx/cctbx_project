@@ -238,18 +238,19 @@ def super_cell_and_prune(buffer_model,
               ag = atom.parent()
               ag.remove_atom(atom)
 
-  complete_p1 = super_cell.run(
+  complete_p1 = super_cell.manager(
     pdb_hierarchy        = buffer_model.get_hierarchy(),
     crystal_symmetry     = buffer_model.crystal_symmetry(),
     select_within_radius = buffer,
     )
+  super_sphere_hierarchy = complete_p1.super_sphere_hierarchy
   if(write_steps):
-    complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
-      crystal_symmetry = complete_p1.crystal_symmetry)
-  for atom in complete_p1.hierarchy.atoms(): atom.tmp=-1
-  for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
+    super_sphere_hierarchy.write_pdb_file(file_name="complete_p1.pdb",
+      crystal_symmetry = complete_p1.cs_super_sphere)
+  for atom in super_sphere_hierarchy.atoms(): atom.tmp=-1
+  for atom1, atom2 in zip(buffer_model.get_atoms(), super_sphere_hierarchy.atoms()):
     atom2.tmp = atom1.tmp
-  buffer_model._pdb_hierarchy = complete_p1.hierarchy
+  buffer_model._pdb_hierarchy = super_sphere_hierarchy
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
   assert len(buffer_model.get_atoms())>0
 

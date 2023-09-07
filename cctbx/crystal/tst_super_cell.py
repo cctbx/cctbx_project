@@ -947,6 +947,99 @@ ATOM    132 HG23 VAL B   2       9.826   4.273  -5.467  0.00  2.63           H
 TER
 """
 
+pdb_str_one_chain = """
+CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
+SCALE1      0.045585  0.000000  0.014006        0.00000
+SCALE2      0.000000  0.205508  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.044560        0.00000
+ATOM      1  N   GLY A   1      12.928   4.612   6.102  1.00 16.77           N
+ATOM      2  CA  GLY A   1      12.885   4.207   4.651  1.00 16.57           C
+ATOM      3  C   GLY A   1      13.922   3.140   4.419  1.00 16.16           C
+ATOM      4  O   GLY A   1      14.414   2.521   5.381  1.00 16.78           O
+ATOM      5  H1  GLY A   1      11.977   4.525   6.514  0.00 16.77           H
+ATOM      6  H2  GLY A   1      13.586   3.992   6.616  0.00 16.77           H
+ATOM      7  H3  GLY A   1      13.250   5.598   6.177  0.00 16.77           H
+ATOM      8  HA2 GLY A   1      11.900   3.815   4.398  0.00 16.57           H
+ATOM      9  HA3 GLY A   1      13.100   5.065   4.014  0.00 16.57           H
+ATOM     10  N   ASN A   2      14.281   2.923   3.155  1.00 15.02           N
+ATOM     11  CA  ASN A   2      15.415   2.038   2.831  1.00 14.10           C
+ATOM     12  C   ASN A   2      16.696   2.537   3.427  1.00 13.13           C
+ATOM     13  O   ASN A   2      16.959   3.742   3.426  1.00 11.91           O
+ATOM     14  CB  ASN A   2      15.591   1.881   1.341  1.00 15.38           C
+ATOM     15  CG  ASN A   2      14.353   1.342   0.692  1.00 14.08           C
+ATOM     16  OD1 ASN A   2      13.912   0.227   1.016  1.00 17.46           O
+ATOM     17  ND2 ASN A   2      13.733   2.155  -0.169  1.00 11.72           N
+ATOM     18  H   ASN A   2      13.820   3.334   2.343  0.00 15.02           H
+ATOM     19  HA  ASN A   2      15.193   1.057   3.252  0.00 14.10           H
+ATOM     20  HB2 ASN A   2      15.813   2.853   0.900  0.00 15.38           H
+ATOM     21  HB3 ASN A   2      16.409   1.188   1.146  0.00 15.38           H
+ATOM     22 HD21 ASN A   2      12.885   1.845  -0.643  0.00 11.72           H
+ATOM     23 HD22 ASN A   2      14.108   3.086  -0.352  0.00 11.72           H
+ATOM     24  N   ASN A   3      17.499   1.590   3.905  1.00 12.26           N
+ATOM     25  CA  ASN A   3      18.744   1.904   4.589  1.00 11.74           C
+ATOM     26  C   ASN A   3      19.982   1.332   3.895  1.00 11.10           C
+ATOM     27  O   ASN A   3      20.065   0.119   3.648  1.00 10.42           O
+ATOM     28  CB  ASN A   3      18.678   1.378   6.042  1.00 12.15           C
+ATOM     29  CG  ASN A   3      19.931   1.739   6.861  1.00 12.82           C
+ATOM     30  OD1 ASN A   3      20.235   2.925   7.072  1.00 15.05           O
+ATOM     31  ND2 ASN A   3      20.666   0.715   7.306  1.00 13.48           N
+ATOM     32  OXT ASN A   3      20.908   2.077   3.576  1.00 11.10           O
+ATOM     33  H   ASN A   3      17.311   0.590   3.832  0.00 12.26           H
+ATOM     34  HA  ASN A   3      18.863   2.987   4.586  0.00 11.74           H
+ATOM     35  HB2 ASN A   3      17.812   1.815   6.539  0.00 12.15           H
+ATOM     36  HB3 ASN A   3      18.588   0.292   6.023  0.00 12.15           H
+ATOM     37 HD21 ASN A   3      21.508   0.892   7.854  0.00 13.48           H
+ATOM     38 HD22 ASN A   3      20.385  -0.243   7.097  0.00 13.48           H
+TER
+"""
+
+pdb_str_huge_box = """
+CRYST1  109.608  105.841  108.497  90.00  90.00  90.00 P 1
+SCALE1      0.009123  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.009448  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.009217        0.00000
+ATOM      1  N   GLY A   1      51.028  54.855  56.745  1.00 16.77           N
+ATOM      2  CA  GLY A   1      50.985  54.450  55.294  1.00 16.57           C
+ATOM      3  C   GLY A   1      52.022  53.383  55.062  1.00 16.16           C
+ATOM      4  O   GLY A   1      52.514  52.764  56.024  1.00 16.78           O
+ATOM      5  H1  GLY A   1      50.077  54.768  57.157  0.00 16.77           H
+ATOM      6  H2  GLY A   1      51.686  54.235  57.259  0.00 16.77           H
+ATOM      7  H3  GLY A   1      51.350  55.841  56.820  0.00 16.77           H
+ATOM      8  HA2 GLY A   1      50.000  54.058  55.041  0.00 16.57           H
+ATOM      9  HA3 GLY A   1      51.200  55.308  54.657  0.00 16.57           H
+ATOM     10  N   ASN A   2      52.381  53.166  53.798  1.00 15.02           N
+ATOM     11  CA  ASN A   2      53.515  52.281  53.474  1.00 14.10           C
+ATOM     12  C   ASN A   2      54.796  52.780  54.070  1.00 13.13           C
+ATOM     13  O   ASN A   2      55.059  53.985  54.069  1.00 11.91           O
+ATOM     14  CB  ASN A   2      53.691  52.124  51.984  1.00 15.38           C
+ATOM     15  CG  ASN A   2      52.453  51.585  51.335  1.00 14.08           C
+ATOM     16  OD1 ASN A   2      52.012  50.470  51.659  1.00 17.46           O
+ATOM     17  ND2 ASN A   2      51.833  52.398  50.474  1.00 11.72           N
+ATOM     18  H   ASN A   2      51.920  53.577  52.986  0.00 15.02           H
+ATOM     19  HA  ASN A   2      53.293  51.300  53.895  0.00 14.10           H
+ATOM     20  HB2 ASN A   2      53.913  53.096  51.543  0.00 15.38           H
+ATOM     21  HB3 ASN A   2      54.509  51.431  51.789  0.00 15.38           H
+ATOM     22 HD21 ASN A   2      50.985  52.088  50.000  0.00 11.72           H
+ATOM     23 HD22 ASN A   2      52.208  53.329  50.291  0.00 11.72           H
+ATOM     24  N   ASN A   3      55.599  51.833  54.548  1.00 12.26           N
+ATOM     25  CA  ASN A   3      56.844  52.147  55.232  1.00 11.74           C
+ATOM     26  C   ASN A   3      58.082  51.575  54.538  1.00 11.10           C
+ATOM     27  O   ASN A   3      58.165  50.362  54.291  1.00 10.42           O
+ATOM     28  CB  ASN A   3      56.778  51.621  56.685  1.00 12.15           C
+ATOM     29  CG  ASN A   3      58.031  51.982  57.504  1.00 12.82           C
+ATOM     30  OD1 ASN A   3      58.335  53.168  57.715  1.00 15.05           O
+ATOM     31  ND2 ASN A   3      58.766  50.958  57.949  1.00 13.48           N
+ATOM     32  OXT ASN A   3      59.008  52.320  54.219  1.00 11.10           O
+ATOM     33  H   ASN A   3      55.411  50.833  54.475  0.00 12.26           H
+ATOM     34  HA  ASN A   3      56.963  53.230  55.229  0.00 11.74           H
+ATOM     35  HB2 ASN A   3      55.912  52.058  57.182  0.00 12.15           H
+ATOM     36  HB3 ASN A   3      56.688  50.535  56.666  0.00 12.15           H
+ATOM     37 HD21 ASN A   3      59.608  51.135  58.497  0.00 13.48           H
+ATOM     38 HD22 ASN A   3      58.485  50.000  57.740  0.00 13.48           H
+TER
+END
+"""
+
 def exercise_00(nonbonded_distance_cutoff=4.5, write_files=False):
   """
   Exercise supercell. General.
@@ -963,27 +1056,28 @@ def exercise_00(nonbonded_distance_cutoff=4.5, write_files=False):
   p.pdb_interpretation.nonbonded_distance_cutoff = nonbonded_distance_cutoff
   m.process(make_restraints=True, pdb_interpretation_params=p)
   # Figure symmetry interactions internally
-  sc1 = super_cell.run(
+  sc1 = super_cell.manager(
     pdb_hierarchy        = m.get_hierarchy(),
     crystal_symmetry     = m.crystal_symmetry(),
     select_within_radius = nonbonded_distance_cutoff)
   if(write_files):
-    sc1.hierarchy.write_pdb_file(file_name="sc1.pdb",
-      crystal_symmetry = sc1.crystal_symmetry)
+    sc1.super_sphere_hierarchy.write_pdb_file(file_name="sc1.pdb",
+      crystal_symmetry = sc1.cs_super_sphere)
   # Take symmetry interactions from restraints
   siiu = m.get_restraints_manager().geometry.pair_proxies().nonbonded_proxies.\
      get_symmetry_interacting_indices_unique(
        sites_cart = m.get_hierarchy().atoms().extract_xyz())
-  sc2 = super_cell.run(
+  sc2 = super_cell.manager(
     pdb_hierarchy        = m.get_hierarchy(),
     crystal_symmetry     = m.crystal_symmetry(),
     select_within_radius = nonbonded_distance_cutoff,
     siiu                 = siiu)
   if(write_files):
-    sc2.hierarchy.write_pdb_file(file_name="sc2.pdb",
-      crystal_symmetry = sc2.crystal_symmetry)
+    sc2.super_sphere_hierarchy.write_pdb_file(file_name="sc2.pdb",
+      crystal_symmetry = sc2.cs_super_sphere)
   # Check both ways produce the same models (chain/residue order can vary)
-  assert sc1.hierarchy.atoms().size()==sc2.hierarchy.atoms().size()
+  assert sc1.super_sphere_hierarchy.atoms().size()==\
+         sc2.super_sphere_hierarchy.atoms().size()
 
 def exercise_01():
   """
@@ -998,12 +1092,12 @@ def exercise_01():
     pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_3q2c)
     h = pdb_inp.construct_hierarchy()
     h.atoms().reset_i_seq()
-    ss = super_cell.run(
+    ss = super_cell.manager(
       pdb_hierarchy = h,
       crystal_symmetry = pdb_inp.crystal_symmetry(),
       select_within_radius=Rss,
       siiu=None)
-    coords.append(ss.hierarchy.atoms().extract_xyz())
+    coords.append(ss.super_sphere_hierarchy.atoms().extract_xyz())
   for i, ri in enumerate(coords):
     for j, rj in enumerate(coords):
       if(i<j):
@@ -1016,11 +1110,33 @@ def exercise_01():
               break
           assert found
 
+def _grad_from_ss(expansion):
+  pdb_hierarchy_super = expansion.super_sphere_hierarchy
+  ss_crystal_symmetry = expansion.cs_super_sphere
+  selection = flex.bool(pdb_hierarchy_super.atoms().size(), False)
+  selection = selection.set_selected(
+    flex.size_t(range(expansion.pdb_hierarchy.atoms().size())), True)
+  model = mmtbx.model.manager(
+    model_input       = None,
+    pdb_hierarchy     = pdb_hierarchy_super,
+    crystal_symmetry  = ss_crystal_symmetry,
+    log               = null_out())
+  model.process(make_restraints=True, grm_normalization=True)
+  rm = model.get_restraints_manager()
+  es = rm.geometry.energies_sites(
+    sites_cart        = model.get_sites_cart(),
+    compute_gradients =True)
+  return es.gradients.select(selection)
+
 def exercise_02():
   """
   Check expansion via gradients.
   """
-  for pdb_str in [pdb_str_1yjp, pdb_str_3q2c, pdb_str_fraction]:
+  for pdb_str in [pdb_str_huge_box,
+                  pdb_str_one_chain,
+                  pdb_str_1yjp,
+                  pdb_str_3q2c,
+                  pdb_str_fraction]:
     # gradients usual way
     pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str)
     h = pdb_inp.construct_hierarchy()
@@ -1036,29 +1152,30 @@ def exercise_02():
       compute_gradients = True)
     g1 = es.gradients
     # gradients via expansion
-    expansion = super_cell.run(
+    expansion = super_cell.manager(
       pdb_hierarchy        = model.get_hierarchy(),
       crystal_symmetry     = model.crystal_symmetry(),
       select_within_radius = 5,
       box_buffer_layer     = 3)
-    pdb_hierarchy_super = expansion.hierarchy
-    ss_crystal_symmetry = expansion.crystal_symmetry
-    selection = flex.bool(pdb_hierarchy_super.atoms().size(), False)
-    selection = selection.set_selected(flex.size_t(range(model.size())), True)
-    model = mmtbx.model.manager(
-      model_input       = None,
-      pdb_hierarchy     = pdb_hierarchy_super,
-      crystal_symmetry  = ss_crystal_symmetry,
-      log               = null_out())
-    model.process(make_restraints=True, grm_normalization=True)
-    rm = model.get_restraints_manager()
-    es = rm.geometry.energies_sites(
-      sites_cart        = model.get_sites_cart(),
-      compute_gradients =True)
-    g2 = es.gradients.select(selection)
-    # Compare gradinets by means of distance
+    g2 = _grad_from_ss(expansion)
+    # compare gradinets by means of distance
     dist = flex.sqrt((g1 - g2).dot())
-    assert flex.max(dist) < 1.e-6
+    assert flex.max(dist) < 1.e-6, flex.max(dist)
+    #
+    # scramble sites_cart
+    for it in [1,2]:
+      r = model.get_hierarchy().atoms().extract_xyz()
+      rs = flex.vec3_double(r.as_double()*3 + flex.random_double(r.as_double().size()))
+      expansion.update(sites_cart = rs, debug=True)
+      g3 = _grad_from_ss(expansion)
+      dist = flex.sqrt((g1 - g3).dot())
+      assert flex.max(dist) > 100., flex.max(dist) # some number like this, typically 300-600
+      # set original sites
+      expansion.update(sites_cart = r, debug=True)
+      g4 = _grad_from_ss(expansion)
+      dist = flex.sqrt((g1 - g4).dot())
+      assert flex.max(dist) < 1.e-6, flex.max(dist)
+
 
 if(__name__ == "__main__"):
   exercise_00()
