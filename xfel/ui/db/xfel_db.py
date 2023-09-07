@@ -346,10 +346,14 @@ class db_application(object):
       except OperationalError as e:
         reconnect_strings = [
             "MySQL server has gone away",
+            "max_user_connections",
+            "is not allowed to connect to this MariaDB server",
         ]
         retry_strings = [
             "Can't connect to MySQL server",
             "Lost connection to MySQL server",
+            "Deadlock found when trying to get lock",
+            "WSREP has not yet prepared node for application use",
         ]
         if any([s in str(e) for s in reconnect_strings]):
           self.dbobj = None

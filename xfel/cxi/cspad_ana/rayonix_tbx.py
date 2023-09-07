@@ -259,7 +259,7 @@ def get_data_from_psana_event(evt, address):
   from xfel.cxi.cspad_ana import cspad_tbx
   import numpy as np
   address = cspad_tbx.old_address_to_new_address(address)
-  src=Source('DetInfo(%s)'%address)
+  src=Source(address)
   data = evt.get(Camera.FrameV1,src)
   if data is not None:
     data = data.data16().astype(np.float64)
