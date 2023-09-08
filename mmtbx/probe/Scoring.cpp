@@ -1016,8 +1016,9 @@ std::string DotScorer::test()
       }
   }
 
-  // Sweep an atom from just touching to far away and make sure the attract
-  // curve is monotonically decreasing to 0.
+  // Sweep an atom from just touching to far away and make sure the attraction
+  // curve is monotonically decreasing to 0 and does not reach 0 until the atom
+  // is two probe radii away.
   {
     double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
     DotSphere ds(sourceRad, 200);
@@ -1060,6 +1061,9 @@ std::string DotScorer::test()
         probeRad, exclude, ds.dots(), ds.density(), false);
       if (!res.valid) {
         return "DotScorer::test(): Could not score dots for swept-distance case";
+      }
+      if ((gap < 2 * probeRad) && (res.totalScore() == 0)) {
+        return "DotScorer::test(): Got zero score for swept-distance case when within range";
       }
       if ((res.attractSubScore != res.totalScore()) || (res.attractSubScore > lastAttract)) {
         return "DotScorer::test(): Non-monotonic scores for swept-distance case";
