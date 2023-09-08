@@ -158,7 +158,7 @@ namespace molprobity {
       }
 
       /// @brief Get and set methods
-      ExtraAtomInfo  getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
+      ExtraAtomInfo  const &getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
       {
         return m_extraInfo[atom.data.get()];
       }

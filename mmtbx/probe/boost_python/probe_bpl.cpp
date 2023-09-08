@@ -67,7 +67,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     scitbx::af::shared<ExtraAtomInfo> >();
 
   class_<ExtraAtomInfoMap>("ExtraAtomInfoMap", init< scitbx::af::shared<iotbx::pdb::hierarchy::atom>, scitbx::af::shared<ExtraAtomInfo> >())
-    .def("getMappingFor", &ExtraAtomInfoMap::getMappingFor)
+    .def("getMappingFor", &ExtraAtomInfoMap::getMappingFor, return_internal_reference<>())
     .def("setMappingFor", &ExtraAtomInfoMap::setMappingFor)
     ;
 
