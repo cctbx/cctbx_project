@@ -179,8 +179,8 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
       // Figure out what kind of overlap this is based on the atom types and
       // charge status of the two atoms.
-      int chargeSource = atom_charge(sourceAtom);
-      int chargeB = atom_charge(*b);
+      int chargeSource = sourceExtra.getCharge();
+      int chargeB = bExtra.getCharge();
 
       bool bothCharged = (chargeSource != 0) && (chargeB != 0);
       bool chargeComplement = bothCharged && (chargeSource * chargeB < 0);
@@ -740,7 +740,8 @@ std::string DotScorer::test()
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
                 atoms.push_back(a);
                 SpatialQuery sq(atoms);
-                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy, *targetIon);
+                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy, *targetIon,
+                  atom_charge(a));
                 scitbx::af::shared<ExtraAtomInfo> infos;
                 infos.push_back(e);
 
@@ -754,7 +755,8 @@ std::string DotScorer::test()
                   source.set_element("O");
                 }
                 source.data->i_seq = atomSeq++;
-                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy, *sourceIon);
+                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy, *sourceIon,
+                  atom_charge(source));
                 atoms.push_back(source);
                 infos.push_back(se);
 
@@ -929,7 +931,7 @@ std::string DotScorer::test()
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
         atoms.push_back(a);
         SpatialQuery sq(atoms);
-        ExtraAtomInfo e(targetRad, !*targetDummy, *targetDummy, *targetDummy);
+        ExtraAtomInfo e(targetRad, !*targetDummy, *targetDummy, *targetDummy, false, atom_charge(a));
         scitbx::af::shared<ExtraAtomInfo> infos;
         infos.push_back(e);
 
@@ -938,7 +940,7 @@ std::string DotScorer::test()
         source.set_charge("+");
         source.set_occ(1);
         source.data->i_seq = atomSeq++;
-        ExtraAtomInfo se(sourceRad, !*sourceDummy, *sourceDummy, *sourceDummy);
+        ExtraAtomInfo se(sourceRad, !*sourceDummy, *sourceDummy, *sourceDummy, false, atom_charge(source));
         atoms.push_back(source);
         infos.push_back(se);
 
@@ -1200,7 +1202,7 @@ std::string DotScorer::test()
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
     atoms.push_back(a);
     SpatialQuery sq(atoms);
-    ExtraAtomInfo e(targetRad, true);
+    ExtraAtomInfo e(targetRad, true, false, false, false, atom_charge(a));
     scitbx::af::shared<ExtraAtomInfo> infos;
     infos.push_back(e);
 
@@ -1255,7 +1257,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.set_charge("0");
       source.data->i_seq = atomSeq++;
-      ExtraAtomInfo se(sourceRad,false, true);
+      ExtraAtomInfo se(sourceRad, false, true, false, false, atom_charge(source));
       atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
@@ -1316,7 +1318,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.set_charge("+");
       source.data->i_seq = atomSeq++;
-      ExtraAtomInfo se(sourceRad, false, true);
+      ExtraAtomInfo se(sourceRad, false, true, false, false, atom_charge(source));
       atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;

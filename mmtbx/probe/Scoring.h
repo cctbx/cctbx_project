@@ -86,13 +86,13 @@ namespace molprobity {
     public:
       /// @brief Constructor with default parameters
       ExtraAtomInfo(double vdwRadius = 0, bool isAcceptor = false, bool isDonor = false,
-        bool isDummyHydrogen = false, bool isIon = false)
+        bool isDummyHydrogen = false, bool isIon = false, int charge = 0)
         : m_vdwRadius(vdwRadius), m_isAcceptor(isAcceptor), m_isDonor(isDonor)
-        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon) {}
+        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon), m_charge(charge) {}
       /// @brief Constructor from another ExtraAtomInfo
       ExtraAtomInfo(const ExtraAtomInfo &e)
         : m_vdwRadius(e.m_vdwRadius), m_isAcceptor(e.m_isAcceptor), m_isDonor(e.m_isDonor)
-        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon) {}
+        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon), m_charge(e.m_charge) {}
 
       /// @brief Get and set methods
       double getVdwRadius() const { return m_vdwRadius; }
@@ -106,6 +106,8 @@ namespace molprobity {
       void setIsDummyHydrogen(bool val) { m_isDummyHydrogen = val; }
       bool getIsIon() const { return m_isIon; }
       void setIsIon(bool val) { m_isIon = val; }
+      int getCharge() const { return m_charge; }
+      void setCharge(int val) { m_charge = val; }
 
       /// @brief == operator is required so that we can wrap the standard vector operators in Boost::Python
       bool operator ==(ExtraAtomInfo const& o) {
@@ -114,6 +116,7 @@ namespace molprobity {
           && (getIsDonor() == o.getIsDonor())
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
           && (getIsIon() == o.getIsIon())
+          && (getCharge() == o.getCharge())
           );
       }
       bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
@@ -125,6 +128,7 @@ namespace molprobity {
       bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide potential
                                ///  hydrogen bonds to nearby acceptors.
       bool m_isIon;            ///< Is this an ion?
+      int m_charge;            ///< The integer charge of the atom: -2, -1, 0, 1, 2
     };
 
     //=====================================================================================================

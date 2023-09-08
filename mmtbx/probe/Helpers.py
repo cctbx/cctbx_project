@@ -392,6 +392,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
 
+                extra.charge = probeExt.atom_charge(a)
+
                 # For ions, the Richardsons determined in discussion with
                 # Michael Prisant that we want to use the ionic radius rather than the
                 # larger radius for all purposes.

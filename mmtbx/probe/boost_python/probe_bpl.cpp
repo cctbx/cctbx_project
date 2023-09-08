@@ -60,6 +60,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .add_property("isDonor", &ExtraAtomInfo::getIsDonor, &ExtraAtomInfo::setIsDonor)
     .add_property("isDummyHydrogen", &ExtraAtomInfo::getIsDummyHydrogen, &ExtraAtomInfo::setIsDummyHydrogen)
     .add_property("isIon", &ExtraAtomInfo::getIsIon, &ExtraAtomInfo::setIsIon)
+    .add_property("charge", &ExtraAtomInfo::getCharge, &ExtraAtomInfo::setCharge)
     ;
   // Define the flex array wrapping for this class because we take it as a parameter.
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
