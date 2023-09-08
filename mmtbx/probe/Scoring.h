@@ -86,13 +86,13 @@ namespace molprobity {
     public:
       /// @brief Constructor with default parameters
       ExtraAtomInfo(double vdwRadius = 0, bool isAcceptor = false, bool isDonor = false,
-        bool isDummyHydrogen = false)
+        bool isDummyHydrogen = false, bool isIon = false)
         : m_vdwRadius(vdwRadius), m_isAcceptor(isAcceptor), m_isDonor(isDonor)
-        , m_isDummyHydrogen(isDummyHydrogen) {}
+        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon) {}
       /// @brief Constructor from another ExtraAtomInfo
       ExtraAtomInfo(const ExtraAtomInfo &e)
         : m_vdwRadius(e.m_vdwRadius), m_isAcceptor(e.m_isAcceptor), m_isDonor(e.m_isDonor)
-        , m_isDummyHydrogen(e.m_isDummyHydrogen) {}
+        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon) {}
 
       /// @brief Get and set methods
       double getVdwRadius() const { return m_vdwRadius; }
@@ -104,6 +104,8 @@ namespace molprobity {
       void setIsDonor(bool val) { m_isDonor = val; }
       bool getIsDummyHydrogen() const { return m_isDummyHydrogen; }
       void setIsDummyHydrogen(bool val) { m_isDummyHydrogen = val; }
+      bool getIsIon() const { return m_isIon; }
+      void setIsIon(bool val) { m_isIon = val; }
 
       /// @brief == operator is required so that we can wrap the standard vector operators in Boost::Python
       bool operator ==(ExtraAtomInfo const& o) {
@@ -111,6 +113,7 @@ namespace molprobity {
           && (getIsAcceptor() == o.getIsAcceptor())
           && (getIsDonor() == o.getIsDonor())
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
+          && (getIsIon() == o.getIsIon())
           );
       }
       bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
@@ -121,6 +124,7 @@ namespace molprobity {
       bool m_isDonor;          ///< Is this a donor hydrogen?
       bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide potential
                                ///  hydrogen bonds to nearby acceptors.
+      bool m_isIon;            ///< Is this an ion?
     };
 
     //=====================================================================================================

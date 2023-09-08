@@ -119,8 +119,11 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Defaults to "no overlap" type
   CheckDotResult ret;
 
+  // Find the extra-atom information for the source atom.
+  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
+
   // If the source atom is an ion and we are ignoring ions, we're done.
-  if (sourceAtom.element_is_ion() && m_ignoreIonInteractions) {
+  if (sourceExtra.getIsIon() && m_ignoreIonInteractions) {
     return ret;
   }
 
@@ -138,9 +141,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // probe radius.
   Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
 
-  // Find the extra-atom information for the source atom.
-  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
-
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
   double hydrogenBondMinDist = 0;       ///< Hydrogen bond minimum distance based on the atom types (will be set below).
@@ -152,14 +152,14 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator b = interacting.begin();
        b != interacting.end(); b++) {
 
-    // If the potential target atom is an ion and we are ignoring ions, skip it.
-    if (b->element_is_ion() && m_ignoreIonInteractions) {
-      continue;
-    }
-
     ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
     Point const &locb = b->data->xyz;
     double vdwb = bExtra.getVdwRadius();
+
+    // If the potential target atom is an ion and we are ignoring ions, skip it.
+    if (bExtra.getIsIon() && m_ignoreIonInteractions) {
+      continue;
+    }
 
     // See if we are too far away to interact, bail if so.
     double squareProbeDist = (probLoc - locb).length_sq();
@@ -739,7 +739,7 @@ std::string DotScorer::test()
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
                 atoms.push_back(a);
                 SpatialQuery sq(atoms);
-                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy);
+                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy, *targetIon);
                 scitbx::af::shared<ExtraAtomInfo> infos;
                 infos.push_back(e);
 
@@ -753,7 +753,7 @@ std::string DotScorer::test()
                   source.set_element("O");
                 }
                 source.data->i_seq = atomSeq++;
-                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
+                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy, *sourceIon);
                 atoms.push_back(source);
                 infos.push_back(se);
 

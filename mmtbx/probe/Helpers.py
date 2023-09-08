@@ -398,7 +398,8 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 # @todo Once the CCTBX radius determination discussion and upgrade is
                 # complete (ongoing as of March 2022), this check might be removed
                 # and we'll just use the CCTBX radius.
-                if a.element_is_ion():
+                extra.isIon = a.element_is_ion()
+                if extra.isIon:
                   extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
                   warnings += ("Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+
                                " (rather than "+
@@ -852,6 +853,7 @@ ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
 ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
 ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
 ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+HETATM 4333 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          Cu
 END
 """
     )
@@ -905,31 +907,34 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # Spot check the values on the atoms for standard, neutron distances, implicit hydrogen distances,
   # and original Probe results.
   standardChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True],
-    ["ND1", 1.55, False,  True],
-    ["C",   1.65, False, False],
-    ["CB",  1.7,  False, False],
-    ["O",   1.4,  True,  False],
-    ["CD2", 1.75, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72,  False, False,  True],
+    ["N",   1.55, False,  True, False],
+    ["ND1", 1.55, False,  True, False],
+    ["C",   1.65, False, False, False],
+    ["CB",  1.7,  False, False, False],
+    ["O",   1.4,  True,  False, False],
+    ["CD2", 1.75, False, False, False]
   ]
   neutronChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True],
-    ["ND1", 1.55, False,  True],
-    ["C",   1.65, False, False],
-    ["CB",  1.7,  False, False],
-    ["O",   1.4,  True,  False],
-    ["CD2", 1.75, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72, False, False,  True],
+    ["N",   1.55, False,  True, False],
+    ["ND1", 1.55, False,  True, False],
+    ["C",   1.65, False, False, False],
+    ["CB",  1.7,  False, False, False],
+    ["O",   1.4,  True,  False, False],
+    ["CD2", 1.75, False, False, False]
   ]
   implicitChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.6,  False, True],
-    ["ND1", 1.6,  False,  True],
-    ["C",   1.8,  False, False],
-    ["CB",  1.92, False, False],
-    ["O",   1.52, True,  False],
-    ["CD2", 1.74, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72, False, False,  True],
+    ["N",   1.6,  False,  True, False],
+    ["ND1", 1.6,  False,  True, False],
+    ["C",   1.8,  False, False, False],
+    ["CB",  1.92, False, False, False],
+    ["O",   1.52, True,  False, False],
+    ["CD2", 1.74, False, False, False]
   ]
 
   # Situations to run the test in and expected results:
@@ -988,6 +993,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           assert e.isDummyHydrogen == False, "Helpers.Test(): Bad Dummy Hydrogen status for "+a.name+runType
           e.isDummyHydrogen = True
           assert e.isDummyHydrogen == True, "Helpers.Test(): Can't set DummyHydrogen status for "+a.name+runType
+          assert e.isIon == c[4], "Helpers.Test(): Bad Ion status for "+a.name+": "+str(e.isIon)+runType
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
@@ -1117,7 +1123,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
   # Check the counts in the neighbor lists to make sure they match what we expect
   neighborCounts = {"N": 1, "CA": 3, "C": 2, "O": 1, "CB": 2,
-                    "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2}
+                    "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2, "CU": 0}
   for a in atoms:
     assert len(bondedNeighborLists[a]) == neighborCounts[a.name.strip()], (
         "Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+
