@@ -153,8 +153,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
        b != interacting.end(); b++) {
 
     ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
-    Point const &locb = b->data->xyz;
-    double vdwb = bExtra.getVdwRadius();
 
     // If the potential target atom is an ion and we are ignoring ions, skip it.
     if (bExtra.getIsIon() && m_ignoreIonInteractions) {
@@ -162,6 +160,8 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     }
 
     // See if we are too far away to interact, bail if so.
+    Point const& locb = b->data->xyz;
+    double vdwb = bExtra.getVdwRadius();
     double squareProbeDist = (probLoc - locb).length_sq();
     double pRadPlusVdwb = vdwb + probeRadius;
     if (squareProbeDist > pRadPlusVdwb * pRadPlusVdwb) {
@@ -371,8 +371,9 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // If we're looking for other contacts besides bumps, we need to add twice the
   // probe radius to the neighbor list to ensure that we include atoms where the
   // probe spans from the source to the target.
+  double twiceProbeRadius = 2 * probeRadius;
   if (!onlyBumps) {
-    nearbyRadius += 2 * probeRadius;
+    nearbyRadius += twiceProbeRadius;
   }
 
   // Find the neighboring atoms that are potentially interacting.
@@ -390,7 +391,6 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator a = neighbors.begin();
        a != neighbors.end(); a++) {
     ExtraAtomInfo const& aExtra = m_extraInfoMap.getMappingFor(*a);
-    double nonBondedDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius();
     bool excluded = false;
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
          e != exclude.end(); e++) {
@@ -399,9 +399,10 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         break;
       }
     }
+    double interactionDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius() + twiceProbeRadius;
     if ((std::abs(a->data->occ) >= minOccupancy)
-          && ((a->data->xyz - sourceAtom.data->xyz).length() <= nonBondedDistance + probeRadius)
           && (!excluded)
+          && ((a->data->xyz - sourceAtom.data->xyz).length() <= interactionDistance)
         ) {
       interacting.push_back(*a);
     }
