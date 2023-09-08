@@ -496,14 +496,27 @@ Usage examples:
       if self.params.qi.step_buffer_radius:
         ih = 'step_buffer_radius="%s"' % self.params.qi.step_buffer_radius
 
-      ih += ' qi.nproc=%s' % self.params.qi.nproc
+      program = 'mmtbx.quantum_interface'
+      ih2 = ' run_qmr=True'
+      if self.params.qi.format=='qi':
+        ih += ' qi.nproc=%s' % self.params.qi.nproc
+      else:
+        program='phenix.refine'
+        ih2 = self.data_manager.get_default_model_name()
+        if ih2.endswith('.updated.pdb'):
+          ih2 = ih2.replace('.updated.pdb', '.mtz')
+        else:
+          ih2 = ' %s' % 'test.mtz'
 
       print('''
 
-      mmtbx.quantum_interface %s run_qmr=True %s %s
-      ''' % (self.data_manager.get_default_model_name(),
+      %s %s %s %s %s
+      ''' % (program,
+             self.data_manager.get_default_model_name(),
              ih,
-             pf))
+             pf,
+             ih2,
+             ))
       return
 
     if self.params.qi.run_directory:
@@ -731,6 +744,7 @@ Usage examples:
           energy+=0.5
         elif units.lower() in ['ev']:
           energy+=13.61
+          # energy+=4.098 # 94.51 kcal/mol
         else:
           assert 0
       te.append(energy)
