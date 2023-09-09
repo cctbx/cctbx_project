@@ -15,7 +15,7 @@
 
 #include "SpatialQuery.h"
 #include <iotbx/pdb/hierarchy.h>
-#include <map>
+#include <unordered_map>
 
 namespace molprobity {
   namespace probe {
@@ -147,12 +147,7 @@ namespace molprobity {
         if (atoms.size() == extraInfo.size()) {
           // Build the map from the vector of atoms and vector of extra atom info
           for (size_t i = 0; i < atoms.size(); i++) {
-            std::pair < iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo>
-              element(atoms[i].data.get(), extraInfo[i]);
-            m_extraInfo.insert(element);
-            // Keep a shared pointer so that the data doesn't go away while we're still
-            // using it.
-            m_keepPointers.push_back(atoms[i].data);
+            setMappingFor(atoms[i], extraInfo[i]);
           }
         }
       }
@@ -165,13 +160,16 @@ namespace molprobity {
       void setMappingFor(iotbx::pdb::hierarchy::atom const &atom, ExtraAtomInfo const &info)
       {
         m_extraInfo[atom.data.get()] = info;
+        // Keep a shared pointer so that the data doesn't go away while we're still
+        // using it.
+        m_keepPointers.push_back(atom.data);
       }
 
     protected:
       // Constructed map from the atom_data elements to the extra-atom information so that we
       // can look up extra info based on particular atoms without having to rely on the sequence
       // IDs being correct.
-      std::map< iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo > m_extraInfo;
+      std::unordered_map< iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo > m_extraInfo;
       // This keeps around shared pointers to the data we placed into our map so that they don't
       // get deleted out from under us.
       std::vector< boost::shared_ptr<iotbx::pdb::hierarchy::atom_data> > m_keepPointers;
