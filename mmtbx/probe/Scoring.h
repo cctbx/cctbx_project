@@ -141,6 +141,9 @@ namespace molprobity {
       /// @brief Constructor creates the map from vectors of atoms and ExtraAtomInfo.
       /// @param [in] atoms Vector of atoms that will be mapped from.  Must include all of the ones added
       ///             to the SpatialQuery structure so that anyone using its outputs will find an entry.
+      ///             NOTE: This uses the i_seq values of atoms to index the vector, so there must be a unique
+      ///             i_seq value for each atom (including Phantom hydrogens) and the i_seq must not
+      ///             change between setting and getting.
       /// @param [in] extraInfo Vector of extra information pertaining to each atom.  Must be the same
       ///             length as the atoms vector.
       ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms
