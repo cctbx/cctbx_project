@@ -399,19 +399,19 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         break;
       }
     }
-    double interactionDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius() + twiceProbeRadius;
-    if ((std::abs(a->data->occ) >= minOccupancy)
-          && (!excluded)
-          && ((a->data->xyz - sourceAtom.data->xyz).length() <= interactionDistance)
-        ) {
-      interacting.push_back(*a);
+    if (!excluded) {
+      double interactionDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius() + twiceProbeRadius;
+      if ((std::abs(a->data->occ) >= minOccupancy)
+        && ((a->data->xyz - sourceAtom.data->xyz).length() <= interactionDistance)
+      ) {
+        interacting.push_back(*a);
+      }
     }
   }
 
   // Run through all of the dots and determine whether and how to score each.
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
-    // Find out which atom (if any) had the closest interaction, and the type of interaction.
     // If the dots have been pre-trimmed, we don't need to pass the excluded list.
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> const* excludeToUse = &exclude;
