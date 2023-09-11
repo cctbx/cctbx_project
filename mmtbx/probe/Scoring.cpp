@@ -409,11 +409,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
     }
   }
 
+  // Construct this outside of the loop to avoid repeated construction.
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
+
   // Run through all of the dots and determine whether and how to score each.
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
     // If the dots have been pre-trimmed, we don't need to pass the excluded list.
-    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> const* excludeToUse = &exclude;
     if (preTrimmedDots) {
       excludeToUse = &emptyExclude;
