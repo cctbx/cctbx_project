@@ -50,7 +50,7 @@ namespace molprobity {
       ///             conformation of a hierarchy, although it is of course possible to
       ///             use the parent() methods to chase up the hierarchy and verify that
       ///             the atom is in a specific group.
-      SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const atoms);
+      SpatialQuery(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms);
 
       /// @brief Add an atom to the query object
       /// @param [in] a Atom to be added to the query object.

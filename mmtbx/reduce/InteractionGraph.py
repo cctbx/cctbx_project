@@ -23,6 +23,8 @@ from __future__ import absolute_import
 
 from boost_adaptbx import graph
 import mmtbx.reduce.Movers as Movers
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
 
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
@@ -44,7 +46,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   the mover list must not be modified after the graph has been constructed because
   that will change the index of its elements, making the graph point to the wrong
   elements (or to elements that no longer exist). (2) A dictionary with atoms as the
-  key that returns the set of Movers that the atom interacts with; each has at least
+  key that returns the list of Movers that the atom interacts with; each has at least
   the Mover that it is a part of and may contain additional ones when they overlap.
   """
 
@@ -53,7 +55,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   # takes too long.
   myGraph = _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
 
-  # Dictionary looked up by atom that returns the set of Movers that atom interacts
+  # Dictionary looked up by atom i_seq that returns the set of Movers that atom interacts
   # with.
   atomMoverSets = {}
 
@@ -65,18 +67,20 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   for m in movers:
 
     # Find all possible positions, coarse and fine, for each atom
-    # in this mover.
+    # in this mover. Make a copy so that we don't extend the original
+    # positions.
     coarses = m.CoarsePositions()
     coarsePositions = coarses.positions
     total = coarsePositions[:]
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c).positions)
+      for fp in m.FinePositions(c).positions:
+        total.append(fp)
 
     # Add the atoms and positions into our dictionaries
     atoms[m] = coarses.atoms
     positions[m] = total
     for a in coarses.atoms:
-      atomMoverSets[a] = {m}
+      atomMoverSets[a.i_seq] = {m}
 
   # For each pair of movers that are connected by an edge in the graph produced
   # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.
@@ -88,6 +92,10 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
         extraAtomInfoMap, probeRadius,
         atomMoverSets):
       myGraph.remove_edge( e )
+
+  # Turn the Mover sets into lists to make them easier to traverse
+  for a in atomMoverSets:
+    atomMoverSets[a] = list(atomMoverSets[a])
 
   return myGraph, atomMoverSets
 
@@ -131,12 +139,15 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
     verts.append(ret.add_vertex(m))
 
     # Find all possible positions, coarse and fine.
+    # Make a copy so that we don't extend the original
+    # positions.
     coarses = m.CoarsePositions()
     atoms = coarses.atoms
     coarsePositions = coarses.positions
     total = coarsePositions[:]
     for c in range(len(coarsePositions)):
-      total.extend(m.FinePositions(c).positions)
+      for fp in m.FinePositions(c).positions:
+        total.append(fp)
 
     # Find the range of positions of all atoms in X, Y, and Z
     xRange = [ 1e10, -1e10 ]
@@ -192,24 +203,27 @@ def _AABBOverlap(box1, box2):
            (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
+# This function has been moved into C++ for speed. The original Python function
+# is below it and commented out.
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
+"""Helper function that tells whether any pair of atoms from two Movers overlap.
+:param mover1: The first Mover
+:param atoms1: Atom list for the first Mover
+:param positions1: probe.PositionReturn.positions holding possible positions for each.
+:param mover2: The second Mover
+:param atoms2: Atom list for the second Mover
+:param positions2: probe.PositionReturn.positions holding possible positions for each.
+:param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+up the information for atoms whose values need to be changed.  Can be
+obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+:param ProbeRad: Probe radius
+:param atomMoverSets: Parameter that is modified in place to record all Movers that
+a particular atom interacts with.  An entry is created whenever there is overlap
+with an atom in another Mover.  Indexed by i_seq number of the atom.
+:returns True if a pair of atoms with one from each overlap, False if not.
 def _PairsOverlap(mover1, atoms1, positions1,
                   mover2, atoms2, positions2, extraAtomInfoMap, probeRad, atomMoverSets):
-  """Helper function that tells whether any pair of atoms from two Movers overlap.
-  :param mover1: The first Mover
-  :param atoms1: Atom list for the first Mover
-  :param positions1: probe.PositionReturn.positions holding possible positions for each.
-  :param mover2: The second Mover
-  :param atoms2: Atom list for the second Mover
-  :param positions2: probe.PositionReturn.positions holding possible positions for each.
-  :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
-  up the information for atoms whose values need to be changed.  Can be
-  obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
-  :param ProbeRad: Probe radius
-  :param atomMoverSets: Parameter that is modified in place to record all Movers that
-  a particular atom interacts with.  An entry is created whenever there is overlap
-  with an atom in another Mover.
-  :returns True if a pair of atoms with one from each overlap, False if not.
-  """
 
   # Construct look-up tables for the radii of each atom to pull these calculations
   # outside of the loops.
@@ -239,20 +253,20 @@ def _PairsOverlap(mover1, atoms1, positions1,
           limitSquared = limit*limit
           if dSquared <= limitSquared:
             # Add the opposite Mover to each atom; they interact
-            atomMoverSets[atoms1[ai1]].add(mover2)
-            atomMoverSets[atoms2[ai2]].add(mover1)
+            atomMoverSets[atoms1[ai1].i_seq].add(mover2)
+            atomMoverSets[atoms2[ai2].i_seq].add(mover1)
             # Set the return value to True but do not quit looking
             # because we need to catalog all of the atomMoverSets
             # interactions, not just the first one found.
             ret = True
   return ret
+"""
 
 #######################################################################################################
 # Test code and objects below here
 
 from iotbx import pdb
 import math
-import mmtbx_probe_ext as probe
 from boost_adaptbx.graph import connected_component_algorithm as cca
 
 def Test():
@@ -291,7 +305,7 @@ def Test():
     a.name = name
     a.xyz = locs[i]
     atoms.append(a)
-    e = probe.ExtraAtomInfo(rad)
+    e = probeExt.ExtraAtomInfo(rad)
     extras.append(e)
     extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
     movers.append(Movers.MoverNull(a, extrasMap))
@@ -361,7 +375,7 @@ def Test():
     # Check atom/Mover overlaps by finding the set of lengths that are present across all atoms.
     lengths = set()
     for a in atoms:
-      lengths.add(len(am[a]))
+      lengths.add(len(am[a.i_seq]))
     if lengths != e[3]:
       return "Expected set of overlap counts "+str(e[3])+", found "+str(lengths)+" for case "+str(i)
 

@@ -172,7 +172,7 @@ class PopUpCharts(object):
     #print "Rejecting", outliers.count(True), "out of", len(outliers)
     return outliers
 
-  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, title = None, image_fname=None, hist_scale=None):
+  def plot_uc_histogram(self, info_list, legend_list, extra_title = None, xsize = 10, ysize = 10, high_vis = False, iqr_ratio = 1.5, ranges = None, angle_ranges = None, title = None, image_fname=None, hist_scale=None):
     """
     Plot a 3x3 grid of plots showing unit cell dimensions.
     @param info list of lists of dictionaries. The outer list groups seperate lists
@@ -192,6 +192,14 @@ class PopUpCharts(object):
       clim = ranges[4:6]
     else:
       alim = blim = clim = None
+
+    if angle_ranges is not None:
+      assert len(angle_ranges) == 6
+      allim = angle_ranges[0:2]
+      belim = angle_ranges[2:4]
+      galim = angle_ranges[4:6]
+    else:
+      allim = belim = galim = None
 
     plot_ratio = max(min(xsize, ysize)/2.5, 3)
     text_ratio = plot_ratio * (4 if high_vis else 3)
@@ -227,13 +235,20 @@ class PopUpCharts(object):
       beta = flex.double([i['beta'] for i in info])
       gamma = flex.double([i['gamma'] for i in info])
       if ranges is not None:
-        sel = (a >= alim[0]) & (a <= alim[1]) & (b >= blim[0]) & (b <= blim[1]) & (c >= clim[0]) & (c <= clim[1])
-        a = a.select(sel)
-        b = b.select(sel)
-        c = c.select(sel)
-        alpha = alpha.select(sel)
-        beta = beta.select(sel)
-        gamma = gamma.select(sel)
+        axis_sel = (a >= alim[0]) & (a <= alim[1]) & (b >= blim[0]) & (b <= blim[1]) & (c >= clim[0]) & (c <= clim[1])
+      else:
+        axis_sel = flex.bool(len(a), True)
+      if angle_ranges is not None:
+        angle_sel = (alpha >= allim[0]) & (alpha <= allim[1]) & (beta >= belim[0]) & (beta <= belim[1]) & (gamma >= galim[0]) & (gamma <= galim[1])
+      else:
+        angle_sel = flex.bool(len(a), True)
+      sel = axis_sel & angle_sel
+      a = a.select(sel)
+      b = b.select(sel)
+      c = c.select(sel)
+      alpha = alpha.select(sel)
+      beta = beta.select(sel)
+      gamma = gamma.select(sel)
 
       accepted = flex.bool(len(a), True)
       for d in [a, b, c, alpha, beta, gamma]:
@@ -288,8 +303,8 @@ class PopUpCharts(object):
         sub.set_xlabel("%s axis" % n1).set_fontsize(text_ratio)
         sub.set_ylabel("%s axis" % n2).set_fontsize(text_ratio)
 
-      for (angle, sub) in [(alpha, sub_alpha), (beta, sub_beta), (gamma, sub_gamma)]:
-        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled')
+      for (angle, sub, lim) in [(alpha, sub_alpha, allim), (beta, sub_beta, belim), (gamma, sub_gamma, galim)]:
+        sub.hist(angle, nbins, alpha=0.75, histtype='stepfilled', range=lim)
         stats = flex.mean_and_variance(angle)
         mean = stats.mean()
         stddev = stats.unweighted_sample_standard_deviation()

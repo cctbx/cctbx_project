@@ -199,6 +199,7 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
+      process_biomt             = True,
       skip_ss_annotations       = False,
       reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
@@ -290,7 +291,7 @@ class manager(object):
       self.expand_with_MTRIX_records()
     # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
-    if(self._model_input is not None):
+    if(self._model_input is not None and process_biomt):
       try: # ugly work-around for limited support of BIOMT
         self.biomt_operators = self._model_input.process_BIOMT_records()
       except RuntimeError: pass
@@ -1547,6 +1548,9 @@ class manager(object):
       self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
 
+  def can_be_outputted_as_pdb(self):
+    return True
+
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
@@ -2779,13 +2783,21 @@ class manager(object):
   def neutralize_scatterers(self):
     if(self._neutralized): return
     xrs = self.get_xray_structure()
+    atoms = self.get_hierarchy().atoms()
     scatterers = xrs.scatterers()
-    for scatterer in scatterers:
+    for i_seq, scatterer in enumerate(scatterers):
       neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
+        # propagate into hierarchy
+        atoms[i_seq].charge = '  '
+        # propagate into pdb_inp
+        # necessary if grm is constructed as it may drop xrs
+        if self._model_input:
+          self._model_input.atoms()[i_seq].charge='  '
     if self._neutralized:
+      xrs.discard_scattering_type_registry()
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 

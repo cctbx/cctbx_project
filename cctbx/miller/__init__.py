@@ -3593,13 +3593,14 @@ class array(set):
       else:
         raise RuntimeError(e)
 
-  def sigma_filter(self, cutoff_factor, negate=False):
+  def sigma_filter(self, cutoff_factor=None, negate=False):
     """
     Return a copy of the array filtered to remove reflections whose value is
     less than cutoff_factor*sigma (or the reverse, if negate=True).
     """
-    assert self.data() is not None
-    assert self.sigmas() is not None
+    if(cutoff_factor is None): return self
+    if(self.data() is None): return self
+    if(self.sigmas() is None): return self
     flags = flex.abs(self.data()) >= self.sigmas() * cutoff_factor
     return self.select(flags, negate)
 

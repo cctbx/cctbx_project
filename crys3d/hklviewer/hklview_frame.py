@@ -941,6 +941,8 @@ Borrowing them from the first miller array""" %i)
     # Make temporary data array the size of hkls. This will be filled with datavalues
     # from procarray matching the order of indices in hkls
     datarr = flex.double(len(hkls), float("nan"))
+    if isinstance( procarray.data(), flex.complex_double):
+      datarr = flex.complex_double(len(hkls), float("nan"))
     # assign data values corresponding to matching indices to datarr
     m = miller.match_indices(procarray.indices(), hkls )
     # get single indices in hkls matching procarray.indices()
@@ -1772,11 +1774,11 @@ Borrowing them from the first miller array""" %i)
 
     tncsvec = []
     if self.tncsvec is not None:
-      # TNCS vector from xtricorder is specified in realspace fractional coordinates. Convert it to cartesian
+      # tNCS vector from xtricorder is specified in realspace fractional coordinates. Convert it to cartesian
       cartvec = list( self.tncsvec * matrix.sqr(uc.orthogonalization_matrix()) )
       ln = len(self.viewer.all_vectors)
       veclength = self.viewer.renderscale/math.sqrt( cartvec[0]*cartvec[0] + cartvec[1]*cartvec[1] + cartvec[2]*cartvec[2] )
-      tncsvec = [("TNCS_xtricorder", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
+      tncsvec = [("tNCS_xtricorder", 0, cartvec, "", "", str(roundoff(self.tncsvec, 5)), veclength )]
 
     anisovectors = []
     if self.aniso1 is not None:
@@ -2134,7 +2136,7 @@ master_phil_str = """
       .type = int(value_min=-1, value_max=1)
     user_vector
       .multiple = True
-      .help = "Vectors the user add in addition to existing vectors (rotations, TNCS, anisotropy principal axes). " \
+      .help = "Vectors the user add in addition to existing vectors (rotations, tNCS, anisotropy principal axes). " \
               "A vector has to be entered either as a rotation, a real space or a reciprocal space vector. " \
               "The label is required but only one of hkl_op, abc or hkl must be specified"
     {

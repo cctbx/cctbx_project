@@ -1,5 +1,6 @@
 
 # TODO reduce to one outlier per residue
+# CDL on by default?
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import pdb_interpretation
@@ -9,6 +10,7 @@ from mmtbx.validation import validation
 from mmtbx.validation import residue
 from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
+from scitbx.array_family import flex
 from cctbx import geometry_restraints
 from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
@@ -18,7 +20,7 @@ import json
 
 # individual validation results
 class mp_bond(atoms):
-  __slots__ = atoms.__slots__ + ["sigma", "delta"]
+  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "distance_value"]
 
   @staticmethod
   def header():
@@ -53,7 +55,7 @@ class mp_bond(atoms):
              self.score ]
 
 class mp_angle(atoms):
-  __slots__ = atoms.__slots__ + ["sigma", "delta"]
+  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "angle_value"]
 
   @staticmethod
   def header():
@@ -125,7 +127,7 @@ class mp_bonds(validation):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
@@ -137,19 +139,13 @@ class mp_bonds(validation):
       if (is_outlier or not outliers_only):
         self.results.append(mp_bond(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
+          target=restraint.distance_ideal,
+          distance_value=restraint.distance_model,
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
-          xyz=self.mean_xyz([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]),
+          xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
           outlier=is_outlier))
-
-  def mean_xyz(self, atom_xyzs):
-    sums = [0]*3
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
-    return mean
 
   def get_result_class(self) : return mp_bond
 
@@ -214,7 +210,7 @@ class mp_angles(validation):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
@@ -226,6 +222,8 @@ class mp_angles(validation):
       if (is_outlier or not outliers_only):
         self.results.append(mp_angle(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
+          target=restraint.angle_ideal,
+          angle_value=restraint.angle_model,
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,

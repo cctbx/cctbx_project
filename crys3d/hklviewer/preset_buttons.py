@@ -237,9 +237,9 @@ buttonsdeflist = [
             expand_anomalous = True
           }
   """),
-  ("TNCSlayer_xtricorder", "Slice perpendicular to TNCS_xtricorder vector", """
+  ("TNCSlayer_xtricorder", "Slice perpendicular to tNCS_xtricorder vector", """
           clip_plane {
-            normal_vector = "TNCS_xtricorder"
+            normal_vector = "tNCS_xtricorder"
             clip_width = 0.380397231
           }
           viewer {
@@ -247,7 +247,7 @@ buttonsdeflist = [
               label = "TEPS"
               datatype = "Floating-point"
             }
-            show_vector = "['TNCS_xtricorder', True]"
+            show_vector = "['tNCS_xtricorder', True]"
             fixorientation = *vector None
           }
           hkls {
@@ -256,7 +256,7 @@ buttonsdeflist = [
           }
 
 """),
-  ("TNCSvecrotate_xtricorder", "Rotate around TNCS_xtricorder vector", """
+  ("TNCSvecrotate_xtricorder", "Rotate around tNCS_xtricorder vector", """
             clip_plane {
               clip_width = 6
               auto_clip_width = False
@@ -266,19 +266,19 @@ buttonsdeflist = [
                 label = "TEPS"
                 datatype = "Floating-point"
               }
-              show_vector = "['TNCS_xtricorder', True]"
+              show_vector = "['tNCS_xtricorder', True]"
               is_parallel = True
               fixorientation = *vector None
-              animate_rotation_around_vector = "['TNCS_xtricorder', 5.0]"
+              animate_rotation_around_vector = "['tNCS_xtricorder', 5.0]"
             }
             hkls {
               expand_to_p1 = True
               expand_anomalous = True
             }
 """),
-  ("TNCSlayer_xtriage", "Slice perpendicular to TNCS_xtriage vector", """
+  ("TNCSlayer_xtriage", "Slice perpendicular to tNCS_xtriage vector", """
           clip_plane {
-            normal_vector = "TNCS_xtriage"
+            normal_vector = "tNCS_xtriage"
             clip_width = 0.380397231
           }
           miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
@@ -287,9 +287,9 @@ buttonsdeflist = [
               label = "E-values"
               datatype = "Amplitude"
             }
-            show_vector = "['TNCS_xtriage', True]"
+            show_vector = "['tNCS_xtriage', True]"
             user_vector {
-              label = "TNCS_xtriage"
+              label = "tNCS_xtriage"
             }
             fixorientation = *vector None
           }
@@ -299,7 +299,7 @@ buttonsdeflist = [
           }
 
 """),
-  ("TNCSvecrotate_xtriage", "Rotate around TNCS_xtriage vector", """
+  ("TNCSvecrotate_xtriage", "Rotate around tNCS_xtriage vector", """
             clip_plane {
               clip_width = 6
               auto_clip_width = False
@@ -310,13 +310,13 @@ buttonsdeflist = [
                 label = "E-values"
                 datatype = "Amplitude"
               }
-              show_vector = "['TNCS_xtriage', True]"
+              show_vector = "['tNCS_xtriage', True]"
               user_vector {
-                label = "TNCS_xtriage"
+                label = "tNCS_xtriage"
               }
               is_parallel = True
               fixorientation = *vector None
-              animate_rotation_around_vector = "['TNCS_xtriage', 5.0]"
+              animate_rotation_around_vector = "['tNCS_xtriage', 5.0]"
             }
             hkls {
               expand_to_p1 = True

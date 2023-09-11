@@ -733,7 +733,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_12.addWidget(self.OpaqueAllCheckbox, 1, 0, 1, 1)
 
-        self.binstable = QTableWidget(self.widget_6)
+        self.binstable = HeaderDataTableWidget(self.widget_6)
         if (self.binstable.columnCount() < 4):
             self.binstable.setColumnCount(4)
         if (self.binstable.rowCount() < 5):

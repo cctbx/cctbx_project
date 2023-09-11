@@ -82,7 +82,7 @@ Example:
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-    model.log=null_out()
+    model.set_log(log = null_out())
     model.process(make_restraints=True, pdb_interpretation_params=p)
     geometry_restraints_manager = model.get_restraints_manager().geometry
     pdb_hierarchy = model.get_hierarchy()

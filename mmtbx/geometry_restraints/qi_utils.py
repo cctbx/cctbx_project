@@ -38,10 +38,10 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
   if nproc==1:
     for i, args in enumerate(argstuples):
       t0=time.time()
-      print('  Running "%s" job %d' % (name, i+1), file=log)
+      # print('  Running "%s" job %d' % (name, i+1), file=log)
       res = func(*args)
       rc.append(res)
-      print('    Time : %0.1fs' % (time.time()-t0))
+      # print('    Time for job %d: %0.1fs' % (i+1, time.time()-t0), file=log)
   elif nproc>1:
     print('  Running %d jobs on %d procs' % (len(argstuples), nproc), file=log)
     i=0
@@ -56,7 +56,8 @@ def run_serial_or_parallel(func, argstuples, nproc=1, log=None):
       i+=1
   return rc
 
-def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
+def get_hbonds_via_filenames(filenames, nq_or_h, nproc=1, restraint_filenames=None):
+  assert nproc>0
   argstuples = []
   for i, filename in enumerate(filenames):
     assert os.path.exists(filename), '"%s"' % filename
@@ -71,7 +72,7 @@ def get_hbonds_via_filenames(filenames, nq_or_h, restraint_filenames=None):
     if restraint_filenames:
       argstuples[-1][-1]+=self.restraint_filenames
 
-  rc = run_serial_or_parallel(run_hbond, argstuples, nproc=6)
+  rc = run_serial_or_parallel(run_hbond, argstuples, nproc=nproc)
 
   i=0
   hbondss=[]

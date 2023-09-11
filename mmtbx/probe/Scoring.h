@@ -1,4 +1,4 @@
-// Copyright(c) 2021, Richardson Lab at Duke
+// Copyright(c) 2021-2023, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -113,6 +113,7 @@ namespace molprobity {
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
           );
       }
+      bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
 
     protected:
       double m_vdwRadius;      ///< van Der Waals radius of the atom
@@ -223,6 +224,24 @@ namespace molprobity {
         , m_ignoreIonInteractions(ignoreIonInteractions)
       {}
 
+      /// @brief Tells whether the specified location is inside any of a list of atoms.
+      ///
+      /// The original Probe code does internal checks for Phantom Hydrogens, but we handle that
+      /// in the calling routine by properly adjusting the list of atoms to be excluded.
+      /// @param [in] location The location to check
+      /// @param [in] atoms The list of atoms to check
+      /// @return True if the location is inside any of the atoms, false otherwise
+      bool point_inside_atoms(Point const &location, scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms);
+
+      /// @brief Trim down a list of dots to only those that are not inside any of a list of atoms.
+      /// @param [in] atom The center of the source atom to check
+      /// @param [in] dots Vector of dot offsets from the center
+      /// @param [in] exclude The list of atoms to check
+      /// @return A vector of dots that are not inside any of the atoms
+      scitbx::af::shared<Point> trim_dots(iotbx::pdb::hierarchy::atom const &atom,
+        scitbx::af::shared<Point> const &dots,
+        scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude);
+
       /// @brief Enumeration listing the basic types of overlap a dot can have with an atom.
       /// The values mean: NoOverlap => dot outside atom, Clash => dot inside atom and not hydrogen bonding
       /// (including too-close hydrogen), HydrogenBond => Hydrogen bond, Ignore = this dot was inside
@@ -261,7 +280,7 @@ namespace molprobity {
       /// @param [in] overlapScale: The fraction of overlap to assign to each of the two atoms, scaling the
       ///             spike drawn for each.  The default value of 0.5 draws half of the spike for one atom
       ///             and the other half for the other.
-      CheckDotResult check_dot(iotbx::pdb::hierarchy::atom sourceAtom,
+      CheckDotResult check_dot(iotbx::pdb::hierarchy::atom const &sourceAtom,
         Point const& dotOffset, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& interacting,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
@@ -329,11 +348,16 @@ namespace molprobity {
       /// @param [in] density Density of the dots on the probe sphere, used to normalize results.
       ///             If this is <= 0, an invalid result will be returned.
       /// @param [in] onlyBumps If true, ignore near touches and count even hydrogen bonds as bumps.
+      /// @param [in] preTrimmedDots If true, the dots have already been trimmed to only those that
+      ///             are not inside excluded atoms. The excluded atoms are still used to determine
+      ///             which neighboring atoms should be excluded, but they are not passed on to
+      ///             the check_dot() function.
       /// @return Normalized sum of scores, also broken down by hydrogen bond vs. bump scores.
-      ScoreDotsResult score_dots(iotbx::pdb::hierarchy::atom sourceAtom, double minOccupancy,
+      ScoreDotsResult score_dots(iotbx::pdb::hierarchy::atom const &sourceAtom, double minOccupancy,
         SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
-        scitbx::af::shared<Point> const &dots, double density, bool onlyBumps);
+        scitbx::af::shared<Point> const &dots, double density, bool onlyBumps,
+        bool preTrimmedDots = false);
 
       /// @brief Count how many surface dots on an atom are not within an excluded atom.
       /// @param [in] sourceAtom Atom that the dot is offset with respect to.
@@ -342,7 +366,8 @@ namespace molprobity {
       ///             of atoms bonded to sourceAtom.  If the dot is inside an excluded atom, it will not be
       ///             counted.
       /// @return Number of surface dots that are not inside an excluded atom.
-      unsigned count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, scitbx::af::shared<Point> const& dots,
+      unsigned count_surface_dots(iotbx::pdb::hierarchy::atom const &sourceAtom,
+        scitbx::af::shared<Point> const& dots,
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude);
 
       //===========================================================================

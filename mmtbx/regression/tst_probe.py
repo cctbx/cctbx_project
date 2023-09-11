@@ -131,7 +131,7 @@ def RunProbeTests(inFileName):
     exclude = list(exclude)
 
     dots = sphere.dots()
-    res = ds.score_dots(a, 1.0, sq, rad*3, 0.25, exclude, sphere.dots(), sphere.density(), False)
+    res = ds.score_dots(a, 1.0, sq, rad*3, 0.25, exclude, sphere.dots(), sphere.density(), False, False)
     total += res.totalScore()
     if res.hasBadBump:
       badBumpTotal += 1

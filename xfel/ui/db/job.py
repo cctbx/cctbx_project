@@ -949,7 +949,7 @@ class _job(object):
     return tuple(ret)
 
   def __eq__(self, other):
-    return job_hash(self) == job_hash(other)
+    return _job.job_hash(self) == _job.job_hash(other)
 
 def submit_all_jobs(app):
   submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}

@@ -249,7 +249,8 @@ class place_hydrogens():
     #For example when heavy atom is missing, H needs not to be placed
     sel_isolated = self.model.isolated_atoms_selection()
     self.sel_lone_H = sel_h & sel_isolated
-    self.model = self.model.select(~self.sel_lone_H)
+    if not self.sel_lone_H.all_eq(False):
+      self.model = self.model.select(~self.sel_lone_H)
 
     t0 = time.time()
     # get riding H manager --> parameterize all H atoms
@@ -476,7 +477,8 @@ class place_hydrogens():
                    origin_ids.get_origin_key(removed_dict[atom.i_seq]))
         for atom in self.model.get_hierarchy().atoms().select(sel_remove)]
     #
-    self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
+    if sel_remove:
+      self.model = self.model.select(~flex.bool(self.model.size(), sel_remove))
     self.sl_removed = sl_removed
     self.exclusion_iseqs = exclusion_iseqs
 

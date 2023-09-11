@@ -1606,3 +1606,15 @@ citation {
   doi_id =  doi:10.1038/s41586-021-03819-2
   pmid = 34265844
 }
+
+citation {
+  article_id = qmr_ligand
+  authors = Liebschner D, Moriarty NW, Poon BK, Adams PD
+  title = In situ ligand restraints from quantum-mechanical methods
+  journal = Acta Cryst. D
+  volume = 79
+  pages = 100-110
+  year = 2023
+  pmid = 36762856
+  doi_id = 10.1107/S2059798323000025
+}

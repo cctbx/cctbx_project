@@ -52,6 +52,7 @@ class CosymAnalysis(BaseClass):
           plt.show()
 
   def plot_after_cluster_analysis(self):
+      if self.coords.shape[1] == 2: # one twining operator, most merohedry problems
           xx = flex.double()
           yy = flex.double()
           for item in range(self.coords.shape[0]):
@@ -69,9 +70,69 @@ class CosymAnalysis(BaseClass):
           ax.set_aspect("equal")
           circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
           ax.add_artist(circle)
-          if self.plot_fname is None:
+      elif self.coords.shape[1] == 4: # special case of P3 having 4 cosets
+          # cast the data into two different shaped arrays.
+          # one for me
+          xyzt = [flex.double(),flex.double(),flex.double(),flex.double()]
+          datasize = self.coords.shape[0]
+          for item in range(datasize):
+            for icoset in range(4):
+              xyzt[icoset].append(self.coords[(item,icoset)])
+          # and one for sklearn
+          xsrc = []
+          for i in range(datasize):
+            pt = []
+            for j in range(4):
+              pt.append(xyzt[j][i])
+            xsrc.append(pt)
+          X = np.array(xsrc)
+
+          from sklearn.cluster import DBSCAN
+          db = DBSCAN(eps=0.1, min_samples=10).fit(X)
+          labels = db.labels_
+
+          # Number of clusters in labels, ignoring noise if present.
+          n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+          n_noise_ = list(labels).count(-1)
+
+          print("Estimated number of clusters: %d" % n_clusters_)
+          print("Estimated number of noise points: %d" % n_noise_)
+
+          coset_keys = list(set(self.reindexing_ops))
+          assert len(coset_keys)==4 # result from dials cosym nearest neighbor clustering
+          assert n_clusters_ == 4 # result from dbscan
+
+          assert len(labels)==datasize
+          print("unique labels",set(labels))
+
+          from matplotlib import pyplot as plt
+          colordict = {-1:"black",0:"green",1:"red",2:"magenta",3:"blue"}
+          colors = [colordict[item] for item in labels]
+
+          import matplotlib.gridspec as gridspec
+          fig = plt.figure(figsize=(8,7))
+          gs = gridspec.GridSpec(nrows=2, ncols=2, height_ratios=[1, 1])
+          label={0:"$x$",1:"$y$",2:"$z$",3:"$t$"}
+          for axp, axf in zip([(0,0),(0,1),(1,0),(1,1)],[(0,1),(3,1),(0,2),(3,2)]):
+            axspec = fig.add_subplot(gs[axp[0],axp[1]])
+            axspec.scatter(xyzt[axf[0]], xyzt[axf[1]], c=colors, marker='.')
+
+            axspec.plot([0,0],[-0.01,0.01],"k-")
+            axspec.plot([-0.01,0.01],[0,0],"k-")
+            axspec.set_xlim(-0.2,1.0)
+            axspec.set_ylim(-0.2,1.0)
+            axspec.set_xlabel(label[axf[0]])
+            axspec.set_ylabel(label[axf[1]])
+            axspec.set_aspect("equal")
+            plt.title("$<w_{ij}>$=%.1f"%(np.mean(self.target.wij_matrix)))
+            if axp[0]==1: plt.title("")
+            ax = plt.gca()
+            circle = plt.Circle((0,0),1,fill=False,edgecolor="b")
+            ax.add_artist(circle)
+
+      if self.plot_fname is None:
             plt.show()
-          else:
+      else:
             plot_path = os.path.join(self.output_dir, self.plot_fname)
             plot_fname = "{}_{}.{}".format(
                 plot_path, self.i_plot, self.plot_format)

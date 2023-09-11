@@ -22,6 +22,9 @@ phil_str = """
   ranges = None
     .type = floats(6)
     .help = Lower and upper bounds for the ranges to display for each of the a, b and c axes
+  angle_ranges = None
+    .type = floats(6)
+    .help = Lower and upper bounds for the ranges to display for each of the cell angles
   extract_tags = False
     .type = bool
     .help = Extract tags from the names of multiple combined.expt filenames and use
@@ -124,6 +127,7 @@ class Script(object):
       legend_list=experiments_tags,
       iqr_ratio = params.iqr_ratio,
       ranges = params.ranges,
+      angle_ranges = params.angle_ranges,
       title = params.title,
       image_fname = params.output.image_file,
       hist_scale = params.scale)
