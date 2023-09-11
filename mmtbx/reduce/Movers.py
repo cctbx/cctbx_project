@@ -500,6 +500,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
 
     # Compute the dihedral angle from the Hydrogen to the potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
+    # Sort these so that we get the same order each time the program is run.
     for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -584,8 +585,7 @@ class MoverNH3Rotator(_MoverRotator):
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends.
+    # conventional one of them to point away from the conventional one of the friends.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
@@ -659,8 +659,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends plus 90 degrees.
+    # conventional one of them to point away from the conventional one of the friends plus 90 degrees.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
@@ -747,8 +746,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends.
+    # conventional one of them to point away from the conventional one of the friends.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
