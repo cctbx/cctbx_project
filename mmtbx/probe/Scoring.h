@@ -15,7 +15,9 @@
 
 #include "SpatialQuery.h"
 #include <iotbx/pdb/hierarchy.h>
+#include <vector>
 #include <map>
+#include <boost/python.hpp>
 
 namespace molprobity {
   namespace probe {
@@ -141,12 +143,12 @@ namespace molprobity {
       ///             to the SpatialQuery structure so that anyone using its outputs will find an entry.
       /// @param [in] extraInfo Vector of extra information pertaining to each atom.  Must be the same
       ///             length as the atoms vector.
-      ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
-        , scitbx::af::shared<ExtraAtomInfo> extraInfo)
+      ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms
+        , scitbx::af::shared<ExtraAtomInfo> const &extraInfo)
       {
         if (atoms.size() == extraInfo.size()) {
           // Pre-allocated the vector to a reasonable size -- it will not be correct if we
-          // have skipped i_seq values, but should will be close.
+          // have skipped i_seq values, but should be close.
           m_extraInfo.reserve(atoms.size());
           // Insert the values
           for (size_t i = 0; i < atoms.size(); i++) {
@@ -158,6 +160,10 @@ namespace molprobity {
       /// @brief Get and set methods
       ExtraAtomInfo  const &getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
       {
+        if (atom.data->i_seq >= m_extraInfo.size()) {
+          PyErr_SetString(PyExc_RuntimeError, "Out of bounds reference in ExtraAtomInfoMap::getMappingFor()");
+          boost::python::throw_error_already_set();
+        }
         return m_extraInfo[atom.data->i_seq];
       }
       void setMappingFor(iotbx::pdb::hierarchy::atom const &atom, ExtraAtomInfo const &info)
@@ -167,17 +173,11 @@ namespace molprobity {
           m_extraInfo.resize(i_seq + 1);
         }
         m_extraInfo[i_seq] = info;
-        //m_keepPointers.push_back(atom.data);
       }
 
     protected:
       // Vector indexed by i_seq
       std::vector<ExtraAtomInfo> m_extraInfo;
-
-      // This keeps around shared pointers to the data we placed into our map so that they don't
-      // get deleted out from under us. Use this if we are using something about the atom
-      // data (like its data.get() pointer values).
-      //std::vector< boost::shared_ptr<iotbx::pdb::hierarchy::atom_data> > m_keepPointers;
     };
 
     //=====================================================================================================

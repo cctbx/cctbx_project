@@ -1528,20 +1528,66 @@ std::string Scoring_test()
   ContactResult res;
 
   // Test the atom-charge code.
-  static const char* chargesArray[] = { "--", "-", "", "+", "++", "+2", "-1", "0" };
-  static const int expectedChargeArray[] = { -2, -1, 0, 1, 2, 2, -1, 0 };
-  std::vector<std::string> charges;
-  std::vector<int> expectedCharge;
-  for (size_t i = 0; i < sizeof(chargesArray)/sizeof(chargesArray[0]); i++) {
-    charges.push_back(chargesArray[i]);
-    expectedCharge.push_back(expectedChargeArray[i]);
+  {
+    static const char* chargesArray[] = { "--", "-", "", "+", "++", "+2", "-1", "0" };
+    static const int expectedChargeArray[] = { -2, -1, 0, 1, 2, 2, -1, 0 };
+    std::vector<std::string> charges;
+    std::vector<int> expectedCharge;
+    for (size_t i = 0; i < sizeof(chargesArray) / sizeof(chargesArray[0]); i++) {
+      charges.push_back(chargesArray[i]);
+      expectedCharge.push_back(expectedChargeArray[i]);
+    }
+
+    for (size_t i = 0; i < charges.size(); i++) {
+      iotbx::pdb::hierarchy::atom a;
+      a.set_charge(charges[i].c_str());
+      if (atom_charge(a) != expectedCharge[i]) {
+        return "Scoring_test: atom_charge() failed";
+      }
+    }
   }
 
-  for (size_t i = 0; i < charges.size(); i++) {
+  // Check the ExtraAtomInfoMap
+  {
+    double targetRad = 1.5, sourceRad = 1.0;
+    unsigned int atomSeq = 0;
+
+    // Construct a single target atom, including its extra info
     iotbx::pdb::hierarchy::atom a;
-    a.set_charge(charges[i].c_str());
-    if (atom_charge(a) != expectedCharge[i]) {
-      return "Scoring_test: atom_charge() failed";
+    a.set_xyz(vec3(0, 0, 0));
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    ExtraAtomInfo e(targetRad, true);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+
+    // Construct a source atom, including its extra info.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct an ExtraAtomInfoMap and verify that its lookups work.
+    ExtraAtomInfoMap eam(atoms, infos);
+    if (eam.getMappingFor(a).getVdwRadius() != targetRad) {
+      return "Scoring_test(): Unexpected original target radius from ExtraAtomInfoMap";
+    }
+    if (eam.getMappingFor(a).getIsAcceptor() != true) {
+      return "DotScorer::test(): Unexpected target acceptor status from ExtraAtomInfoMap";
+    }
+    if (eam.getMappingFor(source).getVdwRadius() != sourceRad) {
+      return "Scoring_test(): Unexpected source radius from ExtraAtomInfoMap";
+    }
+
+    // Modify the value of one of the atoms and verify that the lookup still works.
+    ExtraAtomInfo e2(targetRad);
+    eam.setMappingFor(a, e2);
+    if (eam.getMappingFor(a).getIsAcceptor() != false) {
+      return "Scoring_test(): Unexpected changed target acceptor status from ExtraAtomInfoMap";
     }
   }
 
