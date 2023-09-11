@@ -35,6 +35,11 @@ boost::python::tuple wrap_vec3_array(Point const& d) {
   return boost::python::tuple(a);
 }
 
+/// @brief Helper function to set the i_seq on an atom.
+void set_atom_i_seq(iotbx::pdb::hierarchy::atom& atom, int i_seq) {
+  atom.data->i_seq = i_seq;
+}
+
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(check_dot_overloads, DotScorer::check_dot, 5, 6)
 BOOST_PYTHON_MEMBER_FUNCTION_OVERLOADS(interaction_type_overloads, DotScorer::interaction_type, 2, 3)
 
@@ -161,5 +166,6 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
   def("SpatialQuery_test", SpatialQuery_test, "Test all classes defined in SpatialQuery.h.");
   def("Scoring_test", Scoring_test, "Test all classes defined in Scoring.h.");
 
+  // Export the helper functions
+  def("set_atom_i_seq", set_atom_i_seq, "Set the i_seq on an atom, required for Phantom Hydrogen processing.");
 }
-

@@ -307,10 +307,10 @@ def Test():
     atoms.append(a)
     e = probeExt.ExtraAtomInfo(rad)
     extras.append(e)
+    # Fix the sequence numbers, which are otherwise all 0
+    atoms.reset_i_seq()
     extrasMap = probeExt.ExtraAtomInfoMap(atoms, extras)
     movers.append(Movers.MoverNull(a, extrasMap))
-  # Fix the sequence numbers, which are otherwise all 0
-  atoms.reset_i_seq()
 
   # Generate a table of parameters and expected results.  The first entry in each row is
   # the probe radius.  The second is the expected number of connected components.

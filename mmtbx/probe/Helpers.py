@@ -325,6 +325,14 @@ def isPolarHydrogen(atom, bondedNeighborLists):
       return True
   return False
 
+def getMaxISeq(model):
+  """Return the maximum i_seq value for all atoms in a model.
+  """
+  maxISeq = 0
+  for a in model.get_atoms():
+    maxISeq = max(maxISeq, a.i_seq)
+  return maxISeq
+
 class getExtraAtomInfoReturn(object):
   """
     Return type from getExtraAtomInfo() call.
@@ -623,11 +631,14 @@ def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
 
   return ret
 
-def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
+def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOccupancy,
       acceptorOnly = False, placedHydrogenRadius = 1.05, placedHydrogenDistance = 0.84):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
+    :param largestISeq: The largest i_seq number in the model so far. Each new Phantom will be
+    given a different number, starting with one larger than this. This should be incremented
+    by the length of the returned list if this function is called multiple times.
     :param atom: The Oxygen that is to have phantoms added to it.
     :param spatialQuery: mmtbx_probe_ext.SpatialQuery structure to rapidly determine which atoms
     are within a specified distance of a location.
@@ -646,16 +657,17 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
     Water Oxygen. The Phantom Hydrogens are placed at the optimal overlap distance so may be
     closer than this.  Default is for electron-cloud distances.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
-    element type and xyz positions filled in.  They will have i_seq 0 and they should not be
-    inserted into a structure.
+    element type and xyz positions filled in.  They will have i_seq as specified and they
+    should not be inserted into a structure.
   """
 
   ret = []
 
   # Get the list of nearby atoms.  The center of the search is the water atom
   # and the search radius is 4 (these values are pulled from the Reduce C++ code).
+  # Sort these by i_seq so that we get repeatable results from run to run.
   maxDist = 4.0
-  nearby = spatialQuery.neighbors(atom.xyz, 0.001, maxDist)
+  nearby = sorted(spatialQuery.neighbors(atom.xyz, 0.001, maxDist), key=lambda x:x.i_seq)
 
   # Candidates for nearby atoms.  We use this list to keep track of one ones we
   # have already found so that we can compare against them to only get one for each
@@ -712,7 +724,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
           candidates.append(Candidate(a, overlap))
 
   # Generate phantoms pointing toward all of the remaining candidates.
-  # Make most of their characteristics (including i_seq) copied from the source Oxygen.
+  # Make most of their characteristics copied from the source Oxygen.
   # The element, name, and location are modified.
   for c in candidates:
     h = pdb.hierarchy.atom(atom.parent(), atom)
@@ -737,6 +749,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
     try:
       normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset
+      largestISeq += 1
+      probeExt.set_atom_i_seq(h, largestISeq)
       ret.append(h)
     except Exception:
       # If we have overlapping atoms (normalize() fails), don't add.
@@ -1069,6 +1083,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # Run Phantom placement with different settings for occupancy and acceptorOnly
     # and make sure the atom counts match what is expected.
     # @todo Test changing the radius and distance for the Hydrogen.
+    largestISeq = len(m.atoms())
     for occThresh in [0.4,1.0]:
       for acceptorOnly in [False, True]:
         # Check that we get the expected number of contacts
@@ -1078,8 +1093,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           expected = 7 # Only one of the acceptor Aromatics but all other atoms
         if occThresh > 0.5:
           expected = 0
-        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly, 1.0, 1.0)
+        ret = getPhantomHydrogensFor(largestISeq, o, sq, extrasMap, occThresh, acceptorOnly, 1.0, 1.0)
         assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))+" (expected "+str(expected)+")"
+        largestISeq += len(ret)
 
         # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
         # Here we check that we get as many matching directions as we have atoms.

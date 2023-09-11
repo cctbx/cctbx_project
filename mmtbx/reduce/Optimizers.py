@@ -480,6 +480,7 @@ class Optimizer(object):
         # model) by removing them from the atom list and from the spatial query structure.
         phantoms = [] # List of tuples, the Phantom and its parent Oxygen
         watersToDelete = []
+        maxISeq = Helpers.getMaxISeq(model)
         for a in self._atoms:
           if a.element == 'O' and common_residue_names_get_class(name=a.parent().resname) == "common_water":
             if a.occ >= self._waterOccCutoff and a.b < self._waterBCutoff:
@@ -490,7 +491,7 @@ class Optimizer(object):
               ei.isAcceptor = True
               self._extraAtomInfo.setMappingFor(a, ei)
 
-              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
+              newPhantoms = Helpers.getPhantomHydrogensFor(maxISeq, a, self._spatialQuery, self._extraAtomInfo, self._minOccupancy,
                               False, phantomHydrogenRadius, placedHydrogenDistance)
               if len(newPhantoms) > 0:
                 resNameAndID = _ResNameAndID(a)
