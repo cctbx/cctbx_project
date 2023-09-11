@@ -363,7 +363,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
 
   // Make sure that the occupancy of the atom is high enough to score it.
   // If not, we send a valid but otherwise empty return value.
-  if (std::abs(sourceAtom.data->occ) < minOccupancy) {
+  if (sourceAtom.data->occ < minOccupancy) {
     ret.valid = true;
     return ret;
   }
