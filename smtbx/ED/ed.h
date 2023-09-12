@@ -17,4 +17,15 @@
   typedef typename af::versa<FloatType, af::mat_grid> mat_t;       \
   typedef typename af::versa<complex_t, af::mat_grid> cmat_t;      
 
-namespace smtbx { namespace ED{} }
+namespace smtbx { namespace ED{
+  enum {
+    /* As in Acta Cryst. (2013). A69, 171–188 */
+    DYN_MATRIX_2013 = 0,
+    /* As in Acta Cryst. (2015). A71, 235–244 */
+    DYN_MATRIX_2015 = 1,
+    /* As in Electron Microscopy of Thin Crystals by Hirsch, Peter B., etc., et al
+    (ISBN: 9780882753768)
+    */
+    DYN_MATRIX_DEFAULT = 10
+  };
+}}

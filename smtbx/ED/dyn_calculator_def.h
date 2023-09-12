@@ -251,7 +251,15 @@ namespace smtbx { namespace ED
       for (size_t i = 1; i < n_beams; i++) {
         miller::index<> h = this->indices[i - 1];
         cart_t K_g = this->K + this->RMf * cart_t(h[0], h[1], h[2]);
-        this->A(i, i) = Kl * Kl - K_g.length_sq();
+        FloatType K_g_l = K_g.length();
+        this->A(i, i) = Kl * Kl - K_g_l * K_g_l;
+        FloatType cos_theta = K_g * this->N / K_g_l;
+        this->A(i, 0) *= cos_theta;
+        this->A(0, i) *= cos_theta;
+        for (size_t j = i; j < n_beams; j++) {
+          this->A(i, j) *= cos_theta;
+          this->A(j, i) *= cos_theta;
+        }
       }
       return *this;
     }

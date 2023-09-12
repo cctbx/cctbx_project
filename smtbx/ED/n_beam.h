@@ -12,7 +12,6 @@ namespace smtbx { namespace ED
   public:
     ED_UTIL_TYPEDEFS;
 
-    // mat_Ug will be affected if build is called!
     dyn_calculator_n_beam(
       size_t N,
       int mat_type,
@@ -47,9 +46,16 @@ namespace smtbx { namespace ED
     dyn_calculator_n_beam& init(const miller::index<> &h, FloatType angle,
       const af::shared<complex_t> & Fcs_kin, const lookup_t  &mi_lookup)
     {
-      std::pair<mat3_t, cart_t> FI = frame.compute_RMf_N(angle);
+      return init(h, frame.compute_RMf_N(angle).first, Fcs_kin, mi_lookup);
+    }
+
+    // recomputes the Eigen matrix
+    dyn_calculator_n_beam& init(const miller::index<>& h,
+      const mat3_t& RMf,
+      const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
+    {
       indices = utils<FloatType>::build_Ug_matrix_N(A, Fcs_kin, mi_lookup,
-          strong_indices, K.length(), h, FI.first, beam_n);
+        strong_indices, K.length(), h, RMf, beam_n);
       dc = dc_f.make(indices, K, thickness);
       return *this;
     }

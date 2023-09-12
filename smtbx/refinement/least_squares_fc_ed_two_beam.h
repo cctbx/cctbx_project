@@ -322,7 +322,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         data.params.getIntStep());
 
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
-        DYN_CALCULATOR_2013,
+        data.params.getMatrixType(),
         *frame, data.K, data.thickness.value);
 
       n_beam_dc.init(h, da, data.Fcs_kin, data.mi_lookup);
@@ -339,22 +339,25 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       af::shared<FloatType> grads_sum(coln),
         grads1;
       FloatType I1 = -1, g1 = -1, I_sum = 0;
-
       for (size_t ai=0; ai < angles.size(); ai++) {
         std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
-        cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
-        FloatType g = K_g.length();
+        cart_t g = r.first * cart_t(h[0], h[1], h[2]);
+        cart_t K_g = g + data.K;
+        FloatType K_g_l = K_g.length();
+
         FloatType I;
         if (compute_grad) {
           I = std::norm(
-            n_beam_dc.calc_amp_ext(r, Ds_kin, data.thickness.grad, D_dyn)
-          );
+            n_beam_dc.calc_amp_ext(r, Ds_kin, data.thickness.grad, D_dyn));
         }
         else {
           I = std::norm(n_beam_dc.calc_amp(r));
         }
         if (g1 >= 0) {
-          FloatType d = std::abs(g - g1) / 2;
+          FloatType d = std::abs(K_g_l - g1) / 2;
+          if (d == 0) {
+            continue;
+          }
           I_sum += (I + I1) * d;
           if (compute_grad) {
             for (size_t i = 0; i < coln; i++) {
@@ -363,7 +366,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
           }
         }
         I1 = I;
-        g1 = g;
+        g1 = K_g_l;
         if (compute_grad) {
           grads1 = af::shared<FloatType>(&D_dyn(0, 0), &D_dyn(0, n_param));
         }

@@ -1,4 +1,8 @@
 Import("env_smtbx_boost_python_ext")
 env = env_smtbx_boost_python_ext.Clone()
+env.StaticLibrary(target="#lib/smtbx_ed_data",
+                  source=["../dyn_calculator.cpp"])
+
+env.Prepend(LIBS=["smtbx_ed_data"])
 env.SharedLibrary(target="#lib/smtbx_ed_data_ext",
                   source=["ed_data.cpp"])

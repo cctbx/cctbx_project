@@ -338,6 +338,26 @@ namespace smtbx { namespace ED
   af::shared<FloatType> FrameInfo<FloatType>::get_int_angles(
     FloatType Kl, FloatType span_, FloatType step_, size_t N) const
   {
+    if (false) {
+      af::shared<FloatType> angles = get_angles(alpha, span_, step_);
+      for (size_t i = 0; i < strong_measured_beams.size(); i++) {
+        const miller::index<>& h = indices[strong_measured_beams[i]];
+        FloatType da = this->get_diffraction_angle(h, Kl);
+        size_t sz = angles.size();
+        for (size_t j = 0; j < sz; j++) {
+          if (j + 1 < sz && angles[j] < da && angles[j + 1] > da) {
+            if (da - angles[j] > angles[j + 1] - da) {
+              angles[j + 1] = da;
+            }
+            else {
+              angles[j] = da;
+            }
+          }
+        }
+      }
+
+      return angles;
+    }
     FloatType span = scitbx::deg_as_rad(span_),
       step = scitbx::deg_as_rad(step_);
     af::shared<FloatType> angles, d_angles, res;
@@ -370,29 +390,8 @@ namespace smtbx { namespace ED
     if (!last_in) {
       res.push_back(angles[angles.size()-1]);
     }
+    res.extend(d_angles.begin(), d_angles.end());
 
-    size_t st = 0, sz = res.size();
-    for (size_t i = 0; i < sz; i++) {
-      FloatType ang = res[i];
-      for (size_t j = st; j < d_angles.size(); j++) {
-        if (ang > d_angles[j]) {
-          if (i > 0) {
-            if (std::abs(ang - d_angles[j]) < threshold) {
-              res[i] = d_angles[j];
-            }
-            else if (i - 1 < res.size()) {
-              if (std::abs(res[i - 1] - d_angles[j]) < threshold) {
-                res[i - 1] = d_angles[j];
-              }
-            }
-          }
-          else {
-            res.push_back(d_angles[j]);
-          }
-          st = j;
-        }
-      }
-    }
     std::sort(res.begin(), res.end());
     return res;
   }
@@ -426,6 +425,7 @@ namespace smtbx { namespace ED
     FloatType getFc2Ug() const { return values[2]; }
     FloatType getEpsilon() const { return values[3]; }
     int getMatrixType() const { return static_cast<int>(values[4]); }
+    void setMatrixType(int v) { values[4] = v; }
     int getBeamN() const { return static_cast<int>(values[5]); }
     int getThreadN() const { return static_cast<int>(values[6]); }
     FloatType getIntSpan() const { return values[7]; }

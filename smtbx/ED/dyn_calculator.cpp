@@ -8,9 +8,7 @@ using namespace smtbx::ED;
 template <typename FloatType>
 smtbx::ED::dyn_calculator_factory<FloatType>::dyn_calculator_factory(int type)
   : type(type)
-{
-  SMTBX_ASSERT(type >0 && type <= DYN_CALCULATOR_LAST);
-}
+{}
 
 template <typename FloatType>
 boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factory<FloatType>::make(
@@ -23,12 +21,15 @@ boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factor
 {
   typedef boost::shared_ptr<a_dyn_calculator<FloatType> > ptr_t;
   switch (type) {
+  case DYN_CALCULATOR_DEFAULT:
+    return ptr_t(new dyn_calculator_def<FloatType>(indices, mat_Ug, K, RMf, N, thickness));
   case DYN_CALCULATOR_2013:
     return ptr_t(new dyn_calculator_2013<FloatType>(indices, mat_Ug, K, RMf, N, thickness));
   case DYN_CALCULATOR_2015:
     return ptr_t(new dyn_calculator_2015<FloatType>(indices, mat_Ug, K, RMf, N, thickness));
   }
-  return ptr_t(new dyn_calculator_def<FloatType>(indices, mat_Ug, K, RMf, N, thickness));
+  SMTBX_ERROR("Unknown DYN_CALCULATOR request");
+  return ptr_t();
 }
 
 template <typename FloatType>
@@ -39,12 +40,15 @@ boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factor
 {
   typedef boost::shared_ptr<a_dyn_calculator<FloatType> > ptr_t;
   switch (type) {
+  case DYN_CALCULATOR_DEFAULT:
+    return ptr_t(new dyn_calculator_def<FloatType>(indices, K, thickness));
   case DYN_CALCULATOR_2013:
     return ptr_t(new dyn_calculator_2013<FloatType>(indices, K, thickness));
   case DYN_CALCULATOR_2015:
     return ptr_t(new dyn_calculator_2015<FloatType>(indices, K, thickness));
   }
-  return ptr_t(new dyn_calculator_def<FloatType>(indices, K, thickness));
+  SMTBX_ERROR("Unknown DYN_CALCULATOR request");
+  return ptr_t();
 }
 
 template class dyn_calculator_factory<double>;

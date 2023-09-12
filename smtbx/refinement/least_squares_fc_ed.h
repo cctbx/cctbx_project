@@ -130,12 +130,10 @@ namespace smtbx {
           boost::thread_group pool;
           typedef frame_integrator<FloatType> integrator_t;
           typedef typename boost::shared_ptr<integrator_t> frame_integrator_ptr_t;
-          FloatType angle = scitbx::deg_as_rad(params.getIntSpan()),
-            step = scitbx::deg_as_rad(params.getIntStep());
           size_t to = 0,
             n_param = design_matrix.accessor().n_columns();
 
-          dyn_calculator_factory<FloatType> dc_f(DYN_CALCULATOR_2013);
+          dyn_calculator_factory<FloatType> dc_f(mat_type);
 
           for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
             size_t t_end = std::min(thread_n, (int)(frames.size() - fi));

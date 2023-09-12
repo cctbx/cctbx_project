@@ -8,6 +8,7 @@
 namespace smtbx {
   namespace refinement {
     namespace least_squares {
+      using namespace cctbx;
       using namespace cctbx::xray;
       /* Need inheritance to achive more flexibility */
       template <typename FloatType>

@@ -6,7 +6,7 @@
 namespace smtbx { namespace ED
 {
   using namespace cctbx;
-    
+
   template <typename FloatType>
   struct utils {
     ED_UTIL_TYPEDEFS;
@@ -75,7 +75,7 @@ namespace smtbx { namespace ED
         beams.push_back(
           std::make_pair(i,
             std::abs(
-              std::abs(Fcs_k[idx]) / (calc_Sg(g, Kl) + 0.001))
+              std::abs(Fcs_k[idx]) / (calc_Sg(g, Kl) + 1e-5))
           )
         );
       }

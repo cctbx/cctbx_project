@@ -283,7 +283,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
           .def("process_frame_id", &wt::process_frame_id)
-          .def("build_profile", &wt::build_profile)
           .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
           ;
       }
