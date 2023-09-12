@@ -497,24 +497,26 @@ merging {
                 'ev11_mll' implements the maximum log-likelihood from Mittan-Moreau 202X
         .type = choice
         .multiple = False
-      n_degrees = 0
+      n_degrees = 1
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
-      tuning_param = 5
+      tuning_param = 20
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
-      expectation_scaling = 1
-        .help = Value to scale the expectation of the absolute normalized deviation\
-                before optimization.
-        .type = float
-      overall_scaling_method = *standard_deviation interquartile_range normalized_mad pairwise_difference
+      overall_scaling_method = *none standard_deviation pairwise_difference
         .help = Calculation of the overall scaling ...
         .type = choice
         .multiple = False
+      limit_differences = True
+        .help = Place an upper bound on number of pairwise differences
+        .type = bool
+      n_max_differences = 100
+        .help = Maximum number of pairwise differences per reflection
+        .type = int
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter
-      likelihood = *normal t-dist
+      likelihood = *normal t-dist original
         .help = Choice for likelihood function. Either 't-dist', 'normal'.
         .type = choice
         .multiple = False
