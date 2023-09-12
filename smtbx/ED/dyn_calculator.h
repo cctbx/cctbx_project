@@ -69,15 +69,9 @@ namespace smtbx { namespace ED
 
 
   enum {
-    /* As in Electron Microscopy of Thin Crystals by Hirsch, Peter B., etc., et al
-    (ISBN: 9780882753768)
-    */
-    DYN_CALCULATOR_DEFAULT = 1,
-    /* As in Acta Cryst. (2013). A69, 171–188 */
-    DYN_CALCULATOR_2013 = 2,
-    /* As in Acta Cryst. (2015). A71, 235–244 */
-    DYN_CALCULATOR_2015 = 3,
-    DYN_CALCULATOR_LAST = DYN_CALCULATOR_2015
+    DYN_CALCULATOR_DEFAULT = DYN_MATRIX_DEFAULT,
+    DYN_CALCULATOR_2013 = DYN_MATRIX_2013,
+    DYN_CALCULATOR_2015 = DYN_MATRIX_2015
   };
 
   template <typename FloatType>

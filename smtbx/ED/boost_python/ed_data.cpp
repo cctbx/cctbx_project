@@ -9,6 +9,7 @@
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
 #include <smtbx/ED/ed_data.h>
 #include <smtbx/ED/utils.h>
+#include <smtbx/ED/frame_profiler.h>
 
 // what is going on here???
 //#ifdef __WIN32__
@@ -99,6 +100,28 @@ namespace boost_python {
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("peak_profile_point");
     }
 
+    static void wrap_frame_profiler() {
+      using namespace boost::python;
+      typedef frame_profiler<FloatType> wt;
+      typedef refinement::least_squares::f_calc_function_base<FloatType> f_calc_f_t;
+
+      class_<wt, std::auto_ptr<wt> >("frame_profiler", no_init)
+        .def(init< const FrameInfo<FloatType> &,
+          f_calc_f_t&,
+          cctbx::xray::fc_correction<FloatType> const&,
+          sgtbx::space_group const&,
+          bool,
+          cctbx::xray::thickness<FloatType> const&,
+          RefinementParams<FloatType> const&>(
+            (arg("frame"),
+              arg("f_calc_function"), arg("fc_correction"),
+              arg("space_group"), arg("anomalous_flag"),
+              arg("thickness"),
+              arg("params"))))
+        .def("build_profile", &wt::build_profile)
+        ;
+    }
+
     static void wrap_refinement_params() {
       using namespace boost::python;
       typedef return_internal_reference<> rir_t;
@@ -111,7 +134,7 @@ namespace boost_python {
         .add_property("Kl", &wt::getKl)
         .add_property("Fc2Ug", &wt::getFc2Ug)
         .add_property("epsilon", &wt::getEpsilon)
-        .add_property("matrix_type", &wt::getMatrixType)
+        .add_property("matrix_type", &wt::getMatrixType, &wt::setMatrixType)
         .add_property("beam_n", &wt::getBeamN)
         .add_property("thread_n", &wt::getThreadN)
         .add_property("int_span", &wt::getIntSpan)
@@ -124,6 +147,7 @@ namespace boost_python {
       wrap_frame();
       wrap_beam();
       wrap_peak_profile_point();
+      wrap_frame_profiler();
       wrap_refinement_params();
     }
   };
