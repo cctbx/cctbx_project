@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from phenix.program_template import ProgramTemplate
+from libtbx.program_template import ProgramTemplate
 from mmtbx.maps.qscore.qscore import qscore_np
 from mmtbx.maps.qscore.pandas_utils import get_df_atoms
 
