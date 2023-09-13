@@ -22,7 +22,10 @@ except ImportError:
   from urllib import urlencode
 
 from libtbx.utils import Sorry
-from qttbx.viewers import ModelViewer
+try:
+  from qttbx.viewers import ModelViewer
+except:
+  from viewers import ModelViewer
 
 # =============================================================================
 class ChimeraXViewer(ModelViewer):

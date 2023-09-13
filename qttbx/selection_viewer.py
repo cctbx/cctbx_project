@@ -2,14 +2,21 @@ import sys
 import types
 import requests
 import json
+from collections import defaultdict
 from PySide2.QtCore import QAbstractTableModel, Qt, Slot
 from PySide2.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableView
 import pandas as pd
 from urllib.parse import urlencode
 from pathlib import Path
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 from PySide2 import QtCore
 from PySide2.QtCore import Qt, QTimer
+from PySide2.QtWidgets import QApplication, QGraphicsView, QGraphicsScene, QGraphicsRectItem
+from PySide2.QtCore import Qt, QRectF
+from PySide2.QtGui import QBrush, QColor
+
+
 from PySide2.QtWidgets import (
     QApplication,
     QCheckBox,
@@ -26,10 +33,15 @@ from PySide2.QtWidgets import (
     QFileDialog,
     QTabWidget
 )
+from phenix.programs.hotspots import Program as HotSpots
+from phenix.program_template import call_program
+from iotbx import phil
 from iotbx.data_manager import DataManager
+from iotbx.map_model_manager import map_model_manager
 from qttbx.viewers.chimerax import ChimeraXViewer
 from cctbx.array_family import flex
 from iotbx.pdb.atom_selection import selection_string_from_selection
+from mmtbx.validation.ramalyze import ramalyze
 
 from qttbx.sel_convert_chimera import (
   translate_phenix_selection_string,
@@ -40,7 +52,127 @@ from qttbx.sel_convert_chimera import (
 from cctbx_utils import model_to_df
 from cctbx_utils import get_restraint_dfs_from_model
 
-# A pyside2 windows which connects to ChimeraX to view Phenix selections
+def convert_id_str_to_selection_str(id_str):
+  # convert pdb id_str to selection string 
+  values = [id_str[:2], id_str[2:8], id_str[8:11], id_str[11:]]
+  values = [v.strip() for v in values]
+  keys = ["chain","resid","resname","name"]
+  
+  parts = []
+  parts_res = []
+  for key,value in zip(keys,values):
+      if len(value)>0:
+          parts.append(key+" "+value)
+          if key != "name":
+              parts_res.append(key+" "+value)
+              
+  selection_string = " and ".join(parts)
+  return selection_string
+
+
+def get_rama_dfs(model):
+  ramalyze_result = ramalyze(model.get_hierarchy())
+  rama_type_dict = {
+  0:"General",
+  1:"Glycine",
+  2:"CisPro",
+  3:"TransPro",
+  4:"PrePro",
+  5:"IleVal",
+  }
+  ramalyze_type_dict = {0:"Outlier",
+  1:"Allowed",
+  2:"Favored",
+  3:"Any",
+  4:"Not Favored",
+  }
+    
+
+
+
+  data = {
+  "Chain":[],
+  "Residue Name":[],
+  "Residue Seq":[],
+  "Residue Type":[],
+  "Ramalyze Type":[],
+  "Score":[],
+  "Phi":[],
+  "Psi":[],
+  "Integer Selection":[]
+  }
+
+  for result in ramalyze_result.results:
+    
+    selection_string = convert_id_str_to_selection_str(result.id_str())
+    selection_int = convert_selection_str_to_int(model,selection_string)
+    data["Integer Selection"].append(selection_int)
+    data["Residue Type"].append(rama_type_dict[result.rama_type])
+    data["Ramalyze Type"].append(result.ramalyze_type())
+    data["Chain"].append(result.chain_id)
+    data["Residue Seq"].append(result.resseq.strip())
+    data["Residue Name"].append(result.resname)
+    data["Score"].append(result.score)
+    data["Phi"].append(result.phi)
+    data["Psi"].append(result.psi)
+
+  #print(data)
+  return pd.DataFrame(data)
+    
+
+
+def rotation_from_abc(a, b, c):
+    # Compute vectors based on the given points
+    x = a - c
+    y =  b - ((a + c) / 2)
+    z = np.cross(x, y)
+
+    # Normalize each vector
+    x_norm = x / np.linalg.norm(x)
+    y_norm = y / np.linalg.norm(y)
+    z_norm = z / np.linalg.norm(z)
+
+    # Create a rotation matrix using the normalized vectors
+    rotation_matrix = np.column_stack((x_norm, y_norm, z_norm))
+
+    # Convert the rotation matrix to a Rotation object
+    rotation = R.from_matrix(rotation_matrix)
+    
+    return rotation
+
+def translate_along_z(R, a, b):
+    # Get the z-axis direction from R
+    z_direction = R.as_matrix()[:, 2]
+    
+    # Scale the z-direction by b units
+    offset = b * z_direction
+    
+    # Translate a by the offset
+    new_a = a + offset
+    
+    return new_a
+
+def matrix_string_from_R(R,center=np.array([0,0,0]),offset=10):
+    
+    center = translate_along_z(R,center,offset)
+    matrix_flattened = np.vstack([R.as_matrix().T,center]).T.flatten()
+    return ",".join([str(round(v,4)) for v in matrix_flattened])
+
+def chimerax_composition_from_selection_response(response):
+    
+    def split_into_pairs(lst):
+        return [[lst[i], lst[i + 1]] for i in range(0, len(lst), 2)]
+
+
+    content =  response.json()["log messages"]["note"][0]
+    composition = {}
+    try:
+        for value,key in split_into_pairs(content.split()[:-1]):
+            composition[key.strip(",")] = int(value.strip(","))
+    except:
+        assert False, "Unable to parse composition from :"+"".join(content)
+    return composition
+
 
 
 def group_by_columns(df, columns):
@@ -79,53 +211,71 @@ def group_by_columns(df, columns):
 class FastTableView(QTableView):
     mouseReleased = QtCore.Signal()
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None,default_col_width=150):
         super(FastTableView, self).__init__(parent)
+        self.horizontalHeader().setDefaultSectionSize(default_col_width)
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         self.mouseReleased.emit()
 
       
+
 class PandasModel(QAbstractTableModel):
-    def __init__(self, df=pd.DataFrame(), parent=None):
-        QAbstractTableModel.__init__(self, parent=parent)
-        self._df = df
+  def __init__(self, df=pd.DataFrame(), parent=None, suppress_columns=[]):
+    QAbstractTableModel.__init__(self, parent=parent)
+    self._df = df
+    self.suppress_columns = set(suppress_columns)
+    self.visible_columns = [col for col in self._df.columns if col not in self.suppress_columns]
 
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return None
-        if orientation == Qt.Horizontal:
-            return self._df.columns[section]
-        else:
-            return self._df.index[section]
+  def headerData(self, section, orientation, role=Qt.DisplayRole):
+    if role != Qt.DisplayRole:
+      return None
+    if orientation == Qt.Horizontal:
+      return self.visible_columns[section]
+    else:
+      return self._df.index[section]
 
-    def data(self, index, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return None
-        return str(self._df.iloc[index.row(), index.column()])
+  def data(self, index, role=Qt.DisplayRole):
+    if role != Qt.DisplayRole:
+      return None
+    return str(self._df.loc[index.row(), self.visible_columns[index.column()]])
 
-    def setData(self, index, value, role):
-        if not index.isValid() or role != Qt.EditRole:
-            return False
-        self._df.iloc[index.row(), index.column()] = value
-        self.dataChanged.emit(index, index, (Qt.DisplayRole,))
-        return True
+  def setData(self, index, value, role):
+    if not index.isValid() or role != Qt.EditRole:
+      return False
+    self._df.loc[index.row(), self.visible_columns[index.column()]] = value
+    self.dataChanged.emit(index, index, (Qt.DisplayRole,))
+    return True
 
-    def rowCount(self, parent=None):
-        return len(self._df.values)
+  def rowCount(self, parent=None):
+    return len(self._df.values)
 
-    def columnCount(self, _, parent=None):
-        return self._df.columns.size
+  def columnCount(self, _, parent=None):
+    return len(self.visible_columns)
 
-    def flags(self, index):
-        return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+  def flags(self, index):
+    return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
+class ClickableRect(QGraphicsRectItem):
+  def __init__(self, x, y, width, height, color):
+    super(ClickableRect, self).__init__(x, y, width, height)
+    self.setBrush(QBrush(QColor(color)))
 
+  def mousePressEvent(self, event):
+    print(f"Clicked on rectangle with color: {self.brush().color().name()}")
 
+class Histogram(QGraphicsView):
+  def __init__(self, data):
+    super(Histogram, self).__init__()
+    self.scene = QGraphicsScene()
+    self.setScene(self.scene)
 
-
-
+    x = 0
+    for height, color in data:
+      rect = ClickableRect(x, 0, 50, -height, color)
+      self.scene.addItem(rect)
+      x += 60
 
 
 
@@ -165,6 +315,8 @@ class SelectionViewerWindow(QMainWindow):
   
     def __init__(self):
         super().__init__()
+        self.debug = True
+        self.strict_selections = False
         self._data_manager = None # Stores models
         self._viewer = None # chimerax viewer
         self._current_model_path = None
@@ -173,11 +325,16 @@ class SelectionViewerWindow(QMainWindow):
       
         self._model_name_to_path = {}
         self._model_name_to_spec = {}
+
         self.dfs = {}
+        self.df_residues_q = None
+        self.df_residues_cc = None
         self.dfs_restraints = {}
         self.restraint_types = ["bond","nonbonded","angle","dihedral","chirality"]#,"planarity","parallelity"]
+        self.dfs_validation = defaultdict(dict)
+        self.validation_types = ["ramachandran"]
+        self.validation_types_map = ["q-score","ccatoms"]
         self.process = True # make restraints?
-        self.debug = True
         self.notes = []
         self.truncation_limit = 100
         self.setWindowTitle("Phenix Viewer")
@@ -197,13 +354,20 @@ class SelectionViewerWindow(QMainWindow):
         
         layout.addWidget(self.label_header)
         
-        # file
+        # files
         self.filename = None
-        self.upload_button = QPushButton("Load File")
-        self.upload_button.setFixedWidth(100) 
+        self.upload_button = QPushButton("Load Model File")
+        self.upload_button.setFixedWidth(150) 
         self.upload_button.clicked.connect(self.upload_file)
         layout.addWidget(self.upload_button)
         
+        self.filename_map = None
+        self.upload_button_map = QPushButton("Load Map File")
+        self.upload_button_map.setFixedWidth(150) 
+        self.upload_button_map.clicked.connect(self.upload_file_map)
+        layout.addWidget(self.upload_button_map)
+        
+
         # Label
         self.filename_label = QLabel()
         layout.addWidget(self.filename_label)
@@ -217,10 +381,10 @@ class SelectionViewerWindow(QMainWindow):
         layout.addWidget(self.combo_box_models)
         self.combo_box_models.currentIndexChanged.connect(self.on_combobox_models_changed)
             
-        # workaround checkbox
-        self.checkbox_workaround = QCheckBox("If selection fails, try with simpler vocabulary.")
-        self.checkbox_workaround.setChecked(True)
-        layout.addWidget(self.checkbox_workaround)
+        # # workaround checkbox
+        # self.checkbox_workaround = QCheckBox("If selection fails, try with simpler vocabulary.")
+        # self.checkbox_workaround.setChecked(True)
+        # layout.addWidget(self.checkbox_workaround)
         
         # Label
         self.title = QLabel("\nEnter Phenix selection string")
@@ -284,20 +448,20 @@ class SelectionViewerWindow(QMainWindow):
         self.tab1_content.setLayout(layout)
         self.tab_widget.addTab(self.tab1_content, "Selections")
 
-        # Create a QTableView for the second tab.
+        # Atoms tab
         self.tab2_content = FastTableView()
         #self.tab2_content.clicked.connect(self.on_atom_select)
         self.tab2_content.setSelectionBehavior(QTableView.SelectRows)
         self.tab2_content.mouseReleased.connect(self.on_mouse_released_atoms)
         self.tab_widget.addTab(self.tab2_content, "Atoms")
       
-        # Third tab
+        # Residues tab
         self.tab_comp_content = FastTableView()
         self.tab_comp_content.setSelectionBehavior(QTableView.SelectRows)
         self.tab_comp_content.mouseReleased.connect(self.on_mouse_released_comp)
         self.tab_widget.addTab(self.tab_comp_content, "Residues")
 
-        # restraints
+        # restraints tab
         self.restraints_tab = QTabWidget()
         self.tab_widget.addTab(self.restraints_tab, "Restraints")
 
@@ -311,17 +475,100 @@ class SelectionViewerWindow(QMainWindow):
             # Add the FastTableView to the restraints_tab
             self.restraints_tab.addTab(tab_content, restraint_type.capitalize())
 
+
+
+        # validation tab
+        self.validation_tab = QTabWidget()
+        self.tab_widget.addTab(self.validation_tab, "Validation")
+
+        for validation_type in self.validation_types:
+            # Create a FastTableView for each restraint_type
+            setattr(self, f"tab_content_{validation_type}", FastTableView())
+            tab_content = getattr(self, f"tab_content_{validation_type}")
+            tab_content.setSelectionBehavior(QTableView.SelectRows)
+            tab_content.mouseReleased.connect(self.on_mouse_released_validation)
+
+            # Add the FastTableView to the validation tab
+            self.validation_tab.addTab(tab_content, validation_type.capitalize())
+
+
+
+       # Hotspots
+        self.tab_hot_content = FastTableView()
+        self.tab_hot_content.setSelectionBehavior(QTableView.SelectRows)
+        self.tab_hot_content.mouseReleased.connect(self.on_mouse_released_hotspots)
+        self.tab_widget.addTab(self.tab_hot_content, "Hotspots")
+    
+        # Settings
+        self.settings_layout = QVBoxLayout()
+
+        # Create and add a button to the layout
+        self.hotspot_color_button = QPushButton("Color Hotspots")
+        self.hotspot_color_button.clicked.connect(self.on_hotspot_button_click)  # Connect to a new slot function
+        self.settings_layout.addWidget(self.hotspot_color_button)
+
+        # Create a new QWidget to house the settings_layout
+        self.settings_tab_content = QWidget()
+        self.settings_tab_content.setLayout(self.settings_layout)
+
+        # Add the new QWidget to the tab_widget
+        self.tab_widget.addTab(self.settings_tab_content, "Settings")
+
+
+        # # hotspots tab
+        # self.tab_hot_content = FastTableView(default_col_width=75)
+        # self.tab_hot_content.setSelectionBehavior(QTableView.SelectRows)
+        # self.tab_hot_content.mouseReleased.connect(self.on_mouse_released_hotspots)
+        # self.tab_widget.addTab(self.tab_hot_content, "Hotspots")
+        # # Create Button
+        # self.hotspot_button = QPushButton("Click Me!")
+        # self.hotspot_button.clicked.connect(self.on_hotspot_button_click)
+
+        # # Create Vertical Layout for hotspots
+        # self.hotspot_layout = QVBoxLayout()
+
+        # # Add Button and Table to the layout
+        # self.hotspot_layout.addWidget(self.hotspot_button)
+        # self.hotspot_layout.addWidget(self.tab_hot_content)  # Re-use the table you already created, instead of creating a new one
+
+        # # Create a new QWidget to house the hotspot_layout
+        # self.hotspot_tab_content = QWidget()
+        # self.hotspot_tab_content.setLayout(self.hotspot_layout)
+
+        # # Add the new QWidget to the tab_widget
+        # self.tab_widget.addTab(self.hotspot_tab_content, "Hotspots")
+
+
+        # ...
+
+        # Remove this line as the layout is already set to tab_widget which is the central widget.
+        # self.setLayout(self.hotspot_layout)
+
+        # Set tab_widget as the central widget
         self.setCentralWidget(self.tab_widget)
 
 
-
-        
-        
         # set a timer
         self.timer = QTimer()
         self.timer.timeout.connect(self.periodic_update)
         self.timer.start(5000) # 5 seconds
 
+
+    def on_hotspot_button_click(self):
+      # color hotspots
+      current_model = self.tab_hot_content.model()
+      df = current_model._df
+      # TODO: Move this to a generic color function
+      if "Color" in df.columns:
+        for i,row in df.iterrows():
+          color = row["Color"]
+          sel_string = row["Sel Str Phenix"]
+          #print(sel_string)
+          response = self.view_selection(sel_string)
+          cmd = "color sel "+color
+          #print(cmd)
+          response = self.viewer.send_command(cmd)
+          #print(response)
 
 
     def get_selected_rows(self,content):
@@ -369,8 +616,12 @@ class SelectionViewerWindow(QMainWindow):
         selected_rows = flatten(selected_rows)
         selection_int = flex.int(selected_rows)
         phenix_selection_string_modified = convert_selection_int_to_str(self.model,selection_int)
-        success = self.view_selection(phenix_selection_string_modified)
-        self.focus_selection()
+        success, chimerax_selection = self.view_selection(phenix_selection_string_modified,return_chimerax_string=True)
+        if self.model.selection(phenix_selection_string_modified).count(True) == \
+          self.model.selection(phenix_selection_string_modified+" and protein").count(True):
+          self.focus_single_residue(chimerax_selection)
+        else:
+           self.focus_selection()
 
       
     @Slot()
@@ -378,7 +629,88 @@ class SelectionViewerWindow(QMainWindow):
         selected = self.tab2_content.selectionModel().selection()
         deselected = QtCore.QItemSelection()
         self.on_selection_changed_comp(selected, deselected)
-      
+
+    @Slot()
+    def on_selection_changed_validation(self, selected, deselected):
+        content = self.validation_tab.currentWidget()
+        selected_rows = self.get_selected_rows(content)
+        model = content.model()
+        df = model._df
+        iseq_columns = []
+        has_explicit = False
+        for column in df.columns:
+          if column in ["Integer Selection"]:
+            has_explicit = True
+            iseq_columns.append(column)
+        if not has_explicit:
+          assert "i_seqs" in df.columns
+          iseq_columns.append("i_seqs")
+        #print(iseq_columns)
+        #print(selected_rows)
+        selected_rows = df[iseq_columns].iloc[selected_rows]
+        #print(selected_rows)
+
+        def flatten(df):
+          def is_iterable(x):
+            if isinstance(x,(int,np.int64)):
+              return False
+            try:
+                iter(x)
+            except TypeError:
+                return False
+            return True
+          
+          return [item for sublist in df.values.flatten() for item in sublist if is_iterable(sublist)]
+
+        # flatten the df of indices
+
+        selected_rows = flatten(selected_rows)
+        selected_rows = [int(e) for e in selected_rows]
+        selection_int = flex.int(selected_rows)
+        phenix_selection_string_modified = convert_selection_int_to_str(self.model,selection_int)
+
+        success = self.view_selection(phenix_selection_string_modified)
+        self.focus_selection()
+
+    @Slot()
+    def on_mouse_released_validation(self):
+        content = self.validation_tab.currentWidget()
+        selected = content.selectionModel().selection()
+        deselected = QtCore.QItemSelection()
+        self.on_selection_changed_validation(selected, deselected)
+
+    @Slot()
+    def on_mouse_released_validation_map(self):
+        content = self.validation_tab_map.currentWidget()
+        selected = content.selectionModel().selection()
+        deselected = QtCore.QItemSelection()
+        self.on_selection_changed_validation_map(selected, deselected)
+
+    @Slot()
+    def on_selection_changed_validation_map(self, selected, deselected):
+        content = self.validation_tab_map.currentWidget()
+        selected_rows = self.get_selected_rows(content)
+        model = content.model()
+        df = model._df
+    
+    @Slot()
+    def on_selection_changed_hotspots(self, selected, deselected):
+        content = self.tab_hot_content
+        selected_rows = self.get_selected_rows(content)
+        model = content.model()
+        df = model._df
+        selected_rows = [int(e) for e in selected_rows]
+        phenix_selection_string = "or".join([df.iloc[i]["Sel Str Phenix"] for i in selected_rows])
+        success = self.view_selection(phenix_selection_string)
+        self.focus_selection()
+
+    @Slot()
+    def on_mouse_released_hotspots(self):
+        content = self.tab_hot_content
+        selected = content.selectionModel().selection()
+        deselected = QtCore.QItemSelection()
+        self.on_selection_changed_hotspots(selected, deselected)
+
     @Slot()
     def on_mouse_released_restraints(self):
         content = self.restraints_tab.currentWidget()
@@ -462,25 +794,39 @@ class SelectionViewerWindow(QMainWindow):
         return None
       else:
         model = self.data_manager.get_model(filename=self.current_model_path)
+
         if model.crystal_symmetry() is None:
           from cctbx.maptbx.box import shift_and_box_model
           model= shift_and_box_model(model)
-        
+        model = model.select(model.selection("protein"))
         return model
+
+    def add_map(self,filepath):
+      filepath = Path(filepath)
+      # load in cctbx/phenix
+      self.data_manager.process_real_map_file(str(filepath))
+      cmd = "volume #2 style solid opacity 0.5" # TODO: do not hardcode model number!
+      response = self.viewer.send_command(cmd)
 
     def add_model(self,filepath):
       filepath = Path(filepath)
       # load in cctbx/phenix
       self.data_manager.process_model_file(str(filepath))
+      
       self.current_model_path = str(filepath)
       self._model_name_to_path[filepath.name] = str(filepath)
       df = model_to_df(self.model)
       self.dfs[filepath.name] = df
 
+      # add restraints dfs
       if self.process:
         self.dfs_restraints[self.current_model_name] = get_restraint_dfs_from_model(self.model,lazy_build=True)
 
-      
+      # TODO: enable changing model for validation
+
+
+      # add validation dfs
+      self.dfs_validation[self.current_model_name]["ramachandran"] = get_rama_dfs(self.model)
           
       
     @property
@@ -510,7 +856,24 @@ class SelectionViewerWindow(QMainWindow):
       return [str(Path(path).name) for path in self.model_paths]
   
 
-        
+     
+    def calculate_q_score(self,state):
+      pass
+      # assert self._has_model and self._has_map, "Map and model are required"
+      # model = self.model
+      # mm = self.data_manager.get_map_manager()
+      # mmm = map_model_manager(model=model,map_manager=mm)
+      # q = qscore_np(mmm,n_probes=16)
+      # df_atoms = model_to_df(model)
+      # df_atoms["Q-score"] = q
+      # groupby_labels= ["asym_id","seq_id","comp_id"]
+      # mean_labels = ["Q-score"]
+      # drop_labels = [label for label in df_atoms.columns if label not in set(groupby_labels+mean_labels)]
+      # df_atoms = df_atoms.drop(columns=drop_labels)
+
+      # agg_dict = {label:"mean" for label in mean_labels}
+      # self.df_residues_q = df_atoms.groupby(groupby_labels).agg(agg_dict).reset_index()
+      
         
 
     
@@ -518,11 +881,20 @@ class SelectionViewerWindow(QMainWindow):
       if not self.viewer_status_alive:
         self.viewer_start()
       assert self.viewer_status_alive, "Cannot load file if viewer is not running"
-      response = self.viewer.send_command(["open "+filename,"set bgcolor white"])
+      response = self.viewer.send_command(["open "+filename,"set bgcolor white","color #1 #999fffff"]) 
+      # TODO: better color handling right off the bat
       
       # update dropdown
       self.update_model_list()
     
+
+    def upload_file_map(self,state):
+      # get file name
+      filename, _ = QFileDialog.getOpenFileName(self, "Select File")
+      self.filename_label.setText(filename)
+      self.load_file_in_chimera(filename)
+      self.add_map(filename)
+
     def upload_file(self,state):
       
       # get file name
@@ -585,8 +957,11 @@ class SelectionViewerWindow(QMainWindow):
         return True
 
 
-    def view_selection(self,phenix_selection_string):
-        # check if malformed phenix selection
+
+    def view_selection(self,phenix_selection_string,return_chimerax_string=False):
+        # rename this to just "selection", decouple focusing 
+
+        # Step 1. Validate
         validated,composition_phenix,remove_through_ok, has_partial_occ = self.validate_selection(phenix_selection_string)
 
         if not validated:
@@ -594,7 +969,7 @@ class SelectionViewerWindow(QMainWindow):
 
         elif not remove_through_ok:
           self.output_notes.setText("Warning!: the keyword 'through' and this selection are incompatible with visualization.")
-        elif has_partial_occ:
+        elif has_partial_occ and self.strict_selections:
           self.output_notes.setText("Warning!: the selection contains partial occupancy, which cannot be selected simultaneously in Chimera")
           self.phenix_selection_string.setText(phenix_selection_string)
         elif  composition_phenix is None:
@@ -611,8 +986,7 @@ class SelectionViewerWindow(QMainWindow):
             str(n_atoms)+" atoms, "+str(n_chains)+" chains, "+str(n_residue_groups)+" residue groups selected")
             
         
-        
-        # check if translation fails
+        # Step 2. Translate
         if validated and remove_through_ok:
           try:
             chimerax_selection = translate_phenix_selection_string(phenix_selection_string,model_number=1)
@@ -632,26 +1006,13 @@ class SelectionViewerWindow(QMainWindow):
         used_workaround = False
           
         if validated and translated and self.viewer_status_alive and remove_through_ok:
-          # try to send translated selection to chimerax          
-          
-          chimerax_command = "sel "+chimerax_selection
-          response = self.viewer.send_command(chimerax_command)
-          rest_error = self.response_error_rest(response)
-          chimera_error = self.response_error_chimera(response)
-          if rest_error== True:
-            self.output_notes.setText("Error: failure in REST communication with ChimeraX")
-          elif chimera_error== True:
+          ###################################################################################################
+          # Here we send a selection to Chimera
+          ###################################################################################################
 
-            if not self.checkbox_workaround.isChecked():
-              self.output_notes.setText("Error: failure reported from ChimeraX")
-              notes = "".join(response.json()["log messages"]["note"])
-              self.text_response.setText(notes)
-            else:
-              success = self.phenix_selection_workaround(phenix_selection_string)
-              used_workaround = True
-          else:
-            # Everything is ok, no errors
-            success = True
+          chimerax_command = "sel "+chimerax_selection
+          success,response = self.send_command(chimerax_command)
+
 
           if success and not used_workaround:
             
@@ -666,10 +1027,37 @@ class SelectionViewerWindow(QMainWindow):
             except:
               n_atoms_chimera = None
             if n_atoms_chimera!= None and n_atoms_chimera !=n_atoms and not has_partial_occ:
-              QMessageBox.warning(self, "Warning", "Number of selected atoms differs between programs!")
+              pass
+              #QMessageBox.warning(self, "Warning", "Number of selected atoms differs between programs!")
+              # TODO: Re-enable warning after debugging
           
+          if return_chimerax_string:
+             return success, chimerax_selection
           return success
         
+    def send_command(self,command):
+      
+      if self.debug:
+        print("Sending command: "+command)
+      response = self.viewer.send_command(command)
+      rest_error = self.response_error_rest(response)
+      chimera_error = self.response_error_chimera(response)
+      if rest_error== True:
+        self.output_notes.setText("Error: failure in REST communication with ChimeraX")
+      elif chimera_error== True:
+
+        if not self.checkbox_workaround.isChecked():
+          self.output_notes.setText("Error: failure reported from ChimeraX")
+          notes = "".join(response.json()["log messages"]["note"])
+          self.text_response.setText(notes)
+        else:
+          success = self.phenix_selection_workaround(phenix_selection_string)
+          used_workaround = True
+      else:
+        # Everything is ok, no errors
+        success = True
+
+      return success, response
     
     def phenix_selection_workaround(self,phenix_selection_string):      
       # round trip integer to string selection
@@ -760,6 +1148,41 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
         response = self.viewer.send_command([f"show sel atoms"])
         response = self.viewer.send_command([f"hide sel ribbon"])
 
+    def focus_single_residue(self,sel_residue_cmd):
+        # Verify a single residue is selected
+        response = self.viewer.send_command(f"sel {sel_residue_cmd}") # get a response about the composition of the selection
+        composition = chimerax_composition_from_selection_response(response)
+        assert composition["residue"]==1, "Selection did not return a single residue:"+sel_residue_cmd
+        
+        # show atoms
+
+
+        # get the xyz coords of the anchor atoms N,CA,C
+        cmd = f"sel {sel_residue_cmd}; show sel atoms; sel intersect @N|@CA|@C"
+        response = self.viewer.send_command(cmd)
+        cmd = f"getcrd sel"
+        response = self.viewer.send_command(cmd)
+        content =  response.json()["log messages"]["note"][0]
+        content = [e for e in content.split("Atom") if len(e)>0]
+        coords = {}
+        for line,name in zip(content,["N","CA","C"]):
+            coord = np.array([float(s) for s in line.split()[-3:]])
+            coords[name] = coord
+            
+        # Get a rotation for the residue
+        R_residue = rotation_from_abc(coords["N"],coords["CA"],coords["C"])
+        
+        # convert to chimerax matrix string of where to move the camera to
+        matrix_string = matrix_string_from_R(R_residue,center=coords["CA"],offset=25)
+        
+
+
+        # clip and send
+        clip_cmd = ";clip near -3 far 3 position sel"
+        cmd = f"view matrix camera {matrix_string}; sel {sel_residue_cmd}{clip_cmd}"
+        response = self.viewer.send_command(cmd)
+        return response
+
     def focus_model(self,model_name):
       spec = self._model_name_to_spec[model_name]
       if self.viewer_status_alive:
@@ -813,7 +1236,7 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
       # residue data
       df_comp = group_by_columns(df,["asym_id","seq_id","comp_id"])
       
-      model_comp = PandasModel(df_comp)
+      model_comp = PandasModel(df_comp,suppress_columns=["Atom Index"])
       self.tab_comp_content.setModel(model_comp)
 
       # load restraint data
@@ -822,12 +1245,33 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
         if restraint_type in restraint_dict:
           df = restraint_dict[restraint_type]
           #df.drop(columns=["labels"],inplace=True)
-          model = PandasModel(df)
+          model = PandasModel(df,suppress_columns=["i","j","k","l","labels","slack","weight","sym_op_j","rt_mx"])
           content = getattr(self,f"tab_content_{restraint_type}")
           content.setModel(model)
 
+      # load validation data
+      for validation_type in self.validation_types:
+        validation_dict = self.dfs_validation[self.current_model_name]
+        if validation_type in validation_dict:
+          df = validation_dict[validation_type]
+          #df.drop(columns=["labels"],inplace=True)
+          model = PandasModel(df,suppress_columns=["Residue Type","Integer Selection"])
+          content = getattr(self,f"tab_content_{validation_type}")
+          content.setModel(model)
 
-                                 
+      # load hotspots data
+      params = phil.parse(HotSpots.master_phil_str).extract()
+      hotspots = call_program(program_class=HotSpots,data_manager=self.data_manager,params=params)
+      df_hotspots = pd.read_json(hotspots)
+      df_hotspots = df_hotspots.reset_index()
+      model_hotspots = PandasModel(df_hotspots,suppress_columns=[
+        "index","Cluster Label","x","y","z","Oversample Count","Sel Str Phenix","Sel Str Chimera"
+      ])
+      self.tab_hot_content.setModel(model_hotspots) 
+
+          
+
+
     def update_model_list(self):
       if self.current_model_name is None:
         return None
