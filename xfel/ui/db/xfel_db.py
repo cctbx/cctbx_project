@@ -914,9 +914,6 @@ class xfel_db_application(db_application):
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)
 
-  def get_dataset(self, dataset_version_id):
-    return Dataset(self, dataset_version_id)
-
   def get_dataset_version(self, dataset_version_id):
     return DatasetVersion(self, dataset_version_id)
 
