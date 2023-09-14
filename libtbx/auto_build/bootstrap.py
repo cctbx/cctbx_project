@@ -1020,6 +1020,7 @@ class probe_module(SourceModule):
   anonymous = ['git', 'https://github.com/rlabduke/probe.git']
 
 class reduce_module(SourceModule):
+  # Version 4.14 or later should be used to avoid mmtbx_reduce_ext name conflict.
   module = 'reduce'
   anonymous = ['git', 'https://github.com/rlabduke/reduce.git']
 
