@@ -488,8 +488,8 @@ class suitealyze(rna_geometry):
   def local_altloc_from_atoms(self, atom_list):
     for atom in atom_list:
       if atom is not None:
-        altloc = atom.id_str()[9:10]
-        if altloc != " ":
+        altloc = atom.parent().altloc
+        if altloc != '':
           return altloc
     return ''
 
