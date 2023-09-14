@@ -197,9 +197,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       for (size_t sci = 0; sci < nr_scat; sci++) {
         boost::to_upper(toks[sci]);
         map<string, size_t>::iterator fsci = sc_map.find(toks[sci]);
-        if(fsci == sc_map.end()){
-          SMTBX_ERROR("scatterer " + toks[sci] + "not found!");
-        }
+        SMTBX_ASSERT(fsci != sc_map.end())("scatterer " + toks[sci] + " not found!");
         sc_indices[sci] = fsci->second;
       }
       SMTBX_ASSERT(sc_map.size() == scatterers.size());
