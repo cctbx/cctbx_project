@@ -616,16 +616,8 @@ def get_local_omega_altlocs(twores):
   return prevres_alt, mainres_alt
 
 def get_omega_atoms(twores):
-  #atomlist = [CA1 C1 N2 CA2]
-  atomlist = [None, None, None, None]
-  for atom in twores[0].atoms():
-    if atom.name == " CA ":
-      atomlist[0] = atom
-    elif atom.name == " C  ":
-      atomlist[1] = atom
-  for atom in twores[1].atoms():
-    if atom.name == " N  ":
-      atomlist[2] = atom
-    elif atom.name == " CA ":
-      atomlist[3] = atom
+  atomlist = [twores[0].find_atom_by(name=" CA "),
+              twores[0].find_atom_by(name=" C  "),
+              twores[1].find_atom_by(name=" N  "),
+              twores[1].find_atom_by(name=" CA ")]
   return atomlist
