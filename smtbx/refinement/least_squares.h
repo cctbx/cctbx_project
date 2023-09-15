@@ -186,8 +186,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
           typedef accumulate_reflection_chunk_omp<
             NormalEquations, WeightingScheme>
             accumulate_reflection_chunk_omp_t;
+          normal_equations_ptr_t local_NE(new NormalEquations(normal_equations.n_parameters()));
           accumulate_reflection_chunk_omp_t job(
-            normal_equations_ptr_t(&normal_equations, null_deleter()),
+            local_NE,
             reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
             one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
             jacobian_transpose_matching_grad_fc,
@@ -199,6 +200,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             throw* job.exception_.get();
           }
           if (!build_design_matrix) {
+            normal_equations = &local_NE;
             normal_equations.finalise(objective_only);
           }
           return;
