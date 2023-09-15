@@ -458,45 +458,96 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
     bool use_nominal_hkl = !db_cryst.nominal_hkl.empty();
-    kokkos_sum_over_steps(
-        Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
-        m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
-        m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
-        m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
-        m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
-        db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F,
-        local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
-        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
-        db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
-        local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
-        to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
-        m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
-        m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
-        local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
-        db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
-        to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
-        db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
-        db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
-        db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
-        db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
-        m_Fhkl, m_Fhkl2, m_refine_flag,
-        m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
-        m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
-        db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
-        m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
-        use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
-        m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
-        db_flags.gamma_miller_units, db_flags.wavelength_img,
-        db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
-        db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
-        db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
-        m_data_residual, m_data_variance,
-        m_data_freq, m_data_trusted,
-        m_FhklLinear_ASUid,
-        m_Fhkl_channels,
-        m_Fhkl_scale, m_Fhkl_scale_deriv
-        );
+    if ((db_flags.printout==false) &&
+       (db_flags.complex_miller==false) &&
+       (db_flags.compute_curvatures==false) &&
+       (m_refine_flag==REFINE_FCELL) &&
+       (db_flags.use_diffuse==false) &&
+       (db_flags.wavelength_img==false) &&
+       (db_flags.Fhkl_gradient_mode==false) &&
+       (db_flags.Fhkl_errors_mode==false) && 
+       (db_flags.using_trusted_mask==false) &&
+       (db_beam.Fhkl_channels.empty()==true) &&
+       (db_flags.Fhkl_have_scale_factors)==false) {
+        kokkos_sum_over_steps<false, false, false, REFINE_FCELL, false, false, false, false, false, true, false>(
+            Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
+            m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
+            m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
+            m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
+            m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
+            db_flags.printout_fpixel, db_flags.printout_spixel, /*db_flags.printout,*/ db_cryst.default_F,
+            local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
+            local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+            local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+            db_cryst.phisteps, (int) db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
+            local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
+            to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
+            m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
+            m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+            local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
+            db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
+            to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
+            db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
+            db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
+            db_cryst.dmin, db_cryst.fudge, /*db_flags.complex_miller,*/ db_flags.verbose,
+            db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, /*db_flags.compute_curvatures,*/
+            m_Fhkl, m_Fhkl2, /*m_refine_flag,*/
+            m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+            m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
+            db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
+            m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
+            use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), /*db_flags.use_diffuse,*/
+            m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
+            db_flags.gamma_miller_units, /*db_flags.wavelength_img,*/
+            db_cryst.laue_group_num, db_cryst.stencil_size, /*db_flags.Fhkl_gradient_mode,*/
+            /*db_flags.Fhkl_errors_mode,*/ /*db_flags.using_trusted_mask,*/ /*db_beam.Fhkl_channels.empty(),*/
+            /*db_flags.Fhkl_have_scale_factors,*/ db_cryst.Num_ASU,
+            m_data_residual, m_data_variance,
+            m_data_freq, m_data_trusted,
+            m_FhklLinear_ASUid,
+            m_Fhkl_channels,
+            m_Fhkl_scale, m_Fhkl_scale_deriv);
+    } else {
+        kokkos_sum_over_steps(
+            Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
+            m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
+            m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
+            m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
+            m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
+            db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F,
+            local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
+            local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+            local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+            db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
+            local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
+            to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
+            m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
+            m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+            local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
+            db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
+            to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
+            db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
+            db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
+            db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
+            db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
+            m_Fhkl, m_Fhkl2, m_refine_flag,
+            m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+            m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
+            db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
+            m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
+            use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
+            m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
+            db_flags.gamma_miller_units, db_flags.wavelength_img,
+            db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
+            db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
+            db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
+            m_data_residual, m_data_variance,
+            m_data_freq, m_data_trusted,
+            m_FhklLinear_ASUid,
+            m_Fhkl_channels,
+            m_Fhkl_scale, m_Fhkl_scale_deriv
+            );
+    }
 
     ::Kokkos::fence("after kernel call");
 
