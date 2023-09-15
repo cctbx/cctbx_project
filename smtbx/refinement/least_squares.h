@@ -200,9 +200,10 @@ namespace smtbx { namespace refinement { namespace least_squares {
             throw* job.exception_.get();
           }
           if (!build_design_matrix) {
-            normal_equations = &local_NE;
+            normal_equations = *local_NE;
             normal_equations.finalise(objective_only);
           }
+          built = true;
           return;
         }
 #endif 
