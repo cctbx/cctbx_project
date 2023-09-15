@@ -61,14 +61,16 @@ def setup_logging_from_params(params):
             utils.safe_makedirs(params.outdir)
         COMM.barrier()
         main_level = LEVELS[params.logging.logfiles_level]
+        logfile_name = params.logging.log_hostname*(HOST+"-") + params.logging.logname
         main_logger = _make_logger("diffBragg.main",
-                                  os.path.join(params.outdir, HOST+"-"+params.logging.logname),
+                                  os.path.join(params.outdir, logfile_name),
                                   level=main_level,
                                   overwrite=params.logging.overwrite,
                                   formatter=logging.Formatter(DETAILED_FORMAT))
 
+        profile_name = params.logging.log_hostname*(HOST+"-") + params.profile_name
         _make_logger("diffBragg.profile",
-                    os.path.join(params.outdir, HOST+"-"+params.profile_name),
+                    os.path.join(params.outdir, profile_name),
                     level=logging.INFO,
                     overwrite=params.logging.overwrite,
                     formatter=logging.Formatter(SIMPLE_FORMAT))
