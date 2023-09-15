@@ -342,11 +342,11 @@ class error_modifier_ev11(worker):
     for intensity_bin in self.intensity_bins:
       number_of_refls_distributed += intensity_bin.size()
     self.logger.log("Distributed over intensity bins %d out of %d reflections"%(number_of_refls_distributed, count))
-  
+
   def setup_pairwise_differences(self):
     rng = np.random.default_rng(seed=self.mpi_helper.rank)
     self.pairwise_differences = [flex.reflection_table() for i in range(number_of_intensity_bins)]
-    self.n_refls_in_bin = [0 for i in range(number_of_intensity_bins)] 
+    self.n_refls_in_bin = [0 for i in range(number_of_intensity_bins)]
     for bin_index, bin_reflections in enumerate(self.intensity_bins):
       n_refls_in_bin_rank = 0
       if len(bin_reflections) > 0:
@@ -360,13 +360,13 @@ class error_modifier_ev11(worker):
 
         for same_reflections in reflection_table_utils.get_next_hkl_reflection_table(bin_reflections):
           number_of_reflections = same_reflections.size()
-          n_refls_in_bin_rank += number_of_reflections 
+          n_refls_in_bin_rank += number_of_reflections
           if number_of_reflections > 1:
             I = same_reflections['I'].as_numpy_array()
             var_cs = same_reflections['intensity.sum.variance'].as_numpy_array()
             correlation = same_reflections[self.cc_key].as_numpy_array()
 
-            indices = np.triu_indices(n=I.size, k=1) # This is the bottleneck step
+            indices = np.triu_indices(n=I.size, k=1)
             N = indices[0].size
             if self.limit_differences and N > self.n_max_differences:
               subset_indices = rng.choice(N, size=self.n_max_differences, replace=False, shuffle=True)
@@ -395,7 +395,7 @@ class error_modifier_ev11(worker):
         self.pairwise_differences[bin_index]['correlation_j'] = correlation_j
         self.pairwise_differences[bin_index]['miller_index_asymmetric'] = miller_index_asymmetric
       self.n_refls_in_bin[bin_index] = self.mpi_helper.comm.reduce(
-          n_refls_in_bin_rank, 
+          n_refls_in_bin_rank,
           op=self.mpi_helper.MPI.SUM, root=0
           )
 
@@ -498,7 +498,7 @@ class error_modifier_ev11(worker):
   def scale_sfac(self):
     scale = self._get_scale_pairwise_difference()
     if self.mpi_helper.rank == 0:
-      if self.overall_scaling_method == 'pairwise_difference':
+      if self.overall_scaling_method == 'pairwise_differences':
         sfac_old = self.sfac
         self.sfac = self.sfac * scale
         log_out = 'SCALING SFAC  '\
@@ -508,7 +508,7 @@ class error_modifier_ev11(worker):
       else:
         log_out = f'Unscaled standard deviation: {scale:0.3f} '
       self.logger.main_log(log_out)
-    if self.overall_scaling_method == 'pairwise_difference':
+    if self.overall_scaling_method == 'pairwise_differences':
       self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
 
   def _get_scale_pairwise_difference(self, return_in_bins=False):
@@ -548,15 +548,14 @@ class error_modifier_ev11(worker):
               same_reflections['biased_mean'],
               same_reflections[self.cc_key]
               )
-            var_ev11 = var_ev11.as_numpy_array()
-            differences = np.abs(I[np.newaxis] - I[:, np.newaxis]) 
-            variances = var_ev11[np.newaxis] + var_ev11[:, np.newaxis]
-            normalized_differences = differences / np.sqrt(variances)
-            median_differences.append(np.median(normalized_differences, axis=1))
+            std_estimate = np.median(np.sqrt(var_ev11.as_numpy_array()))
+            differences = np.abs(I[np.newaxis] - I[:, np.newaxis])
+            differences[np.diag_indices(number_of_reflections)] = np.nan
+            median_differences.append(
+              np.median(np.nanmedian(differences, axis=1)) / std_estimate
+              )
 
       if return_in_bins:
-        if len(median_differences) > 0:
-          median_differences = np.concatenate(median_differences)
         all_median_differences_bin = self.mpi_helper.comm.gather(median_differences, root=0)
         median_differences = []
         if self.mpi_helper.rank == 0:
@@ -566,12 +565,10 @@ class error_modifier_ev11(worker):
     if return_in_bins:
       return median_differences_bin
     else:
-      all_median_differences = self.mpi_helper.comm.gather(np.concatenate(median_differences), root=0)
+      all_median_differences = self.mpi_helper.comm.gather(median_differences, root=0)
       if self.mpi_helper.rank == 0:
         all_median_differences = np.concatenate(all_median_differences)
-        measured_std = np.median(all_median_differences) * conversion_factor
-        target_std = np.sqrt(1 - 2/np.pi)
-        scale = measured_std / target_std
+        scale = np.median(all_median_differences) * conversion_factor
         return float(scale)
       else:
         return None
@@ -598,7 +595,7 @@ class error_modifier_ev11(worker):
     else:
       conversion_factor = None
     conversion_factor = self.mpi_helper.comm.bcast(conversion_factor)
-    
+
     median_differences = []
     if return_in_bins:
       median_differences_bin = np.zeros(number_of_intensity_bins)
@@ -658,7 +655,7 @@ class error_modifier_ev11(worker):
       tf_func = self.calculate_functional_ev11
     elif self.algorithm == 'ev11_mll':
       tf_func = self.calculate_functional_mll
-      
+
     tf_func()
     TF = copy.copy(self.functional)
     der_wrt_sfac = copy.copy(self.der_wrt_sfac)
@@ -742,7 +739,7 @@ class error_modifier_ev11(worker):
       elif distribution == 'half t-dist':
         prob_level = (prob_level + 1) / 2
         return scipy.stats.t.ppf(prob_level[::down_sample], df=self.tuning_param)
-    
+
     cc_rank = self.work_table[self.cc_key].as_numpy_array()
     cc_all = self.mpi_helper.comm.gather(cc_rank, root=0)
 
@@ -766,7 +763,7 @@ class error_modifier_ev11(worker):
     output_nd_all = {}
     for key in output_nd_keys:
       output_nd_all[key] = self.mpi_helper.comm.gather(output_nd_rank[key].as_numpy_array(), root=0)
-    
+
     output_pd_keys = ['differences', 'var_ev11_i', 'var_ev11_j', 'biased_mean']
     output_pd_rank = {}
     for key in output_pd_keys:
@@ -777,14 +774,14 @@ class error_modifier_ev11(worker):
       number_of_differences_in_bin = differences.size()
       if number_of_differences_in_bin > 0:
         var_i = self._get_var_ev11(
-          differences['var_cs_i'], 
-          differences['biased_mean'], 
-          differences['correlation_i'], 
+          differences['var_cs_i'],
+          differences['biased_mean'],
+          differences['correlation_i'],
           )
         var_j = self._get_var_ev11(
-          differences['var_cs_j'], 
-          differences['biased_mean'], 
-          differences['correlation_j'], 
+          differences['var_cs_j'],
+          differences['biased_mean'],
+          differences['correlation_j'],
           )
         output_pd_rank['differences'].extend(differences['pairwise_differences'])
         output_pd_rank['var_ev11_i'].extend(var_i)
@@ -815,7 +812,7 @@ class error_modifier_ev11(worker):
         )
       nd_rankits_normal = get_rankits(sorted_normalized_deviations.size, downsample, 'normal')
       nd_rankits_t_dist = get_rankits(sorted_normalized_deviations.size, downsample, 't-dist')
-      
+
       var = output_pd_all['var_ev11_i'] + output_pd_all['var_ev11_j']
       normalized_pd = output_pd_all['differences'] / np.sqrt(var)
       sorted_normalized_pd = np.sort(normalized_pd)
@@ -844,7 +841,7 @@ class error_modifier_ev11(worker):
             sigma_bin[index, 0, 0] = nd.std()
           else:
             sigma_bin[index, 0, :] = np.nan
-          
+
           indices = np.logical_and(
             output_pd_all['biased_mean'] >= self.intensity_bin_limits[index],
             output_pd_all['biased_mean'] < self.intensity_bin_limits[index + 1]
@@ -940,7 +937,7 @@ class error_modifier_ev11(worker):
       axes[0, 1].set_yticks([-4, -2, 0, 2, 4])
       axes[0, 1].set_xlim([-4.5, 4.5])
       axes[0, 1].set_ylim([-4.5, 4.5])
-      
+
       axes[1, 1].set_ylim([0, lim])
       axes[1, 1].set_ylabel('Rankits')
       axes[1, 1].set_xlabel('Sorted Normalized PD ($DIFF_{hbk}$)')
@@ -957,18 +954,12 @@ class error_modifier_ev11(worker):
       axes[0, 2].set_ylabel('Standard Deviation of $\delta_{hbk}$')
       axes[0, 2].set_xlabel('Mean Intensity X 100,000')
       axes[0, 2].legend(frameon=False, labelspacing=0.1, handlelength=1)
-      
-      expected_sigma = np.sqrt(1 - 2/np.pi)
-      axes[1, 2].plot([x[0], x[-1]], [expected_sigma, expected_sigma], color=[0, 0, 0])
+
+      axes[1, 2].plot([x[0], x[-1]], [1, 1], color=[0, 0, 0])
       if self.likelihood == 't-dist':
         v = self.tuning_param
         expected_sigma = np.sqrt(v / (v - 2))
         axes[0, 2].plot([x[0], x[-1]], [expected_sigma, expected_sigma], color=grey2)
-        
-        term1 = v / (v - 2)
-        term2 = 4*v / (np.pi * (v - 1)**2)
-        term3 = (gamma((v + 1) / 2) / gamma(v / 2))**2
-        expected_sigma = np.sqrt(term1 - term2*term3)
         axes[1, 2].plot([x[0], x[-1]], [expected_sigma, expected_sigma], color=grey2)
 
       axes[1, 2].plot(x, sigma_bin[:, 1, 0], label='STD')
@@ -1099,9 +1090,9 @@ class error_modifier_ev11(worker):
 
     L0 = -np.log(gamma((v+1)/2))
     dL0_dv = -polygamma(0, (v+1)/2) * 1/2
-    
+
     L1 = 1/2 * np.log(np.pi)
-    
+
     L2 = 1/2 * np.log(v)
     dL2_dv = 1 / (2*v)
 
@@ -1119,13 +1110,13 @@ class error_modifier_ev11(worker):
     dL_dvar = dL4_dvar + dL5_dvar
     dL_dv = dL0_dv + dL2_dv + dL3_dv + dL5_dv
     return flex.double(L), flex.double(dL_dvar), flex.double(dL_dvar), flex.double(dL_dv)
-  
+
   def _loss_function_original(self, delta_sq, var):
     # This just sums the delta squares
     L = delta_sq / var
     dL_dvar = -delta_sq / var**2
     return L, dL_dvar
-  
+
   def _get_sadd(self, correlation):
     sadd = flex.double(len(correlation), 0)
     dsadd_dsaddi = [flex.double(len(correlation), 0) for i in range(self.n_coefs)]
@@ -1167,15 +1158,15 @@ class error_modifier_ev11(worker):
 
       if number_of_differences_in_bin > 0:
         var_i, dvar_i_dsfac, dvar_i_dsb, dvar_i_dsadd, dsadd_i_dsaddi = self._get_var_ev11(
-          differences['var_cs_i'], 
-          differences['biased_mean'], 
-          differences['correlation_i'], 
+          differences['var_cs_i'],
+          differences['biased_mean'],
+          differences['correlation_i'],
           return_der=True
           )
         var_j, dvar_j_dsfac, dvar_j_dsb, dvar_j_dsadd, dsadd_j_dsaddi = self._get_var_ev11(
-          differences['var_cs_j'], 
-          differences['biased_mean'], 
-          differences['correlation_j'], 
+          differences['var_cs_j'],
+          differences['biased_mean'],
+          differences['correlation_j'],
           return_der=True
           )
 
@@ -1228,7 +1219,7 @@ class error_modifier_ev11(worker):
     self.der_wrt_sadd = comm.bcast(dL_dsadd, root=0)
     if self.tuning_param_opt:
       self.der_wrt_nu = comm.bcast(dL_dnu, root=0)
-  
+
   def calculate_functional_ev11(self):
     # Results of calculation (on rank 0):
     TF        = 0
@@ -1258,9 +1249,9 @@ class error_modifier_ev11(worker):
       if number_of_reflections_in_bin > 0:
         var, dvar_dsfac_in_bin, dvar_dsb_in_bin, dvar_dsadd_in_bin, dsadd_dsaddi = \
           self._get_var_ev11(
-          reflections['intensity.sum.variance'], 
-          reflections['biased_mean'], 
-          reflections[self.cc_key], 
+          reflections['intensity.sum.variance'],
+          reflections['biased_mean'],
+          reflections[self.cc_key],
           return_der=True
           )
         TF_in_bin, dL_dvar = self._loss_function_original(reflections['delta_sq'], var)

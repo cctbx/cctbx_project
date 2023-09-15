@@ -503,7 +503,7 @@ merging {
       tuning_param = 20
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
-      overall_scaling_method = *none standard_deviation pairwise_difference
+      overall_scaling_method = *none pairwise_differences
         .help = Calculation of the overall scaling ...
         .type = choice
         .multiple = False
@@ -516,7 +516,7 @@ merging {
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter
-      likelihood = *normal t-dist original
+      likelihood = *normal t-dist
         .help = Choice for likelihood function. Either 't-dist', 'normal'.
         .type = choice
         .multiple = False
