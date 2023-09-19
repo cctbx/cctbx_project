@@ -2482,6 +2482,8 @@ class conformer_i_seq(dict):
     rc = flex.std_string()
     for i, (i_seq, item) in enumerate(sorted(self.items())):
       assert len(rc)==i
+      if item==False: item='False'
+      elif item==None: item='None'
       rc.append(item)
     return rc
 
