@@ -40,7 +40,9 @@ namespace smtbx { namespace ED
       return build();
     }
 
-    virtual af::shared<complex_t> calc_amps(size_t num) = 0;
+    virtual af::shared<complex_t> calc_amps(size_t num,
+      bool include_incident=false) = 0;
+    // 0 is for the incident beam
     virtual complex_t calc_amps_1(size_t idx) = 0;
 
     virtual af::shared<complex_t> calc_amps_ext(
@@ -49,7 +51,7 @@ namespace smtbx { namespace ED
       mat_t& D_dyn,
       size_t num) = 0;
 
-    //D_dyn has one row as output
+    //D_dyn has one row as output, 0 is the incident beam
     virtual complex_t calc_amps_ext_1(
       const af::shared<cmat_t>& Ds_kin,
       bool grad_thickness,

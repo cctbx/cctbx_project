@@ -27,9 +27,9 @@ namespace smtbx { namespace ED
         frame.strong_beams.const_ref());
     }
 
-    complex_t calc_amp(const std::pair<mat3_t, cart_t> &fi) {
+    complex_t calc_amp(const std::pair<mat3_t, cart_t> &fi, size_t idx=1) {
       return dc->reset(A, fi.first, fi.second)
-        .calc_amps_1(0);
+        .calc_amps_1(idx);
     }
 
     //D_dyn has one row as output
@@ -39,7 +39,7 @@ namespace smtbx { namespace ED
       mat_t& D_dyn)
     {
       return dc->reset(A, fi.first, fi.second)
-        .calc_amps_ext_1(Ds_kin, grad_thickness, D_dyn, 0);
+        .calc_amps_ext_1(Ds_kin, grad_thickness, D_dyn, 1);
     }
 
     // recomputes the Eigen matrix
