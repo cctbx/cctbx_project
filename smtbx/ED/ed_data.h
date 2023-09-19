@@ -370,7 +370,9 @@ namespace smtbx { namespace ED
         angles.push_back(da + st * step);
       }
     }
-
+    if (angles.size() < 3) {
+      return angles;
+    }
     std::sort(angles.begin(), angles.end());
     std::sort(d_angles.begin(), d_angles.end());
     FloatType ang_span = (angles[angles.size() - 1] - angles[0]);

@@ -307,7 +307,8 @@ namespace smtbx { namespace ED
       FloatType thickness,
       cart_t const& K,
       mat3_t const& RMf,
-      cart_t const& N)
+      cart_t const& N,
+      size_t idx=1)
     {
       FloatType Kn = N * K, Kl = K.length();
       cart_t K_g = K + RMf * cart_t(h[0], h[1], h[2]);
@@ -326,6 +327,11 @@ namespace smtbx { namespace ED
       //SMTBX_ASSERT(!info)(info);
       // A[1] and A[3] are real numbers
       math_utils<FloatType>::two_beam_eigen(&A[0], &v[0]);
+      // incident beam
+      if (idx == 0) {
+        return A[0] * std::exp(v[0] * exp_k) * std::conj(A[0]) +
+          A[1].real() * std::exp(v[1] * exp_k) * A[1].real();
+      }
       return A[2] * std::exp(v[0] * exp_k) * std::conj(A[0]) +
         A[3].real() * std::exp(v[1] * exp_k) * A[1].real();
     }

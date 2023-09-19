@@ -38,7 +38,7 @@ namespace smtbx { namespace ED
         FloatType I1 = -1, K_g_l1;
         for (size_t ai = 0;  ai < angles.size(); ai++) {
           std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
-          processor->process_1(i, r.first, r.second);
+          processor->process_1(i+1, r.first, r.second);
           if (processor->exception_) {
             exception_.swap(processor->exception_);
             break;

@@ -78,6 +78,10 @@ namespace boost_python {
       typedef BeamInfo<FloatType> wt;
 
       class_<wt, std::auto_ptr<wt> >("beam_info", no_init)
+        .def(init<const miller::index<> &,
+          FloatType, FloatType>
+          ((arg("h"), arg("I"),
+            arg("sig"))))
         .add_property("h", make_getter(&wt::index, rbv))
         .add_property("I", &wt::I)
         .add_property("s", &wt::sig)
@@ -119,6 +123,7 @@ namespace boost_python {
               arg("thickness"),
               arg("params"))))
         .def("build_profile", &wt::build_profile)
+        .def("build_incident_profile", &wt::build_incident_profile)
         ;
     }
 

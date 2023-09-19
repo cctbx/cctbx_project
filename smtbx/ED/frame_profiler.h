@@ -68,7 +68,15 @@ namespace smtbx { namespace ED {
         indices.const_ref(),
         space_group,
         anomalous_flag);
+      strong_indices = af::select(frame.indices.const_ref(),
+        frame.strong_beams.const_ref());
       build_();
+      if (!use_n_beam) {
+        utils<FloatType>::build_Ug_matrix(
+          A, Fcs_k,
+          mi_lookup,
+          strong_indices);
+      }
     }
 
     complex_t calc_one_h(miller::index<> const& h) const {
@@ -89,13 +97,6 @@ namespace smtbx { namespace ED {
         frame(frame),
         Is(Is)
       {
-        strong_indices = af::select(frame.indices.const_ref(),
-          frame.strong_beams.const_ref());
-        utils<FloatType>::build_Ug_matrix(
-          A, parent.Fcs_k,
-          parent.mi_lookup,
-          strong_indices
-        );
       }
 
       void process(const mat3_t& RMf, const cart_t& N) {
@@ -130,9 +131,10 @@ namespace smtbx { namespace ED {
           }
           boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
             dyn_calculator_factory<FloatType>(parent.mat_type)
-              .make(strong_indices, K, parent.thickness);
+              .make(parent.strong_indices, K, parent.thickness);
           af::shared<complex_t> amps = 
-            dc->reset(A, RMf, N).calc_amps(frame.strong_measured_beams.size());
+            dc->reset(parent.A, RMf, N).calc_amps(
+              frame.strong_measured_beams.size());
           for (size_t i = 0; i < amps.size(); i++) {
             Is[i] = std::norm(amps[i]);
           }
@@ -144,8 +146,52 @@ namespace smtbx { namespace ED {
           exception_.reset(new smtbx::error(e.what()));
         }
       }
-      cmat_t A;
-      af::shared<miller::index<> > strong_indices;
+      
+      FloatType process_incident(const mat3_t& RMf, const cart_t& N) {
+        try {
+          const cart_t K = cart_t(0, 0, -parent.Kl);
+          if (parent.use_n_beam) { // N-beam
+            FloatType I_sum = 0;
+            if (parent.params.getBeamN() > 2) {
+              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+                size_t beam_idx = frame.strong_measured_beams[i];
+                miller::index<> h = frame.indices[beam_idx];
+                dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
+                  parent.mat_type,
+                  frame, K, parent.thickness);
+                n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
+                I_sum += std::norm(
+                  n_beam_dc.calc_amp(std::make_pair(RMf, N), 0));
+              }
+            }
+            else {
+              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+                size_t beam_idx = frame.strong_measured_beams[i];
+                miller::index<> h = frame.indices[beam_idx];
+                int ii = parent.mi_lookup.find_hkl(h);
+                complex_t Fc = ii != -1 ? parent.Fcs_k[ii] : 0;
+                I_sum += std::norm(utils<FloatType>::calc_amp_2beam(
+                  h, Fc,
+                  parent.thickness,
+                  K, RMf, N, 0));
+              }
+            }
+            return I_sum / frame.strong_measured_beams.size();
+          }
+          boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
+            dyn_calculator_factory<FloatType>(parent.mat_type)
+            .make(parent.strong_indices, K, parent.thickness);
+          return std::norm(dc->reset(parent.A, RMf, N).calc_amps_1(0));
+        }
+        catch (smtbx::error const& e) {
+          exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const& e) {
+          exception_.reset(new smtbx::error(e.what()));
+        }
+        // suppress warning
+        return FloatType();
+      }
       const frame_profiler& parent;
       const FrameInfo<FloatType>& frame;
       FloatType thickness;
@@ -154,7 +200,7 @@ namespace smtbx { namespace ED {
     };
 
     af::shared<PeakProfilePoint<FloatType> > build_profile(
-      const af::shared<FloatType>& angles)
+      const af::shared<FloatType>& angles, bool inc_incident)
     {
       af::shared<FloatType> Is_(frame.beams.size());
       af::shared<PeakProfilePoint<FloatType> > rv;
@@ -168,6 +214,11 @@ namespace smtbx { namespace ED {
         if (fp.exception_) {
           throw* fp.exception_.get();
         }
+        if (inc_incident) {
+          process_frame_profile ibp(*this, frame, Is_);
+          FloatType I = ibp.process_incident(r.first, r.second);
+          rv.push_back(PeakProfilePoint<FloatType>(I, 0.0, ang, Kl));
+        }
         for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
           size_t beam_idx = frame.strong_measured_beams[i];
           miller::index<> h = frame.indices[beam_idx];
@@ -175,6 +226,26 @@ namespace smtbx { namespace ED {
           FloatType Sg = utils<FloatType>::calc_Sg(g, K);
           rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, ang, (K + g).length()));
         }
+      }
+      return rv;
+    }
+
+    af::shared<PeakProfilePoint<FloatType> > build_incident_profile(
+      const af::shared<FloatType>& angles)
+    {
+      af::shared<FloatType> Is_;
+      af::shared<PeakProfilePoint<FloatType> > rv(
+        af::reserve(angles.size()));
+      const cart_t K = cart_t(0, 0, -Kl);
+      for (size_t ai = 0; ai < angles.size(); ai++) {
+        FloatType ang = angles[ai];
+        std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(ang);
+        process_frame_profile fp(*this, frame, Is_);
+        FloatType I = fp.process_incident(r.first, r.second);
+        if (fp.exception_) {
+          throw* fp.exception_.get();
+        }
+        rv.push_back(PeakProfilePoint<FloatType>(I, 0.0, ang, Kl));
       }
       return rv;
     }
@@ -200,5 +271,7 @@ namespace smtbx { namespace ED {
     lookup_t mi_lookup;
     int thread_n;
     bool use_n_beam;
+    af::shared<miller::index<> > strong_indices;
+    cmat_t A;
   };
 }} // end of smtbx::ED
