@@ -28,7 +28,7 @@ namespace smtbx { namespace ED
       : parent_t(indices, K, thickness)
     {}
 
-    virtual af::shared<complex_t> calc_amps(size_t num) {
+    virtual af::shared<complex_t> calc_amps(size_t num, bool include_incident) {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
       af::shared<FloatType> ev(n_beams);
@@ -43,9 +43,10 @@ namespace smtbx { namespace ED
         im[i] = std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(this->A(0, i));
       }
       af::shared<complex_t> rv(num);
+      const size_t off = include_incident ? 0 : 1;
       for (size_t i = 0; i < num; i++) {
         for (size_t j = 0; j < n_beams; j++) {
-          rv[i] += this->A(i + 1, j) * im[j];
+          rv[i] += this->A(i + off, j) * im[j];
         }
       }
       return rv;
@@ -62,7 +63,8 @@ namespace smtbx { namespace ED
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness);
       complex_t res;
       for (size_t i = 0; i < n_beams; i++) {
-        res += this->A(idx + 1, i) * std::exp(ev[i] * exp_k / ExpDen[i]) * std::conj(this->A(0, i));
+        res += this->A(idx, i) * std::exp(ev[i] * exp_k / ExpDen[i])
+          * std::conj(this->A(0, i));
       }
       return res;
     }
@@ -177,9 +179,9 @@ namespace smtbx { namespace ED
       {
         complex_t dt = 0;
         for (size_t j = 0; j < n_beams; j++) {
-          rv += this->A(idx + 1, j) * im[j];
+          rv += this->A(idx, j) * im[j];
           if (grad_thickness) {
-            dt += this->A(idx + 1, j) * im_dt[j];
+            dt += this->A(idx, j) * im_dt[j];
           }
         }
         if (grad_thickness) {
@@ -190,7 +192,7 @@ namespace smtbx { namespace ED
       for (size_t pi = 0; pi < d_T_off; pi++) {
         af::shared<complex_t> d_dyn_1 = math_utils<FloatType>::calc_dS_dx_1(
           Ds_kin[pi], exps, ev, this->A, A_cjt, m_DL);
-        complex_t dp = d_dyn_1[idx+1];
+        complex_t dp = d_dyn_1[idx];
         // copy result to output (dI/dp - > |CI|^2)
         D_dyn(0, pi) = 2 * (rv.real() * dp.real() + rv.imag() * dp.imag());
       }
