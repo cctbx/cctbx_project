@@ -3464,8 +3464,7 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
-    # brain dead way to avoid issues. Needs to be a selection to retain full functionality
-    if hasattr(self, '_type_h_bonds'):
+    if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
     return new
