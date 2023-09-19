@@ -2479,7 +2479,7 @@ class conformer_i_seq(dict):
     return self
 
   def convert(self):
-    rc = []
+    rc = flex.std_string()
     for i, (i_seq, item) in enumerate(sorted(self.items())):
       assert len(rc)==i
       rc.append(item)

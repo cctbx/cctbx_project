@@ -1211,7 +1211,7 @@ NOTES:
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
       startInt = time.time()
-      self._ReinterpretModel()
+      # self._ReinterpretModel()
       doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
