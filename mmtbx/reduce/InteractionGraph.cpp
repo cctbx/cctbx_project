@@ -12,6 +12,7 @@
 // limitations under the License.
 
 #include "InteractionGraph.h"
+#include "PositionReturn.h"
 #include <vector>
 
 typedef scitbx::vec3<double> vec3;
@@ -81,9 +82,88 @@ bool PairsOverlap(boost::python::object const &mover1,
   return ret;
 }
 
+scitbx::af::shared<scitbx::af::shared<int> > FindOverlappingMoversAABB(
+  scitbx::af::shared<boost::python::object> const& movers,
+  molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+  double probeRad)
+{
+  // Make a vector of bounding boxes for each mover.
+  std::vector<scitbx::vec3<double> > mins(movers.size());
+  std::vector<scitbx::vec3<double> > maxs(movers.size());
+  for (size_t i = 0; i < movers.size(); ++i) {
+    boost::python::object mover = movers[i];
+
+    // Find the coarse positions for this mover.
+    molprobity::reduce::PositionReturn coarse =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms = coarse.atoms;
+    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions = coarse.positions;
+
+    // Make a copy so that we don't change the original.
+    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > total;
+    for (size_t p = 0; p < positions.size(); ++p) {
+      total.push_back(positions[p]);
+    }
+
+    // Add the fine positions for this mover.
+    for (size_t c = 0; c < coarse.positions.size(); ++c) {
+      molprobity::reduce::PositionReturn fine =
+        boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(c));
+      for (size_t f = 0; f < fine.positions.size(); f++) {
+        total.push_back(fine.positions[f]);
+      }
+    }
+
+    scitbx::vec3<double> thisMin(1e10, 1e10, 1e10);
+    scitbx::vec3<double> thisMax(-1e10, -1e10, -1e10);
+    for (size_t p = 0; p < total.size(); ++p) {
+      // Find the bounding box that includes all dilated positions for all atoms.
+      scitbx::af::shared<molprobity::probe::Point> const& pos = total[p];
+      for (size_t a = 0; a < pos.size(); ++a) {
+        // Find the radius of the atom, which is used to displace the bounding box.
+        // We dilate by the probe radius; this will be dilated in each box, so together
+        // we have 2 * probeRad.
+        double r = probeRad + extraAtomInfoMap.getMappingFor(atoms[a]).getVdwRadius();
+
+        scitbx::vec3<double> const& pt = pos[a];
+        thisMin[0] = std::min(thisMin[0], pt[0] - r);
+        thisMin[1] = std::min(thisMin[1], pt[1] - r);
+        thisMin[2] = std::min(thisMin[2], pt[2] - r);
+        thisMax[0] = std::max(thisMax[0], pt[0] + r);
+        thisMax[1] = std::max(thisMax[1], pt[1] + r);
+        thisMax[2] = std::max(thisMax[2], pt[2] + r);
+      }
+    }
+
+    mins[i] = thisMin;
+    maxs[i] = thisMax;
+  }
+
+  // For each pair of Movers whose bounding boxes overlap, add an entry to the
+  // return value.
+  scitbx::af::shared<scitbx::af::shared<int> > ret;
+  for (size_t i = 0; i < movers.size() - 1; ++i) {
+    for (size_t j = i + 1; j < movers.size(); ++j) {
+      if (
+        mins[i][0] <= maxs[j][0] && maxs[i][0] >= mins[j][0] &&
+        mins[i][1] <= maxs[j][1] && maxs[i][1] >= mins[j][1] &&
+        mins[i][2] <= maxs[j][2] && maxs[i][2] >= mins[j][2]
+      ) {
+        scitbx::af::shared<int> overlap;
+        overlap.push_back(i);
+        overlap.push_back(j);
+        ret.push_back(overlap);
+      }
+    }
+  }
+
+  return ret;
+}
+
 std::string InteractionGraph_test()
 {
   // The PairsOverlap() function is tested in the Python test script.
+  // The FindOverlappingMoversAABB() function is tested in the Python test script.
 
   // All tests passed.
   return "";

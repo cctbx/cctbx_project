@@ -30,11 +30,13 @@ namespace molprobity {
         @param mover1 : The first Mover
         @param atoms1 : Atom list for the first Mover
         @param positions1 : probe.PositionReturn.positions holding possible positions for each.
+          This is indexed first by position, then by atom in that position.
         @param mover2 : The second Mover
         @param atoms2 : Atom list for the second Mover
         @param positions2 : probe.PositionReturn.positions holding possible positions for each.
+          This is indexed first by position, then by atom in that position.
         @param extraAtomInfoMap : probe.ExtraAtomInfoMap that can be used to look
-          up the information for atoms whose values need to be changed.Can be
+          up the information for atoms whose values need to be changed. Can be
           obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
         @param ProbeRad : Probe radius
         @param atomMoverSets : Parameter that is modified in place to record all Movers that
@@ -53,6 +55,20 @@ namespace molprobity {
       double probeRad,
       boost::python::dict &atomMoverSets
     );
+
+    /** @brief Function to determine which Movers have overlapping bounding boxes.
+    * @param movers : List of Movers to check
+    * @param extraAtomInfoMap : probe.ExtraAtomInfoMap that can be used to look
+    * up the information for atoms whose values need to be changed. Can be
+    * obtained by calling mmtbx.probe.Helpers.getExtraAtomInfo().
+    * @param probeRad : Probe radius
+    * @return Vector of vectors of indices of movers that overlap. Each inner vector has
+    * two values.
+    */
+    scitbx::af::shared< scitbx::af::shared<int> > FindOverlappingMoversAABB(
+      scitbx::af::shared<boost::python::object> const &movers,
+      molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+      double probeRad);
 
     //=====================================================================================================
 

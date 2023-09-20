@@ -109,11 +109,14 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
 
-  // Define the flex array wrapping for these classes because we take them as parameters.
+  // Define the flex array wrapping for these classes because we take them as parameters
+  // and return them.
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<boost::python::object> >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<molprobity::reduce::PositionReturn> >();
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared< scitbx::af::shared<int> > >();
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
@@ -134,6 +137,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 
   def("PairsOverlap", PairsOverlap,
     "Test for overlap between two pairs of atoms.");
+  def("FindOverlappingMoversAABB", FindOverlappingMoversAABB,
+    "Test for bounding-box overlap between two Movers.");
   def("InteractionGraph_test", InteractionGraph_test,
     "Test all classes and functions defined in InteractionGraph.h.");
 

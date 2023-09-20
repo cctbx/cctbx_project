@@ -27,6 +27,10 @@ import boost_adaptbx.boost.python as bp
 bp.import_ext("mmtbx_probe_ext")
 import mmtbx_probe_ext as probeExt
 
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
+from mmtbx_reduce_ext import FindOverlappingMoversAABB as _FindOverlappingMoversAABB
+
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   """Tests for overlap of all possible positions of all movable atoms between each
   pair of Movers in the set of Movers passed in to construct the
@@ -126,67 +130,24 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
   elements (or to elements that no longer exist).
   """
 
-  pr = probeRadius
-
   # Add all of the Movers as nodes in the graph
   # Compute the axis-aligned bounding box for each Mover
   ret = graph.adjacency_list(
         vertex_type = "list",   # List so that deletions do not invalidate iterators and descriptors
         )
-  AABBs = []
+
+  # Find the pairs of indices of Movers that have overlapping AABBs
+  pairs = _FindOverlappingMoversAABB(movers, extraAtomInfoMap, probeRadius)
+
+  # Add all of the Movers as nodes in the graph
   verts = []
   for m in movers:
     verts.append(ret.add_vertex(m))
 
-    # Find all possible positions, coarse and fine.
-    # Make a copy so that we don't extend the original
-    # positions.
-    coarses = m.CoarsePositions()
-    atoms = coarses.atoms
-    coarsePositions = coarses.positions
-    total = coarsePositions[:]
-    for c in range(len(coarsePositions)):
-      for fp in m.FinePositions(c).positions:
-        total.append(fp)
-
-    # Find the range of positions of all atoms in X, Y, and Z
-    xRange = [ 1e10, -1e10 ]
-    yRange = [ 1e10, -1e10 ]
-    zRange = [ 1e10, -1e10 ]
-    for pos in total:
-      for i, atomLoc in enumerate(pos):
-        # Find the radius of the atom, which is used to extend it in all directions
-        # so that we catch all potential overlaps.
-        r = extraAtomInfoMap.getMappingFor(atoms[i]).vdwRadius
-
-        x = atomLoc[0]
-        xRange[0] = min(xRange[0], x - r)
-        xRange[1] = max(xRange[1], x + r)
-
-        y = atomLoc[1]
-        yRange[0] = min(yRange[0], y - r)
-        yRange[1] = max(yRange[1], y + r)
-
-        z = atomLoc[2]
-        zRange[0] = min(zRange[0], z - r)
-        zRange[1] = max(zRange[1], z + r)
-
-    # Dilate the bounding box by the radius of the probe.
-    # Because we're dilating each box by this radius, we're properly
-    # checking to twice the probe radius between two Movers.
-    xRange = [ xRange[0] - pr, xRange[1] + pr ]
-    yRange = [ yRange[0] - pr, yRange[1] + pr ]
-    zRange = [ zRange[0] - pr, zRange[1] + pr ]
-
-    # Store the bounding boxes for this Mover
-    AABBs.append( [xRange, yRange, zRange] )
-
   # For each pair of Movers whose bounding boxes overlap, add an
-  # edge to the graph.  We add them based on their indices.
-  for i in range(len(movers)-1):
-    for j in range(i+1, len(movers)):
-      if _AABBOverlap(AABBs[i], AABBs[j]):
-        ret.add_edge( vertex1 = verts[i], vertex2 = verts[j])
+  # edge to the graph.
+  for p in pairs:
+    ret.add_edge( vertex1 = verts[p[0]], vertex2 = verts[p[1]])
 
   return ret
 
@@ -204,9 +165,7 @@ def _AABBOverlap(box1, box2):
            (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
 
 # This function has been moved into C++ for speed. The original Python function
-# is below it and commented out.
-bp.import_ext("mmtbx_reduce_ext")
-from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
+# is below and commented out.
 """Helper function that tells whether any pair of atoms from two Movers overlap.
 :param mover1: The first Mover
 :param atoms1: Atom list for the first Mover

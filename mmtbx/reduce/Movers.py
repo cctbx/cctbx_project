@@ -75,6 +75,8 @@ from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 #  - PositionReturn FinePositions(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
+#     The list of atoms returned here must match the list returned for this index
+#       by CoarsePositions().
 #     The return values are the same as for CoarsePositions and they list potential
 #       fine motions around the particular coarse position (not including the position
 #       itself).  This function can be used by optimizers that wish to do heavy-weight
