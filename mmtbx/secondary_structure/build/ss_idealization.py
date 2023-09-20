@@ -405,7 +405,9 @@ def get_matching_sites_cart_in_both_h(old_h, new_h):
   if old_h.atoms_size() == new_h.atoms_size():
     good = True
     for a1, a2 in zip(old_h.atoms(), new_h.atoms()):
-      if a1.id_str()[:-6] != a2.id_str()[:-6]:
+      awl1 = a1.fetch_labels()
+      awl2 = a2.fetch_labels()
+      if awl1.chain_id != awl2.chain_id or awl1.resname != awl2.resname or awl1.name != awl2.name:
         # print "No match: '%s', '%s'" % (a1.id_str()[:-6], a2.id_str()[:-6])
         good = False
         break
