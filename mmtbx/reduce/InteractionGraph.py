@@ -151,19 +151,6 @@ def _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius = 0.25):
 
   return ret
 
-def _AABBOverlap(box1, box2):
-  """Helper function that tells whether two axis-aligned bounding boxes overlap.
-  :param box1: list of three ranges, for X, Y, and Z, that indicate one axis-aligned
-  bounding box.
-  :param box2: list of three ranges, for X, Y, and Z, that indicate another axis-aligned
-  bounding box.
-  :returns True if the boxes overlap, False if not.
-  """
-
-  return ( (box1[0][0] <= box2[0][1] and box1[0][1] >= box2[0][0]) and
-           (box1[1][0] <= box2[1][1] and box1[1][1] >= box2[1][0]) and
-           (box1[2][0] <= box2[2][1] and box1[2][1] >= box2[2][0]) )
-
 # This function has been moved into C++ for speed. The original Python function
 # is below and commented out.
 """Helper function that tells whether any pair of atoms from two Movers overlap.
