@@ -166,7 +166,7 @@ scitbx::af::shared<scitbx::af::shared<int> > FindOverlappingMoversAABB(
   // For each pair of Movers whose bounding boxes overlap, add an entry to the
   // return value.
   scitbx::af::shared<scitbx::af::shared<int> > ret;
-  for (size_t i = 0; i < movers.size() - 1; ++i) {
+  if (movers.size() > 0) for (size_t i = 0; i < movers.size() - 1; ++i) {
     for (size_t j = i + 1; j < movers.size(); ++j) {
       if (
         mins[i][0] <= maxs[j][0] && maxs[i][0] >= mins[j][0] &&
