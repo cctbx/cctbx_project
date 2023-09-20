@@ -145,12 +145,10 @@ def print_hbond_proxies(geometry, hierarchy, pymol=False):
     print((atoms[hb[0]].id_str(), "<====>",atoms[hb[1]].id_str(),
         atoms[hb[0]].distance(atoms[hb[1]]), hb[0], hb[1]))
     if pymol:
-      s1 = atoms[hb[0]].id_str()
-      s2 = atoms[hb[1]].id_str()
-      #print "pdbstr1:", s1
-      #print "pdbstr1:",s2
-      ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (s1[14:15],
-         s1[16:19], s1[5:7], s2[14:15], s2[16:19], s2[5:7])
+      awl1 = atoms[hb[0]].fetch_labels()
+      awl2 = atoms[hb[1]].fetch_labels()
+      ps = "dist chain \"%s\" and resi %s and name %s, chain \"%s\" and resi %s and name %s\n" % (
+          awl1.chain_id, awl1.resseq, awl1.name, awl2.chain_id, awl2.resseq, awl2.name)
       dashes.write(ps)
   print("min, max, mean, sd hbond lenghts", hbondlen.min_max_mean().as_tuple(),\
     hbondlen.standard_deviation_of_the_sample())
