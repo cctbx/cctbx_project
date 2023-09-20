@@ -57,7 +57,7 @@ bool PairsOverlap(boost::python::object const &mover1,
   boost::python::object const& mover2,
   molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
   double probeRad,
-  boost::python::dict &atomMoverSets)
+  boost::python::list &atomMoverLists)
 {
   // Read the atoms and positions for the two movers.
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms1 = getAtomsForMover(mover1);
@@ -101,14 +101,33 @@ bool PairsOverlap(boost::python::object const &mover1,
           double limitSquared = limit * limit;
           if (dSquared <= limitSquared) {
             // Add the two movers to each other's set of movers that they overlap with.
+            // Make sure that it is not already in the list before adding it.
             /// @todo This is the current bottleneck in interaction graph generation.
-            boost::python::object set_obj = atomMoverSets[atoms1[ai1].data->i_seq];
-            boost::python::object set_type = set_obj.attr("__class__");
-            set_type.attr("add")(set_obj, mover2);
+            boost::python::list myList = boost::python::extract<boost::python::list>(
+              atomMoverLists[atoms1[ai1].data->i_seq]);
+            bool found = false;
+            for (size_t i = 0; i < boost::python::len(myList); i++) {
+              if (myList[i] == mover2) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              myList.append(mover2);
+            }
 
-            set_obj = atomMoverSets[atoms2[ai2].data->i_seq];
-            set_type = set_obj.attr("__class__");
-            set_type.attr("add")(set_obj, mover1);
+            myList = boost::python::extract<boost::python::list>(
+              atomMoverLists[atoms2[ai2].data->i_seq]);
+            found = false;
+            for (size_t i = 0; i < boost::python::len(myList); i++) {
+              if (myList[i] == mover1) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              myList.append(mover1);
+            }
 
             // We found an overlap.
             ret = true;

@@ -1400,7 +1400,6 @@ def Test(inFileName = None, dumpAtoms = False):
   if len(ret) > 0:
     return "Optimizers.Test(): " + ret
 
-
   #========================================================================
   # Test model to use for validating the alternate/conformer-selection functions.
 

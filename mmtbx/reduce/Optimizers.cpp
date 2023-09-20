@@ -268,7 +268,7 @@ OptimizerC::OptimizerC(
     boost::python::dict& exclude,
     boost::python::object& dotScorer,
     boost::python::object& dotSphereCache,
-    boost::python::dict& atomMoverLists,
+    boost::python::list& atomMoverLists,
     molprobity::probe::SpatialQuery& spatialQuery,
     molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
     boost::python::object& deleteMes)
@@ -295,19 +295,20 @@ OptimizerC::OptimizerC(
       m_dotSphereCache.get_sphere( m_extraAtomInfoMap.getMappingFor(m_atoms[i]).getVdwRadius() ).dots();
   }
 
-  // Convert the atom-mover lists to a map from unsigned int (i_seq) to a vector of pointers to movers.
+  // Convert the atom-mover lists to a vector of vectors of pointers to movers, indexed by i_seq.
+  // The first index looks up the vector of Movers interacting with the atom.
   // This will speed up our internal processing when looking for cached atom scores.
-  boost::python::list keys = atomMoverLists.keys();
-  for (size_t i = 0; i < boost::python::len(keys); i++) {
-    boost::python::object key = keys[i];
-    boost::python::list movers = boost::python::extract<boost::python::list>(atomMoverLists[key]);
+  int length = boost::python::len(atomMoverLists);
+  m_atomMoverLists.resize(length);
+  for (size_t i = 0; i < length; i++) {
+    boost::python::list movers = boost::python::extract<boost::python::list>(atomMoverLists[i]);
 
     std::vector<PyObject*> moverPtrs;
     for (size_t j = 0; j < boost::python::len(movers); j++) {
       boost::python::object mover = movers[j];
       moverPtrs.push_back(mover.ptr());
     }
-    m_atomMoverLists[boost::python::extract<unsigned int>(key)] = moverPtrs;
+    m_atomMoverLists[i] = moverPtrs;
   }
 }
 

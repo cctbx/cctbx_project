@@ -153,7 +153,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , boost::python::dict&
       , boost::python::object&
       , boost::python::object&
-      , boost::python::dict&
+      , boost::python::list&
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
       , boost::python::object&

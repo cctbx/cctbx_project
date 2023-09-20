@@ -46,7 +46,7 @@ namespace molprobity {
           @param [in] exclude: Dictionary of atoms to exclude from collisions, looked up by i_seq.
           @param [in] dotScorer: Dot scorer to use.
           @param [in] dotSphereCache: Dot sphere cache to use to generate spheres for atoms.
-          @param [in] atomMoverLists: Dictionary of list of movers, looked up by i_seq.
+          @param [in] atomMoverLists: List of lists of movers that interact with an atom, looked up by i_seq.
           @param [inOut] spatialQuery: Spatial-query structure telling which atoms are where
           @param [inOut] extraAtomInfoMap: Map containing extra information about each atom.
           @param [inOut] deleteMes: Set of atoms to be deleted, passed as a Python object.
@@ -62,7 +62,7 @@ namespace molprobity {
         boost::python::dict& exclude,
         boost::python::object& dotScorer,
         boost::python::object& dotSphereCache,
-        boost::python::dict& atomMoverLists,
+        boost::python::list& atomMoverLists,
         molprobity::probe::SpatialQuery& spatialQuery,
         molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
         boost::python::object& deleteMes);
@@ -160,7 +160,7 @@ namespace molprobity {
       boost::python::dict m_exclude;          //< Make a copy so it will persist
       molprobity::probe::DotScorer& m_dotScorer;
       molprobity::probe::DotSphereCache& m_dotSphereCache;
-      std::map<unsigned, std::vector<PyObject*> > m_atomMoverLists;   // Converted in constructor
+      std::vector< std::vector<PyObject*> > m_atomMoverLists;   // Converted in constructor
       molprobity::probe::SpatialQuery& m_spatialQuery;
       molprobity::probe::ExtraAtomInfoMap& m_extraAtomInfoMap;
       boost::python::object m_deleteMes;      //< Make a copy so it will persist

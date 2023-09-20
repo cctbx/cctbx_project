@@ -49,8 +49,8 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   and whose edges indicate which Movers might overlap in any of their states.  Note that
   the mover list must not be modified after the graph has been constructed because
   that will change the index of its elements, making the graph point to the wrong
-  elements (or to elements that no longer exist). (2) A dictionary with atoms as the
-  key that returns the list of Movers that the atom interacts with; each has at least
+  elements (or to elements that no longer exist). (2) A list with atom i_seq as the
+  index that returns the list of Movers that the atom interacts with; each has at least
   the Mover that it is a part of and may contain additional ones when they overlap.
   """
 
@@ -59,13 +59,16 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   # takes too long.
   myGraph = _InteractionGraphAABB(movers, extraAtomInfoMap, probeRadius)
 
-  # Dictionary looked up by atom i_seq that returns the set of Movers that atom interacts
+  # List indexed by atom i_seq that returns the list of Movers that atom interacts
   # with.
-  atomMoverSets = {}
+  atomMoverLists = []
   for m in movers:
     coarses = m.CoarsePositions()
     for a in coarses.atoms:
-      atomMoverSets[a.i_seq] = {m}
+      # Ensure that the list is long enough to store this value in.
+      while a.i_seq >= len(atomMoverLists):
+        atomMoverLists.append([])
+      atomMoverLists[a.i_seq] = [m]
 
   # For each pair of movers that are connected by an edge in the graph produced
   # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.
@@ -74,14 +77,10 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
     targetMover = myGraph.vertex_label( myGraph.target(e) )
     if not _PairsOverlap(sourceMover, targetMover,
         extraAtomInfoMap, probeRadius,
-        atomMoverSets):
+        atomMoverLists):
       myGraph.remove_edge( e )
 
-  # Turn the Mover sets into lists to make them easier to traverse
-  for a in atomMoverSets:
-    atomMoverSets[a] = list(atomMoverSets[a])
-
-  return myGraph, atomMoverSets
+  return myGraph, atomMoverLists
 
 #######################################################################################################
 # Internal helper functions defined here
