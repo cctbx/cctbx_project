@@ -1464,6 +1464,10 @@ namespace hierarchy {
 
       void
       sort_atoms_in_place();
+
+      bool
+      fits_in_pdb_format(
+        bool use_hybrid36=true);
   };
 
   //! label_formatter chain_id must be set before this function is called.
