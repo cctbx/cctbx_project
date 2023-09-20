@@ -161,7 +161,7 @@ namespace molprobity {
       }
 
       /// @brief Get and set methods
-      ExtraAtomInfo  const &getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
+      ExtraAtomInfo  const &getMappingFor(iotbx::pdb::hierarchy::atom const &atom) const
       {
         if (atom.data->i_seq >= m_extraInfo.size()) {
           PyErr_SetString(PyExc_RuntimeError, "Out of bounds reference in ExtraAtomInfoMap::getMappingFor()");

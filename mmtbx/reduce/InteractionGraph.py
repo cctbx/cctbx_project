@@ -62,27 +62,8 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   # Dictionary looked up by atom i_seq that returns the set of Movers that atom interacts
   # with.
   atomMoverSets = {}
-
-  # Dictionaries of list of atoms per mover and dictionary of list of positions per atom per mover.
-  # Each of these is indexed the same way that movers is, so finding the index of the
-  # mover gets the same index for them.
-  atoms = {}
-  positions = {}
   for m in movers:
-
-    # Find all possible positions, coarse and fine, for each atom
-    # in this mover. Make a copy so that we don't extend the original
-    # positions.
     coarses = m.CoarsePositions()
-    coarsePositions = coarses.positions
-    total = coarsePositions[:]
-    for c in range(len(coarsePositions)):
-      for fp in m.FinePositions(c).positions:
-        total.append(fp)
-
-    # Add the atoms and positions into our dictionaries
-    atoms[m] = coarses.atoms
-    positions[m] = total
     for a in coarses.atoms:
       atomMoverSets[a.i_seq] = {m}
 
@@ -91,8 +72,7 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   for e in myGraph.edges():
     sourceMover = myGraph.vertex_label( myGraph.source(e) )
     targetMover = myGraph.vertex_label( myGraph.target(e) )
-    if not _PairsOverlap(sourceMover, atoms[sourceMover], positions[sourceMover],
-        targetMover, atoms[targetMover], positions[targetMover],
+    if not _PairsOverlap(sourceMover, targetMover,
         extraAtomInfoMap, probeRadius,
         atomMoverSets):
       myGraph.remove_edge( e )

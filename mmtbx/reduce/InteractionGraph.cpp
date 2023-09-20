@@ -17,19 +17,56 @@
 
 typedef scitbx::vec3<double> vec3;
 
+static scitbx::af::shared<iotbx::pdb::hierarchy::atom> getAtomsForMover(boost::python::object const& mover)
+{
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+  return coarse.atoms;
+}
+
+scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > getAtomLocationsForMover(
+  boost::python::object const& mover)
+{
+  // Find the coarse positions for this mover.
+  molprobity::reduce::PositionReturn coarse =
+    boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions = coarse.positions;
+
+  // Make a copy so that we don't change the original.
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > total;
+  for (size_t p = 0; p < positions.size(); ++p) {
+    total.push_back(positions[p]);
+  }
+
+  // Add the fine positions for this mover.
+  for (size_t c = 0; c < coarse.positions.size(); ++c) {
+    molprobity::reduce::PositionReturn fine =
+      boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(c));
+    for (size_t f = 0; f < fine.positions.size(); f++) {
+      total.push_back(fine.positions[f]);
+    }
+  }
+
+  return total;
+}
+
 namespace molprobity {
   namespace reduce {
 
 bool PairsOverlap(boost::python::object const &mover1,
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const& atoms1,
-  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const& positions1,
   boost::python::object const& mover2,
-  scitbx::af::shared<iotbx::pdb::hierarchy::atom>  const& atoms2,
-  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const& positions2,
-  molprobity::probe::ExtraAtomInfoMap & extraAtomInfoMap,
+  molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
   double probeRad,
   boost::python::dict &atomMoverSets)
 {
+  // Read the atoms and positions for the two movers.
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms1 = getAtomsForMover(mover1);
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions1 =
+    getAtomLocationsForMover(mover1);
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms2 = getAtomsForMover(mover2);
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions2 =
+    getAtomLocationsForMover(mover2);
+
   // Make a vector the stores the radius for each atom in the two lists, matched based
   // on index in the list. This keeps us from having to redo these lookups multiple times
   // in the loop below.
@@ -50,6 +87,7 @@ bool PairsOverlap(boost::python::object const &mover1,
       double x1 = p1[ai1][0];
       double y1 = p1[ai1][1];
       double z1 = p1[ai1][2];
+      // Compute all portions of the distance other than the radius of the second atom.
       double limit1 = 2 * probeRad + r1;
       for (size_t p2i = 0; p2i < positions2.size(); ++p2i) {
         scitbx::af::shared<molprobity::probe::Point> const& p2 = positions2[p2i];
@@ -63,6 +101,7 @@ bool PairsOverlap(boost::python::object const &mover1,
           double limitSquared = limit * limit;
           if (dSquared <= limitSquared) {
             // Add the two movers to each other's set of movers that they overlap with.
+            /// @todo This is the current bottleneck in interaction graph generation.
             boost::python::object set_obj = atomMoverSets[atoms1[ai1].data->i_seq];
             boost::python::object set_type = set_obj.attr("__class__");
             set_type.attr("add")(set_obj, mover2);
@@ -84,7 +123,7 @@ bool PairsOverlap(boost::python::object const &mover1,
 
 scitbx::af::shared<scitbx::af::shared<int> > FindOverlappingMoversAABB(
   scitbx::af::shared<boost::python::object> const& movers,
-  molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+  molprobity::probe::ExtraAtomInfoMap const& extraAtomInfoMap,
   double probeRad)
 {
   // Make a vector of bounding boxes for each mover.
@@ -93,26 +132,11 @@ scitbx::af::shared<scitbx::af::shared<int> > FindOverlappingMoversAABB(
   for (size_t i = 0; i < movers.size(); ++i) {
     boost::python::object mover = movers[i];
 
-    // Find the coarse positions for this mover.
+    // Find the atoms and their locations for this mover.
     molprobity::reduce::PositionReturn coarse =
       boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
-    scitbx::af::shared<iotbx::pdb::hierarchy::atom>  atoms = coarse.atoms;
-    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > positions = coarse.positions;
-
-    // Make a copy so that we don't change the original.
-    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > total;
-    for (size_t p = 0; p < positions.size(); ++p) {
-      total.push_back(positions[p]);
-    }
-
-    // Add the fine positions for this mover.
-    for (size_t c = 0; c < coarse.positions.size(); ++c) {
-      molprobity::reduce::PositionReturn fine =
-        boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(c));
-      for (size_t f = 0; f < fine.positions.size(); f++) {
-        total.push_back(fine.positions[f]);
-      }
-    }
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms = getAtomsForMover(mover);
+    scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > total = getAtomLocationsForMover(mover);
 
     scitbx::vec3<double> thisMin(1e10, 1e10, 1e10);
     scitbx::vec3<double> thisMax(-1e10, -1e10, -1e10);

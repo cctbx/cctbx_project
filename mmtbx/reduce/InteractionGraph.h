@@ -46,12 +46,8 @@ namespace molprobity {
     */
     bool PairsOverlap(
       boost::python::object const &mover1,
-      scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms1,
-      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const &positions1,
       boost::python::object const &mover2,
-      scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms2,
-      scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > const &positions2,
-      molprobity::probe::ExtraAtomInfoMap &extraAtomInfoMap,
+      molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
       double probeRad,
       boost::python::dict &atomMoverSets
     );
@@ -67,7 +63,7 @@ namespace molprobity {
     */
     scitbx::af::shared< scitbx::af::shared<int> > FindOverlappingMoversAABB(
       scitbx::af::shared<boost::python::object> const &movers,
-      molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
+      molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
       double probeRad);
 
     //=====================================================================================================
