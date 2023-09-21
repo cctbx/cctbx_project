@@ -836,16 +836,17 @@ class _():
       a.set_element(element)
       a.set_charge(charge)
     def get_id(l):
+      # This function takes content between last 2 quotes and removes whitespaces.
+      # figure out positions of " (quotes)
       r = [pos for pos, char in enumerate(l) if char == '"']
+      # do nothing if less than two quotes
       if(len(r)<2): return None
+      # assign the last 2 to i,j... not clear when there will be more that 2 quotes in id_str or sc.label
       i,j = r[-2:]
+      # drop the quotes and remove whitespaces while spoiling r.
       r = "".join(l[i:j+1].replace('"',"").replace('"',"").split())
       return r
     for sc, a in zip(scatterers, awl):
-      id_str = a.id_str()
-      resname_from_sc = id_str[10:13]
-      cl1 = common_residue_names_get_class(resname_from_sc)
-      cl2 = common_residue_names_get_class(a.resname)
       if assert_identical_id_str:
         l1 = get_id(sc.label)
         l2 = get_id(a.id_str())

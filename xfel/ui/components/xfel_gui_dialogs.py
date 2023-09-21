@@ -932,7 +932,8 @@ class AdvancedSettingsDialog(BaseDialog):
                                            name='extra_options',
                                            size=(-1, 60),
                                            style=wx.VSCROLL,
-                                           value="\n".join(self.params.mp.extra_options))
+                                           value="\n".join(self.params.mp.extra_options)
+                                                 if any(self.params.mp.extra_options) else "")
     extra_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     extra_sizer.Add(extra_txt, flag=wx.ALL, border=10)
     extra_sizer.Add(self.extra_options, flag=wx.EXPAND | wx.ALL, border=10)

@@ -149,6 +149,8 @@ class Scraper(object):
       if 'CC1/2' in r:
         last = last_res = 0
         for row in r['CC1/2']:
+          if 'All' in row:
+            break
           row_n, d_max, d_min, cc = row
           if cc > 0 and not last:
             last = cc; last_res = (d_max + d_min) / 2

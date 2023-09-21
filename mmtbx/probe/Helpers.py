@@ -386,7 +386,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
             extra = probeExt.ExtraAtomInfo()
             try:
               hb_type = model.get_specific_h_bond_type(a.i_seq)
-              if isinstance(hb_type, str):
+              if hb_type in ['A', 'B', 'D', 'N', 'H']: #isinstance(hb_type, str):
                 if hb_type == "A" or hb_type == "B":
                   extra.isAcceptor = True
                 if hb_type == "D" or hb_type == "B":

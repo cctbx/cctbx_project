@@ -404,6 +404,12 @@ namespace hierarchy {
       bool add_model,
       bool add_segid);
 
+    std::string
+    format(
+      shared_ptr<chain_data> const& ch_lock,
+      bool add_model,
+      bool add_segid);
+
     //! All labels are extracted from the atom and its parents.
     /*! result must point to an array of size 15 (or greater).
         On return, result is NOT null-terminated.
@@ -426,12 +432,8 @@ namespace hierarchy {
       bool pdbres=false);
 
     //! All relevant labels are extracted from the residue and its parents.
-    /*! result must point to an array of size 37 (or greater).
-        On return, result IS null-terminated.
-     */
-    void
+    std::string
     format(
-      char* result,
       hierarchy::residue const& residue);
   };
 
@@ -1464,6 +1466,10 @@ namespace hierarchy {
 
       void
       sort_atoms_in_place();
+
+      bool
+      fits_in_pdb_format(
+        bool use_hybrid36=true);
   };
 
   //! label_formatter chain_id must be set before this function is called.
