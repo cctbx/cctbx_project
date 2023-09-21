@@ -239,6 +239,41 @@ namespace {
     return i_seq;
   }
 
+  bool
+  root::fits_in_pdb_format(
+    bool use_hybrid36)
+  {
+    std::vector<model> const& models = this->models();
+    unsigned n_mds = models_size();
+    for(unsigned i_md=0;i_md<n_mds;i_md++) {
+      unsigned n_chs = models[i_md].chains_size();
+      std::vector<chain> const& chains = models[i_md].chains();
+      for(unsigned i_ch=0;i_ch<n_chs;i_ch++) {
+        // chain id
+        if (chains[i_ch].data->id.size()>2) return false;
+        unsigned n_rgs = chains[i_ch].residue_groups_size();
+        std::vector<residue_group> const& rgs = chains[i_ch].residue_groups();
+        for(unsigned i_rg=0;i_rg<n_rgs;i_rg++) {
+          // resseq
+          if (!use_hybrid36 && rgs[i_rg].resseq_as_int() > 9999) return false;
+          unsigned n_ags = rgs[i_rg].atom_groups_size();
+          std::vector<atom_group> const& ags = rgs[i_rg].atom_groups();
+          for(unsigned i_ag=0;i_ag<n_ags;i_ag++) {
+            // residue name
+            if (ags[i_ag].data->resname.size()>3) return false;
+            unsigned n_ats = ags[i_ag].atoms_size();
+            std::vector<atom> const& atoms = ags[i_ag].atoms();
+            for(unsigned i_at=0; i_at<n_ats; i_at++) {
+              // atom serial number
+              if (!use_hybrid36 && atoms[i_at].serial_as_int() > 99999) return false;
+            }
+          }
+        }
+      }
+    }
+    return true;
+  }
+
   void
   root::sort_atoms_in_place()
   {

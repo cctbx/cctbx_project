@@ -980,6 +980,11 @@ class structure(crystal.special_position_settings):
     return result
 
 
+# MARKED_FOR_DELETION_OLEG
+# Reason: this functionality relies on content of scatterer.label, which should be
+# identical to atom.id_str(). Now when it becomes of variable lenghts, slicing it to extract
+# atom names or residue names will not work.
+
   def heavy_selection(self,
     ignore_atoms_with_alternative_conformations=False,
     include_only_atoms_with_alternative_conformations=False,
@@ -1064,6 +1069,7 @@ class structure(crystal.special_position_settings):
     :rtype: boolean[]
     """
     #XXX may need a better function
+    assert 0
     if ( ignore_atoms_with_alternative_conformations and
          include_only_atoms_with_alternative_conformations
          ):
@@ -1162,6 +1168,8 @@ class structure(crystal.special_position_settings):
       ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
       include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
       )
+
+# END_MARKED_FOR_DELETION_OLEG
 
   def element_selection(self, *elements):
     """Get a selector array for scatterers of specified element type(s) of the structure.

@@ -54,7 +54,7 @@ class Job(db_proxy):
           if self.dataset_id is not None:
             self._dataset_version = self.app.get_job_dataset_version(self.id)
         elif getattr(self, name_id) is not None:
-          setattr(self, _name, getattr(self.app, "get_" + name)(**{name_id:self.trial_id}))
+          setattr(self, _name, getattr(self.app, "get_" + name)(**{name_id:getattr(self, name_id)}))
       return getattr(self, _name)
     elif name == "scope":
       return task_scope[task_types.index(self.type)]
@@ -633,7 +633,6 @@ class EnsembleRefinementJob(Job):
     mp.wall_time={}
     mp.use_mpi=False
     mp.mpi_command={}
-    {}
     mp.shifter.submit_command={}
     mp.shifter.shifter_image={}
     mp.shifter.sbatch_script_template={}
@@ -663,7 +662,6 @@ class EnsembleRefinementJob(Job):
                '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
                self.app.params.mp.wall_time,
                self.app.params.mp.mpi_command,
-               "\n".join(["extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.mp.shifter.submit_command,
                self.app.params.mp.shifter.shifter_image,
                self.app.params.mp.shifter.sbatch_script_template,
@@ -682,6 +680,7 @@ class EnsembleRefinementJob(Job):
                path,
                self.rungroup.untrusted_pixel_mask_path,
                ).split()
+    arguments.extend(["mp.extra_options={}".format(opt) for opt in self.app.params.mp.extra_options])
 
     try:
       commands = Script(arguments).run()
@@ -921,12 +920,13 @@ class PhenixJob(Job):
 
 class _job(object):
   """Used to represent a job that may not have been submitted into the cluster or database yet"""
-  def __init__(self, trial, rungroup, run, task=None, dataset=None):
+  def __init__(self, trial, rungroup, run, task=None, dataset=None, dataset_version=None):
     self.trial = trial
     self.rungroup = rungroup
     self.run = run
     self.task = task
     self.dataset = dataset
+    self.dataset_version = dataset_version
 
   def __str__(self):
     s = "Job: Trial %d, rg %d, run %s"%(self.trial.trial, self.rungroup.id, self.run.run)
@@ -934,12 +934,14 @@ class _job(object):
       s += ", task %d %s"%(self.task.id, self.task.type)
     if self.dataset:
       s += ", dataset %d %s"%(self.dataset.id, self.dataset.name)
+    if self.dataset_version:
+      s += ", dataset_version %d %d"%(self.dataset_version.id, self.dataset_version.version)
     return s
 
   @staticmethod
   def job_hash(job):
     ret = []
-    check = ['trial', 'rungroup', 'run', 'task', 'dataset']
+    check = ['trial', 'rungroup', 'run', 'task', 'dataset', 'dataset_version']
     for subitem_name in check:
       subitem = getattr(job, subitem_name)
       if subitem is None:
@@ -949,13 +951,19 @@ class _job(object):
     return tuple(ret)
 
   def __eq__(self, other):
-    return job_hash(self) == job_hash(other)
+    return _job.job_hash(self) == _job.job_hash(other)
 
 def submit_all_jobs(app):
   submitted_jobs = {_job.job_hash(j):j for j in app.get_all_jobs()}
   if app.params.mp.method == 'local': # only run one job at a time
     for job in submitted_jobs.values():
       if job.status in ['RUN', 'UNKWN', 'SUBMITTED']: return
+
+  if app.params.mp.max_queued is not None:
+    running_jobs = sum([1 for job in submitted_jobs.values() if job.status in ['RUN', 'SUBMITTED', 'PEND']])
+    if running_jobs >= app.params.mp.max_queued:
+      print("Waiting for space in the queue to submit next job")
+      return
 
   runs = app.get_all_runs()
   trials = app.get_all_trials(only_active = True)
@@ -988,6 +996,12 @@ def submit_all_jobs(app):
 
     if app.params.mp.method == 'local': # only run one job at a time
       return
+
+    if app.params.mp.max_queued is not None:
+      running_jobs += 1
+      if running_jobs >= app.params.mp.max_queued:
+        print("Waiting for space in the queue to submit next job")
+        return
 
   datasets = app.get_all_datasets()
   for dataset_idx, dataset in enumerate(datasets):
@@ -1071,6 +1085,11 @@ def submit_all_jobs(app):
 
         if app.params.mp.method == 'local': # only run one job at a time
           return
+        if app.params.mp.max_queued is not None:
+          running_jobs += 1
+          if running_jobs >= app.params.mp.max_queued:
+            print("Waiting for space in the queue to submit next job")
+            return
         break # job submitted so don't look for more in this run for this dataset
 
     versions = dataset.versions
@@ -1114,6 +1133,11 @@ def submit_all_jobs(app):
 
             if app.params.mp.method == 'local': # only run one job at a time
               return
+            if app.params.mp.max_queued is not None:
+              running_jobs += 1
+              if running_jobs >= app.params.mp.max_queued:
+                print("Waiting for space in the queue to submit next job")
+                return
 
       key = dataset_idx, task_idx
       if key not in global_tasks: continue # no jobs ready yet
@@ -1148,3 +1172,8 @@ def submit_all_jobs(app):
 
         if app.params.mp.method == 'local': # only run one job at a time
           return
+        if app.params.mp.max_queued is not None:
+          running_jobs += 1
+          if running_jobs >= app.params.mp.max_queued:
+            print("Waiting for space in the queue to submit next job")
+            return
