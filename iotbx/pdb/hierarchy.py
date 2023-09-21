@@ -11,7 +11,7 @@ from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
-from cctbx import crystal
+from cctbx import crystal, adptbx
 from cctbx.array_family import flex
 import six
 from six.moves import cStringIO as StringIO
@@ -808,20 +808,18 @@ class _():
     else:  # usual just use whatever is default in xray_structure_simple
       return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
 
-  def adopt_xray_structure(self, xray_structure, assert_identical_id_str=True):
+  def adopt_xray_structure(self, xray_structure):
     """
     Apply the current (refined) atomic parameters from the cctbx.xray.structure
-    object to the atoms in the PDB hierarchy.  This will fail if the labels of
-    the scatterers do not match the atom labels.
+    object to the atoms in the PDB hierarchy.
     """
-    from cctbx import adptbx
     if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
     awl = self.atoms_with_labels()
     scatterers = xray_structure.scatterers()
     uc = xray_structure.unit_cell()
     orth = uc.orthogonalize
-    def set_attr(sc, a):
+    for sc, a in zip(scatterers, awl):
       a.set_xyz(new_xyz=orth(sc.site))
       a.set_occ(new_occ=sc.occupancy)
       a.set_b(new_b=adptbx.u_as_b(sc.u_iso_or_equiv(uc)))
@@ -835,24 +833,6 @@ class _():
       element, charge = sc.element_and_charge_symbols()
       a.set_element(element)
       a.set_charge(charge)
-    def get_id(l):
-      # This function takes content between last 2 quotes and removes whitespaces.
-      # figure out positions of " (quotes)
-      r = [pos for pos, char in enumerate(l) if char == '"']
-      # do nothing if less than two quotes
-      if(len(r)<2): return None
-      # assign the last 2 to i,j... not clear when there will be more that 2 quotes in id_str or sc.label
-      i,j = r[-2:]
-      # drop the quotes and remove whitespaces while spoiling r.
-      r = "".join(l[i:j+1].replace('"',"").replace('"',"").split())
-      return r
-    for sc, a in zip(scatterers, awl):
-      if assert_identical_id_str:
-        l1 = get_id(sc.label)
-        l2 = get_id(a.id_str())
-        if(l1 != l2):
-          raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
-      set_attr(sc=sc, a=a)
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """

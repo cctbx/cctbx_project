@@ -381,7 +381,6 @@ def strip_model(
       xray_structure = xray_structure.select(sele)
       print("  removed %d waters" % n_wat, file=log)
       pdb_hierarchy.atoms().reset_i_seq()
-  assert_identical_id_str = True
   if (remove_alt_confs):
     n_atoms_start = xray_structure.scatterers().size()
     pdb_hierarchy.remove_alt_confs(always_keep_one_conformer=False)
@@ -390,7 +389,6 @@ def strip_model(
     if (n_atoms_end != n_atoms_start):
       print("  removed %d atoms in alternate conformations" % \
         (n_atoms_end - n_atoms_start), file=log)
-      assert_identical_id_str = False
     xray_structure = xray_structure.select(i_seqs)
     pdb_hierarchy.atoms().reset_i_seq()
   if (convert_semet_to_met):
@@ -400,14 +398,12 @@ def strip_model(
     pdb_hierarchy.convert_semet_to_met()
   if (convert_to_isotropic):
     xray_structure.convert_to_isotropic()
-    pdb_hierarchy.adopt_xray_structure(xray_structure,
-      assert_identical_id_str=assert_identical_id_str)
+    pdb_hierarchy.adopt_xray_structure(xray_structure)
     print("  converted all atoms to isotropic B-factors", file=log)
   if (reset_occupancies):
     assert (remove_alt_confs)
     xray_structure.adjust_occupancy(occ_max=1.0, occ_min=1.0)
-    pdb_hierarchy.adopt_xray_structure(xray_structure,
-      assert_identical_id_str=assert_identical_id_str)
+    pdb_hierarchy.adopt_xray_structure(xray_structure)
     print("  reset occupancy to 1.0 for all atoms", file=log)
   if (reset_hetatm_flag):
     for atom in pdb_hierarchy.atoms():
