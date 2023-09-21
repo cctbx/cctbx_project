@@ -2957,7 +2957,7 @@ class MergingStatsTab(BaseTab):
       pass
     else:
       self.dataset_version.ctr.Append('All')
-      for version in dataset.versions:
+      for version in dataset.active_versions:
         self.dataset_version.ctr.Append(str(version.version))
       self.dataset_version.ctr.SetSelection(0)
       self.refresh_stats()
@@ -2967,9 +2967,9 @@ class MergingStatsTab(BaseTab):
     dataset = self.all_datasets[sel]
     self.dataset_name = dataset.name
     if self.dataset_version.ctr.GetSelection() == 0:
-      self.dataset_versions = [version.output_path() for version in dataset.versions]
+      self.dataset_versions = [version.output_path() for version in dataset.active_versions]
     else:
-      version = dataset.versions[self.dataset_version.ctr.GetSelection()-1]
+      version = dataset.active_versions[self.dataset_version.ctr.GetSelection()-1]
       self.dataset_name += " v%03d"%version.version
       self.dataset_versions = [version.output_path()]
 

@@ -19,6 +19,9 @@ class Dataset(db_proxy):
       versions = self.app.get_dataset_versions(self.id, latest = True)
       if versions: return versions[0]
       else: return None
+    elif name == "active_versions":
+      dataset_task_ids = [t.id for t in self.tasks]
+      return [v for v in self.versions if all([j.task.id in dataset_task_ids for j in v.jobs])]
     else:
       return super(Dataset, self).__getattr__(name)
 
