@@ -1049,6 +1049,8 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _ReinterpretModel(self, make_restraints=True):
+    # Reinterpret the model using the same approach that hydrogen-placement does.
+    # @param make_restraints: Should we compute restraints during the interpretation?
     self.model.get_hierarchy().sort_atoms_in_place()
     self.model.get_hierarchy().atoms().reset_serial()
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -1057,7 +1059,7 @@ NOTES:
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.sort_atoms=True
-    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p) # make restraints
+    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
 
@@ -1211,7 +1213,7 @@ NOTES:
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
       startInt = time.time()
-      # self._ReinterpretModel()
+      self._ReinterpretModel()
       doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
