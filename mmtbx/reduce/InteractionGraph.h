@@ -17,12 +17,38 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <boost/python.hpp>
 #include "../../boost_adaptbx/graph/graph_type.hpp"
 #include "../probe/Scoring.h"
 
 namespace molprobity {
   namespace reduce {
+
+    /** @brief Class to keep track of the Movers that each atom interacts with. */
+    class AtomMoverLists {
+    public:
+
+      /// @brief Default constructor.
+      AtomMoverLists();
+
+      /// @brief Add a Mover to the list for an atom.
+      /// @param i_seq : Index of the atom
+      /// @param mover : Mover to add
+      void AddAtomMoverEntry(unsigned i_seq, boost::python::object mover);
+
+      /// @brief Clear the list of Movers for all atoms.
+      void Clear();
+
+      /// @brief Get the list of Movers for an atom.
+      /// @param i_seq : Index of the atom
+      /// @return List of Movers for the atom. Throws a Python exception if it beyond those added.
+      std::vector< boost::python::object > const& GetAtomMoverList(unsigned i_seq) const;
+
+    protected:
+      /// Vector indexed by i_seq of the atom. Each entry is a list of Movers that the atom interacts with.
+      std::vector< std::vector< boost::python::object > > m_atomMoverLists;
+    };
 
     /** @brief Function to report whether any atoms overlap between two Movers.
 
@@ -50,7 +76,7 @@ namespace molprobity {
       boost::python::object const &mover2,
       molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
       double probeRad,
-      boost::python::list &atomMoverLists
+      AtomMoverLists &atomMoverLists
     );
 
     /** @brief Function to determine which Movers have overlapping bounding boxes.

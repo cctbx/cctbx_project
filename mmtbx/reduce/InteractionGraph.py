@@ -30,6 +30,7 @@ import mmtbx_probe_ext as probeExt
 bp.import_ext("mmtbx_reduce_ext")
 from mmtbx_reduce_ext import PairsOverlap as _PairsOverlap
 from mmtbx_reduce_ext import FindOverlappingMoversAABB as _FindOverlappingMoversAABB
+from mmtbx_reduce_ext import AtomMoverLists
 
 def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   """Tests for overlap of all possible positions of all movable atoms between each
@@ -49,9 +50,10 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
   and whose edges indicate which Movers might overlap in any of their states.  Note that
   the mover list must not be modified after the graph has been constructed because
   that will change the index of its elements, making the graph point to the wrong
-  elements (or to elements that no longer exist). (2) A list with atom i_seq as the
-  index that returns the list of Movers that the atom interacts with; each has at least
-  the Mover that it is a part of and may contain additional ones when they overlap.
+  elements (or to elements that no longer exist). (2) An AtomMoverLists class that
+  can look up using atom i_seq as the index and returns the list of Movers that the
+  atom interacts with; each has at least the Mover that it is a part of and may
+  contain additional ones when they overlap.
   """
 
   # Run the AABB test to get a superset of the list of pairs that we need to check for
@@ -61,14 +63,11 @@ def InteractionGraphAllPairs(movers, extraAtomInfoMap, probeRadius = 0.25):
 
   # List indexed by atom i_seq that returns the list of Movers that atom interacts
   # with.
-  atomMoverLists = []
+  atomMoverLists = AtomMoverLists()
   for m in movers:
     coarses = m.CoarsePositions()
     for a in coarses.atoms:
-      # Ensure that the list is long enough to store this value in.
-      while a.i_seq >= len(atomMoverLists):
-        atomMoverLists.append([])
-      atomMoverLists[a.i_seq] = [m]
+      atomMoverLists.AddAtomMoverEntry(a.i_seq, m)
 
   # For each pair of movers that are connected by an edge in the graph produced
   # by the AABB algorithm to see if they actually overlap.  If not, remove that edge.

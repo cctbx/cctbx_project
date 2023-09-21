@@ -53,11 +53,50 @@ scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > getAtomLocati
 namespace molprobity {
   namespace reduce {
 
+AtomMoverLists::AtomMoverLists()
+{
+}
+
+void AtomMoverLists::AddAtomMoverEntry(unsigned i_seq, boost::python::object mover)
+{
+  // Make sure that we have an entry to add it to.
+  while (i_seq >= m_atomMoverLists.size()) {
+    m_atomMoverLists.push_back(std::vector< boost::python::object >());
+  }
+  std::vector< boost::python::object > &atomMoverList = m_atomMoverLists[i_seq];
+
+  // If we already have this, then we don't need to add it again.
+  bool found = false;
+  for (size_t i = 0; i < atomMoverList.size(); ++i) {
+    if (atomMoverList[i].ptr() == mover.ptr()) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    atomMoverList.push_back(mover);
+  }
+}
+
+void AtomMoverLists::Clear()
+{
+  m_atomMoverLists.clear();
+}
+
+std::vector< boost::python::object > const& AtomMoverLists::GetAtomMoverList(unsigned i_seq) const
+{
+  if (i_seq >= m_atomMoverLists.size()) {
+    PyErr_SetString(PyExc_RuntimeError, "Out of bounds reference in AtomMoverLists::GetAtomMoverList()");
+    boost::python::throw_error_already_set();
+  }
+  return m_atomMoverLists[i_seq];
+}
+
 bool PairsOverlap(boost::python::object const &mover1,
   boost::python::object const& mover2,
   molprobity::probe::ExtraAtomInfoMap const &extraAtomInfoMap,
   double probeRad,
-  boost::python::list &atomMoverLists)
+  AtomMoverLists &atomMoverLists)
 {
   // Read the atoms and positions for the two movers.
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms1 = getAtomsForMover(mover1);
@@ -103,31 +142,8 @@ bool PairsOverlap(boost::python::object const &mover1,
             // Add the two movers to each other's set of movers that they overlap with.
             // Make sure that it is not already in the list before adding it.
             /// @todo This is the current bottleneck in interaction graph generation.
-            boost::python::list myList = boost::python::extract<boost::python::list>(
-              atomMoverLists[atoms1[ai1].data->i_seq]);
-            bool found = false;
-            for (size_t i = 0; i < boost::python::len(myList); i++) {
-              if (myList[i] == mover2) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              myList.append(mover2);
-            }
-
-            myList = boost::python::extract<boost::python::list>(
-              atomMoverLists[atoms2[ai2].data->i_seq]);
-            found = false;
-            for (size_t i = 0; i < boost::python::len(myList); i++) {
-              if (myList[i] == mover1) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              myList.append(mover1);
-            }
+            atomMoverLists.AddAtomMoverEntry(atoms1[ai1].data->i_seq, mover2);
+            atomMoverLists.AddAtomMoverEntry(atoms2[ai2].data->i_seq, mover1);
 
             // We found an overlap.
             ret = true;
@@ -205,6 +221,7 @@ scitbx::af::shared<scitbx::af::shared<int> > FindOverlappingMoversAABB(
 
 std::string InteractionGraph_test()
 {
+  // The AtomMoverLists class is tested in the Python test script.
   // The PairsOverlap() function is tested in the Python test script.
   // The FindOverlappingMoversAABB() function is tested in the Python test script.
 

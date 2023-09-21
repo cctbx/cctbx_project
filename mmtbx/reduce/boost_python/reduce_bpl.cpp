@@ -135,6 +135,13 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     ;
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
+  class_<AtomMoverLists>("AtomMoverLists")
+    .def(init<>())
+    .def("AddAtomMoverEntry", &AtomMoverLists::AddAtomMoverEntry)
+    .def("Clear", &AtomMoverLists::Clear)
+    .def("GetAtomMoverList", &AtomMoverLists::GetAtomMoverList, return_internal_reference<>())
+    ;
+
   def("PairsOverlap", PairsOverlap,
     "Test for overlap between two pairs of atoms.");
   def("FindOverlappingMoversAABB", FindOverlappingMoversAABB,
@@ -153,7 +160,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , boost::python::dict&
       , boost::python::object&
       , boost::python::object&
-      , boost::python::list&
+      , AtomMoverLists&
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
       , boost::python::object&
