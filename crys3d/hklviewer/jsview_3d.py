@@ -600,7 +600,7 @@ class HKLview_3d:
         self.L = self.all_vectors[ self.normal_vecnr ][7]
         # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
         # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
-        if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
+        if "tNCS" in self.all_vectors[ self.normal_vecnr ][1]:
           self.L *= 0.5
 
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
@@ -631,7 +631,7 @@ class HKLview_3d:
           abcvec = self.all_vectors[ self.normal_vecnr ][6]
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec), verbose=1)
           infomsg = "Vector distance from origin: %d" %(self.params.clip_plane.hkldist)
-          if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
+          if "tNCS" in self.all_vectors[ self.normal_vecnr ][1]:
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
             The tncs modulation length is the inverse length of the tncs vector as defined in
@@ -650,7 +650,7 @@ class HKLview_3d:
             sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1]
                                       + dmincartvec[2]*dmincartvec[2] )
             n_tncs_layers = sphereradius*self.renderscale/self.L
-            infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
+            infomsg = "tNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
 
           if "-fold" in self.all_vectors[ self.normal_vecnr ][1]:
             clipwidth = self.params.clip_plane.clip_width
@@ -659,7 +659,7 @@ class HKLview_3d:
 
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
-        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "TNCS":
+        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "tNCS":
           scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections

@@ -252,7 +252,11 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
   print('\n\n')
   for i, sel in enumerate(opts):
     print('    %2d : "%s"' % (i+1,sel))
-  rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
+  if len(opts)==1:
+    print('\n  Automatically selecting')
+    rc=opts[0]
+  else:
+    rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
   try:
     rc = int(rc)
     rc = opts[rc-1]
@@ -492,14 +496,27 @@ Usage examples:
       if self.params.qi.step_buffer_radius:
         ih = 'step_buffer_radius="%s"' % self.params.qi.step_buffer_radius
 
-      ih += ' qi.nproc=%s' % self.params.qi.nproc
+      program = 'mmtbx.quantum_interface'
+      ih2 = ' run_qmr=True'
+      if self.params.qi.format=='qi':
+        ih += ' qi.nproc=%s' % self.params.qi.nproc
+      else:
+        program='phenix.refine'
+        ih2 = self.data_manager.get_default_model_name()
+        if ih2.endswith('.updated.pdb'):
+          ih2 = ih2.replace('.updated.pdb', '.mtz')
+        else:
+          ih2 = ' %s' % 'test.mtz'
 
       print('''
 
-      mmtbx.quantum_interface %s run_qmr=True %s %s
-      ''' % (self.data_manager.get_default_model_name(),
+      %s %s %s %s %s
+      ''' % (program,
+             self.data_manager.get_default_model_name(),
              ih,
-             pf))
+             pf,
+             ih2,
+             ))
       return
 
     if self.params.qi.run_directory:
@@ -727,6 +744,7 @@ Usage examples:
           energy+=0.5
         elif units.lower() in ['ev']:
           energy+=13.61
+          # energy+=4.098 # 94.51 kcal/mol
         else:
           assert 0
       te.append(energy)
@@ -741,7 +759,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('ASN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('ASN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_GLN(self, log=None):
     def classify_NQ(args): pass
@@ -752,7 +771,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('GLN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('GLN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_histidine(self, log=None):
     rc=self.iterate_NQH('HIS',
@@ -768,7 +788,8 @@ Usage examples:
                     'HD1 only flipped',
                     'HE2 only flipped',
     ]
-    self.process_flipped_jobs('HIS', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('HIS', rc, protonation=protonation, nproc=nproc, log=log)
 
   def process_flipped_jobs(self, resname, rc, protonation=None, id_str=None, nproc=-1, log=None):
     energies = []
@@ -1027,12 +1048,9 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
-      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
-                                              'exclude_protein_main_chain_to_delta_from_optimisation = True')
-      qi_phil_string = qi_phil_string.replace('exclude_torsions_from_optimisation = False',
-                                              'exclude_torsions_from_optimisation = True')
-      # qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
-      #                                         'exclude_protein_main_chain_from_optimisation = True')
+      qi_phil_string = qi_phil_string.replace(
+        'protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions',
+        'protein_optimisation_freeze = all None main_chain main_chain_to_beta *main_chain_to_delta *torsions')
 
     if iterate_metals:
       qi_phil_string = qi_phil_string.replace('refinement.', '')

@@ -306,8 +306,11 @@ class omegalyze(validation):
         include_non_standard_peptides=True):
       main_residue = twores[1] #this is the relevant residue for id-ing cis-Pro
       conf_altloc = get_conformer_altloc(twores)
-      prevres_altloc, mainres_altloc = get_local_omega_altlocs(twores)
-      twores_altloc = prevres_altloc or mainres_altloc #default '' evals False
+      omega_atoms = get_omega_atoms(twores)
+      # omega_atoms is the list [CA1 C1 N2 CA2], with None for missing atoms
+      if None in omega_atoms:
+        continue
+      twores_altloc = local_altloc_from_atoms(omega_atoms)
 
       model_id = twores[0].parent().parent().parent().id
       if model_id not in self.residue_count_by_model:
@@ -325,10 +328,7 @@ class omegalyze(validation):
       if (conf_altloc != first_conf_altloc) and twores_altloc == '':
         #skip non-alternate residues unless this is the first time thru a chain
         continue
-      omega_atoms = get_omega_atoms(twores)
-      #omega_atoms is the list [CA1 C1 N2 CA2], with None for missing atoms
-      if None in omega_atoms:
-        continue
+
       omega = get_omega(omega_atoms)
       if omega is None: continue
       omega_type = find_omega_type(omega)
@@ -355,11 +355,11 @@ class omegalyze(validation):
                 resseq=main_residue.resseq,
                 icode=main_residue.icode,
                 resname=main_residue.resname,
-                altloc=mainres_altloc,
+                altloc=local_altloc_from_atoms(omega_atoms[2:]),
                 prev_resseq=twores[0].resseq,
                 prev_icode=twores[0].icode,
                 prev_resname=twores[0].resname,
-                prev_altloc=prevres_altloc,
+                prev_altloc=local_altloc_from_atoms(omega_atoms[0:2]),
                 segid=None,
                 omega=omega,
                 omega_type=omega_type,
@@ -434,13 +434,16 @@ class omegalyze(validation):
         data.append((result.chain_id, result.resid, result.resname, result.score, result.xyz))
     return data
 
-  def as_JSON(self):
+  def as_JSON(self, addon_json={}):
     # self.chain_id, "%1s%s %4s%1s to %1s%s %s" % (self.prev_altloc, self.prev_resname, self.prev_resseq, self.prev_icode, self.altloc, self.resname, self.resid),
     #         res_types[self.res_type], self.omega, omega_types[self.omega_type] ]
     # keep names roughly the same
     #check name in program template
     # {model: {1: {chain: {A: {residue_group: {1A: results}}}}}}
-    data = {"validation_type": "omegalyze"}
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "omegalyze"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -589,40 +592,17 @@ def get_center(ag):
 def get_conformer_altloc(twores):
   return twores[0].parent().altloc #go to conformer level
 
-def get_local_omega_altlocs(twores):
-  #in conformer world, where threes come from, altlocs are most accurately
-  #  stored at the atom level, in the .id_str()
-  #look at all atoms in the main residues, plus the atoms used in calculations
-  #  from adjacent residues to find if any have altlocs
-  prevres_alt = ''
-  mainres_alt = ''
-  for atom in twores[1].atoms():
-    if atom.name not in [" N  ", " CA "]:
-      continue
-    altchar = atom.id_str()[9:10]
-    if altchar != ' ':
-      mainres_alt = altchar
-      break
-  for atom in twores[0].atoms():
-    if atom.name not in [" CA "," C  "]:
-      continue
-    altchar = atom.id_str()[9:10]
-    if altchar != ' ':
-      prevres_alt = altchar
-      break
-  return prevres_alt, mainres_alt
+def local_altloc_from_atoms(atom_list):
+  for atom in atom_list:
+    if atom is not None:
+      altloc = atom.parent().altloc #go to atom_group level
+      if altloc != '':
+        return altloc
+  return ''
 
 def get_omega_atoms(twores):
-  #atomlist = [CA1 C1 N2 CA2]
-  atomlist = [None, None, None, None]
-  for atom in twores[0].atoms():
-    if atom.name == " CA ":
-      atomlist[0] = atom
-    elif atom.name == " C  ":
-      atomlist[1] = atom
-  for atom in twores[1].atoms():
-    if atom.name == " N  ":
-      atomlist[2] = atom
-    elif atom.name == " CA ":
-      atomlist[3] = atom
+  atomlist = [twores[0].find_atom_by(name=" CA "),
+              twores[0].find_atom_by(name=" C  "),
+              twores[1].find_atom_by(name=" N  "),
+              twores[1].find_atom_by(name=" CA ")]
   return atomlist

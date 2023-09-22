@@ -59,6 +59,10 @@ Usage example:
       #
       stats = mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix,
         output_stats_pdf = self.params.hbond.output_stats_pdf)
+      if stats is None:
+        print('\n\tLimited number of H-bonds so statistics are not calculated.',
+              file=self.logger)
+        return
       min_data_size=self.params.hbond.min_data_size
       # These are the values to be used for the plot!
       stats.all.show_summary(log = self.logger)

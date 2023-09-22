@@ -17,7 +17,7 @@ def print_energy_in_kcal(ga):
     units=ga.units.lower()
     if d in ['opt', 'bound']: atoms=b
     elif d in ['energy', 'strain']: atoms=l
-    s.append('%-12s %s (atoms %4d)  ' % (d,
+    s.append('%-22s %s (atoms %4d)  ' % (d,
                                           _print_energy_in_kcal(e, units), atoms))
   return s
 
@@ -28,7 +28,9 @@ class energies(list):
   def as_string(self, verbose=False):
     # from libtbx import easy_pickle
     # easy_pickle.dump('ga.pickle', self)
-    pairs = [['bound', 'opt']]
+    pairs = [['bound', 'opt'],
+             ['bound-opt', 'strain'],
+      ]
     s=''
     tmp = {}
     t_atoms = {}
@@ -54,11 +56,14 @@ class energies(list):
         if t_atoms[i][k1]!=t_atoms[i][k2]: continue
         if k1 in tmp[i] and k2 in tmp[i]:
           e = tmp[i][k1]-tmp[i][k2]
-          t+='%s%-12s %s (atoms %4d)' % (' '*6,
-                             '%s-%s' % (k1,k2),
+          k3='%s-%s' % (k1,k2)
+          t+='%s%-22s %s (atoms %4d)\n' % (' '*6,
+                             k3,
                              _print_energy_in_kcal(e, units),
                              t_atoms[i][k1],
                              )
+          tmp[i][k3]=e
+          t_atoms[i][k3]=t_atoms[i][k2]
       if i:
         def _add_dE(e1, e2, units):
           s=''

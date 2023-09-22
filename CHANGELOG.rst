@@ -1,3 +1,11 @@
+2023.8
+======
+
+* Added JSON output to MolProbity structure validation scripts
+* Added support for segID when converting between PDB and mmCIF formats
+* Fixed bug in CCTBXParser where a file could be processed more than once
+* Reorganized restraints based on quantum mechanics
+
 2023.7
 ======
 

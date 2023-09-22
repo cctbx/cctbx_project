@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.4"
+version = "1.3.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -91,7 +91,7 @@ comparison_file = None
   .type = str
   .short_caption = Compare the Mover scores from this run with those in comparison_file
   .help = Points to a comparison_file that is the result of running Hydrogenate or Reduce or Reduce2 or some other hydrogen-placement program. The Probe2 scores for the Movers found in the current run are compared against the scores for comparison_file and stored in a file with the same name as output.file_name with _comparison.csv appended. If None, no comparison is done.
-verbosity = 3
+verbosity = 2
   .type = int
   .short_caption = Level of detail in description file
   .help = Level of detail in description file.
@@ -115,6 +115,10 @@ output
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
     .help = Where to place the Flipkin Kinemages. If None, no Flipkin files are made.
+  clique_outline_file_name = None
+    .type = str
+    .short_caption = Where to save a Kinemage showing all positions for atoms in each Mover in each clique
+    .help = Where to save a Kinemage showing all positions for atoms in each Mover for each clique. This enable exploration of the reasons for the cliques. Each clique has the atoms expanded by the probe radius and as each is turned off, the Movers inside are revealed. Clicking on each Mover shows its description. If None, no such Kinemage is made.
   print_atom_info = False
     .type = bool
     .short_caption = Print extra atom info
@@ -272,7 +276,7 @@ def _AddPosition(a, tag, group, partner=None):
     altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
   return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.lower(),               # Atom name
+    a.name.lower(),                       # Atom name
     altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
@@ -1154,7 +1158,9 @@ NOTES:
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
-      raise Sorry("Must specify output.description_file_name")
+      self.params.output.description_file_name=self.params.output.filename.replace('.pdb',
+                                                                                   '.txt')
+      # raise Sorry("Must specify output.description_file_name")
 
     # Check the model ID to make sure they didn't set it to 0
     if self.params.model_id == 0:
@@ -1205,19 +1211,20 @@ NOTES:
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
       startInt = time.time()
-      self._ReinterpretModel()
+      # self._ReinterpretModel()
       doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
-      opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+      opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+        self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
-        verbosity=self.params.verbosity)
+        verbosity=self.params.verbosity,
+        clique_outline_file_name=self.params.output.clique_outline_file_name)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
@@ -1463,8 +1470,8 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
@@ -1586,8 +1593,8 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,

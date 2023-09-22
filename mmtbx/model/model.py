@@ -2251,7 +2251,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_h_bond_type takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_h_bonds):
-      print('get_specific_h_bond_type(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_h_bond_type(%s): i_seq is larger than array length %s. Perhaps due to an unsupported selection.' % (i_seq, len(self._type_h_bonds)))
     type_h_bond = self._type_h_bonds[i_seq]
     return type_h_bond
 
@@ -2260,7 +2260,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('get_specific_vdw_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_vdw_radius(%s): i_seq is larger than array length %s. Perhaps due to an unsupported selection.' % (i_seq, len(self._type_energies)))
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     if vdw_radius_without_H:
@@ -2282,7 +2282,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_ion_radius takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('get_specific_ion_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_ion_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     ion_radii = e.lib_atom[type_energy].ion_radius
@@ -3464,9 +3464,9 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
-    # brain dead way to avoid issues. Needs to be a selection to retain full functionality
-    self._type_energies = []
-    self._type_h_bonds = []
+    if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
+      new._type_energies = self._type_energies.select(selection)
+      new._type_h_bonds = self._type_h_bonds.select(selection)
     return new
 
   def number_of_ordered_solvent_molecules(self):

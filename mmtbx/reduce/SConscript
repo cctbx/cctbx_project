@@ -1,0 +1,27 @@
+import libtbx.load_env
+
+Import("env_base", "env_etc")
+
+env = env_base.Clone(
+  LIBS=env_etc.libm)
+if (env_etc.compiler != "win32_cl"):
+  env.Replace(LINK=env_base["CC"])
+
+if (not env_etc.no_boost_python):
+  Import("env_cctbx_boost_python_ext")
+  env_bpl = env_cctbx_boost_python_ext.Clone()
+
+  # We need Boost Python to compile this C++ library because we use it.
+  env_bpl.StaticLibrary(
+    target=["#reduce/lib/reduce2lib"],
+    source=[
+      "PositionReturn.cpp", "InteractionGraph.cpp", "Optimizers.cpp"
+    ])
+
+  env_bpl.Append(LIBPATH=["#reduce/lib","#probe/lib"])
+  env_bpl.Prepend(LIBS=["reduce2lib", "probelib", "iotbx_pdb", "cctbx", "scitbx_boost_python"])
+
+  env_bpl.SharedLibrary(
+    target="#lib/mmtbx_reduce_ext",
+    source=["boost_python/reduce_bpl.cpp"
+            ])

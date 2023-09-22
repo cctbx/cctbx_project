@@ -70,6 +70,7 @@ qm_restraints
             geometry minimisation
   run_in_macro_cycles = *first_only first_and_last all last_only test
     .type = choice
+    .help = the steps of the refinement that the restraints generation is run
   buffer = 3.5
     .type = float
     .help = distance to include entire residues into the enviroment of the core
@@ -100,30 +101,49 @@ starting_higher_single_point final_higher_single_point
 
   write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer
     .type = choice(multi=True)
-    .help = Choose which ligand or cluster files to write
+    .help = which ligand or cluster files to write
     .caption = restraints_file \
       input_ligand_in_PDB_format input_cluster_in_PDB_format \
       final_ligand_in_PDB_format final_cluster_in_PDB_format
 
+  protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions
+    .type = choice(multi=True)
+    .help = the parts of protein residues that are frozen when an amino \
+            acid is the main selection
+    .caption = all None N_CA_C_O N_CA_CB_C_O N_CA_CB_CD_C_O all_torsions
+
   restraints_filename = Auto
     .type = path
     .style = new_file
+    .help = restraints filename is based on model name if not specified
   cleanup = all *most None
     .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
   capping_groups = True
     .type = bool
-  exclude_protein_main_chain_from_optimisation = False
-    .type = bool
-  exclude_protein_main_chain_to_delta_from_optimisation = False
-    .type = bool
-  exclude_torsions_from_optimisation = False
-    .type = bool
-  include_inter_residue_restraints = False
-    .type = bool
+
+  freeze_specific_atoms
+    .optional = True
+    .multiple = True
+    .short_caption = specify atoms of the main selection frozen in optimisation
+    .caption = can be used to freeze a ligand from moving too far. use Auto \
+               to freeze the atom closest to the centre of mass.
+    .style = auto_align
+  {
+    atom_selection = None
+      .type = atom_selection
+      .input_size = 400
+  }
+
   include_nearest_neighbours_in_optimisation = False
     .type = bool
+    .short_caption = Include protein side chain in ligand optimisation
+    .help = include the side chains of protein in the QM optimisation
+
+  include_inter_residue_restraints = False
+    .type = bool
+
   do_not_update_restraints = False
     .type = bool
     .style = hidden
@@ -242,11 +262,13 @@ def get_preamble(macro_cycle, i, qmr, old_style=False, compact_selection_syntax=
     s+='_C'
   if qmr.include_nearest_neighbours_in_optimisation:
     s+='_N'
-  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+  if 'main_chain_to_delta' in qmr.protein_optimisation_freeze:
     s+='_D'
-  elif qmr.exclude_protein_main_chain_from_optimisation:
+  elif 'main_chain_to_beta' in qmr.protein_optimisation_freeze:
+    s+='_B'
+  elif 'main_chain' in qmr.protein_optimisation_freeze:
     s+='_S'
-  if qmr.exclude_torsions_from_optimisation:
+  if 'torsions' in qmr.protein_optimisation_freeze:
     s+='_T'
   if qmr.package.method is not Auto:
     s+='_%s' % get_safe_filename(qmr.package.method)

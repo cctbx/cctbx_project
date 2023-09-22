@@ -1,4 +1,4 @@
-// Copyright(c) 2021, Richardson Lab at Duke
+// Copyright(c) 2021-2023, Richardson Lab at Duke
 // Licensed under the Apache 2 license
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -82,8 +82,35 @@ int atom_charge(iotbx::pdb::hierarchy::atom const& atom)
   return ret;
 }
 
+bool DotScorer::point_inside_atoms(Point const& location,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms)
+{
+  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = atoms.begin();
+    e != atoms.end(); e++) {
+    double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
+    if ((location - e->data->xyz).length_sq() < vdwe * vdwe) {
+      return true;
+    }
+  }
+  return false;
+}
+
+scitbx::af::shared<Point> DotScorer::trim_dots(iotbx::pdb::hierarchy::atom const& atom,
+  scitbx::af::shared<Point> const& dots,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
+{
+  scitbx::af::shared<Point> ret;
+  for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
+    Point dotLoc = atom.data->xyz + *d;
+    if (!point_inside_atoms(dotLoc, exclude)) {
+      ret.push_back(*d);
+    }
+  }
+  return ret;
+}
+
 DotScorer::CheckDotResult DotScorer::check_dot(
-  iotbx::pdb::hierarchy::atom sourceAtom,
+  iotbx::pdb::hierarchy::atom const &sourceAtom,
   Point const& dotOffset, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &interacting,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude,
@@ -92,31 +119,27 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Defaults to "no overlap" type
   CheckDotResult ret;
 
-  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
-
   // If the source atom is an ion and we are ignoring ions, we're done.
   if (sourceAtom.element_is_ion() && m_ignoreIonInteractions) {
     return ret;
   }
 
   // Find the world-space location of the dot by adding it to the location of the source atom.
-  // The probe location is in the same direction as d from the source but is further away by the
-  // probe radius.
   Point absoluteDotLocation = sourceAtom.data->xyz + dotOffset;
-  Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
 
   // Check to see if the dot should be removed from consideration because it is inside an excluded atom.
   // Doing this test ahead of the neighbor-interaction test makes things faster for the long-running
   // 4fen test case.
-  for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
-    e != exclude.end(); e++) {
-    // The original Probe code does internal checks for Phantom Hydrogens, but we handle that
-    // in the calling routine by properly adjusting the list of atoms to be excluded.
-    double vdwe = m_extraInfoMap.getMappingFor(*e).getVdwRadius();
-    if ((absoluteDotLocation - e->data->xyz).length_sq() < vdwe * vdwe) {
-      return ret;
-    }
+  if (point_inside_atoms(absoluteDotLocation, exclude)) {
+    return ret;
   }
+
+  // The probe location is in the same direction as d from the source but is further away by the
+  // probe radius.
+  Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
+
+  // Find the extra-atom information for the source atom.
+  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
 
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
@@ -135,7 +158,7 @@ DotScorer::CheckDotResult DotScorer::check_dot(
     }
 
     ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
-    Point locb = b->data->xyz;
+    Point const &locb = b->data->xyz;
     double vdwb = bExtra.getVdwRadius();
 
     // See if we are too far away to interact, bail if so.
@@ -214,8 +237,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       ret.overlapType = DotScorer::Clash;
     }
 
-    /// @todo We may be able to speed things up by only computing this for NoOverlap dots because
-    /// the client code only seems to check it in this case.
     ret.annular = annularDots(absoluteDotLocation, sourceAtom.data->xyz, sourceExtra.getVdwRadius(),
       ret.cause.data->xyz, m_extraInfoMap.getMappingFor(ret.cause).getVdwRadius(), probeRadius);
   }
@@ -322,21 +343,15 @@ std::string DotScorer::interaction_type_short_name(InteractionType t)
 }
 
 DotScorer::ScoreDotsResult DotScorer::score_dots(
-  iotbx::pdb::hierarchy::atom sourceAtom, double minOccupancy,
+  iotbx::pdb::hierarchy::atom const &sourceAtom, double minOccupancy,
   SpatialQuery &spatialQuery, double nearbyRadius, double probeRadius,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &exclude,
-  scitbx::af::shared<Point> const &dots, double density, bool onlyBumps)
+  scitbx::af::shared<Point> const &dots, double density, bool onlyBumps,
+  bool preTrimmedDots)
 {
   // This method is based on AtomPositions::atomScore() from Reduce.
   // It is passed only the dots that it should score rather than excluding them
   // internally like that function does.
-
-  // If we're looking for other contacts besides bumps, we need to add twice the
-  // probe radius to the neighbor list to ensure that we include atoms where the
-  // probe spans from the source to the target.
-  if (!onlyBumps) {
-    nearbyRadius += 2 * probeRadius;
-  }
 
   // Default return has 0 value for all subscores.
   ScoreDotsResult ret;
@@ -351,6 +366,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   if (std::abs(sourceAtom.data->occ) < minOccupancy) {
     ret.valid = true;
     return ret;
+  }
+
+  // If we're looking for other contacts besides bumps, we need to add twice the
+  // probe radius to the neighbor list to ensure that we include atoms where the
+  // probe spans from the source to the target.
+  if (!onlyBumps) {
+    nearbyRadius += 2 * probeRadius;
   }
 
   // Find the neighboring atoms that are potentially interacting.
@@ -389,7 +411,13 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
     // Find out which atom (if any) had the closest interaction, and the type of interaction.
-    CheckDotResult score = check_dot(sourceAtom, *d, probeRadius, interacting, exclude);
+    // If the dots have been pre-trimmed, we don't need to pass the excluded list.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const* excludeToUse = &exclude;
+    if (preTrimmedDots) {
+      excludeToUse = &emptyExclude;
+    }
+    CheckDotResult score = check_dot(sourceAtom, *d, probeRadius, interacting, *excludeToUse);
 
     // Compute the score for the dot based on the overlap type and amount of overlap.
     // Assign it to the appropriate subscore.
@@ -445,7 +473,8 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   return ret;
 }
 
-unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom sourceAtom, scitbx::af::shared<Point> const& dots,
+unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom const &sourceAtom,
+  scitbx::af::shared<Point> const& dots,
   scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& exclude)
 {
   unsigned ret = 0;
@@ -488,6 +517,63 @@ static bool closeTo(double a, double b) {
 std::string DotScorer::test()
 {
   /// @todo Check the annular-dots behavior.
+
+  // Check trim_dots(), which along with check_dot() will also check point_inside_atoms().
+  {
+    double targetRad = 1.5, sourceRad = 1.0;
+    DotSphere ds(sourceRad, 200);
+    unsigned int atomSeq = 0;
+    scitbx::af::shared<Point> kept;
+
+    // Construct a single target atom, including its extra info
+    iotbx::pdb::hierarchy::atom a;
+    a.set_xyz(vec3(0, 0, 0));
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    SpatialQuery sq(atoms);
+    ExtraAtomInfo e(targetRad, true);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct the scorer to be used with the specified bond gaps.
+    DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+    // Construct an exclusion list and add the target atom.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+    exclude.push_back(a);
+
+    // Check the source atom not overlapping with the target.
+    source.set_xyz(vec3(targetRad + sourceRad + 0.1, 0, 0));
+    kept = as.trim_dots(source, ds.dots(), exclude);
+    if (kept.size() != ds.dots().size()) {
+      return "DotScorer::test(): Unexpected non-excluded dot count for non-overlapping case";
+    }
+
+    // Check the source atom completely overlapping with the target.
+    source.set_xyz(vec3(0, 0, 0));
+    kept = as.trim_dots(source, ds.dots(), exclude);
+    if (kept.size() != 0) {
+      return "DotScorer::test(): Unexpected nonzero non-excluded dot count for fully-overlapping case";
+    }
+
+    // Check the source atom partially overlapping with the target.
+    source.set_xyz(vec3(targetRad, 0, 0));
+    kept = as.trim_dots(source, ds.dots(), exclude);
+    if ((kept.size() == 0) || (kept.size() >= ds.dots().size())) {
+      return "DotScorer::test(): Unexpected non-excluded dot count for partially-overlapping case";
+    }
+  }
 
   // Test the check_dot() function to make sure that it gets correct interaction types for
   // all ranges of interaction.  Also check the cause.

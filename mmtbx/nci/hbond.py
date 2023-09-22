@@ -548,7 +548,7 @@ class find(object):
       a_YAH = flex.double()
     return group_args(d_HA=d_HA, a_DHA=a_DHA, a_YAH=a_YAH)
 
-  def get_counts(self, b=None, occ=None, min_data_size=10):
+  def get_counts(self, b=None, occ=None, filter_id_str=None, min_data_size=10):
     theta_1 = flex.double()
     theta_2 = flex.double()
     d_HA    = flex.double()
@@ -560,9 +560,14 @@ class find(object):
       if(b   is not None and r.atom_A.b>b): continue
       if(occ is not None and r.atom_H.occ<occ): continue
       if(occ is not None and r.atom_A.occ<occ): continue
+      if(filter_id_str is not None and
+         (r.atom_A.id_str.find(filter_id_str)==-1 and r.atom_H.id_str.find(filter_id_str)==-1)
+         ):
+         continue
       theta_1.append(r.a_DHA)
       theta_2.extend(flex.double(r.a_YAH))
       d_HA   .append(r.d_HA)
+    n_filter=len(theta_1)
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
     theta_1 = get_stats(theta_1, min_data_size=min_data_size)
@@ -574,6 +579,7 @@ class find(object):
       theta_2 = theta_2,
       d_HA    = d_HA,
       n       = len(self.result),
+      n_filter= n_filter,
       n_sym   = n_sym,
       bpr     = bpr)
 

@@ -179,8 +179,8 @@ def getBondedNeighborLists(atoms, bondProxies):
     it should be a flex array of atom positions for the atoms that are in the first parameter.
     It can include atoms that are not in the first parameter, but they will not be added
     to the lists.
-    :returns a dictionary with one entry for each atom that contains a list of all of
-    the atoms (within the atoms list) that are bonded to it.
+    :returns a dictionary with one entry for each atom, indexed by i_seq, that contains a
+    list of all of the atoms (within the atoms list) that are bonded to it.
   """
   atomDict = {}
   for a in atoms:
@@ -386,7 +386,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
             extra = probeExt.ExtraAtomInfo()
             try:
               hb_type = model.get_specific_h_bond_type(a.i_seq)
-              if isinstance(hb_type, str):
+              if hb_type in ['A', 'B', 'D', 'N', 'H']: #isinstance(hb_type, str):
                 if hb_type == "A" or hb_type == "B":
                   extra.isAcceptor = True
                 if hb_type == "D" or hb_type == "B":

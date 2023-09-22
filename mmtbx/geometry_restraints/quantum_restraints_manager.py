@@ -238,18 +238,19 @@ def super_cell_and_prune(buffer_model,
               ag = atom.parent()
               ag.remove_atom(atom)
 
-  complete_p1 = super_cell.run(
+  complete_p1 = super_cell.manager(
     pdb_hierarchy        = buffer_model.get_hierarchy(),
     crystal_symmetry     = buffer_model.crystal_symmetry(),
     select_within_radius = buffer,
     )
+  super_sphere_hierarchy = complete_p1.super_sphere_hierarchy
   if(write_steps):
-    complete_p1.hierarchy.write_pdb_file(file_name="complete_p1.pdb",
-      crystal_symmetry = complete_p1.crystal_symmetry)
-  for atom in complete_p1.hierarchy.atoms(): atom.tmp=-1
-  for atom1, atom2 in zip(buffer_model.get_atoms(), complete_p1.hierarchy.atoms()):
+    super_sphere_hierarchy.write_pdb_file(file_name="complete_p1.pdb",
+      crystal_symmetry = complete_p1.cs_super_sphere)
+  for atom in super_sphere_hierarchy.atoms(): atom.tmp=-1
+  for atom1, atom2 in zip(buffer_model.get_atoms(), super_sphere_hierarchy.atoms()):
     atom2.tmp = atom1.tmp
-  buffer_model._pdb_hierarchy = complete_p1.hierarchy
+  buffer_model._pdb_hierarchy = super_sphere_hierarchy
   movers, removers = find_movers(buffer_model, ligand_model, buffer)
   assert len(buffer_model.get_atoms())>0
 
@@ -278,7 +279,6 @@ def reverse_shift(original_model, moved_model):
   ph.atoms().set_xyz(sites_cart)
 
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
-  from cctbx.maptbx.box import shift_and_box_model
   if WRITE_STEPS_GLOBAL: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
   #
@@ -315,17 +315,6 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
                        write_steps=write_steps)
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
 
-  ph=buffer_model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  mc = sites_cart.min()
-  buffer_model_p1 = shift_and_box_model(model=buffer_model)
-  ph=buffer_model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  box = sites_cart.min()
-  if write_steps: write_pdb_file(buffer_model, 'post_shift.pdb', None)
-  for atom1, atom2 in zip(buffer_model_p1.get_atoms(), buffer_model.get_atoms()):
-    atom1.tmp=atom2.tmp
-  buffer_model = buffer_model_p1
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
@@ -364,10 +353,13 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   # ligand_model.process(make_restraints=True)
   #
   # reverse_shift(original_model, buffer_model_p1)
-  ph=buffer_model.get_hierarchy()
-  sites_cart=ph.atoms().extract_xyz()
-  sites_cart=sites_cart-col(box)+col(mc)
-  ph.atoms().set_xyz(sites_cart)
+  def move_atoms(local_model):
+    ph=local_model.get_hierarchy()
+    sites_cart=ph.atoms().extract_xyz()
+    sites_cart=sites_cart-col(box)+col(mc)
+    ph.atoms().set_xyz(sites_cart)
+  # move_atoms(buffer_model)
+  # move_atoms(ligand_model)
   if write_steps: write_pdb_file(buffer_model, 'post_reverse_shift.pdb', None)
   use_neutron_distances_in_model_in_place(ligand_model)
   use_neutron_distances_in_model_in_place(buffer_model)
@@ -452,14 +444,32 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']: continue
       ligand_selection[i]=True
-  if qmr.exclude_protein_main_chain_to_delta_from_optimisation:
+  if 'main_chain_to_delta' in qmr.protein_optimisation_freeze:
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT', 'CB', 'CG']: # mostly for HIS...
         ligand_selection[i]=False
-  elif qmr.exclude_protein_main_chain_from_optimisation:
+  elif 'main_chain_to_beta' in qmr.protein_optimisation_freeze:
+    for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
+      if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT', 'CB']:
+        ligand_selection[i]=False
+  elif 'main_chain' in qmr.protein_optimisation_freeze:
     for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
       if atom.name.strip() in ['CA', 'C', 'N', 'O', 'OXT']:
         ligand_selection[i]=False
+  if qmr.freeze_specific_atoms:
+    min_d2=1e9
+    min_i=None
+    ph=ligand_model.get_hierarchy()
+    atoms = ph.atoms()
+    xyzs=atoms.extract_xyz()
+    m=xyzs.mean()
+    for i, (sel, atom) in enumerate(zip(ligand_selection, electron_model.get_atoms())):
+      if sel and not atom.element_is_hydrogen():
+        d2 = dist2(m, atom.xyz)
+        if d2<min_d2:
+          min_d2=d2
+          min_i=i
+    ligand_selection[min_i]=False
   qmm.set_ligand_atoms(ligand_selection)
   return qmm
 
@@ -568,7 +578,7 @@ def update_bond_restraints(ligand_model,
   The QM optimisation has caused a X-H covalent bond to exceed 1.5 Angstrom.
   This may be because the input geometry was not appropriate or the QM method
   is not providing the biological answer. Check the QM result for issues. This
-  check can be skipped by using ignore_x_h_distance_protein.
+  check can be skipped by using ignore_x_h_distance_protein=True.
   ''')
 
 def update_bond_restraints_simple(model):
@@ -787,7 +797,6 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('strain')
     if qmr.calculate.count('final_bound'):
       program_goal.append('bound')
-  print('program_goal',program_goal)
   return program_goal
 
 def setup_qm_jobs(model,
@@ -808,6 +817,11 @@ def setup_qm_jobs(model,
   #   print('  Changing to %s' % working_directory, file=log)
   #   os.chdir(working_directory)
   for i, qmr in enumerate(params.qi.qm_restraints):
+    if len(qmr.freeze_specific_atoms)>2:
+      raise Sorry('Only Auto supported so multiple freezes not necessary.')
+    elif len(qmr.freeze_specific_atoms)==1:
+      if qmr.freeze_specific_atoms[0].atom_selection!=Auto:
+        raise Sorry('Freezing ligand atoms only supports "Auto" for centre of mass.')
     number_of_macro_cycles = 1
     if hasattr(params, 'main'):
       number_of_macro_cycles = params.main.number_of_macro_cycles
@@ -838,8 +852,11 @@ def setup_qm_jobs(model,
         if 'pdb_buffer' in qmr.write_files:
           write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
       qmm.preamble='%s_%s' % (prefix, preamble)
-      for attr in ['exclude_torsions_from_optimisation']:
-        setattr(qmm, attr, getattr(qmr, attr))
+      # for attr in ['exclude_torsions_from_optimisation']:
+      #   setattr(qmm, attr, getattr(qmr, attr))
+      attr = 'exclude_torsions_from_optimisation'
+      setattr(qmm, attr, qmr.protein_optimisation_freeze.count('torsions'))
+      #
       objects.append([ligand_model, buffer_model, qmm, qmr])
   print('',file=log)
   return objects
@@ -947,6 +964,16 @@ def update_restraints(model,
                       parallel_id=None,
                       log=StringIO(),
                       ):
+  def is_ligand_going_to_be_same_size(qmr):
+    rc=True
+    inter = set(qmr.protein_optimisation_freeze).intersection(set(['main_chain_to_delta',
+                                                                  'main_chain_to_beta',
+                                                                  'main_chain',
+                                                                  'torsions']))
+    if (qmr.include_nearest_neighbours_in_optimisation or inter):
+      rc=False
+    if len(qmr.freeze_specific_atoms)>0: rc=False
+    return rc
   t0 = time.time()
   times=[]
   energy_only=False
@@ -996,10 +1023,7 @@ def update_restraints(model,
     #
     ligand_rmsd = None
     old = ligand_model.get_hierarchy().atoms().extract_xyz()
-    if not (qmr.include_nearest_neighbours_in_optimisation or
-            qmr.exclude_protein_main_chain_to_delta_from_optimisation or
-            qmr.exclude_protein_main_chain_from_optimisation or
-            qmr.exclude_torsions_from_optimisation):
+    if is_ligand_going_to_be_same_size(qmr):
       ligand_rmsd = old.rms_difference(xyz)
       if ligand_rmsd>5:
         print('  QM minimisation has large rms difference in cartesian coordinates: %0.1f' % (ligand_rmsd),
