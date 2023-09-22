@@ -58,18 +58,6 @@ jobs:
       git lfs pull
     displayName: Update xfel_regression
 
-  - script: |
-      cd $(Pipeline.Workspace)
-      cd modules/dxtbx
-      git checkout serial_tbx
-      cd ../dials
-      git checkout serial_tbx
-      cd ../LS49
-      git checkout serial_tbx
-      cd ../xfel_regression
-      git checkout serial_tbx
-    displayName: Checkout serialtbx branches
-
   # preserve permissions and delete extra files
   - script: |
       cd $(Pipeline.Workspace)
