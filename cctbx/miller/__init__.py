@@ -2348,6 +2348,14 @@ class array(set):
       result = result.select(selection_positive)
     return result.set_info(info)
 
+  def g_function(self, R, volume_scale=False):
+    # reciprocal sphere
+    s = 1./self.d_spacings().data()
+    arg = 2*math.pi*s*R
+    vol=1
+    if(volume_scale): vol = 4*math.pi*R**3/3
+    return vol*3*(flex.sin(arg) - arg*flex.cos(arg))/(arg)**3
+
   def as_double(self):
     """
     Create a copy of the array with the data converted to a flex.double type.
@@ -4572,8 +4580,7 @@ class array(set):
     # This should really have been called "local_variance_map" because the
     # square root is not taken after local averaging of density-squared
     complete_set = self.complete_set()
-    sphere_reciprocal=get_sphere_reciprocal(
-       complete_set=complete_set,radius=radius)
+    sphere_reciprocal = self.g_function(R=radius)
     fft = self.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -4611,13 +4618,10 @@ class array(set):
     # Based on local_standard_deviation_map above
     assert self.crystal_symmetry().unit_cell().is_similar_to(
         other.crystal_symmetry().unit_cell())
-
     complete_set = self.complete_set()
-    sphere_reciprocal=get_sphere_reciprocal(
-       complete_set=complete_set,radius=radius)
+    sphere_reciprocal = self.g_function(R=radius)
     if d_min is None:
       d_min=self.d_min()
-
     fft = self.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -4628,7 +4632,6 @@ class array(set):
       assert_shannon_sampling=assert_shannon_sampling,
       f_000=f_000)
     fft.apply_sigma_scaling()
-
     other_fft = other.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -6138,13 +6141,6 @@ class fft_map(maptbx.crystal_gridding):
       gridding_first=gridding_first,
       gridding_last=gridding_last,
       map_data=map_data)
-
-def get_sphere_reciprocal(complete_set=None,radius=None):
-  stol = flex.sqrt(complete_set.sin_theta_over_lambda_sq().data())
-  w = 4 * stol * math.pi * radius
-  sphere_reciprocal = 3 * (flex.sin(w) - w * flex.cos(w))/flex.pow(w, 3)
-  return sphere_reciprocal
-
 
 def patterson_map(crystal_gridding, f_patt, f_000=None,
                   sharpening=False,
