@@ -24,6 +24,19 @@ from scitbx.matrix import col
 
 WRITE_STEPS_GLOBAL=False
 
+def predict_time(x,y):
+  coeff_str = '''
+[ 1.15779091e+02 -4.56245017e+00 -1.64820657e+00  2.16405554e-02
+  5.61327262e-03  3.52624540e-02]
+  '''
+  coeff_str=coeff_str.replace('[','').replace(']','')
+  coeffs = []
+  for s in coeff_str.split(): coeffs.append(float(s))
+  variables = [1, x, y, x**2, y**2, x*y]
+  rc = 0
+  for coeff, var in zip(coeffs,variables): rc += coeff*var
+  return rc
+
 def dist2(r1,r2): return (r1[0]-r2[0])**2+(r1[1]-r2[1])**2+(r1[2]-r2[2])**2
 def min_dist2(residue_group1, residue_group2, limit=1e-2):
   min_d2=1e9
@@ -281,6 +294,7 @@ def reverse_shift(original_model, moved_model):
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   if WRITE_STEPS_GLOBAL: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
+  if not ligand_model.has_hd(): return None, None
   #
   # check for to sparse selections like a ligand in two monomers
   #
@@ -404,7 +418,8 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   solvent_model = qmr.package.solvent_model
   if program_goal in ['energy', 'strain']:
     electron_model = ligand_model
-    solvent_model = 'EPS=78.4 PRECISE NSPA=92'
+    solvent_model = 'EPS=78.4 PRECISE NSPA=92' # maybe not the best place as it's
+                                               # not in the input file???
   elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
   else:
@@ -838,6 +853,8 @@ def setup_qm_jobs(model,
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    if ligand_model is None:
+      raise Sorry('\n    Ligand "%s" has problem. Check the model.' % qmr.selection)
     assert buffer_model.restraints_manager_available()
     #
     # get appropriate QM manager
@@ -872,6 +889,13 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
                        not(qmr.package.ignore_input_differences),
                        log,
                        ))
+    if qmm.method.find('PM6-D3H4')==0:
+      key = (ligand_model.get_number_of_atoms(),
+             buffer_model.get_number_of_atoms())
+      predicted_time = predict_time(*key)
+      print('  Predicted time of QM calculation : %7.1fs' % predicted_time, file=log)
+      if log is None:
+        print('  Predicted time of QM calculation : %7.1fs' % predicted_time)
   results = run_serial_or_parallel(qm_manager.qm_runner, argstuples, nproc)
   if results:
     xyzs = []
@@ -882,6 +906,12 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
+        if os.getlogin()=='NWMoriarty':
+          from mmtbx.geometry_restraints import curve_fit_3d
+          key = (ligand_model.get_number_of_atoms(),
+                 buffer_model.get_number_of_atoms())
+          time_query = qmm.get_timings()
+          curve_fit_3d.load_and_display(key, time_query)
       elif qmm.program_goal in ['energy', 'strain', 'bound']:
         energy=xyz
         units=xyz_buffer
