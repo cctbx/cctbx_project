@@ -66,6 +66,7 @@ namespace boost_python {
         .def("angle_to_Sg", &wt::angle_to_Sg)
         .def("get_int_angles", &wt::get_int_angles)
         .def("get_angles", &wt::get_angles)
+        .def("get_angles_Sg", &wt::get_angles_Sg)
         .staticmethod("get_angles")
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");

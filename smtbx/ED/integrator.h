@@ -36,6 +36,7 @@ namespace smtbx { namespace ED
         //FloatType sg_a = frame.Sg_to_angle(0.01, h, -K[2]);
         //int steps = std::abs(round((da - sg_a) / step));
         FloatType I1 = -1, K_g_l1;
+        //angles = frame.get_angles_Sg(h, -K[2], 0.02, 0.001);
         for (size_t ai = 0;  ai < angles.size(); ai++) {
           std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
           processor->process_1(i+1, r.first, r.second);

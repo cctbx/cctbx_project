@@ -139,6 +139,8 @@ namespace smtbx { namespace ED
     /* returns all angles for span with step */
     static af::shared<FloatType> get_angles(FloatType  ang,
       FloatType span, FloatType step);
+    af::shared<FloatType> get_angles_Sg(const miller::index<> &h,
+      FloatType Kl, FloatType Sg_span, FloatType Sg_step) const;
 
     int id, tag;
     cart_t normal, original_normal;
@@ -318,6 +320,18 @@ namespace smtbx { namespace ED
     return cnt;
 
   }
+  template <typename FloatType>
+  af::shared<FloatType> FrameInfo<FloatType>::get_angles_Sg(
+    const miller::index<>& h,
+    FloatType Kl, FloatType Sg_span, FloatType Sg_step) const
+  {
+    af::shared<FloatType> rv(af::reserve(std::abs(Sg_span * 2 / Sg_step) + 1));
+    for (FloatType p = -Sg_span; p <= Sg_span; p += Sg_step) {
+      rv.push_back(Sg_to_angle(p, h, Kl));
+    }
+    return rv;
+  }
+
   /* input span and step are in degrees */
   template <typename FloatType>
   af::shared<FloatType> FrameInfo<FloatType>::get_angles(FloatType ang,

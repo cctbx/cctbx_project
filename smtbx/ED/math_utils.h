@@ -71,7 +71,10 @@ namespace smtbx {  namespace ED
       return rv;
     }
 
-    // derivatites of A = V * D * V^-1
+    /* derivatites of A = V * D * V ^ -1
+    * Section 3.1 for eigenvalue decomposition derivatives
+    * https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+    */
     template <typename ev_t>
     static cmat_t calc_dS_dx(
       // derivatives of the Eigen matrix by params
