@@ -906,7 +906,7 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
-        if os.getlogin()=='NWMoriarty':
+        if 0 : #os.getlogin()=='NWMoriarty':
           from mmtbx.geometry_restraints import curve_fit_3d
           key = (ligand_model.get_number_of_atoms(),
                  buffer_model.get_number_of_atoms())
