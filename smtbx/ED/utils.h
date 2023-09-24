@@ -23,27 +23,20 @@ namespace smtbx { namespace ED
       for (size_t i = 1; i < n_beams; i++) {
         miller::index<> h_i = indices[i - 1];
         int ii = mi_lookup.find_hkl(h_i);
-        complex_t Fc_i = ii != -1 ? Fcs_k[ii] : 0;
+        SMTBX_ASSERT(ii >= 0);
+        complex_t Fc_i = Fcs_k[ii];
         // h_i - (0,0,0)
         A(i, 0) = Fc_i;
         // (0,0,0) - h_i
-        A(0, i) = std::conj(A(i, 0));
+        A(0, i) = std::conj(Fc_i);
         A(i, i) = 0;
         for (size_t j = i + 1; j < n_beams; j++) {
           miller::index<> h_j = indices[j - 1];
           int i_m_j = mi_lookup.find_hkl(h_i - h_j);
-          complex_t Fc = 0;
-          if (i_m_j < 0) {
-            int j_m_i = mi_lookup.find_hkl(h_j - h_i);
-            if (j_m_i >= 0) {
-              Fc = std::conj(Fcs_k[j_m_i]);
-            }
-          }
-          else {
-            Fc = Fcs_k[i_m_j];
-          }
+          SMTBX_ASSERT(i_m_j >= 0);
+          complex_t Fc = Fcs_k[i_m_j];
           A(i, j) = Fc;
-          A(j, i) = std::conj(A(i, j));
+          A(j, i) = std::conj(Fc);
         }
       }
     }
