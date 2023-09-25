@@ -291,10 +291,41 @@ def reverse_shift(original_model, moved_model):
   sites_cart=sites_cart+col(box_cushion)-col(translate)
   ph.atoms().set_xyz(sites_cart)
 
-def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
+def validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=None):
+  '''
+  validate models before allowing QM
+  '''
+  assert buffer_model.restraints_manager_available()
+  #
+  if not ligand_model.has_hd():
+    for atom_group in ligand_model.get_hierarchy().atom_groups():
+      if get_class(atom_group.resname) in [ 'common_small_molecule',
+                                            'common_element',
+        ]:
+        print('    Selection %s has no H/D but is %s - continue' % (
+              qmr.selection,
+              get_class(atom_group.resname),
+              ),
+              file=log)
+        break
+    else:
+      raise Sorry('\n    Ligand "%s" has no H/D. Check the model. %s' % (
+        qmr.selection,
+        get_class(atom_group.resname),
+        ))
+  for residue_group in buffer_model.get_hierarchy().residue_groups():
+    if (residue_group.atom_groups_size() != 1):
+      raise Sorry("Not implemented: cannot run QI on buffer "+
+                  "molecules with alternate conformations")
+  for atom_group in buffer_model.get_hierarchy().atom_groups():
+    if get_class(atom_group.resname) in ["common_rna_dna",
+                                         "modified_rna_dna",
+                                         "ccp4_mon_lib_rna_dna"]:
+      raise Sorry('QI cannot protonate RNA/DNA : "%s"' % atom_group.id_str())
+
+def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=None):
   if WRITE_STEPS_GLOBAL: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
-  if not ligand_model.has_hd(): return None, None
   #
   # check for to sparse selections like a ligand in two monomers
   #
@@ -311,15 +342,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
   buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
   if write_steps: write_pdb_file(buffer_model, 'post_remove_altloc.pdb', None)
-  for residue_group in buffer_model.get_hierarchy().residue_groups():
-    if (residue_group.atom_groups_size() != 1):
-      raise Sorry("Not implemented: cannot run QI on buffer "+
-                  "molecules with alternate conformations")
-  for atom_group in buffer_model.get_hierarchy().atom_groups():
-    if get_class(atom_group.resname) in ["common_rna_dna",
-                                         "modified_rna_dna",
-                                         "ccp4_mon_lib_rna_dna"]:
-      raise Sorry('QI cannot protonate RNA/DNA : "%s"' % atom_group.id_str())
+  validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=log)
   if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
   do_not_prune = qmr.buffer_selection
   super_cell_and_prune(buffer_model,
@@ -342,6 +365,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   ligand_atoms = ligand_model.get_atoms()
   buffer_atoms = buffer_model.get_atoms()
   def compare_id_str(s1,s2):
+    # needs to be updated for PDB and mmCIF
     ptr=9
     if s1[:ptr]==s2[:ptr] and s1[ptr+1:]==s2[ptr+1:]:
       return True
@@ -383,6 +407,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False):
   return ligand_model, buffer_model
 
 def show_ligand_buffer_models(ligand_model, buffer_model):
+  # need to update for nearest neighbour...
   outl = '    Core atoms\n'
   ags = []
   for atom in ligand_model.get_atoms():
@@ -853,9 +878,6 @@ def setup_qm_jobs(model,
     # get ligand and buffer region models
     #
     ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
-    if ligand_model is None:
-      raise Sorry('\n    Ligand "%s" has problem. Check the model.' % qmr.selection)
-    assert buffer_model.restraints_manager_available()
     #
     # get appropriate QM manager
     #
@@ -889,13 +911,13 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
                        not(qmr.package.ignore_input_differences),
                        log,
                        ))
-    if qmm.method.find('PM6-D3H4')==0:
+    if type(qmm.method)==type('') and qmm.method.find('PM6-D3H4')==0:
       key = (ligand_model.get_number_of_atoms(),
              buffer_model.get_number_of_atoms())
       predicted_time = predict_time(*key)
-      print('  Predicted time of QM calculation : %7.1fs' % predicted_time, file=log)
-      if log is None:
-        print('  Predicted time of QM calculation : %7.1fs' % predicted_time)
+      msg = '  Predicted time of QM calculation : %7.1fs' % predicted_time
+      if log is None: print(msg)
+      else: print(msg, file=log)
   results = run_serial_or_parallel(qm_manager.qm_runner, argstuples, nproc)
   if results:
     xyzs = []
