@@ -63,8 +63,11 @@ namespace smtbx { namespace ED
       return Sg_to_angle(0, h, Kl, sweep_angle);
     }
 
-    /* returns angle in rads at which the excitation error is Sg */
-    FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
+    /* returns angle in rads at which the excitation error is Sg as
+    angle = alpha + (Sg-rv.first)/rv.second
+    */
+    std::pair<FloatType, FloatType> Sg_to_angle_k(
+      const miller::index<>& h,
       FloatType Kl, FloatType sweep_angle = 3) const
     {
       FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
@@ -74,7 +77,15 @@ namespace smtbx { namespace ED
       FloatType k = (Sg2 - Sg1) / ang_diff;
       //FloatType a = Sg1 - k*alpha;
       //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
-      return alpha + (Sg - Sg1) / k;
+      return std::make_pair(Sg1, k);
+    }
+
+    /* returns angle in rads at which the excitation error is Sg */
+    FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
+      FloatType Kl, FloatType sweep_angle = 3) const
+    {
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, Kl, sweep_angle);
+      return alpha + (Sg - k.first) / k.second;
     }
 
     /* returns Sg or the given angle.
@@ -82,7 +93,7 @@ namespace smtbx { namespace ED
     excitation andle is too hight at the edge of the frame
     */
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
-      FloatType Kl, FloatType sweep_angle = 3)
+      FloatType Kl, FloatType sweep_angle)
     {
       FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
@@ -325,9 +336,11 @@ namespace smtbx { namespace ED
     const miller::index<>& h,
     FloatType Kl, FloatType Sg_span, FloatType Sg_step) const
   {
+    std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, Kl);
     af::shared<FloatType> rv(af::reserve(std::abs(Sg_span * 2 / Sg_step) + 1));
-    for (FloatType p = -Sg_span; p <= Sg_span; p += Sg_step) {
-      rv.push_back(Sg_to_angle(p, h, Kl));
+    for (FloatType Sg = -Sg_span; Sg <= Sg_span; Sg += Sg_step) {
+      FloatType ang = alpha + (Sg - k.first) / k.second;
+      rv.push_back(ang);
     }
     return rv;
   }
