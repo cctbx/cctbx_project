@@ -1935,6 +1935,23 @@ class manager(object):
     # Order of calling this matetrs!
     self.link_records_in_pdb_format = link_record_output(acp)
 
+  def has_atoms_in_special_positions(self, selection, log=None):
+    pdb_hierarchy = self.get_hierarchy()
+    atom_labels = list(pdb_hierarchy.atoms_with_labels())
+    sel_cache = pdb_hierarchy.atom_selection_cache()
+    site_symmetry_table = self.get_xray_structure().site_symmetry_table()
+    disallowed_i_seqs = site_symmetry_table.special_position_indices()
+    isel = sel_cache.selection(selection).iselection()
+    isel_special = isel.intersection(disallowed_i_seqs)
+    if (len(isel_special) != 0):
+      print("  WARNING: selection includes atoms on special positions", file=log)
+      print("    selection: %s" % selection, file=log)
+      print("    bad atoms:", file=log)
+      for i_seq in isel_special :
+        print("    %s" % atom_labels[i_seq].id_str(), file=log)
+      return True
+    return False
+
   def has_hd(self):
     if self._has_hd is None:
       self._update_has_hd()
