@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.4.0"
+version = "2.5.0"
 
 master_phil_str = '''
 profile = False
@@ -1812,28 +1812,37 @@ Note:
       # Get our model.
       self.model = self.data_manager.get_model()
 
-      # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-      cs = self.model.crystal_symmetry()
-      if (cs is None) or (cs.unit_cell() is None):
-        self.model = shift_and_box_model(model = self.model)
-
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
     allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     try:
-      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-      p.pdb_interpretation.allow_polymer_cross_special_position=True
-      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
       self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
           geometry.get_all_bond_proxies(sites_cart = sites_cart)
     except Exception as e:
-      raise Sorry("Could not get bonding information for input file: " + str(e))
+      try:
+        # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+        cs = self.model.crystal_symmetry()
+        if (cs is None) or (cs.unit_cell() is None):
+          self.model = shift_and_box_model(model = self.model, shift_model=False)
+
+        # Retry with the adjusted model
+        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+        geometry = self.model.get_restraints_manager().geometry
+        sites_cart = self.model.get_sites_cart() # cartesian coordinates
+        bondProxies, asu = \
+            geometry.get_all_bond_proxies(sites_cart = sites_cart)
+
+      except Exception as e:
+        raise Sorry("Could not get bonding information for input file: " + str(e))
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
