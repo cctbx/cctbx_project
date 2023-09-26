@@ -8,7 +8,7 @@ from libtbx.phil import parse
 import six
 from libtbx.utils import Sorry
 import datetime
-from xfel.util.jungfrau import pad_stacked_format
+from serialtbx.detector.jungfrau import pad_stacked_format
 
 phil_scope = parse("""
   unassembled_file = None

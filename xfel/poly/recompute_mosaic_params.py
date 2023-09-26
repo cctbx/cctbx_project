@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
 from scitbx.matrix import col, sqr
-from xfel.mono_simulation import max_like
+from serialtbx.mono_simulation import max_like
 import numpy as np
 from scipy import constants
 ENERGY_CONV = 1e10*constants.c*constants.h / constants.electron_volt

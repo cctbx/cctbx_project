@@ -50,8 +50,8 @@ def _get_flex_image(
 
 def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
                                binning=1, show_untrusted=False, color_scheme=0):
-  # From xfel.cftbx.cspad_detector.readHeader() and
-  # xfel.cftbx.cspad_detector.get_flex_image().  XXX Is it possible to
+  # From serialtbx.detector.legacy_metrology.cspad_detector.readHeader() and
+  # serialtbx.detector.legacy_metrology.cspad_detector.get_flex_image().  XXX Is it possible to
   # merge this with _get_flex_image() above?  XXX Move to dxtbx Format
   # class (or a superclass for multipanel images)?
 
@@ -61,7 +61,7 @@ def _get_flex_image_multipanel(panels, raw_data, beam, brightness=1.0,
   from libtbx.test_utils import approx_equal
   from scitbx.array_family import flex
   from scitbx.matrix import col, rec, sqr
-  from xfel.cftbx.detector.metrology import get_projection_matrix
+  from serialtbx.detector.legacy_metrology.metrology import get_projection_matrix
 
   assert len(panels) == len(raw_data), (len(panels), len(raw_data))
 

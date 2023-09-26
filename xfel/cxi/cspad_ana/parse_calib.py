@@ -256,7 +256,7 @@ def v2calib2sections(filename):
   @return        Section objects
   """
 
-  from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology
+  from serialtbx.detector.cspad import read_slac_metrology
   from scitbx.matrix import sqr
   from xfel.cxi.cspad_ana.cspad_tbx import pixel_size
 
