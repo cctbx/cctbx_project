@@ -291,6 +291,26 @@ def reverse_shift(original_model, moved_model):
   sites_cart=sites_cart+col(box_cushion)-col(translate)
   ph.atoms().set_xyz(sites_cart)
 
+def validate_super_cell_cluster(buffer_model, selection):
+  if buffer_model.has_atoms_in_special_positions(selection):
+    outl = '''
+  Ligand "%s" has atoms in special positions. Check special_positions.pdb
+  Reducing symmetry should help.
+  ''' % selection
+    write_pdb_file(buffer_model, 'special_positions.pdb', None)
+    raise Sorry(outl)
+  ph=buffer_model.get_hierarchy()
+  for i, rg1 in enumerate(ph.residue_groups()):
+    for j, rg2 in enumerate(ph.residue_groups()):
+      if j<=i: continue
+      min_d2, tmp = min_dist2(rg1,rg2)
+      if min_d2<1:
+        outl = '''
+  Two residues in ligand cluster appear too close. Check overlapping_residues.pdb
+  May be due not selecting an altloc or symmetry copy overlap.'''
+        write_pdb_file(buffer_model, 'overlapping_residues.pdb', None)
+        raise Sorry(outl)
+
 def validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=None):
   '''
   validate models before allowing QM
@@ -351,7 +371,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
                        do_not_prune=do_not_prune,
                        write_steps=write_steps)
   if write_steps: write_pdb_file(buffer_model, 'post_super_cell.pdb', None)
-
+  validate_super_cell_cluster(buffer_model, qmr.selection)
   buffer_model.unset_restraints_manager()
   buffer_model.log=null_out()
   if write_steps: write_pdb_file(buffer_model, 'pre_add_terminii.pdb', None)
