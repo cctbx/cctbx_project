@@ -546,12 +546,35 @@ def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
     conn = conn / crystal_symmetry.space_group().order_z()
   return conn
 
+
+def modify(fofc, R, cutoff, crystal_gridding):
+  G = fofc.g_function(R=R)
+
+  fft_map = fofc.fft_map(crystal_gridding = crystal_gridding)
+  fft_map.apply_volume_scaling()
+  map_data = fft_map.real_map_unpadded()
+
+  sel = map_data<cutoff
+  map_data = map_data.set_selected(sel, cutoff)
+
+  F = fofc.structure_factors_from_map(map = map_data, in_place_fft=False,
+    use_scale=True, use_sg=False)
+
+  F = F.customized_copy(data = F.data()*G)
+
+  fft_map = F.fft_map(crystal_gridding = crystal_gridding)
+  fft_map.apply_volume_scaling()
+  map_data = fft_map.real_map_unpadded()
+
+  return map_data
+
+
 class f_masks(object):
   def __init__(self,
                xray_structure,
-               step,
-               volume_cutoff=None,
-               mean_diff_map_threshold=None,
+               step=0.6,
+               volume_cutoff=50,
+               mean_diff_map_threshold=0.5,
                compute_whole=False,
                largest_only=False,
                wrapping=True, # should be False if working with ASU
@@ -581,6 +604,9 @@ class f_masks(object):
       self._mask_p1.size()
     # Optionally compute Fmask from original whole mask, zero-ed at dmin<3A.
     self.f_mask_whole = self._compute_f_mask_whole()
+    # Solvent content
+    solvent_content = (self._mask_p1>0).count(True)*100./self._mask_p1.size()
+    print("Solvent content: %7.4f percent"%solvent_content, file=self.log)
     # Connectivity analysis
     co = maptbx.connectivity(
       map_data                   = self._mask_p1,
@@ -591,7 +617,14 @@ class f_masks(object):
       co.merge_symmetry_related_regions(
         space_group = xray_structure.space_group())
     #
-    self.conn = co.result().as_double()
+    self.conn = co.result().as_double() # 0 = protein, 1 = solvent, >1 = other
+
+    #print(co.result())
+    #sz = co.result().size()
+    #for i in list(set(co.result())):
+    #  print(i, (co.result()==i).count(True)*100./sz)
+    #print()
+
     z = zip(co.regions(),range(0,co.regions().size()))
     sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
     #
@@ -670,6 +703,65 @@ class f_masks(object):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
       # Compose result object
       self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+    # end of FOR loop
+
+#    OFFSET = i_seq+1
+#    print("<><><><><><><><><><>")
+#    dmd = modify(fofc=self.mFoDFc_0, R=0.1, cutoff=0, #0.1/10,
+#                 crystal_gridding=self.crystal_gridding)
+#
+#
+#    mask_ = mmtbx.masks.mask_from_xray_structure(
+#      xray_structure           = self.xray_structure,
+#      p1                       = True,
+#      for_structure_factors    = True,
+#      solvent_radius           = 0.5,
+#      shrink_truncation_radius = 0.5,
+#      n_real                   = self.n_real,
+#      in_asu                   = False).mask_data
+#    maptbx.unpad_in_place(map=mask_)
+#    dmd = dmd * mask_
+#
+#    co = maptbx.connectivity(
+#      map_data                   = dmd,
+#      threshold                  = 0, #0.001/10,
+#      preprocess_against_shallow = False,
+#      wrapping                   = wrapping)
+#    if(xray_structure.space_group().type().number() != 1): # not P1
+#      co.merge_symmetry_related_regions(
+#        space_group = xray_structure.space_group())
+#    self.conn = co.result().as_double()
+#    z = zip(co.regions(),range(0,co.regions().size()))
+#    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+#    for i_seq, p in enumerate(sorted_by_volume):
+#      i_seq = OFFSET + i_seq
+#      v, i = p
+#      if(i==0): continue
+#      volume = v*step**3
+#      if(volume_cutoff is not None and volume < volume_cutoff): continue
+#      uc_fraction = v*100./self.conn.size()
+#      print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
+#            "%7s"%str(None), file=log)
+#
+#      self.regions[i_seq] = group_args(
+#        id          = i,
+#        i_seq       = i_seq,
+#        volume      = volume,
+#        uc_fraction = uc_fraction)
+#
+#      #mask_i_asu = self.compute_i_mask_asu(
+#      #  selection = sel, volume = volume)
+#      sel = self._get_region_i_selection(i)
+#      dmd_i = dmd.deep_copy()
+#      mask_i_asu = dmd_i.set_selected(~sel, 0)
+#      mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
+#
+#      f_mask_i = self.compute_f_mask_i(mask_i_asu)
+#      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
+#    print("<><><><><><><><><><>")
+
+
+
     #
     # Determine number of secondary regions. Must happen here!
     # Preliminarily if need to do mosaic.
@@ -756,8 +848,8 @@ class f_masks(object):
       apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
     self.mFoDFc_0 = fmodel.electron_density_map().map_coefficients(
       map_type   = "mFobs-DFmodel",
-      isotropize = True,
-      exclude_free_r_reflections = False)
+      isotropize = False,
+      exclude_free_r_reflections = True)
     fft_map = self.mFoDFc_0.fft_map(crystal_gridding = self.crystal_gridding)
     fft_map.apply_sigma_scaling()
     return fft_map.real_map_unpadded()
