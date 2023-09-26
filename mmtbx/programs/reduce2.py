@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.6.0"
+version = "1.7.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1058,6 +1058,10 @@ NOTES:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    # We need to turn this on because without it 1zz0.txt kept flipping the ring
+    # in A TYR 214 every time we re-interpreted. The original interpretation done
+    # by Hydrogen placement will have flipped them, so we don't need to do it again.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
     self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
@@ -1208,14 +1212,6 @@ NOTES:
       self._AddHydrogens()
       doneAdd = time.time()
 
-      # Interpret the model after shifting and adding Hydrogens to it so that
-      # all of the needed fields are filled in when we use them below.
-      # @todo Remove this once place_hydrogens() does all the interpretation we need.
-      make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = time.time()
-      self._ReinterpretModel()
-      doneInt = time.time()
-
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
       opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
@@ -1230,7 +1226,6 @@ NOTES:
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
-      outString += 'Time to Interpret = {:.3f} sec'.format(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
         print('Atom information used during calculations:', file=self.logger)
@@ -1444,8 +1439,6 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
-          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
-          self._ReinterpretModel()
 
           # Run optimization, locking the specified Amides into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
@@ -1567,8 +1560,6 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
-          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
-          self._ReinterpretModel()
 
           # Run optimization, locking the specified Histidines into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
