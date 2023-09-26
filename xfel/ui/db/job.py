@@ -1103,9 +1103,9 @@ def submit_all_jobs(app):
       prev_task = tasks[task_idx-1]
       if prev_task.scope == 'global':
         # Submit a job for this task for any versions where it has not been
-        prev_j = _job(None, None, None, prev_task, dataset)
-        test_j = _job(None, None, None, task, dataset)
         for version in versions:
+          prev_j = _job(None, None, None, prev_task, dataset, version)
+          test_j = _job(None, None, None, task, dataset, version)
           prev_job = this_job = None
           for j in version.jobs:
             if prev_j == j:
@@ -1146,7 +1146,7 @@ def submit_all_jobs(app):
       if latest_version is None:
         next_version = 0
       else:
-        latest_version_local_jobs = [j.id for j in latest_version.jobs if j.task.scope == 'local']
+        latest_version_local_jobs = [j.id for j in latest_version.jobs if j.task and j.task.scope == 'local']
         new_jobs = [j for j in global_tasks[key] if j.id not in latest_version_local_jobs]
         if new_jobs:
           next_version = latest_version.version + 1

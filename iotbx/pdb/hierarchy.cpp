@@ -446,8 +446,6 @@ namespace {
     bool add_segid) const
   {
     /* This is replacement for the below function.
-    Presently is called exclusively from overall_counts for constructing duplicate
-    atom labels.
     At this point all members have the information, so we just put it into string
     and return. */
     std::string result;
@@ -458,7 +456,7 @@ namespace {
         unsigned n = static_cast<unsigned>(l);
         unsigned m = std::max(4U, n);
         result += "model=\"";
-        result += (boost::format("%s") % boost::io::group(std::setw(n), model_id)).str();
+        result += (boost::format("%4s") % model_id).str();
         result += "\" ";
       }
       if (name != 0) {
@@ -482,6 +480,7 @@ namespace {
     if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
       result += " segid=\"";
       result += (boost::format("%-4s") % segid).str();
+      result += "\"";
     }
     return result;
   }
@@ -540,6 +539,35 @@ namespace {
     }
   }
 
+  std::string
+  atom_label_columns_formatter::format(
+    shared_ptr<chain_data> const& ch_lock,
+    bool add_model,
+    bool add_segid)
+  {
+    chain_data const* ch = ch_lock.get();
+    if (ch == 0) {
+      chain_id = model_id = 0;
+    }
+    else {
+      chain_id = ch->id.c_str();
+      if (!add_model) {
+        model_id = 0;
+      }
+      else {
+        shared_ptr<model_data> md_lock = ch->parent.lock();
+        model_data const* md = md_lock.get();
+        if (md == 0) {
+          model_id = 0;
+        }
+        else {
+          model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
+        }
+      }
+    }
+    return format(add_model, add_segid);
+  }
+
   void
   atom_label_columns_formatter::format(
     char* result,
@@ -581,8 +609,6 @@ namespace {
     bool pdbres)
   {
     /* This is replacement for the below function.
-    Presently is called exclusively from overall_counts for constructing duplicate
-    atom labels.
     Here we populate members of atom_label_columns_formatter, such as name, segid etc
     and then call format where this info will be put into string */
     name = (pdbres ? 0 : atom.data->name.elems);
@@ -603,29 +629,7 @@ namespace {
       else {
         resseq = rg->resseq.elems;
         icode = rg->icode.elems;
-        // rg->parent is chain, we can do the extraction right here and
-        // then just go with the final format() call
-        // format(rg->parent.lock(), add_model, add_segid);
-        chain_data const* ch = rg->parent.lock().get();
-        if (ch == 0) {
-          chain_id = model_id = 0;
-        }
-        else {
-          chain_id = ch->id.c_str();
-          if (!add_model) {
-            model_id = 0;
-          }
-          else {
-            shared_ptr<model_data> md_lock = ch->parent.lock();
-            model_data const* md = md_lock.get();
-            if (md == 0) {
-              model_id = 0;
-            }
-            else {
-              model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
-            }
-          }
-        }
+        return format(rg->parent.lock(), add_model, add_segid);
       }
     }
     return format(add_model, add_segid);
@@ -665,9 +669,8 @@ namespace {
     }
   }
 
-  void
+  std::string
   atom_label_columns_formatter::format(
-    char* result,
     hierarchy::residue const& residue)
   {
     name = 0;
@@ -679,12 +682,10 @@ namespace {
     const conformer_data* cf = cf_lock.get();
     if (cf == 0) {
       chain_id = model_id = 0;
-      format(
-        result, /* add_model */ true, /* add_segid */ true);
+      return format(/* add_model */ true, /* add_segid */ true);
     }
     else {
-      format(
-        result, cf->parent.lock(), /* add_model */ true, /* add_segid */ true);
+      return format(cf->parent.lock(), /* add_model */ true, /* add_segid */ true);
     }
   }
 
@@ -791,33 +792,27 @@ namespace {
   std::string
   atom::id_str(bool pdbres, bool suppress_segid) const
   {
-    char result[52];
-    atom_label_columns_formatter().format(
-      result,
+    return atom_label_columns_formatter().format(
       *this,
       /* add_model */ true,
       /* add_segid */ !suppress_segid,
       pdbres);
-    return std::string(result);
   }
 
   std::string
   atom_with_labels::id_str(bool pdbres, bool suppress_segid) const
   {
-    char result[52];
     atom_label_columns_formatter label_formatter;
     label_formatter.name = (pdbres ? 0 : data->name.elems);
     label_formatter.segid = data->segid.elems;
     atom_with_labels_init_label_formatter(*this, label_formatter);
-    label_formatter.format(
-      result, /* add_model */ true, /* add_segid */ !suppress_segid);
-    return std::string(result);
+    return label_formatter.format(/* add_model */ true, /* add_segid */ !suppress_segid);
   }
 
   std::string
   residue::id_str(int suppress_segid) const
   {
-    char result[50];
+    std::string result;
     bool throw_segid_not_unique = false;
     atom_label_columns_formatter label_formatter;
     label_formatter.segid = 0;
@@ -837,13 +832,13 @@ namespace {
         }
       }
     }
-    label_formatter.format(result, *this);
+    result = label_formatter.format(*this);
     if (throw_segid_not_unique) {
       throw std::invalid_argument(
         "residue.id_str(suppress_segid=false): segid is not unique:\n"
         + ("  " + std::string(result)));
     }
-    return std::string(result);
+    return result;
   }
 
   unsigned

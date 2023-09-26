@@ -502,8 +502,8 @@ class run_one(object):
       "  distance (A), min: %4.2f max: %4.2f"%(self.dist_min, self.dist_max))
     self.ma.add("  start: %d"%self.xrs_water.scatterers().size())
     sel = mmtbx.utils.filter_water(
-      sites_frac_interaction = self.sites_frac_interaction,
-      sites_frac_other       = self.model.get_sites_frac().select(~self.interaction_selection),
+      interaction_selection  = self.interaction_selection,
+      sites_frac_other       = self.model.get_sites_frac(),
       sites_frac_water       = self.xrs_water.sites_frac(),
       dist_min               = self.dist_min,
       dist_max               = self.dist_max,

@@ -6434,9 +6434,7 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
       if chain.id == "A": chain.id = "C"
   try: hierarchy.adopt_xray_structure(xray_structure=xrs)
   except Exception as e: pass
-  else: raise Exception_expected
-  hierarchy.adopt_xray_structure(
-    xray_structure=xrs, assert_identical_id_str=False)
+  hierarchy.adopt_xray_structure(xray_structure=xrs)
   xrs_new5 = hierarchy.extract_xray_structure(
     crystal_symmetry=xrs.crystal_symmetry())
   for s1,s2 in zip(xrs.scatterers(), xrs_new5.scatterers()):
