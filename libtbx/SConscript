@@ -1188,7 +1188,15 @@ if env_etc.cxx11_is_available:
   test_code += "int main() {std::vector<int> x(9); for(auto & i : x) "
   test_code += "{i=7; std::cout << i << std::endl;}\n"
   test_code += " x = func(std::vector<int>(2)); return 0;}\n"
-  conf = env_base.Configure()
+  # temp fix for Xcode 15 and current static conda environments
+  if sys.platform.startswith('darwin') \
+    and libtbx.env.build_options.use_conda \
+    and 'conda' not in libtbx.env.build_options.compiler \
+    and env_etc.clang_version[0] > 14:
+    test_env = env_base.Clone(LIBPATH=[env_base['LIBPATH'][0]])
+    conf = test_env.Configure()
+  else:
+    conf = env_base.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')
   conf.Finish()
   if not flag:
