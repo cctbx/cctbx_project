@@ -1197,9 +1197,11 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+    '''
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
+    '''
 
     # Stores the initial coordinates for all of the atoms and the rest of the information
     # about the original model for use by Kinemages.

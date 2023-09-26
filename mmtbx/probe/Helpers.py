@@ -483,7 +483,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
               fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                 str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
               raise Sorry("Could not find atom info for "+fullName+
-                "(perhaps interpretation was not run on the model?)\n")
+                " (perhaps interpretation was not run on the model?)\n")
 
   return getExtraAtomInfoReturn(extras, warnings)
 
