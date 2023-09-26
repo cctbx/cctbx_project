@@ -2348,9 +2348,12 @@ class array(set):
       result = result.select(selection_positive)
     return result.set_info(info)
 
-  def g_function(self, R, volume_scale=False):
+  def g_function(self, R, s=None, volume_scale=False):
     # reciprocal sphere
-    s = 1./self.d_spacings().data()
+    if s is None:
+      s = 1./self.d_spacings().data()
+    else:
+      s = 1./s
     arg = 2*math.pi*s*R
     vol=1
     if(volume_scale): vol = 4*math.pi*R**3/3
@@ -4580,7 +4583,7 @@ class array(set):
     # This should really have been called "local_variance_map" because the
     # square root is not taken after local averaging of density-squared
     complete_set = self.complete_set()
-    sphere_reciprocal = self.g_function(R=radius)
+    sphere_reciprocal = self.g_function(R=radius, s=complete_set.d_spacings().data())
     fft = self.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -4619,7 +4622,7 @@ class array(set):
     assert self.crystal_symmetry().unit_cell().is_similar_to(
         other.crystal_symmetry().unit_cell())
     complete_set = self.complete_set()
-    sphere_reciprocal = self.g_function(R=radius)
+    sphere_reciprocal = self.g_function(R=radius, s=complete_set.d_spacings().data())
     if d_min is None:
       d_min=self.d_min()
     fft = self.fft_map(
