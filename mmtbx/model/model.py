@@ -1938,7 +1938,7 @@ class manager(object):
   def has_atoms_in_special_positions(self, selection, log=None):
     pdb_hierarchy = self.get_hierarchy()
     atom_labels = list(pdb_hierarchy.atoms_with_labels())
-    sel_cache = pdb_hierarchy.atom_selection_cache()
+    sel_cache = self.atom_selection_cache()
     site_symmetry_table = self.get_xray_structure().site_symmetry_table()
     disallowed_i_seqs = site_symmetry_table.special_position_indices()
     isel = sel_cache.selection(selection).iselection()
