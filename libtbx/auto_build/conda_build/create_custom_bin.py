@@ -75,11 +75,14 @@ if __name__ == '__main__':
   parser = argparse.ArgumentParser(description=__doc__,
                                    formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument('--prefix', type=str,
-    help='''The prefix of the installation. The conda-meta directory must exist in this directory.''')
+    help='''The prefix of the installation. The conda-meta directory must exist in this directory.''',
+    required=True)
   parser.add_argument('--custom_bin', type=str,
-    help='''The name of the custom binary directory. It will exist in the prefix directory.''')
+    help='''The name of the custom binary directory. It will exist in the prefix directory.''',
+    required=True)
   parser.add_argument('--packages', type=str, nargs='*',
-    help='''The packages to search.''')
+    help='''The packages to search.''',
+    required=True)
 
   namespace = parser.parse_args()
 
