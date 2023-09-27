@@ -162,7 +162,8 @@ class Optimizer(object):
                 skipBondFixup = False,
                 flipStates = '',
                 verbosity = 1,
-                clique_outline_file_name = None
+                cliqueOutlineFileName = None,
+                keepExistingH = False
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -215,11 +216,12 @@ class Optimizer(object):
     Value of 2 reports timing information.
     Setting it to 0 removes all informational messages.
     Setting it above 1 provides additional debugging information.
-    :param clique_outline_file_name: Name of file to write Kinemage with outlines of Movers to.
+    :param cliqueOutlineFileName: Name of file to write Kinemage with outlines of Movers to.
     This file holds spheres showing all possible locations for each atom in each Mover in different
     colors as one master. It shows the outlines expanded by the probe radius, with a single color
     for each clique, as another master. These are useful for determining why the cliques are as
     they are.
+    :param keepExistingH: If True, then existing Hydrogens will be kept and not removed.
     """
 
     ################################################################################
@@ -235,7 +237,7 @@ class Optimizer(object):
     self._skipBondFixup = skipBondFixup
     self._flipStates = flipStates
     self._verbosity = verbosity
-    self._clique_outline_file_name = clique_outline_file_name
+    self._cliqueOutlineFileName = cliqueOutlineFileName
 
     ################################################################################
     # Initialize internal variables.
@@ -294,6 +296,14 @@ class Optimizer(object):
       pass
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
+    if keepExistingH:
+      # If we are keeping existing Hydrogens, then we need to make sure that the
+      # more-general approach is taken to adding single-hydrogen rotators.
+      # This handles the case of missing atoms in the model that would make it
+      # look like hydrogens are rotatable to the simpler method defined in
+      # this file.
+      rotatableHydrogens = model.rotatable_hd_selection(iselection=True)
+      self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens (detailed)")
 
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
@@ -306,9 +316,12 @@ class Optimizer(object):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
 
-      # Find the single rotatable hydrogens in this model, which we'll use to place Movers.
-      allRotatableHydrogens = self._getRotatableSingleHydrogens(myModel, bondedNeighborLists)
-      self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
+      if not keepExistingH:
+        # Find the single rotatable hydrogens in this model, which we'll use to place Movers.
+        # We can use the simpler and faster method to find these because we know that hydrogens will
+        # only have been placed where they have good restraints.
+        rotatableHydrogens = self._getRotatableSingleHydrogens(myModel, bondedNeighborLists)
+        self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens (fast)")
 
       ################################################################################
       # Store the states (position and extra atom info) of all of the atoms in this model
@@ -391,7 +404,7 @@ class Optimizer(object):
         # The list of rotatable hydrogens comes from the global model, not just the current
         # model index.  However, we only place on atoms that are also in self._atoms, which
         # only includes those from the current model index.
-        deleteAtoms = self._PlaceMovers(self._atoms, allRotatableHydrogens, bondedNeighborLists, h_parameterization,
+        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
                            addFlipMovers)
         self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
         self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
@@ -432,8 +445,8 @@ class Optimizer(object):
         self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
 
         # If we've been asked to write an interaction graph file, do so.
-        if self._clique_outline_file_name:
-          with open(self._clique_outline_file_name, 'w') as f:
+        if self._cliqueOutlineFileName:
+          with open(self._cliqueOutlineFileName, 'w') as f:
             f.write(self._InteractionKinemage(groupCliques))
 
         ################################################################################
@@ -815,6 +828,10 @@ class Optimizer(object):
     """Produce a list of the i_seq numbers of hydrogens that are rotatable. These
     are defined as hydrogens that are bonded to a single neighbor that is itself
     bonded to only a single other neighbor and the other neighbor is not a hydrogen.
+    This is a fast and simple calculation compared to the one that is called when
+    the hydrogens were placed by the author. It should work when all hydrogens that
+    have been placed have a complete set of restraints (as the ones placed by
+    hydrogen-placement do).
     :return: a list of i_seq numbers for hydrogens that are rotatable.
     """
     rotatableHydrogenIDs = []
@@ -833,7 +850,9 @@ class Optimizer(object):
     """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
     :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
     Movers present in the structure already.
-    :param rotateableHydrogenIDs: List of sequence IDs for single hydrogens that are rotatable.
+    :param rotateableHydrogenIDs: List of sequence IDs that include those of single hydrogens
+    that are rotatable. It might include additional rotatable hydrogens (three bonded to the
+    same parent atom) or it might not.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
     structure that the atom from the first parameter interacts with that lists all of the
     bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().

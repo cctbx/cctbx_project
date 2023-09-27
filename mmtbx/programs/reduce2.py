@@ -1050,7 +1050,7 @@ NOTES:
 
   def _ReinterpretModel(self, make_restraints=True):
     # Reinterpret the model using the same approach that hydrogen-placement does.
-    # @param make_restraints: Should we compute restraints during the interpretation?
+    # :param make_restraints: Should we compute restraints during the interpretation?
     self.model.get_hierarchy().sort_atoms_in_place()
     self.model.get_hierarchy().atoms().reset_serial()
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -1223,7 +1223,8 @@ NOTES:
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
-        clique_outline_file_name=self.params.output.clique_outline_file_name)
+        cliqueOutlineFileName=self.params.output.clique_outline_file_name,
+        keepExistingH = self.params.keep_existing_H)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
@@ -1472,7 +1473,8 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            keepExistingH = self.params.keep_existing_H)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -1593,7 +1595,8 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            keepExistingH = self.params.keep_existing_H)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
