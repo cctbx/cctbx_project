@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
   namespace = parser.parse_args()
 
-  copy_bin(namespace.prefix, namespace.custom_bin, namespace.packages)
+  copy_bin(namespace.prefix, namespace.custom_bin.lower(), namespace.packages)
 
 # =============================================================================
 # end
