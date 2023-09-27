@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Jun  2 15:06:48 2023
+The date of file generation: Wed Sep 27 09:55:16 2023
 """
 from __future__ import absolute_import, division, print_function
 
@@ -102,6 +102,7 @@ lookup = {
   "UY1" : "?",
   "UY4" : "?",
   "UZL" : "?",
+  "XE6" : "?",
   "XEC" : "?",
   "XNY" : "?",
   "Y5P" : "?",
@@ -204,6 +205,7 @@ lookup = {
   "JSP" : "?",
   "LCH" : "?",
   "LHO" : "?",
+  "LR6" : "?",
   "LTP" : "?",
   "LWM" : "?",
   "MBZ" : "?",
@@ -224,6 +226,7 @@ lookup = {
   "NRI" : "?",
   "NYM" : "?",
   "OFC" : "?",
+  "OIQ" : "?",
   "OWR" : "?",
   "P9G" : "?",
   "PBT" : "?",
@@ -544,8 +547,6 @@ lookup = {
   "SDG" : "DG",
   "SDH" : "DG",
   "SJO" : "DG",
-  "T0N" : "DG",
-  "T0Q" : "DG",
   "TGP" : "DG",
   "X" : "DG",
   "XGL" : "DG",
@@ -602,6 +603,8 @@ lookup = {
   "PST" : "DT",
   "QCK" : "DT",
   "SPT" : "DT",
+  "T0N" : "DT",
+  "T0Q" : "DT",
   "T2S" : "DT",
   "T32" : "DT",
   "T36" : "DT",
@@ -784,6 +787,7 @@ lookup = {
   "UR3" : "U",
   "URD" : "U",
   "US5" : "U",
+  "XSX" : "U",
   "ZBU" : "U",
 }
 if __name__ == '__main__':
