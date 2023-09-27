@@ -297,7 +297,7 @@ class electron_distribution(dict):
       element = atom.element.strip()
       if self.properties.is_metal(element):
         if atom.i_seq not in self:
-          raise Sorry('''
+          raise Sorry('''Charge error:
   Atom %s does not have a charge specified. Use PHIL parameter
   specific_atom_charges or specify in the input model.
   ''' % (
