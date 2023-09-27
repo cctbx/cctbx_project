@@ -18,7 +18,7 @@ class empty: pass
 
 class wilson_plot(object):
 
-  def __init__(self, f_obs, asu_contents, scattering_table, e_statistics=False):
+  def __init__(self, f_obs, asu_contents, scattering_table="wk1995", e_statistics=False):
     assert scattering_table in [
       "n_gaussian", "it1992", "wk1995", "electron", "neutron"]
     assert f_obs.is_real_array()
