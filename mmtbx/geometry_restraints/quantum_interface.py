@@ -143,7 +143,7 @@ starting_higher_single_point final_higher_single_point
 
   include_inter_residue_restraints = False
     .type = bool
-    .short_caption = include residue (including metal) linking in restraints
+    .short_caption = include residue (including metal) linking in restraints \
                      update
 
   do_not_update_restraints = False
