@@ -17,6 +17,7 @@ def run_validation(pdb_file, ignore_hd=True):
     pdb_hierarchy=cmdline.pdb_hierarchy,
     xray_structure=cmdline.xray_structure,
     geometry_restraints_manager=cmdline.geometry,
+    reverse_sort=True,
     ignore_hd=ignore_hd)
   return validation
 
@@ -90,9 +91,9 @@ atoms                   ideal    model    delta   sigma  residual   deviation
   v2.show(out=out2)
   assert (out2.getvalue() != out1.getvalue())
   assert ("""\
- A   1  LYS  HA        110.00    57.00    53.00  3.00e+00  3.12e+02  17.7*sigma
  A   1  LYS  N
  A   1  LYS  CA
+ A   1  LYS  HA        110.00    57.00    53.00  3.00e+00  3.12e+02  17.7*sigma
 """ in "\n".join([ l.rstrip() for l in out2.getvalue().splitlines() ]))
   #
   # C-alpha-only model (from 3b5d)

@@ -282,6 +282,7 @@ class molprobity(slots_getstate_setstate):
         xray_structure=xray_structure,
         geometry_restraints_manager=geometry_restraints_manager,
         ignore_hd=(not nuclear),
+        reverse_sort=True,
         cdl=getattr(all_chain_proxies, "use_cdl", None))
     if (sequences is not None) and (flags.seq):
       self.sequence = sequence.validation(
