@@ -154,7 +154,7 @@ class FlipMoverState(object):
 class Optimizer(object):
 
   def __init__(self, probePhil, addFlipMovers, model, modelIndex = 0, altID = None,
-                bondedNeighborDepth = 3,
+                bondedNeighborDepth = 4,
                 useNeutronDistances = False,
                 minOccupancy = 0.02,
                 preferenceMagnitude = 1.0,
