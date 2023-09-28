@@ -387,9 +387,11 @@ class _MoverRotator(object):
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, potentialAcceptors = [],
-                  coarseStepDegrees = 10.0,
-                  fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
+  def __init__(self, atom, bondedNeighborLists, extraAtomInfoMap,
+                hParameters, potentialAcceptors = [],
+                potentialClashes = [],
+                coarseStepDegrees = 10.0,
+                fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
@@ -403,17 +405,22 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
+       :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+       up the information for atoms.  Can be obtained by calling
+       mmtbx.probe.Helpers.getExtraAtomInfo().
        :param hParameters: List indexed by sequence ID that stores the riding
        coefficients for hydrogens that have associated dihedral angles.  This can be
        obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
        :param potentialAcceptors: A flex array of atoms that are nearby potential acceptors.
        Coarse orientations are added that aim the hydrogen in the direction of these potential
        partners.
+       :param potentialClashes: A flex array of atoms that are nearby potential clashes.
        :param coarseStepDegrees: The coarse step to take.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
     """
+    # @todo All callers and tests
 
     # Check the conditions to make sure we've been called with a valid atom.  This is a hydrogen with
     # a single bonded neighbor that has a single other bonded partner that has 2-3 other bonded friends.
@@ -479,10 +486,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       preferredOrientationScale = preferredOrientationScale)
 
     # Now add orientations that point in the direction of the potential acceptors.
-    # @todo The original C++ code aimed only at these (or near them for clashes) and in a
-    # direction far from clashes.  We may need to do this for speed reasons and to reduce the
-    # number of elements in each clique, but for now we try all coarse orientations and all
-    # acceptor directions.
+    # Then select from the original angles the one that has the least overlap with
+    # any clashing atoms that is at least the coarse step size away from pointing
+    # towards an acceptor.
+    # We replace the original coarse angles with this set of 1+ angles to reduce the
+    # number of angles to check and to ensure that we always check potential acceptors.
 
     ###########################
     # Helper utility function to sort atoms consistently from run to run so that we get
@@ -500,9 +508,10 @@ class MoverSingleHydrogenRotator(_MoverRotator):
     #
     ###########################
 
-    # Compute the dihedral angle from the Hydrogen to the potential acceptor through
+    # Compute the dihedral angle from the Hydrogen to each potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
     # Sort these so that we get the same order each time the program is run.
+    acceptorAngles = []
     for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
@@ -511,10 +520,43 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       # constructor, so our dihedral measurement here is with respect to that new location.
       # This means that we merely have to add the degrees offset to its current rotation.
       if degrees is not None:
-        self._coarseAngles.append(degrees)
-        # Recompute the coarse and fine positions given the new angle we want to test
-        self._coarsePositions = self._computeCoarsePositions()
-        self._finePositions = self._computeFinePositions()
+        acceptorAngles.append(degrees)
+
+    # Find the coarse angle that has the least amount of clashing with the potential clashes
+    # that is also at least the coarse step size away from pointing at an acceptor.
+    leastClashAngle = 0
+    leastClashGap = -1e50
+    ra = extraAtomInfoMap.getMappingFor(atom).vdwRadius
+    for i, ang in enumerate(self._coarseAngles):
+      # Make sure this angle is not near any of the acceptor angles
+      tooClose = False
+      for aa in acceptorAngles:
+        if abs(aa - ang) < coarseStepDegrees:
+          tooClose = True
+          break
+
+      # Find minimum gap with clashing atoms at this angle. This number is
+      # negative when there is a clash.
+      if not tooClose:
+        maxGap = -1e100
+        for pc in potentialClashes:
+          rc = extraAtomInfoMap.getMappingFor(pc).vdwRadius
+          distance = (rvec3(self._coarsePositions.positions[i][0]) - rvec3(pc.xyz)).length()
+          gap = distance - (ra + rc)
+          if gap > maxGap:
+            maxGap = gap
+        if maxGap > leastClashGap:
+          leastClashGap = maxGap
+          leastClashAngle = ang
+
+    # Replace the coarse angles with the least-bumping angle and the angles that point
+    # towards an acceptor.
+    self._coarseAngles = [leastClashAngle]
+    self._coarseAngles.extend(acceptorAngles)
+
+    # Recompute the coarse and fine positions given the new angles we want to test
+    self._coarsePositions = self._computeCoarsePositions()
+    self._finePositions = self._computeFinePositions()
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
@@ -1683,6 +1725,13 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
+    # Prepare our extraAtomInfoMap
+    atoms = c.atoms()
+    extras = []
+    for a in atoms:
+      extras.append(probe.ExtraAtomInfo())
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
+
     # Add a non-bonded potential acceptor atom at 13 degrees rotation towards the Y axis from
     # the X axis.
     acc = pdb.hierarchy.atom()
@@ -1699,7 +1748,7 @@ def Test():
     hParams = {}
     hParams[h.i_seq] = item
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams, [acc])
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, extrasMap, hParams, [acc])
 
     # Check for hydrogen rotated into -X plane at a distance of sqrt(2) from Z axis.
     # It should have been rotated 180 degrees from f1 because f1 is the conventional branch based on its name.
@@ -1792,6 +1841,13 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
+    # Prepare our extraAtomInfoMap
+    atoms = c.atoms()
+    extras = []
+    for a in atoms:
+      extras.append(probe.ExtraAtomInfo())
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
+
     # Construct a stand-in riding-coefficients-producing hParams object that will provide an
     # appropriate dihedral atom for the hydrogen to use.
     class Item:
@@ -1802,7 +1858,7 @@ def Test():
     hParams = {}
     hParams[h.i_seq] = item
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams)
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, extrasMap, hParams)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
     # it should have picked f1 as the conventional friend to be opposite to based on its name.
