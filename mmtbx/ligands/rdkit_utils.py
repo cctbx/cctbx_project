@@ -109,9 +109,7 @@ def convert_model_to_rdkit(cctbx_model):
       rdatom = Chem.Atom(atomic_number)
       rdatom.SetFormalCharge(atom.charge_as_int())
       rdatom_idx = rwmol.AddAtom(rdatom)
-
       conformer.SetAtomPosition(rdatom_idx,atom.xyz)
-
 
   rm = cctbx_model.restraints_manager
   grm = rm.geometry
@@ -133,7 +131,6 @@ def convert_elbow_to_rdkit(elbow_mol):
 
   TODO: Charge
   """
-
   # elbow bond order to rdkit bond orders
   bond_order_elbowkey = {
     1.5:Chem.rdchem.BondType.AROMATIC,
@@ -142,10 +139,7 @@ def convert_elbow_to_rdkit(elbow_mol):
     3: Chem.rdchem.BondType.TRIPLE,
   }
   bond_order_rdkitkey = {value:key for key,value in bond_order_elbowkey.items()}
-
-
   atoms = list(elbow_mol)
-
   mol = Chem.Mol()
   rwmol = Chem.RWMol(mol)
   conformer = Chem.Conformer(len(atoms))
@@ -166,9 +160,21 @@ def convert_elbow_to_rdkit(elbow_mol):
   mol = rwmol.GetMol()
   return mol
 
+def convert_rdkit_to_elbow(rwmol):
+  from elbow.chemistry.SimpleMoleculeClass import SimpleMoleculeClass
+  from elbow.chemistry.xyzClass import xyzClass
+  positions = molecule.GetConformer().GetPositions()
+  smc = SimpleMoleculeClass()
+  for i, atom in enumerate(smc):
+    atom.xyz = xyzClass(positions[i])
+    atom.record_name = 'LIG'
+    atom.chainID = 'A'
+    atom.segID = ''
+  smc.SetOriginalFormat('PDB')
+  assert 0
+
 def enumerate_bonds(mol):
   idx_set_bonds = {frozenset((bond.GetBeginAtomIdx(),bond.GetEndAtomIdx())) for bond in mol.GetBonds()}
-
   # check that the above approach matches the more exhaustive approach used for angles/torsion
   idx_set = set()
   for atom in mol.GetAtoms():
@@ -180,7 +186,6 @@ def enumerate_bonds(mol):
             idx0,idx1 = idx1,idx0
             idx_set.add(s)
   assert idx_set == idx_set_bonds
-
   return idx_set_bonds
 
 def enumerate_angles(mol):
@@ -235,24 +240,16 @@ def mol_to_2d(mol):
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
 
-def mol_from_smiles(smiles,embed3d=False,addHs=True,removeHs=False):
+def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False):
   """
   Convert a smiles string to rdkit mol
   """
   ps = Chem.SmilesParserParams()
   ps.removeHs=removeHs
   rdmol = Chem.MolFromSmiles(smiles,ps)
-
-  if addHs:
-    rdmol = Chem.AddHs(rdmol)
-
-  if embed3d:
-    rdmol = mol_to_3d(rdmol)
-
-
-  if removeHs:
-    rdmol = Chem.RemoveHs(rdmol)
-
+  if addHs: rdmol = Chem.AddHs(rdmol)
+  if embed3d: rdmol = mol_to_3d(rdmol)
+  if removeHs: rdmol = Chem.RemoveHs(rdmol)
   Chem.SetHybridization(rdmol)
   rdmol.UpdatePropertyCache()
   return rdmol
@@ -274,10 +271,6 @@ def match_mol_indices(mol_list):
   smarts_mol = Chem.MolFromSmarts(mcs_SMARTS.smartsString)
   match_list = [x.GetSubstructMatch(smarts_mol) for x in mol_list]
   return list(zip(*match_list))
-
-
-
-
 
 if __name__ == '__main__':
   import sys
