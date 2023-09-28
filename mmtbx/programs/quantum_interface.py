@@ -22,6 +22,8 @@ import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 
+from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
+
 get_class = iotbx.pdb.common_residue_names_get_class
 
 def stepper(b,e,s):
@@ -369,6 +371,7 @@ Usage examples:
     #
     # validate selection
     #
+    include_nearest_neighbours=False
     selection=None
     if len(self.params.qi.qm_restraints)!=0:
       selection = self.params.qi.qm_restraints[0].selection
@@ -379,6 +382,13 @@ Usage examples:
       selected_model = model.select(selection_array)
       print('Selected model  %s' % selected_model, file=log)
       self.data_manager.add_model('ligand', selected_model)
+      ags = selected_model.get_hierarchy().atom_groups()
+      names = []
+      for ag in ags: names.append(ag.resname.strip())
+      if len(names)==1:
+        if names[0] in ad_hoc_single_metal_residue_element_types:
+          include_nearest_neighbours=True
+
     if self.params.qi.step_buffer_radius:
       step_buffer_radius = self.params.qi.step_buffer_radius
       assert len(step_buffer_radius.split(','))==3
@@ -485,6 +495,7 @@ Usage examples:
                                iterate_metals=self.params.qi.iterate_metals,
                                step_buffer_radius=self.params.qi.step_buffer_radius,
                                output_format=self.params.qi.format,
+                               include_nearest_neighbours=include_nearest_neighbours,
                                )
       ih = ''
       if self.params.qi.iterate_NQH:
@@ -1018,6 +1029,7 @@ Usage examples:
                      iterate_metals=False,
                      step_buffer_radius=False,
                      output_format=None,
+                     include_nearest_neighbours=False,
                      log=None):
     qi_phil_string = self.get_single_qm_restraints_scope(self.params.qi.selection[0])
     # qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
@@ -1062,6 +1074,12 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                               'include_nearest_neighbours_in_optimisation = True')
+
+    if include_nearest_neighbours:
+      qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                              'include_nearest_neighbours_in_optimisation = True')
+      qi_phil_string = qi_phil_string.replace('include_inter_residue_restraints = False',
+                                              'include_inter_residue_restraints = True')
 
     if output_format=='qi':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')
