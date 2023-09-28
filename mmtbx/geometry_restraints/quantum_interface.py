@@ -138,11 +138,13 @@ starting_higher_single_point final_higher_single_point
 
   include_nearest_neighbours_in_optimisation = False
     .type = bool
-    .short_caption = Include protein side chain in ligand optimisation
+    .short_caption = include protein side chain in ligand optimisation
     .help = include the side chains of protein in the QM optimisation
 
   include_inter_residue_restraints = False
     .type = bool
+    .short_caption = include residue (including metal) linking in restraints
+                     update
 
   do_not_update_restraints = False
     .type = bool

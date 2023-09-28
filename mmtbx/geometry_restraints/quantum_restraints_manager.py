@@ -1111,6 +1111,7 @@ def update_restraints(model,
     #
     ligand_atoms = ligand_model.get_hierarchy().atoms()
     ligand_i_seqs = []
+    number_of_ligand_atoms=len(ligand_atoms)
     for atom in ligand_atoms:
       if atom.element.strip() in ['H', 'D']: continue
       ligand_i_seqs.append(atom.id_str())
@@ -1188,7 +1189,10 @@ def update_restraints(model,
             '-'*71,
             ),
             file=log)
-    if 'restraints' in qmr.write_files and not never_write_restraints:
+    if ('restraints' in qmr.write_files and
+        not never_write_restraints and
+        number_of_ligand_atoms>1
+        ):
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()
