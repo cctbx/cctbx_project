@@ -904,13 +904,14 @@ class Optimizer(object):
           if len(bondedNeighborLists[neighbor]) == 2:
 
             # Get the list of atoms that are bonded in a chain to the hydrogen. They
-            # cannot be either hydrogen-bond acceptors nor clashes with this atom.
+            # cannot be either hydrogen-bond acceptors nor touches/clashes with this atom.
             bonded = Helpers.getAtomsWithinNBonds(a, bondedNeighborLists, self._extraAtomInfo,
                                                   self._probeRadius, self._bondedNeighborDepth, 3)
 
-            # Construct a list of nearby atoms that are potential acceptors and potential clashes.
+            # Construct a list of nearby atoms that are potential acceptors and potential touches.
+            # The potential acceptors are also potential touches.
             potentialAcceptors = []
-            potentialClashes = []
+            potentialTouches = []
 
             # Get the list of nearby atoms.  The center of the search is the atom that
             # the Hydrogen is bound to and its radius is 4 (these values are pulled from
@@ -941,7 +942,7 @@ class Optimizer(object):
             # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
             # We check the partner (N's for GLN And ASN, C's for HIS) because if it is the O or
             # N atom, we will already be checking it as an acceptor now.
-            # If not, then it is a potential clash.
+            # In any case, it is a potential touch.
             for c in candidates:
               cName = c.name.strip().upper()
               resName = c.parent().resname.strip().upper()
@@ -952,12 +953,11 @@ class Optimizer(object):
               acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
               if acceptor or flipPartner:
                 potentialAcceptors.append(c)
-              else:
-                potentialClashes.append(c)
+              potentialTouches.append(c)
 
             self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                   hParameters, potentialAcceptors,
-                                                                  potentialClashes))
+                                                                  potentialTouches))
             self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
               " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
             self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;

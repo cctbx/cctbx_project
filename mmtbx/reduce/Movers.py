@@ -389,7 +389,7 @@ class _MoverRotator(object):
 class MoverSingleHydrogenRotator(_MoverRotator):
   def __init__(self, atom, bondedNeighborLists, extraAtomInfoMap,
                 hParameters, potentialAcceptors = [],
-                potentialClashes = [],
+                potentialTouches = [],
                 coarseStepDegrees = 10.0,
                 fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
@@ -414,7 +414,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param potentialAcceptors: A flex array of atoms that are nearby potential acceptors.
        Coarse orientations are added that aim the hydrogen in the direction of these potential
        partners.
-       :param potentialClashes: A flex array of atoms that are nearby potential clashes.
+       :param potentialTouches: A flex array of atoms that are nearby potential touches/clashes.
        :param coarseStepDegrees: The coarse step to take.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
@@ -486,8 +486,8 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       preferredOrientationScale = preferredOrientationScale)
 
     # Now add orientations that point in the direction of the potential acceptors.
-    # Then select from the original angles the one that has the least overlap with
-    # any clashing atoms that is at least the coarse step size away from pointing
+    # Then select from the original angles the one that has the best contact with
+    # any touching atoms that is at least the coarse step size away from pointing
     # towards an acceptor.
     # We replace the original coarse angles with this set of 1+ angles to reduce the
     # number of angles to check and to ensure that we always check potential acceptors.
@@ -522,10 +522,11 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       if degrees is not None:
         acceptorAngles.append(degrees)
 
-    # Find the coarse angle that has the least amount of clashing with the potential clashes
+    # Find the coarse angle that has the least best contact with potential touches
     # that is also at least the coarse step size away from pointing at an acceptor.
-    leastClashAngle = 0
-    leastClashGap = -1e50
+    # This is the one whose gap is closest to 0.
+    bestTouchAngle = 0
+    bestgClashGap = -1e50
     ra = extraAtomInfoMap.getMappingFor(atom).vdwRadius
     for i, ang in enumerate(self._coarseAngles):
       # Make sure this angle is not near any of the acceptor angles
@@ -536,22 +537,23 @@ class MoverSingleHydrogenRotator(_MoverRotator):
           break
 
       # Find minimum gap with clashing atoms at this angle. This number is
-      # negative when there is a clash.
+      # negative when there is a clash. It reports the atom that we're most
+      # in contact with at this angle.
       if not tooClose:
         maxGap = -1e100
-        for pc in potentialClashes:
+        for pc in potentialTouches:
           rc = extraAtomInfoMap.getMappingFor(pc).vdwRadius
           distance = (rvec3(self._coarsePositions.positions[i][0]) - rvec3(pc.xyz)).length()
           gap = distance - (ra + rc)
           if gap > maxGap:
             maxGap = gap
-        if maxGap > leastClashGap:
-          leastClashGap = maxGap
-          leastClashAngle = ang
+        if abs(maxGap) < bestgClashGap:
+          bestgClashGap = abs(maxGap)
+          bestTouchAngle = ang
 
     # Replace the coarse angles with the least-bumping angle and the angles that point
     # towards an acceptor.
-    self._coarseAngles = [leastClashAngle]
+    self._coarseAngles = [bestTouchAngle]
     self._coarseAngles.extend(acceptorAngles)
 
     # Recompute the coarse and fine positions given the new angles we want to test
