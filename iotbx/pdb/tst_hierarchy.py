@@ -1032,7 +1032,7 @@ BREAK
   a.set_element("e")
   assert a.pdb_element_charge_columns() == " e  "
   a.set_charge("+")
-  assert a.pdb_element_charge_columns() == " e+ "
+  assert a.pdb_element_charge_columns() == " e+ ", "'%s'" % a.pdb_element_charge_columns()
   a.set_element("el")
   a.set_charge("2+")
   assert a.pdb_element_charge_columns() == "el2+"
