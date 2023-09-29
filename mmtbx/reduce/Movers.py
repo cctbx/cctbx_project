@@ -523,33 +523,30 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         acceptorAngles.append(degrees)
 
     # Find the coarse angle that has the least best contact with potential touches
-    # that is also at least the coarse step size away from pointing at an acceptor.
+    # which may also be one of the acceptors (for a weak hydrogen bond, the score
+    # can be better for a touch than an overlap).
     # This is the one whose gap is closest to 0.
     bestTouchAngle = 0
-    bestgClashGap = -1e50
+    bestTouchGap = 1e100
     ra = extraAtomInfoMap.getMappingFor(atom).vdwRadius
     for i, ang in enumerate(self._coarseAngles):
-      # Make sure this angle is not near any of the acceptor angles
-      tooClose = False
-      for aa in acceptorAngles:
-        if abs(aa - ang) < coarseStepDegrees:
-          tooClose = True
-          break
-
       # Find minimum gap with clashing atoms at this angle. This number is
       # negative when there is a clash. It reports the atom that we're most
       # in contact with at this angle.
-      if not tooClose:
-        maxGap = -1e100
-        for pc in potentialTouches:
-          rc = extraAtomInfoMap.getMappingFor(pc).vdwRadius
-          distance = (rvec3(self._coarsePositions.positions[i][0]) - rvec3(pc.xyz)).length()
-          gap = distance - (ra + rc)
-          if gap > maxGap:
-            maxGap = gap
-        if abs(maxGap) < bestgClashGap:
-          bestgClashGap = abs(maxGap)
-          bestTouchAngle = ang
+      minGap = 1e100
+      for pt in potentialTouches:
+        rt = extraAtomInfoMap.getMappingFor(pt).vdwRadius
+        # Measure from the first atom's position (the Hydrogen) at this position to the potential touch
+        distance = (rvec3(self._coarsePositions.positions[i][0]) - rvec3(pt.xyz)).length()
+        gap = distance - (ra + rt)
+        if gap < minGap:
+          minGap = gap
+      # Find the minimum gap distance that is closest to zero, either
+      # above or below zero. This is the one with the best just-touch
+      # value.
+      if abs(minGap) < bestTouchGap:
+        bestTouchGap = abs(minGap)
+        bestTouchAngle = ang
 
     # Replace the coarse angles with the least-bumping angle and the angles that point
     # towards an acceptor.

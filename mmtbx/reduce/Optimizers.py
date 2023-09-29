@@ -934,6 +934,8 @@ class Optimizer(object):
             for n in nearby:
               # We don't count bonded atoms.
               if not n in bonded:
+                # We treat them all as potential touches/clashes.
+                potentialTouches.append(n)
                 d = (Helpers.rvec3(neighbor.xyz) - Helpers.rvec3(n.xyz)).length()
                 if d <= XHbondlen + self._extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
                   candidates.append(n)
@@ -953,7 +955,6 @@ class Optimizer(object):
               acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
               if acceptor or flipPartner:
                 potentialAcceptors.append(c)
-              potentialTouches.append(c)
 
             self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
                                                                   hParameters, potentialAcceptors,
