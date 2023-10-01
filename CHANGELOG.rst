@@ -1,3 +1,10 @@
+2023.9
+======
+
+* Added initial support for longer residue names
+* Updated lists of modified amino and nucleic acids
+* Generalized wilson_plot to neutron and elecron scattering tables
+
 2023.8
 ======
 

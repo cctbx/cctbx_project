@@ -58,7 +58,7 @@ def parse_pae_file(pae_file = None, text = None):
       _, ext = os.path.splitext(pae_file)
 
     if text or ext == '.json' or ext == '.jsn':
-     
+
         import json
         if not text:
           try:
