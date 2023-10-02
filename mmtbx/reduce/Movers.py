@@ -524,7 +524,7 @@ class MoverSingleHydrogenRotator(_MoverRotator):
 
     # Find the coarse angle that has the least best contact with potential touches
     # which may also be one of the acceptors (for a weak hydrogen bond, the score
-    # can be better for a touch than an overlap).
+    # can be better for a touch than for an overlap).
     # This is the one whose gap is closest to 0.
     bestTouchAngle = 0
     bestTouchGap = 1e100
@@ -548,10 +548,24 @@ class MoverSingleHydrogenRotator(_MoverRotator):
         bestTouchGap = abs(minGap)
         bestTouchAngle = ang
 
-    # Replace the coarse angles with the least-bumping angle and the angles that point
-    # towards an acceptor.
-    self._coarseAngles = [bestTouchAngle]
-    self._coarseAngles.extend(acceptorAngles)
+    # Check every coarse angle to see whether it is at least 45 degrees away from
+    # any of the acceptor angles or the best touch angle.  If it is, then we add
+    # it to the list of coarse angles to try. This ensures that we try at least
+    # sparsely in all directions.
+
+    sofar = [bestTouchAngle]
+    sofar.extend(acceptorAngles)
+    for ang in self._coarseAngles:
+      minAng = 360
+      for a in sofar:
+        diff = abs(a - ang)
+        if diff < minAng:
+          minAng = diff
+      if minAng >= 45:
+        sofar.append(ang)
+
+    # Replace the coarse angles with the ones that we have found.
+    self._coarseAngles = sofar
 
     # Recompute the coarse and fine positions given the new angles we want to test
     self._coarsePositions = self._computeCoarsePositions()
