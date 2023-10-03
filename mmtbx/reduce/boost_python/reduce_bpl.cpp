@@ -89,7 +89,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   std::cout << "XXX Done mapping the double" << std::endl;
   */
   /// @todo This does not make the type available to Python
-  //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
+  //scitbx::af::boost_python::flex_wrapper< scitbx::af::shared<double> >::plain("flex_double");
 
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
@@ -109,8 +109,8 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
 
-  boost::python::class_<std::vector<boost::python::object>>("ObjectVector")
-    .def(boost::python::vector_indexing_suite<std::vector<boost::python::object>>());
+  boost::python::class_< std::vector<boost::python::object> >("ObjectVector")
+    .def(boost::python::vector_indexing_suite< std::vector<boost::python::object> >());
 
   // Define the flex array wrapping for these classes because we take them as parameters
   // and return them.
