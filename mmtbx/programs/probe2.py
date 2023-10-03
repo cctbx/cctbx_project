@@ -1,5 +1,5 @@
 ##################################################################################
-# Copyright(c) 2021-2022, Richardson Lab at Duke
+# Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.3.0"
+version = "2.5.0"
 
 master_phil_str = '''
 profile = False
@@ -1812,28 +1812,37 @@ Note:
       # Get our model.
       self.model = self.data_manager.get_model()
 
-      # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-      cs = self.model.crystal_symmetry()
-      if (cs is None) or (cs.unit_cell() is None):
-        self.model = shift_and_box_model(model = self.model)
-
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
     allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     try:
-      p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-      p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-      p.pdb_interpretation.allow_polymer_cross_special_position=True
-      p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-      p.pdb_interpretation.proceed_with_excessive_length_bonds=True
       self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
           geometry.get_all_bond_proxies(sites_cart = sites_cart)
     except Exception as e:
-      raise Sorry("Could not get bonding information for input file: " + str(e))
+      try:
+        # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+        cs = self.model.crystal_symmetry()
+        if (cs is None) or (cs.unit_cell() is None):
+          self.model = shift_and_box_model(model = self.model, shift_model=False)
+
+        # Retry with the adjusted model
+        self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+        geometry = self.model.get_restraints_manager().geometry
+        sites_cart = self.model.get_sites_cart() # cartesian coordinates
+        bondProxies, asu = \
+            geometry.get_all_bond_proxies(sites_cart = sites_cart)
+
+      except Exception as e:
+        raise Sorry("Could not get bonding information for input file: " + str(e))
 
     ################################################################################
     # Get the bonding information we'll need to exclude our bonded neighbors.
@@ -1983,12 +1992,31 @@ Note:
         if a in atoms:
           target_atoms.add(a)
 
+      ###########################
+      # Helper utility function to sort atoms consistently from run to run so that we get
+      # the same ordering on coarse angles.
+      def atomID(a):
+        # Return the ID of the atom, which includes its chain, residue name,
+        # residue number, atom name, and alternate separated by spaces. This
+        # is used to sort the atoms. This must work in the case where we have
+        # test atoms that are not completely fleshed out.
+        try:
+          return ( a.parent().parent().parent().id + a.parent().resname +
+            str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+        except Exception:
+          return ""
+      #
+      ###########################
+
       ################################################################################
       # Find a list of all of the selected atoms with no duplicates
       # Get the bonded neighbor lists for the atoms that are in this selection.
       # We have to do this so that when keep_unselected_atoms is set to False we don't
       # follow bonds to neighbor atoms that should not exist.
-      all_selected_atoms = source_atoms.union(target_atoms)
+      # Sort the atoms by an ID that is consistent from run to run so that they end up
+      # in our data structures in the same order for each run.
+
+      all_selected_atoms = sorted(source_atoms.union(target_atoms), key=lambda x:atomID(x))
       bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
       ################################################################################
@@ -2003,8 +2031,8 @@ Note:
         bondedNeighborLists = self._allBondedNeighborLists
         selectedAtomsIncludingKept = atoms
       else:
-        self._spatialQuery = Helpers.createSpatialQuery(list(all_selected_atoms), self.params.probe)
-        selectedAtomsIncludingKept = list(all_selected_atoms)
+        self._spatialQuery = Helpers.createSpatialQuery(all_selected_atoms, self.params.probe)
+        selectedAtomsIncludingKept = all_selected_atoms
 
       ################################################################################
       # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
@@ -2031,6 +2059,7 @@ Note:
 
         # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
         # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
+        maxISeq = Helpers.getMaxISeq(self.model)
         for a in all_selected_atoms:
 
           # Ignore Hydrogens whose parameters are out of bounds.
@@ -2060,14 +2089,12 @@ Note:
 
             # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
             if len(bondedNeighborLists[a]) == 0:
-              newPhantoms = Helpers.getPhantomHydrogensFor(a, self._spatialQuery, self._extraAtomInfo,
+              # NOTE: The Phantoms have i_seq numbers that are sequential and that are higher than
+              # all other atoms in the model.  Each one has a unique i_seq.
+              newPhantoms = Helpers.getPhantomHydrogensFor(maxISeq, a, self._spatialQuery, self._extraAtomInfo,
                               0.0, True, adjustedHydrogenRadius, placedHydrogenDistance)
+              maxISeq += len(newPhantoms)
               for p in newPhantoms:
-                # NOTE: The Phantoms have the same i_seq number as their parents.  Although this does not
-                # impact our Probe data structures and algorithms, we'd like to avoid this in case it leaks
-                # through to some CCTBX-called code.
-                # This would require us to redo the i_seq numbers on the hierarchy and then recompute
-                # everything (unfortunately including the selection).
 
                 # Put in our list of Phantom Hydrogens
                 phantomHydrogens.append(p)
@@ -2144,7 +2171,7 @@ Note:
 
       ################################################################################
       # Re-fill all_selected_atoms
-      all_selected_atoms = source_atoms.union(target_atoms)
+      all_selected_atoms = sorted(source_atoms.union(target_atoms), key=lambda x:atomID(x))
 
       ################################################################################
       # Get the dot sets we will need for each atom.  This is the set of offsets from the

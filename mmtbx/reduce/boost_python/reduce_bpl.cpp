@@ -14,7 +14,7 @@
 // Enable functions with up to 20 parameters to be called.  Default of 15 is insufficient
 #define BOOST_PYTHON_MAX_ARITY 20
 #include <boost/python.hpp>
-//#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <mmtbx/reduce/PositionReturn.h>
 #include <mmtbx/reduce/InteractionGraph.h>
@@ -89,7 +89,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   std::cout << "XXX Done mapping the double" << std::endl;
   */
   /// @todo This does not make the type available to Python
-  //scitbx::af::boost_python::flex_wrapper<scitbx::af::shared<double>>::plain("flex_double");
+  //scitbx::af::boost_python::flex_wrapper< scitbx::af::shared<double> >::plain("flex_double");
 
   typedef scitbx::af::shared<bool> afsbool;
   typedef scitbx::af::boost_python::shared_wrapper<afsbool> wwbool;
@@ -109,11 +109,17 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
 
-  // Define the flex array wrapping for these classes because we take them as parameters.
+  boost::python::class_< std::vector<boost::python::object> >("ObjectVector")
+    .def(boost::python::vector_indexing_suite< std::vector<boost::python::object> >());
+
+  // Define the flex array wrapping for these classes because we take them as parameters
+  // and return them.
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<boost::python::object> >();
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
     scitbx::af::shared<molprobity::reduce::PositionReturn> >();
+  scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<
+    scitbx::af::shared< scitbx::af::shared<int> > >();
 
   class_<PositionReturn>("PositionReturn")
     .def(init<>())
@@ -132,8 +138,17 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
     ;
   def("PositionReturn_test", PositionReturn_test, "Test all classes defined in PositionReturn.h.");
 
+  class_<AtomMoverLists>("AtomMoverLists")
+    .def(init<>())
+    .def("AddAtomMoverEntry", &AtomMoverLists::AddAtomMoverEntry)
+    .def("Clear", &AtomMoverLists::Clear)
+    .def("GetAtomMoverList", &AtomMoverLists::GetAtomMoverList, return_internal_reference<>())
+    ;
+
   def("PairsOverlap", PairsOverlap,
     "Test for overlap between two pairs of atoms.");
+  def("FindOverlappingMoversAABB", FindOverlappingMoversAABB,
+    "Test for bounding-box overlap between two Movers.");
   def("InteractionGraph_test", InteractionGraph_test,
     "Test all classes and functions defined in InteractionGraph.h.");
 
@@ -148,7 +163,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
       , boost::python::dict&
       , boost::python::object&
       , boost::python::object&
-      , boost::python::dict&
+      , AtomMoverLists&
       , molprobity::probe::SpatialQuery&
       , molprobity::probe::ExtraAtomInfoMap&
       , boost::python::object&

@@ -119,8 +119,11 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // Defaults to "no overlap" type
   CheckDotResult ret;
 
+  // Find the extra-atom information for the source atom.
+  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
+
   // If the source atom is an ion and we are ignoring ions, we're done.
-  if (sourceAtom.element_is_ion() && m_ignoreIonInteractions) {
+  if (sourceExtra.getIsIon() && m_ignoreIonInteractions) {
     return ret;
   }
 
@@ -138,9 +141,6 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   // probe radius.
   Point probLoc = sourceAtom.data->xyz + dotOffset.normalize() * (dotOffset.length() + probeRadius);
 
-  // Find the extra-atom information for the source atom.
-  ExtraAtomInfo const& sourceExtra = m_extraInfoMap.getMappingFor(sourceAtom);
-
   bool isHydrogenBond = false;          ///< Are we looking at a hydrogen bond to our neighbor?
   bool tooCloseHydrogenBond = false;    ///< Are we too close to be a hydrogen bond?
   double hydrogenBondMinDist = 0;       ///< Hydrogen bond minimum distance based on the atom types (will be set below).
@@ -152,16 +152,16 @@ DotScorer::CheckDotResult DotScorer::check_dot(
   for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator b = interacting.begin();
        b != interacting.end(); b++) {
 
+    ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
+
     // If the potential target atom is an ion and we are ignoring ions, skip it.
-    if (b->element_is_ion() && m_ignoreIonInteractions) {
+    if (bExtra.getIsIon() && m_ignoreIonInteractions) {
       continue;
     }
 
-    ExtraAtomInfo const& bExtra = m_extraInfoMap.getMappingFor(*b);
-    Point const &locb = b->data->xyz;
-    double vdwb = bExtra.getVdwRadius();
-
     // See if we are too far away to interact, bail if so.
+    Point const& locb = b->data->xyz;
+    double vdwb = bExtra.getVdwRadius();
     double squareProbeDist = (probLoc - locb).length_sq();
     double pRadPlusVdwb = vdwb + probeRadius;
     if (squareProbeDist > pRadPlusVdwb * pRadPlusVdwb) {
@@ -179,8 +179,8 @@ DotScorer::CheckDotResult DotScorer::check_dot(
 
       // Figure out what kind of overlap this is based on the atom types and
       // charge status of the two atoms.
-      int chargeSource = atom_charge(sourceAtom);
-      int chargeB = atom_charge(*b);
+      int chargeSource = sourceExtra.getCharge();
+      int chargeB = bExtra.getCharge();
 
       bool bothCharged = (chargeSource != 0) && (chargeB != 0);
       bool chargeComplement = bothCharged && (chargeSource * chargeB < 0);
@@ -363,7 +363,7 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
 
   // Make sure that the occupancy of the atom is high enough to score it.
   // If not, we send a valid but otherwise empty return value.
-  if (std::abs(sourceAtom.data->occ) < minOccupancy) {
+  if (sourceAtom.data->occ < minOccupancy) {
     ret.valid = true;
     return ret;
   }
@@ -371,8 +371,9 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   // If we're looking for other contacts besides bumps, we need to add twice the
   // probe radius to the neighbor list to ensure that we include atoms where the
   // probe spans from the source to the target.
+  double twiceProbeRadius = 2 * probeRadius;
   if (!onlyBumps) {
-    nearbyRadius += 2 * probeRadius;
+    nearbyRadius += twiceProbeRadius;
   }
 
   // Find the neighboring atoms that are potentially interacting.
@@ -390,7 +391,6 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
   for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator a = neighbors.begin();
        a != neighbors.end(); a++) {
     ExtraAtomInfo const& aExtra = m_extraInfoMap.getMappingFor(*a);
-    double nonBondedDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius();
     bool excluded = false;
     for (scitbx::af::shared<iotbx::pdb::hierarchy::atom>::const_iterator e = exclude.begin();
          e != exclude.end(); e++) {
@@ -399,20 +399,23 @@ DotScorer::ScoreDotsResult DotScorer::score_dots(
         break;
       }
     }
-    if ((std::abs(a->data->occ) >= minOccupancy)
-          && ((a->data->xyz - sourceAtom.data->xyz).length() <= nonBondedDistance + probeRadius)
-          && (!excluded)
-        ) {
-      interacting.push_back(*a);
+    if (!excluded) {
+      double interactionDistance = sourceExtra.getVdwRadius() + aExtra.getVdwRadius() + twiceProbeRadius;
+      if ((std::abs(a->data->occ) >= minOccupancy)
+        && ((a->data->xyz - sourceAtom.data->xyz).length() <= interactionDistance)
+      ) {
+        interacting.push_back(*a);
+      }
     }
   }
+
+  // Construct this outside of the loop to avoid repeated construction.
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
 
   // Run through all of the dots and determine whether and how to score each.
   for (scitbx::af::shared<Point>::const_iterator d = dots.begin(); d != dots.end(); d++) {
 
-    // Find out which atom (if any) had the closest interaction, and the type of interaction.
     // If the dots have been pre-trimmed, we don't need to pass the excluded list.
-    scitbx::af::shared<iotbx::pdb::hierarchy::atom> const emptyExclude;
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> const* excludeToUse = &exclude;
     if (preTrimmedDots) {
       excludeToUse = &emptyExclude;
@@ -739,7 +742,8 @@ std::string DotScorer::test()
                 scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
                 atoms.push_back(a);
                 SpatialQuery sq(atoms);
-                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy);
+                ExtraAtomInfo e(targetRad, *targetAccept, *targetDonor, *targetDummy, *targetIon,
+                  atom_charge(a));
                 scitbx::af::shared<ExtraAtomInfo> infos;
                 infos.push_back(e);
 
@@ -753,7 +757,8 @@ std::string DotScorer::test()
                   source.set_element("O");
                 }
                 source.data->i_seq = atomSeq++;
-                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy);
+                ExtraAtomInfo se(sourceRad, *sourceAccept, *sourceDonor, *sourceDummy, *sourceIon,
+                  atom_charge(source));
                 atoms.push_back(source);
                 infos.push_back(se);
 
@@ -928,7 +933,7 @@ std::string DotScorer::test()
         scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
         atoms.push_back(a);
         SpatialQuery sq(atoms);
-        ExtraAtomInfo e(targetRad, !*targetDummy, *targetDummy, *targetDummy);
+        ExtraAtomInfo e(targetRad, !*targetDummy, *targetDummy, *targetDummy, false, atom_charge(a));
         scitbx::af::shared<ExtraAtomInfo> infos;
         infos.push_back(e);
 
@@ -937,7 +942,7 @@ std::string DotScorer::test()
         source.set_charge("+");
         source.set_occ(1);
         source.data->i_seq = atomSeq++;
-        ExtraAtomInfo se(sourceRad, !*sourceDummy, *sourceDummy, *sourceDummy);
+        ExtraAtomInfo se(sourceRad, !*sourceDummy, *sourceDummy, *sourceDummy, false, atom_charge(source));
         atoms.push_back(source);
         infos.push_back(se);
 
@@ -1015,8 +1020,9 @@ std::string DotScorer::test()
       }
   }
 
-  // Sweep an atom from just touching to far away and make sure the attract
-  // curve is monotonically decreasing to 0.
+  // Sweep an atom from just touching to far away and make sure the attraction
+  // curve is monotonically decreasing to 0 and does not reach 0 until the atom
+  // is two probe radii away.
   {
     double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
     DotSphere ds(sourceRad, 200);
@@ -1059,6 +1065,9 @@ std::string DotScorer::test()
         probeRad, exclude, ds.dots(), ds.density(), false);
       if (!res.valid) {
         return "DotScorer::test(): Could not score dots for swept-distance case";
+      }
+      if ((gap < 2 * probeRad) && (res.totalScore() == 0)) {
+        return "DotScorer::test(): Got zero score for swept-distance case when within range";
       }
       if ((res.attractSubScore != res.totalScore()) || (res.attractSubScore > lastAttract)) {
         return "DotScorer::test(): Non-monotonic scores for swept-distance case";
@@ -1195,7 +1204,7 @@ std::string DotScorer::test()
     scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
     atoms.push_back(a);
     SpatialQuery sq(atoms);
-    ExtraAtomInfo e(targetRad, true);
+    ExtraAtomInfo e(targetRad, true, false, false, false, atom_charge(a));
     scitbx::af::shared<ExtraAtomInfo> infos;
     infos.push_back(e);
 
@@ -1250,7 +1259,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.set_charge("0");
       source.data->i_seq = atomSeq++;
-      ExtraAtomInfo se(sourceRad,false, true);
+      ExtraAtomInfo se(sourceRad, false, true, false, false, atom_charge(source));
       atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
@@ -1311,7 +1320,7 @@ std::string DotScorer::test()
       source.set_occ(1);
       source.set_charge("+");
       source.data->i_seq = atomSeq++;
-      ExtraAtomInfo se(sourceRad, false, true);
+      ExtraAtomInfo se(sourceRad, false, true, false, false, atom_charge(source));
       atoms.push_back(source);
       infos.push_back(se);
       ScoreDotsResult res;
@@ -1521,20 +1530,66 @@ std::string Scoring_test()
   ContactResult res;
 
   // Test the atom-charge code.
-  static const char* chargesArray[] = { "--", "-", "", "+", "++", "+2", "-1", "0" };
-  static const int expectedChargeArray[] = { -2, -1, 0, 1, 2, 2, -1, 0 };
-  std::vector<std::string> charges;
-  std::vector<int> expectedCharge;
-  for (size_t i = 0; i < sizeof(chargesArray)/sizeof(chargesArray[0]); i++) {
-    charges.push_back(chargesArray[i]);
-    expectedCharge.push_back(expectedChargeArray[i]);
+  {
+    static const char* chargesArray[] = { "--", "-", "", "+", "++", "+2", "-1", "0" };
+    static const int expectedChargeArray[] = { -2, -1, 0, 1, 2, 2, -1, 0 };
+    std::vector<std::string> charges;
+    std::vector<int> expectedCharge;
+    for (size_t i = 0; i < sizeof(chargesArray) / sizeof(chargesArray[0]); i++) {
+      charges.push_back(chargesArray[i]);
+      expectedCharge.push_back(expectedChargeArray[i]);
+    }
+
+    for (size_t i = 0; i < charges.size(); i++) {
+      iotbx::pdb::hierarchy::atom a;
+      a.set_charge(charges[i].c_str());
+      if (atom_charge(a) != expectedCharge[i]) {
+        return "Scoring_test: atom_charge() failed";
+      }
+    }
   }
 
-  for (size_t i = 0; i < charges.size(); i++) {
+  // Check the ExtraAtomInfoMap
+  {
+    double targetRad = 1.5, sourceRad = 1.0;
+    unsigned int atomSeq = 0;
+
+    // Construct a single target atom, including its extra info
     iotbx::pdb::hierarchy::atom a;
-    a.set_charge(charges[i].c_str());
-    if (atom_charge(a) != expectedCharge[i]) {
-      return "Scoring_test: atom_charge() failed";
+    a.set_xyz(vec3(0, 0, 0));
+    a.set_occ(1);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    ExtraAtomInfo e(targetRad, true);
+    scitbx::af::shared<ExtraAtomInfo> infos;
+    infos.push_back(e);
+
+    // Construct a source atom, including its extra info.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    infos.push_back(se);
+
+    // Construct an ExtraAtomInfoMap and verify that its lookups work.
+    ExtraAtomInfoMap eam(atoms, infos);
+    if (eam.getMappingFor(a).getVdwRadius() != targetRad) {
+      return "Scoring_test(): Unexpected original target radius from ExtraAtomInfoMap";
+    }
+    if (eam.getMappingFor(a).getIsAcceptor() != true) {
+      return "DotScorer::test(): Unexpected target acceptor status from ExtraAtomInfoMap";
+    }
+    if (eam.getMappingFor(source).getVdwRadius() != sourceRad) {
+      return "Scoring_test(): Unexpected source radius from ExtraAtomInfoMap";
+    }
+
+    // Modify the value of one of the atoms and verify that the lookup still works.
+    ExtraAtomInfo e2(targetRad);
+    eam.setMappingFor(a, e2);
+    if (eam.getMappingFor(a).getIsAcceptor() != false) {
+      return "Scoring_test(): Unexpected changed target acceptor status from ExtraAtomInfoMap";
     }
   }
 

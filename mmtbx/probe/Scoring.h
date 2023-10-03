@@ -15,7 +15,9 @@
 
 #include "SpatialQuery.h"
 #include <iotbx/pdb/hierarchy.h>
+#include <vector>
 #include <map>
+#include <boost/python.hpp>
 
 namespace molprobity {
   namespace probe {
@@ -86,13 +88,13 @@ namespace molprobity {
     public:
       /// @brief Constructor with default parameters
       ExtraAtomInfo(double vdwRadius = 0, bool isAcceptor = false, bool isDonor = false,
-        bool isDummyHydrogen = false)
+        bool isDummyHydrogen = false, bool isIon = false, int charge = 0)
         : m_vdwRadius(vdwRadius), m_isAcceptor(isAcceptor), m_isDonor(isDonor)
-        , m_isDummyHydrogen(isDummyHydrogen) {}
+        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon), m_charge(charge) {}
       /// @brief Constructor from another ExtraAtomInfo
       ExtraAtomInfo(const ExtraAtomInfo &e)
         : m_vdwRadius(e.m_vdwRadius), m_isAcceptor(e.m_isAcceptor), m_isDonor(e.m_isDonor)
-        , m_isDummyHydrogen(e.m_isDummyHydrogen) {}
+        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon), m_charge(e.m_charge) {}
 
       /// @brief Get and set methods
       double getVdwRadius() const { return m_vdwRadius; }
@@ -104,6 +106,10 @@ namespace molprobity {
       void setIsDonor(bool val) { m_isDonor = val; }
       bool getIsDummyHydrogen() const { return m_isDummyHydrogen; }
       void setIsDummyHydrogen(bool val) { m_isDummyHydrogen = val; }
+      bool getIsIon() const { return m_isIon; }
+      void setIsIon(bool val) { m_isIon = val; }
+      int getCharge() const { return m_charge; }
+      void setCharge(int val) { m_charge = val; }
 
       /// @brief == operator is required so that we can wrap the standard vector operators in Boost::Python
       bool operator ==(ExtraAtomInfo const& o) {
@@ -111,6 +117,8 @@ namespace molprobity {
           && (getIsAcceptor() == o.getIsAcceptor())
           && (getIsDonor() == o.getIsDonor())
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
+          && (getIsIon() == o.getIsIon())
+          && (getCharge() == o.getCharge())
           );
       }
       bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
@@ -121,6 +129,8 @@ namespace molprobity {
       bool m_isDonor;          ///< Is this a donor hydrogen?
       bool m_isDummyHydrogen;  ///< These are inserted on Oxygens that are waters to provide potential
                                ///  hydrogen bonds to nearby acceptors.
+      bool m_isIon;            ///< Is this an ion?
+      int m_charge;            ///< The integer charge of the atom: -2, -1, 0, 1, 2
     };
 
     //=====================================================================================================
@@ -131,42 +141,46 @@ namespace molprobity {
       /// @brief Constructor creates the map from vectors of atoms and ExtraAtomInfo.
       /// @param [in] atoms Vector of atoms that will be mapped from.  Must include all of the ones added
       ///             to the SpatialQuery structure so that anyone using its outputs will find an entry.
+      ///             NOTE: This uses the i_seq values of atoms to index the vector, so there must be a unique
+      ///             i_seq value for each atom (including Phantom hydrogens) and the i_seq must not
+      ///             change between setting and getting.
       /// @param [in] extraInfo Vector of extra information pertaining to each atom.  Must be the same
       ///             length as the atoms vector.
-      ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms
-        , scitbx::af::shared<ExtraAtomInfo> extraInfo)
+      ExtraAtomInfoMap(scitbx::af::shared<iotbx::pdb::hierarchy::atom> const &atoms
+        , scitbx::af::shared<ExtraAtomInfo> const &extraInfo)
       {
         if (atoms.size() == extraInfo.size()) {
-          // Build the map from the vector of atoms and vector of extra atom info
+          // Pre-allocated the vector to a reasonable size -- it will not be correct if we
+          // have skipped i_seq values, but should be close.
+          m_extraInfo.reserve(atoms.size());
+          // Insert the values
           for (size_t i = 0; i < atoms.size(); i++) {
-            std::pair < iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo>
-              element(atoms[i].data.get(), extraInfo[i]);
-            m_extraInfo.insert(element);
-            // Keep a shared pointer so that the data doesn't go away while we're still
-            // using it.
-            m_keepPointers.push_back(atoms[i].data);
+            setMappingFor(atoms[i], extraInfo[i]);
           }
         }
       }
 
       /// @brief Get and set methods
-      ExtraAtomInfo  getMappingFor(iotbx::pdb::hierarchy::atom const &atom)
+      ExtraAtomInfo  const &getMappingFor(iotbx::pdb::hierarchy::atom const &atom) const
       {
-        return m_extraInfo[atom.data.get()];
+        if (atom.data->i_seq >= m_extraInfo.size()) {
+          PyErr_SetString(PyExc_RuntimeError, "Out of bounds reference in ExtraAtomInfoMap::getMappingFor()");
+          boost::python::throw_error_already_set();
+        }
+        return m_extraInfo[atom.data->i_seq];
       }
       void setMappingFor(iotbx::pdb::hierarchy::atom const &atom, ExtraAtomInfo const &info)
       {
-        m_extraInfo[atom.data.get()] = info;
+        unsigned i_seq = atom.data->i_seq;
+        if (m_extraInfo.size() < i_seq + 1) {
+          m_extraInfo.resize(i_seq + 1);
+        }
+        m_extraInfo[i_seq] = info;
       }
 
     protected:
-      // Constructed map from the atom_data elements to the extra-atom information so that we
-      // can look up extra info based on particular atoms without having to rely on the sequence
-      // IDs being correct.
-      std::map< iotbx::pdb::hierarchy::atom_data*, ExtraAtomInfo > m_extraInfo;
-      // This keeps around shared pointers to the data we placed into our map so that they don't
-      // get deleted out from under us.
-      std::vector< boost::shared_ptr<iotbx::pdb::hierarchy::atom_data> > m_keepPointers;
+      // Vector indexed by i_seq
+      std::vector<ExtraAtomInfo> m_extraInfo;
     };
 
     //=====================================================================================================

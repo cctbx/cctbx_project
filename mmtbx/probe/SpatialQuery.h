@@ -74,7 +74,9 @@ namespace molprobity {
       ///     the sum of their radii.
       /// @param [in] max_distance Maximum distance from the point to the atom.  Specifies the
       ///     furthest an atom can be and be considered a neighbor.
-      /// @return Vector of atoms that are within the specified distance from the Point.
+      /// @return Vector of atoms that are within the specified distance from the Point. NOTE:
+      ///     These are not guaranteed to be in any particular order from run to run, so if
+      ///     you need them to be in the same order, you should sort them by i_seq.
       scitbx::af::shared<iotbx::pdb::hierarchy::atom> neighbors(
         Point const& p, double min_distance, double max_distance);
 

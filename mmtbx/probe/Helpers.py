@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022  Richardson Lab at Duke University
+#                Copyright 2021-2023  Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License"],
 # you may not use this file except in compliance with the License.
@@ -325,6 +325,14 @@ def isPolarHydrogen(atom, bondedNeighborLists):
       return True
   return False
 
+def getMaxISeq(model):
+  """Return the maximum i_seq value for all atoms in a model.
+  """
+  maxISeq = 0
+  for a in model.get_atoms():
+    maxISeq = max(maxISeq, a.i_seq)
+  return maxISeq
+
 class getExtraAtomInfoReturn(object):
   """
     Return type from getExtraAtomInfo() call.
@@ -392,15 +400,21 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
 
+                extra.charge = probeExt.atom_charge(a)
+
                 # For ions, the Richardsons determined in discussion with
                 # Michael Prisant that we want to use the ionic radius rather than the
                 # larger radius for all purposes.
                 # @todo Once the CCTBX radius determination discussion and upgrade is
                 # complete (ongoing as of March 2022), this check might be removed
                 # and we'll just use the CCTBX radius.
-                if a.element_is_ion():
+                extra.isIon = a.element_is_ion()
+                if extra.isIon:
                   extra.vdwRadius = model.get_specific_ion_radius(a.i_seq)
-                  warnings += "Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
+                  warnings += ("Using ionic radius for "+a.name.strip()+": "+str(extra.vdwRadius)+
+                               " (rather than "+
+                               str(model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances))+
+                               ")\n")
                 else:
                   extra.vdwRadius = model.get_specific_vdw_radius(a.i_seq, useImplicitHydrogenDistances)
 
@@ -431,7 +445,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                       extra.isAcceptor = True
                       warnings += "Marking "+a.parent().resname.strip()+" "+a.name.strip()+" as a non-Hydrogen HET acceptor\n"
 
-                # Mark all Carbonyl's with the Probe radius while the Richarsons and
+                # Mark all Carbonyl's with the Probe radius while the Richardsons and
                 # the CCTBX decide how to handle this.
                 # @todo After 2021, see if the CCTBX has the same values (1.65 and 1.80)
                 # for Carbonyls and remove this if so.  It needs to stay with these values
@@ -445,14 +459,16 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                   else:
                     expected = 1.65
                   if extra.vdwRadius != expected:
+                    warnings += ("Overriding radius for "+a.name.strip()+": "+str(expected)+
+                                 " (was "+str(extra.vdwRadius)+")\n")
                     extra.vdwRadius = expected
-                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 # If we've been asked to ensure polar hydrogen radius, do so here.
                 if probePhil.set_polar_hydrogen_radius and isPolarHydrogen(a, bondedNeighborLists):
                   if extra.vdwRadius != 1.05:
+                    warnings += ("Overriding radius for "+a.name.strip()+": 1.05 (was "+
+                                 str(extra.vdwRadius)+")\n")
                     extra.vdwRadius = 1.05
-                    warnings += "Overriding radius for "+a.name.strip()+": "+str(extra.vdwRadius)+"\n"
 
                 extras.setMappingFor(a, extra)
 
@@ -467,7 +483,7 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
               fullName = (chain.id + ' ' + a.parent().resname.strip() + ' ' +
                 str(a.parent().parent().resseq_as_int()) + ' ' + a.name.strip())
               raise Sorry("Could not find atom info for "+fullName+
-                "(perhaps interpretation was not run on the model?)\n")
+                " (perhaps interpretation was not run on the model?)\n")
 
   return getExtraAtomInfoReturn(extras, warnings)
 
@@ -615,11 +631,14 @@ def compareAtomInfoFiles(fileName1, fileName2, distanceThreshold):
 
   return ret
 
-def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
+def getPhantomHydrogensFor(largestISeq, atom, spatialQuery, extraAtomInfo, minOccupancy,
       acceptorOnly = False, placedHydrogenRadius = 1.05, placedHydrogenDistance = 0.84):
   """
     Get a list of phantom Hydrogens for the atom specified, which is asserted to be an Oxygen
     atom for a water.
+    :param largestISeq: The largest i_seq number in the model so far. Each new Phantom will be
+    given a different number, starting with one larger than this. This should be incremented
+    by the length of the returned list if this function is called multiple times.
     :param atom: The Oxygen that is to have phantoms added to it.
     :param spatialQuery: mmtbx_probe_ext.SpatialQuery structure to rapidly determine which atoms
     are within a specified distance of a location.
@@ -638,16 +657,17 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
     Water Oxygen. The Phantom Hydrogens are placed at the optimal overlap distance so may be
     closer than this.  Default is for electron-cloud distances.
     :return: List of new atoms that make up the phantom Hydrogens, with only their name and
-    element type and xyz positions filled in.  They will have i_seq 0 and they should not be
-    inserted into a structure.
+    element type and xyz positions filled in.  They will have i_seq as specified and they
+    should not be inserted into a structure.
   """
 
   ret = []
 
   # Get the list of nearby atoms.  The center of the search is the water atom
   # and the search radius is 4 (these values are pulled from the Reduce C++ code).
+  # Sort these by i_seq so that we get repeatable results from run to run.
   maxDist = 4.0
-  nearby = spatialQuery.neighbors(atom.xyz, 0.001, maxDist)
+  nearby = sorted(spatialQuery.neighbors(atom.xyz, 0.001, maxDist), key=lambda x:x.i_seq)
 
   # Candidates for nearby atoms.  We use this list to keep track of one ones we
   # have already found so that we can compare against them to only get one for each
@@ -704,7 +724,7 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
           candidates.append(Candidate(a, overlap))
 
   # Generate phantoms pointing toward all of the remaining candidates.
-  # Make most of their characteristics (including i_seq) copied from the source Oxygen.
+  # Make most of their characteristics copied from the source Oxygen.
   # The element, name, and location are modified.
   for c in candidates:
     h = pdb.hierarchy.atom(atom.parent(), atom)
@@ -729,6 +749,8 @@ def getPhantomHydrogensFor(atom, spatialQuery, extraAtomInfo, minOccupancy,
     try:
       normOffset = (rvec3(c._atom.xyz) - rvec3(atom.xyz)).normalize()
       h.xyz = rvec3(atom.xyz) + distance * normOffset
+      largestISeq += 1
+      probeExt.set_atom_i_seq(h, largestISeq)
       ret.append(h)
     except Exception:
       # If we have overlapping atoms (normalize() fails), don't add.
@@ -847,6 +869,7 @@ ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
 ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
 ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
 ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
+HETATM 4333 CU    CU A   1      22.291  33.388   3.996  1.00 13.22          Cu
 END
 """
     )
@@ -900,31 +923,34 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # Spot check the values on the atoms for standard, neutron distances, implicit hydrogen distances,
   # and original Probe results.
   standardChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True],
-    ["ND1", 1.55, False,  True],
-    ["C",   1.65, False, False],
-    ["CB",  1.7,  False, False],
-    ["O",   1.4,  True,  False],
-    ["CD2", 1.75, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72,  False, False,  True],
+    ["N",   1.55, False,  True, False],
+    ["ND1", 1.55, False,  True, False],
+    ["C",   1.65, False, False, False],
+    ["CB",  1.7,  False, False, False],
+    ["O",   1.4,  True,  False, False],
+    ["CD2", 1.75, False, False, False]
   ]
   neutronChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.55, False, True],
-    ["ND1", 1.55, False,  True],
-    ["C",   1.65, False, False],
-    ["CB",  1.7,  False, False],
-    ["O",   1.4,  True,  False],
-    ["CD2", 1.75, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72, False, False,  True],
+    ["N",   1.55, False,  True, False],
+    ["ND1", 1.55, False,  True, False],
+    ["C",   1.65, False, False, False],
+    ["CB",  1.7,  False, False, False],
+    ["O",   1.4,  True,  False, False],
+    ["CD2", 1.75, False, False, False]
   ]
   implicitChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor
-    ["N",   1.6,  False, True],
-    ["ND1", 1.6,  False,  True],
-    ["C",   1.8,  False, False],
-    ["CB",  1.92, False, False],
-    ["O",   1.52, True,  False],
-    ["CD2", 1.74, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isIon
+    ["CU",  0.72, False, False,  True],
+    ["N",   1.6,  False,  True, False],
+    ["ND1", 1.6,  False,  True, False],
+    ["C",   1.8,  False, False, False],
+    ["CB",  1.92, False, False, False],
+    ["O",   1.52, True,  False, False],
+    ["CD2", 1.74, False, False, False]
   ]
 
   # Situations to run the test in and expected results:
@@ -983,6 +1009,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           assert e.isDummyHydrogen == False, "Helpers.Test(): Bad Dummy Hydrogen status for "+a.name+runType
           e.isDummyHydrogen = True
           assert e.isDummyHydrogen == True, "Helpers.Test(): Can't set DummyHydrogen status for "+a.name+runType
+          assert e.isIon == c[4], "Helpers.Test(): Bad Ion status for "+a.name+": "+str(e.isIon)+runType
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
@@ -1056,6 +1083,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # Run Phantom placement with different settings for occupancy and acceptorOnly
     # and make sure the atom counts match what is expected.
     # @todo Test changing the radius and distance for the Hydrogen.
+    largestISeq = len(m.atoms())
     for occThresh in [0.4,1.0]:
       for acceptorOnly in [False, True]:
         # Check that we get the expected number of contacts
@@ -1065,8 +1093,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           expected = 7 # Only one of the acceptor Aromatics but all other atoms
         if occThresh > 0.5:
           expected = 0
-        ret = getPhantomHydrogensFor(o, sq, extrasMap, occThresh, acceptorOnly, 1.0, 1.0)
+        ret = getPhantomHydrogensFor(largestISeq, o, sq, extrasMap, occThresh, acceptorOnly, 1.0, 1.0)
         assert len(ret) == expected, "Helpers.Test() Unexpected count during Phantom Hydrogen placement: "+str(len(ret))+" (expected "+str(expected)+")"
+        largestISeq += len(ret)
 
         # The location of the each Hydrogen should point towards one of the non-Oxygen atoms.
         # Here we check that we get as many matching directions as we have atoms.
@@ -1112,7 +1141,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
 
   # Check the counts in the neighbor lists to make sure they match what we expect
   neighborCounts = {"N": 1, "CA": 3, "C": 2, "O": 1, "CB": 2,
-                    "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2}
+                    "CG": 3, "ND1": 2, "CD2": 2, "CE1":2, "NE2": 2, "CU": 0}
   for a in atoms:
     assert len(bondedNeighborLists[a]) == neighborCounts[a.name.strip()], (
         "Helpers.Test(): Neighbor count for "+a.name.strip()+" was "+

@@ -268,7 +268,7 @@ OptimizerC::OptimizerC(
     boost::python::dict& exclude,
     boost::python::object& dotScorer,
     boost::python::object& dotSphereCache,
-    boost::python::dict& atomMoverLists,
+    AtomMoverLists& atomMoverLists,
     molprobity::probe::SpatialQuery& spatialQuery,
     molprobity::probe::ExtraAtomInfoMap& extraAtomInfoMap,
     boost::python::object& deleteMes)
@@ -282,6 +282,7 @@ OptimizerC::OptimizerC(
   , m_exclude(exclude)
   , m_dotScorer(boost::python::extract<molprobity::probe::DotScorer&>(dotScorer))
   , m_dotSphereCache(boost::python::extract<molprobity::probe::DotSphereCache&>(dotSphereCache))
+  , m_atomMoverLists(atomMoverLists)
   , m_spatialQuery(spatialQuery)
   , m_extraAtomInfoMap(extraAtomInfoMap)
   , m_deleteMes(deleteMes)
@@ -293,21 +294,6 @@ OptimizerC::OptimizerC(
   for (size_t i = 0; i < m_atoms.size(); i++) {
     m_dotSpheres[m_atoms[i].data->i_seq] =
       m_dotSphereCache.get_sphere( m_extraAtomInfoMap.getMappingFor(m_atoms[i]).getVdwRadius() ).dots();
-  }
-
-  // Convert the atom-mover lists to a map from unsigned int (i_seq) to a vector of pointers to movers.
-  // This will speed up our internal processing when looking for cached atom scores.
-  boost::python::list keys = atomMoverLists.keys();
-  for (size_t i = 0; i < boost::python::len(keys); i++) {
-    boost::python::object key = keys[i];
-    boost::python::list movers = boost::python::extract<boost::python::list>(atomMoverLists[key]);
-
-    std::vector<PyObject*> moverPtrs;
-    for (size_t j = 0; j < boost::python::len(movers); j++) {
-      boost::python::object mover = movers[j];
-      moverPtrs.push_back(mover.ptr());
-    }
-    m_atomMoverLists[boost::python::extract<unsigned int>(key)] = moverPtrs;
   }
 }
 
@@ -347,10 +333,10 @@ double OptimizerC::scoreAtomCached(iotbx::pdb::hierarchy::atom const& a, unsigne
 {
   // Find the vector that is the state of all Movers related to this atom.
   std::vector<unsigned> state;
-  std::vector<PyObject*> movers = m_atomMoverLists[a.data->i_seq];
+  std::vector< boost::python::object > const& movers = m_atomMoverLists.GetAtomMoverList(a.data->i_seq);
   for (int i = 0; i < movers.size(); ++i) {
     // Go through and look up the state of each mover.
-    state.push_back(m_coarseLocations[movers[i]]);
+    state.push_back(m_coarseLocations[movers[i].ptr()]);
   }
 
   // See if we have a cached score for this state.  If so, use it. If not, calculate it and store it.
