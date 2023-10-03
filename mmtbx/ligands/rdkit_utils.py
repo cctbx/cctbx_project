@@ -21,10 +21,7 @@ Functions:
 def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal'):
   rc = []
   for i, (code, monomer) in enumerate(cc_cif.items()):
-    molecule = Chem.Mol()
-    rwmol = Chem.RWMol(molecule)
-    atom = monomer.get_loop('_chem_comp_atom')
-    conformer = Chem.Conformer(atom.n_rows())
+    atom = monomer.get_loop_or_row('_chem_comp_atom')
     for j, tmp in enumerate(atom.iterrows()):
       if label=='pdbx_model_Cartn_x_ideal':
         xyz = (tmp.get('_chem_comp_atom.pdbx_model_Cartn_x_ideal'),
@@ -64,7 +61,7 @@ def read_chemical_component_filename(filename):
   for i, (code, monomer) in enumerate(ccd.items()):
     molecule = Chem.Mol()
     rwmol = Chem.RWMol(molecule)
-    atom = monomer.get_loop('_chem_comp_atom')
+    atom = monomer.get_loop_or_row('_chem_comp_atom')
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
@@ -73,15 +70,16 @@ def read_chemical_component_filename(filename):
       xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
       conformer.SetAtomPosition(rdatom, xyz)
       lookup[tmp.get('_chem_comp_atom.atom_id')]=j
-    bond = monomer.get_loop('_chem_comp_bond')
-    for tmp in bond.iterrows():
-      atom1 = tmp.get('_chem_comp_bond.atom_id_1')
-      atom2 = tmp.get('_chem_comp_bond.atom_id_2')
-      atom1 = lookup.get(atom1)
-      atom2 = lookup.get(atom2)
-      order = tmp.get('_chem_comp_bond.value_order')
-      order = bond_order_ccd[order]
-      rwmol.AddBond(atom1, atom2, order)
+    bond = monomer.get_loop_or_row('_chem_comp_bond')
+    if bond:
+      for tmp in bond.iterrows():
+        atom1 = tmp.get('_chem_comp_bond.atom_id_1')
+        atom2 = tmp.get('_chem_comp_bond.atom_id_2')
+        atom1 = lookup.get(atom1)
+        atom2 = lookup.get(atom2)
+        order = tmp.get('_chem_comp_bond.value_order')
+        order = bond_order_ccd[order]
+        rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
   molecule = rwmol.GetMol()
   return molecule
