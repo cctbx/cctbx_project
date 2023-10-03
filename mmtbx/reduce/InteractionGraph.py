@@ -299,7 +299,7 @@ def Test():
     # Check atom/Mover overlaps by finding the set of lengths that are present across all atoms.
     lengths = set()
     for a in atoms:
-      lengths.add(len(am[a.i_seq]))
+      lengths.add(len(am.GetAtomMoverList(a.i_seq)))
     if lengths != e[3]:
       return "Expected set of overlap counts "+str(e[3])+", found "+str(lengths)+" for case "+str(i)
 

@@ -14,7 +14,7 @@
 // Enable functions with up to 20 parameters to be called.  Default of 15 is insufficient
 #define BOOST_PYTHON_MAX_ARITY 20
 #include <boost/python.hpp>
-//#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
+#include <boost/python/suite/indexing/vector_indexing_suite.hpp>
 #include <scitbx/boost_python/container_conversions.h>
 #include <mmtbx/reduce/PositionReturn.h>
 #include <mmtbx/reduce/InteractionGraph.h>
@@ -108,6 +108,9 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   class_<wwei::w_t> wwExtraInfo = wwei::wrap("af_shared_af_shared_ExtraAtomInfo");
   scitbx::af::boost_python::select_wrappers<
     afsei, scitbx::af::shared<afsei> >::wrap(wwExtraInfo);
+
+  boost::python::class_<std::vector<boost::python::object>>("ObjectVector")
+    .def(boost::python::vector_indexing_suite<std::vector<boost::python::object>>());
 
   // Define the flex array wrapping for these classes because we take them as parameters
   // and return them.

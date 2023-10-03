@@ -1517,7 +1517,7 @@ END
 
   ################################################################################
   # Test using a modified snippet from 7c31 to make sure the single-hydrogen rotator sets
-  # the orientation of the Hydrogen to be as far as possible from a nearby Carbon.
+  # the orientation of the Hydrogen touching a nearby Carbon.
   # The above example has the Oxygen replaced by a Carbon.
 
   pdb_7c31_two_residues_close_C = """\
@@ -1544,7 +1544,7 @@ END
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
-  expected = -177
+  expected = -64
   angle = int(re.search(r'(?<=pose Angle )[-+]?\d+', opt.getInfo()).group(0))
   if angle != expected:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator clash, expected "+str(expected)
