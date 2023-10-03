@@ -69,7 +69,8 @@ if (__name__ == "__main__") :
     print("Generating circular gain mask %s angstroms, assuming a distance %s mm and wavelength %s angstroms" % \
       (params.resolution, params.distance, params.wavelength))
 
-  from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology, get_cspad_cbf_handle
+  from serialtbx.detector.cspad import read_slac_metrology
+  from xfel.cftbx.detector.cspad_cbf_tbx import get_cspad_cbf_handle
   from dxtbx.format.FormatCBFCspad import FormatCBFCspadInMemory
   from dxtbx.model import BeamFactory
   metro = read_slac_metrology(path = params.optical_metrology_path)

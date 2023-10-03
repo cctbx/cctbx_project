@@ -22,6 +22,8 @@ import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 
+from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
+
 get_class = iotbx.pdb.common_residue_names_get_class
 
 def stepper(b,e,s):
@@ -51,9 +53,12 @@ def merge_water(filenames, chain_id='A'):
       for i, ag in enumerate(ags):
         ag.altloc='ABCDEF'[i]
         for atom in ag.atoms():
-          print(atom.format_atom_record())
           outl += '%s\n' % atom.format_atom_record()
+  print('-'*80)
   print(outl)
+  f=open('water.pdb', 'w')
+  f.write(outl)
+  del f
 
 def _add_HIS_H_atom_to_atom_group(ag, name):
   from mmtbx.ligands.ready_set_basics import construct_xyz
@@ -366,6 +371,7 @@ Usage examples:
     #
     # validate selection
     #
+    include_nearest_neighbours=False
     selection=None
     if len(self.params.qi.qm_restraints)!=0:
       selection = self.params.qi.qm_restraints[0].selection
@@ -376,6 +382,13 @@ Usage examples:
       selected_model = model.select(selection_array)
       print('Selected model  %s' % selected_model, file=log)
       self.data_manager.add_model('ligand', selected_model)
+      ags = selected_model.get_hierarchy().atom_groups()
+      names = []
+      for ag in ags: names.append(ag.resname.strip())
+      if len(names)==1:
+        if names[0] in ad_hoc_single_metal_residue_element_types:
+          include_nearest_neighbours=True
+
     if self.params.qi.step_buffer_radius:
       step_buffer_radius = self.params.qi.step_buffer_radius
       assert len(step_buffer_radius.split(','))==3
@@ -416,15 +429,9 @@ Usage examples:
       return
 
     if self.params.qi.each_water:
-      print(self.params.qi.each_water)
-      merge_water(('1yjp.updated_cluster_final_A_8_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_9_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_10_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_11_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_12_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_13_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_14_3.5_C_PM6-D3H4.pdb'))
-      assert 0
+      # merge_water(['4ny6_cluster_final_A_101_3.5_C_PM6-D3H4.pdb',
+      #             '4ny6_cluster_final_A_102_3.5_C_PM6-D3H4.pdb'])
+      # assert 0
       hierarchy = model.get_hierarchy()
       outl = ''
       for rg in hierarchy.residue_groups():
@@ -466,7 +473,9 @@ Usage examples:
         for filenames in rc.final_pdbs:
           print(filenames)
           args.append(filenames[-1])
+        print('args'*10)
         print(args)
+        merge_water(args)
         assert 0
       return
 
@@ -486,6 +495,7 @@ Usage examples:
                                iterate_metals=self.params.qi.iterate_metals,
                                step_buffer_radius=self.params.qi.step_buffer_radius,
                                output_format=self.params.qi.format,
+                               include_nearest_neighbours=include_nearest_neighbours,
                                )
       ih = ''
       if self.params.qi.iterate_NQH:
@@ -499,7 +509,7 @@ Usage examples:
       program = 'mmtbx.quantum_interface'
       ih2 = ' run_qmr=True'
       if self.params.qi.format=='qi':
-        ih += ' qi.nproc=%s' % self.params.qi.nproc
+        ih2 += ' qi.nproc=%s' % self.params.qi.nproc
       else:
         program='phenix.refine'
         ih2 = self.data_manager.get_default_model_name()
@@ -529,7 +539,7 @@ Usage examples:
       for i, atom_group in enumerate(ph.atom_groups()):
         id_str = atom_group.id_str()
       assert i==0
-      rc = self.step_thru_buffer_radii(id_str=id_str)
+      rc = self.step_thru_buffer_radii(id_str=id_str, log=log)
       return
 
     if ( self.params.qi.run_qmr and
@@ -738,13 +748,15 @@ Usage examples:
         if units.lower() in ['kcal/mol']:
           # energy-=247.80642 # Heat of formation
           # energy-=156.9
-          energy-=26.9295
+          energy+=26.9295
+          # energy+=94.51
           assert 0
         elif units.lower() in ['hartree']:
           energy+=0.5
+          assert 0
         elif units.lower() in ['ev']:
-          energy+=13.61
-          # energy+=4.098 # 94.51 kcal/mol
+          # energy+=13.61
+          energy+=4.098 # 94.51 kcal/mol
         else:
           assert 0
       te.append(energy)
@@ -1000,12 +1012,15 @@ Usage examples:
     return outl
 
   def set_all_write_to_true(self, qi_phil_string):
-    assert 0
     outl = ''
+    # write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer
     for line in qi_phil_string.splitlines():
       if line.find(' write_')>-1:
         tmp=line.split()
-        line = '  %s = True' % tmp[0]
+        line = '  '
+        for t in tmp:
+          if t.startswith('pdb'): t='*%s'%t
+          line+='%s ' % t
       outl += '%s\n' % line
     return outl
 
@@ -1014,6 +1029,7 @@ Usage examples:
                      iterate_metals=False,
                      step_buffer_radius=False,
                      output_format=None,
+                     include_nearest_neighbours=False,
                      log=None):
     qi_phil_string = self.get_single_qm_restraints_scope(self.params.qi.selection[0])
     # qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
@@ -1051,11 +1067,19 @@ Usage examples:
       qi_phil_string = qi_phil_string.replace(
         'protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions',
         'protein_optimisation_freeze = all None main_chain main_chain_to_beta *main_chain_to_delta *torsions')
+      qi_phil_string = qi_phil_string.replace(
+        'solvent_model = None', 'solvent_model = EPS=78.4 PRECISE NSPA=92')
 
     if iterate_metals:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                               'include_nearest_neighbours_in_optimisation = True')
+
+    if include_nearest_neighbours:
+      qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                              'include_nearest_neighbours_in_optimisation = True')
+      qi_phil_string = qi_phil_string.replace('include_inter_residue_restraints = False',
+                                              'include_inter_residue_restraints = True')
 
     if output_format=='qi':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')

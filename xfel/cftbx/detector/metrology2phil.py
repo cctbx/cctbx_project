@@ -27,15 +27,15 @@ def metrology2phil(calib_dir, verbose):
   return sections2phil(sections, verbose)
 
 def sections2phil(sections, verbose):
-  from xfel.cftbx.detector.metrology import master_phil
+  from serialtbx.detector.legacy_metrology.metrology import master_phil
 
   # Properties of CSPad pixels (Philipp et al., 2007).  The counters
   # are 14 bits wide, and the pixels are square with a side length of
   # 110 um.  Because cspad_tbx depends on pyana, it may fail to import
   # in which case a hardcoded fallback is provided.
   try:
-    from xfel.cxi.cspad_ana.cspad_tbx import cspad_saturated_value as sv
-    from xfel.cxi.cspad_ana.cspad_tbx import pixel_size as ps
+    from serialtbx.detector.cspad import cspad_saturated_value as sv
+    from serialtbx.detector.cspad import pixel_size as ps
     saturated_value = sv
     pixel_size = ps * 1e-3
   except ImportError:

@@ -10,7 +10,7 @@ from iotbx.detectors import generic_flex_image
 from libtbx import easy_pickle
 from scitbx.array_family import flex
 from scitbx.matrix import col, rec, sqr
-from xfel.cftbx.detector.generic_detector import GenericDetector
+from serialtbx.detector.legacy_metrology.generic_detector import GenericDetector
 from six.moves import range
 import six
 
@@ -43,7 +43,7 @@ class CSPadDetector(GenericDetector):
     # However, several code paths still depend on the member variables
     # created here.
 
-    from xfel.cftbx.detector.metrology import metrology_as_transformation_matrices
+    from serialtbx.detector.legacy_metrology.metrology import metrology_as_transformation_matrices
 
     d = easy_pickle.load(self.filename)
 
@@ -117,11 +117,11 @@ class CSPadDetector(GenericDetector):
     # rstbx.slip_viewer.tile_generation._get_flex_image_multitile().
     # XXX Still used by iotbx/command_line/detector_image_as_png.py
     #raise DeprecationWarning(
-    #  "xfel.cftbx.cspad_detector.get_flex_image() is deprecated")
+    #  "serialtbx.detector.legacy_metrology.cspad_detector.get_flex_image() is deprecated")
 
     # no kwargs supported at present
 
-    from xfel.cftbx.detector.metrology import get_projection_matrix
+    from serialtbx.detector.legacy_metrology.metrology import get_projection_matrix
 
     # E maps picture coordinates onto metric Cartesian coordinates,
     # i.e. [row, column, 1 ] -> [x, y, z, 1].  Both frames share the
@@ -183,7 +183,7 @@ class CSPadDetector(GenericDetector):
     directly.
     """
 
-    from xfel.cftbx.detector.metrology import get_projection_matrix
+    from serialtbx.detector.legacy_metrology.metrology import get_projection_matrix
 
     center = col([self._asic_focus[0] / 2, self._asic_focus[1] / 2, 1])
     fast, nmemb, slow = 0, 0, 0
@@ -269,7 +269,7 @@ class CSPadDetector(GenericDetector):
     """
 
     from libtbx import phil
-    from xfel.cftbx.detector.metrology import \
+    from serialtbx.detector.legacy_metrology.metrology import \
       master_phil, regularize_transformation_matrices
 
     # XXX Experimental!
@@ -323,7 +323,7 @@ class CSPadDetector(GenericDetector):
     assert self._pixel_size is not None
     assert self._asic_focus is not None
 
-    from xfel.cftbx.detector.metrology import get_projection_matrix
+    from serialtbx.detector.legacy_metrology.metrology import get_projection_matrix
 
     P_f, P_b = get_projection_matrix(self._pixel_size, self._asic_focus)
 

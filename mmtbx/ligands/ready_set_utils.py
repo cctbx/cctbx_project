@@ -88,10 +88,15 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
                                      c.xyz,
                                    ],
                               deg=True)
-  if retain_original_hydrogens: pass
+  proton = 'H'
+  if retain_original_hydrogens:
+    if ag.get_atom('D'): proton='D'
   else:
     if ag.get_atom("H"): # maybe needs to be smarter or actually work
       ag.remove_atom(ag.get_atom('H'))
+    if ag.get_atom('D'):
+      ag.remove_atom(ag.get_atom('D'))
+      proton='D'
   #if use_capping_hydrogens and 0:
   #  for i, atom in enumerate(ag.atoms()):
   #    if atom.name == ' H3 ':
@@ -105,27 +110,39 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
   # this could be smarter
   possible = ['H', 'H1', 'H2', 'H3', 'HT1', 'HT2']
   h_count = 0
+  d_count = 0
   for h in possible:
     if ag.get_atom(h): h_count+=1
+    if ag.get_atom(h.replace('H', 'D')): d_count+=1
   number_of_hydrogens=3
   if use_capping_hydrogens:
     number_of_hydrogens-=1
     #if ag.atoms()[0].parent().resname=='PRO':
     #  number_of_hydrogens=-1
     #  # should name the hydrogens correctly
-  if h_count>=number_of_hydrogens: return []
+  if h_count+d_count>=number_of_hydrogens: return []
+  def distance2(xyz1, xyz2):
+    d2=0
+    for k in range(3):
+      d2+=(xyz2[k]-xyz1[k])**2
+    return d2
+  j=0
   for i in range(0, number_of_hydrogens):
-    name = " H%d " % (i+1)
+    name = " %s%d " % (proton, i+1)
     if retain_original_hydrogens:
-      if i==0 and ag.get_atom('H'): continue
+      if i==0 and ag.get_atom(proton): continue
+      if i==1 and ag.get_atom(proton):
+        retained = ag.get_atom(proton)
+        d2 = distance2(retained.xyz, rh3[j])
+        if d2<0.5: j+=1
     if ag.get_atom(name.strip()): continue
     if ag.resname=='PRO':
       if i==0:
         continue
     atom = iotbx.pdb.hierarchy.atom()
     atom.name = name
-    atom.element = "H"
-    atom.xyz = rh3[i]
+    atom.element = proton
+    atom.xyz = rh3[j]
     atom.occ = n.occ
     atom.b = n.b
     atom.segid = ' '*4
@@ -134,6 +151,8 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
       rc.append(rg)
     else:
       ag.append_atom(atom)
+    j+=1
+    if j==number_of_hydrogens: j=0
   return rc
 
 def add_n_terminal_hydrogens_to_residue_group(residue_group,

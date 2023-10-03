@@ -453,8 +453,6 @@ namespace {
       if (model_id != 0) {
         std::size_t l = std::strlen(model_id);
         IOTBX_ASSERT(l <= 8);
-        unsigned n = static_cast<unsigned>(l);
-        unsigned m = std::max(4U, n);
         result += "model=\"";
         result += (boost::format("%4s") % model_id).str();
         result += "\" ";
@@ -753,15 +751,6 @@ namespace {
     return blanks_start_at;
   }
 
-  void
-  atom::format_pdb_element_charge_columns(
-    char* result) const
-  {
-    char blank = ' ';
-    data->element.copy_right_justified(result, 2U, blank);
-    data->charge.copy_left_justified(result+2, 2U, blank);
-  }
-
   std::string
   atom::pdb_label_columns() const
   {
@@ -773,7 +762,6 @@ namespace {
   std::string
   atom::pdb_label_columns_segid_small_str() const
   // Only used in overall_counts in find_duplicate_atom_labels()
-  // new implementation
   {
     std::string result;
     result = atom_label_columns_formatter().format(*this);
@@ -784,9 +772,10 @@ namespace {
   std::string
   atom::pdb_element_charge_columns() const
   {
-    char result[4];
-    format_pdb_element_charge_columns(result);
-    return std::string(result, 4U);
+    std::string result;
+    result += (boost::format("%2s") % data->element.elems).str();
+    result += (boost::format("%-2s") % data->charge.elems).str();
+    return result;
   }
 
   std::string

@@ -106,7 +106,7 @@ class SBSettingsPanel(wx.Panel):
     if dialog.ShowModal() == wx.ID_OK:
       path = dialog.GetPath()
       if (path != ""):
-        from xfel.cftbx.detector.metrology import \
+        from serialtbx.detector.legacy_metrology.metrology import \
           master_phil, metrology_as_transformation_matrices
         from libtbx import phil
 

@@ -31,7 +31,7 @@ class suite(residue):
     "angle","angles",
     "deltaMinus","epsilon","zeta","alpha","beta","gamma","delta",
     "bin", "cluster", "distance", "suiteness", "situation", "issue", "comment", "pointMaster", "pointColor",
-    "is_outlier",
+    "outlier",
     "atoms",
     "base"
   ]
@@ -56,7 +56,7 @@ class suite(residue):
     self.gamma = self.angles[5]
     self.delta = self.angles[6]
     #print(self.suiteclustername)
-    self.is_outlier = False #False by default, set True in suitealyze after computations if needed
+    self.outlier = False #False by default, set True in suitealyze after computations if needed
     self.atoms = atoms
     assert len(self.atoms) == 3, "wrong # of atom positions passed to suite"
     self.xyz = atoms[1]
@@ -73,9 +73,6 @@ class suite(residue):
       if angle < 0 or angle > 360:
         return False
     return True
-
-  #def is_outlier(self):
-  #  return self.is_outlier
 
   @property
   def suite(self):
@@ -204,7 +201,7 @@ class suitealyze(rna_geometry):
     self.results = compute(self.results)
     for result in self.results:
       if result.suite == "!!":
-        result.is_outlier=True
+        result.outlier=True
     if outliers_only:
       outlier_results = []
       for outlier in self.select_results(include_suites=["!!"]):
@@ -264,7 +261,7 @@ class suitealyze(rna_geometry):
     for result in self.select_results(model=model, chain=chain,
                                       include_suites=include_suites,
                                       exclude_suites=exclude_suites):
-      if result.is_outlier:
+      if result.is_outlier():
         continue
       elif s_min <= result.suiteness < s_max:
         count += 1
@@ -374,7 +371,7 @@ class suitealyze(rna_geometry):
       outlist.append(result.as_kinemage_label())
     outlist.append("@vectorlist {suites} color=gold width=4 nobutton master={suite outliers}")
     for result in self.results:
-      if result.is_outlier:
+      if result.is_outlier():
         outlist.append(result.as_kinemage_markup())
     return "\n".join(outlist)
 

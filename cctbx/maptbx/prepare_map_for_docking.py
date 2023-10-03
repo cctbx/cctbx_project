@@ -1462,7 +1462,11 @@ def assess_cryoem_errors(
   # Determine ordered volume in whole reconstruction and fraction that will be in sphere
   unit_cell = mmm.map_manager().unit_cell()
   unit_cell_grid = mmm.map_manager().unit_cell_grid
+  map_grid = mmm.map_manager().map_data().all()
   if (not mmm.map_manager().is_full_size()):
+    print("\nERROR: Unit cell grid does not match map dimensions:")
+    print("Unit cell grid: ", unit_cell_grid)
+    print("Map dimensions: ", map_grid)
     raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
@@ -1489,6 +1493,9 @@ def assess_cryoem_errors(
     sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
     if shifted_origin:
       sphere_cent_grid = [(c - o) for c,o in zip(sphere_cent_grid, origin_shift)]
+  for i in range(3):
+    if sphere_cent_grid[i] > map_grid[i] or sphere_cent_grid[i] < 0:
+      raise Sorry("Sphere centre is outside map grid")
   sphere_cent_map = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
   sphere_cent_map = flex.double(sphere_cent_map)
 

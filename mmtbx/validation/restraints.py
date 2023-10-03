@@ -269,6 +269,7 @@ class restraint_validation(validation):
       ignore_hd=True,
       sigma_cutoff=4.0,
       outliers_only=True,
+      reverse_sort=False,
       use_segids_in_place_of_chainids=False):
     validation.__init__(self)
     self.z_min = self.z_max = self.z_mean = None
@@ -296,7 +297,7 @@ class restraint_validation(validation):
       pdb_atoms=pdb_atoms,
       sigma_cutoff=sigma_cutoff,
       outliers_only=outliers_only,
-      use_segids_in_place_of_chainids=use_segids_in_place_of_chainids))
+      use_segids_in_place_of_chainids=use_segids_in_place_of_chainids), reverse=reverse_sort)
     self.n_outliers = len(self.results) #this appears as if it will give wrong results if outliers_only=True
     self.get_n_total_by_model(energies_sites, sites_cart, pdb_atoms)
 
@@ -738,6 +739,7 @@ class combined(slots_getstate_setstate):
       ignore_hd=True,
       sigma_cutoff=4.0,
       outliers_only=True,
+      reverse_sort=False,
       use_segids_in_place_of_chainids=False,
       cdl=None):
     self._use_cdl = cdl
@@ -771,6 +773,7 @@ class combined(slots_getstate_setstate):
         ignore_hd=ignore_hd,
         sigma_cutoff=sigma_cutoff,
         outliers_only=outliers_only,
+        reverse_sort=reverse_sort,
         use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
       setattr(self, geo_type, rv)
 

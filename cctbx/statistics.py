@@ -5,6 +5,7 @@ from cctbx import eltbx
 from cctbx.array_family import flex
 from libtbx.utils import plural_s
 import math
+from cctbx import xray, crystal
 
 import boost_adaptbx.boost.python as bp
 from six.moves import range
@@ -17,7 +18,9 @@ class empty: pass
 
 class wilson_plot(object):
 
-  def __init__(self, f_obs, asu_contents, e_statistics=False):
+  def __init__(self, f_obs, asu_contents, scattering_table="wk1995", e_statistics=False):
+    assert scattering_table in [
+      "n_gaussian", "it1992", "wk1995", "electron", "neutron"]
     assert f_obs.is_real_array()
     self.info = f_obs.info()
     f_obs_selected = f_obs.select(f_obs.data() > 0)
@@ -44,21 +47,47 @@ class wilson_plot(object):
     self.mean_stol_sq = flex.double(stol_sq.mean(
       use_binning=True,
       use_multiplicities=True).data[1:-1])
-    # cache scattering factor info
-    gaussians = {}
+    #
+    scatterers = flex.xray_scatterer()
     for chemical_type in asu_contents.keys():
-      gaussians[chemical_type] = eltbx.xray_scattering.wk1995(
-        chemical_type).fetch()
-    # compute expected f_calc^2 in resolution shells
+      sc = xray.scatterer(
+       scattering_type = chemical_type,
+       site            = (0, 0, 0),
+       u               = 0)
+      scatterers.append(sc)
+    cs = crystal.symmetry((1, 1, 1, 90, 90, 90), "P 1")
+    sp = crystal.special_position_settings(cs)
+    xrs = xray.structure(sp, scatterers)
+    xrs.scattering_type_registry(table = scattering_table)
+    scr = xrs.scattering_type_registry()
     self.expected_f_sq = flex.double()
     for stol_sq in self.mean_stol_sq:
       sum_fj_sq = 0
       for chemical_type, n_atoms in asu_contents.items():
-        f0 = gaussians[chemical_type].at_stol_sq(stol_sq)
+        f0 = scr.gaussian(chemical_type).at_stol_sq(stol_sq)
         sum_fj_sq += f0 * f0 * n_atoms
       self.expected_f_sq.append(sum_fj_sq)
     self.expected_f_sq *= f_obs_selected.space_group().order_z() \
                         * f_obs_selected.space_group().n_ltr()
+#
+# Valuable example of an alternative was to calculate self.expected_f_sq
+#
+#    # cache scattering factor info
+#    gaussians = {}
+#    for chemical_type in asu_contents.keys():
+#      gaussians[chemical_type] = eltbx.xray_scattering.wk1995(
+#        chemical_type).fetch()
+#    # compute expected f_calc^2 in resolution shells
+#    self.expected_f_sq = flex.double()
+#    for stol_sq in self.mean_stol_sq:
+#      sum_fj_sq = 0
+#      for chemical_type, n_atoms in asu_contents.items():
+#        f0 = gaussians[chemical_type].at_stol_sq(stol_sq)
+#        sum_fj_sq += f0 * f0 * n_atoms
+#      self.expected_f_sq.append(sum_fj_sq)
+#    self.expected_f_sq *= f_obs_selected.space_group().order_z() \
+#                        * f_obs_selected.space_group().n_ltr()
+#
     # fit to straight line
     self.x = self.mean_stol_sq
     self.y = flex.log(self.mean_fobs_sq / self.expected_f_sq)

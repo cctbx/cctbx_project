@@ -643,11 +643,11 @@ class annotation(structure_base):
       for helix_row in helix_loop.iterrows():
         try:
           h = pdb_helix.from_cif_row(helix_row, serial)
-          serial += 1
+          if h is not None:
+            helices.append(h)
+            serial += 1
         except ValueError:
           print("Bad HELIX records!", file=log)
-        else:
-          helices.append(h)
     sheets = []
     struct_sheet_loop = cif_block.get_loop_or_row("_struct_sheet")
     struct_sheet_order_loop = cif_block.get_loop_or_row("_struct_sheet_order")
@@ -1796,6 +1796,7 @@ class annotation(structure_base):
 class pdb_helix(structure_base):
   _helix_class_array = ['unknown','alpha', 'unknown', 'pi', 'unknown',
         '3_10', 'unknown', 'unknown', 'unknown', 'unknown', 'unknown']
+  _cif_helix_classes = {'HELX_RH_AL_P': 1, 'HELX_RH_PI_P':3, 'HELX_RH_3T_P':5}
 
   def __init__(self,
         serial,
@@ -1847,9 +1848,22 @@ class pdb_helix(structure_base):
   def helix_class_to_str(cls, h_class):
     return cls._helix_class_array[h_class]
 
+  @classmethod
+  def get_helix_class(cls, cif_row):
+    conf_type_class = cif_row.get('_struct_conf.conf_type_id', None)
+    if conf_type_class not in ['HELX_P', 'HELX_RH_AL_P', 'HELX_RH_PI_P', 'HELX_RH_3T_P']:
+      return None
+    if conf_type_class == 'HELX_P':
+      pdbx_class = int(cif_row.get('_struct_conf.pdbx_PDB_helix_class', 0))
+      return cls._helix_class_array[pdbx_class]
+    else:
+      return cls._helix_class_array[cls._cif_helix_classes[conf_type_class]]
 
   @classmethod
   def from_cif_row(cls, cif_row, serial):
+    h_class = cls.get_helix_class(cif_row)
+    if h_class is None:
+      return None
     start_resname = choose_correct_cif_record(
         cif_row,
         '_struct_conf.beg_auth_comp_id',
@@ -1899,7 +1913,7 @@ class pdb_helix(structure_base):
       end_chain_id=end_chain_id,
       end_resseq=cls.convert_resseq(end_resseq),
       end_icode=cls.parse_cif_insertion_code(cif_row.get('_struct_conf.pdbx_end_PDB_ins_code', '.')),
-      helix_class=cls.helix_class_to_str(int(cif_row.get('_struct_conf.pdbx_PDB_helix_class',0))),
+      helix_class=h_class,
       helix_selection=None,
       comment=comment,
       length=length)

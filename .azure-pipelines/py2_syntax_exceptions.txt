@@ -1,6 +1,7 @@
 crys3d/hklviewer/webbrowser_messenger_py3.py
 crys3d/hklviewer/xtriage_runner.py
 crys3d/regression/tst_websocket.py
+libtbx/auto_build/conda_build/create_custom_bin.py
 xfel/ui/db/dxtbx_db.py
 xfel/euxfel/agipd_from_defs.py
 xfel/euxfel/agipd_cxigeom2nexus.py

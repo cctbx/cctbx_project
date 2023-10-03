@@ -6,7 +6,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from dials.util.options import Importer, flatten_reflections, flatten_experiments
-from xfel.command_line.frame_extractor import ConstructFrame
+from serialtbx.util.construct_frame import ConstructFrame
 
 def find_json(pickle, pickle_ext=None, json_ext=None):
   """find the matching json file for a given dials-format non-image pickle file"""

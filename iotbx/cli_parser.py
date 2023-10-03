@@ -128,6 +128,9 @@ class CCTBXParser(ParserBase):
     if program_class.program_name is None:
       program_class.program_name = self.prog
     self.prefix = self.prog.split('.')[-1]
+    # Windows dispatchers may have the .bat extension
+    if sys.platform == 'win32' and self.prefix.lower() == 'bat':
+      self.prefix = self.prog.split('.')[-2]
 
     # PHIL filenames
     self.data_filename = self.prefix + '_data.eff'

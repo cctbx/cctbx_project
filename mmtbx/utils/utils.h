@@ -141,7 +141,7 @@ class density_distribution_per_atom
 template <typename FloatType>
 af::shared<std::size_t>
   filter_water(
-    af::shared<vec3<FloatType> > const& sites_frac_interaction,
+    af::shared<bool> const& interaction_selection,
     af::shared<vec3<FloatType> > const& sites_frac_other,
     af::shared<vec3<FloatType> > const& sites_frac_water,
     FloatType const& dist_max,
@@ -149,62 +149,60 @@ af::shared<std::size_t>
     cctbx::uctbx::unit_cell const& unit_cell)
 {
   af::shared<std::size_t> result;
-  af::shared<std::size_t> result_;
   af::shared<std::size_t> first_shell;
   af::shared<std::size_t> second_shell;
+  MMTBX_ASSERT(interaction_selection.size()==sites_frac_other.size());
+  // Select water that a) do not clash with any of non-water atom and b) are
+  // within prescribed limits (first_shell).
+  // Set aside others non-clashing (second_shell).
   for(std::size_t i=0; i<sites_frac_water.size(); i+=1) {
     FloatType dist_closest = 1.e+9;
+    FloatType dist_closest_int = 1.e+9;
     cctbx::fractional<> sfw = sites_frac_water[i];
-    for(std::size_t j=0; j<sites_frac_interaction.size(); j+=1) {
-      cctbx::fractional<> sf = sites_frac_interaction[j];
-      FloatType dist = unit_cell.distance(sf, sfw);
-      if(dist < dist_closest) {
-        dist_closest = dist;
+    bool skip = false;
+    for(std::size_t j=0; j<sites_frac_other.size(); j+=1) {
+      cctbx::fractional<> sfo = sites_frac_other[j];
+      FloatType dist = unit_cell.distance(sfo, sfw);
+      if(dist<dist_min) { // clash detected
+        skip = true;
+        break;
       }
+      if(dist<dist_closest) dist_closest = dist;
+      if(dist<dist_closest_int && interaction_selection[j]) dist_closest_int = dist;
     }
-    if(dist_closest<=dist_max && dist_closest>=dist_min) {
+    if(skip) continue;
+    if(dist_closest_int<=dist_max &&
+       dist_closest_int>=dist_min &&
+       dist_closest    >=dist_min) {
       first_shell.push_back(i);
     }
     else {
       second_shell.push_back(i);
     }
   }
+  // Now check those set aside (second_shell) and fill into result
   for(std::size_t i=0; i<second_shell.size(); i+=1) {
     FloatType dist_closest = 1.e+9;
     cctbx::fractional<> sfi = sites_frac_water[second_shell[i]];
+    bool skip = false;
     for(std::size_t j=0; j<first_shell.size(); j+=1) {
       cctbx::fractional<> sfj = sites_frac_water[first_shell[j]];
       FloatType dist = unit_cell.distance(sfi, sfj);
-      if(dist < dist_closest) {
-        dist_closest = dist;
+      if(dist<dist_min) {
+        break; // clash detected
+        skip = true;
       }
+      if(dist < dist_closest) dist_closest = dist;
     }
+    if(skip) continue;
     if(dist_closest<=dist_max && dist_closest>=dist_min) {
-      result_.push_back(second_shell[i]);
+      result.push_back(second_shell[i]);
     }
   }
+  // Add first shell into result
   for(std::size_t i=0; i<first_shell.size(); i+=1) {
-    result_.push_back(first_shell[i]);
+    result.push_back(first_shell[i]);
   }
-
-
-  for(std::size_t i=0; i<result_.size(); i+=1) {
-    FloatType dist_closest = 1.e+9;
-    cctbx::fractional<> sfi = sites_frac_water[result_[i]];
-
-    for(std::size_t j=0; j<sites_frac_other.size(); j+=1) {
-      cctbx::fractional<> sfj = sites_frac_other[j];
-      FloatType dist = unit_cell.distance(sfi, sfj);
-      if(dist < dist_closest) {
-        dist_closest = dist;
-      }
-    }
-    if(dist_closest>=dist_min) {
-      result.push_back(result_[i]);
-    }
-  }
-
-
   return result;
 }
 

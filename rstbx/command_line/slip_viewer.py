@@ -69,7 +69,7 @@ def run(argv=None):
   frame.settings_frame.panel.collect_values()
 
   if (work_params.effective_metrology is not None):
-    from xfel.cftbx.detector.metrology import \
+    from serialtbx.detector.legacy_metrology.metrology import \
       master_phil, metrology_as_transformation_matrices
 
     stream = open(work_params.effective_metrology)

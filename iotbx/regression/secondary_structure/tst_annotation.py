@@ -511,9 +511,8 @@ loop_
   _struct_conf.pdbx_PDB_helix_class
   _struct_conf.details
   _struct_conf.pdbx_PDB_helix_length
-  HELX_P  1  1  ARG  A   87  ?  GLN  A   92  ?  0  ?  5
-  HELX_P  2  2  ARG  B  287  ?  GLN  B  292  ?  0  ?  5
-  HELX_P  3  3  PRO  A    1  ?  LEU  A    5  ?  0  ?  4
+  HELX_P  1  1  ARG  A   87  ?  GLN  A   92  ?  1  ?  5
+  HELX_P  2  2  ARG  B  287  ?  GLN  B  292  ?  1  ?  5
 """
   cif_answer_conf_type_loop = """\
 loop_
@@ -524,8 +523,7 @@ loop_
 """
   pdb_answer_minimal_helix = """\
 HELIX    1   1 ARG A   87  GLN A   92  1                                   5
-HELIX    2   2 ARG B  287  GLN B  292  1                                   5
-HELIX    3   3 PRO A    1  LEU A    5  1                                   4"""
+HELIX    2   2 ARG B  287  GLN B  292  1                                   5"""
   minimal_helix = """\
     data_4ZTE
     loop_
@@ -552,7 +550,7 @@ HELIX    3   3 PRO A    1  LEU A    5  1                                   4"""
     out = StringIO()
     cif_loops[i].show(out)
     v = out.getvalue()
-    # print "\"%s\"" % v
+    # print ("\"%s\"" % v)
     assert not show_diff(out.getvalue(), answer)
 
 def tst_from_minimal_cif_sheet():
@@ -708,7 +706,7 @@ loop_
   out = StringIO()
   helix_loop.show(out)
   v = out.getvalue()
-  print("\"%s\"" % v)
+  # print("\"%s\"" % v)
   assert not show_diff(out.getvalue(), answer)
 
   # hmmm... when there's only one chain, there is one less 'space'
@@ -1722,7 +1720,7 @@ def tst_filter_sheets_with_long_hbonds3():
   h = inp.construct_hierarchy()
   ann = original_ann.deep_copy()
   ann.filter_sheets_with_long_hbonds(hierarchy=h)
-  print(ann)
+  # print(ann)
   assert ann.get_n_helices() == 11, ann.get_n_helices()
   assert ann.get_n_sheets() == 2, ann.get_n_sheets()
 
@@ -1779,6 +1777,307 @@ SHEET    2 AA2 4 MET A  92  THR A  99  0
       '0Y', '0Z', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19',
       '1A', '1B', '1C', '1D', '1E'], sheet_ids
 
+def tst_struct_conf_various():
+  struct_conf_str = """
+data_test
+loop_
+_struct_conf.beg_auth_asym_id
+_struct_conf.beg_auth_comp_id
+_struct_conf.beg_auth_seq_id
+_struct_conf.beg_label_asym_id
+_struct_conf.beg_label_comp_id
+_struct_conf.beg_label_seq_id
+_struct_conf.conf_type_id
+_struct_conf.end_auth_asym_id
+_struct_conf.end_auth_comp_id
+_struct_conf.end_auth_seq_id
+_struct_conf.end_label_asym_id
+_struct_conf.end_label_comp_id
+_struct_conf.end_label_seq_id
+_struct_conf.id
+_struct_conf.pdbx_beg_PDB_ins_code
+_struct_conf.pdbx_end_PDB_ins_code
+A LEU 8    A LEU 8    HELX_RH_AL_P A ARG 14   A ARG 14   HELX_RH_AL_P1  ? ?
+A ASP 16   A ASP 16   HELX_RH_3T_P A GLU 18   A GLU 18   HELX_RH_3T_P1  ? ?
+A PRO 20   A PRO 20   TURN_TY1_P   A GLY 21   A GLY 21   TURN_TY1_P1    ? ?
+A THR 23   A THR 23   BEND         A THR 23   A THR 23   BEND1          ? ?
+A GLN 24   A GLN 24   STRN         A LEU 25   A LEU 25   STRN1          ? ?
+A ASN 26   A ASN 26   BEND         A ASN 26   A ASN 26   BEND2          ? ?
+A ARG 27   A ARG 27   HELX_LH_PP_P A ALA 30   A ALA 30   HELX_LH_PP_P1  ? ?
+A PRO 32   A PRO 32   BEND         A PRO 32   A PRO 32   BEND3          ? ?
+A TRP 37   A TRP 37   STRN         A TRP 37   A TRP 37   STRN2          ? ?
+A ARG 38   A ARG 38   BEND         A ASN 39   A ASN 39   BEND4          ? ?
+A SER 40   A SER 40   HELX_RH_AL_P A THR 45   A THR 45   HELX_RH_AL_P2  ? ?
+A ASP 46   A ASP 46   TURN_TY1_P   A ASP 46   A ASP 46   TURN_TY1_P2    ? ?
+A ARG 47   A ARG 47   HELX_LH_PP_P A SER 49   A SER 49   HELX_LH_PP_P2  ? ?
+A GLN 50   A GLN 50   TURN_TY1_P   A GLN 51   A GLN 51   TURN_TY1_P3    ? ?
+A LEU 52   A LEU 52   STRN         A SER 54   A SER 54   STRN3          ? ?
+A GLY 57   A GLY 57   STRN         A PHE 64   A PHE 64   STRN4          ? ?
+A PRO 65   A PRO 65   BEND         A ALA 66   A ALA 66   BEND5          ? ?
+A PRO 67   A PRO 67   HELX_RH_3T_P A ALA 69   A ALA 69   HELX_RH_3T_P2  ? ?
+A VAL 70   A VAL 70   BEND         A VAL 70   A VAL 70   BEND6          ? ?
+A GLU 72   A GLU 72   HELX_RH_3T_P A LEU 75   A LEU 75   HELX_RH_3T_P3  ? ?
+A GLU 76   A GLU 76   TURN_TY1_P   A GLU 76   A GLU 76   TURN_TY1_P4    ? ?
+A CYS 77   A CYS 77   BEND         A CYS 77   A CYS 77   BEND7          ? ?
+A PRO 80   A PRO 80   TURN_TY1_P   A GLU 81   A GLU 81   TURN_TY1_P5    ? ?
+A ALA 82   A ALA 82   HELX_LH_PP_P A ALA 82   A ALA 82   HELX_LH_PP_P3  ? ?
+A ASP 83   A ASP 83   STRN         A VAL 87   A VAL 87   STRN5          ? ?
+A PRO 88   A PRO 88   BEND         A PRO 88   A PRO 88   BEND8          ? ?
+A TRP 91   A TRP 91   HELX_RH_3T_P A HIS 94   A HIS 94   HELX_RH_3T_P4  ? ?
+A GLY 95   A GLY 95   TURN_TY1_P   A GLY 95   A GLY 95   TURN_TY1_P6    ? ?
+A TYR 96   A TYR 96   BEND         A ASP 97   A ASP 97   BEND9          ? ?
+A ILE 100  A ILE 100  STRN         A THR 102  A THR 102  STRN6          ? ?
+A ASN 103  A ASN 103  BEND         A THR 105  A THR 105  BEND10         ? ?
+A PRO 107  A PRO 107  BEND         A ILE 108  A ILE 108  BEND11         ? ?
+A PRO 112  A PRO 112  TURN_TY1_P   A PRO 113  A PRO 113  TURN_TY1_P7    ? ?
+A THR 117  A THR 117  BEND         A GLU 118  A GLU 118  BEND12         ? ?
+A THR 121  A THR 121  STRN         A PHE 128  A PHE 128  STRN7          ? ?
+A GLU 132  A GLU 132  HELX_RH_AL_P A GLN 136  A GLN 136  HELX_RH_AL_P3  ? ?
+A GLU 137  A GLU 137  BEND         A GLY 138  A GLY 138  BEND13         ? ?
+A GLN 139  A GLN 139  STRN         A PHE 144  A PHE 144  STRN8          ? ?
+A ASP 145  A ASP 145  BEND         A ASP 145  A ASP 145  BEND14         ? ?
+A VAL 147  A VAL 147  STRN         A ASN 148  A ASN 148  STRN9          ? ?
+A SER 149  A SER 149  BEND         A SER 149  A SER 149  BEND15         ? ?
+A ALA 150  A ALA 150  STRN         A CYS 155  A CYS 155  STRN10         ? ?
+A ASN 156  A ASN 156  TURN_TY1_P   A GLY 157  A GLY 157  TURN_TY1_P8    ? ?
+A ARG 158  A ARG 158  STRN         A GLN 164  A GLN 164  STRN11         ? ?
+A SER 166  A SER 166  TURN_TY1_P   A ARG 167  A ARG 167  TURN_TY1_P9    ? ?
+A LEU 168  A LEU 168  BEND         A LEU 168  A LEU 168  BEND16         ? ?
+A SER 170  A SER 170  STRN         A ASP 173  A ASP 173  STRN12         ? ?
+A SER 175  A SER 175  TURN_TY1_P   A PHE 177  A PHE 177  TURN_TY1_P10   ? ?
+A ALA 180  A ALA 180  BEND         A GLY 181  A GLY 181  BEND17         ? ?
+A ASN 183  A ASN 183  STRN         A LEU 190  A LEU 190  STRN13         ? ?
+A ARG 191  A ARG 191  BEND         A ARG 191  A ARG 191  BEND18         ? ?
+A ASP 194  A ASP 194  HELX_RH_3T_P A LEU 198  A LEU 198  HELX_RH_3T_P5  ? ?
+A GLU 199  A GLU 199  STRN         A GLU 199  A GLU 199  STRN14         ? ?
+A ASP 202  A ASP 202  BEND         A ASP 202  A ASP 202  BEND19         ? ?
+A MET 203  A MET 203  STRN         A ARG 205  A ARG 205  STRN15         ? ?
+A GLY 208  A GLY 208  STRN         A ILE 209  A ILE 209  STRN16         ? ?
+A ARG 211  A ARG 211  BEND         A ARG 211  A ARG 211  BEND20         ? ?
+A VAL 213  A VAL 213  STRN         A LYS 218  A LYS 218  STRN17         ? ?
+A THR 220  A THR 220  BEND         A THR 221  A THR 221  BEND21         ? ?
+A GLN 222  A GLN 222  STRN         A PHE 232  A PHE 232  STRN18         ? ?
+A ASP 234  A ASP 234  TURN_TY1_P   A ASP 235  A ASP 235  TURN_TY1_P11   ? ?
+A PHE 236  A PHE 236  BEND         A SER 237  A SER 237  BEND22         ? ?
+A ARG 238  A ARG 238  STRN         A CYS 248  A CYS 248  STRN19         ? ?
+A GLY 249  A GLY 249  BEND         A GLY 249  A GLY 249  BEND23         ? ?
+A ASP 253  A ASP 253  TURN_TY1_P   A TYR 254  A TYR 254  TURN_TY1_P12   ? ?
+A LEU 255  A LEU 255  STRN         A GLN 263  A GLN 263  STRN20         ? ?
+A GLY 264  A GLY 264  TURN_TY1_P   A GLU 265  A GLU 265  TURN_TY1_P13   ? ?
+A THR 266  A THR 266  STRN         A ALA 273  A ALA 273  STRN21         ? ?
+A PHE 275  A PHE 275  BEND         A PHE 275  A PHE 275  BEND24         ? ?
+A GLY 277  A GLY 277  HELX_LH_PP_P A ILE 279  A ILE 279  HELX_LH_PP_P4  ? ?
+A ASP 281  A ASP 281  STRN         A ASP 281  A ASP 281  STRN22         ? ?
+A GLU 282  A GLU 282  TURN_TY1_P   A ARG 283  A ARG 283  TURN_TY1_P14   ? ?
+A GLY 284  A GLY 284  STRN         A GLY 284  A GLY 284  STRN23         ? ?
+A ALA 287  A ALA 287  TURN_TY1_P   A ASP 288  A ASP 288  TURN_TY1_P15   ? ?
+A ARG 289  A ARG 289  STRN         A GLU 297  A GLU 297  STRN24         ? ?
+A ASN 298  A ASN 298  BEND         A ASN 298  A ASN 298  BEND25         ? ?
+A LEU 301  A LEU 301  STRN         A TRP 302  A TRP 302  STRN25         ? ?
+A ALA 304  A ALA 304  BEND         A ILE 306  A ILE 306  BEND26         ? ?
+A PRO 307  A PRO 307  STRN         A PRO 307  A PRO 307  STRN26         ? ?
+A TYR 310  A TYR 310  STRN         A THR 318  A THR 318  STRN27         ? ?
+A ALA 319  A ALA 319  TURN_TY1_P   A ASP 320  A ASP 320  TURN_TY1_P16   ? ?
+A GLY 321  A GLY 321  BEND         A GLY 321  A GLY 321  BEND27         ? ?
+A LEU 323  A LEU 323  STRN         A VAL 331  A VAL 331  STRN28         ? ?
+A PHE 333  A PHE 333  STRN         A PHE 333  A PHE 333  STRN29         ? ?
+A VAL 336  A VAL 336  STRN         A GLU 339  A GLU 339  STRN30         ? ?
+A ASN 340  A ASN 340  TURN_TY1_P   A GLY 341  A GLY 341  TURN_TY1_P17   ? ?
+A LEU 342  A LEU 342  STRN         A LEU 345  A LEU 345  STRN31         ? ?
+A ASN 346  A ASN 346  TURN_TY1_P   A GLY 347  A GLY 347  TURN_TY1_P18   ? ?
+A LYS 348  A LYS 348  STRN         A PRO 349  A PRO 349  STRN32         ? ?
+A ILE 352  A ILE 352  STRN         A ASN 356  A ASN 356  STRN33         ? ?
+A HIS 361  A HIS 361  STRN         A HIS 361  A HIS 361  STRN34         ? ?
+A PRO 362  A PRO 362  TURN_TY1_P   A HIS 364  A HIS 364  TURN_TY1_P19   ? ?
+A GLY 365  A GLY 365  STRN         A GLY 365  A GLY 365  STRN35         ? ?
+A GLN 366  A GLN 366  TURN_TY1_P   A GLN 366  A GLN 366  TURN_TY1_P20   ? ?
+A GLU 370  A GLU 370  HELX_RH_AL_P A GLN 382  A GLN 382  HELX_RH_AL_P4  ? ?
+A ASN 383  A ASN 383  TURN_TY1_P   A ASN 384  A ASN 384  TURN_TY1_P21   ? ?
+A ALA 387  A ALA 387  STRN         A ARG 389  A ARG 389  STRN36         ? ?
+A SER 391  A SER 391  TURN_TY1_P   A HIS 392  A HIS 392  TURN_TY1_P22   ? ?
+A TYR 393  A TYR 393  BEND         A TYR 393  A TYR 393  BEND28         ? ?
+A PRO 397  A PRO 397  HELX_RH_AL_P A TYR 406  A TYR 406  HELX_RH_AL_P5  ? ?
+A GLY 407  A GLY 407  TURN_TY1_P   A GLY 407  A GLY 407  TURN_TY1_P23   ? ?
+A TYR 409  A TYR 409  STRN         A GLU 413  A GLU 413  STRN37         ? ?
+A ASN 415  A ASN 415  BEND         A ASN 415  A ASN 415  BEND29         ? ?
+A GLU 417  A GLU 417  STRN         A GLU 417  A GLU 417  STRN38         ? ?
+A HIS 419  A HIS 419  TURN_TY1_P   A GLY 420  A GLY 420  TURN_TY1_P24   ? ?
+A MET 421  A MET 421  BEND         A PRO 423  A PRO 423  BEND30         ? ?
+A MET 424  A MET 424  HELX_RH_3T_P A ARG 426  A ARG 426  HELX_RH_3T_P6  ? ?
+A LEU 427  A LEU 427  TURN_TY1_P   A ASP 429  A ASP 429  TURN_TY1_P25   ? ?
+A PRO 431  A PRO 431  TURN_TY1_P   A TRP 433  A TRP 433  TURN_TY1_P26   ? ?
+A LEU 434  A LEU 434  HELX_RH_AL_P A ASP 448  A ASP 448  HELX_RH_AL_P6  ? ?
+A ARG 449  A ARG 449  TURN_TY1_P   A ASN 450  A ASN 450  TURN_TY1_P27   ? ?
+A PRO 452  A PRO 452  BEND         A SER 453  A SER 453  BEND31         ? ?
+A VAL 454  A VAL 454  STRN         A SER 458  A SER 458  STRN39         ? ?
+A ASN 461  A ASN 461  STRN         A ASN 461  A ASN 461  STRN40         ? ?
+A GLU 462  A GLU 462  BEND         A GLU 462  A GLU 462  BEND32         ? ?
+A ALA 467  A ALA 467  HELX_RH_AL_P A VAL 479  A VAL 479  HELX_RH_AL_P7  ? ?
+A PRO 481  A PRO 481  TURN_TY1_P   A SER 482  A SER 482  TURN_TY1_P28   ? ?
+A ARG 483  A ARG 483  BEND         A ARG 483  A ARG 483  BEND33         ? ?
+A VAL 485  A VAL 485  STRN         A GLN 486  A GLN 486  STRN41         ? ?
+A GLY 489  A GLY 489  TURN_TY1_P   A GLY 491  A GLY 491  TURN_TY1_P29   ? ?
+A ALA 492  A ALA 492  BEND         A THR 494  A THR 494  BEND34         ? ?
+A THR 495  A THR 495  TURN_TY1_P   A ALA 496  A ALA 496  TURN_TY1_P30   ? ?
+A ASP 498  A ASP 498  BEND         A ILE 499  A ILE 499  BEND35         ? ?
+A ILE 500  A ILE 500  STRN         A ILE 500  A ILE 500  STRN42         ? ?
+A MET 503  A MET 503  STRN         A MET 503  A MET 503  STRN43         ? ?
+A TYR 504  A TYR 504  BEND         A TYR 504  A TYR 504  BEND36         ? ?
+A VAL 507  A VAL 507  BEND         A ASP 508  A ASP 508  BEND37         ? ?
+A GLN 511  A GLN 511  STRN         A GLN 511  A GLN 511  STRN44         ? ?
+A PRO 514  A PRO 514  BEND         A VAL 516  A VAL 516  BEND38         ? ?
+A LYS 518  A LYS 518  STRN         A LYS 518  A LYS 518  STRN45         ? ?
+A ILE 521  A ILE 521  HELX_RH_AL_P A TRP 524  A TRP 524  HELX_RH_AL_P8  ? ?
+A LEU 525  A LEU 525  TURN_TY1_P   A SER 526  A SER 526  TURN_TY1_P31   ? ?
+A LEU 527  A LEU 527  BEND         A LEU 527  A LEU 527  BEND39         ? ?
+A PRO 528  A PRO 528  TURN_TY1_P   A GLY 529  A GLY 529  TURN_TY1_P32   ? ?
+A ARG 532  A ARG 532  BEND         A ARG 532  A ARG 532  BEND40         ? ?
+A LEU 534  A LEU 534  STRN         A TYR 539  A TYR 539  STRN46         ? ?
+A ALA 540  A ALA 540  BEND         A ALA 540  A ALA 540  BEND41         ? ?
+A GLY 544  A GLY 544  BEND         A ASN 545  A ASN 545  BEND42         ? ?
+A GLY 548  A GLY 548  TURN_TY1_P   A GLY 549  A GLY 549  TURN_TY1_P33   ? ?
+A PHE 550  A PHE 550  HELX_RH_AL_P A GLN 559  A GLN 559  HELX_RH_AL_P9  ? ?
+A PRO 561  A PRO 561  TURN_TY1_P   A ARG 562  A ARG 562  TURN_TY1_P34   ? ?
+A LEU 563  A LEU 563  STRN         A VAL 568  A VAL 568  STRN47         ? ?
+A TRP 569  A TRP 569  BEND         A TRP 569  A TRP 569  BEND43         ? ?
+A TRP 571  A TRP 571  BEND         A TRP 571  A TRP 571  BEND44         ? ?
+A VAL 572  A VAL 572  STRN         A VAL 572  A VAL 572  STRN48         ? ?
+A LEU 576  A LEU 576  STRN         A TYR 579  A TYR 579  STRN49         ? ?
+A GLU 581  A GLU 581  TURN_TY1_P   A ASN 582  A ASN 582  TURN_TY1_P35   ? ?
+A PRO 585  A PRO 585  STRN         A ALA 588  A ALA 588  STRN50         ? ?
+A GLY 590  A GLY 590  TURN_TY1_P   A PHE 593  A PHE 593  TURN_TY1_P36   ? ?
+A GLY 594  A GLY 594  BEND         A GLY 594  A GLY 594  BEND45         ? ?
+A THR 596  A THR 596  BEND         A PRO 597  A PRO 597  BEND46         ? ?
+A ARG 600  A ARG 600  HELX_RH_3T_P A CYS 603  A CYS 603  HELX_RH_3T_P7  ? ?
+A LEU 607  A LEU 607  BEND         A LEU 607  A LEU 607  BEND47         ? ?
+A VAL 608  A VAL 608  STRN         A VAL 608  A VAL 608  STRN51         ? ?
+A ALA 610  A ALA 610  TURN_TY1_P   A ASP 611  A ASP 611  TURN_TY1_P37   ? ?
+A ARG 612  A ARG 612  BEND         A ARG 612  A ARG 612  BEND48         ? ?
+A THR 613  A THR 613  HELX_LH_PP_P A THR 613  A THR 613  HELX_LH_PP_P5  ? ?
+A PRO 614  A PRO 614  STRN         A PRO 614  A PRO 614  STRN52         ? ?
+A HIS 615  A HIS 615  HELX_LH_PP_P A HIS 615  A HIS 615  HELX_LH_PP_P6  ? ?
+A PRO 616  A PRO 616  TURN_TY1_P   A PRO 616  A PRO 616  TURN_TY1_P38   ? ?
+A ALA 617  A ALA 617  HELX_RH_AL_P A GLN 624  A GLN 624  HELX_RH_AL_P10 ? ?
+A GLN 625  A GLN 625  TURN_TY1_P   A GLN 625  A GLN 625  TURN_TY1_P39   ? ?
+A PHE 627  A PHE 627  BEND         A PHE 627  A PHE 627  BEND49         ? ?
+A PHE 628  A PHE 628  STRN         A SER 633  A SER 633  STRN53         ? ?
+A GLY 634  A GLY 634  TURN_TY1_P   A GLN 635  A GLN 635  TURN_TY1_P40   ? ?
+A THR 636  A THR 636  STRN         A SER 641  A SER 641  STRN54         ? ?
+A LEU 644  A LEU 644  BEND         A PHE 645  A PHE 645  BEND50         ? ?
+A SER 648  A SER 648  BEND         A SER 648  A SER 648  BEND51         ? ?
+A ASP 649  A ASP 649  TURN_TY1_P   A ASN 650  A ASN 650  TURN_TY1_P41   ? ?
+A LEU 652  A LEU 652  STRN         A LEU 659  A LEU 659  STRN55         ? ?
+A ASP 660  A ASP 660  TURN_TY1_P   A GLY 661  A GLY 661  TURN_TY1_P42   ? ?
+A LYS 662  A LYS 662  STRN         A PRO 670  A PRO 670  STRN56         ? ?
+A PRO 675  A PRO 675  TURN_TY1_P   A GLN 676  A GLN 676  TURN_TY1_P43   ? ?
+A LYS 678  A LYS 678  STRN         A GLU 682  A GLU 682  STRN57         ? ?
+A LEU 683  A LEU 683  HELX_LH_PP_P A PRO 687  A PRO 687  HELX_LH_PP_P7  ? ?
+A GLU 690  A GLU 690  BEND         A SER 691  A SER 691  BEND52         ? ?
+A GLY 693  A GLY 693  STRN         A GLN 703  A GLN 703  STRN58         ? ?
+A PRO 704  A PRO 704  BEND         A ASN 705  A ASN 705  BEND53         ? ?
+A ALA 708  A ALA 708  BEND         A SER 710  A SER 710  BEND54         ? ?
+A ALA 712  A ALA 712  TURN_TY1_P   A GLY 713  A GLY 713  TURN_TY1_P44   ? ?
+A HIS 714  A HIS 714  STRN         A ASN 726  A ASN 726  STRN59         ? ?
+A THR 730  A THR 730  HELX_LH_PP_P A SER 735  A SER 735  HELX_LH_PP_P8  ? ?
+A HIS 736  A HIS 736  BEND         A ALA 737  A ALA 737  BEND55         ? ?
+A PRO 739  A PRO 739  HELX_LH_PP_P A PRO 739  A PRO 739  HELX_LH_PP_P9  ? ?
+A HIS 740  A HIS 740  STRN         A THR 743  A THR 743  STRN60         ? ?
+A GLU 745  A GLU 745  BEND         A MET 746  A MET 746  BEND56         ? ?
+A ASP 747  A ASP 747  STRN         A LEU 752  A LEU 752  STRN61         ? ?
+A GLY 753  A GLY 753  TURN_TY1_P   A ASN 754  A ASN 754  TURN_TY1_P45   ? ?
+A LYS 755  A LYS 755  STRN         A ASN 760  A ASN 760  STRN62         ? ?
+A ARG 761  A ARG 761  TURN_TY1_P   A SER 763  A SER 763  TURN_TY1_P46   ? ?
+A PHE 765  A PHE 765  BEND         A PHE 765  A PHE 765  BEND57         ? ?
+A LEU 766  A LEU 766  STRN         A ILE 771  A ILE 771  STRN63         ? ?
+A GLY 772  A GLY 772  TURN_TY1_P   A ASP 773  A ASP 773  TURN_TY1_P47   ? ?
+A LYS 774  A LYS 774  STRN         A LYS 775  A LYS 775  STRN64         ? ?
+A LEU 777  A LEU 777  STRN         A GLN 784  A GLN 784  STRN65         ? ?
+A ALA 788  A ALA 788  HELX_LH_PP_P A LEU 790  A LEU 790  HELX_LH_PP_P10 ? ?
+A ASP 791  A ASP 791  HELX_RH_AL_P A ILE 794  A ILE 794  HELX_RH_AL_P11 ? ?
+A GLY 795  A GLY 795  TURN_TY1_P   A VAL 796  A VAL 796  TURN_TY1_P48   ? ?
+A ALA 799  A ALA 799  BEND         A ARG 801  A ARG 801  BEND58         ? ?
+A PRO 804  A PRO 804  TURN_TY1_P   A ASN 805  A ASN 805  TURN_TY1_P49   ? ?
+A ALA 806  A ALA 806  BEND         A ALA 806  A ALA 806  BEND59         ? ?
+A TRP 807  A TRP 807  HELX_RH_AL_P A ALA 813  A ALA 813  HELX_RH_AL_P12 ? ?
+A ALA 814  A ALA 814  TURN_TY1_P   A GLY 815  A GLY 815  TURN_TY1_P50   ? ?
+A HIS 816  A HIS 816  HELX_RH_3T_P A GLN 818  A GLN 818  HELX_RH_3T_P8  ? ?
+A GLU 820  A GLU 820  STRN         A THR 830  A THR 830  STRN66         ? ?
+A ALA 832  A ALA 832  BEND         A ASP 833  A ASP 833  BEND60         ? ?
+A ALA 834  A ALA 834  STRN         A HIS 845  A HIS 845  STRN67         ? ?
+A GLN 846  A GLN 846  TURN_TY1_P   A GLY 847  A GLY 847  TURN_TY1_P51   ? ?
+A LYS 848  A LYS 848  STRN         A ASP 860  A ASP 860  STRN68         ? ?
+A GLY 861  A GLY 861  TURN_TY1_P   A SER 862  A SER 862  TURN_TY1_P52   ? ?
+A GLY 863  A GLY 863  BEND         A GLY 863  A GLY 863  BEND61         ? ?
+A MET 865  A MET 865  STRN         A VAL 873  A VAL 873  STRN69         ? ?
+A SER 875  A SER 875  TURN_TY1_P   A ASP 876  A ASP 876  TURN_TY1_P53   ? ?
+A THR 877  A THR 877  BEND         A THR 877  A THR 877  BEND62         ? ?
+A PRO 878  A PRO 878  HELX_LH_PP_P A PRO 880  A PRO 880  HELX_LH_PP_P11 ? ?
+A ALA 881  A ALA 881  BEND         A ALA 881  A ALA 881  BEND63         ? ?
+A ARG 882  A ARG 882  STRN         A LEU 889  A LEU 889  STRN70         ? ?
+A ALA 890  A ALA 890  BEND         A ALA 890  A ALA 890  BEND64         ? ?
+A GLU 894  A GLU 894  BEND         A GLU 894  A GLU 894  BEND65         ? ?
+A ARG 895  A ARG 895  STRN         A GLY 902  A GLY 902  STRN71         ? ?
+A PRO 903  A PRO 903  BEND         A GLN 904  A GLN 904  BEND66         ? ?
+A TYR 907  A TYR 907  STRN         A TYR 907  A TYR 907  STRN72         ? ?
+A PRO 908  A PRO 908  TURN_TY1_P   A ASP 909  A ASP 909  TURN_TY1_P54   ? ?
+A ARG 910  A ARG 910  STRN         A ARG 910  A ARG 910  STRN73         ? ?
+A THR 912  A THR 912  BEND         A ALA 913  A ALA 913  BEND67         ? ?
+A CYS 915  A CYS 915  STRN         A PRO 922  A PRO 922  STRN74         ? ?
+A LEU 923  A LEU 923  HELX_RH_3T_P A MET 926  A MET 926  HELX_RH_3T_P9  ? ?
+A TYR 927  A TYR 927  BEND         A TYR 927  A TYR 927  BEND68         ? ?
+A VAL 931  A VAL 931  BEND         A PHE 932  A PHE 932  BEND69         ? ?
+A GLU 935  A GLU 935  BEND         A GLU 935  A GLU 935  BEND70         ? ?
+A ARG 939  A ARG 939  STRN         A TYR 947  A TYR 947  STRN75         ? ?
+A GLY 948  A GLY 948  TURN_TY1_P   A PRO 949  A PRO 949  TURN_TY1_P55   ? ?
+A HIS 950  A HIS 950  STRN         A SER 961  A SER 961  STRN76         ? ?
+A ARG 962  A ARG 962  BEND         A TYR 963  A TYR 963  BEND71         ? ?
+A GLN 965  A GLN 965  HELX_RH_AL_P A GLU 970  A GLU 970  HELX_RH_AL_P13 ? ?
+A SER 972  A SER 972  BEND         A HIS 973  A HIS 973  BEND72         ? ?
+A ARG 974  A ARG 974  HELX_RH_3T_P A LEU 976  A LEU 976  HELX_RH_3T_P10 ? ?
+A ALA 979  A ALA 979  HELX_LH_PP_P A GLU 980  A GLU 980  HELX_LH_PP_P12 ? ?
+A GLU 981  A GLU 981  BEND         A GLY 982  A GLY 982  BEND73         ? ?
+A THR 983  A THR 983  STRN         A HIS 991  A HIS 991  STRN77         ? ?
+A ASP 997  A ASP 997  BEND         A ASP 997  A ASP 997  BEND74         ? ?
+A SER 999  A SER 999  BEND         A SER 1001 A SER 1001 BEND75         ? ?
+A ALA 1006 A ALA 1006 HELX_RH_3T_P A PHE 1008 A PHE 1008 HELX_RH_3T_P11 ? ?
+A GLN 1009 A GLN 1009 BEND         A GLN 1009 A GLN 1009 BEND76         ? ?
+A ALA 1012 A ALA 1012 BEND         A GLY 1013 A GLY 1013 BEND77         ? ?
+A ARG 1014 A ARG 1014 STRN         A GLN 1023 A GLN 1023 STRN78         ? ?
+#
+    """
+
+  pdb_answer = """\
+HELIX    1   1 LEU A    8  ARG A   14  1                                   6
+HELIX    2   2 ASP A   16  GLU A   18  5                                   2
+HELIX    3   3 SER A   40  THR A   45  1                                   5
+HELIX    4   4 PRO A   67  ALA A   69  5                                   2
+HELIX    5   5 GLU A   72  LEU A   75  5                                   3
+HELIX    6   6 TRP A   91  HIS A   94  5                                   3
+HELIX    7   7 GLU A  132  GLN A  136  1                                   4
+HELIX    8   8 ASP A  194  LEU A  198  5                                   4
+HELIX    9   9 GLU A  370  GLN A  382  1                                  12
+HELIX   10  10 PRO A  397  TYR A  406  1                                   9
+HELIX   11  11 MET A  424  ARG A  426  5                                   2
+HELIX   12  12 LEU A  434  ASP A  448  1                                  14
+HELIX   13  13 ALA A  467  VAL A  479  1                                  12
+HELIX   14  14 ILE A  521  TRP A  524  1                                   3
+HELIX   15  15 PHE A  550  GLN A  559  1                                   9
+HELIX   16  16 ARG A  600  CYS A  603  5                                   3
+HELIX   17  17 ALA A  617  GLN A  624  1                                   7
+HELIX   18  18 ASP A  791  ILE A  794  1                                   3
+HELIX   19  19 TRP A  807  ALA A  813  1                                   6
+HELIX   20  20 HIS A  816  GLN A  818  5                                   2
+HELIX   21  21 LEU A  923  MET A  926  5                                   3
+HELIX   22  22 GLN A  965  GLU A  970  1                                   5
+HELIX   23  23 ARG A  974  LEU A  976  5                                   2
+HELIX   24  24 ALA A 1006  PHE A 1008  5                                   2"""
+
+  cif_model = iotbx.cif.reader(input_string=struct_conf_str).model()
+  cif_block = list(cif_model.values())[0]
+  ann = annotation.from_cif_block(cif_block)
+  # print(ann.as_pdb_str())
+  assert not show_diff(ann.as_pdb_str(), pdb_answer)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test_helix_interface()
@@ -1807,4 +2106,5 @@ if (__name__ == "__main__"):
   tst_filter_sheets_with_long_hbonds3()
   tst_reset_sheet_ids()
   tst_simple_elements()
+  tst_struct_conf_various()
   print("OK time =%8.3f"%(time.time() - t0))
