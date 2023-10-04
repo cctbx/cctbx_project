@@ -1115,7 +1115,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("file_name"):
             self.currentfileName = self.infodict.get("file_name", "")
             self.setWindowFilenameTitles( self.currentfileName)
-            for tabname in ["Xtricorder",  "Xtriage"]:
+            for tabname in ["xtricorder.log",  "xtriage.log"]:
               self.removeNamedTab(tabname)
 
           if self.infodict.get("NewFileLoaded"):
@@ -1125,7 +1125,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
             self.AlignVectorGroupBox.setChecked( False)
-            for tabname in ["Xtricorder",  "Xtriage"]:
+            for tabname in ["xtricorder.log",  "xtriage.log"]:
               self.removeNamedTab(tabname)
             # display only those miller table columns that have been persisted if any
             stored_colnames_select_lst = []
@@ -1323,10 +1323,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.tabTextScrollDownShow(self.textAlerts)
 
 
-  def removeNamedTab(self, tabname):
-    if self.__dict__.get(tabname, None) is not None: # remove any existing one with the same name
-      self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
-      self.__dict__[tabname].setParent(None)
+  def removeNamedTab(self, tabsubstr):
+    for n in range(self.tabText.count()):
+      tabname = self.tabText.tabText(n)
+      if tabsubstr in tabname:
+        self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
+        self.__dict__[tabname].setParent(None)
 
 
   def add_another_text_tab(self, tabname, mstr, ttip):
