@@ -223,10 +223,34 @@ def tst_01(log = sys.stdout):
   model_info = process_predicted_model(pae_m,  params, pae_matrix = pae_matrix,
      log = log)
 
+def tst_02(log = sys.stdout):
+
+
+  # Split into domains with chunks
+  print("\nSplitting into domains with chunks",
+    file = log)
+
+  dm = DataManager()
+  dm.set_overwrite(True)
+  model = dm.get_model(model_file)
+  model.add_crystal_symmetry_if_necessary()
+
+  # Check splitting model into domains
+  print("\nSplitting model into domains", file = log)
+  model_info = split_model_into_compact_units(model,
+      break_into_chunks_if_length_is = model.overall_counts().n_residues,
+      chunk_size = 70,
+      overlap_size =  50,
+      maximum_fraction_close = 0.5, log = log)
+
+  chainid_list = model_info.chainid_list
+  print("Segments found: %s" %(" ".join(chainid_list)), file = log)
+  assert len(chainid_list) == 2
 
 if __name__ == "__main__":
 
   t0 = time.time()
   tst_01()
+  tst_02()
   print ("Time:", time.time()-t0)
   print ("OK")
