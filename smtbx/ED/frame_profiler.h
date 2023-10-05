@@ -61,12 +61,12 @@ namespace smtbx { namespace ED {
       }
       mi_lookup = lookup_t(
         all_indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       indices = mi_lookup.get_unique();
       mi_lookup = lookup_t(
         indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       strong_indices = af::select(frame.indices.const_ref(),
         frame.strong_beams.const_ref());
@@ -96,21 +96,25 @@ namespace smtbx { namespace ED {
         : parent(parent),
         frame(frame),
         Is(Is)
-      {
-      }
+      {}
 
       void process(const mat3_t& RMf, const cart_t& N) {
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.use_n_beam) { // N-beam
+            /* a LOT of overhead here!!! may need to change the logic to speed up
+             as the matrix rebuilt for each angles
+             */
             if (parent.params.getBeamN() > 2) {
               for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
                 size_t beam_idx = frame.strong_measured_beams[i];
                 miller::index<> h = frame.indices[beam_idx];
                 dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
                   parent.mat_type,
-                  frame, K, parent.thickness);
-                n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
+                  frame, K, parent.thickness,
+                  parent.params.useNBeamSg(), parent.params.getNBeamWght());
+                FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+                n_beam_dc.init(h, da, parent.Fcs_k, parent.mi_lookup);
                 Is[i] = std::norm(
                   n_beam_dc.calc_amp(std::make_pair(RMf, N)));
               }
@@ -158,7 +162,8 @@ namespace smtbx { namespace ED {
                 miller::index<> h = frame.indices[beam_idx];
                 dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
                   parent.mat_type,
-                  frame, K, parent.thickness);
+                  frame, K, parent.thickness,
+                  parent.params.useNBeamSg(), parent.params.getNBeamWght());
                 n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
                 I_sum += std::norm(
                   n_beam_dc.calc_amp(std::make_pair(RMf, N), 0));
@@ -192,6 +197,7 @@ namespace smtbx { namespace ED {
         // suppress warning
         return FloatType();
       }
+      boost::shared_ptr< dyn_calculator_n_beam<FloatType> > n_beam_dc;
       const frame_profiler& parent;
       const FrameInfo<FloatType>& frame;
       FloatType thickness;

@@ -79,12 +79,12 @@ namespace smtbx {
           // a tricky way of getting unique only...
           mi_lookup = lookup_t(
             all_indices.const_ref(),
-            space_group,
+            P1,
             anomalous_flag);
           indices = mi_lookup.get_unique();
           mi_lookup = lookup_t(
             indices.const_ref(),
-            space_group,
+            P1,
             anomalous_flag);
           if (do_build) {
             build();
@@ -146,7 +146,8 @@ namespace smtbx {
               af::shared<FloatType> angles =
                 frames[to].get_int_angles(params.getKl(), params.getIntSpan(),
                   params.getIntStep(),
-                  params.getIntPoints());
+                  params.getIntPoints(),
+                  !params.isAngleInt());
               af::shared<cmat_t> Ds_kin;
               build_Ug_matrix(frames[to], Ugs, Ds_kin);
               frame_integrator_ptr_t pf(
