@@ -634,7 +634,7 @@ class map_manager(map_reader, write_ccp4_map):
         shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None,
-    apply_external_origin_if_present = None):
+    apply_external_origin_if_present = True):
     '''
       Utility to calculate the shift necessary (grid units)
       map to place the origin of the current map
