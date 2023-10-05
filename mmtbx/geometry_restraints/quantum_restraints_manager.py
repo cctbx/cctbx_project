@@ -131,6 +131,21 @@ def write_restraints(model, filename, header=None, log=None):
   f.write(str(co))
   del f
 
+def retain_only_one_alternative_conformation(model, alt_loc_id):
+  ph = model.get_hierarchy()
+  for residue_group in ph.residue_groups():
+    remove=[]
+    for atom_group in residue_group.atom_groups():
+      if atom_group.altloc:
+        if atom_group.altloc!=alt_loc_id:
+          remove.append(atom_group)
+    if remove:
+      for atom_group in remove:
+        residue_group.remove_atom_group(atom_group)
+    if len(residue_group.atom_groups())==0:
+      chain = residue_group.parent()
+      chain.remove_residue_group(residue_group)
+
 def add_additional_hydrogen_atoms_to_model( model,
                                             use_capping_hydrogens=False,
                                             # use_neutron_distances=True,
@@ -360,6 +375,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
                                                            qmr.selection)
   buffer_model = select_and_reindex(model, buffer_selection_string)
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
+  if 0: retain_only_one_alternative_conformation(buffer_model, 'B')
   buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
   if write_steps: write_pdb_file(buffer_model, 'post_remove_altloc.pdb', None)
   validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=log)
@@ -1148,7 +1164,7 @@ def update_restraints(model,
                            buffer_model,
                            ignore_x_h_distance_protein=qmr.ignore_x_h_distance_protein,
                            log=log)
-    print('\n  Transfer', file=log)
+    print('\n  Transfer : old ~> new', file=log)
     update_bond_restraints(ligand_model,
                            buffer_model,
                            model_grm=model_grm,
