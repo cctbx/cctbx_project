@@ -73,6 +73,7 @@ namespace smtbx { namespace ED
     {
       using namespace fast_linalg;
       const size_t n_beams = this->A.accessor().n_columns();
+      SMTBX_ASSERT(num + 1 < n_beams);
       af::shared<FloatType> ev(n_beams);
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
@@ -102,7 +103,6 @@ namespace smtbx { namespace ED
       // !need only num rows!
       cmat_t G(af::mat_grid(n_beams, n_beams));
       for (size_t i = 0; i < n_beams; i++) {
-        //G(i, i) = exps[i];
         G(i, i) = exps[i] * exp_k;
         for (size_t j = i + 1; j < n_beams; j++) {
           G(i, j) = (exps[i] - exps[j]) / (ev[i] - ev[j]);
@@ -111,7 +111,7 @@ namespace smtbx { namespace ED
       }
       // last column - dI_dT
       size_t d_T_off = Ds_kin.size();
-      D_dyn.resize(af::mat_grid(1, d_T_off + (grad_thickness ? 1 : 0)));
+      D_dyn.resize(af::mat_grid(num, d_T_off + (grad_thickness ? 1 : 0)));
 
       af::shared<complex_t> rv(num); // complex amplitudes
       for (size_t i = 1; i <= num; i++) {
@@ -122,7 +122,7 @@ namespace smtbx { namespace ED
             dt += this->A(i, j) * im_dt[j];
           }
         }
-        rv[i - 1] = ci * M[i];
+        rv[i - 1] = (ci *= M[i]);
         if (grad_thickness) {
           dt *= M[i];
           D_dyn(i - 1, d_T_off) = 2 * (ci.real() * dt.real() + ci.imag() * dt.imag());
@@ -132,7 +132,7 @@ namespace smtbx { namespace ED
       for (size_t pi = 0; pi < d_T_off; pi++) {
         cmat_t V = af::matrix_multiply(
           af::matrix_multiply(A_cjt.const_ref(), Ds_kin[pi].const_ref()).const_ref(),
-          this->A.const_ref());
+            this->A.const_ref());
 
         // Hadamard product of G x V by A* first column into dI_dP
         af::shared<complex_t> df(n_beams);

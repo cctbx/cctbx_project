@@ -84,12 +84,12 @@ namespace least_squares {
       // a tricky way of getting unique only...
       mi_lookup = lookup_t(
         all_indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       indices = mi_lookup.get_unique();
       mi_lookup = lookup_t(
         indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       if (do_build) {
         build();
@@ -141,7 +141,8 @@ namespace least_squares {
               parent.Kl,
               parent.params.getIntSpan(),
               parent.params.getIntStep(),
-              parent.params.getIntPoints());
+              parent.params.getIntPoints(),
+              !parent.params.isAngleInt());
             for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
               size_t beam_idx = frame.strong_measured_beams[i];
               miller::index<> h = frame.indices[beam_idx];
@@ -153,7 +154,8 @@ namespace least_squares {
                 std::pair<mat3_t, cart_t> FI = frame.compute_RMf_N(da);
                 indices = utils<FloatType>::build_Ug_matrix_N(A,
                   Fcs_k, parent.mi_lookup,
-                  strong_indices, parent.Kl, h, FI.first, beam_n);
+                  strong_indices, parent.Kl, h, FI.first, beam_n,
+                  parent.params.useNBeamSg(), parent.params.getNBeamWght());
                 dc = dyn_calculator_factory<FloatType>(parent.mat_type)
                   .make(indices, K, thickness);
               }
@@ -162,8 +164,6 @@ namespace least_squares {
                 Fc = ii != -1 ? Fcs_k[ii] : 0;
               }
 
-              //FloatType sg_a = frame.Sg_to_angle(0.01, h, parent.Kl);
-              //int steps = std::abs(round((da-sg_a) / step));
               for (size_t ai = 0; ai < angles.size(); ai++) {
                 std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
@@ -239,7 +239,8 @@ namespace least_squares {
           af::shared<FloatType> angles =
             frame.get_int_angles(parent.Kl, parent.params.getIntSpan(),
               parent.params.getIntStep(),
-              parent.params.getIntPoints());
+              parent.params.getIntPoints(),
+              !parent.params.isAngleInt());
           for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
             size_t beam_idx = frame.strong_measured_beams[i];
             miller::index<> h = frame.indices[beam_idx];

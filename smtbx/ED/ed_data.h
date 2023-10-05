@@ -146,7 +146,7 @@ namespace smtbx { namespace ED
     in the list. Using threshold to merge near-by points
     * */
     af::shared<FloatType> get_int_angles(FloatType Kl, FloatType span,
-      FloatType step, size_t N) const;
+      FloatType step, size_t N, bool use_Sg) const;
     /* returns all angles for span with step */
     static af::shared<FloatType> get_angles(FloatType  ang,
       FloatType span, FloatType step);
@@ -237,10 +237,17 @@ namespace smtbx { namespace ED
     if (indices.size() >= num) {
       return;
     }
+    FloatType Kl = K.length();
     typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
+    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
+    for (size_t i = 0; i < beams.size(); i++) {
+      FloatType da = this->get_diffraction_angle(beams[i].index, Kl);
+      RMfs.push_back(this->compute_RMf_N(da).first);
+    }
+
     af::shared<typename utils<FloatType>::ExcitedBeam> ebeams =
-      utils<FloatType>::generate_index_set(RMf, K, min_d,
+      utils<FloatType>::generate_index_set(RMfs, K, min_d,
         MaxG, MaxSg, unit_cell);
 
     lookup_t existing = lookup_t(
@@ -363,39 +370,21 @@ namespace smtbx { namespace ED
   /* input span and step are in degrees */
   template <typename FloatType>
   af::shared<FloatType> FrameInfo<FloatType>::get_int_angles(
-    FloatType Kl, FloatType span_, FloatType step_, size_t N) const
+    FloatType Kl, FloatType span_, FloatType step_, size_t N, bool use_Sg) const
   {
-    if (false) {
-      af::shared<FloatType> angles = get_angles(alpha, span_, step_);
-      for (size_t i = 0; i < strong_measured_beams.size(); i++) {
-        const miller::index<>& h = indices[strong_measured_beams[i]];
-        FloatType da = this->get_diffraction_angle(h, Kl);
-        size_t sz = angles.size();
-        for (size_t j = 0; j < sz; j++) {
-          if (j + 1 < sz && angles[j] < da && angles[j + 1] > da) {
-            if (da - angles[j] > angles[j + 1] - da) {
-              angles[j + 1] = da;
-            }
-            else {
-              angles[j] = da;
-            }
-          }
-        }
-      }
-
-      return angles;
-    }
-    FloatType span = scitbx::deg_as_rad(span_),
-      step = scitbx::deg_as_rad(step_);
     af::shared<FloatType> angles, d_angles, res;
-    int steps = round(span / step);
     for (size_t i = 0; i < strong_measured_beams.size(); i++) {
       const miller::index<>& h = indices[strong_measured_beams[i]];
       FloatType da = this->get_diffraction_angle(h, Kl);
       d_angles.push_back(da);
-      for (int st = -steps; st <= steps; st++) {
-        angles.push_back(da + st * step);
+      af::shared<FloatType> b_angles;
+      if (use_Sg) {
+        b_angles = get_angles_Sg(h, Kl, span_, step_);
       }
+      else {
+        b_angles = get_angles(alpha, span_, step_);
+      }
+      angles.extend(b_angles.begin(), b_angles.end());
     }
     if (angles.size() < 3) {
       return angles;
@@ -443,7 +432,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() >= 10);
+      SMTBX_ASSERT(values.size() >= 13);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -460,6 +449,10 @@ namespace smtbx { namespace ED
     FloatType getIntSpan() const { return values[7]; }
     FloatType getIntStep() const { return values[8]; }
     size_t getIntPoints() const { return static_cast<size_t>(values[9]); }
+    bool isAngleInt() const { return values[10] == 1; }
+    FloatType useNBeamSg() const { return values[11] == 1; }
+    // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight) 
+    FloatType getNBeamWght() const { return values[12]; }
   };
 
 }}

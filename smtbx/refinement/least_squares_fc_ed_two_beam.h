@@ -88,12 +88,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       // a tricky way of getting unique only...
       mi_lookup = lookup_t(
         all_indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       indices = mi_lookup.get_unique();
       mi_lookup = lookup_t(
         indices.const_ref(),
-        space_group,
+        P1,
         anomalous_flag);
       if (do_build) {
         build();
@@ -317,13 +317,22 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     FloatType get_observable_N() const {
       FloatType da = frame->get_diffraction_angle(h, data.Kl);
-      af::shared<FloatType> angles = frame->get_angles(da,
-        data.params.getIntSpan(),
-        data.params.getIntStep());
+      af::shared<FloatType> angles;
+      if (data.params.isAngleInt()) {
+        angles = frame->get_angles(da,
+          data.params.getIntSpan(),
+          data.params.getIntStep());
+      }
+      else {
+        angles = frame->get_angles_Sg(h, data.Kl,
+          data.params.getIntSpan(),
+          data.params.getIntStep());
+      }
 
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
         data.params.getMatrixType(),
-        *frame, data.K, data.thickness.value);
+        *frame, data.K, data.thickness.value,
+        data.params.useNBeamSg(), data.params.getNBeamWght());
 
       n_beam_dc.init(h, da, data.Fcs_kin, data.mi_lookup);
 

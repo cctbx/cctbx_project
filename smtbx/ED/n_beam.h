@@ -17,11 +17,13 @@ namespace smtbx { namespace ED
       int mat_type,
       const FrameInfo<FloatType>& frame,
       const cart_t& K,
-      FloatType thickness)
+      FloatType thickness, bool useAngleInt, FloatType wght)
       : dc_f(mat_type),
       frame(frame), beam_n(N),
       K(K),
-      thickness(thickness)
+      thickness(thickness),
+      wght(wght),
+      useSgInt(useSgInt)
     {
       strong_indices = af::select(frame.indices.const_ref(),
         frame.strong_beams.const_ref());
@@ -55,7 +57,7 @@ namespace smtbx { namespace ED
       const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
     {
       indices = utils<FloatType>::build_Ug_matrix_N(A, Fcs_kin, mi_lookup,
-        strong_indices, K.length(), h, RMf, beam_n);
+        strong_indices, K.length(), h, RMf, beam_n, useSgInt, wght);
       dc = dc_f.make(indices, K, thickness);
       return *this;
     }
@@ -69,7 +71,8 @@ namespace smtbx { namespace ED
     size_t beam_n;
     cmat_t A;
     cart_t K;
-    FloatType thickness;
+    FloatType thickness, wght;
+    bool useSgInt;
   };
 
 }}

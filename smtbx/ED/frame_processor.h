@@ -49,11 +49,11 @@ namespace smtbx {  namespace ED
           CIs = dyn_calculator->reset(Ugs, RM, N).calc_amps_ext(Ds_kin,
             thickness.grad,
             D_dyn,
-            frame.strong_measured_beams.size());
+            beam_n);
         }
         else {
           CIs = dyn_calculator->reset(Ugs, RM, N)
-            .calc_amps(frame.strong_measured_beams.size());
+            .calc_amps(beam_n);
         }
       }
       catch (smtbx::error const& e) {
@@ -66,7 +66,6 @@ namespace smtbx {  namespace ED
 
     void process_1(size_t idx, const mat3_t& RM, const cart_t& N) {
       try {
-        size_t beam_n = frame.strong_measured_beams.size();
         if (calc_grad) {
           CIs.resize(1);
           CIs[0] = dyn_calculator->reset(Ugs, RM, N).calc_amps_ext_1(Ds_kin,

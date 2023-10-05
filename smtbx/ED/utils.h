@@ -47,6 +47,10 @@ namespace smtbx { namespace ED
       return (a.second < b.second);
     }
 
+    /* Use_Sg controls how the beams are selected - using plain Sg or |Fc|/(Sg+wght)
+    * In the case use_Sg is true - wght parameter is impose Sg limit on beams
+    * added into the matrix
+    */
     static af::shared<miller::index<> > build_Ug_matrix_N(cmat_t& A,
       const af::shared<complex_t>& Fcs_k,
       const lookup_t& mi_lookup,
@@ -54,7 +58,7 @@ namespace smtbx { namespace ED
       FloatType Kl,
       const miller::index<> &h,
       const mat3_t &RMf,
-      size_t num)
+      size_t num, bool use_Sg, FloatType wght)
     {
       typedef std::pair<size_t, FloatType> se_t;
       std::vector<se_t> beams;
@@ -65,18 +69,32 @@ namespace smtbx { namespace ED
         }
         long idx = mi_lookup.find_hkl(h_);
         cart_t g = RMf * cart_t(h_[0], h_[1], h_[2]);
-        beams.push_back(
-          std::make_pair(i,
-            std::abs(
-              std::abs(Fcs_k[idx]) / (calc_Sg(g, Kl) + 1e-5))
-          )
-        );
+        FloatType Sg = std::abs(calc_Sg(g, Kl));
+        if (use_Sg) {
+          beams.push_back(std::make_pair(i, Sg));
+        }
+        else {
+          beams.push_back(
+            std::make_pair(i, std::abs(Fcs_k[idx]) / (Sg + wght)));
+        }
       }
       std::sort(beams.begin(), beams.end(), sort_beams);
       af::shared<miller::index<> > indices;
       indices.push_back(h);
-      for (size_t i = 0; i < std::min(num, beams.size()) - 1; i++) {
-        indices.push_back(index_selection[beams[beams.size() - i - 1].first]);
+      if (use_Sg) {
+        for (size_t i = 0; i < std::min(num, beams.size()); i++) {
+          if (beams[i].second < 0.0025) {
+            indices.push_back(index_selection[beams[i].first]);
+            if (indices.size() == num) {
+              break;
+            }
+          }
+        }
+      }
+      else {
+        for (size_t i = 0; i < std::min(num, beams.size()) - 1; i++) {
+          indices.push_back(index_selection[beams[beams.size() - i - 1].first]);
+        }
       }
       build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
       return indices;
@@ -379,8 +397,7 @@ namespace smtbx { namespace ED
     };
 
     /* Generates a list of miller indices for given resolution and space group
-    * The indices are will fulfil the MaxSg and MaxG parameters and sorted by
-    * FoM from ReciPro
+    * The indices will fulfil the MaxSg and MaxG parameters and sorted by Sg
     */
     static af::shared<ExcitedBeam> generate_index_set(
       mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
@@ -413,12 +430,59 @@ namespace smtbx { namespace ED
         if (MaxSg > 0 && Sg > MaxSg) {
           continue;
         }
-        FloatType w = s * s * Kg_sq;
-        all.push_back(ExcitedBeam(h, g, w, Sg));
+        //FloatType w = s * s * Kg_sq;
+        all.push_back(ExcitedBeam(h, g, Sg, Sg));
       }
       std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
       return all;
     }
 
+    static af::shared<ExcitedBeam> generate_index_set(
+      af::shared<mat3_t> const& RMfs, // matrix to orthogonalise and rotate into the frame basis
+      cart_t const& K,
+      FloatType min_d,
+      FloatType MaxG, FloatType MaxSg,
+      uctbx::unit_cell const& unit_cell)
+    {
+      using namespace cctbx::miller;
+
+      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
+        true,
+        min_d, false);
+
+      miller::index<> h;
+      af::shared<ExcitedBeam> all;
+
+      const FloatType max_f_sq = MaxG * MaxG,
+        Kl = K.length(),
+        Kl_sq = Kl * Kl;
+      while (!(h = h_generator.next()).is_zero()) {
+        FloatType min_sg = MaxSg;
+        cart_t g;
+        for (size_t mi = 0; mi < RMfs.size(); mi++) {
+          g = RMfs[mi] * cart_t(h[0], h[1], h[2]);
+          if (mi == 0) {
+            FloatType g_sq = g.length_sq();
+            if (g_sq > max_f_sq) {
+              break;
+            }
+          }
+          FloatType Kg_sq = (K + g).length_sq();
+          FloatType s = Kl_sq - Kg_sq;
+          FloatType Sg = std::abs(s / (2 * Kl));
+          if (MaxSg > 0 && Sg > MaxSg) {
+            continue;
+          }
+          if (Sg < min_sg) {
+            min_sg = Sg;
+          }
+        }
+        if (min_sg < MaxSg) {
+          all.push_back(ExcitedBeam(h, g, min_sg, min_sg));
+        }
+      }
+      std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
+      return all;
+    }
   }; //struct smtbx::ED::utils
 }} // namespace smtbx::ED

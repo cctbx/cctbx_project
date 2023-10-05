@@ -40,6 +40,16 @@ namespace smtbx { namespace ED
       return build();
     }
 
+    // mat_Ug will be NOT be affected - deep copied
+    a_dyn_calculator& reset(const af::shared<miller::index<> > &indices_,
+      const cmat_t& m, const mat3_t& RMf, const cart_t& N) {
+      A = m.deep_copy();
+      indices = indices_;
+      this->RMf = RMf;
+      this->N = N;
+      return build();
+    }
+
     virtual af::shared<complex_t> calc_amps(size_t num,
       bool include_incident=false) = 0;
     // 0 is for the incident beam

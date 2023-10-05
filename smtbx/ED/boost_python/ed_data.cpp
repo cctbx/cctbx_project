@@ -187,8 +187,8 @@ namespace boost_python {
         .staticmethod("is_excited_g")
         .def("is_excited_h", &wt::is_excited_h)
         .staticmethod("is_excited_h")
-        .def("generate_index_set", &wt::generate_index_set)
-        .staticmethod("generate_index_set")
+        //.def("generate_index_set", &wt::generate_index_set)
+        //.staticmethod("generate_index_set")
         ;
     }
     static void wrap() {
