@@ -1,10 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import time
-import mmtbx.model
-import iotbx.pdb
-from mmtbx.hydrogens import reduce_hydrogen
-from libtbx.utils import null_out
-from libtbx.test_utils import approx_equal
 
 from mmtbx.hydrogens.tst_add_hydrogen import compare_models
 
@@ -12,7 +7,7 @@ from mmtbx.hydrogens.tst_add_hydrogen import compare_models
 
 def run():
   test_000()
-  # test_001()
+  test_001()
   # test_002()
   # test_003()
   # test_004()
@@ -25,11 +20,17 @@ def run():
 
 def test_000():
   '''
-    Added a torsion to NH2_CTERM
+  Added a torsion to NH2_CTERM
   '''
   compare_models(pdb_str = pdb_str_000)
 
 # ------------------------------------------------------------------------------
+
+def test_001():
+  '''
+  A nucleotide with missing for some reason and a missing dihedral
+  '''
+  compare_models(pdb_str = pdb_str_001)
 
 # ------------------------------------------------------------------------------
 
@@ -61,6 +62,52 @@ HETATM   21  HN1 NH2 E 202     -48.680 -10.596  15.728  1.00 40.90           H
 HETATM   22  HN2 NH2 E 202     -50.051 -10.572  15.024  1.00 40.90           H
 END
 """
+
+pdb_str_001 = '''
+CRYST1   60.683   61.851   76.893  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.016479  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.016168  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.013005        0.00000
+HETATM    1  C1' ADP A1311      -7.459  14.326  10.821  0.60 14.02           C
+HETATM    2  C2  ADP A1311      -5.449  12.545   7.224  0.60 15.85           C
+HETATM    3  C2' ADP A1311      -7.594  15.611  11.604  0.60 14.04           C
+HETATM    4  C3' ADP A1311      -8.097  15.126  12.927  0.60 13.75           C
+HETATM    5  C4  ADP A1311      -6.903  13.885   8.453  0.60 14.26           C
+HETATM    6  C4' ADP A1311      -8.964  13.965  12.513  0.60 14.88           C
+HETATM    7  C5  ADP A1311      -7.414  14.430   7.198  0.60 14.79           C
+HETATM    8  C5' ADP A1311     -10.403  14.410  12.351  0.60 12.89           C
+HETATM    9  C6  ADP A1311      -6.877  13.954   5.942  0.60 15.37           C
+HETATM   10  C8  ADP A1311      -8.458  15.356   8.818  0.60 13.69           C
+HETATM   11  N1  ADP A1311      -5.907  13.025   6.029  0.60 16.08           N
+HETATM   12  N3  ADP A1311      -5.925  12.949   8.425  0.60 15.93           N
+HETATM   13  N6  ADP A1311      -7.358  14.471   4.786  0.60 16.26           N
+HETATM   14  N7  ADP A1311      -8.348  15.322   7.484  0.60 15.22           N
+HETATM   15  N9  ADP A1311      -7.603  14.521   9.383  0.60 14.10           N
+HETATM   16  O1A ADP A1311     -12.593  15.064  10.083  0.60  6.78           O
+HETATM   17  O1B ADP A1311     -11.480  19.808  11.509  0.30 13.50           O
+HETATM   18  O2' ADP A1311      -6.345  16.239  11.737  0.60 12.16           O
+HETATM   19  O2A ADP A1311     -12.829  15.834  12.325  0.60  8.51           O
+HETATM   20  O2B ADP A1311     -10.576  17.778  12.692  0.30 17.96           O
+HETATM   21  O3' ADP A1311      -7.034  14.659  13.737  0.60 15.01           O
+HETATM   22  O3A ADP A1311     -11.739  17.443  10.617  0.60 12.19           O
+HETATM   23  O3B ADP A1311     -13.078  18.233  12.535  0.20 17.22           O
+HETATM   24  O4' ADP A1311      -8.522  13.493  11.245  0.60 15.01           O
+HETATM   25  O5' ADP A1311     -10.557  15.534  11.511  0.60 12.05           O
+HETATM   26  PA  ADP A1311     -12.004  15.966  11.098  0.60 10.28           P
+HETATM   27  PB  ADP A1311     -11.709  18.390  11.914  0.30 15.89           P
+HETATM   28  H2  ADP A1311      -4.669  11.794   7.209  0.60 15.85           H
+HETATM   29  H1' ADP A1311      -6.491  13.859  11.051  0.60 14.02           H
+HETATM   30  H2' ADP A1311      -8.331  16.303  11.184  0.60 14.04           H
+HETATM   31  H3' ADP A1311      -8.694  15.901  13.428  0.60 13.75           H
+HETATM   32  H4' ADP A1311      -8.905  13.169  13.269  0.60 14.88           H
+HETATM   33  H8  ADP A1311      -9.149  16.001   9.344  0.60 13.69           H
+HETATM   34 H5'1 ADP A1311     -10.814  14.645  13.335  0.60 12.89           H
+HETATM   35 H5'2 ADP A1311     -10.986  13.581  11.944  0.60 12.89           H
+HETATM   36 HN61 ADP A1311      -8.087  15.169   4.810  0.60 16.26           H
+HETATM   37 HN62 ADP A1311      -6.991  14.154   3.900  0.60 16.26           H
+HETATM   38 HO2' ADP A1311      -6.433  17.013  12.310  0.60 12.16           H
+HETATM   39 HO3' ADP A1311      -6.507  15.409  14.043  0.60 15.01           H
+'''
 
 if (__name__ == "__main__"):
   t0 = time.time()
