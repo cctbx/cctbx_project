@@ -544,7 +544,7 @@ class CCTBXParser(ParserBase):
           'data_manager.miller_array.user_selected_labels']:
           label_objects.append(source)
 
-      if len(label_objects) > 1:
+      if len(label_objects) > 0:
         print('  Found labels in command-line', file=self.logger)
         print('  ----------------------------', file=self.logger)
         # modify PHIL hierarchy

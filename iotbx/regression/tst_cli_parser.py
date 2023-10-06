@@ -1,12 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 import os
+import sys
+
+from six.moves import cStringIO as StringIO
 
 from iotbx.cli_parser import run_program
 from iotbx.data_manager import DataManager
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
-
+from libtbx.utils import multi_out, Sorry
 from libtbx.test_utils import Exception_expected, Exception_not_expected
 
 # =============================================================================
@@ -51,6 +53,7 @@ def test_label_parsing():
 
   # check label matching and parsing
   for phil_args, label_args in [
+    (['labels.name'], ['xd']),
     (['labels.name', 'labels.name', 'labels.name'], ['XD', 'SIGI', 'WIDTH']),
     (['user_selected_labels', 'user_selected_labels', 'user_selected_labels'], ['YD', 'M_ISYM', 'IPR']),
     (['labels.name', 'user_selected_labels', 'user_selected_labels'], ['BATCH', 'FRACTION', 'BGP']),
@@ -59,9 +62,20 @@ def test_label_parsing():
 
     combined_args = ['{}={}'.format(phil_arg, label_arg) for phil_arg, label_arg in zip(phil_args, label_args)]
 
+    parser_log = StringIO()
+    logger = multi_out()
+    logger.register('parser_log', parser_log)
+
     run_program(
       program_class=testProgram,
-      args=['--quiet', '--overwrite', '--write-all', data_mtz] + combined_args)
+      args=['--overwrite', '--write-all', data_mtz] + combined_args,
+      logger=logger)
+
+    parser_log.flush()
+    text = parser_log.getvalue()
+    assert 'Combined labels PHIL' in text
+
+    logger.close()
 
     dm = DataManager()
     dm.process_phil_file(phil_filename)
