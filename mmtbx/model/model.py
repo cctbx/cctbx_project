@@ -49,6 +49,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+import collections
 
 from mmtbx.rotamer import nqh
 
@@ -1444,8 +1445,13 @@ class manager(object):
       model_ph.append_model(m.detached_copy())
     self.reset_after_changing_hierarchy()
 
-  def reset_after_changing_hierarchy(self):
+  def atom_counts(self):
+    c = collections.Counter()
+    for a in self.get_hierarchy().atoms():
+      c[a.element.strip()]+=1
+    return c
 
+  def reset_after_changing_hierarchy(self):
     '''  Regenerate xray_structure after changing hierarchy '''
     self.update_xrs()
     self._update_atom_selection_cache()
