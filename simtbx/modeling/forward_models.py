@@ -75,12 +75,18 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         assert gpu_energy_channels is not None, "cant use exascale api if not in a GPU build"
         assert multipanel_sim is not None, "cant use exascale api if LS49: https://github.com/nksauter/LS49.git  is not configured\n install in the modules folder"
 
-    df = pandas_frame
+    df = pandas_frame.reset_index(drop=True)
 
     if not quiet: LOGGER.info("Loading experiment models")
-    expt_name = df.opt_exp_name.values[0]
+    expt_name = df.exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
-    expt = El[0]
+    exp_idx = 0
+    if "exp_idx" in list(df):
+        exp_idx = int(df.exp_idx.values[0])  # cast to int because has to be 32-bit
+    expt = El[exp_idx]
+    crystal = expt.crystal
+    crystal.set_A(df.Amats.values[0])
+    expt.crystal = crystal
     columns = list(df)
     if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly
         expt.detector = utils.shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
@@ -236,13 +242,14 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
                       det_thicksteps=None, eta_abc=None, Ncells_def=None,
-                      num_phi_steps=1, delta_phi=None):
+                      num_phi_steps=1, delta_phi=None, div_mrad=0):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
     nbBeam = NBbeam()
+    nbBeam.divergence = div_mrad / 1e3 * 180 / np.pi
     nbBeam.size_mm = beamsize_mm
     nbBeam.unit_s0 = BEAM.get_unit_s0()
     wavelengths = utils.ENERGY_CONV / np.array(energies)

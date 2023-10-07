@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import os
+import socket
 import sys
 import re
 from io import StringIO
@@ -29,6 +30,8 @@ import mmtbx.utils
 from cctbx.eltbx import henke
 from simtbx.diffBragg import psf
 from dials.algorithms.shoebox import MaskCode
+from xfel.merging.application.utils.memory_usage import get_memory_usage
+
 
 import logging
 MAIN_LOGGER = logging.getLogger("diffBragg.main")
@@ -81,14 +84,22 @@ def label_background_pixels(roi_img, thresh=3.5, iterations=1, only_high=True):
     while iterations > 0:
         if background_pixels is None:
             outliers = is_outlier(img1, thresh)
-            m = np.median(img1[~outliers])
+            inlier_vals = img1[~outliers]
+            if inlier_vals.size:
+                m = np.median(inlier_vals)
+            else:
+                m = np.nan
             if only_high:
                 outliers = np.logical_and(outliers, img1 > m)
             background_pixels = ~outliers
         else:
             where_bg = np.where(background_pixels)[0]
             outliers = is_outlier(img1[background_pixels], thresh)
-            m = np.median(img1[background_pixels][~outliers])
+            inlier_vals = img1[background_pixels][~outliers]
+            if inlier_vals.size:
+                m = np.median(inlier_vals)
+            else:
+                m = np.nan
             if only_high:
                 outliers = np.logical_and(outliers, img1[background_pixels] > m)
             background_pixels[where_bg[outliers]] = False
@@ -101,10 +112,16 @@ def is_outlier(points, thresh=3.5):
     """http://stackoverflow.com/a/22357811/2077270"""
     if len(points.shape) == 1:
         points = points[:, None]
-    median = np.median(points, axis=0)
+    if points.size:
+        median = np.median(points, axis=0)
+    else:
+        median = np.nan
     diff = np.sum((points - median) ** 2, axis=-1)
     diff = np.sqrt(diff)
-    med_abs_deviation = np.median(diff)
+    if diff.size:
+        med_abs_deviation = np.median(diff)
+    else:
+        med_abs_deviation = np.nan
     if med_abs_deviation == 0:
         return np.zeros(points.shape[0], bool)
 
@@ -452,7 +469,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     selection_flags = []
     num_roi_negative_bg = 0
     num_roi_nan_bg = 0
-    background = np.ones(imgs.shape)*-1
+    background = np.full_like(imgs, -1, dtype=float)
     i_roi = 0
     while i_roi < len(rois):
         roi = rois[i_roi]
@@ -474,6 +491,14 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 MAIN_LOGGER.debug("reflection %d has too many (%d) hot pixels (%d allowed)!" % (i_roi, num_hotpix, min_trusted_pix_per_roi))
                 is_selected = False
 
+        # Before padding and fitting, test for overlaps and shrink if needed
+        is_overlapping = not np.all(background[pid, j1:j2, i1:i2] == -1)
+        if not allow_overlaps and is_overlapping:
+            MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2-i1, j2-j1))
+            rois[i_roi] = (i1 + 1, i2, j1 + 1, j2) if (i1 + i2) % 2 \
+                else (i1, i2 - 1, j1, j2 - 1)  # shrink alternately from corners
+            continue
+
         dimY, dimX = imgs[pid].shape
         j1_nopad = j1
         i1_nopad = i1
@@ -487,6 +512,10 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
 
         shoebox = imgs[pid, j1:j2, i1:i2]
 
+        if shoebox.size < 4:
+            MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
+            is_selected = False
+
         if not isinstance(sigma_rdout, float) and not isinstance(sigma_rdout, int):
             shoebox_sigma_readout = sigma_rdout[pid, j1:j2, i1:i2]
         else:
@@ -495,19 +524,27 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         if background_mask is not None:
             is_background = background_mask[pid, j1:j2, i1:i2]
         else:
-            is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2, only_high=only_high)
+            if shoebox.shape== (0,0):
+                is_background = shoebox.copy().astype(bool)
+            else:
+                is_background = label_background_pixels(shoebox,thresh=bg_thresh, iterations=2, only_high=only_high)
 
         Ycoords, Xcoords = np.indices((j2-j1, i2-i1))
 
         if use_robust_estimation:
             bg_pixels = shoebox[is_background]
-            bg_signal = np.median(bg_pixels)
+            if not bg_pixels.size:
+                bg_signal = np.nan
+            else:
+                bg_signal = np.median(bg_pixels)
             if bg_signal < 0:
                 num_roi_negative_bg += 1
                 if set_negative_bg_to_zero:
                     bg_signal = 0
                 elif skip_roi_with_negative_bg:
                     MAIN_LOGGER.debug("reflection %d has negative background" % i_roi)
+                    is_selected = False
+                elif np.isnan(bg_signal):
                     is_selected = False
             tilt_a, tilt_b, tilt_c = 0, 0, bg_signal
             covariance = None
@@ -535,14 +572,6 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                     num_roi_negative_bg += 1
                     MAIN_LOGGER.debug("reflection %d has tilt plane that dips below 0" % i_roi)
                     is_selected = False
-
-        is_overlapping = not np.all(background[pid, j1_nopad:j2_nopad, i1_nopad:i2_nopad] == -1)
-
-        if not allow_overlaps and is_overlapping:
-            # NOTE : move away from this option, it potentially moves the pixel centroid outside of the ROI (in very rare instances)
-            MAIN_LOGGER.debug("region of interest already accounted for roi size= %d %d" % (i2_nopad-i1_nopad, j2_nopad-j1_nopad))
-            rois[i_roi] = i1_nopad+1,i2_nopad,j1_nopad+1,j2_nopad
-            continue
 
         # unpadded ROI dimension
         roi_dimY = j2_nopad-j1_nopad
@@ -650,7 +679,7 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     # vector of residuals
     r = rho_bg - np.dot(A, (t1, t2, t3))
     Nbg = len(rho_bg)
-    with np.errstate(invalid='ignore'):
+    with np.errstate(divide='ignore'):
         r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
     var_covar = AWA_inv * r_fact  # TODO: check for correlations in the off diagonal elems
 
@@ -705,6 +734,7 @@ def image_data_from_expt(expt, as_double=True):
         raise ValueError("imageset should have only 1 shot. This expt has imageset with %d shots" % len(iset))
     try:
         flex_data = iset.get_raw_data(0)
+
     except Exception as err:
         assert str(type(err)) == "<class 'Boost.Python.ArgumentError'>", "something weird going on with imageset data"
         flex_data = iset.get_raw_data()
@@ -1385,15 +1415,20 @@ def refls_to_hkl(refls, detector, beam, crystal,
         return np.vstack(HKL).T, np.vstack(HKLi).T
 
 
-def get_panels_fasts_slows(expt, pids, rois):
+def get_panels_fasts_slows(expt, pids, rois, img_sh=None):
     """
     :param expt: dxtbx experiment
     :param pids: panel ids
     :param rois: regions of interest
+    :param img_sh: 3-tuple Npan, Nslow, Nfast
     :return:
     """
-    npan = len(expt.detector)
-    nfast, nslow = expt.detector[0].get_image_size()
+    if expt is not None:
+        npan = len(expt.detector)
+        nfast, nslow = expt.detector[0].get_image_size()
+    else:
+        assert img_sh is not None
+        npan, nslow, nfast = img_sh
     MASK = np.zeros((npan, nslow, nfast), bool)
     ROI_ID = np.zeros((npan, nslow, nfast), 'uint16')
     #ROI_ID = NP_ONES((npan, nslow, nfast), 'uint16') * mx
@@ -1727,3 +1762,10 @@ def find_diffBragg_instances(globe_objs):
         if "simtbx_diffBragg_ext.diffBragg" in str(obj):
             inst_names.append(name)
     return inst_names
+
+
+def memory_report(prefix='Memory usage'):
+    """Return a string documenting memory usage; to be used with LOGGER.info"""
+    memory_usage_in_gb = get_memory_usage() / 1024.
+    host = socket.gethostname()
+    return "%s: %f GB on node %s" % (prefix, memory_usage_in_gb, host)
