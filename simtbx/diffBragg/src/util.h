@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <sys/time.h>
 
 #ifndef CUDAREAL
     #define CUDAREAL double
@@ -19,14 +20,34 @@ typedef Eigen::Matrix<double,3,3> MAT3;
 typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
 typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
+inline void easy_time(double& timer, struct timeval& t, bool recording){
+    double before_sec = t.tv_sec;
+    double before_usec = t.tv_usec;
+    gettimeofday(&t, 0);
+    double time = (1000000.0 * (t.tv_sec - before_sec) + t.tv_usec - before_usec) / 1000.0;
+    if (recording)
+        timer += time;
+}
+
 struct timer_variables{
-    CUDAREAL add_spots_pre=0; // times the initializations for add spots kernel
-    CUDAREAL add_spots_post=0; // times the copies that occur after add spots kernel
-    CUDAREAL add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
-    CUDAREAL cuda_alloc=0; // times the allocation of the device
-    CUDAREAL cuda_copy_to_dev=0; // times the copying from host to device
-    CUDAREAL cuda_copy_from_dev=0; // times the copying back from device to host
-    CUDAREAL cuda_kernel=0; // times the GPU kernel
+    double add_spots_pre=0; // times the initializations for add spots kernel
+    double add_spots_post=0; // times the copies that occur after add spots kernel
+    double add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
+    double cuda_alloc=0; // times the allocation of the device
+    double cuda_copy_to_dev=0; // times the copying from host to device
+    double cuda_copy_from_dev=0; // times the copying back from device to host
+    double cuda_kernel=0; // times the GPU kernel
+    double copy_sources=0;
+    double copy_umats=0;
+    double copy_amats=0;
+    double copy_bmats=0;
+    double copy_rotmats=0;
+    double copy_det=0;
+    double copy_nomhkl=0;
+    double copy_flags=0;
+    double copy_fhkl=0;
+    double copy_detderiv=0;
+    double copy_pfs=0;
     int timings=0; // how many times these variables were incremented
     bool recording=true;
   };
@@ -72,16 +93,16 @@ struct cuda_flags{
     int Npix_to_allocate; // how much space to allocate for simulating forward model and gradients
     // these following flags indicate whether to update quantities on the GPU device prior to running the kernel
     // ( of course they are all set prior to running the kernel for the first time)
-    bool update_step_positions;  // step arrays
-    bool update_panels_fasts_slows; // pixels to simulatoe (panel id, fast scan, slow scan)
-    bool update_sources;  // beam sources
-    bool update_umats; // umatrices for mosaic blocks
-    bool update_dB_mats; // derivative of the orthogonalization matrix (for unit cell derivatives)
-    bool update_rotmats; // rotation matrices (for Umat derivatives)
-    bool update_Fhkl; // structure factors
-    bool update_detector; // detector vectors (origin, slow-axis, fast-axis, orth-axis)
-    bool update_refine_flags;  // refinement flags (in case one is iteratively freezing parameters)
-    bool update_panel_deriv_vecs; // if one is refining the detector vectors)
+    bool update_step_positions = false;  // step arrays
+    bool update_panels_fasts_slows = false; // pixels to simulatoe (panel id, fast scan, slow scan)
+    bool update_sources = false;  // beam sources
+    bool update_umats = false; // umatrices for mosaic blocks
+    bool update_dB_mats = false; // derivative of the orthogonalization matrix (for unit cell derivatives)
+    bool update_rotmats = false; // rotation matrices (for Umat derivatives)
+    bool update_Fhkl = false; // structure factors
+    bool update_detector = false; // detector vectors (origin, slow-axis, fast-axis, orth-axis)
+    bool update_refine_flags = false;  // refinement flags (in case one is iteratively freezing parameters)
+    bool update_panel_deriv_vecs = false; // if one is refining the detector vectors)
 };
 
 struct flags{
@@ -91,30 +112,30 @@ struct flags{
     bool using_trusted_mask=false;
     bool Fhkl_gradient_mode=false;
     bool wavelength_img=false;
-    bool track_Fhkl; // for CPU kernel only, track the HKLS evaluated in the inner most loop
-    bool printout; // whether to printout debug info for a pixel
-    bool nopolar; // disable polarization effects
-    bool point_pixel; // approximate solid angle effects
-    bool only_save_omega_kahn; // only save the polarization and solid angle corrections (deprecated)
-    bool compute_curvatures; // whether to compute the curvatures in addition to gradients
-    bool isotropic_ncells; // one mosaic domain parameter
-    bool complex_miller;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are both defined)
-    bool no_Nabc_scale; // no Nabc prefactor
-    bool refine_diffuse; // flag for computing diffuse gradients
+    bool track_Fhkl = false; // for CPU kernel only, track the HKLS evaluated in the inner most loop
+    bool printout = false; // whether to printout debug info for a pixel
+    bool nopolar = false; // disable polarization effects
+    bool point_pixel = false; // approximate solid angle effects
+    bool only_save_omega_kahn = false; // only save the polarization and solid angle corrections (deprecated)
+    bool compute_curvatures = false; // whether to compute the curvatures in addition to gradients
+    bool isotropic_ncells = false; // one mosaic domain parameter
+    bool complex_miller = false;  // is the miller array complex (such thet Fhkl_linear and Fhkl2_linear are both defined)
+    bool no_Nabc_scale = false; // no Nabc prefactor
+    bool refine_diffuse = false; // flag for computing diffuse gradients
     std::vector<bool> refine_Bmat;  //  Bmatrix
     std::vector<bool> refine_Ncells; // mosaic domain size
-    bool refine_Ncells_def; // mosaic domain size off diag
+    bool refine_Ncells_def = false; // mosaic domain size off diag
     std::vector<bool> refine_panel_origin; // panel shift
     std::vector<bool> refine_panel_rot; // detector panel rotation
-    bool refine_fcell; // structure factor
+    bool refine_fcell = false; // structure factor
     std::vector<bool> refine_lambda; // spectrum affine correction
-    bool refine_eta; // mosaic spread
+    bool refine_eta = false; // mosaic spread
     std::vector<bool> refine_Umat; // missetting angle umatrix
-    bool refine_fp_fdp; // fprime and fbl prime
-    bool use_lambda_coefficients; // affine correction lam0 , lam1
-    bool oversample_omega; // omega is computed separately for each sub-pixel
-    int printout_fpixel, printout_spixel; // debug printout pixel (fast scan, slow scan) // TODO add panel id
-    int verbose; // nanoBragg verbosity flag
+    bool refine_fp_fdp = false; // fprime and fbl prime
+    bool use_lambda_coefficients = false; // affine correction lam0 , lam1
+    bool oversample_omega = false; // omega is computed separately for each sub-pixel
+    int printout_fpixel = 0, printout_spixel = 0; // debug printout pixel (fast scan, slow scan) // TODO add panel id
+    int verbose = 0; // nanoBragg verbosity flag
     bool use_diffuse = false; // model  diffuse
     bool only_diffuse = false; // model  diffuse scattering (experimental)
     bool refine_Icell = false; // option to refine the structure factor intensity directly (F_cell^2)
@@ -139,7 +160,6 @@ struct crystal{
     int laue_group_num=1;
     int stencil_size=0;
     Eigen::Matrix3d anisoG;
-    Eigen::Matrix3d rotate_principal_axes;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
     Eigen::Matrix3d anisoU;
@@ -203,7 +223,10 @@ struct beam{
 struct detector{
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dF_vecs; // derivative of the panel fast direction
     std::vector<Eigen::Vector3d,Eigen::aligned_allocator<Eigen::Vector3d> > dS_vecs; // derivative of the panel slow direction
-    CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
+    CUDAREAL detector_thickstep;
+    int detector_thicksteps;
+    CUDAREAL detector_thick;
+    CUDAREAL detector_attnlen;
     std::vector<CUDAREAL> close_distances; // offsets to the detector origins (Z direction)
     int oversample; // determines the pixel subsampling rate
     CUDAREAL subpixel_size, pixel_size;

@@ -104,24 +104,6 @@ namespace boost_python { namespace {
       return boost::python::make_tuple(sig0, sig1, sig2);
   }
 
-  static boost::python::tuple get_rotate_principal_axes(simtbx::nanoBragg::diffBragg& diffBragg){
-    double val0=diffBragg.db_cryst.rotate_principal_axes(0,0);
-    double val1=diffBragg.db_cryst.rotate_principal_axes(0,1);
-    double val2=diffBragg.db_cryst.rotate_principal_axes(0,2);
-    double val3=diffBragg.db_cryst.rotate_principal_axes(1,0);
-    double val4=diffBragg.db_cryst.rotate_principal_axes(1,1);
-    double val5=diffBragg.db_cryst.rotate_principal_axes(1,2);
-    double val6=diffBragg.db_cryst.rotate_principal_axes(2,0);
-    double val7=diffBragg.db_cryst.rotate_principal_axes(2,1);
-    double val8=diffBragg.db_cryst.rotate_principal_axes(2,2);
-    return boost::python::make_tuple(val0,val1,val2,val3,val4,val5,val6,val7,val8);
-  }
-
-  void set_rotate_principal_axes(simtbx::nanoBragg::diffBragg& diffBragg, nanoBragg::mat3 const& value){
-    diffBragg.db_cryst.rotate_principal_axes << value[0], value[1], value[2],
-            value[3], value[4], value[5],
-            value[6], value[7], value[8];
-  }
 
   static void  set_Ndef(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& values) {
       diffBragg.set_ncells_def_values(values);
@@ -471,9 +453,8 @@ namespace boost_python { namespace {
   }
 
   void initialize_kokkos(int dev){
-    Kokkos::InitArguments kokkos_init;
-    kokkos_init.device_id = dev;
-    Kokkos::initialize(kokkos_init);
+    Kokkos::initialize(Kokkos::InitializationSettings()
+                           .set_device_id(dev));
   }
 #endif
 
@@ -628,12 +609,14 @@ namespace boost_python { namespace {
 
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+
 #ifdef DIFFBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
 #endif
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-      .def("kokkos_gpu_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
+      .def("kokkos_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
 #endif
 
       .def("set_mosaic_blocks_prime",
@@ -789,9 +772,9 @@ namespace boost_python { namespace {
              "coefficients for source_lambda refinement: `lambda = coef0 + coef1*source`  where `source` is the source index")
 
      // CUDA PROPERTIES
-      .add_property("use_cuda",
-             make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
-             make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
+      .add_property("use_gpu",
+             make_getter(&simtbx::nanoBragg::diffBragg::use_gpu,rbv()),
+             make_setter(&simtbx::nanoBragg::diffBragg::use_gpu,dcp()),
              "use GPU acceleration")
 
       .add_property("record_time",
@@ -833,11 +816,6 @@ namespace boost_python { namespace {
             make_function(&get_diffuse_sigma,rbv()),
             make_function(&set_diffuse_sigma,dcp()),
             "set the 3 diffuse sigma factors")
-
-      .add_property("_ext_rotate_principal_axes",
-             make_function(&get_rotate_principal_axes,rbv()),
-             make_function(&set_rotate_principal_axes,dcp()),
-             "sets the matrix that rotates the principal axes of the anisotropic diffuse model")
 
       .add_property("most_recent_kernel_used_GPU",
             make_getter(&simtbx::nanoBragg::diffBragg::last_kernel_on_GPU,rbv()),

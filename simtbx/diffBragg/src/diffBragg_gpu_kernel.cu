@@ -57,8 +57,8 @@ void gpu_sum_over_steps(
         const CUDAREAL* __restrict__ fpfdp,
         const CUDAREAL* __restrict__ fpfdp_derivs,
         const CUDAREAL* __restrict__ atom_data, int num_atoms, bool refine_fp_fdp,
-        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, MAT3 rotate_principal_axes,
-        bool use_diffuse, CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
+        const int* __restrict__ nominal_hkl, bool use_nominal_hkl, MAT3 anisoU, MAT3 anisoG, bool use_diffuse,
+        CUDAREAL* d_diffuse_gamma_images, CUDAREAL* d_diffuse_sigma_images, bool refine_diffuse, bool gamma_miller_units,
         bool refine_Icell, bool save_wavelenimage, int laue_group_num, int stencil_size,
         bool Fhkl_gradient_mode, bool Fhkl_errors_mode, bool using_trusted_mask, bool Fhkl_channels_empty, bool Fhkl_have_scale_factors,
         int Num_ASU,
@@ -215,8 +215,7 @@ void gpu_sum_over_steps(
         if (s_use_diffuse){
             anisoG_local = anisoG;
             anisoU_local = anisoU;
-
-            num_laue_mats = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+            num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
             for (int i_gam=0; i_gam<3; i_gam++){
               dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
               dG_dgam[i_gam](i_gam, i_gam) = 1;
@@ -465,7 +464,7 @@ void gpu_sum_over_steps(
 
             CUDAREAL _F_cell = s_default_F;
             CUDAREAL _F_cell2 = 0;
-           int i_hklasu=0;
+            int i_hklasu=0;
 
             if ( (_h0<=s_h_max) && (_h0>=s_h_min) && (_k0<=s_k_max) && (_k0>=s_k_min) && (_l0<=s_l_max) && (_l0>=s_l_min)  ) {
                 int Fhkl_linear_index = (_h0-s_h_min) * s_k_range * s_l_range + (_k0-s_k_min) * s_l_range + (_l0-s_l_min);

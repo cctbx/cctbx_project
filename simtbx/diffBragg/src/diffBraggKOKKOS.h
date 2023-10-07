@@ -9,9 +9,11 @@
 #include "kokkostbx/kokkos_utils.h"
 #include "simtbx/diffBragg/src/util.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
+#include "simtbx/diffBragg/src/diffBragg_refine_flag.h"
 
 using vector_vec3_t = view_1d_t<KOKKOS_VEC3>;
 using vector_mat3_t = view_1d_t<KOKKOS_MAT3>;
+using vector_manager_t = view_1d_t<kokkos_manager>;
 
 #define INTEGER_VIEW(varname) vector_int_t varname = vector_int_t(#varname, 0)
 #define CUDAREAL_VIEW(varname) vector_cudareal_t varname = vector_cudareal_t(#varname, 0)
@@ -101,12 +103,16 @@ class diffBraggKOKKOS {
     MATRIX3_VIEW(m_sausages_U);
     CUDAREAL_VIEW(m_sausages_scale);
 
+    uint32_t m_refine_flag = 0;
     vector_bool_t m_refine_Bmat = vector_bool_t("m_refine_Bmat", 6);
     vector_bool_t m_refine_Umat = vector_bool_t("m_refine_Umat", 3);
     vector_bool_t m_refine_Ncells = vector_bool_t("m_refine_Ncells", 3);
     vector_bool_t m_refine_panel_origin = vector_bool_t("m_refine_panel_origin", 3);
     vector_bool_t m_refine_panel_rot = vector_bool_t("m_refine_panel_rot", 3);
     vector_bool_t m_refine_lambda = vector_bool_t("m_refine_lambda", 2);
+
+    vector_manager_t m_manager_dI = vector_manager_t("m_manager_dI", 0);
+    vector_manager_t m_manager_dI2 = vector_manager_t("m_manager_dI2", 0);
 
     bool m_Fhkl_gradient_mode;
     bool m_using_trusted_mask;
@@ -119,11 +125,13 @@ class diffBraggKOKKOS {
     INTEGER_VIEW(m_data_freq); // length is number of modeled pixels
     vector_bool_t m_data_trusted = vector_bool_t("m_data_trusted", 0); // length is number of modeled pixels
     INTEGER_VIEW(m_FhklLinear_ASUid); // length is number of ASU in FhklLinear
-    CUDAREAL_VIEW(m_Fhkl_channels);
+    INTEGER_VIEW(m_Fhkl_channels);
     // Fhkl_scale is dynamically copied each iteration
     // Fhkl_scale_deriv is set to 0 each iteration
     CUDAREAL_VIEW(m_Fhkl_scale);  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
     CUDAREAL_VIEW(m_Fhkl_scale_deriv); // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
+
+    void prepare_refinement_flags(flags& db_flags, bool update_flags=false);
 
    public:
     void diffBragg_sum_over_steps_kokkos(
