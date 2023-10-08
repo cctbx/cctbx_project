@@ -41,14 +41,6 @@ class _():
             arr = np.ascontiguousarray(arr)
         return arr
 
-    def get_rotate_principal_axes(self):
-        return self._ext_rotate_principal_axes
-
-    def set_rotate_principal_axes(self, val):
-        # do stuff to set val, e.g renormalize
-        # val =
-        self._ext_rotate_principal_axes = val  # as a 9-tuple or a scitbx matrix sqr
-
     def add_Fhkl_gradients(self, psf, residuals, variance, trusted, freq, num_Fhkl_channels, spot_scale,
                            track=False, errors=False):
         """

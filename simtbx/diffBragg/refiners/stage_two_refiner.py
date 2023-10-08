@@ -53,7 +53,6 @@ import os
 from simtbx.diffBragg.refiners import BreakBecauseSignal, BreakToUseCurvatures
 from dials.array_family import flex
 from simtbx.diffBragg.refiners import BaseRefiner
-from collections import Counter
 from cctbx import miller, sgtbx
 from simtbx.diffBragg.refiners.parameters import RangedParameter
 
@@ -77,8 +76,7 @@ class StageTwoRefiner(BaseRefiner):
         self.saveZ_freq = self.params.refiner.stage_two.save_Z_freq  # save Z-score data every N iterations
         self.break_signal = None  # check for this signal during refinement, and break refinement if signal is received (see python signal module) TODO: make work with MPI
         self.save_model = False  # whether to save the model
-        self.idx_from_asu = {}  # maps global fcell index to asu hkl
-        self.asu_from_idx = {}  # maps asu hkl to global fcell index
+        self.hiasu = None  # stores Hi_asu, counts, maps to and from fcell indices
         self.rescale_params = True  # whether to rescale parameters during refinement  # TODO this will always be true, so remove the ability to disable
         self.request_diag_once = False  # LBFGS refiner property
         self.min_multiplicity = self.params.refiner.stage_two.min_multiplicity
@@ -151,7 +149,7 @@ class StageTwoRefiner(BaseRefiner):
 
     @property
     def n_global_fcell(self):
-        return len(self.idx_from_asu)
+        return self.hiasu.present_len
 
     @property
     def image_shape(self):
@@ -190,16 +188,20 @@ class StageTwoRefiner(BaseRefiner):
         self.Zdir = os.path.join(self.output_dir, "Z")
         self.model_dir = os.path.join(self.output_dir, "model")
         for dirname in (self.Zdir, self.model_dir):
-            if self.I_AM_ROOT and not os.path.exists(dirname):
+            if self.params.debug_mode and self.I_AM_ROOT and not os.path.exists(dirname):
                 os.makedirs(dirname)
         COMM.barrier()
 
     def _setup(self):
         # Here we go!  https://youtu.be/7VvkXA6xpqI
+        if not self.params.debug_mode:
+            LOGGER.info("Disabling saveZ and save_model because debug_mode=False")
+            self.saveZ_freq = None
+            self.save_model_freq = None
         LOGGER.info("Setup begins!")
-        if self.refine_Fcell and not self.asu_from_idx:
+        if self.refine_Fcell and not self.hiasu.from_idx:
             raise ValueError("Need to supply a non empty asu from idx map")
-        if self.refine_Fcell and not self.idx_from_asu:  # # TODO just derive from its inverse
+        if self.refine_Fcell and not self.hiasu.to_idx:
             raise ValueError("Need to supply a non empty idx from asu map")
 
         self.make_output_dir()
@@ -240,18 +242,12 @@ class StageTwoRefiner(BaseRefiner):
         self._setup_ncells_refinement_parameters()
         self._track_num_times_pixel_was_modeled()
 
-        self.hkl_totals = []
-        if self.refine_Fcell:
-            for i_shot in self.shot_ids:
-                for i_h, h in enumerate(self.Modelers[i_shot].Hi_asu):
-                    self.hkl_totals.append(self.idx_from_asu[h])
-            self.hkl_totals = self._MPI_reduce_broadcast(self.hkl_totals)
-
+        self._setup_nominal_hkl_p1()
         self._MPI_setup_global_params()
         self._MPI_sync_fcell_parameters()
         # reduce then broadcast fcell
         LOGGER.info("--combining parameters across ranks")
-        self._MPI_sync_hkl_freq()
+        self._MPI_sync_hkl_freq()  # FIXME does this do absolutely anything?
 
         if self.x_init is not None:
             LOGGER.info("Initializing with provided x_init array")
@@ -270,7 +266,7 @@ class StageTwoRefiner(BaseRefiner):
 
         for sid in self.shot_ids:
             Modeler = self.Modelers[sid]
-            Modeler.all_fcell_global_idx = np.array([self.idx_from_asu[h] for h in Modeler.hi_asu_perpix])
+            Modeler.all_fcell_global_idx = np.array([self.hiasu.to_idx[h] for h in Modeler.hi_asu_perpix])
             Modeler.unique_i_fcell = set(Modeler.all_fcell_global_idx)
             Modeler.i_fcell_slices = self._get_i_fcell_slices(Modeler)
             self.Modelers[sid] = Modeler  # TODO: VERIFY IF THIS IS NECESSARY ?
@@ -349,7 +345,7 @@ class StageTwoRefiner(BaseRefiner):
         self.num_equivs_for_i_fcell = {}
         self.update_indices = []
         for i_fcell in range(self.n_global_fcell):
-            hkl_asu = self.asu_from_idx[i_fcell]
+            hkl_asu = self.hiasu.from_idx[i_fcell]
 
             equivs = [i.h() for i in miller.sym_equiv_indices(self.space_group, hkl_asu).indices()]
             self.num_equivs_for_i_fcell[i_fcell] = len(equivs)
@@ -360,9 +356,18 @@ class StageTwoRefiner(BaseRefiner):
         if self.I_AM_ROOT:
             LOGGER.info("--2 Setting up global parameters")
             if self.output_dir is not None:
-                np.save(os.path.join(self.output_dir, "f_asu_map"), self.asu_from_idx)
+                np.save(os.path.join(self.output_dir, "f_asu_map"), self.hiasu.from_idx)
 
             self._setup_fcell_params()
+
+    def _setup_nominal_hkl_p1(self):
+        Omatrix = np.reshape(self.S.crystal.Omatrix.elems, [3, 3])
+        for i_shot in self.Modelers:
+            MOD = self.Modelers[i_shot]
+            nom_h = MOD.all_nominal_hkl
+            nom_h_p1 = np.dot(nom_h, Omatrix).astype(np.int32)
+            nom_h_p1 = list(map(tuple, nom_h_p1))
+            self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
 
     def _setup_fcell_params(self):
         if self.refine_Fcell:
@@ -370,17 +375,26 @@ class StageTwoRefiner(BaseRefiner):
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             LOGGER.info("---- -- counting hkl totes")
             LOGGER.info("compute HKL multiplicity")
-            self.hkl_frequency = Counter(self.hkl_totals)
+            self.hkl_frequency = self.hiasu.present_idx_counter
             LOGGER.info("save HKL multiplicity")
             np.save(os.path.join(self.output_dir, "f_asu_multi"), self.hkl_frequency)
             LOGGER.info("Done ")
 
             LOGGER.info("local refiner symbol=%s ; nanoBragg crystal symbol: %s" % (self.symbol, self.S.crystal.symbol))
-            ma = self.S.crystal.miller_array_high_symmetry.map_to_asu()
+            self.fcell_init_from_i_fcell = []
+            ma = self.S.crystal.miller_array
             LOGGER.info("make an Fhkl map")
             ma_map = {h: d for h,d in zip(ma.indices(), ma.data())}
-            LOGGER.info("make fcell_init")
-            self.fcell_init_from_i_fcell = np.array([ma_map[self.asu_from_idx[i_fcell]] for i_fcell in range(self.n_global_fcell)])
+            Omatrix = np.reshape(self.S.crystal.Omatrix.elems,[3,3])
+
+            # TODO: Vectorize
+            for i_fcell in range(self.n_global_fcell):
+                asu_hkl = self.hiasu.from_idx[i_fcell]  # high symmetry
+                P1_hkl = tuple(np.dot(Omatrix, asu_hkl).astype(int))
+                fcell_val = ma_map[P1_hkl]
+                self.fcell_init_from_i_fcell.append(fcell_val)
+            self.fcell_init_from_i_fcell = np.array(self.fcell_init_from_i_fcell)
+
             self.fcell_sigmas_from_i_fcell = self.params.sigmas.Fhkl
             LOGGER.info("DONE make fcell_init")
 
@@ -465,8 +479,8 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("run diffBragg for shot %d" % self._i_shot)
         pfs = self.Modelers[self._i_shot].pan_fast_slow
         if self.use_nominal_h:
-            nom_h = self.Modelers[self._i_shot].all_nominal_hkl
-            self.D.add_diffBragg_spots(pfs, nom_h)
+            nom_h_p1 = self.Modelers[self._i_shot].all_nominal_hkl_p1
+            self.D.add_diffBragg_spots(pfs, nom_h_p1)
         else:
             self.D.add_diffBragg_spots(pfs)
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
@@ -626,7 +640,7 @@ class StageTwoRefiner(BaseRefiner):
         t = time.time()
         out = self._compute_functional_and_gradients()
         t = time.time()-t
-        LOGGER.info("TOok %.4f sec to compute functional and grad" % t)
+        LOGGER.info("Took %.4f sec to compute functional and grad" % t)
         return out
 
     def _compute_functional_and_gradients(self):
@@ -658,7 +672,7 @@ class StageTwoRefiner(BaseRefiner):
         if save_model:
             self._save_model_dir = os.path.join(self.model_dir, "iter%d" % self.iterations)
 
-            if COMM.rank == 0 and not os.path.exists(self._save_model_dir):
+            if self.params.debug_mode and COMM.rank == 0 and not os.path.exists(self._save_model_dir):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
 
@@ -702,7 +716,7 @@ class StageTwoRefiner(BaseRefiner):
 
             self._derivative_convenience_factors()
 
-            if self.iterations % self.saveZ_freq == 0:
+            if self.saveZ_freq is not None and self.iterations % self.saveZ_freq == 0:
                 MOD = self.Modelers[self._i_shot]
                 self._spot_Zscores = []
                 for i_fcell in MOD.unique_i_fcell:
@@ -791,7 +805,7 @@ class StageTwoRefiner(BaseRefiner):
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
-        if not self.iterations % self.saveZ_freq == 0:
+        if self.saveZ_freq is None or not self.iterations % self.saveZ_freq == 0:
             return
         outdir = os.path.join(self.Zdir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):
@@ -827,6 +841,7 @@ class StageTwoRefiner(BaseRefiner):
         if not self.refine_Fcell:
             return
         MOD = self.Modelers[self._i_shot]
+        dumps = []
         for i_fcell in MOD.unique_i_fcell:
 
             multi = self.hkl_frequency[i_fcell]
@@ -836,6 +851,7 @@ class StageTwoRefiner(BaseRefiner):
             xpos = self.fcell_xstart + i_fcell
             Famp = self._fcell_at_i_fcell[i_fcell]
             sig = 1
+
             for slc in MOD.i_fcell_slices[i_fcell]:
                 self.fcell_dI_dtheta = self.fcell_deriv[slc]
 
@@ -852,7 +868,9 @@ class StageTwoRefiner(BaseRefiner):
                 trust = MOD.all_trusted[slc]
                 # NOTE : no need to normalize Fhkl gradients by the overlap rate - they should arise from different HKLs
                 #freq = MOD.all_freq[slc]  # pixel frequency (1 is no overlaps)
-                self.grad[xpos] += (g_accum[trust].sum())*.5
+                dump = (g_accum[trust].sum())*.5
+                self.grad[xpos] += dump
+                dumps.append(dump)
                 if self.calc_curvatures:
                     raise NotImplementedError("No curvature for Fcell refinement")
 

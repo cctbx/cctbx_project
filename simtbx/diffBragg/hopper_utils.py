@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import time
 import os
+import json
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
@@ -14,7 +15,7 @@ from scitbx.matrix import sqr, col
 from scipy.ndimage import binary_dilation
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
-from serialtbx.detector.jungfrau import get_pedestalRMS_from_jungfrau
+from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
@@ -137,6 +138,8 @@ class DataModeler:
         self.all_freq = None  # flag for the h,k,l frequency of the observed pixel
         self.best_model = None  # best model value at each pixel
         self.best_model_includes_background = False  # whether the best model includes the background scattering estimate
+        self.all_nominal_hkl_p1 = None  # nominal p1 hkl at each pixel
+        self.all_nominal_hkl = None  # nominal hkl at each pixel
         self.all_data =None  # data at each pixel (photon units)
         self.all_sigma_rdout = None  # this is either a float or an array. if the phil param use_perpixel_dark_rms=True, then these are different per pixel, per shot
         self.all_gain = None  # gain value per pixel (used during diffBragg/refiners/stage_two_refiner)
@@ -158,6 +161,7 @@ class DataModeler:
         self.exper_name = None  # optional name specifying where dxtbx.model.Experiment was loaded from
         self.refl_name = None  # optional name specifying where dials.array_family.flex.reflection_table refls were loaded from
         self.spec_name = None  # optional name specifying spectrum file(.lam)
+        self.exper_idx = 0  # optional number specifying the index of the experiment in the experiment list
         self.rank = 0  # in case DataModelers are part of an MPI program, have a rank attribute for record keeping
 
         self.Hi = None  # miller index (P1)
@@ -211,11 +215,11 @@ class DataModeler:
         #self.target.minima.append((f,self.target.x0,accept))
         self.target.lowest_x = x
         try:
-            # TODO get SIM and i_exp in here so we can save_up each new global minima!
+            # TODO get SIM and i_shot in here so we can save_up each new global minima!
             if f < self.target.lowest_f:
                  self.target.lowest_f = f
                  MAIN_LOGGER.info("New minimum found!")
-                 self.save_up(self.target.x0, SIM, self.rank, i_exp=i_exp)
+                 self.save_up(self.target.x0, SIM, self.rank, i_shot=i_shot)
         except NameError:
             pass
 
@@ -275,9 +279,47 @@ class DataModeler:
     def clean_up(self, SIM):
         free_SIM_mem(SIM)
 
-    def set_experiment(self, exp, load_imageset=True):
+    @staticmethod
+    def exper_json_single_file(exp_file, i_exp=0):
+        """
+        load a single experiment from an exp_file
+        If working with large combined experiment files, we only want to load
+        one image at a time on each MPI rank, otherwise at least one rank would need to
+        load the entire file into memory.
+        :param exp_file: experiment list file
+        :param i_exp: experiment id
+        :return:
+        """
+        exper_json = json.load(open(exp_file))
+        nexper = len(exper_json["experiment"])
+        assert 0 <= i_exp < nexper
+
+        this_exper = exper_json["experiment"][i_exp]
+
+        new_json = {'__id__': "ExperimentList", "experiment": [deepcopy(this_exper)]}
+
+        for model in ['beam', 'detector', 'crystal', 'imageset', 'profile', 'scan', 'goniometer', 'scaling_model']:
+            if model in this_exper:
+                model_index = this_exper[model]
+                new_json[model] = [exper_json[model][model_index]]
+                new_json["experiment"][0][model] = 0
+            else:
+                new_json[model] = []
+        explist = ExperimentListFactory.from_dict(new_json)
+        assert len(explist) == 1
+        return explist[0]
+
+    def set_experiment(self, exp, load_imageset=True, exp_idx=0):
+        """
+        :param exp: experiment or filename
+        :param load_imageset: whether to load the imageset (usually True)
+        :param exp_idx: index corresponding to experiment in experiment list
+        """
         if isinstance(exp, str):
-            self.E = ExperimentListFactory.from_json_file(exp, load_imageset)[0]
+            if not load_imageset:
+                self.E = ExperimentListFactory.from_json_file(exp, False)[exp_idx]
+            else:
+                self.E = self.exper_json_single_file(exp, exp_idx)
         else:
             self.E = exp
         if self.params.opt_det is not None:
@@ -290,9 +332,15 @@ class DataModeler:
             self.E.beam = opt_beam_E.beam
             MAIN_LOGGER.info("Set the optimal beam from %s" % self.params.opt_beam)
 
-    def load_refls(self, ref):
+    def load_refls(self, ref, exp_idx=0):
+        """
+        :param ref: reflection table or filename
+        :param exp_idx: index corresponding to experiment in experiment list
+        """
         if isinstance(ref, str):
             refls = flex.reflection_table.from_file(ref)
+            # TODO: is this the proper way to select the id ?
+            refls = refls.select(refls['id']==exp_idx)
         else:
             # assert is a reflection table. ..
             refls = ref
@@ -311,6 +359,7 @@ class DataModeler:
         return is_duplicate
 
     def GatherFromReflectionTable(self, exp, ref, sg_symbol=None):
+
         self.set_experiment(exp, load_imageset=False)
         self.refls = self.load_refls(ref)
         nref = len(self.refls)
@@ -360,7 +409,8 @@ class DataModeler:
             else:
                 sb_trust = np.logical_or(mask==fg_code, mask==bg_code)
 
-            below_zero = sb_bkgrnd <= 0
+            # below_zero = sb_bkgrnd <= 0
+            below_zero = sb_bkgrnd < 0
             if np.any(below_zero):
                 nbelow = np.sum(below_zero)
                 ntot = sb_bkgrnd.size
@@ -390,10 +440,19 @@ class DataModeler:
         self.data_to_one_dim(img_data, is_trusted, background)
         return True
 
-    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True, sg_symbol=None):
-        self.set_experiment(exp, load_imageset=True)
+    def GatherFromExperiment(self, exp, ref, remove_duplicate_hkl=True, sg_symbol=None, exp_idx=0):
+        """
 
-        refls = self.load_refls(ref)
+        :param exp: experiment list filename , or experiment object
+        :param ref: reflection table filename, or reflection table instance
+        :param remove_duplicate_hkl: search for miller index duplicates and remove
+        :param sg_symbol: space group lookup symbol P43212
+        :param exp_idx: index of the experiment in the experiment list
+        :return:
+        """
+        self.set_experiment(exp, load_imageset=True, exp_idx=exp_idx)
+
+        refls = self.load_refls(ref, exp_idx=exp_idx)
         if len(refls)==0:
             MAIN_LOGGER.warning("no refls loaded!")
             return False
@@ -471,6 +530,9 @@ class DataModeler:
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
+        self.Hi =[hi for i_roi, hi in enumerate(self.Hi) if self.selection_flags[i_roi]]
+        self.Hi_asu =[hi_asu for i_roi, hi_asu in enumerate(self.Hi_asu) if self.selection_flags[i_roi]]
+
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
 
@@ -562,6 +624,8 @@ class DataModeler:
             if self.Hi is not None:
                 self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
                 self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix
+                #self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+                #self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
         if self.params.roi.mask_outside_trusted_range:
             MAIN_LOGGER.debug("Found %d pixels outside of trusted range" % numOutOfRange)
@@ -650,27 +714,15 @@ class DataModeler:
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
             # Umatrix
             # NOTE: just set the best Amatrix here
-            if self.params.apply_best_crystal_model:
-                xax = col((-1, 0, 0))
-                yax = col((0, -1, 0))
-                zax = col((0, 0, -1))
-                rotX, rotY, rotZ = best[["rotX", "rotY", "rotZ"]].values[0]
-                RX = xax.axis_and_angle_as_r3_rotation_matrix(rotX, deg=False)
-                RY = yax.axis_and_angle_as_r3_rotation_matrix(rotY, deg=False)
-                RZ = zax.axis_and_angle_as_r3_rotation_matrix(rotZ, deg=False)
-                M = RX * RY * RZ
-                U = M * sqr(self.E.crystal.get_U())
-                self.E.crystal.set_U(U)
-
-                # Bmatrix:
-                ucparam = best[["a","b","c","al","be","ga"]].values[0]
-                ucman = utils.manager_from_params(ucparam)
-                self.E.crystal.set_B(ucman.B_recipspace)
+            #C = deepcopy(self.E.crystal)
+            #crystal = self.E.crystal
+            #self.E.crystal = crystal
 
             ## TODO , currently need this anyway
             ucparam = best[["a","b","c","al","be","ga"]].values[0]
             ucman = utils.manager_from_params(ucparam)
             self.E.crystal.set_B(ucman.B_recipspace)
+            self.E.crystal.set_A(best.Amats.values[0])
 
             # mosaic block
             self.params.init.Nabc = tuple(best.ncells.values[0])
@@ -923,7 +975,7 @@ class DataModeler:
 
         return ret_subimgs
 
-    def Minimize(self, x0, SIM, i_exp=0):
+    def Minimize(self, x0, SIM, i_shot=0):
         self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
 
         # set up the refinement flags
@@ -957,7 +1009,7 @@ class DataModeler:
             assert self.params.hopper_save_freq is None
             at_min = self.at_minimum
 
-        callback_kwargs = {"SIM":SIM, "i_exp": i_exp, "save_freq": self.params.hopper_save_freq}
+        callback_kwargs = {"SIM":SIM, "i_shot": i_shot, "save_freq": self.params.hopper_save_freq}
         callback = lambda x: self.callback(x, callback_kwargs)
         target.terminate_after_n_converged_iterations = self.params.terminate_after_n_converged_iter
         target.percent_change_of_converged = self.params.converged_param_percent_change
@@ -1035,13 +1087,13 @@ class DataModeler:
 
     def callback(self, x, kwargs):
         save_freq = kwargs["save_freq"]
-        i_exp = kwargs["i_exp"]
+        i_shot = kwargs["i_shot"]
         SIM = kwargs["SIM"]
         target = self.target
         if save_freq is not None and target.iteration % save_freq==0 and target.iteration> 0:
             xall = target.x0.copy()
             xall[target.vary] = x
-            self.save_up(xall, SIM, rank=self.rank, i_exp=i_exp)
+            self.save_up(xall, SIM, rank=self.rank, i_shot=i_shot)
         return
 
         rescaled_vals = np.zeros_like(xall)
@@ -1094,30 +1146,34 @@ class DataModeler:
             # at this point prev_iter_vals are the converged parameters!
             raise StopIteration()  # Refinement has reached convergence!
 
-    def save_up(self, x, SIM, rank=0, i_exp=0,
+    def save_up(self, x, SIM, rank=0, i_shot=0,
                 save_fhkl_data=True, save_modeler_file=True,
                 save_refl=True,
-                save_sim_info=True):
+                save_sim_info=True,
+                save_traces=True,
+                save_pandas=True, save_expt=True):
         """
 
-        :param x:
-        :param SIM:
-        :param rank:
-        :param i_exp:
-        :param save_fhkl_data:
-        :param save_modeler_file:
-        :param save_refl:
-        :param save_sim_info:
-        :return:
+        :param x: l-bfgs refinement parameters (reparameterized, e.g. unbounded)
+        :param SIM: sim_data.SimData instance
+        :param rank: MPI rank Id
+        :param i_shot: shot index for this rank (assuming each rank processes more than one shot, this should increment)
+        :param save_fhkl_data: whether to write mtz files
+        :param save_modeler_file: whether to write the DataModeler .npy file (a pickle file)
+        :param save_refl: whether to write a reflection table for this shot with updated xyzcal.px from diffBragg models
+        :param save_sim_info: whether to write a text file showing the diffBragg state
+        :param save_traces: whether to write a text file showing the refinement target functional and sigmaZ per iter
+        :param save_pandas: whether to write a single-shot pandas dataframe containing optimized diffBragg params
+        :param save_expt: whether to save a single-shot experiment file for this shot with optimized crystal model
+        :return: returns the single shot pandas dataframe (whether or not it was written)
         """
-        # TODO optionally create directories
         assert self.exper_name is not None
         assert self.refl_name is not None
         Modeler = self
         LOGGER = logging.getLogger("refine")
         Modeler.best_model, _ = model(x, Modeler, SIM,  compute_grad=False)
         Modeler.best_model_includes_background = False
-        LOGGER.info("Optimized values for i_exp %d:" % i_exp)
+        LOGGER.info("Optimized values for i_shot %d:" % i_shot)
 
         basename = os.path.splitext(os.path.basename(self.exper_name))[0]
 
@@ -1170,26 +1226,30 @@ class DataModeler:
                     scale_facs.append(scale_fac)
                     scale_vars.append(scale_var)
                     is_nominal_hkl.append(asu in all_nominal_hkl)
-                scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_channel%d_scale.npz"\
-                                     % (Modeler.params.tag, basename, i_exp, i_chan))
+                scale_fname = os.path.join(fhkl_scale_dir, "%s_%s_%d_%d_channel%d_scale.npz"\
+                                     % (Modeler.params.tag, basename, i_shot, self.exper_idx, i_chan))
                 np.savez(scale_fname, asu_hkl=asu_hkls, scale_fac=scale_facs, scale_var=scale_vars,
                          is_nominal_hkl=is_nominal_hkl)
 
 
         # TODO: pretty formatting ?
         if Modeler.target is not None:
-            rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
-            trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_traces.txt" % (Modeler.params.tag, basename, i_exp))
             # hop number, gradient descent index (resets with each new hop), target functional
             trace0, trace1, trace2 = Modeler.target.all_hop_id, Modeler.target.all_f, Modeler.target.all_sigZ
-
             trace_data = np.array([trace0, trace1, trace2]).T
-            np.savetxt(trace_path, trace_data, fmt="%s")
+
+            if save_traces:
+                rank_trace_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "traces", rank)
+                trace_path = os.path.join(rank_trace_outdir, "%s_%s_%d_%d_traces.txt"
+                                          % (Modeler.params.tag, basename, i_shot, self.exper_idx))
+                np.savetxt(trace_path, trace_data, fmt="%s")
 
             Modeler.niter = len(trace0)
             Modeler.sigz = trace2[-1]
 
-        hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_exp, self.refl_name, None, rank)
+        shot_df = hopper_io.save_to_pandas(x, Modeler, SIM, self.exper_name, Modeler.params, Modeler.E, i_shot,
+                                           self.refl_name, None, rank, write_expt=save_expt, write_pandas=save_pandas,
+                                           exp_idx=self.exper_idx)
 
         if isinstance(Modeler.all_sigma_rdout, np.ndarray):
             data_subimg, model_subimg, trusted_subimg, bragg_subimg, sigma_rdout_subimg = Modeler.get_data_model_pairs()
@@ -1208,7 +1268,8 @@ class DataModeler:
 
         if save_refl:
             rank_refls_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "refls", rank)
-            new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d.refl" % (Modeler.params.tag, basename, i_exp))
+            new_refls_file = os.path.join(rank_refls_outdir, "%s_%s_%d_%d.refl"
+                                          % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             new_refls = deepcopy(Modeler.refls)
             has_xyzcal = 'xyzcal.px' in list(new_refls.keys())
             if has_xyzcal:
@@ -1268,18 +1329,23 @@ class DataModeler:
         if save_modeler_file:
             rank_imgs_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "imgs", rank)
             modeler_file = os.path.join(rank_imgs_outdir,
-                                        "%s_%s_%d_modeler.npy" % (Modeler.params.tag, basename, i_exp))
+                                        "%s_%s_%d_%d_modeler.npy"
+                                        % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             np.save(modeler_file, Modeler)
         if save_sim_info:
             spectrum_file = os.path.join(rank_imgs_outdir,
-                                         "%s_%s_%d_spectra.lam" % (Modeler.params.tag, basename, i_exp))
+                                         "%s_%s_%d_%d_spectra.lam"
+                                         % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             rank_SIMlog_outdir = hopper_io.make_rank_outdir(Modeler.params.outdir, "simulator_state", rank)
-            SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d.txt" % (Modeler.params.tag, basename, i_exp))
+            SIMlog_path = os.path.join(rank_SIMlog_outdir, "%s_%s_%d_%d.txt"
+                                       % (Modeler.params.tag, basename, i_shot, self.exper_idx))
             write_SIM_logs(SIM, log=SIMlog_path, lam=spectrum_file)
 
         if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
             # TODO separate diffBragg logger
             utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+
+        return shot_df
 
 
 def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
@@ -2117,9 +2183,23 @@ def generate_gauss_spec(central_en=9500, fwhm=10, res=1, nchan=20, total_flux=1e
     else:
         return ens, wt
 
+def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
+    """
 
-def downsamp_spec_from_params(params, expt):
-    dxtbx_spec = expt.imageset.get_spectrum(0)
+    :param params:  hopper phil params extracted
+    :param expt: a dxtbx experiment (optional)
+    :param imgset: an dxtbx imageset (optional)
+    :param i_img: index of the image in the imageset (only matters if imgset is not None)
+    :return: dxtbx spectrum with parameters applied
+    """
+    if expt is not None:
+        dxtbx_spec = expt.imageset.get_spectrum(0)
+        starting_wave = expt.beam.get_wavelength()
+    else:
+        assert imgset is not None
+        dxtbx_spec = imgset.get_spectrum(i_img)
+        starting_wave = imgset.get_beam(i_img).get_wavelength()
+
     spec_en = dxtbx_spec.get_energies_eV()
     spec_wt = dxtbx_spec.get_weights()
     if params.downsamp_spec.skip:
@@ -2149,11 +2229,12 @@ def downsamp_spec_from_params(params, expt):
         downsamp_wave = utils.ENERGY_CONV / downsamp_en
         spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
-    starting_wave = expt.beam.get_wavelength()
     waves, specs = map(np.array, zip(*spectrum))
     ave_wave = sum(waves*specs) / sum(specs)
-    expt.beam.set_wavelength(ave_wave)
-    MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    MAIN_LOGGER.debug("Starting wavelength=%f. Spectrum ave wavelength=%f" % (starting_wave, ave_wave))
+    if expt is not None:
+        expt.beam.set_wavelength(ave_wave)
+        MAIN_LOGGER.debug("Shifting expt wavelength from %f to %f" % (starting_wave, ave_wave))
     MAIN_LOGGER.debug("USING %d ENERGY CHANNELS" % len(spectrum))
     return spectrum
 
@@ -2234,12 +2315,12 @@ def set_gauss_spec(SIM=None, params=None, E=None):
 
 def sanity_test_input_lines(input_lines):
     for line in input_lines:
-        line_fields = line.strip().split()
-        if len(line_fields) not in [2, 3]:
+        line_items = line.strip().split()
+        if len(line_items) not in [2, 3, 4]:
             raise IOError("Input line %s is not formatted properly" % line)
-        for fname in line_fields:
-            if not os.path.exists(fname):
-                raise FileNotFoundError("File %s does not exist" % fname)
+        for item in line_items:
+            if os.path.isfile(item) and not os.path.exists(item):
+                raise FileNotFoundError("File %s does not exist" % item)
 
 
 def full_img_pfs(img_sh):

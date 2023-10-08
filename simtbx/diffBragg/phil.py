@@ -6,6 +6,13 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+consider_multicrystal_shots = False
+  .type = bool
+  .help = If True, and if there are multiple crystals in the experiment list,
+  .help = then try to model all crystals for a given shot.
+debug_mode = False
+  .type = bool
+  .help = If True, many output files are written to explore the diffBragg models in great detail
 nominal_Fhkl_only = True
   .type = bool
   .help = if refining Fhkls, only refine the ones that are assigned to a reflection table...
@@ -121,12 +128,6 @@ downsamp_spec {
     .help = final resolution of downsampled spectrum in eV
     .expert_level=0
 }
-apply_best_crystal_model = False
-  .type = bool
-  .help = depending on what experiments in the exper refl file, one may want
-  .help = to apply the optimal crystal transformations (this parameter only matters
-  .help = if params.best_pickle is not None)
-  .expert_level=10
 filter_unpredicted_refls_in_output = True
   .type = bool
   .help = filter reflections in the output refl table for which there was no model bragg peak
