@@ -4,7 +4,7 @@ from libtbx.phil import parse
 from libtbx.utils import Sorry
 import psana
 from matplotlib import pyplot as plt
-from serialtbx.energy_scan_notch_finder import notch_phil_string, find_notch, plot_notches, calibrate_energy
+from serialtbx.util.energy_scan_notch_finder import notch_phil_string, find_notch, plot_notches, calibrate_energy
 
 """When an energy scan is conducted at LCLS, we acquire FEE spectra of the incident beam with a varying, known, narrow energy band removed -- the "notch". Energy calibration is the process of identifying the notch in each scan and using the known pixel-energy pairs to generate a function (linear fit) returning the energy for any given pixel position on the spectrometer (reported FEE energy in xtc streams). This file automates this process. Helper functions are located in serialtbx in case energy calibration can be useful outside the LCLS use case."""
 
