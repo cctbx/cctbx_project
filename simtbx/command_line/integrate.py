@@ -16,6 +16,7 @@ parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for
 parser.add_argument("--loud", action="store_true", help="show lots of screen output")
 parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
 parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
+parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
 
 args = parser.parse_args()
 
@@ -29,6 +30,7 @@ def print0(*args, **kwargs):
         print(*args, **kwargs)
 
 import numpy as np
+import json
 from simtbx.diffBragg import hopper_utils, utils
 from simtbx.modeling import predictions
 from simtbx.diffBragg.hopper_utils import downsamp_spec_from_params
@@ -400,7 +402,8 @@ if __name__=="__main__":
         all_pred_names = []
         exp_ref_spec_lines = []
         all_rank_pred = None
-        all_rank_expt = ExperimentList()
+        all_rank_expt = None
+
         rank_shot_count = 0
         rank_pred_file = os.path.join(EXPT_DIRS, "rank%d_preds.refl" % COMM.rank)
         rank_pred_file = os.path.abspath(rank_pred_file)
@@ -455,15 +458,28 @@ if __name__=="__main__":
             nstrong = np.sum(strong_sel)
             printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
             pred['id'] = flex.int(len(pred), rank_shot_count)
+            if 'shoebox' in list(pred) and not args.keepShoeboxes:
+                del pred['shoebox']
             if all_rank_pred is None:
                 all_rank_pred = deepcopy(pred)
             else:
                 all_rank_pred.extend(pred)
-            all_rank_expt.append(data_expt)
+
+            # Note, the simple append causes memory leak:
+            #all_rank_expt.append(data_expt)
+            if all_rank_expt is None:
+                all_rank_expt = deepcopy(data_exptList.to_dict())
+            else:
+                Edict = data_exptList.to_dict()
+                for exp_key in 'beam', 'detector', 'crystal', 'imageset':
+                    Edict['experiment'][0][exp_key] = rank_shot_count
+                for exp_key in 'experiment', 'beam', 'detector', 'crystal', 'imageset':
+                    assert len( Edict[exp_key])==1
+                    all_rank_expt[exp_key] .append(Edict[exp_key][0])
 
             Rindexed = Rstrong.select(Rstrong['indexed'])
             if len(Rindexed)==0:
-                print("No strong indexed refls for shot %s" % new_expt_name)
+                print("No strong indexed refls for shot %s" % expt_name)
                 continue
 
             utils.refls_to_hkl(Rindexed, data_expt.detector, data_expt.beam, data_expt.crystal, update_table=True)
@@ -485,6 +501,7 @@ if __name__=="__main__":
             df['exp_idx'] = rank_shot_count
             df['predictions'] = rank_pred_file
             df['predicted_refs'] = rank_pred_file
+            df['num_pred'] = len(pred)
             all_dfs.append(df)
             rank_shot_count += 1
 
@@ -494,7 +511,10 @@ if __name__=="__main__":
             exp_ref_spec_lines.append("%s %s %s %d\n" % (rank_expt_file, rank_pred_file, spec_name, rank_shot_count))
 
         all_rank_pred.as_file(rank_pred_file)
-        all_rank_expt.as_file(rank_expt_file)
+        # NOTE: all_rank_expt is a dictionary to avoid weird OOM, so we write a simple json
+        #all_rank_expt.as_file(rank_expt_file)
+        with open(rank_expt_file, "w") as file_O:
+            json.dump(all_rank_expt, file_O)
         print0("Done with predictions, combining dataframes")
         if all_dfs:
             all_dfs = pandas.concat(all_dfs)
