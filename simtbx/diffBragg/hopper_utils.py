@@ -15,7 +15,10 @@ from scitbx.matrix import sqr, col
 from scipy.ndimage import binary_dilation
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
-from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
+try:  # TODO keep backwards compatibility until we close the nxmx_writer_experimental branch
+    from serialtbx.detector.jungfrau import get_pedestalRMS_from_jungfrau
+except ModuleNotFoundError:
+    from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
@@ -622,8 +625,8 @@ class DataModeler:
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
             if self.Hi is not None:
-                self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
-                self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix
+                self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+                self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
                 #self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
                 #self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
@@ -704,6 +707,7 @@ class DataModeler:
             shoeboxes.append(sb)
 
         R['shoebox'] = flex.shoebox(shoeboxes)
+        R['id'] = flex.int(len(R), 0)
         R.as_file(output_name)
 
     def set_parameters_for_experiment(self, best=None):
