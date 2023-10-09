@@ -1354,11 +1354,14 @@ def get_map_and_d_min(m_ca_or_p, d_min = None,
   for offset in range(n_offset):
     mmm = m_ca_or_p.as_map_model_manager()
     d_min_use = d_min + 5 * offset
-    if d_min_use > 50:
-      continue # max is 50
+    if d_min_use > 70:
+      continue # max is about 70
     mmm.set_resolution(d_min_use)
-    mmm.generate_map(d_min_use,
+    try:
+      mmm.generate_map(d_min_use,
         resolution_factor = 0.25 * grid_resolution/d_min )
+    except Exception as e: # too low resolution
+      continue
 
     # Box the map and set SD to 1 mean to 0
     box_mmm = mmm.extract_all_maps_around_model()
