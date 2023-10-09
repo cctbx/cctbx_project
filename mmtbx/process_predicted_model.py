@@ -57,6 +57,14 @@ master_phil_str = """
               domains, try making domain_size bigger (maximum is 70 A).
       .short_caption = Domain size (A)
 
+    adjust_domain_size = True
+      .type = bool
+      .help = If more that maximum_domains are initially found, increase \
+               domain_size in increments of 5 A and take the value that \
+               gives the smallest number of domains, but at \
+               least maximum_domains.
+      .short_caption = Adjust domain size
+
     minimum_domain_length = 10
       .type = float
       .help = Minimum length of a domain to keep (reject at end if smaller).
@@ -281,6 +289,7 @@ def process_predicted_model(
 
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
+    adjust_domain_size: increase domain_size if more than maximum domains found
     minimum_domain_length: minimum length (residues) of a domain to keep
     maximum_fraction_close: Merge domains with more than this fraction of close
                            CA atoms
@@ -497,6 +506,7 @@ def process_predicted_model(
     else: # usual
       info = split_model_into_compact_units(new_model,
         d_min = p.domain_size,
+        adjust_domain_size = p.adjust_domain_size,
         maximum_domains = p.maximum_domains,
         minimum_domain_length = p.minimum_domain_length,
         maximum_fraction_close = p.maximum_fraction_close,
@@ -934,6 +944,7 @@ def split_model_into_compact_units_by_chunks(
      minimum_domain_length = 10,
      maximum_fraction_close = 0.3,
      maximum_domains = None,
+     adjust_domain_size = None,
      break_into_chunks_if_length_is = None,
      chunk_size = None,
      overlap_size = None,
@@ -975,6 +986,7 @@ def split_model_into_compact_units_by_chunks(
      minimum_domain_length = minimum_domain_length,
      maximum_fraction_close = maximum_fraction_close,
      maximum_domains = maximum_domains,
+     adjust_domain_size = adjust_domain_size,
      break_into_chunks_if_length_is = working_m.overall_counts().n_residues + 1,
      log = log)
     info.first_resno = c[0]
@@ -1209,6 +1221,7 @@ def split_model_into_compact_units(
      minimum_domain_length = 10,
      maximum_fraction_close = 0.3,
      maximum_domains = None,
+     adjust_domain_size = None,
      break_into_chunks_if_length_is = None,
      chunk_size = None,
      overlap_size = None,
@@ -1232,10 +1245,12 @@ def split_model_into_compact_units(
    Inputs:
    m:  cctbx.model.model object containing information about the input model
    d_min:  resolution used for low-res map.  Corresponds roughly to domain size.
+   adjust_domain_size: Vary d_min to try and obtain maximum_domains in initial
+                       domain identification
    grid_resolution:  resolution of map used to define the gridding
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
-   minimum_domain_length: typical size (CA or P) of the smallest segments to keep
+   minimum_domain_length: typical size (CA or P) of smallest segments to keep
    minimum_remainder_sequence_length: minimum length of a removed sequence
       segment to write out to a new sequence file
    bfactor_min: smallest bfactor for atoms to include in calculations
@@ -1264,6 +1279,7 @@ def split_model_into_compact_units(
      minimum_domain_length = minimum_domain_length,
      maximum_fraction_close = maximum_fraction_close,
      maximum_domains = maximum_domains,
+     adjust_domain_size = adjust_domain_size,
      break_into_chunks_if_length_is = break_into_chunks_if_length_is,
      chunk_size = chunk_size,
      overlap_size = overlap_size,
@@ -1298,6 +1314,7 @@ def split_model_into_compact_units(
   # Generate map at medium_res for this model and use it to get domains
   info = get_map_and_d_min(
     m_ca_or_p, d_min = d_min, target_regions = maximum_domains,
+    adjust_domain_size = adjust_domain_size,
     grid_resolution = grid_resolution, log = log)
   if not info:
     print("Failed to find domains", file = log)
@@ -1321,7 +1338,8 @@ def split_model_into_compact_units(
     info.model.set_crystal_symmetry(original_crystal_symmetry)
   return info
 
-def get_map_and_d_min(m_ca_or_p, d_min = None, target_regions = None,
+def get_map_and_d_min(m_ca_or_p, d_min = None,
+      adjust_domain_size = None, target_regions = None,
       grid_resolution = None,
       log = sys.stdout):
   # Choose d_min that give about target_regions clusters
@@ -1329,7 +1347,11 @@ def get_map_and_d_min(m_ca_or_p, d_min = None, target_regions = None,
   best_map_data = None
   best_n = None
   best_d_min = None
-  for offset in range(10):
+  if adjust_domain_size:
+     n_offset = 10
+  else:
+     n_offset = 1
+  for offset in range(n_offset):
     mmm = m_ca_or_p.as_map_model_manager()
     d_min_use = d_min + 5 * offset
     if d_min_use > 50:
