@@ -290,7 +290,7 @@ class dummy_cursor(object):
     return self.prefetched
 
 class db_application(object):
-  def __init__(self, params, cache_connection = True, mode = 'execute'):
+  def __init__(self, params, cache_connection = False, mode = 'execute'):
     self.params = params
     self.dbobj = None
     self.cache_connection = cache_connection

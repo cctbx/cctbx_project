@@ -20,11 +20,12 @@ class Spotfinder_radial_average:
     n_panels = len(experiments[0].detector)
     self.panelsums = [np.zeros(params.n_bins) for _ in range(n_panels)]
 
-  def _process_pixel(self, i_panel, s0, panel, xy, value):
+  def _process_pixel(self, i_panel, s0, panel, xy, value, expt):
     value -= self.params.downweight_weak
     d_max_inv = 1/self.params.d_max
     d_min_inv = 1/self.params.d_min
     res_inv = 1 / panel.get_resolution_at_pixel(s0, xy)
+    res = 1/res_inv
     n_bins = self.params.n_bins
     i_bin = int(
         n_bins * (res_inv - d_max_inv ) / (d_min_inv - d_max_inv)
@@ -102,7 +103,7 @@ class Spotfinder_radial_average:
             value = intensities[i_refl]
           else:
             value = 1
-          self._process_pixel(i_panel, s0, panel, xy, value)
+          self._process_pixel(i_panel, s0, panel, xy, value, expt)
         if params.peak_position=="shoebox":
           sb = shoeboxes[i_refl]
           sbpixels = zip(sb.coords(), sb.values())
@@ -187,6 +188,8 @@ Currently supported options: %s""" %backend_list
         plt.show()
 
     elif params.plot.interactive:
+      import os
+      plt.title(os.getcwd())
       plt.show()
 
 

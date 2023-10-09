@@ -12,6 +12,7 @@ from libtbx.phil import parse
 from scitbx.math import five_number_summary
 
 help_message = """
+
 Two plots:
 deltaXY: plot of the difference between observed and predicted reflections in microns vs. two theta. Only reflections with I/sigI >= 5 are included.
 I/sigI: plot of I/sigI for all reflections vs. two theta.

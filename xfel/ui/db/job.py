@@ -648,7 +648,7 @@ class EnsembleRefinementJob(Job):
     striping.rungroup={}
     striping.run={}
     {}
-    striping.chunk_size=256
+    striping.chunk_size=512
     striping.stripe=False
     striping.dry_run=True
     striping.output_folder={}

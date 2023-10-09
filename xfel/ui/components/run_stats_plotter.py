@@ -222,6 +222,7 @@ def plot_run_stats(stats,
   ax1.set_ylim(ymin=0)
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: idx\ngray: did not idx", fontsize=text_ratio)
+  ax1.set_ylim(0, min(flex.max(n_strong), 5000))
   ax2.plot(t, idx_rate*100)
   ax2.plot(t, multiples_rate*100, color='magenta')
   ax2_twin = ax2.twinx()

@@ -197,12 +197,19 @@ filter
           .type = path
         component = 0
           .type = int(value_min=0)
+        skip_component = None
+          .type = int(value_min=0)
+          .multiple = True
+          .help = If a lattice belongs to any of these components, exclude it from processing.
         mahalanobis = 4.0
           .type = float(value_min=0)
           .help = Is essentially the standard deviation cutoff. Given that the unit cells
           .help = are estimated to be distributed by a multivariate Gaussian, this is the
           .help = maximum deviation (in sigmas) from the central value that is allowable for the
           .help = unit cell to be considered part of the cluster.
+        skip_mahalanobis = 4.0
+          .type = float(value_min=0)
+          .help = Cutoff distance for any components specified under skip_component.
         }
       isoform = None
         .type=str
