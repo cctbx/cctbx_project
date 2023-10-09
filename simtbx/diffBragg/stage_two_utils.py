@@ -113,6 +113,8 @@ def PAR_from_params(params, experiment, best=None):
     PAR.Ndef = [None]*3
     PAR.eta = [None]*3
     PAR.RotXYZ_params = [None]*3
+    PAR.diffuse_sigma = [None]*3
+    PAR.diffuse_gamma = [None]*3
 
     if not params.use_restraints or params.fix.ucell:
         # dummie values:
@@ -125,6 +127,10 @@ def PAR_from_params(params, experiment, best=None):
         eta_min=-1e-10,-1e-10,-1e-10
         if not params.simulator.crystal.num_mosaicity_samples == 1:
             raise ValueError("if all eta_abc are 0,0,0, num_mosaicity_samples should be 1")
+
+    # TODO allow setting diffuse gamma/sigma from stage 1 (e.g. from the `best` dataframe)
+    init_diffuse_sigma = params.init.diffuse_sigma
+    init_diffuse_gamma = params.init.diffuse_gamma
 
     for i in range(3):
         initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
@@ -148,6 +154,15 @@ def PAR_from_params(params, experiment, best=None):
                                        center=params.betas.eta_abc[i], beta=params.betas.eta_abc[i])
 
         # TODO: diffuse scattering terms
+        PAR.diffuse_sigma[i] = ParameterType(init=init_diffuse_sigma[i], minval=params.mins.diffuse_sigma[i],
+                                        maxval=params.maxs.diffuse_sigma[i], fix=params.fix.diffuse_sigma,
+                                        sigma=params.sigmas.diffuse_sigma[i],
+                                        center=params.centers.diffuse_sigma[i], beta=params.betas.diffuse_sigma[i])
+
+        PAR.diffuse_gamma[i] = ParameterType(init=init_diffuse_gamma[i], minval=params.mins.diffuse_gamma[i],
+                                             maxval=params.maxs.diffuse_gamma[i], fix=params.fix.diffuse_gamma,
+                                             sigma=params.sigmas.diffuse_gamma[i],
+                                             center=params.centers.diffuse_gamma[i], beta=params.betas.diffuse_gamma[i])
 
     # unit cell parameters
     ucell_man = utils.manager_from_crystal(experiment.crystal)  # Note ucell man contains the best parameters (if best is not None)
@@ -203,3 +218,5 @@ class StageTwoParams:
         self.detz_shift = None
         self.paneRot = None
         self.PanXYZ = None
+        self.diffuse_sigma = None
+        self.diffuse_gamma = None

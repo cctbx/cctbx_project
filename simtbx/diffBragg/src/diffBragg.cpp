@@ -2303,13 +2303,13 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
 //      TODO assert eig_O and hall_symbol are properly set before proceeding
         cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
         Eigen::Matrix3d O_inv = db_cryst.eig_O.inverse();
-        if (verbose>1){
+        //if (verbose>1){
             printf("Hall symbol %s\n", db_cryst.hall_symbol.c_str());
             printf("O_inv:\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n%.1f %.1f %.1f\n",
                 O_inv(0,0), O_inv(0,1), O_inv(0,2),
                 O_inv(1,0), O_inv(1,1), O_inv(1,2),
                 O_inv(2,0), O_inv(2,1), O_inv(2,2));
-        }
+        //}
 
         cctbx::sgtbx::reciprocal_space::asu asu(sg.type());
 
@@ -2333,6 +2333,7 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
         db_cryst.ASU_Fcell.clear();
 
         int asu_count = 0;
+        printf("hklmin=%d,%d,%d .. hklrange=%d %d %d\n" , h_min, k_min, l_min, h_range, k_range, l_range);
         for (int h = 0; h < h_range; h++) {
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {

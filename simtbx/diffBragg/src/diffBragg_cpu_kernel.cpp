@@ -700,6 +700,10 @@ void diffBragg_sum_over_steps(
                 double Fhkl_deriv_scale = db_cryst.r_e_sqr*db_beam.fluence*db_cryst.spot_scale*polar_for_Fhkl_grad/db_steps.Nsteps;
                 double dfhkl = I_noFcell*I_cell * Fhkl_deriv_scale;
                 double grad_incr = dfhkl*Fhkl_deriv_coef;
+                //if (i_pix==0){
+                //    printf("Fhkl_deriv_scale=%10.7g, dfhkl=%10.7g, dinc=%10.7g\n", Fhkl_deriv_scale, dfhkl, grad_incr);
+                //    printf("I_noFcell=%10.7g, I_cell=%10.7g, Fhkl_deriv_coef=%10.7g\n", I_noFcell, I_cell,Fhkl_deriv_coef);
+                //}
                 int fhkl_grad_idx=i_hklasu + Fhkl_channel*db_cryst.Num_ASU;
                 if (db_flags.track_Fhkl_indices)
                     db_cryst.Fhkl_grad_idx_tracker.insert(fhkl_grad_idx);

@@ -7,7 +7,7 @@ parser = ArgumentParser()
 parser.add_argument("input", type=str, help="combined pandas pickle")
 parser.add_argument("phil", type=str, help="user phil file used to run hopper (see simtbx/diffBragg/phil.py)")
 parser.add_argument("--outdir", type=str, default=None, help="output folder")
-parser.add_argument("--exp", type=str, default="opt_exp_name", help="column name for input expeirments (default is opt_exp_name)")
+parser.add_argument("--exp", type=str, default="exp_name", help="column name for input expeirments (default is opt_exp_name)")
 parser.add_argument("--refl", type=str, default="stage2_refls", help="column name for refls (default is stage2_refls)")
 parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
 parser.add_argument("--cell", nargs=6, type=float, default=None, help="unit cell to use when writing MTZ files. If not provided, average will be used")
@@ -78,8 +78,8 @@ if __name__ == "__main__":
 
     if params.skip is not None:
         df = df.iloc[params.skip:]
-    if params.first_n is not None:
-        df = df.iloc[:params.first_n]
+    if params.max_process is not None:
+        df = df.iloc[:params.max_process]
     df.reset_index(inplace=True, drop=True)
 
     gather_dir=None
@@ -90,6 +90,9 @@ if __name__ == "__main__":
             if not os.path.exists(gather_dir):
                 os.makedirs(gather_dir)
 
+    for col in [args.exp, args.refl]:
+        if col not in list(df):
+            raise KeyError("Col %s is missing from dataframe" % col)
     modelers = load_inputs(df, params, exper_key=args.exp, refls_key=args.refl, gather_dir=gather_dir)
     # note, we only go beyond this point if perImport flag was not passed
     modelers.cell_for_mtz = args.cell

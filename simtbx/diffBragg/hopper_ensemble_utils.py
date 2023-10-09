@@ -182,7 +182,6 @@ def target_func(x, modelers):
         MAIN_LOGGER.debug("Fhkl restraint comp took %.4f sec" %t)
     f = COMM.bcast(f)
     g_fhkl = COMM.bcast(g_fhkl)
-
     g_fhkl *= modelers.SIM.Fhkl_scales*modelers.params.sigmas.Fhkl  # need to rescale the Fhkl gradient according to the reparameterization on Fhkl scale factord
 
     g = np.append(g, g_fhkl)
@@ -386,10 +385,13 @@ class DataModelers:
         all_nominal_hkl = set()
         for mod in self.data_modelers.values():
             all_nominal_hkl = all_nominal_hkl.union(mod.hi_asu_perpix)
+        #TODO : is this memory intensive?
         all_nominal_hkl = COMM.gather(all_nominal_hkl)
         if COMM.rank == 0:
+            # TODO: all_nominal_hkl is P1, asu_map_int is non-P1
             all_nominal_hkl = set(all_nominal_hkl[0]).union(*all_nominal_hkl[1:])
-            asu_inds_to_vary = [self.SIM.asu_map_int[h] for h in all_nominal_hkl]
+            all_nominal_hkl_sym = utils.map_hkl_list(all_nominal_hkl, True, self.SIM.crystal.symbol)
+            asu_inds_to_vary = [self.SIM.asu_map_int[h] for h in all_nominal_hkl_sym]
         else:
             asu_inds_to_vary = None
         asu_inds_to_vary = set(COMM.bcast(asu_inds_to_vary))
@@ -571,9 +573,10 @@ def get_gather_name(exper_name, gather_dir):
 
 
 def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictions',
-                gather_dir=None):
+                gather_dir=None, exper_idx_key="exp_idx"):
 
-    work_distribution = prep_dataframe(pandas_table, refls_key, params.refiner.res_ranges)
+    work_distribution = prep_dataframe(pandas_table, refls_key,
+                                       res_ranges_string=params.refiner.res_ranges)
     COMM.barrier()
     num_exp = len(pandas_table)
     first_exper_file = pandas_table[exper_key].values[0]
@@ -592,7 +595,9 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
                          % (COMM.size, num_exp, num_exp))
 
     exper_names = pandas_table[exper_key]
-    assert len(exper_names) == len(set(exper_names))
+    exper_ids = pandas_table[exper_idx_key]
+    name_ids = list(zip(exper_names, exper_ids))
+    assert len(name_ids) == len(set(name_ids))
     worklist = work_distribution[COMM.rank]
     MAIN_LOGGER.info("EVENT: begin loading inputs")
 
@@ -601,20 +606,21 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
     Fhkl_model = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
     Fhkl_model_indices = set(Fhkl_model.indices())
     shot_modelers = hopper_ensemble_utils.DataModelers()
-    for ii, i_exp in enumerate(worklist):
-        exper_name = exper_names[i_exp]
+    for ii, i_df in enumerate(worklist):
+        exper_name = exper_names[i_df]
+        exper_id = int(exper_ids[i_df])
         MAIN_LOGGER.info("EVENT: BEGIN loading experiment list")
-        expt_list = ExperimentList.from_file(exper_name, check_format=params.refiner.check_expt_format)
+        expt = hopper_utils.DataModeler.exper_json_single_file(exper_name, exper_id)
+        expt_list = ExperimentList()
+        expt_list.append(expt)
         MAIN_LOGGER.info("EVENT: DONE loading experiment list")
-        if len(expt_list) != 1:
-            MAIN_LOGGER.critical("Input experiments need to have length 1, %s does not" % exper_name)
-        expt = expt_list[0]
         expt.detector = detector  # in case of supplied ref geom
 
-        exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name))
+        exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name)).query("%s==%d" % (exper_idx_key, exper_id))
 
         refl_name = exper_dataframe[refls_key].values[0]
         refls = flex.reflection_table.from_file(refl_name)
+        refls = refls.select(refls['id'] == exper_id)
 
         miller_inds = list( refls['miller_index'])
         is_not_000 = [h != (0, 0, 0) for h in miller_inds]
@@ -624,7 +630,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         refls = refls.select(refl_sel)
 
         exp_cry_sym = expt.crystal.get_space_group().type().lookup_symbol()
-        if exp_cry_sym.replace(" ", "") != params.space_group:
+        if params.space_group is not None and exp_cry_sym.replace(" ", "") != params.space_group:
             gr = sgtbx.space_group_info(params.space_group).group()
             expt.crystal.set_space_group(gr)
             #raise ValueError("Crystals should all have the same space group symmetry")
@@ -632,6 +638,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         MAIN_LOGGER.info("EVENT: LOADING ROI DATA")
         shot_modeler = hopper_utils.DataModeler(params)
         shot_modeler.exper_name = exper_name
+        shot_modeler.exper_idx = exper_id
         shot_modeler.refl_name = refl_name
         shot_modeler.rank = COMM.rank
         if params.refiner.load_data_from_refl:
