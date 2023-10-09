@@ -1294,26 +1294,17 @@ def split_model_into_compact_units(
 
   # Put the model inside a box and get a map_model_manager
   put_model_inside_cell(m_ca_or_p, grid_resolution)
-  mmm = m_ca_or_p.as_map_model_manager()
 
   # Generate map at medium_res for this model and use it to get domains
+  info = get_map_and_d_min(
+    m_ca_or_p, d_min = d_min, target_regions = maximum_domains,
+    grid_resolution = grid_resolution, log = log)
+  if not info:
+    print("Failed to find domains", file = log)
+    return # Nothing to do
+  map_data = info.map_data
+  co_info = info.co_info
 
-  print("Generating map at resolution of %.1f A to identify domains" %(
-    d_min), file = log)
-  mmm.set_resolution(d_min)
-  mmm.generate_map(d_min, resolution_factor = 0.25 * grid_resolution/d_min )
-
-  # Box the map and set SD to 1 mean to 0
-  box_mmm = mmm.extract_all_maps_around_model()
-  box_mmm.map_manager().set_mean_zero_sd_one()
-
-  # Now get regions where there is model
-  map_data = box_mmm.map_manager().map_data()
-
-  #  Get a connectivity analysis of this map data
-  co_info = get_best_co(map_data)
-  if not co_info:
-    return None # failed
 
   # Assign all points in box to a grouping
   co_info = assign_all_points(co_info, map_data, log = log)
@@ -1329,6 +1320,55 @@ def split_model_into_compact_units(
   if original_crystal_symmetry and info and info.model:
     info.model.set_crystal_symmetry(original_crystal_symmetry)
   return info
+
+def get_map_and_d_min(m_ca_or_p, d_min = None, target_regions = None,
+      grid_resolution = None,
+      log = sys.stdout):
+  # Choose d_min that give about target_regions clusters
+  best_co_info = None
+  best_map_data = None
+  best_n = None
+  best_d_min = None
+  for offset in range(10):
+    mmm = m_ca_or_p.as_map_model_manager()
+    d_min_use = d_min + 5 * offset
+    if d_min_use > 50:
+      continue # max is 50
+    mmm.set_resolution(d_min_use)
+    mmm.generate_map(d_min_use,
+        resolution_factor = 0.25 * grid_resolution/d_min )
+
+    # Box the map and set SD to 1 mean to 0
+    box_mmm = mmm.extract_all_maps_around_model()
+    box_mmm.map_manager().set_mean_zero_sd_one()
+
+    # Now get regions where there is model
+    map_data = box_mmm.map_manager().map_data()
+
+    #  Get a connectivity analysis of this map data
+    co_info = get_best_co(map_data)
+    if not co_info:
+      continue
+    n = len(co_info.sorted_by_volume)
+    if (best_n is None) or (target_regions is None) or (
+        (n >= target_regions) and (n < best_n)):
+      best_n = n
+      best_co_info = co_info
+      best_map_data = map_data
+      best_d_min = d_min_use
+  if co_info is None:
+    return # Nothing to do
+  n = best_n
+  d_min = best_d_min
+  co_info = best_co_info
+  map_data = best_map_data
+  print("Best resolution for domains is %.1f A giving %s regions" %(
+        d_min, n), file = log)
+  return group_args(group_args_type = 'co_info and map_data',
+    d_min = d_min,
+    co_info = co_info,
+    map_data = map_data,)
+
 
 def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}
