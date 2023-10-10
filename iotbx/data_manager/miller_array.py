@@ -782,10 +782,13 @@ fmodel {
       arrays.append(self._get_array_by_label(datatype, filename, label))
     return arrays
 
-  def _get_array_by_label(self, datatype, filename, label):
+  def _get_array_by_label(self, datatype, filename, label, try_matching=True):
     storage_dict = getattr(self, self._arrays_str % datatype)
     if label in storage_dict[filename].keys():
       return storage_dict[filename][label]
+    elif label in self._get_user_selected_array_labels(datatype, filename) and try_matching:
+      matched_label = self._match_label(label, self._get_arrays(datatype, filename, labels=None))
+      return self._get_array_by_label(datatype, filename, matched_label, try_matching=False)
     else:
       raise Sorry('%s does not have any arrays labeled %s' %
                   (filename, label))
