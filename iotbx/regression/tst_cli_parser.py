@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 import os
-import sys
 
 from six.moves import cStringIO as StringIO
 
