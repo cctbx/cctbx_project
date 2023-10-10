@@ -1453,7 +1453,6 @@ def assess_cryoem_errors(
   """
 
   from libtbx import group_args
-  from iotbx.map_model_manager import map_model_manager
 
   if verbosity > 0:
     print("\nPrepare map for docking by analysing signal and errors", file=log)
@@ -1938,8 +1937,6 @@ def run():
         The flatten_model option cannot be combined with cutting out a sphere.
   """
   import argparse
-  from iotbx.map_model_manager import map_model_manager
-  from iotbx.data_manager import DataManager
   dm = DataManager()
   dm.set_overwrite(True)
 
