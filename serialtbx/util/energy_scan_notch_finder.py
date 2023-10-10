@@ -80,7 +80,7 @@ def plot_notches(runs, rundata, notches, per_run_plots=False):
 def calibrate_energy(notches, energies):
   """Having identified the pixel positions on the FEE spectrometer corresponding to known energy values, get a linear fit of these ordered pairs and report the eV offset and eV per pixel matching the fit."""
   pixels = [n[0][0] for n in notches]
-  linear_fit = Poly.fit(pixels, energies, 1)
+  linear_fit = Poly.fit(pixels, energies, 1).convert()
   eV_offset, eV_per_pixel = linear_fit.coef
   print(f"Calibrated eV offset of {eV_offset} and eV per pixel of {eV_per_pixel}".format())
   plt.scatter(pixels, energies, color='k', label="known energy positions")
