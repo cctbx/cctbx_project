@@ -8,7 +8,7 @@ from mmtbx.hydrogens.tst_add_hydrogen import compare_models
 def run():
   test_000()
   test_001()
-  # test_002()
+  test_002()
   # test_003()
   # test_004()
   # test_005()
@@ -31,6 +31,14 @@ def test_001():
   A nucleotide with missing for some reason and a missing dihedral
   '''
   compare_models(pdb_str = pdb_str_001)
+
+# ------------------------------------------------------------------------------
+
+def test_002():
+  '''
+  Carbohydrates need more dihedrals
+  '''
+  compare_models(pdb_str = pdb_str_002)
 
 # ------------------------------------------------------------------------------
 
@@ -107,6 +115,44 @@ HETATM   36 HN61 ADP A1311      -8.087  15.169   4.810  0.60 16.26           H
 HETATM   37 HN62 ADP A1311      -6.991  14.154   3.900  0.60 16.26           H
 HETATM   38 HO2' ADP A1311      -6.433  17.013  12.310  0.60 12.16           H
 HETATM   39 HO3' ADP A1311      -6.507  15.409  14.043  0.60 15.01           H
+'''
+
+pdb_str_002 = '''
+CRYST1   16.163   16.054   17.729  90.00  90.00  90.00 P 1
+SCALE1      0.061870  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.062290  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.056405        0.00000
+HETATM    1  C1  NAG A   1       7.207   7.892   8.696  1.00 20.00      A    C
+HETATM    2  C2  NAG A   1       8.726   7.903   8.675  1.00 20.00      A    C
+HETATM    3  C3  NAG A   1       9.299   7.873  10.037  1.00 20.00      A    C
+HETATM    4  C4  NAG A   1       8.735   8.963  10.912  1.00 20.00      A    C
+HETATM    5  C5  NAG A   1       7.211   8.952  10.928  1.00 20.00      A    C
+HETATM    6  C6  NAG A   1       6.722  10.156  11.692  1.00 20.00      A    C
+HETATM    7  C7  NAG A   1       9.920   6.866   6.642  1.00 20.00      A    C
+HETATM    8  C8  NAG A   1      10.391   5.633   5.851  1.00 20.00      A    C
+HETATM    9  N2  NAG A   1       9.210   6.694   7.918  1.00 20.00      A    N
+HETATM   10  O1  NAG A   1       6.748   8.064   7.430  1.00 20.00      A    O
+HETATM   11  O3  NAG A   1      10.730   8.045   9.943  1.00 20.00      A    O
+HETATM   12  O4  NAG A   1       9.211   8.778  12.243  1.00 20.00      A    O
+HETATM   13  O5  NAG A   1       6.644   8.983   9.574  1.00 20.00      A    O
+HETATM   14  O6  NAG A   1       5.328  10.234  11.597  1.00 20.00      A    O
+HETATM   15  O7  NAG A   1      10.109   7.947   6.214  1.00 20.00      A    O
+HETATM   16  H1  NAG A   1       6.928   7.042   9.072  1.00 20.00      A    H
+HETATM   17  H2  NAG A   1       9.004   8.727   8.246  1.00 20.00      A    H
+HETATM   18  H3  NAG A   1       9.042   7.013  10.404  1.00 20.00      A    H
+HETATM   19  H4  NAG A   1       9.054   9.784  10.505  1.00 20.00      A    H
+HETATM   20  H5  NAG A   1       6.893   8.131  11.334  1.00 20.00      A    H
+HETATM   21  H61 NAG A   1       7.154  10.946  11.330  1.00 20.00      A    H
+HETATM   22  H62 NAG A   1       7.018  10.077  12.612  1.00 20.00      A    H
+HETATM   23  H81 NAG A   1      10.095   4.828   6.305  1.00 20.00      A    H
+HETATM   24  H82 NAG A   1      11.359   5.638   5.795  1.00 20.00      A    H
+HETATM   25  H83 NAG A   1      10.013   5.661   4.958  1.00 20.00      A    H
+HETATM   26  HN2 NAG A   1       9.068   5.908   8.238  1.00 20.00      A    H
+HETATM   27  HO1 NAG A   1       6.819   8.882   7.211  1.00 20.00      A    H
+HETATM   28  HO3 NAG A   1      10.919   8.822  10.230  1.00 20.00      A    H
+HETATM   29  HO4 NAG A   1       9.549   8.001  12.310  1.00 20.00      A    H
+HETATM   30  HO6 NAG A   1       5.126  10.415  10.791  1.00 20.00      A    H
+END
 '''
 
 if (__name__ == "__main__"):
