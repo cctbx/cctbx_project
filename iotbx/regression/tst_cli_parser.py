@@ -105,7 +105,7 @@ def test_user_selected_labels():
 
   class testProgram(ProgramTemplate):
     program_name = 'tst_cli_parser'
-    datatypes = ['miller_array', 'phil']
+    datatypes = ['map_coefficients', 'miller_array', 'phil', 'real_map']
     master_phil_str = '''
 other_file = None
   .type = path
@@ -157,6 +157,106 @@ other_file = %s
       assert label in ['FRACTIONCALC' ,'IPR,SIGIPR,merged']
 
   os.remove(phil_name)
+
+  # duplicate user labels
+  try:
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WID',
+            'miller_array.user_selected=WIDT'])
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  # map_coefficients.user_selected will not work on files without map coefficients
+  try:
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WID',
+            'map_coefficients.user_selected=WIDT'])
+  except Sorry as s:
+    assert 'does not seem to have map_coefficients data' in str(s)
+
+  # map_coefficients.user_selected_labels should be mirrored in
+  # miller_array.user_selected_labels
+  data_mtz = os.path.join(data_dir, 'data',
+                          'phaser_1.mtz')
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['map_coefficients', 'miller_array', 'phil', 'real_map']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      ma_labels = self.data_manager.get_miller_array_user_selected_labels()
+      mc_labels = self.data_manager.get_map_coefficients_user_selected_labels()
+      print(ma_labels, file=self.logger)
+      print(mc_labels, file=self.logger)
+      assert ma_labels == mc_labels
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.user_selected=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.user_selected=FW']
+  )
+
+  # non map_coefficients should not be copied
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=FP']
+    )
+  except AssertionError:
+    pass
+
+  # or used to select non map_coefficients data
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=FP']
+    )
+  except Sorry as s:
+    assert 'is not recognized to be map_coefficients data' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=WT',
+            'miller_array.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WT',
+            'miller_array.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=WT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
 
 # =============================================================================
 if __name__ == '__main__':

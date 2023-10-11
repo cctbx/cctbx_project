@@ -500,6 +500,8 @@ fmodel {
       for label in labels:
         label_extract = deepcopy(item_extract.labels[0])
         label_extract.name = label
+        if label not in types.keys():
+          raise Sorry('The label, %s, is not recognized to be %s data.' % (label, datatype))
         label_extract.type = types[label]
         label_extract.array_type = array_types[label]
         labels_extract.append(label_extract)
@@ -532,6 +534,48 @@ fmodel {
       label_match = match.info().label_string()
     return label_match
 
+  def _reconcile_user_labels(self, filename):
+    '''
+    Ensures that user_selected_labels are consistent between miller_array
+    and map_coefficient types. Also ensures that user_selected_labels
+    are uniquely selecting arrays.
+    '''
+    miller_arrays = self.get_miller_arrays(filename=filename)
+    ma_user_selected_labels = self.get_miller_array_user_selected_labels(filename)
+    matched_ma_user_selected_labels = [
+      self._match_label(label, miller_arrays) for label in ma_user_selected_labels]
+    datatype_user_selected_labels = []
+    matched_datatype_user_selected_labels = []
+    if self.supports('map_coefficients') and self.has_map_coefficients():
+      for datatype in self.miller_array_child_datatypes:
+        datatype_user_selected_labels = self._get_user_selected_array_labels(datatype, filename)
+        matched_datatype_user_selected_labels = [
+          self._match_label(label, miller_arrays) for label in datatype_user_selected_labels]
+        datatype_labels = self._get_array_labels(datatype, filename)
+        # append to parent labels if missing
+        for label in datatype_user_selected_labels:
+          matched_label = self._match_label(label, miller_arrays)
+          if label not in ma_user_selected_labels \
+            and matched_label not in matched_ma_user_selected_labels:
+            ma_user_selected_labels.append(label)
+        # append to datatype labels if missing
+        for label in ma_user_selected_labels:
+          matched_label = self._match_label(label, miller_arrays)
+          if label not in datatype_user_selected_labels \
+            and matched_label not in matched_datatype_user_selected_labels \
+            and matched_label in datatype_labels:
+            datatype_user_selected_labels.append(label)
+
+    # check for duplicates
+    for label_pair in [(matched_ma_user_selected_labels, ma_user_selected_labels),
+                       (matched_datatype_user_selected_labels, datatype_user_selected_labels)]:
+      if len(set(label_pair[0])) < len(label_pair[0]):
+        raise Sorry('''
+There are duplicate user_selected_labels. Please only specify unique labels.
+user_selected_labels: %s
+      matched labels: %s
+''' % (label_pair[1], label_pair[0]))
+
   def _load_miller_array_phil_extract(self, datatype, phil_extract):
     if self.supports('model'):
       self._fmodel_phil_scope = self.master_phil.format(python_object=phil_extract)
@@ -552,7 +596,7 @@ fmodel {
       # check labels (if available)
       if len(item_extract.labels) > 0 or len(item_extract.user_selected_labels) > 0:
         # all labels in file
-        file_labels = getattr(self, self._all_labels_str % datatype)[item_extract.file]
+        file_labels = getattr(self, self._all_labels_str % 'miller_array')[item_extract.file]
 
         # labels from PHIL
         phil_labels = []
@@ -596,7 +640,10 @@ fmodel {
             phil_array_types[label_name] = array_type
 
         # update storage
-        labels_storage = getattr(self, self._labels_str % datatype)[item_extract.file]
+        labels_storage = getattr(self, self._labels_str % datatype)
+        if item_extract.file not in labels_storage.keys():
+          raise Sorry('The file, %s, does not seem to have %s data.' % (item_extract.file, datatype))
+        labels_storage = labels_storage[item_extract.file]
         types_storage = getattr(self, self._type_str % datatype)[item_extract.file]
         array_types_storage = getattr(self, self._array_type_str % datatype)[item_extract.file]
         for label in phil_labels:
@@ -610,6 +657,9 @@ fmodel {
         for label in phil_user_selected_labels:
           if label not in user_selected_labels_storage:
             user_selected_labels_storage.append(label)
+
+      # ensure user_selected_labels are consistent
+      self._reconcile_user_labels(filename=item_extract.file)
 
   def _is_valid_miller_array_type(self, datatype, array_type):
     """
@@ -629,7 +679,6 @@ fmodel {
     bool:
     """
     if not isinstance(array_type, list):
-      raise Exception('oh no')
       raise Sorry('The type argument must be a list.')
     if len(array_type) == 0:
       return False
@@ -800,6 +849,10 @@ fmodel {
     '''
     if datatype not in MillerArrayDataManager.miller_array_child_datatypes:
       raise Sorry('%s is not a valid child datatype of miller_array.')
+
+    user_labels = getattr(self, self._user_selected_labels_str % datatype)
+    user_labels[filename] = []
+
     data = self.get_miller_array(filename)
     merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
     miller_arrays = data.as_miller_arrays(merge_equivalents=merge_equivalents)
@@ -820,11 +873,10 @@ fmodel {
         # array_types[label] = getattr(self, self._default_array_type_str % datatype)
 
     # if arrays exist, start tracking
-    if len(labels) > 1:
+    if len(labels) > 0:
       getattr(self, self._labels_str % datatype)[filename] = labels
       getattr(self, self._type_str % datatype)[filename] = types
       # getattr(self, self._array_type_str % datatype)[filename] = array_types
-      getattr(self, self._user_selected_labels_str % datatype)[filename] = []
       self._add(datatype, filename, data)
 
 # =============================================================================
