@@ -257,7 +257,7 @@ namespace smtbx { namespace ED
         FloatType s_2k = (Kl * Kl - (this->K + gs[i]).length_sq());
         FloatType i_den = dens[i];
         this->A(0, i) *= i_den;
-        this->A(i, i) *= i_den;
+        this->A(i, 0) *= i_den;
         this->A(i, i) += s_2k * i_den * i_den;
         M[i] = i_den;
         for (size_t j = i + 1; j < n_beams; j++) {
