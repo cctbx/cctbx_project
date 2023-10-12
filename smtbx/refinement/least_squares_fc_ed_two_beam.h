@@ -64,6 +64,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         }
       }
       else {
+        SMTBX_ASSERT(params.getBeamN() > 2);
         for (size_t i = 0; i < frames.size(); i++) {
           FrameInfo<FloatType>& frame = frames[i];
           frames_map.insert(std::make_pair(frame.id, &frame));
