@@ -2516,7 +2516,7 @@ END
     params = params.pdb_interpretation,
     log=None).xray_structure()
 
-def exercise_merging_of_multiple_torsions_from_bloody_ccp4(mon_lib_srv, ener_lib):
+def exercise_merging_of_multiple_torsions_from_ccp4(mon_lib_srv, ener_lib):
   raw_records = '''\
 CRYST1  173.131   63.222  139.747  90.00 117.44  90.00 C 1 2 1
 SCALE1      0.005776  0.000000  0.002999        0.00000
@@ -2648,7 +2648,7 @@ def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
-  exercise_merging_of_multiple_torsions_from_bloody_ccp4(mon_lib_srv, ener_lib)
+  exercise_merging_of_multiple_torsions_from_ccp4(mon_lib_srv, ener_lib)
   exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib)
   exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)
