@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 import time
 import iotbx.pdb
 from libtbx.test_utils import assert_lines_in_text
+import mmtbx.model
+from mmtbx import monomer_library
 
 # ------------------------------------------------------------------------------
 
@@ -279,8 +281,32 @@ def test2():
   oc.show()
   assert oc.errors() == []
 
+def test3():
+  """ Construct restraints and output .geo file.
+  Make sure long chain ids are properly outputted.
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
+  m = mmtbx.model.manager(model_input = inp)
+  m.process(make_restraints=True)
+  geo = m.restraints_as_geo()
+  # print (geo)
+  for l in [
+    'bond pdb=" CA  PHEA-5   4 "',
+    'pdb=" CB  PHEA-5   4 "',
+    'angle pdb=" C   THRA-5   5 "',
+    'dihedral pdb=" N   SERA-5   2 "',
+    'chirality pdb=" CA  ASNA-5   3 "',
+    'nonbonded pdb=" O   PHEA-5   4 "',]:
+    assert_lines_in_text(geo, l)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
   test2()
+  try:
+    mon_lib_srv = monomer_library.server.server()
+  except: # intentional
+    print("Can not initialize monomer_library, skipping test.")
+  if mon_lib_srv is not None:
+    test3()
   print("OK. Time: %8.3f"%(time.time()-t0))
