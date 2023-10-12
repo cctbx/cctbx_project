@@ -303,6 +303,7 @@ if (__name__ == "__main__"):
   t0 = time.time()
   test1()
   test2()
+  mon_lib_srv = None
   try:
     mon_lib_srv = monomer_library.server.server()
   except: # intentional
