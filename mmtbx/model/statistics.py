@@ -292,6 +292,10 @@ class geometry(object):
     return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
       r.ramachandran.favored, r.ramachandran.outliers, r.rama_z.whole.value, r.c_beta.outliers)
 
+  def number_of_bonds(self):
+    bonds = self.bond()
+    return bonds.n
+
   def show(self, log=None, prefix="", exclude_protein_only_stats=False, uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):

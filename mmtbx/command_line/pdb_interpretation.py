@@ -50,10 +50,11 @@ def run(args):
   for file_name in work_params.restraints_cif_file_name:
     print("Processing CIF file: %s" % show_string(file_name))
     af = any_file(file_name = file_name)
-    for srv in [mon_lib_srv, ener_lib]:
+    for i, srv in enumerate([mon_lib_srv, ener_lib]):
       srv.process_cif_object(
         cif_object=af.file_object.model(),
-        file_name=af.file_name)
+        file_name=af.file_name,
+        process_tor=not i)
   #
   import mmtbx.monomer_library.pdb_interpretation
   from libtbx.utils import Sorry

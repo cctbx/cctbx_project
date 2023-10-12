@@ -359,7 +359,7 @@ def print_filtered_cif(cif):
 
 class process_cif_mixin(object):
 
-  def process_cif_object(self, cif_object, file_name=None, cache=True):
+  def process_cif_object(self, cif_object, file_name=None, cache=True, process_tor=False):
     if (file_name is None):
       source_info = None
     else:
@@ -368,6 +368,7 @@ class process_cif_mixin(object):
       self.convert_all(source_info=source_info,
                        cif_object=cif_object,
                        cache=cache,
+                       process_tor=process_tor,
         )
     except KeyboardInterrupt: raise
     except Exception:
@@ -430,7 +431,10 @@ class server(process_cif_mixin):
                   cif_object,
                   skip_comp_list=False,
                   cache=True,
+                  process_tor=False,
                   ):
+    if process_tor:
+      self.convert_ccp4_tor_list(source_info=source_info, cif_object=cif_object)
     self.convert_deriv_list_dict(cif_object=cif_object)
     self.convert_comp_synonym_list(cif_object=cif_object)
     self.convert_comp_synonym_atom_list(cif_object=cif_object)
@@ -497,6 +501,42 @@ class server(process_cif_mixin):
           "mod_rna3p_pyr.cif"]:
       self.process_cif(
         file_name=os.path.join(self.geostd_path, "rna_dna", file_name))
+
+  def convert_ccp4_tor_list(self, source_info, cif_object):
+    def get_tor_key(rc):
+      key = [rc['_chem_comp_tor.atom_id_1'],
+             rc['_chem_comp_tor.atom_id_2'],
+             rc['_chem_comp_tor.atom_id_3'],
+             rc['_chem_comp_tor.atom_id_4'],
+             ]
+      key.sort()
+      key=tuple(key)
+      return key
+    for key, block in cif_object.items():
+      if key=='comp_list': continue
+      tors = block.get_loop_or_row('_chem_comp_tor')
+      if tors is None: continue
+      if '_chem_comp_tor.alt_value_angle' in tors.keys(): continue
+      alt_value_angle = {}
+      remove=[]
+      for i, rc in enumerate(tors.iterrows()):
+        key = get_tor_key(rc)
+        tmp = alt_value_angle.setdefault(key, [])
+        if tmp:
+          remove.append(i)
+        if rc['_chem_comp_tor.value_angle'] not in tmp:
+          tmp.append(rc['_chem_comp_tor.value_angle'])
+      remove.reverse()
+      for r in remove:
+        tors.delete_row(r)
+      column = []
+      for row, key in zip(tors.iterrows(), alt_value_angle.keys()):
+        assert key==get_tor_key(row)
+        if len(alt_value_angle[key])==1:
+          column.append('.')
+        else:
+          column.append(','.join(alt_value_angle[key][1:]))
+      tors.add_column('_chem_comp_tor.alt_value_angle', column)
 
   def get_comp_comp_id_direct(self,
                               comp_id,
@@ -689,6 +729,7 @@ class ener_lib(process_cif_mixin):
                   cif_object,
                   use_neutron_distances=False,
                   cache=True, # not used
+                  process_tor=False, # not used
                   ):
     if (source_info is not None):
       self.source_infos.append(source_info)
