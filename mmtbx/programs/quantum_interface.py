@@ -420,12 +420,14 @@ Usage examples:
       pf = '%s_all.phil' % (
         self.data_manager.get_default_model_name().replace('.pdb',''))
       f=open(pf, 'w')
-      f.write('qi {\n')
+      f.write('refinement.qi {\n')
       for line in outl.splitlines():
         if line.strip().startswith('.'): continue
         f.write('%s\n' % line)
       f.write('}\n')
       del f
+      print('  phenix.refine %s %s qi.nproc=6' % (self.data_manager.get_default_model_name(),
+                                                  pf))
       return
 
     if self.params.qi.each_water:
