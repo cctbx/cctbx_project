@@ -147,6 +147,7 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
   "$D/regression/tst_hierarchy_long_chain_ids_1.py",
   "$D/regression/tst_hierarchy_long_resname_1.py",
+  "$D/regression/tst_hierarchy_long_resname_2.py",
   "$D/regression/tst_hierarchy_copy_select.py",
   "$D/regression/tst_hierarchy_id_str.py",
   ]
