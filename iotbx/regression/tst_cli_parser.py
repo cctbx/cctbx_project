@@ -208,6 +208,30 @@ other_file = %s
           'miller_array.user_selected=FW']
   )
 
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.labels.name=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.labels.name=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.user_selected=FWT,PHIFWT']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.user_selected=FWT,PHIFWT']
+  )
+
   # non map_coefficients should not be copied
   try:
     run_program(
@@ -257,6 +281,27 @@ other_file = %s
     )
   except Sorry as s:
     assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.labels.name=FWT,PHIFWT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.labels.name=FWT,PHIFWT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
 
 # =============================================================================
 if __name__ == '__main__':
