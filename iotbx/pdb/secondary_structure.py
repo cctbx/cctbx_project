@@ -1331,11 +1331,10 @@ class annotation(structure_base):
   def split_sheets(self):
     "Split all multi-strand sheets into 2-strand sheets"
     new_sheets=[]
-    from copy import deepcopy
     for sheet in self.sheets:
       new_sheets+=sheet.split(starting_sheet_id_number=len(new_sheets)+1)
     return annotation(
-      helices=deepcopy(self.helices),
+      helices=copy.deepcopy(self.helices),
       sheets=new_sheets)
 
   def merge_sheets(self):
@@ -1343,7 +1342,6 @@ class annotation(structure_base):
     # Assumes that all the sheets are non-overlapping
     # First run sheet.split() on all sheets or split_sheets on the annotation
     #  as this requires 2-strand sheets (not 3 or more)
-    from copy import deepcopy
 
     sheet_pointer_0={}
     sheet_pointer_1={}
@@ -1370,7 +1368,7 @@ class annotation(structure_base):
         if key in sheet_pointer_0.keys() and (
             iter==1 or not key in sheet_pointer_1.keys()):
           used_strand_selections.append(key)
-          working_sheet=deepcopy(sheet_pointer_0.get(key))
+          working_sheet=copy.deepcopy(sheet_pointer_0.get(key))
           new_sheets.append(working_sheet)  # now we will extend this sheet
 
           second_strand=working_sheet.strands[1] # second strand
@@ -1383,8 +1381,8 @@ class annotation(structure_base):
             if not next_sheet: break
             used_strand_selections.append(next_key)
 
-            next_strand=deepcopy(next_sheet.strands[1])
-            next_registration=deepcopy(next_sheet.registrations[1])
+            next_strand=copy.deepcopy(next_sheet.strands[1])
+            next_registration=copy.deepcopy(next_sheet.registrations[1])
 
             working_sheet.add_strand(next_strand)
             working_sheet.add_registration(next_registration)
@@ -1404,7 +1402,7 @@ class annotation(structure_base):
         strand.strand_id=strand_number
 
     # Now new_sheets has strands arranged in sheets.
-    new_annotation=deepcopy(self)
+    new_annotation=copy.deepcopy(self)
     new_annotation.sheets=new_sheets
     return new_annotation
 
@@ -1518,10 +1516,9 @@ class annotation(structure_base):
       sheet_or_helix_list=self.sheets)
     new_helices=self.select_best_overlapping_annotations(hierarchy=hierarchy,
       sheet_or_helix_list=self.helices)
-    from copy import deepcopy
     new_annotation=annotation(
-      helices=deepcopy(new_helices),
-      sheets=deepcopy(new_sheets))
+      helices=copy.deepcopy(new_helices),
+      sheets=copy.deepcopy(new_sheets))
     return new_annotation.merge_sheets()
 
   def select_best_overlapping_annotations(self,hierarchy=None,
@@ -2474,8 +2471,7 @@ class pdb_strand_register(structure_base):
 
   def reversed(self):
     # swap cur and prev
-    from copy import deepcopy
-    new_register=deepcopy(self)
+    new_register=copy.deepcopy(self)
     for key in [
         'atom',
         'resname',
@@ -2947,19 +2943,18 @@ class pdb_sheet(structure_base):
   def split(self,starting_sheet_id_number=1):
     assert len(self.strands)==len(self.registrations)
     new_sheets=[]
-    from copy import deepcopy
     for s1,s2,r2 in zip(
       self.strands[:-1],
       self.strands[1:],self.registrations[1:]):
       self_id="%d" %(len(new_sheets)+1)
-      new_s1=deepcopy(s1)
+      new_s1=copy.deepcopy(s1)
       new_s1.sense=0
       new_s1.strand_id=1
       new_s1.sheet_id="%d" %(starting_sheet_id_number)
-      new_s2=deepcopy(s2)
+      new_s2=copy.deepcopy(s2)
       new_s2.strand_id=2
       new_s2.sheet_id="%d" %(starting_sheet_id_number)
-      new_r2=deepcopy(r2)
+      new_r2=copy.deepcopy(r2)
       new_sheet=pdb_sheet(
              sheet_id="%d" %(starting_sheet_id_number),
              n_strands=2,
