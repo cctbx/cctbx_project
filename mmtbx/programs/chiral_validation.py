@@ -6,6 +6,7 @@ from mmtbx.model import manager
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -53,17 +54,6 @@ Example:
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
-    result = chiralities(
-      pdb_hierarchy=hierarchy,
-      nontrans_only=self.params.nontrans_only,
-      out=self.logger,
-      quiet=False)
-    return result.as_JSON()
-
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
@@ -86,6 +76,8 @@ Example:
     model.process(make_restraints=True, pdb_interpretation_params=p)
     geometry_restraints_manager = model.get_restraints_manager().geometry
     pdb_hierarchy = model.get_hierarchy()
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
     pdb_hierarchy.atoms().reset_i_seq()
     xray_structure = model.get_xray_structure()
     from mmtbx import restraints
@@ -98,7 +90,7 @@ Example:
       sites_cart=sites_cart,
       compute_gradients=False).geometry
     restraint_proxies = getattr(restraints_manager.geometry, "chirality_proxies")
-    result = chiralities(
+    self.results = chiralities(
         pdb_atoms=pdb_atoms,
         sites_cart=sites_cart,
         energies_sites=energies_sites,
@@ -110,14 +102,19 @@ Example:
         use_segids_in_place_of_chainids=False)
 
     if self.params.kinemage:
-      print(result.as_kinemage(), file=self.logger)
+      print(self.results.as_kinemage(), file=self.logger)
     elif self.params.json:
-      print(result.as_JSON(), file=self.logger)
+      print(self.results.as_JSON(self.info_json), file=self.logger)
     else:
-      result.show(out=self.logger, verbose=True)
+      self.results.show(out=self.logger, verbose=True)
     if f:
       try:
         f.close()
       except Exception:
         raise Sorry("Could not close output file")
 
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

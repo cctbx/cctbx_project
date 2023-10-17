@@ -201,8 +201,11 @@ class rna_bonds(rna_geometry):
 
   def get_result_class(self) : return rna_bond
 
-  def as_JSON(self):
-    data = {"validation_type": "rna_bonds"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rna_bonds"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -286,8 +289,11 @@ class rna_angles(rna_geometry):
 
   def get_result_class(self) : return rna_angle
 
-  def as_JSON(self):
-    data = {"validation_type": "rna_angles"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rna_angles"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -412,8 +418,11 @@ class rna_puckers(rna_geometry):
 
   def get_result_class(self) : return rna_pucker
 
-  def as_JSON(self):
-    data = {"validation_type": "rna_puckers"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rna_puckers"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -509,8 +518,10 @@ class rna_validation(slots_getstate_setstate):
         make_sub_header(rv.label, out=out)
         rv.show(out=out)
 
-  def as_JSON(self):
-    rna_json = {}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    rna_json = addon_json
     for slot in self.__slots__:
       slot_json = json.loads(getattr(self, slot).as_JSON())
       rna_json["rna_"+slot] = slot_json

@@ -338,8 +338,11 @@ class suitealyze(rna_geometry):
     print(self.suiteness_summary_block(include_suites=["1a"]), file=out)
     print(self.suiteness_summary_block(exclude_suites=["1a","__"]), file=out)
 
-  def as_JSON(self):
-    data = {"validation_type": "rna_suites"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rna_suites"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
