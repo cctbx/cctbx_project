@@ -290,8 +290,11 @@ class rotalyze(validation):
     frame.Show()
     return frame
 
-  def as_JSON(self):
-    data = {"validation_type": "rotalyze"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rotalyze"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}

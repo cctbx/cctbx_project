@@ -1580,8 +1580,11 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
-  def as_JSON(self):
-    data = {"validation_type": "cablam"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "cablam"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     for result in self.results:

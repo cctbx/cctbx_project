@@ -266,8 +266,11 @@ These categories are general suggestions. Check your electron density; trust you
 #          print(prefix + str(result), file=out)
 #    self.show_summary(out=out, prefix=prefix)
 
-  def as_JSON(self):
-    data = {"validation_type": "undowser"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "undowser"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}

@@ -149,8 +149,11 @@ class mp_bonds(validation):
 
   def get_result_class(self) : return mp_bond
 
-  def as_JSON(self):
-    data = {"validation_type": "mp_bonds"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "mp_bonds"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -232,8 +235,11 @@ class mp_angles(validation):
 
   def get_result_class(self) : return mp_angle
 
-  def as_JSON(self):
-    data = {"validation_type": "mp_angles"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "mp_angles"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -304,9 +310,11 @@ class mp_validate_bonds(slots_getstate_setstate):
         make_sub_header(rv.label, out=out)
         rv.show(out=out)
 
-  def as_JSON(self):
-    mp_json = {}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    mp_json = addon_json
     for slot in self.__slots__:
       slot_json = json.loads(getattr(self, slot).as_JSON())
-      rna_json["mp_"+slot] = slot_json
-    return json.dumps(rna_json, indent=2)
+      mp_json["mp_"+slot] = slot_json
+    return json.dumps(mp_json, indent=2)

@@ -318,7 +318,6 @@ def exercise_cablam_json2():
 
   cablam_json = cablamalyze.as_JSON()
   cablam_dict = json.loads(cablam_json)
-  print(cablam_json)
   assert cablam_dict['summary_results']["   2"]["num_cablam_disfavored"]==1, "tst_cablam summary json model 2 num_disfavored value changed, now: "+str(cablam_dict['summary_results']["   2"]["num_cablam_disfavored"])
   assert cablam_dict['summary_results']["   1"]["num_cablam_outliers"]==1, "tst_cablam summary json model 1 num_outliers value changed, now: "+str(cablam_dict['summary_results']["   1"]["num_cablam_outliers"])
 
