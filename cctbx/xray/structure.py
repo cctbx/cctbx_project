@@ -437,6 +437,8 @@ class structure(crystal.special_position_settings):
         b_min = int(max(0.0, b_mean - spread))
     if b_min is not None and b_max is not None:
       assert b_min <= b_max, [b_min,b_max,spread,b_mean]
+      b_min = int(b_min)
+      b_max = int(b_max)
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
