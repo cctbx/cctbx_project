@@ -302,7 +302,13 @@ class Optimizer(object):
       # This handles the case of missing atoms in the model that would make it
       # look like hydrogens are rotatable to the simpler method defined in
       # this file.
-      rotatableHydrogens = model.rotatable_hd_selection(iselection=True)
+      #rotatableHydrogens = model.rotatable_hd_selection(iselection=True)
+      rotatableHydrogens = flex.size_t()
+      for p in h_parameterization:
+        if p is not None:
+          if p.htype in ['alg1b', 'prop']:
+            rotatableHydrogens.append(p.ih)
+
       self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens (detailed)")
 
     startModelIndex = 0
