@@ -296,20 +296,16 @@ class Optimizer(object):
       pass
     riding_h_manager = model.get_riding_h_manager()
     h_parameterization = riding_h_manager.h_parameterization
-    if keepExistingH:
-      # If we are keeping existing Hydrogens, then we need to make sure that the
-      # more-general approach is taken to adding single-hydrogen rotators.
-      # This handles the case of missing atoms in the model that would make it
-      # look like hydrogens are rotatable to the simpler method defined in
-      # this file.
-      #rotatableHydrogens = model.rotatable_hd_selection(iselection=True)
-      rotatableHydrogens = flex.size_t()
-      for p in h_parameterization:
-        if p is not None:
-          if p.htype in ['alg1b', 'prop']:
-            rotatableHydrogens.append(p.ih)
 
-      self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens (detailed)")
+    # Find the single-hydrogen rotators.
+    # Dorothee provided this faster approach that uses the riding_h_manager.
+    rotatableHydrogens = flex.size_t()
+    for p in h_parameterization:
+      if p is not None:
+        if p.htype  == 'alg1b':
+          rotatableHydrogens.append(p.ih)
+
+    self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens")
 
     startModelIndex = 0
     stopModelIndex = len(model.get_hierarchy().models())
@@ -321,13 +317,6 @@ class Optimizer(object):
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
-
-      if not keepExistingH:
-        # Find the single rotatable hydrogens in this model, which we'll use to place Movers.
-        # We can use the simpler and faster method to find these because we know that hydrogens will
-        # only have been placed where they have good restraints.
-        rotatableHydrogens = self._getRotatableSingleHydrogens(myModel, bondedNeighborLists)
-        self._infoString += _ReportTiming(self._verbosity, "select rotatable hydrogens (fast)")
 
       ################################################################################
       # Store the states (position and extra atom info) of all of the atoms in this model
@@ -829,27 +818,6 @@ class Optimizer(object):
 
   ##################################################################################
   # Placement
-
-  def _getRotatableSingleHydrogens(self, model, bondedNeighborLists):
-    """Produce a list of the i_seq numbers of hydrogens that are rotatable. These
-    are defined as hydrogens that are bonded to a single neighbor that is itself
-    bonded to only a single other neighbor and the other neighbor is not a hydrogen.
-    This is a fast and simple calculation compared to the one that is called when
-    the hydrogens were placed by the author. It should work when all hydrogens that
-    have been placed have a complete set of restraints (as the ones placed by
-    hydrogen-placement do).
-    :return: a list of i_seq numbers for hydrogens that are rotatable.
-    """
-    rotatableHydrogenIDs = []
-    for a in model.atoms():
-      if a.element_is_hydrogen():
-        if len(bondedNeighborLists[a]) == 1:
-          neighbor = bondedNeighborLists[a][0]
-          if len(bondedNeighborLists[neighbor]) == 2:
-            if ( (not bondedNeighborLists[neighbor][0].element_is_hydrogen()) or
-                 (not bondedNeighborLists[neighbor][1].element_is_hydrogen()) ):
-              rotatableHydrogenIDs.append(a.i_seq)
-    return rotatableHydrogenIDs
 
   def _PlaceMovers(self, atoms, rotatableHydrogenIDs, bondedNeighborLists, hParameters,
                     addFlipMovers):
