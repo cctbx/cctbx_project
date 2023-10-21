@@ -11,6 +11,10 @@ namespace smtbx { namespace ED
   struct utils {
     ED_UTIL_TYPEDEFS;
 
+    static cart_t Kl_as_K(FloatType Kl) {
+      return cart_t(0, 0, -Kl);
+    }
+
     static void build_Ug_matrix(
       cmat_t& A,
       const af::shared<complex_t> &Fcs_k,
@@ -55,13 +59,14 @@ namespace smtbx { namespace ED
       const af::shared<complex_t>& Fcs_k,
       const lookup_t& mi_lookup,
       const af::shared<miller::index<> >& index_selection,
-      FloatType Kl,
+      const cart_t& K,
       const miller::index<> &h,
       const mat3_t &RMf,
       size_t num, bool use_Sg, FloatType wght)
     {
       typedef std::pair<size_t, FloatType> se_t;
       std::vector<se_t> beams;
+      cart_t g0 = RMf * cart_t(h[0], h[1], h[2]);
       for (size_t i = 0; i < index_selection.size(); i++) {
         miller::index<> h_ = index_selection[i];
         if (h_ == h) {
@@ -69,7 +74,7 @@ namespace smtbx { namespace ED
         }
         long idx = mi_lookup.find_hkl(h_);
         cart_t g = RMf * cart_t(h_[0], h_[1], h_[2]);
-        FloatType Sg = std::abs(calc_Sg(g, Kl));
+        FloatType Sg = std::abs(calc_Sg(g, K));
         if (use_Sg) {
           beams.push_back(std::make_pair(i, Sg));
         }
@@ -83,7 +88,7 @@ namespace smtbx { namespace ED
       indices.push_back(h);
       if (use_Sg) {
         for (size_t i = 0; i < std::min(num, beams.size()); i++) {
-          if (beams[i].second < 0.0025) {
+          if (beams[i].second < wght) {
             indices.push_back(index_selection[beams[i].first]);
             if (indices.size() == num) {
               break;
@@ -108,6 +113,7 @@ namespace smtbx { namespace ED
     {
       const size_t n_beams = indices.size() + 1; // g0+
       size_t n_param = DM_kin.accessor().n_columns();
+      Ds_kin.clear();
       Ds_kin.reserve(n_param);
       for (size_t pi = 0; pi < n_param; pi++) {
         cmat_t D(af::mat_grid(n_beams, n_beams));
@@ -207,7 +213,7 @@ namespace smtbx { namespace ED
       af::shared<FloatType> const& excitation_errors,
       af::shared<FloatType>& ExpDen)
     {
-      const FloatType Kn = N * K, Kl = K.length();
+      const FloatType Kn = N * K;
       const size_t n_beams = A.accessor().n_columns();
       ExpDen.resize(n_beams);
       ExpDen[0] = Kn; //for g0
@@ -347,24 +353,17 @@ namespace smtbx { namespace ED
         A[3].real() * std::exp(v[1] * exp_k) * A[1].real();
     }
 
-    static FloatType calc_Sg(cart_t const& g,
-      cart_t const& K)
-    {
+    static FloatType calc_Sg(const cart_t& g, const cart_t& K) {
+#ifdef _DEBUG
+      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
+#endif
       FloatType Kl = K.length();
       cart_t Kg = K + g;
       return (Kl * Kl - Kg.length_sq()) / (2 * Kl);
     }
 
-    // considers K being at (0, 0, -Kl)
-    static FloatType calc_Sg(cart_t const& g,
-      FloatType Kl)
-    {
-      FloatType Kg_sql = cart_t(g[0], g[1], g[2] - Kl).length_sq();
-      return (Kl * Kl - Kg_sql) / (2 * Kl);
-    }
-
     static bool is_excited_g(cart_t const& g,
-      cart_t const& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
+      const cart_t& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
       FloatType gl = g.length(),
         Sg = std::abs(calc_Sg(g, K));

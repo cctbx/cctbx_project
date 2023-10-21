@@ -127,7 +127,7 @@ namespace least_squares {
 
       void operator()() {
         try {
-          const cart_t K = cart_t(0, 0, -parent.Kl);
+          const cart_t K = utils<FloatType>::Kl_as_K(parent.Kl);
           if (parent.use_n_beam) {
             int beam_n = parent.params.getBeamN();
             cmat_t A;
@@ -154,7 +154,7 @@ namespace least_squares {
                 std::pair<mat3_t, cart_t> FI = frame.compute_RMf_N(da);
                 indices = utils<FloatType>::build_Ug_matrix_N(A,
                   Fcs_k, parent.mi_lookup,
-                  strong_indices, parent.Kl, h, FI.first, beam_n,
+                  strong_indices, K, h, FI.first, beam_n,
                   parent.params.useNBeamSg(), parent.params.getNBeamWght());
                 dc = dyn_calculator_factory<FloatType>(parent.mat_type)
                   .make(indices, K, thickness);

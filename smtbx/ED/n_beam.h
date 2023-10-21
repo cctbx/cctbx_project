@@ -57,7 +57,7 @@ namespace smtbx { namespace ED
       const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
     {
       indices = utils<FloatType>::build_Ug_matrix_N(A, Fcs_kin, mi_lookup,
-        strong_indices, K.length(), h, RMf, beam_n, useSgInt, wght);
+        strong_indices, K, h, RMf, beam_n, useSgInt, wght);
       dc = dc_f.make(indices, K, thickness);
       return *this;
     }
