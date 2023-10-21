@@ -58,9 +58,9 @@ namespace smtbx { namespace ED
 
     // returns angle in rads at which the excitation error is 0
     FloatType get_diffraction_angle(const miller::index<>& h,
-      FloatType Kl, FloatType sweep_angle=3) const
+      const cart_t& K, FloatType sweep_angle=3) const
     {
-      return Sg_to_angle(0, h, Kl, sweep_angle);
+      return Sg_to_angle(0, h, K, sweep_angle);
     }
 
     /* returns angle in rads at which the excitation error is Sg as
@@ -68,12 +68,15 @@ namespace smtbx { namespace ED
     */
     std::pair<FloatType, FloatType> Sg_to_angle_k(
       const miller::index<>& h,
-      FloatType Kl, FloatType sweep_angle = 3) const
+      const cart_t& K, FloatType sweep_angle = 3) const
     {
-      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
+#ifdef _DEBUG
+      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
+#endif
+      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
       std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, Kl);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
       FloatType k = (Sg2 - Sg1) / ang_diff;
       //FloatType a = Sg1 - k*alpha;
       //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
@@ -82,9 +85,12 @@ namespace smtbx { namespace ED
 
     /* returns angle in rads at which the excitation error is Sg */
     FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
-      FloatType Kl, FloatType sweep_angle = 3) const
+      const cart_t& K, FloatType sweep_angle = 3) const
     {
-      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, Kl, sweep_angle);
+#ifdef _DEBUG
+      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
+#endif
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K, sweep_angle);
       return alpha + (Sg - k.first) / k.second;
     }
 
@@ -93,12 +99,15 @@ namespace smtbx { namespace ED
     excitation andle is too hight at the edge of the frame
     */
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
-      FloatType Kl, FloatType sweep_angle)
+      const cart_t& K, FloatType sweep_angle)
     {
-      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, Kl);
+#ifdef _DEBUG
+      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
+#endif
+      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
       std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, Kl);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
       FloatType k = (Sg2 - Sg1) / ang_diff;
       //FloatType a = Sg1 - k*alpha;
       //return k * ang + a = k*(ang-alpha) + Sg1;
@@ -106,22 +115,22 @@ namespace smtbx { namespace ED
     }
 
     bool is_excited_index(const miller::index<> &h,
-      FloatType Kl,
+      const cart_t& K,
       FloatType MaxSg,
       FloatType MaxG
       ) const;
   
     bool is_excited_beam(const BeamInfo<FloatType>& beam,
-      FloatType Kl,
+      const cart_t& K,
       FloatType MaxSg,
       FloatType MaxG
     ) const;
 
-    void top_up(cart_t const& Kl,
+    void top_up(cart_t const& K,
       size_t num, FloatType min_d,
       FloatType MaxSg, FloatType MaxG,
       uctbx::unit_cell const& unit_cell,
-      sgtbx::space_group const& space_group, bool anomalous
+      sgtbx::space_group const& space_group, bool force_frame_normal
     );
 
     void add_indices(const af::shared<miller::index<> >& indices);
@@ -141,17 +150,18 @@ namespace smtbx { namespace ED
       cart_t const& K,
       FloatType MaxG,
       FloatType MaxSg,
-      FloatType MinP);
+      FloatType MinP,
+      bool force_Sg);
     /* computes integration angles making sure that the diffraction angles are
     in the list. Using threshold to merge near-by points
     * */
-    af::shared<FloatType> get_int_angles(FloatType Kl, FloatType span,
+    af::shared<FloatType> get_int_angles(const cart_t& K, FloatType span,
       FloatType step, size_t N, bool use_Sg) const;
     /* returns all angles for span with step */
     static af::shared<FloatType> get_angles(FloatType  ang,
       FloatType span, FloatType step);
     af::shared<FloatType> get_angles_Sg(const miller::index<> &h,
-      FloatType Kl, FloatType Sg_span, FloatType Sg_step) const;
+      const cart_t& K, FloatType Sg_span, FloatType Sg_step) const;
 
     int id, tag;
     cart_t normal, original_normal;
@@ -185,16 +195,16 @@ namespace smtbx { namespace ED
 
   template <typename FloatType>
   bool FrameInfo<FloatType>::is_excited_index(const miller::index<>& h,
-    FloatType Kl, FloatType MaxSg, FloatType MaxG) const
+    const cart_t& K, FloatType MaxSg, FloatType MaxG) const
   {
-    return utils<FloatType>::is_excited_h(h, RMf, Kl, MaxSg, MaxG, angle);
+    return utils<FloatType>::is_excited_h(h, RMf, K, MaxSg, MaxG, angle);
   }
 
   template <typename FloatType>
   bool FrameInfo<FloatType>::is_excited_beam(const BeamInfo<FloatType>& beam,
-    FloatType Kl, FloatType MaxSg, FloatType MaxG) const
+    const cart_t& K, FloatType MaxSg, FloatType MaxG) const
   {
-    return is_excited_index(beam.index, Kl, MaxSg, MaxG);
+    return is_excited_index(beam.index, K, MaxSg, MaxG);
   }
 
   template <typename FloatType>
@@ -232,28 +242,33 @@ namespace smtbx { namespace ED
     size_t num, FloatType min_d,
     FloatType MaxSg, FloatType MaxG,
     uctbx::unit_cell const& unit_cell,
-    sgtbx::space_group const &space_group, bool anomalous)
+    sgtbx::space_group const &space_group, bool force_frame_normal)
   {
     if (indices.size() >= num) {
       return;
     }
-    FloatType Kl = K.length();
     typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
-    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
-    for (size_t i = 0; i < beams.size(); i++) {
-      FloatType da = this->get_diffraction_angle(beams[i].index, Kl);
-      RMfs.push_back(this->compute_RMf_N(da).first);
+    af::shared<typename utils<FloatType>::ExcitedBeam> ebeams;
+    if (force_frame_normal) {
+      ebeams = utils<FloatType>::generate_index_set(RMf, K, min_d,
+        MaxG, MaxSg, unit_cell);
+    }
+    else {
+      af::shared<mat3_t> RMfs(af::reserve(beams.size()));
+      for (size_t i = 0; i < beams.size(); i++) {
+        FloatType da = this->get_diffraction_angle(beams[i].index, K);
+        RMfs.push_back(this->compute_RMf_N(da).first);
+      }
+      ebeams = utils<FloatType>::generate_index_set(RMfs, K, min_d,
+        MaxG, MaxSg, unit_cell);
     }
 
-    af::shared<typename utils<FloatType>::ExcitedBeam> ebeams =
-      utils<FloatType>::generate_index_set(RMfs, K, min_d,
-        MaxG, MaxSg, unit_cell);
 
     lookup_t existing = lookup_t(
       indices.const_ref(),
       space_group,
-      anomalous);
+      true);
 
     for (size_t i = 0; i < ebeams.size(); i++) {
       if (existing.add_hkl(ebeams[i].h)) {
@@ -272,7 +287,8 @@ namespace smtbx { namespace ED
     cart_t const& K,
     FloatType MaxG,
     FloatType MaxSg,
-    FloatType MinP)
+    FloatType MinP,
+    bool force_Sg)
   {
     SMTBX_ASSERT(indices.size() == Ugs.size());
     strong_beams.clear();
@@ -290,10 +306,10 @@ namespace smtbx { namespace ED
       miller::index<> const& h = indices[i];
       cart_t g = RMf * cart_t(h[0], h[1], h[2]);
       gs[i] = g;
-      FloatType g_sq = g.length_sq();
-      if (g_sq > max_f_sq) { // || g_sq * p_ang_sq > 1.0) {
-        continue;
-      }
+      //FloatType g_sq = g.length_sq();
+      //if (g_sq > max_f_sq) { // || g_sq * p_ang_sq > 1.0) {
+      //  continue;
+      //}
       cart_t K_g = K + g;
       FloatType s = Kl_sq - K_g.length_sq();
       excitation_errors[i] = s;
@@ -301,6 +317,13 @@ namespace smtbx { namespace ED
         s = -s;
       }
       FloatType Sg = s / (2 * Kl);
+      if (!force_Sg) {
+        strong_beams.push_back(i);
+        if (i < beams.size() && Sg < MaxSg) {
+          strong_measured_beams.push_back(i);
+        }
+        continue;
+      }
       if (Sg < MaxSg) {
         strong_beams.push_back(i);
         if (i < beams.size()) {
@@ -341,9 +364,9 @@ namespace smtbx { namespace ED
   template <typename FloatType>
   af::shared<FloatType> FrameInfo<FloatType>::get_angles_Sg(
     const miller::index<>& h,
-    FloatType Kl, FloatType Sg_span, FloatType Sg_step) const
+    const cart_t& K, FloatType Sg_span, FloatType Sg_step) const
   {
-    std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, Kl);
+    std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
     af::shared<FloatType> rv(af::reserve(std::abs(Sg_span * 2 / Sg_step) + 1));
     for (FloatType Sg = -Sg_span; Sg <= Sg_span; Sg += Sg_step) {
       FloatType ang = alpha + (Sg - k.first) / k.second;
@@ -370,16 +393,16 @@ namespace smtbx { namespace ED
   /* input span and step are in degrees */
   template <typename FloatType>
   af::shared<FloatType> FrameInfo<FloatType>::get_int_angles(
-    FloatType Kl, FloatType span_, FloatType step_, size_t N, bool use_Sg) const
+    const cart_t& K, FloatType span_, FloatType step_, size_t N, bool use_Sg) const
   {
     af::shared<FloatType> angles, d_angles, res;
     for (size_t i = 0; i < strong_measured_beams.size(); i++) {
       const miller::index<>& h = indices[strong_measured_beams[i]];
-      FloatType da = this->get_diffraction_angle(h, Kl);
+      FloatType da = this->get_diffraction_angle(h, K);
       d_angles.push_back(da);
       af::shared<FloatType> b_angles;
       if (use_Sg) {
-        b_angles = get_angles_Sg(h, Kl, span_, step_);
+        b_angles = get_angles_Sg(h, K, span_, step_);
       }
       else {
         b_angles = get_angles(alpha, span_, step_);
@@ -432,7 +455,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() >= 13);
+      SMTBX_ASSERT(values.size() >= 14);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -453,6 +476,7 @@ namespace smtbx { namespace ED
     FloatType useNBeamSg() const { return values[11] == 1; }
     // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight) 
     FloatType getNBeamWght() const { return values[12]; }
+    bool isNBeamFloating() const { return values[13] != 0; }
   };
 
 }}
