@@ -46,7 +46,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       compute_grad(compute_grad),
       thread_n(params.getThreadN())
     {
-      K = cart_t(0, 0, -Kl);
+      K = utils<FloatType>::Kl_as_K(Kl);
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
       // treat equivalents independently inside the frames
@@ -220,7 +220,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     // Acta Cryst. (2013). A69, 171–188
     FloatType get_observable_pltns_2013() const {
-      FloatType da = frame->get_diffraction_angle(h, data.Kl);
+      FloatType da = frame->get_diffraction_angle(h, data.K);
       size_t n_param = data.Jt_matching_grad_fc.n_rows();
       size_t coln = data.design_matrix_kin.accessor().n_columns();
       af::shared<FloatType> grads_sum(coln);
@@ -270,10 +270,10 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     // returns I, d_I_d_F_sq, d_I_d_EDT
     af::shared<FloatType> get_observable_pltns_2013_(FloatType angle) const {
       FloatType Kl = data.Kl;
+      cart_t K = data.K;
       std::pair<mat3_t, cart_t> FI = frame->compute_RMf_N(angle);
 
       cart_t g = FI.first * cart_t(h[0], h[1], h[2]);
-      cart_t K = cart_t(0, 0, -Kl);
 
       FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
       FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
@@ -317,7 +317,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     FloatType get_observable_N() const {
-      FloatType da = frame->get_diffraction_angle(h, data.Kl);
+      FloatType da = frame->get_diffraction_angle(h, data.K);
       af::shared<FloatType> angles;
       if (data.params.isAngleInt()) {
         angles = frame->get_angles(da,
@@ -325,21 +325,24 @@ namespace smtbx {  namespace refinement  { namespace least_squares
           data.params.getIntStep());
       }
       else {
-        angles = frame->get_angles_Sg(h, data.Kl,
+        angles = frame->get_angles_Sg(h, data.K,
           data.params.getIntSpan(),
           data.params.getIntStep());
       }
 
+      std::pair<mat3_t, cart_t> da_r = frame->compute_RMf_N(da);
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
         data.params.getMatrixType(),
         *frame, data.K, data.thickness.value,
         data.params.useNBeamSg(), data.params.getNBeamWght());
 
-      n_beam_dc.init(h, da, data.Fcs_kin, data.mi_lookup);
+      if (!data.params.isNBeamFloating()) {
+        n_beam_dc.init(h, da_r.first, data.Fcs_kin, data.mi_lookup);
+      }
 
-      af::shared<cmat_t> Ds_kin;
       mat_t D_dyn;
-      if (compute_grad) {
+      af::shared<cmat_t> Ds_kin;
+      if (compute_grad && !data.params.isNBeamFloating()) {
         utils<FloatType>::build_D_matrices(data.mi_lookup, n_beam_dc.indices,
           data.design_matrix_kin, Ds_kin);
       }
@@ -351,23 +354,31 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       FloatType I1 = -1, g1 = -1, I_sum = 0;
       for (size_t ai=0; ai < angles.size(); ai++) {
         std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
+        // keep the original normal
+        r.second = da_r.second;
         cart_t g = r.first * cart_t(h[0], h[1], h[2]);
         cart_t K_g = g + data.K;
         FloatType K_g_l = K_g.length();
 
         FloatType I;
         if (compute_grad) {
+          if (data.params.isNBeamFloating()) {
+            n_beam_dc.init(h, r.first, data.Fcs_kin, data.mi_lookup);
+            utils<FloatType>::build_D_matrices(data.mi_lookup, n_beam_dc.indices,
+              data.design_matrix_kin, Ds_kin);
+          }
           I = std::norm(
-            n_beam_dc.calc_amp_ext(r, Ds_kin, data.thickness.grad, D_dyn));
+            n_beam_dc.calc_amp_ext(r, Ds_kin, data.thickness.grad, D_dyn)
+          );
         }
         else {
+          if (data.params.isNBeamFloating()) {
+            n_beam_dc.init(h, r.first, data.Fcs_kin, data.mi_lookup);
+          }
           I = std::norm(n_beam_dc.calc_amp(r));
         }
         if (g1 >= 0) {
           FloatType d = std::abs(K_g_l - g1) / 2;
-          if (d == 0) {
-            continue;
-          }
           I_sum += (I + I1) * d;
           if (compute_grad) {
             for (size_t i = 0; i < coln; i++) {

@@ -49,7 +49,7 @@ namespace smtbx {
           compute_grad(compute_grad),
           thread_n(params.getThreadN())
         {
-          K = cart_t(0, 0, -Kl);
+          K = utils<FloatType>::Kl_as_K(Kl);
           // build lookups for each frame + collect all indices and they diffs
           af::shared<miller::index<> > all_indices;
           size_t offset = 0;

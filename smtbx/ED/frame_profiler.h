@@ -91,57 +91,34 @@ namespace smtbx { namespace ED {
 
     struct process_frame_profile {
       process_frame_profile(const frame_profiler& parent,
-        const FrameInfo<FloatType>& frame,
-        af::shared<FloatType>& Is)
+        const FrameInfo<FloatType>& frame)
         : parent(parent),
-        frame(frame),
-        Is(Is)
+        frame(frame)
       {}
 
-      void process(const mat3_t& RMf, const cart_t& N) {
+      // N-Beam specific
+      af::shared<FloatType> process(const miller::index<> &h, const af::shared<FloatType> &angles) const {
+        SMTBX_ASSERT(parent.use_n_beam && parent.params.getBeamN() > 2);
         try {
+          af::shared<FloatType> rv(angles.size());
           const cart_t K = cart_t(0, 0, -parent.Kl);
-          if (parent.use_n_beam) { // N-beam
-            /* a LOT of overhead here!!! may need to change the logic to speed up
-             as the matrix rebuilt for each angles
-             */
-            if (parent.params.getBeamN() > 2) {
-              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-                size_t beam_idx = frame.strong_measured_beams[i];
-                miller::index<> h = frame.indices[beam_idx];
-                dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
-                  parent.mat_type,
-                  frame, K, parent.thickness,
-                  parent.params.useNBeamSg(), parent.params.getNBeamWght());
-                FloatType da = frame.get_diffraction_angle(h, parent.Kl);
-                n_beam_dc.init(h, da, parent.Fcs_k, parent.mi_lookup);
-                Is[i] = std::norm(
-                  n_beam_dc.calc_amp(std::make_pair(RMf, N)));
-              }
-            }
-            else {
-              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-                size_t beam_idx = frame.strong_measured_beams[i];
-                miller::index<> h = frame.indices[beam_idx];
-                int ii = parent.mi_lookup.find_hkl(h);
-                complex_t Fc = ii != -1 ? parent.Fcs_k[ii] : 0;
-                Is[i] = std::norm(utils<FloatType>::calc_amp_2beam(
-                  h, Fc,
-                  parent.thickness,
-                  K, RMf, N));
-              }
-            }
-            return;
+          bool floating = parent.params.isNBeamFloating();
+          dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
+            parent.mat_type,
+            frame, K, parent.thickness,
+            parent.params.useNBeamSg(), parent.params.getNBeamWght());
+          if (!floating) {
+            FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+            n_beam_dc.init(h, da, parent.Fcs_k, parent.mi_lookup);
           }
-          boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
-            dyn_calculator_factory<FloatType>(parent.mat_type)
-              .make(parent.strong_indices, K, parent.thickness);
-          af::shared<complex_t> amps = 
-            dc->reset(parent.A, RMf, N).calc_amps(
-              frame.strong_measured_beams.size());
-          for (size_t i = 0; i < amps.size(); i++) {
-            Is[i] = std::norm(amps[i]);
+          for (size_t ai = 0; ai < angles.size(); ai++) {
+            std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
+            if (floating) {
+              n_beam_dc.init(h, r.first, parent.Fcs_k, parent.mi_lookup);
+            }
+            rv[i] = std::norm(n_beam_dc.calc_amp(r));
           }
+          return rv;
         }
         catch (smtbx::error const& e) {
           exception_.reset(new smtbx::error(e));
@@ -150,13 +127,17 @@ namespace smtbx { namespace ED {
           exception_.reset(new smtbx::error(e.what()));
         }
       }
-      
-      FloatType process_incident(const mat3_t& RMf, const cart_t& N) {
+
+      af::shared<FloatType> process(const mat3_t& RMf, const cart_t& N) {
+        af::shared<FloatType> Is(frame.strong_measured_beams.size());
         try {
           const cart_t K = cart_t(0, 0, -parent.Kl);
           if (parent.use_n_beam) { // N-beam
-            FloatType I_sum = 0;
+            /* a LOT of overhead here!!! may need to change the logic to speed up
+             as the matrix rebuilt for each angle
+             */
             if (parent.params.getBeamN() > 2) {
+              bool floating = parent.params.isNBeamFloating();
               for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
                 size_t beam_idx = frame.strong_measured_beams[i];
                 miller::index<> h = frame.indices[beam_idx];
@@ -164,7 +145,76 @@ namespace smtbx { namespace ED {
                   parent.mat_type,
                   frame, K, parent.thickness,
                   parent.params.useNBeamSg(), parent.params.getNBeamWght());
-                n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
+                FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+                std::pair<mat3_t, cart_t> da_r = frame.compute_RMf_N(da);
+                if (floating) {
+                  n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
+                }
+                else {
+                  FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+                  n_beam_dc.init(h, da_r.first, parent.Fcs_k, parent.mi_lookup);
+                }
+                Is[i] = std::norm(
+                  n_beam_dc.calc_amp(std::make_pair(RMf, da_r.second)));
+              }
+            }
+            else {
+              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+                size_t beam_idx = frame.strong_measured_beams[i];
+                miller::index<> h = frame.indices[beam_idx];
+                int ii = parent.mi_lookup.find_hkl(h);
+                complex_t Fc = ii != -1 ? parent.Fcs_k[ii] : 0;
+                FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+                std::pair<mat3_t, cart_t> da_r = frame.compute_RMf_N(da);
+                Is[i] = std::norm(utils<FloatType>::calc_amp_2beam(
+                  h, Fc,
+                  parent.thickness,
+                  K, RMf, da_r.second));
+              }
+            }
+          }
+          else {
+            boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
+              dyn_calculator_factory<FloatType>(parent.mat_type)
+              .make(parent.strong_indices, K, parent.thickness);
+            af::shared<complex_t> amps =
+              dc->reset(parent.A, RMf, frame.normal).calc_amps(
+                frame.strong_measured_beams.size());
+            for (size_t i = 0; i < amps.size(); i++) {
+              Is[i] = std::norm(amps[i]);
+            }
+          }
+        }
+        catch (smtbx::error const& e) {
+          exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const& e) {
+          exception_.reset(new smtbx::error(e.what()));
+        }
+        return Is;
+      }
+      
+      FloatType process_incident(const mat3_t& RMf, const cart_t& N) {
+        try {
+          const cart_t K = cart_t(0, 0, -parent.Kl);
+          if (parent.use_n_beam) { // N-beam
+            FloatType I_sum = 0;
+            if (parent.params.getBeamN() > 2) {
+              bool floating = parent.params.isNBeamFloating();
+              for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
+                size_t beam_idx = frame.strong_measured_beams[i];
+                miller::index<> h = frame.indices[beam_idx];
+                dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
+                  parent.mat_type,
+                  frame, K, parent.thickness,
+                  parent.params.useNBeamSg(), parent.params.getNBeamWght());
+                if (floating) {
+                  n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
+                }
+                else {
+                  FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+                  n_beam_dc.init(h, da, parent.Fcs_k, parent.mi_lookup);
+                }
                 I_sum += std::norm(
                   n_beam_dc.calc_amp(std::make_pair(RMf, N), 0));
               }
@@ -201,27 +251,26 @@ namespace smtbx { namespace ED {
       const frame_profiler& parent;
       const FrameInfo<FloatType>& frame;
       FloatType thickness;
-      af::shared<FloatType>& Is;
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
     af::shared<PeakProfilePoint<FloatType> > build_profile(
       const af::shared<FloatType>& angles, bool inc_incident)
     {
-      af::shared<FloatType> Is_(frame.beams.size());
       af::shared<PeakProfilePoint<FloatType> > rv;
-      const cart_t K = cart_t(0, 0, -Kl);
+      const cart_t K = utils<FloatType>::Kl_as_K(Kl);
+
+
       for (size_t ai = 0; ai < angles.size(); ai++) {
         FloatType ang = angles[ai];
         std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(ang);
-        std::fill(Is_.begin(), Is_.end(), 0);
-        process_frame_profile fp(*this, frame, Is_);
-        fp.process(r.first, r.second);
+        process_frame_profile fp(*this, frame);
+        af::shared<FloatType> Is = fp.process(r.first, r.second);
         if (fp.exception_) {
           throw* fp.exception_.get();
         }
         if (inc_incident) {
-          process_frame_profile ibp(*this, frame, Is_);
+          process_frame_profile ibp(*this, frame);
           FloatType I = ibp.process_incident(r.first, r.second);
           rv.push_back(PeakProfilePoint<FloatType>(I, 0.0, ang, Kl));
         }
@@ -230,7 +279,7 @@ namespace smtbx { namespace ED {
           miller::index<> h = frame.indices[beam_idx];
           cart_t g = r.first * cart_t(h[0], h[1], h[2]);
           FloatType Sg = utils<FloatType>::calc_Sg(g, K);
-          rv.push_back(PeakProfilePoint<FloatType>(Is_[i], Sg, ang, (K + g).length()));
+          rv.push_back(PeakProfilePoint<FloatType>(Is[i], Sg, ang, (K + g).length()));
         }
       }
       return rv;
@@ -239,14 +288,13 @@ namespace smtbx { namespace ED {
     af::shared<PeakProfilePoint<FloatType> > build_incident_profile(
       const af::shared<FloatType>& angles)
     {
-      af::shared<FloatType> Is_;
       af::shared<PeakProfilePoint<FloatType> > rv(
         af::reserve(angles.size()));
-      const cart_t K = cart_t(0, 0, -Kl);
+      const cart_t K = utils<FloatType>::Kl_as_K(Kl);
       for (size_t ai = 0; ai < angles.size(); ai++) {
         FloatType ang = angles[ai];
         std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(ang);
-        process_frame_profile fp(*this, frame, Is_);
+        process_frame_profile fp(*this, frame);
         FloatType I = fp.process_incident(r.first, r.second);
         if (fp.exception_) {
           throw* fp.exception_.get();
