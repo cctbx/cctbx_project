@@ -70,7 +70,7 @@ def get_hbonds_via_filenames(filenames, nq_or_h, nproc=1, restraint_filenames=No
                        'prefix=%s' % filename.replace('.pdb',''),
                        ]])
     if restraint_filenames:
-      argstuples[-1][-1]+=self.restraint_filenames
+      argstuples[-1][-1]+=restraint_filenames
 
   rc = run_serial_or_parallel(run_hbond, argstuples, nproc=nproc)
 
