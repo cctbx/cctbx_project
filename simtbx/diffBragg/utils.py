@@ -566,6 +566,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     MAIN_LOGGER.debug("Number of skipped ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))
     MAIN_LOGGER.debug("Number of skipped ROI with NAN in BGs: %d / %d" % (num_roi_nan_bg, len(rois)))
     MAIN_LOGGER.info("Number of ROIS that will proceed to refinement: %d/%d" % (np.sum(selection_flags), len(rois)))
+    if np.sum(selection_flags) == 0:
+        raise RuntimeError("Can't proceed with zero ROIs")
     if ret_cov:
         return kept_rois, panel_ids, tilt_abc, selection_flags, background, all_cov
     else:

@@ -16,6 +16,7 @@ from cctbx import miller, crystal, sgtbx
 from dials.array_family import flex
 from dxtbx.model import ExperimentList
 from xfel.merging.application.utils.memory_usage import get_memory_usage
+from libtbx.mpi4py import mpi_abort_on_exception
 
 
 COMM = MPI.COMM_WORLD
@@ -578,6 +579,7 @@ def get_gather_name(exper_name, gather_dir):
     return os.path.abspath(gathered_name)
 
 
+@mpi_abort_on_exception
 def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictions',
                 gather_dir=None):
 
@@ -622,7 +624,11 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name))
 
         refl_name = exper_dataframe[refls_key].values[0]
-        refls = flex.reflection_table.from_file(refl_name)
+        try:
+            refls = flex.reflection_table.from_file(refl_name)
+        except IOError:
+            MAIN_LOGGER.critical("Unable to load reflection file %s -- skipping." % refl_name)
+            continue
 
         miller_inds = list( refls['miller_index'])
         is_not_000 = [h != (0, 0, 0) for h in miller_inds]
@@ -642,16 +648,17 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         shot_modeler.exper_name = exper_name
         shot_modeler.refl_name = refl_name
         shot_modeler.rank = COMM.rank
-        if params.refiner.load_data_from_refl:
-            gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=params.space_group)
-            MAIN_LOGGER.debug("tried loading from reflection table")
-        else:
-            gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=params.space_group)
-            MAIN_LOGGER.debug("tried loading data from expt table")
-        if not gathered:
-            raise IOError("Failed to gather data from experiment %s", exper_name)
-        else:
+        try:
+            if params.refiner.load_data_from_refl:
+                gathered = shot_modeler.GatherFromReflectionTable(expt, refls, sg_symbol=params.space_group)
+                MAIN_LOGGER.debug("tried loading from reflection table")
+            else:
+                gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=params.space_group)
+                MAIN_LOGGER.debug("tried loading data from expt table")
             MAIN_LOGGER.debug("successfully loaded data")
+        except RuntimeError:
+            MAIN_LOGGER.critical("Failed to gather data from experiment %s; skipping.", exper_name)
+            continue
         MAIN_LOGGER.info("EVENT: DONE LOADING ROI")
 
         if gather_dir is not None:
@@ -697,7 +704,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
             pandas_table.to_pickle(pd_name)
             print("Wrote file %s to be used to re-run ens.hopper . Use optional ens.hopper arg '--refl ens.hopper.imported', and the phil param load_data_from_refl=True to load the imported data" % pd_name)
         COMM.barrier()
-        sys.exit()
+        return # this must not be a sys.exit() which will be interpreted by the @mpi_abort_on_exception decorator as an exception
     shot_modelers.mpi_set_x_slices()
 
     assert shot_modelers.num_modelers > 0
