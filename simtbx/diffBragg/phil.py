@@ -521,7 +521,7 @@ maxs
   diffuse_sigma = [20,20,20]
     .type = floats(size=3)
     .help = max diffuse sigma
-  diffuse_gamma = [1000,1000,1000]
+  diffuse_gamma = [10000,10000,10000]
     .type = floats(size=3)
     .help = max for diffuse gamma
   RotXYZ = [1,1,1]
@@ -612,6 +612,9 @@ diffuse_stencil_size = 0
   .type = int
   .help = Increase to add accuracy to diffuse scattering models, at the expense of longer computations
   .help = Best to increment by values of 1 when testing
+diffuse_orientation = 1
+  .type = int
+  .help = orient the diffuse scattering features. 0 is along (a-b, a+b, c), 1 is along (a,b,c)
 symmetrize_diffuse = True
   .type = bool
   .help = use the laue group rotation operators to symmetrize diffuse signals

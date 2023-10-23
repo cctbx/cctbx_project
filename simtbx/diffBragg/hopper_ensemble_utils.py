@@ -79,7 +79,8 @@ class TargetFuncEnsemble:
         min_info = "it=%d | t/it=%.4fs | F=%10.7g | sigZ=%10.7g" \
                   % (self.niter,self.ave_t_per_iter, f, ave_zscore_sig)
         if COMM.rank==0:
-            print(min_info, flush=True)
+            #print(min_info, flush=True)
+            MAIN_LOGGER.info(min_info)
         if modelers.save_freq is not None and self.niter % modelers.save_freq == 0:
             modelers.save_up(self.x0, ref_iter=self.niter)
 

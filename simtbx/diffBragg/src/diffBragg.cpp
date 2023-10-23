@@ -382,6 +382,10 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
                        0,.16,0,
                        0,0,.16;
 
+    db_cryst.rotate_principal_axes << 0.70710678,-0.70710678,0.,
+                                      0.70710678, 0.70710678,0.,
+                                      0.,0.,1.;
+
     lambda_managers[0]->value = 0;
     lambda_managers[1]->value = 1;
     use_lambda_coefficients = false;

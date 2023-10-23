@@ -4,10 +4,13 @@
 #include <simtbx/diffBragg/src/util_kokkos.h>
 
 KOKKOS_INLINE_FUNCTION
-int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
-  if ( laue_group_num < 1 or laue_group_num > 14) {
-    return 0;
+int gen_laue_mats(int laue_group_num, vector_mat3_t lmats, KOKKOS_MAT3 rpa) {
+
+  if (laue_group_num < 1 || laue_group_num >14 ){
+    printf("Laue group number not in range 1-14; exiting\n");
+    exit(1);
   }
+  int num_mats;
 
   const double one_over_root2 = 1./sqrt(2.);
 
@@ -19,7 +22,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0, 1, 0,
                  0, 0, 1;
 
-    return 1;
+    num_mats= 1;
   }
   if ( laue_group_num == 2 ) {
   // P 1 1 2/m
@@ -34,7 +37,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0,-1, 0,
                  0, 0, 1;
 
-    return 2;
+    num_mats= 2;
   }
   if ( laue_group_num == 3 ) {
   // P 1 2/m 1
@@ -49,7 +52,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0, 1, 0,
                  0, 0,-1;
 
-    return 2;
+    num_mats= 2;
   }
   if ( laue_group_num == 4 ) {
   // P 2/m 1 1
@@ -64,7 +67,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0,-1, 0,
                  0, 0,-1;
 
-    return 2;
+    num_mats= 2;
   }
   if ( laue_group_num == 5 ) {
   // P m m m
@@ -89,7 +92,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0,-1, 0,
                  0, 0, 1;
 
-    return 4;
+    num_mats= 4;
   }
   if ( laue_group_num == 6 ) {
   // P 4/m
@@ -114,7 +117,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0,-1, 0,
                  0, 0, 1;
 
-    return 4;
+    num_mats= 4;
   }
   if ( laue_group_num == 7 ) {
   // P 4/m m m
@@ -159,7 +162,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                 -1, 0, 0,
                  0, 0,-1;
 
-    return 8;
+    num_mats= 8;
   }
   if ( laue_group_num == 8 ) {
   // P -3
@@ -179,7 +182,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                 -1, 0, 0,
                  0, 0, 1;
 
-    return 3;
+    num_mats= 3;
   }
   if ( laue_group_num == 9 ) {
   // P -3 m 1
@@ -214,7 +217,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  1, 0, 0,
                  0, 0,-1;
 
-    return 6;
+    num_mats= 6;
   }
   if ( laue_group_num == 10 ) {
   // P -3 1 m
@@ -249,7 +252,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  one_over_root2,-one_over_root2, 0,
                  0, 0,-1;
 
-    return 6;
+    num_mats= 6;
   }
   if ( laue_group_num == 11 ) {
   // P 6/m
@@ -284,7 +287,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                  0,-1, 0,
                  0, 0, 1;
 
-    return 6;
+    num_mats= 6;
   }
   if ( laue_group_num == 12 ) {
   // P 6/m m m
@@ -349,7 +352,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                   one_over_root2,-one_over_root2, 0,
                   0, 0,-1;
 
-    return 12;
+    num_mats= 12;
   }
   if ( laue_group_num == 13 ) {
   // P m -3
@@ -414,7 +417,7 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                   0,-1, 0,
                   0, 0, 1;
 
-    return 12;
+    num_mats= 12;
   }
   if ( laue_group_num == 14 ) {
   // P m -3 m
@@ -539,12 +542,13 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats) {
                   0, 0,-1,
                   0,-1, 0;
 
-    return 24;
+    num_mats = 24;
   }
-  else {
-    return 0;
+
+  for (int i_mat=0; i_mat < num_mats; i_mat ++){
+    lmats[i_mat] = lmats[i_mat] * rpa;
   }
-  return 0;
+  return num_mats;
 };
 
 KOKKOS_FUNCTION

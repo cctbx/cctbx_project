@@ -2389,6 +2389,12 @@ def get_simulator_for_data_modelers(data_modeler):
         if self.params.diffuse_stencil_size > 0:
             SIM.D.stencil_size = self.params.diffuse_stencil_size
             MAIN_LOGGER.debug("Set diffuse stencil size: %d" % SIM.D.stencil_size)
+        if self.params.diffuse_orientation == 1:
+            ori = (1,0,0,0,1,0,0,0,1)
+        else:
+            a = 1/np.sqrt(2)
+            ori = a, a, 0.0, a, a, 0.0, 0.0, 0.0, 1.0
+        SIM.D.set_rotate_principal_axes(ori)
     SIM.D.gamma_miller_units = self.params.gamma_miller_units
     SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
     SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma

@@ -160,6 +160,7 @@ struct crystal{
     int laue_group_num=1;
     int stencil_size=0;
     Eigen::Matrix3d anisoG;
+    Eigen::Matrix3d rotate_principal_axes;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dG_dgamma;
     std::vector<Eigen::Matrix3d,Eigen::aligned_allocator<Eigen::Matrix3d> > dU_dsigma;
     Eigen::Matrix3d anisoU;

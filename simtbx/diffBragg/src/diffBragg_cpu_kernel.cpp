@@ -310,7 +310,8 @@ void diffBragg_sum_over_steps(
     if (db_flags.use_diffuse){
       anisoG_local = db_cryst.anisoG;
       anisoU_local = db_cryst.anisoU;
-      num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+
+      num_laue_mats = gen_laue_mats(laue_group_num, laue_mats, db_cryst.rotate_principal_axes);
       for (int i_gam=0; i_gam<3; i_gam++){
         dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
         dG_dgam[i_gam](i_gam, i_gam) = 1;
