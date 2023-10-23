@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import time
-# from libtbx.test_utils import assert_lines_in_text
+from libtbx.test_utils import assert_lines_in_text
 import iotbx.pdb
 import iotbx.cif
 import mmtbx.model
@@ -11,7 +11,7 @@ from libtbx.utils import Sorry
 
 # from https://github.com/wwPDB/extended-wwPDB-identifier-examples
 # https://github.com/wwPDB/extended-wwPDB-identifier-examples/blob/main/Models/7fgz-extended_CCD_code-model.cif
-model_cif = '''
+mm_cif = '''
 data_XXXX
 #
 loop_
@@ -78,164 +78,101 @@ HETATM 2179 O  O3S . 7ZTVU D 3 .   ? -8.264  -1.864  12.321 1.00 70.44 ? 303 7ZT
 '''
 
 ligand_cif = """\
-data_7ZTVU
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+ 7ZTVU         7ZTVU '2-[4-(2-hydroxyethyl)piperazin-1-yl]ethanesulfonic acid' ligand 32 15 .
 #
-
-_chem_comp.id                                   7ZTVU
-_chem_comp.name                                 "4-(2-HYDROXYETHYL)-1-PIPERAZINE ETHANESULFONIC ACID"
-_chem_comp.type                                 NON-POLYMER
-_chem_comp.pdbx_type                            HETAIN
-_chem_comp.formula                              "C8 H18 N2 O4 S"
-_chem_comp.mon_nstd_parent_comp_id              ?
-_chem_comp.pdbx_synonyms                        HEPES
-_chem_comp.pdbx_formal_charge                   0
-_chem_comp.pdbx_initial_date                    1999-07-08
-_chem_comp.pdbx_modified_date                   2020-06-17
-_chem_comp.pdbx_ambiguous_flag                  N
-_chem_comp.pdbx_release_status                  REL
-_chem_comp.pdbx_replaced_by                     ?
-_chem_comp.pdbx_replaces                        ?
-_chem_comp.formula_weight                       238.305
-_chem_comp.one_letter_code                      ?
-_chem_comp.three_letter_code                    7ZTVU
-_chem_comp.pdbx_model_coordinates_details       ?
-_chem_comp.pdbx_model_coordinates_missing_flag  N
-_chem_comp.pdbx_ideal_coordinates_details       ?
-_chem_comp.pdbx_ideal_coordinates_missing_flag  N
-_chem_comp.pdbx_model_coordinates_db_code       1CXQ
-_chem_comp.pdbx_subcomponent_list               ?
-_chem_comp.pdbx_processing_site                 RCSB
-#   #
+data_comp_7ZTVU
+#
 loop_
 _chem_comp_atom.comp_id
 _chem_comp_atom.atom_id
-_chem_comp_atom.alt_atom_id
 _chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
 _chem_comp_atom.charge
-_chem_comp_atom.pdbx_align
-_chem_comp_atom.pdbx_aromatic_flag
-_chem_comp_atom.pdbx_leaving_atom_flag
-_chem_comp_atom.pdbx_stereo_config
-_chem_comp_atom.model_Cartn_x
-_chem_comp_atom.model_Cartn_y
-_chem_comp_atom.model_Cartn_z
-_chem_comp_atom.pdbx_model_Cartn_x_ideal
-_chem_comp_atom.pdbx_model_Cartn_y_ideal
-_chem_comp_atom.pdbx_model_Cartn_z_ideal
-_chem_comp_atom.pdbx_component_atom_id
-_chem_comp_atom.pdbx_component_comp_id
-_chem_comp_atom.pdbx_ordinal
-7ZTVU  N1    N1    N  0  1  N  N  N  61.652  47.337  51.616  -0.820  -0.330   0.258  N1    7ZTVU   1
-7ZTVU  C2    C2    C  0  1  N  N  N  63.051  46.905  51.967  -1.669   0.557   1.061  C2    7ZTVU   2
-7ZTVU  C3    C3    C  0  1  N  N  N  63.962  47.257  50.796  -1.693   0.072   2.511  C3    7ZTVU   3
-7ZTVU  N4    N4    N  0  1  N  N  N  63.551  46.544  49.578  -0.342   0.147   3.079  N4    7ZTVU   4
-7ZTVU  C5    C5    C  0  1  N  N  N  62.151  46.910  49.248   0.507  -0.740   2.276  C5    7ZTVU   5
-7ZTVU  C6    C6    C  0  1  N  N  N  61.218  46.554  50.402   0.531  -0.255   0.826  C6    7ZTVU   6
-7ZTVU  C7    C7    C  0  1  N  N  N  64.368  46.893  48.385  -0.416  -0.441   4.423  C7    7ZTVU   7
-7ZTVU  C8    C8    C  0  1  N  N  N  65.854  46.721  48.613   0.966  -0.395   5.076  C8    7ZTVU   8
-7ZTVU  O8    O8    O  0  1  N  N  N  66.240  45.400  48.979   1.402   0.961   5.174  O8    7ZTVU   9
-7ZTVU  C9    C9    C  0  1  N  N  N  60.685  46.992  52.709  -0.746   0.258  -1.085  C9    7ZTVU  10
-7ZTVU  C10   C10   C  0  1  N  N  N  60.870  47.974  53.893   0.128  -0.621  -1.980  C10   7ZTVU  11
-7ZTVU  S     S     S  0  1  N  N  N  59.559  47.692  55.090   0.219   0.104  -3.640  S     7ZTVU  12
-7ZTVU  O1S   O1S   O  0  1  N  N  N  59.732  48.694  56.115  -1.019  -0.001  -4.327  O1S   7ZTVU  13
-7ZTVU  O2S   O2S   O  0  1  N  N  N  59.737  46.327  55.596   0.986   1.301  -3.646  O2S   7ZTVU  14
-7ZTVU  O3S   O3S   O  0  1  N  N  N  58.331  47.863  54.358   1.110  -0.870  -4.397  O3S   7ZTVU  15
-7ZTVU  H21   1H2   H  0  1  N  N  N  63.405  47.334  52.932  -2.683   0.551   0.659  H21   7ZTVU  16
-7ZTVU  H22   2H2   H  0  1  N  N  N  63.111  45.828  52.251  -1.271   1.571   1.024  H22   7ZTVU  17
-7ZTVU  H31   1H3   H  0  1  N  N  N  64.013  48.358  50.630  -2.044  -0.959   2.543  H31   7ZTVU  18
-7ZTVU  H32   2H3   H  0  1  N  N  N  65.034  47.072  51.038  -2.367   0.702   3.093  H32   7ZTVU  19
-7ZTVU  H51   1H5   H  0  1  N  N  N  62.060  47.982  48.958   1.520  -0.734   2.677  H51   7ZTVU  20
-7ZTVU  H52   2H5   H  0  1  N  N  N  61.817  46.449  48.288   0.109  -1.754   2.313  H52   7ZTVU  21
-7ZTVU  H61   1H6   H  0  1  N  N  N  61.169  45.456  50.592   1.204  -0.885   0.244  H61   7ZTVU  22
-7ZTVU  H62   2H6   H  0  1  N  N  N  60.143  46.711  50.150   0.881   0.775   0.794  H62   7ZTVU  23
-7ZTVU  H71   1H7   H  0  1  N  N  N  64.033  46.316  47.491  -0.748  -1.476   4.348  H71   7ZTVU  24
-7ZTVU  H72   2H7   H  0  1  N  N  N  64.136  47.925  48.032  -1.123   0.124   5.029  H72   7ZTVU  25
-7ZTVU  H81   1H8   H  0  1  N  N  N  66.427  47.061  47.719   1.673  -0.961   4.470  H81   7ZTVU  26
-7ZTVU  H82   2H8   H  0  1  N  N  N  66.220  47.457  49.365   0.911  -0.832   6.073  H82   7ZTVU  27
-7ZTVU  HO8   HO8   H  0  1  N  N  N  67.172  45.292  49.122   2.275   0.945   5.590  HO8   7ZTVU  28
-7ZTVU  H91   1H9   H  0  1  N  N  N  59.631  46.964  52.345  -1.748   0.323  -1.509  H91   7ZTVU  29
-7ZTVU  H92   2H9   H  0  1  N  N  N  60.772  45.927  53.027  -0.313   1.256  -1.022  H92   7ZTVU  30
-7ZTVU  H101  1H10  H  0  0  N  N  N  61.885  47.904  54.349   1.131  -0.687  -1.557  H101  7ZTVU  31
-7ZTVU  H102  2H10  H  0  0  N  N  N  60.921  49.037  53.560  -0.304  -1.620  -2.044  H102  7ZTVU  32
-7ZTVU  HOS3  3HOS  H  0  0  N  N  N  57.638  47.714  54.990   1.194  -0.529  -5.298  HOS3  7ZTVU  33
-#   #
+_chem_comp_atom.partial_charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+ 7ZTVU         N1     N   NT     0    .      -0.5253    0.0932   -1.5549
+ 7ZTVU         C2     C   CH2    0    .       0.9262    0.1022   -1.5401
+ 7ZTVU         C3     C   CH2    0    .       1.4857    0.1109   -0.1192
+ 7ZTVU         N4     N   NT     0    .       0.9247    1.1836    0.6816
+ 7ZTVU         C5     C   CH2    0    .      -0.5267    1.1746    0.6669
+ 7ZTVU         C6     C   CH2    0    .      -1.0863    1.1660   -0.7540
+ 7ZTVU         C7     C   CH2    0    .       1.3954    1.0634    2.0495
+ 7ZTVU         C8     C   CH2    0    .       2.1337    2.3395    2.4478
+ 7ZTVU         O8     O   OH1    0    .       2.5312    2.2499    3.7877
+ 7ZTVU         C9     C   CH2    0    .      -1.0063   -1.1833   -1.0588
+ 7ZTVU         C10    C   CH2    0    .      -1.8024   -1.8881   -2.1549
+ 7ZTVU         S      S   S      0    .      -2.4815   -3.4426   -1.5057
+ 7ZTVU         O1S    O   OS     0    .      -3.5911   -3.1842   -0.5146
+ 7ZTVU         O2S    O   OS     0    .      -3.2186   -4.2088   -2.5779
+ 7ZTVU         O3S    O   OS    -1    .      -1.3827   -4.2775   -0.8928
+ 7ZTVU         H21    H   HCH2   0    .       1.2877   -0.7819   -2.0541
+ 7ZTVU         H22    H   HCH2   0    .       1.2768    0.9870   -2.0606
+ 7ZTVU         H31    H   HCH2   0    .       1.2556   -0.8376    0.3543
+ 7ZTVU         H32    H   HCH2   0    .       2.5623    0.2348   -0.1669
+ 7ZTVU         H51    H   HCH2   0    .      -0.8883    2.0588    1.1809
+ 7ZTVU         H52    H   HCH2   0    .      -0.8774    0.2898    1.1874
+ 7ZTVU         H61    H   HCH2   0    .      -0.8561    2.1144   -1.2275
+ 7ZTVU         H62    H   HCH2   0    .      -2.1629    1.0420   -0.7063
+ 7ZTVU         H71    H   HCH2   0    .       2.0691    0.2167    2.1269
+ 7ZTVU         H72    H   HCH2   0    .       0.5490    0.9138    2.7113
+ 7ZTVU         H81    H   HCH2   0    .       1.4752    3.1923    2.3222
+ 7ZTVU         H82    H   HCH2   0    .       3.0087    2.4624    1.8185
+ 7ZTVU         HO8    H   HOH1   0    .       3.0956    2.9773    3.9980
+ 7ZTVU         H91    H   HCH2   0    .      -0.1620   -1.8008   -0.7712
+ 7ZTVU         H92    H   HCH2   0    .      -1.6444   -1.0192   -0.1971
+ 7ZTVU        H101    H   HCH2   0    .      -1.1503   -2.1015   -2.9952
+ 7ZTVU        H102    H   HCH2   0    .      -2.6144   -1.2471   -2.4811
+#
 loop_
 _chem_comp_bond.comp_id
 _chem_comp_bond.atom_id_1
 _chem_comp_bond.atom_id_2
-_chem_comp_bond.value_order
-_chem_comp_bond.pdbx_aromatic_flag
-_chem_comp_bond.pdbx_stereo_config
-_chem_comp_bond.pdbx_ordinal
-7ZTVU  N1   C2    SING  N  N   1
-7ZTVU  N1   C6    SING  N  N   2
-7ZTVU  N1   C9    SING  N  N   3
-7ZTVU  C2   C3    SING  N  N   4
-7ZTVU  C2   H21   SING  N  N   5
-7ZTVU  C2   H22   SING  N  N   6
-7ZTVU  C3   N4    SING  N  N   7
-7ZTVU  C3   H31   SING  N  N   8
-7ZTVU  C3   H32   SING  N  N   9
-7ZTVU  N4   C5    SING  N  N  10
-7ZTVU  N4   C7    SING  N  N  11
-7ZTVU  C5   C6    SING  N  N  12
-7ZTVU  C5   H51   SING  N  N  13
-7ZTVU  C5   H52   SING  N  N  14
-7ZTVU  C6   H61   SING  N  N  15
-7ZTVU  C6   H62   SING  N  N  16
-7ZTVU  C7   C8    SING  N  N  17
-7ZTVU  C7   H71   SING  N  N  18
-7ZTVU  C7   H72   SING  N  N  19
-7ZTVU  C8   O8    SING  N  N  20
-7ZTVU  C8   H81   SING  N  N  21
-7ZTVU  C8   H82   SING  N  N  22
-7ZTVU  O8   HO8   SING  N  N  23
-7ZTVU  C9   C10   SING  N  N  24
-7ZTVU  C9   H91   SING  N  N  25
-7ZTVU  C9   H92   SING  N  N  26
-7ZTVU  C10  S     SING  N  N  27
-7ZTVU  C10  H101  SING  N  N  28
-7ZTVU  C10  H102  SING  N  N  29
-7ZTVU  S    O1S   DOUB  N  N  30
-7ZTVU  S    O2S   DOUB  N  N  31
-7ZTVU  S    O3S   SING  N  N  32
-7ZTVU  O3S  HOS3  SING  N  N  33
-#   #
-loop_
-_pdbx_chem_comp_descriptor.comp_id
-_pdbx_chem_comp_descriptor.type
-_pdbx_chem_comp_descriptor.program
-_pdbx_chem_comp_descriptor.program_version
-_pdbx_chem_comp_descriptor.descriptor
-7ZTVU  SMILES            ACDLabs               10.04  "O=S(=O)(O)CCN1CCN(CCO)CC1"
-7ZTVU  SMILES_CANONICAL  CACTVS                3.341  "OCCN1CCN(CC1)CC[S](O)(=O)=O"
-7ZTVU  SMILES            CACTVS                3.341  "OCCN1CCN(CC1)CC[S](O)(=O)=O"
-7ZTVU  SMILES_CANONICAL  "OpenEye OEToolkits"  1.5.0  "C1CN(CCN1CCO)CCS(=O)(=O)O"
-7ZTVU  SMILES            "OpenEye OEToolkits"  1.5.0  "C1CN(CCN1CCO)CCS(=O)(=O)O"
-7ZTVU  InChI             InChI                 1.03   "InChI=1S/C8H18N2O4S/c11-7-5-9-1-3-10(4-2-9)6-8-15(12,13)14/h11H,1-8H2,(H,12,13,14)"
-7ZTVU  InChIKey          InChI                 1.03   JKMHFZQWWAIEOD-UHFFFAOYSA-N
-#   #
-loop_
-_pdbx_chem_comp_identifier.comp_id
-_pdbx_chem_comp_identifier.type
-_pdbx_chem_comp_identifier.program
-_pdbx_chem_comp_identifier.program_version
-_pdbx_chem_comp_identifier.identifier
-7ZTVU  "SYSTEMATIC NAME"  ACDLabs               10.04  "2-[4-(2-hydroxyethyl)piperazin-1-yl]ethanesulfonic acid"
-7ZTVU  "SYSTEMATIC NAME"  "OpenEye OEToolkits"  1.5.0  "2-[4-(2-hydroxyethyl)piperazin-1-yl]ethanesulfonic acid"
-#   #
-loop_
-_pdbx_chem_comp_audit.comp_id
-_pdbx_chem_comp_audit.action_type
-_pdbx_chem_comp_audit.date
-_pdbx_chem_comp_audit.processing_site
-7ZTVU  "Create component"   2023-01-01  RCSB
-#
-_pdbx_chem_comp_synonyms.ordinal     1
-_pdbx_chem_comp_synonyms.comp_id     7ZTVU
-_pdbx_chem_comp_synonyms.name        HEPES
-_pdbx_chem_comp_synonyms.provenance  ?
-_pdbx_chem_comp_synonyms.type        ?
+_chem_comp_bond.type
+_chem_comp_bond.value_dist
+_chem_comp_bond.value_dist_esd
+ 7ZTVU   N1      C2    single        1.452 0.020
+ 7ZTVU   N1      C6    single        1.452 0.020
+ 7ZTVU   N1      C9    single        1.452 0.020
+ 7ZTVU   C2      C3    single        1.527 0.020
+ 7ZTVU   C2      H21   single        1.085 0.020
+ 7ZTVU   C2      H22   single        1.085 0.020
+ 7ZTVU   C3      N4    single        1.452 0.020
+ 7ZTVU   C3      H31   single        1.085 0.020
+ 7ZTVU   C3      H32   single        1.085 0.020
+ 7ZTVU   N4      C5    single        1.452 0.020
+ 7ZTVU   N4      C7    single        1.452 0.020
+ 7ZTVU   C5      C6    single        1.527 0.020
+ 7ZTVU   C5      H51   single        1.085 0.020
+ 7ZTVU   C5      H52   single        1.085 0.020
+ 7ZTVU   C6      H61   single        1.085 0.020
+ 7ZTVU   C6      H62   single        1.085 0.020
+ 7ZTVU   C7      C8    single        1.527 0.020
+ 7ZTVU   C7      H71   single        1.085 0.020
+ 7ZTVU   C7      H72   single        1.085 0.020
+ 7ZTVU   C8      O8    single        1.401 0.020
+ 7ZTVU   C8      H81   single        1.085 0.020
+ 7ZTVU   C8      H82   single        1.085 0.020
+ 7ZTVU   O8      HO8   single        0.944 0.020
+ 7ZTVU   C9      C10   single        1.527 0.020
+ 7ZTVU   C9      H91   single        1.085 0.020
+ 7ZTVU   C9      H92   single        1.085 0.020
+ 7ZTVU   C10     S     single        1.816 0.020
+ 7ZTVU   C10    H101   single        1.085 0.020
+ 7ZTVU   C10    H102   single        1.085 0.020
+ 7ZTVU   S       O1S   deloc         1.510 0.020
+ 7ZTVU   S       O2S   deloc         1.510 0.020
+ 7ZTVU   S       O3S   deloc         1.510 0.020
 """
 
 def test1():
@@ -247,7 +184,7 @@ def test1():
   # for name, s in [('model', model_cif), ('restr', ligand_cif)]:
   #   with open('%s.cif' % name, 'w') as f:
   #     f.write(s)
-  inp = iotbx.pdb.input(lines=model_cif.split("\n"), source_info=None)
+  inp = iotbx.pdb.input(lines=mm_cif.split("\n"), source_info=None)
   cif_object = iotbx.cif.reader(input_string = ligand_cif).model()
   cif_objects = [('bla.cif', cif_object)]
   model = mmtbx.model.manager(model_input = inp, restraint_objects = cif_objects)
@@ -257,25 +194,28 @@ def test1():
   except Sorry as e:
     pass
   # print(geo_str)
-  # for l in [
-  #     'bond pdb=" NZ  LYS A 279 "',
-  #     '     pdb=" O   longHOH A 401 "',
-  #     'nonbonded pdb=" CD  LYS A 279 "',
-  #     '          pdb=" O   longHOH A 401 "']:
-  #   assert_lines_in_text(geo_str, l)
-  # model_cif = model.model_as_mmcif()
-  # # print(model_cif)
-  # for l in [
-  #     'longHOH H2 O H1 103.91 3.000',
-  #     'data_comp_longHOH',
-  #     '   HETATM 10 O . longHOH A 401 ? -3.20900 -12.85600 46.10000 1.000 30.11000 O ? B ? . 1']:
-  #   assert_lines_in_text(model_cif, l)
-  # model_pdb = model.model_as_pdb()
-  # # print(model_pdb)
-  # for l in [
-  #     'LINK         NZ  LYS A 279                 O   longHOH A 401 ',
-  #     'HETATM   10  O   lon A 401      -3.209 -12.856  46.100  1.00 30.11           O']:
-  #   assert_lines_in_text(model_pdb, l)
+  for l in [
+    'bond pdb=" C10 7ZTVU A 303 "',
+    '     pdb=" S   7ZTVU A 303 "',
+    'nonbonded pdb=" C2  7ZTVU A 302 "',
+    '          pdb=" O8  7ZTVU A 302 "',
+    ]:
+    # print(geo_str.find(l),l)
+    assert_lines_in_text(geo_str, l)
+  model_cif = model.model_as_mmcif()
+   # print(model_cif)
+  for l in [
+    'HETATM 10 C10 . 7ZTVU A 302 ? -7.64600 -6.96500 5.79600 1.000 22.62000 C ? B ? . 1',
+    '7ZTVU N1 C2 single 1.452 0.020',
+    'data_comp_7ZTVU',
+    ]:
+    assert_lines_in_text(model_cif, l)
+  model_pdb = model.model_as_pdb()
+  # print(model_pdb)
+  for l in [
+    'HETATM   10  C10 7ZT A 302      -7.646  -6.965   5.796  1.00 22.62           C',
+    ]:
+    assert_lines_in_text(model_pdb, l)
 
 if (__name__ == "__main__"):
   t0 = time.time()
