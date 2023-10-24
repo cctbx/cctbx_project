@@ -217,6 +217,8 @@ class fmodel_mixins(object):
     # XXX
     # Get reflection data
     data = extract_xtal_data.run(
+      keep_going                        = not tmp_p.r_free_flags.required,
+      extract_r_free_flags              = not tmp_p.r_free_flags.ignore_r_free_flags,
       reflection_file_server            = rfs,
       parameters                        = tmp_p,
       experimental_phases_params        = experimental_phases_params,
