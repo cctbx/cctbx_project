@@ -8,6 +8,7 @@ from libtbx.str_utils import format_value
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
@@ -487,10 +488,6 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_matthews_coeff(self):
     return _float_or_None(self.cif_block.get('_exptl_crystal.density_Matthews'))
 
-  def experiment_type_electron_microscopy(self):
-    et = self.get_experiment_type().strip().upper()
-    return et == "ELECTRON MICROSCOPY"
-
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
@@ -559,9 +556,13 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def get_experiment_type(self):
     exptl_method = self.cif_block.get('_exptl.method')
-    if(isinstance(exptl_method,flex.std_string)):
-      exptl_method = "; ".join(list(exptl_method))
-    return exptl_method
+    lines = []
+    if exptl_method is not None:
+      if(isinstance(exptl_method,flex.std_string)):
+        lines = list(exptl_method)
+      else:
+        lines = [exptl_method]
+    return experiment_type(lines)
 
   def process_BIOMT_records(self):
     import iotbx.mtrix_biomt
