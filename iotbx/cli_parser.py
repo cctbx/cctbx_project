@@ -164,6 +164,7 @@ class CCTBXParser(ParserBase):
     self.data_manager = DataManager(
       datatypes=program_class.datatypes,
       custom_options=program_class.data_manager_options,
+      custom_master_phil_str=program_class.data_manager_custom_master_phil_str,
       logger=self.logger)
     self.namespace = None
 
