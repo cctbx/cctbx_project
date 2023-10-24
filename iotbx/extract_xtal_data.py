@@ -119,6 +119,9 @@ data_and_flags_str_part2a = """\
 """
 
 data_and_flags_str_part2b = """\
+  required = True
+    .type = bool
+    .help = Specify if free-r flags are must be present (or else generated)
   test_flag_value = None
     .type=int
     .help = This value is usually selected automatically - do not change \
