@@ -199,10 +199,15 @@ class fmodel_mixins(object):
       reflection_file_server = rfs)
     #
     fmodel_params = self.get_fmodel_params()
+
     if array_type == 'neutron':
       parameters = fmodel_params.neutron_data
     else:
       parameters = fmodel_params.xray_data
+
+    #print("LOOK : parameters.r_free_flags.required", parameters.r_free_flags.required)
+    #print("LOOK : parameters.force_anomalous_flag_to_be_equal_to", parameters.force_anomalous_flag_to_be_equal_to)
+
     #
     # XXX
     # XXX Temporary hack/work-around (REMOVE later) start
