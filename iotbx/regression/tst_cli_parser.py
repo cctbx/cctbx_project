@@ -128,6 +128,13 @@ def test_model_type_parsing():
     assert '1jyp' in str(e)
     assert 'neutron' in str(e)
 
+  # and there needs to be a model.type for each model
+  try:
+    run_program(program_class=testProgram, args=[model_1yjp, model_2erl,
+      'model.type=neutron', '--quiet'])
+  except Sorry as e:
+    assert 'Please specify exactly one "model.type" for each model' in str(e)
+
 # -----------------------------------------------------------------------------
 def test_user_selected_labels():
   data_dir = os.path.dirname(os.path.abspath(__file__))
