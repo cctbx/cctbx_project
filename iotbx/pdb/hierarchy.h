@@ -692,13 +692,8 @@ namespace hierarchy {
       }
 
       //! Not available in Python.
-      /*! result must point to an array of size 27 (or greater).
-          The first 6 characters are not modified.
-          On return, result is NOT null-terminated.
-       */
-      void
+      std::string
       format_atom_record_serial_label_columns(
-        char* result,
         atom_label_columns_formatter* label_formatter=0) const;
 
       //! Not available in Python.

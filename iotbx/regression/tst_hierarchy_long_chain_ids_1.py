@@ -260,9 +260,10 @@ def test1():
   o_pdb_str = h.as_pdb_string()
   # Note here incorrect/trimmed chain id
   # There's no way to correctly output chain ids longer than 2 char in PDB format
+  print(o_pdb_str)
   assert_lines_in_text(o_pdb_str, """\
-ATOM     61  C   SERA-   2      72.898  71.361  62.393  1.00 67.20           C
-ATOM     62  O   SERA-   2      73.055  70.333  61.737  1.00 65.10           O
+ATOM     61  C   SERA-2   2      72.898  71.361  62.393  1.00 67.20           C
+ATOM     62  O   SERA-2   2      73.055  70.333  61.737  1.00 65.10           O
     """)
 
   o_cif_str = "%s" % h.as_cif_block()

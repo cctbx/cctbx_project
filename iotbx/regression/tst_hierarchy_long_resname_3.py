@@ -6,6 +6,7 @@ import iotbx.cif
 import mmtbx.model
 from mmtbx import monomer_library
 from libtbx.utils import Sorry
+from six.moves import cStringIO as StringIO
 
 # ------------------------------------------------------------------------------
 
@@ -178,16 +179,17 @@ _chem_comp_bond.value_dist_esd
 def test1():
   """
   Creating restraints for long residue name
-  Not finished yet.
   """
   #dumping to disk if needed:
-  # for name, s in [('model', model_cif), ('restr', ligand_cif)]:
+  # for name, s in [('model', mm_cif), ('restr', ligand_cif)]:
   #   with open('%s.cif' % name, 'w') as f:
   #     f.write(s)
   inp = iotbx.pdb.input(lines=mm_cif.split("\n"), source_info=None)
   cif_object = iotbx.cif.reader(input_string = ligand_cif).model()
   cif_objects = [('bla.cif', cif_object)]
-  model = mmtbx.model.manager(model_input = inp, restraint_objects = cif_objects)
+  model = mmtbx.model.manager(
+      model_input = inp,
+      restraint_objects = cif_objects)
   try:
     model.process(make_restraints=True)
     geo_str = model.restraints_as_geo()
@@ -211,11 +213,36 @@ def test1():
     ]:
     assert_lines_in_text(model_cif, l)
   model_pdb = model.model_as_pdb()
-  # print(model_pdb)
+  print(model_pdb)
   for l in [
-    'HETATM   10  C10 7ZT A 302      -7.646  -6.965   5.796  1.00 22.62           C',
+    'HETATM   10  C10 7ZTVU A 302      -7.646  -6.965   5.796  1.00 22.62           C',
     ]:
     assert_lines_in_text(model_pdb, l)
+
+def test2():
+  """
+  Try creating restraints for long residue name without cif.
+  Check error message formatting (atom.quote() function)
+  """
+  #dumping to disk if needed:
+  # for name, s in [('model', mm_cif), ('restr', ligand_cif)]:
+  #   with open('%s.cif' % name, 'w') as f:
+  #     f.write(s)
+  inp = iotbx.pdb.input(lines=mm_cif.split("\n"), source_info=None)
+  cif_object = iotbx.cif.reader(input_string = ligand_cif).model()
+  cif_objects = [('bla.cif', cif_object)]
+  mlog = StringIO()
+  model = mmtbx.model.manager(
+      model_input = inp,
+      log = mlog)
+  try:
+    model.process(make_restraints=True)
+  except Sorry as e:
+    mlog_txt = mlog.getvalue()
+    # print(str(e))
+    # print(mlog_txt)
+    assert_lines_in_text(mlog_txt, """ "HETATM   15  C7  7ZTVU A 302 .*.     C  " """)
+
 
 if (__name__ == "__main__"):
   t0 = time.time()
@@ -226,4 +253,5 @@ if (__name__ == "__main__"):
     print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None:
     test1()
+    test2()
   print("OK. Time: %8.3f"%(time.time()-t0))

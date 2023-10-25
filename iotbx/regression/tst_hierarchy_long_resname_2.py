@@ -132,7 +132,7 @@ def test1():
   # print(model_pdb)
   for l in [
       'LINK         NZ  LYS A 279                 O   longHOH A 401 ',
-      'HETATM   10  O   lon A 401      -3.209 -12.856  46.100  1.00 30.11           O']:
+      'HETATM   10  O   longHOH A 401      -3.209 -12.856  46.100  1.00 30.11           O']:
     assert_lines_in_text(model_pdb, l)
 
 if (__name__ == "__main__"):
