@@ -705,21 +705,22 @@ namespace {
 
 } // namespace <anonymous>
 
-  void
+  std::string
   atom::format_atom_record_serial_label_columns(
-    char* result,
     atom_label_columns_formatter* label_formatter) const
   {
+    std::string result;
     char blank = ' ';
-    data->serial.copy_right_justified(result+6, 5U, blank);
-    result[11] = blank;
+    result += (boost::format("%5s") % data->serial.elems).str();
+    result += blank;
     if (label_formatter == 0) {
-      atom_label_columns_formatter().format(result+12, *this);
+      result += atom_label_columns_formatter().format(*this);
     }
     else {
       label_formatter->name = data->name.elems;
-      label_formatter->format(result+12);
+      result += label_formatter->format();
     }
+    return result;
   }
 
   unsigned
@@ -838,11 +839,13 @@ namespace {
   {
     char blank = ' ';
     std::memcpy(result, (data->hetero ? "HETATM" : "ATOM  "), 6U);
-    format_atom_record_serial_label_columns(result, label_formatter);
+    std::string far = format_atom_record_serial_label_columns(label_formatter);
+    std::memcpy(result+6, far.c_str(), far.size());
     unsigned segid_start;
     unsigned blanks_start_at;
+    size_t far_plus = far.size() + 6;
     if (replace_floats_with != 0) {
-      segid_start = 27U;
+      segid_start = far_plus;
       unsigned i=0;
       while (replace_floats_with[i] != '\0' && segid_start != 72U) {
         result[segid_start++] = replace_floats_with[i++];
@@ -850,8 +853,8 @@ namespace {
       blanks_start_at = segid_start + 8U;
     }
     else {
-      copy_left_justified(result+27, 3U, 0, 0U, blank);
-      char *r = result + 30;
+      copy_left_justified(result+far_plus, 3U, 0, 0U, blank);
+      char *r = result + far_plus + 3;
       // the buffer size in std::snprintf is limited to 640 bytes for
       // the 80 column PDB format
       for(unsigned i=0;i<3;i++) {
@@ -860,7 +863,7 @@ namespace {
           throw std::runtime_error(
             std::string("atom ") + "XYZ"[i] + " coordinate value"
             " does not fit into F8.3 format:\n"
-            + "  \"" + std::string(result, 27U) + "\"\n"
+            + "  \"" + std::string(result, far_plus) + "\"\n"
             + "  value: " + (boost::format("%.3f") % data->xyz[i]).str());
         }
         r += 8;
@@ -869,7 +872,7 @@ namespace {
       if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
           std::string("atom occupancy factor does not fit into F6.2 format:\n")
-          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  \"" + std::string(result, far_plus) + "\"\n"
           + "  occupancy factor: " + (boost::format("%.2f") % data->occ).str());
       }
       r += 6;
@@ -877,14 +880,13 @@ namespace {
       if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
         throw std::runtime_error(
           std::string("atom B-factor does not fit into F6.2 format:\n")
-          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  \"" + std::string(result, far_plus) + "\"\n"
           + "  B-factor: " + (boost::format("%.2f") % data->b).str());
       }
-      segid_start = 72U;
-      blanks_start_at = 66U;
+      blanks_start_at = 39+far_plus;
+      segid_start = blanks_start_at+6;
     }
-    return format_atom_record_segid_element_charge_columns(
-      result, segid_start, blanks_start_at);
+    return format_atom_record_segid_element_charge_columns(result, segid_start, blanks_start_at);
   }
 
   unsigned
@@ -894,16 +896,18 @@ namespace {
   {
     char blank = ' ';
     std::memcpy(result, "SIGATM", 6U);
-    format_atom_record_serial_label_columns(result, label_formatter);
-    copy_left_justified(result+27, 3U, 0, 0U, blank);
-    char *r = result + 30;
+    std::string far = format_atom_record_serial_label_columns(label_formatter);
+    size_t far_plus = far.size() + 6;
+    std::memcpy(result+6, far.c_str(), far.size());
+    copy_left_justified(result+far_plus, 3U, 0, 0U, blank);
+    char *r = result + far_plus + 3;
     for(unsigned i=0;i<3;i++) {
       std::snprintf(r, 640U, "%8.3f", std::min(std::max(-1.e7, data->sigxyz[i]),1.e8));
       if (r[8] != '\0' && r[5] != '.' && r[6] != '.' && r[7] != '.') {
         throw std::runtime_error(
           std::string("atom sigma ") + "XYZ"[i] + " coordinate value"
           " does not fit into F8.3 format:\n"
-          + "  \"" + std::string(result, 27U) + "\"\n"
+          + "  \"" + std::string(result, far_plus) + "\"\n"
           + "  value: " + (boost::format("%.3f") % data->sigxyz[i]).str());
       }
       r += 8;
@@ -912,7 +916,7 @@ namespace {
     if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
       throw std::runtime_error(std::string(
           "atom sigma occupancy factor does not fit into F6.2 format:\n")
-        + "  \"" + std::string(result, 27U) + "\"\n"
+        + "  \"" + std::string(result, far_plus) + "\"\n"
         + "  sigma occupancy factor: "
         + (boost::format("%.2f") % data->sigocc).str());
     }
@@ -921,11 +925,11 @@ namespace {
     if (r[6] != '\0' && r[4] != '.' && r[5] != '.') {
       throw std::runtime_error(std::string(
           "atom sigma B-factor does not fit into F6.2 format:\n")
-        + "  \"" + std::string(result, 27U) + "\"\n"
+        + "  \"" + std::string(result, far_plus) + "\"\n"
         + "  sigma B-factor: "
         + (boost::format("%.2f") % data->sigb).str());
     }
-    return format_atom_record_segid_element_charge_columns(result, 72U, 66U);
+    return format_atom_record_segid_element_charge_columns(result, 45+far_plus, 39+far_plus);
   }
 
 namespace {
@@ -955,16 +959,18 @@ namespace {
   {
     char blank = ' ';
     std::memcpy(result, "ANISOU", 6U);
-    format_atom_record_serial_label_columns(result, label_formatter);
-    result[27] = blank;
-    char *r = result + 28;
+    std::string far = format_atom_record_serial_label_columns(label_formatter);
+    std::memcpy(result+6, far.c_str(), far.size());
+    size_t far_plus=far.size() + 6;
+    result[far_plus] = blank;
+    char *r = result + far_plus + 1;
     for(unsigned i=0;i<6;i++) {
       double value = data->uij[i]*10000.;
       std::snprintf(r, 640U, "%7.0f", std::min(std::max(-1.e7, value), 1.e8));
       r += 7;
       if (*r != '\0') throw_f70_error(i, value, result, "");
     }
-    return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
+    return format_atom_record_segid_element_charge_columns(result, 45+far_plus, 43+far_plus);
   }
 
   unsigned
@@ -974,9 +980,11 @@ namespace {
   {
     char blank = ' ';
     std::memcpy(result, "SIGUIJ", 6U);
-    format_atom_record_serial_label_columns(result, label_formatter);
-    result[27] = blank;
-    char *r = result + 28;
+    std::string far = format_atom_record_serial_label_columns(label_formatter);
+    std::memcpy(result+6, far.c_str(), far.size());
+    size_t far_plus=far.size() + 6;
+    result[far_plus] = blank;
+    char *r = result + far_plus +1;
     for(unsigned i=0;i<6;i++) {
       double value =
 #ifdef IOTBX_PDB_ENABLE_ATOM_DATA_SIGUIJ
@@ -989,7 +997,7 @@ namespace {
       r += 7;
       if (*r != '\0') throw_f70_error(i, value, result, "sigma ");
     }
-    return format_atom_record_segid_element_charge_columns(result, 72U, 70U);
+    return format_atom_record_segid_element_charge_columns(result, 45+far_plus, 43+far_plus);
   }
 
   std::string
