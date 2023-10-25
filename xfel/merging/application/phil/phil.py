@@ -530,6 +530,9 @@ merging {
   merge_anomalous = False
     .type = bool
     .help = Merge anomalous contributors
+  include_multiplicity_column = False
+    .type = bool
+    .help = If True, save multiplicity to output mtz as separate column
 }
 """
 
