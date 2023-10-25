@@ -292,9 +292,15 @@ class error_modifier_ev11(worker):
   def calculate_intensity_bin_limits_mll(self):
     '''Calculate the minimum and maximum values of the mean intensities for each HKL
     This is specific to the updated maximum log-likelihood error model (Mittan-Moreau 202X).'''
-    all_mean_intensities = self.mpi_helper.comm.gather(self.work_table['biased_mean'].as_numpy_array(), root=0)
+    senddata = self.work_table['biased_mean'].as_numpy_array()
+    sendcounts = np.array(self.mpi_helper.comm.gather(len(senddata), root=0))
     if self.mpi_helper.rank == 0:
-      all_mean_intensities = np.sort(np.concatenate(all_mean_intensities))
+      all_mean_intensities = np.empty(sum(sendcounts), dtype=senddata.dtype)
+    else:
+      all_mean_intensities = None
+    self.mpi_helper.comm.Gatherv(senddata, (all_mean_intensities, sendcounts), root=0)
+    if self.mpi_helper.rank == 0:
+      all_mean_intensities = np.sort(all_mean_intensities)
       lower_percentile = 0.005
       upper_percentile = 0.995
       n = all_mean_intensities.size
