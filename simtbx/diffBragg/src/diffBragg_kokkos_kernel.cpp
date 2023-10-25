@@ -1154,7 +1154,7 @@ template <
     bool printout,
     bool complex_miller,
     bool compute_curvatures,
-    uint32_t refine_flag, 
+    uint32_t refine_flag,
     bool use_diffuse,
     bool save_wavelenimage,
     bool Fhkl_gradient_mode,
@@ -2308,12 +2308,12 @@ void kokkos_sum_over_steps(
 
 }  // END of GPU kernel
 
-template void 
+template void
 kokkos_sum_over_steps<
     false, // printout,
     false, // complex_miller,
     false, // compute_curvatures,
-    REFINE_FCELL,  // refine_flag, 
+    REFINE_FCELL,  // refine_flag,
     false, // use_diffuse,
     false, // save_wavelenimage
     false, // Fhkl_gradient_mode,

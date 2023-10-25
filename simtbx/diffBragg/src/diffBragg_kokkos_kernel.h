@@ -158,7 +158,7 @@ template <
     bool printout,
     bool complex_miller,
     bool compute_curvatures,
-    uint32_t refine_fcell, 
+    uint32_t refine_fcell,
     bool use_diffuse,
     bool save_wavelenimage,
     bool Fhkl_gradient_mode,

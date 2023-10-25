@@ -465,7 +465,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
        (db_flags.use_diffuse==false) &&
        (db_flags.wavelength_img==false) &&
        (db_flags.Fhkl_gradient_mode==false) &&
-       (db_flags.Fhkl_errors_mode==false) && 
+       (db_flags.Fhkl_errors_mode==false) &&
        (db_flags.using_trusted_mask==false) &&
        (db_beam.Fhkl_channels.empty()==true) &&
        (db_flags.Fhkl_have_scale_factors)==false) {
