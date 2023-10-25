@@ -120,7 +120,7 @@ def test1():
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
-  print(conversion_info.conversion_as_remark_string())
+  print(conversion_info.conversion_as_remark_hetnam_string())
 
 def test2():
   """
@@ -131,31 +131,58 @@ def test2():
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
-  print(conversion_info.conversion_as_remark_string())
+  print(conversion_info.conversion_as_remark_hetnam_string())
 
 def test3():
   """
   Test methods in conversion_tables with mmcif_str_1 and
-    set_conversion_tables_from_remarks_records
+    set_conversion_tables_from_remark_hetnam_records
   """
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
-  remark_string = conversion_info.conversion_as_remark_string()
+  conversion_info = pdb_v3_cif_conversion(hierarchy = ph,
+    residue_conversion_as_remark = True)
+  remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
 
   new_conversion_info = pdb_v3_cif_conversion()
-  new_conversion_info.set_conversion_tables_from_remarks_records(
-    remarks_records = remark_string.splitlines())
-  new_remark_string = new_conversion_info.conversion_as_remark_string()
-  print(new_remark_string)
-  assert remark_string == new_remark_string
+  new_conversion_info.set_conversion_tables_from_remark_hetnam_records(
+    remark_hetnam_records = remark_hetnam_string.splitlines())
+  new_remark_hetnam_string = new_conversion_info.conversion_as_remark_hetnam_string()
+  print(new_remark_hetnam_string)
+  assert remark_hetnam_string == new_remark_hetnam_string
+
+def test3a():
+  """
+  Test methods in conversion_tables with mmcif_str_1 and
+    set_conversion_tables_from_remark_hetnam_records
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
+  ph = inp.construct_hierarchy()
+
+  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
+  conversion_info = pdb_v3_cif_conversion(hierarchy = ph,
+    residue_conversion_as_remark = False,
+    residue_conversion_as_hetnam = True,
+     )
+  remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
+  print("OLD\n",remark_hetnam_string)
+
+  new_conversion_info = pdb_v3_cif_conversion(
+     residue_conversion_as_remark = False,
+     residue_conversion_as_hetnam = True,
+     )
+  new_conversion_info.set_conversion_tables_from_remark_hetnam_records(
+    remark_hetnam_records = remark_hetnam_string.splitlines())
+  new_remark_hetnam_string = new_conversion_info.conversion_as_remark_hetnam_string()
+  print("NEW\n",new_remark_hetnam_string)
+  assert remark_hetnam_string == new_remark_hetnam_string
 
 def test4():
   """
   Test methods in conversion_tables with mmcif_str_1 and
-    set_conversion_tables_from_remarks_records and read remarks as part
+    set_conversion_tables_from_remark_hetnam_records and read remarks as part
     of input string
   """
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
@@ -163,27 +190,27 @@ def test4():
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
-  remark_string = conversion_info.conversion_as_remark_string()
+  remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
 
   # convert to pdb_v3
   conversion_info.convert_hierarchy_to_pdb_v3_representation(ph)
   new_string = ph.as_pdb_string()
   print("NEW STRING (pdb_v3)\n%s" %(new_string))
-  new_inp = iotbx.pdb.input(lines=(remark_string + new_string).split("\n"),
+  new_inp = iotbx.pdb.input(lines=(remark_hetnam_string + new_string).split("\n"),
       source_info=None,
       )
-  new_remark_string = "\n".join(new_inp.remark_section())
+  new_remark_hetnam_string = "\n".join(new_inp.remark_section())
   new_ph = new_inp.construct_hierarchy()
   print("New ph as string:\n",new_ph.as_pdb_string())
 
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   new_conversion_info = pdb_v3_cif_conversion()
-  new_conversion_info.set_conversion_tables_from_remarks_records(
-    remarks_records = new_remark_string.splitlines())
-  updated_remark_string = new_conversion_info.conversion_as_remark_string()
-  print("\nNew remark string:\n",new_remark_string)
-  print("\nUpdated remark string:\n",updated_remark_string)
-  assert remark_string == updated_remark_string
+  new_conversion_info.set_conversion_tables_from_remark_hetnam_records(
+    remark_hetnam_records = new_remark_hetnam_string.splitlines())
+  updated_remark_hetnam_string = new_conversion_info.conversion_as_remark_hetnam_string()
+  print("\nNew remark string:\n",new_remark_hetnam_string)
+  print("\nUpdated remark string:\n",updated_remark_hetnam_string)
+  assert remark_hetnam_string == updated_remark_hetnam_string
 
 def test5():
   """
@@ -194,7 +221,7 @@ def test5():
 
   # Get a hierarchy that is not pdb_v3 compatible
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1)
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
 
   # Write a pdb_v3 compatible string with conversion information in REMARKs
   from iotbx.pdb.pdb_v3_cif_conversion import hierarchy_as_pdb_v3_string
@@ -203,7 +230,7 @@ def test5():
 
   # convert pdb_v3_string to a hierarchy
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  new_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string)
+  new_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string).hierarchy
   new_pdb_v3_string =  hierarchy_as_pdb_v3_string(new_ph)
   print("Hierarchy after writing/reading as pdb_v3 string with REMARKS:\n%s" %(new_pdb_v3_string))
   assert pdb_v3_string == new_pdb_v3_string
@@ -211,10 +238,10 @@ def test5():
   # strip off REMARKS from pdb_v3_string, read in and apply conversions
   from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
   conversion_info = pdb_v3_cif_conversion(ph)
-  pdb_v3_string_no_remarks = remove_remarks(pdb_v3_string)
-  print("pdb_v3_string with no remarks:\n%s" %(pdb_v3_string_no_remarks))
+  pdb_v3_string_no_remarks = remove_remarks_hetnam(pdb_v3_string)
+  print("pdb_v3_string with no remarks:\n%s\n" %(pdb_v3_string_no_remarks))
 
-  updated_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks)
+  updated_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks).hierarchy
   # Apply the conversions to obtain a full representation in updated_ph
   conversion_info.convert_hierarchy_to_full_representation(updated_ph)
 
@@ -223,10 +250,42 @@ def test5():
   print("Hierarchy after writing/reading as pdb_v3 string without REMARKS and restoring conversion:\n%s" %(updated_pdb_v3_string))
   assert updated_pdb_v3_string == pdb_v3_string
 
-def remove_remarks(text):
+  # Initialize conversion_info with unique_values_dict
+  conversion_info = pdb_v3_cif_conversion(ph)
+  unique_values_dict = {}
+  unique_values_dict['chain_id'] = \
+     conversion_info._unique_chain_ids_from_hierarchy(ph)
+  unique_values_dict['resname'] = \
+      conversion_info._unique_resnames_from_hierarchy(ph)
+  new_conversion_info = pdb_v3_cif_conversion(
+    unique_values_dict = unique_values_dict)
+  print("\nConversion info using unique_values_dict:")
+  print(conversion_info.conversion_as_remark_hetnam_string())
+  assert conversion_info.conversion_as_remark_hetnam_string() == new_conversion_info.conversion_as_remark_hetnam_string()
+
+def test6():
+  print("Testing use of ph.as_mmcif_string(segid_as_auth_segid=True)")
+
+  # Get a hierarchy
+  from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1)
+  # Add segid to the hierarchy
+  i = 0
+  for model in ph.models():
+    for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            for atom in atom_group.atoms():
+              atom.set_segid('UNK')
+  assert ph.as_pdb_string().find("UNK")>-1
+  assert ph.as_mmcif_string().find("UNK") == -1
+  assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
+
+def remove_remarks_hetnam(text):
   new_text_list = []
   for line in text.splitlines():
     if line.startswith("REMARK"):continue
+    if line.startswith("HETNAM"):continue
     new_text_list.append(line)
   return "\n".join(new_text_list)
 if (__name__ == "__main__"):
@@ -234,6 +293,8 @@ if (__name__ == "__main__"):
   test1()
   test2()
   test3()
+  test3a()
   test4()
   test5()
+  test6()
   print("OK. Time: %8.3f"%(time.time()-t0))

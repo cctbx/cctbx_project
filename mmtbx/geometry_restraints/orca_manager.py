@@ -20,11 +20,6 @@ class orca_manager(base_qm_manager.base_qm_manager):
 
   def get_log_filename(self): return 'orca_%s.log' % self.preamble
 
-  # def set_sites_cart(self, sites_cart):
-  #   assert len(self.atoms)==len(sites_cart)
-  #   for atom, site_cart in zip(self.atoms, sites_cart):
-  #     atom.xyz = site_cart
-
   def read_engrad_output(self):
     '''#
 # Number of atoms
@@ -146,11 +141,8 @@ end
     return outl
 
   def get_coordinate_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    assert not constrain_torsions
     outl = '* xyz %s %s\n' % (self.charge, self.multiplicity)
     for i, atom in enumerate(self.atoms):
-      # if interest_only and self.ligand_atoms_array and not self.ligand_atoms_array[i]:
-      #   continue
       outl += ' %s %0.5f %0.5f %0.5f # %s %s\n' % (
         atom.element,
         atom.xyz[0],
@@ -163,7 +155,6 @@ end
     return outl
 
   def get_input_lines(self, optimise_ligand=True, optimise_h=True, constrain_torsions=False):
-    assert not constrain_torsions, 'constrain_torsions %s' % constrain_torsions
     outl = self._input_header()
     outl += self.get_coordinate_lines(optimise_ligand=optimise_ligand,
                                       optimise_h=optimise_h,
@@ -175,10 +166,26 @@ end
     added = 0
     for i, (sel, atom) in enumerate(zip(self.ligand_atoms_array, self.atoms)):
       if optimise_h and atom.element in ['H', 'D']: continue
+      opt = self._is_atom_for_opt(i,
+                                  atom,
+                                  optimise_ligand=optimise_ligand,
+                                  optimise_h=optimise_h)
+      tmp=''
+      if constrain_torsions:
+        if opt and atom.element not in ['H', 'D']:
+          torsions = self.get_torsion(i)
+          tmp = '{D %d %d %d %d C } # Constraining dihedral' % tuple(torsions)
+          tmp += ' "%s %s %s" :' % (atom.parent().parent().parent().id,
+                                    atom.parent().parent().resseq.strip(),
+                                    atom.parent().resname,
+                                    )
+          for j in torsions: tmp += ' %s' % self.atoms[j].name.strip()
+          tmp += '\n'
+      if tmp:
+        freeze_outl += tmp
       if sel and optimise_ligand: continue
-      if 1:
-        freeze_outl += '{C %d C} # Restraining %s\n' % (i, atom.id_str())
-        added+=1
+      freeze_outl += '{C %d C} # Constraining xyz %s\n' % (i, atom.id_str())
+      added+=1
     freeze_outl += 'end\nend\n'
     if added: outl+=freeze_outl
     assert outl.find('Opt')>-1

@@ -11,6 +11,8 @@ from libtbx.str_utils import make_sub_header
 from libtbx import slots_getstate_setstate
 from math import sqrt
 import sys
+import json
+import collections
 
 __restraint_attr__ = [
   "sigma",
@@ -42,6 +44,29 @@ class restraint(atoms):
     return "%-20s  %7s  %7s  %7s  %6s  %6s  %10s" % ("atoms", "ideal", "model",
       "delta", "sigma", "residual", "deviation")
 
+  def as_JSON(self):
+    atom_info_list = []
+    for atom_inf in self.atoms_info:
+      atom_slots_list = [s for s in atom_inf.__slots__]
+      atom_slots_as_dict = ({s: getattr(atom_inf, s) for s in atom_slots_list if s != 'xyz' })
+      atom_info_list.append(atom_slots_as_dict)
+
+    serializable_slots = [s for s in self.__slots__ if s != 'markup' and s != 'atoms_info' and hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    slots_as_dict["xyz"] = slots_as_dict["xyz"].elems
+    if callable(getattr(self, "outlier_type", None)):
+      slots_as_dict["outlier_type"] = self.outlier_type()
+    slots_as_dict["atoms_info"] = atom_info_list
+    #res_type_index = slots_as_dict['res_type']
+    #slots_as_dict['res_type'] = res_types[res_type_index]
+    #slots_as_dict['res_type_label'] = res_type_labels[res_type_index]
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   def as_table_row_phenix(self):
     """
     Values for populating ListCtrl in Phenix GUI.
@@ -59,6 +84,7 @@ class restraint(atoms):
     for atom_str in id_strs :
       lines.append("%s%-20s" % (prefix, atom_str))
     lines[-1] += "  " + self.format_values()
+    lines = [s.rstrip() for s in lines]
     return "\n".join(lines)
 
   def format_values(self):
@@ -155,7 +181,7 @@ class chirality(restraint):
   def is_pseudochiral(self):
     #Certain atoms are treated like chiral centers because they bond to atoms that have different names without chemical difference.
     #VAL CB bonds to CG1 and CG2, for example.
-    #A large chiral volume outlier relfects a failure to follow chemical naming conventions, not necessarily a major geometry error
+    #A large chiral volume outlier reflects a failure to follow chemical naming conventions, not necessarily a major geometry error
     #So these pseudochiral centers should be treated differently.
     #
     #backbone phosphate in nucleic acids
@@ -262,6 +288,7 @@ class restraint_validation(validation):
     if (deviations_z_method is not None):
       deviations_z = deviations_z_method()
       self.z_min, self.z_max, self.z_mean = deviations_z_method()
+    self.n_outliers_by_model = {}
     self.results = sorted(self.get_outliers(
       proxies=restraint_proxies,
       unit_cell=unit_cell,
@@ -270,7 +297,8 @@ class restraint_validation(validation):
       sigma_cutoff=sigma_cutoff,
       outliers_only=outliers_only,
       use_segids_in_place_of_chainids=use_segids_in_place_of_chainids))
-    self.n_outliers = len(self.results)
+    self.n_outliers = len(self.results) #this appears as if it will give wrong results if outliers_only=True
+    self.get_n_total_by_model(energies_sites, sites_cart, pdb_atoms)
 
   def get_outliers(self, proxies, unit_cell, sites_cart, pdb_atoms,
       sigma_cutoff):
@@ -305,6 +333,41 @@ class restraint_validation(validation):
       print(prefix + "Min. delta:  %7.3f" % self.min, file=out)
       print(prefix + "Max. delta:  %7.3f" % self.max, file=out)
       print(prefix + "Mean delta:  %7.3f" % self.mean, file=out)
+
+# the subclasses bonds and planarities have different versions of this function
+  def get_n_total_by_model(self, energies_sites, sites_cart, pdb_atoms):
+    self.n_total_by_model = {}
+    proxies = getattr(energies_sites, "%s_proxies" % self.restraint_type)
+    sorted_prox, not_shown = proxies.get_sorted("delta", sites_cart)
+    if sorted_prox:
+      for prox in sorted_prox:
+        atom_indexes = prox[0]
+        first_atom_index = int(atom_indexes[0])
+        model_id = pdb_atoms[first_atom_index].parent().parent().parent().parent().id
+        if model_id not in self.n_total_by_model:
+          self.n_total_by_model[model_id] = 1
+        else:
+          self.n_total_by_model[model_id] += 1
+
+  def as_JSON(self):
+    data = {"validation_type": self.restraint_type}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+
+    for model_id in self.n_total_by_model.keys():
+      summary_results[model_id] = { "num_outliers" : self.n_outliers_by_model[model_id],
+        "num_total" : self.n_total_by_model[model_id],
+      }
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def as_kinemage(self, chain_id=None):
     header = self.kinemage_header
@@ -372,10 +435,28 @@ class bonds(restraint_validation):
         xyz=get_mean_xyz(bond_atoms))
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
+        model_id = bond_atoms[0].model_id
+        if model_id not in self.n_outliers_by_model:
+          self.n_outliers_by_model[model_id] = 1
+        else:
+          self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
     return outliers
+
+  def get_n_total_by_model(self, energies_sites, sites_cart, pdb_atoms):
+    self.n_total_by_model = {}
+    proxies = getattr(energies_sites, "%s_proxies" % self.restraint_type)
+    sorted_prox, not_shown = proxies.get_sorted("delta", sites_cart)
+    if sorted_prox:
+      for prox in sorted_prox:
+        first_atom_index = prox[0]
+        model_id = pdb_atoms[first_atom_index].parent().parent().parent().parent().id
+        if model_id not in self.n_total_by_model:
+          self.n_total_by_model[model_id] = 1
+        else:
+          self.n_total_by_model[model_id] += 1
 
 class angles(restraint_validation):
   restraint_type = "angle"
@@ -409,6 +490,11 @@ class angles(restraint_validation):
         xyz=proxy_atoms[1].xyz)
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
+        model_id = proxy_atoms[0].model_id
+        if model_id not in self.n_outliers_by_model:
+          self.n_outliers_by_model[model_id] = 1
+        else:
+          self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
@@ -444,6 +530,11 @@ class dihedrals(restraint_validation):
         outlier=True)
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
+        model_id = proxy_atoms[0].model_id
+        if model_id not in self.n_outliers_by_model:
+          self.n_outliers_by_model[model_id] = 1
+        else:
+          self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
@@ -457,11 +548,17 @@ class chiralities(restraint_validation):
                       "Deviation (sigmas)","Probable cause"]
   gui_formats = ["%s", "%.3f", "%.3f", "%.1f", "%s"]
   wx_column_widths = [250, 100, 100, 180, 250]
+  __chiralities_slots__ = ["n_handedness_by_model", "n_pseudochiral_by_model", "n_tetrahedral_by_model", "n_chiral_by_model"]
+  __slots__ = restraint_validation.__slots__ + __chiralities_slots__
   def get_result_class(self) : return chirality
 
   def get_outliers(self, proxies, unit_cell, sites_cart, pdb_atoms,
       sigma_cutoff, outliers_only=True,
       use_segids_in_place_of_chainids=False):
+    self.n_handedness_by_model = collections.defaultdict(int)
+    self.n_pseudochiral_by_model = collections.defaultdict(int)
+    self.n_tetrahedral_by_model = collections.defaultdict(int)
+    self.n_chiral_by_model = collections.defaultdict(int)
     import cctbx.geometry_restraints
     sorted = _get_sorted(proxies,
       unit_cell=None,
@@ -481,12 +578,44 @@ class chiralities(restraint_validation):
         residual=restraint.residual(),
         outlier=True,
         xyz=get_mean_xyz(proxy_atoms))
+      model_id = proxy_atoms[0].model_id
+      if not outlier.is_pseudochiral():
+        self.n_chiral_by_model[model_id] += 1
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
+        if model_id not in self.n_outliers_by_model:
+          self.n_outliers_by_model[model_id] = 1
+        else:
+          self.n_outliers_by_model[model_id] += 1
+        self.increment_category_counts(model_id, outlier)
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
+    self.n_handedness_by_model.default_factory = None
+    self.n_pseudochiral_by_model.default_factory = None
+    self.n_tetrahedral_by_model.default_factory = None
+    self.n_chiral_by_model.default_factory = None
     return outliers
+
+  def increment_category_counts(self, model_id, outlier):
+    if not outlier.is_handedness_swap():
+      self.n_tetrahedral_by_model[model_id] += 1
+    else:
+      if outlier.is_pseudochiral():
+        self.n_pseudochiral_by_model[model_id] += 1
+      else:
+        self.n_handedness_by_model[model_id] += 1
+
+  def as_JSON(self):
+    parent_json = json.loads(restraint_validation.as_JSON(self))
+    summary_results = parent_json['summary_results']
+    for model_id in summary_results:
+      summary_results[model_id]["num_handedness_outliers"] = self.n_handedness_by_model[model_id]
+      summary_results[model_id]["num_chiral_centers"] = self.n_chiral_by_model[model_id]
+      summary_results[model_id]["num_tetrahedral_outliers"] = self.n_tetrahedral_by_model[model_id]
+      summary_results[model_id]["num_pseudochiral_outliers"] = self.n_pseudochiral_by_model[model_id]
+    return json.dumps(parent_json, indent=2)
+
 
 class planarities(restraint_validation):
   restraint_type = "planarity"
@@ -525,10 +654,30 @@ class planarities(restraint_validation):
         xyz=get_mean_xyz(plane_atoms_))
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
+        model_id = plane_atoms_[0].model_id
+        if model_id not in self.n_outliers_by_model:
+          self.n_outliers_by_model[model_id] = 1
+        else:
+          self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
     return outliers
+
+  def get_n_total_by_model(self, energies_sites, sites_cart, pdb_atoms):
+    self.n_total_by_model = {}
+    proxies = getattr(energies_sites, "%s_proxies" % self.restraint_type)
+    sorted_prox, not_shown = proxies.get_sorted("residual", sites_cart)
+    if sorted_prox:
+      for prox in sorted_prox:
+        first_plane = prox[0]
+        atom_indexes = first_plane[0]
+        first_atom_index = int(atom_indexes[0])
+        model_id = pdb_atoms[first_atom_index].parent().parent().parent().parent().id
+        if model_id not in self.n_total_by_model:
+          self.n_total_by_model[model_id] = 1
+        else:
+          self.n_total_by_model[model_id] += 1
 
 def get_mean_xyz(atoms):
   from scitbx.matrix import col

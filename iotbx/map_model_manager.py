@@ -8081,6 +8081,48 @@ class map_model_manager(object):
     self.map_manager().set_model_symmetries_and_shift_cart_to_match_map(model)
 
 
+
+  def remove_origin_shift_and_unit_cell_crystal_symmetry(self):
+    '''
+       Set the origin of the current map to be (0,0,0) and reset the
+       unit_cell_crystal_symmetry to match the current crystal_symmetry.
+
+       Do not use this method if you want to use the map_model_manager or any
+       of its maps and models in the usual way.  This is a method to create
+       a set of maps and model that have no reference to their original
+       locations.
+
+       Typical use:
+         box_mmm = mmm.extract_all_maps_around_model()
+         box_mmm.remove_origin_shift_and_unit_cell_crystal_symmetry()
+         data_manager.write_model_file(box_mmm.model(), model_file)
+         data_manager.write_real_map_file(box_mmm.map_manager(), map_file)
+       Now model_file and map_file have no origin shift and the model CRYST1
+       matches the crystal_symmetry and map_file unit_cell_crystal_symmetry of
+       map_file
+
+    '''
+
+    assert self.map_data() is not None
+    # Target origin (zero)
+    zero_origin = (0,0,0)
+    # Gridding of full unit cell (same as current map data)
+    box_gridding = self.map_manager().map_data().all()
+
+    # Reset origin and gridding for each map_manager
+    for mm in self.map_managers():
+      mm.set_original_origin_and_gridding(
+       original_origin = zero_origin,
+       gridding = box_gridding)
+
+    # Any map_manager
+    mm = self.map_manager()
+    # Reset origin for each model
+    for m in self.models():
+      mm.set_model_symmetries_and_shift_cart_to_match_map(m)
+    # All done
+
+
   def set_original_origin_grid_units(self, original_origin_grid_units = None):
     '''
      Reset (redefine) the original origin of the maps and models (apply an

@@ -41,7 +41,7 @@ class energies(list):
           s=''
           if e1 and e2:
             if e1[0]==e2[0]:
-              if e1[0] in ['opt']:
+              if e1[0] in ['opt', 'bound']:
                 b1=e1[3]==e2[3]
               if e1[0] in ['strain', 'energy']:
                 b1=e1[2]==e2[2]

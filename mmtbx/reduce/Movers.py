@@ -1192,6 +1192,11 @@ class MoverHisFlip(object):
 
     #########################
     # Compute the preference energies.
+    # There is an energy penalty of -nonFlipPreference
+    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
+    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
+    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
+    # score is this much better we leave it alone.
     self._preferenceEnergies = []
     if self._enabledFlipStates & 1:
       self._preferenceEnergies.extend([ 0.0 - 0.05,  0.0,  0.0,  0.0 - 1.0])
@@ -1203,11 +1208,7 @@ class MoverHisFlip(object):
         -self._nonFlipPreference - 1.0])
 
   def CoarsePositions(self):
-    # returns: The two possible coarse positions with an energy penalty of -nonFlipPreference
-    # for the flipped orientations, and a penalty of -0.05 for keeping both Hydrogens;
-    # The doubly-deprotenated case (both Hydrogens removed) has a penalty of -1.0.
-    # The -nonFlipPreference penalty is to prevent uncertain flips from happening -- unless the
-    # score is this much better we leave it alone.
+    # returns: The potential coarse positions.
     return PositionReturn(self._atoms, self._coarsePositions,
       self._extras, self._deleteMes, self._preferenceEnergies)
 

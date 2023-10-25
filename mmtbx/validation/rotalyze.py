@@ -6,6 +6,7 @@ from iotbx.pdb import aa_utils
 from libtbx.str_utils import format_value
 from libtbx.utils import Sorry
 import operator
+import json
 import os, sys
 
 OUTLIER_THRESHOLD = 0.003
@@ -21,6 +22,7 @@ class rotamer(residue):
     "rotamer_name",
     "chi_angles",
     "incomplete",
+    "model_id"
   ]
   __slots__ = residue.__slots__ + __rotamer_attr__
 
@@ -64,6 +66,17 @@ class rotamer(residue):
       self.format_chi_angles(pad=True, sep=":"),
       self.evaluation,self.rotamer_name)
 
+  def as_JSON(self):
+    serializable_slots = [s for s in self.__slots__ if hasattr(self, s)]
+    slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
+    #slots_as_dict["rama_type"] = rama_types[slots_as_dict["rama_type"]]
+    return json.dumps(slots_as_dict, indent=2)
+
+  def as_hierarchical_JSON(self):
+    hierarchical_dict = {}
+    hierarchy_nest_list = ['model_id', 'chain_id', 'resid', 'altloc']
+    return json.dumps(self.nest_dict(hierarchy_nest_list, hierarchical_dict), indent=2)
+
   # GUI output
   def as_table_row_phenix(self):
     return [ self.chain_id, "%1s%s %s" % (self.altloc,self.resname,self.resid),
@@ -91,7 +104,7 @@ class rotamer_ensemble(residue):
     return "%-20s %s" % (self.id_str(), ", ".join(rot_out))
 
 class rotalyze(validation):
-  __slots__ = validation.__slots__ + ["n_allowed", "n_favored", "out_percent",
+  __slots__ = validation.__slots__ + ["n_allowed", "n_allowed_by_model", "n_favored", "n_favored_by_model", "out_percent",
         "outlier_threshold", "data_version"]
   program_description = "Analyze protein sidechain rotamers"
   output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:"
@@ -112,6 +125,8 @@ class rotalyze(validation):
     validation.__init__(self)
     self.n_allowed = 0
     self.n_favored = 0
+    self.n_allowed_by_model = {}
+    self.n_favored_by_model = {}
     from mmtbx.rotamer.sidechain_angles import SidechainAngles
     from mmtbx.rotamer import rotamer_eval
     from mmtbx.rotamer.rotamer_eval import RotamerID
@@ -129,6 +144,10 @@ class rotalyze(validation):
                    hierarchy=pdb_hierarchy)
     current_rotamers = {}
     for model in pdb_hierarchy.models():
+      self.n_allowed_by_model[model.id] = 0
+      self.n_favored_by_model[model.id] = 0
+      self.n_outliers_by_model[model.id] = 0
+      self.n_total_by_model[model.id] = 0
       for chain in model.chains():
         if use_segids:
           chain_id = utils.get_segid_as_chainid(chain=chain)
@@ -141,6 +160,7 @@ class rotalyze(validation):
             resname = atom_group.resname
             occupancy = get_occupancy(atom_group)
             kwargs = {
+              "model_id" : model.id,
               "chain_id" : chain_id,
               "resseq" : rg.resseq,
               "icode" : rg.icode,
@@ -176,12 +196,13 @@ class rotalyze(validation):
               value = rotamer_evaluator.evaluate(cur_res, chis)
               if value is not None:
                 self.n_total += 1
+                self.n_total_by_model[model.id] += 1
                 kwargs['score'] = value * 100
                 wrap_chis = rotamer_id.wrap_chis(resname.strip(), chis,
                   symmetry=False)
                 sym_chis = wrap_chis[:]
                 sym_chis = rotamer_id.wrap_sym(resname.strip(), sym_chis)
-                evaluation = self.evaluateScore(value)
+                evaluation = self.evaluateScore(value, model.id)
                 kwargs['evaluation'] = evaluation
                 if evaluation == "OUTLIER":
                   kwargs['outlier'] = True
@@ -203,15 +224,27 @@ class rotalyze(validation):
     out_count, out_percent = self.get_outliers_count_and_fraction()
     self.out_percent = out_percent * 100.0
 
-  def evaluateScore(self, value):
+  def evaluateScore(self, value, model_id=""):
     if value >= ALLOWED_THRESHOLD :
       self.n_favored += 1
+      if model_id in self.n_favored_by_model:
+        self.n_favored_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in favored count dictionary, make sure you are calling this function with the correct model ID")
       return "Favored"
     elif value >= self.outlier_threshold:
       self.n_allowed += 1
+      if model_id in self.n_allowed_by_model:
+        self.n_allowed_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in allowed count dictionary, make sure you are calling this function with the correct model ID")
       return "Allowed"
     else:
       self.n_outliers += 1
+      if model_id in self.n_outliers_by_model:
+        self.n_outliers_by_model[model_id] += 1
+      else:
+        raise Sorry("Model ID not found in outliers count dictionary, make sure you are calling this function with the correct model ID")
       return "OUTLIER"
 
   def show_summary(self, out=sys.stdout, prefix=""):
@@ -248,6 +281,30 @@ class rotalyze(validation):
       parent=parent, title=title, validation=self)
     frame.Show()
     return frame
+
+  def as_JSON(self):
+    data = {"validation_type": "rotalyze"}
+    flat_results = []
+    hierarchical_results = {}
+    summary_results = {}
+    for result in self.results:
+      flat_results.append(json.loads(result.as_JSON()))
+      hier_result = json.loads(result.as_hierarchical_JSON())
+      hierarchical_results = self.merge_dict(hierarchical_results, hier_result)
+
+    data['flat_results'] = flat_results
+    data['hierarchical_results'] = hierarchical_results
+    for model_id in self.n_total_by_model:
+      summary_results[model_id] = {
+        "num_favored" : self.n_favored_by_model[model_id],
+        "num_allowed" : self.n_allowed_by_model[model_id],
+        "num_outliers" : self.n_outliers_by_model[model_id],
+        "num_residues" : self.n_total_by_model[model_id],
+        "outlier_percentage" : self.get_outliers_fraction_for_model(model_id) * 100,
+        "outlier_goal" : self.get_outliers_goal()
+      }
+    data['summary_results'] = summary_results
+    return json.dumps(data, indent=2)
 
   def as_coot_data(self):
     data = []

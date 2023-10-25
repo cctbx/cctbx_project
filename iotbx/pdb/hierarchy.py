@@ -1024,9 +1024,10 @@ class _():
     assert self.atoms_size() > iseq, "%d, %d" % (self.atoms_size(), iseq)
     return self.get_auth_asym_id(self.atoms()[iseq].parent().parent().parent())
 
-  def get_auth_asym_id(self, chain):
+  def get_auth_asym_id(self, chain, segid_as_auth_segid = False):
     auth_asym_id = chain.id
-    if len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
+    if (not segid_as_auth_segid) and \
+       len(chain.atoms()[0].segid.strip()) > len(auth_asym_id):
       auth_asym_id = chain.atoms()[0].segid.strip()
     if auth_asym_id.strip() == '':
       # chain id is empty, segid is empty, just duplicate label_asym_id
@@ -1121,7 +1122,8 @@ class _():
       coordinate_precision=5,
       occupancy_precision=3,
       b_iso_precision=5,
-      u_aniso_precision=5):
+      u_aniso_precision=5,
+      segid_as_auth_segid=False):
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
@@ -1132,7 +1134,7 @@ class _():
     b_iso_fmt_str = "%%.%if" %b_iso_precision
     u_aniso_fmt_str = "%%.%if" %u_aniso_precision
 
-    atom_site_loop = iotbx.cif.model.loop(header=(
+    atom_site_header = [
       '_atom_site.group_PDB',
       '_atom_site.id',
       '_atom_site.label_atom_id',
@@ -1156,7 +1158,11 @@ class _():
       #'_atom_site.auth_comp_id',
       #'_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
-    ))
+     ]
+    if segid_as_auth_segid:
+      atom_site_header.append('_atom_site.auth_segid',)
+
+    atom_site_loop = iotbx.cif.model.loop(header=tuple(atom_site_header))
 
     aniso_loop = iotbx.cif.model.loop(header=(
       '_atom_site_anisotrop.id',
@@ -1200,6 +1206,8 @@ class _():
     #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
     #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
     atom_site_pdbx_PDB_model_num = atom_site_loop['_atom_site.pdbx_PDB_model_num']
+    if segid_as_auth_segid:
+      atom_site_auth_segid = atom_site_loop['_atom_site.auth_segid']
     atom_site_anisotrop_id = aniso_loop['_atom_site_anisotrop.id']
     atom_site_anisotrop_pdbx_auth_atom_id = \
       aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id']
@@ -1239,7 +1247,8 @@ class _():
       model_id = model.id
       if model_id == '': model_id = '1'
       for chain in model.chains():
-        auth_asym_id = self.get_auth_asym_id(chain)
+        auth_asym_id = self.get_auth_asym_id(chain,
+           segid_as_auth_segid = segid_as_auth_segid)
         for residue_group in chain.residue_groups():
           label_asym_id = self.get_label_asym_id(residue_group)
           seq_id = self.get_auth_seq_id(residue_group)
@@ -1293,6 +1302,8 @@ class _():
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
               #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
+              if segid_as_auth_segid:
+                atom_site_auth_segid.append(atom.segid)
 
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
@@ -1330,15 +1341,31 @@ class _():
     #
     return h_cif_block
 
-  def write_mmcif_file(self,
-                       file_name,
+  def as_mmcif_string(self,
                        crystal_symmetry=None,
-                       data_block_name=None):
+                       data_block_name=None,
+                       segid_as_auth_segid=False):
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
-      crystal_symmetry=crystal_symmetry)
+      crystal_symmetry=crystal_symmetry,
+      segid_as_auth_segid = segid_as_auth_segid)
+    f = StringIO()
+    cif_object.show(out = f)
+    return f.getvalue()
+
+  def write_mmcif_file(self,
+                       file_name,
+                       crystal_symmetry=None,
+                       data_block_name=None,
+                       segid_as_auth_segid=False):
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block(
+      crystal_symmetry=crystal_symmetry,
+      segid_as_auth_segid = segid_as_auth_segid)
     with open(file_name, "w") as f:
       print(cif_object, file=f)
 

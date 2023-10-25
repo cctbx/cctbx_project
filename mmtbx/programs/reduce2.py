@@ -28,16 +28,15 @@ from iotbx import pdb
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
-from libtbx.development.timers import work_clock
 from scitbx.array_family import flex
-from iotbx.pdb import common_residue_names_get_class
+from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
 from mmtbx.programs import probe2
 import copy
 import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.0.0"
+version = "1.2.4"
 
 master_phil_str = '''
 approach = *add remove
@@ -111,7 +110,7 @@ output
   description_file_name = None
     .type = str
     .short_caption = Description output file name
-    .help = Description output file name
+    .help = This file holds a description of the operations that Reduce2 performed when placing and optimize hydrogens. Its creation is required because it can contain important warnings that must be attended to by the person running the program. It also includes a REPORT section that lists the final orientation along with initial and final score for each Mover that can be parsed to determine the results. The REPORT information and some additional information used to be included in the resulting PDB file produced by Reduce.
   flipkin_directory = None
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
@@ -264,20 +263,24 @@ def _AddPosition(a, tag, group, partner=None):
   else:
     tagString = ''
   if a.parent().altloc in ['', ' ']:
+    altLoc = ''
     altTag = ''
   else:
+    altLoc = a.parent().altloc.lower()
     altTag = " '{}'".format(a.parent().altloc.lower())
   if (partner is not None) and not (partner.parent().altloc in ['', ' ']):
+    altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
-  return '{{{:.4s} {} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.strip().lower(),               # Atom name
+  return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
+    a.name.lower(),               # Atom name
+    altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
     a.parent().parent().resseq_as_int(),  # Residue number
     a.b,                                  # B factor
     group,                                # Dominant group name
     tagString,                            # Tag (P or L)
-    altTag,                               # Alternate, if any
+    altTag,                               # Tag for alternate, if any
     a.xyz[0],                             # location
     a.xyz[1],
     a.xyz[2]
@@ -303,6 +306,25 @@ def _DescribeMainchainLink(a0s, a1s, group):
         ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
+def _IsStandardResidue(resname):
+  amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
+  return resname.strip().upper() in amino_acid_resnames
+
+def _IsNucleicAcidResidue(resname):
+  nucleic_acids = [
+        "A", "C", "G", "T",  # DNA bases
+        "U", "I",            # RNA bases (I for inosine, a modified RNA base)
+  ]
+  return resname.strip().upper() in nucleic_acids
+
+def _MainChainAtomsWithHydrogen(resname):
+  # Find the main chain atoms with hydrogen bonds
+  if _IsStandardResidue(resname):
+    return ['N', 'CA', 'C', 'O']
+  elif _IsNucleicAcidResidue(resname):
+    return ["OP2", "OP3", "C5'", "C4'", "C3'", "C2'", "C1'", "O3'", "O2'"]
+  return []
+
 
 def _DescribeMainchainResidue(r, group, prevCs):
   '''Return a string that describes the mainchain for a specified residue.
@@ -310,25 +332,66 @@ def _DescribeMainchainResidue(r, group, prevCs):
   (none for the first) and lines to the N, Ca, C, and O.
   :param r: Residue to describe.
   :param group: The dominant group name the point or line is part of.
-  :param prevCs: Atom(s) that is the mainchain C in all conformations
-  of the previous residue.
+  :param prevCs: Atom(s) that is the mainchain last connection in all conformations
+  of the previous residue. For protein, this is C and for nucleic acid, this is O3'.
   '''
 
   ret = ''
 
-  # Find the lists of atoms that we might need.
-  Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
-  CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
-  Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
-  Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
-  OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
 
-  # Make all of the connections.
-  ret += _DescribeMainchainLink(prevCs, Ns, group)
-  ret += _DescribeMainchainLink(Ns, CAs, group)
-  ret += _DescribeMainchainLink(CAs, Cs, group)
-  ret += _DescribeMainchainLink(Cs, Os, group)
-  ret += _DescribeMainchainLink(Cs, OXTs, group)
+    # Find the lists of atoms that we might need.
+    Ns = [a for a in r.atoms() if a.name.strip().upper() == 'N']
+    CAs = [a for a in r.atoms() if a.name.strip().upper() == 'CA']
+    Cs = [a for a in r.atoms() if a.name.strip().upper() == 'C']
+    Os = [a for a in r.atoms() if a.name.strip().upper() == 'O']
+    OXTs = [a for a in r.atoms() if a.name.strip().upper() == 'OXT']
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ns, group)
+    ret += _DescribeMainchainLink(Ns, CAs, group)
+    ret += _DescribeMainchainLink(CAs, Cs, group)
+    ret += _DescribeMainchainLink(Cs, Os, group)
+    ret += _DescribeMainchainLink(Cs, OXTs, group)
+
+  ############################################################
+  # Nucleic acid main chain
+  if _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Find the lists of atoms that we might need.
+    Ps = [a for a in r.atoms() if a.name.strip().upper() == "P"]
+    OP3s = [a for a in r.atoms() if a.name.strip().upper() == "OP3"]
+    OP2s = [a for a in r.atoms() if a.name.strip().upper() == "OP2"]
+    OP1s = [a for a in r.atoms() if a.name.strip().upper() == "OP1"]
+    O5Ps = [a for a in r.atoms() if a.name.strip().upper() == "O5'"]
+    O4Ps = [a for a in r.atoms() if a.name.strip().upper() == "O4'"]
+    O3Ps = [a for a in r.atoms() if a.name.strip().upper() == "O3'"]
+    O2Ps = [a for a in r.atoms() if a.name.strip().upper() == "O2'"]
+    C5Ps = [a for a in r.atoms() if a.name.strip().upper() == "C5'"]
+    C4Ps = [a for a in r.atoms() if a.name.strip().upper() == "C4'"]
+    C3Ps = [a for a in r.atoms() if a.name.strip().upper() == "C3'"]
+    C2Ps = [a for a in r.atoms() if a.name.strip().upper() == "C2'"]
+    C1Ps = [a for a in r.atoms() if a.name.strip().upper() == "C1'"]
+
+    # Make all of the connections.
+    ret += _DescribeMainchainLink(prevCs, Ps, group)
+    ret += _DescribeMainchainLink(Ps, OP1s, group)
+    ret += _DescribeMainchainLink(Ps, OP2s, group)
+    ret += _DescribeMainchainLink(Ps, OP3s, group)
+    ret += _DescribeMainchainLink(Ps, O5Ps, group)
+    ret += _DescribeMainchainLink(O5Ps, C5Ps, group)
+    ret += _DescribeMainchainLink(C5Ps, C4Ps, group)
+    ret += _DescribeMainchainLink(C4Ps, C3Ps, group)
+    ret += _DescribeMainchainLink(C3Ps, C2Ps, group)
+    ret += _DescribeMainchainLink(C2Ps, O2Ps, group)
+
+    ret += _DescribeMainchainLink(C4Ps, O4Ps, group)
+    ret += _DescribeMainchainLink(O4Ps, C1Ps, group)
+    ret += _DescribeMainchainLink(C1Ps, C2Ps, group)
+
+    ret += _DescribeMainchainLink(C3Ps, O3Ps, group)
 
   return ret
 
@@ -349,7 +412,7 @@ def _DescribeMainchainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -367,20 +430,42 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
   '''
   ret = ''
 
-  # Start with the CA atom and mark as handled all links that go back to the main chain
-  # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
   described = []   # A list of sets of two atoms that we have already described bonds between
   queued = []
-  try:
-    # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
-    # Do this for all CAs found because there may be multiple atom groups (alts)
-    for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
-      queued.append(aCA)
-      known = [a for a in bondedNeighborLists[aCA] if a.name.strip().upper() in ['N','C']]
-      for a in known:
-        described.append({aCA, a})
-  except Exception as e:
-    pass
+
+  ############################################################
+  # Protein main chain
+  if _IsStandardResidue(r.atom_groups()[0].resname):
+
+    # Start with the CA atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the CA to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not N or C.  Queue them for testing.
+      # Do this for all CAs found because there may be multiple atom groups (alts)
+      for aCA in [a for a in r.atoms() if a.name.strip().upper() == 'CA']:
+        queued.append(aCA)
+        known = [a for a in bondedNeighborLists[aCA]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ['N','C']]
+        for a in known:
+          described.append({aCA, a})
+    except Exception:
+      pass
+
+  elif _IsNucleicAcidResidue(r.atom_groups()[0].resname):
+
+    # Start with the C1' atom and mark as handled all links that go back to the main chain
+    # or to Hydrogens.  Add the C1' to the list of atoms queued to be handled.
+    try:
+      # Get all of the neighbors of CA that are not C2' or O4'.  Queue them for testing.
+      # Do this for all Cs found because there may be multiple atom groups (alts)
+      for aC in [a for a in r.atoms() if a.name.strip().upper() == "C1'"]:
+        queued.append(aC)
+        known = [a for a in bondedNeighborLists[aC]
+                 if a.element_is_hydrogen() or a.name.strip().upper() in ["C2'","O4'"]]
+        for a in known:
+          described.append({aC, a})
+    except Exception:
+      pass
 
   # Cycle through the list of queued atoms until we run out of them.
   # For each, look for a non-hydrogen neighbor that we've not yet described a bond
@@ -409,8 +494,8 @@ def _DescribeSidechainResidue(r, group, bondedNeighborLists):
       described.append({last,curr})
       ret += _AddPosition(curr, 'L', group, last) + '\n'
       links = [a for a in bondedNeighborLists[curr]
-                if (not {curr, a} in described) and not a.element_is_hydrogen()
-                and curr.parent().parent() == a.parent().parent()
+                if (not {curr, a} in described) and (not a.element_is_hydrogen())
+                and (curr.parent().parent() == a.parent().parent())
               ]
       last = curr
   return ret
@@ -432,7 +517,7 @@ def _DescribeSidechainResidueHydrogens(r, group, bondedNeighborLists):
     try:
       n = bondedNeighborLists[h][0]
       # If the hydrogen is bonded to a mainchain atom, add it
-      if not n.name.strip().upper() in ['N', 'CA', 'C', 'O']:
+      if not n.name.strip().upper() in _MainChainAtomsWithHydrogen(r.atom_groups()[0].resname):
         ret += _AddPosition(n, 'P', group) + ' ' + _AddPosition(h, 'L', group, n) + '\n'
     except Exception:
       pass
@@ -601,6 +686,9 @@ def _AddFlipkinBase(states, views, fileName, fileBaseName, model, alts, bondedNe
       ret += _DescribeMainchainResidue(rg, fileBaseName, prevCs)
       try:
         prevCs = [a for a in rg.atoms() if a.name.strip().upper() == 'C']
+        # If not protein, check nucleic acid
+        if len(prevCs) == 0:
+          prevCs = [a for a in rg.atoms() if a.name.strip().upper() == "O3'"]
       except Exception:
         pass
 
@@ -752,7 +840,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
           described.append({a,n})
 
   # Add bonded structures for het groups that are Movers
-  ret += '@vectorlist {het} color= cyan  master= {hets}\n'
+  ret += '@vectorlist {het} color= orange  master= {hets}\n'
   for c in model.chains():
     for rg in c.residue_groups():
       if inHet[rg.atoms()[0]] and not inWater[rg.atoms()[0]] and _IsMover(rg, moverList):
@@ -1108,20 +1196,20 @@ NOTES:
     if self.params.approach == 'add':
       # Add Hydrogens to the model
       make_sub_header('Adding Hydrogens', out=self.logger)
-      startAdd = work_clock()
+      startAdd = time.time()
       self._AddHydrogens()
-      doneAdd = work_clock()
+      doneAdd = time.time()
 
       # Interpret the model after shifting and adding Hydrogens to it so that
       # all of the needed fields are filled in when we use them below.
       # @todo Remove this once place_hydrogens() does all the interpretation we need.
       make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = work_clock()
+      startInt = time.time()
       self._ReinterpretModel()
-      doneInt = work_clock()
+      doneInt = time.time()
 
       make_sub_header('Optimizing', out=self.logger)
-      startOpt = work_clock()
+      startOpt = time.time()
       opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
         self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
@@ -1130,11 +1218,11 @@ NOTES:
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity)
-      doneOpt = work_clock()
+      doneOpt = time.time()
       outString += opt.getInfo()
-      outString += 'Time to Add Hydrogen = '+str(doneAdd-startAdd)+'\n'
-      outString += 'Time to Interpret = '+str(doneInt-startInt)+'\n'
-      outString += 'Time to Optimize = '+str(doneOpt-startOpt)+'\n'
+      outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
+      outString += 'Time to Interpret = {:.3f} sec'.format(doneInt-startInt)+'\n'
+      outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
         print('Atom information used during calculations:', file=self.logger)
         print(opt.getAtomDump(), file=self.logger)

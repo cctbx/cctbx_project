@@ -405,6 +405,19 @@ class base_qm_manager(base_manager):
       f+=' Energy : %0.6f' % energy
     return f
 
+  def _is_atom_for_opt(self, i, atom, optimise_ligand=True, optimise_h=True):
+    ligand_atom = self.ligand_atoms_array[i]
+    if optimise_ligand:
+      if ligand_atom:
+        opt=1
+      else:
+        opt=0
+    else:
+      opt=0
+    if optimise_h and atom.element in ['H', 'D']:
+      opt=1
+    return opt
+
   def guess_bonds(self):
     bonds = []
     for i, atom1 in enumerate(self.atoms):

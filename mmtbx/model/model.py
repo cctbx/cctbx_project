@@ -1680,6 +1680,7 @@ class manager(object):
       do_not_shift_back = False,
       try_unique_with_biomt = False,
       skip_restraints=False,
+      segid_as_auth_segid = False,
       ):
     if try_unique_with_biomt:
       if not self.can_be_unique_with_biomt():
@@ -1698,7 +1699,8 @@ class manager(object):
           additional_blocks = ab,
           align_columns = align_columns,
           do_not_shift_back = do_not_shift_back,
-          try_unique_with_biomt = False)
+          try_unique_with_biomt = False,
+          segid_as_auth_segid = segid_as_auth_segid)
     out = StringIO()
     cif = iotbx.cif.model.cif()
     cif_block = None
@@ -1712,9 +1714,11 @@ class manager(object):
     if hierarchy_to_output is not None:
       if cif_block is not None:
         hierarchy_to_output.round_occupancies_in_place(3)
-        cif_block.update(hierarchy_to_output.as_cif_block())
+        cif_block.update(hierarchy_to_output.as_cif_block(
+          segid_as_auth_segid = segid_as_auth_segid))
       else:
-        cif_block = hierarchy_to_output.as_cif_block()
+        cif_block = hierarchy_to_output.as_cif_block(
+          segid_as_auth_segid = segid_as_auth_segid)
 
     if self.restraints_manager_available():
       ias_selection = self.get_ias_selection()

@@ -68,6 +68,8 @@ qm_restraints
     .type = atom_selection
     .help = selection for core of atoms to calculate new restraints via a QM \
             geometry minimisation
+  run_in_macro_cycles = *first_only first_and_last all last_only test
+    .type = choice
   buffer = 3.5
     .type = float
     .help = distance to include entire residues into the enviroment of the core
@@ -83,34 +85,25 @@ qm_restraints
     charge = None
       .type = float
   }
-  calculate_starting_energy = False
-    .type = bool
-  calculate_final_energy = False
-    .type = bool
-  calculate_starting_strain = False
-    .type = bool
-  calculate_final_strain = False
-    .type = bool
-  calculate_starting_bound = False
-    .type = bool
-  calculate_final_bound = False
-    .type = bool
-  write_pdb_core = False
-    .type = bool
-  write_pdb_buffer = False
-    .type = bool
-  write_final_pdb_core = False
-    .type = bool
-  write_final_pdb_buffer = False
-    .type = bool
-  write_restraints = True
-    .type = bool
+
+  calculate = *in_situ_opt starting_energy final_energy \
+starting_strain final_strain starting_bound final_bound \
+starting_higher_single_point final_higher_single_point
+    .type = choice(multi=True)
+    .help = Choose QM calculations to run
+    .caption = in_situ_optimisation_of_selection \
+      starting_energy_of_isolated_ligand final_energy_of_isolated_ligand \
+      strain_energy_of_starting_ligand_geometry \
+      strain_energy_of_final_ligand_geometry \
+      5 6 7 8
+
+  write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer
+    .type = choice(multi=True)
+    .help = Choose which ligand or cluster files to write
   restraints_filename = Auto
     .type = path
     .style = new_file
   cleanup = all *most None
-    .type = choice
-  run_in_macro_cycles = *first_only first_and_last all test
     .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
@@ -147,7 +140,7 @@ qm_restraints
       if package=='mopac':
         programs += ' *%s' % package
       else:
-        programs += '   %s' % package
+        programs += ' %s' % package
   if verbose: print(programs)
   if validate:
     assert programs, 'Need to set some parameters for QM programs %s' % program_options
@@ -358,9 +351,9 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
       rc=[]
       for i in range(number_of_macro_cycles+1):
         rc.append(unique_item_list())
-      if qmr.calculate_starting_energy:
+      if qmr.calculate.count('starting_energy'):
         rc[1].append('energy')
-      if qmr.calculate_starting_strain:
+      if qmr.calculate.count('starting_strain'):
         rc[1].append('strain')
       if not qmr.do_not_even_calculate_qm_restraints:
         if qmr.run_in_macro_cycles in ['first_only', 'first_and_last']:
@@ -372,9 +365,9 @@ def get_qi_macro_cycle_array(params, verbose=False, log=None):
           rc[1].append('test')
       if qmr.run_in_macro_cycles in ['first_and_last']:
         rc[-1].append('restraints')
-      if qmr.calculate_final_energy:
+      if qmr.calculate.count('final_energy'):
         rc[-1].append('energy')
-      if qmr.calculate_final_strain:
+      if qmr.calculate.count('final_strain'):
         rc[-1].append('strain')
       data.append(rc)
       if verbose:

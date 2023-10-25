@@ -14,6 +14,7 @@ Options:
 
   model=input_file        input PDB file
   outliers_only=False   only print outliers
+  json=False            Outputs results as JSON compatible dictionary
   verbose=False         verbose text output
 
 Example:
@@ -29,6 +30,9 @@ Example:
   show_errors = False
     .type = bool
     .help = '''Print out errors'''
+  json = False
+    .type = bool
+    .help = "Prints results as JSON format dictionary"
   wxplot = False
     .type = bool
     .help = Display interactive plots (requires wxPython and Matplotlib)
@@ -38,6 +42,20 @@ Example:
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
+
+  def get_results_as_JSON(self):
+    hierarchy = self.data_manager.get_model().get_hierarchy()
+    hierarchy.atoms().reset_i_seq()
+
+    result = rotalyze(
+      pdb_hierarchy=hierarchy,
+      data_version="8000",#was 'params.data_version', no options currently
+      show_errors=self.params.show_errors,
+      outliers_only=self.params.outliers_only,
+      use_parent=self.params.use_parent,
+      out=self.logger,
+      quiet=False)
+    return result.as_JSON()
 
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
@@ -53,7 +71,9 @@ Example:
       use_parent=self.params.use_parent,
       out=self.logger,
       quiet=False)
-    if self.params.verbose:
+    if self.params.json:
+      print(result.as_JSON(), file=self.logger)
+    elif self.params.verbose:
       result.show_old_output(out=self.logger, verbose=True)
     if self.params.wxplot :
       try :

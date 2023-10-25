@@ -481,16 +481,12 @@ def running_this_macro_cycle(qmr,
   if energy_only:
     # if macro_cycle in [0, None]: return False
     if pre_refinement:
-      if (qmr.calculate_starting_energy or
-          qmr.calculate_starting_strain or
-          qmr.calculate_starting_bound
-         ):
+      checks = 'starting_strain starting_energy starting_bound'
+      if any(item in checks for item in qmr.calculate):
         return True
     else:
-      if (qmr.calculate_final_energy or
-          qmr.calculate_final_strain or
-          qmr.calculate_final_bound
-         ):
+      checks = 'final_strain final_energy final_bound'
+      if any(item in checks for item in qmr.calculate):
         if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
           return True
   return False
@@ -763,18 +759,18 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
     program_goal=['opt']
     return program_goal
   if macro_cycle==1:
-    if qmr.calculate_starting_energy:
+    if qmr.calculate.count('starting_energy'):
       program_goal.append('energy')
-    if qmr.calculate_starting_strain:
+    if qmr.calculate.count('starting_strain'):
       program_goal.append('strain')
-    if qmr.calculate_starting_bound:
+    if qmr.calculate.count('starting_bound'):
       program_goal.append('bound')
   else: # only called with final energy on final macro cycle
-    if qmr.calculate_final_energy:
+    if qmr.calculate.count('final_energy'):
       program_goal.append('energy')
-    if qmr.calculate_final_strain:
+    if qmr.calculate.count('final_strain'):
       program_goal.append('strain')
-    if qmr.calculate_final_bound:
+    if qmr.calculate.count('final_bound'):
       program_goal.append('bound')
   return program_goal
 
@@ -811,9 +807,10 @@ def setup_qm_jobs(model,
       qmm = get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=log)
       preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
       if not energy_only: # only write PDB files for restraints update
-        if qmr.write_pdb_core:
+        print(qmr.write_files)
+        if 'pdb_core' in qmr.write_files:
           write_pdb_file(ligand_model, '%s_ligand_%s.pdb' % (prefix, preamble), log)
-        if qmr.write_pdb_buffer:
+        if 'pdb_buffer' in qmr.write_files:
           write_pdb_file(buffer_model, '%s_cluster_%s.pdb' % (prefix, preamble), log)
       if not energy_only and qmr.do_not_even_calculate_qm_restraints:
         print('    Skipping QM calculation : %s' % qmr.selection)
@@ -1012,10 +1009,10 @@ def update_restraints(model,
     gs = ligand_model.geometry_statistics()
     print('  Interim stats : %s' % gs.show_bond_and_angle_and_dihedral(), file=log)
     preamble = quantum_interface.get_preamble(macro_cycle, i, qmr)
-    if qmr.write_final_pdb_core:
+    if 'pdb_final_core' in qmr.write_files:
       write_pdb_file(ligand_model, '%s_ligand_final_%s.pdb' % (prefix, preamble), log)
       final_pdbs[-1].append('%s_ligand_final_%s.pdb' % (prefix, preamble))
-    if qmr.write_final_pdb_buffer:
+    if 'pdb_final_buffer' in qmr.write_files:
       write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
       final_pdbs[-1].append('%s_cluster_final_%s.pdb' % (prefix, preamble))
     if qmr.do_not_update_restraints:
@@ -1072,7 +1069,7 @@ def update_restraints(model,
             '-'*71,
             ),
             file=log)
-    if qmr.write_restraints and not never_write_restraints:
+    if 'restraints' in qmr.write_files and not never_write_restraints:
       header='''
 Restraints written by QMR process in phenix.refine
       ''' % ()

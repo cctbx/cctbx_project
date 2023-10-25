@@ -162,7 +162,7 @@ Inputs: Model file (PDB, mmCIF)
       return  # done
 
     starting_residues = self.model.get_hierarchy().overall_counts().n_residues
-    print("Starting residues: %s" %(starting_residues), file = self.logger)
+    print("\nStarting residues: %s" %(starting_residues), file = self.logger)
 
     if self.params.output_files.processed_model_prefix:
       prefix = self.params.output_files.processed_model_prefix
@@ -190,6 +190,9 @@ Inputs: Model file (PDB, mmCIF)
 
     # original (multi-char chain IDs)
     self.data_manager.write_model_file(mm, self.processed_model_file_name)
+
+    final_residues = mm.get_hierarchy().overall_counts().n_residues
+    print("Final residues: %s\n" %(final_residues), file = self.logger)
 
     # Split up processed model and write each chain as well
     if len(mm_to_split.chain_ids()) > 1 or \
