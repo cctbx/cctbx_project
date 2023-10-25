@@ -98,6 +98,37 @@ def test_label_parsing():
     assert 'The label, SIG' in str(s)
 
 # -----------------------------------------------------------------------------
+def test_model_type_parsing():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  model_2erl = os.path.join(data_dir, 'data', '2ERL.pdb')
+
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['map_coefficients', 'miller_array', 'model', 'phil', 'real_map']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      if self.data_manager.get_model_type(filename=model_1yjp) != ['neutron']:
+        raise Sorry('1jyp should be neutron')
+      if self.data_manager.get_model_type(filename=model_2erl) != ['electron']:
+        raise Sorry('2erl should be electron')
+
+  # model.type order matches input model order
+  run_program(program_class=testProgram, args=[model_1yjp, model_2erl,
+    'model.type=neutron', 'model.type=electron', '--quiet'])
+
+  # other order will fail
+  try:
+    run_program(program_class=testProgram, args=[model_1yjp, model_2erl,
+      'model.type=electron', 'model.type=neutron', '--quiet'])
+  except Sorry as e:
+    assert '1jyp' in str(e)
+    assert 'neutron' in str(e)
+
+# -----------------------------------------------------------------------------
 def test_user_selected_labels():
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_mtz = os.path.join(data_dir, 'data',
@@ -307,6 +338,7 @@ other_file = %s
 if __name__ == '__main__':
   test_dry_run()
   test_label_parsing()
+  test_model_type_parsing()
   test_user_selected_labels()
 
   print("OK")

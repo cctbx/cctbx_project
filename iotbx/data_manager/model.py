@@ -75,8 +75,9 @@ model
         raise Sorry('This PHIL is not properly defined for the "model" datatype.\n There should be a parameter for the filename ("file") and type ("type").\n')
 
       # process file
-      self.process_model_file(item_extract.file)
-      self._model_types[item_extract.file] = item_extract.type
+      if item_extract.file is not None:
+        self.process_model_file(item_extract.file)
+        self._model_types[item_extract.file] = item_extract.type
 
   def add_model(self, filename, data):
     return self._add(ModelDataManager.datatype, filename, data)
