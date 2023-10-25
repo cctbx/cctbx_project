@@ -2,11 +2,12 @@ from __future__ import absolute_import, division, print_function
 
 import os
 
+from six.moves import cStringIO as StringIO
+
 from iotbx.cli_parser import run_program
 from iotbx.data_manager import DataManager
 from libtbx.program_template import ProgramTemplate
-from libtbx.utils import Sorry
-
+from libtbx.utils import multi_out, Sorry
 from libtbx.test_utils import Exception_expected, Exception_not_expected
 
 # =============================================================================
@@ -51,6 +52,7 @@ def test_label_parsing():
 
   # check label matching and parsing
   for phil_args, label_args in [
+    (['labels.name'], ['xd']),
     (['labels.name', 'labels.name', 'labels.name'], ['XD', 'SIGI', 'WIDTH']),
     (['user_selected_labels', 'user_selected_labels', 'user_selected_labels'], ['YD', 'M_ISYM', 'IPR']),
     (['labels.name', 'user_selected_labels', 'user_selected_labels'], ['BATCH', 'FRACTION', 'BGP']),
@@ -59,9 +61,20 @@ def test_label_parsing():
 
     combined_args = ['{}={}'.format(phil_arg, label_arg) for phil_arg, label_arg in zip(phil_args, label_args)]
 
+    parser_log = StringIO()
+    logger = multi_out()
+    logger.register('parser_log', parser_log)
+
     run_program(
       program_class=testProgram,
-      args=['--quiet', '--overwrite', '--write-all', data_mtz] + combined_args)
+      args=['--overwrite', '--write-all', data_mtz] + combined_args,
+      logger=logger)
+
+    parser_log.flush()
+    text = parser_log.getvalue()
+    assert 'Combined labels PHIL' in text
+
+    logger.close()
 
     dm = DataManager()
     dm.process_phil_file(phil_filename)
@@ -84,9 +97,216 @@ def test_label_parsing():
   except Sorry as s:
     assert 'The label, SIG' in str(s)
 
+# -----------------------------------------------------------------------------
+def test_user_selected_labels():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  data_mtz = os.path.join(data_dir, 'data',
+                          'insulin_unmerged_cutted_from_ccp4.mtz')
+
+  class testProgram(ProgramTemplate):
+    program_name = 'tst_cli_parser'
+    datatypes = ['map_coefficients', 'miller_array', 'phil', 'real_map']
+    master_phil_str = '''
+other_file = None
+  .type = path
+'''
+    def validate(self):
+      pass
+    def run(self):
+      self.result = self.data_manager.get_miller_array_user_selected_labels(data_mtz)
+      params = self.data_manager.export_phil_scope(as_extract=True)
+      assert params.data_manager.miller_array[0].user_selected_labels == self.result
+    def get_results(self):
+      return self.result
+
+  phil_name = 'user_selected.eff'
+
+  # phil file with just the DataManager scope
+  phil_one = '''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = IPR,SIGIPR,merged
+    user_selected_labels = FRACTIONCALC
+  }
+}
+''' % data_mtz
+
+  # phil file with the same file as a separate parameter
+  phil_two = '''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = IPR,SIGIPR,merged
+    user_selected_labels = FRACTIONCALC
+  }
+}
+other_file = %s
+''' % (data_mtz, data_mtz)
+
+  for phil in [phil_one, phil_two]:
+    with open(phil_name, 'w') as f:
+      f.write(phil)
+
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', phil_name])
+
+    assert len(result) == 2
+    for label in result:
+      assert label in ['FRACTIONCALC' ,'IPR,SIGIPR,merged']
+
+  os.remove(phil_name)
+
+  # duplicate user labels
+  try:
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WID',
+            'miller_array.user_selected=WIDT'])
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  # map_coefficients.user_selected will not work on files without map coefficients
+  try:
+    result = run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WID',
+            'map_coefficients.user_selected=WIDT'])
+  except Sorry as s:
+    assert 'does not seem to have map_coefficients data' in str(s)
+
+  # map_coefficients.user_selected_labels should be mirrored in
+  # miller_array.user_selected_labels
+  data_mtz = os.path.join(data_dir, 'data',
+                          'phaser_1.mtz')
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['map_coefficients', 'miller_array', 'phil', 'real_map']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      ma_labels = self.data_manager.get_miller_array_user_selected_labels()
+      mc_labels = self.data_manager.get_map_coefficients_user_selected_labels()
+      print(ma_labels, file=self.logger)
+      print(mc_labels, file=self.logger)
+      assert ma_labels == mc_labels
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.user_selected=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.user_selected=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.labels.name=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.labels.name=FW']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'map_coefficients.user_selected=FWT,PHIFWT']
+  )
+
+  run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', data_mtz,
+          'miller_array.user_selected=FWT,PHIFWT']
+  )
+
+  # non map_coefficients should not be copied
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=FP']
+    )
+  except AssertionError:
+    pass
+
+  # or used to select non map_coefficients data
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=FP']
+    )
+  except Sorry as s:
+    assert 'is not recognized to be map_coefficients data' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=WT',
+            'miller_array.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.user_selected=WT',
+            'miller_array.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.user_selected=WT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'map_coefficients.labels.name=FWT,PHIFWT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+  try:
+    run_program(
+      program_class=testProgram,
+      args=['--quiet', '--overwrite', data_mtz,
+            'miller_array.labels.name=FWT,PHIFWT',
+            'map_coefficients.user_selected=PHIF']
+    )
+  except Sorry as s:
+    assert 'duplicate user_selected_labels' in str(s)
+
+
 # =============================================================================
 if __name__ == '__main__':
   test_dry_run()
   test_label_parsing()
+  test_user_selected_labels()
 
   print("OK")

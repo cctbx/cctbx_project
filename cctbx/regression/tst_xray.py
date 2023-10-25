@@ -1345,10 +1345,6 @@ def exercise_select_on_name_or_chemical_element():
     )))
   sel = xs.element_selection('O', 'N')
   assert tuple(sel) == (0, 0, 0, 1, 0, 1)
-  sel = xs.label_selection('C4')
-  assert tuple(sel) == (0, 0, 0, 0, 1, 0)
-  sel = xs.label_regex_selection("^(O|C)(1|2)$")
-  assert tuple(sel) == (1, 1, 0, 1, 0, 0)
 
 def exercise_chemical_formula():
   cs = crystal.symmetry((10,10,10, 90,90,90), 'hall: P 2 2 3')

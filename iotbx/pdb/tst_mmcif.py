@@ -43,7 +43,8 @@ def exercise_extract_header_misc():
   wavelength = cif_in.extract_wavelength()
   assert (approx_equal(wavelength, 1.8927))
   exptl_method = cif_in.get_experiment_type()
-  assert (exptl_method == 'X-RAY DIFFRACTION')
+  assert exptl_method.is_xray()
+  assert ("%s" % exptl_method == 'X-RAY DIFFRACTION')
   r_rfree_sigma = cif_in.get_r_rfree_sigma(cif_file)
   r_rfree_sigma.show()
 

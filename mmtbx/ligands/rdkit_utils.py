@@ -21,10 +21,7 @@ Functions:
 def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal'):
   rc = []
   for i, (code, monomer) in enumerate(cc_cif.items()):
-    molecule = Chem.Mol()
-    rwmol = Chem.RWMol(molecule)
-    atom = monomer.get_loop('_chem_comp_atom')
-    conformer = Chem.Conformer(atom.n_rows())
+    atom = monomer.get_loop_or_row('_chem_comp_atom')
     for j, tmp in enumerate(atom.iterrows()):
       if label=='pdbx_model_Cartn_x_ideal':
         xyz = (tmp.get('_chem_comp_atom.pdbx_model_Cartn_x_ideal'),
@@ -64,7 +61,7 @@ def read_chemical_component_filename(filename):
   for i, (code, monomer) in enumerate(ccd.items()):
     molecule = Chem.Mol()
     rwmol = Chem.RWMol(molecule)
-    atom = monomer.get_loop('_chem_comp_atom')
+    atom = monomer.get_loop_or_row('_chem_comp_atom')
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
@@ -73,15 +70,16 @@ def read_chemical_component_filename(filename):
       xyz = (float(xyzs[j][0]), float(xyzs[j][1]), float(xyzs[j][2]))
       conformer.SetAtomPosition(rdatom, xyz)
       lookup[tmp.get('_chem_comp_atom.atom_id')]=j
-    bond = monomer.get_loop('_chem_comp_bond')
-    for tmp in bond.iterrows():
-      atom1 = tmp.get('_chem_comp_bond.atom_id_1')
-      atom2 = tmp.get('_chem_comp_bond.atom_id_2')
-      atom1 = lookup.get(atom1)
-      atom2 = lookup.get(atom2)
-      order = tmp.get('_chem_comp_bond.value_order')
-      order = bond_order_ccd[order]
-      rwmol.AddBond(atom1, atom2, order)
+    bond = monomer.get_loop_or_row('_chem_comp_bond')
+    if bond:
+      for tmp in bond.iterrows():
+        atom1 = tmp.get('_chem_comp_bond.atom_id_1')
+        atom2 = tmp.get('_chem_comp_bond.atom_id_2')
+        atom1 = lookup.get(atom1)
+        atom2 = lookup.get(atom2)
+        order = tmp.get('_chem_comp_bond.value_order')
+        order = bond_order_ccd[order]
+        rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
   molecule = rwmol.GetMol()
   return molecule
@@ -109,9 +107,7 @@ def convert_model_to_rdkit(cctbx_model):
       rdatom = Chem.Atom(atomic_number)
       rdatom.SetFormalCharge(atom.charge_as_int())
       rdatom_idx = rwmol.AddAtom(rdatom)
-
       conformer.SetAtomPosition(rdatom_idx,atom.xyz)
-
 
   rm = cctbx_model.restraints_manager
   grm = rm.geometry
@@ -133,7 +129,6 @@ def convert_elbow_to_rdkit(elbow_mol):
 
   TODO: Charge
   """
-
   # elbow bond order to rdkit bond orders
   bond_order_elbowkey = {
     1.5:Chem.rdchem.BondType.AROMATIC,
@@ -142,10 +137,7 @@ def convert_elbow_to_rdkit(elbow_mol):
     3: Chem.rdchem.BondType.TRIPLE,
   }
   bond_order_rdkitkey = {value:key for key,value in bond_order_elbowkey.items()}
-
-
   atoms = list(elbow_mol)
-
   mol = Chem.Mol()
   rwmol = Chem.RWMol(mol)
   conformer = Chem.Conformer(len(atoms))
@@ -166,9 +158,21 @@ def convert_elbow_to_rdkit(elbow_mol):
   mol = rwmol.GetMol()
   return mol
 
+def convert_rdkit_to_elbow(rwmol):
+  from elbow.chemistry.SimpleMoleculeClass import SimpleMoleculeClass
+  from elbow.chemistry.xyzClass import xyzClass
+  positions = molecule.GetConformer().GetPositions()
+  smc = SimpleMoleculeClass()
+  for i, atom in enumerate(smc):
+    atom.xyz = xyzClass(positions[i])
+    atom.record_name = 'LIG'
+    atom.chainID = 'A'
+    atom.segID = ''
+  smc.SetOriginalFormat('PDB')
+  assert 0
+
 def enumerate_bonds(mol):
   idx_set_bonds = {frozenset((bond.GetBeginAtomIdx(),bond.GetEndAtomIdx())) for bond in mol.GetBonds()}
-
   # check that the above approach matches the more exhaustive approach used for angles/torsion
   idx_set = set()
   for atom in mol.GetAtoms():
@@ -180,7 +184,6 @@ def enumerate_bonds(mol):
             idx0,idx1 = idx1,idx0
             idx_set.add(s)
   assert idx_set == idx_set_bonds
-
   return idx_set_bonds
 
 def enumerate_angles(mol):
@@ -235,24 +238,16 @@ def mol_to_2d(mol):
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
 
-def mol_from_smiles(smiles,embed3d=False,addHs=True,removeHs=False):
+def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False):
   """
   Convert a smiles string to rdkit mol
   """
   ps = Chem.SmilesParserParams()
   ps.removeHs=removeHs
   rdmol = Chem.MolFromSmiles(smiles,ps)
-
-  if addHs:
-    rdmol = Chem.AddHs(rdmol)
-
-  if embed3d:
-    rdmol = mol_to_3d(rdmol)
-
-
-  if removeHs:
-    rdmol = Chem.RemoveHs(rdmol)
-
+  if addHs: rdmol = Chem.AddHs(rdmol)
+  if embed3d: rdmol = mol_to_3d(rdmol)
+  if removeHs: rdmol = Chem.RemoveHs(rdmol)
   Chem.SetHybridization(rdmol)
   rdmol.UpdatePropertyCache()
   return rdmol
@@ -274,10 +269,6 @@ def match_mol_indices(mol_list):
   smarts_mol = Chem.MolFromSmarts(mcs_SMARTS.smartsString)
   match_list = [x.GetSubstructMatch(smarts_mol) for x in mol_list]
   return list(zip(*match_list))
-
-
-
-
 
 if __name__ == '__main__':
   import sys

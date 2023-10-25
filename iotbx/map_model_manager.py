@@ -5128,14 +5128,17 @@ class map_model_manager(object):
     f = StringIO()
     print("\nSummary of anisotropic scaling applied for %s" %(
       self.get_map_manager_by_id(map_id).file_name), file = f)
-    print("Original B-cart:    (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(prev_b_cart)), file = f)
-    print("New B-cart:         (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(new_b_cart)), file = f)
-    print("Effective B-sharpen:(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
-     tuple(b_sharpen)), file = f)
-    print("Effective average B-sharpen: %.2f A**2" %(
-      flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
+    if prev_b_cart is not None:
+      print("Original B-cart:    (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(prev_b_cart)), file = f)
+    if new_b_cart is not None:
+      print("New B-cart:         (%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(new_b_cart)), file = f)
+    if b_sharpen and b_sharpen is not None:
+      print("Effective B-sharpen:(%.2f, %.2f, %.2f, %.2f, %.2f, %.2f)" %(
+       tuple(b_sharpen)), file = f)
+      print("Effective average B-sharpen: %.2f A**2" %(
+        flex.double(b_sharpen[:3]).min_max_mean().mean), file = f)
 
     result = group_args(
      group_args_type = 'aniso_before_and_after for %s' %(previous_map_id),
@@ -5365,7 +5368,7 @@ class map_model_manager(object):
       else:
         n_bins = 200
 
-    min_n_bins = n_bins//3
+    min_n_bins = 3
     original_n_bins = n_bins
     while n_bins > min_n_bins:
       f_array = get_map_coeffs_as_fp_phi(map_coeffs, n_bins = n_bins,
@@ -6305,10 +6308,14 @@ class map_model_manager(object):
     n_bins = len(sthol2_list)
 
     if not overall_values:
+      nn = 0
       overall_values = flex.double(n_bins,0.)
       for si in si_list:
-        overall_values += si.get(key)
-      overall_values /= n
+        values = si.get(key)
+        if values is not None:
+          overall_values += values
+          nn += 1
+      overall_values /= max(1,nn)
 
     print("\n D-min                %s by direction vector %s: " %(
        text,extra_text)+

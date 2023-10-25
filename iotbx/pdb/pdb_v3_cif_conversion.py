@@ -260,7 +260,7 @@ class pdb_v3_cif_conversion:
     from six.moves import cStringIO as StringIO
     f = StringIO()
     print(
-       "REMARK   PDB_V3_CONVERSION  CONVERSIONS MADE FOR PDB_V3 COMPATIBILITY",
+       "REMARK 987 PDB_V3_CONVERSION  CONVERSIONS MADE FOR PDB_V3 COMPATIBILITY",
            file = f)
 
     # Set up conversion info that goes in REMARK records
@@ -272,7 +272,7 @@ class pdb_v3_cif_conversion:
            info.pdb_v3_representation_list,
            ):
           print(
-            "REMARK   PDB_V3_CONVERSION  %s: %s  PDB_V3_TEXT: %s" %(
+            "REMARK 987 PDB_V3_CONVERSION  %s: %s  PDB_V3_TEXT: %s" %(
               key.upper(),
               full_text,
               pdb_v3_text),
@@ -424,12 +424,12 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     for line in remark_hetnam_records:
       if not line: continue
       spl = line.split()
-      if (spl[0] == "REMARK") and (spl[1] == "PDB_V3_CONVERSION"):
-        if len(spl) != 6: continue
-        key = spl[2].lower()[:-1] # take off ":"
+      if (spl[0] == "REMARK") and (spl[1] == "987") and (spl[2] == "PDB_V3_CONVERSION"):
+        if len(spl) != 7: continue
+        key = spl[3].lower()[:-1] # take off ":"
         if not key in self._remark_keys: continue
-        full = spl[3]
-        pdb_v3 = spl[5]
+        full = spl[4]
+        pdb_v3 = spl[6]
       elif self._residue_conversion_as_hetnam and (spl[0] == "HETNAM"):
         key = "resname"
         if not key in self._hetnam_keys: continue

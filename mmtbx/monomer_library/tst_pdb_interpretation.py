@@ -2516,10 +2516,139 @@ END
     params = params.pdb_interpretation,
     log=None).xray_structure()
 
+def exercise_merging_of_multiple_torsions_from_ccp4(mon_lib_srv, ener_lib):
+  raw_records = '''\
+CRYST1  173.131   63.222  139.747  90.00 117.44  90.00 C 1 2 1
+SCALE1      0.005776  0.000000  0.002999        0.00000
+SCALE2      0.000000  0.015817  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.008063        0.00000
+ATOM     51  P   UFT D   7     -67.463  33.524   3.567  1.00112.63           P
+ATOM     52  OP1 UFT D   7     -68.380  34.407   4.348  1.00110.72           O
+ATOM     53  OP2 UFT D   7     -66.071  33.991   3.308  1.00125.39           O1-
+ATOM     54  O5' UFT D   7     -67.227  32.153   4.352  1.00 96.88           O
+ATOM     55  C5' UFT D   7     -66.275  31.194   3.850  1.00 86.30           C
+ATOM     56  C4' UFT D   7     -66.867  29.809   3.998  1.00 90.89           C
+ATOM     57  O4' UFT D   7     -67.018  29.186   2.691  1.00 89.89           O
+ATOM     58  C3' UFT D   7     -66.068  28.802   4.846  1.00 94.41           C
+ATOM     59  O3' UFT D   7     -66.587  28.769   6.175  1.00 95.64           O
+ATOM     60  C2' UFT D   7     -66.247  27.476   4.085  1.00 90.12           C
+ATOM     61  C1' UFT D   7     -66.300  27.971   2.642  1.00 87.60           C
+ATOM     62  N1  UFT D   7     -64.948  28.191   2.070  1.00 92.31           N
+ATOM     63  C2  UFT D   7     -64.148  27.069   1.895  1.00 97.52           C
+ATOM     64  O2  UFT D   7     -64.517  25.929   2.181  1.00 83.90           O
+ATOM     65  N3  UFT D   7     -62.899  27.333   1.376  1.00 96.36           N
+ATOM     66  C4  UFT D   7     -62.378  28.569   1.029  1.00 96.57           C
+ATOM     67  O4  UFT D   7     -61.235  28.641   0.578  1.00104.59           O
+ATOM     68  C5  UFT D   7     -63.264  29.677   1.237  1.00 88.14           C
+ATOM     69  C6  UFT D   7     -64.492  29.451   1.732  1.00 89.94           C
+ATOM     70  F2' UFT D   7     -67.445  26.780   4.352  1.00 91.06           F
+  '''.splitlines()
+  cif_records = '''
+data_comp_list
+loop_
+_chem_comp.id
+_chem_comp.three_letter_code
+_chem_comp.name
+_chem_comp.group
+_chem_comp.number_atoms_all
+_chem_comp.number_atoms_nh
+_chem_comp.desc_level
+UFT UFT "2'-deoxy-2'-fluorouridine 5'-(dihydrogen phosphate)" DNA 31 21 .
+
+data_comp_UFT
+loop_
+_chem_comp_atom.comp_id
+_chem_comp_atom.atom_id
+_chem_comp_atom.type_symbol
+_chem_comp_atom.type_energy
+_chem_comp_atom.charge
+_chem_comp_atom.x
+_chem_comp_atom.y
+_chem_comp_atom.z
+UFT OP3    O OP   -1 1.868  -46.867 -34.019
+UFT P      P P    0  0.567  -47.432 -33.481
+UFT OP1    O O    0  -0.201 -48.232 -34.516
+UFT OP2    O OP   -1 -0.289 -46.386 -32.791
+UFT "O5'"  O O2   0  0.984  -48.486 -32.332
+UFT N1     N NR6  0  0.520  -52.299 -30.250
+UFT C6     C CR16 0  0.035  -52.133 -31.532
+UFT C2     C CR6  0  0.180  -53.419 -29.502
+UFT O2     O O    0  0.586  -53.626 -28.364
+UFT N3     N NR16 0  -0.668 -54.303 -30.131
+UFT C4     C CR6  0  -1.196 -54.193 -31.405
+UFT O4     O O    0  -1.946 -55.073 -31.830
+UFT C5     C CR16 0  -0.794 -53.014 -32.119
+UFT "F2'"  F F    0  3.749  -51.440 -29.039
+UFT "C2'"  C CH1  0  2.891  -51.409 -30.143
+UFT "C5'"  C CH2  0  1.715  -48.005 -31.174
+UFT "C4'"  C CH1  0  2.137  -49.171 -30.313
+UFT "O4'"  O O2   0  0.993  -49.989 -29.983
+UFT "C1'"  C CH1  0  1.444  -51.292 -29.649
+UFT "C3'"  C CH1  0  3.123  -50.141 -30.956
+UFT "O3'"  O OH1  0  4.454  -49.679 -30.878
+UFT H6     H H    0  0.289  -51.368 -32.013
+UFT HN3    H H    0  -0.896 -55.022 -29.658
+UFT H5     H H    0  -1.105 -52.862 -32.987
+UFT "H2'"  H H    0  3.011  -52.211 -30.708
+UFT "H5'"  H H    0  1.142  -47.394 -30.647
+UFT "H5'A" H H    0  2.516  -47.504 -31.468
+UFT "H4'"  H H    0  2.524  -48.816 -29.478
+UFT "H1'"  H H    0  1.433  -51.381 -28.667
+UFT "H3'"  H H    0  2.880  -50.294 -31.893
+UFT "HO3'" H H    0  4.516  -48.968 -31.338
+loop_
+_chem_comp_tor.comp_id
+_chem_comp_tor.id
+_chem_comp_tor.atom_id_1
+_chem_comp_tor.atom_id_2
+_chem_comp_tor.atom_id_3
+_chem_comp_tor.atom_id_4
+_chem_comp_tor.value_angle
+_chem_comp_tor.value_angle_esd
+_chem_comp_tor.period
+UFT C2e-chi         "O4'" "C1'" N1    C2     210.000 10.000 6
+UFT C2e-nyu0        "C4'" "O4'" "C1'" "C2"   340.700 6.300  1
+UFT C2e-nyu3        "C2'" "C3'" "C4'" "O4'"  22.600  4.500  1
+UFT C2e-nyu4        "C3'" "C4'" "O4'" "C1'"  357.700 6.100  1
+UFT C3e-chi         "O4'" "C1'" N1    C2     210.000 10.000 6
+UFT C3e-nyu0        "C4'" "O4'" "C1'" "C2'"  2.8     6.100  1
+UFT C3e-nyu3        "C2'" "C3'" "C4'" "O4'"  324.700 3.100  1
+UFT C3e-nyu4        "C3'" "C4'" "O4'" "C1'"  20.500  5.100  1
+UFT alpha           "C5'" "O5'" P     OP3    -60.000 10.00  3
+UFT beta            P     "O5'" "C5'" "C4'"  180.000 10.00  3
+UFT epsi            "C4'" "C3'" "O3'" "HO3'" 180.000 10.00  3
+UFT gamma           "O5'" "C5'" "C4'" "C3'"  180.000 10.00  3
+UFT const_11        O4    C4    C5    C6     180.000 10.0   2
+UFT sp3_sp3_35      N1    "C1'" "C2'" "F2'"  180.000 10.0   3
+UFT sp3_sp3_5       "F2'" "C2'" "C3'" "O3'"  60.000  10.0   3
+UFT const_sp2_sp2_1 C5    C6    N1    C2     0.000   5.0    2
+UFT const_23        O2    C2    N1    C6     180.000 10.0   2
+UFT const_sp2_sp2_5 C4    C5    C6    N1     0.000   5.0    2
+UFT const_19        O2    C2    N3    C4     180.000 10.0   2
+UFT const_15        O4    C4    N3    C2     180.000 10.0   2
+
+'''
+  import iotbx.cif
+  log = StringIO()
+  cif_object = iotbx.cif.reader(input_string=cif_records).model()
+  mon_lib_srv.process_cif_object(cif_object=cif_object,
+                                 process_tor=True)
+  params = iotbx.phil.parse(
+    monomer_library.pdb_interpretation.grand_master_phil_str,
+    process_includes=True).extract()
+  processed_pdb_file = monomer_library.pdb_interpretation.process(
+    mon_lib_srv=mon_lib_srv,
+    ener_lib=ener_lib,
+    file_name=None,
+    raw_records=raw_records,
+    params = params.pdb_interpretation,
+    log=None).xray_structure()
+
 def run(args):
   assert len(args) == 0
   mon_lib_srv = monomer_library.server.server()
   ener_lib = monomer_library.server.ener_lib()
+  exercise_merging_of_multiple_torsions_from_ccp4(mon_lib_srv, ener_lib)
   exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib)
   exercise_bad_custom_bonds(mon_lib_srv, ener_lib)
   exercise_bad_water(mon_lib_srv, ener_lib)

@@ -200,7 +200,7 @@ Usage examples:
     self.torsions_in_planes()
     print('\n%s' % self.results, file=log)
     reduce_H_atoms = self.results.is_possible_reduce()
-    print('  Has reduce-like H atoms : %s\n' % reduce_H_atoms if reduce_H_atoms else '')
+    print('  Has reduce-like H atoms : %s\n' % reduce_H_atoms if reduce_H_atoms else '', file=log)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

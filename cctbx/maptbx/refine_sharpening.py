@@ -2564,10 +2564,17 @@ def scale_amplitudes(model_map_coeffs=None,
   f_array,phases=map_coeffs_as_fp_phi(map_coeffs)
 
   (d_max,d_min)=f_array.d_max_min(d_max_is_highest_defined_if_infinite=True)
-  if not f_array.binner():
-    f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
-    f_array.binner().require_all_bins_have_data(min_counts=1,
-      error_string="Please use a lower value of n_bins")
+  n_bins_use = si.n_bins
+  while not f_array.binner():
+    try:
+      f_array.setup_binner(n_bins=si.n_bins,d_max=d_max,d_min=d_min)
+      f_array.binner().require_all_bins_have_data(min_counts=1,
+        error_string="Please use a lower value of n_bins")
+    except Exception as e:
+      if n_bins_use > 1:
+        n_bins_use -= 1
+      else:
+        raise Exception(e)
 
   if resolution is None:
     resolution=si.resolution

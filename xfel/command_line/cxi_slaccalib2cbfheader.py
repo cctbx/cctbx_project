@@ -8,7 +8,8 @@ from __future__ import absolute_import, division, print_function
 import sys, os
 import libtbx.phil
 from libtbx.utils import Usage, Sorry
-from xfel.cftbx.detector.cspad_cbf_tbx import read_slac_metrology, write_cspad_cbf
+from serialtbx.detector.cspad import read_slac_metrology
+from xfel.cftbx.detector.cspad_cbf_tbx import write_cspad_cbf
 
 master_phil = libtbx.phil.parse("""
 metrology_file = None

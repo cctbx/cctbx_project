@@ -129,6 +129,7 @@ void kokkos_sum_over_steps(
     bool use_nominal_hkl,
     KOKKOS_MAT3 anisoU,
     KOKKOS_MAT3 anisoG,
+    KOKKOS_MAT3 rotate_principal_axes,
     bool use_diffuse,
     vector_cudareal_t d_diffuse_gamma_images,
     vector_cudareal_t d_diffuse_sigma_images,
@@ -295,7 +296,9 @@ void kokkos_sum_over_steps(
     if (use_diffuse){
         anisoG_local = anisoG;
         anisoU_local = anisoU;
-        num_laue_mats = gen_laue_mats(laue_group_num, laue_mats);
+
+        num_laue_mats = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+
         for (int i_gam=0; i_gam<3; i_gam++){
             dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
             dG_dgam[i_gam](i_gam, i_gam) = 1;

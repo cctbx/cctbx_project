@@ -636,7 +636,8 @@ def exercise_header_misc(regression_pdb):
   wavelength = pdb_inp.extract_wavelength()
   assert approx_equal(wavelength, 0.995)
   expt_type = pdb_inp.get_experiment_type()
-  assert (expt_type == 'X-RAY DIFFRACTION')
+  assert ("%s" % expt_type == 'X-RAY DIFFRACTION')
+  assert expt_type.is_xray()
 
 def dump_pdb(file_name, sites_cart, crystal_symmetry=None):
   f = open(file_name, "w")

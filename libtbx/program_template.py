@@ -66,6 +66,10 @@ Program Description
   # available options are set in iotbx/data_manager/__init__.py (data_manager_options)
   data_manager_options = None
 
+  # customization of master PHIL defined by string
+  # this is useful for setting different defaults
+  data_manager_custom_master_phil_str = None
+
   # master PHIL string for the program (required)
   master_phil_str = '''
 # example

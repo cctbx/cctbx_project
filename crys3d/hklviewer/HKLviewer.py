@@ -747,7 +747,7 @@ newarray._sigmas = sigs
       QMessageBox.warning(self.window, "HKLviewer",
         "First highlight one or more datasets in the table of datasets on the details tab to save them as a new datafile", buttons=QMessageBox.Ok)
       return
-    datasets2savestr = "', '".join([ e.text() for e in self.millertable.selectedItems()] )
+    datasets2savestr = "', '".join([ self.millertable.item(i, 0).text() for i in self.millertable.selectedrows ] )
     options = QFileDialog.Options()
     fileName, filtr = QFileDialog.getSaveFileName(self.window,
             "Save datasets '%s' to a reflection file" %datasets2savestr, "",
@@ -947,7 +947,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
               mstr = ""
               with open(fname, 'r') as f:
                 mstr += f.read() + '\\n'
-              self.add_another_text_tab(tabname, mstr)
+              self.add_another_text_tab(fname, mstr, os.path.abspath(fname))
             self.waiting = False
             self.XtricorderBtn.setEnabled(True)
             self.XtriageBtn.setEnabled(True)
@@ -980,12 +980,12 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
                 # only allow changing the last column with opacity values
                 if col == 0:
                   item = QTableWidgetItem(str(elm))
-                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 if col==1:
                   self.lowerbinvals.append(elm)
                 if col==2:
                   item = QTableWidgetItem(str(elm))
-                  item.setFlags(item.flags() ^ Qt.ItemIsEnabled)
+                  item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                   self.upperbinvals.append(elm)
                 if col == 1: # allow changing bin thresholds
                   item = QTableWidgetItem(str(elm))
@@ -1115,7 +1115,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
           if self.infodict.get("file_name"):
             self.currentfileName = self.infodict.get("file_name", "")
             self.setWindowFilenameTitles( self.currentfileName)
-            for tabname in ["Xtricorder",  "Xtriage"]:
+            for tabname in ["xtricorder.log",  "xtriage.log"]:
               self.removeNamedTab(tabname)
 
           if self.infodict.get("NewFileLoaded"):
@@ -1125,7 +1125,7 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
             self.ShowAllVectorsBtn.setCheckState(Qt.Unchecked)
             self.functionTabWidget.setDisabled(True)
             self.AlignVectorGroupBox.setChecked( False)
-            for tabname in ["Xtricorder",  "Xtriage"]:
+            for tabname in ["xtricorder.log",  "xtriage.log"]:
               self.removeNamedTab(tabname)
             # display only those miller table columns that have been persisted if any
             stored_colnames_select_lst = []
@@ -1323,13 +1323,15 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
       self.tabTextScrollDownShow(self.textAlerts)
 
 
-  def removeNamedTab(self, tabname):
-    if self.__dict__.get(tabname, None) is not None: # remove any existing one with the same name
-      self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
-      self.__dict__[tabname].setParent(None)
+  def removeNamedTab(self, tabsubstr):
+    for n in range(self.tabText.count()):
+      tabname = self.tabText.tabText(n)
+      if tabsubstr in tabname:
+        self.tabText.removeTab( self.tabText.indexOf(self.__dict__[tabname]) )
+        self.__dict__[tabname].setParent(None)
 
 
-  def add_another_text_tab(self, tabname, mstr):
+  def add_another_text_tab(self, tabname, mstr, ttip):
     self.removeNamedTab(tabname)
     self.__dict__[tabname] = QWidget()
     gridLayout = QGridLayout(self.__dict__[tabname])
@@ -1350,7 +1352,9 @@ hkls.color_powscale = %s""" %(selcolmap, colourpowscale) )
     newtabedit.finddlg = self.finddlg
     gridLayout.addWidget(newtabedit, 0, 0, 1, 1)
     self.tabText.addTab(self.__dict__[tabname], tabname)
-    self.tabText.setCurrentIndex( self.tabText.indexOf(self.__dict__[tabname]) )
+    idx = self.tabText.indexOf(self.__dict__[tabname])
+    self.tabText.setCurrentIndex( idx )
+    self.tabText.setTabToolTip(idx, ttip)
 
 
   def make_new_millertable(self):

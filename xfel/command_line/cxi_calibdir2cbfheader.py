@@ -92,7 +92,8 @@ if (__name__ == "__main__") :
       # In order to match the image pickle metrology, we have to discard the tilts and offets in the
       # section objects, and instead use the active areas returned by corners_asic as the tile
       # locations.
-      from xfel.cftbx.detector.cspad_cbf_tbx import basis, pixel_size, asic_dimension, asic_gap
+      from serialtbx.detector import basis
+      from xfel.cftbx.detector.cspad_cbf_tbx import pixel_size, asic_dimension, asic_gap
       null_ori = col((0,0,1)).axis_and_angle_as_unit_quaternion(0, deg=True)
 
       # the detector is rotated 90 degrees from how corners_asic reports things

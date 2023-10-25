@@ -24,6 +24,7 @@ from __future__ import absolute_import, division, print_function
 # revision 1.60 - JJH 081120 - reorganized code into functions and cleaned up flag usage
 # revision 1.61 - JJH 110622 - moved to iotbx
 # revision 1.70 - VBC 201116 - switch over to using model object and chemical components library
+# revision 1.71 - VBC 230923 - switch to using atom.parent() instead of relying on id_str()
 
 import sys
 import os
@@ -250,7 +251,7 @@ class Remediator():
     non_v3_atoms_count = 0
     for atom in atoms:
       #print(atom.name)
-      res_name = atom.id_str()[10:13]
+      res_name = atom.parent().resname
       if not res_name in self.residues_dict:
         self.residues_dict[res_name] = self.build_hash_from_chem_components(res_name, convert_to_new=False, build_all_atoms=True)
         #print(res_name+"\n"+str(residues_dict[res_name]))

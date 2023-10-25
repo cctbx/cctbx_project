@@ -1066,6 +1066,24 @@ data_manager {
     if label != 'I,SIGI,merged':
       assert label in fs_labels
 
+  # select array by incomplete label
+  dm = DataManager(['miller_array', 'phil'])
+  phil = iotbx.phil.parse('''
+data_manager {
+  miller_array {
+    file = %s
+    user_selected_labels = XD
+  }
+}
+''' % data_mtz)
+  working_phil = dm.master_phil.fetch(phil)
+  dm.load_miller_array_phil_extract(working_phil.extract())
+  answer = dm.get_miller_arrays(labels=['XDET'])
+  user_labels = dm.get_miller_array_user_selected_labels()
+  test = dm.get_miller_arrays(labels=user_labels)
+  assert user_labels == ['XD']
+  assert answer == test
+
 # -----------------------------------------------------------------------------
 def test_scattering_table_mixins():
   for datatype in ['model', 'miller_array']:

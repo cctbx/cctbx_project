@@ -21,6 +21,7 @@ from scitbx.array_family import flex
 from xfel.cxi.cspad_ana import cspad_tbx
 from xfel.cxi.cspad_ana import skip_event_flag
 from xfel.cxi.cspad_ana.mod_event_info import mod_event_info
+from serialtbx.detector.xtc import old_address_to_new_address
 
 
 class common_mode_correction(mod_event_info):
@@ -380,7 +381,7 @@ class common_mode_correction(mod_event_info):
          self.address == 'MfxEndstation-0|Rayonix-0':
       from psana import Source, Camera
       import numpy as np
-      address = cspad_tbx.old_address_to_new_address(self.address)
+      address = old_address_to_new_address(self.address)
       src=Source('DetInfo(%s)'%address)
       self.cspad_img = evt.get(Camera.FrameV1,src)
       if self.cspad_img is not None:

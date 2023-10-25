@@ -158,7 +158,7 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
-                 free_r_flags_scope = 'xray_data',
+                 free_r_flags_scope = 'miller_array.labels.name',
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
@@ -199,10 +199,15 @@ class fmodel_mixins(object):
       reflection_file_server = rfs)
     #
     fmodel_params = self.get_fmodel_params()
+
     if array_type == 'neutron':
       parameters = fmodel_params.neutron_data
     else:
       parameters = fmodel_params.xray_data
+
+    #print("LOOK : parameters.r_free_flags.required", parameters.r_free_flags.required)
+    #print("LOOK : parameters.force_anomalous_flag_to_be_equal_to", parameters.force_anomalous_flag_to_be_equal_to)
+
     #
     # XXX
     # XXX Temporary hack/work-around (REMOVE later) start
@@ -217,6 +222,8 @@ class fmodel_mixins(object):
     # XXX
     # Get reflection data
     data = extract_xtal_data.run(
+      keep_going                        = not tmp_p.r_free_flags.required,
+      extract_r_free_flags              = not tmp_p.r_free_flags.ignore_r_free_flags,
       reflection_file_server            = rfs,
       parameters                        = tmp_p,
       experimental_phases_params        = experimental_phases_params,

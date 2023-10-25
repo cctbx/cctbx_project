@@ -518,7 +518,7 @@ class intensity_resolution_statistics_cxi(worker):
            self.logger.main_log(this_label + ' ' + str(array.observation_type()))
            uniform.append(array.as_intensity_array())
            break
-         if self.params.statistics.cciso.mtz_column_F in this_label:
+         if self.params.statistics.cciso.mtz_column_F.lower() in this_label:
            self.logger.main_log(this_label + ' ' + str(array.observation_type()))
            uniform.append(array.as_intensity_array())
            break
@@ -587,6 +587,10 @@ class intensity_resolution_statistics_cxi(worker):
 
     selected_uniform = []
     if have_iso_ref:
+      # quickly circumvent the odd case where the reference intensities have no sigmas
+      # (which is the case for model F's)
+      if uniform[0].sigmas() is None:
+        uniform[0].set_sigmas( uniform[0].data() )
       uniformA = (uniform[0].sigmas() > 0.).__and__(uniform[1].sigmas() > 0.)
 
       for x in [0, 1]:

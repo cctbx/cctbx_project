@@ -128,6 +128,9 @@ class CCTBXParser(ParserBase):
     if program_class.program_name is None:
       program_class.program_name = self.prog
     self.prefix = self.prog.split('.')[-1]
+    # Windows dispatchers may have the .bat extension
+    if sys.platform == 'win32' and self.prefix.lower() == 'bat':
+      self.prefix = self.prog.split('.')[-2]
 
     # PHIL filenames
     self.data_filename = self.prefix + '_data.eff'
@@ -161,6 +164,7 @@ class CCTBXParser(ParserBase):
     self.data_manager = DataManager(
       datatypes=program_class.datatypes,
       custom_options=program_class.data_manager_options,
+      custom_master_phil_str=program_class.data_manager_custom_master_phil_str,
       logger=self.logger)
     self.namespace = None
 
@@ -538,29 +542,49 @@ class CCTBXParser(ParserBase):
         phil_object = _get_last_object(source)
         if phil_object.full_path() in [
           'data_manager.miller_array.labels.name',
-          'data_manager.miller_array.user_selected_labels']:
+          'data_manager.miller_array.user_selected_labels',
+          'data_manager.map_coefficients.labels.name',
+          'data_manager.map_coefficients.user_selected_labels']:
           label_objects.append(source)
 
-      if len(label_objects) > 1:
+      if len(label_objects) > 0:
         print('  Found labels in command-line', file=self.logger)
         print('  ----------------------------', file=self.logger)
-        # modify PHIL hierarchy
-        parent_object = _get_last_object(label_objects[0])  # name / user_selected_labels
-        pps = parent_object.primary_parent_scope  # miller_array
-        if parent_object.full_path() == 'data_manager.miller_array.labels.name':
-          pps = parent_object.primary_parent_scope.primary_parent_scope
-        for label_object in label_objects[1:]:
-          data_manager_sources.remove(label_object)
-          phil_object = _get_last_object(label_object)
-          if phil_object.full_path() == 'data_manager.miller_array.labels.name':
-            phil_object = phil_object.primary_parent_scope
-          pps.objects.append(phil_object)
-          phil_object.primary_parent_scope = pps
+
+        # combine labels of the same datatype
+        datatypes = ['miller_array', 'map_coefficients']
+        for datatype in datatypes:
+          for parent_label_object in label_objects:
+            parent_object = _get_last_object(parent_label_object)  # name / user_selected_labels
+            pps = parent_object.primary_parent_scope  # miller_array
+            if parent_object.primary_parent_scope.name == 'datatype':
+              break
+          if parent_object.full_path() == 'data_manager.%s.labels.name' % datatype:
+            pps = parent_object.primary_parent_scope.primary_parent_scope
+          for child_label_object in label_objects:
+            if child_label_object is not parent_label_object \
+              and child_label_object in data_manager_data_sources \
+              and child_label_object in label_objects:
+              data_manager_sources.remove(child_label_object)
+              phil_object = _get_last_object(child_label_object)
+              if phil_object.full_path() == 'data_manager.%s.labels.name' % datatype:
+                phil_object = phil_object.primary_parent_scope
+              pps.objects.append(phil_object)
+              phil_object.primary_parent_scope = pps
+
+        # finally combine labels into one scope
+        label_phil = label_objects[0]
+        if len(label_objects) == len(datatypes):
+          for label_object in label_objects[1:]:
+            label_phil.adopt_scope(label_object)
+            if label_object in data_manager_sources:
+              data_manager_sources.remove(label_object)
+
         print('', file=self.logger)
 
         print('  Combined labels PHIL', file=self.logger)
         print('  --------------------', file=self.logger)
-        tmp_working_phil = self.data_manager.master_phil.fetch_diff(label_objects[0])
+        tmp_working_phil = self.data_manager.master_phil.fetch_diff(label_phil)
         print(tmp_working_phil.as_str(prefix='    '), file=self.logger)
         print('', file=self.logger)
 

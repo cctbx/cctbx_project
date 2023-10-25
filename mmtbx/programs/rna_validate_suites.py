@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from mmtbx.model import manager
-from mmtbx.validation.rna_validate import rna_suites
+from mmtbx.suitename import suitealyze
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
 
@@ -50,13 +50,12 @@ Example:
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-    model.log=null_out()
+    model.set_log(log = null_out())
     model.process(make_restraints=True, pdb_interpretation_params=p)
     geometry = model.get_restraints_manager().geometry
 
-    result = rna_suites(
+    result = suitealyze.suitealyze(
       pdb_hierarchy=hierarchy,
-      geometry_restraints_manager=geometry,
       outliers_only=self.params.outliers_only)
     if self.params.json:
       print(result.as_JSON(), file=self.logger)

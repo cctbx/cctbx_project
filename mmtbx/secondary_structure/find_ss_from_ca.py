@@ -257,11 +257,47 @@ master_phil = iotbx.phil.parse("""
 master_params = master_phil
 
 ######## Methods for getting selection strings from a model ############
+def get_selection_from_chain_dict(chain_dict, minimum_segment_length = None,
+   return_as_dict = False):
+  ''' Create a selection based on a dict of residues present in each chain.
+   If minimum_segment_length is set, remove segments shorter than this'''
+
+  from iotbx.pdb import resseq_encode
+  int_type = type(1)
+  selection_list = []
+  if return_as_dict: info_dict = {}
+  for chain_id in list(chain_dict.keys()):
+    residues_to_keep = chain_dict[chain_id]
+    if return_as_dict:
+      info_dict[chain_id] = []
+    for c in compress_indices(residues_to_keep):
+      if type(c) == int_type:
+        if minimum_segment_length and minimum_segment_length > 1:
+          continue # too short
+        i = resseq_encode(c).replace(" ","")
+        selection_list.append(" ( chain %s and resseq %s:%s) " %(chain_id, i,i))
+      else:
+        if minimum_segment_length and \
+           minimum_segment_length > (c[1] - c[0]) + 1:
+          continue # too short
+        i = resseq_encode(c[0]).replace(" ","")
+        j = resseq_encode(c[1]).replace(" ","")
+        selection_list.append(" (chain %s and resseq %s:%s) " %(chain_id, i,j))
+      if return_as_dict:
+        info_dict[chain_id].append([c[0],c[1]])
+  if return_as_dict:
+    return info_dict
+  else: # usual
+    return " or ".join(selection_list)
+
+def get_residue_ranges_from_model(model = None):
+  chain_dict = get_chain_dict(model.get_hierarchy())
+  return get_selection_from_chain_dict(chain_dict, return_as_dict = True)
+
 def get_selection_string_from_model(model = None,
    hierarchy = None, minimum_segment_length = None):
    ''' Get selection string based on the residues present in selected_model
     If minimum_segment_length is set, remove segments shorter than this '''
-   from phenix.model_building.ssm import get_selection_from_chain_dict
    if not hierarchy:
      hierarchy = model.get_hierarchy()
    chain_dict = get_chain_dict(hierarchy)

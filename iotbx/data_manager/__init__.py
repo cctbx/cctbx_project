@@ -106,7 +106,8 @@ def load_datatype_modules(datatypes=None):
   return modules
 
 # =============================================================================
-def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
+def DataManager(datatypes=None, phil=None, custom_options=None,
+                custom_master_phil_str=None, logger=None):
   '''
   Function for dynamically creating a DataManager instance that supports a
   specific set of datatypes.
@@ -180,12 +181,14 @@ def DataManager(datatypes=None, phil=None, custom_options=None, logger=None):
     datatypes=datatypes,
     phil=phil,
     custom_options=custom_options,
+    custom_master_phil_str=custom_master_phil_str,
     logger=logger)
 
 # =============================================================================
 class DataManagerBase(object):
 
-  def __init__(self, datatypes=None, phil=None, custom_options=None, logger=None):
+  def __init__(self, datatypes=None, phil=None, custom_options=None,
+               custom_master_phil_str=None, logger=None):
     '''
     Base DataManager class
     '''
@@ -243,6 +246,16 @@ options are {options}.\
     self.master_phil_str += '}'
 
     self.master_phil = iotbx.phil.parse(self.master_phil_str, process_includes=True)
+
+    # Add custom PHIL settings
+    if custom_master_phil_str is not None:
+      custom_master_phil = iotbx.phil.parse(custom_master_phil_str, process_includes=True)
+      new_master_phil, unused_phil = self.master_phil.fetch(
+        sources=[custom_master_phil], track_unused_definitions=True)
+      if len(unused_phil) > 0:
+        raise Sorry('There are unrecognized PHIL in your custom DataManager PHIL.')
+      self.master_phil_str = new_master_phil.as_str(expert_level=3, attributes_level=3)
+      self.master_phil = iotbx.phil.parse(self.master_phil_str, process_includes=True)
 
     self._storage = '_%ss'
     self._default = '_default_%s'
