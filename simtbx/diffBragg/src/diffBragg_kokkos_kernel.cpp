@@ -127,6 +127,7 @@ void kokkos_sum_over_steps(
     bool use_nominal_hkl,
     KOKKOS_MAT3 anisoU,
     KOKKOS_MAT3 anisoG,
+    KOKKOS_MAT3 rotate_principal_axes,
     bool use_diffuse,
     vector_cudareal_t d_diffuse_gamma_images,
     vector_cudareal_t d_diffuse_sigma_images,
@@ -198,12 +199,12 @@ void kokkos_sum_over_steps(
             anisoG_local = anisoG_local * Bmat_realspace;
         }
         Kokkos::parallel_reduce("prepare diffuse mats", 1, KOKKOS_LAMBDA (const int& i, int& num_laue_mats_temp){
-            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats);
-            KOKKOS_MAT3 rotate_principal_axes;
-            rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+            // KOKKOS_MAT3 rotate_principal_axes;
+            // rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
 
             for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
-                laue_mats(iL) = Ainv * laue_mats(iL) * rotate_principal_axes;
+                laue_mats(iL) = Ainv * laue_mats(iL);
             }
             // printf("Bmat =");
             // for (int i=0; i<9; ++i) {
@@ -1286,6 +1287,7 @@ void kokkos_sum_over_steps(
     bool use_nominal_hkl,
     KOKKOS_MAT3 anisoU,
     KOKKOS_MAT3 anisoG,
+    KOKKOS_MAT3 rotate_principal_axes,
     /*bool use_diffuse,*/
     vector_cudareal_t d_diffuse_gamma_images,
     vector_cudareal_t d_diffuse_sigma_images,
@@ -1357,9 +1359,9 @@ void kokkos_sum_over_steps(
             anisoG_local = anisoG_local * Bmat_realspace;
         }
         Kokkos::parallel_reduce("prepare diffuse mats", 1, KOKKOS_LAMBDA (const int& i, int& num_laue_mats_temp){
-            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats);
-            KOKKOS_MAT3 rotate_principal_axes;
-            rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+            // KOKKOS_MAT3 rotate_principal_axes;
+            // rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
 
             for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
                 laue_mats(iL) = Ainv * laue_mats(iL) * rotate_principal_axes;
@@ -2444,6 +2446,7 @@ kokkos_sum_over_steps<
     bool use_nominal_hkl,
     KOKKOS_MAT3 anisoU,
     KOKKOS_MAT3 anisoG,
+    KOKKOS_MAT3 rotate_principal_axes,
     /*bool use_diffuse,*/
     vector_cudareal_t d_diffuse_gamma_images,
     vector_cudareal_t d_diffuse_sigma_images,

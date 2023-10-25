@@ -45,7 +45,8 @@ master_phil_str = """
       .help = Maximum domains to obtain.  You can use this to merge \
                 the closest domains at the end of splitting the model. Make\
                 it bigger (and optionally make domain_size smaller) to \
-                get more domains.
+                get more domains.  If model is processed in chunks, \
+                maximum_domains will apply to each chunk.
       .short_caption = Maximum domains
 
     domain_size = 15
@@ -55,6 +56,14 @@ master_phil_str = """
               will be used to make a domain map.  If you are getting too many \
               domains, try making domain_size bigger (maximum is 70 A).
       .short_caption = Domain size (A)
+
+    adjust_domain_size = True
+      .type = bool
+      .help = If more that maximum_domains are initially found, increase \
+               domain_size in increments of 5 A and take the value that \
+               gives the smallest number of domains, but at \
+               least maximum_domains.
+      .short_caption = Adjust domain size
 
     minimum_domain_length = 10
       .type = float
@@ -185,6 +194,35 @@ master_phil_str = """
            where mean pLDDT of non-low_confidence_residues is used.
        .short_caption = vRMS slope
 
+     break_into_chunks_if_length_is = 1500
+       .type = int
+       .help = If a sequence is at least \
+                break_into_chunks_if_length_is, break it into chunks \
+                of length chunk_size with overlap of overlap_size for \
+                domain identification using split_model_by_compact_regions \
+                without a pae matrix
+       .short_caption = Threshold for domain identification in chunks
+
+     chunk_size = 600
+       .type = int
+       .help = If a sequence is at least \
+                break_into_chunks_if_length_is, break it into chunks \
+                of length chunk_size with overlap of overlap_size for \
+                domain identification using split_model_by_compact_regions \
+                without a pae_matrix
+       .short_caption = Chunk size
+
+     overlap_size = 200
+       .type = int
+       .help = If a sequence is at least \
+                break_into_chunks_if_length_is, break it into chunks \
+                of length chunk_size with overlap of overlap_size for \
+                domain identification using split_model_by_compact_regions \
+                without a pae_matrix
+       .short_caption = Overlap length
+
+
+
     }
 
     """
@@ -251,6 +289,7 @@ def process_predicted_model(
 
     domain_size: typical size of domains (resolution used for filtering is
        the domain size)
+    adjust_domain_size: increase domain_size if more than maximum domains found
     minimum_domain_length: minimum length (residues) of a domain to keep
     maximum_fraction_close: Merge domains with more than this fraction of close
                            CA atoms
@@ -268,6 +307,12 @@ def process_predicted_model(
     If stop_if_no_residues_obtained (default), stop with Sorry if no residues
       are obtained after processing, except if
         keep_all_if_no_residues_obtained (not default), then take everything.
+
+    break_into_chunks_if_length_is, chunk_size, overlap_size:
+       If a sequence is at least break_into_chunks_if_length_is, break
+         it into chunks of length chunk_size with overlap of overlap_size for
+         domain identification using split_model_by_compact_regions without
+         pae_matrix
 
   Output:
     processed_model_info: group_args object containing:
@@ -461,9 +506,13 @@ def process_predicted_model(
     else: # usual
       info = split_model_into_compact_units(new_model,
         d_min = p.domain_size,
+        adjust_domain_size = p.adjust_domain_size,
         maximum_domains = p.maximum_domains,
         minimum_domain_length = p.minimum_domain_length,
         maximum_fraction_close = p.maximum_fraction_close,
+        break_into_chunks_if_length_is = p.break_into_chunks_if_length_is,
+        chunk_size = p.chunk_size,
+        overlap_size = p.overlap_size,
         log = log)
     if info is None:
       print("No compact regions identified", file = log)
@@ -884,6 +933,283 @@ def split_model_with_pae(
     chainid_list = chainid_list)
 
 ################################################################################
+####################   split_model_into_compact_units_by_chunks   ##############
+################################################################################
+
+def split_model_into_compact_units_by_chunks(
+     m,
+     d_min = 15,
+     grid_resolution = 6,
+     close_distance = 15,
+     minimum_domain_length = 10,
+     maximum_fraction_close = 0.3,
+     maximum_domains = None,
+     adjust_domain_size = None,
+     break_into_chunks_if_length_is = None,
+     chunk_size = None,
+     overlap_size = None,
+     log = sys.stdout):
+
+  """
+   Function to sequentially run split_model_into_compact_units on
+    chunks of a large model, breaking into overlapping chunks of size
+    chunk_size, get domains from each, putting them together.
+   The value of maximum_domains will apply only within a chunk.
+   See split_model_into_compact_units for details
+
+  """
+  first_resno = m.first_resseq_as_int()
+  last_resno = m.last_resseq_as_int()
+  # Select CA and P atoms with B-values in range
+  selection_string = '(name ca or name p)'
+  m_ca_or_p = m.apply_selection_string(selection_string)
+  print("Residue range: (%s - %s) " %(first_resno,last_resno), file = log)
+  chunks = get_residue_ranges_for_chunks(model = m,
+     first_resno = first_resno,
+     last_resno = last_resno,
+     chunk_size = chunk_size, overlap_size = overlap_size)
+  print("Residue ranges for chunks:", file = log)
+  for c in chunks:
+    print(c, file = log)
+
+  info_list = []
+  for c in chunks:
+    selection_text = "resseq %s:%s" %(c[0], c[1])
+    working_m = m.apply_selection_string(selection_text)
+    print("\nGetting compact domains in residue range %s" %(selection_text),
+      file = log)
+    info = split_model_into_compact_units(
+     working_m,
+     d_min = d_min,
+     grid_resolution = grid_resolution,
+     close_distance = close_distance,
+     minimum_domain_length = minimum_domain_length,
+     maximum_fraction_close = maximum_fraction_close,
+     maximum_domains = maximum_domains,
+     adjust_domain_size = adjust_domain_size,
+     break_into_chunks_if_length_is = working_m.overall_counts().n_residues + 1,
+     log = log)
+    info.first_resno = c[0]
+    info.last_resno = c[1]
+    info.residues_present = get_residues_present_list(working_m)
+    info_list.append(info)
+
+  # Find crossover points between each block that minimizes
+  #   crossing over between parts of a domain
+  crossover_points_list = find_crossover_points(info_list)
+
+  # Assemble into full list. Crossover is residue number of last residue
+  new_regions_list = []
+  numbers_list = []
+  for info, start_crossover, end_crossover in zip(
+     info_list, [None] + crossover_points_list , crossover_points_list +[None]):
+    if start_crossover in info.residues_present:
+      working_start_crossover = info.residues_present.index(start_crossover)
+    else:
+      working_start_crossover = None
+    if end_crossover in info.residues_present:
+      working_end_crossover = info.residues_present.index(end_crossover)
+    else:
+      working_end_crossover = None
+    r1 = list(info.residues_present)
+    if (working_start_crossover is not None) and (
+       working_end_crossover is not None):
+      section = info.regions_list[
+           working_start_crossover:working_end_crossover]
+      numbers_section = r1[working_start_crossover:working_end_crossover]
+    elif working_start_crossover is not None:
+      section = info.regions_list[working_start_crossover:]
+      numbers_section = r1[working_start_crossover:]
+    else:
+      numbers_section = r1[:working_end_crossover]
+      section = info.regions_list[:working_end_crossover]
+    unique_numbers = get_unique_values(section)
+    used_numbers = get_unique_values(new_regions_list)
+    new_numbers = get_new_numbers(unique_numbers, used_numbers)
+    new_section = replace_numbers(section, unique_numbers, new_numbers)
+    new_regions_list += new_section
+
+
+  new_regions_list = flex.int(new_regions_list)
+  # Update region list
+  new_regions_list = recalculate_regions_list(new_regions_list,
+     minimum_domain_length = minimum_domain_length,
+     model = m_ca_or_p, close_distance = close_distance,
+     maximum_domains = maximum_domains * len(chunks) if \
+       maximum_domains is not None else None,
+     maximum_fraction_close = maximum_fraction_close,
+     log = log)
+
+  # Get unique domain ids for each chunk and make globally unique
+  info = set_chain_id_by_region(m, m_ca_or_p, new_regions_list, log = log)
+
+  return info
+
+def get_residues_present_list(m):
+  hierarchy = m.get_hierarchy()
+  residue_list = []
+  for model in hierarchy.models()[:1]:
+    for chain in model.chains()[:1]:
+       for rg in chain.residue_groups():
+          residue_list.append(rg.resseq_as_int())
+  return residue_list
+
+def replace_numbers(section, unique_numbers, new_numbers):
+  s = flex.int(section)
+  for old,new in zip(unique_numbers, new_numbers):
+    sel = (s == old)
+    s.set_selected(sel, new)
+  return list(s)
+
+def get_new_numbers(unique_numbers, used_numbers, keep_zeros = True):
+  if used_numbers:
+    max_n = max(used_numbers)
+  else:
+    max_n = 0
+  new_numbers = []
+  for i in unique_numbers:
+    if keep_zeros and i == 0:
+      if not 0 in used_numbers:
+        used_numbers.append(i)
+      new_numbers.append(i)
+    if not i in used_numbers:
+      used_numbers.append(i)
+      new_numbers.append(i)
+    else:
+      max_n = max_n + 1
+      used_numbers.append(max_n)
+      new_numbers.append(max_n)
+  return new_numbers
+
+def find_crossover_points(info_list):
+  # Try to find crossover points between each block that minimizes
+  #   crossing over between parts of a domain
+  crossover_points_list = []
+  for info_1, info_2 in zip(info_list, info_list[1:]):
+    crossover_points_list.append(find_one_crossover_point(info_1, info_2))
+  return crossover_points_list
+
+def find_one_crossover_point(info_1, info_2):
+  # Try to find crossover points between blocks info_1 and info_2 that
+  #  minimizes crossing over between parts of a domain at least on one of
+  # the two chains
+  unique_regions_1 = get_unique_values(info_1.regions_list)
+  unique_regions_2 = get_unique_values(info_2.regions_list)
+  # Find places in overlap where all values in info_1 after overlap are
+  #   different from all values before, and same for info_2
+  first_crossover = info_2.first_resno
+  last_crossover = info_1.last_resno
+  best_crossover = None
+  best_crossover_score = None
+  for crossover in range(first_crossover, last_crossover + 1):
+    crossover_info = get_crossover_info(info_1, info_2, crossover)
+    if not crossover_info:
+      continue
+    unique_regions_1a = crossover_info.unique_regions_1a
+    unique_regions_1b = crossover_info.unique_regions_1b
+    unique_regions_2a = crossover_info.unique_regions_2a
+    unique_regions_2b = crossover_info.unique_regions_2b
+    values_distinct_1 = not values_overlap(unique_regions_1a, unique_regions_1b)
+    if values_distinct_1:
+      overlap_1 = 0
+    else:
+      overlap_1 = count_overlap(unique_regions_1a, unique_regions_1b)
+    values_distinct_2 = not values_overlap(unique_regions_2a, unique_regions_2b)
+    if values_distinct_2:
+      overlap_2 = 0
+    else:
+      overlap_2 = count_overlap(unique_regions_2a, unique_regions_2b)
+
+    if values_distinct_1 and values_distinct_2: # perfect
+      if (best_crossover_score is None) or (best_crossover_score < 3):
+        best_crossover_score = 3
+        best_crossover = crossover
+    elif unique_regions_1a and unique_regions_1b and values_distinct_1:
+      if (best_crossover_score is None) or (best_crossover_score < 2):
+        best_crossover_score = 2
+        best_crossover = crossover
+    elif unique_regions_2a and unique_regions_2b and values_distinct_2:
+      if (best_crossover_score is None) or (best_crossover_score < 2):
+        best_crossover_score = 2
+        best_crossover = crossover
+    else:
+      score = -1 * min(overlap_1, overlap_2)
+      if (best_crossover_score is None) or (best_crossover_score < score):
+        best_crossover_score = score
+        best_crossover = crossover
+
+  # Here everything is distinct
+  print("Found overlap at %s" %(best_crossover))
+  print("Found overlap at %s" %(best_crossover - info_1.first_resno ))
+  crossover_info = get_crossover_info(info_1, info_2, best_crossover)
+  unique_regions_1a = crossover_info.unique_regions_1a
+  unique_regions_1b = crossover_info.unique_regions_1b
+  unique_regions_2a = crossover_info.unique_regions_2a
+  unique_regions_2b = crossover_info.unique_regions_2b
+
+  print("Unique values in info 1: (%s), (%s)  info 2: (%s), (%s)" %(
+    str(unique_regions_1a),str(unique_regions_1b),
+    str(unique_regions_2a),str(unique_regions_2b),))
+  return best_crossover
+
+def get_crossover_info(info_1, info_2, crossover):
+    # crossover is residue number to cross over. crossover_1 and _2 are
+    #   indices in the full_regions_list that correspond to this residue
+    #   number
+    if info_1.residues_present and (not crossover in info_1.residues_present):
+      return None
+    if info_2.residues_present and (not crossover in info_2.residues_present):
+      return None
+    crossover_1 = info_1.residues_present.index(crossover)
+    crossover_2 = info_2.residues_present.index(crossover)
+    unique_regions_1a = get_unique_values(
+        info_1.regions_list[:crossover_1])
+    unique_regions_1b = get_unique_values(
+        info_1.regions_list[crossover_1:])
+    unique_regions_2a = get_unique_values(
+        info_2.regions_list[:crossover_2])
+    unique_regions_2b = get_unique_values(
+        info_2.regions_list[crossover_2:])
+    return group_args(group_args_type = 'overlap info',
+      unique_regions_1a = unique_regions_1a,
+      unique_regions_1b = unique_regions_1b,
+      unique_regions_2a = unique_regions_2a,
+      unique_regions_2b = unique_regions_2b,
+      )
+def count_overlap(v1,v2):
+  count = 0
+  for v in v1:
+    if v in v2:
+      count += 1
+  return count
+
+def values_overlap(v1,v2):
+  for v in v1:
+    if v in v2:
+      return True
+  return False
+
+def get_residue_ranges_for_chunks(model = None,
+     first_resno = None, last_resno = None,
+     chunk_size = None, overlap_size = None):
+  resno_list = list(range(first_resno, last_resno+1))
+
+  chunks = []
+  while resno_list:
+    if len(resno_list) < 2*chunk_size and len(resno_list) > chunk_size:
+      c = resno_list[:chunk_size]
+      resno_list = resno_list[-chunk_size:] # take last chunk_size
+      print(len(resno_list))
+    else: # usual
+      c = resno_list[:chunk_size]
+      resno_list = resno_list[chunk_size-overlap_size:]
+      if len(resno_list) < chunk_size: # we are done
+        resno_list = ""
+      print(len(resno_list))
+    chunks.append([c[0], c[-1]])
+  return chunks
+
+################################################################################
 ####################   split_model_into_compact_units   ########################
 ################################################################################
 
@@ -895,6 +1221,10 @@ def split_model_into_compact_units(
      minimum_domain_length = 10,
      maximum_fraction_close = 0.3,
      maximum_domains = None,
+     adjust_domain_size = None,
+     break_into_chunks_if_length_is = None,
+     chunk_size = None,
+     overlap_size = None,
      log = sys.stdout):
 
   """
@@ -908,20 +1238,29 @@ def split_model_into_compact_units(
     a domain.  Then regroup in order to have few cases where small parts of
     model are part of one domain but neighboring parts are part of another.
 
+   For very long chains (longer than break_into_chunks_if_length_is), break
+   into overlapping chunks of size chunk_size, get domains from each, put
+   them together.
+
    Inputs:
    m:  cctbx.model.model object containing information about the input model
    d_min:  resolution used for low-res map.  Corresponds roughly to domain size.
+   adjust_domain_size: Vary d_min to try and obtain maximum_domains in initial
+                       domain identification
    grid_resolution:  resolution of map used to define the gridding
    close_distance:  distance between two CA (or P) atoms considered close
                     NOTE: may be useful to double default for P compared to CA
-   minimum_domain_length: typical size (CA or P) of the smallest segments to keep
+   minimum_domain_length: typical size (CA or P) of smallest segments to keep
    minimum_remainder_sequence_length: minimum length of a removed sequence
       segment to write out to a new sequence file
    bfactor_min: smallest bfactor for atoms to include in calculations
    bfactor_max: largest bfactor for atoms to include in calculations
    maximum_domains:  If more than this many domains, merge closest ones until
      reaching this number
-
+   break_into_chunks_if_length_is, chunk_size, overlap_size:
+       If a sequence is at least break_into_chunks_if_length_is, break
+         it into chunks of length chunk_size with overlap of overlap_size.
+         Run on each chunk, then apply results to whole.
    Output:
    group_args object with members:
     m:  new model with chainid values from 0 to N where there are N domains
@@ -930,6 +1269,23 @@ def split_model_into_compact_units(
 
    On failure:  returns None
   """
+  if break_into_chunks_if_length_is is not None and \
+       m.overall_counts().n_residues >= break_into_chunks_if_length_is:
+    return split_model_into_compact_units_by_chunks(
+     m,
+     d_min = d_min,
+     grid_resolution = grid_resolution,
+     close_distance = close_distance,
+     minimum_domain_length = minimum_domain_length,
+     maximum_fraction_close = maximum_fraction_close,
+     maximum_domains = maximum_domains,
+     adjust_domain_size = adjust_domain_size,
+     break_into_chunks_if_length_is = break_into_chunks_if_length_is,
+     chunk_size = chunk_size,
+     overlap_size = overlap_size,
+     log = log)
+
+
   print("\nSelecting domains as compact chains",
      file = log)
   d_min = min(50, d_min) # limitation in fmodel
@@ -951,28 +1307,21 @@ def split_model_into_compact_units(
   selection_string = '(name ca or name p)'
   m_ca_or_p = m.apply_selection_string(selection_string)
 
+
   # Put the model inside a box and get a map_model_manager
   put_model_inside_cell(m_ca_or_p, grid_resolution)
-  mmm = m_ca_or_p.as_map_model_manager()
 
   # Generate map at medium_res for this model and use it to get domains
+  info = get_map_and_d_min(
+    m_ca_or_p, d_min = d_min, target_regions = maximum_domains,
+    adjust_domain_size = adjust_domain_size,
+    grid_resolution = grid_resolution, log = log)
+  if not info:
+    print("Failed to find domains", file = log)
+    return # Nothing to do
+  map_data = info.map_data
+  co_info = info.co_info
 
-  print("Generating map at resolution of %.1f A to identify domains" %(
-    d_min), file = log)
-  mmm.set_resolution(d_min)
-  mmm.generate_map(d_min, resolution_factor = 0.25 * grid_resolution/d_min )
-
-  # Box the map and set SD to 1 mean to 0
-  box_mmm = mmm.extract_all_maps_around_model()
-  box_mmm.map_manager().set_mean_zero_sd_one()
-
-  # Now get regions where there is model
-  map_data = box_mmm.map_manager().map_data()
-
-  #  Get a connectivity analysis of this map data
-  co_info = get_best_co(map_data)
-  if not co_info:
-    return None # failed
 
   # Assign all points in box to a grouping
   co_info = assign_all_points(co_info, map_data, log = log)
@@ -988,6 +1337,63 @@ def split_model_into_compact_units(
   if original_crystal_symmetry and info and info.model:
     info.model.set_crystal_symmetry(original_crystal_symmetry)
   return info
+
+def get_map_and_d_min(m_ca_or_p, d_min = None,
+      adjust_domain_size = None, target_regions = None,
+      grid_resolution = None,
+      log = sys.stdout):
+  # Choose d_min that give about target_regions clusters
+  best_co_info = None
+  best_map_data = None
+  best_n = None
+  best_d_min = None
+  if adjust_domain_size:
+     n_offset = 10
+  else:
+     n_offset = 1
+  for offset in range(n_offset):
+    mmm = m_ca_or_p.as_map_model_manager()
+    d_min_use = d_min + 5 * offset
+    if d_min_use > 70:
+      continue # max is about 70
+    mmm.set_resolution(d_min_use)
+    try:
+      mmm.generate_map(d_min_use,
+        resolution_factor = 0.25 * grid_resolution/d_min )
+    except Exception as e: # too low resolution
+      continue
+
+    # Box the map and set SD to 1 mean to 0
+    box_mmm = mmm.extract_all_maps_around_model()
+    box_mmm.map_manager().set_mean_zero_sd_one()
+
+    # Now get regions where there is model
+    map_data = box_mmm.map_manager().map_data()
+
+    #  Get a connectivity analysis of this map data
+    co_info = get_best_co(map_data)
+    if not co_info:
+      continue
+    n = len(co_info.sorted_by_volume)
+    if (best_n is None) or (target_regions is None) or (
+        (n >= target_regions) and (n < best_n)):
+      best_n = n
+      best_co_info = co_info
+      best_map_data = map_data
+      best_d_min = d_min_use
+  if co_info is None:
+    return # Nothing to do
+  n = best_n
+  d_min = best_d_min
+  co_info = best_co_info
+  map_data = best_map_data
+  print("Best resolution for domains is %.1f A giving %s regions" %(
+        d_min, n), file = log)
+  return group_args(group_args_type = 'co_info and map_data',
+    d_min = d_min,
+    co_info = co_info,
+    map_data = map_data,)
+
 
 def get_region_name_dict(m, unique_regions, keep_list = None):
   region_name_dict = {}
@@ -1023,17 +1429,17 @@ def set_chain_id_by_region(m, m_ca_or_p, regions_list, log = sys.stdout):
     region_dict[resseq_int] = region_number
 
   # And apply to full model
-  full_region_list = flex.int()
+  full_regions_list = flex.int()
   for at in m.get_hierarchy().atoms():
     resseq_int = at.parent().parent().resseq_as_int()
     region = region_dict.get(resseq_int,0)
-    full_region_list.append(region)
+    full_regions_list.append(region)
 
   # Now create new model with chains based on region list
   full_new_model = None
   print("\nSelection list based on domains:", file =log)
   for region_number in unique_regions:
-    sel = (full_region_list == region_number)
+    sel = (full_regions_list == region_number)
     new_m = m.select(sel)
     selection_string = selection_string_from_model(
        new_m.apply_selection_string("name ca or name P"))
@@ -1055,7 +1461,9 @@ def set_chain_id_by_region(m, m_ca_or_p, regions_list, log = sys.stdout):
   return group_args(
     group_args_type = 'model_info',
     model = m,
-    chainid_list = chainid_list)
+    chainid_list = chainid_list,
+    regions_list = regions_list,
+    full_regions_list = full_regions_list)
 
 def selection_string_from_model(model):
     resno_list = get_residue_numbers_in_model(model)
@@ -1070,7 +1478,6 @@ def assign_ca_to_region(co_info,
     close_distance,
     maximum_domains = None,
     maximum_fraction_close = None,
-    n_cycles = 10,
     log = sys.stdout):
   region_id_map = co_info.region_id_map
   id_list = co_info.id_list
@@ -1079,12 +1486,32 @@ def assign_ca_to_region(co_info,
   for sf in sites_frac:
     regions_list.append(int(region_id_map.value_at_closest_grid_point(sf)))
   # Now remove occasional ones out of place
+
+  regions_list = recalculate_regions_list(regions_list,
+     minimum_domain_length = minimum_domain_length,
+     model = m, close_distance = close_distance,
+     maximum_domains = maximum_domains,
+     maximum_fraction_close = maximum_fraction_close,
+     log = log)
+
+  return regions_list
+
+def recalculate_regions_list(regions_list,
+     minimum_domain_length = None,
+     model = None,
+     close_distance = None,
+     maximum_domains = None,
+     maximum_fraction_close = None,
+     n_cycles = 10,
+     log = sys.stdout):
+
   for cycle in range(n_cycles):
     regions_list = replace_lone_sites(regions_list)
     regions_list = replace_short_segments(regions_list, minimum_domain_length)
     for i in range(len(get_unique_values(regions_list))):
       new_regions_list = swap_close_regions(
-        m.get_sites_cart(), regions_list, minimum_domain_length, close_distance)
+        model.get_sites_cart(),
+       regions_list, minimum_domain_length, close_distance)
       if new_regions_list:
          regions_list = new_regions_list
       else:
@@ -1093,14 +1520,15 @@ def assign_ca_to_region(co_info,
   for k in range(len(get_unique_values(regions_list))):
     if maximum_domains and \
          len((get_unique_values(regions_list))) > maximum_domains:
-      regions_list = merge_closest_regions(m.get_sites_cart(), regions_list,
+      regions_list = merge_closest_regions(model.get_sites_cart(), regions_list,
         close_distance, log = log)
     else:
       break
 
   # Merge close regions if they are really close
   for k in range(len(get_unique_values(regions_list))):
-    regions_list = merge_very_close_regions(m.get_sites_cart(), regions_list,
+    regions_list = merge_very_close_regions(model.get_sites_cart(),
+        regions_list,
         close_distance,
         minimum_domain_length =  minimum_domain_length,
         maximum_fraction_close = maximum_fraction_close,
@@ -1108,7 +1536,7 @@ def assign_ca_to_region(co_info,
 
   # Finally check for any short fragments not attached to neighbors
   regions_list = remove_short_fragments_obscured_by_gap(regions_list,
-    m, minimum_domain_length)
+    model, minimum_domain_length)
   return regions_list
 
 def remove_short_fragments_obscured_by_gap(regions_list,

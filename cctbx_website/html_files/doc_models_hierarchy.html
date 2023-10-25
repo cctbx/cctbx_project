@@ -14,7 +14,7 @@
 Author: Ralf Grosse-Kunstleve</p>
 
 <p>(This text is adapted from an article by Ralf Grosse-Kunstleve; the original
-can be found <a href="http://phenix-online.org/newsletter/CCN_2010_07.pdf">here</a>.)</p>
+can be found <a href="https://phenix-online.org/phenixwebsite_static/mainsite/files/newsletter/CCN_2010_07.pdf">here</a>.)</p>
 
 <!----------------------------------------------------------------------------->
 
@@ -295,7 +295,6 @@ the alternative secondary view of the PDB hierarchy:</p>
   <div style="padding-left: 60px;">residue(s)</div>
   <div style="padding-left: 80px;">resname</div>
   <div style="padding-left: 80px;">resseq</div>
-  <div style="padding-left: 80px;">altloc</div>
   <div style="padding-left: 80px;">atom(s)</div>
 </div></p>
 
@@ -377,6 +376,146 @@ changed is very fast (fractions of seconds even for the largest files, e.g.
 
 <p>The <code>iotbx/examples/pdb_hierarchy.py</code> script shows how to construct the primary
 hierarchy from a PDB file, and how to obtain the secondary view.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">PDB hierarchy and formatted PDB and mmCIF files</h3>
+
+<p>A PDB hierarchy can be represented as a PDB-formatted file (as illustrated
+so far here), or as an
+<a href="https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/beginner%E2%80%99s-guide-to-pdb-structures-and-the-pdbx-mmcif-format">mmCIF-formatted file</a>.  Both of these file formats can
+be converted back into PDB hierarchies as well.</p>
+
+<p>Although all three of these representations can be interconverted, they
+do not contain exactly the same information and it can be useful to
+know some of the similarities and differences.</p>
+
+<p>The mmCIF format supersedes the PDB format and is the official
+<a href="https://mmcif.wwpdb.org/">format for macromolecular structures</a>
+ deposited in the Protein Data Bank.  The relationships
+between PDB and mmCIF formats are specified in
+<a href="https://mmcif.wwpdb.org/docs/pdb_to_pdbx_correspondences.html">PDB to PDBx/mmCIF Data Item Correspondences</a>.</p>
+
+<!----------------------------------------------------------------------------->
+
+<h3 class="mt-3">Chains and chain IDs in a PDB hierarchy and in PDB and mmCIF files</h3>
+
+<p>The second level in a PDB hierarchy is a "chain" (see the
+Real-world PDB files section above). A chain is normally a segment
+of protein or nucleic acid, or a metal atom, or a group of water molecules,
+or a ligand.  It can actually be any combination of these as well, however.</p>
+
+<p>When working with a hierarchy in cctbx, the chain is a basic unit
+(the expression "for chain in model.chains():" appears almost
+200 times in cctbx.) Every chain has an ID, but importantly, these chain ID
+values do not have to be unique.  Multiple chains can have the same ID. This
+allows grouping of chains that are related. For example, protein chain A may
+be next to ligand GOL that part of another chain that has the
+same chain ID of A. The atom selection syntax (see Atom selections below)
+allows selecting all the atoms that are part of any chain that has the
+ID of A. This is done with the selection, "chain A".</p>
+
+<p>One of the important differences between PDB and mmCIF formats is the use of
+the chain ID.  In a PDB formatted file, atoms in a polymer such as a
+protein molecule are grouped by residue and are listed sequentially, one
+atom on each line. Each line includes the chain ID.
+At the end of the polymer, a special line that
+starts with TER is present, indicating the end of a protein or nucleic acid
+polymer. Here is an example of part of such a PDB file. It contains two
+protein chains (just one residue in each chain), and two Au (gold) atoms and
+four waters (all the coordinates are zeros in this example):
+
+<pre class="CodeGreen"><code>
+REMARK PDB FORMATTED FILE WITH TWO PROTEIN CHAINS AND ONE CHAIN WITH AU AND WAT
+
+ATOM      1  N   ALA A 102       0.000   0.000   0.000  1.00 10.00           N
+ATOM      2  CA  ALA A 102       0.000   0.000   0.000  1.00 10.00           C
+ATOM      3  C   ALA A 102       0.000   0.000   0.000  1.00 10.00           C
+ATOM      4  O   ALA A 102       0.000   0.000   0.000  1.00 10.00           O
+TER
+ATOM      5  N   GLY A 103       0.000   0.000   0.000  1.00 10.00           N
+ATOM      6  CA  GLY A 103       0.000   0.000   0.000  1.00 10.00           C
+ATOM      7  C   GLY A 103       0.000   0.000   0.000  1.00 10.00           C
+ATOM      8  O   GLY A 103       0.000   0.000   0.000  1.00 10.00           O
+TER
+HETATM    9 AU    AU A 104       0.000   0.000   0.000  1.00 10.00          AU
+HETATM   10 AU    AU A 105       0.000   0.000   0.000  1.00 10.00          AU
+HETATM   11 HOH  WAT A 106       0.000   0.000   0.000  1.00 10.00           O
+HETATM   12 HOH  WAT A 107       0.000   0.000   0.000  1.00 10.00           O
+HETATM   13 HOH  WAT A 108       0.000   0.000   0.000  1.00 10.00           O
+HETATM   14 HOH  WAT A 109       0.000   0.000   0.000  1.00 10.00           O
+END
+</code></pre>
+
+If this file is read in and used to create a PDB hierarchy, the hierarchy will
+have two protein chains, both with chain ID of A. It will have one additional
+chain, also with a chain ID of A, containing the gold atoms and waters.</p>
+
+In an mmCIF file, there is no "chain" and no "chain ID" and there are no
+TER lines.
+There are instead two labels that convey similar information.  One is called
+<a href="https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_atom_site.auth_asym_id.html">auth_asym_id</a>. This label generally
+corresponds to the chain ID, but does not have to.  The second label is
+<a href="https://mmcif.wwpdb.org/dictionaries/mmcif_pdbx_v50.dic/Items/_atom_site.label_asym_id.html">label_asym_id</a>. This label is unique (no duplicates)
+and refers to one protein or nucleic acid polymer, or one ligand, or one metal,
+or one group of waters.  </p>
+
+<p>Here is part of the mmCIF representation of this
+same structure.  The "loop_" line and the lines following it
+that start with an underscore describe the items of data that are going to
+follow in the lines starting with "ATOM" (for protein/nucleic acid atoms) or
+"HETATM" (for ligands, metals, waters).
+The auth_asym_id is the A in "ALA A 102" and the
+label_asym_id is the A in "N ? A ? 1 1" at the end of the line.
+Notice that the auth_asym_id is A for all the atoms (as the chain ID
+was in the PDB format), and the label_asym_id is A for the first protein
+chain, B for the second, then C and D for the gold atoms and E for
+all four waters:</p>
+
+<pre class="CodeGreen"><code>
+# PART OF MMCIF FILE WITH TWO PROTEIN CHAINS AND ONE CHAIN WITH AU AND WAT
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+
+   ATOM 1 N . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 N ? A ? 1 1
+   ATOM 2 CA . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? A ? 1 1
+   ATOM 3 C . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? A ? 1 1
+   ATOM 4 O . ALA A 102 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? A ? 1 1
+   ATOM 5 N . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 N ? B ? 1 1
+   ATOM 6 CA . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? B ? 1 1
+   ATOM 7 C . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 C ? B ? 1 1
+   ATOM 8 O . GLY A 103 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? B ? 1 1
+   HETATM 9 AU . AU A 104 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? C ? . 1
+   HETATM 10 AU . AU A 105 ? 0.00000 0.00000 0.00000 1.000 10.00000 AU ? D ? . 1
+   HETATM 11 HOH . WAT A 106 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 12 HOH . WAT A 107 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 13 HOH . WAT A 108 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+   HETATM 14 HOH . WAT A 109 ? 0.00000 0.00000 0.00000 1.000 10.00000 O ? E ? . 1
+</code></pre>
+
+<p>In cctbx, the mmCIF and PDB formatted files shown above are
+interconvertible with the hierarchy.  You can read in either of these and
+obtain the same hierarchy, and if you write out the hierarchy in either format
+you will get back the text shown above.</p>
 
 <!----------------------------------------------------------------------------->
 

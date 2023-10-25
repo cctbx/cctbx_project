@@ -15,7 +15,7 @@ from scitbx.matrix import sqr, col
 from scipy.ndimage import binary_dilation
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
-from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
+from serialtbx.detector.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils

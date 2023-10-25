@@ -12,6 +12,7 @@ from mmtbx.validation import atoms
 from mmtbx.validation import get_atoms_info
 from iotbx.pdb import common_residue_names_get_class as get_res_class
 from cctbx import geometry_restraints
+from scitbx.array_family import flex
 from libtbx.str_utils import make_sub_header, format_value
 from libtbx import slots_getstate_setstate
 from math import sqrt
@@ -180,7 +181,7 @@ class rna_bonds(rna_geometry):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
@@ -195,16 +196,8 @@ class rna_bonds(rna_geometry):
           sigma=sigma,
           score=num_sigmas,
           delta=restraint.delta,
-          xyz=self.mean_xyz([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]),
+          xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
           outlier=is_outlier))
-
-  def mean_xyz(self, atom_xyzs):
-    sums = [0]*3
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
-    return mean
 
   def get_result_class(self) : return rna_bond
 
@@ -273,7 +266,7 @@ class rna_angles(rna_geometry):
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
-      num_sigmas = restraint.delta / sigma
+      num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
@@ -414,10 +407,7 @@ class rna_puckers(rna_geometry):
       if sug_atom is not None:
         atom_xyzs.append(sug_atom.xyz)
     assert len(atom_xyzs) > 0, "RNA sugar pucker validation found zero sugar atoms, probably due to non-standard atom names"
-    for xyz in atom_xyzs:
-      for i, val in enumerate(xyz):
-        sums[i] += val
-    mean = [x / len(atom_xyzs) for x in sums]
+    mean = flex.vec3_double(atom_xyzs).mean()
     return mean
 
   def get_result_class(self) : return rna_pucker
@@ -451,18 +441,17 @@ class rna_puckers(rna_geometry):
 
   def local_altloc_from_atoms(self, residue_1_deoxy_ribo_atom_dict, residue_1_c1p_outbound_atom, residue_2_p_atom):
     #conformer.altloc masks whether a residue has true alternate conformations
+    #check atom.parent().altloc for whether any atoms have alt positions
     #only run this if conformer.altloc != ''
-    #atom.id_str() looks like 'pdb=" C1'B  G B  -3 "' for a B alternate
-    #this format may change with mmCIF
     for atom in [residue_1_c1p_outbound_atom, residue_2_p_atom]:
       if atom is None: continue
-      altloc = atom.id_str()[9:10]
-      if altloc != " ":
+      altloc = atom.parent().altloc
+      if altloc != "":
         return altloc
     for atom in residue_1_deoxy_ribo_atom_dict.values():
       if atom is None: continue
-      altloc = atom.id_str()[9:10]
-      if altloc != " ":
+      altloc = atom.parent().altloc
+      if altloc != "":
         return altloc
     return ""
 

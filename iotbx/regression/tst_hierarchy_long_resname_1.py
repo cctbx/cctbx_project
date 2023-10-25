@@ -97,9 +97,11 @@ def test1():
   # print(o_pdb_str)
   # Note here incorrect/trimmed residue names
   # There's no way to correctly output resnames longer than 3 char in PDB format
+  # print(o_pdb_str)
   assert_lines_in_text(o_pdb_str, """\
 ATOM      8  CE  LYS A 279      -2.923 -13.799  42.993  1.00 52.86           C
 ATOM      9  NZ  LYS A 279      -3.209 -12.856  44.100  1.00 54.19           N
+TER
 HETATM   10 CA    CA A 301     -17.362 -22.385  28.047  1.00 15.20          CA
 HETATM   11  C10 7ZT A 302      -7.646  -6.965   5.796  1.00 22.62           C
 HETATM   12  C2  7ZT A 302      -8.462  -5.534   9.265  1.00 16.68           C

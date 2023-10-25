@@ -285,6 +285,16 @@ def test_01():
   assert tuple(resampled_mm.unit_cell_grid) == (67, 67, 67)
   assert tuple(resampled_mm.origin_shift_grid_units) == (3 , 3, 3)
 
+  # Reset crystal_symmetry of map with ncs object
+  another_mm.set_unit_cell_crystal_symmetry(
+     crystal_symmetry=another_mm.unit_cell_crystal_symmetry())
+  assert not new_cs.is_similar_symmetry(
+    another_mm.unit_cell_crystal_symmetry())
+  shift_cart =  another_mm.shift_cart()
+  another_mm.set_unit_cell_crystal_symmetry(crystal_symmetry=new_cs)
+  assert shift_cart !=  another_mm.shift_cart()
+  assert approx_equal(another_mm.ncs_object().shift_cart(), another_mm.shift_cart())
+
   # Get resolution
   assert approx_equal(new_mm.resolution(force=True, method='d99') ,
     3.73886)

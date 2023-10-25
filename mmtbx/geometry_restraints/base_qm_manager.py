@@ -304,7 +304,7 @@ class base_qm_manager(base_manager):
         lf = self.get_log_filename()
         if os.path.exists(lf):
           process_qm_log_file(lf, log=log)
-        print('  Reading coordinates from %s\n' % filename, file=log)
+        # print('  Reading coordinates from %s\n' % filename, file=log)
         coordinates = self.read_xyz_output()
     if coordinates is None:
       self.opt_setup(optimise_ligand=optimise_ligand,
@@ -343,7 +343,7 @@ class base_qm_manager(base_manager):
       if os.path.exists(filename):
         if os.path.exists(filename):
           process_qm_log_file(filename, log=log)
-        print('  Reading energy from %s\n' % filename, file=log)
+        # print('  Reading energy from %s\n' % filename, file=log)
         energy, units = self.read_energy()
     if energy is None:
       outl = self.get_input_lines(optimise_ligand=optimise_ligand,
@@ -354,7 +354,7 @@ class base_qm_manager(base_manager):
       self.run_cmd(redirect_output=redirect_output)
       energy, units = self.read_energy()
     if cleanup: self.cleanup(level=cleanup)
-    print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
+    # print('  Current energy = %0.5f %s' % (self.energy, self.units), file=log)
     self.preamble = old_preamble
     return energy, units
 
@@ -376,7 +376,7 @@ class base_qm_manager(base_manager):
     final_energy, units = self.read_energy()
     self.strain = start_energy-final_energy
     self.units = units
-    print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
+    # print('  Strain energy = %0.5f %s' % (self.strain, self.units), file=log)
     self.preamble = old_preamble
     return self.strain, self.units
 

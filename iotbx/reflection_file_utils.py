@@ -754,7 +754,7 @@ class reflection_file_server(object):
     else: labels=[label]
     try:
       i = select_array(
-        parameter_name=parameter_scope+".label",
+        parameter_name=parameter_scope,
         labels=labels,
         miller_arrays=miller_arrays,
         data_scores=data_scores,

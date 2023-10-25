@@ -131,7 +131,7 @@ def RunProbeTests(inFileName):
     exclude = list(exclude)
 
     dots = sphere.dots()
-    res = ds.score_dots(a, 1.0, sq, rad*3, 0.25, exclude, sphere.dots(), sphere.density(), False)
+    res = ds.score_dots(a, 1.0, sq, rad*3, 0.25, exclude, sphere.dots(), sphere.density(), False, False)
     total += res.totalScore()
     if res.hasBadBump:
       badBumpTotal += 1
@@ -185,7 +185,7 @@ def RunProbeTests(inFileName):
     ft_text = ft.readlines()
   with open(kin_file) as fk:
     fk_text = fk.readlines()
-  instructions = ("  Use KiNG or another program to see what changed and then determine if the "+
+  instructions = ("Use KiNG or another program to see what changed and then determine if the "+
       "differences are expected.  If so, replace "+kin_file+" with the new file.")
   if len(ft_text) != len(fk_text):
     raise Exception("Different number of lines in "+temp_file+" and "+kin_file+instructions)
@@ -194,7 +194,7 @@ def RunProbeTests(inFileName):
       print('Line',i,'from each file:')
       print(ft_text[i])
       print(fk_text[i])
-      raise Exception("Line "+str(i)+" in "+temp_file+" and "+kin_file+"differ."+instructions)
+      raise Exception("Line "+str(i)+" in "+temp_file+" and "+kin_file+" differ.  "+instructions)
 
 if __name__ == '__main__':
 

@@ -72,6 +72,7 @@ def split_stills_expts(expt_f, refl_f, split_dir, write=False):
             new_expt_name = os.path.join(split_dir, unique_tag)
         new_refl_name = new_expt_name.replace(".expt", ".refl")
         refls = R.select(R['id'] == i_expt)
+        refls.reset_ids()
 
         if write:
             one_exp_El.as_file(new_expt_name)

@@ -298,6 +298,7 @@ class array_input(slots_getstate_setstate):
         label_string = array_info.label_string()
         if label_string == array_params.labels :
           self.miller_arrays.append(miller_array)
+
           self.file_names.append(input_file.file_name)
           found = True
           if is_mtz :
@@ -581,24 +582,32 @@ class process_arrays(object):
           print("  Final size:    %d" % output_array.data().size(), file=log)
           if output_array.sigmas() is not None :
             print("      sigmas:    %d" % output_array.sigmas().size(), file=log)
-        self.add_array_to_mtz_dataset(
-          output_array=output_array,
-          default_label=default_label,
-          column_types=column_types,
-          out=log)
-        if (output_labels is not None):
-          for label in output_labels :
-            labels.append(label)
-            label_files.append(file_name)
-        else :
-          n_cols = len(default_types)
-          if (output_array.anomalous_flag() and
-              not output_array.is_xray_reconstructed_amplitude_array()):
-            n_cols *= 2
-          for k in range(n_cols):
-            labels.append(None)
-            label_files.append(file_name)
-        self.final_arrays.append(output_array)
+        try:
+          self.add_array_to_mtz_dataset(
+            output_array=output_array,
+            default_label=default_label,
+            column_types=column_types,
+            out=log)
+          ok_array = True
+        except Exception as e:
+          ok_array = False
+          print("Skipping array '%s' which cannot be converted to MTZ" %(
+            output_array.info), file = log)
+        if ok_array:
+          if (output_labels is not None):
+            for label in output_labels :
+              labels.append(label)
+              label_files.append(file_name)
+          else :
+            n_cols = len(default_types)
+            if (output_array.anomalous_flag() and
+                not output_array.is_xray_reconstructed_amplitude_array()):
+              n_cols *= 2
+            for k in range(n_cols):
+              labels.append(None)
+              label_files.append(file_name)
+          self.final_arrays.append(output_array)
+
       i += 1
 
     #-------------------------------------------------------------------
@@ -865,7 +874,7 @@ class process_arrays(object):
         column_types=column_types,
         wavelength=self.wavelength)
     else :
-     self.mtz_dataset.add_miller_array(
+      self.mtz_dataset.add_miller_array(
         miller_array=output_array,
         column_root_label=default_label,
         column_types=column_types)
@@ -960,7 +969,29 @@ def guess_array_output_labels(miller_array):
                         "%s(-)" % labels[1] ] # sigma(-)
     elif (len(labels) == 1) and (miller_array.sigmas() is None):
       output_labels = [ "%s(+)" % labels[0], "%s(-)" % labels[0] ]
+    elif (miller_array.anomalous_flag()) and (len(labels) == 5): # mmCIF
+      output_labels = ["I(+)","SIGI(+)","I(-)","SIGI(-)"]
+    elif (not miller_array.anomalous_flag()) and (len(labels) == 3): # mmCIF
+      output_labels = ["I","SIGI"]
+
+  # Catch general mmCIF inputs and remove leading label (it is dataset name)
+  #  and remove anything before "." because those are not allowed in output
+  n_expected = get_number_of_expected_columns(miller_array,
+    raise_sorry_on_errors = False)
+  if output_labels and (len(output_labels) == n_expected + 1):
+    output_labels = edit_mmcif_output_labels(output_labels,
+      n_expected = n_expected)
   return output_labels
+
+def edit_mmcif_output_labels(output_labels, n_expected = None):
+  assert n_expected and len(output_labels) == n_expected + 1
+  output_labels = output_labels[1:]
+  new_output_labels = []
+  for o in output_labels:
+    if o.find(".") > -1:
+      o = o.split(".")[-1]
+    new_output_labels.append(o)
+  return new_output_labels
 
 def modify_array(
     miller_array,
@@ -1239,11 +1270,32 @@ def validate_output_labels(
         "%s; the %s been specified, but only %s are allowed "+
         "for the output array after processing.  " + msg_extra) %
         (array_name, msg_used, msg_expected))
+  n_expected = get_number_of_expected_columns(miller_array,
+    array_params = array_params,
+    array_name = array_name,
+    output_labels = output_labels,
+    raise_sorry_on_errors = True)
+  raise_sorry_if_wrong_number_of_labels(n_expected)
+  if miller_array.is_xray_data_array():
+    validate_column_root_label(
+      miller_array=miller_array,
+      root_label = output_labels[0].upper(),
+      array_name=array_name)
+  return True
+
+def get_number_of_expected_columns(miller_array,
+    output_labels = None,
+    array_params = None,
+    array_name = None,
+    raise_sorry_on_errors = True):
+  if raise_sorry_on_errors:
+    assert (output_labels is not None) and (array_params is not None) and (
+     array_name is not None)
   n_expected = None
   if (miller_array.is_xray_reconstructed_amplitude_array()):
     # FIXME this needs to be handled better - but it should at least
     # catch files from CCP4 data processing
-    if ((len(output_labels) != 5) and
+    if (raise_sorry_on_errors) and ((len(output_labels) != 5) and
         (not array_params.anomalous_data == "merged")):
       raise Sorry(("The array %s will be output as "+
         "amplitudes and anomalous differences with sigmas, plus ISYM. "+
@@ -1270,20 +1322,16 @@ def validate_output_labels(
       else :
         n_expected = 1
     elif miller_array.is_complex_array():
-      if (miller_array.sigmas() is not None):
+      if (raise_sorry_on_errors) and (
+           miller_array.sigmas() is not None):
         raise RuntimeError("Combination of sigmas and complex data not allowed for array %s" % array_name)
       n_expected = 2
     elif miller_array.is_hendrickson_lattman_array():
       n_expected = 4
     else :
       n_expected = 1
-  raise_sorry_if_wrong_number_of_labels(n_expected)
-  if miller_array.is_xray_data_array():
-    validate_column_root_label(
-      miller_array=miller_array,
-      root_label = output_labels[0].upper(),
-      array_name=array_name)
-  return True
+  return n_expected
+
 
 def validate_column_root_label(miller_array, root_label, array_name):
   """

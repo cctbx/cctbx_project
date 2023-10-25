@@ -1,13 +1,14 @@
 from __future__ import absolute_import, division, print_function
+from libtbx import group_args
 
 to_kcal_mol = {'ev':23.0609,
   }
 
 def _print_energy_in_kcal(e, units):
-    if units.lower() in to_kcal_mol:
-      return '%15.3f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
-    else:
-      return '%15.3f %s' % (e, units)
+  if units.lower() in to_kcal_mol:
+    return '%15.3f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
+  else:
+    return '%15.3f %s' % (e, units)
 
 def print_energy_in_kcal(ga):
   s=[]
@@ -16,7 +17,7 @@ def print_energy_in_kcal(ga):
     units=ga.units.lower()
     if d in ['opt', 'bound']: atoms=b
     elif d in ['energy', 'strain']: atoms=l
-    s.append('%-12s %s (atoms %4d)  ' % (d,
+    s.append('%-22s %s (atoms %4d)  ' % (d,
                                           _print_energy_in_kcal(e, units), atoms))
   return s
 
@@ -27,15 +28,42 @@ class energies(list):
   def as_string(self, verbose=False):
     # from libtbx import easy_pickle
     # easy_pickle.dump('ga.pickle', self)
-    s='QM energies\n'
+    pairs = [['bound', 'opt'],
+             ['bound-opt', 'strain'],
+      ]
+    s=''
+    tmp = {}
+    t_atoms = {}
     for i, gas in enumerate(self):
+      tmp.setdefault(i, {})
+      t_atoms.setdefault(i, {})
       t=''
+      units = None
       for j, ga in enumerate(gas):
+        if ga:
+          units=ga.units
+          for d, e, l, b in ga.energies:
+            tmp[i][d]=e
+            t_atoms[i][d]=b
         rc = print_energy_in_kcal(ga)
         if rc:
           for line in rc:
-            t += '    %s\n' % line
+            t += '%s%s\n' % (' '*6, line)
       if verbose: print('macro_cycle %d %s' % (i+1,t))
+      for k1, k2 in pairs:
+        if not (t_atoms[i].get(k1, False) and t_atoms[i].get(k2, False)):
+          continue
+        if t_atoms[i][k1]!=t_atoms[i][k2]: continue
+        if k1 in tmp[i] and k2 in tmp[i]:
+          e = tmp[i][k1]-tmp[i][k2]
+          k3='%s-%s' % (k1,k2)
+          t+='%s%-22s %s (atoms %4d)\n' % (' '*6,
+                             k3,
+                             _print_energy_in_kcal(e, units),
+                             t_atoms[i][k1],
+                             )
+          tmp[i][k3]=e
+          t_atoms[i][k3]=t_atoms[i][k2]
       if i:
         def _add_dE(e1, e2, units):
           s=''
@@ -47,8 +75,9 @@ class energies(list):
                 b1=e1[2]==e2[2]
               if b1:
                 de = e2[1]-e1[1]
-                s+='    %-12s %s\n' % ('%s dE' % e2[0],
-                                      _print_energy_in_kcal(e2[1]-e1[1],units))
+                s+='%s%-12s %s\n' % (' '*6,
+                                     '%s dE' % e2[0],
+                                     _print_energy_in_kcal(e2[1]-e1[1],units))
           return s
         e1=e2=None
         for k in range(2):
@@ -61,12 +90,41 @@ class energies(list):
       else:
         first=gas
       if t:
-        s+='  Macro cycle %d\n' % (i+1)
+        s+='%sMacro cycle %d\n' % (' '*4, i+1)
         s+=t
     return s
+
+class all_energies(dict):
+  def __init__(self):
+    pass
+
+  def as_string(self):
+    s='QM energies\n'
+    for selection, energies in self.items():
+      s+='\n  "%s"\n' % selection
+      s+='%s' % energies.as_string()
+    return s
+
+def digest_return_energy_object(ga, macro_cycle, energy_only, rc=None):
+  if rc is None:
+    rc = all_energies()
+  if ga is None: return rc
+  for selection, es in ga.energies.items():
+    rc.setdefault(selection, energies())
+    while len(rc[selection])<macro_cycle:
+      rc[selection].append([None,None,None])
+    if energy_only:
+      rc[selection][-1][0]=group_args(energies=es,
+                                      units=ga.units,
+                                      )
+    else:
+      rc[selection][-1][1]=group_args(energies=es,
+                                      units=ga.units,
+                                      )
+  return rc
 
 if __name__ == '__main__':
   from libtbx import easy_pickle
   e=easy_pickle.load('ga.pickle')
-  rc=e.as_string()
+  rc=e.as_string(verbose=0)
   print(rc)

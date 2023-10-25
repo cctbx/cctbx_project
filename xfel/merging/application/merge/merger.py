@@ -120,6 +120,17 @@ class merger(worker):
     mtz_out.add_miller_array(
       miller_array=all_obs.average_bijvoet_mates(),
       column_root_label="IMEAN")
+
+    if self.params.merging.include_multiplicity_column:
+      all_mult = miller.array(
+        miller_set=miller.set(final_symm, reflections['miller_index'], not self.params.merging.merge_anomalous),
+        data=reflections['multiplicity']).resolution_filter(
+                                          d_min=self.params.merging.d_min,
+                                          d_max=self.params.merging.d_max).set_observation_type_xray_intensity()
+      mtz_out.add_miller_array(
+        miller_array=all_mult,
+        column_root_label='multiplicity')
+
     mtz_obj = mtz_out.mtz_object()
     mtz_obj.write(mtz_file)
     self.logger.main_log("Output anomalous and mean data:\n    %s" %os.path.abspath(mtz_file))

@@ -98,6 +98,7 @@ tst_list_base = [
   "$D/regression/tst_bioinformatics.py",
   "$D/regression/tst_box_around_molecule.py",
   "$D/regression/tst_mmcif_segids.py",
+  "$D/regression/tst_hierarchy_pdb_v3.py",
   "$D/regression/tst_mmcif_multimodel.py",
   "$D/regression/tst_add_conformations.py",
   "$D/regression/tst_symmetry.py",
@@ -146,7 +147,10 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
   "$D/regression/tst_hierarchy_long_chain_ids_1.py",
   "$D/regression/tst_hierarchy_long_resname_1.py",
+  "$D/regression/tst_hierarchy_long_resname_2.py",
+  "$D/regression/tst_hierarchy_long_resname_3.py",
   "$D/regression/tst_hierarchy_copy_select.py",
+  "$D/regression/tst_hierarchy_id_str.py",
   ]
 
 # failing tests on Windows, Python 2.7
@@ -156,6 +160,7 @@ tst_list_windows_fail = [
 
 tst_list_fail = [
   "$D/regression/ncs/tst_ncs_reordered_chains.py",
+  "$D/regression/tst_mmcif_to_from_hierarchy.py",
   ]
 if sys.platform == 'win32':
   tst_list_fail += tst_list_windows_fail

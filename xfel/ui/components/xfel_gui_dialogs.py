@@ -932,7 +932,8 @@ class AdvancedSettingsDialog(BaseDialog):
                                            name='extra_options',
                                            size=(-1, 60),
                                            style=wx.VSCROLL,
-                                           value="\n".join(self.params.mp.extra_options))
+                                           value="\n".join(self.params.mp.extra_options)
+                                                 if any(self.params.mp.extra_options) else "")
     extra_sizer = wx.FlexGridSizer(1, 2, 0, 10)
     extra_sizer.Add(extra_txt, flag=wx.ALL, border=10)
     extra_sizer.Add(self.extra_options, flag=wx.EXPAND | wx.ALL, border=10)
@@ -1749,7 +1750,7 @@ class MultiRunTagDialog(BaseDialog):
 
     self.select_runs_panel = wx.Panel(self)
     self.select_runs_sizer = wx.BoxSizer(wx.HORIZONTAL)
-    self.select_runs =  gctr.CheckListCtrl(self,
+    self.select_runs =  gctr.CheckListCtrl(self.select_runs_panel,
                                            label='Selected runs:',
                                            label_size=(200, -1),
                                            label_style='normal',
@@ -3004,6 +3005,7 @@ class DatasetDialog(BaseDialog):
     else:
       self.dataset.name = name
       self.dataset.comment = comment
+      self.dataset.tag_operator = mode
 
     checked = self.tag_checklist.ctr.GetCheckedItems()
     for tag_idx, tag in enumerate(self.all_tags):

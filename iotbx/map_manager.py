@@ -428,12 +428,17 @@ class map_manager(map_reader, write_ccp4_map):
     '''
       Specify the dimensions and space group of unit cell.  This also changes
       the crystal_symmetry of the part that is present and the grid spacing.
+      Also resets crystal_symmetry of ncs object
 
       Purpose is to redefine the dimensions of the map without changing values
       of the map.  Normally used to correct the dimensions of a map
       where something was defined incorrectly.
 
-      Does not change self.unit_cell_grid
+      Does not change self.unit_cell_grid or self.origin_shift_grid_units
+
+      Does change the result of self.shift_cart(), which is based on
+        self.origin_shift_grid_units and self.unit_cell_grid
+        and self.crystal_symmetry
 
        Fundamental parameters set:
         self._unit_cell_crystal_symmetry: dimensions of full unit cell
@@ -446,6 +451,10 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Always follow a set of _unit_cell_crystal_symmetry with this:
     self.set_crystal_symmetry_of_partial_map()
+
+    # Now apply crystal symmetry and new shift cart to ncs object if any
+    if self._ncs_object:
+      self._ncs_object = self.shift_ncs_object_to_match_map_and_return_new_ncs_object(self._ncs_object)
 
   def set_original_origin_and_gridding(self,
       original_origin = None,
@@ -584,7 +593,7 @@ class map_manager(map_reader, write_ccp4_map):
        so that the value of self.external_origin is not (0,0,0) and not None,
        and apply_external_origin_if_present is set, then:
        determine if self.external_origin is on a grid point and if so, convert
-        and use negative of it as origin. Then self.external_origin to zero.
+        and use negative of it as origin. Then set self.external_origin to zero.
        Does not apply if origin is already not (0,0,0).
 
     '''
@@ -625,7 +634,7 @@ class map_manager(map_reader, write_ccp4_map):
         shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None,
-    apply_external_origin_if_present = None):
+    apply_external_origin_if_present = True):
     '''
       Utility to calculate the shift necessary (grid units)
       map to place the origin of the current map
@@ -752,7 +761,7 @@ class map_manager(map_reader, write_ccp4_map):
       return # Nothing to do
     assert isinstance(ncs_object, mmtbx.ncs.ncs.ncs)
     if (not self.is_compatible_ncs_object(ncs_object)):
-      self.shift_ncs_object_to_match_map(ncs_object)
+      ncs_object = self.shift_ncs_object_to_match_map_and_return_new_ncs_object(ncs_object)
     self._ncs_object = deepcopy(ncs_object)
 
   def set_program_name(self, program_name = None):
@@ -1724,9 +1733,10 @@ class map_manager(map_reader, write_ccp4_map):
     return tuple(
        [-x for x in self.grid_units_to_cart(self.origin_shift_grid_units)])
 
-  def shift_ncs_object_to_match_map(self,ncs_object):
+  def shift_ncs_object_to_match_map_and_return_new_ncs_object(self,ncs_object):
     '''
-      Move the ncs_object to match this map
+      Move the ncs_object to match this map. Also sets ncs_object shift_cart
+      Returns new copy of ncs_obect and does not affect the original
 
       Note difference from set_ncs_object_shift_cart_to_match_map which
         sets the shift_cart but does not move the object
@@ -1738,10 +1748,11 @@ class map_manager(map_reader, write_ccp4_map):
 
     else:
       ncs_object = ncs_object.coordinate_offset(self.shift_cart())
+    return ncs_object
 
   def shift_model_to_match_map(self, model):
     '''
-      Move the model to match this map
+      Move the model to match this map.
       Note difference from set_model_symmetries_and_shift_cart_to_match_map
        which sets model symmetry and shift_cart but does not move the model
     '''
@@ -1757,10 +1768,15 @@ class map_manager(map_reader, write_ccp4_map):
       Set the ncs_object shift_cart to match map
 
       Overwrites any information in ncs_object on shift_cart
-      Modifies ncs_object in place
+      Modifies ncs_object in place. Does not return anything
 
       Do not use this to try to shift the ncs object. That is done in
-      the ncs object itself with ncs_object.coordinate_offset(shift_cart)
+      the ncs object itself with ncs_object.coordinate_offset(shift_cart),
+      which returns a new ncs object
+
+      You can use ncs_object =
+       self.shift_ncs_object_to_match_map_and_return_new_ncs_object(ncs_object)
+         to shift the ncs object and set its shift_cart and get a new copy.
     '''
 
     # Set shift_cart (shift since readin) to match shift_cart for

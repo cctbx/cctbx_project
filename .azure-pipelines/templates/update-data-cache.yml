@@ -156,6 +156,7 @@ jobs:
         git clone https://gitlab.com/phenix_project/phenix_examples.git
       fi
       cd $(System.DefaultWorkingDirectory)/phenix_examples
+      git fetch origin
       git reset --hard origin/master
       git lfs install --local
       git pull --rebase

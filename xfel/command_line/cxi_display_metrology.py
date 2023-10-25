@@ -99,7 +99,7 @@ if (__name__ == "__main__") :
         ax.set_ylim((0, 2000))
         ax.set_ylim(ax.get_ylim()[::-1])
       else:
-        from xfel.cftbx.detector.cspad_cbf_tbx import basis_from_geo
+        from serialtbx.detector.xtc import basis_from_geo
 
         root = geometry.get_top_geo()
         root_basis = basis_from_geo(root)

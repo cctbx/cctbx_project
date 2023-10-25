@@ -3,8 +3,9 @@ from six.moves import range
 
 from dials.array_family import flex
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 from xfel.ui.components.timeit import duration
-import time
+import time, math
 from six.moves import map
 
 # get_hitrate_stats takes a tuple (run, trial, rungroup, d_min)
@@ -43,7 +44,7 @@ def get_multirun_should_have_indexed_timestamps(stats_by_run,
   return (run_numbers, timestamps)
 
 def get_string_from_timestamp(ts, long_form=False):
-  import time, math
+  import time
   time_seconds = int(math.floor(ts))
   time_milliseconds = int(round((ts - time_seconds)*1000))
   time_obj = time.gmtime(time_seconds)
@@ -221,6 +222,7 @@ def plot_run_stats(stats,
   ax1.set_ylim(ymin=0)
   ax1.axis('tight')
   ax1.set_ylabel("strong spots\nblue: idx\ngray: did not idx", fontsize=text_ratio)
+  ax1.set_ylim(0, min(flex.max(n_strong), 5000))
   ax2.plot(t, idx_rate*100)
   ax2.plot(t, multiples_rate*100, color='magenta')
   ax2_twin = ax2.twinx()
@@ -230,9 +232,13 @@ def plot_run_stats(stats,
   ax2.set_ylabel("blue:%% idx\npink:%% %d lattices" % n_multiples, fontsize=text_ratio)
   ax2_twin.set_ylabel("green:\n% solvent", fontsize=text_ratio)
   gtz = resolutions > 0 # no indexing solution stored as resolution of 0
-  # ax3.semilogy()
-  ax3.invert_yaxis()
-  ax3.scatter(t.select(gtz), resolutions.select(gtz), edgecolors="none", color='orange', s=spot_ratio)
+  ax3.scatter(t.select(gtz), 1/(resolutions.select(gtz)**2), edgecolors="none", color='orange', s=spot_ratio)
+  def resolution(x,pos):
+    if x <= 0:
+      return '-'
+    return "%.1f"%(1/math.sqrt(x))
+  formatter = FuncFormatter(resolution)
+  ax3.yaxis.set_major_formatter(formatter)
   ax3_twin = ax3.twinx()
   ax3_twin.plot(t, hq_rate*100, color='orange')
   ax3_twin.set_ylim(ymin=0)
@@ -300,7 +306,6 @@ def plot_run_stats(stats,
     plt.title(title)
   if interactive:
     def onclick(event):
-      import math
       ts = event.xdata
       if ts is None: return
       diffs = flex.abs(t - ts)

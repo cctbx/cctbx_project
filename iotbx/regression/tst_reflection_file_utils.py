@@ -515,27 +515,27 @@ For manual selection define:
                 else:
                   assert str(e) == \
                       "Not a suitable array of R-free flags:" \
-                    + " r_free_flags.label=free\n" \
+                    + " r_free_flags=free\n" \
                     + "To override the suitability test define:" \
                     + " r_free_flags.disable_suitability_test=True"
               else:
-                assert str(e) == "No matching array: r_free_flags.label=foo"
+                assert str(e) == "No matching array: r_free_flags=foo"
                 if (i_exercise == 0):
                   assert err.getvalue() == """\
 
-No matching array: r_free_flags.label=foo
+No matching array: r_free_flags=foo
 
 Possible choices:
   tmp.mtz:FreeRflags
 
-Please use r_free_flags.label
+Please use r_free_flags
 to specify an unambiguous substring of the target label.
 
 """
                 else:
                   assert err.getvalue() == """\
 
-No matching array: r_free_flags.label=foo
+No matching array: r_free_flags=foo
 
 """
               err = reflection_file_srv.err = StringIO()
@@ -578,7 +578,7 @@ Possible choices:
   tmp.mtz:FreeRflags
   tmp.mtz:test
 
-Please use r_free_flags.label
+Please use r_free_flags
 to specify an unambiguous substring of the target label.
 
 """

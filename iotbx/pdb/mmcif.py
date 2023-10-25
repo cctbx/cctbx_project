@@ -8,6 +8,7 @@ from libtbx.str_utils import format_value
 import iotbx.pdb
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
 import iotbx.cif
@@ -21,6 +22,14 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
   # The recommended translation for ATOM records can be found at:
   #   http://mmcif.rcsb.org/dictionaries/pdb-correspondence/pdb2mmcif-2010.html#ATOM
   #   https://www.ebi.ac.uk/pdbe/docs/exchange/pdb-correspondence/pdb2mmcif.html#ATOM
+
+  #  Note: pdb_hierarchy allows the same chain ID to be used in multiple chains.
+  #    This is indicated in PDB format with a TER record indicating the end of a chain
+  #    The corresponding information in mmCIF is the label_asym_id changes for each
+  #    new chain (the auth_asym_id matches the chain ID).
+  #    Catch cases where one chain id is split into multiple chains in the following way:
+  #    If label_asym_id changes and previous residue was protein or rna/dna or modified
+  #    (or auth_asym_id or model_id changes), create a chain break.
 
   def __init__(self, cif_block):
     crystal_symmetry_builder.__init__(self, cif_block)
@@ -115,7 +124,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         "record with empty auth_asym_id, which is wrong."
       assert current_label_asym_id is not None
       if (current_auth_asym_id != last_auth_asym_id
-          or current_model_id != last_model_id):
+          or current_model_id != last_model_id
+          or (current_label_asym_id != last_label_asym_id and
+             i_atom > 0 and is_aa_or_rna_dna(comp_id[i_atom-1]))
+         ): # insert chain breaks
         chain = hierarchy.chain(id=current_auth_asym_id)
         model.append_chain(chain)
       else:
@@ -217,6 +229,16 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
       data = flex.std_string([data])
     return data
 
+
+def is_aa_or_rna_dna(resname):
+   from iotbx.pdb import common_residue_names_get_class
+   resname = resname.strip()
+   residue_class = common_residue_names_get_class(resname)
+   if residue_class in ['common_amino_acid', 'modified_amino_acid',
+                'common_rna_dna', 'modified_rna_dna']:
+     return True
+   else:
+     return False
 
 def format_pdb_atom_name(atom_name, atom_type):
   # The PDB-format atom name is 4 characters long (columns 13 - 16):
@@ -466,10 +488,6 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def get_matthews_coeff(self):
     return _float_or_None(self.cif_block.get('_exptl_crystal.density_Matthews'))
 
-  def experiment_type_electron_microscopy(self):
-    et = self.get_experiment_type().strip().upper()
-    return et == "ELECTRON MICROSCOPY"
-
   def get_program_name(self):
     software_name = self.cif_block.get('_software.name')
     software_classification = self.cif_block.get('_software.classification')
@@ -538,9 +556,13 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
 
   def get_experiment_type(self):
     exptl_method = self.cif_block.get('_exptl.method')
-    if(isinstance(exptl_method,flex.std_string)):
-      exptl_method = "; ".join(list(exptl_method))
-    return exptl_method
+    lines = []
+    if exptl_method is not None:
+      if(isinstance(exptl_method,flex.std_string)):
+        lines = list(exptl_method)
+      else:
+        lines = [exptl_method]
+    return experiment_type(lines)
 
   def process_BIOMT_records(self):
     import iotbx.mtrix_biomt

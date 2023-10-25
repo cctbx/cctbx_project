@@ -187,6 +187,8 @@ Currently supported options: %s""" %backend_list
         plt.show()
 
     elif params.plot.interactive:
+      import os
+      plt.title(os.getcwd())
       plt.show()
 
 

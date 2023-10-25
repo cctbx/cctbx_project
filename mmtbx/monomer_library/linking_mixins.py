@@ -823,8 +823,8 @@ Residue classes
         print('link',link)
         print('link_key',link_key)
         print('link_atoms',link_atoms)
-        for atoms in link_atoms:
-          for atom in atoms: print(atom.quote())
+        for tatoms in link_atoms:
+          for atom in tatoms: print(atom.quote())
       is_glyco_link = (key.find("ALPHA1")>-1 or
                        key.find("BETA1")>-1 or
                        key.find("ALPHA2")>-1 or

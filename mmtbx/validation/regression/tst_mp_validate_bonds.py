@@ -159,7 +159,7 @@ def exercise_mp_validate_bonds():
   p.pdb_interpretation.allow_polymer_cross_special_position=True
   p.pdb_interpretation.flip_symmetric_amino_acids=False
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-  model.log=null_out()
+  model.set_log(log = null_out())
   model.process(make_restraints=True, pdb_interpretation_params=p)
   geometry = model.get_restraints_manager().geometry
   atoms = hierarchy.atoms()
@@ -179,11 +179,15 @@ def exercise_mp_validate_bonds():
   assert approx_equal(bonds_json['flat_results'][18]["sigma"], 0.019), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(bonds_json['flat_results'][18]["sigma"])
   assert bonds_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(bonds_json['summary_results'][""]["num_outliers"])
   assert bonds_json['summary_results'][""]["num_total"]==19, "tst_mp_validate_bonds json summary output total number of bonds changed, now: "+str(bonds_json['summary_results'][""]["num_total"])
+  assert bonds_json['summary_results'][""]["num_outliers_too_small"] == 0, "tst_mp_validate_bonds json summary output total number of bonds too small changed, now: "+str(bonds_json['summary_results'][""]["num_outliers_too_small"])
+  assert bonds_json['summary_results'][""]["num_outliers_too_large"] == 1, "tst_mp_validate_bonds json summary output total number of bonds too large changed, now: "+str(bonds_json['summary_results'][""]["num_outliers_too_large"])
   angles_json = json.loads(angles.as_JSON())
   assert len(angles_json['flat_results'])==24, "tst_mp_validate_bonds total number of angles changed, now: "+str(len(angles_json['flat_results']))
   assert approx_equal(angles_json['flat_results'][23]["sigma"], 2.3), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(angles_json['flat_results'][23]["sigma"])
   assert angles_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(angles_json['summary_results'][""]["num_outliers"])
   assert angles_json['summary_results'][""]["num_total"]==24, "tst_mp_validate_bonds json summary output total number of angles changed, now: "+str(angles_json['summary_results'][""]["num_total"])
+  assert angles_json['summary_results'][""]["num_outliers_too_small"]==1, "tst_mp_validate_bonds json summary output total number of angles too small changed, now: "+str(angles_json['summary_results'][""]["num_outliers_too_small"])
+  assert angles_json['summary_results'][""]["num_outliers_too_large"]==0, "tst_mp_validate_bonds json summary output total number of angles too large changed, now: "+str(angles_json['summary_results'][""]["num_outliers_too_large"])
 
 if (__name__ == "__main__"):
   t0 = time.time()

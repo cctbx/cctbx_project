@@ -121,8 +121,8 @@ def run_one(args):
   cs = pdb_inp.crystal_symmetry()
   #
   if(cs.space_group_number() != 1): return
-  if(not pdb_inp.get_experiment_type() in
-     ["X-RAY DIFFRACTION", "NEUTRON DIFFRACTION"]): return
+  exp_type = pdb_inp.get_experiment_type()
+  if not (exp_type.is_xray() or exp_type.is_neutron()): return
 
   #log = sys.stdout
   #log = open("%s.log"%code,"w")

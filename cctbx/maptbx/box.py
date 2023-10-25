@@ -1320,6 +1320,7 @@ def shift_and_box_model(model = None,
   '''
     Shift a model near the origin and box around it
     Use crystal_symmetry if supplied
+    Keeps input model unchanged.
   '''
   from mmtbx.model import manager as model_manager
   from scitbx.matrix import col
@@ -1335,14 +1336,17 @@ def shift_and_box_model(model = None,
   if not crystal_symmetry:
     a,b,c=box_end
     crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
-  ph.atoms().set_xyz(sites_cart)
-
-  return model_manager(
-     ph.as_pdb_input(),
+  phc = ph.deep_copy()
+  phc.atoms().set_xyz(sites_cart)
+  phc.atoms().reset_serial()
+  mm = model_manager(
+     model_input = None,
+     pdb_hierarchy = phc,
      crystal_symmetry = crystal_symmetry,
      restraint_objects = model.get_restraint_objects(),
      monomer_parameters = model.get_monomer_parameters(),
      log = null_out())
+  return mm
 
 def get_boxes_to_tile_map(target_for_boxes = 24,
       n_real = None,

@@ -372,10 +372,11 @@ class manager(object):
     return None
 
   def find_sec_str(self, pdb_hierarchy):
-    if (pdb_hierarchy.atoms_size() > 99999 and
+    if ((pdb_hierarchy.atoms_size() > 99999 or not pdb_hierarchy.fits_in_pdb_format()) and
         self.params.secondary_structure.protein.search_method == "ksdssp"):
-      print("Warning!!! ksdssp method is not applicable for" + \
-          "structures with more than 99999 atoms!\nSwitching to from_ca.", file=self.log)
+      print("\n".join([
+          "Warning!!! ksdssp method is not applicable for",
+          "structures that cannot fit in PDB format. Switching to from_ca."]), file=self.log)
       self.params.secondary_structure.protein.search_method = "from_ca"
     if self.params.secondary_structure.protein.search_method == "ksdssp":
       pdb_str = pdb_hierarchy.as_pdb_string()

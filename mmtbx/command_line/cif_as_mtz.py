@@ -415,7 +415,7 @@ def extract(file_name,
             "(%d redundant indices out of %d)" % (n_all-n_uus, n_all) +
             "Add --merge to command arguments to force merging data.")
           if (show_details_if_error):
-            print(msg)
+            print(msg, file=log)
             ma.show_comprehensive_summary(prefix="  ")
             ma.map_to_asu().sort().show_array(prefix="  ")
           raise Sorry(msg)
@@ -430,7 +430,7 @@ def extract(file_name,
             from cctbx import r_free_utils
             # determine flag values
             fvals = list(set(ma.data()))
-            print("fvals", fvals)
+            print("fvals", fvals, file=log)
             fval = None
             if(len(fvals)==1):
               fval = fvals[0]
@@ -458,12 +458,12 @@ def extract(file_name,
             else:
               ma = None
           else :
-            libtbx.warn(("%d reflections do not have R-free flags in the "+
-              "array '%s' - this may "+
-              "cause problems if you try to use the MTZ file for refinement "+
-              "or map calculation.  We recommend that you extend the flags "+
-              "to cover all reflections (--extend_flags on the command line).")
-              % (n_missing, label))
+            strings = ["%d reflections do not have R-free flags in the "%n_missing,
+              "array '%s' - this may "%label,
+              "cause problems if you try to use the MTZ file for refinement ",
+              "or map calculation.  We recommend that you extend the flags ",
+              "to cover all reflections (--extend_flags on the command line)."]
+            print("WARNING: ", "\n".join(strings), file=log)
       # Get rid of fake (0,0,0) reflection in some CIFs
       if(ma is not None):
         ma = ma.select_indices(indices=flex.miller_index(((0,0,0),)),

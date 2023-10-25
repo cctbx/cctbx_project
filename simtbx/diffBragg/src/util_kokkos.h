@@ -72,6 +72,9 @@ struct kokkos_crystal {
     std::vector<KOKKOS_MAT3> dG_dgamma;
     std::vector<KOKKOS_MAT3> dU_dsigma;
     KOKKOS_MAT3 anisoU;
+    KOKKOS_MAT3 rotate_principal_axes;
+
+
     int mosaic_domains;               // number of mosaic domains to model
     CUDAREAL Na, Nb, Nc, Nd, Ne, Nf;  // mosaic domain terms
     CUDAREAL phi0;                    // gonio
@@ -129,6 +132,7 @@ struct kokkos_crystal {
           stencil_size(T.stencil_size),
           anisoG(to_mat3(T.anisoG)),
           anisoU(to_mat3(T.anisoU)),
+          rotate_principal_axes(to_mat3(T.rotate_principal_axes)),
           mosaic_domains(T.mosaic_domains),
           Na(T.Na),
           Nb(T.Nb),

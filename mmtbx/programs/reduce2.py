@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "1.2.4"
+version = "2.1.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -77,8 +77,8 @@ non_flip_preference = 0.5
   .help = For flip movers, only do the flip if the score in the flipped orientation is this much better.
 skip_bond_fix_up = False
   .type = bool
-  .short_caption = Skip fixup step for Movers
-  .help = For debugging purposes, it can be useful to only do flips with no bond fix-up to compare scores.
+  .short_caption = Skip fixup step for Movers that are flips
+  .help = For debugging purposes, it can be useful to only do flips with no bond fix-up to compare scores. This fixup is done to make the bond angles within expected ranges for structures that are going to be deposited in the PDB. If further refinement is to be done, then it may also be useful to set this to True.
 set_flip_states = None
   .type = str
   .short_caption = Comma-separated list of flip Mover states to set
@@ -91,7 +91,7 @@ comparison_file = None
   .type = str
   .short_caption = Compare the Mover scores from this run with those in comparison_file
   .help = Points to a comparison_file that is the result of running Hydrogenate or Reduce or Reduce2 or some other hydrogen-placement program. The Probe2 scores for the Movers found in the current run are compared against the scores for comparison_file and stored in a file with the same name as output.file_name with _comparison.csv appended. If None, no comparison is done.
-verbosity = 3
+verbosity = 2
   .type = int
   .short_caption = Level of detail in description file
   .help = Level of detail in description file.
@@ -115,6 +115,10 @@ output
     .type = str
     .short_caption = Where to place the Flipkin Kinemages
     .help = Where to place the Flipkin Kinemages. If None, no Flipkin files are made.
+  clique_outline_file_name = None
+    .type = str
+    .short_caption = Where to save a Kinemage showing all positions for atoms in each Mover in each clique
+    .help = Where to save a Kinemage showing all positions for atoms in each Mover for each clique. This enable exploration of the reasons for the cliques. Each clique has the atoms expanded by the probe radius and as each is turned off, the Movers inside are revealed. Clicking on each Mover shows its description. If None, no such Kinemage is made.
   print_atom_info = False
     .type = bool
     .short_caption = Print extra atom info
@@ -272,7 +276,7 @@ def _AddPosition(a, tag, group, partner=None):
     altLoc = partner.parent().altloc.lower()
     altTag = " '{}'".format(partner.parent().altloc.lower())
   return '{{{:4s}{:1s}{} {} {:3d} B{:.2f} {}}}{}{} {:.3f}, {:.3f}, {:.3f}'.format(
-    a.name.lower(),               # Atom name
+    a.name.lower(),                       # Atom name
     altLoc,                               # Alternate, if any
     a.parent().resname.strip().lower(),   # Residue name
     a.parent().parent().parent().id,      # chain
@@ -1045,6 +1049,8 @@ NOTES:
 # ------------------------------------------------------------------------------
 
   def _ReinterpretModel(self, make_restraints=True):
+    # Reinterpret the model using the same approach that hydrogen-placement does.
+    # :param make_restraints: Should we compute restraints during the interpretation?
     self.model.get_hierarchy().sort_atoms_in_place()
     self.model.get_hierarchy().atoms().reset_serial()
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -1052,8 +1058,12 @@ NOTES:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    # We need to turn this on because without it 1zz0.txt kept flipping the ring
+    # in A TYR 214 every time we re-interpreted. The original interpretation done
+    # by Hydrogen placement will have flipped them, so we don't need to do it again.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
     #p.pdb_interpretation.sort_atoms=True
-    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p) # make restraints
+    self.model.process(make_restraints=make_restraints, pdb_interpretation_params=p)
 
 # ------------------------------------------------------------------------------
 
@@ -1154,7 +1164,9 @@ NOTES:
 
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
-      raise Sorry("Must specify output.description_file_name")
+      self.params.output.description_file_name=self.params.output.filename.replace('.pdb',
+                                                                                   '.txt')
+      # raise Sorry("Must specify output.description_file_name")
 
     # Check the model ID to make sure they didn't set it to 0
     if self.params.model_id == 0:
@@ -1185,6 +1197,7 @@ NOTES:
     self.model = self.data_manager.get_model()
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+    # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
@@ -1200,28 +1213,21 @@ NOTES:
       self._AddHydrogens()
       doneAdd = time.time()
 
-      # Interpret the model after shifting and adding Hydrogens to it so that
-      # all of the needed fields are filled in when we use them below.
-      # @todo Remove this once place_hydrogens() does all the interpretation we need.
-      make_sub_header('Interpreting Hydrogenated Model', out=self.logger)
-      startInt = time.time()
-      self._ReinterpretModel()
-      doneInt = time.time()
-
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
-      opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+      opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+        self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
         skipBondFixup=self.params.skip_bond_fix_up,
         flipStates = self.params.set_flip_states,
-        verbosity=self.params.verbosity)
+        verbosity=self.params.verbosity,
+        cliqueOutlineFileName=self.params.output.clique_outline_file_name,
+        keepExistingH = self.params.keep_existing_H)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
-      outString += 'Time to Interpret = {:.3f} sec'.format(doneInt-startInt)+'\n'
       outString += 'Time to Optimize = {:.3f} sec'.format(doneOpt-startOpt)+'\n'
       if self.params.output.print_atom_info:
         print('Atom information used during calculations:', file=self.logger)
@@ -1435,8 +1441,6 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
-          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
-          self._ReinterpretModel()
 
           # Run optimization, locking the specified Amides into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
@@ -1463,13 +1467,14 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            keepExistingH = self.params.keep_existing_H)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -1558,8 +1563,6 @@ NOTES:
 
           # Rerun hydrogen placement.
           self._AddHydrogens()
-          # @todo Remove this reinterpretation once place_hydrogens() does all the interpretation we need.
-          self._ReinterpretModel()
 
           # Run optimization, locking the specified Histidines into each configuration.
           # Don't do fixup on the ones that are locked down.  Make sure that we can
@@ -1586,13 +1589,14 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
-          opt = Optimizers.FastOptimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, probeRadius=0.25, altID=self.params.alt_id, modelIndex=self.params.model_id,
+          opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
+            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3)
+            verbosity=3,
+            keepExistingH = self.params.keep_existing_H)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()

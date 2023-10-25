@@ -49,6 +49,7 @@ from mmtbx.refinement import print_statistics
 from mmtbx.refinement import anomalous_scatterer_groups
 from mmtbx.refinement import geometry_minimization
 import cctbx.geometry_restraints.nonbonded_overlaps as nbo
+import collections
 
 from mmtbx.rotamer import nqh
 
@@ -199,6 +200,7 @@ class manager(object):
       stop_for_unknowns         = True,
       log                       = None,
       expand_with_mtrix         = True,
+      process_biomt             = True,
       skip_ss_annotations       = False,
       reset_crystal_symmetry_to_box_with_buffer = None):
     # Assert basic assumptions
@@ -290,7 +292,7 @@ class manager(object):
       self.expand_with_MTRIX_records()
     # Handle BIOMT. Keep track of BIOMT matrices (to allow to expand later)
     self.biomt_operators = None
-    if(self._model_input is not None):
+    if(self._model_input is not None and process_biomt):
       try: # ugly work-around for limited support of BIOMT
         self.biomt_operators = self._model_input.process_BIOMT_records()
       except RuntimeError: pass
@@ -1443,8 +1445,13 @@ class manager(object):
       model_ph.append_model(m.detached_copy())
     self.reset_after_changing_hierarchy()
 
-  def reset_after_changing_hierarchy(self):
+  def atom_counts(self):
+    c = collections.Counter()
+    for a in self.get_hierarchy().atoms():
+      c[a.element.strip()]+=1
+    return c
 
+  def reset_after_changing_hierarchy(self):
     '''  Regenerate xray_structure after changing hierarchy '''
     self.update_xrs()
     self._update_atom_selection_cache()
@@ -1546,6 +1553,9 @@ class manager(object):
     if (self._shift_cart is not None) and (not do_not_shift_back):
       self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
+
+  def can_be_outputted_as_pdb(self):
+    return True
 
   def model_as_pdb(self,
       output_cs = True,
@@ -1931,6 +1941,23 @@ class manager(object):
     # Order of calling this matetrs!
     self.link_records_in_pdb_format = link_record_output(acp)
 
+  def has_atoms_in_special_positions(self, selection, log=None):
+    pdb_hierarchy = self.get_hierarchy()
+    atom_labels = list(pdb_hierarchy.atoms_with_labels())
+    sel_cache = self.get_atom_selection_cache()
+    site_symmetry_table = self.get_xray_structure().site_symmetry_table()
+    disallowed_i_seqs = site_symmetry_table.special_position_indices()
+    isel = sel_cache.selection(selection).iselection()
+    isel_special = isel.intersection(disallowed_i_seqs)
+    if (len(isel_special) != 0):
+      print("  WARNING: selection includes atoms on special positions", file=log)
+      print("    selection: %s" % selection, file=log)
+      print("    bad atoms:", file=log)
+      for i_seq in isel_special :
+        print("    %s" % atom_labels[i_seq].id_str(), file=log)
+      return True
+    return False
+
   def has_hd(self):
     if self._has_hd is None:
       self._update_has_hd()
@@ -2247,7 +2274,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_h_bond_type takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_h_bonds):
-      print('get_specific_h_bond_type(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_h_bond_type(%s): i_seq is larger than array length %s. Perhaps due to an unsupported selection.' % (i_seq, len(self._type_h_bonds)))
     type_h_bond = self._type_h_bonds[i_seq]
     return type_h_bond
 
@@ -2256,7 +2283,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_vdw_radii takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('get_specific_vdw_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_vdw_radius(%s): i_seq is larger than array length %s. Perhaps due to an unsupported selection.' % (i_seq, len(self._type_energies)))
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     if vdw_radius_without_H:
@@ -2278,7 +2305,7 @@ class manager(object):
       cctbx_depreciation_warning('get_specific_ion_radius takes int argument')
       i_seq = i_seq.i_seq
     if i_seq>=len(self._type_energies):
-      print('get_specific_ion_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
+      raise Sorry('get_specific_ion_radius(): i_seq is larger than array length. Perhaps due to an unsupported selection.')
     e = self.get_ener_lib()
     type_energy = self._type_energies[i_seq]
     ion_radii = e.lib_atom[type_energy].ion_radius
@@ -2779,13 +2806,21 @@ class manager(object):
   def neutralize_scatterers(self):
     if(self._neutralized): return
     xrs = self.get_xray_structure()
+    atoms = self.get_hierarchy().atoms()
     scatterers = xrs.scatterers()
-    for scatterer in scatterers:
+    for i_seq, scatterer in enumerate(scatterers):
       neutralized_scatterer = re.sub('[^a-zA-Z]', '', scatterer.scattering_type)
       if (neutralized_scatterer != scatterer.scattering_type):
         self._neutralized = True
         scatterer.scattering_type = neutralized_scatterer
+        # propagate into hierarchy
+        atoms[i_seq].charge = '  '
+        # propagate into pdb_inp
+        # necessary if grm is constructed as it may drop xrs
+        if self._model_input:
+          self._model_input.atoms()[i_seq].charge='  '
     if self._neutralized:
+      xrs.discard_scattering_type_registry()
       self.set_xray_structure(xray_structure = xrs)
       self.unset_restraints_manager()
 
@@ -3452,9 +3487,9 @@ class manager(object):
     new._mon_lib_srv = self._mon_lib_srv
     new._ener_lib = self._ener_lib
     new._original_model_format = self._original_model_format
-    # brain dead way to avoid issues. Needs to be a selection to retain full functionality
-    self._type_energies = []
-    self._type_h_bonds = []
+    if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
+      new._type_energies = self._type_energies.select(selection)
+      new._type_h_bonds = self._type_h_bonds.select(selection)
     return new
 
   def number_of_ordered_solvent_molecules(self):

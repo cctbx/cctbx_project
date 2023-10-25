@@ -161,12 +161,9 @@ known_dials_dispatchers = {
 
 def load_phil_scope_from_dispatcher(dispatcher):
   import importlib
-  try:
-    phil_scope = importlib.import_module(known_dials_dispatchers[dispatcher]).phil_scope
-  except KeyError:
-    import imp
-    mod = imp.load_source('module', dispatcher)
-    phil_scope = mod.phil_scope
+  module = importlib.import_module(known_dials_dispatchers[dispatcher])
+  importlib.reload(module)
+  phil_scope = module.phil_scope
   return phil_scope
 
 def load_cached_settings():

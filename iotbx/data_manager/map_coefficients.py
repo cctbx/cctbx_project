@@ -67,11 +67,20 @@ class MapCoefficientsDataManager(MillerArrayDataManager):
     return self._get_miller_array_type(MapCoefficientsDataManager.datatype,
                                        filename, label)
 
+  def get_map_coefficients_all_labels(self, filename=None):
+    return self.get_miller_array_all_labels(filename)
+
   def get_map_coefficients_labels(self, filename=None):
     '''
     Returns a list of array labels
     '''
     return self._get_array_labels(MapCoefficientsDataManager.datatype, filename)
+
+  def get_map_coefficients_user_selected_labels(self, filename=None):
+    '''
+    Returns a list of user selected array labels
+    '''
+    return self._get_user_selected_array_labels(MapCoefficientsDataManager.datatype, filename)
 
   def get_map_coefficients_types(self, filename=None):
     '''
