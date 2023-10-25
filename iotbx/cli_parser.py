@@ -538,6 +538,7 @@ class CCTBXParser(ParserBase):
         return _get_last_object(phil_scope.objects[0])
 
       label_objects = []
+      type_objects = []
       for source in data_manager_sources:
         phil_object = _get_last_object(source)
         if phil_object.full_path() in [
@@ -546,6 +547,8 @@ class CCTBXParser(ParserBase):
           'data_manager.map_coefficients.labels.name',
           'data_manager.map_coefficients.user_selected_labels']:
           label_objects.append(source)
+        if phil_object.full_path() == 'data_manager.model.type':
+          type_objects.append(source)
 
       if len(label_objects) > 0:
         print('  Found labels in command-line', file=self.logger)
@@ -586,6 +589,29 @@ class CCTBXParser(ParserBase):
         print('  --------------------', file=self.logger)
         tmp_working_phil = self.data_manager.master_phil.fetch_diff(label_phil)
         print(tmp_working_phil.as_str(prefix='    '), file=self.logger)
+        print('', file=self.logger)
+
+      # set model types for each model
+      # if model type is specified, a model type needs to be specified
+      # for each model even if it is the default.
+      if len(type_objects) > 0:
+        model_names = self.data_manager.get_model_names()
+        if len(type_objects) != len(model_names):
+          raise Sorry('Please specify exactly one "model.type" for each model.')
+        print('  Matching model type PHIL:', file=self.logger)
+        print('  -------------------------', file=self.logger)
+        for model_name, type_object in zip(model_names, type_objects):
+          type_phil = self.data_manager.master_phil.fetch(source=type_object)
+          type_extract = type_phil.extract()
+          model_extract = type_extract.data_manager.model[0]
+          model_extract.file = model_name
+          print('    %s %s' % (model_extract.file, model_extract.type), file=self.logger)
+          new_type_object = self.data_manager.master_phil.format(python_object=type_extract)
+          for object in new_type_object.objects[0].objects:
+            if object.name == 'model':
+              e = object.extract()
+              if e.file == model_name:
+                type_object.objects[0].objects = [object]
         print('', file=self.logger)
 
     if self.namespace.overwrite:  # override overwrite if True
