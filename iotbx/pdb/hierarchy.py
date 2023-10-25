@@ -377,17 +377,22 @@ class _():
   def __getstate__(self):
     version = 2
     pdb_string = StringIO()
-    py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
-      cstringio=pdb_string,
-      append_end=True,
-      interleaved_conf=0,
-      atoms_reset_serial_first_value=None,
-      atom_hetatm=True,
-      sigatm=True,
-      anisou=True,
-      siguij=True)
-    if six.PY3:
-      pdb_string.write(py3out)
+    if self.fits_in_pdb_format():
+      py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
+        cstringio=pdb_string,
+        append_end=True,
+        interleaved_conf=0,
+        atoms_reset_serial_first_value=None,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True)
+      if six.PY3:
+        pdb_string.write(py3out)
+    else:
+      cif_object = iotbx.cif.model.cif()
+      cif_object['pickled'] = self.as_cif_block()
+      cif_object.show(out=pdb_string)
     return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
 
   def __setstate__(self, state):
