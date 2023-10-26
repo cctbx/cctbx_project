@@ -1392,6 +1392,17 @@ citation {
 }
 
 citation {
+  article_id = phenix.mosaic
+  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev A
+  title = Accounting for nonuniformity of bulk-solvent: a mosaic model
+  journal = None
+  volume = None
+  pages = None
+  year = None
+  doi_id = None
+}
+
+citation {
   article_id = phenix.validation_cryoem
   authors = Afonine PV, Klaholz BP, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD, Urzhumtsev A
   title = New tools for the analysis and validation of cryo-EM maps and atomic models
