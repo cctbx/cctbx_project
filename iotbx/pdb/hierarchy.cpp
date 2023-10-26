@@ -483,59 +483,59 @@ namespace {
     return result;
   }
 
-  void
-  atom_label_columns_formatter::format(
-    char* result,
-    bool add_model,
-    bool add_segid) const
-  {
-    char blank = ' ';
-    if (add_model) {
-      if (model_id != 0) {
-        std::size_t l = std::strlen(model_id);
-        IOTBX_ASSERT(l <= 8);
-        unsigned n = static_cast<unsigned>(l);
-        unsigned m = std::max(4U, n);
-        std::memcpy(result, "model=\"", 7U);
-        result += 7;
-        copy_right_justified(result, m, model_id, n, blank);
-        result += m;
-        std::memcpy(result, "\" ", 2U);
-        result += 2;
-      }
-      if (name != 0) {
-        std::memcpy(result, "pdb=\"", 5U);
-        result += 5;
-      }
-      else {
-        std::memcpy(result, "pdbres=\"", 8U);
-        result += 8;
-      }
-    }
-    if (name != 0) {
-      copy_left_justified(result, 4U, name, 4U, blank);
-      copy_left_justified(result+4, 1U, altloc, 1U, blank);
-      result += 5;
-    }
-    copy_right_justified(result, 3U, resname, 3U, blank);
-    copy_right_justified(result+3, 2U, chain_id, 2U, blank);
-    copy_right_justified(result+5, 4U, resseq, 4U, blank);
-    copy_left_justified(result+9, 1U, icode, 1U, blank);
-    result += 10;
-    if (add_model) {
-      result[0] = '"';
-      result++;
-    }
-    if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
-      std::memcpy(result, " segid=\"", 8U);
-      copy_left_justified(result+8, 4U, segid, 4U, blank);
-      result[12] = '"';
-      result += 13;
-    }
-    if (add_model || add_segid) {
-      result[0] = '\0';
-    }
-  }
+  // void
+  // atom_label_columns_formatter::format(
+  //   char* result,
+  //   bool add_model,
+  //   bool add_segid) const
+  // {
+  //   char blank = ' ';
+  //   if (add_model) {
+  //     if (model_id != 0) {
+  //       std::size_t l = std::strlen(model_id);
+  //       IOTBX_ASSERT(l <= 8);
+  //       unsigned n = static_cast<unsigned>(l);
+  //       unsigned m = std::max(4U, n);
+  //       std::memcpy(result, "model=\"", 7U);
+  //       result += 7;
+  //       copy_right_justified(result, m, model_id, n, blank);
+  //       result += m;
+  //       std::memcpy(result, "\" ", 2U);
+  //       result += 2;
+  //     }
+  //     if (name != 0) {
+  //       std::memcpy(result, "pdb=\"", 5U);
+  //       result += 5;
+  //     }
+  //     else {
+  //       std::memcpy(result, "pdbres=\"", 8U);
+  //       result += 8;
+  //     }
+  //   }
+  //   if (name != 0) {
+  //     copy_left_justified(result, 4U, name, 4U, blank);
+  //     copy_left_justified(result+4, 1U, altloc, 1U, blank);
+  //     result += 5;
+  //   }
+  //   copy_right_justified(result, 3U, resname, 3U, blank);
+  //   copy_right_justified(result+3, 2U, chain_id, 2U, blank);
+  //   copy_right_justified(result+5, 4U, resseq, 4U, blank);
+  //   copy_left_justified(result+9, 1U, icode, 1U, blank);
+  //   result += 10;
+  //   if (add_model) {
+  //     result[0] = '"';
+  //     result++;
+  //   }
+  //   if (add_segid && segid != 0 && str4(segid).stripped_size() != 0) {
+  //     std::memcpy(result, " segid=\"", 8U);
+  //     copy_left_justified(result+8, 4U, segid, 4U, blank);
+  //     result[12] = '"';
+  //     result += 13;
+  //   }
+  //   if (add_model || add_segid) {
+  //     result[0] = '\0';
+  //   }
+  // }
 
   std::string
   atom_label_columns_formatter::format(
@@ -566,38 +566,38 @@ namespace {
     return format(add_model, add_segid);
   }
 
-  void
-  atom_label_columns_formatter::format(
-    char* result,
-    shared_ptr<chain_data> const& ch_lock,
-    bool add_model,
-    bool add_segid)
-  {
-    chain_data const* ch = ch_lock.get();
-    if (ch == 0) {
-      chain_id = model_id = 0;
-      format(result, add_model, add_segid);
-    }
-    else {
-      chain_id = ch->id.c_str();
-      if (!add_model) {
-        model_id = 0;
-        format(result, add_model, add_segid);
-      }
-      else {
-        shared_ptr<model_data> md_lock = ch->parent.lock();
-        model_data const* md = md_lock.get();
-        if (md == 0) {
-          model_id = 0;
-          format(result, add_model, add_segid);
-        }
-        else {
-          model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
-          format(result, add_model, add_segid);
-        }
-      }
-    }
-  }
+  // void
+  // atom_label_columns_formatter::format(
+  //   char* result,
+  //   shared_ptr<chain_data> const& ch_lock,
+  //   bool add_model,
+  //   bool add_segid)
+  // {
+  //   chain_data const* ch = ch_lock.get();
+  //   if (ch == 0) {
+  //     chain_id = model_id = 0;
+  //     format(result, add_model, add_segid);
+  //   }
+  //   else {
+  //     chain_id = ch->id.c_str();
+  //     if (!add_model) {
+  //       model_id = 0;
+  //       format(result, add_model, add_segid);
+  //     }
+  //     else {
+  //       shared_ptr<model_data> md_lock = ch->parent.lock();
+  //       model_data const* md = md_lock.get();
+  //       if (md == 0) {
+  //         model_id = 0;
+  //         format(result, add_model, add_segid);
+  //       }
+  //       else {
+  //         model_id = (md->id.size() == 0 ? 0 : md->id.c_str());
+  //         format(result, add_model, add_segid);
+  //       }
+  //     }
+  //   }
+  // }
 
   std::string
   atom_label_columns_formatter::format(
@@ -634,38 +634,38 @@ namespace {
   }
 
 
-  void
-  atom_label_columns_formatter::format(
-    char* result,
-    hierarchy::atom const& atom,
-    bool add_model,
-    bool add_segid,
-    bool pdbres)
-  {
-    name = (pdbres ? 0 : atom.data->name.elems);
-    segid = atom.data->segid.elems;
-    shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
-    const atom_group_data* ag = ag_lock.get();
-    if (ag == 0) {
-      altloc = resname = resseq = icode = chain_id = model_id = 0;
-      format(result, add_model, add_segid);
-    }
-    else {
-      altloc = ag->altloc.elems;
-      resname = ag->resname.c_str();
-      shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
-      const residue_group_data* rg = rg_lock.get();
-      if (rg == 0) {
-        resseq = icode = chain_id = model_id = 0;
-        format(result, add_model, add_segid);
-      }
-      else {
-        resseq = rg->resseq.elems;
-        icode = rg->icode.elems;
-        format(result, rg->parent.lock(), add_model, add_segid);
-      }
-    }
-  }
+  // void
+  // atom_label_columns_formatter::format(
+  //   char* result,
+  //   hierarchy::atom const& atom,
+  //   bool add_model,
+  //   bool add_segid,
+  //   bool pdbres)
+  // {
+  //   name = (pdbres ? 0 : atom.data->name.elems);
+  //   segid = atom.data->segid.elems;
+  //   shared_ptr<atom_group_data> ag_lock = atom.data->parent.lock();
+  //   const atom_group_data* ag = ag_lock.get();
+  //   if (ag == 0) {
+  //     altloc = resname = resseq = icode = chain_id = model_id = 0;
+  //     format(result, add_model, add_segid);
+  //   }
+  //   else {
+  //     altloc = ag->altloc.elems;
+  //     resname = ag->resname.c_str();
+  //     shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
+  //     const residue_group_data* rg = rg_lock.get();
+  //     if (rg == 0) {
+  //       resseq = icode = chain_id = model_id = 0;
+  //       format(result, add_model, add_segid);
+  //     }
+  //     else {
+  //       resseq = rg->resseq.elems;
+  //       icode = rg->icode.elems;
+  //       format(result, rg->parent.lock(), add_model, add_segid);
+  //     }
+  //   }
+  // }
 
   std::string
   atom_label_columns_formatter::format(
@@ -755,9 +755,7 @@ namespace {
   std::string
   atom::pdb_label_columns() const
   {
-    char result[15];
-    atom_label_columns_formatter().format(result, *this);
-    return std::string(result, 15U);
+    return atom_label_columns_formatter().format(*this);
   }
 
   std::string

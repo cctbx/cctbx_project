@@ -385,11 +385,11 @@ namespace hierarchy {
         If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
-    void
-    format(
-      char* result,
-      bool add_model=false,
-      bool add_segid=false) const;
+    // void
+    // format(
+    //   char* result,
+    //   bool add_model=false,
+    //   bool add_segid=false) const;
 
     std::string
     format(
@@ -397,12 +397,12 @@ namespace hierarchy {
       bool add_segid=false) const;
 
     //! Extracts chain_id and model_id, then calls format(char*, bool).
-    void
-    format(
-      char* result,
-      shared_ptr<chain_data> const& ch_lock,
-      bool add_model,
-      bool add_segid);
+    // void
+    // format(
+    //   char* result,
+    //   shared_ptr<chain_data> const& ch_lock,
+    //   bool add_model,
+    //   bool add_segid);
 
     std::string
     format(
@@ -416,13 +416,13 @@ namespace hierarchy {
         If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
-    void
-    format(
-      char* result,
-      hierarchy::atom const& atom,
-      bool add_model=false,
-      bool add_segid=false,
-      bool pdbres=false);
+    // void
+    // format(
+    //   char* result,
+    //   hierarchy::atom const& atom,
+    //   bool add_model=false,
+    //   bool add_segid=false,
+    //   bool pdbres=false);
 
     std::string
     format(
