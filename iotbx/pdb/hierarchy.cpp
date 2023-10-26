@@ -829,13 +829,13 @@ namespace {
     return result;
   }
 
-  unsigned
+  std::string
   atom::format_atom_record(
-    char* result,
     atom_label_columns_formatter* label_formatter,
     const char* replace_floats_with) const
   {
     char blank = ' ';
+    char result[81];
     std::memcpy(result, (data->hetero ? "HETATM" : "ATOM  "), 6U);
     std::string far = format_atom_record_serial_label_columns(label_formatter);
     std::memcpy(result+6, far.c_str(), far.size());
@@ -884,7 +884,8 @@ namespace {
       blanks_start_at = 39+far_plus;
       segid_start = blanks_start_at+6;
     }
-    return format_atom_record_segid_element_charge_columns(result, segid_start, blanks_start_at);
+    unsigned len_return = format_atom_record_segid_element_charge_columns(result, segid_start, blanks_start_at);
+    return std::string(result, len_return);
   }
 
   unsigned
@@ -1002,12 +1003,10 @@ namespace {
   atom_with_labels::format_atom_record(
     const char* replace_floats_with) const
   {
-    char result[81];
     atom_label_columns_formatter label_formatter;
     atom_with_labels_init_label_formatter(*this, label_formatter);
-    unsigned str_len = atom::format_atom_record(
-      result, &label_formatter, replace_floats_with);
-    return std::string(result, str_len);
+    return atom::format_atom_record(
+      &label_formatter, replace_floats_with);
   }
 
 #define IOTBX_LOC(type) \
@@ -1040,7 +1039,9 @@ namespace {
     char newline = '\n';
     unsigned str_len = 0;
     if (atom_hetatm) {
-      str_len += format_atom_record(result, label_formatter);
+      std::string far = format_atom_record(label_formatter);
+      str_len += far.size();
+      far.copy(result, far.size());
     }
     if (  sigatm
         && (  !data->sigxyz.const_ref().all_le(0)
@@ -1079,29 +1080,23 @@ namespace {
   std::string
   atom::quote(bool full) const
   {
-    char result[82];
-    result[0] = '"';
-    unsigned str_len = format_atom_record(
-      result+1,
+    std::string res = format_atom_record(
       /* label_formatter */ 0,
       /* replace_floats_with */ (full ? 0 : ".*."));
-    result[++str_len] = '"';
-    return std::string(result, ++str_len);
+    res = '"'+res+'"';
+    return res;
   }
 
   std::string
   atom_with_labels::quote(bool full) const
   {
-    char result[82];
     atom_label_columns_formatter label_formatter;
     atom_with_labels_init_label_formatter(*this, label_formatter);
-    result[0] = '"';
-    unsigned str_len = atom::format_atom_record(
-      result+1,
+    std::string res = atom::format_atom_record(
       &label_formatter,
       /* replace_floats_with */ (full ? 0 : ".*."));
-    result[++str_len] = '"';
-    return std::string(result, ++str_len);
+    res = '"'+res+'"';
+    return res;
   }
 
   atom_with_labels

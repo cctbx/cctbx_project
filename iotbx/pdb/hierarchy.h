@@ -723,9 +723,8 @@ namespace hierarchy {
       /*! result must point to an array of size 81 (or greater).
           On return, result is null-terminated.
        */
-      unsigned
+      std::string
       format_atom_record(
-        char* result,
         atom_label_columns_formatter* label_formatter=0,
         const char* replace_floats_with=0) const;
 
