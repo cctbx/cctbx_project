@@ -387,6 +387,7 @@ class refinery(object):
         self.fmodel_best = self.fmodel.deep_copy()
     #
     self.fmodel = self.fmodel_best
+    self.n_region_final = len(self.F)-1
 
 
   #def update_k_masks(self, K_MASKS):
