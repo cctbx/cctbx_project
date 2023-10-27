@@ -690,6 +690,13 @@ def modify_params(params = None,
     params = get_origin_or_bounds_from_ccp4_file(params = params, log = log)
 
 
+  # Check that bounds are None or tuples of three 
+
+  if params.lower_bounds and len(params.lower_bounds) != 3:
+    raise Sorry("Need 3 values for lower_bounds")
+  if params.upper_bounds and len(params.upper_bounds) != 3:
+    raise Sorry("Need 3 values for upper_bounds")
+
   if params.output_origin_grid_units is not None and params.keep_origin:
     params.keep_origin = False
     print("Setting keep_origin = False as output_origin_grid_units is set",
