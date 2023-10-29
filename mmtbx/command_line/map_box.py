@@ -690,7 +690,7 @@ def modify_params(params = None,
     params = get_origin_or_bounds_from_ccp4_file(params = params, log = log)
 
 
-  # Check that bounds are None or tuples of three 
+  # Check that bounds are None or tuples of three
 
   if params.lower_bounds and len(params.lower_bounds) != 3:
     raise Sorry("Need 3 values for lower_bounds")
