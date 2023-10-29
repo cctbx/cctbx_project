@@ -259,7 +259,16 @@ class refinery(object):
     r4_best              = None
     self.fmodel_best     = None
     #
+
+    #alg_save = alg
+
     for it in range(5):
+
+      #if it in [0,1]:
+      #  alg = "alg4a"
+      #else:
+      #  alg = alg_save
+
       #
       if(it==1):
         r4_start         = self.fmodel.r_work4()
@@ -270,11 +279,8 @@ class refinery(object):
         if(abs(round(r4-r4_start,4))<1.e-4):
           break
         r4_start = r4
-      #if(it>0 and n_zones_start == len(self.F)): break
-      #
-      #if it>0:
-      #  self.F = [self.fmodel.f_model().deep_copy()] + self.F[1:]
-      self._print("cycle: %2d"%it)
+
+      self._print("cycle: %2d (regions: %d)"%(it, len(self.F[1:])))
       self._print("  Region #:                  "+"".join(["%7d"%fv[f] for f in self.F[1:]]))
 
       f_obs   = self.f_obs.deep_copy()
@@ -283,7 +289,7 @@ class refinery(object):
       K_MASKS = OrderedDict()
 
       if(alg.endswith('a')):
-        self.bin_selections = [self.f_calc.d_spacings().data()>3]
+        self.bin_selections = [self.f_calc.d_spacings().data()>4]
       else:
         self.bin_selections = thiken_bins(
           bins=bin_selections_input, n=50*len(self.F), ds=self.f_calc.d_spacings().data())
@@ -340,7 +346,14 @@ class refinery(object):
           f_bulk_data_ += self.F[i_mask].data().select(sel)*k_mask
         f_bulk_data = f_bulk_data.set_selected(sel,f_bulk_data_ )
       #
-      self.update_F(K_MASKS)
+
+      #if it in [0,1]:
+      #  self.update_F(K_MASKS, cutoff=0)
+      #else:
+      #  self.update_F(K_MASKS, cutoff=0.03)
+      self.update_F(K_MASKS, cutoff=0.03)
+
+
       f_bulk = self.f_calc.customized_copy(data = f_bulk_data)
 
       if(len(self.F)==2):
@@ -406,12 +419,14 @@ class refinery(object):
     if(self.log is not None):
       print(m, file=self.log)
 
-  def update_F(self, K_MASKS):
+  def update_F(self, K_MASKS, cutoff=0.03):
     tmp = []
     for i_mask, F in enumerate(self.F):
       k_masks = [k_masks_bin[1][i_mask] for k_masks_bin in K_MASKS.values()]
+      #print(i_mask, flex.mean(flex.double(k_masks)), [round(i,2) for i in k_masks])
       if(i_mask == 0):                        tmp.append(self.F[0])
-      elif moving_average(k_masks,2)[0]>=0.03: tmp.append(F)
+      #elif moving_average(k_masks,2)[0]>=cutoff: tmp.append(F)
+      elif flex.mean(flex.double(k_masks))>0.01: tmp.append(F)
       self.F = tmp[:]
 
   def _get_x_init(self, i_bin):
