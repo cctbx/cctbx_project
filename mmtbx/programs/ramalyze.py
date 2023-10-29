@@ -130,7 +130,7 @@ Example:
     self.data_manager.has_models(raise_sorry=True)
 
   def get_results_as_JSON(self):
-    # this calculates the results separately from run() because historically 
+    # this calculates the results separately from run() because historically
     # the ramalyze object couldn't handle multi-model files. Multi-model support was
     # added for the JSON code.  Ideally this would get fixed in the future.
     hierarchy = self.data_manager.get_model().get_hierarchy()
