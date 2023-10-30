@@ -699,11 +699,17 @@ class _():
     Generate corresponding pdb.input object.
     """
     import iotbx.pdb
-    pdb_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
-    pdb_inp = iotbx.pdb.input(
-      source_info="pdb_hierarchy",
-      lines=flex.split_lines(pdb_str))
-    return pdb_inp
+    if self.fits_in_pdb_format():
+      h_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
+      inp = iotbx.pdb.input(
+        source_info="pdb_hierarchy",
+        lines=flex.split_lines(h_str))
+    else:
+      h_str = self.as_mmcif_string(crystal_symmetry=crystal_symmetry)
+      inp = iotbx.pdb.mmcif.cif_input(
+        source_info="pdb_hierarchy",
+        lines=flex.split_lines(h_str))
+    return inp
 
 # END_MARKED_FOR_DELETION_OLEG
 
