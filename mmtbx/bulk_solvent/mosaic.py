@@ -598,6 +598,7 @@ class mask_and_regions(object):
     """
     self.crystal_gridding = crystal_gridding
     self.crystal_symmetry = xray_structure.crystal_symmetry()
+    self.step = step
     # Compute mask in P1
     self.mask_p1 = mmtbx.masks.mask_from_xray_structure(
       xray_structure           = xray_structure,
@@ -624,21 +625,25 @@ class mask_and_regions(object):
     # Regions
     self.conn = co.result().as_double() # 0 = protein, 1 = solvent, >1 = other
     z = zip(co.regions(),range(0,co.regions().size()))
-    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+    self.sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
     #
     if(log is not None):
       print("Regions (V > %d):"%volume_cutoff, file=log)
       print("  #   #   Vol. (A^3)    uc(%)", file=log)
+    self.small_selection = flex.size_t()
     self.regions = []
     cntr = 0
-    for i_seq, p in enumerate(sorted_by_volume):
+    for i_seq, p in enumerate(self.sorted_by_volume):
       v, i = p
       # skip macromolecule
       if(i==0): continue
+      # Region (i)selection
+      iselection = (self.conn==i).iselection()
       # Skip small volume regions
-      volume = v*step**3
+      volume = v*self.step**3
       uc_fraction = v*100./self.conn.size()
       if(volume_cutoff is not None and volume < volume_cutoff):
+        self.small_selection.extend(iselection)
         continue
       # Region
       region = group_args(
@@ -646,7 +651,7 @@ class mask_and_regions(object):
         i           = i,
         volume      = volume,
         uc_fraction = uc_fraction,
-        iselection  = (self.conn==i).iselection())
+        iselection  = iselection)
       cntr+=1
       self.regions.append(region)
       if(log is not None):
@@ -673,11 +678,32 @@ class mask_and_regions(object):
     return asu_map_ext.asymmetric_map(
       self.crystal_symmetry.space_group().type(), mask_i).data()
 
-  def f_mask_whole(self, miller_array):
+  def _mask_to_sf(self, mask_data, miller_array, d_min_cutoff=3):
+    # Cutoff incoming Miller array
+    result = miller_array.deep_copy()
+    d_spacings    = miller_array.d_spacings().data()
+    sel           = d_spacings >= 3
+    miller_array_ = miller_array.select(sel)
+    # Compute SF for truncated Miller array
     mask_asu = asu_map_ext.asymmetric_map(
-      self.crystal_symmetry.space_group().type(), self.mask_p1).data()
-    return miller_array.structure_factors_from_asu_map(
+      self.crystal_symmetry.space_group().type(), mask_data).data()
+    sf = miller_array_.structure_factors_from_asu_map(
         asu_map_data = mask_asu, n_real = self.crystal_gridding.n_real())
+    # Inflate Miller array to original hkl set before returning
+    data = flex.complex_double(d_spacings.size(), 0)
+    data = data.set_selected(sel, sf.data())
+    return result.set().array(data=data)
+
+  def f_mask_whole(self, miller_array):
+    return self._mask_to_sf(mask_data=self.mask_p1, miller_array=miller_array)
+
+  def f_mask_whole_corrected(self, miller_array, volume_cutoff=30):
+    mask_p1_corrected = self.mask_p1.deep_copy()
+    sel = flex.bool(self.conn.size(), self.small_selection)
+    sel.resize(self.conn.accessor())
+    mask_p1_corrected = mask_p1_corrected.set_selected(sel, 0)
+    return self._mask_to_sf(
+      mask_data=mask_p1_corrected, miller_array=miller_array)
 
 class f_masks(object):
   def __init__(self,
@@ -702,8 +728,6 @@ class f_masks(object):
     #
     self.crystal_symmetry = self.xray_structure.crystal_symmetry()
     self.n_real = self.crystal_gridding.n_real()
-    # Fmask from original whole mask, zero-ed at dmin<3A.
-    self.f_mask_whole = self._compute_f_mask_whole()
     #
     f_mask_data_main = flex.complex_double(f_obs.data().size(), 0)
     self.f_mask_main = None
@@ -825,10 +849,6 @@ class f_masks(object):
     data = flex.complex_double(self.d_spacings.size(), 0)
     data = data.set_selected(self.sel_gte3, f.data())
     return self.f_obs.set().array(data = data)
-
-  def _compute_f_mask_whole(self):
-    tmp = self.mask_and_regions.f_mask_whole(miller_array = self.miller_array)
-    return self._inflate(tmp)
 
   def compute_f_mask_i(self, mask_i_asu):
     return self._inflate(self.miller_array.structure_factors_from_asu_map(
