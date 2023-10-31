@@ -273,7 +273,11 @@ def get_header(code):
 
 def get_group(code, split_rna_dna=False, split_l_d=False):
   t = get_type(code)
-  t=t.replace('"','').upper()
+  if t is not None:
+    t=t.replace('"','').upper()
+  else:
+    if code in ['AD', 'TD']:
+      t='L-DNA LINKING'
   if t in sugar_types:
     if split_l_d:
       if t in l_sugar_types:
@@ -297,12 +301,12 @@ def get_group(code, split_rna_dna=False, split_l_d=False):
     assert not split_l_d
     return 'amino_acid_terminal'
   elif t in rna_dna_types:
-    assert not split_rna_dna
+    # assert not split_rna_dna
     if split_rna_dna:
       if t in rna_types:
-        return 'rna'
+        return 'RNA'
       elif t in dna_types:
-        return dna
+        return 'DNA'
       else:
         assert 0
     return 'rna_dna'
@@ -319,6 +323,7 @@ def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
   if g in ['L-peptide', 'D-peptide', 'peptide',
             'L-saccharide', 'D-saccharide', 'saccharide',
            # 'non-polymer',
+           'RNA', 'DNA',
           ]:
     return g
   return {'amino_acid' : 'peptide',
