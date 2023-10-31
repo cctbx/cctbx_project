@@ -258,6 +258,7 @@ class refinery(object):
     r4_start             = None
     r4_best              = None
     self.fmodel_best     = None
+    self.n_regions       = None
     #
 
     #alg_save = alg
@@ -400,7 +401,7 @@ class refinery(object):
         self.fmodel_best = self.fmodel.deep_copy()
     #
     self.fmodel = self.fmodel_best
-    self.n_region_final = len(self.F)-1
+    self.n_regions = len(self.F)-1
 
 
   #def update_k_masks(self, K_MASKS):
@@ -657,6 +658,8 @@ class mask_and_regions(object):
       if(log is not None):
         print("%3d %3d %12.3f %8.4f"%(region.i_seq, region.i, region.volume,
           region.uc_fraction), file=log)
+    #
+    self.n_regions = len(self.regions)
 
   def get_selection(self, region):
     result = flex.bool(self.conn.size(), region.iselection)
