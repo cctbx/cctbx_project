@@ -700,7 +700,7 @@ class mask_and_regions(object):
   def f_mask_whole(self, miller_array):
     return self._mask_to_sf(mask_data=self.mask_p1, miller_array=miller_array)
 
-  def f_mask_whole_corrected(self, miller_array, volume_cutoff=30):
+  def f_mask_whole_corrected(self, miller_array):
     mask_p1_corrected = self.mask_p1.deep_copy()
     sel = flex.bool(self.conn.size(), self.small_selection)
     sel.resize(self.conn.accessor())
@@ -753,7 +753,7 @@ class f_masks(object):
         f_mask_data_main += f_mask_i.data()
       # Compute mFo-DFc map using main mask (once done computing main mask!)
       if(region.uc_fraction < 1 and self.diff_map is None and
-         self.f_calc is not None):
+         self.f_calc is not None and mean_diff_map_threshold is not None):
         self.diff_map = self.compute_diff_map(f_mask_data = f_mask_data_main)
       if(self.diff_map is not None):
         # Analyze mFo-DFc map in the i-th region
