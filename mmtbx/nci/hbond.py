@@ -392,6 +392,7 @@ class find(object):
         h_bond_params  = None,
         protein_only   = False,
         pair_proxies   = None):
+    assert not protein_only
     if(h_bond_params is None):
       import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
       h_bond_params = pnp.h_bond()
@@ -570,6 +571,7 @@ class find(object):
     n_filter=len(theta_1)
     bpr=float(len(self.result))/\
       len(list(self.model.get_hierarchy().residue_groups()))
+    if len(theta_1)==0: return None
     theta_1 = get_stats(theta_1, min_data_size=min_data_size)
     theta_2 = get_stats(theta_2, min_data_size=min_data_size)
     d_HA    = get_stats(d_HA, min_data_size=min_data_size)
