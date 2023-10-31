@@ -93,7 +93,7 @@ def digester(model,
               )
   return qm_grm
 
-def get_prefix(params):
+def get_prefix(params, user_prefix=None):
   if hasattr(params, 'output') and hasattr(params.output, 'prefix'):
     prefix = params.output.prefix
   else:
@@ -1050,6 +1050,7 @@ def update_restraints(model,
                       never_write_restraints=False,
                       nproc=1,
                       parallel_id=None,
+                      prefix=None,
                       log=StringIO(),
                       ):
   def is_ligand_going_to_be_same_size(qmr):
@@ -1083,6 +1084,11 @@ def update_restraints(model,
   #
   assert objects
   if not objects: return None
+  working_dir = 'qm_work_dir'
+  if not os.path.exists(working_dir):
+    try: os.mkdir(working_dir)
+    except Exception as e: pass
+  os.chdir(working_dir)
   xyzs, xyzs_buffer, energies, units = run_jobs(objects,
                                                 macro_cycle=macro_cycle,
                                                 nproc=nproc,
@@ -1093,7 +1099,8 @@ def update_restraints(model,
   #
   rmsds=[]
   final_pdbs = []
-  prefix = get_prefix(params)
+  if prefix is None:
+    prefix = get_prefix(params, prefix)
   for i, ((ligand_model, buffer_model, qmm, qmr), xyz, xyz_buffer) in enumerate(
     zip(objects,
         xyzs,
@@ -1223,6 +1230,7 @@ Restraints written by QMR process in phenix.refine
                        header=header,
                        log=log,
                        )
+  os.chdir('..')
   print('\n  Total time for QM restaints: %0.1fs\n' % (time.time()-t0), file=log)
   print('%s%s' % ('/'*39, '\\'*40), file=log)
   print('%s%s' % ('\\'*39, '/'*40), file=log)
