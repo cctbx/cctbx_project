@@ -16,6 +16,8 @@ from collections import OrderedDict
 import mmtbx.f_model
 import sys
 from libtbx.test_utils import approx_equal
+from libtbx.utils import Sorry
+from cctbx import miller
 
 from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
@@ -561,24 +563,52 @@ def filter_mask(mask_p1, volume_cutoff, crystal_symmetry,
   return conn
 
 
-def modify(fofc, R, cutoff, crystal_gridding):
+def modify(fofc, R, cutoff, crystal_gridding, mask=None):
   G = fofc.g_function(R=R)
 
   fft_map = fofc.fft_map(crystal_gridding = crystal_gridding)
   fft_map.apply_volume_scaling()
   map_data = fft_map.real_map_unpadded()
 
+  if mask is not None: map_data = map_data*mask
+
   sel = map_data<cutoff
   map_data = map_data.set_selected(sel, cutoff)
 
-  F = fofc.structure_factors_from_map(map = map_data, in_place_fft=False,
-    use_scale=True, use_sg=False)
-
-  F = F.customized_copy(data = F.data()*G)
-
-  fft_map = F.fft_map(crystal_gridding = crystal_gridding)
+  B = miller.structure_factor_box_from_map(
+    crystal_symmetry=fofc.crystal_symmetry(),
+    map=map_data, n_real=None,
+     anomalous_flag=False, include_000=True)
+  GB = B.g_function(R=R)
+  B = B.customized_copy(data = B.data()*GB)
+  fft_map = B.fft_map(crystal_gridding = crystal_gridding)
   fft_map.apply_volume_scaling()
   map_data = fft_map.real_map_unpadded()
+
+  print(flex.min(map_data), flex.max(map_data), flex.mean(map_data))
+
+  map_data = map_data.set_selected(map_data<abs(flex.min(map_data)), 0)
+
+  print(flex.min(map_data), flex.max(map_data), flex.mean(map_data))
+
+  F=B
+
+
+  #F = fofc.structure_factors_from_map(map = map_data, in_place_fft=False,
+  #  use_scale=True, use_sg=False)
+  #
+  #F = F.customized_copy(data = F.data()*G)
+  #
+  #fft_map = F.fft_map(crystal_gridding = crystal_gridding)
+  #fft_map.apply_volume_scaling()
+  #map_data = fft_map.real_map_unpadded()
+
+  mtz_dataset = F.as_mtz_dataset(column_root_label = "F")
+  mtz_object = mtz_dataset.mtz_object()
+  mtz_object.write(file_name = "map.mtz")
+
+  write_map_file(crystal_symmetry=fofc.crystal_symmetry(),
+    map_data=map_data, file_name="map.ccp4")
 
   return map_data
 
@@ -700,7 +730,7 @@ class mask_and_regions(object):
   def f_mask_whole(self, miller_array):
     return self._mask_to_sf(mask_data=self.mask_p1, miller_array=miller_array)
 
-  def f_mask_whole_corrected(self, miller_array):
+  def f_mask_whole_filtered(self, miller_array):
     mask_p1_corrected = self.mask_p1.deep_copy()
     sel = flex.bool(self.conn.size(), self.small_selection)
     sel.resize(self.conn.accessor())
@@ -771,65 +801,154 @@ class f_masks(object):
       self.FV[f_mask_i] = region.i_seq
     # END OF LOOP OVER REGIONS
 
-#    OFFSET = i_seq+1
-#    print("<><><><><><><><><><>")
-#    dmd = modify(fofc=self.mFoDFc_main, R=0.1, cutoff=0, #0.1/10,
-#                 crystal_gridding=self.crystal_gridding)
-#
-#
-#    mask_ = mmtbx.masks.mask_from_xray_structure(
-#      xray_structure           = self.xray_structure,
-#      p1                       = True,
-#      for_structure_factors    = True,
-#      solvent_radius           = 0.5,
-#      shrink_truncation_radius = 0.5,
-#      n_real                   = self.n_real,
-#      in_asu                   = False).mask_data
-#    maptbx.unpad_in_place(map=mask_)
-#    dmd = dmd * mask_
-#
-#    co = maptbx.connectivity(
-#      map_data                   = dmd,
-#      threshold                  = 0, #0.001/10,
-#      preprocess_against_shallow = False,
-#      wrapping                   = wrapping)
-#    if(xray_structure.space_group().type().number() != 1): # not P1
-#      co.merge_symmetry_related_regions(
-#        space_group = xray_structure.space_group())
-#    self.conn = co.result().as_double()
-#    z = zip(co.regions(),range(0,co.regions().size()))
-#    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
-#    for i_seq, p in enumerate(sorted_by_volume):
-#      i_seq = OFFSET + i_seq
-#      v, i = p
-#      if(i==0): continue
-#      volume = v*step**3
-#      if(volume_cutoff is not None and volume < volume_cutoff): continue
-#      uc_fraction = v*100./self.conn.size()
-#      print("%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
-#            "%7s"%str(None), file=log)
-#
-#      self.regions[i_seq] = group_args(
-#        id          = i,
-#        i_seq       = i_seq,
-#        volume      = volume,
-#        uc_fraction = uc_fraction)
-#
-#      #mask_i_asu = self.compute_i_mask_asu(
-#      #  selection = sel, volume = volume)
-#      sel = self._get_region_selection(i)
-#      dmd_i = dmd.deep_copy()
-#      mask_i_asu = dmd_i.set_selected(~sel, 0)
-#      mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
-#
-#      f_mask_i = self.compute_f_mask_i(mask_i_asu)
-#      self.FV[f_mask_i] = [round(volume, 3), round(uc_fraction,1)]
-#    print("<><><><><><><><><><>")
+
+"""
+
+    #self.FV          = OrderedDict()
+    #self.FV[f_obs.customized_copy(data = f_mask_data_main)] = 0
+
+    self.diff_map = self.compute_diff_map(f_mask_data = f_mask_data_main)
+
+    mask_ = mmtbx.masks.mask_from_xray_structure(
+      xray_structure           = self.xray_structure,
+      p1                       = True,
+      for_structure_factors    = True,
+      #solvent_radius           = 0.5,
+      #shrink_truncation_radius = 0.5,
+      n_real                   = self.n_real,
+      in_asu                   = False).mask_data
+    maptbx.unpad_in_place(map=mask_)
+
+    mc = self.mFoDFc_main
+    fft_map = mc.fft_map(
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      crystal_gridding = self.crystal_gridding)
+    fft_map.apply_volume_scaling()
+    map_data = fft_map.real_map_unpadded() #* mask_
+
+    map_data = map_data.set_selected(map_data<0,0)
+
+    #sgt = self.f_obs.space_group().type()
+    #asu_map = asu_map_ext.asymmetric_map(sgt, map_data)
+    #map_data_asu = asu_map.data()
+    #map_data_asu = map_data_asu.shift_origin()
+    #
+    #asu_map = asu_map_ext.asymmetric_map(sgt, map_data_asu,
+    #  self.crystal_gridding.n_real())
+    #f_mask_i = self.f_calc.customized_copy(
+    #  indices = self.f_calc.indices(),
+    #  data    = asu_map.structure_factors(self.f_calc.indices() ))
+
+    def _sf_from_map(map_data):
+      return self.f_calc.structure_factors_from_map(
+        map            = map_data,
+        use_scale      = True,
+        anomalous_flag = False,
+        use_sg         = False)
+
+    #f_mask_i = _sf_from_map(map_data = map_data)
+    #
+    #
+    #self.FV[f_mask_i] = -99
+
+    OFFSET = region.i_seq+1
+    print("<><><><><><><><><><>")
+    dmd = modify(fofc=self.mFoDFc_main, R=2, cutoff=0.3, #0.1/10,
+       crystal_gridding=self.crystal_gridding,
+       mask = self.mask_and_regions.mask_p1)
+    #dmd = map_data
+    #STOP()
+
+    mask_p1 = self.mask_and_regions.mask_p1.deep_copy()
+
+    #mask_ = mmtbx.masks.mask_from_xray_structure(
+    #  xray_structure           = self.xray_structure,
+    #  p1                       = True,
+    #  for_structure_factors    = True,
+    #  solvent_radius           = 0.5,
+    #  shrink_truncation_radius = 0.5,
+    #  n_real                   = self.n_real,
+    #  in_asu                   = False).mask_data
+    #maptbx.unpad_in_place(map=mask_)
+    #dmd = dmd * mask_
+
+    co = maptbx.connectivity(
+      map_data                   = dmd,
+      threshold                  = 0.04, #0.001/10,
+      preprocess_against_shallow = False,
+      wrapping                   = True)
+    if(xray_structure.space_group().type().number() != 1): # not P1
+      co.merge_symmetry_related_regions(
+        space_group = xray_structure.space_group())
+    conn = co.result().as_double()
+    z = zip(co.regions(),range(0,co.regions().size()))
+    sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+    for i_seq, p in enumerate(sorted_by_volume):
+      i_seq = OFFSET + i_seq
+      v, i = p
+
+      #if(i==0 or i==1): continue
+      if i==0: continue
+
+      step=0.6
+      volume = v*step**3
+      volume_cutoff = 2500
+      if(volume_cutoff is not None and volume < volume_cutoff): continue
+      uc_fraction = v*100./conn.size()
+      print(i, "%3d"%i_seq,"%12.3f"%volume, "%8.4f"%round(uc_fraction,4),
+            "%7s"%str(None), file=log)
+      iselection = (conn==i).iselection()
+      selection = flex.bool(conn.size(), iselection)
+      selection.resize(conn.accessor())
+
+      mask_p1 = mask_p1.set_selected(selection, 0)
+
+      region = group_args(
+        i           = i,
+        i_seq       = i_seq,
+        volume      = volume,
+        uc_fraction = uc_fraction,
+        iselection  = iselection)
+      self.mask_and_regions.regions.append( region )
+
+      dmd_i = dmd.deep_copy()
+      mask_i_asu = dmd_i.set_selected(~selection, 0)
+      #mask_i_asu = mask_i_asu.set_selected(mask_i_asu>0, 1)
+      f_mask_i = _sf_from_map(map_data=mask_i_asu)
+
+      #mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
+      #mask_i_asu = self.mask_and_regions.get_region_asu_mask(region = region, map_data=dmd_i)
+      #mask_i_asu = mask_i_asu/flex.max(mask_i_asu)
+      #
+      #f_mask_i = self.compute_f_mask_i(mask_i_asu)
+      self.FV[f_mask_i] = -1*i_seq
+    print("<><><><><><><><><><>")
+"""
+
+    fmodel = mmtbx.f_model.manager(
+      f_obs        = self.f_obs,
+      f_calc       = self.f_calc,
+      r_free_flags = self.r_free_flags,
+      f_mask       = _sf_from_map(map_data=mask_p1))
+    fmodel.update_all_scales(remove_outliers=True,
+      apply_scale_k1_to_f_obs = APPLY_SCALE_K1_TO_FOBS)
+    mc = fmodel.electron_density_map().map_coefficients(
+      map_type   = "mFobs-DFmodel",
+      isotropize = False,
+      exclude_free_r_reflections = True)
+    mtz_dataset = mc.as_mtz_dataset(column_root_label = "F")
+    mtz_object = mtz_dataset.mtz_object()
+    mtz_object.write(file_name = "map2.mtz")
+
+
 
     #
     # Determine number of secondary regions. Must happen here!
     # Preliminarily if need to do mosaic.
+
     self.n_regions = len(self.FV.values())
+    if(self.n_regions==0):
+      raise Sorry("Region selection criteria lead to no regions")
     self.do_mosaic = False
     if(self.n_regions>1 and flex.max(self.d_spacings)>6):
       self.do_mosaic = True
@@ -837,6 +956,13 @@ class f_masks(object):
     self.f_mask_main = f_obs.customized_copy(data = f_mask_data_main)
     # Delete large objects from memory
     del self.diff_map
+
+  def _get_sum_f_masks(self):
+    f_masks = list(self.FV.keys())
+    data = f_masks[0].data()
+    for f in f_masks[1:]:
+      data += f.data()
+    return self.f_obs.set().array(data = data)
 
   def _get_map_info(self, iselection):
     if(self.diff_map is None):
