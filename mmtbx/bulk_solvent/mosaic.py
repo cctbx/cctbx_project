@@ -792,8 +792,11 @@ class f_masks(object):
         if(map_info.mean is not None and map_info.mean < mean_diff_map_threshold):
           continue
         if(log is not None):
-          print("%3d"%region.i_seq,"%12.3f"%region.volume, "%8.4f"%round(region.uc_fraction,4),
-                map_info.string, file=log)
+          print("%3d"%region.i_seq,"%12.3f"%region.volume,
+                "%8.4f"%round(region.uc_fraction,4), map_info.string, file=log)
+      else:
+        print("%3d"%region.i_seq,"%12.3f"%region.volume,
+              "%8.4f"%round(region.uc_fraction,4), file=log)
       # Compute F_mask for i-th region
       if(f_mask_i is None):
         f_mask_i = self.compute_f_mask_i(mask_i_asu)
@@ -960,7 +963,7 @@ class f_masks(object):
 
   def _get_sum_f_masks(self):
     f_masks = list(self.FV.keys())
-    data = f_masks[0].data()
+    data = f_masks[0].data().deep_copy()
     for f in f_masks[1:]:
       data += f.data()
     return self.f_obs.set().array(data = data)
