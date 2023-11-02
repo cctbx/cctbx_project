@@ -802,7 +802,8 @@ class f_masks(object):
     # END OF LOOP OVER REGIONS
 
 
-"""
+
+    """
 
     #self.FV          = OrderedDict()
     #self.FV[f_obs.customized_copy(data = f_mask_data_main)] = 0
@@ -923,7 +924,7 @@ class f_masks(object):
       #f_mask_i = self.compute_f_mask_i(mask_i_asu)
       self.FV[f_mask_i] = -1*i_seq
     print("<><><><><><><><><><>")
-"""
+
 
     fmodel = mmtbx.f_model.manager(
       f_obs        = self.f_obs,
@@ -939,7 +940,7 @@ class f_masks(object):
     mtz_dataset = mc.as_mtz_dataset(column_root_label = "F")
     mtz_object = mtz_dataset.mtz_object()
     mtz_object.write(file_name = "map2.mtz")
-
+    """
 
 
     #
