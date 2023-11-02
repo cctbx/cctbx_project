@@ -294,5 +294,5 @@ if __name__ == '__main__':
       mol = mol_from_smiles(smiles_string, verbose=True)
       try:
         print(mol.Debug())
-      except: pass
+      except Exception: pass
     assert 0
