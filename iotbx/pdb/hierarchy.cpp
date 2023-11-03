@@ -617,7 +617,7 @@ namespace {
       altloc = resname = resseq = icode = chain_id = model_id = 0;
     }
     else {
-      altloc = ag->altloc.elems;
+      altloc = ag->altloc.c_str();
       resname = ag->resname.c_str();
       shared_ptr<residue_group_data> rg_lock = ag->parent.lock();
       const residue_group_data* rg = rg_lock.get();
@@ -694,7 +694,7 @@ namespace {
     atom_with_labels const& self,
     atom_label_columns_formatter& label_formatter)
   {
-    label_formatter.altloc = self.altloc.elems;
+    label_formatter.altloc = self.altloc.c_str();
     label_formatter.resname = self.resname.c_str();
     label_formatter.resseq = self.resseq.elems;
     label_formatter.icode = self.icode.elems;
@@ -1111,7 +1111,7 @@ namespace {
     std::string chain_id;
     str4 resseq;
     str1 icode;
-    str1 altloc;
+    std::string altloc;
     std::string resname;
     boost::optional<atom_group> ag = parent();
     if (ag) {
@@ -1137,7 +1137,7 @@ namespace {
       chain_id.c_str(),
       resseq.elems,
       icode.elems,
-      altloc.elems,
+      altloc.c_str(),
       resname.c_str(),
       /* is_first_in_chain */ false,
       /* is_first_after_break */ false);
@@ -1330,7 +1330,7 @@ namespace {
   atom_group::confid() const
   {
     std::string result;
-    result += (data->altloc.size() == 0) ? " " : data->altloc.elems;
+    result += (data->altloc.size() == 0) ? " " : data->altloc.c_str();
     result += (data->resname.size() == 0) ? " " : boost::algorithm::trim_copy(data->resname);
     return result;
   }
@@ -1583,8 +1583,8 @@ namespace {
     typedef std::vector<atom_group>::const_iterator agi_t;
     agi_t ag_end = data->atom_groups.end();
     for(agi_t agi=data->atom_groups.begin();agi!=ag_end;agi++) {
-      char altloc = agi->data->altloc.elems[0];
-      if (altloc != '\0' && altloc != blank_altloc_char) {
+      std::string altloc = agi->data->altloc;
+      if (altloc != "" && altloc != blank_altloc_string) {
         return true;
       }
     }
@@ -1629,8 +1629,8 @@ namespace {
     unsigned n_ag = atom_groups_size();
     for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
       atom_group const& ag = data->atom_groups[i_ag];
-      char altloc = ag.data->altloc.elems[0];
-      if (altloc == '\0' || altloc == blank_altloc_char) {
+      std::string altloc = ag.data->altloc;
+      if (altloc == "" || altloc == blank_altloc_string) {
         if (i_ag != n_blank_altloc_atom_groups) {
           atom_group ag_by_value = ag;
           remove_atom_group(i_ag);
@@ -1656,7 +1656,7 @@ namespace {
     unsigned i_ag = 0;
     for(;i_ag<n_blank_altloc_atom_groups;i_ag++) {
       atom_group& ag = data->atom_groups[i_ag];
-      ag.data->altloc.elems[0] = '\0';
+      ag.data->altloc = "";
       ss4& blank_name_set = blank_name_sets[ag.data->resname];
       unsigned n_atoms = ag.atoms_size();
       for(unsigned i_atom=0;i_atom<n_atoms;i_atom++) {
@@ -1713,7 +1713,7 @@ namespace {
           if (new_atom_group == 0) {
             unsigned i = n_blank_altloc_atom_groups
                        + n_blank_but_alt_atom_groups;
-            atom_group new_ag(blank_altloc_cstr, ag.data->resname.c_str());
+            atom_group new_ag(blank_altloc_string, ag.data->resname.c_str());
             insert_atom_group(i, new_ag);
             new_atom_group = &data->atom_groups[i];
             n_blank_but_alt_atom_groups++;
@@ -1755,7 +1755,7 @@ namespace {
         " (this chain must be the parent).");
     }
     typedef std::map<std::string, atom_group> s3ag;
-    typedef std::map<str1, s3ag> s1s3ag;
+    typedef std::map<std::string, s3ag> s1s3ag;
     s1s3ag altloc_resname_dict;
     unsigned n_ag = primary.atom_groups_size();
     for(unsigned i=0;i<n_ag;i++) {
@@ -1844,9 +1844,9 @@ namespace {
         std::vector<unsigned> const& i_rgs = mrii->second;
         unsigned n_i_rgs = static_cast<unsigned>(i_rgs.size());
         if (n_i_rgs == 1U) continue;
-        std::set<str1> altlocs;
-        altlocs.insert('\0');
-        altlocs.insert(blank_altloc_char);
+        std::set<std::string> altlocs;
+        altlocs.insert("");
+        altlocs.insert(blank_altloc_string);
         unsigned altlocs_size = 2U;
         for(unsigned i_i_rgs=0;i_i_rgs<n_i_rgs;i_i_rgs++) {
           unsigned i_rg = i_rgs[i_i_rgs];
@@ -1910,7 +1910,7 @@ namespace {
       unsigned n_ags = rg.atom_groups_size();
       std::vector<atom_group> const& ags = rg.atom_groups();
       bool is_pure_altloc = (   n_ags != 0
-                             && ags[0].data->altloc.elems[0] != '\0');
+                             && ags[0].data->altloc != "");
       if (common_residue_name_class_only != 0) {
         skip = 1;
         for(unsigned i_ag=0;i_ag<n_ags;i_ag++) {
@@ -1997,9 +1997,10 @@ namespace {
     const residue_group* residue_groups,
     unsigned residue_groups_size)
   {
-    const char nulc = '\0';
-    std::vector<char> altlocs;
-    typedef std::map<char, unsigned> mcu;
+    // const char nulc = '\0';
+    std::string nulc = "";
+    std::vector<std::string> altlocs;
+    typedef std::map<std::string, unsigned> mcu;
     mcu altloc_indices;
     bool have_at_least_one_atom_group = false;
     for(unsigned i_rg=0;i_rg<residue_groups_size;i_rg++) {
@@ -2008,7 +2009,7 @@ namespace {
       if (n_ag != 0) have_at_least_one_atom_group = true;
       std::vector<atom_group> const& ags = rg.atom_groups();
       for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
-        char altloc = ags[i_ag].data->altloc.elems[0];
+        std::string altloc = ags[i_ag].data->altloc;
         if (altloc == nulc) continue;
         if (altloc_indices.find(altloc) == altloc_indices.end()) {
           altlocs.push_back(altloc);
@@ -2026,10 +2027,10 @@ namespace {
     af::shared<conformer> result((af::reserve(n_cf)));
     for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
       if (chain != 0) {
-        result.push_back(conformer(*chain, str1(altlocs[i_cf]).elems));
+        result.push_back(conformer(*chain, altlocs[i_cf]));
       }
       else {
-        result.push_back(conformer(str1(altlocs[i_cf]).elems));
+        result.push_back(conformer(altlocs[i_cf]));
       }
     }
     std::vector<std::string> resnames; // allocate once
@@ -2046,7 +2047,7 @@ namespace {
       std::vector<atom_group> const& ags = rg.atom_groups();
       for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
         atom_group const& ag = ags[i_ag];
-        char altloc = ag.data->altloc.elems[0];
+        std::string altloc = ag.data->altloc;
         if (altloc == nulc) {
           for(unsigned i_cf=0;i_cf<n_cf;i_cf++) {
             altloc_ags[i_cf].push_back(ag);
@@ -2079,7 +2080,7 @@ namespace {
             }
           }
           atoms->insert(atoms->end(), ag.atoms().begin(), ag.atoms().end());
-          if (ag.data->altloc.elems[0] != nulc) {
+          if (ag.data->altloc != nulc) {
             resnames_with_altloc.insert(ag.data->resname);
           }
         }
@@ -2526,7 +2527,7 @@ namespace {
       chain_id.c_str(),
       resseq.elems,
       icode.elems,
-      altloc.elems,
+      altloc.c_str(),
       resname.c_str(),
       is_first_in_chain,
       is_first_after_break);

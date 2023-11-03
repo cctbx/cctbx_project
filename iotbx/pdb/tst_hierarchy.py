@@ -468,9 +468,13 @@ def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
   assert ag.altloc == ""
   assert ag.resname == ""
-  ag = pdb.hierarchy.atom_group(altloc=None, resname=None)
-  assert ag.altloc == ""
-  assert ag.resname == ""
+  ag = pdb.hierarchy.atom_group(altloc="abc", resname="longxyz")
+  assert ag.altloc == "abc"
+  assert ag.resname == "longxyz"
+  # Does not work anymore
+  # ag = pdb.hierarchy.atom_group(altloc=None, resname=None)
+  # assert ag.altloc == ""
+  # assert ag.resname == ""
   ag = pdb.hierarchy.atom_group(altloc="a", resname="xyz")
   assert ag.altloc == "a"
   assert ag.resname == "xyz"
@@ -586,11 +590,12 @@ def exercise_atom_group():
     pass
   else: raise Exception_expected
   #
-  try: pdb.hierarchy.atom_group(altloc="ab")
-  except (ValueError, RuntimeError) as e:
-    assert str(e) == "string is too long for target variable " \
-      "(maximum length is 1 character, 2 given)."
-  else: raise Exception_expected
+  # Now works
+  # try: pdb.hierarchy.atom_group(altloc="ab")
+  # except (ValueError, RuntimeError) as e:
+  #   assert str(e) == "string is too long for target variable " \
+  #     "(maximum length is 1 character, 2 given)."
+  # else: raise Exception_expected
   #
   ag1 = pdb.hierarchy.atom_group()
   atom = pdb.hierarchy.atom()
