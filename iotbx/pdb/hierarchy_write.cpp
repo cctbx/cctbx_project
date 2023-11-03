@@ -28,7 +28,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
         unsigned n_ag = rg.atom_groups_size();
         for(unsigned i_ag=0;i_ag<n_ag;i_ag++) {
           atom_group const& ag = rg.atom_groups()[i_ag];
-          label_formatter.altloc = ag.data->altloc.elems;
+          label_formatter.altloc = ag.data->altloc.c_str();
           label_formatter.resname = ag.data->resname.c_str();
           typedef std::vector<atom> va;
           va const& atoms = ag.atoms();
@@ -55,7 +55,7 @@ namespace iotbx { namespace pdb { namespace hierarchy {
         for(unsigned i_at=0;i_at<n_at;i_at++) {
           hierarchy::atom const* atom = &ats[i_at];
           shared_ptr<atom_group_data> ag_data = atom->parent_ptr();
-          label_formatter.altloc = ag_data->altloc.elems;
+          label_formatter.altloc = ag_data->altloc.c_str();
           label_formatter.resname = ag_data->resname.c_str();
           IOTBX_LOC
         }

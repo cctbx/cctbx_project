@@ -62,7 +62,7 @@ namespace {
   {
     typedef atom_group w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(altloc)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(resname)
 
     static

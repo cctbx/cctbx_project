@@ -76,7 +76,7 @@ namespace mmtbx { namespace secondary_structure { namespace dssp {
     unsigned n_ags = prev_rg.atom_groups_size();
     std::vector<atom_group> const& ags = prev_rg.atom_groups();
     for (unsigned i_ag = 0; i_ag < n_ags; i_ag++) {
-      if (ags[i_ag].data->altloc.elems[0] == ag_N->data->altloc.elems[0]) {
+      if (ags[i_ag].data->altloc[0] == ag_N->data->altloc[0]) {
         n_ats = ags[i_ag].atoms_size();
         std::vector<atom> prev_atoms = ags[i_ag].atoms();
         for (unsigned i_at = 0; i_at < n_ats; i_at++) {

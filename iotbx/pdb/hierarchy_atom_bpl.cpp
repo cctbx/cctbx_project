@@ -454,7 +454,7 @@ namespace {
       /* HY36_WIDTH_4_MAX */ 2436111)
     IOTBX_LOC_GET(resseq)
     IOTBX_LOC_GET_SET(icode)
-    IOTBX_LOC_GET_SET(altloc)
+    // IOTBX_LOC_GET_SET(altloc)
     // IOTBX_LOC_GET_SET(resname)
 
 #undef IOTBX_LOC_GET
@@ -484,6 +484,7 @@ namespace {
     IOTBX_LOC_GET_SET_STD_STRING(model_id)
     IOTBX_LOC_GET_SET_STD_STRING(chain_id)
     IOTBX_LOC_GET_SET_STD_STRING(resname)
+    IOTBX_LOC_GET_SET_STD_STRING(altloc)
 
 #undef IOTBX_LOC_GET_STD_STRING
 #undef IOTBX_LOC_SET_STD_STRING
