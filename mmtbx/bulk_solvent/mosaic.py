@@ -657,6 +657,8 @@ class mask_and_regions(object):
     self.conn = co.result().as_double() # 0 = protein, 1 = solvent, >1 = other
     z = zip(co.regions(),range(0,co.regions().size()))
     self.sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+    self.n_regions_total = co.regions().size()
+    print("Total number of regions: %d"%self.n_regions_total, file=log)
     #
     if(log is not None):
       print("Regions (V > %d):"%volume_cutoff, file=log)
@@ -690,6 +692,8 @@ class mask_and_regions(object):
           region.uc_fraction), file=log)
     #
     self.n_regions = len(self.regions)
+    print("Number of regions (V > %d): %d"%(
+      volume_cutoff, self.n_regions), file=log)
 
   def get_selection(self, region):
     result = flex.bool(self.conn.size(), region.iselection)
@@ -951,6 +955,8 @@ class f_masks(object):
     # Preliminarily if need to do mosaic.
 
     self.n_regions = len(self.FV.values())
+    print("Number of regions (mean(mFo-DFc) >= %s): %d"%(
+      mean_diff_map_threshold, self.n_regions), file=log)
     if(self.n_regions==0):
       raise Sorry("Region selection criteria lead to no regions")
     self.do_mosaic = False
