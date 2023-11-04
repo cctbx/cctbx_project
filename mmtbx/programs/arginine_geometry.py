@@ -115,6 +115,8 @@ Usage examples:
       .type = atom_selection
       .help = what to select
       .multiple = True
+    exclude_hydrogen = False
+      .type = bool
     print_torsion_limit = 1.
       .type = float
     print_torsion_number = 10
@@ -148,7 +150,7 @@ Usage examples:
         current[tuple(torsion_atom_names)]=v
     self.results.process()
 
-  def torsions_in_planes(self):
+  def torsions_in_planes(self, exclude_hydrogen=False):
     model = self.data_manager.get_model()
     model.set_log(null_out())
     model.process(make_restraints=True)
@@ -187,6 +189,7 @@ Usage examples:
             if atom.element_is_hydrogen(): h_atom=True
             torsion_xyzs.append(atom.xyz)
             torsion_strs += '%s - ' % (atom.id_str()[4:])
+          if exclude_hydrogen and h_atom: continue
           v = geometry_restraints.dihedral(sites=torsion_xyzs, angle_ideal=0, weight=1).angle_model
           v = get_torsion_deviations(v)
           self.results[torsion_strs[:-2]]=[v, h_atom]
@@ -197,7 +200,7 @@ Usage examples:
     # self.arginine_simple()
     self.results = plane_torsion_deviations(self.params.arginine.print_torsion_limit,
                                             self.params.arginine.print_torsion_number)
-    self.torsions_in_planes()
+    self.torsions_in_planes(self.params.arginine.exclude_hydrogen)
     print('\n%s' % self.results, file=log)
     reduce_H_atoms = self.results.is_possible_reduce()
     print('  Has reduce-like H atoms : %s\n' % reduce_H_atoms if reduce_H_atoms else '', file=log)
