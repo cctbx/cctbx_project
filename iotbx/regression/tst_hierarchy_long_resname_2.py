@@ -129,11 +129,7 @@ def test1():
       '   HETATM 10 O . longHOH A 401 ? -3.20900 -12.85600 46.10000 1.000 30.11000 O ? B ? . 1']:
     assert_lines_in_text(model_cif, l)
   model_pdb = model.model_as_pdb()
-  # print(model_pdb)
-  for l in [
-      'LINK         NZ  LYS A 279                 O   longHOH A 401 ',
-      'HETATM   10  O   longHOH A 401      -3.209 -12.856  46.100  1.00 30.11           O']:
-    assert_lines_in_text(model_pdb, l)
+  assert not model.can_be_outputted_as_pdb()
 
 if (__name__ == "__main__"):
   t0 = time.time()

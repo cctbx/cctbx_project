@@ -209,11 +209,7 @@ def test1():
     assert_lines_in_text(model_cif, l)
   model_pdb = model.model_as_pdb()
   # print(model_pdb)
-  for l in [
-      'ATOM     20  ND2 ASN A   3      -1.271   0.715   7.306  1.00 13.48           N',
-      'ATOM     21  N   longGLY A   4      -1.005   2.228   3.598  1.00 10.29           N',
-    ]:
-    assert_lines_in_text(model_pdb, l)
+  assert not model.can_be_outputted_as_pdb()
 
 def test2():
   """
