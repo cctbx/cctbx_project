@@ -898,6 +898,9 @@ def exercise_xds_input():
   assert approx_equal(wl2, 0.9792)
 
 def exercise_cif():
+  if (not libtbx.env.has_module("phenix_regression")):
+    print("phenix_regression not available, skipping")
+    return
   cif_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/reflection_files/1yjp-sf.cif",
     test=os.path.isfile)
