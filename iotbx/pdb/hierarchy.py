@@ -658,6 +658,8 @@ class _():
     :param siguij: write SIGUIJ records if applicable
     :returns: Python str
     """
+    if not self.fits_in_pdb_format():
+      return ""
     if (cstringio is None):
       cstringio = StringIO()
       if (return_cstringio is Auto):

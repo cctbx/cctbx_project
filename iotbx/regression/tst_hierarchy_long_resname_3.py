@@ -212,12 +212,7 @@ def test1():
     'data_comp_7ZTVU',
     ]:
     assert_lines_in_text(model_cif, l)
-  model_pdb = model.model_as_pdb()
-  print(model_pdb)
-  for l in [
-    'HETATM   10  C10 7ZTVU A 302      -7.646  -6.965   5.796  1.00 22.62           C',
-    ]:
-    assert_lines_in_text(model_pdb, l)
+  assert not model.can_be_outputted_as_pdb()
 
 def test2():
   """
