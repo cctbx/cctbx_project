@@ -414,7 +414,7 @@ class run(object):
     # self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
     print(self.min_max_mean_shift(), file=self.log)
 
-    if self.model.can_be_outputted_as_pdb():
+    if self.model.can_be_output_as_pdb():
       print("  output file name:", self.result_model_fname, file=self.log)
       r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
       f = open(self.result_model_fname, 'w')
