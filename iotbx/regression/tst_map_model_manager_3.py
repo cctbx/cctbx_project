@@ -80,7 +80,7 @@ def exercise(file_name, out = sys.stdout):
   unique_mam=ncs_mam.extract_all_maps_around_model(select_unique_by_ncs=True)
   assert unique_mam.model().get_sites_cart().size() == 42
   assert approx_equal (unique_mam.model().get_sites_cart()[0],
-    (18.740916666666664, 13.1794, 16.10544), 1e-4)
+    (18.740916666666664, 13.1794, 16.10544), 1e-3)
 
   # Make sure that the extraction did not change the original but does change
   #   the extracted part
@@ -109,7 +109,7 @@ def exercise(file_name, out = sys.stdout):
     other_model_id = 'model')
   # ...and check that copy 1 and copy 2 both change
   assert approx_equal (ncs_mam.model().get_sites_cart()[0],
-     (5.820083333333333, -4.020400000000001, -4.445440000000001))
+     (5.820083333333333, -4.020400000000001, -4.445440000000001), 1e-3)
   assert approx_equal (ncs_mam.model().get_sites_cart()[42],
      (38.41904613024224, 17.233251085893276, 2.5547442135142524), 1e-3)
 

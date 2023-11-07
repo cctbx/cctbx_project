@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
+ext2 = bp.import_ext("iotbx_pdb_ext")
+from iotbx_pdb_ext import xray_structures_simple_extension
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0, group_args
@@ -11,7 +13,7 @@ from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
-from cctbx import crystal, adptbx
+from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
 import six
 from six.moves import cStringIO as StringIO
@@ -815,11 +817,64 @@ class _():
     is usually best to keep the original xray structure object around, but this
     method is helpful in corner cases.
     """
-    if min_distance_sym_equiv is not None: # use it
-      return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
-        min_distance_sym_equiv=min_distance_sym_equiv)
-    else:  # usual just use whatever is default in xray_structure_simple
-      return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    # if min_distance_sym_equiv is not None: # use it
+    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
+    #     min_distance_sym_equiv=min_distance_sym_equiv)
+    # else:  # usual just use whatever is default in xray_structure_simple
+    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    #
+    # Abbreviated copy-paste from iotbx/pdb/__init__.py: def xray_structures_simple()
+    # Better than getting iotbx.pdb.input from hierarchy.as_pdb_string()
+    from cctbx import xray
+    import scitbx.stl.set
+    cryst1_substitution_buffer_layer = None
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero = True
+    if min_distance_sym_equiv is None:
+      min_distance_sym_equiv = 0.5
+    #
+    if (crystal_symmetry is None):
+      crystal_symmetry = crystal.symmetry()
+    if (crystal_symmetry.unit_cell() is None):
+      crystal_symmetry = crystal_symmetry.customized_copy(
+        unit_cell=uctbx.non_crystallographic_unit_cell(
+          sites_cart=self.atoms().extract_xyz(),
+          buffer_layer=cryst1_substitution_buffer_layer))
+    if (crystal_symmetry.space_group_info() is None):
+      crystal_symmetry = crystal_symmetry.cell_equivalent_p1()
+    unit_cell = crystal_symmetry.unit_cell()
+    scale_r = (0,0,0,0,0,0,0,0,0)
+    scale_t = (0,0,0)
+    scale_matrix = None
+    result = []
+    from iotbx.pdb import default_atom_names_scattering_type_const
+    atom_names_scattering_type_const = default_atom_names_scattering_type_const
+    mi = flex.size_t([m.atoms_size() for m in self.models()])
+    for i in range(1, len(mi)):
+      mi[i] += mi[i-1]
+    loop = xray_structures_simple_extension(
+      False, # one_structure_for_each_model,
+      False, # unit_cube_pseudo_crystal,
+      False, # fractional_coordinates,
+      False, # scattering_type_exact,
+      False, # enable_scattering_type_unknown,
+      self.atoms_with_labels(),
+      mi,
+      scitbx.stl.set.stl_string(atom_names_scattering_type_const),
+      unit_cell,
+      scale_r,
+      scale_t)
+    special_position_settings = crystal_symmetry.special_position_settings(
+      min_distance_sym_equiv=min_distance_sym_equiv)
+    try :
+      while (next(loop)):
+        result.append(xray.structure(
+          special_position_settings=special_position_settings,
+          scatterers=loop.scatterers,
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+            non_unit_occupancy_implies_min_distance_sym_equiv_zero))
+    except ValueError as e :
+      raise Sorry(str(e))
+    return result[0]
 
   def adopt_xray_structure(self, xray_structure):
     """
