@@ -1554,7 +1554,7 @@ class manager(object):
       self._shift_back(hierarchy_to_output)
     return hierarchy_to_output
 
-  def can_be_outputted_as_pdb(self):
+  def can_be_output_as_pdb(self):
     return self.get_hierarchy().fits_in_pdb_format()
 
   def model_as_pdb(self,

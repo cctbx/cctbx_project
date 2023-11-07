@@ -212,7 +212,7 @@ def test1():
     'data_comp_7ZTVU',
     ]:
     assert_lines_in_text(model_cif, l)
-  assert not model.can_be_outputted_as_pdb()
+  assert not model.can_be_output_as_pdb()
 
 def test2():
   """

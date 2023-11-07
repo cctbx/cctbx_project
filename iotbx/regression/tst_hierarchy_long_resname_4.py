@@ -209,7 +209,7 @@ def test1():
     assert_lines_in_text(model_cif, l)
   model_pdb = model.model_as_pdb()
   # print(model_pdb)
-  assert not model.can_be_outputted_as_pdb()
+  assert not model.can_be_output_as_pdb()
 
 def test2():
   """
