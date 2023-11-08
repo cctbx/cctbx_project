@@ -360,6 +360,8 @@ class SimData:
 
   def update_Fhkl_tuple(self):
     if self.crystal.miller_array is not None:
+      if np.all(self.crystal.miller_array.data().as_numpy_array()==0):
+        raise ValueError("Seems all miller indices are 0")
       d_max, _ = self.crystal.miller_array.resolution_range()
       d_min = self.get_detector_corner_res()
       ma_on_detector = self.crystal.miller_array.resolution_filter(d_min=d_min, d_max=d_max)

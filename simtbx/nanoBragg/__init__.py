@@ -15,6 +15,7 @@ from dxtbx.model import BeamFactory
 from dxtbx.model import DetectorFactory
 from dxtbx.format.Format import Format
 from dxtbx.format import cbf_writer, nxmx_writer
+import numpy as np
 
 
 @bp.inject_into(ext.nanoBragg)
@@ -150,7 +151,7 @@ class _():
     det_descr = {'panels':
                    [{'fast_axis': fdet,
                      'slow_axis': sdet,
-                     'gain': self.quantum_gain,
+                     'gain': 1, # this should always be 1 for simulations. If you ran add_noise then quantum gain was multiplied
                      'identifier': '',
                      'image_size': im_shape,
                      'mask': [],
@@ -170,10 +171,17 @@ class _():
 
   @property
   def imageset(self):
-    format_class = FormatBraggInMemory(self.raw_pixels)
+    if self.cbf_int:
+      raw_pix = self.raw_pixels.as_numpy_array()
+      raw_pix = flex.int(raw_pix.astype(np.int32))
+    else:
+      raw_pix = self.raw_pixels
+
+    format_class = FormatBraggInMemory(raw_pix)
     reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
     reader.format_class = FormatBraggInMemory
-    imageset_data = ImageSetData(reader, None, vendor="", params={'raw_pixels': self.raw_pixels}, format=FormatBraggInMemory)
+    imageset_data = ImageSetData(reader, None, vendor="", params={'raw_pixels': raw_pix},
+                                 format=FormatBraggInMemory)
     imageset = ImageSet(imageset_data)
     imageset.set_beam(self.beam)
     imageset.set_detector(self.detector)
@@ -216,12 +224,16 @@ class _():
 
     return explist
 
-  def to_cbf(self, cbf_filename, toggle_conventions=False, intfile_scale=1.0):
+  def to_cbf(self, cbf_filename, toggle_conventions=False, intfile_scale=1.0, cbf_int=False):
     """write a CBF-format image file to disk from the raw pixel array
     intfile_scale: multiplicative factor applied to raw pixels before output
          intfile_scale > 0 : value of the multiplicative factor
          intfile_scale = 1 (default): do not apply a factor
-         intfile_scale = 0 : compute a reasonable scale factor to set max pixel to 55000; given by get_intfile_scale()"""
+         intfile_scale = 0 : compute a reasonable scale factor to set max pixel to 55000; given by get_intfile_scale()
+    cbf_int: boolean flag, write the cbf using 32-bit int precision
+    """
+    temp = self.cbf_int
+    self.cbf_int = cbf_int
 
     if intfile_scale != 1.0:
       cache_pixels = self.raw_pixels
@@ -234,8 +246,12 @@ class _():
       CURRENT_CONV = self.beamcenter_convention
       self.beamcenter_convention=DIALS
 
-    writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
-    writer.write_cbf(cbf_filename, index=0)
+    imgset = self.imageset
+    writer = cbf_writer.FullCBFWriter(imageset=imgset)
+    cbf = writer.get_cbf_handle(index=0, header_only=True)
+    data = imgset.get_raw_data(0)
+    writer.add_data_to_cbf(cbf, data=data)
+    writer.write_cbf(cbf_filename, cbf=cbf)
 
     if toggle_conventions:
       self.beamcenter_convention=CURRENT_CONV
@@ -243,6 +259,8 @@ class _():
     if intfile_scale != 1.0:
       self.raw_pixels = cache_pixels
       # print("switch back to cached")
+
+    self.cbf_int = temp
 
   def to_nexus_nxmx(self, nxmx_filename, toggle_conventions=False, intfile_scale=1.0):
     """write a NeXus NXmx-format image file to disk from the raw pixel array
