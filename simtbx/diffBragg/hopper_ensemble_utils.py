@@ -678,7 +678,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
             continue
 
         shot_modeler.set_parameters_for_experiment(best=exper_dataframe)
-        shot_modeler.set_spectrum()
+        shot_modeler.set_spectrum(spectra_file=exper_dataframe.spectrum_filename.values[0])
         MAIN_LOGGER.info("Will simulate %d energy channels" % len(shot_modeler.nanoBragg_beam_spectrum))
 
         # verify this

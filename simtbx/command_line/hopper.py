@@ -155,7 +155,7 @@ class Script:
             elif num_fields==4:
                 assert os.path.isfile(line_fields[2])
                 spec = line_fields[2]
-                exp_idx = line_fields[3]
+                exp_idx = int(line_fields[3])
 
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
