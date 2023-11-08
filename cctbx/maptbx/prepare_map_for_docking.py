@@ -813,12 +813,10 @@ def default_target_spectrum(ssqr):
 
 def sphere_enclosing_model(model):
   sites_cart = model.get_sites_cart()
-  cart_min = flex.double(sites_cart.min())
-  cart_max = flex.double(sites_cart.max())
-  model_midpoint = (cart_max + cart_min) / 2
-  dsqrmax = flex.max((sites_cart - tuple(model_midpoint)).norms()) ** 2
+  model_centre = sites_cart.mean()
+  dsqrmax = flex.max((sites_cart - tuple(model_centre)).norms()) ** 2
   model_radius = math.sqrt(dsqrmax)
-  return model_midpoint, model_radius
+  return model_centre, model_radius
 
 def sphere_sampling_model(model):
   sites_cart = model.get_sites_cart()
