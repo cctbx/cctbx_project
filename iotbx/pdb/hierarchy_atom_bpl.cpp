@@ -183,7 +183,7 @@ namespace {
     {
       std::string result = self.format_atom_record(
         0, replace_floats_with);
-      return boost::python::str(result.c_str());
+      return static_cast<boost::python::str>(result);
     }
 
 #ifdef IS_PY3K
