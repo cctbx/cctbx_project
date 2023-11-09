@@ -8,6 +8,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
+#include <sys/time.h>
 
 #ifndef CUDAREAL
     #define CUDAREAL double
@@ -19,14 +20,34 @@ typedef Eigen::Matrix<double,3,3> MAT3;
 typedef std::vector<MAT3,Eigen::aligned_allocator<MAT3> > eigMat3_vec;
 typedef std::vector<VEC3,Eigen::aligned_allocator<VEC3> > eigVec3_vec;
 
+inline void easy_time(double& timer, struct timeval& t, bool recording){
+    double before_sec = t.tv_sec;
+    double before_usec = t.tv_usec;
+    gettimeofday(&t, 0);
+    double time = (1000000.0 * (t.tv_sec - before_sec) + t.tv_usec - before_usec) / 1000.0;
+    if (recording)
+        timer += time;
+}
+
 struct timer_variables{
-    CUDAREAL add_spots_pre=0; // times the initializations for add spots kernel
-    CUDAREAL add_spots_post=0; // times the copies that occur after add spots kernel
-    CUDAREAL add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
-    CUDAREAL cuda_alloc=0; // times the allocation of the device
-    CUDAREAL cuda_copy_to_dev=0; // times the copying from host to device
-    CUDAREAL cuda_copy_from_dev=0; // times the copying back from device to host
-    CUDAREAL cuda_kernel=0; // times the GPU kernel
+    double add_spots_pre=0; // times the initializations for add spots kernel
+    double add_spots_post=0; // times the copies that occur after add spots kernel
+    double add_spots_kernel_wrapper=0; // times the add spots kernel overall, either CPU or GPU
+    double cuda_alloc=0; // times the allocation of the device
+    double cuda_copy_to_dev=0; // times the copying from host to device
+    double cuda_copy_from_dev=0; // times the copying back from device to host
+    double cuda_kernel=0; // times the GPU kernel
+    double copy_sources=0;
+    double copy_umats=0;
+    double copy_amats=0;
+    double copy_bmats=0;
+    double copy_rotmats=0;
+    double copy_det=0;
+    double copy_nomhkl=0;
+    double copy_flags=0;
+    double copy_fhkl=0;
+    double copy_detderiv=0;
+    double copy_pfs=0;
     int timings=0; // how many times these variables were incremented
     bool recording=true;
   };

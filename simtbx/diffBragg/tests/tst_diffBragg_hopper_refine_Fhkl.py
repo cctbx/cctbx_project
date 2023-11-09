@@ -216,7 +216,9 @@ with DeviceWrapper(0) as _:
     P.outdir="_temp_fhkl_refine"
     if args.maxiter is not None:
         P.lbfgs_maxiter = args.maxiter
+    P.record_device_timings = True
     Eopt,_, Mod,SIM_from_hopper, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
+    SIM_from_hopper.D.show_timings(0)
 
     logging.disable()
     print("\nResults\n<><><><><><>")
@@ -341,6 +343,8 @@ with DeviceWrapper(0) as _:
     modelers.prep_for_refinement()
     print("Minimizing using hopper_ensemble_utils...")
     modelers.Minimize(save=True)
+    if modelers.SIM.D.record_timings:
+        modelers.SIM.D.show_timings(MPI_RANK=0)
     print("Done!")
 
     from iotbx.reflection_file_reader import any_reflection_file

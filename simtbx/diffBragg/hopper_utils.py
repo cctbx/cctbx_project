@@ -2399,6 +2399,8 @@ def get_simulator_for_data_modelers(data_modeler):
     SIM.D.gamma_miller_units = self.params.gamma_miller_units
     SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
     SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma
+    if self.params.record_device_timings:
+        SIM.D.record_timings = True
 
     if self.params.spectrum_from_imageset:
         downsamp_spec(SIM, self.params, self.E)

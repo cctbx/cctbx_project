@@ -300,6 +300,9 @@ class Script:
                 # TODO separate diffBragg logger
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
+            # TODO verify this works:
+            #if self.params.record_device_timings:
+            #    SIM.D.show_timings(COMM.rank)
             Modeler.clean_up(SIM)
             del SIM.D  # TODO: is this necessary ?
 

@@ -6,6 +6,10 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+record_device_timings = False
+  .type = bool
+  .help = Record the execution times of diffBragg host-dev copies and kernel executions
+  .help = the results will be printed to the terminal
 consider_multicrystal_shots = False
   .type = bool
   .help = If True, and if there are multiple crystals in the experiment list,

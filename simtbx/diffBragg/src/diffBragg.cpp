@@ -2389,7 +2389,20 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
         printf("RANK%d TIMINGS: add_diffBragg_spots post kernel wrapper: %10.3f\n", MPI_RANK , TIMERS.add_spots_post);
         printf("RANK%d TIMINGS: add_diffBragg_spots kernel wrapper: %10.3f\n", MPI_RANK, TIMERS.add_spots_kernel_wrapper );
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA alloc: %10.3f\n", MPI_RANK, TIMERS.cuda_alloc );
-        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy host to dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
+        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy host-to-dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
+
+        printf("RANK%d TIMINGS: host-to-dev sources: %10.3f\n", MPI_RANK, TIMERS.copy_sources );
+        printf("RANK%d TIMINGS: host-to-dev umats: %10.3f\n", MPI_RANK, TIMERS.copy_umats );
+        printf("RANK%d TIMINGS: host-to-dev amats: %10.3f\n", MPI_RANK, TIMERS.copy_amats );
+        printf("RANK%d TIMINGS: host-to-dev bmats: %10.3f\n", MPI_RANK, TIMERS.copy_bmats );
+        printf("RANK%d TIMINGS: host-to-dev rotmats: %10.3f\n", MPI_RANK, TIMERS.copy_rotmats );
+        printf("RANK%d TIMINGS: host-to-dev det: %10.3f\n", MPI_RANK, TIMERS.copy_det );
+        printf("RANK%d TIMINGS: host-to-dev nomhkl: %10.3f\n", MPI_RANK, TIMERS.copy_nomhkl );
+        printf("RANK%d TIMINGS: host-to-dev flags: %10.3f\n", MPI_RANK, TIMERS.copy_flags );
+        printf("RANK%d TIMINGS: host-to-dev fhkl: %10.3f\n", MPI_RANK, TIMERS.copy_fhkl );
+        printf("RANK%d TIMINGS: host-to-dev detderiv: %10.3f\n", MPI_RANK, TIMERS.copy_detderiv );
+        printf("RANK%d TIMINGS: host-to-dev pfs: %10.3f\n", MPI_RANK, TIMERS.copy_pfs );
+
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy dev to host: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_from_dev );
         printf("RANK%d TIMINGS: add_diffBragg_spots CUDA kernel: %10.3f\n", MPI_RANK, TIMERS.cuda_kernel );
         printf("RANK%d TIMINGS: Total kernel calls=%d\n", MPI_RANK, TIMERS.timings );

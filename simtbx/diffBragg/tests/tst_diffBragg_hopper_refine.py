@@ -268,7 +268,10 @@ with DeviceWrapper(0) as _:
         # TODO open the pandas output file and optimized expt in outdir and verify the optimized parameters are similar to ground
         exit()
 
+    P.record_device_timings = True
     Eopt,_, Mod, SIM_used_by_hopper, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
+    if SIM_used_by_hopper.D.record_timings:
+        SIM_used_by_hopper.D.show_timings(MPI_RANK=0)
 
     G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod)
     eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod, SIM_used_by_hopper)

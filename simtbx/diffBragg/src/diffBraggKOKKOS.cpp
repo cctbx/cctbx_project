@@ -81,7 +81,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     Kokkos::Tools::popRegion();
 
     double time;
-    struct timeval t1, t2;  //, t3 ,t4;
+    struct timeval t1, t;  // t1 times larger blocks of code, and t is used to time shorter blocks of code
     gettimeofday(&t1, 0);
 
     //  determine if we need to allocate pixels, and how many.
@@ -257,12 +257,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     bool ALLOC = !m_device_is_allocated;  // shortcut variable
 
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_alloc += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_alloc, t1, TIMERS.recording); //, db_flags.verbose > 1);
 
     // ALLOC = false;
     //  BEGIN COPYING DATA
@@ -297,6 +292,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  BEGIN sources
     Kokkos::Tools::pushRegion("BEGIN sources");
+    gettimeofday(&t, 0);
     if (db_cu_flags.update_sources || ALLOC || FORCE_COPY) {
         int source_count = local_beam.number_of_sources;
         kokkostbx::transfer_double2kokkos(m_source_X, local_beam.source_X, source_count);
@@ -319,11 +315,13 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         if (db_flags.verbose > 1)
             printf("H2D sources\n");
     }
+    easy_time(TIMERS.copy_sources, t, TIMERS.recording); //, db_flags.verbose > 1);
 
     Kokkos::Tools::popRegion();
     //  END sources
 
     //  UMATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("UMATS");
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_UMATS, db_cryst.UMATS);
@@ -335,8 +333,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying Umats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_umats, t, TIMERS.recording); //, db_flags.verbose > 1);
     //  END UMATS
 
+    gettimeofday(&t, 0);
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
         auto Amat_init = db_cryst.eig_U*db_cryst.eig_B*1e10*(db_cryst.eig_O.transpose());
         auto host_AMATS = Kokkos::create_mirror_view(m_AMATS);
@@ -347,8 +347,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         if (db_flags.verbose > 1)
             printf("H2D Done copying Amats\n");
     }
+    easy_time(TIMERS.copy_amats, t, TIMERS.recording);
 
     //  BMATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BMATS");
     if (db_cu_flags.update_dB_mats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_dB_Mats, db_cryst.dB_Mats);
@@ -357,9 +359,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying dB_Mats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_bmats, t, TIMERS.recording);
     //  END BMATS
 
     //  ROT MATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("ROT MATS");
     if (db_cu_flags.update_rotmats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_RotMats, db_cryst.RotMats);
@@ -369,9 +373,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying rotmats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_rotmats, t, TIMERS.recording);
     //  END ROT MATS
 
     //  DETECTOR VECTORS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("DETECTOR VECTORS");
     if (db_cu_flags.update_detector || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_fdet_vectors, local_det.fdet_vectors);
@@ -383,8 +389,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying detector vectors\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_det, t, TIMERS.recording);
     //  END  DETECTOR VECTORS
 
+    gettimeofday(&t, 0);
     if (ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_nominal_hkl, db_cryst.nominal_hkl);
         kokkostbx::transfer_vector2kokkos(m_atom_data, db_cryst.atom_data);
@@ -396,14 +404,18 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         if (db_flags.verbose > 1)
             printf("H2D Done copying fprime and fdblprime\n");
     }
+    easy_time(TIMERS.copy_nomhkl, t, TIMERS.recording);
 
     //  BEGIN REFINEMENT FLAGS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN REFINMENT FLAGS");
     prepare_refinement_flags(db_flags, db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY);
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_flags, t, TIMERS.recording);
     //  END REFINEMENT FLAGS
 
     //  BEGIN Fhkl
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("Begin Fhkl");
     if (db_cu_flags.update_Fhkl || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_Fhkl, db_cryst.FhklLinear);
@@ -414,9 +426,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying step Fhkl\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_fhkl, t, TIMERS.recording);
     //  END Fhkl
 
     //  BEGIN panel derivative vecs
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN panel derivative vecs");
     if (db_cu_flags.update_panel_deriv_vecs || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_dF_vecs, local_det.dF_vecs);
@@ -425,9 +439,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying step panel derivative vectors\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_detderiv, t, TIMERS.recording);
     //  END panel derivative vecs
 
     //  BEGIN panels fasts slows
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN panels fasts slows");
     if (db_cu_flags.update_panels_fasts_slows || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_panels_fasts_slows, panels_fasts_slows);
@@ -435,14 +451,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying panels_fasts_slows\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_pfs, t, TIMERS.recording);
     //  END panels fasts slows
 
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_copy_to_dev += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_copy_to_dev, t1, TIMERS.recording);
 
     m_device_is_allocated = true;
     ::Kokkos::fence("after copy to device");
@@ -553,12 +565,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     if (db_flags.verbose > 1)
         printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_kernel += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT(KERNEL):  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_kernel, t1, TIMERS.recording);
 
     gettimeofday(&t1, 0);
     //  COPY BACK FROM DEVICE
@@ -616,12 +623,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
 
     Kokkos::Tools::popRegion();
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_copy_from_dev += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_copy_from_dev, t1, TIMERS.recording);
     ::Kokkos::fence("After copy to host");
 
     Kokkos::Tools::popRegion();
