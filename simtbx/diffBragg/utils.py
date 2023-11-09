@@ -1769,3 +1769,45 @@ def memory_report(prefix='Memory usage'):
     memory_usage_in_gb = get_memory_usage() / 1024.
     host = socket.gethostname()
     return "%s: %f GB on node %s" % (prefix, memory_usage_in_gb, host)
+
+
+def smooth(x, beta=10.0, window_size=11):
+    """
+    https://glowingpython.blogspot.com/2012/02/convolution-with-numpy.html
+
+    Apply a Kaiser window smoothing convolution.
+
+    Parameters
+    ----------
+    x : ndarray, float
+        The array to smooth.
+
+    Optional Parameters
+    -------------------
+    beta : float
+        Parameter controlling the strength of the smoothing -- bigger beta
+        results in a smoother function.
+    window_size : int
+        The size of the Kaiser window to apply, i.e. the number of neighboring
+        points used in the smoothing.
+
+    Returns
+    -------
+    smoothed : ndarray, float
+        A smoothed version of `x`.
+    """
+
+    # make sure the window size is odd
+    if window_size % 2 == 0:
+        window_size += 1
+
+    # apply the smoothing function
+    s = np.r_[x[window_size - 1:0:-1], x, x[-1:-window_size:-1]]
+    w = np.kaiser(window_size, beta)
+    y = np.convolve(w / w.sum(), s, mode='valid')
+
+    # remove the extra array length convolve adds
+    b = int((window_size - 1) / 2)
+    smoothed = y[b:len(y) - b]
+
+    return smoothed

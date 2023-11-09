@@ -40,7 +40,7 @@ def global_refiner_from_parameters(params):
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if "exp_idx" not in list(pandas_table):
         pandas_table["exp_idx"] = 0
-    work_distribution = prep_dataframe(pandas_table)
+    work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges)
     LOGGER.info("EVENT: DONE prep dataframe")
     return launcher.launch_refiner(pandas_table, work_distribution=work_distribution)
 
@@ -359,7 +359,7 @@ class RefineLauncher:
         LOGGER.info("EVENT: Gathering global HKL information")
         try:
             self._gather_Hi_information()
-        except TypeError:
+        except TypeError:  # TODO: should we siltently fail here ?
             pass
         LOGGER.info("EVENT: FINISHED gather global HKL information")
         if self.params.roi.cache_dir_only:
@@ -418,7 +418,7 @@ class RefineLauncher:
         # (None of ranks > 0) but was removed when moving to new `HiAsu` class.
         # marr_unique_h = self._get_unique_Hi(Hi_asu_all_ranks)
 
-        # TODO: I think this code does absolutely nothing, but might be useful
+        # TODO: I think this code does absolutely nothing, but might be useful (it was used for B-factor modeling, and maybe more..)
         # fres = marr_unique_h.d_spacings()
         # self.res_from_asu = {h: res for h, res in zip(fres.indices(), fres.data())}
         # TODO: End of code I think does absolutely nothing

@@ -4,6 +4,7 @@ import pandas
 import numpy as np
 from dials.array_family import flex
 from libtbx.mpi4py import MPI
+from simtbx.diffBragg import utils
 COMM = MPI.COMM_WORLD
 
 import logging
@@ -27,8 +28,20 @@ def get_equal_partition(weights, partitions):
         load[lightest] += weights[idx]
     return distribution
 
-def prep_dataframe(df, refls_key="predictions"):
+def prep_dataframe(df, refls_key="predictions", res_ranges_string=None):
+    """
+
+    :param df: input pandas dataframe for stage2
+    :param refls_key: column in df containing the reflection filenames
+    :param res_ranges_string: optional res_ranges_string phil param (params.refiner.res_ranges)
+    :return:
+    """
     # TODO make sure all pred files exist
+
+    res_ranges = None
+    if res_ranges_string is not None:
+        res_ranges = utils.parse_reso_string(res_ranges_string)
+
     if refls_key not in list(df):
         raise KeyError("Dataframe has no key %s" % refls_key)
     nshots = len(df)
@@ -54,7 +67,16 @@ def prep_dataframe(df, refls_key="predictions"):
             prev_name = name
 
         R = Rall.select(Rall['id'] == int(expt_id))
-        num_ref = len(R)
+        if res_ranges is not None:
+            num_ref = 0
+            if 'rlp' not in set(R.keys()):
+                raise KeyError("Cannot filter res ranges if rlp column not in refl tables")
+            d = 1. / np.linalg.norm(R["rlp"], axis=1)  # resolution per refl
+            for d_fine, d_coarse in res_ranges:
+                d_sel = np.logical_and(d >= d_fine, d < d_coarse)
+                num_ref += d_sel.sum()
+        else:
+            num_ref = len(R)
 
         if num_ref==0:
             LOGGER.critical("Reflection %s id=%d has 0 reflections !" % (name, expt_id, num_ref))

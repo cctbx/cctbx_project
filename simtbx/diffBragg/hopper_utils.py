@@ -15,7 +15,10 @@ from scitbx.matrix import sqr, col
 from scipy.ndimage import binary_dilation
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
-from serialtbx.detector.jungfrau import get_pedestalRMS_from_jungfrau
+try:  # TODO keep backwards compatibility until we close the nxmx_writer_experimental branch
+    from serialtbx.detector.jungfrau import get_pedestalRMS_from_jungfrau
+except ModuleNotFoundError:
+    from xfel.util.jungfrau import get_pedestalRMS_from_jungfrau
 from simtbx.nanoBragg.utils import downsample_spectrum
 from dials.array_family import flex
 from simtbx.diffBragg import utils
@@ -280,7 +283,7 @@ class DataModeler:
         free_SIM_mem(SIM)
 
     @staticmethod
-    def exper_json_single_file(exp_file, i_exp=0):
+    def exper_json_single_file(exp_file, i_exp=0, check_format=True):
         """
         load a single experiment from an exp_file
         If working with large combined experiment files, we only want to load
@@ -288,6 +291,7 @@ class DataModeler:
         load the entire file into memory.
         :param exp_file: experiment list file
         :param i_exp: experiment id
+        :param check_format: bool, verifies the format class of the experiment, set to False if loading data from refls
         :return:
         """
         exper_json = json.load(open(exp_file))
@@ -305,7 +309,7 @@ class DataModeler:
                 new_json["experiment"][0][model] = 0
             else:
                 new_json[model] = []
-        explist = ExperimentListFactory.from_dict(new_json)
+        explist = ExperimentListFactory.from_dict(new_json, check_format=check_format)
         assert len(explist) == 1
         return explist[0]
 
@@ -530,6 +534,9 @@ class DataModeler:
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
+        self.Hi =[hi for i_roi, hi in enumerate(self.Hi) if self.selection_flags[i_roi]]
+        self.Hi_asu =[hi_asu for i_roi, hi_asu in enumerate(self.Hi_asu) if self.selection_flags[i_roi]]
+
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
 
@@ -618,10 +625,11 @@ class DataModeler:
             all_refls_idx += [self.refls_idx[i_roi]] * npix
             if not self.no_rlp_info:
                 all_q_perpix += [self.Q[i_roi]]*npix
-            # import IPython; IPython.embed()
             if self.Hi is not None:
-                self.all_nominal_hkl += [tuple(self.Hi[self.refls_idx[i_roi]])]*npix
-                self.hi_asu_perpix += [self.Hi_asu[self.refls_idx[i_roi]]] * npix
+                self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+                self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
+                #self.all_nominal_hkl += [tuple(self.Hi[i_roi])]*npix
+                #self.hi_asu_perpix += [self.Hi_asu[i_roi]] * npix
 
         if self.params.roi.mask_outside_trusted_range:
             MAIN_LOGGER.debug("Found %d pixels outside of trusted range" % numOutOfRange)
@@ -700,6 +708,7 @@ class DataModeler:
             shoeboxes.append(sb)
 
         R['shoebox'] = flex.shoebox(shoeboxes)
+        R['id'] = flex.int(len(R), 0)
         R.as_file(output_name)
 
     def set_parameters_for_experiment(self, best=None):
@@ -2381,6 +2390,12 @@ def get_simulator_for_data_modelers(data_modeler):
         if self.params.diffuse_stencil_size > 0:
             SIM.D.stencil_size = self.params.diffuse_stencil_size
             MAIN_LOGGER.debug("Set diffuse stencil size: %d" % SIM.D.stencil_size)
+        if self.params.diffuse_orientation == 1:
+            ori = (1,0,0,0,1,0,0,0,1)
+        else:
+            a = 1/np.sqrt(2)
+            ori = a, a, 0.0, a, a, 0.0, 0.0, 0.0, 1.0
+        SIM.D.set_rotate_principal_axes(ori)
     SIM.D.gamma_miller_units = self.params.gamma_miller_units
     SIM.isotropic_diffuse_gamma = self.params.isotropic.diffuse_gamma
     SIM.isotropic_diffuse_sigma = self.params.isotropic.diffuse_sigma
