@@ -547,7 +547,9 @@ class Optimizer(object):
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
+        self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
         atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
+        self._infoString += _ReportTiming(self._verbosity, "dump atom info to string")
 
         ################################################################################
         # Construct dot-sphere cache.
@@ -870,7 +872,7 @@ class Optimizer(object):
 
       # See if we should construct a MoverSingleHydrogenRotator here.
       # @todo This is placing on atoms C and N in CYS 352; and on HE2 and CA in SER 500 of 4z4d
-      if a.i_seq in rotatableHydrogenIDs:
+      if a.element_is_hydrogen() and a.i_seq in rotatableHydrogenIDs:
         try:
           # Skip Hydrogens that are not bound to an atom that only has a single other
           # atom bound to it -- we will handle those in other cases.
