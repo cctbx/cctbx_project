@@ -41,9 +41,12 @@ def run(args, log=sys.stdout):
     resolution_factor = params.resolution_factor,
     symmetry_flags    = maptbx.use_space_group_symmetry,
     space_group_info  = xrs.space_group().info())
+  mp = mmtbx.masks.mask_master_params.extract()
+  mp.n_real = crystal_gridding.n_real()
+  mp.step = None
   mmtbx_masks_asu_mask_obj = mmtbx.masks.asu_mask(
     xray_structure = xrs.expand_to_p1(sites_mod_positive=True),
-    n_real         = crystal_gridding.n_real())
+    mask_params    = mp)
   bulk_solvent_mask = mmtbx_masks_asu_mask_obj.mask_data_whole_uc()
   #
   fem.ccp4_map(cg=crystal_gridding, file_name="mask.ccp4",
