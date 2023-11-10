@@ -503,13 +503,13 @@ def writeAtomInfoToString(atoms, extraAtomInfo):
   #################################################################################
   # Dump information about all of the atoms in the model into a string.
   ret = ""
+  acceptorChoices = ["noAcceptor","isAcceptor"]
+  donorChoices = ["noDonor","isDonor"]
+  metallicChoices = ["noMetallic","isMetallic"]
   for a in atoms:
     chainID = a.parent().parent().parent().id
     resName = a.parent().resname.upper()
     resID = str(a.parent().parent().resseq_as_int())
-    acceptorChoices = ["noAcceptor","isAcceptor"]
-    donorChoices = ["noDonor","isDonor"]
-    metallicChoices = ["noMetallic","isMetallic"]
     alt = a.parent().altloc
     if alt == " " or alt == "":
       alt = "-"
