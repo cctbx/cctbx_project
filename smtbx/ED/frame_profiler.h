@@ -97,7 +97,7 @@ namespace smtbx { namespace ED {
       {}
 
       // N-Beam specific
-      af::shared<FloatType> process(const miller::index<> &h, const af::shared<FloatType> &angles) const {
+      af::shared<FloatType> process(const miller::index<> &h, const af::shared<FloatType> &angles) {
         SMTBX_ASSERT(parent.use_n_beam && parent.params.getBeamN() > 2);
         try {
           af::shared<FloatType> rv(angles.size());
@@ -116,7 +116,7 @@ namespace smtbx { namespace ED {
             if (floating) {
               n_beam_dc.init(h, r.first, parent.Fcs_k, parent.mi_lookup);
             }
-            rv[i] = std::norm(n_beam_dc.calc_amp(r));
+            rv[ai] = std::norm(n_beam_dc.calc_amp(r));
           }
           return rv;
         }
