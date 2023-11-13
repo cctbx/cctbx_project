@@ -2388,8 +2388,8 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
         printf("RANK%d TIMINGS: add_diffBragg_spots pre kernel wrapper: %10.3f\n", MPI_RANK, TIMERS.add_spots_pre );
         printf("RANK%d TIMINGS: add_diffBragg_spots post kernel wrapper: %10.3f\n", MPI_RANK , TIMERS.add_spots_post);
         printf("RANK%d TIMINGS: add_diffBragg_spots kernel wrapper: %10.3f\n", MPI_RANK, TIMERS.add_spots_kernel_wrapper );
-        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA alloc: %10.3f\n", MPI_RANK, TIMERS.cuda_alloc );
-        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy host-to-dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
+        printf("RANK%d TIMINGS: add_diffBragg_spots device alloc: %10.3f\n", MPI_RANK, TIMERS.cuda_alloc );
+        printf("RANK%d TIMINGS: add_diffBragg_spots copy host-to-dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
 
         printf("RANK%d TIMINGS: host-to-dev sources: %10.3f\n", MPI_RANK, TIMERS.copy_sources );
         printf("RANK%d TIMINGS: host-to-dev umats: %10.3f\n", MPI_RANK, TIMERS.copy_umats );
@@ -2403,8 +2403,8 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
         printf("RANK%d TIMINGS: host-to-dev detderiv: %10.3f\n", MPI_RANK, TIMERS.copy_detderiv );
         printf("RANK%d TIMINGS: host-to-dev pfs: %10.3f\n", MPI_RANK, TIMERS.copy_pfs );
 
-        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA copy dev to host: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_from_dev );
-        printf("RANK%d TIMINGS: add_diffBragg_spots CUDA kernel: %10.3f\n", MPI_RANK, TIMERS.cuda_kernel );
+        printf("RANK%d TIMINGS: add_diffBragg_spots copy dev-to-host: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_from_dev );
+        printf("RANK%d TIMINGS: add_diffBragg_spots device kernel: %10.3f\n", MPI_RANK, TIMERS.cuda_kernel );
         printf("RANK%d TIMINGS: Total kernel calls=%d\n", MPI_RANK, TIMERS.timings );
     }
     else printf("RANK%d No timing has occured since instantiation of diffBragg\n", MPI_RANK);
