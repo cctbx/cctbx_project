@@ -45,39 +45,24 @@ steps:
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
   displayName: Install miniforge
 
-# create conda environment
-#- task: DownloadPipelineArtifact@2
-#  displayName: Download conda packages
-#  inputs:
-#    source: 'current'
-#    artifact: $(PYTHON_VERSION)_$(OS)
-#    path: $(Pipeline.Workspace)/channel
-#
-#- script: |
-#    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-#    conda install -y conda-build
-#    cd $(Pipeline.Workspace)/channel
-#    conda index .
-#    echo @EXPLICIT > env.txt
-#    for filename in `cat filenames.txt`; do
-#      echo file://$(Pipeline.Workspace)/channel/${filename} >> env.txt
-#    done
-#  displayName: Build local channel
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda update -y -n base -c conda-forge conda
+  displayName: Update to latest conda
 
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    #conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
-    conda install -y -c conda-forge mamba
-    mamba create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
-    mamba install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    mamba install -y -c conda-forge cmake pandas distro -n $(PYTHON_VERSION)
+    conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
+    conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
+    conda install -y -c conda-forge cmake pandas distro -n $(PYTHON_VERSION)
   displayName: Create conda environment
 
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    mamba env update -n $(PYTHON_VERSION) --file=$(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/ml.yml
+    conda env update -n $(PYTHON_VERSION) --file=$(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/ml.yml
   displayName: Create conda environment
   condition: eq('${{ parameters.distribution }}', 'centos')
 
