@@ -1412,6 +1412,18 @@ def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
 
 def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_spectrum=False):
 
+    if Mod.params.logging.parameters:
+        val_s = ""
+        for p in Mod.P.values():
+            if p.name.startswith("Fhkl_"):
+                continue
+            if p.refine:
+                xval = x[p.xpos]
+                val = p.get_val(xval)
+                val_s += "%s=%.3f, " % (p.name, val)
+        print(val_s)
+
+
     pfs = Mod.pan_fast_slow
 
     if update_spectrum:
