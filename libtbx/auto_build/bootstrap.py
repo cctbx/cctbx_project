@@ -1017,7 +1017,7 @@ class kokkos_kernels_module(SourceModule):
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
-  anonymous = ['svn', 'https://github.com/rlabduke/probe.git/trunk']
+  anonymous = ['git', 'https://github.com/rlabduke/probe.git']
 
 class reduce_module(SourceModule):
   module = 'reduce'
@@ -1026,12 +1026,12 @@ class reduce_module(SourceModule):
 
 class king_module(SourceModule):
   module = 'king'
-  anonymous = ['svn',
-               'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
+  anonymous = ['git',
+               'https://github.com/rlabduke/phenix_king_binaries.git']
 
 class molprobity_moodule(SourceModule):
   module = 'molprobity'
-  anonymous = ['svn', 'https://github.com/rlabduke/MolProbity.git/trunk']
+  anonymous = ['git', 'https://github.com/rlabduke/MolProbity.git']
 
 class uc_metrics_module(SourceModule):
   module = 'uc_metrics'
