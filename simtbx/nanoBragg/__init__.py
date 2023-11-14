@@ -15,6 +15,8 @@ from dxtbx.model import BeamFactory
 from dxtbx.model import DetectorFactory
 from dxtbx.format.Format import Format
 from dxtbx.format import cbf_writer, nxmx_writer
+from cctbx import sgtbx
+from cctbx.sgtbx.literal_description import literal_description
 import numpy as np
 
 
@@ -31,6 +33,57 @@ class _():
       indices,data = self.Fhkl_tuple
       mset = set(crystal_symmetry=cs, anomalous_flag=True, indices=indices)
       return array(mset, data=data).set_observation_type_xray_amplitude()
+
+  def set_mosaic_blocks_sym(self, crystal, reference_symbol, orig_mos_domains):
+    """
+    hijack the mosaic blocks to symmetrize F_latt for P3/P6 space groups
+    Will extend mosaic blocks by up to a factor of 3
+    :param crystal:  dxtbx crystal model, preferably in the original setting (reference)
+    :param symbol: space group loopk symbol e.g. P6522
+    :param orig_mos_domains: int number of mosaic blocks before adding 3-fold mosaic blocks
+    """
+    sgi = sgtbx.space_group_info(reference_symbol)
+    cb_op = sgi.change_of_basis_op_to_primitive_setting()
+    # TODO? use internal nanoBragg parameters to get the p1 a,b,c vectors,
+    # then use those to construct the crystal, then apply change of basis
+    crystal_reference = crystal.change_basis(cb_op.inverse())
+
+    # Get the real space Amatrix in the reference setting
+    A = sqr(crystal_reference.get_A()).inverse().transpose()
+
+    # this should be equivalent to column matrix of real space vectors
+    a,b,c = crystal_reference.get_real_space_vectors()
+    assert sqr(a+b+c).transpose()==A
+
+    # get the originally set mosaic blocks
+    mos_blocks = self.get_mosaic_blocks()[:orig_mos_domains]
+
+    # new list of mosaic blocks
+    new_mos_blocks = flex.mat3_double()
+    new_mos_blocks.extend(mos_blocks)
+
+    # loop over all laue group 3-fold operations
+    ops = sgi.group().build_derived_laue_group().all_ops()
+    for op in ops:
+      if op.r().determinant()==-1:
+        continue
+      descr = literal_description(op).long_form()
+      if "3-fold" in descr:
+        R = sqr(op.r().as_double())
+        # we want to operate about the crystal basis hence we use A*R*A^-1
+        Rcryst = A*R*A.inverse()
+        # this will left-multiply the real space amatrix in nanoBragg / diffBragg
+        new_mos_blocks.extend(flex.mat3_double([sqr(U)*Rcryst for U in mos_blocks]))
+
+    self.set_mosaic_blocks(new_mos_blocks)
+    # if using diffBragg, we must also call:
+    if self.vectorize_umats is not None:
+      print("vectorizing Umats")
+      self.vectorize_umats()
+
+    # need to update nanoBragg mos_spread_deg so it actually runs through the mosaic domains
+    if self.mosaic_spread_deg == 0:
+      self.mosaic_spread_deg = 1e-6
 
   def __setattr__(self,name,value):
     """use a P1 anomalous=True miller array to initialize the internal C cube array with structure factors for the spot intensities
