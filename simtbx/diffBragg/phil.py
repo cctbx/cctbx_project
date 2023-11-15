@@ -197,41 +197,41 @@ betas
   ucell_gamma = None
     .type = float
     .help = restraint variance for unit cell gamma angle
-  Nvol = 1e8
+  Nvol = None
     .type = float
     .help = tightness of the Nabc volume contraint
-  detz_shift = 1e8
+  detz_shift = None
     .type = float
     .help = restraint variance for detector shift target
-  ucell = [1e8,1e8,1e8,1e8,1e8,1e8]
+  ucell = None
     .type = floats
     .help = DEPRECATED: use e.g. betas.ucell_a instead
     .help = variances for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
-  RotXYZ = 1e8
+  RotXYZ = None
     .type = float
     .help = restraint factor for the rotXYZ restraint
-  Nabc = [1e8,1e8,1e8]
+  Nabc = None
     .type = floats(size=3)
     .help = restraint factor for the ncells abc
-  Ndef = [1e8,1e8,1e8]
+  Ndef = None
     .type = floats(size=3)
     .help = restraint factor for the ncells def
-  diffuse_sigma = 1e8,1e8,1e8
+  diffuse_sigma = None
     .type = floats(size=3)
     .help = restraint factor for diffuse sigma
-  diffuse_gamma = 1e8,1e8,1e8
+  diffuse_gamma = None
     .type = floats(size=3)
     .help = restraint factor for diffuse gamma
-  G = 1e8
+  G = None
     .type = float
     .help = restraint factor for the scale G
-  B = 1e8
+  B = None
     .type = float
     .help = restraint factor for Bfactor
-  eta_abc = [1e8,1e8,1e8]
+  eta_abc = None
     .type = floats(size=3)
     .help = restrain factor for mosaic spread angles
-  spec = [1e8,1e8]
+  spec = None
     .type = floats(size=2)
     .help = restraint factor for spectrum coefs
   Fhkl = None
@@ -281,38 +281,34 @@ centers
   Nvol = None
     .type = float
     .help = if provided, constrain the product Na*Nb*Nc to this value
-  detz_shift = 0
+  detz_shift = None
     .type = float
     .help = restraint target for detector shift along z-direction
-  ucell = [63.66, 28.87, 35.86, 1.8425]
-    .type = floats
-    .help = DEPRECATED: use e.g. betas.ucell_a instead
-    .help = centers for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
-  RotXYZ = [0,0,0]
+  RotXYZ = None
     .type = floats(size=3)
     .help = restraint target for Umat rotations
-  Nabc = [100,100,100]
+  Nabc = None
     .type = floats(size=3)
     .help = restraint target for Nabc
-  Ndef = [0,0,0]
+  Ndef = None
     .type = floats(size=3)
     .help = restraint target for Ndef
-  diffuse_sigma = [1,1,1]
+  diffuse_sigma = None
     .type = floats(size=3)
     .help = restraint target for diffuse sigma
-  diffuse_gamma = [1,1,1]
+  diffuse_gamma = None
     .type = floats(size=3)
     .help = restraint target for diffuse gamma
-  G = 100
+  G = None
     .type = float
     .help = restraint target for scale G
-  B = 0
+  B = None
     .type = float
     .help = restraint target for Bfactor
-  eta_abc = [0,0,0]
+  eta_abc = None
     .type = floats(size=3)
     .help = restraint target for mosaic spread angles in degrees
-  spec = [0,1]
+  spec = None
     .type = floats(size=2)
     .help = restraint target for specturm correction (0 + 1*Lambda )
 }

@@ -116,11 +116,6 @@ def PAR_from_params(params, experiment, best=None):
     PAR.diffuse_sigma = [None]*3
     PAR.diffuse_gamma = [None]*3
 
-    if not params.use_restraints or params.fix.ucell:
-        # dummie values:
-        params.centers.ucell = [1, 1, 1, 1, 1, 1]
-        params.betas.ucell = [1,1,1,1,1,1]
-
     eta_min = params.mins.eta_abc
     init_eta = params.init.eta_abc if best is None else best.eta_abc.values[0]
     if tuple(init_eta) == (0,0,0):
@@ -136,33 +131,38 @@ def PAR_from_params(params, experiment, best=None):
         initN = params.init.Nabc[i] if best is None else best.ncells.values[0][i]
         PAR.Nabc[i] = ParameterType(init=initN, minval=params.mins.Nabc[i],
                                     maxval=params.maxs.Nabc[i], fix=params.fix.Nabc, sigma=params.sigmas.Nabc[i],
-                                    center=params.centers.Nabc[i], beta=params.betas.Nabc[i])
+                                    center=params.centers.Nabc[i] if params.centers.Nabc is not None else None,
+                                    beta=params.betas.Nabc[i] if params.betas.Nabc is not None else None)
 
         initN = params.init.Ndef[i] if best is None else best.ncells_def.values[0][i]
         PAR.Ndef[i] = ParameterType(init=initN, minval=params.mins.Ndef[i],
                                     maxval=params.maxs.Ndef[i], fix=params.fix.Ndef, sigma=params.sigmas.Ndef[i],
-                                    center=params.centers.Ndef[i], beta=params.betas.Ndef[i])
+                                    center=params.centers.Ndef[i] if params.centers.Ndef is not None else None,
+                                    beta=params.betas.Ndef[i] if params.betas.Ndef is not None else None)
 
         PAR.RotXYZ_params[i] = ParameterType(init=0, minval=params.mins.RotXYZ[i],
                                             maxval=params.maxs.RotXYZ[i], fix=params.fix.RotXYZ,
                                             sigma=params.sigmas.RotXYZ[i],
-                                            center=0, beta=params.betas.RotXYZ)
+                                            center=0 if params.betas.RotXYZ is not None else None, beta=params.betas.RotXYZ)
 
         PAR.eta[i] = ParameterType(init=init_eta[i], minval=eta_min[i],
                                        maxval=params.maxs.eta_abc[i], fix=params.fix.eta_abc,
                                        sigma=params.sigmas.eta_abc[i],
-                                       center=params.betas.eta_abc[i], beta=params.betas.eta_abc[i])
+                                       center=params.betas.eta_abc[i] if params.centers.eta_abc is not None else None,
+                                   beta=params.betas.eta_abc[i] if params.betas.eta_abc is not None else None)
 
         # TODO: diffuse scattering terms
         PAR.diffuse_sigma[i] = ParameterType(init=init_diffuse_sigma[i], minval=params.mins.diffuse_sigma[i],
                                         maxval=params.maxs.diffuse_sigma[i], fix=params.fix.diffuse_sigma,
                                         sigma=params.sigmas.diffuse_sigma[i],
-                                        center=params.centers.diffuse_sigma[i], beta=params.betas.diffuse_sigma[i])
+                                        center=params.centers.diffuse_sigma[i] if params.centers.diffuse_sigma is not None else None,
+                                             beta=params.betas.diffuse_sigma[i] if params.betas.diffuse_sigma is not None else None)
 
         PAR.diffuse_gamma[i] = ParameterType(init=init_diffuse_gamma[i], minval=params.mins.diffuse_gamma[i],
                                              maxval=params.maxs.diffuse_gamma[i], fix=params.fix.diffuse_gamma,
                                              sigma=params.sigmas.diffuse_gamma[i],
-                                             center=params.centers.diffuse_gamma[i], beta=params.betas.diffuse_gamma[i])
+                                             center=params.centers.diffuse_gamma[i] if params.centers.diffuse_gamma is not None else None,
+                                             beta=params.betas.diffuse_gamma[i] if params.betas.diffuse_gamma is not None else None)
 
     # unit cell parameters
     ucell_man = utils.manager_from_crystal(experiment.crystal)  # Note ucell man contains the best parameters (if best is not None)
@@ -172,12 +172,34 @@ def PAR_from_params(params, experiment, best=None):
         if "Ang" in name:
             minval = val - ucell_vary_perc * val
             maxval = val + ucell_vary_perc * val
+            if name == 'a_Ang':
+                cent = params.centers.ucell_a
+                beta = params.betas.ucell_a
+            elif name == 'b_Ang':
+                cent = params.centers.ucell_b
+                beta = params.betas.ucell_b
+            else:
+                cent = params.centers.ucell_c
+                beta = params.betas.ucell_c
         else:
             val_in_deg = val * 180 / np.pi
             minval = (val_in_deg - params.ucell_ang_abs) * np.pi / 180.
             maxval = (val_in_deg + params.ucell_ang_abs) * np.pi / 180.
+            if name == 'alpha_rad':
+                cent = params.centers.ucell_alpha
+                beta = params.betas.ucell_alpha
+            elif name == 'beta_rad':
+                cent = params.centers.ucell_beta
+                beta = params.betas.ucell_beta
+            else:
+                cent = params.centers.ucell_gamma
+                beta = params.betas.ucell_gamma
+            assert cent is not None
+            assert beta is not None
+            cent = cent * np.pi / 180.
+
         p = ParameterType(init=val, minval=minval, maxval=maxval, fix=params.fix.ucell, sigma=params.sigmas.ucell[i_uc],
-                          center=params.centers.ucell[i_uc], beta=params.betas.ucell[i_uc])
+                          center=cent, beta=beta)
         PAR.ucell.append(p)
     PAR.ucell_man = ucell_man
 
@@ -188,7 +210,7 @@ def PAR_from_params(params, experiment, best=None):
                                    center=params.centers.detz_shift, beta=params.betas.detz_shift)
 
     PAR.B = ParameterType(init=params.init.B, sigma=params.sigmas.B, minval=params.mins.B, maxval=params.maxs.B, fix=True,
-                          center=0, beta=1e8)
+                          center=params.centers.B, beta=params.betas.B)
 
     lam0, lam1 = params.init.spec
     if best is not None:
@@ -196,8 +218,8 @@ def PAR_from_params(params, experiment, best=None):
     PAR.spec_coef = []
     for i_p, init_val in enumerate((lam0, lam1)):
         p = ParameterType(init=init_val, sigma=params.sigmas.spec[i_p],
-                          center=params.centers.spec[i_p],
-                          beta=params.betas.spec[i_p],
+                          center=params.centers.spec[i_p] if params.centers.spec is not None else None,
+                          beta=params.betas.spec[i_p] if params.betas.spec is not None else None,
                           fix=params.fix.spec,
                           minval=params.mins.spec[i_p], maxval=params.maxs.spec[i_p])
         PAR.spec_coef.append(p)

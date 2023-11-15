@@ -750,9 +750,6 @@ class DataModeler:
         maxs = self.params.maxs
         centers = self.params.centers
         betas = self.params.betas
-        if not self.params.use_restraints or self.params.fix.ucell:
-            centers.ucell = [1,1,1,1,1,1]
-            betas.ucell = [1,1,1,1,1,1]
         fix = self.params.fix
         types = self.params.types
         P = Parameters()
@@ -764,7 +761,8 @@ class DataModeler:
                 p = ParameterType(init=0, sigma=sigma.RotXYZ[ii],
                                   minval=mins.RotXYZ[ii], maxval=maxs.RotXYZ[ii],
                                   fix=fix.RotXYZ, name="RotXYZ%d_xtal%d" % (ii,i_xtal),
-                                  center=centers.RotXYZ[ii], beta=betas.RotXYZ)
+                                  center=0 if betas.RotXYZ is not None else None,
+                                  beta=betas.RotXYZ)
                 P.add(p)
 
             p = ParameterTypes[types.G](init=init.G + init.G*0.01*i_xtal, sigma=sigma.G,
@@ -803,33 +801,38 @@ class DataModeler:
             p = ParameterTypes[types.Nabc](init=init.Nabc[ii], sigma=sigma.Nabc[ii],
                               minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
                               fix=fix_Nabc[ii], name="Nabc%d" % (ii,),
-                              center=centers.Nabc[ii], beta=betas.Nabc[ii])
+                              center=centers.Nabc[ii] if centers.Nabc is not None else None,
+                              beta=betas.Nabc[ii] if betas.Nabc is not None else None)
             P.add(p)
 
             p = ParameterType(init=init.Ndef[ii], sigma=sigma.Ndef[ii],
                               minval=mins.Ndef[ii], maxval=maxs.Ndef[ii],
                               fix=fix.Ndef, name="Ndef%d" % (ii,),
-                              center=centers.Ndef[ii], beta=betas.Ndef[ii])
+                              center=centers.Ndef[ii] if centers.Ndef is not None else None,
+                              beta=betas.Ndef[ii] if betas.Ndef is not None else None)
             P.add(p)
 
             # diffuse gamma and sigma
             p = ParameterTypes[types.diffuse_gamma](init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
                               minval=mins.diffuse_gamma[ii], maxval=maxs.diffuse_gamma[ii],
                               fix=fix_difgam[ii], name="diffuse_gamma%d" % (ii,),
-                              center=centers.diffuse_gamma[ii], beta=betas.diffuse_gamma[ii])
+                              center=centers.diffuse_gamma[ii] if centers.diffuse_gamma is not None else None,
+                              beta=betas.diffuse_gamma[ii] if betas.diffuse_gamma is not None else None)
             P.add(p)
 
             p = ParameterTypes[types.diffuse_sigma](init=init.diffuse_sigma[ii], sigma=sigma.diffuse_sigma[ii],
                               minval=mins.diffuse_sigma[ii], maxval=maxs.diffuse_sigma[ii],
                               fix=fix_difsig[ii], name="diffuse_sigma%d" % (ii,),
-                              center=centers.diffuse_sigma[ii], beta=betas.diffuse_sigma[ii])
+                              center=centers.diffuse_sigma[ii] if centers.diffuse_sigma is not None else None,
+                              beta=betas.diffuse_sigma[ii] if betas.diffuse_sigma is not None else None)
             P.add(p)
 
             # mosaic spread (mosaicity)
             p = ParameterType(init=init.eta_abc[ii], sigma=sigma.eta_abc[ii],
                               minval=mins.eta_abc[ii], maxval=maxs.eta_abc[ii],
                               fix=fix_eta[ii], name="eta_abc%d" % (ii,),
-                              center=centers.eta_abc[ii], beta=betas.eta_abc[ii])
+                              center=centers.eta_abc[ii] if centers.eta_abc is not None else None,
+                              beta=betas.eta_abc[ii] if betas.eta_abc is not None else None)
             P.add(p)
 
         ucell_man = utils.manager_from_crystal(self.E.crystal)
@@ -838,41 +841,31 @@ class DataModeler:
             if "Ang" in name:
                 minval = val - ucell_vary_perc * val
                 maxval = val + ucell_vary_perc * val
-                if centers.ucell is not None:
-                    cent = centers.ucell[i_uc]
-                    beta = betas.ucell[i_uc]
+                if name == 'a_Ang':
+                    cent = centers.ucell_a
+                    beta = betas.ucell_a
+                elif name== 'b_Ang':
+                    cent = centers.ucell_b
+                    beta = betas.ucell_b
                 else:
-                    if name == 'a_Ang':
-                        cent = centers.ucell_a
-                        beta = betas.ucell_a
-                    elif name== 'b_Ang':
-                        cent = centers.ucell_b
-                        beta = betas.ucell_b
-                    else:
-                        cent = centers.ucell_c
-                        beta = betas.ucell_c
-                    assert cent is not None, "Set the center restraints properly!"
-                    assert beta is not None
+                    cent = centers.ucell_c
+                    beta = betas.ucell_c
             else:
                 val_in_deg = val * 180 / np.pi
                 minval = (val_in_deg - self.params.ucell_ang_abs) * np.pi / 180.
                 maxval = (val_in_deg + self.params.ucell_ang_abs) * np.pi / 180.
-                if centers.ucell is not None:
-                    cent = centers.ucell[i_uc]*np.pi / 180.
-                    beta = betas.ucell[i_uc]
+                if name=='alpha_rad':
+                    cent = centers.ucell_alpha
+                    beta = betas.ucell_alpha
+                elif name=='beta_rad':
+                    cent = centers.ucell_beta
+                    beta = betas.ucell_beta
                 else:
-                    if name=='alpha_rad':
-                        cent = centers.ucell_alpha
-                        beta = betas.ucell_alpha
-                    elif name=='beta_rad':
-                        cent = centers.ucell_beta
-                        beta = betas.ucell_beta
-                    else:
-                        cent = centers.ucell_gamma
-                        beta = betas.ucell_gamma
-                    assert cent is not None
-                    assert beta is not None
-                    cent = cent*np.pi / 180.
+                    cent = centers.ucell_gamma
+                    beta = betas.ucell_gamma
+                assert cent is not None
+                assert beta is not None
+                cent = cent*np.pi / 180.
 
             p = ParameterType(init=val, sigma=sigma.ucell[i_uc],
                               minval=minval, maxval=maxval, fix=fix.ucell,
@@ -917,17 +910,24 @@ class DataModeler:
         # two parameters for optimizing the spectrum
         p = RangedParameter(init=self.params.init.spec[0], sigma=self.params.sigmas.spec[0],
                             minval=mins.spec[0], maxval=maxs.spec[0], fix=fix.spec,
-                            name="lambda_offset", center=centers.spec[0], beta=betas.spec[0])
+                            name="lambda_offset", center=centers.spec[0] if centers.spec is not None else None,
+                            beta=betas.spec[0] if betas.spec is not None else None)
         P.add(p)
         p = RangedParameter(init=self.params.init.spec[1], sigma=self.params.sigmas.spec[1],
                             minval=mins.spec[1], maxval=maxs.spec[1], fix=fix.spec,
-                            name="lambda_scale", center=centers.spec[1], beta=betas.spec[1])
+                            name="lambda_scale", center=centers.spec[1] if centers.spec is not None else None,
+                            beta=betas.spec[1] if betas.spec is not None else None)
         P.add(p)
 
         # iterating over this dict is time-consuming when refinine Fhkl, so we split up the names here:
         self.non_fhkl_params = [name for name in P if not name.startswith("scale_roi") and not name.startswith("Fhkl_")]
         self.scale_roi_names = [name for name in P if name.startswith("scale_roi")]
         self.P = P
+
+        for name in self.P:
+            p = self.P[name]
+            if (p.beta is not None and p.center is None) or (p.center is not None and p.beta is None):
+                raise RuntimeError("To use restraints, must specify both center and beta for param %s" % name)
 
     def get_data_model_pairs(self, reorder=False):
         if self.best_model is None:
@@ -1421,7 +1421,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                 xval = x[p.xpos]
                 val = p.get_val(xval)
                 val_s += "%s=%.3f, " % (p.name, val)
-        print(val_s)
+        MAIN_LOGGER.debug(val_s)
 
 
     pfs = Mod.pan_fast_slow
@@ -1847,8 +1847,9 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
         # scale factor restraint
         for name in mod.non_fhkl_params:
             p = mod.P[name]
-            val = p.get_restraint_val(x[p.xpos])
-            restraint_terms[name] = val
+            if p.beta is not None:
+                val = p.get_restraint_val(x[p.xpos])
+                restraint_terms[name] = val
 
         if params.centers.Nvol is not None:
             na,nb,nc = SIM.D.Ncells_abc_aniso
@@ -1916,14 +1917,16 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
             # update gradients according to restraints
             for name in mod.non_fhkl_params:
                 p = mod.P[name]
-                g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
-
-            if not params.fix.perRoiScale:
-                for name in mod.scale_roi_names:
-                    p = mod.P[name]
+                if p.beta is not None:
                     g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
 
-            if params.centers.Nvol is not None:
+            if not params.fix.perRoiScale:  # deprecated ?
+                for name in mod.scale_roi_names:
+                    p = mod.P[name]
+                    if p.beta is not None:
+                        g[p.xpos] += p.get_restraint_deriv(x[p.xpos])
+
+            if params.betas.Nvol is not None:
                 Nmat_inv = np.linalg.inv(Nmat)
                 dVol_dN_vals = []
                 for i_N in range(6):
