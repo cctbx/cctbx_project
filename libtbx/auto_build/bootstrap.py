@@ -1029,7 +1029,7 @@ class king_module(SourceModule):
   anonymous = ['git',
                'https://github.com/rlabduke/phenix_king_binaries.git']
 
-class molprobity_moodule(SourceModule):
+class molprobity_module(SourceModule):
   module = 'molprobity'
   anonymous = ['git', 'https://github.com/rlabduke/MolProbity.git']
 
