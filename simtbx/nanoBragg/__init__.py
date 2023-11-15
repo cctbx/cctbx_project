@@ -78,7 +78,6 @@ class _():
     self.set_mosaic_blocks(new_mos_blocks)
     # if using diffBragg, we must also call:
     if self.vectorize_umats is not None:
-      print("vectorizing Umats")
       self.vectorize_umats()
 
     # need to update nanoBragg mos_spread_deg so it actually runs through the mosaic domains
