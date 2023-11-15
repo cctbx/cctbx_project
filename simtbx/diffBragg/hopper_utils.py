@@ -1545,6 +1545,15 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         SIM.D.set_value(ROTY_ID, rotY)
         SIM.D.set_value(ROTZ_ID, rotZ)
 
+        if Mod.params.symmetrize_Flatt:
+            RXYZU = hopper_io.diffBragg_Umat(rotX, rotY, rotZ, SIM.D.Umatrix)
+            Cryst = deepcopy(SIM.crystal.dxtbx_crystal)
+            A = RXYZU * Mod.ucell_man.B_realspace
+            A_recip = A.inverse().transpose()
+            Cryst.set_A(A_recip)
+            symbol = SIM.crystal.space_group_info.type().lookup_symbol()
+            SIM.D.set_mosaic_blocks_sym(Cryst, symbol , Mod.params.simulator.crystal.num_mosaicity_samples)
+
         G = Mod.P["G_xtal%d" % i_xtal]
         scale = G.get_val(x[G.xpos])
 

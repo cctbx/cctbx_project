@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+symmetrize_Flatt = False
+  .type = bool
+  .help = If True, add 3-fold symmetric mosaic blocks to the calculation of F_latt
 record_device_timings = False
   .type = bool
   .help = Record the execution times of diffBragg host-dev copies and kernel executions
