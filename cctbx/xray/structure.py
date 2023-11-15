@@ -482,7 +482,7 @@ class structure(crystal.special_position_settings):
 
   def shake_occupancies(self, selection = None):
     s = self._scatterers
-    q_new = flex.random_double(s.size())*2.
+    q_new = flex.random_double(s.size())
     if(selection is None):
       s.set_occupancies(q_new)
     else:
