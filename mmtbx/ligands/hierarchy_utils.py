@@ -25,7 +25,7 @@ def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   # altloc???
   atom = iotbx.pdb.hierarchy.atom()
   atom.name = name
-  atom.element = "H"
+  atom.element = element
   atom.xyz = xyz
   atom.occ = occ
   atom.b = b

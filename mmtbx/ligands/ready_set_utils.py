@@ -54,6 +54,26 @@ def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
         tc.append_residue_group(rg.detached_copy())
     model.append_chain(tc)
 
+def is_perdeuterated(ag):
+  protons = {}
+  for atom in ag.atoms():
+    if atom.element_is_hydrogen():
+      protons.setdefault(atom.element, 0)
+      protons[atom.element]+=1
+  if len(protons) in [0,2]: return False
+  if len(protons)==1:
+    if 'D' in protons:
+      return True
+    else:
+      return False
+  assert 0
+
+def get_proton_info(ag):
+  proton_name=proton_element='H'
+  if is_perdeuterated(ag):
+    proton_name=proton_element='D'
+  return proton_element, proton_name
+
 def add_n_terminal_hydrogens_to_atom_group(ag,
                                            bonds=None,
                                            use_capping_hydrogens=False,
@@ -79,7 +99,8 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
         ns.append(key)
     if len(ns)>=3: return rc
 
-  atom = ag.get_atom('H')
+  proton_element, proton_name = get_proton_info(ag)
+  atom = ag.get_atom(proton_element) # just so happens that the atom is named H/D
   dihedral=120.
   if atom:
     dihedral = dihedral_angle(sites=[atom.xyz,
@@ -88,27 +109,25 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
                                      c.xyz,
                                    ],
                               deg=True)
-  proton = 'H'
-  if retain_original_hydrogens:
-    if ag.get_atom('D'): proton='D'
+  if retain_original_hydrogens: pass
   else:
-    if ag.get_atom("H"): # maybe needs to be smarter or actually work
-      ag.remove_atom(ag.get_atom('H'))
-    if ag.get_atom('D'):
-      ag.remove_atom(ag.get_atom('D'))
-      proton='D'
+    if ag.get_atom(proton_name): # maybe needs to be smarter or actually work
+      ag.remove_atom(ag.get_atom(proton_name))
   #if use_capping_hydrogens and 0:
   #  for i, atom in enumerate(ag.atoms()):
   #    if atom.name == ' H3 ':
   #      ag.remove_atom(i)
   #      break
   # add H1
-  rh3 = construct_xyz(n, 0.9,
+  rh3 = construct_xyz(n, 1.0,
                       ca, 109.5,
                       c, dihedral,
                      )
   # this could be smarter
-  possible = ['H', 'H1', 'H2', 'H3', 'HT1', 'HT2']
+  if proton_element=='H':
+    possible = ['H', 'H1', 'H2', 'H3', 'HT1', 'HT2']
+  elif proton_element=='D':
+    possible = ['D', 'D1', 'D2', 'D3'] #, 'HT1', 'HT2']
   h_count = 0
   d_count = 0
   for h in possible:
@@ -128,11 +147,11 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     return d2
   j=0
   for i in range(0, number_of_hydrogens):
-    name = " %s%d " % (proton, i+1)
+    name = " %s%d " % (proton_element, i+1)
     if retain_original_hydrogens:
-      if i==0 and ag.get_atom(proton): continue
-      if i==1 and ag.get_atom(proton):
-        retained = ag.get_atom(proton)
+      if i==0 and ag.get_atom(proton_name): continue
+      if i==1 and ag.get_atom(proton_name):
+        retained = ag.get_atom(proton_name)
         d2 = distance2(retained.xyz, rh3[j])
         if d2<0.5: j+=1
     if ag.get_atom(name.strip()): continue
@@ -141,13 +160,15 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
         continue
     atom = iotbx.pdb.hierarchy.atom()
     atom.name = name
-    atom.element = proton
+    atom.element = proton_element
     atom.xyz = rh3[j]
     atom.occ = n.occ
     atom.b = n.b
     atom.segid = ' '*4
     if append_to_end_of_model and i+1==number_of_hydrogens:
-      rg = _add_atom_to_chain(atom, ag)
+      rg = _add_atom_to_chain(atom,
+                              ag,
+                              icode=n.parent().parent().icode)
       rc.append(rg)
     else:
       ag.append_atom(atom)
@@ -188,14 +209,15 @@ def add_c_terminal_oxygens_to_atom_group(ag,
   #
   # do we need ANISOU
   #
+  proton_element, proton_name = get_proton_info(ag)
   rc = []
   atom_name=' OXT'
   atom_element = 'O'
   bond_length=1.231
   if use_capping_hydrogens:
     if ag.get_atom(atom_name.strip()): return []
-    atom_name=" HC "
-    atom_element="H"
+    atom_name=" %sC " % proton_element
+    atom_element=proton_element
     bond_length=1.
   if ag.get_atom(atom_name.strip()): return []
   if c_ca_n is not None:
@@ -234,7 +256,9 @@ def add_c_terminal_oxygens_to_atom_group(ag,
       atom.segid = ' '*4
       atom.xyz = ro2[i]
       if append_to_end_of_model:
-        chain = _add_atom_to_chain(atom, ag)
+        chain = _add_atom_to_chain(atom,
+                                   ag,
+                                   icode=c.parent().parent().icode)
         rc.append(chain)
       else:
         # add the atom to the hierarchy
@@ -246,7 +270,7 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
                                             use_capping_hydrogens=False,
                                             append_to_end_of_model=False,
                                            ):
-  rc=[]
+  result=[]
   for ag, rc in generate_atom_group_atom_names(residue_group,
                                                        ['C', 'CA', 'N'],
                                                        ):
@@ -259,8 +283,8 @@ def add_c_terminal_oxygens_to_residue_group(residue_group,
       append_to_end_of_model=append_to_end_of_model,
       c_ca_n = [c, ca, n],
     )
-    rc += tmp
-  return rc
+    result += tmp
+  return result
 
 def add_main_chain_o_to_atom_group(ag, c_ca_n=None):
   # cetral functuon
