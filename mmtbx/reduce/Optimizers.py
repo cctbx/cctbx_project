@@ -163,7 +163,8 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                keepExistingH = False
+                keepExistingH = False,
+                fillAtomDump = True
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -222,6 +223,8 @@ class Optimizer(object):
     for each clique, as another master. These are useful for determining why the cliques are as
     they are.
     :param keepExistingH: If True, then existing Hydrogens will be kept and not removed.
+    :param fillAtomDump: If true, fill in the atomDump string with the atom information.
+    This can take a long time to do, so the caller may want to turn it off if they don't need it.
     """
 
     ################################################################################
@@ -548,8 +551,6 @@ class Optimizer(object):
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
-        atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
-        self._infoString += _ReportTiming(self._verbosity, "dump atom info to string")
 
         ################################################################################
         # Construct dot-sphere cache.
@@ -732,7 +733,9 @@ class Optimizer(object):
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
-      self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
+      if fillAtomDump:
+        self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
+        self._infoString += _ReportTiming(self._verbosity, "dump atom info to string")
 
       #################################################################################
       # Report the fraction of atoms that were calculated and the fraction that were cached.
@@ -748,6 +751,8 @@ class Optimizer(object):
       detail on this can be set by setting the verbosity parameter during Optimizer construction.
       :return: the information so far collected in the string.  Calling this method also clears
       the information, so that later calls will not repeat it.
+      If the object was constructed with fillAtomDump = False, then the atom dump will always be
+      empty.
     """
     ret = self._infoString
     self._infoString = ""
