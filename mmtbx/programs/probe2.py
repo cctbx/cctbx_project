@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.5.0"
+version = "2.5.1"
 
 master_phil_str = '''
 profile = False
@@ -1894,6 +1894,7 @@ Note:
 
     ################################################################################
     # Get the other characteristics we need to know about each atom to do our work.
+    make_sub_header('Getting extra atom characteristics', out=self.logger)
     self._inWater = {}
     self._inHet = {}
     self._inMainChain = {}
@@ -1943,6 +1944,7 @@ Note:
     # lists of atoms that are in each selection, a subset of the atoms in the model.
     # If there is no model_id in the selection criteria, these may include atoms from
     # multiple models in the hierarchy.
+    make_sub_header('Getting atom selections', out=self.logger)
     source_sel = self.model.selection(self.params.source_selection)
     allSourceAtoms = set()
     for a in allAtoms:
@@ -1967,6 +1969,7 @@ Note:
     # We get lists of all atoms present in each hierarchy model that we're running.
     # This is a list of one when only one is selected and it is all of the available ones
     # when no particular one is selected.
+    make_sub_header('Getting atom lists', out=self.logger)
     atomLists = [ self.model.get_atoms() ]
     if (self.params.approach == 'self' and
         (self.params.source_selection is None or 'model' not in self.params.source_selection) and
@@ -1977,6 +1980,7 @@ Note:
       for i in range(numModels):
         atomLists.append( self.model.get_hierarchy().models()[i].atoms() )
 
+    make_sub_header('Processing atom lists', out=self.logger)
     for modelIndex, atoms in enumerate(atomLists):
 
       ################################################################################
@@ -2016,7 +2020,9 @@ Note:
       # Sort the atoms by an ID that is consistent from run to run so that they end up
       # in our data structures in the same order for each run.
 
+      make_sub_header('Sorting atoms', out=self.logger)
       all_selected_atoms = sorted(source_atoms.union(target_atoms), key=lambda x:atomID(x))
+      make_sub_header('Getting bonded-neighbor lists', out=self.logger)
       bondedNeighborLists = Helpers.getBondedNeighborLists(all_selected_atoms, bondProxies)
 
       ################################################################################
