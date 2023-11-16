@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.1.0"
+version = "2.2.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1224,7 +1224,8 @@ NOTES:
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        keepExistingH = self.params.keep_existing_H)
+        keepExistingH = self.params.keep_existing_H,
+        fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'
