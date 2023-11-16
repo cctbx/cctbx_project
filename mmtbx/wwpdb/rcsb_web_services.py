@@ -225,20 +225,14 @@ def chemical_id_search(resname, **kwds):
     "nodes": [
       {
         "type": "terminal",
-        "service": "text",
+        "service": "text_chem",
         "parameters": {
-          "attribute": "rcsb_nonpolymer_instance_feature_summary.comp_id",
-          "operator": "exact_match",
-          "value": "%s"
-        }
-      },
-      {
-        "type": "terminal",
-        "service": "text",
-        "parameters": {
-          "attribute": "rcsb_nonpolymer_instance_feature_summary.type",
-          "operator": "exact_match",
-          "value": "HAS_COVALENT_LINKAGE"
+          "attribute": "rcsb_chem_comp_container_identifiers.comp_id",
+          "operator": "in",
+          "negation": false,
+          "value": [
+            "%s"
+          ]
         }
       },
       {
