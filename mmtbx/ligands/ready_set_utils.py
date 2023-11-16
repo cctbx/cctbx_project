@@ -357,70 +357,72 @@ def add_main_chain_atoms_to_protein_three(three):
 
   assert 0
 
-# def generate_residues_via_conformer(hierarchy,
-#                                     backbone_only=False,
-#                                     verbose=False,
-#                                     ):
-#   assert 0
-#   backbone_asc = hierarchy.atom_selection_cache()
-#   backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
-#   backbone_hierarchy = hierarchy.select(backbone_sel)
-#   get_class = iotbx.pdb.common_residue_names_get_class
-#   loop_hierarchy=hierarchy
-#   if backbone_only: loop_hierarchy=backbone_hierarchy
-#   for model in loop_hierarchy.models():
-#     if verbose: print 'model: "%s"' % model.id
-#     for chain in model.chains():
-#       if verbose: print 'chain: "%s"' % chain.id
-#       for conformer in chain.conformers():
-#         if verbose: print '  conformer: altloc="%s"' % (
-#           conformer.altloc)
-# #        while threes: del threes[0]
-# #        threes.start=None
-# #        threes.end=None
-# #        list_of_threes = []
-#         for residue in conformer.residues():
-#           if verbose:
-#             if residue.resname not in ["HOH"]:
-#               print '    residue: resname="%s" resid="%s"' % (
-#                 residue.resname, residue.resid())
-#           if verbose: print '      residue class : %s' % get_class(residue.resname)
-#           if get_class(residue.resname) not in ["common_amino_acid",
-#                                                 'modified_amino_acid',
-#                                               ]:
-#             # this needs to be moved to cctbx get_class
-#             #'ETA', # COOH terminal - not in modified
-#             if residue.resname not in aac.three_letter_l_given_three_letter_d:
-#               continue
-#           yield residue
+def generate_residues_via_conformer(hierarchy,
+                                    backbone_only=False,
+                                    verbose=False,
+                                    ):
+  backbone_asc = hierarchy.atom_selection_cache()
+  backbone_sel = backbone_asc.selection("name ca or name c or name n or name o or name cb")
+  backbone_hierarchy = hierarchy.select(backbone_sel)
+  get_class = iotbx.pdb.common_residue_names_get_class
+  loop_hierarchy=hierarchy
+  if backbone_only: loop_hierarchy=backbone_hierarchy
+  for model in loop_hierarchy.models():
+    if verbose: print 'model: "%s"' % model.id
+    for chain in model.chains():
+      if verbose: print 'chain: "%s"' % chain.id
+      for conformer in chain.conformers():
+        if verbose: print '  conformer: altloc="%s"' % (
+          conformer.altloc)
+#        while threes: del threes[0]
+#        threes.start=None
+#        threes.end=None
+#        list_of_threes = []
+        for residue in conformer.residues():
+          if verbose:
+            if residue.resname not in ["HOH"]:
+              print '    residue: resname="%s" resid="%s"' % (
+                residue.resname, residue.resid())
+          if verbose: print '      residue class : %s' % get_class(residue.resname)
+          if get_class(residue.resname) not in ["common_amino_acid",
+                                                'modified_amino_acid',
+                                              ]:
+            # this needs to be moved to cctbx get_class
+            #'ETA', # COOH terminal - not in modified
+            if residue.resname not in aac.three_letter_l_given_three_letter_d:
+              continue
+          yield residue
 
-# def generate_protein_fragments(hierarchy,
-#                                geometry,
-#                                backbone_only=False,
-#                                use_capping_hydrogens=False,
-#                                verbose=False,
-#                                ):
-#   assert 0
-#   from mmtbx.conformation_dependent_library.multi_residue_class import \
-#     ThreeProteinResidues, RestraintsRegistry
-#   registry = RestraintsRegistry()
-#   threes = ThreeProteinResidues(geometry, registry=registry)
-#   for residue in generate_residues_via_conformer(hierarchy,
-#                                                  backbone_only=backbone_only,
-#                                                  verbose=verbose,
-#                                                  ):
-#     list.append(threes, residue)
-#     if verbose: print 'THREE',threes
-#     sub_unit = threes.provide_second_sub_unit_if_unlinked()
-#     if verbose: print 'THREE, SUBUNIT',threes, sub_unit
-#     if sub_unit:
-#       threes.start = True
-#       threes.end = True
-#       yield threes
-#       threes = sub_unit
-#   threes.start = True
-#   threes.end = True
-#   yield threes
+def generate_protein_fragments(hierarchy,
+                               geometry,
+                               backbone_only=False,
+                               use_capping_hydrogens=False,
+                               verbose=False,
+                               ):
+  '''
+  Called by qrefine. This should be replaced by the function in hierarchy_utils
+  after much testing.
+  '''
+  from mmtbx.conformation_dependent_library.multi_residue_class import \
+    ThreeProteinResidues, RestraintsRegistry
+  registry = RestraintsRegistry()
+  threes = ThreeProteinResidues(geometry, registry=registry)
+  for residue in generate_residues_via_conformer(hierarchy,
+                                                 backbone_only=backbone_only,
+                                                 verbose=verbose,
+                                                 ):
+    list.append(threes, residue)
+    if verbose: print 'THREE',threes
+    sub_unit = threes.provide_second_sub_unit_if_unlinked()
+    if verbose: print 'THREE, SUBUNIT',threes, sub_unit
+    if sub_unit:
+      threes.start = True
+      threes.end = True
+      yield threes
+      threes = sub_unit
+  threes.start = True
+  threes.end = True
+  yield threes
 
 def _hierarchy_into_slots(hierarchy,
                           geometry_restraints_manager,
@@ -795,42 +797,3 @@ def main_hydrogen(model,
       verbose=False,
       )
   return
-
-  assert 0
-
-
-  n_done = []
-  for three in hierarchy_utils.generate_protein_fragments(
-    hierarchy,
-    geometry_restraints_manager,
-    backbone_only=False,
-    #use_capping_hydrogens=use_capping_hydrogens,
-    ):
-    if verbose: print(three)
-    if len(three)==1: continue
-    for i, residue in enumerate(three):
-      if not i: continue
-      # this may not be necessary with the new threes
-      residue = hierarchy_utils.get_residue_group(residue, atoms)
-      h = hierarchy_utils.get_atom_from_residue_group(residue, 'H')
-      if h is None:
-        assert 0
-        for ag, (n, ca, c) in ready_set_basics.generate_atom_group_atom_names(
-            residue,
-            ['N', 'CA', 'C'],
-        ):
-          if ag.resname in ['PRO']: continue
-          if n in n_done: continue
-          n_done.append(n)
-          dihedral = 0
-          rh3 = general_utils.construct_xyz(n, 0.9,
-                                            ca, 109.5,
-                                            c, dihedral,
-          )
-          atom = create_atom(' H  ', 'H', rh3[0], n)
-          # adding to atom_group
-          # need to add to geometry_restraints_manager
-          ag.append_atom(atom)
-          if verbose: print(atom.quote())
-          assert ag.resname!='PRO'
-
