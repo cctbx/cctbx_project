@@ -797,6 +797,20 @@ void diffBragg::initialize_managers(){
 
 }
 
+af::shared<mat3>
+diffBragg::get_mosaic_blocks_prime() {
+    af::shared<mat3> result;
+    int num_blocks = mosaic_domains;
+    // TODO if refining aniso eta, then num_blocks for the primes is 3*mosaic_domains, address this case
+    for(mos_tic=0;mos_tic<num_blocks;++mos_tic) {
+        result.push_back(mat3( mosaic_umats_prime[9*mos_tic+0], mosaic_umats_prime[9*mos_tic+1], mosaic_umats_prime[9*mos_tic+2],
+                               mosaic_umats_prime[9*mos_tic+3], mosaic_umats_prime[9*mos_tic+4], mosaic_umats_prime[9*mos_tic+5],
+                               mosaic_umats_prime[9*mos_tic+6], mosaic_umats_prime[9*mos_tic+7], mosaic_umats_prime[9*mos_tic+8]));
+    }
+    return result;
+}
+
+
 void diffBragg::vectorize_umats(){
     /* vector store two copies of Umats, one unperturbed for reference */
     if (db_cryst.UMATS.size() > 0){

@@ -712,8 +712,14 @@ class DataModeler:
         R.as_file(output_name)
 
     def set_parameters_for_experiment(self, best=None):
+        if self.params.symmetrize_Flatt and not self.params.fix.eta_abc:
+            if not self.params.simulator.crystal.has_isotropic_mosaicity:
+                raise NotImplementedError("if fix.eta_abc=False and symmetrize_Flatt=True, then eta must be isotropic. Set simulator.crystal.has_isotropic_mosaicity=True")
         ParameterTypes = {"ranged": RangedParameter, "positive": PositiveParameter}
         ParameterType = RangedParameter  # most params currently only this type
+
+        if self.params.centers.Nvol is not None:
+            assert self.params.betas.Nvol is not None
 
         if best is not None:
             # set the crystal Umat (rotational displacement) and Bmat (unit cell)
@@ -1519,6 +1525,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         J = np.zeros((nparam-SIM.Num_ASU*SIM.num_Fhkl_channels, npix))  # gradients
 
     model_pix = None
+    #TODO check roiScales mode and if its broken, git rid of it!
     model_pix_noRoi = None
 
     # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
@@ -1552,7 +1559,8 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
             A_recip = A.inverse().transpose()
             Cryst.set_A(A_recip)
             symbol = SIM.crystal.space_group_info.type().lookup_symbol()
-            SIM.D.set_mosaic_blocks_sym(Cryst, symbol , Mod.params.simulator.crystal.num_mosaicity_samples)
+            SIM.D.set_mosaic_blocks_sym(Cryst, symbol , Mod.params.simulator.crystal.num_mosaicity_samples,
+                                        refining_eta=not Mod.params.fix.eta_abc)
 
         G = Mod.P["G_xtal%d" % i_xtal]
         scale = G.get_val(x[G.xpos])

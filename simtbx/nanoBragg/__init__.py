@@ -34,14 +34,19 @@ class _():
       mset = set(crystal_symmetry=cs, anomalous_flag=True, indices=indices)
       return array(mset, data=data).set_observation_type_xray_amplitude()
 
-  def set_mosaic_blocks_sym(self, crystal, reference_symbol, orig_mos_domains):
+  def set_mosaic_blocks_sym(self, crystal, reference_symbol, orig_mos_domains, refining_eta=False):
     """
     hijack the mosaic blocks to symmetrize F_latt for P3/P6 space groups
     Will extend mosaic blocks by up to a factor of 3
     :param crystal:  dxtbx crystal model, preferably in the original setting (reference)
     :param symbol: space group loopk symbol e.g. P6522
     :param orig_mos_domains: int number of mosaic blocks before adding 3-fold mosaic blocks
+    :param refining_eta: bool, if using diffBragg to refine eta, the umat derivative mats should also be updated
     """
+    if refining_eta:
+      # TODO, fix this case, see diffBragg.cpp, method get_mosaic_blocks_prime
+      assert not self.has_anisotropic_spread
+
     sgi = sgtbx.space_group_info(reference_symbol)
     cb_op = sgi.change_of_basis_op_to_primitive_setting()
     # TODO? use internal nanoBragg parameters to get the p1 a,b,c vectors,
@@ -57,10 +62,19 @@ class _():
 
     # get the originally set mosaic blocks
     mos_blocks = self.get_mosaic_blocks()[:orig_mos_domains]
+    mos_blocks_prime = None
+    if refining_eta:
+      mos_blocks_prime = self.get_mosaic_blocks_prime()[:orig_mos_domains]
 
     # new list of mosaic blocks
     new_mos_blocks = flex.mat3_double()
     new_mos_blocks.extend(mos_blocks)
+
+    # eta deriv matrices
+    new_mos_blocks_prime = None
+    if mos_blocks_prime is not None:
+      new_mos_blocks_prime = flex.mat3_double()
+      new_mos_blocks_prime.extend(mos_blocks_prime)
 
     # loop over all laue group 3-fold operations
     ops = sgi.group().build_derived_laue_group().all_ops()
@@ -74,8 +88,14 @@ class _():
         Rcryst = A*R*A.inverse()
         # this will left-multiply the real space amatrix in nanoBragg / diffBragg
         new_mos_blocks.extend(flex.mat3_double([sqr(U)*Rcryst for U in mos_blocks]))
+        if new_mos_blocks_prime is not None:
+          #TODO does Umat_prime need to also be multiplied by Rcryst ?
+          new_mos_blocks_prime.extend(flex.mat3_double([sqr(U) for U in mos_blocks_prime]))
 
     self.set_mosaic_blocks(new_mos_blocks)
+    if new_mos_blocks_prime is not None:
+      self.set_mosaic_blocks_prime(new_mos_blocks_prime)
+
     # if using diffBragg, we must also call:
     if self.vectorize_umats is not None:
       self.vectorize_umats()

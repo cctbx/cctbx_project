@@ -139,6 +139,8 @@ class diffBragg: public nanoBragg{
 
   ~diffBragg(){};
 
+  af::shared<mat3> get_mosaic_blocks_prime();
+
   /// pixels
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;

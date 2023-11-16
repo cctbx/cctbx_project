@@ -887,6 +887,10 @@ namespace boost_python { namespace {
             &simtbx::nanoBragg::diffBragg::set_Friedel_mate_inds,
             "Two arguments; each lists of the same length, pointing to the positive and negative mates in a Friedel pair, respectively")
 
+      .def("get_mosaic_blocks_prime",
+           &simtbx::nanoBragg::diffBragg::get_mosaic_blocks_prime,
+           "return the deriv of the matrices U that define the mosaic block distribution w.r.t eta")
+
     ; // end of diffBragg extention
 
   } // end of diffBragg_init_module

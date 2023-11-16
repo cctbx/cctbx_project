@@ -475,7 +475,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         roi = rois[i_roi]
         i1, i2, j1, j2 = roi
         is_selected = True
-        MAIN_LOGGER.debug("Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d" % (i_roi, i1,i2,j1,j2))
+        refl_bbox_str = "Reflection %d bounded by x1=%d,x2=%d,y1=%d,y2=%d" % (i_roi, i1,i2,j1,j2)
         if is_on_edge[i_roi] and reject_edge_reflections:
             MAIN_LOGGER.debug("Reflection %d is on edge" % i_roi)
             is_selected = False
@@ -561,7 +561,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
                 MAIN_LOGGER.debug("tilt fit failed for reflection %d, probably too few pixels" % i_roi)
                 tilt_plane = np.zeros_like(Xcoords)
             else:
-                MAIN_LOGGER.debug("successfully fit tilt plane")
+                #MAIN_LOGGER.debug("successfully fit tilt plane")
                 (tilt_a, tilt_b, tilt_c), covariance = fit_results
                 tilt_plane = tilt_a * Xcoords + tilt_b * Ycoords + tilt_c
                 if np.any(np.isnan(tilt_plane)) and is_selected:
@@ -590,6 +590,8 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
         kept_rois.append(roi)
         panel_ids.append(pid)
         selection_flags.append(is_selected)
+        if not is_selected:
+            MAIN_LOGGER.debug("--> %s was not selected for above reasons" % refl_bbox_str)
         i_roi += 1
 
     MAIN_LOGGER.debug("Number of skipped ROI with negative BGs: %d / %d" % (num_roi_negative_bg, len(rois)))

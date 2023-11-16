@@ -236,9 +236,12 @@ class Script:
                 MAIN_LOGGER.debug("Found %d xtals with unit cells:" %len(xtals))
                 for xtal in xtals:
                     MAIN_LOGGER.debug("%.4f %.4f %.4f %.4f %.4f %.4f" % xtal.get_unit_cell().parameters())
+            if self.params.record_device_timings and COMM.rank >0:
+                self.params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
             SIM = hopper_utils.get_simulator_for_data_modelers(Modeler)
             Modeler.set_parameters_for_experiment(best)
             Modeler.Umatrices = [Modeler.E.crystal.get_U()]
+
             # TODO: move this to SimulatorFromExperiment
             # TODO: fix multi crystal shot mode
             if best is not None and "other_spotscales" in list(best) and "other_Umats" in list(best):
@@ -301,8 +304,8 @@ class Script:
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
             # TODO verify this works:
-            #if self.params.record_device_timings:
-            #    SIM.D.show_timings(COMM.rank)
+            if SIM.D.record_timings:
+                SIM.D.show_timings(COMM.rank)
             Modeler.clean_up(SIM)
             del SIM.D  # TODO: is this necessary ?
 
