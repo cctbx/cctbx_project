@@ -6,8 +6,9 @@ from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
 from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
 from mmtbx.ligands.ready_set_basics import get_hierarchy_h_atom
+from mmtbx.ligands.ready_set_basics import get_proton_info
 from mmtbx.ligands.hierarchy_utils import _add_atom_to_chain
-from mmtbx.hydrogens.specialised_hydrogen_atoms import conditional_add_cys_hg_to_atom_group
+from mmtbx.hydrogens.specialised_hydrogen_atoms import process_disulphide_hydrogen_atoms
 from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
@@ -33,26 +34,6 @@ def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
       for rg in chain.residue_groups():
         tc.append_residue_group(rg.detached_copy())
     model.append_chain(tc)
-
-def is_perdeuterated(ag):
-  protons = {}
-  for atom in ag.atoms():
-    if atom.element_is_hydrogen():
-      protons.setdefault(atom.element, 0)
-      protons[atom.element]+=1
-  if len(protons) in [0,2]: return False
-  if len(protons)==1:
-    if 'D' in protons:
-      return True
-    else:
-      return False
-  assert 0
-
-def get_proton_info(ag):
-  proton_name=proton_element='H'
-  if is_perdeuterated(ag):
-    proton_name=proton_element='D'
-  return proton_element, proton_name
 
 def add_n_terminal_hydrogens_to_atom_group(ag,
                                            bonds=None,
@@ -599,8 +580,10 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
     verbose=verbose,
     ):
     if use_capping_hydrogens:
-      conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
-                                           residue_group)
+      # conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+      #                                      residue_group)
+      process_disulphide_hydrogen_atoms(geometry_restraints_manager,
+                                        residue_group)
     if start:
       # ptr+=1
       # assert ptr==1
