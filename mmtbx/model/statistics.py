@@ -380,14 +380,24 @@ class geometry(object):
       result += res.rama_z.as_string(prefix=prefix)
     #
     result += "\n\n%sMax deviation from planes:"%prefix
-    result += "\n%s   Type MaxDev LineInFile"%prefix
+    result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
     for pp in p.protein_planes_max_dev:
-      result += "\n  %s %3s %6.3f %s"%(prefix, pp.resname[:3], pp.max_dev, pp.id)
+      result += "\n  %s %s %s %s  %s"%(
+        prefix,
+        format_value("%s", pp.resname),
+        format_value("%7.3f", pp.max_dev),
+        format_value("%7.3f", pp.mean_dev),
+        pp.id)
     if p.protein_planes_max_dev_noH is not None:
       result += "\n\n%sMax deviation from planes (no H):"%prefix
-      result += "\n%s   Type MaxDev LineInFile"%prefix
+      result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
       for pp in p.protein_planes_max_dev_noH:
-        result += "\n  %s %3s %6.3f %s"%(prefix, pp.resname[:3], pp.max_dev, pp.id)
+        result += "\n  %s %s %s %s  %s"%(
+          prefix,
+          format_value("%s", pp.resname),
+          format_value("%7.3f", pp.max_dev),
+          format_value("%7.3f", pp.mean_dev),
+          pp.id)
     #
     if( uppercase ):
       result = result.upper()
@@ -674,7 +684,6 @@ def protein_planes(hierarchy):
   "ARG":     [' NE ', ' CZ ', ' NH1', ' NH2', ' HE ', 'HH11', 'HH12', 'HH21', 'HH22'],
   "TYR":     ["CB","CG", "CD1","CD2","CE1","CE2","CZ", "OH", "HD1","HD2","HE1","HE2"],
   "PHE":     ["CB","CG", "CD1","CD2","CE1","CE2","CZ", "OH", "HD1","HD2","HE1","HE2"],
-  "peptide": ["C","O","N","H"],
   "TRP":     ["CB","CG","CD1","CD2","NE1","CE2","CE3","CZ2","CZ3","CH2","HD1","HE1","HE3","HZ2","HZ3","HH2"],
   "HIS":     [ "CG","ND1","CE1","NE2","CD2","HCD2","HNE2","HND1"]
   }
@@ -684,20 +693,17 @@ def protein_planes(hierarchy):
     MAX = -1
     ID = None
     RESNAME = None
+    deltas = flex.double()
     names = planes[resname]
-    ss = " or ".join(["name %s"%it for it in names])
-    if resname != "peptide":
-      ss = "resname %s and (%s)"%(resname,ss)
+    ss = ss = "resname %s and (%s)"%(resname," or ".join(["name %s"%it for it in names]))
     sel = asc.selection(string=ss)
     h = hierarchy.select(sel)
     for residue_group in h.residue_groups():
       if len(residue_group.atom_groups())>1: continue
       atom_group = residue_group.atom_groups()[0]
-      if resname != "peptide":
-        assert atom_group.resname==resname
+      assert atom_group.resname==resname
       atoms = atom_group.atoms()
       size = atoms.size()
-      if resname == "peptide" and size<3: continue
       sites_cart = atoms.extract_xyz()
       pproxy = geometry_restraints.planarity_proxy(
         i_seqs  = list(range(size)),
@@ -705,14 +711,20 @@ def protein_planes(hierarchy):
       planarity = geometry_restraints.planarity(
         sites_cart = sites_cart,
         proxy      = pproxy)
-      max_delta = flex.max(flex.abs(planarity.deltas()))
+      abs_deltas = flex.abs(planarity.deltas())
+      deltas.extend(abs_deltas)
+      max_delta  = flex.max(abs_deltas)
       if max_delta > MAX:
         MAX = max_delta
         ID = atom_group.id_str()
         RESNAME = resname
+    if(MAX > 0 and deltas.size() > 0):
+      assert approx_equal(MAX, flex.max(deltas), 1.e-4)
     r = group_args(
-      resname = RESNAME,
-      max_dev = MAX,
-      id      = ID)
-    result.append(r)
+      resname  = RESNAME,
+      max_dev  = MAX,
+      mean_dev = flex.mean(deltas) if deltas.size()>0 else None,
+      id       = ID)
+    if MAX>=0:
+      result.append(r)
   return result
