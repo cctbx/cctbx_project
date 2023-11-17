@@ -2,17 +2,12 @@ from __future__ import absolute_import, division, print_function
 from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
 from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
+from mmtbx.ligands.ready_set_basics import get_proton_info
 from mmtbx.ligands.hierarchy_utils import new_atom_with_inheritance
 from mmtbx.ligands.hierarchy_utils import add_hydrogens_to_atom_group_using_bad
 
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
-
-def get_proton_info(ag):
-  proton_name=proton_element='H'
-  if is_perdeuterated(ag):
-    proton_name=proton_element='D'
-  return proton_element, proton_name
 
 def _generate_bonds_with_origin_ids_in_list(bond_proxies, specific_origin_ids=None):
   assert specific_origin_ids
@@ -223,6 +218,7 @@ def add_disulfur_hydrogen_atoms(geometry_restraints_manager,
   """Example of usage
 
   """
+  assert 0
   for residue_group in hierarchy.residue_groups():
     resnames=[]
     for atom_group in residue_group.atom_groups():
@@ -268,3 +264,16 @@ def conditional_remove_cys_hg_to_atom_group(geometry_restraints_manager,
     if len(sg_bonds)>2:
       remove_cys_hg_from_residue_group(rg)
 
+def process_disulphide_hydrogen_atoms(geometry_restraints_manager,
+                                      residue_group,
+                                      element='H',
+                                      append_to_end_of_model=False,
+                                      ):
+  rc = conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
+                                            residue_group,
+                                            element=element,
+                                            append_to_end_of_model=append_to_end_of_model)
+  assert not rc, '%s' % rc
+  conditional_remove_cys_hg_to_atom_group(geometry_restraints_manager,
+                                          residue_group)
+  return rc
