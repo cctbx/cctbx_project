@@ -2749,16 +2749,29 @@ class manager(object):
     self.reset_after_changing_hierarchy()
     self.unset_riding_h_manager()
 
-  def rotatable_hd_selection(self, iselection=True, use_shortcut=True):
-    rmh_sel = mmtbx.hydrogens.rotatable(
-      pdb_hierarchy      = self.get_hierarchy(),
-      mon_lib_srv        = self.get_mon_lib_srv(),
-      restraints_manager = self.get_restraints_manager(),
-      log                = self.log,
-      use_shortcut       = use_shortcut)
-    sel_i = []
-    for s in rmh_sel: sel_i.extend(s[1])
-    result = flex.size_t(sel_i)
+  def rotatable_hd_selection(self,
+                             iselection=True,
+                             use_shortcut=True,
+                             from_riding_manager=False):
+    if from_riding_manager:
+      self.setup_riding_h_manager()
+      riding_h_manager = self.get_riding_h_manager()
+      para = riding_h_manager.h_parameterization
+      result = flex.size_t()
+      for p in para:
+        if p is not None:
+          if p.htype in ['alg1b', 'prop']:
+            result.append(p.ih)
+    else:
+      rmh_sel = mmtbx.hydrogens.rotatable(
+        pdb_hierarchy      = self.get_hierarchy(),
+        mon_lib_srv        = self.get_mon_lib_srv(),
+        restraints_manager = self.get_restraints_manager(),
+        log                = self.log,
+        use_shortcut       = use_shortcut)
+      sel_i = []
+      for s in rmh_sel: sel_i.extend(s[1])
+      result = flex.size_t(sel_i)
     if(iselection): return result
     else:           return flex.bool(self.size(), result)
 
