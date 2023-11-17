@@ -1553,9 +1553,10 @@ def exercise_03():
   #assert r1 == r2
 
 def exercise_04():
-  m_strings = [m1_str, m2_str, m3_str, m4_str, m5_str, m9_str, m11_str,m12_str,
-    m13_str, m17_str, m19_str]
-  for i, l in enumerate(m_strings):
+  m_strings = [all_aa_all_h, all_aa_all_d, m5_str_HD_rotated,
+    exercise_02_str,m1_str, m2_str, m3_str, m4_str, m5_str, m9_str, m11_str,
+    m12_str, m13_str, m17_str, m19_str]
+  for l in m_strings:
     pdb_inp = iotbx.pdb.input(lines=l.split("\n"), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
@@ -1574,18 +1575,6 @@ def exercise_04():
     #  print('  ----')
     #  for at in atoms.select(hd_sel_2):
     #    print(at.id_str())
-
-  other_strings = [all_aa_all_h,
-    all_aa_all_d, m5_str_HD_rotated, exercise_02_str]
-  for l in other_strings:
-    pdb_inp = iotbx.pdb.input(lines=l.split("\n"), source_info=None)
-    model = mmtbx.model.manager(
-      model_input = pdb_inp,
-      log         = null_out())
-    model.process(make_restraints=True)
-    hd_sel_1 = model.rotatable_hd_selection()
-    hd_sel_2 = model.rotatable_hd_selection(from_riding_manager=True)
-    assert (set(hd_sel_1) == set(hd_sel_2))
 
 if (__name__ == "__main__"):
   t0 = time.time()
