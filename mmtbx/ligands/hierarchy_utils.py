@@ -4,23 +4,6 @@ from string import ascii_letters
 
 from mmtbx.ligands.ready_set_basics import construct_xyz
 
-# class smart_add_atoms(list):
-#   def __init__(self): pass
-
-#   def append(self, item):
-#     for chain1 in item:
-#       remove = []
-#       for atom1 in chain1.atoms():
-#         for chain_list in self:
-#           for chain2 in chain_list:
-#             for atom2 in chain2.atoms():
-#               if atom1.quote()==atom2.quote():
-#                 remove.append(atom1)
-#       if remove:
-#         for atom in remove:
-#           remove_atom_from_chain(chain1, atom)
-#     list.append(self, item)
-
 def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
   # altloc???
   atom = iotbx.pdb.hierarchy.atom()
@@ -97,7 +80,7 @@ def add_hydrogens_to_atom_group_using_bad(ag,
                      )
   atom = _new_atom(atom_name, atom_element, ro2[0], ba.occ, ba.b, ba.hetero)
   if append_to_end_of_model:
-    chain = _add_atom_to_chain(atom, ag)
+    chain = _add_atom_to_chain(atom, ag, icode=ba.parent().parent().icode)
     rc.append(chain)
   else:
     ag.append_atom(atom)
@@ -122,24 +105,6 @@ def is_hierarchy_altloc_consistent(hierarchy, verbose=False):
     return False
   return True
 
-def merge_atoms_at_end_to_residues(hierarchy):
-  residues = {}
-  for ag in hierarchy.atom_groups():
-    # complication with alt.loc.
-    key = ag.id_str()
-    previous_instance = residues.setdefault(key, None)
-    if previous_instance:
-      # move atoms from here to there
-      for atom in ag.atoms():
-        previous_instance.append_atom(atom.detached_copy())
-        ag.remove_atom(atom)
-      rg = ag.parent()
-      rg.remove_atom_group(ag)
-      chain = rg.parent()
-      chain.remove_residue_group(rg)
-    residues[key] = ag
-  return hierarchy
-
 def attempt_to_squash_alt_loc(hierarchy):
   indices = hierarchy.altloc_indices()
   altlocs = [_f for _f in indices if _f]
@@ -154,7 +119,6 @@ def attempt_to_squash_alt_loc(hierarchy):
       ags[0].append_atom(atom.detached_copy())
     rg.remove_atom_group(ags[1])
   return squash_hierarchy
-
 
 def main(filename):
   from iotbx import pdb

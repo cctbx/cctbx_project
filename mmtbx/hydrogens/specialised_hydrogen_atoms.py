@@ -218,7 +218,6 @@ def add_disulfur_hydrogen_atoms(geometry_restraints_manager,
   """Example of usage
 
   """
-  assert 0
   for residue_group in hierarchy.residue_groups():
     resnames=[]
     for atom_group in residue_group.atom_groups():
