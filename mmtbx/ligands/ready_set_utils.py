@@ -6,6 +6,7 @@ from scitbx.math import dihedral_angle
 from mmtbx.ligands.ready_set_basics import construct_xyz
 from mmtbx.ligands.ready_set_basics import generate_atom_group_atom_names
 from mmtbx.ligands.ready_set_basics import get_hierarchy_h_atom
+from mmtbx.ligands.hierarchy_utils import _add_atom_to_chain
 from mmtbx.hydrogens.specialised_hydrogen_atoms import conditional_add_cys_hg_to_atom_group
 from six.moves import range
 
