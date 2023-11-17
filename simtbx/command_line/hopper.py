@@ -272,6 +272,10 @@ class Script:
             MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_shot+1, len(input_lines)))
             try:
                 x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+                for i_rep in range(self.params.repeat.number_of_repeats):
+                    Modeler.filter_pixels(self.params.repeat.filter.threshold)
+                    x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+
             except StopIteration:
                 x = Modeler.target.x0
             tref = time.time()-tref

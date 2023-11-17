@@ -152,6 +152,7 @@ class DataModeler:
         self.all_fast =None  # fast-scan coordinate per pixel
         self.all_slow =None  # slow-scan coordinate per pixel
         self.all_pid = None  # panel id per pixel
+        self.all_zscore = None # the estimated z-score values for each pixel, updated each iteration in the Target class
         self.rois=None  # region of interest (per spot)
         self.pids=None  # panel id (per spot)
         self.tilt_abc=None  # background plane constants (per spot), a,b are fast,slow scan components, c is offset
@@ -177,6 +178,49 @@ class DataModeler:
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                       "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow", "best_model_includes_background",
                       "all_q_perpix", "all_sigma_rdout"]
+
+    def filter_pixels(self, thresh):
+        assert self.roi_id is not None
+        assert self.all_trusted is not None
+        assert self.all_zscore is not None
+
+        if not hasattr(self, 'roi_id_slices') or self.roi_id_slices is None:
+            self.set_slices('roi_id')
+
+        ntrust = self.all_trusted.sum()
+
+        sigz_per_shoebox = []
+        for roi_id in self.roi_id_unique:
+            slcs = self.roi_id_slices[roi_id]
+            Zs = []
+            for slc in slcs:
+                trusted = self.all_trusted[slc]
+                Zs += list(self.all_zscore[slc][trusted])
+            if not Zs:
+                sigz = np.nan
+            else:
+                sigz = np.std(Zs)
+            sigz_per_shoebox.append(sigz)
+        if np.all(np.isnan(sigz_per_shoebox)):
+            MAIN_LOGGER.debug("All shoeboxes are nan, nothing to filter")
+            return
+        med_sigz = np.median([sigz for sigz in sigz_per_shoebox if not np.isnan(sigz)])
+        sigz_per_shoebox = np.nan_to_num(sigz_per_shoebox, nan=med_sigz)
+        shoebox_is_bad = utils.is_outlier(sigz_per_shoebox, thresh)
+        nbad_pix = 0
+        for i_roi, roi_id in enumerate(self.roi_id_unique):
+            if shoebox_is_bad[i_roi]:
+                for slc in self.roi_id_slices[roi_id]:
+                    nbad_pix += slc.stop - slc.start
+                    self.all_trusted[slc] = False
+
+        #inds = np.arange(len(self.all_trusted))
+        #Zs = self.all_zscore[self.all_trusted]
+        #bad = utils.is_outlier(Zs, thresh=thresh)
+        #inds_trusted = inds[self.all_trusted]
+        #self.all_trusted[inds_trusted[bad]] = False
+        MAIN_LOGGER.debug("Added %d pixels from %d shoeboxes to the untrusted list (%d / %d trusted pixels remain)"
+                          % (nbad_pix, shoebox_is_bad.sum(), self.all_trusted.sum(), len(self.all_trusted)))
 
     def set_spectrum(self, spectra_file=None, spectra_stride=None, total_flux=None):
 
@@ -1763,7 +1807,15 @@ class TargetFunc:
         self.all_x.append(self.x0)
 
         mod, SIM, compute_grad = args
-        f, g, modelpix, J, sigZ, debug_s = target_func(self.x0, update_terms, mod, SIM, compute_grad)
+        f, g, modelpix, J, sigZ, debug_s, zscore_perpix = target_func(self.x0, update_terms, mod, SIM, compute_grad,
+                                                                      return_all_zscores=True)
+        mod.all_zscore = zscore_perpix
+
+        # filter during refinement?
+        if mod.params.filter_during_refinement.enable and self.iteration > 0:
+            if self.iteration % mod.params.filter_during_refinement.after_n == 0:
+                mod.filter_pixels(thresh=mod.params.filter_during_refinement.threshold)
+
 
         self.t_per_iter.append(time.time())
         if len(self.t_per_iter) > 2:
@@ -1783,7 +1835,7 @@ class TargetFunc:
         return f
 
 
-def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
+def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores=False):
     pfs = mod.pan_fast_slow
     data = mod.all_data
     sigma_rdout = mod.all_sigma_rdout
@@ -1857,7 +1909,8 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
     fLogLike = fLogLike[trusted].sum()   # negative log Likelihood target
 
     # width of z-score should decrease as refinement proceeds
-    zscore_sigma = np.std( (resid / np.sqrt(V))[trusted])
+    zscore_per = resid/np.sqrt(V)
+    zscore_sigma = np.std(zscore_per[trusted])
 
     restraint_terms = {}
     if params.use_restraints:
@@ -2003,7 +2056,11 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True):
 
     debug_s = "F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
               % (f, zscore_sigma, restraint_debug_s, gnorm)
-    return f, g, model_bragg, Jac, zscore_sigma, debug_s
+
+    return_data = f, g, model_bragg, Jac, zscore_sigma, debug_s
+    if return_all_zscores:
+        return_data += (zscore_per,)
+    return return_data
 
 
 def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True):

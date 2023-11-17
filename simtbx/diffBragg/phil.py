@@ -6,6 +6,31 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+
+filter_during_refinement {
+  enable = False
+    .type = bool
+    .help = if True, filtering will occur each N iterations
+  after_n = 20
+    .type = int
+    .help = refiner will pause and check for outliers every after_n iterations
+  threshold = 10
+    .type = float
+    .help = outliers are detected by looking at the distribution of per-pixel or per shoebox Z-scores
+    .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
+}
+
+repeat {
+  number_of_repeats = 0
+    .type = int
+    .help = how many additional times to run hopper
+  filter { # TODO add a filter pixels vs shoeboxes choice
+    threshold = 10
+      .type = float
+      .help = outliers are detected by looking at the distribution of per-pixel or per shoebox Z-scores
+      .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
+  }
+}
 symmetrize_Flatt = False
   .type = bool
   .help = If True, add 3-fold symmetric mosaic blocks to the calculation of F_latt
