@@ -296,9 +296,16 @@ class geometry(object):
 
   def show_short(self):
     r = self.result()
-    f="bond: %6.3f angle: %6.2f clash: %5.1f rota: %5.2f rama: f: %6.2f o: %6.2f Z: %6.2f cb: %6.2f"
-    return f%(r.bond.mean, r.angle.mean, r.clash.score, r.rotamer.outliers,
-      r.ramachandran.favored, r.ramachandran.outliers, r.rama_z.whole.value, r.c_beta.outliers)
+    f="%s %s %s %s %s %s %s %s"
+    return f%(
+      format_value("bond: %6.3f",r.bond.mean),
+      format_value("angle: %6.2f", r.angle.mean),
+      format_value("clash: %5.1f", r.clash.score),
+      format_value("rota: %5.2f", r.rotamer.outliers),
+      format_value("rama: f: %6.2f", r.ramachandran.favored),
+      format_value("o: %6.2f", r.ramachandran.outliers),
+      format_value("Z: %6.2f", r.rama_z.whole.value),
+      format_value("cb: %6.2f", r.c_beta.outliers) )
 
   def number_of_bonds(self):
     bonds = self.bond()
