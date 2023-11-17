@@ -110,6 +110,9 @@ steps:
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export OMP_NUM_THREADS=2
     export OMPI_MCA_mca_base_component_show_load_errors=0 # see open-mpi/ompi#7752
+    # Silences a warning from MPI regarding restrictive ptrace settings
+    # See https://lists.openhpc.community/g/users/topic/openmpi_and_shared_memory/16489081
+    echo 0 > /proc/sys/kernel/yama/ptrace_scope
     libtbx.run_tests_parallel module=cctbx module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
