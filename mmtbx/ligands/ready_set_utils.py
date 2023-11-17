@@ -19,27 +19,6 @@ def is_n_terminal_residue(residue_group):
   #if residues[0] in n_terminal_amino_acid_codes: return True
   return False
 
-def _add_atom_to_chain(atom, ag):
-  rg = _add_atom_to_residue_group(atom, ag)
-  chain = ag.parent().parent()
-  tc = iotbx.pdb.hierarchy.chain()
-  tc.id = chain.id
-  tc.append_residue_group(rg)
-  return tc
-
-def _add_atom_to_residue_group(atom, ag):
-  tag = iotbx.pdb.hierarchy.atom_group()
-  tag.resname = ag.resname
-  tag.append_atom(atom)
-  rg = iotbx.pdb.hierarchy.residue_group()
-  rg.resseq = ag.parent().resseq
-  rg.append_atom_group(tag)
-  for i, c in enumerate(letters):
-    if c==ag.parent().parent().id:
-      break
-  atom.tmp = i
-  return rg
-
 def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
   lookup = {}
   for chain in chains:
