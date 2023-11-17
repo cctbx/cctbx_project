@@ -122,6 +122,40 @@ def is_hierarchy_altloc_consistent(hierarchy, verbose=False):
     return False
   return True
 
+def merge_atoms_at_end_to_residues(hierarchy):
+  residues = {}
+  for ag in hierarchy.atom_groups():
+    # complication with alt.loc.
+    key = ag.id_str()
+    previous_instance = residues.setdefault(key, None)
+    if previous_instance:
+      # move atoms from here to there
+      for atom in ag.atoms():
+        previous_instance.append_atom(atom.detached_copy())
+        ag.remove_atom(atom)
+      rg = ag.parent()
+      rg.remove_atom_group(ag)
+      chain = rg.parent()
+      chain.remove_residue_group(rg)
+    residues[key] = ag
+  return hierarchy
+
+def attempt_to_squash_alt_loc(hierarchy):
+  indices = hierarchy.altloc_indices()
+  altlocs = [_f for _f in indices if _f]
+  if len(altlocs)==0: return hierarchy
+  elif len(altlocs)>1: return None
+  squash_hierarchy = hierarchy.deep_copy()
+  for rg in squash_hierarchy.residue_groups():
+    if len(rg.atom_groups())==1: continue
+    ags = rg.atom_groups()
+    detached_ag = ags[1].detached_copy()
+    for atom in detached_ag.atoms():
+      ags[0].append_atom(atom.detached_copy())
+    rg.remove_atom_group(ags[1])
+  return squash_hierarchy
+
+
 def main(filename):
   from iotbx import pdb
   pdb_inp=pdb.input(filename)
