@@ -214,8 +214,8 @@ def load_pdb_structure(id, format="pdb", allow_unknowns=False,
   directly (without intermediate files).
   """
   data = fetch(id=id, format=format, log=null_out(), local_cache=local_cache)
-  import iotbx.pdb.input
-  pdb_in = iotbx.pdb.input(pdb_string=data.read())
+  import iotbx.pdb
+  pdb_in = iotbx.pdb.input(source_info=None, lines=data.read().decode())
   hierarchy = pdb_in.construct_hierarchy()
   hierarchy.atoms().reset_i_seq()
   # XXX enable_scattering_type_unknown can be modified here because the PDB
