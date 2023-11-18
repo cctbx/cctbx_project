@@ -86,25 +86,6 @@ def add_hydrogens_to_atom_group_using_bad(ag,
     ag.append_atom(atom)
   return rc
 
-def is_hierarchy_altloc_consistent(hierarchy, verbose=False):
-  altlocs = {}
-  for residue_group in hierarchy.residue_groups():
-    if not residue_group.have_conformers(): continue
-    for atom_group in residue_group.atom_groups():
-      rc = altlocs.setdefault(residue_group.id_str(), [])
-      if atom_group.altloc: rc.append(atom_group.altloc)
-  lens=[]
-  for key, item in altlocs.items():
-    l=len(item)
-    if l not in lens: lens.append(l)
-  if len(lens)>1:
-    outl = '  Uneven Alt. Locs.\n'
-    for key, item in altlocs.items():
-      outl += '    "%s" : %s\n' % (key, item)
-    if verbose: print(outl)
-    return False
-  return True
-
 def attempt_to_squash_alt_loc(hierarchy):
   indices = hierarchy.altloc_indices()
   altlocs = [_f for _f in indices if _f]
@@ -123,8 +104,9 @@ def attempt_to_squash_alt_loc(hierarchy):
 def main(filename):
   from iotbx import pdb
   pdb_inp=pdb.input(filename)
+  ph=pdb_inp.construct_hierarchy()
   print('is_hierarchy_altloc_consistent')
-  print(is_hierarchy_altloc_consistent(pdb_inp.construct_hierarchy()))
+  print(ph.is_hierarchy_altloc_consistent())
 
 if __name__ == '__main__':
   import sys
