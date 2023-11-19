@@ -17,11 +17,21 @@ parser.add_argument("--loud", action="store_true", help="show lots of screen out
 parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
 parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
 parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
+parser.add_argument("--scanWeakFracs", action="store_true", help="optionally stores a variety of inputs for stage2 based filtering different fractions of weak reflections")
 
 args = parser.parse_args()
 
 from mpi4py import MPI
 COMM = MPI.COMM_WORLD
+
+import logging
+if not args.loud:
+    logging.disable(logging.CRITICAL)
+else:
+    if COMM.rank==0:
+        logger = logging.getLogger("diffBragg.main")
+        logger.setLevel(logging.DEBUG)
+
 
 def printR(*args, **kwargs):
     print("RANK %d" % COMM.rank, *args, **kwargs)
@@ -39,13 +49,31 @@ import pandas
 import os
 from dials.algorithms.integration.stills_significance_filter import SignificanceFilter
 from dials.algorithms.indexing.stills_indexer import calc_2D_rmsd_and_displacements
-import logging
 import sys
 
-if not args.loud:
-    logging.disable(logging.CRITICAL)
-else:
-    logging.basicConfig(level=logging.DEBUG)
+
+def filter_weak_reflections(refls, weak_fraction):
+    """
+    :param pred:  reflection table created by this script
+    :param weak_fraction: number from 0-1 (if 0, only strong spots are saved)
+    :return: new reflection table with weak reflections filtered according to weak_fraction
+    """
+    new_refls = None
+    for idx in set(refls['id']):
+        pred = refls.select(refls['id']==idx)
+        weaks = pred.select(pred['is_weak'])
+        nweak = len(weaks)
+        weaks_sorted = np.argsort(weaks["scatter"])[::-1]
+        num_keep = int(nweak * weak_fraction)
+        weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
+        weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
+        keeps = np.logical_or(pred['is_strong'], weak_sel)
+        pred = pred.select(flex.bool(keeps))
+        if new_refls is None:
+            new_refls = deepcopy(pred)
+        else:
+            new_refls.extend(pred)
+    return new_refls
 
 
 # Note: these imports and following 3 methods will eventually be in CCTBX/simtbx/diffBragg/utils
@@ -376,7 +404,9 @@ if __name__=="__main__":
 
     print0("getting dataframe handles")
     df_handles = {}
-    dfs, _ = zip(*df_rows_per_rank)
+    dfs = []
+    if df_rows_per_rank.size:
+        dfs, _ = zip(*df_rows_per_rank)
     for f in set(dfs):
         df_handles[f] = pandas.read_pickle(f).reset_index(drop=True)
 
@@ -395,6 +425,10 @@ if __name__=="__main__":
     EXPT_DIRS = os.path.join(args.outdir, "expts_and_refls")
     if COMM.rank==0:
         utils.safe_makedirs(EXPT_DIRS)
+
+    if args.scanWeakFracs and params.predictions.weak_fraction != 1:
+        print("WARNING: overriding weak_fracion because of scanWeakFracs")
+        params.predictions.weak_fraction=1
 
     print0("Found %d input files" % Nf)
     with DeviceWrapper(dev) as _:
@@ -445,18 +479,20 @@ if __name__=="__main__":
             strong_sel = np.logical_not(pred['is_weak'])
 
             pred["refl_idx"] = flex.int(np.arange(len(pred)))
-            weaks = pred.select(pred['is_weak'])
-            weaks_sorted = np.argsort(weaks["scatter"])[::-1]
-            nweak = len(weaks)
-            num_keep = int(nweak*params.predictions.weak_fraction)
-            weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
 
-            weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
-            keeps = np.logical_or( pred['is_strong'], weak_sel)
+            #weaks = pred.select(pred['is_weak'])
+            #weaks_sorted = np.argsort(weaks["scatter"])[::-1]
+            #nweak = len(weaks)
+            #num_keep = int(nweak*params.predictions.weak_fraction)
+            #weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
+            #weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
+            #keeps = np.logical_or( pred['is_strong'], weak_sel)
             #printR("Sum keeps=%d; num_strong=%d, num_kept_weak=%d" % (sum(keeps), sum(strong_sel), sum(weak_sel)))
-            pred = pred.select(flex.bool(keeps))
+            #pred = pred.select(flex.bool(keeps))
+            pred = filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
+
             nstrong = np.sum(strong_sel)
-            printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(strong_sel), np.sum(weak_sel)))
+            printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(pred["is_strong"]), np.sum(pred["is_weak"])))
             pred['id'] = flex.int(len(pred), rank_shot_count)
             if 'shoebox' in list(pred) and not args.keepShoeboxes:
                 del pred['shoebox']
@@ -499,9 +535,11 @@ if __name__=="__main__":
             df['old_exp_idx'] = expt_idx
             df['exp_name'] = rank_expt_file
             df['exp_idx'] = rank_shot_count
+
             df['predictions'] = rank_pred_file
             df['predicted_refs'] = rank_pred_file
             df['num_pred'] = len(pred)
+
             all_dfs.append(df)
             rank_shot_count += 1
 
@@ -520,6 +558,34 @@ if __name__=="__main__":
             all_dfs = pandas.concat(all_dfs)
         else:
             all_dfs = None
+
+        if args.scanWeakFracs and all_dfs is not None:
+            assert len(all_dfs.predictions.unique()) == 1
+            pred_file = all_dfs.predictions.values[0]
+            n_total_weak = np.sum(all_rank_pred['is_weak'])
+            n_total = len(all_rank_pred)
+            weak_fracs = [.11,.22,.33,.44,.55,.66,.77,.88]
+            labels = []
+            for i_frac, weak_frac in enumerate(weak_fracs):
+                filt_refls = filter_weak_reflections(all_rank_pred, weak_frac)
+                label="%dperc"%(weak_frac*100,)
+                labels.append(label)
+                new_pred_file = os.path.splitext(pred_file)[0]+"_%s.refl" % label
+                all_dfs['predictions_%s' % label] = new_pred_file
+                all_dfs['predicted_refs_%s' %label] = new_pred_file
+                num_preds = []
+                for exp_id in all_dfs.exp_idx.values:
+                    n = np.sum(filt_refls['id'] == int(exp_id))
+                    num_preds.append(n)
+                all_dfs['num_pred_%s' %label] = num_preds
+                filt_refls.as_file(new_pred_file)
+                printR("Saved %d/%d refls (%d strong, %d/%d weak) to %s"
+                       % (len(filt_refls), n_total, np.sum(filt_refls["is_strong"]), np.sum(filt_refls["is_weak"]), n_total_weak, new_pred_file))
+            # note this sanity check below requires that weaK_fracs be sorted
+            if sorted(weak_fracs) == weak_fracs:
+                # then as weak frac increases, there should be an increasing number of predictions
+                num_preds_per_frac = [all_dfs["num_pred_%s" % lab].sum() for lab in labels]
+                assert num_preds_per_frac == sorted(num_preds_per_frac)
 
         print0("MPI gather all_dfs")
         all_dfs = COMM.gather(all_dfs)

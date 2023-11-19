@@ -42,7 +42,7 @@ def global_refiner_from_parameters(params):
         pandas_table["exp_idx"] = 0
     work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges)
     LOGGER.info("EVENT: DONE prep dataframe")
-    return launcher.launch_refiner(pandas_table, work_distribution=work_distribution)
+    return launcher.launch_refiner(pandas_table, work_distribution=work_distribution, refls_key=params.refls_key)
 
 
 class RefineLauncher:
@@ -125,8 +125,8 @@ class RefineLauncher:
             if not hasattr(expt, model):
                 raise ValueError("No %s in experiment, exiting. " % model)
 
-    def launch_refiner(self, pandas_table, miller_data=None, work_distribution=None):
-        self.load_inputs(pandas_table, miller_data=miller_data, work_distribution=work_distribution)
+    def launch_refiner(self, pandas_table, miller_data=None, work_distribution=None, refls_key="predictions"):
+        self.load_inputs(pandas_table, miller_data=miller_data, work_distribution=work_distribution, refls_key=refls_key)
         LOGGER.info("EVENT: launch refiner")
         self._launch()
         return self.RUC

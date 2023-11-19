@@ -11,6 +11,8 @@ import time
 import warnings
 import signal
 import logging
+from copy import deepcopy
+from simtbx.diffBragg import hopper_io
 
 LOGGER = logging.getLogger("diffBragg.main")
 warnings.filterwarnings("ignore")
@@ -450,7 +452,9 @@ class StageTwoRefiner(BaseRefiner):
         return vals
 
     def _get_eta(self, i_shot):
-        pass
+        # NOTE: refinement of eta not supported in this script
+        vals = [self.Modelers[i_shot].PAR.eta[i_eta].init for i_eta in range(3)]
+        return vals
 
     def _get_spot_scale(self, i_shot):
         xval = self.x[self.spot_scale_xpos[i_shot]]
@@ -520,7 +524,30 @@ class StageTwoRefiner(BaseRefiner):
         pass
 
     def _update_eta(self):
-        pass
+
+        if self.S.umat_maker is not None:
+            eta_vals = self._get_eta(self._i_shot)
+
+            if not self.D.has_anisotropic_mosaic_spread:
+                assert self.S.Umats_method == 2
+                assert len(set(eta_vals))==1
+                eta_vals = eta_vals[0]
+
+            LOGGER.info("eta=%f" % eta_vals)
+            self.S.update_umats_for_refinement(eta_vals)
+
+    def _symmetrize_Flatt(self):
+        if self.params.symmetrize_Flatt:
+            # NOTE: RotXYZ refinement disabled for this script, so offsets always 0,0,0
+            RXYZU = hopper_io.diffBragg_Umat(0,0,0,self.D.Umatrix)
+            Cryst = deepcopy(self.S.crystal.dxtbx_crystal)
+            B_realspace = self.get_refined_Bmatrix(self._i_shot, recip=False)
+            A = RXYZU * B_realspace
+            A_recip = A.inverse().transpose()
+            Cryst.set_A(A_recip)
+            symbol = self.S.crystal.space_group_info.type().lookup_symbol()
+            self.D.set_mosaic_blocks_sym(Cryst, symbol , self.params.simulator.crystal.num_mosaicity_samples,
+                                        refining_eta=False) # NOTE:no eta refinement in this stage 2 script (possible in ens.hopper)
 
     def _set_background_plane(self):
         self.tilt_plane = self.Modelers[self._i_shot].all_background[self.roi_sel]
@@ -698,6 +725,7 @@ class StageTwoRefiner(BaseRefiner):
             self._update_ncells_def()
             self._update_rotXYZ()
             self._update_eta()  # mosaic spread
+            self._symmetrize_Flatt()
             self._update_dxtbx_detector()
             self._update_sausages()
 
@@ -1089,8 +1117,11 @@ class StageTwoRefiner(BaseRefiner):
         self.log_v = np.log(v)
         self.log_v[v <= 0] = 0  # but will I ever negative_model ?
 
-    def get_refined_Bmatrix(self, i_shot):
-        return self.Modelers[i_shot].PAR.ucell_man.B_recipspace
+    def get_refined_Bmatrix(self, i_shot, recip=False):
+        if recip:
+            return self.Modelers[i_shot].PAR.ucell_man.B_recipspace
+        else:
+            return self.Modelers[i_shot].PAR.ucell_man.B_realspace
 
     def curvatures(self):
         return self.curv

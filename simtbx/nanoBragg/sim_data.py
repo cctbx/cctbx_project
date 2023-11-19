@@ -472,8 +472,12 @@ class SimData:
     if self.crystal.anisotropic_mos_spread_deg is not None:
       if tuple(self.crystal.anisotropic_mos_spread_deg) == (0,0,0) and self.crystal.n_mos_domains != 1:
         raise ValueError("If more than 1 mosaic domain are passed, must set a positive value for anisotropic_mos_spread")
-      self.D.has_anisotropic_mosaic_spread = True
-      mosaicity = self.crystal.anisotropic_mos_spread_deg
+      if len(set(self.crystal.anisotropic_mos_spread_deg))==1:
+        self.D.has_anisotropic_mosaic_spread = False
+        mosaicity = self.crystal.anisotropic_mos_spread_deg[0]
+      else:
+        self.D.has_anisotropic_mosaic_spread = True
+        mosaicity = self.crystal.anisotropic_mos_spread_deg
     else:
       self.D.has_anisotropic_mosaic_spread = False
       mosaicity = self.crystal.mos_spread_deg

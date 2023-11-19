@@ -272,9 +272,14 @@ class Script:
             MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_shot+1, len(input_lines)))
             try:
                 x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
-                for i_rep in range(self.params.repeat.number_of_repeats):
-                    Modeler.filter_pixels(self.params.repeat.filter.threshold)
-                    x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+                for i_rep in range(self.params.filter_after_refinement.max_attempts):
+                    final_sigz = Modeler.target.all_sigZ[-1]
+                    niter = len(Modeler.target.all_sigZ)
+                    too_few_iter = niter < self.params.filter_after_refinement.min_prev_niter
+                    too_high_sigz = final_sigz > self.params.filter_after_refinement.max_prev_sigz
+                    if too_few_iter or too_high_sigz:
+                        Modeler.filter_pixels(self.params.filter_after_refinement.threshold)
+                        x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
 
             except StopIteration:
                 x = Modeler.target.x0

@@ -10,27 +10,35 @@ hopper_phil = """
 filter_during_refinement {
   enable = False
     .type = bool
-    .help = if True, filtering will occur each N iterations
-  after_n = 20
+    .help = if True, filtering will occur each N iterations, controlled by parameter after_n
+  after_n = 50
     .type = int
     .help = refiner will pause and check for outliers every after_n iterations
-  threshold = 10
+  threshold = 20
     .type = float
-    .help = outliers are detected by looking at the distribution of per-pixel or per shoebox Z-scores
+    .help = outliers are detected by looking at the distribution of per shoebox sigmaZ
     .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
 }
 
-repeat {
-  number_of_repeats = 0
+filter_after_refinement {
+  enable = False
+    .type = bool
+    .help = if True, filter, then rerun refinement if certain conditions are met (e.g. too few refinement iterations)
+  max_attempts = 2
     .type = int
     .help = how many additional times to run hopper
-  filter { # TODO add a filter pixels vs shoeboxes choice
-    threshold = 10
-      .type = float
-      .help = outliers are detected by looking at the distribution of per-pixel or per shoebox Z-scores
-      .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
-  }
+  min_prev_niter = 50
+    .type = int
+    .help = only repeat if the previous refinement was fewer than this many iterations
+  max_prev_sigz = 10
+    .type = float
+    .help = only repeat if the previous refinement had sigma Z more than this
+  threshold = 20
+    .type = float
+    .help = outliers are detected by looking at the distribution of per shoebox sigmaZ
+    .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
 }
+
 symmetrize_Flatt = False
   .type = bool
   .help = If True, add 3-fold symmetric mosaic blocks to the calculation of F_latt

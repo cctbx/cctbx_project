@@ -189,7 +189,8 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         opt_det=params.opt_det, stg1_refls=stg1_refls,
         stg1_img_path=stg1_img_path,
         ncells_init=Nabc_init, spot_scales_init=scale_init,
-        other_Umats = other_Umats, other_spotscales = other_spotscales)
+        other_Umats = other_Umats, other_spotscales = other_spotscales,
+        num_mosaicity_samples=params.simulator.crystal.num_mosaicity_samples)
 
     df['exp_idx'] = exp_idx
 
@@ -212,7 +213,7 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
                        spec_file, spec_stride,flux, beamsize_mm,
                        orig_exp_name, opt_exp_name, spec_from_imageset, oversample,
                        opt_det, stg1_refls, stg1_img_path, ncells_init=None, spot_scales_init = None,
-                       other_Umats=None, other_spotscales=None):
+                       other_Umats=None, other_spotscales=None, num_mosaicity_samples=None):
     """
 
     :param xtal_scale:
@@ -241,6 +242,7 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
     :param opt_det:
     :param stg1_refls:
     :param stg1_img_path:
+    :num_mosaicity_samples:
     :return:
     """
     if other_Umats is None:
@@ -282,6 +284,8 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
         df["other_spotscales"] = [tuple(other_spotscales)]
     if other_Umats:
         df["other_Umats"] = [tuple(map(tuple, other_Umats))]
+    if num_mosaicity_samples is not None:
+        df['num_mosaicity_samples'] = num_mosaicity_samples
 
     df["total_flux"] = flux
     df["beamsize_mm"] = beamsize_mm
