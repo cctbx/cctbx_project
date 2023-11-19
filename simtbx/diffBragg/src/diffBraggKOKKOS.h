@@ -131,7 +131,6 @@ class diffBraggKOKKOS {
     CUDAREAL_VIEW(m_Fhkl_scale);  // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
     CUDAREAL_VIEW(m_Fhkl_scale_deriv); // length is (number of ASUin FhklLinear) *times* (number of Fhkl channels)
 
-    void prepare_refinement_flags(flags& db_flags, bool update_flags=false);
 
    public:
     void diffBragg_sum_over_steps_kokkos(

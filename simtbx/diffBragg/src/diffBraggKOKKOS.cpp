@@ -11,45 +11,36 @@
         function<false>(__VA_ARGS__); \
     }                                 \
 
-void diffBraggKOKKOS::prepare_refinement_flags(flags& db_flags, bool update_flags) {
-    m_refine_flag = 0;
-    m_refine_flag |= db_flags.refine_diffuse * REFINE_DIFFUSE;
-    m_refine_flag |= db_flags.refine_fcell * REFINE_FCELL;
-    m_refine_flag |= db_flags.refine_eta * REFINE_ETA;
-    m_refine_flag |= db_flags.refine_Umat[0] * REFINE_UMAT1;
-    m_refine_flag |= db_flags.refine_Umat[1] * REFINE_UMAT2;
-    m_refine_flag |= db_flags.refine_Umat[2] * REFINE_UMAT3;
-    m_refine_flag |= db_flags.refine_Ncells_def * REFINE_NCELLS_DEF;
-    m_refine_flag |= db_flags.refine_Ncells[0] * REFINE_NCELLS1;
-    m_refine_flag |= db_flags.refine_Ncells[1] * REFINE_NCELLS2;
-    m_refine_flag |= db_flags.refine_Ncells[2] * REFINE_NCELLS3;
-    m_refine_flag |= db_flags.refine_panel_rot[0] * REFINE_PANEL_ROT1;
-    m_refine_flag |= db_flags.refine_panel_rot[1] * REFINE_PANEL_ROT2;
-    m_refine_flag |= db_flags.refine_panel_rot[2] * REFINE_PANEL_ROT3;
-    m_refine_flag |= db_flags.refine_panel_origin[0] * REFINE_PANEL_ORIGIN1;
-    m_refine_flag |= db_flags.refine_panel_origin[1] * REFINE_PANEL_ORIGIN2;
-    m_refine_flag |= db_flags.refine_panel_origin[2] * REFINE_PANEL_ORIGIN3;
-    m_refine_flag |= db_flags.refine_lambda[0] * REFINE_LAMBDA1;
-    m_refine_flag |= db_flags.refine_lambda[1] * REFINE_LAMBDA2;
-    m_refine_flag |= db_flags.refine_Bmat[0] * REFINE_BMAT1;
-    m_refine_flag |= db_flags.refine_Bmat[1] * REFINE_BMAT2;
-    m_refine_flag |= db_flags.refine_Bmat[2] * REFINE_BMAT3;
-    m_refine_flag |= db_flags.refine_Bmat[3] * REFINE_BMAT4;
-    m_refine_flag |= db_flags.refine_Bmat[4] * REFINE_BMAT5;
-    m_refine_flag |= db_flags.refine_Bmat[5] * REFINE_BMAT6;
-    m_refine_flag |= db_flags.refine_fp_fdp * REFINE_FP_FDP;
-    m_refine_flag |= db_flags.refine_Icell * REFINE_ICELL;
+uint32_t combine_refinement_flags(flags& db_flags) {
+    uint32_t refine_flag = 0;
+    refine_flag |= db_flags.refine_diffuse * REFINE_DIFFUSE;
+    refine_flag |= db_flags.refine_fcell * REFINE_FCELL;
+    refine_flag |= db_flags.refine_eta * REFINE_ETA;
+    refine_flag |= db_flags.refine_Umat[0] * REFINE_UMAT1;
+    refine_flag |= db_flags.refine_Umat[1] * REFINE_UMAT2;
+    refine_flag |= db_flags.refine_Umat[2] * REFINE_UMAT3;
+    refine_flag |= db_flags.refine_Ncells_def * REFINE_NCELLS_DEF;
+    refine_flag |= db_flags.refine_Ncells[0] * REFINE_NCELLS1;
+    refine_flag |= db_flags.refine_Ncells[1] * REFINE_NCELLS2;
+    refine_flag |= db_flags.refine_Ncells[2] * REFINE_NCELLS3;
+    refine_flag |= db_flags.refine_panel_rot[0] * REFINE_PANEL_ROT1;
+    refine_flag |= db_flags.refine_panel_rot[1] * REFINE_PANEL_ROT2;
+    refine_flag |= db_flags.refine_panel_rot[2] * REFINE_PANEL_ROT3;
+    refine_flag |= db_flags.refine_panel_origin[0] * REFINE_PANEL_ORIGIN1;
+    refine_flag |= db_flags.refine_panel_origin[1] * REFINE_PANEL_ORIGIN2;
+    refine_flag |= db_flags.refine_panel_origin[2] * REFINE_PANEL_ORIGIN3;
+    refine_flag |= db_flags.refine_lambda[0] * REFINE_LAMBDA1;
+    refine_flag |= db_flags.refine_lambda[1] * REFINE_LAMBDA2;
+    refine_flag |= db_flags.refine_Bmat[0] * REFINE_BMAT1;
+    refine_flag |= db_flags.refine_Bmat[1] * REFINE_BMAT2;
+    refine_flag |= db_flags.refine_Bmat[2] * REFINE_BMAT3;
+    refine_flag |= db_flags.refine_Bmat[3] * REFINE_BMAT4;
+    refine_flag |= db_flags.refine_Bmat[4] * REFINE_BMAT5;
+    refine_flag |= db_flags.refine_Bmat[5] * REFINE_BMAT6;
+    refine_flag |= db_flags.refine_fp_fdp * REFINE_FP_FDP;
+    refine_flag |= db_flags.refine_Icell * REFINE_ICELL;
 
-    if (update_flags) {
-        kokkostbx::transfer_vector2kokkos(m_refine_Umat, db_flags.refine_Umat);
-        kokkostbx::transfer_vector2kokkos(m_refine_Ncells, db_flags.refine_Ncells);
-        kokkostbx::transfer_vector2kokkos(m_refine_panel_origin, db_flags.refine_panel_origin);
-        kokkostbx::transfer_vector2kokkos(m_refine_panel_rot, db_flags.refine_panel_rot);
-        kokkostbx::transfer_vector2kokkos(m_refine_lambda, db_flags.refine_lambda);
-        kokkostbx::transfer_vector2kokkos(m_refine_Bmat, db_flags.refine_Bmat);
-        if (db_flags.verbose > 1)
-            printf("H2D Done copying refinement flags\n");
-    }
+    return refine_flag;
 }
 
 void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
@@ -248,8 +239,12 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         }
 
         resize(m_panels_fasts_slows, db_cu_flags.Npix_to_allocate * 3);
-        resize(m_manager_dI, db_cu_flags.Npix_to_allocate);
-        resize(m_manager_dI2, db_cu_flags.Npix_to_allocate);
+
+        m_refine_flag = combine_refinement_flags(db_flags);
+        if (m_refine_flag) {
+            resize(m_manager_dI, db_cu_flags.Npix_to_allocate);
+            resize(m_manager_dI2, db_cu_flags.Npix_to_allocate);
+        }
 
         m_npix_allocated = db_cu_flags.Npix_to_allocate;
         Kokkos::Tools::popRegion();
@@ -406,13 +401,22 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
     easy_time(TIMERS.copy_nomhkl, t, TIMERS.recording);
 
-    //  BEGIN REFINEMENT FLAGS
+    //  BEGIN UPDATE REFINEMENT
     gettimeofday(&t, 0);
-    Kokkos::Tools::pushRegion("BEGIN REFINMENT FLAGS");
-    prepare_refinement_flags(db_flags, db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY);
+    Kokkos::Tools::pushRegion("BEGIN UPDATE REFINMENT");
+    if (db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY) {
+        kokkostbx::transfer_vector2kokkos(m_refine_Umat, db_flags.refine_Umat);
+        kokkostbx::transfer_vector2kokkos(m_refine_Ncells, db_flags.refine_Ncells);
+        kokkostbx::transfer_vector2kokkos(m_refine_panel_origin, db_flags.refine_panel_origin);
+        kokkostbx::transfer_vector2kokkos(m_refine_panel_rot, db_flags.refine_panel_rot);
+        kokkostbx::transfer_vector2kokkos(m_refine_lambda, db_flags.refine_lambda);
+        kokkostbx::transfer_vector2kokkos(m_refine_Bmat, db_flags.refine_Bmat);
+        if (db_flags.verbose > 1)
+            printf("H2D Done copying refinement flags\n");
+    }
     Kokkos::Tools::popRegion();
     easy_time(TIMERS.copy_flags, t, TIMERS.recording);
-    //  END REFINEMENT FLAGS
+    //  END UPDATE REFINEMENT
 
     //  BEGIN Fhkl
     gettimeofday(&t, 0);

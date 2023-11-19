@@ -289,9 +289,7 @@ void kokkos_sum_over_steps(
         double _I = 0;
         double Ilambda = 0;
 
-        // reset derivative photon counts for the various parameters
-        auto& dI = manager_dI(pixIdx);
-        auto& dI2 = manager_dI2(pixIdx);
+        kokkos_manager dI, dI2;
         dI.reset();
         dI2.reset();
 
@@ -927,6 +925,11 @@ void kokkos_sum_over_steps(
         floatimage(pixIdx) = _I;
         if (save_wavelenimage)
             wavelenimage(pixIdx) = Ilambda / _I;
+
+        if (refine_flag) {
+            manager_dI(pixIdx) = dI;
+            manager_dI2(pixIdx) = dI2;
+        }
     }); // end pixIdx loop
 
     if (Fhkl_gradient_mode)
@@ -1449,12 +1452,10 @@ void kokkos_sum_over_steps(
         double _I = 0;
         double Ilambda = 0;
 
-        // reset derivative photon counts for the various parameters
-        auto& dI = manager_dI(pixIdx);
-        auto& dI2 = manager_dI2(pixIdx);
+        kokkos_manager dI, dI2;
         dI.reset();
         dI2.reset();
-
+        
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
                 // absolute mm position on detector (relative to its origin)
@@ -2087,6 +2088,11 @@ void kokkos_sum_over_steps(
         floatimage(pixIdx) = _I;
         if (save_wavelenimage)
             wavelenimage(pixIdx) = Ilambda / _I;
+
+        if (refine_flag) {
+            manager_dI(pixIdx) = dI;
+            manager_dI2(pixIdx) = dI2;
+        }
     }); // end pixIdx loop
 
     if (Fhkl_gradient_mode)
