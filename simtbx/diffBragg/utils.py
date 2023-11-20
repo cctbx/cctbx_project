@@ -780,6 +780,9 @@ def simulator_for_refinement(expt, params):
     else:
         MAIN_LOGGER.info("Will not use mosaic models, as simulator.crystal.num_mosaicity_samples=1")
 
+    if not params.fix.eta_abc:
+        assert SIM.D.mosaic_domains > 1
+
     if not params.fix.diffuse_gamma or not params.fix.diffuse_sigma:
         assert params.use_diffuse_models
     SIM.D.use_diffuse = params.use_diffuse_models
