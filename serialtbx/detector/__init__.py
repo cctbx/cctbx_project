@@ -63,6 +63,33 @@ class basis(object):
                                      h[11]))
       assert h[12] == h[13] == h[14] == 0 and h[15] == 1
 
+  def as_homogenous_transformation(self):
+    """ Returns this basis change as a 4x4 transformation matrix in homogenous coordinates"""
+    r3 = self.orientation.normalize().unit_quaternion_as_r3_rotation_matrix()
+    return matrix.sqr((r3[0],r3[1],r3[2],self.translation[0],
+                       r3[3],r3[4],r3[5],self.translation[1],
+                       r3[6],r3[7],r3[8],self.translation[2],
+                       0,0,0,1))
+
+  def __mul__(self, other):
+    """ Use homogenous matrices to multiply bases together """
+    if hasattr(other, 'as_homogenous_transformation'):
+      return basis(homogenous_transformation = self.as_homogenous_transformation() * other.as_homogenous_transformation())
+    elif hasattr(other, 'n'):
+      if other.n == (3,1):
+        b = matrix.col((other[0], other[1], other[2], 1))
+      elif other.n == (4,1):
+        b = other
+      else:
+        raise TypeError(b, "Incompatible matrices")
+      p = self.as_homogenous_transformation() * b
+      if other.n == (3,1):
+        return matrix.col(p[0:3])
+      else:
+        return p
+    else:
+      raise TypeError(b)
+
 def iterate_detector_at_level(item, depth = 0, level = 0):
   """
   Iterate through all panel groups or panels of a detector object at a given
