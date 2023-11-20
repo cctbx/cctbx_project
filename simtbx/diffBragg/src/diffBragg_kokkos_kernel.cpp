@@ -1455,7 +1455,7 @@ void kokkos_sum_over_steps(
         kokkos_manager dI, dI2;
         dI.reset();
         dI2.reset();
-        
+
         for (int _subS = 0; _subS < oversample; ++_subS) {
             for (int _subF = 0; _subF < oversample; ++_subF) {
                 // absolute mm position on detector (relative to its origin)

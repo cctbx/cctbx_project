@@ -54,7 +54,7 @@ centers {{
 }}
 betas {{
   Nvol = 1e-2
-  ucell_a = 1e-7 
+  ucell_a = 1e-7
   ucell_b = 1e-7
   ucell_c = 1e-7
   ucell_alpha = 1e-7

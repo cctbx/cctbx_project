@@ -18,7 +18,7 @@ F = F.as_amplitude_array()
 if not F.is_xray_amplitude_array():
     F = F.set_observation_type_xray_amplitude()
 
-print("Bin-ID    Res-range    Completeness    #ASU-indices") 
+print("Bin-ID    Res-range    Completeness    #ASU-indices")
 F.show_completeness()
 d_max,d_min = F.resolution_range()
 print("d_min, d_max (Angstrom): ", d_min, d_max)
@@ -37,7 +37,7 @@ for h in mset_full.indices():
     else:
         amp = Fmap[h]
     data.append(amp)
-    
+
 complete_amps = flex.double(data)
 complete_inds = mset_full.indices()
 ma = miller.array(mset_full, complete_amps)
