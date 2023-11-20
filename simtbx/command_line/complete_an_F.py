@@ -1,4 +1,5 @@
 
+from __future__ import division
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("mtzin", help="input mtz file", type=str)
