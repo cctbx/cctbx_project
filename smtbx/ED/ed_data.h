@@ -482,7 +482,7 @@ namespace smtbx { namespace ED
     FloatType getIntStep() const { return values[8]; }
     size_t getIntPoints() const { return static_cast<size_t>(values[9]); }
     bool isAngleInt() const { return values[10] == 1; }
-    FloatType useNBeamSg() const { return values[11] == 1; }
+    bool useNBeamSg() const { return values[11] == 1; }
     // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight) 
     FloatType getNBeamWght() const { return values[12]; }
     bool isNBeamFloating() const { return values[13] != 0; }
