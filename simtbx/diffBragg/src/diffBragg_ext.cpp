@@ -23,6 +23,15 @@ namespace boost_python { namespace {
       return indices;
   }
 
+  static void set_beams(simtbx::nanoBragg::diffBragg& diffBragg, scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
+      if(nanoBragg.verbose>3) printf(" about to initialize sources\n");
+      diffBragg.pythony_beams = value;
+      if(nanoBragg.verbose>3) printf(" done\n");
+      diffBragg.db_cu_flags.update_sources=true;
+      /* re-initialize source table from pythony array */
+      diffBragg.init_sources();
+  }
+
   void set_dspace_bins(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::list bins){
     diffBragg.db_cryst.dspace_bins.clear();
     for (int i=0; i< boost::python::len(bins); i++ ){
@@ -155,7 +164,7 @@ namespace boost_python { namespace {
     values = boost::python::make_tuple(0,0);
     return values;
   }
-  //TODO override the set_sources function (or xray_beams) property in nanoBragg in order
+  //TODO override the set_sources function (or xray_beams) property in nanoBragg
   // to set the fpfdp accordingly (if Fhkl2 is set)
   static void set_atom_data(simtbx::nanoBragg::diffBragg & diffBragg,
             boost::python::tuple const& atom_XYZBO){
@@ -890,6 +899,11 @@ namespace boost_python { namespace {
       .def("get_mosaic_blocks_prime",
            &simtbx::nanoBragg::diffBragg::get_mosaic_blocks_prime,
            "return the deriv of the matrices U that define the mosaic block distribution w.r.t eta")
+
+      .add_property("xray_beams",
+                    make_function(&simtbx::nanoBragg::boost_python::get_beams,rbv()),
+                    make_function(&set_beams,dcp()),
+                    "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
 
     ; // end of diffBragg extention
 

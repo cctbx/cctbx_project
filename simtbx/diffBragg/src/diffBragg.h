@@ -322,7 +322,6 @@ class diffBragg: public nanoBragg{
   bool update_rotmats_on_device=false;
   bool update_umats_on_device=false;
   bool update_panels_fasts_slows_on_device=false;
-  bool update_sources_on_device=false;
   bool update_Fhkl_on_device=false;
   bool update_refine_flags_on_device=false;
   bool update_step_positions_on_device=false;

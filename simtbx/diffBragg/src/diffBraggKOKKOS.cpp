@@ -288,7 +288,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BEGIN sources
     Kokkos::Tools::pushRegion("BEGIN sources");
     gettimeofday(&t, 0);
-    if (db_cu_flags.update_sources || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_sources || ALLOC) {
         int source_count = local_beam.number_of_sources;
         kokkostbx::transfer_double2kokkos(m_source_X, local_beam.source_X, source_count);
         kokkostbx::transfer_double2kokkos(m_source_Y, local_beam.source_Y, source_count);
@@ -309,6 +309,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         Kokkos::fence();
         if (db_flags.verbose > 1)
             printf("H2D sources\n");
+        db_cu_flags.update_sources = false;
     }
     easy_time(TIMERS.copy_sources, t, TIMERS.recording); //, db_flags.verbose > 1);
 

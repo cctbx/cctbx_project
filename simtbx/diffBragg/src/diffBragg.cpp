@@ -2058,7 +2058,6 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.device_Id = device_Id;
         db_cu_flags.update_step_positions = update_step_positions_on_device;
         db_cu_flags.update_panels_fasts_slows = update_panels_fasts_slows_on_device;
-        db_cu_flags.update_sources = update_sources_on_device;
         db_cu_flags.update_umats = update_umats_on_device;
         db_cu_flags.update_dB_mats = update_dB_matrices_on_device;
         db_cu_flags.update_rotmats = update_rotmats_on_device;
