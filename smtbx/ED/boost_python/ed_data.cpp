@@ -68,6 +68,7 @@ namespace boost_python {
         .def("get_angles", &wt::get_angles)
         .def("get_angles_Sg", &wt::get_angles_Sg)
         .staticmethod("get_angles")
+        .def("PL_correctionROD", &wt::PL_correctionROD)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
