@@ -24,13 +24,41 @@ namespace boost_python { namespace {
   }
 
   static void set_beams(simtbx::nanoBragg::diffBragg& diffBragg, scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
-      if(nanoBragg.verbose>3) printf(" about to initialize sources\n");
+      if(diffBragg.verbose>3) printf(" about to initialize sources\n");
       diffBragg.pythony_beams = value;
-      if(nanoBragg.verbose>3) printf(" done\n");
+      if(diffBragg.verbose>3) printf(" done\n");
       diffBragg.db_cu_flags.update_sources=true;
       /* re-initialize source table from pythony array */
       diffBragg.init_sources();
   }
+  // TODO: point to the get_beams defined in simtbx/nanoBragg/nanoBragg_ext.cpp if possible..
+  ///* table of sources, as dxtbx "beam"s */
+  static scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > get_beams(simtbx::nanoBragg::diffBragg& diffBragg) {
+      int i;
+      /* allocate new flex array */
+//      scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > diffBragg_pythony_beams;
+      diffBragg.pythony_beams = scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> >();
+      /* make sure it is big enough to hold all sources */
+      diffBragg.pythony_beams.resize(diffBragg.sources);
+
+      /* polarization normal seems to be B vector */
+      scitbx::vec3 Evector = scitbx::vec3(diffBragg.polar_vector[1],diffBragg.polar_vector[2],diffBragg.polar_vector[3]);
+      scitbx::vec3 Pvector = scitbx::vec3(diffBragg.beam_vector[1],diffBragg.beam_vector[2],diffBragg.beam_vector[3]);
+      scitbx::vec3 Bvector = Pvector.cross(Evector).normalize();
+
+      /* copy internal storage into the flex array */
+      for(i=0;i<diffBragg.sources;++i){
+          diffBragg.pythony_beams[i].set_direction(scitbx::vec3(diffBragg.source_X[i],diffBragg.source_Y[i],diffBragg.source_Z[i]));
+          diffBragg.pythony_beams[i].set_wavelength(diffBragg.source_lambda[i]*1e10);
+          diffBragg.pythony_beams[i].set_flux(diffBragg.source_I[i]);
+          // how is this a fraction when it can be negative? (Kahn et al. 1982)
+          diffBragg.pythony_beams[i].set_polarization_fraction(diffBragg.polarization);
+          diffBragg.pythony_beams[i].set_polarization_normal(Bvector);
+      }
+      /* pass this back to python */
+      return diffBragg.pythony_beams;
+  }
+
 
   void set_dspace_bins(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::list bins){
     diffBragg.db_cryst.dspace_bins.clear();
@@ -427,6 +455,7 @@ namespace boost_python { namespace {
 
   static void  set_Fhkl_tuple(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
       //TODO nanoBragg set as well ?
+      diffBragg.db_cu_flags.update_Fhkl=true;
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
       diffBragg.init_Fhkl();
@@ -441,7 +470,7 @@ namespace boost_python { namespace {
       diffBragg.linearize_Fhkl(true);
   }
 
-  static boost::python::tuple get_Fhkl_tuple(simtbx::nanoBragg::diffBragg diffBragg) {
+  static boost::python::tuple get_Fhkl_tuple(nanoBragg::diffBragg diffBragg) {
       int h,k,l;
       double temp;
       int hkls = diffBragg.h_range*diffBragg.k_range*diffBragg.l_range;
@@ -901,7 +930,7 @@ namespace boost_python { namespace {
            "return the deriv of the matrices U that define the mosaic block distribution w.r.t eta")
 
       .add_property("xray_beams",
-                    make_function(&simtbx::nanoBragg::boost_python::get_beams,rbv()),
+                    make_function(&get_beams,rbv()),
                     make_function(&set_beams,dcp()),
                     "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
 

@@ -681,7 +681,7 @@ def fit_plane_equation_to_background_pixels(shoebox_img, fit_sel, sigma_rdout=3,
     # vector of residuals
     r = rho_bg - np.dot(A, (t1, t2, t3))
     Nbg = len(rho_bg)
-    with np.errstate(divide='ignore'):
+    with np.errstate(divide='ignore', invalid='ignore'):
         r_fact = np.dot(r.T, np.dot(W, r)) / (Nbg - 3)  # 3 parameters fit
     var_covar = AWA_inv * r_fact  # TODO: check for correlations in the off diagonal elems
 

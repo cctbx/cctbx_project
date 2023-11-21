@@ -537,6 +537,7 @@ void diffBragg::update_dxtbx_geoms(
     double panel_rot_angS, double panel_offsetX, double panel_offsetY, double panel_offsetZ,
     bool force){
 
+    db_cu_flags.update_detector = true;
     int old_verbose = verbose;
     verbose = 0;
 
@@ -714,12 +715,18 @@ void diffBragg::update_dxtbx_geoms(
     SCITBX_ASSERT(close_distance > 0);
     verbose = old_verbose;
     set_close_distances();
+    db_cu_flags.update_panel_deriv_vecs=true;
+    db_cu_flags.update_detector=true;
     }
 
 void diffBragg::shift_originZ(const dxtbx::model::Detector& detector, double shiftZ){
-    for (int pid=0; pid< detector.size(); pid++)
-        db_det.pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
-    set_close_distances();
+    if (shiftZ != prev_shiftZ){
+        for (int pid=0; pid< detector.size(); pid++)
+            db_det.pix0_vectors[pid*3 + 2] = detector[pid].get_origin()[2]/1000.0 + shiftZ;
+        set_close_distances();
+        db_cu_flags.update_detector=true;
+        prev_shiftZ = shiftZ;
+    }
 }
 
 void diffBragg::init_raw_pixels_roi(){
@@ -749,7 +756,7 @@ void diffBragg::initialize_managers(){
         pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1+i_pan_orig]);
         if (pan_orig->refine_me){
             pan_orig->initialize(Npix_total, compute_curvatures);
-            update_detector_on_device=true;
+            db_cu_flags.update_detector=true;
         }
     }
 
@@ -757,7 +764,8 @@ void diffBragg::initialize_managers(){
         fcell_managers[0]->initialize(Npix_total, compute_curvatures);
         //fcell_managers[1]->initialize(Npix_total, compute_curvatures);
         //fcell_managers[2]->initialize(Npix_total, compute_curvatures);
-        update_Fhkl_on_device = true;
+        db_cu_flags.update_Fhkl = true;
+        db_cu_flags.update_Fhkl_scales = true;
         }
 
     for (int i_eta=0; i_eta<3; i_eta++){
@@ -785,7 +793,7 @@ void diffBragg::initialize_managers(){
         pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[manager_idx]);
         if (pan_rot->refine_me){
             update_panel_deriv_vecs_on_device=true;
-            update_detector_on_device=true;
+            db_cu_flags.update_detector=true;
             pan_rot->initialize(Npix_total, compute_curvatures);
         }
     }
@@ -1014,12 +1022,13 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[1]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device=true;
+        db_cu_flags.update_detector=true;
     }
     else if(refine_id==11){
         fcell_managers[0]->refine_me=true;
         fcell_managers[0]->initialize(Npix_total, compute_curvatures);
-        update_Fhkl_on_device = true;
+        db_cu_flags.update_Fhkl = true;
+        db_cu_flags.update_Fhkl_scales = true;
     }
 
     else if (refine_id==12 || refine_id==13){
@@ -1034,7 +1043,7 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
 
@@ -1042,21 +1051,21 @@ void diffBragg::refine(int refine_id){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[2]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
     }
 
     else if (refine_id==16){
         boost::shared_ptr<panel_manager> pan_orig = boost::dynamic_pointer_cast<panel_manager>(panels[3]);
         pan_orig->refine_me=true;
         pan_orig->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
     }
     else if (refine_id==17){
         boost::shared_ptr<panel_manager> pan_rot = boost::dynamic_pointer_cast<panel_manager>(panels[4]);
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==18){
@@ -1064,7 +1073,7 @@ void diffBragg::refine(int refine_id){
         pan_rot->refine_me=true;
         rotate_fs_ss_vecs_3D(0,0,0);
         pan_rot->initialize(Npix_total, compute_curvatures);
-        update_detector_on_device = true;
+        db_cu_flags.update_detector = true;
         update_panel_deriv_vecs_on_device = true;
     }
     else if (refine_id==19){
@@ -1145,6 +1154,7 @@ void diffBragg::update_Fhkl_channels(np::ndarray& channels){
         if (verbose)
             printf("source=%d channel_id=%d\n", i, channel_id);
     }
+    db_cu_flags.update_Fhkl_channels=true;
 }
 
 boost::python::list diffBragg::get_Fhkl_channels(){
@@ -1212,6 +1222,7 @@ void diffBragg::quick_Fcell_update(boost::python::tuple const& value){
     }
     //update_linear_Fhkl();
     if(verbose) printf("done with quick update of Fhkl:\n");
+    db_cu_flags.update_Fhkl=true;
 }
 
 
@@ -1811,6 +1822,7 @@ void diffBragg::update_Fhkl_scale_factors(np::ndarray& scale_factors, int num_Fh
     bool init_scales=first_deriv_imgs.Fhkl_scale.empty();
     db_flags.Fhkl_have_scale_factors = true;
     db_cryst.num_Fhkl_channels=num_Fhkl_channels;
+    db_cu_flags.update_Fhkl_scales=true;
 
     double* scale_ptr = reinterpret_cast<double*>(scale_factors.get_data());
     for(int i_chan=0; i_chan< num_Fhkl_channels; i_chan++){
@@ -1857,41 +1869,55 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     int pan_rot_ids[3] = {0,4,5};
     int pan_orig_ids[3] = {1,2,3};
 
-    db_flags.refine_panel_rot.resize(3, false);
-    db_flags.refine_panel_origin.resize(3,false);
-    db_flags.refine_lambda.resize(2,false);
-    db_flags.refine_Bmat.resize(6,false);
-    db_flags.refine_Umat.resize(3,false);
-    db_flags.refine_Ncells.resize(3,false);
+    if (db_flags.refine_panel_rot.empty()){ // if one is empty, they're all empty
+        db_flags.refine_panel_rot.resize(3, false);
+        db_flags.refine_panel_origin.resize(3,false);
+        db_flags.refine_lambda.resize(2,false);
+        db_flags.refine_Bmat.resize(6,false);
+        db_flags.refine_Umat.resize(3,false);
+        db_flags.refine_Ncells.resize(3,false);
+        db_cu_flags.update_refine_flags=true;
+    }
 
     for(int i_pan=0;i_pan < 3; i_pan++){
         int i_pan_rot = pan_rot_ids[i_pan];
         int i_pan_orig = pan_orig_ids[i_pan];
-        if (panels[i_pan_rot]->refine_me)
-            db_flags.refine_panel_rot[i_pan] = true;
-        if (panels[i_pan_orig]-> refine_me)
-            db_flags.refine_panel_origin[i_pan] = true;
+        if (panels[i_pan_rot]->refine_me != db_flags.refine_panel_rot[i_pan]){
+            db_flags.refine_panel_rot[i_pan] = panels[i_pan_rot]->refine_me;
+            db_cu_flags.update_refine_flags=true;
+        }
+        if (panels[i_pan_orig]-> refine_me != db_flags.refine_panel_origin[i_pan_orig]){
+            db_flags.refine_panel_origin[i_pan] = panels[i_pan_orig]->refine_me;
+            db_cu_flags.update_refine_flags=true;
+        }
     }
     for (int i_uc = 0; i_uc < 6; i_uc++){
-        if (ucell_managers[i_uc]->refine_me)
-            db_flags.refine_Bmat[i_uc] = true;
+        if (ucell_managers[i_uc]->refine_me != db_flags.refine_Bmat[i_uc]){
+            db_flags.refine_Bmat[i_uc] = ucell_managers[i_uc]->refine_me;
+            db_cu_flags.update_refine_flags=true;
+        }
     }
 
     for (int i_rot =0; i_rot< 3; i_rot ++){
-        if (rot_managers[i_rot]->refine_me)
-            db_flags.refine_Umat[i_rot] = true;
+        if (rot_managers[i_rot]->refine_me != db_flags.refine_Umat[i_rot]){
+            db_flags.refine_Umat[i_rot] = rot_managers[i_rot]->refine_me;
+            db_cu_flags.update_refine_flags=true;
+        }
     }
 
     for (int i_lam=0; i_lam< 2; i_lam++){
-        if (lambda_managers[i_lam]->refine_me)
-            db_flags.refine_lambda[i_lam] = true;
+        if (lambda_managers[i_lam]->refine_me != db_flags.refine_lambda[i_lam]){
+            db_flags.refine_lambda[i_lam] = lambda_managers[i_lam]->refine_me;
+            db_cu_flags.update_refine_flags=true;
+        }
     }
 
-    if (Ncells_managers[0]->refine_me){
-        db_flags.refine_Ncells[0] = true;
-        if (! isotropic_ncells){
-            db_flags.refine_Ncells[1] = true;
-            db_flags.refine_Ncells[2] = true;
+    for (int i_nc=0; i_nc<3; i_nc++){
+        if (isotropic_ncells && i_nc >0)
+            continue;
+        if (Ncells_managers[i_nc]->refine_me != db_flags.refine_Ncells[i_nc]){
+            db_flags.refine_Ncells[i_nc] = Ncells_managers[i_nc]->refine_me;
+            db_cu_flags.update_refine_flags=true;
         }
     }
 
@@ -2061,9 +2087,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
         db_cu_flags.update_umats = update_umats_on_device;
         db_cu_flags.update_dB_mats = update_dB_matrices_on_device;
         db_cu_flags.update_rotmats = update_rotmats_on_device;
-        db_cu_flags.update_Fhkl = update_Fhkl_on_device;
-        db_cu_flags.update_detector = update_detector_on_device;
-        db_cu_flags.update_refine_flags = update_refine_flags_on_device;
+        //db_cu_flags.update_Fhkl = update_Fhkl_on_device;
         db_cu_flags.update_panel_deriv_vecs = update_panel_deriv_vecs_on_device;
         db_cu_flags.Npix_to_allocate = Npix_to_allocate;
 
@@ -2404,6 +2428,7 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
         printf("RANK%d TIMINGS: add_diffBragg_spots device alloc: %10.3f\n", MPI_RANK, TIMERS.cuda_alloc );
         printf("RANK%d TIMINGS: add_diffBragg_spots copy host-to-dev: %10.3f\n", MPI_RANK, TIMERS.cuda_copy_to_dev );
 
+        printf("RANK%d TIMINGS: host-to-dev Fhkl scales: %10.3f\n", MPI_RANK, TIMERS.copy_Fhkl_scale );
         printf("RANK%d TIMINGS: host-to-dev sources: %10.3f\n", MPI_RANK, TIMERS.copy_sources );
         printf("RANK%d TIMINGS: host-to-dev umats: %10.3f\n", MPI_RANK, TIMERS.copy_umats );
         printf("RANK%d TIMINGS: host-to-dev amats: %10.3f\n", MPI_RANK, TIMERS.copy_amats );

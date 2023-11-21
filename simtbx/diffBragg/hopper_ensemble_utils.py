@@ -83,6 +83,8 @@ class TargetFuncEnsemble:
             MAIN_LOGGER.info(min_info)
         if modelers.save_freq is not None and self.niter % modelers.save_freq == 0:
             modelers.save_up(self.x0, ref_iter=self.niter)
+            if modelers.SIM.D.record_timings:
+                modelers.SIM.D.show_timings()
 
         return f
 
@@ -106,12 +108,13 @@ def target_func(x, modelers):
     g_fhkl = np.zeros(num_fhkl_params)
     zscore_sigs = []
     fcell_params = x[-num_fhkl_params:]
-    for i_shot in modelers:
+    for ii, i_shot in enumerate(modelers):
         shot_modeler = modelers[i_shot]
         shot_x_slice = modelers.x_slices[i_shot]
         per_shot_params = x[shot_x_slice]
         x_for_shot = np.hstack((per_shot_params, fcell_params))
-        model_bragg, Jac = hopper_utils.model(x_for_shot, shot_modeler, modelers.SIM, compute_grad=True, update_spectrum=True)
+        model_bragg, Jac = hopper_utils.model(x_for_shot, shot_modeler, modelers.SIM, compute_grad=True, update_spectrum=True,
+                                              update_Fhkl_scales=ii==0)
 
         model_pix = model_bragg + shot_modeler.all_background
 

@@ -1460,7 +1460,8 @@ def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
     return model_pix, J
 
 
-def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_spectrum=False):
+def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_spectrum=False,
+          update_Fhkl_scales=True):
 
     if Mod.params.logging.parameters:
         val_s = ""
@@ -1484,7 +1485,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         if Mod.Fhkl_channel_ids is not None:
             SIM.D.update_Fhkl_channels(Mod.Fhkl_channel_ids)
 
-    if SIM.refining_Fhkl:  # once per iteration
+    if SIM.refining_Fhkl and update_Fhkl_scales:  # once per iteration
         nscales = SIM.Num_ASU*SIM.num_Fhkl_channels
         current_Fhkl_xvals = x[-nscales:]
         SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp( Mod.params.sigmas.Fhkl *(current_Fhkl_xvals-1))

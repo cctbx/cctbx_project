@@ -66,6 +66,8 @@ if __name__ == "__main__":
     if args.outdir is not None:
         params.outdir = args.outdir
     params.tag = args.saveTag
+    if params.record_device_timings and COMM.rank > 0:
+        params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
     # end of phil stuff ========
 
     write_commandline(params)

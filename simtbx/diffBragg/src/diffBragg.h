@@ -310,6 +310,7 @@ class diffBragg: public nanoBragg{
   double Nd, Ne, Nf;
   bool refine_Ncells_def;
   bool no_Nabc_scale;  // if true, then absorb the Nabc scale into an overall scale factor
+  double prev_shiftZ=0; // keep track of when detector Z was shifted  (helps determine when to set the update_detector flag for GPU devices
   Eigen::Matrix3d NABC;
 
   bool use_lambda_coefficients;

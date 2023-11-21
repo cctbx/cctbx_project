@@ -271,19 +271,21 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_vector2kokkos(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
     }
 
+    Kokkos::Tools::pushRegion("BEGIN Fhkl have scale factors");
+    gettimeofday(&t, 0);
     if (db_flags.Fhkl_have_scale_factors){
-        //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
-        kokkostbx::transfer_vector2kokkos(m_Fhkl_channels, db_beam.Fhkl_channels);
-        kokkostbx::transfer_vector2kokkos(m_Fhkl_scale, d_image.Fhkl_scale);
+        if (db_cu_flags.update_Fhkl_scales || ALLOC){
+            kokkostbx::transfer_vector2kokkos(m_Fhkl_scale, d_image.Fhkl_scale);
+            db_cu_flags.update_Fhkl_scales = false;
+        }
+        if (db_cu_flags.update_Fhkl_channels || ALLOC){
+            kokkostbx::transfer_vector2kokkos(m_Fhkl_channels, db_beam.Fhkl_channels);
+            db_cu_flags.update_Fhkl_channels = false;
+        }
         ::Kokkos::deep_copy(m_Fhkl_scale_deriv, 0);
-
-        // for (int i=0; i < d_image.Fhkl_scale.size(); i++){
-            // cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
-            // if (db_flags.Fhkl_gradient_mode){
-            //     cp.Fhkl_scale_deriv[i] = 0;
-            // }
-        // }
     }
+    Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_Fhkl_scale, t, TIMERS.recording); //, db_flags.verbose > 1);
 
     //  BEGIN sources
     Kokkos::Tools::pushRegion("BEGIN sources");
@@ -375,7 +377,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  DETECTOR VECTORS
     gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("DETECTOR VECTORS");
-    if (db_cu_flags.update_detector || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_detector || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_fdet_vectors, local_det.fdet_vectors);
         kokkostbx::transfer_vector2kokkos(m_sdet_vectors, local_det.sdet_vectors);
         kokkostbx::transfer_vector2kokkos(m_odet_vectors, local_det.odet_vectors);
@@ -383,6 +385,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_vector2kokkos(m_close_distances, local_det.close_distances);
         if (db_flags.verbose > 1)
             printf("H2D Done copying detector vectors\n");
+        db_cu_flags.update_detector = false;
     }
     Kokkos::Tools::popRegion();
     easy_time(TIMERS.copy_det, t, TIMERS.recording);
@@ -405,7 +408,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BEGIN UPDATE REFINEMENT
     gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN UPDATE REFINMENT");
-    if (db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_refine_flags || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_refine_Umat, db_flags.refine_Umat);
         kokkostbx::transfer_vector2kokkos(m_refine_Ncells, db_flags.refine_Ncells);
         kokkostbx::transfer_vector2kokkos(m_refine_panel_origin, db_flags.refine_panel_origin);
@@ -414,6 +417,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_vector2kokkos(m_refine_Bmat, db_flags.refine_Bmat);
         if (db_flags.verbose > 1)
             printf("H2D Done copying refinement flags\n");
+        db_cu_flags.update_refine_flags=false;
     }
     Kokkos::Tools::popRegion();
     easy_time(TIMERS.copy_flags, t, TIMERS.recording);
@@ -422,13 +426,14 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BEGIN Fhkl
     gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("Begin Fhkl");
-    if (db_cu_flags.update_Fhkl || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_Fhkl || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_Fhkl, db_cryst.FhklLinear);
         if (db_flags.complex_miller) {
             kokkostbx::transfer_vector2kokkos(m_Fhkl2, db_cryst.Fhkl2Linear);
         }
         if (db_flags.verbose > 1)
             printf("H2D Done copying step Fhkl\n");
+        db_cu_flags.update_Fhkl = false;
     }
     Kokkos::Tools::popRegion();
     easy_time(TIMERS.copy_fhkl, t, TIMERS.recording);
@@ -437,11 +442,12 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     //  BEGIN panel derivative vecs
     gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN panel derivative vecs");
-    if (db_cu_flags.update_panel_deriv_vecs || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_panel_deriv_vecs || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_dF_vecs, local_det.dF_vecs);
         kokkostbx::transfer_vector2kokkos(m_dS_vecs, local_det.dS_vecs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying step panel derivative vectors\n");
+        db_cu_flags.update_panel_deriv_vecs=false;
     }
     Kokkos::Tools::popRegion();
     easy_time(TIMERS.copy_detderiv, t, TIMERS.recording);

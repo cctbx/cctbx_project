@@ -38,6 +38,7 @@ struct timer_variables{
     double cuda_copy_from_dev=0; // times the copying back from device to host
     double cuda_kernel=0; // times the GPU kernel
     double copy_sources=0;
+    double copy_Fhkl_scale=0;
     double copy_umats=0;
     double copy_amats=0;
     double copy_bmats=0;
@@ -100,6 +101,8 @@ struct cuda_flags{
     bool update_dB_mats = false; // derivative of the orthogonalization matrix (for unit cell derivatives)
     bool update_rotmats = false; // rotation matrices (for Umat derivatives)
     bool update_Fhkl = false; // structure factors
+    bool update_Fhkl_scales = false; // structure factors
+    bool update_Fhkl_channels = false; // structure factors
     bool update_detector = false; // detector vectors (origin, slow-axis, fast-axis, orth-axis)
     bool update_refine_flags = false;  // refinement flags (in case one is iteratively freezing parameters)
     bool update_panel_deriv_vecs = false; // if one is refining the detector vectors)
