@@ -301,6 +301,21 @@ def test3():
     'nonbonded pdb=" O   PHEA-5   4 "',]:
     assert_lines_in_text(geo, l)
 
+def test4():
+  """
+  Test selections
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
+  h = inp.construct_hierarchy()
+  asc = h.atom_selection_cache()
+  s = asc.iselection("chain A")
+  assert list(s) == list(range(0,58)), list(s)
+  s = asc.iselection("chain A-2")
+  assert list(s) == list(range(58,116)), list(s)
+  s = asc.iselection("chain A-5")
+  assert list(s) == list(range(116,174)), list(s)
+
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
@@ -312,4 +327,5 @@ if (__name__ == "__main__"):
     print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None:
     test3()
+  test4()
   print("OK. Time: %8.3f"%(time.time()-t0))

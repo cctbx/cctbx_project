@@ -118,7 +118,20 @@ HETATM  11  C10  .  7ZTVU  A  302  ?   -7.64600   -6.96500   5.79600  1.000  22.
 HETATM  12  C2   .  7ZTVU  A  302  ?   -8.46200   -5.53400   9.26500  1.000  16.68000  C   ?  C  ?  .  1
     """)
 
+def test2():
+  """
+  Testing selections
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
+  h = inp.construct_hierarchy()
+  asc = h.atom_selection_cache()
+  s = asc.iselection("resname 7ZTVU")
+  assert list(s) == list(range(10,40)), list(s)
+  s = asc.iselection("resname 7ZTVU and name N1")
+  assert list(s) == [18,33], list(s)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
+  test2()
   print("OK. Time: %8.3f"%(time.time()-t0))
