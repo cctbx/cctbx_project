@@ -10,6 +10,28 @@ except ImportError:
   env.initialised = False
   try_to_initialise = False
 
+def find_dlls(lib_dirs):
+  files = []
+  for lib_dir in lib_dirs:
+    if not os.path.exists(lib_dir):
+      continue
+    files += [os.path.join(lib_dir, x)\
+      for x in os.listdir(lib_dir) if 'openblas' in x and (x.endswith('.dll') or '.so.')]
+  return files
+
+def find_old_layout_libs():
+  import numpy, scipy
+  dirs = [os.path.join(os.path.dirname(scipy.__file__), ".libs"),
+          os.path.join(os.path.dirname(numpy.__file__), ".libs")]
+  return find_dlls(dirs)
+
+def find_new_layout_libs():
+  import numpy, scipy
+  from pathlib import Path
+  dirs = [os.path.join(Path(os.path.dirname(scipy.__file__)).parent.absolute(), "scipy.libs"),
+          os.path.join(Path(os.path.dirname(numpy.__file__)).parent.absolute(), "numpy.libs")]
+  return find_dlls(dirs)
+
 if not env.initialised and try_to_initialise:
   if sys.platform[:3] == "win":
     lib_path = "openblas.dll"
@@ -23,26 +45,21 @@ if not env.initialised and try_to_initialise:
     else:
       print("Located OpenBlas but could not initialise")
   except Exception:
-    if sys.platform[:3] == "win":
-      import os
-      try:
-        import scipy
-        scipy_path = os.path.dirname(scipy.__file__)
-        lib_dirs = ["extra-dll", ".libs"]
-        files = None
-        for lib_dir in lib_dirs:
-          scipy_libs_path = os.path.join(scipy_path, lib_dir)
-          if not os.path.exists(scipy_libs_path):
-            continue
-          files = [os.path.join(x, scipy_libs_path)\
-            for x in os.listdir(scipy_libs_path) if 'openblas' in x and 'dll' in x]
+    import os
+    try:
+      files = find_new_layout_libs()
+      if not files:
+        files = find_old_layout_libs()
+      if not files:
+        print("Could not locate usable OpenBlas")
+      for lib_file in files:
+        try:
+          env.initialise(lib_file.encode("utf-8"))
+        except:
+          continue
+        if env.initialised:
+          print("Successfully initialised OpenBlas from %s:" %lib_file)
+          print(env.build_config)
           break
-        if files:
-          env.initialise(files[0].encode("utf-8"))
-          if env.initialised:
-            print("Successfully initialised SciPy OpenBlas:")
-            print(env.build_config)
-      except Exception as e:
-        print("Could not initialise OpenBlas: %s" %e)
-    else:
-      print("Could not initialise OpenBlas")
+    except Exception as e:
+      print("Could not initialise OpenBlas: %s" %e)
