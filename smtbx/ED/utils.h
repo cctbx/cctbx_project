@@ -378,6 +378,34 @@ namespace smtbx { namespace ED
         MaxSg, MaxG, precession_angle);
     }
 
+    // as in CAP
+    static FloatType PL_correctionROD(const cart_t &g) {
+      cart_t p_vec(0, 1, 0),
+        p_vec_normal(0, 0, 1),
+        S0(-1, 0, 0),
+        S = g + S0;
+      FloatType f1 = 0, s1 = 0.5, f2 = 0.5;
+
+      FloatType s_pn_sq = scitbx::fn::pow2(S * p_vec_normal);
+      FloatType s_s0_sq = scitbx::fn::pow2(S * S0);
+
+      FloatType p = 1./(f1 * s_pn_sq + s1 + f2 * s_s0_sq);
+      FloatType l = S * p_vec;
+
+      return l * p;
+    }
+
+    static FloatType PL_correctionROD_(const cart_t& g) {
+      cart_t S0(-1, 0, 0),
+        S = g + S0;
+      FloatType s_s0_sq = S[0] * S[0];
+
+      FloatType p = 1. / (0.5 + 0.5 * s_s0_sq);
+      FloatType l = S[1];
+
+      return l * p;
+    }
+
     struct ExcitedBeam {
       miller::index<> h;
       cart_t g;

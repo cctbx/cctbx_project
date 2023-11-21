@@ -114,6 +114,10 @@ namespace smtbx { namespace ED
       return Sg1 + k*(ang-alpha);
     }
 
+    FloatType PL_correctionROD(const miller::index<>& h) const {
+      return utils<FloatType>::PL_correctionROD(RMf * h);
+    }
+
     bool is_excited_index(const miller::index<> &h,
       const cart_t& K,
       FloatType MaxSg,
@@ -130,7 +134,8 @@ namespace smtbx { namespace ED
       size_t num, FloatType min_d,
       FloatType MaxSg, FloatType MaxG,
       uctbx::unit_cell const& unit_cell,
-      sgtbx::space_group const& space_group, bool force_frame_normal
+      sgtbx::space_group const& space_group,
+      sgtbx::space_group const& uniq_sg, bool force_frame_normal
     );
 
     void add_indices(const af::shared<miller::index<> >& indices);
@@ -142,8 +147,8 @@ namespace smtbx { namespace ED
     /* removes symmetry equivalents beams (and corresponding indices) and
     return the number of removed elements
     */
-    size_t unify(sgtbx::space_group const& space_group, bool anomalous,
-      bool exclude_sys_abs);
+    size_t unify(sgtbx::space_group const& space_group,
+      sgtbx::space_group const& uniq_sg, bool anomalous, bool exclude_sys_abs);
 
     void analyse_strength(
       af::shared<complex_t> const& Fcs_k,
@@ -242,7 +247,8 @@ namespace smtbx { namespace ED
     size_t num, FloatType min_d,
     FloatType MaxSg, FloatType MaxG,
     uctbx::unit_cell const& unit_cell,
-    sgtbx::space_group const &space_group, bool force_frame_normal)
+    sgtbx::space_group const &space_group,
+    sgtbx::space_group const& uniq_sg, bool force_frame_normal)
   {
     if (indices.size() >= num) {
       return;
@@ -264,13 +270,15 @@ namespace smtbx { namespace ED
         MaxG, MaxSg, unit_cell);
     }
 
-
     lookup_t existing = lookup_t(
       indices.const_ref(),
-      space_group,
+      uniq_sg,
       true);
 
     for (size_t i = 0; i < ebeams.size(); i++) {
+      if (space_group.is_sys_absent(ebeams[i].h)) {
+        continue;
+      }
       if (existing.add_hkl(ebeams[i].h)) {
         indices.push_back(ebeams[i].h);
         if (indices.size() >= num) {
@@ -343,10 +351,11 @@ namespace smtbx { namespace ED
 
   template <typename FloatType>
   size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
+    sgtbx::space_group const& uniq_sg,
     bool anomalous, bool exclude_sys_abs)
   {
     typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
-    lookup_t bm = lookup_t(space_group, anomalous);
+    lookup_t bm = lookup_t(uniq_sg, anomalous);
     size_t cnt = 0;
     for (size_t i = 0; i < beams.size(); i++) {
       if ((exclude_sys_abs && space_group.is_sys_absent(beams[i].index)) ||
