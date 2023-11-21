@@ -153,6 +153,8 @@ class AveragingJob(Job):
         f'mp.wall_time = {params.mp.wall_time}',
         f'mp.htcondor.executable_path = {params.mp.htcondor.executable_path}',
       ]
+      for opt in params.mp.extra_options:
+        mp_args.append(f'mp.extra_options = {opt}')
       for arg in mp_args:
         self.args.append(arg)
     if params.mp.shifter.shifter_image is not None:
@@ -167,6 +169,8 @@ class AveragingJob(Job):
         f'mp.shifter.nersc_reservation = {params.mp.shifter.reservation}',
         f'mp.shifter.staging = {params.mp.shifter.staging}',
       ]
+      for opt in params.mp.extra_options:
+        mp_args.append(f'mp.extra_options = {opt}')
       for arg in shifter_args:
         self.args.append(arg)
 
@@ -1060,6 +1064,8 @@ def submit_all_jobs(app):
             print ("Task %s cannot start due to unexpected status for job %d (%s) for trial %d, rungroup %d, run %s, task %d" % \
               (next_task.type, submitted_job.id, submitted_job.status, trial.trial, rungroup.id, run.run, next_task.id))
             break
+          if submitted_job.status in ("SUBMIT_FAIL", "DELETED") and job.task and job.task.type == "ensemble_refinement":
+            break # XXX need a better way to indicate that a job has failed and shouldn't go through the pipeline due to no data
           submit_next_task = True
           previous_job = submitted_job
           continue
