@@ -25,6 +25,7 @@ import pandas
 
 from simtbx.diffBragg.hopper_ensemble_utils import load_inputs
 from libtbx.mpi4py import MPI
+from simtbx.diffBragg.device import DeviceWrapper
 
 COMM= MPI.COMM_WORLD
 LOGGER = logging.getLogger("diffBragg.main")
@@ -93,16 +94,21 @@ if __name__ == "__main__":
     for col in [args.exp, args.refl]:
         if col not in list(df):
             raise KeyError("Col %s is missing from dataframe" % col)
+
     modelers = load_inputs(df, params, exper_key=args.exp, refls_key=args.refl, gather_dir=gather_dir)
     # note, we only go beyond this point if perImport flag was not passed
     modelers.cell_for_mtz = args.cell
     modelers.max_sigma = args.maxSigma
     modelers.outdir = args.outdir if args.outdir is not None else modelers.params.outdir
     modelers.save_freq = args.saveFreq
+
     modelers.prep_for_refinement()
-    modelers.save_modeler_params = args.saveAll
 
-    # do all sanity checks up front before minimization
-    modelers.Minimize(save=True)
+    with DeviceWrapper(modelers.SIM.D.device_Id) as _:
+        modelers.alloc_max_pix_per_shot()
+        modelers.save_modeler_params = args.saveAll
 
-    LOGGER.debug("Done!")
+        # do all sanity checks up front before minimization
+        modelers.Minimize(save=True)
+
+        LOGGER.debug("Done!")

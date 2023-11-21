@@ -367,6 +367,8 @@ class DataModelers:
 
         self._set_mtz_data()
         self.set_device_id()
+
+    def alloc_max_pix_per_shot(self):
         self._mpi_set_allocation_volume()
 
     def _get_fhkl_vary_flags(self):
