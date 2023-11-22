@@ -16,7 +16,8 @@ def find_dlls(lib_dirs):
     if not os.path.exists(lib_dir):
       continue
     files += [os.path.join(lib_dir, x)\
-      for x in os.listdir(lib_dir) if 'openblas' in x and (x.endswith('.dll') or '.so.')]
+      for x in os.listdir(lib_dir)\
+        if 'openblas' in x and (x.endswith('.dll') or x.endswith('.dylib') or x.endswith('.so') or '.so.' in x)]
   return files
 
 def find_old_layout_libs():
