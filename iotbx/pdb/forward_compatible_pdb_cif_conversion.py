@@ -78,19 +78,22 @@ E. Convert a forward_compatible_pdb compatible hierarchy to a full hierarchy wit
   conversion_info.convert_hierarchy_to_full_representation(ph)
   '''
 
-def hierarchy_as_forward_compatible_pdb_string(ph, *args, **kw):
+def hierarchy_as_forward_compatible_pdb_string(ph, conversion_info = None, *args, **kw):
   '''Convert a hierarchy into a forward_compatible_pdb compatible string, with any
      conversion information written as REMARK records
 
     parameters:
       ph: hierarchy object
+      conversion_info: optional conversion_info object specifying conversion
       args, kw: any args and kw suitable for the hierarchy
           method ph.as_pdb_string()
 
     returns:  string
   '''
 
-  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
+  if not conversion_info:
+    conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
+
   if (not conversion_info.conversion_required()):
     return ph.as_pdb_string(*args, **kw)
   else:
@@ -112,7 +115,7 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
       pdb_or_mmcif_string: mmcif string or a forward_compatible_pdb compatible string
       conversion_info: optional forward_compatible_pdb_cif_conversion object to apply
 
-    returns: group_args (hierarchy, crystal_symmetry)
+    returns: group_args (hierarchy, pdb_inp, crystal_symmetry, conversion_info)
   '''
   import iotbx.pdb
   from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
@@ -134,7 +137,9 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
   result = group_args(
     group_args_type = 'hierarchy and crystal_symmetry from text string',
     hierarchy = ph,
-    crystal_symmetry = crystal_symmetry)
+    pdb_inp = inp,
+    crystal_symmetry = crystal_symmetry,
+    conversion_info = conversion_info)
 
   # Determine if this is already in full format
   if forward_compatible_pdb_cif_conversion(ph).conversion_required(): # already set
@@ -687,6 +692,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     '''
 
     if not key in self._keys:
+      return None
+    elif (not self._conversion_required):
       return None
     else:
       return self._conversion_table_info_dict[key]
