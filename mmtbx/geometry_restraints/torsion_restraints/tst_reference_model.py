@@ -1263,8 +1263,10 @@ TER     490       DG B  24
            params=all_pars.reference_model,
            log=log)
     rm.show_reference_summary(log=log)
-    assert rm.get_n_proxies() == 74, \
-        "Expecting 74 proxies, got %d" % rm.get_n_proxies()
+    # more dihedrals via sugar
+    np=90
+    assert rm.get_n_proxies() == np, \
+        "Expecting %s proxies, got %d" % (np, rm.get_n_proxies())
     log_strings = log.getvalue().split("\n")
     for needed_string in [
         " DA A   5  <=====>   DA A   5",
