@@ -22,15 +22,17 @@ def find_dlls(lib_dirs):
 
 def find_old_layout_libs():
   import numpy, scipy
-  dirs = [os.path.join(os.path.dirname(scipy.__file__), ".libs"),
-          os.path.join(os.path.dirname(numpy.__file__), ".libs")]
+  dir_name = ".dylibs" if sys.platform == 'darwin' else ".libs"
+  dirs = [os.path.join(os.path.dirname(scipy.__file__), dir_name),
+          os.path.join(os.path.dirname(numpy.__file__), dir_name)]
   return find_dlls(dirs)
 
 def find_new_layout_libs():
   import numpy, scipy
   from pathlib import Path
-  dirs = [os.path.join(Path(os.path.dirname(scipy.__file__)).parent.absolute(), "scipy.libs"),
-          os.path.join(Path(os.path.dirname(numpy.__file__)).parent.absolute(), "numpy.libs")]
+  dir_name = ".dylibs" if sys.platform == 'darwin' else ".lib"
+  dirs = [os.path.join(Path(os.path.dirname(scipy.__file__)).parent.absolute(), "scipy%s" %dir_name),
+          os.path.join(Path(os.path.dirname(numpy.__file__)).parent.absolute(), "numpy%s" %dir_name)]
   return find_dlls(dirs)
 
 if not env.initialised and try_to_initialise:
