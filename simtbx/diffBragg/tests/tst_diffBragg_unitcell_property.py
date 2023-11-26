@@ -1,12 +1,10 @@
 from __future__ import division
-##from simtbx.kokkos import gpu_instance
-#kokkos_run = gpu_instance(deviceId = 0)
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--crystalsystem", default='tetragonal',
-                    choices=["monoclinic", "tetragonal"])
+                    choices=["monoclinic", "tetragonal", "hexagonal"])
 parser.add_argument("--curvatures", action='store_true')
 parser.add_argument("--kokkos", action="store_true")
 args = parser.parse_args()
@@ -38,6 +36,9 @@ with DeviceWrapper(0) as _:
     if args.crystalsystem=="tetragonal":
         ucell = (55, 55, 77, 90, 90, 90)
         symbol = "P43212"
+    elif args.crystalsystem=="hexagonal":
+        ucell = (55, 55, 77, 90, 90, 120)
+        symbol = "P6522"
     else:  # args.crystalsystem == "monoclinic"
         ucell = (70, 60, 50, 90.0, 110, 90.0)
         symbol = "C121"
@@ -76,6 +77,7 @@ with DeviceWrapper(0) as _:
     # and our dxtbx crystal created above
     D = SIM.D
     D.progress_meter = True
+    D.compute_curvatures = args.curvatures
 
     # STEP6:
     # initialize the derivative managers for the unit cell parameters
@@ -178,26 +180,26 @@ with DeviceWrapper(0) as _:
                 cc_vals2.append(r2)
             if args.plot:
                 plt.subplot(121)
-                plt.imshow(finite_deriv)
+                plt.imshow(finite_deriv.reshape((img_sh)))
                 plt.title("finite diff")
                 plt.subplot(122)
-                plt.imshow(analy_deriv)
+                plt.imshow(analy_deriv.reshape((img_sh)))
                 plt.title("analytical")
                 plt.draw()
                 plt.suptitle("Shift %d / %d"
                              % (i_shift+1, len(shifts)))
-                plt.pause(0.8)
+                plt.pause(1.2)
                 if args.curvatures:
                     plt.subplot(121)
-                    plt.imshow(finite_second_deriv)
+                    plt.imshow(finite_second_deriv.reshape((img_sh)))
                     plt.title("finite second diff")
                     plt.subplot(122)
-                    plt.imshow(second_derivs[i_param])
+                    plt.imshow(second_derivs[i_param].reshape((img_sh)))
                     plt.title("analytical")
                     plt.draw()
                     plt.suptitle("Shift %d / %d"
                                  % (i_shift + 1, len(shifts)))
-                    plt.pause(0.8)
+                    plt.pause(1.2)
 
         l = linregress(h_vals, error)
 
