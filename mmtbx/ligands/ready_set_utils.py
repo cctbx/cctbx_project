@@ -446,14 +446,10 @@ def _hierarchy_into_slots(hierarchy,
 def generate_residue_group_with_start_and_end(hierarchy,
                                               geometry_restraints_manager,
                                               # ideal_hierarchy=None,
-                                              verbose=False,
                                               ):
   # assert not ideal_hierarchy
   slots = _hierarchy_into_slots(hierarchy, geometry_restraints_manager)
   for i in range(len(slots)):
-    if verbose:
-      try: print(i, slots[i].id_str())
-      except: print(i,slots[i])
     start=False
     end=False
     if slots[i]:
