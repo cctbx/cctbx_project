@@ -299,15 +299,39 @@ buttonsdeflist = [
           }
 
 """),
-  ("TNCSvecrotate_xtriage", "Rotate around tNCS_xtriage vector", """
+  ("TNCSvecrotate_xtriage_F", "Rotate around tNCS_xtriage vector", """
             clip_plane {
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values(F)', ['FP,SIGFP', 'Amplitude'], ['', ''])"
             viewer {
               data_array {
-                label = "E-values"
+                label = "E-values(F)"
+                datatype = "Amplitude"
+              }
+              show_vector = "['tNCS_xtriage', True]"
+              user_vector {
+                label = "tNCS_xtriage"
+              }
+              is_parallel = True
+              fixorientation = *vector None
+              animate_rotation_around_vector = "['tNCS_xtriage', 5.0]"
+            }
+            hkls {
+              expand_to_p1 = True
+              expand_anomalous = True
+            }
+"""),
+  ("TNCSvecrotate_xtriage_I", "Rotate around tNCS_xtriage vector", """
+            clip_plane {
+              clip_width = 6
+              auto_clip_width = False
+            }
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values(I)', ['I,SIGI', 'Intensity'], ['', ''])"
+            viewer {
+              data_array {
+                label = "E-values(I)"
                 datatype = "Amplitude"
               }
               show_vector = "['tNCS_xtriage', True]"
