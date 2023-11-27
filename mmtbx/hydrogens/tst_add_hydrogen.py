@@ -30,6 +30,7 @@ def compare_models(pdb_str,
   '''
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
+  # initial model
   model_initial = mmtbx.model.manager(model_input = pdb_inp,
                                       log         = null_out())
   ph_initial = model_initial.get_hierarchy()
@@ -47,9 +48,10 @@ def compare_models(pdb_str,
   assert (hd_sel_without_h.count(True) == 0)
 
   #model_h_added = reduce.add(model = model_without_h)
-  # place H atoms
+  # place H atoms again
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
   reduce_add_h_obj.run()
+  #
   model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
 
@@ -71,7 +73,6 @@ def compare_models(pdb_str,
 
   if not_contains:
     assert (not_contains not in h_names_added)
-
   if contains:
     assert (contains in h_names_added)
 
@@ -81,7 +82,7 @@ def compare_models(pdb_str,
   d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
   d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
 
-  # check that coordinates are correct
+  # check if coordinates are correct
   for name, sc in d2.items():
     assert(name in d1)
     assert approx_equal(sc, d1[name], 0.01)
