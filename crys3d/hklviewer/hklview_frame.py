@@ -535,6 +535,7 @@ class HKLViewFrame() :
       if jsview_3d.has_phil_path(diff_phil, "miller_array_operation"):
         phl.viewer.scene_id = self.make_new_miller_array( msgtype=="preset_philstr" )
         self.set_scene(phl.viewer.scene_id)
+        self.update_space_group_choices()
         phl.hkls.sigma_color_radius = False
       else:
         self.params.miller_array_operation = ""
@@ -575,7 +576,8 @@ class HKLViewFrame() :
                                             "show_only_missing",
                                             "show_systematic_absences",
                                             "data_array"):
-        if self.set_scene(phl.viewer.scene_id) and not jsview_3d.has_phil_path(diff_phil, "binning"):
+        if self.viewer.set_scene() and not jsview_3d.has_phil_path(diff_phil, "binning"):
+          self.viewer.binvals = []
           phl.binning.scene_bin_thresholds = []
           self.update_space_group_choices()
           self.set_scene_bin_thresholds(phl.binning.scene_bin_thresholds,
@@ -1700,7 +1702,6 @@ Borrowing them from the first miller array""" %i)
 
 
   def set_scene(self, scene_id):
-    self.viewer.binvals = []
     if scene_id is None:
       return False
     self.viewer.set_miller_array(scene_id)
@@ -1710,7 +1711,6 @@ Borrowing them from the first miller array""" %i)
      %(self.viewer.miller_array.info().label_string(), self.viewer.miller_array.index_span().min(),
         self.viewer.miller_array.index_span().max() ) )
     self.mprint("Spacegroup: %s" %self.viewer.miller_array.space_group().info().symbol_and_number())
-    self.update_space_group_choices()
     return True
 
 
