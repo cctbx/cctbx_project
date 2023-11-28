@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import  QVBoxLayout, QTableView
+from PySide2.QtWidgets import  QVBoxLayout, QTableView, QMessageBox
 
 from ..widgets import  FastTableView
 from ..widgets.tab import GUITab
@@ -19,6 +19,9 @@ class SitesTabView(GUITab):
     layout.addWidget(self.table)
     self.setLayout(layout)
 
+
+  def on_first_visit(self):
+    msg = QMessageBox.information(self,"Notice", "The atom sites tab is currently very slow for large structures.")
 
 
   

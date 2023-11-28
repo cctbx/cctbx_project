@@ -66,7 +66,7 @@ class DemoView(QMainWindow):
 
     # Sites
     self.sites_tab_view = SitesTabView(parent=self)
-    self.tabs.addTab(self.sites_tab_view, "Sites")
+    self.tabs.addTab(self.sites_tab_view, "Atoms")
 
     # Cif
     self.cif_tab_view = CifTabView(parent=self)
@@ -82,8 +82,8 @@ class DemoView(QMainWindow):
 
 
     # Qscore
-    self.qscore_tab_view = QscoreTab(parent=self)
-    self.tabs.addTab(self.qscore_tab_view, "Qscore")
+    # self.qscore_tab_view = QscoreTab(parent=self)
+    # self.tabs.addTab(self.qscore_tab_view, "Qscore")
 
     # Consoles
     self.consoles = GUITabWidget(parent=self)

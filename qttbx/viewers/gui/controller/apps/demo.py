@@ -23,7 +23,7 @@ class DemoController(Controller):
     self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
     #self.restraints = RestraintsTopTabController(parent=self,view=self.view.restraints_tab_view)
     self.restraints_table = RestraintsTableTopTabController(parent=self,view=self.view.restraints_table_tab_view)
-    self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
+    #self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
 
 
     # signals
