@@ -18,11 +18,11 @@ buttonsdeflist = [
               }
             }
 """),
-# ConstanAxesSliceIntens and ConstanAxesSliceAmpl rely on hard coded names "H-axis (1,0,0)", "K-axis (0,1,0)"
+# ConstantAxesSliceIntens and ConstantAxesSliceAmpl rely on hard coded names "H-axis (1,0,0)", "K-axis (0,1,0)"
 # and "L-axis (0,0,1)" being present in the list of vectors. The button PHIL parameter show_vector="['-axis', True]"
 # will then entail comboboxes being created from where H, K or L axes can be selected. This is more compact
 # than having threee separate buttons for each axes
-  ("ConstanAxesSliceIntens", "Show plane of intensities with constant: ", """
+  ("ConstantAxesSliceIntens", "Show plane of intensities with constant: ", """
           clip_plane {
             normal_vector = "-axis"
             is_assoc_real_space_vector = True
@@ -42,7 +42,7 @@ buttonsdeflist = [
           }
  """),
 
-   ("ConstanAxesSliceAmpl", "Show plane of amplitudes with constant: ", """
+   ("ConstantAxesSliceAmpl", "Show plane of amplitudes with constant: ", """
           clip_plane {
             normal_vector = "-axis"
             is_assoc_real_space_vector = True
