@@ -576,7 +576,6 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
   for residue_group, start, end in generate_residue_group_with_start_and_end(
     hierarchy,
     geometry_restraints_manager,
-    verbose=verbose,
     ):
     if use_capping_hydrogens:
       # conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
