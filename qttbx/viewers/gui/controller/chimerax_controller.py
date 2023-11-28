@@ -2,11 +2,13 @@ from pathlib import Path
 import json
 import re
 import copy
+from typing import Optional
 
 import pandas as pd
 
 from .controller import Controller
-from ...chimerax2 import ChimeraXViewer
+from ..state.ref import ModelRef, MapRef
+from ...chimerax.chimerax import ChimeraXViewer
 from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController
 from ...last.selection_utils import Selection, SelectionQuery
@@ -17,8 +19,6 @@ class ChimeraXController(Controller):
 
     self.viewer = ChimeraXViewer() # Not formally a controller, but similar role
     self.viewer.controller = self
-    self.model_style_controller = ModelStyleController(parent=self,view=None)
-    self.map_style_controller = MapStyleController(parent=self,view=None)
     self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
     
     # Local state
@@ -30,7 +30,6 @@ class ChimeraXController(Controller):
 
     # Signals
     self.view.button_start.clicked.connect(self.start_viewer)
-
     self.state.signals.model_change.connect(self._load_active_model)
     self.state.signals.map_change.connect(self._load_active_map)
 
@@ -43,11 +42,38 @@ class ChimeraXController(Controller):
 
   def start_viewer(self):
     print("controller start viewer")
+    self.model_style_controller = ModelStyleController(parent=self,view=None)
+    self.map_style_controller = MapStyleController(parent=self,view=None)
     self.viewer.start_viewer(json_response=True)
     self.viewer.send_command("set bgColor white")
 
+  # Parsing the output of a response is kept in the controller for now because it is messy
+  def _interpret_response_text(self,response_text,debug=False):
+    if debug:
+      print("0: Response text:",type(response_text))
+      print(response_text)
+      print("1: Response json:",type(json.loads(response_text)))
+      response_json = json.loads(response_text)
+      print(response_json)
+      print("2: 'json values' key:",type(response_json["json values"]))
+      json_values = response_json["json values"]
+      print("3: json value 0:",type(json_values[0]))
+      print(json_values[0])
+      if json_values[0] is None:
+        return None
+      print("4: json value 0 as json:",type(json.loads(json_values[0])))
+      json_values_0 = json.loads(json_values[0])
+      print(json_values_0)
+      if not isinstance(json_values_0,list):
+        json_values_0 = [json_values_0]
+      print("5: json value 00:",type(json_values_0[0]))
+      print(json_values_0[0])
+
+    objects = [json.loads(e) for e in json.loads(response_text)["json values"]][0]
+    return objects
+
   def _process_remote_ref_response_model(self,response):
-    response_objects = self.viewer.interpret_response_text(response.text,debug=True)
+    response_objects = self._interpret_response_text(response.text,debug=True)
     assert 'model specs' in response_objects, f"Unexpected response objects: {response_objects}"
     model_specs = response_objects['model specs']
     assert len(model_specs) ==1, f'Unsure how to interpret multiple model specs in response: {model_specs}'
@@ -137,7 +163,7 @@ class ChimeraXController(Controller):
         else:
           print(f"Not adding remote ref from response: {response}")
         self.loaded_map_refs.append(ref)
-        self.viewer.set_transparency(ref.external_ids['chimerax'],0.7)
+        self.viewer.set_transparency_map(ref.external_ids['chimerax'],0.7)
         return response
 
   # Selection
@@ -161,8 +187,11 @@ class ChimeraXController(Controller):
 
 
   def poll_selection(self,callback=None):
-    # get selected atoms
+    if not self.viewer._connected:
+      return 
 
+
+    # get selected atoms
     if self._picking_granularity == "residue":
       self.viewer._select_up_residues()
     response = self.viewer.poll_selection()
@@ -248,6 +277,17 @@ class ChimeraXController(Controller):
     return output
   # end poll_selection
   
+  def select_from_phenix_string(self,selection_phenix: str):
+    if self.viewer._connected:
+      ref= self.state.active_model_ref
+      model_id = ref.external_ids["chimerax"]
+      return self.viewer.select_from_phenix_string(model_id,selection_phenix)
+
+  def select_from_ref(self,ref):
+    if self.viewer._connected:
+      model_id = ref.external_ids["chimerax"]
+      phenix_string = ref.query.phenix_string
+      return self.viewer.select_from_phenix_string(model_id,phenix_string)
 
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'
@@ -266,7 +306,8 @@ class ChimeraXController(Controller):
     self.viewer.clear_viewer()
 
   def close_viewer(self):
-    self.viewer.close_viewer()
+    if self.viewer._connected:
+      self.viewer.close_viewer()
 
 
   def reset_camera(self,queue=False):
@@ -276,26 +317,50 @@ class ChimeraXController(Controller):
   def sync_ref_mapping(self):
     pass 
 
-  # def get_remote_ref_id(self,ref):
-  #   if ref is not None and self.viewer._connected:
-  #     assert ref.id in self.references_remote_map, "References out of sync"
-  #     remote_ref_id = self.references_remote_map[ref.id]
-  #     return remote_ref_id
+
 
   # Style
 
+  # Style
   def set_iso(self,ref,value):
-    remote_ref_id = ref.external_ids["chimerax"]
-    self.viewer.set_iso(remote_ref_id,value)
+    if self.viewer._connected:
+      model_id = ref.external_ids["chimerax"]
+      self.viewer.set_iso(model_id,value)
 
-  def hide_selection(self):
-    self.viewer.hide_selection()
 
-  def show_selection(self):
-    self.viewer.show_selection()
+  def show_ref(self,ref,representation: Optional[str] = None):
+    if self.viewer._connected:
+      model_id = ref.model_ref.external_ids["chimerax"]
+      if representation is None:
+        representation = ref.style.representation
+      else:
+        representation = [representation]
 
-  def hide_model(self,remote_ref_id):
-    self.viewer.hide_model(remote_ref_id)
+      for rep_name in representation:
+        # if isinstance(ref,(ModelRef,MapRef)):
+        #   self.viewer.show_model(model_id)
+        # else:
+        #   self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
+        self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
 
-  def show_model(self,remote_ref_id):
-    self.viewer.show_model(remote_ref_id)
+  def hide_ref(self,ref,representation: Optional[str] = None):
+    if self.viewer._connected:
+      model_id = ref.model_ref.external_ids["chimerax"]
+
+      if representation is None:
+        representation = ref.style.representation
+      else:
+        representation = [representation]
+
+      for rep_name in representation:
+        # if isinstance(ref,(ModelRef,MapRef)):
+        #   self.viewer.hide_model(model_id)
+        # else:
+        #   self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
+        self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
+
+  def color_ref(self,ref,color):
+    if self.viewer._connected:
+      model_id = ref.model_ref.external_ids["chimerax"]
+      self.viewer.color_query(model_id,ref.query.to_json(),color)
+

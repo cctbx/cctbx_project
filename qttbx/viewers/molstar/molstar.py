@@ -377,8 +377,6 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Models
 
-
-    
   def _load_model_build_js(self,model_str,format='pdb',label=None,ref_id=None):
     assert ref_id is not None, 'Cannot load into molstar without preexisting Python ref'
     assert label is not None, 'Cannot load into molstar without label'
@@ -410,14 +408,10 @@ class MolstarViewer(ModelViewer):
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
     self.send_command(command,callback=callback,queue=queue)
 
- 
 
-
-
-
-  def _load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
+  def load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
     """
-    Load a model from file.
+    Load a model directly from file. Note if using upstream gui, it will not automatically be aware.
     """
     filename = str(filename)
     
@@ -477,49 +471,9 @@ class MolstarViewer(ModelViewer):
     self.send_command(command,callback=callback,queue=queue,wrap_async=False)
 
 
-      
-    
-  # def _poll_selection(self,callback,selection_json):
-  #   query_atoms = SelectionQuery.from_json(selection_json)
-    
-  #   # get the relevant mol
-  #   ref_id = query_atoms.params.refId
-  #   model_ref = self.state.references[ref_id]
-
-  #   # select sites
-  #   sites_sel = model_ref.mol.atom_sites.select_from_query(query_atoms)
-
-  #   # make condensed query
-  #   query_condensed = model_ref.mol.atom_sites._convert_sites_to_query(sites_sel)
-  #   query_condensed.params.refId = ref_id
-
-  #   query_dict = {ref_id:query_condensed}
-  #   if callback is not None:
-  #     callback(query_dict)
-
-
-
-  # def clear_selection(self,queue=False):
-  #   # This version removes coloring. Use deselect_all to retain color.
-  #   command = f"{self.plugin_prefix}.clearSelection()"
-  #   self.send_command(command,queue=queue)
-
   def deselect_all(self,queue=False):
     command = f"{self.plugin_prefix}.visual.deselectAll()"
     self.send_command(command,queue=queue)
-
-  # def highlight_selection(self):
-  #   # Highlighting usually comes with selection
-  #   raise NotImplementedError
-
-  # def focus_selection(self):
-  #   raise NotImplementedError
-
-  # def select_and_focus(self,selection_string):
-  #   # Select, highlight, and focus
-  #   # Implementing this first because that is 
-  #   # the existing behavior
-  #   print("select_and_focus()")
 
 
   # ---------------------------------------------------------------------------
@@ -534,7 +488,7 @@ class MolstarViewer(ModelViewer):
     command = f"{self.plugin_prefix}.plugin.managers.camera.reset();"
     self.send_command(command,queue=queue)
 
-  def toggle_selection_mode(self,value):
+  def _toggle_selection_mode(self,value):
     if value == True:
       value = 'true'
     else:
@@ -563,6 +517,8 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Style
 
+
+  # Volume ISO
   def set_iso(self,volume_id,value):
     params = '{"entry":{"name":"'+volume_id+'","params":{"view":{"name":"camera-target","params":{"radius":5,"selectionDetailLevel":0,"isSelection":false,"bottomLeft":[6.000999927520752,6.004000186920166,6.011000156402588],"topRight":[30.89900016784668,11.321000099182129,18.44099998474121]}},"detailLevel":0,"channels":{"em":{"isoValue":{"kind":"absolute","absoluteValue":'+str(value)+'},"color":6524815,"wireframe":false,"opacity":0.3}}}}}'
     command = f"""
@@ -573,63 +529,57 @@ class MolstarViewer(ModelViewer):
     """
     self.send_command(command)
 
+  # Transparency Volume
+  def set_transparency_map(self,model_id,value):
+    raise NotImplementedError
+
+  # Show/Hide model/selection, works by setting transparency
+
+  def show_model(self,model_id,representation_name: Optional[str] = None):
+    raise NotImplementedError
+
+  def show_selected(self,representation_name: Optional[str] = None):
+    raise NotImplementedError
+
+  def show_query(self,model_id: str, query_json: str, representation_name: str):
+    self.transparency_query(model_id=model_id, query_json=query_json, representation_name=representation_name,value=0.0)
 
 
-  # def hide_selection(self):
-    # #command = f"{self.plugin_prefix}.hideSelection();"
-    # command = f"await {self.plugin_prefix}.visual.setQueryTransparency(,1.0)"
-    # self.send_command(command,sync=True,wrap_async=False)
-    # pass
+  def hide_model(self,model_id,representation_name: Optional[str] = None):
+    raise NotImplementedError
 
-  # def show_selection(self)Viewer:
-  #   command = f"{self.plugin_prefix}.showSelection();"
-  #   self.send_command(command,sync=True,wrap_async=False)
+  def hide_selected(self,representation_name: Optional[str] = None):
+    raise NotImplementedError
 
-  # def show_model(self,model_id: str):
-  #   command = f"""
-  #   const query = {self.plugin_prefix}.getQueryAll()
-  #   query.params.refId = '{model_id}'
-  #   await {self.plugin_prefix}.visual.setQueryTransparency(query,0.0)
-  #   {self.plugin_prefix}.visual.deselectAll();
-  #   """
-  #   self.send_command(command)
+  def hide_query(self,model_id: str, query_json: str, representation_name: str):
+    self.transparency_query(model_id=model_id, query_json=query_json, representation_name=representation_name,value=1.0)
+  
 
+  # Transparency for model/selection
 
-  # def hide_model(self,model_id: str):
-  #   command = f"""
-  #   const query = {self.plugin_prefix}.getQueryAll()
-  #   query.params.refId = '{model_id}'
-  #   await {self.plugin_prefix}.visual.setQueryTransparency(query,1.0)
-  #   {self.plugin_prefix}.visual.deselectAll();
-  #   """
-    # self.send_command(command)
+  def transparency_model(self,model_id: str, representation_name: Optional[str] = None):
+    raise NotImplementedError
 
-  def hide(self,model_id: str, query_json: str, representation_name: str):
-    # command = f"""
-    # const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
-    # query.params.refId = '{model_id}'
-    # await {self.plugin_prefix}.visual.setQueryTransparency(query,1.0)
-    # {self.plugin_prefix}.visual.deselectAll();
-    # """
-    self.transparency(model_id=model_id, query_json=query_json, representation_name=representation_name,value=1.0)
+  def transparency_selected(self,representation_name: Optional[str] = None):
+    raise NotImplementedError
 
-  def show(self,model_id: str, query_json: str, representation_name: str):
-    # command = f"""
-    # const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
-    # query.params.refId = '{model_id}'
-    # await {self.plugin_prefix}.visual.setQueryTransparency(query,0.0)
-    # {self.plugin_prefix}.visual.deselectAll();
-    # """
-    self.transparency(model_id=model_id, query_json=query_json, representation_name=representation_name,value=0.0)
-
-  def transparency(self,model_id: str, query_json: str, representation_name: str, value: float):
+  def transparency_query(self,model_id: str, query_json: str, representation_name: str, value: float):
     command = f"""
     const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
     await {self.plugin_prefix}.visual.setTransparencyFromQuery(query, '{representation_name}', '{value}')
     """
     self.send_command(command)
-  
+
+
+  # Color for model/selection
+
+  def color_model(self,model_id: str, color: str):
+    raise NotImplementedError
+
+  def color_selected(self, color: str):
+    raise NotImplementedError
+
   def color_query(self,model_id: str, query_json: str, color: str):
     command = f"""
     const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
@@ -639,7 +589,13 @@ class MolstarViewer(ModelViewer):
     """
     self.send_command(command)
 
-    
+  # Representation for model/selection
+
+  def representation_model(self,model_id: str, representation_name: str):
+    query = SelectionQuery.from_model_ref()
+
+  def representation_selected(self, representation_name: str):
+    raise NotImplementedError
 
 
   def representation_query(self,model_id: str, query_json: str, representation_name: str):
@@ -663,82 +619,3 @@ class MolstarViewer(ModelViewer):
     result = self.send_command(command)
     print("RESULT")
     print(result)
-
-
-  def color_selection(self,value):
-    command = f"color sel {value}"
-    self.send_command(command)
-
-  def color_model(self,ref_id,value):
-    command = f"color {ref_id} {value}"
-    self.send_command(command)
-  
-  def show_ribbon_model(self,ref_id):
-    command = f"show {ref_id} cartoons"
-    self.send_command(command)
-
-  def show_ribbon_selection(self):
-    command = f"show sel cartoons"
-    self.send_command(command)
-
-  def hide_ribbon_model(self,ref_id):
-    command = f"hide {ref_id} cartoons"
-    self.send_command(command)
-
-  def hide_ribbon_selection(self):
-    command = f"hide sel cartoons"
-    self.send_command(command)
-
-
-  ###################################################
-  # def set_iso(self,ref_id,value):
-  #   # TODO: this doesn't support multiple volumes
-  #   command = f"""
-  #   {self.plugin_prefix}.volumeRefInfo.params.values.entries[0].source.params.isoValue.absoluteValue = {value};
-  #   {self.plugin_prefix}.plugin.build().to({self.plugin_prefix}.volumeStreamingRef).update().commit();
-  #   """
-  #   self.send_command(command)
-
-  def set_color(self,ref,color,theme='uniform',queue=False):
-    assert theme in ['uniform'], "Provide predefined color theme"
-    if theme == 'uniform':
-      command = f"""
-      var query = {self.plugin_prefix}.queryFromString('{ref.query.to_json()}');
-      {self.plugin_prefix}.visual.colorSelection(query, '{color}');
-      {self.plugin_prefix}.visual.deselectAll();
-      """
-      self.send_command(command,queue=queue)
-
-
-  def set_representation(self,ref,representation_name,queue=False):
-    # select
-    self.select_from_json(ref.query.to_json())
-    # hide
-    self.hide_selection()
-
-    # add representation
-    command = f"""
-    var query = {self.plugin_prefix}.queryFromString('{ref.query.to_json()}');
-    await {self.plugin_prefix}.visual.addRepr(query,'{representation_name}')
-    """
-    self.send_command(command,queue=queue)
-
-  def set_visibility(self,ref_id,is_visible,queue=False):
-    ref = self.state.references[ref_id]
-    # select
-    self.select_from_json(ref.query.to_json())
-    if not is_visible:
-      # hide
-      self.hide_selection(queue=queue)
-    else:
-      # show
-      self.show_selection(queue=queue)
-    
-  def hide_selection(self,queue=False):
-    command = f"{self.plugin_prefix}.hideSelection();"
-    self.send_command(command,queue=queue)
-    #self.state.emitter.signal_repr_change.emit(ref_id,[])
-
-  def show_selection(self,queue=False):
-    command = f"{self.plugin_prefix}.showSelection();"
-    self.send_command(command,queue=queue)

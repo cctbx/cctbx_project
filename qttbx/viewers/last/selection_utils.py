@@ -54,7 +54,7 @@ class SelectionQuery:
     selections = [Selection.from_default()]
 
     return cls(selections=selections,params=params)
-  
+
 
   @classmethod
   def from_i_seqs(cls,atom_sites,i_seqs,auth_label_pref='auth'):
@@ -111,7 +111,12 @@ class SelectionQuery:
         query = ' & '.join(query_list)
         full_query_list.append(f'({query})')
     
-    return ' | '.join(full_query_list)
+    if len(full_query_list)==0:
+      output =  "index >= 0" # all
+    else:
+      output =  ' | '.join(full_query_list)
+    return output
+    
 
   @property
   def phenix_string(self):
@@ -386,7 +391,8 @@ class SelConverterPhenix2:
         'resname':'comp_id',
         '':"==",
         "or":"|",
-        "and":"&"
+        "and":"&",
+        "all":"index >= 0",
       }
   @staticmethod
   def replace_keys_in_str(input_str, replacements):

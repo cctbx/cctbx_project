@@ -49,7 +49,6 @@ class SelectionControlsController(Controller):
   @Slot()
   def start_selecting(self):
     # selection button was clicked
-    print("clicked")
     self.viewer.toggle_selection_mode(True)
     self.execute_selection()
   
@@ -65,7 +64,7 @@ class SelectionControlsController(Controller):
           text = text[7:]
         elif text.startswith("sel "):
           text = text[4:]
-        self.viewer.select_from_phenix(text)
+        self.viewer.select_from_phenix_string(text)
         self.save_text_to_history()
       except:
         raise

@@ -4,6 +4,7 @@ import re
 import copy
 import time
 from functools import partial
+from typing import Optional
 
 import pandas as pd
 from PySide2.QtCore import QUrl, Signal, QObject, QTimer
@@ -153,7 +154,7 @@ class MolstarController(Controller):
      #self.viewer.poll_selection(callback=None)
 
   def _poll_selection(self,callback,selection_json):
-    if not isinstance(selection_json,str) and len(selection_json.strip())==0:
+    if not isinstance(selection_json,str) or len(selection_json.strip())==0:
       return None
     query_atoms = SelectionQuery.from_json(selection_json)
     
@@ -172,9 +173,9 @@ class MolstarController(Controller):
     if callback is not None:
       callback(query_dict)
 
-  def select_from_phenix(self,selection_string):
+  def select_from_phenix_string(self,selection_phenix: str):
     # convert to query
-    query = self.state.mol.sites._select_query_from_str_phenix(selection_string)
+    query = self.state.mol.sites._select_query_from_str_phenix(selection_phenix)
     query.params.refId = self.state.active_model_ref.id
     self.viewer.select_from_query(query)
 
@@ -187,7 +188,7 @@ class MolstarController(Controller):
     self.viewer._set_granularity(value=value)
 
   def toggle_selection_mode(self,value):
-    self.viewer.toggle_selection_mode(value)
+    self.viewer._toggle_selection_mode(value)
 
   def deselect_all(self):
     self.viewer.deselect_all()
@@ -259,46 +260,31 @@ class MolstarController(Controller):
         if ref.id in self.references_remote_map:
           ref.external_ids["molstar"] = self.references_remote_map[ref_id]
 
-  # def get_remote_ref_id(self,local_ref_id):
-  #   if local_ref_id is not None and self.viewer._connected:
-  #     assert local_ref_id in self.references_remote_map.keys(), "References out of sync"
-  #     remote_ref_id = self.references_remote_map[local_ref_id]
-  #     return remote_ref_id
-
-  # def get_local_ref_id(self,remote_ref_id):
-  #   if remote_ref_id is not None and self.viewer._connected:
-  #     assert remote_ref_id in self.references_remote_map.values(), "References out of sync"
-  #     d = {value:key for key,value in self.references_remote_map.items()} # reverse the mapper
-  #     local_ref_id = d[remote_ref_id]
-  #     return local_ref_id
   # Style
-
-
   def set_iso(self,ref,value):
-    self.viewer.set_iso(ref.id,value)
-
-  # def hide_selection(self):
-  #   self.viewer.hide_selection()
-
-  # def show_selection(self):
-  #   self.viewer.show_selection()
-
-
-  def hide_ref(self,ref):
-    for representation_name in ref.style.representation:
-      self.hide_representation(ref,representation_name)
-
-  def show_ref(self,ref):
-    for representation_name in ref.style.representation:
-      self.show_representation(ref,representation_name)
-
-  def hide_representation(self,ref,representation_name):
     model_id = ref.model_ref.external_ids["molstar"]
-    self.viewer.hide(model_id,ref.query.to_json(),representation_name)
+    self.viewer.set_iso(model_id,value)
 
-  def show_representation(self,ref,representation_name):
+
+  def show_ref(self,ref,representation: Optional[str] = None):
     model_id = ref.model_ref.external_ids["molstar"]
-    self.viewer.show(model_id,ref.query.to_json(),representation_name)
+    if representation is None:
+      representation = ref.style.representation
+    else:
+      representation = [representation]
+
+    for rep_name in representation:
+      self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
+
+  def hide_ref(self,ref,representation: Optional[str] = None):
+    model_id = ref.model_ref.external_ids["molstar"]
+    if representation is None:
+      representation = ref.style.representation
+    else:
+      representation = [representation]
+
+    for rep_name in representation:
+      self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
 
   def color_ref(self,ref,color):
     model_id = ref.model_ref.external_ids["molstar"]

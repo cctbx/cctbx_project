@@ -55,9 +55,9 @@ class ModelStyleController(Controller):
     old_style = ref.style
     for rep_name in set(new_style.representation + old_style.representation):
       if rep_name in new_style.representation and rep_name not in old_style.representation:
-        self.parent.show_representation(ref,rep_name)
+        self.parent.show_ref(ref,representation=rep_name)
       elif rep_name in old_style.representation and rep_name not in new_style.representation:
-        self.parent.hide_representation(ref,rep_name)
+        self.parent.hide_ref(ref,representation=rep_name)
     
   # Generic apply of a style to a ref. Uses above transition_ functions
   def apply_from_json(self,json_str):

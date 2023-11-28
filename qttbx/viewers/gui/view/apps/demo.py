@@ -46,13 +46,14 @@ class DemoView(QMainWindow):
     self.tabs.tabBar().childSignal.connect(self.child_window_handler) 
     self.setCentralWidget(self.tabs)
 
-    # ChimeraX Viewer
-    self.chimerax_tab_view = ChimeraXTabView(parent=self)
-    self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
 
     # Viewer
     self.viewer_tab_view = ViewerTabView(parent=self)
-    self.tabs.insertTab(1,self.viewer_tab_view, "Viewer")
+    self.tabs.insertTab(1,self.viewer_tab_view, "Molstar")
+
+    # ChimeraX Viewer
+    self.chimerax_tab_view = ChimeraXTabView(parent=self)
+    self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
 
     # Selections
     self.selection_tab_view = SelectionsTabView(parent=self)

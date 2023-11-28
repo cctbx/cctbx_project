@@ -11,6 +11,7 @@ import glob
 import os
 import random
 import requests
+from typing import Optional
 from requests.exceptions import RequestException
 
 import subprocess
@@ -32,6 +33,15 @@ try:
   from qttbx.viewers import ModelViewer
 except:
   from viewers import ModelViewer
+
+
+from ..last.selection_utils import SelectionQuery
+from .sel_convert_chimera import (
+  translate_phenix_selection_string,
+  convert_selection_str_to_int,
+  convert_selection_int_to_str
+)
+
 
 
 
@@ -272,7 +282,7 @@ class ChimeraXViewer(ModelViewer):
   def load_model(self, filename=None,format=None,label=None,ref_id=None,callback=None):
     return self._load_file(filename)
 
-  def load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None):
+  def _load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None):
 
     with tempfile.NamedTemporaryFile(mode='w+t', suffix="."+format,delete=False) as temp_file:
       temp_file.write(model_str)
@@ -281,27 +291,27 @@ class ChimeraXViewer(ModelViewer):
     os.remove(temp_file.name)
     return response
 
-  def load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
+  def _load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
     assert format in ['pdb','mmcif'], "Use one of the supported format names"
     if format == 'pdb':
       model_str = model.model_as_pdb()
     elif format == "mmcif":
       model_str = model.model_as_mmcif()
 
-    return self.load_model_from_string(model_str,format=format,label=label,ref_id=ref_id,callback=callback)
+    return self._load_model_from_string(model_str,format=format,label=label,ref_id=ref_id,callback=callback)
 
   # ---------------------------------------------------------------------------
   # Maps
 
-  def load_map_from_mmtbx(self,map_manager,filename=None,label=None,ref_id_map=None,ref_id_model=None,callback=None):
+  # def load_map_from_mmtbx(self,map_manager,filename=None,label=None,ref_id_map=None,ref_id_model=None,callback=None):
 
-    with tempfile.NamedTemporaryFile(mode='wb', suffix=".mrc",delete=False) as temp_file:
-      temp_filename = temp_file.name
+  #   with tempfile.NamedTemporaryFile(mode='wb', suffix=".mrc",delete=False) as temp_file:
+  #     temp_filename = temp_file.name
     
-    map_manager.write_map(temp_filename)
-    response = self.load_map(filename=temp_filename)
-    os.remove(temp_filename)
-    return response
+  #   map_manager.write_map(temp_filename)
+  #   response = self.load_map(filename=temp_filename)
+  #   os.remove(temp_filename)
+  #   return response
 
   def load_map(self, filename=None,label=None,ref_id_map=None,ref_id_model=None,callback=None):
     """
@@ -315,30 +325,6 @@ class ChimeraXViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Selection
 
-  def interpret_response_text(self,response_text,debug=True):
-    if debug:
-      print("0: Response text:",type(response_text))
-      print(response_text)
-      print("1: Response json:",type(json.loads(response_text)))
-      response_json = json.loads(response_text)
-      print(response_json)
-      print("2: 'json values' key:",type(response_json["json values"]))
-      json_values = response_json["json values"]
-      print("3: json value 0:",type(json_values[0]))
-      print(json_values[0])
-      if json_values[0] is None:
-        return None
-      print("4: json value 0 as json:",type(json.loads(json_values[0])))
-      json_values_0 = json.loads(json_values[0])
-      print(json_values_0)
-      if not isinstance(json_values_0,list):
-        json_values_0 = [json_values_0]
-      print("5: json value 00:",type(json_values_0[0]))
-      print(json_values_0[0])
-
-    objects = [json.loads(e) for e in json.loads(response_text)["json values"]][0]
-    return objects
-
   def poll_selection(self):
     response = self.send_command('info sel')
     return response
@@ -349,29 +335,32 @@ class ChimeraXViewer(ModelViewer):
 
   def deselect_all(self):
     response = self.send_command('~select')
+  
+  def select_from_query(self,model_id: str, query_json: str):
+    """
+    This takes a json string, converts to query object, and then translates. 
+    The idea is to maintain a looser coupling with upstream by never using 
+    query objects in the api.
+    """
+    query = SelectionQuery.from_json(query_json)
+    self.select_from_phenix_string(model_id,query.phenix_string)
+
+  def select_from_phenix_string(self,model_id: str, phenix_selection: str):
+    print(f"DEBUG: select_from_phenix_string({model_id},{phenix_selection})")
+    model_number = int(model_id.replace("#",""))
+    # if phenix_selection in ["","all"]:
+    #   chimerax_selection = model_id
+    # else:
+    chimerax_selection = translate_phenix_selection_string(phenix_selection,model_number=model_number)
+    print("DEBUG: chimerax_selection: ",chimerax_selection)
+    command = f"sel {chimerax_selection}"
+    self.send_command(command)
+
 
   # Other
   def clear_viewer(self):
     # Remove all objects from the viewer
     response = self.send_command('close')
-
-  def close_viewer(self):
-    print('='*79)
-    if self._connected:
-      print('Shutting down ChimeraX')
-      params = {'command': 'quit'}
-      self._run_command(params)
-    else:
-      print('ChimeraX already shut down')
-    if self.process is not None:
-      rc = self.process.returncode
-      stdout, stderr = self.process.communicate()
-    # print('-'*79)
-    # print(stdout)
-    # print('-'*79)
-    # print(stderr)
-    print('='*79)
-
 
   def reset_camera(self,queue=False):
     response = self.send_command("view")
@@ -380,191 +369,130 @@ class ChimeraXViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Style
 
-  def set_iso(self,ref_id,value):
+  #  Volume ISO
+  def set_iso(self,volume_id,value):
     # ref_id is remote ref_id here, the ChimeraX spec, like '#1'
-    command = f"volume {ref_id} level {value}"
+    command = f"volume {volume_id} level {value}"
     self.send_command(command)
 
-  def set_transparency(self,model_id,value):
+  # Volume Transparency
+  def set_transparency_map(self,model_id,value):
     command = f"volume {model_id} transparency  {value}"
     self.send_command(command)
 
+# Show/Hide model/selection, works by setting transparency
 
+  def _get_level_from_representation(self,representation_name):
+    # Convert from upstream/molstar representation names and chimerax level keyword
+    if representation_name is None:
+      level = 'models'
+    elif representation_name == "ball-and-stick":
+      level = 'atoms'
+    elif representation_name == 'cartoon':
+      level = 'cartoons'
+    else:
+      assert False, f"Unrecognized representation name: {representation_name}"
+    return level
 
-  def hide_model(self,remote_ref_id):
-    command = f"hide {remote_ref_id} models"
+  def show_model(self,model_id,representation_name: Optional[str] = None):
+    level = self._get_level_from_representation(representation_name)
+    command = f"show {model_id} {level}"
     self.send_command(command)
 
-  def show_model(self,remote_ref_id):
-    command = f"show {remote_ref_id} models"
+  def show_selected(self,representation_name: Optional[str] = None):
+    level = self._get_level_from_representation(representation_name)
+    command = f"show sel {level}"
     self.send_command(command)
 
-  def show_selection(self):
-    command = f"show sel atoms"
+  def show_query(self,model_id: str, query_json: str, representation_name: Optional[str] = None ):
+    self.deselect_all()
+    self.select_from_query(model_id,query_json)
+    self.show_selected(representation_name=representation_name)
+    self.deselect_all()
+
+  def hide_model(self,model_id,representation_name: Optional[str] = None):
+    level = self._get_level_from_representation(representation_name)
+    command = f"hide {model_id} {level}"
     self.send_command(command)
 
-  def hide_selection(self):
-    command = f"hide sel atoms"
+  def hide_selected(self,representation_name: Optional[str] = None):
+    level = self._get_level_from_representation(representation_name)
+    command = f"hide sel {level}"
     self.send_command(command)
 
-  def color_selection(self,value):
-    command = f"color sel {value}"
+  def hide_query(self,model_id: str, query_json: str,representation_name: Optional[str] = None ):
+    self.deselect_all()
+    self.select_from_query(model_id,query_json)
+    self.hide_selected(representation_name=representation_name)
+    self.deselect_all()
+
+
+  # Transparency for model/selection
+
+  def transparency_model(self,model_id: str, representation_name: Optional[str] = None):
+    raise NotImplementedError
+
+  def transparency_selected(self,representation_name: Optional[str] = None):
+    raise NotImplementedError
+
+  def transparency_query(self,model_id: str, query_json: str, representation_name: str, value: float):
+    raise NotImplementedError
+
+
+  # Color for model/selection
+
+  def color_model(self,model_id: str,color: str):
+    command = f"color {model_id} {color}"
     self.send_command(command)
 
-  def color_model(self,ref_id,value):
-    command = f"color {ref_id} {value}"
-    self.send_command(command)
-  
-  def show_ribbon_model(self,ref_id):
-    command = f"show {ref_id} cartoons"
+  def color_selected(self,color: str):
+    command = f"color sel {color}"
     self.send_command(command)
 
-  def show_ribbon_selection(self):
-    command = f"show sel cartoons"
+  def color_query(self,model_id: str, query_json: str, color: str):
+    self.deselect_all()
+    self.select_from_query(model_id,query_json)
+    self.color_selected(color) # currently works on all reps
+    self.deselect_all()
+
+  # Representation for model/selection
+
+  def representation_model(self,model_id: str, representation_name: str):
+    self.show_model(model_id,representation_name)
+
+  def representation_selected(self,representation_name: str):
+    self.show_selected(representation_name)
+
+  def representation_query(self,model_id: str, query_json: str, representation_name: str):
+    self.show_query(model_id,query_json,representation_name)
+
+    # add representation
+    command = f"""
+    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    query.params.refId = '{model_id}'
+    await {self.plugin_prefix}.visual.addRepr(query,'{representation_name}')
+    """
     self.send_command(command)
 
-  def hide_ribbon_model(self,ref_id):
-    command = f"hide {ref_id} cartoons"
-    self.send_command(command)
+  def _get_representation_names(self,model_id: str, query_json: str):
+    # add representation
+    command = f"""
+    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    query.params.refId = '{model_id}'
+    {self.plugin_prefix}.visual.getRepresentationNames(query)
+    """
+    result = self.send_command(command)
+    print("RESULT")
+    print(result)
 
-  def hide_ribbon_selection(self):
-    command = f"hide sel cartoons"
-    self.send_command(command)
+  # ---------------------------------------------------------------------------
+  # functions for wxPython GUI
+  def is_alive(self):
+    self._check_status()
+    return self._connected
 
-  # def select_from_phenix(self,selection_string):
-  #   # convert to json
-  #   query = self.state.mol.sites._select_query_from_str_phenix(selection_string)
-  #   self.select_from_query(query)
+  def quit(self):
+    return self.close_viewer()
 
-  # def select_from_json(self,query_json):
-  #   # json representation of SelectionQuery class
-  #   query = SelectionQuery.from_json(query_json)
-  #   self.select_from_query(query)
+# =============================================================================
 
-  # def select_from_query(self,query):
-  #   if query.params.refId in ["",None]:
-  #     query.params.refId = self.state.active_model_ref.id
-  #   query_json = query.to_json()
-  #   command = f"result = await {self.plugin_prefix}.select("+query_json+");"
-  #   self.send_command(command)
-
-  # def poll_selection(self,callback=None,queue=False):
-  #   # return the selection on the viewer side, 
-  #   # which may not be the active selection stored in self.state
-  #   #print("(#1) molstar.poll_selection")
-  #   command = f"{self.plugin_prefix}.pollSelection()"
-  #   self.send_command(command,callback=callback,queue=queue,wrap_async=False)
-
-  # # def clear_selection(self,queue=False):
-  # #   # This version removes coloring. Use deselect_all to retain color.
-  # #   command = f"{self.plugin_prefix}.clearSelection()"
-  # #   self.send_command(command,queue=queue)
-
-  # def deselect_all(self,queue=False):
-  #   command = f"{self.plugin_prefix}.visual.deselectAll()"
-  #   self.send_command(command,queue=queue)
-
-  # # def highlight_selection(self):
-  # #   # Highlighting usually comes with selection
-  # #   raise NotImplementedError
-
-  # # def focus_selection(self):
-  # #   raise NotImplementedError
-
-  # # def select_and_focus(self,selection_string):
-  # #   # Select, highlight, and focus
-  # #   # Implementing this first because that is 
-  # #   # the existing behavior
-  # #   print("select_and_focus()")
-
-
-  # # ---------------------------------------------------------------------------
-  # # Other
-
-  # def clear_viewer(self,queue=False):
-  #   # Remove all objects from the viewer
-  #   self.loaded_map_refs = []
-  #   self.loaded_model_refs = []
-  #   command = f"{self.plugin_prefix}.plugin.clear()"
-  #   self.send_command(command,queue=queue)
-  #   for ref in self.state.references.values():
-  #     if ref.entry is not None:
-  #       ref.entry.is_active = False
-
-   
-  # def reset_camera(self,queue=False):
-  #   command = f"{self.plugin_prefix}.plugin.managers.camera.reset();"
-  #   self.send_command(command,queue=queue)
-
-  # def toggle_selection_mode(self,value):
-  #   if value == True:
-  #     value = 'true'
-  #   else:
-  #     value = 'false'
-  #   command = f"""
-  #   {self.plugin_prefix}.toggleSelectionMode({value});
-  #   """
-  #   self.send_command(command)
-
-  # def set_granularity(self,value="residue"):
-  #   assert value in ['element','residue'], 'Provide one of the implemented picking levels'
-  #   if value == "element":
-  #     command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'element' }})"
-  #   elif value == "residue":
-  #     command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
-  #   self.send_command(command)
-
-  # # ---------------------------------------------------------------------------
-  # # Style
-
-  # def set_iso(self,ref,value):
-  #   #print(f"settings iso for ref: {ref.id} to {value}")
-  #   command = f"""
-  #   {self.plugin_prefix}.volumeRefInfo.params.values.entries[0].source.params.isoValue.absoluteValue = {value};
-  #   {self.plugin_prefix}.plugin.build().to({self.plugin_prefix}.volumeStreamingRef).update().commit();
-  #   """
-  #   self.send_command(command)
-
-  # def set_color(self,ref,color,theme='uniform',queue=False):
-  #   assert theme in ['uniform'], "Provide predefined color theme"
-  #   if theme == 'uniform':
-  #     command = f"""
-  #     var query = {self.plugin_prefix}.queryFromString('{ref.query.to_json()}');
-  #     {self.plugin_prefix}.visual.colorSelection(query, '{color}');
-  #     """
-  #     self.send_command(command,queue=queue)
-
-
-  # def set_representation(self,ref,representation_name,queue=False):
-  #   # select
-  #   self.select_from_json(ref.query.to_json())
-  #   # hide
-  #   self.hide_selection()
-
-  #   # add representation
-  #   command = f"""
-  #   var query = {self.plugin_prefix}.queryFromString('{ref.query.to_json()}');
-  #   await {self.plugin_prefix}.visual.addRepr(query,'{representation_name}')
-  #   """
-  #   self.send_command(command,queue=queue)
-
-  # def set_visibility(self,ref_id,is_visible,queue=False):
-  #   ref = self.state.references[ref_id]
-  #   # select
-  #   self.select_from_json(ref.query.to_json())
-  #   if not is_visible:
-  #     # hide
-  #     self.hide_selection(queue=queue)
-  #   else:
-  #     # show
-  #     self.show_selection(queue=queue)
-    
-
-  # def hide_selection(self,queue=False):
-  #   command = f"{self.plugin_prefix}.hideSelection();"
-  #   self.send_command(command,queue=queue)
-  #   #self.state.emitter.signal_repr_change.emit(ref_id,[])
-
-  # def show_selection(self,queue=False):
-  #   command = f"{self.plugin_prefix}.showSelection();"
-  #   self.send_command(command,queue=queue)

@@ -134,7 +134,7 @@ def translate_water(value,model_number=1):
   
 def translate_all(value,model_number=1):
     return "#"+str(model_number) # 'all' only emcompasses the model
-  
+      
 def translate_not(value,model_number=1):
     return "~"
   
