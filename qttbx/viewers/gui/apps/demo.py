@@ -42,7 +42,8 @@ if __name__ == '__main__':
   #qapp.setStyleSheet("QWidget { border: 1px solid black; }")
 
   # get icon
-  icon_path =  Path(__file__).parent / '../views/assets/icons/phenix/icon.icns'
+  icon_path =  Path(__file__).parent / '../view/assets/icons/phenix/icon.icns'
+  #print("DEBUG: icon path for phenix: ",icon_path)
   icon = QIcon(str(icon_path))
   qapp.setWindowIcon(icon)
 
