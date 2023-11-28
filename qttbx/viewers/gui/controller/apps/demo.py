@@ -11,6 +11,11 @@ from ..restraints_table import RestraintsTableTopTabController
 from ..qscore import QscoreTabController
 from ..controller import Controller
 
+
+from PySide2.QtWidgets import QApplication
+from PySide2.QtCore import QEvent
+
+
 class DemoController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
@@ -33,8 +38,13 @@ class DemoController(Controller):
     # Finish
     self.state._sync()
 
+  def close_application(self):
+    # manually call this function to close
+    closeEvent = QEvent(QEvent.Close)
+    QApplication.sendEvent(self.view, closeEvent)
 
   def close_event(self):
+    # slot for built in close event
     if hasattr(self,"molstar"):
       self.molstar.close_viewer()
     if hasattr(self,"chimerax"):

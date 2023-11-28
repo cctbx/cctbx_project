@@ -232,7 +232,8 @@ class MolstarController(Controller):
       self.viewer._sync(callback=self._sync_callback)
       
     elif not self.has_synced and self._sync_count> self._max_sync_count:
-      assert False, "Failure to sync..."
+      msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+      self.parent.close_application()
 
   def _sync_callback(self,result):
     print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
