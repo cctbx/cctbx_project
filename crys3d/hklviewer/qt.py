@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division
-import sys
 
 try:
   import PyQt5
@@ -18,7 +17,7 @@ try:
                            QKeySequence, QPalette, QTextDocument )
   from PyQt5.QtWebEngineWidgets import ( QWebEngineView, QWebEngineProfile, QWebEnginePage )   # special import
 
-except:
+except Exception:
   # PySide2
   from PySide2 import ( QtCore, QtWidgets )   # special import
   from PySide2.QtCore import Qt, QEvent, QAbstractTableModel, QCoreApplication, QMetaObject, \
