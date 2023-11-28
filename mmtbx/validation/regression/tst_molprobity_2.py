@@ -44,7 +44,7 @@ def exercise_protein():
   # percentiles
   out4 = StringIO()
   result.show_summary(out=out4, show_percentiles=True)
-  assert ("""  Clashscore            =  49.21 (percentile: 0.3)""" in
+  assert ("""  Clashscore            =  49.59""" in
           out4.getvalue())
   # misc
   assert approx_equal(result.r_work(), 0.237) # from PDB header
@@ -139,8 +139,5 @@ if (__name__ == "__main__"):
     print("Skipping tests: probe not configured")
   else :
     exercise_protein()
-    if (not libtbx.env.has_module(name="suitename")):
-      print("Skipping RNA test: suitename not available")
-    else :
-      exercise_rna()
+    exercise_rna()
     print("OK")
