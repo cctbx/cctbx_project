@@ -1,0 +1,489 @@
+"""
+Interface for Molstar via a Typescript plugin
+
+https://github.com/molstar/molstar
+
+This class is meant to control the molstar viewer from python, and be independent of 
+any other gui components. It also serves as a translation  layer for standardized commands and the respective Javascript for the
+specific Molstar app written to pair.
+
+Because the Javascript runs asynchronously, some methods accept an optional callback function, which is a Python 
+function to run with the result once the Javascript finishes. The Molstar functions should return a json result,
+and the python callback should expect a string which can be loaded as json.
+"""
+
+from __future__ import absolute_import, division, print_function
+
+import glob
+from pathlib import Path
+import os
+import random
+import requests
+import subprocess
+import sys
+import time
+
+from PySide2.QtCore import QObject, Signal
+
+
+
+try:
+  from urllib.parse import urlencode
+except ImportError:
+  from urllib import urlencode
+
+from libtbx.utils import Sorry
+try:
+  from qttbx.viewers import ModelViewer
+except:
+  from viewers import ModelViewer
+
+
+from .server_utils import HttpServerThread, NodeHttpServer
+from .volume_streaming import VolumeStreamingManager
+from ..last.selection_utils import SelectionQuery, Selection
+
+class ViewerSignalEmitter(QObject):
+  commandRequested = Signal(str, object) # Emit a signal that we want to run a command on the web view
+
+
+# =============================================================================
+class MolstarViewer(ModelViewer):
+
+  viewer_name = 'Molstar'
+
+  # ---------------------------------------------------------------------------
+  def is_available(self):
+    '''
+    Function for determining if Molstar is available
+
+    Parameters
+    ----------
+      Nothing
+
+    Returns
+    -------
+      True if available
+    '''
+    self.find_viewer()
+    if self.command:
+      return True
+    else:
+      return False
+
+  def find_viewer(self):
+    '''
+    Function for finding Molstar
+
+    Parameters
+    ----------
+      Nothing
+
+    Returns
+    -------
+      Command for running Molstar
+    '''
+    #self.molstar_project_path = Path("/Users/user/Desktop/CambridgeTrip/Molstar/molstar/")
+    #self.app_root_dir = self.molstar_project_path / Path("build/examples/basic-wrapper")
+    self.molstar_project_path = Path("/Users/user/Desktop/CambridgeTrip/Molstar/molstar")
+    self.app_root_dir = self.molstar_project_path / Path("build/viewer/")
+
+    
+    self.volume_server_js_path=self.molstar_project_path / Path("lib/commonjs/servers/volume/server.js")
+    self.pack_js_path = self.molstar_project_path / Path("lib/commonjs/servers/volume/pack.js")
+    self.node_js_path = Path("/opt/homebrew/bin/node")
+    self.command = ['http-server',str(self.app_root_dir)]
+    return self.command
+
+
+  def start_viewer(self,plugin_prefix="this.viewer"):
+    '''
+    Function for starting Molstar. Sequence of events:
+      1. Start web server for molstar app
+      2. Start volume server for volume streaming
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+      Nothing
+    '''
+
+    # Start the HTTP server using built in server
+    # self.http_server_thread = HttpServerThread()
+    # self.http_server_thread.start()
+    # self.ip = self.http_server_thread.ip
+    # self.port = self.http_server_thread.port
+    # self.url = self.http_server_thread.url
+    self.plugin_prefix = plugin_prefix
+
+    # Start node http-server
+    print()
+    print('-'*79)
+    print('Starting HTTP server for Molstar')
+    self.command = self.find_viewer()
+    self.view_server = NodeHttpServer(self.command)
+    self.view_server.start()
+    self.command = self.view_server.command
+    self.port = self.view_server.port
+    self.url = self.view_server.url
+    print('-'*79)
+    print()
+
+
+    # Start volume streaming server
+    print()
+    print('-'*79)
+    print('Starting volume streaming server')
+    self.volume_streamer = VolumeStreamingManager() # lots of hardcoded defaults here
+    self.volume_streamer.start_server()
+    print('-'*79)
+    print()
+
+    # Two important objects
+    #self.viewer = viewer_class(port,ip,etc)
+    #self.webview = webview # a property
+
+    # initialize the signal emitter to run commands
+    self.emitter = ViewerSignalEmitter()
+
+    # Other stuff
+    self._blocking_commands = False
+
+
+    
+    
+  # ---------------------------------------------------------------------------
+  def _check_status(self):
+    '''
+    Check if the server is available
+    '''
+    output = None
+    try:
+      output = requests.get(url=self.url)
+      if output.status_code == 200:
+        self._connected = True
+    except requests.exceptions.ConnectionError:
+      self._connected = False
+    return output
+
+
+  # ---------------------------------------------------------------------------
+  def close_viewer(self):
+    self.view_server.stop()
+    self.volume_streamer.stop_server()
+    print('='*79)
+
+  # ---------------------------------------------------------------------------
+  def send_command(self, cmds,callback=None):
+    """
+    This function takes a list of commands or a single command. 
+    Each command is a string of Javascript 
+    code that will be executed. 
+    """
+    self._block_until_result = True
+    if not isinstance(cmds,list):
+      assert isinstance(cmds,str), "send_command takes a string or list of strings"
+      cmds = [cmds]
+    if not isinstance(callback,list):
+      callback= [callback for cmd in cmds]
+    for cmd,callback in zip(cmds,callback):
+      self._run_command(cmd,callback=callback)
+
+  def _run_command(self,cmd,callback=None):
+    #print("(#2) molstar.send_command")
+    print("molstar.send_command:")
+    print(cmd)
+    self.emitter.commandRequested.emit(cmd,callback)
+
+  # ---------------------------------------------------------------------------
+
+
+  def load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
+    func_name = f"model_as_{format}"
+    func = getattr(model,func_name)
+    model_string = func()
+    return self._load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
+
+
+  def load_model_from_string(self, model_string,format='pdb',label=None,ref_id=None,callback=None):
+    # Key is filename in data manager context
+    return self._load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
+
+  def _load_model_from_string(self,model_str,format='pdb',label=None,ref_id=None,callback=None):
+    if ref_id is None:
+      ref_id = 'null'
+    if label is None:
+      label = 'model'
+  
+    command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
+    command= f"""
+    (async () => {{
+        {command}
+    }})();
+    """
+    self.send_command(command,callback=callback)
+
+  # def _load_dummy_model(self,callback=None):
+  #   s = """
+  #   ATOM      1  N   ASN A   1       0.000   0.000   0.000  1.00100.00           N
+  #   """
+  #   command =  self._load_model_build_js(s,format="pdb",label="dummy")
+  #   command= f"""
+  #   (async () => {{
+  #       {command}
+  #   }})();
+  #   """
+  #   self.send_command(command,callback=callback)
+
+
+  def _load_model_build_js(self,model_str,format='pdb',label=None,ref_id=None):
+    assert ref_id is not None, 'Cannot load into molstar without preexisting Python ref'
+    assert label is not None, 'Cannot load into molstar without label'
+    # build command
+    # commands = f"""
+    # var model_str = `{model_str}`
+    # await {self.plugin_prefix}.load_rawdata({{ rawdata: model_str, label: '{label}', format: '{format}' }});
+    # """
+    js_str = f"""
+    var model_str = `{model_str}`
+    result = await {self.plugin_prefix}.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}');
+    """
+
+    # wrap in async in order to await
+    return js_str
+    
+  # ---------------------------------------------------------------------------
+
+  # def set_color(self,ref=None,ref_id=None,color='#FFA500',callback=None):
+  #   if ref is not None:
+  #     ref_id = ref.id
+    
+  #   command = f"""
+  #   {self.plugin_prefix}.setStyling({{ref_id: '{ref_id}', color: '{color}'}});
+  #   """
+  #   self.send_command(command)
+  
+  def load_map(self, filename=None,ref=None,callback=None):
+    print("molstar viewer load_map")
+    filename = str(filename)
+    
+    assert filename is not None, 'Provide filename'
+    if filename not in self.state.dm.get_real_map_names():
+      key = self.state.dm.process_real_map_file(filename)
+      self.state._data_manager_changed() # TODO: Refactor out
+    else:
+      key = filename
+    if ref:
+      iso = ref.iso
+    else:
+      iso = 0.5
+    js_str = self._load_map_build_js(None,iso=iso) #TODO: need a way to pass properties, or a way to combine a queue of commands
+    # How about start queue and execute queue, and then a queue combiner on viewer?
+    js_str = f"""
+    (async () => {{
+        {js_str}
+    }})();
+    """
+    self.send_command(js_str,callback=callback)
+
+  def _load_map_build_js(self,map_ref,iso=0.5):
+    url_server =self.volume_streamer.url
+    js_str = f"""
+    {self.plugin_prefix}.volumeServer = '{url_server}';
+    await {self.plugin_prefix}.loadMap();
+    {self.plugin_prefix}.volumeRefInfo.params.values.entries[0].source.params.isoValue.absoluteValue = {iso};
+    {self.plugin_prefix}.plugin.build().to({self.plugin_prefix}.volumeStreamingRef).update().commit();
+    """
+
+    return js_str
+
+  # ---------------------------------------------------------------------------
+  # def load_model_and_map_from_string(self,model_string=None,map_file=None,model_format='pdb',callback=None):
+  #   """
+  #   Application specific
+  #   Volume streaming as implemented cannot start without a model.
+  #   Loading a model and map sequentially is buggy due to async, sometimes
+  #   the volume is ready before the map. This is a workaround.
+  #   """
+  #   # validate model
+  #   model_file = str(model_file)
+  #   assert model_file is not None, 'Provide filename'
+  #   if model_file not in self.state.dm.get_model_names():
+  #     key = self.state.dm.process_model_file(model_file)
+  #     self.state._data_manager_changed() # TODO: Refactor out
+  #   else:
+  #     key = model_file
+  #   model = self.state.dm.get_model(key)
+  #   if model_format == 'pdb':
+  #     model_str = model.model_as_pdb()
+  #   elif model_format == 'mmcif':
+  #     model_str = model.model_as_mmcif()
+  #   js_model =  self._load_model_build_js(model_str,format=model_format,label=Path(model_file).stem)
+
+  #   # Validate maps
+  #   map_file = str(map_file)
+  #   assert map_file is not None, 'Provide filename'
+  #   if map_file not in self.state.dm.get_real_map_names():
+  #     key = self.state.dm.process_real_map_file(map_file)
+  #     self.state._data_manager_changed() # TODO: Refactor out
+  #   else:
+  #     key = map_file
+  #   js_map =  self._load_map_build_js(key)
+
+  #   combined_js = f"""
+  #   (async () => {{
+  #     //  Model
+  #     {js_model}
+      
+  #     // Map
+  #     {js_map}
+  #   }})();
+  #   """
+  #   self.send_command(combined_js,callback=callback)
+
+
+
+  # ---------------------------------------------------------------------------
+  # def _convert_json_to_javascript(query_json):
+  #   # convert a string json query to javascript code to run
+  #   #
+  #   # TODO: replace with json, meaning the typescript app takes json
+  #   s = repr(query_json)
+  #   s = s.replace("SelectionQuery(","{")
+  #   s = s.replace("Selection(","{")
+  #   s = s.replace(")","}")
+  #   s = s.replace("=",": ")
+  #   s = s.replace("selections","site_params")
+  #   s ="{query: "+s+"}"
+  #   s = s.replace("*","")
+  #   return s
+
+  def select_from_phenix(self,selection_string):
+    # convert to json
+    query = self.state.mol.sites._select_query_from_str_phenix(selection_string)
+    self.select_from_query(query)
+
+  def select_from_json(self,query_json):
+    # json representation of SelectionQuery class
+    query = SelectionQuery.from_json(query_json)
+    self.select_from_query(query)
+
+  def select_from_query(self,query):
+    # actual SelectionQuery object
+    query_json = query.to_json()
+    command = f"{self.plugin_prefix}.select("+query_json+");"
+    self.send_command(command)
+
+  # def highlight_selection(self):
+  #   # Highlighting usually comes with selection
+  #   raise NotImplementedError
+
+  def focus_selection(self):
+    raise NotImplementedError
+
+  def select_and_focus(self,selection_string):
+    # Select, highlight, and focus
+    # Implementing this first because that is 
+    # the existing behavior
+    print("select_and_focus()")
+
+  def clear_viewer(self):
+    # Remove all objects from the viewer
+    command = f"{self.plugin_prefix}.plugin.clear()"
+    self.send_command(command)
+    
+  def clear_selection(self):
+    command = f"{self.plugin_prefix}.clearSelection()"
+    self.send_command(command)
+
+  def toggle_selection_mode(self,value):
+    if value == True:
+      value = 'true'
+    else:
+      value = 'false'
+    command = f"""
+    {self.plugin_prefix}.toggleSelectionMode({value});
+    """
+    self.send_command(command)
+
+  def set_granularity(self,value="residue"):
+    assert value in ['element','residue'], 'Provide one of the implemented picking levels'
+    if value == "element":
+      command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'element' }})"
+    elif value == "residue":
+      command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
+    self.send_command(command)
+
+  def poll_selection(self,callback=None):
+    # return the selection on the viewer side, 
+    # which may not be the active selection stored in self.state
+    print("(#1) molstar.poll_selection")
+    command = f"{self.plugin_prefix}.pollSelection()"
+    self.send_command(command,callback=callback)
+
+  def poll_objects(self,callback=None):
+    command = f"{self.plugin_prefix}.pollStructures()"
+    self.send_command(command,callback=callback)
+
+  # def _poll_selection_callback(self,result):
+  #   # called with the result from the viewer.
+  #   # func to operate on the result
+  #   # TODO: now hardcoded that result is selection change
+
+  #   #set new selection
+  #   print("(#5) molstar._poll_selection_callback")
+  #   if result is None or len(result.strip())==0:
+  #     return
+  #   else:
+  #     query = SelectionQuery.from_json(result)
+  #     #print("############################################")
+  #     self._last_polled_selection = query.to_json()
+
+  # @property
+  # def last_polled_selection(self):
+  #   print("(#6) molstar.last_polled_selection")
+  #   return self._last_polled_selection
+
+  def set_iso(self,ref_id,value):
+    #print(f"settings iso for ref: {ref_id} to {value}")
+    command = f"""
+    {self.plugin_prefix}.volumeRefInfo.params.values.entries[0].source.params.isoValue.absoluteValue = {value};
+    {self.plugin_prefix}.plugin.build().to({self.plugin_prefix}.volumeStreamingRef).update().commit();
+    """
+    self.send_command(command)
+
+  def set_color(self,ref_id,color,theme='uniform'):
+    query = SelectionQuery(selections=[Selection.from_default()],params={"refId":ref_id})
+    command = f"""
+    var query = {self.plugin_prefix}.queryFromString('{query.to_json()}');
+    {self.plugin_prefix}.visual.colorSelection(query, '{color}');
+    """
+    self.send_command(command)
+
+
+  def set_representation(self,ref_id,representations):
+    ref = self.state.references[ref_id]
+    # select
+    self.select_from_json(ref.selection_json)
+
+    # hide
+    self.hide_selection()
+
+    # add representations
+    for repr in representations:
+      command = f"""
+      var query = {self.plugin_prefix}.queryFromString('{ref.selection_json}');
+      {self.plugin_prefix}.visual.addRepr(query,'{repr}')
+      """
+      self.send_command(command)
+
+  def hide_selection(self):
+    command = f"{self.plugin_prefix}.hideSelection();"
+    self.send_command(command)
+
+  def show_selection(self):
+    command = f"{self.plugin_prefix}.showSelection();"
+    self.send_command(command)
+

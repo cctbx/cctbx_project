@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 from cctbx.array_family import flex
 
-from cif_io import df_to_cif_lines
+from .cif_io import df_to_cif_lines
 
 
 
 def convert_iseq_to_i(df):
   """
   Takes a dataframe and looks for i,j,k,l _seq columns
-  If found, then i,j,kl columns will be added
+  If found, then i,j,k,l columns will be added
   """
   
   
@@ -58,6 +58,7 @@ def get_restraint_df(model,restraint_type="bond"):
         keys = ["i_seq", "j_seq","labels", "distance_ideal", "distance_model", "slack", "delta", "sigma", "weight", "residual", "sym_op_j", "rt_mx"]
         simple,asu = pair_proxies.bond_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
+
         
     elif restraint_type=="nonbonded":
         pair_proxies = grm.pair_proxies(flags=flags, sites_cart=sites_cart)
@@ -99,15 +100,36 @@ def get_restraint_df(model,restraint_type="bond"):
     df = pd.DataFrame.from_records(records)
     df = df.applymap(cell_convert_cctbx)
 
-    # move i_seqs list to column if not too many
-    if "i_seqs" in df.columns:
-      max_len = df["i_seqs"].apply(len).max()
-      if max_len<5:
-        indices = "ijkl"
-        df[[indices[e] for e in range(max_len)]] = pd.DataFrame(df['i_seqs'].tolist(), index=df.index)
-        del df["i_seqs"]
+    # move i_seqs columns to list
+    if any([("_seq" in column and column != "i_seqs") for column in df.columns]):
 
-    df = convert_iseq_to_i(df)
+      indices = "ijklm"
+      to_merge = []
+      for i in indices:
+        name = f"{i}_seq" 
+        if name in df.columns:
+          to_merge.append(name)
+      if len(to_merge)>0:
+        df['i_seqs'] = df.apply(lambda row: [int(row[name]) for name in to_merge], axis=1)
+        df.drop(to_merge, axis=1, inplace=True)
+
+    # add labels if none
+    if 'labels' not in df.columns:
+      if 'i_seqs' in df.columns:
+        df['labels'] = df['i_seqs'].apply(lambda lst: [str(x) for x in lst])
+
+
+
+
+    # # move i_seqs list to column if not too many
+    # if "i_seqs" in df.columns:
+    #   max_len = df["i_seqs"].apply(len).max()
+    #   if max_len<5:
+    #     indices = "ijkl"
+    #     df[[indices[e] for e in range(max_len)]] = pd.DataFrame(df['i_seqs'].tolist(), index=df.index)
+    #     del df["i_seqs"]
+
+    #df = convert_iseq_to_i(df)
     return df
 
 def get_restraint_dfs_from_model(model,lazy_build=False):

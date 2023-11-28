@@ -170,14 +170,13 @@ class ChimeraXViewer(ModelViewer):
     '''
     Check if the REST server is available
     '''
-    output = None
     try:
-      output = requests.get(url=self.url + 'cmdline.html')
-      if output.status_code == 200:
-        self._connected = True
-    except requests.exceptions.ConnectionError:
-      self._connected = False
-    return output
+      response = requests.get(url)
+      if response.status_code == 200:
+        return True
+    except RequestException as e:
+      print(f"An error occurred: {e}")
+    return False
 
   # ---------------------------------------------------------------------------
   def _run_command(self, params):

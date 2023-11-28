@@ -1,0 +1,295 @@
+from PySide2.QtCore import Qt, QSize, QPoint
+from PySide2.QtWidgets import (
+  QWidget, QLineEdit, QSlider, QComboBox, QHBoxLayout, QVBoxLayout,
+QFrame, QApplication, QLabel, QPushButton, QColorDialog,QCheckBox, QFileDialog, QSpacerItem, QSizePolicy
+)
+from PySide2.QtGui import QPalette, QColor, QFont, QIcon
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (
+  QWidget, QLineEdit, QSlider, QComboBox, QHBoxLayout, QVBoxLayout,
+QFrame, QApplication, QLabel, QPushButton
+)
+from PySide2.QtGui import QPalette, QColor
+
+from PySide2.QtCore import Qt, Slot
+from PySide2.QtWidgets import (
+  QWidget, QLineEdit, QSlider, QComboBox, QHBoxLayout, QVBoxLayout,
+QFrame, QApplication, QLabel, QPushButton
+)
+from PySide2.QtGui import QPalette, QColor
+import subprocess
+import platform
+from PySide2.QtWidgets import QApplication, QMainWindow, QPushButton, QWidget, QVBoxLayout
+import numpy as np
+
+from ..widgets.tab import GUITab
+from ..widgets import FastTableView, PandasTableModel, FloatingVSlider, ISOWidget, OpacityWidget
+from ..widgets.scroll_entry import ScrollEntryView
+from ..widgets.scroll_list import ScrollableListView
+import os
+
+
+from pathlib import Path
+from functools import partial
+
+
+
+
+class ModelEntryView(ScrollEntryView):
+  def __init__(self,parent=None):
+    super().__init__(parent=parent)
+
+
+    # signals
+    self.state.emitter.signal_model_change.connect(self.handle_model_change) 
+    #self.checkbox_active.stateChanged.connect(self.become_active)
+  @property
+  def max_width(self):
+    # TODO: Really need to refactor sizing of entries
+    return self.parent().width()*1.05
+
+  def handle_model_change(self):
+    if (self.state.active_model_ref is  None  or
+     self.state.active_model_ref.id != self.ref.id):
+      self.active_toggle.is_checked = False
+
+  def _toggle_active_func(self,is_checked):
+    # TODO: Move this to data tab?
+    if is_checked:
+      self.state.active_model_ref = self.ref
+    else:
+      if self.state.active_model_ref == self.ref:
+        self.state.active_model_ref = None
+
+
+class MapEntryView(ScrollEntry):
+  def __init__(self,parent=None,ref=None):
+    super().__init__(parent=parent,ref=ref)
+
+    # ISO
+    self.iso_button = QPushButton()
+    icon_path = Path(__file__).parent / '../assets/icons/other/graph_icon.svg'
+    icon = QIcon(str(icon_path))
+    self.iso_button.setIcon(icon)
+    self.iso_button.setToolTip("ISO Contour")
+    self.iso_button.clicked.connect(self.show_iso_slider)
+    
+    self.layout.insertWidget(self.layout.count() - self._insert_index, self.iso_button)
+    self.iso_widget = ISOWidget(self)
+   
+    # Opacity
+    self.opacity = QPushButton()
+    icon_path = Path(__file__).parent / '../assets/icons/material/opacity.svg'
+    icon = QIcon(str(icon_path))
+    self.opacity.setIcon(icon)
+    self.opacity.setToolTip("Opacity")
+    self.opacity.clicked.connect(self.show_opacity_slider)
+    
+    self.layout.insertWidget(self.layout.count() - self._insert_index, self.opacity)
+    self.opacity_slider = OpacityWidget(self)
+
+    # signals
+    self.state.emitter.signal_map_change.connect(self.handle_map_change) 
+    #self.checkbox_active.stateChanged.connect(self.become_active)
+
+
+  def show_opacity_slider(self):
+    pos = self.opacity.mapToGlobal(QPoint(0, 0))
+    self.opacity_slider.move(pos.x() - (self.width()//2), pos.y()-self.opacity.height())
+    self.opacity_slider.show()
+
+  def show_iso_slider(self):
+    pos = self.iso_button.mapToGlobal(QPoint(0, 0))
+    self.iso_widget.move(pos.x() - (self.width()//2), pos.y()-self.iso_button.height())
+    self.iso_widget.show()
+
+  def _toggle_active_func(self,is_checked):
+    # TODO: Move this to data tab?
+    if is_checked:
+      self.state.active_map_ref = self.ref
+    else:
+      if self.state.active_map_ref == self.ref:
+        self.state.active_map_ref = None
+
+
+  def handle_map_change(self):
+    if (self.state.active_map_ref is  None  or
+     self.state.active_map_ref.id != self.ref.id):
+      self.active_toggle.is_checked = False
+
+  @property
+  def max_width(self):
+    # TODO: Really need to refactor sizing of entries
+    return self.parent().width()*1.065
+  
+
+  @property
+  def max_volume(self):
+    return  np.percentile(self.map_manager.map_data().as_numpy_array(),100)
+
+
+  @property
+  def map_manager(self):
+    # map manager
+    return self.state.dm.get_real_map(filename=self.key)
+
+
+
+  
+  def truncate_string(self,path, max_len=50):
+    if len(path) > max_len:
+      return path[:max_len // 2] + "..." + path[-max_len // 2:]
+    else:
+      return path
+
+  def show_color_dialog(self):
+    color = QColorDialog.getColor()
+    if color.isValid():
+      print(f"You chose the color: {color.name()}")
+
+
+class EntryList(ScrollableList):
+  def __init__(self, parent,title="List"):
+    super(EntryList, self).__init__(parent)
+    header_layout = QHBoxLayout()
+    label = QLabel(title)
+    current_font = label.font()
+    current_font.setPointSize(16)
+    current_font.setBold(False)
+    label.setFont(current_font)
+    
+    load_button = QPushButton()
+    icon_path = Path(__file__).parent / '../assets/icons/material/plus.svg'
+    load_icon = QIcon(str(icon_path))
+    load_button.setIcon(load_icon)
+    load_button.setMaximumSize(50, 50)
+    load_button.setContentsMargins(10, 10, 0, 0) 
+    header_layout.addWidget(label)
+    header_layout.addWidget(load_button)
+    
+    self.layout.insertLayout(0, header_layout)
+    load_button.clicked.connect(self._showFileDialog)
+
+
+
+  def _showFileDialog(self):
+    home_dir = os.path.expanduser("~")  # Cross-platform home directory
+    fname = QFileDialog.getOpenFileName(self, 'Open file', home_dir)
+    if fname[0]:
+      filename = fname[0]
+      print(f"File selected: {filename}, stopping.")
+      
+
+
+
+
+
+
+
+class ModelList(EntryList):
+  def __init__(self,parent):
+      self.title = "Models"
+      super().__init__(parent=parent,title=self.title)
+
+  # def active_entry_changed(self, entry_obj, state):
+  #   # uncheck other boxes using super
+  #   super().active_entry_changed(entry_obj, state)
+
+  #   # Change state
+  #   if state:
+  #     print(f"DEBUG: Setting to active: {entry_obj.key}")
+  #     self.state.active_model_key = entry_obj.key
+  #     print("can read?",self.state.active_model_key)
+  #   else:
+  #     self.state.active_model_key = None
+
+  def _showFileDialog(self):
+    home_dir = os.path.expanduser("~")  # Cross-platform home directory
+    fname = QFileDialog.getOpenFileName(self, 'Open file', home_dir)
+    if fname[0]:
+      filename = fname[0]
+      print(f"File selected: {filename}")
+      _ = self.state.data_manager.process_model_file(filename)
+      self.state._data_manager_changed()
+
+
+class MapList(EntryList):
+  def __init__(self,parent):
+      self.title = "Maps"
+      super().__init__(parent=parent,title=self.title)
+
+  # def active_entry_changed(self, entry_obj, state):
+  #   # uncheck other boxes
+  #   super().active_entry_changed(entry_obj, state)
+
+  #   # Change state
+  #   if state:
+  #     self.state.active_map_key = entry_obj.key
+  #   else:
+  #     self.state.active_map_key = None
+
+
+  def _showFileDialog(self):
+    home_dir = os.path.expanduser("~")  # Cross-platform home directory
+    fname = QFileDialog.getOpenFileName(self, 'Open file', home_dir)
+    if fname[0]:
+      filename = fname[0]
+      print(f"File selected: {filename}")
+      _ = self.state.data_manager.process_real_map_file(filename)
+      self.state._data_manager_changed()
+
+
+
+class DataTab(GUITab):
+  def __init__(self,parent=None):
+    super().__init__(parent=parent)
+    layout = QVBoxLayout()
+    
+    self.model_list = ModelList(self)
+    layout.addWidget(self.model_list)
+    self.setLayout(layout)
+
+
+    
+    self.last_clicked_data = 0
+    self.click_interval = 2
+
+    
+    self.map_list = MapList(self)
+
+
+    # ModelEntry() for i in range(3)]
+    # map_entries = [MapEntry() for i in range(2)]
+    # self.model_list = ModelList(model_entries)
+    # self.map_list = MapList(map_entries)
+
+    
+    layout.addWidget(self.map_list)
+
+    # Signals
+    #self.state.emitter.signal_state_change.connect(self.update)
+    self.state.emitter.signal_references_change.connect(self.update_data)
+    #self.state.emitter.signal_iso_change.connect(self.update_iso)
+    # initialize maps/models
+    self.update_data()
+
+  @property
+  def volume_manager(self):
+    return self.parent().viewer.volume_streamer
+
+  @Slot()
+  def update_data(self):
+    # models
+    for ref in self.state.references_model:
+      if ref not in self.model_list.refs:
+          entry = ModelEntry(parent=self.model_list,ref=ref)
+          self.model_list.add_entry(entry)
+    # maps
+    for ref in self.state.references_map:
+      if ref not in self.map_list.refs:
+        entry = MapEntry(parent=self.map_list,ref=ref)
+        self.map_list.add_entry(entry)
+
+
+
+

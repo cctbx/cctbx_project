@@ -5,6 +5,8 @@ import json
 from collections import defaultdict
 from PySide2.QtCore import QAbstractTableModel, Qt, Slot
 from PySide2.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QTabWidget, QTableView
+from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+from PySide2.QtCore import QUrl
 import pandas as pd
 from urllib.parse import urlencode
 from pathlib import Path
@@ -31,8 +33,37 @@ from PySide2.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QFileDialog,
-    QTabWidget
+    QTabWidget,
+    QFrame
 )
+
+from PySide2.QtCore import QUrl, QThread
+import http.server
+import socketserver
+import sys
+import threading
+import os
+import random
+
+
+class HttpServerThread(QThread):
+  def run(self):
+    class CustomHandler(http.server.SimpleHTTPRequestHandler):
+      allow_reuse_address = True
+      def __init__(self, *args, **kwargs):
+        
+        super().__init__(*args, directory="/Users/user/Desktop/CambridgeTrip/Molstar/molstar/build/examples/basic-wrapper" , **kwargs)
+    
+    with socketserver.TCPServer(("", 8000), CustomHandler) as httpd:
+      print("HTTP Server at port 8000")
+      try:
+        httpd.serve_forever()
+      except Exception as e:
+        print(f"An error occurred: {e}")
+      finally:
+        httpd.server_close()
+
+
 from phenix.programs.hotspots import Program as HotSpots
 from phenix.program_template import call_program
 from iotbx import phil
@@ -49,8 +80,14 @@ from qttbx.sel_convert_chimera import (
   convert_selection_int_to_str
 )
 
+from last.mol import LastMol
+
 from cctbx_utils import model_to_df
 from cctbx_utils import get_restraint_dfs_from_model
+
+class MyWebEnginePage(QWebEnginePage):
+  def javaScriptConsoleMessage(self, level, msg, line, sourceID):
+    print(f"JS console message: {msg}, line: {line}, sourceID: {sourceID}")
 
 def convert_id_str_to_selection_str(id_str):
   # convert pdb id_str to selection string 
@@ -173,36 +210,6 @@ def chimerax_composition_from_selection_response(response):
         assert False, "Unable to parse composition from :"+"".join(content)
     return composition
 
-
-
-def group_by_columns(df, columns):
-    # Make a copy of the DataFrame to avoid modifying the original
-    df_copy = df.copy()
-
-    # Reset index if any of the groupby columns is the index
-    df_copy.reset_index(drop=True, inplace=True)
-
-    # Create a column with the original index
-    df_copy['Atom Index'] = df.index
-    
-    # Group by the specified columns and aggregate
-    grouped_df = df_copy.groupby(columns).agg({
-        col: 'first' if col in columns else list
-        for col in df_copy.columns
-    })
-    
-    # Here the grouped columns are the index, so we convert the index to a normal column
-    grouped_df.reset_index(drop=True, inplace=True)
-
-    # Remove columns where rows differ
-    for col in grouped_df.columns:
-        if col not in columns and col != 'Atom Index':
-            grouped_df.drop(col, axis=1, inplace=True)
-
-    # Sort by the columns
-    grouped_df.sort_values(by=columns, inplace=True)
-    
-    return grouped_df
 
 
 
@@ -440,10 +447,51 @@ class SelectionViewerWindow(QMainWindow):
         layout.addWidget(self.checkbox_chimerax)
         
 
-        # Create the QTabWidget.
         self.tab_widget = QTabWidget()
+        # viewer tab
+        # Create layout for the viewer tab
+        self.viewer_layout = QVBoxLayout()
         
+        # Start the HTTP server for molstar
+        self.http_server_thread = HttpServerThread()
+        self.http_server_thread.start()
+
+        # Webview setup
+        self.webview_molstar = QWebEngineView()
+        self.webpage = MyWebEnginePage(self.webview_molstar)
+        self.webview_molstar.setPage(self.webpage)
+
+        random_query = random.randint(1000, 9999)
+        self.webview_molstar.setUrl(QUrl(f"http://localhost:8000/index.html?nocache={random_query}"))
         
+        # Create settings area
+        self.viewer_settings = QFrame()
+        self.viewer_settings.setFrameShape(QFrame.StyledPanel)
+
+        # Create layout for settings area and add QTextEdit
+        self.viewer_settings_layout = QVBoxLayout()
+        self.viewer_text_edit =  QLineEdit()
+        self.viewer_text_edit.returnPressed.connect(self.viewer_select_button_clicked)
+        self.viewer_settings_layout.addWidget(self.viewer_text_edit)
+        self.viewer_settings.setLayout(self.viewer_settings_layout)
+        
+        # Add webview and settings to the layout
+        self.viewer_layout.addWidget(self.webview_molstar)
+        self.viewer_layout.addWidget(self.viewer_settings)
+        
+        # Create a container for the viewer tab and set its layout
+        self.viewer_container = QWidget()
+        self.viewer_container.setLayout(self.viewer_layout)
+        
+        # Add container as a tab
+        self.tab_widget.addTab(self.viewer_container, "Viewer")
+
+
+
+  #       #################
+
+        
+        # Selections tab
         self.tab1_content = QWidget()
         self.tab1_content.setLayout(layout)
         self.tab_widget.addTab(self.tab1_content, "Selections")
@@ -507,6 +555,10 @@ class SelectionViewerWindow(QMainWindow):
         self.hotspot_color_button.clicked.connect(self.on_hotspot_button_click)  # Connect to a new slot function
         self.settings_layout.addWidget(self.hotspot_color_button)
 
+        self.button_debug = QPushButton("Debug")
+        self.button_debug.clicked.connect(self.on_button_click_debug)  # Connect to a new slot function
+        self.settings_layout.addWidget(self.button_debug)
+
         # Create a new QWidget to house the settings_layout
         self.settings_tab_content = QWidget()
         self.settings_tab_content.setLayout(self.settings_layout)
@@ -552,6 +604,61 @@ class SelectionViewerWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.periodic_update)
         self.timer.start(5000) # 5 seconds
+
+    def viewer_select_button_clicked(self):
+      sel_str = self.viewer_text_edit.text()
+      mol = LastMol.from_mmtbx_model(self.model)
+      query = mol.atom_sites.select_as_query(sel_str)
+      js_str = query.as_javascript_string()
+      js_code = "window.BasicMolStarWrapper.visual.select("+js_str+");"
+      print(js_code)
+      self.webview_molstar.page().runJavaScript(js_code)
+      
+
+
+    def resizeEvent(self, event):
+      window_height = self.height()
+      window_width= self.width()
+
+      # resize viewer settings
+      settings_height = int(window_height * 0.1)  # % of the total height
+      self.viewer_settings.setFixedHeight(settings_height)
+
+      # # resize viewer
+      # viewer_height = int(window_height * 0.95)  
+      # self.webview_molstar.setFixedHeight(viewer_height)
+
+
+ 
+
+    @Slot()
+    def run_javascript(self):
+      # Execute a simple method without parameters
+      self.webview_molstar.page().runJavaScript("window.BasicMolStarWrapper.load_file('1qgt');")
+
+      # Execute a method with parameters and capture its return value
+      self.webview_molstar.page().runJavaScript("addNumbers(5, 3);", self.handle_result)
+
+    def handle_result(self, result):
+      print(f"Result from JavaScript: {result}")
+
+    def on_button_click_debug(self):
+
+      # Debug print statements from both Python and javascript
+      print("DEBUG! from Python")
+      self.webview_molstar.page().runJavaScript("console.log('DEBUG! from Javascript');")
+      ####
+      # Actual debug here
+      ####
+      mol = LastMol.from_mmtbx_model(self.model)
+      sel_str = "chain A and resseq 2:4"
+      query = mol.atom_sites.select_as_query("chain A and resseq 2:4")
+      js_str = query.as_javascript_string()
+      #query_str = "{: [{asym_id: 'A', comp_id: '*', seq_id_start: 10, seq_id_stop: 15, atom_id: '*', id: '*'}, {asym_id: 'A', comp_id: '*', seq_id_start: 20, seq_id_stop: 30, atom_id: '*', id: '*'}, {asym_id: 'B', comp_id: '*', seq_id_start: 10, seq_id_stop: 15, atom_id: '*', id: '*'}, {asym_id: 'C', comp_id: '*', seq_id_start: 10, seq_id_stop: 15, atom_id: '*', id: '*'}, {asym_id: 'D', comp_id: '*', seq_id_start: 10, seq_id_stop: 15, atom_id: '*', id: '*'}], model_num: 1, auth_label_pref: 'auth'}"
+      js_code = "window.BasicMolStarWrapper.visual.select("+js_str+");"
+      print(js_code)
+      #js_code = "window.BasicMolStarWrapper.visual.select({query: { site_params: [{seq_id_start: 2, seq_id_end: 6, comp_id: 'ASN'}], model_num: 1, auth_label_preference: 'auth'}})"
+      self.webview_molstar.page().runJavaScript(js_code)
 
 
     def on_hotspot_button_click(self):
@@ -874,7 +981,15 @@ class SelectionViewerWindow(QMainWindow):
       # agg_dict = {label:"mean" for label in mean_labels}
       # self.df_residues_q = df_atoms.groupby(groupby_labels).agg(agg_dict).reset_index()
       
-        
+    def load_model_in_molstar(self,model):
+      model_str_mmcif = model.model_as_mmcif()
+      javacsript_str = f"""
+      (async () => {{
+        const s = `{model_str_mmcif}`;
+        await window.BasicMolStarWrapper.load_rawdata({{ rawdata: s, label: 'mylabel' }});
+      }})();
+      """
+      self.webview_molstar.page().runJavaScript(javacsript_str)
 
     
     def load_file_in_chimera(self,filename):
@@ -892,7 +1007,6 @@ class SelectionViewerWindow(QMainWindow):
       # get file name
       filename, _ = QFileDialog.getOpenFileName(self, "Select File")
       self.filename_label.setText(filename)
-      self.load_file_in_chimera(filename)
       self.add_map(filename)
 
     def upload_file(self,state):
@@ -905,7 +1019,11 @@ class SelectionViewerWindow(QMainWindow):
       # load in chimera
       self.load_file_in_chimera(filename)
       
+      
       self.add_model(filename)
+
+      # load in molstar
+      self.load_model_in_molstar(self.model)
 
       # update the combo box
       self.update_model_list()
@@ -1260,14 +1378,14 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
           content.setModel(model)
 
       # load hotspots data
-      params = phil.parse(HotSpots.master_phil_str).extract()
-      hotspots = call_program(program_class=HotSpots,data_manager=self.data_manager,params=params)
-      df_hotspots = pd.read_json(hotspots)
-      df_hotspots = df_hotspots.reset_index()
-      model_hotspots = PandasModel(df_hotspots,suppress_columns=[
-        "index","Cluster Label","x","y","z","Oversample Count","Sel Str Phenix","Sel Str Chimera"
-      ])
-      self.tab_hot_content.setModel(model_hotspots) 
+      # params = phil.parse(HotSpots.master_phil_str).extract()
+      # hotspots = call_program(program_class=HotSpots,data_manager=self.data_manager,params=params)
+      # df_hotspots = pd.read_json(hotspots)
+      # df_hotspots = df_hotspots.reset_index()
+      # model_hotspots = PandasModel(df_hotspots,suppress_columns=[
+      #   "index","Cluster Label","x","y","z","Oversample Count","Sel Str Phenix","Sel Str Chimera"
+      # ])
+      # self.tab_hot_content.setModel(model_hotspots) 
 
           
 
@@ -1313,6 +1431,9 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
       pass
       
 if __name__ == '__main__':
+  
+
+
   app = QApplication(sys.argv)
   window = SelectionViewerWindow()
   window.resize(800, 600) 
