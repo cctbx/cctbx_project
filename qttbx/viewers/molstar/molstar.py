@@ -29,6 +29,7 @@ from .server_utils import  NodeHttpServer
 from .volume_streaming import VolumeStreamingManager
 from ..last.selection_utils import SelectionQuery
 from ..gui.controller.style import ModelStyleController, MapStyleController
+from ..last.python_utils import DotDict
 
 class CallbackManager:
   """
@@ -145,7 +146,9 @@ class MolstarViewer(ModelViewer):
   with this class. It functions as a controller for the 'viewer' tab in the GUI.
   """
   viewer_name = 'Molstar'
-  def __init__(self,web_view,use_web_view=True,use_selenium=False):
+  def __init__(self,web_view,use_web_view=True,use_selenium=False,config_json_file=None):
+    if config_json_file is None:
+      config_json_file = Path(__file__).parent / Path("config.json")
     ModelViewer.__init__(self)
     
     self.web_view = web_view
@@ -158,19 +161,21 @@ class MolstarViewer(ModelViewer):
     self.selenium_driver = None
     
     
-
-    # Signals
-    
-    # self.state.signals.model_change.connect(self._load_active_model)
-    # self.state.signals.map_change.connect(self._load_active_map)
-    # self.state.signals.selection_change.connect(self.selection_controls.select_active_selection)
-    # self.state.emitter.signal_iso_change.connect(self.map_set_iso)
-    # self.state.signals.color_change.connect(self.set_color)
-    # self.state.signals.repr_change.connect(self.set_representation)
-    # self.state.signals.viz_change.connect(self.set_visibility)
-    # self.state.signals.data_change.connect(self._data_change)
-    
-
+    # get config variables
+    with open(config_json_file,"r") as fh:
+      config = json.load(fh)
+      self.config = DotDict(config)
+      expected_config_params = [
+        "molstar_project_path",
+        "node_js_path",
+        "volume_server_relative_path",
+        "pack_script_relative_path",
+        "molstar_app_relative_path",
+      ]
+      for name in expected_config_params:
+        assert name in self.config, f"Missing necessary config variable: '{name}'"
+      
+  
     # Flags
     self._blocking_commands = False
 
@@ -212,15 +217,11 @@ class MolstarViewer(ModelViewer):
     -------
       Command for running Molstar
     '''
-    #self.molstar_project_path = Path("/Users/user/Desktop/CambridgeTrip/Molstar/molstar/")
-    #self.app_root_dir = self.molstar_project_path / Path("build/examples/basic-wrapper")
-    self.molstar_project_path = Path("/Users/user/Desktop/CambridgeTrip/Molstar/molstar")
-    self.app_root_dir = self.molstar_project_path / Path("build/viewer/")
+    self.molstar_project_path = Path(self.config.molstar_project_path)
+    self.app_root_dir = self.molstar_project_path / Path(self.config.molstar_app_relative_path)
 
-    
-    self.volume_server_js_path=self.molstar_project_path / Path("lib/commonjs/servers/volume/server.js")
-    self.pack_js_path = self.molstar_project_path / Path("lib/commonjs/servers/volume/pack.js")
-    self.node_js_path = Path("/opt/homebrew/bin/node")
+  
+    self.node_js_path = Path(self.config.node_js_path)
     self.command = ['http-server',str(self.app_root_dir)]
     return self.command
 
@@ -252,7 +253,14 @@ class MolstarViewer(ModelViewer):
     print()
     print('-'*79)
     print('Starting volume streaming server')
-    self.volume_streamer = VolumeStreamingManager() # lots of hardcoded defaults here
+    self.volume_streamer = VolumeStreamingManager(
+              molstar_project_path=self.config.molstar_project_path,
+              node_js_path = self.config.node_js_path,
+              volume_server_relative_path = self.config.volume_server_relative_path,
+              pack_script_relative_path = self.config.pack_script_relative_path,
+              default_server_port=1336,
+              debug = True
+    )
     self.volume_streamer.start_server()
     print(self.volume_streamer.url)
     print('-'*79)

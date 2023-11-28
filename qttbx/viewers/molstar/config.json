@@ -1,0 +1,7 @@
+{
+  "node_js_path":"/opt/homebrew/bin/node",
+  "molstar_project_path":"/Users/user/Desktop/CambridgeTrip/Molstar/molstar",
+  "volume_server_relative_path": "lib/commonjs/servers/volume/server.js",
+  "pack_script_relative_path": "lib/commonjs/servers/volume/pack.js",
+  "molstar_app_relative_path": "build/viewer/"
+}
