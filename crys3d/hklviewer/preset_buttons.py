@@ -103,7 +103,7 @@ buttonsdeflist = [
 
 ("Evalues", "E-values",
  """
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values', ['FP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -281,7 +281,7 @@ buttonsdeflist = [
             normal_vector = "tNCS_xtriage"
             clip_width = 0.380397231
           }
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values', ['FP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -304,7 +304,7 @@ buttonsdeflist = [
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values(F)', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values(F)', ['FP', 'Amplitude'], ['', ''])"
             viewer {
               data_array {
                 label = "E-values(F)"
@@ -328,7 +328,7 @@ buttonsdeflist = [
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values(I)', ['I,SIGI', 'Intensity'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values(I)', ['I', 'Intensity'], ['', ''])"
             viewer {
               data_array {
                 label = "E-values(I)"
