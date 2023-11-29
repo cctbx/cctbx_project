@@ -998,20 +998,38 @@ class HKLview_3d:
       bindata, dummy = self.get_matched_binarray(binner_idx)
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
-      # Get binvals by dividing bindata_sorted with nbins
-      # This yields approximately the same number of reflections in each bin
-      binvals = [bindata_sorted[0]] * (nbins+1) #
-      for i,e in enumerate(bindata_sorted):
-        idiv = int( (nbins)*float(i)/len(bindata_sorted))
-        binvals[idiv] = e
-      # If this didn't yield enough bins with different binvalues, say a multiplicity dataset
-      # with values between [1;6] but 95% reflections having multiplcity=2 then assign
-      # binvalues equidistantly between [1;6] even if some bins are empty
-      nuniquevalues = len(set(list(bindata)))
-      if len(set(binvals)) < nbins:
-        binincr = (max(bindata) - min(bindata))/nbins
-        for i in range(nbins):
-          binvals[i] = i*binincr + min(bindata)
+      # First check for case where all unique values could be covered by
+      # number of requested bins (e.g. multiplicity values)
+      uniquevalues = list((set(list(bindata))))
+      nuniquevalues = len(uniquevalues)
+      if nuniquevalues <= nbins:
+        uniquevalues.sort()
+        binvals = [uniquevalues[0]-1]
+        for ival in range(nuniquevalues):
+          binvals.append(uniquevalues[ival])
+        nuniquevalues = len(binvals)
+
+      else:
+        # Get binvals by dividing bindata_sorted with nbins
+        # This yields approximately the same number of reflections in each bin
+        binvals = [ bindata_sorted[0] ]
+        nbins_used = 0
+        float_data_used = 0.0
+        num_per_bin = float(len(bindata_sorted))/nbins
+        while nbins_used < nbins:
+          index = round(float_data_used + num_per_bin) - 1
+          threshold = bindata_sorted[index]
+          # Handle case where there are a lot of repeated values
+          float_data_used += num_per_bin
+          if threshold > binvals[-1]:
+            binvals.append(threshold)
+            nbins_used += 1
+          else:
+            # Split remaining data over remaining requested bins
+            num_per_bin = (float(len(bindata_sorted))-float_data_used)/(nbins-nbins_used)
+        if bindata_sorted[-1] > binvals[-1]:
+          binvals.append(bindata_sorted[-1])
+        nuniquevalues = len(binvals)
 
     binvals.sort()
     self.mprint("Bin thresholds are:\n" + str(binvals), verbose=1)
