@@ -3,6 +3,7 @@ import json
 import re
 import copy
 import time
+import sys
 from functools import partial
 from typing import Optional
 
@@ -38,6 +39,7 @@ class MolstarController(Controller):
     self._sync_interval = 500
     self._sync_count = 0
     self._max_sync_count = 20
+    self._sync_failure = False
 
     # Signals
     self.viewer.web_view.loadStarted.connect(self._on_load_started)
@@ -177,7 +179,7 @@ class MolstarController(Controller):
     # convert to query
     query = self.state.mol.sites._select_query_from_str_phenix(selection_phenix)
     query.params.refId = self.state.active_model_ref.id
-    self.viewer.select_from_query(query)
+    self.viewer.select_from_query(query.to_json())
 
   def select_from_ref(self,ref):
     self.viewer.select_from_query(ref.query.to_json())
@@ -224,16 +226,20 @@ class MolstarController(Controller):
     self.viewer.close_viewer()
 
   def sync(self):
-    print(f"sync called with count: {self._sync_count} at time: {time.time()}")
+    print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
     if self.has_synced:
       pass
     elif not self.has_synced and self._sync_count < self._max_sync_count:
       self._sync_count+=1
       self.viewer._sync(callback=self._sync_callback)
       
-    elif not self.has_synced and self._sync_count> self._max_sync_count:
+    else:
+      
+      print("DEBUG: warning, have not synced")
+      self._sync_failure = True
       msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
       self.parent.close_application()
+      sys.exit()
 
   def _sync_callback(self,result):
     print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
@@ -261,10 +267,16 @@ class MolstarController(Controller):
         if ref.id in self.references_remote_map:
           ref.external_ids["molstar"] = self.references_remote_map[ref_id]
 
+      # catch failure
+      if self._sync_failure:
+        msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+        self.parent.close_application()
+        sys.exit()
+        
   # Style
   def set_iso(self,ref,value):
-    model_id = ref.model_ref.external_ids["molstar"]
-    self.viewer.set_iso(model_id,value)
+    # This one is unusual in that remote uses local id
+    self.viewer.set_iso(ref.id,value)
 
 
   def show_ref(self,ref,representation: Optional[str] = None):

@@ -164,17 +164,18 @@ class MolstarViewer(ModelViewer):
     # get config variables
     with open(config_json_file,"r") as fh:
       config = json.load(fh)
-      self.config = DotDict(config)
+      self.config = DotDict()
       expected_config_params = [
-        "molstar_project_path",
         "node_js_path",
         "volume_server_relative_path",
         "pack_script_relative_path",
         "molstar_app_relative_path",
       ]
       for name in expected_config_params:
-        assert name in self.config, f"Missing necessary config variable: '{name}'"
+        assert name in config, f"Missing necessary config variable: '{name}'"
       
+      for key,value in config.items():
+        self.config[key] = str(Path(__file__).parent / Path(value))
   
     # Flags
     self._blocking_commands = False
@@ -217,8 +218,7 @@ class MolstarViewer(ModelViewer):
     -------
       Command for running Molstar
     '''
-    self.molstar_project_path = Path(self.config.molstar_project_path)
-    self.app_root_dir = self.molstar_project_path / Path(self.config.molstar_app_relative_path)
+    self.app_root_dir = Path(self.config.molstar_app_relative_path)
 
   
     self.node_js_path = Path(self.config.node_js_path)
@@ -254,7 +254,6 @@ class MolstarViewer(ModelViewer):
     print('-'*79)
     print('Starting volume streaming server')
     self.volume_streamer = VolumeStreamingManager(
-              molstar_project_path=self.config.molstar_project_path,
               node_js_path = self.config.node_js_path,
               volume_server_relative_path = self.config.volume_server_relative_path,
               pack_script_relative_path = self.config.pack_script_relative_path,
@@ -383,7 +382,7 @@ class MolstarViewer(ModelViewer):
 
     js_str = f"""
     var model_str = `{model_str}`
-    {self.plugin_prefix}.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}')
+    {self.plugin_prefix}.phenix.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}')
     """
     return js_str
 
@@ -435,11 +434,8 @@ class MolstarViewer(ModelViewer):
     assert model_id is not None, "Maps cannot be loaded without an accompanying model"
     url_server =self.volume_streamer.url
     js_str = f"""
-    {self.plugin_prefix}.hasSynced = false;
     {self.plugin_prefix}.volumeServerURL = '{url_server}';
-    await {self.plugin_prefix}.loadMap('{model_id}','{volume_id}');
-    {self.plugin_prefix}.hasVolumes = true;
-    {self.plugin_prefix}.hasSynced = true;
+    await {self.plugin_prefix}.phenix.loadMap('{model_id}','{volume_id}');
     """
     return js_str
 
@@ -458,7 +454,7 @@ class MolstarViewer(ModelViewer):
 
 
   def select_from_query(self,query_json):
-    command = f"result = await {self.plugin_prefix}.select("+query_json+");"
+    command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
     self.send_command(command,sync=True)
 
 
@@ -466,13 +462,13 @@ class MolstarViewer(ModelViewer):
     print("Callback manager callback: ",self.command_queue.callback_manager.callback)
     # get selection
     command = f"""
-    {self.plugin_prefix}.pollSelection();
+    {self.plugin_prefix}.phenix.pollSelection();
     """
     self.send_command(command,callback=callback,queue=queue,wrap_async=False)
 
 
   def deselect_all(self,queue=False):
-    command = f"{self.plugin_prefix}.visual.deselectAll()"
+    command = f"{self.plugin_prefix}.phenix.deselectAll()"
     self.send_command(command,queue=queue)
 
 
@@ -494,7 +490,7 @@ class MolstarViewer(ModelViewer):
     else:
       value = 'false'
     command = f"""
-    {self.plugin_prefix}.toggleSelectionMode({value});
+    {self.plugin_prefix}.phenix.toggleSelectionMode({value});
     """
     self.send_command(command)
 
@@ -510,7 +506,7 @@ class MolstarViewer(ModelViewer):
     #print("Sync ref mapping")
     # get the remote: local reference mapping from the web app
     command = f"""
-    {self.plugin_prefix}.getSyncResult();
+    {self.plugin_prefix}.phenix.getSyncResult();
     """
     self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
 
@@ -520,9 +516,10 @@ class MolstarViewer(ModelViewer):
 
   # Volume ISO
   def set_iso(self,volume_id,value):
+    # volume_id here is local id
     params = '{"entry":{"name":"'+volume_id+'","params":{"view":{"name":"camera-target","params":{"radius":5,"selectionDetailLevel":0,"isSelection":false,"bottomLeft":[6.000999927520752,6.004000186920166,6.011000156402588],"topRight":[30.89900016784668,11.321000099182129,18.44099998474121]}},"detailLevel":0,"channels":{"em":{"isoValue":{"kind":"absolute","absoluteValue":'+str(value)+'},"color":6524815,"wireframe":false,"opacity":0.3}}}}}'
     command = f"""
-    const volumeEntry = {self.plugin_prefix}.getVolumeEntry('{volume_id}');
+    const volumeEntry = {self.plugin_prefix}.phenix.getVolumeEntry('{volume_id}');
     volumeEntry.source.params.isoValue.absoluteValue = {value};
     const volumeStreamingRef = {self.plugin_prefix}.refMapping_volume['{volume_id}']
     await {self.plugin_prefix}.plugin.build().to(volumeStreamingRef).update({params}).commit();
@@ -565,9 +562,9 @@ class MolstarViewer(ModelViewer):
 
   def transparency_query(self,model_id: str, query_json: str, representation_name: str, value: float):
     command = f"""
-    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.visual.setTransparencyFromQuery(query, '{representation_name}', '{value}')
+    await {self.plugin_prefix}.phenix.setTransparencyFromQuery(query, '{representation_name}', '{value}')
     """
     self.send_command(command)
 
@@ -582,10 +579,10 @@ class MolstarViewer(ModelViewer):
 
   def color_query(self,model_id: str, query_json: str, color: str):
     command = f"""
-    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.visual.setQueryColor(query,'{color}')
-    this.viewer.visual.deselectAll();
+    await {self.plugin_prefix}.phenix.setQueryColor(query,'{color}')
+    this.viewer.phenix.deselectAll();
     """
     self.send_command(command)
 
@@ -603,18 +600,18 @@ class MolstarViewer(ModelViewer):
 
     # add representation
     command = f"""
-    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.visual.addRepr(query,'{representation_name}')
+    await {self.plugin_prefix}.phenix.addRepr(query,'{representation_name}')
     """
     self.send_command(command)
 
   def _get_representation_names(self,model_id: str, query_json: str):
     # add representation
     command = f"""
-    const query = {self.plugin_prefix}.queryFromJSON('{query_json}');
+    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
-    {self.plugin_prefix}.visual.getRepresentationNames(query)
+    {self.plugin_prefix}.phenix.getRepresentationNames(query)
     """
     result = self.send_command(command)
     print("RESULT")

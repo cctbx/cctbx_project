@@ -220,7 +220,7 @@ class AtomSites(pd.DataFrame):
 
   def select_from_query(self,query):
     if len(query.selections)==0:
-      return self[self.index < 0] # empty
+      return self.__class__(self[self.index < 0]) # empty
     else:
       return self._convert_query_to_sites(query)
 
@@ -276,6 +276,7 @@ class AtomSites(pd.DataFrame):
     together with a graph (self.G) to get the minimum number
     of nodes to fullfill the subset.
     """
+    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
     nodes = find_simplest_selected_nodes(self.G,sites_sel.core["id"])
     if nodes == ["root"]:
       nodes = [["*" for _ in sites_sel.attrs_hierarchy_core]]
@@ -289,6 +290,7 @@ class AtomSites(pd.DataFrame):
     With a subset sites data frame, convert to a
     SelectionQuery object
     """
+    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
     # find the minimum selections required
     nodes = self._find_simplest_nodes_from_sites(sites_sel)
 

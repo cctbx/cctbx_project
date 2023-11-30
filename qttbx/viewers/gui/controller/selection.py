@@ -30,7 +30,7 @@ class SelectionEntryController(ModelLikeEntryController):
   def display_info(self):
     text = f"""
     Reference id: {self.ref.id}
-    Model Reference id: {self.model_reflid}
+    Model Reference id: {self.ref.model_ref.id}
     External ids:
     {self.model_ref.external_ids}
     

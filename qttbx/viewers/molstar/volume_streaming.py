@@ -22,20 +22,18 @@ class VolumeStreamingManager:
   NOTE: For now, 'em' is hardcoded as a map id type
   """
   def __init__(self,
-               molstar_project_path=None,
                node_js_path = None,
-               volume_server_relative_path = "lib/commonjs/servers/volume/server.js",
-               pack_script_relative_path = "lib/commonjs/servers/volume/pack.js",
+               volume_server_relative_path = None,
+               pack_script_relative_path = None,
                default_server_port=1336,
                debug = True
               ):
-    assert [molstar_project_path, node_js_path].count(None) == 0, "Must explicitly provide filepaths on init" 
+    assert [node_js_path, volume_server_relative_path, pack_script_relative_path].count(None) == 0, "Must explicitly provide filepaths on init" 
     self.server_process = None
-    self.molstar_project_path = Path(molstar_project_path)
     self.node_js_path = Path(node_js_path).absolute()
     self.temp_dir = tempfile.TemporaryDirectory()
-    self.server_js_path = self.molstar_project_path / Path(volume_server_relative_path)
-    self.pack_js_path = self.molstar_project_path / Path(pack_script_relative_path)
+    self.server_js_path =  Path(volume_server_relative_path)
+    self.pack_js_path = Path(pack_script_relative_path)
     
     # get any free port of default populated
     if not self.check_port_free(default_server_port):
