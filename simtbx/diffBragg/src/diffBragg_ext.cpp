@@ -42,13 +42,13 @@ namespace boost_python { namespace {
       diffBragg.pythony_beams.resize(diffBragg.sources);
 
       /* polarization normal seems to be B vector */
-      scitbx::vec3 Evector = scitbx::vec3(diffBragg.polar_vector[1],diffBragg.polar_vector[2],diffBragg.polar_vector[3]);
-      scitbx::vec3 Pvector = scitbx::vec3(diffBragg.beam_vector[1],diffBragg.beam_vector[2],diffBragg.beam_vector[3]);
-      scitbx::vec3 Bvector = Pvector.cross(Evector).normalize();
+      scitbx::vec3<double> Evector = scitbx::vec3<double>(diffBragg.polar_vector[1],diffBragg.polar_vector[2],diffBragg.polar_vector[3]);
+      scitbx::vec3<double> Pvector = scitbx::vec3<double>(diffBragg.beam_vector[1],diffBragg.beam_vector[2],diffBragg.beam_vector[3]);
+      scitbx::vec3<double> Bvector = Pvector.cross(Evector).normalize();
 
       /* copy internal storage into the flex array */
       for(i=0;i<diffBragg.sources;++i){
-          diffBragg.pythony_beams[i].set_direction(scitbx::vec3(diffBragg.source_X[i],diffBragg.source_Y[i],diffBragg.source_Z[i]));
+          diffBragg.pythony_beams[i].set_direction(scitbx::vec3<double>(diffBragg.source_X[i],diffBragg.source_Y[i],diffBragg.source_Z[i]));
           diffBragg.pythony_beams[i].set_wavelength(diffBragg.source_lambda[i]*1e10);
           diffBragg.pythony_beams[i].set_flux(diffBragg.source_I[i]);
           // how is this a fraction when it can be negative? (Kahn et al. 1982)
