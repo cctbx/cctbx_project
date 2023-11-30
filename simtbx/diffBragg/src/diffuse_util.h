@@ -15,12 +15,10 @@ __device__ __host__
 
 #if defined(CUDA_COMPILE) || not defined(DIFFBRAGG_HAVE_CUDA)
 int gen_laue_mats(int laue_group_num, MAT3 *lmats, MAT3 rpa) {
-  if ( laue_group_num < 1 or laue_group_num > 14) {
-    printf("Laue group number not in range 1-14; exiting\n");
-    exit(1);
-  }
+  assert(laue_group_num>0);
+  assert(laue_group_num<15);   
 
-  int num_mats;
+  int num_mats = 0;
 
   const double one_over_root2 = 1./sqrt(2.);
 
