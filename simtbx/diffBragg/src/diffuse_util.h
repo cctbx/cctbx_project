@@ -16,7 +16,7 @@ __device__ __host__
 #if defined(CUDA_COMPILE) || not defined(DIFFBRAGG_HAVE_CUDA)
 int gen_laue_mats(int laue_group_num, MAT3 *lmats, MAT3 rpa) {
   assert(laue_group_num>0);
-  assert(laue_group_num<15);   
+  assert(laue_group_num<15);
 
   int num_mats = 0;
 

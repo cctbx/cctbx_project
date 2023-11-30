@@ -1364,7 +1364,7 @@ void kokkos_sum_over_steps(
 
         if (laue_group_num < 1 || laue_group_num >14 ){
             throw std::string("Laue group number not in range 1-14");
-        }        
+        }
 
         if (gamma_miller_units){
             anisoG_local = anisoG_local * Bmat_realspace;
