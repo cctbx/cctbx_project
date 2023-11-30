@@ -244,14 +244,15 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
                       det_thicksteps=None, eta_abc=None, Ncells_def=None,
-                      num_phi_steps=1, delta_phi=None, div_mrad=0):
+                      num_phi_steps=1, delta_phi=None, div_mrad=0, divsteps=0):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
     nbBeam = NBbeam()
-    nbBeam.divergence = div_mrad / 1e3 * 180 / np.pi
+    nbBeam.divergence_mrad = div_mrad  # / 1e3 * 180 / np.pi
+    nbBeam.divsteps = divsteps
     nbBeam.size_mm = beamsize_mm
     nbBeam.unit_s0 = BEAM.get_unit_s0()
     wavelengths = utils.ENERGY_CONV / np.array(energies)

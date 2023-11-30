@@ -4,6 +4,19 @@ Organizer for nanoBragg beam properties
 from __future__ import print_function, division
 from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
+import numpy as np
+from copy import deepcopy
+
+
+def rotate_axis(v, axis, phi):
+    sinphi = np.sin(phi);
+    cosphi = np.cos(phi);
+    dot = np.dot(axis,v)*(1-cosphi)
+    #dot = (axis[0]*v[0]+axis[1]*v[1]+axis[2]*v[2])*(1.0-cosphi);
+    new_x = axis[0]*dot+v[0]*cosphi+(-axis[2]*v[1]+axis[1]*v[2])*sinphi;
+    new_y = axis[1]*dot+v[1]*cosphi+(+axis[2]*v[0]-axis[0]*v[2])*sinphi;
+    new_z = axis[2]*dot+v[2]*cosphi+(-axis[1]*v[0]+axis[0]*v[1])*sinphi;
+    return new_x, new_y, new_z
 
 
 class NBbeam(object):
@@ -12,9 +25,29 @@ class NBbeam(object):
     self.spectrum = [(1.8, 1e12)] # angstroms, photons per pulse
     self.unit_s0 = 1, 0, 0
     self.polarization_fraction = 1
-    self.divergence = 0
+    self.divergence_mrad = 0
+    self.divsteps = 0
     self.size_mm = 0.001
     self._undo_nanoBragg_norm_by_nbeams = True # we undo it by default
+
+  @property
+  def divsteps(self):
+    return self._divsteps
+
+  @divsteps.setter
+  def divsteps(self, val):
+    if val > 0:
+      assert val % 2 == 0, "divsteps must be even"
+    self._divsteps = val
+
+  @property
+  def divergences(self):
+    divrange = self.divergence_mrad/1000.
+    if self.divsteps==0:
+      return [(0,0)]
+    else:
+      all_divs = np.arange(0, divrange+1e-7, divrange / self.divsteps) - divrange / 2
+      return [(hdiv, vdiv) for vdiv in all_divs for hdiv in all_divs]
 
   @property
   def size_mm(self):
@@ -60,16 +93,44 @@ class NBbeam(object):
   @property
   def xray_beams(self):
     self._xray_beams = flex_Beam()
+
+    divs = self.divergences
+
+    wavelen = self.spectrum[0][0]
+    nominal_beam = BeamFactory.simple(wavelen * 1e-10)
+    nominal_beam.set_unit_s0(self.unit_s0)
+    nominal_beam.set_polarization_fraction(self.polarization_fraction)
+    beam_vector = nominal_beam.get_sample_to_source_direction()
+    beam_vector /= np.linalg.norm(beam_vector)
+    vert_vector = nominal_beam.get_polarization_normal()
+    polar_vector = np.cross(beam_vector, vert_vector)
+    polar_vector /= np.linalg.norm(polar_vector)
+
+    beams = []
+    for hdiv, vdiv in divs:
+      vec_xyz = rotate_axis(-beam_vector, polar_vector, vdiv)
+      unit_s0 = rotate_axis(vec_xyz, vert_vector, hdiv)
+      div_ang = np.arccos(np.dot(unit_s0, -beam_vector))
+      if hdiv == 0 and vdiv == 0:
+        assert div_ang == 0
+        assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
+      if div_ang > self.divergence_mrad / 1000. / 2.:
+        continue
+      for wavelen, flux in self.spectrum:
+        beam = deepcopy(nominal_beam)
+        beam.set_wavelength(wavelen*1e-10)
+        beam.set_flux(flux)
+        beam.set_polarization_fraction(self.polarization_fraction)
+        beam.set_unit_s0(unit_s0)
+        beam.set_divergence(div_ang)
+        beams.append(beam)
+
+    # set normalization
     norm = 1
     if self._undo_nanoBragg_norm_by_nbeams:
-      norm = float(len(self.spectrum))
-
-    for wavelen, flux in self.spectrum:
-      beam = BeamFactory.simple(wavelen * 1e-10)
-      beam.set_flux(flux / norm)
-      beam.set_unit_s0(self.unit_s0)
-      beam.set_polarization_fraction(self.polarization_fraction)
-      beam.set_divergence(self.divergence)
+      norm = len(beams)
+    for beam in beams:
+      beam.set_flux(beam.get_flux()/norm)
       self._xray_beams.append(beam)
 
     return self._xray_beams
@@ -84,16 +145,26 @@ class NBbeam(object):
     num = 0
     den = 0
     flux = 0
+    u0 = []
+    div = 0
+    count = 0
     for b in self.xray_beams:
       wave = b.get_wavelength()
       wt = b.get_flux()
       num += wave * wt
       den += wt
       flux += b.get_flux()
+      div += b.get_divergence()
+      u0.append( b.get_unit_s0())
+      count += 1
+    u0 = np.mean(u0, 0)
     ave_wave = num / den
+    div = div / count
 
+    beam.set_divergence(div)
     beam.set_wavelength(ave_wave * 1e10)
     beam.set_flux(flux)
+    beam.set_unit_s0(u0)
     return beam
 
   @property
