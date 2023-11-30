@@ -73,6 +73,9 @@ steps:
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)
     rm -rf modules/boost
+    pushd modules/dials
+    git checkout dont_lose_refls_in_indexers
+    popd
     export KOKKOS_ARCH=HSW
     export KOKKOS_DEVICES=OpenMP
     if [ "$(OS)" = "macos" ]; then
