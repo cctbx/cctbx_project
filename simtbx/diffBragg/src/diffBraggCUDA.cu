@@ -187,7 +187,7 @@ void diffBragg_sum_over_steps_cuda(
         //gettimeofday(&t3, 0));
         gpuErr(cudaMallocManaged(&cp.cu_floatimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
         if (db_flags.wavelength_img){
-            gpuErr(cudaMallocManaged(&cp.cu_wavelenimage, db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
+            gpuErr(cudaMallocManaged(&cp.cu_wavelenimage, 4*db_cu_flags.Npix_to_allocate*sizeof(CUDAREAL) ));
         }
         if (db_flags.refine_diffuse){
             gpuErr(cudaMallocManaged(&cp.cu_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate*3*sizeof(CUDAREAL)));
@@ -529,7 +529,7 @@ void diffBragg_sum_over_steps_cuda(
         floatimage[i] = cp.cu_floatimage[i];
     }
     if(db_flags.wavelength_img){
-        for (int i=0; i< Npix_to_model; i++){
+        for (int i=0; i< 4*Npix_to_model; i++){
             d_image.wavelength[i] = cp.cu_wavelenimage[i];
         }
     }

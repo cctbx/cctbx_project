@@ -189,7 +189,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         resize(m_floatimage, db_cu_flags.Npix_to_allocate);
 
         if (db_flags.wavelength_img) {
-            resize(m_wavelenimage, db_cu_flags.Npix_to_allocate);
+            resize(m_wavelenimage, 4*db_cu_flags.Npix_to_allocate);
         }
         if (db_flags.refine_diffuse) {
             resize(m_d_diffuse_gamma_images, db_cu_flags.Npix_to_allocate * 3);

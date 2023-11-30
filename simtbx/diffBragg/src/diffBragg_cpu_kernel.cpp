@@ -369,6 +369,9 @@ void diffBragg_sum_over_steps(
         // reset photon count for this pixel
         double I=0;
         double Ilambda = 0;
+        double Imiller_h =0;
+        double Imiller_k =0;
+        double Imiller_l =0;
         double II_max = -1;
         double max_stats[11] = {0,0,0,0,0,
                                0,0,0,0,0,0};
@@ -718,9 +721,12 @@ void diffBragg_sum_over_steps(
 
             double Iincrement = s_hkl*I_cell*I_noFcell;
             I += Iincrement;
-            if(db_flags.wavelength_img)
+            if(db_flags.wavelength_img){
                 Ilambda += Iincrement*lambda_ang;
-
+                Imiller_h += Iincrement * h ;
+                Imiller_k += Iincrement * k;
+                Imiller_l += Iincrement * l;
+            }
             if (db_flags.refine_diffuse){
                 double step_scale = count_scale*I_cell;
                 for (int i_gam=0; i_gam <3; i_gam++){
@@ -1090,8 +1096,12 @@ void diffBragg_sum_over_steps(
 
             floatimage[i_pix] = scale_term*I;
 
-            if (db_flags.wavelength_img)
-                d_image.wavelength[i_pix] = Ilambda / I;
+            if (db_flags.wavelength_img){
+                d_image.wavelength[i_pix*4] = Ilambda / I;
+                d_image.wavelength[i_pix*4+1] = Imiller_h / I;
+                d_image.wavelength[i_pix*4+2] = Imiller_k / I;
+                d_image.wavelength[i_pix*4+3] = Imiller_l / I;
+            }
         }
         if (db_flags.refine_diffuse){
             for (int i_diff=0; i_diff < 6; i_diff++){

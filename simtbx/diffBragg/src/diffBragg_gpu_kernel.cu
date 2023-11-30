@@ -294,6 +294,9 @@ void gpu_sum_over_steps(
         // reset photon count for this pixel
         double _I=0;
         double Ilambda=0;
+        double Imiller_h=0;
+        double Imiller_k=0;
+        double Imiller_l=0;
 
         // reset derivative photon counts for the various parameters
         double rot_manager_dI[3] = {0,0,0};
@@ -576,8 +579,12 @@ void gpu_sum_over_steps(
             CUDAREAL _I_total = s_hkl*_I_cell *I0;
             CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
-            if (save_wavelenimage)
+            if (save_wavelenimage){
                 Ilambda += Iincrement*lambda_ang;
+                Imiller_h += Iincrement*_h;
+                Imiller_k += Iincrement*_k;
+                Imiller_l += Iincrement*_l;
+            }
 
             if (s_refine_diffuse){
                 CUDAREAL step_scale = texture_scale*_F_cell*_F_cell;
@@ -971,8 +978,12 @@ void gpu_sum_over_steps(
         // final scale term to being everything to photon number units
         CUDAREAL _scale_term = _polar*_om * s_overall_scale;
         floatimage[i_pix] = _scale_term*_I;
-        if (save_wavelenimage)
-            wavelenimage[i_pix] = Ilambda / _I;
+        if (save_wavelenimage){
+            wavelenimage[i_pix*4] = Ilambda / _I;
+            wavelenimage[i_pix*4+1] = Imiller_h / _I;
+            wavelenimage[i_pix*4+2] = Imiller_k / _I;
+            wavelenimage[i_pix*4+3] = Imiller_l / _I;
+        }
 
         // udpate the rotation derivative images*
         for (int i_rot =0 ; i_rot < 3 ; i_rot++){
