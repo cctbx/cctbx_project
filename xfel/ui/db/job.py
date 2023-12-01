@@ -139,6 +139,8 @@ class AveragingJob(Job):
       f'mp.extra_args = {extra_args}',
       f'mp.method = {params.mp.method}',
     ]
+    for opt in params.mp.extra_options:
+      self.args.append(f'mp.extra_options = {opt}')
 
     if params.mp.method != 'local' or (params.mp.method == 'local' and params.facility.name == 'lcls'):
       mp_args = [
@@ -153,8 +155,6 @@ class AveragingJob(Job):
         f'mp.wall_time = {params.mp.wall_time}',
         f'mp.htcondor.executable_path = {params.mp.htcondor.executable_path}',
       ]
-      for opt in params.mp.extra_options:
-        mp_args.append(f'mp.extra_options = {opt}')
       for arg in mp_args:
         self.args.append(arg)
     if params.mp.shifter.shifter_image is not None:
@@ -169,8 +169,6 @@ class AveragingJob(Job):
         f'mp.shifter.nersc_reservation = {params.mp.shifter.reservation}',
         f'mp.shifter.staging = {params.mp.shifter.staging}',
       ]
-      for opt in params.mp.extra_options:
-        mp_args.append(f'mp.extra_options = {opt}')
       for arg in shifter_args:
         self.args.append(arg)
 
@@ -178,6 +176,8 @@ class AveragingJob(Job):
       locator_path = os.path.join(configs_dir, identifier_string + ".loc")
       self.args.append(f'input.locator = {locator_path}')
       write_xtc_locator(locator_path, params, self.run, self.rungroup)
+    else:
+      self.args.append(self.run.path)
     result = submit_script().run(self.args)
     return result
 
