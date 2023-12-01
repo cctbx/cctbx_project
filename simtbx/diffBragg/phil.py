@@ -439,9 +439,9 @@ sigmas
   diffuse_gamma = [1,1,1]
     .type = floats(size=3)
     .help = sensitivity for diffuse gamma
-  RotXYZ = [1,1,1]
+  RotXYZ = [1e-3,1e-3,1e-3]
     .type = floats(size=3)
-    .help = sensitivity for RotXYZ
+    .help = sensitivity for RotXYZ in radians
   G = 1
     .type = float
     .help = sensitivity for scale factor
@@ -488,7 +488,7 @@ init
     .help = init for diffuse gamma
   RotXYZ = [0,0,0]
     .type = floats(size=3)
-    .help = init for RotXYZ
+    .help = init for RotXYZ in radians
   G = 1
     .type = float
     .help = init for scale factor
@@ -519,9 +519,9 @@ mins
   diffuse_gamma = [0,0,0]
     .type = floats(size=3)
     .help = min for diffuse gamma
-  RotXYZ = [-1,-1,-1]
+  RotXYZ = [-3.1415926, -3.1415926, -3.1415926]
     .type = floats(size=3)
-    .help = min for rotXYZ in degrees
+    .help = min for rotXYZ in radians
   G = 0
     .type = float
     .help = min for scale G
@@ -560,9 +560,9 @@ maxs
   diffuse_gamma = [10000,10000,10000]
     .type = floats(size=3)
     .help = max for diffuse gamma
-  RotXYZ = [1,1,1]
+  RotXYZ = [3.1415926, 3.1415926, 3.1415926]
     .type = floats(size=3)
-    .help = max for rotXYZ in degrees
+    .help = max for rotXYZ in radians
   G = 1e12
     .type = float
     .help = max for scale G
