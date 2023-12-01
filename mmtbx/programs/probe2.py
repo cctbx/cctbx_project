@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.5.1"
+version = "2.6.0"
 
 master_phil_str = '''
 profile = False
@@ -1986,14 +1986,19 @@ Note:
       ################################################################################
       # Get the subset of the source selection and target selection for this hierarchy
       # model.
+
+      # Make an acceleration structure for determining whether an atom is in the ones we
+      # are considering in the current list. This is a set rather than a list to make it
+      # rapid to determine membership.
+      atomsInThisModel = set(atoms)
       source_atoms = set()
       for a in allSourceAtoms:
-        if a in atoms:
+        if a in atomsInThisModel:
           source_atoms.add(a)
 
       target_atoms = set()
       for a in allTargetAtoms:
-        if a in atoms:
+        if a in atomsInThisModel:
           target_atoms.add(a)
 
       ###########################
