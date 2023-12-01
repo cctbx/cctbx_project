@@ -1466,7 +1466,7 @@ END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues)
   movers = opt._movers
-  if len(movers) != 1:
+  if len(movers) != 3:
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It should be 62 degrees, and is reported
@@ -1505,14 +1505,14 @@ END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues_close_O)
   movers = opt._movers
-  if len(movers) != 1:
+  if len(movers) != 2:
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator H-bond test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
   expected = 113
-  angle = int(re.search(r'(?<=pose Angle )[-+]?\d+', opt.getInfo()).group(0))
+  angle = int(re.findall(r'(?<=pose Angle )[-+]?\d+', opt.getInfo())[1])
   if angle != expected:
-    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected "+str(expected)
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator H-bond, expected "+str(expected)+", found "+str(angle)
 
   ################################################################################
   # Test using a modified snippet from 7c31 to make sure the single-hydrogen rotator sets
@@ -1539,14 +1539,14 @@ END
 """
   opt = _optimizeFragment(pdb_7c31_two_residues_close_C)
   movers = opt._movers
-  if len(movers) != 1:
+  if len(movers) != 2:
     return "Optimizers.Test(): Incorrect number of Movers for single-hydrogen rotator clash test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It is reported after 'pose Angle '.
   expected = -64
-  angle = int(re.search(r'(?<=pose Angle )[-+]?\d+', opt.getInfo()).group(0))
+  angle = int(re.findall(r'(?<=pose Angle )[-+]?\d+', opt.getInfo())[1])
   if angle != expected:
-    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator clash, expected "+str(expected)
+    return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for single-hydrogen rotator clash, expected "+str(expected)+", found "+str(angle)
 
   ################################################################################
   # Test using a modified snippet from 1ubq to make sure the NH3 rotator sets
@@ -1584,12 +1584,12 @@ END
   # doing the calculations when we set it up.
   opt = _optimizeFragment(pdb_1ubq_two_residues_close_O, 3)
   movers = opt._movers
-  if len(movers) != 1:
+  if len(movers) != 2:
     return "Optimizers.Test(): Incorrect number of Movers for NH3 rotator test: " + str(len(movers))
 
   # See what the pose angle is on the Mover. It should be 163 degrees, and is reported
   # after 'pose Angle '.
-  angle = int(re.search(r'(?<=pose Angle )[-+]?\d+', opt.getInfo()).group(0))
+  angle = int(re.findall(r'(?<=pose Angle )[-+]?\d+', opt.getInfo())[0])
   if angle != 163:
     return "Optimizers.Test(): Unexpected angle ("+str(angle)+") for NH3 rotator, expected 163"
 
@@ -1640,7 +1640,7 @@ END
     )
   opt = _optimizeFragment(pdb_1dfu_his80)
   movers = opt._movers
-  if len(movers) != 2:
+  if len(movers) != 3:
     return "Optimizers.Test(): Incorrect number of Movers for His placement test: " + str(len(movers))
   info = opt.getInfo()
   if not 'HD1NotPlaced' in info:
@@ -1750,11 +1750,12 @@ END
       a.xyz = origPositionZN
 
   # Optimization will place the movers, which should be none because the Histidine flip
-  # will be constrained by the ionic bonds.
+  # will be constrained by the ionic bonds. There is a rotatable hydrogen placed at the
+  # terminus, but no Flip Mover.
   probePhil = _philLike(False)
   opt = Optimizer(probePhil, True, model)
   movers = opt._movers
-  if len(movers) != 0:
+  if len(movers) != 1:
     return "Optimizers.Test(): Incorrect number of Movers for 1xso Histidine test: " + str(len(movers))
 
   # Make sure that the two ring Nitrogens have been marked as acceptors.
