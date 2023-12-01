@@ -19,9 +19,11 @@ jobs:
     displayName: Link bootstrap.py
 
   - script: |
+      set -xe
       cd $(Pipeline.Workspace)
       python bootstrap.py hot update --builder=xfel --python=39 --no-boost-src
       cd modules
+      pushd dials; git checkout dont_lose_refls_in_indexers; popd
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
       git clone https://github.com/lanl/lunus.git
