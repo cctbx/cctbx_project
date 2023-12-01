@@ -3,6 +3,8 @@ The state object is a container of references.
 The origin of any signal related to changes of state.
 """
 from pathlib import Path
+import json
+from collections import defaultdict
 
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from iotbx.data_manager import DataManager
@@ -65,9 +67,11 @@ class State:
     self._data_manager = data_manager
     self._model = None
     self._map_manager = None
-    self._iso = 0.5
-    #self.associations = {} # model: map associations
+    self._has_synced = False
+
+      #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
+    self.external_loaded = defaultdict(list) # external name: [internal ref_ids]
     self.params = DotDict()
     self.params.default_format = 'pdb'
 
@@ -88,9 +92,21 @@ class State:
       map_manager = self.data_manager.get_real_map(filename=name)
       self.add_ref_from_mmtbx_map(map_manager,filename=name)
 
+  def to_dict(self):
+    d= {
+      "class_name": self.__class__.__name__,
+      "references": {ref_id: ref.to_dict() for ref_id,ref in self.references.items()},
+      "external_loaded": self.external_loaded,
+      "active_model_ref": self.active_model_ref.id if self.active_model_ref else None,
+      "active_map_ref": self.active_map_ref.id if self.active_map_ref else None,
+      "active_selection_ref": self.active_selection_ref.id if self.active_selection_ref else None
+    }
+    return d
 
-    # TODO: remove this
-    #self._guess_associations() # TODO: Make associations explicit
+
+  def to_json(self,indent=None):
+    d = self.to_dict()
+    return json.dumps(d,indent=indent)
 
   def _sync(self):
     # Run this after all controllers are initialized
@@ -199,6 +215,13 @@ class State:
     self.add_ref(ref)
     return ref
 
+  @property
+  def has_synced(self):
+    return self._has_synced
+
+  @has_synced.setter
+  def has_synced(self,value):
+    self._has_synced = value
 
   @property
   def references_model(self):

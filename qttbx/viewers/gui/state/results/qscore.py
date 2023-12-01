@@ -4,7 +4,7 @@ from typing import List
 
 from .results import Result
 
-@dataclass(frozen=True)
+@dataclass
 class QscoreResult(Result):
   qscore_per_atom: List[float]
 

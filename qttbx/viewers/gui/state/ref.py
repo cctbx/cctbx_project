@@ -115,8 +115,18 @@ class Ref:
   def query(self):
     raise NotImplementedError
 
+  def to_dict(self):
+    d = {
+      "id":self.id,
+      "class_name" : self.__class__.__name__,
+      "external_ids": self.external_ids,
+      "data":self.data.to_dict(),
+      "style":self.style.to_dict(),
+    }
+    return d
 
-
+  def to_json(self,indent=None):
+    return json.dumps(self.to_dict(),indent=indent)
 
   def _truncate_string(self,path, max_len=20):
     if len(path) > max_len:

@@ -157,7 +157,7 @@ class VolumeStreamingManager:
   
   @property
   def available_volumes(self):
-    files = list(self.mdb_path.glob("**/*"))
+    files = [f for f in self.mdb_path.glob("**/*") if not f.is_dir()]
     return files
   
 

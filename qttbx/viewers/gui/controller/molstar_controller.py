@@ -17,6 +17,94 @@ from ...molstar.molstar import MolstarViewer
 from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController
 from ...last.selection_utils import Selection, SelectionQuery
+from ...last.python_utils import DotDict
+
+# class SyncContext:
+#     def __init__(self, controller, ref):
+#         self.controller = controller
+#         self.ref = ref
+
+#     def __enter__(self):
+        
+#         return self  
+
+#     def __exit__(self, exc_type, exc_value, traceback):
+#       if self.started_sync:
+#         self.controller.state.external_loaded["molstar"].append(self.ref.id)
+#         self.controller.sync_manager.has_synced = False # Trigger periodic attempts to sync
+#       return False  # Return True to suppress exceptions, False to propagate
+
+class SyncManager:
+  """
+  Manages the synchronization of state for the molstar typescript app
+  """
+  def __init__(self,controller):
+    self.controller= controller
+    self._has_synced = None
+    self._sync_timer = QTimer()
+    self._sync_timer.timeout.connect(self.try_sync)  # Connect the timeout signal to my_function
+    self._sync_interval = 500
+    self._sync_count = 0
+    self._max_sync_count = 20
+    self._sync_failure = False
+
+  
+  @property
+  def has_synced(self):
+    return self._has_synced
+
+  @has_synced.setter
+  def has_synced(self,value):
+    """
+    Change the sync state
+    """
+    if self._has_synced is False and value is True:
+      self._has_synced = value
+      self.controller.state.has_synced = value
+      self._sync_timer.stop()
+    elif ((self._has_synced is True and value is False) or self._has_synced is None):
+      self._has_synced = value
+      self.controller.state.has_synced = value
+      self._sync_timer.start(self._sync_interval)
+    elif self._has_synced is True and value is True:
+      assert False, "Error, should not reach here"
+
+
+  def try_sync(self):
+    print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
+    if self.has_synced:
+      pass
+    elif not self.has_synced and self._sync_count < self._max_sync_count:
+      self._sync_count+=1
+      self.controller.viewer._get_sync_state(self.controller.state.to_json(),callback=self._try_sync_callback)
+    else:
+      self._sync_failure = True
+      msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+      self.parent.close_application()
+      sys.exit()
+
+  def _try_sync_callback(self,result): #  get_state
+    print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
+    if isinstance(result,str) and len(result.strip())>0:
+      result = json.loads(result)
+      print("sync result: ",result)
+      print(result.keys())
+      # update molstar ids
+      for ref_id, ref_dict in result["references"].items():
+        for external_key, external_id in ref_dict["external_ids"].items():
+          ref = self.controller.state.references[ref_id]
+          ref.external_ids[external_key] = external_id
+
+      has_synced = result["hasSynced"]
+      if has_synced:
+        self.has_synced = has_synced
+        self._sync_count = 0
+
+      # catch failure
+      if self._sync_failure:
+        msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+        self.parent.close_application()
+        sys.exit()
 
 class MolstarController(Controller):
   def __init__(self,parent=None,view=None):
@@ -27,26 +115,18 @@ class MolstarController(Controller):
     self.map_style_controller = MapStyleController(parent=self,view=None)
     self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
 
-    # local state
-    self.loaded_map_refs = []
-    self.loaded_model_refs = []
     self._blocking_commands = False
     self._picking_granularity = "residue"
     self.references_remote_map = {} # Local ref_id : molstar_ref_id
-    self._has_synced = None
-    self._sync_timer = QTimer()
-    self._sync_timer.timeout.connect(self.sync)  # Connect the timeout signal to my_function
-    self._sync_interval = 500
-    self._sync_count = 0
-    self._max_sync_count = 20
-    self._sync_failure = False
+    self.sync_manager = SyncManager(self)
+
 
     # Signals
     self.viewer.web_view.loadStarted.connect(self._on_load_started)
     self.viewer.web_view.loadFinished.connect(self._on_load_finished)
 
     self.state.signals.model_change.connect(self.load_model_from_ref)
-    self.state.signals.map_change.connect(self.load_active_map)
+    self.state.signals.map_change.connect(self.load_map_from_ref)
 
     self.state.signals.select.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
@@ -97,54 +177,35 @@ class MolstarController(Controller):
 
 
   def load_model_from_ref(self,ref,label=None,format='pdb'):
-    if ref is not None and ref not in self.loaded_model_refs:
-      print("molstar controller adding model from ref: ",ref.id)
-      self.viewer._load_model_from_mmtbx(
-        model=ref.model,
-        format=format,
-        ref_id=ref.id,
-        label=label,
-        callback=None
-      )
+    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+        self.viewer._set_sync_state(self.state.to_json())
 
-      # important! add ref to local state
-      self.loaded_model_refs.append(ref)
-      
-      self.has_synced = False # flag that we do not know the remote ref yet
-    
+        self.viewer._load_model_from_mmtbx(
+          model=ref.model,
+          format=format,
+          ref_id=ref.id,
+          label=label,
+          callback=None
+        )
+        self.sync_manager.has_synced = False
 
 
-  @property
-  def has_synced(self):
-    return self._has_synced
-
-  @has_synced.setter
-  def has_synced(self,value):
-    print("Setting has_synced")
-    if self._has_synced is False and value is True:
-      self._has_synced = value
-      self._sync_timer.stop()
-    elif ((self._has_synced is True and value is False) or self._has_synced is None):
-      self._has_synced = value
-      self._sync_timer.start(self._sync_interval)
-    elif self._has_synced is True and value is True:
-      assert False, "Error, should not reach here"
 
 
   # Maps
 
-  def load_active_map(self,ref):
-    assert ref is None or ref is self.state.active_map_ref
-    if ref is not None and ref not in self.loaded_map_refs:
-      self.load_map_from_ref(ref)
+  # def load_active_map(self,ref):
+  #   if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+  #     self.load_map_from_ref(ref)
 
 
-  def load_map_from_ref(self,map_ref):
-    if map_ref.model_ref is None:
-      map_ref.model_ref = self.state.active_model_ref
-    self.viewer.load_map(filename=map_ref.data.filepath,volume_id=map_ref.id,model_id=map_ref.model_ref.id)
-    self.loaded_map_refs.append(map_ref)
-    self.has_synced = False
+  def load_map_from_ref(self,ref):
+    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+        self.viewer._set_sync_state(self.state.to_json())
+        ref.model_ref = self.state.active_model_ref
+
+        self.viewer.load_map(filename=ref.data.filepath,volume_id=ref.id,model_id=ref.model_ref.id)
+        self.sync_manager.has_synced = False
 
 
   # Selection
@@ -200,9 +261,8 @@ class MolstarController(Controller):
   def clear_viewer(self,msg):
 
     # clear local state
-    self.loaded_map_refs = []
-    self.loaded_model_refs = []
-    
+    self.state.external_loaded["molstar"] = []
+
     # Un-toggle any entry
     for ref in self.state.references.values():
       if ref.entry is not None:
@@ -224,54 +284,6 @@ class MolstarController(Controller):
 
   def close_viewer(self):
     self.viewer.close_viewer()
-
-  def sync(self):
-    print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
-    if self.has_synced:
-      pass
-    elif not self.has_synced and self._sync_count < self._max_sync_count:
-      self._sync_count+=1
-      self.viewer._sync(callback=self._sync_callback)
-      
-    else:
-      
-      print("DEBUG: warning, have not synced")
-      self._sync_failure = True
-      msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
-      self.parent.close_application()
-      sys.exit()
-
-  def _sync_callback(self,result):
-    print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
-    if isinstance(result,str) and len(result.strip())>0:
-      result = json.loads(result)
-      print("sync result: ",result)
-
-      has_synced = result["hasSynced"]
-      if has_synced:
-        self.has_synced = has_synced
-        self._sync_count = 0
-        model_result = json.loads(result["refMapping"])
-        for remote_id,local_id in model_result.items():
-          assert local_id in self.state.references, "Recieved local ref_id from remote that is not known"
-          if local_id not in self.references_remote_map:
-            self.references_remote_map[local_id] = remote_id
-        volume_result = result["volumeEntries"]
-        if isinstance(volume_result,str):
-          volume_result = json.loads(volume_result)
-        print("volume_result_from_sync_callback:")
-        print(volume_result)
-
-      # sync references
-      for ref_id,ref in self.state.references.items():
-        if ref.id in self.references_remote_map:
-          ref.external_ids["molstar"] = self.references_remote_map[ref_id]
-
-      # catch failure
-      if self._sync_failure:
-        msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
-        self.parent.close_application()
-        sys.exit()
         
   # Style
   def set_iso(self,ref,value):

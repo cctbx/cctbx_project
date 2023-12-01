@@ -207,8 +207,9 @@ class Selection:
   
   @classmethod
   def from_json(cls,json_str,params=None):
-    d = json.loads(json_str)
-    # How to check d is same form as default_select_all ???
+    d = {"class_name":cls.__class__.__name__}
+    d.update(json.loads(json_str))
+    
     return cls(d,params=params)
     
   def to_json(self,indent=None):

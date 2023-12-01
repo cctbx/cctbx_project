@@ -366,7 +366,7 @@ class MolstarViewer(ModelViewer):
           web_view = None
         self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
     
-  def execute_command_queue(self,wrap_async=True):
+  def execute_command_queue(self,wrap_async=True,sync=False):
     if self.use_web_view:
       web_view = self.web_view
     else:
@@ -379,7 +379,6 @@ class MolstarViewer(ModelViewer):
   def _load_model_build_js(self,model_str,format='pdb',label=None,ref_id=None):
     assert ref_id is not None, 'Cannot load into molstar without preexisting Python ref'
     assert label is not None, 'Cannot load into molstar without label'
-
     js_str = f"""
     var model_str = `{model_str}`
     {self.plugin_prefix}.phenix.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}')
@@ -433,13 +432,14 @@ class MolstarViewer(ModelViewer):
     assert volume_id is not None, "At this state, maps must already have a ref id in the volume streamer"
     assert model_id is not None, "Maps cannot be loaded without an accompanying model"
     url_server =self.volume_streamer.url
+    
     js_str = f"""
     {self.plugin_prefix}.volumeServerURL = '{url_server}';
     await {self.plugin_prefix}.phenix.loadMap('{model_id}','{volume_id}');
     """
     return js_str
-
-  def load_map(self, filename,volume_id,model_id):
+  
+  def load_map(self,filename,volume_id,model_id):
     """
     Load a map from disk.
     """
@@ -448,6 +448,7 @@ class MolstarViewer(ModelViewer):
     self.volume_streamer.pack_volume_path(volume_path=filename,volume_id=volume_id)
     js_str = self._load_map_build_js(volume_id=volume_id,model_id=model_id)
     self.send_command(js_str)
+
 
   # ---------------------------------------------------------------------------
   # Selection
@@ -502,13 +503,20 @@ class MolstarViewer(ModelViewer):
       command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
     self.send_command(command)
 
-  def _sync(self,callback=None):
+  def _get_sync_state(self,state_json,callback=None):
     #print("Sync ref mapping")
     # get the remote: local reference mapping from the web app
     command = f"""
-    {self.plugin_prefix}.phenix.getSyncResult();
+    {self.plugin_prefix}.phenix.getState('{state_json}');
     """
     self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
+
+
+  def _set_sync_state(self,state_json):
+    command = f"""
+    {self.plugin_prefix}.phenix.setState('{state_json}')
+    """
+    self.send_command(command)
 
   # ---------------------------------------------------------------------------
   # Style
