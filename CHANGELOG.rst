@@ -1,3 +1,11 @@
+2023.11
+=======
+
+* Initial support for longer alternate locations
+* Added some support functions for quantum refinement
+* Bug fixes and improvements to cctbx.HKLviewer
+* Improved handling of rotable hydrogens
+
 2023.10
 =======
 
