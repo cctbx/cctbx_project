@@ -852,7 +852,7 @@ void gpu_sum_over_steps(
             if( s_printout){
              if( _subS==0 && _subF==0 && _thick_tic==0 && _source==0 &&  _mos_tic==0 ){
               if((_fpixel==s_printout_fpixel && _spixel==s_printout_spixel) || s_printout_fpixel < 0){
-                   printf("%4d %4d :  lambda = %g\n", _fpixel,_spixel, _lambda);
+                   printf("%4d %4d :  lambda = %10.9g\n", _fpixel,_spixel, _lambda);
                    printf("at %g %g %g\n", _pixel_pos[0],_pixel_pos[1],_pixel_pos[2]);
                    printf("Fdet= %10.7g; Sdet= %10.7g ; Odet= %10.7g\n", _Fdet, _Sdet, _Odet);
                    printf("PIX0: %10.5g %10.5g %10.5g\n" , pix0_vectors[pid_x], pix0_vectors[pid_y], pix0_vectors[pid_z]);
@@ -901,6 +901,7 @@ void gpu_sum_over_steps(
                    printf("default_F= %f\n", s_default_F);
                    printf("Incident[0]=%15.10g, Incident[1]=%15.10g, Incident[2]=%15.10g\n", _incident[0], _incident[1], _incident[2]);
                    printf("Diffracted[0]=%15.10g, Diffracted[1]=%15.10g, Diffracted[2]=%15.10g\n", _diffracted[0], _diffracted[1], _diffracted[2]);
+                   printf("Scattering[0]=%15.10g, Scattering[1]=%15.10g, Scattering[2]=%15.10g\n", _scattering[0], _scattering[1], _scattering[2]);
                    printf("sourceI=%10.7g\n",  sI);
                   if (s_complex_miller)printf("COMPLEX MILLER!\n");
                   if (s_no_Nabc_scale)printf("No Nabc scale!\n");
