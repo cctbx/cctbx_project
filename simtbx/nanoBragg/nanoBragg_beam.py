@@ -47,6 +47,7 @@ class NBbeam(object):
       return [(0,0)]
     else:
       all_divs = np.arange(0, divrange+1e-7, divrange / self.divsteps) - divrange / 2
+      print("LEN DIVS: %d" % len(all_divs))
       return [(hdiv, vdiv) for vdiv in all_divs for hdiv in all_divs]
 
   @property
@@ -106,6 +107,7 @@ class NBbeam(object):
     polar_vector = np.cross(beam_vector, vert_vector)
     polar_vector /= np.linalg.norm(polar_vector)
 
+    good_divs =0
     beams = []
     for hdiv, vdiv in divs:
       vec_xyz = rotate_axis(-beam_vector, polar_vector, vdiv)
@@ -116,6 +118,7 @@ class NBbeam(object):
         assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
       if div_ang > self.divergence_mrad / 1000. / 2.:
         continue
+      good_divs += 1
       for wavelen, flux in self.spectrum:
         beam = deepcopy(nominal_beam)
         beam.set_wavelength(wavelen*1e-10)
@@ -125,6 +128,7 @@ class NBbeam(object):
         beam.set_divergence(div_ang)
         beams.append(beam)
 
+    print("num divergence angles: %d" % good_divs)
     # set normalization
     norm = 1
     if self._undo_nanoBragg_norm_by_nbeams:
