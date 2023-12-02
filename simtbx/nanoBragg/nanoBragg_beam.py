@@ -116,7 +116,7 @@ class NBbeam(object):
       if hdiv == 0 and vdiv == 0:
         assert div_ang == 0
         assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
-      if div_ang > self.divergence_mrad / 1000. / 2.:
+      if div_ang >= 1.1*(self.divergence_mrad / 1000. / 2.):
         continue
       good_divs += 1
       for wavelen, flux in self.spectrum:
