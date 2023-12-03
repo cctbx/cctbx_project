@@ -230,7 +230,6 @@ buttonsdeflist = [
             show_vector = "['Anisotropy1', True]"
             show_vector = "['Anisotropy2', True]"
             show_vector = "['Anisotropy3', True]"
-            animate_rotation_around_vector = "[0, -1.0]"
           }
           hkls {
             expand_to_p1 = True

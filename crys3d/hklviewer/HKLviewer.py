@@ -109,7 +109,7 @@ class AboutForm(QDialog):
     HKLviewer uses functionality provided by the
     <a href="https://github.com/nglviewer/ngl">NGL Viewer</a> project and
     the <a href="https://github.com/niklasvh/html2canvas">html2canvas</a> project.
-    Refer to rdo20@cam.ac.uk or cctbx@cci.lbl.gov for queries or bug reports.
+    Refer to robert@oeffner.net or cctbx@cci.lbl.gov for queries or bug reports.
     </p></body></html>"""
     self.aboutlabel.setText(aboutstr)
   def onOK(self):
