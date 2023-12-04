@@ -144,7 +144,7 @@ namespace smtbx {
             for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
               cmat_t Ugs;
               af::shared<FloatType> angles =
-                frames[to].get_int_angles(params.getKl(), params.getIntSpan(),
+                frames[to].get_int_angles(K, params.getIntSpan(),
                   params.getIntStep(),
                   params.getIntPoints(),
                   !params.isAngleInt());
