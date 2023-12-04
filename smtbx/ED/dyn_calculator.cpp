@@ -51,4 +51,4 @@ boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factor
   return ptr_t();
 }
 
-template class dyn_calculator_factory<double>;
+template class smtbx::ED::dyn_calculator_factory<double>;
