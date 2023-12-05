@@ -474,6 +474,10 @@ class Toolbox(object):
     except OSError:
       git_available = False
 
+    # put molprobity repository at same level as "modules" to reproduce svn behavior
+    if module == 'molprobity':
+      destination = os.path.join('.', module)
+
     if destination is None:
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
