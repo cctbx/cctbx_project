@@ -2,8 +2,6 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from .base import DataClassBase
-from ...last.selection_utils import SelectionQuery
-
 @dataclass
 class Style(DataClassBase):
   ref_id: str

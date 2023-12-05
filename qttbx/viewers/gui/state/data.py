@@ -1,7 +1,9 @@
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict
 from pathlib import Path
+
+import pandas as pd
 
 from .base import DataClassBase
 
@@ -30,4 +32,3 @@ class RealSpaceMapData(DataClassBase):
     if self.filepath and not self.filename:
         self.filename = Path(self.filepath).name
     
-  

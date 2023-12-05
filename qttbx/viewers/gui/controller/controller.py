@@ -1,4 +1,3 @@
-from ...molstar.volume_streaming import VolumeStreamingManager
 from ..state.state import State
 
 class Controller:

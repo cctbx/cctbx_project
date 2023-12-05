@@ -19,6 +19,7 @@ from ...last.mol import MolDF
 from ...last.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .results import Result, QscoreResult
+from .cif import CifFileData
 from .base import DataClassBase
 from .restraints import Restraint, Restraints
 from typing import Optional
@@ -365,6 +366,9 @@ class QscoreRef(ModelResultsRef):
       super().__init__(data=data,model_ref=model_ref,selection_ref=selection_ref)
       self.model_ref.results["qscore"] = self
 
+class CifFileRef(Ref):
+  def __init__(self,data: CifFileData):
+    super().__init__(data=data)
 
 
 

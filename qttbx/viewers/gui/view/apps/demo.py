@@ -10,7 +10,7 @@ from ..tabs.console import JupyterTabWidget, JSConsoleTab
 from ..tabs.selection import SelectionsTabView
 from ..tabs.data import DataTabView
 from ..tabs.sites import SitesTabView
-from ..tabs.cif import CifTabView
+from ..cif import CifTabView
 #from ..tabs.restraints import RestraintsTopTabView
 from ..tabs.restraints_table import RestraintsTableTopTabView
 from ..tabs.qscore import QscoreTab

@@ -1,14 +1,13 @@
 
-from ....molstar.molstar import MolstarViewer
 from ..selection import SelectionTabController
 from ..data import DataTabController
 from ..sites import SitesTabController
 from ..chimerax_controller import ChimeraXController
 from ..molstar_controller import MolstarController
-from ..cif import CifTabController
 from ..restraints import RestraintsTopTabController
 from ..restraints_table import RestraintsTableTopTabController
 from ..qscore import QscoreTabController
+from ..cif import CifTabController
 from ..controller import Controller
 
 

@@ -9,30 +9,6 @@ from ..widgets import  FastTableView, PandasTableModel
 from ..widgets.tab import GUITab,GUITabWidget
 
 
-# def add_tabs(widget, nested_dict):
-#       if isinstance(nested_dict, pd.DataFrame):
-#           # Create a table view for the DataFrame
-#           table_view = QTableView(widget)
-#           model = QStandardItemModel()
-#           model.setHorizontalHeaderLabels(nested_dict.columns.tolist())
-#           for row in nested_dict.itertuples(index=False):
-#               items = [QStandardItem(str(field)) for field in row]
-#               model.appendRow(items)
-#           table_view.setModel(model)
-#           return table_view
-
-#       elif isinstance(nested_dict, dict):
-#           tab_widget = QTabWidget(widget)
-#           for key, value in nested_dict.items():
-#               child_widget = add_tabs(tab_widget, value)
-#               tab_widget.addTab(child_widget, key)
-#           return tab_widget
-
-#       else:
-#           # Handle other data types if necessary
-#           pass
-
-
 class CifTabView(GUITab):
   """
   View cif structure

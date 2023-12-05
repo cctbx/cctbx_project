@@ -12,36 +12,6 @@ from ..restraints.bonds import BondTabController
 
 import time
 
-# class RestraintEntryController(ScrollEntryController):
-#   def __init__(self,parent=None,view=None,ref=None):
-#     super().__init__(parent=parent,view=view,ref=ref)
-
-
-#   def toggle_active_func(self,is_checked):
-#     # TODO: Move this to data tab?
-#     if is_checked:
-#       selection_ref = self.ref.selection_ref
-#       self.state.active_selection_ref = selection_ref
-#     else:
-#       #print("The entry is unchecked.")
-#       if self.state.active_selection_ref == self.ref.selection_ref:
-#         self.state.active_selection_ref = None 
-
-# class RestraintListController(ScrollableListController):
-#   def __init__(self,parent=None,view=None):
-#     super().__init__(parent=parent,view=view)
-
-#   def update(self):
-#     entry_list = self
-#     refs= [ref for ref in self.state.references.values() if isinstance(ref,RestraintRef)]
-#     for ref in refs:
-#       if ref not in entry_list.refs:
-#         entry_view = ScrollEntryView()
-#         entry_controller = RestraintEntryController(parent=self,view=entry_view,ref=ref)
-#         entry_controller.view.active_toggle.is_checked = True
-#         entry_list.add_entry(entry_controller)
-
-
 class RestraintsTopTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)

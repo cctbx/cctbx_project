@@ -9,7 +9,7 @@ from collections import defaultdict
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from iotbx.data_manager import DataManager
 
-from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, ResultsRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, ResultsRef, CifFileRef
 from ...last.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
 
@@ -45,6 +45,7 @@ class StateSignals(QObject):
   selection_change = Signal(object) # selection  ref
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
+  ciffile_change = Signal(object) # cif file ref
   repr_change = Signal(str,list) # (ref_id, list of desired reprs)
   viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
   picking_level = Signal(int) # one of:  1 for "residue" or  0 for "element"
@@ -64,6 +65,7 @@ class State:
     self._active_model_ref = None
     self._active_map_ref = None
     self._active_selection_ref = None
+    self._active_ciffile_ref = None
     self._data_manager = data_manager
     self._model = None
     self._map_manager = None
@@ -171,6 +173,9 @@ class State:
 
     elif isinstance(ref,(ResultsRef)):
       self.signals.results_change.emit(ref)
+
+    elif isinstance(ref,(CifFileRef)):
+      self.signals.ciffile_change.emit(ref)
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
 
@@ -233,6 +238,7 @@ class State:
   @property
   def references_selection(self):
     return [value for key,value in self.references.items() if isinstance(value,SelectionRef)]
+
 
   @property
   def state(self):
@@ -391,3 +397,21 @@ class State:
     return self.active_model_ref.restraints
 
 
+  #####################################
+  # Cif Files
+  #####################################
+
+  @property
+  def active_ciffile_ref(self):
+    return self._active_ciffile_ref
+
+  @active_ciffile_ref.setter
+  def active_ciffile_ref(self,value):
+    if value is None:
+      self._active_ciffile_ref = None
+    else:
+      assert isinstance(value,CifFileRef), "Set active_model_ref with instance of Ref or subclass"
+      assert value in self.references.values(), "Cannot set active ref before adding to state"
+      self._active_ciffile_ref = value
+      self.signals.ciffile_change.emit(self.active_ciffile_ref)
+    self.signals.references_change.emit()

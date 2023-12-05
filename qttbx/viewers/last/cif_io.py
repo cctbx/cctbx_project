@@ -1,18 +1,110 @@
-import sys
-import io
-from pathlib import Path
 from functools import reduce
 from itertools import zip_longest
+from collections import OrderedDict
+import re
 
-import numpy as np
 import pandas as pd
-
-from iotbx import cif
+# Try import iotbx cif
+try:
+  from iotbx import cif
+except:
+  pass
+# Try import pdbecif (pip install)
 try:
   from pdbecif.mmcif_io import CifFileWriter, MMCIF2Dict
 except:
   pass
 
+"""
+Tools for working with cif files in the context of pandas dataframes
+
+The functions read_cif_file and write_cif_file do cif file io, and by default return nested
+dictionaries with pandas dataframes as values. There are three options for the cif backend, iotbx cif, 
+pdbecif, and a custom parser implemented here named "cifpd" which has only pandas for external dependencies.
+"""
+  
+# Conversion functions
+def convert_dict_to_dataframes(d):
+  """
+  Convert a nested dictionary with list leaves to nested dataframes
+  Types are inferred from the contents of the lists
+  """
+  if isinstance(d, dict):
+      # Check if all values are lists of the same length
+      if all(isinstance(v, list) for v in d.values()) and len(set(len(v) for v in d.values())) == 1:
+          return pd.DataFrame(d)
+      elif all(not isinstance(child, dict) for child in d.values()):
+          # Handle single-row dataframes
+          return pd.DataFrame({k: [v] for k, v in d.items()})
+      else:
+          # Recursively apply the conversion to each child dictionary
+          return {k: convert_dict_to_dataframes(v) for k, v in d.items()}
+  else:
+      return d  # In case the value is not a dictionary
+
+def convert_dataframes_to_dict(obj):
+  """
+  Convert a nested dict with pd.DataFrame leaves to 
+  nested dict with list leaves
+  
+  """
+  if isinstance(obj, pd.DataFrame):
+      # Convert DataFrame to a dictionary of lists
+      return obj.to_dict(orient='list')
+  elif isinstance(obj, dict):
+      # Recursively process dictionary
+      return {k: convert_dataframes_to_dict(v) for k, v in obj.items()}
+  else:
+      # Return the object as-is if it's neither a DataFrame nor a dictionary
+      return obj
+
+def convert_iotbx_cif_to_dict(cif_model):
+  d = remove_iotbx_cif(cif_model)
+  d = nest_dict(d)
+  d = clean_nested_dict(d)
+  return d
+
+def convert_dataframes_to_iotbx_cif(dfs):
+  """
+  Convert nested dataframes to a cctbx cif model
+  Dataframes are converted to string here.
+  """
+  cif_out = cif.model.cif()
+  for data_key,data_d in dfs.items():
+    data_block = cif.model.block()
+    for block_key, df in data_d.items():
+      block = cif.model.block()
+      assert isinstance(df,pd.DataFrame)
+      
+      # Convert all elements to strings
+      df_as_strings = df.applymap(str)
+      
+      # Convert DataFrame to a list of lists (columns as lists of strings)
+      list_of_columns = [df_as_strings[col].tolist() for col in df_as_strings.columns]
+  
+      if len(df)>1:
+        list_as_cctbx = []
+        for l in list_of_columns:
+          #print("l",l)
+          list_as_cctbx.append(l)
+        loop = cif.model.loop()
+        for i,column in enumerate(df.columns):
+          
+          k = block_key+"."+column
+          d = list_as_cctbx[i]
+          loop.add_column(k,d)
+        block.add_loop(loop)
+      else:
+        data = [l[0] for l in list_of_columns]
+        for column,value in zip(df.columns,data):
+          c = block_key+"."+column
+          block.add_data_item(c,value)
+  
+      data_block.update(block)
+    cif_out[data_key] = data_block
+  return cif_out
+
+# General utilities for dicts, strings, and dataframes
 
 def find_key_in_dict(d, target_key, counter=0, value=None):
   # search for a single key (like _atom_site) in a dict
@@ -30,316 +122,324 @@ def find_key_in_dict(d, target_key, counter=0, value=None):
         counter, value = find_key_in_dict(item, target_key, counter, value)
   
   return counter, value
+  
 
 
-
-
-def nest_dict(flat_dict):
-    # take a flat dictionary with implicit nesting 
-    # using dot syntax (like iotbx.cif) and make nesting explicit
-    # It assumes a single head key
-    head_keys = list(flat_dict.keys())
-    assert len(head_keys)==1
-    head_key = head_keys[0]
-    flat_dict = flat_dict[head_key]
-    nested_dict = {}
-    for key, value in flat_dict.items():
-        parts = key.split('.')
-        d = nested_dict
-        for part in parts[:-1]:
-            if part not in d:
-                d[part] = {}
-            d = d[part]
-        if not isinstance(value,str):
-            value = list(value)
-        d[parts[-1]] = value
-    return {head_key:nested_dict}
-
-def convert_to_dataframes(d):
-    if isinstance(d, dict):
-        # Check if all values are lists of the same length
-        if all(isinstance(v, list) for v in d.values()) and len(set(len(v) for v in d.values())) == 1:
-            return pd.DataFrame(d)
-        elif all(not isinstance(child, dict) for child in d.values()):
-            # Handle single-row dataframes
-            return pd.DataFrame({k: [v] for k, v in d.items()})
+def remove_iotbx_cif(d, condition=lambda x: isinstance(x, int) and x > 10, new_value=0):
+    new_dict = {}
+    for key, value in d.items():
+        if isinstance(value, dict):
+            # Recursively call the function for nested dictionaries
+            new_dict[key] = remove_iotbx_cif(value, condition, new_value)
         else:
-            # Recursively apply the conversion to each child dictionary
-            return {k: convert_to_dataframes(v) for k, v in d.items()}
-    else:
-        return d  # In case the value is not a dictionary
+            if "iotbx.cif" in str(type(value)):
+              new_dict[key] = dict(value)
+            else: 
+              new_dict[key] = value
+    return new_dict
 
-def max_dict_depth(d):
-    if isinstance(d, dict):
-        return 1 + (max(map(max_dict_depth, d.values())) if d else 0)
-    return 0
+def nest_dict(flat_cif_dict):
+  # data keys on top, block and value keys combined with "."
+  for data_key,value in list(flat_cif_dict.items()):
+    flat_cif_dict[data_key] = unpack_dict(value)
+  return flat_cif_dict
 
+def unpack_dict(d):
+    def expand_key(key, value):
+        keys = key.split('.')
+        current = result = {}
+        for k in keys[:-1]:
+            current[k] = {}
+            current = current[k]
+        current[keys[-1]] = value
+        return result
 
-def find_paths(d, path=None):
-    paths = []
+    if not isinstance(d, dict):
+        return d
+
+    result = {}
+    for key, value in d.items():
+        if '.' in key:
+            expanded = expand_key(key, unpack_dict(value))
+            for k, v in expanded.items():
+                result.setdefault(k, {}).update(v)
+        else:
+            result[key] = unpack_dict(value)
+    return result
+
+def flatten_dict(d, parent_key='', sep='.'):
+    items = []
     for k, v in d.items():
-        new_path = path + [k] if path else [k]
+        new_key = f"{parent_key}{sep}{k}" if parent_key else k
         if isinstance(v, dict):
-            paths += find_paths(v, new_path)
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
         else:
-            paths.append(new_path)
-    return paths
-  
-def resolve_value(d, keys):
-    for key in keys:
-        if isinstance(d, dict) and key in d:
-            d = d[key]
-        else:
-            raise KeyError('Invalid key: {}'.format(key))
+            items.append((new_key, v))
+    return dict(items)
+
+def no_single_element_list(d):
+    for key, value in d.items():
+        if isinstance(value, dict):
+            no_single_element_list(value)  # Recursive call for nested dictionaries
+        elif isinstance(value, list) and len(value) == 1:
+            d[key] = value[0]  # Replace the list with its first element
+
+
+def clean_string(s):
+    return s.strip().replace('\n', '').replace("\t","")
+
+def clean_nested_dict(d):
+    for key, value in list(d.items()):
+        if isinstance(value, str):
+            d[key] = clean_string(value)
+        elif isinstance(value, list) or "scitbx" in str(type(value)):
+            d[key] = [clean_string(item) if isinstance(item, str) else item for item in value]
+        elif isinstance(value, dict):
+            clean_nested_dict(value)
     return d
-  
-  
-def merge_dicts(dict1, dict2):
-    # Recursively merge the dictionaries
-    merged = {}
-    for key in set(dict1.keys()).union(dict2.keys()):
-        if key in dict1 and key in dict2:
-            if isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
-                merged[key] = merge_dicts(dict1[key], dict2[key])  # Recursive call for nested dictionaries
-            else:
-                merged[key] = dict2[key]  # Override value in dict1 with value from dict2
-        elif key in dict1:
-            merged[key] = dict1[key]
-        else:
-            merged[key] = dict2[key]
-    return merged
-  
-def set_value_at_nested_key(dictionary, keys, value):
-    # Define the helper function to update the nested value
-    def update_nested_value(d, key):
-        if key not in d:
-            d[key] = {}
-        return d[key]
 
-    # Use reduce to traverse the dictionary hierarchy and set the value
-    reduce(update_nested_value, keys[:-1], dictionary)[keys[-1]] = value
-    
-    
-def read_cif_file(fileinp,method="pdbe"):
-  assert method in ["lastcif","pdbe","iotbx"]
-  if method == "iotbx":
-    if isinstance(fileinp,str):
-      reader = cif.reader(file_path=fileinp)
+# A custom pure python cif parser with no external dependencies. Named cifpd
+
+QUOTES_REGEX = re.compile(r'"[^"]*"|\'[^\']*\'|\S+')
+
+def split_with_quotes_regex(line):
+    parts = QUOTES_REGEX.findall(line)
+    return [part[1:-1] if (part[0]=="'" or part[0]=='"') else part for part in parts]
+
+split_with_quotes = split_with_quotes_regex
+
+
+def check_for_semicolon(current_line_index, lines, used_semicolons):
+    start = None
+    end = None
+    text_between_semicolons = []
+
+    for i in range(current_line_index - 1, len(lines)):
+        for j, char in enumerate(lines[i]):
+            if char == ';' and (i, j) not in used_semicolons:
+                if start is None:
+                    start = (i, j)
+                else:
+                    end = (i, j)
+                    break
+        if start is not None:
+            text_between_semicolons.append(lines[i])
+        if end is not None:
+            break
+
+    if start and end:
+        used_semicolons.extend([start, end])
+        joined_text = ''.join(text_between_semicolons)
+        # Remove the semicolons and anything before/after them in the start/end lines
+        joined_text = joined_text[joined_text.find(';') + 1:joined_text.rfind(';')]
+        return joined_text, used_semicolons
     else:
-      reader = cif.reader(file_obj=fileinp)
-    model = reader.model()
-    d = nest_dict(model)
-    return d
-  elif method == "pdbe":
-    return MMCIF2Dict().parse(str(fileinp))
-  elif method =="lastcif":
-    if isinstance(fileinp,io.StringIO):
-      lines = fileinp.readlines()
+        return None, used_semicolons
 
-      return read_cif_lines(lines)
-    filepath = Path(fileinp)
-    if ".gz" in filepath.suffixes:
-      with gzip.open(str(filepath),"rt") as fh:
-        lines = fh.readlines()
-        return read_cif_lines(lines)
-    else:
-      with open(str(fileinp),"r") as fh:
-        lines = fh.readlines()
-
-        return read_cif_lines(lines)
+      
+def open_loop(lines, line_index):
+    loop_keys = []
+    loop_data = []
+    in_loop = True
+    line_index += 1  # Move to the next line after "loop_"
+    used_semicolons = []
     
-def split_and_quote(line):
-  """
-  This is a method to preserve quotes when splitting string by whitespace.
-  It uses shlex and is slower than the other manual implementation
-  """
-  if "'" in line or '"' in line:
-    split_line = shlex.split(line)
-    for i, item in enumerate(split_line):
-        if "'" + item + "'" in line or '"' + item + '"' in line:
-            split_line[i] = "'" + item + "'"
-    return split_line
-  else:
-    return shlex.split(line)
+    while line_index < len(lines) and in_loop:
+        line = lines[line_index]
+        if len(line)>0:
+          if line[0] =='_' and len(loop_data)==0:
+              loop_keys.append(line)
+          elif line and not line[0]=='_' and not line[0]=='#':
+              parts = split_with_quotes(line)
+              missing_parts = False
+              if len(parts)>len(loop_keys): 
+                assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
+              elif len(parts)<len(loop_keys): 
+                  # attempt to find missing parts
+                  missing_parts = True
+                  print("\nMissing parts at line:",line_index)
+                  print(line)
+                  print(len(parts),len(loop_keys))
+                  print("\n")
+            
+                  s, used_semicolons = check_for_semicolon(line_index,lines,used_semicolons)
+                  if s is not None:
+                    parts.append(s)
+                    line_index = used_semicolons[-1][0]
+                  if len(parts)==len(loop_keys):
+                    missing_parts = False
+                    print("Found missing parts with semicolon search")
+                  elif len(parts)>len(loop_keys): 
+                    assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
+                  elif len(parts)<len(loop_keys):  
+                    # still not enough,  now check for non-semicolon next line continuation (only check one)
+                    print("Checking next line continuation")
+                    line = lines[line_index]
+                    line_next = lines[line_index+1]
+                    parts_next = split_with_quotes_regex(line_next)
+                    if len(parts)+len(parts_next)==len(loop_keys):
+                      # accept that the next line is a continuation
+                      missing_parts = False
+                      print("Found missing parts with next-line continuation")
+                      parts = parts+parts_next
+                      line_index += 1
+                    else:
+                      # A failure to assign values to keys
+                      assert len(parts)==len(loop_keys), f"Unable to fix mismatch between number of values in loop row: {parts},  and number of keys({len(loop_keys)}): {loop_keys}"
+              loop_data.append(parts)
+          else:  # End of loop data
+              in_loop = False
+              line_index -= 1
+        line_index += 1
+
+    return loop_keys, loop_data, line_index
+
+def add_single_entry(line,current_data_key,result):
+  parts = split_with_quotes(line)
+  group_key, column_key = parts[0].split('.')[0], parts[0].split('.')[-1]
+  value = ' '.join(parts[1:])
+  if group_key not in result[current_data_key]:
+      result[current_data_key][group_key] = {}
+  result[current_data_key][group_key][column_key] = value
+  last_key = (current_data_key,group_key,column_key)
+  return last_key
   
-def split_with_quotes(line):
-  """
-  This is a method to preserve quotes when splitting string by whitespace.
-  If no quotes are present in the line, it just returns line.split()
-  """
-  s = line
-  if "'" in line or '"' in line:
-    parts = []
-    current_word = ""
-    inside_quotes = False
+def close_loop(loop_keys, loop_data):
+    result = {}
+    group_key = loop_keys[0].split('.')[0] if loop_keys else ""
+    result[group_key] = {}
+    for i, key in enumerate(loop_keys):
+        column_key = key.split('.')[-1]
+        column_data = [data[i] for data in loop_data if i < len(data)]
+        result[group_key][column_key] = column_data
+    return result
 
-    for c in s:
-        if c == ' ' and not inside_quotes:
-            if current_word:
-                parts.append(current_word)
-                current_word = ""
-        elif c == "'":
-            inside_quotes = not inside_quotes
-        else:
-            current_word += c
+def parse_cifpd(content):
+    """
+    The entry function to parse cif string contents. 
+    """
+    lines = [line.strip() for line in content.splitlines()]
+    result = {}
+    current_data_key = None
+    last_key = None
+    line_index = 0
+    multi_line_single_start = None # flag for semicolon, denoting multi line text
 
-    if current_word:
-        parts.append(current_word)
-    return parts
-  else:
-    
-    return line.split()
+    while line_index < len(lines):
+        line = lines[line_index]
+        if not line or line[0]=='#':
+            line_index += 1
+            continue  # Skip empty and comment lines
 
-def read_cif_lines(lines):
-
-
-  current_data_key = None
-  loops = []
-  failures = []
-  in_loop = False
-  loop_start = None
-  loop_data_start = None
-  loop_keys = []
-  lines_len = len(lines)-1
-  building_d = {}
-  debug_stop = False
-  for i,line in enumerate(lines):
-      if debug_stop:
-        continue
-      
-      
-      line = line.replace("\n","").lstrip()
-      whitespace_index = line.find(" ")
-      if len(line)>0 and line[:4]=="data":
-        data_key = line.split("data_")[-1].strip()
-        building_d[data_key] = {}
-        current_data_key = data_key
-      elif len(line)>0 and line[0] == "_":
-        if whitespace_index>-1:
-          keys = line[:whitespace_index]
-          value = line[whitespace_index:]
-        else:
-          keys = line
-          value = ""
-         
-        value = value.strip()
-        # if len(value)>2:
-        #   if value[0]=="'" and value[-1]=="'":
-        #     value = value[1:-1]
-        key_split = keys.split(".")
-        if not in_loop:
-          nested_d = reduce(lambda x, y: {y: x}, key_split[::-1], value)
-          building_d[current_data_key] = merge_dicts(building_d[current_data_key],nested_d)
-        else:
-          loop_keys.append(key_split)
-      
-      elif len(line)>0 and line[:4]== "loop":
-        loop_start = i
-        in_loop = True
-      else:
-        if in_loop:
-          strip = line.strip()
-          if loop_data_start == None:
-            loop_data_start = i
-          elif (len(strip) == 0 or strip == "#" or i==lines_len):
-            if i==lines_len:
-              i = i+1            
-            loop_data = list(zip_longest(*[split_with_quotes(line) for line in lines[loop_data_start:i]]))
-        
-      
-            loop_data = [list(e) for e in loop_data]
-            loop_d = {"line_start":loop_start,
-                         "line_data_start":loop_data_start,
-                         "line_end": i,
-                         "loop_keys":loop_keys,
-                         "loop_lines":lines[loop_data_start:i],
-                         "loop_data":loop_data}
-            if len(loop_data) != len(loop_keys):
-              failures.append(loop_d)
-            else:
-              loops.append(loop_d)
-            in_loop = False
-            loop_start = None
-            loop_data_start = None
-            loop_keys = []
+        if multi_line_single_start is not None:
+          if line[0]!=";":
+            line_index += 1
+            continue
           else:
-            pass
-  #print([loop["loop_keys"] for loop in failures])
-  # load data into dicts
-  loop_dicts = []
-  for loop in loops:
+            # close multi line text
+            multi_line_single_end = line_index
+            current_data_key, group_key, column_key = last_key
+            result[current_data_key][group_key][column_key] = "".join(lines[multi_line_single_start:multi_line_single_end]).replace(";","")
+            multi_line_single_start = None
+            line_index += 1
+            continue
+        if line[0]==";":
+          multi_line_single_start = line_index
+          line_index += 1
+          continue
+      
+        if line[:5] == "data_":
+            current_data_key = line.replace("data_","")
+            result[current_data_key] = {}
+        elif line == "loop_":
+            loop_keys, loop_data, line_index = open_loop(lines, line_index)
+            loop_result = close_loop(loop_keys, loop_data)
+            result[current_data_key].update(loop_result)
+            continue  # open_loop and close_loop handle line_index increment
+        elif line[0]=="_" and current_data_key:
+            last_key = add_single_entry(line,current_data_key,result)
+        else:
+          # maybe line is value for previous key on a new line
+          current_data_key, group_key, column_key = last_key
+          
+          last_value= result[current_data_key][group_key][column_key]
+          if last_value != "":
+            print("IGNORED LINE: ",line)
+          else:
+            # assume value for previous key on a new line
+            result[current_data_key][group_key][column_key] = split_with_quotes_regex(line)[0]
+          
+        line_index += 1
+
+    return result
+
+# Format and write cif text directly from dataframes
+
+def infer_type(element):
+    try:
+        # Convert to float first
+        float_val = float(element)
+        # If the float is actually an integer, convert to int
+        if float_val.is_integer():
+            return int(float_val)
+        return float
+    except ValueError:
+        # If conversion fails, it's a string
+        return str
+
+def convert_column_types_based_on_first(df):
+    # Get the first row of the DataFrame
+    sample_row = df.iloc[0]
+
+    # Infer the type for each column based on the first row
+    inferred_types = {col: infer_type(sample_row[col]) for col in df.columns}
+
+    # Convert entire columns to the inferred types
+    for col, dtype in inferred_types.items():
+        if dtype is float or dtype is int:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Else, it's a string, no need to convert
+
+    return df
+
+
   
-      keys = loop["loop_keys"]
-      loop_d = {}
-      for i,keys in enumerate(loop["loop_keys"]):
-        set_value_at_nested_key(loop_d,keys,loop["loop_data"][i])
-      loop_dicts.append(loop_d)
-      
-      # add to building dict
-      for d in loop_dicts:
-          keys = list(d.keys())
-          assert len(keys)==1
-          key = keys[0]
-          #assert key not in building_d[current_data_key] # ??
-          building_d[current_data_key][key] = d[key]
-  return building_d
+def quote_strings_with_spaces(df):
+  # Iterate over columns
+  for col in df.columns:
+      if df[col].dtype == 'object':  # Check if column is string type
+          # Add quotes to strings with spaces
+          df[col] = df[col].apply(lambda x: f'"{x}"' if isinstance(x, str) and ' ' in x else x)
+  return df
+  
+def format_dataframe_for_cif(df):
+    # Determine padding for each column
+    col_format = {}
+    for col in df.columns:
+        if df[col].dtype == float or df[col].apply(lambda x: isinstance(x, float)).any():
+            max_left_len = df[col].apply(lambda x: len(str(int(x)) if isinstance(x, float) and not pd.isna(x) else str(x))).max()
+            max_right_len = df[col].apply(lambda x: len(str(x).split('.')[1]) if isinstance(x, float) and '.' in str(x) else 0).max()
+            total_width = max_left_len + max_right_len + 1  # +1 for decimal
+            df[col] = df[col].apply(lambda x: f"{x:>{total_width}.{max_right_len}f}" if isinstance(x, float) else str(x).ljust(total_width))
+        else:
+            max_len = df[col].astype(str).str.len().max()
+            df[col] = df[col].astype(str).str.ljust(max_len)
+
+    # Concatenate the formatted columns
+    formatted_df = df.apply(lambda x: ' '.join(x), axis=1)
+
+    return '\n'.join(formatted_df)
+
+# Example DataFrame (replace with your actual Da
 
 
-# Define a function to pad each cell in the DataFrame
-def pad_with_spaces(cell,decimal_places=3,integer_padding=2,decimal_padding=2):
-    if isinstance(cell,(int)):
-      cell = str(cell)
-      return cell.ljust(integer_padding + decimal_padding + 1)  # +1 for the decimal point
-
-    if isinstance(cell, (float)):
-        # Split the number into integer and decimal parts
-        integer_part, decimal_part = f"{round(cell, decimal_places):.0{decimal_places}f}".split('.')
-        # Pad the integer part to the left and the decimal part to the right
-        return f"{integer_part.rjust(integer_padding)}.{decimal_part.ljust(decimal_padding)}"
-    elif isinstance(cell, str):
-        # Pad the string to the right
-        return cell.ljust(integer_padding + decimal_padding + 1)  # +1 for the decimal point
-    else:
-        # Convert the cell to a string and pad it to the right
-        return str(cell).ljust(integer_padding + decimal_padding + 1)  # +1 for the decimal point
-      
-def df_to_cif_string(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
-  lines = df_to_cif_lines(df,
-                          decimal_places=decimal_places,
-                          integer_padding=integer_padding,
-                          decimal_padding=decimal_padding,
-                          column_prefix=column_prefix,
-                          data_name=data_name)
-  return "\n".join(lines)
-
-def df_to_cif_file(df,filename,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None,check=True,suppress=False):
-  s = df_to_cif_string(df,
-                       decimal_places=decimal_places,
-                       integer_padding=integer_padding,
-                       decimal_padding=decimal_padding,
-                       column_prefix=column_prefix,
-                       data_name=data_name)
-  with open(filename,"w") as fh:
-    fh.write(s)
-
-  # roundtrip
-  if check:
-    df_in,df_out = df_to_cif_roundtrip_check(df,suppress=suppress)
-    if suppress:
-      return df_in, df_out
 def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
   
   # replace python uncertain values with cif ones
   df.replace(to_replace=[None,""," "], value='.', inplace=True)
   
-  # convert to string and pad
-  df = df.applymap(lambda x: pad_with_spaces(x,
-                                             decimal_places=decimal_places,
-                                             integer_padding=integer_padding,
-                                             decimal_padding=decimal_padding))
-
   if len(df)>1: #a loop
-    lines_header = ["#","loop_"]
+    lines_header = ["loop_"]
     for column in df.columns:
       if column_prefix is not None:
         column = column_prefix+"."+column
@@ -347,7 +447,7 @@ def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,colu
         column = "_"+column
       lines_header.append(column)
 
-    lines_body = [' '.join(map(str, row)) for row in df.values]
+    lines_body = format_dataframe_for_cif(df).splitlines()
     lines = lines_header+lines_body
     
   else: # not a loop
@@ -360,91 +460,138 @@ def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,colu
       assert len(values)==1
       value = values[0]
       column_prefix_key = column_prefix_keys[i]
-      line = column_prefix_key.ljust(max_len+2)+value.ljust(max_len)
+      line = column_prefix_key.ljust(max_len+2)+str(value).ljust(max_len)
       lines.append(line)
 
   if data_name is not None:
     lines = ["data_"+data_name]+lines
   return lines
 
-def dict_to_cif_file(dict,filename,method="lastcif"):
-  assert method in ["pdbe","lastcif"]
-  if method=="pdbe":
-    CifFileWriter("filename").write(dict)
-  else:
-    raise NotImplementedError("Only pdbe cif is fully functional")
+def write_dataframes_to_cif_file(dataframe_dict,filename):
+  lines_out = []
+  for data_key,data_value in dataframe_dict.items():
+    lines_out.append("data_"+data_key)
+    for group_key,group_value in data_value.items():
+      if isinstance(group_value,pd.DataFrame):
+        df = convert_column_types_based_on_first(group_value)
+        df = quote_strings_with_spaces(df)
+        #df = group_value
   
+        #df = group_value.applymap(str)
+        lines = df_to_cif_lines(df,column_prefix=group_key)
+        lines_out+=lines
+        lines_out.append("#")
+      else:
+        assert False, f"Encountered non-dataframe value: {type(group_value)}"
+  s = "\n".join(lines_out)
+  with open(filename,"w") as fh:
+    fh.write(s)
 
-def df_to_cif_roundtrip_check(df,filename,suppress=False):
-    df = df.copy()
-    df_to_cif_file(df,filename)
-    d = parse_cif_file(filename)
-    assert len(d.keys())==1, "Multiple head keys (data blocks) not supported"
-    head_key = list(d.keys())[0]
-    data = d[head_key]
+
+# Finally, Actual IO functions
+
+def read_cif_file(filename,method="pdbe",return_as="pandas"):
+  assert method in ["pdbe","iotbx","cifpd"]
+  assert return_as in ["dict","pandas","iotbx"]
+  if method == "iotbx":
+    if isinstance(filename,str):
+      reader = cif.reader(file_path=filename)
+    else:
+      reader = cif.reader(file_obj=filename)
+    model = reader.model()
+    if return_as == "iotbx":
+      return model
+
+    d = convert_iotbx_cif_to_dict(model)
+    if return_as == "dict":
+      return d
+      
+    if return_as == "pandas":
+      dfs = convert_dict_to_dataframes(d)
+    return dfs
     
-    assert len(data.keys())==1, "Multiple tables not supported for this function"
-    table_key = list(data.keys())[0]
-    d = {table_key+"."+key:value for key,value in d[head_key][table_key].items()}
-    df_backin = pd.DataFrame(d)
-    for column in df_backin.columns:
-        df_backin[column] = pd.to_numeric(df_backin[column],errors="raise")
-    min_int = sys.maxsize * -1 - 1
-    df_backin.fillna(min_int,inplace=True)
+  elif method == "pdbe":
+    d = MMCIF2Dict().parse(str(filename))
+    d = clean_nested_dict(d)
 
-    #df = df.reset_index(drop=True)
-    #df_backin = df_backin.reset_index(drop=True)
-    if not suppress:
-        assert all(df==df_backin), "Round trip df -> cif -> df failure. Use suppress keyword to debug"
-    return df,df_backin
+    if return_as == "iotbx":
+      raise NotImplementedError
+    if return_as == "dict":
+      return d
 
-def write_cif_file(d,filename,method="pdbe"):
-  assert method in ["pdbe"]
+    if return_as == "pandas":
+      dfs = convert_dict_to_dataframes(d)
+      return dfs
+
+  elif method == "cifpd":
+    with open(filename,"r") as fh:
+      content = fh.read()
+      
+    d = parse_cifpd(content)
+    if return_as == "dict":
+      return d
+    if return_as == "pandas":
+      dfs = convert_dict_to_dataframes(d)
+      return dfs
+    if return_as == "iotbx":
+      raise NotImplementedError
+
+
+def write_cif_file(inp,filename,inp_type="pandas",method="pdbe"):
+  assert method in ["pdbe","iotbx", "cifpd"]
+  assert inp_type in ["dict","pandas","iotbx"]
   if method == "pdbe":
-    CifFileWriter(str(filename)).write(d)
+    if inp_type== "pandas":
+      d = convert_dataframes_to_dict(inp)
+    elif inp_type == "dict":
+      d = object
+    elif inp_type == "iotbx":
+      raise NotImplementedError
+      
+    CifFileWriter(filename).write(d)
+    
+  elif method == "iotbx":
+    if inp_type == "iotbx":
+      model = inp
+    elif inp_type == "dict":
+      dfs = convert_dict_to_dataframes(inp)
+      model = convert_dataframes_to_iotbx_cif(dfs)
+    elif inp_type == "pandas":
+      model = convert_dataframes_to_iotbx_cif(inp)
 
+    with open(filename,"w") as fh:
+      model.show(out=fh)
 
+  elif method == "cifpd":
+    if inp_type == "pandas":
+      dfs = inp
+    elif inp_type == "dict":
+      dfs = convert_dict_to_dataframes(inp)
 
-  # # this uses functions from lastcif.py that need to be moved
-  # # go from cif dict to list of dfs
-  # assert len(list(td.keys()))==1, "Multiple data blocks not supported"
-  # head_key = list(td.keys())[0]
-  
-  # # find second to last keys
-  # all_paths = find_paths(td.data)
-  
-  # unique_paths = set()
-  # for path in all_paths:
-  #     if len(path)>1:
-  #       p = path[:-1]
-  #     else:
-  #       p = path
-  #     unique_paths.add(tuple(p))
-  
-  # dicts = {p[-1]:resolve_value(td.data,p) for p in unique_paths}
-  # dfs = {}
-  # # check for scaler values and make dfs
-  # for k,d in dicts.items():
-  #     keys = list(d.keys())
-  #     is_scaler = False
-  #     for key in keys:
-  #         v_check = d[key]
-  #         if isinstance(v_check,str) or len(v_check)==1:
-  #             is_scaler = True
-  #         if is_scaler:
-  #             df = pd.DataFrame(d,index=[0])
-  #         else:
-  #             df = pd.DataFrame(d)
-  #         dfs[k] = df
-  
-  # # # write to disk
-  # cif_lines_all = ["data_"+head_key]
-  # for key,df in dfs.items():
-  
-  #     cif_lines = df_to_cif_lines(df,column_prefix=key,
-  #                                 decimal_places=3,
-  #                                 integer_padding=2,
-  #                                 decimal_padding=2)
-  #     cif_lines_all+=cif_lines
-  # with outfile.open("w") as fh:
-  #   fh.write("\n".join(cif_lines))
+    elif inp_type == "iotbx":
+      d = convert_iotbx_cif_to_dict(inp)
+      dfs = convert_dict_to_dataframes(d)
+
+    write_dataframes_to_cif_file(dfs,filename)
+      
+# Testing tools
+
+def compare_nested_dataframe_dicts(dict1, dict2, parent_key=''):
+  """
+  Take two nested dicts with pd.DataFrame leaves, compare the contents.
+  """
+  if dict1.keys() != dict2.keys():
+      raise ValueError(f"Keys mismatch at {parent_key}: {dict1.keys()} vs {dict2.keys()}")
+
+  for key in dict1.keys():
+      current_key = f"{parent_key}.{key}" if parent_key else key
+      if isinstance(dict1[key], pd.DataFrame) and isinstance(dict2[key], pd.DataFrame):
+          if not dict1[key].equals(dict2[key]):
+              raise ValueError(f"DataFrames mismatch at {current_key}")
+      elif isinstance(dict1[key], dict) and isinstance(dict2[key], dict):
+          compare_nested_dataframe_dicts(dict1[key], dict2[key], current_key)
+      else:
+          if dict1[key] != dict2[key]:
+              raise ValueError(f"Values mismatch at {current_key}: {dict1[key]} vs {dict2[key]}")
+
+  return True
