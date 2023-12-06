@@ -10,8 +10,6 @@ from .controller import Controller
 from ..state.ref import ModelRef, MapRef
 
 
-
-
 class ScrollEntryController(Controller, QObject):
   """
   Controls views/scroll_entry.py
@@ -22,7 +20,7 @@ class ScrollEntryController(Controller, QObject):
     assert ref is not None, f"An Entry is a gui analog to a Ref. Must provide ref"
     self.ref = ref
     self.ref.entry = self
-    self._is_active = False
+    self._is_active = ref.active
     self.show = True
     self._is_destroyed = False
 
@@ -65,7 +63,7 @@ class ScrollEntryController(Controller, QObject):
 
 
   def remove_entry(self):
-    print("removeing entry for ref: ",self.ref.id)
+    print("removing entry for ref: ",self.ref.id)
     # TODO: move all  this to state
     if hasattr(self.ref,"show_in_list"):
       self.ref.show_in_list = False
@@ -105,6 +103,7 @@ class ScrollEntryController(Controller, QObject):
 
 
   def _toggle_active_func(self,is_checked):
+    self.ref.active = is_checked
     if self.view._is_destroyed:
         return
     else:

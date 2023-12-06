@@ -14,26 +14,6 @@ from ...last.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
 
 
-
-# class StateSignalEmitter(QObject):
-#   """
-#   These are signals emitted from the state object (the Model in MVC). 
-#   It is the responsibility of the viewer to listen and implement these signals.
-#   """
-#   signal_dm_changed = Signal()
-#   #signal_model_change = Signal()
-#   signal_map_change = Signal()
-#   #signal_selection_change = Signal()
-#   #signal_references_change = Signal() # the list of references changed, not just change in active
-#   signal_load_active_model = Signal()
-#   signal_load_active_map = Signal()
-
-#   # Style properties
-#   signal_iso_change = Signal(str,float) # (ref_id, iso value)
- 
-#   signal_repr_change = Signal(str,list) # (ref_id, list of desired reprs)
-#   signal_viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
-
 class StateSignals(QObject):
   style_change = Signal(str)# json
   tab_change = Signal(str) # tab name TOOD: Move? Not really a state thing...
@@ -65,7 +45,7 @@ class State:
     self._active_model_ref = None
     self._active_map_ref = None
     self._active_selection_ref = None
-    self._active_ciffile_ref = None
+    #self._active_ciffile_ref = None
     self._data_manager = data_manager
     self._model = None
     self._map_manager = None
@@ -158,7 +138,11 @@ class State:
     if isinstance(ref,ModelRef):
       #self.active_model_ref = ref
       #self.signals.model_change.emit(self.active_model)
-      pass
+
+      # Optionally add a cif file ref
+      if ref.cif_ref is not None:
+        self.add_ref(ref.cif_ref)
+
     elif isinstance(ref,MapRef):
       #self.active_map_ref = ref
       #self.signals.model_change.emit(self.active_model)
@@ -239,6 +223,10 @@ class State:
   def references_selection(self):
     return [value for key,value in self.references.items() if isinstance(value,SelectionRef)]
 
+  @property
+  def references_ciffile(self):
+    return [value for key,value in self.references.items() if isinstance(value,CifFileRef)]
+
 
   @property
   def state(self):
@@ -297,13 +285,21 @@ class State:
 
   @active_model_ref.setter
   def active_model_ref(self,value):
+    ref = value
     if value is None:
       self._active_model_ref = None
     else:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_model_ref = value
+
+      # check if cif file for cif editor
+      if self.active_model_ref.cif_ref is not None:
+        self.signals.ciffile_change.emit(self.active_model_ref.cif_ref)
+
+      # emit signals
       self.signals.model_change.emit(self.active_model_ref)
+
     self.signals.references_change.emit()
 
   @property
@@ -337,12 +333,15 @@ class State:
 
   @active_map_ref.setter
   def active_map_ref(self,value):
+    ref = value
     if value is None:
       self._active_map_ref = None
     else:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_map_ref = value
+
+      # signals
       self.signals.map_change.emit(self.active_map_ref)
     self.signals.references_change.emit()
 
@@ -377,12 +376,14 @@ class State:
 
   @active_selection_ref.setter
   def active_selection_ref(self,value):
+    ref = value
     if value is None:
       self._active_selection_ref =None
     else:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_selection_ref = value
+      
     
     self.signals.selection_change.emit(value)
     self.signals.references_change.emit()
@@ -401,17 +402,28 @@ class State:
   # Cif Files
   #####################################
 
-  @property
-  def active_ciffile_ref(self):
-    return self._active_ciffile_ref
+  # @property
+  # def active_ciffile_ref(self):
+  #   return self._active_ciffile_ref
 
-  @active_ciffile_ref.setter
-  def active_ciffile_ref(self,value):
-    if value is None:
-      self._active_ciffile_ref = None
-    else:
-      assert isinstance(value,CifFileRef), "Set active_model_ref with instance of Ref or subclass"
-      assert value in self.references.values(), "Cannot set active ref before adding to state"
-      self._active_ciffile_ref = value
-      self.signals.ciffile_change.emit(self.active_ciffile_ref)
-    self.signals.references_change.emit()
+  # @active_ciffile_ref.setter
+  # def active_ciffile_ref(self,value):
+
+  #   ref = value
+  #   if value is None:
+  #     self._active_ciffile_ref = None
+  #   else:
+  #     assert isinstance(value,CifFileRef), "Set active_model_ref with instance of Ref or subclass"
+  #     assert value in self.references.values(), "Cannot set active ref before adding to state"
+  #     self._active_ciffile_ref = value
+
+  #     # control active flag
+  #     ref.active = True
+  #     for key,other_ref in self.references.items():
+  #       if isinstance(ref,CifFileRef):
+  #         if other_ref != ref and other_ref.active:
+  #           other_ref.active = False
+
+  #     # Emit signals
+  #     self.signals.ciffile_change.emit(self.active_ciffile_ref)
+  #   self.signals.references_change.emit()

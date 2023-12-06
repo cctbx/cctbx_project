@@ -44,6 +44,7 @@ class Ref:
     self._show_in_list = show
     self.entry = None # set later the entry controller object
     self.results = {} # program_name: result_ref
+    self._active = False
 
 
     if style is None:
@@ -52,7 +53,28 @@ class Ref:
       style = replace(style,ref_id=self.id,query=self.query)
     self._style = style
     self.style_history = []
+    
+  def _connections(self):
+    pass
 
+  @property
+  def active(self):
+    return self._active
+
+  @active.setter
+  def active(self,value):
+    print("#"*80)
+    print(f"setting ref: {self} to active: ",value)
+    print("#"*80)
+
+    # toggle entry as active
+    if self.entry:
+      self.entry.is_active = value
+    self._active = value
+
+  def _set_active(self,ref):
+    assert self==ref
+    self.active = True
 
   @property
   def id(self):
@@ -76,6 +98,7 @@ class Ref:
   @state.setter
   def state(self,value):
     self._state = value
+    self._connections()
 
   @property
   def style(self):
@@ -134,6 +157,7 @@ class Ref:
       return path[:max_len // 2] + "..." + path[-max_len // 2:]
     else:
       return path
+      
 
   @staticmethod
   def _generate_uuid(length: int=24):
@@ -147,11 +171,18 @@ class Ref:
     short_uuid = hashed_uuid[:length]
     return short_uuid
 
+
+
+
 class ModelRef(Ref):
   def __init__(self,data: MolecularModelData, style: Optional[Style] = None):
     super().__init__(data=data,style=style)
     self._mol = None
     self._restraints = None
+    self._cif_data = None
+    self._cif_ref =  None
+    if self.data.cif_data is not None:
+      self._cif_ref =  CifFileRef(self.data.cif_data)
     
     
 
@@ -159,6 +190,10 @@ class ModelRef(Ref):
   def from_filename(cls,filename: str):
     model_data = MolecularModelData(filename=filename)
     return cls(model_data)
+
+  @property
+  def cif_ref(self):
+    return self._cif_ref
 
   @property
   def model(self):
@@ -369,6 +404,24 @@ class QscoreRef(ModelResultsRef):
 class CifFileRef(Ref):
   def __init__(self,data: CifFileData):
     super().__init__(data=data)
+  
+
+  def _connections(self):
+    self.state.signals.ciffile_change.connect(self._set_active)
+
+  @property
+  def label(self):
+    if self._label is None:
+      if self.data.filename is not None:
+        try:
+          # if key is a path, get the stem
+          self._label = self._truncate_string(Path(self.data.filename).name)
+        except:
+          self._label = self._truncate_string(self.data.filename)
+      else:
+        self._label = super().label
+
+    return self._label
 
 
 
