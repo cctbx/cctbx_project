@@ -16,11 +16,14 @@ from PySide2.QtCore import QEvent
 
 
 class DemoController(Controller):
-  def __init__(self,parent=None,view=None):
+  def __init__(self,parent=None,view=None,viewer_choice='molstar'):
     super().__init__(parent=parent,view=view)
 
-    self.chimerax = ChimeraXController(parent=self,view=self.view.chimerax_tab_view)
-    self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
+    if viewer_choice == 'molstar':
+      self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
+    else:
+      self.chimerax = ChimeraXController(parent=self,view=self.view.chimerax_tab_view)
+      
     self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
     self.data = DataTabController(parent=self,view=self.view.data_tab_view)
     self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)

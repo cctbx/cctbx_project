@@ -21,8 +21,9 @@ from ..widgets.tab import GUITabWidget
 class DemoView(QMainWindow):
   signal_close = Signal()
 
-  def __init__(self,parent=None):
+  def __init__(self,parent=None,viewer_choice='molstar'):
     super().__init__(parent=parent)
+    self.viewer_choice = viewer_choice
     self._has_child_window = False
     
 
@@ -46,14 +47,14 @@ class DemoView(QMainWindow):
     self.tabs.tabBar().childSignal.connect(self.child_window_handler) 
     self.setCentralWidget(self.tabs)
 
-
-    # Viewer
-    self.viewer_tab_view = ViewerTabView(parent=self)
-    self.tabs.insertTab(1,self.viewer_tab_view, "Molstar")
-
-    # ChimeraX Viewer
-    self.chimerax_tab_view = ChimeraXTabView(parent=self)
-    self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
+     # Viewer
+    if viewer_choice == 'molstar':
+      self.viewer_tab_view = ViewerTabView(parent=self)
+      self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
+    else:
+      # ChimeraX Viewer
+      self.chimerax_tab_view = ChimeraXTabView(parent=self)
+      self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
 
     # Selections
     self.selection_tab_view = SelectionsTabView(parent=self)
@@ -90,10 +91,10 @@ class DemoView(QMainWindow):
      # Python console subtab
     self.python_console = JupyterTabWidget(parent=self.consoles)
     self.consoles.addTab(self.python_console, "Python")
-
-    # javascript console subtab
-    self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
-    self.consoles.addTab(self.javascript_console, "Javascript")
+    if self.viewer_choice == 'molstar':
+      # javascript console subtab
+      self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
+      self.consoles.addTab(self.javascript_console, "Javascript")
 
     self.tabs.addTab(self.consoles,"Console")
 
