@@ -38,7 +38,7 @@ class Ref:
     self._data = data
     self._id = self._generate_uuid()
     self._external_ids = {}
-
+    self._file_ref = None
     self._state = None
     self._label = None
     self._show_in_list = show
@@ -55,7 +55,26 @@ class Ref:
     self.style_history = []
     
   def _connections(self):
-    pass
+    self.state.signals.remove_ref.connect(self._remove)
+
+
+
+  def _remove(self,ref):
+    print("REMOVING A REF: ",ref)
+    if self.file_ref ==ref:
+      self.file_ref = None
+    if self.model_ref == ref:
+      self.model_ref = None
+  
+  @property 
+  def file_ref(self):
+    return self._file_ref
+
+  @file_ref.setter
+  def file_ref(self,value):
+    self._file_ref = value
+
+
 
   @property
   def active(self):
@@ -69,12 +88,20 @@ class Ref:
 
     # toggle entry as active
     if self.entry:
-      self.entry.is_active = value
+      self.entry.active = value
+
+    if self.file_ref:
+      self.file_ref.active = value
+
     self._active = value
 
-  def _set_active(self,ref):
-    assert self==ref
-    self.active = True
+
+  def _set_active_ref(self,ref):
+    if ref == self:
+      self.active = True
+    else:
+      self.active = False
+
 
   @property
   def id(self):
@@ -180,9 +207,9 @@ class ModelRef(Ref):
     self._mol = None
     self._restraints = None
     self._cif_data = None
-    self._cif_ref =  None
+    self._file_ref =  None
     if self.data.cif_data is not None:
-      self._cif_ref =  CifFileRef(self.data.cif_data)
+      self._file_ref =  CifFileRef(self.data.cif_data)
     
     
 
@@ -190,10 +217,6 @@ class ModelRef(Ref):
   def from_filename(cls,filename: str):
     model_data = MolecularModelData(filename=filename)
     return cls(model_data)
-
-  @property
-  def cif_ref(self):
-    return self._cif_ref
 
   @property
   def model(self):
@@ -241,6 +264,10 @@ class ModelRef(Ref):
   def query(self):    
     return SelectionQuery.from_model_ref(self)
   
+  def _connections(self):
+    super()._connections()
+    self.state.signals.model_change.connect(self._set_active_ref)
+
 
 class MapRef(Ref):
   def __init__(self,data: RealSpaceMapData, model_ref: Optional[ModelRef] = None,style: Optional[Style] = None):
@@ -407,7 +434,7 @@ class CifFileRef(Ref):
   
 
   def _connections(self):
-    self.state.signals.ciffile_change.connect(self._set_active)
+    self.state.signals.ciffile_change.connect(self._set_active_ref)
 
   @property
   def label(self):

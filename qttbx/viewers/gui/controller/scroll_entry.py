@@ -20,7 +20,6 @@ class ScrollEntryController(Controller, QObject):
     assert ref is not None, f"An Entry is a gui analog to a Ref. Must provide ref"
     self.ref = ref
     self.ref.entry = self
-    self._is_active = ref.active
     self.show = True
     self._is_destroyed = False
 
@@ -38,14 +37,13 @@ class ScrollEntryController(Controller, QObject):
 
 
   @property
-  def is_active(self):
-    return self._is_active
+  def active(self):
+    return self.ref.active
 
-  @is_active.setter
-  def is_active(self,value):
-    if not self.view.is_destroyed:
+  @active.setter
+  def active(self,value):
+    if not self.view.is_destroyed and not self.is_destroyed:
       assert isinstance(value,bool), "Active must be boolean"
-      self._is_active = value
       self.view.active_toggle.is_checked=value
 
   @property
@@ -97,7 +95,9 @@ class ScrollEntryController(Controller, QObject):
       del self.state.references[self.ref.id]
 
     # harsh reset of viewer, the problem is that the viewer will send back old pairings if same model
+    self.is_destroyed = True
     self.parent_list.remove_entry(self) # remove from gui
+    self.state.signals.remove_ref.emit(self.ref)
     self.state.signals.clear.emit("Currently, closing an entry triggers a full viewer reset.")
 
 

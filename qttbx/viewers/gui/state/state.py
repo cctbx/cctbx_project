@@ -32,6 +32,7 @@ class StateSignals(QObject):
   sync = Signal()
   clear = Signal(str) # reload all active objects, send the messagebox message
   select = Signal(object) # select a ref object
+  remove_ref = Signal(object) # ref
 
 class State:
 
@@ -140,8 +141,8 @@ class State:
       #self.signals.model_change.emit(self.active_model)
 
       # Optionally add a cif file ref
-      if ref.cif_ref is not None:
-        self.add_ref(ref.cif_ref)
+      if ref.file_ref is not None:
+        self.add_ref(ref.file_ref)
 
     elif isinstance(ref,MapRef):
       #self.active_map_ref = ref
@@ -294,8 +295,9 @@ class State:
       self._active_model_ref = value
 
       # check if cif file for cif editor
-      if self.active_model_ref.cif_ref is not None:
-        self.signals.ciffile_change.emit(self.active_model_ref.cif_ref)
+      if self.active_model_ref.file_ref is not None:
+        if isinstance(self.active_model_ref.file_ref,CifFileRef):
+          self.signals.ciffile_change.emit(self.active_model_ref.file_ref)
 
       # emit signals
       self.signals.model_change.emit(self.active_model_ref)

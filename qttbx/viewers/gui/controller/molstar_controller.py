@@ -79,7 +79,7 @@ class SyncManager:
       self.controller.viewer._get_sync_state(self.controller.state.to_json(),callback=self._try_sync_callback)
     else:
       self._sync_failure = True
-      msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+      msg = QMessageBox.warning(self.controller.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
       self.parent.close_application()
       sys.exit()
 
@@ -87,8 +87,7 @@ class SyncManager:
     print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
     if isinstance(result,str) and len(result.strip())>0:
       result = json.loads(result)
-      print("sync result: ",result)
-      print(result.keys())
+      print("sync result: ",json.dumps(result,indent=2))
       # update molstar ids
       for ref_id, ref_dict in result["references"].items():
         for external_key, external_id in ref_dict["external_ids"].items():
@@ -265,8 +264,7 @@ class MolstarController(Controller):
 
     # Un-toggle any entry
     for ref in self.state.references.values():
-      if ref.entry is not None:
-        ref.entry.is_active = False
+      ref.entry = None
 
     # clear viewer
     self.viewer.clear_viewer()
