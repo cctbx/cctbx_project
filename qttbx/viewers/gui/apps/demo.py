@@ -2,6 +2,7 @@
 import time
 import sys
 from pathlib import Path
+import argparse
 
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication, QWidget, QApplication, QWidget, QPushButton, QVBoxLayout
@@ -69,7 +70,9 @@ class ViewerChoiceDialog(QDialog):
         self.choice = 'chimerax'
         self.accept()
 
-if __name__ == '__main__':
+def main(viewer=None,dm=None,log=None):
+  choice = viewer # 'molstar' or 'chimerax'
+  
 
   # start app
   QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -81,48 +84,61 @@ if __name__ == '__main__':
   qapp.setWindowIcon(icon)
 
   # choose viewer
-  choice_dialog = ViewerChoiceDialog()
-  res = choice_dialog.exec_()
+  if not choice:
+    choice_dialog = ViewerChoiceDialog()
+    res = choice_dialog.exec_()
 
-  # If a choice was made, show the main window
-  if res != QDialog.Accepted:
-    QMessageBox.warning(None, "No Choice", "No option was selected. Exiting application.")
-    qapp.quit()
-  else:
-    # a viewer was chosen
-
-    choice = choice_dialog.choice
-    print("Choice was: ",choice)
-    dm = DataManager()
-    # DEBUG: load some data automatically
-    #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.pdb")
-    dm.process_real_map_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp_calc.mrc")
-
-    dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.cif")
-
-    # Core top level object initialization
-    state = State(dm)  
-    view = DemoView(viewer_choice=choice)
-    controller = DemoController(parent=state,view=view,viewer_choice=choice)
-    app = DemoApp(state,view,controller)
-
-    # DEBUG: Sync references for test data
-    state.signals.references_change.emit()
+    # If a choice was made, show the main window
+    if res != QDialog.Accepted:
+      QMessageBox.warning(None, "No Choice", "No option was selected. Exiting application.")
+      qapp.quit()
     
+    
+    
+    choice = choice_dialog.choice
+  
+  # Set up a data manager
+  if not dm:
+    dm = DataManager()
 
-    # Reach into the Console tab to make variables accessible
-    app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
-    #include Selection dataclasses to build querys in console
-    app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
-    app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
+  
+  # DEBUG: load some data automatically
+  #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.pdb")
+  dm.process_real_map_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp_calc.mrc")
+
+  dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.cif")
+
+  # Core top level object initialization
+  state = State(dm)  
+  view = DemoView(viewer_choice=choice)
+  controller = DemoController(parent=state,view=view,viewer_choice=choice,log=log)
+  app = DemoApp(state,view,controller)
+
+  # DEBUG: Sync references for test data
+  state.signals.references_change.emit()
+  
+
+  # Reach into the Console tab to make variables accessible
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
+  #include Selection dataclasses to build querys in console
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
 
-    # # Create an instance of the event filter
-    # globalEventFilter = GlobalEventFilter()
+  # # Create an instance of the event filter
+  # globalEventFilter = GlobalEventFilter()
 
-    # # Install the event filter on the QApplication instance
-    # qapp.installEventFilter(globalEventFilter)
+  # # Install the event filter on the QApplication instance
+  # qapp.installEventFilter(globalEventFilter)
 
-    controller.view.show()
+  controller.view.show()
 
-    sys.exit(qapp.exec_())
+  sys.exit(qapp.exec_())
+
+if __name__ == '__main__':
+  # arguments
+  parser = argparse.ArgumentParser(description='Phenix Viewer Demo')
+  parser.add_argument('--viewer', type=str, help="Either 'molstar' or 'chimerax'", required=False)
+  args = parser.parse_args()
+  choice = args.viewer # viewer choice
+  main(viewer=choice)

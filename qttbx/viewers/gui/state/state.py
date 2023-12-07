@@ -41,8 +41,8 @@ class State:
     dm = DataManager()
     return cls(dm)
 
-  def __init__(self, data_manager):
-    # Props are more complex data structures
+  def __init__(self, data_manager,log=None):
+    self.log = log
     self._active_model_ref = None
     self._active_map_ref = None
     self._active_selection_ref = None
