@@ -2299,6 +2299,9 @@ def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
     spec_wt = dxtbx_spec.get_weights()
     if params.downsamp_spec.skip:
         spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
+        stride=params.simulator.spectrum.stride
+        spec_wave = spec_wave[::stride]
+        spec_wt = spec_wt[::stride]
         spectrum = list(zip(spec_wave, spec_wt))
     else:
         spec_en = dxtbx_spec.get_energies_eV()
@@ -2341,6 +2344,9 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
     spec_wt = SIM.dxtbx_spec.get_weights()
     if params.downsamp_spec.skip:
         spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
+        stride = params.simulator.spectrum.stride
+        spec_wave = spec_wave[::stride]
+        spec_wt = spec_wt[::stride]
         SIM.beam.spectrum = list(zip(spec_wave, spec_wt))
     else:
         spec_en = SIM.dxtbx_spec.get_energies_eV()
@@ -2371,6 +2377,7 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
     ave_wave = sum(waves*specs) / sum(specs)
     expt.beam.set_wavelength(ave_wave)
     MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
+    MAIN_LOGGER.debug("Using %d energy channels" % len(SIM.beam.spectrum))
     if return_and_dont_set:
         return SIM.beam.spectrum
     else:
@@ -2492,6 +2499,7 @@ def get_simulator_for_data_modelers(data_modeler):
     if self.params.record_device_timings:
         SIM.D.record_timings = True
 
+    # TODO: use data_modeler.set_spectrum instead
     if self.params.spectrum_from_imageset:
         downsamp_spec(SIM, self.params, self.E)
     elif self.params.gen_gauss_spec:
