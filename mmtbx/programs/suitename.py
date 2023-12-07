@@ -31,8 +31,11 @@ Supply a PDB or mmCIF file; get suitename validation
 Options:
 
   model=input_file      input PDB file
-  output=text, kin, or bullseye    select type of output
   outliers_only=False   suppress non-outlier results
+  report=True           standard text output
+  json=False            JSON format output
+  string=False          output in suitestring format, 3 characters per suite
+  kinemage=False        kinemage-format visual markup
 
 Example:
 
