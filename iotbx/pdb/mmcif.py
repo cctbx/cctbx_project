@@ -499,7 +499,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         return software_name
     elif software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
-      if i >= 0: return software_name[i]
+      if i is not None and i >= 0 and software_name is not None and i < len(software_name):
+        return software_name[i]
 
   def resolution(self):
     result = []
