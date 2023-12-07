@@ -824,7 +824,7 @@ class StageTwoRefiner(BaseRefiner):
 
         LOGGER.info("DONE WITH FUNC GRAD")
         return self._f, self._g
-    
+
     def callback_after_step(self, minimizer):
         self.iterations = minimizer.iter()
 
