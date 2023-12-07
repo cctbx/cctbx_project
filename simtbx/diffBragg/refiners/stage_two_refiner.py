@@ -91,7 +91,7 @@ class StageTwoRefiner(BaseRefiner):
         self.use_curvatures_threshold = 7  # how many positive curvature iterations required before breaking, after which simulation can be restart with use_curvatures=True
         self.verbose = True  # whether to print during iterations
         self.iterations = 0  # iteration counter , used internally
-        self.call_counter = 0  # function call counter, used internally
+        self.target_eval_count = 0  # target function evaluation counter, used internally
         self.shot_ids = None  # for global refinement ,
         self.log2pi = np.log(np.pi*2)
 
@@ -672,7 +672,7 @@ class StageTwoRefiner(BaseRefiner):
         return out
 
     def _compute_functional_and_gradients(self):
-        LOGGER.info(Bcolors.OKBLUE+"BEGIN FUNC GRAD ; Call %d" % self.call_counter+Bcolors.ENDC)
+        LOGGER.info(Bcolors.OKBLUE+"BEGIN FUNC GRAD ; Eval %d" % self.target_eval_count+Bcolors.ENDC)
         #if self.verbose:
         #    self._print_iteration_header()
 
@@ -696,15 +696,15 @@ class StageTwoRefiner(BaseRefiner):
 
         LOGGER.info("Iterate over %d shots" % len(self.shot_ids))
         self._shot_Zscores = []
-        save_model = self.save_model_freq is not None and self.call_counter % self.save_model_freq == 0
+        save_model = self.save_model_freq is not None and self.target_eval_count % self.save_model_freq == 0
         if save_model:
-            self._save_model_dir = os.path.join(self.model_dir, "call%d" % self.call_counter)
+            self._save_model_dir = os.path.join(self.model_dir, "eval%d" % self.target_eval_count)
 
             if self.params.debug_mode and COMM.rank == 0 and not os.path.exists(self._save_model_dir):
                 os.makedirs(self._save_model_dir)
             COMM.barrier()
 
-        if self.call_counter % self.params.refiner.save_gain_freq == 0:
+        if self.target_eval_count % self.params.refiner.save_gain_freq == 0:
             self._save_optimized_gain_map()
 
         self.all_sigZ = []
@@ -745,7 +745,7 @@ class StageTwoRefiner(BaseRefiner):
 
             self._derivative_convenience_factors()
 
-            if self.saveZ_freq is not None and self.call_counter % self.saveZ_freq == 0:
+            if self.saveZ_freq is not None and self.target_eval_count % self.saveZ_freq == 0:
                 MOD = self.Modelers[self._i_shot]
                 self._spot_Zscores = []
                 for i_fcell in MOD.unique_i_fcell:
@@ -815,7 +815,7 @@ class StageTwoRefiner(BaseRefiner):
         tsave = time.time()-tsave
         LOGGER.info("Time to dump param and Zscore data: %.4f" % tsave)
 
-        self.call_counter += 1
+        self.target_eval_count += 1
         self.f_vals.append(self.target_functional)
 
         if self.calc_curvatures and not self.use_curvatures:
@@ -833,16 +833,16 @@ class StageTwoRefiner(BaseRefiner):
         df = pandas.DataFrame(model_info)
         df["shot_id"] = self._i_shot
         outdir = self._save_model_dir
-        outname = os.path.join(outdir, "rank%d_shot%d_CALL%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.call_counter, self.iterations))
+        outname = os.path.join(outdir, "rank%d_shot%d_EVAL%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.target_eval_count, self.iterations))
         df.to_pickle(outname)
 
     def _save_Zscore_data(self):
-        if self.saveZ_freq is None or not self.call_counter % self.saveZ_freq == 0:
+        if self.saveZ_freq is None or not self.target_eval_count % self.saveZ_freq == 0:
             return
         outdir = os.path.join(self.Zdir, "rank%d_Zscore" % self.rank)
         if not os.path.exists(outdir):
             os.makedirs(outdir)
-        fname = os.path.join(outdir, "sigZ_call%d_iter%d_rank%d" % (self.call_counter, self.iterations, self.rank))
+        fname = os.path.join(outdir, "sigZ_eval%d_iter%d_rank%d" % (self.target_eval_count, self.iterations, self.rank))
         np.save(fname, np.array(self._shot_Zscores, object))
 
     def _sanity_check_grad(self):
@@ -1035,11 +1035,11 @@ class StageTwoRefiner(BaseRefiner):
         if self.use_curvatures:
 
             LOGGER.info(
-                "%s%s%s%s\nTrial%d (%s): Compute functional and gradients call %d %s(Using Curvatures)%s\n%s%s%s%s"
-                % (Bcolors.HEADER, border,border,border, self.trial_id + 1, refine_str, self.call_counter + 1, Bcolors.OKGREEN, Bcolors.HEADER, border,border,border, Bcolors.ENDC))
+                "%s%s%s%s\nTrial%d (%s): Compute functional and gradients eval %d %s(Using Curvatures)%s\n%s%s%s%s"
+                % (Bcolors.HEADER, border,border,border, self.trial_id + 1, refine_str, self.target_eval_count + 1, Bcolors.OKGREEN, Bcolors.HEADER, border,border,border, Bcolors.ENDC))
         else:
-            LOGGER.info("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients call %d PosCurva %d\n%s%s%s%s"
-                  % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.call_counter + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
+            LOGGER.info("%s%s%s%s\n, Trial%d (%s): Compute functional and gradients eval %d PosCurva %d\n%s%s%s%s"
+                  % (Bcolors.HEADER, border, border, border, self.trial_id + 1, refine_str, self.target_eval_count + 1, self.num_positive_curvatures, border, border,border, Bcolors.ENDC))
 
     def _save_optimized_gain_map(self):
         if not self.params.refiner.refine_gain_map:
@@ -1056,7 +1056,7 @@ class StageTwoRefiner(BaseRefiner):
 
     def _MPI_save_state_of_refiner(self):
         if self.I_AM_ROOT and self.output_dir is not None and self.refine_Fcell:
-            outf = os.path.join(self.output_dir, "_fcell_trial%d_call%d_iter%d" % (self.trial_id, self.call_counter, self.iterations))
+            outf = os.path.join(self.output_dir, "_fcell_trial%d_eval%d_iter%d" % (self.trial_id, self.target_eval_count, self.iterations))
             np.savez(outf, fvals=self._fcell_at_i_fcell)
 
     def _target_accumulate(self):
