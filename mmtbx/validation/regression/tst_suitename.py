@@ -8,6 +8,8 @@ import os
 
 def exercise_suitename_json():
   # derived from 2goz
+  # note: chain B, residue 20 of 2goz is a DNA residue (DC). As of 2023, DNA conformations are not handled by suitename,
+  #   and this residue is skipped.
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
     test=os.path.isfile)
@@ -20,18 +22,18 @@ def exercise_suitename_json():
   sz_dict = json.loads(sz.as_JSON())
   #import pprint
   #pprint.pprint(csjson_dict)
-  assert len(sz_dict['flat_results']) == 63, "tst_suitename json output not returning correct number of suites, now: "+str(len(sz_dict['flat_results']))
+  assert len(sz_dict['flat_results']) == 62, "tst_suitename json output not returning correct number of suites, now: "+str(len(sz_dict['flat_results']))
   assert sz_dict['flat_results'][0]["cluster"] == "__", "tst_suitename json output first cluster value changed, now: "+sz_dict['flat_results'][0]["cluster"]
   from mmtbx.validation import test_utils
-  assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "1a")==38, "tst_suitename json hierarchical output total number of 1a changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "1a"))
+  assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "1a")==37, "tst_suitename json hierarchical output total number of 1a changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "1a"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "1b")==5, "tst_suitename json hierarchical output total number of 1b changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "1b"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "7r")==1, "tst_suitename json hierarchical output total number of 7r changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "7r"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "!!")==5, "tst_suitename json hierarchical output total number of !! changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "!!"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "__")==2, "tst_suitename json hierarchical output total number of __ changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "__"))
   assert sz_dict['summary_results'][""]["num_outliers"] == 5, "tst_suitename json summary output total number of outliers changed"
-  assert sz_dict['summary_results'][""]["num_suites"] == 63, "tst_suitename json summary output total number of suites changed"
+  assert sz_dict['summary_results'][""]["num_suites"] == 62, "tst_suitename json summary output total number of suites changed"
   assert sz_dict['suitestrings'][""]["A"] == "__G1aG1aA1aU1aG1aU1aA7rC0aU1aA1aC1aC1aA1cG1bC4aU1gG1aA1[U6gG9aA1aG1aU1aC1aC1aC1aA!!A!!A2aU1bA!!G1aG1aA1aC1aG&aA1aA1aA1aC1aG1aC1cC", "model 1 chain A suitestring changed"
-  assert sz_dict['suitestrings'][""]["B"] == "__G1aG1aC1aG1aU1bC!!C1aU1aG1cG1a?1aA1bU4aC1bC!!A1aA1a?1aC1a?", "model 1 chain B suitestring changed"
+  assert sz_dict['suitestrings'][""]["B"] == "__G1aG1aC1aG1aU1bC!!C1aU1aG1cG1a?1aA1bU4aC1bC!!A1aA1a?1aC", "model 1 chain B suitestring changed"
 
 multimod_2goz_pdb_str = """MODEL        1
 ATOM    539  P     C A  26     -19.024  25.068  -5.945  1.00 46.81           P

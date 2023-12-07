@@ -448,6 +448,11 @@ class suitealyze(rna_geometry):
           local_altloc = self.local_altloc_from_atoms(list(self.get_res1atoms(residue_pair[0]).values()))
         if not (local_altloc == '' and local_altloc != conformer_altloc and conformer_altloc != first_altloc):
           res1atoms = self.get_res1atoms(residue_pair[0])
+          if res1atoms[" O2'"] is None:
+            # this residue is not RNA and should be skipped
+            prev_chain = chainid
+            prev_model = modelid
+            continue
           deltaMinus, epsilon, zeta, alpha, beta, gamma, delta = self.get_7_dihedrals(res0atoms, res1atoms)
           resid = {"model": modelid, "chain": chainid, "resseq": residue_pair[0].resseq, "icode": residue_pair[0].icode,
                    "alt": local_altloc, "resname": residue_pair[0].resname}
@@ -460,9 +465,15 @@ class suitealyze(rna_geometry):
       #first residue done, resume normal path
       if residue_pair.are_linked():
         res0atoms = self.get_res0atoms(residue_pair[0])
+        if res0atoms[" O2'"] is None:
+          # preceding residue is not RNA, pair should be treated as non-linked
+          res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None, " O2'": None}
       else:
-        res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None}
+        res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None, " O2'":None}
       res1atoms = self.get_res1atoms(residue_pair[1])
+      if res1atoms[" O2'"] is None:
+        #this residue is not RNA and should be skipped
+        continue
 
       if conformer_altloc == '':
         local_altloc = ''
@@ -497,7 +508,8 @@ class suitealyze(rna_geometry):
     return {" C5'": residue.find_atom_by(name=" C5'"),
             " C4'": residue.find_atom_by(name=" C4'"),
             " C3'": residue.find_atom_by(name=" C3'"),
-            " O3'": residue.find_atom_by(name=" O3'")}
+            " O3'": residue.find_atom_by(name=" O3'"),
+            " O2'": residue.find_atom_by(name=" O2'"), }
 
   def get_res1atoms(self,residue):
     return {" P  ": residue.find_atom_by(name=" P  "),
@@ -505,7 +517,8 @@ class suitealyze(rna_geometry):
             " C5'": residue.find_atom_by(name=" C5'"),
             " C4'": residue.find_atom_by(name=" C4'"),
             " C3'": residue.find_atom_by(name=" C3'"),
-            " O3'": residue.find_atom_by(name=" O3'"), }
+            " O3'": residue.find_atom_by(name=" O3'"),
+            " O2'": residue.find_atom_by(name=" O2'"), }
 
   def get_7_dihedrals(self, res0atoms, res1atoms):
     deltaMinus = self.get_dihedral([res0atoms[" C5'"], res0atoms[" C4'"], res0atoms[" C3'"], res0atoms[" O3'"]])
