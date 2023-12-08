@@ -6,11 +6,9 @@
 KOKKOS_INLINE_FUNCTION
 int gen_laue_mats(int laue_group_num, vector_mat3_t lmats, KOKKOS_MAT3 rpa) {
 
-  if (laue_group_num < 1 || laue_group_num >14 ){
-    printf("Laue group number not in range 1-14; exiting\n");
-    exit(1);
-  }
-  int num_mats;
+  assert(laue_group_num>0);
+  assert(laue_group_num<15);
+  int num_mats = 0;
 
   const double one_over_root2 = 1./sqrt(2.);
 

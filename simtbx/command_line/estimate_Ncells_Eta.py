@@ -4,6 +4,15 @@ parser = ArgumentParser()
 parser.add_argument("dirname", help="still process output folder", type=str)
 parser.add_argument("--updatePhil", default=None, help="name of an exisiting stage 1 phil file  to update (just the init.Ncells portion)", type=str)
 parser.add_argument("--expSuffix", help="extension of refined experiments", type=str, default="_refined.expt")
+parser.add_argument("--thresh", type=float, default=7, help="MAD score for outliers (default=7 standard deviation above the median)")
+parser.add_argument("--useMean", action="store_true", help="set Eta and Nabc using the mean (default is median)")
+parser.add_argument("--NabcMax",  type=float, default=100, help="If estaimated Nabc is above this value, it will default to NabcDefault")
+parser.add_argument("--NabcMin",  type=float, default=5, help="If estaimated Nabc is BELOW this value, it will default to NabcDefault")
+parser.add_argument("--NabcDefault",  type=float, default=15, help="If estaimated Nabc is too high, use this value")
+parser.add_argument("--EtaMax", type=float, default=1, help="If estimated Eta is above this range, it will default to EtaDefault")
+parser.add_argument("--EtaMin", type=float, default=1e-5, help="If estimated Eta is BELOW this range, it will default to EtaDefault")
+parser.add_argument("--EtaDefault", type=float, default=0.01, help="If estimated Eta is  too high, use this value")
+
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
 args = parser.parse_args()
@@ -58,16 +67,34 @@ all_mos_spreads = COMM.reduce(all_mos_spreads)
 if COMM.rank==0:
     import pandas
     import pylab as plt
+    from simtbx.diffBragg import utils
+    all_Ns = np.array(all_Ns)
+    all_mos_spreads = np.array(all_mos_spreads)
+    bad_Ns = utils.is_outlier(all_Ns, args.thresh)
+    bad_mos_spreads = utils.is_outlier(all_mos_spreads, args.thresh)
+    is_bad = np.logical_or(bad_Ns, bad_mos_spreads)
+    print("Removing %d outlier estiamtes" % is_bad.sum())
+    all_Ns = all_Ns[~is_bad]
+    all_mos_spreads = all_mos_spreads[~is_bad]
+
     df = pandas.DataFrame({"Ncells": all_Ns, "mos_spread_deg": all_mos_spreads})
     print(df.Ncells.describe())
     print(df.mos_spread_deg.describe())
-    mean_N = df.Ncells.mean()
-    mean_mos = df.mos_spread_deg.mean()
+    if args.useMean:
+        mean_N = df.Ncells.mean()
+        mean_mos = df.mos_spread_deg.mean()
+    else:
+        mean_N = df.Ncells.median()
+        mean_mos = df.mos_spread_deg.median()
     print("mean Ncells=%f" % mean_N)
     print("mean mos_spread=%f (deg.)" % mean_mos)
 
-    # mosaic spread should be at least 1e-5 if we want to try refining it
-    mean_mos = max(mean_mos, 1e-5)
+    if mean_mos > args.EtaMax or mean_mos < args.EtaMin:
+        print("Estimated Eta=%f, setting it to the EtaDefault of %f" %(mean_mos, args.EtaDefault))
+        mean_mos = args.EtaDefault
+    if mean_N > args.NabcMax or mean_N < args.NabcMin:
+        print("Estimated N=%f, setting it to the NabcDefault of %f" %(mean_N, args.NabcDefault))
+        mean_N = args.NabcDefault
 
     phil = """\ninit {{
       Nabc = [{n},{n},{n}]

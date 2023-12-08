@@ -311,6 +311,10 @@ void diffBragg_sum_over_steps(
       anisoG_local = db_cryst.anisoG;
       anisoU_local = db_cryst.anisoU;
 
+      if (laue_group_num < 1 || laue_group_num >14 ){
+        throw std::string("Laue group number not in range 1-14");
+      }
+
       num_laue_mats = gen_laue_mats(laue_group_num, laue_mats, db_cryst.rotate_principal_axes);
       for (int i_gam=0; i_gam<3; i_gam++){
         dG_dgam[i_gam] << 0,0,0,0,0,0,0,0,0;
