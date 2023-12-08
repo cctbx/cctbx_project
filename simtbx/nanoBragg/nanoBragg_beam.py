@@ -23,12 +23,14 @@ class NBbeam(object):
 
   def __init__(self):
     self.spectrum = [(1.8, 1e12)] # angstroms, photons per pulse
-    self.unit_s0 = 1, 0, 0
-    self.polarization_fraction = 1
-    self.divergence_mrad = 0
-    self.divsteps = 0
-    self.size_mm = 0.001
+    self.unit_s0 = 1, 0, 0  # forward beam direction
+    self.polarization_fraction = 1  # defines horizontal and vertical polarization fraction
+    self.divergence_mrad = 0  # set the divergence cone angle
+    self.divsteps = 0  # number of divergence steps, will be squared (one per horizontal, vertical directions)
+    self.size_mm = 0.001 # beam spot size
     self._undo_nanoBragg_norm_by_nbeams = True # we undo it by default
+    self.prev_xray_beams = None  # used to cache most recent xray_beams property for efficiency
+    self.num_div_angles_within_cone = 0  # used to count how manydivergence angles we sample within the cone of divergence
 
   @property
   def divsteps(self):
@@ -47,7 +49,6 @@ class NBbeam(object):
       return [(0,0)]
     else:
       all_divs = np.arange(0, divrange+1e-7, divrange / self.divsteps) - divrange / 2
-      print("LEN DIVS: %d" % len(all_divs))
       return [(hdiv, vdiv) for vdiv in all_divs for hdiv in all_divs]
 
   @property
@@ -107,7 +108,7 @@ class NBbeam(object):
     polar_vector = np.cross(beam_vector, vert_vector)
     polar_vector /= np.linalg.norm(polar_vector)
 
-    good_divs =0
+    self.num_div_angles_within_cone = 0
     beams = []
     for hdiv, vdiv in divs:
       vec_xyz = rotate_axis(-beam_vector, polar_vector, vdiv)
@@ -116,9 +117,9 @@ class NBbeam(object):
       if hdiv == 0 and vdiv == 0:
         assert div_ang == 0
         assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
-      if div_ang >= 1.1*(self.divergence_mrad / 1000. / 2.):
+      if div_ang > 1.1*(self.divergence_mrad / 1000. / 2.):
         continue
-      good_divs += 1
+      self.num_div_angles_within_cone += 1
       for wavelen, flux in self.spectrum:
         beam = deepcopy(nominal_beam)
         beam.set_wavelength(wavelen*1e-10)
@@ -128,7 +129,6 @@ class NBbeam(object):
         beam.set_divergence(div_ang)
         beams.append(beam)
 
-    print("num divergence angles: %d" % good_divs)
     # set normalization
     norm = 1
     if self._undo_nanoBragg_norm_by_nbeams:
@@ -137,13 +137,16 @@ class NBbeam(object):
       beam.set_flux(beam.get_flux()/norm)
       self._xray_beams.append(beam)
 
+    self.prev_xray_beams = self._xray_beams
     return self._xray_beams
 
   @property
   def nanoBragg_constructor_beam(self):
-    """dumb necessity FIXME please"""
+    """dumb necessity for instantiating nanoBragg."""
+    if self.prev_xray_beams is None:
+      self.prev_xray_beams = self.xray_beams
 
-    beam = BeamFactory.from_dict(self.xray_beams[0].to_dict())
+    beam = BeamFactory.from_dict(self.prev_xray_beams[0].to_dict())
 
     # set the nominal beam to have the average wavelength and the total flux
     num = 0
@@ -152,7 +155,7 @@ class NBbeam(object):
     u0 = []
     div = 0
     count = 0
-    for b in self.xray_beams:
+    for b in self.prev_xray_beams:
       wave = b.get_wavelength()
       wt = b.get_flux()
       num += wave * wt
