@@ -6,12 +6,10 @@ parser.add_argument("--updatePhil", default=None, help="name of an exisiting sta
 parser.add_argument("--expSuffix", help="extension of refined experiments", type=str, default="_refined.expt")
 parser.add_argument("--thresh", type=float, default=7, help="MAD score for outliers (default=7 standard deviation above the median)")
 parser.add_argument("--useMean", action="store_true", help="set Eta and Nabc using the mean (default is median)")
-parser.add_argument("--NabcMax",  type=float, default=100, help="If estaimated Nabc is above this value, it will default to NabcDefault")
-parser.add_argument("--NabcMin",  type=float, default=5, help="If estaimated Nabc is BELOW this value, it will default to NabcDefault")
-parser.add_argument("--NabcDefault",  type=float, default=15, help="If estaimated Nabc is too high, use this value")
-parser.add_argument("--EtaMax", type=float, default=1, help="If estimated Eta is above this range, it will default to EtaDefault")
-parser.add_argument("--EtaMin", type=float, default=1e-5, help="If estimated Eta is BELOW this range, it will default to EtaDefault")
-parser.add_argument("--EtaDefault", type=float, default=0.01, help="If estimated Eta is  too high, use this value")
+parser.add_argument("--NabcMax",  type=float, default=70, help="If estaimated Nabc is above this value, it will set to this value")
+parser.add_argument("--NabcMin",  type=float, default=5, help="If estaimated Nabc is BELOW this value, it will be set to this value")
+parser.add_argument("--EtaMax", type=float, default=0.5, help="If estimated Eta is above this range, it will be set to this value")
+parser.add_argument("--EtaMin", type=float, default=1e-3, help="If estimated Eta is BELOW this range, it will be set to this value")
 
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
@@ -90,11 +88,13 @@ if COMM.rank==0:
     print("mean mos_spread=%f (deg.)" % mean_mos)
 
     if mean_mos > args.EtaMax or mean_mos < args.EtaMin:
-        print("Estimated Eta=%f, setting it to the EtaDefault of %f" %(mean_mos, args.EtaDefault))
-        mean_mos = args.EtaDefault
+        temp = mean_mos
+        mean_mos = args.EtaMax if mean_mos > args.EtaMax else args.EtaMin
+        print("Estimated Eta=%f, setting it to %f" % (temp, mean_mos))
     if mean_N > args.NabcMax or mean_N < args.NabcMin:
-        print("Estimated N=%f, setting it to the NabcDefault of %f" %(mean_N, args.NabcDefault))
-        mean_N = args.NabcDefault
+        temp = mean_N
+        mean_N = args.NabcMax if mean_N > args.NabcMax else args.NabcMin
+        print("Estimated N=%f, setting it to %f" %(temp, mean_N))
 
     phil = """\ninit {{
       Nabc = [{n},{n},{n}]

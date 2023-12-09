@@ -35,22 +35,23 @@ ea, eb, ec = map( np.median, np.vstack(df1.eta_abc).T)
 
 # spot scale (G)
 Gmed = df1.spot_scales.median()
+Gmin = df1.spot_scales.min()/100
+Gmax = df1.spot_scales.max()*100
 
-update_phil = f"""
-
+update_phil = """
 init {{
-  G = {Gmed:.4f}
-  Nabc = [{na:.1f},{nb:.1f},{nc:.1f}]
-  eta_abc = [{ea:.5f},{eb:.5f},{ec:.4f}]
+  G = {G}
+  Nabc = [{na},{nb},{nc}]
+  eta_abc = [{ea},{eb},{ec}]
 }}
 centers {{
-  Nvol = {nvol:.2f}
-  ucell_a = {a:.6f}
-  ucell_b = {b:.6f}
-  ucell_c = {c:.6f}
-  ucell_alpha = {al:.6f}
-  ucell_beta = {be:.6f}
-  ucell_gamma = {ga:.6f}
+  Nvol = {nvol}
+  ucell_a = {a}
+  ucell_b = {b}
+  ucell_c = {c}
+  ucell_alpha = {al}
+  ucell_beta = {be}
+  ucell_gamma = {ga}
 }}
 betas {{
   Nvol = 1e-2
@@ -61,9 +62,10 @@ betas {{
   ucell_beta = 1e-7
   ucell_gamma = 1e-7
 }}
+mins.G={Gmin}
+maxs.G={Gmax}
 use_restraints = True
-
-"""
+""".format(G=Gmed, Gmin=Gmin, Gmax=Gmax,na=na, nb=nb, nc=nb, ea=ea, eb=eb, ec=ec,a=a,b=b,c=c,al=al,be=be,ga=ga, nvol=nvol)
 
 diff_phil_name = os.path.join(args.dirname, "diff.phil")
 assert os.path.exists(diff_phil_name)
