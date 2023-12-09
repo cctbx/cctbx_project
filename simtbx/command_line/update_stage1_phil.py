@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("dirname", help="stage1 output folder with pandas and diff.phil", type=str)
 parser.add_argument("newPhil", default=None, help="new stage 1 phil file", type=str)
+parser.add_argument("--setGlim", action="store_true", help="Use unrestrained stage1 to set bounds on G")
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 #parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
 args = parser.parse_args()
@@ -62,10 +63,15 @@ betas {{
   ucell_beta = 1e-7
   ucell_gamma = 1e-7
 }}
-mins.G={Gmin}
-maxs.G={Gmax}
 use_restraints = True
-""".format(G=Gmed, Gmin=Gmin, Gmax=Gmax,na=na, nb=nb, nc=nb, ea=ea, eb=eb, ec=ec,a=a,b=b,c=c,al=al,be=be,ga=ga, nvol=nvol)
+""".format(G=Gmed,na=na, nb=nb, nc=nb, ea=ea, eb=eb, ec=ec,a=a,b=b,c=c,al=al,be=be,ga=ga, nvol=nvol)
+
+Gmin_Gmax="""
+mins.G={Gmin}
+maxs.G={Gmax}\n""".format(Gmin=Gmin, Gmax=Gmax)
+
+if args.setGlim:
+    update_phil += Gmin_Gmax
 
 diff_phil_name = os.path.join(args.dirname, "diff.phil")
 assert os.path.exists(diff_phil_name)
