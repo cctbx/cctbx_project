@@ -16,7 +16,6 @@
 #define cbf_failnez(x) { int err; err = (x); if (err) { \
   std::cout<<"error code "<<err<<std::endl; throw iotbx::detectors::Error ( \
   "CBFlib error in " #x " "); }}
-//#include <boost/timer.hpp>
 
 namespace iotbx {
   namespace detectors {
