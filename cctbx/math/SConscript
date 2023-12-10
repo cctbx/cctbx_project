@@ -3,6 +3,7 @@ env = env_base.Clone(
   CXXFLAGS=env_etc.cxxflags_base,
 )
 env.Prepend(LIBS=["cctbx"])
+env.Append(LIBS='boost_timer')
 env.Append(LIBS=env_etc.libm)
 env_etc.include_registry.append(
   env=env,
