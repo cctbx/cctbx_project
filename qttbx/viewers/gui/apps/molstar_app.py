@@ -55,16 +55,8 @@ if __name__ == '__main__':
   view = MolstarAppView()
   controller = MolstarAppController(parent=state,view=view)
   app = MolstarApp(state,view,controller)
-
-  # DEBUG: Sync references for test data
-  state.signals.references_change.emit()
   
 
-  # Reach into the Console tab to make variables accessible
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
-  #include Selection dataclasses to build querys in console
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
   controller.view.show()
 

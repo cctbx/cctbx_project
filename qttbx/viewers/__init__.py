@@ -9,8 +9,6 @@ import shutil
 import sys
 
 from libtbx.utils import Sorry
-#from .chimerax.chimerax import ChimeraXViewer # TODO: enable backwards compatible imports
-#from .molstar.molstar import MolstarViewer
 
 # =============================================================================
 class ModelViewer(object):

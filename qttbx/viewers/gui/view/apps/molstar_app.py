@@ -61,18 +61,6 @@ class MolstarAppView(QMainWindow):
     self.data_tab_view = DataTabView(parent=self)
     self.tabs.addTab(self.data_tab_view, "Files")
 
-    # Consoles
-    self.consoles = GUITabWidget(parent=self)
-     # Python console subtab
-    self.python_console = JupyterTabWidget(parent=self.consoles)
-    self.consoles.addTab(self.python_console, "Python")
-
-    # javascript console subtab
-    self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
-    self.consoles.addTab(self.javascript_console, "Javascript")
-
-    self.tabs.addTab(self.consoles,"Console")
-
   
   def child_window_handler(self,event):
     self._has_child_window = True

@@ -22,8 +22,8 @@ class MolstarAppController(Controller):
     self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
     self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
     self.data = DataTabController(parent=self,view=self.view.data_tab_view)
-    self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
-    self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
+    #self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
+    #self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
 
 
     # signals
