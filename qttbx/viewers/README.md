@@ -27,11 +27,11 @@ python bootstrap.py build  --builder=phenix --use_conda --nproc=16
 
 ### Run a minimal molstar viewer
 ```bash
-phenix.start_molstar model.mmcif
+phenix.start_molstar data/1yjp.cif
 ```
 
 
 ### Run a demo with all existing features
 ```bash
-phenix.start_viewer_demo model.mmcif
+phenix.start_viewer_demo data/1yjp.cif
 ```
