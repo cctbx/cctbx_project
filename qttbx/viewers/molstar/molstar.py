@@ -175,8 +175,15 @@ class MolstarViewer(ModelViewer):
         assert name in config, f"Missing necessary config variable: '{name}'"
       
       for key,value in config.items():
-        self.config[key] = str(Path(__file__).parent / Path(value))
-  
+        if key == 'node_js_path' and value == '':
+          value = 'npm'
+        else:
+          value = str(Path(__file__).parent / Path(value))
+        self.config[key] = value
+
+      if self.config["node_js_path"] == "":
+        self.config["node_js_path"] = 'npm'
+
     # Flags
     self._blocking_commands = False
 
@@ -220,8 +227,7 @@ class MolstarViewer(ModelViewer):
     '''
     self.app_root_dir = Path(self.config.molstar_app_relative_path)
 
-  
-    self.node_js_path = Path(self.config.node_js_path)
+    self.node_js_path = self.config.node_js_path
     self.command = ['http-server',str(self.app_root_dir)]
     return self.command
 

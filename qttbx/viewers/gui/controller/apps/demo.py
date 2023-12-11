@@ -16,9 +16,9 @@ from PySide2.QtCore import QEvent
 
 
 class DemoController(Controller):
-  def __init__(self,parent=None,view=None,viewer_choice='molstar'):
+  def __init__(self,parent=None,view=None,viewer_choice='molstar',log=None):
     super().__init__(parent=parent,view=view)
-
+    self.log = log
     if viewer_choice == 'molstar':
       self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
     else:

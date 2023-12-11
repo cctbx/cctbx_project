@@ -2,7 +2,7 @@
 import time
 import sys
 from pathlib import Path
-import argparse
+#import argparse
 
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication, QWidget, QApplication, QWidget, QPushButton, QVBoxLayout
@@ -104,9 +104,8 @@ def main(viewer=None,dm=None,log=None):
   
   # DEBUG: load some data automatically
   #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.pdb")
-  dm.process_real_map_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp_calc.mrc")
-
-  dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.cif")
+  #dm.process_real_map_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp_calc.mrc")
+  #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.cif")
 
   # Core top level object initialization
   state = State(dm)  
@@ -135,10 +134,10 @@ def main(viewer=None,dm=None,log=None):
 
   sys.exit(qapp.exec_())
 
-if __name__ == '__main__':
-  # arguments
-  parser = argparse.ArgumentParser(description='Phenix Viewer Demo')
-  parser.add_argument('--viewer', type=str, help="Either 'molstar' or 'chimerax'", required=False)
-  args = parser.parse_args()
-  choice = args.viewer # viewer choice
-  main(viewer=choice)
+# if __name__ == '__main__':
+#   # arguments
+#   parser = argparse.ArgumentParser(description='Phenix Viewer Demo')
+#   parser.add_argument('--viewer', type=str, help="Either 'molstar' or 'chimerax'", required=False)
+#   args = parser.parse_args()
+#   choice = args.viewer # viewer choice
+#   main(viewer=choice)

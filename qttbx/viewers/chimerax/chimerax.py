@@ -29,10 +29,7 @@ from libtbx.utils import Sorry
 
 from PySide2.QtCore import QObject, Signal
 from PySide2.QtCore import QUrl, Signal, QObject
-try:
-  from qttbx.viewers import ModelViewer
-except:
-  from viewers import ModelViewer
+from qttbx.viewers import ModelViewer
 
 
 from ..last.selection_utils import SelectionQuery
