@@ -611,6 +611,12 @@ Note:
   The most simple dotkin:
     mmtbx.probe2 approach=self source_selection="all" output.file_name=out.kin input.pdb
 
+  The original probe command line that tested a ligand named TMP against everything else
+  would have been:
+    probe -c -both "TMP" (not "TMP") PDBfilename
+  and the probe2 equivalent is the following:
+    mmtbx.probe2 approach=both source_selection="resname TMP" target_selection="not resname TMP" PDBfilename
+
   Equivalent PHIL arguments for original Probe command-line options:
     -defaults:
       source_selection="(altid a or altid '' or altid ' ') and occupancy > 0.33"
