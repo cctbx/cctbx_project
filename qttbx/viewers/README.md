@@ -19,13 +19,19 @@ npm install
 npm run build
 ```
 
-
-### Running
-The entry point is qttbx/command_line/start_gui.py
+### Enable command line tool
 ```bash
-# enable command line program
-python bootstrap.py build  --builder=phenix --use_conda
+python bootstrap.py build  --builder=phenix --use_conda --nproc=16
+```
 
-# run program
-phenix.start_gui
+
+### Run a minimal molstar viewer
+```bash
+phenix.start_molstar model.mmcif
+```
+
+
+### Run a demo with all existing features
+```bash
+phenix.start_viewer_demo model.mmcif
 ```
