@@ -707,11 +707,8 @@ def renumber_residues(hierarchy, first_resno = 1,
         current_resno += 1
 
 def create_new_hierarchy():
-  import iotbx.pdb
-  new_hierarchy = iotbx.pdb.input(
-      source_info = "Model",
-      lines = flex.split_lines("")).construct_hierarchy()
-  return new_hierarchy
+  from iotbx.pdb import hierarchy
+  return hierarchy.root()
 
 def create_new_hierarchy_and_model():
   import iotbx.pdb
