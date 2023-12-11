@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "2.6.0"
+version = "3.0.0"
 
 master_phil_str = '''
 profile = False
@@ -1919,7 +1919,7 @@ Note:
     ################################################################################
     # Ensure that the model we've been passed has at least one Hydrogen bonded to a Carbon
     # and at least one polar Hydrogen (bonded to N, O, or S).  Otherwise, raise a Sorry.
-    if not (self.params.ignore_lack_of_explicit_hydrogens or self.params.probe.implicit_hydrogens):
+    if not self.params.ignore_lack_of_explicit_hydrogens:
       foundCBonded = False
       foundPolar = False
       for a in allAtoms:
@@ -2046,129 +2046,128 @@ Note:
         selectedAtomsIncludingKept = all_selected_atoms
 
       ################################################################################
-      # If we're not doing implicit hydrogens, add Phantom hydrogens to waters and mark
+      # Add Phantom hydrogens to waters and mark
       # the water oxygens as not being donors in atoms that are in the source or target selection.
       # Also clear the donor status of all N, O, S atoms because we have explicit hydrogen donors.
       self._phantomHydrogenOutput = ""
       phantomHydrogens = []
-      if not self.params.probe.implicit_hydrogens:
-        make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
-        if self.params.output.record_added_hydrogens:
-          self._phantomHydrogenOutput += "@master {water H?}\n"
-          self._phantomHydrogenOutput += '@vectorlist {water H?} color= gray master={water H?}\n'
+      make_sub_header('Adjusting for explicit hydrogens', out=self.logger)
+      if self.params.output.record_added_hydrogens:
+        self._phantomHydrogenOutput += "@master {water H?}\n"
+        self._phantomHydrogenOutput += '@vectorlist {water H?} color= gray master={water H?}\n'
 
-        # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
-        # a single water in it and asking about the hydrogen radius.  This could also become a
-        # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
-        phantomHydrogenRadius = 1.05
-        placedHydrogenDistance = 0.84
-        if self.params.use_neutron_distances:
-          phantomHydrogenRadius = 1.0
-          placedHydrogenDistance = 0.98
+      # @todo Look up the radius of a water Hydrogen.  This may require constructing a model with
+      # a single water in it and asking about the hydrogen radius.  This could also become a
+      # Phil parameter.  Also look up the OH bond distance rather than hard-coding it here.
+      phantomHydrogenRadius = 1.05
+      placedHydrogenDistance = 0.84
+      if self.params.use_neutron_distances:
+        phantomHydrogenRadius = 1.0
+        placedHydrogenDistance = 0.98
 
-        adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
+      adjustedHydrogenRadius = self.params.atom_radius_offset + (phantomHydrogenRadius * self.params.atom_radius_scale)
 
-        # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
-        # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
-        maxISeq = Helpers.getMaxISeq(self.model)
-        for a in all_selected_atoms:
+      # Check all selected atoms to see if we need to add Phantom Hydrogens to them.
+      # Don't add Phantom Hydrogens to atoms that are not selected, even if they are kept.
+      maxISeq = Helpers.getMaxISeq(self.model)
+      for a in all_selected_atoms:
 
-          # Ignore Hydrogens whose parameters are out of bounds.
-          if a.element_is_hydrogen():
-            # In the original code, this looks at H atoms with parent N,O,S atoms
-            # and marks them as donors.  This is handled for us below in the call
-            # to Helpers.fixupExplicitDonors().
+        # Ignore Hydrogens whose parameters are out of bounds.
+        if a.element_is_hydrogen():
+          # In the original code, this looks at H atoms with parent N,O,S atoms
+          # and marks them as donors.  This is handled for us below in the call
+          # to Helpers.fixupExplicitDonors().
 
-            # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
-            # If they are not, set the class for the atom to 'ignore'.
-            # This handles the case where there were explicit Hydrogens on waters and so
-            # we won't add Phantom Hydrogens.
-            if self._inWater[a] and (a.occ < self.params.minimum_water_hydrogen_occupancy or
-                a.b > self.params.maximum_water_hydrogen_b):
-              self._atomClasses[a] = 'ignore'
+          # If we are in a water, make sure our occupancy and temperature (b) factor are acceptable.
+          # If they are not, set the class for the atom to 'ignore'.
+          # This handles the case where there were explicit Hydrogens on waters and so
+          # we won't add Phantom Hydrogens.
+          if self._inWater[a] and (a.occ < self.params.minimum_water_hydrogen_occupancy or
+              a.b > self.params.maximum_water_hydrogen_b):
+            self._atomClasses[a] = 'ignore'
 
-          # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
-          elif self._inWater[a] and a.element == 'O':
-            # We're an acceptor and not a donor.
-            # @todo Original Probe code only cleared the donor status if it found a bonded
-            # Hydrogen in the same conformation whose occupancy was > 0.1.  Here, we're turning
-            # it off regardless of the occupancy.
-            ei = self._extraAtomInfo.getMappingFor(a)
-            ei.isDonor = False
-            ei.isAcceptor = True
-            self._extraAtomInfo.setMappingFor(a, ei)
+        # If we are the Oxygen in a water, then add phantom hydrogens pointing towards nearby acceptors
+        elif self._inWater[a] and a.element == 'O':
+          # We're an acceptor and not a donor.
+          # @todo Original Probe code only cleared the donor status if it found a bonded
+          # Hydrogen in the same conformation whose occupancy was > 0.1.  Here, we're turning
+          # it off regardless of the occupancy.
+          ei = self._extraAtomInfo.getMappingFor(a)
+          ei.isDonor = False
+          ei.isAcceptor = True
+          self._extraAtomInfo.setMappingFor(a, ei)
 
-            # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
-            if len(bondedNeighborLists[a]) == 0:
-              # NOTE: The Phantoms have i_seq numbers that are sequential and that are higher than
-              # all other atoms in the model.  Each one has a unique i_seq.
-              newPhantoms = Helpers.getPhantomHydrogensFor(maxISeq, a, self._spatialQuery, self._extraAtomInfo,
-                              0.0, True, adjustedHydrogenRadius, placedHydrogenDistance)
-              maxISeq += len(newPhantoms)
-              for p in newPhantoms:
+          # If we don't yet have Hydrogens attached, add phantom hydrogen(s)
+          if len(bondedNeighborLists[a]) == 0:
+            # NOTE: The Phantoms have i_seq numbers that are sequential and that are higher than
+            # all other atoms in the model.  Each one has a unique i_seq.
+            newPhantoms = Helpers.getPhantomHydrogensFor(maxISeq, a, self._spatialQuery, self._extraAtomInfo,
+                            0.0, True, adjustedHydrogenRadius, placedHydrogenDistance)
+            maxISeq += len(newPhantoms)
+            for p in newPhantoms:
 
-                # Put in our list of Phantom Hydrogens
-                phantomHydrogens.append(p)
+              # Put in our list of Phantom Hydrogens
+              phantomHydrogens.append(p)
 
-                # Add the atom to the general spatial-query data structure
-                self._spatialQuery.add(p)
+              # Add the atom to the general spatial-query data structure
+              self._spatialQuery.add(p)
 
-                # Set the extra atom information for this atom
-                ei = probeExt.ExtraAtomInfo(adjustedHydrogenRadius, False, True, True)
-                self._extraAtomInfo.setMappingFor(p, ei)
+              # Set the extra atom information for this atom
+              ei = probeExt.ExtraAtomInfo(adjustedHydrogenRadius, False, True, True)
+              self._extraAtomInfo.setMappingFor(p, ei)
 
-                # Set the atomClass and other data based on the parent Oxygen.
-                self._atomClasses[p] = self._atom_class_for(a)
-                self._inWater[p] = self._inWater[a]
-                self._inMainChain[p] = self._inMainChain[a]
-                self._inSideChain[p] = self._inSideChain[a]
-                self._inHet[p] = self._inHet[a]
+              # Set the atomClass and other data based on the parent Oxygen.
+              self._atomClasses[p] = self._atom_class_for(a)
+              self._inWater[p] = self._inWater[a]
+              self._inMainChain[p] = self._inMainChain[a]
+              self._inSideChain[p] = self._inSideChain[a]
+              self._inHet[p] = self._inHet[a]
 
-                # Mark the Phantom Hydrogens as being bonded to their Oxygen so that
-                # dots on a Phantom Hydrogen within its Oxygen will be excluded.
-                bondedNeighborLists[p] = [a]
+              # Mark the Phantom Hydrogens as being bonded to their Oxygen so that
+              # dots on a Phantom Hydrogen within its Oxygen will be excluded.
+              bondedNeighborLists[p] = [a]
 
-                # It was thought that in the future, we may add these bonds, but that will cause the
-                # Phantom Hydrogens to mask their water Oxygens from close contacts or
-                # clashes with the acceptors, which is a change in behavior from the
-                # original Probe and would have the undesirable effect of a potential
-                # Hydrogen hiding a true collision.
-                # Not marking these as bonded requires special-case handling
-                # of Phantom Hydrogen interactions in the dot-scoring code.
-                # This means that we have a one-way bond, which is unusual but suits our
-                # purposes.
-                # Not done: bondedNeighborLists[a].append(p)
+              # It was thought that in the future, we may add these bonds, but that will cause the
+              # Phantom Hydrogens to mask their water Oxygens from close contacts or
+              # clashes with the acceptors, which is a change in behavior from the
+              # original Probe and would have the undesirable effect of a potential
+              # Hydrogen hiding a true collision.
+              # Not marking these as bonded requires special-case handling
+              # of Phantom Hydrogen interactions in the dot-scoring code.
+              # This means that we have a one-way bond, which is unusual but suits our
+              # purposes.
+              # Not done: bondedNeighborLists[a].append(p)
 
-                # Add the new atom to any selections that the old atom was in.
-                if a in source_atoms:
-                  source_atoms.add(p)
-                if a in target_atoms:
-                  target_atoms.add(p)
+              # Add the new atom to any selections that the old atom was in.
+              if a in source_atoms:
+                source_atoms.add(p)
+              if a in target_atoms:
+                target_atoms.add(p)
 
-                # Report on the creation if we've been asked to
-                if self.params.output.record_added_hydrogens:
+              # Report on the creation if we've been asked to
+              if self.params.output.record_added_hydrogens:
 
-                  resName = a.parent().resname.strip().upper()
-                  resID = str(a.parent().parent().resseq_as_int())
-                  chainID = a.parent().parent().parent().id
-                  iCode = a.parent().parent().icode
-                  alt = a.parent().altloc
-                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
-                    a.name, alt, resName, chainID, resID, iCode,
-                    a.xyz[0], a.xyz[1], a.xyz[2])
+                resName = a.parent().resname.strip().upper()
+                resID = str(a.parent().parent().resseq_as_int())
+                chainID = a.parent().parent().parent().id
+                iCode = a.parent().parent().icode
+                alt = a.parent().altloc
+                self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}P {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  a.name, alt, resName, chainID, resID, iCode,
+                  a.xyz[0], a.xyz[1], a.xyz[2])
 
-                  resName = p.parent().resname.strip().upper()
-                  resID = str(p.parent().parent().resseq_as_int())
-                  chainID = p.parent().parent().parent().id
-                  iCode = p.parent().parent().icode
-                  alt = p.parent().altloc
-                  self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
-                    p.name, alt, resName, chainID, resID, iCode,
-                    p.xyz[0], p.xyz[1], p.xyz[2])
+                resName = p.parent().resname.strip().upper()
+                resID = str(p.parent().parent().resseq_as_int())
+                chainID = p.parent().parent().parent().id
+                iCode = p.parent().parent().icode
+                alt = p.parent().altloc
+                self._phantomHydrogenOutput += '{{{:4.4s}{:1s}{:>3s}{:>2s}{:>4s}{:1s}}}L {:8.3f}{:8.3f}{:8.3f}\n'.format(
+                  p.name, alt, resName, chainID, resID, iCode,
+                  p.xyz[0], p.xyz[1], p.xyz[2])
 
-        # Fix up the donor status for all of the atoms now that we've added the final explicit
-        # Phantom Hydrogens.
-        Helpers.fixupExplicitDonors(selectedAtomsIncludingKept, bondedNeighborLists, self._extraAtomInfo)
+      # Fix up the donor status for all of the atoms now that we've added the final explicit
+      # Phantom Hydrogens.
+      Helpers.fixupExplicitDonors(selectedAtomsIncludingKept, bondedNeighborLists, self._extraAtomInfo)
 
       ################################################################################
       # Add ionic bonds to the bonded-neighbor list so that we won't count interactions

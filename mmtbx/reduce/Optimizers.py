@@ -1341,7 +1341,7 @@ def _subsetGraph(g, keepLabels):
 
 # Class to pass default Probe parameters as if they were in a probePhil structure
 class _philLike:
-  def __init__(self, useImplicitHydrogenDistances = False):
+  def __init__(self):
     self.probe_radius = 0.25
     self.density = 16.0
     self.worse_clash_cutoff = 0.5
@@ -1353,7 +1353,6 @@ class _philLike:
     self.hydrogen_bond_weight = 4.0
     self.gap_weight = 0.25
     self.allow_weak_hydrogen_bonds = False
-    self.implicit_hydrogens = useImplicitHydrogenDistances
     self.ignore_ion_interactions = False
     self.set_polar_hydrogen_radius = True
     self.excluded_bond_chain_length = 4
@@ -1385,7 +1384,7 @@ def _optimizeFragment(pdb_raw, bondedNeighborDepth = 4):
   model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Optimization will place the movers.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   return Optimizer(probePhil, True, model, bondedNeighborDepth=bondedNeighborDepth)
 
 def Test(inFileName = None, dumpAtoms = False):
@@ -1729,7 +1728,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1752,7 +1751,7 @@ END
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds. There is a rotatable hydrogen placed at the
   # terminus, but no Flip Mover.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   opt = Optimizer(probePhil, True, model)
   movers = opt._movers
   if len(movers) != 1:
@@ -1853,7 +1852,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1867,7 +1866,7 @@ END
   # Make sure that the orientation for all of the movers is correct.
   # Test with each type of optimizer, from the base to the more derived, so
   # that we find out about failures on the base classes first.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
 
   global _DoCliqueOptimizationInC
 
@@ -1957,7 +1956,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1969,7 +1968,7 @@ END
 
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,
