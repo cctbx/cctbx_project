@@ -26,10 +26,42 @@
 
 #include <scitbx/math/modulo.h>
 #include <scitbx/vec3.h>
+
 #include <scitbx/math/rotate_around_axis.h>
 
 using namespace boost::python;
 using namespace molprobity::reduce;
+
+// Define this to use fast and approximate sin and cos tables instead of the
+// standard library functions. All kinds of optimizations done here to try and
+// make this as fast as possible.
+// It turns out not to reduce speed much, if at all, so it's not worth the
+// complexity.
+#define USE_FAST_SIN_COS
+#ifdef USE_FAST_SIN_COS
+// How many times less than one degree to sample the sin and cos tables
+static const unsigned OVERSAMPLING = 50;
+static const double STEP = scitbx::constants::pi_180 / OVERSAMPLING;
+static const unsigned TABLE_SIZE = 360 * OVERSAMPLING;
+static double fast_sin_table[TABLE_SIZE];
+static double fast_cos_table[TABLE_SIZE];
+static scitbx::af::const_ref<double> const sin_table_ref(fast_sin_table, TABLE_SIZE);
+static scitbx::af::const_ref<double> const cos_table_ref(fast_cos_table, TABLE_SIZE);
+static bool INITIALIZED = false;
+static inline void init_fast_sin_cos_tables() {
+  // Only initialize once
+  if (INITIALIZED) return;
+
+  // Initialize the tables
+  std::cout << "XXX initializing tables" << std::endl;
+  for (int i = 0; i < 360 * OVERSAMPLING; i++) {
+    fast_sin_table[i] = std::sin(i * scitbx::constants::pi_180 / OVERSAMPLING);
+    fast_cos_table[i] = std::cos(i * scitbx::constants::pi_180 / OVERSAMPLING);
+  }
+  INITIALIZED = true;
+  std::cout << "XXX done initializing tables" << std::endl;
+}
+#endif
 
 // This reformats the parameters to match the values expected by the C++ function
 // in the library and then calls it.
@@ -39,12 +71,21 @@ static scitbx::vec3<double> RotatePointDegreesAroundAxisDir(
   scitbx::vec3<double> const& point,
   double angle_degrees
 ) {
+#ifdef USE_FAST_SIN_COS
+  init_fast_sin_cos_tables();
+#endif
   scitbx::vec3<double> const& axis_point_2 = axis_point_1 + axis_direction;
   return scitbx::math::rotate_point_around_axis(
-    axis_point_1,
-    axis_point_2,
-    point,
-    angle_degrees * scitbx::constants::pi_180
+    axis_point_1
+    , axis_point_2
+    , point
+    , angle_degrees * scitbx::constants::pi_180
+#ifdef USE_FAST_SIN_COS
+    , sin_table_ref
+    , cos_table_ref
+    , STEP
+    , TABLE_SIZE
+#endif
   );
 }
 
@@ -56,12 +97,21 @@ static scitbx::vec3<double> RotateAtomDegreesAroundAxisDir(
   iotbx::pdb::hierarchy::atom const& atom,
   double angle_degrees
 ) {
+#ifdef USE_FAST_SIN_COS
+  init_fast_sin_cos_tables();
+#endif
   scitbx::vec3<double> const& axis_point_2 = axis_point_1 + axis_direction;
   return scitbx::math::rotate_point_around_axis(
-    axis_point_1,
-    axis_point_2,
-    atom.data->xyz,
-    angle_degrees * scitbx::constants::pi_180
+    axis_point_1
+    , axis_point_2
+    , atom.data->xyz
+    , angle_degrees * scitbx::constants::pi_180
+#ifdef USE_FAST_SIN_COS
+    , sin_table_ref
+    , cos_table_ref
+    , STEP
+    , TABLE_SIZE
+#endif
   );
 }
 
