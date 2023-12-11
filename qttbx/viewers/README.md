@@ -10,6 +10,11 @@ git switch ChimeraXSelectionViewer
 ### Installation of Molstar Viewer
 See [here](https://github.com/phenix-project/phenix-molstar)
 
+### Installation of additional dependencies
+```
+python -m pip install qtconsole
+```
+
 ### Enable command line tool
 Run from Phenix installation directory
 ```bash
