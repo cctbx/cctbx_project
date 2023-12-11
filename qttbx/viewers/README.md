@@ -3,8 +3,8 @@ Integration between cctbx data structures, a QT gui, and external viewers such a
 
 ### Switch to branch
 ```bash
-git pull
-git checkout ChimeraXSelectionViewer
+git fetch --all
+git switch ChimeraXSelectionViewer
 ```
 
 ### Installation of Molstar Viewer
