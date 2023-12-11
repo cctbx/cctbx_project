@@ -20,6 +20,7 @@ npm run build
 ```
 
 ### Enable command line tool
+Run from Phenix installation directory
 ```bash
 python bootstrap.py build  --builder=phenix --use_conda --nproc=16
 ```
