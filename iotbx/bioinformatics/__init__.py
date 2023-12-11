@@ -1802,6 +1802,101 @@ def any_hh_file(file_name):
       return p
   raise RuntimeError("Not an HHpred/HHalign/HHsearch file!")
 
+def any_a3m_file(file_name):
+  with open(file_name) as f:
+    data = f.read()
+  try:
+    a3m_info = read_a3m(data)
+  except KeyboardInterrupt : raise
+  except Exception as e :
+    pass
+  else :
+    return a3m_info
+  raise RuntimeError("Not an a3m file")
+
+def read_a3m(text):
+  """ Read text as a3m format
+      Ignore any lines starting with # at top
+      Lines starting with > or blank lines are separators and are ignored
+      Text between separators are sequence info.
+        First line is base sequence.  It cannot contain any lowercase or "-"
+        or "."
+        All other lines contain upper case characters (sequence matches),
+        lower case characters (insertions), and "-" or "." (gaps).
+      The total number of characters in base sequence must equal the
+        number of upper case characters plus number of gap characters, minus
+        the number of insertion characters in each other line.
+  """
+
+  # Get text as utf-8
+  if hasattr(text,'decode'):
+    text = pae_text.decode(encoding='utf-8')
+
+  # Read in line representing each sequence
+  sequences = []
+  new_line = ""
+  for line in text.splitlines():
+    line = line.strip()
+    if not sequences and line.startswith("#"): continue # skip leading # lines
+    if not line or line.startswith(">"):  # separator
+      if new_line:
+        sequences.append(new_line)
+        new_line = ""
+      continue
+    new_line += line.strip().replace(" ","")
+  if new_line:
+    sequences.append(new_line)
+
+
+  # Check for illegal characters and length of lines
+  base_sequence = sequences[0]
+  n = len(base_sequence)
+  import re
+  for s in sequences:
+    if not ok_a3m_sequence(s, n = n, base_sequence = base_sequence):
+      return None
+
+  from libtbx import group_args
+  a3m_info = group_args(group_args_type = 'a3m_info',
+    base_sequence = base_sequence,
+    sequence_length = len(base_sequence),
+    sequences = sequences,
+     )
+  return a3m_info
+
+def ok_a3m_sequence(s, n = None, base_sequence = None):
+  """ Check a sequence and make sure it matches expectations for an a3m line
+  """
+  # Remove blanks/linefeeds and convert . to -
+  s = s.replace(" ","").replace("\m","").replace("\n","")
+  s = s.replace(".","-")
+
+  n_gap_chars = s.count("-")
+  s_all = s
+
+  # Get upper and lowercase
+  s = s.replace("-","")
+  # count lowercase/uppercase
+  n_upper = 0
+  n_lower = 0
+  n_other = 0
+  s_upper = ""
+  for c in s:
+    if c >="A" and c <= "Z":
+      n_upper += 1
+      s_upper += c
+    elif c >="a" and c <= "z":
+      n_lower += 1
+    else:
+      print(c)
+      n_other += 1
+
+  if n_other > 0:
+    return False
+  if n_upper + n_gap_chars == n:
+    return True
+  else:
+    return False
 def composition_from_sequence_file(file_name, log=None):
   if (log is None):
     log = sys.stdout
