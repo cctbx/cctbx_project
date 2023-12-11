@@ -23,6 +23,9 @@ npm run build
 ### Running
 The entry point is qttbx/command_line/start_gui.py
 ```bash
-python bootstrap.py build  --builder=phenix --use_conda 
+# enable command line program
+python bootstrap.py build  --builder=phenix --use_conda
+
+# run program
 phenix.start_gui
 ```
