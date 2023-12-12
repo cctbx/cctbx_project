@@ -65,6 +65,7 @@ struct accumulate_reflection_chunk_omp {
       const int threads = 2*parent_t::get_available_threads();
       //const int threads = 2;
       bool error_flag = false;
+      std::cout << "USING OPENMP!" << std::endl;
       std::string error_string;
       std::vector<FloatType> gradients, matrix, yo_dot_grad_yc_, yc_dot_grad_yc_;
       boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;
@@ -125,7 +126,7 @@ struct accumulate_reflection_chunk_omp {
               }
             }
             catch (smtbx::error const& e) {
-              error_flag = true;;
+              error_flag = true;
               error_string = e.what();
               continue;
             }
