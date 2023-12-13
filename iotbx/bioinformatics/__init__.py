@@ -1830,7 +1830,7 @@ def read_a3m(text):
 
   # Get text as utf-8
   if hasattr(text,'decode'):
-    text = pae_text.decode(encoding='utf-8')
+    text = text.decode(encoding='utf-8')
 
   # Read in line representing each sequence
   sequences = []
