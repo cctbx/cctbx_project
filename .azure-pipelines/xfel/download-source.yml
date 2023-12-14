@@ -25,7 +25,7 @@ jobs:
       cd modules
       pushd dxtbx
       git checkout no_set_batch_offset
-      git rebase main
+      GIT_COMMITTER_EMAIL=abcd git rebase main
       popd
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
