@@ -7,6 +7,8 @@ using mat3 = kokkostbx::matrix3<CUDAREAL>;
 #include <simtbx/nanoBragg/nanotypes.h>
 #include <simtbx/kokkos/kernel_math.h>
 
+#include <simtbx/diffBragg/src/diffBraggKOKKOS.h>
+#include <simtbx/diffBragg/src/diffuse_util_kokkos.h> // test diffuse halo in exascale API context.
 
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
@@ -378,6 +380,11 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                 const int s_k_max = s_k_min + s_k_range - 1;
                 const int s_l_max = s_l_min + s_l_range - 1;
 
+   auto laue_mats = vector_mat3_t("laue_mats",24);
+   vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace",3);
+   vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam",3);
+
+
 // Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
 // 1) mosaicity non-zero positive
 // 2) xtal shape is "Gauss" i.e. 3D spheroid.
@@ -527,6 +534,20 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                         rotate_axis(b0, bp, spindle_vector, phi);
                                                         rotate_axis(c0, cp, spindle_vector, phi);
 
+KOKKOS_MAT3 Amatrix(ap[1],ap[2],ap[3],bp[1],bp[2],bp[3],cp[1],cp[2],cp[3]);
+KOKKOS_MAT3 Ainv_T = Amatrix.inverse().transpose();
+KOKKOS_MAT3 rotate_principle_axes(1,0,0,0,1,0,0,0,1);
+int laue_group=12;
+int num_laue_mats = gen_laue_mats(laue_group, laue_mats, rotate_principle_axes);
+
+for ( int iL = 0; iL < num_laue_mats; iL++ ){
+                laue_mats(iL) = Ainv_T * laue_mats(iL);
+    }
+KOKKOS_VEC3 dHH(0.,0.,0.); // stencil size
+KOKKOS_MAT3 anisoG_local(50,0,0,0,50,0,0,0,50);
+KOKKOS_MAT3 anisoU_local(0.1,0,0,0,0.1,0,0,0,0.1);
+CUDAREAL anisoG_determ = anisoG_local.determinant();
+
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
                                                                 // apply mosaic rotation after phi rotation
@@ -569,6 +590,17 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                                 // fudge the radius so that volume and FWHM are similar to square_xtal spots
                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
                                                                 F_latt = Na * Nb * Nc * exp(-(my_arg));
+
+                                                                // new code for diffuse.
+                                                                bool use_diffuse=true;
+                                                                if (use_diffuse) {
+KOKKOS_VEC3 H_vec(h,k,l);
+KOKKOS_VEC3 H0(h0,k0,l0);
+CUDAREAL step_diffuse_param[6];
+                    calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,s_l_max,s_h_range,s_k_range,s_l_range,
+                    Ainv_T,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&F_latt,step_diffuse_param);
+                            } // end s_use_diffuse outer
+
 
                                                                 // structure factor of the unit cell
                                                                 CUDAREAL F_cell = default_F;
