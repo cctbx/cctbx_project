@@ -535,7 +535,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                         rotate_axis(c0, cp, spindle_vector, phi);
 
 KOKKOS_MAT3 Amatrix(ap[1],ap[2],ap[3],bp[1],bp[2],bp[3],cp[1],cp[2],cp[3]);
-KOKKOS_MAT3 Ainv_T = Amatrix.inverse().transpose();
+KOKKOS_MAT3 Ainv_T = Amatrix.inverse().transpose()*1.e-10;
 KOKKOS_MAT3 rotate_principle_axes(1,0,0,0,1,0,0,0,1);
 int laue_group=12;
 int num_laue_mats = gen_laue_mats(laue_group, laue_mats, rotate_principle_axes);
@@ -543,9 +543,10 @@ int num_laue_mats = gen_laue_mats(laue_group, laue_mats, rotate_principle_axes);
 for ( int iL = 0; iL < num_laue_mats; iL++ ){
                 laue_mats(iL) = Ainv_T * laue_mats(iL);
     }
-KOKKOS_VEC3 dHH(0.,0.,0.); // stencil size
-KOKKOS_MAT3 anisoG_local(50,0,0,0,50,0,0,0,50);
-KOKKOS_MAT3 anisoU_local(0.1,0,0,0,0.1,0,0,0,0.1);
+int stencil_size = 1;
+KOKKOS_VEC3 dHH(stencil_size,stencil_size,stencil_size);
+KOKKOS_MAT3 anisoG_local(150.,0,0,0,50.,0,0,0,150.);
+KOKKOS_MAT3 anisoU_local(0.48,0,0,0,0.16,0,0,0,0.16);
 CUDAREAL anisoG_determ = anisoG_local.determinant();
 
                                                         // enumerate mosaic domains
@@ -583,13 +584,14 @@ CUDAREAL anisoG_determ = anisoG_local.determinant();
                                                                 // structure factor of the lattice (paralelpiped crystal)
                                                                 // F_latt = sin(M_PI*s_Na*h)*sin(M_PI*s_Nb*k)*sin(M_PI*s_Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
 
-                                                                CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
+                                                                CUDAREAL I_latt = 1.0; // Shape transform for the crystal.
                                                                 CUDAREAL hrad_sqr = 0.0;
                                                                 // handy radius in reciprocal space, squared
                                                                 hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
                                                                 // fudge the radius so that volume and FWHM are similar to square_xtal spots
                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
-                                                                F_latt = Na * Nb * Nc * exp(-(my_arg));
+                                                                I_latt = Na * Nb * Nc * exp(-(my_arg));
+								I_latt *= I_latt;
 
                                                                 // new code for diffuse.
                                                                 bool use_diffuse=true;
@@ -598,7 +600,7 @@ KOKKOS_VEC3 H_vec(h,k,l);
 KOKKOS_VEC3 H0(h0,k0,l0);
 CUDAREAL step_diffuse_param[6];
                     calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,s_l_max,s_h_range,s_k_range,s_l_range,
-                    Ainv_T,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&F_latt,step_diffuse_param);
+                    Ainv_T,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
                             } // end s_use_diffuse outer
 
 
@@ -622,7 +624,7 @@ CUDAREAL step_diffuse_param[6];
                                                                 // now we have the structure factor for this pixel
 
                                                                 // convert amplitudes into intensity (photons per steradian)
-                                                                I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
+                                                                I += F_cell * F_cell * I_latt * source_fraction * capture_fraction * omega_pixel;
                                                                 omega_sub_reduction += omega_pixel;
                                                         }
                                                         // end of mosaic loop
