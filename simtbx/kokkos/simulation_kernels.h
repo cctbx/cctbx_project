@@ -535,13 +535,13 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                         rotate_axis(c0, cp, spindle_vector, phi);
 
 KOKKOS_MAT3 Amatrix(ap[1],ap[2],ap[3],bp[1],bp[2],bp[3],cp[1],cp[2],cp[3]);
-KOKKOS_MAT3 Ainv_T = Amatrix.inverse().transpose()*1.e-10;
+KOKKOS_MAT3 Ainv = Amatrix.inverse()*1.e-10;
 KOKKOS_MAT3 rotate_principle_axes(1,0,0,0,1,0,0,0,1);
 int laue_group=12;
 int num_laue_mats = gen_laue_mats(laue_group, laue_mats, rotate_principle_axes);
 
 for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                laue_mats(iL) = Ainv_T * laue_mats(iL);
+                laue_mats(iL) = Ainv * laue_mats(iL);
     }
 int stencil_size = 1;
 KOKKOS_VEC3 dHH(stencil_size,stencil_size,stencil_size);
@@ -600,7 +600,7 @@ KOKKOS_VEC3 H_vec(h,k,l);
 KOKKOS_VEC3 H0(h0,k0,l0);
 CUDAREAL step_diffuse_param[6];
                     calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,s_l_max,s_h_range,s_k_range,s_l_range,
-                    Ainv_T,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
+                    Ainv,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
                             } // end s_use_diffuse outer
 
 
