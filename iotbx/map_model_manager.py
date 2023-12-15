@@ -1043,7 +1043,8 @@ class map_model_manager(object):
     # We are going to need id='map_manager'   create if if missing
     if self.map_manager() is None: # creates it usually but if it can't ...
       return group_args(map_id=None, other_map_id_list = [])
-    assert all_map_id_list
+    if not all_map_id_list:
+      return group_args(map_id=None, other_map_id_list = [])
     all_map_id_list.sort()
     map_id='map_manager'
     other_map_id_list=[]
