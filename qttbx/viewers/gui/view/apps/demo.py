@@ -86,17 +86,21 @@ class DemoView(QMainWindow):
     # self.qscore_tab_view = QscoreTab(parent=self)
     # self.tabs.addTab(self.qscore_tab_view, "Qscore")
 
-    # Consoles
-    self.consoles = GUITabWidget(parent=self)
-     # Python console subtab
-    self.python_console = JupyterTabWidget(parent=self.consoles)
-    self.consoles.addTab(self.python_console, "Python")
-    if self.viewer_choice == 'molstar':
-      # javascript console subtab
-      self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
-      self.consoles.addTab(self.javascript_console, "Javascript")
+    # # Consoles
+    # try:
+    #   import qtconsole
+    #   self.consoles = GUITabWidget(parent=self)
+    #   # Python console subtab
+    #   self.python_console = JupyterTabWidget(parent=self.consoles)
+    #   self.consoles.addTab(self.python_console, "Python")
+    #   if self.viewer_choice == 'molstar':
+    #     # javascript console subtab
+    #     self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
+    #     self.consoles.addTab(self.javascript_console, "Javascript")
 
-    self.tabs.addTab(self.consoles,"Console")
+    #   self.tabs.addTab(self.consoles,"Console")
+    # except:
+    #   pass
 
   
   def child_window_handler(self,event):

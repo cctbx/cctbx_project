@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import seaborn as sns
+#import seaborn as sns
 
 from PySide2 import QtCore
 from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
@@ -105,26 +105,6 @@ class ClickableHistogramSeaborn(FigureCanvas):
     self.axes.clear()
     sns.histplot(self.data, bins=self.bins, kde=False, ax=self.axes)
     self.draw()
-
-  # def mousePressEvent(self, event):
-  #   if event.button() == Qt.LeftButton:
-  #     x, y = event.pos().x(), event.pos().y()
-      
-  #     ax_bbox = self.axes.transAxes.transform((0, 1)) - self.axes.transAxes.transform((0, 0))
-  #     ax_x, ax_y = (x / ax_bbox[0], y / ax_bbox[1])
-
-  #     if 0 <= ax_x <= 1 and 0 <= ax_y <= 1:
-  #       data_x = self.axes.transData.inverted().transform((ax_x * ax_bbox[0], ax_y * ax_bbox[1]))[0]
-
-  #       if self.vertical_line:
-  #         self.vertical_line.remove()
-  #       self.vertical_line = self.axes.axvline(x=data_x, color='r', linestyle='--')
-
-  #       if self.text:
-  #         self.text.remove()
-  #       y_max = max(self.axes.get_ylim())
-  #       self.text = self.axes.text(data_x, y_max, f"{data_x:.2f}", ha='center', va='bottom', fontsize=14)
-  #       self.draw()
 
   def mousePressEvent(self, event: QMouseEvent):
     if event.button() == Qt.LeftButton:

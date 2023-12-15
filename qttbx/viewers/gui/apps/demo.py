@@ -16,17 +16,10 @@ from ..view.apps.demo import DemoView
 from ..controller.apps.demo import DemoController
 from ..state.state import State
 from ...last.selection_utils import Selection, SelectionQuery
+from . import ViewerChoiceDialog, check_program_access
+
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
-class GlobalEventFilter(QObject):
-  def eventFilter(self, watched, event):
-    if event.type() == QEvent.Enter:
-      if isinstance(watched, QWidget):
-        print(f"Mouse entered: {watched.objectName()} ({type(watched).__name__})")
-    elif event.type() == QEvent.Leave:
-      if isinstance(watched, QWidget):
-        print(f"Mouse left: {watched.objectName()} ({type(watched).__name__})")
-    return super().eventFilter(watched, event)
 
 
 class DemoApp:
@@ -36,41 +29,21 @@ class DemoApp:
     self.state = state
   
 
-class ViewerChoiceDialog(QDialog):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Choose Viewer")
-        self.choice = None
-        self.initUI()
 
-    def initUI(self):
-        self.setMinimumSize(QSize(300, 100))  # Example size: 300x
-
-
-        layout = QVBoxLayout()
-        
-
-        # Buttons for choices
-        btnOption1 = QPushButton("Molstar", self)
-        btnOption1.clicked.connect(self.select_molstar)
-
-        btnOption2 = QPushButton("ChimeraX", self)
-        btnOption2.clicked.connect(self.select_chimerax)
-
-        layout.addWidget(btnOption1)
-        layout.addWidget(btnOption2)
-
-        self.setLayout(layout)
-
-    def select_molstar(self):
-        self.choice = 'molstar'
-        self.accept()
-
-    def select_chimerax(self):
-        self.choice = 'chimerax'
-        self.accept()
 
 def main(viewer=None,dm=None,log=None):
+
+  # first check that the necessary programs are available
+  programs_to_check = ['npm', 'http-server']
+  inaccessible_programs = check_program_access(programs_to_check)
+
+  if inaccessible_programs:
+      print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
+      sys.exit()
+  else:
+      print("All programs are accessible.")
+
+
   choice = viewer # 'molstar' or 'chimerax'
   
 
@@ -92,6 +65,7 @@ def main(viewer=None,dm=None,log=None):
     if res != QDialog.Accepted:
       QMessageBox.warning(None, "No Choice", "No option was selected. Exiting application.")
       qapp.quit()
+      sys.exit()
     
     
     
@@ -117,11 +91,16 @@ def main(viewer=None,dm=None,log=None):
   state.signals.references_change.emit()
   
 
-  # Reach into the Console tab to make variables accessible
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
-  #include Selection dataclasses to build querys in console
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
-  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
+  # # Reach into the Console tab to make variables accessible
+  # try:
+  #   import qtconsole
+  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
+  #   #include Selection dataclasses to build querys in console
+  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
+  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
+
+  # except:
+  #   print("No qtconsole found")
 
 
   # # Create an instance of the event filter
@@ -134,10 +113,5 @@ def main(viewer=None,dm=None,log=None):
 
   sys.exit(qapp.exec_())
 
-# if __name__ == '__main__':
-#   # arguments
-#   parser = argparse.ArgumentParser(description='Phenix Viewer Demo')
-#   parser.add_argument('--viewer', type=str, help="Either 'molstar' or 'chimerax'", required=False)
-#   args = parser.parse_args()
-#   choice = args.viewer # viewer choice
-#   main(viewer=choice)
+if __name__ == '__main__':
+  main()

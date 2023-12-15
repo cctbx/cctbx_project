@@ -63,65 +63,68 @@ class DraggableTabBar(QTabBar):
     super().mousePressEvent(event)
 
   def mouseMoveEvent(self, event):
-      if not event.buttons() & Qt.LeftButton:
-        return
-      if (event.pos() - self.drag_start_pos).manhattanLength() < QApplication.startDragDistance():
+    print("Mouse move event triggered.")
+    if not event.buttons() & Qt.LeftButton:
+        print("Left button not pressed.")
         return
 
-      drag = QDrag(self)
-      mime_data = QMimeData()
-      tab_name = self.tabText(self.drag_start_index)
-      mime_data.setText(tab_name)
-      drag.setMimeData(mime_data)
+    drag = QDrag(self)
+    mime_data = QMimeData()
+    tab_name = self.tabText(self.drag_start_index)
+    mime_data.setText(tab_name)
+    drag.setMimeData(mime_data)
 
-      result = drag.exec_(Qt.MoveAction)
-      
-      if result == Qt.IgnoreAction:
+    result = drag.exec_(Qt.CopyAction | Qt.MoveAction)
+
+    if result == Qt.IgnoreAction or result == Qt.MoveAction:
         # The drop was outside the window
         global_pos = QCursor.pos()
         window = self.window()
         window_rect = window.geometry()
+        print(f"Global position: {global_pos}")
+        print(f"Window rectangle: {window_rect}")
 
         if not window_rect.contains(global_pos):
-          print("Dropped outside window!")
-          # Your code to handle external drop
-          tab_widget = self.parentWidget()
-          if tab_widget:
-            old_content = tab_widget.widget(self.drag_start_index)
-            tab_text = self.tabText(self.drag_start_index)
-            
-            # Remove the tab without deleting the content
-            tab_widget.removeTab(self.drag_start_index)
-
-
-
-
-            # Create a new QTabWidget
-            new_tab_widget = QTabWidget(self)
-
-            # Create a new QMainWindow
-            new_window = ChildWindow(self.parentWidget(),new_tab_widget,self.drag_start_index,tab_name)
-            
-            # Add the old content to the new QTabWidget
-            new_tab_widget.addTab(old_content, tab_text)
-            
-            # Make sure it's visible
-            old_content.show()
-            
-            # Set central widget
-            new_window.setCentralWidget(new_tab_widget)
-            
-            # Show the new window
-            new_window.show()
-            new_window.raise_()
-            new_window.activateWindow()
-
-            # persistence
-            self.new_window = new_window
-
-            # notify main window
-            self.childSignal.emit("created")
+            print("Dropped outside window!")
     
+        # Your code to handle external drop
+        tab_widget = self.parentWidget()
+        if tab_widget:
+          old_content = tab_widget.widget(self.drag_start_index)
+          tab_text = self.tabText(self.drag_start_index)
+          
+          # Remove the tab without deleting the content
+          tab_widget.removeTab(self.drag_start_index)
+
+
+
+
+          # Create a new QTabWidget
+          new_tab_widget = QTabWidget(self)
+
+          # Create a new QMainWindow
+          new_window = ChildWindow(self.parentWidget(),new_tab_widget,self.drag_start_index,tab_name)
+          
+          # Add the old content to the new QTabWidget
+          new_tab_widget.addTab(old_content, tab_text)
+          
+          # Make sure it's visible
+          old_content.show()
+          
+          # Set central widget
+          new_window.setCentralWidget(new_tab_widget)
+          
+          # Show the new window
+          new_window.show()
+          new_window.raise_()
+          new_window.activateWindow()
+
+          # persistence
+          self.new_window = new_window
+
+          # notify main window
+          self.childSignal.emit("created")
+      
 class DraggableTabWidget(QTabWidget):
   def __init__(self, parent=None):
     super(DraggableTabWidget, self).__init__(parent)
