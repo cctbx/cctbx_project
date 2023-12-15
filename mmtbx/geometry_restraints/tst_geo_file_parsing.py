@@ -1,11 +1,10 @@
+from __future__ import division
 import os
 import json
-from collections import defaultdict
 
 
 import libtbx.load_env
 from iotbx.data_manager import DataManager
-import pandas as pd
 
 from geo_file_parsing import parse_geo_file
 
@@ -190,7 +189,7 @@ def get_type(value):
       return int
     else:
       return float
-  except:
+  except Exception:
     return str
 
 def compare_custom(d1,d2):
