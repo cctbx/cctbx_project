@@ -140,7 +140,10 @@ def extract_restraint_dicts_from_groups(groups,
     keys = [e for e in restraint[key_index].split()]
     values = [float(e) for e in restraint[value_index].split()]
     d = {"restraint_type":restraint_key}
-    d.update({f"{atom_indices[i]}_seq":i_seq for i,i_seq in enumerate(atoms_i_seqs)})
+    for i, i_seq in enumerate(atoms_i_seqs):
+      k = "{}_seq".format(atom_indices[i])
+      v = i_seq
+      d[k] = v
     d.update({key:value for key,value in zip(keys,values)})
 
     restraint_dicts.append(d)
