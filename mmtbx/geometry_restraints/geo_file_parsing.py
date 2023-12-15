@@ -1,6 +1,7 @@
 """
 Parse a '.geo' text file to structured restraint data.
 """
+from __future__ import division
 import re
 import pandas as pd
 import numpy as np
