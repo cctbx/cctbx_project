@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 import os
 import json
 
@@ -218,3 +218,6 @@ def test():
       d_ref = test_data[key][idx]
       same = compare_custom(d,d_ref)
       print(same)
+
+if __name__ == '__main__':
+  test()
