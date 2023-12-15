@@ -62,6 +62,7 @@ dependencies:
  - dials-data
  - pint
  - nxmx
+ - gemmi
 
  # xia2
  - tabulate
