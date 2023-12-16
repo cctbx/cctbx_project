@@ -18,12 +18,15 @@ from ..widgets.tab import GUITabWidget
 
 
 
-class DemoView(QMainWindow):
+class ViewerGUIView(QMainWindow):
   signal_close = Signal()
 
-  def __init__(self,parent=None,viewer_choice='molstar'):
+  def __init__(self,parent=None,params=None):
     super().__init__(parent=parent)
-    self.viewer_choice = viewer_choice
+    if params and params.viewer_choice:
+      self.viewer_choice = params.viewer_choice
+    else:
+      self.viewer_choice = 'molstar'
     self._has_child_window = False
     
 
@@ -43,12 +46,23 @@ class DemoView(QMainWindow):
     self.setGeometry(screen_width // 2, screen_height,w,h)
 
     # Main Level Components
+
+    if params and params.show_tab:
+      show_tab = params.show_tab
+      if 'all' in params.show_tab:
+        show_tab = 'all'
+    else:
+      show_tab = []
+
+    
+
     self.tabs = GUITabWidget(parent=self)
     self.tabs.tabBar().childSignal.connect(self.child_window_handler) 
     self.setCentralWidget(self.tabs)
 
+    # Required tabs
      # Viewer
-    if viewer_choice == 'molstar':
+    if self.viewer_choice == 'molstar':
       self.viewer_tab_view = ViewerTabView(parent=self)
       self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
     else:
@@ -56,51 +70,53 @@ class DemoView(QMainWindow):
       self.chimerax_tab_view = ChimeraXTabView(parent=self)
       self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
 
-    # Selections
     self.selection_tab_view = SelectionsTabView(parent=self)
     self.tabs.addTab(self.selection_tab_view, "Selections")
 
-    # Data
-    # recieves datamanager from outside
     self.data_tab_view = DataTabView(parent=self)
     self.tabs.addTab(self.data_tab_view, "Files")
+    
+    # Optional tabs
+    if 'all' in show_tab or 'atoms' in show_tab:
+      self.sites_tab_view = SitesTabView(parent=self)
+      self.tabs.addTab(self.sites_tab_view, "Atoms")
 
-    # Sites
-    self.sites_tab_view = SitesTabView(parent=self)
-    self.tabs.addTab(self.sites_tab_view, "Atoms")
-
-    # Cif
-    self.cif_tab_view = CifTabView(parent=self)
-    self.tabs.addTab(self.cif_tab_view, "CIF")
+    if 'all' in show_tab  or 'cif' in show_tab:
+      self.cif_tab_view = CifTabView(parent=self)
+      self.tabs.addTab(self.cif_tab_view, "CIF")
 
     # # Restraints
-    # self.restraints_tab_view = RestraintsTopTabView(parent=self)
-    # self.tabs.addTab(self.restraints_tab_view, "Restraints")
+    if 'all' in show_tab or 'restraints' in show_tab:
+      # self.restraints_tab_view = RestraintsTopTabView(parent=self)
+      # self.tabs.addTab(self.restraints_tab_view, "Restraints")
 
-    # Restraints Table
-    self.restraints_table_tab_view = RestraintsTableTopTabView(parent=self)
-    self.tabs.addTab(self.restraints_table_tab_view, "Restraints")
+      # Restraints Table
+      self.restraints_table_tab_view = RestraintsTableTopTabView(parent=self)
+      self.tabs.addTab(self.restraints_table_tab_view, "Restraints")
 
 
     # Qscore
-    # self.qscore_tab_view = QscoreTab(parent=self)
-    # self.tabs.addTab(self.qscore_tab_view, "Qscore")
+    if 'all' in show_tab or 'qscore' in show_tab:
+      self.qscore_tab_view = QscoreTab(parent=self)
+      self.tabs.addTab(self.qscore_tab_view, "Qscore")
 
-    # # Consoles
-    # try:
-    #   import qtconsole
-    #   self.consoles = GUITabWidget(parent=self)
-    #   # Python console subtab
-    #   self.python_console = JupyterTabWidget(parent=self.consoles)
-    #   self.consoles.addTab(self.python_console, "Python")
-    #   if self.viewer_choice == 'molstar':
-    #     # javascript console subtab
-    #     self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
-    #     self.consoles.addTab(self.javascript_console, "Javascript")
+    # Consoles
+    if 'all' in show_tab or 'console' in show_tab:
+      try:
+        import qtconsole
+        self.consoles = GUITabWidget(parent=self)
+        # Python console subtab
+        self.python_console = JupyterTabWidget(parent=self.consoles)
+        self.consoles.addTab(self.python_console, "Python")
+        if self.viewer_choice == 'molstar':
+          # javascript console subtab
+          self.javascript_console = JSConsoleTab(parent=self.consoles,web_view=self.viewer_tab_view.web_view)
+          self.consoles.addTab(self.javascript_console, "Javascript")
 
-    #   self.tabs.addTab(self.consoles,"Console")
-    # except:
-    #   pass
+        self.tabs.addTab(self.consoles,"Console")
+      except:
+        print("Console tab not included. Install qtconsole")
+        raise
 
   
   def child_window_handler(self,event):

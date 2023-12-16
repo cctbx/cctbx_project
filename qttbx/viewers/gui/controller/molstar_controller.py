@@ -91,8 +91,10 @@ class SyncManager:
       # update molstar ids
       for ref_id, ref_dict in result["references"].items():
         for external_key, external_id in ref_dict["external_ids"].items():
+          print("debugme",ref_id,external_key,external_id)
           ref = self.controller.state.references[ref_id]
           ref.external_ids[external_key] = external_id
+          self.controller.state.external_loaded["molstar"].append(ref.id)
 
       has_synced = result["hasSynced"]
       if has_synced:
@@ -130,7 +132,7 @@ class MolstarController(Controller):
     self.state.signals.select.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
 
-
+    self.view.web_view.loadProgress.connect(self._print_message)
 
 
     # # self.state.signals.selection_change.connect(self.selection_controls.select_active_selection)
@@ -142,13 +144,15 @@ class MolstarController(Controller):
     # Start by default
     self.start_viewer()
 
+  def _print_message(self,*args):
+    print("MESSAGE from:",self.__class__.__name__,*args)
+
   def _on_load_started(self):
     self._blocking_commands = True
     self.viewer._blocking_commands = True
     self.view.parent_explicit.setEnabled(False)
 
   def _on_load_finished(self, ok):
-    
     self.view.parent_explicit.setEnabled(True)
     if ok:
       print("Page loaded successfully. Accepting commands")

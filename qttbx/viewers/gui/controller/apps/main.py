@@ -15,15 +15,44 @@ from PySide2.QtWidgets import QApplication
 from PySide2.QtCore import QEvent
 
 
-class MolstarAppController(Controller):
-  def __init__(self,parent=None,view=None):
+class ViewerGUIController(Controller):
+  def __init__(self,parent=None,view=None,params=None,log=None):
     super().__init__(parent=parent,view=view)
+    self.log = log
+    if params and params.viewer_choice:
+      self.viewer_choice = params.viewer_choice
+    else:
+      self.viewer_choice = 'molstar'
 
-    self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
+
+    
+    # Main Level Components
+
+    if params and params.show_tab:
+      show_tab = params.show_tab
+      if 'all' in params.show_tab:
+        show_tab = 'all'
+    else:
+      show_tab = []
+
+
+    if self.viewer_choice == 'molstar':
+      self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
+    else:
+      self.chimerax = ChimeraXController(parent=self,view=self.view.chimerax_tab_view)
+
     self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
     self.data = DataTabController(parent=self,view=self.view.data_tab_view)
-    #self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
-    #self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
+
+    if 'all' in show_tab  or 'atoms' in show_tab:
+      self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
+    if 'all' in show_tab  or 'cif' in show_tab:
+      self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
+    if 'all' in show_tab  or 'restraints' in show_tab:
+      #self.restraints = RestraintsTopTabController(parent=self,view=self.view.restraints_tab_view)
+      self.restraints_table = RestraintsTableTopTabController(parent=self,view=self.view.restraints_table_tab_view)
+    if 'all' in show_tab  or 'qscore' in show_tab:
+      self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
 
 
     # signals

@@ -56,6 +56,7 @@ class DraggableTabBar(QTabBar):
 
   def __init__(self,parent=None):
     super().__init__(parent)
+    self.drag_start_index = 0
     
   def mousePressEvent(self, event):
     self.drag_start_index = self.tabAt(event.pos())
@@ -63,9 +64,9 @@ class DraggableTabBar(QTabBar):
     super().mousePressEvent(event)
 
   def mouseMoveEvent(self, event):
-    print("Mouse move event triggered.")
+    #print("Mouse move event triggered.")
     if not event.buttons() & Qt.LeftButton:
-        print("Left button not pressed.")
+        #print("Left button not pressed.")
         return
 
     drag = QDrag(self)
@@ -81,50 +82,49 @@ class DraggableTabBar(QTabBar):
         global_pos = QCursor.pos()
         window = self.window()
         window_rect = window.geometry()
-        print(f"Global position: {global_pos}")
-        print(f"Window rectangle: {window_rect}")
+        #print(f"Global position: {global_pos}")
+        #print(f"Window rectangle: {window_rect}")
 
         if not window_rect.contains(global_pos):
-            print("Dropped outside window!")
-    
-        # Your code to handle external drop
-        tab_widget = self.parentWidget()
-        if tab_widget:
-          old_content = tab_widget.widget(self.drag_start_index)
-          tab_text = self.tabText(self.drag_start_index)
-          
-          # Remove the tab without deleting the content
-          tab_widget.removeTab(self.drag_start_index)
+            #print("Dropped outside window!")
+            # Your code to handle external drop
+            tab_widget = self.parentWidget()
+            if tab_widget:
+              old_content = tab_widget.widget(self.drag_start_index)
+              tab_text = self.tabText(self.drag_start_index)
+              
+              # Remove the tab without deleting the content
+              tab_widget.removeTab(self.drag_start_index)
 
 
 
 
-          # Create a new QTabWidget
-          new_tab_widget = QTabWidget(self)
+              # Create a new QTabWidget
+              new_tab_widget = QTabWidget(self)
 
-          # Create a new QMainWindow
-          new_window = ChildWindow(self.parentWidget(),new_tab_widget,self.drag_start_index,tab_name)
-          
-          # Add the old content to the new QTabWidget
-          new_tab_widget.addTab(old_content, tab_text)
-          
-          # Make sure it's visible
-          old_content.show()
-          
-          # Set central widget
-          new_window.setCentralWidget(new_tab_widget)
-          
-          # Show the new window
-          new_window.show()
-          new_window.raise_()
-          new_window.activateWindow()
+              # Create a new QMainWindow
+              new_window = ChildWindow(self.parentWidget(),new_tab_widget,self.drag_start_index,tab_name)
+              
+              # Add the old content to the new QTabWidget
+              new_tab_widget.addTab(old_content, tab_text)
+              
+              # Make sure it's visible
+              old_content.show()
+              
+              # Set central widget
+              new_window.setCentralWidget(new_tab_widget)
+              
+              # Show the new window
+              new_window.show()
+              new_window.raise_()
+              new_window.activateWindow()
 
-          # persistence
-          self.new_window = new_window
+              # persistence
+              self.new_window = new_window
 
-          # notify main window
-          self.childSignal.emit("created")
-      
+              # notify main window
+              self.childSignal.emit("created")
+  
 class DraggableTabWidget(QTabWidget):
   def __init__(self, parent=None):
     super(DraggableTabWidget, self).__init__(parent)
@@ -159,6 +159,25 @@ class GUITabWidget(DraggableTabWidget):
       if not current_tab_widget.was_visited:
         current_tab_widget.on_first_visit()
         current_tab_widget.was_visited = True
+
+  def toggle_tab_visible(self, tab_name, show=True):
+    # Find the index of the tab by name
+    index = None
+    for i in range(self.count()):
+        if self.tabText(i) == tab_name:
+            index = i
+            break
+
+    # Show or hide the tab if it exists
+    if index is not None:
+        if show:
+            self.tabBar().showTab(index)
+        else:
+            self.tabBar().hideTab(index)
+    else:
+        print(f"Tab named '{tab_name}' not found.")
+
+
   @property
   def widgets(self):
     tab_widgets = []

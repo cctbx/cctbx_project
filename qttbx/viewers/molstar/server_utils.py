@@ -66,7 +66,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
   """
   allow_reuse_address = True
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, directory="/Users/user/Desktop/CambridgeTrip/Molstar/molstar/build/examples/basic-wrapper" , **kwargs)
+    super().__init__(*args, directory=__file__ , **kwargs)
 
 
 class HttpServerThread(QThread):

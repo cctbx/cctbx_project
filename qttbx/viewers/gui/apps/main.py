@@ -12,8 +12,8 @@ from PySide2.QtCore import QObject, QEvent, Qt,  QEvent, QSize
 from PySide2.QtSvg import QSvgRenderer
 
 from iotbx.data_manager import DataManager
-from ..view.apps.demo import DemoView
-from ..controller.apps.demo import DemoController
+from ..view.apps.main import ViewerGUIView
+from ..controller.apps.main import ViewerGUIController
 from ..state.state import State
 from ...last.selection_utils import Selection, SelectionQuery
 from . import ViewerChoiceDialog, check_program_access
@@ -22,7 +22,7 @@ QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
 
 
-class DemoApp:
+class ViewerGUIApp:
   def __init__(self,state,view,controller):
     self.controller = controller
     self.view = view
@@ -31,7 +31,7 @@ class DemoApp:
 
 
 
-def main(viewer=None,dm=None,log=None):
+def main(dm=None,params=None,log=None):
 
   # first check that the necessary programs are available
   programs_to_check = ['npm', 'http-server']
@@ -43,9 +43,11 @@ def main(viewer=None,dm=None,log=None):
   else:
       print("All programs are accessible.")
 
+  choice = None
+  if params:
+    if params.viewer_choice:
+      choice = params.viewer_choice
 
-  choice = viewer # 'molstar' or 'chimerax'
-  
 
   # start app
   QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -71,7 +73,7 @@ def main(viewer=None,dm=None,log=None):
     
     choice = choice_dialog.choice
   
-  # Set up a data manager
+  # Set up a data manager if no provided
   if not dm:
     dm = DataManager()
 
@@ -83,25 +85,26 @@ def main(viewer=None,dm=None,log=None):
 
   # Core top level object initialization
   state = State(dm)  
-  view = DemoView(viewer_choice=choice)
-  controller = DemoController(parent=state,view=view,viewer_choice=choice,log=log)
-  app = DemoApp(state,view,controller)
+  view = ViewerGUIView(params=params)
+  controller = ViewerGUIController(parent=state,view=view,params=params)
+  app = ViewerGUIApp(state,view,controller)
 
   # DEBUG: Sync references for test data
   state.signals.references_change.emit()
   
 
-  # # Reach into the Console tab to make variables accessible
-  # try:
-  #   import qtconsole
-  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
-  #   #include Selection dataclasses to build querys in console
-  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
-  #   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
+  # Reach into the Console tab to make variables accessible
+  if params and params.show_tab:
+    if 'all' in params.show_tab or 'console' in params.show_tab:
+      try:
+        import qtconsole
+        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
+        #include Selection dataclasses to build querys in console
+        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
+        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
-  # except:
-  #   print("No qtconsole found")
-
+      except:
+        print("No qtconsole found")
 
   # # Create an instance of the event filter
   # globalEventFilter = GlobalEventFilter()

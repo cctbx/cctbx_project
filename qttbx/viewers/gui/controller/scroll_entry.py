@@ -77,9 +77,20 @@ class ScrollEntryController(Controller, QObject):
 
     # delete from data manager
     if isinstance(self.ref,ModelRef):
-      self.state.data_manager.remove_model(self.ref.data.filepath)
+      if self.ref.data.filepath in self.state.data_manager.get_model_names():
+        name = self.ref.data.filepath
+      elif self.ref.data.filename in self.state.data_manager.get_model_names():
+        name = self.ref.data.filepath
+      if name:
+        self.state.data_manager.remove_model(name)
+
     if isinstance(self.ref,MapRef):
-      self.state.data_manager.remove_real_map(self.ref.data.filepath)
+      if self.ref.data.filepath in self.state.data_manager.get_real_map_names():
+        name = self.ref.data.filepath
+      elif self.ref.data.filename in self.state.data_manager.get_real_map_names():
+        name = self.ref.data.filepath
+      if name:
+        self.state.data_manager.remove_real_map(name)
 
 
     # delete children

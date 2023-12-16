@@ -1,9 +1,9 @@
 from PySide2.QtWidgets import QVBoxLayout
-# try:
-#   from qtconsole.rich_jupyter_widget import RichJupyterWidget
-#   from qtconsole.inprocess import QtInProcessKernelManager
-# except:
-#   pass
+try:
+  from qtconsole.rich_jupyter_widget import RichJupyterWidget
+  from qtconsole.inprocess import QtInProcessKernelManager
+except:
+  pass
 from PySide2.QtCore import Slot
 from PySide2.QtWidgets import QVBoxLayout,QLineEdit, QPlainTextEdit
 from PySide2.QtCore import Slot

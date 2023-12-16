@@ -64,7 +64,7 @@ class Ref:
     if self.file_ref ==ref:
       self.file_ref = None
     if self.model_ref == ref:
-      self.model_ref = None
+      self._model_ref = None
   
   @property 
   def file_ref(self):
