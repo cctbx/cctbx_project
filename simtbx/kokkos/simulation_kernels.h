@@ -380,9 +380,80 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                 const int s_k_max = s_k_min + s_k_range - 1;
                 const int s_l_max = s_l_min + s_l_range - 1;
 
-   auto laue_mats = vector_mat3_t("laue_mats",24);
+   vector_mat3_t laue_mats = vector_mat3_t("laue_mats",24);
    vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace",3);
    vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam",3);
+   int num_laue_mats = 0;
+   int dhh = 0, dkk = 0, dll = 0;
+
+KOKKOS_MAT3 rotate_principal_axes(1,0,0,0,1,0,0,0,1);
+int laue_group_num=12;
+int stencil_size = 1;
+KOKKOS_MAT3 anisoG(300.,0,0,0,100.,0,0,0,300.);
+KOKKOS_MAT3 anisoU(0.48,0,0,0,0.16,0,0,0,0.16);
+KOKKOS_MAT3 Bmat_realspace(1.,0,0,0,1.,0,0,0,1.); // Placeholder
+KOKKOS_MAT3 anisoG_local;
+CUDAREAL anisoG_determ = 0;
+KOKKOS_MAT3 anisoU_local;
+bool use_diffuse=true;
+KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to mirror the diffBrag struture 
+
+    if (use_diffuse){
+        anisoG_local = anisoG;
+        anisoU_local = anisoU;
+
+        if (laue_group_num < 1 || laue_group_num >14 ){
+            throw std::string("Laue group number not in range 1-14");
+        }
+
+        Kokkos::parallel_reduce("prepare diffuse mats", 1, KOKKOS_LAMBDA (const int& i, int& num_laue_mats_temp){
+            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+            // KOKKOS_MAT3 rotate_principal_axes;
+            // rotate_principal_axes << 0.70710678,  -0.70710678,  0., 0.70710678,  0.70710678,  0., 0.,  0., 1.;
+
+	    KOKKOS_MAT3 Amatrix(a0[1],a0[2],a0[3],b0[1],b0[2],b0[3],c0[1],c0[2],c0[3]); // This is temporarily needed to mirror the diffBrag struture 
+	    KOKKOS_MAT3 Ainv = Amatrix.inverse()*1.e-10;
+            for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
+	      laue_mats(iL) = Ainv * laue_mats(iL);
+            }
+            // printf("Bmat =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", Bmat_realspace[i]);
+            // }
+            // printf("\n");
+            const KOKKOS_MAT3 Ginv = anisoG_local.inverse();
+            // printf("Ginv =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", Ginv[i]);
+            // }
+            // printf("\n");
+            const KOKKOS_MAT3 dG = Bmat_realspace * Ginv;
+            // printf("dG   =");
+            // for (int i=0; i<9; ++i) {
+            //     printf(" %g", dG[i]);
+            // }
+            // printf("\n");
+            for (int i_gam=0; i_gam<3; i_gam++){
+	        dG_dgam(i_gam)[i_gam] = 1;
+                KOKKOS_MAT3 temp_dgam;
+                temp_dgam(i_gam, 0) = dG_dgam(i_gam)[0];
+                temp_dgam(i_gam, 1) = dG_dgam(i_gam)[1];
+                temp_dgam(i_gam, 2) = dG_dgam(i_gam)[2];
+                dG_trace(i_gam) = (Ginv*temp_dgam).trace();
+                // printf("TRACE %g\n", dG_trace(i_gam));
+                // printf("dgam =");
+                // for (int i=0; i<9; ++i) {
+                //     printf(" %g", temp_dgam[i]);
+                // }
+                // printf("\n");
+
+                // dG(i_gam, i_gam);
+            }
+        }, num_laue_mats);
+        anisoG_determ = anisoG_local.determinant();
+        dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
+    }
+    KOKKOS_VEC3 dHH(dhh,dkk,dll);
 
 
 // Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
@@ -534,20 +605,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                         rotate_axis(b0, bp, spindle_vector, phi);
                                                         rotate_axis(c0, cp, spindle_vector, phi);
 
-KOKKOS_MAT3 Amatrix(ap[1],ap[2],ap[3],bp[1],bp[2],bp[3],cp[1],cp[2],cp[3]);
-KOKKOS_MAT3 Ainv = Amatrix.inverse()*1.e-10;
-KOKKOS_MAT3 rotate_principle_axes(1,0,0,0,1,0,0,0,1);
-int laue_group=12;
-int num_laue_mats = gen_laue_mats(laue_group, laue_mats, rotate_principle_axes);
 
-for ( int iL = 0; iL < num_laue_mats; iL++ ){
-                laue_mats(iL) = Ainv * laue_mats(iL);
-    }
-int stencil_size = 1;
-KOKKOS_VEC3 dHH(stencil_size,stencil_size,stencil_size);
-KOKKOS_MAT3 anisoG_local(150.,0,0,0,50.,0,0,0,150.);
-KOKKOS_MAT3 anisoU_local(0.48,0,0,0,0.16,0,0,0,0.16);
-CUDAREAL anisoG_determ = anisoG_local.determinant();
 
                                                         // enumerate mosaic domains
                                                         for (int mos_tic = 0; mos_tic < mosaic_domains; ++mos_tic) {
@@ -594,13 +652,12 @@ CUDAREAL anisoG_determ = anisoG_local.determinant();
 								I_latt *= I_latt;
 
                                                                 // new code for diffuse.
-                                                                bool use_diffuse=true;
                                                                 if (use_diffuse) {
 KOKKOS_VEC3 H_vec(h,k,l);
 KOKKOS_VEC3 H0(h0,k0,l0);
 CUDAREAL step_diffuse_param[6];
                     calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,s_l_max,s_h_range,s_k_range,s_l_range,
-                    Ainv,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
+                    Ainv_dummy,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
                             } // end s_use_diffuse outer
 
 
