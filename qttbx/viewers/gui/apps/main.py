@@ -91,7 +91,7 @@ def main(dm=None,params=None,log=None):
 
   # DEBUG: Sync references for test data
   state.signals.references_change.emit()
-  
+
 
   # Reach into the Console tab to make variables accessible
   if params and params.show_tab:

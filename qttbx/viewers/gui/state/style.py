@@ -11,6 +11,7 @@ class Style(DataClassBase):
   representation: List[str] # one of: ['ball-and-stick', 'cartoon']
   visible: bool
   color: Optional[str] = None
+  query: object = None
 
 
   @classmethod

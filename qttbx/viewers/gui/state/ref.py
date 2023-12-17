@@ -45,6 +45,7 @@ class Ref:
     self.entry = None # set later the entry controller object
     self.results = {} # program_name: result_ref
     self._active = False
+    self._query = None
 
 
     if style is None:
@@ -164,7 +165,7 @@ class Ref:
 
   @property
   def query(self):
-    raise NotImplementedError
+    return self._query
 
   def to_dict(self):
     d = {

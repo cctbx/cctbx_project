@@ -353,6 +353,7 @@ class MolstarViewer(ModelViewer):
     print()
     print(f"wrap_async={wrap_async}")
     print("="*79)
+    out = "fish"
     if self._connected:
       if self._blocking_commands:
         print(f"Commands ignored due to not accepting commands: {cmds}")
@@ -370,8 +371,8 @@ class MolstarViewer(ModelViewer):
           web_view = self.web_view
         else:
           web_view = None
-        self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
-    
+        out = self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
+    return out
   def execute_command_queue(self,wrap_async=True,sync=False):
     if self.use_web_view:
       web_view = self.web_view
@@ -510,12 +511,11 @@ class MolstarViewer(ModelViewer):
     self.send_command(command)
 
   def _get_sync_state(self,state_json,callback=None):
-    #print("Sync ref mapping")
-    # get the remote: local reference mapping from the web app
+    # get the remote: local -> reference mapping from the web app
     command = f"""
     {self.plugin_prefix}.phenix.getState('{state_json}');
     """
-    self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
+    return self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
 
 
   def _set_sync_state(self,state_json):

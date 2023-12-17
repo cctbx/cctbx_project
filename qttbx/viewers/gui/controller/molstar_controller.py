@@ -19,21 +19,6 @@ from ..controller.selection_controls import SelectionControlsController
 from ...last.selection_utils import Selection, SelectionQuery
 from ...last.python_utils import DotDict
 
-# class SyncContext:
-#     def __init__(self, controller, ref):
-#         self.controller = controller
-#         self.ref = ref
-
-#     def __enter__(self):
-        
-#         return self  
-
-#     def __exit__(self, exc_type, exc_value, traceback):
-#       if self.started_sync:
-#         self.controller.state.external_loaded["molstar"].append(self.ref.id)
-#         self.controller.sync_manager.has_synced = False # Trigger periodic attempts to sync
-#       return False  # Return True to suppress exceptions, False to propagate
-
 class SyncManager:
   """
   Manages the synchronization of state for the molstar typescript app
@@ -47,6 +32,7 @@ class SyncManager:
     self._sync_count = 0
     self._max_sync_count = 20
     self._sync_failure = False
+    self._received_first_sync = False
 
   
   @property
@@ -58,11 +44,11 @@ class SyncManager:
     """
     Change the sync state
     """
-    if self._has_synced is False and value is True:
+    if (value is True and (self._has_synced is False or self._has_synced is None)):
       self._has_synced = value
       self.controller.state.has_synced = value
       self._sync_timer.stop()
-    elif ((self._has_synced is True and value is False) or self._has_synced is None):
+    elif (value is False and (self._has_synced is True or self._has_synced is None)):
       self._has_synced = value
       self.controller.state.has_synced = value
       self._sync_timer.start(self._sync_interval)
@@ -70,7 +56,21 @@ class SyncManager:
       assert False, "Error, should not reach here"
 
 
-  def try_sync(self):
+  # def check_alive(self):
+  #   self.controller.viewer._get_sync_state(self.controller.state.to_json(),callback=self._check_alive_callback)
+
+  # def _check_alive_callback(self,result):
+  #   if isinstance(result,str) and len(result.strip())>0:
+  #     result = json.loads(result)
+  #   if "hasSynced" in result:
+  #     self._is_alive = True
+  #   else:
+  #     self._is_alive = False
+
+
+  def try_sync(self,callback=None):
+    self._has_synced = False
+    # callback is run if successful sync
     print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
     if self.has_synced:
       pass
@@ -83,29 +83,40 @@ class SyncManager:
       self.parent.close_application()
       sys.exit()
 
-  def _try_sync_callback(self,result): #  get_state
+  def _try_sync_callback(self,result,second_callback=None): #  get_state function in ts
+    received_result = False
     print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
     if isinstance(result,str) and len(result.strip())>0:
       result = json.loads(result)
       print("sync result: ",json.dumps(result,indent=2))
-      # update molstar ids
-      for ref_id, ref_dict in result["references"].items():
-        for external_key, external_id in ref_dict["external_ids"].items():
-          print("debugme",ref_id,external_key,external_id)
-          ref = self.controller.state.references[ref_id]
-          ref.external_ids[external_key] = external_id
-          self.controller.state.external_loaded["molstar"].append(ref.id)
+      if 'hasSynced' in result:
+        received_result = True
+        self._received_first_sync = True
+        result["hasSynced"] = True # The very first sync is True
+        print("set result hasSynced to True",result['hasSynced'])
 
-      has_synced = result["hasSynced"]
-      if has_synced:
-        self.has_synced = has_synced
+
+    # update molstar ids
+    if received_result:
+      if 'references' in result: # if not, not well formed response
+        for ref_id, ref_dict in result["references"].items():
+          for external_key, external_id in ref_dict["external_ids"].items():
+            print("debugme",ref_id,external_key,external_id)
+            ref = self.controller.state.references[ref_id]
+            ref.external_ids[external_key] = external_id
+            self.controller.state.external_loaded["molstar"].append(ref.id)
+
+    if received_result:    
+      if result["hasSynced"]:
+        print("setting class has_synced to True")
+        self.has_synced = True
         self._sync_count = 0
 
-      # catch failure
-      if self._sync_failure:
-        msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
-        self.parent.close_application()
-        sys.exit()
+    # catch failure
+    if self._sync_failure:
+      msg = QMessageBox.warning(self.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
+      self.controller.parent.close_application()
+      sys.exit()
 
 class MolstarController(Controller):
   def __init__(self,parent=None,view=None):
@@ -158,13 +169,15 @@ class MolstarController(Controller):
       print("Page loaded successfully. Accepting commands")
       self._blocking_commands = False
       self.viewer._blocking_commands = False
-      # Debugging
-      # Set the loaded model to be visible
-      # self.parent.data.model_list_controller.entries[0].toggle_active_func(True)
+      time.sleep(0.5)
+      self._load_all_from_ref()
+  
     else:
       print("An error occurred while loading web app.")
       self._blocking_commands = True
 
+
+  
 
   # API
 
@@ -173,9 +186,13 @@ class MolstarController(Controller):
   def start_viewer(self):
     self.viewer.start_viewer()
 
-
-  # def _data_change(self):
-  #   self.volume_streamer.pack_data_manager(self.state.data_manager)
+  def _load_all_from_ref(self,*args):
+    # Molstar must load inital models here
+    print("loading all models")
+    for ref in self.state.references_model:
+      self.load_model_from_ref(ref)
+    for ref in self.state.references_map:
+      self.load_map_from_ref(ref)
 
 
 
