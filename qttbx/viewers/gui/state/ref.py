@@ -167,6 +167,7 @@ class Ref:
   def query(self):
     return self._query
 
+
   def to_dict(self):
     d = {
       "id":self.id,
@@ -313,12 +314,15 @@ class SelectionRef(Ref):
     assert ModelRef is not None, "Selection Ref cannot exist without reference model"
     assert data is not None, "Provide a Selection query as the data"
     self._show_in_list = show
+    self._debug_data = data
     
 
     self._model_ref = model_ref
-    self._query = data
-    self._query.params.refId=model_ref.id
+    self._query_sel = data
+    self._query_sel.params.refId=model_ref.id
     super().__init__(data=data, style=model_ref.style)
+    self._query_sel = data
+    self._query_sel.params.refId=model_ref.id
 
   @property
   def show_in_list(self):
@@ -330,7 +334,9 @@ class SelectionRef(Ref):
   @property
   def query(self):
     query = SelectionQuery.from_model_ref(self.model_ref)
-    query.selections = self._query.selections
+    # import pdb
+    # pdb.set_trace()
+    query.selections = self._query_sel.selections
     return query
 
   @property

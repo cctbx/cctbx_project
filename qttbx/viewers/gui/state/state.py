@@ -388,6 +388,7 @@ class State:
       
     
     self.signals.selection_change.emit(value)
+    self.signals.select.emit(value)
     self.signals.references_change.emit()
 
 
