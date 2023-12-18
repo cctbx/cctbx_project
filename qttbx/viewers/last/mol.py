@@ -16,7 +16,7 @@ class MolDF:
     _ = dm.process_model_file(filename)
     model = dm.get_model()
     return cls.from_mmtbx_model(model,params={"filename":filename},**kwargs)
-    
+
   @classmethod
   def from_atom_sites(cls,atom_sites,params={},**kwargs):
     return cls(atom_sites,params=params,**kwargs)
@@ -26,12 +26,12 @@ class MolDF:
     atom_sites = AtomSites.from_mmtbx_model(model)
     params["mmtbx_model"] = model
     return cls(atom_sites,params=params,**kwargs)
-  
+
   def __init__(self,atom_sites,params={},**kwargs):
     self._atom_sites = atom_sites
     self.params = params
     self.select = self.sites.select
-  
+
   @property
   def sites(self):
     # alias of atom_sites
@@ -52,8 +52,3 @@ class MolDF:
   #   """
   #   assert return_type in ["sites","query"], "Specify one of allowed return types"
   #   return self.atom_sites.select(arg,return_type=return_type)
-
-    
-
-
-    

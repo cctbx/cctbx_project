@@ -46,7 +46,7 @@ from .sel_convert_chimera import (
 class ChimeraXViewer(ModelViewer):
 
   viewer_name = 'ChimeraX'
-  
+
   def __init__(self):
     super().__init__()
 
@@ -137,7 +137,7 @@ class ChimeraXViewer(ModelViewer):
         available before raising a Sorry
 
       json_response: bool
-        Pass json true to ChimeraX remotecontrol. Returns the log as 
+        Pass json true to ChimeraX remotecontrol. Returns the log as
         a json object for inspection.
 
     Returns
@@ -156,7 +156,7 @@ class ChimeraXViewer(ModelViewer):
 
     # set REST server information
     self.flags = ['--cmd', 'remotecontrol rest start port {}'.format(self.port)]
-    
+
     if json_response:
       self.flags[-1]+=" json true"
 
@@ -251,7 +251,7 @@ class ChimeraXViewer(ModelViewer):
 
 
   def send_command(self, cmds):
-    
+
     # print("="*79)
     # print(f"ChimeraX command: (connected={self._connected})")
     # print()
@@ -268,7 +268,7 @@ class ChimeraXViewer(ModelViewer):
       params = [("command",c) for c in cmds]
       return self._run_command(params)
 
-  
+
   # ---------------------------------------------------------------------------
   # Models
 
@@ -283,7 +283,7 @@ class ChimeraXViewer(ModelViewer):
 
     with tempfile.NamedTemporaryFile(mode='w+t', suffix="."+format,delete=False) as temp_file:
       temp_file.write(model_str)
-    
+
     response = self.load_model(filename=temp_file.name,label=label,ref_id=ref_id,callback=callback)
     os.remove(temp_file.name)
     return response
@@ -304,7 +304,7 @@ class ChimeraXViewer(ModelViewer):
 
   #   with tempfile.NamedTemporaryFile(mode='wb', suffix=".mrc",delete=False) as temp_file:
   #     temp_filename = temp_file.name
-    
+
   #   map_manager.write_map(temp_filename)
   #   response = self.load_map(filename=temp_filename)
   #   os.remove(temp_filename)
@@ -316,7 +316,7 @@ class ChimeraXViewer(ModelViewer):
     """
     filename = str(filename)
     return self._load_file(filename=filename)
-    
+
 
 
   # ---------------------------------------------------------------------------
@@ -332,11 +332,11 @@ class ChimeraXViewer(ModelViewer):
 
   def deselect_all(self):
     response = self.send_command('~select')
-  
+
   def select_from_query(self,model_id: str, query_json: str):
     """
-    This takes a json string, converts to query object, and then translates. 
-    The idea is to maintain a looser coupling with upstream by never using 
+    This takes a json string, converts to query object, and then translates.
+    The idea is to maintain a looser coupling with upstream by never using
     query objects in the api.
     """
     query = SelectionQuery.from_json(query_json)
@@ -498,4 +498,3 @@ class ChimeraXViewer(ModelViewer):
     return self.close_viewer()
 
 # =============================================================================
-

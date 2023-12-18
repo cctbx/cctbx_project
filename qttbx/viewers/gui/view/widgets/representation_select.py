@@ -23,7 +23,7 @@ class RepresentationSelect(QWidget):
     for key,value in self.options.items():
       action = QAction(key, self, checkable=True)
       self.menu.addAction(action)
-      self.actions[value] = action 
+      self.actions[value] = action
 
     self.button.clicked.connect(self.show_menu)
 
@@ -40,9 +40,3 @@ class RepresentationSelect(QWidget):
   def show_menu(self):
     global_pos = self.button.mapToGlobal(self.button.pos())
     self.menu.exec_(global_pos)
-
-
-    
-
-
-    

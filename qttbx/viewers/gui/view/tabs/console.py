@@ -38,7 +38,7 @@ class JSConsoleTab(GUITab):
   @Slot()
   def execute_js(self):
     js_code = self.console_input.text()
-    
+
     js_code_exec = f"""
     (function() {{
       try {{
@@ -72,7 +72,7 @@ class JSConsoleTab(GUITab):
 #     self.console_input = QTextEdit()
 #     self.console_output = QTextEdit()
 #     self.console_output.setReadOnly(True)
-    
+
 #     execute_button = QPushButton("Execute JS")
 #     execute_button.clicked.connect(self.execute_js)
 
@@ -97,23 +97,23 @@ class JSConsoleTab(GUITab):
 class JupyterTabWidget(GUITab):
   def __init__(self,parent=None):
     super().__init__(parent=parent)
-    
+
 
     layout = QVBoxLayout()
-    
+
     kernel_manager = QtInProcessKernelManager()
-    
+
 
     kernel_manager.start_kernel()
     kernel_manager.kernel.shell.banner1 = f"""
     Execute python code here.
-    Access the program with 'app'. 
+    Access the program with 'app'.
 
     For example:
       {'app.view':<30} : {'the Qt main window':<30}
       {'app.controller.molstar.viewer':<30} : {'the python interface for the Mol* viewer':<30}
       {'app.state.data_manager':<30} : {'the cctbx data manager':<30}
-    """ 
+    """
     kernel_manager.kernel.gui = 'qt'
 
     kernel_client = kernel_manager.client()
@@ -127,7 +127,7 @@ class JupyterTabWidget(GUITab):
 
     layout.addWidget(self.jupyter_widget)
     self.setLayout(layout)
-    
+
 
 
   def on_first_visit(self):
@@ -136,11 +136,3 @@ class JupyterTabWidget(GUITab):
     # self.toast = Toast(msg,duration=4000,parent_widget=self)
     # self.toast.show()
     #QMessageBox.information(None, "Title", "Your message here.")
-
-
-    
-  
-
-
-
-

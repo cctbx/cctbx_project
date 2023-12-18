@@ -26,7 +26,7 @@ class InfoDialog(QDialog):
     layout = QVBoxLayout(self)
     layout.addWidget(self.text_edit)
 
-    
+
 class Toast(QWidget):
   def __init__(self, message, duration=2000, active_toasts=None, parent_widget=None):
     super(Toast, self).__init__(parent_widget)
@@ -97,7 +97,7 @@ class ClickableHistogramSeaborn(FigureCanvas):
     if self.bins is None:
       self.bins = self.get_bins(data)
     self.bins = max(self.bins,40) # min number of bins
-    self.vline = None 
+    self.vline = None
     self.text = None
     self.plot_histogram()
 
@@ -114,7 +114,7 @@ class ClickableHistogramSeaborn(FigureCanvas):
   def calculate_coordinates(self, x, y):
     canvas_width = self.width()
     canvas_height = self.height()
-    
+
     # Coordinates relative to the canvas size
     rel_x = x / canvas_width
     rel_y = y / canvas_height
@@ -129,14 +129,14 @@ class ClickableHistogramSeaborn(FigureCanvas):
 
     print(f"Clicked on x = {data_x:.2f}")
     self.emitter.histogram_click_value.emit(data_x)
-    
+
     if self.vline:  # Remove the previous line if it exists
       self.vline.remove()
 
     if self.text:  # Remove the previous text if it exists
       self.text.remove()
 
-      
+
     self.vline = self.axes.axvline(x=data_x, color='black', linestyle='--')
 
     # Add text annotation directly above the vline in axis coordinates
@@ -148,13 +148,13 @@ class ClickableHistogramSeaborn(FigureCanvas):
 
 class ClickableHistogramMatplotlib(FigureCanvas):
   def __init__(self, data, parent=None, width=5, height=4, dpi=100):
-    
+
     self.fig = Figure(figsize=(width, height), dpi=dpi)
     self.axes = self.fig.add_subplot(111)
     FigureCanvas.__init__(self, self.fig)
     self.setParent(parent)
     self.data = data
-    self.vline = None 
+    self.vline = None
     self.text = None
     self.plot_histogram()
 
@@ -170,7 +170,7 @@ class ClickableHistogramMatplotlib(FigureCanvas):
   def calculate_coordinates(self, x, y):
     canvas_width = self.width()
     canvas_height = self.height()
-    
+
     # Coordinates relative to the canvas size
     rel_x = x / canvas_width
     rel_y = y / canvas_height
@@ -184,22 +184,22 @@ class ClickableHistogramMatplotlib(FigureCanvas):
     data_y = y_min + rel_y * (y_max - y_min)
 
     print(f"Clicked on x = {data_x:.2f}")
-    
+
     if self.vline:  # Remove the previous line if it exists
       self.vline.remove()
 
     if self.text:  # Remove the previous text if it exists
       self.text.remove()
 
-      
+
     self.vline = self.axes.axvline(x=data_x, color='black', linestyle='--')
 
     # Add text annotation directly above the vline in axis coordinates
     self.text = self.axes.text(data_x, y_max, f"{data_x:.2f}", ha='center', va='bottom',fontsize=14)
 
     self.draw()
-      
-  
+
+
 
 class FastTableView(QTableView):
     mouseReleased = QtCore.Signal()
@@ -225,7 +225,7 @@ class FastTableView(QTableView):
       unique_rows = sorted(list(set(rows)))
 
       return unique_rows
-    
+
     def selected_rows(self):
       return self.model()._df.iloc[self.selected_indices()]
 
@@ -289,7 +289,7 @@ class NoCheckComboBox(QComboBox):
 class NoCheckListView(QListView):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-  
+
   def drawBranches(self, painter, rect, index):
     pass
 
@@ -312,7 +312,7 @@ class FloatingVSlider(QSlider):
 
 class ISOSlider(QSlider):
   """
-  Slider to control the ISO level for a map. 
+  Slider to control the ISO level for a map.
   TODO: Should this be just for active map or individual on each map entry?
   TODO: Separate to a more MVC style
   """
@@ -333,7 +333,7 @@ class ISOSlider(QSlider):
   @property
   def map_ref(self):
     return self._map_ref
-  
+
   @map_ref.setter
   def map_ref(self,map_ref):
 
@@ -346,7 +346,7 @@ class ISOSlider(QSlider):
     self.real_start = real_start
     self.iso_start = real_start
     granularity = 0.01  # Set granularity (the smallest change)
-   
+
 
     # Calculate scaled values
     slider_iso_min = int(real_min / granularity)
@@ -364,7 +364,7 @@ class ISOSlider(QSlider):
     slider_iso.setPageStep(slider_iso_page_step)
     #slider_iso.setMinimumWidth(250)
 
-  
+
   def real_to_slider_iso(self,real_value, granularity):
     return int(real_value / granularity)
 
@@ -385,11 +385,11 @@ class ISOWidget(QWidget):
     if map_ref is not None:
       self.map_ref = map_ref
     self.slider = ISOSlider(map_ref=map_ref)
-    
+
     layout.addWidget(self.slider)
-    
+
     self.setLayout(layout)
-    
+
     # # Set popup flag
     # self.setWindowFlags(Qt.Popup)
     self.setMinimumSize(30, 20)  # Min Width, Min Height
@@ -417,7 +417,7 @@ class OpacityWidget(QDialog):
     layout = QHBoxLayout()
     self.default_opacity = 0.8
 
-    
+
     self.slider = QSlider(Qt.Horizontal)
     self.slider.setInvertedAppearance(True)  # Invert visual appearance
 
@@ -428,14 +428,14 @@ class OpacityWidget(QDialog):
     self.slider.setValue(int((self.default_opacity)*100))
     self.slider.setSingleStep(1)
     self.slider.setPageStep(5)
-    
+
     self.label = QLabel(f"Opacity: {round(self.default_opacity,2)}")  # Initialize with the scaled value
-    
+
     # Add slider and label to layout
     layout.addWidget(self.label)
     layout.addWidget(self.slider)
-    
+
     self.setLayout(layout)
-    
+
     # Set popup flag
     #self.setWindowFlags(Qt.Popup)

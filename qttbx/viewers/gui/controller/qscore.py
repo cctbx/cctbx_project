@@ -13,7 +13,7 @@ class QscoreTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
 
-    
+
     # Signals
     self.view.table.mouseReleased.connect(self.on_mouse_released)
     self.view.process_button.clicked.connect(self.calculate_qscore)
@@ -33,7 +33,7 @@ class QscoreTabController(Controller):
         self.update(model_ref)
       else:
         self._show_header()
-  
+
   def update(self):
     model_ref = self.state.active_model_ref
     if "qscore" in model_ref.results:
@@ -42,7 +42,7 @@ class QscoreTabController(Controller):
       df = df.round(3)
       df = pd.concat([df,model_ref.mol.sites],axis=1)
       df.sort_values(by="Qscore",inplace=True,ascending=False)
-      
+
       model = PandasTableModel(df)
       self.view.table.setModel(model)
       #self.view.add_histogram()
@@ -66,8 +66,8 @@ class QscoreTabController(Controller):
     result_ref = QscoreRef(data=qdata,model_ref = self.state.active_model_ref,selection_ref=None)
     self.state.add_ref(result_ref)
 
-    
-        
+
+
 
   def _hide_header(self):
     if not self.header_hidden:
@@ -111,11 +111,11 @@ class QscoreTabController(Controller):
       self.state.add_ref(ref)
       self.state.active_selection_ref = ref
       self.state.signals.select.emit(ref)
-    
+
     else:
       print("no atoms returned as query")
-   
-    
+
+
   def on_mouse_released(self):
     selected = self.view.table.selectionModel().selection()
     deselected = QtCore.QItemSelection()

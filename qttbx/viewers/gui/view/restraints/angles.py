@@ -21,8 +21,7 @@ class AngleListView(ScrollableListView):
 class AnglesTabView(RestraintsTab):
   def __init__(self,parent=None,title="Angles"):
     super().__init__(parent=parent,title=title)
-    
+
     self.angle_list_view = AngleListView(self)
     self.layout.addWidget(self.angle_list_view)
     self.setLayout(self.layout)
-    

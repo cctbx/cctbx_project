@@ -34,8 +34,8 @@ class RestraintsTab(GUITab):
     header_layout.addWidget(label)
     header_layout.addStretch(1)
     self.header_layout = header_layout
-    
-    # Process 
+
+    # Process
 
     # Process text
     label_process = QLabel("Generate restraints")
@@ -59,11 +59,7 @@ class RestraintsTab(GUITab):
     # load_icon = QIcon(str(icon_path))
     # self.load_button.setIcon(load_icon)
     # self.load_button.setMaximumSize(50, 50)
-    # self.load_button.setContentsMargins(10, 10, 0, 0) 
+    # self.load_button.setContentsMargins(10, 10, 0, 0)
     # header_layout.addWidget(self.load_button)
-    
+
     self.layout.insertLayout(0, header_layout)
-
-
-
-    

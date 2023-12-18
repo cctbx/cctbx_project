@@ -17,13 +17,13 @@ class ScrollEntryView(QWidget):
     self._is_destroyed = False
 
     # self.ref = ref
-    
+
     # Start Components
     self.layout = QHBoxLayout(self)
     self.setLayout(self.layout)
 
 
-    # Styling 
+    # Styling
     self.palette = self.palette()
     # self.color = self.palette.color(QPalette.Background)
     # self.palette.setColor(QPalette.Background, self.color)
@@ -84,7 +84,7 @@ class ScrollEntryView(QWidget):
     painter = QPainter(self)
     painter.setRenderHint(QPainter.Antialiasing)
     painter.setPen(Qt.NoPen)
-    painter.setBrush(self.color)  
+    painter.setBrush(self.color)
     # Draw a rounded rectangle
     painter.drawRoundedRect(self.rect(), 7, 7)  # The last two arguments specify the x and y radius
 

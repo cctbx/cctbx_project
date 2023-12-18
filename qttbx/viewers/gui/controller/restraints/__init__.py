@@ -20,7 +20,7 @@ class RestraintsTopTabController(Controller):
 
     for widget in self.view.widgets:
       widget.process_button.clicked.connect(self.process_model)
-    
+
     # Signals for the presence of restraints
     self.state.signals.restraints_change.connect(self.handle_restraints_change)
 
@@ -51,8 +51,8 @@ class RestraintsTopTabController(Controller):
         restraints_ref = RestraintsRef.from_model_ref(self.state.active_model_ref)
         ref.restraints = restraints_ref
         self.state.signals.restraints_change.emit(restraints_ref)
-        
-        
+
+
 
   def _hide_header(self):
     for widget in self.view.widgets:

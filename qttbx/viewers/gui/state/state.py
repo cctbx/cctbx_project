@@ -1,5 +1,5 @@
 """
-The state object is a container of references. 
+The state object is a container of references.
 The origin of any signal related to changes of state.
 """
 from pathlib import Path
@@ -112,7 +112,7 @@ class State:
   #   return None
 
 
-  
+
   # def get_ref_from_mmtbx_model(self,model):
   #   if model in list(self.data_manager._models.values()):
   #     rev_d = {value:key for key,value in self.data_manager._models}
@@ -162,12 +162,12 @@ class State:
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
 
-    
+
 
   def _remove_ref(self,ref):
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     del self.references[ref.id]
-  
+
   def add_ref_from_mmtbx_model(self,model,filename=None):
     # filepath = None
     # name = filename
@@ -182,7 +182,7 @@ class State:
     #           name = filename
     if filename is not None:
       filepath = str(Path(filename).absolute())
-    
+
     data = MolecularModelData(filepath=filepath,model=model)
     ref = ModelRef(data=data)
     self.add_ref(ref)
@@ -247,7 +247,7 @@ class State:
 
   def _data_manager_changed(self):
     # Call this to emit a signal the data_manager changed.
-    # 
+    #
     # Unless putting signals in data manager, this must
     # be called explicitly/manually if the data manager changes.
     #self.signals.data_manager_changed.emit()
@@ -258,9 +258,9 @@ class State:
         print(f"New file found in data manager: {filename} and not found in references: {model_keys}")
         model = self.data_manager.get_model(filename=filename)
         ref = self.add_ref_from_mmtbx_model(model,filename=filename)
-        
+
         self.signals.model_change.emit(self._active_model_ref) # No change, just trigger update
-        
+
 
     map_refs = [ref for ref in self.references_map]
     map_keys = [ref.data.filepath for ref in map_refs]
@@ -353,7 +353,7 @@ class State:
   #   for model_ref,map_ref in zip(self.references_model,self.references_map):
   #     self.associations[model_ref] = map_ref
   #     self.associations[map_ref] = model_ref
-    
+
   #   # TODO: remove this, load maps no matter what
   #   for map_ref in self.references_map:
   #     if map_ref not in self.associations:
@@ -379,8 +379,8 @@ class State:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_selection_ref = value
-      
-    
+
+
     self.signals.selection_change.emit(value)
     self.signals.select.emit(value)
     self.signals.references_change.emit()
@@ -389,8 +389,8 @@ class State:
   #####################################
   # Restraints
   #####################################
-  
-  @property 
+
+  @property
   def active_restraint_ref(self):
     return self.active_model_ref.restraints
 

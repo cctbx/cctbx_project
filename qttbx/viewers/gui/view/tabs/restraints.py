@@ -10,7 +10,7 @@ class RestraintsTopTabView(GUITabWidget):
   def __init__(self,parent=None):
     super().__init__(parent=parent)
 
-    
+
     # Bonds
     self.bonds = BondsTabView(parent=self)
     self.addTab(self.bonds, "Bonds")
@@ -18,8 +18,3 @@ class RestraintsTopTabView(GUITabWidget):
     # Angles
     self.angles = AnglesTabView(parent=self)
     self.addTab(self.angles, "Angles")
-
-
-
-
-

@@ -21,4 +21,3 @@ class CifTabController(Controller):
 
     self.files = CifFileListController(parent=self,view=self.view.files.list_view)
     self.browser = CifBrowserController(parent=self,view=self.view.browser)
-    

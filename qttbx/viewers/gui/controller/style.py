@@ -20,9 +20,9 @@ class ModelStyleController(Controller):
       self.parent.hide_ref(ref)
     else:
       self.parent.show_ref(ref)
-      
 
-  
+
+
   def transition_representation(self,ref,style,queue=False):
     new_style = style
     old_style = ref.style
@@ -31,7 +31,7 @@ class ModelStyleController(Controller):
         self.parent.show_ref(ref,representation=rep_name)
       elif rep_name in old_style.representation and rep_name not in new_style.representation:
         self.parent.hide_ref(ref,representation=rep_name)
-    
+
   # Generic apply of a style to a ref. Uses above transition_ functions
   def apply_from_json(self,json_str):
     style = Style.from_json(json_str)
@@ -63,7 +63,7 @@ class MapStyleController(Controller):
     super().__init__(parent=parent,view=view)
     self.state.signals.style_change.connect(self.apply_from_json)
 
-  
+
   def apply_from_json(self,json_str):
     style = Style.from_json(json_str)
     self.apply(style)

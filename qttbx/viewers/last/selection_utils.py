@@ -10,7 +10,7 @@ Selection API
 
 The basic idea is to define a common way to specify selections among all the relevant other programs.
 Each program will have corner cases that can't be translated. This api serves as a filter, if a selection can be
-formatted using this api, it should be translatable to any other relevant program. 
+formatted using this api, it should be translatable to any other relevant program.
 
 """
 class SelectionQuery:
@@ -22,14 +22,14 @@ class SelectionQuery:
   def __init__(self,selections,params=None):
 
     # set up params
-    
+
     if params is None:
       params = self.get_default_params()
     for key,value in params.items():
       setattr(self,key,value)
     self.params = DotDict(params)
 
-    
+
     self.selections = selections
 
 
@@ -110,13 +110,13 @@ class SelectionQuery:
       if query_list:  # Only append if query_list is not empty
         query = ' & '.join(query_list)
         full_query_list.append(f'({query})')
-    
+
     if len(full_query_list)==0:
       output =  "index >= 0" # all
     else:
       output =  ' | '.join(full_query_list)
     return output
-    
+
 
   @property
   def phenix_string(self):
@@ -169,7 +169,7 @@ class Selection:
       else:
         newcol = col
       new_columns[col] = newcol
-    
+
     out = {}
     for key,value in d.items():
       if 'auth' in key and  auth_label_pref == 'label':
@@ -180,7 +180,7 @@ class Selection:
         out[new_columns[key]] = value
     return out
 
-  
+
   @classmethod
   def from_default(cls,params=None):
     data = cls.default_select_all
@@ -204,14 +204,14 @@ class Selection:
 
   def to_dict(self):
     return self.data
-  
+
   @classmethod
   def from_json(cls,json_str,params=None):
     d = {"class_name":cls.__class__.__name__}
     d.update(json.loads(json_str))
-    
+
     return cls(d,params=params)
-    
+
   def to_json(self,indent=None):
     return json.dumps(self.data,indent=indent)
 # @dataclass
@@ -243,7 +243,7 @@ class Selection:
 #   @classmethod
 #   def from_dict(cls, init_dict: Dict[str, Union[str, int]], auth_label_pref: str = 'auth', fallback: bool = True):
 #     instance = cls()
-    
+
 #     for field_name in cls.__annotations__.keys():
 #       auth_key = f'auth_{field_name}'
 #       label_key = f'label_{field_name}'
@@ -377,10 +377,10 @@ class Selection:
 #     parsed_json = json.loads(self.to_json())
 #     pretty_json_str = json.dumps(parsed_json, indent=2)
 #     return pretty_json_str
-    
+
 
 class SelConverterPhenix2:
-    
+
   phenix_keyword_map_default = {
         # phenix : pandas query with mmcif names
         'chain':'asym_id',
@@ -401,18 +401,18 @@ class SelConverterPhenix2:
     for key, value in replacements.items():
       input_str = input_str.replace(key, str(value))
     return input_str
-    
+
   def __init__(self,phenix_keyword_map=None):
     if phenix_keyword_map is None:
       phenix_keyword_map = self.phenix_keyword_map_default
-      
+
     # store forward and reverse mapping
     self.phenix_keyword_map = phenix_keyword_map
     self.phenix_keyword_map_rev = {v:k for k,v in phenix_keyword_map.items()}
-    
+
   def convert_pandas_to_phenix(self,sel_str):
     return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_rev)
-    
+
 
 
 class SelConverterPhenix:
@@ -432,18 +432,18 @@ class SelConverterPhenix:
     for key, value in replacements.items():
       input_str = input_str.replace(key, str(value))
     return input_str
-    
+
   def __init__(self,phenix_keyword_map=None):
     if phenix_keyword_map is None:
       phenix_keyword_map = self.phenix_keyword_map_default
-      
+
     # store forward and reverse mapping
     self.phenix_keyword_map = phenix_keyword_map
     self.phenix_keyword_map_rev = {v:k for k,v in phenix_keyword_map.items()}
-    
+
   def convert_phenix_to_common(self,sel_str):
     return self.replace_keys_in_str(sel_str,self.phenix_keyword_map)
-    
+
   def convert_common_to_phenix(self,sel_str):
     return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_rev)
 
@@ -455,19 +455,19 @@ class SelConverterPhenix:
 #     left = ast_to_pandas_query(ast['left'])
 #     right = ast_to_pandas_query(ast['right'])
 #     op = ast['op']['value']
-    
+
 #     if op == 'and':
 #       op = '&'
 #     elif op == 'or':
 #       op = '|'
-    
+
 #     return f'({left} {op} {right})'
-  
+
 #   # Handle the Keyword nodes
 #   elif ast['type'] == 'Keyword':
 #     keyword = ast['keyword']['value']
 #     value = ast['value']
-    
+
 #     if value['type'] == 'ID':
 #       return f'{keyword} == '{value['value']}''
 #     elif value['type'] == 'RANGE':
@@ -480,7 +480,7 @@ class SelConverterPhenix:
 #   # If none of the above, return an empty string
 #   else:
 #     return ''
-    
+
 def find_simplest_selected_nodes(graph, selected_atoms):
   '''
   graph: atom_sites.G, the nx hierarchy graph
@@ -514,28 +514,28 @@ def find_simplest_selected_nodes(graph, selected_atoms):
 
 def df_nodes_group_to_query(df):
   '''
-  Nodes is a dataframe obtained from 
+  Nodes is a dataframe obtained from
   simplifying a selection with a graph. Each
   row is a selection, which is possible grouped by seq_id
 
   An alternative to group_seq_range
   '''
   selections = []
-  
+
   # Group by all columns except 'seq_id'
   grouped = df.groupby(['asym_id', 'comp_id', 'atom_id'])  # Add more columns if needed
-  
+
   for name, group in grouped:
     # Sort and reset index for convenience
     group = group.sort_values('seq_id').reset_index(drop=True)
-  
+
     # Initialize variables for sequence detection
     start_seq = end_seq = group.loc[0, 'seq_id']
     data = {}
-  
+
     for i in range(1, len(group)):
       curr_seq = group.loc[i, 'seq_id']
-  
+
       if curr_seq == end_seq + 1:
         # Continue the sequence
         end_seq = curr_seq
@@ -545,7 +545,7 @@ def df_nodes_group_to_query(df):
           seq_ops = [{'op': '==', 'value': int(start_seq)}]
         else:
           seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
-  
+
         data = {
           'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
           'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
@@ -553,10 +553,10 @@ def df_nodes_group_to_query(df):
           'seq_id': {'ops': seq_ops},
           # ... other columns?
         }
-  
+
         selections.append(Selection(data, None))  # Add the Selection object
         start_seq = end_seq = curr_seq  # Reset sequence variables
-    
+
     # Don't forget the last sequence
     if not (start_seq == "*" and end_seq =="*"):
       if start_seq == end_seq:
@@ -564,7 +564,7 @@ def df_nodes_group_to_query(df):
       else:
         seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
 
-              
+
       data = {
         'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
         'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
@@ -580,8 +580,8 @@ def df_nodes_group_to_query(df):
         # ... other columns?
       }
 
-  
-    selections.append(Selection(data, None))  
+
+    selections.append(Selection(data, None))
 
   query = SelectionQuery(selections=selections)
   return query
@@ -591,29 +591,29 @@ def df_nodes_group_to_query(df):
 #   Take a selection dataframe and transform it into a new dataframe with each row containing a range
 #   of seq_id rather than a single value. It uses the output of find_simplest_selected_nodes() as the start
 #   '''
-  
+
 #   # Create DataFrame
 #   df = pd.DataFrame(simplest_nodes, columns=columns)
-  
+
 #   # Initialize an empty list to store transformed rows
 #   transformed_rows = []
-  
+
 #   # Generate groupby columns by removing 'seq_id' from the columns list
 #   groupby_columns = [col for col in columns if col != 'seq_id']
-  
+
 #   # Group by non-sequential columns
 #   for _, group in df.groupby(groupby_columns):
 #     group = group.sort_values('seq_id')  # Sort by 'seq_id'
-    
+
 #     seq_id_start = group['seq_id'].iloc[0]
 #     seq_id_stop = group['seq_id'].iloc[0]
-    
+
 #     # Initialize a row dictionary with other columns
 #     row_dict = {col: group[col].iloc[0] for col in groupby_columns}
-    
+
 #     for i in range(1, len(group)):
 #       current_seq_id = group['seq_id'].iloc[i]
-      
+
 #       # Check if the sequence is continuous
 #       if current_seq_id == seq_id_stop + 1:
 #         seq_id_stop = current_seq_id
@@ -622,28 +622,28 @@ def df_nodes_group_to_query(df):
 #         row_dict['seq_id_start'] = seq_id_start
 #         row_dict['seq_id_stop'] = seq_id_stop
 #         transformed_rows.append(row_dict.copy())
-        
+
 #         # Reset the sequence
 #         seq_id_start = current_seq_id
 #         seq_id_stop = current_seq_id
-    
+
 #     # Add the final sequence to the transformed list
 #     row_dict['seq_id_start'] = seq_id_start
 #     row_dict['seq_id_stop'] = seq_id_stop
 #     transformed_rows.append(row_dict.copy())
-  
+
 #   # Convert transformed rows into a DataFrame
 #   transformed_df = pd.DataFrame(transformed_rows)
-  
+
 #   return transformed_df
 
 def form_simple_str_common(df_sel_simple):
-  
+
   final_component_strs = []
   for row in df_sel_simple.itertuples(index=False):
     s = f'(asym_id {row.asym_id} and seq_id {row.seq_id_start}:{row.seq_id_stop} and atom_id {row.atom_id})'
     final_component_strs.append(s)
-  
+
   sel_str_simple_common = ' or '.join(final_component_strs)
   return sel_str_simple_common
 

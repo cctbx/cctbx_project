@@ -12,7 +12,7 @@ from PySide2.QtWebEngineWidgets import QWebEngineView
 
 class WebEnginePage(QWebEnginePage):
   """
-  Subclassing this allows access to javascript console output 
+  Subclassing this allows access to javascript console output
   """
   console_message = Signal(str, int, str)
   def __init__(self, *args, **kwargs):
@@ -23,7 +23,7 @@ class WebEnginePage(QWebEnginePage):
     print(f"JS console message: {msg}, line: {line}, sourceID: {sourceID}") #get as stdout
     self.console_message.emit(msg, line, sourceID) # get for a gui tab
 
-    
+
 
 
 class MolstarWebEngineView(QWebEngineView):
@@ -83,4 +83,3 @@ class ViewerTabView(GUITab):
 
     # Set the layout for the whole viewer
     self.setLayout(self.layout)
-

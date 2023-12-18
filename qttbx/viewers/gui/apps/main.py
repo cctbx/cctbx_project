@@ -28,7 +28,7 @@ class ViewerGUIApp:
     self.controller = controller
     self.view = view
     self.state = state
-  
+
 
 
 
@@ -70,9 +70,9 @@ def main(dm=None,params=None,log=None):
       QMessageBox.warning(None, "No Choice", "No option was selected. Exiting application.")
       qapp.quit()
       sys.exit()
-    
-    
-    
+
+
+
     choice = choice_dialog.choice
     if not params:
       params = DotDict()
@@ -81,14 +81,14 @@ def main(dm=None,params=None,log=None):
   if not dm:
     dm = DataManager()
 
-  
+
   # DEBUG: load some data automatically
   #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.pdb")
   #dm.process_real_map_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp_calc.mrc")
   #dm.process_model_file("/Users/user/software/phenix/modules/cctbx_project/qttbx/data/1yjp.cif")
 
   # Core top level object initialization
-  state = State(dm)  
+  state = State(dm)
   view = ViewerGUIView(params=params)
   controller = ViewerGUIController(parent=state,view=view,params=params)
   app = ViewerGUIApp(state,view,controller)

@@ -13,7 +13,7 @@ Selection string: Has parenthetic logic, "(chain 'A' and ((resid 19 and (name CB
 Selection expression: No parenthesis, "name N or name CG or name CD1 or name CD2"
 
 Selection statement: A single key,value selection: "name N"
-                     
+
 
 """
 
@@ -28,8 +28,8 @@ def is_int(s):
     except:
         return False
 
-      
-      
+
+
 # Simple selection statement translation functions
 
 def translate_model(x,model_number=1):
@@ -55,7 +55,7 @@ def translate_resid_colon(residue_id,model_number=1):
     return "#"+str(model_number)+":"+str(resid_start)
   else:
     return "#"+str(model_number)+":"+str(resid_start)+"-"+str(resid_stop)
-  
+
 
 def translate_resid_through(residue_id,model_number=1):
   split = residue_id.split("through")
@@ -104,7 +104,7 @@ def translate_resseq(residue_id,model_number=1):
 
 def translate_atom_name(atom_name,model_number=1):
     return "#"+str(model_number)+"@"+atom_name.lower()
-    
+
 
 def translate_element_name(element_name,model_number=1):
     if len(element_name)==2:
@@ -112,7 +112,7 @@ def translate_element_name(element_name,model_number=1):
     else:
         assert len(element_name)==1, "Element name must be 1 or two characters, got: "+element_name
     return element_name
-        
+
 def translate_attr(key,operator,value):
     return "@@"+key+operator+str(value)
 
@@ -128,27 +128,27 @@ def translate_nucleotide(value,model_number=1):
 
 def translate_hetatm(value,model_number=1):
     return "::"+"isHet"
-  
+
 def translate_water(value,model_number=1):
     return translate_residue_name("HOH",model_number=model_number)
-  
+
 def translate_all(value,model_number=1):
     return "#"+str(model_number) # 'all' only emcompasses the model
-      
+
 def translate_not(value,model_number=1):
     return "~"
-  
+
 def translate_within(value,model_number=1):
   return "@<__START_WITHIN__"
-    
+
 translation_dict = {
-    
+
 # compositional keywords, implicit "="
 "model":translate_model,
 "chain":translate_chain,
 "resname":translate_residue_name,
-"resid":translate_resid, 
-"resseq":translate_resseq, 
+"resid":translate_resid,
+"resseq":translate_resseq,
 "resi":translate_resid, # alias fo resid
 "name":translate_atom_name,
 "element":translate_element_name,
@@ -157,7 +157,7 @@ translation_dict = {
 "bfactor":translate_attr,
 "occupancy":translate_attr,
 "altloc":translate_altloc,
-    
+
 # single value keywords
 "protein":translate_protein,
 "nucleotide":translate_nucleotide,
@@ -175,23 +175,23 @@ def translate_phenix_expression(selection_expression,model_number=1):
   """
   Translate a Phenix selection expression to Chimera selection. A selection expression
   is defined as anything that fits in a single parenthetical level.
-  
+
   Example:
     resname lys or resname arg and chain A
     This is a valid selection expression
-    
+
     Not:
     (chain B and (resname lys or resname arg and chain A))
     This is not a single expression, it is a full selection string.
-  
+
   Attributes:
     selection_expression (str): A Phenix-style selection expression
     model_number (int): The Chimera model number of the model to appear in the Chimera selection
-    
-    
-  Returns: 
+
+
+  Returns:
     translated_string (str): The selection expression translated to Chimera-style syntax
-    
+
   """
   translated_expression = ""
   keywords = [" and ", " or "," not ","not "]
@@ -201,7 +201,7 @@ def translate_phenix_expression(selection_expression,model_number=1):
   result = re.split(pattern, selection_expression)
   statements = [r.strip() for r in result]
   operators = [""]+re.findall(pattern,selection_expression)
-  
+
   # first eliminate all >=, etc
   selection_expression = selection_expression.replace(">=",">")
   selection_expression = selection_expression.replace("=>",">")
@@ -271,13 +271,13 @@ def translate_phenix_expression(selection_expression,model_number=1):
 def process_within_statements(translated_string,staged_within=[]):
   """
   Attributes:
-    translated_string (str): The chimera string with special keywords defining the scope of withins 
+    translated_string (str): The chimera string with special keywords defining the scope of withins
     staged_within (list): Information collected about withins during translation (symbol,distance)
-                        
+
   Returns:
     translated_string (str): The selection string translated to Chimera-style syntax
   """
-    
+
   keywords = ["__START_WITHIN__"]
   pattern = "|".join(keywords)
   results = re.split(pattern,translated_string)
@@ -285,7 +285,7 @@ def process_within_statements(translated_string,staged_within=[]):
 
   within_starts = [(result,operator) for result,operator in zip(results,operators) if len(operator)>0]
   assert len(within_starts)==len(staged_within), "Error parsing within statement"
-  
+
   reformatted_withins = []
   for staged,(result,operator) in zip(staged_within,within_starts):
     assert "__END_WITHIN__" in result, "Error parsing within statement"
@@ -313,7 +313,7 @@ def translate_phenix_selection_string(selection_string,model_number=1):
   Attributes:
     selection_string (str): The full Phenix-style selection string to translate.
     model_number (int): The Chimera model number of the model to appear in the Chimera selection
-                        
+
   Returns:
     translated_string (str): The selection string translated to Chimera-style syntax
   """
@@ -322,31 +322,31 @@ def translate_phenix_selection_string(selection_string,model_number=1):
   closed_count = selection_string.count(")")
   if open_count==0 and closed_count==0:
     return translate_phenix_expression(selection_string,model_number=model_number)
-  
+
 
 
   # preprocessing
   # remove disabled wildcards
   selection_string = selection_string.replace("\*","")
-  
+
   start = None # the character index that starts the content
   stop = None # the index that ends the content
   translated_string = "" # the translated string we build on
-  
+
   open_stack = 0 # this keeps track of the number of open parenthesis
   entered_within = False # This is flipped upon encountering the 'within' keyword
   within_stack_start = None # This is the state of the open stack upon encountering the 'within' keyword
   staged_within = [] # This holds the within information that needs to be incorporated (distance,chimerax symbol)
-  
-  
+
+
   for i, c in enumerate(selection_string): # step through the string for each character 'c'
-      
+
       #debug
       #print(c,entered_within,open_stack,within_stack_start)
-          
+
       last_i = max(i-1,0) # the index preceeding i
       next_i = min(i+1,len(selection_string)-1) # the index following i
-      
+
       last_c = selection_string[last_i] # the character preceding c
       next_c = selection_string[next_i] # the character following c
 
@@ -354,15 +354,15 @@ def translate_phenix_selection_string(selection_string,model_number=1):
 
           # trigger the end of a content block
           if last_c not in ["(",")"]:
-              # if the preceeding character was not a parenthesis, 
+              # if the preceeding character was not a parenthesis,
               # we are are likely at the end of a selection expression
-              # we call it 'content' 
-            
+              # we call it 'content'
+
               stop = i # the index that ends the content
-              
+
               content = selection_string[start:stop] # the content string
               #print("content:",content)
-              
+
               # check if we are currently processing a within statement
               if entered_within ==True:
                 # if so, then the content will likely be uninterpretable to the translate_expression function
@@ -372,54 +372,54 @@ def translate_phenix_selection_string(selection_string,model_number=1):
                 if "," in content:
                   content_split = content.split(",")
                   assert len(content_split)==2,  "Error parsing within statement"
-                  
+
                   # split content into within distance and the actual content
                   d,content = content_split
-                  
+
                   # add the distance to the last staged within list
                   staged_within[-1].append(d)
 
-              # translate the content   
+              # translate the content
               translated_content = translate_phenix_expression(content,model_number=model_number)
-      
+
               # check if we encountered a 'within' statement
               if "__START_WITHIN__" in translated_content:
                 # if the 'within' keyword appeared, the function above will
                 #  embed __START_WITHIN__ in the translated content
-                
+
                 # sanity check that we are not already handling another within
                 assert entered_within == False, "Error parsing within statement"
                 entered_within = True # set the flag that we are processing a within
                 within_stack_start = open_stack+1 # this is the parenthesis stack state when within encountered
-                # if we encountered a within, we need to save the content and not put it immediatetly in the 
+                # if we encountered a within, we need to save the content and not put it immediatetly in the
                 # translated string, because chimera's zone grammar has the subject of the selection first
-                staged_within.append([translated_content.replace("__START_WITHIN__","")]) 
-                
+                staged_within.append([translated_content.replace("__START_WITHIN__","")])
+
                 # we will put the placeholder into the translated string to replace later
                 translated_content = "__START_WITHIN__"
-                
+
               # append the content to the translated string
               translated_string+=translated_content
-              
 
-              
-              
-          
-        
+
+
+
+
+
       # trigger the start of a content block
       if c in ["(",")"] and next_c not in ["(",")"]:
           # if the character following c is not a parenthesis, but c is,
           # we are at the start of a content block
           start = next_i
-      
+
       # if c is parenthesis, also add it to the translated string
       if i<len(selection_string) and c in ["(",")"]:
         translated_string+=c
-      
+
       # # debug
       # print(c,entered_within,open_stack,within_stack_start)
       # print("")
-      
+
       # finally we need to check if we are currently processing a special within statement
       # If so, then a parenthesis encountered means that this is the end of the within statement
       if c in [")"]:
@@ -432,9 +432,9 @@ def translate_phenix_selection_string(selection_string,model_number=1):
             entered_within = False
             within_stack_start = None
             translated_string+="__END_WITHIN__"
-        
+
       # decide whether to increase to decrease the stack
-      if c == "(":   
+      if c == "(":
         open_stack+=1
       elif c==")":
         open_stack-=1
@@ -458,5 +458,5 @@ def convert_selection_int_to_str(model,int_selection):
   except:
     assert type(int_selection) in [int,float,np.int64], "Pass int_selection as iterable or single number"
     int_selection = [int(int_selection)]
-  
+
   return selection_string_from_selection(pdb_h=model.get_hierarchy(),selection=flex.int(int_selection))

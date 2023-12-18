@@ -11,7 +11,7 @@ from .base import DataClassBase
 class CifFileData(DataClassBase):
   filepath: Optional[str] = None
   filename: Optional[str] = None
-  
+
   def __post_init__(self):
     super().__post_init__()
     if self.filepath and not self.filename:

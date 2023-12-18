@@ -15,7 +15,7 @@ class MolecularModelData(DataClassBase):
   filename: Optional[str] = None
   model: Optional[object] = None
   cif_data: Optional[CifFileData] = None
-  
+
   def __post_init__(self):
     super().__post_init__()
     if self.filepath and not self.filename:
@@ -24,7 +24,7 @@ class MolecularModelData(DataClassBase):
       cif_data = CifFileData(filepath = self.filepath)
       self.cif_data = cif_data
 
-   
+
 
 @dataclass
 class RealSpaceMapData(DataClassBase):
@@ -36,4 +36,3 @@ class RealSpaceMapData(DataClassBase):
     super().__post_init__()
     if self.filepath and not self.filename:
         self.filename = Path(self.filepath).name
-    

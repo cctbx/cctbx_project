@@ -22,13 +22,13 @@ class Controller:
 class ViewController:
   """
   TODO: Remove this file
-  The 'Controller' in MVC architecture. 
+  The 'Controller' in MVC architecture.
 
   Principles:
-  
+
   1. The controller is 'aware' of both the Views (Molstar viewer/ QT GUI) and the State
   2. The Views/State have no awareness of each other (ie, Views cannot read/write on state)
-  3. The Views/State have no awareness of the Controller. State/Views define signals and emit. 
+  3. The Views/State have no awareness of the Controller. State/Views define signals and emit.
      Controller has slots to react to changes, and then directly calls methods on state/views
 
   """
@@ -36,18 +36,7 @@ class ViewController:
     self.state = state
     self.viewer = viewer
     self.gui = gui
-    
+
   #
   # Slots for Selections
   #
-
-
-
-
-
-  
-
-
-
-
-  

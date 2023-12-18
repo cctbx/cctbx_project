@@ -27,7 +27,7 @@ class EntryContainer(QWidget):
     self.setPalette(palette)
     self.setAutoFillBackground(True)
     self.layout.setAlignment(Qt.AlignTop)
-    self.layout.setContentsMargins(5, 5, 5, 5) 
+    self.layout.setContentsMargins(5, 5, 5, 5)
     self.setLayout(self.layout)
 
 
@@ -40,4 +40,3 @@ class ScrollableListView(QWidget):
     self.container = EntryContainer(parent=self)
     scroll = CustomScrollArea(self.container)
     self.layout.addWidget(scroll)
-

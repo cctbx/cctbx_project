@@ -36,27 +36,24 @@ class CifFileListView(ScrollableListView):
     current_font.setPointSize(16)
     current_font.setBold(False)
     label.setFont(current_font)
-    
+
     self.load_button = QPushButton()
     icon_path = Path(__file__).parent / '../assets/icons/material/plus.svg'
     load_icon = QIcon(str(icon_path))
     self.load_button.setIcon(load_icon)
     self.load_button.setMaximumSize(50, 50)
-    self.load_button.setContentsMargins(10, 10, 0, 0) 
+    self.load_button.setContentsMargins(10, 10, 0, 0)
     header_layout.addWidget(label)
     header_layout.addWidget(self.load_button)
-    
+
     self.layout.insertLayout(0, header_layout)
-    
+
 
 class CifFileTabView(GUITab):
   def __init__(self,parent=None):
     super().__init__(parent=parent)
     layout = QVBoxLayout()
-    
+
     self.list_view = CifFileListView(self)
     layout.addWidget(self.list_view)
     self.setLayout(layout)
-
-
-

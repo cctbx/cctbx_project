@@ -23,7 +23,7 @@ class BondRestraint(Restraint):
   slack: float
   sym_op_j: object
   rt_mx: object
-  
+
 @dataclass(frozen=False)
 class AngleRestraint(Restraint):
   angle_ideal: float
@@ -56,5 +56,3 @@ class Restraints(DataClassBase):
       instances_dict[key] = instances
 
     return cls(filename=None,**instances_dict,manager=model.get_restraints_manager())
-      
-

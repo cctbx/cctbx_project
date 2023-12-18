@@ -30,7 +30,7 @@ class CifFileEntryController(ScrollEntryController):
     # else:
     #   if self.state.active_ciffile_ref == self.ref:
     #     self.state.active_ciffile_ref = None
-        
+
 
 class CifFileListController(ScrollableListController):
   def __init__(self,parent=None,view=None):

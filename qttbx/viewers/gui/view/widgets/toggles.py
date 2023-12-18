@@ -10,7 +10,7 @@ class ToggleIconButton(QPushButton):
     self.current_icon = self.on_icon
     self.setIcon(self.current_icon)
     self.clicked.connect(self.toggle_icon)
-  
+
   @property
   def is_on(self):
     if self.current_icon == self.on_icon:
@@ -35,21 +35,21 @@ class ToggleIconLabel(QLabel):
     super(ToggleIconLabel, self).__init__(*args, **kwargs)
     self.checked_icon_path = checked_icon_path
     self.unchecked_icon_path = unchecked_icon_path
-    self._is_checked = False  
+    self._is_checked = False
     self._is_destroyed = False
     self.update_icon()
 
   @property
   def is_checked(self):
     return self._is_checked
-  
+
   @is_checked.setter
   def is_checked(self, value):
     if not self.is_destroyed:
       assert isinstance(value, bool), "is_checked must be boolean"
       self._is_checked = value
       self.update_icon()
-  
+
   @property
   def is_destroyed(self):
     return self._is_destroyed

@@ -8,9 +8,5 @@ class BondsTableTabView(RestraintsTab):
     super().__init__(parent=parent,title=title)
     self.table = FastTableView()
     self.table.setSelectionBehavior(QTableView.SelectRows)
-    
+
     self.layout.addWidget(self.table)
-
-
-
-

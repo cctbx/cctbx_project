@@ -42,7 +42,7 @@ class CallbackManager:
     self.cmd = None
 
   def call(self, *args, **kwargs):
-  
+
     if self.callback is not None:
       #print(f"Callback manager calling: {self.callback}")
       func = self.callback
@@ -70,7 +70,7 @@ class CommandQueue(QObject):
     self.callback = None
     self.callback_manager = CallbackManager()
 
-    
+
     self.commandRequested.connect(self._execute_command)
 
 
@@ -82,7 +82,7 @@ class CommandQueue(QObject):
       else:
         assert self.callback == callback, "Cannot form a command queue with multiple callbacks"
     self.commands.append(cmd)
-  
+
   def run(self,web_view=None,selenium_driver=None,wrap_async=True,sync=False):
     command = "\n".join(self.commands)
     if wrap_async:
@@ -99,7 +99,7 @@ class CommandQueue(QObject):
     self.commands = []
     self.callback = None
 
- 
+
   def _execute_command(self,cmd,web_view,selenium_driver,callback=None,sync=False):
     """
     Actually execute a command in a web view. Requires a QT Web view to be
@@ -120,7 +120,7 @@ class CommandQueue(QObject):
     # selenium
     if selenium_driver is not None:
       result = selenium_driver.execute_script(cmd)
-  
+
       #print(f"Result going to selenium callback: {result}")
       if callback is not None:
         callback(result)
@@ -150,7 +150,7 @@ class MolstarViewer(ModelViewer):
     if config_json_file is None:
       config_json_file = Path(__file__).parent / Path("config.json")
     ModelViewer.__init__(self)
-    
+
     self.web_view = web_view
     self.command_queue = CommandQueue()
     #self.references_remote_map={} # Keys: remote (molstar) ref_ids, Values: local ref_ids
@@ -159,8 +159,8 @@ class MolstarViewer(ModelViewer):
     self.use_selenium = use_selenium
     self.use_web_view = use_web_view
     self.selenium_driver = None
-    
-    
+
+
     # get config variables
     with open(config_json_file,"r") as fh:
       config = json.load(fh)
@@ -173,7 +173,7 @@ class MolstarViewer(ModelViewer):
       ]
       for name in expected_config_params:
         assert name in config, f"Missing necessary config variable: '{name}'"
-      
+
       for key,value in config.items():
         if key == 'node_js_path' and value == '':
           value = 'npm'
@@ -295,7 +295,7 @@ class MolstarViewer(ModelViewer):
       self.selenium_driver.get(self.url)
 
 
-      
+
     counter = 0
     while counter<timeout:
       output = self._check_status()
@@ -339,9 +339,9 @@ class MolstarViewer(ModelViewer):
 
   def send_command(self, cmds,callback=None,queue=False,wrap_async=True,sync=False):
     """
-    This function takes a list of commands or a single command. 
-    Each command is a string of Javascript 
-    code that will be executed. 
+    This function takes a list of commands or a single command.
+    Each command is a string of Javascript
+    code that will be executed.
     """
     # print("="*79)
     # print(f"Molstar plugin command: (connected={self._connected})")
@@ -379,7 +379,7 @@ class MolstarViewer(ModelViewer):
     else:
       web_view = None
     self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
-  
+
   # ---------------------------------------------------------------------------
   # Models
 
@@ -409,7 +409,7 @@ class MolstarViewer(ModelViewer):
       ref_id = 'null'
     if label is None:
       label = 'model'
-  
+
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
     self.send_command(command,callback=callback,queue=queue)
 
@@ -419,7 +419,7 @@ class MolstarViewer(ModelViewer):
     Load a model directly from file. Note if using upstream gui, it will not automatically be aware.
     """
     filename = str(filename)
-    
+
     with open(filename,"r") as fh:
       contents = fh.read()
     self.load_model_from_string(contents,format=format,label=label,ref_id=ref_id,callback=callback)
@@ -439,19 +439,19 @@ class MolstarViewer(ModelViewer):
     assert volume_id is not None, "At this state, maps must already have a ref id in the volume streamer"
     assert model_id is not None, "Maps cannot be loaded without an accompanying model"
     url_server =self.volume_streamer.url
-    
+
     js_str = f"""
     {self.plugin_prefix}.volumeServerURL = '{url_server}';
     await {self.plugin_prefix}.phenix.loadMap('{model_id}','{volume_id}');
     """
     return js_str
-  
+
   def load_map(self,filename,volume_id,model_id):
     """
     Load a map from disk.
     """
     filename = str(filename)
-    
+
     self.volume_streamer.pack_volume_path(volume_path=filename,volume_id=volume_id)
     js_str = self._load_map_build_js(volume_id=volume_id,model_id=model_id)
     self.send_command(js_str)
@@ -564,7 +564,7 @@ class MolstarViewer(ModelViewer):
 
   def hide_query(self,model_id: str, query_json: str, representation_name: str):
     self.transparency_query(model_id=model_id, query_json=query_json, representation_name=representation_name,value=1.0)
-  
+
 
   # Transparency for model/selection
 

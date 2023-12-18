@@ -17,7 +17,7 @@ class EditableLabel(QWidget):
     self.layout = QVBoxLayout()
     # self.layout.setAlignment(Qt.AlignLeft)
     # self.layout.setContentsMargins(0, 0, 0, 0)
-    
+
     #self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.setMinimumHeight(self.parent_explicit.height())
     self.layout.setContentsMargins(0,0,0,10) # left, top, right, bottom
@@ -77,7 +77,7 @@ class EditableLabel(QWidget):
 #     self.text = text
 
 #     self.layout = QVBoxLayout()
-   
+
 
 #     self.setLayout(self.layout)
 

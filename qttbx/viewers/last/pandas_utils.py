@@ -27,13 +27,13 @@ def sel_str_from_atom(atom):
   "resseq":lambda atom: atom.parent().parent().resseq_as_int(),
   "resname":lambda atom: atom.parent().parent().unique_resnames()[0],
   "name":lambda atom: atom.name.strip()}
-  
+
   sel_string = " and ".join([f"{key} {func(atom)}"for key,func in func_mapper.items()])
   return sel_string
 
 def cctbx_atoms_to_df(atoms):
   # For example: atoms = model.get_atoms()
-  
+
   # values composition
   func_mapper = {
                         #"model_id", # model
@@ -54,17 +54,17 @@ def cctbx_atoms_to_df(atoms):
     for key,func in func_mapper.items():
       data[key].append(func(atom))
 
-      
+
   # values non-composition
   xyz = atoms.extract_xyz().as_numpy_array()
   data["x"] = xyz[:,0]
   data["y"] = xyz[:,1]
   data["z"] = xyz[:,2]
-  
-    
+
+
   #assert len(set([len(e) for e in data["comp_id"]]))==1, "Residue groups exist with different resnames"
   #data["comp_id"] = [e[0] for e in data["comp_id"]]
-  df_atoms = pd.DataFrame(data,index=list(range(len(atoms))))      
+  df_atoms = pd.DataFrame(data,index=list(range(len(atoms))))
   df_atoms = df_atoms.astype({"id":"int",
                               "asym_id":"str",
                               "comp_id":"str",
@@ -74,7 +74,7 @@ def cctbx_atoms_to_df(atoms):
                               "alt_id":"str"})
   return df_atoms
 
-  
+
 def get_df_atoms(model):
   # out = io.StringIO()
   # print(model.model_as_mmcif(),file=out)
@@ -136,9 +136,9 @@ def nested_dict_to_pandas(d):
       new_d[key] = value
   return new_d
 
-  
+
 def nest_dict(flat_dict):
-    # take a flat dictionary with implicit nesting 
+    # take a flat dictionary with implicit nesting
     # using dot syntax (like iotbx.cif) and make nesting explicit
     # It assumes a single head key
     head_keys = [key for key in flat_dict.keys() if "comp" not in key]
@@ -175,7 +175,7 @@ def find_paths(d, path=None):
         else:
             paths.append(new_path)
     return paths
-  
+
 def resolve_value(d, keys):
     for key in keys:
         if isinstance(d, dict) and key in d:
@@ -183,8 +183,8 @@ def resolve_value(d, keys):
         else:
             raise KeyError('Invalid key: {}'.format(key))
     return d
-  
-  
+
+
 def merge_dicts(dict1, dict2):
     # Recursively merge the dictionaries
     merged = {}
@@ -199,7 +199,7 @@ def merge_dicts(dict1, dict2):
         else:
             merged[key] = dict2[key]
     return merged
-  
+
 def set_value_at_nested_key(dictionary, keys, value):
     # Define the helper function to update the nested value
     def update_nested_value(d, key):
@@ -209,8 +209,8 @@ def set_value_at_nested_key(dictionary, keys, value):
 
     # Use reduce to traverse the dictionary hierarchy and set the value
     reduce(update_nested_value, keys[:-1], dictionary)[keys[-1]] = value
-    
-    
+
+
 def read_cif_file(fileinp,method="pdbe",name="default"):
   assert method in ["lastcif","pdbe","iotbx"]
   if method == "iotbx":
@@ -240,7 +240,7 @@ def read_cif_file(fileinp,method="pdbe",name="default"):
         lines = fh.readlines()
 
         return read_cif_lines(lines)
-    
+
 def split_and_quote(line):
   """
   This is a method to preserve quotes when splitting string by whitespace.
@@ -254,7 +254,7 @@ def split_and_quote(line):
     return split_line
   else:
     return shlex.split(line)
-  
+
 def split_with_quotes(line):
   """
   This is a method to preserve quotes when splitting string by whitespace.
@@ -280,7 +280,7 @@ def split_with_quotes(line):
         parts.append(current_word)
     return parts
   else:
-    
+
     return line.split()
 
 def read_cif_lines(lines):
@@ -299,8 +299,8 @@ def read_cif_lines(lines):
   for i,line in enumerate(lines):
       if debug_stop:
         continue
-      
-      
+
+
       line = line.replace("\n","").lstrip()
       whitespace_index = line.find(" ")
       if len(line)>0 and line[:4]=="data":
@@ -314,7 +314,7 @@ def read_cif_lines(lines):
         else:
           keys = line
           value = ""
-         
+
         value = value.strip()
         # if len(value)>2:
         #   if value[0]=="'" and value[-1]=="'":
@@ -325,7 +325,7 @@ def read_cif_lines(lines):
           building_d[current_data_key] = merge_dicts(building_d[current_data_key],nested_d)
         else:
           loop_keys.append(key_split)
-      
+
       elif len(line)>0 and line[:4]== "loop":
         loop_start = i
         in_loop = True
@@ -336,10 +336,10 @@ def read_cif_lines(lines):
             loop_data_start = i
           elif (len(strip) == 0 or strip == "#" or i==lines_len):
             if i==lines_len:
-              i = i+1            
+              i = i+1
             loop_data = list(zip_longest(*[split_with_quotes(line) for line in lines[loop_data_start:i]]))
-        
-      
+
+
             loop_data = [list(e) for e in loop_data]
             loop_d = {"line_start":loop_start,
                          "line_data_start":loop_data_start,
@@ -361,13 +361,13 @@ def read_cif_lines(lines):
   # load data into dicts
   loop_dicts = []
   for loop in loops:
-  
+
       keys = loop["loop_keys"]
       loop_d = {}
       for i,keys in enumerate(loop["loop_keys"]):
         set_value_at_nested_key(loop_d,keys,loop["loop_data"][i])
       loop_dicts.append(loop_d)
-      
+
       # add to building dict
       for d in loop_dicts:
           keys = list(d.keys())
@@ -395,7 +395,7 @@ def pad_with_spaces(cell,decimal_places=3,integer_padding=2,decimal_padding=2):
     else:
         # Convert the cell to a string and pad it to the right
         return str(cell).ljust(integer_padding + decimal_padding + 1)  # +1 for the decimal point
-      
+
 def df_to_cif_string(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
   lines = df_to_cif_lines(df,
                           decimal_places=decimal_places,
@@ -421,10 +421,10 @@ def df_to_cif_file(df,filename,decimal_places=3,integer_padding=4,decimal_paddin
     if suppress:
       return df_in, df_out
 def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
-  
+
   # replace python uncertain values with cif ones
   df.replace(to_replace=[None,""," "], value='.', inplace=True)
-  
+
   # convert to string and pad
   df = df.applymap(lambda x: pad_with_spaces(x,
                                              decimal_places=decimal_places,
@@ -442,12 +442,12 @@ def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,colu
 
     lines_body = [' '.join(map(str, row)) for row in df.values]
     lines = lines_header+lines_body
-    
+
   else: # not a loop
     kv_list = list(df.to_dict("list").items())
     column_prefix_keys = [".".join([column_prefix,key]) for key,values in kv_list]
     max_len = max([len(key) for key in column_prefix_keys])
-    
+
     lines = []
     for i,(key,values) in enumerate(kv_list):
       assert len(values)==1
@@ -466,7 +466,7 @@ def dict_to_cif_file(dict,filename,method="lastcif"):
     CifFileWriter("filename").write(dict)
   else:
     raise NotImplementedError("Only pdbe cif is fully functional")
-  
+
 
 def df_to_cif_roundtrip_check(df,filename,suppress=False):
     df = df.copy()
@@ -475,7 +475,7 @@ def df_to_cif_roundtrip_check(df,filename,suppress=False):
     #assert len(d.keys())==1, "Multiple head keys (data blocks) not supported"
     head_key = list(d.keys())[0]
     data = d[head_key]
-    
+
     assert len(data.keys())==1, "Multiple tables not supported for this function"
     table_key = list(data.keys())[0]
     d = {table_key+"."+key:value for key,value in d[head_key][table_key].items()}
@@ -502,10 +502,10 @@ def write_cif_file(d,filename,method="pdbe"):
   # # go from cif dict to list of dfs
   # assert len(list(td.keys()))==1, "Multiple data blocks not supported"
   # head_key = list(td.keys())[0]
-  
+
   # # find second to last keys
   # all_paths = find_paths(td.data)
-  
+
   # unique_paths = set()
   # for path in all_paths:
   #     if len(path)>1:
@@ -513,7 +513,7 @@ def write_cif_file(d,filename,method="pdbe"):
   #     else:
   #       p = path
   #     unique_paths.add(tuple(p))
-  
+
   # dicts = {p[-1]:resolve_value(td.data,p) for p in unique_paths}
   # dfs = {}
   # # check for scaler values and make dfs
@@ -529,11 +529,11 @@ def write_cif_file(d,filename,method="pdbe"):
   #         else:
   #             df = pd.DataFrame(d)
   #         dfs[k] = df
-  
+
   # # # write to disk
   # cif_lines_all = ["data_"+head_key]
   # for key,df in dfs.items():
-  
+
   #     cif_lines = df_to_cif_lines(df,column_prefix=key,
   #                                 decimal_places=3,
   #                                 integer_padding=2,

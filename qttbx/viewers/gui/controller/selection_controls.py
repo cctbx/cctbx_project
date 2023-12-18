@@ -22,7 +22,7 @@ class SelectionControlsController(Controller):
   @property
   def viewer(self):
     return self.parent
-  
+
   def clear_viewer(self):
     self.parent.clear_viewer("Clearing the viewer.")
 
@@ -51,12 +51,12 @@ class SelectionControlsController(Controller):
     # selection button was clicked
     self.viewer.toggle_selection_mode(True)
     self.execute_selection()
-  
+
   @Slot()
   def execute_selection(self):
     """
     This is a selection from the text box
-    """    
+    """
     text = self.view.selection_edit.text()
     if text:
       try:
@@ -77,8 +77,8 @@ class SelectionControlsController(Controller):
       query = self.state.mol.atom_sites.select_as_query(sel_str)
       return query
 
-  
-  
+
+
   def save_text_to_history(self):
     text = self.view.selection_edit.text()
     if text:
@@ -98,7 +98,7 @@ class SelectionControlsController(Controller):
     This is when the 'add selection'
     """
     self.viewer.poll_selection(callback=self._add_selection)
-    
+
   def _add_selection(self,query_dict):
     assert len(query_dict)==1, "Multi structure queries not yet supported"
     ref_id = list(query_dict.keys())[0]
@@ -113,5 +113,3 @@ class SelectionControlsController(Controller):
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
       print("Skipping add selection due to empty selection")
-      
-

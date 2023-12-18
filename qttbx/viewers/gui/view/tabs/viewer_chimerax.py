@@ -23,7 +23,7 @@ class ChimeraXTabView(GUITab):
 
     spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
     self.layout.addSpacerItem(spacer)
-    
+
     # Label
     self.label = QLabel("Executable path", self)
     self.layout.addWidget(self.label)
@@ -36,8 +36,7 @@ class ChimeraXTabView(GUITab):
     self.button_start = QPushButton("Start ChimeraX")
     self.button_start.setMaximumWidth(128)
     self.layout.addWidget(self.button_start)
-    
+
 
     self.selection_controls = SelectionControlsView()
     self.layout.addWidget(self.selection_controls)
-

@@ -39,11 +39,11 @@ class ViewerChoiceDialog(QDialog):
         self.initUI()
 
     def initUI(self):
-        self.setMinimumSize(QSize(200, 100)) 
+        self.setMinimumSize(QSize(200, 100))
 
 
         layout = QVBoxLayout()
-        
+
 
         # Buttons for choices
         btnOption1 = QPushButton("Molstar", self)

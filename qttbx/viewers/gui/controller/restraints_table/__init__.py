@@ -23,7 +23,7 @@ class RestraintsTableTopTabController(Controller):
 
     for widget in self.view.widgets:
       widget.process_button.clicked.connect(self.process_model)
-    
+
     # Signals
     self.state.signals.restraints_change.connect(self.handle_restraints_change)
 
@@ -55,8 +55,8 @@ class RestraintsTableTopTabController(Controller):
         restraints_ref = RestraintsRef.from_model_ref(self.state.active_model_ref)
         ref.restraints = restraints_ref
         self.state.signals.restraints_change.emit(restraints_ref)
-        
-        
+
+
 
   def _hide_header(self):
     for widget in self.view.widgets:
@@ -84,5 +84,3 @@ class RestraintsTableTopTabController(Controller):
         widget.show()
     # Assuming the header layout should be inserted at position 0
     layout_parent.insertLayout(0, layout_child)
-
-    

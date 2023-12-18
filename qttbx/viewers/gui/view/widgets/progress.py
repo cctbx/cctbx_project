@@ -17,7 +17,7 @@ class CircularProgressIndicator(QDialog):
     self.setFixedSize(200, 200)
 
     layout = QVBoxLayout()
-    
+
     # Create QGraphicsView and QGraphicsScene
     self.view = QGraphicsView(self)
     self.scene = QGraphicsScene(self)
@@ -28,7 +28,7 @@ class CircularProgressIndicator(QDialog):
     self.svg_item = QGraphicsSvgItem(str(icon_path))
     self.svg_item.setTransformOriginPoint(self.svg_item.boundingRect().width()/2, self.svg_item.boundingRect().height()/2)
     self.scene.addItem(self.svg_item)
-    
+
     layout.addWidget(self.view)
 
     self.setLayout(layout)
@@ -44,7 +44,3 @@ class CircularProgressIndicator(QDialog):
     if self.angle == 360:
       self.angle = 0
     self.svg_item.setRotation(self.angle)
-
-
-
-

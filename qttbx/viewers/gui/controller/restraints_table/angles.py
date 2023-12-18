@@ -15,7 +15,7 @@ class AnglesTableTabController(Controller):
     self.state.signals.restraints_change.connect(self.update)
 
 
-  
+
   def update(self,restraint_ref):
     model = PandasTableModel(restraint_ref.dfs["angle"])
     self.view.table.setModel(model)
@@ -39,10 +39,9 @@ class AnglesTableTabController(Controller):
           self.state.active_selection_ref = ref
       else:
         print("no atoms returned as query")
-   
-    
+
+
   def on_mouse_released(self):
     selected = self.view.table.selectionModel().selection()
     deselected = QtCore.QItemSelection()
     self.on_selection_changed(selected, deselected)
-      

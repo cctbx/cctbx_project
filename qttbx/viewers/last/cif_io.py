@@ -19,10 +19,10 @@ except:
 Tools for working with cif files in the context of pandas dataframes
 
 The functions read_cif_file and write_cif_file do cif file io, and by default return nested
-dictionaries with pandas dataframes as values. There are three options for the cif backend, iotbx cif, 
+dictionaries with pandas dataframes as values. There are three options for the cif backend, iotbx cif,
 pdbecif, and a custom parser implemented here named "cifpd" which has only pandas for external dependencies.
 """
-  
+
 # Conversion functions
 def convert_dict_to_dataframes(d):
   """
@@ -44,9 +44,9 @@ def convert_dict_to_dataframes(d):
 
 def convert_dataframes_to_dict(obj):
   """
-  Convert a nested dict with pd.DataFrame leaves to 
+  Convert a nested dict with pd.DataFrame leaves to
   nested dict with list leaves
-  
+
   """
   if isinstance(obj, pd.DataFrame):
       # Convert DataFrame to a dictionary of lists
@@ -75,13 +75,13 @@ def convert_dataframes_to_iotbx_cif(dfs):
     for block_key, df in data_d.items():
       block = cif.model.block()
       assert isinstance(df,pd.DataFrame)
-      
+
       # Convert all elements to strings
       df_as_strings = df.applymap(str)
-      
+
       # Convert DataFrame to a list of lists (columns as lists of strings)
       list_of_columns = [df_as_strings[col].tolist() for col in df_as_strings.columns]
-  
+
       if len(df)>1:
         list_as_cctbx = []
         for l in list_of_columns:
@@ -89,7 +89,7 @@ def convert_dataframes_to_iotbx_cif(dfs):
           list_as_cctbx.append(l)
         loop = cif.model.loop()
         for i,column in enumerate(df.columns):
-          
+
           k = block_key+"."+column
           d = list_as_cctbx[i]
           loop.add_column(k,d)
@@ -99,7 +99,7 @@ def convert_dataframes_to_iotbx_cif(dfs):
         for column,value in zip(df.columns,data):
           c = block_key+"."+column
           block.add_data_item(c,value)
-  
+
       data_block.update(block)
     cif_out[data_key] = data_block
   return cif_out
@@ -110,7 +110,7 @@ def find_key_in_dict(d, target_key, counter=0, value=None):
   # search for a single key (like _atom_site) in a dict
   if not isinstance(d, dict):
     return counter, value
-  
+
   for key, val in d.items():
     if key == target_key:
       counter += 1
@@ -120,9 +120,9 @@ def find_key_in_dict(d, target_key, counter=0, value=None):
     elif isinstance(val, list):
       for item in val:
         counter, value = find_key_in_dict(item, target_key, counter, value)
-  
+
   return counter, value
-  
+
 
 
 def remove_iotbx_cif(d, condition=lambda x: isinstance(x, int) and x > 10, new_value=0):
@@ -134,7 +134,7 @@ def remove_iotbx_cif(d, condition=lambda x: isinstance(x, int) and x > 10, new_v
         else:
             if "iotbx.cif" in str(type(value)):
               new_dict[key] = dict(value)
-            else: 
+            else:
               new_dict[key] = value
     return new_dict
 
@@ -236,14 +236,14 @@ def check_for_semicolon(current_line_index, lines, used_semicolons):
     else:
         return None, used_semicolons
 
-      
+
 def open_loop(lines, line_index):
     loop_keys = []
     loop_data = []
     in_loop = True
     line_index += 1  # Move to the next line after "loop_"
     used_semicolons = []
-    
+
     while line_index < len(lines) and in_loop:
         line = lines[line_index]
         if len(line)>0:
@@ -252,16 +252,16 @@ def open_loop(lines, line_index):
           elif line and not line[0]=='_' and not line[0]=='#':
               parts = split_with_quotes(line)
               missing_parts = False
-              if len(parts)>len(loop_keys): 
+              if len(parts)>len(loop_keys):
                 assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
-              elif len(parts)<len(loop_keys): 
+              elif len(parts)<len(loop_keys):
                   # attempt to find missing parts
                   missing_parts = True
                   print("\nMissing parts at line:",line_index)
                   print(line)
                   print(len(parts),len(loop_keys))
                   print("\n")
-            
+
                   s, used_semicolons = check_for_semicolon(line_index,lines,used_semicolons)
                   if s is not None:
                     parts.append(s)
@@ -269,9 +269,9 @@ def open_loop(lines, line_index):
                   if len(parts)==len(loop_keys):
                     missing_parts = False
                     print("Found missing parts with semicolon search")
-                  elif len(parts)>len(loop_keys): 
+                  elif len(parts)>len(loop_keys):
                     assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
-                  elif len(parts)<len(loop_keys):  
+                  elif len(parts)<len(loop_keys):
                     # still not enough,  now check for non-semicolon next line continuation (only check one)
                     print("Checking next line continuation")
                     line = lines[line_index]
@@ -303,7 +303,7 @@ def add_single_entry(line,current_data_key,result):
   result[current_data_key][group_key][column_key] = value
   last_key = (current_data_key,group_key,column_key)
   return last_key
-  
+
 def close_loop(loop_keys, loop_data):
     result = {}
     group_key = loop_keys[0].split('.')[0] if loop_keys else ""
@@ -316,7 +316,7 @@ def close_loop(loop_keys, loop_data):
 
 def parse_cifpd(content):
     """
-    The entry function to parse cif string contents. 
+    The entry function to parse cif string contents.
     """
     lines = [line.strip() for line in content.splitlines()]
     result = {}
@@ -347,7 +347,7 @@ def parse_cifpd(content):
           multi_line_single_start = line_index
           line_index += 1
           continue
-      
+
         if line[:5] == "data_":
             current_data_key = line.replace("data_","")
             result[current_data_key] = {}
@@ -361,14 +361,14 @@ def parse_cifpd(content):
         else:
           # maybe line is value for previous key on a new line
           current_data_key, group_key, column_key = last_key
-          
+
           last_value= result[current_data_key][group_key][column_key]
           if last_value != "":
             print("IGNORED LINE: ",line)
           else:
             # assume value for previous key on a new line
             result[current_data_key][group_key][column_key] = split_with_quotes_regex(line)[0]
-          
+
         line_index += 1
 
     return result
@@ -403,7 +403,7 @@ def convert_column_types_based_on_first(df):
     return df
 
 
-  
+
 def quote_strings_with_spaces(df):
   # Iterate over columns
   for col in df.columns:
@@ -411,7 +411,7 @@ def quote_strings_with_spaces(df):
           # Add quotes to strings with spaces
           df[col] = df[col].apply(lambda x: f'"{x}"' if isinstance(x, str) and ' ' in x else x)
   return df
-  
+
 def format_dataframe_for_cif(df):
     # Determine padding for each column
     col_format = {}
@@ -434,10 +434,10 @@ def format_dataframe_for_cif(df):
 
 
 def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
-  
+
   # replace python uncertain values with cif ones
   df.replace(to_replace=[None,""," "], value='.', inplace=True)
-  
+
   if len(df)>1: #a loop
     lines_header = ["loop_"]
     for column in df.columns:
@@ -449,12 +449,12 @@ def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,colu
 
     lines_body = format_dataframe_for_cif(df).splitlines()
     lines = lines_header+lines_body
-    
+
   else: # not a loop
     kv_list = list(df.to_dict("list").items())
     column_prefix_keys = [".".join([column_prefix,key]) for key,values in kv_list]
     max_len = max([len(key) for key in column_prefix_keys])
-    
+
     lines = []
     for i,(key,values) in enumerate(kv_list):
       assert len(values)==1
@@ -476,7 +476,7 @@ def write_dataframes_to_cif_file(dataframe_dict,filename):
         df = convert_column_types_based_on_first(group_value)
         df = quote_strings_with_spaces(df)
         #df = group_value
-  
+
         #df = group_value.applymap(str)
         lines = df_to_cif_lines(df,column_prefix=group_key)
         lines_out+=lines
@@ -505,11 +505,11 @@ def read_cif_file(filename,method="pdbe",return_as="pandas"):
     d = convert_iotbx_cif_to_dict(model)
     if return_as == "dict":
       return d
-      
+
     if return_as == "pandas":
       dfs = convert_dict_to_dataframes(d)
     return dfs
-    
+
   elif method == "pdbe":
     d = MMCIF2Dict().parse(str(filename))
     d = clean_nested_dict(d)
@@ -526,7 +526,7 @@ def read_cif_file(filename,method="pdbe",return_as="pandas"):
   elif method == "cifpd":
     with open(filename,"r") as fh:
       content = fh.read()
-      
+
     d = parse_cifpd(content)
     if return_as == "dict":
       return d
@@ -547,9 +547,9 @@ def write_cif_file(inp,filename,inp_type="pandas",method="pdbe"):
       d = object
     elif inp_type == "iotbx":
       raise NotImplementedError
-      
+
     CifFileWriter(filename).write(d)
-    
+
   elif method == "iotbx":
     if inp_type == "iotbx":
       model = inp
@@ -573,7 +573,7 @@ def write_cif_file(inp,filename,inp_type="pandas",method="pdbe"):
       dfs = convert_dict_to_dataframes(d)
 
     write_dataframes_to_cif_file(dfs,filename)
-      
+
 # Testing tools
 
 def compare_nested_dataframe_dicts(dict1, dict2, parent_key=''):

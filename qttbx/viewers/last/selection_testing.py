@@ -9,7 +9,7 @@ except ImportError:
   def tqdm(iterable, *args, **kwargs):
     return iterable
 
-    
+
 # A fundamental concept here is that integer selections are NEVER trustworthy between objects.
 # One integer selection is likely to produce two different string selections for two objects.
 # When testing integer ranges between objects, go:
@@ -17,7 +17,7 @@ except ImportError:
 #     int_sel0 -> str_sel2
 #     df1 = obj1.select(str_sel1)
 #     df2 = obj2.select(str_sel2)
-#     
+#
 
 
 def generate_random_ranges(k, n_min, n_max, N_max):
@@ -65,7 +65,7 @@ def test_two_objects(obj1,obj2,sel_str):
   df2 = df2.drop(columns="id")
   df1 = df1.sort_values(by=list(df1.columns)).reset_index(drop=True)
   df2 = df2.sort_values(by=list(df2.columns)).reset_index(drop=True)
-  
+
   assert (df1==df2).all().all(), "A string selection returned different data for two objects"
 
 # Start

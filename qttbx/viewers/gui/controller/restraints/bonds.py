@@ -34,7 +34,7 @@ class BondListController(ScrollableListController):
         entry_controller = BondEntryController(parent=self,view=entry_view,ref=ref)
         entry_controller.view.active_toggle.is_checked = True
         entry_list.add_entry(entry_controller)
-          
+
 
 
 class BondTabController(Controller):

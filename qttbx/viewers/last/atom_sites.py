@@ -43,7 +43,7 @@ class AtomSites(pd.DataFrame):
     df = cctbx_atoms_to_df(atoms)
     df = AtomSites.insert_defaults_for_missing_columns(df,AtomSites._attrs_default_values)
     return cls(df,**kwargs)
-    
+
   _attrs_map_default = OrderedDict([
       ("asym_id",["auth_asym_id","label_asym_id","chain"]),
       ("seq_id",["auth_seq_id","label_seq_id","resseq"]),
@@ -56,12 +56,12 @@ class AtomSites(pd.DataFrame):
       ("z",["Cartn_z"]),
       ("occupancy",['occupancy','occ']),
       ("B_iso_or_equiv",['bfactor','b','B'])])
-  
+
   @staticmethod
   def map_core_attrs_to_columns(df, attrs_core_map):
     attrs_core = list(attrs_core_map.keys())
     mapping = {}  # Initialize the mapping dictionary
-  
+
     for attr in attrs_core:
       if attr in df.columns:
         # If the core attribute is already in the DataFrame columns, map it to itself
@@ -79,7 +79,7 @@ class AtomSites(pd.DataFrame):
             raise ValueError(f"For mapping: {attrs_core_map} Neither attribute '{attr}' nor its aliases are present in DataFrame columns: {list(df.columns)}")
         else:
           raise ValueError(f"For mapping: {attrs_core_map} Attribute '{attr}' and its aliases are not present in DataFrame columns: {list(df.columns)}")
-    
+
     return mapping
 
   _attrs_hierarchy_core_default = [
@@ -112,7 +112,7 @@ class AtomSites(pd.DataFrame):
       if attr not in df.columns:
         df[attr] = value
     return df
-    
+
   def __init__(self,data,*args,attrs_map=None, params={},attrs_hierarchy_core=None,**kwargs):
     if attrs_hierarchy_core is None:
       attrs_hierarchy_core = self._attrs_hierarchy_core_default
@@ -123,16 +123,16 @@ class AtomSites(pd.DataFrame):
       super().__init__(data, *args, **kwargs)
     # Custom attributes need to be defined differently to avoid pandas adding as columns
     # Use object.__setattr__ to safely set the custom attribute
-    
-    
+
+
     object.__setattr__(self,"params", params)
     object.__setattr__(self,"_default_str_format", "phenix")
-    
-    
+
+
     # First build a mapper between "core" attrs and column names ("original" attrs)
     if attrs_map is None:
       attrs_map = copy.deepcopy(self._attrs_map_default)
-  
+
     object.__setattr__(self,"attrs_map", self.map_core_attrs_to_columns(self,attrs_map))
     object.__setattr__(self,"attrs_core_map",{v:k for k,v in self.attrs_map.items()})
     object.__setattr__(self,"attrs_hierarchy_core", attrs_hierarchy_core)
@@ -142,12 +142,12 @@ class AtomSites(pd.DataFrame):
 
     # build hierarchy graph
     object.__setattr__(self, '_G', self._create_hierarchy_graph(self.attrs_hierarchy_core))
-    
+
     self._validate()
-    
+
   def _validate(self):
     assert len(set(self.core["id"].values)) == len(self), "The 'id' field must be unique for each atom"
-  
+
   @property
   def attrs_core(self):
     return list(self.attrs_core_map.keys())
@@ -155,17 +155,17 @@ class AtomSites(pd.DataFrame):
   def core(self):
     # set instance dataframes
     return self[self.attrs_core_map.keys()].rename(columns=self.attrs_core_map)
-  
+
   @property
   def model(self):
     assert "model" in self.params, "A mmtbx model was not used to initialize this instance"
     return self.params["model"]
-    
+
   @property
   def model(self):
     assert "filename" in self.params, "A filename was not provided for this instance"
     return self.params["filename"]
-    
+
   @property
   def G(self):
     # the networkx graph for the macromolecular hierarchy
@@ -176,42 +176,42 @@ class AtomSites(pd.DataFrame):
   def _create_hierarchy_graph(self,columns):
       df = self.core
       G = nx.DiGraph()
-    
+
       # Create root node
       root = "root"
       G.add_node(root, ids=[])
-    
+
       # Function to add IDs to a node and its ancestors
       def add_id_to_ancestors(G, node, id_value):
         G.nodes[node]['ids'].append(id_value)
         for parent in G.predecessors(node):
           add_id_to_ancestors(G, parent, id_value)
-    
+
       for row in df.itertuples(index=False):
         cur_node = root  # Start at the root for each row
         id_value = getattr(row, "id")
-    
+
         # Initialize a list of "*" values with the same length as "columns"
         cur_level_columns = ["*" for _ in columns]
-    
+
         for idx, col in enumerate(columns):
           parent_node = cur_node  # The current node becomes the parent
-    
+
           # Fill in the next value in "cur_level_columns"
           cur_level_columns[idx] = getattr(row, col)
-    
+
           # Create a new node for the current row and column
           cur_node = tuple(cur_level_columns.copy())  # Make a copy of the list and convert to tuple
-    
+
           # Add the node to the graph if it doesn't exist, then connect it to its parent
           if cur_node not in G:
             G.add_node(cur_node, ids=[])
             G.add_edge(parent_node, cur_node)
-    
+
           # Add the ID to the current node and its ancestors
           add_id_to_ancestors(G, cur_node, id_value)
       return G
-    
+
   ###############################
   #### Starting Selection Fresh #
   ###############################
@@ -226,19 +226,19 @@ class AtomSites(pd.DataFrame):
 
   def _convert_query_to_sites(self,query):
     """
-    Convert a SelectionQuery object to a 
+    Convert a SelectionQuery object to a
     subset sites data frame (This class)
     """
     # get a pandas query
     return self._pandas_query_to_sites(query.pandas_query)
 
 
-  
+
 
   def _pandas_query_to_sites(self,pandas_query):
     # rename columns
     self.rename(columns=self.attrs_core_map, inplace=True)
-    
+
     # perform query
     if copy:
       # returns a copy
@@ -246,13 +246,13 @@ class AtomSites(pd.DataFrame):
       # must rename both
       self.rename(columns=self.attrs_map, inplace=True)
       df_sel.rename(columns=self.attrs_map, inplace=True)
-      
+
     else:
       # returns a subset
       df_sel = self.query(pandas_query)
       # rename back (only one necessary)
       self.rename(columns=self.attrs_map, inplace=True)
-    
+
     # return new selected df
     return self.__class__(df_sel,attrs_map=self.attrs_map)
 
@@ -317,11 +317,11 @@ class AtomSites(pd.DataFrame):
     # parse to ast
     parser = CommonSelectionParser(sel_str_common, debug=False)
     parser.parse()
-    
+
     # interpret ast as pandas selection query
     query = parser.to_pandas_query()
     #print("Pandas query:")
-    #print(query)    
+    #print(query)
     return self._pandas_query_to_sites(query)
 
   # ## Public selection methods
@@ -385,7 +385,7 @@ class AtomSites(pd.DataFrame):
   #     if not isinstance(arg,self.__class__):
   #       arg = self.__class__(arg,attrs_map=self.attrs_map)
   #     return arg
-  
+
   # def _select_from_query_obj(self,query):
   #   assert isinstance(query,SelectionQuery), "Provide SelectionQuery object"
 
@@ -402,13 +402,13 @@ class AtomSites(pd.DataFrame):
   #   query = SelectionQuery(selections=selections)
   #   return query
 
-                         
+
   # def _select_from_phenix_str(self,sel_str_phenix,copy=False):
   #   # convert to common selection string (very similar)
   #   converter = SelConverterPhenix()
   #   sel_str_common = converter.convert_phenix_to_common(sel_str_phenix)
   #   return self._select_from_common_str(sel_str_common,copy=False)
-    
+
   # def _select_from_common_str(self,sel_str_common,copy=False):
 
   #   # remove 'sel' statements
@@ -420,13 +420,13 @@ class AtomSites(pd.DataFrame):
   #   # parse to ast
   #   parser = CommonSelectionParser(sel_str_common, debug=False)
   #   parser.parse()
-    
+
   #   # interpret ast as pandas selection query
   #   query = parser.to_pandas_query()
-    
+
   #   # rename columns
   #   self.rename(columns=self.attrs_core_map, inplace=True)
-    
+
   #   # perform query
   #   if copy:
   #     # returns a copy
@@ -434,13 +434,13 @@ class AtomSites(pd.DataFrame):
   #     # must rename both
   #     self.rename(columns=self.attrs_map, inplace=True)
   #     df_sel.rename(columns=self.attrs_map, inplace=True)
-      
+
   #   else:
   #     # returns a subset
   #     df_sel = self.query(query)
   #     # rename back (only one necessary)
   #     self.rename(columns=self.attrs_map, inplace=True)
-    
+
   #   # return new selected df
   #   return self.__class__(df_sel,attrs_map=self.attrs_map)
 
@@ -466,7 +466,7 @@ class AtomSites(pd.DataFrame):
 
   #   # simplify the df
   #   df_simple_sel = self._simplify_selection(df_sel) #TODO: defined?
-    
+
   #   # make a final additive statement of rows in final_df
   #   sel_str_simple = form_simple_str_common(df_simple_sel)
   #   return sel_str_simple
@@ -484,35 +484,35 @@ class AtomSites(pd.DataFrame):
   #   if not isinstance(selection,(np.ndarray,list)):
   #     # assume cctbx object
   #     selection = selection.as_numpy_array()
-    
+
   #   # check type
   #   e = selection[0]
   #   if not isinstance(e,bool):
   #     selection_bool = np.full(len(self),False)
   #     selection_bool[selection] = True
   #     selection = selection_bool
-    
+
   #   # select atoms using phenix selection
   #   df_sel = self.core[selection]
   #   return df_sel
 
-  
+
 
   # def _select_simple_from_selection(self,selection):
   #   df_sel = self._select_from_selection(selection)
-    
+
   #   # Simplify selected atoms to highest level nodes
   #   simplest_nodes = find_simplest_selected_nodes(self.G,df_sel.index.values)
 
   #   # Merge residue ranges
   #   df_simple_sel = group_seq_range(simplest_nodes,columns=self.attrs_hierarchy_core)
   #   return df_simple_sel
-  
+
   # def _str_common_from_selection(self,selection):
   #   df_simple = self._select_simple_from_selection(selection)
   #   str_simple = form_simple_str_common(df_simple)
   #   return str_simple
-    
+
   # def _str_phenix_from_selection(self,selection):
 
   #   str_simple_common = self._str_common_from_selection(selection)
@@ -540,9 +540,3 @@ class AtomSites(pd.DataFrame):
 
   #   query_string = " or ".join(query_parts)
   #   return query_string
-    
-
-
-
-
-    

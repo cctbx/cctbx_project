@@ -14,8 +14,8 @@ class SitesTabView(GUITab):
     self.table = FastTableView()
     #self.tab2_content.clicked.connect(self.on_atom_select)
     self.table.setSelectionBehavior(QTableView.SelectRows)
-    
-  
+
+
     layout.addWidget(self.table)
     self.setLayout(layout)
 
@@ -23,6 +23,3 @@ class SitesTabView(GUITab):
   def on_first_visit(self):
     #msg = QMessageBox.information(self,"Notice", "The atom sites tab is currently very slow for large structures.")
     pass
-
-
-  

@@ -3,7 +3,7 @@ import json
 
 
 class CommonSelectionParser:
-  
+
   @staticmethod
   def remove_whitespace_around_colon(s):
     return re.sub(r'\s*:\s*', ':', s)
@@ -29,13 +29,13 @@ class CommonSelectionParser:
         break
     return expr[start:end+1]
 
-  
+
   def __init__(self, input_str, debug=False):
     self.debug = debug
     # preprocessing
     input_str = self.remove_whitespace_around_colon(input_str)
     input_str = self.remove_top_level_parentheses(input_str)
-    
+
     self.input_str = input_str
 
     if self.debug:
@@ -46,7 +46,7 @@ class CommonSelectionParser:
       print(self.tokens)
       print()
       print(f"Regularized string: {self.regular_str}")
-    
+
 
     # instance vars
     self.ast = None
@@ -67,7 +67,7 @@ class CommonSelectionParser:
       ('COLON', r':'),
       ('WHITESPACE', r'\s+'),
     ]
-  
+
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     tokens = []
     for mo in re.finditer(tok_regex, input_str):
@@ -76,27 +76,27 @@ class CommonSelectionParser:
       token = {"type":type,
                "value": value}
       tokens.append(token)
-  
+
     # Regularize
-  
+
     # Test round trip
     reconstructed = ""
     for token in tokens:
       reconstructed+=token["value"]
     assert input_str == reconstructed, f"Input str and reconstructed str do not match\n{input_str}\n{reconstructed}"
-  
-      
+
+
     # Check for whitespace in values
     for token in tokens:
       if token["type"] != "WHITESPACE":
         assert len(token["value"]) == len(token["value"].strip()), f"Token value contains whitespace: {token}"
-  
+
     # Remove whitespace tokens
     tokens = [token for token in tokens if token["type"] != "WHITESPACE"]
-  
+
     # Create regularized string
     regular_string = " ".join([token["value"] for token in tokens])
-        
+
     return tokens, regular_string
 
   def consume(self):
@@ -107,7 +107,7 @@ class CommonSelectionParser:
         print(f"Consumed: {self.current_token}")
     else:
       self.current_token = None
-  
+
   def parse(self):
     # Entry point for parsing
     if self.debug:
@@ -128,7 +128,7 @@ class CommonSelectionParser:
       print(reconstructed_regular_str)
     assert self.regular_str == reconstructed_regular_str, "Lexer + Parsing failed round trip check"
     self.ast = ast
-  
+
   def parse_expression(self):
       # Initialize node with the first logical core expression
       node = self.parse_logical_core()
@@ -153,7 +153,7 @@ class CommonSelectionParser:
       }
     else:  # Otherwise, parse keyword or value
       return self.parse_keyword_or_value()
-  
+
   def handle_logical_combinations(self, node, token):
     # Handle 'and not' combination or just AND/OR
     if token['value'] == 'and' and self.current_token and self.current_token['value'] == 'not':
@@ -176,14 +176,14 @@ class CommonSelectionParser:
         'operator': token,
         'right': self.parse_expression()
       }
-  
+
   def parse_keyword_or_value(self):
     # choose between keyword and value for the initial token
     if self.current_token["type"] == 'KEYWORD':
       return self.parse_keyword()
     else:
       return self.parse_value()
-  
+
   def parse_keyword(self):
     # handle keyword and what follows it
     token = self.current_token
@@ -192,7 +192,7 @@ class CommonSelectionParser:
       return self.handle_keyword_with_operator(token)
     else:
       return self.handle_keyword_with_value(token)
-  
+
   def handle_keyword_with_operator(self, keyword_token):
     # Handle keyword followed by an operator
     operator_token = self.current_token
@@ -208,7 +208,7 @@ class CommonSelectionParser:
       return node
     else:
       raise Exception("Expected integer after operator")
-  
+
   def handle_keyword_with_value(self, keyword_token):
     # Handle keyword followed by a value
     if self.current_token["type"] in ["ID", "INT", "RANGE", "WILDCARD"]:
@@ -217,7 +217,7 @@ class CommonSelectionParser:
       return node
     else:
       raise Exception("Expected value or operator after keyword")
-  
+
   def parse_value(self):
     # Handle value types like ID, INT, etc.
     token = self.current_token
@@ -281,11 +281,11 @@ class CommonSelectionParser:
   #     node = self.parse_expression()
   #   else:
   #     node = self.parse_keyword()  # Otherwise start with keyword or value
-    
+
   #   while self.current_token and self.current_token["type"] == 'LOGICAL':
   #     token = self.current_token
   #     self.consume()
-      
+
   #     # Check for the 'and not' combination
   #     if token['value'] == 'and' and self.current_token and self.current_token['value'] == 'not':
   #       not_token = self.current_token
@@ -308,7 +308,7 @@ class CommonSelectionParser:
   #         'operator': token,
   #         'right': self.parse_expression()
   #       }
-        
+
   #   return node
 
 
@@ -358,21 +358,21 @@ class CommonSelectionParser:
       operator_token = [{'type': 'LOGICAL', 'value': node['operator']['value']}]
       if node['left']['type'] == 'BinaryLogical' and node['left']['operator']['value'] != node['operator']['value']:
         left_tokens = [{'type': 'OPEN_PAREN', 'value': '('}] + left_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
-  
+
       if node['right']['type'] == 'BinaryLogical' and node['right']['operator']['value'] != node['operator']['value']:
         right_tokens = [{'type': 'OPEN_PAREN', 'value': '('}] + right_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
       return left_tokens + operator_token + right_tokens
-    
+
     elif node['type'] == 'UnaryLogical':
       operator_token = [{'type': 'LOGICAL', 'value': node['operator']['value']}]
       operand_tokens = self.unparse_ast(node['operand'])
       return operator_token + operand_tokens
-    
+
     elif node['type'] == 'Keyword':
       keyword_token = [{'type': 'KEYWORD', 'value': node['keyword']['value']}]
       value_token = [{'type': node['value']['type'], 'value': node['value']['value']}]
       return keyword_token + value_token
-    
+
     elif node['type'] == 'KeywordComparison':
       keyword_token = [{'type': 'KEYWORD', 'value': node['keyword']['value']}]
       operator_token = [{'type': 'OPERATOR', 'value': node['operator']['value']}]
@@ -382,8 +382,8 @@ class CommonSelectionParser:
     elif node['type'] == 'ParenthesizedExpression':
       operand_tokens = self.unparse_ast(node['operand'])
       return [{'type': 'OPEN_PAREN', 'value': '('}] + operand_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
-    
-    
+
+
     else:
       raise Exception(f"Unrecognized node type: {node['type']}")
 
@@ -409,18 +409,18 @@ class CommonSelectionParser:
     return query
 
   def _to_pandas_query(self,ast):
-    
+
     # handle the BinaryLogical nodes
     if ast['type'] == 'BinaryLogical':
       left = self._to_pandas_query(ast['left'])
       right = self._to_pandas_query(ast['right'])
       operator = ast['operator']['value']
-      
+
       if operator == 'and':
         operator = '&'
       elif operator == 'or':
         operator = '|'
-      
+
       return f"({left} {operator} {right})"
 
     # handle the KeywordComparison nodes
@@ -454,10 +454,10 @@ class CommonSelectionParser:
     elif ast['type'] == 'UnaryLogical':
       operator = ast['operator']['value']
       operand = self._to_pandas_query(ast['operand'])
-      
+
       if operator == 'not':
         return f"~({operand})"
-      
+
     # handle Value nodes
     elif ast['type'] == 'Value':
       value = ast['value']['value']

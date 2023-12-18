@@ -29,14 +29,14 @@ class ColorThemeButton(QWidget):
       action = QAction(key, self, checkable=True)
       self.menu.addAction(action)
       action.triggered.connect(self.option_selected)
-      self.actions.append(action)    
+      self.actions.append(action)
 
     self.button.clicked.connect(self.show_menu)
 
     layout = QVBoxLayout(self)
     layout.setContentsMargins(0,0,0,0)
     layout.addWidget(self.button)
-  
+
   @property
   def state(self):
     return self.parent_explicit.state

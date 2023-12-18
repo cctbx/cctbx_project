@@ -82,7 +82,7 @@ class ModelLikeEntryController(ScrollEntryController):
       subprocess.run(['open', path])
     elif platform.system() == 'Linux':
       subprocess.run(['xdg-open', path])
-  
+
   def show_color_dialog(self):
     color_dialog = QColorDialog(self.view)
     button_pos = self.view.button_color.mapToGlobal(self.view.button_color.rect().topLeft())

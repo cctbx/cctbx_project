@@ -13,14 +13,14 @@ def convert_iseq_to_i(df):
   Takes a dataframe and looks for i,j,k,l _seq columns
   If found, then i,j,k,l columns will be added
   """
-  
-  
+
+
   df.rename(columns={"i_seq":"i",
                      "j_seq":"j",
                      "k_seq":"k",
                      "l_seq":"l",
                     },inplace=True)
-  
+
   return df
 
 def cell_convert_cctbx(cell):
@@ -29,7 +29,7 @@ def cell_convert_cctbx(cell):
     return list(cell)
   else:
     return cell
-      
+
 def obj_to_dict(obj):
     # Returns an objects non-function and non-hidden attributes as a dictionary
     d = {}
@@ -39,7 +39,7 @@ def obj_to_dict(obj):
             if not callable(value):# Ignore functions
                 d[attr]=value
     return d
-    
+
 def get_restraint_df(model,restraint_type="bond"):
     """
     Access the cctbx model's geometry restraints as pandas dataframes
@@ -48,7 +48,7 @@ def get_restraint_df(model,restraint_type="bond"):
     grm = model.get_restraints_manager()
     assert grm is not None, "Process model to build restraints manager first."
     grm = grm.geometry
-    
+
     flags=None
     sites_cart=model.get_sites_cart()
     site_labels=None
@@ -59,24 +59,24 @@ def get_restraint_df(model,restraint_type="bond"):
         simple,asu = pair_proxies.bond_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
 
-        
+
     elif restraint_type=="nonbonded":
         pair_proxies = grm.pair_proxies(flags=flags, sites_cart=sites_cart)
         keys = ["labels", "i_seq", "j_seq", "delta", "vdw_distance", "sym_op_j", "rt_mx"]
         simple,asu = pair_proxies.nonbonded_proxies.get_sorted("delta",model.get_sites_cart())
-        records = [dict(zip(keys,info)) for info in simple if info[-1]==None] 
+        records = [dict(zip(keys,info)) for info in simple if info[-1]==None]
         # check for not simple, for some reason simple,asu not working like others
-        
+
     elif restraint_type == "angle":
         keys = ["i_seqs", "angle_ideal", "angle_model", "delta", "sigma", "weight", "residual"]
         simple,asu =  grm.angle_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
-        
+
     elif restraint_type == "dihedral":
         keys = ["i_seqs", "angle_ideal", "angle_model", "delta", "period", "sigma", "weight", "residual"]
         simple,asu =  grm.dihedral_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
-        
+
     elif restraint_type == "chirality":
         keys = ["i_seqs","both_signs","ideal","model","delta","sigma","weight","residual"]
         simple,asu =  grm.chirality_proxies.get_sorted("delta",model.get_sites_cart())
@@ -95,8 +95,8 @@ def get_restraint_df(model,restraint_type="bond"):
         for proxy in proxies:
             record = obj_to_dict(proxy)
             records.append(record)
-    
-    
+
+
     df = pd.DataFrame.from_records(records)
     df = df.applymap(cell_convert_cctbx)
 
@@ -106,7 +106,7 @@ def get_restraint_df(model,restraint_type="bond"):
       indices = "ijklm"
       to_merge = []
       for i in indices:
-        name = f"{i}_seq" 
+        name = f"{i}_seq"
         if name in df.columns:
           to_merge.append(name)
       if len(to_merge)>0:
@@ -140,7 +140,7 @@ def get_restraint_dfs_from_model(model,lazy_build=False):
   else:
     if model.get_restraints_manager() is None:
       model.process(make_restraints=True)
-      
+
   # these are the key,values for supported restraints
   restraint_dfs = {
       restraint_type:get_restraint_df(model,restraint_type=restraint_type)
@@ -192,11 +192,11 @@ def model_to_df(model):
   data["x"] = xyz[:,0]
   data["y"] = xyz[:,1]
   data["z"] = xyz[:,2]
-  
-    
+
+
   assert len(set([len(e) for e in data["comp_id"]]))==1, "Residue groups exist with different resnames"
   data["comp_id"] = [e[0] for e in data["comp_id"]]
-  df_atoms = pd.DataFrame(data,index=list(range(len(atoms))))      
+  df_atoms = pd.DataFrame(data,index=list(range(len(atoms))))
   df_atoms = df_atoms.astype({"id":"int",
                               "asym_id":"str",
                               "comp_id":"str",

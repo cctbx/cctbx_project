@@ -28,7 +28,7 @@ class ViewerGUIView(QMainWindow):
     else:
       self.viewer_choice = 'molstar'
     self._has_child_window = False
-    
+
 
     # set title
     self.setWindowTitle("Phenix Viewer")
@@ -54,10 +54,10 @@ class ViewerGUIView(QMainWindow):
     else:
       show_tab = []
 
-    
+
 
     self.tabs = GUITabWidget(parent=self)
-    self.tabs.tabBar().childSignal.connect(self.child_window_handler) 
+    self.tabs.tabBar().childSignal.connect(self.child_window_handler)
     self.setCentralWidget(self.tabs)
 
     # Required tabs
@@ -75,7 +75,7 @@ class ViewerGUIView(QMainWindow):
 
     self.data_tab_view = DataTabView(parent=self)
     self.tabs.addTab(self.data_tab_view, "Files")
-    
+
     # Optional tabs
     if 'all' in show_tab or 'atoms' in show_tab:
       self.sites_tab_view = SitesTabView(parent=self)
@@ -118,7 +118,7 @@ class ViewerGUIView(QMainWindow):
         print("Console tab not included. Install qtconsole")
         raise
 
-  
+
   def child_window_handler(self,event):
     self._has_child_window = True
     pass #TODO: Setting window to half of screen causes it to freeze. Why?
@@ -143,5 +143,3 @@ class ViewerGUIView(QMainWindow):
   def closeEvent(self, event):
     self.signal_close.emit()
     event.accept()
-
-

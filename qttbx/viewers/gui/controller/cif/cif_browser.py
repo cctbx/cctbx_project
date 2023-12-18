@@ -35,7 +35,7 @@ class CifBrowserController(Controller):
   @df_dict.setter
   def df_dict(self,value):
     self._df_dict = value
-  
+
   @property
   def cif_ref(self):
     return self._cif_ref
@@ -52,11 +52,11 @@ class CifBrowserController(Controller):
 
     if filepath:
         print(f"File selected for saving: {filepath}")
-        
+
         write_cif_file(self.df_dict,str(Path(filepath)),inp_type='pandas',method='iotbx')
 
-    
-    
+
+
 
   def on_data_changed(self):
     notification = QLabel("** Data has been manually changed **")
@@ -73,7 +73,7 @@ class CifBrowserController(Controller):
       # trigger update_data
       self.update_data(0,data_key=list(self.df_dict.keys())[0])
       #self.view.combobox_data.setCurrentIndex(0)
-      
+
       # switch to browser tab
       self.parent.view.setCurrentIndex(1)
     else:
@@ -93,15 +93,15 @@ class CifBrowserController(Controller):
         self.update_block(0,block_key=block_key)
         #self.view.combobox_block.setCurrentIndex(0)
 
-    
-    
+
+
   def update_block(self, index,data_key=None,block_key=None):
     # first delete old table
     if self.view.layout.count() > 0:
         # Get the last item in the layout
         last_item = self.view.layout.itemAt(self.view.layout.count() - 1)
         if isinstance(last_item.widget(),FastTableView):
-          
+
 
           # If the item is a widget, delete it
           widget = last_item.widget()
@@ -133,10 +133,10 @@ class CifBrowserController(Controller):
           self.table_model = PandasTableModel(df)
           self.table_model.dataChanged.connect(self.on_data_changed)
           self.view.table.setModel(self.table_model)
-          
 
 
-      
+
+
       # # Clear previous tabs
       # old_layout = self.tabs_container.layout()
       # if old_layout:

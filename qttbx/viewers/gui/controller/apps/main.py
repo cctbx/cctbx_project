@@ -25,7 +25,7 @@ class ViewerGUIController(Controller):
       self.viewer_choice = 'molstar'
 
 
-    
+
     # Main Level Components
 
     if params and params.show_tab:

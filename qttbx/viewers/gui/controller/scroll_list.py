@@ -3,7 +3,7 @@ from .controller import Controller
 class ScrollableListController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-  
+
     self.entries = [] # list of ScrollEntryControllers
 
   def update(self):

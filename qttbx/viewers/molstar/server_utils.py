@@ -21,7 +21,7 @@ class NodeHttpServer:
     self.process = None
     self.command_list = command+['--port',str(self.port)]
     self.command = ' '.join(self.command_list)
-    
+
 
   def find_open_port(self):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -71,7 +71,7 @@ class CustomHandler(http.server.SimpleHTTPRequestHandler):
 
 class HttpServerThread(QThread):
   stop_signal = Signal()
-  
+
   def __init__(self,ip='localhost',default_port=8080,check_free=False):
     self.ip = ip
     if check_free:
@@ -117,7 +117,3 @@ class HttpServerThread(QThread):
   def stop(self):
     print("Stopping HTTP Server...")
     self.is_running = False
-
-
-
-

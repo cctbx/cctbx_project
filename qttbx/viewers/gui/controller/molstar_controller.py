@@ -34,7 +34,7 @@ class SyncManager:
     self._sync_failure = False
     self._received_first_sync = False
 
-  
+
   @property
   def has_synced(self):
     return self._has_synced
@@ -105,7 +105,7 @@ class SyncManager:
             ref.external_ids[external_key] = external_id
             self.controller.state.external_loaded["molstar"].append(ref.id)
 
-    if received_result:    
+    if received_result:
       if result["hasSynced"]:
         self.has_synced = True
         self._sync_count = 0
@@ -169,13 +169,13 @@ class MolstarController(Controller):
       self.viewer._blocking_commands = False
       time.sleep(0.5)
       self._load_all_from_ref()
-  
+
     else:
       print("An error occurred while loading web app.")
       self._blocking_commands = True
 
 
-  
+
 
   # API
 
@@ -237,7 +237,7 @@ class MolstarController(Controller):
     if not isinstance(selection_json,str) or len(selection_json.strip())==0:
       return None
     query_atoms = SelectionQuery.from_json(selection_json)
-    
+
     # get the relevant model ref (to get mol)
     ref_id = query_atoms.params.refId
     model_ref = self.state.references[ref_id]
@@ -292,7 +292,7 @@ class MolstarController(Controller):
     self.state.active_map_ref = None
 
     # just using the above causes problems within molstar, but only for web view
-    
+
     self.view.web_view.reload() # so refresh the whole page. Not ideal, large visual disruption.
     QMessageBox.information(self.view, 'Notice', msg)
 
@@ -300,7 +300,7 @@ class MolstarController(Controller):
 
   def close_viewer(self):
     self.viewer.close_viewer()
-        
+
   # Style
   def set_iso(self,ref,value):
     # This one is unusual in that remote uses local id
@@ -330,5 +330,3 @@ class MolstarController(Controller):
   def color_ref(self,ref,color):
     model_id = ref.model_ref.external_ids["molstar"]
     self.viewer.color_query(model_id,ref.query.to_json(),color)
-
-    

@@ -52,7 +52,7 @@ class MapEntryController(ScrollEntryController):
             self.state.active_map_ref.entry.view.active_toggle.is_checked = True
         else:
           self.state.active_map_ref = self.ref
-        
+
 
     else:
       if self.state.active_map_ref == self.ref:
@@ -85,6 +85,3 @@ class MapListController(ScrollableListController):
           entry_view = MapEntryView()
           entry_controller = MapEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)
-
-          
-

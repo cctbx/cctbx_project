@@ -13,7 +13,7 @@ class CifTabView(GUITabWidget): # Top view
   def __init__(self,parent=None):
     super().__init__(parent=parent)
 
-    
+
     # Files
     self.files = CifFileTabView(parent=self)
     self.addTab(self.files, "Files")
@@ -21,8 +21,3 @@ class CifTabView(GUITabWidget): # Top view
     # Browser
     self.browser = CifBrowserTabView(parent=self)
     self.addTab(self.browser, "Browser")
-
-
-
-
-

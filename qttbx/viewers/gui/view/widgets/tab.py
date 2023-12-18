@@ -19,7 +19,7 @@ class GUITab(QTabWidget):
 
 
 class ChildWindow(QMainWindow):
-  
+
   def __init__(self, original_tab_widget, tab_widget, tab_index, tab_name,*args, **kwargs):
     super().__init__(*args, **kwargs)
     self.setParent(original_tab_widget) # set parent to close with original window
@@ -36,17 +36,17 @@ class ChildWindow(QMainWindow):
     self.setGeometry(screen_rect.x(), screen_rect.y(),
                             screen_rect.width() // 2, screen_rect.height())
 
-    
+
 
   def closeEvent(self, event):
     # Remove the tab from the child window's QTabWidget
     widget = self.tab_widget.widget(self.tab_index)
     self.tab_widget.removeTab(self.tab_index)
-    
+
     # Add the tab back to the original QTabWidget
     self.original_tab_widget.insertTab(self.tab_index, widget, self.tab_name)
 
-    
+
     event.accept()
 
 
@@ -58,7 +58,7 @@ class DraggableTabBar(QTabBar):
   def __init__(self,parent=None):
     super().__init__(parent)
     self.drag_start_index = 0
-    
+
   def mousePressEvent(self, event):
     self.drag_start_index = self.tabAt(event.pos())
     self.drag_start_pos = event.pos()
@@ -93,7 +93,7 @@ class DraggableTabBar(QTabBar):
             if tab_widget:
               old_content = tab_widget.widget(self.drag_start_index)
               tab_text = self.tabText(self.drag_start_index)
-              
+
               # Remove the tab without deleting the content
               tab_widget.removeTab(self.drag_start_index)
 
@@ -105,16 +105,16 @@ class DraggableTabBar(QTabBar):
 
               # Create a new QMainWindow
               new_window = ChildWindow(self.parentWidget(),new_tab_widget,self.drag_start_index,tab_name)
-              
+
               # Add the old content to the new QTabWidget
               new_tab_widget.addTab(old_content, tab_text)
-              
+
               # Make sure it's visible
               old_content.show()
-              
+
               # Set central widget
               new_window.setCentralWidget(new_tab_widget)
-              
+
               # Show the new window
               new_window.show()
               new_window.raise_()
@@ -125,14 +125,14 @@ class DraggableTabBar(QTabBar):
 
               # notify main window
               self.childSignal.emit("created")
-  
+
 class DraggableTabWidget(QTabWidget):
   def __init__(self, parent=None):
     super(DraggableTabWidget, self).__init__(parent)
     self.setTabBar(DraggableTabBar())
     self.setMouseTracking(True)
     self.setAcceptDrops(True)
-    
+
 
   def dragEnterEvent(self, event):
     #print("Enter drag Event")
@@ -185,5 +185,3 @@ class GUITabWidget(DraggableTabWidget):
     for index in range(self.count()):
       tab_widgets.append(self.widget(index))
     return tab_widgets
-
-

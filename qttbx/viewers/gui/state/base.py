@@ -25,7 +25,7 @@ class DataClassBase:
       else:
         pass # value may not be json serializable.
     return d2
-  
+
   def to_json(self, indent=None):
     return json.dumps(self.to_dict(),indent=indent)
 

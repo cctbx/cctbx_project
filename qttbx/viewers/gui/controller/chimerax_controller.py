@@ -20,7 +20,7 @@ class ChimeraXController(Controller):
     self.viewer = ChimeraXViewer() # Not formally a controller, but similar role
     self.viewer.controller = self
     self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
-    
+
     # Local state
     self.loaded_map_refs = []
     self.loaded_model_refs = []
@@ -41,7 +41,7 @@ class ChimeraXController(Controller):
     # # self.state.signals.viz_change.connect(self.set_visibility)
     # self.state.signals.data_change.connect(self._data_change)
     self.view.textInput.setPlaceholderText("Find automatically")
-    
+
 
   def start_viewer(self):
     self.model_style_controller = ModelStyleController(parent=self,view=None)
@@ -198,21 +198,21 @@ class ChimeraXController(Controller):
 
   def poll_selection(self,callback=None):
     if not self.viewer._connected:
-      return 
+      return
 
 
     # get selected atoms
     if self._picking_granularity == "residue":
       self.viewer._select_up_residues()
     response = self.viewer.poll_selection()
-    
+
     json_objects = self._process_remote_ref_response_selection(response)
 
     #print("chimerax controller poll_selection() json_objects:")
     if json_objects is None:
       return None
 
-    
+
     # Translate chimerax response to per-atom dictionaries
     # Updated pattern to correctly handle the value after '@'
     pattern = r"(?:([^/]+))?/([^:]*)(?::([^@]*))?(?:@(.*))?"
@@ -220,7 +220,7 @@ class ChimeraXController(Controller):
     atoms = []
     for obj in json_objects:  # atoms
         spec = obj['spec']
-      
+
         match = re.match(pattern, spec)
         if match:
           atom_dict = {}
@@ -240,12 +240,12 @@ class ChimeraXController(Controller):
           atom_dict["atom_id"] = atom_id
           atoms.append(atom_dict)
 
-      
+
         else:
             print("No match found")
             assert False, f"Must be able to translate atom spec... {spec}"
 
-          
+
     #get df of all selected atoms
     df = pd.DataFrame.from_records(atoms)
 
@@ -281,12 +281,12 @@ class ChimeraXController(Controller):
       query = model_ref.mol.atom_sites._convert_sites_to_query(sites_sel)
       query.params.refId = ref_id
       output[ref_id] = query
-    
+
     if callback is not None:
       callback(output)
     return output
   # end poll_selection
-  
+
   def select_from_phenix_string(self,selection_phenix: str):
     if self.viewer._connected:
       ref= self.state.active_model_ref
@@ -325,7 +325,7 @@ class ChimeraXController(Controller):
 
 
   def sync_ref_mapping(self):
-    pass 
+    pass
 
 
 
@@ -373,4 +373,3 @@ class ChimeraXController(Controller):
     if self.viewer._connected:
       model_id = ref.model_ref.external_ids["chimerax"]
       self.viewer.color_query(model_id,ref.query.to_json(),color)
-

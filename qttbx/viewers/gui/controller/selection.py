@@ -25,7 +25,7 @@ class SelectionEntryController(ModelLikeEntryController):
     else:
       #print("The entry is unchecked.")
       if self.state.active_selection_ref == self.ref:
-        self.state.active_selection_ref = None 
+        self.state.active_selection_ref = None
 
   def display_info(self):
     text = f"""
@@ -33,7 +33,7 @@ class SelectionEntryController(ModelLikeEntryController):
     Model Reference id: {self.ref.model_ref.id}
     External ids:
     {self.model_ref.external_ids}
-    
+
     Phenix string: {self.ref.query.phenix_string}
     """
     dialog = InfoDialog(text, title="Selection Info", parent=self.view)
@@ -60,7 +60,7 @@ class SelectionListController(ScrollableListController):
           entry_controller.view.label_name.setText(ref.label)
           selection_list.next_selection_number+=1
           # make new selection active
-          
+
 
 
 class SelectionTabController(Controller):
@@ -68,4 +68,3 @@ class SelectionTabController(Controller):
     super().__init__(parent=parent,view=view)
 
     self.selection_list_controller = SelectionListController(parent=self,view=self.view.selection_list_view)
-

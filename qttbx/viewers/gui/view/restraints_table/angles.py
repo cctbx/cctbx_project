@@ -11,6 +11,3 @@ class AnglesTableTabView(RestraintsTab):
     self.table = FastTableView()
     self.table.setSelectionBehavior(QTableView.SelectRows)
     self.layout.addWidget(self.table)
-
-
-

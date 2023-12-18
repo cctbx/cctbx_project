@@ -35,7 +35,7 @@ class SelectionControlsView(QWidget):
     self.selection_hbox.addWidget(self.selection_edit)
 
 
-    icon_path_checked = Path(__file__).parent / '../assets/icons/material/target_searching.svg' 
+    icon_path_checked = Path(__file__).parent / '../assets/icons/material/target_searching.svg'
     icon_path_unchecked = Path(__file__).parent / '../assets/icons/material/target_stop_searching.svg'
     self.selector_toggle = ToggleIconButton(str(icon_path_checked),str(icon_path_unchecked))
     self.selection_hbox.addWidget(self.selector_toggle)
@@ -48,7 +48,7 @@ class SelectionControlsView(QWidget):
     # self.start_selecting.setToolTip("Start selecting")
     # self.selection_hbox.addWidget(self.start_selecting)
 
-  
+
     # # stop selecting
     # self.button_deselect = QPushButton()
     # icon_path = Path(__file__).parent / '../assets/icons/material/target_stop_searching.svg'
@@ -81,7 +81,7 @@ class SelectionControlsView(QWidget):
     icon = QIcon(str(icon_path))
     self.combo_box.addItem(icon, "")
     self.combo_box.setToolTip("Pick atoms or residues")
-    # Adjust icon size 
+    # Adjust icon size
     # current_size = self.combo_box.iconSize()
     # scale_factor = 1.5
     # scaled_size = QSize(current_size.width() * scale_factor, current_size.height() * scale_factor)
@@ -96,7 +96,7 @@ class SelectionControlsView(QWidget):
     separator = QFrame()
     separator.setFrameShape(QFrame.VLine)
     separator.setFrameShadow(QFrame.Sunken)
-    
+
     self.selection_hbox.addWidget(separator)
 
     # Clear

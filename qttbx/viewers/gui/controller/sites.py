@@ -13,7 +13,7 @@ class SitesTabController(Controller):
     self.view.table.mouseReleased.connect(self.on_mouse_released)
     self.state.signals.model_change.connect(self.update)
 
-  
+
   def update(self,*args):
     if self.state.mol is not None:
       model = PandasTableModel(self.state.mol.sites)
@@ -32,13 +32,12 @@ class SitesTabController(Controller):
       self.state.add_ref(ref)
       self.state.active_selection_ref = ref
       self.state.signals.select.emit(ref)
-    
+
     else:
       print("no atoms returned as query")
-   
-    
+
+
   def on_mouse_released(self):
     selected = self.view.table.selectionModel().selection()
     deselected = QtCore.QItemSelection()
     self.on_selection_changed(selected, deselected)
-      

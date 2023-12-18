@@ -1,6 +1,6 @@
 """
 A Ref is a top level container for data. It provides:
- 1. unification of indentifiers across various programs. 
+ 1. unification of indentifiers across various programs.
  2. 'Instances' of data, where identical data appears in multiple objects
  3. An additional unique identifier to pass around in signals
 """
@@ -54,7 +54,7 @@ class Ref:
       style = replace(style,ref_id=self.id,query=self.query)
     self._style = style
     self.style_history = []
-    
+
   def _connections(self):
     self.state.signals.remove_ref.connect(self._remove)
 
@@ -65,8 +65,8 @@ class Ref:
       self.file_ref = None
     if self.model_ref == ref:
       self._model_ref = None
-  
-  @property 
+
+  @property
   def file_ref(self):
     return self._file_ref
 
@@ -109,7 +109,7 @@ class Ref:
 
   @property
   def data(self):
-    return self._data 
+    return self._data
 
   @property
   def external_ids(self):
@@ -121,7 +121,7 @@ class Ref:
   def state(self):
     assert self._state is not None, "State was never set for this ref"
     return self._state
-    
+
   @state.setter
   def state(self,value):
     self._state = value
@@ -137,7 +137,7 @@ class Ref:
     self.state.signals.style_change.emit(value.to_json())
     self.style_history.append(self.style)
     self._style = value
-    
+
   @property
   def last_visible_style(self):
     for style in reversed(self.style_history):
@@ -152,7 +152,7 @@ class Ref:
   def show_in_list(self,value):
     self._show_in_list = value
 
-  @property 
+  @property
   def label(self):
     if self._label is None:
       self._label = self._truncate_string(f"{self.__class__.__name__} {self.id}")
@@ -185,7 +185,7 @@ class Ref:
       return path[:max_len // 2] + "..." + path[-max_len // 2:]
     else:
       return path
-      
+
 
   @staticmethod
   def _generate_uuid(length: int=24):
@@ -211,8 +211,8 @@ class ModelRef(Ref):
     self._file_ref =  None
     if self.data.cif_data is not None:
       self._file_ref =  CifFileRef(self.data.cif_data)
-    
-    
+
+
 
   @classmethod
   def from_filename(cls,filename: str):
@@ -262,9 +262,9 @@ class ModelRef(Ref):
   def model_ref(self):
     return self
   @property
-  def query(self):    
+  def query(self):
     return SelectionQuery.from_model_ref(self)
-  
+
   def _connections(self):
     super()._connections()
     self.state.signals.model_change.connect(self._set_active_ref)
@@ -284,7 +284,7 @@ class MapRef(Ref):
   def model_ref(self):
     return self._model_ref
 
-  
+
   @model_ref.setter
   def model_ref(self,value):
     self._model_ref = value
@@ -314,7 +314,7 @@ class SelectionRef(Ref):
     assert data is not None, "Provide a Selection query as the data"
     self._show_in_list = show
     self._debug_data = data
-    
+
 
     self._model_ref = model_ref
     self._query_sel = data
@@ -329,7 +329,7 @@ class SelectionRef(Ref):
   @show_in_list.setter
   def show_in_list(self,value):
     self._show_in_list = value
-    
+
   @property
   def query(self):
     query = SelectionQuery.from_model_ref(self.model_ref)
@@ -390,7 +390,7 @@ class RestraintsRef(Ref):
         df = pd.DataFrame([dataclass_instance.data.__dict__ for dataclass_instance in field_value])
         df = df.round(2)
         # Drop some columns for now
-        columns_to_drop = ['labels', 'slack', 'rt_mx',"sym_op_i"]  
+        columns_to_drop = ['labels', 'slack', 'rt_mx',"sym_op_i"]
         columns_to_drop = [col for col in columns_to_drop if col in df.columns]
         df.drop(columns=columns_to_drop, inplace=True)
         # Sort columns
@@ -427,7 +427,7 @@ class ModelResultsRef(ResultsRef):
     super().__init__(data=data)
     self.model_ref = model_ref
     self.selection_ref = selection_ref
-    
+
 
 class QscoreRef(ModelResultsRef):
     def __init__(self,data: QscoreResult,model_ref: ModelRef, selection_ref: Optional[SelectionRef] = None):
@@ -437,7 +437,7 @@ class QscoreRef(ModelResultsRef):
 class CifFileRef(Ref):
   def __init__(self,data: CifFileData):
     super().__init__(data=data)
-  
+
 
   def _connections(self):
     self.state.signals.ciffile_change.connect(self._set_active_ref)
@@ -455,6 +455,3 @@ class CifFileRef(Ref):
         self._label = super().label
 
     return self._label
-
-
-
