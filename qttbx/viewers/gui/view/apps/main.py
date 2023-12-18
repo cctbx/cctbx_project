@@ -87,18 +87,16 @@ class ViewerGUIView(QMainWindow):
 
     # # Restraints
     if 'all' in show_tab or 'restraints' in show_tab:
-      # self.restraints_tab_view = RestraintsTopTabView(parent=self)
-      # self.tabs.addTab(self.restraints_tab_view, "Restraints")
 
       # Restraints Table
       self.restraints_table_tab_view = RestraintsTableTopTabView(parent=self)
       self.tabs.addTab(self.restraints_table_tab_view, "Restraints")
 
 
-    # Qscore
-    if 'all' in show_tab or 'qscore' in show_tab:
-      self.qscore_tab_view = QscoreTab(parent=self)
-      self.tabs.addTab(self.qscore_tab_view, "Qscore")
+    # # Qscore
+    # if 'all' in show_tab or 'qscore' in show_tab:
+    #   self.qscore_tab_view = QscoreTab(parent=self)
+    #   self.tabs.addTab(self.qscore_tab_view, "Qscore")
 
     # Consoles
     if 'all' in show_tab or 'console' in show_tab:
