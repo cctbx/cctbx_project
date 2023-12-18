@@ -80,7 +80,7 @@ class ViewerGUIController(Controller):
     """
     # TODO: Clean up tab change behavior for Selection and Viewer as child
     #if self.view._has_child_window:
-    print("Change to tab: ",name)
+    #print("Change to tab: ",name)
     tab_widget = self.view.tabs
     for index in range(tab_widget.count()):
       if tab_widget.tabText(index) == name:

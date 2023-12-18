@@ -71,7 +71,7 @@ class SyncManager:
   def try_sync(self,callback=None):
     self._has_synced = False
     # callback is run if successful sync
-    print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
+    #print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
     if self.has_synced:
       pass
     elif not self.has_synced and self._sync_count < self._max_sync_count:
@@ -85,15 +85,15 @@ class SyncManager:
 
   def _try_sync_callback(self,result,second_callback=None): #  get_state function in ts
     received_result = False
-    print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
+    #print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
     if isinstance(result,str) and len(result.strip())>0:
       result = json.loads(result)
-      print("sync result: ",json.dumps(result,indent=2))
+      #print("sync result: ",json.dumps(result,indent=2))
       if 'hasSynced' in result:
         received_result = True
         self._received_first_sync = True
         result["hasSynced"] = True # The very first sync is True
-        print("set result hasSynced to True",result['hasSynced'])
+        #print("set result hasSynced to True",result['hasSynced'])
 
 
     # update molstar ids
@@ -101,14 +101,12 @@ class SyncManager:
       if 'references' in result: # if not, not well formed response
         for ref_id, ref_dict in result["references"].items():
           for external_key, external_id in ref_dict["external_ids"].items():
-            print("debugme",ref_id,external_key,external_id)
             ref = self.controller.state.references[ref_id]
             ref.external_ids[external_key] = external_id
             self.controller.state.external_loaded["molstar"].append(ref.id)
 
     if received_result:    
       if result["hasSynced"]:
-        print("setting class has_synced to True")
         self.has_synced = True
         self._sync_count = 0
 
@@ -188,7 +186,6 @@ class MolstarController(Controller):
 
   def _load_all_from_ref(self,*args):
     # Molstar must load inital models here
-    print("loading all models")
     for ref in self.state.references_model:
       self.load_model_from_ref(ref)
     for ref in self.state.references_map:

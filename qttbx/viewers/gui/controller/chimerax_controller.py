@@ -44,7 +44,6 @@ class ChimeraXController(Controller):
     
 
   def start_viewer(self):
-    print("controller start viewer")
     self.model_style_controller = ModelStyleController(parent=self,view=None)
     self.map_style_controller = MapStyleController(parent=self,view=None)
     if self.view.textInput.text() == 'Find automatically':
@@ -114,7 +113,7 @@ class ChimeraXController(Controller):
 
         if response is not None and response.status_code == 200:
           remote_ref_id = self._process_remote_ref_response_model(response)
-          print("ADDING CHIMERAX REMOTE MODEL ID FOR MODEL: ",remote_ref_id)
+          #print("ADDING CHIMERAX REMOTE MODEL ID FOR MODEL: ",remote_ref_id)
           ref.external_ids["chimerax"] = remote_ref_id
           self.state.external_loaded["chimerax"].append(ref.id)
         else:
@@ -165,7 +164,7 @@ class ChimeraXController(Controller):
         if response is not None and response.status_code == 200:
           remote_ref_id = self._process_remote_ref_response_map(response)
           if remote_ref_id is not None:
-            print("ADDING CHIMERAX REMOTE MODEL ID FOR MAP: ",remote_ref_id)
+            #print("ADDING CHIMERAX REMOTE MODEL ID FOR MAP: ",remote_ref_id)
             ref.external_ids["chimerax"] = remote_ref_id
         else:
           print(f"Not adding remote ref from response: {response}")
@@ -175,20 +174,24 @@ class ChimeraXController(Controller):
 
   # Selection
 
-  def _process_remote_ref_response_selection(self,response):
+  def _process_remote_ref_response_selection(self,response,debug=False):
     response_text = response.text
-    print("0: Response text:",type(response_text))
-    print(response_text)
-    print("1: Response json:",type(json.loads(response_text)))
+    if debug:
+      print("0: Response text:",type(response_text))
+      print(response_text)
+      print("1: Response json:",type(json.loads(response_text)))
     response_json = json.loads(response_text)
-    print(response_json)
-    print("2: 'json values' key:",type(response_json["json values"]))
+    if debug:
+      print(response_json)
+      print("2: 'json values' key:",type(response_json["json values"]))
     json_values = response_json["json values"]
-    print("3: json value 0:",type(json_values[0]))
-    print(json_values[0])
+    if debug:
+      print("3: json value 0:",type(json_values[0]))
+      print(json_values[0])
     if json_values[0] is None:
       return None
-    print("4: json value 0 as json:",type(json.loads(json_values[0])))
+    if debug:
+      print("4: json value 0 as json:",type(json.loads(json_values[0])))
     json_values_0 = json.loads(json_values[0])
     return json_values_0
 
@@ -205,7 +208,7 @@ class ChimeraXController(Controller):
     
     json_objects = self._process_remote_ref_response_selection(response)
 
-    print("chimerax controller poll_selection() json_objects:")
+    #print("chimerax controller poll_selection() json_objects:")
     if json_objects is None:
       return None
 

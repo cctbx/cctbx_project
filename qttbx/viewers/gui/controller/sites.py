@@ -21,7 +21,6 @@ class SitesTabController(Controller):
 
 
   def on_selection_changed(self, selected, deselected):
-    print("on_selection_changed_atoms()")
     df_sel = self.view.table.selected_rows()
     if df_sel is not None:
       # switch to atom picking level
@@ -39,7 +38,6 @@ class SitesTabController(Controller):
    
     
   def on_mouse_released(self):
-    print("on_mouse_released_atoms()")
     selected = self.view.table.selectionModel().selection()
     deselected = QtCore.QItemSelection()
     self.on_selection_changed(selected, deselected)

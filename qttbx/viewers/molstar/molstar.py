@@ -44,7 +44,7 @@ class CallbackManager:
   def call(self, *args, **kwargs):
   
     if self.callback is not None:
-      print(f"Callback manager calling: {self.callback}")
+      #print(f"Callback manager calling: {self.callback}")
       func = self.callback
       self.callback = None
       self.cmd = None
@@ -121,7 +121,7 @@ class CommandQueue(QObject):
     if selenium_driver is not None:
       result = selenium_driver.execute_script(cmd)
   
-      print(f"Result going to selenium callback: {result}")
+      #print(f"Result going to selenium callback: {result}")
       if callback is not None:
         callback(result)
 
@@ -343,17 +343,17 @@ class MolstarViewer(ModelViewer):
     Each command is a string of Javascript 
     code that will be executed. 
     """
-    print("="*79)
-    print(f"Molstar plugin command: (connected={self._connected})")
-    print()
-    if len(cmds)==1:
-      print(cmds[0])
-    else:
-      print(cmds)
-    print()
-    print(f"wrap_async={wrap_async}")
-    print("="*79)
-    out = "fish"
+    # print("="*79)
+    # print(f"Molstar plugin command: (connected={self._connected})")
+    # print()
+    # if len(cmds)==1:
+    #   print(cmds[0])
+    # else:
+    #   print(cmds)
+    # print()
+    # print(f"wrap_async={wrap_async}")
+    # print("="*79)
+    out = None
     if self._connected:
       if self._blocking_commands:
         print(f"Commands ignored due to not accepting commands: {cmds}")
@@ -467,7 +467,7 @@ class MolstarViewer(ModelViewer):
 
 
   def poll_selection(self,callback=None,queue=False):
-    print("Callback manager callback: ",self.command_queue.callback_manager.callback)
+    #print("Callback manager callback: ",self.command_queue.callback_manager.callback)
     # get selection
     command = f"""
     {self.plugin_prefix}.phenix.pollSelection();
@@ -628,5 +628,3 @@ class MolstarViewer(ModelViewer):
     {self.plugin_prefix}.phenix.getRepresentationNames(query)
     """
     result = self.send_command(command)
-    print("RESULT")
-    print(result)

@@ -82,11 +82,8 @@ class CifBrowserController(Controller):
       self.df_dict = None
 
   def update_data(self,index,data_key=None):
-      print("called update_data with data_key: ",data_key,type(data_key))
       if data_key is None:
         data_key = self.view.combobox_data.itemText(index)
-      print("using data_key: ",data_key,type(data_key))
-
       if data_key in self.df_dict:
         self.view.combobox_block.clear()
         self.view.combobox_block.addItems(list(self.df_dict[data_key].keys()))
@@ -117,14 +114,14 @@ class CifBrowserController(Controller):
           print("type of last widget: ",type(last_item.widget()))
 
     # add new table
-    print("called update_block with block_key: ",block_key,type(block_key))
+    #print("called update_block with block_key: ",block_key,type(block_key))
 
     if data_key is None:
       data_key = self.view.combobox_data.currentText()
     if block_key is None:
       block_key = self.view.combobox_block.itemText(index)
-    print("using data_key: ",data_key,type(data_key))
-    print("using block_key: ",block_key,type(block_key))
+    #print("using data_key: ",data_key,type(data_key))
+    #print("using block_key: ",block_key,type(block_key))
 
     if "" not in [data_key,block_key]:
       data = self.df_dict[data_key]

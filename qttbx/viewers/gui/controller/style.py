@@ -15,38 +15,11 @@ class ModelStyleController(Controller):
     self.parent.color_ref(ref,style.color)
 
   def transition_visible(self,ref, new_style):
-    print("transition_visible() called...")
 
     if new_style.visible == False:
       self.parent.hide_ref(ref)
     else:
       self.parent.show_ref(ref)
-
-
-    # elif isinstance(ref,SelectionRef):
-
-    # print("New style:")
-    # print(new_style.to_json(indent=2))
-
-    # if new_style.visible == False:
-    #   #self.parent.set_representation(ref.id,[])
-    #   self.parent.set_visibility(ref.id,False,queue=True)
-    # else:
-    #   # last_reps = ref.last_visible_style.representations
-    #   # self.parent.set_representation(ref.id,last_reps)
-    #   base_rep = set(new_style.representation).intersection(set(oldstyle.representation))
-    #   if len(base_rep)>0:
-    #     self.parent.set_visibility(ref.id,True,queue=True)
-    #   for rep_name in set(new_style.representation):#-set(base_rep):
-    #     self.parent.set_representation(ref,rep_name,queue=True)
-
-    #   if new_style.color is not None:
-    #     self.transition_color(ref,new_style,queue=True)
-    #   self.parent.reset_camera(queue=True)
-    #   #self.parent.clear_selection(queue=True)
-
-    # if not queue:
-    #   self.parent.execute_command_queue()
       
 
   

@@ -21,7 +21,8 @@ class SitesTabView(GUITab):
 
 
   def on_first_visit(self):
-    msg = QMessageBox.information(self,"Notice", "The atom sites tab is currently very slow for large structures.")
+    #msg = QMessageBox.information(self,"Notice", "The atom sites tab is currently very slow for large structures.")
+    pass
 
 
   

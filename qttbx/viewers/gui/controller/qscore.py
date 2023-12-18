@@ -70,7 +70,6 @@ class QscoreTabController(Controller):
         
 
   def _hide_header(self):
-    print("Hiding header")
     if not self.header_hidden:
       self._hide_child_layout(self.view.layout, self.view.header_layout)
       QApplication.processEvents()  # Update the UI

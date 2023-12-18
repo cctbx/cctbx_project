@@ -31,7 +31,6 @@ class RestraintsTableTopTabController(Controller):
     self.header_hidden = False
 
   def handle_restraints_change(self):
-    print("Handling restraints change")
     if self.state.active_model_ref.has_restraints:
       if not self.header_hidden:
         self._hide_header()
@@ -50,7 +49,6 @@ class RestraintsTableTopTabController(Controller):
       msg.exec_()
     else:
       if not self.state.active_model_ref.has_restraints:
-        print("Processing model")
         ref = self.state.active_model_ref
         model = ref.model
         model.process(make_restraints=True)
@@ -61,7 +59,6 @@ class RestraintsTableTopTabController(Controller):
         
 
   def _hide_header(self):
-    print("Hiding header")
     for widget in self.view.widgets:
       self._hide_child_layout(widget.layout, widget.header_layout)
       QApplication.processEvents()  # Update the UI

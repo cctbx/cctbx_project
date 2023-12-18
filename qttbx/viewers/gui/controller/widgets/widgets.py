@@ -35,7 +35,6 @@ class OpacityWidgetController(Controller):
 
   def opacity_update(self,value):
     ref_id = self.map_ref.id
-    print("slider update opacity:",ref_id,value)
     QMessageBox.information(self.view, 'Notice', "Opacity slider not yet connected")
     real_value = value/100
     self.view.label.setText(f"Opacity: {round(real_value,2)}")

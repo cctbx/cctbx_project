@@ -66,12 +66,12 @@ class ModelLikeEntryController(ScrollEntryController):
       action.setChecked(not current_state)
       selected_options[option] = not selected_options[option]
       reps = [key for key,value in selected_options.items() if value]
-      print("Replacing data for style from ref: ",self.ref, self.ref.id)
-      print("Old:")
-      print(self.ref.style.to_json(indent=2))
+      #print("Replacing data for style from ref: ",self.ref, self.ref.id)
+      #print("Old:")
+      #print(self.ref.style.to_json(indent=2))
       style = replace(self.ref.style,representation=reps)
-      print("New:")
-      print(style.to_json(indent=2))
+      #print("New:")
+      #print(style.to_json(indent=2))
       self.ref.style = style
       #self.state.emitter.signal_repr_change.emit(*emission)
 
@@ -90,7 +90,7 @@ class ModelLikeEntryController(ScrollEntryController):
     color = color_dialog.getColor()
 
     if color.isValid():
-      print("User selected color:", color.name())
+      #print("User selected color:", color.name())
 
       style = replace(self.ref.style,color_theme='uniform',color=color.name())
       self.ref.style = style

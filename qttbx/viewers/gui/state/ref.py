@@ -61,7 +61,6 @@ class Ref:
 
 
   def _remove(self,ref):
-    print("REMOVING A REF: ",ref)
     if self.file_ref ==ref:
       self.file_ref = None
     if self.model_ref == ref:
@@ -83,9 +82,9 @@ class Ref:
 
   @active.setter
   def active(self,value):
-    print("#"*80)
-    print(f"setting ref: {self} to active: ",value)
-    print("#"*80)
+    # print("#"*80)
+    # print(f"setting ref: {self} to active: ",value)
+    # print("#"*80)
 
     # toggle entry as active
     if self.entry:

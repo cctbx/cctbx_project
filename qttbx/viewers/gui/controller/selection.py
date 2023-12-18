@@ -56,9 +56,7 @@ class SelectionListController(ScrollableListController):
           entry_controller = SelectionEntryController(parent=self,view=entry_view,ref=ref)
           entry_controller.view.active_toggle.is_checked = True
           selection_list.add_entry(entry_controller)
-          print(ref.label)
           ref.label = f"Selection {selection_list.next_selection_number}"
-          print(ref.label)
           entry_controller.view.label_name.setText(ref.label)
           selection_list.next_selection_number+=1
           # make new selection active

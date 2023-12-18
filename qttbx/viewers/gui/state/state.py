@@ -65,13 +65,11 @@ class State:
 
     # models
     for name in self.data_manager.get_model_names():
-      print("Model name: ",name)
       model = self.data_manager.get_model(filename=name)
       self.add_ref_from_mmtbx_model(model,filename=name)
 
     # maps
     for name in self.data_manager.get_real_map_names():
-      print("Map name: ",name)
       map_manager = self.data_manager.get_real_map(filename=name)
       self.add_ref_from_mmtbx_map(map_manager,filename=name)
 
@@ -130,7 +128,7 @@ class State:
       return
 
     # Add the new reference
-    print(f"Adding ref of type {ref.__class__.__name__}: {ref.id}")
+    #print(f"Adding ref of type {ref.__class__.__name__}: {ref.id}")
 
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     self.references[ref.id] = ref
@@ -253,13 +251,9 @@ class State:
     # Unless putting signals in data manager, this must
     # be called explicitly/manually if the data manager changes.
     #self.signals.data_manager_changed.emit()
-    print("_data_manager_changed")
     model_refs = [ref for ref in self.references_model]
     model_keys = [ref.data.filepath for ref in model_refs]
-    print("model keys")
-    print(model_keys)
     for filename in self.data_manager.get_model_names():
-      print("filename",filename)
       if filename not in model_keys:
         print(f"New file found in data manager: {filename} and not found in references: {model_keys}")
         model = self.data_manager.get_model(filename=filename)

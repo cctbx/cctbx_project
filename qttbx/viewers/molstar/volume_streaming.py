@@ -26,7 +26,7 @@ class VolumeStreamingManager:
                volume_server_relative_path = None,
                pack_script_relative_path = None,
                default_server_port=1336,
-               debug = True
+               debug = False
               ):
 
     assert [node_js_path, volume_server_relative_path, pack_script_relative_path].count(None) == 0, "Must explicitly provide filepaths on init" 
@@ -135,7 +135,7 @@ class VolumeStreamingManager:
                "em",
                 str(volume_path),
                 str(mdb_path)]
-    print('Pack command: ',command)
+    #print('Pack command: ',command)
     result = subprocess.run(
       command,
       env={'TEMP_DIR': self.mdb_path},

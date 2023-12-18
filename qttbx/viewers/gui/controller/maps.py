@@ -38,8 +38,8 @@ class MapEntryController(ScrollEntryController):
             t0 = time.time()
             msg = 'When switching maps, the viewer is fully cleared and reloaded with the active map and model.'
             self.state.signals.clear.emit(msg)
-            print("Now need to load model: ",_active_model_ref.id, "and map: ",self.ref.id)
-            print(self.state.active_model_ref, self.state.active_map_ref)
+            #print("Now need to load model: ",_active_model_ref.id, "and map: ",self.ref.id)
+            #print(self.state.active_model_ref, self.state.active_map_ref)
             self.state.active_model_ref = _active_model_ref
             self.state.active_model_ref.entry.view.active_toggle.is_checked = True
             t1 = time.time()
@@ -74,7 +74,7 @@ class MapListController(ScrollableListController):
     if fname[0]:
       filename = fname[0]
       filepath = str(Path(filename).absolute())
-      print(f"File selected: {filepath}")
+      #print(f"File selected: {filepath}")
       _ = self.state.data_manager.process_real_map_file(filepath)
       self.state._data_manager_changed()
 

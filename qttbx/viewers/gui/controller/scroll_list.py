@@ -25,7 +25,6 @@ class ScrollableListController(Controller):
     assert entry in self.entries, f"Cannot remove an entry {entry} not in the list: {self.entries}"
     self.entries.remove(entry)
     layout_index = self._find_widget_index(self.view.container.layout,entry.view)
-    print("Removing widget at index: ",layout_index)
     self._remove_widget_at(self.view.container.layout,layout_index)
     del entry
     self.update()

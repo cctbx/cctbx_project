@@ -61,7 +61,6 @@ class ScrollEntryController(Controller, QObject):
 
 
   def remove_entry(self):
-    print("removing entry for ref: ",self.ref.id)
     # TODO: move all  this to state
     if hasattr(self.ref,"show_in_list"):
       self.ref.show_in_list = False
@@ -96,10 +95,8 @@ class ScrollEntryController(Controller, QObject):
     # delete children
     
     for ref_id,ref in list(self.state.references.items()):
-      print("Ref: ",ref,ref.id)
       if not isinstance(ref,ModelRef):
         if hasattr(ref,"model_ref") and ref.model_ref == self.ref:
-          print(ref,ref.model_ref.id,self.ref.id)
           if ref.entry in ref.entry.parent_list.entries:
             ref.entry.parent_list.remove_entry(ref.entry)
     if self.ref.id in self.state.references:

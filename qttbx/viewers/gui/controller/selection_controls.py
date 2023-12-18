@@ -97,11 +97,9 @@ class SelectionControlsController(Controller):
     """
     This is when the 'add selection'
     """
-    print("controls add_selection()")
     self.viewer.poll_selection(callback=self._add_selection)
     
   def _add_selection(self,query_dict):
-    print(f"controls _add_selection() callback for query_dict: {query_dict}")
     assert len(query_dict)==1, "Multi structure queries not yet supported"
     ref_id = list(query_dict.keys())[0]
     query = query_dict[ref_id]

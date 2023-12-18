@@ -14,7 +14,8 @@ class GUITab(QTabWidget):
     self.was_visited = False
 
   def on_first_visit(self):
-    print("First time visiting: "+str(self))
+    #print("First time visiting: "+str(self))
+     pass
 
 
 class ChildWindow(QMainWindow):
@@ -134,11 +135,11 @@ class DraggableTabWidget(QTabWidget):
     
 
   def dragEnterEvent(self, event):
-    print("Enter drag Event")
+    #print("Enter drag Event")
     event.acceptProposedAction()
 
   def dropEvent(self, event):
-    print("Drop event")
+    #print("Drop event")
     tab_name = event.mimeData().text()
     # Handle the drop: create a new window, add the tab, etc.
     new_window = QMainWindow()

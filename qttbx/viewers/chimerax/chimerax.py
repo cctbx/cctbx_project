@@ -252,15 +252,15 @@ class ChimeraXViewer(ModelViewer):
 
   def send_command(self, cmds):
     
-    print("="*79)
-    print(f"ChimeraX command: (connected={self._connected})")
-    print()
-    if len(cmds)==1:
-      print(cmds[0])
-    else:
-      print(cmds)
-    print()
-    print("="*79)
+    # print("="*79)
+    # print(f"ChimeraX command: (connected={self._connected})")
+    # print()
+    # if len(cmds)==1:
+    #   print(cmds[0])
+    # else:
+    #   print(cmds)
+    # print()
+    # print("="*79)
 
     if self._connected == True:
       if not isinstance(cmds,list):
