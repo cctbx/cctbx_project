@@ -18,7 +18,7 @@ python -m pip install qtconsole
 ```
 
 ### Enable command line tool
-Run from Phenix installation directory
+Use the cctbx bootstrap script, For example: 
 ```bash
 python bootstrap.py build  --builder=phenix --use_conda --nproc=16
 ```
@@ -28,3 +28,5 @@ python bootstrap.py build  --builder=phenix --use_conda --nproc=16
 ```bash
 phenix.start_viewer 1yjp.cif
 ```
+
+
