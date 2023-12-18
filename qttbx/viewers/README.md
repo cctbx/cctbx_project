@@ -11,7 +11,6 @@ git switch ChimeraXSelectionViewer
 
 ### Installation of Molstar Viewer
 See [here](https://github.com/phenix-project/phenix-molstar)
-```
 
 ### Optional: Installation of additional dependencies
 ```
