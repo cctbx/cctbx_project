@@ -29,7 +29,11 @@ def generate_torsion_restraints(
   if selection is None:
     bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), True)
   actual_selection = bool_pdbh_selection.iselection()
-  assert len(sites_cart) == len(actual_selection)
+
+  # PVA: assertion does not make sense. It means actual_selection must be
+  #      all-selection!
+  #assert len(sites_cart) == len(actual_selection)
+
   if abs(sigma) < 1e-6:
     raise Sorry("Please set non-zero sigma for reference model restraints.")
   weight = 1.0 / (sigma**2)
