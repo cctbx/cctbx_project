@@ -17,6 +17,7 @@ from ..controller.apps.main import ViewerGUIController
 from ..state.state import State
 from ...last.selection_utils import Selection, SelectionQuery
 from . import ViewerChoiceDialog, check_program_access
+from ...last.python_utils import DotDict
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
@@ -38,10 +39,11 @@ def main(dm=None,params=None,log=None):
   inaccessible_programs = check_program_access(programs_to_check)
 
   if inaccessible_programs:
-      print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
-      sys.exit()
+    print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
+    sys.exit()
   else:
-      print("All programs are accessible.")
+    #print("All programs are accessible.")
+    pass
 
   choice = None
   if params:
@@ -72,7 +74,9 @@ def main(dm=None,params=None,log=None):
     
     
     choice = choice_dialog.choice
-  
+    if not params:
+      params = DotDict()
+    params.viewer_choice = choice
   # Set up a data manager if no provided
   if not dm:
     dm = DataManager()

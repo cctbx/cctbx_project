@@ -342,8 +342,9 @@ class ChimeraXViewer(ModelViewer):
     query = SelectionQuery.from_json(query_json)
     self.select_from_phenix_string(model_id,query.phenix_string)
 
-  def select_from_phenix_string(self,model_id: str, phenix_selection: str):
-    print(f"DEBUG: select_from_phenix_string({model_id},{phenix_selection})")
+  def select_from_phenix_string(self,model_id: str, phenix_selection: str, focus=True):
+    # focus by default for consistency with molstar
+    #print(f"DEBUG: select_from_phenix_string({model_id},{phenix_selection})")
     model_number = int(model_id.replace("#",""))
     # if phenix_selection in ["","all"]:
     #   chimerax_selection = model_id
@@ -352,6 +353,11 @@ class ChimeraXViewer(ModelViewer):
     print("DEBUG: chimerax_selection: ",chimerax_selection)
     command = f"sel {chimerax_selection}"
     self.send_command(command)
+
+    if focus:
+      command = f"view {chimerax_selection}"
+      self.send_command(command)
+
 
 
   # Other

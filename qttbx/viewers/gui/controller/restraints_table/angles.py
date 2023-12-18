@@ -23,22 +23,22 @@ class AnglesTableTabController(Controller):
 
   def on_selection_changed(self, selected, deselected):
     df_sel = self.view.table.selected_rows()
-    print("Selection made")
-    if df_sel is not None:
-      if "i_seqs" in df_sel.columns:
-        # switch to atom picking level
-        self.state.signals.picking_level.emit(1) # element
+    if len(df_sel)==1:
+      if df_sel is not None:
+        if "i_seqs" in df_sel.columns:
+          # switch to atom picking level
+          self.state.signals.picking_level.emit(1) # element
 
-        flattened_i_seqs = [item for sublist in df_sel['i_seqs'] for item in sublist]
-        flattened_i_seqs = [int(e) for e in flattened_i_seqs]
-        # TODO: verify that .loc[i_seqs] will in fact work
-        sel_sites = self.state.mol.sites.__class__(self.state.mol.sites.loc[flattened_i_seqs],attrs_map=self.state.mol.sites.attrs_map)
-        query = self.state.mol.sites._convert_sites_to_query(sel_sites)
-        ref = SelectionRef(data=query,model_ref=self.state.active_model_ref,show=False)
-        self.state.add_ref(ref)
-        self.state.active_selection_ref = ref
-    else:
-      print("no atoms returned as query")
+          flattened_i_seqs = [item for sublist in df_sel['i_seqs'] for item in sublist]
+          flattened_i_seqs = [int(e) for e in flattened_i_seqs]
+          # TODO: verify that .loc[i_seqs] will in fact work
+          sel_sites = self.state.mol.sites.__class__(self.state.mol.sites.loc[flattened_i_seqs],attrs_map=self.state.mol.sites.attrs_map)
+          query = self.state.mol.sites._convert_sites_to_query(sel_sites)
+          ref = SelectionRef(data=query,model_ref=self.state.active_model_ref,show=False)
+          self.state.add_ref(ref)
+          self.state.active_selection_ref = ref
+      else:
+        print("no atoms returned as query")
    
     
   def on_mouse_released(self):

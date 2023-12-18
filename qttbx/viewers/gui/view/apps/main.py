@@ -67,8 +67,8 @@ class ViewerGUIView(QMainWindow):
       self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
     else:
       # ChimeraX Viewer
-      self.chimerax_tab_view = ChimeraXTabView(parent=self)
-      self.tabs.insertTab(0,self.chimerax_tab_view, "ChimeraX")
+      self.viewer_tab_view = ChimeraXTabView(parent=self)
+      self.tabs.insertTab(0,self.viewer_tab_view, "ChimeraX")
 
     self.selection_tab_view = SelectionsTabView(parent=self)
     self.tabs.addTab(self.selection_tab_view, "Selections")

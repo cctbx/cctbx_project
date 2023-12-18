@@ -201,6 +201,12 @@ def translate_phenix_expression(selection_expression,model_number=1):
   result = re.split(pattern, selection_expression)
   statements = [r.strip() for r in result]
   operators = [""]+re.findall(pattern,selection_expression)
+  
+  # first eliminate all >=, etc
+  selection_expression = selection_expression.replace(">=",">")
+  selection_expression = selection_expression.replace("=>",">")
+  selection_expression = selection_expression.replace("<=","<")
+  selection_expression = selection_expression.replace("=<","<")
 
   for operator,statement in zip(operators,statements):
       operator = operator.strip()

@@ -39,7 +39,7 @@ class ViewerGUIController(Controller):
     if self.viewer_choice == 'molstar':
       self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
     else:
-      self.chimerax = ChimeraXController(parent=self,view=self.view.chimerax_tab_view)
+      self.chimerax = ChimeraXController(parent=self,view=self.view.viewer_tab_view)
 
     self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
     self.data = DataTabController(parent=self,view=self.view.data_tab_view)

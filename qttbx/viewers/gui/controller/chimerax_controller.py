@@ -30,20 +30,26 @@ class ChimeraXController(Controller):
 
     # Signals
     self.view.button_start.clicked.connect(self.start_viewer)
-    self.state.signals.model_change.connect(self._load_active_model)
-    self.state.signals.map_change.connect(self._load_active_map)
-
+    self.state.signals.model_change.connect(self.load_model_from_ref)
+    self.state.signals.map_change.connect(self.load_map_from_ref)
+    self.state.signals.select.connect(self.select_from_ref)
+    self.state.signals.clear.connect(self.clear_viewer)
 
     # # self.state.signals.selection_change.connect(self.selection_controls.select_active_selection)
     # # self.state.signals.color_change.connect(self.set_color)
     # # self.state.signals.repr_change.connect(self.set_representation)
     # # self.state.signals.viz_change.connect(self.set_visibility)
     # self.state.signals.data_change.connect(self._data_change)
+    self.view.textInput.setPlaceholderText("Find automatically")
+    
 
   def start_viewer(self):
     print("controller start viewer")
     self.model_style_controller = ModelStyleController(parent=self,view=None)
     self.map_style_controller = MapStyleController(parent=self,view=None)
+    if self.view.textInput.text() == 'Find automatically':
+      self.view.textInput.setText(self.viewer.find_viewer())
+    self.viewer.command = self.view.textInput.text()
     self.viewer.start_viewer(json_response=True)
     self.viewer.send_command("set bgColor white")
 
@@ -110,6 +116,7 @@ class ChimeraXController(Controller):
           remote_ref_id = self._process_remote_ref_response_model(response)
           print("ADDING CHIMERAX REMOTE MODEL ID FOR MODEL: ",remote_ref_id)
           ref.external_ids["chimerax"] = remote_ref_id
+          self.state.external_loaded["chimerax"].append(ref.id)
         else:
           print(f"Not adding remote ref from response: {response}")
         self.loaded_model_refs.append(ref)
@@ -285,9 +292,9 @@ class ChimeraXController(Controller):
 
   def select_from_ref(self,ref):
     if self.viewer._connected:
-      model_id = ref.external_ids["chimerax"]
+      model_id = ref.model_ref.external_ids["chimerax"]
       phenix_string = ref.query.phenix_string
-      return self.viewer.select_from_phenix_string(model_id,phenix_string)
+      self.viewer.select_from_phenix_string(model_id,phenix_string)
 
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'
