@@ -181,9 +181,6 @@ class MolstarViewer(ModelViewer):
           value = str(Path(__file__).parent / Path(value))
         self.config[key] = value
 
-      if self.config["node_js_path"] == "":
-        self.config["node_js_path"] = 'npm'
-
     # Flags
     self._blocking_commands = False
 

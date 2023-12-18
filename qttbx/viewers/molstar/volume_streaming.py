@@ -31,7 +31,7 @@ class VolumeStreamingManager:
 
     assert [node_js_path, volume_server_relative_path, pack_script_relative_path].count(None) == 0, "Must explicitly provide filepaths on init"
     self.server_process = None
-    self.node_js_path = node_js_path
+    self.node_js_path = node_js_path.replace("npm","node")
     self.temp_dir = tempfile.TemporaryDirectory()
     self.server_js_path =  Path(volume_server_relative_path)
     self.pack_js_path = Path(pack_script_relative_path)
