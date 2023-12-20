@@ -83,7 +83,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       SMTBX_ASSERT(scale_factor);
       T k = *scale_factor;
       T p = (std::max(fo_sq, 0.) + 2*k*fc_sq)/3.;
-      return 1./(sigma*sigma + std::pow(a*p, 2) + b*k*p);
+      return 1./(sigma*sigma + std::pow(a*p, 2) + b*p);
     }
   };
 
