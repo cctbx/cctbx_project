@@ -16,6 +16,8 @@
 #include <dxtbx/model/beam.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
+#include <curand_kernel.h>
+#include <curand.h>
 
 namespace simtbx {
 namespace gpu {
@@ -47,10 +49,18 @@ struct gpu_detector{
     std::cout << "Detector size" << cu_n_panels <<std::endl;
     metrology.show();
   }
+
   void each_image_allocate();
   void scale_in_place(const double&);
+  void offset_in_place(const af::flex_double & offset);
+  curandState* devStates = NULL;
+  void setup_random_states();
+  void free_random_states();
+  void noisify(double flicker_noise, double calibration_noise, double readout_noise,
+        double quantum_gain, double adc_offset, double global_shot_number);
   void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
   af::flex_double get_raw_pixels();
+  void set_raw_pixels(af::flex_double& raw_pix);
   void set_active_pixels_on_GPU(af::shared<std::size_t>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   void each_image_free();

@@ -67,10 +67,20 @@ namespace simtbx { namespace gpu {
              "Allocate large pixel arrays")
         .def("scale_in_place", &simtbx::gpu::gpu_detector::scale_in_place,
              "Apply a scale factor directly on the GPU")
+        .def("offset_in_place", &simtbx::gpu::gpu_detector::offset_in_place,
+             "Accepts a flex_double array as inmput. Adds the array element-wise to the allocated array on the GPU")
+        .def("noisify", &simtbx::gpu::gpu_detector::noisify,
+             "adds noise to each pixel")
+        .def("setup_random_states", &simtbx::gpu::gpu_detector::setup_random_states,
+             "initialize memory for random states for each pixel")
+        .def("free_random_states", &simtbx::gpu::gpu_detector::free_random_states,
+             "free memory for random states for each pixel")
         .def("write_raw_pixels",&simtbx::gpu::gpu_detector::write_raw_pixels,
              "Update raw_pixels on host with array from GPU")
         .def("get_raw_pixels",&simtbx::gpu::gpu_detector::get_raw_pixels,
              "return multipanel detector raw pixels as a flex array")
+        .def("set_raw_pixels",&simtbx::gpu::gpu_detector::set_raw_pixels,
+             "set multipanel detector raw pixels from a flex array")
         .def("get_whitelist_raw_pixels",
               (af::shared<double> (simtbx::gpu::gpu_detector::*)(af::shared<std::size_t>))
               &simtbx::gpu::gpu_detector::get_whitelist_raw_pixels,

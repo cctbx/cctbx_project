@@ -174,10 +174,70 @@ namespace gpu {
   };
 
   void
-  gpu_detector::scale_in_place(const double& factor){
+  gpu_detector::setup_random_states(){
+    // allocate space for states
+
+    // boiler plate, not sure if its correct
+    cudaDeviceProp deviceProps = { 0 };
+    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
+    int smCount = deviceProps.multiProcessorCount;
+    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    dim3 numBlocks(smCount * 8, 1);
+    int total_pixels=_image_size;
+    cudaSafeCall(cudaMalloc(  (void**)&devStates, total_pixels*sizeof(curandState) ));
+
+    // launch the setup kernel
+    setup_random_states_CUDAKernel<<< numBlocks, threadsPerBlock>>>(devStates, total_pixels);
+    cudaSafeCall(cudaDeviceSynchronize());
+    // device Synchronize?
+  }
+
+  void
+  gpu_detector::free_random_states(){
+    if (devStates != NULL)
+      cudaSafeCall(cudaFree(devStates)) ;
+  }
+
+  void
+  gpu_detector::noisify(double flicker_noise, double calibration_noise, double readout_noise,
+        double quantum_gain, double adc_offset, double global_shot_number){
+    SCITBX_ASSERT(devStates != NULL);// must have already setup random states
+    cudaDeviceProp deviceProps = { 0 };
+    cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
+    int smCount = deviceProps.multiProcessorCount;
+    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    dim3 numBlocks(smCount * 8, 1);
+    int total_pixels = _image_size;
+
+    noisify_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+      devStates, cu_accumulate_floatimage, flicker_noise, calibration_noise, readout_noise, quantum_gain, adc_offset, total_pixels, global_shot_number);
+
+  }
+
+  void
+  gpu_detector::offset_in_place(const af::flex_double& offset){
     cudaSafeCall(cudaSetDevice(h_deviceID));
     cudaDeviceProp deviceProps = { 0 };
     cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
+    int smCount = deviceProps.multiProcessorCount;
+    dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
+    dim3 numBlocks(smCount * 8, 1);
+    int total_pixels = _image_size;
+    double * cu_offset_floatimage;
+    SCITBX_ASSERT(offset.size()==total_pixels);
+    cudaSafeCall(cudaMalloc((void ** )&cu_offset_floatimage, sizeof(*cu_accumulate_floatimage) * total_pixels));
+    cudaSafeCall(cudaMemcpy(cu_offset_floatimage, offset.begin(), sizeof(*cu_offset_floatimage) * total_pixels, cudaMemcpyHostToDevice)   );
+    offset_array_CUDAKernel<<<numBlocks, threadsPerBlock>>>(
+      cu_offset_floatimage, cu_accumulate_floatimage, total_pixels);
+    cudaSafeCall(cudaFree(cu_offset_floatimage));
+  }
+
+
+  void
+  gpu_detector::scale_in_place(const double& factor){
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+  cudaDeviceProp deviceProps = { 0 };
+  cudaSafeCall(cudaGetDeviceProperties(&deviceProps, h_deviceID));
   int smCount = deviceProps.multiProcessorCount;
   dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
   dim3 numBlocks(smCount * 8, 1);
@@ -202,6 +262,18 @@ namespace gpu {
      cu_accumulate_floatimage,
      sizeof(*cu_accumulate_floatimage) * _image_size,
      cudaMemcpyDeviceToHost));
+  }
+
+  void
+  gpu_detector::set_raw_pixels(af::flex_double& raw_pix){
+    //ASSERT ALLOCATEWD
+    SCITBX_ASSERT (cu_accumulate_floatimage != NULL) ;
+    cudaSafeCall(cudaSetDevice(h_deviceID));
+    cudaSafeCall(cudaMemcpy(
+     cu_accumulate_floatimage,
+     raw_pix.begin(),
+     sizeof(*cu_accumulate_floatimage) * raw_pix.size(),
+     cudaMemcpyHostToDevice));
   }
 
   af::flex_double
@@ -270,6 +342,10 @@ namespace gpu {
     cudaSetDevice(h_deviceID);
     /*allocate but do not initialize (set to 0) the reductions (the code was too inefficient and was removed as the reductions
       are not utilized in practice.  Should they be needed in the future a faster zeroing API must be found*/
+    if (devStates != NULL){
+      cudaSafeCall(cudaFree(devStates)) ;
+      devStates = NULL;
+    }
     cu_omega_reduction = NULL;
     cudaSafeCall(cudaMalloc((void ** )&cu_omega_reduction, sizeof(*cu_omega_reduction) * _image_size));
 

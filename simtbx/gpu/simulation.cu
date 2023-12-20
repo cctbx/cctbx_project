@@ -386,7 +386,7 @@ namespace af = scitbx::af;
   };
 
   exascale_api::~exascale_api(){
-    cudaSafeCall(cudaSetDevice(SIM.device_Id));
+    //cudaSafeCall(cudaSetDevice(SIM.device_Id));
 
         cudaSafeCall(cudaFree(cu_beam_vector));
         cudaSafeCall(cudaFree(cu_spindle_vector));
