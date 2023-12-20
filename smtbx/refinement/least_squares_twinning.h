@@ -93,7 +93,6 @@ namespace smtbx {
                 identity_part = measured_part;
               }
             }
-            std::size_t twc_cnt = 0;
             while (itr.has_next()) {
               twc_t twc = itr.next();
               boost::optional<complex_type> f_mask = boost::none;
@@ -124,7 +123,6 @@ namespace smtbx {
                 else {
                   identity_part += f_calc_function.get_observable();
                 }
-                twc_cnt++;
               }
             }
             if (compute_grad) {
@@ -136,7 +134,7 @@ namespace smtbx {
                   gradients[twc.fraction->grad_index] -= identity_part;
                 }
               }
-              if (twc_cnt != 0 && measured_fraction != 0 && measured_fraction->grad) {
+              if (measured_fraction != 0 && measured_fraction->grad) {
                 SMTBX_ASSERT(!(measured_fraction->grad_index < 0 ||
                   measured_fraction->grad_index >= gradients.size()));
                 gradients[measured_fraction->grad_index] +=
