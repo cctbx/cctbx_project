@@ -2380,6 +2380,7 @@ nanoBragg::show_params()
     if(xtal_shape == SQUARE) printf("parallelpiped");
     if(xtal_shape == GAUSS ) printf("gaussian");
     if(xtal_shape == GAUSS_ARGCHK ) printf("gaussian_argchk");
+    if(xtal_shape == GAUSS_STAR ) printf("gaussian_star");
     if(xtal_shape == TOPHAT) printf("tophat-spot");
     printf(" xtal: %.1fx%.1fx%.1f cells\n",Na,Nb,Nc);
     printf("Unit Cell: %g %g %g %g %g %g\n", a_A[0],b_A[0],c_A[0],alpha*RTD,beta*RTD,gamma*RTD);
@@ -2672,6 +2673,28 @@ nanoBragg::add_nanoBragg_spots()
                                         double my_arg = hrad_sqr / 0.63 * fudge; // pre-calculate to check for no Bragg signal
                                         if (my_arg<35.){ F_latt = Na * Nb * Nc * exp(-(my_arg));}
                                         else { F_latt = 0.; } // not expected to give performance gain on optimized C++, only on GPU
+                                    }
+                                    if (xtal_shape == GAUSS_STAR){
+                                        cross_product(a,b,a_cross_b);
+                                        cross_product(b,c,b_cross_c);
+                                        cross_product(c,a,c_cross_a);
+                                        /* new reciprocal-space cell vectors */
+                                        double a_star_tic[4] = {0,0,0,0};
+                                        double b_star_tic[4] = {0,0,0,0};
+                                        double c_star_tic[4] = {0,0,0,0};
+                                        vector_scale(b_cross_c,a_star_tic,1e20/V_cell);
+                                        vector_scale(c_cross_a,b_star_tic,1e20/V_cell);
+                                        vector_scale(a_cross_b,c_star_tic,1e20/V_cell);
+                                        double dh=h-h0;
+                                        double dk=k-k0;
+                                        double dl=l-l0;
+                                        double dx_star = dh*a_star_tic[1] + dk*b_star_tic[1] + dl*c_star_tic[1];
+                                        double dy_star = dh*a_star_tic[2] + dk*b_star_tic[2] + dl*c_star_tic[2];
+                                        double dz_star = dh*a_star_tic[3] + dk*b_star_tic[3] + dl*c_star_tic[3];
+                                        double Nvol=Na*Nb*Nc;
+                                        double rad_star_sqr = ( dx_star*dx_star + dy_star*dy_star + dz_star*dz_star )
+                                                       *Nvol*Nvol;
+                                        F_latt = Nvol*exp(-( rad_star_sqr / 0.63 * fudge ));
                                     }
 
                                     if(xtal_shape == TOPHAT)
