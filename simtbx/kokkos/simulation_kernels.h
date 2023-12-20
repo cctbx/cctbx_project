@@ -396,8 +396,10 @@ KOKKOS_MAT3 anisoG_local;
 CUDAREAL anisoG_determ = 0;
 KOKKOS_MAT3 anisoU_local;
 bool use_diffuse=true;
-KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to mirror the diffBrag struture 
-
+KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to mirror the diffBrag struture
+// ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+vector_mat3_t diffuse_scale_mat3 = vector_mat3_t("diffuse_scale_mat3",1);
+ 
     if (use_diffuse){
         anisoG_local = anisoG;
         anisoU_local = anisoU;
@@ -413,6 +415,12 @@ KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to m
 
 	    KOKKOS_MAT3 Amatrix(a0[1],a0[2],a0[3],b0[1],b0[2],b0[3],c0[1],c0[2],c0[3]); // This is temporarily needed to mirror the diffBrag struture 
 	    KOKKOS_MAT3 Ainv = Amatrix.inverse()*1.e-10;
+	    CUDAREAL reciprocal_space_volume = 8*M_PI*M_PI*M_PI*Ainv.determinant();
+	    CUDAREAL _tmpfac = M_PI * 0.63 / fudge;
+	    CUDAREAL diffuse_scale = reciprocal_space_volume * sqrt(_tmpfac*_tmpfac*_tmpfac);
+// ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3	    
+	    diffuse_scale_mat3(0)(0,0) = diffuse_scale;
+	    
             for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
 	      laue_mats(iL) = Ainv * laue_mats(iL);
             }
@@ -454,7 +462,6 @@ KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to m
         dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
     }
     KOKKOS_VEC3 dHH(dhh,dkk,dll);
-
 
 // Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
 // 1) mosaicity non-zero positive
@@ -656,8 +663,10 @@ KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to m
 KOKKOS_VEC3 H_vec(h,k,l);
 KOKKOS_VEC3 H0(h0,k0,l0);
 CUDAREAL step_diffuse_param[6];
+ // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
                     calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,s_l_max,s_h_range,s_k_range,s_l_range,
-                    Ainv_dummy,Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
+					diffuse_scale_mat3(0),Fhkl,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,
+					&I_latt,step_diffuse_param);
                             } // end s_use_diffuse outer
 
 
