@@ -1182,7 +1182,6 @@ def test_1():
       out = StringIO()
       stats.show(log=out)
       val = out.getvalue()
-      # print (val)
       assert not show_diff(val, """
 GEOMETRY RESTRAINTS LIBRARY: GEOSTD + MONOMER LIBRARY + CDL V1.2
 DEVIATIONS FROM IDEAL VALUES - RMSD, RMSZ FOR BONDS AND ANGLES.
@@ -1218,6 +1217,13 @@ THEREFORE, THE VALUES ARE NOT RELATED IN A SIMPLE MANNER.
   HELIX:  0.29 (0.58), RESIDUES: 67
   SHEET: -1.83 (0.89), RESIDUES: 20
   LOOP : -0.50 (0.74), RESIDUES: 62
+
+MAX DEVIATION FROM PLANES:
+   TYPE  MAXDEV  MEANDEV LINEINFILE
+   ARG   0.002   0.000   ARG A  49
+   TYR   0.008   0.002   TYR A  40
+   PHE   0.008   0.001   PHE A  87
+   HIS   0.001   0.000   HIS A 126
 """)
 
 if __name__ == '__main__':
