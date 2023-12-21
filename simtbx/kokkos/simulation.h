@@ -18,6 +18,17 @@ namespace simtbx { namespace Kokkos {
 
 namespace af = scitbx::af;
 
+struct diffuse_api {
+  inline diffuse_api() {};
+  inline void show() {};
+  bool enable = false;
+  mat3 anisoG;
+  mat3 anisoU;
+  int stencil_size = 1;
+  bool symmetrize_diffuse = true;
+  int laue_group_num = 12;
+};
+
 struct exascale_api {
   inline
   exascale_api(const simtbx::nanoBragg::nanoBragg& nB) : SIM(nB) { }
@@ -72,7 +83,10 @@ struct exascale_api {
   CUDAREAL m_water_size = 0;
   CUDAREAL m_water_F = 0;
   CUDAREAL m_water_MW = 0;
+  diffuse_api diffuse;
 };
+
+
 } // Kokkos
 } // simtbx
 #endif // SIMTBX_Kokkos_STRUCTURE_FACTORS_H

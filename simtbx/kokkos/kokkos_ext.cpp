@@ -1,7 +1,4 @@
-#include <boost/python/module.hpp>
-#include <boost/python/class.hpp>
-#include <boost/python/def.hpp>
-#include <boost/python/args.hpp>
+#include <boost/python.hpp>
 
 #include "simtbx/kokkos/kokkos_instance.h"
 #include "simtbx/kokkos/detector.h"
@@ -9,6 +6,30 @@
 #include "simtbx/kokkos/simulation.h"
 
 namespace simtbx { namespace Kokkos {
+
+  namespace {
+  static void set_anisoG(simtbx::Kokkos::diffuse_api& diffuse, boost::python::list const& values) {
+      double g0 = boost::python::extract<double>(values[0]);
+      double g1 = boost::python::extract<double>(values[1]);
+      double g2 = boost::python::extract<double>(values[2]);
+      diffuse.anisoG << g0,0,0,0,g1,0,0,0,g2;
+  }
+
+  static boost::python::tuple get_anisoG(simtbx::Kokkos::diffuse_api const& diffuse) {
+      return boost::python::make_tuple(diffuse.anisoG[0],diffuse.anisoG[4],diffuse.anisoG[8]);
+  }
+
+  static void set_anisoU(simtbx::Kokkos::diffuse_api& diffuse, boost::python::list const& values) {
+      double g0 = boost::python::extract<double>(values[0]);
+      double g1 = boost::python::extract<double>(values[1]);
+      double g2 = boost::python::extract<double>(values[2]);
+      diffuse.anisoU << g0,0,0,0,g1,0,0,0,g2;
+  }
+
+  static boost::python::tuple get_anisoU(simtbx::Kokkos::diffuse_api const& diffuse) {
+      return boost::python::make_tuple(diffuse.anisoU[0],diffuse.anisoU[4],diffuse.anisoU[8]);
+  }
+  }
 
   struct kokkos_instance_wrapper
   {
@@ -91,6 +112,8 @@ namespace simtbx { namespace Kokkos {
     wrap()
     {
       using namespace boost::python;
+      typedef return_value_policy<return_by_value> rbv;
+      typedef default_call_policies dcp;
       using namespace simtbx::Kokkos;
       class_<simtbx::Kokkos::exascale_api>("exascale_api",no_init )
         .def(init<const simtbx::nanoBragg::nanoBragg&>(
@@ -130,7 +153,40 @@ namespace simtbx { namespace Kokkos {
              (arg_("detector")),
              "Modify pixels with noise on CPU. Unusual pattern, returns pixels directly instead of saving persistent")
         .def("show",&simtbx::Kokkos::exascale_api::show)
+        .add_property("diffuse",
+                     make_getter(&simtbx::Kokkos::exascale_api::diffuse,rbv()),
+                     make_setter(&simtbx::Kokkos::exascale_api::diffuse,dcp()),
+                     "the diffuse parameters for the simulation.")
         ;
+      class_<simtbx::Kokkos::diffuse_api>("diffuse_api",no_init )
+        .def(init<>())
+        .add_property("enable",
+                     make_getter(&simtbx::Kokkos::diffuse_api::enable,rbv()),
+                     make_setter(&simtbx::Kokkos::diffuse_api::enable,dcp()),
+                     "whether or not to simulate diffuse.")
+        .add_property("stencil_size",
+                     make_getter(&simtbx::Kokkos::diffuse_api::stencil_size,rbv()),
+                     make_setter(&simtbx::Kokkos::diffuse_api::stencil_size,dcp()),
+                     "")
+        .add_property("symmetize_diffuse",
+                     make_getter(&simtbx::Kokkos::diffuse_api::symmetrize_diffuse,rbv()),
+                     make_setter(&simtbx::Kokkos::diffuse_api::symmetrize_diffuse,dcp()),
+                     "")
+        .add_property("laue_group_num",
+                     make_getter(&simtbx::Kokkos::diffuse_api::laue_group_num,rbv()),
+                     make_setter(&simtbx::Kokkos::diffuse_api::laue_group_num,dcp()),
+                     "")
+        .add_property("anisoG",
+                     make_function(&get_anisoG,rbv()),
+                     make_function(&set_anisoG,dcp()),
+                     "")
+        .add_property("anisoU",
+                     make_function(&get_anisoU,rbv()),
+                     make_function(&set_anisoU,dcp()),
+                     "")
+        .def("show",&simtbx::Kokkos::diffuse_api::show)
+        ;
+
     }
   };
 
