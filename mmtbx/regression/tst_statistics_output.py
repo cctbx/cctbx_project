@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model.statistics
 from six.moves import cStringIO as StringIO
-from libtbx.test_utils import show_diff
 from libtbx.utils import null_out
 import mmtbx.model
 
