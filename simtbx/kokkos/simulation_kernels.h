@@ -364,6 +364,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     int nopolar, const vector_cudareal_t polar_vector,
     CUDAREAL polarization, CUDAREAL fudge,
     const vector_size_t pixel_lookup,
+    simtbx::Kokkos::diffuse_api diffuse,
     vector_float_t floatimage /*out*/, vector_float_t omega_reduction/*out*/,
     vector_float_t max_I_x_reduction/*out*/, vector_float_t max_I_y_reduction /*out*/, vector_bool_t rangemap) {
 
@@ -378,6 +379,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                 const int s_k_max = s_k_min + s_k_range - 1;
                 const int s_l_max = s_l_min + s_l_range - 1;
 
+    // set up diffuse scattering if needed
    vector_mat3_t laue_mats = vector_mat3_t("laue_mats",24);
    vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace",3);
    vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam",3);
@@ -385,15 +387,15 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
    int dhh = 0, dkk = 0, dll = 0;
 
 KOKKOS_MAT3 rotate_principal_axes(1,0,0,0,1,0,0,0,1);
-int laue_group_num=12;
-int stencil_size = 1;
-KOKKOS_MAT3 anisoG(300.,0,0,0,100.,0,0,0,300.);
-KOKKOS_MAT3 anisoU(0.48,0,0,0,0.16,0,0,0,0.16);
+    int laue_group_num = diffuse.laue_group_num;
+    int stencil_size = diffuse.stencil_size;
+    KOKKOS_MAT3 anisoG = diffuse.anisoG; // (300.,0,0,0,100.,0,0,0,300.);
+    KOKKOS_MAT3 anisoU = diffuse.anisoU; // (0.48,0,0,0,0.16,0,0,0,0.16);
 KOKKOS_MAT3 Bmat_realspace(1.,0,0,0,1.,0,0,0,1.); // Placeholder
 KOKKOS_MAT3 anisoG_local;
 CUDAREAL anisoG_determ = 0;
 KOKKOS_MAT3 anisoU_local;
-bool use_diffuse=true;
+    bool use_diffuse=diffuse.enable;
 KOKKOS_MAT3 Ainv_dummy(1.,0,0,0,1.,0,0,0,1.); // This is temporarily needed to mirror the diffBrag struture
 // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
 vector_mat3_t diffuse_scale_mat3 = vector_mat3_t("diffuse_scale_mat3",1);

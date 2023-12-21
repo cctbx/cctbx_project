@@ -229,6 +229,7 @@ namespace Kokkos {
       current_channel_Fhkl, kec.m_FhklParams, SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       kdt.m_active_pixel_list,
+      diffuse,
       // return arrays:
       kdt.m_floatimage,
       kdt.m_omega_reduction,
@@ -306,6 +307,7 @@ namespace Kokkos {
       current_channel_Fhkl, kec.m_FhklParams, SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       kdt.m_active_pixel_list,
+      diffuse,
       // return arrays:
       kdt.m_floatimage,
       kdt.m_omega_reduction,
