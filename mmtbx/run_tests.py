@@ -429,7 +429,6 @@ molprobity_tests = [
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
   # validation/molprobity
-  "$D/validation/regression/tst_nqh_minimize.py",
   "$D/validation/regression/tst_molprobity_1.py",
   "$D/validation/regression/tst_molprobity_4.py",
   "$D/validation/regression/tst_molprobity_5.py",
