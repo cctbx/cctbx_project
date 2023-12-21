@@ -386,15 +386,16 @@ class geometry(object):
 %s"""%prefix
       result += res.rama_z.as_string(prefix=prefix)
     #
-    result += "\n\n%sMax deviation from planes:"%prefix
-    result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
-    for pp in p.protein_planes_max_dev:
-      result += "\n  %s %s %s %s  %s"%(
-        prefix,
-        format_value("%s", pp.resname),
-        format_value("%7.3f", pp.max_dev),
-        format_value("%7.3f", pp.mean_dev),
-        pp.id)
+    if p.protein_planes_max_dev:
+      result += "\n\n%sMax deviation from planes:"%prefix
+      result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
+      for pp in p.protein_planes_max_dev:
+        result += "\n  %s %s %s %s  %s"%(
+          prefix,
+          format_value("%s", pp.resname),
+          format_value("%7.3f", pp.max_dev),
+          format_value("%7.3f", pp.mean_dev),
+          pp.id)
     if p.protein_planes_max_dev_noH is not None:
       result += "\n\n%sMax deviation from planes (no H):"%prefix
       result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
