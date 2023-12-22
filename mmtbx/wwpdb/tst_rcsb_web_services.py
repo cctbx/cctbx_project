@@ -70,12 +70,12 @@ def exercise_2():
   assert len(fes_binding) > 765, len(fes_binding)
   # checking correct work when no results found
   di1_examples = rcsb_web_services.chemical_id_search(
-      'Di1',
+      'Di2',
       data_only=True,
       sort_by_resolution=True,
       # log=sys.stdout,
       )
-  assert len(di1_examples) == 0
+  assert len(di1_examples) == 0, len(di1_examples)
 
 def exercise_3():
   # Direct test of post_query
