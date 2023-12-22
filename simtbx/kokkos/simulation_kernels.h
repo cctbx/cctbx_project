@@ -386,7 +386,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
    int num_laue_mats = 0;
    int dhh = 0, dkk = 0, dll = 0;
 
-KOKKOS_MAT3 rotate_principal_axes(1,0,0,0,1,0,0,0,1);
+    KOKKOS_MAT3 rotate_principal_axes = diffuse.rotate_principal_axes; // (1,0,0,0,1,0,0,0,1);
     int laue_group_num = diffuse.laue_group_num;
     int stencil_size = diffuse.stencil_size;
     KOKKOS_MAT3 anisoG = diffuse.anisoG; // (300.,0,0,0,100.,0,0,0,300.);

@@ -29,6 +29,23 @@ namespace simtbx { namespace Kokkos {
   static boost::python::tuple get_anisoU(simtbx::Kokkos::diffuse_api const& diffuse) {
       return boost::python::make_tuple(diffuse.anisoU[0],diffuse.anisoU[4],diffuse.anisoU[8]);
   }
+
+  static void set_rotate_principal_axes(simtbx::Kokkos::diffuse_api& diffuse, std::string const& value) {
+      if (value==std::string("a,b,c")){
+        diffuse.rotate_principal_axes << 1.,0.,0.,0.,1.,0.,0.,0.,1.;
+      } else if (value==std::string("a-b,a+b,c")){
+        double sqrt2o2 = std::sqrt(2.)/2.;
+        diffuse.rotate_principal_axes << sqrt2o2,-sqrt2o2,0.,sqrt2o2,sqrt2o2,0.,0.,0.,1.;
+      } else {
+        throw std::string("rotation case not implemented");
+      }
+  }
+
+  static boost::python::tuple get_rotate_principal_axes(simtbx::Kokkos::diffuse_api const& diffuse) {
+      return boost::python::make_tuple(diffuse.rotate_principal_axes[0],diffuse.rotate_principal_axes[1],diffuse.rotate_principal_axes[2],
+                   diffuse.rotate_principal_axes[3],diffuse.rotate_principal_axes[4],diffuse.rotate_principal_axes[5],
+                   diffuse.rotate_principal_axes[6],diffuse.rotate_principal_axes[7],diffuse.rotate_principal_axes[8]);
+  }
   }
 
   struct kokkos_instance_wrapper
@@ -183,6 +200,10 @@ namespace simtbx { namespace Kokkos {
         .add_property("anisoU",
                      make_function(&get_anisoU,rbv()),
                      make_function(&set_anisoU,dcp()),
+                     "")
+        .add_property("rotate_principal_axes",
+                     make_function(&get_rotate_principal_axes,rbv()),
+                     make_function(&set_rotate_principal_axes,dcp()),
                      "")
         .def("show",&simtbx::Kokkos::diffuse_api::show)
         ;

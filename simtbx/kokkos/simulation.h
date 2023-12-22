@@ -27,6 +27,7 @@ struct diffuse_api {
   int stencil_size = 1;
   bool symmetrize_diffuse = true;
   int laue_group_num = 12;
+  mat3 rotate_principal_axes;
 };
 
 struct exascale_api {
