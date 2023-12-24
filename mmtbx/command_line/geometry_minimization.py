@@ -422,10 +422,11 @@ class run(object):
       f.close()
 
     cif_fname = self.result_model_fname.replace('.pdb', '.cif')
-    print("  output file name:", cif_fname, file=self.log)
-    r = self.model.model_as_mmcif(output_cs=self.output_crystal_symmetry)
-    with open(cif_fname, 'w') as f:
-      f.write(r)
+    if not os.path.isfile(cif_fname):
+      print("  output file name:", cif_fname, file=self.log)
+      r = self.model.model_as_mmcif(output_cs=self.output_crystal_symmetry)
+      with open(cif_fname, 'w') as f:
+        f.write(r)
 
     if(self.states_collector):
       self.states_collector.write(
