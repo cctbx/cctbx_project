@@ -2190,6 +2190,14 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
     if stdin_lines is not None and parameters.split()[-1] != '-':
       raise Sorry(" - should appear at the end of parameters when using stdin_lines mode.")
 
+    # Verify that we're not trying to run on an mMCIF file.
+    if file_name is not None:
+      if ".cif".lower() in file_name.lower():
+        raise Sorry("Reduce cannot read mmCIF files. Please convert to PDB format.")
+    else:
+      if "data_" == stdin_lines[0:5]:
+        raise Sorry("Reduce cannot read mmCIF files. Please convert to PDB format.")
+
     size_bytes = len(stdin_lines) if stdin_lines is not None else 0
     command_to_run="molprobity.reduce "
     if file_name is not None:
