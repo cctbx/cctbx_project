@@ -1,3 +1,10 @@
+2023.12
+=======
+
+* Fixed bug in model_vs_sequence
+* Updated suitename analysis to ignore DNA
+* Fixed bug where mask parameters were not propagated in f_model
+
 2023.11
 =======
 
