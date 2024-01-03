@@ -784,7 +784,7 @@ class manager(manager_mixin):
       if(mngmsks is not None):
         f_masks = mngmsks[:] # copy
       if(mngmsks is not None and curfmsks is not None):
-        assert len(curfmsks) == len(mngmsks)
+        assert len(curfmsks) == len(mngmsks), [len(curfmsks), len(mngmsks)]
         for i in range(len(curfmsks)):
           if( mngmsks[i].data().size() != curfmsks[i].data().size() ):
             f_masks[i] = mngmsks[i].common_set(curfmsks[i])

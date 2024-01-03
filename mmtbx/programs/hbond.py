@@ -66,8 +66,9 @@ Usage example:
       min_data_size=self.params.hbond.min_data_size
       # These are the values to be used for the plot!
       stats.all.show_summary(log = self.logger)
-      theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
-      Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
+      if stats.all.get_counts(min_data_size=min_data_size):
+        theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
+        Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
 
     if self.params.hbond.output_skew_kurtosis_plot and self.results.get_counts():
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,

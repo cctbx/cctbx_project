@@ -331,8 +331,11 @@ class cbetadev(validation):
     if len(cbeta_alt_labels) == 1: cbeta_alt_labels = []
     return "\n".join(header + cbeta_main + cbeta_main_labels + cbeta_alt + cbeta_alt_labels)
 
-  def as_JSON(self):
-    data = {"validation_type": "cbetadev"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "cbetadev"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}

@@ -77,6 +77,25 @@ def get_hierarchy_h_atom(name, xyz, heavy_atom):
                             heavy_atom.b,
                             )
 
+def is_perdeuterated(ag):
+  protons = {}
+  for atom in ag.atoms():
+    if atom.element_is_hydrogen():
+      protons.setdefault(atom.element, 0)
+      protons[atom.element]+=1
+  if len(protons) in [0,2]: return False
+  if len(protons)==1:
+    if 'D' in protons:
+      return True
+    else:
+      return False
+  assert 0
+
+def get_proton_info(ag):
+  proton_name=proton_element='H'
+  if is_perdeuterated(ag):
+    proton_name=proton_element='D'
+  return proton_element, proton_name
 
 def generate_atom_group_atom_names(rg, names, return_Nones=False, verbose=True):
   '''

@@ -260,10 +260,12 @@ def test1():
   o_pdb_str = h.as_pdb_string()
   # Note here incorrect/trimmed chain id
   # There's no way to correctly output chain ids longer than 2 char in PDB format
-  assert_lines_in_text(o_pdb_str, """\
-ATOM     61  C   SERA-   2      72.898  71.361  62.393  1.00 67.20           C
-ATOM     62  O   SERA-   2      73.055  70.333  61.737  1.00 65.10           O
-    """)
+  print(o_pdb_str)
+  assert o_pdb_str==""
+#   assert_lines_in_text(o_pdb_str, """\
+# ATOM     61  C   SERA-2   2      72.898  71.361  62.393  1.00 67.20           C
+# ATOM     62  O   SERA-2   2      73.055  70.333  61.737  1.00 65.10           O
+#     """)
 
   o_cif_str = "%s" % h.as_cif_block()
   assert_lines_in_text(o_cif_str, """\
@@ -299,6 +301,21 @@ def test3():
     'nonbonded pdb=" O   PHEA-5   4 "',]:
     assert_lines_in_text(geo, l)
 
+def test4():
+  """
+  Test selections
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
+  h = inp.construct_hierarchy()
+  asc = h.atom_selection_cache()
+  s = asc.iselection("chain A")
+  assert list(s) == list(range(0,58)), list(s)
+  s = asc.iselection("chain A-2")
+  assert list(s) == list(range(58,116)), list(s)
+  s = asc.iselection("chain A-5")
+  assert list(s) == list(range(116,174)), list(s)
+
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
@@ -310,4 +327,5 @@ if (__name__ == "__main__"):
     print("Can not initialize monomer_library, skipping test.")
   if mon_lib_srv is not None:
     test3()
+  test4()
   print("OK. Time: %8.3f"%(time.time()-t0))

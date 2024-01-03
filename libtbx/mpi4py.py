@@ -78,7 +78,7 @@ def mpi_abort_on_exception(func):
       if e.code:
         sys.stderr.write(e.code + '\n')
       MPI.COMM_WORLD.Abort(1)
-  if using_mpi:
+  if using_mpi and MPI.COMM_WORLD.size > 1:
     return wrapped_func
   else:
     return func

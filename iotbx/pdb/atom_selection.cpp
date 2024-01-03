@@ -28,6 +28,18 @@ namespace {
     }
   }
 
+  void
+  s_map_array_transfer(
+    std::map<std::string, std::vector<unsigned> >& map_s,
+    std::map<std::string, std::vector<unsigned> >& map)
+  {
+    typedef typename std::map<std::string, std::vector<unsigned> >::iterator it;
+    it i_end = map_s.end();
+    for(it i=map_s.begin();i!=i_end;i++) {
+      map[i->first].swap(i->second);
+    }
+  }
+
 } // namespace <anonymous>
 
   atom_selection_cache::atom_selection_cache(
@@ -35,7 +47,7 @@ namespace {
     bool altloc_only)
   {
     std::map<str4, std::vector<unsigned> > name_s;
-    std::map<str1, std::vector<unsigned> > altloc_s;
+    std::map<std::string, std::vector<unsigned> > altloc_s;
     std::map<str4, std::vector<unsigned> > resseq_s;
     std::map<str1, std::vector<unsigned> > icode_s;
     std::map<str5, std::vector<unsigned> > resid_s;
@@ -106,11 +118,11 @@ namespace {
     }
     n_seq = i_seq;
     if (!altloc_only) {
-      if (altloc_s.find(str1("")) != altloc_s.end()) {
-        std::vector<unsigned> const& s0 = altloc_s[str1("")];
-        std::vector<unsigned>& s1 = altloc_s[str1(" ")];
+      if (altloc_s.find("") != altloc_s.end()) {
+        std::vector<unsigned> const& s0 = altloc_s[""];
+        std::vector<unsigned>& s1 = altloc_s[" "];
         s1.insert(s1.end(), s0.begin(), s0.end());
-        altloc_s.erase(str1(""));
+        altloc_s.erase("");
       }
       map_array_transfer(name_s, name);
       map_array_transfer(resseq_s, resseq);
@@ -120,7 +132,7 @@ namespace {
       map_array_transfer(element_s, element);
       map_array_transfer(charge_s, charge);
     }
-    map_array_transfer(altloc_s, altloc);
+    s_map_array_transfer(altloc_s, altloc);
   }
 
   af::shared<unsigned> get_resid_sequence (

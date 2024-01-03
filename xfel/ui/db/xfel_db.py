@@ -837,8 +837,8 @@ class xfel_db_application(db_application):
   def get_all_jobs(self, active = False, where = None):
     if active:
       if where is None:
-        where = ""
-      where += " WHERE (trial.active = True AND rungroup.active = True) OR dataset.active = True"
+        where = "LEFT OUTER JOIN `%s_dataset_task` dataset_task ON job.dataset_id = dataset_task.dataset_id " % self.params.experiment_tag
+        where += "WHERE (trial.active = True AND rungroup.active = True) OR (dataset.active = True AND job.task_id = dataset_task.task_id AND dataset_task.task_id IS NOT NULL)"
     return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', False),
                                                                                   (Run, 'run', False),
                                                                                   (Rungroup, 'rungroup', False),

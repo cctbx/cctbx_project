@@ -49,6 +49,7 @@ standard_file_extensions = {
   'txt'  : ["txt", "log", "html", "geo"],
   'mtz'  : ["mtz"],
   'aln'  : ["aln", "ali", "clustal"],
+  'a3m'  : ["a3m"],
   'hhr'  : ["hhr"],
   'ncs'  : ["ncs","ncs_spec"],
   'img'  : ["img", "osc", "mccd", "cbf", "nxs", "h5", "hdf5"],
@@ -73,6 +74,7 @@ standard_file_descriptions = {
   'txt'  : "Text",
   'mtz'  : "Reflections (MTZ)",
   'aln'  : "Sequence alignment",
+  'a3m'  : "MSA (a3m)",
   'hhr'  : "HHpred alignment",
   'ncs'  : "NCS information file",
   'img'  : "Detector image",
@@ -83,10 +85,10 @@ standard_file_descriptions = {
 }
 
 supported_file_types = ["pdb","hkl","cif","pkl","ncs","seq","phil",
-  "aln", "txt", "xplor_map", "ccp4_map"]
+  "aln", "a3m", "txt", "xplor_map", "ccp4_map"]
 
 binary_types = ["hkl","ccp4_map","img","pkl"]
-ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln",
+ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln", "a3m",
    "seq", "xml", "txt"]
 
 def get_wildcard_string(format):
@@ -449,6 +451,12 @@ class any_file_input(object):
     assert (not hh_object.query in ["", None])
     self._file_object = hh_object
     self._file_type = "hhr"
+
+  def _try_as_a3m(self):
+    from iotbx.bioinformatics import any_a3m_file
+    a3m_object = any_a3m_file(self.file_name)
+    self._file_object = a3m_object
+    self._file_type = "a3m"
 
   def _try_as_aln(self):
     from iotbx.bioinformatics import any_alignment_file

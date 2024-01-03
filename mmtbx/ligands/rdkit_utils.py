@@ -22,6 +22,7 @@ def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal'):
   rc = []
   for i, (code, monomer) in enumerate(cc_cif.items()):
     atom = monomer.get_loop_or_row('_chem_comp_atom')
+    # if atom is None: return rc
     for j, tmp in enumerate(atom.iterrows()):
       if label=='pdbx_model_Cartn_x_ideal':
         xyz = (tmp.get('_chem_comp_atom.pdbx_model_Cartn_x_ideal'),
@@ -62,6 +63,7 @@ def read_chemical_component_filename(filename):
     molecule = Chem.Mol()
     rwmol = Chem.RWMol(molecule)
     atom = monomer.get_loop_or_row('_chem_comp_atom')
+    # if atom is None: continue
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
@@ -98,16 +100,16 @@ def convert_model_to_rdkit(cctbx_model):
   conformer = Chem.Conformer(cctbx_model.get_number_of_atoms())
 
   for i,atom in enumerate(cctbx_model.get_atoms()):
-      element = atom.element.strip().upper()
-      if element =="D":
-        element = "H"
-      else:
-        element = element
-      atomic_number = Chem.GetPeriodicTable().GetAtomicNumber(element)
-      rdatom = Chem.Atom(atomic_number)
-      rdatom.SetFormalCharge(atom.charge_as_int())
-      rdatom_idx = rwmol.AddAtom(rdatom)
-      conformer.SetAtomPosition(rdatom_idx,atom.xyz)
+    element = atom.element.strip().upper()
+    if element =="D":
+      element = "H"
+    else:
+      element = element
+    atomic_number = Chem.GetPeriodicTable().GetAtomicNumber(element)
+    rdatom = Chem.Atom(atomic_number)
+    rdatom.SetFormalCharge(atom.charge_as_int())
+    rdatom_idx = rwmol.AddAtom(rdatom)
+    conformer.SetAtomPosition(rdatom_idx,atom.xyz)
 
   rm = cctbx_model.restraints_manager
   grm = rm.geometry
@@ -238,18 +240,26 @@ def mol_to_2d(mol):
   ret = Chem.rdDepictor.Compute2DCoords(mol)
   return mol
 
-def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False):
+def mol_from_smiles(smiles, embed3d=False, addHs=True, removeHs=False, verbose=False):
   """
   Convert a smiles string to rdkit mol
   """
   ps = Chem.SmilesParserParams()
   ps.removeHs=removeHs
-  rdmol = Chem.MolFromSmiles(smiles,ps)
+  rdmol = Chem.MolFromSmiles(smiles, ps)
+  if verbose: print('rdmol',rdmol)
+  if rdmol is None: return rdmol
+  if verbose: print('rdmol',rdmol.Debug())
   if addHs: rdmol = Chem.AddHs(rdmol)
+  if verbose: print('rdmol',rdmol.Debug())
   if embed3d: rdmol = mol_to_3d(rdmol)
+  if verbose: print('rdmol',rdmol.Debug())
   if removeHs: rdmol = Chem.RemoveHs(rdmol)
+  if verbose: print('rdmol',rdmol.Debug())
   Chem.SetHybridization(rdmol)
+  if verbose: print('rdmol',rdmol.Debug())
   rdmol.UpdatePropertyCache()
+  if verbose: print('rdmol',rdmol.Debug())
   return rdmol
 
 def match_mol_indices(mol_list):
@@ -272,4 +282,17 @@ def match_mol_indices(mol_list):
 
 if __name__ == '__main__':
   import sys
-  read_chemical_component_filename(sys.argv[1])
+  if sys.argv[1:]:
+    read_chemical_component_filename(sys.argv[1])
+  else:
+    for smiles_string in ['CD',
+                          'Cd',
+                          '[Cd]',
+                          'CC',
+                          'c1ccc1',
+      ]:
+      mol = mol_from_smiles(smiles_string, verbose=True)
+      try:
+        print(mol.Debug())
+      except Exception: pass
+    assert 0

@@ -464,8 +464,16 @@ class get_pbs_submit_command(get_submit_command):
       env_str = "source %s\n" % env
       self.source_env_scripts.append(env_str)
 
+    if '<output_dir>' in self.command:
+      self.command = self.command.replace(
+        '<output_dir>',
+        os.path.split(self.stdoutdir[0])
+      )
     # <args> (optional, following the command)
+    image_average_output_dir = os.path.join(os.path.split(self.stdoutdir)[0], 'out')
     for arg in self.params.extra_args:
+      if '<output_dir>' in arg:
+        arg = arg.replace('<output_dir>', image_average_output_dir)
       self.args.append(arg)
 
 class get_slurm_submit_command(get_submit_command):

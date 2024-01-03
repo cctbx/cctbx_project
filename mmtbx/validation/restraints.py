@@ -350,8 +350,11 @@ class restraint_validation(validation):
         else:
           self.n_total_by_model[model_id] += 1
 
-  def as_JSON(self):
-    data = {"validation_type": self.restraint_type}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = self.restraint_type
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -613,8 +616,8 @@ class chiralities(restraint_validation):
       else:
         self.n_handedness_by_model[model_id] += 1
 
-  def as_JSON(self):
-    parent_json = json.loads(restraint_validation.as_JSON(self))
+  def as_JSON(self, addon_json={}):
+    parent_json = json.loads(restraint_validation.as_JSON(self, addon_json))
     summary_results = parent_json['summary_results']
     for model_id in summary_results:
       summary_results[model_id]["num_handedness_outliers"] = self.n_handedness_by_model[model_id]

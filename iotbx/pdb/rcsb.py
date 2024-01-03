@@ -59,7 +59,7 @@ class Redirections(object):
   def __init__(self):
 
     stream = openurl(
-      url = "ftp://ftp.wwpdb.org/pub/pdb/data/status/obsolete.dat",
+      url = "https://files.wwpdb.org/pub/pdb/data/status/obsolete.dat",
       )
 
     chain_redirection_for = parse_pdb_redirections( lineiter = stream )

@@ -4,6 +4,7 @@ import os
 from mmtbx.validation.rotalyze import rotalyze
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -43,27 +44,14 @@ Example:
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
-    result = rotalyze(
-      pdb_hierarchy=hierarchy,
-      data_version="8000",#was 'params.data_version', no options currently
-      show_errors=self.params.show_errors,
-      outliers_only=self.params.outliers_only,
-      use_parent=self.params.use_parent,
-      out=self.logger,
-      quiet=False)
-    return result.as_JSON()
-
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-
-    result = rotalyze(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.results = rotalyze(
       pdb_hierarchy=hierarchy,
       data_version="8000",#was 'params.data_version', no options currently
       show_errors=self.params.show_errors,
@@ -72,9 +60,9 @@ Example:
       out=self.logger,
       quiet=False)
     if self.params.json:
-      print(result.as_JSON(), file=self.logger)
+      print(self.results.as_JSON(), file=self.logger)
     elif self.params.verbose:
-      result.show_old_output(out=self.logger, verbose=True)
+      self.results.show_old_output(out=self.logger, verbose=True)
     if self.params.wxplot :
       try :
         import wxtbx.app
@@ -82,5 +70,11 @@ Example:
         raise Sorry("wxPython not available.")
       else :
         app = wxtbx.app.CCTBXApp(0)
-        result.display_wx_plots()
+        self.results.display_wx_plots()
         app.MainLoop()
+
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

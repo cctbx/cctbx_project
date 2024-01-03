@@ -157,8 +157,11 @@ def exercise_ag_id_str():
   # The function defined in python
   ag = pdb.hierarchy.atom_group()
   ag.altloc='A'
-  ag.resname == "ALA"
-  assert ag.id_str() == 'A          ', "'%s'" % ag.id_str()
+  ag.resname = "ALA"
+  assert ag.id_str() == 'AALA       ', "'%s'" % ag.id_str()
+  ag.altloc="longAlt"
+  ag.resname = "ALAnine"
+  assert ag.id_str() == 'longAltALAnine       ', "'%s'" % ag.id_str()
 
   h = pdb.input(source_info=None, lines="""\
 ATOM      6  CA  ASN B   2      -6.522   2.038   2.831  1.00 14.10           C""").construct_hierarchy()

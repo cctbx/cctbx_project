@@ -6,6 +6,8 @@ from libtbx.phil import parse
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
 from scitbx.matrix import col, sqr
+from cctbx import sgtbx
+from cctbx.sgtbx.literal_description import literal_description
 
 from dxtbx.imageset import MemReader
 from dxtbx.imageset import ImageSet, ImageSetData

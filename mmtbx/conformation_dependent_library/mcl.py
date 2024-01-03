@@ -110,6 +110,14 @@ def update(grm,
                                          _atom_id(aa[0], True),
                                          _atom_id(aa[1], True))
     if bproxies:
+      if verbose:
+        atoms = pdb_hierarchy.atoms()
+        for bp in bproxies:
+          print(bp.i_seqs,
+                atoms[bp.i_seqs[0]].quote(),
+                atoms[bp.i_seqs[1]].quote(),
+                bp.rt_mx_ji,
+                )
       try:
         grm.add_new_bond_restraints_in_place(
           proxies=bproxies,

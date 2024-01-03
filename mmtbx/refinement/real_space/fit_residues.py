@@ -5,7 +5,8 @@ import iotbx.pdb
 import mmtbx.refinement.real_space
 import mmtbx.refinement.real_space.fit_residue
 import sys, time
-from cctbx import crystal
+from cctbx import crystal, maptbx
+from mmtbx.maps import correlation
 import boost_adaptbx.boost.python as bp
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
 fit_ext = bp.import_ext("mmtbx_rotamer_fit_ext")
@@ -52,6 +53,8 @@ class run(object):
                rotamer_manager,
                sin_cos_table,
                mon_lib_srv,
+               filter_by_cc = False,
+               d_min = None,
                map_data_scale = 2.5,
                diff_map_data_threshold = -2.5,
                exclude_selection=None,
@@ -63,6 +66,12 @@ class run(object):
                diff_map_data=None,
                log = None):
     adopt_init_args(self, locals())
+    # Final filtering by CC_mask requires the map and resolution
+    if self.filter_by_cc:
+      assert self.d_min is not None
+      assert self.map_data is not None
+    #
+    self.pdb_hierarchy_start = self.pdb_hierarchy.deep_copy()
     self.processed = 0
     self.total_time_residue_loop = 0
     t0 = time.time()
@@ -105,6 +114,72 @@ class run(object):
       self.mes.append("average time/residue: %6.4f"%(
         self.total_time_residue_loop/self.processed))
     self.mes.append("time to fit residues: %6.4f"%(time.time()-t0))
+    # Final chack by CCmask per residue
+    if self.filter_by_cc:
+      self._filter_by_cc()
+
+  def _filter_by_cc(self):
+    def __get_map_from_hierarchy(ph):
+      xrs = ph.extract_xray_structure(
+        crystal_symmetry = self.crystal_symmetry)
+      hd_sel = xrs.hd_selection()
+      xrs = xrs.select(~hd_sel)
+      fc = xrs.structure_factors(d_min=self.d_min).f_calc()
+      crystal_gridding = maptbx.crystal_gridding(
+        unit_cell             = xrs.unit_cell(),
+        space_group_info      = xrs.space_group_info(),
+        pre_determined_n_real = self.map_data.accessor().all(),
+        symmetry_flags        = maptbx.use_space_group_symmetry)
+      fft_map = fc.fft_map(crystal_gridding = crystal_gridding)
+      return fft_map.real_map_unpadded()
+    # XXX This may be a memory bottleneck (3 maps in memory!)
+    map_calc_start = __get_map_from_hierarchy(ph=self.pdb_hierarchy_start)
+    map_calc_final = __get_map_from_hierarchy(ph=self.pdb_hierarchy)
+    #
+    for m1,m2 in zip(self.pdb_hierarchy_start.models(),
+                     self.pdb_hierarchy.models()):
+      for c1,c2 in zip(m1.chains(), m2.chains()):
+        for rg1, rg2 in zip(c1.residue_groups(), c2.residue_groups()):
+          confs1 = rg1.conformers()
+          confs2 = rg2.conformers()
+          if(len(confs1)>1): continue
+          for con1, con2 in zip(confs1, confs2):
+            res1 = con1.only_residue()
+            res2 = con2.only_residue()
+            if(not self.bselection[res1.atoms()[0].i_seq]): continue
+            atoms1, atoms2 = res1.atoms(), res2.atoms()
+            dist = flex.sqrt((atoms1.extract_xyz() -
+                              atoms2.extract_xyz()).dot())
+            moved = False
+            if(flex.max(dist) > 0.5): moved = True
+            if(moved):
+              sites_cart_start = flex.vec3_double()
+              sites_cart_final = flex.vec3_double()
+              for a1, a2 in zip(atoms1, atoms2):
+                if a1.element_is_hydrogen(): continue
+                sites_cart_start.append(a1.xyz)
+                sites_cart_final.append(a2.xyz)
+              cc_start = correlation.from_map_map_atoms(
+                map_1      = map_calc_start,
+                map_2      = self.map_data,
+                sites_cart = sites_cart_start,
+                unit_cell  = self.crystal_symmetry.unit_cell(),
+                radius     = 2)
+              cc_final = correlation.from_map_map_atoms(
+                map_1      = map_calc_final,
+                map_2      = self.map_data,
+                sites_cart = sites_cart_start,
+                unit_cell  = self.crystal_symmetry.unit_cell(),
+                radius     = 2)
+              if(cc_final < cc_start and abs(cc_final-cc_start)>0.02):
+                re = self.rotamer_manager.rotamer_evaluator
+                re_start = re.evaluate_residue(res1)
+                re_final = re.evaluate_residue(res2)
+                k = "REVERT: %s %s %s cc_start: %6.4f (%s) cc_final: %6.4f (%s)"%(
+                  c1.id, str(res1.resseq), res1.resname, cc_start, re_start,
+                  cc_final, re_final)
+                print(k, file=self.log)
+                rg2.atoms().set_xyz(rg1.atoms().extract_xyz())
 
   def show(self, prefix=""):
     for m in self.mes:

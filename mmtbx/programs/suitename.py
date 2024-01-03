@@ -18,6 +18,7 @@ import os
 from mmtbx.suitename.suitealyze import suitealyze
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import Sorry
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -30,8 +31,11 @@ Supply a PDB or mmCIF file; get suitename validation
 Options:
 
   model=input_file      input PDB file
-  output=text, kin, or bullseye    select type of output
   outliers_only=False   suppress non-outlier results
+  report=True           standard text output
+  json=False            JSON format output
+  string=False          output in suitestring format, 3 characters per suite
+  kinemage=False        kinemage-format visual markup
 
 Example:
 
@@ -123,19 +127,27 @@ Example:
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    suite_results = suitealyze(pdb_hierarchy=hierarchy, options=self.params)
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.suite_results = suitealyze(pdb_hierarchy=hierarchy, options=self.params)
     if self.params.suitename.string or self.params.suitename.oneline:# == "string":
-      suite_results.display_suitestrings(blockform=True)
+      self.suite_results.display_suitestrings(blockform=True)
     elif self.params.suitename.markup:# == "markup":
-      print(suite_results.as_kinemage_markup())
+      print(self.suite_results.as_kinemage_markup())
     elif self.params.suitename.json:
-      print(suite_results.as_JSON())
+      print(self.suite_results.as_JSON())
     elif self.params.suitename.report:# == "report":
-      suite_results.show_old_output(verbose=True)
+      self.suite_results.show_old_output(verbose=True)
     else:
-      suite_results.show_old_output(verbose=True)
+      self.suite_results.show_old_output(verbose=True)
     #print(suite_results.as_kinemage())
     #suite_results.show_summary()
+
+  def get_results(self):
+    return self.suite_results
+
+  def get_results_as_JSON(self):
+    return self.suite_results.as_JSON(self.info_json)
 
     #hierarchy.atoms().reset_i_seq()
     #result = cbetadev(

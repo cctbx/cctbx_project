@@ -262,6 +262,16 @@ class refine_adp(object):
             nproc=None):
     adopt_init_args(self, locals())
     d_min = fmodels.fmodel_xray().f_obs().d_min()
+    #
+    # Figure out if need to optimize weights or skip it
+    #
+    optimize_adp_weight = self.target_weights.twp.optimize_adp_weight
+    if(optimize_adp_weight):
+      r_work = self.fmodels.fmodel_xray().r_work()
+      r_free = self.fmodels.fmodel_xray().r_free()
+      if ((r_free < r_work or (r_free-r_work)<0.01) and
+          (not all_params.target_weights.force_optimize_weights)) :
+        optimize_adp_weight = False
     # initialize with defaults...
     if(target_weights is not None):
       import mmtbx.refinement.weights_params
@@ -307,7 +317,7 @@ class refine_adp(object):
     if(self.target_weights is not None):
       default_weight = self.target_weights.adp_weights_result.wx*\
           self.target_weights.adp_weights_result.wx_scale
-      if(self.target_weights.twp.optimize_adp_weight):
+      if(optimize_adp_weight):
         wx_scale = [0.03,0.125,0.5,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.]
         trial_weights = list( flex.double(wx_scale)*self.target_weights.adp_weights_result.wx )
         self.wx_scale = 1

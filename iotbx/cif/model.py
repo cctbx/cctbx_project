@@ -173,6 +173,12 @@ class block_base(MutableMapping):
           return loop[key]
       if key in self.loops:
         return self.loops[key]
+      # special key added to GeoStd
+      if key in ['_chem_comp.initial_date',
+                 '_chem_comp.modified_date',
+                 '_chem_comp.source',
+                 ]:
+        return '.'
     raise KeyError(key)
 
   def __delitem__(self, key):

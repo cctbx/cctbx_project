@@ -158,6 +158,7 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
+                 mask_params = None,
                  free_r_flags_scope = 'miller_array.labels.name',
                  ):
     """
@@ -257,6 +258,7 @@ class fmodel_mixins(object):
       abcd                = data.experimental_phases,
       xray_structure      = model.get_xray_structure(),
       twin_law            = twin_law,
+      mask_params         = mask_params,
       ignore_r_free_flags = parameters.r_free_flags.ignore_r_free_flags,
       mtz_object          = data.mtz_object,
       data_type           = array_type)

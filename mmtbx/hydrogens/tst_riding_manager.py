@@ -25,7 +25,7 @@ def exercise1():
   number_h = model.get_hd_selection().count(True)
   number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
-  assert (number_h_para == number_h-1), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h)
 
   rc = h_parameterization[20]
 
@@ -62,7 +62,7 @@ def exercise1():
 
 def apply_selection(riding_h_manager, selection, answers):
   entries_original_h_para = 21
-  entries_cpp_original    = 8
+  entries_cpp_original    = 9
   h_parameterization = riding_h_manager.h_parameterization
 
   pdb_hierarchy = riding_h_manager.pdb_hierarchy
@@ -79,10 +79,11 @@ def apply_selection(riding_h_manager, selection, answers):
   assert (
     len(new_h_parameterization) == selected_manager.pdb_hierarchy.atoms_size())
   assert (len(riding_h_manager.parameterization_cpp) == entries_cpp_original)
+  #print('number of entries in new_h_para_selected', len(new_h_parameterization))
+  #print('para c++ new', len(selected_manager.parameterization_cpp))
   assert (
     len(selected_manager.parameterization_cpp) == answers.entries_cpp_selected)
-  #print 'number of entries in new_h_para_selected', len(new_h_parameterization)
-  #print 'para c++ new', len(selected_manager.parameterization_cpp)
+
 
   assert (
     selected_manager.hd_selection.count(True) == answers.h_in_selected_hierarchy)
@@ -110,8 +111,6 @@ def exercise2():
     log         = null_out())
   model.process(make_restraints=True)
   pdb_hierarchy = model.get_hierarchy()
-  #sites_cart = model.get_sites_cart()
-  #atoms = pdb_hierarchy.atoms()
 
   model.setup_riding_h_manager()
   riding_h_manager = model.get_riding_h_manager()
@@ -121,23 +120,23 @@ def exercise2():
   number_h_para = len(h_parameterization) - h_parameterization.count(None)
 
   # Check that all H atoms are parameterized in original manager
-  assert (number_h_para == number_h - 1), 'Not all H atoms are parameterized'
+  assert (number_h_para == number_h)
 
   # Test several selections and compare with known answers
   #
-  print('selection1 = not (name CE1 or name CB)')
+  #print('selection1 = not (name CE1 or name CB)')
   selection1 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name CE1 or name CB)")
   answers1 = group_args(
     entries_selected_h_para = 19,
-    entries_cpp_selected    = 2,
+    entries_cpp_selected    = 3,
     h_in_selected_hierarchy = 9)
   apply_selection(
     riding_h_manager = riding_h_manager,
     selection        = selection1,
     answers          = answers1)
   #
-  print('selection2 = not (name CD1 or name HD2 or name C)')
+  #print('selection2 = not (name CD1 or name HD2 or name C)')
   selection2 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name CD1 or name HD2 or name C)")
   answers2 = group_args(
@@ -149,7 +148,7 @@ def exercise2():
     selection        = selection2,
     answers          = answers2)
   #
-  print('selection3 = not (name N or name HB2 or name CE2)')
+  #print('selection3 = not (name N or name HB2 or name CE2)')
   selection3 = pdb_hierarchy.atom_selection_cache().\
       selection("not (name N or name HB2 or name CE2)")
   answers3 = group_args(

@@ -303,6 +303,8 @@ Usage examples:
       .type = str
     iterate_NQH = HIS ASN GLN
       .type = choice
+    proton_energy_difference = None
+      .type = float
     only_i = None
       .type = int
     step_buffer_radius = None
@@ -353,7 +355,6 @@ Usage examples:
         rc = get_selection_from_user(model.get_hierarchy(),
                                      include_amino_acids=[resname])
         if rc.find('resname %s' % resname)>-1:
-          # self.params.qi.iterate_NQH=rc
           self.params.qi.format='qi'
         self.params.qi.selection = [rc]
     #
@@ -736,11 +737,12 @@ Usage examples:
                             ))
     results = run_serial_or_parallel(update_restraints, argstuples, nproc)
     for i, filename in enumerate(filenames):
+      filename=os.path.join('qm_work_dir', filename)
       assert os.path.exists(filename), ' Output %s missing' % filename
       results[i].filename = filename
     return results
 
-  def _process_energies(self, energies, units, resname='HIS'):
+  def _process_energies(self, energies, units, resname='HIS', energy_adjustment=None, log=None):
     te=[]
     adjust = []
     if resname=='HIS': adjust=[0,3]
@@ -757,12 +759,18 @@ Usage examples:
           energy+=0.5
           assert 0
         elif units.lower() in ['ev']:
-          # energy+=13.61
-          energy+=4.098 # 94.51 kcal/mol
+          if energy_adjustment is None:
+            # energy_adjustment=13.61 # ???
+            # energy_adjustment=4.098 # 94.51 kcal/mol JM
+            energy_adjustment=5.157 # 118.931
+          energy+=energy_adjustment
         else:
           assert 0
       te.append(energy)
-    return te
+    outl=''
+    if resname=='HIS':
+      outl = '  Proton energy used : %0.4f %s' % (energy_adjustment, units)
+    return te, outl
 
   def iterate_ASN(self, log=None):
     def classify_NQ(args): pass
@@ -803,9 +811,10 @@ Usage examples:
                     'HE2 only flipped',
     ]
     nproc = self.params.qi.nproc
-    self.process_flipped_jobs('HIS', rc, protonation=protonation, nproc=nproc, log=log)
+    energy_adjustment=self.params.qi.proton_energy_difference
+    self.process_flipped_jobs('HIS', rc, protonation=protonation, nproc=nproc, energy_adjustment=energy_adjustment, log=log)
 
-  def process_flipped_jobs(self, resname, rc, protonation=None, id_str=None, nproc=-1, log=None):
+  def process_flipped_jobs(self, resname, rc, protonation=None, id_str=None, nproc=-1, energy_adjustment=None, log=None):
     energies = []
     units = None
     rmsds = []
@@ -839,14 +848,15 @@ Usage examples:
     else:
       rotamers=['None']*len(filenames)
 
-    energies = self._process_energies(energies, units, resname=resname)
+    energies, outl = self._process_energies(energies, units, resname=resname, energy_adjustment=energy_adjustment, log=log)
     me=min(energies)
     cmd = '\n\n  phenix.start_coot'
     #
     if resname not in ['radius']:
       hierarchy = self.get_selected_hierarchy()
       original_ch = classify_histidine(hierarchy, resname=resname)
-      print('\n\nEnergies in units of %s\n' % units, file=log)
+      print('\n\nEnergies in units of %s' % units, file=log)
+      print('%s\n' % outl, file=log)
       print('  %i. %-20s : rotamer "%s"' % (
         0,
         original_ch[1],
@@ -862,7 +872,9 @@ Usage examples:
         cmd += ' %s' % filename
       #
       nci = hbondss[i].get_counts(filter_id_str=id_str, min_data_size=1)
-      n=nci.n_filter
+      n=-1
+      if nci:
+        n=nci.n_filter
       energy = energies[i]
       #
       # convert to kcal/mol

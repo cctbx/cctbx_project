@@ -18,11 +18,11 @@ buttonsdeflist = [
               }
             }
 """),
-# ConstanAxesSliceIntens and ConstanAxesSliceAmpl rely on hard coded names "H-axis (1,0,0)", "K-axis (0,1,0)"
+# ConstantAxesSliceIntens and ConstantAxesSliceAmpl rely on hard coded names "H-axis (1,0,0)", "K-axis (0,1,0)"
 # and "L-axis (0,0,1)" being present in the list of vectors. The button PHIL parameter show_vector="['-axis', True]"
 # will then entail comboboxes being created from where H, K or L axes can be selected. This is more compact
 # than having threee separate buttons for each axes
-  ("ConstanAxesSliceIntens", "Show plane of intensities with constant: ", """
+  ("ConstantAxesSliceIntens", "Show plane of intensities with constant: ", """
           clip_plane {
             normal_vector = "-axis"
             is_assoc_real_space_vector = True
@@ -42,7 +42,7 @@ buttonsdeflist = [
           }
  """),
 
-   ("ConstanAxesSliceAmpl", "Show plane of amplitudes with constant: ", """
+   ("ConstantAxesSliceAmpl", "Show plane of amplitudes with constant: ", """
           clip_plane {
             normal_vector = "-axis"
             is_assoc_real_space_vector = True
@@ -103,7 +103,7 @@ buttonsdeflist = [
 
 ("Evalues", "E-values",
  """
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values', ['FP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -230,7 +230,6 @@ buttonsdeflist = [
             show_vector = "['Anisotropy1', True]"
             show_vector = "['Anisotropy2', True]"
             show_vector = "['Anisotropy3', True]"
-            animate_rotation_around_vector = "[0, -1.0]"
           }
           hkls {
             expand_to_p1 = True
@@ -281,7 +280,7 @@ buttonsdeflist = [
             normal_vector = "tNCS_xtriage"
             clip_width = 0.380397231
           }
-          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+          miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values', ['FP', 'Amplitude'], ['', ''])"
           viewer {
             data_array {
               label = "E-values"
@@ -299,15 +298,39 @@ buttonsdeflist = [
           }
 
 """),
-  ("TNCSvecrotate_xtriage", "Rotate around tNCS_xtriage vector", """
+  ("TNCSvecrotate_xtriage_F", "Rotate around tNCS_xtriage vector", """
             clip_plane {
               clip_width = 6
               auto_clip_width = False
             }
-            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = array1.normalize().sigmas()', 'E-values', ['FP,SIGFP', 'Amplitude'], ['', ''])"
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values(F)', ['FP', 'Amplitude'], ['', ''])"
             viewer {
               data_array {
-                label = "E-values"
+                label = "E-values(F)"
+                datatype = "Amplitude"
+              }
+              show_vector = "['tNCS_xtriage', True]"
+              user_vector {
+                label = "tNCS_xtriage"
+              }
+              is_parallel = True
+              fixorientation = *vector None
+              animate_rotation_around_vector = "['tNCS_xtriage', 5.0]"
+            }
+            hkls {
+              expand_to_p1 = True
+              expand_anomalous = True
+            }
+"""),
+  ("TNCSvecrotate_xtriage_I", "Rotate around tNCS_xtriage vector", """
+            clip_plane {
+              clip_width = 6
+              auto_clip_width = False
+            }
+            miller_array_operation = "('newarray._data = array1.normalize().data()\\nnewarray._sigmas = None', 'E-values(I)', ['I', 'Intensity'], ['', ''])"
+            viewer {
+              data_array {
+                label = "E-values(I)"
                 datatype = "Amplitude"
               }
               show_vector = "['tNCS_xtriage', True]"

@@ -58,8 +58,9 @@ class cartesian_ncs_manager(object):
         self.groups_list.append(g)
 
   def select(self, selection):
-    assert isinstance(selection, flex.bool)
-    iselection = selection.iselection()
+    iselection = selection
+    if isinstance(selection, flex.bool):
+      iselection = selection.iselection()
     ext_groups = []
     for group in self.groups_list:
       ext_groups.append(group.select(iselection))

@@ -36,8 +36,10 @@ def exercise():
   homologs = rcsb_web_services.sequence_search(lysozyme, d_max=2.0)
   assert (len(homologs) > 500)
   atp_binding = rcsb_web_services.chemical_id_search("ATP", protein_only=True)
+  # print("len(atp_binding)", len(atp_binding)) # 1314
   assert (len(atp_binding) > 650)
   atp_binding = rcsb_web_services.chemical_id_search("ATP", xray_only=True, protein_only=True)
+  # print("len(atp_binding)", len(atp_binding)) # 1314
   assert (len(atp_binding) > 650)
   report = rcsb_web_services.get_high_resolution_for_structures(atp_binding)
   assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
@@ -68,12 +70,12 @@ def exercise_2():
   assert len(fes_binding) > 765, len(fes_binding)
   # checking correct work when no results found
   di1_examples = rcsb_web_services.chemical_id_search(
-      'Di1',
+      'Di2',
       data_only=True,
       sort_by_resolution=True,
       # log=sys.stdout,
       )
-  assert len(di1_examples) == 0
+  assert len(di1_examples) == 0, len(di1_examples)
 
 def exercise_3():
   # Direct test of post_query

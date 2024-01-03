@@ -7,9 +7,10 @@ from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time
 import sys
 from  mmtbx.programs import suitename
+from iotbx.cli_parser import run_program
 
 #=============================================================================
-def run(args):
+def old_run(args):
 
   # create parser
   logger = multi_out()
@@ -43,5 +44,5 @@ def run(args):
 # =============================================================================
 
 if __name__ == '__main__':
-  run(args=sys.argv[1:])
-
+  #run(sys.argv[1:])
+  run_program(program_class=suitename.Program, hide_parsing_output=True)
