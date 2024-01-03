@@ -194,6 +194,13 @@ with DeviceWrapper(0) as _:
         P.fix.detz_shift = True
         P.ftol=1e-15
 
+    if args.perturb == ["detz_shift"]:
+        P.fix.detz_shift = False
+        P.fix.ucell=True
+        P.fix.Nabc=True
+        P.fix.G=True
+        P.fix.RotXYZ=True
+
     E.detector = SIM.detector
     E.beam = SIM.D.beam
     E.imageset = make_imageset([img], E.beam, E.detector)
@@ -219,6 +226,7 @@ with DeviceWrapper(0) as _:
     P.simulator.structure_factors.mtz_name = mtz_name
     P.simulator.structure_factors.mtz_column = "F(+),F(-)"
     P.niter = 0
+    P.sigmas.RotXYZ = [1,1,1]
     P.logging.parameters=True
     P.niter_per_J = 1
     P.method="L-BFGS-B"

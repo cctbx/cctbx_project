@@ -913,9 +913,8 @@ class DataModeler:
                 else:
                     cent = centers.ucell_gamma
                     beta = betas.ucell_gamma
-                assert cent is not None
-                assert beta is not None
-                cent = cent*np.pi / 180.
+                if cent is not None:
+                    cent = cent*np.pi / 180.
 
             p = ParameterType(init=val, sigma=sigma.ucell[i_uc],
                               minval=minval, maxval=maxval, fix=fix.ucell,
@@ -1471,7 +1470,11 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
             if p.refine:
                 xval = x[p.xpos]
                 val = p.get_val(xval)
-                val_s += "%s=%.3f, " % (p.name, val)
+                name = p.name
+                if name == "detz_shift":
+                    val = val * 1e3
+                    name = p.name + "_mm"
+                val_s += "%s=%.3f, " % (name, val)
         MAIN_LOGGER.debug(val_s)
 
 

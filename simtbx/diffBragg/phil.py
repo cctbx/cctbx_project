@@ -619,7 +619,7 @@ fix
   ucell = False
     .type = bool
     .help = fix the unit cell during refinement
-  detz_shift = False
+  detz_shift = True
     .type = bool
     .help = fix the detector distance shift during refinement
 }
