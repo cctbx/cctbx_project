@@ -846,12 +846,25 @@ class UnitCellSentinel(Thread):
             plots = dbscan_plot_manager(params)
             plots.wrap_3D_features(fig = figure, embedded = True)
             figure.canvas.draw_idle()
+            cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
+            if not os.path.isdir(cluster_dir):
+              os.makedirs(cluster_dir)
+            cluster_file = os.path.join(cluster_dir,"cluster_%s.pickle"%(plots.FV.sample_name.strip().replace(" ", "_")))
+            print("Writing cluster to", cluster_file)
+            import pickle
+            with open(cluster_file,"wb") as FF:
+              pickle.dump(
+                dict(populations=plots.pop,
+                     features=plots.FV.features_,
+                     info=plots.FV.output_info,
+                     sample=plots.FV.sample_name),FF
+                )
           else:
             print("Unsupported crystal system", cs)
 
         self.post_refresh()
         self.parent.run_window.unitcell_light.change_status('on')
-        time.sleep(5)
+        time.sleep(15)
       except Exception as e:
         print(e)
         self.parent.run_window.unitcell_light.change_status('alert')
