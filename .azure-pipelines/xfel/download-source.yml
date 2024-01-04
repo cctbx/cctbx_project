@@ -61,6 +61,9 @@ jobs:
   # preserve permissions and delete extra files
   - script: |
       cd $(Pipeline.Workspace)
+      mv modules/kokkos/.git modules/kokkos/.git.tmp
+      rm -fr modules/*/.git/*
+      mv modules/kokkos/.git.tmp modules/kokkos/.git
       rm -fr modules/*/.svn/*
       rm -fr modules/*.tar
       tar -cf modules.tar modules
