@@ -61,7 +61,6 @@ jobs:
   # preserve permissions and delete extra files
   - script: |
       cd $(Pipeline.Workspace)
-      rm -fr modules/*/.git/*
       rm -fr modules/*/.svn/*
       rm -fr modules/*.tar
       tar -cf modules.tar modules
