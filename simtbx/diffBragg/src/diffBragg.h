@@ -139,6 +139,8 @@ class diffBragg: public nanoBragg{
 
   ~diffBragg(){};
 
+  af::shared<mat3> get_mosaic_blocks_prime();
+
   /// pixels
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
@@ -164,11 +166,20 @@ class diffBragg: public nanoBragg{
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
     // diffBragg_cudaPointers cuda_pointers;
-    void kokkos_free() { diffBragg_runner.reset(); }
+    inline void kokkos_free() { diffBragg_runner.reset(); }
     // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
     std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
     // diffBraggKOKKOS diffBragg_runner;
 #endif
+
+    inline void gpu_free(){
+#ifdef DIFFBRAGG_HAVE_CUDA
+            cuda_free();
+#endif
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+            kokkos_free();
+#endif
+    }
 
   // methods
   void update_xray_beams(scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value);
@@ -299,6 +310,7 @@ class diffBragg: public nanoBragg{
   double Nd, Ne, Nf;
   bool refine_Ncells_def;
   bool no_Nabc_scale;  // if true, then absorb the Nabc scale into an overall scale factor
+  double prev_shiftZ=0; // keep track of when detector Z was shifted  (helps determine when to set the update_detector flag for GPU devices
   Eigen::Matrix3d NABC;
 
   bool use_lambda_coefficients;
@@ -311,12 +323,11 @@ class diffBragg: public nanoBragg{
   bool update_rotmats_on_device=false;
   bool update_umats_on_device=false;
   bool update_panels_fasts_slows_on_device=false;
-  bool update_sources_on_device=false;
   bool update_Fhkl_on_device=false;
   bool update_refine_flags_on_device=false;
   bool update_step_positions_on_device=false;
   bool update_panel_deriv_vecs_on_device=false;
-  bool use_cuda=false;
+  bool use_gpu=false;
   bool force_cpu=false;
   int Npix_to_allocate=-1; // got GPU allocation, -1 is auto mode
 

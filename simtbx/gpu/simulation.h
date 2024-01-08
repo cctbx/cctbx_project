@@ -14,7 +14,7 @@ namespace af = scitbx::af;
 struct exascale_api {
   inline
   exascale_api(const simtbx::nanoBragg::nanoBragg& nB):
-    SIM(nB){
+    SIM(nB),stash_device_Id(nB.device_Id){
   }
 
   void show();
@@ -38,6 +38,7 @@ struct exascale_api {
   ~exascale_api();
 
   const simtbx::nanoBragg::nanoBragg& SIM;
+  const int stash_device_Id; // must remain the same after initialization
   CUDAREAL * cu_current_channel_Fhkl;
 
   CUDAREAL cu_subpixel_size;

@@ -9,7 +9,7 @@ import os
 import numpy as np
 
 
-def save_expt_refl_file(filename, expts, refls, specs=None, check_exists=False):
+def save_expt_refl_file(filename, expts, refls, specs=None, check_exists=False, indices=None):
     """
     Save an input file for bg_and_probOri (the EMC initializer script)
     expt and refl names will be given absolute paths
@@ -18,12 +18,15 @@ def save_expt_refl_file(filename, expts, refls, specs=None, check_exists=False):
     :param refls: list of reflection tables
     :param specs: optional list of spectrum .lam files
     :param check_exists: ensure files actually exist
+    :param indices: experiment indices if multiple images per experiment
     :return:
     """
     if specs is None:
         specs = [None]*len(expts)
+    if indices is None:
+        indices = [None] *len(indices)
     with open(filename, "w") as o:
-        for expt, refl, spec in zip(expts, refls, specs):
+        for expt, refl, spec, idx in zip(expts, refls, specs, indices):
             expt = os.path.abspath(expt)
             refl = os.path.abspath(refl)
             if spec is not None:
@@ -33,10 +36,15 @@ def save_expt_refl_file(filename, expts, refls, specs=None, check_exists=False):
                 assert os.path.exists(refl)
                 if spec is not None:
                     assert os.path.exists(spec)
-            if spec is not None:
-                o.write("%s %s %s\n" % (expt, refl, spec))
+            if spec is None:
+                spec = ""
             else:
-                o.write("%s %s\n" % (expt, refl))
+                spec = " %s" %spec
+            if idx is None:
+                idx = ""
+            else:
+                idx = " %d" % idx
+            o.write("%s %s%s%s\n" % (expt, refl, spec, idx))
 
 
 def make_rank_outdir(root, subfolder, rank=0):
@@ -59,11 +67,31 @@ def diffBragg_Umat(rotX, rotY, rotZ, U):
     return U
 
 
-def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path,
-                   rank=0):
+def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path=None,
+                   rank=0, write_expt=True, write_pandas=True, exp_idx=0):
+    """
+
+    :param x: the optiized parameters used by hopper (output of Minimize)
+    :param Mod: the instance of the hopper_utils.DataModeler that was used by hopper
+    :param SIM: the instance of nanoBragg/sim_data.SimData that was used by hopper
+    :param orig_exp_name: the name of the experiment list that was input to hopper
+    :param params: the diffBragg hopper parameters
+    :param expt: the data modeler experiment
+    :param rank_exp_idx: order this shot was processed by this MPI rank #TODO rename this
+    :param stg1_refls: path to the refls that were input to hopper
+    :param stg1_img_path: leave as None, no longer used
+    :param rank: MPI rank
+    :param write_expt: whether to write the single shot experiment
+    :param write_pandas: whether to write the single shot dataframe
+    :param exp_idx: the index of the experiment within the experiment list (orig_exp_name)
+    :return: the single shot dataframe
+    """
     LOGGER = logging.getLogger("refine")
-    rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
-    rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)
+    opt_exp_path = None
+    basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
+    if write_expt:
+        rank_exper_outdir = make_rank_outdir(params.outdir, "expers",rank)
+        opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
 
     scale, rotX, rotY, rotZ, Na, Nb, Nc, Nd, Ne, Nf,\
         diff_gam_a, diff_gam_b, diff_gam_c, diff_sig_a, \
@@ -109,9 +137,6 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
             rotY_xt = par['rotY']
             rotZ_xt = par['rotZ']
             U_xt = diffBragg_Umat(rotX_xt, rotY_xt, rotZ_xt, SIM.Umatrices[i_xtal])
-            #cryst_temp = deepcopy(new_cryst)
-            #cryst_temp.set_U(U_xt)
-            #Amat_xt = cryst_temp.get_A()
             other_Umats.append(U_xt)
             other_spotscales.append(scale_xt)
 
@@ -128,9 +153,6 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
                     lam_coefs.append([val])
             lam_coefs = tuple(lam_coefs)
 
-    basename = os.path.splitext(os.path.basename(orig_exp_name))[0]
-    opt_exp_path = os.path.join(rank_exper_outdir, "%s_%s_%d.expt" % (params.tag, basename, rank_exp_idx))
-    pandas_path = os.path.join(rank_pandas_outdir, "%s_%s_%d.pkl" % (params.tag, basename, rank_exp_idx))
     new_expt = Experiment()
     new_expt.crystal = new_cryst
     new_expt.detector = expt.detector
@@ -140,8 +162,9 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
     # expt.detector = refiner.get_optimized_detector()
     new_exp_list = ExperimentList()
     new_exp_list.append(new_expt)
-    new_exp_list.as_file(opt_exp_path)
-    LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
+    if write_expt:
+        new_exp_list.as_file(opt_exp_path)
+        LOGGER.debug("saved opt_exp %s with wavelength %f" % (opt_exp_path, expt.beam.get_wavelength()))
     _,flux_vals = zip(*SIM.beam.spectrum)
 
     df = single_expt_pandas(xtal_scale=scale, Amat=Amat,
@@ -166,14 +189,21 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         opt_det=params.opt_det, stg1_refls=stg1_refls,
         stg1_img_path=stg1_img_path,
         ncells_init=Nabc_init, spot_scales_init=scale_init,
-        other_Umats = other_Umats, other_spotscales = other_spotscales)
+        other_Umats = other_Umats, other_spotscales = other_spotscales,
+        num_mosaicity_samples=params.simulator.crystal.num_mosaicity_samples)
+
+    df['exp_idx'] = exp_idx
+
     if hasattr(Mod, "sigz"):
         df['sigz'] = [Mod.sigz]
     if hasattr(Mod, "niter"):
         df['niter'] = [Mod.niter]
     df['phi_deg'] = SIM.D.phi_deg
     df['osc_deg'] = SIM.D.osc_deg
-    df.to_pickle(pandas_path)
+    if write_pandas:
+        rank_pandas_outdir = make_rank_outdir(params.outdir, "pandas",rank)
+        pandas_path = os.path.join(rank_pandas_outdir, "%s_%s_%d.pkl" % (params.tag, basename, rank_exp_idx))
+        df.to_pickle(pandas_path)
     return df
 
 
@@ -183,7 +213,7 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
                        spec_file, spec_stride,flux, beamsize_mm,
                        orig_exp_name, opt_exp_name, spec_from_imageset, oversample,
                        opt_det, stg1_refls, stg1_img_path, ncells_init=None, spot_scales_init = None,
-                       other_Umats=None, other_spotscales=None):
+                       other_Umats=None, other_spotscales=None, num_mosaicity_samples=None):
     """
 
     :param xtal_scale:
@@ -212,6 +242,7 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
     :param opt_det:
     :param stg1_refls:
     :param stg1_img_path:
+    :num_mosaicity_samples:
     :return:
     """
     if other_Umats is None:
@@ -253,11 +284,16 @@ def single_expt_pandas(xtal_scale, Amat, ncells_abc, ncells_def, eta_abc,
         df["other_spotscales"] = [tuple(other_spotscales)]
     if other_Umats:
         df["other_Umats"] = [tuple(map(tuple, other_Umats))]
+    if num_mosaicity_samples is not None:
+        df['num_mosaicity_samples'] = num_mosaicity_samples
 
     df["total_flux"] = flux
     df["beamsize_mm"] = beamsize_mm
     df["exp_name"] = os.path.abspath(orig_exp_name)
-    df["opt_exp_name"] = os.path.abspath(opt_exp_name)
+
+    if opt_exp_name is not None:
+        opt_exp_name = os.path.abspath(opt_exp_name)
+    df["opt_exp_name"] = opt_exp_name
     df["spectrum_from_imageset"] = spec_from_imageset
     df["oversample"] = oversample
     if opt_det is not None:

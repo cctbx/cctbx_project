@@ -72,8 +72,8 @@ def _compute(rot_ax, ang_idx, eta_eff, Cvec, derivs=None, second_derivs=None):
             dU_d_theta = rot_ax.axis_and_angle_as_r3_derivative_wrt_angle(rot_sign*rot_ang, deg=False) # 1st deriv
             d2U_d_theta2 = rot_ax.axis_and_angle_as_r3_derivative_wrt_angle(rot_sign*rot_ang, deg=False, second_order=True)  # second deriv
             for d, d2 in zip(d_theta_d_eta, dsquared_theta_d_eta_squared):
-                dU_d_eta = rot_sign*dU_d_theta*d
-                d2U_d_eta2 = d2U_d_theta2*(d**2) + dU_d_theta*d2
+                dU_d_eta = dU_d_theta*(rot_sign*d)
+                d2U_d_eta2 = d2U_d_theta2*(d**2) + dU_d_theta*(rot_sign*d2)
                 Uprimes.append(dU_d_eta)
                 Udblprimes.append(d2U_d_eta2)
 

@@ -256,7 +256,7 @@ class Hopper_Processor(Processor):
                     )
 
         if self.params.dispatch.coset:
-            from dials.algorithms.integration.sublattice_helper import integrate_coset
+            from xfel.util.sublattice_helper import integrate_coset
 
             integrate_coset(self, experiments, indexed)
 

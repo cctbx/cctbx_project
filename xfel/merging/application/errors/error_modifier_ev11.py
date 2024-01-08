@@ -325,7 +325,7 @@ class error_modifier_ev11(worker):
       # Calculate initial EV11 parameters
       self.sfac = 1/slope
       self.sadd = offset
-      self.sb = math.sqrt(self.sadd)
+      self.sb = math.sqrt(self.sadd) if self.sadd > 0 else 0
 
       '''
       if True:

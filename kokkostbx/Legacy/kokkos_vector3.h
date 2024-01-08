@@ -144,7 +144,7 @@ namespace kokkostbx {
         }
 
         KOKKOS_INLINE_FUNCTION NumType length() const {
-            return ::Kokkos::Experimental::sqrt(length_sqr());
+            return ::Kokkos::sqrt(length_sqr());
         }
 
         KOKKOS_INLINE_FUNCTION NumType dot(const vector3<NumType>& v) const {
@@ -177,8 +177,8 @@ namespace kokkostbx {
 
         // rotate a point about a unit vector3 axis
         KOKKOS_INLINE_FUNCTION vector3<NumType> rotate_around_axis(const vector3<NumType>& axis, NumType angle) const {
-            NumType sinphi = ::Kokkos::Experimental::sin(angle);
-            NumType cosphi = ::Kokkos::Experimental::cos(angle);
+            NumType sinphi = ::Kokkos::sin(angle);
+            NumType cosphi = ::Kokkos::cos(angle);
             NumType dot_factor = axis.dot(*this) * (1.0-cosphi);
 
             vector3<NumType> vector_rot = axis.cross(*this) * sinphi;

@@ -3,12 +3,12 @@ from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
-from simtbx.kokkos import gpu_instance
-kokkos_run = gpu_instance(deviceId = 0)
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
 from simtbx.diffBragg import mpi_logger
+
+from simtbx.diffBragg.device import DeviceWrapper
 
 COMM = MPI.COMM_WORLD
 
@@ -28,10 +28,13 @@ script_phil = """
 pandas_table = None
   .type = str
   .help = path to an input pandas table (usually output by simtbx.diffBragg.predictions)
-prep_time = 60
+refls_key = predictions
+  .type = str
+  .help = name of the predicted refls column in the pandas table input
+max_sigz = 10.
   .type = float
-  .help = Time spent optimizing order of input dataframe to better divide shots across ranks
-  .help = Unit is seconds, 1-2 minutes of prep might save a lot of time during refinement!
+  .help = Maximum allowed value ot sigz in the input pandas table  (dataframe)
+  .help = (high sigz above 10 usually indicates failed stage 1 refinement)
 """
 
 philz = script_phil + philz + hopper_phil
@@ -85,6 +88,7 @@ if __name__ == '__main__':
         if LineProfiler is not None and script.params.profile:
             lp = LineProfiler()
             lp.add_function(ensemble_refine_launcher.RefineLauncher.launch_refiner)
+            lp.add_function(ensemble_refine_launcher.RefineLauncher.load_inputs)
             lp.add_function(stage_two_refiner.StageTwoRefiner._compute_functional_and_gradients)
             lp.add_function(stage_two_refiner.StageTwoRefiner._run_diffBragg_current)
             lp.add_function(stage_two_refiner.StageTwoRefiner._update_Fcell)
@@ -108,7 +112,9 @@ if __name__ == '__main__':
         else:
             mpi_logger.setup_logging_from_params(script.params)
 
-        RUN()
+        dev = COMM.rank % script.params.refiner.num_devices
+        with DeviceWrapper(dev) as _:
+            RUN()
 
         if lp is not None:
             stats = lp.get_stats()
@@ -116,4 +122,4 @@ if __name__ == '__main__':
             hopper_utils.print_profile(stats,
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
                      "_update_Fcell", "_scale_pixel_data", "_Fcell_derivatives", "_mpi_aggregation",
-                     "GatherFromExperiment", "_setup"])
+                     "GatherFromExperiment", "_setup", "load_inputs"])

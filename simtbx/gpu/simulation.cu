@@ -92,7 +92,8 @@ namespace af = scitbx::af;
     simtbx::gpu::gpu_detector & gdt,
     double const& weight
   ){
-        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+        SCITBX_ASSERT(SIM.device_Id == stash_device_Id);
+        cudaSafeCall(cudaSetDevice(stash_device_Id));
 
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
@@ -107,7 +108,7 @@ namespace af = scitbx::af;
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
         cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, stash_device_Id));
         int smCount = deviceProps.multiProcessorCount;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
@@ -185,7 +186,8 @@ namespace af = scitbx::af;
     simtbx::gpu::gpu_detector & gdt,
     af::shared<std::size_t> const active_pixel_list
   ){
-        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+        SCITBX_ASSERT(SIM.device_Id == stash_device_Id);
+        cudaSafeCall(cudaSetDevice(stash_device_Id));
 
         gdt.set_active_pixels_on_GPU(active_pixel_list);
 
@@ -198,7 +200,7 @@ namespace af = scitbx::af;
         cu_current_channel_Fhkl = gec.d_channel_Fhkl[ichannel];
 
         cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, stash_device_Id));
         int smCount = deviceProps.multiProcessorCount;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
@@ -249,7 +251,8 @@ namespace af = scitbx::af;
 
   void
   exascale_api::add_background(simtbx::gpu::gpu_detector & gdt, int const& override_source){
-        cudaSafeCall(cudaSetDevice(SIM.device_Id));
+        SCITBX_ASSERT(SIM.device_Id == stash_device_Id);
+        cudaSafeCall(cudaSetDevice(stash_device_Id));
 
         // transfer source_I, source_lambda
         // the int arguments are for sizes of the arrays
@@ -265,7 +268,7 @@ namespace af = scitbx::af;
         cudaSafeCall(cudaMemcpyVectorDoubleToDevice(cu_Fbg_of, SIM.Fbg_of, SIM.stols));
 
         cudaDeviceProp deviceProps = { 0 };
-        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, SIM.device_Id));
+        cudaSafeCall(cudaGetDeviceProperties(&deviceProps, stash_device_Id));
         int smCount = deviceProps.multiProcessorCount;
         dim3 threadsPerBlock(THREADS_PER_BLOCK_X, THREADS_PER_BLOCK_Y);
         dim3 numBlocks(smCount * 8, 1);
@@ -314,7 +317,8 @@ namespace af = scitbx::af;
 
   void
   exascale_api::allocate(){
-    cudaSafeCall(cudaSetDevice(SIM.device_Id));
+    SCITBX_ASSERT(SIM.device_Id == stash_device_Id);
+    cudaSafeCall(cudaSetDevice(stash_device_Id));
 
     /* water_size not defined in class, CLI argument, defaults to 0 */
     double water_size = 0.0;
@@ -386,7 +390,7 @@ namespace af = scitbx::af;
   };
 
   exascale_api::~exascale_api(){
-    cudaSafeCall(cudaSetDevice(SIM.device_Id));
+    cudaSafeCall(cudaSetDevice(stash_device_Id));
 
         cudaSafeCall(cudaFree(cu_beam_vector));
         cudaSafeCall(cudaFree(cu_spindle_vector));

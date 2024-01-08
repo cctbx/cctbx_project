@@ -7,7 +7,7 @@
 //   3) the associated simulated data, in process of being accumulated by kernel calls
 //   4) mask data
 //   5) possibly other metadata
-
+#include <iostream>
 
 #include "scitbx/array_family/shared.h"
 #include "scitbx/array_family/flex_types.h"
@@ -15,8 +15,12 @@
 #include "dxtbx/model/beam.h"
 #include "simtbx/nanoBragg/nanoBragg.h"
 #include "kokkostbx/kokkos_types.h"
+#include "kokkostbx/kokkos_vector3.h"
+#include "kokkostbx/kokkos_matrix3.h"
 
-#include <iostream>
+using vec3 = kokkostbx::vector3<CUDAREAL>;
+using mat3 = kokkostbx::matrix3<CUDAREAL>;
+
 
 namespace simtbx { namespace Kokkos {
 
@@ -27,10 +31,10 @@ struct packed_metrology{
   packed_metrology(dxtbx::model::Detector const &,dxtbx::model::Beam const &);
   packed_metrology(const simtbx::nanoBragg::nanoBragg& nB);
   void show() const;
-  af::shared<double>sdet;
-  af::shared<double>fdet;
-  af::shared<double>odet;
-  af::shared<double>pix0;
+  af::shared<vec3>sdet;
+  af::shared<vec3>fdet;
+  af::shared<vec3>odet;
+  af::shared<vec3>pix0;
   af::shared<double>dists;
   af::shared<double>Xbeam;
   af::shared<double>Ybeam;
@@ -83,10 +87,10 @@ struct kokkos_detector{
   vector_float_t m_floatimage = vector_float_t("m_floatimage", 0);
 
   // all-panel packed GPU representation of the multi-panel metrology
-  vector_cudareal_t m_sdet_vector = vector_cudareal_t("m_sdet_vector", 0);
-  vector_cudareal_t m_fdet_vector = vector_cudareal_t("m_fdet_vector", 0);
-  vector_cudareal_t m_odet_vector = vector_cudareal_t("m_odet_vector", 0);
-  vector_cudareal_t m_pix0_vector = vector_cudareal_t("m_pix0_vector", 0);
+  view_1d_t<vec3> m_sdet_vector = view_1d_t<vec3>("m_sdet_vector", 0);
+  view_1d_t<vec3> m_fdet_vector = view_1d_t<vec3>("m_fdet_vector", 0);
+  view_1d_t<vec3> m_odet_vector = view_1d_t<vec3>("m_odet_vector", 0);
+  view_1d_t<vec3> m_pix0_vector = view_1d_t<vec3>("m_pix0_vector", 0);
   vector_cudareal_t m_distance = vector_cudareal_t("m_distance", 0);
   vector_cudareal_t m_Xbeam = vector_cudareal_t("m_Xbeam", 0);
   vector_cudareal_t m_Ybeam = vector_cudareal_t("m_Ybeam", 0);

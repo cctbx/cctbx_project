@@ -7,6 +7,12 @@
 #include "simtbx/kokkos/structure_factors.h"
 #include "simtbx/kokkos/detector.h"
 #include "kokkostbx/kokkos_types.h"
+#include "kokkostbx/kokkos_vector3.h"
+#include "kokkostbx/kokkos_matrix3.h"
+
+using vec3 = kokkostbx::vector3<CUDAREAL>;
+using mat3 = kokkostbx::matrix3<CUDAREAL>;
+using crystal_orientation_t = Kokkos::View<vec3***, Kokkos::LayoutRight, MemSpace>; // [phisteps, domains, 3]
 
 namespace simtbx { namespace Kokkos {
 
@@ -62,6 +68,7 @@ struct exascale_api {
   vector_cudareal_t m_source_I = vector_cudareal_t("m_source_I", 0);
   vector_cudareal_t m_source_lambda = vector_cudareal_t("m_source_lambda", 0);
   vector_cudareal_t m_mosaic_umats = vector_cudareal_t("m_mosaic_umats", 0);
+  crystal_orientation_t m_crystal_orientation = crystal_orientation_t("m_crystal_orientation", 0, 0, 3);
   CUDAREAL m_water_size = 0;
   CUDAREAL m_water_F = 0;
   CUDAREAL m_water_MW = 0;

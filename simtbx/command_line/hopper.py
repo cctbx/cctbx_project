@@ -96,6 +96,7 @@ class Script:
         assert os.path.exists(self.params.exp_ref_spec_file)
         input_lines = None
         best_models = None
+        pd_dir = os.path.join(self.params.outdir, "pandas")
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.skip is not None:
@@ -113,6 +114,10 @@ class Script:
                 if self.params.gathers_dir is None:
                     raise ValueError("Need to provide a file dir path in order to dump_gathers")
                 utils.safe_makedirs(self.params.gathers_dir)
+
+            utils.safe_makedirs(pd_dir)
+
+        COMM.barrier()
         input_lines = COMM.bcast(input_lines)
         best_models = COMM.bcast(best_models)
 
@@ -127,53 +132,63 @@ class Script:
 
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         trefs = []
-        for i_exp, line in enumerate(input_lines):
-            if i_exp == self.params.max_process:
+        this_rank_dfs = []  # dataframes storing the modeling results for each shot
+        for i_shot, line in enumerate(input_lines):
+            if i_shot == self.params.max_process:
                 break
-            if i_exp % COMM.size != COMM.rank:
+            if i_shot % COMM.size != COMM.rank:
                 continue
 
-            logging.info("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_exp + 1, len(input_lines)))
+            logging.info("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_shot + 1, len(input_lines)))
             line_fields = line.strip().split()
-            assert len(line_fields) in [2, 3]
-            if len(line_fields) == 2:
-                exp, ref = line_fields
-                spec = None
-            else:
-                exp, ref, spec = line_fields
+            num_fields = len(line_fields)
+            assert num_fields in [2, 3, 4]
+            exp, ref = line_fields[:2]
+            spec = None
+            exp_idx = 0
+            if num_fields==3:
+                try:
+                    exp_idx = int(line_fields[2])
+                except ValueError:
+                    spec = line_fields[2]
+                    exp_idx = 0
+            elif num_fields==4:
+                assert os.path.isfile(line_fields[2])
+                spec = line_fields[2]
+                exp_idx = int(line_fields[3])
 
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
                 exists = False
-                for ii in [i_exp, 0]:
-                    opt_exp = "%s_%s_%d.expt" % (self.params.tag, basename, ii)
+                for ii in [i_shot, 0]:
+                    opt_exp = "%s_%s_%d_%d.expt" % (self.params.tag, basename, exp_idx, ii)
                     opt_refl = opt_exp.replace(".expt", ".refl")
                     if opt_exp in exp_names_already and opt_refl in refl_names_already:
                         exists = True
                         break
                 if exists:
-                    print("Found existing!! %d" % i_exp)
+                    print("Found existing!! %d" % i_shot)
                     continue
 
             best = None
             if best_models is not None:
-                best = best_models.query("exp_name=='%s'" % exp)
-                if len(best) == 0:
-                    best = best_models.query("opt_exp_name=='%s'" % exp)
+                best = best_models.query("exp_name=='%s'" % exp).query("exp_idx==%d" % exp_idx)
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
             Modeler = hopper_utils.DataModeler(self.params)
             Modeler.exper_name = exp
+            Modeler.exper_idx = exp_idx
             Modeler.refl_name = ref
             Modeler.rank = COMM.rank
-            Modeler.i_exp = i_exp
+            Modeler.i_shot = i_shot
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref, sg_symbol=self.params.space_group)
             else:
                 gathered = Modeler.GatherFromExperiment(exp, ref,
                                                         remove_duplicate_hkl=self.params.remove_duplicate_hkl,
-                                                        sg_symbol=self.params.space_group)
+                                                        sg_symbol=self.params.space_group,
+                                                        exp_idx=exp_idx)
             if not gathered:
                 logging.warning("No refls in %s; CONTINUE; COMM.rank=%d" % (ref, COMM.rank))
                 continue
@@ -213,20 +228,24 @@ class Script:
             # best pickle is not supported yet for multiple crystals
             # also, if number of crystals is >1 , then the params.number_of_xtals flag will be overridden
             exp_list = ExperimentListFactory.from_json_file(exp, False)
-            xtals = exp_list.crystals()
-            if len(xtals) > 1:
+            xtals = exp_list.crystals()  # TODO: fix as this is broken now that we allow multi image experiments
+            if self.params.consider_multicrystal_shots and len(xtals) > 1:
                 assert best is None, "cannot pass best pickle if expt list has more than one crystal"
                 assert self.params.number_of_xtals==1, "if expt list has more than one xtal, leave number_of_xtals as the default"
                 self.params.number_of_xtals = len(xtals)
                 MAIN_LOGGER.debug("Found %d xtals with unit cells:" %len(xtals))
                 for xtal in xtals:
                     MAIN_LOGGER.debug("%.4f %.4f %.4f %.4f %.4f %.4f" % xtal.get_unit_cell().parameters())
+            if self.params.record_device_timings and COMM.rank >0:
+                self.params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
             SIM = hopper_utils.get_simulator_for_data_modelers(Modeler)
             Modeler.set_parameters_for_experiment(best)
-            Modeler.Umatrices = [xtal.get_U() for xtal in xtals]
-            # TODO, move this to SimulatorFromExperiment
+            Modeler.Umatrices = [Modeler.E.crystal.get_U()]
+
+            # TODO: move this to SimulatorFromExperiment
+            # TODO: fix multi crystal shot mode
             if best is not None and "other_spotscales" in list(best) and "other_Umats" in list(best):
-                Modeler.Umatrices[0] = self.E.get_U()
+                Modeler.Umatrices[0] = Modeler.E.get_U()
                 assert len(xtals) == len(best.other_spotscales.values[0])+1
                 for i_xtal in range(1, len(xtals),1):
                     scale_xt = best.other_spotscales.values[0][i_xtal]
@@ -250,22 +269,31 @@ class Script:
                 nparam += SIM.Num_ASU*SIM.num_Fhkl_channels
             x0 = [1] * nparam
             tref = time.time()
-            MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_exp+1, len(input_lines)))
+            MAIN_LOGGER.info("Beginning refinement of shot %d / %d" % (i_shot+1, len(input_lines)))
             try:
-                x = Modeler.Minimize(x0, SIM, i_exp=i_exp)
+                x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+                for i_rep in range(self.params.filter_after_refinement.max_attempts):
+                    final_sigz = Modeler.target.all_sigZ[-1]
+                    niter = len(Modeler.target.all_sigZ)
+                    too_few_iter = niter < self.params.filter_after_refinement.min_prev_niter
+                    too_high_sigz = final_sigz > self.params.filter_after_refinement.max_prev_sigz
+                    if too_few_iter or too_high_sigz:
+                        Modeler.filter_pixels(self.params.filter_after_refinement.threshold)
+                        x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+
             except StopIteration:
                 x = Modeler.target.x0
             tref = time.time()-tref
             sigz = niter = None
             try:
                 niter = len(Modeler.target.all_hop_id)
-                sigz = np.mean(Modeler.target.all_sigZ)
+                sigz = Modeler.target.all_sigZ[-1]
             except Exception:
                 pass
 
             trefs.append(tref)
             print_s = "Finished refinement of shot %d / %d in %.4f sec. (rank mean t/im=%.4f sec.)" \
-                        % (i_exp+1, len(input_lines), tref, np.mean(trefs))
+                        % (i_shot+1, len(input_lines), tref, np.mean(trefs))
             if sigz is not None and niter is not None:
                 print_s += " Ran %d iterations. Final sigmaZ = %.1f," % (niter, sigz)
             if COMM.rank==0:
@@ -275,11 +303,18 @@ class Script:
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 
-            Modeler.save_up(x,SIM, rank=COMM.rank, i_exp=i_exp)
+            dbg = self.params.debug_mode
+            shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_shot=i_shot,
+                            save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,
+                            save_sim_info=dbg, save_pandas=dbg, save_traces=dbg, save_expt=dbg)
+            this_rank_dfs.append(shot_df)
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
 
+            # TODO verify this works:
+            if SIM.D.record_timings:
+                SIM.D.show_timings(COMM.rank)
             Modeler.clean_up(SIM)
             del SIM.D  # TODO: is this necessary ?
 
@@ -293,6 +328,21 @@ class Script:
                     else:
                         o.write("%s %s\n" % (e,r))
                 o.close()
+
+        if this_rank_dfs:
+            this_rank_dfs = pandas.concat(this_rank_dfs).reset_index(drop=True)
+            df_name = os.path.join(pd_dir, "hopper_results_rank%d.pkl" % COMM.rank)
+            this_rank_dfs.to_pickle(df_name)
+
+        #MAIN_LOGGER.info("MPI-Gathering data frames across ranks")
+        #all_rank_dfs = COMM.gather(this_rank_dfs)
+        #if COMM.rank==0:
+        #    all_rank_dfs = pandas.concat(all_rank_dfs)
+        #    all_rank_dfs.reset_index(inplace=True, drop=True)
+        #    all_df_name = os.path.join(self.params.outdir, "hopper_results.pkl")
+        #    all_rank_dfs.to_pickle(all_df_name)
+
+
 
 
 if __name__ == '__main__':
@@ -311,6 +361,7 @@ if __name__ == '__main__':
             print("Install line_profiler in order to use logging: libtbx.python -m pip install line_profiler")
 
         with DeviceWrapper(script.dev) as _:
+            #with np.errstate(all='raise'):
             RUN()
 
         if lp is not None:
