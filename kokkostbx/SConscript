@@ -22,7 +22,7 @@ if env_etc.enable_kokkos:
   if os.getenv('KOKKOS_ARCH') is None:
     os.environ['KOKKOS_ARCH'] = "HSW"
   if use_cuda and os.getenv('KOKKOS_CUDA_OPTIONS') is None:
-    os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda,force_uvm"
+    os.environ['KOKKOS_CUDA_OPTIONS'] = "enable_lambda"
   os.environ['CXXFLAGS'] = '-O3 -fPIC -DCUDAREAL=double'
 
   library_flags = "-Llib"
@@ -36,10 +36,6 @@ if env_etc.enable_kokkos:
   if use_cuda:
     linked_libraries += " -lcudart -lcuda"
   os.environ['LDLIBS'] = linked_libraries
-
-  cxx_standard = '14'
-  if use_sycl:
-    cxx_standard = '17'
 
   original_cxx = None
   kokkos_lib = 'libkokkos.a'
@@ -119,7 +115,7 @@ if env_etc.enable_kokkos:
     returncode = subprocess.call([
         'cmake',
         os.environ['KOKKOS_PATH'],
-        '-DCMAKE_CXX_STANDARD={}'.format(cxx_standard),
+        '-DCMAKE_CXX_STANDARD={}'.format('17'),
         '-DCMAKE_INSTALL_PREFIX={}'.format(libtbx.env.under_build('.')),
         '-DCMAKE_INSTALL_LIBDIR=lib',
         '-DBUILD_SHARED_LIBS={}'.format(OnOff[True]),
@@ -138,9 +134,9 @@ if env_etc.enable_kokkos:
         '-DKokkos_ENABLE_SERIAL=ON',
         '-DKokkos_ENABLE_OPENMP={}'.format(OnOff[use_openmp]),
         '-DKokkos_ENABLE_CUDA={}'.format(OnOff[use_cuda]),
-        '-DKokkos_ENABLE_CUDA_UVM={}'.format(OnOff[use_cuda]),
         '-DKokkos_ENABLE_HIP={}'.format(OnOff[use_hip]),
-        '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl])
+        '-DKokkos_ENABLE_SYCL={}'.format(OnOff[use_sycl]),
+        '-DKokkos_ENABLE_IMPL_MDSPAN=ON'
       ],
       cwd=kokkos_build_dir)
 

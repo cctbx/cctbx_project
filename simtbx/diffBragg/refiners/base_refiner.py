@@ -210,12 +210,14 @@ class BaseRefiner:
         else:
             try:
                 self.diag_mode = None
+
                 self.minimizer = scitbx.lbfgs.run(
                     target_evaluator=self,
                     core_params=self._core_param,
                     exception_handling_params=self._handler,
                     termination_params=self._terminator,
                     gradient_only=self.gradient_only)
+
             except BreakToUseCurvatures:
                 self.hit_break_to_use_curvatures = True
                 pass

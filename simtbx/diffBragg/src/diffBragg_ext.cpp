@@ -23,6 +23,43 @@ namespace boost_python { namespace {
       return indices;
   }
 
+  static void set_beams(simtbx::nanoBragg::diffBragg& diffBragg, scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > const& value) {
+      if(diffBragg.verbose>3) printf(" about to initialize sources\n");
+      diffBragg.pythony_beams = value;
+      if(diffBragg.verbose>3) printf(" done\n");
+      diffBragg.db_cu_flags.update_sources=true;
+      /* re-initialize source table from pythony array */
+      diffBragg.init_sources();
+  }
+  // TODO: point to the get_beams defined in simtbx/nanoBragg/nanoBragg_ext.cpp if possible..
+  ///* table of sources, as dxtbx "beam"s */
+  static scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > get_beams(simtbx::nanoBragg::diffBragg& diffBragg) {
+      int i;
+      /* allocate new flex array */
+//      scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> > diffBragg_pythony_beams;
+      diffBragg.pythony_beams = scitbx::af::versa<dxtbx::model::Beam, scitbx::af::flex_grid<> >();
+      /* make sure it is big enough to hold all sources */
+      diffBragg.pythony_beams.resize(diffBragg.sources);
+
+      /* polarization normal seems to be B vector */
+      scitbx::vec3<double> Evector = scitbx::vec3<double>(diffBragg.polar_vector[1],diffBragg.polar_vector[2],diffBragg.polar_vector[3]);
+      scitbx::vec3<double> Pvector = scitbx::vec3<double>(diffBragg.beam_vector[1],diffBragg.beam_vector[2],diffBragg.beam_vector[3]);
+      scitbx::vec3<double> Bvector = Pvector.cross(Evector).normalize();
+
+      /* copy internal storage into the flex array */
+      for(i=0;i<diffBragg.sources;++i){
+          diffBragg.pythony_beams[i].set_direction(scitbx::vec3<double>(diffBragg.source_X[i],diffBragg.source_Y[i],diffBragg.source_Z[i]));
+          diffBragg.pythony_beams[i].set_wavelength(diffBragg.source_lambda[i]*1e10);
+          diffBragg.pythony_beams[i].set_flux(diffBragg.source_I[i]);
+          // how is this a fraction when it can be negative? (Kahn et al. 1982)
+          diffBragg.pythony_beams[i].set_polarization_fraction(diffBragg.polarization);
+          diffBragg.pythony_beams[i].set_polarization_normal(Bvector);
+      }
+      /* pass this back to python */
+      return diffBragg.pythony_beams;
+  }
+
+
   void set_dspace_bins(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::list bins){
     diffBragg.db_cryst.dspace_bins.clear();
     for (int i=0; i< boost::python::len(bins); i++ ){
@@ -155,7 +192,7 @@ namespace boost_python { namespace {
     values = boost::python::make_tuple(0,0);
     return values;
   }
-  //TODO override the set_sources function (or xray_beams) property in nanoBragg in order
+  //TODO override the set_sources function (or xray_beams) property in nanoBragg
   // to set the fpfdp accordingly (if Fhkl2 is set)
   static void set_atom_data(simtbx::nanoBragg::diffBragg & diffBragg,
             boost::python::tuple const& atom_XYZBO){
@@ -418,6 +455,7 @@ namespace boost_python { namespace {
 
   static void  set_Fhkl_tuple(simtbx::nanoBragg::diffBragg& diffBragg, boost::python::tuple const& value) {
       //TODO nanoBragg set as well ?
+      diffBragg.db_cu_flags.update_Fhkl=true;
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
       diffBragg.init_Fhkl();
@@ -432,7 +470,7 @@ namespace boost_python { namespace {
       diffBragg.linearize_Fhkl(true);
   }
 
-  static boost::python::tuple get_Fhkl_tuple(simtbx::nanoBragg::diffBragg diffBragg) {
+  static boost::python::tuple get_Fhkl_tuple(nanoBragg::diffBragg diffBragg) {
       int h,k,l;
       double temp;
       int hkls = diffBragg.h_range*diffBragg.k_range*diffBragg.l_range;
@@ -471,9 +509,8 @@ namespace boost_python { namespace {
   }
 
   void initialize_kokkos(int dev){
-    Kokkos::InitArguments kokkos_init;
-    kokkos_init.device_id = dev;
-    Kokkos::initialize(kokkos_init);
+    Kokkos::initialize(Kokkos::InitializationSettings()
+                           .set_device_id(dev));
   }
 #endif
 
@@ -628,12 +665,14 @@ namespace boost_python { namespace {
 
       .def("show_heavy_atom_data", &simtbx::nanoBragg::diffBragg::show_heavy_atom_data)
 
+      .def("gpu_free",&simtbx::nanoBragg::diffBragg::gpu_free)
+
 #ifdef DIFFBRAGG_HAVE_CUDA
       .def("gpu_free",&simtbx::nanoBragg::diffBragg::cuda_free)
 #endif
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-      .def("kokkos_gpu_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
+      .def("kokkos_free",&simtbx::nanoBragg::diffBragg::kokkos_free)
 #endif
 
       .def("set_mosaic_blocks_prime",
@@ -789,9 +828,9 @@ namespace boost_python { namespace {
              "coefficients for source_lambda refinement: `lambda = coef0 + coef1*source`  where `source` is the source index")
 
      // CUDA PROPERTIES
-      .add_property("use_cuda",
-             make_getter(&simtbx::nanoBragg::diffBragg::use_cuda,rbv()),
-             make_setter(&simtbx::nanoBragg::diffBragg::use_cuda,dcp()),
+      .add_property("use_gpu",
+             make_getter(&simtbx::nanoBragg::diffBragg::use_gpu,rbv()),
+             make_setter(&simtbx::nanoBragg::diffBragg::use_gpu,dcp()),
              "use GPU acceleration")
 
       .add_property("record_time",
@@ -885,6 +924,15 @@ namespace boost_python { namespace {
       .def("_set_Friedel_mate_inds",
             &simtbx::nanoBragg::diffBragg::set_Friedel_mate_inds,
             "Two arguments; each lists of the same length, pointing to the positive and negative mates in a Friedel pair, respectively")
+
+      .def("get_mosaic_blocks_prime",
+           &simtbx::nanoBragg::diffBragg::get_mosaic_blocks_prime,
+           "return the deriv of the matrices U that define the mosaic block distribution w.r.t eta")
+
+      .add_property("xray_beams",
+                    make_function(&get_beams,rbv()),
+                    make_function(&set_beams,dcp()),
+                    "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
 
     ; // end of diffBragg extention
 

@@ -366,6 +366,7 @@ class nanoBragg {
     af::flex_double raw_pixels;
     unsigned short int *intimage;
     unsigned char *pgmimage;
+    bool cbf_int; // if saving the cbf file raw pixels will be converted to int
 //    char *byte_order; // = get_byte_order();
     /* optional input image to extract background? */
 //    SMVinfo imginfile;

@@ -444,6 +444,12 @@ void diffBragg_sum_over_steps_cuda(
     if (db_cryst.fpfdp.size() == 0){ // note cannot use atom data if fpfdp is 0, make this cleaner
         num_atoms=0;
     }
+
+    if (db_flags.use_diffuse) {
+        if (db_cryst.laue_group_num < 1 || db_cryst.laue_group_num >14 ){
+            throw std::string("Laue group number not in range 1-14");
+        }
+    }
     //int sm_size = number_of_sources*5*sizeof(CUDAREAL);
     //gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();

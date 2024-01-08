@@ -129,6 +129,7 @@ with DeviceWrapper(0) as _:
     SIM.D.raw_pixels *= 0
 
     P = phil_scope.extract()
+    P.debug_mode=True
     E = Experiment()
 
     P.init.G = SIM.D.spot_scale
@@ -215,7 +216,9 @@ with DeviceWrapper(0) as _:
     P.outdir="_temp_fhkl_refine"
     if args.maxiter is not None:
         P.lbfgs_maxiter = args.maxiter
+    P.record_device_timings = True
     Eopt,_, Mod,SIM_from_hopper, x = hopper_utils.refine(E, refls, P, return_modeler=True, free_mem=False)
+    SIM_from_hopper.D.show_timings(0)
 
     logging.disable()
     print("\nResults\n<><><><><><>")
@@ -331,10 +334,18 @@ with DeviceWrapper(0) as _:
     df[refl_col] = [input_refl]
     P.refiner.load_data_from_refl = True
     P.refiner.check_expt_format = False
+
+    #from simtbx.diffBragg import mpi_logger
+    #P.logging.rank0_level="high"
+    #mpi_logger.setup_logging_from_params(P)
     modelers = load_inputs(df, P, exper_key="opt_exp_name", refls_key=refl_col)
     modelers.outdir=P.outdir
     modelers.prep_for_refinement()
+    print("Minimizing using hopper_ensemble_utils...")
     modelers.Minimize(save=True)
+    if modelers.SIM.D.record_timings:
+        modelers.SIM.D.show_timings(MPI_RANK=0)
+    print("Done!")
 
     from iotbx.reflection_file_reader import any_reflection_file
     opt_F = any_reflection_file("_temp_fhkl_refine/optimized_channel0.mtz").as_miller_arrays()[0]
