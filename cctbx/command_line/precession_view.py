@@ -24,11 +24,13 @@ width = 800
   .type = int
 height = 800
   .type = int
+silent = True
+  .type = bool
 format = *Auto png eps
   .type = choice
 """, process_includes=True)
 
-def run(args, out=sys.stdout, silent=True):
+def run(args, out=sys.stdout):
   if (len(args) == 0):
     params_out = StringIO()
     master_phil.show(out=params_out, prefix="  ")
@@ -133,7 +135,7 @@ Please choose one by specifying the 'labels' parameter.""" %
     canvas = open(params.output_file, "w")
     render.paint(canvas)
     canvas.close()
-  elif (not silent):
+  elif (not params.silent):
     render = render_pil(
       w=params.width*8,
       h=params.height*8,
@@ -144,7 +146,7 @@ Please choose one by specifying the 'labels' parameter.""" %
     render.render(canvas)
     im2 = im.resize((params.width, params.height), Image.ANTIALIAS)
     im2.save(params.output_file)
-  if (not silent):
+  if (not params.silent):
     print("Wrote %s" % params.output_file, file=out)
   else :
     return scene, params
