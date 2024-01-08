@@ -28,5 +28,8 @@ python bootstrap.py build  --builder=phenix --use_conda --nproc=16
 ```bash
 phenix.start_viewer 1yjp.cif
 ```
-
+or, to show all available tabs:
+```bash
+phenix.start_viewer show_tab=all 1yjp.cif
+```
 
