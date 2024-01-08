@@ -98,12 +98,12 @@ Please choose one by specifying the 'labels' parameter.""" %
   scene = cctbx.miller.display.scene(
     miller_array=selected_array,
     settings=params)
-  postcript = False
+  postscript = False
   if (params.output_file is not None):
     if (params.output_file.endswith("eps")):
       if (params.format == "png"):
         raise Sorry("Postscript format requested, but output file ends in .png!")
-      postcript = True
+      postscript = True
     elif (not params.output_file.endswith("png")):
       raise Sorry("Output file extension must be .eps or .png.")
   else :
