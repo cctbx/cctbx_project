@@ -28,15 +28,20 @@ class SelectionEntryController(ModelLikeEntryController):
         self.state.active_selection_ref = None
 
   def display_info(self):
+    # TODO: this is a view, should move to the view directory
     text = f"""
     Reference id: {self.ref.id}
     Model Reference id: {self.ref.model_ref.id}
     External ids:
-    {self.model_ref.external_ids}
+    {self.ref.model_ref.external_ids}
 
     Phenix string: {self.ref.query.phenix_string}
     """
     dialog = InfoDialog(text, title="Selection Info", parent=self.view)
+    default_width = dialog.width()
+    new_width = default_width * 6
+    dialog.setMinimumWidth(new_width)
+
     dialog.exec_()
 
 class SelectionListController(ScrollableListController):
