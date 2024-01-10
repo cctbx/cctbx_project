@@ -136,7 +136,7 @@ class info(object):
         matches.n_singles()
     self.mask_solvent_radius = mp.solvent_radius
     self.mask_shrink_radius = mp.shrink_truncation_radius
-    self.mask_grid_step_factor = mp.grid_step_factor
+    self.mask_grid_step = mp.step
     self.ml_phase_error = flex.mean(fmodel.phase_errors())
     self.ml_coordinate_error = fmodel.model_error_ml()
     self.d_max, self.d_min = fmodel.f_obs().resolution_range()
@@ -299,7 +299,7 @@ class info(object):
     print(pr+" METHOD USED        : FLAT BULK SOLVENT MODEL", file=out)
     print(pr+" SOLVENT RADIUS     : %s"%format_value("%-8.2f", self.mask_solvent_radius), file=out)
     print(pr+" SHRINKAGE RADIUS   : %s"%format_value("%-8.2f", self.mask_shrink_radius), file=out)
-    print(pr+" GRID STEP FACTOR   : %s"%format_value("%-8.2f", self.mask_grid_step_factor), file=out)
+    print(pr+" GRID STEP          : %s"%format_value("%-8.2f", self.mask_grid_step), file=out)
     print(pr, file=out)
     if(self.twin_fraction is not None):
       print(pr+"TWINNING INFORMATION.", file=out)
