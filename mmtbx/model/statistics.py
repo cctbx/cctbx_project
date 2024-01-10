@@ -328,7 +328,7 @@ class geometry(object):
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
     az, bz = res.angle_z, res.bond_z
-    result = """%s
+    result = """
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
 %s  Bond      : %s
@@ -337,7 +337,7 @@ class geometry(object):
 %s  Planarity : %s
 %s  Dihedral  : %s
 %s  Min Nonbonded Distance : %s
-%s"""%(prefix.strip(),
+%s"""%(#prefix.strip(),
        prefix,
        self.restraints_source,
        prefix,
@@ -386,11 +386,12 @@ class geometry(object):
 %s"""%prefix
       result += res.rama_z.as_string(prefix=prefix)
     #
+    result+="\n%s"%prefix
     if p.protein_planes_max_dev:
-      result += "\n\n%sMax deviation from planes:"%prefix
+      result += "\n%sMax deviation from planes:"%prefix
       result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
       for pp in p.protein_planes_max_dev:
-        result += "\n  %s %s %s %s  %s"%(
+        result += "\n%s %s %s %s  %s"%(
           prefix,
           format_value("%s", pp.resname),
           format_value("%7.3f", pp.max_dev),
@@ -400,7 +401,7 @@ class geometry(object):
       result += "\n\n%sMax deviation from planes (no H):"%prefix
       result += "\n%s   Type  MaxDev  MeanDev LineInFile"%prefix
       for pp in p.protein_planes_max_dev_noH:
-        result += "\n  %s %s %s %s  %s"%(
+        result += "\n%s %s %s %s  %s"%(
           prefix,
           format_value("%s", pp.resname),
           format_value("%7.3f", pp.max_dev),
@@ -566,6 +567,7 @@ class adp(object):
         v.min, v.max, v.mean, rms, v.n_iso, v.n_aniso)
     r = self.result()
     pad=" "*14
+    print(prefix, "Individual atomic B", file=log)
     print(prefix, pad, "min    max   mean <Bi,j>   iso aniso", file=log)
     if(r.overall is not None):
       print(prefix, "  Overall: ", format_str(r.overall), file=log)
@@ -646,18 +648,16 @@ class info(object):
       print(prefix+"X-RAY DATA.", file=out)
       print(prefix, file=out)
       self.data_x.show_remark_3(out = out)
-      print(prefix, file=out, end='')
     if(self.data_n is not None):
       print(prefix+"NEUTRON DATA.", file=out)
       print(prefix, file=out)
       self.data_n.show_remark_3(out = out)
       print(prefix, file=out, end='')
-    if(self.geometry is not None):
-      self.geometry.show(log=out, prefix=prefix)
-      print(prefix, file=out)
     if self.adp is not None:
       self.adp.show(log=out, prefix=prefix)
-      print(prefix, file=out)
+      print(prefix, file=out, end='')
+    if(self.geometry is not None):
+      self.geometry.show(log=out, prefix=prefix)
     for info_pdb_str in [self.model.tls_groups_as_pdb(),
         self.model.anomalous_scatterer_groups_as_pdb(),
         self.model.cartesian_NCS_as_pdb(),
