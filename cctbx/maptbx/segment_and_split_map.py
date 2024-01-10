@@ -3401,6 +3401,8 @@ def score_ncs_in_map_point_group_symmetry(
   return get_cc_among_value_lists(all_value_lists)
 
 def get_cc_among_value_lists(all_value_lists):
+  if not all_value_lists:
+    return None, None
   a = all_value_lists[0]
   cc_avg = 0.
   cc_low = None
@@ -3491,6 +3493,9 @@ def score_ncs_in_map(map_data = None, ncs_object = None, sites_orth = None,
           best_id = site_ncs_id
           best_values = values
     all_value_lists.append(best_values)
+
+  if not all_value_lists:
+    return None, None
 
   values_by_site_dict = {} # all_value_lists[j][i] -> values_by_site_dict[i][j]
   # there are sites_orth.size() values of j

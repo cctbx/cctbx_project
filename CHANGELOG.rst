@@ -1,3 +1,28 @@
+2023.12
+=======
+
+* Fixed bug in model_vs_sequence
+* Updated suitename analysis to ignore DNA
+* Fixed bug where mask parameters were not propagated in f_model
+
+2023.11
+=======
+
+* Initial support for longer alternate locations
+* Added some support functions for quantum refinement
+* Bug fixes and improvements to cctbx.HKLviewer
+* Improved handling of rotable hydrogens
+
+2023.10
+=======
+
+* Improvements to reduce2
+* More improvements for handling long residue names
+* Improvments to mosaic bulk solvent model
+* Fixed bug in CCTBXParser that did not show one label being parsed
+* Added option to customize DataManager PHIL in ProgramTemplate
+* Initial support for Python 3.12
+
 2023.9
 ======
 

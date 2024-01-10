@@ -145,17 +145,24 @@ class glyco_link_class:
         i_seqs.append(getattr(atom, "i_seq"))
     return i_seqs
 
-  def get_isomer(self):
+  def get_isomer(self, verbose=False):
     isomer = get_alpha_beta(self.anomeric_carbon.parent().resname)
+    if verbose: print('1 isomer',isomer)
     if isomer is None: isomer = "?"
+    if verbose: print('2 isomer',isomer)
     if self.anomeric_carbon.name.strip()[-1] in digits:
       isomer += self.anomeric_carbon.name.strip()[-1]
+      if verbose: print('3 isomer',isomer)
     else:
       isomer += " %s " % self.anomeric_carbon.name.strip()
+      if verbose: print('4 isomer',isomer)
     if self.link_oxygen.name.strip()[-1] in digits:
       isomer += "-%s" % self.link_oxygen.name.strip()[-1]
+      if verbose: print('5 isomer',isomer)
     else:
       isomer += "- %s " % self.link_oxygen.name.strip()
+      if verbose: print('6 isomer',isomer)
+    if verbose: print('get_isomer',isomer)
     return isomer
 
   def get_code(self):

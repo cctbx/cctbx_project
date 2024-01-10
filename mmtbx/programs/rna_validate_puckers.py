@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.rna_validate import rna_puckers
 from libtbx.program_template import ProgramTemplate
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -47,12 +48,19 @@ Example:
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-
-    result = rna_puckers(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.results = rna_puckers(
       pdb_hierarchy=hierarchy,
       params=getattr(self.params, "rna_sugar_pucker_analysis", None),
       outliers_only=self.params.outliers_only)
     if self.params.json:
-      print(result.as_JSON(), file=self.logger)
+      print(self.results.as_JSON(), file=self.logger)
     elif self.params.verbose:
-      result.show(out=self.logger, verbose=True)
+      self.results.show(out=self.logger, verbose=True)
+
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

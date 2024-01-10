@@ -474,6 +474,10 @@ class Toolbox(object):
     except OSError:
       git_available = False
 
+    # put molprobity repository at same level as "modules" to reproduce svn behavior
+    if module == 'molprobity':
+      destination = os.path.join('.', module)
+
     if destination is None:
       destination = os.path.join('modules', module)
     destpath, destdir = os.path.split(destination)
@@ -1002,36 +1006,36 @@ class xia2_module(SourceModule):
 
 class kokkos_module(SourceModule):
   module = 'kokkos'
-  anonymous = ['git', '-b 3.7.01',
+  anonymous = ['git', '-b 4.2.00',
                'git@github.com:kokkos/kokkos.git',
                'https://github.com/kokkos/kokkos.git',
-               'https://github.com/kokkos/kokkos/archive/refs/tags/3.7.01.zip']
+               'https://github.com/kokkos/kokkos/archive/refs/tags/4.2.00.zip']
 
 class kokkos_kernels_module(SourceModule):
   module = 'kokkos-kernels'
-  anonymous = ['git', '-b 3.7.01',
+  anonymous = ['git', '-b 4.2.00',
                'git@github.com:kokkos/kokkos-kernels.git',
                'https://github.com/kokkos/kokkos-kernels.git',
-               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/3.7.01.zip']
+               'https://github.com/kokkos/kokkos-kernels/archive/refs/tags/4.2.00.zip']
 
 # Duke repositories
 class probe_module(SourceModule):
   module = 'probe'
-  anonymous = ['svn', 'https://github.com/rlabduke/probe.git/trunk']
+  anonymous = ['git', 'https://github.com/rlabduke/probe.git']
 
 class reduce_module(SourceModule):
+  # Version 4.14 or later should be used to avoid mmtbx_reduce_ext name conflict.
   module = 'reduce'
-  anonymous = ['git', '-b v3.7.2',
-               'https://github.com/rlabduke/reduce.git']
+  anonymous = ['git', 'https://github.com/rlabduke/reduce.git']
 
 class king_module(SourceModule):
   module = 'king'
-  anonymous = ['svn',
-               'https://github.com/rlabduke/phenix_king_binaries.git/trunk']
+  anonymous = ['git',
+               'https://github.com/rlabduke/phenix_king_binaries.git']
 
-class molprobity_moodule(SourceModule):
+class molprobity_module(SourceModule):
   module = 'molprobity'
-  anonymous = ['svn', 'https://github.com/rlabduke/MolProbity.git/trunk']
+  anonymous = ['git', 'https://github.com/rlabduke/MolProbity.git']
 
 class uc_metrics_module(SourceModule):
   module = 'uc_metrics'

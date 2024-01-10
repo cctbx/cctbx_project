@@ -21,7 +21,7 @@ Starting job
 ===============================================================================
 1 Miller arrays in this dataset:
  Labels          |       Type      |   λ/Å   |  #HKLs  |               Span              |     min,max data       |     min,max sigmas     |  d_min,d_max/Å   |Anomalous|Sym.uniq.|Data compl.|
-  LowValuesFSigF |       Amplitude |       1 |     364 |           (-9, 0, 0), (9, 9, 9) |    0.78407,      11.265|        nan,         nan|     2.5,    8.771|   False |    True |   0.34019 |
+  LowValuesFSigF |       Amplitude |       1 |     363 |           (-9, 0, 0), (9, 9, 9) |    0.78407,       11.26|        nan,         nan|     2.5,    8.771|   False |    True |   0.33925 |
 
 ===============================================================================
 Job complete

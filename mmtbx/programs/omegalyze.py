@@ -91,7 +91,7 @@ Example:
       out=self.logger,
       quiet=False)
     if self.params.kinemage:
-      print(result.as_kinemage(), file=self.logger)
+      print(self.results.as_kinemage(), file=self.logger)
     elif self.params.oneline:
       self.results.summary_only(out=self.logger, pdbid=self.data_manager.get_default_model_name())#params.model)
     elif self.params.json:

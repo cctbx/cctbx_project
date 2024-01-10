@@ -150,7 +150,7 @@ Optional output:
 
   Try something like
 
-    solvent_exclusion_mask_selection=LIG
+    solvent_exclusion_mask_selection="resname LIG"
   ''')
     if (self.params.polder.sphere_radius < 3):
       raise Sorry("Sphere radius out of range: must be larger than 3 A")

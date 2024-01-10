@@ -4,6 +4,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("dirname", help="stage1 output folder with pandas and diff.phil", type=str)
 parser.add_argument("newPhil", default=None, help="new stage 1 phil file", type=str)
+parser.add_argument("--setGlim", action="store_true", help="Use unrestrained stage1 to set bounds on G")
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 #parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
 args = parser.parse_args()
@@ -35,22 +36,23 @@ ea, eb, ec = map( np.median, np.vstack(df1.eta_abc).T)
 
 # spot scale (G)
 Gmed = df1.spot_scales.median()
+Gmin = df1.spot_scales.min()/100
+Gmax = df1.spot_scales.max()*100
 
-update_phil = f"""
-
+update_phil = """
 init {{
-  G = {Gmed:.4f}
-  Nabc = [{na:.1f},{nb:.1f},{nc:.1f}]
-  eta_abc = [{ea:.5f},{eb:.5f},{ec:.4f}]
+  G = {G}
+  Nabc = [{na},{nb},{nc}]
+  eta_abc = [{ea},{eb},{ec}]
 }}
 centers {{
-  Nvol = {nvol:.2f}
-  ucell_a = {a:.6f}
-  ucell_b = {b:.6f}
-  ucell_c = {c:.6f}
-  ucell_alpha = {al:.6f}
-  ucell_beta = {be:.6f}
-  ucell_gamma = {ga:.6f}
+  Nvol = {nvol}
+  ucell_a = {a}
+  ucell_b = {b}
+  ucell_c = {c}
+  ucell_alpha = {al}
+  ucell_beta = {be}
+  ucell_gamma = {ga}
 }}
 betas {{
   Nvol = 1e-2
@@ -62,8 +64,14 @@ betas {{
   ucell_gamma = 1e-7
 }}
 use_restraints = True
+""".format(G=Gmed,na=na, nb=nb, nc=nb, ea=ea, eb=eb, ec=ec,a=a,b=b,c=c,al=al,be=be,ga=ga, nvol=nvol)
 
-"""
+Gmin_Gmax="""
+mins.G={Gmin}
+maxs.G={Gmax}\n""".format(Gmin=Gmin, Gmax=Gmax)
+
+if args.setGlim:
+    update_phil += Gmin_Gmax
 
 diff_phil_name = os.path.join(args.dirname, "diff.phil")
 assert os.path.exists(diff_phil_name)

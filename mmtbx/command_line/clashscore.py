@@ -8,9 +8,10 @@ import sys
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time
 from mmtbx.programs import clashscore
+from iotbx.cli_parser import run_program
 
 #=============================================================================
-def run(args):
+def old_run(args):
 
   # create parser
   logger = multi_out()
@@ -43,4 +44,5 @@ def run(args):
 
 # =============================================================================
 if __name__ == '__main__':
-  run(sys.argv[1:])
+  #run(sys.argv[1:])
+  run_program(program_class=clashscore.Program, hide_parsing_output=True)

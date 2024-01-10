@@ -404,7 +404,10 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def model_indices(self):
     if self.hierarchy is None:
       self.construct_hierarchy()
-    return flex.size_t([m.atoms_size() for m in self.hierarchy.models()])
+    mi = flex.size_t([m.atoms_size() for m in self.hierarchy.models()])
+    for i in range(1, len(mi)):
+      mi[i] += mi[i-1]
+    return mi
 
   def ter_indices(self):
     # for compatibility with pdb_input
@@ -496,7 +499,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         return software_name
     elif software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
-      if i >= 0: return software_name[i]
+      if i is not None and i >= 0 and software_name is not None and i < len(software_name):
+        return software_name[i]
 
   def resolution(self):
     result = []

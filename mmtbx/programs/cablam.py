@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 import os
 from mmtbx.validation.cablam import cablamalyze
+from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 try:
   from phenix.program_template import ProgramTemplate
@@ -69,23 +70,14 @@ Example:
 
 #TODO: get cablam.interpretation() to print again
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
-    result = cablamalyze(
-      pdb_hierarchy = hierarchy,
-      outliers_only = self.params.outliers_only,
-      out           = self.logger,
-      quiet         = False)
-    return result.as_JSON()
-
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    cablam = cablamalyze(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.cablam = cablamalyze(
       pdb_hierarchy=hierarchy,
       outliers_only=self.params.outliers_only,
       out=self.logger,
@@ -96,16 +88,22 @@ Example:
       print(self.get_results_as_JSON())
     elif self.params.output_type=='oneline':
       pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])
-      cablam.as_oneline(pdbid=pdb_file_str)
+      self.cablam.as_oneline(pdbid=pdb_file_str)
     elif self.params.output_type=='kin':
-      cablam.as_kinemage()
+      self.cablam.as_kinemage()
     elif self.params.output_type=='full_kin':
-      cablam.as_full_kinemage(pdbid=pdbid)
+      self.cablam.as_full_kinemage(pdbid=pdbid)
     elif self.params.output_type=='points_kin':
-      cablam.as_pointcloud_kinemage()
+      self.cablam.as_pointcloud_kinemage()
     elif self.params.output_type=='records':
-      cablam.as_records()
+      self.cablam.as_records()
     elif self.params.output_type=='records_and_pdb':
-      cablam.as_records_and_pdb()
+      self.cablam.as_records_and_pdb()
     else: #default text output
-      cablam.as_text(outliers_only=self.params.outliers_only)
+      self.cablam.as_text(outliers_only=self.params.outliers_only)
+
+  def get_results(self):
+    return self.cablam
+
+  def get_results_as_JSON(self):
+    return self.cablam.as_JSON(self.info_json)

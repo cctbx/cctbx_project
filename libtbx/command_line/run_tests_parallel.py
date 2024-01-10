@@ -44,7 +44,9 @@ def run(args,
    python_keyword_text="",
    max_tests=None,
    start_test=None,
-   tests_to_skip=None):
+   tests_to_skip=None,
+   expected_failures_from_phenix_regression=[],
+   unstables_from_phenix_regression = []):
 
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
@@ -110,6 +112,18 @@ def run(args,
     expected_failure_list.extend(fail_tests)
     expected_unstable_list.extend(unstable_tests)
     parallel_list.extend(parallel_tests)
+
+  # add expected failures from phenix regression
+  for ef in expected_failures_from_phenix_regression:
+    for t in all_tests:
+      if t.find(ef) > -1:
+        expected_failure_list.append(t)
+
+  # add unstables from phenix regression
+  for u in unstables_from_phenix_regression:
+    for t in all_tests:
+      if t.find(u) > -1:
+        expected_unstable_list.append(t)
 
   # remove any specified tests:
   if tests_to_skip:

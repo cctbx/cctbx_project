@@ -5,6 +5,9 @@ import os
 from libtbx import easy_run
 
 def exercise():
+  if not libtbx.env.has_module("phenix_regression"):
+    print("phenix_regression not configured, skipping.")
+    return
   fn="phenix_regression/mmtbx/extract_box_around_model_and_map/tst8.pdb"
   pdb_file_name = libtbx.env.find_in_repositories(
     relative_path=fn,

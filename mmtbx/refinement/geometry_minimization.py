@@ -65,9 +65,13 @@ def add_rotamer_restraints(
       rotamer_manager= rotamer_manager)
   else:
     pdb_hierarchy_for_proxies = pdb_hierarchy.deep_copy()
+  sc = pdb_hierarchy_for_proxies.atoms().extract_xyz()
+  if selection is not None:
+    sc = sc.select(selection)
   restraints_manager.geometry.add_chi_torsion_restraints_in_place(
     pdb_hierarchy   = pdb_hierarchy_for_proxies,
-    sites_cart      = pdb_hierarchy_for_proxies.atoms().extract_xyz(),
+    sites_cart      = sc,
+    selection       = selection,
     chi_angles_only = True,
     sigma           = sigma)
   return pdb_hierarchy_for_proxies, restraints_manager

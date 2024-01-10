@@ -98,14 +98,15 @@ def test1():
   # Note here incorrect/trimmed residue names
   # There's no way to correctly output resnames longer than 3 char in PDB format
   # print(o_pdb_str)
-  assert_lines_in_text(o_pdb_str, """\
-ATOM      8  CE  LYS A 279      -2.923 -13.799  42.993  1.00 52.86           C
-ATOM      9  NZ  LYS A 279      -3.209 -12.856  44.100  1.00 54.19           N
-TER
-HETATM   10 CA    CA A 301     -17.362 -22.385  28.047  1.00 15.20          CA
-HETATM   11  C10 7ZT A 302      -7.646  -6.965   5.796  1.00 22.62           C
-HETATM   12  C2  7ZT A 302      -8.462  -5.534   9.265  1.00 16.68           C
-    """)
+  assert o_pdb_str == ""
+#   assert_lines_in_text(o_pdb_str, """\
+# ATOM      8  CE  LYS A 279      -2.923 -13.799  42.993  1.00 52.86           C
+# ATOM      9  NZ  LYS A 279      -3.209 -12.856  44.100  1.00 54.19           N
+# TER
+# HETATM   10 CA    CA A 301     -17.362 -22.385  28.047  1.00 15.20          CA
+# HETATM   11  C10 7ZTVU A 302      -7.646  -6.965   5.796  1.00 22.62           C
+# HETATM   12  C2  7ZTVU A 302      -8.462  -5.534   9.265  1.00 16.68           C
+#     """)
 
   o_cif_str = "%s" % h.as_cif_block()
   # print(o_cif_str)
@@ -117,7 +118,20 @@ HETATM  11  C10  .  7ZTVU  A  302  ?   -7.64600   -6.96500   5.79600  1.000  22.
 HETATM  12  C2   .  7ZTVU  A  302  ?   -8.46200   -5.53400   9.26500  1.000  16.68000  C   ?  C  ?  .  1
     """)
 
+def test2():
+  """
+  Testing selections
+  """
+  inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
+  h = inp.construct_hierarchy()
+  asc = h.atom_selection_cache()
+  s = asc.iselection("resname 7ZTVU")
+  assert list(s) == list(range(10,40)), list(s)
+  s = asc.iselection("resname 7ZTVU and name N1")
+  assert list(s) == [18,33], list(s)
+
 if (__name__ == "__main__"):
   t0 = time.time()
   test1()
+  test2()
   print("OK. Time: %8.3f"%(time.time()-t0))

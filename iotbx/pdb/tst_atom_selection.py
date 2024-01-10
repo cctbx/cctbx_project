@@ -127,7 +127,7 @@ END
   for conj in ["and ", ""]:
     assert list(isel(r"altloc a %sname n" % conj)) == [24]
     assert list(isel(r"altloc b %sname n" % conj)) == [32]
-    assert list(isel(r"altloc ' ' %sname n" % conj)) == [0,6,17]
+    assert list(isel(r"altloc ' ' %sname n" % conj)) == [0,6,17], list(isel(r"altloc ' ' %sname n" % conj))
     assert list(isel(r"altid ' ' %sname n" % conj)) == [0,6,17]
   assert list(isel(r"resname hoh")) == [69]
   assert list(isel(r"resname SO4")) == [64,65,66,67,68]

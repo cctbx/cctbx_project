@@ -82,7 +82,7 @@ static std::string resNameAndID(iotbx::pdb::hierarchy::atom const& a)
   std::string chainID = a.parent().get().parent().get().parent().get().data->id;
   std::string resName = toUpperCase(stripWhitespace(a.parent().get().data->resname));
   std::string resID = stripWhitespace(fromSmall(a.parent().get().parent().get().data->resseq.elems, 4));
-  std::string altLoc = stripWhitespace(fromSmall(a.parent().get().data->altloc.elems,1));
+  std::string altLoc = stripWhitespace(a.parent().get().data->altloc);
   // Don't print the code if it is a space (blank).
   std::string insertionCode = stripWhitespace(fromSmall(a.parent().get().parent().get().data->icode.elems,1));
   return "chain " + chainID + " " + altLoc + resName + " " + resID + insertionCode;

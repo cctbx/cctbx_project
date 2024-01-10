@@ -72,8 +72,7 @@ A residue object is NOT a parent of the atoms.
 
 namespace hierarchy {
 
-  static const char blank_altloc_char = ' ';
-  static const char blank_altloc_cstr[2] = {blank_altloc_char, '\0'};
+  static const std::string blank_altloc_string(" ");
 
   class root_data;
   class root;
@@ -203,7 +202,7 @@ namespace hierarchy {
       friend struct atom_label_columns_formatter;
       weak_ptr<residue_group_data> parent;
     public:
-      str1 altloc;
+      std::string altloc;
       std::string resname;
     protected:
       std::vector<atom> atoms;
@@ -211,13 +210,13 @@ namespace hierarchy {
       inline
       atom_group_data(
         weak_ptr<residue_group_data> const& parent_,
-        const char* altloc_,
-        const char* resname_);
+        std::string altloc_,
+        std::string resname_);
 
       inline
       atom_group_data(
-        const char* altloc_,
-        const char* resname_);
+        std::string altloc_,
+        std::string resname_);
 
       inline
       atom_group_data(
@@ -385,11 +384,11 @@ namespace hierarchy {
         If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
-    void
-    format(
-      char* result,
-      bool add_model=false,
-      bool add_segid=false) const;
+    // void
+    // format(
+    //   char* result,
+    //   bool add_model=false,
+    //   bool add_segid=false) const;
 
     std::string
     format(
@@ -397,12 +396,12 @@ namespace hierarchy {
       bool add_segid=false) const;
 
     //! Extracts chain_id and model_id, then calls format(char*, bool).
-    void
-    format(
-      char* result,
-      shared_ptr<chain_data> const& ch_lock,
-      bool add_model,
-      bool add_segid);
+    // void
+    // format(
+    //   char* result,
+    //   shared_ptr<chain_data> const& ch_lock,
+    //   bool add_model,
+    //   bool add_segid);
 
     std::string
     format(
@@ -416,13 +415,13 @@ namespace hierarchy {
         If add_model or add_segid is true, the size of the result
         array must be 52 (or greater) and result IS null-terminated.
      */
-    void
-    format(
-      char* result,
-      hierarchy::atom const& atom,
-      bool add_model=false,
-      bool add_segid=false,
-      bool pdbres=false);
+    // void
+    // format(
+    //   char* result,
+    //   hierarchy::atom const& atom,
+    //   bool add_model=false,
+    //   bool add_segid=false,
+    //   bool pdbres=false);
 
     std::string
     format(
@@ -692,13 +691,8 @@ namespace hierarchy {
       }
 
       //! Not available in Python.
-      /*! result must point to an array of size 27 (or greater).
-          The first 6 characters are not modified.
-          On return, result is NOT null-terminated.
-       */
-      void
+      std::string
       format_atom_record_serial_label_columns(
-        char* result,
         atom_label_columns_formatter* label_formatter=0) const;
 
       //! Not available in Python.
@@ -729,9 +723,8 @@ namespace hierarchy {
       /*! result must point to an array of size 81 (or greater).
           On return, result is null-terminated.
        */
-      unsigned
+      std::string
       format_atom_record(
-        char* result,
         atom_label_columns_formatter* label_formatter=0,
         const char* replace_floats_with=0) const;
 
@@ -868,13 +861,13 @@ namespace hierarchy {
       explicit
       atom_group(
         residue_group const& parent,
-        const char* altloc="",
-        const char* resname="");
+        std::string altloc="",
+        std::string resname="");
 
       explicit
       atom_group(
-        const char* altloc="",
-        const char* resname="")
+        std::string altloc="",
+        std::string resname="")
       :
         data(new atom_group_data(altloc, resname))
       {}
@@ -883,8 +876,8 @@ namespace hierarchy {
       atom_group(const atom_group_data* other)
       :
         data(new atom_group_data(
-          other->altloc.elems,
-          other->resname.c_str()))
+          other->altloc,
+          other->resname))
       {}
 
       atom_group(
@@ -1688,7 +1681,7 @@ namespace hierarchy {
       std::string chain_id;
       str4 resseq;
       str1 icode;
-      str1 altloc;
+      std::string altloc;
       std::string resname;
       bool is_first_in_chain;
       bool is_first_after_break;
@@ -1861,21 +1854,21 @@ namespace hierarchy {
   inline
   atom_group_data::atom_group_data(
     weak_ptr<residue_group_data> const& parent_,
-    const char* altloc_,
-    const char* resname_)
+    std::string altloc_,
+    std::string resname_)
   :
     parent(parent_),
     altloc(altloc_),
-    resname((resname_ == 0) ? "" : resname_)
+    resname(resname_)
   {}
 
   inline
   atom_group_data::atom_group_data(
-    const char* altloc_,
-    const char* resname_)
+    std::string altloc_,
+    std::string resname_)
   :
     altloc(altloc_),
-    resname((resname_ == 0) ? "" : resname_)
+    resname(resname_)
   {}
 
   inline
@@ -1891,8 +1884,8 @@ namespace hierarchy {
   inline
   atom_group::atom_group(
     residue_group const& parent,
-    const char* altloc,
-    const char* resname)
+    std::string altloc,
+    std::string resname)
   :
     data(new atom_group_data(parent.data, altloc, resname))
   {}

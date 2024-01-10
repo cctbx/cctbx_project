@@ -149,8 +149,10 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_long_resname_1.py",
   "$D/regression/tst_hierarchy_long_resname_2.py",
   "$D/regression/tst_hierarchy_long_resname_3.py",
+  "$D/regression/tst_hierarchy_long_resname_4.py",
   "$D/regression/tst_hierarchy_copy_select.py",
   "$D/regression/tst_hierarchy_id_str.py",
+  "$D/regression/tst_fetch.py",
   ]
 
 # failing tests on Windows, Python 2.7

@@ -112,6 +112,10 @@ starting_higher_single_point final_higher_single_point
             acid is the main selection
     .caption = all None N_CA_C_O N_CA_CB_C_O N_CA_CB_CD_C_O all_torsions
 
+  remove_water = False
+    .type = bool
+    .style = hidden
+
   restraints_filename = Auto
     .type = path
     .style = new_file

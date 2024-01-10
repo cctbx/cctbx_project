@@ -49,8 +49,7 @@ def RunReduceTests():
   ret = Optimizers.Test()
   if len(ret) != 0:
     print("Failure:",ret)
-  assert (len(ret) == 0)
-
+  assert (len(ret) == 0), 'len(ret)=%s' % len(ret)
   return ret
 
 # Each test case has a name, a raw PDB file, a chain ID, a residue ID, an atom name,

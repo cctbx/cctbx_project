@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+# LIBTBX_SET_DISPATCHER_NAME mmtbx.model_vs_sequence
 # LIBTBX_SET_DISPATCHER_NAME phenix.model_vs_sequence
 
 import mmtbx.validation.sequence
@@ -45,7 +46,7 @@ and other inconsistencies (similar to validation upon PDB deposition).""")
   import mmtbx.validation.sequence
   from iotbx.file_reader import any_file
   import iotbx.pdb
-  pdb_in = iotbx.pdb.inpu(params.input.pdb_file)
+  pdb_in = iotbx.pdb.input(params.input.pdb_file)
   seq_in = any_file(params.input.seq_file, force_type="seq")
   seq_in.check_file_type("seq")
   pdb_hierarchy = pdb_in.construct_hierarchy()

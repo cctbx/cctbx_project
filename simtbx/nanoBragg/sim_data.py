@@ -605,9 +605,9 @@ class SimData:
     else:
       self.D.vectorize_umats()
 
-  def generate_simulated_image(self, instantiate=False):
+  def generate_simulated_image(self, instantiate=False, use_diffBragg=True):
     if instantiate:
-      self.instantiate_diffBragg()
+      self.instantiate_diffBragg(use_diffBragg=use_diffBragg)
     self._add_nanoBragg_spots()
     self._add_background()
     if self.include_noise:
@@ -694,7 +694,7 @@ class SimData:
 
 
 if __name__ == "__main__":
-  S = SimData()
-  img = S.generate_simulated_image()
+  S = SimData(use_default_crystal=True)
+  img = S.generate_simulated_image(instantiate=True, use_diffBragg=False)
   print ("Maximum pixel value: %.3g" % img.max())
   print ("Minimum pixel value: %.3g" % img.min())

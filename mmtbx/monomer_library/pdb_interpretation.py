@@ -1442,9 +1442,9 @@ class monomer_mapping(slots_getstate_setstate):
     mod_mod_ids = []
     ani = self.atom_name_interpretation
     u = self.unexpected_atoms
-    caa = get_class(name=self.monomer.chem_comp.id[:3]) in ['common_amino_acid',
-                                                            'modified_amino_acid',
-                                                            ]
+    caa = get_class(name=self.monomer.chem_comp.id) in ['common_amino_acid',
+                                                        'modified_amino_acid',
+                                                        ]
     if (self.monomer.classification == "peptide"):
       if (ani is not None):
         u_mon_lib = {}
@@ -5254,7 +5254,7 @@ class build_all_chain_proxies(linking_mixins):
                 if ag_t.get_atom(atom_name):
                   ss_atoms[i][ag_t.altloc] = ag_t.get_atom(atom_name)
           return ss_atoms
-        def genereate_ss_atom_lookup():
+        def generate_ss_atom_lookup():
           cb_atoms = _get_ss_atom_pairs("CB")
           ca_atoms = _get_ss_atom_pairs("CA")
           altlocs = []
@@ -5284,7 +5284,7 @@ class build_all_chain_proxies(linking_mixins):
             if len(lookup)==6:
               yield lookup
 
-        for lookup in genereate_ss_atom_lookup():
+        for lookup in generate_ss_atom_lookup():
           # move checking of having all atoms to generator
           angle_weight = 1/disulfide_angle.value_angle_esd**2
           proxy = geometry_restraints.angle_proxy(

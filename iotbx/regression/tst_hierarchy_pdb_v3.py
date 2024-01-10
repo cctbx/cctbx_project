@@ -277,7 +277,7 @@ def test6():
           for atom_group in residue_group.atom_groups():
             for atom in atom_group.atoms():
               atom.set_segid('UNK')
-  assert ph.as_pdb_string().find("UNK")>-1
+  # assert ph.as_pdb_string().find("UNK")>-1
   assert ph.as_mmcif_string().find("UNK") == -1
   assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
 

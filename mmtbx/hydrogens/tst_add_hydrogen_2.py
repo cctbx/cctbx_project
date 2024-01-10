@@ -25,39 +25,50 @@ def run():
 def compare_models(pdb_str,
                    contains     = None,
                    not_contains = None):
+  '''
+    Function to compare model with new H to the known answer (pdb_str)
+  '''
   #
   pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
   # initial model
   model_initial = mmtbx.model.manager(model_input = pdb_inp,
                                       log         = null_out())
-  hd_sel_initial = model_initial.get_hd_selection()
-  number_h_expected = hd_sel_initial.count(True)
   ph_initial = model_initial.get_hierarchy()
+  hd_sel_initial = model_initial.get_hd_selection()
   h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
   h_names_initial = list(h_atoms_initial.extract_name())
-  # remove H atoms
+  # number of H in pdb string (right answer)
+  number_h_expected = hd_sel_initial.count(True)
+
+  # get model obj without H atoms
   model_without_h = model_initial.select(~hd_sel_initial)
+  # make sure model without H indeed has no H atoms
   hd_sel_without_h = model_without_h.get_hd_selection()
   assert (hd_sel_without_h is not None)
   assert (hd_sel_without_h.count(True) == 0)
+
   # place H atoms again
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
   reduce_add_h_obj.run()
   #
   model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
+
+  f = open("m_initial.pdb","w")
+  f.write(model_initial.model_as_pdb())
+  f.close()
+  f = open("m_added.pdb","w")
+  f.write(model_h_added.model_as_pdb())
+  f.close()
+
   ph_h_added = model_h_added.get_hierarchy()
-  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
-  h_names_added = list(h_atoms_added.extract_name())
-  number_h_added = hd_sel_h_added.count(True)
-
-  #f = open("bla_intermediate.pdb","w")
-  #f.write(model_h_added.model_as_pdb())
-  #f.close()
-
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
 
+  number_h_added = hd_sel_h_added.count(True)
   assert(number_h_expected == number_h_added)
+
+  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
+  h_names_added = list(h_atoms_added.extract_name())
 
   if not_contains:
     assert (not_contains not in h_names_added)
@@ -70,6 +81,7 @@ def compare_models(pdb_str,
   d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
   d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
 
+  # check if coordinates are correct
   for name, sc in d2.items():
     assert(name in d1)
     assert approx_equal(sc, d1[name], 0.01), name
@@ -289,6 +301,9 @@ HETATM   67  H61 TAM H   2       5.264  12.763   7.385  1.00 20.00           H
 HETATM   68  H62 TAM H   2       5.044  11.254   7.689  1.00 20.00           H
 HETATM   69  HN1 TAM H   2       9.235  12.859   6.527  1.00 20.00           H
 HETATM   70  HN2 TAM H   2       9.942  12.134   7.862  1.00 20.00           H
+HETATM   71  HO4 TAM H   2       5.529  13.560   6.592  1.00 20.00           H
+HETATM   72  HO5 TAM H   2       7.358   9.637   8.639  1.00 20.00           H
+HETATM   73  HO6 TAM H   2       6.211  12.942   9.316  1.00 20.00           H
 """
 
 pdb_str_002 = """
@@ -444,34 +459,36 @@ ATOM      9  CE1ATYR A  59       9.100   7.172  10.481  0.63  7.99           C
 ATOM     10  CE2ATYR A  59       8.408   9.230   9.447  0.63  9.07           C
 ATOM     11  CZ ATYR A  59       8.919   8.547  10.507  0.63  9.01           C
 ATOM     12  OH ATYR A  59       9.211   9.255  11.657  0.63 12.31           O
-ATOM     13  HA ATYR A  59       6.384   5.020   7.788  0.63  5.48           H
-ATOM     14  HB2ATYR A  59       7.683   7.014   6.196  0.63  5.57           H
-ATOM     15  HB3ATYR A  59       8.349   5.699   6.792  0.63  5.57           H
-ATOM     16  HD1ATYR A  59       8.740   5.613   9.260  0.63  7.05           H
-ATOM     17  HD2ATYR A  59       7.760   9.068   7.512  0.63  8.31           H
-ATOM     18  HE1ATYR A  59       9.466   6.703  11.196  0.63  7.99           H
-ATOM     19  HE2ATYR A  59       8.278  10.148   9.520  0.63  9.07           H
-ATOM     20  HH ATYR A  59       9.058  10.072  11.538  0.63 12.31           H
-ATOM     21  N  BTYR A  59       5.613   5.513   5.963  0.37  5.75           N
-ATOM     22  CA BTYR A  59       6.322   5.809   7.211  0.37  5.49           C
-ATOM     23  C  BTYR A  59       5.795   6.953   8.094  0.37  5.14           C
-ATOM     24  O  BTYR A  59       5.668   8.090   7.641  0.37  6.42           O
-ATOM     25  CB BTYR A  59       7.798   6.076   6.900  0.37  7.77           C
-ATOM     26  CG BTYR A  59       8.556   6.722   8.038  0.37  5.20           C
-ATOM     27  CD1BTYR A  59       9.162   5.951   9.021  0.37  8.94           C
-ATOM     28  CD2BTYR A  59       8.665   8.103   8.129  0.37  6.25           C
-ATOM     29  CE1BTYR A  59       9.856   6.537  10.063  0.37 11.97           C
-ATOM     30  CE2BTYR A  59       9.357   8.699   9.167  0.37  9.52           C
-ATOM     31  CZ BTYR A  59       9.950   7.911  10.131  0.37 12.68           C
-ATOM     32  OH BTYR A  59      10.639   8.500  11.166  0.37 26.50           O
-ATOM     33  HA BTYR A  59       6.185   5.019   7.758  0.37  5.49           H
-ATOM     34  HB2BTYR A  59       7.853   6.669   6.134  0.37  7.77           H
-ATOM     35  HB3BTYR A  59       8.231   5.232   6.698  0.37  7.77           H
-ATOM     36  HD1BTYR A  59       9.100   5.024   8.978  0.37  8.94           H
-ATOM     37  HD2BTYR A  59       8.266   8.637   7.480  0.37  6.25           H
-ATOM     38  HE1BTYR A  59      10.257   6.008  10.714  0.37 11.97           H
-ATOM     39  HE2BTYR A  59       9.422   9.625   9.215  0.37  9.52           H
-ATOM     40  HH BTYR A  59      10.618   9.336  11.086  0.37 26.50           H
+ATOM     13  H  ATYR A  59       4.943   4.975   6.085  0.63  5.05           H
+ATOM     14  HA ATYR A  59       6.384   5.020   7.788  0.63  5.48           H
+ATOM     15  HB2ATYR A  59       7.683   7.014   6.196  0.63  5.57           H
+ATOM     16  HB3ATYR A  59       8.349   5.699   6.792  0.63  5.57           H
+ATOM     17  HD1ATYR A  59       8.740   5.613   9.260  0.63  7.05           H
+ATOM     18  HD2ATYR A  59       7.760   9.068   7.512  0.63  8.31           H
+ATOM     19  HE1ATYR A  59       9.466   6.703  11.196  0.63  7.99           H
+ATOM     20  HE2ATYR A  59       8.278  10.148   9.520  0.63  9.07           H
+ATOM     21  HH ATYR A  59       9.058  10.072  11.538  0.63 12.31           H
+ATOM     22  N  BTYR A  59       5.613   5.513   5.963  0.37  5.75           N
+ATOM     23  CA BTYR A  59       6.322   5.809   7.211  0.37  5.49           C
+ATOM     24  C  BTYR A  59       5.795   6.953   8.094  0.37  5.14           C
+ATOM     25  O  BTYR A  59       5.668   8.090   7.641  0.37  6.42           O
+ATOM     26  CB BTYR A  59       7.798   6.076   6.900  0.37  7.77           C
+ATOM     27  CG BTYR A  59       8.556   6.722   8.038  0.37  5.20           C
+ATOM     28  CD1BTYR A  59       9.162   5.951   9.021  0.37  8.94           C
+ATOM     29  CD2BTYR A  59       8.665   8.103   8.129  0.37  6.25           C
+ATOM     30  CE1BTYR A  59       9.856   6.537  10.063  0.37 11.97           C
+ATOM     31  CE2BTYR A  59       9.357   8.699   9.167  0.37  9.52           C
+ATOM     32  CZ BTYR A  59       9.950   7.911  10.131  0.37 12.68           C
+ATOM     33  OH BTYR A  59      10.639   8.500  11.166  0.37 26.50           O
+ATOM     34  H  BTYR A  59       4.940   4.987   6.060  0.37  5.75           H
+ATOM     35  HA BTYR A  59       6.185   5.019   7.758  0.37  5.49           H
+ATOM     36  HB2BTYR A  59       7.853   6.669   6.134  0.37  7.77           H
+ATOM     37  HB3BTYR A  59       8.231   5.232   6.698  0.37  7.77           H
+ATOM     38  HD1BTYR A  59       9.100   5.024   8.978  0.37  8.94           H
+ATOM     39  HD2BTYR A  59       8.266   8.637   7.480  0.37  6.25           H
+ATOM     40  HE1BTYR A  59      10.257   6.008  10.714  0.37 11.97           H
+ATOM     41  HE2BTYR A  59       9.422   9.625   9.215  0.37  9.52           H
+ATOM     42  HH BTYR A  59      10.618   9.336  11.086  0.37 26.50           H
 '''
 
 pdb_str_005 = '''
@@ -486,22 +503,24 @@ ATOM      6  CG AGLU A  78       6.481   6.798   8.188  0.70 36.10           C
 ATOM      7  CD AGLU A  78       5.833   7.232   9.476  0.70 37.70           C
 ATOM      8  OE1AGLU A  78       6.155   8.333   9.982  0.70 38.74           O
 ATOM      9  OE2AGLU A  78       5.000   6.456   9.985  0.70 37.65           O
-ATOM     10  HA AGLU A  78       7.819   6.627   6.051  0.70 35.57           H
-ATOM     11  HB2AGLU A  78       6.802   8.717   7.588  0.70 35.75           H
-ATOM     12  HB3AGLU A  78       8.137   7.971   8.021  0.70 35.75           H
-ATOM     13  HG2AGLU A  78       5.778   6.526   7.578  0.70 36.10           H
-ATOM     14  HG3AGLU A  78       7.059   6.044   8.385  0.70 36.10           H
-ATOM     15  CA BGLU A  78       7.581   7.608   6.115  0.30 35.61           C
-ATOM     16  CB BGLU A  78       7.269   8.093   7.534  0.30 35.70           C
-ATOM     17  CG BGLU A  78       6.166   7.322   8.245  0.30 36.05           C
-ATOM     18  CD BGLU A  78       6.683   6.115   9.003  0.30 36.79           C
-ATOM     19  OE1BGLU A  78       7.585   6.285   9.856  0.30 37.19           O
-ATOM     20  OE2BGLU A  78       6.173   5.000   8.760  0.30 37.31           O
-ATOM     21  HA BGLU A  78       7.779   6.660   6.170  0.30 35.61           H
-ATOM     22  HB2BGLU A  78       8.073   8.013   8.070  0.30 35.70           H
-ATOM     23  HB3BGLU A  78       6.992   9.022   7.488  0.30 35.70           H
-ATOM     24  HG3BGLU A  78       5.525   7.010   7.587  0.30 36.05           H
-ATOM     25  HG2BGLU A  78       5.730   7.910   8.881  0.30 36.05           H
+ATOM     10  H  AGLU A  78       9.405   7.900   5.385  1.00 35.65           H
+ATOM     11  HA AGLU A  78       7.819   6.627   6.051  0.70 35.57           H
+ATOM     12  HB2AGLU A  78       6.802   8.717   7.588  0.70 35.75           H
+ATOM     13  HB3AGLU A  78       8.137   7.971   8.021  0.70 35.75           H
+ATOM     14  HG2AGLU A  78       5.778   6.526   7.578  0.70 36.10           H
+ATOM     15  HG3AGLU A  78       7.059   6.044   8.385  0.70 36.10           H
+ATOM     16  CA BGLU A  78       7.581   7.608   6.115  0.30 35.61           C
+ATOM     17  CB BGLU A  78       7.269   8.093   7.534  0.30 35.70           C
+ATOM     18  CG BGLU A  78       6.166   7.322   8.245  0.30 36.05           C
+ATOM     19  CD BGLU A  78       6.683   6.115   9.003  0.30 36.79           C
+ATOM     20  OE1BGLU A  78       7.585   6.285   9.856  0.30 37.19           O
+ATOM     21  OE2BGLU A  78       6.173   5.000   8.760  0.30 37.31           O
+ATOM     22  H  BGLU A  78       9.470   8.008   5.731  1.00 35.65           H
+ATOM     23  HA BGLU A  78       7.779   6.660   6.170  0.30 35.61           H
+ATOM     24  HB2BGLU A  78       8.073   8.013   8.070  0.30 35.70           H
+ATOM     25  HB3BGLU A  78       6.992   9.022   7.488  0.30 35.70           H
+ATOM     26  HG3BGLU A  78       5.525   7.010   7.587  0.30 36.05           H
+ATOM     27  HG2BGLU A  78       5.730   7.910   8.881  0.30 36.05           H
 '''
 
 pdb_str_006 = '''
@@ -580,24 +599,27 @@ ATOM      3  C   CYS A  27      16.236   6.026  11.467  1.00 14.53           C
 ATOM      4  O   CYS A  27      15.254   6.760  11.351  1.00 16.95           O
 ATOM      5  CB  CYS A  27      17.114   6.698  13.662  1.00 15.77           C
 ATOM      6  SG  CYS A  27      17.230   6.332  15.443  1.00 17.57           S
-ATOM      7  HA  CYS A  27      15.739   5.186  13.237  1.00 14.57           H
-ATOM      8  HB2 CYS A  27      16.526   7.461  13.549  1.00 15.77           H
-ATOM      9  HB3 CYS A  27      18.003   6.913  13.340  1.00 15.77           H
-ATOM     10  CB  CYS A 123      14.607   7.591  16.260  1.00 24.16           C
-ATOM     11  SG  CYS A 123      15.316   5.939  15.946  1.00 20.05           S
-ATOM     12  N  ACYS A 123      15.023   7.279  18.624  0.58 26.40           N
+ATOM      7  H   CYS A  27      17.225   3.695  13.192  1.00 13.99           H
+ATOM      8  HA  CYS A  27      15.739   5.186  13.237  1.00 14.57           H
+ATOM      9  HB2 CYS A  27      16.526   7.461  13.549  1.00 15.77           H
+ATOM     10  HB3 CYS A  27      18.003   6.913  13.340  1.00 15.77           H
+ATOM     11  CB  CYS A 123      14.607   7.591  16.260  1.00 24.16           C
+ATOM     12  SG  CYS A 123      15.316   5.939  15.946  1.00 20.05           S
+ATOM     13  N  ACYS A 123      15.023   7.279  18.624  0.58 26.40           N
 ATOM     14  CA ACYS A 123      15.266   8.190  17.491  0.58 25.69           C
 ATOM     15  C  ACYS A 123      14.764   9.599  17.776  0.58 26.33           C
 ATOM     16  O  ACYS A 123      14.197  10.238  16.886  0.58 28.70           O
 ATOM     17  OXTACYS A 123      14.975  10.081  18.878  0.58 28.31           O
-ATOM     18  HA ACYS A 123      16.217   8.287  17.324  0.58 25.69           H
-ATOM     19  HB2ACYS A 123      13.652   7.502  16.408  1.00 24.16           H
-ATOM     20  HB3ACYS A 123      14.772   8.157  15.490  1.00 24.16           H
+ATOM     18  H  ACYS A 123      14.369   7.516  19.130  0.58 26.40           H
+ATOM     19  HA ACYS A 123      16.217   8.287  17.324  0.58 25.69           H
+ATOM     20  HB2ACYS A 123      13.652   7.502  16.408  1.00 24.16           H
+ATOM     21  HB3ACYS A 123      14.772   8.157  15.490  1.00 24.16           H
 ATOM     22  N  BCYS A 123      15.023   7.288  18.685  0.42 25.68           N
 ATOM     23  CA BCYS A 123      15.108   8.205  17.548  0.42 25.86           C
 ATOM     24  C  BCYS A 123      14.270   9.460  17.813  0.42 26.42           C
-ATOM     26  O  BCYS A 123      13.915  10.125  16.837  0.42 27.75           O
-ATOM     27  OXTBCYS A 123      13.981   9.728  18.968  0.42 28.04           O
+ATOM     25  O  BCYS A 123      13.915  10.125  16.837  0.42 27.75           O
+ATOM     26  OXTBCYS A 123      13.981   9.728  18.968  0.42 28.04           O
+ATOM     27  H  BCYS A 123      14.279   7.331  19.115  0.42 25.68           H
 ATOM     28  HA BCYS A 123      16.045   8.426  17.432  0.42 25.86           H
 ATOM     29  HB2BCYS A 123      13.642   7.500  16.307  1.00 24.16           H
 ATOM     30  HB3BCYS A 123      14.850   8.168  15.519  1.00 24.16           H

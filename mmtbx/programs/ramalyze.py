@@ -10,6 +10,7 @@ try:
 except ImportError:
   pass
 from libtbx.utils import Sorry
+from datetime import datetime
 
 master_phil_str = """
 plot = False
@@ -69,7 +70,7 @@ def compute(hierarchies, params, log, quiet=False, plot_file_base_default=None):
   result = results[0]
   for i in range(1,len(results)):
     result += results[i]
-  if params.verbose:
+  if params.verbose and not params.json:
     result.show_old_output(out=log, verbose=True)
   if params.plot:
     plot_file_base = params.output_prefix
@@ -129,32 +130,33 @@ Example:
     self.data_manager.has_models(raise_sorry=True)
 
   def get_results_as_JSON(self):
+    # this calculates the results separately from run() because historically
+    # the ramalyze object couldn't handle multi-model files. Multi-model support was
+    # added for the JSON code.  Ideally this would get fixed in the future.
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
     result = ramalyze(
       pdb_hierarchy = hierarchy,
       outliers_only = self.params.outliers_only,
       out           = self.logger)
-    return result.as_JSON()
+    return result.as_JSON(self.info_json)
 
   def run(self):
     if self.params.json:
       print(self.get_results_as_JSON())
-    else:
-      hierarchies = []
-      for model_name in self.data_manager.get_model_names():
-        hierarchy = self.data_manager.get_model(model_name).get_hierarchy()
-        hierarchy.atoms().reset_i_seq()
-        hierarchies.append(hierarchy)
-      fb = os.path.splitext(os.path.basename(
-        self.data_manager.get_model_names()[0]))[0]
-      self.results = compute(
-        hierarchies            = hierarchies,
-        params                 = self.params,
-        log                    = self.logger,
-        quiet                  = False,
-        plot_file_base_default = fb)
+    hierarchies = []
+    for model_name in self.data_manager.get_model_names():
+      hierarchy = self.data_manager.get_model(model_name).get_hierarchy()
+      hierarchies.append(hierarchy)
+    fb = os.path.splitext(os.path.basename(
+      self.data_manager.get_model_names()[0]))[0]
+    self.results = compute(
+      hierarchies            = hierarchies,
+      params                 = self.params,
+      log                    = self.logger,
+      quiet                  = False,
+      plot_file_base_default = fb)
 
   def get_results(self):
     return self.results

@@ -3,6 +3,8 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.clashscore import clashscore
 from libtbx.program_template import ProgramTemplate
+from datetime import datetime
+
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
@@ -110,7 +112,9 @@ Example:
     # if do_flips, make keep_hydrogens false
     if self.params.do_flips : self.params.keep_hydrogens = False
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    self.result = clashscore(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.results = clashscore(
       pdb_hierarchy=hierarchy,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
@@ -121,11 +125,14 @@ Example:
       b_factor_cutoff=self.params.b_factor_cutoff,
       do_flips=self.params.do_flips)
     if self.params.json:
-      print(self.result.as_JSON())
+      print(self.results.as_JSON())
     elif self.params.verbose:
-      self.result.show_old_output(out=self.logger)
+      self.results.show_old_output(out=self.logger)
     else:
-      print(round(self.result.get_clashscore(),2), file=self.logger)
+      print(round(self.results.get_clashscore(),2), file=self.logger)
 
   def get_results(self):
-    return self.result
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

@@ -262,27 +262,43 @@ class refine_adp(object):
             nproc=None):
     adopt_init_args(self, locals())
     d_min = fmodels.fmodel_xray().f_obs().d_min()
+    #
+    # Figure out if need to optimize weights or skip it
+    #
+    optimize_adp_weight = self.target_weights.twp.optimize_adp_weight
+    if(optimize_adp_weight):
+      r_work = self.fmodels.fmodel_xray().r_work()
+      r_free = self.fmodels.fmodel_xray().r_free()
+      if ((r_free < r_work or (r_free-r_work)<0.01) and
+          (not all_params.target_weights.force_optimize_weights)) :
+        optimize_adp_weight = False
     # initialize with defaults...
-    if(target_weights is not None):
-      import mmtbx.refinement.weights_params
-      wcp = mmtbx.refinement.weights_params.tw_customizations_params.extract()
-      for w_s_c in wcp.weight_selection_criteria:
-        if(d_min >= w_s_c.d_min and d_min < w_s_c.d_max):
-          r_free_range_width = w_s_c.r_free_range_width
-          r_free_r_work_gap = w_s_c.r_free_minus_r_work
-          mean_diff_b_iso_bonded_fraction = w_s_c.mean_diff_b_iso_bonded_fraction
-          min_diff_b_iso_bonded = w_s_c.min_diff_b_iso_bonded
-          break
-      # ...then customize
-      wsc = all_params.target_weights.weight_selection_criteria
-      if(wsc.r_free_minus_r_work is not None):
-        r_free_r_work_gap = wsc.r_free_minus_r_work
-      if(wsc.r_free_range_width is not None):
-        r_free_range_width = wsc.r_free_range_width
-      if(wsc.mean_diff_b_iso_bonded_fraction is not None):
-        mean_diff_b_iso_bonded_fraction = wsc.mean_diff_b_iso_bonded_fraction
-      if(wsc.min_diff_b_iso_bonded is not None):
-        min_diff_b_iso_bonded = wsc.min_diff_b_iso_bonded
+    if(self.fmodels.fmodel_xray().f_obs().d_min()<3): # This logic is only good for high_res
+      if(target_weights is not None):
+        import mmtbx.refinement.weights_params
+        wcp = mmtbx.refinement.weights_params.tw_customizations_params.extract()
+        for w_s_c in wcp.weight_selection_criteria:
+          if(d_min >= w_s_c.d_min and d_min < w_s_c.d_max):
+            r_free_range_width = w_s_c.r_free_range_width
+            r_free_r_work_gap = w_s_c.r_free_minus_r_work
+            mean_diff_b_iso_bonded_fraction = w_s_c.mean_diff_b_iso_bonded_fraction
+            min_diff_b_iso_bonded = w_s_c.min_diff_b_iso_bonded
+            break
+        # ...then customize
+        wsc = all_params.target_weights.weight_selection_criteria
+        if(wsc.r_free_minus_r_work is not None):
+          r_free_r_work_gap = wsc.r_free_minus_r_work
+        if(wsc.r_free_range_width is not None):
+          r_free_range_width = wsc.r_free_range_width
+        if(wsc.mean_diff_b_iso_bonded_fraction is not None):
+          mean_diff_b_iso_bonded_fraction = wsc.mean_diff_b_iso_bonded_fraction
+        if(wsc.min_diff_b_iso_bonded is not None):
+          min_diff_b_iso_bonded = wsc.min_diff_b_iso_bonded
+    else: # Worse than 3A: better yet ad hoc criteria.
+      r_free_r_work_gap = 6
+      r_free_range_width = 1.5
+      mean_diff_b_iso_bonded_fraction = 0.2
+      min_diff_b_iso_bonded = 20
     #
     print_statistics.make_sub_header(text="Individual ADP refinement", out = log)
     assert fmodels.fmodel_xray().xray_structure is model.get_xray_structure()
@@ -307,8 +323,9 @@ class refine_adp(object):
     if(self.target_weights is not None):
       default_weight = self.target_weights.adp_weights_result.wx*\
           self.target_weights.adp_weights_result.wx_scale
-      if(self.target_weights.twp.optimize_adp_weight):
+      if(optimize_adp_weight):
         wx_scale = [0.03,0.125,0.5,1.,1.5,2.,2.5,3.,3.5,4.,4.5,5.]
+
         trial_weights = list( flex.double(wx_scale)*self.target_weights.adp_weights_result.wx )
         self.wx_scale = 1
       else:

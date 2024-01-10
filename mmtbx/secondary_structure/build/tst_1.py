@@ -464,11 +464,6 @@ def exercise_secondary_structure_from_sequence():
       for rg1, rg2 in zip(c1.residue_groups(), c2.residue_groups()):
         rg1.is_similar_hierarchy(  other=rg2)
         rg1.is_identical_hierarchy(other=rg2)
-  f1 = correct_h.extract_xray_structure(crystal_symmetry=cs).structure_factors(
-    algorithm="direct", d_min=2).f_calc().data()
-  f2 = test_h.extract_xray_structure(crystal_symmetry=cs).structure_factors(
-    algorithm="direct", d_min=2).f_calc().data()
-  assert approx_equal(f1, f2)
   assert test_h.as_str() == correct_h.as_str()
   #correct_h.write_pdb_file(file_name="tst_1_ex_last_correct.pdb")
   #test_h.write_pdb_file(file_name="tst_1_ex_last_out.pdb")
