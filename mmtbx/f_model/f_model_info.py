@@ -314,6 +314,7 @@ class info(object):
     print(pr, file=out)
     print(pr+"STRUCTURE FACTORS CALCULATION ALGORITHM : %-s"%\
       self.sf_algorithm.upper(), file=out)
+    print(pr, file=out)
     print(pr+"B VALUES.", file=out)
     print(pr+" FROM WILSON PLOT           (A**2) : %s" %\
       format_value("%-8.2f", self.wilson_b), file=out)
