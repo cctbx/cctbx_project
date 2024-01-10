@@ -69,18 +69,22 @@ class SyncManager:
 
 
   def try_sync(self,callback=None):
+
     self._has_synced = False
     # callback is run if successful sync
-    #print(f"sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
+    #print(f"try_sync() ... sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
     if self.has_synced:
+      #print("case1: has synced")
       pass
     elif not self.has_synced and self._sync_count < self._max_sync_count:
+      #print("case 2: keep trying to sync")
       self._sync_count+=1
-      self.controller.viewer._get_sync_state(self.controller.state.to_json(),callback=self._try_sync_callback)
+      self.controller.viewer._get_sync_state(callback=self._try_sync_callback)
     else:
+      #print("case 3: sync failure")
       self._sync_failure = True
       msg = QMessageBox.warning(self.controller.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
-      self.parent.close_application()
+      self.controller.parent.close_application()
       sys.exit()
 
   def _try_sync_callback(self,result,second_callback=None): #  get_state function in ts
@@ -91,9 +95,11 @@ class SyncManager:
       #print("sync result: ",json.dumps(result,indent=2))
       if 'hasSynced' in result:
         received_result = True
-        self._received_first_sync = True
-        result["hasSynced"] = True # The very first sync is True
-        #print("set result hasSynced to True",result['hasSynced'])
+        if not self._received_first_sync:
+          self._received_first_sync = True
+          result["hasSynced"] = True # The very first sync is True
+          # print("Setting result['hasSynced'] = True because it is the first sync state")
+          # print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
 
 
     # update molstar ids
@@ -109,6 +115,7 @@ class SyncManager:
       if result["hasSynced"]:
         self.has_synced = True
         self._sync_count = 0
+        self.controller.viewer._set_sync_state(self.controller.state.to_json())
 
     # catch failure
     if self._sync_failure:
@@ -141,20 +148,9 @@ class MolstarController(Controller):
     self.state.signals.select.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
 
-    self.view.web_view.loadProgress.connect(self._print_message)
-
-
-    # # self.state.signals.selection_change.connect(self.selection_controls.select_active_selection)
-    # # self.state.signals.color_change.connect(self.set_color)
-    # # self.state.signals.repr_change.connect(self.set_representation)
-    # # self.state.signals.viz_change.connect(self.set_visibility)
-    # self.state.signals.data_change.connect(self._data_change)
 
     # Start by default
     self.start_viewer()
-
-  def _print_message(self,*args):
-    print("MESSAGE from:",self.__class__.__name__,*args)
 
   def _on_load_started(self):
     self._blocking_commands = True
@@ -228,12 +224,11 @@ class MolstarController(Controller):
   # Selection
 
   def poll_selection(self,callback=None):
+    self.viewer.poll_selection(callback=partial(self._poll_selection_callback,callback))
 
-
-    self.viewer.poll_selection(callback=partial(self._poll_selection,callback))
-     #self.viewer.poll_selection(callback=None)
-
-  def _poll_selection(self,callback,selection_json):
+  def _poll_selection_callback(self,callback,selection_json):
+    #print("Calling MolstarController._poll_selection_callback(callback, selection_json)")
+    #print(f"where\n\tcallback:{callback}\n\n\tselection_json:{selection_json}")
     if not isinstance(selection_json,str) or len(selection_json.strip())==0:
       return None
     query_atoms = SelectionQuery.from_json(selection_json)

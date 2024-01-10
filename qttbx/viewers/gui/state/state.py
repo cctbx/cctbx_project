@@ -67,11 +67,18 @@ class State:
     for name in self.data_manager.get_model_names():
       model = self.data_manager.get_model(filename=name)
       self.add_ref_from_mmtbx_model(model,filename=name)
+      # set the first model in dm as active
+      if self.active_model_ref is None:
+        self.active_model_ref = self.references_model[0]
 
     # maps
     for name in self.data_manager.get_real_map_names():
       map_manager = self.data_manager.get_real_map(filename=name)
       self.add_ref_from_mmtbx_map(map_manager,filename=name)
+
+      # set the first map in dm as active
+      if self.active_map_ref is None:
+        self.active_map_ref = self.references_map[0]
 
   def to_dict(self):
     d= {
@@ -147,8 +154,8 @@ class State:
       #self.signals.model_change.emit(self.active_model)
       pass
     elif isinstance(ref,SelectionRef):
-      self.active_selection_ref = ref
-      self.signals.selection_change.emit(self.active_selection_ref)
+      #self.active_selection_ref = ref
+      #self.signals.selection_change.emit(ref)
       pass
     elif isinstance(ref,(RestraintRef,RestraintsRef)):
       pass # access through model
@@ -382,7 +389,7 @@ class State:
 
 
     self.signals.selection_change.emit(value)
-    self.signals.select.emit(value)
+    #self.signals.select.emit(value)
     self.signals.references_change.emit()
 
 

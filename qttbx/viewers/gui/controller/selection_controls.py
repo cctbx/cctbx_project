@@ -110,6 +110,7 @@ class SelectionControlsController(Controller):
     if len(sel_sites)>0:
       sel_ref = SelectionRef(data=query,model_ref=ref,show=True)
       self.state.add_ref(sel_ref)
+      self.state.active_selection_ref = sel_ref
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
       print("Skipping add selection due to empty selection")

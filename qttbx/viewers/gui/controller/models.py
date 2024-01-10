@@ -145,3 +145,5 @@ class ModelListController(ScrollableListController):
           entry_view = ModelEntryView()
           entry_controller = ModelEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)
+          if ref == self.state.active_model_ref:
+            entry_controller.active = True # display radio button

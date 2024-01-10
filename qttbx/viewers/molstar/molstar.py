@@ -304,7 +304,7 @@ class MolstarViewer(ModelViewer):
       raise Sorry('The Molstar on the QT web view is not reachable at {} after '
                   '{} seconds.'.format(self.url, counter))
     print('Molstar is ready')
-    self.send_command(f"{self.plugin_prefix}.postInit()")
+    #self.send_command(f"{self.plugin_prefix}.postInit()")
     print('-'*79)
     print()
 
@@ -507,10 +507,10 @@ class MolstarViewer(ModelViewer):
       command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
     self.send_command(command)
 
-  def _get_sync_state(self,state_json,callback=None):
+  def _get_sync_state(self,callback=None):
     # get the remote: local -> reference mapping from the web app
     command = f"""
-    {self.plugin_prefix}.phenix.getState('{state_json}');
+    {self.plugin_prefix}.phenix.getState();
     """
     return self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
 
