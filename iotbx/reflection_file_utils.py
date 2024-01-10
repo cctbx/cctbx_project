@@ -693,8 +693,13 @@ class reflection_file_server(object):
           new_miller_arrays.append(ma)
           new_data_scores.append(ds)
     #
+    parameter_name = parameter_name.strip()
+    if(len(parameter_name)==0):
+      parameter_name_ = parameter_scope
+    else:
+      parameter_name_ = parameter_scope+"."+parameter_name
     i = select_array(
-      parameter_name=parameter_scope+"."+parameter_name,
+      parameter_name=parameter_name_,
       labels=labels,
       miller_arrays=new_miller_arrays,
       data_scores=new_data_scores,
