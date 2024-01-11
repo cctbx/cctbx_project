@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Wed Sep 27 09:55:15 2023
+The date of file generation: Thu Jan 11 09:02:01 2024
 """
 from __future__ import absolute_import, division, print_function
 
@@ -630,7 +630,6 @@ lookup = {
   "ERL" : "?",
   "EYS" : "?",
   "F0G" : "?",
-  "F2Y" : "?",
   "F3G" : "?",
   "F3M" : "?",
   "F3T" : "?",
@@ -648,6 +647,9 @@ lookup = {
   "FPR" : "?",
   "FRD" : "?",
   "FTO" : "?",
+  "FXC" : "?",
+  "FXF" : "?",
+  "FXL" : "?",
   "FYI" : "?",
   "FYQ" : "?",
   "G85" : "?",
@@ -962,6 +964,7 @@ lookup = {
   "THO" : "?",
   "TIF" : "?",
   "TIG" : "?",
+  "TJI" : "?",
   "TKL" : "?",
   "TPH" : "?",
   "TPN" : "?",
@@ -1010,6 +1013,7 @@ lookup = {
   "VLT" : "?",
   "VME" : "?",
   "VMS" : "?",
+  "VNW" : "?",
   "VOL" : "?",
   "VPF" : "?",
   "VSC" : "?",
@@ -1022,6 +1026,7 @@ lookup = {
   "X5H" : "?",
   "X6E" : "?",
   "X9A" : "?",
+  "XC0" : "?",
   "XCP" : "?",
   "XDD" : "?",
   "XDJ" : "?",
@@ -1113,6 +1118,7 @@ lookup = {
   "FB5" : "A",
   "FB6" : "A",
   "FLA" : "A",
+  "H7V" : "A",
   "HAC" : "A",
   "HIX" : "A",
   "HQA" : "A",
@@ -1379,6 +1385,7 @@ lookup = {
   "TNB" : "C",
   "TQZ" : "C",
   "TSY" : "C",
+  "UJR" : "C",
   "V44" : "C",
   "VI3" : "C",
   "XCN" : "C",
@@ -1454,6 +1461,7 @@ lookup = {
   "MSA" : "G",
   "NLY" : "G",
   "NMC" : "G",
+  "OZ3" : "G",
   "PGY" : "G",
   "PRV" : "G",
   "SAR" : "G",
@@ -1727,6 +1735,7 @@ lookup = {
   "F2F" : "F",
   "FC0" : "F",
   "FCL" : "F",
+  "FX9" : "F",
   "H14" : "F",
   "HOX" : "F",
   "HP9" : "F",
@@ -1820,6 +1829,7 @@ lookup = {
   "RT0" : "P",
   "TPJ" : "P",
   "TPK" : "P",
+  "V3C" : "P",
   "VH0" : "P",
   "XPR" : "P",
   "YPR" : "P",
@@ -2028,6 +2038,7 @@ lookup = {
   "DPQ" : "Y",
   "E9C" : "Y",
   "ESB" : "Y",
+  "F2Y" : "Y",
   "F7Q" : "Y",
   "FLT" : "Y",
   "FTY" : "Y",
