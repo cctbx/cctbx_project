@@ -596,7 +596,7 @@ namespace scitbx { namespace lstbx { namespace normal_equations {
             temp3 += yo[i] * yc[i];
             temp4 += w[i] * yc[i] * yc[i];
           }
-#pragma omp critical
+#pragma omp single
           {
             yo_sq += temp2;
             yo_dot_yc += temp3;
