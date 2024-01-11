@@ -7,7 +7,7 @@ parser = ArgumentParser()
 parser.add_argument("input", type=str, help="combined pandas pickle")
 parser.add_argument("phil", type=str, help="user phil file used to run hopper (see simtbx/diffBragg/phil.py)")
 parser.add_argument("--outdir", type=str, default=None, help="output folder")
-parser.add_argument("--exp", type=str, default="opt_exp_name", help="column name for input expeirments (default is opt_exp_name)")
+parser.add_argument("--exp", type=str, default="exp_name", help="column name for input expeirments (default is opt_exp_name)")
 parser.add_argument("--refl", type=str, default="stage2_refls", help="column name for refls (default is stage2_refls)")
 parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
 parser.add_argument("--cell", nargs=6, type=float, default=None, help="unit cell to use when writing MTZ files. If not provided, average will be used")
@@ -25,7 +25,7 @@ import pandas
 
 from simtbx.diffBragg.hopper_ensemble_utils import load_inputs
 from libtbx.mpi4py import MPI
-
+from simtbx.diffBragg.device import DeviceWrapper
 
 COMM= MPI.COMM_WORLD
 LOGGER = logging.getLogger("diffBragg.main")
@@ -66,6 +66,8 @@ if __name__ == "__main__":
     if args.outdir is not None:
         params.outdir = args.outdir
     params.tag = args.saveTag
+    if params.record_device_timings and COMM.rank > 0:
+        params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
     # end of phil stuff ========
 
     write_commandline(params)
@@ -79,8 +81,8 @@ if __name__ == "__main__":
 
     if params.skip is not None:
         df = df.iloc[params.skip:]
-    if params.first_n is not None:
-        df = df.iloc[:params.first_n]
+    if params.max_process is not None:
+        df = df.iloc[:params.max_process]
     df.reset_index(inplace=True, drop=True)
 
     gather_dir=None
@@ -91,16 +93,24 @@ if __name__ == "__main__":
             if not os.path.exists(gather_dir):
                 os.makedirs(gather_dir)
 
+    for col in [args.exp, args.refl]:
+        if col not in list(df):
+            raise KeyError("Col %s is missing from dataframe" % col)
+
     modelers = load_inputs(df, params, exper_key=args.exp, refls_key=args.refl, gather_dir=gather_dir)
     # note, we only go beyond this point if perImport flag was not passed
     modelers.cell_for_mtz = args.cell
     modelers.max_sigma = args.maxSigma
     modelers.outdir = args.outdir if args.outdir is not None else modelers.params.outdir
     modelers.save_freq = args.saveFreq
+
     modelers.prep_for_refinement()
-    modelers.save_modeler_params = args.saveAll
 
-    # do all sanity checks up front before minimization
-    modelers.Minimize(save=True)
+    with DeviceWrapper(modelers.SIM.D.device_Id) as _:
+        modelers.alloc_max_pix_per_shot()
+        modelers.save_modeler_params = args.saveAll
 
-    LOGGER.debug("Done!")
+        # do all sanity checks up front before minimization
+        modelers.Minimize(save=True)
+
+        LOGGER.debug("Done!")

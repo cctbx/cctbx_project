@@ -158,6 +158,7 @@ class fmodel_mixins(object):
                  crystal_symmetry = None,
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
+                 mask_params = None,
                  free_r_flags_scope = 'miller_array.labels.name',
                  ):
     """
@@ -192,6 +193,8 @@ class fmodel_mixins(object):
       array_type       = array_type,
       crystal_symmetry = crystal_symmetry,
       ignore_intensities_if_amplitudes_present = True)
+    if rfs is None:
+      raise Sorry("No reflection data provided.")
     # Resolve symmetry issues (in-place)
     self._resolve_symmetry_conflicts(
       params                 = crystal_symmetry_phil,
@@ -221,13 +224,16 @@ class fmodel_mixins(object):
     # XXX Temporary hack/work-around (REMOVE later) end
     # XXX
     # Get reflection data
+    dpg = None
+    if(model.crystal_symmetry() is not None):
+      dpg = model.crystal_symmetry().space_group().build_derived_point_group()
     data = extract_xtal_data.run(
       keep_going                        = not tmp_p.r_free_flags.required,
       extract_r_free_flags              = not tmp_p.r_free_flags.ignore_r_free_flags,
       reflection_file_server            = rfs,
       parameters                        = tmp_p,
       experimental_phases_params        = experimental_phases_params,
-      working_point_group               = model.crystal_symmetry().space_group().build_derived_point_group(),
+      working_point_group               = dpg,
       free_r_flags_scope                = free_r_flags_scope,
       remark_r_free_flags_md5_hexdigest = model.get_header_r_free_flags_md5_hexdigest()).result()
     #
@@ -257,6 +263,7 @@ class fmodel_mixins(object):
       abcd                = data.experimental_phases,
       xray_structure      = model.get_xray_structure(),
       twin_law            = twin_law,
+      mask_params         = mask_params,
       ignore_r_free_flags = parameters.r_free_flags.ignore_r_free_flags,
       mtz_object          = data.mtz_object,
       data_type           = array_type)

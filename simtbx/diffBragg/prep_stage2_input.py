@@ -4,6 +4,7 @@ import pandas
 import numpy as np
 from dials.array_family import flex
 from libtbx.mpi4py import MPI
+from simtbx.diffBragg import utils
 COMM = MPI.COMM_WORLD
 
 import logging
@@ -27,20 +28,59 @@ def get_equal_partition(weights, partitions):
         load[lightest] += weights[idx]
     return distribution
 
-def prep_dataframe(df, refls_key="predictions"):
+def prep_dataframe(df, refls_key="predictions", res_ranges_string=None):
+    """
+
+    :param df: input pandas dataframe for stage2
+    :param refls_key: column in df containing the reflection filenames
+    :param res_ranges_string: optional res_ranges_string phil param (params.refiner.res_ranges)
+    :return:
+    """
     # TODO make sure all pred files exist
+
+    res_ranges = None
+    if res_ranges_string is not None:
+        res_ranges = utils.parse_reso_string(res_ranges_string)
+
+    if refls_key not in list(df):
+        raise KeyError("Dataframe has no key %s" % refls_key)
     nshots = len(df)
-    refls_names = df[refls_key]
+    df.reset_index(drop=True, inplace=True)
+    df['index'] = df.index.values
+    refl_info = df[["index", refls_key, "exp_idx"]].values
+
+    # sort and split such that each rank will read many refls from same file
+    sorted_names_and_ids = sorted(
+        refl_info,
+        key=lambda x: x[1])  # sort by name
+    df_idx, refl_names, expt_ids = np.array_split(sorted_names_and_ids, COMM.size)[COMM.rank].T
+
     refls_per_shot = []
     if COMM.rank==0:
         LOGGER.info("Loading nrefls per shot")
-    for i_shot, name in enumerate(refls_names):
-        if i_shot % COMM.size != COMM.rank:
-            continue
-        R = flex.reflection_table.from_file(name)
-        if len(R)==0:
-            LOGGER.critical("Reflection %s has 0 reflections !" % (name, len(R)))
-        refls_per_shot.append((i_shot, len(R)))
+
+    prev_name = ""  # keep track of the most recently read refl table file
+    Rall = None
+    for (i_shot, name, expt_id) in zip(df_idx, refl_names, expt_ids):
+        if Rall is None or name != prev_name:
+            Rall = flex.reflection_table.from_file(name)
+            prev_name = name
+
+        R = Rall.select(Rall['id'] == int(expt_id))
+        if res_ranges is not None:
+            num_ref = 0
+            if 'rlp' not in set(R.keys()):
+                raise KeyError("Cannot filter res ranges if rlp column not in refl tables")
+            d = 1. / np.linalg.norm(R["rlp"], axis=1)  # resolution per refl
+            for d_fine, d_coarse in res_ranges:
+                d_sel = np.logical_and(d >= d_fine, d < d_coarse)
+                num_ref += d_sel.sum()
+        else:
+            num_ref = len(R)
+
+        if num_ref==0:
+            LOGGER.critical("Reflection %s id=%d has 0 reflections !" % (name, expt_id, num_ref))
+        refls_per_shot.append((i_shot, num_ref))
 
     refls_per_shot = COMM.reduce(refls_per_shot, root=0)
     work_distribution = None

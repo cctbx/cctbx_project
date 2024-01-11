@@ -156,7 +156,7 @@ namespace kokkostbx {
         }
 
         KOKKOS_INLINE_FUNCTION NumType length() const {
-            return ::Kokkos::Experimental::sqrt(length_sqr());
+            return ::Kokkos::sqrt(length_sqr());
         }
 
         KOKKOS_INLINE_FUNCTION NumType dot(const matrix<NumType>& v) const {

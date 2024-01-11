@@ -1868,7 +1868,7 @@ def ok_a3m_sequence(s, n = None, base_sequence = None):
   """ Check a sequence and make sure it matches expectations for an a3m line
   """
   # Remove blanks/linefeeds and convert . to -
-  s = s.replace(" ","").replace("\m","").replace("\n","")
+  s = s.replace(" ","").replace("\r","").replace("\n","")
   s = s.replace(".","-")
 
   n_gap_chars = s.count("-")

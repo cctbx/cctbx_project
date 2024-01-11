@@ -95,6 +95,7 @@ steps:
       libtbx.configure lunus
       make
     fi
+    rm -fr modules/kokkos/.git/*
   displayName: Configure and Build
 
 # test

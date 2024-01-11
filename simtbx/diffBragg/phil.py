@@ -6,6 +6,53 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+
+filter_during_refinement {
+  enable = False
+    .type = bool
+    .help = if True, filtering will occur each N iterations, controlled by parameter after_n
+  after_n = 50
+    .type = int
+    .help = refiner will pause and check for outliers every after_n iterations
+  threshold = 20
+    .type = float
+    .help = outliers are detected by looking at the distribution of per shoebox sigmaZ
+    .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
+}
+
+filter_after_refinement {
+  enable = False
+    .type = bool
+    .help = if True, filter, then rerun refinement if certain conditions are met (e.g. too few refinement iterations)
+  max_attempts = 2
+    .type = int
+    .help = how many additional times to run hopper
+  min_prev_niter = 50
+    .type = int
+    .help = only repeat if the previous refinement was fewer than this many iterations
+  max_prev_sigz = 10
+    .type = float
+    .help = only repeat if the previous refinement had sigma Z more than this
+  threshold = 20
+    .type = float
+    .help = outliers are detected by looking at the distribution of per shoebox sigmaZ
+    .help = and then using a median absolute deviation filter. Lower values of threshold will flag more pixels as outliers
+}
+
+symmetrize_Flatt = False
+  .type = bool
+  .help = If True, add 3-fold symmetric mosaic blocks to the calculation of F_latt
+record_device_timings = False
+  .type = bool
+  .help = Record the execution times of diffBragg host-dev copies and kernel executions
+  .help = the results will be printed to the terminal
+consider_multicrystal_shots = False
+  .type = bool
+  .help = If True, and if there are multiple crystals in the experiment list,
+  .help = then try to model all crystals for a given shot.
+debug_mode = False
+  .type = bool
+  .help = If True, many output files are written to explore the diffBragg models in great detail
 nominal_Fhkl_only = True
   .type = bool
   .help = if refining Fhkls, only refine the ones that are assigned to a reflection table...
@@ -121,12 +168,6 @@ downsamp_spec {
     .help = final resolution of downsampled spectrum in eV
     .expert_level=0
 }
-apply_best_crystal_model = False
-  .type = bool
-  .help = depending on what experiments in the exper refl file, one may want
-  .help = to apply the optimal crystal transformations (this parameter only matters
-  .help = if params.best_pickle is not None)
-  .expert_level=10
 filter_unpredicted_refls_in_output = True
   .type = bool
   .help = filter reflections in the output refl table for which there was no model bragg peak
@@ -192,41 +233,41 @@ betas
   ucell_gamma = None
     .type = float
     .help = restraint variance for unit cell gamma angle
-  Nvol = 1e8
+  Nvol = None
     .type = float
     .help = tightness of the Nabc volume contraint
-  detz_shift = 1e8
+  detz_shift = None
     .type = float
     .help = restraint variance for detector shift target
-  ucell = [1e8,1e8,1e8,1e8,1e8,1e8]
+  ucell = None
     .type = floats
     .help = DEPRECATED: use e.g. betas.ucell_a instead
     .help = variances for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
-  RotXYZ = 1e8
+  RotXYZ = None
     .type = float
     .help = restraint factor for the rotXYZ restraint
-  Nabc = [1e8,1e8,1e8]
+  Nabc = None
     .type = floats(size=3)
     .help = restraint factor for the ncells abc
-  Ndef = [1e8,1e8,1e8]
+  Ndef = None
     .type = floats(size=3)
     .help = restraint factor for the ncells def
-  diffuse_sigma = 1e8,1e8,1e8
+  diffuse_sigma = None
     .type = floats(size=3)
     .help = restraint factor for diffuse sigma
-  diffuse_gamma = 1e8,1e8,1e8
+  diffuse_gamma = None
     .type = floats(size=3)
     .help = restraint factor for diffuse gamma
-  G = 1e8
+  G = None
     .type = float
     .help = restraint factor for the scale G
-  B = 1e8
+  B = None
     .type = float
     .help = restraint factor for Bfactor
-  eta_abc = [1e8,1e8,1e8]
+  eta_abc = None
     .type = floats(size=3)
     .help = restrain factor for mosaic spread angles
-  spec = [1e8,1e8]
+  spec = None
     .type = floats(size=2)
     .help = restraint factor for spectrum coefs
   Fhkl = None
@@ -276,38 +317,34 @@ centers
   Nvol = None
     .type = float
     .help = if provided, constrain the product Na*Nb*Nc to this value
-  detz_shift = 0
+  detz_shift = None
     .type = float
     .help = restraint target for detector shift along z-direction
-  ucell = [63.66, 28.87, 35.86, 1.8425]
-    .type = floats
-    .help = DEPRECATED: use e.g. betas.ucell_a instead
-    .help = centers for unit cell constants in order determined by unit cell manager class (see diffBragg/refiners/crystal_systems)
-  RotXYZ = [0,0,0]
+  RotXYZ = None
     .type = floats(size=3)
     .help = restraint target for Umat rotations
-  Nabc = [100,100,100]
+  Nabc = None
     .type = floats(size=3)
     .help = restraint target for Nabc
-  Ndef = [0,0,0]
+  Ndef = None
     .type = floats(size=3)
     .help = restraint target for Ndef
-  diffuse_sigma = [1,1,1]
+  diffuse_sigma = None
     .type = floats(size=3)
     .help = restraint target for diffuse sigma
-  diffuse_gamma = [1,1,1]
+  diffuse_gamma = None
     .type = floats(size=3)
     .help = restraint target for diffuse gamma
-  G = 100
+  G = None
     .type = float
     .help = restraint target for scale G
-  B = 0
+  B = None
     .type = float
     .help = restraint target for Bfactor
-  eta_abc = [0,0,0]
+  eta_abc = None
     .type = floats(size=3)
     .help = restraint target for mosaic spread angles in degrees
-  spec = [0,1]
+  spec = None
     .type = floats(size=2)
     .help = restraint target for specturm correction (0 + 1*Lambda )
 }
@@ -402,9 +439,9 @@ sigmas
   diffuse_gamma = [1,1,1]
     .type = floats(size=3)
     .help = sensitivity for diffuse gamma
-  RotXYZ = [1,1,1]
+  RotXYZ = [1e-3,1e-3,1e-3]
     .type = floats(size=3)
-    .help = sensitivity for RotXYZ
+    .help = sensitivity for RotXYZ in radians
   G = 1
     .type = float
     .help = sensitivity for scale factor
@@ -451,7 +488,7 @@ init
     .help = init for diffuse gamma
   RotXYZ = [0,0,0]
     .type = floats(size=3)
-    .help = init for RotXYZ
+    .help = init for RotXYZ in radians
   G = 1
     .type = float
     .help = init for scale factor
@@ -482,9 +519,9 @@ mins
   diffuse_gamma = [0,0,0]
     .type = floats(size=3)
     .help = min for diffuse gamma
-  RotXYZ = [-1,-1,-1]
+  RotXYZ = [-3.1415926, -3.1415926, -3.1415926]
     .type = floats(size=3)
-    .help = min for rotXYZ in degrees
+    .help = min for rotXYZ in radians
   G = 0
     .type = float
     .help = min for scale G
@@ -520,12 +557,12 @@ maxs
   diffuse_sigma = [20,20,20]
     .type = floats(size=3)
     .help = max diffuse sigma
-  diffuse_gamma = [1000,1000,1000]
+  diffuse_gamma = [10000,10000,10000]
     .type = floats(size=3)
     .help = max for diffuse gamma
-  RotXYZ = [1,1,1]
+  RotXYZ = [3.1415926, 3.1415926, 3.1415926]
     .type = floats(size=3)
-    .help = max for rotXYZ in degrees
+    .help = max for rotXYZ in radians
   G = 1e12
     .type = float
     .help = max for scale G
@@ -582,7 +619,7 @@ fix
   ucell = False
     .type = bool
     .help = fix the unit cell during refinement
-  detz_shift = False
+  detz_shift = True
     .type = bool
     .help = fix the detector distance shift during refinement
 }
@@ -611,6 +648,9 @@ diffuse_stencil_size = 0
   .type = int
   .help = Increase to add accuracy to diffuse scattering models, at the expense of longer computations
   .help = Best to increment by values of 1 when testing
+diffuse_orientation = 1
+  .type = int
+  .help = orient the diffuse scattering features. 0 is along (a-b, a+b, c), 1 is along (a,b,c)
 symmetrize_diffuse = True
   .type = bool
   .help = use the laue group rotation operators to symmetrize diffuse signals
@@ -718,6 +758,9 @@ logging
     .type = str
     .help = if logfiles=True, then write the log to this file, stored in the folder specified by outdir
     .help = if None, then defaults to main_stage1.log for hopper, main_pred.log for prediction, main_stage2.log for stage_two
+  log_hostname = True
+    .type = bool
+    .help = prefix logfiles with host name
 }
 profile = False
   .type = bool

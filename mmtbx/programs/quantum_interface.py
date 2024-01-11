@@ -872,7 +872,9 @@ Usage examples:
         cmd += ' %s' % filename
       #
       nci = hbondss[i].get_counts(filter_id_str=id_str, min_data_size=1)
-      n=nci.n_filter
+      n=-1
+      if nci:
+        n=nci.n_filter
       energy = energies[i]
       #
       # convert to kcal/mol

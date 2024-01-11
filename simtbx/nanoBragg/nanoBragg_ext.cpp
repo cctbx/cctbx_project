@@ -1915,6 +1915,11 @@ printf("DEBUG: pythony_stolFbg[1]=(%g,%g)\n",nanoBragg.pythony_stolFbg[1][0],nan
                      make_setter(&nanoBragg::raw_pixels,dcp()),
                      "2D flex array representing floating-point pixel values, this is expected photons before you call add_noise(), which converts it into detector pixel values, or ADU")
 
+     .add_property("cbf_int",
+                     make_getter(&nanoBragg::cbf_int,rbv()),
+                     make_setter(&nanoBragg::cbf_int,dcp()),
+                     "Write the cbf file using to_cbf with int32 precision")
+
       /* print to screen a summary of all initialized parameters */
       .def("show_params",&nanoBragg::show_params,
        "print out all simulation parameters, just like the standalone program")
