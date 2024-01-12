@@ -921,6 +921,10 @@ namespace boost_python { namespace {
             &simtbx::nanoBragg::diffBragg::ave_wavelength_img,
             "return flex array containing average wavelen per pixel")
 
+      .def("ave_hkl_image",
+            &simtbx::nanoBragg::diffBragg::ave_hkl_img,
+            "return 3-tuple of flex arrays each containing average h,k,l per pixel, respectively")
+
       .def("_set_Friedel_mate_inds",
             &simtbx::nanoBragg::diffBragg::set_Friedel_mate_inds,
             "Two arguments; each lists of the same length, pointing to the positive and negative mates in a Friedel pair, respectively")
