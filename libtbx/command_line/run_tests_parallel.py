@@ -34,7 +34,7 @@ max_time = 180
   .type = float(value_min=0)
   .help = "Print warning and timing for all tests that take longer"
           "than max_time (in seconds) to run."
-slow_tests = False
+slow_tests = True
   .type = bool
   .help = "If True, also run any tests marked as slow, if any"
 """)
