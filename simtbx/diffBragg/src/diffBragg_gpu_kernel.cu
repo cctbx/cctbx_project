@@ -294,6 +294,9 @@ void gpu_sum_over_steps(
         // reset photon count for this pixel
         double _I=0;
         double Ilambda=0;
+        double Imiller_h=0;
+        double Imiller_k=0;
+        double Imiller_l=0;
 
         // reset derivative photon counts for the various parameters
         double rot_manager_dI[3] = {0,0,0};
@@ -576,8 +579,12 @@ void gpu_sum_over_steps(
             CUDAREAL _I_total = s_hkl*_I_cell *I0;
             CUDAREAL Iincrement = _I_total*texture_scale;
             _I += Iincrement;
-            if (save_wavelenimage)
+            if (save_wavelenimage){
                 Ilambda += Iincrement*lambda_ang;
+                Imiller_h += Iincrement*_h;
+                Imiller_k += Iincrement*_k;
+                Imiller_l += Iincrement*_l;
+            }
 
             if (s_refine_diffuse){
                 CUDAREAL step_scale = texture_scale*_F_cell*_F_cell;
@@ -845,16 +852,16 @@ void gpu_sum_over_steps(
             if( s_printout){
              if( _subS==0 && _subF==0 && _thick_tic==0 && _source==0 &&  _mos_tic==0 ){
               if((_fpixel==s_printout_fpixel && _spixel==s_printout_spixel) || s_printout_fpixel < 0){
-                   printf("%4d %4d :  lambda = %g\n", _fpixel,_spixel, _lambda);
+                   printf("%4d %4d :  lambda = %10.9g\n", _fpixel,_spixel, _lambda);
                    printf("at %g %g %g\n", _pixel_pos[0],_pixel_pos[1],_pixel_pos[2]);
-                   printf("Fdet= %g; Sdet= %g ; Odet= %g\n", _Fdet, _Sdet, _Odet);
-                   printf("PIX0: %f %f %f\n" , pix0_vectors[pid_x], pix0_vectors[pid_y], pix0_vectors[pid_z]);
-                   printf("F: %f %f %f\n" , fdet_vectors[pid_x], fdet_vectors[pid_y], fdet_vectors[pid_z]);
-                   printf("S: %f %f %f\n" , sdet_vectors[pid_x], sdet_vectors[pid_y], sdet_vectors[pid_z]);
-                   printf("O: %f %f %f\n" , odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
+                   printf("Fdet= %10.7g; Sdet= %10.7g ; Odet= %10.7g\n", _Fdet, _Sdet, _Odet);
+                   printf("PIX0: %10.5g %10.5g %10.5g\n" , pix0_vectors[pid_x], pix0_vectors[pid_y], pix0_vectors[pid_z]);
+                   printf("F: %10.5g %10.5g %10.5g\n" , fdet_vectors[pid_x], fdet_vectors[pid_y], fdet_vectors[pid_z]);
+                   printf("S: %10.5g %10.5g %10.5g\n" , sdet_vectors[pid_x], sdet_vectors[pid_y], sdet_vectors[pid_z]);
+                   printf("O: %10.5g %10.5g %10.5g\n" , odet_vectors[pid_x], odet_vectors[pid_y], odet_vectors[pid_z]);
                    printf("pid_x=%d, pid_y=%d; pid_z=%d\n", pid_x, pid_y, pid_z);
 
-                   printf("QVECTOR: %f %f %f\n" , q_vec[0], q_vec[1], q_vec[2]);
+                   printf("QVECTOR: %10.5g %10.5g %10.5g\n" , q_vec[0], q_vec[1], q_vec[2]);
                    MAT3 UU = UMATS_RXYZ[_mos_tic];
                      printf("UMAT_RXYZ :\n%f  %f  %f\n%f  %f  %f\n%f  %f  %f\n",
                       UU(0,0),  UU(0,1), UU(0,2),
@@ -892,7 +899,10 @@ void gpu_sum_over_steps(
                    //printf("Ilatt diffuse %15.10g\n", I_latt_diffuse);
                    printf("omega   %15.10g\n", _omega_pixel);
                    printf("default_F= %f\n", s_default_F);
-                   printf("Incident[0]=%g, Incident[1]=%g, Incident[2]=%g\n", _incident[0], _incident[1], _incident[2]);
+                   printf("Incident[0]=%15.10g, Incident[1]=%15.10g, Incident[2]=%15.10g\n", _incident[0], _incident[1], _incident[2]);
+                   printf("Diffracted[0]=%15.10g, Diffracted[1]=%15.10g, Diffracted[2]=%15.10g\n", _diffracted[0], _diffracted[1], _diffracted[2]);
+                   printf("Scattering[0]=%15.10g, Scattering[1]=%15.10g, Scattering[2]=%15.10g\n", _scattering[0], _scattering[1], _scattering[2]);
+                   printf("sourceI=%10.7g\n",  sI);
                   if (s_complex_miller)printf("COMPLEX MILLER!\n");
                   if (s_no_Nabc_scale)printf("No Nabc scale!\n");
                 }
@@ -971,8 +981,12 @@ void gpu_sum_over_steps(
         // final scale term to being everything to photon number units
         CUDAREAL _scale_term = _polar*_om * s_overall_scale;
         floatimage[i_pix] = _scale_term*_I;
-        if (save_wavelenimage)
-            wavelenimage[i_pix] = Ilambda / _I;
+        if (save_wavelenimage){
+            wavelenimage[i_pix*4] = Ilambda / _I;
+            wavelenimage[i_pix*4+1] = Imiller_h / _I;
+            wavelenimage[i_pix*4+2] = Imiller_k / _I;
+            wavelenimage[i_pix*4+3] = Imiller_l / _I;
+        }
 
         // udpate the rotation derivative images*
         for (int i_rot =0 ; i_rot < 3 ; i_rot++){

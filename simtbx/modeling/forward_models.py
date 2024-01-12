@@ -315,6 +315,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     data = S.D.raw_pixels_roi.as_numpy_array().reshape(img_shape)
     if perpixel_wavelen:
         wavelen_data = S.D.ave_wavelength_image().as_numpy_array().reshape(img_shape)
+        hdata,kdata,ldata = map(lambda x:x.as_numpy_array().reshape(img_shape), S.D.ave_hkl_image())
 
     t = time.time() - t
     if show_timings:
@@ -332,7 +333,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     if S.D.gpu_free is not None:
         S.D.gpu_free()
     if perpixel_wavelen:
-        return data, wavelen_data
+        return data, wavelen_data, hdata, kdata, ldata
     else:
         return data
 
