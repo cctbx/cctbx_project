@@ -25,3 +25,5 @@ stages:
   dependsOn: Preparation
   jobs:
     - template: ./xfel-ci-build.yml
+      parameters:
+        slow_tests: False

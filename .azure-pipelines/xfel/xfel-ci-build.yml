@@ -6,6 +6,7 @@ jobs:
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_
+      slow_tests: ${{ parameters.slow_tests }}
   - template: ./conda-linux.yml
     parameters:
       distribution: centos
@@ -13,6 +14,7 @@ jobs:
       modules: xfel_modules
       template: ./unix-psana-build.yml
       prefix: xfel_psana_
+      slow_tests: ${{ parameters.slow_tests }}
   - template: ./conda-osx.yml
     parameters:
       vmImage: [11]
@@ -20,3 +22,4 @@ jobs:
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_
+      slow_tests: ${{ parameters.slow_tests }}
