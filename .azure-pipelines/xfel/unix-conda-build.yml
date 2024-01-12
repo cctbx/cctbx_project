@@ -101,6 +101,7 @@ steps:
 
 # test
 - script: |
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate $(PYTHON_VERSION)
     cd $(Pipeline.Workspace)

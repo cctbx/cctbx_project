@@ -66,6 +66,7 @@ steps:
 
 # test
 - script: |
+    set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
@@ -76,7 +77,7 @@ steps:
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/xfel_merge.sh
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export SIT_ROOT=/reg/g/psdm
-    libtbx.run_tests_parallel module=xfel_regression nproc=4 ${{ parameters.slow_tests }}
+    libtbx.run_tests_parallel module=xfel_regression nproc=4 slow_tests=${{ parameters.slow_tests }}
   failOnStderr: false
   displayName: Test
 
