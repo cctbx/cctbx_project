@@ -105,7 +105,8 @@ def run(args,
         skip_missing = params.skip_missing)
     parallel_tests = libtbx.test_utils.parallel.\
       get_module_parallel_tests(module_name,
-        skip_missing = params.skip_missing)
+        skip_missing = params.skip_missing,
+        slow_tests = params.slow_tests)
     all_tests.extend(module_tests)
     all_tests.extend(fail_tests)
     all_tests.extend(unstable_tests)

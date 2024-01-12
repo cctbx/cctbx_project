@@ -79,15 +79,20 @@ def get_module_tests(module_name, valgrind=False, slow_tests=False,
 
 def get_module_expected_test_failures(module_name, skip_missing = False):
   return get_test_list(module_name, test_type='tst_list_expected_failures',
-                    skip_missing = skip_missing)
+                       skip_missing = skip_missing)
 
 def get_module_expected_unstable_tests(module_name, skip_missing = False):
   return get_test_list(module_name, test_type='tst_list_expected_unstable',
-                    skip_missing = skip_missing)
+                       skip_missing = skip_missing)
 
-def get_module_parallel_tests(module_name, skip_missing = False):
-  return get_test_list(module_name, test_type='tst_list_parallel',
-                     skip_missing = skip_missing)
+def get_module_parallel_tests(module_name, skip_missing = False, slow_tests = False):
+  tst_list = get_test_list(module_name, test_type='tst_list_parallel',
+                           skip_missing = skip_missing)
+  if slow_tests:
+    tst_list.extend(get_test_list(module_name, test_type='tst_list_parallel_slow',
+                                  skip_missing = skip_missing))
+  return tst_list
+
 
 def find_tests(dir_name):
   if not os.path.isdir(dir_name):
