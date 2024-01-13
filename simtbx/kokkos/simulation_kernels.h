@@ -347,19 +347,16 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
     CUDAREAL detector_thickstep, int detector_thicksteps, CUDAREAL detector_thick, CUDAREAL detector_mu,
     const view_1d_t<vec3> sdet_vector, const view_1d_t<vec3> fdet_vector,
     const view_1d_t<vec3> odet_vector, const view_1d_t<vec3> pix0_vector,
-
     const vector_cudareal_t close_distance,
     const vector_cudareal_t beam_vector,
     CUDAREAL dmin, int phisteps, int sources,
     const vector_cudareal_t source_X, const vector_cudareal_t source_Y,
     const vector_cudareal_t source_Z,
     const vector_cudareal_t source_I, const vector_cudareal_t source_lambda,
-
     int mosaic_domains, crystal_orientation_t crystal_orientation,
     CUDAREAL Na, CUDAREAL Nb, CUDAREAL Nc, CUDAREAL V_cell,
     CUDAREAL water_size, CUDAREAL water_F, CUDAREAL water_MW, CUDAREAL r_e_sqr,
     CUDAREAL fluence, CUDAREAL Avogadro, CUDAREAL spot_scale, int integral_form,
-
     CUDAREAL default_F,
     const vector_cudareal_t Fhkl,
     const hklParams FhklParams,
