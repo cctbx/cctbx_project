@@ -310,19 +310,16 @@ namespace Kokkos {
       kdt.m_fdet_vector,
       kdt.m_odet_vector,
       kdt.m_pix0_vector,
-
       kdt.m_distance,
       m_beam_vector,
       SIM.dmin, SIM.phisteps, 1,
       c_source_X, c_source_Y,
       c_source_Z,
       c_source_I, c_source_lambda,
-
       SIM.mosaic_domains, m_crystal_orientation,
       SIM.Na, SIM.Nb, SIM.Nc, SIM.V_cell,
       m_water_size, m_water_F, m_water_MW, simtbx::nanoBragg::r_e_sqr,
       SIM.fluence, simtbx::nanoBragg::Avogadro, SIM.spot_scale, SIM.integral_form,
-
       SIM.default_F,
       current_channel_Fhkl,
       kec.m_FhklParams,
