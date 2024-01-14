@@ -549,8 +549,9 @@ int gen_laue_mats(int laue_group_num, vector_mat3_t lmats, KOKKOS_MAT3 rpa) {
   return num_mats;
 };
 
+// ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
 KOKKOS_FUNCTION
-void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int h_min, int k_min, int l_min, int h_max, int k_max, int l_max, int h_range, int k_range, int l_range, KOKKOS_MAT3 Ainv, const vector_cudareal_t FhklLinear, int num_laue_mats, const vector_mat3_t laue_mats, KOKKOS_MAT3 anisoG_local, vector_cudareal_t dG_trace, CUDAREAL anisoG_determ, KOKKOS_MAT3 anisoU_local, const vector_vec3_t dG_dgam, bool refine_diffuse, CUDAREAL *I0, CUDAREAL *step_diffuse_param){
+void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int h_min, int k_min, int l_min, int h_max, int k_max, int l_max, int h_range, int k_range, int l_range, const KOKKOS_MAT3 diffuse_scale_mat3, const vector_cudareal_t FhklLinear, int num_laue_mats, const vector_mat3_t laue_mats, KOKKOS_MAT3 anisoG_local, vector_cudareal_t dG_trace, CUDAREAL anisoG_determ, KOKKOS_MAT3 anisoU_local, const vector_vec3_t dG_dgam, bool refine_diffuse, CUDAREAL *I0, CUDAREAL *step_diffuse_param){
    constexpr CUDAREAL four_mpi_sq = 4.*M_PI*M_PI;
    // loop over laue matrices
    int num_stencil_points = (2*dHH[0] + 1) * (2*dHH[1] + 1) * (2*dHH[2] + 1);
@@ -573,7 +574,7 @@ void calc_diffuse_at_hkl(KOKKOS_VEC3 H_vec, KOKKOS_VEC3 H0, KOKKOS_VEC3 dHH, int
                      else
                         _this_diffuse_scale = 1.0;
 
-                     _this_diffuse_scale *= _this_diffuse_scale/(CUDAREAL)num_laue_mats/(CUDAREAL)num_stencil_points;
+                     _this_diffuse_scale *= _this_diffuse_scale * diffuse_scale_mat3(0,0) / (CUDAREAL)num_laue_mats; // legacy API for passing diffuse_scale
 
                      const KOKKOS_VEC3 H0_offset(H0[0]+hh, H0[1]+kk, H0[2]+ll);
                      const KOKKOS_VEC3 delta_H_offset = H_vec - H0_offset;
