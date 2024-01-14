@@ -6,7 +6,8 @@ using mat3 = kokkostbx::matrix3<CUDAREAL>;
 
 #include <simtbx/nanoBragg/nanotypes.h>
 #include <simtbx/kokkos/kernel_math.h>
-
+#include <simtbx/diffBragg/src/diffBraggKOKKOS.h>
+#include <simtbx/diffBragg/src/diffuse_util_kokkos.h> // test diffuse halo in exascale API context.
 
 using simtbx::nanoBragg::shapetype;
 using simtbx::nanoBragg::hklParams;
@@ -379,6 +380,68 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
         const int s_k_max = s_k_min + s_k_range - 1;
         const int s_l_max = s_l_min + s_l_range - 1;
 
+        // set up diffuse scattering if needed
+        vector_mat3_t laue_mats = vector_mat3_t("laue_mats",24);
+        vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace",3);
+        vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam",3);
+        int num_laue_mats = 0;
+        int dhh = 0, dkk = 0, dll = 0;
+        KOKKOS_MAT3 rotate_principal_axes = diffuse.rotate_principal_axes; // (1,0,0,0,1,0,0,0,1);
+        int laue_group_num = diffuse.laue_group_num;
+        int stencil_size = diffuse.stencil_size;
+        KOKKOS_MAT3 anisoG = diffuse.anisoG; // (300.,0,0,0,100.,0,0,0,300.);
+        KOKKOS_MAT3 anisoU = diffuse.anisoU; // (0.48,0,0,0,0.16,0,0,0,0.16);
+        KOKKOS_MAT3 Bmat_realspace(1.,0,0,0,1.,0,0,0,1.); // Placeholder
+        KOKKOS_MAT3 anisoG_local;
+        CUDAREAL anisoG_determ = 0;
+        KOKKOS_MAT3 anisoU_local;
+        bool use_diffuse=diffuse.enable;
+        // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+        vector_mat3_t diffuse_scale_mat3 = vector_mat3_t("diffuse_scale_mat3",1);
+
+        if (use_diffuse){
+          anisoG_local = anisoG;
+          anisoU_local = anisoU;
+
+          if (laue_group_num < 1 || laue_group_num >14 ){
+            throw std::string("Laue group number not in range 1-14");
+          }
+
+          Kokkos::parallel_reduce("prepare diffuse mats", 1, KOKKOS_LAMBDA (const int& i, int& num_laue_mats_temp){
+            num_laue_mats_temp = gen_laue_mats(laue_group_num, laue_mats, rotate_principal_axes);
+            // KOKKOS_MAT3 rotate_principal_axes;
+            // rotate_principal_axes << 0.70710678, -0.70710678, 0., 0.70710678, 0.70710678, 0., 0., 0., 1.;
+
+            KOKKOS_MAT3 Amatrix(diffuse.a0[0],diffuse.a0[1],diffuse.a0[2],diffuse.b0[0],diffuse.b0[1],diffuse.b0[2],
+                                diffuse.c0[0],diffuse.c0[1],diffuse.c0[2]);
+            KOKKOS_MAT3 Ainv = Amatrix.inverse()*1.e-10;
+            CUDAREAL reciprocal_space_volume = 8*M_PI*M_PI*M_PI*Ainv.determinant();
+            CUDAREAL _tmpfac = M_PI * 0.63 / fudge;
+            CUDAREAL diffuse_scale = reciprocal_space_volume * sqrt(_tmpfac*_tmpfac*_tmpfac);
+
+            // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+            diffuse_scale_mat3(0)(0,0) = diffuse_scale;
+
+            for ( int iL = 0; iL < num_laue_mats_temp; iL++ ){
+              laue_mats(iL) = Ainv * laue_mats(iL);
+            }
+            const KOKKOS_MAT3 Ginv = anisoG_local.inverse();
+            const KOKKOS_MAT3 dG = Bmat_realspace * Ginv;
+            for (int i_gam=0; i_gam<3; i_gam++){
+              dG_dgam(i_gam)[i_gam] = 1;
+              KOKKOS_MAT3 temp_dgam;
+              temp_dgam(i_gam, 0) = dG_dgam(i_gam)[0];
+              temp_dgam(i_gam, 1) = dG_dgam(i_gam)[1];
+              temp_dgam(i_gam, 2) = dG_dgam(i_gam)[2];
+              dG_trace(i_gam) = (Ginv*temp_dgam).trace();
+            }
+          }, num_laue_mats);
+          anisoG_determ = anisoG_local.determinant();
+          dhh = dkk = dll = stencil_size; // Limits of stencil for diffuse calc
+        }
+        KOKKOS_VEC3 dHH(dhh,dkk,dll);
+        // end of diffuse setup
+
 // Implementation notes.  This kernel is aggressively debranched, therefore the assumptions are:
 // 1) mosaicity non-zero positive
 // 2) xtal shape is "Gauss" i.e. 3D spheroid.
@@ -517,14 +580,29 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                                 // structure factor of the lattice (paralelpiped crystal)
                                                                 // F_latt = sin(M_PI*s_Na*h)*sin(M_PI*s_Nb*k)*sin(M_PI*s_Nc*l)/sin(M_PI*h)/sin(M_PI*k)/sin(M_PI*l);
 
-                                                                CUDAREAL F_latt = 1.0; // Shape transform for the crystal.
+                                                                CUDAREAL I_latt = 1.0; // Shape transform for the crystal.
                                                                 CUDAREAL hrad_sqr = 0.0;
 
                                                                 // handy radius in reciprocal space, squared
                                                                 hrad_sqr = (h - h0) * (h - h0) * Na * Na + (k - k0) * (k - k0) * Nb * Nb + (l - l0) * (l - l0) * Nc * Nc;
                                                                 // fudge the radius so that volume and FWHM are similar to square_xtal spots
                                                                 double my_arg = hrad_sqr / 0.63 * fudge;
-                                                                F_latt = Na * Nb * Nc * exp(-(my_arg));
+                                                                {
+                                                                CUDAREAL F_latt = Na * Nb * Nc * exp(-(my_arg));
+                                                                I_latt = F_latt * F_latt;
+                                                                }
+
+                                                                // new code for diffuse.
+                                                                if (use_diffuse) {
+                                                                  KOKKOS_VEC3 H_vec(h,k,l);
+                                                                  KOKKOS_VEC3 H0(h0,k0,l0);
+                                                                  CUDAREAL step_diffuse_param[6];
+                                                                  // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+                                                                  calc_diffuse_at_hkl(H_vec,H0,dHH,s_h_min,s_k_min,s_l_min,s_h_max,s_k_max,
+                                                                    s_l_max,s_h_range,s_k_range,s_l_range,diffuse_scale_mat3(0),Fhkl,num_laue_mats,laue_mats,
+                                                                    anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,false,&I_latt,step_diffuse_param);
+                                                                }
+                                                                // end s_use_diffuse outer
 
                                                                 // structure factor of the unit cell
                                                                 CUDAREAL F_cell = default_F;
@@ -546,7 +624,7 @@ void debranch_maskall_Kernel(int npanels, int spixels, int fpixels, int total_pi
                                                                 // now we have the structure factor for this pixel
 
                                                                 // convert amplitudes into intensity (photons per steradian)
-                                                                I += F_cell * F_cell * F_latt * F_latt * source_fraction * capture_fraction * omega_pixel;
+                                                                I += F_cell * F_cell * I_latt * source_fraction * capture_fraction * omega_pixel;
                                                                 omega_sub_reduction += omega_pixel;
                                                         } // end of mosaic loop
                                                 } // end of phi loop
