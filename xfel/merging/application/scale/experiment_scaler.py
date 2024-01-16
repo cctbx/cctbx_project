@@ -142,6 +142,7 @@ class experiment_scaler(worker):
     # Do we have any data left?
     from xfel.merging.application.utils.data_counter import data_counter
     data_counter(self.params).count(new_experiments, new_reflections)
+
     return new_experiments, new_reflections
 
   def fit_experiment_to_reference(self,
