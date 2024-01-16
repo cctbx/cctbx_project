@@ -500,8 +500,7 @@ class TargetWithCustomSymops(TargetWithFastRij):
     auto_sym_ops = self._generate_twin_operators()
     if twin_axes is not None:
       assert len(twin_axes) == len(twin_angles)
-      lds = [literal_description(cb_op.apply(op)) for op in auto_sym_ops]
-      #lds = [literal_description(cb_op.inverse().apply(op)) for op in auto_sym_ops]
+      lds = [literal_description(cb_op.inverse().apply(op)) for op in auto_sym_ops]
       ld_tuples = [(ld.r_info.ev(), ld.r_info.type()) for ld in lds]
       i_symops_to_keep = []
       for i, (axis, angle) in enumerate(ld_tuples):
