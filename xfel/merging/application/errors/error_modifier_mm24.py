@@ -13,7 +13,10 @@ from xfel.merging.application.reflection_table_utils import reflection_table_uti
 class error_modifier_mm24(worker):
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(error_modifier_mm24, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
-    self.expected_sf = math.sqrt(self.params.merging.error.mm24.expected_gain)
+    if not self.params.merging.error.mm24.expected_gain is None:
+      self.expected_sf = math.sqrt(self.params.merging.error.mm24.expected_gain)
+    else:
+      self.expected_sf = None
     self.likelihood = self.params.merging.error.mm24.likelihood
     self.limit_differences = self.params.merging.error.mm24.limit_differences
     self.n_max_differences = self.params.merging.error.mm24.n_max_differences
@@ -223,7 +226,7 @@ class error_modifier_mm24(worker):
       w = w[good_indices]
 
       self.sadd = [0 for i in range(self.n_coefs)]
-      if self.expected_sf == 0:
+      if self.expected_sf is None:
         results = scipy.optimize.minimize(
           target_fun_bfgs,
           x0=(1, 1),
@@ -259,12 +262,6 @@ class error_modifier_mm24(worker):
           self.params.output.prefix + '_initial_differences.png'
           ))
         plt.close()
-
-        filename = os.path.join(
-          self.params.output.output_dir,
-          self.params.output.prefix + '_initial_differences.npy'
-          )
-        np.save(filename, np.column_stack((bin_centers, median_differences)))
 
     else:
       self.sfac = 0

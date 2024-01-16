@@ -519,9 +519,9 @@ merging {
     mm24
       .help = maximum log-likelihood from Mittan-Moreau 2024
       {
-      expected_gain = 0
+      expected_gain = None
         .help = Expected gain used for s_fac initialization.\
-                If zero, initialize s_fac using routine.
+                If None, initialize s_fac using routine.
         .type = float
       number_of_intensity_bins = 100
         .help = number of intensity bins
