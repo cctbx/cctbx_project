@@ -3,6 +3,7 @@ from dials.array_family import flex
 import math
 import numpy as np
 import os
+import scipy.optimize
 from scipy.special import gamma
 from scipy.special import polygamma
 import scipy.stats
@@ -49,7 +50,6 @@ class error_modifier_mm24(worker):
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
     if self.params.merging.error.mm24.do_diagnostics:
-      self.verify_derivatives()
       self.plot_diagnostics(reflections)
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
     reflections['intensity.sum.variance'] = self._get_var_ev11(
@@ -224,8 +224,7 @@ class error_modifier_mm24(worker):
 
       self.sadd = [0 for i in range(self.n_coefs)]
       if self.expected_sf == 0:
-        from scipy.optimize import minimize
-        results = minimize(
+        results = scipy.optimize.minimize(
           target_fun_bfgs,
           x0=(1, 1),
           args=(x, y, w),
@@ -236,8 +235,7 @@ class error_modifier_mm24(worker):
         self.sadd[0] = abs(float(results.x[1]))
         fit_curve = fitting_equation(results.x, y[0], False)
       else:
-        from scipy.optimize import minimize_scalar
-        results = minimize_scalar(
+        results = scipy.optimize.minimize_scalar(
           target_fun_scalar,
           bounds=(0, 10),
           args=(x, y, w),
@@ -589,16 +587,18 @@ class error_modifier_mm24(worker):
   def plot_diagnostics(self, reflections):
     def get_rankits(n, down_sample, distribution):
       prob_level = (np.arange(1, n+1) - 0.5) / n
-      if distribution == 'normal':
-        return scipy.stats.norm.ppf(prob_level[::down_sample])
-      elif distribution == 'half normal':
+      if distribution == 'half normal':
         return scipy.stats.halfnorm.ppf(prob_level[::down_sample])
-      elif distribution == 't-dist':
-        return scipy.stats.t.ppf(prob_level[::down_sample], df=self.tuning_param)
       elif distribution == 'half t-dist':
         prob_level = (prob_level + 1) / 2
         return scipy.stats.t.ppf(prob_level[::down_sample], df=self.tuning_param)
 
+    # In intensity bins, the estimated std of I/sigma based on pairwise differences
+    # See Absolute pairwise differences: https://en.wikipedia.org/wiki/Robust_measures_of_scale
+    # Rousseeuw, Peter J.; Croux, Christophe (December 1993),
+    #   "Alternatives to the Median Absolute Deviation",
+    #   Journal of the American Statistical Association, 88 (424): 1273–1283
+    # This gets the conversion factor from median pairwise differences to standard deviation
     def min_fun_t(c, df):
       term0 = scipy.stats.t.ppf(3/4, df=df)
       term1 = scipy.stats.t.cdf(term0 + 1/c, df=df)
@@ -619,17 +619,7 @@ class error_modifier_mm24(worker):
     else:
       conversion_factor = None
     conversion_factor = self.mpi_helper.comm.bcast(conversion_factor)
-
-    # Calculate the normalized deviations
-    # In intensity bins, the estimated scale based on pairwise differences of
-    #   the normalized deviations and pairwise differences
-    median_differences_pd = [[] for i in range(self.number_of_intensity_bins)]
-    median_differences_nd = [[] for i in range(self.number_of_intensity_bins)]
-    normalized_deviations = []
-    output_nd_keys = ['deviations', 'biased_mean', 'var_ev11', 'I', 'intensity.sum.variance']
-    output_nd_rank = {}
-    for key in output_nd_keys:
-      output_nd_rank[key] = flex.double()
+    median_differences = [[] for i in range(self.number_of_intensity_bins)]
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_reflections = refls.size()
       if number_of_reflections == 0:
@@ -646,66 +636,23 @@ class error_modifier_mm24(worker):
             )
           var_ev11 = var_ev11_flex.as_numpy_array()
 
-          # Calculate the normalized deviations
-          prefactor = math.sqrt((number_of_reflections - 1) / number_of_reflections)
-          I_sum = I.sum() * np.ones(number_of_reflections)
-          I_sum_minus_val = I_sum - I
-          mean_without_val = I_sum_minus_val / (number_of_reflections - 1)
-          delta = prefactor * (I - mean_without_val)
-          nd = delta / np.sqrt(var_ev11)
-          normalized_deviations.append(nd)
-
-          deviations = prefactor * (refls['intensity.sum.value'] - flex.double(mean_without_val))
-
           # calculate the median difference for the pairwise differences
           differences = np.abs(I[np.newaxis] - I[:, np.newaxis])
           variances = var_ev11[np.newaxis] + var_ev11[:, np.newaxis]
-          median_difference = np.median(differences / np.sqrt(variances), axis=1)
-          median_differences_pd[bin_index].append(median_difference)
-
-          # calculate the median difference for the normalized deviations
-          differences = np.abs(nd[np.newaxis] - nd[:, np.newaxis])
-          median_difference = np.median(differences, axis=1)
-          median_differences_nd[bin_index].append(median_difference)
-
-          output_nd_rank['deviations'].extend(deviations)
-          output_nd_rank['biased_mean'].extend(flex.double(number_of_reflections, biased_mean))
-          output_nd_rank['var_ev11'].extend(var_ev11_flex)
-          output_nd_rank['I'].extend(refls['intensity.sum.value'])
-          output_nd_rank['intensity.sum.variance'].extend(refls['intensity.sum.variance'])
-    output_nd_all = {}
-    for key in output_nd_keys:
-      output_nd_all[key] = self.mpi_helper.comm.gather(output_nd_rank[key].as_numpy_array(), root=0)
-    all_normalized_deviations = self.mpi_helper.comm.gather(np.concatenate(normalized_deviations), root=0)
-    if self.mpi_helper.rank == 0:
-      output_nd_all['deviations'] = np.concatenate(output_nd_all['deviations'])
-      output_nd_all['biased_mean'] = np.concatenate(output_nd_all['biased_mean'])
-      output_nd_all['var_ev11'] = np.concatenate(output_nd_all['var_ev11'])
-      output_nd_all['I'] = np.concatenate(output_nd_all['I'])
-      output_nd_all['intensity.sum.variance'] = np.concatenate(output_nd_all['intensity.sum.variance'])
-      sorted_normalized_deviations = np.sort(np.concatenate(all_normalized_deviations))
-
-    binned_scale_pd = np.zeros(self.number_of_intensity_bins)
-    binned_scale_nd = np.zeros(self.number_of_intensity_bins)
+          median_differences[bin_index].append(
+            np.median(differences / np.sqrt(variances), axis=1)
+            )
+    binned_scale = np.zeros(self.number_of_intensity_bins)
     for bin_index in range(self.number_of_intensity_bins):
-      if len(median_differences_pd[bin_index]) > 0:
-        median_differences_pd[bin_index] = np.concatenate(median_differences_pd[bin_index])
-      if len(median_differences_nd[bin_index]) > 0:
-        median_differences_nd[bin_index] = np.concatenate(median_differences_nd[bin_index])
-      all_median_differences_pd = self.mpi_helper.comm.gather(median_differences_pd[bin_index], root=0)
-      all_median_differences_nd = self.mpi_helper.comm.gather(median_differences_nd[bin_index], root=0)
+      if len(median_differences[bin_index]) > 0:
+        median_differences[bin_index] = np.concatenate(median_differences[bin_index])
+      all_median_differences = self.mpi_helper.comm.gather(median_differences[bin_index], root=0)
       if self.mpi_helper.rank == 0:
-        all_median_differences_pd = np.concatenate(all_median_differences_pd)
-        all_median_differences_nd = np.concatenate(all_median_differences_nd)
-        binned_scale_pd[bin_index] = np.median(all_median_differences_pd) * conversion_factor
-        binned_scale_nd[bin_index] = np.median(all_median_differences_nd) * conversion_factor
+        all_median_differences = np.concatenate(all_median_differences)
+        binned_scale[bin_index] = np.median(all_median_differences) * conversion_factor
 
     # Get all the pairwise differences onto rank 0 for plotting
     pairwise_differences = []
-    output_pd_keys = ['differences', 'var_ev11_i', 'var_ev11_j', 'biased_mean']
-    output_pd_rank = {}
-    for key in output_pd_keys:
-      output_pd_rank[key] = flex.double()
     for bin_index, differences in enumerate(self.intensity_bins):
       if len(differences) > 0:
         var_i = self._get_var_ev11(
@@ -722,33 +669,16 @@ class error_modifier_mm24(worker):
           )
         normalized_differences = differences['pairwise_differences'] / flex.sqrt(var_i + var_j)
         pairwise_differences.append(normalized_differences.as_numpy_array())
-        output_pd_rank['differences'].extend(differences['pairwise_differences'])
-        output_pd_rank['var_ev11_i'].extend(var_i)
-        output_pd_rank['var_ev11_j'].extend(var_j)
-        output_pd_rank['biased_mean'].extend(differences['biased_mean'])
-    output_pd_all = {}
-    for key in output_pd_keys:
-      output_pd_all[key] = self.mpi_helper.comm.gather(output_pd_rank[key].as_numpy_array(), root=0)
     all_pairwise_differences = self.mpi_helper.comm.gather(np.concatenate(pairwise_differences), root=0)
-    if self.mpi_helper.rank == 0:
-      for key in output_pd_keys:
-        output_pd_all[key] = np.concatenate(output_pd_all[key])
-      sorted_pairwise_differences = np.sort(np.concatenate(all_pairwise_differences))
 
     if self.mpi_helper.rank == 0:
       import matplotlib.pyplot as plt
-      import pandas as pd
+      sorted_pairwise_differences = np.sort(np.concatenate(all_pairwise_differences))
       lim = 5
-      downsample = 10
-
-      normalized_deviations_bins = np.linspace(-lim, lim, 101)
-      normalized_deviations_db = normalized_deviations_bins[1] - normalized_deviations_bins[0]
-      normalized_deviations_centers = (normalized_deviations_bins[1:] + normalized_deviations_bins[:-1]) / 2
-      normalized_deviations_hist, _ = np.histogram(
-        sorted_normalized_deviations, bins=normalized_deviations_bins, density=True
-        )
-      nd_rankits_normal = get_rankits(sorted_normalized_deviations.size, downsample, 'normal')
-      nd_rankits_t_dist = get_rankits(sorted_normalized_deviations.size, downsample, 't-dist')
+      downsample = 10000
+      I_scale = 100000
+      grey1 = np.array([99, 102, 106]) / 255
+      grey2 = np.array([177, 179, 179]) / 255
 
       pairwise_differences_bins = np.linspace(0, lim, 101)
       pairwise_differences_db = pairwise_differences_bins[1] - pairwise_differences_bins[0]
@@ -756,154 +686,78 @@ class error_modifier_mm24(worker):
       pairwise_differences_hist, _ = np.histogram(
         sorted_pairwise_differences, bins=pairwise_differences_bins, density=True
         )
-      pd_rankits_half_normal = get_rankits(sorted_pairwise_differences.size, downsample, 'half normal')
-      pd_rankits_half_t_dist = get_rankits(sorted_pairwise_differences.size, downsample, 'half t-dist')
 
-      fig, axes = plt.subplots(2, 3, figsize=(8, 5))
-      I_scale = 100000
-      grey1 = np.array([99, 102, 106]) / 255
-      grey2 = np.array([177, 179, 179]) / 255
-      axes[0, 0].bar(
-        normalized_deviations_centers, normalized_deviations_hist,
-        width=normalized_deviations_db, label='$\delta_{hkl}$'
-        )
-      axes[0, 0].plot(
-        normalized_deviations_centers,
-        scipy.stats.norm.pdf(normalized_deviations_centers),
-        color=grey1, label='Normal'
-        )
-      if self.likelihood == 't-dist':
-        axes[0, 0].plot(
-          normalized_deviations_centers,
-          scipy.stats.t.pdf(normalized_deviations_centers, df=self.tuning_param),
-          color=grey2, label=f't-dist\n$\\nu: ${self.tuning_param:0.1f}'
-          )
-
-      axes[1, 0].bar(
+      fig, axes = plt.subplots(1, 3, figsize=(8, 3))
+      axes[0].bar(
         pairwise_differences_centers, pairwise_differences_hist,
-        width=pairwise_differences_db, label='$DIFF_{hkl}$'
+        width=pairwise_differences_db, label='$\omega_{hkl}$'
         )
-      axes[1, 0].plot(
+      axes[0].plot(
         pairwise_differences_centers,
         scipy.stats.halfnorm.pdf(pairwise_differences_centers),
         color=grey1, label='Normal'
         )
       if self.likelihood == 't-dist':
-        axes[1, 0].plot(
+        axes[0].plot(
           pairwise_differences_centers,
           2*scipy.stats.t.pdf(pairwise_differences_centers, df=self.tuning_param),
           color=grey2, label=f't-dist\n$\\nu: ${self.tuning_param:0.1f}'
           )
 
-      axes[0, 0].legend(frameon=False, fontsize=8, handlelength=1)
-      axes[0, 0].set_ylabel('Distribution of $\delta_{hbk}$')
-      axes[0, 0].set_xlabel('Normalized Deviations ($\delta_{hbk}$)')
-      axes[0, 0].set_xlim([-4.5, 4.5])
-      axes[0, 0].set_xticks([-4, -2, 0, 2, 4])
-      axes[1, 0].set_ylabel('Distribution of $DIFF_{hbk}$')
-      axes[1, 0].set_xlabel('Normalized PD ($DIFF_{hbk}$)')
-      axes[1, 0].set_xlim([0, 4.5])
-      axes[1, 0].set_xticks([0, 1, 2, 3, 4])
+      axes[0].legend(frameon=False, fontsize=8, handlelength=1)
+      axes[0].set_ylabel('Distribution of $\omega_{hbk}$')
+      axes[0].set_xlabel('Normalized PD ($\omega_{hbk}$)')
+      axes[0].set_xlim([0, 4.5])
+      axes[0].set_xticks([0, 1, 2, 3, 4])
 
-      axes[0, 1].plot([-lim, lim], [-lim, lim], color=[0, 0, 0], linewidth=1, linestyle=':')
-      axes[0, 1].plot(
-        sorted_normalized_deviations[::downsample],
-        nd_rankits_normal,
-        color=grey1
-        )
-      if self.likelihood == 't-dist':
-        axes[0, 1].plot(
-          sorted_normalized_deviations[::downsample],
-          nd_rankits_t_dist,
-          color=grey2
-          )
-
-      axes[1, 1].plot([0, lim], [0, lim], color=[0, 0, 0], linewidth=1, linestyle=':')
-      axes[1, 1].plot(
+      axes[1].plot([0, lim], [0, lim], color=[0, 0, 0], linewidth=1, linestyle=':')
+      axes[1].plot(
         sorted_pairwise_differences[::downsample],
-        pd_rankits_half_normal,
+        get_rankits(sorted_pairwise_differences.size, downsample, 'half normal'),
         color=grey1
         )
       if self.likelihood == 't-dist':
-        axes[1, 1].plot(
+        axes[1].plot(
           sorted_pairwise_differences[::downsample],
-          pd_rankits_half_t_dist,
+          get_rankits(sorted_pairwise_differences.size, downsample, 'half t-dist'),
           color=grey2
           )
 
-      axes[0, 1].set_ylim([-lim, lim])
-      axes[0, 1].set_ylabel('Rankits')
-      axes[0, 1].set_xlabel('Sorted Normalized Deviations ($\delta_{hbk}$)')
-      axes[0, 1].set_box_aspect(1)
-      axes[0, 1].set_xticks([-4, -2, 0, 2, 4])
-      axes[0, 1].set_yticks([-4, -2, 0, 2, 4])
-      axes[0, 1].set_xlim([-4.5, 4.5])
-      axes[0, 1].set_ylim([-4.5, 4.5])
-
-      axes[1, 1].set_ylim([0, lim])
-      axes[1, 1].set_ylabel('Rankits')
-      axes[1, 1].set_xlabel('Sorted Normalized PD ($DIFF_{hbk}$)')
-      axes[1, 1].set_box_aspect(1)
-      axes[1, 1].set_xticks([0, 1, 2, 3, 4])
-      axes[1, 1].set_yticks([0, 1, 2, 3, 4])
-      axes[1, 1].set_xlim([0, 4.5])
-      axes[1, 1].set_ylim([0, 4.5])
+      axes[1].set_ylim([0, lim])
+      axes[1].set_ylabel('Rankits')
+      axes[1].set_xlabel('Sorted Normalized PD ($\omega_{hbk}$)')
+      axes[1].set_box_aspect(1)
+      axes[1].set_xticks([0, 1, 2, 3, 4])
+      axes[1].set_yticks([0, 1, 2, 3, 4])
+      axes[1].set_xlim([0, 4.5])
+      axes[1].set_ylim([0, 4.5])
 
       intensity_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
       x = intensity_centers / I_scale
       if self.likelihood == 't-dist':
         v = self.tuning_param
-        expected_sigma = np.sqrt(v / (v - 2))
-        axes[0, 2].plot([x[0], x[-1]], [expected_sigma, expected_sigma], color=grey2)
-        axes[1, 2].plot([x[0], x[-1]], [expected_sigma, expected_sigma], color=grey2)
-      axes[0, 2].plot([x[0], x[-1]], [1, 1], color=[0, 0, 0])
-      axes[0, 2].plot(x, binned_scale_nd, label='STD')
-      axes[0, 2].set_ylabel('Standard Deviation of $\delta_{hbk}$')
-      axes[0, 2].set_xlabel('Mean Intensity X 100,000')
-      axes[0, 2].legend(frameon=False, labelspacing=0.1, handlelength=1)
+        term0 = v / (v - 2)
+        term1 = 4*v / (np.pi * (v - 1)**2)
+        term2 = (gamma((v + 1) / 2) / gamma(v / 2))**2
+        expected_sigma = np.sqrt(term0 - term1 * term2)
+        axes[2].plot([x[0], x[-1]], expected_sigma * np.ones(2), color=grey2)
+      axes[2].plot([x[0], x[-1]], np.sqrt(1 - 2/np.pi) * np.ones(2), color=[0, 0, 0])
+      axes[2].plot(x, binned_scale, label='STD')
 
-      axes[1, 2].plot([x[0], x[-1]], [1, 1], color=[0, 0, 0])
-      axes[1, 2].plot(x, binned_scale_pd, label='STD')
-      axes[1, 2].set_ylabel('Standard Deviation of $DIFF_{hbk}$')
-      axes[1, 2].set_xlabel('Mean Intensity X 100,000')
-
+      axes[2].set_ylabel('Standard Deviation of $I_{hbk}/\sigma_{hbk}$')
+      axes[2].set_xlabel('Mean Intensity X 100,000')
       fig.tight_layout()
       fig.savefig(os.path.join(
         self.params.output.output_dir,
-        self.params.output.prefix + '_NormalizedDeviations.png'
+        self.params.output.prefix + '_PairwiseDifferences.png'
         ))
       plt.close()
-
-      df = pd.DataFrame(output_nd_all)
-      df.to_parquet(os.path.join(
-        self.params.output.output_dir,
-        self.params.output.prefix + '_deltas.parquet'
-        ))
-
-      df = pd.DataFrame(output_pd_all)
-      df.to_parquet(os.path.join(
-        self.params.output.output_dir,
-        self.params.output.prefix + '_differences.parquet'
-        ))
-
-      sigma_bin = np.zeros((self.number_of_intensity_bins, 2, 3))
-      sigma_bin[:, 0, 2] = intensity_centers
-      sigma_bin[:, 1, 2] = intensity_centers
-      sigma_bin[:, 0, 1] = binned_scale_nd
-      sigma_bin[:, 1, 1] = binned_scale_pd
-      np.save(
-        os.path.join(
-          self.params.output.output_dir, self.params.output.prefix + '_sigma_bin.npy'
-          ),
-        sigma_bin
-        )
 
     # Get the correlations for later plotting
     cc_rank = np.unique(self.work_table['correlation_i'].as_numpy_array())
     cc_all = self.mpi_helper.comm.gather(cc_rank, root=0)
     if self.mpi_helper.rank == 0:
       cc_unique = np.unique(np.concatenate(cc_all))
-    if self.mpi_helper.rank == 0:
       # CC & sadd plots #
       bins = np.linspace(cc_unique.min(), cc_unique.max(), 101)
       dbin = bins[1] - bins[0]
