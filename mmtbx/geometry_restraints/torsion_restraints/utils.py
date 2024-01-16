@@ -106,7 +106,10 @@ def get_complete_dihedral_proxies(
   if ener_lib is None:
     ener_lib = server.ener_lib()
   if pdb_hierarchy is not None:
-    raw_records = pdb_hierarchy.as_pdb_string()
+    if pdb_hierarchy.fits_in_pdb_format():
+      raw_records = pdb_hierarchy.as_pdb_string()
+    else:
+      raw_records = pdb_hierarchy.as_mmcif_string()
   if raw_records is not None:
     if (isinstance(raw_records, str)):
       raw_records = flex.split_lines(raw_records)
