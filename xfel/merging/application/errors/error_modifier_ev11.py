@@ -369,56 +369,6 @@ class error_modifier_ev11(worker):
     self.sadd = initial_params[1]
     self.sb   = initial_params[2]
 
-  def calculate_intensity_bin_limits(self):
-    if self.algorithm == 'ev11':
-      self.calculate_intensity_bin_limits_ev11()
-    elif self.algorithm == 'ev11_mll':
-      self.calculate_intensity_bin_limits_mll()
-
-  def calculate_intensity_bin_limits_mll(self):
-    '''Calculate the minimum and maximum values of the mean intensities for each HKL
-    This is specific to the updated maximum log-likelihood error model (Mittan-Moreau 202X).'''
-    senddata = self.work_table['biased_mean'].as_numpy_array()
-    sendcounts = np.array(self.mpi_helper.comm.gather(len(senddata), root=0))
-    if self.mpi_helper.rank == 0:
-      all_mean_intensities = np.empty(sum(sendcounts), dtype=senddata.dtype)
-    else:
-      all_mean_intensities = None
-    self.mpi_helper.comm.Gatherv(senddata, (all_mean_intensities, sendcounts), root=0)
-    if self.mpi_helper.rank == 0:
-      all_mean_intensities = np.sort(all_mean_intensities)
-      lower_percentile = 0.005
-      upper_percentile = 0.995
-      n = all_mean_intensities.size
-      lower = all_mean_intensities[int(lower_percentile * n)]
-      upper = all_mean_intensities[int(upper_percentile * n)]
-      self.intensity_bin_limits = np.linspace(lower, upper, number_of_intensity_bins + 1)
-
-    else:
-      self.intensity_bin_limits = None
-    self.intensity_bin_limits = self.mpi_helper.comm.bcast(self.intensity_bin_limits, root=0)
-
-  def calculate_intensity_bin_limits_ev11(self):
-    '''Calculate the minimum and maximum values of the mean intensities for each HKL
-    This is bin limit calculation in the original Ev11 implementation (Brewster 2019)'''
-    count = self.work_table.size()
-    mean_intensity_min = flex.min(self.work_table['biased_mean']) if count > 0 else float('inf')
-    mean_intensity_max = flex.max(self.work_table['biased_mean']) if count > 0 else float('-inf')
-    if count > 0:
-      self.logger.log("Using %d multiply-measured HKLs; mean intensity (min,max): (%f,%f)"%(count, mean_intensity_min, mean_intensity_max))
-    else:
-      self.logger.log("No multiply-measured HKLs available")
-
-    comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
-    global_mean_intensity_min = comm.allreduce(mean_intensity_min, MPI.MIN)
-    global_mean_intensity_max = comm.allreduce(mean_intensity_max, MPI.MAX)
-    self.logger.log("Global mean intensity (min,max): (%f,%f)"%(global_mean_intensity_min, global_mean_intensity_max))
-
-    self.intensity_bin_limits = np.linspace(global_mean_intensity_min, global_mean_intensity_max, number_of_intensity_bins + 1)
-    self.intensity_bin_limits[0] = float('-inf')
-    self.intensity_bin_limits[len(self.intensity_bin_limits) - 1] = float('inf')
-
   def distribute_reflections_over_intensity_bins(self):
     self.intensity_bins = []
     count = self.work_table.size()
