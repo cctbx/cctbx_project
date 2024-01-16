@@ -157,17 +157,25 @@ class reconcile_cosym_reports:
       reports_as_lists.append(one_report)
 
     print("There are %d reports"%len(reports_as_lists))
-    print([(len(reports_as_lists[i][0]),len(reports_as_lists[i][1])) for i in range(len(reports_as_lists))])
-
+    print([
+        tuple( [
+           len(reports_as_lists[i][j]) for j in range(len(reports_as_lists[i]))
+        ] )
+      for i in range(len(reports_as_lists))
+      ])
     #Bypass reconciliation and voting if there is only one tranch
     if len(reports_as_lists)==1 : return self.reports[0][0] # dataframe with one tranch
 
     # now modify the reports-as-list structure so ranks line up with respect to their coset assignments
     # entire function is same as simple_merge except in this block, where attention is paid to whether
     # there are sufficient overlap with base tranch.
-
-    from xfel.merging.application.modify.cosym_tranch_align import alignment_by_embedding
-    reports_as_lists = alignment_by_embedding(reports_as_lists)
+    import pickle
+    if self.n_cosets == 2:
+      from xfel.merging.application.modify.cosym_tranch_align import alignment_by_embedding
+      reports_as_lists = alignment_by_embedding(reports_as_lists)
+    else: # for more than 1 twin law
+      from xfel.merging.application.modify.cosym_tranch_align import alignment_by_sequential_trial
+      reports_as_lists = alignment_by_sequential_trial(reports_as_lists)
 
     # merge everything together into experiments plus votes
     experiment_lookup = dict()

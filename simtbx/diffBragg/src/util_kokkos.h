@@ -23,29 +23,37 @@ inline KOKKOS_VEC3 to_vec3(const Eigen::Vector3d& v) {
 
 inline KOKKOS_MAT3 to_mat3(const Eigen::Matrix3d& m) {
     // Eigen matrix is column-major!
-    return KOKKOS_MAT3(m(0, 0), m(0, 1), m(0, 2), m(1, 0), m(1, 1), m(1, 2), m(2, 0), m(2, 1), m(2, 2));
+    return KOKKOS_MAT3(m(0, 0), m(0, 1), m(0, 2),
+                       m(1, 0), m(1, 1), m(1, 2),
+                       m(2, 0), m(2, 1), m(2, 2));
 }
 
 template <class T, class U>
-inline void transfer(T& target, U& source, int size=-1) {
-    const int length = size>=0 ? size : source.size();
+inline void transfer(T& dst, U& src, int size=-1) {
+    const int length = size>=0 ? size : src.size();
     for (int i=0; i<length; ++i) {
-        target(i) = source[i];
+        dst(i) = src[i];
     }
 }
 
 template <class T, class U>
-inline void transfer_KOKKOS_VEC3(T& target, U& source) {
-    for (int i=0; i<source.size(); ++i) {
-        target(i) = to_vec3(source[i]);
+inline void transfer_KOKKOS_VEC3(T& dst, U& src) {
+    auto host_view = Kokkos::create_mirror_view(dst);
+    auto src_ptr = src.begin();
+    for (int i = 0; i < src.size(); ++i) {
+        host_view(i) = to_vec3(src_ptr[i]);
     }
+    Kokkos::deep_copy(dst, host_view);
 }
 
 template <class T, class U>
-inline void transfer_KOKKOS_MAT3(T& target, U& source) {
-    for (int i=0; i<source.size(); ++i) {
-        target(i) = to_mat3(source[i]);
+inline void transfer_KOKKOS_MAT3(T& dst, U& src) {
+    auto host_view = Kokkos::create_mirror_view(dst);
+    auto src_ptr = src.begin();
+    for (int i = 0; i < src.size(); ++i) {
+        host_view(i) = to_mat3(src_ptr[i]);
     }
+    Kokkos::deep_copy(dst, host_view);
 }
 
 // CONTAINERS
@@ -64,6 +72,9 @@ struct kokkos_crystal {
     std::vector<KOKKOS_MAT3> dG_dgamma;
     std::vector<KOKKOS_MAT3> dU_dsigma;
     KOKKOS_MAT3 anisoU;
+    KOKKOS_MAT3 rotate_principal_axes;
+
+
     int mosaic_domains;               // number of mosaic domains to model
     CUDAREAL Na, Nb, Nc, Nd, Ne, Nf;  // mosaic domain terms
     CUDAREAL phi0;                    // gonio
@@ -121,6 +132,7 @@ struct kokkos_crystal {
           stencil_size(T.stencil_size),
           anisoG(to_mat3(T.anisoG)),
           anisoU(to_mat3(T.anisoU)),
+          rotate_principal_axes(to_mat3(T.rotate_principal_axes)),
           mosaic_domains(T.mosaic_domains),
           Na(T.Na),
           Nb(T.Nb),
@@ -217,7 +229,8 @@ struct kokkos_beam {
     int number_of_sources;                     // number of beams
 
     kokkos_beam(beam T)
-        : Fhkl_channels(T.Fhkl_channels),
+        : polarization_axis(to_vec3(T.polarization_axis)),
+          Fhkl_channels(T.Fhkl_channels),
           fluence(T.fluence),
           kahn_factor(T.kahn_factor),
           source_X(T.source_X),
@@ -227,14 +240,16 @@ struct kokkos_beam {
           source_I(T.source_I),
           lambda0(T.lambda0),
           lambda1(T.lambda1),
-          number_of_sources(T.number_of_sources),
-          polarization_axis(to_vec3(T.polarization_axis)){ };
+          number_of_sources(T.number_of_sources){ };
 };
 
 struct kokkos_detector {
     std::vector<KOKKOS_VEC3> dF_vecs;  // derivative of the panel fast direction
     std::vector<KOKKOS_VEC3> dS_vecs;  // derivative of the panel slow direction
-    CUDAREAL detector_thickstep, detector_thicksteps, detector_thick, detector_attnlen;
+    CUDAREAL detector_thickstep;
+    int detector_thicksteps;
+    CUDAREAL detector_thick;
+    CUDAREAL detector_attnlen;
     std::vector<CUDAREAL> close_distances;  // offsets to the detector origins (Z direction)
     int oversample;                         // determines the pixel subsampling rate
     CUDAREAL subpixel_size, pixel_size;
@@ -262,6 +277,36 @@ struct kokkos_detector {
         }
     }
 
+};
+
+struct kokkos_manager {
+    KOKKOS_VEC3 rot;
+    double ucell[6] = {0, 0, 0, 0, 0, 0};
+    double Ncells[6] = {0, 0, 0, 0, 0, 0};
+    KOKKOS_VEC3 pan_orig;
+    KOKKOS_VEC3 pan_rot;
+    double fcell = 0;
+    KOKKOS_VEC3 eta;
+    double lambda[2] = {0, 0};
+    double fp_fdp[2] = {0, 0};
+    double diffuse[6] = {0, 0, 0, 0, 0, 0};
+
+    KOKKOS_INLINE_FUNCTION void reset() {
+        for (int i=0; i<6; ++i) {
+            ucell[i] = 0;
+            Ncells[i] = 0;
+            diffuse[i] = 0;
+        }
+        for (int i=0; i<2; ++i) {
+            lambda[i] = 0;
+            fp_fdp[i] = 0;
+        }
+        rot.zero();
+        pan_orig.zero();
+        pan_rot.zero();
+        eta.zero();
+        fcell = 0;
+    }
 };
 
 #endif

@@ -176,36 +176,14 @@ namespace {
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(charge)
 
     static
-    boost::python::object
+    boost::python::str
     format_atom_record(
       w_t const& self,
       const char* replace_floats_with)
     {
-#ifdef IS_PY3K
-      boost::python::handle<> str_hdl(PyBytes_FromStringAndSize(0, 81));
-      PyObject* str_obj = str_hdl.get();
-      char* str_begin = PyBytes_AS_STRING(str_obj);
-#else
-      boost::python::handle<> str_hdl(PyString_FromStringAndSize(0, 81));
-      PyObject* str_obj = str_hdl.get();
-      char* str_begin = PyString_AS_STRING(str_obj);
-#endif
-      unsigned str_len = self.format_atom_record(
-        str_begin, 0, replace_floats_with);
-      str_hdl.release();
-#ifdef IS_PY3K
-      if (_PyBytes_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
-#else
-      if (_PyString_Resize(&str_obj, static_cast<int>(str_len)) != 0) {
-#endif
-        boost::python::throw_error_already_set();
-      }
-#ifdef IS_PY3K
-      return boost::python::object(boost::python::handle<>(
-        PyUnicode_FromEncodedObject(str_obj, "ascii", "strict")));
-#else
-      return boost::python::object(boost::python::handle<>(str_obj));
-#endif
+      std::string result = self.format_atom_record(
+        0, replace_floats_with);
+      return static_cast<boost::python::str>(result);
     }
 
 #ifdef IS_PY3K
@@ -454,7 +432,7 @@ namespace {
       /* HY36_WIDTH_4_MAX */ 2436111)
     IOTBX_LOC_GET(resseq)
     IOTBX_LOC_GET_SET(icode)
-    IOTBX_LOC_GET_SET(altloc)
+    // IOTBX_LOC_GET_SET(altloc)
     // IOTBX_LOC_GET_SET(resname)
 
 #undef IOTBX_LOC_GET
@@ -484,6 +462,7 @@ namespace {
     IOTBX_LOC_GET_SET_STD_STRING(model_id)
     IOTBX_LOC_GET_SET_STD_STRING(chain_id)
     IOTBX_LOC_GET_SET_STD_STRING(resname)
+    IOTBX_LOC_GET_SET_STD_STRING(altloc)
 
 #undef IOTBX_LOC_GET_STD_STRING
 #undef IOTBX_LOC_SET_STD_STRING

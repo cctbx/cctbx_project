@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Jun  2 15:06:48 2023
+The date of file generation: Thu Jan 11 09:02:01 2024
 """
 from __future__ import absolute_import, division, print_function
 
@@ -94,6 +94,7 @@ lookup = {
   "TYU" : "?",
   "U4M" : "?",
   "U5M" : "?",
+  "U6F" : "?",
   "UDP" : "?",
   "UFB" : "?",
   "UOA" : "?",
@@ -102,6 +103,9 @@ lookup = {
   "UY1" : "?",
   "UY4" : "?",
   "UZL" : "?",
+  "X0F" : "?",
+  "X0O" : "?",
+  "XE6" : "?",
   "XEC" : "?",
   "XNY" : "?",
   "Y5P" : "?",
@@ -204,6 +208,7 @@ lookup = {
   "JSP" : "?",
   "LCH" : "?",
   "LHO" : "?",
+  "LR6" : "?",
   "LTP" : "?",
   "LWM" : "?",
   "MBZ" : "?",
@@ -224,6 +229,7 @@ lookup = {
   "NRI" : "?",
   "NYM" : "?",
   "OFC" : "?",
+  "OIQ" : "?",
   "OWR" : "?",
   "P9G" : "?",
   "PBT" : "?",
@@ -486,8 +492,11 @@ lookup = {
   "6PO" : "DG",
   "7BG" : "DG",
   "7GU" : "DG",
+  "7S8" : "DG",
   "8AG" : "DG",
+  "8EB" : "DG",
   "8FG" : "DG",
+  "8H2" : "DG",
   "8MG" : "DG",
   "8OG" : "DG",
   "8PY" : "DG",
@@ -544,8 +553,6 @@ lookup = {
   "SDG" : "DG",
   "SDH" : "DG",
   "SJO" : "DG",
-  "T0N" : "DG",
-  "T0Q" : "DG",
   "TGP" : "DG",
   "X" : "DG",
   "XGL" : "DG",
@@ -602,6 +609,8 @@ lookup = {
   "PST" : "DT",
   "QCK" : "DT",
   "SPT" : "DT",
+  "T0N" : "DT",
+  "T0Q" : "DT",
   "T2S" : "DT",
   "T32" : "DT",
   "T36" : "DT",
@@ -721,11 +730,13 @@ lookup = {
   "TG" : "G",
   "TPG" : "G",
   "VC7" : "G",
+  "VSN" : "G",
   "XTS" : "G",
   "YG" : "G",
   "YYG" : "G",
   "ZGU" : "G",
   "RT" : "T",
+  "WUH" : "TTD",
   "125" : "U",
   "126" : "U",
   "127" : "U",
@@ -784,6 +795,7 @@ lookup = {
   "UR3" : "U",
   "URD" : "U",
   "US5" : "U",
+  "XSX" : "U",
   "ZBU" : "U",
 }
 if __name__ == '__main__':

@@ -4,6 +4,7 @@ import os
 from mmtbx.validation.omegalyze import omegalyze
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import Sorry
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -69,17 +70,6 @@ Example:
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
-    result = omegalyze(
-      pdb_hierarchy=hierarchy,
-      nontrans_only=self.params.nontrans_only,
-      out=self.logger,
-      quiet=False)
-    return result.as_JSON()
-
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
@@ -92,24 +82,30 @@ Example:
       except IOError:
         raise Sorry("The output file could not be opened")
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
 
-    result = omegalyze(
+    self.results = omegalyze(
       pdb_hierarchy=hierarchy,
       nontrans_only=self.params.nontrans_only,
       out=self.logger,
       quiet=False)
     if self.params.kinemage:
-      print(result.as_kinemage(), file=self.logger)
+      print(self.results.as_kinemage(), file=self.logger)
     elif self.params.oneline:
-      result.summary_only(out=self.logger, pdbid=self.data_manager.get_default_model_name())#params.model)
+      self.results.summary_only(out=self.logger, pdbid=self.data_manager.get_default_model_name())#params.model)
     elif self.params.json:
-      print(result.as_JSON(), file=self.logger)
+      print(self.results.as_JSON(addon_json=self.info_json), file=self.logger)
     elif self.params.text:
-      result.show_old_output(out=self.logger, verbose=True)
+      self.results.show_old_output(out=self.logger, verbose=True)
     if f:
       try:
         f.close()
       except Exception:
         raise Sorry("Could not close output file")
 
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

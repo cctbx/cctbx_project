@@ -784,7 +784,7 @@ class manager(manager_mixin):
       if(mngmsks is not None):
         f_masks = mngmsks[:] # copy
       if(mngmsks is not None and curfmsks is not None):
-        assert len(curfmsks) == len(mngmsks)
+        assert len(curfmsks) == len(mngmsks), [len(curfmsks), len(mngmsks)]
         for i in range(len(curfmsks)):
           if( mngmsks[i].data().size() != curfmsks[i].data().size() ):
             f_masks[i] = mngmsks[i].common_set(curfmsks[i])
@@ -1614,6 +1614,13 @@ class manager(manager_mixin):
   def target_unscaled_t(self, alpha_beta=None):
     return self.target_t(alpha_beta=alpha_beta)*self.f_calc_t().data().size()
 
+  def _update_mask_params(self, mask_params):
+    self.mask_params = mask_params
+    self.mask_manager = masks.manager(
+      miller_array      = self.f_obs(),
+      miller_array_twin = self.twin_set,
+      mask_params       = self.mask_params)
+
   def update(self, f_calc                       = None,
                    f_obs                        = None,
                    f_mask                       = None,
@@ -1637,8 +1644,8 @@ class manager(manager_mixin):
       k_anisotropic=k_anisotropic)
     if(epsilons is not None):
       self.epsilons = epsilons
-    if(mask_params is not None):
-      self.mask_params = mask_params
+    if(mask_params is not None): # Reguires updating mask manager!
+      self._update_mask_params(mask_params=mask_params)
     if(f_obs is not None):
       self.arrays.f_obs = f_obs
       self.update_core()

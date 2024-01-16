@@ -5,7 +5,8 @@ from mmtbx.model import manager
 from libtbx.program_template import ProgramTemplate
 from libtbx.utils import null_out
 import json
-from mmtbx.validation.mp_validate_bonds import mp_bonds, mp_angles
+from mmtbx.validation.mp_validate_bonds import mp_validate_bonds
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -46,29 +47,28 @@ Example:
     model = self.data_manager.get_model()
     model.set_stop_for_unknowns(False)
     hierarchy = model.get_hierarchy()
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
     p = manager.get_default_pdb_interpretation_params()
     ##print(dir(p.pdb_interpretation))
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-    model.log=null_out()
+    model.set_log(log = null_out())
     model.process(make_restraints=True, pdb_interpretation_params=p)
     geometry = model.get_restraints_manager().geometry
     atoms = hierarchy.atoms()
-    bonds = mp_bonds(
+    self.results = mp_validate_bonds(
       pdb_hierarchy=hierarchy,
-      pdb_atoms=atoms,
-      geometry_restraints_manager=geometry,
-      outliers_only=self.params.outliers_only)
-    angles = mp_angles(
-      pdb_hierarchy=hierarchy,
-      pdb_atoms=atoms,
       geometry_restraints_manager=geometry,
       outliers_only=self.params.outliers_only)
     if self.params.json:
-      results = {"mp_bonds": json.loads(bonds.as_JSON()),
-       "mp_angles": json.loads(angles.as_JSON())}
-      print(json.dumps(results, indent=2))
+      print(self.results.as_JSON(addon_json=self.info_json), file=self.logger)
     elif self.params.verbose:
-      bonds.show(out=self.logger, verbose=True)
-      angles.show(out=self.logger, verbose=True)
+      self.results.show(out=self.logger, verbose=True)
+
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

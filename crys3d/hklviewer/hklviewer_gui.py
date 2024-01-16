@@ -733,7 +733,7 @@ class Ui_MainWindow(object):
 
         self.gridLayout_12.addWidget(self.OpaqueAllCheckbox, 1, 0, 1, 1)
 
-        self.binstable = QTableWidget(self.widget_6)
+        self.binstable = HeaderDataTableWidget(self.widget_6)
         if (self.binstable.columnCount() < 4):
             self.binstable.setColumnCount(4)
         if (self.binstable.rowCount() < 5):
@@ -1154,7 +1154,7 @@ class Ui_MainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.actiondebug.setText(QCoreApplication.translate("MainWindow", u"Debug", None))
         self.actionExit.setText(QCoreApplication.translate("MainWindow", u"Exit", None))
-        self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save highligted datasets as a reflection file...", None))
+        self.actionSave_reflection_file.setText(QCoreApplication.translate("MainWindow", u"Save highlighted datasets as a reflection file...", None))
         self.actionReset_View.setText(QCoreApplication.translate("MainWindow", u"Reset View", None))
         self.actionSave_Current_Image.setText(QCoreApplication.translate("MainWindow", u"Save Current Image...", None))
         self.actionCCTBXwebsite.setText(QCoreApplication.translate("MainWindow", u"CCTBX Documentation", None))

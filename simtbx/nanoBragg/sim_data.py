@@ -360,6 +360,8 @@ class SimData:
 
   def update_Fhkl_tuple(self):
     if self.crystal.miller_array is not None:
+      if np.all(self.crystal.miller_array.data().as_numpy_array()==0):
+        raise ValueError("Seems all miller indices are 0")
       d_max, _ = self.crystal.miller_array.resolution_range()
       d_min = self.get_detector_corner_res()
       ma_on_detector = self.crystal.miller_array.resolution_filter(d_min=d_min, d_max=d_max)
@@ -470,8 +472,12 @@ class SimData:
     if self.crystal.anisotropic_mos_spread_deg is not None:
       if tuple(self.crystal.anisotropic_mos_spread_deg) == (0,0,0) and self.crystal.n_mos_domains != 1:
         raise ValueError("If more than 1 mosaic domain are passed, must set a positive value for anisotropic_mos_spread")
-      self.D.has_anisotropic_mosaic_spread = True
-      mosaicity = self.crystal.anisotropic_mos_spread_deg
+      if len(set(self.crystal.anisotropic_mos_spread_deg))==1:
+        self.D.has_anisotropic_mosaic_spread = False
+        mosaicity = self.crystal.anisotropic_mos_spread_deg[0]
+      else:
+        self.D.has_anisotropic_mosaic_spread = True
+        mosaicity = self.crystal.anisotropic_mos_spread_deg
     else:
       self.D.has_anisotropic_mosaic_spread = False
       mosaicity = self.crystal.mos_spread_deg
@@ -599,9 +605,9 @@ class SimData:
     else:
       self.D.vectorize_umats()
 
-  def generate_simulated_image(self, instantiate=False):
+  def generate_simulated_image(self, instantiate=False, use_diffBragg=True):
     if instantiate:
-      self.instantiate_diffBragg()
+      self.instantiate_diffBragg(use_diffBragg=use_diffBragg)
     self._add_nanoBragg_spots()
     self._add_background()
     if self.include_noise:
@@ -688,7 +694,7 @@ class SimData:
 
 
 if __name__ == "__main__":
-  S = SimData()
-  img = S.generate_simulated_image()
+  S = SimData(use_default_crystal=True)
+  img = S.generate_simulated_image(instantiate=True, use_diffBragg=False)
   print ("Maximum pixel value: %.3g" % img.max())
   print ("Minimum pixel value: %.3g" % img.min())

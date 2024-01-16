@@ -346,10 +346,14 @@ class db_application(object):
       except OperationalError as e:
         reconnect_strings = [
             "MySQL server has gone away",
+            "max_user_connections",
+            "is not allowed to connect to this MariaDB server",
         ]
         retry_strings = [
             "Can't connect to MySQL server",
             "Lost connection to MySQL server",
+            "Deadlock found when trying to get lock",
+            "WSREP has not yet prepared node for application use",
         ]
         if any([s in str(e) for s in reconnect_strings]):
           self.dbobj = None
@@ -833,8 +837,8 @@ class xfel_db_application(db_application):
   def get_all_jobs(self, active = False, where = None):
     if active:
       if where is None:
-        where = ""
-      where += " WHERE (trial.active = True AND rungroup.active = True) OR dataset.active = True"
+        where = "LEFT OUTER JOIN `%s_dataset_task` dataset_task ON job.dataset_id = dataset_task.dataset_id " % self.params.experiment_tag
+        where += "WHERE (trial.active = True AND rungroup.active = True) OR (dataset.active = True AND job.task_id = dataset_task.task_id AND dataset_task.task_id IS NOT NULL)"
     return self.get_all_x_with_subitems(JobFactory.from_args, "job", sub_items = [(Trial, 'trial', False),
                                                                                   (Run, 'run', False),
                                                                                   (Rungroup, 'rungroup', False),
@@ -909,9 +913,6 @@ class xfel_db_application(db_application):
 
   def create_dataset_version(self, **kwargs):
     return DatasetVersion(self, **kwargs)
-
-  def get_dataset(self, dataset_version_id):
-    return Dataset(self, dataset_version_id)
 
   def get_dataset_version(self, dataset_version_id):
     return DatasetVersion(self, dataset_version_id)

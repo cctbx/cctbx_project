@@ -319,7 +319,7 @@ class SingleFrame(InputFrame):
 
 class SingleDialsFrame(SingleFrame):
   def __init__(self, refl=None, expt=None, id=None, **kwargs):
-    from xfel.command_line.frame_extractor import ConstructFrame
+    from serialtbx.util.construct_frame import ConstructFrame
     frame = ConstructFrame(refl, expt).make_frame()
     SingleFrame.__init__(self, dicti=frame, path=str(id), **kwargs)
     self.experiment = expt

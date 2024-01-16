@@ -468,9 +468,13 @@ def exercise_atom_group():
   ag = pdb.hierarchy.atom_group()
   assert ag.altloc == ""
   assert ag.resname == ""
-  ag = pdb.hierarchy.atom_group(altloc=None, resname=None)
-  assert ag.altloc == ""
-  assert ag.resname == ""
+  ag = pdb.hierarchy.atom_group(altloc="abc", resname="longxyz")
+  assert ag.altloc == "abc"
+  assert ag.resname == "longxyz"
+  # Does not work anymore
+  # ag = pdb.hierarchy.atom_group(altloc=None, resname=None)
+  # assert ag.altloc == ""
+  # assert ag.resname == ""
   ag = pdb.hierarchy.atom_group(altloc="a", resname="xyz")
   assert ag.altloc == "a"
   assert ag.resname == "xyz"
@@ -586,11 +590,12 @@ def exercise_atom_group():
     pass
   else: raise Exception_expected
   #
-  try: pdb.hierarchy.atom_group(altloc="ab")
-  except (ValueError, RuntimeError) as e:
-    assert str(e) == "string is too long for target variable " \
-      "(maximum length is 1 character, 2 given)."
-  else: raise Exception_expected
+  # Now works
+  # try: pdb.hierarchy.atom_group(altloc="ab")
+  # except (ValueError, RuntimeError) as e:
+  #   assert str(e) == "string is too long for target variable " \
+  #     "(maximum length is 1 character, 2 given)."
+  # else: raise Exception_expected
   #
   ag1 = pdb.hierarchy.atom_group()
   atom = pdb.hierarchy.atom()
@@ -1032,7 +1037,7 @@ BREAK
   a.set_element("e")
   assert a.pdb_element_charge_columns() == " e  "
   a.set_charge("+")
-  assert a.pdb_element_charge_columns() == " e+ "
+  assert a.pdb_element_charge_columns() == " e+ ", "'%s'" % a.pdb_element_charge_columns()
   a.set_element("el")
   a.set_charge("2+")
   assert a.pdb_element_charge_columns() == "el2+"
@@ -6434,9 +6439,7 @@ ANISOU    6  O   HOH     1      788    626    677   -344    621   -232       O
       if chain.id == "A": chain.id = "C"
   try: hierarchy.adopt_xray_structure(xray_structure=xrs)
   except Exception as e: pass
-  else: raise Exception_expected
-  hierarchy.adopt_xray_structure(
-    xray_structure=xrs, assert_identical_id_str=False)
+  hierarchy.adopt_xray_structure(xray_structure=xrs)
   xrs_new5 = hierarchy.extract_xray_structure(
     crystal_symmetry=xrs.crystal_symmetry())
   for s1,s2 in zip(xrs.scatterers(), xrs_new5.scatterers()):
@@ -7185,6 +7188,40 @@ ATOM     29  NZ  LYS A   4       0.827  -4.892  34.541  1.10 36.05           N
   assert (approx_equal(oc.greater_than_1_fraction, 2*100/30, eps=eps))
   assert (approx_equal(oc.alt_conf_frac, 100/3, eps=eps))
 
+def exercise_fits_in_pdb_format():
+  pdb_inp_lines = flex.split_lines("""\
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+""")
+  h = pdb.input(source_info=None, lines=pdb_inp_lines).construct_hierarchy()
+  assert h.fits_in_pdb_format()
+  assert h.fits_in_pdb_format(use_hybrid36=False)
+  h.only_model().chains()[1].id = "long_chain_id"
+  assert not h.fits_in_pdb_format()
+  h.only_model().chains()[1].id = "B"
+  assert h.fits_in_pdb_format()
+  h.only_model().chains()[0].residue_groups()[0].atom_groups()[0].resname="long_resname"
+  assert not h.fits_in_pdb_format()
+  # hy36
+  h = pdb.input(source_info=None, lines=pdb_inp_lines).construct_hierarchy()
+  h.only_model().chains()[0].residue_groups()[0].resseq="A100"
+  # print(h.only_model().chains()[0].residue_groups()[0].resseq_as_int())
+  assert h.fits_in_pdb_format()
+  assert not h.fits_in_pdb_format(use_hybrid36=False)
+  # STOP()
+  h.atoms()[0].serial="A1000"
+  assert h.fits_in_pdb_format()
+  # print(h.atoms()[0].serial_as_int())
+  assert not h.fits_in_pdb_format(use_hybrid36=False)
+
 def exercise(args):
   comprehensive = "--comprehensive" in args
   forever = "--forever" in args
@@ -7255,6 +7292,7 @@ def exercise(args):
     exercise_selection_and_deep_copy()
     exercise_is_ca_only()
     exercise_occupancy_counts()
+    exercise_fits_in_pdb_format()
     if (not forever): break
   print(format_cpu_times())
 

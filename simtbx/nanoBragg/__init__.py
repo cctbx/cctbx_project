@@ -2,9 +2,12 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 import cctbx.uctbx # possibly implicit
 ext = bp.import_ext("simtbx_nanoBragg_ext")
+from libtbx.phil import parse
 from scitbx.array_family import flex
 from simtbx_nanoBragg_ext import *
 from scitbx.matrix import col, sqr
+from cctbx import sgtbx
+from cctbx.sgtbx.literal_description import literal_description
 
 from dxtbx.imageset import MemReader
 from dxtbx.imageset import ImageSet, ImageSetData
@@ -12,7 +15,11 @@ from dxtbx.model.experiment_list import Experiment, ExperimentList
 from dxtbx.model import CrystalFactory
 from dxtbx.model import BeamFactory
 from dxtbx.model import DetectorFactory
-from dxtbx.format import cbf_writer
+from dxtbx.format.Format import Format
+from dxtbx.format import cbf_writer, nxmx_writer
+from cctbx import sgtbx
+from cctbx.sgtbx.literal_description import literal_description
+import numpy as np
 
 
 @bp.inject_into(ext.nanoBragg)
@@ -28,6 +35,76 @@ class _():
       indices,data = self.Fhkl_tuple
       mset = set(crystal_symmetry=cs, anomalous_flag=True, indices=indices)
       return array(mset, data=data).set_observation_type_xray_amplitude()
+
+  def set_mosaic_blocks_sym(self, crystal, reference_symbol, orig_mos_domains, refining_eta=False):
+    """
+    hijack the mosaic blocks to symmetrize F_latt for P3/P6 space groups
+    Will extend mosaic blocks by up to a factor of 3
+    :param crystal:  dxtbx crystal model, preferably in the original setting (reference)
+    :param symbol: space group loopk symbol e.g. P6522
+    :param orig_mos_domains: int number of mosaic blocks before adding 3-fold mosaic blocks
+    :param refining_eta: bool, if using diffBragg to refine eta, the umat derivative mats should also be updated
+    """
+    if refining_eta:
+      # TODO, fix this case, see diffBragg.cpp, method get_mosaic_blocks_prime
+      assert not self.has_anisotropic_spread
+
+    sgi = sgtbx.space_group_info(reference_symbol)
+    cb_op = sgi.change_of_basis_op_to_primitive_setting()
+    # TODO? use internal nanoBragg parameters to get the p1 a,b,c vectors,
+    # then use those to construct the crystal, then apply change of basis
+    crystal_reference = crystal.change_basis(cb_op.inverse())
+
+    # Get the real space Amatrix in the reference setting
+    A = sqr(crystal_reference.get_A()).inverse().transpose()
+
+    # this should be equivalent to column matrix of real space vectors
+    a,b,c = crystal_reference.get_real_space_vectors()
+    assert sqr(a+b+c).transpose()==A
+
+    # get the originally set mosaic blocks
+    mos_blocks = self.get_mosaic_blocks()[:orig_mos_domains]
+    mos_blocks_prime = None
+    if refining_eta:
+      mos_blocks_prime = self.get_mosaic_blocks_prime()[:orig_mos_domains]
+
+    # new list of mosaic blocks
+    new_mos_blocks = flex.mat3_double()
+    new_mos_blocks.extend(mos_blocks)
+
+    # eta deriv matrices
+    new_mos_blocks_prime = None
+    if mos_blocks_prime is not None:
+      new_mos_blocks_prime = flex.mat3_double()
+      new_mos_blocks_prime.extend(mos_blocks_prime)
+
+    # loop over all laue group 3-fold operations
+    ops = sgi.group().build_derived_laue_group().all_ops()
+    for op in ops:
+      if op.r().determinant()==-1:
+        continue
+      descr = literal_description(op).long_form()
+      if "3-fold" in descr:
+        R = sqr(op.r().as_double())
+        # we want to operate about the crystal basis hence we use A*R*A^-1
+        Rcryst = A*R*A.inverse()
+        # this will left-multiply the real space amatrix in nanoBragg / diffBragg
+        new_mos_blocks.extend(flex.mat3_double([sqr(U)*Rcryst for U in mos_blocks]))
+        if new_mos_blocks_prime is not None:
+          #TODO does Umat_prime need to also be multiplied by Rcryst ?
+          new_mos_blocks_prime.extend(flex.mat3_double([sqr(U) for U in mos_blocks_prime]))
+
+    self.set_mosaic_blocks(new_mos_blocks)
+    if new_mos_blocks_prime is not None:
+      self.set_mosaic_blocks_prime(new_mos_blocks_prime)
+
+    # if using diffBragg, we must also call:
+    if self.vectorize_umats is not None:
+      self.vectorize_umats()
+
+    # need to update nanoBragg mos_spread_deg so it actually runs through the mosaic domains
+    if self.mosaic_spread_deg == 0:
+      self.mosaic_spread_deg = 1e-6
 
   def __setattr__(self,name,value):
     """use a P1 anomalous=True miller array to initialize the internal C cube array with structure factors for the spot intensities
@@ -148,19 +225,19 @@ class _():
     det_descr = {'panels':
                    [{'fast_axis': fdet,
                      'slow_axis': sdet,
-                     'gain': self.quantum_gain,
+                     'gain': 1, # this should always be 1 for simulations. If you ran add_noise then quantum gain was multiplied
                      'identifier': '',
                      'image_size': im_shape,
                      'mask': [],
-                     'material': '',  # TODO
+                     'material': 'Si',
                      'mu': 0.0,  # TODO
                      'name': 'Panel',
                      'origin': origin,
                      'pedestal': 0.0,
                      'pixel_size': (pixsize, pixsize),
                      'px_mm_strategy': {'type': 'SimplePxMmStrategy'},
-                     'raw_image_offset': (0, 0),  # TODO
-                     'thickness': 0.0,  # TODO
+                     'raw_image_offset': (0, 0),
+                     'thickness': 0.00001,  # TODO
                      'trusted_range': (-1e3, 1e10),  # TODO
                      'type': ''}]}
     detector = DetectorFactory.from_dict(det_descr)
@@ -168,10 +245,17 @@ class _():
 
   @property
   def imageset(self):
-    format_class = FormatBraggInMemory(self.raw_pixels)
+    if self.cbf_int:
+      raw_pix = self.raw_pixels.as_numpy_array()
+      raw_pix = flex.int(raw_pix.astype(np.int32))
+    else:
+      raw_pix = self.raw_pixels
+
+    format_class = FormatBraggInMemory(raw_pix)
     reader = MemReaderNamedPath("virtual_Bragg_path", [format_class])
     reader.format_class = FormatBraggInMemory
-    imageset_data = ImageSetData(reader, None)
+    imageset_data = ImageSetData(reader, None, vendor="", params={'raw_pixels': raw_pix},
+                                 format=FormatBraggInMemory)
     imageset = ImageSet(imageset_data)
     imageset.set_beam(self.beam)
     imageset.set_detector(self.detector)
@@ -214,8 +298,46 @@ class _():
 
     return explist
 
-  def to_cbf(self, cbf_filename, toggle_conventions=False, intfile_scale=1.0):
+  def to_cbf(self, cbf_filename, toggle_conventions=False, intfile_scale=1.0, cbf_int=False):
     """write a CBF-format image file to disk from the raw pixel array
+    intfile_scale: multiplicative factor applied to raw pixels before output
+         intfile_scale > 0 : value of the multiplicative factor
+         intfile_scale = 1 (default): do not apply a factor
+         intfile_scale = 0 : compute a reasonable scale factor to set max pixel to 55000; given by get_intfile_scale()
+    cbf_int: boolean flag, write the cbf using 32-bit int precision
+    """
+    temp = self.cbf_int
+    self.cbf_int = cbf_int
+
+    if intfile_scale != 1.0:
+      cache_pixels = self.raw_pixels
+      if intfile_scale > 0: self.raw_pixels = self.raw_pixels * intfile_scale
+      else: self.raw_pixels = self.raw_pixels * self.get_intfile_scale()
+      # print("switch to scaled")
+
+    if toggle_conventions:
+      # switch to DIALS convention before writing CBF
+      CURRENT_CONV = self.beamcenter_convention
+      self.beamcenter_convention=DIALS
+
+    imgset = self.imageset
+    writer = cbf_writer.FullCBFWriter(imageset=imgset)
+    cbf = writer.get_cbf_handle(index=0, header_only=True)
+    data = imgset.get_raw_data(0)
+    writer.add_data_to_cbf(cbf, data=data)
+    writer.write_cbf(cbf_filename, cbf=cbf)
+
+    if toggle_conventions:
+      self.beamcenter_convention=CURRENT_CONV
+
+    if intfile_scale != 1.0:
+      self.raw_pixels = cache_pixels
+      # print("switch back to cached")
+
+    self.cbf_int = temp
+
+  def to_nexus_nxmx(self, nxmx_filename, toggle_conventions=False, intfile_scale=1.0):
+    """write a NeXus NXmx-format image file to disk from the raw pixel array
     intfile_scale: multiplicative factor applied to raw pixels before output
          intfile_scale > 0 : value of the multiplicative factor
          intfile_scale = 1 (default): do not apply a factor
@@ -232,8 +354,18 @@ class _():
       CURRENT_CONV = self.beamcenter_convention
       self.beamcenter_convention=DIALS
 
-    writer = cbf_writer.FullCBFWriter(imageset=self.imageset)
-    writer.write_cbf(cbf_filename, index=0)
+    params = nxmx_writer.phil_scope.fetch(parse("""
+    output_file=%s
+    nexus_details {
+      instrument_name=nanoBragg
+      source_name=nanoBragg
+      start_time=NA
+      end_time_estimated=NA
+      sample_name=nanoBragg
+    }
+    """%nxmx_filename)).extract()
+    writer = nxmx_writer.NXmxWriter(params)
+    writer(imageset=self.imageset)
 
     if toggle_conventions:
       self.beamcenter_convention=CURRENT_CONV
@@ -241,6 +373,22 @@ class _():
     if intfile_scale != 1.0:
       self.raw_pixels = cache_pixels
       # print("switch back to cached")
+
+def nexus_factory(nxmx_filename):
+    params = nxmx_writer.phil_scope.fetch(parse("""
+    output_file=%s
+    nexus_details {
+      instrument_name=nanoBragg
+      source_name=nanoBragg
+      start_time=NA
+      end_time_estimated=NA
+      sample_name=nanoBragg
+    }
+    dtype=int32
+    """%nxmx_filename)).extract()
+    writer = nxmx_writer.NXmxWriter(params)
+    return writer
+
 
 def make_imageset(data, beam, detector):
   format_class = FormatBraggInMemoryMultiPanel(data)
@@ -279,7 +427,7 @@ class FormatBraggInMemoryMultiPanel:
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask
 
-class FormatBraggInMemory:
+class FormatBraggInMemory(Format):
 
   def __init__(self, raw_pixels):
     self.raw_pixels = raw_pixels
@@ -304,6 +452,10 @@ class FormatBraggInMemory:
   def get_mask(self, goniometer=None):
     """dummie place holder for mask, consider using internal nanoBragg mask"""
     return self.mask,
+
+  @classmethod
+  def get_instance(Class, filename, **kwargs):
+    return Class(raw_pixels = kwargs.pop('raw_pixels'), **kwargs)
 
   #def paths(self):
   #  return ["InMemoryBraggPath"]  # TODO: CBFLib complains if no datablock path provided which comes from path

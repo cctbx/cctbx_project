@@ -3,10 +3,10 @@
 #include <Kokkos_Core.hpp>
 
 #ifdef KOKKOS_ENABLE_CUDA
-    #define MemSpace Kokkos::CudaUVMSpace
+    #define MemSpace Kokkos::CudaSpace
 #endif
 #ifdef KOKKOS_ENABLE_HIP
-    #define MemSpace Kokkos::Experimental::HIPSpace
+    #define MemSpace Kokkos::HIPSpace
 #endif
 #ifdef KOKKOS_ENABLE_OPENMPTARGET
     #define MemSpace Kokkos::OpenMPTargetSpace
@@ -19,8 +19,11 @@
 using ExecSpace = MemSpace::execution_space;
 using range_policy = Kokkos::RangePolicy<ExecSpace>;
 
-template <typename T>
-using view_1d_t = Kokkos::View<T*, MemSpace>;
+template <typename T> using view_1d_t = Kokkos::View<T*, MemSpace>;
+template <typename T> using view_4d_t = Kokkos::View<T****, MemSpace>;
+template <typename T> using view_5d_t = Kokkos::View<T*****, MemSpace>;
+template <typename T> using view_6d_t = Kokkos::View<T******, MemSpace>;
+template <typename T> using view_6d6_t = Kokkos::View<T******[6], MemSpace>;
 
 using vector_bool_t = view_1d_t<bool>;
 using vector_double_t = view_1d_t<double>;

@@ -593,7 +593,7 @@ class map_manager(map_reader, write_ccp4_map):
        so that the value of self.external_origin is not (0,0,0) and not None,
        and apply_external_origin_if_present is set, then:
        determine if self.external_origin is on a grid point and if so, convert
-        and use negative of it as origin. Then self.external_origin to zero.
+        and use negative of it as origin. Then set self.external_origin to zero.
        Does not apply if origin is already not (0,0,0).
 
     '''
@@ -634,7 +634,7 @@ class map_manager(map_reader, write_ccp4_map):
         shift_info.shift_to_apply_cart)
 
   def _get_shift_info(self, desired_origin = None,
-    apply_external_origin_if_present = None):
+    apply_external_origin_if_present = True):
     '''
       Utility to calculate the shift necessary (grid units)
       map to place the origin of the current map

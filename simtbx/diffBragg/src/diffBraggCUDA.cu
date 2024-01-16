@@ -444,6 +444,12 @@ void diffBragg_sum_over_steps_cuda(
     if (db_cryst.fpfdp.size() == 0){ // note cannot use atom data if fpfdp is 0, make this cleaner
         num_atoms=0;
     }
+
+    if (db_flags.use_diffuse) {
+        if (db_cryst.laue_group_num < 1 || db_cryst.laue_group_num >14 ){
+            throw std::string("Laue group number not in range 1-14");
+        }
+    }
     //int sm_size = number_of_sources*5*sizeof(CUDAREAL);
     //gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
@@ -496,8 +502,9 @@ void diffBragg_sum_over_steps_cuda(
         cp.cu_odet_vectors, cp.cu_pix0_vectors,
         db_flags.nopolar, db_flags.point_pixel, db_beam.fluence, db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
         cp.cu_fpfdp,  cp.cu_fpfdp_derivs, cp.cu_atom_data, num_atoms,
-        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl, db_cryst.anisoU, db_cryst.anisoG, db_flags.use_diffuse,
-        cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images,
+        db_flags.refine_fp_fdp, cp.cu_nominal_hkl, use_nominal_hkl,
+        db_cryst.anisoU, db_cryst.anisoG, db_cryst.rotate_principal_axes,
+        db_flags.use_diffuse, cp.cu_d_diffuse_gamma_images, cp.cu_d_diffuse_sigma_images,
         db_flags.refine_diffuse, db_flags.gamma_miller_units, db_flags.refine_Icell,
         db_flags.wavelength_img, db_cryst.laue_group_num, db_cryst.stencil_size,
         db_flags.Fhkl_gradient_mode, db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(), db_flags.Fhkl_have_scale_factors,

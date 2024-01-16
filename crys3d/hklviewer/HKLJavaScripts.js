@@ -90,7 +90,7 @@ var componentaxis = new NGL.Vector3();
 var sockwaitcount = 0;
 var ready_for_closing = false;
 var columnSelect = null;
-var animationspeed = -1.0;
+var animationspeed = 0.0;
 var XYZaxes = null;
 var Helm = null;
 var Kelm = null;
@@ -477,7 +477,7 @@ function AnimateRotation(axis, animatheta) {
     const deltaTime = now - then;
     then = now;
 
-    if (animationspeed > 0)
+    if (animationspeed > 0.0)
       animatheta = (animatheta + deltaTime * animationspeed) % 360;
     if (shapeComp == null)
       return;
@@ -485,10 +485,10 @@ function AnimateRotation(axis, animatheta) {
     RotateAxisComponents(axis, animatheta);
     stage.viewer.requestRender();
 
-    if (animationspeed > 0)
+    if (animationspeed > 0.0)
       requestAnimationFrame(render);
   }
-  if (animationspeed > 0)
+  if (animationspeed > 0.0)
     requestAnimationFrame(render);
 }
 
@@ -540,7 +540,7 @@ function getRotatedZoutMatrix()
 
 
 function SetDefaultOrientation(release_python_semaphore=true) {
-  if (!rotationdisabled)
+  if (!rotationdisabled && animationspeed == 0.0)
     stage.viewerControls.orient(getRotatedZoutMatrix());
   SetAutoviewTimeout(shapeComp, 500, release_python_semaphore);
 }
@@ -583,7 +583,9 @@ async function ResolveAutoview(mycomponent, t)
     center.x=0;
     center.y=0;
     center.z=0;
+    //if (camz===null || camz === -1)
     zaim = zaim*1.5;
+    //else zaim = camz;
     // with HKL axes now part of vectorshape and not shape getCenter no longer returns (0,0,0)
     // and zaim often is too small. Work around this with explicit center at 0,0,0 and doubling zaim
     zoomanis = mycomponent.stage.animationControls.zoomMove(center, zaim, t);
@@ -645,10 +647,26 @@ async function SetAutoviewTimeout(mycomponent, t, release_python_semaphore)
   WebsockSendMsg('StartSetAutoView ');
   WebsockSendMsg('SetAutoView camera.z = ' + stage.viewer.camera.position.z.toString()); 
   isAutoviewing = true;
+
+  let currentmode = stage.viewer.parameters.clipMode;
+  let currentscale = stage.viewer.parameters.clipScale
+  let currentnear = stage.viewer.parameters.clipNear;
+  let currentfar = stage.viewer.parameters.clipFar;
+  let currentcameraZ = stage.viewer.camera.position.z;
+
   AutoViewPromiseRace(mycomponent, t).then(()=>{
     requestedby = ""
     if (release_python_semaphore==true)
       requestedby = "AutoViewFinished"; // posts AutoViewFinished_AfterRendering in stage.viewer.signals.rendered.add()
+
+    if (rotationdisabled || animationspeed > 0.0)
+    {
+      stage.viewer.parameters.clipMode = currentmode; 
+      stage.viewer.parameters.clipScale = currentscale;
+      stage.viewer.parameters.clipNear = currentnear; 
+      stage.viewer.parameters.clipFar = currentfar;
+      stage.viewer.camera.position.z = currentcameraZ;
+    }
     stage.viewer.requestRender();
     ReturnClipPlaneDistances(); // updates zoom value in python */
   });
@@ -1194,6 +1212,11 @@ function onMessage(e)
       animaaxis.y = parseFloat(val[1]);
       animaaxis.z = parseFloat(val[2]);
 
+      if (animationspeed == 0.0)
+        StopAnimateBtn.style.display = "None";
+      else
+        StopAnimateBtn.style.display = "Block";
+
       AnimateRotation(animaaxis, animatheta);
 
       SendComponentRotationMatrixMsg();
@@ -1514,6 +1537,7 @@ function onMessage(e)
       filename = val[0];
       //CHROME ONLY
       // html2canvas retains div legends when creaing an image blob
+      let oldbtnstyle = StopAnimateBtn.style.display;
       ResetViewBtn.style.display = "None"; // hide buttons and other GUL controls on this webpage
       StopAnimateBtn.style.display = "None";
       html2canvas(document.getElementById("viewport")).then(function (canvas) {
@@ -1533,7 +1557,7 @@ function onMessage(e)
         }
       });
       ResetViewBtn.style.display = "Block";
-      StopAnimateBtn.style.display = "Block";
+      StopAnimateBtn.style.display = oldbtnstyle;
       WebsockSendMsg('ImageWritten ');
     }
 
@@ -2262,12 +2286,13 @@ function MakeButtons() {
     type: "button",
     onclick: function () {
       animationspeed = -animationspeed;
-      if (animationspeed > 0 && animaaxis.length() > 0.0)
+      if (animationspeed > 0.0 && animaaxis.length() > 0.0)
         AnimateRotation(animaaxis, animatheta);
       WebsockSendMsg('ToggleAnimation');
     },
   }, { bottom: "10px", left: leftoffset.toString() + "px", width: btnwidth.toString + "px", position: "absolute" }, fontsize);
   addElement(StopAnimateBtn);
+  StopAnimateBtn.style.display = "None";
 }
 
 

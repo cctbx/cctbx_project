@@ -6,6 +6,8 @@ LOGGER = logging.getLogger("diffBragg.main")
 import numpy as np
 import pandas
 from simtbx.nanoBragg.utils import flexBeam_sim_colors
+from cctbx import miller
+from cctbx.array_family import flex
 
 try:
     from simtbx.gpu import gpu_energy_channels
@@ -75,12 +77,18 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         assert gpu_energy_channels is not None, "cant use exascale api if not in a GPU build"
         assert multipanel_sim is not None, "cant use exascale api if LS49: https://github.com/nksauter/LS49.git  is not configured\n install in the modules folder"
 
-    df = pandas_frame
+    df = pandas_frame.reset_index(drop=True)
 
     if not quiet: LOGGER.info("Loading experiment models")
-    expt_name = df.opt_exp_name.values[0]
+    expt_name = df.exp_name.values[0]
     El = ExperimentListFactory.from_json_file(expt_name, check_format=False)
-    expt = El[0]
+    exp_idx = 0
+    if "exp_idx" in list(df):
+        exp_idx = int(df.exp_idx.values[0])  # cast to int because has to be 32-bit
+    expt = El[exp_idx]
+    crystal = expt.crystal
+    crystal.set_A(df.Amats.values[0])
+    expt.crystal = crystal
     columns = list(df)
     if "detz_shift_mm" in columns:  # NOTE, this could also be inside expt_name directly
         expt.detector = utils.shift_panelZ(expt.detector, df.detz_shift_mm.values[0])
@@ -137,22 +145,20 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     if mtz_file is not None:
         assert mtz_col is not None
         Famp = utils.open_mtz(mtz_file, mtz_col)
-    elif from_pdb is not None:
-        if from_pdb.name is not None:
-            wavelength=None
-            if from_pdb.add_anom:
-                wavelength = expt.beam.get_wavelength()
-            miller_data = utils.get_complex_fcalc_from_pdb(from_pdb.name,
-                                                     dmin=d_min,
-                                                     dmax=d_max,
-                                                     wavelength=wavelength,
-                                                     k_sol=from_pdb.k_sol,
-                                                     b_sol=from_pdb.b_sol)
-            Famp = miller_data.as_amplitude_array()
+        Famp = miller.array(Famp.set(), data=flex.double(len(Famp.data()), np.mean(Famp.data())))
+    elif from_pdb is not None and from_pdb.name is not None:
+        wavelength=None
+        if from_pdb.add_anom:
+            wavelength = expt.beam.get_wavelength()
+        miller_data = utils.get_complex_fcalc_from_pdb(from_pdb.name,
+                                                 dmin=d_min,
+                                                 dmax=d_max,
+                                                 wavelength=wavelength,
+                                                 k_sol=from_pdb.k_sol,
+                                                 b_sol=from_pdb.b_sol)
+        Famp = miller_data.as_amplitude_array()
     else:
         Famp = utils.make_miller_array_from_crystal(expt.crystal, dmin=d_min, dmax=d_max, defaultF=defaultF, symbol=symbol_override)
-
-
 
     diffuse_params = None
     if "use_diffuse_models" in columns and df.use_diffuse_models.values[0]:
@@ -189,13 +195,15 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
     elif use_db:
         mos_dom = 1
         if "num_mosaicity_samples" in list(df):
-            mos_dom = df.num_mosaicity_samples.values[0]
+            mos_dom = int(df.num_mosaicity_samples.values[0])
         eta_abc = df.eta_abc.values[0]
         LOGGER.debug("Num mos samples=%d, eta_abc=" % mos_dom, eta_abc)
+        LOGGER.debug("Num energy channels=%d" % len(energies))
         results = diffBragg_forward(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                     fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
                                     Ncells_abc=Ncells_abc, spot_scale_override=spot_scale,
                                     mos_dom=mos_dom, eta_abc=df.eta_abc.values[0],
+                                    default_F=np.mean(Famp.data()),
                                     device_Id=device_Id, oversample=oversample,
                                     show_params=not quiet,
                                     nopolar=nopolar,
@@ -236,13 +244,14 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       nopolar=False, diffuse_params=None, cuda=False,
                       show_timings=False,perpixel_wavelen=False,
                       det_thicksteps=None, eta_abc=None, Ncells_def=None,
-                      num_phi_steps=1, delta_phi=None):
+                      num_phi_steps=1, delta_phi=None, div_mrad=0):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
     CRYSTAL, Famp = nanoBragg_utils.ensure_p1(CRYSTAL, Famp)
 
     nbBeam = NBbeam()
+    nbBeam.divergence = div_mrad / 1e3 * 180 / np.pi
     nbBeam.size_mm = beamsize_mm
     nbBeam.unit_s0 = BEAM.get_unit_s0()
     wavelengths = utils.ENERGY_CONV / np.array(energies)
@@ -300,7 +309,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     if delta_phi is not None:
         utils.update_SIM_with_gonio(S, delta_phi=delta_phi, num_phi_steps=num_phi_steps )
     S.D.add_diffBragg_spots_full()
-    if show_timings:
+    if show_timings or LOGGER.level <= 10:
         S.D.show_timings()
     t = time.time()
     data = S.D.raw_pixels_roi.as_numpy_array().reshape(img_shape)

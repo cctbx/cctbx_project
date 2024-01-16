@@ -1,6 +1,8 @@
 crys3d/hklviewer/webbrowser_messenger_py3.py
 crys3d/hklviewer/xtriage_runner.py
 crys3d/regression/tst_websocket.py
+libtbx/auto_build/conda_build/create_custom_bin.py
+serialtbx/util/energy_scan_notch_finder.py
 xfel/ui/db/dxtbx_db.py
 xfel/euxfel/agipd_from_defs.py
 xfel/euxfel/agipd_cxigeom2nexus.py
@@ -9,4 +11,5 @@ xfel/ui/db/cfgs/shifter_templates.py
 xfel/small_cell/powder_util.py
 xfel/ui/db/job.py
 xfel/command_line/cxi_mpi_submit.py
+xfel/command_line/fee_calibration.py
 xfel/util/drift.py

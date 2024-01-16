@@ -446,6 +446,11 @@ libtbx.scons: Warning: compiling with /MDd:
     if sys.version_info.major == 3 and sys.version_info.minor <= 8:
       env_etc.ccflags_base.append('/DHAVE_SNPRINTF')
       env_etc.cxxflags_base.append('/DHAVE_SNPRINTF')
+    # needed for latest versions of Visual Studio 2022 so that type
+    # limits are available
+    if env_etc.msvc_version == 17:
+      env_etc.ccflags_base.append('/D__STDC_LIMIT_MACROS')
+      env_etc.cxxflags_base.append('/D__STDC_LIMIT_MACROS')
   elif (env_etc.compiler == "win32_icc"):
     cl_exe = full_command_path("icl.exe")
     if (cl_exe is None):
@@ -1188,7 +1193,15 @@ if env_etc.cxx11_is_available:
   test_code += "int main() {std::vector<int> x(9); for(auto & i : x) "
   test_code += "{i=7; std::cout << i << std::endl;}\n"
   test_code += " x = func(std::vector<int>(2)); return 0;}\n"
-  conf = env_base.Configure()
+  # temp fix for Xcode 15 and current static conda environments
+  if sys.platform.startswith('darwin') \
+    and libtbx.env.build_options.use_conda \
+    and 'conda' not in libtbx.env.build_options.compiler \
+    and env_etc.clang_version[0] > 14:
+    test_env = env_base.Clone(LIBPATH=[env_base['LIBPATH'][0]])
+    conf = test_env.Configure()
+  else:
+    conf = env_base.Configure()
   flag, output = conf.TryRun(test_code, extension='.cpp')
   conf.Finish()
   if not flag:

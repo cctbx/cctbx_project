@@ -104,42 +104,47 @@ class RunSentinel(Thread):
     use_ids = self.parent.params.facility.name not in ['lcls']
 
     while self.active:
-      # Find the delta
-      known_runs = [r.run for r in db.get_all_runs()]
-      if self.parent.params.facility.name == 'lcls':
-        unknown_run_runs = [str(run['run']) for run in db.list_lcls_runs() if
-                            str(run['run']) not in known_runs]
-        unknown_run_paths = [''] * len(unknown_run_runs)
-      elif self.parent.params.facility.name == 'standalone':
-        standalone_runs = [run for run in self.finder.list_runs() if
-                           run[0] not in known_runs]
-        unknown_run_runs = [r[0] for r in standalone_runs]
-        unknown_run_paths = [r[1] for r in standalone_runs]
+      try:
+        # Find the delta
+        known_runs = [r.run for r in db.get_all_runs()]
+        if self.parent.params.facility.name == 'lcls':
+          unknown_run_runs = [str(run['run']) for run in db.list_lcls_runs() if
+                              str(run['run']) not in known_runs]
+          unknown_run_paths = [''] * len(unknown_run_runs)
+        elif self.parent.params.facility.name == 'standalone':
+          standalone_runs = [run for run in self.finder.list_runs() if
+                             run[0] not in known_runs]
+          unknown_run_runs = [r[0] for r in standalone_runs]
+          unknown_run_paths = [r[1] for r in standalone_runs]
 
-      if len(unknown_run_runs) > 0:
-        for run_run, run_path in zip(unknown_run_runs, unknown_run_paths):
-          db.create_run(run = run_run, path = run_path)
-        new_runs = [r for r in db.get_all_runs() if r.run in unknown_run_runs]
-        if len(self.parent.run_window.runs_tab.persistent_tags) > 0:
-          tags = [t for t in db.get_all_tags() if t.name in self.parent.run_window.runs_tab.persistent_tags]
-          for r in new_runs:
-            for t in tags:
-              r.add_tag(t)
-        # Sync new runs to rungroups
-        for rungroup in db.get_all_rungroups(only_active=True):
-          first_run, last_run = rungroup.get_first_and_last_runs()
-          # HACK: to get working -- TODO: make nice
-          if use_ids:
-            first_run = first_run.id
-            last_run = last_run.id if last_run is not None else None
-          else:
-            first_run = int(first_run.run)
-            last_run = int(last_run.run) if last_run is not None else None
-          rungroup.sync_runs(first_run, last_run, use_ids=use_ids)
+        if len(unknown_run_runs) > 0:
+          for run_run, run_path in zip(unknown_run_runs, unknown_run_paths):
+            db.create_run(run = run_run, path = run_path)
+          new_runs = [r for r in db.get_all_runs() if r.run in unknown_run_runs]
+          if len(self.parent.run_window.runs_tab.persistent_tags) > 0:
+            tags = [t for t in db.get_all_tags() if t.name in self.parent.run_window.runs_tab.persistent_tags]
+            for r in new_runs:
+              for t in tags:
+                r.add_tag(t)
+          # Sync new runs to rungroups
+          for rungroup in db.get_all_rungroups(only_active=True):
+            first_run, last_run = rungroup.get_first_and_last_runs()
+            # HACK: to get working -- TODO: make nice
+            if use_ids:
+              first_run = first_run.id
+              last_run = last_run.id if last_run is not None else None
+            else:
+              first_run = int(first_run.run)
+              last_run = int(last_run.run) if last_run is not None else None
+            rungroup.sync_runs(first_run, last_run, use_ids=use_ids)
 
-        print("%d new runs" % len(unknown_run_runs))
-        self.post_refresh()
-      time.sleep(10)
+          print("%d new runs" % len(unknown_run_runs))
+          self.post_refresh()
+        time.sleep(10)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.run_light.change_status('alert')
+        break
 
 # ------------------------------- Job Monitor ------------------------------- #
 
@@ -181,24 +186,29 @@ class JobMonitor(Thread):
     tracker = TrackerFactory.from_params(self.parent.params)
 
     while self.active:
-      self.parent.run_window.jmn_light.change_status('idle')
+      try:
+        self.parent.run_window.jmn_light.change_status('idle')
 
-      trials = db.get_all_trials()
-      jobs = db.get_all_jobs(active = self.only_active_jobs)
+        trials = db.get_all_trials()
+        jobs = db.get_all_jobs(active = self.only_active_jobs)
 
-      for job in jobs:
-        if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
-          continue
-        new_status = tracker.track(job.submission_id, job.get_log_path())
-        # Handle the case where the job was submitted but no status is available yet
-        if job.status == "SUBMITTED" and new_status == "ERR":
-          pass
-        elif job.status != new_status:
-          job.status = new_status
+        for job in jobs:
+          if job.status in ['DONE', 'EXIT', 'SUBMIT_FAIL', 'DELETED']:
+            continue
+          new_status = tracker.track(job.submission_id, job.get_log_path())
+          # Handle the case where the job was submitted but no status is available yet
+          if job.status == "SUBMITTED" and new_status == "ERR":
+            pass
+          elif job.status != new_status:
+            job.status = new_status
 
-      self.post_refresh(trials, jobs)
-      self.parent.run_window.jmn_light.change_status('on')
-      time.sleep(5)
+        self.post_refresh(trials, jobs)
+        self.parent.run_window.jmn_light.change_status('on')
+        time.sleep(5)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.jmn_light.change_status('alert')
+        break
 
 
 # ------------------------------- Job Sentinel ------------------------------- #
@@ -234,9 +244,14 @@ class JobSentinel(Thread):
     from xfel.ui.db.job import submit_all_jobs
 
     while self.active:
-      submit_all_jobs(db)
-      self.post_refresh()
-      time.sleep(2)
+      try:
+        submit_all_jobs(db)
+        self.post_refresh()
+        time.sleep(2)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.job_light.change_status('alert')
+        break
 
 # ----------------------------- Progress Sentinel ---------------------------- #
 
@@ -280,114 +295,119 @@ class ProgressSentinel(Thread):
     db = xfel_db_application(self.parent.params)
 
     while self.active:
-      self.parent.run_window.prg_light.change_status('idle')
+      try:
+        self.parent.run_window.prg_light.change_status('idle')
 
-      if len(db.get_all_trials()) > 0:
-        trial = db.get_trial(
-          trial_number=self.parent.run_window.status_tab.trial_no)
+        if len(db.get_all_trials()) > 0:
+          trial = db.get_trial(
+            trial_number=self.parent.run_window.status_tab.trial_no)
 
-        trial_has_isoforms = len(trial.isoforms) > 0
+          trial_has_isoforms = len(trial.isoforms) > 0
 
-        tags = self.parent.run_window.status_tab.selected_tags
-        tag_ids = [tag.id for tag in tags]
-        cells = db.get_stats(trial=trial, tags=tags, isigi_cutoff = self.parent.run_window.status_tab.isigi_cutoff)()
+          tags = self.parent.run_window.status_tab.selected_tags
+          tag_ids = [tag.id for tag in tags]
+          cells = db.get_stats(trial=trial, tags=tags, isigi_cutoff = self.parent.run_window.status_tab.isigi_cutoff)()
 
-        if self.parent.run_window.status_tab.tag_trial_changed:
-          self.parent.run_window.status_tab.redraw_windows = True
-          self.parent.run_window.status_tab.tag_trial_changed = False
+          if self.parent.run_window.status_tab.tag_trial_changed:
+            self.parent.run_window.status_tab.redraw_windows = True
+            self.parent.run_window.status_tab.tag_trial_changed = False
 
-        run_numbers = []
-        runs = []
-        for rb in trial.rungroups:
-          for run in rb.runs:
-            if run.run not in run_numbers:
-              if len(tags) > 0:
-                for tag in run.tags:
-                  if tag.id in tag_ids:
-                    run_numbers.append(run.run)
-                    runs.append(run)
-              else:
-                run_numbers.append(run.run)
-                runs.append(run)
-        if not trial_has_isoforms:
-          n_img = len(db.get_all_events(trial, runs))
+          run_numbers = []
+          runs = []
+          for rb in trial.rungroups:
+            for run in rb.runs:
+              if run.run not in run_numbers:
+                if len(tags) > 0:
+                  for tag in run.tags:
+                    if tag.id in tag_ids:
+                      run_numbers.append(run.run)
+                      runs.append(run)
+                else:
+                  run_numbers.append(run.run)
+                  runs.append(run)
+          if not trial_has_isoforms:
+            n_img = len(db.get_all_events(trial, runs))
 
-        for cell in cells:
-          # Check for cell isoform
-          if cell.isoform is None:
-            self.noiso_cells.append({'a':cell.cell_a,
-                                     'b':cell.cell_b,
-                                     'c':cell.cell_c,
-                                     'alpha':cell.cell_alpha,
-                                     'beta':cell.cell_beta,
-                                     'gamma':cell.cell_gamma,
-                                     'n_img':n_img})
-          else:
-            current_rows = self.parent.run_window.status_tab.rows
-            if current_rows != {}:
-              if cell.isoform._db_dict['name'] in current_rows:
-                bins = cell.bins[
-                       :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
-                highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
-              else:
-                assert False, "This isoform is not available yet"
+          for cell in cells:
+            # Check for cell isoform
+            if cell.isoform is None:
+              self.noiso_cells.append({'a':cell.cell_a,
+                                       'b':cell.cell_b,
+                                       'c':cell.cell_c,
+                                       'alpha':cell.cell_alpha,
+                                       'beta':cell.cell_beta,
+                                       'gamma':cell.cell_gamma,
+                                       'n_img':n_img})
             else:
-              bins = cell.bins
-              d_mins = [b.d_min for b in bins]
-              highest_bin = bins[d_mins.index(min(d_mins))]
+              current_rows = self.parent.run_window.status_tab.rows
+              if current_rows != {}:
+                if cell.isoform._db_dict['name'] in current_rows:
+                  bins = cell.bins[
+                         :int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+                  highest_bin = cell.bins[int(current_rows[cell.isoform._db_dict['name']]['high_bin'])]
+                else:
+                  assert False, "This isoform is not available yet"
+              else:
+                bins = cell.bins
+                d_mins = [b.d_min for b in bins]
+                highest_bin = bins[d_mins.index(min(d_mins))]
 
-            counts_all = [int(i.count) for i in bins]
-            totals_all = [int(i.total_hkl) for i in bins]
-            counts_highest = int(highest_bin.count)
-            totals_highest = int(highest_bin.total_hkl)
+              counts_all = [int(i.count) for i in bins]
+              totals_all = [int(i.total_hkl) for i in bins]
+              counts_highest = int(highest_bin.count)
+              totals_highest = int(highest_bin.total_hkl)
 
-            # Apply throttle to multiplicity calculation
-            if trial.process_percent is None:
-              process_percent = 100
-            else:
-              process_percent = trial.process_percent
+              # Apply throttle to multiplicity calculation
+              if trial.process_percent is None:
+                process_percent = 100
+              else:
+                process_percent = trial.process_percent
 
-            n_img = len(db.get_all_events(trial, runs, isoform = cell.isoform))
+              n_img = len(db.get_all_events(trial, runs, isoform = cell.isoform))
 
-            # Generate multiplicity graph for isoforms
-            mult_all = sum(counts_all) / sum(totals_all) / (process_percent / 100)
-            mult_highest = counts_highest / totals_highest / (process_percent / 100)
-            self.info[cell.isoform._db_dict['name']] = {'multiplicity_all':mult_all,
-                                            'multiplicity_highest':mult_highest,
-                                            'bins':bins,
-                                            'isoform':cell.isoform._db_dict['name'],
-                                            'a':cell.cell_a,
-                                            'b':cell.cell_b,
-                                            'c':cell.cell_c,
-                                            'alpha':cell.cell_alpha,
-                                            'beta':cell.cell_beta,
-                                            'gamma':cell.cell_gamma,
-                                            'n_img':n_img}
-        #if len(self.noiso_cells) > 0:
-        if len(self.info) == 0 and len(self.noiso_cells) > 0:
-          sum_n_img = sum([cell['n_img'] for cell in self.noiso_cells])
-          mean_a = sum([cell['n_img']*cell['a'] for cell in self.noiso_cells])/sum_n_img
-          mean_b = sum([cell['n_img']*cell['b'] for cell in self.noiso_cells])/sum_n_img
-          mean_c = sum([cell['n_img']*cell['c'] for cell in self.noiso_cells])/sum_n_img
-          mean_alpha = sum([cell['n_img']*cell['alpha'] for cell in self.noiso_cells])/sum_n_img
-          mean_beta  = sum([cell['n_img']*cell['beta']  for cell in self.noiso_cells])/sum_n_img
-          mean_gamma = sum([cell['n_img']*cell['gamma'] for cell in self.noiso_cells])/sum_n_img
-          noiso_entry = {'multiplicity_all':0,
-                         'multiplicity_highest':0,
-                         'bins':None,
-                         'isoform':None,
-                         'a':mean_a,
-                         'b':mean_b,
-                         'c':mean_c,
-                         'alpha':mean_alpha,
-                         'beta':mean_beta,
-                         'gamma':mean_gamma,
-                         'n_img':sum_n_img}
-          self.info['noiso'] = noiso_entry
-      self.post_refresh()
-      self.info = {}
-      self.parent.run_window.prg_light.change_status('on')
-      time.sleep(5)
+              # Generate multiplicity graph for isoforms
+              mult_all = sum(counts_all) / sum(totals_all) / (process_percent / 100)
+              mult_highest = counts_highest / totals_highest / (process_percent / 100)
+              self.info[cell.isoform._db_dict['name']] = {'multiplicity_all':mult_all,
+                                              'multiplicity_highest':mult_highest,
+                                              'bins':bins,
+                                              'isoform':cell.isoform._db_dict['name'],
+                                              'a':cell.cell_a,
+                                              'b':cell.cell_b,
+                                              'c':cell.cell_c,
+                                              'alpha':cell.cell_alpha,
+                                              'beta':cell.cell_beta,
+                                              'gamma':cell.cell_gamma,
+                                              'n_img':n_img}
+          #if len(self.noiso_cells) > 0:
+          if len(self.info) == 0 and len(self.noiso_cells) > 0:
+            sum_n_img = sum([cell['n_img'] for cell in self.noiso_cells])
+            mean_a = sum([cell['n_img']*cell['a'] for cell in self.noiso_cells])/sum_n_img
+            mean_b = sum([cell['n_img']*cell['b'] for cell in self.noiso_cells])/sum_n_img
+            mean_c = sum([cell['n_img']*cell['c'] for cell in self.noiso_cells])/sum_n_img
+            mean_alpha = sum([cell['n_img']*cell['alpha'] for cell in self.noiso_cells])/sum_n_img
+            mean_beta  = sum([cell['n_img']*cell['beta']  for cell in self.noiso_cells])/sum_n_img
+            mean_gamma = sum([cell['n_img']*cell['gamma'] for cell in self.noiso_cells])/sum_n_img
+            noiso_entry = {'multiplicity_all':0,
+                           'multiplicity_highest':0,
+                           'bins':None,
+                           'isoform':None,
+                           'a':mean_a,
+                           'b':mean_b,
+                           'c':mean_c,
+                           'alpha':mean_alpha,
+                           'beta':mean_beta,
+                           'gamma':mean_gamma,
+                           'n_img':sum_n_img}
+            self.info['noiso'] = noiso_entry
+        self.post_refresh()
+        self.info = {}
+        self.parent.run_window.prg_light.change_status('on')
+        time.sleep(5)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.prg_light.change_status('alert')
+        break
 
 # ----------------------------- Run Stats Sentinel ---------------------------- #
 
@@ -431,14 +451,19 @@ class RunStatsSentinel(Thread):
     self.db = xfel_db_application(self.parent.params)
 
     while self.active:
-      self.parent.run_window.runstats_light.change_status('idle')
-      self.plot_stats()
-      self.fetch_timestamps(indexed=True)
-      self.fetch_timestamps(indexed=False)
-      self.post_refresh()
-      self.info = {}
-      self.parent.run_window.runstats_light.change_status('on')
-      time.sleep(5)
+      try:
+        self.parent.run_window.runstats_light.change_status('idle')
+        self.plot_stats()
+        self.fetch_timestamps(indexed=True)
+        self.fetch_timestamps(indexed=False)
+        self.post_refresh()
+        self.info = {}
+        self.parent.run_window.runstats_light.change_status('on')
+        time.sleep(5)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.runstats_light.change_status('alert')
+        break
 
   def refresh_stats(self):
     #from xfel.ui.components.timeit import duration
@@ -609,12 +634,17 @@ class SpotfinderSentinel(Thread):
     self.db = xfel_db_application(self.parent.params)
 
     while self.active:
-      self.parent.run_window.spotfinder_light.change_status('idle')
-      self.plot_stats_static()
-      self.post_refresh()
-      self.info = {}
-      self.parent.run_window.spotfinder_light.change_status('on')
-      time.sleep(5)
+      try:
+        self.parent.run_window.spotfinder_light.change_status('idle')
+        self.plot_stats_static()
+        self.post_refresh()
+        self.info = {}
+        self.parent.run_window.spotfinder_light.change_status('on')
+        time.sleep(5)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.spotfinder_light.change_status('alert')
+        break
 
   def refresh_stats(self):
     from xfel.ui.db.stats import SpotfinderStats
@@ -742,85 +772,103 @@ class UnitCellSentinel(Thread):
     self.db = xfel_db_application(self.parent.params)
 
     while self.active:
-      self.parent.run_window.unitcell_light.change_status('idle')
-      trial = self.parent.run_window.unitcell_tab.trial
-      tag_sets = self.parent.run_window.unitcell_tab.tag_sets
-      sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panelsize
+      try:
+        self.parent.run_window.unitcell_light.change_status('idle')
+        trial = self.parent.run_window.unitcell_tab.trial
+        tag_sets = self.parent.run_window.unitcell_tab.tag_sets
+        sizex, sizey = self.parent.run_window.unitcell_tab.unit_cell_panelsize
 
-      info_list = []
-      legend_list = []
-      for tag_set in tag_sets:
-        legend_list.append(str(tag_set))
-        cells = self.db.get_stats(trial=trial,
-                                  tags=tag_set.tags,
-                                  isigi_cutoff=1.0,
-                                  tag_selection_mode=tag_set.mode)()
-        info = []
-        for cell in cells:
-          info.append({'a':cell.cell_a,
-                       'b':cell.cell_b,
-                       'c':cell.cell_c,
-                       'alpha':cell.cell_alpha,
-                       'beta':cell.cell_beta,
-                       'gamma':cell.cell_gamma,
-                       'n_img':0})
-        info_list.append(info)
+        info_list = []
+        legend_list = []
+        for tag_set in tag_sets:
+          legend_list.append(str(tag_set))
+          cells = self.db.get_stats(trial=trial,
+                                    tags=tag_set.tags,
+                                    isigi_cutoff=1.0,
+                                    tag_selection_mode=tag_set.mode)()
+          info = []
+          for cell in cells:
+            info.append({'a':cell.cell_a,
+                         'b':cell.cell_b,
+                         'c':cell.cell_c,
+                         'alpha':cell.cell_alpha,
+                         'beta':cell.cell_beta,
+                         'gamma':cell.cell_gamma,
+                         'n_img':0})
+          info_list.append(info)
 
-      iqr_ratio = 1.5 if self.parent.run_window.unitcell_tab.reject_outliers else None
+        iqr_ratio = 1.5 if self.parent.run_window.unitcell_tab.reject_outliers else None
 
-      figure = self.parent.run_window.unitcell_tab.figure
-      plotter = pltr.PopUpCharts(interactive=True, figure=figure)
+        figure = self.parent.run_window.unitcell_tab.figure
+        plotter = pltr.PopUpCharts(interactive=True, figure=figure)
 
-      if not self.parent.run_window.unitcell_tab.plot_clusters:
-        figure.clear()
-        plotter.plot_uc_histogram(
-          info_list=info_list,
-          legend_list=legend_list,
-          xsize=(sizex-115)/82, ysize=(sizey-115)/82,
-          high_vis=self.parent.high_vis,
-          iqr_ratio=iqr_ratio)
-        figure.canvas.draw_idle()
-      elif len(info_list) > 0:
-        from uc_metrics.clustering.step1 import phil_scope
-        from uc_metrics.clustering.step_dbscan3d import dbscan_plot_manager
-        from cctbx.sgtbx import space_group_info
-
-        if len(info_list) > 1:
-          print("Warning, only first tag set will be plotted")
-
-        params = phil_scope.extract()
-        try:
-          sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
-        except AttributeError:
-          sg = "P1"
-        sg = "".join(sg.split()) # remove spaces
-        params.input.space_group = sg
-
-        iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
-        params.input.__inject__('iterable', iterable)
-        params.file_name = None
-        params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
-        params.show_plot = True
-        params.plot.legend = legend_list[0]
-        reject_outliers = self.parent.run_window.unitcell_tab.chk_reject_outliers.GetValue()
-        params.plot.outliers = not reject_outliers
-
-        sginfo = space_group_info(params.input.space_group)
-        cs = sginfo.group().crystal_system()
-        params.input.feature_vector = feature_vectors.get(cs)
-
-        if params.input.feature_vector:
-          figure = self.parent.run_window.unitcell_tab.figure
+        if not self.parent.run_window.unitcell_tab.plot_clusters:
           figure.clear()
-          plots = dbscan_plot_manager(params)
-          plots.wrap_3D_features(fig = figure, embedded = True)
+          plotter.plot_uc_histogram(
+            info_list=info_list,
+            legend_list=legend_list,
+            xsize=(sizex-115)/82, ysize=(sizey-115)/82,
+            high_vis=self.parent.high_vis,
+            iqr_ratio=iqr_ratio)
           figure.canvas.draw_idle()
-        else:
-          print("Unsupported crystal system", cs)
+        elif len(info_list) > 0:
+          from uc_metrics.clustering.step1 import phil_scope
+          from uc_metrics.clustering.step_dbscan3d import dbscan_plot_manager
+          from cctbx.sgtbx import space_group_info
 
-      self.post_refresh()
-      self.parent.run_window.unitcell_light.change_status('on')
-      time.sleep(5)
+          if len(info_list) > 1:
+            print("Warning, only first tag set will be plotted")
+
+          params = phil_scope.extract()
+          try:
+            sg = self.parent.run_window.unitcell_tab.trial.cell.lookup_symbol
+          except AttributeError:
+            sg = "P1"
+          sg = "".join(sg.split()) # remove spaces
+          params.input.space_group = sg
+
+          iterable = ["{a} {b} {c} {alpha} {beta} {gamma} ".format(**c) + sg for c in info_list[0]]
+          params.input.__inject__('iterable', iterable)
+          params.file_name = None
+          params.cluster.dbscan.eps = float(self.parent.run_window.unitcell_tab.plot_eps.eps.GetValue())
+          params.show_plot = True
+          params.plot.legend = legend_list[0]
+          reject_outliers = self.parent.run_window.unitcell_tab.chk_reject_outliers.GetValue()
+          params.plot.outliers = not reject_outliers
+
+          sginfo = space_group_info(params.input.space_group)
+          cs = sginfo.group().crystal_system()
+          params.input.feature_vector = feature_vectors.get(cs)
+
+          if params.input.feature_vector:
+            figure = self.parent.run_window.unitcell_tab.figure
+            figure.clear()
+            plots = dbscan_plot_manager(params)
+            plots.wrap_3D_features(fig = figure, embedded = True)
+            figure.canvas.draw_idle()
+            cluster_dir = os.path.join(self.parent.params.output_folder, "cluster")
+            if not os.path.isdir(cluster_dir):
+              os.makedirs(cluster_dir)
+            cluster_file = os.path.join(cluster_dir,"cluster_%s.pickle"%(plots.FV.sample_name.strip().replace(" ", "_")))
+            print("Writing cluster to", cluster_file)
+            import pickle
+            with open(cluster_file,"wb") as FF:
+              pickle.dump(
+                dict(populations=plots.pop,
+                     features=plots.FV.features_,
+                     info=plots.FV.output_info,
+                     sample=plots.FV.sample_name),FF
+                )
+          else:
+            print("Unsupported crystal system", cs)
+
+        self.post_refresh()
+        self.parent.run_window.unitcell_light.change_status('on')
+        time.sleep(15)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.unitcell_light.change_status('alert')
+        break
 
 # ------------------------------- Frames Sentinel ------------------------------- #
 
@@ -854,16 +902,21 @@ class FramesSentinel(Thread):
     db = xfel_db_application(self.parent.parent.params)
 
     while self.active:
-      trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
-      runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
-      print("Total events in trial", trial.trial, end=' ')
-      if len(runs) == 0:
-        runs = None
-      else:
-        print("runs", ", ".join(sorted([str(r.run) for r in runs])), end=' ')
-      print(":", len(db.get_all_events(trial, runs)))
-      self.post_refresh()
-      time.sleep(2)
+      try:
+        trial = db.get_trial(trial_number=int(self.parent.trial_number.ctr.GetStringSelection()))
+        runs = [db.get_run(run_number=int(r)) for r in self.parent.trial_runs.ctr.GetCheckedStrings()]
+        print("Total events in trial", trial.trial, end=' ')
+        if len(runs) == 0:
+          runs = None
+        else:
+          print("runs", ", ".join(sorted([str(r.run) for r in runs])), end=' ')
+        print(":", len(db.get_all_events(trial, runs)))
+        self.post_refresh()
+        time.sleep(2)
+      except Exception as e:
+        print(e)
+        #self.parent.run_window.frames_light.change_status('alert')
+        break
 
 # ------------------------------- Clustering --------------------------------- #
 
@@ -1003,11 +1056,16 @@ class MergingStatsSentinel(Thread):
     self.db = xfel_db_application(self.parent.params)
 
     while self.active:
-      self.parent.run_window.mergingstats_light.change_status('idle')
-      self.plot_stats_static()
-      self.post_refresh()
-      self.parent.run_window.mergingstats_light.change_status('on')
-      time.sleep(5)
+      try:
+        self.parent.run_window.mergingstats_light.change_status('idle')
+        self.plot_stats_static()
+        self.post_refresh()
+        self.parent.run_window.mergingstats_light.change_status('on')
+        time.sleep(5)
+      except Exception as e:
+        print(e)
+        self.parent.run_window.mergingstats_light.change_status('alert')
+        break
 
   def plot_stats_static(self):
     from xfel.ui.db.merging_log_scraper import Scraper
@@ -1827,6 +1885,10 @@ class JobsTab(BaseTab):
         focused_job_id = None
 
       self.data = {} # reset contents of the table, with unique row ids
+
+      # assemble updated list of job ids
+      job_list_ids = [self.job_list.GetItemData(i) for i in range(self.job_list.GetItemCount())]
+
       for job in e.jobs:
         if job.trial is not None:
           if job.trial.trial not in selected_trials: continue
@@ -1854,8 +1916,8 @@ class JobsTab(BaseTab):
         self.data[job.id] = [j, jt, ds, t, r, rg, tsk, sid, s]
         found_it = False
         # Look to see if item already in list
-        for i in range(self.job_list.GetItemCount()):
-          if self.job_list.GetItemData(i) == job.id:
+        for i, jid in enumerate(job_list_ids):
+          if jid == job.id:
             for k, item in enumerate(self.data[job.id]):
               self.job_list.SetItem(i, k, item)
             found_it = True
@@ -2957,7 +3019,7 @@ class MergingStatsTab(BaseTab):
       pass
     else:
       self.dataset_version.ctr.Append('All')
-      for version in dataset.versions:
+      for version in dataset.active_versions:
         self.dataset_version.ctr.Append(str(version.version))
       self.dataset_version.ctr.SetSelection(0)
       self.refresh_stats()
@@ -2967,9 +3029,9 @@ class MergingStatsTab(BaseTab):
     dataset = self.all_datasets[sel]
     self.dataset_name = dataset.name
     if self.dataset_version.ctr.GetSelection() == 0:
-      self.dataset_versions = [version.output_path() for version in dataset.versions]
+      self.dataset_versions = [version.output_path() for version in dataset.active_versions]
     else:
-      version = dataset.versions[self.dataset_version.ctr.GetSelection()-1]
+      version = dataset.active_versions[self.dataset_version.ctr.GetSelection()-1]
       self.dataset_name += " v%03d"%version.version
       self.dataset_versions = [version.output_path()]
 

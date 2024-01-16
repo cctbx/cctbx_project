@@ -600,7 +600,7 @@ class HKLview_3d:
         self.L = self.all_vectors[ self.normal_vecnr ][7]
         # Use half the length of the tncs vector to allow stepping through alternating weak and strong layers
         # of reflections in the GUI when orienting clip plane perpendicular to the tncs vector
-        if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
+        if "tNCS" in self.all_vectors[ self.normal_vecnr ][1]:
           self.L *= 0.5
 
         if self.params.clip_plane.auto_clip_width: # set the default spacing between layers of reflections
@@ -631,7 +631,7 @@ class HKLview_3d:
           abcvec = self.all_vectors[ self.normal_vecnr ][6]
           self.mprint("clip plane perpendicular to realspace vector: %s" %str(abcvec), verbose=1)
           infomsg = "Vector distance from origin: %d" %(self.params.clip_plane.hkldist)
-          if "TNCS" in self.all_vectors[ self.normal_vecnr ][1]:
+          if "tNCS" in self.all_vectors[ self.normal_vecnr ][1]:
             """ Clip plane width for tncs should be around 1/4 of the tncs modulation length
             as to ensure we only get the strongest/weakest reflections between clipnear, clipfar.
             The tncs modulation length is the inverse length of the tncs vector as defined in
@@ -650,7 +650,7 @@ class HKLview_3d:
             sphereradius = math.sqrt(dmincartvec[0]*dmincartvec[0] + dmincartvec[1]*dmincartvec[1]
                                       + dmincartvec[2]*dmincartvec[2] )
             n_tncs_layers = sphereradius*self.renderscale/self.L
-            infomsg = "TNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
+            infomsg = "tNCS layer: %d out of +-%2.2f" %(self.params.clip_plane.hkldist, n_tncs_layers)
 
           if "-fold" in self.all_vectors[ self.normal_vecnr ][1]:
             clipwidth = self.params.clip_plane.clip_width
@@ -659,7 +659,7 @@ class HKLview_3d:
 
         self.orient_vector_to_screen(orientvector)
         scalefactor = 1.0
-        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "TNCS":
+        if self.params.clip_plane.normal_vector_length_scale > 0 and self.all_vectors[self.normal_vecnr][1] != "tNCS":
           scalefactor = self.L/self.params.clip_plane.normal_vector_length_scale
           self.L = self.params.clip_plane.normal_vector_length_scale
         # Make a string of the equation of the plane of reflections
@@ -998,20 +998,38 @@ class HKLview_3d:
       bindata, dummy = self.get_matched_binarray(binner_idx)
       selection = flex.sort_permutation( bindata )
       bindata_sorted = bindata.select(selection)
-      # Get binvals by dividing bindata_sorted with nbins
-      # This yields approximately the same number of reflections in each bin
-      binvals = [bindata_sorted[0]] * (nbins+1) #
-      for i,e in enumerate(bindata_sorted):
-        idiv = int( (nbins)*float(i)/len(bindata_sorted))
-        binvals[idiv] = e
-      # If this didn't yield enough bins with different binvalues, say a multiplicity dataset
-      # with values between [1;6] but 95% reflections having multiplcity=2 then assign
-      # binvalues equidistantly between [1;6] even if some bins are empty
-      nuniquevalues = len(set(list(bindata)))
-      if len(set(binvals)) < nbins:
-        binincr = (max(bindata) - min(bindata))/nbins
-        for i in range(nbins):
-          binvals[i] = i*binincr + min(bindata)
+      # First check for case where all unique values could be covered by
+      # number of requested bins (e.g. multiplicity values)
+      uniquevalues = list((set(list(bindata))))
+      nuniquevalues = len(uniquevalues)
+      if nuniquevalues <= nbins:
+        uniquevalues.sort()
+        binvals = [uniquevalues[0]-1]
+        for ival in range(nuniquevalues):
+          binvals.append(uniquevalues[ival])
+        nuniquevalues = len(binvals)
+
+      else:
+        # Get binvals by dividing bindata_sorted with nbins
+        # This yields approximately the same number of reflections in each bin
+        binvals = [ bindata_sorted[0] ]
+        nbins_used = 0
+        float_data_used = 0.0
+        num_per_bin = float(len(bindata_sorted))/nbins
+        while nbins_used < nbins:
+          index = round(float_data_used + num_per_bin) - 1
+          threshold = bindata_sorted[index]
+          # Handle case where there are a lot of repeated values
+          float_data_used += num_per_bin
+          if threshold > binvals[-1]:
+            binvals.append(threshold)
+            nbins_used += 1
+          else:
+            # Split remaining data over remaining requested bins
+            num_per_bin = (float(len(bindata_sorted))-float_data_used)/(nbins-nbins_used)
+        if bindata_sorted[-1] > binvals[-1]:
+          binvals.append(bindata_sorted[-1])
+        nuniquevalues = len(binvals)
 
     binvals.sort()
     self.mprint("Bin thresholds are:\n" + str(binvals), verbose=1)
@@ -2507,8 +2525,9 @@ in the space group %s\nwith unit cell %s""" \
       (dummy1, infolst, dummy2, dummy3), dummy4, dummy5 = arrayinfo.get_selected_info_columns_from_phil()
 
       fomsarrays_idx = [(None, None)]
-      if infolst[1] in ['Map coeffs']:
-        fomsarrays_idx.extend( self.mapcoef_fom_dict.get(infolst[0]))
+      mextnd = self.mapcoef_fom_dict.get(infolst[0])
+      if infolst[1] in ['Map coeffs'] and mextnd is not None:
+        fomsarrays_idx.extend( mextnd )
       for (fomsarray, fidx) in fomsarrays_idx:
         lbl = arrayinfo.labelstr
         fomslabel = None

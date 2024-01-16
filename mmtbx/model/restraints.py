@@ -153,8 +153,6 @@ def get_restraints_from_model_via_grm(ligand_model,
     code = get_ligand_code_from_cif_object(cif_object)
     if code==resname:
       break
-  if cif_object:
-    pass
   else:
     mon_lib_srv = monomer_library.server.server()
     filename = mon_lib_srv.get_comp_comp_id_direct(resname, return_filename=True)
@@ -241,7 +239,7 @@ def get_restraints_from_model_via_grm(ligand_model,
         name = row['_chem_comp_atom.atom_id']
         atom = ag.get_atom(name)
         if atom is None:
-          print('Failed to find atom %s' % name)
+          print('  Failed to find atom %s' % name)
         else:
           for i in range(3):
             values[i].append('%.5f' % atom.xyz[i])

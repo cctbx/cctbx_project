@@ -16,6 +16,7 @@ parser.add_argument("--idx", type=int, default=0, choices=[0,1,2], help="diffuse
 parser.add_argument("--stencil", type=int, default=0, help="sets the stencil property in diffBragg (default is 0)")
 parser.add_argument("--laue", action="store_true", help="sets the laue group number for the spacegroup")
 parser.add_argument("--grad", choices=['sigma','gamma'], default='gamma')
+parser.add_argument("--orientation", choices=[0,1], type=int, help="selects orientation for aniso. model", default=0)
 
 import pylab as plt
 import os
@@ -48,6 +49,12 @@ with DeviceWrapper(0) as _:
     print("diffuse scattering stencil size set to %d" % S.D.stencil_size)
     S.D.diffuse_gamma = tuple(args.gamma)
     S.D.diffuse_sigma = tuple(args.sigma)
+    if args.orientation == 1:
+        ori = (1,0,0,0,1,0,0,0,1)
+    else:
+        ori = (0.70710678, -0.70710678, 0.0, 0.70710678, 0.70710678, 0.0, 0.0, 0.0, 1.0)
+    S.D.set_rotate_principal_axes(ori)
+    print("Set the orientation as:", S.D.get_rotate_principal_axes())
 
     default_gamma = args.gamma
     default_sigma = args.sigma
@@ -115,6 +122,7 @@ with DeviceWrapper(0) as _:
         assert l.rvalue > .9999  # this is definitely a line!
         assert l.slope > 0
         assert l.pvalue < 1e-6
+        assert l.intercept < 0.1*l.slope # line should go through origin
 
     det_sh = 1024, 1024
     print("OK")

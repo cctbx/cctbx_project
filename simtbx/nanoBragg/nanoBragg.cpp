@@ -216,6 +216,9 @@ nanoBragg::init_defaults()
         exit(9);
     };
 
+    /* write cbf files in int precision? */
+    cbf_int = false;
+
     /* optional file stuff, to be removed eventually? */
     matfilename = NULL;
     hklfilename = NULL;

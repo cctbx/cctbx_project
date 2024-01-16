@@ -1,5 +1,5 @@
 ##################################################################################
-#                Copyright 2021-2022 Richardson Lab at Duke University
+#                Copyright 2021-2023 Richardson Lab at Duke University
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
-
+from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -45,7 +45,7 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #       flex<flex<vec3>> positions,
 #       flex<flex<probe.ExtraAtomInfo>> extraInfos,
 #       flex<flex<bool>> deleteMes,
-#       flex<float> preferenceEnergies
+#       std::vector<double> preferenceEnergies
 #    )
 #       The atoms element has a list of all of the atoms to be adjusted.
 #       The other elements each have a list of entries, where there is one entry
@@ -53,15 +53,20 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #     outer list is per entry and the inner list is per atom in the atoms element,
 #     each with a corresponding list index.
 #       The positions element has the new location of each atom in each set of positions.
+#     This array may be shorter in length than the number of atoms because
+#     some Movers do not need to change the position for all atoms (for flips, all atoms
+#     are involved in fixup but not moved during optimization).  The index in
+#     this array will match the index in the atoms array so the earliest atoms will be
+#     changed if a subset is present.
 #       The extraInfos element has the new ExtraAtomInfo for each atom in each set of positions.
-#     This array may be shorter in length than the number of atoms (any may be empty) because
-#     some Movers to not need to change the information for any or all atoms.  The index in
+#     This array may be shorter in length than the number of atoms (and may be empty) because
+#     some Movers do not need to change the information for any or all atoms.  The index in
 #     this array will match the index in the atoms array so the earliest atoms will be
 #     changed if a subset is present.
 #       The deleteMes element tells whether each atom in each set of positions should be
 #     deleted.  This means that it should be ignored in all calculations and also should be
 #     deleted from the model if this configuration is chosen.  This array may be shorter in
-#     length than the number of atoms (any may be empty) because some Movers to not need to
+#     length than the number of atoms (and may be empty) because some Movers do not need to
 #     change the information for any or all atoms.  The index in this array will match the
 #     index in the atoms array so the earliest atoms will be deleted if a subset is present.
 #       The preferenceEnergies entry holds an additional bias term that should be added to
@@ -70,6 +75,8 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #  - PositionReturn FinePositions(coarseIndex)
 #     The coarseIndex indicates the index (0 for the first) of the relevant coarse
 #       orientation.
+#     The list of atoms returned here must match the list returned for this index
+#       by CoarsePositions().
 #     The return values are the same as for CoarsePositions and they list potential
 #       fine motions around the particular coarse position (not including the position
 #       itself).  This function can be used by optimizers that wish to do heavy-weight
@@ -110,17 +117,19 @@ from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydroge
 #
 # The InteractionGraph.py script provides functions for determining which pairs of
 # Movers have overlaps between movable atoms.
-#
 
 ##################################################################################
-class PositionReturn(object):
-  # Return type from CoarsePosition() and FinePosition() calls.
-  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
-    self.atoms = atoms
-    self.positions = positions
-    self.extraInfos = extraInfos
-    self.deleteMes = deleteMes
-    self.preferenceEnergies = preferenceEnergies
+import boost_adaptbx.boost.python as bp
+bp.import_ext("mmtbx_reduce_ext")
+from mmtbx_reduce_ext import PositionReturn
+#class PositionReturn(object):
+#  # Return type from CoarsePosition() and FinePosition() calls.
+#  def __init__(self, atoms, positions, extraInfos, deleteMes, preferenceEnergies):
+#    self.atoms = atoms
+#    self.positions = positions
+#    self.extraInfos = extraInfos
+#    self.deleteMes = deleteMes
+#    self.preferenceEnergies = preferenceEnergies
 
 ##################################################################################
 class FixUpReturn(object):
@@ -245,7 +254,7 @@ class _MoverRotator(object):
     # specified offset from a 0 dihedral angle.  The other atoms maintain their relative rotations
     # with the conventional atom.
     for atom in atoms:
-      atom.xyz = _rotateAroundAxis(atom, axis, offset + dihedral)
+      atom.xyz = RotateAtomDegreesAroundAxisDir(axis[0], axis[1], atom, offset + dihedral)
 
     # Make a list of coarse angles to try based on the coarse range (inclusive
     # for negative and exclusive for positive) and the step size.  We always
@@ -309,7 +318,7 @@ class _MoverRotator(object):
     for agl in angles:
       atoms = flex.vec3_double()
       for atm in self._atoms:
-        atoms.append(_rotateAroundAxis(atm, self._axis, agl))
+        atoms.append(RotateAtomDegreesAroundAxisDir(self._axis[0], self._axis[1], atm, agl))
       poses.append(atoms)
     return poses;
 
@@ -369,7 +378,7 @@ class _MoverRotator(object):
       return "Unrecognized state . ."
     else:
       fineOffset = 0
-      if fineIndex is not None:
+      if fineIndex is not None and fineIndex >= 0:
         fineOffset = self._fineAngles[fineIndex]
       angle = self._offset + self._coarseAngles[coarseIndex] + fineOffset
       while angle > 180: angle -= 360
@@ -378,9 +387,11 @@ class _MoverRotator(object):
 
 ##################################################################################
 class MoverSingleHydrogenRotator(_MoverRotator):
-  def __init__(self, atom, bondedNeighborLists, hParameters, potentialAcceptors = [],
-                  coarseStepDegrees = 10.0,
-                  fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
+  def __init__(self, atom, bondedNeighborLists, extraAtomInfoMap,
+                hParameters, potentialAcceptors = [],
+                potentialTouches = [],
+                coarseStepDegrees = 10.0,
+                fineStepDegrees = 1.0, preferredOrientationScale = 1.0):
     """ A Mover that rotates a single Hydrogen around an axis from its bonded partner
        to the single bonded partner of its partner.  This is designed for use with OH,
        SH, and SeH configurations.  For partner-partner atoms that are bonded to a
@@ -394,17 +405,22 @@ class MoverSingleHydrogenRotator(_MoverRotator):
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
        bonded atoms.  Can be obtained by calling probe.Helpers.getBondedNeighborLists().
+       :param extraAtomInfoMap: probe.ExtraAtomInfoMap that can be used to look
+       up the information for atoms.  Can be obtained by calling
+       mmtbx.probe.Helpers.getExtraAtomInfo().
        :param hParameters: List indexed by sequence ID that stores the riding
        coefficients for hydrogens that have associated dihedral angles.  This can be
        obtained by calling model.setup_riding_h_manager() and then model.get_riding_h_manager().
        :param potentialAcceptors: A flex array of atoms that are nearby potential acceptors.
        Coarse orientations are added that aim the hydrogen in the direction of these potential
        partners.
+       :param potentialTouches: A flex array of atoms that are nearby potential touches/clashes.
        :param coarseStepDegrees: The coarse step to take.
        :param fineStepDegrees: The fine step to take.
        :param preferredOrientationScale: How much to scale the preferred-orientation
        energy by before adding it to the total.
     """
+    # @todo All callers and tests
 
     # Check the conditions to make sure we've been called with a valid atom.  This is a hydrogen with
     # a single bonded neighbor that has a single other bonded partner that has 2-3 other bonded friends.
@@ -470,14 +486,33 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       preferredOrientationScale = preferredOrientationScale)
 
     # Now add orientations that point in the direction of the potential acceptors.
-    # @todo The original C++ code aimed only at these (or near them for clashes) and in a
-    # direction far from clashes.  We may need to do this for speed reasons and to reduce the
-    # number of elements in each clique, but for now we try all coarse orientations and all
-    # acceptor directions.
+    # Then select from the original angles the one that has the best contact with
+    # any touching atoms that is at least the coarse step size away from pointing
+    # towards an acceptor.
+    # We replace the original coarse angles with this set of 1+ angles to reduce the
+    # number of angles to check and to ensure that we always check potential acceptors.
 
-    # Compute the dihedral angle from the Hydrogen to the potential acceptor through
+    ###########################
+    # Helper utility function to sort atoms consistently from run to run so that we get
+    # the same ordering on coarse angles.
+    def atomID(a):
+      # Return the ID of the atom, which includes its chain, residue name,
+      # residue number, atom name, and alternate separated by spaces. This
+      # is used to sort the atoms. This must work in the case where we have
+      # test atoms that are not completely fleshed out.
+      try:
+        return ( a.parent().parent().parent().id + a.parent().resname +
+          str(a.parent().parent().resseq_as_int()) + a.name + a.parent().altloc )
+      except Exception:
+        return ""
+    #
+    ###########################
+
+    # Compute the dihedral angle from the Hydrogen to each potential acceptor through
     # the partner and neighbor.  This is the amount to rotate the hydrogen by.
-    for a in potentialAcceptors:
+    # Sort these so that we get the same order each time the program is run.
+    acceptorAngles = []
+    for a in sorted(potentialAcceptors, key=lambda x:atomID(x)):
       sites = [ atom.xyz, partner.xyz, neighbor.xyz, a.xyz ]
       degrees = scitbx.math.dihedral_angle(sites=sites, deg=True)
       # The degrees can be None in degenerate cases.  We avoid adding an entry in that case.
@@ -485,10 +520,56 @@ class MoverSingleHydrogenRotator(_MoverRotator):
       # constructor, so our dihedral measurement here is with respect to that new location.
       # This means that we merely have to add the degrees offset to its current rotation.
       if degrees is not None:
-        self._coarseAngles.append(degrees)
-        # Recompute the coarse and fine positions given the new angle we want to test
-        self._coarsePositions = self._computeCoarsePositions()
-        self._finePositions = self._computeFinePositions()
+        acceptorAngles.append(degrees)
+
+    # Find the coarse angle that has the least best contact with potential touches
+    # which may also be one of the acceptors (for a weak hydrogen bond, the score
+    # can be better for a touch than for an overlap).
+    # This is the one whose gap is closest to 0.
+    bestTouchAngle = 0
+    bestTouchGap = 1e100
+    ra = extraAtomInfoMap.getMappingFor(atom).vdwRadius
+    for i, ang in enumerate(self._coarseAngles):
+      # Find minimum gap with clashing atoms at this angle. This number is
+      # negative when there is a clash. It reports the atom that we're most
+      # in contact with at this angle.
+      minGap = 1e100
+      for pt in potentialTouches:
+        rt = extraAtomInfoMap.getMappingFor(pt).vdwRadius
+        # Measure from the first atom's position (the Hydrogen) at this position to the potential touch
+        distance = (rvec3(self._coarsePositions.positions[i][0]) - rvec3(pt.xyz)).length()
+        gap = distance - (ra + rt)
+        if gap < minGap:
+          minGap = gap
+      # Find the minimum gap distance that is closest to zero, either
+      # above or below zero. This is the one with the best just-touch
+      # value.
+      if abs(minGap) < bestTouchGap:
+        bestTouchGap = abs(minGap)
+        bestTouchAngle = ang
+
+    # Check every coarse angle to see whether it is at least 45 degrees away from
+    # any of the acceptor angles or the best touch angle.  If it is, then we add
+    # it to the list of coarse angles to try. This ensures that we try at least
+    # sparsely in all directions.
+
+    sofar = [bestTouchAngle]
+    sofar.extend(acceptorAngles)
+    for ang in self._coarseAngles:
+      minAng = 360
+      for a in sofar:
+        diff = abs(a - ang)
+        if diff < minAng:
+          minAng = diff
+      if minAng >= 45:
+        sofar.append(ang)
+
+    # Replace the coarse angles with the ones that we have found.
+    self._coarseAngles = sofar
+
+    # Recompute the coarse and fine positions given the new angles we want to test
+    self._coarsePositions = self._computeCoarsePositions()
+    self._finePositions = self._computeFinePositions()
 
 ##################################################################################
 class MoverNH3Rotator(_MoverRotator):
@@ -561,8 +642,7 @@ class MoverNH3Rotator(_MoverRotator):
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends.
+    # conventional one of them to point away from the conventional one of the friends.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
@@ -636,8 +716,7 @@ class MoverAromaticMethylRotator(_MoverRotator):
     axis = flex.vec3_double([partner.xyz, normal])
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends plus 90 degrees.
+    # conventional one of them to point away from the conventional one of the friends plus 90 degrees.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
@@ -724,8 +803,7 @@ class MoverTetrahedralMethylRotator(_MoverRotator):
     def preferenceFunction(degrees): return 0.1 + 0.1 * math.cos(degrees * (math.pi/180) * (360/120))
 
     # Move the Hydrogens so that they are in one of the preferred locations by rotating the
-    # conventional (lowest in sort order) of them to point away from the conventional (lowest
-    # sort order) of the friends.
+    # conventional one of them to point away from the conventional one of the friends.
     conventionalH, conventionalFriend = dihedralChoicesForRotatableHydrogens(hydrogens,
       hParameters, friends)
     sites = [ conventionalH.xyz, partner.xyz, neighbor.xyz, conventionalFriend.xyz ]
@@ -889,7 +967,8 @@ class MoverAmideFlip(object):
     newPos[2] = oxygen.xyz
     newPos[3] = nh2Atom.xyz
 
-    self._coarsePositions = [ startPos, newPos ]
+    # Only consider the first 5 atoms when optimizing, the four that move and the one they may shield
+    self._coarsePositions = [ startPos[:5], newPos[:5] ]
 
     #########################
     # Compute the list of Fixup returns.
@@ -941,8 +1020,8 @@ class MoverHisFlip(object):
     """Constructs a Mover that will handle flipping a Histidine ring.
        This Mover uses a simple swap of the center positions of the heavy atoms (with
        repositioning of the Hydrogens to lie in the same directions)
-       for its testing, but during FixUp it adjusts the bond lengths per
-       Protein Science Vol 27:293-315.
+       for its testing, but during FixUp it adjusts the bond lengths and angles for
+       additional atoms per Protein Science Vol 27:293-315.
        :param ne2Atom: NE2 atom within the Histidine ring.
        :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
        structure that the atom from the first parameter interacts with that lists all of the
@@ -1138,10 +1217,12 @@ class MoverHisFlip(object):
     self._coarsePositions = []
     if self._enabledFlipStates & 1:
       for i in range(4):
-        self._coarsePositions.append(startPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(startPos[:9])
     if self._enabledFlipStates & 2:
       for i in range(4):
-        self._coarsePositions.append(newPos)
+        # Only move the first 9 atoms when optimizing, the ones that move and the one they may shield.
+        self._coarsePositions.append(newPos[:9])
 
     #########################
     # Compute the list of Fixup returns.
@@ -1293,6 +1374,7 @@ def _rotateOppositeFriend(atom, axis, partner, friend):
 
   return nearPoint + distFromNearPoint * normalizedOffset
 
+from mmtbx_reduce_ext import RotatePointDegreesAroundAxisDir
 def _rotateAroundAxis(atom, axis, degrees):
   '''Rotate the atom about the specified axis by the specified number of degrees.
      :param atom: iotbx.pdb.hierarchy.atom or scitbx::vec3<double> or
@@ -1314,10 +1396,12 @@ def _rotateAroundAxis(atom, axis, degrees):
 
   # The axis of rotation for this function is specified as the two ends of the axis.
   # The axis passed in has the point around which to rotate and the direction vector
-  # from the origin, so we need to add those.
-  return lvec3(scitbx.matrix.rotate_point_around_axis(
-      axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
-      point = pos, angle = degrees, deg = True))
+  # from the origin, so we need to add those together to get the other end of the axis.
+  # (This is done in the C++ code by the RotatePointDegreesAroundAxisDir function.)
+  return lvec3(RotatePointDegreesAroundAxisDir(axis[0], axis[1], pos, degrees))
+  #return lvec3(scitbx.matrix.rotate_point_around_axis(
+  #    axis_point_1 = axis[0], axis_point_2 = rvec3(axis[0]) + rvec3(axis[1]),
+  #    point = pos, angle = degrees, deg = True))
 
 def _rotateHingeDock(movableAtoms, hingeIndex, firstDockIndex, secondDockIndex, alphaCarbon):
   '''Perform the three-step rotate-hinge-dock calculation described in
@@ -1654,6 +1738,13 @@ def Test():
     bondedNeighborLists[f1] = [ p ]
     bondedNeighborLists[f2] = [ p ]
 
+    # Prepare our extraAtomInfoMap
+    atoms = c.atoms()
+    extras = []
+    for a in atoms:
+      extras.append(probe.ExtraAtomInfo())
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
+
     # Add a non-bonded potential acceptor atom at 13 degrees rotation towards the Y axis from
     # the X axis.
     acc = pdb.hierarchy.atom()
@@ -1670,7 +1761,7 @@ def Test():
     hParams = {}
     hParams[h.i_seq] = item
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams, [acc])
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, extrasMap, hParams, [acc])
 
     # Check for hydrogen rotated into -X plane at a distance of sqrt(2) from Z axis.
     # It should have been rotated 180 degrees from f1 because f1 is the conventional branch based on its name.
@@ -1763,6 +1854,13 @@ def Test():
     bondedNeighborLists[f2] = [ p ]
     bondedNeighborLists[f3] = [ p ]
 
+    # Prepare our extraAtomInfoMap
+    atoms = c.atoms()
+    extras = []
+    for a in atoms:
+      extras.append(probe.ExtraAtomInfo())
+    extrasMap = probe.ExtraAtomInfoMap(atoms, extras)
+
     # Construct a stand-in riding-coefficients-producing hParams object that will provide an
     # appropriate dihedral atom for the hydrogen to use.
     class Item:
@@ -1773,7 +1871,7 @@ def Test():
     hParams = {}
     hParams[h.i_seq] = item
 
-    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, hParams)
+    mover = MoverSingleHydrogenRotator(h, bondedNeighborLists, extrasMap, hParams)
 
     # Check for a hydrogen on the -X axis at a distance of sqrt(2) from Z axis,
     # it should have picked f1 as the conventional friend to be opposite to based on its name.

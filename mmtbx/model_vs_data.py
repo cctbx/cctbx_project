@@ -137,7 +137,7 @@ def run(args,
   #
   scattering_table = params.scattering_table
   exptl_method = pdb_inp.get_experiment_type()
-  if(exptl_method is not None) and ("NEUTRON" in exptl_method):
+  if exptl_method.is_neutron():
     scattering_table = "neutron"
   model.setup_scattering_dictionaries(
     scattering_table = scattering_table,

@@ -105,7 +105,7 @@ class rotamer_ensemble(residue):
 
 class rotalyze(validation):
   __slots__ = validation.__slots__ + ["n_allowed", "n_allowed_by_model", "n_favored", "n_favored_by_model", "out_percent",
-        "outlier_threshold", "data_version"]
+        "outlier_threshold", "data_version", "percent_favored","percent_allowed"]
   program_description = "Analyze protein sidechain rotamers"
   output_header = "residue:occupancy:score%:chi1:chi2:chi3:chi4:"
   output_header+= "evaluation:rotamer"
@@ -223,6 +223,14 @@ class rotalyze(validation):
                   self.results.append(result)
     out_count, out_percent = self.get_outliers_count_and_fraction()
     self.out_percent = out_percent * 100.0
+    assert abs(self.percent_outliers - self.out_percent) < 1.e-6
+    self.percent_favored, self.percent_allowed = 0, 0
+    if(self.n_total>0):
+      self.percent_favored  = self.n_favored * 100. / self.n_total
+      self.percent_allowed  = self.n_allowed * 100. / self.n_total
+      # Checksum assert
+      assert abs(self.percent_favored+self.percent_allowed+
+                 self.percent_outliers-100.) < 1.e-6
 
   def evaluateScore(self, value, model_id=""):
     if value >= ALLOWED_THRESHOLD :
@@ -282,8 +290,11 @@ class rotalyze(validation):
     frame.Show()
     return frame
 
-  def as_JSON(self):
-    data = {"validation_type": "rotalyze"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rotalyze"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}

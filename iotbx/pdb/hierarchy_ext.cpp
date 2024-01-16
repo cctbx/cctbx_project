@@ -62,7 +62,7 @@ namespace {
   {
     typedef atom_group w_t;
 
-    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_SMALL_STR_GET_SET(altloc)
+    IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(altloc)
     IOTBX_PDB_HIERARCHY_DATA_WRAPPERS_STD_STRING_GET_SET(resname)
 
     static
@@ -443,6 +443,8 @@ namespace {
         .def("atoms", &w_t::atoms, (arg("interleaved_conf")=0))
         .def("reset_atom_i_seqs", &w_t::reset_atom_i_seqs)
         .def("sort_atoms_in_place", &w_t::sort_atoms_in_place)
+        .def("fits_in_pdb_format", &w_t::fits_in_pdb_format, (
+          arg("use_hybrid36")=true))
         .def("atoms_with_i_seq_mismatch", &w_t::atoms_with_i_seq_mismatch)
         .def("atoms_reset_serial", &w_t::atoms_reset_serial, (
           arg("interleaved_conf")=0,

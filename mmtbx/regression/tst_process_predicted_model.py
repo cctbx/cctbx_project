@@ -98,7 +98,7 @@ def tst_01(log = sys.stdout):
 
   model_info = process_predicted_model(m, params, mark_atoms_to_keep_with_occ_one= True)
   models = model_info.model_list
-  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1506528458663525,1.1506528458663525],[84,88],[88,84]):
+  for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1506528458663525,1.1506528458663525],[85,87],[87,85]):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
@@ -170,13 +170,14 @@ def tst_01(log = sys.stdout):
   # Check splitting model into domains
   print("\nSplitting model into domains", file = log)
   model_info = split_model_into_compact_units(model,
+      adjust_domain_size = False,
       maximum_fraction_close = 0.5, log = log)
 
   chainid_list = model_info.chainid_list
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
   assert len(chainid_list) == 2
 
-  # Check processing and splitting model into domains
+  # Check processing and splitting model into domains, adjusting domain size automatically
   print("\nProcessing and splitting model into domains", file = log)
 
   params.process_predicted_model.maximum_fraction_close = 0.5
@@ -185,6 +186,7 @@ def tst_01(log = sys.stdout):
   params.process_predicted_model.maximum_rmsd = 1.5
   params.process_predicted_model.split_model_by_compact_regions = True
   params.process_predicted_model.maximum_domains = 3
+  params.process_predicted_model.adjust_domain_size = True
   model_info = process_predicted_model(m,  params, log = log)
 
   chainid_list = model_info.chainid_list
@@ -195,7 +197,41 @@ def tst_01(log = sys.stdout):
   mmm = model_info.model.as_map_model_manager()
   mmm.write_model('model_with_groupings.pdb')
   residue_count = []
-  expected_residue_count = [84, 88]
+  expected_residue_count =  [85, 87]
+  for chainid in chainid_list:
+    selection_string = "chain %s" %(chainid)
+    ph = model_info.model.get_hierarchy()
+    asc1 = ph.atom_selection_cache()
+    sel = asc1.selection(selection_string)
+    m1 = model_info.model.select(sel)
+    n = m1.get_hierarchy().overall_counts().n_residues
+    print("Residues in %s: %s" %(
+      selection_string, n),
+       file = log)
+    residue_count.append(n)
+  assert expected_residue_count == residue_count
+
+  # Check processing and splitting model into domains
+  print("\nProcessing and splitting model into domains without adjusting domain size", file = log)
+
+  params.process_predicted_model.maximum_fraction_close = 0.5
+  params.process_predicted_model.b_value_field_is = 'plddt'
+  params.process_predicted_model.remove_low_confidence_residues = True
+  params.process_predicted_model.maximum_rmsd = 1.5
+  params.process_predicted_model.split_model_by_compact_regions = True
+  params.process_predicted_model.maximum_domains = 3
+  params.process_predicted_model.adjust_domain_size = False
+  model_info = process_predicted_model(m,  params, log = log)
+
+  chainid_list = model_info.chainid_list
+  print("Segments found: %s" %(" ".join(chainid_list)), file = log)
+  assert len(chainid_list) == 2
+
+
+  mmm = model_info.model.as_map_model_manager()
+  mmm.write_model('model_with_groupings.pdb')
+  residue_count = []
+  expected_residue_count =  [84, 88]
   for chainid in chainid_list:
     selection_string = "chain %s" %(chainid)
     ph = model_info.model.get_hierarchy()
@@ -223,10 +259,35 @@ def tst_01(log = sys.stdout):
   model_info = process_predicted_model(pae_m,  params, pae_matrix = pae_matrix,
      log = log)
 
+def tst_02(log = sys.stdout):
+
+
+  # Split into domains with chunks
+  print("\nSplitting into domains with chunks",
+    file = log)
+
+  dm = DataManager()
+  dm.set_overwrite(True)
+  model = dm.get_model(model_file)
+  model.add_crystal_symmetry_if_necessary()
+
+  # Check splitting model into domains
+  print("\nSplitting model into domains", file = log)
+  model_info = split_model_into_compact_units(model,
+      break_into_chunks_if_length_is = model.overall_counts().n_residues,
+      chunk_size = 70,
+      overlap_size =  50,
+      adjust_domain_size = True,
+      maximum_fraction_close = 0.5, log = log)
+
+  chainid_list = model_info.chainid_list
+  print("Segments found: %s" %(" ".join(chainid_list)), file = log)
+  assert len(chainid_list) == 2
 
 if __name__ == "__main__":
 
   t0 = time.time()
   tst_01()
+  tst_02()
   print ("Time:", time.time()-t0)
   print ("OK")

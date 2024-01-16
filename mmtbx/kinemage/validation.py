@@ -392,12 +392,20 @@ def get_residue_bonds(residue):
   return bonds
 
 def make_probe_dots(hierarchy, keep_hydrogens=False):
-  probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
-                               'probe', 'exe', 'probe')
-  reduce_command = os.path.join(os.environ['LIBTBX_BUILD'],
-                                'reduce', 'exe', 'reduce') \
-                   + ' -DB %s -ALLALT' % \
-                     libtbx.env.under_dist('reduce', 'reduce_wwPDB_het_dict.txt')
+  probe_command = None
+  reduce_command = None
+  if os.environ.get('LIBTBX_BUILD') is not None:
+    probe_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                                'probe', 'exe', 'probe')
+    reduce_command = os.path.join(os.environ['LIBTBX_BUILD'],
+                                  'reduce', 'exe', 'reduce')
+  elif os.environ.get('LIBTBX_PREFIX') is not None:
+    probe_command = os.path.join(os.environ['LIBTBX_PREFIX'], 'bin', 'probe')
+    reduce_command = os.path.join(os.environ['LIBTBX_PREFIX'], 'bin', 'reduce')
+  if probe_command is None or reduce_command is None:
+    return ""
+  reduce_command += ' -DB %s -ALLALT' % \
+                    libtbx.env.under_dist('reduce', 'reduce_wwPDB_het_dict.txt')
   probe = \
     '%s -4H -quiet -sepworse -noticks -nogroup -dotmaster -mc -self "ALL" -' %\
     probe_command

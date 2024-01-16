@@ -4,6 +4,7 @@ import os
 from mmtbx.validation.cbetadev import cbetadev
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import Sorry
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -54,20 +55,17 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
+  def get_results(self):
+    return self.results
 
-    result = cbetadev(
-      pdb_hierarchy = hierarchy,
-      outliers_only = self.params.outliers_only,
-      out           = self.logger)
-    return result.as_JSON()
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-    result = cbetadev(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.results = cbetadev(
       pdb_hierarchy=hierarchy,
       outliers_only=self.params.outliers_only,
       apply_phi_psi_correction=self.params.cbetadev.apply_phi_psi_correction,
@@ -76,14 +74,14 @@ Example:
       out=self.logger,
       quiet=False)
     if self.params.cbetadev.output == "kin":
-      self.logger.write(result.as_kinemage())
+      self.logger.write(self.results.as_kinemage())
     elif self.params.cbetadev.output == "bullseye":
       filebase = os.path.basename(self.data_manager.get_model_names()[0])
-      self.logger.write(result.as_bullseye_kinemage(pdbid=filebase))
+      self.logger.write(self.results.as_bullseye_kinemage(pdbid=filebase))
     elif self.params.json:
       print(self.get_results_as_JSON())
     elif self.params.verbose:
       #pdb_file_str = os.path.basename(self.params.model)[:-4]
       #get input file name from data manager, strip file extension
       pdb_file_str = os.path.basename(self.data_manager.get_model_names()[0])[:-4]
-      result.show_old_output(out=self.logger, prefix=pdb_file_str, verbose=True)
+      self.results.show_old_output(out=self.logger, prefix=pdb_file_str, verbose=True)

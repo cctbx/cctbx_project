@@ -11,6 +11,15 @@ sequence2 = "LVKFYGRKFVLLFMDQKTFDKYESKLETSGYEKFFIFCMASPISPA"
 name1 = "gi|159164330|pdb|2E6P|A"
 name2 = "Q8E5Q5_STRA3"
 description_tmplt = "Chain %s, Solution Structure Of The Ig-Like Domain"
+a3m_text = \
+""">101
+GSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSME
+>101
+GSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSMEYGDNDSECAAGEFEDAAARDKEFSSQFGSKLKSANDKGLSAAMVVKSFTDQIQLSME
+>547|Ga0247610_10220222_2|-972|01 87 0.781 2.428E-13 15 68 600 55 105 328
+---------------MGVK-FTDsQIQHLMEYGDND--WSDAEFEDAAARDKEFSSQF-SKLKSANDKGL---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+"""
 
 class test_sequence(unittest.TestCase):
 
@@ -1793,6 +1802,12 @@ class test_hhalign_parser(unittest.TestCase):
     for ( o, e ) in zip( i1, i2 ):
       self.assertAlmostEqual( o, e, digits )
 
+def exercise_read_a3m():
+  from iotbx.bioinformatics import read_a3m
+  a3m_info = read_a3m(a3m_text)
+  assert a3m_info is not None
+  assert a3m_info.sequence_length == 600, a3m_info.sequence_length
+
 def exercise_guess_chain_types():
   from iotbx.bioinformatics import \
      guess_chain_types_from_sequences,text_from_chains_matching_chain_type
@@ -2048,6 +2063,7 @@ alltests = unittest.TestSuite(
   )
 
 if __name__ == "__main__":
+  exercise_read_a3m()
   exercise_guess_chain_types()
   exercise_merge_sequences()
   exercise_random_sequences()

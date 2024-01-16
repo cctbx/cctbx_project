@@ -4,6 +4,45 @@
 #include "diffBraggKOKKOS.h"
 #include "diffBragg_kokkos_kernel.h"
 
+#define PRINTOUT(flag, function, ...) \
+    if (flag) {                       \
+        function<true>(__VA_ARGS__);  \
+    } else {                          \
+        function<false>(__VA_ARGS__); \
+    }                                 \
+
+uint32_t combine_refinement_flags(flags& db_flags) {
+    uint32_t refine_flag = 0;
+    refine_flag |= db_flags.refine_diffuse * REFINE_DIFFUSE;
+    refine_flag |= db_flags.refine_fcell * REFINE_FCELL;
+    refine_flag |= db_flags.refine_eta * REFINE_ETA;
+    refine_flag |= db_flags.refine_Umat[0] * REFINE_UMAT1;
+    refine_flag |= db_flags.refine_Umat[1] * REFINE_UMAT2;
+    refine_flag |= db_flags.refine_Umat[2] * REFINE_UMAT3;
+    refine_flag |= db_flags.refine_Ncells_def * REFINE_NCELLS_DEF;
+    refine_flag |= db_flags.refine_Ncells[0] * REFINE_NCELLS1;
+    refine_flag |= db_flags.refine_Ncells[1] * REFINE_NCELLS2;
+    refine_flag |= db_flags.refine_Ncells[2] * REFINE_NCELLS3;
+    refine_flag |= db_flags.refine_panel_rot[0] * REFINE_PANEL_ROT1;
+    refine_flag |= db_flags.refine_panel_rot[1] * REFINE_PANEL_ROT2;
+    refine_flag |= db_flags.refine_panel_rot[2] * REFINE_PANEL_ROT3;
+    refine_flag |= db_flags.refine_panel_origin[0] * REFINE_PANEL_ORIGIN1;
+    refine_flag |= db_flags.refine_panel_origin[1] * REFINE_PANEL_ORIGIN2;
+    refine_flag |= db_flags.refine_panel_origin[2] * REFINE_PANEL_ORIGIN3;
+    refine_flag |= db_flags.refine_lambda[0] * REFINE_LAMBDA1;
+    refine_flag |= db_flags.refine_lambda[1] * REFINE_LAMBDA2;
+    refine_flag |= db_flags.refine_Bmat[0] * REFINE_BMAT1;
+    refine_flag |= db_flags.refine_Bmat[1] * REFINE_BMAT2;
+    refine_flag |= db_flags.refine_Bmat[2] * REFINE_BMAT3;
+    refine_flag |= db_flags.refine_Bmat[3] * REFINE_BMAT4;
+    refine_flag |= db_flags.refine_Bmat[4] * REFINE_BMAT5;
+    refine_flag |= db_flags.refine_Bmat[5] * REFINE_BMAT6;
+    refine_flag |= db_flags.refine_fp_fdp * REFINE_FP_FDP;
+    refine_flag |= db_flags.refine_Icell * REFINE_ICELL;
+
+    return refine_flag;
+}
+
 void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     int Npix_to_model,
     std::vector<unsigned int>& panels_fasts_slows,
@@ -20,7 +59,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     timer_variables& TIMERS) {
     if (db_cryst.phi0 != 0 || db_cryst.phisteps > 1) {
         printf(
-            "PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%d\n",
+            "PHI (goniometer position) not supported in GPU code: phi0=%f phisteps=%d, phistep=%f\n",
             db_cryst.phi0, db_cryst.phisteps, db_cryst.phistep);
         exit(-1);
     }
@@ -33,7 +72,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     Kokkos::Tools::popRegion();
 
     double time;
-    struct timeval t1, t2;  //, t3 ,t4;
+    struct timeval t1, t;  // t1 times larger blocks of code, and t is used to time shorter blocks of code
     gettimeofday(&t1, 0);
 
     //  determine if we need to allocate pixels, and how many.
@@ -201,18 +240,19 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
         resize(m_panels_fasts_slows, db_cu_flags.Npix_to_allocate * 3);
 
+        m_refine_flag = combine_refinement_flags(db_flags);
+        if (m_refine_flag) {
+            resize(m_manager_dI, db_cu_flags.Npix_to_allocate);
+            resize(m_manager_dI2, db_cu_flags.Npix_to_allocate);
+        }
+
         m_npix_allocated = db_cu_flags.Npix_to_allocate;
         Kokkos::Tools::popRegion();
     }  // END of allocation
 
     bool ALLOC = !m_device_is_allocated;  // shortcut variable
 
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_alloc += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT ALLOCATING (TOTAL):  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_alloc, t1, TIMERS.recording); //, db_flags.verbose > 1);
 
     // ALLOC = false;
     //  BEGIN COPYING DATA
@@ -221,33 +261,36 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
 
     //  END step position
     if (db_flags.Fhkl_gradient_mode){
-        transfer(m_data_residual, d_image.residual, Npix_to_model);
-        transfer(m_data_variance, d_image.variance, Npix_to_model);
-        transfer(m_data_trusted, d_image.trusted, Npix_to_model);
-        transfer(m_data_freq, d_image.freq, Npix_to_model);
+        kokkostbx::transfer_vector2kokkos(m_data_residual, d_image.residual);
+        kokkostbx::transfer_vector2kokkos(m_data_variance, d_image.variance);
+        kokkostbx::transfer_vector2kokkos(m_data_trusted, d_image.trusted);
+        kokkostbx::transfer_vector2kokkos(m_data_freq, d_image.freq);
     }
 
     if (db_flags.Fhkl_have_scale_factors && ALLOC){
-        transfer(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
+        kokkostbx::transfer_vector2kokkos(m_FhklLinear_ASUid, db_cryst.FhklLinear_ASUid);
     }
 
+    Kokkos::Tools::pushRegion("BEGIN Fhkl have scale factors");
+    gettimeofday(&t, 0);
     if (db_flags.Fhkl_have_scale_factors){
-        //SCITBX_ASSERT(db_beam.number_of_sources == db_beam.Fhkl_channels.size());
-        transfer(m_Fhkl_channels, db_beam.Fhkl_channels);
-        transfer(m_Fhkl_scale, d_image.Fhkl_scale);
+        if (db_cu_flags.update_Fhkl_scales || ALLOC){
+            kokkostbx::transfer_vector2kokkos(m_Fhkl_scale, d_image.Fhkl_scale);
+            db_cu_flags.update_Fhkl_scales = false;
+        }
+        if (db_cu_flags.update_Fhkl_channels || ALLOC){
+            kokkostbx::transfer_vector2kokkos(m_Fhkl_channels, db_beam.Fhkl_channels);
+            db_cu_flags.update_Fhkl_channels = false;
+        }
         ::Kokkos::deep_copy(m_Fhkl_scale_deriv, 0);
-
-        // for (int i=0; i < d_image.Fhkl_scale.size(); i++){
-            // cp.Fhkl_scale[i] = d_image.Fhkl_scale[i];
-            // if (db_flags.Fhkl_gradient_mode){
-            //     cp.Fhkl_scale_deriv[i] = 0;
-            // }
-        // }
     }
+    Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_Fhkl_scale, t, TIMERS.recording); //, db_flags.verbose > 1);
 
     //  BEGIN sources
     Kokkos::Tools::pushRegion("BEGIN sources");
-    if (db_cu_flags.update_sources || ALLOC || FORCE_COPY) {
+    gettimeofday(&t, 0);
+    if (db_cu_flags.update_sources || ALLOC) {
         int source_count = local_beam.number_of_sources;
         kokkostbx::transfer_double2kokkos(m_source_X, local_beam.source_X, source_count);
         kokkostbx::transfer_double2kokkos(m_source_Y, local_beam.source_Y, source_count);
@@ -268,12 +311,15 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         Kokkos::fence();
         if (db_flags.verbose > 1)
             printf("H2D sources\n");
+        db_cu_flags.update_sources = false;
     }
+    easy_time(TIMERS.copy_sources, t, TIMERS.recording); //, db_flags.verbose > 1);
 
     Kokkos::Tools::popRegion();
     //  END sources
 
     //  UMATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("UMATS");
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_UMATS, db_cryst.UMATS);
@@ -285,18 +331,24 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying Umats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_umats, t, TIMERS.recording); //, db_flags.verbose > 1);
     //  END UMATS
 
+    gettimeofday(&t, 0);
     if (db_cu_flags.update_umats || ALLOC || FORCE_COPY) {
         auto Amat_init = db_cryst.eig_U*db_cryst.eig_B*1e10*(db_cryst.eig_O.transpose());
+        auto host_AMATS = Kokkos::create_mirror_view(m_AMATS);
         for (int i=0; i<db_cryst.UMATS_RXYZ.size(); ++i) {
-            m_AMATS(i) = to_mat3((db_cryst.UMATS_RXYZ[i]*Amat_init).transpose());
+            host_AMATS(i) = to_mat3((db_cryst.UMATS_RXYZ[i]*Amat_init).transpose());
         }
+        Kokkos::deep_copy(m_AMATS, host_AMATS);
         if (db_flags.verbose > 1)
             printf("H2D Done copying Amats\n");
     }
+    easy_time(TIMERS.copy_amats, t, TIMERS.recording);
 
     //  BMATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BMATS");
     if (db_cu_flags.update_dB_mats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_dB_Mats, db_cryst.dB_Mats);
@@ -305,9 +357,11 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying dB_Mats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_bmats, t, TIMERS.recording);
     //  END BMATS
 
     //  ROT MATS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("ROT MATS");
     if (db_cu_flags.update_rotmats || ALLOC || FORCE_COPY) {
         transfer_KOKKOS_MAT3(m_RotMats, db_cryst.RotMats);
@@ -317,11 +371,13 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying rotmats\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_rotmats, t, TIMERS.recording);
     //  END ROT MATS
 
     //  DETECTOR VECTORS
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("DETECTOR VECTORS");
-    if (db_cu_flags.update_detector || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_detector || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_fdet_vectors, local_det.fdet_vectors);
         kokkostbx::transfer_vector2kokkos(m_sdet_vectors, local_det.sdet_vectors);
         kokkostbx::transfer_vector2kokkos(m_odet_vectors, local_det.odet_vectors);
@@ -329,25 +385,30 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_vector2kokkos(m_close_distances, local_det.close_distances);
         if (db_flags.verbose > 1)
             printf("H2D Done copying detector vectors\n");
+        db_cu_flags.update_detector = false;
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_det, t, TIMERS.recording);
     //  END  DETECTOR VECTORS
 
+    gettimeofday(&t, 0);
     if (ALLOC || FORCE_COPY) {
-        transfer(m_nominal_hkl, db_cryst.nominal_hkl);
-        transfer(m_atom_data, db_cryst.atom_data);
+        kokkostbx::transfer_vector2kokkos(m_nominal_hkl, db_cryst.nominal_hkl);
+        kokkostbx::transfer_vector2kokkos(m_atom_data, db_cryst.atom_data);
         if (db_flags.verbose > 1)
             printf("H2D Done copying atom data\n");
 
-        transfer(m_fpfdp, db_cryst.fpfdp);
-        transfer(m_fpfdp_derivs, db_cryst.fpfdp_derivs);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp, db_cryst.fpfdp);
+        kokkostbx::transfer_vector2kokkos(m_fpfdp_derivs, db_cryst.fpfdp_derivs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying fprime and fdblprime\n");
     }
+    easy_time(TIMERS.copy_nomhkl, t, TIMERS.recording);
 
-    //  BEGIN REFINEMENT FLAGS
-    Kokkos::Tools::pushRegion("BEGIN REFINMENT FLAGS");
-    if (db_cu_flags.update_refine_flags || ALLOC || FORCE_COPY) {
+    //  BEGIN UPDATE REFINEMENT
+    gettimeofday(&t, 0);
+    Kokkos::Tools::pushRegion("BEGIN UPDATE REFINMENT");
+    if (db_cu_flags.update_refine_flags || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_refine_Umat, db_flags.refine_Umat);
         kokkostbx::transfer_vector2kokkos(m_refine_Ncells, db_flags.refine_Ncells);
         kokkostbx::transfer_vector2kokkos(m_refine_panel_origin, db_flags.refine_panel_origin);
@@ -356,35 +417,44 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
         kokkostbx::transfer_vector2kokkos(m_refine_Bmat, db_flags.refine_Bmat);
         if (db_flags.verbose > 1)
             printf("H2D Done copying refinement flags\n");
+        db_cu_flags.update_refine_flags=false;
     }
     Kokkos::Tools::popRegion();
-    //  END REFINEMENT FLAGS
+    easy_time(TIMERS.copy_flags, t, TIMERS.recording);
+    //  END UPDATE REFINEMENT
 
     //  BEGIN Fhkl
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("Begin Fhkl");
-    if (db_cu_flags.update_Fhkl || ALLOC || FORCE_COPY) {
-        transfer(m_Fhkl, db_cryst.FhklLinear);
+    if (db_cu_flags.update_Fhkl || ALLOC) {
+        kokkostbx::transfer_vector2kokkos(m_Fhkl, db_cryst.FhklLinear);
         if (db_flags.complex_miller) {
-            transfer(m_Fhkl2, db_cryst.Fhkl2Linear);
+            kokkostbx::transfer_vector2kokkos(m_Fhkl2, db_cryst.Fhkl2Linear);
         }
         if (db_flags.verbose > 1)
             printf("H2D Done copying step Fhkl\n");
+        db_cu_flags.update_Fhkl = false;
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_fhkl, t, TIMERS.recording);
     //  END Fhkl
 
     //  BEGIN panel derivative vecs
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN panel derivative vecs");
-    if (db_cu_flags.update_panel_deriv_vecs || ALLOC || FORCE_COPY) {
+    if (db_cu_flags.update_panel_deriv_vecs || ALLOC) {
         kokkostbx::transfer_vector2kokkos(m_dF_vecs, local_det.dF_vecs);
         kokkostbx::transfer_vector2kokkos(m_dS_vecs, local_det.dS_vecs);
         if (db_flags.verbose > 1)
             printf("H2D Done copying step panel derivative vectors\n");
+        db_cu_flags.update_panel_deriv_vecs=false;
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_detderiv, t, TIMERS.recording);
     //  END panel derivative vecs
 
     //  BEGIN panels fasts slows
+    gettimeofday(&t, 0);
     Kokkos::Tools::pushRegion("BEGIN panels fasts slows");
     if (db_cu_flags.update_panels_fasts_slows || ALLOC || FORCE_COPY) {
         kokkostbx::transfer_vector2kokkos(m_panels_fasts_slows, panels_fasts_slows);
@@ -392,14 +462,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
             printf("H2D Done copying panels_fasts_slows\n");
     }
     Kokkos::Tools::popRegion();
+    easy_time(TIMERS.copy_pfs, t, TIMERS.recording);
     //  END panels fasts slows
 
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_copy_to_dev += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT COPYING DATA HOST->DEV:  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_copy_to_dev, t1, TIMERS.recording);
 
     m_device_is_allocated = true;
     ::Kokkos::fence("after copy to device");
@@ -412,61 +478,105 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     if (db_cryst.fpfdp.size() == 0) {
         num_atoms = 0;
     }
-    // int sm_size = number_of_sources*5*sizeof(CUDAREAL);
-    // gpu_sum_over_steps<<<numblocks, blocksize, sm_size >>>(
+
     bool aniso_eta = db_cryst.UMATS_RXYZ.size() != db_cryst.UMATS_RXYZ_prime.size();
     bool use_nominal_hkl = !db_cryst.nominal_hkl.empty();
-    kokkos_sum_over_steps(
-        Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
-        m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
-        m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
-        m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
-        m_d2_panel_orig_images, m_d_fp_fdp_images, db_steps.Nsteps, db_flags.printout_fpixel,
-        db_flags.printout_spixel, db_flags.printout, db_cryst.default_F, local_det.oversample,
-        db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
-        local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
-        local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
-        db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
-        local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
-        to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
-        m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
-        m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
-        local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
-        db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
-        to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
-        db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
-        db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
-        db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
-        db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
-        m_Fhkl, m_Fhkl2, m_refine_Bmat, m_refine_Ncells, db_flags.refine_Ncells_def,
-        m_refine_panel_origin, m_refine_panel_rot, db_flags.refine_fcell, m_refine_lambda,
-        db_flags.refine_eta, m_refine_Umat, m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
-        m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
-        db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
-        m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, db_flags.refine_fp_fdp, m_nominal_hkl,
-        use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), db_flags.use_diffuse,
-        m_d_diffuse_gamma_images, m_d_diffuse_sigma_images, db_flags.refine_diffuse,
-        db_flags.gamma_miller_units, db_flags.refine_Icell, db_flags.wavelength_img,
-        db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
-        db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
-        db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
-        m_data_residual, m_data_variance,
-        m_data_freq, m_data_trusted,
-        m_FhklLinear_ASUid,
-        m_Fhkl_channels,
-        m_Fhkl_scale, m_Fhkl_scale_deriv
-        );
+    if ((db_flags.printout==false) &&
+       (db_flags.complex_miller==false) &&
+       (db_flags.compute_curvatures==false) &&
+       (m_refine_flag==REFINE_FCELL) &&
+       (db_flags.use_diffuse==false) &&
+       (db_flags.wavelength_img==false) &&
+       (db_flags.Fhkl_gradient_mode==false) &&
+       (db_flags.Fhkl_errors_mode==false) &&
+       (db_flags.using_trusted_mask==false) &&
+       (db_beam.Fhkl_channels.empty()==true) &&
+       (db_flags.Fhkl_have_scale_factors)==false) {
+        kokkos_sum_over_steps<false, false, false, REFINE_FCELL, false, false, false, false, false, true, false>(
+            Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
+            m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
+            m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
+            m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
+            m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
+            db_flags.printout_fpixel, db_flags.printout_spixel, /*db_flags.printout,*/ db_cryst.default_F,
+            local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
+            local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+            local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+            db_cryst.phisteps, (int) db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
+            local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
+            to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
+            m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
+            m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+            local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
+            db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
+            to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
+            db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
+            db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
+            db_cryst.dmin, db_cryst.fudge, /*db_flags.complex_miller,*/ db_flags.verbose,
+            db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, /*db_flags.compute_curvatures,*/
+            m_Fhkl, m_Fhkl2, /*m_refine_flag,*/
+            m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+            m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
+            db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
+            m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
+            use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), to_mat3(db_cryst.rotate_principal_axes),
+            /*db_flags.use_diffuse,*/ m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
+            db_flags.gamma_miller_units, /*db_flags.wavelength_img,*/
+            db_cryst.laue_group_num, db_cryst.stencil_size, /*db_flags.Fhkl_gradient_mode,*/
+            /*db_flags.Fhkl_errors_mode,*/ /*db_flags.using_trusted_mask,*/ /*db_beam.Fhkl_channels.empty(),*/
+            /*db_flags.Fhkl_have_scale_factors,*/ db_cryst.Num_ASU,
+            m_data_residual, m_data_variance,
+            m_data_freq, m_data_trusted,
+            m_FhklLinear_ASUid,
+            m_Fhkl_channels,
+            m_Fhkl_scale, m_Fhkl_scale_deriv);
+    } else {
+        kokkos_sum_over_steps(
+            Npix_to_model, m_panels_fasts_slows, m_floatimage, m_wavelenimage, m_d_Umat_images,
+            m_d2_Umat_images, m_d_Bmat_images, m_d2_Bmat_images, m_d_Ncells_images, m_d2_Ncells_images,
+            m_d_fcell_images, m_d2_fcell_images, m_d_eta_images, m_d2_eta_images, m_d_lambda_images,
+            m_d2_lambda_images, m_d_panel_rot_images, m_d2_panel_rot_images, m_d_panel_orig_images,
+            m_d2_panel_orig_images, m_d_fp_fdp_images, m_manager_dI, m_manager_dI2, db_steps.Nsteps,
+            db_flags.printout_fpixel, db_flags.printout_spixel, db_flags.printout, db_cryst.default_F,
+            local_det.oversample, db_flags.oversample_omega, local_det.subpixel_size, local_det.pixel_size,
+            local_det.detector_thickstep, local_det.detector_thick, m_close_distances,
+            local_det.detector_attnlen, local_det.detector_thicksteps, local_beam.number_of_sources,
+            db_cryst.phisteps, db_cryst.UMATS.size(), db_flags.use_lambda_coefficients,
+            local_beam.lambda0, local_beam.lambda1, to_mat3(db_cryst.eig_U), to_mat3(db_cryst.eig_O),
+            to_mat3(db_cryst.eig_B), to_mat3(db_cryst.RXYZ), m_dF_vecs, m_dS_vecs, m_UMATS_RXYZ, m_UMATS_RXYZ_prime,
+            m_UMATS_RXYZ_dbl_prime, m_RotMats, m_dRotMats, m_d2RotMats, m_UMATS, m_dB_Mats, m_dB2_Mats,
+            m_AMATS, m_source_X, m_source_Y, m_source_Z, m_source_lambda, m_source_I,
+            local_beam.kahn_factor, db_cryst.Na, db_cryst.Nb, db_cryst.Nc, db_cryst.Nd,
+            db_cryst.Ne, db_cryst.Nf, db_cryst.phi0, db_cryst.phistep,
+            to_vec3(db_cryst.spindle_vec), local_beam.polarization_axis, db_cryst.h_range,
+            db_cryst.k_range, db_cryst.l_range, db_cryst.h_max, db_cryst.h_min,
+            db_cryst.k_max, db_cryst.k_min, db_cryst.l_max, db_cryst.l_min,
+            db_cryst.dmin, db_cryst.fudge, db_flags.complex_miller, db_flags.verbose,
+            db_flags.only_save_omega_kahn, db_flags.isotropic_ncells, db_flags.compute_curvatures,
+            m_Fhkl, m_Fhkl2, m_refine_flag,
+            m_fdet_vectors, m_sdet_vectors, m_odet_vectors,
+            m_pix0_vectors, db_flags.nopolar, db_flags.point_pixel, local_beam.fluence,
+            db_cryst.r_e_sqr, db_cryst.spot_scale, Npanels, aniso_eta, db_flags.no_Nabc_scale,
+            m_fpfdp, m_fpfdp_derivs, m_atom_data, num_atoms, m_nominal_hkl,
+            use_nominal_hkl, to_mat3(db_cryst.anisoU), to_mat3(db_cryst.anisoG), to_mat3(db_cryst.rotate_principal_axes),
+            db_flags.use_diffuse, m_d_diffuse_gamma_images, m_d_diffuse_sigma_images,
+            db_flags.gamma_miller_units, db_flags.wavelength_img,
+            db_cryst.laue_group_num, db_cryst.stencil_size, db_flags.Fhkl_gradient_mode,
+            db_flags.Fhkl_errors_mode, db_flags.using_trusted_mask, db_beam.Fhkl_channels.empty(),
+            db_flags.Fhkl_have_scale_factors, db_cryst.Num_ASU,
+            m_data_residual, m_data_variance,
+            m_data_freq, m_data_trusted,
+            m_FhklLinear_ASUid,
+            m_Fhkl_channels,
+            m_Fhkl_scale, m_Fhkl_scale_deriv
+            );
+    }
 
     ::Kokkos::fence("after kernel call");
 
     if (db_flags.verbose > 1)
         printf("KERNEL_COMPLETE gpu_sum_over_steps\n");
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_kernel += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT(KERNEL):  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_kernel, t1, TIMERS.recording);
 
     gettimeofday(&t1, 0);
     //  COPY BACK FROM DEVICE
@@ -482,12 +592,10 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
     if (db_flags.Fhkl_gradient_mode){
         if (db_flags.Fhkl_errors_mode){
-            for (int i=0; i < d_image.Fhkl_hessian.size(); i++)
-                d_image.Fhkl_hessian[i]= m_Fhkl_scale_deriv(i);
+            kokkostbx::transfer_kokkos2vector(d_image.Fhkl_hessian, m_Fhkl_scale_deriv);
         }
         else{
-            for (int i=0; i < d_image.Fhkl_scale_deriv.size(); i++)
-                d_image.Fhkl_scale_deriv[i]= m_Fhkl_scale_deriv(i);
+            kokkostbx::transfer_kokkos2vector(d_image.Fhkl_scale_deriv, m_Fhkl_scale_deriv);
         }
     }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0) {
@@ -526,12 +634,7 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     }
 
     Kokkos::Tools::popRegion();
-    gettimeofday(&t2, 0);
-    time = (1000000.0 * (t2.tv_sec - t1.tv_sec) + t2.tv_usec - t1.tv_usec) / 1000.0;
-    if (TIMERS.recording)
-        TIMERS.cuda_copy_from_dev += time;
-    if (db_flags.verbose > 1)
-        printf("TIME SPENT COPYING BACK :  %3.10f ms \n", time);
+    easy_time(TIMERS.cuda_copy_from_dev, t1, TIMERS.recording);
     ::Kokkos::fence("After copy to host");
 
     Kokkos::Tools::popRegion();

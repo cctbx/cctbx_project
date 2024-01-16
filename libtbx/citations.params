@@ -1392,6 +1392,17 @@ citation {
 }
 
 citation {
+  article_id = phenix.mosaic
+  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev A
+  title = Accounting for nonuniformity of bulk-solvent: a mosaic model
+  journal = None
+  volume = None
+  pages = None
+  year = 2030
+  doi_id = None
+}
+
+citation {
   article_id = phenix.validation_cryoem
   authors = Afonine PV, Klaholz BP, Moriarty NW, Poon BK, Sobolev OV, Terwilliger TC, Adams PD, Urzhumtsev A
   title = New tools for the analysis and validation of cryo-EM maps and atomic models
@@ -1605,4 +1616,16 @@ citation {
   year = 2021
   doi_id =  doi:10.1038/s41586-021-03819-2
   pmid = 34265844
+}
+
+citation {
+  article_id = qmr_ligand
+  authors = Liebschner D, Moriarty NW, Poon BK, Adams PD
+  title = In situ ligand restraints from quantum-mechanical methods
+  journal = Acta Cryst. D
+  volume = 79
+  pages = 100-110
+  year = 2023
+  pmid = 36762856
+  doi_id = 10.1107/S2059798323000025
 }

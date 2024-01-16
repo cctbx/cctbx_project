@@ -15,7 +15,6 @@ from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 from cctbx import miller, crystal, sgtbx
 from dials.array_family import flex
 from dxtbx.model import ExperimentList
-from xfel.merging.application.utils.memory_usage import get_memory_usage
 
 
 COMM = MPI.COMM_WORLD
@@ -80,9 +79,12 @@ class TargetFuncEnsemble:
         min_info = "it=%d | t/it=%.4fs | F=%10.7g | sigZ=%10.7g" \
                   % (self.niter,self.ave_t_per_iter, f, ave_zscore_sig)
         if COMM.rank==0:
-            print(min_info, flush=True)
+            #print(min_info, flush=True)
+            MAIN_LOGGER.info(min_info)
         if modelers.save_freq is not None and self.niter % modelers.save_freq == 0:
             modelers.save_up(self.x0, ref_iter=self.niter)
+            if modelers.SIM.D.record_timings:
+                modelers.SIM.D.show_timings()
 
         return f
 
@@ -106,12 +108,13 @@ def target_func(x, modelers):
     g_fhkl = np.zeros(num_fhkl_params)
     zscore_sigs = []
     fcell_params = x[-num_fhkl_params:]
-    for i_shot in modelers:
+    for ii, i_shot in enumerate(modelers):
         shot_modeler = modelers[i_shot]
         shot_x_slice = modelers.x_slices[i_shot]
         per_shot_params = x[shot_x_slice]
         x_for_shot = np.hstack((per_shot_params, fcell_params))
-        model_bragg, Jac = hopper_utils.model(x_for_shot, shot_modeler, modelers.SIM, compute_grad=True, update_spectrum=True)
+        model_bragg, Jac = hopper_utils.model(x_for_shot, shot_modeler, modelers.SIM, compute_grad=True, update_spectrum=True,
+                                              update_Fhkl_scales=ii==0)
 
         model_pix = model_bragg + shot_modeler.all_background
 
@@ -367,6 +370,8 @@ class DataModelers:
 
         self._set_mtz_data()
         self.set_device_id()
+
+    def alloc_max_pix_per_shot(self):
         self._mpi_set_allocation_volume()
 
     def _get_fhkl_vary_flags(self):
@@ -387,10 +392,13 @@ class DataModelers:
         all_nominal_hkl = set()
         for mod in self.data_modelers.values():
             all_nominal_hkl = all_nominal_hkl.union(mod.hi_asu_perpix)
+        #TODO : is this memory intensive?
         all_nominal_hkl = COMM.gather(all_nominal_hkl)
         if COMM.rank == 0:
+            # TODO: all_nominal_hkl is P1, asu_map_int is non-P1
             all_nominal_hkl = set(all_nominal_hkl[0]).union(*all_nominal_hkl[1:])
-            asu_inds_to_vary = [self.SIM.asu_map_int[h] for h in all_nominal_hkl]
+            all_nominal_hkl_sym = utils.map_hkl_list(all_nominal_hkl, True, self.SIM.crystal.symbol)
+            asu_inds_to_vary = [self.SIM.asu_map_int[h] for h in all_nominal_hkl_sym]
         else:
             asu_inds_to_vary = None
         asu_inds_to_vary = set(COMM.bcast(asu_inds_to_vary))
@@ -564,13 +572,6 @@ class DataModelers:
                 mod.params.tag = temp
 
 
-def mem_usage(rank):
-    if COMM.rank == rank:
-        memMB = get_memory_usage()
-        host = socket.gethostname()
-        MAIN_LOGGER.info("Rank %d reporting memory usage: %f GB on Rank 0 node %s" % (COMM.rank, memMB / 1e3, host))
-
-
 def get_gather_name(exper_name, gather_dir):
     gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
     gathered_name += "_withData.refl"
@@ -579,9 +580,10 @@ def get_gather_name(exper_name, gather_dir):
 
 
 def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictions',
-                gather_dir=None):
+                gather_dir=None, exper_idx_key="exp_idx"):
 
-    work_distribution = prep_dataframe(pandas_table, refls_key)
+    work_distribution = prep_dataframe(pandas_table, refls_key,
+                                       res_ranges_string=params.refiner.res_ranges)
     COMM.barrier()
     num_exp = len(pandas_table)
     first_exper_file = pandas_table[exper_key].values[0]
@@ -600,7 +602,9 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
                          % (COMM.size, num_exp, num_exp))
 
     exper_names = pandas_table[exper_key]
-    assert len(exper_names) == len(set(exper_names))
+    exper_ids = pandas_table[exper_idx_key]
+    name_ids = list(zip(exper_names, exper_ids))
+    assert len(name_ids) == len(set(name_ids))
     worklist = work_distribution[COMM.rank]
     MAIN_LOGGER.info("EVENT: begin loading inputs")
 
@@ -609,20 +613,22 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
     Fhkl_model = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
     Fhkl_model_indices = set(Fhkl_model.indices())
     shot_modelers = hopper_ensemble_utils.DataModelers()
-    for ii, i_exp in enumerate(worklist):
-        exper_name = exper_names[i_exp]
+    for ii, i_df in enumerate(worklist):
+        exper_name = exper_names[i_df]
+        exper_id = int(exper_ids[i_df])
         MAIN_LOGGER.info("EVENT: BEGIN loading experiment list")
-        expt_list = ExperimentList.from_file(exper_name, check_format=params.refiner.check_expt_format)
+        check_format = not params.refiner.load_data_from_refl
+        expt = hopper_utils.DataModeler.exper_json_single_file(exper_name, exper_id, check_format)
+        expt_list = ExperimentList()
+        expt_list.append(expt)
         MAIN_LOGGER.info("EVENT: DONE loading experiment list")
-        if len(expt_list) != 1:
-            MAIN_LOGGER.critical("Input experiments need to have length 1, %s does not" % exper_name)
-        expt = expt_list[0]
         expt.detector = detector  # in case of supplied ref geom
 
-        exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name))
+        exper_dataframe = pandas_table.query("%s=='%s'" % (exper_key, exper_name)).query("%s==%d" % (exper_idx_key, exper_id))
 
         refl_name = exper_dataframe[refls_key].values[0]
         refls = flex.reflection_table.from_file(refl_name)
+        refls = refls.select(refls['id'] == exper_id)
 
         miller_inds = list( refls['miller_index'])
         is_not_000 = [h != (0, 0, 0) for h in miller_inds]
@@ -632,7 +638,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         refls = refls.select(refl_sel)
 
         exp_cry_sym = expt.crystal.get_space_group().type().lookup_symbol()
-        if exp_cry_sym.replace(" ", "") != params.space_group:
+        if params.space_group is not None and exp_cry_sym.replace(" ", "") != params.space_group:
             gr = sgtbx.space_group_info(params.space_group).group()
             expt.crystal.set_space_group(gr)
             #raise ValueError("Crystals should all have the same space group symmetry")
@@ -640,6 +646,7 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
         MAIN_LOGGER.info("EVENT: LOADING ROI DATA")
         shot_modeler = hopper_utils.DataModeler(params)
         shot_modeler.exper_name = exper_name
+        shot_modeler.exper_idx = exper_id
         shot_modeler.refl_name = refl_name
         shot_modeler.rank = COMM.rank
         if params.refiner.load_data_from_refl:
@@ -678,13 +685,13 @@ def load_inputs(pandas_table, params, exper_key="exp_name", refls_key='predictio
             continue
 
         shot_modeler.set_parameters_for_experiment(best=exper_dataframe)
-        shot_modeler.set_spectrum()
+        shot_modeler.set_spectrum(spectra_file=exper_dataframe.spectrum_filename.values[0])
         MAIN_LOGGER.info("Will simulate %d energy channels" % len(shot_modeler.nanoBragg_beam_spectrum))
 
         # verify this
         shot_modeler.Umatrices = [shot_modeler.E.crystal.get_U()]
 
-        mem_usage(0)
+        MAIN_LOGGER.info(utils.memory_report('Rank 0 reporting memory usage'))
         if COMM.rank==0:
             print("Finished loading image %d / %d" % (ii + 1, len(worklist)), flush=True)
 

@@ -31,7 +31,7 @@ class suite(residue):
     "angle","angles",
     "deltaMinus","epsilon","zeta","alpha","beta","gamma","delta",
     "bin", "cluster", "distance", "suiteness", "situation", "issue", "comment", "pointMaster", "pointColor",
-    "is_outlier",
+    "outlier",
     "atoms",
     "base"
   ]
@@ -56,7 +56,7 @@ class suite(residue):
     self.gamma = self.angles[5]
     self.delta = self.angles[6]
     #print(self.suiteclustername)
-    self.is_outlier = False #False by default, set True in suitealyze after computations if needed
+    self.outlier = False #False by default, set True in suitealyze after computations if needed
     self.atoms = atoms
     assert len(self.atoms) == 3, "wrong # of atom positions passed to suite"
     self.xyz = atoms[1]
@@ -73,9 +73,6 @@ class suite(residue):
       if angle < 0 or angle > 360:
         return False
     return True
-
-  #def is_outlier(self):
-  #  return self.is_outlier
 
   @property
   def suite(self):
@@ -204,7 +201,7 @@ class suitealyze(rna_geometry):
     self.results = compute(self.results)
     for result in self.results:
       if result.suite == "!!":
-        result.is_outlier=True
+        result.outlier=True
     if outliers_only:
       outlier_results = []
       for outlier in self.select_results(include_suites=["!!"]):
@@ -264,7 +261,7 @@ class suitealyze(rna_geometry):
     for result in self.select_results(model=model, chain=chain,
                                       include_suites=include_suites,
                                       exclude_suites=exclude_suites):
-      if result.is_outlier:
+      if result.is_outlier():
         continue
       elif s_min <= result.suiteness < s_max:
         count += 1
@@ -341,8 +338,11 @@ class suitealyze(rna_geometry):
     print(self.suiteness_summary_block(include_suites=["1a"]), file=out)
     print(self.suiteness_summary_block(exclude_suites=["1a","__"]), file=out)
 
-  def as_JSON(self):
-    data = {"validation_type": "rna_suites"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "rna_suites"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}
@@ -374,7 +374,7 @@ class suitealyze(rna_geometry):
       outlist.append(result.as_kinemage_label())
     outlist.append("@vectorlist {suites} color=gold width=4 nobutton master={suite outliers}")
     for result in self.results:
-      if result.is_outlier:
+      if result.is_outlier():
         outlist.append(result.as_kinemage_markup())
     return "\n".join(outlist)
 
@@ -448,6 +448,11 @@ class suitealyze(rna_geometry):
           local_altloc = self.local_altloc_from_atoms(list(self.get_res1atoms(residue_pair[0]).values()))
         if not (local_altloc == '' and local_altloc != conformer_altloc and conformer_altloc != first_altloc):
           res1atoms = self.get_res1atoms(residue_pair[0])
+          if res1atoms[" O2'"] is None:
+            # this residue is not RNA and should be skipped
+            prev_chain = chainid
+            prev_model = modelid
+            continue
           deltaMinus, epsilon, zeta, alpha, beta, gamma, delta = self.get_7_dihedrals(res0atoms, res1atoms)
           resid = {"model": modelid, "chain": chainid, "resseq": residue_pair[0].resseq, "icode": residue_pair[0].icode,
                    "alt": local_altloc, "resname": residue_pair[0].resname}
@@ -460,9 +465,15 @@ class suitealyze(rna_geometry):
       #first residue done, resume normal path
       if residue_pair.are_linked():
         res0atoms = self.get_res0atoms(residue_pair[0])
+        if res0atoms[" O2'"] is None:
+          # preceding residue is not RNA, pair should be treated as non-linked
+          res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None, " O2'": None}
       else:
-        res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None}
+        res0atoms = {" C5'": None, " C4'": None, " C3'": None, " O3'": None, " O2'":None}
       res1atoms = self.get_res1atoms(residue_pair[1])
+      if res1atoms[" O2'"] is None:
+        #this residue is not RNA and should be skipped
+        continue
 
       if conformer_altloc == '':
         local_altloc = ''
@@ -488,8 +499,8 @@ class suitealyze(rna_geometry):
   def local_altloc_from_atoms(self, atom_list):
     for atom in atom_list:
       if atom is not None:
-        altloc = atom.id_str()[9:10]
-        if altloc != " ":
+        altloc = atom.parent().altloc
+        if altloc != '':
           return altloc
     return ''
 
@@ -497,7 +508,8 @@ class suitealyze(rna_geometry):
     return {" C5'": residue.find_atom_by(name=" C5'"),
             " C4'": residue.find_atom_by(name=" C4'"),
             " C3'": residue.find_atom_by(name=" C3'"),
-            " O3'": residue.find_atom_by(name=" O3'")}
+            " O3'": residue.find_atom_by(name=" O3'"),
+            " O2'": residue.find_atom_by(name=" O2'"), }
 
   def get_res1atoms(self,residue):
     return {" P  ": residue.find_atom_by(name=" P  "),
@@ -505,7 +517,8 @@ class suitealyze(rna_geometry):
             " C5'": residue.find_atom_by(name=" C5'"),
             " C4'": residue.find_atom_by(name=" C4'"),
             " C3'": residue.find_atom_by(name=" C3'"),
-            " O3'": residue.find_atom_by(name=" O3'"), }
+            " O3'": residue.find_atom_by(name=" O3'"),
+            " O2'": residue.find_atom_by(name=" O2'"), }
 
   def get_7_dihedrals(self, res0atoms, res1atoms):
     deltaMinus = self.get_dihedral([res0atoms[" C5'"], res0atoms[" C4'"], res0atoms[" C3'"], res0atoms[" O3'"]])

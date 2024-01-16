@@ -2,6 +2,8 @@
 from __future__ import absolute_import, division, print_function
 import os
 import time
+import copy
+
 from libtbx.program_template import ProgramTemplate
 
 from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
@@ -15,14 +17,23 @@ from mmtbx.geometry_restraints.qi_utils import run_serial_or_parallel
 from mmtbx.geometry_restraints.qi_utils import get_hbonds_via_filenames
 from mmtbx.geometry_restraints.qi_utils import get_rotamers_via_filenames
 
-from mmtbx.refinement.energy_monitor import energies as energy_monitor
-
 import iotbx.pdb
 import iotbx.phil
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 
+from mmtbx.monomer_library.linking_setup import ad_hoc_single_metal_residue_element_types
+
 get_class = iotbx.pdb.common_residue_names_get_class
+
+def stepper(b,e,s):
+  b=float(b)
+  e=float(e)
+  s=float(s)
+  for i in range(100):
+    yield b
+    b+=s
+    if b>e: break
 
 def merge_water(filenames, chain_id='A'):
   hierarchies = []
@@ -42,9 +53,12 @@ def merge_water(filenames, chain_id='A'):
       for i, ag in enumerate(ags):
         ag.altloc='ABCDEF'[i]
         for atom in ag.atoms():
-          print(atom.format_atom_record())
           outl += '%s\n' % atom.format_atom_record()
+  print('-'*80)
   print(outl)
+  f=open('water.pdb', 'w')
+  f.write(outl)
+  del f
 
 def _add_HIS_H_atom_to_atom_group(ag, name):
   from mmtbx.ligands.ready_set_basics import construct_xyz
@@ -243,7 +257,11 @@ def get_selection_from_user(hierarchy, include_amino_acids=None):
   print('\n\n')
   for i, sel in enumerate(opts):
     print('    %2d : "%s"' % (i+1,sel))
-  rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
+  if len(opts)==1:
+    print('\n  Automatically selecting')
+    rc=opts[0]
+  else:
+    rc = input('\n  Enter selection by choosing number or typing a new one ~> ')
   try:
     rc = int(rc)
     rc = opts[rc-1]
@@ -281,17 +299,19 @@ Usage examples:
       .type = bool
     run_qmr = False
       .type = bool
-    randomise_selection = None
-      .type = float
     run_directory = None
-      .type = str
-    include_amino_acids = None
       .type = str
     iterate_NQH = HIS ASN GLN
       .type = choice
+    proton_energy_difference = None
+      .type = float
     only_i = None
       .type = int
+    step_buffer_radius = None
+      .type = str
     iterate_metals = None
+      .type = str
+    include_amino_acids = None
       .type = str
     each_amino_acid = False
       .type = bool
@@ -299,6 +319,8 @@ Usage examples:
       .type = bool
     nproc = 1
       .type = int
+    randomise_selection = None
+      .type = float
     verbose = False
       .type = bool
   }
@@ -333,7 +355,6 @@ Usage examples:
         rc = get_selection_from_user(model.get_hierarchy(),
                                      include_amino_acids=[resname])
         if rc.find('resname %s' % resname)>-1:
-          # self.params.qi.iterate_NQH=rc
           self.params.qi.format='qi'
         self.params.qi.selection = [rc]
     #
@@ -351,6 +372,7 @@ Usage examples:
     #
     # validate selection
     #
+    include_nearest_neighbours=False
     selection=None
     if len(self.params.qi.qm_restraints)!=0:
       selection = self.params.qi.qm_restraints[0].selection
@@ -361,6 +383,16 @@ Usage examples:
       selected_model = model.select(selection_array)
       print('Selected model  %s' % selected_model, file=log)
       self.data_manager.add_model('ligand', selected_model)
+      ags = selected_model.get_hierarchy().atom_groups()
+      names = []
+      for ag in ags: names.append(ag.resname.strip())
+      if len(names)==1:
+        if names[0] in ad_hoc_single_metal_residue_element_types:
+          include_nearest_neighbours=True
+
+    if self.params.qi.step_buffer_radius:
+      step_buffer_radius = self.params.qi.step_buffer_radius
+      assert len(step_buffer_radius.split(','))==3
     #
     # options
     #
@@ -376,13 +408,14 @@ Usage examples:
         if gc not in ['common_amino_acid', 'modified_amino_acid']: continue
         selection = 'chain %s and resid %s' % (rg.parent().id, rg.resseq.strip())
         qi_phil_string = self.get_single_qm_restraints_scope(selection)
-        qi_phil_string = self.set_all_write_to_true(qi_phil_string)
+        # qi_phil_string = self.set_all_write_to_true(qi_phil_string)
         # qi_phil_string = qi_phil_string.replace('run_in_macro_cycles = *first_only first_and_last all test',
         #                                         'run_in_macro_cycles = first_only *first_and_last all test')
         # qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                                 # 'include_nearest_neighbours_in_optimisation = True')
         qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                                 'ignore_x_h_distance_protein = True')
+        qi_phil_string = qi_phil_string.replace(' pdb_final_buffer', ' *pdb_final_buffer')
         print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
         outl += '%s' % qi_phil_string
       pf = '%s_all.phil' % (
@@ -394,18 +427,14 @@ Usage examples:
         f.write('%s\n' % line)
       f.write('}\n')
       del f
+      print('  phenix.refine %s %s qi.nproc=6' % (self.data_manager.get_default_model_name(),
+                                                  pf))
       return
 
     if self.params.qi.each_water:
-      print(self.params.qi.each_water)
-      merge_water(('1yjp.updated_cluster_final_A_8_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_9_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_10_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_11_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_12_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_13_3.5_C_PM6-D3H4.pdb',
-                   '1yjp.updated_cluster_final_A_14_3.5_C_PM6-D3H4.pdb'))
-      assert 0
+      # merge_water(['4ny6_cluster_final_A_101_3.5_C_PM6-D3H4.pdb',
+      #             '4ny6_cluster_final_A_102_3.5_C_PM6-D3H4.pdb'])
+      # assert 0
       hierarchy = model.get_hierarchy()
       outl = ''
       for rg in hierarchy.residue_groups():
@@ -447,7 +476,9 @@ Usage examples:
         for filenames in rc.final_pdbs:
           print(filenames)
           args.append(filenames[-1])
+        print('args'*10)
         print(args)
+        merge_water(args)
         assert 0
       return
 
@@ -465,7 +496,9 @@ Usage examples:
     if self.params.qi.write_qmr_phil:
       pf = self.write_qmr_phil(iterate_NQH=self.params.qi.iterate_NQH,
                                iterate_metals=self.params.qi.iterate_metals,
+                               step_buffer_radius=self.params.qi.step_buffer_radius,
                                output_format=self.params.qi.format,
+                               include_nearest_neighbours=include_nearest_neighbours,
                                )
       ih = ''
       if self.params.qi.iterate_NQH:
@@ -473,19 +506,44 @@ Usage examples:
         ih = ih.replace('  ',' ')
       if self.params.qi.iterate_metals:
         ih = 'iterate_metals="%s"' % self.params.qi.iterate_metals
+      if self.params.qi.step_buffer_radius:
+        ih = 'step_buffer_radius="%s"' % self.params.qi.step_buffer_radius
+
+      program = 'mmtbx.quantum_interface'
+      ih2 = ' run_qmr=True'
+      if self.params.qi.format=='qi':
+        ih2 += ' qi.nproc=%s' % self.params.qi.nproc
+      else:
+        program='phenix.refine'
+        ih2 = self.data_manager.get_default_model_name()
+        if ih2.endswith('.updated.pdb'):
+          ih2 = ih2.replace('.updated.pdb', '.mtz')
+        else:
+          ih2 = ' %s' % 'test.mtz'
 
       print('''
 
-      mmtbx.quantum_interface %s run_qmr=True %s %s
-      ''' % (self.data_manager.get_default_model_name(),
+      %s %s %s %s %s
+      ''' % (program,
+             self.data_manager.get_default_model_name(),
              ih,
-             pf))
+             pf,
+             ih2,
+             ))
       return
 
     if self.params.qi.run_directory:
       if not os.path.exists(self.params.qi.run_directory):
         os.mkdir(self.params.qi.run_directory)
       os.chdir(self.params.qi.run_directory)
+
+    if self.params.qi.run_qmr and self.params.qi.step_buffer_radius:
+      ph=selected_model.get_hierarchy()
+      for i, atom_group in enumerate(ph.atom_groups()):
+        id_str = atom_group.id_str()
+      assert i==0
+      rc = self.step_thru_buffer_radii(id_str=id_str, log=log)
+      return
 
     if ( self.params.qi.run_qmr and
          not (self.params.qi.iterate_NQH or
@@ -575,14 +633,13 @@ Usage examples:
                                 never_write_restraints=True,
                                 # never_run_strain=True,
                                 log=arg_log)
-        energies.append(res.energies[0])
+        energies.append(energies)
         units=res.units
         rmsds.append(res.rmsds[0][1])
         print('    Energy : %s %s' % (energies[-1],units), file=log)
         print('    Time   : %ds' % (time.time()-t0), file=log)
         print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
       else:
-        import copy
         params = copy.deepcopy(self.params)
         argstuples.append(( model,
                             params,
@@ -603,7 +660,6 @@ Usage examples:
       self.write_qmr_phil(iterate_NQH=True)
       print('Restart command with PHIL file')
       return
-    from mmtbx.geometry_restraints.quantum_interface import get_preamble
     nproc = self.params.qi.nproc
     preamble = get_preamble(None, 0, self.params.qi.qm_restraints[0])
     hierarchy = self.get_selected_hierarchy()
@@ -664,14 +720,13 @@ Usage examples:
                                 never_write_restraints=True,
                                 # never_run_strain=True,
                                 log=arg_log)
-        energies.append(res.energies[0])
+        energies.append(energies)
         units=res.units
         rmsds.append(res.rmsds[0][1])
         print('    Energy : %s %s' % (energies[-1],units), file=log)
         print('    Time   : %ds' % (time.time()-t0), file=log)
         print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
       else:
-        import copy
         params = copy.deepcopy(self.params)
         argstuples.append(( model,
                             params,
@@ -682,11 +737,12 @@ Usage examples:
                             ))
     results = run_serial_or_parallel(update_restraints, argstuples, nproc)
     for i, filename in enumerate(filenames):
+      filename=os.path.join('qm_work_dir', filename)
       assert os.path.exists(filename), ' Output %s missing' % filename
       results[i].filename = filename
     return results
 
-  def _process_energies(self, energies, units, resname='HIS'):
+  def _process_energies(self, energies, units, resname='HIS', energy_adjustment=None, log=None):
     te=[]
     adjust = []
     if resname=='HIS': adjust=[0,3]
@@ -696,16 +752,25 @@ Usage examples:
         if units.lower() in ['kcal/mol']:
           # energy-=247.80642 # Heat of formation
           # energy-=156.9
-          energy-=26.9295
+          energy+=26.9295
+          # energy+=94.51
           assert 0
         elif units.lower() in ['hartree']:
           energy+=0.5
+          assert 0
         elif units.lower() in ['ev']:
-          energy+=13.61
+          if energy_adjustment is None:
+            # energy_adjustment=13.61 # ???
+            # energy_adjustment=4.098 # 94.51 kcal/mol JM
+            energy_adjustment=5.157 # 118.931
+          energy+=energy_adjustment
         else:
           assert 0
       te.append(energy)
-    return te
+    outl=''
+    if resname=='HIS':
+      outl = '  Proton energy used : %0.4f %s' % (energy_adjustment, units)
+    return te, outl
 
   def iterate_ASN(self, log=None):
     def classify_NQ(args): pass
@@ -716,7 +781,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('ASN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('ASN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_GLN(self, log=None):
     def classify_NQ(args): pass
@@ -727,7 +793,8 @@ Usage examples:
                         log=log)
     if rc is None: return
     protonation = ['original', 'flipped']
-    self.process_flipped_jobs('GLN', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    self.process_flipped_jobs('GLN', rc, protonation=protonation, nproc=nproc, log=log)
 
   def iterate_histidine(self, log=None):
     rc=self.iterate_NQH('HIS',
@@ -743,48 +810,58 @@ Usage examples:
                     'HD1 only flipped',
                     'HE2 only flipped',
     ]
-    self.process_flipped_jobs('HIS', rc, protonation=protonation, log=log)
+    nproc = self.params.qi.nproc
+    energy_adjustment=self.params.qi.proton_energy_difference
+    self.process_flipped_jobs('HIS', rc, protonation=protonation, nproc=nproc, energy_adjustment=energy_adjustment, log=log)
 
-  def process_flipped_jobs(self, resname, rc, protonation=None, log=None):
+  def process_flipped_jobs(self, resname, rc, protonation=None, id_str=None, nproc=-1, energy_adjustment=None, log=None):
     energies = []
     units = None
     rmsds = []
     rotamers = []
     filenames = []
     for i, res in enumerate(rc):
+      for selection, te in res.energies.items(): pass
+      te=te[0]
       print('  Energy %d %s : %07.1f %s # ligand atoms : %d # cluster atoms : %d' % (
         i+1,
-        res.energies[0][0],
-        res.energies[0][1],
+        te[0],
+        te[1],
         res.units,
-        res.energies[0][2],
-        res.energies[0][3],
+        te[2],
+        te[3],
         ))
-      energies.append(res.energies[0])
+      energies.append(te)
       units=res.units
       rmsds.append(res.rmsds[0][1])
       filenames.append(res.filename)
 
+    if protonation is None: protonation=filenames
     rc=get_hbonds_via_filenames(filenames,
                                 resname,
+                                nproc=nproc,
                                 restraint_filenames=self.restraint_filenames)
     hbondss, pymols = rc
     selection = self.params.qi.qm_restraints[0].selection
-    rotamers=get_rotamers_via_filenames(filenames, selection, resname)
+    if resname not in ['radius']:
+      rotamers=get_rotamers_via_filenames(filenames, selection, resname)
+    else:
+      rotamers=['None']*len(filenames)
 
-    energies = self._process_energies(energies, units, resname=resname)
+    energies, outl = self._process_energies(energies, units, resname=resname, energy_adjustment=energy_adjustment, log=log)
     me=min(energies)
     cmd = '\n\n  phenix.start_coot'
     #
-    # results = {}
-    hierarchy = self.get_selected_hierarchy()
-    original_ch = classify_histidine(hierarchy, resname=resname)
-    print('\n\nEnergies in units of %s\n' % units, file=log)
-    print('  %i. %-20s : rotamer "%s"' % (
-      0,
-      original_ch[1],
-      original_ch[0])
-    )
+    if resname not in ['radius']:
+      hierarchy = self.get_selected_hierarchy()
+      original_ch = classify_histidine(hierarchy, resname=resname)
+      print('\n\nEnergies in units of %s' % units, file=log)
+      print('%s\n' % outl, file=log)
+      print('  %i. %-20s : rotamer "%s"' % (
+        0,
+        original_ch[1],
+        original_ch[0])
+      )
     #
     outl = '  %i. %-20s : %7.5f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"'
     for i, filename in enumerate(filenames):
@@ -794,7 +871,10 @@ Usage examples:
       else:
         cmd += ' %s' % filename
       #
-      n = hbondss[i].get_counts(min_data_size=1).n
+      nci = hbondss[i].get_counts(filter_id_str=id_str, min_data_size=1)
+      n=-1
+      if nci:
+        n=nci.n_filter
       energy = energies[i]
       #
       # convert to kcal/mol
@@ -821,10 +901,78 @@ Usage examples:
     print(cmd)
     print(pymols)
 
+  def step_thru_buffer_radii(self, id_str=None, log=None):
+    from mmtbx.geometry_restraints.quantum_interface import get_preamble
+    if len(self.params.qi.qm_restraints)<1:
+      self.write_qmr_phil(step_buffer_radius=True)
+      print('Restart command with PHIL file')
+      return
+    nproc = self.params.qi.nproc
+    #
+    start, end, step = self.params.qi.step_buffer_radius.split(',')
+    # qi_phil_string=qi_phil_string.replace('refinement.qi.qm_restraints',
+    #                                       'qm_restraints')
+    # qi_phil_string=qi_phil_string.replace('ignore_x_h_distance_protein = False',
+    #                                       'ignore_x_h_distance_protein = True')
+    # tmp = 'qi {\n'
+    steps=[]
+    for r in stepper(start, end, step): steps.append(r)
+    steps.reverse()
+    buffer = self.params.qi.qm_restraints[0].buffer
+    t0=time.time()
+    argstuples = []
+    filenames = []
+    for i, r in enumerate(steps):
+      model = self.data_manager.get_model()
+      model=model.deep_copy()
+      self.params.output.prefix='iterate_radii'
+      arg_log=null_out()
+      if self.params.qi.verbose:
+        arg_log=log
+      #
+      if self.params.qi.only_i is not None and self.params.qi.only_i!=i+1:
+        continue
+      params = copy.deepcopy(self.params)
+      params.qi.qm_restraints[0].buffer=r
+      preamble = get_preamble(None, 0, params.qi.qm_restraints[0])
+      filenames.append('%s_cluster_final_%s.pdb' % (self.params.output.prefix,
+                                                   preamble))
+      #
+      if nproc==-1:
+        print('  Running radius %d' % (r), file=log)
+        res = update_restraints(model,
+                                params,
+                                never_write_restraints=True,
+                                # never_run_strain=True,
+                                log=arg_log)
+        energies.append(res.energies)
+        units=res.units
+        rmsds.append(res.rmsds[0][1])
+        print('    Energy : %s %s' % (energies[-1],units), file=log)
+        print('    Time   : %ds' % (time.time()-t0), file=log)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
+      else:
+        argstuples.append(( model,
+                            params,
+                            None, # macro_cycle=None,
+                            False, #never_write_restraints=False,
+                            1, # nproc=1,
+                            None, #null_out(),
+                            ))
+    results = run_serial_or_parallel(update_restraints, argstuples, nproc)
+    for i, filename in enumerate(filenames):
+      assert os.path.exists(filename), ' Output %s missing' % filename
+      results[i].filename = filename
+    if results is None: return
+    self.process_flipped_jobs('radius', results, id_str=id_str, nproc=nproc, log=log)
+    return results
+
   def run_qmr(self, format, log=None):
+    from mmtbx.refinement.energy_monitor import digest_return_energy_object
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
     checks = 'starting_strain starting_energy starting_bound'
+    energies = None
     if any(item in checks for item in qmr.calculate):
       rc = run_energies(
         model,
@@ -834,9 +982,8 @@ Usage examples:
         nproc=self.params.qi.nproc,
         log=log,
         )
-      energies=energy_monitor()
-      energies.append([None,None,None])
-      energies[-1][0]=rc
+      energies = digest_return_energy_object(rc, 1, energy_only=True)
+
       outl = energies.as_string()
       print(outl, file=log)
     #
@@ -846,9 +993,10 @@ Usage examples:
                             self.params,
                             log=log,
                             )
-    energies=energy_monitor()
-    energies.append([None,None,None])
-    energies[-1][1]=rc
+    if energies is None:
+      energies = digest_return_energy_object(rc, 1, energy_only=False)
+    else:
+      digest_return_energy_object(rc, 1, False, energies)
     outl = energies.as_string()
     print(outl, file=log)
     return rc
@@ -878,22 +1026,27 @@ Usage examples:
     return outl
 
   def set_all_write_to_true(self, qi_phil_string):
-    assert 0
     outl = ''
+    # write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer
     for line in qi_phil_string.splitlines():
       if line.find(' write_')>-1:
         tmp=line.split()
-        line = '  %s = True' % tmp[0]
+        line = '  '
+        for t in tmp:
+          if t.startswith('pdb'): t='*%s'%t
+          line+='%s ' % t
       outl += '%s\n' % line
     return outl
 
   def write_qmr_phil(self,
                      iterate_NQH=False,
                      iterate_metals=False,
+                     step_buffer_radius=False,
                      output_format=None,
+                     include_nearest_neighbours=False,
                      log=None):
     qi_phil_string = self.get_single_qm_restraints_scope(self.params.qi.selection[0])
-    qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
+    # qi_phil_string = self.set_all_calculate_to_true(qi_phil_string)
     # qi_phil_string = self.set_all_write_to_true(qi_phil_string)
     qi_phil = iotbx.phil.parse(qi_phil_string,
                              # process_includes=True,
@@ -905,21 +1058,42 @@ Usage examples:
     qi_phil_string = qi_phil_string.replace('qm_restraints',
                                             'refinement.qi.qm_restraints',
                                             1)
+    if step_buffer_radius:
+      # start, end, step = step_buffer_radius.split(',')
+      qi_phil_string=qi_phil_string.replace('refinement.qi.qm_restraints',
+                                            'qm_restraints')
+      qi_phil_string=qi_phil_string.replace('ignore_x_h_distance_protein = False',
+                                            'ignore_x_h_distance_protein = True')
+      start=3.5
+      end=3.5
+      step=1
+      tmp = 'qi {\n'
+      for r in stepper(start, end, step):
+        print(r)
+        tmp+=qi_phil_string.replace('buffer = 3.5', 'buffer = %s' % r)
+      tmp += '\n}\n'
+      qi_phil_string = tmp
+
     if iterate_NQH:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                               'ignore_x_h_distance_protein = True')
-      qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_to_delta_from_optimisation = False',
-                                              'exclude_protein_main_chain_to_delta_from_optimisation = True')
-      qi_phil_string = qi_phil_string.replace('exclude_torsions_from_optimisation = False',
-                                              'exclude_torsions_from_optimisation = True')
-      # qi_phil_string = qi_phil_string.replace('exclude_protein_main_chain_from_optimisation = False',
-      #                                         'exclude_protein_main_chain_from_optimisation = True')
+      qi_phil_string = qi_phil_string.replace(
+        'protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions',
+        'protein_optimisation_freeze = all None main_chain main_chain_to_beta *main_chain_to_delta *torsions')
+      qi_phil_string = qi_phil_string.replace(
+        'solvent_model = None', 'solvent_model = EPS=78.4 PRECISE NSPA=92')
 
     if iterate_metals:
       qi_phil_string = qi_phil_string.replace('refinement.', '')
       qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
                                               'include_nearest_neighbours_in_optimisation = True')
+
+    if include_nearest_neighbours:
+      qi_phil_string = qi_phil_string.replace('include_nearest_neighbours_in_optimisation = False',
+                                              'include_nearest_neighbours_in_optimisation = True')
+      qi_phil_string = qi_phil_string.replace('include_inter_residue_restraints = False',
+                                              'include_inter_residue_restraints = True')
 
     if output_format=='qi':
       qi_phil_string = qi_phil_string.replace('refinement.qi', 'qi')

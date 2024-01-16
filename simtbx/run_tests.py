@@ -33,6 +33,7 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 1"],
     ["$D/diffBragg/tests/tst_diffBragg_ncells_property_anisotropic.py", "--idx 2"],
     ["$D/diffBragg/tests/tst_diffBragg_unitcell_property.py", "--crystalsystem tetragonal" ],
+    ["$D/diffBragg/tests/tst_diffBragg_unitcell_property.py", "--crystalsystem hexagonal" ],
     ["$D/diffBragg/tests/tst_diffBragg_unitcell_property.py", "--crystalsystem monoclinic" ],
     ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 0"],
     ["$D/diffBragg/tests/tst_diffBragg_lambda_coefficients.py", "--idx 1"],
@@ -59,9 +60,11 @@ db_tst_list = [
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel y"],
     ["$D/diffBragg/tests/tst_diffBragg_panelXY_derivs.py", "--panel z"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 0 --gamma 100 125 150"],
+    ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 0 --gamma 100 125 150 --orientation 1"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 1 --gamma 100 125 150"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 2 --gamma 100 125 150"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 0 --gamma 100 125 150 --grad sigma --sigma 1 2 3"],
+    ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 0 --gamma 100 125 150 --grad sigma --sigma 1 2 3 --orientation 1"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 1 --gamma 100 125 150 --grad sigma --sigma 1 2 3"],
     ["$D/diffBragg/tests/tst_diffBragg_diffuse_properties.py", "--idx 2 --gamma 100 125 150 --grad sigma --sigma 1 2 3"]
     ]

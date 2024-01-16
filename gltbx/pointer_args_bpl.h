@@ -207,7 +207,7 @@ namespace gltbx { namespace boost_python {
       if (item != 0) {
 #ifdef IS_PY3K
         if (is_unicode)
-          item_size = PyUnicode_GET_SIZE(item);
+          item_size = PyUnicode_GET_LENGTH(item);
         else
           item_size = PyBytes_GET_SIZE(item);
 #else

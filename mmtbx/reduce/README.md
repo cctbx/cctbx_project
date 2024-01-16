@@ -10,6 +10,27 @@ and optimize Hydrogens on a model.
 **Notes:**
 * Reduce2 uses the Probe2 module, which requires the chem_data modules from Phenix.
 
+# C++ Classes
+
+The C++ classes, wrapped for use in Python, make use of CCTBX and Boost structures and define
+all of their classes and functions in the molprobity::reduce C++ namespace. These are wrapped
+in Python and can be imported as mmtbx_reduce_ext.
+
+* **PositionReturn.*:** Structure to hold atom-behavior information returned from Mover methods.
+
+* **InteractionGraph.*:** Defines the **PairsOverlap** function to determine whether two Movers
+have any atoms that interact in any of their possible conformations.
+
+* **Optimizers.*:** Defines the **OptimizerC** class, which determines the best conformations
+for a set of Movers in a clique. It caches the scores for atoms to avoid recalculation when all
+Movers they interact with are in the same configuration. It splits the clique into smaller
+subcliques and optimizes them independently, then combines the results.
+
+* **boost_python/reduce_bpl.cpp:** As is usual for CCTBX projects, this file contains the wrapper
+code for the above functions that uses Boost Python to wrap them to be called from Python. It also
+defines a wrapper for the **RotatePointDegreesAroundAxisDir** function, which wraps
+**scitbx::math::rotate_point_around_axis()** to quickly rotate a point around an axis.
+
 ## Python Modules
 
 There are a set of Python modules that implement the core optimization functions.
@@ -26,9 +47,8 @@ It is used to determine a graph of Movers that may interact, which is used to de
 that must be jointly optimized and "Singletons" which can be independenly optimized.
 
 * **Optimizers.py:** This contains classes to optimize a set of Movers, including adding them
-to a model and determining their optimal states. User code should use the **FastOptimizer** class,
-which is derived from other classes that provide more basic, but slower, approaches to optimization
-so that the different accelerations can be tested independently.
+to a model and determining their optimal states. User code should use the **Optimizer** class,
+which wraps the C++ OptimizerC class.
 
 ## Testing
 
@@ -64,12 +84,24 @@ The tests performed include the following:
     --dumpAtoms command-line flag was given, an **atomDump.pdb** file will be written with the
     description of the extra atom info for each atom in the model, along with a **deleteme.pdb**
     file that contains the optimized model.
+* **PositionReturn.cpp:** Its **PositionReturn_test** function verifies that the C++ structure
+is properly wrapped and can be accessed.
+* **InteractionGraph.cpp:** Its tests are run from Python, so its **InteractionGraph_test**
+test function currently always returns success.
+* **Optimizers.cpp:** its **Optimizers_test** function tests the static methods in the class.
+The other methods and the class itself is tested from Python.
+    * **generateAllStates()** function is tested to verify that it behaves as expected.
+    * **nChooseM()** function is tested to verify that it behaves as expected.
+    * **subsetGraph()** function is tested to verify that it behaves as expected.
+    * **findVertexCut()** function is tested to verify that it behaves as expected.
 
 A **tst_reduce.py** script is located in the mmtbx/regression folder within this project.  this
 script runs all of the unit tests described above and then several specific test cases are run
 to ensure that various corner cases are properly handled.
 
-Version 1.2.2 is the code that passed all of the above tests.
+A **tst_mmtbx_reduce_ext.py:** Script is located in the mmtbx/reduce folder that runs the test
+functions in the C++ classes via their python wrappers. When run, prints nothing on success and
+raises an assertion on failure.
 
 ## Regression testing
 

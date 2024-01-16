@@ -412,14 +412,21 @@ class run(object):
   def write_pdb_file(self, prefix):
     broadcast(m=prefix, log = self.log)
     # self.pdb_hierarchy.adopt_xray_structure(self.xray_structure)
-    print("  output file name:", self.result_model_fname, file=self.log)
     print(self.min_max_mean_shift(), file=self.log)
 
-    print(self.min_max_mean_shift(), file=self.log)
-    r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
-    f = open(self.result_model_fname, 'w')
-    f.write(r)
-    f.close()
+    if self.model.can_be_output_as_pdb():
+      print("  output file name:", self.result_model_fname, file=self.log)
+      r = self.model.model_as_pdb(output_cs=self.output_crystal_symmetry)
+      f = open(self.result_model_fname, 'w')
+      f.write(r)
+      f.close()
+
+    cif_fname = self.result_model_fname.replace('.pdb', '.cif')
+    if not os.path.isfile(cif_fname):
+      print("  output file name:", cif_fname, file=self.log)
+      r = self.model.model_as_mmcif(output_cs=self.output_crystal_symmetry)
+      with open(cif_fname, 'w') as f:
+        f.write(r)
 
     if(self.states_collector):
       self.states_collector.write(

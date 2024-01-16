@@ -2,6 +2,8 @@ from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
 from iotbx_pdb_hierarchy_ext import *
+ext2 = bp.import_ext("iotbx_pdb_ext")
+from iotbx_pdb_ext import xray_structures_simple_extension
 from libtbx.str_utils import show_sorted_by_counts
 from libtbx.utils import Sorry, plural_s, null_out
 from libtbx import Auto, dict_with_default_0, group_args
@@ -11,7 +13,7 @@ from iotbx.pdb.modified_aa_names import lookup as aa_3_as_1_mod
 from iotbx.pdb.modified_rna_dna_names import lookup as na_3_as_1_mod
 from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
 import iotbx.cif.model
-from cctbx import crystal
+from cctbx import crystal, adptbx, uctbx
 from cctbx.array_family import flex
 import six
 from six.moves import cStringIO as StringIO
@@ -377,17 +379,22 @@ class _():
   def __getstate__(self):
     version = 2
     pdb_string = StringIO()
-    py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
-      cstringio=pdb_string,
-      append_end=True,
-      interleaved_conf=0,
-      atoms_reset_serial_first_value=None,
-      atom_hetatm=True,
-      sigatm=True,
-      anisou=True,
-      siguij=True)
-    if six.PY3:
-      pdb_string.write(py3out)
+    if self.fits_in_pdb_format():
+      py3out = self._as_pdb_string_cstringio(  # NOTE py3out will be None in py2
+        cstringio=pdb_string,
+        append_end=True,
+        interleaved_conf=0,
+        atoms_reset_serial_first_value=None,
+        atom_hetatm=True,
+        sigatm=True,
+        anisou=True,
+        siguij=True)
+      if six.PY3:
+        pdb_string.write(py3out)
+    else:
+      cif_object = iotbx.cif.model.cif()
+      cif_object['pickled'] = self.as_cif_block()
+      cif_object.show(out=pdb_string)
     return (version, pickle_import_trigger(), self.info, pdb_string.getvalue())
 
   def __setstate__(self, state):
@@ -653,6 +660,8 @@ class _():
     :param siguij: write SIGUIJ records if applicable
     :returns: Python str
     """
+    if not self.fits_in_pdb_format():
+      return ""
     if (cstringio is None):
       cstringio = StringIO()
       if (return_cstringio is Auto):
@@ -694,11 +703,17 @@ class _():
     Generate corresponding pdb.input object.
     """
     import iotbx.pdb
-    pdb_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
-    pdb_inp = iotbx.pdb.input(
-      source_info="pdb_hierarchy",
-      lines=flex.split_lines(pdb_str))
-    return pdb_inp
+    if self.fits_in_pdb_format():
+      h_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
+      inp = iotbx.pdb.input(
+        source_info="pdb_hierarchy",
+        lines=flex.split_lines(h_str))
+    else:
+      h_str = self.as_mmcif_string(crystal_symmetry=crystal_symmetry)
+      inp = iotbx.pdb.mmcif.cif_input(
+        source_info="pdb_hierarchy",
+        lines=flex.split_lines(h_str))
+    return inp
 
 # END_MARKED_FOR_DELETION_OLEG
 
@@ -802,26 +817,77 @@ class _():
     is usually best to keep the original xray structure object around, but this
     method is helpful in corner cases.
     """
-    if min_distance_sym_equiv is not None: # use it
-      return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
-        min_distance_sym_equiv=min_distance_sym_equiv)
-    else:  # usual just use whatever is default in xray_structure_simple
-      return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    # if min_distance_sym_equiv is not None: # use it
+    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
+    #     min_distance_sym_equiv=min_distance_sym_equiv)
+    # else:  # usual just use whatever is default in xray_structure_simple
+    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
+    #
+    # Abbreviated copy-paste from iotbx/pdb/__init__.py: def xray_structures_simple()
+    # Better than getting iotbx.pdb.input from hierarchy.as_pdb_string()
+    from cctbx import xray
+    import scitbx.stl.set
+    cryst1_substitution_buffer_layer = None
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero = True
+    if min_distance_sym_equiv is None:
+      min_distance_sym_equiv = 0.5
+    #
+    if (crystal_symmetry is None):
+      crystal_symmetry = crystal.symmetry()
+    if (crystal_symmetry.unit_cell() is None):
+      crystal_symmetry = crystal_symmetry.customized_copy(
+        unit_cell=uctbx.non_crystallographic_unit_cell(
+          sites_cart=self.atoms().extract_xyz(),
+          buffer_layer=cryst1_substitution_buffer_layer))
+    if (crystal_symmetry.space_group_info() is None):
+      crystal_symmetry = crystal_symmetry.cell_equivalent_p1()
+    unit_cell = crystal_symmetry.unit_cell()
+    scale_r = (0,0,0,0,0,0,0,0,0)
+    scale_t = (0,0,0)
+    scale_matrix = None
+    result = []
+    from iotbx.pdb import default_atom_names_scattering_type_const
+    atom_names_scattering_type_const = default_atom_names_scattering_type_const
+    mi = flex.size_t([m.atoms_size() for m in self.models()])
+    for i in range(1, len(mi)):
+      mi[i] += mi[i-1]
+    loop = xray_structures_simple_extension(
+      False, # one_structure_for_each_model,
+      False, # unit_cube_pseudo_crystal,
+      False, # fractional_coordinates,
+      False, # scattering_type_exact,
+      False, # enable_scattering_type_unknown,
+      self.atoms_with_labels(),
+      mi,
+      scitbx.stl.set.stl_string(atom_names_scattering_type_const),
+      unit_cell,
+      scale_r,
+      scale_t)
+    special_position_settings = crystal_symmetry.special_position_settings(
+      min_distance_sym_equiv=min_distance_sym_equiv)
+    try :
+      while (next(loop)):
+        result.append(xray.structure(
+          special_position_settings=special_position_settings,
+          scatterers=loop.scatterers,
+          non_unit_occupancy_implies_min_distance_sym_equiv_zero=
+            non_unit_occupancy_implies_min_distance_sym_equiv_zero))
+    except ValueError as e :
+      raise Sorry(str(e))
+    return result[0]
 
-  def adopt_xray_structure(self, xray_structure, assert_identical_id_str=True):
+  def adopt_xray_structure(self, xray_structure):
     """
     Apply the current (refined) atomic parameters from the cctbx.xray.structure
-    object to the atoms in the PDB hierarchy.  This will fail if the labels of
-    the scatterers do not match the atom labels.
+    object to the atoms in the PDB hierarchy.
     """
-    from cctbx import adptbx
     if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
     awl = self.atoms_with_labels()
     scatterers = xray_structure.scatterers()
     uc = xray_structure.unit_cell()
     orth = uc.orthogonalize
-    def set_attr(sc, a):
+    for sc, a in zip(scatterers, awl):
       a.set_xyz(new_xyz=orth(sc.site))
       a.set_occ(new_occ=sc.occupancy)
       a.set_b(new_b=adptbx.u_as_b(sc.u_iso_or_equiv(uc)))
@@ -835,23 +901,6 @@ class _():
       element, charge = sc.element_and_charge_symbols()
       a.set_element(element)
       a.set_charge(charge)
-    def get_id(l):
-      r = [pos for pos, char in enumerate(l) if char == '"']
-      if(len(r)<2): return None
-      i,j = r[-2:]
-      r = "".join(l[i:j+1].replace('"',"").replace('"',"").split())
-      return r
-    for sc, a in zip(scatterers, awl):
-      id_str = a.id_str()
-      resname_from_sc = id_str[10:13]
-      cl1 = common_residue_names_get_class(resname_from_sc)
-      cl2 = common_residue_names_get_class(a.resname)
-      if assert_identical_id_str:
-        l1 = get_id(sc.label)
-        l2 = get_id(a.id_str())
-        if(l1 != l2):
-          raise RuntimeError("Mismatch: \n %s \n %s \n"%(sc.label,a.id_str()))
-      set_attr(sc=sc, a=a)
 
   def apply_rotation_translation(self, rot_matrices, trans_vectors):
     """
@@ -1676,6 +1725,25 @@ class _():
           chain.remove_residue_group(rg)
         else:
           residues[key] = ag
+
+  def is_hierarchy_altloc_consistent(self, verbose=False):
+    altlocs = {}
+    for residue_group in self.residue_groups():
+      if not residue_group.have_conformers(): continue
+      for atom_group in residue_group.atom_groups():
+        rc = altlocs.setdefault(residue_group.id_str(), [])
+        if atom_group.altloc: rc.append(atom_group.altloc)
+    lens=[]
+    for key, item in altlocs.items():
+      l=len(item)
+      if l not in lens: lens.append(l)
+    if len(lens)>1:
+      outl = '  Uneven Alt. Locs.\n'
+      for key, item in altlocs.items():
+        outl += '    "%s" : %s\n' % (key, item)
+      if verbose: print(outl)
+      return False
+    return True
 
   def format_correction_for_H(self, verbose=False): # remove 1-JUL-2024
     for atom in self.atoms():

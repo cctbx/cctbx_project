@@ -207,8 +207,9 @@ struct vector_base {
     }
 
     KOKKOS_FUNCTION void operator/=(const NumType& v) {
+        const NumType v_r = 1 / v;
         for (size_t i = 0; i < size; ++i) {
-            data[i] /= v;
+            data[i] *= v_r;
         }
     }
 
@@ -261,14 +262,15 @@ struct vector_base {
 
     KOKKOS_FUNCTION NumType length() const {
         // return sqrt_func(length_sqr());
-        return ::Kokkos::Experimental::sqrt(length_sqr());
+        return ::Kokkos::sqrt(length_sqr());
     }
 
     KOKKOS_FUNCTION void normalize() {
         NumType l = length();
         if (l > 0) {
+            NumType l_r = 1 / l;
             for (size_t i = 0; i < size; ++i) {
-                data[i] /= l;
+                data[i] *= l_r;
             }
         }
     }
@@ -277,8 +279,9 @@ struct vector_base {
         NumType l = length();
         Derived unit_vector{};
         if (l > 0) {
+            NumType l_r = 1 / l;
             for (size_t i = 0; i < size; ++i) {
-                unit_vector[i] = data[i] / l;
+                unit_vector[i] = data[i] * l_r;
             }
         }
         return unit_vector;

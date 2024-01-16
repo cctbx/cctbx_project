@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from mmtbx.validation.undowser import undowserlyze
 from libtbx.program_template import ProgramTemplate
+from datetime import datetime
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -47,27 +48,25 @@ Example:
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
 
-  def get_results_as_JSON(self):
-    hierarchy = self.data_manager.get_model().get_hierarchy()
-    hierarchy.atoms().reset_i_seq()
-
-    result = undowserlyze(
-      pdb_hierarchy=hierarchy,
-      outliers_only=self.params.outliers_only,)
-    return result.as_JSON()
-
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
   def run(self):
     hierarchy = self.data_manager.get_model().get_hierarchy()
-
-    result = undowserlyze(
+    self.info_json = {"model_name":self.data_manager.get_default_model_name(),
+                      "time_analyzed": str(datetime.now())}
+    self.results = undowserlyze(
       pdb_hierarchy=hierarchy,
       keep_hydrogens=self.params.keep_hydrogens,
       nuclear=self.params.nuclear,
       outliers_only=self.params.outliers_only,)
     if self.params.json:
-      print(result.as_JSON(), file=self.logger)
+      print(self.results.as_JSON(), file=self.logger)
     else:
-      print(result.as_HTML())
+      print(self.results.as_HTML())
+
+  def get_results(self):
+    return self.results
+
+  def get_results_as_JSON(self):
+    return self.results.as_JSON(self.info_json)

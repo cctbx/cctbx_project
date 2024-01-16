@@ -19,7 +19,6 @@ import six
 from libtbx.utils import count_max, Sorry, Keep
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
-from libtbx.assert_utils import is_string
 from cctbx.eltbx.neutron import neutron_news_1992_table
 from cctbx import eltbx
 from libtbx.utils import format_float_with_standard_uncertainty \
@@ -438,6 +437,8 @@ class structure(crystal.special_position_settings):
         b_min = int(max(0.0, b_mean - spread))
     if b_min is not None and b_max is not None:
       assert b_min <= b_max, [b_min,b_max,spread,b_mean]
+      b_min = int(b_min)
+      b_max = int(b_max)
     if(selection is not None):
       assert selection.size() == self._scatterers.size()
     else:
@@ -481,7 +482,7 @@ class structure(crystal.special_position_settings):
 
   def shake_occupancies(self, selection = None):
     s = self._scatterers
-    q_new = flex.random_double(s.size())*2.
+    q_new = flex.random_double(s.size())
     if(selection is None):
       s.set_occupancies(q_new)
     else:
@@ -979,190 +980,6 @@ class structure(crystal.special_position_settings):
       else: result.append(False)
     return result
 
-
-  def heavy_selection(self,
-    ignore_atoms_with_alternative_conformations=False,
-    include_only_atoms_with_alternative_conformations=False,
-    only_protein=False,
-                   ):
-    """Get a selector array for heavy (= non H or D) scatterers of the structure.
-
-    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
-    :type ignore_atoms_with_alternative_conformations: boolean
-    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
-    :type include_only_atoms_with_alternative_conformations: boolean
-    :param only_protein: select only protein scatterers
-    :type only_protein: boolean
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    if ( ignore_atoms_with_alternative_conformations and
-         include_only_atoms_with_alternative_conformations
-         ):
-      raise Sorry("Mutually exclusive alternative location options")
-    scattering_types = self._scatterers.extract_scattering_types()
-    scatterers = self.scatterers()
-    result = flex.bool()
-    for i, sct in enumerate(scattering_types):
-      if ignore_atoms_with_alternative_conformations:
-        if scatterers[i].label[9:10]!=" ":
-          result.append(False)
-          continue
-      if include_only_atoms_with_alternative_conformations:
-        if scatterers[i].label[9:10]==" ":
-          result.append(False)
-          continue
-      if only_protein:
-        for resname in [
-            "ALA",
-            "CYS",
-            "ASP",
-            "GLU",
-            "PHE",
-            "GLY",
-            "HIS",
-            "ILE",
-            "LYS",
-            "LEU",
-            "MET",
-            "ASN",
-            "PRO",
-            "GLN",
-            "ARG",
-            "SER",
-            "THR",
-            "VAL",
-            "TRP",
-            "TYR",
-            ]:
-          if scatterers[i].label[10:13]==resname:
-            break
-        else:
-          result.append(False)
-          continue
-
-      if(sct.strip() in ['H','D']): result.append(False)
-      else: result.append(True)
-    return result
-
-  def atom_names_selection(self,
-    atom_names=["C","O","CA","N"],
-    ignore_atoms_with_alternative_conformations=False,
-    include_only_atoms_with_alternative_conformations=False,
-    ):
-    """Get a selector array for scatterers of the structure by "atom" names.
-
-    :param atom_names: list of labels of scatterers to select
-    :type atom_names: list(string)
-    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
-    :type ignore_atoms_with_alternative_conformations: boolean
-    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
-    :type include_only_atoms_with_alternative_conformations: boolean
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    #XXX may need a better function
-    if ( ignore_atoms_with_alternative_conformations and
-         include_only_atoms_with_alternative_conformations
-         ):
-      raise Sorry("Mutually exclusive alternative location options")
-    scattering_types = self._scatterers.extract_scattering_types()
-    result = flex.bool()
-    for sc in self.scatterers():
-      if(sc.label.find("HOH")>-1):
-        result.append(False)
-        continue
-      if ignore_atoms_with_alternative_conformations:
-        if sc.label[9:10]!=" ":
-          result.append(False)
-          continue
-      if include_only_atoms_with_alternative_conformations:
-        if sc.label[9:10]==" ":
-          result.append(False)
-          continue
-      for name in atom_names:
-        if(sc.label[5:9].find("%s " % name)>-1 and
-           sc.scattering_type==name[0]
-           ):
-          result.append(True)
-          break
-      else: result.append(False)
-    return result
-
-  def backbone_selection(self,
-    atom_names=["C","O","CA","N"],
-    ignore_atoms_with_alternative_conformations=False,
-    include_only_atoms_with_alternative_conformations=False,
-                         ):
-    """Get a selector array for scatterers of the backbone of the structure.
-    (This is just an alias for atom_names_selection.)
-
-    :param atom_names: list of labels of scatterers to select
-    :type atom_names: list(string)
-    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
-    :type ignore_atoms_with_alternative_conformations: boolean
-    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
-    :type include_only_atoms_with_alternative_conformations: boolean
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    return self.atom_names_selection(
-      atom_names=atom_names,
-      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
-      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
-      )
-
-  def main_chain_selection(self,
-    atom_names=["C","O","CA","N","CB"],
-    ignore_atoms_with_alternative_conformations=False,
-    include_only_atoms_with_alternative_conformations=False,
-                           ):
-    """Get a selector array for scatterers of the main chain of the structure.
-    (This is just an alias for atom_names_selection with a different default selection.)
-
-    :param atom_names: list of labels of scatterers to select
-    :type atom_names: list(string)
-    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
-    :type ignore_atoms_with_alternative_conformations: boolean
-    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
-    :type include_only_atoms_with_alternative_conformations: boolean
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    return self.atom_names_selection(
-      atom_names=atom_names,
-      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
-      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
-      )
-
-  def peptide_dihedral_selection(self,
-    atom_names=["C","CA","N"],
-    ignore_atoms_with_alternative_conformations=False,
-    include_only_atoms_with_alternative_conformations=False,
-                                 ):
-    """Get a selector array for peptide dihedral scatterers of the structure.
-    (This is just an alias for atom_names_selection with a different default selection.)
-
-    :param atom_names: list of labels of scatterers to select
-    :type atom_names: list(string)
-    :param ignore_atoms_with_alternative_conformations: select normal atoms/conformations only
-    :type ignore_atoms_with_alternative_conformations: boolean
-    :param include_only_atoms_with_alternative_conformations: select only scatterers with alternative conformations
-    :type include_only_atoms_with_alternative_conformations: boolean
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    return self.atom_names_selection(
-      atom_names=atom_names,
-      ignore_atoms_with_alternative_conformations=ignore_atoms_with_alternative_conformations,
-      include_only_atoms_with_alternative_conformations=include_only_atoms_with_alternative_conformations,
-      )
-
   def element_selection(self, *elements):
     """Get a selector array for scatterers of specified element type(s) of the structure.
 
@@ -1173,33 +990,6 @@ class structure(crystal.special_position_settings):
     :rtype: boolean[]
     """
     return flex.bool([ sc.element_symbol().strip() in elements
-                       for sc in self.scatterers() ])
-
-  def label_selection(self, *labels):
-    """Get a selector array for scatterers of specified labels from the structure.
-
-    :param labels: tuple of scatterer labels to select
-    :type labels: list(string) or set(string) or tuple(string)
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    return flex.bool([ sc.label in labels for sc in self.scatterers() ])
-
-  def label_regex_selection(self, label_regex):
-    """Get a selector array for scatterers of specified labels (via regular
-    expression) from the structure.
-
-    :param label_regex: a regular expression matching scatterer labels to select
-    :type label_regex: string or re
-
-    :returns: an array to select the desired scatterers of the structure
-    :rtype: boolean[]
-    """
-    if is_string(label_regex):
-      import re
-      label_regex = re.compile(label_regex)
-    return flex.bool([ label_regex.search(sc.label) is not None
                        for sc in self.scatterers() ])
 
   def by_index_selection(self, selected_scatterers):

@@ -670,6 +670,7 @@ def fmodel_manager2(
   xray_structure,
   twin_law,
   ignore_r_free_flags,
+  mask_params,
   mtz_object=None,
   data_type=None):
   """
@@ -684,6 +685,7 @@ def fmodel_manager2(
       f_obs          = f_obs,
       r_free_flags   = r_free_flags,
       abcd           = abcd,
+      mask_params    = mask_params,
       xray_structure = xray_structure,
       origin         = mtz_object,
       data_type      = data_type)
@@ -700,6 +702,7 @@ def fmodel_manager2(
       detwin_mode    = twin_params.detwin.mode,
       map_types      = twin_params.detwin.map_types,
       origin         = mtz_object,
+      mask_params    = mask_params,
       data_type      = data_type)
     fmodel.twin = twin_law
   return fmodel

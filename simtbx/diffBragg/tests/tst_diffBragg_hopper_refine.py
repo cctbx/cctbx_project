@@ -194,6 +194,13 @@ with DeviceWrapper(0) as _:
         P.fix.detz_shift = True
         P.ftol=1e-15
 
+    if args.perturb == ["detz_shift"]:
+        P.fix.detz_shift = False
+        P.fix.ucell=True
+        P.fix.Nabc=True
+        P.fix.G=True
+        P.fix.RotXYZ=True
+
     E.detector = SIM.detector
     E.beam = SIM.D.beam
     E.imageset = make_imageset([img], E.beam, E.detector)
@@ -219,6 +226,7 @@ with DeviceWrapper(0) as _:
     P.simulator.structure_factors.mtz_name = mtz_name
     P.simulator.structure_factors.mtz_column = "F(+),F(-)"
     P.niter = 0
+    P.sigmas.RotXYZ = [1,1,1]
     P.logging.parameters=True
     P.niter_per_J = 1
     P.method="L-BFGS-B"
@@ -268,7 +276,10 @@ with DeviceWrapper(0) as _:
         # TODO open the pandas output file and optimized expt in outdir and verify the optimized parameters are similar to ground
         exit()
 
+    P.record_device_timings = True
     Eopt,_, Mod, SIM_used_by_hopper, x = hopper_utils.refine(E, refls, P, spec=spec, return_modeler=True)
+    if SIM_used_by_hopper.D.record_timings:
+        SIM_used_by_hopper.D.show_timings(MPI_RANK=0)
 
     G, rotX,rotY, rotZ, Na,Nb,Nc,_,_,_,_,_,_,_,_,_,a,b,c,al,be,ga,detz_shift = hopper_utils.get_param_from_x(x, Mod)
     eta_abc_opt = hopper_utils.get_mosaicity_from_x(x, Mod, SIM_used_by_hopper)

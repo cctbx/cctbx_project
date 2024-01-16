@@ -80,11 +80,11 @@ A clashing HOH is very unlikely be be a real water, unless the clashing atom pos
 <br><br>
 <b>Clash with polar</b> - HOH that clashes with polar groups may actually be a coordinated ion.
 <br>
-<b>Clash with nonpolar</b> - HOH that clashes with nonpolar groups may be a missing or displaced atom&ast;.
+<b>Clash with nonpolar</b> - HOH that clashes with nonpolar groups may be a missing or displaced atom&ast;. Or it may be the first atom of an unmodeled alternate.
 <br>
 <b>Clash with both polar and nonpolar</b> - HOH that clashes with both polar and non-polar groups is unlikely to be an ion. If clashes are severe, a displaced atom is likely. If clashes and map are weak, the HOH may be entirely removable.
 <br>
-<b>Clash with water</b> - HOH-HOH clashes may be real waters that need to be modeled as alternates of compatible occupancy. Or they may indicate missing or displaced atoms.
+<b>Clash with water</b> - HOH-HOH clashes may be real waters that need to be modeled as alternates of compatible occupancy. Or they may be in the density of a sidechain alternate or a larger ligand.
 <br>
 <b>Clash with altloc</b> - HOH clashes involving one or more alternate conformations may be resolved by renaming some of the alternates.
 <br><br>
@@ -96,7 +96,7 @@ A clashing HOH is very unlikely be be a real water, unless the clashing atom pos
 <br>
 <i>Missing atoms</i> have been entirely replaced by HOH. Removed atoms may be restored by modeling alternate conformations (especially sidechains), modeling ligands, or continuing a macromolecular mainchain.
 <br><br>
-These categories are general suggestions. Check your electron density; trust your intuition and experience.
+These categories are general suggestions. Check your electron density; trust your intuition and experience. Prisant 2020 Prot Sci 29:315 (<a href="https://doi.org/10.1002/pro.3786">https://doi.org/10.1002/pro.3786</a>) illustrates 10 examples of clashing HOH cases.
 <br>
 <hr>
 <br>
@@ -266,8 +266,11 @@ These categories are general suggestions. Check your electron density; trust you
 #          print(prefix + str(result), file=out)
 #    self.show_summary(out=out, prefix=prefix)
 
-  def as_JSON(self):
-    data = {"validation_type": "undowser"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "undowser"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     summary_results = {}

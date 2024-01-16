@@ -293,7 +293,7 @@ def test_01():
   shift_cart =  another_mm.shift_cart()
   another_mm.set_unit_cell_crystal_symmetry(crystal_symmetry=new_cs)
   assert shift_cart !=  another_mm.shift_cart()
-  assert another_mm.ncs_object().shift_cart() ==  another_mm.shift_cart()
+  assert approx_equal(another_mm.ncs_object().shift_cart(), another_mm.shift_cart())
 
   # Get resolution
   assert approx_equal(new_mm.resolution(force=True, method='d99') ,

@@ -8,6 +8,7 @@ from iotbx_pdb_ext import *
 
 import iotbx.pdb.records
 import iotbx.pdb.hierarchy
+from iotbx.pdb.experiment_type import experiment_type
 from scitbx import matrix
 
 from iotbx.pdb.atom_name_interpretation import \
@@ -131,10 +132,10 @@ rna_dna_reference_residue_names = {
   "GUA": "?G",
   "URI": "U",
   "THY": "DT",
-  "AR": "A",
-  "CR": "C",
-  "GR": "G",
-  "UR": "U",
+  # "AR": "A",
+  # "CR": "C",
+  # "GR": "G",
+  # "UR": "U",
   "AD": "DA",
   "CD": "DC",
   "GD": "DG",
@@ -1286,10 +1287,6 @@ class _():
   def resolution(self):
     return self.get_r_rfree_sigma().resolution
 
-  def experiment_type_electron_microscopy(self):
-    et = self.get_experiment_type().strip().upper()
-    return et == "ELECTRON MICROSCOPY"
-
   def get_program_name(self):
     remark_3_lines = self.extract_remark_iii_records(3)
     result = None
@@ -1388,8 +1385,8 @@ class _():
   def get_experiment_type(self):
     for line in self.title_section():
       if (line.startswith("EXPDTA")):
-        return records.expdta(line).technique.strip()
-    return None
+        return experiment_type(iotbx.pdb.records.expdta(line).keywords)
+    return experiment_type([])
 
   def extract_connectivity(self):
     """

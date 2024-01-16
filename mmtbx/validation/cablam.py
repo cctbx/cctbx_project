@@ -341,9 +341,6 @@ class cablam_result(residue):
     #  i: insertion code, space for none
     #  l: alternate ID, space for none
     #  t: residue type (ALA, LYS, etc.), all caps left justified, space padded
-    ##id_str = self.residue.id_str()
-    ##| A  75 |
-    ##chain = id_str[0:2]
     chain = self.chain_id
     resnum = self.residue.resseq
     ins = self.residue.icode
@@ -945,9 +942,6 @@ class cablamalyze(validation):
               altloc=conf.altloc,
               chain_id=chain_id,
               resname = residue.resname,
-              #formatting note: residue.id_str() = 'pdbres="THR B 182 "'
-              #chain=residue.id_str()[11:13],
-              #residue.id_str() turned out to break on some segid formatting
               prevres=None,
               nextres=None,
               has_ca=False,
@@ -1586,8 +1580,11 @@ class cablamalyze(validation):
   #-----------------------------------------------------------------------------
   #}}}
 
-  def as_JSON(self):
-    data = {"validation_type": "cablam"}
+  def as_JSON(self, addon_json={}):
+    if not addon_json:
+      addon_json = {}
+    addon_json["validation_type"] = "cablam"
+    data = addon_json
     flat_results = []
     hierarchical_results = {}
     for result in self.results:

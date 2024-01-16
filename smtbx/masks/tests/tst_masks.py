@@ -24,8 +24,8 @@ def exercise_masks():
   k = 0.05 + 10 * mt.random_double()
   fo = fo.customized_copy(data=fo.data()*k)
   fo2 = fo.f_as_f_sq()
-  acetonitrile_sel = xs_ref.label_selection(
-    'N4', 'C20', 'C21', 'H211', 'H212', 'H213')
+  labels = ['N4', 'C20', 'C21', 'H211', 'H212', 'H213']
+  acetonitrile_sel = flex.bool([sc.label in labels for sc in xs_ref.scatterers()])
   xs_no_sol = xs_ref.deep_copy_scatterers().select(
     acetonitrile_sel, negate=True)
   # check what happens when no voids are found

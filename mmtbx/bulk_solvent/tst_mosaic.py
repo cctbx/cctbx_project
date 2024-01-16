@@ -7,6 +7,7 @@ asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx.test_utils import approx_equal
 from libtbx import group_args
 from mmtbx.bulk_solvent import mosaic
+from cctbx import maptbx
 
 pdb_str = """
 REMARK iotbx.pdb.box_around_molecule --buffer-layer=2 "l.pdb"
@@ -1039,12 +1040,25 @@ def common_inputs(k_sols, for_test):
   sgt = xrs.space_group().type()
   fc  = xrs.structure_factors(d_min=4).f_calc()
   #
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell        = xrs.unit_cell(),
+    space_group_info = xrs.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = 0.5)
+  mar = mosaic.mask_and_regions(
+    xray_structure   = xrs,
+    crystal_gridding = crystal_gridding,
+    r_sol            = 1.1,
+    r_shrink         = 0.9,
+    volume_cutoff    = 6,
+    wrapping         = True,
+    force_symmetry   = True,
+    log              = None)
   mm = mosaic.f_masks(
+    mask_and_regions = mar,
+    crystal_gridding = crystal_gridding,
     f_obs          = abs(fc),
-    #f_calc         = fc,
-    xray_structure = xrs,
-    step           = 0.5,
-    volume_cutoff  = 6)
+    xray_structure = xrs)
   # Make Fobs
   f_bulk_data = flex.complex_double(fc.data().size())
   for f_mask, k_sol in zip(mm.FV.keys(), k_sols):

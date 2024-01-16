@@ -897,10 +897,30 @@ def exercise_xds_input():
   wl2 = mtz_in.file_server.miller_arrays[0].info().wavelength
   assert approx_equal(wl2, 0.9792)
 
+def exercise_cif():
+  if (not libtbx.env.has_module("phenix_regression")):
+    print("phenix_regression not available, skipping")
+    return
+  cif_file = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/reflection_files/1yjp-sf.cif",
+    test=os.path.isfile)
+  p = reflection_file_editor.run(
+    args=[cif_file, "dry_run=True",
+          "output_file=cif_file.mtz"],
+    out=null_out())
+  assert ([ c.label() for c in p.mtz_object.columns() ] == [
+     'H', 'K', 'L', 'crystal_id', 'wavelength_id', 'scale_group_code', 'F_meas_au', 'F_meas_sigma_au', 'FreeR_flag'])
+  p.finish()
+  mtz_in = file_reader.any_file("cif_file.mtz")
+  miller_arrays = mtz_in.file_object.as_miller_arrays()
+  assert [str(ma.info()) for ma in miller_arrays] == ['cif_file.mtz:crystal_id', 'cif_file.mtz:wavelength_id', 'cif_file.mtz:scale_group_code', 'cif_file.mtz:F_meas_au,F_meas_sigma_au', 'cif_file.mtz:FreeR_flag']
+
+
 if __name__ == "__main__" :
   with warnings.catch_warnings(record=True) as w:
     exercise_basic(verbose=("--verbose" in sys.argv))
     assert (len(w) == 7), len(w)
     exercise_command_line()
     exercise_xds_input()
+    exercise_cif()
   print("OK")

@@ -26,7 +26,7 @@ jobs:
 
   container:
     image: ${{ parameters.distribution }}:${{ join('.', parameters.version) }}
-    options: --name ci-container
+    options: --name ci-container --privileged
     volumes:
       - /usr/bin/docker:/tmp/docker:ro
       - /usr:/tmp/host_usr:rw
@@ -80,6 +80,12 @@ jobs:
       echo "##vso[task.setvariable variable=LC_ALL]C.utf8"
     displayName: Setup locale for CentOS 8
     condition: eq('${{ parameters.version[0] }}', 8)
+
+  # https://lists.openhpc.community/g/users/topic/openmpi_and_shared_memory/16489081?p=,,,20,0,0,0::recentpostdate%2Fsticky,,,20,2,0,16489081
+  - script: |
+      sudo sysctl -w kernel.yama.ptrace_scope=0
+    displayName: Hide OpenMPI warning
+    condition: eq('${{ parameters.distribution }}', 'centos')
 
   # ubuntu setup
   - script: |
