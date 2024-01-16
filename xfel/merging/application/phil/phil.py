@@ -488,7 +488,7 @@ merging {
     .type = int(value_min=2)
     .help = If defined, merged structure factors not produced for the Miller indices below this threshold.
   error {
-    model = ha14 *ev11 errors_from_sample_residuals
+    model = ha14 *ev11 mm24 errors_from_sample_residuals
       .type = choice
       .multiple = False
       .help = ha14, formerly sdfac_auto, apply sdfac to each-image data assuming negative
@@ -496,24 +496,42 @@ merging {
       .help = errors_from_sample_residuals, use the distribution of intensities in a given miller index
       .help = to compute the error for each merged reflection
     ev11
-      .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011. \
-              Updated EV11 with MLL target function
+      .help = formerly sdfac_refine, correct merged sigmas refining sdfac, sdb and sdadd as Evans 2011.
       {
-      algorithm = *ev11 ev11_mll
-        .help = 'ev11' implements the original Ev11 from Brewster 2019 \
-                'ev11_mll' implements the maximum log-likelihood from Mittan-Moreau 202X
+      random_seed = None
+        .help = Random seed. May be int or None. Only used for the simplex minimizer
+        .type = int
+        .expert_level = 1
+      minimizer = *lbfgs LevMar
         .type = choice
-        .multiple = False
-      n_degrees = 1
+        .help = Which minimizer to use while refining the Sdfac terms
+      refine_propagated_errors = False
+        .type = bool
+        .help = If True then during sdfac refinement, also \
+                refine the estimated error used for error propagation.
+      show_finite_differences = False
+        .type = bool
+        .help = If True and minimizer is lbfgs, show the finite vs. analytical differences
+      plot_refinement_steps = False
+        .type = bool
+        .help = If True, plot refinement steps during refinement.
+    }
+    mm24
+      .help = maximum log-likelihood from Mittan-Moreau 2024
+      {
+      expected_gain = 0
+        .help = Expected gain used for s_fac initialization.\
+                If zero, initialize s_fac using routine.
+        .type = float
+      number_of_intensity_bins = 100
+        .help = number of intensity bins
+        .type = int
+      n_degrees = 2
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
-      tuning_param = 20
+      tuning_param = 10
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
-      overall_scaling_method = *none pairwise_differences
-        .help = Calculation of the overall scaling ...
-        .type = choice
-        .multiple = False
       limit_differences = True
         .help = Place an upper bound on number of pairwise differences
         .type = bool
@@ -523,7 +541,7 @@ merging {
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter
-      likelihood = *normal t-dist
+      likelihood = normal *t-dist
         .help = Choice for likelihood function. Either 't-dist', 'normal'.
         .type = choice
         .multiple = False
@@ -534,7 +552,7 @@ merging {
                 If post-refinement is not performed, must be False.
       do_diagnostics = False
         .type = bool
-        .help = plot normalized deviations, s_add and correlation coefficients, and I/sigma vs I.
+        .help = Make diagnostic plots.
     }
   }
   plot_single_index_histograms = False

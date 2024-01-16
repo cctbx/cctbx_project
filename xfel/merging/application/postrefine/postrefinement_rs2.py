@@ -175,7 +175,7 @@ class postrefinement_rs2(postrefinement_rs):
         assert result_observations_original_index.size() == result_observations.size()
         assert result_matches.pairs().size() == result_observations_original_index.size()
         # Calculate the correlation of each frame after corrections.
-        # This is used in the MLL error model to determine a per frame level of error
+        # This is used in the MM24 error model to determine a per frame level of error
         if "correlation_after_post" in self.params.input.persistent_refl_cols:
           I_observed = result_observations.data()
           matches = miller.match_multi_indices(

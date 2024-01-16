@@ -224,6 +224,13 @@ class Script(object):
       else:
         if "correlation" not in self.params.input.persistent_refl_cols:
           self.params.input.persistent_refl_cols.append("correlation")
+    if self.params.merging.error.model == "mm24":
+      if self.params.merging.error.mm24.cc_after_pr:
+        if "correlation_after_post" not in self.params.input.persistent_refl_cols:
+          self.params.input.persistent_refl_cols.append("correlation_after_post")
+      else:
+        if "correlation" not in self.params.input.persistent_refl_cols:
+          self.params.input.persistent_refl_cols.append("correlation")
 
 if __name__ == '__main__':
   script = Script()

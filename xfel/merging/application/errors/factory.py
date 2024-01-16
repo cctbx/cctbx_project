@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.errors.error_modifier_sr import error_modifier_sr
 from xfel.merging.application.errors.error_modifier_ev11 import error_modifier_ev11
 from xfel.merging.application.errors.error_modifier_ha14 import error_modifier_ha14
+from xfel.merging.application.errors.error_modifier_mm24 import error_modifier_mm24
 from xfel.merging.application.worker import factory as factory_base
 
 class factory(factory_base):
@@ -18,4 +19,6 @@ class factory(factory_base):
         return [error_modifier_sr(params, mpi_helper, mpi_logger)]
       elif params.merging.error.model == "ev11":
         return [error_modifier_ev11(params, mpi_helper, mpi_logger)]
+      elif params.merging.error.model == "mm24":
+        return [error_modifier_mm24(params, mpi_helper, mpi_logger)]
     return []

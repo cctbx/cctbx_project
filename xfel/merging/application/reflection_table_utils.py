@@ -4,6 +4,7 @@ from six.moves import range
 from dials.array_family import flex
 import math
 from simtbx.diffBragg.utils import is_outlier
+import pandas as pd
 
 class reflection_table_utils(object):
 
@@ -48,6 +49,54 @@ class reflection_table_utils(object):
     table['sigma'] = flex.double()
     table['multiplicity'] = flex.int()
     return table
+  
+  @staticmethod
+  def merge_reflections_print(reflections, min_multiplicity, nameprefix=None, thresh=None):
+    '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
+    merged_reflections = reflection_table_utils.merged_reflection_table()
+    df_rank = pd.DataFrame(columns=['intensities', 'outliers', 'multiplicity', 'mean_intensity', 'sigma', 'miller_index'])
+    df_index = 0
+    for i_refls,refls in enumerate(reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections)):
+      if refls.size() == 0:
+        break # unless the input "reflections" list is empty, generated "refls" lists cannot be empty
+
+      hkl = refls[0]['miller_index_asymmetric']
+      # This assert is timeconsuming when using a small number of cores
+      #assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
+
+      refls = refls.select(refls['intensity.sum.variance'] > 0.0)
+
+      if refls.size() >= min_multiplicity:
+        weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
+        weights_array = flex.double(refls.size(), 1.0) / refls['intensity.sum.variance']
+
+        weighted_mean_intensity = flex.sum(weighted_intensity_array) / flex.sum(weights_array)
+        standard_error_of_weighted_mean_intensity = 1.0/math.sqrt(flex.sum(weights_array))
+
+        if thresh is not None:
+          vals = refls["intensity.sum.value"].as_numpy_array()
+          good = ~is_outlier(vals, thresh)
+          good_vals = vals[good]
+          weighted_mean_intensity = np.mean(good_vals)
+          vals_var = refls["intensity.sum.variance"].as_numpy_array()
+          num_good = good.sum()
+          standard_error_of_weighted_mean_intensity = np.sqrt(vals_var[good].sum())/num_good
+        merged_reflections.append(
+                                  {'miller_index' : hkl,
+                                  'intensity' : weighted_mean_intensity,
+                                  'sigma' : standard_error_of_weighted_mean_intensity,
+                                  'multiplicity' : refls.size()})
+        if refls.size() > 100:
+          df_rank.loc[df_index] = {
+            'intensities': refls["intensity.sum.value"].as_numpy_array(),
+            'sigma' : refls["intensity.sum.variance"].as_numpy_array(),
+            'multiplicity': refls.size(),
+            'mean_intensity': weighted_mean_intensity,
+            'error_intensity' : standard_error_of_weighted_mean_intensity,
+            'miller_index': hkl,
+            }
+          df_index += 1 
+    return merged_reflections, df_rank
 
   @staticmethod
   def merge_reflections(reflections, min_multiplicity, nameprefix=None, thresh=None):
