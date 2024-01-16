@@ -365,9 +365,9 @@ class error_modifier_ev11(worker):
       initial_params = None
 
     initial_params = self.mpi_helper.comm.bcast(initial_params, root=0)
-    self.sfac = initial_params[0]
-    self.sadd = initial_params[1]
-    self.sb   = initial_params[2]
+    self.sfac  = initial_params[0]
+    self.sadd  = initial_params[1]
+    self.sb    = initial_params[2]
 
   def distribute_reflections_over_intensity_bins(self):
     self.intensity_bins = []
