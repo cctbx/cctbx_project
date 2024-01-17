@@ -19,7 +19,7 @@ from scitbx_array_family_flex_ext import bool as flex_bool
 
 from .qscore_utils import (
     trilinear_interpolation,
-    rowwise_corrcoef
+    rowwise_corrcoef,
     sphere_points_np,
     sphere_points_flex,
     cdist_flex,

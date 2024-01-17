@@ -83,7 +83,7 @@ class Program(ProgramTemplate):
              nproc=self.params.nproc,
              version=version,
              log = self.logger)
-    print(result)
+    self.result = group_args(qscore=result)
 
   def get_results(self):
-    return group_args()
+    return self.result
