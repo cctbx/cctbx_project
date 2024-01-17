@@ -9,13 +9,12 @@ from copy import deepcopy
 
 
 def rotate_axis(v, axis, phi):
-    sinphi = np.sin(phi);
-    cosphi = np.cos(phi);
+    sinphi = np.sin(phi)
+    cosphi = np.cos(phi)
     dot = np.dot(axis,v)*(1-cosphi)
-    #dot = (axis[0]*v[0]+axis[1]*v[1]+axis[2]*v[2])*(1.0-cosphi);
-    new_x = axis[0]*dot+v[0]*cosphi+(-axis[2]*v[1]+axis[1]*v[2])*sinphi;
-    new_y = axis[1]*dot+v[1]*cosphi+(+axis[2]*v[0]-axis[0]*v[2])*sinphi;
-    new_z = axis[2]*dot+v[2]*cosphi+(-axis[1]*v[0]+axis[0]*v[1])*sinphi;
+    new_x = axis[0]*dot+v[0]*cosphi+(-axis[2]*v[1]+axis[1]*v[2])*sinphi
+    new_y = axis[1]*dot+v[1]*cosphi+(+axis[2]*v[0]-axis[0]*v[2])*sinphi
+    new_z = axis[2]*dot+v[2]*cosphi+(-axis[1]*v[0]+axis[0]*v[1])*sinphi
     return new_x, new_y, new_z
 
 
