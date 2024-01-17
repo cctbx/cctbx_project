@@ -18,7 +18,10 @@ class error_modifier_mm24(worker):
     else:
       self.expected_sf = None
     self.likelihood = self.params.merging.error.mm24.likelihood
-    self.limit_differences = self.params.merging.error.mm24.limit_differences
+    if self.params.merging.error.mm24.n_max_differences is None:
+      self.limit_differences = True
+    else:
+      self.limit_differences = False
     self.n_max_differences = self.params.merging.error.mm24.n_max_differences
     self.n_coefs = self.params.merging.error.mm24.n_degrees + 1
     self.tuning_param = self.params.merging.error.mm24.tuning_param
@@ -94,14 +97,15 @@ class error_modifier_mm24(worker):
         self.biased_mean_count.extend(flex.double(I.size, refls_biased_mean[0]))
         indices = np.triu_indices(n=I.size, k=1)
         N = indices[0].size
-        if self.limit_differences and N > self.n_max_differences:
-          # this option is for performance trade-offs
-          if N > 1000:
-            subset_indices = rng.choice(N, size=self.n_max_differences, replace=False, shuffle=True)
-          else:
-            subset_indices = rng.permutation(N)[:self.n_max_differences]
-          indices = (indices[0][subset_indices], indices[1][subset_indices])
-          N = self.n_max_differences
+        if self.limit_differences == False:
+          if N > self.n_max_differences:
+            # this option is for performance trade-offs
+            if N > 1000:
+              subset_indices = rng.choice(N, size=self.n_max_differences, replace=False, shuffle=True)
+            else:
+              subset_indices = rng.permutation(N)[:self.n_max_differences]
+            indices = (indices[0][subset_indices], indices[1][subset_indices])
+            N = self.n_max_differences
         differences = flex.double(np.abs(I[indices[0]] - I[indices[1]]))
         var_cs_i = flex.double(var_cs[indices[0]])
         var_cs_j = flex.double(var_cs[indices[1]])

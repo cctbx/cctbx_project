@@ -532,11 +532,9 @@ merging {
       tuning_param = 10
         .help = tuning param for t-dist in maximum log likelihood
         .type = float
-      limit_differences = True
-        .help = Place an upper bound on number of pairwise differences
-        .type = bool
       n_max_differences = 100
-        .help = Maximum number of pairwise differences per reflection
+        .help = Maximum number of pairwise differences per reflection.\
+                If None, then do not limit the maximum number of differences
         .type = int
       tuning_param_opt = False
         .type = bool

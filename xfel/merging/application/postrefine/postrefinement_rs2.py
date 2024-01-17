@@ -219,8 +219,9 @@ class postrefinement_rs2(postrefinement_rs):
         for key in self.params.input.persistent_refl_cols:
           if key not in new_exp_reflections.keys():
             new_exp_reflections[key] = exp_reflections_match_results[key]
-        if "correlation_after_post" in self.params.input.persistent_refl_cols:
-          new_exp_reflections["correlation_after_post"] = flex.double(len(new_exp_reflections), SWC_after_post.corr)
+        if self.params.merging.error.model == 'mm24':
+          if "correlation_after_post" in self.params.input.persistent_refl_cols:
+            new_exp_reflections["correlation_after_post"] = flex.double(len(new_exp_reflections), SWC_after_post.corr)
         new_reflections.extend(new_exp_reflections)
 
     # report rejected experiments, reflections
