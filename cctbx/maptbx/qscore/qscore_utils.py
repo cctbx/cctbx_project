@@ -119,7 +119,7 @@ def sphere_points_np(ctr, rad, N):
 
 
 def sphere_points_flex(ctr, rad, N):
-"""Generate points on a sphere, using flex only, as implemented in original qscore from Pintile et al."""
+  """Generate points on a sphere, using flex only, as implemented in original qscore from Pintile et al."""
 
   h = -1.0 + (2.0 * flex.double_range(N) / (N-1))
   phis = flex.acos(h)

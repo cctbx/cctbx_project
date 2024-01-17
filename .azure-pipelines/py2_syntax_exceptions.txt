@@ -13,3 +13,6 @@ xfel/ui/db/job.py
 xfel/command_line/cxi_mpi_submit.py
 xfel/command_line/fee_calibration.py
 xfel/util/drift.py
+cctbx/maptbx/qscore/flex_utils.py
+cctbx/maptbx/qscore/qscore_utils.py
+cctbx/maptbx/qscore/tst_qscore.py
