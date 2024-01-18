@@ -36,12 +36,14 @@ def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
     model.append_chain(tc)
 
 def validate_c_ca_n_for_n_terminal(c,ca,n,bonds):
+  if bonds is None: return True
   nb = bonds.get(n.i_seq, None)
   if not nb: return False
   if len(nb) not in [1]: return False
   return True
 
 def validate_c_ca_n_for_c_terminal(c,ca,n,bonds):
+  if bonds is None: return True
   cb = bonds.get(c.i_seq, None)
   if not cb: return False
   if len(cb) not in [2]: return False
