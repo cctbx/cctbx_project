@@ -536,6 +536,10 @@ merging {
         .help = Maximum number of pairwise differences per reflection.\
                 If None, then do not limit the maximum number of differences
         .type = int
+      random_seed=50298
+        .help = Seed used to establish the random number generator for\
+                subsampling the pairwise differences.
+        .type = int
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter

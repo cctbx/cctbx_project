@@ -6,6 +6,7 @@ import os
 import scipy.optimize
 from scipy.special import gamma
 from scipy.special import polygamma
+from scipy.special import erfinv
 import scipy.stats
 from xfel.merging.application.worker import worker
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
@@ -79,7 +80,7 @@ class error_modifier_mm24(worker):
     correlation_i = flex.double()
     correlation_j = flex.double()
     number_of_reflections = 0
-    rng = np.random.default_rng(seed=self.mpi_helper.rank)
+    rng = np.random.default_rng(seed=self.params.merging.error.mm24.random_seed)
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
@@ -191,12 +192,13 @@ class error_modifier_mm24(worker):
       def fitting_equation(params, y0, return_jac):
         sf = params[0]
         sadd = params[1]
-        arg = 2 * sf**2 * (x + sadd**2 * x**2)
-        curve = np.sqrt(arg) + y0
+        prefactor = 2 * erfinv(1/2)
+        arg = sf**2 * (x + sadd**2 * x**2)
+        curve = prefactor * np.sqrt(arg) + y0
         if return_jac:
-          darg_dsf = 4 * sf * (x + sadd**2 * x**2)
-          darg_dsadd = 4 * sf**2 * sadd * x**2
-          dcurve_darg = 1/2 * 1/np.sqrt(arg)
+          darg_dsf = 2 * sf * (x + sadd**2 * x**2)
+          darg_dsadd = 2 * sf**2 * sadd * x**2
+          dcurve_darg = 1/2 * prefactor/np.sqrt(arg)
           dcurve_dsf = dcurve_darg * darg_dsf
           dcurve_dsadd = dcurve_darg * darg_dsadd
           return curve, dcurve_dsf, dcurve_dsadd
