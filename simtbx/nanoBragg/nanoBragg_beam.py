@@ -5,7 +5,9 @@ from __future__ import print_function, division
 from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
 import numpy as np
+from collections import namedtuple
 from copy import deepcopy
+from itertools import product
 
 
 def rotate_axis(v, axis, phi):
@@ -41,14 +43,14 @@ class NBbeam(object):
       assert val % 2 == 0, "divsteps must be even"
     self._divsteps = val
 
+  Divergence = namedtuple('NBbeamDivergence', 'x y angle')
+
   @property
   def divergences(self):
-    divrange = self.divergence_mrad/1000.
-    if self.divsteps==0:
-      return [(0,0)]
-    else:
-      all_divs = np.arange(0, divrange+1e-7, divrange / self.divsteps) - divrange / 2
-      return [(hdiv, vdiv) for vdiv in all_divs for hdiv in all_divs]
+    rr = self.divergence_mrad / 1000.  # divergence cone radius in radians
+    divs = product(np.linspace(-rr, rr, num=self.divsteps or 1) / 2, repeat=2)
+    angles = [(div[0] ** 2 + div[1] ** 2) ** 0.5 for div in divs]
+    return [self.Divergence(*d, a) for d, a in zip(divs, angles) if a < rr + 1e-8]
 
   @property
   def size_mm(self):
@@ -95,8 +97,6 @@ class NBbeam(object):
   def xray_beams(self):
     self._xray_beams = flex_Beam()
 
-    divs = self.divergences
-
     wavelen = self.spectrum[0][0]
     nominal_beam = BeamFactory.simple(wavelen * 1e-10)
     nominal_beam.set_unit_s0(self.unit_s0)
@@ -109,15 +109,15 @@ class NBbeam(object):
 
     self.num_div_angles_within_cone = 0
     beams = []
-    for hdiv, vdiv in divs:
+    for hdiv, vdiv, adiv in self.divergences:
       vec_xyz = rotate_axis(-beam_vector, polar_vector, vdiv)
       unit_s0 = rotate_axis(vec_xyz, vert_vector, hdiv)
-      div_ang = np.arccos(np.dot(unit_s0, -beam_vector))
-      if hdiv == 0 and vdiv == 0:
-        assert div_ang == 0
-        assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
-      if div_ang > 1.1*(self.divergence_mrad / 1000. / 2.):
-        continue
+      # div_ang = np.arccos(np.dot(unit_s0, -beam_vector))
+      # if hdiv == 0 and vdiv == 0:
+      #   assert div_ang == 0
+      #   assert np.allclose(unit_s0, nominal_beam.get_unit_s0())
+      # if div_ang > 1.1*(self.divergence_mrad / 1000. / 2.):
+      #   continue
       self.num_div_angles_within_cone += 1
       for wavelen, flux in self.spectrum:
         beam = deepcopy(nominal_beam)
@@ -125,7 +125,7 @@ class NBbeam(object):
         beam.set_flux(flux)
         beam.set_polarization_fraction(self.polarization_fraction)
         beam.set_unit_s0(unit_s0)
-        beam.set_divergence(div_ang)
+        beam.set_divergence(adiv)
         beams.append(beam)
 
     # set normalization
