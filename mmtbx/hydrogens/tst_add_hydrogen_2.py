@@ -16,7 +16,7 @@ def run():
   test_004()
   test_005()
   test_006()
-  test_007() # needs fixing
+  test_007()
   test_008()
   #test_009()
 
