@@ -194,14 +194,17 @@ def get_type(value):
 
 def compare_custom(d1,d2):
   """
-  Compare two dictionaries by types, and 'idea' floats
+  Compare two dictionaries by types, and 'ideal' floats
   with a large tolerance to enable future changes to restraints.
   """
+  print(d1)
+  print(d2)
   for key1,value1 in d1.items():
     assert key1 in d2
     value2 = d2[key1]
+    print(value1,value2)
     t1,t2 = get_type(value1), get_type(value2)
-    assert t1==t2
+    assert t1==t2, '%s!=%s' % (t1, t2)
     if isinstance(t1,float):
       if key1 == 'ideal':
         diff = abs(float(value1)-float(value2))
