@@ -6,16 +6,17 @@ from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
 import numpy as np
 from copy import deepcopy
+from mmtbx_reduce_ext import RotatePointDegreesAroundAxisDir
 
 
 def rotate_axis(v, axis, phi):
-    sinphi = np.sin(phi)
-    cosphi = np.cos(phi)
-    dot = np.dot(axis,v)*(1-cosphi)
-    new_x = axis[0]*dot+v[0]*cosphi+(-axis[2]*v[1]+axis[1]*v[2])*sinphi
-    new_y = axis[1]*dot+v[1]*cosphi+(+axis[2]*v[0]-axis[0]*v[2])*sinphi
-    new_z = axis[2]*dot+v[2]*cosphi+(-axis[1]*v[0]+axis[0]*v[1])*sinphi
-    return new_x, new_y, new_z
+    """
+    :param v: vector to rotate
+    :param axis: axis of rotation
+    :param phi: angle in radians
+    """
+    new_v = RotatePointDegreesAroundAxisDir((0,0,0), axis, v, phi*180/np.pi)
+    return new_v
 
 
 class NBbeam(object):
