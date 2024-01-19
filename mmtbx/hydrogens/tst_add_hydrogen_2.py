@@ -16,7 +16,7 @@ def run():
   test_004()
   test_005()
   test_006()
-  # test_007() # needs fixing
+  test_007() # needs fixing
   test_008()
   #test_009()
 
@@ -54,12 +54,18 @@ def compare_models(pdb_str,
   model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
 
-  f = open("m_initial.pdb","w")
-  f.write(model_initial.model_as_pdb())
-  f.close()
-  f = open("m_added.pdb","w")
-  f.write(model_h_added.model_as_pdb())
-  f.close()
+  #f = open("m_initial.pdb","w")
+  #f.write(model_initial.model_as_pdb())
+  #f.close()
+  #f = open("m_initial.cif","w")
+  #f.write(model_initial.model_as_mmcif())
+  #f.close()
+  #f = open("m_added.pdb","w")
+  #f.write(model_h_added.model_as_pdb())
+  #f.close()
+  #f = open("m_added.cif","w")
+  #f.write(model_h_added.model_as_mmcif())
+  #f.close()
 
   ph_h_added = model_h_added.get_hierarchy()
   assert ph_initial.is_similar_hierarchy(other=ph_h_added)
@@ -579,16 +585,17 @@ ATOM   594 N N   . GLY A 1 75 ? 41.165 35.531 31.898 0.25 36.31 ? 75  GLY A N   
 ATOM   595 C CA  . GLY A 1 75 ? 41.845 36.550 32.686 0.25 36.07 ? 75  GLY A CA  1
 ATOM   596 C C   . GLY A 1 75 ? 41.251 37.941 32.588 0.25 36.16 ? 75  GLY A C   1
 ATOM   597 O O   . GLY A 1 75 ? 41.102 38.523 31.500 0.25 36.26 ? 75  GLY A O   1
-ATOM   598 H HA2 . GLY A 1 75 ? 42.768 36.603 32.393 0.25 36.07 ? 75  GLY A HA3 1
-ATOM   599 H HA3 . GLY A 1 75 ? 41.823 36.286 33.619 0.25 36.07 ? 75  GLY A HA2 1
-ATOM   600 N N   . GLY A 1 76 ? 40.946 38.472 33.757 0.25 36.05 ? 76  GLY A N   1
-ATOM   601 C CA  . GLY A 1 76 ? 40.373 39.813 33.944 0.25 36.19 ? 76  GLY A CA  1
-ATOM   602 C C   . GLY A 1 76 ? 40.031 39.992 35.432 0.25 36.20 ? 76  GLY A C   1
-ATOM   603 O O   . GLY A 1 76 ? 38.933 40.525 35.687 0.25 36.13 ? 76  GLY A O   1
-ATOM   604 O OXT . GLY A 1 76 ? 40.862 39.575 36.251 0.25 36.27 ? 76  GLY A OXT 1
-ATOM   605 H H   . GLY A 1 76 ? 41.063 38.062 34.504 0.25 36.05 ? 76  GLY A H   1
-ATOM   606 H HA3 . GLY A 1 76 ? 39.566 39.910 33.413 0.25 36.19 ? 76  GLY A HA3 1
-ATOM   607 H HA2 . GLY A 1 76 ? 41.011 40.491 33.675 0.25 36.19 ? 76  GLY A HA2 1
+ATOM   598 H H   . GLY A 1 75 ? 40.314 35.502 32.022 0.25 36.31 ? 75  GLY A H   1
+ATOM   599 H HA2 . GLY A 1 75 ? 42.768 36.603 32.393 0.25 36.07 ? 75  GLY A HA3 1
+ATOM   600 H HA3 . GLY A 1 75 ? 41.823 36.286 33.619 0.25 36.07 ? 75  GLY A HA2 1
+ATOM   601 N N   . GLY A 1 76 ? 40.946 38.472 33.757 0.25 36.05 ? 76  GLY A N   1
+ATOM   602 C CA  . GLY A 1 76 ? 40.373 39.813 33.944 0.25 36.19 ? 76  GLY A CA  1
+ATOM   603 C C   . GLY A 1 76 ? 40.031 39.992 35.432 0.25 36.20 ? 76  GLY A C   1
+ATOM   604 O O   . GLY A 1 76 ? 38.933 40.525 35.687 0.25 36.13 ? 76  GLY A O   1
+ATOM   605 O OXT . GLY A 1 76 ? 40.862 39.575 36.251 0.25 36.27 ? 76  GLY A OXT 1
+ATOM   606 H H   . GLY A 1 76 ? 41.063 38.062 34.504 0.25 36.05 ? 76  GLY A H   1
+ATOM   607 H HA3 . GLY A 1 76 ? 39.566 39.910 33.413 0.25 36.19 ? 76  GLY A HA3 1
+ATOM   608 H HA2 . GLY A 1 76 ? 41.011 40.491 33.675 0.25 36.19 ? 76  GLY A HA2 1
 HETATM 611 O O   . HOH B 2 .  ? 45.747 30.081 19.708 1.00 12.43 ? 77  HOH A O   1
 '''
 
