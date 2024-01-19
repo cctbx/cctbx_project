@@ -173,6 +173,7 @@ jobs:
     parameters:
       distribution: ${{ parameters.distribution }}
       version: ${{ parameters.version }}
+      slow_tests: ${{ parameters.slow_tests }}
 
   # preserve permissions
   - script: |

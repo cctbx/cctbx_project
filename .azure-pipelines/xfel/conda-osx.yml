@@ -101,6 +101,8 @@ jobs:
 
   # build
   - template: ${{ parameters.template }}
+    parameters:
+      slow_tests: ${{ parameters.slow_tests }}
 
   # preserve permissions
   - script: |
