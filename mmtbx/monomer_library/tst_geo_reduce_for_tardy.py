@@ -61,7 +61,7 @@ def run(args):
         ("1yjp_box.pdb", (59,0), (22, 15)),
         # ("disulfides_box.pdb", (198,3), (65, 28)), origin ID move some restraints
         # ("disulfides_box.pdb", (198,3), (56, 25)), added torsions for H atoms
-        ("disulfides_box.pdb", (198,3), (70, 37)),
+        ("disulfides_box.pdb", (198,3), (74, 41)),
         ]:
     exercise_geo_reduce_for_tardy(
       mon_lib_srv=mon_lib_srv,
