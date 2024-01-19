@@ -145,6 +145,9 @@ scattering_table = wk1995  it1992  *n_gaussian  neutron electron
     n_gaussian is the standard set of X-ray scattering factors.
   .expert_level=1
   .style = noauto
+custom_scattering_factors = None
+  .type = path
+  .help = Use custom scattering factors and replaces default values entirely
 pdb_file = None
   .type = path
   .multiple = True
@@ -397,6 +400,9 @@ def run(args, log = sys.stdout):
     else: ofn = ofn + "_et_al" + extension
   if([miller_array, params.high_resolution].count(None)==2):
     raise Sorry("Input data file or high_resolution has to be provided.")
+  use_custom_scattering_dictionary = False
+  if params.custom_scattering_factors:
+    use_custom_scattering_dictionary = True
   mmtbx.utils.fmodel_from_xray_structure(
     xray_structure = xray_structure,
     f_obs          = miller_array,
@@ -404,6 +410,7 @@ def run(args, log = sys.stdout):
     params         = params,
     twin_law       = params.twin_law,
     twin_fraction  = params.twin_fraction,
+    use_custom_scattering_dictionary = use_custom_scattering_dictionary,
     out            = log).write_to_file(file_name = ofn,
       obs_type=params.output.obs_type)
   print("Output file name:", ofn, file=log)
