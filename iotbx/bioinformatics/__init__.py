@@ -1888,7 +1888,6 @@ def ok_a3m_sequence(s, n = None, base_sequence = None):
     elif c >="a" and c <= "z":
       n_lower += 1
     else:
-      print(c)
       n_other += 1
 
   if n_other > 0:
