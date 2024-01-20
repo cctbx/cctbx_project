@@ -36,7 +36,9 @@ def copy_cmd(src, dst, link):
   -------
     Nothing
   """
-  if os.path.exists(dst):
+  if not os.path.exists(src):
+    print('  {src} does not exist, skipping'.format(dst=dst))
+  elif os.path.exists(dst):
     print('  {dst} already exists'.format(dst=dst))
   else:
     print('  source:      ' + src)
