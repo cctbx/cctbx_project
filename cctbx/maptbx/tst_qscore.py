@@ -280,7 +280,7 @@ expected_results = {
 0.19546149360621035
   ],
     42:[
-  
+
   ]
 }
 # make flex arrays
@@ -301,11 +301,11 @@ def exercise(test_name):
     logger=null_out(),
   )
 
-  
+
   try:
     expected_result = expected_results[test_name]
     assert approx_equal(expected_result, result.qscore,eps=1.e-2)
-  except:
+  except Exception:
     for val in result.qscore:
       print(str(val)+",")
     raise
