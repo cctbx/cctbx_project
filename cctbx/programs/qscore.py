@@ -10,14 +10,13 @@ import numpy as np
 
 class Program(ProgramTemplate):
 
-  description = """
+    description = """
   Perform a Qscore analysis for map-model fit
   """
 
-  datatypes = ['phil','model','real_map']
+    datatypes = ['phil', 'model', 'real_map']
 
-
-  master_phil_str = """  
+    master_phil_str = """
   nproc = 8
       .type = int
       .help = Number of processors to use
@@ -39,7 +38,7 @@ class Program(ProgramTemplate):
     .help = Start testing density at this radius from atom
     .short_caption = Start testing density at this radius from atom
     .expert_level = 1
-  
+
   shell_radius_stop = 2
     .type = float
     .help = Stop testing density at this radius from atom
@@ -60,36 +59,35 @@ class Program(ProgramTemplate):
                      Precalculate is a method where probes are pre-allocated and \
                      rejected once. Parallelization is done by radial shell. \
                      Precalculate is much faster but will yield slightly different results.
-    
+
 
   """
 
-  def validate(self):
-    pass
+    def validate(self):
+        pass
 
-  def run(self):
-    print("Running")
-    shells = np.linspace(self.params.shell_radius_start,
-                                  self.params.shell_radius_stop,
-                                  num = self.params.shell_radius_num,
-                                  endpoint=True)
-    mmm = self.data_manager.get_map_model_manager()
-    version = 2 if self.params.probe_allocation_method == "precalculate" else 1 # 'progressive'
+    def run(self):
+        print("Running")
+        shells = np.linspace(self.params.shell_radius_start,
+                             self.params.shell_radius_stop,
+                             num=self.params.shell_radius_num,
+                             endpoint=True)
+        mmm = self.data_manager.get_map_model_manager()
+        version = 2 if self.params.probe_allocation_method == "precalculate" else 1  # 'progressive'
 
-    # TODO: move param unpacking to the library function
-    result = qscore_np(
-             mmm,
-             selection=self.params.selection,
-             n_probes = self.params.n_probes,
-             shells =  shells,
-             nproc=self.params.nproc,
-             version=version,
-             log = self.logger)
-    print("Result:")
-    for val in result:
-      print(str(val)+",")
-    self.result = group_args(qscore=result)
+        # TODO: move param unpacking to the library function
+        result = qscore_np(
+            mmm,
+            selection=self.params.selection,
+            n_probes=self.params.n_probes,
+            shells=shells,
+            nproc=self.params.nproc,
+            version=version,
+            log=self.logger)
+        print("Result:")
+        for val in result:
+            print(str(val)+",")
+        self.result = group_args(qscore=result)
 
-
-  def get_results(self):
-    return self.result
+    def get_results(self):
+        return self.result
