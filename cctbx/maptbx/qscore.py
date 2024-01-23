@@ -738,7 +738,7 @@ def sphere_points_np(ctr, rad, N, mode='SpherePts'):
     thetas[1:-1] = a
     thetas = np.cumsum(thetas)
   elif mode == 'SpherePts':
-    thetas = np.zeros(N)ß
+    thetas = np.zeros(N)
     for k in range(1, N):
       if k == 1 or k == N - 1:
         thetas[k] = 0
@@ -759,7 +759,6 @@ def sphere_points_np(ctr, rad, N, mode='SpherePts'):
   else:
     # Multiple centers case
     points = points.reshape(-1, 1, 3) + ctr.reshape(1, -1, 3)
-
 
   return points
 
