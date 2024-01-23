@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from phenix.program_template import ProgramTemplate
 from libtbx import group_args
-from cctbx.maptbx.qscore.qscore import qscore_np
+from cctbx.maptbx.qscore import qscore_np
 
 import numpy as np
 
@@ -46,7 +46,7 @@ class Program(ProgramTemplate):
     .short_caption = Stop testing density at this radius from atom
     .expert_level = 1
 
-  shell_radius_num = 11
+  shell_radius_num = 20
     .type = int
     .help = The number of radial shells
     .short_caption = The number of radial shells (includes start/stop, so minimum 2)
@@ -75,6 +75,8 @@ class Program(ProgramTemplate):
                                   endpoint=True)
     mmm = self.data_manager.get_map_model_manager()
     version = 2 if self.params.probe_allocation_method == "precalculate" else 1 # 'progressive'
+
+    # TODO: move param unpacking to the library function
     result = qscore_np(
              mmm,
              selection=self.params.selection,
@@ -83,7 +85,11 @@ class Program(ProgramTemplate):
              nproc=self.params.nproc,
              version=version,
              log = self.logger)
+    print("Result:")
+    for val in result:
+      print(str(val)+",")
     self.result = group_args(qscore=result)
+
 
   def get_results(self):
     return self.result
