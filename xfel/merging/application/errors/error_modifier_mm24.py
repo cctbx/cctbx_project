@@ -1,6 +1,3 @@
-"""
-How much flumpy did you try?  Lots of as_numpy_array.  I seem to recall you tested this.
-"""
 from __future__ import absolute_import, division, print_function
 from dials.array_family import flex
 import math
@@ -48,24 +45,17 @@ class error_modifier_mm24(worker):
 
   def modify_errors(self, reflections):
     # First set up a reflection table to do work downstream.
-    t0 = time.time()
     reflections = self.setup_work_arrays(reflections)
-    t1 = time.time()
     # Now moving to intensities, find the bin limits using global min/max of the means of each reflection
     self.calculate_intensity_bin_limits()
-    t2 = time.time()
     # Once bin limits are determined, assign intensities on each rank to appropriate bin limits
     self.distribute_differences_over_intensity_bins()
-    t3 = time.time()
     self.initialize_ev11_params()
-    t4 = time.time()
     # Run LBFGSB minimizer
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
-    t5 = time.time()
     if self.params.merging.error.mm24.do_diagnostics:
       self.plot_diagnostics(reflections)
-    t6 = time.time()
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
     reflections['intensity.sum.variance'] = self._get_var_ev11(
       reflections['intensity.sum.variance'],
@@ -73,15 +63,6 @@ class error_modifier_mm24(worker):
       reflections[self.cc_key]
       )
     del reflections['biased_mean']
-    t7 = time.time()
-    if self.mpi_helper.rank == 0:
-      print(f'Setup work arrays:              {t1 - t0:0.3f}')
-      print(f'Calculate intensity bin limits: {t2 - t1:0.3f}')
-      print(f'Distribute intensities:         {t3 - t2:0.3f}')
-      print(f'Initialize params:              {t4 - t3:0.3f}')
-      print(f'Minimization:                   {t5 - t4:0.3f}')
-      print(f'Diagnostics:                    {t6 - t5:0.3f}')
-      print(f'Update variances:               {t7 - t6:0.3f}')
     return reflections
 
   def setup_work_arrays(self, reflections):
@@ -97,7 +78,6 @@ class error_modifier_mm24(worker):
     correlation_i = flex.double()
     correlation_j = flex.double()
     number_of_reflections = 0
-    rng = np.random.default_rng(seed=self.params.merging.error.mm24.random_seed)
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_measurements = refls.size()
@@ -117,20 +97,28 @@ class error_modifier_mm24(worker):
         N = indices[0].size
         if self.limit_differences == False:
           if N > self.params.merging.error.mm24.n_max_differences:
+            # random number generation needs to be consistent between symmetry related reflections
+            # for reproducibility
+            rng = np.random.default_rng(seed=self.params.merging.error.mm24.random_seed)
+            # Reflections are in different order when run with different numbers of ranks
+            sort_indices = np.argsort(I)
+            rng.shuffle(sort_indices)
+            I = I[sort_indices]
+            var_cs = var_cs[sort_indices]
+            correlation = correlation[sort_indices]
             # this option is for performance trade-offs
             if N > 1000:
               subset_indices = rng.choice(
-                N,
-                size=self.params.merging.error.mm24.n_max_differences,
-                replace=False,
-                shuffle=True
+                N, 
+                size=self.params.merging.error.mm24.n_max_differences, 
+                replace=False, 
+                shuffle=False
                 )
             else:
               subset_indices = rng.permutation(N)[:self.params.merging.error.mm24.n_max_differences]
             indices = (indices[0][subset_indices], indices[1][subset_indices])
             N = self.params.merging.error.mm24.n_max_differences
         differences = flex.double(np.abs(I[indices[0]] - I[indices[1]]))
-
         pairwise_differences.extend(differences)
         biased_mean.extend(flex.double(N, refls_biased_mean[0]))
         counting_stats_var_i.extend(flex.double(var_cs[indices[0]]))
@@ -145,7 +133,7 @@ class error_modifier_mm24(worker):
     self.work_table['correlation_i'] = correlation_i
     self.work_table['correlation_j'] = correlation_j
     reflections['biased_mean'] = biased_mean_to_reflections
-
+    
     self.logger.log(f"Number of work reflections selected: {number_of_reflections}")
     return reflections
 
@@ -202,8 +190,7 @@ class error_modifier_mm24(worker):
       )
 
   def initialize_ev11_params(self):
-    median_differences = np.zeros(self.number_of_intensity_bins)
-    n_bins = 1000
+    mean_differences = np.zeros(self.number_of_intensity_bins)
     for bin_index, differences in enumerate(self.intensity_bins):
       summation = self.mpi_helper.comm.reduce(
         flex.sum(differences['pairwise_differences']), op=self.mpi_helper.MPI.SUM, root=0
@@ -212,8 +199,8 @@ class error_modifier_mm24(worker):
         len(differences['pairwise_differences']), op=self.mpi_helper.MPI.SUM, root=0
         )
       if self.mpi_helper.rank == 0:
-        median_differences[bin_index] = summation / counts
-
+        mean_differences[bin_index] = summation / counts
+      
     if self.mpi_helper.rank == 0:
       def fitting_equation(params, y0, return_jac):
         sf = params[0]
@@ -250,7 +237,7 @@ class error_modifier_mm24(worker):
       bin_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
       positive_indices = bin_centers > 0
       x = bin_centers[positive_indices]
-      y = median_differences[positive_indices]
+      y = mean_differences[positive_indices]
       good_indices = np.invert(np.isnan(y))
       x = x[good_indices]
       y = y[good_indices]
@@ -281,7 +268,7 @@ class error_modifier_mm24(worker):
         fit_curve = fitting_equation([self.sfac, self.sadd[0]], y[0], False)
         fig, axes = plt.subplots(1, 1, figsize=(5, 3))
         axes.plot(
-          bin_centers, median_differences,
+          bin_centers, mean_differences,
           linestyle='none', marker='.', color=[0, 0, 0], label='Data'
           )
         axes.plot(x, fit_curve, color=[0, 0.8, 0], label='Initialization')
