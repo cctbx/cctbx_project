@@ -7,7 +7,6 @@ import scipy.optimize
 from scipy.special import gamma
 from scipy.special import polygamma
 import scipy.stats
-import time
 from xfel.merging.application.worker import worker
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
 
@@ -109,9 +108,9 @@ class error_modifier_mm24(worker):
             # this option is for performance trade-offs
             if N > 1000:
               subset_indices = rng.choice(
-                N, 
-                size=self.params.merging.error.mm24.n_max_differences, 
-                replace=False, 
+                N,
+                size=self.params.merging.error.mm24.n_max_differences,
+                replace=False,
                 shuffle=False
                 )
             else:
@@ -133,7 +132,7 @@ class error_modifier_mm24(worker):
     self.work_table['correlation_i'] = correlation_i
     self.work_table['correlation_j'] = correlation_j
     reflections['biased_mean'] = biased_mean_to_reflections
-    
+
     self.logger.log(f"Number of work reflections selected: {number_of_reflections}")
     return reflections
 
@@ -200,7 +199,7 @@ class error_modifier_mm24(worker):
         )
       if self.mpi_helper.rank == 0:
         mean_differences[bin_index] = summation / counts
-      
+
     if self.mpi_helper.rank == 0:
       def fitting_equation(params, y0, return_jac):
         sf = params[0]
