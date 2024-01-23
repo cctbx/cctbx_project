@@ -90,7 +90,7 @@ class mpi_helper(object):
 
   def gather_variable_length_numpy_arrays(self, send_arrays, root=0, dtype=float):
     lengths = self.comm.gather(send_arrays.size, root=root)
-    if self.rank == 0:
+    if self.rank == root:
       gathered_arrays = np.empty(np.sum(lengths), dtype=dtype)
     else:
       gathered_arrays = None
