@@ -1,8 +1,8 @@
 """
 This code provides methods to calculate the qscore metric for map-model validation,
-as developed by Pintile et al. 
+as developed by Pintile et al.
 
-As with the original implementation, multiple calculation options are provided. 
+As with the original implementation, multiple calculation options are provided.
 The fastest (default) is to pass an mmtbx map-model-manager (mmm)
 to the the function qscore_np, qscore_np(mmm)
 """
@@ -171,7 +171,7 @@ def radial_shell_worker_v2_np(args):
 
 
 def radial_shell_mp_np(
-  
+
     model,
     n_probes=32,
     radii=np.linspace(0.1, 2, 12),
@@ -363,7 +363,7 @@ def qscore_np(
   # np.save("probe_mask_np.npy",probe_mask)
   # print("saving qscore: qscore_np.npy")
   # np.save("qscore_np.npy",q)
-  
+
   return q
 
 
@@ -722,46 +722,46 @@ def rowwise_corrcoef(A, B, mask=None):
   return cc.data
 
 def sphere_points_np(ctr, rad, N, mode='SpherePts'):
-    """
-    Points on a sphere given centers, radius, number N
+  """
+  Points on a sphere given centers, radius, number N
 
-    TODO: Mode is confusing, it is not clear why there is a difference.
-    mode='SpherePts' an attempt to literally copy the SpherePts function from mapq
-    mode='original' a version that gives the same results as the QscorePt3 function from mapq
-    """
-    h = -1.0 + (2.0 * np.arange(N) / float(N-1))
-    phis = np.arccos(h)
+  TODO: Mode is confusing, it is not clear why there is a difference.
+  mode='SpherePts' an attempt to literally copy the SpherePts function from mapq
+  mode='original' a version that gives the same results as the QscorePt3 function from mapq
+  """
+  h = -1.0 + (2.0 * np.arange(N) / float(N-1))
+  phis = np.arccos(h)
 
-    if mode == 'original':
-        thetas = np.zeros(N)
-        a = (3.6 / np.sqrt(N * (1.0 - h[1:-1]**2)))
-        thetas[1:-1] = a
-        thetas = np.cumsum(thetas)
-    elif mode == 'SpherePts':
-        thetas = np.zeros(N)
-        for k in range(1, N):
-            if k == 1 or k == N - 1:
-                thetas[k] = 0
-            else:
-                thetas[k] = (thetas[k-1] + 3.6 / np.sqrt(N * (1 - h[k]**2))) % (2 * np.pi)
-        thetas = thetas.cumsum()
+  if mode == 'original':
+    thetas = np.zeros(N)
+    a = (3.6 / np.sqrt(N * (1.0 - h[1:-1]**2)))
+    thetas[1:-1] = a
+    thetas = np.cumsum(thetas)
+  elif mode == 'SpherePts':
+    thetas = np.zeros(N)ß
+    for k in range(1, N):
+      if k == 1 or k == N - 1:
+        thetas[k] = 0
+      else:
+        thetas[k] = (thetas[k-1] + 3.6 / np.sqrt(N * (1 - h[k]**2))) % (2 * np.pi)
+    thetas = thetas.cumsum()
 
-    x = np.sin(phis) * np.cos(thetas)
-    y = np.sin(phis) * np.sin(thetas)
-    z = np.cos(phis)
+  x = np.sin(phis) * np.cos(thetas)
+  y = np.sin(phis) * np.sin(thetas)
+  z = np.cos(phis)
 
-    points = rad * np.stack([x, y, z], axis=-1)
-    
-    # Adjusting for multiple centers
-    if ctr.ndim == 1:
-        # Single center case
-        points = points + ctr
-    else:
-        # Multiple centers case
-        points = points.reshape(-1, 1, 3) + ctr.reshape(1, -1, 3)
+  points = rad * np.stack([x, y, z], axis=-1)
+
+  # Adjusting for multiple centers
+  if ctr.ndim == 1:
+    # Single center case
+    points = points + ctr
+  else:
+    # Multiple centers case
+    points = points.reshape(-1, 1, 3) + ctr.reshape(1, -1, 3)
 
 
-    return points
+  return points
 
 
 def cdist_flex(A, B):
