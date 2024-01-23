@@ -10,28 +10,35 @@ to the the function qscore_np, qscore_np(mmm)
 from __future__ import division
 import math
 import sys
-import numpy as np
-from scipy.spatial import KDTree
+from collections import defaultdict
 from multiprocessing import Pool, cpu_count
+from itertools import chain
 
+import numpy as np
+import numpy.ma as ma
+
+from scipy.spatial import KDTree
+
+import cctbx
 from cctbx.array_family import flex
 from scitbx_array_family_flex_ext import bool as flex_bool
 
-from .qscore_utils import (
-    trilinear_interpolation,
-    rowwise_corrcoef,
-    sphere_points_np,
-    sphere_points_flex,
-    cdist_flex,
-    query_ball_point_flex,
-    query_atom_neighbors,
-)
-from .flex_utils import optimized_nd_to_1d_indices, nd_to_1d_indices, flex_std
+# from .qscore_utils import (
+#     trilinear_interpolation,
+#     rowwise_corrcoef,
+#     sphere_points_np,
+#     sphere_points_flex,
+#     cdist_flex,
+#     query_ball_point_flex,
+#     query_atom_neighbors,
+# )
+# from .flex_utils import optimized_nd_to_1d_indices, nd_to_1d_indices, flex_std
 
 try:
   from tqdm import tqdm
 except ImportError:
   from .qscore_utils import DummyTQDM as tqdm
+
 
 
 def radial_shell_worker_v1_np(args):
@@ -233,7 +240,17 @@ def radial_shell_mp_np(
 
   return probe_xyz, probe_mask
 
+def ndarray_to_nested_list(arr):
+    """
+    Convert a NumPy array of arbitrary dimensions into a nested list.
+    :param arr: A NumPy array.
+    :return: A nested list representing the array.
+    """
+    if arr.ndim == 1:
+        return arr.tolist()
+    return [ndarray_to_nested_list(sub_arr) for sub_arr in arr]
 
+# Example usage
 def qscore_np(
     mmm,
     selection=None,
@@ -276,7 +293,7 @@ def qscore_np(
       radii=radii,
       log=log,
   )
-  # return probe_xyz,probe_mask
+
   # after the probe generation, versions 1 and 2 are the same
 
   # infer params from shape
@@ -332,6 +349,21 @@ def qscore_np(
   # # numpy
   q = rowwise_corrcoef(g_vals_2d, d_vals_2d, mask=mask_2d)
 
+
+  # # Log
+  # import os
+
+  # print("FINISHING...")
+  # print(os.getcwd())
+  # print("saving atoms xyz: atom_xyz_np.npy")
+  # np.save("atoms_xyz_np.npy",model.get_sites_cart().as_numpy_array())
+  # print("saving probe xyz: probe_xyz_np.npy")
+  # np.save("probe_xyz_np.npy",probe_xyz)
+  # print("saving probe mask: probe_mask_np.npy")
+  # np.save("probe_mask_np.npy",probe_mask)
+  # print("saving qscore: qscore_np.npy")
+  # np.save("qscore_np.npy",q)
+  
   return q
 
 
@@ -595,3 +627,394 @@ def qscore_flex(
 
   q = flex.double(q_cctbx)
   return q
+
+
+
+
+### qscore utils
+
+
+
+class DummyTQDM:
+  """A 'dummy' object that can be used for compatibility if tqdm is not installed"""
+  def __init__(self, iterable=None, *args, **kwargs):
+    self.iterable = iterable
+    self.args = args
+    self.kwargs = kwargs
+
+  def __iter__(self):
+    return iter(self.iterable)
+
+  def __enter__(self):
+    return self
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    pass
+
+
+def trilinear_interpolation(voxel_grid, coords, voxel_size=None, offset=None):
+  """Numpy trilinear interpolation"""
+  assert voxel_size is not None, "Provide voxel size as an array or single value"
+
+  # Apply offset if provided
+  if offset is not None:
+    coords = coords - offset
+
+  # Transform coordinates to voxel grid index space
+  index_coords = coords / voxel_size
+
+  # Split the index_coords array into three arrays: x, y, and z
+  x, y, z = index_coords.T
+
+  # Truncate to integer values
+  x0, y0, z0 = np.floor([x, y, z]).astype(int)
+  x1, y1, z1 = np.ceil([x, y, z]).astype(int)
+
+  # Ensure indices are within grid boundaries
+  x0, y0, z0 = np.clip([x0, y0, z0], 0, voxel_grid.shape[0]-1)
+  x1, y1, z1 = np.clip([x1, y1, z1], 0, voxel_grid.shape[0]-1)
+
+  # Compute weights
+  xd, yd, zd = [arr - arr.astype(int) for arr in [x, y, z]]
+
+  # Interpolate along x
+  c00 = voxel_grid[x0, y0, z0]*(1-xd) + voxel_grid[x1, y0, z0]*xd
+  c01 = voxel_grid[x0, y0, z1]*(1-xd) + voxel_grid[x1, y0, z1]*xd
+  c10 = voxel_grid[x0, y1, z0]*(1-xd) + voxel_grid[x1, y1, z0]*xd
+  c11 = voxel_grid[x0, y1, z1]*(1-xd) + voxel_grid[x1, y1, z1]*xd
+
+  # Interpolate along y
+  c0 = c00*(1-yd) + c10*yd
+  c1 = c01*(1-yd) + c11*yd
+
+  # Interpolate along z
+  c = c0*(1-zd) + c1*zd
+
+  return c
+
+
+def rowwise_corrcoef(A, B, mask=None):
+  """Numpy masked array rowwise correlation coefficient"""
+  assert A.shape == B.shape, f"A and B must have the same shape, got: {A.shape} and {B.shape}"
+
+  if mask is not None:
+    assert mask.shape == A.shape, "mask must have the same shape as A and B"
+    A = ma.masked_array(A, mask=np.logical_not(mask))
+    B = ma.masked_array(B, mask=np.logical_not(mask))
+
+  # Calculate means
+  A_mean = ma.mean(A, axis=1, keepdims=True)
+  B_mean = ma.mean(B, axis=1, keepdims=True)
+
+  # Subtract means
+  A_centered = A - A_mean
+  B_centered = B - B_mean
+
+  # Calculate sum of products
+  sumprod = ma.sum(A_centered * B_centered, axis=1)
+
+  # Calculate square roots of the sum of squares
+  sqrt_sos_A = ma.sqrt(ma.sum(A_centered**2, axis=1))
+  sqrt_sos_B = ma.sqrt(ma.sum(B_centered**2, axis=1))
+
+  # Return correlation coefficients
+  cc = sumprod / (sqrt_sos_A * sqrt_sos_B)
+  return cc.data
+
+def sphere_points_np(ctr, rad, N, mode='SpherePts'):
+    """
+    Points on a sphere given centers, radius, number N
+
+    TODO: Mode is confusing, it is not clear why there is a difference.
+    mode='SpherePts' an attempt to literally copy the SpherePts function from mapq
+    mode='original' a version that gives the same results as the QscorePt3 function from mapq
+    """
+    h = -1.0 + (2.0 * np.arange(N) / float(N-1))
+    phis = np.arccos(h)
+
+    if mode == 'original':
+        thetas = np.zeros(N)
+        a = (3.6 / np.sqrt(N * (1.0 - h[1:-1]**2)))
+        thetas[1:-1] = a
+        thetas = np.cumsum(thetas)
+    elif mode == 'SpherePts':
+        thetas = np.zeros(N)
+        for k in range(1, N):
+            if k == 1 or k == N - 1:
+                thetas[k] = 0
+            else:
+                thetas[k] = (thetas[k-1] + 3.6 / np.sqrt(N * (1 - h[k]**2))) % (2 * np.pi)
+        thetas = thetas.cumsum()
+
+    x = np.sin(phis) * np.cos(thetas)
+    y = np.sin(phis) * np.sin(thetas)
+    z = np.cos(phis)
+
+    points = rad * np.stack([x, y, z], axis=-1)
+    
+    # Adjusting for multiple centers
+    if ctr.ndim == 1:
+        # Single center case
+        points = points + ctr
+    else:
+        # Multiple centers case
+        points = points.reshape(-1, 1, 3) + ctr.reshape(1, -1, 3)
+
+
+    return points
+
+
+def cdist_flex(A, B):
+  """A flex implementation of the cdist function"""
+
+  def indices_2d_flex(dimensions):
+    N = len(dimensions)
+    if N != 2:
+      raise ValueError("Only 2D is supported for this implementation.")
+
+    # Create the row indices
+    row_idx = flex.size_t(chain.from_iterable(
+        [[i] * dimensions[1] for i in range(dimensions[0])]))
+
+    # Create the column indices
+    col_idx = flex.size_t(chain.from_iterable(
+        [list(range(dimensions[1])) for _ in range(dimensions[0])]))
+
+    return row_idx, col_idx
+
+  i_idxs, j_idxs = indices_2d_flex((A.focus()[0], B.focus()[0]))
+
+  r = i_idxs
+  xi = i_idxs*3
+  yi = i_idxs*3 + 1
+  zi = i_idxs*3 + 2
+
+  xa = A.select(xi)
+  ya = A.select(yi)
+  za = A.select(zi)
+
+  xj = j_idxs*3
+  yj = j_idxs*3 + 1
+  zj = j_idxs*3 + 2
+
+  xb = B.select(xj)
+  yb = B.select(yj)
+  zb = B.select(zj)
+
+  d = ((xb - xa)**2 + (yb - ya)**2 + (zb - za)**2)**0.5
+  d.reshape(flex.grid((A.focus()[0], B.focus()[0])))
+
+  return d
+
+
+def query_atom_neighbors(model, radius=3.5, include_self=True, only_unit=True):
+  """Perform radial nearest neighbor searches using cctbx tools, for atom coordinates in a model"""
+  crystal_symmetry = model.crystal_symmetry()
+  hierarchy = model.get_hierarchy()
+  sites_cart = hierarchy.atoms().extract_xyz()
+  sst = crystal_symmetry.special_position_settings().site_symmetry_table(
+      sites_cart=sites_cart)
+  conn_asu_mappings = crystal_symmetry.special_position_settings().\
+      asu_mappings(buffer_thickness=5)
+  conn_asu_mappings.process_sites_cart(
+      original_sites=sites_cart,
+      site_symmetry_table=sst)
+  conn_pair_asu_table = cctbx.crystal.pair_asu_table(
+      asu_mappings=conn_asu_mappings)
+  conn_pair_asu_table.add_all_pairs(distance_cutoff=radius)
+  pair_generator = cctbx.crystal.neighbors_fast_pair_generator(
+      conn_asu_mappings,
+      distance_cutoff=radius)
+  fm = crystal_symmetry.unit_cell().fractionalization_matrix()
+  om = crystal_symmetry.unit_cell().orthogonalization_matrix()
+
+  pairs = list(pair_generator)
+  inds = defaultdict(list)
+  dists = defaultdict(list)
+
+  for pair in pairs:
+    i, j = pair.i_seq, pair.j_seq
+    rt_mx_i = conn_asu_mappings.get_rt_mx_i(pair)
+    rt_mx_j = conn_asu_mappings.get_rt_mx_j(pair)
+    rt_mx_ji = rt_mx_i.inverse().multiply(rt_mx_j)
+
+    if (only_unit and rt_mx_ji.is_unit_mx()) or (not only_unit):
+      d = round(math.sqrt(pair.dist_sq), 6)
+      inds[i].append(j)
+      dists[i].append(d)
+
+      # add reverse
+      inds[j].append(i)
+      dists[j].append(d)
+      # print(pair.i_seq, pair.j_seq, rt_mx_ji, math.sqrt(pair.dist_sq), de)
+
+  # add self
+  if include_self:
+    for key, value in list(inds.items()):
+      dval = dists[key]
+      dists[key] = dval+[0.0]
+      inds[key] = value+[key]
+
+  # sort
+  for key, value in list(inds.items()):
+    dval = dists[key]
+    # sort
+    sorted_pairs = sorted(set(list(zip(value, dval))))
+    value_sorted, dval_sorted = zip(*sorted_pairs)
+    inds[key] = value_sorted
+    dists[key] = dval_sorted
+
+  return inds, dists
+
+
+def query_ball_point_flex(tree, tree_xyz, query_xyz, r=None):
+  """
+  Imitate the api of the scipy.spatial query_ball_point function, but using only flex arrays.
+  Note: This just copies the api, it does not actually use a tree structure, so is much slower.
+  """
+  assert r is not None, "provide radius"
+  n_atoms, n_probes, _ = query_xyz.focus()
+  counts = []
+
+  for atom_i in range(n_atoms):
+    probe_range = (n_probes * atom_i * 3, n_probes * (atom_i+1) * 3)
+    atom_probes_xyz = query_xyz.select(flex.size_t_range(*probe_range))
+    atom_probes_xyz.reshape(flex.grid(n_probes, 3))
+    nbrs = tree[atom_i]
+    n_nbrs = len(nbrs)
+    nbrs_xyz = tree_xyz.select(flex.size_t(nbrs)).as_1d().as_double()
+    nbrs_xyz.reshape(flex.grid(len(nbrs), 3))
+    d = cdist_flex(nbrs_xyz, atom_probes_xyz)
+    sel = d < r
+    count = []
+    for nbr_i in range(n_probes):
+      nbr_range = (slice(0, n_nbrs), slice(nbr_i, nbr_i+1))
+      count_nbr = sel[nbr_range].count(True)
+      count.append(count_nbr)
+
+    counts.append(count)
+
+  counts = flex_from_list(counts)
+  return counts
+
+
+### flex utils
+
+
+def flex_from_list(lst, signed_int=False):
+  """Generate a flex array from a list, try to infer type"""
+  flat_list, shape = flatten_and_shape(lst)
+  dtype = get_dtype_of_list(flat_list)
+  type_mapper = {int: flex.size_t,
+                 float: flex.double,
+                 bool: flex.bool}
+  if signed_int:
+    type_mapper[int] = flex.int16
+
+  # make flex array
+  assert dtype in type_mapper, f"Unrecognized type: {dtype}"
+  flex_func = type_mapper[dtype]
+  flex_array = flex_func(flat_list)
+  if len(shape) > 1:
+    flex_array.reshape(flex.grid(*shape))
+  return flex_array
+
+
+def flatten_and_shape(lst):
+  """Flatten a nested list and return its shape."""
+  def helper(l):
+    if not isinstance(l, list):
+      return [l], ()
+    flat = []
+    shapes = []
+    for item in l:
+      f, s = helper(item)
+      flat.extend(f)
+      shapes.append(s)
+    if len(set(shapes)) != 1:
+      raise ValueError("Ragged nested list detected.")
+    return flat, (len(l),) + shapes[0]
+
+  flattened, shape = helper(lst)
+  return flattened, shape
+
+
+def get_dtype_of_list(lst):
+  dtypes = {type(item) for item in lst}
+
+  if len(dtypes) > 1:
+    raise ValueError("Multiple data types detected.")
+  elif len(dtypes) == 0:
+    raise ValueError("Empty list provided.")
+  else:
+    return dtypes.pop()
+
+
+def nd_to_1d_indices(indices, shape):
+  """Generate the 1d indices given nd indices and an array shape"""
+  # Normalize indices to always use slice objects
+  normalized_indices = []
+  for dim, idx in enumerate(indices):
+    if idx is None:
+      normalized_indices.append(slice(0, shape[dim]))
+    else:
+      normalized_indices.append(idx)
+
+  # If any index is a slice, recursively call function for each value in slice
+  for dim, (i, s) in enumerate(zip(normalized_indices, shape)):
+    if isinstance(i, slice):
+      result_indices = []
+      start, stop, step = i.indices(s)
+      for j in range(start, stop, step):
+        new_indices = list(normalized_indices)
+        new_indices[dim] = j
+        result_indices.extend(nd_to_1d_indices(new_indices, shape))
+      return result_indices
+
+  # If no slices, calculate single 1D index
+  index = 0
+  stride = 1
+  for i, dim in reversed(list(zip(normalized_indices, shape))):
+    index += i * stride
+    stride *= dim
+  return [index]
+
+def optimized_nd_to_1d_indices(i, shape):
+  """Similar to above, but hardcoded to select a single index on dimension 1"""
+  # For fixed input of (None, i, None), we directly compute based on given structure
+  result_indices = []
+
+  # Pre-compute for 1st dimension which is always a slice
+  start1, stop1 = 0, shape[0]
+
+  # Pre-compute for 3rd dimension which is always a slice
+  start3, stop3 = 0, shape[2]
+  stride3 = 1
+
+  # Directly compute for 2nd dimension which is variable
+  stride2 = shape[2]
+  index2 = i * stride2 * shape[0]
+
+  for val1 in range(start1, stop1):
+    for val3 in range(start3, stop3):
+      result_indices.append(val1 * stride2 + index2 + val3 * stride3)
+
+  return result_indices
+
+
+def flex_std(flex_array):
+  """Standard deviation"""
+  n = flex_array.size()
+  if n <= 1:
+    raise ValueError("Sample size must be greater than 1")
+
+  # Compute the mean
+  mean_value = flex.mean(flex_array)
+
+  # Compute the sum of squared deviations
+  squared_deviations = (flex_array - mean_value) ** 2
+  sum_squared_deviations = flex.sum(squared_deviations)
+
+  # Compute the standard deviation
+  std_dev = (sum_squared_deviations / (n - 1)) ** 0.5
+  return std_dev
