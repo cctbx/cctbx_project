@@ -328,6 +328,9 @@ class place_hydrogens():
 #        restraint_objects = ro,
 #        log               = null_out())
 
+    if not self.exclude_water:
+      self.model.add_hydrogens(1., occupancy=0.)
+
     self.n_H_final = self.model.get_hd_selection().count(True)
 
 # ------------------------------------------------------------------------------
