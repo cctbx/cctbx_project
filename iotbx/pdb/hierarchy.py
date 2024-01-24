@@ -376,7 +376,17 @@ class _():
   >>> hierarchy = iotbx.pdb.hierarchy.root()
   """
 
+  __getstate_manages_dict__ = True
+
   def __getstate__(self):
+    # check that the only possible attributes that are set are
+    #   _lai_lookup
+    #   _label_seq_id_dict
+    # these are not pickled and are not restored when unpickling
+    # if more attributes are added to the hierarchy class in Python,
+    # the pickling code needs to be updated.
+    assert len(set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])) == 0, \
+      set(['_lai_lookup', '_label_seq_id_dict']) - set(self.__dict__.keys())
     version = 2
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
