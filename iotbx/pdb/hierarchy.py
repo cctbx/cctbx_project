@@ -385,8 +385,8 @@ class _():
     # these are not pickled and are not restored when unpickling
     # if more attributes are added to the hierarchy class in Python,
     # the pickling code needs to be updated.
-    assert len(set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])) == 0, \
-      set(['_lai_lookup', '_label_seq_id_dict']) - set(self.__dict__.keys())
+    attribute_check = set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])
+    assert len(attribute_check) == 0, attribute_check
     version = 2
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
