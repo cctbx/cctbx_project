@@ -114,22 +114,22 @@ def get_bonds_as_dict(geometry_restraints_manager):
 
 def get_valences(element, charge):
   valence = {
-    'C' : 4,
+    # 'C' : 4,
     'N' : 3,
     'O' : 2,
   }
   rc = valence.get(element)
+  if rc is None: return []
   rc += charge
   return [rc]
 
 def simple_valence_check(ph, geometry_restraints_manager):
-  bonds = get_bonds_as_dict(geometry_restraints_manager)
+  bonds = get_bonds_as_dict(geometry_restraints_manager.geometry)
   for atom in ph.atoms():
     if atom.element_is_hydrogen(): continue
     if atom.parent().resname in ['HOH']: continue
-    print(atom.quote())
-    print(bonds[atom.i_seq])
     number_of_bonds = len(bonds.get(atom.i_seq, None))
+    # if number_of_bonds is None: continue
     if number_of_bonds not in get_valences(atom.element, atom.charge_as_int()):
       assert 0
 

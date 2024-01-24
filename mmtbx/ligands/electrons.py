@@ -918,7 +918,7 @@ class electron_distribution(dict):
     return report
 
 from libtbx.program_template import ProgramTemplate
-#from libtbx.utils import null_out
+from libtbx.utils import null_out
 from libtbx import group_args
 
 master_phil_str = '''
@@ -956,6 +956,7 @@ Inputs:
 
   def run(self):
     model = self.data_manager.get_model()
+    model.set_log(null_out())
     model.process(make_restraints=True)
     if self.params.input.selection:
       new_model = model.selection(self.params.input.selection)
