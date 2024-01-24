@@ -5706,6 +5706,43 @@ ATOM     12  O   ASN A   3      -1.872   0.119   3.648  1.00 10.42           O
         assert not show_diff(l.root().as_pdb_string(), eps)
         rp = l
 
+def exercise_attribute_pickling():
+  pdb_inp = pdb.input(source_info=None, lines="""\
+MODEL        1
+ATOM      1  N   MET A   1       6.215  22.789  24.067  1.00  0.00           N
+ATOM      2  CA  MET A   1       6.963  22.789  22.822  1.00  0.00           C
+BREAK
+HETATM    3  C   MET A   2       7.478  21.387  22.491  1.00  0.00           C
+ATOM      4  O   MET A   2       8.406  20.895  23.132  1.00  0.00           O
+ENDMDL
+MODEL 3
+HETATM    9 2H3  MPR B   5      16.388   0.289   6.613  1.00  0.08
+SIGATM    9 2H3  MPR B   5       0.155   0.175   0.155  0.00  0.05
+ANISOU    9 2H3  MPR B   5      848    848    848      0      0      0
+SIGUIJ    9 2H3  MPR B   5      510    510    510      0      0      0
+TER
+ATOM     10  N   CYSCH   6      14.270   2.464   3.364  1.00  0.07
+SIGATM   10  N   CYSCH   6       0.012   0.012   0.011  0.00  0.00
+ANISOU   10  N   CYSCH   6      788    626    677   -344    621   -232
+SIGUIJ   10  N   CYSCH   6        3     13      4     11      6     13
+TER
+ENDMDL
+""")
+  hierarchy = pdb_inp.construct_hierarchy()
+  s = pickle.dumps(hierarchy, 1)
+
+  hierarchy.as_mmcif_string()
+  expected_attributes = ['_lai_lookup', '_label_seq_id_dict']
+  for attribute in hierarchy.__dict__.keys():
+    assert attribute in expected_attributes, attribute
+  s = pickle.dumps(hierarchy, 1)
+
+  setattr(hierarchy, 'not_a_valid_attribute', None)
+  try:
+    s = pickle.dumps(hierarchy, 1)
+  except AssertionError as a:
+    assert 'not_a_valid_attribute' in str(a)
+
 def exercise_hierarchy_input():
   pdb_obj = pdb.hierarchy.input(pdb_string=pdb_2izq_220)
   i_atoms = pdb_obj.input.atoms()
@@ -7282,6 +7319,7 @@ def exercise(args):
     exercise_root_altloc_indices()
     exercise_root_pickling()
     exercise_residue_pickling()
+    exercise_attribute_pickling()
     exercise_hierarchy_input()
     exercise_other()
     exercise_equality_and_hashing()
