@@ -1552,6 +1552,7 @@ class manager(object):
       hierarchy_to_output = hierarchy_to_output.deep_copy()
     if (self._shift_cart is not None) and (not do_not_shift_back):
       self._shift_back(hierarchy_to_output)
+    hierarchy_to_output.clear_label_asym_id_lookups()
     return hierarchy_to_output
 
   def can_be_output_as_pdb(self):

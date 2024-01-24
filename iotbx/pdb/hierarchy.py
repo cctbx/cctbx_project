@@ -1176,6 +1176,14 @@ class _():
               self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
 
+  def clear_label_asym_id_lookups(self):
+    """ Make sure we have fresh lookups in case the hierarchy was modified since
+        they were calculated."""
+    if hasattr(self, '_lai_lookup'):
+      del self._lai_lookup
+    if hasattr(self, '_label_seq_id_dict'):
+      del self._label_seq_id_dict
+
   def as_cif_block(self,
       crystal_symmetry=None,
       coordinate_precision=5,
@@ -1186,6 +1194,7 @@ class _():
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
+    self.clear_label_asym_id_lookups()
 
     h_cif_block = iotbx.cif.model.block()
     coord_fmt_str = "%%.%if" %coordinate_precision
