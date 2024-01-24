@@ -1,10 +1,5 @@
 from __future__ import division, print_function
-import os
 import json
-
-
-import libtbx.load_env
-from iotbx.data_manager import DataManager
 
 from geo_file_parsing import parse_geo_file
 

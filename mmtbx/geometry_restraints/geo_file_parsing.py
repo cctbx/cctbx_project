@@ -1,13 +1,11 @@
-"""
-Parse a '.geo' text file to structured restraint data.
-"""
+from __future__ import division, print_function
 import re
 import pandas as pd
 import numpy as np
 def tryfloat(value):
   try:
     return float(value)
-  except:
+  except Exception:
     return value
 class BondRestraint:
   restraint_label = 'bond'
