@@ -23,21 +23,90 @@ import cctbx
 from cctbx.array_family import flex
 from scitbx_array_family_flex_ext import bool as flex_bool
 
-# from .qscore_utils import (
-#     trilinear_interpolation,
-#     rowwise_corrcoef,
-#     sphere_points_np,
-#     sphere_points_flex,
-#     cdist_flex,
-#     query_ball_point_flex,
-#     query_atom_neighbors,
-# )
-# from .flex_utils import optimized_nd_to_1d_indices, nd_to_1d_indices, flex_std
 
+class DummyTQDM:
+    """A 'dummy' object that can be used for compatibility if tqdm is not installed"""
+
+    def __init__(self, iterable=None, *args, **kwargs):
+        self.iterable = iterable
+        self.args = args
+        self.kwargs = kwargs
+
+    def __iter__(self):
+        return iter(self.iterable)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
 try:
-    from tqdm import tqdm
+  from tqdm import tqdm
 except ImportError:
-    from .qscore_utils import DummyTQDM as tqdm
+    tqdm = DummyTQDM
+
+
+master_phil_str = """
+  qscore
+  {
+
+    nproc = 16
+        .type = int
+        .help = Number of processors to use
+        .short_caption = Number of processors to use
+        .expert_level = 1
+    n_probes = 8
+        .type = int
+        .help = Number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    selection = None
+      .type = str
+      .help = Only test atoms within this selection
+      .short_caption = Only test atoms within this selection
+      .expert_level = 1
+
+    shell_radius_start = 0.1
+      .type = float
+      .help = Start testing density at this radius from atom
+      .short_caption = Start testing density at this radius from atom
+      .expert_level = 1
+
+    shell_radius_stop = 2
+      .type = float
+      .help = Stop testing density at this radius from atom
+      .short_caption = Stop testing density at this radius from atom
+      .expert_level = 1
+
+    shell_radius_num = 20
+      .type = int
+      .help = The number of radial shells
+      .short_caption = The number of radial shells (includes start/stop, so minimum 2)
+      .expert_level = 1
+
+    probe_allocation_method = precalculate
+      .type = str
+      .help = The method used to allocate radial probes
+      .short_caption = Either 'progressive' or 'precalculate'. Progressive is the original method \
+                      where probes are proposed and rejected iteratively. \
+                      Precalculate is a method where probes are pre-allocated and \
+                      rejected once. Parallelization is done by radial shell. \
+                      Precalculate is much faster but will yield slightly different results.
+
+    progress = False
+      .type = bool
+      .help = Report progress
+      .short_caption = Report progress bar
+      .expert_level = 1
+
+    debug = False
+      .type = bool
+      .help = Return much more debug information
+      .short_caption = Returns a dictionary with additional debug information
+      .expert_level = 1
+  }
+
+  """
 
 
 def radial_shell_worker_v1_np(args):
@@ -150,7 +219,8 @@ def radial_shell_worker_v2_np(args):
     if selection is None:
         selection = np.arange(len(atoms_xyz))
     else:
-        assert selection.dtype == bool
+        #assert selection.dtype == bool
+        pass
 
     # do selection
     atoms_xyz_sel = atoms_xyz[selection]
@@ -165,7 +235,6 @@ def radial_shell_worker_v2_np(args):
     probe_mask = (
         counts == 0
     )  # keep probes with 0 nearby atoms. The rtol ensures self is not counted
-
     return probe_xyz, probe_mask
 
 
@@ -178,13 +247,15 @@ def radial_shell_mp_np(
     num_processes=cpu_count(),
     selection=None,
     version=2,
+    progress=True,
     log=sys.stdout,
 ):
     """
     Generate probes for a model file using numpy
     """
     assert version in [1, 2], "Version must be 1 or 2"
-
+    if not progress:
+        tqdm = DummyTQDM
     atoms_xyz = model.get_sites_cart().as_numpy_array()
     tree = KDTree(atoms_xyz)
 
@@ -230,13 +301,11 @@ def radial_shell_mp_np(
     probe_xyz_all = [result[0] for result in results]
     probe_mask_all = [result[1] for result in results]
 
-    # debug
-    # return probe_xyz_all, probe_mask_all
-
     # stack numpy
     probe_xyz = np.stack(probe_xyz_all)
     probe_mask = np.stack(probe_mask_all)
-
+    probe_xyz = np.transpose(probe_xyz, (0, 2, 1, 3))  # Reorder to shape (n_shells,n_atoms,n_probes,3)
+    probe_mask = np.swapaxes(probe_mask, 1, 2)
     return probe_xyz, probe_mask
 
 
@@ -249,9 +318,6 @@ def ndarray_to_nested_list(arr):
     if arr.ndim == 1:
         return arr.tolist()
     return [ndarray_to_nested_list(sub_arr) for sub_arr in arr]
-
-# Example usage
-
 
 def qscore_np(
     mmm,
@@ -275,7 +341,9 @@ def qscore_np(
     ),
     version=2,
     nproc=cpu_count(),
+    progress=True,
     log=sys.stdout,
+    debug = False
 ):
     """
     Calculate the qscore metric per-atom from an mmtbx map-model-manager, using numpy
@@ -293,6 +361,7 @@ def qscore_np(
         selection=selection,
         version=version,
         radii=radii,
+        progress=progress,
         log=log,
     )
 
@@ -364,10 +433,37 @@ def qscore_np(
     # np.save("probe_mask_np.npy",probe_mask)
     # print("saving qscore: qscore_np.npy")
     # np.save("qscore_np.npy",q)
-
+    if debug:
+        result = {
+            "q":q,
+            "probe_xyz":probe_xyz,
+            "probe_mask":probe_mask,
+        }
+        return result
     return q
 
-
+def run_qscore(mmm,params,log=sys.stdout,return_type='flex'):
+    """
+    The primary function to interact with this file.
+    """
+    shells = np.linspace(params.shell_radius_start,
+                          params.shell_radius_stop,
+                          num=params.shell_radius_num,
+                          endpoint=True)
+    version = 2 if "precalculate" in params.probe_allocation_method else 1 # "progressive"
+    result = qscore_np(mmm,
+                     selection=params.selection,
+                     n_probes = params.n_probes,
+                     shells = shells,
+                     version=version,
+                     nproc=params.nproc,
+                     progress=params.progress,
+                     log=log,
+                     debug=params.debug
+                     )
+    if return_type == "flex" and not params.debug:
+        result = flex.double(result)
+    return result
 ##############################################################################
 # Functions that use only flex, no numpy
 ##############################################################################
@@ -631,25 +727,6 @@ def qscore_flex(
 
 
 # qscore utils
-
-
-class DummyTQDM:
-    """A 'dummy' object that can be used for compatibility if tqdm is not installed"""
-
-    def __init__(self, iterable=None, *args, **kwargs):
-        self.iterable = iterable
-        self.args = args
-        self.kwargs = kwargs
-
-    def __iter__(self):
-        return iter(self.iterable)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
-
 
 def trilinear_interpolation(voxel_grid, coords, voxel_size=None, offset=None):
     """Numpy trilinear interpolation"""
