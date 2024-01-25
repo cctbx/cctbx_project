@@ -6,7 +6,7 @@ from dxtbx.model.beam import BeamFactory
 from dxtbx_model_ext import flex_Beam
 import numpy as np
 from copy import deepcopy
-from mmtbx_reduce_ext import RotatePointDegreesAroundAxisDir
+from mmtbx.reduce import RotatePointDegreesAroundAxisDir
 
 
 def rotate_axis(v, axis, phi):

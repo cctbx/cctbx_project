@@ -97,11 +97,16 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
   scitbx::af::boost_python::select_wrappers<
     afsbool, scitbx::af::shared<afsbool> >::wrap(wwb);
 
+   /* This binding is a duplicate because molprobity::probe::Point is
+   * equivalent to vec3<double> through typedefs in mmtbx/probe/Common.h.
+   * Therefore, `af_shared_af_shared_Point` is now defined as an alias for
+   * rstbx.array_family.flex_vec3double in reduce/__init__.py.
   typedef scitbx::af::shared<molprobity::probe::Point> afsPoint;
   typedef scitbx::af::boost_python::shared_wrapper<afsPoint> wwPoint;
   class_<wwPoint::w_t> wwd = wwPoint::wrap("af_shared_af_shared_Point");
   scitbx::af::boost_python::select_wrappers<
     afsPoint, scitbx::af::shared<afsPoint> >::wrap(wwd);
+    */
 
   typedef scitbx::af::shared<molprobity::probe::ExtraAtomInfo> afsei;
   typedef scitbx::af::boost_python::shared_wrapper<afsei> wwei;
