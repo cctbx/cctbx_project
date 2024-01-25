@@ -837,7 +837,7 @@ Installation of Python packages may fail.
       configure_args += ["--prefix", self.base_dir]
       if (self.options.python_shared):
         configure_args.append("--enable-shared")
-        configure_args.append("LDFLAGS=-Wl,-rpath=\$$ORIGIN/../lib")
+        configure_args.append("LDFLAGS=-Wl,-rpath=$ORIGIN/../lib")
 
       # patch Modules/Setup.dist to find custom OpenSSL
       targets = ['#SSL=/usr/local/ssl',
