@@ -1,2 +1,5 @@
+from __future__ import division
 from mmtbx_reduce_ext import *
-from rstbx_array_family_flex_ext import flex_vec3double as af_shared_af_shared_Point
+import rstbx_array_family_flex_ext
+
+af_shared_af_shared_Point = rstbx_array_family_flex_ext.flex_vec3double
