@@ -200,7 +200,7 @@ class Script:
 
     cbar = plt.colorbar(scat, shrink=params.cbarshrink)
 
-    cbar.ax.set_title("$\Delta \psi$")
+    cbar.ax.set_title(r"$\Delta \psi$")
     ax.set_aspect("equal")
     ax.set_facecolor(params.axcol)
     title = "prediction offsets (arrow points to prediction)"

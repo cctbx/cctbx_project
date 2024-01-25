@@ -774,9 +774,9 @@ def CONVERT(list):
 #                   print "resid", resid, "list", list
                    while count <= len(resid):
                        if list[resid_count] != []:
-                           m=re.search('\d+', list[resid_count])
+                           m=re.search(r'\d+', list[resid_count])
                            resid[resid_count] = m.group()
-                           n=re.search('\w', list[resid_count + 1])
+                           n=re.search(r'\w', list[resid_count + 1])
                            resid[resid_count + 1] = n.group()
                            count = count + 2
                            resid_count = resid_count + 2
@@ -813,14 +813,14 @@ def PYMOL_OUTPUT(list, h, pdb_file_main, From, file):
               if file[k] != []:
                  for a in range (1, 3):
                      if From == 'basepairs':
-                         m=re.search('\d+', list[2 * a])
+                         m=re.search(r'\d+', list[2 * a])
                          resid = m.group()
                          RESID = str(resid)
                          line = [["color " + color + ", /" + pdb_file_main + "/*/*/" + RESID + '\n',"hide sticks, /" + pdb_file_main + "/*/*/" + RESID + '\n'],["color " + color + ", /" + pdb_file_main + "/*/*/" + RESID + '\n', "show sticks, /" + pdb_file_main + "/*/*/" + RESID + '\n']]
                          for l in range (len(line[k])):
                              file[k].write(line[k][l])
                      else:
-                         m=re.search('\d+', list[2 * a])
+                         m=re.search(r'\d+', list[2 * a])
                          resid = m.group()
                          RESID = str(resid)
                          line = "color " + color + ", /" + pdb_file_main + "/*/*/" + RESID + '\n'
@@ -1188,10 +1188,10 @@ def loop(MASTER_Basepairs_summary, control, loop_control, CUTOFF, positions):
                     MH_yes = 'n' #Three-bond-basepairs for which only two bonds have been identified are prevented from entering the rest of the loop lines until MAX_CUTOFF_str[0:3]  == CUTOFF_str[0:3]
                 if len(MASTER_Basepairs_summary[i]) > 0:
                     if ('no' in MASTER_Basepairs_summary[i][j]) and ('yes' not in MASTER_Basepairs_summary[i][j]) and MH_yes == 'y':
-                        m=re.search('\d+', MASTER_Basepairs_summary[i][j][2])
+                        m=re.search(r'\d+', MASTER_Basepairs_summary[i][j][2])
                         search1 = m.group()
                         SEARCH1 = to_int(search1) #convert string to integers
-                        m=re.search('\d+', MASTER_Basepairs_summary[i][j][4])
+                        m=re.search(r'\d+', MASTER_Basepairs_summary[i][j][4])
                         search2 = m.group()
                         SEARCH2 = to_int(search2) #convert string to integers
                         list = [MASTER_Basepairs_summary[i][j][2], MASTER_Basepairs_summary[i][j][3], MASTER_Basepairs_summary[i][j][4], MASTER_Basepairs_summary[i][j][5]]
@@ -1496,13 +1496,13 @@ def program(First_List, MASTER_Basepairs_summary, CUTOFF, pdb_file_main, control
 #Detection of lines carrying consecutive bases. These should be not allowed to enter the assignment section, as they can give rise to FALSE basepairs
                 resid = [[],[]]
                 atom = [[],[],[]]
-                m=re.search('\d+', MASTER_Basepairs[i][j][0])
+                m=re.search(r'\d+', MASTER_Basepairs[i][j][0])
                 resid[0] = int(m.group())
-                m=re.search('\d+', MASTER_Basepairs[i][j][3])
+                m=re.search(r'\d+', MASTER_Basepairs[i][j][3])
                 resid[1] = int(m.group())
-                m=re.search('\S+', MASTER_Basepairs[i][j][2])
+                m=re.search(r'\S+', MASTER_Basepairs[i][j][2])
                 atom[0] = str(m.group())
-                m=re.search('\S+', MASTER_Basepairs[i][j][5])
+                m=re.search(r'\S+', MASTER_Basepairs[i][j][5])
                 atom[1] = str(m.group())
                 atom[2] = MASTER_Basepairs[i][j][6]
                 if (resid[1] - resid[0] > 1) or (resid[1] - resid[0] < -1):
@@ -1820,9 +1820,9 @@ def HELICITY(LIST, a0, a1, a2, a3, where_from):
                         match_position = []
                         for r in range (len(LIST)):
                             for s in range (len(LIST[r])):
-                                m=re.search('\d+', LIST[r][s][2])
+                                m=re.search(r'\d+', LIST[r][s][2])
                                 match1 = m.group()
-                                m=re.search('\d+', LIST[r][s][4])
+                                m=re.search(r'\d+', LIST[r][s][4])
                                 match2 = m.group()
 #                                print "LIST[r][s]", LIST[r][s], "\n    match1", match1, "match2", match2, "a0", a0, "a1", a1, "a2", a2, "a3", a3
                                 if (('Loop' in where_from) and ('REMOVED' not in LIST[r][s]) and ('yes' in LIST[r][s]) and ((match1 in a0) and (match2 in a1) or (match2 in a0) and (match1 in a1))):
@@ -1876,7 +1876,7 @@ First_List[0] = []
 import os
 dir =  os.getcwd()
 import re
-ma=re.compile('\/+')
+ma=re.compile(r'\/+')
 iterator = ma.finditer(dir)
 aaa=[]
 for match in iterator:
@@ -1985,10 +1985,10 @@ while CUTOFF < MAX_CUTOFF:
 #Called below
 
 def CONTINUITY_HELICITY_CRITERION(MASTER_Basepairs_summary_line, MASTER_Basepairs_summary, CUTOFF):
-                        m=re.search('\d+', MASTER_Basepairs_summary_line[2])
+                        m=re.search(r'\d+', MASTER_Basepairs_summary_line[2])
                         search1 = m.group()
                         SEARCH1 = to_int(search1) #convert string to integers
-                        m=re.search('\d+', MASTER_Basepairs_summary_line[4])
+                        m=re.search(r'\d+', MASTER_Basepairs_summary_line[4])
                         search2 = m.group()
                         SEARCH2 = to_int(search2) #convert string to integers
                         list = [MASTER_Basepairs_summary_line[2], MASTER_Basepairs_summary_line[3], MASTER_Basepairs_summary_line[4], MASTER_Basepairs_summary_line[5]]
@@ -2315,13 +2315,13 @@ while (yes_count > 0):
                    if 'yes' in MASTER_Basepairs_summary[i][j]:
                       if yes_count == 0: #Initializing 'min' and 'max'
                           count = 1
-                          m=re.search('\d+', MASTER_Basepairs_summary[i][j][2])
+                          m=re.search(r'\d+', MASTER_Basepairs_summary[i][j][2])
                           search1 = m.group()
                           compare_to = to_int(search1)
                           max = [compare_to, i, j]
                           yes_count = 1
                       else:
-                          m=re.search('\d+', MASTER_Basepairs_summary[i][j][2])
+                          m=re.search(r'\d+', MASTER_Basepairs_summary[i][j][2])
                           search1 = m.group()
                           transient = to_int(search1)
                           if transient >= max[0]:
@@ -2889,7 +2889,7 @@ for c in range (len(MASTER_Basepairs_schemes)):
     geometry_counter_real = 0 #Will count only non-FALSE, non-UNDETERMINED basepairs within 'new_list_end[b]' with 'MASTER_Basepairs_schemes[c]' geometry
 #TRUE BASEPAIRS
     for b in range (len(new_list_end)):
-        m=re.search('\S+', new_list_end[b][0])
+        m=re.search(r'\S+', new_list_end[b][0])
         scheme = str(m.group())
         if MASTER_Basepairs_schemes[c] == scheme:
            geometry_counter = geometry_counter + 1
@@ -2976,9 +2976,9 @@ for i in range (len(control)):
               processed_control.append(control[i][j])
        for u in range (len(processed_control)): #To format the 2 strings for the current basepair, resid and resid #, into residresid #
            if u%2 == 0:
-              search = '\d+'
+              search = r'\d+'
            else:
-              search = '\w+'
+              search = r'\w+'
            formatted = SEARCH(processed_control[u], search)
            list.append(formatted)
        for v in range (len(list)/2):

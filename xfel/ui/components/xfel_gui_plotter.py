@@ -390,11 +390,11 @@ class PopUpCharts(object):
     b = b.select(accepted)
     c = c.select(accepted)
 
-    AA = "a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
+    AA = r"a-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(a),
                                         flex.mean_and_variance(a).unweighted_sample_standard_deviation())
-    BB = "b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
+    BB = r"b-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(b),
                                         flex.mean_and_variance(b).unweighted_sample_standard_deviation())
-    CC = "c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
+    CC = r"c-edge (%.2f +/- %.2f $\AA$)" % (flex.mean(c),
                                         flex.mean_and_variance(c).unweighted_sample_standard_deviation())
 
 

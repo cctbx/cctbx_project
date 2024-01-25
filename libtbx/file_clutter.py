@@ -9,11 +9,11 @@ class file_clutter(object):
   from_future_pat = re.compile(
     '^ from [ ]+ __future__ ', re.VERBOSE)
   from_future_import_division_pat = re.compile(
-    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
+    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ division', re.VERBOSE)
   from_future_import_absolute_import_pat = re.compile(
-    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
+    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ absolute_import', re.VERBOSE)
   from_future_import_print_function_pat = re.compile(
-    '^ from [ ]+ __future__ [ ]+ import [ \w,]+ print_function', re.VERBOSE)
+    r'^ from [ ]+ __future__ [ ]+ import [ \w,]+ print_function', re.VERBOSE)
 
   def __init__(self, path, find_unused_imports=False,
       find_bad_indentation=True, flag_absolute_import=False,
