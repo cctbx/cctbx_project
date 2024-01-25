@@ -58,7 +58,7 @@ class version(object):
     import re
     self.__dict__ = self._shared_state
     if not self._shared_state:
-      vers_pat = re.compile("^((\d+)\.(\d+))(?:\.(\d+))?(?: (.*))?$")
+      vers_pat = re.compile(r"^((\d+)\.(\d+))(?:\.(\d+))?(?: (.*))?$")
       m = vers_pat.search(gl.glGetString(gl.GL_VERSION))
       self.__dict__.update(dict(zip(
         ["principal", "major_number", "minor_number", "release_number",

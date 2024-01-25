@@ -1,7 +1,7 @@
 
 from __future__ import absolute_import, division, print_function
-import cStringIO
 import sys, os, re
+from six.moves import cStringIO as StringIO
 from six.moves import zip
 
 def check_bin_format(bin):
@@ -16,7 +16,7 @@ def float_or_none(n):
 
 def percent_to_float(value):
   assert value.endswith("%")
-  return float(re.sub("\%$", "", value))
+  return float(re.sub(r"\%$", "", value))
 
 class experiment_info(object):
   def extract_all_stats(self):
@@ -174,7 +174,7 @@ class processing_info(object):
       wavelength = getattr(i, "wavelength", None)
     synchrotron = "NULL"
     if (wavelength is not None):
-      out = cStringIO.StringIO()
+      out = StringIO()
       if (not approx_equal(wavelength, 1.5418, eps=0.01, out=out) and
           not approx_equal(wavelength, 0.7107, eps=0.01, out=out)):
         synchrotron = "Y"
@@ -471,7 +471,7 @@ def parse_xscale(lines):
         elif (fields[0] == "total"):
           overall = fields
           break
-        elif re.match("^\d", line):
+        elif re.match(r"^\d", line):
           bins.append(fields)
         j += 1
       assert (len(bins) > 0) and (len(overall) == len(bins[0]))

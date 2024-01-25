@@ -4,7 +4,7 @@ from itertools import product
 from six.moves import range
 
 class generate_n_char_string:
-  """ Iterator to generate strings of length n_chars, using upper-case,
+  r""" Iterator to generate strings of length n_chars, using upper-case,
     lower-case and numbers as desired.
     Allows specialty sets of characters as well
 
@@ -42,7 +42,7 @@ class generate_n_char_string:
     all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     all_chars_lc = all_chars.lower()
     all_numbers = '0123456789'
-    special_characters = """[]_,.;:"&<>()\/\{}'`~!@#$%*|+-"""
+    special_characters = r"""[]_,.;:"&<>()/\{}'`~!@#$%*|+-"""
     self._tilde = """~"""
 
     self._all_everything = ""

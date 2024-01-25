@@ -1121,9 +1121,9 @@ class ResidualsPlotter(object):
                                         ["XY", "radial", "transverse"]):
           fig = plt.figure()
           plt.hist2d(angle.as_numpy_array(), reflections[column_name].as_numpy_array() * 1000, bins=180, norm=LogNorm())
-          plt.title("2d histogram of $\Delta$ %s vs azimuthal angle"%caption)
+          plt.title(r"2d histogram of $\Delta$ %s vs azimuthal angle"%caption)
           plt.xlabel("Azimuthal angle (deg)")
-          plt.ylabel("$\Delta$ %s ($\mu$m)"%caption)
+          plt.ylabel(r"$\Delta$ %s ($\mu$m)"%caption)
           plt.colorbar()
 
       if params.plots.intensity_vs_radials_2dhist and 'intensity.sum.value' in reflections:
@@ -1263,9 +1263,9 @@ class ResidualsPlotter(object):
           if expt_id == 0:
             fig = plt.figure()
             plt.scatter(two_thetas, offset)
-            plt.title(u"%d: Ewald offset ($\AA^{-1}$) vs $2\\theta$ on %d spots"%(expt_id, len(two_thetas)))
-            plt.xlabel(u"$2\\theta (\circ)$")
-            plt.ylabel(u"Ewald offset ($\AA^{-1}$)")
+            plt.title(r"%d: Ewald offset ($\AA^{-1}$) vs $2\theta$ on %d spots"%(expt_id, len(two_thetas)))
+            plt.xlabel(r"$2\theta (\circ)$")
+            plt.ylabel(r"Ewald offset ($\AA^{-1}$)")
 
           array = refls.as_miller_array(experiments[expt_id])
           binner = array.setup_binner(d_min=2.0, n_bins=n_bins)
@@ -1291,9 +1291,9 @@ class ResidualsPlotter(object):
             print (bin_id, binner.bin_d_range(bin_number), sel.count(True), x[-1], y[-1])
           plt.plot(x, y, '-')
         plt.legend(legend)
-        plt.title(u"Binned $I/\sigma_I$ vs. Ewald offset")
-        plt.xlabel(u"Ewald offset ($\AA^{-1}$)")
-        plt.ylabel(u"Median $I/\sigma_I$")
+        plt.title(r"Binned $I/\sigma_I$ vs. Ewald offset")
+        plt.xlabel(r"Ewald offset ($\AA^{-1}$)")
+        plt.ylabel(r"Median $I/\sigma_I$")
 
         plt.figure()
         plt.title('Ewald offsets vs. two theta')

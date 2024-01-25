@@ -279,7 +279,7 @@ def sge_xml_evaluate(out, running, completed):
 
 
 CONDOR_XML_OUTPUT_REGEX = util.get_lazy_initialized_regex(
-  pattern = "^.*?(?=<\?xml)",
+  pattern = r"^.*?(?=<\?xml)",
   flags = [ "DOTALL" ],
   )
 
