@@ -622,7 +622,9 @@ class mask_and_regions(object):
       volume_cutoff=50,
       wrapping=True,
       force_symmetry=True,
-      log=None):
+      log=None,
+      modifier=None
+      ):
     """
     Split 0/1 traditional bulk-solvent mask into a series of isolated masks
     covering the whole unit cell in P1.
@@ -640,13 +642,44 @@ class mask_and_regions(object):
       n_real                   = self.crystal_gridding.n_real(),
       in_asu                   = False).mask_data
     maptbx.unpad_in_place(map=self.mask_p1)
+    #
+    # TO-DO: instead of excluding, add them as mosaic regions, may be?
+    #
+    tmp  = flex.double(flex.grid(self.mask_p1.all()), 1)
+    if(modifier is not None):
+      modifier = modifier * self.mask_p1
+      sel = modifier <  -2.0 # XXX Depending on this, results can vary a lot
+      modifier = modifier.set_selected(sel, 1)
+      modifier = modifier.set_selected(~sel, 0)
+      co = maptbx.connectivity(
+        map_data                   = modifier,
+        threshold                  = 0.01,
+        preprocess_against_shallow = False,
+        wrapping                   = wrapping)
+      if(force_symmetry and xray_structure.space_group().type().number() != 1):
+        co.merge_symmetry_related_regions(
+          space_group = xray_structure.space_group())
+      conn = co.result().as_double()
+      z = zip(co.regions(),range(0,co.regions().size()))
+      sorted_by_volume = sorted(z, key=lambda x: x[0], reverse=True)
+      for i_seq, p in enumerate(sorted_by_volume):
+        v, i = p
+        if(i==0): continue
+        # Skip small volume regions
+        volume = v*self.step**3
+        tmp = tmp.set_selected(conn==i, 0)
+        if(volume_cutoff is not None and volume < volume_cutoff):
+          break
+    modifier = tmp
+    #
+    #
     # Solvent fraction
     self.solvent_content=100.*(self.mask_p1!=0).count(True)/self.mask_p1.size()
     if(log is not None):
       print("Solvent content: %7.3f"%self.solvent_content, file=log)
     # Connectivity
     co = maptbx.connectivity(
-      map_data                   = self.mask_p1,
+      map_data                   = self.mask_p1 * modifier, #!!!!!!!!!!!!!!!!!!!
       threshold                  = 0.01,
       preprocess_against_shallow = False, # XXX WHY False?
       wrapping                   = wrapping)
