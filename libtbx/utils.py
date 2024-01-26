@@ -2525,6 +2525,74 @@ git lsf pull
 """%path)
   return not test
 
+def display_context(text, header = 'Supplied text', n_context = 5, 
+   search_word = None, required_word= None, 
+   excluded_words = None, category = None,
+    quiet = None,
+   always_excluded_words = ['DEBUG', 'PDB OK']):
+  ''' Search lines in text for search_word and select blocks of size
+    n_context on either side. If context_word appears, mark that line
+
+    params: text: block of text
+    params: n_context: number of lines on either side of search word to keep
+    params: search_word:  word to find
+    params: required_word: another word to find (must have both in block
+            if required_word is set)
+    params: excluded_words: if any are present in text_block, skip it
+    params: category: category to pass on in group_args
+    params: header: header (title or name of file) to pass on in group_args
+    params: always_excluded_words: add to excluded words
+  '''
+
+  text_block_list = []
+  from libtbx import group_args
+  lines = text.splitlines()
+  if not quiet:
+    print("\n"+79*"=")
+    print(
+    "Searching %s with Search word: %s  Required word: %s Excluded word: %s" %(
+           header, search_word, required_word, excluded_words))
+    print("\n"+79*"=")
+
+
+  if not excluded_words: excluded_words = []
+  for i in range(len(lines)):
+    if lines[i].find(search_word)>-1:
+      text_block = ""
+      first_line_number = max(0,i-n_context)
+      last_line_number = min(len(lines), i+n_context+1)
+      for ll in lines[first_line_number: last_line_number]:
+        if ll.find(search_word)> -1:
+          text_block += "  ** %s\n" %(ll)
+        else:
+          text_block += "     %s\n" %(ll)
+      skip = False
+      for x in excluded_words + always_excluded_words:
+        if text_block.find(x) > -1:
+          skip = True
+      if skip:
+        continue 
+      if required_word and  (text_block.find(required_word) < 0):
+        continue
+
+      if not quiet:
+        print("\n%s at line %s. Search word: %s  Required word: %s" %(
+          header, first_line_number+1, search_word, required_word))
+        print(text_block)
+      info = group_args(group_args_type = 'text block',
+        category = category,
+        header = header,
+        search_word = search_word,
+        required_word = required_word,
+        excluded_words = excluded_words,
+        always_excluded_words = always_excluded_words,
+        text_block = text_block,
+        line_number = i+1,
+        )
+      text_block_list.append(info) 
+  return text_block_list
+        
+
 class timer:
   '''
   Context manager for timing blocks of code
