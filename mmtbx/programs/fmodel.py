@@ -1,26 +1,15 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import zip
 try:
   from phenix.program_template import ProgramTemplate
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
-from libtbx.utils import null_out, Sorry
-import mmtbx.maps.polder
-from iotbx import crystal_symmetry_from_any
-import mmtbx.utils
-from iotbx import mrcfile
-from libtbx import group_args
-from cctbx.array_family import flex
-from iotbx import extract_xtal_data
-import sys, os
 import mmtbx.utils
 import iotbx.phil
 import iotbx.pdb
-from scitbx.array_family import flex
-from libtbx import runtime_utils
-from libtbx.utils import Sorry
 import random
+from libtbx.utils import Sorry
+from cctbx.array_family import flex
 
 fmodel_from_xray_structure_params_str = """\
 fmodel
@@ -58,7 +47,6 @@ mask
   include scope mmtbx.masks.mask_master_params
 }
 """
-
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
@@ -173,8 +161,6 @@ anomalous_scatterers
 fmodel_from_xray_structure_params = iotbx.phil.parse(
   fmodel_from_xray_structure_params_str, process_includes=True)
 
-#master_phil = fmodel_from_xray_structure_master_params # XXX for phenix docs
-
 master_phil = iotbx.phil.parse(master_phil_str, process_includes = True)
 
 #pdb_file = None
@@ -283,7 +269,6 @@ See below for complete list of available parameters.
   datatypes = ['model', 'phil', 'miller_array']
 
   master_phil_str = master_phil_str
-  known_article_ids = ['phenix.polder']
 
   # ---------------------------------------------------------------------------
 
@@ -326,7 +311,7 @@ See below for complete list of available parameters.
         raise Sorry("Wavelength parameter not supported when the neutron "+
           "scattering table is used.")
 
-
+# For GUI
 #def validate_params(params, callback=None):
 #  if len(params.pdb_file) == 0 :
 #    raise Sorry("You must provide at least one model file to use for "+
@@ -453,4 +438,3 @@ generate_fake_p1_symmetry=True.'''
     print("All done.", file=self.logger)
     print("-"*79, file=self.logger)
     return ofn
-
