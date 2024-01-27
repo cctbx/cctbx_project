@@ -162,6 +162,7 @@ def run(args, n_context = 7, overall_exclude = None):
     'mmcif', # the author has considered cif
     '.cif',  # the author has considered cif
     'write_model(',  # the write_model function is cif-aware
+    'write_output_file(',  # the write_output_file function is cif-aware
     '.type = ',  # This is in parameters
     ]
 
