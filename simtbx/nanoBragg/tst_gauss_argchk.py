@@ -155,8 +155,8 @@ class amplitudes:
       sc.fp = expected_henke.fp()
       sc.fdp = expected_henke.fdp()
 
-    import mmtbx.command_line.fmodel
-    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    import mmtbx.programs.fmodel
+    phil2 = mmtbx.programs.fmodel.master_phil
     params2 = phil2.extract()
     params2.high_resolution = 1.6
     params2.fmodel.k_sol = 0.35

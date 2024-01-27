@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
-from libtbx import group_args
 
 from libtbx.utils import display_context
 
