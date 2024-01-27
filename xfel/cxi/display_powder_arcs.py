@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 import math
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import mmtbx.utils
 import iotbx.pdb.fetch
 from iotbx import pdb
@@ -24,7 +24,7 @@ def get_mmtbx_icalc(code,d_min, anomalous_flag = False):
 
     xray_structure = pdb_input.xray_structure_simple()
 
-    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    phil2 = mmtbx.programs.fmodel.master_phil
     params2 = phil2.extract()
     # adjust the cutoff of the generated intensities to assure that
     # statistics will be reported to the desired high-resolution limit

@@ -141,7 +141,7 @@ simulate_data {
   fake_data_from_fmodel
     .help = Options for generating model-based reflections using phenix.fmodel.
   {
-    include scope mmtbx.command_line.fmodel.fmodel_from_xray_structure_params
+    include scope mmtbx.programs.fmodel.fmodel_from_xray_structure_params
   }
 }
 """, process_includes=True)
@@ -386,9 +386,9 @@ class prepare_data(object):
       pdb_hierarchy.atoms().set_adps_from_scatterers(
         scatterers=xray_structure.scatterers(),
         unit_cell=xray_structure.unit_cell())
-    import mmtbx.command_line.fmodel
+    import mmtbx.programs.fmodel
     from mmtbx import utils
-    fmodel_params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
+    fmodel_params = mmtbx.programs.fmodel.master_phil.extract()
     fmodel_params.high_resolution = params.d_min
     fake_data = params.fake_data_from_fmodel
     fmodel_params.fmodel = fake_data.fmodel
