@@ -235,7 +235,8 @@ def run(args, n_context = 7, overall_exclude = None):
 
 
 def display_problem(p, out = sys.stdout):
-  print("%s  Line: %s\n" %(p.file_name,p.line_number)+ 70*"-", file = out)
+  print("%s  Line: %s  :: %s\n" %(
+     p.file_name,p.line_number,p.category)+ 70*"-", file = out)
   sw = [p.search_word, p.required_word]
   if None in sw: sw.remove(None)
   next_ending = None
