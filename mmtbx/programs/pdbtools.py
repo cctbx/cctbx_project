@@ -68,8 +68,13 @@ gui
     # Write output model file
     input_file_name_base = os.path.basename(
       self.data_manager.get_default_model_name())[:-4]
-    if(  self.model.input_model_format_cif()): extension = ".cif"
+    if(  self.model.input_model_format_cif()) or (
+       not self.model.can_be_output_as_pdb()):
+          extension = ".cif"
     elif(self.model.input_model_format_pdb()): extension = ".pdb"
+    else:
+      assert self.model.input_model_format_pdb() or \
+        self.model.input_model_format_cif()
     if(self.params.output.prefix is not None):
       output_file_name = self.params.output.prefix
       if(self.params.output.suffix is not None):
@@ -81,9 +86,10 @@ gui
       prefix=output_file_name,
       suffix=None,
       serial=Auto)
-    print('Writing output model', file=self.logger)
+    print('Writing output model to %s' %ofn, file=self.logger)
     output_cs=True
     if(cs is None): output_cs = False
+
     self.data_manager.write_model_file(self.model.model_as_str(
       output_cs=output_cs), ofn)
     self.result = ofn
