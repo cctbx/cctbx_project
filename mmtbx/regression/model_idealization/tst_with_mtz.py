@@ -20,8 +20,7 @@ def exercise_01(prefix="tst_mi_mtz_01"):
   pdb_h = pdb_inp.construct_hierarchy()
   xrs = pdb_h.extract_xray_structure(crystal_symmetry=pdb_inp.crystal_symmetry())
 
-  params = mmtbx.command_line.fmodel.\
-        fmodel_from_xray_structure_master_params.extract()
+  params = mmtbx.programs.fmodel.master_phil.extract()
   params.high_resolution = 3
   params.low_resolution = 20
   params.output.label="FOBS"

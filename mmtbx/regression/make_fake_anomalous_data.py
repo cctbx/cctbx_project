@@ -180,13 +180,12 @@ def generate_mtz_file(file_base, d_min, anomalous_scatterers=None,
     high_resolution = %g
     r_free_flags_fraction = 0.1
     add_sigmas = True
-    pdb_file = %s.pdb
     wavelength = %s
     output {
       label = F
       type = *real complex
       file_name = %s.mtz
-    }\n""" % (d_min, file_base, wavelength, file_base)
+    }\n""" % (d_min, wavelength, file_base)
   if anomalous_scatterers is not None:
     params += "anomalous_scatterers {\n"
     for group in anomalous_scatterers :
@@ -199,7 +198,7 @@ def generate_mtz_file(file_base, d_min, anomalous_scatterers=None,
   eff_file = file_base + "_fmodel.eff"
   with open(eff_file, "w") as f:
     f.write(params)
-  assert (easy_run.fully_buffered("phenix.fmodel %s" % eff_file,
+  assert (easy_run.fully_buffered("phenix.fmodel %s.pdb %s" % (file_base, eff_file),
     ).raise_if_errors().return_code == 0)
   return mtz_file
 

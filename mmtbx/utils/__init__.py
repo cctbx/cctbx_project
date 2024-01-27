@@ -1260,8 +1260,7 @@ class fmodel_from_xray_structure(object):
     if(out is None): out = sys.stdout
     self.add_sigmas = add_sigmas
     if(params is None):
-      params = mmtbx.command_line.fmodel.\
-        fmodel_from_xray_structure_master_params.extract()
+      params = mmtbx.programs.fmodel.master_phil.extract()
     if(r_free_flags_fraction is None):
       if(params.r_free_flags_fraction is not None):
         r_free_flags_fraction = params.r_free_flags_fraction

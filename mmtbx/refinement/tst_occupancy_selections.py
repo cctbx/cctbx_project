@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.monomer_library import pdb_interpretation
 from mmtbx.refinement.occupancies import occupancy_selections
-from mmtbx.command_line import fmodel
+from iotbx.cli_parser import run_program
+from mmtbx.programs import fmodel
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
@@ -1223,7 +1224,7 @@ TER
       "random_seed=12345",
       "output.file_name=%s.mtz" % prefix,
     ]
-    fmodel.run(args=args, log=null_out())
+    run_program(program_class=fmodel.Program, args=args, logger=null_out())
   pdb_file = iotbx.pdb.input(pdb_in)
   hierarchy = pdb_file.construct_hierarchy()
   xrs = pdb_file.xray_structure_simple()
