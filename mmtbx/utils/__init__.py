@@ -44,7 +44,8 @@ import mmtbx.f_model
 import mmtbx.restraints
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
-import mmtbx.command_line.fmodel
+import mmtbx.command_line.fmodel 
+import mmtbx.programs.fmodel
 import libtbx.callbacks # import dependency
 from libtbx.math_utils import ifloor, iceil
 from cctbx import maptbx

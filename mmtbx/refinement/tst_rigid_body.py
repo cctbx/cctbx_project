@@ -12,7 +12,6 @@ from cctbx import xray
 import mmtbx.utils
 import iotbx.pdb
 from scitbx import matrix
-import mmtbx.command_line.fmodel
 import scitbx.rigid_body
 from six.moves import range
 

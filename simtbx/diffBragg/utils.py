@@ -25,7 +25,7 @@ from dxtbx.model.experiment_list import ExperimentListFactory
 import libtbx
 from libtbx.phil import parse
 from dials.array_family import flex as dials_flex
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import mmtbx.utils
 from cctbx.eltbx import henke
 from simtbx.diffBragg import psf
@@ -930,7 +930,7 @@ def get_complex_fcalc_from_pdb(
         dmax=None,
         k_sol=0.435, b_sol=46, show_pdb_summary=False):
     """
-    produce a structure factor from PDB coords, see mmtbx/command_line/fmodel.py for formulation
+    produce a structure factor from PDB coords, see mmtbx/programs/fmodel.py for formulation
     k_sol, b_sol form the solvent component of the Fcalc: Fprotein + k_sol*exp(-b_sol*s^2/4) (I think)
     """
     import iotbx.pdb
@@ -943,7 +943,7 @@ def get_complex_fcalc_from_pdb(
             expected_henke = henke.table(sc.element_symbol()).at_angstrom(wavelength)
             sc.fp = expected_henke.fp()
             sc.fdp = expected_henke.fdp()
-    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    phil2 = mmtbx.programs.fmodel.master_phil
     params2 = phil2.extract()
     params2.high_resolution = dmin
     params2.low_resolution = dmax

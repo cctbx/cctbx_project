@@ -6,7 +6,7 @@ import time
 import iotbx
 from mmtbx.utils import fmodel_from_xray_structure
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 
 def exercise_01(prefix="tst_mi_mtz_01"):
   """

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import mmtbx.utils
 import libtbx.phil.command_line
 from cctbx import miller
@@ -125,7 +125,7 @@ class crystal_model(worker):
       self.params.scaling.unit_cell = unit_cell
 
     # prepare phil parameters to generate model intensities
-    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    phil2 = mmtbx.programs.fmodel.master_phil
     params2 = phil2.extract()
 
     '''
