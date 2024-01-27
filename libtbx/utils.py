@@ -2525,11 +2525,11 @@ git lsf pull
 """%path)
   return not test
 
-def display_context(text, header = 'Supplied text', n_context = 5, 
-   search_word = None, required_word= None, 
+def display_context(text, file_name = 'file name', n_context = 5,
+   search_word = None, required_word= None,
    excluded_words = None, category = None,
     quiet = None,
-   always_excluded_words = ['DEBUG', 'PDB OK']):
+   always_excluded_words = None):
   ''' Search lines in text for search_word and select blocks of size
     n_context on either side. If context_word appears, mark that line
 
@@ -2540,7 +2540,7 @@ def display_context(text, header = 'Supplied text', n_context = 5,
             if required_word is set)
     params: excluded_words: if any are present in text_block, skip it
     params: category: category to pass on in group_args
-    params: header: header (title or name of file) to pass on in group_args
+    params: file_name: file_name (title or name of file) to pass on in group_args
     params: always_excluded_words: add to excluded words
   '''
 
@@ -2551,13 +2551,21 @@ def display_context(text, header = 'Supplied text', n_context = 5,
     print("\n"+79*"=")
     print(
     "Searching %s with Search word: %s  Required word: %s Excluded word: %s" %(
-           header, search_word, required_word, excluded_words))
+           file_name, search_word, required_word, excluded_words))
     print("\n"+79*"=")
 
 
   if not excluded_words: excluded_words = []
+  if not always_excluded_words: always_excluded_words = []
+  max_working_lines = 2*n_context
+  working_lines = []
   for i in range(len(lines)):
-    if lines[i].find(search_word)>-1:
+    working_lines.append(lines[i])
+    if len(working_lines) > max_working_lines:
+      working_lines = working_lines[1:]
+    working_lines_text = "\n".join(working_lines)
+    if lines[i].find(search_word)>-1  and (
+       not lines[i].strip().startswith("#")):
       text_block = ""
       first_line_number = max(0,i-n_context)
       last_line_number = min(len(lines), i+n_context+1)
@@ -2570,18 +2578,20 @@ def display_context(text, header = 'Supplied text', n_context = 5,
       for x in excluded_words + always_excluded_words:
         if text_block.find(x) > -1:
           skip = True
+        if working_lines_text.find(x) > -1: # allow backwards further
+          skip = True
       if skip:
-        continue 
+        continue
       if required_word and  (text_block.find(required_word) < 0):
         continue
 
       if not quiet:
         print("\n%s at line %s. Search word: %s  Required word: %s" %(
-          header, first_line_number+1, search_word, required_word))
+          file_name, first_line_number+1, search_word, required_word))
         print(text_block)
       info = group_args(group_args_type = 'text block',
         category = category,
-        header = header,
+        file_name = file_name,
         search_word = search_word,
         required_word = required_word,
         excluded_words = excluded_words,
@@ -2589,9 +2599,9 @@ def display_context(text, header = 'Supplied text', n_context = 5,
         text_block = text_block,
         line_number = i+1,
         )
-      text_block_list.append(info) 
+      text_block_list.append(info)
   return text_block_list
-        
+
 
 class timer:
   '''
