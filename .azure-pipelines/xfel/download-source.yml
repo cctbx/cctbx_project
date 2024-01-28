@@ -28,6 +28,16 @@ jobs:
     displayName: Download sources
 
   - script: |
+      set -xe
+      for repo in dials LS49; do
+        cd $(Pipeline.Workspace)/modules/${repo}
+        git remote add fmodel https://github.com/dcliebschner/${repo}.git
+        git fetch --all
+        git checkout fmodel
+      done
+    displayName: Select fmodel branch
+
+  - script: |
       cd $(Pipeline.Workspace)
       cd modules/uc_metrics
       git lfs install --local
