@@ -2,14 +2,15 @@
 This code provides methods to calculate the qscore metric for map-model validation,
 as developed by Pintile et al.
 
-As with the original implementation, multiple calculation options are provided.
-The fastest (default) is to pass an mmtbx map-model-manager (mmm)
-to the the function qscore_np, qscore_np(mmm)
+Two main modes are provided.
+  1. progressive: Allocates probes progressively, and should give identical results to mapq
+  2. precalculate: Allocates probes once and rejects. Should give analogous results and is faster.
 """
 
 from __future__ import division
 import math
 import sys
+from libtbx.utils import null_out
 from collections import defaultdict
 from multiprocessing import Pool, cpu_count
 from itertools import chain
@@ -24,28 +25,6 @@ from cctbx.array_family import flex
 from scitbx_array_family_flex_ext import bool as flex_bool
 
 
-class DummyTQDM:
-    """A 'dummy' object that can be used for compatibility if tqdm is not installed"""
-
-    def __init__(self, iterable=None, *args, **kwargs):
-        self.iterable = iterable
-        self.args = args
-        self.kwargs = kwargs
-
-    def __iter__(self):
-        return iter(self.iterable)
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        pass
-try:
-  from tqdm import tqdm
-except ImportError:
-    tqdm = DummyTQDM
-
-
 master_phil_str = """
   qscore
   {
@@ -55,9 +34,19 @@ master_phil_str = """
         .help = Number of processors to use
         .short_caption = Number of processors to use
         .expert_level = 1
-    n_probes = 8
+    n_probes_target = 8
         .type = int
         .help = Number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    n_probes_max = 16
+        .type = int
+        .help = Max number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    n_probes_min = 4
+        .type = int
+        .help = Min number of radial probes to use
         .short_caption = Number of radial probes to use
         .expert_level = 1
     selection = None
@@ -84,6 +73,15 @@ master_phil_str = """
       .short_caption = The number of radial shells (includes start/stop, so minimum 2)
       .expert_level = 1
 
+    shells = None
+      .type = float
+      .multiple = True
+      .help = Explicitly provide radial shells
+
+    rtol = 0.9
+      .type = float
+      .help = Mapq rtol value, the "real" shell radii are r*rtol
+
     probe_allocation_method = precalculate
       .type = str
       .help = The method used to allocate radial probes
@@ -108,364 +106,450 @@ master_phil_str = """
 
   """
 
+def get_probe_mask(atom_tree,probes_xyz,r=None,expected=None,log=null_out(),debug=False):
+  """
+  atoms_xyz shape  (n_atoms,3)
+  probes_xyz shape (n_atoms,n_probes,3)
 
-def radial_shell_worker_v1_np(args):
-    """
-    Calulate qscore for a single radial shell using version 1 (serial probe allocation) and numpy
-    """
-    (
-        i,
-        atoms_xyz,
-        n_probes,
-        radius_shell,
-        tree,
-        rtol,
-        selection,
-        n_probes_target,
-    ) = args
+  If expected is None, infer atom indices from probes_xyz
+  Else expected should be a single value, or have shape  (n_atoms,n_probes)
 
-    #
-    # manage selection input
-    if selection is None:
-        selection = np.arange(len(atoms_xyz))
+  """
+
+  assert r is not None, "Provide a radius"
+  assert probes_xyz.ndim ==3 and probes_xyz.shape[-1] == 3, "Provide probes_xyz as shape: (n_atoms,n_probes,3)"
+  n_atoms_probe,n_probes,_ = probes_xyz.shape
+  dim = probes_xyz.shape[-1] # 3 for cartesian coords
+
+
+  # reshaped_probes shape (n_atoms*n_probes,3)
+  reshaped_probes = probes_xyz.reshape(-1, 3)
+  atom_indices = np.tile(np.arange(n_atoms_probe), (probes_xyz.shape[1], 1)).T
+
+  if not expected:
+    atom_indices = np.tile(np.arange(n_atoms_probe), (probes_xyz.shape[1], 1)).T
+  else:
+    atom_indices = np.full(probes_xyz.shape,expected)
+
+  associated_indices = atom_indices.reshape(-1)
+
+
+  # query
+  # Check if any other tree points are within r of each query point
+  query_points = reshaped_probes
+  other_points_within_r = []
+  for i, (query_point,idx) in enumerate(zip(query_points,associated_indices)):
+
+    indices_within_r = atom_tree.query_ball_point(query_point, r)
+
+    # Exclude the associated point
+    associated_index = associated_indices[i]
+    other_indices = []
+    for  idx in indices_within_r:
+      if idx != associated_index:
+        other_indices.append(idx)
+      if len(indices_within_r)==0:
+        other_indices.append(-1)
+
+
+    print(other_indices,file=log)
+
+    other_points_within_r.append(other_indices)
+
+  # true are points that don't get rejected
+  num_nbrs_other = np.array([len(inds) for i,inds in enumerate(other_points_within_r)])
+  print(num_nbrs_other,file=log)
+  num_nbrs_other = num_nbrs_other.reshape((n_atoms_probe,n_probes))
+  mask = num_nbrs_other==0
+
+  return mask
+
+# Generating probes
+def generate_probes_np(atoms_xyz, rad, n_probes):
+  """
+  atoms_xyz: np array of shape (n_atoms,3)
+  rad: the radius at which to place the probes
+  N: the number of probes per atom
+
+  Returns:
+    probes (np.ndarray): shape (n_atoms,n_probes,3)
+  """
+  assert atoms_xyz.ndim == 2 and atoms_xyz.shape[-1]==3, "Provide coordinates in shape (n_atoms,3)"
+  N = n_probes
+  h = -1.0 + (2.0 * np.arange(N) / float(N-1))
+  phis = np.arccos(h)
+
+  thetas = np.zeros(N)
+  a = (3.6 / np.sqrt(N * (1.0 - h[1:-1]**2)))
+  thetas[1:-1] = a
+  thetas = np.cumsum(thetas)
+
+
+  x = np.sin(phis) * np.cos(thetas)
+  y = np.sin(phis) * np.sin(thetas)
+  z = np.cos(phis)
+
+  probes = rad * np.stack([x, y, z], axis=-1)
+
+  # Adjusting location of generated points relative to point ctr
+  probes = probes.reshape(-1, 1, 3) + atoms_xyz.reshape(1, -1, 3)
+
+  # reshape (n_atoms,n_probes,3)
+  probes = probes.swapaxes(0,1)
+  return probes
+
+def SpherePtsVectorized ( ctr, rad, N ) :
+  """
+  Function for generating points on a sphere. For testing, it retains the original
+  mapq pattern
+  """
+  thetas, phis = [], []
+  from math import acos, sin, cos, sqrt, pi
+  for k in range ( 1, N+1 ) :
+    h = -1.0 + ( 2.0*float(k-1)/float(N-1) )
+    phis.append ( acos(h) )
+    thetas.append ( 0 if k == 1 or k == N else
+                    (thetas[k-2] + 3.6/sqrt(N*(1.0-h**2.0))) % (2*pi) )
+
+  pts = [None] * N
+  for i, theta, phi in zip ( range(N), thetas, phis ):
+    v = np.array([ sin(phi)*cos(theta), sin(phi)*sin(theta), cos(phi)])
+
+    pt = ctr + v * rad
+    pts[i] = pt
+  pts = np.array(pts)
+  pts = pts.swapaxes(0,1)
+  return pts
+
+def _shell_probes_progressive_wrapper(kwargs):
+  """
+  A wrapper function to pass kwargs for 'shell_probes_progressive'
+    to multiprocessing pool.
+  """
+  return shell_probes_progressive(**kwargs)
+
+def shell_probes_progressive( atoms_xyz=None,   # A numpy array of shape (N,3)
+                              atoms_tree=None,  # An atom_xyz scipy kdtree
+                              selection=None,   # An atom selection
+                              n_probes_target=8,# The desired number of probes per shell
+                              n_probes_max=16,  # The maximum number of probes allowed
+                              n_probes_min=4,
+                              RAD=1.5,          # The nominal radius of this shell
+                              rtol=0.9,         # Multiplied with RAD to get actual radius
+                              log = null_out(),
+                             ):
+  """
+  Generate probes progressively for a single shell (radius)
+  """
+
+  # Do input validation
+  if not atoms_tree:
+    assert atoms_tree is None, "If not providing an atom tree, provide a 2d atom coordinate array to build tree"
+    atoms_tree = KDTree(atoms_xyz)
+
+  # Manage log
+  if log is None:
+      log = null_out()
+
+  # manage selection input
+  if selection is None:
+    selection = np.arange(atoms_xyz.shape[0])
+  else:
+    selection = np.array(selection)
+    assert selection.dtype in [int,bool]
+
+  # do selection
+  atoms_xyz_sel = atoms_xyz[selection]
+  n_atoms = atoms_xyz_sel.shape[0]
+
+  all_pts = []  # list of probe arrays for each atom
+  for atom_i in range(n_atoms):
+    coord = atoms_xyz_sel[atom_i:atom_i+1]
+    outRAD = RAD * rtol
+
+
+    print(coord,file=log)
+    pts = []
+    i_log = []
+    # try to get at least numPts] points at [RAD] distance
+    # from the atom, that are not closer to other atoms
+    N_i = 50
+    for i in range(0, N_i):
+      rejections = 0
+
+      # if we find the necessary number of probes in the first iteration, then i will never go to 1
+      # points on a sphere at radius RAD...
+      n_pts_to_grab = (n_probes_target + i * 2)  # progressively more points are grabbed  with each failed iter
+      #print(f"Grabbing {n_pts_to_grab} probes at RAD {RAD} using generate_probes_np()",file=log)
+
+      outPts = generate_probes_np(coord, RAD, n_pts_to_grab)  # get the points in shape (n_atoms,n_pts_to_grab,3)
+
+      # initialize points to keep
+      at_pts, at_pts_i = [None] * outPts.shape[1], 0
+
+      # mask for outPts, are they are closest to the expected atom
+      # mask shape (n_atoms,n_pts_to_grab)
+      # NOTE: n_atoms != len(outPts)
+
+      # will get mask of shape (n_atoms,n_probes)
+      mask = get_probe_mask(atoms_tree,outPts,r=outRAD,expected=atom_i,log=log)
+
+
+      for pt_i, pt in enumerate(outPts[0]):  # identify which ones to keep, progressively grow pts list
+        keep = mask[0,pt_i] # only one atom TODO: vectorize atoms
+        if keep:
+          at_pts[at_pts_i] = pt
+          at_pts_i += 1
+        else:
+          #print("REJECTING...",pt,file=log)
+          rejections+=1
+          pass
+
+      # check if we have enough points to break the search loop
+      if ( at_pts_i >= n_probes_target):
+        pts.extend(at_pts[0:at_pts_i])
+        pts = pts + [np.array([np.nan,np.nan,np.nan])]*(n_probes_max-len(pts))
+        #print(pts)
+        break
+
+      i_log.append(i)
+      if i>=N_i:
+          assert False, "Too many iterations to get probes"
+      if i>0:
+          print("Going another round..",file=log)
+      # End sampling iteration
+
+
+    #Finish working on a single atom
+
+    pts = np.array(pts)
+    if pts.shape == (0,): # all probes clashed
+      pts = np.full((n_probes_max,3),np.nan)
     else:
-        assert selection.dtype == bool
-    # do selection
-    atoms_xyz_sel = atoms_xyz[selection]
-    # print("sel_shape",atoms_xyz_sel.shape)
-    n_atoms = atoms_xyz_sel.shape[0]
+      assert pts.shape == (n_probes_max,3), (
+        f"Generated points shape:{pts.shape}, expected: {(n_probes_max,3)}, try increasing n_probes_max"
+      )
+    #iterations_shell.append(i+1)
+    all_pts.append(pts)
 
-    if radius_shell == 0:
-        radius_shell = 1e-9  # zero causes crash
-    numPts = n_probes_target
-    RAD = radius_shell
-    outRAD = rtol
-    all_pts = []  # list of probe arrays for each atom
-    probe_xyz_r = np.full((n_atoms, n_probes_target, 3), -1.0)
-    # print(atoms_xyz_sel)
-    # print("n_atoms",n_atoms)
-    for atom_i in range(n_atoms):
-        coord = atoms_xyz_sel[atom_i]
-        # print("atom_i",atom_i)
-        # print("coord:",coord)
-        pts = []
+  # Finish the shell function
+  probes_xyz = np.array(all_pts)
+  assert probes_xyz.shape == (n_atoms,n_probes_max,3),(
+  f"probes not allocated correctly, probes_xyz.shape: {probes_xyz.shape}, expected: {(n_atoms,n_probes_max,3)}"
+  )
+  probe_mask = ~(np.isnan(probes_xyz))[:,:,0]
 
-        # try to get at least [numPts] points at [RAD] distance
-        # from the atom, that are not closer to other atoms
-        for i in range(0, 50):
-            # if we find the necessary number of probes in the first iteration, then i will never go to 1
-            # points on a sphere at radius RAD...
-            n_pts_to_grab = (
-                numPts + i * 2
-            )  # progressively more points are grabbed  with each failed iter
-            # print("n_to_grab:",n_pts_to_grab)
+  return probes_xyz, probe_mask
 
-            outPts = sphere_points_np(
-                coord[None, :], RAD, n_pts_to_grab
-            )  # get the points
-            outPts = outPts.reshape(-1, 3)
-            at_pts, at_pts_i = [None] * len(outPts), 0
-            # print("probe candidates")
+def _shell_probes_precalculate_wrapper(kwargs):
+  """
+  A wrapper function to pass kwargs for 'shell_probes_progressive'
+    to multiprocessing pool.
+  """
+  return shell_probes_precalculate(**kwargs)
 
-            for pt_i, pt in enumerate(
-                outPts
-            ):  # identify which ones to keep, progressively grow pts list
-                # print(f"\t{pt[0]},{pt[1]},{pt[2]}")
-                # query kdtree to find probe-atom interactions
-                counts = tree.query_ball_point(
-                    pt[None, :], RAD * outRAD, return_length=True
-                )
+def shell_probes_precalculate(atoms_xyz=None,   # A numpy array of shape (N,3)
+                              atoms_tree=None,  # An atom_xyz scipy kdtree
+                              selection=None,   # An atom selection
+                              n_probes_target=8,# The desired number of probes per shell
+                              n_probes_max=16,  # The maximum number of probes allowed
+                              n_probes_min=4,   # The min number of probes allowed without error
+                              RAD=1.5,          # The nominal radius of this shell
+                              rtol=0.9,         # Multiplied with RAD to get actual radius
+                              log = null_out(),
+                              strict = False,
+                             ):
+  """
+  Generate probes by precalculating for a single shell (radius)
+  """
 
-                # each value in counts is the number of atoms within radius+tol of each probe
-                count = counts.flatten()[0]
-                ptsNear = count
+  # Do input validation
+  if not atoms_tree:
+    assert atoms_tree is None, "If not providing an atom tree, provide a 2d atom coordinate array to build tree"
+    atoms_tree = KDTree(atoms_xyz)
 
-                if ptsNear == 0:
-                    at_pts[at_pts_i] = pt
-                    at_pts_i += 1
-                # if at_pts_i >= numPts:
-                #     break
+  # Manage log
+  if log is None:
+      log = null_out()
 
-            if (
-                at_pts_i >= numPts
-            ):  # if we have enough points, take all the "good" points from this iter
-                pts.extend(at_pts[0:at_pts_i])
-                break
-        # assert len(pts)>0, "Zero probes were found "
-        pts = np.array(pts)  # should be shape (n_probes,3)
-        all_pts.append(pts)
+  # manage selection input
+  if selection is None:
+      selection = np.arange(atoms_xyz.shape[0])
+  else:
+      assert selection.dtype == bool
 
-    # prepare output
-    n_atoms = len(atoms_xyz)
-    for i, r in enumerate(all_pts):
-        if r.ndim == 2 and len(r) > 0:
-            probe_xyz_r[i, :n_probes, :] = r[:n_probes_target, :]
+  # do selection
+  atoms_xyz_sel = atoms_xyz[selection]
 
-    keep_sel = probe_xyz_r != -1.0
-    keep_sel = np.mean(keep_sel, axis=-1, keepdims=True)
-    keep_sel = np.squeeze(keep_sel, axis=-1)
+  # get probe coordinates
+  probe_xyz = generate_probes_np(atoms_xyz_sel, RAD, n_probes_max)
+  n_atoms, n_probes, _ = probe_xyz.shape
+  probe_xyz_flat = probe_xyz.reshape(-1,3)
 
-    return probe_xyz_r, keep_sel.astype(bool)
+  outRAD = RAD*rtol
+  dists, atom_indices = atoms_tree.query(probe_xyz_flat, k=2)
+  dists = dists.reshape((n_atoms,n_probes,2))
+  atom_indices = atom_indices.reshape((n_atoms,n_probes,2))
+  row_indices = np.arange(n_atoms)[:, np.newaxis]
+  expected_atom_mask = atom_indices[:,:,0]==row_indices # whether each probe's nearest atom is the one expected
+  within_r_mask = dists[:,:,1]<outRAD # whether the second nearest neighbor is within the rejection radius
+  probe_mask = expected_atom_mask & ~within_r_mask
+  n_probes_per_atom = probe_mask.sum(axis=1)
+  insufficient_probes = np.where(n_probes_per_atom<n_probes_target)[0]
+  problematic_probes = np.where(n_probes_per_atom<n_probes_min)[0]
+  if strict:
+    assert n_probes_per_atom.min() >= n_probes_min, f"Some atoms have less than {n_probes_min} probes ({len(problematic_probes)}). Consider raising n_probes_max"
+  return probe_xyz, probe_mask
 
 
-def radial_shell_worker_v2_np(args):
+def get_probes(
+    atoms_xyz=None,
+    atoms_tree = None,
+    params=None,
+    worker_func=None,
+    log=None):
     """
-    Calulate qscore for a single radial shell using version 2 (parallel probe allocation) and numpy
+    Generate probes for atom coordinates.
     """
-    # unpack args
-    i, atoms_xyz, n_probes, radius_shell, tree, rtol, selection = args
 
-    # manage selection input
-    if selection is None:
-        selection = np.arange(len(atoms_xyz))
+    if atoms_tree is None:
+      atoms_tree = KDTree(atoms_xyz)
+
+    kwargs_list = [
+    {
+      'atoms_xyz':atoms_xyz,
+      'atoms_tree':atoms_tree,
+      'selection':params.selection,
+      'n_probes_target':params.n_probes_target,
+      'n_probes_max':params.n_probes_max,
+      'n_probes_min':params.n_probes_min,
+      'RAD':RAD,
+      'rtol':params.rtol,
+    } for RAD in params.shells]
+
+  # Create a pool of worker processes
+    if params.nproc > 1:
+      with Pool(params.nproc) as pool:
+        results = pool.starmap(worker_func, [(kwargs,) for kwargs in kwargs_list])
     else:
-        #assert selection.dtype == bool
-        pass
-
-    # do selection
-    atoms_xyz_sel = atoms_xyz[selection]
-    n_atoms = atoms_xyz_sel.shape[0]
-
-    # get probe coordinates
-    probe_xyz = sphere_points_np(atoms_xyz_sel, radius_shell, n_probes)
-
-    counts = tree.query_ball_point(
-        probe_xyz, radius_shell * rtol, return_length=True
-    )  # atom counts for each probe, for probes in shape (n_atoms,n_probes)
-    probe_mask = (
-        counts == 0
-    )  # keep probes with 0 nearby atoms. The rtol ensures self is not counted
-    return probe_xyz, probe_mask
-
-
-def radial_shell_mp_np(
-
-    model,
-    n_probes=32,
-    radii=np.linspace(0.1, 2, 12),
-    rtol=0.9,
-    num_processes=cpu_count(),
-    selection=None,
-    version=2,
-    progress=True,
-    log=sys.stdout,
-):
-    """
-    Generate probes for a model file using numpy
-    """
-    assert version in [1, 2], "Version must be 1 or 2"
-    if not progress:
-        tqdm = DummyTQDM
-    atoms_xyz = model.get_sites_cart().as_numpy_array()
-    tree = KDTree(atoms_xyz)
-
-    if version == 1:
-        worker_func = radial_shell_worker_v1_np
-        n_probes_target = n_probes
-        # Create argument tuples for each chunk
-        args = [
-            (
-                i,
-                atoms_xyz,
-                n_probes,
-                radius_shell,
-                tree,
-                rtol,
-                selection,
-                n_probes_target,
-            )
-            for i, radius_shell in enumerate(radii)
-        ]
-    else:
-        worker_func = radial_shell_worker_v2_np
-        # Create argument tuples for each chunk
-        args = [
-            (i, atoms_xyz, n_probes, radius_shell, tree, rtol, selection)
-            for i, radius_shell in enumerate(radii)
-        ]
-
-    # Create a pool of worker processes
-    if num_processes > 1:
-        with Pool(num_processes) as p:
-            # Use the pool to run the trilinear_interpolation_worker function in parallel
-            results = list(
-                tqdm(p.imap(worker_func, args), total=len(args), file=log)
-            )
-    else:
-        results = []
-        for arg in tqdm(args, file=log):
-            # for arg in args:
-            result = worker_func(arg)
-            results.append(result)
+      results = []
+      for kwargs in kwargs_list:
+        result = worker_func(kwargs)
+        results.append(result)
 
     probe_xyz_all = [result[0] for result in results]
     probe_mask_all = [result[1] for result in results]
 
-    # stack numpy
+    # # stack numpy
     probe_xyz = np.stack(probe_xyz_all)
     probe_mask = np.stack(probe_mask_all)
-    probe_xyz = np.transpose(probe_xyz, (0, 2, 1, 3))  # Reorder to shape (n_shells,n_atoms,n_probes,3)
-    probe_mask = np.swapaxes(probe_mask, 1, 2)
     return probe_xyz, probe_mask
 
 
+def calc_qscore(mmm,params,log=null_out(),debug=False):
+  """
+  Calculate qscore from map model manager
+  """
+  model = mmm.model()
+  mm = mmm.map_manager()
+
+
+  # Get atoms
+  atom_xyz = model.get_sites_cart().as_numpy_array()
+
+  # Get probes and probe mask (probes to reject)
+  if params.probe_allocation_method == "progressive":
+    worker_func=_shell_probes_progressive_wrapper
+  else:
+    worker_func=_shell_probes_precalculate_wrapper
+
+  probe_xyz,probe_mask = get_probes(
+    atoms_xyz=atom_xyz,
+    atoms_tree = None,
+    params=params,
+    worker_func=worker_func,
+    log = log,
+    )
+
+  n_shells, n_atoms, n_probes, _ = probe_xyz.shape
+
+  # flatten
+  probe_xyz_flat = probe_xyz.reshape((n_atoms * n_shells * n_probes, 3))
+  probe_mask_flat = probe_mask.reshape(-1)  # (n_shells*n_atoms*n_probes,)
+
+  # apply the mask to get only the xyz for selected probes
+  masked_probe_xyz_flat = probe_xyz_flat[probe_mask_flat]
+
+  # interpolate
+  volume = mm.map_data().as_numpy_array()
+  voxel_size = mm.pixel_sizes()
+  masked_density = trilinear_interpolation(volume, masked_probe_xyz_flat, voxel_size=voxel_size)
+
+  d_vals = np.full((n_shells, n_atoms, n_probes),np.nan)
+  d_vals[probe_mask] = masked_density
+
+  # g vals
+  # create the reference data
+  radii = params.shells
+  M = volume
+  maxD = min(M.mean() + M.std() * 10, M.max())
+  minD = max(M.mean() - M.std() * 1, M.min())
+  A = maxD - minD
+  B = minD
+  u = 0
+  sigma = 0.6
+  x = np.array(radii)
+  y = A * np.exp(-0.5 * ((x - u) / sigma) ** 2) + B
+
+  # Stack and reshape data for correlation calc
+
+  # stack the reference to shape (n_shells,n_atoms,n_probes)
+  g_vals = np.repeat(y[:, None], n_probes, axis=1)
+  g_vals = np.expand_dims(g_vals, 1)
+  g_vals = np.tile(g_vals, (n_atoms, 1))
+
+  # set masked area to nan
+  g_vals[~probe_mask] = np.nan
+
+  # reshape
+  g_vals_2d = g_vals.transpose(1, 0, 2).reshape(g_vals.shape[1], -1)
+  d_vals_2d = d_vals.transpose(1, 0, 2).reshape(d_vals.shape[1], -1)
+  mask_2d = probe_mask.transpose(1, 0, 2).reshape(probe_mask.shape[1], -1)
+
+  # CALCULATE Q
+  q = rowwise_corrcoef(g_vals_2d, d_vals_2d, mask=mask_2d)
+
+  # Output
+  if debug or params.debug:
+    # Collect debug data
+    result = {
+      "atom_xyz":atom_xyz,
+      "probe_xyz":probe_xyz,
+      "probe_mask":probe_mask,
+      "d_vals":d_vals,
+      "g_vals":g_vals,
+      "qscore_per_atom":q,
+    }
+  else:
+    result = {
+    "qscore_per_atom":q,
+    }
+  return result
+
+
+
 def ndarray_to_nested_list(arr):
-    """
-    Convert a NumPy array of arbitrary dimensions into a nested list.
-    :param arr: A NumPy array.
-    :return: A nested list representing the array.
-    """
-    if arr.ndim == 1:
-        return arr.tolist()
-    return [ndarray_to_nested_list(sub_arr) for sub_arr in arr]
+  """
+  Convert a NumPy array of arbitrary dimensions into a nested list.
+  :param arr: A NumPy array.
+  :return: A nested list representing the array.
+  """
+  if arr.ndim == 1:
+    return arr.tolist()
+  return [ndarray_to_nested_list(sub_arr) for sub_arr in arr]
 
-def qscore_np(
-    mmm,
-    selection=None,
-    n_probes=32,
-    shells=np.array(
-        [
-            0.1,
-            0.27272727,
-            0.44545455,
-            0.61818182,
-            0.79090909,
-            0.96363636,
-            1.13636364,
-            1.30909091,
-            1.48181818,
-            1.65454545,
-            1.82727273,
-            2.0,
-        ]
-    ),
-    version=2,
-    nproc=cpu_count(),
-    progress=True,
-    log=sys.stdout,
-    debug = False
-):
-    """
-    Calculate the qscore metric per-atom from an mmtbx map-model-manager, using numpy
-    """
-    model = mmm.model()
-    mm = mmm.map_manager()
-    volume = mm.map_data().as_numpy_array()
-    radii = shells
-    voxel_size = mm.pixel_sizes()
-
-    probe_xyz, probe_mask = radial_shell_mp_np(
-        model,
-        n_probes=n_probes,
-        num_processes=nproc,
-        selection=selection,
-        version=version,
-        radii=radii,
-        progress=progress,
-        log=log,
-    )
-
-    # after the probe generation, versions 1 and 2 are the same
-
-    # infer params from shape
-    n_shells, n_atoms, n_probes, _ = probe_xyz.shape
-
-    # flatten
-    probe_xyz_flat = probe_xyz.reshape((n_atoms * n_shells * n_probes, 3))
-    probe_mask_flat = probe_mask.reshape(-1)  # (n_shells*n_atoms*n_probes,)
-
-    # select mask=True probes
-    masked_probe_xyz_flat = probe_xyz_flat[probe_mask_flat]
-
-    # interpolate
-    masked_density = trilinear_interpolation(
-        volume, masked_probe_xyz_flat, voxel_size=voxel_size
-    )
-
-    # reshape interpolated values to (n_shells,n_atoms, n_probes)
-
-    d_vals = np.zeros((n_shells, n_atoms, n_probes))
-    d_vals[probe_mask] = masked_density
-
-    # reshape to (M,N*L) for rowwise correlation
-
-    d_vals_2d = d_vals.transpose(1, 0, 2).reshape(d_vals.shape[1], -1)
-
-    # create the reference data
-
-    M = volume
-    maxD = min(M.mean() + M.std() * 10, M.max())
-    minD = max(M.mean() - M.std() * 1, M.min())
-    A = maxD - minD
-    B = minD
-    u = 0
-    sigma = 0.6
-    x = np.array(radii)
-    y = A * np.exp(-0.5 * ((x - u) / sigma) ** 2) + B
-
-    # Stack and reshape data for correlation calc
-
-    # stack the reference to shape (n_shells,n_atoms,n_probes)
-    g_vals = np.repeat(y[:, None], n_probes, axis=1)
-    g_vals = np.expand_dims(g_vals, 1)
-    g_vals = np.tile(g_vals, (n_atoms, 1))
-
-    # reshape
-    g_vals_2d = g_vals.transpose(1, 0, 2).reshape(g_vals.shape[1], -1)
-    d_vals_2d = d_vals.transpose(1, 0, 2).reshape(d_vals.shape[1], -1)
-    mask_2d = probe_mask.transpose(1, 0, 2).reshape(probe_mask.shape[1], -1)
-
-    # # CALCULATE Q
-
-    # # numpy
-    q = rowwise_corrcoef(g_vals_2d, d_vals_2d, mask=mask_2d)
-
-    # # Log
-    # import os
-
-    # print("FINISHING...")
-    # print(os.getcwd())
-    # print("saving atoms xyz: atom_xyz_np.npy")
-    # np.save("atoms_xyz_np.npy",model.get_sites_cart().as_numpy_array())
-    # print("saving probe xyz: probe_xyz_np.npy")
-    # np.save("probe_xyz_np.npy",probe_xyz)
-    # print("saving probe mask: probe_mask_np.npy")
-    # np.save("probe_mask_np.npy",probe_mask)
-    # print("saving qscore: qscore_np.npy")
-    # np.save("qscore_np.npy",q)
-    if debug:
-        result = {
-            "q":q,
-            "probe_xyz":probe_xyz,
-            "probe_mask":probe_mask,
-        }
-        return result
-    return q
-
-def run_qscore(mmm,params,log=sys.stdout,return_type='flex'):
-    """
-    The primary function to interact with this file.
-    """
-    shells = np.linspace(params.shell_radius_start,
-                          params.shell_radius_stop,
-                          num=params.shell_radius_num,
-                          endpoint=True)
-    version = 2 if "precalculate" in params.probe_allocation_method else 1 # "progressive"
-    result = qscore_np(mmm,
-                     selection=params.selection,
-                     n_probes = params.n_probes,
-                     shells = shells,
-                     version=version,
-                     nproc=params.nproc,
-                     progress=params.progress,
-                     log=log,
-                     debug=params.debug
-                     )
-    if return_type == "flex" and not params.debug:
-        result = flex.double(result)
-    return result
 ##############################################################################
-# Functions that use only flex, no numpy
+# Code below here requires refactoring
 ##############################################################################
 
 
@@ -797,50 +881,6 @@ def rowwise_corrcoef(A, B, mask=None):
     cc = sumprod / (sqrt_sos_A * sqrt_sos_B)
     return cc.data
 
-
-def sphere_points_np(ctr, rad, N, mode='SpherePts'):
-    """
-    Points on a sphere given centers, radius, number N
-
-    TODO: Mode is confusing, it is not clear why there is a difference.
-    mode='SpherePts' an attempt to literally copy the SpherePts function from mapq
-    mode='original' a version that gives the same results as the QscorePt3 function from mapq
-    """
-    h = -1.0 + (2.0 * np.arange(N) / float(N-1))
-    phis = np.arccos(h)
-
-    if mode == 'original':
-        thetas = np.zeros(N)
-        a = (3.6 / np.sqrt(N * (1.0 - h[1:-1]**2)))
-        thetas[1:-1] = a
-        thetas = np.cumsum(thetas)
-    elif mode == 'SpherePts':
-        thetas = np.zeros(N)
-        for k in range(1, N):
-            if k == 1 or k == N - 1:
-                thetas[k] = 0
-            else:
-                thetas[k] = (thetas[k-1] + 3.6 /
-                             np.sqrt(N * (1 - h[k]**2))) % (2 * np.pi)
-        thetas = thetas.cumsum()
-
-    x = np.sin(phis) * np.cos(thetas)
-    y = np.sin(phis) * np.sin(thetas)
-    z = np.cos(phis)
-
-    points = rad * np.stack([x, y, z], axis=-1)
-
-    # Adjusting for multiple centers
-    if ctr.ndim == 1:
-        # Single center case
-        points = points + ctr
-    else:
-        # Multiple centers case
-        points = points.reshape(-1, 1, 3) + ctr.reshape(1, -1, 3)
-
-    return points
-
-
 def cdist_flex(A, B):
     """A flex implementation of the cdist function"""
 
@@ -976,8 +1016,6 @@ def query_ball_point_flex(tree, tree_xyz, query_xyz, r=None):
 
 
 # flex utils
-
-
 def flex_from_list(lst, signed_int=False):
     """Generate a flex array from a list, try to infer type"""
     flat_list, shape = flatten_and_shape(lst)
