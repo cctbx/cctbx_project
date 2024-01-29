@@ -119,7 +119,7 @@ if __name__ == '__main__':
         else:
             mpi_logger.setup_logging_from_params(script.params)
 
-        script.params.simulator.device_id = COMM.rank % script.params.refiner.num_devices            
+        script.params.simulator.device_id = COMM.rank % script.params.refiner.num_devices
         with DeviceWrapper(script.params.simulator.device_id) as _:
             RUN()
 
