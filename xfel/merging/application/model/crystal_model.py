@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 import mmtbx.programs.fmodel
 import mmtbx.utils
-import libtbx.phil.command_line
 from cctbx import miller
 from cctbx.crystal import symmetry
 import iotbx.pdb
