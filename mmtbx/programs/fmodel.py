@@ -163,22 +163,6 @@ fmodel_from_xray_structure_params = iotbx.phil.parse(
 
 master_phil = iotbx.phil.parse(master_phil_str, process_includes = True)
 
-#pdb_file = None
-#  .type = path
-#  .multiple = True
-#  .optional = True
-#  .short_caption = Model file
-#  .style = bold noauto file_type:pdb input_file OnChange:update_output_file_name
-#reference_file = None
-#  .type = path
-#  .short_caption = Reference set
-#  .help = Reflections file containing Miller indices (h,k,l) to use in output \
-#    file.
-#  .style = noauto input_file file_type:mtz OnChange:update_reference_column_labels
-#data_column_label = None
-#  .type = str
-#  .short_caption = Reference file label
-#  .style = noauto renderer:draw_any_label_widget
 
 def set_fp_fdp_for_anomalous_scatterers(pdb_hierarchy, xray_structure,
   anomalous_scatterer_groups):
