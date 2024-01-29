@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import os, sys
 
+
 from libtbx.utils import display_context
 
 
@@ -306,7 +307,7 @@ def write_model_file_without_assignment(text, file_name = None, n_context = 7,
 def pdb_write_statements(text, file_name = None, n_context = 7,
     overall_exclude = None):
   all_problems = []
-  for search_word in [".model_as_pdb(", ".as_pdb_string(",
+  for search_word in [".model_as_pdb(", ".as_pdb_string(", # PDB OK
       ".write_pdb_file("]:
     all_problems += display_context(file_name = file_name, text = text,
        n_context = n_context, search_word = search_word,quiet = True,
@@ -318,7 +319,7 @@ def pdb_format_interpretation(text, file_name = None, n_context = 7,
       overall_exclude = None):
   all_problems = []
   for search_word in ['.open(']:
-    for required_word in ['.pdb"',".pdb'",'pdb_file','model_file']:
+    for required_word in ['.pdb"',".pdb'",'pdb_file','model_file']: # PDB OK
       all_problems += display_context(file_name = file_name, text = text,
        n_context = n_context,
        search_word = search_word,
@@ -335,12 +336,14 @@ def pdb_format_interpretation(text, file_name = None, n_context = 7,
           'traceback','phil_string',] + overall_exclude,
        quiet = True,
        category = 'pdb_format_interpretation')
-  for search_word in ['HETATM','ATOM','TER','BREAK',' CA ',' N ']:
+  for search_word in ['HETATM','"ATOM',"'ATOM",'"TER',"'TER",
+         '"BREAK',"'BREAK",' CA ',' N ']: # PDB OK
     for required_word in ['startswith','find(','re.search(']:
       all_problems += display_context(file_name = file_name, text = text,
        n_context = n_context,
        search_word = search_word,
        required_word=required_word,
+       excluded_words = ['group_PDB'] + overall_exclude,
        quiet = True,
        category = 'pdb_format_interpretation')
   return all_problems
