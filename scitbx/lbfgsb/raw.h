@@ -168,7 +168,7 @@ namespace raw {
   void
   timer(FloatType& ttime)
   {
-    static boost::timer::auto_cpu_timer timer_;
+    static boost::timer::cpu_timer timer_;
     ttime = 1.0e-9 * static_cast<FloatType>(timer_.elapsed().wall);
   }
 
