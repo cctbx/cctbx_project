@@ -154,6 +154,10 @@ def get_input_model_file_name_from_params(params):
   return file_name
 
 def target_output_format_in_params(params):
+  """
+  Find and return value of target_output_format parameter that may be under
+  output_files or output phil scope.
+  """
   for x in ['output_files','output']:
     if params and hasattr(params,x) and \
          hasattr(getattr(params,x),'target_output_format'):
@@ -180,6 +184,11 @@ def get_target_output_format_from_file_name(file_name,
   return target_output_format
 
 def move_down_scope_to_input_files(params, levels = 3):
+  """
+  Find one of the scope names from target_scopes below in params.
+  levels - depth of the nested scopes to look in.
+  returns first suitable name/scope.
+  """
   target_scopes = ['input_files','output','output_files','map_model',]
   if levels < 0:
     return None
@@ -197,6 +206,15 @@ def move_down_scope_to_input_files(params, levels = 3):
 def set_target_output_format_in_params(params,
       file_name = None, default = 'pdb', target_output_format = None,
       out = sys.stdout, quiet = True):
+  """
+  Find target_output_format parameter in params and:
+  - If it is not None, leave it as it was
+  - If it is None:
+    - set it to extension of file_name or default;
+  Return what was set - "pdb" or "mmcif"
+  """
+  # Note that this assignment will change params only inside this
+  # function (?). Params outside this function will remain unchanged.
   params = move_down_scope_to_input_files(params)
   # Do we have it set already:
   target_output_format = target_output_format_in_params(params)
