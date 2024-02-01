@@ -879,6 +879,7 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
   if args is None:
     args = sys.argv[1:]
+
   # start profiling
   pr = None
   if '--profile' in args:
