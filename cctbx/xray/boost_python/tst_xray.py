@@ -749,6 +749,24 @@ def exercise_rotate():
     scatterers=s)
   assert approx_equal(r[0].site, (-0.02,-0.01,-0.3))
 
+def exercise_scattering_type_registry_1():
+  reg = xray.scattering_type_registry()
+  scatterers = flex.xray_scatterer((
+    xray.scatterer("O"),
+    xray.scatterer("O1-")))
+  reg.process(scatterers)
+  reg.assign_from_table(table="PENG1996")
+  d = reg.as_type_gaussian_dict()
+  # Values from peng1996.cpp:
+  O_minus = d["O1-"]
+  assert approx_equal(O_minus.array_of_a()[2], 1.17, 0.01)
+  assert approx_equal(O_minus.array_of_b()[1], 2.64, 0.01)
+  assert approx_equal(O_minus.c(), 0, 0.001)
+  O = d["O"]
+  assert approx_equal(O.array_of_a()[3], 0.8814, 0.0001)
+  assert approx_equal(O.array_of_b()[4], 28.2194, 0.00001)
+  assert approx_equal(O.c(), 0, 0.001)
+
 def exercise_scattering_type_registry():
   reg = xray.scattering_type_registry()
   assert len(reg.type_index_pairs_as_dict()) == 0
@@ -1983,6 +2001,7 @@ def exercise_r_factor():
   assert approx_equal(r.scale_ls(), 0.1)
 
 def run():
+  exercise_scattering_type_registry_1()
   exercise_r_factor()
   exercise_extinction_correction()
   exercise_twin_components()
