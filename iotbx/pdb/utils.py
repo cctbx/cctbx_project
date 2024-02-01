@@ -213,9 +213,13 @@ def set_target_output_format_in_params(params,
     - set it to extension of file_name or default;
   Return what was set - "pdb" or "mmcif"
   """
-  # Note that this assignment will change params only inside this
-  # function (?). Params outside this function will remain unchanged.
   params = move_down_scope_to_input_files(params)
+  # Now params pointing out at the correct level of phil scope, the one
+  # containing output_files.target_output_format.
+  # Note that level to which params points outside this function is not changed.
+  # At the same time the value of output_files.target_output_format outside
+  # WILL be changed by statements below.
+
   # Do we have it set already:
   target_output_format = target_output_format_in_params(params)
   if not target_output_format:
