@@ -24,7 +24,7 @@ from iotbx.cif import category_sort_function
 from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import adptbx
-from cctbx import geometry_restraints
+
 from cctbx import adp_restraints
 from cctbx import crystal
 from cctbx import uctbx
@@ -37,8 +37,8 @@ import mmtbx.monomer_library.server
 from mmtbx.geometry_restraints.torsion_restraints.utils import check_for_internal_chain_ter_records
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
-from mmtbx import utils
-from mmtbx import ncs
+
+
 from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
@@ -1682,6 +1682,55 @@ class manager(object):
     if not original_nrgl.check_for_max_rmsd(self.get_sites_cart(), 0.01, null_out()):
       return False
     return True
+
+  def pdb_or_mmcif_string_info(self,
+      target_filename = None, target_format = None,
+      segid_as_auth_segid = True,
+      write_file = False,
+      data_manager = None,
+      overwrite = True,
+      remark_section = None,
+      **kw):
+    # Method to allow shifting from general writing as pdb
+    # to writing as mmcif, with the change in two places (here and hierarchy.py)
+    # Note default of segid_as_auth_segid = True, different from
+    #     as_mmcif_string()
+
+    if target_format in ['None',None]:  # set the default format here
+      target_format = 'pdb'
+    assert target_format in ['pdb','mmcif']
+
+    if target_format == 'pdb':
+      if self.get_hierarchy().fits_in_pdb_format():
+        pdb_str = self.model_as_pdb(**kw)
+        is_mmcif = False
+        if remark_section:
+          pdb_str = "%s\n%s" %(remark_section, pdb_str)
+      else:
+        pdb_str = self.model_as_mmcif(
+          segid_as_auth_segid = segid_as_auth_segid,**kw)
+        is_mmcif = True
+    else:
+      pdb_str = self.model_as_mmcif(segid_as_auth_segid = segid_as_auth_segid,**kw)
+      is_mmcif = True
+    if target_filename:
+      import os
+      path,ext = os.path.splitext(target_filename)
+      if is_mmcif:
+        ext = ".cif"
+      else:
+        ext = ".pdb"
+      target_filename = "%s%s" %(path,ext)
+    if write_file and target_filename:
+      if not data_manager:
+        from iotbx.data_manager import DataManager
+        data_manager = DataManager()
+      target_filename = data_manager.write_model_file(pdb_str, target_filename,
+        overwrite = overwrite)
+    return group_args(group_args_type = 'pdb_string and filename',
+      pdb_string = pdb_str,
+      file_name = target_filename,
+      is_mmcif = is_mmcif)
 
   def model_as_mmcif(self,
       cif_block_name = "default",

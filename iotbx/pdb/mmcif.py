@@ -44,6 +44,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
     label_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.label_asym_id") # chain id
     auth_asym_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_asym_id")
     auth_segid = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_segid")
+    auth_break = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_break")
     if label_asym_id is None: label_asym_id = auth_asym_id
     if auth_asym_id is None: auth_asym_id = label_asym_id
     comp_id = self._wrap_loop_if_needed(cif_block, "_atom_site.auth_comp_id")
@@ -129,6 +130,7 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
              i_atom > 0 and is_aa_or_rna_dna(comp_id[i_atom-1]))
          ): # insert chain breaks
         chain = hierarchy.chain(id=current_auth_asym_id)
+        is_first_in_chain = None
         model.append_chain(chain)
       else:
         assert current_auth_asym_id == last_auth_asym_id
@@ -155,6 +157,10 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
           resseq=resseq,
           icode=current_ins_code)
         chain.append_residue_group(residue_group)
+        if is_first_in_chain is None:
+          is_first_in_chain = True
+        else:
+          is_first_in_chain = False
         atom_groups = OrderedDict() # reset atom_groups cache
       # atom_group(s)
       # defined by resname and altloc id
@@ -192,6 +198,9 @@ class pdb_hierarchy_builder(crystal_symmetry_builder):
         atom.set_segid(auth_segid[i_atom][:4]+(4-len(auth_segid[i_atom]))*" ")
       else:
         atom.set_segid("    ")
+      if auth_break and (not is_first_in_chain) and auth_break[i_atom] == "1":
+        # insert break before this residue
+        residue_group.link_to_previous = False
       if group_PDB is not None and group_PDB[i_atom] == "HETATM":
         atom.hetero = True
       if formal_charge is not None:
@@ -378,6 +387,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
     return "mmcif"
 
   def construct_hierarchy(self, set_atom_i_seq=True, sort_atoms=True):
+    if self.hierarchy is not None:
+      return self.hierarchy
     self.builder = pdb_hierarchy_builder(self.cif_block)
     self.hierarchy = self.builder.hierarchy
     if sort_atoms:
@@ -499,7 +510,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
         return software_name
     elif software_classification is not None:
       i = flex.first_index(software_classification, 'refinement')
-      if i is not None and i >= 0 and software_name is not None and i < len(software_name):
+      if (i is not None) and (i >= 0) and (software_name is not None) and (
+           i < len(software_name)):
         return software_name[i]
 
   def resolution(self):

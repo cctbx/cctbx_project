@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from operator import itemgetter
 import iotbx.phil
-import iotbx.pdb
 import iotbx.mrcfile
 from cctbx import crystal
 from cctbx import maptbx
@@ -2609,8 +2608,8 @@ def write_ccp4_map(crystal_symmetry, file_name, map_data,
 def set_up_xrs(crystal_symmetry = None):  # dummy xrs to write out atoms
 
   lines = ["ATOM     92  SG  CYS A  10       8.470  28.863  18.423  1.00 22.05           S"] # just a random line to set up x-ray structure
-  from cctbx.array_family import flex
-  pdb_inp = iotbx.pdb.input(source_info = "", lines = lines)
+  from iotbx.pdb.utils import get_pdb_input
+  pdb_inp = get_pdb_input(lines = lines)
   xrs = pdb_inp.xray_structure_simple(crystal_symmetry = crystal_symmetry)
   scatterers = flex.xray_scatterer()
   return xrs, scatterers
@@ -2637,10 +2636,11 @@ def write_atoms(tracking_data = None, sites = None, file_name = None,
     return text
 
 
-def write_xrs(xrs = None, scatterers = None, file_name = "atoms.pdb", out = sys.stdout):
+def write_xrs(
+    xrs = None, scatterers = None, file_name = "atoms.pdb", out = sys.stdout):
   from cctbx import xray
   xrs = xray.structure(xrs, scatterers = scatterers)
-  text = xrs.as_pdb_file()
+  text = xrs.as_pdb_file()  # PDB OK just writing out some atoms
   if file_name:
     f = open(file_name, 'w')
     print(text, file = f)
@@ -4734,7 +4734,7 @@ def get_bounds_for_au_box(params,
 
   # write out closest_sites to match original position
   coordinate_offset = -1*matrix.col(box.shift_cart)
-  write_atoms(file_name = 'one_au.pdb',
+  write_atoms(file_name = 'one_au.pdb', # PDB OK just writing out atoms
       crystal_symmetry = box_crystal_symmetry, sites = closest_sites+coordinate_offset)
 
   unique_closest_sites = closest_sites.deep_copy()
@@ -5034,8 +5034,8 @@ def get_params(args, map_data = None, crystal_symmetry = None,
   if params.input_files.pdb_file:
     print("\nInput PDB file to be used to identify region to work with: %s\n" %(
        params.input_files.pdb_file), file = out)
-    pdb_inp = iotbx.pdb.input(file_name = params.input_files.pdb_file)
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
+    from iotbx.pdb.utils import get_pdb_hierarchy
+    pdb_hierarchy = get_pdb_hierarchy(file_name = params.input_files.pdb_file)
     pdb_atoms = pdb_hierarchy.atoms()
     pdb_atoms.reset_i_seq()
     tracking_data.set_input_pdb_info(file_name = params.input_files.pdb_file,
@@ -5643,7 +5643,8 @@ def get_ncs(params = None, tracking_data = None, file_name = None,
       from mmtbx.ncs.ncs import ncs
       ncs_object = ncs()
       try: # see if we can read biomtr records
-        pdb_inp = iotbx.pdb.input(file_name = file_name)
+        from iotbx.pdb.utils import get_pdb_input
+        pdb_inp = get_pdb_input(file_name = file_name)
         ncs_object.ncs_from_pdb_input_BIOMT(pdb_inp = pdb_inp, log = out)
       except Exception as e: # try as regular ncs object
         ncs_object.read_ncs(file_name = file_name, log = out)
@@ -7730,11 +7731,12 @@ def write_region_maps(params,
     else:
       text = "_r"
     base_file = 'map%s_%d.ccp4' %(text, id)
-    base_pdb_file = 'atoms%s_%d.pdb' %(text, id)
+    base_pdb_file = 'atoms%s_%d.pdb' %(text, id) # PDB OK just atoms
     if tracking_data.params.output_files.output_directory:
       if not os.path.isdir(tracking_data.params.output_files.output_directory):
         os.mkdir(tracking_data.params.output_files.output_directory)
-      file_name = os.path.join(tracking_data.params.output_files.output_directory, base_file)
+      file_name = os.path.join(
+        tracking_data.params.output_files.output_directory, base_file)
       pdb_file_name = os.path.join(
         tracking_data.params.output_files.output_directory, base_pdb_file)
     else:
@@ -8441,11 +8443,13 @@ def apply_origin_shift(origin_shift = None,
 
 
   if shifted_pdb_file and pdb_hierarchy:
-      import iotbx.pdb
+      info = pdb_hierarchy.pdb_or_mmcif_string_info(
+        target_filename = shifted_pdb_file,
+        crystal_symmetry = tracking_data.crystal_symmetry)
+      shifted_pdb_file = info.file_name
+
       f = open(shifted_pdb_file, 'w')
-      print(iotbx.pdb.format_cryst1_record(
-         crystal_symmetry = tracking_data.crystal_symmetry), file = f)
-      print(pdb_hierarchy.as_pdb_string(), file = f)
+      print(info.pdb_string, file = f)
       f.close()
       print("Wrote shifted pdb file to %s" %(
         shifted_pdb_file), file = out)
@@ -8467,8 +8471,8 @@ def apply_origin_shift(origin_shift = None,
         is_helical_symmetry = tracking_data.input_ncs_info.is_helical_symmetry)
       tracking_data.shifted_ncs_info.show_summary(out = out)
 
-  return shifted_ncs_object, pdb_hierarchy, target_hierarchy, tracking_data, \
-     sharpening_target_pdb_inp
+  return shifted_pdb_file, shifted_ncs_object, pdb_hierarchy, \
+     target_hierarchy, tracking_data, sharpening_target_pdb_inp
 
 def restore_pdb(params, tracking_data = None, out = sys.stdout):
   if not params.output_files.restored_pdb:
@@ -8481,19 +8485,23 @@ def restore_pdb(params, tracking_data = None, out = sys.stdout):
   origin_shift = (-os[0], -os[1], -os[2])
   print("Origin shift will be: %.1f  %.1f  %.1f "%(origin_shift), file = out)
 
-  import iotbx.pdb
-  pdb_inp = iotbx.pdb.input(file_name = params.input_files.pdb_to_restore)
-  pdb_hierarchy = pdb_inp.construct_hierarchy()
+  from iotbx.pdb.utils import get_pdb_hierarchy
+  pdb_hierarchy = get_pdb_hierarchy(
+     file_name = params.input_files.pdb_to_restore)
+
   pdb_hierarchy = apply_shift_to_pdb_hierarchy(
     origin_shift = origin_shift,
     crystal_symmetry = tracking_data.crystal_symmetry,
     pdb_hierarchy = pdb_hierarchy,
     out = out)
 
+  info = pdb_hierarchy.pdb_or_mmcif_string_info(
+      crystal_symmetry = tracking_data.crystal_symmetry,
+      target_filename = params.output_files.restored_pdb)
+  tracking_data.crystal_symmetry = info.file_name
+
   f = open(params.output_files.restored_pdb, 'w')
-  print(iotbx.pdb.format_cryst1_record(
-      crystal_symmetry = tracking_data.crystal_symmetry), file = f)
-  print(pdb_hierarchy.as_pdb_string(), file = f)
+  print(info.pdb_string, file = f)
   f.close()
   print("Wrote restored pdb file to %s" %(
      params.output_files.restored_pdb), file = out)
@@ -10072,11 +10080,11 @@ def get_target_boxes(si = None, ncs_obj = None, map = None,
 
   sharpening_centers_file = os.path.join(
       si.output_directory, "sharpening_centers.pdb")
-  write_atoms(file_name = sharpening_centers_file,
+  write_atoms(file_name = sharpening_centers_file, # PDB OK
     crystal_symmetry = si.crystal_symmetry, sites = centers_cart)
   ncs_sharpening_centers_file = os.path.join(
       si.output_directory, "ncs_sharpening_centers.pdb")
-  write_atoms(file_name = ncs_sharpening_centers_file,
+  write_atoms(file_name = ncs_sharpening_centers_file, # PDB OK
     crystal_symmetry = si.crystal_symmetry, sites = all_cart)
 
   print("\nSharpening centers (matching shifted_map_file).\n\n "+\
@@ -11769,9 +11777,9 @@ def run(args,
     if target_model:
       target_hierarchy = target_model.get_hierarchy()
     elif params.input_files.target_ncs_au_file: # read in target
-      import iotbx.pdb
-      target_hierarchy = iotbx.pdb.input(
-         file_name = params.input_files.target_ncs_au_file).construct_hierarchy()
+      from iotbx.pdb.utils import get_pdb_hierarchy
+      pdb_hierarchy = get_pdb_hierarchy(
+         file_name = params.input_files.target_ncs_au_file)
 
     print("\nShifting model based on origin shift (if any)", file = out)
     print("Coordinate shift is (%7.2f, %7.2f, %7.2f)" %(
@@ -11797,7 +11805,7 @@ def run(args,
           params.output_files.shifted_pdb_file)
     else:
       shifted_pdb_file = None
-    ncs_obj, pdb_hierarchy, target_hierarchy, \
+    shifted_pdb_file, ncs_obj, pdb_hierarchy, target_hierarchy, \
       tracking_data, sharpening_target_pdb_inp = apply_origin_shift(
         shifted_map_file = shifted_map_file,
         shifted_pdb_file = shifted_pdb_file,
@@ -11810,6 +11818,8 @@ def run(args,
         tracking_data = tracking_data,
         sharpening_target_pdb_inp = sharpening_target_pdb_inp,
         out = out)
+    if shifted_pdb_file:
+      params.output_files.shifted_pdb_file = os.path.split(shifted_pdb_file)[-1]
 
     if target_hierarchy:
       target_xyz = target_hierarchy.atoms().extract_xyz()

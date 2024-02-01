@@ -67,6 +67,14 @@ Inputs: Model file (PDB, mmCIF)
 
   }
   output_files {
+     target_output_format = *None pdb mmcif
+       .type = choice
+       .help = Desired output format (if possible). Choices are None (\
+                try to use input format), pdb, mmcif.  If output model\
+                 does not fit in pdb format, mmcif will be used. \
+                 Default is pdb.
+       .short_caption = Desired output format
+
     processed_model_prefix = None
       .type = str
       .help = Output file with processed models will begin with this prefix.\
@@ -132,6 +140,9 @@ Inputs: Model file (PDB, mmCIF)
 
     #
     self.get_data_inputs()  # get any file-based information
+    from iotbx.pdb.utils import set_target_output_format_in_params
+    set_target_output_format_in_params(self.params)
+
     # self.print_params()
     self.starting_model = self.model
     self.model_list = []
@@ -189,7 +200,10 @@ Inputs: Model file (PDB, mmCIF)
       mm_to_split = mm
 
     # original (multi-char chain IDs)
-    self.data_manager.write_model_file(mm, self.processed_model_file_name)
+
+    self.processed_model_file_name = self.data_manager.write_model_file(
+      mm, self.processed_model_file_name,
+      format=self.params.output_files.target_output_format)
 
     final_residues = mm.get_hierarchy().overall_counts().n_residues
     print("Final residues: %s\n" %(final_residues), file = self.logger)
@@ -217,7 +231,9 @@ Inputs: Model file (PDB, mmCIF)
         continue
       mm = limit_output_b(m,
            maximum_output_b = self.params.output_files.maximum_output_b)
-      self.data_manager.write_model_file(mm,fn)
+      fn = self.data_manager.write_model_file(mm,fn,
+        format=self.params.output_files.target_output_format)
+
       self.processed_model_file_name_list.append(fn)
 
 

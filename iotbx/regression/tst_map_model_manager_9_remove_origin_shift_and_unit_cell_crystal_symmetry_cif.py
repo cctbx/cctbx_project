@@ -3,14 +3,13 @@ from iotbx.data_manager import DataManager
 import libtbx.load_env
 import os
 
-
 def exercise():
   data_dir = os.path.dirname(os.path.abspath(__file__))
   data_ccp4 = os.path.join(data_dir, 'data',
                           'non_zero_origin_map.ccp4')
   data_model = os.path.join(data_dir, 'data',
-                          'non_zero_origin_model.pdb')
-
+                          'non_zero_origin_model.cif')
+  #
   dm = DataManager()
   mmm = dm.get_map_model_manager(
     model_file = data_model,

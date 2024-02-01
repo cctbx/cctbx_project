@@ -848,5 +848,22 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print("OK")
 
+def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG", key_str="pdb_str"):
+  #  Converts all the strings that start with "pdb_str" from PDB to mmcif
+  #  format, adding chain_addition to chain names
+  keys = list(locals.keys())
+  for key in keys:
+    if (not key.startswith(key_str)) or (type(locals[key]) != type("abc")):
+      continue
+    from iotbx.pdb.utils import get_pdb_input
+    pdb_inp = get_pdb_input(locals[key])
+    ph = pdb_inp.construct_hierarchy()
+    if ph.overall_counts().n_residues < 1:
+      continue
+    for model in ph.models():
+     for chain in model.chains():
+       chain.id = "%s%s" %(chain.id,chain_addition)
+    new_string = ph.as_mmcif_string(crystal_symmetry = pdb_inp.crystal_symmetry())
+    locals[key] = new_string
 if (__name__ == "__main__"):
   exercise()

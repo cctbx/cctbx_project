@@ -398,30 +398,38 @@ Full parameters:
   if (params.output_file is None):
     params.output_file = os.path.splitext(
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
-  f = open(params.output_file, "w")
-  if (params.preserve_remarks):
-    remarks = pdb_in.remark_section()
-    if (len(remarks) > 0):
-      f.write("\n".join(remarks))
-      f.write("\n")
-  pdb_str = result.pdb_hierarchy.as_pdb_string(crystal_symmetry=final_symm)
-  if (params.remove_hetatm_ter_records):
-    n_hetatm = n_atom = 0
-    for line in pdb_str.splitlines():
-      if (line[0:3] == "TER"):
-        if (n_atom != 0):
-          f.write("%s\n" % line)
-        n_atom = n_hetatm = 0
-        continue
-      elif (line.startswith("HETATM")):
-        n_hetatm += 1
-      elif (line.startswith("ATOM")):
-        n_atom += 1
-      f.write("%s\n" % line)
-  else :
-    f.write(pdb_str)
-  f.write("END")
-  f.close()
+  if (not result.pdb_hierarchy.fits_in_pdb_format()):
+    info = result.pdb_hierarchy.pdb_or_mmcif_string_info(
+      target_filename = params.output_file,
+      write_file = True)
+    params.output_file = info.file_name
+
+  else: # standard pdb file
+    f = open(params.output_file, "w")
+    if (params.preserve_remarks):
+      remarks = pdb_in.remark_section()
+      if (len(remarks) > 0):
+        f.write("\n".join(remarks))
+        f.write("\n")
+    pdb_str = result.pdb_hierarchy.as_pdb_string(crystal_symmetry=final_symm)
+    if (params.remove_hetatm_ter_records):
+      n_hetatm = n_atom = 0
+      for line in pdb_str.splitlines():
+        if (line[0:3] == "TER"):
+          if (n_atom != 0):
+            f.write("%s\n" % line)
+          n_atom = n_hetatm = 0
+          continue
+        elif (line.startswith("HETATM")):
+          n_hetatm += 1
+        elif (line.startswith("ATOM")):
+          n_atom += 1
+        f.write("%s\n" % line)
+    else :
+      f.write(pdb_str)
+    f.write("END")
+    f.close()
+
   print("Wrote %s" % params.output_file, file=out)
   out.flush()
   return sort_hetatms_result(

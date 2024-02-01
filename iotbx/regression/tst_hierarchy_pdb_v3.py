@@ -118,8 +118,8 @@ def test1():
   inp = iotbx.pdb.input(lines=mmcif_str.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
   print(conversion_info.conversion_as_remark_hetnam_string())
 
 def test2():
@@ -129,8 +129,8 @@ def test2():
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
   print(conversion_info.conversion_as_remark_hetnam_string())
 
 def test3():
@@ -141,12 +141,12 @@ def test3():
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph,
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph,
     residue_conversion_as_remark = True)
   remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
 
-  new_conversion_info = pdb_v3_cif_conversion()
+  new_conversion_info = forward_compatible_pdb_cif_conversion()
   new_conversion_info.set_conversion_tables_from_remark_hetnam_records(
     remark_hetnam_records = remark_hetnam_string.splitlines())
   new_remark_hetnam_string = new_conversion_info.conversion_as_remark_hetnam_string()
@@ -161,15 +161,15 @@ def test3a():
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph,
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph,
     residue_conversion_as_remark = False,
     residue_conversion_as_hetnam = True,
      )
   remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
   print("OLD\n",remark_hetnam_string)
 
-  new_conversion_info = pdb_v3_cif_conversion(
+  new_conversion_info = forward_compatible_pdb_cif_conversion(
      residue_conversion_as_remark = False,
      residue_conversion_as_hetnam = True,
      )
@@ -188,14 +188,14 @@ def test4():
   inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
   ph = inp.construct_hierarchy()
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(hierarchy = ph)
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
   remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
 
-  # convert to pdb_v3
-  conversion_info.convert_hierarchy_to_pdb_v3_representation(ph)
+  # convert to forward_compatible_pdb
+  conversion_info.convert_hierarchy_to_forward_compatible_pdb_representation(ph)
   new_string = ph.as_pdb_string()
-  print("NEW STRING (pdb_v3)\n%s" %(new_string))
+  print("NEW STRING (forward_compatible_pdb)\n%s" %(new_string))
   new_inp = iotbx.pdb.input(lines=(remark_hetnam_string + new_string).split("\n"),
       source_info=None,
       )
@@ -203,8 +203,8 @@ def test4():
   new_ph = new_inp.construct_hierarchy()
   print("New ph as string:\n",new_ph.as_pdb_string())
 
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  new_conversion_info = pdb_v3_cif_conversion()
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  new_conversion_info = forward_compatible_pdb_cif_conversion()
   new_conversion_info.set_conversion_tables_from_remark_hetnam_records(
     remark_hetnam_records = new_remark_hetnam_string.splitlines())
   updated_remark_hetnam_string = new_conversion_info.conversion_as_remark_hetnam_string()
@@ -214,50 +214,50 @@ def test4():
 
 def test5():
   """
-  Test standard uses of pdb_v3 to hierarchy conversions
+  Test standard uses of forward_compatible_pdb to hierarchy conversions
   """
 
-  print("\nTest 5, standard uses of pdb_v3 to hierarchy conversions")
+  print("\nTest 5, standard uses of forward_compatible_pdb to hierarchy conversions")
 
-  # Get a hierarchy that is not pdb_v3 compatible
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  # Get a hierarchy that is not forward_compatible_pdb compatible
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
   ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
 
-  # Write a pdb_v3 compatible string with conversion information in REMARKs
-  from iotbx.pdb.pdb_v3_cif_conversion import hierarchy_as_pdb_v3_string
-  pdb_v3_string =  hierarchy_as_pdb_v3_string(ph)
-  print("Hierarchy as pdb_v3 string with REMARKS:\n%s" %(pdb_v3_string))
+  # Write a forward_compatible_pdb compatible string with conversion information in REMARKs
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import hierarchy_as_forward_compatible_pdb_string
+  forward_compatible_pdb_string =  hierarchy_as_forward_compatible_pdb_string(ph)
+  print("Hierarchy as forward_compatible_pdb string with REMARKS:\n%s" %(forward_compatible_pdb_string))
 
-  # convert pdb_v3_string to a hierarchy
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  new_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string).hierarchy
-  new_pdb_v3_string =  hierarchy_as_pdb_v3_string(new_ph)
-  print("Hierarchy after writing/reading as pdb_v3 string with REMARKS:\n%s" %(new_pdb_v3_string))
-  assert pdb_v3_string == new_pdb_v3_string
+  # convert forward_compatible_pdb_string to a hierarchy
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  new_ph = pdb_or_mmcif_string_as_hierarchy(forward_compatible_pdb_string).hierarchy
+  new_forward_compatible_pdb_string =  hierarchy_as_forward_compatible_pdb_string(new_ph)
+  print("Hierarchy after writing/reading as forward_compatible_pdb string with REMARKS:\n%s" %(new_forward_compatible_pdb_string))
+  assert forward_compatible_pdb_string == new_forward_compatible_pdb_string
 
-  # strip off REMARKS from pdb_v3_string, read in and apply conversions
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_v3_cif_conversion
-  conversion_info = pdb_v3_cif_conversion(ph)
-  pdb_v3_string_no_remarks = remove_remarks_hetnam(pdb_v3_string)
-  print("pdb_v3_string with no remarks:\n%s\n" %(pdb_v3_string_no_remarks))
+  # strip off REMARKS from forward_compatible_pdb_string, read in and apply conversions
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(ph)
+  forward_compatible_pdb_string_no_remarks = remove_remarks_hetnam(forward_compatible_pdb_string)
+  print("forward_compatible_pdb_string with no remarks:\n%s\n" %(forward_compatible_pdb_string_no_remarks))
 
-  updated_ph = pdb_or_mmcif_string_as_hierarchy(pdb_v3_string_no_remarks).hierarchy
+  updated_ph = pdb_or_mmcif_string_as_hierarchy(forward_compatible_pdb_string_no_remarks).hierarchy
   # Apply the conversions to obtain a full representation in updated_ph
   conversion_info.convert_hierarchy_to_full_representation(updated_ph)
 
-  # Get updated pdb_v3 string
-  updated_pdb_v3_string =  hierarchy_as_pdb_v3_string(updated_ph)
-  print("Hierarchy after writing/reading as pdb_v3 string without REMARKS and restoring conversion:\n%s" %(updated_pdb_v3_string))
-  assert updated_pdb_v3_string == pdb_v3_string
+  # Get updated forward_compatible_pdb string
+  updated_forward_compatible_pdb_string =  hierarchy_as_forward_compatible_pdb_string(updated_ph)
+  print("Hierarchy after writing/reading as forward_compatible_pdb string without REMARKS and restoring conversion:\n%s" %(updated_forward_compatible_pdb_string))
+  assert updated_forward_compatible_pdb_string == forward_compatible_pdb_string
 
   # Initialize conversion_info with unique_values_dict
-  conversion_info = pdb_v3_cif_conversion(ph)
+  conversion_info = forward_compatible_pdb_cif_conversion(ph)
   unique_values_dict = {}
   unique_values_dict['chain_id'] = \
      conversion_info._unique_chain_ids_from_hierarchy(ph)
   unique_values_dict['resname'] = \
       conversion_info._unique_resnames_from_hierarchy(ph)
-  new_conversion_info = pdb_v3_cif_conversion(
+  new_conversion_info = forward_compatible_pdb_cif_conversion(
     unique_values_dict = unique_values_dict)
   print("\nConversion info using unique_values_dict:")
   print(conversion_info.conversion_as_remark_hetnam_string())
@@ -267,7 +267,7 @@ def test6():
   print("Testing use of ph.as_mmcif_string(segid_as_auth_segid=True)")
 
   # Get a hierarchy
-  from iotbx.pdb.pdb_v3_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
   ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
   # Add segid to the hierarchy
   i = 0

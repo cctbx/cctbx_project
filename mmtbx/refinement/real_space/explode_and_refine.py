@@ -384,7 +384,7 @@ class run(object):
     #
     if("merge_models" in self.score_method):
       from mmtbx.building.merge_models import run as merge_models
-      pdb_hierarchy_merged = merge_models(
+      pdb_hierarchy_merged, pdb_out = merge_models(
         map_data         = self.map_data,
         resolution       = self.resolution,
         pdb_hierarchy    = pdb_hierarchy,

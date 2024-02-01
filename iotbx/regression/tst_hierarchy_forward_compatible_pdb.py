@@ -110,6 +110,68 @@ loop_
    ATOM 1 CA . GLYG ABCDEFG 1 ? 12.47000 12.95700 8.06900 1.000 30.00000 C ? A ? 1 1
    ATOM 2 CA . GLYHABCD DEFGHIL 1 ? 12.47000 12.95700 8.06900 1.000 30.00000 C ? B ? 1 1
 '''
+mmcif_str_3 = '''
+data_XXXX
+#
+loop_
+_atom_site.group_PDB
+_atom_site.id
+_atom_site.type_symbol
+_atom_site.label_atom_id
+_atom_site.label_alt_id
+_atom_site.label_comp_id
+_atom_site.label_asym_id
+_atom_site.label_entity_id
+_atom_site.label_seq_id
+_atom_site.pdbx_PDB_ins_code
+_atom_site.Cartn_x
+_atom_site.Cartn_y
+_atom_site.Cartn_z
+_atom_site.occupancy
+_atom_site.B_iso_or_equiv
+_atom_site.pdbx_formal_charge
+_atom_site.auth_seq_id
+_atom_site.auth_comp_id
+_atom_site.auth_asym_id
+_atom_site.auth_atom_id
+_atom_site.pdbx_PDB_model_num
+ATOM   2141 C  CA  . LYS A 1 261 ? -0.169  -9.988  41.173 1.00 43.86 ? 261 LYS A C  1
+ATOM   2142 C  CA  . LYS A 1 262 ? 0.687   -9.011  41.991 1.00 41.94 ? 262 LYS A C   1
+ATOM   2143 C  CA  . LYS A 1 263 ? 1.044   -7.920  41.556 1.00 39.32 ? 263 LYS A C   1
+ATOM   2144 C  CA  . LYS A 1 264 ? -0.260  -11.336 41.902 1.00 46.47 ? 264 LYS A C  1
+'''
+mmcif_str_4 = '''data_default
+loop_
+  _struct_asym.id
+   A
+
+loop_
+  _chem_comp.id
+   GLY
+
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+   ATOM 1 CA . GLY A 1 ? 12.47000 12.95700 8.06900 1.000 30.00000 C ? A ? 1 1
+   ATOM 2 CA . GLY A 2 ? 12.47000 12.95700 8.06900 1.000 30.00000 C ? A ? 1 1
+'''
 
 def test1():
   """
@@ -267,9 +329,10 @@ def test6():
   print("Testing use of ph.as_mmcif_string(segid_as_auth_segid=True)")
 
   # Get a hierarchy
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
-  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_1).hierarchy
-  # Add segid to the hierarchy
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+     import pdb_or_mmcif_string_as_hierarchy
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_4).hierarchy
+  # Add segid to the hierarchy and set chain ID and resnames
   i = 0
   for model in ph.models():
     for chain in model.chains():
@@ -277,9 +340,62 @@ def test6():
           for atom_group in residue_group.atom_groups():
             for atom in atom_group.atoms():
               atom.set_segid('UNK')
-  # assert ph.as_pdb_string().find("UNK")>-1
-  assert ph.as_mmcif_string().find("UNK") == -1
-  assert ph.as_mmcif_string(segid_as_auth_segid=True).find("UNK") > -1
+  ph_as_string = ph.as_pdb_string()
+  ph_as_mmcif_string_auth_segid = ph.as_mmcif_string(segid_as_auth_segid=True)
+  ph_as_mmcif_string_no_auth_segid = ph.as_mmcif_string(
+      segid_as_auth_segid=False)
+  new_ph_auth_segid = pdb_or_mmcif_string_as_hierarchy(
+     ph_as_mmcif_string_auth_segid).hierarchy
+  new_ph_no_auth_segid = pdb_or_mmcif_string_as_hierarchy(
+     ph_as_mmcif_string_no_auth_segid).hierarchy
+  new_ph_auth_segid_as_string = new_ph_auth_segid.as_pdb_string(
+     force_write=True)
+  new_ph_no_auth_segid_as_string = new_ph_no_auth_segid.as_pdb_string(
+     force_write=True)
+
+  #print("ph_as_string\n",ph_as_string)
+  #print("ph_as_mmcif_string_auth_segid\n",ph_as_mmcif_string_auth_segid)
+  #print("ph_as_mmcif_string_no_auth_segid\n",ph_as_mmcif_string_no_auth_segid)
+  #print("new_ph_auth_segid_as_string\n",new_ph_auth_segid_as_string)
+  #print("new_ph_no_auth_segid_as_string\n",new_ph_no_auth_segid_as_string)
+  assert ph_as_string.find(" UNK  C")>-1
+  assert ph_as_mmcif_string_auth_segid.find("1  1  UNK") > -1
+  assert ph_as_mmcif_string_no_auth_segid.find("0  1  UNK") < 0
+  assert ph_as_mmcif_string_no_auth_segid.find(" UNK ") > -1
+  assert ph_as_string == new_ph_auth_segid_as_string
+
+def test7():
+  """
+  Test get_unique_values_dict
+  """
+  print("Testing get_unique_values_dict")
+  inp = iotbx.pdb.input(lines=mmcif_str_1.split("\n"), source_info=None)
+  ph = inp.construct_hierarchy()
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import \
+    get_unique_values_dict
+  unique_values_dict = get_unique_values_dict([ph])
+  assert unique_values_dict == {
+    'chain_id': ['ABCDEFG', 'DEFGHIL'], 'resname': ['GLYG', 'GLYHABCD']}
+
+def test8():
+  print("Testing use of ph.as_mmcif_string(output_break_string=True)")
+
+  # Get a hierarchy
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  ph = pdb_or_mmcif_string_as_hierarchy(mmcif_str_3).hierarchy
+  # Add segid to the hierarchy
+  i = 0
+  for model in ph.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        i+= 1
+        if i == 2:
+           residue_group.link_to_previous = False
+  ph1 = pdb_or_mmcif_string_as_hierarchy(ph.as_mmcif_string()).hierarchy
+  assert ph1.as_pdb_string().find("BREAK") == -1
+  ph2 = pdb_or_mmcif_string_as_hierarchy(
+      ph.as_mmcif_string(output_break_records=True)).hierarchy
+  assert ph2.as_pdb_string().find("BREAK") > -1
 
 def remove_remarks_hetnam(text):
   new_text_list = []
@@ -297,4 +413,6 @@ if (__name__ == "__main__"):
   test4()
   test5()
   test6()
+  test7()
+  test8()
   print("OK. Time: %8.3f"%(time.time()-t0))

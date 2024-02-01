@@ -129,6 +129,14 @@ output {
   serial_format = "%03d"
     .type = str
     .help = Format for serial number
+ target_output_format = *None pdb mmcif
+   .type = choice
+   .help = Desired output format (if possible). Choices are None (\
+            try to use input format), pdb, mmcif.  If output model\
+             does not fit in pdb format, mmcif will be used. \
+             Default is pdb.
+   .short_caption = Desired output format
+
   overwrite = False
     .type = bool
     .help = Overwrite files when set to True
@@ -207,6 +215,7 @@ output {
     if self.data_manager is not None:
       self.data_manager.set_default_output_filename(
         self.get_default_output_filename())
+      self.set_target_output_format()
       try:
         self.data_manager.set_overwrite(self.params.output.overwrite)
       except AttributeError:
@@ -385,6 +394,24 @@ output {
     params: str
     '''
     return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
+
+  # ---------------------------------------------------------------------------
+  def set_target_output_format(self):
+    """ Try to set the desired output format if not set by user (pdb or mmcif)
+    """
+    assert self.data_manager is not None
+    if not hasattr(self.data_manager,'set_target_output_format'):
+      return # No models in this data_manager
+
+    from iotbx.pdb.utils import set_target_output_format_in_params
+    if hasattr(self.data_manager, 'get_default_model_name'):
+      file_name = self.data_manager.get_default_model_name()
+    else:
+      file_name = None
+    target_output_format = set_target_output_format_in_params(self.params,
+      file_name = file_name,
+      out = self.logger)
+    self.data_manager.set_target_output_format(target_output_format)
 
   # ---------------------------------------------------------------------------
   def get_default_output_filename(self, prefix=Auto, suffix=Auto, serial=Auto,

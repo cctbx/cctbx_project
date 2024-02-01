@@ -366,6 +366,7 @@ def run():
   exercise_4()
   debug_utils.parse_options_loop_space_groups(sys.argv[1:], run_call_back,
     symbols_to_stdout=True, symbols_to_stderr=False)
+  print("OK")
 
 if (__name__ == "__main__"):
   run()
