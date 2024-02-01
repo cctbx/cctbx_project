@@ -1313,6 +1313,7 @@ def exercise(args):
   exercise_mmcif_support()
   exercise_segid_manipulations()
   exercise_result_is_empty()
+  print("OK")
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

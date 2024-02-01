@@ -106,6 +106,13 @@ model
       valid = valid and (mt in self._possible_model_types)
     return valid
 
+  def set_target_output_format(self, target_output_format):
+   if target_output_format == 'mmcif': target_output_format='cif'
+   if not target_output_format in ['cif','pdb']:
+     raise  Sorry("Target output format (%s) not recognized, options are" %(
+       target_output_format) + "pdb or cif")
+   self._target_output_format = target_output_format
+
   def set_default_model_type(self, model_type):
     if not self._is_valid_model_type(model_type):
       raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
@@ -271,7 +278,7 @@ The choices are {}.
     return filename
 
   def write_model_file(self, model_str, filename=Auto, extension=Auto,
-                       format=Auto, overwrite=Auto):
+                       format=Auto, overwrite=Auto, append_ext = True):
     '''
     Function for writing a model to file
 
@@ -287,11 +294,14 @@ The choices are {}.
         and params.output.serial
       extension: str or Auto
         The extension to be added. If set to Auto, defaults to .cif
-      format: pdb or cif or Auto.  If set to Auto, defaults to format of
-        original file.
+      format: pdb or cif (mmcif treated as cif) or Auto.  If set to
+         Auto, defaults to format of original file.
+         If self._target_output_format is not None,
+         always write to this format if possible
       overwrite: bool or Auto
         Overwrite filename if it exists. If set to Auto, the overwrite
         state of the DataManager is used.
+      append_ext: bool.  If True append extension if necessary
 
     Returns
     -------
@@ -301,20 +311,40 @@ The choices are {}.
         extension to cif by default. This function may alter the extension
         based on the desired format.
     '''
+    target_output_format = getattr(self,'_target_output_format',None)
+    if target_output_format and (format in [Auto, None]):
+      # Take format from self._target_output_format
+      format = target_output_format
+
+    if format == 'mmcif': format = 'cif'  # mmcif and cif are synonyms here
+
     if isinstance(model_str, mmtbx.model.manager):
+
       if format == 'cif' or (
           format is Auto and model_str.input_model_format_cif()):
         extension = '.cif'
         model_str = model_str.model_as_mmcif()
       else:
-        extension = '.pdb'
-        model_str = model_str.model_as_pdb()
+        if model_str.get_hierarchy().fits_in_pdb_format():
+          extension = '.pdb'
+          model_str = model_str.model_as_pdb()
+        else: # XXX Catch case where it does not fit in PDB format
+          extension = '.cif'
+          model_str = model_str.model_as_mmcif()
     if filename is Auto:
       filename = self.get_default_output_model_filename(extension=extension)
-    elif extension is not Auto and (not filename.endswith(extension)):
-      filename += extension
-    return self._write_text(ModelDataManager.datatype, model_str,
+    elif (extension is not Auto) and (not filename.endswith(extension)) and (
+         append_ext):
+      if filename.endswith(".pdb") or filename.endswith(".cif"):
+        fn,ext = os.path.splitext(filename)
+        filename = fn + extension  # replace extension
+      else:
+        filename += extension
+    if model_str:
+      return self._write_text(ModelDataManager.datatype, model_str,
                             filename=filename, overwrite=overwrite)
+    else:
+      return ''
 
 # =============================================================================
 # end

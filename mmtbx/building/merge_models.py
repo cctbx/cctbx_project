@@ -552,15 +552,6 @@ def smooth_cc_values(cc_dict=None,
 
   return smoothed_cc_dict
 
-def remove_ter(text): # remove blank lines and TER records
-  new_lines=[]
-  for line in flex.split_lines(text):
-    if not line.replace(" ",""): continue
-    if line.startswith("TER"): continue
-    new_lines.append(line)
-  return "\n".join(new_lines)
-
-
 # NOTE: Match defaults here and in params at top of file
 #     : copy from defaults if params is not None below
 #     : See explanations of parameters in params at top of file
@@ -695,6 +686,7 @@ def run(
 
   # Save composite model, chain by chain
   composite_model_stream=StringIO()
+  sel_ph_list = []
 
   for chain_id_and_resseq in chain_id_and_resseq_list:
     f=StringIO()
@@ -721,7 +713,7 @@ def run(
        verbose=verbose,out=out)
 
     # figure out all the places where crossover can occur.
-    # FIXME: order of keys changes in py2/3 vthis could be bad
+    # FIXME: order of keys changes in py2/3 vthis could be bad. No all are same.
     n_residues=cc_dict[list(cc_dict.keys())[0]].size()
 
     crossover_dict=get_crossover_dict(
@@ -811,7 +803,6 @@ def run(
 
     # Note residue values. We are going to pick each residue from one of
     # the models
-
     for model in ph.models():
       for chain in model.chains():
         if chain.id != chain_id: continue
@@ -820,27 +811,29 @@ def run(
           residue_list.append(rg.resseq)
     residue_list.sort()
     assert len(best_model.source_list)==len(residue_list)
-
+    from mmtbx.secondary_structure.find_ss_from_ca import remove_ter_or_break
     for i in range(len(residue_list)):
       atom_selection=get_atom_selection(model_id=best_model.source_list[i],
         resseq_sel=residue_list[i])
       asc=ph.atom_selection_cache()
       sel=asc.selection(string = atom_selection)
       sel_hierarchy=ph.select(sel)
-      print(remove_ter(sel_hierarchy.as_pdb_string()), file=composite_model_stream)
-
-  #  All done, make a new pdb_hierarchy
-  pdb_string=composite_model_stream.getvalue()
-  pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
-  pdb_hierarchy=pdb_inp.construct_hierarchy()
+      sel_hierarchy = remove_ter_or_break(sel_hierarchy)
+      sel_ph_list.append(sel_hierarchy)
+  from iotbx.pdb.utils import add_hierarchies
+  pdb_hierarchy = remove_ter_or_break(add_hierarchies(sel_ph_list,
+    create_new_chain_ids_if_necessary = False))
+  print(pdb_hierarchy.as_pdb_string())
 
   if pdb_out:
-    f=open(pdb_out,'w')
-    print(pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry), file=f)
+    info = pdb_hierarchy.pdb_or_mmcif_string_info(target_filename = pdb_out,
+      crystal_symmetry = crystal_symmetry)
+    f=open(info.file_name,'w')
+    print(info.pdb_string, file = f)
     print("Final model is in: %s\n" %(f.name))
     f.close()
 
-  return pdb_hierarchy
+  return pdb_hierarchy, pdb_out
 
 if   (__name__ == "__main__"):
   args=sys.argv[1:]

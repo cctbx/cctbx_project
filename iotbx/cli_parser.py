@@ -275,6 +275,12 @@ class CCTBXParser(ParserBase):
       '--dry-run', '--dry_run', action='store_true',
       help='performs basic validation the input arguments, but does not run the program'
     )
+    # --get-parser
+    # proceeds until the validate step
+    self.add_argument(
+      '--get-parser', '--get_parser', action='store_true',
+      help='sets up the parameters only'
+    )
 
     # --citations will use the default format
     # --citations=<format> will use the specified format
@@ -873,7 +879,6 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
   if args is None:
     args = sys.argv[1:]
-
   # start profiling
   pr = None
   if '--profile' in args:
@@ -907,6 +912,8 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
                         unused_phil_raises_sorry=unused_phil_raises_sorry,
                         logger=logger)
   namespace = parser.parse_args(args)
+  if namespace.get_parser:
+    return parser
 
   # start program
   if namespace.dry_run:
@@ -968,4 +975,19 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
   return result
 
 # =============================================================================
+def get_program_params(run):
+    """Tool to get parameters object for a program that runs with
+      the program template.
+    params: run:  the program template object
+    returns: parameters for this program as set up by the program template
+    Get the run something like this way:
+     from phenix.programs import map_to_model as run
+    """
+
+    from iotbx.cli_parser import run_program
+    parser=run_program(program_class=run.Program,args=['--get_parser'],
+        logger=sys.stdout)
+    return  parser.working_phil.extract()
+
+
 # end

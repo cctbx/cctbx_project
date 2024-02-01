@@ -1123,7 +1123,7 @@ def run(args,
        gridding = params.output_unit_cell_grid)
     if mam.map_manager().ncs_object():
       # mam.map_manager().ncs_object().display_all()
-      from scitbx.array_family import flex
+
       mam.map_manager().ncs_object().set_shift_cart(
         mam.map_manager().shift_cart())
 
@@ -1215,9 +1215,10 @@ def run(args,
       if(params.output_file_name_prefix is None):
         filename = "%s_box"%output_prefix
       else: filename = "%s"%params.output_file_name_prefix
-      dm.write_model_file(model, filename = filename, extension = ".pdb")
+      full_filename = dm.write_model_file(
+        model, filename = filename, extension = ".pdb")
       print("Writing boxed PDB with box unit cell to %s" %(
-          "%s.pdb" %filename), file = log)
+          "%s" %filename), file = log)
 
     # Write NCS file if NCS
     if ncs_object and ncs_object.max_operators()>0:

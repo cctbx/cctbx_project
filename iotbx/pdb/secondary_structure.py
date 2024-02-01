@@ -48,7 +48,7 @@ from __future__ import absolute_import, division, print_function
 #
 
 from libtbx.utils import Sorry
-import libtbx.phil
+
 from libtbx import adopt_init_args
 import sys
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
@@ -358,8 +358,11 @@ class structure_base(object):
   def as_pdb_str(self):
     return None
 
+  def as_pdb_or_mmcif_str(self):
+    return None
+
   def __str__(self):
-    return self.as_pdb_str()
+    return self.as_pdb_or_mmcif_str()
 
   @staticmethod
   def convert_resseq(resseq):
@@ -516,7 +519,7 @@ class structure_base(object):
     from mmtbx.secondary_structure.find_ss_from_ca import \
       find_secondary_structure
     fss=find_secondary_structure(hierarchy=ph,
-      user_annotation_text=self.as_pdb_str(),
+      user_annotation_text=self.as_pdb_or_mmcif_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
       ss_by_chain=ss_by_chain,
@@ -593,6 +596,7 @@ class structure_base(object):
       if ph.overall_counts().n_residues>0:
         return True
     return False
+
 
 
 class annotation(structure_base):
@@ -1194,6 +1198,30 @@ class annotation(structure_base):
       loops.append(struct_sheet_hbond_loop)
     return loops
 
+  def as_mmcif_str(self, data_block_name=None):
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block()
+    from six.moves import cStringIO as StringIO
+    f = StringIO()
+    cif_object.show(out = f)
+    return f.getvalue()
+
+  def as_cif_block(self):
+    cif_block = iotbx.cif.model.block()
+    ss_cif_loops = self.as_cif_loops()
+    for loop in ss_cif_loops:
+      cif_block.add_loop(loop)
+    return cif_block
+
+  def fits_in_pdb_format(self):
+    for helix in self.helices :
+      if (not helix.fits_in_pdb_format()):  return False
+    for sheet in self.sheets :
+      if (not sheet.fits_in_pdb_format()):  return False
+    return True
+
   def as_pdb_str(self):
     records = []
     for helix in self.helices :
@@ -1201,6 +1229,13 @@ class annotation(structure_base):
     for sheet in self.sheets :
       records.append(sheet.as_pdb_str())
     return "\n".join(records)
+
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
 
   def as_restraint_groups(self, log=sys.stdout, prefix_scope="",
       add_segid=None):
@@ -1744,7 +1779,7 @@ class annotation(structure_base):
     def sort_strings(h):
       sorted=[]
       for x in h:
-        sorted.append(x.as_pdb_str(set_id_zero=True))
+        sorted.append(x.as_pdb_str(set_id_zero=True, force_format = True))
       sorted.sort()
       return sorted
 
@@ -2072,7 +2107,30 @@ class pdb_helix(structure_base):
     result['pdbx_PDB_helix_length'] = self.length
     return result
 
-  def as_pdb_str(self, set_id_zero=False):
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
+
+  def fits_in_pdb_format(self):
+    if len(self.start_resname.strip()) > 3: return False
+    if len(self.end_resname.strip()) > 3: return False
+    if len(self.start_chain_id.strip()) > 2: return False
+    if len(self.end_chain_id.strip()) > 2: return False
+    return True
+
+  def as_mmcif_str(self):
+    ann = annotation(helices = [self], sheets = [])
+    text = ann.as_mmcif_str()
+    return text
+
+  def as_pdb_str(self, set_id_zero=False, force_format = False):
+    if (not force_format) and (not self.fits_in_pdb_format()):
+      raise AssertionError(
+       "Helix does not fit in PDB format. "+
+       "Please fix code to use as_pdb_or_mmcif_str instead of as_pdb_str")
     def h_class_to_pdb_int(h_class):
       h_class_int = self.helix_class_to_int(h_class)
       if h_class_int == 0:
@@ -2766,7 +2824,30 @@ class pdb_sheet(structure_base):
       return len(self.hbond_list)
     return 0
 
-  def as_pdb_str(self, strand_id=None, set_id_zero=False):
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
+
+  def fits_in_pdb_format(self):
+    for strand in self.strands:
+      if len(strand.start_resname.strip()) > 3: return False
+      if len(strand.end_resname.strip()) > 3: return False
+      if len(strand.start_chain_id.strip()) > 2: return False
+      if len(strand.end_chain_id.strip()) > 2: return False
+    return True
+
+  def as_mmcif_str(self):
+    ann = annotation(helices = [], sheets = [self])
+    text = ann.as_mmcif_str()
+    return text
+
+  def as_pdb_str(self, strand_id=None, set_id_zero=False, force_format = False):
+    if (not force_format) and (not self.fits_in_pdb_format()):
+      raise AssertionError("Sheet does not fit in PDB format"+
+       "Please fix code to use as_pdb_or_mmcif_str instead of as_pdb_str")
     assert len(self.strands) == len(self.registrations)
     lines = []
     for strand, reg in zip(self.strands, self.registrations):

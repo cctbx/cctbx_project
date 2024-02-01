@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
 import time
 from cctbx import maptbx
 
@@ -74,7 +73,9 @@ def percentile_cutoffs_inefficient(
   return cutoffp, cutoffm
 
 def exercise():
-  xrs = iotbx.pdb.input(source_info=None, lines=pdb_str).xray_structure_simple()
+  from iotbx.pdb.utils import get_pdb_input
+  pdb_inp = get_pdb_input(text = pdb_str)
+  xrs = pdb_inp.xray_structure_simple()
   fc = xrs.structure_factors(d_min=1.5).f_calc()
   fft_map = fc.fft_map(resolution_factor=0.1)
   fft_map.apply_sigma_scaling()

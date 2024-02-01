@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 
+from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
+
 import time
 from mmtbx.building.minimize_chain import run,ccp4_map
 import iotbx.pdb
@@ -537,21 +539,29 @@ ATOM     80  CB  ALA E  16      12.188   5.653  16.999  1.00 40.00           C
 TER
 """
 
+convert_pdb_to_cif_for_pdb_str(locals())
 def tst_01():
   print("\nTesting merge_model\n")
   prefix='tst_01'
   # Full good answer model
-  pdb_file_name_answer_full = "%s_answer_full.pdb"%prefix
+  pdb_file_name_answer_full = "%s_answer_full.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_AE)
-  pdb_inp.write_pdb_file(file_name="%s_answer.pdb"%prefix)
   ph_answer_full = pdb_inp.construct_hierarchy()
+  info = ph_answer_full.pdb_or_mmcif_string_info(
+       target_filename = "%s_answer.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   ph_answer_full.atoms().reset_i_seq()
   xrs_answer_full = pdb_inp.xray_structure_simple()
 
   # Two models we want to merge
-  pdb_file_name_two_models = "%s_poor_two_models.pdb"%prefix
+  pdb_file_name_two_models = "%s_poor_two_models.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_two_models)
-  pdb_inp.write_pdb_file(file_name="%s_two_models.pdb"%prefix)
+  full_two_models = pdb_inp.construct_hierarchy()
+  info = full_two_models.pdb_or_mmcif_string_info(
+       target_filename = "%s_two_models.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   xrs_two_models_full = pdb_inp.xray_structure_simple()
 
   # Compute target map
@@ -576,7 +586,11 @@ def tst_01():
 
   pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
   xrs=pdb_inp.xray_structure_simple()
-  hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
+  refined_ph=pdb_inp.construct_hierarchy()
+  info = refined_ph.pdb_or_mmcif_string_info(
+       target_filename = "%s_refined.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   rmsd=xrs.sites_cart().rms_difference(xrs_answer_full.sites_cart())
   print("RMSD from TARGET allowing any CROSSOVERS: %8.2f " %(rmsd))
   return rmsd
@@ -587,18 +601,24 @@ def tst_02(args,prefix=None):
   if prefix is None:
     prefix='tst_02'
   # Full good answer model
-  pdb_file_name_answer_full = "%s_answer_full.pdb"%prefix
+  pdb_file_name_answer_full = "%s_answer_full.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_full)
-  pdb_inp.write_pdb_file(file_name="%s_answer.pdb"%prefix)
   ph_answer_full = pdb_inp.construct_hierarchy()
+  info = ph_answer_full.pdb_or_mmcif_string_info(
+       target_filename = "%s_answer_full.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   ph_answer_full.atoms().reset_i_seq()
   xrs_answer_full = pdb_inp.xray_structure_simple()
 
   # Poor full model that we want to refine so it matches the answer
-  pdb_file_name_poor = "%s_poor.pdb"%prefix
+  pdb_file_name_poor = "%s_poor.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_poor_full)
-  pdb_inp.write_pdb_file(file_name="%s_poor.pdb"%prefix)
   ph_poor_full = pdb_inp.construct_hierarchy()
+  info = ph_poor_full.pdb_or_mmcif_string_info(
+       target_filename = "%s_poor.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   ph_poor_full.atoms().reset_i_seq()
   xrs_poor_full = pdb_inp.xray_structure_simple()
 
@@ -622,9 +642,14 @@ def tst_02(args,prefix=None):
 
   pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
   xrs_refined=pdb_inp.xray_structure_simple()
-  hierarchy.write_pdb_file(file_name="%s_refined.pdb"%prefix)
-  multiple_model_hierarchy.write_pdb_file(
-      file_name="%s_refined_all_states.pdb"%prefix)
+  info = hierarchy.pdb_or_mmcif_string_info(
+       target_filename = "%s_refined.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
+  info = multiple_model_hierarchy.pdb_or_mmcif_string_info(
+       target_filename = "%s_refined_all_states.cif"%prefix,
+       crystal_symmetry = pdb_inp.crystal_symmetry(),
+       write_file = True)
   rmsd=xrs_refined.sites_cart().rms_difference(xrs_answer_full.sites_cart())
   print("RMSD from TARGET for FULL-model refinement: %8.2f " %(rmsd))
   return rmsd
@@ -639,7 +664,7 @@ if (__name__ == "__main__"):
   args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
   t0=time.time()
   print("Running standard minimize_chain")
-  extra_args=['merge_models=False','pdb_out=std.pdb']
+  extra_args=['merge_models=False','pdb_out=std.cif']
   rmsd=tst_02(args+extra_args,prefix='tst_02')
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")
@@ -647,7 +672,7 @@ if (__name__ == "__main__"):
 
   t0=time.time()
   print("\nRunning standard minimize_chain plus merge_models")
-  extra_args=['merge_models=True','pdb_out=merged.pdb']
+  extra_args=['merge_models=True','pdb_out=merged.cif']
   rmsd=tst_02(args+extra_args,prefix='tst_03')
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")

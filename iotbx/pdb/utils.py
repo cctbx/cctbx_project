@@ -2,9 +2,10 @@ from __future__ import absolute_import, division, print_function
 import string
 from itertools import product
 from six.moves import range
+import sys
 
 class generate_n_char_string:
-  r""" Iterator to generate strings of length n_chars, using upper-case,
+  """ Iterator to generate strings of length n_chars, using upper-case,
     lower-case and numbers as desired.
     Allows specialty sets of characters as well
 
@@ -42,7 +43,7 @@ class generate_n_char_string:
     all_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     all_chars_lc = all_chars.lower()
     all_numbers = '0123456789'
-    special_characters = r"""[]_,.;:"&<>()/\{}'`~!@#$%*|+-"""
+    special_characters = """[]_,.;:"&<>()\/\{}'`~!@#$%*|+-"""
     self._tilde = """~"""
 
     self._all_everything = ""
@@ -128,6 +129,529 @@ def all_label_asym_ids(maximum_length=4):
     char_upper = __permutations(iterable = chars, r = r)
     rc += ["".join(p) for p in char_upper]
   return rc
+
+def get_input_model_file_name_from_params(params):
+  if not params:
+    return ""
+
+  input_scopes = [None, 'input_files','map_model','input']
+  input_file_types = ['pdb_in','model','input_model','fixed_model',
+     'moving_model','fixed_pdb','moving_pdb','search_model']
+  file_name = ""
+  for s in input_scopes:
+    for x in input_file_types:
+      if file_name: break
+      if s is None:
+        file_name = getattr(params,x,None)
+      elif hasattr(params,s):
+        ss = getattr(params,s)
+        file_name = getattr(ss,x,None)
+  if type(file_name) in [type([1,2,3]),type((1,2,3))]:
+    if file_name:
+      file_name = file_name[0]
+    else:
+      file_name = ''
+  return file_name
+
+def target_output_format_in_params(params):
+  for x in ['output_files','output']:
+    if params and hasattr(params,x) and \
+         hasattr(getattr(params,x),'target_output_format'):
+      target_output_format = getattr(getattr(params,x),'target_output_format')
+      if target_output_format in [None,'','None']:
+        target_output_format = None
+      return target_output_format
+  else:
+    return None
+
+def get_target_output_format_from_file_name(file_name,
+   default = None):
+  if file_name:
+    import os
+    path, ext = os.path.splitext(file_name)
+    if ext == '.pdb':
+      target_output_format = 'pdb'
+    elif ext == '.cif':
+      target_output_format = 'mmcif'
+    else:
+      target_output_format = default
+  else:
+    target_output_format = default
+  return target_output_format
+
+def move_down_scope_to_input_files(params, levels = 3):
+  target_scopes = ['input_files','output','output_files','map_model',]
+  if levels < 0:
+    return None
+  for t in target_scopes:
+    if hasattr(params, t):
+      return params
+  for x in dir(params):
+    if x.startswith("_"): continue
+    new_p = move_down_scope_to_input_files(getattr(params, x),
+      levels = levels - 1)
+    if new_p:
+      return new_p
+  return None
+
+def set_target_output_format_in_params(params,
+      file_name = None, default = 'pdb', target_output_format = None,
+      out = sys.stdout, quiet = True):
+  params = move_down_scope_to_input_files(params)
+  # Do we have it set already:
+  target_output_format = target_output_format_in_params(params)
+  if not target_output_format:
+    if not file_name:
+      file_name = get_input_model_file_name_from_params(params)
+    target_output_format = get_target_output_format_from_file_name(
+      file_name, default = default)
+
+  # set value in params.output_files.target_output_format
+  if hasattr(params,'output_files') and \
+       hasattr(params.output_files,'target_output_format'):
+     params.output_files.target_output_format = target_output_format
+  elif hasattr(params,'output') and \
+       hasattr(params.output,'target_output_format'):
+     params.output.target_output_format = target_output_format
+
+  # print result
+  if not quiet:
+    print("Target output format will be: %s" %(target_output_format),
+      file = out)
+
+  # Return value
+  return target_output_format
+
+def catenate_segment_onto_chain(model_chain, s2, gap = 1,
+   keep_numbers = False, insertion_chain = None):
+  '''  catenate residues from s2 onto model_chain'''
+  from iotbx.pdb import resseq_encode
+  if not model_chain:
+    return
+  if not insertion_chain:
+    s2_as_ph = s2.get_hierarchy()
+    if not s2_as_ph.overall_counts().n_residues > 0:
+      return
+    insertion_chain = s2.get_hierarchy().models()[0].chains()[0]
+  new_segid = model_chain.residue_groups(
+     )[0].atom_groups()[0].atoms()[0].segid
+  highest_resseq = None
+  if len(model_chain.residue_groups()) > 0:
+    highest_resseq = model_chain.residue_groups()[0].resseq_as_int()
+  for rg in model_chain.residue_groups():
+    rg_resseq = rg.resseq_as_int()
+    highest_resseq=max(highest_resseq,rg_resseq)
+  resseq_as_int = highest_resseq + (gap - 1)
+  for rg in insertion_chain.residue_groups():
+    resseq_as_int += 1
+    rg_copy = rg.detached_copy()
+    if (not keep_numbers):
+      rg_copy.resseq = resseq_encode(resseq_as_int)
+    model_chain.append_residue_group(
+       residue_group = rg_copy)
+    rg_copy.link_to_previous = True # Required
+    for ag in rg_copy.atom_groups():
+      for atom in ag.atoms():
+        awl = atom.fetch_labels()
+        atom.segid = new_segid
+
+def add_hierarchies(ph_list, create_new_chain_ids_if_necessary = True):
+  new_ph_list = []
+  for ph in ph_list:
+    if ph:
+      new_ph_list.append(ph)
+  if not new_ph_list:
+    return None
+  ph = ph_list[0]
+  for i in range(1, len(ph_list)):
+    ph = add_hierarchy(ph, ph_list[i], create_new_chain_ids_if_necessary =
+      create_new_chain_ids_if_necessary)
+  return ph
+
+
+def add_hierarchy(s1_ph, s2_ph, create_new_chain_ids_if_necessary = True):
+  ''' Add chains from hierarchy s2_ph to existing hierarchy s1_ph'''
+  if not s1_ph:
+    return s2_ph
+  s1_ph = s1_ph.deep_copy()
+  if not s2_ph:
+    return s1_ph
+  existing_chain_ids = s1_ph.chain_ids()
+  for model_mm_2 in s2_ph.models()[:1]:
+    for chain in model_mm_2.chains():
+      if chain.id in existing_chain_ids: # duplicate chains in add_model
+        if not create_new_chain_ids_if_necessary:
+          # append to existing chain
+          existing_chain = get_chain(s1_ph, chain_id = chain.id)
+          catenate_segment_onto_chain(existing_chain, None, gap = 1,
+               keep_numbers = True, insertion_chain= chain.detached_copy())
+          continue
+        else:
+          chain.id = get_new_chain_id(existing_chain_ids)
+      new_chain = chain.detached_copy()
+      existing_chain_ids.append(chain.id)
+      for model_mm in s1_ph.models()[:1]:
+        model_mm.append_chain(new_chain)
+  return s1_ph
+
+def get_chain(s1_ph, chain_id = None):
+  for model in s1_ph.models():
+    for chain in model.chains():
+      if chain.id == chain_id:
+        return chain
+
+def lines_are_really_text(lines):
+  if lines and type(lines) in (type('abc'), type(b'abc')):
+    return True
+  else:
+    return False
+
+def get_lines(text = None, file_name = None, lines = None):
+    import os
+    if lines and lines_are_really_text(lines):
+      text = lines
+    elif lines:
+      text = "\n".join(lines)
+    elif file_name and os.path.isfile(file_name):
+      text = open(file_name).read()
+    if not text:
+      text = ""
+    # Python 3 read fix
+    # =======================================================================
+    if sys.version_info.major == 3 and type(text) == type(b'abc'):
+      text = text.decode("utf-8")
+    # =======================================================================
+    from cctbx.array_family import flex
+    return flex.split_lines(text)
+
+def check_for_missing_elements(atoms, file_name = None):
+    elements = atoms.extract_element().strip()
+    if (not elements.all_ne("")):
+      n_missing = elements.count("")
+      missing_list = []
+      for atom in list(atoms):
+        if not atom.element.strip():
+          missing_list.append(atom.format_atom_record())
+
+      raise AssertionError(
+        "Uninterpretable elements for %d atoms%s. \n" %(n_missing,
+        "" if not file_name else " in '%s'" %(file_name))+
+        "Up to 10 listed below: \n%s" % ("\n".join(missing_list[:10])))
+
+def get_pdb_info(text = None, file_name = None, lines = None,
+     check_pseudo = False, return_pdb_hierarchy = False,
+     return_group_args = False,
+     allow_incorrect_spacing = False):
+  ''' Get a pdb_input object from pdb or mmcif file, construct a 
+      hierarchy, check the hierarchy for missing elements and fill them
+      in if from pdb.  Return group_args object with
+      hierarchy, pdb_input, and crystal_symmetry.
+
+      If text has no atoms, returns empty hierarchy (Note: iotbx.pdb.input
+      returns an empty hierarchy in this case if supplied with PDB input
+      and raises an exception if supplied with mmCIF input without atoms).
+
+      This method is preferred over get_pdb_input and get_pdb_hierarchy
+      as a method for robust reading of pdb/mmcif files because it
+      generates the hierarchy only once.  If you run get_pdb_input and then
+      construct the hierarchy it is generated twice.
+  '''
+  return get_pdb_input(text = text, file_name = file_name,
+     lines = lines, check_pseudo = check_pseudo,
+     allow_incorrect_spacing = allow_incorrect_spacing,
+     return_group_args = True)
+
+def get_pdb_hierarchy(text=None, file_name = None,
+     lines = None, check_pseudo = None,
+     allow_incorrect_spacing = False):
+  ''' Get pdb_input object and construct hierarchy.  Normally use instead
+      info =  get_pdb_info and then take info.hierarchy so that you have
+      the pdb_input object and crystal_symmetry available as well
+  '''
+  return get_pdb_input(text = text, file_name = file_name, lines = lines,
+     check_pseudo = check_pseudo, return_pdb_hierarchy = True,
+     allow_incorrect_spacing = allow_incorrect_spacing)
+
+
+def get_pdb_input(text = None, file_name = None, lines = None,
+    check_pseudo = False, return_pdb_hierarchy = False,
+    return_group_args = False,
+     allow_incorrect_spacing = False):
+
+  ''' Get a pdb_input object from pdb or mmcif file, construct a 
+      hierarchy, check the hierarchy for missing elements and fill them
+      in if from pdb.  Return hierarchy, pdb_input, or
+      group_args object with hierarchy, pdb_input, and crystal_symmetry.
+
+      Normally use instead the info = get_pdb_info method and then
+      you have hierarchy, pdb_input and crystal_symmetry all available 
+
+  ''' 
+  lines = get_lines(text = text, file_name = file_name, lines = lines)
+
+  # Get input object as pdb_inp
+  import iotbx.pdb
+  pdb_inp = iotbx.pdb.input(source_info=None,lines=lines)
+
+  # Guess elements if PDB is source input and elements are missing.
+  # This is can only be done with PDB files
+  # because mmcif files lose the positional information
+  # in atom names, so CA cannot be distinguished from Ca (calcium) without
+  #  element information in an mmCIF file.
+
+  if type_of_pdb_input(pdb_inp) == 'pdb': # Guess elements if missing for PDB
+    ph = try_to_get_hierarchy(pdb_inp)
+    atoms = ph.atoms()
+    guess_chemical_elements(atoms, check_pseudo = check_pseudo,
+      allow_incorrect_spacing = allow_incorrect_spacing)
+    check_for_missing_elements(ph.atoms())
+  else:
+    # Make sure we have an element for each atom
+    # try to construct and save empty ph if fails
+    ph = try_to_get_hierarchy(pdb_inp)
+    check_for_missing_elements(ph.atoms())
+
+  # Return what is requested
+  if return_group_args:
+    from libtbx import group_args
+    return group_args(group_args_type = 'hierarchy and pdb_input',
+      hierarchy = ph,
+      pdb_inp = pdb_inp,
+      crystal_symmetry = pdb_inp.crystal_symmetry())
+
+  elif return_pdb_hierarchy:
+    return ph
+  else:
+    return pdb_inp
+
+def guess_chemical_elements(atoms, check_pseudo = False,
+   allow_incorrect_spacing = None):
+    # Standard set of chemical elements based on atom names (and leading spaces)
+    for at in atoms:
+      at.name = at.name.upper()
+    atoms.set_chemical_element_simple_if_necessary()
+
+    # Check to see if all have an element now
+    elements = atoms.extract_element().strip()
+    if elements.all_ne(""): # all done
+      return
+
+    # Check for incorrect spacings (atom name has space before it but should
+    #  not or opposite)
+    if allow_incorrect_spacing:
+      check_for_incorrect_spacings(atoms)
+
+    # Check for pseudo-atoms (ZU ZC etc that represent groups of atoms)
+    if check_pseudo:
+      check_for_pseudo_atoms(atoms)
+
+def check_for_incorrect_spacings(atoms):
+  elements = atoms.extract_element().strip()
+  sel = (elements == "")
+  atoms_sel = atoms.select(sel)
+  for at in atoms_sel:
+    if at.name.startswith(" "):
+      at.name = at.name[1:]
+    else:
+      at.name = " "+at.name[:3]
+  atoms.set_chemical_element_simple_if_necessary()
+
+def check_for_pseudo_atoms(atoms):
+    # Check for special case where PDB input contains pseudo-atoms ZC ZU etc
+
+    # Do we already have all the elements
+    elements = atoms.extract_element().strip()
+    if elements.all_ne(""): # all done
+      return
+
+    # Are there any pseudo-atoms
+    atom_names = atoms.extract_name().strip()
+    all_text = "".join(list(atom_names))
+    if all_text.find("Z") < 0: # no pseudo-atoms
+      return
+
+    # contains some pseudo-atoms ZC ZU etc. Get their elements if necessary
+    for atom in atoms:
+      if atom.element.replace(" ","") == '':
+        # Missing element not fixed by set_chemical_element_simple_if_necessary
+        #  take first non-Z, non-blank character
+        for c in atom.name.replace("Z","").replace(" ",""):
+          if c.isalpha():
+            atom.element=c
+            break
+
+def type_of_pdb_input(pdb_inp):
+  format_type = None
+  if not pdb_inp:
+    return format_type
+  else:
+    s = str(type(pdb_inp))
+    if s.find("cif") > 0:
+      format_type = "mmcif"
+    elif s.find("pdb") > 0:
+      format_type = "pdb"
+    return format_type
+
+def try_to_get_hierarchy(pdb_inp):
+    try:
+      return pdb_inp.construct_hierarchy()
+    except Exception as e: # nothing there
+      if str(e).find("something is not present") > -1:  # was empty hierarchy
+        # NOTE this text is in modules/cctbx_project/iotbx/pdb/mmcif.py
+        # If it changes, change it here too.
+        from iotbx.pdb import hierarchy
+        ph = hierarchy.root()
+        return ph
+      else:  # Stop and ask developers to check code
+        ph_text = "\n".join(lines)
+        text = """The above hierarchy could not be read. If it is just empty,
+         please ask developers to check that the
+         text "something is not present" is used in
+         modules/cctbx_project/iotbx/pdb/mmcif.py as part of the assertion that
+         atoms are present.  Modify this text to match the assertion if
+         necessary"""
+        raise Sorry(ph_text+"\n"+text+"\n"+str(e))
+def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
+  ''' add chains from s2 to existing s1'''
+  if not s1:
+    s2.reset_after_changing_hierarchy()
+    return s2
+  s1.add_crystal_symmetry_if_necessary()
+  s1 = s1.deep_copy()
+  if not s2:
+    s1.reset_after_changing_hierarchy()
+    return s1
+  s1_ph = s1.get_hierarchy() # working hierarchy
+  existing_chain_ids = []
+  from mmtbx.secondary_structure.find_ss_from_ca import get_new_chain_id
+  for model_mm1 in s1_ph.models()[:1]:
+    for chain in model_mm1.chains():
+      if not chain.id.strip():
+        chain.id = get_new_chain_id(existing_chain_ids)
+  existing_chain_ids = s1_ph.chain_ids()
+  for model_mm_2 in s2.get_hierarchy().models()[:1]:
+    for chain in model_mm_2.chains():
+      if not chain.id.strip():
+        chain.id = get_new_chain_id(existing_chain_ids)
+
+      if chain.id in existing_chain_ids: # duplicate chains in add_model
+        if not create_new_chain_ids_if_necessary:
+          # append to existing chain
+          from iotbx.pdb.utils import get_chain
+          from iotbx.pdb.utils import catenate_segment_onto_chain
+          existing_chain = get_chain(s1_ph, chain_id = chain.id)
+          catenate_segment_onto_chain(existing_chain, None, gap = 1,
+               keep_numbers = True, insertion_chain= chain.detached_copy())
+          continue
+        else:
+          chain.id = get_new_chain_id(existing_chain_ids)
+      new_chain = chain.detached_copy()
+      existing_chain_ids.append(chain.id)
+      for model_mm in s1_ph.models()[:1]:
+        model_mm.append_chain(new_chain)
+  s1.reset_after_changing_hierarchy()
+  if hasattr(s1,'info') and s1.info().get('numbering_dict') and \
+     hasattr(s2,'info') and s2.info().get('numbering_dict'):
+    s1.info().numbering_dict.add_from_other(s2.info().numbering_dict) # XXX fixed... never should have worked before
+  return s1
+
+def catenate_segments(s1, s2, gap = 1,
+   keep_numbers = False):
+  '''
+    catenate two models and renumber starting with first residue of s1
+    if gap is set, start s2  gap residue numbers higher than the end of s1
+    if keep_numbers is set, just keep all the residue numbers
+  '''
+  s1 = s1.deep_copy()
+  s1 = s1.apply_selection_string("not (name OXT)") # get rid of these
+  s1_ph = s1.get_hierarchy() # working hierarchy
+  for model_mm in s1_ph.models()[:1]:
+    for model_chain in model_mm.chains()[:1]:
+        from iotbx.pdb.utils import catenate_segment_onto_chain
+        catenate_segment_onto_chain(
+          model_chain,
+          s2,
+          gap = gap,
+          keep_numbers = keep_numbers)
+  s1.reset_after_changing_hierarchy()
+  return s1
+def catenate_segment_onto_chain(model_chain, s2, gap = 1,
+   keep_numbers = False, insertion_chain = None):
+  '''  catenate residues from s2 onto model_chain'''
+  from iotbx.pdb import resseq_encode
+  if not model_chain:
+    return
+  if not insertion_chain:
+    s2_as_ph = s2.get_hierarchy()
+    if not s2_as_ph.overall_counts().n_residues > 0:
+      return
+    insertion_chain = s2.get_hierarchy().models()[0].chains()[0]
+  new_segid = model_chain.residue_groups(
+     )[0].atom_groups()[0].atoms()[0].segid
+  highest_resseq = None
+  if len(model_chain.residue_groups()) > 0:
+    highest_resseq = model_chain.residue_groups()[0].resseq_as_int()
+  for rg in model_chain.residue_groups():
+    rg_resseq = rg.resseq_as_int()
+    highest_resseq=max(highest_resseq,rg_resseq)
+  resseq_as_int = highest_resseq + (gap - 1)
+  for rg in insertion_chain.residue_groups():
+    resseq_as_int += 1
+    rg_copy = rg.detached_copy()
+    if (not keep_numbers):
+      rg_copy.resseq = resseq_encode(resseq_as_int)
+    model_chain.append_residue_group(
+       residue_group = rg_copy)
+    rg_copy.link_to_previous = True # Required
+    for ag in rg_copy.atom_groups():
+      for atom in ag.atoms():
+        awl = atom.fetch_labels()
+        atom.segid = new_segid
+
+def simple_combine(model_list,
+    create_new_chain_ids_if_necessary = True):
+  ''' Method to combine the chains in a set of models to create a new 
+  model with all the chains.
+  param: model_list:  list of model objects
+  param: create_new_chain_ids_if_necessary:  If True (default), if a
+          model has a duplicate chain ID, create a new one and rename it
+  returns:  first model in model_list with all chains from all models.
+          NOTE: first model in model_list is modified by this method. Make
+          a deep_copy before hand if you want to keep it.
+  '''
+
+  model = None
+  for m in model_list:
+    if not model:
+      model = m
+    else:
+      model = add_model(model, m,
+         create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
+  return model
+
+def get_cif_or_pdb_file_if_present(file_name):
+   ''' Identify whether a file with the name file_name or with 
+   alternate extensions replacing pdb/cif is present. 
+   If file_name is present, return file_name.
+   If not, and alternative is present, return alternative file name
+   Otherwise return empty string
+   '''
+
+   import os
+   if file_name and os.path.isfile(file_name): # if it is present, take it
+     return file_name
+   # Otherwise, look for pdb or cif versions of this file
+   p,e = os.path.splitext(file_name)
+   e_pdb = e.replace("cif","pdb")
+   e_cif = e.replace("pdb","cif")
+   pdb_file = "%s%s" %(p,e_pdb)
+   cif_file = "%s%s" %(p,e_cif)
+   if os.path.isfile(pdb_file):
+     return pdb_file
+   elif os.path.isfile(cif_file):
+     return cif_file
+   else:
+     return "" # return empty string so os.path.isfile(return_value) works
 
 if __name__ == '__main__':
   import time

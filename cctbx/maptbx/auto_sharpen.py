@@ -914,7 +914,8 @@ def get_map_and_model(params=None,
     model_file=params.input_files.pdb_file
     if not os.path.isfile(model_file):
       raise Sorry("Missing the model file: %s" %(model_file))
-    pdb_inp=iotbx.pdb.input(file_name=model_file)
+    from iotbx.pdb.utils import get_pdb_input
+    pdb_inp = get_pdb_input(file_name = model_file)
   if pdb_inp: # XXX added 2019-05-05
     if origin_frac != (0,0,0):
       print("Shifting model by %s" %(str(origin_frac)), file=out)

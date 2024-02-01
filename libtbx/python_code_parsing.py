@@ -47,7 +47,7 @@ class unused_imports(ast.NodeVisitor, object):
                ignore_imports_flagged_by_comments=()):
     assert (python_source_code, python_source_filename).count(None) == 1
     if python_source_code is None:
-      python_source_code = file(python_source_filename).read()
+      python_source_code = open(python_source_filename).read()
     super(unused_imports, self).__init__()
     self.comment_flags = ignore_imports_flagged_by_comments
     self.python_source_line = python_source_code.splitlines()
