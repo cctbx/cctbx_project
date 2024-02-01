@@ -22,7 +22,7 @@ based methods to mmCIF/PDB compatible methods
      TOOLS AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
      CREATING CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
      USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
-   DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF 
+   DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF
 
 ===========================================================================
 ===========================================================================
@@ -61,7 +61,7 @@ III. Write mmCIF or PDB-formatted files with the rules:
 ===========================================================================
 ===========================================================================
 
-    RECOMMENDED OVERALL APPROACHES 
+    RECOMMENDED OVERALL APPROACHES
   (DETAILS IN THE SECTION "DETAILED SUGGESTIONS FOR MAKING CODE CIF-COMPLIANT")
 
 I. USE THE PROGRAM TEMPLATE
@@ -108,8 +108,8 @@ to use the methods in the hierarchy class.
   b. All code that accumulates lines from multiple PDB files and then interprets
     the new lines should be replaced by reading each PDB file and merging
     the resulting hierarchies or models.  This can be done for model files
-    with the simple_combine or add_hierarchies methods available in 
-    iotbx.pdb.utils, or simple custom code can be written to add chains 
+    with the simple_combine or add_hierarchies methods available in
+    iotbx.pdb.utils, or simple custom code can be written to add chains
     from one hierarchy onto another hierarchy.
 
 
@@ -119,9 +119,9 @@ IV.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
 
 V.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
     For any code that uses pdb/cif files or that uses the hierarchy object
-    should be tested with models that do not fit in PDB format.  It is 
+    should be tested with models that do not fit in PDB format.  It is
     recommended that each standard test using models should be duplicated
-    and run with non-PDB-compliant models.  The tool 
+    and run with non-PDB-compliant models.  The tool
     convert_pdb_to_cif_for_pdb_str can be used to edit strings in place in
     tests so that identical starting strings can be used in the original and
     non-PDB-compliant tests.
@@ -162,9 +162,9 @@ I. USING THE PROGRAM TEMPLATE TO HANDLE PDB/MMCIF INPUT/OUTPUT
 A. Use the Program Template and use data_manager for
     all model read/write. If you do this there is only one thing
     you need to do:  capture the actual file name written by
-    the data_manager.  
+    the data_manager.
 
-    The program template automatically adds the scope 
+    The program template automatically adds the scope
     'output.target_output_format' to your parameters, allowing
     a user to set the output format. If it is not set, the program
     template sets it to the format of the default incoming model if
@@ -237,7 +237,7 @@ III.  REWRITING CODE USING PDB-FORMATTED TEXT
 A. You will want to remove all instances of the following methods. None of these
 are mmcif-compliant:
 
-  model.model_as_pdb() 
+  model.model_as_pdb()
   ph.as_pdb_string()
   ph.write_pdb_file()
 
@@ -253,7 +253,7 @@ Suggested replacements:
     print("Wrote model to '%s'" %file_name)
 
   Use instead model.pdb_or_mmcif_string_info():
- 
+
     file_name = 'mypdb.pdb'
     info = model.pdb_or_mmcif_string_info(
         target_format = params.output_files.target_output_format,
@@ -270,7 +270,7 @@ Suggested replacements:
 
   Use instead model.pdb_or_mmcif_string_info() which will give you a PDB or
      mmcif string as appropriate:
- 
+
     info = model.pdb_or_mmcif_string_info(
         target_format = params.output_files.target_output_format)
     str = info.pdb_string
@@ -309,7 +309,7 @@ B. You will want to rewrite all code that interprets model text line-by-line.
   for line in open(model_file).readlines():
     do_something_based_on_a_line_in_file(line)
 
-  You will want instead to read in the model to get a hierarchy, then 
+  You will want instead to read in the model to get a hierarchy, then
   use hierarchy methods to change or interpret the hierarchy.
 
 C. If your code catenates model text like this:
@@ -357,14 +357,14 @@ D. If your code names intermediate files with the extension '.pdb':
 V.   TOOLS AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
 
 A.    You can use the libtbx.find_pdb_mmcif_problems to help identify code
-   that needs to be modified to make it cif-compatible.  
+   that needs to be modified to make it cif-compatible.
 
    You can say:
 
    libtbx.find_pdb_mmcif_problems phenix/phenix/command_line
 
    and it (recursively) will go through all files/directories in command_line
-   and look for problems 
+   and look for problems
 
    Or you can work on just one file:
 
@@ -377,7 +377,7 @@ A.    You can use the libtbx.find_pdb_mmcif_problems to help identify code
 B.   Run libtbx.find_pdb_mmcif_problems with the argument "mark_lines":
 
    1. Run it like this:
-   
+
       libtbx.find_pdb_mmcif_problems phase_and_build.py mark_lines
 
    This will edit phase_and_build.py, placing text like:
@@ -389,7 +389,7 @@ B.   Run libtbx.find_pdb_mmcif_problems with the argument "mark_lines":
      b. fix the problems
      c. mark non-problems with the text " # PDB OK", add explanation if you want
 
-   3. Then clean up by running: 
+   3. Then clean up by running:
 
       libtbx.find_pdb_mmcif_problems phase_and_build.py unmark_lines
 
@@ -397,7 +397,7 @@ B.   Run libtbx.find_pdb_mmcif_problems with the argument "mark_lines":
 
    4. Finally, run:
 
-      libtbx.find_pdb_mmcif_problems phase_and_build.py 
+      libtbx.find_pdb_mmcif_problems phase_and_build.py
 
     again to make sure you got it all.
 
@@ -445,7 +445,7 @@ A. Simple conversion of tests to mmCIF if your test uses PDB strings.
   chain IDs (and optionally HETATM residue names) may be different.
 
 B. If your test uses models in PDB files, you may simply want to
- make copies of all your models, converting your PDB files into 
+ make copies of all your models, converting your PDB files into
   mmCIF and edit the chain IDs:
 
   You can do this with pdbtools:
@@ -494,7 +494,7 @@ VI. USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
   These methods are described in detail in the hierarchy.py code.
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
-   DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF 
+   DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF
 
      MODULE:    iotbx/cli_parser.py
 
@@ -518,7 +518,7 @@ output format.
 
      MODULE:    iotbx/pdb/hierarchy.py:
 
-Methods for converting hierarchy to forward-compatible (fits in PDB format, 
+Methods for converting hierarchy to forward-compatible (fits in PDB format,
   see above):
 
   def is_forward_compatible_hierarchy(self):
@@ -528,14 +528,14 @@ Methods for converting hierarchy to forward-compatible (fits in PDB format,
   def forward_compatible_hierarchy_as_standard(self, conversion_info = None):
   def as_forward_compatible_string(self, **kw):
 
-Method for writing as PDB or mmCIF string, using supplied target_format if 
+Method for writing as PDB or mmCIF string, using supplied target_format if
 possible, optionally writing as file, returning group_args object with
 text string, file_name written, and is_mmcif marker:
 
   def pdb_or_mmcif_string_info(self,
 
 NOTE: This method and the corresponding method in model.py use
-default of segid_as_auth_segid = True, different from the default in 
+default of segid_as_auth_segid = True, different from the default in
 model_as_mmcif() in model.py and as_mmcif_string() in hierarchy.py
 The default of segid_as_auth_segid = True causes any text in the SEGID
 field read from a PDB-formatted file to be written to the auth_segid field
@@ -555,14 +555,14 @@ of chain ID:
      MODULE:    mmtbx/model/model.py:
 
 Method matching one of the same name in hierarchy.py,
-for writing as PDB or mmCIF string, using supplied target_format if 
+for writing as PDB or mmCIF string, using supplied target_format if
 possible, optionally writing as file, returning group_args object with
 text string, file_name written, and is_mmcif marker:
 
   def  pdb_or_mmcif_string_info(self,
 
 NOTE: This method and the corresponding method in hierarchy.py use
-default of segid_as_auth_segid = True, different from the default in 
+default of segid_as_auth_segid = True, different from the default in
 model_as_mmcif() in model.py and as_mmcif_string() in hierarchy.py.
 The default of segid_as_auth_segid = True causes any text in the SEGID
 field read from a PDB-formatted file to be written to the auth_segid field
@@ -581,7 +581,7 @@ def move_down_scope_to_input_files(params, levels = 3):
 
 Method to find file named with 'pdb' or 'cif' when given one or the other.
 Returns the file supplied if present, otherwise the other file if it is present,
-otherwise empty string. Can find files with the pdb/cif followed by an 
+otherwise empty string. Can find files with the pdb/cif followed by an
 underscore such as myfile.pdb_1. Only looks for pdb/cif in the extension:
 
 def get_cif_or_pdb_file_if_present(file_name):
@@ -629,13 +629,13 @@ def check_for_incorrect_spacings(atoms):
 
 Method checking for atom names starting with "Z" (used as pseudo-atoms)
 
-def check_for_pseudo_atoms(atoms): 
+def check_for_pseudo_atoms(atoms):
 
 
      MODULE:   iotbx/pdb/forward_compatible_pdb_cif_conversion.py
 
 This module has low-level methods for conversion of hierarchies to a PDB-compatible
-form, for reading and writing these hierarchies, and for converting them 
+form, for reading and writing these hierarchies, and for converting them
 back to the original form.
 
 Normally the methods in the hierarchy class should be used, rather

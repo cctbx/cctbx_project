@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 from iotbx.data_manager import DataManager
-import libtbx.load_env
 import os
 
 

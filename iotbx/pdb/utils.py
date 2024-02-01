@@ -342,7 +342,7 @@ def get_pdb_info(text = None, file_name = None, lines = None,
      check_pseudo = False, return_pdb_hierarchy = False,
      return_group_args = False,
      allow_incorrect_spacing = False):
-  ''' Get a pdb_input object from pdb or mmcif file, construct a 
+  ''' Get a pdb_input object from pdb or mmcif file, construct a
       hierarchy, check the hierarchy for missing elements and fill them
       in if from pdb.  Return group_args object with
       hierarchy, pdb_input, and crystal_symmetry.
@@ -378,15 +378,15 @@ def get_pdb_input(text = None, file_name = None, lines = None,
     return_group_args = False,
      allow_incorrect_spacing = False):
 
-  ''' Get a pdb_input object from pdb or mmcif file, construct a 
+  ''' Get a pdb_input object from pdb or mmcif file, construct a
       hierarchy, check the hierarchy for missing elements and fill them
       in if from pdb.  Return hierarchy, pdb_input, or
       group_args object with hierarchy, pdb_input, and crystal_symmetry.
 
       Normally use instead the info = get_pdb_info method and then
-      you have hierarchy, pdb_input and crystal_symmetry all available 
+      you have hierarchy, pdb_input and crystal_symmetry all available
 
-  ''' 
+  '''
   lines = get_lines(text = text, file_name = file_name, lines = lines)
 
   # Get input object as pdb_inp
@@ -610,7 +610,7 @@ def catenate_segment_onto_chain(model_chain, s2, gap = 1,
 
 def simple_combine(model_list,
     create_new_chain_ids_if_necessary = True):
-  ''' Method to combine the chains in a set of models to create a new 
+  ''' Method to combine the chains in a set of models to create a new
   model with all the chains.
   param: model_list:  list of model objects
   param: create_new_chain_ids_if_necessary:  If True (default), if a
@@ -630,8 +630,8 @@ def simple_combine(model_list,
   return model
 
 def get_cif_or_pdb_file_if_present(file_name):
-   ''' Identify whether a file with the name file_name or with 
-   alternate extensions replacing pdb/cif is present. 
+   ''' Identify whether a file with the name file_name or with
+   alternate extensions replacing pdb/cif is present.
    If file_name is present, return file_name.
    If not, and alternative is present, return alternative file name
    Otherwise return empty string
