@@ -71,7 +71,7 @@ class DirectSpaceVectors(np.ndarray):
     if len(abc.shape) < 3 or abc.shape[0] != 3 or abc.shape[2] != 3:
       msg = 'DirectSpaceVectors must be init with a 3xNx3 array of abc vectors'
       raise ValueError(msg)
-    super().__new__(cls, abc.shape, dtype=float, buffer=abc)
+    return super().__new__(cls, abc.shape, dtype=float, buffer=abc)
 
   @classmethod
   def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectors':
@@ -138,8 +138,8 @@ class SphericalDistribution:
     """Basis vector of cartesian system in which e1 = mu; e2 & e3 arbitrary"""
     e1 = self.mu / np.linalg.norm(self.mu)
     e0 = self.E1 if not self.are_parallel(e1, self.E1) else self.E2
-    e2 = np.cross(e1, e0)
-    e3 = np.cross(e1, e2)
+    e2 = (e := np.cross(e1, e0)) / np.linalg.norm(e)
+    e3 = (e := np.cross(e1, e2)) / np.linalg.norm(e)
     return e1, e2, e3
 
   @property
@@ -148,7 +148,7 @@ class SphericalDistribution:
     azim = np.linspace(0.0, 2*np.pi, num=100, endpoint=True)
     r = np.ones_like(azim)
     polar = np.full_like(azim, np.pi / 2)
-    return self.mu_sph2cart(np.vstack(r, polar, azim).T)
+    return self.mu_sph2cart(np.vstack([r, polar, azim]).T)
 
   def mu_sph2cart(self, r_polar_azim: np.ndarray):
     """Convert spherical coordinates r, polar, azim to cartesian in mu basis"""
