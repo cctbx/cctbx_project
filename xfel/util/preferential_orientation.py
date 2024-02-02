@@ -53,6 +53,10 @@ phil_scope_str = """
   }
 """
 
+
+############################ CONVENIENCE AND TYPING ###########################
+
+
 cctbx_point_group_type = typing.Any
 
 
@@ -136,9 +140,17 @@ class SphericalDistribution:
     e3 = np.cross(e1, e2)
     return e1, e2, e3
 
-  def mu_sph2cart(self, vectors: np.ndarray):
+  @property
+  def mu_ring(self) -> np.ndarray:
+    """A closed 3D ring of points around vector self.mu used for plotting"""
+    azim = np.linspace(0.0, 2*np.pi, num=100, endpoint=True)
+    r = np.ones_like(azim)
+    polar = np.full_like(azim, np.pi / 2)
+    return self.mu_sph2cart(np.vstack(r, polar, azim).T)
+
+  def mu_sph2cart(self, r_polar_azim: np.ndarray):
     """Convert spherical coordinates r, polar, azim to cartesian in mu basis"""
-    r, polar, azim = np.hsplit(vectors, 3)
+    r, polar, azim = np.hsplit(r_polar_azim, 3)
     e1, e2, e3 = self.mu_basis_vectors
     e1_component = e1 * np.cos(polar)
     e2_component = e2 * np.sin(polar) * np.cos(azim)
@@ -312,8 +324,13 @@ class HedgehogArtist:
     origin = [0., 0., 0.]
     name = hedgehog.name
     v = hedgehog.distribution.vectors
+    mu = hedgehog.distribution.mu
+    mu_ring = hedgehog.distribution.mu_ring
+    alpha = 1 / np.log2(len(v) + 1E-8)
     axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color,
-                alpha=0.1, arrow_length_ratio=0.0)
+                alpha=alpha, arrow_length_ratio=0.0)
+    axes.quiver(*-mu, *mu, colors='k', arrow_length_ratio=0.1)
+    axes.plot(mu_ring[:, 0], mu_ring[:, 1], mu_ring[:, 2], color='k')
     axes.set_xlim([-1, 1])
     axes.set_ylim([-1, 1])
     axes.set_zlim([-1, 1])
