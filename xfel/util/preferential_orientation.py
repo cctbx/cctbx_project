@@ -67,11 +67,11 @@ cctbx_point_group_type = typing.Any
 
 class DirectSpaceVectors(np.ndarray):
   """Class responsible for scraping and storing vectors a, b, c from expts"""
-  def __init__(self, shape, *args, **kwargs):
-    super().__init__(shape, *args, **kwargs)
-    if len(shape) < 3 or shape[0] != 3 or shape[2] != 3:
+  def __new__(cls, abc: np.ndarray):
+    if len(abc.shape) < 3 or abc.shape[0] != 3 or abc.shape[2] != 3:
       msg = 'DirectSpaceVectors must be init with a 3xNx3 array of abc vectors'
       raise ValueError(msg)
+    super().__new__(abc.shape, dtype=float, buffer=abc)
 
   @classmethod
   def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectors':
