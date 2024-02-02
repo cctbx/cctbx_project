@@ -346,7 +346,8 @@ def get_lines(text = None, file_name = None, lines = None):
     from cctbx.array_family import flex
     return flex.split_lines(text)
 
-def check_for_missing_elements(atoms, file_name = None):
+def check_for_missing_elements(hierarchy, file_name = None):
+    atoms = hierarchy.atoms()
     elements = atoms.extract_element().strip()
     if (not elements.all_ne("")):
       n_missing = elements.count("")
@@ -423,15 +424,14 @@ def get_pdb_input(text = None, file_name = None, lines = None,
 
   if type_of_pdb_input(pdb_inp) == 'pdb': # Guess elements if missing for PDB
     ph = try_to_get_hierarchy(pdb_inp)
-    atoms = ph.atoms()
-    guess_chemical_elements(atoms, check_pseudo = check_pseudo,
+    ph.guess_chemical_elements(check_pseudo = check_pseudo,
       allow_incorrect_spacing = allow_incorrect_spacing)
-    check_for_missing_elements(ph.atoms())
+    check_for_missing_elements(ph)
   else:
     # Make sure we have an element for each atom
     # try to construct and save empty ph if fails
     ph = try_to_get_hierarchy(pdb_inp)
-    check_for_missing_elements(ph.atoms())
+    check_for_missing_elements(ph)
 
   # Return what is requested
   if return_group_args:
@@ -446,28 +446,16 @@ def get_pdb_input(text = None, file_name = None, lines = None,
   else:
     return pdb_inp
 
-def guess_chemical_elements(atoms, check_pseudo = False,
-   allow_incorrect_spacing = None):
-    # Standard set of chemical elements based on atom names (and leading spaces)
-    for at in atoms:
-      at.name = at.name.upper()
-    atoms.set_chemical_element_simple_if_necessary()
 
-    # Check to see if all have an element now
-    elements = atoms.extract_element().strip()
-    if elements.all_ne(""): # all done
-      return
+def set_element_ignoring_spacings(hierarchy):
+  ''' Set missing elements ignoring spacings. This allows
+   reading a PDB file where there are no elements given and the
+   atom names are not justified properly. Intended for hetero atoms 
+   even if they are not marked as such.  Normally try to set
+   elements in normal way first.
+  '''
 
-    # Check for incorrect spacings (atom name has space before it but should
-    #  not or opposite)
-    if allow_incorrect_spacing:
-      check_for_incorrect_spacings(atoms)
-
-    # Check for pseudo-atoms (ZU ZC etc that represent groups of atoms)
-    if check_pseudo:
-      check_for_pseudo_atoms(atoms)
-
-def check_for_incorrect_spacings(atoms):
+  atoms = hierarchy.atoms()
   elements = atoms.extract_element().strip()
   sel = (elements == "")
   atoms_sel = atoms.select(sel)
@@ -478,9 +466,9 @@ def check_for_incorrect_spacings(atoms):
       at.name = " "+at.name[:3]
   atoms.set_chemical_element_simple_if_necessary()
 
-def check_for_pseudo_atoms(atoms):
+def check_for_pseudo_atoms(hierarchy):
     # Check for special case where PDB input contains pseudo-atoms ZC ZU etc
-
+    atoms = hierarchy.atoms()
     # Do we already have all the elements
     elements = atoms.extract_element().strip()
     if elements.all_ne(""): # all done
@@ -533,8 +521,9 @@ def try_to_get_hierarchy(pdb_inp):
          atoms are present.  Modify this text to match the assertion if
          necessary"""
         raise Sorry(ph_text+"\n"+text+"\n"+str(e))
+
 def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
-  ''' add chains from s2 to existing s1'''
+  ''' Add chains from s2 to existing s1 to create new composite model'''
   if not s1:
     s2.reset_after_changing_hierarchy()
     return s2
@@ -572,9 +561,11 @@ def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
       for model_mm in s1_ph.models()[:1]:
         model_mm.append_chain(new_chain)
   s1.reset_after_changing_hierarchy()
+
+  # Handle model.info().numbering_dict if present
   if hasattr(s1,'info') and s1.info().get('numbering_dict') and \
      hasattr(s2,'info') and s2.info().get('numbering_dict'):
-    s1.info().numbering_dict.add_from_other(s2.info().numbering_dict) # XXX fixed... never should have worked before
+    s1.info().numbering_dict.add_from_other(s2.info().numbering_dict)
   return s1
 
 def catenate_segments(s1, s2, gap = 1,
@@ -645,7 +636,7 @@ def simple_combine(model_list,
   model = None
   for m in model_list:
     if not model:
-      model = m
+      model = m  # ZZZ why cannot this be a deep_copy?
     else:
       model = add_model(model, m,
          create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
@@ -674,6 +665,109 @@ def get_cif_or_pdb_file_if_present(file_name):
      return cif_file
    else:
      return "" # return empty string so os.path.isfile(return_value) works
+
+class numbering_dict:
+  ''' Set up a dict that keeps track of chain ID, residue ID and icode for
+    residues relative to their initial values
+    dict with keys of original residue chain ID, resseq, icode
+    inverse_dict with keys of current, values of original
+  '''
+  def __init__(self, m):
+    self.file_name = m.info().file_name
+    self.ph = m.get_hierarchy().deep_copy()
+    self.dd = self.get_dict(m) # keys are original, values current
+    self.get_inverse_dict()  # keys are current, values original
+
+  def show_summary(self):
+    print("Summary of numbering dict for %s: " %(self.file_name))
+    for model in self.ph.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for conformer in rg.conformers():
+            r = conformer.only_residue()
+            key = self.get_key(r)
+            print(key, self.original_key_from_current(key))
+
+  def update(self, new_m):
+    ''' Update the dicts to refer to new current model
+    new_m must be similar hierarchy to previous current model
+    '''
+    new_dd = {}
+    new_ph = new_m.get_hierarchy()
+    ph = self.ph
+
+
+    for new_model, model in zip(new_ph.models()[:1], ph.models()[:1]):
+      for new_chain, chain in zip(new_model.chains(), model.chains()):
+        for new_rg, rg in zip(new_chain.residue_groups(), chain.residue_groups()):
+          for new_conformer, conformer in zip(
+             new_rg.conformers(),
+             rg.conformers()):
+            new_r = new_conformer.only_residue()
+            r = conformer.only_residue()
+
+          new_key = self.get_key(new_r)
+          key = self.get_key(r)
+          original_key = self.original_key_from_current(key)
+          new_dd[original_key] = new_key
+    self.dd = new_dd
+    self.ph = new_ph.deep_copy()
+    self.get_inverse_dict()
+
+  def get_original_key_list_from_atoms(self, atoms):
+   original_key_list = []
+   for key in self.get_key_list_from_atoms(atoms):
+     original_key_list.append(self.original_key_from_current(key))
+   return original_key_list
+
+  def get_key_list_from_atoms(self, atoms):
+    key_list = []
+    for a in atoms:
+      rg = a.parent().parent()
+      for c in rg.conformers():
+        r = c.only_residue()
+        key_list.append(self.get_key(r))
+    return key_list
+
+  def add_from_other(self, other):
+    for key in other.dd.keys():
+      self.dd[key] = other.dd[key]
+    self.get_inverse_dict()
+
+  def get_key(self, r):
+    conformer = r.parent()
+    chain = conformer.parent()
+    return "%s %s %s %s" %(r.resname, chain.id, r.resseq, r.icode)
+
+  def current_key_from_current_r(self,r):
+    return self.get_key(r)
+
+  def original_key_from_current_r(self,r):
+    key = self.get_key(r)
+    return self.original_key_from_current(key)
+
+  def original_key_from_current(self, key):
+    return self.inverse_dict[key]
+
+  def current_key_from_original(self, key):
+    return self.dd[key]
+
+  def get_inverse_dict(self):
+    self.inverse_dict = {}
+    for key in self.dd.keys():
+      self.inverse_dict[self.dd[key]] = key
+
+  def get_dict(self, m):
+    dd = {}
+    ph = m.get_hierarchy()
+    for model in ph.models()[:1]:
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          for conformer in rg.conformers():
+            r = conformer.only_residue()
+            key = self.get_key(r)
+            dd[key] = key
+    return dd
 
 if __name__ == '__main__':
   import time
