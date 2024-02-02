@@ -41,17 +41,16 @@ This is a work in progress.
 
 
 phil_scope_str = """
-  scrap {
-    input {
-      glob = None
-        .type = str
-        .multiple = True
-        .help = glob which matches all expt files to be investigated.
-      exclude = None
-        .type = str
-        .multiple = True
-        .help = glob which matches all expt files to be excluded from input.
-    }
+  input {
+    glob = None
+      .type = str
+      .multiple = True
+      .help = glob which matches all expt files to be investigated.
+    exclude = None
+      .type = str
+      .multiple = True
+      .help = glob which matches all expt files to be excluded from input.
+  }
 """
 
 cctbx_point_group_type = typing.Any
@@ -60,50 +59,48 @@ cctbx_point_group_type = typing.Any
 ############################ ORIENTATION SCRAPPING ############################
 
 
-@dataclass
-class DirectSpaceVectors:
+class DirectSpaceVectors(np.ndarray):
   """Class responsible for scraping and storing vectors a, b, c from expts"""
-  abc: np.ndarray
+  def __init__(self, shape, *args, **kwargs):
+    super().__init__(shape, *args, **kwargs)
+    if len(shape) < 3 or shape[0] != 3 or shape[2] != 3:
+      msg = 'DirectSpaceVectors must be init with a 3xNx3 array of abc vectors'
+      raise ValueError(msg)
 
   @classmethod
   def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectors':
-    """Read and return a Nx3x3 orientation matrix based on ExperimentList"""
-    return cls(abc=cls.assemble_abc_stack(expts))
+    """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
+    abc = [e.crystal.get_real_space_vectors().as_numpy_array() for e in expts]
+    return cls(np.stack(abc, axis=1).T)
 
   @classmethod
   def from_glob(cls, parameters) -> 'DirectSpaceVectors':
-    """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
+    """Read and return a Nx3x3 orientation matrix based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
-    return cls(abc=cls.assemble_abc_stack(expts))
-
-  @staticmethod
-  def assemble_abc_stack(expts: ExperimentList) -> np.ndarray:
-    """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
-    abc = [e.crystal.get_real_space_vectors().as_numpy_array() for e in expts]
-    return np.stack(abc, axis=1)
+    return cls.from_expts(expts)
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
-    """Return a list of expt paths in scrap.input.glob, but not in exclude"""
+    """Return a list of expt paths in input.glob, but not in exclude"""
     input_paths, exclude_paths = [], []
-    for ig in parameters.scrap.input.glob:
+    for ig in parameters.input.glob:
       input_paths.extend(glob.glob(ig))
-    for ie in parameters.scrap.input.exclude:
+    for ie in parameters.input.exclude:
       exclude_paths.extend(glob.glob(ie))
     return [it for it in input_paths if it not in exclude_paths]
 
   @property
   def a(self) -> np.ndarray:
-    return self.abc[0]
+    return self[0]
 
   @property
   def b(self) -> np.ndarray:
-    return self.abc[1]
+    return self[1]
 
   @property
   def c(self) -> np.ndarray:
-    return self.abc[2]
+    return self[2]
 
 
 ##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
