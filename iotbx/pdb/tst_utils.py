@@ -15,6 +15,17 @@ ATOM      9  CA BLEU A 140      33.072  14.565  23.972  0.50  5.41           C
 ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65           C
 """
 
+pseudo_as_pdb="""
+ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65      
+ATOM     24 ZC1'  GC U  11      10.024   9.813   3.777  1.00 36.50      UNK
+"""
+spacing_as_pdb="""
+ATOM     10  I   ASN A 141      30.271  17.061  23.474  1.00  5.65       
+ATOM     11 I    ASN A 141      30.271  17.061  23.474  1.00  5.65    
+HETATM   12  I   LIG A 141      30.271  17.061  23.474  1.00  5.65      
+HETATM   13 I    LIG A 141      30.271  17.061  23.474  1.00  5.65     
+"""
+
 as_pdb = pdb_str_to_be_cif
 # Convert pdb_str_hybrid_residues to mmcif:
 from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
@@ -25,6 +36,18 @@ def exercise_all_chain_ids():
   ids = iotbx.pdb.utils.all_chain_ids()
   assert len(ids)==3906
   assert len(set(ids))==3906
+
+def exercise_set_element_ignoring_spacings():
+  from iotbx.pdb.utils import get_pdb_info
+  pdb_info = get_pdb_info(spacing_as_pdb, allow_incorrect_spacing = True)
+  from iotbx.pdb.utils import set_element_ignoring_spacings 
+  set_element_ignoring_spacings(pdb_info.hierarchy)
+
+def exercise_check_pseudo_atoms():
+  from iotbx.pdb.utils import get_pdb_info
+  pdb_info = get_pdb_info(pseudo_as_pdb, check_pseudo = True)
+  from iotbx.pdb.utils import check_for_pseudo_atoms
+  check_for_pseudo_atoms(pdb_info.hierarchy)
 
 def exercise_get_pdb_info():
   from iotbx.pdb.utils import get_pdb_info
@@ -41,6 +64,8 @@ def exercise_get_pdb_info():
     pdb_info_from_cif.crystal_symmetry)
 
 def run():
+  exercise_set_element_ignoring_spacings()
+  exercise_check_pseudo_atoms()
   exercise_get_pdb_info()
   exercise_all_chain_ids()
   print("OK")

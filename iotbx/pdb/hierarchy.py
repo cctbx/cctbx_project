@@ -1661,6 +1661,37 @@ class _():
           is_first_in_chain = False
     return False
 
+  def guess_chemical_elements(self,
+     check_pseudo = False,
+     convert_atom_names_to_uppercase = True,
+     allow_incorrect_spacing = None):
+    ''' Attempt to guess chemical elements for all atoms in hierarchy
+       where this is not set.  Normally used only just after reading in
+       PDB-formatted files that do not have elements specified
+    '''
+    # Standard set of chemical elements based on atom names (and leading spaces)
+    atoms = self.atoms()
+    if convert_atom_names_to_uppercase:
+      for at in atoms:
+        at.name = at.name.upper()
+    atoms.set_chemical_element_simple_if_necessary()
+
+    # Check to see if all have an element now
+    elements = atoms.extract_element().strip()
+    if elements.all_ne(""): # all done
+      return
+
+    # Check for incorrect spacings (atom name has space before it but should
+    #  not or opposite)
+    if allow_incorrect_spacing:
+      from iotbx.pdb.utils import set_element_ignoring_spacings
+      set_element_ignoring_spacings(self)
+
+    # Check for pseudo-atoms (ZU ZC etc that represent groups of atoms)
+    if check_pseudo:
+      from iotbx.pdb.utils import check_for_pseudo_atoms
+      check_for_pseudo_atoms(self)
+
   def as_mmcif_string(self,
                        crystal_symmetry=None,
                        data_block_name=None,

@@ -415,13 +415,14 @@ the actual chain ID in the mmCIF output.
 
 Methods supplied so that code elsewhere does not need to parse PDB formatted
 strings to remove HETATM, TER, and BREAK records and to sort chains in order
-of chain ID:
+of chain ID, and to guess the element type of atoms where it is not specified:
 
   def remove_hetero(self):
   def contains_hetero(self):
   def contains_break_records(self):
   def remove_ter_or_break(self):
   def sort_chains_by_id(self):
+  def guess_chemical_elements(self, check_pseudo = False,
 
      MODULE:    mmtbx/model/model.py:
 
@@ -464,12 +465,18 @@ def add_hierarchy(s1_ph, s2_ph, create_new_chain_ids_if_necessary = True):
 def catenate_segment_onto_chain(model_chain, s2, gap = 1,
 def get_chain(s1_ph, chain_id = None):
 
+
 Methods to merge and edit models:
 
 def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
 def catenate_segments(s1, s2, gap = 1,
 def catenate_segment_onto_chain(model_chain, s2, gap = 1,
 def simple_combine(model_list,
+
+Method to keep track of the relative numbering of models with
+similar hierarchies:
+
+class numbering_dict:
 
 Method to get hierarchy and pdb_input objects from text files. These differ
 from iotbx.pdb.input() and construct_hierarchy() by allowing empty text
@@ -485,18 +492,20 @@ Shortcuts to get just hierarchy or pdb_input:
 def get_pdb_hierarchy(text=None, file_name = None,
 def get_pdb_input(text = None, file_name = None, lines = None,
 
-Helper methods for reading pdb_input text and getting hierarchy
+Helper methods for reading pdb_input text and getting hierarchy,
+allowing input of models that have incomplete or incorrect
+atom and element specifications
 
 def lines_are_really_text(lines):
 def get_lines(text = None, file_name = None, lines = None):
 def type_of_pdb_input(pdb_inp):
 def try_to_get_hierarchy(pdb_inp):
 
-Methods to guess elements in atoms object from a hierarchy:
+Methods to check for missing elements and incorrect spacings in
+atom names in a hierarchy:
 
-def check_for_missing_elements(atoms, file_name = None):
-def guess_chemical_elements(atoms, check_pseudo = False,
-def check_for_incorrect_spacings(atoms):
+def check_for_missing_elements(hierarchy, file_name = None):
+def set_element_ignoring_spacings(hierarchy):
 
 Method checking for atom names starting with "Z" (used as pseudo-atoms)
 
