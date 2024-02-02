@@ -7,6 +7,7 @@ from typing import List
 import sys
 
 from dxtbx.model import ExperimentList
+from libtbx.phil import parse
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -52,6 +53,7 @@ phil_scope_str = """
       .help = glob which matches all expt files to be excluded from input.
   }
 """
+phil_scope = parse(phil_scope_str)
 
 
 ############################ CONVENIENCE AND TYPING ###########################
@@ -350,7 +352,7 @@ class HedgehogArtist:
 
 
 def run(params_):
-  abc_stack = DirectSpaceVectors.from_glob(params_).abc
+  abc_stack = DirectSpaceVectors.from_glob(params_)
   hha = HedgehogArtist(parameters=params_)
   for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
     wd = WatsonDistribution.from_vectors(vectors)
@@ -377,5 +379,5 @@ if __name__ == '__main__':
   if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
     print(message)
     exit()
-  params = params_from_phil(sys.argv[1:])
+  params = params_from_phil(phil_scope, sys.argv[1:])
   run(params)

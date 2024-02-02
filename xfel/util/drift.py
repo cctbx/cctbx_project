@@ -140,7 +140,7 @@ phil_scope_str = """
 phil_scope = parse(phil_scope_str)
 
 
-def params_from_phil(args):
+def params_from_phil(phil_scope_, args):
   user_phil = []
   for arg in args:
     if os.path.isfile(arg):
@@ -150,7 +150,7 @@ def params_from_phil(args):
         user_phil.append(parse(arg))
       except Exception:
         raise Sorry("Unrecognized argument: %s" % arg)
-  params_ = phil_scope.fetch(sources=user_phil).extract()
+  params_ = phil_scope_.fetch(sources=user_phil).extract()
   return params_
 
 
@@ -1007,5 +1007,5 @@ if __name__ == '__main__':
   if '--help' in sys.argv[1:] or '-h' in sys.argv[1:]:
     print(message)
     exit()
-  params = params_from_phil(sys.argv[1:])
+  params = params_from_phil(phil_scope, sys.argv[1:])
   run(params)
