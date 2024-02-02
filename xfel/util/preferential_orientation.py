@@ -74,7 +74,7 @@ class DirectSpaceVectors:
   def from_glob(cls, parameters) -> 'DirectSpaceVectors':
     """Read and return a Nx3x3 orientation matrix based on scrap parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
-    expts = read_experiments(expt_paths)
+    expts = read_experiments(*expt_paths)
     return cls(abc=cls.assemble_abc_stack(expts))
 
   @staticmethod
