@@ -315,7 +315,8 @@ class HedgehogArtist:
     origin = [0., 0., 0.]
     name = hedgehog.name
     v = hedgehog.distribution.vectors
-    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color, alpha=0.1)
+    axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color,
+                alpha=0.1, arrow_length_ratio=0.0)
     axes.set_xlim([-1, 1])
     axes.set_ylim([-1, 1])
     axes.set_zlim([-1, 1])
