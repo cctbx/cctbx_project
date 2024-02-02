@@ -7,7 +7,7 @@ info_string = '''
 ===========================================================================
 CCTBX methods, tools, and strategies for conversion of PDB-format
 based methods to mmCIF/PDB compatible methods
-2024-01-30 TT
+2024-01-30 2024-02-01 TT
 ===========================================================================
 ===========================================================================
        SECTIONS:
@@ -17,24 +17,23 @@ based methods to mmCIF/PDB compatible methods
    RECOMMENDED OVERALL APPROACHES
    DETAILED SUGGESTIONS FOR MAKING CODE CIF-COMPLIANT
      USING THE PROGRAM TEMPLATE TO HANDLE PDB/MMCIF INPUT/OUTPUT
-     TOOLS AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
      REWRITING CODE USING PDB-FORMATTED TEXT
      TOOLS AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
      CREATING CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
-     USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
    DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF
+   APPENDIX:  TOOLS FOR EXCEPTIONAL CASES
+     USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
+     TOOLS AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
 
 ===========================================================================
 ===========================================================================
 
 SUMMARY OF RECOMMENDED PROCEDURES
 
-I.   USE THE PROGRAM TEMPLATE
-II.  TOOLS ARE AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
-III. IF CODE USES PDB-FORMATTED TEXT IT SHOULD BE REWRITTEN
-IV.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
-V.   CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
-VI.  USE FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
+I.    USE THE PROGRAM TEMPLATE
+II.   IF CODE USES PDB-FORMATTED TEXT IT SHOULD BE REWRITTEN
+III.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
+IV.   CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
 
 ===========================================================================
 ===========================================================================
@@ -60,8 +59,10 @@ III. Write mmCIF or PDB-formatted files with the rules:
      3. Input model is mmCIF and User does not specify which to use
 ===========================================================================
 ===========================================================================
+         RECOMMENDED OVERALL APPROACHES
+===========================================================================
+===========================================================================
 
-    RECOMMENDED OVERALL APPROACHES
   (DETAILS IN THE SECTION "DETAILED SUGGESTIONS FOR MAKING CODE CIF-COMPLIANT")
 
 I. USE THE PROGRAM TEMPLATE
@@ -71,32 +72,7 @@ and parsing of model files. If you do this then all mmCIF/PDB handling is
 taken care of for you, except only that you need to capture the actual
 file names written by the data_manager.
 
-II. TOOLS ARE AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
-
-For existing code that cannot use the Program Template or that
-reads and writes files outside of the Program Template:
-
-  a.  Try to pass the data_manager from the Program Template and use
-     it to read/write files in your programs. Then once again you only
-     need to capture the actual file names written by the data_manager.
-
-  b. If you cannot use the data_manager, use the pdb_or_mmcif_string_info
-     method of the model manager or the hierarchy to write your files.
-     This method allows setting the preferred output format and capturing
-     the name of the actual file that is written.
-
-     Normally you should keep track of the actual file name that is written
-     and then use that later when you read the file back in.  If you do
-     not use this approach, you can use the get_cif_or_pdb_file_if_present
-     tool from iotbx.pdb.utils with your guess of the file name, and it will
-     return the name of the file with that name if present, or the name of a
-     present file with the opposite extension if it is present instead,
-     or blank if neither is present.
-
-     You can use the get_pdb_info tool from iotbx.pdb.utils or the
-     iotbx.pdb.input method to read in either mmCIF or PDB formatted files.
-
-III. IF CODE USES PDB-FORMATTED TEXT IT SHOULD BE REWRITTEN
+II. IF CODE USES PDB-FORMATTED TEXT IT SHOULD BE REWRITTEN
 
 If code parses PDB-formatted text, generally it should be rewritten
 to use the methods in the hierarchy class.
@@ -112,12 +88,11 @@ to use the methods in the hierarchy class.
     iotbx.pdb.utils, or simple custom code can be written to add chains
     from one hierarchy onto another hierarchy.
 
-
-IV.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
+III.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
     You can find possibly-problematic code using the tool
     libtbx.find_pdb_mmcif_problems and specifying a file or directory to check
 
-V.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
+IV.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
     For any code that uses pdb/cif files or that uses the hierarchy object
     should be tested with models that do not fit in PDB format.  It is
     recommended that each standard test using models should be duplicated
@@ -126,37 +101,12 @@ V.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
     tests so that identical starting strings can be used in the original and
     non-PDB-compliant tests.
 
-VI.  USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
-If you have code or 3rd party code that requires PDB-formatted text you can
-convert any hierarchy into a forward-compatible hierarchy that can be
-formatted in PDB format (hybrid-36 PDB format).  This conversion (currently)
-amounts to replacing chainIDs that are longer than 2 characters with
-2-character IDs, and residue names that are 5 characters long with
-3-character residue names.  A table of conversions is kept that allows
-reversion of the hierarchy to its original form.
-
-a.  This procedure is only partially supported and is not encouraged for
-   anything except cases that cannot be managed without PDB formatting.
-
-b.  When this is done, it should be carried out either one-way (conversion
-    to forward-compatible PDB and never converted back), or else the
-    conversion should be carried out, the operation with the converted file
-    done, and the result converted back, all in one small block.
-
-c.  Note that conversion may be very complicated if the chain IDs or the
-    residue names are needed in whatever operation is done with the
-    converted file. This is one of the reasons this approach is not
-    recommended except where required. Tools are supplied to convert
-    any text-based parameters are used with the converted file, but they
-    are not general and not always simple to use.
-
+===========================================================================
+===========================================================================
+        DETAILED SUGGESTIONS FOR MAKING CODE CIF-COMPLIANT
 ===========================================================================
 ===========================================================================
 
-       DETAILED SUGGESTIONS FOR MAKING CODE CIF-COMPLIANT
-
----------------------------------------------------------------------------
----------------------------------------------------------------------------
 I. USING THE PROGRAM TEMPLATE TO HANDLE PDB/MMCIF INPUT/OUTPUT
 
 A. Use the Program Template and use data_manager for
@@ -183,56 +133,7 @@ A. Use the Program Template and use data_manager for
 
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
-
-II.  TOOLS AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
-
-If you do not use the Program template, you will need to keep track
-of the target output format and write your files with a pdb/cif-aware
-method.
-
-1. Add target_output_format to your "output" or "output_files" scope:
-
-     target_output_format = *None pdb mmcif
-       .type = choice
-       .help = Desired output format (if possible). Choices are None (\
-                try to use input format), pdb, mmcif.  If output model\
-                 does not fit in pdb format, mmcif will be used. \
-                 Default is pdb.
-       .short_caption = Desired output format
-
-2. After you set up your parameters, set the target_output_format:
-
-  from iotbx.pdb.utils import set_target_output_format_in_params
-  set_target_output_format_in_params(params)
-
-3. When you write model files, supply the target output format and
-  capture the actual file name written:
-
-a. If you have a data manager and a model object:
-
-  file_name = self.data_manager.write_model_file(
-        model, self.params.output.file_name)
-  print("Model written to '%s'" %file_name)
-
-b. If have only a hierarchy and crystal_symmetry and params:
-
-  info = ph.pdb_or_mmcif_string_info(
-           target_format = params.output_files.target_output_format,
-           target_filename = params.output.file_name,
-           write_file = True,
-           crystal_symmetry=crystal_symmetry)
-  file_name = info.file_name
-  print("Model written to '%s'" %file_name)
-
-c. When you read pdb/mmcif files, if you do not know the ending .pdb or
-     .mmcif, use the function get_cif_or_pdb_file_if_present:
-
-   from iotbx.pdb.utils import get_cif_or_pdb_file_if_present
-   fn = get_cif_or_pdb_file_if_present(fn)
-
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-III.  REWRITING CODE USING PDB-FORMATTED TEXT
+II.  REWRITING CODE USING PDB-FORMATTED TEXT
 
 A. You will want to remove all instances of the following methods. None of these
 are mmcif-compliant:
@@ -354,7 +255,7 @@ D. If your code names intermediate files with the extension '.pdb':
 
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
-V.   TOOLS AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
+III.   TOOLS AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
 
 A.    You can use the libtbx.find_pdb_mmcif_problems to help identify code
    that needs to be modified to make it cif-compatible.
@@ -414,7 +315,7 @@ C. You can run libtbx.find_pdb_mmcif_problems with a file containing a list
 
 ---------------------------------------------------------------------------
 ---------------------------------------------------------------------------
-V.  CREATING CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
+IV.  CREATING CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
 
   You will want to create a cif-only version of all your tests that use
   models.  The purpose of this is to test all the code that handles
@@ -460,41 +361,11 @@ B. If your test uses models in PDB files, you may simply want to
    so you don't overwrite xxx.cif with the new cif-formatted version
    of xxx.pdb
 
----------------------------------------------------------------------------
----------------------------------------------------------------------------
-VI. USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
-
-  The hierarchy class has tools to convert a hierarchy that cannot fit into
-   PDB format into one that can and to keep track of the conversion so that
-   it can be reversed.
-
-  The main tools are:
-
-  1. Convert a hierarchy to one that fits in PDB format, saving conversion
-     information
-    fc_ph = ph.as_forward_compatible_hierarchy()
-
-  2. Get the conversion information:
-    conversion_info = fc_ph.conversion_info()
-
-  3. Convert back using saved conversion info :
-    original_ph = fc_ph.forward_compatible_hierarchy_as_standard()
-
-  4. Convert one-way to PDB format compatible string:
-    str =  ph.as_forward_compatible_string()
-
-  5. Identify whether hierarchy has been converted:
-    is_fc = ph.is_forward_compatible_hierarchy()
-
-  6. Use saved conversion_info to edit text containing words matching
-     chain IDs or residue names, making new text match the chain IDs and
-     residue names used in the forward_compatible hierarchy:
-    new_text = ph.convert_multi_word_text_to_forward_compatible(text)
-
-  These methods are described in detail in the hierarchy.py code.
----------------------------------------------------------------------------
----------------------------------------------------------------------------
+===========================================================================
+===========================================================================
    DETAILS OF METHODS ADDED FOR WORKING WITH PDB/CIF
+===========================================================================
+===========================================================================
 
      MODULE:    iotbx/cli_parser.py
 
@@ -667,6 +538,139 @@ The methods available are:
 
 ===========================================================================
 ===========================================================================
+           APPENDIX:  TOOLS FOR EXCEPTIONAL CASES
+===========================================================================
+===========================================================================
+
+I. TOOLS AVAILABLE IF YOU CANNOT USE THE PROGRAM TEMPLATE
+
+For existing code that cannot use the Program Template or that
+reads and writes files outside of the Program Template:
+
+  a.  Try to pass the data_manager from the Program Template and use
+     it to read/write files in your programs. Then once again you only
+     need to capture the actual file names written by the data_manager.
+
+  b. If you cannot use the data_manager, use the pdb_or_mmcif_string_info
+     method of the model manager or the hierarchy to write your files.
+     This method allows setting the preferred output format and capturing
+     the name of the actual file that is written.
+
+     Normally you should keep track of the actual file name that is written
+     and then use that later when you read the file back in.  If you do
+     not use this approach, you can use the get_cif_or_pdb_file_if_present
+     tool from iotbx.pdb.utils with your guess of the file name, and it will
+     return the name of the file with that name if present, or the name of a
+     present file with the opposite extension if it is present instead,
+     or blank if neither is present.
+
+     You can use the get_pdb_info tool from iotbx.pdb.utils or the
+     iotbx.pdb.input method to read in either mmCIF or PDB formatted files.
+
+Here is how you can do these things.  Note that this only applies for
+modules that really cannot use the Program template.
+
+1. Add target_output_format to your "output" or "output_files" scope:
+
+     target_output_format = *None pdb mmcif
+       .type = choice
+       .help = Desired output format (if possible). Choices are None (\
+                try to use input format), pdb, mmcif.  If output model\
+                 does not fit in pdb format, mmcif will be used. \
+                 Default is pdb.
+       .short_caption = Desired output format
+
+2. After you set up your parameters, set the target_output_format:
+
+  from iotbx.pdb.utils import set_target_output_format_in_params
+  set_target_output_format_in_params(params)
+
+3. When you write model files, supply the target output format and
+  capture the actual file name written:
+
+a. If you have a data manager and a model object:
+
+  file_name = self.data_manager.write_model_file(
+        model, self.params.output.file_name)
+  print("Model written to '%s'" %file_name)
+
+b. If have only a hierarchy and crystal_symmetry and params:
+
+  info = ph.pdb_or_mmcif_string_info(
+           target_format = params.output_files.target_output_format,
+           target_filename = params.output.file_name,
+           write_file = True,
+           crystal_symmetry=crystal_symmetry)
+  file_name = info.file_name
+  print("Model written to '%s'" %file_name)
+
+c. When you read pdb/mmcif files, if you do not know the ending .pdb or
+     .mmcif, use the function get_cif_or_pdb_file_if_present:
+
+   from iotbx.pdb.utils import get_cif_or_pdb_file_if_present
+   fn = get_cif_or_pdb_file_if_present(fn)
+
+---------------------------------------------------------------------------
+---------------------------------------------------------------------------
+
+II.  USING FORWARD-COMPATIBLE PDB FORMAT FOR CODE REQUIRING PDB-FORMATTED TEXT
+
+If you have code or 3rd party code that requires PDB-formatted text you can
+convert any hierarchy into a forward-compatible hierarchy that can be
+formatted in PDB format (hybrid-36 PDB format).  This conversion (currently)
+amounts to replacing chainIDs that are longer than 2 characters with
+2-character IDs, and residue names that are 5 characters long with
+3-character residue names.  A table of conversions is kept that allows
+reversion of the hierarchy to its original form.
+
+a.  This procedure is only partially supported and is not encouraged for
+   anything except cases that cannot be managed without PDB formatting.
+
+b.  When this is done, it should be carried out either one-way (conversion
+    to forward-compatible PDB and never converted back), or else the
+    conversion should be carried out, the operation with the converted file
+    done, and the result converted back, all in one small block.
+
+c.  Note that conversion may be very complicated if the chain IDs or the
+    residue names are needed in whatever operation is done with the
+    converted file. This is one of the reasons this approach is not
+    recommended except where required. Tools are supplied to convert
+    any text-based parameters are used with the converted file, but they
+    are not general and not always simple to use.
+
+d.  The hierarchy class has tools to convert a hierarchy that cannot fit into
+   PDB format into one that can and to keep track of the conversion so that
+   it can be reversed.
+
+  The main tools are:
+
+  1. Convert a hierarchy to one that fits in PDB format, saving conversion
+     information
+    fc_ph = ph.as_forward_compatible_hierarchy()
+
+  2. Get the conversion information:
+    conversion_info = fc_ph.conversion_info()
+
+  3. Convert back using saved conversion info :
+    original_ph = fc_ph.forward_compatible_hierarchy_as_standard()
+
+  4. Convert one-way to PDB format compatible string:
+    str =  ph.as_forward_compatible_string()
+
+  5. Identify whether hierarchy has been converted:
+    is_fc = ph.is_forward_compatible_hierarchy()
+
+  6. Use saved conversion_info to edit text containing words matching
+     chain IDs or residue names, making new text match the chain IDs and
+     residue names used in the forward_compatible hierarchy:
+    new_text = ph.convert_multi_word_text_to_forward_compatible(text)
+
+  These methods are described in detail in the hierarchy.py code.
+===========================================================================
+===========================================================================
+
+
+
 
 '''
 
