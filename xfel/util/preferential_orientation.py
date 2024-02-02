@@ -1,5 +1,6 @@
 from __future__ import division
 
+import typing
 from dataclasses import dataclass
 import glob
 from typing import List
@@ -12,7 +13,6 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
-import pandas as pd
 import scipy as sp
 
 
@@ -53,6 +53,8 @@ phil_scope_str = """
         .help = glob which matches all expt files to be excluded from input.
     }
 """
+
+cctbx_point_group_type = typing.Any
 
 
 ############################ ORIENTATION SCRAPPING ############################
@@ -108,6 +110,7 @@ class DirectSpaceVectors:
 
 
 class SphericalDistribution:
+  """General class for handling distribution of unit vectors in 3D"""
   E1 = np.array([1, 0, 0])
   E2 = np.array([0, 1, 0])
   E3 = np.array([0, 0, 1])
@@ -144,6 +147,11 @@ class SphericalDistribution:
     e2_component = e2 * np.sin(polar) * np.cos(azim)
     e3_component = e3 * np.sin(polar) * np.sin(azim)
     return r * (e1_component + e2_component + e3_component)
+
+  def apply_symmetry(self, symmetry: cctbx_point_group_type):
+    """Apply all symmetry elements of a given point group to `self.vectors` in
+    order to eliminate any bias coming from non-uniform orientation choice"""
+    pass  # TODO
 
 
 class WatsonDistribution(SphericalDistribution):
@@ -212,14 +220,15 @@ class WatsonDistribution(SphericalDistribution):
     self.mu = fitted['mu']
     self.nll = fitted['nll']
 
-  def sample(self, n: int) -> np.ndarray:
+  def sample(self, n: int, seed: int = 42) -> np.ndarray:
     """Sample `n` vectors from self, based on doi 10.1080/03610919308813139"""
     if n < 0:
         return
     k = self.kappa
     rho = (4 * k) / (2 * k + 3 + ((2 * k + 3) ** 2 - 16 * k) ** 0.5)
     r = ((3 * rho) / (2 * k)) ** 3 * np.exp(-3 + 2 * k / rho)
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=seed)
+
     def cos2_of_polar_angle(_n: int) -> np.ndarray:
       u0 = rng.uniform(size=2*_n)
       u1 = rng.uniform(size=2*_n)
@@ -336,7 +345,7 @@ def run(params_):
   hha.plot()
 
 
-def tst_watson_distribution():
+def exercise_watson_distribution():
   hha = HedgehogArtist(parameters=None)
   for kappa in [-1000, -100, -10, 0.000001, 10, 100]:
     wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
