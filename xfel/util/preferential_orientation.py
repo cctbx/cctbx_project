@@ -3,7 +3,7 @@ from __future__ import division
 from collections import deque
 from dataclasses import dataclass
 import glob
-from typing import Any, List, Dict
+from typing import Any, Iterable, List, Dict, Tuple
 import sys
 
 from dxtbx.model import ExperimentList
@@ -63,6 +63,7 @@ phil_scope = parse(phil_scope_str)
 
 
 cctbx_point_group_type = Any
+Int3 = Tuple[int, int, int]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION SCRAPPING ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -278,27 +279,28 @@ class UniquePseudoNodeGenerator:
   For example, pseudo-nodes [1, 1, 0], [-1, -1, 0], and [2, 2, 0] all express
   the same lattice direction {1, 1, 0}, independent of symmetry
   """
-  def __init__(self):
+  def __init__(self) -> None:
     self.nodes_to_yield = deque()
     self.nodes_considered = set()
-    self.expand(around=np.array([0, 0, 0]), radius=3)
+    self.expand(around=(0, 0, 0), radius=3)
 
-  def __next__(self):
+  def __next__(self) -> Int3:
     while self.nodes_to_yield:
       yield self.nodes_to_yield.popleft()
 
-  def add(self, nodes: np.ndarray):
+  def add(self, nodes: Iterable[Int3]) -> None:
     """Add new pseudo-nodes, but only if they hadn't been yielded yet"""
     for node in nodes:
+      node = tuple(node)
       if node not in self.nodes_considered:
         self.nodes_to_yield.append(node)
         self.nodes_considered.add(node)
 
-  def expand(self, around: np.ndarray, radius=2) -> None:
+  def expand(self, around: Int3, radius: int = 2) -> None:
     """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
-    p_range = np.arange(around[0] - radius, around[0] + radius + .1)
-    q_range = np.arange(around[1] - radius, around[1] + radius + .1)
-    r_range = np.arange(around[2] - radius, around[2] + radius + .1)
+    p_range = np.arange(around[0] - radius, around[0] + radius + 1)
+    q_range = np.arange(around[1] - radius, around[1] + radius + 1)
+    r_range = np.arange(around[2] - radius, around[2] + radius + 1)
     pqr_mesh = np.meshgrid(p_range, q_range, r_range)
     pqr = np.column_stack([mesh_comp.ravel() for mesh_comp in pqr_mesh])
     pqr = pqr[np.linalg.norm(pqr, axis=1) <= radius]
