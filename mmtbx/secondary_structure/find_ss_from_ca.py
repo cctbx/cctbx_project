@@ -342,22 +342,6 @@ def compress_indices(values):
   return new_compressed_values
 
 ######## END Methods for getting selection strings from a model ############
-def get_new_chain_id(existing_chain_ids):
-  # Generate something new...
-  lc = "abcdefghijklmnopqrstuvwxyz"
-  uc = lc.upper()
-  cc = uc+lc
-  eci = []
-  for x in existing_chain_ids:
-    eci.append(x.strip())
-  existing_chain_ids = eci
-  for b in " "+cc:
-    for a in cc:
-      d = (a+b).strip()
-      if not d in existing_chain_ids:
-        return d
-  raise AssertionError ("Not able to generate a new chain ID")
-
 
 def is_close_to(r,last_r,distance_cutoff=None,use_default_distance_cutoff=True):
   if not r or not last_r:

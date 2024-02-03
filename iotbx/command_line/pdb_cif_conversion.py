@@ -84,7 +84,7 @@ to use the methods in the hierarchy class.
   b. All code that accumulates lines from multiple PDB files and then interprets
     the new lines should be replaced by reading each PDB file and merging
     the resulting hierarchies or models.  This can be done for model files
-    with the simple_combine or add_hierarchies methods available in
+    with the add_models or add_hierarchies methods available in
     iotbx.pdb.utils, or simple custom code can be written to add chains
     from one hierarchy onto another hierarchy.
 
@@ -142,9 +142,19 @@ are mmcif-compliant:
   ph.as_pdb_string()
   ph.write_pdb_file()
 
-Suggested replacements:
+The best replacement in all cases is to use the Program template, pass
+the data_manager into any modules that write out models, and 
+use the data_manager to write your model files. If you only have a 
+hierarchy you can still say:
 
-  1. If your code uses model.model_as_pdb():
+  m = hierarchy.as_model_manager(crystal_symmetry = crystal_symmetry)
+  file_name = 'mypdb.pdb'
+  file_name = data_manager.write_model_file(m, file_name)
+
+If for some reason you cannot use the data_manager to write files, 
+here are some alternatives:
+
+  1. If your code uses model.model_as_pdb() like this:
 
     file_name = 'mypdb.pdb'
     str = model.model_as_pdb()
@@ -153,7 +163,7 @@ Suggested replacements:
     f.close()
     print("Wrote model to '%s'" %file_name)
 
-  Use instead model.pdb_or_mmcif_string_info():
+  then use instead model.pdb_or_mmcif_string_info():
 
     file_name = 'mypdb.pdb'
     info = model.pdb_or_mmcif_string_info(
@@ -228,8 +238,8 @@ C. If your code catenates model text like this:
     new_file_name = 'combined.pdb'
     m1 = dm.get_model_file(model_file)
     m2 = dm.get_model_file(other_model_file)
-    from iotbx.pdb.utils import simple_combine
-    m1 = simple_combine(model_list = [m1,m2]) # NOTE: changes m1 in place
+    from iotbx.pdb.utils import add_models
+    m1 = add_models(model_list = [m1,m2])
     new_file_name = dm.write_model_file(m1, new_file_name) # capture actual name
     print("Wrote combined model lines to '%s'" %new_file_name)
 
@@ -460,18 +470,18 @@ def get_cif_or_pdb_file_if_present(file_name):
 
 Methods to merge hierarchies:
 
-def add_hierarchies(ph_list, create_new_chain_ids_if_necessary = True):
-def add_hierarchy(s1_ph, s2_ph, create_new_chain_ids_if_necessary = True):
-def catenate_segment_onto_chain(model_chain, s2, gap = 1,
-def get_chain(s1_ph, chain_id = None):
+def add_hierarchies(hierarchies, create_new_chain_ids_if_necessary = True):
+def add_hierarchy(hierarchy, other, create_new_chain_ids_if_necessary = True):
+def catenate_segment_onto_chain(chain, model, gap = 1,
+def get_chain(hierarchy, chain_id = None):
 
 
 Methods to merge and edit models:
 
-def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
-def catenate_segments(s1, s2, gap = 1,
+def catenate_segments(model, other, gap = 1,
 def catenate_segment_onto_chain(model_chain, s2, gap = 1,
-def simple_combine(model_list,
+def add_models(model_list,
+def add_model(model, other, create_new_chain_ids_if_necessary = True):
 
 Method to keep track of the relative numbering of models with
 similar hierarchies:
