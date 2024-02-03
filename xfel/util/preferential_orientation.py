@@ -284,9 +284,13 @@ class UniquePseudoNodeGenerator:
     self.nodes_considered = set()
     self.expand(around=(0, 0, 0), radius=3)
 
+  def __iter__(self) -> 'UniquePseudoNodeGenerator':
+    return self
+
   def __next__(self) -> Int3:
-    while self.nodes_to_yield:
-      yield self.nodes_to_yield.popleft()
+    if self.nodes_to_yield:
+      return self.nodes_to_yield.popleft()
+    raise StopIteration
 
   def add(self, nodes: Iterable[Int3]) -> None:
     """Add new pseudo-nodes, but only if they hadn't been yielded yet"""
@@ -313,7 +317,7 @@ class UniquePseudoNodeGenerator:
 def find_preferential_orientation_direction(dsv: DirectSpaceVectors) -> dict:
   """Look for a preferential orientation in any direct space direction pqr"""
   unique_pseudo_node_generator = UniquePseudoNodeGenerator()
-  watson_distributions: Dict[np.ndarray, WatsonDistribution] = {}
+  watson_distributions: Dict[Int3, WatsonDistribution] = {}
   for upn in unique_pseudo_node_generator:
     vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
     wd = WatsonDistribution.from_vectors(vectors)
