@@ -59,13 +59,13 @@ phil_scope_str = """
 phil_scope = parse(phil_scope_str)
 
 
-############################ CONVENIENCE AND TYPING ###########################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ CONVENIENCE AND TYPING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 cctbx_point_group_type = typing.Any
 
 
-############################ ORIENTATION SCRAPPING ############################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION SCRAPPING ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class DirectSpaceVectors(np.ndarray):
@@ -122,7 +122,7 @@ class DirectSpaceVectors(np.ndarray):
     return self[2]
 
 
-##################### PREFERENTIAL ORIENTATION CALCULATOR #####################
+# ~~~~~~~~~~~~~~~~~~~ PREFERENTIAL ORIENTATION CALCULATOR ~~~~~~~~~~~~~~~~~~~ #
 
 
 class SphericalDistribution:
@@ -303,7 +303,7 @@ def find_preferential_orientation(dsv: DirectSpaceVectors, params_) -> dict:
   print(f'Best fit found for direction {pqr_array.pqr[i]}: {str(wds[i])}')
 
 
-########################### ORIENTATION VISUALIZING ###########################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION VISUALIZING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 @dataclass
 class Hedgehog:
@@ -361,7 +361,7 @@ class HedgehogArtist:
     plt.show()
 
 
-################################ ENTRY POINTS #################################
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENTRY POINTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 def run(params_):
