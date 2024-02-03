@@ -277,52 +277,10 @@ def catenate_segment_onto_chain(model_chain, s2, gap = 1,
         awl = atom.fetch_labels()
         atom.segid = new_segid
 
-def add_hierarchies(ph_list, create_new_chain_ids_if_necessary = True):
-  new_ph_list = []
-  for ph in ph_list:
-    if ph:
-      new_ph_list.append(ph)
-  if not new_ph_list:
-    return None
-  ph = ph_list[0]
-  for i in range(1, len(ph_list)):
-    ph = add_hierarchy(ph, ph_list[i], create_new_chain_ids_if_necessary =
-      create_new_chain_ids_if_necessary)
-  return ph
-
-
-def add_hierarchy(s1_ph, s2_ph, create_new_chain_ids_if_necessary = True):
-  ''' Add chains from hierarchy s2_ph to existing hierarchy s1_ph'''
-  if not s1_ph:
-    return s2_ph
-  s1_ph = s1_ph.deep_copy()
-  if not s2_ph:
-    return s1_ph
-  existing_chain_ids = s1_ph.chain_ids()
-  for model_mm_2 in s2_ph.models()[:1]:
-    for chain in model_mm_2.chains():
-      if chain.id in existing_chain_ids: # duplicate chains in add_model
-        if not create_new_chain_ids_if_necessary:
-          # append to existing chain
-          existing_chain = get_chain(s1_ph, chain_id = chain.id)
-          catenate_segment_onto_chain(existing_chain, None, gap = 1,
-               keep_numbers = True, insertion_chain= chain.detached_copy())
-          continue
-        else:
-          chain.id = get_new_chain_id(existing_chain_ids)
-      new_chain = chain.detached_copy()
-      existing_chain_ids.append(chain.id)
-      for model_mm in s1_ph.models()[:1]:
-        model_mm.append_chain(new_chain)
-  return s1_ph
-
-def get_chain(s1_ph, chain_id = None):
-  for model in s1_ph.models():
-    for chain in model.chains():
-      if chain.id == chain_id:
-        return chain
-
 def lines_are_really_text(lines):
+  ''' Catch case where lines are supplied but actually it is just text,
+     not a list or flex array of lines
+  '''
   if lines and type(lines) in (type('abc'), type(b'abc')):
     return True
   else:
@@ -446,11 +404,10 @@ def get_pdb_input(text = None, file_name = None, lines = None,
   else:
     return pdb_inp
 
-
 def set_element_ignoring_spacings(hierarchy):
   ''' Set missing elements ignoring spacings. This allows
    reading a PDB file where there are no elements given and the
-   atom names are not justified properly. Intended for hetero atoms 
+   atom names are not justified properly. Intended for hetero atoms
    even if they are not marked as such.  Normally try to set
    elements in normal way first.
   '''
@@ -521,27 +478,119 @@ def try_to_get_hierarchy(pdb_inp):
          atoms are present.  Modify this text to match the assertion if
          necessary"""
         raise Sorry(ph_text+"\n"+text+"\n"+str(e))
+def add_hierarchies(hierarchy_list, create_new_chain_ids_if_necessary = True):
+  if not hierarchy_list:
+    return None
+  new_hierarchy_list = []
+  for hierarchy in hierarchy_list:
+    if hierarchy and (hierarchy.overall_counts().n_residues > 0):
+      new_hierarchy_list.append(hierarchy)
+  hierarchy_list = new_hierarchy_list
+  if not hierarchy_list:
+    return None
 
-def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
-  ''' Add chains from s2 to existing s1 to create new composite model'''
-  if not s1:
-    s2.reset_after_changing_hierarchy()
-    return s2
-  s1.add_crystal_symmetry_if_necessary()
-  s1 = s1.deep_copy()
-  if not s2:
-    s1.reset_after_changing_hierarchy()
-    return s1
-  s1_ph = s1.get_hierarchy() # working hierarchy
+  hierarchy = hierarchy_list[0]
+  for ph in hierarchy_list[1:]:
+    hierarchy = add_hierarchy(hierarchy, ph,
+      create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
+  return hierarchy
+
+def add_hierarchy(hierarchy, other, create_new_chain_ids_if_necessary = True):
+  ''' Add chains from hierarchy other to existing hierarchy.
+    Only adds chains from first model in other hierarchy'''
+  if not hierarchy:
+    return other
+  hierarchy = hierarchy.deep_copy()
+  if not other:
+    return hierarchy
+  existing_chain_ids = hierarchy.chain_ids()
+  for model in other.models()[:1]:
+    for chain in model.chains():
+      if chain.id in existing_chain_ids: # duplicate chains in add_model
+        if not create_new_chain_ids_if_necessary:
+          # append to existing chain
+          existing_chain = get_chain(hierarchy, chain_id = chain.id)
+          catenate_segment_onto_chain(existing_chain, None, gap = 1,
+               keep_numbers = True, insertion_chain= chain.detached_copy())
+          continue
+        else:
+          chain.id = get_new_chain_id(existing_chain_ids)
+      new_chain = chain.detached_copy()
+      existing_chain_ids.append(chain.id)
+      for model_mm in hierarchy.models()[:1]:
+        model_mm.append_chain(new_chain)
+  hierarchy.remove_ter_or_break()
+  return hierarchy
+
+def get_chain(hierarchy, chain_id = None):
+  for model in hierarchy.models():
+    for chain in model.chains():
+      if chain.id == chain_id:
+        return chain
+
+def add_models(model_list, create_new_chain_ids_if_necessary = True):
+  ''' Method to combine the chains in a set of models to create a new
+  model with all the chains.
+  param: model_list:  list of model objects
+  param: create_new_chain_ids_if_necessary:  If True (default), if a
+          model has a duplicate chain ID, create a new one and rename it
+  returns:  first model in model_list with all chains from all models.
+  '''
+
+  if not model_list:
+    return None # nothing to do
+  new_model_list = []
+  for m in model_list:
+    if m and (m.get_hierarchy().overall_counts().n_residues > 0):
+      new_model_list.append(m)
+  model_list = new_model_list
+  if not model_list:
+    return None # nothing to do
+
+  if model_list[0].crystal_symmetry() is not None:
+    model_list[0] = model_list[0].deep_copy() 
+    m_had_crystal_symmetry = True
+  else: # Need crystal symmetry for deep_copy of model
+    crystal_symmetry = None
+    for m in model_list:
+      if m.crystal_symmetry() and (not crystal_symmetry):
+        crystal_symmetry = m.crystal_symmetry()
+        break
+    # Can deep-copy a hierarchy without crystal_symmetry
+    ph = model_list[0].get_hierarchy().deep_copy()
+    model_list[0] = ph.as_model_manager(crystal_symmetry = crystal_symmetry)
+    model_list[0].add_crystal_symmetry_if_necessary()
+    m_had_crystal_symmetry = False
+
+  model = model_list[0]
+  for m in model_list[1:]:
+    model = add_model(model, m,
+         create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
+
+  if not m_had_crystal_symmetry:
+    model = model.get_hierarchy().as_model_manager(crystal_symmetry = None)
+  return model
+
+def add_model(model, other, create_new_chain_ids_if_necessary = True):
+  ''' Add chains from other to existing model to create new composite model'''
+  if not model:
+    other.reset_after_changing_hierarchy()
+    return other
+  model.add_crystal_symmetry_if_necessary()
+  model = model.deep_copy()
+  if not other:
+    model.reset_after_changing_hierarchy()
+    return model
+  model_ph = model.get_hierarchy() # working hierarchy
   existing_chain_ids = []
-  from mmtbx.secondary_structure.find_ss_from_ca import get_new_chain_id
-  for model_mm1 in s1_ph.models()[:1]:
+  for model_mm1 in model_ph.models()[:1]:
     for chain in model_mm1.chains():
       if not chain.id.strip():
         chain.id = get_new_chain_id(existing_chain_ids)
-  existing_chain_ids = s1_ph.chain_ids()
-  for model_mm_2 in s2.get_hierarchy().models()[:1]:
-    for chain in model_mm_2.chains():
+  existing_chain_ids = model_ph.chain_ids()
+
+  for model_mm2 in other.get_hierarchy().models()[:1]:
+    for chain in model_mm2.chains():
       if not chain.id.strip():
         chain.id = get_new_chain_id(existing_chain_ids)
 
@@ -550,7 +599,7 @@ def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
           # append to existing chain
           from iotbx.pdb.utils import get_chain
           from iotbx.pdb.utils import catenate_segment_onto_chain
-          existing_chain = get_chain(s1_ph, chain_id = chain.id)
+          existing_chain = get_chain(model_ph, chain_id = chain.id)
           catenate_segment_onto_chain(existing_chain, None, gap = 1,
                keep_numbers = True, insertion_chain= chain.detached_copy())
           continue
@@ -558,53 +607,74 @@ def add_model(s1, s2, create_new_chain_ids_if_necessary = True):
           chain.id = get_new_chain_id(existing_chain_ids)
       new_chain = chain.detached_copy()
       existing_chain_ids.append(chain.id)
-      for model_mm in s1_ph.models()[:1]:
+      for model_mm in model_ph.models()[:1]:
         model_mm.append_chain(new_chain)
-  s1.reset_after_changing_hierarchy()
+  # Remove TER/BREAK
+  model.get_hierarchy().remove_ter_or_break()
+  model.reset_after_changing_hierarchy()
 
   # Handle model.info().numbering_dict if present
-  if hasattr(s1,'info') and s1.info().get('numbering_dict') and \
-     hasattr(s2,'info') and s2.info().get('numbering_dict'):
-    s1.info().numbering_dict.add_from_other(s2.info().numbering_dict)
-  return s1
+  if hasattr(model,'info') and model.info().get('numbering_dict') and \
+     hasattr(other,'info') and other.info().get('numbering_dict'):
+    model.info().numbering_dict.add_from_other(other.info().numbering_dict)
+  return model
 
-def catenate_segments(s1, s2, gap = 1,
+def get_new_chain_id(existing_chain_ids):
+  # Generate something new...
+  lc = "abcdefghijklmnopqrstuvwxyz"
+  uc = lc.upper()
+  cc = uc+lc
+  eci = []
+  for x in existing_chain_ids:
+    eci.append(x.strip())
+  existing_chain_ids = eci
+  for b in " "+cc:
+    for a in cc:
+      d = (a+b).strip()
+      if not d in existing_chain_ids:
+        return d
+  raise AssertionError ("Not able to generate a new chain ID")
+
+
+def catenate_segments(model, other, gap = 1,
    keep_numbers = False):
   '''
-    catenate two models and renumber starting with first residue of s1
-    if gap is set, start s2  gap residue numbers higher than the end of s1
+    catenate two models and renumber starting with first residue of model
+    if gap is set, start other  gap residue numbers higher than the end of model
     if keep_numbers is set, just keep all the residue numbers
   '''
-  s1 = s1.deep_copy()
-  s1 = s1.apply_selection_string("not (name OXT)") # get rid of these
-  s1_ph = s1.get_hierarchy() # working hierarchy
-  for model_mm in s1_ph.models()[:1]:
+  model = model.deep_copy()
+  model = model.apply_selection_string("not (name OXT)") # get rid of these
+  model_ph = model.get_hierarchy() # working hierarchy
+  for model_mm in model_ph.models()[:1]:
     for model_chain in model_mm.chains()[:1]:
         from iotbx.pdb.utils import catenate_segment_onto_chain
         catenate_segment_onto_chain(
           model_chain,
-          s2,
+          other,
           gap = gap,
           keep_numbers = keep_numbers)
-  s1.reset_after_changing_hierarchy()
-  return s1
-def catenate_segment_onto_chain(model_chain, s2, gap = 1,
+  model.reset_after_changing_hierarchy()
+  return model
+
+def catenate_segment_onto_chain(chain, other_model, gap = 1,
    keep_numbers = False, insertion_chain = None):
-  '''  catenate residues from s2 onto model_chain'''
+  '''  catenate residues from other (mmtbx.model object)  onto chain.
+     Only includes first chain of first model in other'''
   from iotbx.pdb import resseq_encode
-  if not model_chain:
+  if not chain:
     return
   if not insertion_chain:
-    s2_as_ph = s2.get_hierarchy()
-    if not s2_as_ph.overall_counts().n_residues > 0:
+    other_model_as_ph = other_model.get_hierarchy()
+    if not other_model_as_ph.overall_counts().n_residues > 0:
       return
-    insertion_chain = s2.get_hierarchy().models()[0].chains()[0]
-  new_segid = model_chain.residue_groups(
+    insertion_chain = other_model.get_hierarchy().models()[0].chains()[0]
+  new_segid = chain.residue_groups(
      )[0].atom_groups()[0].atoms()[0].segid
   highest_resseq = None
-  if len(model_chain.residue_groups()) > 0:
-    highest_resseq = model_chain.residue_groups()[0].resseq_as_int()
-  for rg in model_chain.residue_groups():
+  if len(chain.residue_groups()) > 0:
+    highest_resseq = chain.residue_groups()[0].resseq_as_int()
+  for rg in chain.residue_groups():
     rg_resseq = rg.resseq_as_int()
     highest_resseq=max(highest_resseq,rg_resseq)
   resseq_as_int = highest_resseq + (gap - 1)
@@ -613,7 +683,7 @@ def catenate_segment_onto_chain(model_chain, s2, gap = 1,
     rg_copy = rg.detached_copy()
     if (not keep_numbers):
       rg_copy.resseq = resseq_encode(resseq_as_int)
-    model_chain.append_residue_group(
+    chain.append_residue_group(
        residue_group = rg_copy)
     rg_copy.link_to_previous = True # Required
     for ag in rg_copy.atom_groups():
@@ -621,26 +691,6 @@ def catenate_segment_onto_chain(model_chain, s2, gap = 1,
         awl = atom.fetch_labels()
         atom.segid = new_segid
 
-def simple_combine(model_list,
-    create_new_chain_ids_if_necessary = True):
-  ''' Method to combine the chains in a set of models to create a new
-  model with all the chains.
-  param: model_list:  list of model objects
-  param: create_new_chain_ids_if_necessary:  If True (default), if a
-          model has a duplicate chain ID, create a new one and rename it
-  returns:  first model in model_list with all chains from all models.
-          NOTE: first model in model_list is modified by this method. Make
-          a deep_copy before hand if you want to keep it.
-  '''
-
-  model = None
-  for m in model_list:
-    if not model:
-      model = m  # ZZZ why cannot this be a deep_copy?
-    else:
-      model = add_model(model, m,
-         create_new_chain_ids_if_necessary = create_new_chain_ids_if_necessary)
-  return model
 
 def get_cif_or_pdb_file_if_present(file_name):
    ''' Identify whether a file with the name file_name or with
@@ -648,6 +698,9 @@ def get_cif_or_pdb_file_if_present(file_name):
    If file_name is present, return file_name.
    If not, and alternative is present, return alternative file name
    Otherwise return empty string
+   NOTE: This is not intended for use on initial read-in of models. That
+    should be done by the DataManager.  This is only for intermediate files
+    in modules where it is not feasible to use the DataManager.
    '''
 
    import os

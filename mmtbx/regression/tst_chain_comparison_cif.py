@@ -848,6 +848,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   print("OK")
 
 if __name__=="__main__":
+  tst_06() # ZZZ
   tst_01()
   tst_02()
   tst_03()
