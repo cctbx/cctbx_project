@@ -1,9 +1,9 @@
 from __future__ import division
 
-import typing
+from collections import deque
 from dataclasses import dataclass
 import glob
-from typing import List
+from typing import Any, List, Dict
 import sys
 
 from dxtbx.model import ExperimentList
@@ -62,7 +62,7 @@ phil_scope = parse(phil_scope_str)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ CONVENIENCE AND TYPING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-cctbx_point_group_type = typing.Any
+cctbx_point_group_type = Any
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION SCRAPPING ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -269,38 +269,54 @@ class WatsonDistribution(SphericalDistribution):
     self.vectors = self.mu_sph2cart(np.vstack([np.ones_like(theta), theta, phi]).T)
 
 
-class PQRArray:
-  """A collection of pseudo-vectors representing directions in direct space"""
-  RADIUS = 5
-
+class UniquePseudoNodeGenerator:
+  """
+  This class generates a list of unique pseudo-nodes; each pseudo-node
+  represents a single pseudo-vector expressed using integer coordinates
+  in cartesian space. They can be used to express all possible unique
+  lattice directions with indices up to `radius`.
+  For example, pseudo-nodes [1, 1, 0], [-1, -1, 0], and [2, 2, 0] all express
+  the same lattice direction {1, 1, 0}, independent of symmetry
+  """
   def __init__(self):
-    self.pqr: np.ndarray = np.array([0, 0, 0])
-    self.expand(around=np.array([0, 0, 0]))
+    self.nodes_to_yield = deque()
+    self.nodes_considered = set()
+    self.expand(around=np.array([0, 0, 0]), radius=3)
 
-  def expand(self, around: np.ndarray) -> None:
+  def __next__(self):
+    while self.nodes_to_yield:
+      yield self.nodes_to_yield.popleft()
+
+  def add(self, nodes: np.ndarray):
+    """Add new pseudo-nodes, but only if they hadn't been yielded yet"""
+    for node in nodes:
+      if node not in self.nodes_considered:
+        self.nodes_to_yield.append(node)
+        self.nodes_considered.add(node)
+
+  def expand(self, around: np.ndarray, radius=3) -> None:
     """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
-    p_range = np.arange(around[0] - self.RADIUS, around[0] + self.RADIUS + 1)
-    q_range = np.arange(around[1] - self.RADIUS, around[1] + self.RADIUS + 1)
-    r_range = np.arange(around[2] - self.RADIUS, around[2] + self.RADIUS + 1)
+    p_range = np.arange(around[0] - radius, around[0] + radius + .1)
+    q_range = np.arange(around[1] - radius, around[1] + radius + .1)
+    r_range = np.arange(around[2] - radius, around[2] + radius + .1)
     pqr_mesh = np.meshgrid(p_range, q_range, r_range)
     pqr = np.column_stack([mesh_comp.ravel() for mesh_comp in pqr_mesh])
-    pqr = pqr[np.linalg.norm(pqr, axis=1) <= self.RADIUS]
+    pqr = pqr[np.linalg.norm(pqr, axis=1) <= radius]
     p, q, r = pqr.T
     pqr = pqr[(p > 0) | ((p == 0) & (q > 0)) | ((p == 0) & (q == 0) & (r == 1))]
     pqr = pqr // np.gcd(np.gcd(pqr[:, 0], pqr[:, 1]), pqr[:, 2])[:, np.newaxis]
-    pqr = np.vstack(self.pqr, pqr)
-    self.pqr = np.unique(pqr, axis=0)
+    self.add(np.unique(pqr, axis=0))
 
 
-def find_preferential_orientation(dsv: DirectSpaceVectors, params_) -> dict:
+def find_preferential_orientation_direction(dsv: DirectSpaceVectors) -> dict:
   """Look for a preferential orientation in any direct space direction pqr"""
-  pqr_array = PQRArray()
-  wds: List[WatsonDistribution] = []
-  for pqr in pqr_array.pqr:
-    vectors = dsv.a * pqr[0] + dsv.b * pqr[1] + dsv.c * pqr[2]
-    wds.append(WatsonDistribution.from_vectors(vectors))
-  i = np.argmin([wd.nll for wd in wds]) # index of distribution with best fit
-  print(f'Best fit found for direction {pqr_array.pqr[i]}: {str(wds[i])}')
+  unique_pseudo_node_generator = UniquePseudoNodeGenerator()
+  watson_distributions: Dict[np.ndarray, WatsonDistribution] = {}
+  for upn in unique_pseudo_node_generator:
+    vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
+    wd = WatsonDistribution.from_vectors(vectors)
+    watson_distributions[upn] =
+    print(f'Direction {upn}: {wd.nll=}, {wd.kappa=}, {wd.mu=}')
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION VISUALIZING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -328,11 +344,11 @@ class HedgehogArtist:
     self.axes = []
 
   def _generate_axes(self) -> None:
-    gs_width = np.ceil(np.sqrt(len(self))).astype(int)
-    gs_height = np.ceil(len(self) / gs_width).astype(int)
-    gs = GridSpec(gs_height, gs_width, hspace=0, wspace=0)
-    for h in range(gs_height):
-      for w in range(gs_width):
+    axes_grid_width = np.ceil(np.sqrt(len(self))).astype(int)
+    axes_grid_height = np.ceil(len(self) / axes_grid_width).astype(int)
+    gs = GridSpec(axes_grid_height, axes_grid_width, hspace=0, wspace=0)
+    for h in range(axes_grid_height):
+      for w in range(axes_grid_width):
         self.axes.append(self.fig.add_subplot(gs[h, w], projection='3d'))
 
   def _plot_hedgehog(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
