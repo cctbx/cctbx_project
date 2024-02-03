@@ -294,7 +294,7 @@ class UniquePseudoNodeGenerator:
         self.nodes_to_yield.append(node)
         self.nodes_considered.add(node)
 
-  def expand(self, around: np.ndarray, radius=3) -> None:
+  def expand(self, around: np.ndarray, radius=2) -> None:
     """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
     p_range = np.arange(around[0] - radius, around[0] + radius + .1)
     q_range = np.arange(around[1] - radius, around[1] + radius + .1)
@@ -315,8 +315,9 @@ def find_preferential_orientation_direction(dsv: DirectSpaceVectors) -> dict:
   for upn in unique_pseudo_node_generator:
     vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
     wd = WatsonDistribution.from_vectors(vectors)
-    watson_distributions[upn] =
+    watson_distributions[upn] = wd
     print(f'Direction {upn}: {wd.nll=}, {wd.kappa=}, {wd.mu=}')
+  return watson_distributions
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION VISUALIZING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -382,11 +383,10 @@ class HedgehogArtist:
 
 def run(params_):
   abc_stack = DirectSpaceVectors.from_glob(params_)
+  distributions = find_preferential_orientation_direction(abc_stack)
   hha = HedgehogArtist(parameters=params_)
-  for vectors, color, name in zip(abc_stack, 'rgb', 'abc'):
-    wd = WatsonDistribution.from_vectors(vectors)
-    print(name + ': ' + str(wd))
-    hh = Hedgehog(distribution=wd, color=color, name=name)
+  for lattice_direction, distribution in distributions.items():
+    hh = Hedgehog(distribution=distribution, color='r', name=lattice_direction)
     hha.register_hedgehog(hh)
   hha.plot()
 
