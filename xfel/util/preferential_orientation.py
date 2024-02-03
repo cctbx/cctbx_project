@@ -51,6 +51,9 @@ phil_scope_str = """
       .type = str
       .multiple = True
       .help = glob which matches all expt files to be excluded from input.
+    symmetrize = True
+      .type = bool
+      .help = Apply crystal's point group symmetry ops to bases to avoid bias
   }
 """
 phil_scope = parse(phil_scope_str)
@@ -74,17 +77,27 @@ class DirectSpaceVectors(np.ndarray):
     return super().__new__(cls, abc.shape, dtype=float, buffer=abc)
 
   @classmethod
-  def from_expts(cls, expts: ExperimentList) -> 'DirectSpaceVectors':
+  def from_expts(cls, expts: ExperimentList, symmetrize=True,
+                 ) -> 'DirectSpaceVectors':
     """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
-    abc = [e.crystal.get_real_space_vectors().as_numpy_array() for e in expts]
-    return cls(np.stack(abc, axis=1).T)
+    abcs = []
+    for expt in expts:
+      abc_raw = expt.crystal.get_real_space_vectors().as_numpy_array()
+      if symmetrize:
+        pg = expt.crystal.get_space_group().build_derived_point_group()
+        for symm_op in pg:
+          symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
+          abcs.append(symm_op_m3.T @ abc_raw)
+      else:
+        abcs.append(abc_raw)
+    return cls(np.stack(abcs, axis=1).T)
 
   @classmethod
   def from_glob(cls, parameters) -> 'DirectSpaceVectors':
     """Read and return a Nx3x3 orientation matrix based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
-    return cls.from_expts(expts)
+    return cls.from_expts(expts, symmetrize=parameters.input.symmetrize)
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
@@ -331,7 +344,7 @@ class HedgehogArtist:
     alpha = 1 / np.log2(len(v) + 1E-8)
     axes.quiver(*origin, v[:, 0], v[:, 1], v[:, 2], colors=hedgehog.color,
                 alpha=alpha, arrow_length_ratio=0.0)
-    axes.quiver(*-mu, *mu, colors='k', arrow_length_ratio=0.1)
+    axes.quiver(*-mu, *2*mu, colors='k', arrow_length_ratio=0.1)
     axes.plot(mu_ring[:, 0], mu_ring[:, 1], mu_ring[:, 2], color='k')
     axes.set_xlim([-1, 1])
     axes.set_ylim([-1, 1])
