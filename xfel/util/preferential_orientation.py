@@ -79,6 +79,14 @@ SgtbxSpaceGroup = Any
 SgtbxSymmOp = Any
 
 
+def positive_first_range(around: int, radius: int):
+  """Return range where numbers >= 0 are given first, in order ~ abs value"""
+  full_arange = np.arange(around - radius, around + radius + 1)
+  non_negative_arange = full_arange[full_arange >= 0]
+  negative_arange = np.flip(full_arange[full_arange < 0])
+  return np.concatenate([non_negative_arange, negative_arange])
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -86,8 +94,7 @@ def transform(vectors: Iterable[Number3],
               symm_op: SgtbxSymmOp,
               ) -> np.ndarray[Number3]:
   """Transform Number3 or Nx3 Iterable of Number3-s using symm_op """
-  vectors = list(vectors)  # read generators, avoid tuples
-  vectors = np.array(vectors, dtype=type(vectors[0][0]))
+  vectors = np.array(list(vectors))  # read generators, avoid tuples
   symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
   return vectors @ symm_op_m3
 
@@ -126,6 +133,8 @@ class DirectSpaceBases(np.ndarray):
       if expt_sg != space_group:
         continue
       abcs.append(expt.crystal.get_real_space_vectors().as_numpy_array())
+    if not abcs:
+      raise ValueError('No experiments matching input space group found')
     return cls(np.stack(abcs, axis=0))
     #   abc_raw = expt.crystal.get_real_space_vectors().as_numpy_array()
     #   if symmetrize:
@@ -189,7 +198,7 @@ class DirectSpaceBases(np.ndarray):
   def symmetrize(self, point_group: SgtbxPointGroup) -> 'DirectSpaceBases':
     """Transform all vectors in self using all symm. ops. in point group"""
     transformed = [self.transform(symm_op) for symm_op in point_group]
-    return self.__class__(np.stack(transformed, axis=0))
+    return self.__class__(np.concatenate(transformed, axis=0))
 
 
 # ~~~~~~~~~~~~~~~~~~~ PREFERENTIAL ORIENTATION CALCULATOR ~~~~~~~~~~~~~~~~~~~ #
@@ -361,16 +370,17 @@ class UniquePseudoNodeGenerator:
     """Add new pseudo-nodes, but only if they hadn't been yielded yet"""
     for node in nodes:
       node = tuple(node)
-      equivalent = {transform(node, symm_op) for symm_op in self.point_group}
-      if not equivalent.intersection(self.nodes_considered):
+      symmetry_equivalents = {tuple(transform(node, symm_op))
+                              for symm_op in self.point_group}
+      if not symmetry_equivalents.intersection(self.nodes_considered):
         self.nodes_to_yield.append(node)
         self.nodes_considered.add(node)
 
   def expand(self, around: Int3, radius: int = 2) -> None:
     """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
-    p_range = np.arange(around[0] - radius, around[0] + radius + 1)
-    q_range = np.arange(around[1] - radius, around[1] + radius + 1)
-    r_range = np.arange(around[2] - radius, around[2] + radius + 1)
+    p_range = positive_first_range(around[0], radius)
+    q_range = positive_first_range(around[1], radius)
+    r_range = positive_first_range(around[2], radius)
     pqr_mesh = np.meshgrid(p_range, q_range, r_range)
     pqr = np.column_stack([mesh_comp.ravel() for mesh_comp in pqr_mesh])
     pqr = pqr[np.linalg.norm(pqr, axis=1) <= radius]
