@@ -143,15 +143,15 @@ are mmcif-compliant:
   ph.write_pdb_file()
 
 The best replacement in all cases is to use the Program template, pass
-the data_manager into any modules that write out models, and 
-use the data_manager to write your model files. If you only have a 
+the data_manager into any modules that write out models, and
+use the data_manager to write your model files. If you only have a
 hierarchy you can still say:
 
   m = hierarchy.as_model_manager(crystal_symmetry = crystal_symmetry)
   file_name = 'mypdb.pdb'
   file_name = data_manager.write_model_file(m, file_name)
 
-If for some reason you cannot use the data_manager to write files, 
+If for some reason you cannot use the data_manager to write files,
 here are some alternatives:
 
   1. If your code uses model.model_as_pdb() like this:
@@ -163,14 +163,12 @@ here are some alternatives:
     f.close()
     print("Wrote model to '%s'" %file_name)
 
-  then use instead model.pdb_or_mmcif_string_info():
+  then use instead model.write_pdb_or_mmcif_file():
 
     file_name = 'mypdb.pdb'
-    info = model.pdb_or_mmcif_string_info(
+    file_name = model.write_pdb_or_mmcif_file(
         target_format = params.output_files.target_output_format,
-        target_filename = file_name,
-        write_file = True)
-    file_name = info.file_name
+        target_filename = file_name)
     print("Wrote model to '%s'" %file_name)
 
   2. If your code uses ph.as_pdb_string() and you need the string:
@@ -179,12 +177,11 @@ here are some alternatives:
     str = ph.as_pdb_string()
     print("Doing something with a string %s" %str)
 
-  Use instead model.pdb_or_mmcif_string_info() which will give you a PDB or
+  Use instead model.as_pdb_or_mmcif_string() which will give you a PDB or
      mmcif string as appropriate:
 
-    info = model.pdb_or_mmcif_string_info(
+    str = model.as_pdb_or_mmcif_string(
         target_format = params.output_files.target_output_format)
-    str = info.pdb_string
     print("Doing something with a string %s" %str)
 
   3. If your code uses ph.as_pdb_string() or ph.write_pdb_file() and you are
@@ -203,14 +200,12 @@ here are some alternatives:
     str = ph.write_model_file(file_name)
     print("Wrote model to '%s'" %file_name)
 
-   Use instead pdb_or_mmcif_string_info:
+   Use instead write_pdb_or_mmcif_file:
 
     file_name = 'mypdb.pdb'
-    info = ph.pdb_or_mmcif_string_info(
+    file_name = ph.write_pdb_or_mmcif_string(
         target_format = params.output_files.target_output_format,
-        target_filename = file_name,
-        write_file = True)
-    file_name = info.file_name
+        target_filename = file_name)
     print("Wrote model to '%s'" %file_name)
 
 B. You will want to rewrite all code that interprets model text line-by-line.
@@ -254,7 +249,7 @@ D. If your code names intermediate files with the extension '.pdb':
     f.close()
     print("Wrote intermediate model lines to '%s'" %new_file_name)
 
-  Use the data_manager or pdb_or_mmcif_string_info to write the file, and
+  Use the data_manager or write_pdb_or_mmcif_file to write the file, and
     capture the actual file name so that you can use it when you read the
     contents of the file back in.
 
@@ -410,10 +405,14 @@ Methods for converting hierarchy to forward-compatible (fits in PDB format,
   def as_forward_compatible_string(self, **kw):
 
 Method for writing as PDB or mmCIF string, using supplied target_format if
-possible, optionally writing as file, returning group_args object with
-text string, file_name written, and is_mmcif marker:
+possible, returning file name written:
 
-  def pdb_or_mmcif_string_info(self,
+  def write_pdb_or_mmcif_file(self,
+
+Method for obtaining a PDB or mmCIF string, using supplied target_format if
+possible, returning the string:
+
+  def as_pdb_or_mmcif_string(self,
 
 NOTE: This method and the corresponding method in model.py use
 default of segid_as_auth_segid = True, different from the default in
@@ -436,12 +435,15 @@ of chain ID, and to guess the element type of atoms where it is not specified:
 
      MODULE:    mmtbx/model/model.py:
 
-Method matching one of the same name in hierarchy.py,
-for writing as PDB or mmCIF string, using supplied target_format if
-possible, optionally writing as file, returning group_args object with
-text string, file_name written, and is_mmcif marker:
+Method for writing as PDB or mmCIF string, using supplied target_format if
+possible, returning file name written:
 
-  def  pdb_or_mmcif_string_info(self,
+  def write_pdb_or_mmcif_file(self,
+
+Method for obtaining a PDB or mmCIF string, using supplied target_format if
+possible, returning the string:
+
+  def as_pdb_or_mmcif_string(self,
 
 NOTE: This method and the corresponding method in hierarchy.py use
 default of segid_as_auth_segid = True, different from the default in
@@ -570,7 +572,7 @@ reads and writes files outside of the Program Template:
      it to read/write files in your programs. Then once again you only
      need to capture the actual file names written by the data_manager.
 
-  b. If you cannot use the data_manager, use the pdb_or_mmcif_string_info
+  b. If you cannot use the data_manager, use the write_pdb_or_mmcif_file
      method of the model manager or the hierarchy to write your files.
      This method allows setting the preferred output format and capturing
      the name of the actual file that is written.
@@ -615,12 +617,10 @@ a. If you have a data manager and a model object:
 
 b. If have only a hierarchy and crystal_symmetry and params:
 
-  info = ph.pdb_or_mmcif_string_info(
+  file_name = ph.write_pdb_or_mmcif_file(
            target_format = params.output_files.target_output_format,
            target_filename = params.output.file_name,
-           write_file = True,
            crystal_symmetry=crystal_symmetry)
-  file_name = info.file_name
   print("Model written to '%s'" %file_name)
 
 c. When you read pdb/mmcif files, if you do not know the ending .pdb or

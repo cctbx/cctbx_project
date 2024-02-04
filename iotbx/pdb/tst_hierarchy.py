@@ -7311,6 +7311,92 @@ ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
   assert not h.contains_hetero()
 
 
+def exercise_as_pdb_or_mmcif_string():
+  pdb_inp_lines = flex.split_lines("""\
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+""")
+  h = pdb.input(source_info=None, lines=pdb_inp_lines).construct_hierarchy()
+  assert h.fits_in_pdb_format()
+  text = h.as_pdb_or_mmcif_string()
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(text))
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert not is_mmcif
+
+  h.only_model().chains()[1].id = "long_chain_id"
+  assert not h.fits_in_pdb_format()
+  text = h.as_pdb_or_mmcif_string()
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(text))
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  h = pdb.input(source_info=None, lines=pdb_inp_lines).construct_hierarchy()
+  assert h.fits_in_pdb_format()
+  text = h.as_pdb_or_mmcif_string(target_format='mmcif')
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(text))
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  h.only_model().chains()[1].id = "long_chain_id"
+  assert not h.fits_in_pdb_format()
+  text = h.as_pdb_or_mmcif_string(target_format='pdb')
+  pdb_inp = pdb.input(source_info=None, lines=flex.split_lines(text))
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+def exercise_write_pdb_or_mmcif_file():
+  pdb_inp_lines = flex.split_lines("""\
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+""")
+  from iotbx.pdb.utils import get_pdb_input
+  h = pdb.input(source_info=None, lines=pdb_inp_lines).construct_hierarchy()
+  assert h.fits_in_pdb_format()
+
+  file_name = h.write_pdb_or_mmcif_file('target_pdb.pdb')
+  assert file_name == 'target_pdb.pdb'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert not is_mmcif
+
+  file_name = h.write_pdb_or_mmcif_file('target_pdb.pdb', target_format='mmcif')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  h.only_model().chains()[1].id = "long_chain_id"
+  assert not h.fits_in_pdb_format()
+
+  file_name = h.write_pdb_or_mmcif_file('target_pdb.pdb')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  file_name = h.write_pdb_or_mmcif_file('target_pdb.pdb', target_format='pdb')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+
 def exercise_fits_in_pdb_format():
   pdb_inp_lines = flex.split_lines("""\
 ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
@@ -7419,6 +7505,8 @@ def exercise(args):
     exercise_remove_ter_or_break()
     exercise_contains_hetero()
     exercise_forward_compatibility()
+    exercise_as_pdb_or_mmcif_string()
+    exercise_write_pdb_or_mmcif_file()
     if (not forever): break
   print(format_cpu_times())
 
