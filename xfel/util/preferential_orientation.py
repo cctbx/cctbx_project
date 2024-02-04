@@ -3,11 +3,13 @@ from __future__ import division
 from collections import deque
 from dataclasses import dataclass
 import glob
-from typing import Any, Iterable, List, Dict, Tuple
+from numbers import Number
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
 import sys
 
 from dxtbx.model import ExperimentList
 from libtbx.phil import parse
+import sgtbx
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -51,9 +53,15 @@ phil_scope_str = """
       .type = str
       .multiple = True
       .help = glob which matches all expt files to be excluded from input.
+    space_group = P1
+      .type = space_group
+      .help = Reject all expts that are not described by this space group. \
+              Investigate only directions that are symmetrically equivalent \
+              according to the point symmetry of given group.
     symmetrize = True
       .type = bool
-      .help = Apply crystal's point group symmetry ops to bases to avoid bias
+      .help = Apply point group symmetry extracted from `space_group` to \
+              extracted unit cell bases to avoid bias introduced by indexing
   }
 """
 phil_scope = parse(phil_scope_str)
@@ -62,47 +70,81 @@ phil_scope = parse(phil_scope_str)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ CONVENIENCE AND TYPING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-cctbx_point_group_type = Any
 Int3 = Tuple[int, int, int]
+Number3 = Sequence[Number, Number, Number]
+pg_i1 = sgtbx.space_group('P 1').build_derived_laue_group()
+SgtbxPointGroup = Any
+SgtbxSymmOp = Any
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+
+def transform(vectors: Iterable[Number3],
+              symm_op: SgtbxSymmOp,
+              ) -> np.ndarray[Number3]:
+  """Transform Number3 or Nx3 Iterable of Number3-s using symm_op """
+  vectors = list(vectors)  # read generators, avoid tuples
+  vectors = np.array(vectors, dtype=type(vectors[0][0]))
+  symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
+  return vectors @ symm_op_m3
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION SCRAPPING ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-class DirectSpaceVectors(np.ndarray):
-  """Class responsible for scraping and storing vectors a, b, c from expts"""
+class DirectSpaceBases(np.ndarray):
+  """
+  This class is responsible for scraping and storing vectors a, b, c;
+  Preferably, these come from expts, but the class can be initiated with
+  a raw numpy array as well. It is 3-dimensional, with individual dimensions
+  representing:
+
+  - [n, :, :] - access m-th array of a, b, c vectors;
+  - [:, n, :] - access a (n=0), b (n=1), or c (n=2) vectors;
+  - [:, :, n] - access x (n=0), y (n=1), or z (n=2) components.
+
+  Consequently, the object is always (and must be init. using) a Nx3n3 array.
+  """
   def __new__(cls, abc: np.ndarray):
-    if len(abc.shape) < 3 or abc.shape[0] != 3 or abc.shape[2] != 3:
-      msg = 'DirectSpaceVectors must be init with a 3xNx3 array of abc vectors'
+    if len(abc.shape) != 3 or abc.shape[1] != 3 or abc.shape[2] != 3:
+      msg = 'DirectSpaceVectors must be init with a Nx3x3 array of abc vectors'
       raise ValueError(msg)
     return super().__new__(cls, abc.shape, dtype=float, buffer=abc)
 
   @classmethod
-  def from_expts(cls, expts: ExperimentList, symmetrize=True,
-                 ) -> 'DirectSpaceVectors':
+  def from_expts(cls,
+                 expts: ExperimentList,
+                 space_group=sgtbx.space_group('P 1'),
+                 ) -> 'DirectSpaceBases':
     """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
     abcs = []
     for expt in expts:
-      abc_raw = expt.crystal.get_real_space_vectors().as_numpy_array()
-      if symmetrize:
-        pg = expt.crystal.get_space_group().build_derived_point_group()
-        for symm_op in pg:
-          symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
-          abcs.append(symm_op_m3.T @ abc_raw)
-      else:
-        abcs.append(abc_raw)
-    return cls(np.stack(abcs, axis=1).T)
+      expt_sg = expt.crystal.get_space_group()
+      if expt_sg != space_group:
+        continue
+      abcs.append(expt.crystal.get_real_space_vectors().as_numpy_array())
+    return cls(np.stack(abcs, axis=0))
+    #   abc_raw = expt.crystal.get_real_space_vectors().as_numpy_array()
+    #   if symmetrize:
+    #     pg = sg.build_derived_point_group()
+    #     for symm_op in pg:
+    #       symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
+    #       abcs.append(symm_op_m3.T @ abc_raw)
+    #   else:
+    #     abcs.append(abc_raw)
+    # return cls(np.stack(abcs, axis=1).T)
 
   @classmethod
-  def from_glob(cls, parameters) -> 'DirectSpaceVectors':
+  def from_glob(cls, parameters) -> 'DirectSpaceBases':
     """Read and return a Nx3x3 orientation matrix based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
-    return cls.from_expts(expts, symmetrize=parameters.input.symmetrize)
+    return cls.from_expts(expts)
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
-    """Return a list of expt paths in input.glob, but not in exclude"""
+    """Return a list of expt paths in `input.glob`, but not in `exclude`"""
     input_paths, exclude_paths = [], []
     for ig in parameters.input.glob:
       input_paths.extend(glob.glob(ig))
@@ -112,15 +154,39 @@ class DirectSpaceVectors(np.ndarray):
 
   @property
   def a(self) -> np.ndarray:
-    return self[0]
+    return np.array(self[:, 0, :])
 
   @property
   def b(self) -> np.ndarray:
-    return self[1]
+    return np.array(self[:, 1, :])
 
   @property
   def c(self) -> np.ndarray:
-    return self[2]
+    return np.array(self[:, 2, :])
+
+  @property
+  def x(self) -> np.ndarray:
+    return np.array(self[:, :, 0])
+
+  @property
+  def y(self) -> np.ndarray:
+    return np.array(self[:, :, 1])
+
+  @property
+  def z(self) -> np.ndarray:
+    return np.array(self[:, :, 2])
+
+  def transform(self, symm_op: SgtbxSymmOp) -> 'DirectSpaceBases':
+    """Transform all vectors in self using sgtbx rt_mx-type object"""
+    x = transform(self.x, symm_op)
+    y = transform(self.y, symm_op)
+    z = transform(self.z, symm_op)
+    return self.__class__(np.stack([x, y, z], axis=2))
+
+  def symmetrize(self, point_group: SgtbxPointGroup) -> 'DirectSpaceBases':
+    """Transform all vectors in self using all symm. ops. in point group"""
+    transformed = [self.transform(symm_op) for symm_op in point_group]
+    return self.__class__(np.stack(transformed, axis=0))
 
 
 # ~~~~~~~~~~~~~~~~~~~ PREFERENTIAL ORIENTATION CALCULATOR ~~~~~~~~~~~~~~~~~~~ #
@@ -172,11 +238,6 @@ class SphericalDistribution:
     e2_component = e2 * np.sin(polar) * np.cos(azim)
     e3_component = e3 * np.sin(polar) * np.sin(azim)
     return r * (e1_component + e2_component + e3_component)
-
-  def apply_symmetry(self, symmetry: cctbx_point_group_type):
-    """Apply all symmetry elements of a given point group to `self.vectors` in
-    order to eliminate any bias coming from non-uniform orientation choice"""
-    pass  # TODO
 
 
 class WatsonDistribution(SphericalDistribution):
@@ -279,7 +340,8 @@ class UniquePseudoNodeGenerator:
   For example, pseudo-nodes [1, 1, 0], [-1, -1, 0], and [2, 2, 0] all express
   the same lattice direction {1, 1, 0}, independent of symmetry
   """
-  def __init__(self) -> None:
+  def __init__(self, laue_group: SgtbxPointGroup = pg_i1) -> None:
+    self.point_group = laue_group
     self.nodes_to_yield = deque()
     self.nodes_considered = set()
     self.expand(around=(0, 0, 0), radius=3)
@@ -296,7 +358,8 @@ class UniquePseudoNodeGenerator:
     """Add new pseudo-nodes, but only if they hadn't been yielded yet"""
     for node in nodes:
       node = tuple(node)
-      if node not in self.nodes_considered:
+      equivalent = {transform(node, symm_op) for symm_op in self.point_group}
+      if not equivalent.intersection(self.nodes_considered):
         self.nodes_to_yield.append(node)
         self.nodes_considered.add(node)
 
@@ -314,7 +377,7 @@ class UniquePseudoNodeGenerator:
     self.add(np.unique(pqr, axis=0))
 
 
-def find_preferential_orientation_direction(dsv: DirectSpaceVectors) -> dict:
+def find_preferential_orientation_direction(dsv: DirectSpaceBases) -> dict:
   """Look for a preferential orientation in any direct space direction pqr"""
   unique_pseudo_node_generator = UniquePseudoNodeGenerator()
   watson_distributions: Dict[Int3, WatsonDistribution] = {}
@@ -388,7 +451,7 @@ class HedgehogArtist:
 
 
 def run(params_):
-  abc_stack = DirectSpaceVectors.from_glob(params_)
+  abc_stack = DirectSpaceBases.from_glob(params_)
   distributions = find_preferential_orientation_direction(abc_stack)
   hha = HedgehogArtist(parameters=params_)
   for lattice_direction, distribution in distributions.items():
