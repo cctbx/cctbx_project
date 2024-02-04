@@ -1503,7 +1503,106 @@ ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
   else:
     assert 0
 
+def exercise_12_as_pdb_or_mmcif_string():
+  pdb_inp_lines = flex.split_lines("""\
+CRYST1  107.161  107.161   93.144  90.00  90.00 120.00 H 3           9
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+""")
+  from iotbx.pdb.utils import get_pdb_input, get_pdb_info
+  pdb_info = get_pdb_info(lines=pdb_inp_lines)
+  h = pdb_info.hierarchy
+  m = h.as_model_manager(crystal_symmetry = pdb_info.crystal_symmetry)
+  assert m.can_be_output_as_pdb()
+
+  text = m.as_pdb_or_mmcif_string()
+  pdb_inp = get_pdb_input(text)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert not is_mmcif
+
+  m.get_hierarchy().only_model().chains()[1].id = "long_chain_id"
+  assert not m.can_be_output_as_pdb()
+  text = m.as_pdb_or_mmcif_string()
+  pdb_inp = get_pdb_input(text)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  pdb_info = get_pdb_info(lines=pdb_inp_lines)
+  h = pdb_info.hierarchy
+  m = h.as_model_manager(crystal_symmetry = pdb_info.crystal_symmetry)
+  assert m.can_be_output_as_pdb()
+
+  text = m.as_pdb_or_mmcif_string(target_format='mmcif')
+  pdb_inp = get_pdb_input(text)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  m.get_hierarchy().only_model().chains()[1].id = "long_chain_id"
+  assert not m.can_be_output_as_pdb()
+  text = m.as_pdb_or_mmcif_string(target_format='pdb')
+  pdb_inp = get_pdb_input(text)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+def exercise_13_write_pdb_or_mmcif_file():
+  pdb_inp_lines = flex.split_lines("""\
+CRYST1  107.161  107.161   93.144  90.00  90.00 120.00 H 3           9
+ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C
+ATOM      5  CA  VAL A   2      44.978 -63.576  62.233  1.00 29.81           C
+ATOM      8  N   GLN B   3      44.585 -65.878  62.864  1.00 25.93           N
+ATOM      9  CA  GLN B   3      44.166 -67.262  62.686  1.00 24.46           C
+ATOM     10  C   GLN B   3      42.730 -67.505  63.153  1.00 23.33           C
+ATOM     11  O   GLN B   3      42.389 -67.234  64.302  1.00 20.10           O
+ATOM     12  N   MET B   4      41.894 -68.026  62.256  1.00 24.27           N
+ATOM     13  CA  MET B   4      40.497 -68.318  62.576  1.00 22.89           C
+ATOM     14  C   MET B   4      40.326 -69.824  62.795  1.00 21.48           C
+ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
+""")
+  from iotbx.pdb.utils import get_pdb_input, get_pdb_info
+  pdb_info = get_pdb_info(lines=pdb_inp_lines)
+  h = pdb_info.hierarchy
+  m = h.as_model_manager(crystal_symmetry = pdb_info.crystal_symmetry)
+  assert m.can_be_output_as_pdb()
+
+  file_name = m.write_pdb_or_mmcif_file('target_pdb.pdb')
+  assert file_name == 'target_pdb.pdb'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert not is_mmcif
+
+  file_name = m.write_pdb_or_mmcif_file('target_pdb.pdb', target_format='mmcif')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  m.get_hierarchy().only_model().chains()[1].id = "long_chain_id"
+  assert not m.can_be_output_as_pdb()
+
+  file_name = m.write_pdb_or_mmcif_file('target_pdb.pdb')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
+  file_name = m.write_pdb_or_mmcif_file('target_pdb.pdb', target_format='pdb')
+  assert file_name == 'target_pdb.cif'
+  pdb_inp = get_pdb_input(file_name = file_name)
+  is_mmcif = (str(type(pdb_inp)).find('cif')>0)
+  assert is_mmcif
+
 def run():
+  exercise_12_as_pdb_or_mmcif_string()
+  exercise_13_write_pdb_or_mmcif_file()
+  return # ZZ
   exercise_00()
   exercise()
   exercise_2()
@@ -1519,6 +1618,8 @@ def run():
   exercise_9()
   exercise_10()
   exercise_11_ss_annotations()
+  exercise_12_as_pdb_or_mmcif_string()
+  exercise_13_write_pdb_or_mmcif_file()
   print(format_cpu_times())
 
 if (__name__ == "__main__"):

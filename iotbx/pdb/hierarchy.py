@@ -749,14 +749,90 @@ class _():
        import hierarchy_as_forward_compatible_pdb_string
     return hierarchy_as_forward_compatible_pdb_string(self, **kw)
 
+  def as_pdb_or_mmcif_string(self,
+       target_format = None,
+       segid_as_auth_segid = True,
+       remark_section = None,
+       **kw):
+    '''
+     Shortcut for pdb_or_mmcif_string_info with write_file=False, returning
+       only the string representing this hierarchy. The string may be in
+       PDB or mmCIF format, with target_format used if it is feasible.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+     :returns text string representing this hierarchy
+    '''
+
+    info = self.pdb_or_mmcif_string_info(
+       target_format = target_format,
+       segid_as_auth_segid = segid_as_auth_segid,
+       remark_section = remark_section,
+       write_file = False,
+       **kw)
+    return info.pdb_string
+
+  def write_pdb_or_mmcif_file(self,
+       target_filename,
+       target_format = None,
+       data_manager = None,
+       overwrite = True,
+       segid_as_auth_segid = True,
+       remark_section = None,
+       **kw):
+    '''
+     Shortcut for pdb_or_mmcif_string_info with write_file=True, returning
+       only the name of the file that is written. The file may be written
+       in PDB or mmCIF format, with target_format used if feasible.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param target_filename: desired output file name, to be modified to
+        match the output format
+     :param data_manager:  data_manager to write files
+     :param overwrite:  parameter to set overwrite=True in data_manager if True
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+     :returns name of file that is written
+    '''
+
+    info = self.pdb_or_mmcif_string_info(
+       target_filename = target_filename,
+       target_format = target_format,
+       data_manager = data_manager,
+       overwrite = overwrite,
+       segid_as_auth_segid = segid_as_auth_segid,
+       remark_section = remark_section,
+       write_file = True,
+       **kw)
+    return info.file_name
+
   def pdb_or_mmcif_string_info(self,
        target_format = None, target_filename = None,
        data_manager = None,
        overwrite = True,
-       segid_as_auth_segid = True, write_file = False,
+       segid_as_auth_segid = True,
+       write_file = False,
        remark_section = None,
        **kw):
     """
+     NOTE: Normally use instead either as_pdb_or_mmcif_string
+     write_pdb_or_mmcif_file.
+
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
      Use default of segid_as_auth_segid=True here (different than
