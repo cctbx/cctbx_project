@@ -117,7 +117,7 @@ class DirectSpaceBases(np.ndarray):
   @classmethod
   def from_expts(cls,
                  expts: ExperimentList,
-                 space_group=sgtbx.space_group('P 1'),
+                 space_group: SgtbxSpaceGroup = sg_p1,
                  ) -> 'DirectSpaceBases':
     """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
     abcs = []
@@ -142,7 +142,7 @@ class DirectSpaceBases(np.ndarray):
     """Read and return a Nx3x3 orientation matrix based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
-    return cls.from_expts(expts)
+    return cls.from_expts(expts, space_group=parameters.input.spacee_group)
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
