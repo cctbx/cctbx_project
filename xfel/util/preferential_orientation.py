@@ -79,14 +79,6 @@ SgtbxSpaceGroup = Any
 SgtbxSymmOp = Any
 
 
-def positive_first_range(around: int, radius: int):
-  """Return range where numbers >= 0 are given first, in order ~ abs value"""
-  full_arange = np.arange(around - radius, around + radius + 1)
-  non_negative_arange = full_arange[full_arange >= 0]
-  negative_arange = np.flip(full_arange[full_arange < 0])
-  return np.concatenate([non_negative_arange, negative_arange])
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -378,9 +370,9 @@ class UniquePseudoNodeGenerator:
 
   def expand(self, around: Int3, radius: int = 2) -> None:
     """Generate new direction pseudo-vectors in a `RADIUS` around `around`."""
-    p_range = positive_first_range(around[0], radius)
-    q_range = positive_first_range(around[1], radius)
-    r_range = positive_first_range(around[2], radius)
+    p_range = np.arange(around[0] - radius, around[0] + radius + 1)
+    q_range = np.arange(around[1] - radius, around[1] + radius + 1)
+    r_range = np.arange(around[2] - radius, around[2] + radius + 1)
     pqr_mesh = np.meshgrid(p_range, q_range, r_range)
     pqr = np.column_stack([mesh_comp.ravel() for mesh_comp in pqr_mesh])
     pqr = pqr[np.linalg.norm(pqr, axis=1) <= radius]
