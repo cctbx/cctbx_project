@@ -7,9 +7,9 @@ from numbers import Number
 from typing import Any, Dict, Iterable, List, Sequence, Tuple
 import sys
 
+from cctbx import sgtbx
 from dxtbx.model import ExperimentList
 from libtbx.phil import parse
-import sgtbx
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -72,8 +72,10 @@ phil_scope = parse(phil_scope_str)
 
 Int3 = Tuple[int, int, int]
 Number3 = Sequence[Number, Number, Number]
-pg_i1 = sgtbx.space_group('P 1').build_derived_laue_group()
+sg_p1 = sgtbx.space_group('P 1')  # noqa
+pg_i1 = sg_p1.build_derived_laue_group()
 SgtbxPointGroup = Any
+SgtbxSpaceGroup = Any
 SgtbxSymmOp = Any
 
 
@@ -377,9 +379,13 @@ class UniquePseudoNodeGenerator:
     self.add(np.unique(pqr, axis=0))
 
 
-def find_preferential_orientation_direction(dsv: DirectSpaceBases) -> dict:
+def find_preferential_orientation_direction(
+        dsv: DirectSpaceBases,
+        space_group: SgtbxSpaceGroup
+) -> dict:
   """Look for a preferential orientation in any direct space direction pqr"""
-  unique_pseudo_node_generator = UniquePseudoNodeGenerator()
+  laue_group = space_group.build_derived_laue_group()
+  unique_pseudo_node_generator = UniquePseudoNodeGenerator(laue_group)
   watson_distributions: Dict[Int3, WatsonDistribution] = {}
   for upn in unique_pseudo_node_generator:
     vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
@@ -452,7 +458,9 @@ class HedgehogArtist:
 
 def run(params_):
   abc_stack = DirectSpaceBases.from_glob(params_)
-  distributions = find_preferential_orientation_direction(abc_stack)
+  space_group = params_.input.space_group
+  abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
+  distributions = find_preferential_orientation_direction(abc_stack, space_group)
   hha = HedgehogArtist(parameters=params_)
   for lattice_direction, distribution in distributions.items():
     hh = Hedgehog(distribution=distribution, color='r', name=lattice_direction)
