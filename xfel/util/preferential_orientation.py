@@ -142,7 +142,8 @@ class DirectSpaceBases(np.ndarray):
     """Read and return a Nx3x3 orientation matrix based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
-    return cls.from_expts(expts, space_group=parameters.input.spacee_group)
+    space_group = parameters.input.space_group.group()
+    return cls.from_expts(expts, space_group)
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
@@ -458,7 +459,7 @@ class HedgehogArtist:
 
 def run(params_):
   abc_stack = DirectSpaceBases.from_glob(params_)
-  space_group = params_.input.space_group
+  space_group = params_.input.space_group.group()
   abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
   distributions = find_preferential_orientation_direction(abc_stack, space_group)
   hha = HedgehogArtist(parameters=params_)
