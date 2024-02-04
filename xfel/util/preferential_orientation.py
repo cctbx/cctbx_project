@@ -88,7 +88,7 @@ def transform(vectors: Iterable[Number3],
   """Transform Number3 or Nx3 Iterable of Number3-s using symm_op """
   vectors = np.array(list(vectors))  # read generators, avoid tuples
   symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
-  return vectors @ symm_op_m3
+  return vectors @ symm_op_m3.T
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION SCRAPPING ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
