@@ -9,7 +9,7 @@ import sys
 
 from cctbx import sgtbx
 from dxtbx.model import ExperimentList
-from libtbx.phil import parse
+from iotbx.phil import parse
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -71,7 +71,7 @@ phil_scope = parse(phil_scope_str)
 
 
 Int3 = Tuple[int, int, int]
-Number3 = Sequence[Number, Number, Number]
+Number3 = Sequence[Number]
 sg_p1 = sgtbx.space_group('P 1')  # noqa
 pg_i1 = sg_p1.build_derived_laue_group()
 SgtbxPointGroup = Any
