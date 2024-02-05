@@ -826,12 +826,9 @@ def run(
   print(pdb_hierarchy.as_pdb_string())
 
   if pdb_out:
-    info = pdb_hierarchy.pdb_or_mmcif_string_info(target_filename = pdb_out,
+    pdb_out = pdb_hierarchy.write_pdb_or_mmcif_file(target_filename = pdb_out,
       crystal_symmetry = crystal_symmetry)
-    f=open(info.file_name,'w')
-    print(info.pdb_string, file = f)
-    print("Final model is in: %s\n" %(f.name))
-    f.close()
+    print("Final model is in: %s\n" %(pdb_out))
 
   return pdb_hierarchy, pdb_out
 

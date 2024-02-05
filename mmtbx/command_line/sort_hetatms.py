@@ -399,10 +399,8 @@ Full parameters:
     params.output_file = os.path.splitext(
       os.path.basename(params.file_name))[0] + "_sorted.pdb"
   if (not result.pdb_hierarchy.fits_in_pdb_format()):
-    info = result.pdb_hierarchy.pdb_or_mmcif_string_info(
-      target_filename = params.output_file,
-      write_file = True)
-    params.output_file = info.file_name
+    params.output_file = result.pdb_hierarchy.write_pdb_or_mmcif_file(
+      target_filename = params.output_file)
 
   else: # standard pdb file
     f = open(params.output_file, "w")

@@ -203,7 +203,7 @@ here are some alternatives:
    Use instead write_pdb_or_mmcif_file:
 
     file_name = 'mypdb.pdb'
-    file_name = ph.write_pdb_or_mmcif_string(
+    file_name = ph.write_pdb_or_mmcif_file(
         target_format = params.output_files.target_output_format,
         target_filename = file_name)
     print("Wrote model to '%s'" %file_name)

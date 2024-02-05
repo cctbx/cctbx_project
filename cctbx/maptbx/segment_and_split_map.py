@@ -8443,14 +8443,10 @@ def apply_origin_shift(origin_shift = None,
 
 
   if shifted_pdb_file and pdb_hierarchy:
-      info = pdb_hierarchy.pdb_or_mmcif_string_info(
+      shifted_pdb_file = pdb_hierarchy.write_pdb_or_mmcif_file(
         target_filename = shifted_pdb_file,
         crystal_symmetry = tracking_data.crystal_symmetry)
-      shifted_pdb_file = info.file_name
 
-      f = open(shifted_pdb_file, 'w')
-      print(info.pdb_string, file = f)
-      f.close()
       print("Wrote shifted pdb file to %s" %(
         shifted_pdb_file), file = out)
       tracking_data.set_shifted_pdb_info(file_name = shifted_pdb_file,
@@ -8495,14 +8491,10 @@ def restore_pdb(params, tracking_data = None, out = sys.stdout):
     pdb_hierarchy = pdb_hierarchy,
     out = out)
 
-  info = pdb_hierarchy.pdb_or_mmcif_string_info(
+  params.output_files.restored_pdb = pdb_hierarchy.write_pdb_or_mmcif_file(
       crystal_symmetry = tracking_data.crystal_symmetry,
       target_filename = params.output_files.restored_pdb)
-  tracking_data.crystal_symmetry = info.file_name
 
-  f = open(params.output_files.restored_pdb, 'w')
-  print(info.pdb_string, file = f)
-  f.close()
   print("Wrote restored pdb file to %s" %(
      params.output_files.restored_pdb), file = out)
 
