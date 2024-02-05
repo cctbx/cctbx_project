@@ -1,6 +1,6 @@
 from __future__ import division
 
-from collections import deque
+from collections import deque, UserDict
 from dataclasses import dataclass
 import glob
 from numbers import Number
@@ -10,6 +10,7 @@ import sys
 from cctbx import sgtbx
 from dxtbx.model import ExperimentList
 from iotbx.phil import parse
+from libtbx import table_utils
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -21,8 +22,8 @@ import scipy as sp
 
 message = """
 This utility tool aims to determinate, characterise, and quantify the degree
-of preferential orientation in crystals. To this aim, it investigates
-the distribution of vectors a, b, and c on a directions sphere in 3D.
+of preferential orientation in crystals. To this aim, it investigates the
+the distribution of various crystallographic directions a semi-sphere in 3D.
 The code assumes each set of vectors follows Wilson Distribution, and attempts
 to model said distribution by fitting its parameter `mu` and `kappa`.
 
@@ -101,24 +102,24 @@ class DirectSpaceBases(np.ndarray):
   a raw numpy array as well. It is 3-dimensional, with individual dimensions
   representing:
 
-  - [n, :, :] - access m-th array of a, b, c vectors;
+  - [n, :, :] - access n-th array of a, b, c vectors;
   - [:, n, :] - access a (n=0), b (n=1), or c (n=2) vectors;
   - [:, :, n] - access x (n=0), y (n=1), or z (n=2) components.
 
   Consequently, the object is always (and must be init. using) a Nx3n3 array.
   """
-  def __new__(cls, abc: np.ndarray):
-    if len(abc.shape) != 3 or abc.shape[1] != 3 or abc.shape[2] != 3:
+  def __new__(cls, abcs: np.ndarray):
+    if abcs.ndim != 3 or abcs.shape[1] != 3 or abcs.shape[2] != 3:
       msg = 'DirectSpaceVectors must be init with a Nx3x3 array of abc vectors'
       raise ValueError(msg)
-    return super().__new__(cls, abc.shape, dtype=float, buffer=abc)
+    return super().__new__(cls, abcs.shape, dtype=float, buffer=abcs)
 
   @classmethod
   def from_expts(cls,
                  expts: ExperimentList,
                  space_group: SgtbxSpaceGroup = sg_p1,
                  ) -> 'DirectSpaceBases':
-    """Extract N vectors a, b, c from N expts into a 3xNx3 ndarray, return"""
+    """Extract N [a, b, c] arrays from N expts into a Nx3x3 ndarray, return"""
     abcs = []
     for expt in expts:
       expt_sg = expt.crystal.get_space_group()
@@ -128,19 +129,10 @@ class DirectSpaceBases(np.ndarray):
     if not abcs:
       raise ValueError('No experiments matching input space group found')
     return cls(np.stack(abcs, axis=0))
-    #   abc_raw = expt.crystal.get_real_space_vectors().as_numpy_array()
-    #   if symmetrize:
-    #     pg = sg.build_derived_point_group()
-    #     for symm_op in pg:
-    #       symm_op_m3 = np.array(symm_op.as_double_array()[:9]).reshape((3, 3))
-    #       abcs.append(symm_op_m3.T @ abc_raw)
-    #   else:
-    #     abcs.append(abc_raw)
-    # return cls(np.stack(abcs, axis=1).T)
 
   @classmethod
   def from_glob(cls, parameters) -> 'DirectSpaceBases':
-    """Read and return a Nx3x3 orientation matrix based on input parameters"""
+    """Extract N [a, b, c] arrays from N expts based on input parameters"""
     expt_paths = cls.locate_input_paths(parameters=parameters)
     expts = read_experiments(*expt_paths)
     space_group = parameters.input.space_group.group()
@@ -148,7 +140,7 @@ class DirectSpaceBases(np.ndarray):
 
   @staticmethod
   def locate_input_paths(parameters) -> List[str]:
-    """Return a list of expt paths in `input.glob`, but not in `exclude`"""
+    """Return a list of expt paths in `input.glob`, outside `input.exclude`"""
     input_paths, exclude_paths = [], []
     for ig in parameters.input.glob:
       input_paths.extend(glob.glob(ig))
@@ -382,6 +374,33 @@ class UniquePseudoNodeGenerator:
     self.add(np.unique(pqr, axis=0))
 
 
+class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
+  """UserDict holding information about fit results with convenient methods"""
+
+  @property
+  def best(self) -> Tuple[Int3, WatsonDistribution]:
+    """Return a tuple with best (most offending) direction and distribution"""
+    return list[self.sorted.items()][0]
+
+  @property
+  def sorted(self) -> 'PreferentialDistributionResults':
+    return self.__class__(sorted(self.items(), key=lambda i: i[1].nll))
+
+  def plot(self, kind: str = 'hedgehog'):
+    pass
+
+  def report(self) -> str:
+    """Prepare a pretty string for logging"""
+    table_data = [['Direction', 'kappa', 'mu', 'NLL']]
+    for k, v in self.sorted.items():
+      dir_ = str(tuple(k)).replace('(', '<').replace(')', '>').replace(' ', '')
+      kappa = f'{v.kappa:+8f}'
+      mu = f'[{v.mu[0]:+6f},{v.mu[1]:+6f},{v.mu[2]:+6f}]'
+      nll = f'{v.nll:+8f}'
+      table_data.append([dir_, kappa, mu, nll])
+    return table_utils.format(table_data, has_header=1, delim=' ')
+
+
 def find_preferential_orientation_direction(
         dsv: DirectSpaceBases,
         space_group: SgtbxSpaceGroup
@@ -389,13 +408,12 @@ def find_preferential_orientation_direction(
   """Look for a preferential orientation in any direct space direction pqr"""
   laue_group = space_group.build_derived_laue_group()
   unique_pseudo_node_generator = UniquePseudoNodeGenerator(laue_group)
-  watson_distributions: Dict[Int3, WatsonDistribution] = {}
+  results = PreferentialDistributionResults()
   for upn in unique_pseudo_node_generator:
     vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
     wd = WatsonDistribution.from_vectors(vectors)
-    watson_distributions[upn] = wd
-    print(f'Direction {upn}: {wd.nll=}, {wd.kappa=}, {wd.mu=}')
-  return watson_distributions
+    results[upn] = wd
+  return results
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~ ORIENTATION VISUALIZING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
