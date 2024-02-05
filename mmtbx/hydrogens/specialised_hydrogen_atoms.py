@@ -196,6 +196,7 @@ def conditional_add_cys_hg_to_atom_group(geometry_restraints_manager,
   if sgs:
     specific_origin_ids = [origin_ids.get_origin_id('SS BOND'),
                            origin_ids.get_origin_id('metal coordination'),
+                           origin_ids.get_origin_id('Misc. bond'),
       ]
     for bond in geometry_restraints_manager.get_all_bond_proxies():
       if not hasattr(bond, 'get_proxies_with_origin_id'): continue

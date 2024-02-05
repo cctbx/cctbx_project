@@ -6,7 +6,7 @@ import time
 import iotbx
 from mmtbx.utils import fmodel_from_xray_structure
 from mmtbx.secondary_structure.build.tst_2 import tst_01_start_lines
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 
 def exercise_01(prefix="tst_mi_mtz_01"):
   """
@@ -20,8 +20,7 @@ def exercise_01(prefix="tst_mi_mtz_01"):
   pdb_h = pdb_inp.construct_hierarchy()
   xrs = pdb_h.extract_xray_structure(crystal_symmetry=pdb_inp.crystal_symmetry())
 
-  params = mmtbx.command_line.fmodel.\
-        fmodel_from_xray_structure_master_params.extract()
+  params = mmtbx.programs.fmodel.master_phil.extract()
   params.high_resolution = 3
   params.low_resolution = 20
   params.output.label="FOBS"

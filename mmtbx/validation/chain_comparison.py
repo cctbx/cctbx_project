@@ -300,7 +300,6 @@ def best_match(sites1,sites2,crystal_symmetry=None,
 
   unit_cell=crystal_symmetry.unit_cell()
   sps=crystal_symmetry.special_position_settings(min_distance_sym_equiv=0.5)
-  from scitbx.array_family import flex
 
   # Match coordinates
   from cctbx import sgtbx
@@ -643,7 +642,7 @@ def get_sorted_matching_chains(
 
 def split_chains_with_unique_four_char_id(ph):
   from mmtbx.secondary_structure.find_ss_from_ca import split_model,model_info,\
-    merge_hierarchies_from_models, make_four_char_unique_chain_id
+    make_four_char_unique_chain_id
   chain_model=model_info(hierarchy=ph)
   distance_cutoff=15. # basically use sequence jumps to ID breaks
   chain_models=split_model(model=chain_model,distance_cutoff=distance_cutoff)
@@ -1245,13 +1244,15 @@ def run(args=None,
   if params.input_files.test_unique_part_of_target_only and  \
     params.output_files.match_pdb_file:
     print("Note: Cannot use test_unique_part_of_target_only "+\
-      "with match_pdb_file...\nturning off test_unique_part_of_target_only", file=out)
+      "with match_pdb_file...\nturning "+
+      "off test_unique_part_of_target_only", file=out)
     params.input_files.test_unique_part_of_target_only=False
 
   if params.input_files.unique_query_only and \
      params.input_files.unique_part_of_target_only:
     print("Warning: You have specified unique_query_only and" +\
-       " unique_part_of_target_only. \nThis is not normally appropriate ", file=out)
+       " unique_part_of_target_only. "+
+      "\nThis is not normally appropriate ", file=out)
   if params.input_files.unique_target_pdb_in and \
          params.input_files.unique_query_only:
     print("Using %s as target for unique chains" %(
@@ -1334,6 +1335,17 @@ def run(args=None,
   if params.comparison.remove_alt_conf:
     chain_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
     target_hierarchy.remove_alt_confs(always_keep_one_conformer=True)
+
+  # Convert to forward_compatible_pdb if necessary
+  conversion_info_dict = {}
+  for ph in (chain_hierarchy, target_hierarchy):
+    if not ph.fits_in_pdb_format():
+      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+         import forward_compatible_pdb_cif_conversion
+      conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
+      conversion_info.\
+        convert_hierarchy_to_forward_compatible_pdb_representation(ph)
+      conversion_info_dict[ph] = conversion_info
 
   total_target=target_hierarchy.overall_counts().n_residues
   total_chain=chain_hierarchy.overall_counts().n_residues

@@ -2324,7 +2324,8 @@ class array(set):
     result = self.deep_copy()
     info = result.info()
     result = result.eliminate_sys_absent()
-    info = info.customized_copy(systematic_absences_eliminated = True)
+    if info is not None:
+      info = info.customized_copy(systematic_absences_eliminated = True)
     if(not result.is_unique_set_under_symmetry()):
       merged = result.merge_equivalents()
       result = merged.array()

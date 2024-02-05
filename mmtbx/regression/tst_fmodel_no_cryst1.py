@@ -1,6 +1,8 @@
-
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
+from mmtbx.programs import fmodel
+from iotbx.cli_parser import run_program
+from libtbx.utils import null_out, Sorry
 import os
 
 def exercise():
@@ -31,11 +33,14 @@ ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
   from iotbx import crystal_symmetry_from_any
   symm = crystal_symmetry_from_any.extract_from("tmp_fmodel_fake_p1.mtz")
   assert (str(symm.space_group_info()) == "P 1")
-  # FIXME this should fail but doesn't due to a bug in the program
-  #args.append("reference_file=tmp_fmodel_fake_p1.mtz")
-  #args.append("data_column_label=FMODEL,PHIFMODEL")
-  #result = easy_run.fully_buffered(args).raise_if_errors()
-  #print result.return_code
+  args.append("tmp_fmodel_fake_p1.mtz")
+  args.append("labels.name=FMODEL,PHIFMODEL")
+  try :
+    run_program(program_class=fmodel.Program, args=args, logger=null_out())
+  except Sorry :
+    pass
+  else :
+    raise Exception_expected
   print("OK")
 
 if (__name__ == "__main__"):

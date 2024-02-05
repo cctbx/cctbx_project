@@ -747,7 +747,7 @@ class RuntimeTab(IOTABasePanel):
     self.bcomp_axes.set_xticklabels([])
     self.bmult_axes.yaxis.get_major_ticks()[0].label1.set_visible(False)
     self.bmult_axes.yaxis.get_major_ticks()[-1].label1.set_visible(False)
-    self.bmult_axes.set_xlabel("Resolution ($\AA$)")
+    self.bmult_axes.set_xlabel(r"Resolution ($\AA$)")
     self.bmult_axes.set_ylabel("# of Obs")
 
   def draw_plots(self, info, total_cycles):

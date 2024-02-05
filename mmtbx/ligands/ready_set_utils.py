@@ -35,6 +35,20 @@ def _add_atoms_from_chains_to_end_of_hierarchy(hierarchy, chains):
         tc.append_residue_group(rg.detached_copy())
     model.append_chain(tc)
 
+def validate_c_ca_n_for_n_terminal(c,ca,n,bonds):
+  if bonds is None: return True
+  nb = bonds.get(n.i_seq, None)
+  if not nb: return False
+  if len(nb) not in [1]: return False
+  return True
+
+def validate_c_ca_n_for_c_terminal(c,ca,n,bonds):
+  if bonds is None: return True
+  cb = bonds.get(c.i_seq, None)
+  if not cb: return False
+  if len(cb) not in [2]: return False
+  return True
+
 def add_n_terminal_hydrogens_to_atom_group(ag,
                                            bonds=None,
                                            use_capping_hydrogens=False,
@@ -53,12 +67,13 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     c = ag.get_atom("C")
     if c is None: return 'no C'
 
-  if bonds:
-    ns = []
-    for key in bonds:
-      if n.i_seq == key[0]:
-        ns.append(key)
-    if len(ns)>=3: return rc
+  if not validate_c_ca_n_for_n_terminal(c, ca, n, bonds): return []
+  # if bonds:
+  #   ns = []
+  #   for key in bonds:
+  #     if n.i_seq == key[0]:
+  #       ns.append(key)
+  #   if len(ns)>=3: return rc
 
   proton_element, proton_name = get_proton_info(ag)
   atom = ag.get_atom(proton_element) # just so happens that the atom is named H/D
@@ -190,6 +205,7 @@ def add_c_terminal_oxygens_to_atom_group(ag,
     if ca is None: return
     n = ag.get_atom("N")
     if n is None: return
+  if not validate_c_ca_n_for_c_terminal(c, ca, n, bonds): return []
   atom = ag.get_atom('O')
   dihedral = dihedral_angle(sites=[atom.xyz,
                                    c.xyz,

@@ -68,7 +68,8 @@ NB_CRYST_ATTRS = [
 
 # properties of nanoBragg_beam.NBbeam instances
 NB_BEAM_ATTRS = [
- 'divergence',
+ 'divergence_mrad',
+ 'divsteps',
  'polarization_fraction',
  'size_mm',
  'number_of_sources',

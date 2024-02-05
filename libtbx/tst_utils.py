@@ -400,6 +400,28 @@ def exercise_round2():
 def exercise_guess_total_memory():
   assert(utils.guess_total_memory() > 0)
 
+def exercise_display_context():
+  text = """
+   line with word1
+   another line
+   another line with word2
+   another line with word1
+   line with word3
+"""
+  from libtbx.utils import display_context
+  text_block_list = display_context(text = text,
+     n_context = 1, search_word = 'word1', quiet = True)
+  assert [text_block_list[0].text_block] == [ '     \n  **    line with word1\n        another line\n']
+
+  text_block_list = display_context(text = text,
+     n_context = 1, search_word = 'word2', quiet = True)
+  assert [text_block_list[0].text_block] == [ '        another line\n  **    another line with word2\n        another line with word1\n']
+
+  text_block_list = display_context(text = text,
+     n_context = 1, search_word = 'word2', required_word ='word1', quiet = True)
+  assert [text_block_list[0].text_block] == [ '        another line\n  **    another line with word2\n        another line with word1\n']
+
+
 def run(args):
   assert len(args) == 0
   if '--exercise-retrieve-unless-exists' in args:
@@ -432,6 +454,7 @@ def run(args):
   exercise_dir_utils()
   exercise_group_args()
   exercise_round2()
+  exercise_display_context()
   print(utils.format_cpu_times())
 
 if (__name__ == "__main__"):

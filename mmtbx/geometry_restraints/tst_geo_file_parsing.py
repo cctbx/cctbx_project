@@ -1,10 +1,5 @@
 from __future__ import division, print_function
-import os
 import json
-
-
-import libtbx.load_env
-from iotbx.data_manager import DataManager
 
 from geo_file_parsing import parse_geo_file
 
@@ -12,173 +7,306 @@ from geo_file_parsing import parse_geo_file
 """
 Test that parsing a geo file yields previous results
 """
+sample_geo_text = """
+# Geometry restraints
+
+Bond restraints: 2
+bond 38
+     39
+  ideal  model  delta    sigma   weight residual
+  1.522  1.553 -0.030 1.18e-02 7.18e+03 6.53e+00
+bond 37
+     38
+  ideal  model  delta    sigma   weight residual
+  1.460  1.485 -0.025 1.17e-02 7.31e+03 4.40e+00
+
+Bond angle restraints: 2
+Sorted by residual:
+angle 23
+      24
+      25
+    ideal   model   delta    sigma   weight residual
+   108.90  113.48   -4.58 1.63e+00 3.76e-01 7.90e+00
+angle 37
+      38
+      39
+    ideal   model   delta    sigma   weight residual
+   108.02  111.93   -3.91 1.78e+00 3.16e-01 4.84e+00
+
+
+Dihedral angle restraints: 2
+  sinusoidal: 1
+    harmonic: 1
+Sorted by residual:
+dihedral 24
+         25
+         37
+         38
+    ideal   model   delta  harmonic     sigma   weight residual
+   180.00  166.21   13.79     0      5.00e+00 4.00e-02 7.60e+00
+dihedral 58
+         59
+         60
+         61
+    ideal   model   delta sinusoidal    sigma   weight residual
+     0.00  -72.39   72.39     2      3.00e+01 1.11e-03 4.85e+00
+
+
+C-Beta improper torsion angle restraints: 2
+Sorted by residual:
+dihedral 37
+         39
+         38
+         41
+    ideal   model   delta  harmonic     sigma   weight residual
+   122.80  126.95   -4.15     0      2.50e+00 1.60e-01 2.75e+00
+dihedral 56
+         54
+         55
+         58
+    ideal   model   delta  harmonic     sigma   weight residual
+  -122.60 -126.01    3.41     0      2.50e+00 1.60e-01 1.86e+00
+
+
+Chirality restraints: 2
+Sorted by residual:
+chirality 55
+          54
+          56
+          58
+  both_signs  ideal   model   delta    sigma   weight residual
+    False      2.51    2.39    0.12 2.00e-01 2.50e+01 3.48e-01
+chirality 72
+          71
+          73
+          75
+  both_signs  ideal   model   delta    sigma   weight residual
+    False      2.51    2.62   -0.11 2.00e-01 2.50e+01 2.86e-01
+
+Planarity restraints: 2
+Sorted by residual:
+             delta    sigma   weight rms_deltas residual
+plane 89     0.007 2.00e-02 2.50e+03   1.43e-02 6.15e+00
+      90     0.029 2.00e-02 2.50e+03
+      91    -0.003 2.00e-02 2.50e+03
+      92     0.001 2.00e-02 2.50e+03
+      93     0.003 2.00e-02 2.50e+03
+      94    -0.001 2.00e-02 2.50e+03
+      95    -0.013 2.00e-02 2.50e+03
+      96    -0.001 2.00e-02 2.50e+03
+      102   -0.029 2.00e-02 2.50e+03
+      103   -0.016 2.00e-02 2.50e+03
+      104    0.017 2.00e-02 2.50e+03
+      105    0.005 2.00e-02 2.50e+03
+            delta    sigma   weight rms_deltas residual
+plane 13   -0.003 2.00e-02 2.50e+03   1.55e-02 3.62e+00
+      14   -0.022 2.00e-02 2.50e+03
+      15    0.019 2.00e-02 2.50e+03
+      16   -0.002 2.00e-02 2.50e+03
+      19   -0.012 2.00e-02 2.50e+03
+      20    0.020 2.00e-02 2.50e+03
+
+
+Nonbonded interactions: 3
+Sorted by model distance:
+nonbonded 106
+          110
+   model   vdw sym.op.
+   1.719 1.850 -x+1,y-1/2,-z+1
+nonbonded 29
+          34
+   model   vdw sym.op.
+   1.859 1.850 x,y+1,z
+
+nonbonded 33
+          61
+   model   vdw
+   1.876 1.850
+
+"""
+
 test_data_json = """
 {
-  "_phenix_restraint_nonbonded": [
+  "nonbonded": [
     {
       "restraint_type": "nonbonded",
-      "i_seq": 0,
-      "j_seq": 3,
-      "model": 2.665,
-      "vdw": 2.496
-    },
-    {
-      "restraint_type": "nonbonded",
-      "i_seq": 19,
-      "j_seq": 36,
-      "model": 2.726,
-      "vdw": 2.52
+      "i_seq": 106,
+      "j_seq": 110,
+      "model": 1.719,
+      "vdw": 1.85,
+      "sym.op.": "-x+1,y-1/2,-z+1"
     },
     {
       "restraint_type": "nonbonded",
-      "i_seq": 41,
-      "j_seq": 42,
-      "model": 2.803,
-      "vdw": 2.752
-    }
-  ],
-  "_phenix_restraint_angle": [
-    {
-      "restraint_type": "angle",
-      "i_seq": 12,
-      "j_seq": 13,
-      "k_seq": 14,
-      "ideal": 108.9,
-      "model": 113.46,
-      "delta": -4.56,
-      "sigma": 1.63,
-      "weight": 0.376,
-      "residual": 7.83
-    },
-    {
-      "restraint_type": "angle",
-      "i_seq": 21,
-      "j_seq": 22,
-      "k_seq": 23,
-      "ideal": 120.33,
-      "model": 122.26,
-      "delta": -1.93,
-      "sigma": 1.08,
-      "weight": 0.857,
-      "residual": 3.18
-    },
-    {
-      "restraint_type": "angle",
       "i_seq": 29,
-      "j_seq": 30,
-      "k_seq": 31,
+      "j_seq": 34,
+      "model": 1.859,
+      "vdw": 1.85,
+      "sym.op.": "x,y+1,z"
+    },
+    {
+      "restraint_type": "nonbonded",
+      "i_seq": 33,
+      "j_seq": 61,
+      "model": 1.876,
+      "vdw": 1.85,
+      "sym.op.": null
+    }
+  ],
+  "angle": [
+    {
+      "restraint_type": "angle",
+      "i_seq": 23,
+      "j_seq": 24,
+      "k_seq": 25,
       "ideal": 108.9,
-      "model": 111.01,
-      "delta": -2.11,
+      "model": 113.48,
+      "delta": -4.58,
       "sigma": 1.63,
       "weight": 0.376,
-      "residual": 1.68
+      "residual": 7.9
+    },
+    {
+      "restraint_type": "angle",
+      "i_seq": 37,
+      "j_seq": 38,
+      "k_seq": 39,
+      "ideal": 108.02,
+      "model": 111.93,
+      "delta": -3.91,
+      "sigma": 1.78,
+      "weight": 0.316,
+      "residual": 4.84
     }
   ],
-  "_phenix_restraint_bond": [
+  "bond": [
     {
       "restraint_type": "bond",
-      "i_seq": 0,
-      "j_seq": 1,
-      "ideal": 1.451,
-      "model": 1.507,
-      "delta": -0.056,
-      "sigma": 0.016,
-      "weight": 3910.0,
-      "residual": 12.1
+      "i_seq": 38,
+      "j_seq": 39,
+      "ideal": 1.522,
+      "model": 1.553,
+      "delta": -0.03,
+      "sigma": 0.0118,
+      "weight": 7180.0,
+      "residual": 6.53
     },
     {
       "restraint_type": "bond",
-      "i_seq": 5,
-      "j_seq": 6,
-      "ideal": 1.524,
-      "model": 1.498,
-      "delta": 0.026,
-      "sigma": 0.0126,
-      "weight": 6300.0,
-      "residual": 4.15
-    },
-    {
-      "restraint_type": "bond",
-      "i_seq": 35,
-      "j_seq": 37,
-      "ideal": 1.328,
-      "model": 1.348,
-      "delta": -0.02,
-      "sigma": 0.021,
-      "weight": 2270.0,
-      "residual": 0.875
+      "i_seq": 37,
+      "j_seq": 38,
+      "ideal": 1.46,
+      "model": 1.485,
+      "delta": -0.025,
+      "sigma": 0.0117,
+      "weight": 7310.0,
+      "residual": 4.4
     }
   ],
-  "_phenix_restraint_dihedral": [
+  "dihedral": [
     {
       "restraint_type": "dihedral",
-      "i_seq": 13,
-      "j_seq": 14,
-      "k_seq": 20,
-      "l_seq": 21,
+      "i_seq": 24,
+      "j_seq": 25,
+      "k_seq": 37,
+      "l_seq": 38,
       "ideal": 180.0,
-      "model": 166.19,
-      "delta": 13.81,
+      "model": 166.21,
+      "delta": 13.79,
       "harmonic": 0.0,
       "sigma": 5.0,
       "weight": 0.04,
-      "residual": 7.63,
+      "residual": 7.6,
       "sinusoidal": null
     },
     {
       "restraint_type": "dihedral",
-      "i_seq": 1,
-      "j_seq": 2,
-      "k_seq": 4,
-      "l_seq": 5,
-      "ideal": 180.0,
-      "model": 171.51,
-      "delta": 8.49,
-      "harmonic": 0.0,
-      "sigma": 5.0,
-      "weight": 0.04,
-      "residual": 2.88,
-      "sinusoidal": null
-    },
-    {
-      "restraint_type": "dihedral",
-      "i_seq": 20,
-      "j_seq": 21,
-      "k_seq": 24,
-      "l_seq": 25,
-      "ideal": -180.0,
-      "model": -164.64,
-      "delta": -15.36,
+      "i_seq": 58,
+      "j_seq": 59,
+      "k_seq": 60,
+      "l_seq": 61,
+      "ideal": 0.0,
+      "model": -72.39,
+      "delta": 72.39,
       "harmonic": null,
-      "sigma": 15.0,
-      "weight": 0.00444,
-      "residual": 1.45,
-      "sinusoidal": 3.0
+      "sigma": 30.0,
+      "weight": 0.00111,
+      "residual": 4.85,
+      "sinusoidal": 2.0
+    }
+  ],
+  "chirality": [
+    {
+      "restraint_type": "chirality",
+      "i_seq": 55,
+      "j_seq": 54,
+      "k_seq": 56,
+      "l_seq": 58,
+      "both_signs": "False",
+      "ideal": 2.51,
+      "model": 2.39,
+      "delta": 0.12,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.348
+    },
+    {
+      "restraint_type": "chirality",
+      "i_seq": 72,
+      "j_seq": 71,
+      "k_seq": 73,
+      "l_seq": 75,
+      "both_signs": "False",
+      "ideal": 2.51,
+      "model": 2.62,
+      "delta": -0.11,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.286
+    }
+  ],
+  "c-beta": [
+    {
+      "restraint_type": "c-beta",
+      "i_seq": 37,
+      "j_seq": 39,
+      "k_seq": 38,
+      "l_seq": 41,
+      "ideal": 122.8,
+      "model": 126.95,
+      "delta": -4.15,
+      "harmonic": 0.0,
+      "sigma": 2.5,
+      "weight": 0.16,
+      "residual": 2.75
+    },
+    {
+      "restraint_type": "c-beta",
+      "i_seq": 56,
+      "j_seq": 54,
+      "k_seq": 55,
+      "l_seq": 58,
+      "ideal": -122.6,
+      "model": -126.01,
+      "delta": 3.41,
+      "harmonic": 0.0,
+      "sigma": 2.5,
+      "weight": 0.16,
+      "residual": 1.86
     }
   ]
 }
+
 """
 
 test_data = json.loads(test_data_json)
 
 # load file
-pdb_file = libtbx.env.find_in_repositories(
-  relative_path="phenix_regression/pdb/1yjp_h.pdb",
-  test=os.path.isfile)
-
-dm = DataManager()
-dm.process_model_file(pdb_file)
-model = dm.get_model()
-
-# write geo
-model.add_crystal_symmetry_if_necessary()
-model.process(make_restraints=True)
-grm = model.get_restraints_manager().geometry
-grm.write_geo_file(model.get_sites_cart(),file_name="test.geo")
+with open("tst_geo_parsing.geo","w") as fh:
+  fh.write(sample_geo_text)
 
 # read back in
-geo_dict = parse_geo_file("test.geo",return_format='dict')
+geo_dict = parse_geo_file("tst_geo_parsing.geo",return_format='dict')
 
 # define comparison functions
 
@@ -194,30 +322,30 @@ def get_type(value):
 
 def compare_custom(d1,d2):
   """
-  Compare two dictionaries by types, and 'idea' floats
+  Compare two dictionaries by types, and 'ideal' floats
   with a large tolerance to enable future changes to restraints.
   """
+  #print(d1)
+  #print(d2)
   for key1,value1 in d1.items():
     assert key1 in d2
     value2 = d2[key1]
+    #print(value1,value2)
     t1,t2 = get_type(value1), get_type(value2)
-    assert t1==t2
-    if isinstance(t1,float):
-      if key1 == 'ideal':
-        diff = abs(float(value1)-float(value2))
-        assert diff < 5, "difference in expected and generated restraint out of range" # 5 ok?
+    assert t1==t2, '%s!=%s' % (t1, t2)
+    assert str(value1)==str(value2), "Invalid comparisons: "+str(value1)+" and "+str(value2)
   return True
+
 
 
 # test
 def test():
   for key,d_list in geo_dict.items():
-    spot_indices = [0,3,11]
-    for idx,i in enumerate(spot_indices):
-      d = d_list[i]
-      d_ref = test_data[key][idx]
+    for j,d in enumerate(d_list):
+      d_ref = test_data[key][j]
       same = compare_custom(d,d_ref)
       print(same)
-
 if __name__ == '__main__':
   test()
+  print("Finished")
+

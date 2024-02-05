@@ -227,6 +227,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
     env.SharedLibrary(
       target="#lib/boost_tuple_ext",
       source="tuple_ext.cpp")
+    env.Append(LIBS=['boost_timer'])
     env.SharedLibrary(
       target="#lib/boost_adaptbx_python_streambuf_test_ext",
       source="tests/python_streambuf_test_ext.cpp")
@@ -356,7 +357,7 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
             source=boost_system_src)
 
       #Boost.Chrono?
-      if boost_thread_uses_winthreads:
+      if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'chrono')):
         env_boost_chrono = env_boost_thread_and_co.Clone()
         simple_darwin_shlinkcom(env_etc, env, 'chrono')
         boost_chrono_src = [
@@ -365,10 +366,37 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
             os.path.join(env_etc.boost_dist, 'libs', 'chrono', 'src', '*.cpp'))]
         # For Windows (c.f. point 2 above)
         env_boost_chrono.Append(CPPDEFINES={'BOOST_CHRONO_DYN_LINK':1})
-        env_boost_chrono.StaticLibrary(
-          target='#lib/boost_chrono',
-          source=boost_chrono_src,
-          LIBS=['boost_system'])
+        if boost_thread_uses_winthreads:
+          env_boost_chrono.StaticLibrary(
+            target='#lib/boost_chrono',
+            source=boost_chrono_src,
+            LIBS=['boost_system'])
+        else:
+          env_boost_chrono.SharedLibrary(
+            target='#lib/boost_chrono',
+            source=boost_chrono_src,
+            LIBS=['boost_system'])
+
+      #Boost.Timer?
+      if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'timer')):
+        env_boost_timer = env_boost_thread_and_co.Clone()
+        simple_darwin_shlinkcom(env_etc, env, 'timer')
+        boost_timer_src = [
+          '#' + os.path.relpath(p, os.path.dirname(env_etc.boost_dist))
+          for p in glob.glob(
+            os.path.join(env_etc.boost_dist, 'libs', 'timer', 'src', '*.cpp'))]
+        # For Windows (c.f. point 2 above)
+        env_boost_timer.Append(CPPDEFINES={'BOOST_TIMER_DYN_LINK':1})
+        if boost_thread_uses_winthreads:
+          env_boost_timer.StaticLibrary(
+            target='#lib/boost_timer',
+            source=boost_timer_src,
+            LIBS=['boost_chrono'])
+        else:
+          env_boost_timer.SharedLibrary(
+            target='#lib/boost_timer',
+            source=boost_timer_src,
+            LIBS=['boost_chrono'])
 
   # Build a Python extension using Boost.Thread so as to test it works.
   # This also constitutes a nice real-life example of

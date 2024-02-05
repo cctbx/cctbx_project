@@ -1012,6 +1012,8 @@ class map_model_manager(object):
      file_name,
      model_id = None,
      model = None,
+     data_manager = None,
+     format = None,
      ):
 
     if not model:
@@ -1024,10 +1026,12 @@ class map_model_manager(object):
       self._print ("Need file name to write model")
     else:
       # Write out model
-
-      f = open(file_name, 'w')
-      print(model.model_as_pdb(), file = f)
-      f.close()
+      if not data_manager:
+        from iotbx.data_manager import DataManager
+        data_manager = DataManager()
+        data_manager.set_overwrite(True)
+      file_name = data_manager.write_model_file(model,
+       file_name, format = format)
       self._print("Wrote model with %s residues to %s" %(
          model.get_hierarchy().overall_counts().n_residues,
          file_name))
@@ -2269,10 +2273,10 @@ class map_model_manager(object):
       for mmm in box_info.mmm_list:
         i += 1
         print("Writing files for model and map: %s " %(i), file=self.log)
-        model_file = "model_%s.pdb" %(i)
+        model_file = "model_%s.pdb" %(i) # PDB OK
         map_file = "map_%s.ccp4" %(i)
-        dm.write_model_file(mmm.model(), model_file)
-        dm.write_real_map_file(mmm.map_manager(), map_file)
+        model_file = dm.write_model_file(mmm.model(), model_file)
+        map_file = dm.write_real_map_file(mmm.map_manager(), map_file)
     return box_info
 
   # Methods for masking maps ( creating masks and applying masks to maps)
@@ -4071,7 +4075,7 @@ class map_model_manager(object):
                       [0.15,0], [0.15,5],
              ]
 
-    from cctbx.development.create_models_or_maps import generate_model, \
+    from cctbx.development.create_models_or_maps import \
        generate_map_coefficients
 
     target_map_coeffs = self.get_map_manager_by_id(
@@ -8117,7 +8121,7 @@ class map_model_manager(object):
        Typical use:
          box_mmm = mmm.extract_all_maps_around_model()
          box_mmm.remove_origin_shift_and_unit_cell_crystal_symmetry()
-         data_manager.write_model_file(box_mmm.model(), model_file)
+         model_file = data_manager.write_model_file(box_mmm.model(), model_file)
          data_manager.write_real_map_file(box_mmm.map_manager(), map_file)
        Now model_file and map_file have no origin shift and the model CRYST1
        matches the crystal_symmetry and map_file unit_cell_crystal_symmetry of
@@ -8753,17 +8757,19 @@ class match_map_model_ncs(object):
       self._map_manager.write_map(file_name = file_name)
 
   def write_model(self,
-     file_name = None):
+     file_name = None, data_manager = None, format = None):
     if not self._model:
       self._print ("No model to write out")
     elif not file_name:
       self._print ("Need file name to write model")
     else:
       # Write out model
-
-      f = open(file_name, 'w')
-      print(self._model.model_as_pdb(), file = f)
-      f.close()
+      if not data_manager:
+        from iotbx.data_manager import DataManager
+        data_manager = DataManager()
+        data_manager.set_overwrite(True)
+      file_name = data_manager.write_model_file(self._model, file_name,
+        format = format)
       self._print("Wrote model with %s residues to %s" %(
          self._model.get_hierarchy().overall_counts().n_residues,
          file_name))
@@ -9516,7 +9522,6 @@ def set_nearby_empty_values(
   Set values within radii of xyz_list points to value if not already
       set
   '''
-  from cctbx.maptbx import grid_indices_around_sites
   gias = maptbx.grid_indices_around_sites(
         unit_cell=map_manager.crystal_symmetry().unit_cell(),
         fft_n_real=map_manager.map_data().all(),
@@ -9547,7 +9552,6 @@ def get_split_maps_and_models(
         masked_value = masked_value,
   '''
 
-  from iotbx.map_model_manager import map_model_manager as MapModelManager
   if hasattr(box_info,'tlso_group_info') and box_info.tlso_group_info:
     # cannot pickle tlso values
     box_info.tlso_group_info.tlso_list = None

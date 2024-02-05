@@ -1,3 +1,11 @@
+2024.1
+======
+
+* Added checks to see if a model can be outupt in the PDB format
+* Added custom scattering factors support to fmodel
+* Reogranize fmodel PHIL
+* Fixed boost::timer deprecation
+
 2023.12
 =======
 

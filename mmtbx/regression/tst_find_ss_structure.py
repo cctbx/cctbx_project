@@ -1,9 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
+import sys
+
 from libtbx.utils import null_out
 from six.moves import cStringIO as StringIO
 from mmtbx.secondary_structure.find_ss_from_ca import find_secondary_structure
-from libtbx import test_utils
+
 
 def remove_blank(text):
   return text.replace(" ","").replace("\n","")
@@ -2712,14 +2714,17 @@ SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
   import iotbx.pdb.secondary_structure as ioss
   hierarchy=iotbx.pdb.input(source_info='text',
         lines=flex.split_lines(text)).construct_hierarchy()
-  annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
+  input_annotation=ioss.annotation.from_records(records=flex.split_lines(anno))
   print("\nAnnotation with insertion codes")
   print("\nInput annotation:")
-  print(annotation.as_pdb_str())
+  print(input_annotation.as_pdb_str())
+
   fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,out=null_out())
   new_annotation=fss.get_annotation()
   print("\nNew annotation:")
-  expected=ioss.annotation.from_records(records=flex.split_lines("""
+  print(new_annotation.as_pdb_str())
+
+  expected_new=ioss.annotation.from_records(records=flex.split_lines("""
 HELIX    1   1 TRP A  181  TYR A  186  3                                   6
 SHEET    1   1 3 VAL A 161  VAL A 164  0
 SHEET    2   1 3 TYR A 170  ASN A 175 -1  N  ASN A 175   O  VAL A 161
@@ -2727,21 +2732,17 @@ SHEET    3   1 3 ILE A 187  ALA A 190 -1  N  ILE A 189   O  TRP A 171
 """))
 
   print(new_annotation.as_pdb_str())
-  assert expected.is_same_as(new_annotation)
+  assert expected_new.is_same_as(new_annotation)
 
   print("\nNew forcing input annotation")
-  expected=ioss.annotation.from_records(records=flex.split_lines("""
-SHEET    1   1 2 GLN A 156A VAL A 164  0
-SHEET    2   1 2 TYR A 170  ASN A 175 -1
-"""))
 
   force_fss=find_secondary_structure(hierarchy=hierarchy,ss_by_chain=False,
-      user_annotation_text=annotation.as_pdb_str(),
+      user_annotation_text=input_annotation.as_pdb_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
       out=null_out()).get_annotation()
   print(force_fss.as_pdb_str())
-  assert expected.is_same_as(force_fss)
+  assert input_annotation.is_same_as(force_fss)
 
   helix_icode="""
 ATOM      2  CA  ALA A   1A     11.323  32.055  11.635  1.00 40.00           C
@@ -2943,7 +2944,7 @@ FINAL PDB selections:
 
 
 if __name__=="__main__":
-  import sys
+
   tst_00()
   tst_01()
   tst_02()

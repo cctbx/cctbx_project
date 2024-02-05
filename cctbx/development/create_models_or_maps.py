@@ -260,7 +260,7 @@ def generate_map_coefficients(
   # get map coefficients
   from mmtbx.utils import fmodel_from_xray_structure
   import iotbx.phil
-  from mmtbx.command_line.fmodel import master_phil
+  from mmtbx.programs.fmodel import master_phil
   fmodel_params=master_phil.extract()
 
   if f_obs_array:

@@ -45,6 +45,7 @@ import mmtbx.restraints
 import mmtbx.tls.tools
 from mmtbx.scaling import outlier_rejection
 import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import libtbx.callbacks # import dependency
 from libtbx.math_utils import ifloor, iceil
 from cctbx import maptbx
@@ -1255,23 +1256,35 @@ class fmodel_from_xray_structure(object):
                      twin_fraction = None,
                      target = "ml",
                      out = None,
-                     merge_r_free_flags = None):
+                     merge_r_free_flags = None,
+                     use_custom_scattering_dictionary = False):
     if(out is None): out = sys.stdout
     self.add_sigmas = add_sigmas
     if(params is None):
-      params = mmtbx.command_line.fmodel.\
-        fmodel_from_xray_structure_master_params.extract()
+      params = mmtbx.programs.fmodel.master_phil.extract()
     if(r_free_flags_fraction is None):
       if(params.r_free_flags_fraction is not None):
         r_free_flags_fraction = params.r_free_flags_fraction
       else:
         r_free_flags_fraction = 0.1
+
+    new_scattering_dictionary = None
+    if use_custom_scattering_dictionary:
+      from cctbx.eltbx import read_custom_scattering_dict
+      new_scattering_dictionary = read_custom_scattering_dict.run(
+        filename = params.custom_scattering_factors, log = out)
+
     if(f_obs is None):
       hr = None
       try: hr = params.high_resolution
       except Exception: self.Sorry_high_resolution_is_not_defined()
       if(params.scattering_table == "neutron"):
-        xray_structure.switch_to_neutron_scattering_dictionary()
+        if(new_scattering_dictionary):
+          xray_structure.scattering_type_registry(
+            custom_dict = new_scattering_dictionary)
+          xray_structure.scattering_type_registry().show(out = out)
+        else:
+          xray_structure.switch_to_neutron_scattering_dictionary()
       else:
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = hr)
@@ -1303,7 +1316,12 @@ class fmodel_from_xray_structure(object):
       except Exception: lr = None
       f_obs = f_obs.resolution_filter(d_max = lr, d_min = hr)
       if(params.scattering_table == "neutron"):
-        xray_structure.switch_to_neutron_scattering_dictionary()
+        if(new_scattering_dictionary):
+          xray_structure.scattering_type_registry(
+            custom_dict = new_scattering_dictionary)
+          xray_structure.scattering_type_registry().show(out = out)
+        else:
+          xray_structure.switch_to_neutron_scattering_dictionary()
       else:
         xray_structure.scattering_type_registry(
           table = params.scattering_table, d_min = f_obs.d_min())

@@ -2006,7 +2006,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     image_type image(Npix_to_model,0.0);
     if(db_flags.wavelength_img){
         // TODO: `wavelength` is not a first derivative image, change membership in the future
-        first_deriv_imgs.wavelength.resize(Npix_to_model,0);
+        first_deriv_imgs.wavelength.resize(4*Npix_to_model,0); // store average wavelength and h,k,l
     }
     if (std::count(db_flags.refine_Umat.begin(), db_flags.refine_Umat.end(), true) > 0){
         first_deriv_imgs.Umat.resize(Npix_to_model*3, 0);
@@ -2451,12 +2451,28 @@ void diffBragg::show_timing_stats(int MPI_RANK){ //}, boost_adaptbx::python::str
 }
 
 af::flex_double diffBragg::ave_wavelength_img(){
-  int Npix = first_deriv_imgs.wavelength.size();
+  int Npix = first_deriv_imgs.wavelength.size()/4;
   af::flex_double wavelen_pixels = af::flex_double(Npix);
   for (int i=0; i <Npix; i++)
-    wavelen_pixels[i] = first_deriv_imgs.wavelength[i];
+    wavelen_pixels[i] = first_deriv_imgs.wavelength[i*4];
   return wavelen_pixels;
 }
+
+boost::python::tuple diffBragg::ave_hkl_img(){
+  int Npix = first_deriv_imgs.wavelength.size()/4;
+  af::flex_double miller_h_pixels = af::flex_double(Npix);
+  af::flex_double miller_k_pixels = af::flex_double(Npix);
+  af::flex_double miller_l_pixels = af::flex_double(Npix);
+  for (int i=0; i <Npix; i++){
+    miller_h_pixels[i] = first_deriv_imgs.wavelength[i*4+1];
+    miller_k_pixels[i] = first_deriv_imgs.wavelength[i*4+2];
+    miller_l_pixels[i] = first_deriv_imgs.wavelength[i*4+3];
+  }
+
+  boost::python::tuple result = boost::python::make_tuple(miller_h_pixels, miller_k_pixels, miller_l_pixels);
+  return result;
+}
+
 
 boost::python::tuple diffBragg::get_ave_I_cell(bool use_Fhkl_scale, int i_channel, bool use_geometric_mean){
     SCITBX_ASSERT(db_cryst.ASU_dspace.size() > 0 );

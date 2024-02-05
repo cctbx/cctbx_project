@@ -214,18 +214,14 @@ def get_pdb_inp(
         pdb_string=open(pdb_in).read()
       else:
         raise Sorry("Need an input PDB file")
-    pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
+    from iotbx.pdb.utils import get_pdb_input
+    pdb_inp=get_pdb_input(pdb_string)
     cryst1_line=iotbx.pdb.format_cryst1_record(
          crystal_symmetry=crystal_symmetry)
-    if not pdb_inp.crystal_symmetry(): # get it
-      from six.moves import cStringIO as StringIO
-      f=StringIO()
-      print(cryst1_line, file=f)
-      print(pdb_string, file=f)
-      pdb_string=f.getvalue()
-      pdb_inp=iotbx.pdb.input(source_info=None, lines = pdb_string)
   if pdb_string is None:
-    pdb_string=pdb_inp.as_pdb_string()
+    ph = pdb_inp.construct_hierarchy()
+    pdb_string = ph.as_pdb_or_mmcif_string(
+      crystal_symmetry = crystal_symmetry)
   return pdb_inp,cryst1_line,pdb_string
 
 def run_one_cycle(

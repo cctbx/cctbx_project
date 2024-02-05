@@ -6,6 +6,7 @@ from libtbx.mpi4py import MPI
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
+import os
 from simtbx.diffBragg import mpi_logger
 
 from simtbx.diffBragg.device import DeviceWrapper
@@ -57,6 +58,13 @@ class Script:
                 check_format=False,
                 epilog=help_message)
             self.params, _ = self.parser.parse_args(show_diff_phil=COMM.rank==0)
+            outdir = self.params.refiner.io.output_dir
+            if outdir is not None:
+                if not os.path.exists(outdir):
+                    os.makedirs(outdir)
+                diff_phil_outname = os.path.join(outdir, "diff.phil")
+                with open(diff_phil_outname, "w") as o:
+                    o.write(self.parser.diff_phil.as_str())
         self.params = COMM.bcast(self.params)
 
     def run(self):
@@ -67,7 +75,6 @@ class Script:
             raise ValueError("Pandas table input required")
 
         refine_starttime = time.time()
-        self.params.simulator.device_id = COMM.rank % self.params.refiner.num_devices
         refiner = ensemble_refine_launcher.global_refiner_from_parameters(self.params)
         print("Time to refine experiment: %f" % (time.time()- refine_starttime))
 
@@ -112,8 +119,8 @@ if __name__ == '__main__':
         else:
             mpi_logger.setup_logging_from_params(script.params)
 
-        dev = COMM.rank % script.params.refiner.num_devices
-        with DeviceWrapper(dev) as _:
+        script.params.simulator.device_id = COMM.rank % script.params.refiner.num_devices
+        with DeviceWrapper(script.params.simulator.device_id) as _:
             RUN()
 
         if lp is not None:

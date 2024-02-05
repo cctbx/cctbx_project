@@ -39,7 +39,7 @@ def run(args, command_name="phenix.find_reticular_twin_laws"):
 
 
    Reticular twin laws are grouped by their associated sublattice.
-   The matrix M acting on the input (base) lattice is listed, as well as the metric R value (\%)
+   The matrix M acting on the input (base) lattice is listed, as well as the metric R value (%)
    between the symmetrized sublattice and the unsymmetrized sublattice.
    reticular twin laws of twin index 1, are 'normal' twin laws
 

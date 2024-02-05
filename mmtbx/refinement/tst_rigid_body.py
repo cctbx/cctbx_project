@@ -12,7 +12,6 @@ from cctbx import xray
 import mmtbx.utils
 import iotbx.pdb
 from scitbx import matrix
-import mmtbx.command_line.fmodel
 import scitbx.rigid_body
 from six.moves import range
 
@@ -185,7 +184,7 @@ def get_fmodel_from_pdb(pdb_file_name,
   pdb_file = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/%s"%pdb_file_name,test=os.path.isfile)
   xray_structure = iotbx.pdb.input(file_name =pdb_file).xray_structure_simple()
-  params = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params.extract()
+  params = mmtbx.programs.fmodel.master_phil.extract()
   assert params.high_resolution is None
   assert params.scattering_table == 'n_gaussian'
   assert params.structure_factors_accuracy.algorithm == 'fft'

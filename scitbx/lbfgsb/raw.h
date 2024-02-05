@@ -6,7 +6,7 @@
 #include <scitbx/array_family/ref.h>
 #include <scitbx/array_family/accessors/c_grid.h>
 #include <scitbx/error.h>
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 
 #include <cstdio>
 
@@ -168,8 +168,8 @@ namespace raw {
   void
   timer(FloatType& ttime)
   {
-    static boost::timer timer_;
-    ttime = static_cast<FloatType>(timer_.elapsed());
+    static boost::timer::cpu_timer timer_;
+    ttime = 1.0e-9 * static_cast<FloatType>(timer_.elapsed().wall);
   }
 
   //! Emulation of write statement with implicit loop.

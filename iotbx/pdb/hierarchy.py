@@ -376,7 +376,17 @@ class _():
   >>> hierarchy = iotbx.pdb.hierarchy.root()
   """
 
+  __getstate_manages_dict__ = True
+
   def __getstate__(self):
+    # check that the only possible attributes that are set are
+    #   _lai_lookup
+    #   _label_seq_id_dict
+    # these are not pickled and are not restored when unpickling
+    # if more attributes are added to the hierarchy class in Python,
+    # the pickling code needs to be updated.
+    attribute_check = set(self.__dict__.keys()) - set(['_lai_lookup', '_label_seq_id_dict'])
+    assert len(attribute_check) == 0, attribute_check
     version = 2
     pdb_string = StringIO()
     if self.fits_in_pdb_format():
@@ -633,6 +643,254 @@ class _():
       level_id_exception=level_id_exception)
     return out.getvalue()
 
+  def is_forward_compatible_hierarchy(self):
+    """ Determine if this is a forward_compatible hierarchy"""
+    if hasattr(self,'_conversion_info'):
+      return True
+    else:
+      return False
+
+  def conversion_info(self):
+    """ Get the conversion info for this forward_compatible hierarchy"""
+    assert self.is_forward_compatible_hierarchy(),\
+      "Only a forward_compatible hierarchy has conversion info"
+    return self._conversion_info
+
+  def convert_multi_word_text_to_forward_compatible(self, text):
+    """ Use conversion info to convert words in a text string to
+     forward-compatible equivalents
+     :params text:  text to convert
+     :returns modified text
+    """
+    c = self.conversion_info()
+    return c.convert_multi_word_text_to_forward_compatible(text = text)
+
+  def as_forward_compatible_hierarchy(self, conversion_info = None):
+    """ Convert a standard hierarchy to a forward_compatible_hierarchy
+
+     :params conversion_info
+
+     :returns pdb_hierarchy with chain ID and residue names converted to
+        strings compatible with PDB formatting.  Returned hierarchy is
+        a deep_copy and contains the attribute _conversion_info with the
+        conversion_info used
+
+     Typical use: running a method with cmd_text (text commands) and supplying
+        a hierarchy (or string from it).  Convert the hierarchy and the
+        cmd_text, run the method, convert the results back:
+
+     # Convert the hierarchy to forward compatible
+     ph_fc = ph.as_forward_compatible_hierarchy()
+
+     # Convert any commands. Can be done one word at a time also
+     cmd_text_fc = ph_fc.convert_multi_word_text_to_forward_compatible(cmd_text)
+
+     # Run the method with converted hierarchy and commands
+     result = do_something(ph = ph_fc, command_text = cmd_text_fc)
+
+     # Convert back any resulting hierarchy
+     new_ph = result.ph.forward_compatible_hierarchy_as_standard(
+              conversion_info = ph_fc.conversion_info())
+
+     # Convert back any words in the results that referred to converted
+     #  items. Keys are chain_id and resname
+     new_result_items = []
+     for result_item,key in zip(results.text_words, results.text_keys):
+       new_result_item = ph_fc.conversion_info().\
+          get_full_text_from_forward_compatible_pdb_text(key = key,
+          forward_compatible_pdb_text = result_item)
+       new_result_items.append(new_result_item)
+
+    """
+    assert not self.is_forward_compatible_hierarchy(), \
+        "Cannot make a hierarchy forward compatible twice"
+    if not conversion_info:
+      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+         import forward_compatible_pdb_cif_conversion
+      conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = self)
+    ph = self.deep_copy() # do not alter original
+    conversion_info.convert_hierarchy_to_forward_compatible_pdb_representation(
+       ph)
+    return ph
+
+  def forward_compatible_hierarchy_as_standard(self, conversion_info = None):
+    """ Convert a forward_compatible_hierarchy to a standard one.
+     Inverse of as_forward_compatible_hierarchy.  Restores chain IDs and
+     residue names using conversion_info object
+
+    :params: conversion_info:  optional conversion_info object specifying
+          conversion to be applied
+
+    :returns pdb_hierarchy with original (standard) chain ID and residue names
+
+    """
+
+    assert self.is_forward_compatible_hierarchy() or \
+        (conversion_info is not None), \
+       "Only a forward_compatible_hierarchy or a "+\
+        "hierarchy and conversion_info can be converted back to standard"
+    if not conversion_info:
+      conversion_info = self.conversion_info()
+    ph = self.deep_copy() # do not alter original
+    conversion_info.convert_hierarchy_to_full_representation(ph)
+    return ph
+
+  def as_forward_compatible_string(self, **kw):
+    """ Create a forward_compatible PDB string from a hierarchy and
+     throw away the conversion information.
+
+     One-way conversion useful for creating a file that is in PDB format.
+
+    :params **kw: any params suitable for as_pdb_string()
+    :returns text string
+    """
+
+    from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+       import hierarchy_as_forward_compatible_pdb_string
+    return hierarchy_as_forward_compatible_pdb_string(self, **kw)
+
+  def as_pdb_or_mmcif_string(self,
+       target_format = None,
+       segid_as_auth_segid = True,
+       remark_section = None,
+       **kw):
+    '''
+     Shortcut for pdb_or_mmcif_string_info with write_file=False, returning
+       only the string representing this hierarchy. The string may be in
+       PDB or mmCIF format, with target_format used if it is feasible.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+     :returns text string representing this hierarchy
+    '''
+
+    info = self.pdb_or_mmcif_string_info(
+       target_format = target_format,
+       segid_as_auth_segid = segid_as_auth_segid,
+       remark_section = remark_section,
+       write_file = False,
+       **kw)
+    return info.pdb_string
+
+  def write_pdb_or_mmcif_file(self,
+       target_filename,
+       target_format = None,
+       data_manager = None,
+       overwrite = True,
+       segid_as_auth_segid = True,
+       remark_section = None,
+       **kw):
+    '''
+     Shortcut for pdb_or_mmcif_string_info with write_file=True, returning
+       only the name of the file that is written. The file may be written
+       in PDB or mmCIF format, with target_format used if feasible.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param target_filename: desired output file name, to be modified to
+        match the output format
+     :param data_manager:  data_manager to write files
+     :param overwrite:  parameter to set overwrite=True in data_manager if True
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+     :returns name of file that is written
+    '''
+
+    info = self.pdb_or_mmcif_string_info(
+       target_filename = target_filename,
+       target_format = target_format,
+       data_manager = data_manager,
+       overwrite = overwrite,
+       segid_as_auth_segid = segid_as_auth_segid,
+       remark_section = remark_section,
+       write_file = True,
+       **kw)
+    return info.file_name
+
+  def pdb_or_mmcif_string_info(self,
+       target_format = None, target_filename = None,
+       data_manager = None,
+       overwrite = True,
+       segid_as_auth_segid = True,
+       write_file = False,
+       remark_section = None,
+       **kw):
+    """
+     NOTE: Normally use instead either as_pdb_or_mmcif_string
+     write_pdb_or_mmcif_file.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param target_filename: desired output file name, to be modified to
+        match the output format
+     :param data_manager:  data_manager to write files
+     :param overwrite:  parameter to set overwrite=True in data_manager if True
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param write_file: Write the string to the target file
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+
+     :returns group_args object with attributes
+       pdb_string, file_name (the actual file name used) and is_mmcif
+    """
+
+    if target_format in ['None',None]:  # set the default format here
+      target_format = 'pdb'
+    assert target_format in ['pdb','mmcif']
+
+    if target_format == 'pdb':
+      if self.fits_in_pdb_format():
+        pdb_str = self.as_pdb_string(**kw)
+        is_mmcif = False
+        if remark_section:
+          pdb_str = "%s\n%s" %(remark_section, pdb_str)
+      else:
+        pdb_str = self.as_mmcif_string(
+          segid_as_auth_segid = segid_as_auth_segid, **kw)
+        is_mmcif = True
+    else:
+      pdb_str = self.as_mmcif_string(
+        segid_as_auth_segid = segid_as_auth_segid, **kw)
+      is_mmcif = True
+    if target_filename:
+      import os
+      path,ext = os.path.splitext(target_filename)
+      if is_mmcif:
+        ext = ".cif"
+      else:
+        ext = ".pdb"
+      target_filename = "%s%s" %(path,ext)
+    if target_filename and write_file:
+      if not data_manager:
+        from iotbx.data_manager import DataManager
+        data_manager = DataManager()
+      target_filename = data_manager.write_model_file(pdb_str, target_filename,
+        overwrite = overwrite)
+
+    return group_args(group_args_type = 'pdb_string and filename',
+      pdb_string = pdb_str,
+      file_name = target_filename,
+      is_mmcif = is_mmcif)
+
   def as_pdb_string(self,
         crystal_symmetry=None,
         cryst1_z=None,
@@ -644,7 +902,8 @@ class _():
         sigatm=True,
         anisou=True,
         siguij=True,
-        output_break_records=True, # TODO deprecate
+        output_break_records=True, # TODO deprecate XXX no, this is still needed
+        force_write = False,
         cstringio=None,
         return_cstringio=Auto):
     """
@@ -658,9 +917,10 @@ class _():
     :param anisou: write ANISOU records for anisotropic atoms
     :param sigatm: write SIGATM records if applicable
     :param siguij: write SIGUIJ records if applicable
+    :param force_write:  write even if it does not fit in pdb format
     :returns: Python str
     """
-    if not self.fits_in_pdb_format():
+    if (not self.fits_in_pdb_format()) and (not force_write):
       return ""
     if (cstringio is None):
       cstringio = StringIO()
@@ -698,7 +958,8 @@ class _():
 # need in this tranformation.
 # Currently used exclusively in Tom's code.
 
-  def as_pdb_input(self, crystal_symmetry=None):
+  def as_pdb_input(self, crystal_symmetry=None,
+     segid_as_auth_segid = True):
     """
     Generate corresponding pdb.input object.
     """
@@ -709,7 +970,9 @@ class _():
         source_info="pdb_hierarchy",
         lines=flex.split_lines(h_str))
     else:
-      h_str = self.as_mmcif_string(crystal_symmetry=crystal_symmetry)
+      h_str = self.deep_copy().as_mmcif_string(
+        segid_as_auth_segid=segid_as_auth_segid,
+       crystal_symmetry=crystal_symmetry) # deep_copy needed to preserve parents
       inp = iotbx.pdb.mmcif.cif_input(
         source_info="pdb_hierarchy",
         lines=flex.split_lines(h_str))
@@ -1095,6 +1358,7 @@ class _():
       # fill self._lai_lookup for the whole hierarchy
       number_label_asym_id = 0
       label_asym_ids = all_label_asym_ids()
+
       for model in self.models():
         for chain in model.chains():
           previous = None
@@ -1166,16 +1430,27 @@ class _():
               self._label_seq_id_dict[ag.memory_id()] = label_seq_id_str
     return self._label_seq_id_dict[atom_group.memory_id()]
 
+  def clear_label_asym_id_lookups(self):
+    """ Make sure we have fresh lookups in case the hierarchy was modified since
+        they were calculated."""
+    if hasattr(self, '_lai_lookup'):
+      del self._lai_lookup
+    if hasattr(self, '_label_seq_id_dict'):
+      del self._label_seq_id_dict
+
   def as_cif_block(self,
       crystal_symmetry=None,
       coordinate_precision=5,
       occupancy_precision=3,
       b_iso_precision=5,
       u_aniso_precision=5,
-      segid_as_auth_segid=False):
+      segid_as_auth_segid=False,
+      output_break_records=False):
+
     if crystal_symmetry is None:
       crystal_symmetry = crystal.symmetry()
     cs_cif_block = crystal_symmetry.as_cif_block(format="mmcif")
+    self.clear_label_asym_id_lookups()
 
     h_cif_block = iotbx.cif.model.block()
     coord_fmt_str = "%%.%if" %coordinate_precision
@@ -1210,6 +1485,12 @@ class _():
      ]
     if segid_as_auth_segid:
       atom_site_header.append('_atom_site.auth_segid',)
+    if output_break_records:
+      # Determine if there are any break records here to write out
+      if not self.contains_break_records():
+        output_break_records = False # no point
+    if output_break_records:  # set up _atom_site.auth_break
+      atom_site_header.append('_atom_site.auth_break',)
 
     atom_site_loop = iotbx.cif.model.loop(header=tuple(atom_site_header))
 
@@ -1257,6 +1538,9 @@ class _():
     atom_site_pdbx_PDB_model_num = atom_site_loop['_atom_site.pdbx_PDB_model_num']
     if segid_as_auth_segid:
       atom_site_auth_segid = atom_site_loop['_atom_site.auth_segid']
+    if output_break_records:
+      atom_site_auth_break = atom_site_loop['_atom_site.auth_break']
+
     atom_site_anisotrop_id = aniso_loop['_atom_site_anisotrop.id']
     atom_site_anisotrop_pdbx_auth_atom_id = \
       aniso_loop['_atom_site_anisotrop.pdbx_auth_atom_id']
@@ -1294,11 +1578,14 @@ class _():
     chain_ids = all_chain_ids()
     for model in self.models():
       model_id = model.id
+      is_first_in_chain = True
       if model_id == '': model_id = '1'
       for chain in model.chains():
         auth_asym_id = self.get_auth_asym_id(chain,
            segid_as_auth_segid = segid_as_auth_segid)
         for residue_group in chain.residue_groups():
+          is_first_after_break = not (
+            is_first_in_chain or residue_group.link_to_previous)
           label_asym_id = self.get_label_asym_id(residue_group)
           seq_id = self.get_auth_seq_id(residue_group)
           icode = residue_group.icode
@@ -1307,6 +1594,7 @@ class _():
             comp_id = atom_group.resname.strip()
             entity_id = '?' # XXX how do we determine this?
             for atom in atom_group.atoms():
+
               group_pdb = "ATOM"
               if atom.hetero: group_pdb = "HETATM"
               x, y, z = [coord_fmt_str %i for i in atom.xyz]
@@ -1353,6 +1641,8 @@ class _():
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
               if segid_as_auth_segid:
                 atom_site_auth_segid.append(atom.segid)
+              if output_break_records:
+                atom_site_auth_break.append("1" if is_first_after_break else "0")
 
               if atom.uij_is_defined():
                 u11, u22, u33, u12, u13, u23 = [
@@ -1371,6 +1661,9 @@ class _():
                 atom_site_anisotrop_U12.append(u12)
                 atom_site_anisotrop_U13.append(u13)
                 atom_site_anisotrop_U23.append(u23)
+              is_first_in_chain = False
+              is_first_after_break = False
+              # end of atom loop
 
     for key in ('_atom_site.phenix_scat_dispersion_real',
                 '_atom_site.phenix_scat_dispersion_imag'):
@@ -1390,16 +1683,103 @@ class _():
     #
     return h_cif_block
 
+  def remove_hetero(self):
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            have_het = False
+            for atom in atom_group.atoms():
+              if atom.hetero:
+                have_het = True
+                break
+            if have_het:
+              residue_group.remove_atom_group(atom_group)
+    # clean up
+    need_fixing = True
+    while need_fixing:
+      need_fixing = False
+      for model in self.models():
+        if len(list(model.chains())) == 0:
+          self.remove_model(model)
+          need_fixing = True
+        for chain in model.chains():
+          if len(list(chain.residue_groups())) == 0:
+            model.remove_chain(chain)
+            need_fixing = True
+          for residue_group in chain.residue_groups():
+            if len(list(residue_group.atom_groups())) == 0:
+              chain.remove_residue_group(residue_group)
+              need_fixing = True
+            for atom_group in residue_group.atom_groups():
+              if len(list(atom_group.atoms())) == 0:
+                residue_group.remove_atom_group(atom_group)
+                need_fixing = True
+
+  def contains_hetero(self):
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            for atom in atom_group.atoms():
+              if atom.hetero:
+                return True
+    return False
+
+  def contains_break_records(self):
+    for model in self.models():
+      for chain in model.chains():
+        is_first_in_chain = True
+        for rg in chain.residue_groups():
+          is_first_after_break = not (is_first_in_chain or rg.link_to_previous)
+          if is_first_after_break:
+            return True
+          is_first_in_chain = False
+    return False
+
+  def guess_chemical_elements(self,
+     check_pseudo = False,
+     convert_atom_names_to_uppercase = True,
+     allow_incorrect_spacing = None):
+    ''' Attempt to guess chemical elements for all atoms in hierarchy
+       where this is not set.  Normally used only just after reading in
+       PDB-formatted files that do not have elements specified
+    '''
+    # Standard set of chemical elements based on atom names (and leading spaces)
+    atoms = self.atoms()
+    if convert_atom_names_to_uppercase:
+      for at in atoms:
+        at.name = at.name.upper()
+    atoms.set_chemical_element_simple_if_necessary()
+
+    # Check to see if all have an element now
+    elements = atoms.extract_element().strip()
+    if elements.all_ne(""): # all done
+      return
+
+    # Check for incorrect spacings (atom name has space before it but should
+    #  not or opposite)
+    if allow_incorrect_spacing:
+      from iotbx.pdb.utils import set_element_ignoring_spacings
+      set_element_ignoring_spacings(self)
+
+    # Check for pseudo-atoms (ZU ZC etc that represent groups of atoms)
+    if check_pseudo:
+      from iotbx.pdb.utils import check_for_pseudo_atoms
+      check_for_pseudo_atoms(self)
+
   def as_mmcif_string(self,
                        crystal_symmetry=None,
                        data_block_name=None,
-                       segid_as_auth_segid=False):
+                       segid_as_auth_segid=False,
+                       output_break_records=False):
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
       crystal_symmetry=crystal_symmetry,
-      segid_as_auth_segid = segid_as_auth_segid)
+      segid_as_auth_segid = segid_as_auth_segid,
+      output_break_records = output_break_records)
     f = StringIO()
     cif_object.show(out = f)
     return f.getvalue()
@@ -1408,13 +1788,15 @@ class _():
                        file_name,
                        crystal_symmetry=None,
                        data_block_name=None,
-                       segid_as_auth_segid=False):
+                       segid_as_auth_segid=False,
+                       output_break_records=False):
     cif_object = iotbx.cif.model.cif()
     if data_block_name is None:
       data_block_name = "phenix"
     cif_object[data_block_name] = self.as_cif_block(
       crystal_symmetry=crystal_symmetry,
-      segid_as_auth_segid = segid_as_auth_segid)
+      segid_as_auth_segid = segid_as_auth_segid,
+      output_break_records = output_break_records)
     with open(file_name, "w") as f:
       print(cif_object, file=f)
 
@@ -1454,6 +1836,90 @@ class _():
       if (altloc == ""): continue
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
     return conformer_indices
+
+  def sort_chains_by_id(self):
+    chain_ids = self.chain_ids()
+    if len(chain_ids) < 2:
+      return # nothing to do
+
+    unique_chain_ids = []
+    have_dups = False
+    for chain_id in chain_ids:
+      if chain_id in unique_chain_ids:
+        have_dups = True
+      else:
+        unique_chain_ids.append(chain_id)
+    if not have_dups:
+      return  # nothing to do
+
+    import iotbx.pdb.hierarchy
+    new_ph = iotbx.pdb.hierarchy.root()
+    for m0 in self.models():
+      detached_chain_dict = {}
+      m1 = iotbx.pdb.hierarchy.model()
+      m1.id = m0.id
+      new_ph.append_model(m1)
+      for c0 in m0.chains():
+        if not c0.id in list(detached_chain_dict.keys()):
+          detached_chain_dict[c0.id] = []
+        detached_chain_dict[c0.id].append(c0.detached_copy())
+      for chain_id in unique_chain_ids:
+        for c in detached_chain_dict[chain_id]:
+          m1.append_chain(c)
+
+    # Now clear out the original and attach new models to the original hierarchy
+    for m0 in self.models():
+      for c0 in m0.chains():
+        m0.remove_chain(chain = c0)
+
+    for m0, m1 in zip(self.models(), new_ph.models()):
+      for c1 in  m1.chains():
+        m0.append_chain(c1.detached_copy())
+
+    # and reset i_seq
+    atoms = self.atoms()
+    atoms.reset_i_seq()
+
+  def remove_ter_or_break(self):
+    import iotbx.pdb.hierarchy
+    new_ph = iotbx.pdb.hierarchy.root()
+    # Sort by chain ID first
+    self.sort_chains_by_id()
+    for m0 in self.models():
+        m1 = iotbx.pdb.hierarchy.model()
+        m1.id = m0.id
+        new_ph.append_model(m1)
+        last_chain = None
+        for c0 in m0.chains():
+         if (not last_chain) or (last_chain and c0.id != last_chain.id) :
+           new_chain = True
+           first = True
+           c1 = c0.detached_copy()
+           m1.append_chain(c1)
+           last_chain = c0
+         else:
+           for residue_group in c0.residue_groups():
+             c1.append_residue_group(residue_group.detached_copy())
+    for m1 in new_ph.models():
+      for c1 in m1.chains():
+        first = True
+        for residue_group in c1.residue_groups():
+           if not first:
+             residue_group.link_to_previous = True
+           first = False
+
+    # Now clear out the original and attach new models to the original hierarchy
+    for m0 in self.models():
+      for c0 in m0.chains():
+        m0.remove_chain(chain = c0)
+
+    for m0, m1 in zip(self.models(), new_ph.models()):
+      for c1 in  m1.chains():
+        m0.append_chain(c1.detached_copy())
+
+    # and reset i_seq
+    atoms = self.atoms()
+    atoms.reset_i_seq()
 
   def remove_incomplete_main_chain_protein(self,
        required_atom_names=['CA','N','C','O']):
@@ -2098,7 +2564,7 @@ class _():
     """
     atoms = self.atoms()
     # Get exchanged sites
-    from mmtbx import utils
+
     hd_group_selections = self.exchangeable_hd_selections()
     hd_site_d_iseqs, hd_site_h_iseqs = [], []
     for gsel in hd_group_selections:

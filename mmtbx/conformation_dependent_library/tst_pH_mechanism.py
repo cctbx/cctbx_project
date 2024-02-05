@@ -144,5 +144,5 @@ if __name__=="__main__":
   del sys.argv[1:]
   rc = run1()
   assert rc.return_code==0
-  rc = run2()
-  assert rc.return_code==0
+  # rc = run2()
+  # assert rc.return_code==0

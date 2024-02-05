@@ -27,9 +27,9 @@ def run(filename, log = None):
     el = fields[0]
     parameters = fields[1:]
     # Make sure the first field is a string
-    assert(isinstance(el, basestring))
+    # assert(isinstance(el, basestring))
     # Python 3
-    # assert (isinstance(el, str))
+    assert (isinstance(el, str))
 
     # How many gaussians?
     n_gauss = (len(parameters))//2
