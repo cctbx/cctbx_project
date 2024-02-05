@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "3.0.0"
+version = "4.0.0"
 
 master_phil_str = '''
 profile = False
@@ -37,7 +37,7 @@ profile = False
   .short_caption = Profile the run
   .help = Profile the performance of the entire run
 
-source_selection = "(altid a or altid '' or altid ' ') and occupancy > 0.33"
+source_selection = "occupancy > 0.33"
   .type = atom_selection
   .short_caption = Source selection
   .help = Source selection description
@@ -243,6 +243,11 @@ output
     .type = bool
     .short_caption = Compute scores rather than counting
     .help = Compute scores rather than just counting dots (-spike, -nospike in probe)
+
+   altid_as_pointmaster = True
+    .type = bool
+    .short_caption = Add alternate IDs as point masters for atoms that are in alternate conformations
+    .help = Add alternate IDs as point masters for atoms that are in alternate conformations
 }
 ''' + Helpers.probe_phil_parameters
 
@@ -568,10 +573,12 @@ It computes the MolProbity Probe score for a file, or a subset of the file,
 producing summaries or lists of all contacts, in Kinemage or raw format, depending
 on the Phil parameters.
 
-By default, it compares all atoms in the A alternate that meet an occupancy
+By default, it compares all atoms in all alternates that meet an occupancy
 criterion against themselves and produces a Kinemage-format file showing all of
 the dot interactions.  See below for the Phil parameter equivalents to some
-original probe command-line arguments.
+original probe command-line arguments.  (Note that the original probe selected
+only the a alternate by default, but version 4 of probe2 selects all alternates by default
+because it also adds point masters for all alternates.)
 
 Inputs:
   PDB or mmCIF file containing atomic model
@@ -1179,7 +1186,7 @@ Note:
 
   def _writeOutput(self, groupName, masterName):
     '''
-      Describe summary counts for data of various kinds.
+      Describe contacts for data of various kinds.
       :param groupName: Name to give to the group.
       :param masterName: Name for the master command.
       :return: String to be added to the output.
@@ -1336,6 +1343,21 @@ Note:
               # assign this node, aka dot, to overflow gapbin
               ptmast = ptmast[:3]+gapNames[-1]+ptmast[4:]
               gapcounts[-1] += 1
+
+          # Add alternate conformation masters to the pointmaster unless we've been told not to
+          if self.params.output.altid_as_pointmaster:
+            alt = ''
+            if (not a.parent().altloc in [' ', '']):
+              alt = a.parent().altloc
+            if (not t is None) and (not t.parent().altloc in [' ', '']):
+              alt += t.parent().altloc
+            if alt != '':
+              # Find the index of the second single quote in the ptmaster string
+
+              idx = ptmast.rfind("'")
+              # Insert the alternate conformation into the ptmaster string at this index,
+              # using the lower-case version of the alternate conformation character.
+              ptmast = ptmast[:idx] + alt.lower() + ptmast[idx:]
 
           if interactionType in [probeExt.InteractionType.SmallOverlap, probeExt.InteractionType.Bump,
               probeExt.InteractionType.BadBump]:
