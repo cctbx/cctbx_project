@@ -403,7 +403,14 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
         hh = Hedgehog(distribution=distribution, color='r', name=direction)
         hha.register_hedgehog(hh)
       hha.plot()
-    pass
+    elif kind == 'hammer':
+      ha = HammerArtist()
+      for direction, distribution in self.items():
+        hh = Hedgehog(distribution=distribution, color='r', name=direction)
+        ha.register_hedgehog(hh)
+      ha.plot()
+    else:
+      raise KeyError('Unknown kind of plot requested: ' + str(kind))
 
   def report(self) -> str:
     """Prepare a pretty string for logging"""
@@ -532,6 +539,7 @@ def run(params_):
   distributions = find_preferential_distribution(abc_stack, space_group)
   distributions.plot('hedgehog')
   distributions.plot('hammer')
+  print(distributions)
 
 
 def exercise_watson_distribution():
