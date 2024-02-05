@@ -1216,9 +1216,9 @@ def run(args,
         filename = "%s_box"%output_prefix
       else: filename = "%s"%params.output_file_name_prefix
       full_filename = dm.write_model_file(
-        model, filename = filename, extension = ".pdb")
+        model, filename = filename, format = "pdb")
       print("Writing boxed PDB with box unit cell to %s" %(
-          "%s" %filename), file = log)
+          "%s" %full_filename), file = log)
 
     # Write NCS file if NCS
     if ncs_object and ncs_object.max_operators()>0:
