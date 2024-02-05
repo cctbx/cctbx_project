@@ -18,6 +18,7 @@ Options:
   model=input_file        input PDB file
   outliers_only=False   only print outliers
   json=False            Outputs results as JSON compatible dictionary
+  use_cdl=True          Use the Conformational Dependent Library (cdl) for reference values
   verbose=False         verbose text output
 
 Example:
@@ -33,6 +34,9 @@ Example:
   json = False
     .type = bool
     .help = "Prints results as JSON format dictionary"
+  use_cdl = True
+    .type = bool
+    .help = "Use conformational dependent library for reference values"
   use_parent = False
     .type = bool
   """
@@ -48,12 +52,16 @@ Example:
     model.set_stop_for_unknowns(False)
     hierarchy = model.get_hierarchy()
     self.info_json = {"model_name":self.data_manager.get_default_model_name(),
-                      "time_analyzed": str(datetime.now())}
+                      "time_analyzed": str(datetime.now()),
+                      "params": {"use_cdl":self.params.use_cdl,
+                                 "outliers_only":self.params.outliers_only,
+                                 }}
     p = manager.get_default_pdb_interpretation_params()
     ##print(dir(p.pdb_interpretation))
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
+    p.pdb_interpretation.restraints_library.cdl=self.params.use_cdl
     model.set_log(log = null_out())
     model.process(make_restraints=True, pdb_interpretation_params=p)
     geometry = model.get_restraints_manager().geometry
