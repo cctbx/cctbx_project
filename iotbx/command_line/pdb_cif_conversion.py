@@ -389,7 +389,7 @@ Modified write_model_file method to check whether output model fits in PDB
 format and to write as mmCIF it does not, or if the user specified cif as the
 output format.
 
- def write_model_file(self, model_str, filename=Auto, extension=Auto,
+ def write_model_file(self, model_str, filename=Auto, format=Auto,
 
 
      MODULE:    iotbx/pdb/hierarchy.py:

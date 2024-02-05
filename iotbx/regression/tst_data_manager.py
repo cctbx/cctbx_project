@@ -878,8 +878,8 @@ ATOM    304  CG2 ILE A  20      19.057   7.034   6.234  1.00  7.06           C
 ATOM    305  CD1 ILE A  20      21.947   6.045   5.765  1.00 12.70           C
 """
   dm = DataManager(['model'])
-  dm.write_model_file(good_h_str + pdb_str, filename='good', extension='.pdb', overwrite=True)
-  dm.write_model_file(bad_h_str + pdb_str, filename='bad', extension='.pdb', overwrite=True)
+  dm.write_model_file(good_h_str + pdb_str, filename='good', format='pdb', overwrite=True)
+  dm.write_model_file(bad_h_str + pdb_str, filename='bad', format='pdb', overwrite=True)
   dm.process_model_file('good.pdb')
   try:
     dm.process_model_file('bad.pdb')
