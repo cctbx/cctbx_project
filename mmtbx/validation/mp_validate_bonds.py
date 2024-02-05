@@ -20,7 +20,7 @@ import json
 
 # individual validation results
 class mp_bond(atoms):
-  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "distance_value"]
+  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "distance_value", "macromolecule_type"]
 
   @staticmethod
   def header():
@@ -55,7 +55,7 @@ class mp_bond(atoms):
              self.score ]
 
 class mp_angle(atoms):
-  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "angle_value"]
+  __slots__ = atoms.__slots__ + ["sigma", "delta", "target", "angle_value", "macromolecule_type"]
 
   @staticmethod
   def header():
@@ -136,6 +136,11 @@ class mp_bonds(validation):
           self.n_outliers_small_by_model[model_id] += 1
         else:
           self.n_outliers_large_by_model[model_id] += 1
+      mm_type="OTHER"
+      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
+        mm_type="PROTEIN"
+      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
+        mm_type="NA"
       if (is_outlier or not outliers_only):
         self.results.append(mp_bond(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
@@ -145,7 +150,8 @@ class mp_bonds(validation):
           score=num_sigmas,
           delta=restraint.delta,
           xyz=flex.vec3_double([pdb_atoms[proxy.i_seqs[0]].xyz, pdb_atoms[proxy.i_seqs[1]].xyz]).mean(),
-          outlier=is_outlier))
+          outlier=is_outlier,
+          macromolecule_type=mm_type))
 
   def get_result_class(self) : return mp_bond
 
@@ -222,6 +228,11 @@ class mp_angles(validation):
           self.n_outliers_small_by_model[model_id] += 1
         else:
           self.n_outliers_large_by_model[model_id] += 1
+      mm_type="OTHER"
+      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
+        mm_type="PROTEIN"
+      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
+        mm_type="NA"
       if (is_outlier or not outliers_only):
         self.results.append(mp_angle(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
@@ -231,7 +242,8 @@ class mp_angles(validation):
           score=num_sigmas,
           delta=restraint.delta,
           xyz=pdb_atoms[proxy.i_seqs[1]].xyz,
-          outlier=is_outlier))
+          outlier=is_outlier,
+          macromolecule_type=mm_type))
 
   def get_result_class(self) : return mp_angle
 
