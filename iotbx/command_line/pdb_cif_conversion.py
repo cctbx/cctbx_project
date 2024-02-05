@@ -167,7 +167,7 @@ here are some alternatives:
 
     file_name = 'mypdb.pdb'
     file_name = model.write_pdb_or_mmcif_file(
-        target_format = params.output_files.target_output_format,
+        target_format = params.output.target_output_format,
         target_filename = file_name)
     print("Wrote model to '%s'" %file_name)
 
@@ -181,7 +181,7 @@ here are some alternatives:
      mmcif string as appropriate:
 
     str = model.as_pdb_or_mmcif_string(
-        target_format = params.output_files.target_output_format)
+        target_format = params.output.target_output_format)
     print("Doing something with a string %s" %str)
 
   3. If your code uses ph.as_pdb_string() or ph.write_pdb_file() and you are
@@ -204,7 +204,7 @@ here are some alternatives:
 
     file_name = 'mypdb.pdb'
     file_name = ph.write_pdb_or_mmcif_file(
-        target_format = params.output_files.target_output_format,
+        target_format = params.output.target_output_format,
         target_filename = file_name)
     print("Wrote model to '%s'" %file_name)
 
@@ -455,7 +455,7 @@ the actual chain ID in the mmCIF output.
 
      MODULE:   iotbx/pdb/utils.py:
 
-Methods to set the target_output_format parameter in the scope output/output_files:
+Methods to set the target_output_format parameter in the scope output:
 
 def set_target_output_format_in_params(params,
 def get_input_model_file_name_from_params(params):
@@ -591,7 +591,9 @@ reads and writes files outside of the Program Template:
 Here is how you can do these things.  Note that this only applies for
 modules that really cannot use the Program template.
 
-1. Add target_output_format to your "output" or "output_files" scope:
+1. Add target_output_format to your "output" scope (if you do not have
+    an output scope and have an output_files scope, that is allowed
+    but not recommended):
 
      target_output_format = *None pdb mmcif
        .type = choice
@@ -618,7 +620,7 @@ a. If you have a data manager and a model object:
 b. If have only a hierarchy and crystal_symmetry and params:
 
   file_name = ph.write_pdb_or_mmcif_file(
-           target_format = params.output_files.target_output_format,
+           target_format = params.output.target_output_format,
            target_filename = params.output.file_name,
            crystal_symmetry=crystal_symmetry)
   print("Model written to '%s'" %file_name)
