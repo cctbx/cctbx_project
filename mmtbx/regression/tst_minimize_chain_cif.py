@@ -547,10 +547,9 @@ def tst_01():
   pdb_file_name_answer_full = "%s_answer_full.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_AE)
   ph_answer_full = pdb_inp.construct_hierarchy()
-  info = ph_answer_full.pdb_or_mmcif_string_info(
+  fn = ph_answer_full.write_pdb_or_mmcif_file(
        target_filename = "%s_answer.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   ph_answer_full.atoms().reset_i_seq()
   xrs_answer_full = pdb_inp.xray_structure_simple()
 
@@ -558,10 +557,9 @@ def tst_01():
   pdb_file_name_two_models = "%s_poor_two_models.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_two_models)
   full_two_models = pdb_inp.construct_hierarchy()
-  info = full_two_models.pdb_or_mmcif_string_info(
+  fn = full_two_models.write_pdb_or_mmcif_file(
        target_filename = "%s_two_models.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   xrs_two_models_full = pdb_inp.xray_structure_simple()
 
   # Compute target map
@@ -587,10 +585,9 @@ def tst_01():
   pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
   xrs=pdb_inp.xray_structure_simple()
   refined_ph=pdb_inp.construct_hierarchy()
-  info = refined_ph.pdb_or_mmcif_string_info(
+  fn = refined_ph.write_pdb_or_mmcif_file(
        target_filename = "%s_refined.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   rmsd=xrs.sites_cart().rms_difference(xrs_answer_full.sites_cart())
   print("RMSD from TARGET allowing any CROSSOVERS: %8.2f " %(rmsd))
   return rmsd
@@ -604,10 +601,9 @@ def tst_02(args,prefix=None):
   pdb_file_name_answer_full = "%s_answer_full.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_answer_full)
   ph_answer_full = pdb_inp.construct_hierarchy()
-  info = ph_answer_full.pdb_or_mmcif_string_info(
+  fn = ph_answer_full.write_pdb_or_mmcif_file(
        target_filename = "%s_answer_full.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   ph_answer_full.atoms().reset_i_seq()
   xrs_answer_full = pdb_inp.xray_structure_simple()
 
@@ -615,10 +611,9 @@ def tst_02(args,prefix=None):
   pdb_file_name_poor = "%s_poor.cif"%prefix
   pdb_inp = iotbx.pdb.input(source_info=None, lines = pdb_str_poor_full)
   ph_poor_full = pdb_inp.construct_hierarchy()
-  info = ph_poor_full.pdb_or_mmcif_string_info(
+  fn = ph_poor_full.write_pdb_or_mmcif_file(
        target_filename = "%s_poor.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   ph_poor_full.atoms().reset_i_seq()
   xrs_poor_full = pdb_inp.xray_structure_simple()
 
@@ -642,14 +637,12 @@ def tst_02(args,prefix=None):
 
   pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
   xrs_refined=pdb_inp.xray_structure_simple()
-  info = hierarchy.pdb_or_mmcif_string_info(
+  fn = hierarchy.write_pdb_or_mmcif_file(
        target_filename = "%s_refined.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
-  info = multiple_model_hierarchy.pdb_or_mmcif_string_info(
+       crystal_symmetry = pdb_inp.crystal_symmetry())
+  fn = multiple_model_hierarchy.write_pdb_or_mmcif_file(
        target_filename = "%s_refined_all_states.cif"%prefix,
-       crystal_symmetry = pdb_inp.crystal_symmetry(),
-       write_file = True)
+       crystal_symmetry = pdb_inp.crystal_symmetry())
   rmsd=xrs_refined.sites_cart().rms_difference(xrs_answer_full.sites_cart())
   print("RMSD from TARGET for FULL-model refinement: %8.2f " %(rmsd))
   return rmsd

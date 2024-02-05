@@ -220,9 +220,8 @@ def get_pdb_inp(
          crystal_symmetry=crystal_symmetry)
   if pdb_string is None:
     ph = pdb_inp.construct_hierarchy()
-    info = ph.pdb_or_mmcif_string_info(
+    pdb_string = ph.as_pdb_or_mmcif_string(
       crystal_symmetry = crystal_symmetry)
-    pdb_string = info.pdb_string
   return pdb_inp,cryst1_line,pdb_string
 
 def run_one_cycle(

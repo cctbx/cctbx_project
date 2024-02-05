@@ -1670,10 +1670,9 @@ class replace_with_segments_from_pdb:
 
     # write out results
     if params.output_files.pdb_out:
-      info = replacement_model.hierarchy.pdb_or_mmcif_string_info(
-           target_filename = params.output_files.pdb_out,
-           write_file = True,)
-      params.output_files.pdb_out = info.file_name
+      params.output_files.pdb_out = \
+         replacement_model.hierarchy.write_pdb_or_mmcif_file(
+           target_filename = params.output_files.pdb_out)
       print("\nWriting output PDB file to %s" %(
         params.output_files.pdb_out), file=out)
     self.replacement_model=replacement_model
