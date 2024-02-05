@@ -1,10 +1,11 @@
 from __future__ import division
 
+import abc
 from collections import deque, UserDict
 from dataclasses import dataclass
 import glob
 from numbers import Number
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Iterable, List, Sequence, Tuple
 import sys
 
 from cctbx import sgtbx
@@ -188,6 +189,14 @@ class DirectSpaceBases(np.ndarray):
 # ~~~~~~~~~~~~~~~~~~~ PREFERENTIAL ORIENTATION CALCULATOR ~~~~~~~~~~~~~~~~~~~ #
 
 
+def cart2sph(xyz: np.ndarray) -> np.ndarray:
+  """Convert an array of xyz vectors into an array of r, polar, azim vectors"""
+  r = np.linalg.norm(xyz, axis=1)
+  polar = np.arccos(xyz[:, 2] / r)
+  azim = np.arctan2(xyz[:, 1], xyz[:, 0])
+  return np.vstack([r, polar, azim]).T
+
+
 class SphericalDistribution:
   """General class for handling distribution of unit vectors in 3D"""
   E1 = np.array([1, 0, 0])
@@ -226,7 +235,7 @@ class SphericalDistribution:
     polar = np.full_like(azim, np.pi / 2)
     return self.mu_sph2cart(np.vstack([r, polar, azim]).T)
 
-  def mu_sph2cart(self, r_polar_azim: np.ndarray):
+  def mu_sph2cart(self, r_polar_azim: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates r, polar, azim to cartesian in mu basis"""
     r, polar, azim = np.hsplit(r_polar_azim, 3)
     e1, e2, e3 = self.mu_basis_vectors
@@ -387,6 +396,13 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     return self.__class__(sorted(self.items(), key=lambda i: i[1].nll))
 
   def plot(self, kind: str = 'hedgehog'):
+    """Plot all results in self as a hedgehog or hammer plot """
+    if kind == 'hedgehog':
+      hha = HedgehogArtist()
+      for direction, distribution in self.items():
+        hh = Hedgehog(distribution=distribution, color='r', name=direction)
+        hha.register_hedgehog(hh)
+      hha.plot()
     pass
 
   def report(self) -> str:
@@ -401,10 +417,10 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     return table_utils.format(table_data, has_header=1, delim=' ')
 
 
-def find_preferential_orientation_direction(
+def find_preferential_distribution(
         dsv: DirectSpaceBases,
         space_group: SgtbxSpaceGroup
-) -> dict:
+) -> PreferentialDistributionResults:
   """Look for a preferential orientation in any direct space direction pqr"""
   laue_group = space_group.build_derived_laue_group()
   unique_pseudo_node_generator = UniquePseudoNodeGenerator(laue_group)
@@ -426,27 +442,39 @@ class Hedgehog:
   name: str
 
 
-class HedgehogArtist:
-  """Class responsible for drawing distribution of vectors as "hedgehogs"."""
-  def __init__(self, parameters) -> None:
-    self.parameters = parameters
+class BaseDistributionArtist(abc.ABC):
+  """Base class for plotting hedgehogs of vector distributions"""
+  PROJECTION: str = NotImplemented
+
+  def __init__(self) -> None:
     self.hedgehogs = []
     self._init_figure()
-
-  def __len__(self) -> int:
-    return len(self.hedgehogs)
 
   def _init_figure(self) -> None:
     self.fig = plt.figure()
     self.axes = []
 
   def _generate_axes(self) -> None:
-    axes_grid_width = np.ceil(np.sqrt(len(self))).astype(int)
-    axes_grid_height = np.ceil(len(self) / axes_grid_width).astype(int)
+    len_ = len(self.hedgehogs)
+    axes_grid_width = np.ceil(np.sqrt(len_)).astype(int)
+    axes_grid_height = np.ceil(len_ / axes_grid_width).astype(int)
     gs = GridSpec(axes_grid_height, axes_grid_width, hspace=0, wspace=0)
     for h in range(axes_grid_height):
       for w in range(axes_grid_width):
-        self.axes.append(self.fig.add_subplot(gs[h, w], projection='3d'))
+        subplot = self.fig.add_subplot(gs[h, w], projection=self.PROJECTION)
+        self.axes.append(subplot)
+
+  def register_hedgehog(self, hedgehog: Hedgehog) -> None:
+    self.hedgehogs.append(hedgehog)
+
+  @abc.abstractmethod
+  def plot(self) -> None:
+    pass
+
+
+class HedgehogArtist(BaseDistributionArtist):
+  """Class responsible for drawing distribution of vectors as "hedgehogs"."""
+  PROJECTION = '3d'
 
   def _plot_hedgehog(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
     origin = [0., 0., 0.]
@@ -464,13 +492,33 @@ class HedgehogArtist:
     axes.set_zlim([-1, 1])
     axes.set_label(axes.get_label() + ' ' + name if axes.get_label() else name)
 
-  def register_hedgehog(self, hedgehog: Hedgehog) -> None:
-    self.hedgehogs.append(hedgehog)
-
   def plot(self):
     self._generate_axes()
     for axes, hedgehog in zip(self.axes, self.hedgehogs):
       self._plot_hedgehog(axes=axes, hedgehog=hedgehog)
+    plt.show()
+
+
+class HammerArtist(BaseDistributionArtist):
+  """Class responsible for drawing distributions as hammer heatmaps"""
+  PROJECTION = 'hammer'
+
+  def _plot_hammer(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
+    bin_number = 10
+    polar_edges = np.linspace(-np.pi/2., np.pi/2., bin_number + 1)
+    azim_edges = np.linspace(-np.pi, np.pi, bin_number + 1)
+    polar_azim = cart2sph(hedgehog.distribution.vectors)[1:]
+    polar_centers = (polar_edges[:-1] + polar_edges[1:]) / 2
+    heat = np.histogram2d(polar_azim, bins=(polar_edges, azim_edges))
+    heat = np.divide(heat, np.tile(np.sin(polar_centers), (bin_number, 1)).T)
+    axes.grid(True)
+    cmap = plt.colormaps.viridis
+    axes.pcolor(azim_edges, polar_edges, heat.T, cmap=cmap)
+
+  def plot(self) -> None:
+    self._generate_axes()
+    for axes, hedgehog in zip(self.axes, self.hedgehogs):
+      self._plot_hammer(axes=axes, hedgehog=hedgehog)
     plt.show()
 
 
@@ -481,16 +529,13 @@ def run(params_):
   abc_stack = DirectSpaceBases.from_glob(params_)
   space_group = params_.input.space_group.group()
   abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
-  distributions = find_preferential_orientation_direction(abc_stack, space_group)
-  hha = HedgehogArtist(parameters=params_)
-  for lattice_direction, distribution in distributions.items():
-    hh = Hedgehog(distribution=distribution, color='r', name=lattice_direction)
-    hha.register_hedgehog(hh)
-  hha.plot()
+  distributions = find_preferential_distribution(abc_stack, space_group)
+  distributions.plot('hedgehog')
+  distributions.plot('hammer')
 
 
 def exercise_watson_distribution():
-  hha = HedgehogArtist(parameters=None)
+  hha = HedgehogArtist()
   for kappa in [-1000, -100, -10, 0.000001, 10, 100]:
     wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
     wd.sample(1000)
