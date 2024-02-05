@@ -107,6 +107,8 @@ class rna_pucker(residue):
     "is_delta_outlier",
     "epsilon_angle",
     "is_epsilon_outlier",
+    "Pperp_distance",
+    "probable_pucker",
     "model_id",
   ]
 
@@ -403,6 +405,13 @@ class rna_puckers(rna_geometry):
               self.pucker_perp_xyz[key] = [ana.p_perp_xyz, ana.o3p_perp_xyz]
               self.pucker_dist[key] = [ana.p_distance_c1p_outbound_line,
                                        ana.o3p_distance_c1p_outbound_line]
+              pucker.Pperp_distance=ana.p_distance_c1p_outbound_line
+              if not pucker.Pperp_distance:
+                pucker.probable_pucker=None
+              elif pucker.Pperp_distance and pucker.Pperp_distance < 2.9:
+                pucker.probable_pucker="C2'-endo"
+              else:
+                pucker.probable_pucker="C3'-endo"
 
   def get_sugar_xyz_mean(self, residue):
     sugar_atoms = [" C1'", " C2'", " C3'", " C4'", " O4'"]
