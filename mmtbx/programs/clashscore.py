@@ -85,21 +85,21 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
-  def get_results_as_JSON(self):
-    if self.params.do_flips : self.params.keep_hydrogens = False
-    hierarchy = self.data_manager.get_model().get_hierarchy()
+  #def get_results_as_JSON(self):
+  #  if self.params.do_flips : self.params.keep_hydrogens = False
+  #  hierarchy = self.data_manager.get_model().get_hierarchy()
 
-    result = clashscore(
-      pdb_hierarchy=hierarchy,
-      fast = self.params.fast,
-      condensed_probe = self.params.condensed_probe,
-      keep_hydrogens=self.params.keep_hydrogens,
-      nuclear=self.params.nuclear,
-      out=self.logger,
-      verbose=self.params.verbose and not quiet,
-      b_factor_cutoff=self.params.b_factor_cutoff,
-      do_flips=self.params.do_flips)
-    return result.as_JSON()
+  #  result = clashscore(
+  #    pdb_hierarchy=hierarchy,
+  #    fast = self.params.fast,
+  #    condensed_probe = self.params.condensed_probe,
+  #    keep_hydrogens=self.params.keep_hydrogens,
+  #    nuclear=self.params.nuclear,
+  #    out=self.logger,
+  #    verbose=self.params.verbose and not quiet,
+  #    b_factor_cutoff=self.params.b_factor_cutoff,
+  #    do_flips=self.params.do_flips)
+  #  return result.as_JSON()
 
   def run(self, quiet=None): #preserved how quiet was passed to the old run, not sure why
     """
@@ -113,7 +113,13 @@ Example:
     if self.params.do_flips : self.params.keep_hydrogens = False
     hierarchy = self.data_manager.get_model().get_hierarchy()
     self.info_json = {"model_name":self.data_manager.get_default_model_name(),
-                      "time_analyzed": str(datetime.now())}
+                      "time_analyzed": str(datetime.now()),
+                      "params": {"fast":self.params.fast,
+                                 "condensed_probe":self.params.condensed_probe,
+                                 "keep_hydrogens":self.params.keep_hydrogens,
+                                 "nuclear":self.params.nuclear,
+                                 "b_factor_cutoff":self.params.b_factor_cutoff,
+                                 "do_flips":self.params.do_flips}}
     self.results = clashscore(
       pdb_hierarchy=hierarchy,
       fast = self.params.fast,
