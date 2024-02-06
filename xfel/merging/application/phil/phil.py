@@ -434,8 +434,8 @@ postrefinement {
     .expert_level = 3
   partiality_threshold_hcfix = 0.2
     .type = float ( value_min = 0.0001 )
-    .help = throw out observations below this value. Hard coded as 0.2 for rs2, allow value for hybrid
-    .help = must enforce minimum positive value because partiality appears in the denominator
+    .help = Throw out observations below this value. Hard coded as 0.2 for rs2
+    .help = Minimum positive value is required because partiality appears in the denominator
   rs {
     fix = thetax thetay *RS G BFACTOR
       .type = choice(multi=True)
@@ -517,26 +517,26 @@ merging {
         .help = If True, plot refinement steps during refinement.
     }
     mm24
-      .help = maximum log-likelihood from Mittan-Moreau 2024
+      .help = Maximum log-likelihood from Mittan-Moreau 2024
       {
       expected_gain = None
         .help = Expected gain used for s_fac initialization.\
                 If None, initialize s_fac using routine.
         .type = float
       number_of_intensity_bins = 100
-        .help = number of intensity bins
+        .help = Number of intensity bins
         .type = int
       n_degrees = 2
         .help = s_add as a n_degree polynomial of the correlation coefficient
         .type = int
       tuning_param = 10
-        .help = tuning param for t-dist in maximum log likelihood
+        .help = Tuning param for t-dist in maximum log likelihood
         .type = float
       n_max_differences = 100
         .help = Maximum number of pairwise differences per reflection.\
                 If None, then do not limit the maximum number of differences
         .type = int
-      random_seed=50298
+      random_seed = 50298
         .help = Seed used to establish the random number generator for\
                 subsampling the pairwise differences.
         .type = int
@@ -544,7 +544,7 @@ merging {
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter
       likelihood = normal *t-dist
-        .help = Choice for likelihood function. Either 't-dist', 'normal'.
+        .help = Choice for likelihood function.
         .type = choice
         .multiple = False
       cc_after_pr = True
