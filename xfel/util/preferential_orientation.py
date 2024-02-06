@@ -417,10 +417,10 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     """Prepare a pretty string for logging"""
     table_data = [['Direction', 'kappa', 'mu', 'NLL']]
     for k, v in self.sorted.items():
-      dir_ = f'<{k[0]:+d},{k[1]:+d},{k[2]:+d}>'
+      dir_ = f'<{k[0]:d},{k[1]:d},{k[2]:d}>'
       dir_ = dir_.replace('(', '<').replace(')', '>').replace(' ', '')
-      kappa = f'{v.kappa:+8f}'
-      mu = f'[{v.mu[0]:+3f},{v.mu[1]:+3f},{v.mu[2]:+3f}]'
+      kappa = f'{v.kappa:+.8f}'
+      mu = f'[{v.mu[0]:+.3f},{v.mu[1]:+.3f},{v.mu[2]:+.3f}]'
       nll = f'{v.nll:.2E}'
       table_data.append([dir_, kappa, mu, nll])
     return table_utils.format(table_data, has_header=1, delim=' ')
@@ -524,12 +524,12 @@ class HammerArtist(BaseDistributionArtist):
       x=azim, y=polar, bins=[azim_edges, polar_edges])
     heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
     axes.grid(True)
-    axes.set_xticklabels([])
-    axes.set_xticklabels([])
     axes.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
-    axes.plot(0., 0., 'ro')                         # laboratory frame x-axis
-    axes.plot([-np.pi, np.pi], [0., 0.], 'ro')      # laboratory frame y-axis
-    axes.plot([0., 0.], [-np.pi/2, np.pi/2], 'ro')  # laboratory frame z-axis
+    axes.plot(0., 0., 'r.')                         # laboratory frame x-axis
+    axes.plot([-np.pi, np.pi], [0., 0.], 'g.')      # laboratory frame y-axis
+    axes.plot([0., 0.], [-np.pi/2, np.pi/2], 'b.')  # laboratory frame z-axis
+    axes.set_xticklabels([])
+    axes.set_xticklabels([])
     axes.set_title(hedgehog.name)
 
   def plot(self) -> None:
