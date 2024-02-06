@@ -409,7 +409,7 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     artist = artists[kind]()
     for direction, distribution in self.items():
       hh = Hedgehog(distribution=distribution, color='r', name=str(direction))
-      artist.register4(hh)
+      artist.register_hedgehog(hh)
     artist.plot()
 
   @property
