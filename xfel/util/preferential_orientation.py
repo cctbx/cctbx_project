@@ -470,7 +470,7 @@ class BaseDistributionArtist(abc.ABC):
     for h in range(axes_grid_height):
       for w in range(axes_grid_width):
         ax = self.fig.add_subplot(gs[h, w], projection=self.PROJECTION)
-        if len(self.axes) > len_:
+        if len(self.axes) >= len_:
           ax.set_axis_off()
         self.axes.append(ax)
 
@@ -529,8 +529,9 @@ class HammerArtist(BaseDistributionArtist):
     ax.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
     axes_params = {'ls': '', 'marker': '.', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
-    ax.plot([-.999 * np.pi, .999 * np.pi], [0., 0.], c='b', **axes_params)
+    ax.plot([-.999 * np.pi, .999 * np.pi], [0., 0.], c='g', **axes_params)
     ax.plot([0., 0.], [-np.pi / 2, np.pi / 2], c='b', **axes_params)
+    ax.tick_params(labelbottom=False, labelleft=False)
     ax.set_title(hedgehog.name)
 
   def plot(self) -> None:
