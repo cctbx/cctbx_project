@@ -163,12 +163,15 @@ here are some alternatives:
     f.close()
     print("Wrote model to '%s'" %file_name)
 
-  then use instead model.write_pdb_or_mmcif_file():
+  then get a data_manager and use it instead:
 
     file_name = 'mypdb.pdb'
-    file_name = model.write_pdb_or_mmcif_file(
-        target_format = params.output.target_output_format,
-        target_filename = file_name)
+    from iotbx.data_manager import DataManager
+    dm = DataManager()
+    dm.set_overwrite(True)
+    file_name = dm.write_model_file(model,
+        filename = file_name,
+        format = params.output.target_output_format)
     print("Wrote model to '%s'" %file_name)
 
   2. If your code uses ph.as_pdb_string() and you need the string:
@@ -249,7 +252,7 @@ D. If your code names intermediate files with the extension '.pdb':
     f.close()
     print("Wrote intermediate model lines to '%s'" %new_file_name)
 
-  Use the data_manager or write_pdb_or_mmcif_file to write the file, and
+  Use the data_manager to write the file, and
     capture the actual file name so that you can use it when you read the
     contents of the file back in.
 
@@ -435,11 +438,6 @@ of chain ID, and to guess the element type of atoms where it is not specified:
 
      MODULE:    mmtbx/model/model.py:
 
-Method for writing as PDB or mmCIF string, using supplied target_format if
-possible, returning file name written:
-
-  def write_pdb_or_mmcif_file(self,
-
 Method for obtaining a PDB or mmCIF string, using supplied target_format if
 possible, returning the string:
 
@@ -573,7 +571,7 @@ reads and writes files outside of the Program Template:
      need to capture the actual file names written by the data_manager.
 
   b. If you cannot use the data_manager, use the write_pdb_or_mmcif_file
-     method of the model manager or the hierarchy to write your files.
+     method of the hierarchy to write your files.
      This method allows setting the preferred output format and capturing
      the name of the actual file that is written.
 

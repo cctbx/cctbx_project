@@ -1714,47 +1714,6 @@ class manager(object):
        **kw)
     return info.pdb_string
 
-  def write_pdb_or_mmcif_file(self,
-       target_filename,
-       target_format = None,
-       data_manager = None,
-       overwrite = True,
-       segid_as_auth_segid = True,
-       remark_section = None,
-       **kw):
-    '''
-     Shortcut for pdb_or_mmcif_string_info with write_file=True, returning
-       only the name of the file that is written. The file may be written
-       in PDB or mmCIF format, with target_format used if feasible.
-
-     Method to allow shifting from general writing as pdb to
-     writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
-       as_mmcif_string())
-     :param target_format: desired output format, pdb or mmcif
-     :param target_filename: desired output file name, to be modified to
-        match the output format
-     :param data_manager:  data_manager to write files
-     :param overwrite:  parameter to set overwrite=True in data_manager if True
-     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
-          in mmcif output
-     :param remark_section: if supplied and format is pdb, add this text
-     :param **kw:  any keywords suitable for as_pdb_string()
-        and as_mmcif_string()
-     :returns name of file that is written
-    '''
-
-    info = self.pdb_or_mmcif_string_info(
-       target_filename = target_filename,
-       target_format = target_format,
-       data_manager = data_manager,
-       overwrite = overwrite,
-       segid_as_auth_segid = segid_as_auth_segid,
-       remark_section = remark_section,
-       write_file = True,
-       **kw)
-    return info.file_name
-
   def pdb_or_mmcif_string_info(self,
       target_filename = None,
       target_format = None,
@@ -1767,10 +1726,12 @@ class manager(object):
     # Method to allow shifting from general writing as pdb
     # to writing as mmcif, with the change in two places (here and hierarchy.py)
 
-    # NOTE: normally use either write_pdb_or_mmcif_file or
-    #   as_pdb_or_mmcif_string instead of this general function
+    # NOTE: Normally use the data_manager to write any files and use
+    #  tools in the hierarchy to manipulate any aspects of a hierarchy.
 
-    # Note default of segid_as_auth_segid = True, different from
+    #  If you need a pdb string, normally use as_pdb_or_mmcif_string 
+    #   instead of this general function 
+    #  Note default of segid_as_auth_segid = True, different from
     #     as_mmcif_string()
 
     if target_format in ['None',None]:  # set the default format here
