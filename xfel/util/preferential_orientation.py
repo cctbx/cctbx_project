@@ -529,7 +529,7 @@ class HammerArtist(BaseDistributionArtist):
     ax.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
     axes_params = {'ls': '', 'marker': 'o', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
-    ax.plot([-.999 * np.pi, .999 * np.pi], [0., 0.], c='g', **axes_params)
+    ax.plot([-np.pi / 2, np.pi / 2], [0., 0.], c='g', **axes_params)
     ax.plot([0., 0.], [-np.pi / 2, np.pi / 2], c='b', **axes_params)
     ax.tick_params(labelbottom=False, labelleft=False)
     ax.set_title(hedgehog.name)
