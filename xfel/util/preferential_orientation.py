@@ -12,6 +12,7 @@ from cctbx import sgtbx
 from dxtbx.model import ExperimentList
 from iotbx.phil import parse
 from libtbx import table_utils
+from libtbx.mpi4py import MPI
 from xfel.util.drift import params_from_phil, read_experiments
 
 from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
@@ -78,6 +79,7 @@ phil_scope = parse(phil_scope_str)
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~ CONVENIENCE AND TYPING ~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
+COMM = MPI.COMM_WORLD
 Int3 = Tuple[int, int, int]
 Number3 = Sequence[Number]
 sg_p1 = sgtbx.space_group('P 1')  # noqa
@@ -85,6 +87,21 @@ pg_i1 = sg_p1.build_derived_laue_group()
 SgtbxPointGroup = Any
 SgtbxSpaceGroup = Any
 SgtbxSymmOp = Any
+
+
+def flatten(sequence: Sequence[Sequence]) -> List:
+  """Flatten a sequence of sequences into a 1-dimensional list"""
+  return [element for sub_sequence in sequence for element in sub_sequence]
+
+
+def locate_paths(
+        include_globs: List[str],
+        exclude_globs: List[str],
+) -> List[str]:
+  """Return a list of expt paths in `include_globs`, outside `exclude_globs`"""
+  include_paths = flatten([glob.glob(ig) for ig in include_globs])
+  exclude_paths = flatten([glob.glob(eg) for eg in exclude_globs])
+  return [path for path in include_paths if path not in exclude_paths]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -133,27 +150,8 @@ class DirectSpaceBases(np.ndarray):
       if expt_sg != space_group:
         continue
       abcs.append(expt.crystal.get_real_space_vectors().as_numpy_array())
-    if not abcs:
-      raise ValueError('No experiments matching input space group found')
-    return cls(np.stack(abcs, axis=0))
-
-  @classmethod
-  def from_glob(cls, parameters) -> 'DirectSpaceBases':
-    """Extract N [a, b, c] arrays from N expts based on input parameters"""
-    expt_paths = cls.locate_input_paths(parameters=parameters)
-    expts = read_experiments(*expt_paths)
-    space_group = parameters.input.space_group.group()
-    return cls.from_expts(expts, space_group)
-
-  @staticmethod
-  def locate_input_paths(parameters) -> List[str]:
-    """Return a list of expt paths in `input.glob`, outside `input.exclude`"""
-    input_paths, exclude_paths = [], []
-    for ig in parameters.input.glob:
-      input_paths.extend(glob.glob(ig))
-    for ie in parameters.input.exclude:
-      exclude_paths.extend(glob.glob(ie))
-    return [it for it in input_paths if it not in exclude_paths]
+    abcs = np.stack(abcs, axis=0) if abcs else np.empty(shape=(0, 3, 3))
+    return cls(abcs)
 
   @property
   def a(self) -> np.ndarray:
@@ -535,9 +533,13 @@ class HammerArtist(BaseDistributionArtist):
 
 
 def run(params_):
-  abc_stack = DirectSpaceBases.from_glob(params_)
   space_group = params_.input.space_group.group()
+  expt_paths = locate_paths(params_.input.glob, params_.input.exclude)
+  expt_paths = expt_paths[COMM.rank::COMM.size]
+  expts = read_experiments(*expt_paths)
+  abc_stack = DirectSpaceBases.from_expts(expts, space_group)
   abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
+  abc_stack = np.concatenate(COMM.allgather(abc_stack), axis=0)
   distributions = find_preferential_distribution(abc_stack, space_group)
   print(distributions.table)
   if (plot_style := params_.plot.style) != 'none':
