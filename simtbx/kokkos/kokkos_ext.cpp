@@ -190,7 +190,7 @@ namespace simtbx { namespace Kokkos {
              make_getter(&simtbx::Kokkos::diffuse_api::stencil_size,rbv()),
              make_setter(&simtbx::Kokkos::diffuse_api::stencil_size,dcp()),
              "")
-        .add_property("symmetize_diffuse",
+        .add_property("symmetrize_diffuse",
              make_getter(&simtbx::Kokkos::diffuse_api::symmetrize_diffuse,rbv()),
              make_setter(&simtbx::Kokkos::diffuse_api::symmetrize_diffuse,dcp()),
              "")
