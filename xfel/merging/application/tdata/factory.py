@@ -9,4 +9,3 @@ class factory(factory_base):
   def from_parameters(params, additional_info=None, mpi_helper=None, mpi_logger=None):
      if params.tdata.output_path is not None:
       return [simple_cell_listing(params, mpi_helper, mpi_logger)]
-

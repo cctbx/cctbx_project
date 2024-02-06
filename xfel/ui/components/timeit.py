@@ -15,4 +15,3 @@ def duration(t1, t2):
     mm = mm % 60
   ss = seconds % 60
   return "%02dh %02dm %fs" % (hh, mm, ss + frac)
-

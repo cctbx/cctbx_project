@@ -21,4 +21,3 @@ def build_dihedrals1(mainchain):
         residue = int(labels.resseq)
         print(residue, name, angle,)
         i = (i + 1) % 6
-

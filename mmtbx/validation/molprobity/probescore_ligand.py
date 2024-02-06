@@ -309,4 +309,3 @@ class probescore():
     probe_unformatted = probe_out.stdout_lines
     result = probe_out.stdout_lines
     return result
-

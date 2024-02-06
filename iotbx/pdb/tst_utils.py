@@ -30,14 +30,14 @@ ATOM     10  CA  ASN D 141      30.271  17.061  23.474  1.00  5.65           C
 """
 
 pseudo_as_pdb="""
-ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65      
+ATOM     10  CA  ASN A 141      30.271  17.061  23.474  1.00  5.65
 ATOM     24 ZC1'  GC U  11      10.024   9.813   3.777  1.00 36.50      UNK
 """
 spacing_as_pdb="""
-ATOM     10  I   ASN A 141      30.271  17.061  23.474  1.00  5.65       
-ATOM     11 I    ASN A 141      30.271  17.061  23.474  1.00  5.65    
-HETATM   12  I   LIG A 141      30.271  17.061  23.474  1.00  5.65      
-HETATM   13 I    LIG A 141      30.271  17.061  23.474  1.00  5.65     
+ATOM     10  I   ASN A 141      30.271  17.061  23.474  1.00  5.65
+ATOM     11 I    ASN A 141      30.271  17.061  23.474  1.00  5.65
+HETATM   12  I   LIG A 141      30.271  17.061  23.474  1.00  5.65
+HETATM   13 I    LIG A 141      30.271  17.061  23.474  1.00  5.65
 """
 
 as_pdb = pdb_str_to_be_cif
@@ -71,7 +71,7 @@ def exercise_add_models_and_hierarchies():
 def exercise_set_element_ignoring_spacings():
   from iotbx.pdb.utils import get_pdb_info
   pdb_info = get_pdb_info(spacing_as_pdb, allow_incorrect_spacing = True)
-  from iotbx.pdb.utils import set_element_ignoring_spacings 
+  from iotbx.pdb.utils import set_element_ignoring_spacings
   set_element_ignoring_spacings(pdb_info.hierarchy)
 
 def exercise_check_pseudo_atoms():

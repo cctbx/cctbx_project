@@ -16,4 +16,3 @@ __device__ __forceinline__ T __ldg(const T* ptr) {
 }
 
 #endif // SIMTBX_CUDA_COMPAT_H
-

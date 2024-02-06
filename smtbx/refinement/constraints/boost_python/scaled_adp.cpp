@@ -52,4 +52,3 @@ namespace smtbx { namespace refinement { namespace constraints {
 
 
 }}}}
-

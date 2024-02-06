@@ -64,4 +64,3 @@ if (__name__ == "__main__"):
   print('from gltbx.images import img_data\n')
   for arg in sys.argv[1:]:
     create_encoded(arg)
-

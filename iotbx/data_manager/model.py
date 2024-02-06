@@ -354,7 +354,7 @@ The choices are {}.
       other_extension = ".pdb" if extension == ".cif" else ".cif"
       fn,ext = os.path.splitext(filename)
       if ext == other_extension: # swap extension
-        filename = fn + extension 
+        filename = fn + extension
       elif extension_matches_ending(filename, other_extension):
         filename = fn + "%s_%s" %(extension, ext.split("_")[1])
       else:

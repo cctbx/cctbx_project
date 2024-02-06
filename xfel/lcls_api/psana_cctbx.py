@@ -154,4 +154,3 @@ class CctbxPsanaEventProcessor(Processor):
       sync_geometry(self.reference_detector.hierarchy(), self.imageset.get_detector().hierarchy())
       experiment.detector = self.imageset.get_detector()
     return experiments
-

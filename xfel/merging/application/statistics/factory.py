@@ -27,4 +27,3 @@ class factory(factory_base):
         return [intensity_resolution_statistics_cxi(params, mpi_helper, mpi_logger)]
       elif info_count > 1 and additional_info[1] == 'histogram':
         return [intensity_histogram(params, mpi_helper, mpi_logger)]
-

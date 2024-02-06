@@ -103,4 +103,3 @@ struct kokkos_detector{
 } // Kokkos
 } // simtbx
 #endif // SIMTBX_KOKKOS_DETECTOR_H
-

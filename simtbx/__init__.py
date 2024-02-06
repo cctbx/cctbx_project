@@ -10,4 +10,3 @@ def get_exascale(interface, context):
 
   return dict(gpu_instance = gpu_instance, gpu_energy_channels = gpu_energy_channels,
               gpu_detector = gpu_detector, exascale_api = exascale_api)[interface]
-

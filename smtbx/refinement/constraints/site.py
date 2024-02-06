@@ -26,4 +26,3 @@ class shared_site(object):
           self.indices[i]])
       reparametrisation.asu_scatterer_parameters[self.indices[i]].site = param
       reparametrisation.shared_sites[self.indices[i]] = site
-

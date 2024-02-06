@@ -58,4 +58,3 @@ if __name__ == "__main__":
                            "less accurate")
   args = parser.parse_args()
   run(args)
-

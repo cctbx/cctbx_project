@@ -183,4 +183,3 @@ def testResidues(model):
   residues = getResidueDihedrals(model)
   for r in residues:
     print(r.pointIDs, " : ", r.angle)
-

@@ -39,4 +39,3 @@ class Program(ProgramTemplate):
     with open(basename+".cif", 'w') as f:
       f.write(txt)
     print("  wrote %s.cif" % basename)
-

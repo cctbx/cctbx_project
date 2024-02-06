@@ -96,4 +96,3 @@ def calibrate_energy(notches, energies):
   plt.legend()
   plt.show()
   return (eV_offset, eV_per_pixel)
-

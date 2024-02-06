@@ -86,4 +86,3 @@ class cutter():
     # On top of that, this function could be overloaded if necessary!
     return group_args(
         answer = self.answer)
-

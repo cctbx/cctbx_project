@@ -31,4 +31,3 @@ if __name__ == "__main__":
                       help='Interpret the arguments as complete paths to pickles or tarred pickles, not directories.')
   args = parser.parse_args()
   result = run(args)
-

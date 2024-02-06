@@ -85,4 +85,3 @@ Inputs:
 
   def get_results(self):
     return group_args(model = self.model)
-

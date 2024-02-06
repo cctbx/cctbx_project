@@ -152,4 +152,3 @@ def run(args):
 if __name__ == '__main__':
   print(sys.argv)
   run(sys.argv[1:])
-

@@ -135,4 +135,3 @@ if (__name__ == "__main__"):
     print("OK. Time: %8.3f"%(time.time()-t0))
   else:
     print("Skipping tst_clashscore_2(): probe or reduce not configured")
-

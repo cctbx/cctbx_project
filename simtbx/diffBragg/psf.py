@@ -101,4 +101,3 @@ if __name__=="__main__":
     plt.gca().set_title("with PSF")
     plt.imshow(a2)
     plt.show()
-

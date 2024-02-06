@@ -67,4 +67,3 @@ def run(filename, log = None):
         tuple(array_of_b))
 
   return new_scattering_dictionary
-

@@ -220,4 +220,3 @@ class decompose_tls_matrices {
 }}} // close mmtbx/tls/decompose
 
 #endif
-

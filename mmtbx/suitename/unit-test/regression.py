@@ -215,4 +215,3 @@ def regression(name, input, canonical_output):
 
 def test():
   regression("1ehz", in_1ehz, out_1ehz)
-

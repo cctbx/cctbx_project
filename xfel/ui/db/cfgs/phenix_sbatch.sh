@@ -20,4 +20,3 @@ cd <output_dir>
 echo -n "Starting job @ t="; date +%s
 srun -n 1 <srun_script>
 echo -n "Finished job @ t="; date +%s
-

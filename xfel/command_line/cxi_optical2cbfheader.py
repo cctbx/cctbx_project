@@ -61,4 +61,3 @@ if (__name__ == "__main__") :
                                                 plot=params.plot,old_style_diff_path=params.old_style_diff_path)
 
   write_cspad_cbf(None, metro, 'cbf', None, params.out, None, 0, header_only=True)
-

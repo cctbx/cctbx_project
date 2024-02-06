@@ -90,4 +90,3 @@ tooltips = {
 
 def setup_tooltip(obj):
   obj.SetToolTip(tooltips.get(obj.Name))
-

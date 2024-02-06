@@ -56,4 +56,3 @@ Usage examples:
   # ---------------------------------------------------------------------------
   def get_results(self):
     return self.evalurama.get_results()
-

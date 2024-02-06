@@ -81,4 +81,3 @@ class from_scatterers_fft(managed_calculation_base):
     - Let us know if none of the above applies (help@phenix-online.org).
     """ % (registry.last_table(), ' '.join(str(x) for x in list(registry.unassigned_types())))
     raise Sorry(msg)
-

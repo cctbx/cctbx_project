@@ -122,4 +122,3 @@ if __name__=="__main__":
   assert np.allclose(nbeam_norm_check, nbeam_norm_check[0], atol=1.0)
 
   print("OK")
-
