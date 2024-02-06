@@ -221,6 +221,7 @@ class place_hydrogens():
     p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.automatic_linking.link_metals = True
+    p.pdb_interpretation.automatic_linking.link_residues = True
 
     t0 = time.time()
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360

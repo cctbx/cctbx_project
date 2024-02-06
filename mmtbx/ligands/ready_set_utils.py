@@ -13,6 +13,12 @@ from six.moves import range
 
 get_class = iotbx.pdb.common_residue_names_get_class
 
+def distance2(xyz1, xyz2):
+  d2=0
+  for k in range(3):
+    d2+=(xyz2[k]-xyz1[k])**2
+  return d2
+
 def is_n_terminal_residue(residue_group):
   residues = []
   for atom_group in residue_group.atom_groups():
@@ -39,7 +45,7 @@ def validate_c_ca_n_for_n_terminal(c,ca,n,bonds):
   if bonds is None: return True
   nb = bonds.get(n.i_seq, None)
   if not nb: return False
-  if len(nb) not in [1]: return False
+  if len(nb) not in [1, 2]: return False
   return True
 
 def validate_c_ca_n_for_c_terminal(c,ca,n,bonds):
@@ -55,6 +61,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
                                            append_to_end_of_model=False,
                                            retain_original_hydrogens=True,
                                            n_ca_c=None,
+                                           verbose=False,
                                           ):
   rc=[]
   if n_ca_c is not None:
@@ -68,12 +75,6 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     if c is None: return 'no C'
 
   if not validate_c_ca_n_for_n_terminal(c, ca, n, bonds): return []
-  # if bonds:
-  #   ns = []
-  #   for key in bonds:
-  #     if n.i_seq == key[0]:
-  #       ns.append(key)
-  #   if len(ns)>=3: return rc
 
   proton_element, proton_name = get_proton_info(ag)
   atom = ag.get_atom(proton_element) # just so happens that the atom is named H/D
@@ -89,12 +90,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
   else:
     if ag.get_atom(proton_name): # maybe needs to be smarter or actually work
       ag.remove_atom(ag.get_atom(proton_name))
-  #if use_capping_hydrogens and 0:
-  #  for i, atom in enumerate(ag.atoms()):
-  #    if atom.name == ' H3 ':
-  #      ag.remove_atom(i)
-  #      break
-  # add H1
+
   rh3 = construct_xyz(n, 1.0,
                       ca, 109.5,
                       c, dihedral,
@@ -115,15 +111,25 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     #if ag.atoms()[0].parent().resname=='PRO':
     #  number_of_hydrogens=-1
     #  # should name the hydrogens correctly
+  if bonds:
+    atoms=ag.atoms()
+    i_seqs = atoms.extract_i_seq()
+    number_of_heavy=0
+    for i_seq in bonds.get(n.i_seq, []):
+      if i_seq in i_seqs:
+        if not atoms[i_seq].element_is_hydrogen():
+          number_of_heavy+=1
+      else:
+        number_of_heavy+=1
+    if number_of_heavy==2:
+      number_of_hydrogens-=2
+    if verbose: print('number_of_heavy', number_of_heavy)
+  if verbose: print('number_of_hydrogens',number_of_hydrogens)
   if h_count+d_count>=number_of_hydrogens: return []
-  def distance2(xyz1, xyz2):
-    d2=0
-    for k in range(3):
-      d2+=(xyz2[k]-xyz1[k])**2
-    return d2
   j=0
   for i in range(0, number_of_hydrogens):
     name = " %s%d " % (proton_element, i+1)
+    if number_of_hydrogens==1: name = ' %s  ' % proton_element
     if retain_original_hydrogens:
       if i==0 and ag.get_atom(proton_name): continue
       if i==1 and ag.get_atom(proton_name):
@@ -141,6 +147,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     atom.occ = n.occ
     atom.b = n.b
     atom.segid = ' '*4
+    if verbose: print('adding', atom.quote())
     if append_to_end_of_model and i+1==number_of_hydrogens:
       rg = _add_atom_to_chain(atom,
                               ag,
@@ -676,16 +683,37 @@ def delete_charged_n_terminal_hydrogens(hierarchy):
     ag.remove_atom(h3)
 
 def add_water_hydrogen_atoms_simple(hierarchy, log=None):
+  displacements = [
+    [ 1.0,  0.0,  0.0],
+    [-0.7, -0.7,  0.0],
+    [ 0.0,  1.0,  0.0],
+    [-0.7, -0.7,  0.0],
+    [ 0.0,  0.0,  1.0],
+    [ 0.0, -0.7, -0.7],
+    ]
   for atom_group in hierarchy.atom_groups():
     if atom_group.resname in ['HOH', 'DOD']:
+      proton_element='H'
+      if atom_group.resname=='DOD': proton_element='D'
       if len(atom_group.atoms())==3: continue
+      names = [atom.name for atom in atom_group.atoms()]
       o_atom = atom_group.atoms()[0]
-      xyz = (o_atom.xyz[0]+1, o_atom.xyz[1], o_atom.xyz[2])
-      h1 = get_hierarchy_h_atom(' H1 ', xyz, o_atom)
-      atom_group.append_atom(h1)
-      xyz = (o_atom.xyz[0]-0.7, o_atom.xyz[1]-0.7, o_atom.xyz[2])
-      h2 = get_hierarchy_h_atom(' H2 ', xyz, o_atom)
-      atom_group.append_atom(h2)
+      for name in [' %s1 ' % proton_element, ' %s2 ' % proton_element]:
+        if name not in names:
+          j=0
+          min_d2=0
+          while min_d2<.9:
+            xyz = (o_atom.xyz[0]+displacements[j][0],
+                   o_atom.xyz[1]+displacements[j][1],
+                   o_atom.xyz[2]+displacements[j][2])
+            min_d2 = 1e9
+            for atom in atom_group.atoms():
+              d2 = distance2(xyz, atom.xyz)
+              min_d2=min(d2, min_d2)
+            j+=1
+          h = get_hierarchy_h_atom(name, xyz, o_atom, proton_element=proton_element)
+          atom_group.append_atom(h)
+      # for atom in atom_group.atoms(): print(atom.format_atom_record())
 
 def add_main_chain_atoms(hierarchy,
                          geometry_restraints_manager,
