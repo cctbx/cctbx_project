@@ -65,6 +65,12 @@ phil_scope_str = """
       .help = Apply point group symmetry extracted from `space_group` to \
               extracted unit cell bases to avoid bias introduced by indexing
   }
+  plot {
+    style = none *hammer hedgehog
+      .type = choice
+      .help = Which kind of plot should be produced; hammer plots heatmap of \
+      distribution on Hammer projection; hedgehog draws all individual vectors.
+  }
 """
 phil_scope = parse(phil_scope_str)
 
@@ -397,22 +403,15 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
 
   def plot(self, kind: str = 'hedgehog'):
     """Plot all results in self as a hedgehog or hammer plot """
-    if kind == 'hedgehog':
-      hha = HedgehogArtist()
-      for direction, distribution in self.items():
-        hh = Hedgehog(distribution=distribution, color='r', name=direction)
-        hha.register_hedgehog(hh)
-      hha.plot()
-    elif kind == 'hammer':
-      ha = HammerArtist()
-      for direction, distribution in self.items():
-        hh = Hedgehog(distribution=distribution, color='r', name=direction)
-        ha.register_hedgehog(hh)
-      ha.plot()
-    else:
-      raise KeyError('Unknown kind of plot requested: ' + str(kind))
+    artists = {'hedgehog': HedgehogArtist(), 'hammer': HammerArtist()}
+    artist = artists[kind]
+    for direction, distribution in self.items():
+      hh = Hedgehog(distribution=distribution, color='r', name=str(direction))
+      artist.register(hh)
+    artist.plot()
 
-  def report(self) -> str:
+  @property
+  def table(self) -> str:
     """Prepare a pretty string for logging"""
     table_data = [['Direction', 'kappa', 'mu', 'NLL']]
     for k, v in self.sorted.items():
@@ -434,8 +433,7 @@ def find_preferential_distribution(
   results = PreferentialDistributionResults()
   for upn in unique_pseudo_node_generator:
     vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
-    wd = WatsonDistribution.from_vectors(vectors)
-    results[upn] = wd
+    results[upn] = WatsonDistribution.from_vectors(vectors)
   return results
 
 
@@ -508,19 +506,23 @@ class HedgehogArtist(BaseDistributionArtist):
 
 class HammerArtist(BaseDistributionArtist):
   """Class responsible for drawing distributions as hammer heatmaps"""
+  CMAP = plt.get_cmap('viridis')
   PROJECTION = 'hammer'
 
   def _plot_hammer(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
     bin_number = 10
-    polar_edges = np.linspace(-np.pi/2., np.pi/2., bin_number + 1)
+    polar_edges = np.linspace(-np.pi / 2., np.pi / 2., bin_number + 1)
     azim_edges = np.linspace(-np.pi, np.pi, bin_number + 1)
-    polar_azim = cart2sph(hedgehog.distribution.vectors)[1:]
+    r_polar_azim = cart2sph(hedgehog.distribution.vectors)
+    polar = np.pi / 2 - r_polar_azim[:, 1]
+    azim = r_polar_azim[:, 2]
     polar_centers = (polar_edges[:-1] + polar_edges[1:]) / 2
-    heat = np.histogram2d(polar_azim, bins=(polar_edges, azim_edges))
-    heat = np.divide(heat, np.tile(np.sin(polar_centers), (bin_number, 1)).T)
+    heat, azim_edges, polar_edges = np.histogram2d(
+      x=azim, y=polar, bins=[azim_edges, polar_edges])
+    heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
     axes.grid(True)
-    cmap = plt.colormaps.viridis
-    axes.pcolor(azim_edges, polar_edges, heat.T, cmap=cmap)
+    axes.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
+    axes.set_title(hedgehog.name)
 
   def plot(self) -> None:
     self._generate_axes()
@@ -537,9 +539,9 @@ def run(params_):
   space_group = params_.input.space_group.group()
   abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
   distributions = find_preferential_distribution(abc_stack, space_group)
-  distributions.plot('hedgehog')
-  distributions.plot('hammer')
-  print(distributions)
+  print(distributions.table)
+  if (plot_style := params_.plot.style) != 'none':
+    distributions.plot(plot_style)
 
 
 def exercise_watson_distribution():
@@ -549,7 +551,7 @@ def exercise_watson_distribution():
     wd.sample(1000)
     wd.fit(wd.vectors)
     print(wd)
-    hh = Hedgehog(distribution=wd, color='r', name='kappa=5.0')
+    hh = Hedgehog(distribution=wd, color='r', name='kappa=' + str(kappa))
     hha.register_hedgehog(hh)
   hha.plot()
 
