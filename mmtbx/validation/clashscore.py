@@ -133,7 +133,8 @@ class clashscore(validation):
         hierarchy = pdb_hierarchy)
       conversion_info.\
        convert_hierarchy_to_forward_compatible_pdb_representation(pdb_hierarchy)
-      print("Converted model to forward_compatible PDB for clashscore")
+      print(
+        "Converted model to forward_compatible PDB for clashscore",file = out)
     else:
       conversion_info = None
     validation.__init__(self)
@@ -206,7 +207,7 @@ class clashscore(validation):
                                    clashscore_b_cutoff
 
     if conversion_info:
-      print("Converted model back to full representation")
+      print("Converted model back to full representation", file = out)
       conversion_info.convert_hierarchy_to_full_representation(pdb_hierarchy)
 
   def get_clashscore(self):
