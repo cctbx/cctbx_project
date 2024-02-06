@@ -17,12 +17,14 @@ from scipy.spatial import KDTree
 
 from cctbx.maptbx.qscore import (
   generate_probes_np,
+  generate_probes_flex,
   get_probe_mask,
   shell_probes_progressive,
   shell_probes_precalculate,
-  #shell_probes_precalculate_flex,
+  shell_probes_precalculate_flex,
   calc_qscore,
-  #calc_qscore_flex
+  calc_qscore_flex,
+  KDTreeFlex
 
 )
 
@@ -58,8 +60,13 @@ def test_probe_generation():
           [ 5.7034, 14.0191, 16.1189],
           [ 5.5845, 13.9741, 16.1474],
           [ 5.649 , 13.947 , 16.176 ]]])
-
+  # np
   probes_xyz = generate_probes_np(atoms_xyz,0.1,8)
+  assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
+
+  # flex
+  atoms_xyz = flex.vec3_double(atoms_xyz)
+  probes_xyz = np.array(generate_probes_flex(atoms_xyz,0.1,8)).reshape((2,8,3))
   assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
 
 def test_probe_masking():
@@ -171,23 +178,38 @@ def test_shell_probes():
 
   assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
 
-  # # test precalculate (flex)
-  # shell_func = shell_probes_precalculate_flex
-  # probe_xyz,probe_mask  = shell_func(
-  #                     atoms_xyz=flex.vec3_double(atoms_xyz),
-  #                     atoms_tree = None,
-  #                     selection_bool=None,
-  #                     n_probes_target=8,
-  #                     n_probes_max=10,
-  #                     RAD=1.5,
-  #                     rtol=0.9,
-  #                     log = null_out())
+  # test precalculate (flex)
+  shell_func = shell_probes_precalculate_flex
+  probe_xyz,probe_mask  = shell_func(
+                      atoms_xyz=flex.vec3_double(atoms_xyz),
+                      atoms_tree = None,
+                      selection_bool=None,
+                      n_probes_target=8,
+                      n_probes_max=10,
+                      RAD=1.5,
+                      rtol=0.9,
+                      log = null_out())
 
-  # # test at single shell
-  # probe_xyz = np.array(probe_xyz)
-  # probe_xyz = probe_xyz.reshape(expected_probes.shape)
-  # assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
+  # test at single shell
+  probe_xyz = np.array(probe_xyz)
+  probe_xyz = probe_xyz.reshape(expected_probes.shape)
+  assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
 
+
+def test_kdtree_flex():
+  # make sure the custom kdtree returns same results as scipy
+  points_np = np.random.random((1000,3))*10
+  points_np_query = np.random.random((100,3))*10
+  tree = KDTree(points_np)
+  dists,inds = tree.query(points_np_query,k=3)
+
+  points_flex = flex.vec3_double(points_np)
+  points_flex_query = flex.vec3_double(points_np_query)
+  tree_flex = KDTreeFlex(points_flex)
+  dists_flex,inds_flex = tree_flex.query(points_flex_query,k=3)
+
+  assert np.all(np.isclose(np.array(dists_flex),dists))
+  assert np.all(np.isclose(np.array(inds_flex),inds))
 
 ################################################################################
 #### Test templates for real data
@@ -357,7 +379,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["params"]["probe_allocation_method"] = "precalculate"
   test["params"]["backend"] = "flex"
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  #tests[test["data"]["name"]] = test
+  tests[test["data"]["name"]] = test
 
   # tst2 progressive (numpy)
   test = copy.deepcopy(test_template)
@@ -427,7 +449,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["params"]["probe_allocation_method"] = "precalculate"
   test["params"]["backend"] = "flex"
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  #tests[test["data"]["name"]] = test
+  tests[test["data"]["name"]] = test
 
   # progressive (numpy)
   test = copy.deepcopy(test_template)
@@ -497,7 +519,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["params"]["probe_allocation_method"] = "precalculate"
   test["params"]["backend"] = "flex"
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  #tests[test["data"]["name"]] = test
+  tests[test["data"]["name"]] = test
 
   #7 tst2 with shift_and_box (numpy,precalculate)
 
@@ -553,7 +575,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["params"]["probe_allocation_method"] = "precalculate"
   test["params"]["backend"] = "flex"
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  #tests[test["data"]["name"]] = test
+  tests[test["data"]["name"]] = test
 
   # tst2, shift_and_box, progressive, numpy
   test = copy.deepcopy(test_template)
@@ -602,6 +624,8 @@ if (__name__ == "__main__"):
   #3. test single shell probe generation
   test_shell_probes()
 
+  #4. test flex kdtree
+  test_kdtree_flex()
 
 
   # Test on some real models
