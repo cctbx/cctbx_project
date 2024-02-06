@@ -62,10 +62,8 @@ struct accumulate_reflection_chunk_omp {
     try {
       const int n = reflections.size();
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
-      const int threads = 2*parent_t::get_available_threads();
-      //const int threads = 2;
+      const int threads = parent_t::get_available_threads();
       bool error_flag = false;
-      //std::cout << "USING OPENMP!" << std::endl;
       std::string error_string;
       std::vector<FloatType> gradients, matrix, yo_dot_grad_yc_, yc_dot_grad_yc_;
       boost::ptr_vector<boost::shared_ptr<f_calc_function_base_t> > f_calc_threads;

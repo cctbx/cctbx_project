@@ -156,7 +156,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       design_matrix_(af::c_grid<2>(build_design_matrix ? reflections.size() : 0,
         build_design_matrix ? jacobian_transpose_matching_grad_fc.n_rows() : 0))
     {
-       build(normal_equations, weighting_scheme);
+      build(normal_equations, weighting_scheme);
     }
 
     template<class NormalEquations,
@@ -186,6 +186,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
           typedef accumulate_reflection_chunk_omp<
             NormalEquations, WeightingScheme>
             accumulate_reflection_chunk_omp_t;
+          /**
+           * @brief A pointer to the normal equations object for local refinement.
+           */
           normal_equations_ptr_t local_NE(new NormalEquations(normal_equations.n_parameters()));
           accumulate_reflection_chunk_omp_t job(
             local_NE,
