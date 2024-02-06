@@ -1,4 +1,4 @@
-import sys
+from __future__ import division
 from multiprocessing import Pool
 from itertools import chain
 import numpy as np
