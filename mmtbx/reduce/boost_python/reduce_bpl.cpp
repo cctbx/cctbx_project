@@ -65,6 +65,30 @@ static scitbx::vec3<double> RotateAtomDegreesAroundAxisDir(
   );
 }
 
+scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > FindPosesFor(
+  scitbx::af::shared<double> const& angles,
+  scitbx::af::shared<iotbx::pdb::hierarchy::atom> const& atoms,
+  scitbx::vec3<double> const& axis_point_1,
+  scitbx::vec3<double> const& axis_direction
+) {
+  scitbx::af::shared< scitbx::af::shared<molprobity::probe::Point> > result;
+  for (size_t angle = 0; angle < angles.size(); angle++) {
+    scitbx::af::shared<molprobity::probe::Point> atomPoses;
+    for (size_t atom = 0; atom < atoms.size(); atom++) {
+      atomPoses.push_back(molprobity::probe::Point(
+        RotateAtomDegreesAroundAxisDir(
+          axis_point_1,
+          axis_direction,
+          atoms[atom],
+          angles[angle]
+        )
+      ));
+    }
+    result.push_back(atomPoses);
+  }
+  return result;
+}
+
 BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 {
   // Dependencies
@@ -188,4 +212,7 @@ BOOST_PYTHON_MODULE(mmtbx_reduce_ext)
 
   def("RotateAtomDegreesAroundAxisDir", RotateAtomDegreesAroundAxisDir,
     "Rotate an atom in place around an axis direction in degrees.");
+
+  def("FindPosesFor", FindPosesFor,
+    "Find poses for atoms around an axis direction in degrees.");
 }
