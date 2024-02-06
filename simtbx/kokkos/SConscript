@@ -127,6 +127,21 @@ if use_sycl:
   kokkos_env.Replace(CXXFLAGS=[list(OrderedDict.fromkeys(kokkos_env['CXXFLAGS']))])
   kokkos_env.Replace(SHLINKFLAGS=[list(OrderedDict.fromkeys(kokkos_env['SHLINKFLAGS']))])
 
+if True: # diffuse code in exascale API
+  # "if True" block is intended to demark the linkage against the eigen library
+  # which is needed to reuse the diffBragg function calc_diffuse_at_hkl() within kokkos/simulation.
+  # This block can be removed in the future if the eigen dependency is replaced by kokkoslib.
+  env_etc.eigen_dist = os.path.abspath(os.path.join(libtbx.env.dist_path("simtbx"),"../../eigen"))
+  if not os.path.isdir(env_etc.eigen_dist) and hasattr(env_etc, "conda_cpppath"):
+    for candidate in env_etc.conda_cpppath:
+      if os.path.isdir(os.path.join(candidate, "eigen3")):
+        env_etc.eigen_dist = os.path.abspath(os.path.join(os.path.join(candidate, "eigen3")))
+  if os.path.isdir(env_etc.eigen_dist):
+    env_etc.eigen_include = env_etc.eigen_dist
+  env_etc.include_registry.append(
+    env=kokkos_env,
+    paths=[env_etc.eigen_include])
+
 simtbx_kokkos_lib = kokkos_env.SharedLibrary(
   target="#lib/libsimtbx_kokkos.so",
   source=[
