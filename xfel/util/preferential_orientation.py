@@ -469,8 +469,10 @@ class BaseDistributionArtist(abc.ABC):
     gs = GridSpec(axes_grid_height, axes_grid_width, hspace=0, wspace=0)
     for h in range(axes_grid_height):
       for w in range(axes_grid_width):
-        subplot = self.fig.add_subplot(gs[h, w], projection=self.PROJECTION)
-        self.axes.append(subplot)
+        ax = self.fig.add_subplot(gs[h, w], projection=self.PROJECTION)
+        if len(self.axes) > len_:
+          ax.set_axis_off()
+        self.axes.append(ax)
 
   def register_hedgehog(self, hedgehog: Hedgehog) -> None:
     self.hedgehogs.append(hedgehog)
@@ -502,8 +504,8 @@ class HedgehogArtist(BaseDistributionArtist):
 
   def plot(self):
     self._generate_axes()
-    for axes, hedgehog in zip(self.axes, self.hedgehogs):
-      self._plot_hedgehog(axes=axes, hedgehog=hedgehog)
+    for ax, hedgehog in zip(self.axes, self.hedgehogs):
+      self._plot_hedgehog(axes=ax, hedgehog=hedgehog)
     plt.show()
 
 
@@ -523,20 +525,18 @@ class HammerArtist(BaseDistributionArtist):
     heat, azim_edges, polar_edges = np.histogram2d(
       x=azim, y=polar, bins=[azim_edges, polar_edges])
     heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
-    ax.grid(True)
+    ax.grid(False)
     ax.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
     axes_params = {'ls': '', 'marker': '.', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
     ax.plot([-.999 * np.pi, .999 * np.pi], [0., 0.], c='b', **axes_params)
     ax.plot([0., 0.], [-np.pi / 2, np.pi / 2], c='b', **axes_params)
-    ax.set_xticks([])
-    ax.set_xticks([])
     ax.set_title(hedgehog.name)
 
   def plot(self) -> None:
     self._generate_axes()
-    for axes, hedgehog in zip(self.axes, self.hedgehogs):
-      self._plot_hammer(ax=axes, hedgehog=hedgehog)
+    for ax, hedgehog in zip(self.axes, self.hedgehogs):
+      self._plot_hammer(ax=ax, hedgehog=hedgehog)
     plt.show()
 
 
