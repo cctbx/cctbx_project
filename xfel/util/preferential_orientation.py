@@ -69,8 +69,8 @@ phil_scope_str = """
   plot {
     style = none *hammer hedgehog
       .type = choice
-      .help = Which kind of plot should be produced; hammer plots heatmap of \
-      distribution on Hammer projection; hedgehog draws all individual vectors.
+      .help = Which kind of plot should be produced. Hammer plots heatmap of \
+      distribution on Hammer projection. Hedgehog draws all individual vectors.
   }
 """
 phil_scope = parse(phil_scope_str)
@@ -150,8 +150,8 @@ class DirectSpaceBases(np.ndarray):
       if expt_sg != space_group:
         continue
       abcs.append(expt.crystal.get_real_space_vectors().as_numpy_array())
-    abcs = np.stack(abcs, axis=0) if abcs else np.empty(shape=(0, 3, 3))
-    return cls(abcs)
+    new = np.stack(abcs, axis=0) if abcs else np.empty(shape=(0, 3, 3))
+    return cls(new)
 
   @property
   def a(self) -> np.ndarray:
@@ -179,10 +179,14 @@ class DirectSpaceBases(np.ndarray):
 
   def transform(self, symm_op: SgtbxSymmOp) -> 'DirectSpaceBases':
     """Transform all vectors in self using sgtbx rt_mx-type object"""
-    x = transform(self.x, symm_op)
-    y = transform(self.y, symm_op)
-    z = transform(self.z, symm_op)
-    return self.__class__(np.stack([x, y, z], axis=2))
+    if self.size:
+      x = transform(self.x, symm_op)
+      y = transform(self.y, symm_op)
+      z = transform(self.z, symm_op)
+      new = np.stack([x, y, z], axis=2)
+    else:
+      new = np.empty(shape=(0, 3, 3))
+    return self.__class__(new)
 
   def symmetrize(self, point_group: SgtbxPointGroup) -> 'DirectSpaceBases':
     """Transform all vectors in self using all symm. ops. in point group"""
@@ -401,11 +405,11 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
 
   def plot(self, kind: str = 'hedgehog'):
     """Plot all results in self as a hedgehog or hammer plot """
-    artists = {'hedgehog': HedgehogArtist(), 'hammer': HammerArtist()}
-    artist = artists[kind]
+    artists = {'hedgehog': HedgehogArtist, 'hammer': HammerArtist}
+    artist = artists[kind]()
     for direction, distribution in self.items():
       hh = Hedgehog(distribution=distribution, color='r', name=str(direction))
-      artist.register(hh)
+      artist.register4(hh)
     artist.plot()
 
   @property
@@ -413,10 +417,11 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     """Prepare a pretty string for logging"""
     table_data = [['Direction', 'kappa', 'mu', 'NLL']]
     for k, v in self.sorted.items():
-      dir_ = str(tuple(k)).replace('(', '<').replace(')', '>').replace(' ', '')
+      dir_ = f'<{k[0]:+d},{k[1]:+d},{k[2]:+d}>'
+      dir_ = dir_.replace('(', '<').replace(')', '>').replace(' ', '')
       kappa = f'{v.kappa:+8f}'
-      mu = f'[{v.mu[0]:+6f},{v.mu[1]:+6f},{v.mu[2]:+6f}]'
-      nll = f'{v.nll:+8f}'
+      mu = f'[{v.mu[0]:+3f},{v.mu[1]:+3f},{v.mu[2]:+3f}]'
+      nll = f'{v.nll:.2E}'
       table_data.append([dir_, kappa, mu, nll])
     return table_utils.format(table_data, has_header=1, delim=' ')
 
@@ -519,7 +524,12 @@ class HammerArtist(BaseDistributionArtist):
       x=azim, y=polar, bins=[azim_edges, polar_edges])
     heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
     axes.grid(True)
+    axes.set_xticklabels([])
+    axes.set_xticklabels([])
     axes.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
+    axes.plot(0., 0., 'ro')                         # laboratory frame x-axis
+    axes.plot([-np.pi, np.pi], [0., 0.], 'ro')      # laboratory frame y-axis
+    axes.plot([0., 0.], [-np.pi/2, np.pi/2], 'ro')  # laboratory frame z-axis
     axes.set_title(hedgehog.name)
 
   def plot(self) -> None:
@@ -539,7 +549,9 @@ def run(params_):
   expts = read_experiments(*expt_paths)
   abc_stack = DirectSpaceBases.from_expts(expts, space_group)
   abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
-  abc_stack = np.concatenate(COMM.allgather(abc_stack), axis=0)
+  abc_stack = DirectSpaceBases(np.concatenate(COMM.allgather(abc_stack), axis=0))
+  if COMM.rank != 0:
+    return
   distributions = find_preferential_distribution(abc_stack, space_group)
   print(distributions.table)
   if (plot_style := params_.plot.style) != 'none':
