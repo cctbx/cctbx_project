@@ -419,11 +419,11 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
     for k, v in self.sorted.items():
       dir_ = f'<{k[0]:d},{k[1]:d},{k[2]:d}>'
       dir_ = dir_.replace('(', '<').replace(')', '>').replace(' ', '')
-      kappa = f'{v.kappa:+.8f}'
+      kappa = f'{v.kappa:+.3f}'
       mu = f'[{v.mu[0]:+.3f},{v.mu[1]:+.3f},{v.mu[2]:+.3f}]'
       nll = f'{v.nll:.2E}'
       table_data.append([dir_, kappa, mu, nll])
-    return table_utils.format(table_data, has_header=1, delim=' ')
+    return table_utils.format(table_data, has_header=1, delim='  ')
 
 
 def find_preferential_distribution(
@@ -512,7 +512,7 @@ class HammerArtist(BaseDistributionArtist):
   CMAP = plt.get_cmap('viridis')
   PROJECTION = 'hammer'
 
-  def _plot_hammer(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
+  def _plot_hammer(self, ax: plt.Axes, hedgehog: Hedgehog) -> None:
     bin_number = 10
     polar_edges = np.linspace(-np.pi / 2., np.pi / 2., bin_number + 1)
     azim_edges = np.linspace(-np.pi, np.pi, bin_number + 1)
@@ -523,19 +523,20 @@ class HammerArtist(BaseDistributionArtist):
     heat, azim_edges, polar_edges = np.histogram2d(
       x=azim, y=polar, bins=[azim_edges, polar_edges])
     heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
-    axes.grid(True)
-    axes.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
-    axes.plot(0., 0., 'r.')                         # laboratory frame x-axis
-    axes.plot([-np.pi, np.pi], [0., 0.], 'g.')      # laboratory frame y-axis
-    axes.plot([0., 0.], [-np.pi/2, np.pi/2], 'b.')  # laboratory frame z-axis
-    axes.set_xticklabels([])
-    axes.set_xticklabels([])
-    axes.set_title(hedgehog.name)
+    ax.grid(True)
+    ax.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
+    axes_params = {'ls': '', 'marker': '.', 'mec': 'w'}  # lab x, y, and z-axes
+    ax.plot(0., 0., c='r', **axes_params)
+    ax.plot([-.999 * np.pi, .999 * np.pi], [0., 0.], c='b', **axes_params)
+    ax.plot([0., 0.], [-np.pi / 2, np.pi / 2], c='b', **axes_params)
+    ax.set_xticks([])
+    ax.set_xticks([])
+    ax.set_title(hedgehog.name)
 
   def plot(self) -> None:
     self._generate_axes()
     for axes, hedgehog in zip(self.axes, self.hedgehogs):
-      self._plot_hammer(axes=axes, hedgehog=hedgehog)
+      self._plot_hammer(ax=axes, hedgehog=hedgehog)
     plt.show()
 
 
