@@ -548,7 +548,7 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
     return None # nothing to do
 
   if model_list[0].crystal_symmetry() is not None:
-    model_list[0] = model_list[0].deep_copy() 
+    model_list[0] = model_list[0].deep_copy()
     m_had_crystal_symmetry = True
   else: # Need crystal symmetry for deep_copy of model
     crystal_symmetry = None
