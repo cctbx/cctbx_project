@@ -366,16 +366,19 @@ e.g. with "yum install python-dev" or "apt-get install python-dev".
             os.path.join(env_etc.boost_dist, 'libs', 'chrono', 'src', '*.cpp'))]
         # For Windows (c.f. point 2 above)
         env_boost_chrono.Append(CPPDEFINES={'BOOST_CHRONO_DYN_LINK':1})
+        libs = ['boost_system']
+        if sys.platform.startswith("linux"): # require realtime extensions for clock_gettime
+          libs.append('rt')
         if boost_thread_uses_winthreads:
           env_boost_chrono.StaticLibrary(
             target='#lib/boost_chrono',
             source=boost_chrono_src,
-            LIBS=['boost_system'])
+            LIBS=libs)
         else:
           env_boost_chrono.SharedLibrary(
             target='#lib/boost_chrono',
             source=boost_chrono_src,
-            LIBS=['boost_system'])
+            LIBS=libs)
 
       #Boost.Timer?
       if os.path.isdir(os.path.join(env_etc.boost_dist, 'boost', 'timer')):
