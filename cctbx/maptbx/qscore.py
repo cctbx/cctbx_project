@@ -668,28 +668,23 @@ def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
 
                     })
 
-  # group atoms into residues
-  df["rg_index"] = df.groupby(["chain_id","resseq","resname"]).ngroup()
+  df["rg_index"] = df.groupby(["chain_id", "resseq", "resname"]).ngroup()
+  grouped_means = df.groupby(['chain_id', "resseq", "resname", "rg_index"],
+                             as_index=False)['Q-score'].mean().rename(
+                               columns={'Q-score': 'Q-Residue'})
 
-  # average qscore by residue
-  grouped_means = df.groupby(['chain_id',"resseq","resname","rg_index"],as_index=False)['Q-score'].mean()
-  # DEBUG:
+  grouped_means['RollingMean'] = None  # Initialize column to avoid KeyError
 
-  if 'Q-score' not in grouped_means.columns:
-    import pdb
-    pdb.set_trace()
-
-
-  # roll over residue means
-  for chain_id,group in grouped_means.groupby("chain_id"):
-    grouped_means.loc[group.index, "Q-scorePerResidue"] = variable_neighbors_rolling_mean(group["Q-score"],window).values
+  for chain_id, group in grouped_means.groupby("chain_id"):
+      # Your actual variable rolling mean calculation here
+      rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
+      grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
 
 
-  # now grouped means is a df with each row being a "residue" "QscoreRollingMean" is the per-residue value to match mapq
-
-  # place back in atom df
-  df = df.merge(grouped_means[['rg_index', 'Q-scorePerResidue']], on='rg_index', how='left')
-  df.drop("rg_index",axis=1,inplace=True)
+  # Merge the updated 'Q-Residue' and 'RollingMean' back into the original DataFrame
+  df = df.merge(grouped_means[['rg_index', 'Q-Residue', 'RollingMean']], on='rg_index', how='left')
+  df.drop("rg_index", axis=1, inplace=True)
+  df["Q-scorePerResidue"] = df["RollingMean"].astype(float)
   return df
 
 def variable_neighbors_rolling_mean(series, window=3):
