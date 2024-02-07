@@ -13,30 +13,6 @@ from cctbx.array_family import flex
 #### Probe generation functions
 ################################################################################
 
-def SpherePtsVectorized ( ctr, rad, N ) :
-  """
-  Function for generating points on a sphere. For testing only.
-  It retains the original mapq code pattern
-  """
-  thetas, phis = [], []
-  from math import acos, sin, cos, sqrt, pi
-  for k in range ( 1, N+1 ) :
-    h = -1.0 + ( 2.0*float(k-1)/float(N-1) )
-    phis.append ( acos(h) )
-    thetas.append ( 0 if k == 1 or k == N else
-                    (thetas[k-2] + 3.6/sqrt(N*(1.0-h**2.0))) % (2*pi) )
-
-  pts = [None] * N
-  for i, theta, phi in zip ( range(N), thetas, phis ):
-    v = np.array([ sin(phi)*cos(theta), sin(phi)*sin(theta), cos(phi)])
-
-    pt = ctr + v * rad
-    pts[i] = pt
-  pts = np.array(pts)
-  pts = pts.swapaxes(0,1)
-  return pts
-
-
 
 # Generate Points with flex
 
