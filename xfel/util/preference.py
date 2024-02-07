@@ -1,7 +1,7 @@
 from __future__ import division
 
 import abc
-from collections import deque, UserDict
+from collections import Counter, deque, UserDict
 from dataclasses import dataclass
 import glob
 from numbers import Number
@@ -11,7 +11,7 @@ import sys
 from cctbx import sgtbx
 from dxtbx.model import ExperimentList
 from iotbx.phil import parse
-from libtbx import table_utils
+from libtbx import Auto, table_utils
 from libtbx.mpi4py import MPI
 from xfel.util.drift import params_from_phil, read_experiments
 
@@ -56,11 +56,12 @@ phil_scope_str = """
       .type = str
       .multiple = True
       .help = glob which matches all expt files to be excluded from input.
-    space_group = P1
+    space_group = Auto
       .type = space_group
       .help = Reject all expts that are not described by this space group. \
               Investigate only directions that are symmetrically equivalent \
-              according to the point symmetry of given group.
+              according to the point symmetry of given group. \
+              By default, look at the most common space group only.
     symmetrize = True
       .type = bool
       .help = Apply point group symmetry extracted from `space_group` to \
@@ -94,14 +95,29 @@ def flatten(sequence: Sequence[Sequence]) -> List:
   return [element for sub_sequence in sequence for element in sub_sequence]
 
 
-def locate_paths(
-        include_globs: List[str],
-        exclude_globs: List[str],
-) -> List[str]:
+def locate_paths(include_globs: Iterable[str],
+                 exclude_globs: Iterable[str],
+                 ) -> List[str]:
   """Return a list of expt paths in `include_globs`, outside `exclude_globs`"""
   include_paths = flatten([glob.glob(ig) for ig in include_globs])
   exclude_paths = flatten([glob.glob(eg) for eg in exclude_globs])
   return [path for path in include_paths if path not in exclude_paths]
+
+
+def space_group_auto(expts: Iterable[ExperimentList],
+                     comm: type(COMM) = None,
+                     ) -> Tuple[SgtbxSpaceGroup, str]:
+  """Return the most common space groups across comm world, and summary str"""
+  counter = Counter([expt.crystal.get_space_group() for expt in expts])
+  if comm is not None:
+    counters = comm.allgather(counter)
+    counter = sum(counters, Counter())
+  message_ = ''
+  for sg, sg_count in counter:
+    message_ += f'Found {sg_count:6d} expts with space group {sg.info()!s}'
+  most_common = counter.most_common(1)[0][0]
+  message_ += f'Evaluating the most common space group {most_common} only'
+  return most_common, message_
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -545,15 +561,18 @@ class HammerArtist(BaseDistributionArtist):
 
 
 def run(params_):
-  space_group = params_.input.space_group.group()
   expt_paths = locate_paths(params_.input.glob, params_.input.exclude)
   expt_paths = expt_paths[COMM.rank::COMM.size]
   expts = read_experiments(*expt_paths)
+  space_group = space_group_auto(expts, COMM)[0] \
+      if (sgi := params_.input.space_group) is Auto else sgi.group()
   abc_stack = DirectSpaceBases.from_expts(expts, space_group)
-  abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
-  abc_stack = DirectSpaceBases(np.concatenate(COMM.allgather(abc_stack), axis=0))
+  if params_.input.symmetrize:
+    abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
+  abc_stacks = COMM.gather(abc_stack)
   if COMM.rank != 0:
     return
+  abc_stack = DirectSpaceBases(np.concatenate(abc_stacks, axis=0))
   distributions = find_preferential_distribution(abc_stack, space_group)
   print(distributions.table)
   if (plot_style := params_.plot.style) != 'none':
