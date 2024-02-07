@@ -1,11 +1,4 @@
 from __future__ import absolute_import, division, print_function
-<<<<<<< Updated upstream
-from phenix.program_template import ProgramTemplate
-from libtbx import group_args
-from cctbx.maptbx.qscore import qscore_np
-
-=======
-
 import json
 from pathlib import Path
 
@@ -17,7 +10,6 @@ from cctbx.maptbx.qscore import (
     cctbx_atoms_to_df,
     write_bild_spheres
 )
->>>>>>> Stashed changes
 import numpy as np
 
 # =============================================================================
@@ -30,56 +22,8 @@ class Program(ProgramTemplate):
 
   datatypes = ['phil', 'model', 'real_map']
 
-<<<<<<< Updated upstream
-    master_phil_str = """
-  nproc = 8
-      .type = int
-      .help = Number of processors to use
-      .short_caption = Number of processors to use
-      .expert_level = 1
-  n_probes = 32
-      .type = int
-      .help = Number of radial probes to use
-      .short_caption = Number of radial probes to use
-      .expert_level = 1
-  selection = None
-    .type = str
-    .help = Only test atoms within this selection
-    .short_caption = Only test atoms within this selection
-    .expert_level = 1
-
-  shell_radius_start = 0.1
-    .type = float
-    .help = Start testing density at this radius from atom
-    .short_caption = Start testing density at this radius from atom
-    .expert_level = 1
-
-  shell_radius_stop = 2
-    .type = float
-    .help = Stop testing density at this radius from atom
-    .short_caption = Stop testing density at this radius from atom
-    .expert_level = 1
-
-  shell_radius_num = 20
-    .type = int
-    .help = The number of radial shells
-    .short_caption = The number of radial shells (includes start/stop, so minimum 2)
-    .expert_level = 1
-
-  probe_allocation_method = precalculate
-    .type = str
-    .help = The method used to allocate radial probes
-    .short_caption = Either 'progressive' or 'precalculate'. Progressive is the original method \
-                     where probes are proposed and rejected iteratively. \
-                     Precalculate is a method where probes are pre-allocated and \
-                     rejected once. Parallelization is done by radial shell. \
-                     Precalculate is much faster but will yield slightly different results.
-
-
-=======
   master_phil_str = """
   include scope cctbx.maptbx.qscore.master_phil_str
->>>>>>> Stashed changes
   """
 
   def validate(self):
@@ -87,58 +31,6 @@ class Program(ProgramTemplate):
       "numpy","flex"
       ], "Provide one of 'numpy', 'flex'"
 
-<<<<<<< Updated upstream
-    def run(self):
-        print("Running")
-
-        # do selection
-        mmm = self.data_manager.get_map_model_manager()
-        if self.params.qscore.selection != None:
-            selection = np.where(mmm.model().selection(self.params.qscore.selection).as_numpy_array())[0]
-            if len(selection)==0:
-                print("Finished... nothing selected")
-                self.result = group_args()
-                return
-            self.params.qscore.selection = selection
-
-        # calculate shells
-
-        if len(self.params.qscore.shells) ==0 :
-           start = self.params.qscore.shell_radius_start
-           stop = self.params.qscore.shell_radius_stop
-           num = self.params.qscore.shell_radius_num
-           shells = list(np.linspace(
-            start,
-            stop,
-            num,
-            endpoint=True))
-           for shell in shells:
-              self.params.qscore.shells.append(shell)
-
-
-        # unsort model, make new mmm
-        model = self._unsort_model(mmm.model())
-        # ignore hydrogens
-        model = model.select(model.selection("not element H"))
-
-        # make mmm
-        mmm.set_model(model,overwrite=True)
-
-
-        # run qscore
-        qscore_result= qscore.calc_qscore(
-            mmm,
-            self.params.qscore,
-            log=self.logger)
-
-
-        self.result = group_args(**qscore_result)
-
-
-
-    def get_results(self):
-        return self.result
-=======
     assert self.params.qscore.probe_allocation_method in [
       "progressive", "precalculate"
     ], "Provide one of 'progressive' or 'precalculate'"
@@ -182,11 +74,6 @@ class Program(ProgramTemplate):
 
     self.result = group_args(**qscore_result)
 
-    # # save as dataframe
-    # df = cctbx_atoms_to_df(model.get_atoms())
-    # df["Q-score"] = self.result.qscore_per_atom
-    # self.result.qscore_dataframe =
-
 
 
     self.write_results()
@@ -218,4 +105,3 @@ class Program(ProgramTemplate):
         probe_xyz_flat = probe_xyz.reshape((n_atoms*n_probes,3))
         out_file = Path(debug_path,f"probes_shell_{shell}.bild")
         write_bild_spheres(probe_xyz_flat,str(out_file),r=0.2)
->>>>>>> Stashed changes
