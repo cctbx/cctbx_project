@@ -325,28 +325,33 @@ def get_probes(
   else:
     assert False, f"Unrecognized backend: {params.backend}"
 
-
-  kwargs_list = [
+  task_list = [
     {
-        "atoms_xyz":atoms_xyz,   # A numpy array of shape (N,3)
-        "atoms_tree":atoms_tree,  # An atom_xyz scipy kdtree
-        "selection_bool":selection_bool,# Boolean atom selection
-        "n_probes_target":params.n_probes_target,# The desired number of probes per shell
-        "n_probes_max":params.n_probes_max,  # The maximum number of probes allowed
-        "n_probes_min":params.n_probes_min,
-        "RAD":RAD,          # The nominal radius of this shell
-        "rtol":params.rtol,         # Multiplied with RAD to get actual radius
-        "log":log,
+      "func": worker_func,  # Specify the function to call
+      "kwargs": {
+        "atoms_xyz": atoms_xyz,  # A numpy array of shape (N,3)
+        "atoms_tree": atoms_tree,  # An atom_xyz scipy kdtree
+        "selection_bool": selection_bool,  # Boolean atom selection
+        "n_probes_target": params.n_probes_target,  # The desired number of probes per shell
+        "n_probes_max": params.n_probes_max,  # The maximum number of probes allowed
+        "n_probes_min": params.n_probes_min,
+        "RAD": RAD,  # The nominal radius of this shell
+        "rtol": params.rtol,  # Multiplied with RAD to get actual radius
+        "log": log,
       }
-     for RAD in params.shells]
-  #DEBUG
-  if params.nproc=="DEBUG":
+    } for RAD in params.shells
+  ]
+
+  if params.nproc>1:
     with Pool() as pool:
-      results = pool.map(starmap_wrapper, kwargs_list)
+      print(params.nproc)
+      results = pool.map(starmap_wrapper, task_list)
   else:
     results = []
-    for kwarg in kwargs_list:
-        result = worker_func(**kwarg)
+    for task in task_list:
+        worker_func = task["func"]
+        kwargs = task["kwargs"]
+        result = worker_func(**kwargs)
         results.append(result)
 
 
@@ -993,7 +998,6 @@ def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
 ###############################################################################
 # Utils
 ###############################################################################
-
 
 
 def flex_from_list(lst, signed_int=False):
