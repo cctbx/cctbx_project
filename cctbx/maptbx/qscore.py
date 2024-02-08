@@ -1,76 +1,101 @@
 from __future__ import division
+from collections import defaultdict
 from multiprocessing import Pool
-from itertools import chain
+
+from libtbx.utils import null_out
+from cctbx.array_family import flex
 import numpy as np
 import numpy.ma as ma
 from scipy.spatial import KDTree
 import pandas as pd
-from libtbx.utils import null_out
-from cctbx.array_family import flex
 
+
+
+
+master_phil_str = """
+  qscore
+  {
+
+    nproc = 16
+        .type = int
+        .help = Number of processors to use
+        .short_caption = Number of processors to use
+        .expert_level = 1
+    n_probes_target = 8
+        .type = int
+        .help = Number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    n_probes_max = 16
+        .type = int
+        .help = Max number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    n_probes_min = 4
+        .type = int
+        .help = Min number of radial probes to use
+        .short_caption = Number of radial probes to use
+        .expert_level = 1
+    selection = None
+      .type = str
+      .help = Only test atoms within this selection
+      .short_caption = Only test atoms within this selection
+      .expert_level = 1
+
+    shell_radius_start = 0.1
+      .type = float
+      .help = Start testing density at this radius from atom
+      .short_caption = Start testing density at this radius from atom
+      .expert_level = 1
+
+    shell_radius_stop = 2
+      .type = float
+      .help = Stop testing density at this radius from atom
+      .short_caption = Stop testing density at this radius from atom
+      .expert_level = 1
+
+    shell_radius_num = 20
+      .type = int
+      .help = The number of radial shells
+      .short_caption = The number of radial shells (includes start/stop, so minimum 2)
+      .expert_level = 1
+
+    shells = None
+      .type = float
+      .multiple = True
+      .help = Explicitly provide radial shells
+
+    rtol = 0.9
+      .type = float
+      .help = Mapq rtol value, the "real" shell radii are r*rtol
+
+    probe_allocation_method = precalculate
+      .type = str
+      .help = The method used to allocate radial probes
+      .short_caption = Either 'progressive' or 'precalculate'. Progressive is the original method \
+                      where probes are proposed and rejected iteratively. \
+                      Precalculate is a method where probes are pre-allocated and \
+                      rejected once. Parallelization is done by radial shell. \
+                      Precalculate is much faster but will yield slightly different results.
+
+    progress = False
+      .type = bool
+      .help = Report progress
+      .short_caption = Report progress bar
+      .expert_level = 1
+
+    debug = False
+      .type = bool
+      .help = Return much more debug information
+      .short_caption = Returns a dictionary with additional debug information
+      .expert_level = 1
+  }
+
+  """
 
 ################################################################################
 #### Probe generation functions
 ################################################################################
-
-
-# Generate Points with flex
-
-def cumsum_flex(arr):
-  """
-  Return an array that is the cumulative sum of arr
-  Analogous to np.cumsum
-  """
-  result = flex.double(len(arr))
-  running_sum = 0.0
-  for i, x in enumerate(arr):
-      running_sum += x
-      result[i] = running_sum
-  return result
-
-def broadcast_add_vec3(ctr, points):
-  """
-  Broadcast add two flex.vec3_double arrays.
-
-  Params:
-    ctr (flex.vec3_double): the 'center' coordinates
-    points (flex.vec3_double): the points that will be added to each ctr
-
-  Returns:
-    result (flex.vec3_double): array of shape (N*M,3), 1 point for each center
-  """
-  N = points.size()
-  M = ctr.size()
-  extended_ctr = flex.vec3_double()
-  extended_points = flex.vec3_double()
-
-  # Extend ctr and points
-  for point in ctr:
-    extended_ctr.extend(flex.vec3_double([point] * N))
-  for _ in range(M):
-    extended_points.extend(points)
-
-  # Perform addition
-  result = flex.vec3_double(M * N)
-  space =flex.size_t_range(M*N)
-  for i in space:
-    pt = extended_ctr[i:i+1] + extended_points[i:i+1]
-    result=result.set_selected(space[i:i+1],pt)
-  return result
-
-
-
-def generate_probes_flex(ctr, rad, N):
-  """
-  TODO: replace with actual flex code. Code lost during failed git stash
-  """
-  ctr = np.array(ctr)
-
-  out= generate_probes_np(ctr,rad,N)
-  n_atoms,_ = ctr.shape
-  out = out.reshape((n_atoms*N,3))
-  return flex.vec3_double(out)
-
 
 # Fast numpy version
 def generate_probes_np(atoms_xyz, rad, n_probes):
@@ -318,40 +343,31 @@ def get_probes(
     if atoms_tree is None:
       atoms_tree = KDTree(atoms_xyz)
     selection_bool = selection_bool_np
-  elif params.backend == "flex":
-    if atoms_tree is None:
-      atoms_tree = KDTreeFlex(atoms_xyz)
-      selection_bool = selection_bool_flex
   else:
     assert False, f"Unrecognized backend: {params.backend}"
 
-  task_list = [
-    {
-      "func": worker_func,  # Specify the function to call
-      "kwargs": {
-        "atoms_xyz": atoms_xyz,  # A numpy array of shape (N,3)
-        "atoms_tree": atoms_tree,  # An atom_xyz scipy kdtree
-        "selection_bool": selection_bool,  # Boolean atom selection
-        "n_probes_target": params.n_probes_target,  # The desired number of probes per shell
-        "n_probes_max": params.n_probes_max,  # The maximum number of probes allowed
-        "n_probes_min": params.n_probes_min,
-        "RAD": RAD,  # The nominal radius of this shell
-        "rtol": params.rtol,  # Multiplied with RAD to get actual radius
-        "log": log,
-      }
-    } for RAD in params.shells
-  ]
 
-  if params.nproc>1:
+  kwargs_list = [
+    {
+        "atoms_xyz":atoms_xyz,   # A numpy array of shape (N,3)
+        "atoms_tree":atoms_tree,  # An atom_xyz scipy kdtree
+        "selection_bool":selection_bool,# Boolean atom selection
+        "n_probes_target":params.n_probes_target,# The desired number of probes per shell
+        "n_probes_max":params.n_probes_max,  # The maximum number of probes allowed
+        "n_probes_min":params.n_probes_min,
+        "RAD":RAD,          # The nominal radius of this shell
+        "rtol":params.rtol,         # Multiplied with RAD to get actual radius
+        "log":log,
+      }
+     for RAD in params.shells]
+  #DEBUG
+  if params.nproc=="DEBUG":
     with Pool() as pool:
-      print(params.nproc)
-      results = pool.map(starmap_wrapper, task_list)
+      results = pool.map(starmap_wrapper, kwargs_list)
   else:
     results = []
-    for task in task_list:
-        worker_func = task["func"]
-        kwargs = task["kwargs"]
-        result = worker_func(**kwargs)
+    for kwarg in kwargs_list:
+        result = worker_func(**kwarg)
         results.append(result)
 
 
@@ -668,23 +684,28 @@ def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
 
                     })
 
-  df["rg_index"] = df.groupby(["chain_id", "resseq", "resname"]).ngroup()
-  grouped_means = df.groupby(['chain_id', "resseq", "resname", "rg_index"],
-                             as_index=False)['Q-score'].mean().rename(
-                               columns={'Q-score': 'Q-Residue'})
+  # group atoms into residues
+  df["rg_index"] = df.groupby(["chain_id","resseq","resname"]).ngroup()
 
-  grouped_means['RollingMean'] = None  # Initialize column to avoid KeyError
+  # average qscore by residue
+  grouped_means = df.groupby(['chain_id',"resseq","resname","rg_index"],as_index=False)['Q-score'].mean()
+  # DEBUG:
 
-  for chain_id, group in grouped_means.groupby("chain_id"):
-      # Your actual variable rolling mean calculation here
-      rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
-      grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
+  if 'Q-score' not in grouped_means.columns:
+    import pdb
+    pdb.set_trace()
 
 
-  # Merge the updated 'Q-Residue' and 'RollingMean' back into the original DataFrame
-  df = df.merge(grouped_means[['rg_index', 'Q-Residue', 'RollingMean']], on='rg_index', how='left')
-  df.drop("rg_index", axis=1, inplace=True)
-  df["Q-scorePerResidue"] = df["RollingMean"].astype(float)
+  # roll over residue means
+  for chain_id,group in grouped_means.groupby("chain_id"):
+    grouped_means.loc[group.index, "Q-scorePerResidue"] = variable_neighbors_rolling_mean(group["Q-score"],window).values
+
+
+  # now grouped means is a df with each row being a "residue" "QscoreRollingMean" is the per-residue value to match mapq
+
+  # place back in atom df
+  df = df.merge(grouped_means[['rg_index', 'Q-scorePerResidue']], on='rg_index', how='left')
+  df.drop("rg_index",axis=1,inplace=True)
   return df
 
 def variable_neighbors_rolling_mean(series, window=3):
@@ -767,451 +788,4 @@ def cctbx_atoms_to_df(atoms):
 
   return df_atoms
 
-
-################################################################################
-#### CCTBX flex-based functions (precalculate mode)
-################################################################################
-def shell_probes_precalculate_flex(
-      atoms_xyz=None,   # sites_cart. Flex vec3_double
-      atoms_tree=None,  # A KDTree
-      selection_bool=None, # Boolean atom selection
-      n_probes_target=8,# The desired number of probes per shell
-      n_probes_max=16,  # The maximum number of probes allowed
-      n_probes_min=4,   # The min number of probes allowed without error
-      RAD=1.5,          # The nominal radius of this shell
-      rtol=0.9,         # Multiplied with RAD to get actual radius
-      log = null_out(),
-      strict = False,
-      ):
-  """
-  Generate probes by precalculating for a single shell (radius)
-  """
-
-  # Do input validation
-  if not atoms_tree:
-    assert atoms_tree is None, ("If not providing an atom tree,\
-      provide a 2d atom coordinate array to build tree")
-
-    # make atom kdtree
-    atoms_tree = KDTreeFlex(atoms_xyz)
-
-  # Manage log
-  if log is None:
-      log = null_out()
-
-  # manage selection input
-
-  if selection_bool is None:
-      selection_bool = flex.bool(len(atoms_xyz),True)
-
-
-  # do selection
-  sites_sel = atoms_xyz.select(selection_bool)
-  n_atoms = len(sites_sel)
-
-  # get probe coordinates
-  probe_sites = generate_probes_flex(sites_sel, RAD, n_probes_max)
-
-
-  # modify "real" radius as in mapq
-  outRAD = RAD*rtol
-
-  # query kdtree to get neighbors and their distances
-  dists,atom_indices = atoms_tree.query(probe_sites,k=2)
-  atom_indices_flat = flex_from_list(atom_indices)
-
-  # Perform equivalent to atom_indices[:,:,0] if (n_atoms,n_probes,k)
-  dim0_indices = flex.size_t_range(0, n_atoms*n_probes_max*2, 2)
-  atom_indices_flat = atom_indices_flat.select(dim0_indices)
-
-  # Build an index array that would be expected if each probe is near "its" atom
-  row_indices_flat = flex.size_t([
-     i for i in range(n_atoms) for _ in range(n_probes_max)])
-
-
-  # Mask for whether each probe's nearest atom is the one expected
-  expected_mask = row_indices_flat == atom_indices_flat
-
-
-  # A second mask to determine if the second nearest neighbor should be rejected
-  #  (whether the second nearest neighbor is within the rejection radius)
-  dists = flex_from_list(dists)
-  # perform equivalent selcetion to dists[:,:,1] if (n_atoms,n_probes,k)
-  dist_dim1_sel = flex.size_t([i * 2 + 1 for i in range(n_atoms * n_probes_max)])
-  dists_dim1 = dists.select(dist_dim1_sel)
-  within_r_mask = dists_dim1<outRAD
-
-  # Combine masks
-  probe_mask_flat = expected_mask & (~within_r_mask)
-
-  # Reshape (this only stores the anticipated shape)
-  probe_xyz = probe_sites
-  probe_xyz.reshape(flex.grid((n_atoms,n_probes_max))) # vec3
-  probe_mask = probe_mask_flat
-  probe_mask.reshape(flex.grid((n_atoms,n_probes_max)))
-
-  return probe_xyz, probe_mask
-
-def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
-  """
-  Calculate qscore from map model manager
-  """
-  model = mmm.model()
-  # never do hydrogen
-  model = model.select(model.selection("not element H"))
-  mm = mmm.map_manager()
-  volume = mm.map_data()
-
-
-  # Get atoms
-  atoms_xyz = model.get_sites_cart()
-
-  # do selection
-  if params.selection_str != None:
-    selection_bool = mmm.model().selection(params.selection_str) # boolean
-    if selection_bool.count(True) ==0:
-      print("Finished... nothing selected")
-      return {"qscore_per_atom":None}
-  else:
-    selection_bool = flex.bool(len(atoms_xyz),True)
-
-
-  # Get probes and probe mask (probes to reject)
-  probe_xyzs,probe_masks = get_probes(
-    atoms_xyz=atoms_xyz,
-    atoms_tree = None,
-    params=params,
-    selection_bool_flex = selection_bool,
-    worker_func=shell_probes_precalculate_flex,
-    log = log,
-    )
-
-  n_shells = len(probe_xyzs)
-  n_atoms,n_probes = probe_xyzs[0].focus()
-
-  # create the reference data
-  M = volume
-  M_std = M.sample_standard_deviation()
-  M_mean = flex.mean(M)
-  maxD_cctbx = min(M_mean + M_std * 10, flex.max(M))
-  minD_cctbx = max(M_mean - M_std * 1, flex.min(M))
-  A_cctbx = maxD_cctbx - minD_cctbx
-  B_cctbx = minD_cctbx
-  u = 0
-  sigma = 0.6
-  x = flex.double(params.shells)
-  y_cctbx = (
-      A_cctbx * flex.exp(-0.5 * ((flex.double(x) - u) / sigma) ** 2)
-      + B_cctbx
-  )
-
-  full_flat_g = flex.double(n_shells*n_atoms*n_probes)
-  full_flat_d = flex.double(n_shells*n_atoms*n_probes)
-  full_flat_mask = flex.bool(n_shells*n_atoms*n_probes)
-  # for each "shell row"
-  for shell_idx,(probe_xyz,probe_mask) in enumerate(zip(probe_xyzs,probe_masks)):
-    probe_mask.reshape(flex.grid(n_atoms*params.n_probes_max))
-    probe_xyz_sel = probe_xyz.select(probe_mask)
-
-    # get d_vals for a "shell row"
-    d_vals = mm.density_at_sites_cart(probe_xyz_sel)
-
-    # get reference for the "shell row"
-    g_vals = flex.double(n_atoms*params.n_probes_max,y_cctbx[shell_idx])
-    g_vals = g_vals.select(probe_mask)
-
-    # calc flat indices for the shell
-    start_idx = shell_idx * n_atoms * n_probes
-    stop_idx = start_idx + n_atoms * n_probes
-    shell_space = flex.size_t_range(start_idx,stop_idx)
-
-    # apply shell mask
-    masked_shell_space = shell_space.select(probe_mask)
-
-    # put d,g, mask into results
-    full_flat_d.set_selected(masked_shell_space,d_vals)
-    full_flat_g.set_selected(masked_shell_space,g_vals)
-    full_flat_mask  = full_flat_mask.set_selected(shell_space,probe_mask)
-
-  # calculate q
-  def calculate_1d_indices_for_atom(n_shells, n_atoms, n_probes, atom_idx):
-    indices_1d = []
-    for shell_idx in range(n_shells):
-      for probe_idx in range(n_probes):
-        index_1d = shell_idx * (n_atoms * n_probes) + atom_idx * n_probes + probe_idx
-        indices_1d.append(index_1d)
-    return indices_1d
-
-  qscore_per_atom = []
-  mask_check_1d = []
-  for atomi in range(n_atoms):
-    inds = calculate_1d_indices_for_atom(n_shells,n_atoms,n_probes,atomi)
-    inds = flex.size_t(inds)
-
-    # select an "atom row" for d,g,mask values
-    d_row = full_flat_d.select(inds)
-    g_row = full_flat_g.select(inds)
-    mask = full_flat_mask.select(inds)
-
-    # subset the d,g rows using the mask
-    d = d_row.select(mask)
-    g = g_row.select(mask)
-
-    # calculate correlation between masked d and g
-    qval = flex.linear_correlation(d, g).coefficient()
-    qscore_per_atom.append(qval)
-
-  qscore_per_atom = flex.double(qscore_per_atom)
-
-  qscore_df = aggregate_qscore_per_residue(model,np.array(qscore_per_atom),window=3)
-  qscore_per_residue = flex.double(qscore_df["Q-scorePerResidue"].values)
-
-  # Output
-  if debug or params.debug:
-    # Collect debug data
-    result = {
-      "atom_xyz":atoms_xyz,
-      "probe_xyz":probe_xyzs,
-      "probe_mask":probe_masks,
-      "d_vals":full_flat_d,
-      "g_vals":full_flat_g,
-      "qscore_per_atom":qscore_per_atom,
-      "mask_check_1d":mask_check_1d,
-      "qscore_per_residue":qscore_per_residue,
-      "qscore_dataframe":qscore_df
-    }
-  else:
-    result = {
-    "qscore_per_atom":qscore_per_atom,
-    "qscore_per_residue":qscore_per_residue,
-    "qscore_dataframe":qscore_df
-
-    }
-  return result
-
-
-###############################################################################
-# Utils
-###############################################################################
-
-
-def flex_from_list(lst, signed_int=False):
-  """Generate a flex array from a list, try to infer type"""
-  flat_list, shape = flatten_and_shape(lst)
-  dtype = get_dtype_of_list(flat_list)
-  type_mapper = {int: flex.size_t,
-                  float: flex.double,
-                  bool: flex.bool}
-  if signed_int:
-    type_mapper[int] = flex.int16
-
-  # make flex array
-  assert dtype in type_mapper, f"Unrecognized type: {dtype}"
-  flex_func = type_mapper[dtype]
-  flex_array = flex_func(flat_list)
-  if len(shape) > 1:
-    flex_array.reshape(flex.grid(*shape))
-  return flex_array
-
-
-def flatten_and_shape(lst):
-  """Flatten a nested list and return its shape."""
-  def helper(l):
-    if not isinstance(l, list):
-      return [l], ()
-    flat = []
-    shapes = []
-    for item in l:
-      f, s = helper(item)
-      flat.extend(f)
-      shapes.append(s)
-    if len(set(shapes)) != 1:
-      raise ValueError("Ragged nested list detected.")
-    return flat, (len(l),) + shapes[0]
-
-  flattened, shape = helper(lst)
-  return flattened, shape
-
-
-def get_dtype_of_list(lst):
-  dtypes = {type(item) for item in lst}
-
-  if len(dtypes) > 1:
-    raise ValueError("Multiple data types detected.")
-  elif len(dtypes) == 0:
-    raise ValueError("Empty list provided.")
-  else:
-    return dtypes.pop()
-
-
-def nd_to_1d_indices(indices, shape):
-  """Generate the 1d indices given nd indices and an array shape"""
-  # Normalize indices to always use slice objects
-  normalized_indices = []
-  for dim, idx in enumerate(indices):
-    if idx is None:
-      normalized_indices.append(slice(0, shape[dim]))
-    else:
-      normalized_indices.append(idx)
-
-  # If any index is a slice, recursively call function for each value in slice
-  for dim, (i, s) in enumerate(zip(normalized_indices, shape)):
-    if isinstance(i, slice):
-      result_indices = []
-      start, stop, step = i.indices(s)
-      for j in range(start, stop, step):
-        new_indices = list(normalized_indices)
-        new_indices[dim] = j
-        result_indices.extend(nd_to_1d_indices(new_indices, shape))
-      return result_indices
-
-  # If no slices, calculate single 1D index
-  index = 0
-  stride = 1
-  for i, dim in reversed(list(zip(normalized_indices, shape))):
-    index += i * stride
-    stride *= dim
-  return [index]
-
-
-def cdist_flex(A, B):
-  """A flex implementation of the cdist function"""
-
-  def indices_2d_flex(dimensions):
-    N = len(dimensions)
-    if N != 2:
-      raise ValueError("Only 2D is supported for this implementation.")
-
-    # Create the row indices
-    row_idx = flex.size_t(chain.from_iterable(
-        [[i] * dimensions[1] for i in range(dimensions[0])]))
-
-    # Create the column indices
-    col_idx = flex.size_t(chain.from_iterable(
-        [list(range(dimensions[1])) for _ in range(dimensions[0])]))
-
-    return row_idx, col_idx
-
-  i_idxs, j_idxs = indices_2d_flex((A.focus()[0], B.focus()[0]))
-
-  r = i_idxs
-  xi = i_idxs*3
-  yi = i_idxs*3 + 1
-  zi = i_idxs*3 + 2
-
-  xa = A.select(xi)
-  ya = A.select(yi)
-  za = A.select(zi)
-
-  xj = j_idxs*3
-  yj = j_idxs*3 + 1
-  zj = j_idxs*3 + 2
-
-  xb = B.select(xj)
-  yb = B.select(yj)
-  zb = B.select(zj)
-
-  d = ((xb - xa)**2 + (yb - ya)**2 + (zb - za)**2)**0.5
-  d.reshape(flex.grid((A.focus()[0], B.focus()[0])))
-
-  return d
-
-################################################################################
-#### KDTree implementation using flex arrays (no numpy/scipy)
-################################################################################
-class KDTreeFlexNode:
-  def __init__(self, index, point, left=None, right=None):
-    self.index = index
-    self.point = point
-    self.left = left
-    self.right = right
-
-
-class KDTreeFlex:
-  def __init__(self, points):
-    self.dims = len(points[0])
-    self.axis_sorted_indices = self.pre_sort_indices(points)
-    self.root = self.build_tree(flex.size_t_range(len(points)), points, 0)
-
-
-  def pre_sort_indices(self, points):
-    # Sort indices for each axis and return the sorted indices
-    x,y,z = points.parts()
-    sorted_indices = [flex.sort_permutation(x),flex.sort_permutation(y),flex.sort_permutation(z)]
-    return sorted_indices
-
-  def build_tree(self, indices, points, depth):
-    if not indices:
-        return None
-
-    axis = depth % self.dims
-
-
-    sorted_indices = self.axis_sorted_indices[axis]
-
-
-    # Step 4: Create an empty boolean mask of length N, initially set to False
-    mask = flex.bool(len(sorted_indices),False)
-
-    # Directly set mask to True for positions in your query array
-    mask.set_selected(indices,True)
-
-    # Step 5: Apply the mask to the sorted indices, then use this to create a sorted mask
-    # This step seems to be where you're looking to optimize.
-    # To directly use the sorted_indices to index into 'mask' and maintain sorting:
-    sorted_mask = mask.select(sorted_indices)
-
-    # Now, apply this sorted_mask to select from the sorted_indices
-    sorted_indices_this_axis = sorted_indices.select(sorted_mask)
-
-
-    if len(sorted_indices_this_axis) == 0:
-        return None
-
-    median_idx = len(sorted_indices_this_axis) // 2
-    median_index = sorted_indices_this_axis[median_idx]
-
-    left_indices = sorted_indices_this_axis[:median_idx]
-    right_indices = sorted_indices_this_axis[median_idx + 1:]
-
-    return KDTreeFlexNode(
-        median_index,
-        points[median_index:median_index+1],
-        left=self.build_tree(left_indices, points, depth + 1),
-        right=self.build_tree(right_indices, points, depth + 1)
-    )
-  def _nearest_neighbor(self, root, point, depth=0, best=None, k=1):
-    if root is None:
-      return best
-
-    if best is None:
-      best = []
-
-    axis = depth % self.dims
-    next_branch = root.left if point[0][axis] < root.point[0][axis] else root.right
-    opposite_branch = root.right if next_branch is root.left else root.left
-
-    # Recursively search the next branch
-    best = self._nearest_neighbor(next_branch, point, depth + 1, best, k)
-
-    # Check the current root distance
-    current_dist = root.point.max_distance(point)
-    if len(best) < k or current_dist < best[-1]['dist']:
-      best.append({'index': root.index, 'dist': current_dist})
-      best.sort(key=lambda x: x['dist'])
-      best = best[:k]  # Keep only k nearest
-
-    # Check if we need to search the opposite branch
-    if len(best) < k or abs(point[0][axis] - root.point[0][axis]) < best[-1]['dist']:
-      best = self._nearest_neighbor(opposite_branch, point, depth + 1, best, k)
-
-    return best
-
-  def query(self, query_points, k=1):
-    dists, inds = [], []
-    for i,point in enumerate(query_points):
-      nearest = self._nearest_neighbor(self.root, query_points[i:i+1], k=k)
-      dists.append([n['dist'] for n in nearest])
-      inds.append([n['index'] for n in nearest])
-    return dists, inds
 
