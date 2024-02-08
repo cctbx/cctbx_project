@@ -44,12 +44,12 @@ class PreferenceWorker(worker):
       return experiments, reflections
     abc_stack = DirectSpaceBases(np.concatenate(abc_stacks, axis=0))
     distributions = find_preferential_distribution(abc_stack, sg)
-    self.logger.log('')
-    self.logger.log(distributions.table)
-    self.logger.log('')
+    self.logger.main_log('')
+    self.logger.main_log(distributions.table)
+    self.logger.main_log('')
     pref_direction, pref_distribution = distributions.best
-    self.logger.log(f'Vector distribution for the most offending'
-                    f'zone axes family {pref_direction}:')
-    self.logger.log(ascii_plot(pref_distribution.vectors))
-    self.logger.log('')
+    self.logger.main_log(f'Vector distribution for the most offending'
+                         f'zone axes family {pref_direction}:')
+    self.logger.main_log(ascii_plot(pref_distribution.vectors))
+    self.logger.main_log('')
     return experiments, reflections
