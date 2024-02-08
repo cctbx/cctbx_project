@@ -103,5 +103,5 @@ class Program(ProgramTemplate):
         probe_xyz = self.result.probe_xyz[i]
         n_shells, n_atoms,n_probes,_ = self.result.probe_xyz.shape
         probe_xyz_flat = probe_xyz.reshape((n_atoms*n_probes,3))
-        out_file = Path(debug_path,f"probes_shell_{shell}.bild")
+        out_file = Path(debug_path,"probes_shell_"+shell+".bild")
         write_bild_spheres(probe_xyz_flat,str(out_file),r=0.2)
