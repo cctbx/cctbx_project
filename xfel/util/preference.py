@@ -68,10 +68,12 @@ phil_scope_str = """
               extracted unit cell bases to avoid bias introduced by indexing
   }
   plot {
-    style = none *hammer hedgehog
+    style = none ascii *hammer hedgehog
       .type = choice
-      .help = Which kind of plot should be produced. Hammer plots heatmap of \
-      distribution on Hammer projection. Hedgehog draws all individual vectors.
+      .help = Which kind of plot should be produced: \
+              Ascii writes a crude heatmap of distribution in x/y coords.\
+              Hammer plots heatmap of distribution on Hammer projection.\
+              Hedgehog draws all individual vectors (use for small data only).
   }
 """
 phil_scope = parse(phil_scope_str)
@@ -461,6 +463,7 @@ def find_preferential_distribution(
     c_star = np.cross(dsv.a, dsv.b)  # not normalized by volume!
     vectors = a_star * upn[0] + b_star * upn[1] + c_star * upn[2]
     results[ZoneAxisFamily(upn)] = WatsonDistribution.from_vectors(vectors)
+
   return results
 
 
@@ -533,24 +536,36 @@ class HedgehogArtist(BaseDistributionArtist):
     plt.show()
 
 
+def calculate_geographic_heat(vectors: np.ndarray, n_bins: int = 10,
+                              ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+  """
+  For an array of cartesian vectors, calculate and return:
+    - edges of bins in azimuth coordinates,
+    - edges of bins in polar coordinates,
+    - heatmap on sphere in azimuth/polar coordinates,
+  Assuming a geographic definition of polar angle (i.e. from pi/2 to -pi/2).
+  """
+  polar_edges = np.linspace(-np.pi / 2., np.pi / 2., n_bins + 1)
+  azim_edges = np.linspace(-np.pi, np.pi, n_bins + 1)
+  r_polar_azim = cart2sph(vectors)
+  polar = np.pi / 2 - r_polar_azim[:, 1]
+  azim = r_polar_azim[:, 2]
+  polar_centers = (polar_edges[:-1] + polar_edges[1:]) / 2
+  heat, azim_edges, polar_edges = np.histogram2d(
+    x=azim, y=polar, bins=[azim_edges, polar_edges])
+  heat = np.divide(heat, np.tile(np.cos(polar_centers), (n_bins, 1)))
+  return azim_edges, polar_edges, heat.T  # heat transposed for x/y plotting
+
+
 class HammerArtist(BaseDistributionArtist):
   """Class responsible for drawing distributions as hammer heatmaps"""
   CMAP = plt.get_cmap('viridis')
   PROJECTION = 'hammer'
 
   def _plot_hammer(self, ax: plt.Axes, hedgehog: Hedgehog) -> None:
-    bin_number = 10
-    polar_edges = np.linspace(-np.pi / 2., np.pi / 2., bin_number + 1)
-    azim_edges = np.linspace(-np.pi, np.pi, bin_number + 1)
-    r_polar_azim = cart2sph(hedgehog.distribution.vectors)
-    polar = np.pi / 2 - r_polar_azim[:, 1]
-    azim = r_polar_azim[:, 2]
-    polar_centers = (polar_edges[:-1] + polar_edges[1:]) / 2
-    heat, azim_edges, polar_edges = np.histogram2d(
-      x=azim, y=polar, bins=[azim_edges, polar_edges])
-    heat = np.divide(heat, np.tile(np.cos(polar_centers), (bin_number, 1)))
+    geo_heat = calculate_geographic_heat(vectors=hedgehog.distribution.vectors)
     ax.grid(False)
-    ax.pcolor(azim_edges, polar_edges, heat.T, cmap=self.CMAP)
+    ax.pcolor(*geo_heat, cmap=self.CMAP)
     axes_params = {'ls': '', 'marker': 'o', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
     ax.plot([-np.pi / 2, np.pi / 2], [0., 0.], c='g', **axes_params)
@@ -563,6 +578,36 @@ class HammerArtist(BaseDistributionArtist):
     for ax, hedgehog in zip(self.axes, self.hedgehogs):
       self._plot_hammer(ax=ax, hedgehog=hedgehog)
     plt.show()
+
+
+def ascii_plot(vectors: np.ndarray, n_bins: int = 10) -> str:
+  """A string with geographic heat plot on a simple xy cartesian coords"""
+  px_width = 3
+  m = (px_width * n_bins + 2) // 2
+  _, _, heat = calculate_geographic_heat(vectors=vectors)
+  int_heat = np.rint(4 / np.max(heat) * heat, dtype=int)
+  colormap = ' ░▒▓█'
+  plot_array = np.empty((2 * m, 2 * m,), dtype=str)
+  plot_array[0, 0] = '┌'
+  plot_array[0, -1] = '┐'
+  plot_array[-1, 0] = '└'
+  plot_array[-1, -1] = '┘'
+  plot_array[0, 1:-1] = '─'
+  plot_array[-1, 1:-1] = '─'
+  plot_array[1:-1, 0] = '│'
+  plot_array[1:-1, -1] = '│'
+  for azim_i in range(n_bins):
+    for polar_i in range(n_bins):
+      color = colormap[int_heat[azim_i, polar_i]]
+      plot_array[2 * azim_i + 1:2 * azim_i + 1 + px_width, polar_i + 1] = color
+  plot_array[0, m] = 'X'
+  plot_array[m, m] = 'X'
+  plot_array[2 * m, m] = 'X'
+  plot_array[m // 2, m] = 'Y'
+  plot_array[3 * m // 2, m] = 'Y'
+  plot_array[m, m] = 'Z'
+  plot_array[m, 2 * m] = 'Z'
+  return '\n'.join(''.join(c for c in line) for line in plot_array)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENTRY POINTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -583,8 +628,14 @@ def run(params_):
   abc_stack = DirectSpaceBases(np.concatenate(abc_stacks, axis=0))
   distributions = find_preferential_distribution(abc_stack, space_group)
   print(distributions.table)
+
   if (plot_style := params_.plot.style) != 'none':
-    distributions.plot(plot_style)
+    if plot_style == 'ascii':
+      for direction, distribution in distributions.items():
+        print(f'Ascii plot direction {direction}:')
+        print(ascii_plot(distribution.vectors))
+    else:
+      distributions.plot(plot_style)
 
 
 def exercise_watson_distribution():

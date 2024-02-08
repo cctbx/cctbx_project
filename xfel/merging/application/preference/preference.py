@@ -5,7 +5,7 @@ from functools import wraps
 import numpy as np
 
 from xfel.merging.application.worker import worker
-from xfel.util.preference import DirectSpaceBases, \
+from xfel.util.preference import ascii_plot, DirectSpaceBases, \
   find_preferential_distribution, space_group_auto
 
 
@@ -45,5 +45,10 @@ class PreferenceWorker(worker):
     distributions = find_preferential_distribution(abc_stack, sg)
     self.logger.log('')
     self.logger.log(distributions.table)
+    self.logger.log('')
+    pref_direction, pref_distribution = distributions.best
+    self.logger.log(f'Vector distribution for the most offending'
+                    f'zone axes family {pref_direction}:')
+    self.logger.log(ascii_plot(pref_distribution.vectors))
     self.logger.log('')
     return experiments, reflections
