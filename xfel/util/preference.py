@@ -142,9 +142,9 @@ class DirectSpaceBases(np.ndarray):
   a raw numpy array as well. It is 3-dimensional, with individual dimensions
   representing:
 
-  - [n, :, :] - access n-th array of a, b, c vectors;
-  - [:, n, :] - access a (n=0), b (n=1), or c (n=2) vectors;
-  - [:, :, n] - access x (n=0), y (n=1), or z (n=2) components.
+  - [n, :, :] - access n-th 3x3 array of a, b, c vectors;
+  - [:, n, :] - access an Nx3 array of a (n=0), b (n=1), or c (n=2) vectors;
+  - [:, :, n] - access an Nx3 array of x (n=0), y (n=1), or z (n=2) components.
 
   Consequently, the object is always (and must be init. using) a Nx3n3 array.
   """
@@ -360,14 +360,21 @@ class WatsonDistribution(SphericalDistribution):
     self.vectors = self.mu_sph2cart(np.vstack([np.ones_like(theta), theta, phi]).T)
 
 
+class ZoneAxisFamily(tuple):
+  """Class for handling "crystal forms", i.e. "families of equiv. zone axes."""
+
+  def __str__(self):
+    return f'{{{self[0]},{self[1]},{self[2]}}}'
+
+
 class UniquePseudoNodeGenerator:
   """
   This class generates a list of unique pseudo-nodes; each pseudo-node
   represents a single pseudo-vector expressed using integer coordinates
   in cartesian space. They can be used to express all possible unique
-  lattice directions with indices up to `radius`.
+  lattice directions or zone axes with indices up to `radius`.
   For example, pseudo-nodes [1, 1, 0], [-1, -1, 0], and [2, 2, 0] all express
-  the same lattice direction {1, 1, 0}, independent of symmetry
+  the same pseudo-vector [1, 1, 0], independent of symmetry
   """
   def __init__(self, laue_group: SgtbxPointGroup = pg_i1) -> None:
     self.point_group = laue_group
@@ -432,9 +439,7 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
   def table(self) -> str:
     """Prepare a pretty string for logging"""
     table_data = [['Direction', 'kappa', 'mu', 'NLL']]
-    for k, v in self.sorted.items():
-      dir_ = f'<{k[0]:d},{k[1]:d},{k[2]:d}>'
-      dir_ = dir_.replace('(', '<').replace(')', '>').replace(' ', '')
+    for dir_, v in self.sorted.items():
       kappa = f'{v.kappa:+.3f}'
       mu = f'[{v.mu[0]:+.3f},{v.mu[1]:+.3f},{v.mu[2]:+.3f}]'
       nll = f'{v.nll:.2E}'
@@ -446,13 +451,16 @@ def find_preferential_distribution(
         dsv: DirectSpaceBases,
         space_group: SgtbxSpaceGroup
 ) -> PreferentialDistributionResults:
-  """Look for a preferential orientation in any direct space direction pqr"""
+  """Look for a preferential orientation along any unique zone axis {hkl}"""
   laue_group = space_group.build_derived_laue_group()
   unique_pseudo_node_generator = UniquePseudoNodeGenerator(laue_group)
   results = PreferentialDistributionResults()
   for upn in unique_pseudo_node_generator:
-    vectors = dsv.a * upn[0] + dsv.b * upn[1] + dsv.c * upn[2]
-    results[upn] = WatsonDistribution.from_vectors(vectors)
+    a_star = np.cross(dsv.b, dsv.c)  # not normalized by volume!
+    b_star = np.cross(dsv.c, dsv.a)  # not normalized by volume!
+    c_star = np.cross(dsv.a, dsv.b)  # not normalized by volume!
+    vectors = a_star * upn[0] + b_star * upn[1] + c_star * upn[2]
+    results[ZoneAxisFamily(upn)] = WatsonDistribution.from_vectors(vectors)
   return results
 
 
