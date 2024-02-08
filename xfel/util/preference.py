@@ -422,7 +422,7 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
   @property
   def best(self) -> Tuple[Int3, WatsonDistribution]:
     """Return a tuple with best (most offending) direction and distribution"""
-    return list[self.sorted.items()][0]
+    return list(self.sorted.items())[0]
 
   @property
   def sorted(self) -> 'PreferentialDistributionResults':
@@ -445,7 +445,7 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
       kappa = f'{v.kappa:+.3f}'
       mu = f'[{v.mu[0]:+.3f},{v.mu[1]:+.3f},{v.mu[2]:+.3f}]'
       nll = f'{v.nll:.2E}'
-      table_data.append([dir_, kappa, mu, nll])
+      table_data.append([str(dir_), kappa, mu, nll])
     return table_utils.format(table_data, has_header=1, delim='  ')
 
 
@@ -486,14 +486,14 @@ class BaseDistributionArtist(abc.ABC):
     self._init_figure()
 
   def _init_figure(self) -> None:
-    self.fig = plt.figure()
+    self.fig = plt.figure(constrained_layout=True)
     self.axes = []
 
   def _generate_axes(self) -> None:
     len_ = len(self.hedgehogs)
     axes_grid_width = np.ceil(np.sqrt(len_)).astype(int)
     axes_grid_height = np.ceil(len_ / axes_grid_width).astype(int)
-    gs = GridSpec(axes_grid_height, axes_grid_width, hspace=0, wspace=0)
+    gs = GridSpec(axes_grid_height, axes_grid_width, figure=self.fig)
     for h in range(axes_grid_height):
       for w in range(axes_grid_width):
         ax = self.fig.add_subplot(gs[h, w], projection=self.PROJECTION)
@@ -583,31 +583,35 @@ class HammerArtist(BaseDistributionArtist):
 def ascii_plot(vectors: np.ndarray, n_bins: int = 10) -> str:
   """A string with geographic heat plot on a simple xy cartesian coords"""
   px_width = 3
-  m = (px_width * n_bins + 2) // 2
   _, _, heat = calculate_geographic_heat(vectors=vectors)
-  int_heat = np.rint(4 / np.max(heat) * heat, dtype=int)
+  minh, maxh = np.min(heat), np.max(heat)
+  int_heat = np.rint(4.0 / (maxh - minh) * (heat.T - minh)).astype(int)
   colormap = ' ░▒▓█'
-  plot_array = np.empty((2 * m, 2 * m,), dtype=str)
+  plot_array = np.empty((px_width * n_bins + 2, n_bins + 2,), dtype=str)  # x/y
   plot_array[0, 0] = '┌'
-  plot_array[0, -1] = '┐'
-  plot_array[-1, 0] = '└'
+  plot_array[-1, 0] = '┐'
+  plot_array[0, -1] = '└'
   plot_array[-1, -1] = '┘'
-  plot_array[0, 1:-1] = '─'
-  plot_array[-1, 1:-1] = '─'
-  plot_array[1:-1, 0] = '│'
-  plot_array[1:-1, -1] = '│'
+  plot_array[1:-1, 0] = '─'
+  plot_array[1:-1, -1] = '─'
+  plot_array[0, 1:-1] = '│'
+  plot_array[-1, 1:-1] = '│'
   for azim_i in range(n_bins):
     for polar_i in range(n_bins):
+      azim_from = px_width * azim_i + 1
+      azim_to = px_width * (azim_i + 1) + 1
       color = colormap[int_heat[azim_i, polar_i]]
-      plot_array[2 * azim_i + 1:2 * azim_i + 1 + px_width, polar_i + 1] = color
-  plot_array[0, m] = 'X'
-  plot_array[m, m] = 'X'
-  plot_array[2 * m, m] = 'X'
-  plot_array[m // 2, m] = 'Y'
-  plot_array[3 * m // 2, m] = 'Y'
-  plot_array[m, m] = 'Z'
-  plot_array[m, 2 * m] = 'Z'
-  return '\n'.join(''.join(c for c in line) for line in plot_array)
+      plot_array[azim_from:azim_to, polar_i + 1] = color
+  mx = 1 + (px_width * n_bins) // 2
+  my = 1 + n_bins // 2
+  plot_array[0, my] = 'X'
+  plot_array[mx, my] = 'X'
+  plot_array[-1, my] = 'X'
+  plot_array[mx // 2, my] = 'Y'
+  plot_array[mx + mx // 2, my] = 'Y'
+  plot_array[mx, 0] = 'Z'
+  plot_array[mx, -1] = 'Z'
+  return '\n'.join(''.join(c for c in line) for line in plot_array.T)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENTRY POINTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -632,7 +636,7 @@ def run(params_):
   if (plot_style := params_.plot.style) != 'none':
     if plot_style == 'ascii':
       for direction, distribution in distributions.items():
-        print(f'Ascii plot direction {direction}:')
+        print(f'Ascii distribution heat plot for direction {direction}:')
         print(ascii_plot(distribution.vectors))
     else:
       distributions.plot(plot_style)

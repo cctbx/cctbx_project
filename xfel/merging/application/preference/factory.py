@@ -7,4 +7,4 @@ class factory(factory_base):
   """Factory for PreferenceWorker which evaluates preferential orientation"""
   @staticmethod
   def from_parameters(params, additional_info=None, mpi_helper=None, mpi_logger=None):
-    return PreferenceWorker(params, mpi_helper, mpi_logger)
+    return [PreferenceWorker(params, mpi_helper, mpi_logger)]
