@@ -108,15 +108,15 @@ def space_group_auto(expts: Iterable[ExperimentList],
                      comm: type(COMM) = None,
                      ) -> Tuple[SgtbxSpaceGroup, str]:
   """Return the most common space groups across comm world, and summary str"""
-  counter = Counter([expt.crystal.get_space_group() for expt in expts])
+  counter = Counter([e.crystal.get_space_group().make_tidy() for e in expts])
   if comm is not None:
     counters = comm.allgather(counter)
     counter = sum(counters, Counter())
   message_ = ''
-  for sg, sg_count in counter:
-    message_ += f'Found {sg_count:6d} expts with space group {sg.info()!s}'
+  for sg, sg_count in counter.items():
+    message_ += f'Found {sg_count:6d} expts with space group {sg.info()}\n'
   most_common = counter.most_common(1)[0][0]
-  message_ += f'Evaluating the most common space group {most_common} only'
+  message_ += f'Evaluating the most common space group {most_common.info()}'
   return most_common, message_
 
 
