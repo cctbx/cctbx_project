@@ -36,7 +36,7 @@ class PreferenceWorker(worker):
     if self.mpi_helper.rank == 0:
       for message_line in message_.split('\n'):
         self.logger.main_log(message_line)
-      self.logger.main_log('')
+    self.logger.main_log('')
     abc_stack = DirectSpaceBases.from_expts(experiments, sg)
     abc_stack = abc_stack.symmetrize(sg.build_derived_point_group())
     abc_stacks = self.mpi_helper.comm.gather(abc_stack)
@@ -44,12 +44,11 @@ class PreferenceWorker(worker):
       return experiments, reflections
     abc_stack = DirectSpaceBases(np.concatenate(abc_stacks, axis=0))
     distributions = find_preferential_distribution(abc_stack, sg)
-    self.logger.main_log('')
     self.logger.main_log(distributions.table)
     self.logger.main_log('')
     pref_direction, pref_distribution = distributions.best
-    self.logger.main_log(f'Vector distribution for the most offending'
-                         f'zone axes family {pref_direction}:')
+    self.logger.main_log(f'Vector distribution for zone axes '
+                         f'family {pref_direction}:')
     self.logger.main_log(ascii_plot(pref_distribution.vectors))
     self.logger.main_log('')
     return experiments, reflections
