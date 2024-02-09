@@ -36,7 +36,7 @@ class PreferenceWorker(worker):
     if self.mpi_helper.rank == 0:
       for message_line in message_.split('\n'):
         self.logger.main_log(message_line)
-    self.logger.main_log('')
+      self.logger.main_log('')
     abc_stack = DirectSpaceBases.from_expts(experiments, sg)
     abc_stack = abc_stack.symmetrize(sg.build_derived_point_group())
     abc_stacks = self.mpi_helper.comm.gather(abc_stack)
