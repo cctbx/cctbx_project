@@ -5,7 +5,7 @@ from collections import Counter, deque, UserDict
 from dataclasses import dataclass
 import glob
 from numbers import Number
-from typing import Any, Iterable, List, Sequence, Tuple
+from typing import Any, Iterable, List, Sequence, Tuple, TypeVar, Union
 import sys
 
 from cctbx import sgtbx
@@ -25,7 +25,7 @@ import scipy as sp
 message = """
 This utility tool aims to determinate, characterise, and quantify the degree
 of preferential orientation in crystals. To this aim, it investigates the
-the distribution of various crystallographic directions a semi-sphere in 3D.
+the distribution of various crystallographic directions on a sphere in 3D.
 The code assumes each set of vectors follows Wilson Distribution, and attempts
 to model said distribution by fitting its parameter `mu` and `kappa`.
 
@@ -35,14 +35,12 @@ to any rotation around `mu` and inversion, and its exact type depends on the
 concentration parameter `kappa`. For `kappa` > 0, the points are focused in
 the polar region around +/- `mu`. In case of  `kappa` < 0, the points
 concentrate mostly in a equatorial region far from `mu`. `kappa` close to 0
-describes a distribution uniform on sphere: no preferential orientation. 
+describes a distribution uniform on sphere: no preferential orientation.
 
 This code has been prepared using the following books & papers as references:
 - http://palaeo.spb.ru/pmlibrary/pmbooks/mardia&jupp_2000.pdf, section 10.3.2
 - https://www.sciencedirect.com/science/article/pii/S0047259X12002084, sect. 2
 - https://www.tandfonline.com/doi/abs/10.1080/03610919308813139
-
-This is a work in progress.
 """.strip()
 
 
@@ -90,9 +88,10 @@ pg_i1 = sg_p1.build_derived_laue_group()
 SgtbxPointGroup = Any
 SgtbxSpaceGroup = Any
 SgtbxSymmOp = Any
+T = TypeVar('T')
 
 
-def flatten(sequence: Sequence[Sequence]) -> List:
+def flatten(sequence: Sequence[Sequence[T]]) -> List[T]:
   """Flatten a sequence of sequences into a 1-dimensional list"""
   return [element for sub_sequence in sequence for element in sub_sequence]
 
@@ -125,7 +124,7 @@ def space_group_auto(expts: Iterable[ExperimentList],
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ SYMMETRY HANDLING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-def transform(vectors: Iterable[Number3],
+def transform(vectors: Union[Number3, Iterable[Number3]],
               symm_op: SgtbxSymmOp,
               ) -> np.ndarray[Number3]:
   """Transform Number3 or Nx3 Iterable of Number3-s using symm_op """
@@ -224,14 +223,20 @@ def cart2sph(xyz: np.ndarray) -> np.ndarray:
 
 
 class SphericalDistribution:
-  """General class for handling distribution of unit vectors in 3D"""
+  """
+  General class for handling distribution of unit vectors in 3D. Operates in
+  and provides methods to transform between different coordinate systems:
+  - `cart` - Cartesian coordinates X, Y, Z in laboratory reference frame;
+  - `sph` - Spherical ref. system with e1 = Z, polar e2 from Z to X, azim. XY;
+  - `mu_sph` - Spherical reference system with e1 = mu and e2, e3 arbitrary;
+  """
   E1 = np.array([1, 0, 0])
   E2 = np.array([0, 1, 0])
   E3 = np.array([0, 0, 1])
 
   def __init__(self):
-    self.vectors: np.ndarray = None
-    self.mu: np.ndarray = np.array([1, 0, 0])
+    self.vectors: np.ndarray = np.empty((0, 3), dtype=float)
+    self.mu: np.ndarray = np.array([1., 0., 0.], dtype=float)
 
   @staticmethod
   def normalized(vectors: np.ndarray, axis: int = -1) -> np.ndarray:
@@ -245,7 +250,7 @@ class SphericalDistribution:
     return abs(np.dot(v, w) / (np.linalg.norm(v) * np.linalg.norm(w))) < 1 - eps
 
   @property
-  def mu_basis_vectors(self):
+  def mu_basis_vectors(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Basis vector of cartesian system in which e1 = mu; e2 & e3 arbitrary"""
     e1 = self.mu / np.linalg.norm(self.mu)
     e0 = self.E1 if not self.are_parallel(e1, self.E1) else self.E2
@@ -313,7 +318,7 @@ class WatsonDistribution(SphericalDistribution):
     """Scatter matrix of `vectors` distribution (9.2.10)"""
     return np.matmul(self.vectors.T, self.vectors) / len(self.vectors)
 
-  def log_likelihood(self, mu: np.ndarray, kappa: float) -> float:
+  def log_likelihood(self, kappa: float, mu: np.ndarray) -> float:
     """Log likelihood of given mu, kappa given current vectors. (10.3.30)"""
     t = self.scatter_matrix
     m = self.kummer_function(1/2, 3/2, kappa)
@@ -322,7 +327,7 @@ class WatsonDistribution(SphericalDistribution):
   def nll_of_kappa(self, kappa: float, mu: np.ndarray) -> float:
     """Negative log likelihood of this Watson Distribution as a function
     of kappa, with `mu` and `vectors` fixed and given in `params`"""
-    return -self.log_likelihood(mu=mu, kappa=kappa)
+    return -self.log_likelihood(kappa=kappa, mu=mu)
 
   def fit(self, vectors: np.ndarray) -> None:
     """Fit distribution to `vectors`, update `self.mu` and `self.kappa`"""
@@ -363,9 +368,9 @@ class WatsonDistribution(SphericalDistribution):
 
 
 class ZoneAxisFamily(tuple):
-  """Class for handling "crystal forms", i.e. "families of equiv. zone axes."""
+  """Class for handling "crystal forms", i.e. sets of symm-equiv. zone axes."""
 
-  def __str__(self):
+  def __str__(self) -> str:
     return f'{{{self[0]},{self[1]},{self[2]}}}'
 
 
@@ -421,7 +426,7 @@ class PreferentialDistributionResults(UserDict[Int3, WatsonDistribution]):
 
   @property
   def best(self) -> Tuple[Int3, WatsonDistribution]:
-    """Return a tuple with best (most offending) direction and distribution"""
+    """Return a tuple w/ best fit (most offending) direction & distribution"""
     return list(self.sorted.items())[0]
 
   @property
@@ -463,7 +468,6 @@ def find_preferential_distribution(
     c_star = np.cross(dsv.a, dsv.b)  # not normalized by volume!
     vectors = a_star * upn[0] + b_star * upn[1] + c_star * upn[2]
     results[ZoneAxisFamily(upn)] = WatsonDistribution.from_vectors(vectors)
-
   return results
 
 
@@ -617,7 +621,7 @@ def ascii_plot(vectors: np.ndarray, n_bins: int = 10) -> str:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ENTRY POINTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-def run(params_):
+def run(params_) -> None:
   expt_paths = locate_paths(params_.input.glob, params_.input.exclude)
   expt_paths = expt_paths[COMM.rank::COMM.size]
   expts = read_experiments(*expt_paths)
@@ -642,7 +646,7 @@ def run(params_):
       distributions.plot(plot_style)
 
 
-def exercise_watson_distribution():
+def exercise_watson_distribution() -> None:
   ha = HammerArtist()
   for kappa in [-10.0, -1.0, -0.1, -0.01, .000001, 0.01, 0.1, 1.0, 10.]:
     wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
