@@ -646,11 +646,12 @@ def exercise_watson_distribution():
   ha = HammerArtist()
   for kappa in [-10.0, -1.0, -0.1, -0.01, .000001, 0.01, 0.1, 1.0, 10.]:
     wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
-    wd.sample(100000)
+    wd.sample(1_000_000)
     wd.fit(wd.vectors)
     print(wd)
     hh = Hedgehog(distribution=wd, color='r', name='kappa=' + str(kappa))
     ha.register_hedgehog(hh)
+    print(ascii_plot(hh.distribution))
   ha.plot()
 
 
