@@ -643,15 +643,15 @@ def run(params_):
 
 
 def exercise_watson_distribution():
-  hha = HedgehogArtist()
-  for kappa in [-1000, -100, -10, 0.000001, 10, 100]:
+  ha = HammerArtist()
+  for kappa in [-10.0, -1.0, -0.1, -0.01, .000001, 0.01, 0.1, 1.0, 10.]:
     wd = WatsonDistribution(mu=np.array([0, 0, 1]), kappa=kappa)
-    wd.sample(1000)
+    wd.sample(100000)
     wd.fit(wd.vectors)
     print(wd)
     hh = Hedgehog(distribution=wd, color='r', name='kappa=' + str(kappa))
-    hha.register_hedgehog(hh)
-  hha.plot()
+    ha.register_hedgehog(hh)
+  ha.plot()
 
 
 params = []
