@@ -582,7 +582,7 @@ class HammerArtist(BaseDistributionArtist):
 
 def ascii_plot(vectors: np.ndarray, n_bins: int = 10) -> str:
   """A string with geographic heat plot on a simple xy cartesian coords"""
-  px_width = 3
+  px_width = 4
   _, _, heat = calculate_geographic_heat(vectors=vectors)
   minh, maxh = np.min(heat), np.max(heat)
   int_heat = np.rint(4.0 / (maxh - minh) * (heat.T - minh)).astype(int)
