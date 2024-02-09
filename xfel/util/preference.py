@@ -254,8 +254,8 @@ class SphericalDistribution:
     """Basis vector of cartesian system in which e1 = mu; e2 & e3 arbitrary"""
     e1 = self.mu / np.linalg.norm(self.mu)
     e0 = self.E1 if not self.are_parallel(e1, self.E1) else self.E2
-    e2 = (e := np.cross(e1, e0)) / np.linalg.norm(e)
-    e3 = (e := np.cross(e1, e2)) / np.linalg.norm(e)
+    e2 = np.cross(e1, e0) / np.linalg.norm(np.cross(e1, e0))
+    e3 = np.cross(e1, e2) / np.linalg.norm(np.cross(e1, e2))
     return e1, e2, e3
 
   @property
@@ -335,9 +335,10 @@ class WatsonDistribution(SphericalDistribution):
     eig_val, eig_vec = np.linalg.eig(self.scatter_matrix)
     fitted = {'mu': np.array([1., 0., 0.]), 'kappa': 0., 'nll': np.inf}
     for eig_val, eig_vec in zip(eig_val, eig_vec.T):
-        result = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
-        if (nll := result['fun']) < fitted['nll']:
-            fitted = {'mu': eig_vec, 'kappa': result['x'][0], 'nll': nll}
+      result = sp.optimize.minimize(self.nll_of_kappa, x0=0., args=eig_vec)
+      nll = result['fun']
+      if nll < fitted['nll']:
+        fitted = {'mu': eig_vec, 'kappa': result['x'][0], 'nll': nll}
     self.kappa = fitted['kappa']
     self.mu = fitted['mu']
     self.nll = fitted['nll']
@@ -345,22 +346,22 @@ class WatsonDistribution(SphericalDistribution):
   def sample(self, n: int, seed: int = 42) -> np.ndarray:
     """Sample `n` vectors from self, based on doi 10.1080/03610919308813139"""
     if n < 0:
-        return
+      return
     k = self.kappa
     rho = (4 * k) / (2 * k + 3 + ((2 * k + 3) ** 2 - 16 * k) ** 0.5)
     r = ((3 * rho) / (2 * k)) ** 3 * np.exp(-3 + 2 * k / rho)
     rng = np.random.default_rng(seed=seed)
 
-    def cos2_of_polar_angle(_n: int) -> np.ndarray:
+    def cos2_of_polar(_n: int) -> np.ndarray:
       u0 = rng.uniform(size=2*_n)
       u1 = rng.uniform(size=2*_n)
       s = u0 ** 2 / (1 - rho * (1 - u0 ** 2))
       v = (r * u1 ** 2) / (1 - rho * s) ** 3
       good_s = s[v <= np.exp(2 * k * s)]
-      return good_s[:_n] if (lgs := len(good_s)) >= _n else \
-          np.concatenate([good_s, cos2_of_polar_angle(_n-lgs)], axis=None)
+      return good_s[:_n] if len(good_s) >= _n else \
+          np.concatenate([good_s, cos2_of_polar(_n-len(good_s))], axis=None)
     u2 = rng.uniform(size=n)
-    theta = np.arccos(cos2_of_polar_angle(n) ** 0.5)
+    theta = np.arccos(cos2_of_polar(n) ** 0.5)
     phi = 4 * np.pi * u2
     theta[u2 < 0.5] = np.pi - theta[u2 < 0.5]
     phi[u2 >= 0.5] = 2 * np.pi * (2 * u2[u2 >= 0.5] - 1)
@@ -625,8 +626,8 @@ def run(params_) -> None:
   expt_paths = locate_paths(params_.input.glob, params_.input.exclude)
   expt_paths = expt_paths[COMM.rank::COMM.size]
   expts = read_experiments(*expt_paths)
-  space_group = space_group_auto(expts, COMM)[0] \
-      if (sgi := params_.input.space_group) is Auto else sgi.group()
+  sgi = params_.input.space_group
+  space_group = space_group_auto(expts, COMM)[0] if sgi is Auto else sgi.group()
   abc_stack = DirectSpaceBases.from_expts(expts, space_group)
   if params_.input.symmetrize:
     abc_stack = abc_stack.symmetrize(space_group.build_derived_point_group())
@@ -637,7 +638,8 @@ def run(params_) -> None:
   distributions = find_preferential_distribution(abc_stack, space_group)
   print(distributions.table)
 
-  if (plot_style := params_.plot.style) != 'none':
+  plot_style = params_.plot.style
+  if plot_style != 'none':
     if plot_style == 'ascii':
       for direction, distribution in distributions.items():
         print(f'Ascii distribution heat plot for direction {direction}:')
