@@ -651,7 +651,7 @@ def exercise_watson_distribution():
     print(wd)
     hh = Hedgehog(distribution=wd, color='r', name='kappa=' + str(kappa))
     ha.register_hedgehog(hh)
-    print(ascii_plot(hh.distribution))
+    print(ascii_plot(hh.distribution.vectors))
   ha.plot()
 
 
