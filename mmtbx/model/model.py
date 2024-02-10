@@ -1729,8 +1729,8 @@ class manager(object):
     # NOTE: Normally use the data_manager to write any files and use
     #  tools in the hierarchy to manipulate any aspects of a hierarchy.
 
-    #  If you need a pdb string, normally use as_pdb_or_mmcif_string 
-    #   instead of this general function 
+    #  If you need a pdb string, normally use as_pdb_or_mmcif_string
+    #   instead of this general function
     #  Note default of segid_as_auth_segid = True, different from
     #     as_mmcif_string()
 
