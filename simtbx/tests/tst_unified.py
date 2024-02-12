@@ -184,7 +184,8 @@ class several_wavelength_case:
     SIM.flux=1e12
     SIM.beamsize_mm=0.003 # square (not user specified)
     SIM.exposure_s=1.0 # multiplies flux x exposure
-    gpu_simulation.add_background(gpu_detector)
+    if gpu_background:
+      gpu_simulation.add_background(gpu_detector)
 
     gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU
     if self.special == 1: #special test breaks encapsulation
@@ -282,6 +283,17 @@ if __name__=="__main__":
     SIM2D.to_cbf("test_unified_%s_diffuse_002.cbf"%(params.context), intfile_scale=scale)
     #assert that the diffuse scattering simulation always adds photons to pixels
     assert np.all(  (SIM2D.raw_pixels.as_1d() >= SIM2.raw_pixels.as_1d()).as_numpy_array()  )
+    print("Diffuse signal confirmed >= 0 for all pixels")
+
+  if "kokkos" in params.context: # same thing but with no background
+    print("\n# Use case 2 with no background (%s). Monochromatic source"%params.context)#"sources=True": use multichannel API
+    SIM2NB = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=False, sources=True, diffuse=False)
+    SIM2NB.to_cbf("test_unified_%s_nb_002.cbf"%(params.context), intfile_scale=scale)
+    print("\n# Use case diffuse 2 with no background (%s). Monochromatic source"%params.context)
+    SIM2DNB = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=False, sources=True, diffuse=True)
+    SIM2DNB.to_cbf("test_unified_%s_diffuse_nb_002.cbf"%(params.context), intfile_scale=scale)
+    #assert that the diffuse scattering simulation always adds photons to pixels
+    assert np.all(  (SIM2DNB.raw_pixels.as_1d() >= SIM2NB.raw_pixels.as_1d()).as_numpy_array()  )
     print("Diffuse signal confirmed >= 0 for all pixels")
 
   # Use explicitly 3-color code and equate with explicitly 1-color:
