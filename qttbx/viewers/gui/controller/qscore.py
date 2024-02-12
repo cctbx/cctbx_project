@@ -3,6 +3,12 @@ import pandas as pd
 from PySide2.QtWidgets import QApplication
 from PySide2 import QtCore
 
+from cctbx.maptbx.qscore import calc_qscore
+from iotbx.map_model_manager import map_model_manager
+from cctbx.maptbx.qscore import master_phil_str as qscore_phil_str
+from libtbx import phil
+import numpy as np
+
 from .controller import Controller
 from ..state.ref import  QscoreRef
 from ..state.results import QscoreResult
@@ -24,6 +30,18 @@ class QscoreTabController(Controller):
     # Flags
     self.header_hidden = False
 
+    # Qscore params
+    working_phil = phil.parse(qscore_phil_str)
+    params = working_phil.extract()
+    if params.qscore.shells[0] is None:
+      params.qscore.shells.pop(0)
+      shells = [
+                0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
+                1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2. ]
+      for shell in reversed(shells):
+        params.qscore.shells.insert(0,shell)
+    self.params_qscore = params.qscore
+
   def handle_hist_click(self):
     pass
 
@@ -38,7 +56,8 @@ class QscoreTabController(Controller):
     model_ref = self.state.active_model_ref
     if "qscore" in model_ref.results:
       results_ref = model_ref.results["qscore"]
-      df = pd.DataFrame({"Qscore":results_ref.data.qscore_per_atom})
+      df = pd.DataFrame({"Qscore":results_ref.data.qscore_per_atom},
+                        index=list(range(len(results_ref.data.qscore_per_atom))))
       df = df.round(3)
       df = pd.concat([df,model_ref.mol.sites],axis=1)
       df.sort_values(by="Qscore",inplace=True,ascending=False)
@@ -49,22 +68,21 @@ class QscoreTabController(Controller):
 
 
   def calculate_qscore(self):
-    # NOTE: This is temporary, all results should come through programs
-    from ....qscore_standalone.qscore2 import qscore_np
-    from iotbx.map_model_manager import map_model_manager
+
     if self.state.active_model_ref is not None:
       model = self.state.active_model_ref.model
       map_manager = self.state.active_map_ref.map_manager
       mmm = map_model_manager(model=model,map_manager=map_manager)
-      q_np_v2 = qscore_np(mmm,n_probes=8,selection=None,version=2,nproc=8)
+      result = calc_qscore(mmm,self.params_qscore)
+      qscore_per_atom = np.array(result["qscore_per_atom"])
 
-    # Hide header
-    self._hide_header()
+      # Hide header
+      self._hide_header()
 
-    # build result and ref
-    qdata =  QscoreResult(program_name="qscore",qscore_per_atom=q_np_v2)
-    result_ref = QscoreRef(data=qdata,model_ref = self.state.active_model_ref,selection_ref=None)
-    self.state.add_ref(result_ref)
+      # build result and ref
+      qdata =  QscoreResult(program_name="qscore",qscore_per_atom=qscore_per_atom)
+      result_ref = QscoreRef(data=qdata,model_ref = self.state.active_model_ref,selection_ref=None)
+      self.state.add_ref(result_ref)
 
 
 

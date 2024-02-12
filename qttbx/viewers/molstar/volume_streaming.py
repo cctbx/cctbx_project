@@ -135,7 +135,7 @@ class VolumeStreamingManager:
                "em",
                 str(volume_path),
                 str(mdb_path)]
-    #print('Pack command: ',command)
+    print('Pack command: ',command)
     result = subprocess.run(
       command,
       env={'TEMP_DIR': self.mdb_path},
