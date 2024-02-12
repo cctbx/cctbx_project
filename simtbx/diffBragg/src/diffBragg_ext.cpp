@@ -4,6 +4,7 @@
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
 #include <boost/python/numpy.hpp>
+#include <dlpack/dlpack.h>
 
 using namespace boost::python;
 namespace simtbx{
@@ -512,6 +513,203 @@ namespace boost_python { namespace {
     Kokkos::initialize(Kokkos::InitializationSettings()
                            .set_device_id(dev));
   }
+
+  void PrintDLTensorParameters( PyObject* capsule ) {
+    auto tensor = static_cast<DLTensor*>(PyCapsule_GetPointer(capsule, "dltensor"));
+    if (tensor == nullptr) {
+        std::cerr << "The input DLTensor is null." << std::endl;
+        return;
+    }
+
+    // Print the number of dimensions.
+    std::cout << "Number of dimensions (ndim): " << tensor->ndim << std::endl;
+
+    // Print the shape of the tensor.
+    std::cout << "Shape: [";
+    for (int i = 0; i < tensor->ndim; ++i) {
+        std::cout << tensor->shape[i];
+        if (i < tensor->ndim - 1) {
+            std::cout << ", ";
+        }
+    }
+    std::cout << "]" << std::endl;
+
+    // Print the data type of the tensor.
+    std::cout << "Data type (dtype): ";
+    switch (tensor->dtype.code) {
+        case kDLInt: std::cout << "Int"; break;
+        case kDLUInt: std::cout << "UInt"; break;
+        case kDLFloat: std::cout << "Float"; break;
+        case kDLBfloat: std::cout << "BFloat"; break;
+        default: std::cout << "Unknown"; break;
+    }
+    std::cout << " (" << int(tensor->dtype.bits) << " bits, " << tensor->dtype.lanes << " lanes)" << std::endl;
+
+    // Print the device context (device type and device id).
+    std::cout << "Device context: ";
+    switch (tensor->device.device_type) {
+        case kDLCPU: std::cout << "CPU"; break;
+        case kDLCUDA: std::cout << "CUDA"; break;
+        case kDLCUDAHost: std::cout << "CUDA Host"; break;
+        case kDLOpenCL: std::cout << "OpenCL"; break;
+        case kDLVulkan: std::cout << "Vulkan"; break;
+        case kDLMetal: std::cout << "Metal"; break;
+        case kDLVPI: std::cout << "VPI"; break;
+        case kDLROCM: std::cout << "ROCM"; break;
+        default: std::cout << "Unknown"; break;
+    }
+    std::cout << ", Device ID: " << tensor->device.device_id << std::endl;
+
+    // Print the strides of the tensor, if available.
+    if (tensor->strides != nullptr) {
+        std::cout << "Strides: [";
+        for (int i = 0; i < tensor->ndim; ++i) {
+            std::cout << tensor->strides[i];
+            if (i < tensor->ndim - 1) {
+                std::cout << ", ";
+            }
+        }
+        std::cout << "]" << std::endl;
+    } else {
+        std::cout << "Strides: [Contiguous in memory]" << std::endl;
+    }
+
+    // Print the byte offset of the tensor data.
+    std::cout << "Byte Offset: " << tensor->byte_offset << std::endl;
+}
+
+  template <typename ViewType>
+  class KokkosViewToDLPack {
+  public:
+    KokkosViewToDLPack(ViewType view) : view_(view) {}
+
+    torch::Tensor convertToDLPack() {
+      // Convert the Kokkos view to DLPack
+      DLManagedTensor* dlpackTensor = convertToDLPack();
+
+      // Convert the DLPack tensor to PyTorch
+      torch::Tensor tensor = torch::from_dlpack(dlpackTensor);
+
+      // Free the DLPack tensor memory
+      delete[] dlpackTensor->dl_tensor.shape;
+      delete dlpackTensor;
+
+      return tensor;
+    }
+    
+  private:
+    ViewType view_;
+
+    DLManagedTensor* convertToDLPack() {
+      // Get the Kokkos view size and dimensions
+      size_t numDims = ViewType::rank;
+      size_t* shape = new size_t[numDims];
+      for (size_t i = 0; i < numDims; i++) {
+        shape[i] = view_.extent(i);
+      }
+
+      // Create a DLPack tensor
+      DLManagedTensor* dlpackTensor = new DLManagedTensor;
+      dlpackTensor->dl_tensor.data = view_.data();
+      dlpackTensor->dl_tensor.ctx = const_cast<void*>(view_.impl_map().template device_data<void>());
+      dlpackTensor->dl_tensor.ndim = numDims;
+      dlpackTensor->dl_tensor.dtype = getDLPackDataType();
+      dlpackTensor->dl_tensor.shape = shape;
+      dlpackTensor->dl_tensor.strides = nullptr;
+      dlpackTensor->dl_tensor.byte_offset = 0;
+      dlpackTensor->manager_ctx = nullptr;
+      dlpackTensor->deleter = [](DLManagedTensor* tensor) { delete[] tensor->dl_tensor.shape; };
+
+      return dlpackTensor;
+    }
+
+    DLDataType getDLPackDataType() {
+      DLDataType dtype;
+      dtype.code = getDLPackTypeCode();
+      dtype.bits = sizeof(typename ViewType::value_type) * 8;
+      dtype.lanes = 1;
+      return dtype;
+    }
+
+    DLDataTypeCode getDLPackTypeCode() {
+      using ValueType = typename ViewType::value_type;
+      if (std::is_same<ValueType, float>::value) {
+        return kDLFloat;
+      } else if (std::is_same<ValueType, double>::value) {
+        return kDLFloat;
+      } else if (std::is_same<ValueType, int>::value) {
+        return kDLInt;
+      } else if (std::is_same<ValueType, unsigned int>::value) {
+        return kDLUInt;
+      } else if (std::is_same<ValueType, bool>::value) {
+        return kDLBool;
+      } else {
+        // Unsupported data type
+        throw std::runtime_error("Unsupported data type for DLPack conversion");
+      }
+    }
+  };
+
+
+struct DLPackAPI {
+
+  double container[50];
+
+  PyObject* dlpack() {
+    // Get the Kokkos view size and dimensions
+    size_t numDims = 1;
+    int64_t* shape = new int64_t[numDims];
+    for (size_t i = 0; i < numDims; i++) {
+      shape[i] = 50;
+    }
+
+    // Create a DLPack tensor
+    DLManagedTensor* dlpackTensor = new DLManagedTensor;
+    dlpackTensor->dl_tensor.data = static_cast<void*>(&container);
+    dlpackTensor->dl_tensor.device.device_type = DLDeviceType::kDLCPU;
+    dlpackTensor->dl_tensor.device.device_id = 0;
+    dlpackTensor->dl_tensor.ndim = numDims;    
+    dlpackTensor->dl_tensor.dtype = getDLPackDataType();
+    dlpackTensor->dl_tensor.shape = shape;
+    dlpackTensor->dl_tensor.strides = nullptr;
+    dlpackTensor->dl_tensor.byte_offset = 0;
+    dlpackTensor->manager_ctx = nullptr;
+    dlpackTensor->deleter = [](DLManagedTensor* tensor) {
+        std::cout << "Blob" << std::endl;
+        delete[] tensor->dl_tensor.shape;
+    };
+
+    // Create a PyCapsule with the DLPack tensor
+    PyObject* capsule = PyCapsule_New(dlpackTensor, "dltensor", nullptr);
+
+    return capsule;
+  }
+
+  DLDataType getDLPackDataType() {
+    DLDataType dtype;
+    dtype.code = kDLFloat;
+    dtype.bits = sizeof(double) * 8;
+    dtype.lanes = 1;
+    return dtype;
+  }  
+
+  void print_hello() {
+    std::cout << "Hello Python!" << std::endl;
+  }
+
+  void print_container() {
+    std::cout << "C = [ ";
+    for (int i=0; i<50; i++) {
+      std::cout << container[i] << " ";
+    }
+    std::cout << "]" << std::endl;
+  }
+
+  boost::python::tuple dlpack_device() {
+    return boost::python::make_tuple(static_cast<int32_t>(DLDeviceType::kDLCPU), 0);
+  }
+
+  };
 #endif
 
   void diffBragg_init_module() {
@@ -529,7 +727,18 @@ namespace boost_python { namespace {
 
     def("initialize_kokkos", initialize_kokkos,
         "the sole argument `dev` (an int from 0 to Ngpu-1) is passed to Kokkos::initialize()");
+
+    def("print_dlpack",PrintDLTensorParameters,"Print information about a dlpack");
+
+    class_<DLPackAPI>("KokkosViewToDLPack", no_init)
+      .def(init("DLPack init"))
+      .def("__dlpack__", &DLPackAPI::dlpack, "Part of DLPack API")
+      .def("__dlpack_device__", &DLPackAPI::dlpack_device, "Part of DLPack API")
+      .def("hello", &DLPackAPI::print_hello, "Dummy test function")
+      .def("print", &DLPackAPI::print_container, "Print container")
+    ;
 #endif
+
 
     class_<simtbx::nanoBragg::diffBragg, bases<simtbx::nanoBragg::nanoBragg> >
             ("diffBragg", no_init)
