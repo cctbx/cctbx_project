@@ -51,6 +51,7 @@ def main(dm=None,params=None,log=None):
       choice = params.viewer_choice
 
 
+
   # start app
   QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
   qapp = QApplication(sys.argv)
@@ -76,6 +77,7 @@ def main(dm=None,params=None,log=None):
     choice = choice_dialog.choice
     if not params:
       params = DotDict()
+      params.show_tab = "all"
     params.viewer_choice = choice
   # Set up a data manager if no provided
   if not dm:
