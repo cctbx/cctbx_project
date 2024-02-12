@@ -106,7 +106,7 @@ class ScrollEntryController(Controller, QObject):
     self.is_destroyed = True
     self.parent_list.remove_entry(self) # remove from gui
     self.state.signals.remove_ref.emit(self.ref)
-    self.state.signals.clear.emit("Currently, closing an entry triggers a full viewer reset.")
+    self.state.signals.clear.emit("Resetting....")
 
 
 

@@ -17,7 +17,7 @@ class Program(ProgramTemplate):
 
   master_phil_str = """
 
-  viewer_choice = None
+  viewer_choice = 'molstar'
     .type = str
     .help = 'molstar' or 'chimerax'
     .short_caption = The viewer to use. None for gui prompt
