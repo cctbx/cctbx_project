@@ -1017,6 +1017,7 @@ NOTES:
     newParams.output.__inject__('atoms_are_masters', False)
     newParams.output.__inject__('default_point_color', 'gray')
     newParams.output.__inject__('compute_scores', True)
+    newParams.output.__inject__('altid_as_pointmaster', True)
     return newParams
 
 # ------------------------------------------------------------------------------
