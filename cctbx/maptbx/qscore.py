@@ -36,7 +36,7 @@ master_phil_str = """
         .help = Min number of radial probes to use
         .short_caption = Number of radial probes to use
         .expert_level = 1
-    selection = None
+    selection_str = None
       .type = str
       .help = Only test atoms within this selection
       .short_caption = Only test atoms within this selection
@@ -78,10 +78,9 @@ master_phil_str = """
                       rejected once. Parallelization is done by radial shell. \
                       Precalculate is much faster but will yield slightly different results.
 
-    progress = False
-      .type = bool
-      .help = Report progress
-      .short_caption = Report progress bar
+    backend = numpy
+      .type = str
+      .help = Choose backend numpy or flex
       .expert_level = 1
 
     debug = False
@@ -409,6 +408,7 @@ def get_probes(
   else:
     assert False, f"Unrecognized backend: {params.backend}"
 
+  assert params.shells is not None, "Must provide explicit radial shells"
   task_list = [
     {
       "func": worker_func,  # Specify the function to call
