@@ -73,6 +73,7 @@ class whitelist_case(several_wavelength_case):
     SIM.interpolate = 0
     # allocate GPU arrays
     gpu_simulation = get_exascale("exascale_api",params.context)(nanoBragg = SIM)
+    assert hasattr(gpu_simulation, "diffuse")==(params.context=="kokkos_gpu") # diffuse halo only implemented in kokkos
     gpu_simulation.allocate()
     gpu_detector = get_exascale("gpu_detector",params.context)(
                  deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
