@@ -112,12 +112,17 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     #  number_of_hydrogens=-1
     #  # should name the hydrogens correctly
   if bonds:
+    def _get_atom_with_i_seq(ag, i_seq):
+      for atom in ag.atoms():
+        if atom.i_seq==i_seq: return atom
+      return None
     atoms=ag.atoms()
     i_seqs = atoms.extract_i_seq()
     number_of_heavy=0
     for i_seq in bonds.get(n.i_seq, []):
       if i_seq in i_seqs:
-        if not atoms[i_seq].element_is_hydrogen():
+        ba = _get_atom_with_i_seq(ag, i_seq)
+        if not ba.element_is_hydrogen():
           number_of_heavy+=1
       else:
         number_of_heavy+=1
