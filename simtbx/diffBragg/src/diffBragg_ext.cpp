@@ -578,77 +578,77 @@ namespace boost_python { namespace {
     std::cout << "Byte Offset: " << tensor->byte_offset << std::endl;
 }
 
-  template <typename ViewType>
-  class KokkosViewToDLPack {
-  public:
-    KokkosViewToDLPack(ViewType view) : view_(view) {}
+  // template <typename ViewType>
+  // class KokkosViewToDLPack {
+  // public:
+  //   KokkosViewToDLPack(ViewType view) : view_(view) {}
 
-    torch::Tensor convertToDLPack() {
-      // Convert the Kokkos view to DLPack
-      DLManagedTensor* dlpackTensor = convertToDLPack();
+  //   torch::Tensor convertToDLPack() {
+  //     // Convert the Kokkos view to DLPack
+  //     DLManagedTensor* dlpackTensor = convertToDLPack();
 
-      // Convert the DLPack tensor to PyTorch
-      torch::Tensor tensor = torch::from_dlpack(dlpackTensor);
+  //     // Convert the DLPack tensor to PyTorch
+  //     torch::Tensor tensor = torch::from_dlpack(dlpackTensor);
 
-      // Free the DLPack tensor memory
-      delete[] dlpackTensor->dl_tensor.shape;
-      delete dlpackTensor;
+  //     // Free the DLPack tensor memory
+  //     delete[] dlpackTensor->dl_tensor.shape;
+  //     delete dlpackTensor;
 
-      return tensor;
-    }
+  //     return tensor;
+  //   }
     
-  private:
-    ViewType view_;
+  // private:
+  //   ViewType view_;
 
-    DLManagedTensor* convertToDLPack() {
-      // Get the Kokkos view size and dimensions
-      size_t numDims = ViewType::rank;
-      size_t* shape = new size_t[numDims];
-      for (size_t i = 0; i < numDims; i++) {
-        shape[i] = view_.extent(i);
-      }
+  //   DLManagedTensor* convertToDLPack() {
+  //     // Get the Kokkos view size and dimensions
+  //     size_t numDims = ViewType::rank;
+  //     size_t* shape = new size_t[numDims];
+  //     for (size_t i = 0; i < numDims; i++) {
+  //       shape[i] = view_.extent(i);
+  //     }
 
-      // Create a DLPack tensor
-      DLManagedTensor* dlpackTensor = new DLManagedTensor;
-      dlpackTensor->dl_tensor.data = view_.data();
-      dlpackTensor->dl_tensor.ctx = const_cast<void*>(view_.impl_map().template device_data<void>());
-      dlpackTensor->dl_tensor.ndim = numDims;
-      dlpackTensor->dl_tensor.dtype = getDLPackDataType();
-      dlpackTensor->dl_tensor.shape = shape;
-      dlpackTensor->dl_tensor.strides = nullptr;
-      dlpackTensor->dl_tensor.byte_offset = 0;
-      dlpackTensor->manager_ctx = nullptr;
-      dlpackTensor->deleter = [](DLManagedTensor* tensor) { delete[] tensor->dl_tensor.shape; };
+  //     // Create a DLPack tensor
+  //     DLManagedTensor* dlpackTensor = new DLManagedTensor;
+  //     dlpackTensor->dl_tensor.data = view_.data();
+  //     dlpackTensor->dl_tensor.ctx = const_cast<void*>(view_.impl_map().template device_data<void>());
+  //     dlpackTensor->dl_tensor.ndim = numDims;
+  //     dlpackTensor->dl_tensor.dtype = getDLPackDataType();
+  //     dlpackTensor->dl_tensor.shape = shape;
+  //     dlpackTensor->dl_tensor.strides = nullptr;
+  //     dlpackTensor->dl_tensor.byte_offset = 0;
+  //     dlpackTensor->manager_ctx = nullptr;
+  //     dlpackTensor->deleter = [](DLManagedTensor* tensor) { delete[] tensor->dl_tensor.shape; };
 
-      return dlpackTensor;
-    }
+  //     return dlpackTensor;
+  //   }
 
-    DLDataType getDLPackDataType() {
-      DLDataType dtype;
-      dtype.code = getDLPackTypeCode();
-      dtype.bits = sizeof(typename ViewType::value_type) * 8;
-      dtype.lanes = 1;
-      return dtype;
-    }
+  //   DLDataType getDLPackDataType() {
+  //     DLDataType dtype;
+  //     dtype.code = getDLPackTypeCode();
+  //     dtype.bits = sizeof(typename ViewType::value_type) * 8;
+  //     dtype.lanes = 1;
+  //     return dtype;
+  //   }
 
-    DLDataTypeCode getDLPackTypeCode() {
-      using ValueType = typename ViewType::value_type;
-      if (std::is_same<ValueType, float>::value) {
-        return kDLFloat;
-      } else if (std::is_same<ValueType, double>::value) {
-        return kDLFloat;
-      } else if (std::is_same<ValueType, int>::value) {
-        return kDLInt;
-      } else if (std::is_same<ValueType, unsigned int>::value) {
-        return kDLUInt;
-      } else if (std::is_same<ValueType, bool>::value) {
-        return kDLBool;
-      } else {
-        // Unsupported data type
-        throw std::runtime_error("Unsupported data type for DLPack conversion");
-      }
-    }
-  };
+  //   DLDataTypeCode getDLPackTypeCode() {
+  //     using ValueType = typename ViewType::value_type;
+  //     if (std::is_same<ValueType, float>::value) {
+  //       return kDLFloat;
+  //     } else if (std::is_same<ValueType, double>::value) {
+  //       return kDLFloat;
+  //     } else if (std::is_same<ValueType, int>::value) {
+  //       return kDLInt;
+  //     } else if (std::is_same<ValueType, unsigned int>::value) {
+  //       return kDLUInt;
+  //     } else if (std::is_same<ValueType, bool>::value) {
+  //       return kDLBool;
+  //     } else {
+  //       // Unsupported data type
+  //       throw std::runtime_error("Unsupported data type for DLPack conversion");
+  //     }
+  //   }
+  // };
 
 
 struct DLPackAPI {
@@ -710,6 +710,7 @@ struct DLPackAPI {
   }
 
   };
+
 #endif
 
   void diffBragg_init_module() {
@@ -729,6 +730,8 @@ struct DLPackAPI {
         "the sole argument `dev` (an int from 0 to Ngpu-1) is passed to Kokkos::initialize()");
 
     def("print_dlpack",PrintDLTensorParameters,"Print information about a dlpack");
+
+    // def("get_d_Ncells_images", &get_dlpack, "Return DLPackTensor for d_Ncells_images; pot. on GPU")
 
     class_<DLPackAPI>("KokkosViewToDLPack", no_init)
       .def(init("DLPack init"))
@@ -787,7 +790,7 @@ struct DLPackAPI {
       .def("set_ncells_values", &simtbx::nanoBragg::diffBragg::set_ncells_values, "set Ncells values as a 3-tuple (Na, Nb, Nc)")
 
       .def("get_ncells_values", &simtbx::nanoBragg::diffBragg::get_ncells_values, "get Ncells values as a 3-tuple (Na, Nb, Nc)")
-
+      .def("get_d_Ncells_images", &simtbx::nanoBragg::diffBragg::get_d_Ncells_images, "get DLPackTensor for d_Ncells_images; pot. on GPU")
 
       .def("add_diffBragg_spots_full", &simtbx::nanoBragg::diffBragg::add_diffBragg_spots_full, "forward model and gradients at every pixel")
 

@@ -170,7 +170,6 @@ class diffBragg: public nanoBragg{
     inline void kokkos_free() { diffBragg_runner.reset(); }
     // allocate when needed to avoid problems with kokkos initialization when cuda/kokkos isn't used
     std::shared_ptr<diffBraggKOKKOS> diffBragg_runner{};
-    // diffBraggKOKKOS diffBragg_runner;
 #endif
 
     inline void gpu_free(){
@@ -238,6 +237,9 @@ class diffBragg: public nanoBragg{
   af::flex_double get_raw_pixels_roi();
   boost::python::tuple get_fp_fdp_derivative_pixels();
   boost::python::tuple get_ncells_derivative_pixels();
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+  PyObject* get_d_Ncells_images();
+#endif
   boost::python::tuple get_diffuse_gamma_derivative_pixels();
   boost::python::tuple get_diffuse_sigma_derivative_pixels();
   boost::python::tuple get_ncells_def_derivative_pixels();

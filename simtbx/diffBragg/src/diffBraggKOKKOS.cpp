@@ -43,6 +43,10 @@ uint32_t combine_refinement_flags(flags& db_flags) {
     return refine_flag;
 }
 
+DLManagedTensor* diffBraggKOKKOS::get_d_Ncells_images() {
+    return kokkostbx::view_to_dlpack(m_d_Ncells_images);
+}
+
 void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     int Npix_to_model,
     std::vector<unsigned int>& panels_fasts_slows,

@@ -1507,6 +1507,16 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
     return derivative_pixels;
 }
 
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+PyObject* diffBragg::get_d_Ncells_images() {
+
+    if (diffBragg_runner == nullptr) {
+        return nullptr;
+    }
+    return PyCapsule_New(diffBragg_runner->get_d_Ncells_images(), "dltensor", nullptr);   
+}
+#endif
+
 boost::python::tuple diffBragg::get_diffuse_gamma_derivative_pixels(){
     SCITBX_ASSERT(db_flags.refine_diffuse);
     int Npix_total = first_deriv_imgs.diffuse_gamma.size() / 3;

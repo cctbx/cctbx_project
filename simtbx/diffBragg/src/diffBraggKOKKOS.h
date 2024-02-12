@@ -7,6 +7,7 @@
 
 #include "kokkostbx/kokkos_types.h"
 #include "kokkostbx/kokkos_utils.h"
+#include "kokkostbx/kokkos_dlpack.h"
 #include "simtbx/diffBragg/src/util.h"
 #include "simtbx/diffBragg/src/util_kokkos.h"
 #include "simtbx/diffBragg/src/diffBragg_refine_flag.h"
@@ -147,6 +148,8 @@ class diffBraggKOKKOS {
         cuda_flags& db_cu_flags,
         // diffBragg_kokkosPointers& kp,
         timer_variables& TIMERS);
+
+    DLManagedTensor* get_d_Ncells_images();
 };
 
 #endif
