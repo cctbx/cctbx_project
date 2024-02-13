@@ -7,9 +7,12 @@ from pathlib import Path
 from iotbx.data_manager import DataManager
 from cctbx.array_family import flex
 import libtbx
+from libtbx import phil
 from cctbx.maptbx.box import shift_and_box_model
 from iotbx.map_model_manager import map_model_manager
 from libtbx.utils import null_out
+from cctbx.programs.qscore import Program as QscoreProgram
+
 import numpy as np
 from scipy.spatial import KDTree
 
@@ -610,6 +613,17 @@ def build_tests(test_dir="qscore_tst_dir"):
   return tests
 
 
+def test_program_template(test):
+  print("Running prgram template test: ",test["data"]["name"])
+  model_file = test["data"]["model_file"]
+  map_file = test["data"]["map_file"]
+  dm = DataManager()
+  dm.process_model_file(str(model_file))
+  dm.process_real_map_file(str(map_file))
+  params = phil.parse(QscoreProgram.master_phil_str,process_includes=True).extract()
+  task = QscoreProgram(dm,params)
+  task.run()
+  results = task.get_results()
 
 
 if (__name__ == "__main__"):
@@ -632,3 +646,8 @@ if (__name__ == "__main__"):
   tests = build_tests()
   for test_name,test in tests.items():
      test = run_test(test)
+
+
+  # Test if program template runs, with default phil
+  test_program_template(list(tests.values())[-1])
+
