@@ -156,7 +156,16 @@ def get_probes(
       "log": log,
       }
 
-  gather = GatherProbes(worker_func,fixed_kwargs)
+  if params.nproc>1:
+    with Pool() as pool:
+      results = pool.map(starmap_wrapper, task_list)
+  else:
+    results = []
+    for task in task_list:
+        worker_func = task["func"]
+        kwargs = task["kwargs"]
+        result = worker_func(**kwargs)
+        results.append(result)
 
   results = easy_mp.pool_map(
       processes=nproc,

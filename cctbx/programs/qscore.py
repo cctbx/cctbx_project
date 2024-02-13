@@ -48,15 +48,27 @@ class Program(ProgramTemplate):
     mmm = self.data_manager.get_map_model_manager()
 
     # calculate shells
-    self.shells = []
-    # add a range of shells
-    start = self.params.qscore.shell_radius_start
-    stop = self.params.qscore.shell_radius_stop
-    num = self.params.qscore.shell_radius_num
-    shells = list(np.linspace(start,stop,num,endpoint=True))
+    if (len(self.params.qscore.shells) ==0  or
+        self.params.qscore.shells[0] is None):
+        if None in self.params.qscore.shells:
+          self.params.qscore.shells.remove(None)
 
-    for shell in reversed(shells):
-      self.shells.insert(0,shell)
+        # add a range of shells
+        start = self.params.qscore.shell_radius_start
+        stop = self.params.qscore.shell_radius_stop
+        num = self.params.qscore.shell_radius_num
+        shells = list(np.linspace(
+        start,
+        stop,
+        num,
+        endpoint=True))
+
+        shells = [
+                  0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
+                  1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.
+                  ]
+        for shell in reversed(shells):
+          self.params.qscore.shells.insert(0,shell)
 
 
     # ignore hydrogens
