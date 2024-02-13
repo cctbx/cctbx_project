@@ -1,5 +1,5 @@
 import numpy as np
-from PySide2.QtWidgets import QWidget, QGridLayout, QTableView
+from PySide2.QtWidgets import QWidget, QGridLayout, QTableView, QComboBox
 
 from ..widgets import ClickableHistogramSeaborn
 from ..widgets.tab import GUITab
@@ -13,6 +13,11 @@ class QscoreTab(PreprocessTab):
     tool_tip = "Calculate Qscore to view results"
     super().__init__(parent=parent,title=title,action=action,tool_tip=tool_tip)
 
+    # Create a combobox for atom/residue toggling
+    self.combobox = QComboBox()
+    self.combobox.setMaximumSize(200,48)
+    self.combobox.addItems(["Q-Atoms","Q-Residues"])
+    self.layout.addWidget(self.combobox)
 
     # Table
     self.table = FastTableView()

@@ -25,6 +25,7 @@ class QscoreTabController(Controller):
     self.view.process_button.clicked.connect(self.calculate_qscore)
     self.state.signals.results_change.connect(self.update)
     self.state.signals.model_change.connect(self.handle_model_change)
+    self.view.combobox.currentIndexChanged.connect(self.toggle_granularity)
     #self.view.hist_widget.emitter.histogram_click_value.connect(self.handle_hist_click)
 
     # Flags
@@ -45,6 +46,11 @@ class QscoreTabController(Controller):
   def handle_hist_click(self):
     pass
 
+  def toggle_granularity(self,value):
+    index = self.view.combobox.currentIndex()
+    label = self.view.combobox.itemText(index)
+    print(label)
+
   def handle_model_change(self,model_ref):
     if model_ref is not None:
       if "qscore" in model_ref.results:
@@ -56,11 +62,12 @@ class QscoreTabController(Controller):
     model_ref = self.state.active_model_ref
     if "qscore" in model_ref.results:
       results_ref = model_ref.results["qscore"]
-      df = pd.DataFrame({"Qscore":results_ref.data.qscore_per_atom},
+      df = pd.DataFrame({"Q-score":results_ref.data.qscore_per_atom},
                         index=list(range(len(results_ref.data.qscore_per_atom))))
       df = df.round(3)
       df = pd.concat([df,model_ref.mol.sites],axis=1)
-      df.sort_values(by="Qscore",inplace=True,ascending=False)
+      df.sort_values(by="Q-score",inplace=True,ascending=False)
+      df = df[["Q-score","asym_id","seq_id","comp_id","atom_id"]]
 
       model = PandasTableModel(df)
       self.view.table.setModel(model)
@@ -119,7 +126,7 @@ class QscoreTabController(Controller):
   def on_selection_changed(self, selected, deselected):
     df_sel = self.view.table.selected_rows()
     if df_sel is not None:
-      df_sel = df_sel.drop(columns=["Qscore"])
+      df_sel = df_sel.drop(columns=["Q-score"])
       # switch to atom picking level
       self.view.parent_explicit.viewer_tab_view.selection_controls.combo_box.setCurrentIndex(1)
       sel = df_sel.index
