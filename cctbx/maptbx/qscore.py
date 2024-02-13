@@ -428,7 +428,6 @@ def get_probes(
 
   if params.nproc>1:
     with Pool() as pool:
-      print(params.nproc)
       results = pool.map(starmap_wrapper, task_list)
   else:
     results = []
