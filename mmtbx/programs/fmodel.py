@@ -50,6 +50,7 @@ mask
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
+
 high_resolution = None
   .type = float
   .expert_level=1
@@ -156,6 +157,13 @@ anomalous_scatterers
       .short_caption = f''
   }
 }
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+}
 '''%fmodel_from_xray_structure_params_str
 
 fmodel_from_xray_structure_params = iotbx.phil.parse(
@@ -253,6 +261,8 @@ See below for complete list of available parameters.
   datatypes = ['model', 'phil', 'miller_array']
 
   master_phil_str = master_phil_str
+
+#  show_data_manager_scope_by_default = True
 
   # ---------------------------------------------------------------------------
 
