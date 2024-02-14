@@ -113,6 +113,7 @@ output
   format = *mtz cns
     .type = choice
     .short_caption = File format
+    .input_size = 100
   label = FMODEL
     .type = str
     .short_caption = Data label
@@ -163,6 +164,11 @@ gui
   output_dir = None
   .type = path
   .style = output_dir
+
+  data_column_label = None
+  .type = str
+  .style = noauto renderer:draw_any_label_widget
+  .input_size = 300
 }
 '''%fmodel_from_xray_structure_params_str
 
