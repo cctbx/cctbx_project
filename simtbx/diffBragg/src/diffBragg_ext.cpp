@@ -578,78 +578,21 @@ namespace boost_python { namespace {
     std::cout << "Byte Offset: " << tensor->byte_offset << std::endl;
 }
 
-  // template <typename ViewType>
-  // class KokkosViewToDLPack {
-  // public:
-  //   KokkosViewToDLPack(ViewType view) : view_(view) {}
+void dlpack_destructor(PyObject* capsule) {
+  if (!PyCapsule_IsValid(capsule, "dltensor")) {
+    std::cout << "Muh0 " << PyCapsule_GetPointer(capsule, "used_dltensor") << std::endl;
+    return;
+  }
 
-  //   torch::Tensor convertToDLPack() {
-  //     // Convert the Kokkos view to DLPack
-  //     DLManagedTensor* dlpackTensor = convertToDLPack();
-
-  //     // Convert the DLPack tensor to PyTorch
-  //     torch::Tensor tensor = torch::from_dlpack(dlpackTensor);
-
-  //     // Free the DLPack tensor memory
-  //     delete[] dlpackTensor->dl_tensor.shape;
-  //     delete dlpackTensor;
-
-  //     return tensor;
-  //   }
-    
-  // private:
-  //   ViewType view_;
-
-  //   DLManagedTensor* convertToDLPack() {
-  //     // Get the Kokkos view size and dimensions
-  //     size_t numDims = ViewType::rank;
-  //     size_t* shape = new size_t[numDims];
-  //     for (size_t i = 0; i < numDims; i++) {
-  //       shape[i] = view_.extent(i);
-  //     }
-
-  //     // Create a DLPack tensor
-  //     DLManagedTensor* dlpackTensor = new DLManagedTensor;
-  //     dlpackTensor->dl_tensor.data = view_.data();
-  //     dlpackTensor->dl_tensor.ctx = const_cast<void*>(view_.impl_map().template device_data<void>());
-  //     dlpackTensor->dl_tensor.ndim = numDims;
-  //     dlpackTensor->dl_tensor.dtype = getDLPackDataType();
-  //     dlpackTensor->dl_tensor.shape = shape;
-  //     dlpackTensor->dl_tensor.strides = nullptr;
-  //     dlpackTensor->dl_tensor.byte_offset = 0;
-  //     dlpackTensor->manager_ctx = nullptr;
-  //     dlpackTensor->deleter = [](DLManagedTensor* tensor) { delete[] tensor->dl_tensor.shape; };
-
-  //     return dlpackTensor;
-  //   }
-
-  //   DLDataType getDLPackDataType() {
-  //     DLDataType dtype;
-  //     dtype.code = getDLPackTypeCode();
-  //     dtype.bits = sizeof(typename ViewType::value_type) * 8;
-  //     dtype.lanes = 1;
-  //     return dtype;
-  //   }
-
-  //   DLDataTypeCode getDLPackTypeCode() {
-  //     using ValueType = typename ViewType::value_type;
-  //     if (std::is_same<ValueType, float>::value) {
-  //       return kDLFloat;
-  //     } else if (std::is_same<ValueType, double>::value) {
-  //       return kDLFloat;
-  //     } else if (std::is_same<ValueType, int>::value) {
-  //       return kDLInt;
-  //     } else if (std::is_same<ValueType, unsigned int>::value) {
-  //       return kDLUInt;
-  //     } else if (std::is_same<ValueType, bool>::value) {
-  //       return kDLBool;
-  //     } else {
-  //       // Unsupported data type
-  //       throw std::runtime_error("Unsupported data type for DLPack conversion");
-  //     }
-  //   }
-  // };
-
+  // If the capsule has not been used, we need to delete it
+  std::cout << "Muh1" << std::endl;
+  DLManagedTensor* dlpackTensor = static_cast<DLManagedTensor*>(PyCapsule_GetPointer(capsule, "dltensor"));
+  std::cout << "Muh2" << std::endl;
+  dlpackTensor->deleter(dlpackTensor);
+  std::cout << "Muh3" << std::endl;
+  delete dlpackTensor;
+  std::cout << "Muh4" << std::endl;
+}
 
 struct DLPackAPI {
 
@@ -680,7 +623,7 @@ struct DLPackAPI {
     };
 
     // Create a PyCapsule with the DLPack tensor
-    PyObject* capsule = PyCapsule_New(dlpackTensor, "dltensor", nullptr);
+    PyObject* capsule = PyCapsule_New(dlpackTensor, "dltensor", dlpack_destructor);
 
     return capsule;
   }
