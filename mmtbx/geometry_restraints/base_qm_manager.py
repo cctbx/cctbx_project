@@ -265,6 +265,13 @@ class base_qm_manager(base_manager):
         for i, (line1, line2) in enumerate(zip(outl.splitlines(),lines.splitlines())):
           if line1!=line2: print(' ! %s "%s" <> "%s"' % (i+1, line1, line2))
         print('='*80)
+        f, ext = os.path.splitext(filename)
+        f=open('old%s' % ext, 'w')
+        f.write(lines)
+        del f
+        f=open('new%s' % ext, 'w')
+        f.write(outl)
+        del f
         raise Sorry('something has changed making the QM input files different')
     return outl==lines
 
@@ -284,7 +291,8 @@ class base_qm_manager(base_manager):
               coordinate_filename_ext='.xyz',
               log_filename_ext='.log',
               redirect_output=True,
-              log=None):
+              log=None,
+              verbose=False):
     if self.program_goal in ['opt', 'strain']:
       optimise_ligand=True
     # elif self.program_goal in ['energy']:
@@ -294,19 +302,22 @@ class base_qm_manager(base_manager):
     coordinates = None
     rc=True
     if check_file_read_safe:
+      if verbose: print('check_file_read_safe',check_file_read_safe)
       rc = self.check_file_read_safe(optimise_ligand=optimise_ligand,
                                      optimise_h=optimise_h,
                                      constrain_torsions=constrain_torsions,
                                      )
+      if verbose: print('rc',rc)
     if file_read and rc:
       filename = self.get_coordinate_filename()
       if os.path.exists(filename):
         lf = self.get_log_filename()
         if os.path.exists(lf):
           process_qm_log_file(lf, log=log)
-        # print('  Reading coordinates from %s\n' % filename, file=log)
+        if verbose: print('  Reading coordinates from %s\n' % filename)
         coordinates = self.read_xyz_output()
     if coordinates is None:
+      if verbose: print('no coordinates')
       self.opt_setup(optimise_ligand=optimise_ligand,
                      optimise_h=optimise_h,
                      constrain_torsions=constrain_torsions,
