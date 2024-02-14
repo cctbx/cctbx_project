@@ -251,6 +251,10 @@ def populate_qmr_defaults(qmr):
     assert 0
   return qmr
 
+def get_working_directory(model, params):
+  rc = 'qm_work_dir'
+  return rc
+
 def get_preamble(macro_cycle, i, qmr, old_style=False, compact_selection_syntax=True):
   qmr = populate_qmr_defaults(qmr)
   s=''
