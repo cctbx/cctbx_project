@@ -1508,12 +1508,38 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
 }
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
+void dlpack_destructor(PyObject* capsule) {
+  if (!PyCapsule_IsValid(capsule, "dltensor")) {
+    return;
+  }
+
+  // If the capsule has not been used, we need to delete it
+  DLManagedTensor* dlpackTensor = static_cast<DLManagedTensor*>(PyCapsule_GetPointer(capsule, "dltensor"));
+  dlpackTensor->deleter(dlpackTensor);
+  delete dlpackTensor;
+}
+
+// template <typename function>
+// struct DLPackAPI {
+//   PyObject* dlpack() {
+//     if (diffBragg::diffBragg_runner == nullptr) {
+//         return nullptr;
+//     }
+//     return PyCapsule_New(function(), "dltensor", dlpack_destructor); 
+//   }
+
+//   boost::python::tuple dlpack_device() {
+//     auto device = kokkostbx::getDLPackDevice<MemSpace>();
+//     return boost::python::make_tuple(static_cast<int32_t>(device.device_type), device.device_id);
+//   }
+// };
+
 PyObject* diffBragg::get_d_Ncells_images() {
 
     if (diffBragg_runner == nullptr) {
         return nullptr;
     }
-    return PyCapsule_New(diffBragg_runner->get_d_Ncells_images(), "dltensor", nullptr);   
+    return PyCapsule_New(diffBragg_runner->get_d_Ncells_images(), "dltensor", dlpack_destructor);   
 }
 #endif
 
