@@ -1,2 +1,3 @@
 from .results import Result
-from .qscore import QscoreResult
+from .ref import ResultsRef
+#from .qscore import QscoreResult

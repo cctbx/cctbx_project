@@ -9,7 +9,8 @@ from collections import defaultdict
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from iotbx.data_manager import DataManager
 
-from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, ResultsRef, CifFileRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, CifFileRef
+from .results import ResultsRef
 from ...last.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
 

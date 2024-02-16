@@ -18,7 +18,6 @@ from .style import Style
 from ...last.mol import MolDF
 from ...last.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
-from .results import Result, QscoreResult
 from .cif import CifFileData
 from .base import DataClassBase
 from .restraints import Restraint, Restraints
@@ -418,21 +417,10 @@ class RestraintsRef(Ref):
 
 
 
-class ResultsRef(Ref):
-  def __init__(self,data: Result):
-    super().__init__(data=data)
-
-class ModelResultsRef(ResultsRef):
-  def __init__(self,data: Result, model_ref: ModelRef, selection_ref: Optional[SelectionRef] = None):
-    super().__init__(data=data)
-    self.model_ref = model_ref
-    self.selection_ref = selection_ref
-
-
-class QscoreRef(ModelResultsRef):
-    def __init__(self,data: QscoreResult,model_ref: ModelRef, selection_ref: Optional[SelectionRef] = None):
-      super().__init__(data=data,model_ref=model_ref,selection_ref=selection_ref)
-      self.model_ref.results["qscore"] = self
+# class QscoreRef(ModelResultsRef):
+#     def __init__(self,data: QscoreResult,model_ref: ModelRef, selection_ref: Optional[SelectionRef] = None):
+#       super().__init__(data=data,model_ref=model_ref,selection_ref=selection_ref)
+#       self.model_ref.results["qscore"] = self
 
 class CifFileRef(Ref):
   def __init__(self,data: CifFileData):

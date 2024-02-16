@@ -5,13 +5,14 @@ from PySide2 import QtCore
 
 from cctbx.maptbx.qscore import calc_qscore
 from iotbx.map_model_manager import map_model_manager
-from cctbx.maptbx.qscore import master_phil_str as qscore_phil_str
+from iotbx.data_manager import DataManager
+from cctbx.programs.qscore import Program as QscoreProgram
+from iotbx.cli_parser import run_program
 from libtbx import phil
 import numpy as np
 
 from .controller import Controller
-from ..state.ref import  QscoreRef
-from ..state.results import QscoreResult
+from ..state.results import  Result, ResultsRef
 from ..view.widgets import   PandasTableModel
 from ..state.ref import SelectionRef
 
@@ -25,31 +26,20 @@ class QscoreTabController(Controller):
     self.view.process_button.clicked.connect(self.calculate_qscore)
     self.state.signals.results_change.connect(self.update)
     self.state.signals.model_change.connect(self.handle_model_change)
-    self.view.combobox.currentIndexChanged.connect(self.toggle_granularity)
+    self.view.combobox.currentIndexChanged.connect(self.update)
     #self.view.hist_widget.emitter.histogram_click_value.connect(self.handle_hist_click)
 
     # Flags
     self.header_hidden = False
 
     # Qscore params
-    working_phil = phil.parse(qscore_phil_str)
+    working_phil = phil.parse(QscoreProgram.master_phil_str,process_includes=True)
     params = working_phil.extract()
-    if params.qscore.shells[0] is None:
-      params.qscore.shells.pop(0)
-      shells = [
-                0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
-                1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2. ]
-      for shell in reversed(shells):
-        params.qscore.shells.insert(0,shell)
-    self.params_qscore = params.qscore
+    self.params = params
 
   def handle_hist_click(self):
     pass
 
-  def toggle_granularity(self,value):
-    index = self.view.combobox.currentIndex()
-    label = self.view.combobox.itemText(index)
-    print(label)
 
   def handle_model_change(self,model_ref):
     if model_ref is not None:
@@ -59,15 +49,38 @@ class QscoreTabController(Controller):
         self._show_header()
 
   def update(self):
+    print("update")
     model_ref = self.state.active_model_ref
     if "qscore" in model_ref.results:
       results_ref = model_ref.results["qscore"]
-      df = pd.DataFrame({"Q-score":results_ref.data.qscore_per_atom},
-                        index=list(range(len(results_ref.data.qscore_per_atom))))
+      df = results_ref.data.results.qscore_dataframe
+
+      # TODO: Fix below. id and positional index not the same
+      # TODO: Also, syntax should be more like:
+      #        sites["Qscore"] = values
+      #        df = sites.per_atom(keep=["Q-score"],sort=[],ascending=False)
+      #        # which is...
+      #        df = df.sort_values(by="Q-score",inplace=False,ascending=ascending)
+      #        df = df[keep + sites.per_atom_cols]
+      #        # or
+      #        df = sites.per_residue(keep=["Q-score"],agg="first",sort=,ascending=)
+      #        # which is...
+      #        # df.groupby(sites.residue_cols).agg('first').reset_index())
+      #        df = df.sort_values(by="Q-score",inplace=False,ascending=ascending)
+      #        df = df[keep + sites.per_residue_cols]
+      df["id"] = df.index.values+1
+      df = pd.merge(df, model_ref.mol.sites, on='id', how='left')
       df = df.round(3)
-      df = pd.concat([df,model_ref.mol.sites],axis=1)
       df.sort_values(by="Q-score",inplace=True,ascending=False)
-      df = df[["Q-score","asym_id","seq_id","comp_id","atom_id"]]
+      df = df[["Q-score","Q-Residue","chain_id","resseq","resname","name"]]
+
+      # Check granularity
+      index = self.view.combobox.currentIndex()
+      label = self.view.combobox.itemText(index)
+      print("label:",label)
+      if label == "Q-Residues":
+        df = df.groupby(["chain_id","resseq","resname"]).agg('first').reset_index()
+        df = df[["Q-Residue","chain_id","resseq","resname"]]
 
       model = PandasTableModel(df)
       self.view.table.setModel(model)
@@ -77,19 +90,33 @@ class QscoreTabController(Controller):
   def calculate_qscore(self):
 
     if self.state.active_model_ref is not None:
-      model = self.state.active_model_ref.model
-      map_manager = self.state.active_map_ref.map_manager
-      mmm = map_model_manager(model=model,map_manager=map_manager)
-      result = calc_qscore(mmm,self.params_qscore)
-      qscore_per_atom = np.array(result["qscore_per_atom"])
+
+      dm = DataManager() #TODO: use state dm, not a temporary one
+      dm.add_model(
+        self.state.active_model_ref.id,
+        self.state.active_model_ref.model)
+      dm.add_real_map(
+        self.state.active_map_ref.id,
+        self.state.active_map_ref.map_manager)
+      task = QscoreProgram(dm,self.params)
+      task.run()
+      results = task.get_results()
+
+      # build result and ref
+      qresult =  Result(program_name="qscore",
+                        model_refs = [self.state.active_model_ref],
+                        map_refs = [self.state.active_map_ref],
+                        results=results,
+                        params=self.params,
+                        )
+      result_ref = ResultsRef(data=qresult)
+      self.state.add_ref(result_ref)
+
 
       # Hide header
       self._hide_header()
 
-      # build result and ref
-      qdata =  QscoreResult(program_name="qscore",qscore_per_atom=qscore_per_atom)
-      result_ref = QscoreRef(data=qdata,model_ref = self.state.active_model_ref,selection_ref=None)
-      self.state.add_ref(result_ref)
+
 
 
 
