@@ -413,7 +413,95 @@ output {
       out = self.logger)
     self.data_manager.set_target_output_format(target_output_format)
 
+
   # ---------------------------------------------------------------------------
+  def _params_as_dict(self, params = None, base_name_list = None):
+    """ Split up a params object into a dict of each individual parameter name
+       as key and value as value. Add base name on to attribute name,
+       Recursively traverse the params object."""
+    if not params: params = self.params
+    if not base_name_list: base_name_list = []
+    params_dict = {}
+    for x in dir(params):
+      if x.startswith("__"): continue
+      v = getattr(params,x)
+      b = base_name_list + [x]
+      if hasattr(v,'__phil_name__'):
+        params_dict.update(self._params_as_dict(v, base_name_list = b))
+      else:
+        params_dict[".".join(b)] = v
+    return params_dict
+  
+  def _fn_is_assigned(self, fn = None):
+    """ Determine if fn is assigned to some parameter"""
+    if fn in list(self._params_as_dict().values()):
+      return True
+    else:
+      return False
+ 
+
+  def _get_scope_and_parameter(self, parameter_name = None, base = None):
+    """ Get the full scope and the parmenter from a parameter name.
+     For example:  autobuild.data -> (self.params.autobuild, 'data')
+    """ 
+    if base is None:
+      base = self.params
+    assert parameter_name is not None, "Missing parameter name"
+    spl = parameter_name.split(".")
+    name = spl[-1]
+    path = spl[:-1]
+    for p in path:
+      assert hasattr(base, p), "Missing scope: %s" %(p)
+      base = getattr(base, p)
+    return base, name
+
+  def assign_if_value_is_unique_and_unassigned(self,
+      parameter_name = None,
+      possible_values = None):
+    """ Method to assign a value to a parameter that has no value so far,
+      choosing value from a list of possible values, eliminating all values 
+      that have been assigned to another parameter already.
+      Normally used like this in a Program template:
+
+      self.assign_if_value_is_unique_and_unassigned(
+        parameter_name = 'autobuild.data',
+        possible_values = self.data_manager.get_miller_array_names())
+
+      Raises Sorry if there are multiple possibilities.
+
+     parameter: parameter_name:  The name of the parameter in the context
+                                 of self.params (self.params.autobuild.data is
+                                 autobuild.data)
+     parameter: possible_values: Possible values of this parameter, usually from
+                                 the data_manager
+
+     sets: value of full parameter to a unique value if present
+     returns: None 
+    """
+    scope, par = self._get_scope_and_parameter(parameter_name)
+
+    v = getattr(scope, par)
+    has_value = (not v in [Auto, 'None',None])
+    if has_value:
+      return # nothing to do, already assigned value to this parameter
+
+    possibilities = [] 
+    for p in possible_values:
+      if p in [Auto, 'None',None]:
+        continue  # not relevant
+      elif (not self._fn_is_assigned(p)): # not already assigned
+        possibilities.append(p)
+    if len(possibilities) == 1:
+      setattr(scope, par, possibilities[0])
+    elif len(possibilities) < 1:
+      return # No unused possibilities for this parameter
+    else:
+      from libtbx.utils import Sorry
+      raise Sorry("Please set these parameters with keywords: (%s), " %(
+        " ".join(possibilities)) + "\nFor example, '%s=%s'" %(
+        parameter_name, possibilities[0]))
+  # ---------------------------------------------------------------------------
+
   def get_default_output_filename(self, prefix=Auto, suffix=Auto, serial=Auto,
     filename=Auto):
     '''
