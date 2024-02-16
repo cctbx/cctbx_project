@@ -20,7 +20,7 @@ from iotbx.file_reader import any_file
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
-from libtbx.utils import multi_out, show_times, Sorry
+from libtbx.utils import multi_out, null_out, show_times, Sorry
 
 # =============================================================================
 class ParserBase(argparse.ArgumentParser):
@@ -274,12 +274,6 @@ class CCTBXParser(ParserBase):
     self.add_argument(
       '--dry-run', '--dry_run', action='store_true',
       help='performs basic validation the input arguments, but does not run the program'
-    )
-    # --get-parser
-    # proceeds until the validate step
-    self.add_argument(
-      '--get-parser', '--get_parser', action='store_true',
-      help='sets up the parameters only'
     )
 
     # --citations will use the default format
@@ -913,8 +907,6 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
                         unused_phil_raises_sorry=unused_phil_raises_sorry,
                         logger=logger)
   namespace = parser.parse_args(args)
-  if namespace.get_parser:
-    return parser
 
   # start program
   if namespace.dry_run:
@@ -985,10 +977,10 @@ def get_program_params(run):
      from phenix.programs import map_to_model as run
     """
 
-    from iotbx.cli_parser import run_program
-    parser=run_program(program_class=run.Program,args=['--get_parser'],
-        logger=sys.stdout)
-    return  parser.working_phil.extract()
+    parser = CCTBXParser(program_class=run.Program,
+                         logger=null_out())
+    _ = parser.parse_args([])
+    return parser.working_phil.extract()
 
-
+# =============================================================================
 # end
