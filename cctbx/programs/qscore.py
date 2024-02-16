@@ -25,6 +25,8 @@ class Program(ProgramTemplate):
   datatypes = ['phil', 'model', 'real_map']
 
   master_phil_str = """
+
+
   include scope cctbx.maptbx.qscore.master_phil_str
   """
 
@@ -39,11 +41,6 @@ class Program(ProgramTemplate):
 
 
   def run(self):
-    # set up logging
-    log = open("qscore.log", "w")
-
-    self.logger.register("log", log, atexit_send_to=None)
-
     # get initial data
     mmm = self.data_manager.get_map_model_manager()
 
