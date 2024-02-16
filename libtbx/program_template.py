@@ -440,8 +440,25 @@ output {
       return False
  
 
+  def get_parameter_value(self, parameter_name, base = None):
+    """ Get the full scope and the parameter from a parameter name.
+     Then get value of this parameter
+     For example:  autobuild.data -> (self.params.autobuild, 'data')
+     returns value of self.params.autobuild.data
+
+     parameter: parameter_name:  text parameter name in context of self.params
+     parameter: base: base scope path to add before parameter name
+     returns: value of self.params.parameter_name
+    """
+
+    scope, par = self._get_scope_and_parameter(parameter_name, base = base)
+    if not hasattr(scope, par):
+      print("The parameter %s does not exist" %(parameter_name),
+         file = self.logger)
+    return getattr(scope, par)
+
   def _get_scope_and_parameter(self, parameter_name = None, base = None):
-    """ Get the full scope and the parmenter from a parameter name.
+    """ Get the full scope and the parameter from a parameter name.
      For example:  autobuild.data -> (self.params.autobuild, 'data')
     """ 
     if base is None:
@@ -478,20 +495,20 @@ output {
      sets: value of full parameter to a unique value if present
      returns: None 
     """
-    scope, par = self._get_scope_and_parameter(parameter_name)
+    v = self.get_parameter_value(parameter_name)
 
-    v = getattr(scope, par)
-    has_value = (not v in [Auto, 'None',None])
+    has_value = not (v in ['Auto',Auto, 'None',None])
     if has_value:
       return # nothing to do, already assigned value to this parameter
 
     possibilities = [] 
     for p in possible_values:
-      if p in [Auto, 'None',None]:
+      if p in ['Auto',Auto, 'None',None]:
         continue  # not relevant
       elif (not self._fn_is_assigned(p)): # not already assigned
         possibilities.append(p)
     if len(possibilities) == 1:
+      scope, par = self._get_scope_and_parameter(parameter_name)
       setattr(scope, par, possibilities[0])
     elif len(possibilities) < 1:
       return # No unused possibilities for this parameter
