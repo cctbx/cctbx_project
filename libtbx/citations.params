@@ -484,12 +484,12 @@ citation {
   article_id = mmseqs2b
   authors = Mirdita M, Steinegger M, Söding J
   title = MMseqs2 desktop and local web server app for fast interactive sequence searches
-  journal = Bioinformatics 
+  journal = Bioinformatics
   volume = 35
-  pages = 2856-2858 
+  pages = 2856-2858
   year = 2019
   doi_id =  10.1093/bioinformatics/bty1057
-  pmid = 30615063 
+  pmid = 30615063
 }
 citation {
   article_id = mmseqs2
