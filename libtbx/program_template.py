@@ -426,19 +426,46 @@ output {
       if x.startswith("__"): continue
       v = getattr(params,x)
       b = base_name_list + [x]
-      if hasattr(v,'__phil_name__'):
-        params_dict.update(self._params_as_dict(v, base_name_list = b))
+      if isinstance(v,libtbx.phil.scope_extract):
+        self._update_params_dict(params_dict,
+             self._params_as_dict(v, base_name_list = b))
+      elif isinstance(v, libtbx.phil.scope_extract_list):
+        for vv in v:
+          if hasattr(vv,'__phil_name__'):
+            self._update_params_dict(params_dict,
+             self._params_as_dict(vv, base_name_list = b))
+          else:
+            params_dict[".".join(b)] = vv
       else:
         params_dict[".".join(b)] = v
     return params_dict
-  
+
+  def _update_params_dict(self, params_dict, other_params_dict):
+    for key in other_params_dict.keys():
+      if not key in params_dict:
+        params_dict[key] = other_params_dict[key]
+      else:
+        if not other_params_dict[key]:
+          pass
+        elif not params_dict[key]:
+          params_dict[key] = other_params_dict[key]
+        else:
+          if not isinstance(params_dict[key], list):
+            params_dict[key] = [ params_dict[key]]
+          if not isinstance(other_params_dict[key], list):
+            other_params_dict[key] = [ other_params_dict[key]]
+          params_dict[key] += other_params_dict[key]
+    return params_dict
   def _fn_is_assigned(self, fn = None):
     """ Determine if fn is assigned to some parameter"""
-    if fn in list(self._params_as_dict().values()):
-      return True
+    for x in list(self._params_as_dict().values()):
+      if fn == x:
+        return True
+      if isinstance(x, list) and fn in x:
+        return True
     else:
       return False
- 
+
 
   def get_parameter_value(self, parameter_name, base = None):
     """ Get the full scope and the parameter from a parameter name.
@@ -460,7 +487,7 @@ output {
   def _get_scope_and_parameter(self, parameter_name = None, base = None):
     """ Get the full scope and the parameter from a parameter name.
      For example:  autobuild.data -> (self.params.autobuild, 'data')
-    """ 
+    """
     if base is None:
       base = self.params
     assert parameter_name is not None, "Missing parameter name"
@@ -476,7 +503,7 @@ output {
       parameter_name = None,
       possible_values = None):
     """ Method to assign a value to a parameter that has no value so far,
-      choosing value from a list of possible values, eliminating all values 
+      choosing value from a list of possible values, eliminating all values
       that have been assigned to another parameter already.
       Normally used like this in a Program template:
 
@@ -493,7 +520,7 @@ output {
                                  the data_manager
 
      sets: value of full parameter to a unique value if present
-     returns: None 
+     returns: None
     """
     v = self.get_parameter_value(parameter_name)
 
@@ -501,7 +528,7 @@ output {
     if has_value:
       return # nothing to do, already assigned value to this parameter
 
-    possibilities = [] 
+    possibilities = []
     for p in possible_values:
       if p in ['Auto',Auto, 'None',None]:
         continue  # not relevant
