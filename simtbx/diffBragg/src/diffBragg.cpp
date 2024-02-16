@@ -7,6 +7,7 @@
 #include<unordered_map>
 #include <cctbx/sgtbx/reciprocal_space_asu.h>
 #include <boost/python/numpy.hpp>
+#include "diffBragg.h"
 
 namespace np=boost::python::numpy;
 
@@ -1509,37 +1510,111 @@ boost::python::tuple diffBragg::get_ncells_derivative_pixels(){
 
 #ifdef DIFFBRAGG_HAVE_KOKKOS
 void dlpack_destructor(PyObject* capsule) {
-  if (!PyCapsule_IsValid(capsule, "dltensor")) {
-    return;
-  }
+    if (!PyCapsule_IsValid(capsule, "dltensor")) {
+        return;
+    }
 
-  // If the capsule has not been used, we need to delete it
-  DLManagedTensor* dlpackTensor = static_cast<DLManagedTensor*>(PyCapsule_GetPointer(capsule, "dltensor"));
-  dlpackTensor->deleter(dlpackTensor);
-  delete dlpackTensor;
+    // If the capsule has not been used, we need to delete it
+    DLManagedTensor* dlpackTensor = static_cast<DLManagedTensor*>(PyCapsule_GetPointer(capsule, "dltensor"));
+    dlpackTensor->deleter(dlpackTensor);
+    delete dlpackTensor;
 }
 
-// template <typename function>
-// struct DLPackAPI {
-//   PyObject* dlpack() {
-//     if (diffBragg::diffBragg_runner == nullptr) {
-//         return nullptr;
-//     }
-//     return PyCapsule_New(function(), "dltensor", dlpack_destructor); 
-//   }
 
-//   boost::python::tuple dlpack_device() {
-//     auto device = kokkostbx::getDLPackDevice<MemSpace>();
-//     return boost::python::make_tuple(static_cast<int32_t>(device.device_type), device.device_id);
-//   }
-// };
-
-PyObject* diffBragg::get_d_Ncells_images() {
-
+// Fun with pointer-to-member-functions
+PyObject* diffBragg::PyCapsule_Wrapper( DLManagedTensor* (diffBraggKOKKOS::*func)()) {
     if (diffBragg_runner == nullptr) {
         return nullptr;
     }
-    return PyCapsule_New(diffBragg_runner->get_d_Ncells_images(), "dltensor", dlpack_destructor);   
+    return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);   
+}
+
+PyObject* diffBragg::get_floatimage() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_floatimage);
+}
+
+PyObject* diffBragg::get_wavelenimage() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_wavelenimage);
+}
+
+PyObject* diffBragg::get_d_diffuse_gamma_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_gamma_images);
+}
+
+PyObject* diffBragg::get_d_diffuse_sigma_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_sigma_images);
+}
+
+PyObject* diffBragg::get_d_Umat_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Umat_images);
+}
+
+PyObject* diffBragg::get_d2_Umat_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Umat_images);
+}
+
+PyObject* diffBragg::get_d_Bmat_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Bmat_images);
+}
+
+PyObject* diffBragg::get_d2_Bmat_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Bmat_images);
+}
+
+PyObject* diffBragg::get_d_Ncells_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Ncells_images);
+}
+
+PyObject* diffBragg::get_d2_Ncells_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Ncells_images);
+}
+
+PyObject* diffBragg::get_d_fcell_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fcell_images);
+}
+
+PyObject* diffBragg::get_d2_fcell_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_fcell_images);
+}
+
+PyObject* diffBragg::get_d_eta_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_eta_images);
+}
+
+PyObject* diffBragg::get_d2_eta_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_eta_images);
+}
+
+PyObject* diffBragg::get_d_lambda_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_lambda_images);
+}
+
+PyObject* diffBragg::get_d2_lambda_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_lambda_images);
+}
+
+PyObject* diffBragg::get_d_panel_rot_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_rot_images);
+}
+
+PyObject* diffBragg::get_d2_panel_rot_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_rot_images);
+}
+
+PyObject* diffBragg::get_d_panel_orig_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_orig_images);
+}
+
+PyObject* diffBragg::get_d2_panel_orig_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_orig_images);
+}
+
+PyObject* diffBragg::get_d_fp_fdp_images() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fp_fdp_images);
+}
+
+PyObject* diffBragg::get_Fhkl_scale_deriv() {
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_Fhkl_scale_deriv);
 }
 #endif
 

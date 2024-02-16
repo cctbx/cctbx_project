@@ -733,7 +733,6 @@ struct DLPackAPI {
       .def("set_ncells_values", &simtbx::nanoBragg::diffBragg::set_ncells_values, "set Ncells values as a 3-tuple (Na, Nb, Nc)")
 
       .def("get_ncells_values", &simtbx::nanoBragg::diffBragg::get_ncells_values, "get Ncells values as a 3-tuple (Na, Nb, Nc)")
-      .def("get_d_Ncells_images", &simtbx::nanoBragg::diffBragg::get_d_Ncells_images, "get DLPackTensor for d_Ncells_images; pot. on GPU")
 
       .def("add_diffBragg_spots_full", &simtbx::nanoBragg::diffBragg::add_diffBragg_spots_full, "forward model and gradients at every pixel")
 
@@ -1092,6 +1091,52 @@ struct DLPackAPI {
                     make_function(&get_beams,rbv()),
                     make_function(&set_beams,dcp()),
                     "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
+
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+      .def("get_floatimage", &simtbx::nanoBragg::diffBragg::get_floatimage, "get DLPackTensor for floatimage; pot. on GPU")
+
+      .def("get_wavelenimage", &simtbx::nanoBragg::diffBragg::get_wavelenimage, "get DLPackTensor for wavelenimage; pot. on GPU")
+
+      .def("get_d_diffuse_gamma_images", &simtbx::nanoBragg::diffBragg::get_d_diffuse_gamma_images, "get DLPackTensor for d_diffuse_gamma_images; pot. on GPU")
+
+      .def("get_d_diffuse_sigma_images", &simtbx::nanoBragg::diffBragg::get_d_diffuse_sigma_images, "get DLPackTensor for d_diffuse_sigma_images; pot. on GPU")
+
+      .def("get_d_Umat_images", &simtbx::nanoBragg::diffBragg::get_d_Umat_images, "get DLPackTensor for d_Umat_images; pot. on GPU")
+
+      .def("get_d2_Umat_images", &simtbx::nanoBragg::diffBragg::get_d2_Umat_images, "get DLPackTensor for d2_Umat_images; pot. on GPU")
+
+      .def("get_d_Bmat_images", &simtbx::nanoBragg::diffBragg::get_d_Bmat_images, "get DLPackTensor for d_Bmat_images; pot. on GPU")
+
+      .def("get_d2_Bmat_images", &simtbx::nanoBragg::diffBragg::get_d2_Bmat_images, "get DLPackTensor for d2_Bmat_images; pot. on GPU")
+
+      .def("get_d_Ncells_images", &simtbx::nanoBragg::diffBragg::get_d_Ncells_images, "get DLPackTensor for d_Ncells_images; pot. on GPU")
+
+      .def("get_d2_Ncells_images", &simtbx::nanoBragg::diffBragg::get_d2_Ncells_images, "get DLPackTensor for d2_Ncells_images; pot. on GPU")
+
+      .def("get_d_fcell_images", &simtbx::nanoBragg::diffBragg::get_d_fcell_images, "get DLPackTensor for d_fcell_images; pot. on GPU")
+
+      .def("get_d2_fcell_images", &simtbx::nanoBragg::diffBragg::get_d2_fcell_images, "get DLPackTensor for d2_fcell_images; pot. on GPU")
+
+      .def("get_d_eta_images", &simtbx::nanoBragg::diffBragg::get_d_eta_images, "get DLPackTensor for d_eta_images; pot. on GPU")
+
+      .def("get_d2_eta_images", &simtbx::nanoBragg::diffBragg::get_d2_eta_images, "get DLPackTensor for d2_eta_images; pot. on GPU")
+
+      .def("get_d_lambda_images", &simtbx::nanoBragg::diffBragg::get_d_lambda_images, "get DLPackTensor for d_lambda_images; pot. on GPU")
+
+      .def("get_d2_lambda_images", &simtbx::nanoBragg::diffBragg::get_d2_lambda_images, "get DLPackTensor for d2_lambda_images; pot. on GPU")
+
+      .def("get_d_panel_rot_images", &simtbx::nanoBragg::diffBragg::get_d_panel_rot_images, "get DLPackTensor for d_panel_rot_images; pot. on GPU")
+
+      .def("get_d2_panel_rot_images", &simtbx::nanoBragg::diffBragg::get_d2_panel_rot_images, "get DLPackTensor for d2_panel_rot_images; pot. on GPU")
+
+      .def("get_d_panel_orig_images", &simtbx::nanoBragg::diffBragg::get_d_panel_orig_images, "get DLPackTensor for d_panel_orig_images; pot. on GPU")
+
+      .def("get_d2_panel_orig_images", &simtbx::nanoBragg::diffBragg::get_d2_panel_orig_images, "get DLPackTensor for d2_panel_orig_images; pot. on GPU")
+
+      .def("get_d_fp_fdp_images", &simtbx::nanoBragg::diffBragg::get_d_fp_fdp_images, "get DLPackTensor for d_fp_fdp_images; pot. on GPU")
+
+      .def("get_Fhkl_scale_deriv", &simtbx::nanoBragg::diffBragg::get_Fhkl_scale_deriv, "get DLPackTensor for Fhkl_scale_deriv; pot. on GPU")
+#endif
 
     ; // end of diffBragg extention
 

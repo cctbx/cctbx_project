@@ -43,10 +43,6 @@ uint32_t combine_refinement_flags(flags& db_flags) {
     return refine_flag;
 }
 
-DLManagedTensor* diffBraggKOKKOS::get_d_Ncells_images() {
-    return kokkostbx::view_to_dlpack(m_d_Ncells_images);
-}
-
 void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     int Npix_to_model,
     std::vector<unsigned int>& panels_fasts_slows,
@@ -642,4 +638,92 @@ void diffBraggKOKKOS::diffBragg_sum_over_steps_kokkos(
     ::Kokkos::fence("After copy to host");
 
     Kokkos::Tools::popRegion();
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_floatimage() {
+    return kokkostbx::view_to_dlpack(m_floatimage);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_wavelenimage() {
+    return kokkostbx::view_to_dlpack(m_wavelenimage);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_diffuse_gamma_images() {
+    return kokkostbx::view_to_dlpack(m_d_diffuse_gamma_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_diffuse_sigma_images() {
+    return kokkostbx::view_to_dlpack(m_d_diffuse_sigma_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_Umat_images() {
+    return kokkostbx::view_to_dlpack(m_d_Umat_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_Umat_images() {
+    return kokkostbx::view_to_dlpack(m_d2_Umat_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_Bmat_images() {
+    return kokkostbx::view_to_dlpack(m_d_Bmat_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_Bmat_images() {
+    return kokkostbx::view_to_dlpack(m_d2_Bmat_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_Ncells_images() {
+    return kokkostbx::view_to_dlpack(m_d_Ncells_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_Ncells_images() {
+    return kokkostbx::view_to_dlpack(m_d2_Ncells_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_fcell_images() {
+    return kokkostbx::view_to_dlpack(m_d_fcell_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_fcell_images() {
+    return kokkostbx::view_to_dlpack(m_d2_fcell_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_eta_images() {
+    return kokkostbx::view_to_dlpack(m_d_eta_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_eta_images() {
+    return kokkostbx::view_to_dlpack(m_d2_eta_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_lambda_images() {
+    return kokkostbx::view_to_dlpack(m_d_lambda_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_lambda_images() {
+    return kokkostbx::view_to_dlpack(m_d2_lambda_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_panel_rot_images() {
+    return kokkostbx::view_to_dlpack(m_d_panel_rot_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_panel_rot_images() {
+    return kokkostbx::view_to_dlpack(m_d2_panel_rot_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_panel_orig_images() {
+    return kokkostbx::view_to_dlpack(m_d_panel_orig_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d2_panel_orig_images() {
+    return kokkostbx::view_to_dlpack(m_d2_panel_orig_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_d_fp_fdp_images() {
+    return kokkostbx::view_to_dlpack(m_d_fp_fdp_images);
+}
+
+DLManagedTensor* diffBraggKOKKOS::get_Fhkl_scale_deriv() {
+    return kokkostbx::view_to_dlpack(m_Fhkl_scale_deriv);
 }
