@@ -1,5 +1,6 @@
 import sys
 import io
+import hashlib
 from pathlib import Path
 from functools import reduce
 from itertools import zip_longest
@@ -13,6 +14,14 @@ try:
 except:
   pass
 
+
+
+def hash_df(df):
+  # Convert the DataFrame to a string representation
+  # including the index and column names to ensure uniqueness
+  df_string = df.to_string() + pd.util.hash_pandas_object(df, index=True).to_string()
+  hash_object = hashlib.sha256(df_string.encode())
+  return hash_object.hexdigest()
 
 def cif_df_to_numeric(df):
   df = df.replace({".":"0",
