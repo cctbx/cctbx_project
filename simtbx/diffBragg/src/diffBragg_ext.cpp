@@ -611,7 +611,7 @@ struct DLPackAPI {
     dlpackTensor->dl_tensor.data = static_cast<void*>(&container);
     dlpackTensor->dl_tensor.device.device_type = DLDeviceType::kDLCPU;
     dlpackTensor->dl_tensor.device.device_id = 0;
-    dlpackTensor->dl_tensor.ndim = numDims;    
+    dlpackTensor->dl_tensor.ndim = numDims;
     dlpackTensor->dl_tensor.dtype = getDLPackDataType();
     dlpackTensor->dl_tensor.shape = shape;
     dlpackTensor->dl_tensor.strides = nullptr;
@@ -634,7 +634,7 @@ struct DLPackAPI {
     dtype.bits = sizeof(double) * 8;
     dtype.lanes = 1;
     return dtype;
-  }  
+  }
 
   void print_hello() {
     std::cout << "Hello Python!" << std::endl;

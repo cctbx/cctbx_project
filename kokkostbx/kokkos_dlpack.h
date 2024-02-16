@@ -54,7 +54,7 @@ DLDevice getDLPackDevice() {
       return {kDLROCM, device_id};
   } else if (std::is_same<SpaceType, Kokkos::HIPHostPinnedSpace>::value) {
       return {kDLROCMHost, device_id};
-  } 
+  }
 #endif
   else {
       // Extend to other device types as needed
@@ -75,7 +75,7 @@ DLManagedTensor* view_to_dlpack(Kokkos::View<DataType, SpaceType>& view) {
   DLManagedTensor* dlpackTensor = new DLManagedTensor;
   dlpackTensor->dl_tensor.data = view.data();
   dlpackTensor->dl_tensor.device = getDLPackDevice<SpaceType>();
-  dlpackTensor->dl_tensor.ndim = numDims;    
+  dlpackTensor->dl_tensor.ndim = numDims;
   dlpackTensor->dl_tensor.dtype = getDLPackDataType<DataType, SpaceType>();
   dlpackTensor->dl_tensor.shape = shape;
   dlpackTensor->dl_tensor.strides = nullptr;

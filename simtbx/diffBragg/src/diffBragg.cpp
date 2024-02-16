@@ -1526,7 +1526,7 @@ PyObject* diffBragg::PyCapsule_Wrapper( DLManagedTensor* (diffBraggKOKKOS::*func
     if (diffBragg_runner == nullptr) {
         return nullptr;
     }
-    return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);   
+    return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);
 }
 
 PyObject* diffBragg::get_floatimage() {
