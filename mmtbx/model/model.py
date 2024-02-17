@@ -3324,7 +3324,9 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    return self.select(selection = flex.bool(self.size(), True))
+    new_model = self.select(selection = flex.bool(self.size(), True))
+    new_model.set_ss_annotation(self.get_ss_annotation())
+    return new_model
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):
