@@ -30,6 +30,15 @@ namespace cctbx { namespace eltbx { namespace electron_scattering {
    electron_scattering::peng19965_iterator,
    electron_scattering::peng1996,
    xray_scattering::base
+
+   ****** Practical note (adopted from Dorothee Liebschner): ******
+   To use these parameters one needs to implement the divergent contribution
+   from the unscreened Coulomb potential of the ionic charge. See formula 4 in
+   Acta Cryst. (1998). A54, 481-485. This term is not available in our code.
+   It isn't clear how to do the Fourier Transform of this. So unless we figure
+   this out and make this available, we cannot use the form factors of ions from
+   Peng. The efforts from UCLA people was to approximate the curves for the ions
+   using negative coefficients. Then the divergent charge term is not needed.
    */
   class peng1996: public xray_scattering::base<5>
   {
