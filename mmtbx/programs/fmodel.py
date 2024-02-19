@@ -10,6 +10,7 @@ import iotbx.pdb
 import random
 from libtbx.utils import Sorry
 from cctbx.array_family import flex
+from libtbx import group_args
 
 fmodel_from_xray_structure_params_str = """\
 fmodel
@@ -437,4 +438,10 @@ generate_fake_p1_symmetry=True.'''
     print("Output file name:", ofn, file=self.logger)
     print("All done.", file=self.logger)
     print("-"*79, file=self.logger)
-    return ofn
+    self.output_file = ofn
+
+  def get_results(self):
+    return group_args(
+     output_file=self.output_file,
+     model=self.data_manager.get_default_model_name())
+
