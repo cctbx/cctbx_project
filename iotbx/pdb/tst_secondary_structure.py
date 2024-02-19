@@ -2144,7 +2144,7 @@ SHEET    2   A 5 LEU B  28C SER B  30 -1  O  ARG B  29   N  ARG B  13D
 SHEET    3   A 5 VAL B 156  HIS B 159  1  O  VAL B 156   N  PHE B  28
 SHEET    4   A 5 ASP B  51  ASP B  54  1  N  ALA B  51   O  LEU B 157
 SHEET    5   A 5 ASP B  74  LEU B  77  1  O  HIS B  74   N  VAL B  52
-""")
+""".strip())
 
 
 def exercise(args):
