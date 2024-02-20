@@ -159,8 +159,8 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
         </a> -->
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=ci">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=ci&jobName=linux_64&configuration=linux_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=linux_64&configuration=linux_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr><tr>
@@ -231,8 +231,8 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
         </a> -->
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=ci">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=ci&jobName=osx_64&configuration=osx_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=osx_64&configuration=osx_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr><tr>
@@ -363,8 +363,8 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
         </a> -->
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=ci">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=ci&jobName=win_64&configuration=win_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=win_64&configuration=win_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr>
