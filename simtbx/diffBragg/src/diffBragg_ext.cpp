@@ -504,6 +504,22 @@ namespace boost_python { namespace {
         return boost::python::make_tuple(diffBragg.pythony_indices,diffBragg.pythony_amplitudes);
   }
 
+std::string kokkos_device() {
+  std::string backend = "cpu:0";
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+  if (Kokkos::is_finalized()) {
+    throw std::runtime_error("Error: Kokkos has been finalized.\n");
+  }
+  if (!Kokkos::is_initialized()) {
+    throw std::runtime_error("Error: Kokkos not initialized.\n");
+  }
+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
+  backend = "cuda:" + std::to_string( Kokkos::device_id() );
+#endif
+#endif
+  return backend;
+}
+
 #ifdef DIFFBRAGG_HAVE_KOKKOS
   void finalize_kokkos(){
     Kokkos::finalize();
@@ -671,6 +687,8 @@ struct DLPackAPI {
 
     def("initialize_kokkos", initialize_kokkos,
         "the sole argument `dev` (an int from 0 to Ngpu-1) is passed to Kokkos::initialize()");
+
+    def("kokkos_device", kokkos_device, "returns kokkos device for use in PyTorch");
 
     def("print_dlpack",PrintDLTensorParameters,"Print information about a dlpack");
 
