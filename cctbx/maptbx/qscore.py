@@ -365,12 +365,17 @@ def shell_probes_progressive(
 
     #Finish working on a single atom
     pts = np.array(pts)  # should be shape (n_probes,3)
-    assert pts.shape == (n_probes_max,3),(
-
-    f"Pts shape must be ({n_probes_max},3), not {pts.shape})")
 
     if pts.shape == (0,): # all probes clashed
       pts = np.full((n_probes_max,3),np.nan)
+      print(f"Failed to assign any probes to atom: {atom_i}")
+
+
+    assert pts.shape == (n_probes_max,3),(
+
+    f"Pts shape must be ({n_probes_max},3), not {pts.shape}). Reached i={i}")
+
+
 
     all_pts.append(pts)
 
