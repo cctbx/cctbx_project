@@ -4,9 +4,9 @@ from __future__ import division
 
 from argparse import ArgumentParser
 parser = ArgumentParser()
-parser.add_argument("dirname", help="still process output folder", type=str)
+parser.add_argument("dirname", help="still process output folder", type=str, nargs="+")
 parser.add_argument("--updatePhil", default=None, help="name of an exisiting stage 1 phil file  to update (just the init.Ncells portion)", type=str)
-parser.add_argument("--expSuffix", help="extension of refined experiments", type=str, default="_refined.expt")
+parser.add_argument("--expSuffix", help="extension of refined experiments (default: _refined.expt)", type=str, default="_refined.expt")
 parser.add_argument("--thresh", type=float, default=7, help="MAD score for outliers (default=7 standard deviation above the median)")
 parser.add_argument("--useMean", action="store_true", help="set Eta and Nabc using the mean (default is median)")
 parser.add_argument("--NabcMax",  type=float, default=70, help="If estaimated Nabc is above this value, it will set to this value")
@@ -28,8 +28,14 @@ import os
 import glob
 from dxtbx.model import ExperimentList
 
-glob_s = os.path.join(args.dirname, "*%s" % args.expSuffix)
-fnames = glob.glob(glob_s)
+fnames = []
+for dirname in args.dirname:
+    glob_s = os.path.join(dirname, "*%s" % args.expSuffix)
+    fnames += glob.glob(glob_s)
+if not fnames:
+    if COMM.rank==0:
+        print("no fnames")
+    exit()
 
 #def main(jid):
 all_Ns = []
@@ -63,8 +69,15 @@ all_mos_spreads = COMM.reduce(all_mos_spreads)
 #for N,mos in results:
 #    all_Ns += N
 #    all_mos_spreads += mos
+# template of the additional phil:
+phil = """\ninit {{
+  Nabc = [{n},{n},{n}]
+  eta_abc = [{m},{m},{m}]
+}}\n
+"""
 
 if COMM.rank==0:
+    print("Obtained %d estimates ..." % len(all_Ns))
     import pandas
     import pylab as plt
     from simtbx.diffBragg import utils
@@ -98,15 +111,13 @@ if COMM.rank==0:
         mean_N = args.NabcMax if mean_N > args.NabcMax else args.NabcMin
         print("Estimated N=%f, setting it to %f" %(temp, mean_N))
 
-    phil = """\ninit {{
-      Nabc = [{n},{n},{n}]
-      eta_abc = [{m},{m},{m}]
-    }}\n""".format(n=round(mean_N,4), m=mean_mos)
+    phil = phil.format(n=round(mean_N,4), m=mean_mos)
 
     if args.updatePhil is not None:
-        with open(args.updatePhil, "r+") as o:
+        with open(args.updatePhil, "r") as o:
             s = o.read()
-            s += phil
+        s += phil
+        with open(args.updatePhil, "w") as o:
             o.write(s)
     if args.plot:
         df.hist(bins=100, log=True)
