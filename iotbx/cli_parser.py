@@ -299,11 +299,11 @@ class CCTBXParser(ParserBase):
     )
 
   # ---------------------------------------------------------------------------
-  def parse_args(self, args):
+  def parse_args(self, args, skip_help = False):
     '''
     '''
     # default behavior with no arguments
-    if len(args) == 0:
+    if (len(args) == 0) and (not skip_help):
       self.print_help()
       self.exit()
 
@@ -979,7 +979,7 @@ def get_program_params(run):
 
     parser = CCTBXParser(program_class=run.Program,
                          logger=null_out())
-    _ = parser.parse_args([])
+    _ = parser.parse_args([], skip_help = True)
     return parser.working_phil.extract()
 
 # =============================================================================
