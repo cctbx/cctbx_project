@@ -174,35 +174,42 @@ namespace smtbx { namespace refinement { namespace constraints {
       std::ostream &output) const
   {
     if (scatterer == this->scatterer) {
-      const std::vector<std::vector<int> > &r3_indices =
-        scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
-      for (size_t i = 0; i < r3_indices.size(); i++) {
-        const std::vector<int> &idx = r3_indices[i];
-        output << scatterer->label << ".C"
-          << (char)('1' + idx[0])
-          << (char)('1' + idx[1])
-          << (char)('1' + idx[2]) << ',';
+      int order = scatterer->anharmonic_adp->get_order();
+      if (order >= 3){
+        const std::vector<std::vector<int> > &r3_indices =
+          scitbx::matrix::tensors::tensor_rank_3<double>::get_indices();
+        for (size_t i = 0; i < r3_indices.size(); i++) {
+          const std::vector<int> &idx = r3_indices[i];
+          output << scatterer->label << ".C"
+            << (char)('1' + idx[0])
+            << (char)('1' + idx[1])
+            << (char)('1' + idx[2]) << ',';
+        }
       }
-      const std::vector<std::vector<int> > &r4_indices =
-        scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
-      for (size_t i = 0; i < r4_indices.size(); i++) {
-        const std::vector<int> &idx = r4_indices[i];
-        output << scatterer->label << ".D"
-          << (char)('1' + idx[0])
-          << (char)('1' + idx[1])
-          << (char)('1' + idx[2])
-          << (char)('1' + idx[3]) << ',';
+      if (order >= 4){
+        const std::vector<std::vector<int> > &r4_indices =
+          scitbx::matrix::tensors::tensor_rank_4<double>::get_indices();
+        for (size_t i = 0; i < r4_indices.size(); i++) {
+          const std::vector<int> &idx = r4_indices[i];
+          output << scatterer->label << ".D"
+            << (char)('1' + idx[0])
+            << (char)('1' + idx[1])
+            << (char)('1' + idx[2])
+            << (char)('1' + idx[3]) << ',';
+        }
       }
     }
   }
 
   void asu_anharmonic_adp_parameter::store(uctbx::unit_cell const &unit_cell) const {
-    for (size_t i = 0; i < 10; i++) {
-      scatterer->anharmonic_adp->C[i] = value[i];
-    }
-    for (size_t i = 0; i < 15; i++) {
-      scatterer->anharmonic_adp->D[i] = value[i + 10];
-    }
+    if (scatterer->anharmonic_adp->order >= 3)
+      for (size_t i = 0; i < 10; i++) {
+        scatterer->anharmonic_adp->C[i] = value[i];
+      }
+    if (scatterer->anharmonic_adp->order >= 4)
+      for (size_t i = 0; i < 15; i++) {
+        scatterer->anharmonic_adp->D[i] = value[i + 10];
+      }
   }
 
   void independent_anharmonic_adp_parameter

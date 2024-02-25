@@ -57,7 +57,7 @@ typedef fractional<double> frac_t;
 
 /// Anisotropic displacement tensor used throughout the module
 typedef scitbx::sym_mat3<double> tensor_rank_2_t;
-typedef adptbx::anharmonic::GramCharlier4<double>  anharmonic_adp_t;
+typedef adptbx::anharmonic::GramCharlier<double>  anharmonic_adp_t;
 
 
 /// A range of index [first, first+size)
@@ -656,9 +656,7 @@ public:
 class anharmonic_adp_parameter : public virtual parameter
 {
 public:
-  anharmonic_adp_parameter()
-    : value(25)
-  {}
+  anharmonic_adp_parameter(){}
 
   virtual af::ref<double> components();
 
@@ -695,13 +693,22 @@ public:
     : parameter(0),
     single_asu_scatterer_parameter(scatterer)
   {
-    for (size_t i = 0; i < 10; i++) {
-      value[i] = scatterer->anharmonic_adp->C[i];
+    int order = scatterer->anharmonic_adp->order;
+    if(order >= 3){
+      value.resize(10);
+      for (size_t i = 0; i < 10; i++) {
+        value[i] = scatterer->anharmonic_adp->C[i];
+      }
     }
-    for (size_t i = 0; i < 15; i++) {
-      value[i+10] = scatterer->anharmonic_adp->D[i];
+    if(order >= 4){
+      value.resize(25);
+      for (size_t i = 0; i < 15; i++) {
+        value[i+10] = scatterer->anharmonic_adp->D[i];
+      }
     }
   }
+
+
 
   /// Does nothing in this class
   /** This optimisation relies on class reparametrisation implementation
