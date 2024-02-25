@@ -40,7 +40,7 @@ namespace xray {
       //! Facilitates meta-programming.
       typedef ScatteringTypeType scattering_type_type;
       //
-      typedef adptbx::anharmonic::GramCharlier4<FloatType> anharmonic_adp_type;
+      typedef adptbx::anharmonic::GramCharlier<FloatType> anharmonic_adp_type;
 
       //! Default constructor. Data members are not initialized!
       scatterer() {}
@@ -236,6 +236,11 @@ namespace xray {
 
       bool is_anharmonic_adp() const {
         return anharmonic_adp != 0;
+      }
+
+      int anharmonic_adp_order() const {
+        if (anharmonic_adp) return anharmonic_adp->order;
+        return 0;
       }
 
       //! get u_iso as b_iso.
@@ -472,7 +477,19 @@ namespace xray {
           std::snprintf(buf, sizeof(buf), "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
         }
-        std::snprintf(buf, sizeof(buf), "%soccupancy: %.6g\n",
+        if (flags.use_u_aniso() && anharmonic_adp) {
+          std::sprintf(buf, "%sanharmonic ADP: order %d\n",
+            prefix, anharmonic_adp->order); result += buf;
+          std::sprintf(buf, "%sC: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+            prefix, anharmonic_adp->C[0], anharmonic_adp->C[1],
+            anharmonic_adp->C[2], anharmonic_adp->C[3],
+            anharmonic_adp->C[4], anharmonic_adp->C[5]); result += buf;
+          std::sprintf(buf, "%sD: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+            prefix, anharmonic_adp->D[0], anharmonic_adp->D[1],
+            anharmonic_adp->D[2], anharmonic_adp->D[3],
+            anharmonic_adp->D[4], anharmonic_adp->D[5]); result += buf;
+        }
+        std::sprintf(buf, "%soccupancy: %.6g\n",
           prefix, occupancy); result += buf;
         std::snprintf(buf, sizeof(buf), "%sf-prime: %.6g\n",
           prefix, fp); result += buf;

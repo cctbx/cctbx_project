@@ -70,7 +70,12 @@ private:
           ids.u_aniso = params;
           params += 6;
           if (sc.anharmonic_adp) {
-            params += 25;
+            if (sc.anharmonic_adp->order == 4)
+              params += 25;
+            else if (sc.anharmonic_adp->order == 3)
+              params += 10;
+            else if (sc.anharmonic_adp->order != 0)
+              throw std::runtime_error("Order must be 3 or 4");
           }
         }
         if (sc.flags.grad_occupancy()) ids.occupancy = params++;

@@ -2222,23 +2222,33 @@ class structure(crystal.special_position_settings):
           D_header.append("_atom_site_anharm_GC_D_%s%s%s%s" %(idx[0]+1,idx[1]+1,idx[2]+1,idx[3]+1))
         C_loop = model.loop(header=(C_header))
         D_loop = model.loop(header=(D_header))
+        has_4th = False
         for sc in anharmonic_scatterers:
+          order = sc.anharmonic_adp_order()
           C_row = [sc.label]
           D_row = [sc.label]
           for i, d in enumerate(sc.anharmonic_adp.data()):
             if covariance_matrix is not None:
               idx = param_map[labels.index(sc.label)].u_aniso
               if idx > -1:
-                var = covariance_diagonal[idx+6:idx+6+25]
+                if order == 3:
+                  var = covariance_diagonal[idx+6:idx+6+10]
+                elif order == 4:
+                  has_4th = True
+                  var = covariance_diagonal[idx+6:idx+6+25]
                 d = format_float_with_su(d, math.sqrt(var[i]))
             if i < 10:
               C_row.append(d)
             else:
+              if order == 3:
+                break
               D_row.append(d)
           C_loop.add_row(C_row)
-          D_loop.add_row(D_row)
+          if order == 4:
+            D_loop.add_row(D_row)
         cs_cif_block.add_loop(C_loop)
-        cs_cif_block.add_loop(D_loop)
+        if has_4th:
+          cs_cif_block.add_loop(D_loop)
       if refined_disp:
         disp_loop = model.loop(header=(['_atom_site_dispersion_label',
                                         '_atom_site_dispersion_real',

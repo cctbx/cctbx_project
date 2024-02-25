@@ -91,20 +91,30 @@ public:
     tensor_r3_constraints(site_symmetry.tensor_rank_3_constraints()),
     tensor_r4_constraints(site_symmetry.tensor_rank_4_constraints())
   {
-    for (size_t i = 0; i < 10; i++) {
-      value[i] = scatterer->anharmonic_adp->C[i];
+    int order = scatterer->anharmonic_adp->order;
+    af::shared<double> params;
+    if(order >= 3){
+      for (size_t i = 0; i < 10; i++) {
+        value[i] = scatterer->anharmonic_adp->C[i];
+      }
+      af::shared<double> ip = tensor_r3_constraints.independent_params(
+        scatterer->anharmonic_adp->C.data());
+      for (size_t i = 0; i < ip.size(); i++) {
+        params.push_back(ip[i]);
+      }
     }
-    for (size_t i = 0; i < 15; i++) {
-      value[i + 10] = scatterer->anharmonic_adp->D[i];
-    }
-    af::shared<double> params = tensor_r3_constraints.independent_params(
-      scatterer->anharmonic_adp->C.data());
     c_count = params.size();
-    af::shared<double> ip = tensor_r4_constraints.independent_params(
-      scatterer->anharmonic_adp->D.data());
-    for (size_t i = 0; i < ip.size(); i++) {
-      params.push_back(ip[i]);
+    if(order >= 4){
+      for (size_t i = 0; i < 15; i++) {
+        value[i + 10] = scatterer->anharmonic_adp->D[i];
+      }
+      af::shared<double> ip = tensor_r4_constraints.independent_params(
+        scatterer->anharmonic_adp->D.data());
+      for (size_t i = 0; i < ip.size(); i++) {
+        params.push_back(ip[i]);
+      }
     }
+    
     set_arguments(new independent_vector_parameter(
       params,
       scatterer->flags.use_u_aniso() && scatterer->flags.grad_u_aniso()));
