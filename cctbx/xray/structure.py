@@ -2224,7 +2224,7 @@ class structure(crystal.special_position_settings):
         D_loop = model.loop(header=(D_header))
         has_4th = False
         for sc in anharmonic_scatterers:
-          order = sc.anharmonic_adp_order()
+          order = sc.anharmonic_adp.get_order()
           C_row = [sc.label]
           D_row = [sc.label]
           for i, d in enumerate(sc.anharmonic_adp.data()):

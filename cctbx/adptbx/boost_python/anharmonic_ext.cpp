@@ -17,17 +17,15 @@ namespace cctbx { namespace boost_python { namespace anharmonic {
       typedef return_value_policy<return_by_value> rbv;
 
       class_<wt>("gram_charlier", no_init)
-        .def(init<af::shared<FloatType> const &,
-                  af::shared<FloatType> const &,
-                  int const &>(
-              (arg("Cijk"),
-               arg("Dijkl"),
-               arg("order"))))
+        .def(init<af::shared<FloatType> const &>(
+              (arg("Cijk"))))
+        .def(init<af::shared<FloatType> const&,
+          af::shared<FloatType> const&>(
+            (arg("Cijk"),
+              arg("Dijkl"))))
         .def("calculate", &wt::calculate,
           (arg("miller_index")))
         .def("get_order", &wt::get_order)
-        .def("set_order", &wt::set_order, 
-          (arg("order")))
         .def("gradient_coefficients", &wt::gradient_coefficients,
           (arg("miller_index")))
         .def("gradient_coefficients_in_place", &wt::gradient_coefficients_in_place,
