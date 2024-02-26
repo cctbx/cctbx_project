@@ -17,11 +17,6 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
     int order;
 
     int get_order() { return order; };
-    void set_order(int o) { 
-      if(o>4)
-        throw std::runtime_error("Order must be 3 or 4");
-      order = o; 
-    };
 
     static FloatType c_factor() {
       static const FloatType c_factor_ =
@@ -38,44 +33,55 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
         std::complex<FloatType>(0, c_factor());
       return compl_c_factor_;
     }
-    GramCharlier() {}
+    GramCharlier(int order) {
+      CCTBX_ASSERT(order > 2 && order < 5);
+      order = order;
+    }
 
-    GramCharlier(const af::shared<FloatType> &Cijk,
-      const af::shared<FloatType> &Dijkl, const int &order)
-      : C(Cijk), D(Dijkl), order(order)
+    GramCharlier(const af::shared<FloatType> &Cijk)
+      : C(Cijk),order(3)
+    {}
+
+    GramCharlier(const af::shared<FloatType>& Cijk,
+      const af::shared<FloatType>& Dijkl)
+      : C(Cijk), D(Dijkl), order(4)
     {}
 
     std::complex<FloatType> calculate(const miller::index<> &h) const {
       using namespace scitbx::constants;
-      FloatType c = C.sum_up(h), d = D.sum_up(h);
-      return std::complex<FloatType>(
-        1 + d * d_factor(),
-        c * c_factor());
+      FloatType c = C.sum_up(h);
+      if (order == 3) {
+        return std::complex<FloatType>(1, c * c_factor());
+      }
+      FloatType  d = D.sum_up(h);
+      return std::complex<FloatType>(1 + d * d_factor(), c * c_factor());
     }
 
     af::shared<std::complex<FloatType> >
-      gradient_coefficients(const miller::index<> &h) const
+      gradient_coefficients(const miller::index<>& h) const
     {
       using namespace scitbx::constants;
-      af::shared<std::complex<FloatType> > r;
-      if (order >= 3){
-        r.resize(10);
+      af::shared<std::complex<FloatType> > r(param_count());
+      if (order >= 3) {
         af::shared<FloatType> c = C.gradient_coefficients(h);
         for (size_t i = 0; i < 10; i++) {
-            r[i] = c[i] * compl_c_factor();
+          r[i] = c[i] * compl_c_factor();
         }
       }
-      else if(order >= 4){
-        r.resize(25);
+      if (order >= 4) {
         af::shared<FloatType> d = D.gradient_coefficients(h);
         std::complex<FloatType>* r_ = &r[10];
         for (size_t i = 0; i < 15; i++) {
-            r_[i] = d[i] * d_factor();
+          r_[i] = d[i] * d_factor();
         }
       }
       return r;
     }
     
+    size_t param_count() const {
+      return order == 3 ? 10 : 25;
+    }
+
     void gradient_coefficients_in_place(
         const miller::index<>& h,
         std::vector<std::complex<FloatType> >& rv) const
@@ -95,17 +101,15 @@ namespace cctbx { namespace adptbx { namespace anharmonic {
     }
 
     af::shared<FloatType> data() const {
-      af::shared<FloatType> rv;
-      if (order >= 3){
-        rv.reserve(10);
+      af::shared<FloatType> rv(param_count());
+      if (order >= 3) {
         for (size_t i = 0; i < 10; i++) {
-          rv.push_back(C[i]);
+          rv[i] = C[i];
         }
       }
-      if(order >= 4){
-        rv.reserve(25);
+      if (order >= 4) {
         for (size_t i = 0; i < 15; i++) {
-          rv.push_back(D[i]);
+          rv[i + 10] = D[i];
         }
       }
       return rv;

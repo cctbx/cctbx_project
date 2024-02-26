@@ -96,10 +96,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
-          if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            this->grad_anharmonic_adp = af::shared<complex_type>(limit);
+          if (scatterer.is_anharmonic_adp()) {
+            this->grad_anharmonic_adp = af::shared<complex_type>(scatterer.anharmonic_adp->param_count());
           }
           this->grad_fp = 0;
           this->grad_fdp = 0;
@@ -120,10 +118,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         if (compute_grad) {
           this->grad_site = grad_site_type(0, 0, 0);
           this->grad_u_star = grad_u_star_type(0, 0, 0, 0, 0, 0);
-          if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            this->grad_anharmonic_adp.resize(limit);
+          if (scatterer.is_anharmonic_adp()) {
+            this->grad_anharmonic_adp.resize(scatterer.anharmonic_adp->param_count());
           }
           this->grad_fp = 0;
           this->grad_fdp = 0;
@@ -210,9 +206,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                for (int j = 0; j < limit; j++) {
+                for (size_t j = 0; j < gc.size(); j++) {
                   base_t::grad_anharmonic_adp[j] += f * gc[j];
                 }
               }
@@ -252,9 +246,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
               }
               if (scatterer.anharmonic_adp) {
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                for (int j = 0; j < limit; j++) {
+                for (size_t j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
                   base_t::grad_anharmonic_adp[j] +=
                     std::conj(base_t::grad_anharmonic_adp[j]) * hr_ht.f_h_inv_t;
                 }
@@ -302,9 +294,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                for (int j = 0; j < limit; j++) {
+                for (size_t j = 0; j < gc.size(); j++) {
                   base_t::grad_anharmonic_adp[j] += ffk * gc[j];
                 }
               }
@@ -350,9 +340,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
                 grad_u_star[j] += std::conj(grad_u_star[j]) * hr_ht.f_h_inv_t;
               }
               if (scatterer.anharmonic_adp) {
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                for (int j = 0; j < limit; j++) {
+                for (size_t j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
                   base_t::grad_anharmonic_adp[j] +=
                     std::conj(base_t::grad_anharmonic_adp[j]) * hr_ht.f_h_inv_t;
                 }
@@ -450,9 +438,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             grad_u_star[j] *= ff_iso;
           }
           if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            for (int j = 0; j < limit; j++) {
+            for (size_t j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
               base_t::grad_anharmonic_adp[j] *= ff_iso;
             }
           }
@@ -511,9 +497,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             grad_u_star[j] *= ff_iso;
           }
           if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            for (int j = 0; j < limit; j++) {
+            for (size_t j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
               base_t::grad_anharmonic_adp[j] *= ff_iso;
             }
           }
@@ -588,9 +572,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
                 af::shared<complex_type> gc = scatterer
                   .anharmonic_adp->gradient_coefficients(g.hr);
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                for (int j = 0; j < limit; j++) {
+                for (size_t j = 0; j < gc.size(); j++) {
                   base_t::grad_anharmonic_adp[j] += (f * gc[j]).real();
                 }
               }
@@ -645,13 +627,10 @@ namespace smtbx { namespace structure_factors { namespace direct {
             if (scatterer.anharmonic_adp) {
               complex_type ac = scatterer.anharmonic_adp->calculate(g.hr);
               if (compute_grad && scatterer.flags.grad_u_aniso()) {
-                int limit = 10;
-                if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-                std::vector<complex_type> gc(limit);
-                complex_type t;
+                std::vector<complex_type> gc(scatterer.anharmonic_adp->param_count());
                 scatterer.anharmonic_adp->gradient_coefficients_in_place(g.hr, gc);
-                for (int gi = 0; gi < limit; gi++) {
-                  t = f * gc[gi];
+                for (size_t gi = 0; gi < gc.size(); gi++) {
+                  complex_type t = f * gc[gi];
                   base_t::grad_anharmonic_adp[gi] += fp_fdp * t.real();
                   // (t * ff[k]).real();
                   base_t::grad_anharmonic_adp[gi] += (t.real()*ff[k].real() - t.imag()*ff[k].imag());
@@ -758,9 +737,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             grad_u_star[j] = ff_iso * grad_u_star[j].real();
           }
           if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            for (int j = 0; j < limit; j++) {
+            for (int j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
               base_t::grad_anharmonic_adp[j] =
                 ff_iso * base_t::grad_anharmonic_adp[j].real();
             }
@@ -826,9 +803,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
             grad_u_star[j] *= ff_iso;
           }
           if (scatterer.anharmonic_adp) {
-            int limit = 10;
-            if (scatterer.anharmonic_adp_order() >= 4) limit += 15;
-            for (int j = 0; j < limit; j++) {
+            for (size_t j = 0; j < base_t::grad_anharmonic_adp.size(); j++) {
               base_t::grad_anharmonic_adp[j] *= ff_iso;
             }
           }
@@ -1195,9 +1170,7 @@ namespace smtbx { namespace structure_factors { namespace direct {
               *grad_f_calc_cursor++ = l.grad_u_star[j];
             }
             if (sc.anharmonic_adp) {
-              int limit = 10;
-              if (sc.anharmonic_adp_order() >= 4) limit += 15;
-              for (int j = 0; j < limit; ++j) {
+              for (int j = 0; j < l.grad_anharmonic_adp.size(); ++j) {
                 *grad_f_calc_cursor++ = l.grad_anharmonic_adp[j];
               }
             }
