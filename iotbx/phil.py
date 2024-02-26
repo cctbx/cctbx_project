@@ -264,7 +264,9 @@ Full parameters:
 
 # Utilities for Phenix GUI
 class setup_app_generic(object):
-  def __init__(self, master_phil_path):
+  def __init__(self, master_phil_path,
+     top_level_scopes_to_remove = None):
+    self.top_level_scopes_to_remove = top_level_scopes_to_remove
     master_phil = self.load_from_cache_if_possible(master_phil_path)
     if master_phil is None :
       raise Sorry("Couldn't start program using specified phil object (%s)!" %
@@ -284,12 +286,13 @@ class setup_app_generic(object):
       command_name="phenix",
       usage_opts=["[model.pdb]", "[data.mtz]"],
       app_options=None,
+      top_level_scopes_to_remove = self.top_level_scopes_to_remove,
       home_scope="")
     return (self.master_phil,working_phil,options, unused_args)
 
   # TODO probably redundant, replace with process_command_line or similar?
   def parse_command_line_phil_args(self, args, master_phil, command_name, usage_opts,
-      app_options, home_scope, log=sys.stdout):
+      app_options, home_scope, top_level_scopes_to_remove = None, log=sys.stdout):
     sources = []
     unused_args = []
     interpreter = master_phil.command_line_argument_interpreter(
@@ -298,6 +301,16 @@ class setup_app_generic(object):
       if os.path.isfile(arg):
         try :
           user_phil = parse(file_name=arg)
+          if top_level_scopes_to_remove:
+            # ----------------------------------------------------------------
+            # Backwards compatibility for modules with top-level scope removed
+            if user_phil and user_phil.objects and \
+                (len(user_phil.objects) == 1) and \
+                (user_phil.objects[0].name in top_level_scopes_to_remove):
+              print("REMOVING TOP-LEVEL SCOPE '%s'" %(user_phil.objects[0].name ))
+              user_phil.objects = user_phil.objects[0].objects
+            # ----------------------------------------------------------------
+
           sources.append(user_phil)
         except Exception as e :
           unused_args.append(os.path.abspath(arg))
