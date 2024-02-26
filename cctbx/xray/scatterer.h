@@ -238,11 +238,6 @@ namespace xray {
         return anharmonic_adp != 0;
       }
 
-      int anharmonic_adp_order() const {
-        if (anharmonic_adp) return anharmonic_adp->order;
-        return 0;
-      }
-
       //! get u_iso as b_iso.
       FloatType
       b_iso(void) const

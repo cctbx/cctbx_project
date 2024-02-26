@@ -92,7 +92,6 @@ namespace {
           arg("unit_cell"),
           arg("u_cart_tolerance")))
         .def("is_anharmonic_adp", &w_t::is_anharmonic_adp)
-        .def("anharmonic_adp_order", &w_t::anharmonic_adp_order)
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg("unit_cell")))
         .def("b_iso", &w_t::b_iso)
         .def("u_cart_plus_u_iso", &w_t::u_cart_plus_u_iso, (arg("unit_cell")))
