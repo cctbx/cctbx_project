@@ -98,8 +98,8 @@ def cumsum_flex(arr):
   result = flex.double(len(arr))
   running_sum = 0.0
   for i, x in enumerate(arr):
-      running_sum += x
-      result[i] = running_sum
+    running_sum += x
+    result[i] = running_sum
   return result
 
 def broadcast_add_vec3(ctr, points):
@@ -348,9 +348,9 @@ def shell_probes_progressive(
 
       i_log.append(i)
       if i>=N_i:
-          assert False, "Too many iterations to get probes"
+        assert False, "Too many iterations to get probes"
       if i>0:
-          print("Going another round..",file=log)
+        print("Going another round..",file=log)
       # End sampling iteration
 
 
@@ -431,10 +431,10 @@ def get_probes(
   else:
     results = []
     for task in task_list:
-        worker_func = task["func"]
-        kwargs = task["kwargs"]
-        result = worker_func(**kwargs)
-        results.append(result)
+      worker_func = task["func"]
+      kwargs = task["kwargs"]
+      result = worker_func(**kwargs)
+      results.append(result)
 
 
   probe_xyz = [result[0] for result in results]
@@ -778,8 +778,8 @@ def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
 
   for chain_id, group in grouped_means.groupby("chain_id"):
       # Your actual variable rolling mean calculation here
-      rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
-      grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
+    rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
+    grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
 
 
   # Merge the updated 'Q-Residue' and 'RollingMean' back into the original DataFrame
@@ -899,12 +899,12 @@ def shell_probes_precalculate_flex(
 
   # Manage log
   if log is None:
-      log = null_out()
+    log = null_out()
 
   # manage selection input
 
   if selection_bool is None:
-      selection_bool = flex.bool(len(sites_cart),True)
+    selection_bool = flex.bool(len(sites_cart),True)
 
 
   # do selection
@@ -1263,7 +1263,7 @@ class KDTreeFlex:
 
   def build_tree(self, indices, points, depth):
     if not indices:
-        return None
+      return None
 
     axis = depth % self.dims
 
@@ -1287,7 +1287,7 @@ class KDTreeFlex:
 
 
     if len(sorted_indices_this_axis) == 0:
-        return None
+      return None
 
     median_idx = len(sorted_indices_this_axis) // 2
     median_index = sorted_indices_this_axis[median_idx]
