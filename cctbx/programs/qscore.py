@@ -31,12 +31,23 @@ class Program(ProgramTemplate):
   """
 
   def validate(self):
-    # test for sane parameters
-    if not (4<=self.params.qscore.n_probes<=512):
-      raise Sorry("Provide n_probe values in the range 4-512")
+    if not self.params.qscore.backend in [
+      "numpy","flex"
+      ]:
+      raise Sorry("Provide one of 'numpy', 'flex'")
+
+    if not self.params.qscore.probe_allocation_method in [
+      "progressive", "precalculate"
+    ]:
+      raise Sorry("Provide one of 'progressive' or 'precalculate'")
+
+    if not (8<=self.params.qscore.n_probes_max<=128) or (
+      not (8<=self.params.qscore.n_probes_max<=128)
+    ):
+      raise Sorry("Provide n_probe values in the range 8-128")
 
     if  not (4<=self.params.qscore.shell_radius_num<=128):
-      raise Sorry("Provide shell_radius_num values in range 4-128")
+      raise SOrry("Provide shell_radius_num values in range 4-128")
 
 
 
@@ -45,50 +56,51 @@ class Program(ProgramTemplate):
     mmm = self.data_manager.get_map_model_manager()
 
     # calculate shells
-    if (len(self.params.qscore.shells) ==0  or
-        self.params.qscore.shells[0] is None):
-        if None in self.params.qscore.shells:
-          self.params.qscore.shells.remove(None)
+    self.shells = []
+    # add a range of shells
+    start = self.params.qscore.shell_radius_start
+    stop = self.params.qscore.shell_radius_stop
+    num = self.params.qscore.shell_radius_num
+    shells = list(np.linspace(
+    start,
+    stop,
+    num,
+    endpoint=True))
 
-        # add a range of shells
-        start = self.params.qscore.shell_radius_start
-        stop = self.params.qscore.shell_radius_stop
-        num = self.params.qscore.shell_radius_num
-        shells = list(np.linspace(
-        start,
-        stop,
-        num,
-        endpoint=True))
-
-        shells = [
-                  0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
-                  1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.
-                  ]
-        for shell in reversed(shells):
-          self.params.qscore.shells.insert(0,shell)
+    for shell in reversed(shells):
+      self.shells.insert(0,shell)
 
 
     # ignore hydrogens
     model = mmm.model()
-    model.add_crystal_symmetry_if_necessary()
     model = model.remove_hydrogens()
 
     # make mmm
     mmm.set_model(model,overwrite=True)
 
     # print output
-    self._print("Running Q-score:")
-    self._print("\nRadial shells (Radii used to place probes):")
-    self._print(",".join([str(round(shell,2)) for shell in shells]))
-    self._print("\n Number of probes per radial shell: "+str(self.params.qscore.n_probes))
-
+    print("Running Q-score:")
+    param_output = group_args(
+      n_probes_max=self.params.qscore.n_probes_max,
+      n_probes_target=self.params.qscore.n_probes_target,
+      rtol=self.params.qscore.rtol,
+      probe_allocation_method=self.params.qscore.probe_allocation_method,
+      selection=self.params.qscore.selection,
+    )
+    print(param_output)
+    print("\nRadial shells used:")
+    print([round(shell,2) for shell in shells])
     # run qscore
     qscore_result= calc_qscore(
         mmm,
         selection=self.params.qscore.selection,
-        n_probes=self.params.qscore.n_probes,
+        n_probes_target=self.params.qscore.n_probes_target,
+        n_probes_max=self.params.qscore.n_probes_max,
+        n_probes_min=self.params.qscore.n_probes_min,
         rtol=self.params.qscore.rtol,
         shells=self.shells,
+        probe_allocation_method = self.params.qscore.probe_allocation_method,
+        backend=backend,
         nproc=self.params.qscore.nproc,
         log=self.logger)
 
@@ -104,66 +116,36 @@ class Program(ProgramTemplate):
       model = model.select(model.selection(self.params.qscore.selection))
     assert model.get_number_of_atoms()==len(df)
 
-
-    self._print("\nFinished running.\n\n Q-score results:")
+    # calculate some metrics
+    print("\nFinished running. Q-score results:")
+    df = self.result.qscore_dataframe
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)
     sel_sc = ~sel_mc
-
-    # Side chains
-    df["Side Chain"] = pd.NA
-    if sel_sc.count(True)>0:
-      q_sc = flex.mean(self.result.qscore_per_atom.select(sel_sc))
-      q_sc = round(q_sc,2)
-      df.loc[sel_sc.as_numpy_array(),"Side Chain"] = np.array(self.result.qscore_per_atom.select(sel_sc))
-    else:
-      q_sc = None
-    df["Side Chain"] = df["Side Chain"].astype("Float64")
-
-    # Main chain
-    df["Main Chain"] = pd.NA
-    if sel_mc.count(True)>0:
-      q_mc = flex.mean(self.result.qscore_per_atom.select(sel_mc))
-      q_mc = round(q_mc,2)
-      df.loc[sel_mc.as_numpy_array(),"Main Chain"] = np.array(self.result.qscore_per_atom.select(sel_mc))
-    else:
-      q_mc = None
-    df["Main Chain"] = df["Main Chain"].astype("Float64")
-    # All
-    q_all = flex.mean(self.result.qscore_per_atom)
-    q_all = round(q_all,2)
-
-    # Per chain
+    q_sc = df["Q-score"].iloc[sel_sc.as_numpy_array()].mean()
+    q_mc = df["Q-score"].iloc[sel_mc.as_numpy_array()].mean()
+    q_all = df["Q-score"].mean()
     q_chains = df.groupby("chain_id").agg('mean',numeric_only=True)
-    q_chains.drop(columns=["id","resseq","x","y","z","Q-Residue"],inplace=True)
-    q_chains = q_chains.round(2)
-    self._print("\n\nBy residue:")
-    self._print("----------------------------------------")
-    pd.set_option('display.max_rows', 20)
-    df.drop(columns=["x","y","z","id","Q-score"],inplace=True)
-    self._print(df.groupby(["model_id","chain_id","resseq","altloc"]).agg("mean"))
-    self._print("\n\nBy chain:")
-    self._print("----------------------------------------")
-    self._print(q_chains)
-    self._print("\n\nAll:")
-    self._print("----------------------------------------")
-    df = pd.DataFrame({"Main Chain":[q_mc],"Side Chain":[q_sc],"Overall":[q_all]})
-    self._print(df)
-
+    q_chains = q_chains[["Q-score"]]
+    print("\nBy residue:")
+    print("----------------------------------------")
+    pd.set_option('display.max_rows', None)
+    print(df)
+    print("\nBy chain:")
+    print("----------------------------------------")
+    print(q_chains)
+    print("\nBy structure:")
+    print("----------------------------------------")
+    print("  Mean side chain Q-score:",round(q_sc,3))
+    print("  Mean main chain Q-score:",round(q_mc,3))
+    print("  Mean overall Q-score:",round(q_all,3))
+    print("  Use --json flat to get json output")
 
     # store in results
     self.result.q_score_chain_df = q_chains
     self.result.q_score_side_chain = q_sc
     self.result.q_score_main_chain = q_mc
     self.result.q_score_overall = q_all
-
-    # write out
-    if self.params.qscore.write_probes:
-      self.write_bild_spheres()
-
-    if self.params.qscore.write_to_bfactor_pdb:
-      self.write_to_bfactor_pdb(model,self.result.qscore_per_atom)
-
 
   def get_results(self):
     return self.result
@@ -174,16 +156,9 @@ class Program(ProgramTemplate):
     }
     return json.dumps(results_dict,indent=2)
 
-  def write_to_bfactor_pdb(self,model,qscore_per_atom):
-    model.set_b_iso(qscore_per_atom)
-
-    with open("qscore_bfactor_field.pdb","w") as fh:
-      fh.write(model.model_as_pdb())
-
-  def write_bild_spheres(self):
     # write bild files
     if self.params.qscore.write_probes:
-      self._print("Writing probe debug files...Using a small selection is recommended",
+      print("Writing probe debug files...Using a small selection is recommended",
             file=self.logger)
       debug_path = Path("qscore_debug")
       debug_path.mkdir(exist_ok=True)
