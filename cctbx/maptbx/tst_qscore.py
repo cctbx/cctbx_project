@@ -256,8 +256,7 @@ test_template ={
            "calc":{},
         },
          "params":{
-            "selection_str":None, # Just calculate q score for a sub-selection
-            "iselection":None,
+            "selection":None, # Just calculate q score for a sub-selection
             "shells": [0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
                        1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2. ],
             "n_probes_target":8,
@@ -311,8 +310,11 @@ def run_test(test):
      q_func = calc_qscore
   elif params.backend == "flex":
      q_func = calc_qscore_flex
-
-  result = q_func(mmm,params,log=null_out(),debug=True)
+  params = convert_group_args_to_dict(params)
+  result = q_func(mmm,
+                  **params,
+                  params=convert_dict_to_group_args(params),
+                  log=null_out())
   test.results.calc = convert_dict_to_group_args(result)
   for key,value_expected in test.results.expected.__dict__.items():
      value_calc= np.array(test.results.calc.__dict__[key])

@@ -10,13 +10,11 @@ from scipy.spatial import KDTree
 import pandas as pd
 
 
-
-
 master_phil_str = """
   qscore
   {
 
-    nproc = 16
+    nproc = 1
         .type = int
         .help = Number of processors to use
         .short_caption = Number of processors to use
@@ -36,9 +34,9 @@ master_phil_str = """
         .help = Min number of radial probes to use
         .short_caption = Number of radial probes to use
         .expert_level = 1
-    selection_str = None
+    selection = None
       .type = str
-      .help = Only test atoms within this selection
+      .help = Only calculate atoms within this selection
       .short_caption = Only test atoms within this selection
       .expert_level = 1
 
@@ -60,11 +58,6 @@ master_phil_str = """
       .short_caption = The number of radial shells (includes start/stop, so minimum 2)
       .expert_level = 1
 
-    shells = None
-      .type = float
-      .multiple = True
-      .help = Explicitly provide radial shells
-
     rtol = 0.9
       .type = float
       .help = Mapq rtol value, the "real" shell radii are r*rtol
@@ -83,11 +76,9 @@ master_phil_str = """
       .help = Choose backend numpy or flex
       .expert_level = 1
 
-    debug = False
+    write_probes = False
       .type = bool
-      .help = Return much more debug information
-      .short_caption = Returns a dictionary with additional debug information
-      .expert_level = 1
+      .help = Write the qscore probes as a .bild file to visualize in Chimera
   }
 
   """
@@ -156,18 +147,18 @@ def generate_probes_flex(ctr, rad, N):
 
 
 # Fast numpy version
-def generate_probes_np(atoms_xyz, rad, n_probes):
+def generate_probes_np(sites_cart, rad, n_probes):
   """
   Generate probes using the same methodology as Pintile mapq, but vectorized
 
-  atoms_xyz: np array of shape (n_atoms,3)
+  sites_cart: np array of shape (n_atoms,3)
   rad: the radius at which to place the probes
   N: the number of probes per atom
 
   Returns:
     probes (np.ndarray): shape (n_atoms,n_probes,3)
   """
-  assert atoms_xyz.ndim == 2 and atoms_xyz.shape[-1]==3, (
+  assert sites_cart.ndim == 2 and sites_cart.shape[-1]==3, (
     "Provide coordinates in shape (n_atoms,3)")
 
   N = n_probes
@@ -187,7 +178,7 @@ def generate_probes_np(atoms_xyz, rad, n_probes):
   probes = rad * np.stack([x, y, z], axis=-1)
 
   # Adjusting location of generated points relative to point ctr
-  probes = probes.reshape(-1, 1, 3) + atoms_xyz.reshape(1, -1, 3)
+  probes = probes.reshape(-1, 1, 3) + sites_cart.reshape(1, -1, 3)
 
   # reshape (n_atoms,n_probes,3)
   probes = probes.swapaxes(0,1)
@@ -206,7 +197,7 @@ def get_probe_mask(
       log=null_out(),
       ):
   """
-  atoms_xyz shape  (n_atoms,3)
+  sites_cart shape  (n_atoms,3)
   probes_xyz shape (n_atoms,n_probes,3)
 
   If expected is None, infer atom indices from probes_xyz
@@ -267,7 +258,7 @@ def get_probe_mask(
 
 
 def shell_probes_progressive(
-      atoms_xyz=None,   # A numpy array of shape (N,3)
+      sites_cart=None,   # A numpy array of shape (N,3)
       atoms_tree=None,  # An atom_xyz scipy kdtree
       selection_bool=None,# Boolean atom selection
       n_probes_target=8,# The desired number of probes per shell
@@ -287,7 +278,7 @@ def shell_probes_progressive(
       "If not providing an atom tree, \
         provide a 2d atom coordinate array to build tree")
 
-    atoms_tree = KDTree(atoms_xyz)
+    atoms_tree = KDTree(sites_cart)
 
   # Manage log
   if log is None:
@@ -295,15 +286,15 @@ def shell_probes_progressive(
 
   # manage selection input
   if selection_bool is None:
-    selection_bool = np.full(len(atoms_xyz),True)
+    selection_bool = np.full(len(sites_cart),True)
 
   # do selection
-  atoms_xyz_sel = atoms_xyz[selection_bool]
-  n_atoms = atoms_xyz_sel.shape[0]
+  sites_cart_sel = sites_cart[selection_bool]
+  n_atoms = sites_cart_sel.shape[0]
 
   all_pts = []  # list of probe arrays for each atom
   for atom_i in range(n_atoms):
-    coord = atoms_xyz_sel[atom_i:atom_i+1]
+    coord = sites_cart_sel[atom_i:atom_i+1]
     outRAD = RAD * rtol
 
 
@@ -363,17 +354,14 @@ def shell_probes_progressive(
       # End sampling iteration
 
 
+
     #Finish working on a single atom
     pts = np.array(pts)  # should be shape (n_probes,3)
-
-    if pts.shape == (0,): # all probes clashed
+    if pts.shape == (0,): # all probes clashed, continue with zero probes
       pts = np.full((n_probes_max,3),np.nan)
-      print(f"Failed to assign any probes to atom: {atom_i}")
-
 
     assert pts.shape == (n_probes_max,3),(
-
-    f"Pts shape must be ({n_probes_max},3), not {pts.shape}). Reached i={i}")
+    f"Pts shape must be ({n_probes_max},3), not {pts.shape})")
 
 
 
@@ -390,48 +378,54 @@ def shell_probes_progressive(
 #### Run shell functions for multiple shells(possibly in parallel)
 ################################################################################
 def get_probes(
-    atoms_xyz=None,
-    sites_cart = None,
+    sites_cart=None,
     atoms_tree = None,
-    params=None,
+    shells = None,
+    n_probes_target=None,
+    n_probes_max=None,
+    n_probes_min=None,
+    rtol=None,
+    nproc=1,
+    backend=None,
     selection_bool_np = None,
-    selection_bool_flex=None,
+    selection_bool_flex = None,
     worker_func=None,
-    log=None):
+    log = null_out()):
+
   """
-  Generate probes for multiple radial shells (params.shells)
+  Generate probes for multiple radial shells (shells)
   """
-  if params.backend == "numpy":
+  if backend == "numpy":
     assert worker_func in [shell_probes_progressive,shell_probes_precalculate]
     if atoms_tree is None:
-      atoms_tree = KDTree(atoms_xyz)
+      atoms_tree = KDTree(sites_cart)
     selection_bool = selection_bool_np
-  elif params.backend == "flex":
+  elif backend == "flex":
     if atoms_tree is None:
-      atoms_tree = KDTreeFlex(atoms_xyz)
+      atoms_tree = KDTreeFlex(sites_cart)
       selection_bool = selection_bool_flex
   else:
-    assert False, f"Unrecognized backend: {params.backend}"
+    assert False, f"Unrecognized backend: {backend}"
 
-  assert params.shells is not None, "Must provide explicit radial shells"
+  assert shells is not None, "Must provide explicit radial shells"
   task_list = [
     {
       "func": worker_func,  # Specify the function to call
       "kwargs": {
-        "atoms_xyz": atoms_xyz,  # A numpy array of shape (N,3)
+        "sites_cart": sites_cart,  # A numpy array of shape (N,3)
         "atoms_tree": atoms_tree,  # An atom_xyz scipy kdtree
         "selection_bool": selection_bool,  # Boolean atom selection
-        "n_probes_target": params.n_probes_target,  # The desired number of probes per shell
-        "n_probes_max": params.n_probes_max,  # The maximum number of probes allowed
-        "n_probes_min": params.n_probes_min,
+        "n_probes_target": n_probes_target,  # The desired number of probes per shell
+        "n_probes_max": n_probes_max,  # The maximum number of probes allowed
+        "n_probes_min": n_probes_min,
         "RAD": RAD,  # The nominal radius of this shell
-        "rtol": params.rtol,  # Multiplied with RAD to get actual radius
+        "rtol": rtol,  # Multiplied with RAD to get actual radius
         "log": log,
       }
-    } for RAD in params.shells
+    } for RAD in shells
   ]
 
-  if params.nproc>1:
+  if nproc>1:
     with Pool() as pool:
       results = pool.map(starmap_wrapper, task_list)
   else:
@@ -446,7 +440,7 @@ def get_probes(
   probe_xyz = [result[0] for result in results]
   probe_mask = [result[1] for result in results]
 
-  if params.backend == "numpy":
+  if backend == "numpy":
     return np.stack(probe_xyz), np.array(probe_mask)
   else:
     return probe_xyz, probe_mask
@@ -455,7 +449,7 @@ def get_probes(
 ################################################################################
 
 def shell_probes_precalculate(
-      atoms_xyz=None,   # A numpy array of shape (N,3)
+      sites_cart=None,   # A numpy array of shape (N,3)
       atoms_tree=None,  # An atom_xyz scipy kdtree
       selection_bool=None,# Boolean atom selection
       n_probes_target=8,# The desired number of probes per shell
@@ -476,7 +470,7 @@ def shell_probes_precalculate(
       provide a 2d atom coordinate array to build tree")
 
     # make atom kdtree
-    atoms_tree = KDTree(atoms_xyz)
+    atoms_tree = KDTree(sites_cart)
 
   # Manage log
   if log is None:
@@ -484,14 +478,14 @@ def shell_probes_precalculate(
 
   # manage selection input
   if selection_bool is None:
-    selection_bool = np.full(len(atoms_xyz),True)
+    selection_bool = np.full(len(sites_cart),True)
 
 
   # do selection
-  atoms_xyz_sel = atoms_xyz[selection_bool]
+  sites_cart_sel = sites_cart[selection_bool]
 
   # get probe coordinates
-  probe_xyz = generate_probes_np(atoms_xyz_sel, RAD, n_probes_max)
+  probe_xyz = generate_probes_np(sites_cart_sel, RAD, n_probes_max)
   n_atoms, n_probes, _ = probe_xyz.shape
   probe_xyz_flat = probe_xyz.reshape(-1,3)
 
@@ -527,30 +521,43 @@ def shell_probes_precalculate(
 
   return probe_xyz, probe_mask
 
-def calc_qscore(mmm,params,log=null_out(),debug=False):
+
+def calc_qscore(mmm,
+                selection=None,
+                shells=None,
+                n_probes_target=8,
+                n_probes_max=16,
+                n_probes_min=4,
+                rtol=0.9,
+                probe_allocation_method=None,
+                backend='numpy',
+                nproc=1,
+                log=null_out(),
+                params=None,# TODO: remove this
+                debug=False):
   """
   Calculate qscore from map model manager
   """
   model = mmm.model()
   # never do hydrogen
-  model = model.select(model.selection("not element H"))
+  model = model.remove_hydrogens()
   mm = mmm.map_manager()
 
 
   # Get atoms
-  atoms_xyz = model.get_sites_cart().as_numpy_array()
+  sites_cart = model.get_sites_cart().as_numpy_array()
 
   # do selection
-  if params.selection_str != None:
-    selection_bool = mmm.model().selection(params.selection_str).as_numpy_array() # boolean
+  if selection != None:
+    selection_bool = mmm.model().selection(selection).as_numpy_array() # boolean
     if selection_bool.sum() ==0:
       print("Finished... nothing selected")
       return {"qscore_per_atom":None}
   else:
-    selection_bool = np.full(len(atoms_xyz),True)
+    selection_bool = np.full(len(sites_cart),True)
 
   # determine worker func
-  if params.probe_allocation_method == "precalculate":
+  if probe_allocation_method == "precalculate":
     worker_func=shell_probes_precalculate
   else:
     worker_func=shell_probes_progressive
@@ -558,9 +565,15 @@ def calc_qscore(mmm,params,log=null_out(),debug=False):
 
   # Get probes and probe mask (probes to reject)
   probe_xyz,probe_mask = get_probes(
-    atoms_xyz=atoms_xyz,
+    sites_cart=sites_cart,
     atoms_tree = None,
-    params=params,
+    shells=shells,
+    n_probes_target=n_probes_target,
+    n_probes_max=n_probes_max,
+    n_probes_min=n_probes_min,
+    rtol=rtol,
+    nproc=nproc,
+    backend=backend,
     selection_bool_np = selection_bool,
     worker_func=worker_func,
     log = log,
@@ -589,7 +602,7 @@ def calc_qscore(mmm,params,log=null_out(),debug=False):
 
   # g vals
   # create the reference data
-  radii = params.shells
+  radii = shells
   M = volume
   maxD = min(M.mean() + M.std() * 10, M.max())
   minD = max(M.mean() - M.std() * 1, M.min())
@@ -624,13 +637,13 @@ def calc_qscore(mmm,params,log=null_out(),debug=False):
   # aggregate per residue
   qscore_df = aggregate_qscore_per_residue(model,q,window=3)
   q = flex.double(q)
-  qscore_per_residue = flex.double(qscore_df["Q-scorePerResidue"].values)
+  qscore_per_residue = flex.double(qscore_df["Q-ResidueRolling"].values)
 
   # Output
-  if debug or params.debug:
+  if debug:
     # Collect debug data
     result = {
-      "atom_xyz":atoms_xyz,
+      "atom_xyz":sites_cart,
       "probe_xyz":probe_xyz,
       "probe_mask":probe_mask,
       "d_vals":d_vals,
@@ -772,7 +785,8 @@ def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
   # Merge the updated 'Q-Residue' and 'RollingMean' back into the original DataFrame
   df = df.merge(grouped_means[['rg_index', 'Q-Residue', 'RollingMean']], on='rg_index', how='left')
   df.drop("rg_index", axis=1, inplace=True)
-  df["Q-scorePerResidue"] = df["RollingMean"].astype(float)
+  df["Q-ResidueRolling"] = df["RollingMean"].astype(float)
+  df.drop(columns=["RollingMean"],inplace=True)
   return df
 
 def variable_neighbors_rolling_mean(series, window=3):
@@ -860,7 +874,7 @@ def cctbx_atoms_to_df(atoms):
 #### CCTBX flex-based functions (precalculate mode)
 ################################################################################
 def shell_probes_precalculate_flex(
-      atoms_xyz=None,   # sites_cart. Flex vec3_double
+      sites_cart=None,   # sites_cart. Flex vec3_double
       atoms_tree=None,  # A KDTree
       selection_bool=None, # Boolean atom selection
       n_probes_target=8,# The desired number of probes per shell
@@ -881,7 +895,7 @@ def shell_probes_precalculate_flex(
       provide a 2d atom coordinate array to build tree")
 
     # make atom kdtree
-    atoms_tree = KDTreeFlex(atoms_xyz)
+    atoms_tree = KDTreeFlex(sites_cart)
 
   # Manage log
   if log is None:
@@ -890,11 +904,11 @@ def shell_probes_precalculate_flex(
   # manage selection input
 
   if selection_bool is None:
-      selection_bool = flex.bool(len(atoms_xyz),True)
+      selection_bool = flex.bool(len(sites_cart),True)
 
 
   # do selection
-  sites_sel = atoms_xyz.select(selection_bool)
+  sites_sel = sites_cart.select(selection_bool)
   n_atoms = len(sites_sel)
 
   # get probe coordinates
@@ -940,7 +954,19 @@ def shell_probes_precalculate_flex(
 
   return probe_xyz, probe_mask
 
-def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
+def calc_qscore_flex(mmm,
+                selection=None,
+                shells=None,
+                n_probes_target=8,
+                n_probes_max=16,
+                n_probes_min=4,
+                rtol=0.9,
+                probe_allocation_method=None,
+                backend='flex',
+                nproc=1,
+                log=null_out(),
+                params=None,# TODO: remove this
+                debug=False):
   """
   Calculate qscore from map model manager
   """
@@ -952,24 +978,31 @@ def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
 
 
   # Get atoms
-  atoms_xyz = model.get_sites_cart()
+  sites_cart = model.get_sites_cart()
 
   # do selection
-  if params.selection_str != None:
-    selection_bool = mmm.model().selection(params.selection_str) # boolean
+  if selection != None:
+    selection_bool = mmm.model().selection(selection) # boolean
     if selection_bool.count(True) ==0:
       print("Finished... nothing selected")
       return {"qscore_per_atom":None}
   else:
-    selection_bool = flex.bool(len(atoms_xyz),True)
+    selection_bool = flex.bool(len(sites_cart),True)
 
 
   # Get probes and probe mask (probes to reject)
+  # Get probes and probe mask (probes to reject)
   probe_xyzs,probe_masks = get_probes(
-    atoms_xyz=atoms_xyz,
+    sites_cart=sites_cart,
     atoms_tree = None,
-    params=params,
-    selection_bool_flex = selection_bool,
+    shells=shells,
+    n_probes_target=n_probes_target,
+    n_probes_max=n_probes_max,
+    n_probes_min=n_probes_min,
+    rtol=rtol,
+    nproc=nproc,
+    backend=backend,
+    selection_bool_np = selection_bool,
     worker_func=shell_probes_precalculate_flex,
     log = log,
     )
@@ -987,7 +1020,7 @@ def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
   B_cctbx = minD_cctbx
   u = 0
   sigma = 0.6
-  x = flex.double(params.shells)
+  x = flex.double(shells)
   y_cctbx = (
       A_cctbx * flex.exp(-0.5 * ((flex.double(x) - u) / sigma) ** 2)
       + B_cctbx
@@ -998,14 +1031,14 @@ def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
   full_flat_mask = flex.bool(n_shells*n_atoms*n_probes)
   # for each "shell row"
   for shell_idx,(probe_xyz,probe_mask) in enumerate(zip(probe_xyzs,probe_masks)):
-    probe_mask.reshape(flex.grid(n_atoms*params.n_probes_max))
+    probe_mask.reshape(flex.grid(n_atoms*n_probes_max))
     probe_xyz_sel = probe_xyz.select(probe_mask)
 
     # get d_vals for a "shell row"
     d_vals = mm.density_at_sites_cart(probe_xyz_sel)
 
     # get reference for the "shell row"
-    g_vals = flex.double(n_atoms*params.n_probes_max,y_cctbx[shell_idx])
+    g_vals = flex.double(n_atoms*n_probes_max,y_cctbx[shell_idx])
     g_vals = g_vals.select(probe_mask)
 
     # calc flat indices for the shell
@@ -1052,13 +1085,13 @@ def calc_qscore_flex(mmm,params,log=null_out(),debug=False):
   qscore_per_atom = flex.double(qscore_per_atom)
 
   qscore_df = aggregate_qscore_per_residue(model,np.array(qscore_per_atom),window=3)
-  qscore_per_residue = flex.double(qscore_df["Q-scorePerResidue"].values)
+  qscore_per_residue = flex.double(qscore_df["Q-ResidueRolling"].values)
 
   # Output
-  if debug or params.debug:
+  if debug:
     # Collect debug data
     result = {
-      "atom_xyz":atoms_xyz,
+      "atom_xyz":sites_cart,
       "probe_xyz":probe_xyzs,
       "probe_mask":probe_masks,
       "d_vals":full_flat_d,
