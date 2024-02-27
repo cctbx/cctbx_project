@@ -42,7 +42,7 @@ def isclose_or_nan(a, b, atol=1e-3):
 
 def test_probe_generation():
   # test the primary points generation function against expected data
-  atoms_xyz = np.array([[ 5.276, 12.488, 16.069],
+  sites_cart = np.array([[ 5.276, 12.488, 16.069],
                     [ 5.649, 13.947, 16.076]])
 
   probes_expected = np.array([[
@@ -64,17 +64,17 @@ def test_probe_generation():
           [ 5.5845, 13.9741, 16.1474],
           [ 5.649 , 13.947 , 16.176 ]]])
   # np
-  probes_xyz = generate_probes_np(atoms_xyz,0.1,8)
+  probes_xyz = generate_probes_np(sites_cart,0.1,8)
   assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
 
   # flex
-  atoms_xyz = flex.vec3_double(atoms_xyz)
-  probes_xyz = np.array(generate_probes_flex(atoms_xyz,0.1,8)).reshape((2,8,3))
+  sites_cart = flex.vec3_double(sites_cart)
+  probes_xyz = np.array(generate_probes_flex(sites_cart,0.1,8)).reshape((2,8,3))
   assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
 
 def test_probe_masking():
   # test the progressive probe masking function against test data
-  atoms_xyz = np.array([
+  sites_cart = np.array([
       [0,0,-1],
       [0,0,1],
   ])
@@ -91,7 +91,7 @@ def test_probe_masking():
     [0,0,0],
     [0,0,0.5]]])
 
-  atom_tree = KDTree(atoms_xyz)
+  atom_tree = KDTree(sites_cart)
 
   calculated_result = get_probe_mask(atom_tree,probes_xyz,r=1.4)
   manual_result = np.array([[ True,  True, False, False],
@@ -104,7 +104,7 @@ def test_probe_masking():
 
 def test_shell_probes():
   # Test full progressive probe generation for a single shell
-  atoms_xyz = np.array([[ 5.276, 12.488, 16.069],
+  sites_cart = np.array([[ 5.276, 12.488, 16.069],
                 [ 5.649, 13.947, 16.076]])
 
   # Test progressive
@@ -132,7 +132,7 @@ def test_shell_probes():
                           [ np.nan,  np.nan,  np.nan]]])
   shell_func = shell_probes_progressive
   probe_xyz, probe_mask = shell_func(
-                      atoms_xyz=atoms_xyz,
+                      sites_cart=sites_cart,
                       atoms_tree = None,
                       selection_bool=None,
                       n_probes_target=8,
@@ -170,7 +170,7 @@ def test_shell_probes():
 
   shell_func = shell_probes_precalculate
   probe_xyz, probe_mask = shell_func(
-                      atoms_xyz=atoms_xyz,
+                      sites_cart=sites_cart,
                       atoms_tree = None,
                       selection_bool=None,
                       n_probes_target=8,
@@ -184,7 +184,7 @@ def test_shell_probes():
   # test precalculate (flex)
   shell_func = shell_probes_precalculate_flex
   probe_xyz,probe_mask  = shell_func(
-                      atoms_xyz=flex.vec3_double(atoms_xyz),
+                      sites_cart=flex.vec3_double(sites_cart),
                       atoms_tree = None,
                       selection_bool=None,
                       n_probes_target=8,
