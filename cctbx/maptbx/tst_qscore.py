@@ -225,7 +225,7 @@ def convert_dict_to_group_args(d):
       converted_items = {k: convert_func(v) for k, v in d.items()}
       return libtbx.group_args(**converted_items)
     else:
-        return d
+      return d
 
   return convert_func(d)
 
@@ -236,7 +236,7 @@ def convert_group_args_to_dict(g):
       converted_items = {k: convert_func(v) for k, v in g.__dict__.items() if not k.startswith('_')}
       return converted_items
     else:
-        return g
+      return g
 
   return convert_func(g)
 
@@ -280,7 +280,7 @@ def run_test(test):
   print("\tModel File:",test.data.model_file)
   print("\tMap:",test.data.map_file)
   if test.data.model_str is not None:
-     print("\tModel Str:\n",test.data.map_file)
+    print("\tModel Str:\n",test.data.map_file)
 
   dm = DataManager()
   assert [test.data.model_file,test.data.model_str].count(None)==1
@@ -298,18 +298,18 @@ def run_test(test):
 
   # get data from file or calculated
   if test.data.map_file is not None:
-     dm.process_real_map_file(test.data.map_file)
-     mm = dm.get_real_map()
-     mmm = map_model_manager(model=model,map_manager=mm)
+    dm.process_real_map_file(test.data.map_file)
+    mm = dm.get_real_map()
+    mmm = map_model_manager(model=model,map_manager=mm)
   else:
-     mmm = map_model_manager(model=model)
-     mmm.generate_map(d_min=2)
+    mmm = map_model_manager(model=model)
+    mmm.generate_map(d_min=2)
 
   params = test.params
   if params.backend == "numpy":
-     q_func = calc_qscore
+    q_func = calc_qscore
   elif params.backend == "flex":
-     q_func = calc_qscore_flex
+    q_func = calc_qscore_flex
   params = convert_group_args_to_dict(params)
   result = q_func(mmm,
                   **params,
@@ -317,8 +317,8 @@ def run_test(test):
                   log=null_out())
   test.results.calc = convert_dict_to_group_args(result)
   for key,value_expected in test.results.expected.__dict__.items():
-     value_calc= np.array(test.results.calc.__dict__[key])
-     assert np.all(isclose_or_nan(value_expected,value_calc)), (
+    value_calc= np.array(test.results.calc.__dict__[key])
+    assert np.all(isclose_or_nan(value_expected,value_calc)), (
 f"Failed test: {test.data.name}\nExpected:\n{value_expected}\nCalc:\n{value_calc}")
   print("Done.\n")
   return convert_group_args_to_dict(test)
@@ -332,7 +332,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   # make test dir
   test_dir = Path("qscore_tst_dir")
   if test_dir.exists():
-     shutil.rmtree(test_dir)
+    shutil.rmtree(test_dir)
   test_dir.mkdir()
 
 
@@ -647,9 +647,8 @@ if (__name__ == "__main__"):
   # Test on some real models
   tests = build_tests()
   for test_name,test in tests.items():
-     test = run_test(test)
+    test = run_test(test)
 
 
   # Test if program template runs, with default phil
   test_program_template(list(tests.values())[-1])
-
