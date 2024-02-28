@@ -13,7 +13,6 @@ from libtbx.utils import null_out
 from cctbx.programs.qscore import Program as QscoreProgram
 
 import numpy as np
-from scipy.spatial import KDTree
 
 
 
