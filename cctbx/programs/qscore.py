@@ -6,7 +6,6 @@ from libtbx.program_template import ProgramTemplate
 from libtbx import group_args
 from cctbx.maptbx.qscore import (
     calc_qscore,
-    calc_qscore_flex,
     cctbx_atoms_to_df,
     write_bild_spheres
 )
@@ -29,19 +28,8 @@ class Program(ProgramTemplate):
   """
 
   def validate(self):
-    if not self.params.qscore.backend in [
-      "numpy","flex"
-      ]:
-      raise Sorry("Provide one of 'numpy', 'flex'")
-
-    if not self.params.qscore.probe_allocation_method in [
-      "progressive", "precalculate"
-    ]:
-      raise Sorry("Provide one of 'progressive' or 'precalculate'")
-
-    if not (8<=self.params.qscore.n_probes_max<=128) or (
-      not (8<=self.params.qscore.n_probes_max<=128)
-    ):
+    # test for sane parameters
+    if not (4<=self.params.qscore.n_probes<=512):
       raise Sorry("Provide n_probe values in the range 8-128")
 
     if  not (4<=self.params.qscore.shell_radius_num<=128):
@@ -81,28 +69,20 @@ class Program(ProgramTemplate):
     # print output
     print("Running Q-score:")
     param_output = group_args(
-      n_probes_max=self.params.qscore.n_probes_max,
-      n_probes_target=self.params.qscore.n_probes_target,
+      n_probes=self.params.qscore.n_probes,
       rtol=self.params.qscore.rtol,
-      probe_allocation_method=self.params.qscore.probe_allocation_method,
       selection=self.params.qscore.selection,
     )
     print(param_output)
     print("\nRadial shells used:")
     print([round(shell,2) for shell in shells])
     # run qscore
-    backend = self.params.qscore.backend
-    calc_func = calc_qscore if backend == "numpy" else calc_qscore_flex
-    qscore_result= calc_func(
+    qscore_result= calc_qscore(
         mmm,
         selection=self.params.qscore.selection,
-        n_probes_target=self.params.qscore.n_probes_target,
-        n_probes_max=self.params.qscore.n_probes_max,
-        n_probes_min=self.params.qscore.n_probes_min,
+        n_probes=self.params.qscore.n_probes,
         rtol=self.params.qscore.rtol,
         shells=self.shells,
-        probe_allocation_method = self.params.qscore.probe_allocation_method,
-        backend=backend,
         nproc=self.params.qscore.nproc,
         log=self.logger)
 
@@ -110,8 +90,12 @@ class Program(ProgramTemplate):
     self.result = group_args(**qscore_result)
 
     # calculate some metrics
-    print("\nFinished running. Q-score results:")
     df = self.result.qscore_dataframe
+    if self.params.qscore.selection is not None:
+      model = model.select(model.selection(self.params.qscore.selection))
+    assert model.get_number_of_atoms()==len(df)
+    print("\nFinished running. Q-score results:")
+
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)
     sel_sc = ~sel_mc
@@ -132,7 +116,8 @@ class Program(ProgramTemplate):
     print("  Mean side chain Q-score:",round(q_sc,3))
     print("  Mean main chain Q-score:",round(q_mc,3))
     print("  Mean overall Q-score:",round(q_all,3))
-    print("  Use --json flat to get json output")
+    print("\n  Use --json flag to get json output")
+
 
     # store in results
     self.result.q_score_chain_df = q_chains

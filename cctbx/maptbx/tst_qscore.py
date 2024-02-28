@@ -5,7 +5,6 @@ import shutil
 from pathlib import Path
 
 from iotbx.data_manager import DataManager
-from cctbx.array_family import flex
 import libtbx
 from libtbx import phil
 from cctbx.maptbx.box import shift_and_box_model
@@ -20,14 +19,8 @@ from scipy.spatial import KDTree
 
 from cctbx.maptbx.qscore import (
   generate_probes_np,
-  generate_probes_flex,
-  get_probe_mask,
-  shell_probes_progressive,
   shell_probes_precalculate,
-  shell_probes_precalculate_flex,
   calc_qscore,
-  calc_qscore_flex,
-  KDTreeFlex
 
 )
 
@@ -63,84 +56,17 @@ def test_probe_generation():
           [ 5.7034, 14.0191, 16.1189],
           [ 5.5845, 13.9741, 16.1474],
           [ 5.649 , 13.947 , 16.176 ]]])
-  # np
   probes_xyz = generate_probes_np(sites_cart,0.1,8)
   assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
 
-  # flex
-  sites_cart = flex.vec3_double(sites_cart)
-  probes_xyz = np.array(generate_probes_flex(sites_cart,0.1,8)).reshape((2,8,3))
-  assert np.all(np.isclose(probes_xyz,probes_expected,atol=1e-3))
 
-def test_probe_masking():
-  # test the progressive probe masking function against test data
-  sites_cart = np.array([
-      [0,0,-1],
-      [0,0,1],
-  ])
-
-  # probes_xyz shape (2,4,3), (n_atoms,n_probes,3)
-  probes_xyz = np.array([
-    [[0,0,-2],
-    [0,0,-0.5],
-    [0,0,0],
-    [0,0,0.5]],
-
-    [[0,0,-2],
-    [0,0,-0.5],
-    [0,0,0],
-    [0,0,0.5]]])
-
-  atom_tree = KDTree(sites_cart)
-
-  calculated_result = get_probe_mask(atom_tree,probes_xyz,r=1.4)
-  manual_result = np.array([[ True,  True, False, False],
-                            [False, False, False,  True]])
-
-
-  assert np.all(calculated_result==manual_result)
 
 
 
 def test_shell_probes():
-  # Test full progressive probe generation for a single shell
   sites_cart = np.array([[ 5.276, 12.488, 16.069],
                 [ 5.649, 13.947, 16.076]])
 
-  # Test progressive
-
-  expected_probes = np.array([[[ 5.276 , 12.488 , 14.569 ],
-                          [ 5.0515, 13.4037, 14.9023],
-                          [ 4.0297, 12.4397, 15.2357],
-                          [ 4.825 , 11.1476, 15.569 ],
-                          [ 6.3669, 11.4721, 15.9023],
-                          [ 4.0466, 12.6981, 16.9023],
-                          [ 5.343 , 11.5476, 17.2357],
-                          [ 5.276 , 12.488 , 17.569 ],
-                          [ np.nan,  np.nan,  np.nan],
-                          [ np.nan,  np.nan,  np.nan]],
-
-                          [[ 5.649 , 13.947 , 14.576 ],
-                          [ 5.4245, 14.8627, 14.9093],
-                          [ 4.4027, 13.8987, 15.2427],
-                          [ 6.7399, 12.9311, 15.9093],
-                          [ 7.0245, 14.5216, 16.2427],
-                          [ 5.6032, 15.3605, 16.576 ],
-                          [ 4.4196, 14.1571, 16.9093],
-                          [ 5.716 , 13.0066, 17.2427],
-                          [ 5.649 , 13.947 , 17.576 ],
-                          [ np.nan,  np.nan,  np.nan]]])
-  shell_func = shell_probes_progressive
-  probe_xyz, probe_mask = shell_func(
-                      sites_cart=sites_cart,
-                      atoms_tree = None,
-                      selection_bool=None,
-                      n_probes_target=8,
-                      n_probes_max=10,
-                      RAD=1.5,
-                      rtol=0.9,
-                      log = null_out())
-  assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
 
   # test precalculate (numpy)
 
@@ -173,25 +99,13 @@ def test_shell_probes():
                       sites_cart=sites_cart,
                       atoms_tree = None,
                       selection_bool=None,
-                      n_probes_target=8,
-                      n_probes_max=10,
+                      n_probes=10,
                       RAD=1.5,
                       rtol=0.9,
                       log = null_out())
 
   assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
 
-  # test precalculate (flex)
-  shell_func = shell_probes_precalculate_flex
-  probe_xyz,probe_mask  = shell_func(
-                      sites_cart=flex.vec3_double(sites_cart),
-                      atoms_tree = None,
-                      selection_bool=None,
-                      n_probes_target=8,
-                      n_probes_max=10,
-                      RAD=1.5,
-                      rtol=0.9,
-                      log = null_out())
 
   # test at single shell
   probe_xyz = np.array(probe_xyz)
@@ -199,20 +113,6 @@ def test_shell_probes():
   assert np.all(isclose_or_nan(probe_xyz,expected_probes,atol=1e-3))
 
 
-def test_kdtree_flex():
-  # make sure the custom kdtree returns same results as scipy
-  points_np = np.random.random((1000,3))*10
-  points_np_query = np.random.random((100,3))*10
-  tree = KDTree(points_np)
-  dists,inds = tree.query(points_np_query,k=3)
-
-  points_flex = flex.vec3_double(points_np)
-  points_flex_query = flex.vec3_double(points_np_query)
-  tree_flex = KDTreeFlex(points_flex)
-  dists_flex,inds_flex = tree_flex.query(points_flex_query,k=3)
-
-  assert np.all(np.isclose(np.array(dists_flex),dists))
-  assert np.all(np.isclose(np.array(inds_flex),inds))
 
 ################################################################################
 #### Test templates for real data
@@ -259,12 +159,8 @@ test_template ={
             "selection":None, # Just calculate q score for a sub-selection
             "shells": [0.0,0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.,
                        1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2. ],
-            "n_probes_target":8,
-            "n_probes_max":16,
-            "n_probes_min":4,
+            "n_probes":8,
             "nproc":4,
-            "probe_allocation_method":None,
-            "backend":None,
             "debug":True,
             "rtol":0.9,
          }
@@ -306,10 +202,8 @@ def run_test(test):
     mmm.generate_map(d_min=2)
 
   params = test.params
-  if params.backend == "numpy":
-    q_func = calc_qscore
-  elif params.backend == "flex":
-    q_func = calc_qscore_flex
+  q_func = calc_qscore
+
   params = convert_group_args_to_dict(params)
   result = q_func(mmm,
                   **params,
@@ -353,9 +247,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["data"]["map_file"] = tst2_map_file
   test["data"]["name"] = "tst2_precalc_numpy"
   test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "numpy"
+  test["params"]["n_probes"] = 32
   expected_qscore_per_atom= np.array([
     0.79852,  0.80609,  0.80133,  0.72103,  0.75883,  0.81456,  0.82049,
     0.77932,  0.77675,  0.78246,  0.84899,  0.71687,  0.77178,  0.82013,
@@ -374,45 +266,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
   tests[test["data"]["name"]] = test
 
-  #tst2 flex precalculate
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = tst2_model_file
-  test["data"]["map_file"] = tst2_map_file
-  test["data"]["name"] = "tst2_precalc_flex"
-  test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "flex"
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
 
-  # tst2 progressive (numpy)
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = tst2_model_file
-  test["data"]["map_file"] = tst2_map_file
-  test["data"]["name"] = "tst2_progressive_numpy"
-  test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 16
-  test["params"]["n_probes_target"] = 8
-  test["params"]["probe_allocation_method"] = "progressive"
-  test["params"]["backend"] = "numpy"
-  expected_qscore_per_atom= np.array([
-    0.81621,  0.79426,  0.83739,  0.67616,  0.75113,  0.81278,  0.75789,
-    0.75623,  0.77865,  0.80018,  0.83847,  0.67525,  0.78909,  0.81843,
-    0.81285,  0.80816,  0.89982,  0.73878,  0.81402,  0.79254,  0.81353,
-    0.81543,  0.64347,  0.75470,  0.84479,  0.80404,  0.77552,  0.75578,
-    0.80234,  0.84508,  0.66298,  0.76894,  0.76924,  0.90342,  0.78303,
-    0.79723,  0.73253,  0.83709,  0.84759,  0.60567,  0.75056,  0.77734,
-    0.89625,  0.85381,  0.74985,  0.69442,  0.80130,  0.82290,  0.57231,
-    0.70518,  0.72775,  0.83440,  0.82770,  0.73152,  0.76289,  0.84503,
-    0.79984,  0.75651,  0.79504,  0.82964,  0.83653,  0.83177,  0.68769,
-    0.79369,  0.83867,  0.67165,  0.78174,  0.85420,  0.73200,  0.82028,
-    0.73856,  0.79636,  0.83043,  0.69672,  0.79881,  0.75317,  0.78247,
-    0.83621,  0.74694,  0.81975,  0.79633,  0.87402,  0.74882,  0.72080,
-    0.87380,  0.74778,
-  ])
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
 
   #5. 1yjp with simulated density
   # precalculated with numpy
@@ -425,9 +279,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["data"]["name"] = "1yjp_precalc_numpy"
   test["data"]["test_dir"] = test_dir
   test["data"]["map_file"] = None
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "numpy"
+  test["params"]["n_probes"] = 32
   expected_qscore_per_atom= np.array([
     0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,
     0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,
@@ -444,43 +296,6 @@ def build_tests(test_dir="qscore_tst_dir"):
   tests[test["data"]["name"]] = test
 
 
-  # precalcualted with flex
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = yjp_model_file
-  test["data"]["name"] = "1yjp_precalc_flex"
-  test["data"]["test_dir"] = test_dir
-  test["data"]["map_file"] = None
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "flex"
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
-
-  # progressive (numpy)
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = yjp_model_file
-  test["data"]["name"] = "1yjp_progressive_numpy"
-  test["data"]["test_dir"] = test_dir
-  test["data"]["map_file"] = None
-  test["params"]["n_probes_max"] = 16
-  test["params"]["n_probes_target"] = 8
-  test["params"]["probe_allocation_method"] = "progressive"
-  test["params"]["backend"] = "numpy"
-  expected_qscore_per_atom= np.array([
-    0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,
-    0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.00000,  0.07689,
-    0.19082,  0.02124,  0.00000,  0.74434,  0.93599,  0.93209,  0.77202,
-    0.91962,  0.91928,  0.96171,  0.91251,  0.91642,  0.36156,  0.31734,
-    0.00000,  0.94018,  0.90381,  0.93852,  0.94966,  0.93188,  0.91575,
-    0.91731,  0.97200,  0.95272,  0.94102,  0.89297,  0.91385,  0.96626,
-    0.89274,  0.91538,  0.96871,  0.96205,  0.93226,  0.89114,  0.92745,
-    0.94155,  0.90361,  0.92891,  0.74236,  0.92431,  0.28466,  0.91468,
-    0.93081,  0.96238,  0.93960,  0.00000,  0.97779,  0.00000,  0.94679,
-    0.97174,  0.89276,  0.90919,
-  ])
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
-
   #6. 1yjp with simulated density and shift and box
   dm = DataManager()
   dm.process_model_file(yjp_model_file)
@@ -496,9 +311,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   #test["data"]["model_file"] = str(boxed_1yjp_path)
   test["data"]["model_str"] = model.model_as_pdb()
   test["data"]["map_file"] = None
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "numpy"
+  test["params"]["n_probes"] = 32
   expected_qscore_per_atom = np.array([
     0.96035,  0.91590,  0.92283,  0.96654,  0.94164,  0.89421,  0.91464,
     0.97026,  0.91649,  0.91408,  0.97073,  0.95491,  0.94386,  0.88791,
@@ -514,17 +327,6 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
   tests[test["data"]["name"]] = test
 
-  # precalculated with flex
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = str(boxed_1yjp_path)
-  test["data"]["name"] = "1yjp_boxed_precalc_flex"
-  test["data"]["test_dir"] = test_dir
-  test["data"]["map_file"] = None
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "flex"
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
 
   #7 tst2 with shift_and_box (numpy,precalculate)
 
@@ -549,9 +351,7 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["data"]["map_file"] = tst2_map_file
   test["data"]["name"] = "tst2_boxed_precalc_numpy"
   test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "numpy"
+  test["params"]["n_probes"] = 32
   expected_qscore_per_atom = np.array([
   0.79852,  0.80609,  0.80133,  0.72103,  0.75883,  0.81456,  0.82049,
   0.77932,  0.77675,  0.78246,  0.84899,  0.71687,  0.77178,  0.82013,
@@ -570,46 +370,6 @@ def build_tests(test_dir="qscore_tst_dir"):
   test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
   tests[test["data"]["name"]] = test
 
-  # tst2, shift_and_box, precalculate, flex
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = str(boxed_tst2_path)
-  test["data"]["map_file"] = tst2_map_file
-  test["data"]["name"] = "tst2_boxed_precalc_flex"
-  test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 32
-  test["params"]["probe_allocation_method"] = "precalculate"
-  test["params"]["backend"] = "flex"
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
-
-  # tst2, shift_and_box, progressive, numpy
-  test = copy.deepcopy(test_template)
-  test["data"]["model_file"] = str(boxed_tst2_path)
-  test["data"]["map_file"] = tst2_map_file
-  test["data"]["name"] = "tst2_boxed_progressive_numpy"
-  test["data"]["test_dir"] = test_dir
-  test["params"]["n_probes_max"] = 16
-  test["params"]["n_probes_target"] = 8
-  test["params"]["probe_allocation_method"] = "progressive"
-  test["params"]["backend"] = "numpy"
-  expected_qscore_per_atom = np.array([
-    0.81621,  0.79426,  0.83739,  0.67616,  0.75113,  0.81278,  0.75789,
-    0.75623,  0.77865,  0.80018,  0.83847,  0.67525,  0.78909,  0.81843,
-    0.81285,  0.80816,  0.89982,  0.73878,  0.81402,  0.79254,  0.81353,
-    0.81543,  0.64347,  0.75470,  0.84479,  0.80404,  0.77552,  0.75578,
-    0.80234,  0.84508,  0.66298,  0.76894,  0.76924,  0.90342,  0.78303,
-    0.79723,  0.73253,  0.83709,  0.84759,  0.60567,  0.75056,  0.77734,
-    0.89625,  0.85381,  0.74985,  0.69442,  0.80130,  0.82290,  0.57231,
-    0.70518,  0.72775,  0.83440,  0.82770,  0.73152,  0.76289,  0.84503,
-    0.79984,  0.75651,  0.79504,  0.82964,  0.83653,  0.83177,  0.68769,
-    0.79369,  0.83867,  0.67165,  0.78174,  0.85420,  0.73200,  0.82028,
-    0.73856,  0.79636,  0.83043,  0.69672,  0.79881,  0.75317,  0.78247,
-    0.83621,  0.74694,  0.81975,  0.79633,  0.87402,  0.74882,  0.72080,
-    0.87380,  0.74778,
-
-  ])
-  test["results"]["expected"]["qscore_per_atom"] = expected_qscore_per_atom
-  tests[test["data"]["name"]] = test
 
 
   return tests
@@ -631,17 +391,12 @@ def test_program_template(test):
 if (__name__ == "__main__"):
 
 
-  #1. test probe generation
+  # test probe generation
   test_probe_generation()
 
-  #2. test probe masking (for progressive)
-  test_probe_masking()
-
-  #3. test single shell probe generation
+  # test single shell probe generation
   test_shell_probes()
 
-  #4. test flex kdtree
-  test_kdtree_flex()
 
 
   # Test on some real models
