@@ -10,7 +10,17 @@
 #include <smtbx/refinement/least_squares_fc_ed_two_beam.h>
 
 
+void SetRefinementProgressListener(ProgressListener l) {
+  smtbx::refinement::least_squares::GetRefinementProgressListener() = l;
+}
+
 namespace smtbx { namespace refinement { namespace least_squares {
+
+  ProgressListener& GetRefinementProgressListener() {
+    static ProgressListener l = 0;
+    return l;
+  }
+
   namespace boost_python {
 
     using namespace boost::python;

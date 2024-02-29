@@ -8,7 +8,7 @@ template<class NormalEquations,
 struct accumulate_reflection_chunk_omp {
   typedef f_calc_function_base<FloatType>
     f_calc_function_base_t;
-
+  builder_base<FloatType>& parent;
   boost::scoped_ptr<smtbx::error> exception_;
   boost::shared_ptr<NormalEquations> normal_equations_ptr;
   NormalEquations& normal_equations;
@@ -30,6 +30,7 @@ struct accumulate_reflection_chunk_omp {
   int max_memory;
 
   accumulate_reflection_chunk_omp(
+    builder_base<FloatType>& parent,
     boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
     cctbx::xray::observations<FloatType> const& reflections,
     MaskData<FloatType> const& f_mask_data,
@@ -46,7 +47,8 @@ struct accumulate_reflection_chunk_omp {
     af::ref<FloatType> weights,
     af::versa<FloatType, af::c_grid<2> >& design_matrix,
     int &max_memory)
-    : normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
+    : parent(parent),
+    normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
     reflections(reflections), f_mask_data(f_mask_data), twp(twp),
     weighting_scheme(weighting_scheme),
     scale_factor(scale_factor),
@@ -92,6 +94,9 @@ struct accumulate_reflection_chunk_omp {
         gradients.resize(size * n_rows, 0);
       }
       for (int i_h = 0; i_h * size < n; i_h++) {
+        if (!parent.OnProgress(n, i_h)) {
+          return;
+        }
         const int start = i_h * size;
         //check whether last chunk is smaller
         if (start + size >= n) {
