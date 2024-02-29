@@ -1,4 +1,3 @@
-
 # TODO reduce to one outlier per residue
 # CDL on by default?
 
@@ -104,6 +103,23 @@ class mp_bonds(validation):
     validation.__init__(self)
     self.n_outliers_large_by_model = {}
     self.n_outliers_small_by_model = {}
+    self.n_outliers_protein_by_model = {}
+    self.n_outliers_na_by_model = {}
+    self.n_outliers_other_by_model = {}
+    self.n_total_protein_by_model = {}
+    self.n_total_na_by_model = {}
+    self.n_total_other_by_model = {}
+    for m in pdb_hierarchy.models():
+      self.n_total_by_model[m.id] = 0
+      self.n_outliers_by_model[m.id] = 0
+      self.n_outliers_small_by_model[m.id] = 0
+      self.n_outliers_large_by_model[m.id] = 0
+      self.n_total_protein_by_model[m.id] = 0
+      self.n_outliers_protein_by_model[m.id] = 0
+      self.n_total_na_by_model[m.id] = 0
+      self.n_outliers_na_by_model[m.id] = 0
+      self.n_total_other_by_model[m.id] = 0
+      self.n_outliers_other_by_model[m.id] = 0
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
@@ -119,28 +135,33 @@ class mp_bonds(validation):
       atom2 = pdb_atoms[proxy.i_seqs[1]].name
       labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
       model_id = labels.model_id
-      if model_id not in self.n_total_by_model.keys():
-        self.n_total_by_model[model_id] = 0
-        self.n_outliers_by_model[model_id] = 0
-        self.n_outliers_small_by_model[model_id] = 0
-        self.n_outliers_large_by_model[model_id] = 0
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
+      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
+        mm_type="PROTEIN"
+        self.n_total_protein_by_model[model_id] += 1
+      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
+        mm_type="NA"
+        self.n_total_na_by_model[model_id] += 1
+      else:
+        mm_type="OTHER"
+        self.n_total_other_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
         self.n_outliers_by_model[model_id] += 1
+        if mm_type == "PROTEIN":
+          self.n_outliers_protein_by_model[model_id] += 1
+        elif mm_type == "NA":
+          self.n_outliers_na_by_model[model_id] += 1
+        else:
+          self.n_outliers_other_by_model[model_id] += 1
         if num_sigmas < 0:
           self.n_outliers_small_by_model[model_id] += 1
         else:
           self.n_outliers_large_by_model[model_id] += 1
-      mm_type="OTHER"
-      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
-        mm_type="PROTEIN"
-      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
-        mm_type="NA"
       if (is_outlier or not outliers_only):
         self.results.append(mp_bond(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
@@ -174,7 +195,13 @@ class mp_bonds(validation):
       summary_results[mod_id] = {"num_outliers": self.n_outliers_by_model[mod_id],
                                  "num_total": self.n_total_by_model[mod_id],
                                  "num_outliers_too_small": self.n_outliers_small_by_model[mod_id],
-                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id]}
+                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id],
+                                 "num_total_protein": self.n_total_protein_by_model[mod_id],
+                                 "num_outliers_protein": self.n_outliers_protein_by_model[mod_id],
+                                 "num_total_na": self.n_total_na_by_model[mod_id],
+                                 "num_outliers_na": self.n_outliers_na_by_model[mod_id],
+                                 "num_total_other": self.n_total_other_by_model[mod_id],
+                                 "num_outliers_other": self.n_outliers_other_by_model[mod_id]}
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
 
@@ -198,6 +225,23 @@ class mp_angles(validation):
     validation.__init__(self)
     self.n_outliers_large_by_model = {}
     self.n_outliers_small_by_model = {}
+    self.n_outliers_protein_by_model = {}
+    self.n_outliers_na_by_model = {}
+    self.n_outliers_other_by_model = {}
+    self.n_total_protein_by_model = {}
+    self.n_total_na_by_model = {}
+    self.n_total_other_by_model = {}
+    for m in pdb_hierarchy.models():
+      self.n_total_by_model[m.id] = 0
+      self.n_outliers_by_model[m.id] = 0
+      self.n_outliers_small_by_model[m.id] = 0
+      self.n_outliers_large_by_model[m.id] = 0
+      self.n_total_protein_by_model[m.id] = 0
+      self.n_outliers_protein_by_model[m.id] = 0
+      self.n_total_na_by_model[m.id] = 0
+      self.n_outliers_na_by_model[m.id] = 0
+      self.n_total_other_by_model[m.id] = 0
+      self.n_outliers_other_by_model[m.id] = 0
     cutoff = 4
     sites_cart = pdb_atoms.extract_xyz()
     flags = geometry_restraints.flags.flags(default=True)
@@ -211,28 +255,34 @@ class mp_angles(validation):
       atom3 = pdb_atoms[proxy.i_seqs[2]].name
       labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
       model_id = labels.model_id
-      if model_id not in self.n_total_by_model.keys():
-        self.n_total_by_model[model_id] = 0
-        self.n_outliers_by_model[model_id] = 0
-        self.n_outliers_small_by_model[model_id] = 0
-        self.n_outliers_large_by_model[model_id] = 0
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
+      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
+        mm_type="PROTEIN"
+        self.n_total_protein_by_model[model_id] += 1
+      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
+        mm_type="NA"
+        self.n_total_na_by_model[model_id] += 1
+      else:
+        mm_type="OTHER"
+        self.n_total_other_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = - restraint.delta / sigma
       is_outlier = (abs(num_sigmas) >= cutoff)
       if is_outlier:
         self.n_outliers += 1
         self.n_outliers_by_model[model_id] += 1
+        if mm_type == "PROTEIN":
+          self.n_outliers_protein_by_model[model_id] += 1
+        elif mm_type == "NA":
+          self.n_outliers_na_by_model[model_id] += 1
+        else:
+          self.n_outliers_other_by_model[model_id] += 1
         if num_sigmas < 0:
           self.n_outliers_small_by_model[model_id] += 1
         else:
           self.n_outliers_large_by_model[model_id] += 1
-      mm_type="OTHER"
-      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
-        mm_type="PROTEIN"
-      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
-        mm_type="NA"
+
       if (is_outlier or not outliers_only):
         self.results.append(mp_angle(
           atoms_info=get_atoms_info(pdb_atoms, proxy.i_seqs),
@@ -266,7 +316,13 @@ class mp_angles(validation):
       summary_results[mod_id] = {"num_outliers": self.n_outliers_by_model[mod_id],
                                  "num_total": self.n_total_by_model[mod_id],
                                  "num_outliers_too_small": self.n_outliers_small_by_model[mod_id],
-                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id]}
+                                 "num_outliers_too_large": self.n_outliers_large_by_model[mod_id],
+                                 "num_total_protein": self.n_total_protein_by_model[mod_id],
+                                 "num_outliers_protein": self.n_outliers_protein_by_model[mod_id],
+                                 "num_total_na": self.n_total_na_by_model[mod_id],
+                                 "num_outliers_na": self.n_outliers_na_by_model[mod_id],
+                                 "num_total_other": self.n_total_other_by_model[mod_id],
+                                 "num_outliers_other": self.n_outliers_other_by_model[mod_id]}
     data['summary_results'] = summary_results
     return json.dumps(data, indent=2)
 
