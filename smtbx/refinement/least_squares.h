@@ -25,13 +25,32 @@
 #include <boost/smart_ptr/scoped_ptr.hpp>
 #include <boost/thread.hpp>
 
+#ifdef HAVE_GCCVISIBILITYPATCH
+#define DllExport __attribute__ ((visibility("default")))
+#else
+#ifdef _MSC_VER
+#define DllExport   __declspec( dllexport )
+#endif
+#ifdef __BORLANDC__
+#define DllExport __export
+#endif
+#ifdef __GNUC__
+#define DllExport
+#endif
+#endif
+
+// returns false to interrupt, true to continue
+typedef bool (*ProgressListener)(size_t max, size_t pos);
+
 namespace smtbx { namespace refinement { namespace least_squares {
+  ProgressListener& GetRefinementProgressListener();
 
   namespace lstbx = scitbx::lstbx;
 
   template <typename FloatType>
   class builder_base {
   public:
+    builder_base() {}
     virtual ~builder_base() {}
     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const = 0;
     virtual bool has_design_matrix() const = 0;
@@ -62,6 +81,16 @@ namespace smtbx { namespace refinement { namespace least_squares {
       return true;
 #endif
       return false;
+    }
+    bool OnProgress(size_t max, size_t pos) const {
+      ProgressListener l = GetRefinementProgressListener();
+      if (l != 0) {
+        bool res = (*l)(max, pos);
+        if (!res) {
+          throw smtbx::error("external_interrupt");
+        }
+      }
+      return true;
     }
   private:
     static int& available_threads_var() {
@@ -112,9 +141,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       fc_cr(fc_cr),
       objective_only(objective_only),
       may_parallelise(may_parallelise),
+      built(false),
       use_openmp(use_openmp),
       max_memory(max_memory),
-      built(false),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
       weights_(reflections.size()),
@@ -147,9 +176,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       fc_cr(fc_cr),
       objective_only(objective_only),
       may_parallelise(may_parallelise),
+      built(false),
       use_openmp(use_openmp),
       max_memory(max_memory),
-      built(false),
       f_calc_(reflections.size()),
       observables_(reflections.size()),
       weights_(reflections.size()),
@@ -191,6 +220,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
            */
           normal_equations_ptr_t local_NE(new NormalEquations(normal_equations.n_parameters()));
           accumulate_reflection_chunk_omp_t job(
+            *this,
             local_NE,
             reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
             one_miller_index_fcalc_ptr_t(&f_calc_function, null_deleter()),
@@ -219,6 +249,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
             new NormalEquations(normal_equations.n_parameters()));
           accumulate_reflection_chunk_ptr_t accumulator(
             new accumulate_reflection_chunk_t(
+              *this,
               scheduler,
               chunk_normal_equations,
               reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
@@ -245,6 +276,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       else {
         Scheduler scheduler(reflections_.size());
         accumulate_reflection_chunk_t job(
+          *this,
           scheduler,
           normal_equations_ptr_t(&normal_equations, null_deleter()),
           reflections_, f_mask_data, twp, weighting_scheme, scale_factor,
@@ -321,6 +353,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
     template<class NormalEquations,
       template<typename> class WeightingScheme>
     struct accumulate_reflection_chunk {
+      builder_base<FloatType>& parent;
       Scheduler& scheduler;
       boost::scoped_ptr<smtbx::error> exception_;
       boost::shared_ptr<NormalEquations> normal_equations_ptr;
@@ -341,6 +374,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::ref<FloatType> weights;
       af::versa<FloatType, af::c_grid<2> > &design_matrix;
       accumulate_reflection_chunk(
+        builder_base<FloatType>& parent,
         Scheduler& scheduler,
         boost::shared_ptr<NormalEquations> const& normal_equations_ptr,
         cctbx::xray::observations<FloatType> const &reflections,
@@ -357,7 +391,8 @@ namespace smtbx { namespace refinement { namespace least_squares {
         af::ref<FloatType> observables,
         af::ref<FloatType> weights,
         af::versa<FloatType, af::c_grid<2> > &design_matrix)
-      : scheduler(scheduler),
+      : parent(parent),
+        scheduler(scheduler),
         normal_equations_ptr(normal_equations_ptr), normal_equations(*normal_equations_ptr),
         reflections(reflections), f_mask_data(f_mask_data), twp(twp),
         weighting_scheme(weighting_scheme),
@@ -384,6 +419,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
             }
             for (int i = 0; i < ch.size; i++) {
               int i_h = ch.idx + i;
+              if (!parent.OnProgress(scheduler.count, i_h)) {
+                return;
+              }
               miller::index<> const& h = reflections.index(i_h);
               const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
               if (f_mask_data.size()) {
@@ -601,6 +639,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
 
 }}}
-
+extern "C" DllExport void SetRefinementProgressListener(ProgressListener listener);
 
 #endif // GUARD
