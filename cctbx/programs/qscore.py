@@ -30,15 +30,15 @@ class Program(ProgramTemplate):
   def validate(self):
     # test for sane parameters
     if not (4<=self.params.qscore.n_probes<=512):
-      raise Sorry("Provide n_probe values in the range 8-128")
+      raise Sorry("Provide n_probe values in the range 4-512")
 
     if  not (4<=self.params.qscore.shell_radius_num<=128):
-      raise SOrry("Provide shell_radius_num values in range 4-128")
+      raise Sorry("Provide shell_radius_num values in range 4-128")
 
 
 
   def run(self):
-    print("Running")
+    self._print("Running")
 
     # get initial data
     mmm = self.data_manager.get_map_model_manager()
@@ -49,11 +49,7 @@ class Program(ProgramTemplate):
     start = self.params.qscore.shell_radius_start
     stop = self.params.qscore.shell_radius_stop
     num = self.params.qscore.shell_radius_num
-    shells = list(np.linspace(
-    start,
-    stop,
-    num,
-    endpoint=True))
+    shells = list(np.linspace(start,stop,num,endpoint=True))
 
     for shell in reversed(shells):
       self.shells.insert(0,shell)
@@ -67,15 +63,15 @@ class Program(ProgramTemplate):
     mmm.set_model(model,overwrite=True)
 
     # print output
-    print("Running Q-score:")
+    self._print("Running Q-score:")
     param_output = group_args(
       n_probes=self.params.qscore.n_probes,
       rtol=self.params.qscore.rtol,
       selection=self.params.qscore.selection,
     )
-    print(param_output)
-    print("\nRadial shells used:")
-    print([round(shell,2) for shell in shells])
+    self._print(param_output)
+    self._print("\nRadial shells used:")
+    self._print([round(shell,2) for shell in shells])
     # run qscore
     qscore_result= calc_qscore(
         mmm,
@@ -94,7 +90,7 @@ class Program(ProgramTemplate):
     if self.params.qscore.selection is not None:
       model = model.select(model.selection(self.params.qscore.selection))
     assert model.get_number_of_atoms()==len(df)
-    print("\nFinished running. Q-score results:")
+    self._print("\nFinished running. Q-score results:")
 
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)

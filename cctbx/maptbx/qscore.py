@@ -124,7 +124,7 @@ def get_probes(
   """
   Generate probes for multiple radial shells (shells)
   """
-
+  # Create before multiprocessing
   atoms_tree = KDTree(sites_cart)
 
 
@@ -181,9 +181,7 @@ def shell_probes_precalculate(
   if not atoms_tree:
     assert atoms_tree is None, ("If not providing an atom tree,\
       provide a 2d atom coordinate array to build tree")
-
-    # make atom kdtree
-    atoms_tree = KDTree(sites_cart)
+    assert atoms_tree is not None
 
   # Manage log
   if log is None:
@@ -233,7 +231,7 @@ def shell_probes_precalculate(
     if n_probes_per_atom.min() >= n_probes_min:
       print(
       f"Some atoms have less than {n_probes_min} probes. \
-          ({len(problematic_probes)}). Consider raising n_probes")
+          ({len(problematic_probes)}). Consider raising n_probes",file=log)
 
   return probe_xyz, probe_mask
 
@@ -245,7 +243,6 @@ def calc_qscore(mmm,
                 rtol=0.9,
                 nproc=1,
                 log=null_out(),
-                params=None,# TODO: remove this
                 debug=False):
   """
   Calculate qscore from map model manager
@@ -263,7 +260,7 @@ def calc_qscore(mmm,
   if selection != None:
     selection_bool = mmm.model().selection(selection).as_numpy_array() # boolean
     if selection_bool.sum() ==0:
-      print("Finished... nothing selected")
+      print("Finished... nothing selected",file=log)
       return {"qscore_per_atom":None}
   else:
     selection_bool = np.full(len(sites_cart),True)
@@ -298,8 +295,6 @@ def calc_qscore(mmm,
   # interpolate
   volume = mm.map_data().as_numpy_array()
   voxel_size = mm.pixel_sizes()
-  # masked_density = trilinear_interpolation(
-  #    volume, masked_probe_xyz_flat, voxel_size=voxel_size)
   masked_density = mm.density_at_sites_cart(
     flex.vec3_double(masked_probe_xyz_flat)).as_numpy_array()
 
@@ -341,7 +336,6 @@ def calc_qscore(mmm,
   q = np.around(q,4)
 
   # aggregate per residue
-
   model = model.select(flex.bool(selection_bool))
   qscore_df = aggregate_qscore_per_residue(model,q,window=3)
   q = flex.double(q)
@@ -367,49 +361,6 @@ def calc_qscore(mmm,
     "qscore_dataframe":qscore_df
     }
   return result
-
-
-
-def trilinear_interpolation(voxel_grid, coords, voxel_size=None, offset=None):
-  """Numpy trilinear interpolation"""
-  assert voxel_size is not None,(
-      "Provide voxel size as an array or single value")
-
-  # Apply offset if provided
-  if offset is not None:
-    coords = coords - offset
-
-  # Transform coordinates to voxel grid index space
-  index_coords = coords / voxel_size
-
-  # Split the index_coords array into three arrays: x, y, and z
-  x, y, z = index_coords.T
-
-  # Truncate to integer values
-  x0, y0, z0 = np.floor([x, y, z]).astype(int)
-  x1, y1, z1 = np.ceil([x, y, z]).astype(int)
-
-  # Ensure indices are within grid boundaries
-  x0, y0, z0 = np.clip([x0, y0, z0], 0, voxel_grid.shape[0]-1)
-  x1, y1, z1 = np.clip([x1, y1, z1], 0, voxel_grid.shape[0]-1)
-
-  # Compute weights
-  xd, yd, zd = [arr - arr.astype(int) for arr in [x, y, z]]
-
-  # Interpolate along x
-  c00 = voxel_grid[x0, y0, z0]*(1-xd) + voxel_grid[x1, y0, z0]*xd
-  c01 = voxel_grid[x0, y0, z1]*(1-xd) + voxel_grid[x1, y0, z1]*xd
-  c10 = voxel_grid[x0, y1, z0]*(1-xd) + voxel_grid[x1, y1, z0]*xd
-  c11 = voxel_grid[x0, y1, z1]*(1-xd) + voxel_grid[x1, y1, z1]*xd
-
-  # Interpolate along y
-  c0 = c00*(1-yd) + c10*yd
-  c1 = c01*(1-yd) + c11*yd
-
-  # Interpolate along z
-  c = c0*(1-zd) + c1*zd
-
-  return c
 
 
 def rowwise_corrcoef(A, B, mask=None):
@@ -463,7 +414,6 @@ def starmap_wrapper(task):
 def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
   # assign residue indices to each atom
 
-  model = model.select(model.selection("not element H"))
   atoms = model.get_atoms()
   res_seqs = [atom.parent().parent().resseq_as_int() for atom in atoms]
   chain_ids = [atom.parent().parent().parent().id for atom in atoms]
