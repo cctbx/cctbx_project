@@ -111,24 +111,8 @@ repository. The tests include adding flip movers in both cases and then running 
 the reduce2 and original reduce outputs and then compares the total scores to see which is better.
 
 The following files were tested, resulting in the same or better scores for most. The ones with worse
-scores point to a set of outstanding issues with hydrogen placement that are still being investigated.
-- 1bti: Reduce2 better.
-- 1crn: Reduce2 better.
-- 1ehz: Reduce2 better.
-- 1otf: Reduce2 better.
-- 1pq7_fragment: Same.
-- 1ubq-nh3_test: **Reduce2 worse**.
-- 1xso: Reduce2 better.
-- 1yk4_snip: Reduce2 better.
-- 2mbw_fragment: **Reduce2 worse**.
-- 3cp5_fragment: Reduce2 better.
-- 4fen: Reduce2 better.
-- 5dka_fragment: Reduce2 better.
-- 6xhv: Reduce2 better.
-- 6t5h_fragment: Reduce2 better.
-- 6tte_fragment: **Reduce2 worse**.
-- 6vw1_fragment: **Reduce2 worse**.
-- 7c31: Reduce2 better.
+scores appear to be due to hydrogen placement difference for non-movable hydrogens where Reduce2 is
+using more-correct angles that sometimes have lower scores in Probe2 but are nonetheless more accurate.
 
 Additional tests were performed using the **comparison_file** command-line option to compare the
 behavior of reduce2 with original reduce on a Mover-by-Mover basis. 3VYK was studied along
@@ -136,9 +120,9 @@ with 1DFU. These tests turned up other issues that are being investigated. The 1
 also studied, which has 164 Movers; the overall score was 75 higher for Reduce2, issues were
 created (and then resolved) for individual residues that were significantly lower.
 
-As of 7/21/2023, the issues under investigation are described in the status and issues document at
+As of 2/29/2024, the issues under investigation are described in the status and issues document at
 https://docs.google.com/document/d/1ogzS6QlBnPJRGU2CNzHvw0KhV8E5fXdwO1TwUEM7GQc/edit?usp=sharing 
 which is being used to track ongoing issues. The major issues are:
-- Some hydrogens are being placed improperly (sometimes too many sometimes too few).
+- Ionic bonds are not being handled properly, causing flip Movers to be adjustable near ions.
 - The restraints information for many files in the PDB is not available, so many files cannot be run.
 - The mostly-Python Reduce2 is significantly slower than the original C++ reduce.
