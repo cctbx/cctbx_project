@@ -591,6 +591,15 @@ def add_terminal_hydrogens_threes(hierarchy,
       if rc: additional_hydrogens.append(rc)
   return additional_hydrogens
 
+def _check_for(atom_holder, resname, name):
+  for atom in atom_holder.atoms():
+    if atom.name.strip()!=name.strip(): continue
+    p1 = atom.parent()
+    if p1.resname.strip()!=resname.strip(): continue
+    print(atom.quote(), resname, name)
+    return True
+  return False
+
 def add_terminal_hydrogens_via_residue_groups(hierarchy,
                                               geometry_restraints_manager,
                                               terminate_all_N_terminals=False,
@@ -600,6 +609,9 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
                                               retain_original_hydrogens=True,
                                               verbose=False,
                                               ):
+  # assert not _check_for(hierarchy, '0QS', 'HC')
+  from mmtbx.ligands.hierarchy_utils import get_bonds_as_dict
+  bonds=get_bonds_as_dict(geometry_restraints_manager)
   additional_hydrogens = []
   for residue_group, start, end in generate_residue_group_with_start_and_end(
     hierarchy,
@@ -618,6 +630,7 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
       else:
         rc = add_n_terminal_hydrogens_to_residue_group(
           residue_group,
+          bonds=bonds,
           use_capping_hydrogens=use_capping_hydrogens,
           append_to_end_of_model=append_to_end_of_model,
           retain_original_hydrogens=retain_original_hydrogens,
@@ -628,6 +641,7 @@ def add_terminal_hydrogens_via_residue_groups(hierarchy,
       # assert ptr==0
       rc = add_c_terminal_oxygens_to_residue_group(
         residue_group,
+        bonds=bonds,
         use_capping_hydrogens=use_capping_hydrogens,
         append_to_end_of_model=append_to_end_of_model,
       )
