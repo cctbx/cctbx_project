@@ -1530,10 +1530,8 @@ def assess_cryoem_errors(
     cart_max[i] = min(cart_max[i],ucpars[i]-spacings[i])
   min_box_width = flex.min(cart_max - cart_min)
   if min_box_width < 2*(radius+padding):
-    # Probably better to reduce boundary width than radius
-    new_boundary_to_smoothing_ratio = max(1.5, (min_box_width/2.-radius)/d_min)
-    radius_check = min_box_width/2. - new_boundary_to_smoothing_ratio * d_min
-    if radius_check < 0.8*radius: # Allowable sphere would be too small
+    radius_check = min_box_width/2. - padding
+    if radius_check < 0.8*radius: # Allowable sphere would be too small to consider
       print("\nModel sphere has radius of ",radius, file=log)
       print("Sphere that fits where requested has radius of ",radius_check, file=log)
       raise Sorry("Target sphere too near edge of map")
@@ -1541,7 +1539,6 @@ def assess_cryoem_errors(
       print("\nWARNING: Model sphere radius reduced from ",radius,
             " to ",radius_check," to stay within map", file=log)
       radius = radius_check
-      boundary_to_smoothing_ratio = new_boundary_to_smoothing_ratio
 
   cs = mmm.crystal_symmetry()
   uc = cs.unit_cell()
