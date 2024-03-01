@@ -1535,7 +1535,7 @@ def assess_cryoem_errors(
       print("\nModel sphere has radius of ",radius, file=log)
       print("Sphere that fits where requested has radius of ",radius_check, file=log)
       raise Sorry("Target sphere too near edge of map")
-    elif radius_check < radius:
+    elif radius_check < radius*0.99:
       print("\nWARNING: Model sphere radius reduced from ",radius,
             " to ",radius_check," to stay within map", file=log)
       radius = radius_check
