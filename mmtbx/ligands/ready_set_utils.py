@@ -106,7 +106,9 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     if ag.get_atom(h): h_count+=1
     if ag.get_atom(h.replace('H', 'D')): d_count+=1
   number_of_hydrogens=3
+  if verbose: print('number_of_hydrogens',number_of_hydrogens)
   if use_capping_hydrogens:
+    if verbose: print('use_capping_hydrogens...')
     number_of_hydrogens-=1
     #if ag.atoms()[0].parent().resname=='PRO':
     #  number_of_hydrogens=-1
@@ -124,8 +126,8 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
         ba = _get_atom_with_i_seq(ag, i_seq)
         if not ba.element_is_hydrogen():
           number_of_heavy+=1
-      else:
-        number_of_heavy+=1
+      # else:
+      #   number_of_heavy+=1
     if number_of_heavy==2:
       number_of_hydrogens-=2
     if verbose: print('number_of_heavy', number_of_heavy)
