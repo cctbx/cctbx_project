@@ -1,3 +1,9 @@
+2024.2
+======
+
+* Improved handling of writing models in mmCIF or PDB formats
+* Speedups to reduce2 and probe2
+
 2024.1
 ======
 
