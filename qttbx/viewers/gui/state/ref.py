@@ -31,7 +31,7 @@ class Ref:
   The fundamental object in the app.
   """
 
-
+  _class_label_name = ""
 
   def __init__(self,data: DataClassBase,style: Optional[Style] = None, show: bool =True):
     self._data = data
@@ -154,7 +154,18 @@ class Ref:
   @property
   def label(self):
     if self._label is None:
-      self._label = self._truncate_string(f"{self.__class__.__name__} {self.id}")
+      if hasattr(self.data,"label") and self.data.label is not None:
+        self._label = self.data.label
+
+      elif hasattr(self.data,"filename") and self.data.filename is not None:
+        try:
+          # if key is a path, get the stem
+          self._label = self._truncate_string(Path(self.data.filename).name)
+        except:
+          self._label = self._truncate_string(self.data.filename)
+      else:
+        self._label = self._class_label_name
+
     return self._label
 
   @label.setter
@@ -202,6 +213,7 @@ class Ref:
 
 
 class ModelRef(Ref):
+  _class_label_name = "model"
   def __init__(self,data: MolecularModelData, style: Optional[Style] = None):
     super().__init__(data=data,style=style)
     self._mol = None
@@ -239,23 +251,23 @@ class ModelRef(Ref):
   @property
   def mol(self):
     if self._mol is None:
-      mol = MolDF.from_mmtbx_model(self.model)
+      mol = MolDF.from_mmtbx_model(self.model,insert_defaults=False)
       self._mol = mol
     return self._mol
 
-  @property
-  def label(self):
-    if self._label is None:
-      if self.data.filename is not None:
-        try:
-          # if key is a path, get the stem
-          self._label = self._truncate_string(Path(self.data.filename).name)
-        except:
-          self._label = self._truncate_string(self.data.filename)
-      else:
-        self._label = super().label
+  # @property
+  # def label(self):
+  #   if self._label is None:
+  #     if self.data.filename is not None:
+  #       try:
+  #         # if key is a path, get the stem
+  #         self._label = self._truncate_string(Path(self.data.filename).name)
+  #       except:
+  #         self._label = self._truncate_string(self.data.filename)
+  #     else:
+  #       self._label ="model"
 
-    return self._label
+  #   return self._label
 
   @property
   def model_ref(self):
@@ -270,6 +282,7 @@ class ModelRef(Ref):
 
 
 class MapRef(Ref):
+  _class_label_name = 'map'
   def __init__(self,data: RealSpaceMapData, model_ref: Optional[ModelRef] = None,style: Optional[Style] = None):
     super().__init__(data=data,style=style)
     self._model_ref = model_ref
@@ -288,25 +301,26 @@ class MapRef(Ref):
   def model_ref(self,value):
     self._model_ref = value
 
-  @property
-  def label(self):
-    if self._label is None:
-      if self.data.filename is not None:
-        try:
-          # if key is a path, get the stem
-          self._label = self._truncate_string(Path(self.data.filename).name)
-        except:
-          self._label = self._truncate_string(self.data.filename)
-      else:
-        self._label = super().label
+  # @property
+  # def label(self):
+  #   if self._label is None:
+  #     if self.data.filename is not None:
+  #       try:
+  #         # if key is a path, get the stem
+  #         self._label = self._truncate_string(Path(self.data.filename).name)
+  #       except:
+  #         self._label = self._truncate_string(self.data.filename)
+  #     else:
+  #       self._label = "map"
 
-    return self._label
+  #   return self._label
 
   @property
   def query(self):
     return None
 
 class SelectionRef(Ref):
+  _class_label_name = 'selection'
   def __init__(self,data: SelectionQuery,model_ref: ModelRef,  show: Optional[bool] = True):
     assert show is not None, "Be explicit about whether to show selection ref in list of selections or not"
     assert ModelRef is not None, "Selection Ref cannot exist without reference model"
@@ -354,6 +368,7 @@ class SelectionRef(Ref):
 
 
 class RestraintRef(Ref):
+  _class_label_name = 'restraint'
   def __init__(self,data: Restraint, model_ref: ModelRef):
     self._selection_ref = None
     self.model_ref = model_ref
@@ -368,6 +383,7 @@ class RestraintRef(Ref):
 
 
 class RestraintsRef(Ref):
+  _class_label_name = 'restraint'
   def __init__(self,data: Restraints, model_ref: ModelRef):
     super().__init__(data=data,style=model_ref.style)
     self.model_ref = model_ref
@@ -423,6 +439,7 @@ class RestraintsRef(Ref):
 #       self.model_ref.results["qscore"] = self
 
 class CifFileRef(Ref):
+  _class_label_name = 'file'
   def __init__(self,data: CifFileData):
     super().__init__(data=data)
 
@@ -430,16 +447,16 @@ class CifFileRef(Ref):
   def _connections(self):
     self.state.signals.ciffile_change.connect(self._set_active_ref)
 
-  @property
-  def label(self):
-    if self._label is None:
-      if self.data.filename is not None:
-        try:
-          # if key is a path, get the stem
-          self._label = self._truncate_string(Path(self.data.filename).name)
-        except:
-          self._label = self._truncate_string(self.data.filename)
-      else:
-        self._label = super().label
+  # @property
+  # def label(self):
+  #   if self._label is None:
+  #     if self.data.filename is not None:
+  #       try:
+  #         # if key is a path, get the stem
+  #         self._label = self._truncate_string(Path(self.data.filename).name)
+  #       except:
+  #         self._label = self._truncate_string(self.data.filename)
+  #     else:
+  #       self._label = "file"
 
-    return self._label
+  #   return self._label

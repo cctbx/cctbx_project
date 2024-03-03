@@ -440,7 +440,6 @@ class MolstarViewer(ModelViewer):
   #   self.send_command(js_str,callback=callback)
 
   def _load_map_build_js(self,volume_id=None,model_id=None):
-    iso = 0.5 # TODO: sane default
     assert volume_id is not None, "At this state, maps must already have a ref id in the volume streamer"
     assert model_id is not None, "Maps cannot be loaded without an accompanying model"
     url_server =self.volume_streamer.url
@@ -540,7 +539,7 @@ class MolstarViewer(ModelViewer):
   # Volume ISO
   def set_iso(self,volume_id,value):
     # volume_id here is local id
-    params = '{"entry":{"name":"'+volume_id+'","params":{"view":{"name":"camera-target","params":{"radius":5,"selectionDetailLevel":0,"isSelection":false,"bottomLeft":[6.000999927520752,6.004000186920166,6.011000156402588],"topRight":[30.89900016784668,11.321000099182129,18.44099998474121]}},"detailLevel":0,"channels":{"em":{"isoValue":{"kind":"absolute","absoluteValue":'+str(value)+'},"color":6524815,"wireframe":false,"opacity":0.3}}}}}'
+    params = '{"entry":{"name":"'+volume_id+'","params":{"view":{"name":"camera-target","params":{"radius":5,"selectionDetailLevel":0,"isSelection":false,"bottomLeft":[6.000999927520752,6.004000186920166,6.011000156402588],"topRight":[30.89900016784668,11.321000099182129,18.44099998474121]}},"detailLevel":0,"channels":{"em":{"isoValue":{"kind":"absolute","absoluteValue":'+str(value)+'},"color":6524815,"wireframe":false,"opacity":0.5}}}}}'
     command = f"""
     const volumeEntry = {self.plugin_prefix}.phenix.getVolumeEntry('{volume_id}');
     volumeEntry.source.params.isoValue.absoluteValue = {value};

@@ -21,6 +21,7 @@ class MapEntryController(ScrollEntryController):
     # Signals
     self.state.signals.map_change.connect(self.handle_map_change)
 
+
   def handle_map_change(self,ref):
     if ref is None or ref.id != self.ref.id:
       self.view.active_toggle.is_checked = False
@@ -67,6 +68,7 @@ class MapListController(ScrollableListController):
 
     # update list
     self.state.signals.map_change.connect(self.update)
+    self.state.signals.update.connect(self.update)
 
   def showFileDialog(self):
     home_dir = os.path.expanduser("~")  # Cross-platform home directory
@@ -85,3 +87,5 @@ class MapListController(ScrollableListController):
           entry_view = MapEntryView()
           entry_controller = MapEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)
+          if ref == self.state.active_map_ref or len(self.state.references_map)==1:
+            entry_controller.active = True # display radio button

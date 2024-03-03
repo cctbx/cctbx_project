@@ -219,13 +219,17 @@ class MolstarController(Controller):
 
   def load_model(self,filename=None,label=None,format='pdb'):
     if filename is not None:
+      if label is None:
+        label = filename
       # make a ref first
       ref = self.state.add_ref_from_model_file(filename=filename,label=label,format=format)
       self.load_model_from_ref(ref,label=label,format=format)
 
   # Maps
-  def load_map(self,filename=None,volume_id=None,model_id=None):
-    ref = self.state.add_ref_from_map_file(filename=filename,volume_id=volume_id,model_id=model_id)
+  def load_map(self,filename=None,volume_id=None,model_id=None,label=None):
+    if volume_id is None:
+      volume_id = filename
+    ref = self.state.add_ref_from_map_file(filename=filename,volume_id=volume_id,model_id=model_id,label=label)
     if ref.model_ref is None:
       if self.state.active_model_ref is None:
         if len(self.state.references_model)>0:

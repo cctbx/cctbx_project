@@ -301,7 +301,7 @@ class PhenixMolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Maps
 
-  def load_map(self,filename=None,volume_id=None,model_id=None):
+  def load_map(self,filename=None,volume_id=None,model_id=None,label=None):
     """
     Load a map from disk.
     """
@@ -312,6 +312,7 @@ class PhenixMolstarViewer(ModelViewer):
         "filename":filename,
         "volume_id":volume_id,
         "model_id":model_id,
+        'label':label,
       }
     }
     self.send_command(command)

@@ -26,13 +26,14 @@ class MolecularModelData(DataClassBase):
         cif_data = CifFileData(filepath = self.filepath)
         self.cif_data = cif_data
 
-    if self.filename is None:
-       self.filename = "model_"+str(id(self))
+    # if self.filename is None:
+    #    self.filename = "model_"+str(id(self))
 
 
 
 @dataclass
 class RealSpaceMapData(DataClassBase):
+  label: Optional[str] = None
   filepath: Optional[str] = None
   filename: Optional[str] = None
   map_manager: Optional[object] = None

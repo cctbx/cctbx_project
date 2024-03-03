@@ -5,6 +5,7 @@ The origin of any signal related to changes of state.
 from pathlib import Path
 import json
 import time
+import os
 from collections import defaultdict
 
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
@@ -35,6 +36,7 @@ class StateSignals(QObject):
   clear = Signal(str) # reload all active objects, send the messagebox message
   select = Signal(object) # select a ref object
   remove_ref = Signal(object) # ref
+  update = Signal(object)
 
 class State:
 
@@ -76,7 +78,8 @@ class State:
     # maps
     for name in self.data_manager.get_real_map_names():
       map_manager = self.data_manager.get_real_map(filename=name)
-      self.add_ref_from_mmtbx_map(map_manager,filename=name)
+      label = os.path.basename(name)
+      self.add_ref_from_map_manager(map_manager=map_manager,filepath=name,label=label)
 
       # set the first map in dm as active
       if self.active_map_ref is None:
@@ -145,7 +148,7 @@ class State:
 
     if isinstance(ref,ModelRef):
       #self.active_model_ref = ref
-      #self.signals.model_change.emit(self.active_model)
+      #self.signals.model_change.emit(ref)
 
       # Optionally add a cif file ref
       if ref.file_ref is not None:
@@ -153,7 +156,7 @@ class State:
 
     elif isinstance(ref,MapRef):
       #self.active_map_ref = ref
-      #self.signals.model_change.emit(self.active_model)
+      #self.signals.model_change.emit(ref)
       pass
     elif isinstance(ref,SelectionRef):
       #self.active_selection_ref = ref
@@ -170,7 +173,8 @@ class State:
       self.signals.ciffile_change.emit(ref)
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
-
+    # update other controllers
+    self.signals.update.emit(ref)
 
 
   def _remove_ref(self,ref):
@@ -179,15 +183,16 @@ class State:
 
   def add_ref_from_model_file(self,filename=None,label=None,format=None):
     if label is None:
-      label = "model_"+str(id(filename))+str(time.time())
+      label = filename
+      #label = "model_"+str(id(filename))+str(time.time())
     dm = DataManager()
     dm.process_model_file(filename)
     model = dm.get_model()
     return self.add_ref_from_mmtbx_model(model,label=label,filename=None)
 
   def add_ref_from_model_string(self,model_string,label=None,format=None):
-    if label is None:
-      label = "model_"+str(id(model_string))+str(time.time())
+    #assert label is not None
+      #label = "model_"+str(id(model_string))+str(time.time())
     dm = DataManager()
     dm.process_model_str(label,model_string)
     model = dm.get_model()
@@ -206,12 +211,15 @@ class State:
     #         if filename.exists():
     #           name = filename
     # get filepath
+    #assert label is not None
     if model.get_number_of_atoms()==0:
       print("Model with zero atoms, not added")
       return
 
     if filename is not None:
       filepath = str(Path(filename).absolute())
+      if label is None:
+        label = os.path.basename(filename)
     else:
       filepath = None
 
@@ -221,7 +229,15 @@ class State:
     self.add_ref(ref)
     return ref
 
-  def add_ref_from_map_file(self,filename=None,volume_id=None,model_id=None):
+
+  def add_ref_from_map_manager(self,filepath=None,map_manager=None,volume_id=None,model_id=None,label=None):
+    data = RealSpaceMapData(filepath=filepath,map_manager=map_manager,label=label)
+    ref = MapRef(data=data,model_ref=None)
+    self.add_ref(ref)
+    return ref
+
+
+  def add_ref_from_map_file(self,filename=None,volume_id=None,model_id=None,label=None):
     # filepath = None
     # name = filename
     # if name is None:
@@ -235,7 +251,7 @@ class State:
     self.data_manager.process_real_map_file(filename=filename)
     map_manager = self.data_manager.get_real_map(filename=filename)
 
-    data = RealSpaceMapData(filepath=filepath,map_manager=map_manager)
+    data = RealSpaceMapData(filepath=filepath,map_manager=map_manager,label=label)
     ref = MapRef(data=data,model_ref=None)
     self.add_ref(ref)
     return ref
@@ -305,7 +321,7 @@ class State:
       if filename not in map_keys:
         print(f"New file found in data manager: {filename} and not found in references: {map_keys}")
         map_manager = self.data_manager.get_real_map(filename=filename)
-        self.add_ref_from_mmtbx_map(map_manager,filename=filename)
+        self.add_ref_from_map_manager(map_manager=map_manager,filepath=filename,label=os.path.basename(filename))
         self.signals.map_change.emit(self.active_map_ref) # No change, just trigger update
   #####################################
   # Models / Mols

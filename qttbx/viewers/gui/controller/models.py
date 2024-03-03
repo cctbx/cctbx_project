@@ -18,8 +18,8 @@ class ModelLikeEntryController(ScrollEntryController):
     super().__init__(parent=parent,view=view,ref=ref)
 
     # Signals
-     # Visibility
     self.view.button_viz.clicked.connect(self.toggle_visibility)
+    #self.state.signals.update.connect(self.update)
 
     # Representation
     for key,action in self.view.button_rep.actions.items():
@@ -40,8 +40,10 @@ class ModelLikeEntryController(ScrollEntryController):
     else:
       file_based_ref = self.ref
 
+    folder = None
     if hasattr(file_based_ref.data,"filepath"):
-      folder = Path(file_based_ref.data.filepath).parent
+      if file_based_ref.data.filepath is not None:
+        folder = Path(file_based_ref.data.filepath).parent
 
     if folder is None or not folder.exists():
       folder = "."
@@ -103,6 +105,7 @@ class ModelEntryController(ModelLikeEntryController):
     super().__init__(parent=parent,view=view,ref=ref)
     self.state.signals.model_change.connect(self.handle_model_change)
 
+
   def handle_model_change(self,ref):
     if ref is None or ref.id != self.ref.id:
       self.view.active_toggle.is_checked = False
@@ -124,6 +127,7 @@ class ModelListController(ScrollableListController):
 
     # update list
     self.state.signals.model_change.connect(self.update)
+    self.state.signals.update.connect(self.update) # generic update
 
 
   def showFileDialog(self):

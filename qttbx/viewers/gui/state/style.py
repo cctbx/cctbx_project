@@ -19,7 +19,7 @@ class Style(DataClassBase):
     return cls(
       ref_id = ref_id,
       #query = SelectionQuery.from_all(ref_id=ref_id),
-      iso=0.5,
+      iso=1.0,
       color=None,
       color_theme='uniform',
       opacity=1.0,

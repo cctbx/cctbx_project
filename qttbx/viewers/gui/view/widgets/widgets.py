@@ -342,7 +342,7 @@ class ISOSlider(QSlider):
     a = mm.map_data().as_numpy_array()
     real_min = 0.0
     real_max = np.max(a)
-    real_start = np.std(a)*3
+    real_start = 1.0#np.std(a)*3
     self.real_start = real_start
     self.iso_start = real_start
     granularity = 0.01  # Set granularity (the smallest change)
