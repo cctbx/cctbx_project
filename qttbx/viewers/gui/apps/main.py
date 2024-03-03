@@ -1,6 +1,6 @@
-
-import time
+import json
 import sys
+import threading
 from pathlib import Path
 #import argparse
 
@@ -8,7 +8,7 @@ from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication, QWidget, QApplication, QWidget, QPushButton, QVBoxLayout
 from PySide2.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QMessageBox, QMainWindow
 
-from PySide2.QtCore import QObject, QEvent, Qt,  QEvent, QSize
+from PySide2.QtCore import QObject, QEvent, Qt,  QEvent, QSize, Signal
 from PySide2.QtSvg import QSvgRenderer
 
 from iotbx.data_manager import DataManager
@@ -18,9 +18,49 @@ from ..state.state import State
 from ...last.selection_utils import Selection, SelectionQuery
 from . import ViewerChoiceDialog, check_program_access
 from ...last.python_utils import DotDict
+from flask import Flask, request, jsonify
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
+class FlaskSignalEmitter(QObject):
+    flask_signal = Signal(dict)
+
+# Create an instance of the signal emitter
+flask_signal_emitter = FlaskSignalEmitter()
+
+
+
+flask_app = Flask(__name__)
+
+@flask_app.route('/process_json', methods=['POST'])
+def process_json():
+    json_data = request.get_json()
+    print("type:",type(json_data))
+    print(json_data)
+    # Continue with actual json message
+    if isinstance(json_data,str):
+      json_data = json.loads(json_data)
+    print("JSON Message recieved:")
+    has_command = False
+    has_kwargs = False
+    for key,value in json_data.items():
+      if key != "kwargs":
+        print(key,":",value)
+    if "kwargs" in json_data:
+      has_kwargs = True
+      for k,value in json_data["kwargs"].items():
+        print(k,":")
+        print(value)
+        print()
+    if "command" in json_data:
+      has_command = True
+    assert isinstance(json_data,dict), (
+        f"Expected json data ({json_data}) to be parsed to a dict, got: {type(json_data)}")
+
+    if has_command and has_kwargs:
+      flask_signal_emitter.flask_signal.emit(json_data)
+
+    return jsonify({'status_ok': "ok"})
 
 
 class ViewerGUIApp:
@@ -118,7 +158,20 @@ def main(dm=None,params=None,log=None):
   # # Install the event filter on the QApplication instance
   # qapp.installEventFilter(globalEventFilter)
 
+
+  # Flask set up
   controller.view.show()
+  controller.flask_signal_emitter = flask_signal_emitter
+  controller.flask_signal_emitter.flask_signal.connect(controller.update_from_remote)
+
+  def run_flask_app():
+    print("Running flask app on port: ",params.rest_server_port)
+    flask_app.run(debug=True, port=params.rest_server_port, use_reloader=False)
+
+  threading.Thread(target=run_flask_app, daemon=True).start()
+
+
+
 
   sys.exit(qapp.exec_())
 

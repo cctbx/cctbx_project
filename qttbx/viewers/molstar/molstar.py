@@ -387,6 +387,7 @@ class MolstarViewer(ModelViewer):
     var model_str = `{model_str}`
     {self.plugin_prefix}.phenix.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}')
     """
+    print(js_str)
     return js_str
 
 
@@ -443,7 +444,7 @@ class MolstarViewer(ModelViewer):
     """
     return js_str
 
-  def load_map(self,filename,volume_id,model_id):
+  def load_map(self,filename=None,volume_id=None,model_id=None):
     """
     Load a map from disk.
     """
@@ -507,11 +508,15 @@ class MolstarViewer(ModelViewer):
       command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
     self.send_command(command)
 
-  def _get_sync_state(self,callback=None):
+  def _get_sync_state(self,callback=None,verbose=False):
     # get the remote: local -> reference mapping from the web app
     command = f"""
     {self.plugin_prefix}.phenix.getState();
     """
+    if verbose:
+      assert callback is None, "Cannot use custom callback and verbose together"
+      def callback(x):
+        print(json.dumps(json.loads(x),indent=2))
     return self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
 
 

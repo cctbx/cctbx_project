@@ -28,6 +28,10 @@ class Program(ProgramTemplate):
     .help = 'all' or None or 'atoms','cif', 'restraints', etc
     .short_caption = Names of the tabs to include in the viewer. \
     'viewer','selections' and 'files' are required and default
+
+  rest_server_port = 5000
+    .type = int
+    .help = "The port for http control"
   """
 
   def validate(self):

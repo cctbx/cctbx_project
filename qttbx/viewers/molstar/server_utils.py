@@ -11,24 +11,23 @@ import subprocess
 
 from PySide2.QtCore import QThread,Signal, Slot
 
+def find_open_port():
+  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    s.bind(("", 0))
+    s.listen(1)
+    port = s.getsockname()[1]
+  return port
+
 class NodeHttpServer:
   def __init__(self,command,default_port=8080):
     assert isinstance(command,list), "Provide command as a list of strings"
     if not self.check_port_free(default_port):
-      default_port = self.find_open_port()
+      default_port = find_open_port()
     self.port = default_port
     self.url = f"http://localhost:{self.port}"
     self.process = None
     self.command_list = command+['--port',str(self.port)]
     self.command = ' '.join(self.command_list)
-
-
-  def find_open_port(self):
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-      s.bind(("", 0))
-      s.listen(1)
-      port = s.getsockname()[1]
-    return port
 
   def check_port_free(self,port,ip='localhost'):
     try:

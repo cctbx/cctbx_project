@@ -1,3 +1,5 @@
+import json
+import threading
 
 from ..selection import SelectionTabController
 from ..data import DataTabController
@@ -12,7 +14,7 @@ from ..controller import Controller
 
 
 from PySide2.QtWidgets import QApplication
-from PySide2.QtCore import QEvent
+from PySide2.QtCore import QEvent, QObject, Signal
 
 
 class ViewerGUIController(Controller):
@@ -59,8 +61,45 @@ class ViewerGUIController(Controller):
     self.view.signal_close.connect(self.close_event)
     self.state.signals.tab_change.connect(self.change_tab_to)
 
+
+
     # Finish
     self.state._sync()
+
+
+  def update_from_remote(self, json_data):
+    # this is connected up in main
+    # Each message should have a clear connection to a function in the viewer
+    # message is a json string
+    assert isinstance(json_data,dict), (
+        f"Expected json data ({json_data}) to be parsed to a dict, got: {type(json_data)}")
+    #try:
+    message_dict = json_data # alias
+    command = message_dict.get("command")
+    args = message_dict.get("args", [])
+    kwargs = message_dict.get("kwargs", {})
+
+    # Ensure command is allowed to prevent unauthorized access
+    if command not in self.molstar.api_function_names:
+      print(f"Command {command} is not allowed.")
+      return
+
+    # Dynamically call the function
+    func = getattr(self.molstar, command, None)
+    if func is None:
+      print(f"No such command: {command}")
+      return
+
+    # Ensure args and kwargs are lists and dicts respectively
+    if not isinstance(args, list) or not isinstance(kwargs, dict):
+      print("Invalid args or kwargs format.")
+      return
+    func(**kwargs)
+    # except json.JSONDecodeError as e:
+    #   print(f"Error decoding JSON: {e}")
+    # except Exception as e:
+    #   print(f"An error occurred: {e}")
+
 
   def close_application(self):
     # manually call this function to close

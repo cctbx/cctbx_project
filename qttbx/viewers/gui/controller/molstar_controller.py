@@ -74,14 +74,14 @@ class SyncManager:
     # callback is run if successful sync
     #print(f"try_sync() ... sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
     if self.has_synced:
-      #print("case1: has synced")
+      print("case1: has synced")
       pass
     elif not self.has_synced and self._sync_count < self._max_sync_count:
-      #print("case 2: keep trying to sync")
+      print("case 2: keep trying to sync")
       self._sync_count+=1
       self.controller.viewer._get_sync_state(callback=self._try_sync_callback)
     else:
-      #print("case 3: sync failure")
+      print("case 3: sync failure")
       self._sync_failure = True
       msg = QMessageBox.warning(self.controller.view,"Warning", "The GUI and the molstar viewer are out of sync, program will exit.")
       self.controller.parent.close_application()
@@ -89,17 +89,17 @@ class SyncManager:
 
   def _try_sync_callback(self,result,second_callback=None): #  get_state function in ts
     received_result = False
-    #print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
+    print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
     if isinstance(result,str) and len(result.strip())>0:
       result = json.loads(result)
-      #print("sync result: ",json.dumps(result,indent=2))
+      print("sync result: ",json.dumps(result,indent=2))
       if 'hasSynced' in result:
         received_result = True
         if not self._received_first_sync:
           self._received_first_sync = True
           result["hasSynced"] = True # The very first sync is True
-          # print("Setting result['hasSynced'] = True because it is the first sync state")
-          # print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
+          print("Setting result['hasSynced'] = True because it is the first sync state")
+          print("sync callback result:",result,", type: ",type(result), ",time: ",time.time())
 
 
     # update molstar ids
@@ -124,6 +124,11 @@ class SyncManager:
       sys.exit()
 
 class MolstarController(Controller):
+  api_function_names = [
+    "load_model",
+    "load_model_from_string",
+    "load_map",
+  ]
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
 
@@ -203,21 +208,33 @@ class MolstarController(Controller):
         self.sync_manager.has_synced = False
 
 
-
+  def load_model_from_string(self,model_str=None,label=None,format='pdb'):
+    if model_str is not None:
+      # make a ref first
+      ref = self.state.add_ref_from_model_string(model_str,label=label,format=format)
+      self.load_model_from_ref(ref,label=label,format=format)
 
   # Maps
 
-  # def load_active_map(self,ref):
-  #   if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
-  #     self.load_map_from_ref(ref)
+  def load_map(self,filename=None,volume_id=None,model_id=None):
+    ref = self.state.add_ref_from_map_file(filename=filename,volume_id=volume_id,model_id=model_id)
+    if ref.model_ref is None:
+      if self.state.active_model_ref is None:
+        if len(self.state.references_model)>0:
+          self.state.active_model_ref = self.state.references_model[0]
+    if ref.model_ref is None and self.state.active_model_ref is not None:
+      ref.model_ref = self.state.active_model_ref
+    if ref.model_ref is not None:
+      self.load_map_from_ref(map_ref=ref)
 
 
-  def load_map_from_ref(self,ref):
-    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+  def load_map_from_ref(self,map_ref=None,model_ref=None):
+    if map_ref is not None and map_ref.id not in self.state.external_loaded["molstar"]:
         self.viewer._set_sync_state(self.state.to_json())
-        ref.model_ref = self.state.active_model_ref
+        if model_ref is None and map_ref.model_ref is None:
+          map_ref.model_ref = self.state.active_model_ref
 
-        self.viewer.load_map(filename=ref.data.filepath,volume_id=ref.id,model_id=ref.model_ref.id)
+        self.viewer.load_map(filename=map_ref.data.filepath,volume_id=map_ref.id,model_id=map_ref.model_ref.id)
         self.sync_manager.has_synced = False
 
 

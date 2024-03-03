@@ -4,6 +4,7 @@ The origin of any signal related to changes of state.
 """
 from pathlib import Path
 import json
+import time
 from collections import defaultdict
 
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
@@ -176,7 +177,15 @@ class State:
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     del self.references[ref.id]
 
-  def add_ref_from_mmtbx_model(self,model,filename=None):
+  def add_ref_from_model_string(self,model_string,label=None,format=None):
+    if label is None:
+      label = "model_"+str(id(model_string))+str(time.time())
+    dm = DataManager()
+    dm.process_model_str(label,model_string)
+    model = dm.get_model()
+    return self.add_ref_from_mmtbx_model(model,label=label,filename=None)
+
+  def add_ref_from_mmtbx_model(self,model,label=None,filename=None):
     # filepath = None
     # name = filename
     # if name is None:
@@ -188,15 +197,23 @@ class State:
     #         filename = Path(filename)
     #         if filename.exists():
     #           name = filename
+    # get filepath
+    if model.get_number_of_atoms()==0:
+      print("Model with zero atoms, not added")
+      return
+
     if filename is not None:
       filepath = str(Path(filename).absolute())
+    else:
+      filepath = None
 
-    data = MolecularModelData(filepath=filepath,model=model)
+    # make data object and ref
+    data = MolecularModelData(filepath=filepath,label=label,model=model)
     ref = ModelRef(data=data)
     self.add_ref(ref)
     return ref
 
-  def add_ref_from_mmtbx_map(self,map_manager,filename=None):
+  def add_ref_from_map_file(self,filename=None,volume_id=None,model_id=None):
     # filepath = None
     # name = filename
     # if name is None:
@@ -206,6 +223,10 @@ class State:
     #       name = filename
     if filename is not None:
       filepath = str(Path(filename).absolute())
+
+    self.data_manager.process_real_map_file(filename=filename)
+    map_manager = self.data_manager.get_real_map(filename=filename)
+
     data = RealSpaceMapData(filepath=filepath,map_manager=map_manager)
     ref = MapRef(data=data,model_ref=None)
     self.add_ref(ref)
