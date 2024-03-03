@@ -159,6 +159,7 @@ class MolstarViewer(ModelViewer):
     self.use_selenium = use_selenium
     self.use_web_view = use_web_view
     self.selenium_driver = None
+    self.log_list = []
 
 
     # get config variables
@@ -331,6 +332,9 @@ class MolstarViewer(ModelViewer):
     self.volume_streamer.stop_server()
     print('='*79)
 
+  def log_message(self,message):
+    self.log_list.append(message)
+
   # ---------------------------------------------------------------------------
   # Remote communication
 
@@ -391,15 +395,15 @@ class MolstarViewer(ModelViewer):
     return js_str
 
 
-  def _load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
+  def load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
 
     func_name = f"model_as_{format}"
     func = getattr(model,func_name)
     model_string = func()
-    return self._load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
+    return self.load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
 
 
-  def _load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None,queue=False):
+  def load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None,queue=False):
     """
     Load a model using a raw string. ref_id is important
     """
@@ -411,16 +415,19 @@ class MolstarViewer(ModelViewer):
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
     self.send_command(command,callback=callback,queue=queue)
 
+  # don't use this, it is confusing, but it loads without a ref
+  # def load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
+  #   """
+  #   Load a model directly from file. Note if using upstream gui, it will not automatically be aware.
+  #   """
+  #   filename = str(filename)
 
-  def load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
-    """
-    Load a model directly from file. Note if using upstream gui, it will not automatically be aware.
-    """
-    filename = str(filename)
+  #   dm = DataManager()
+  #   dm.process_model_file(filename)
+  #   model = dm.get_model()
 
-    with open(filename,"r") as fh:
-      contents = fh.read()
-    self.load_model_from_string(contents,format=format,label=label,ref_id=ref_id,callback=callback)
+  #   format="pdb" # only one supported for now
+  #   self.load_model_from_string(model.model_as_pdb(),format=format,label=label,ref_id=ref_id,callback=callback)
 
 
   # ---------------------------------------------------------------------------

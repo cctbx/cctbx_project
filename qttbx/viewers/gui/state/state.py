@@ -177,6 +177,14 @@ class State:
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     del self.references[ref.id]
 
+  def add_ref_from_model_file(self,filename=None,label=None,format=None):
+    if label is None:
+      label = "model_"+str(id(filename))+str(time.time())
+    dm = DataManager()
+    dm.process_model_file(filename)
+    model = dm.get_model()
+    return self.add_ref_from_mmtbx_model(model,label=label,filename=None)
+
   def add_ref_from_model_string(self,model_string,label=None,format=None):
     if label is None:
       label = "model_"+str(id(model_string))+str(time.time())

@@ -109,7 +109,7 @@ class PhenixMolstarViewer(ModelViewer):
     self.command = str(Path(__file__).parent / Path("../../command_line/start_viewer.py"))
     return self.command
 
-  def start_viewer(self, timeout=60,json_response=False):
+  def start_viewer(self, timeout=60, show_tabs=["all"]):
     '''
     Function for starting the Phenix Molstar  REST server
 
@@ -137,28 +137,24 @@ class PhenixMolstarViewer(ModelViewer):
     self.run_basic_checks()
 
     # construct command
-    cmd = ["python", self.command] + ["show_tab=all"]+["rest_server_port={}".format(self.port)]
+    cmd = (["python", self.command] +
+            [f"show_tab={tab_name}" for tab_name in show_tabs]+
+            ["rest_server_port={}".format(self.port)]
+    )
 
     # clean environment for launching
     env = os.environ.copy()
     # for v in ['PYTHONPATH', 'LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']:
     #   env.pop(v, None)
 
-    # function to read output stream
-    def read_output(stream):
-      while True:
-        output = stream.readline()
-        if output == b'' and stream.closed:
-          break
-        self.log_molstar.append(output.decode().strip())
-
-    # start server and wait until it is ready
-    self.process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env,text=False)
+    #  Start the subprocess detached from the parent process
+    proccess = subprocess.Popen(cmd, start_new_session=True)
 
 
-    # Launch a thread to handle stdout
-    self.stdout_thread = threading.Thread(target=read_output, args=(self.process.stdout,))
-    self.stdout_thread.start()
+
+    # # Launch a thread to handle stdout
+    # self.stdout_thread = threading.Thread(target=read_output, args=(self.process.stdout,))
+    # self.stdout_thread.start()
 
 
 
@@ -191,10 +187,7 @@ class PhenixMolstarViewer(ModelViewer):
       data = {"status_ok":None}
       data = json.dumps(data)
       headers = {'Content-Type': 'application/json'}
-      print("checking status:")
-      print(self.url)
       output = requests.post(self.url, headers=headers, json=data)
-      print("response:",output,output.status_code)
       if output.status_code == 200:
         self._connected = True
     except requests.exceptions.ConnectionError:
@@ -211,19 +204,30 @@ class PhenixMolstarViewer(ModelViewer):
       print('Phenix Molstar  already shut down')
     rc = self.process.returncode
     stdout, stderr = self.process.communicate()
-    if self.process:
-      self.process.wait()
-    self.stdout_thread.join()
+    # if self.process:
+    #   self.process.wait()
+    #self.stdout_thread.join()
     # print('-'*79)
     # print(stdout)
     # print('-'*79)
     # print(stderr)
     print('='*79)
 
+  def log_message(self,message=None):
+    command = {
+      "command":"log_message",
+      "kwargs":{
+        "message":message
+      }
+    }
+    self.send_command(command)
+
   # ---------------------------------------------------------------------------
   # Remote communication
 
   def _run_command(self, data):
+    print("DEBUG: _run_command() in molstar remote")
+
     try:
       # Template data
       #
@@ -234,7 +238,9 @@ class PhenixMolstarViewer(ModelViewer):
       #             "format":"pdb",
       #           }
       #         }
-      data = json.dumps(data)
+      data = json.dumps(data,indent=2)
+      print("Data being sent: ")
+      print(data)
       response = requests.post(self.url, json=data)
       return response
 
@@ -243,7 +249,7 @@ class PhenixMolstarViewer(ModelViewer):
 
 
   def send_command(self, data):
-
+    print("DEBUG: send_command() in molstar remote")
     if self._connected == True:
       return self._run_command(data)
 
@@ -255,14 +261,24 @@ class PhenixMolstarViewer(ModelViewer):
     """
     Load a model directly from file.
     """
+    print("Debug: load_model() in molstar remote")
     filename = str(filename)
 
-    with open(filename,"r") as fh:
-      contents = fh.read()
-    self.load_model_from_string(contents,format=format,label=label)
+    command = {
+      "command":"load_model",
+      "kwargs":{
+        "filename":filename,
+        "format":format,
+        "label":label,
+      }
+    }
+    print("command to send:")
+    self.send_command(command)
 
 
   def load_model_from_mmtbx(self,model,format='pdb',label=None):
+    # This function does connect to identical one in MolstarViewer, because need
+    # string serialization
     assert format in ['pdb','mmcif'], "Use one of the supported format names"
     if format == 'pdb':
       model_str = model.model_as_pdb()

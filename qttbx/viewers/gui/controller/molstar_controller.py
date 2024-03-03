@@ -128,6 +128,7 @@ class MolstarController(Controller):
     "load_model",
     "load_model_from_string",
     "load_map",
+    "log_message",
   ]
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
@@ -179,11 +180,13 @@ class MolstarController(Controller):
 
 
   # API
-
-
-
   def start_viewer(self):
     self.viewer.start_viewer()
+
+  def log_message(self,message):
+    self.viewer.log_message(message)
+
+
 
   def _load_all_from_ref(self,*args):
     # Molstar must load inital models here
@@ -198,7 +201,7 @@ class MolstarController(Controller):
     if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
         self.viewer._set_sync_state(self.state.to_json())
 
-        self.viewer._load_model_from_mmtbx(
+        self.viewer.load_model_from_mmtbx(
           model=ref.model,
           format=format,
           ref_id=ref.id,
@@ -214,8 +217,13 @@ class MolstarController(Controller):
       ref = self.state.add_ref_from_model_string(model_str,label=label,format=format)
       self.load_model_from_ref(ref,label=label,format=format)
 
-  # Maps
+  def load_model(self,filename=None,label=None,format='pdb'):
+    if filename is not None:
+      # make a ref first
+      ref = self.state.add_ref_from_model_file(filename=filename,label=label,format=format)
+      self.load_model_from_ref(ref,label=label,format=format)
 
+  # Maps
   def load_map(self,filename=None,volume_id=None,model_id=None):
     ref = self.state.add_ref_from_map_file(filename=filename,volume_id=volume_id,model_id=model_id)
     if ref.model_ref is None:

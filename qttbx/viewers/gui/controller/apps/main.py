@@ -84,11 +84,14 @@ class ViewerGUIController(Controller):
       print(f"Command {command} is not allowed.")
       return
 
-    # Dynamically call the function
+    # Look for the function on the controller
     func = getattr(self.molstar, command, None)
     if func is None:
-      print(f"No such command: {command}")
-      return
+      # Look for it on the viewer
+      func = getattr(self.molstar.viewer, command, None)
+      if func is None:
+        print(f"No such command: {command}")
+        return
 
     # Ensure args and kwargs are lists and dicts respectively
     if not isinstance(args, list) or not isinstance(kwargs, dict):
