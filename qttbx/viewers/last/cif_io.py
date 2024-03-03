@@ -2,13 +2,16 @@ from functools import reduce
 from itertools import zip_longest
 from collections import OrderedDict
 import re
+from pathlib import Path
 
 import pandas as pd
-# Try import iotbx cif
-try:
-  from iotbx import cif
-except:
-  pass
+
+from iotbx import cif
+from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.model import block
+
+from .python_utils import find_key_path, get_value_by_path
+
 # Try import pdbecif (pip install)
 try:
   from pdbecif.mmcif_io import CifFileWriter, MMCIF2Dict
@@ -202,12 +205,9 @@ def clean_nested_dict(d):
 
 QUOTES_REGEX = re.compile(r'"[^"]*"|\'[^\']*\'|\S+')
 
-def split_with_quotes_regex(line):
+def split_with_quotes(line):
     parts = QUOTES_REGEX.findall(line)
     return [part[1:-1] if (part[0]=="'" or part[0]=='"') else part for part in parts]
-
-split_with_quotes = split_with_quotes_regex
-
 
 def check_for_semicolon(current_line_index, lines, used_semicolons):
     start = None
@@ -236,67 +236,53 @@ def check_for_semicolon(current_line_index, lines, used_semicolons):
     else:
         return None, used_semicolons
 
-
 def open_loop(lines, line_index):
     loop_keys = []
     loop_data = []
     in_loop = True
     line_index += 1  # Move to the next line after "loop_"
-    used_semicolons = []
 
     while line_index < len(lines) and in_loop:
-        line = lines[line_index]
-        if len(line)>0:
-          if line[0] =='_' and len(loop_data)==0:
-              loop_keys.append(line)
-          elif line and not line[0]=='_' and not line[0]=='#':
-              parts = split_with_quotes(line)
-              missing_parts = False
-              if len(parts)>len(loop_keys):
-                assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
-              elif len(parts)<len(loop_keys):
-                  # attempt to find missing parts
-                  missing_parts = True
-                  print("\nMissing parts at line:",line_index)
-                  print(line)
-                  print(len(parts),len(loop_keys))
-                  print("\n")
+        line = lines[line_index].strip()
 
-                  s, used_semicolons = check_for_semicolon(line_index,lines,used_semicolons)
-                  if s is not None:
+        # Handling keys
+        if line.startswith('_') and not loop_data:
+            loop_keys.append(line)
+        # Handling data lines
+        elif line and not line.startswith('_') and not line.startswith('#'):
+            parts = split_with_quotes(line)
+
+            # Handling multiline values and semicolon blocks
+            while len(parts) < len(loop_keys) and line_index + 1 < len(lines):
+                line_index += 1
+                additional_line = lines[line_index].strip()
+
+                # Check for semicolon at the start of the additional line
+                if additional_line.startswith(';'):
+                    s, used_semicolons = check_for_semicolon(line_index, lines, [])
                     parts.append(s)
-                    line_index = used_semicolons[-1][0]
-                  if len(parts)==len(loop_keys):
-                    missing_parts = False
-                    print("Found missing parts with semicolon search")
-                  elif len(parts)>len(loop_keys):
-                    assert False, f"Failed parsing line: {line}, to match number of keys: {len(loop_keys)}"
-                  elif len(parts)<len(loop_keys):
-                    # still not enough,  now check for non-semicolon next line continuation (only check one)
-                    print("Checking next line continuation")
-                    line = lines[line_index]
-                    line_next = lines[line_index+1]
-                    parts_next = split_with_quotes_regex(line_next)
-                    if len(parts)+len(parts_next)==len(loop_keys):
-                      # accept that the next line is a continuation
-                      missing_parts = False
-                      print("Found missing parts with next-line continuation")
-                      parts = parts+parts_next
-                      line_index += 1
-                    else:
-                      # A failure to assign values to keys
-                      assert len(parts)==len(loop_keys), f"Unable to fix mismatch between number of values in loop row: {parts},  and number of keys({len(loop_keys)}): {loop_keys}"
-              loop_data.append(parts)
-          else:  # End of loop data
-              in_loop = False
-              line_index -= 1
-        line_index += 1
+                    line_index = used_semicolons[-1][0]  # Update line index based on semicolon block
+                else:
+                    parts += split_with_quotes(additional_line)
+
+            # Ensure parts match keys in length before adding to loop_data
+            if len(parts) == len(loop_keys):
+                loop_data.append(parts)
+            else:
+                print(f"Warning: Mismatch in line {line_index}. Parts: {parts}, Keys: {loop_keys}")
+        else:  # End of loop data
+            in_loop = False
+            line_index -= 1  # Adjust because the loop will increment it
+
+        line_index += 1  # Move to the next line
 
     return loop_keys, loop_data, line_index
 
 def add_single_entry(line,current_data_key,result):
+
   parts = split_with_quotes(line)
-  group_key, column_key = parts[0].split('.')[0], parts[0].split('.')[-1]
+  keys = parts[0].split('.')
+  group_key, column_key = keys[0], keys[-1]
   value = ' '.join(parts[1:])
   if group_key not in result[current_data_key]:
       result[current_data_key][group_key] = {}
@@ -367,7 +353,7 @@ def parse_cifpd(content):
             print("IGNORED LINE: ",line)
           else:
             # assume value for previous key on a new line
-            result[current_data_key][group_key][column_key] = split_with_quotes_regex(line)[0]
+            result[current_data_key][group_key][column_key] = split_with_quotes(line)[0]
 
         line_index += 1
 
@@ -491,7 +477,8 @@ def write_dataframes_to_cif_file(dataframe_dict,filename):
 # Finally, Actual IO functions
 
 def read_cif_file(filename,method="pdbe",return_as="pandas"):
-  assert method in ["pdbe","iotbx","cifpd"]
+  assert Path(filename).exists(), f"File does not exist: {str(filename)}"
+  assert method in ["pdbe","iotbx","cifpd"], "Method not recognized: "+str(method)
   assert return_as in ["dict","pandas","iotbx"]
   if method == "iotbx":
     if isinstance(filename,str):
@@ -595,3 +582,29 @@ def compare_nested_dataframe_dicts(dict1, dict2, parent_key=''):
               raise ValueError(f"Values mismatch at {current_key}: {dict1[key]} vs {dict2[key]}")
 
   return True
+
+
+def extract_crystal_symmetry(cif_dict):
+  """
+  Extract the crystal symmetry as an object from a nested cif dict
+  """
+
+  # search the nested dict and retrieve value
+  key_path = find_key_path(cif_dict,"_symmetry")
+  d_symmetry = get_value_by_path(cif_dict,key_path)
+
+  # value is dataframe, convert to dict
+  d_cs =d_symmetry.to_dict(orient="records")[0]
+
+  # join cif keys with dot
+  d_cs = {"_symmetry."+key:value for key,value in d_cs.items()}
+
+  # build the cctbx cif block
+  b = block()
+  for k,v in d_cs.items():
+    b[k] = v
+
+  # get crystal symmetry
+  cs_builder = crystal_symmetry_builder(b)
+  cs = cs_builder.crystal_symmetry
+  return cs

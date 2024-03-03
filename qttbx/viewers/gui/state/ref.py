@@ -15,7 +15,6 @@ from dataclasses import fields, replace
 import pandas as pd
 
 from .style import Style
-from ...last.mol import MolDF
 from ...last.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
@@ -251,7 +250,8 @@ class ModelRef(Ref):
   @property
   def mol(self):
     if self._mol is None:
-      mol = MolDF.from_mmtbx_model(self.model,insert_defaults=False)
+      #mol = MolDF.from_mmtbx_model(self.model,insert_defaults=False)
+      assert False
       self._mol = mol
     return self._mol
 
