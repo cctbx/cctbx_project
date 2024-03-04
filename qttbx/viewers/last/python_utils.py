@@ -30,3 +30,29 @@ def flatten_dict(d, parent_key='', sep='.'):
       items.append((new_key, v))
   return dict(items)
 
+def find_key_path(nested_dict, target_key, path=None):
+  if path is None:
+      path = []
+
+  # Check if the current level of the nested dictionary contains the target key
+  if target_key in nested_dict:
+      return path + [target_key]
+
+  # Recursively search for the key in dictionaries within the current level
+  for key, value in nested_dict.items():
+      if isinstance(value, dict):
+          # If the value is a dictionary, search it for the target key
+          new_path = find_key_path(value, target_key, path + [key])
+          if new_path is not None:
+              return new_path
+
+  # Return None if the key was not found at the current level or in any nested dictionaries
+  return None
+
+def get_value_by_path(nested_dict, key_path):
+    current_level = nested_dict
+    for key in key_path:
+        # Navigate deeper into the nested dictionary
+        current_level = current_level[key]
+    return current_level
+
