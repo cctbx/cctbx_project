@@ -47,8 +47,8 @@ class PreferenceWorker(worker):
     self.logger.main_log(distributions.table)
     self.logger.main_log('')
     pref_direction, pref_distribution = distributions.best
-    self.logger.main_log(f'Vector distribution for zone axes '
-                         f'family {pref_direction}:')
+    self.logger.main_log('Vector distribution for zone axes family '
+                         + pref_direction)
     self.logger.main_log(ascii_plot(pref_distribution.vectors))
     self.logger.main_log('')
     return experiments, reflections
