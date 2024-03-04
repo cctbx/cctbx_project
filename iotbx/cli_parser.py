@@ -17,6 +17,7 @@ import libtbx.phil
 
 from iotbx.data_manager import DataManager, data_manager_type
 from iotbx.file_reader import any_file
+from iotbx.phil_migrations import PhilMigrator
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
@@ -633,6 +634,9 @@ class CCTBXParser(ParserBase):
       # load remaining files and final fmodel parameters
       self.data_manager.load_phil_scope(diff_phil)
 
+    self.working_phil = self.check_unused_phil_against_migrators(
+      self.unused_phil, self.working_phil, self.master_phil)
+
     # show unrecognized parameters and abort
     self.raise_Sorry_for_unused_phil()
 
@@ -660,6 +664,24 @@ class CCTBXParser(ParserBase):
     if not printed_something:
       print('  No PHIL parameters found', file=self.logger)
       print('', file=self.logger)
+
+  # ---------------------------------------------------------------------------
+  def check_unused_phil_against_migrators(self, unused_phil, working_phil, master_phil):
+    '''
+    Loops over the unused PHIL arguments and checks each one against
+    the known PHIL migrators
+    Returns a modified working_phil with the migrated parameters
+    '''
+    for p in unused_phil:
+      for migrator_class in PhilMigrator.__subclasses__():
+        migrator = migrator_class(parser_class=CCTBXParser)
+        if migrator.matches(p):
+          working_phil = migrator.update(working_phil, master_phil)
+          print('    Found a PHIL migrator for %s' % p)
+          print('      %s' % migrator.name)
+          print()
+          self.unused_phil.remove(p)
+    return working_phil
 
   # ---------------------------------------------------------------------------
   def process_dir(self, dir_list, message = 'Processing directories:'):
