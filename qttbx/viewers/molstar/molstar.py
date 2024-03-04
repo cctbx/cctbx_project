@@ -630,7 +630,6 @@ class MolstarViewer(ModelViewer):
     self.send_command(command)
 
   def _get_representation_names(self,model_id: str, query_json: str):
-    # add representation
     command = f"""
     const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'

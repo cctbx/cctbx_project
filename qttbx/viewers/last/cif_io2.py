@@ -18,6 +18,10 @@ from .cif_io import convert_dataframes_to_iotbx_cif, convert_dict_to_dataframes
 
 
 class CifInput(UserDict):
+  """
+  This class is intented to be a container with CIF file data, and to be
+  separate from the parsing class
+  """
 
   # Define explicit dtypes, what isn't here become 'string'
   dtypes = defaultdict(lambda: 'string')
@@ -82,10 +86,6 @@ class CifInput(UserDict):
     df =  get_value_by_path(self,atom_site_path)
     return df
 
-
-
-
-
   def extract_crystal_symmetry(self):
     """
     Extract the crystal symmetry as an object from a nested cif dict
@@ -125,6 +125,10 @@ class CifInput(UserDict):
 
 
 class CifParser:
+  """
+  A class that only does cif parsing.
+  The end result is a nested dict of pandas dataframes
+  """
   def __init__(self,lines):
     self.lines = lines
     self.i = 0
