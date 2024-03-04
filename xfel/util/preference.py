@@ -15,13 +15,6 @@ from libtbx import Auto, table_utils
 from libtbx.mpi4py import MPI
 from xfel.util.drift import params_from_phil, read_experiments
 
-try:
-  from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
-  import matplotlib.pyplot as plt
-  from matplotlib.gridspec import GridSpec
-except ModuleNotFoundError as e:
-  plt, GridSpec = None, None
-  matplotlib_import_error = e
 import numpy as np
 import scipy as sp
 
@@ -492,15 +485,17 @@ class BaseDistributionArtist(abc.ABC):
 
   def __init__(self) -> None:
     self.hedgehogs = []
-    if plt is None:
-      raise matplotlib_import_error
+    from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
+    import matplotlib.pyplot as plt
+    self.plt = plt
     self._init_figure()
 
   def _init_figure(self) -> None:
-    self.fig = plt.figure(constrained_layout=True)
+    self.fig = self.plt.figure(constrained_layout=True)
     self.axes = []
 
   def _generate_axes(self) -> None:
+    from matplotlib.gridspec import GridSpec
     len_ = len(self.hedgehogs)
     axes_grid_width = np.ceil(np.sqrt(len_)).astype(int)
     axes_grid_height = np.ceil(len_ / axes_grid_width).astype(int)
@@ -544,7 +539,7 @@ class HedgehogArtist(BaseDistributionArtist):
     self._generate_axes()
     for ax, hedgehog in zip(self.axes, self.hedgehogs):
       self._plot_hedgehog(axes=ax, hedgehog=hedgehog)
-    plt.show()
+    self.plt.show()
 
 
 def calculate_geographic_heat(vectors: np.ndarray, n_bins: int = 10,
@@ -575,7 +570,7 @@ class HammerArtist(BaseDistributionArtist):
   def _plot_hammer(self, ax: 'plt.Axes', hedgehog: Hedgehog) -> None:
     geo_heat = calculate_geographic_heat(vectors=hedgehog.distribution.vectors)
     ax.grid(False)
-    ax.pcolor(*geo_heat, cmap=plt.get_cmap('viridis'))
+    ax.pcolor(*geo_heat, cmap=self.plt.get_cmap('viridis'))
     axes_params = {'ls': '', 'marker': 'o', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
     ax.plot([-np.pi / 2, np.pi / 2], [0., 0.], c='g', **axes_params)
@@ -587,7 +582,7 @@ class HammerArtist(BaseDistributionArtist):
     self._generate_axes()
     for ax, hedgehog in zip(self.axes, self.hedgehogs):
       self._plot_hammer(ax=ax, hedgehog=hedgehog)
-    plt.show()
+    self.plt.show()
 
 
 def ascii_plot(vectors: np.ndarray, n_bins: int = 10) -> str:
