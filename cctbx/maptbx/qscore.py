@@ -5,7 +5,7 @@ import warnings
 
 from libtbx.utils import null_out
 from cctbx.array_family import flex
-
+from libtbx import easy_mp
 import numpy as np
 import numpy.ma as ma
 from scipy.spatial import KDTree
@@ -58,6 +58,10 @@ master_phil_str = """
     write_probes = False
       .type = bool
       .help = Write the qscore probes as a .bild file to visualize in Chimera
+
+    write_to_bfactor_pdb = False
+      .type = bool
+      .help = Write out a pdb file with the Q-score per atom in the B-factor field
   }
 
   """
@@ -110,6 +114,20 @@ def generate_probes_np(sites_cart, rad, n_probes):
 ################################################################################
 #### Run shell functions for multiple shells(possibly in parallel)
 ################################################################################
+
+class GatherProbes:
+  def __init__(self,
+               func,
+               fixed_kwargs,
+               ):
+    self.func = func
+    self.fixed_kwargs = fixed_kwargs
+
+  def __call__(self,RAD):
+
+    return self.func(RAD=RAD,**self.fixed_kwargs)
+
+
 def get_probes(
     sites_cart=None,
     atoms_tree = None,
@@ -130,32 +148,21 @@ def get_probes(
 
 
   assert shells is not None, "Must provide explicit radial shells"
-  task_list = [
-    {
-      "func": worker_func,  # Specify the function to call
-      "kwargs": {
-        "sites_cart": sites_cart,  # A numpy array of shape (N,3)
-        "atoms_tree": atoms_tree,  # An atom_xyz scipy kdtree
-        "selection_bool": selection_bool,  # Boolean atom selection
-        "n_probes": n_probes,  # The desired number of probes per shell
-        "RAD": RAD,  # The nominal radius of this shell
-        "rtol": rtol,  # Multiplied with RAD to get actual radius
-        "log": log,
+  fixed_kwargs = {
+      "sites_cart": sites_cart,  # A numpy array of shape (N,3)
+      "atoms_tree": atoms_tree,  # An atom_xyz scipy kdtree
+      "selection_bool": selection_bool,  # Boolean atom selection
+      "n_probes": n_probes,  # The desired number of probes per shell
+      "rtol": rtol,  # Multiplied with RAD to get actual radius
+      "log": log,
       }
-    } for RAD in shells
-  ]
 
-  if nproc>1:
-    with Pool() as pool:
-      results = pool.map(starmap_wrapper, task_list)
-  else:
-    results = []
-    for task in task_list:
-      worker_func = task["func"]
-      kwargs = task["kwargs"]
-      result = worker_func(**kwargs)
-      results.append(result)
+  gather = GatherProbes(worker_func,fixed_kwargs)
 
+  results = easy_mp.pool_map(
+      processes=nproc,
+      fixed_func=gather,
+      args=shells)
 
   probe_xyz = [result[0] for result in results]
   probe_mask = [result[1] for result in results]
@@ -250,6 +257,7 @@ def calc_qscore(mmm,
   model = mmm.model()
   # never do hydrogen
   model = model.remove_hydrogens()
+  mmm.set_model(model)
   mm = mmm.map_manager()
 
 
@@ -258,12 +266,13 @@ def calc_qscore(mmm,
 
   # do selection
   if selection != None:
-    selection_bool = mmm.model().selection(selection).as_numpy_array() # boolean
+    selection_bool = mmm.model().selection(selection) # boolean
     if selection_bool.sum() ==0:
       print("Finished... nothing selected",file=log)
       return {"qscore_per_atom":None}
   else:
-    selection_bool = np.full(len(sites_cart),True)
+    selection_bool = flex.bool(model.get_number_of_atoms(),True)
+
 
   # determine worker func
   worker_func=shell_probes_precalculate
@@ -342,24 +351,22 @@ def calc_qscore(mmm,
   qscore_per_residue = flex.double(qscore_df["Q-ResidueRolling"].values)
 
   # Output
+  result = {
+    "qscore_per_atom":q,
+    "qscore_per_residue":qscore_per_residue,
+    "qscore_dataframe":qscore_df
+    }
+
   if debug:
     # Collect debug data
-    result = {
+    result.update({
       "atom_xyz":sites_cart,
       "probe_xyz":probe_xyz,
       "probe_mask":probe_mask,
       "d_vals":d_vals,
       "g_vals":g_vals,
-      "qscore_per_atom":q,
-      "qscore_per_residue":qscore_per_residue,
-      "qscore_dataframe":qscore_df,
-    }
-  else:
-    result = {
-    "qscore_per_atom":q,
-    "qscore_per_residue":qscore_per_residue,
-    "qscore_dataframe":qscore_df
-    }
+    })
+
   return result
 
 
@@ -392,23 +399,6 @@ def rowwise_corrcoef(A, B, mask=None):
   cc = sumprod / (sqrt_sos_A * sqrt_sos_B)
   return cc.data
 
-
-def starmap_wrapper(task):
-  """
-  A generic wrapper function to call any worker function with specified arguments.
-  Params:
-    task (dict): A dictionary containing the 'func', 'args', and 'kwargs' keys.
-
-  Returns:
-    return: The result of the worker function call.
-  """
-  # Extract the function to call, its args, and kwargs from the task
-  func = task['func']
-  args = task.get('args', ())
-  kwargs = task.get('kwargs', {})
-
-  # Dynamically call the function with args and kwargs
-  return func(*args, **kwargs)
 
 
 def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):

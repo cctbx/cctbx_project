@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import json
 from pathlib import Path
 
+from cctbx.array_family import flex
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args
 from cctbx.maptbx.qscore import (
@@ -64,12 +65,6 @@ class Program(ProgramTemplate):
 
     # print output
     self._print("Running Q-score:")
-    param_output = group_args(
-      n_probes=self.params.qscore.n_probes,
-      rtol=self.params.qscore.rtol,
-      selection=self.params.qscore.selection,
-    )
-    self._print(param_output)
     self._print("\nRadial shells used:")
     self._print([round(shell,2) for shell in shells])
     # run qscore
@@ -84,20 +79,20 @@ class Program(ProgramTemplate):
 
 
     self.result = group_args(**qscore_result)
-
     # calculate some metrics
     df = self.result.qscore_dataframe
     if self.params.qscore.selection is not None:
       model = model.select(model.selection(self.params.qscore.selection))
     assert model.get_number_of_atoms()==len(df)
-    self._print("\nFinished running. Q-score results:")
 
+
+    self._print("\nFinished running. Q-score results:")
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)
     sel_sc = ~sel_mc
-    q_sc = df["Q-score"].iloc[sel_sc.as_numpy_array()].mean()
-    q_mc = df["Q-score"].iloc[sel_mc.as_numpy_array()].mean()
-    q_all = df["Q-score"].mean()
+    q_sc = flex.mean(self.result.qscore_per_atom.select(sel_sc))
+    q_mc = flex.mean(self.result.qscore_per_atom.select(sel_mc))
+    q_all = flex.mean(self.result.qscore_per_atom)
     q_chains = df.groupby("chain_id").agg('mean',numeric_only=True)
     q_chains = q_chains[["Q-score"]]
     print("\nBy residue:")
@@ -121,6 +116,13 @@ class Program(ProgramTemplate):
     self.result.q_score_main_chain = q_mc
     self.result.q_score_overall = q_all
 
+    # write out
+    if self.params.qscore.write_probes:
+      self.write_bild_spheres()
+
+    if self.params.qscore.write_to_bfactor_pdb:
+      self.write_to_bfactor_pdb(model,self.result.qscore_per_atom)
+
   def get_results(self):
     return self.result
 
@@ -130,6 +132,13 @@ class Program(ProgramTemplate):
     }
     return json.dumps(results_dict,indent=2)
 
+  def write_to_bfactor_pdb(self,model,qscore_per_atom):
+    model.set_b_iso(qscore_per_atom)
+
+    with open("qscore_bfactor_field.pdb","w") as fh:
+      fh.write(model.model_as_pdb())
+
+  def write_bild_spheres(self):
     # write bild files
     if self.params.qscore.write_probes:
       print("Writing probe debug files...Using a small selection is recommended",
