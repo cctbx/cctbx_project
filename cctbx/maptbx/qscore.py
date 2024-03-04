@@ -1,6 +1,5 @@
 from __future__ import division
 from collections import defaultdict
-from multiprocessing import Pool
 import warnings
 
 from libtbx.utils import null_out
