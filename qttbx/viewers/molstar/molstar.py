@@ -466,6 +466,7 @@ class MolstarViewer(ModelViewer):
 
 
   def select_from_query(self,query_json):
+    print(json.dumps(json.loads(query_json),indent=2))
     command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
     self.send_command(command,sync=True)
 

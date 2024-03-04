@@ -43,12 +43,14 @@ attrs_map_core = OrderedDict([
     ("asym_id","auth_asym_id"),
     ("seq_id","auth_seq_id"),
     ("comp_id","auth_comp_id"),
+    ('alt_id','label_alt_id'),
     ("atom_id","label_atom_id"),
     ("id","id"),
     ("type_symbol","type_symbol",),
     ("x", "Cartn_x"),
     ("y","Cartn_y"),
     ("z","Cartn_z"),
+
     ("occupancy",'occupancy'),
     ("B_iso_or_equiv","B_iso_or_equiv")]),
 
@@ -60,6 +62,7 @@ attrs_hierarchy_core= [
     'id',
     'type_symbol',
     'occupancy',
+    'alt_id',
     'B_iso_or_equiv'
     ],
 
@@ -72,6 +75,7 @@ attrs_map_phenix = OrderedDict([
     ("asym_id","chain"),
     ("seq_id","resseq"),
     ("comp_id","resname"),
+    ("alt_id","altloc"),
     ("atom_id","atom"),
     ("id","serial"),
     ("type_symbol","element"),
@@ -82,7 +86,7 @@ attrs_map_phenix = OrderedDict([
     ("bfactor","b"),
     ('icode','icode'),
     ("charge","charge"),
-    ("alt_id","altloc")
+
     ]),
 
 dtypes_mmcif = {
@@ -90,6 +94,7 @@ dtypes_mmcif = {
  'label_asym_id': 'string',
  'auth_seq_id': 'Int64',
  'label_seq_id': 'Int64',
+ 'label_alt_id':'string',
  'label_comp_id': 'string',
  'type_symbol': 'string',
  'label_alt_id': 'string',
@@ -116,9 +121,9 @@ fill_functions = {
  'auth_seq_id': lambda sites: sites["label_seq_id"],
  'label_seq_id': None,
  'auth_comp_id': lambda sites: sites["label_comp_id"],
+ 'label_alt_id': None,
  'label_comp_id': None,
  'type_symbol': None,
- 'label_alt_id': None,
  'pdbx_PDB_model_num': None,
  'pdbx_PDB_ins_code': None,
  'Cartn_x': None,
@@ -204,7 +209,7 @@ class AtomSites(pd.DataFrame):
                                 name=name)
 
   @classmethod
-  def from_cctbx_model(cls,model,name=None):
+  def from_mmtbx_model(cls,model,name=None):
     atoms = model.get_atoms()
     return cls.from_cctbx_atoms(atoms,name=name)
 

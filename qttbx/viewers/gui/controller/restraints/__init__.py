@@ -47,6 +47,7 @@ class RestraintsTopTabController(Controller):
       if not self.state.active_model_ref.has_restraints:
         ref = self.state.active_model_ref
         model = ref.model
+        model.add_crystal_symmetry_if_necessary()
         model.process(make_restraints=True)
         restraints_ref = RestraintsRef.from_model_ref(self.state.active_model_ref)
         ref.restraints = restraints_ref

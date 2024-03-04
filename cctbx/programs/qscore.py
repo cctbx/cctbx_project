@@ -147,15 +147,6 @@ class Program(ProgramTemplate):
     self.result.q_score_main_chain = q_mc
     self.result.q_score_overall = q_all
 
-  def get_results(self):
-    return self.result
-
-  def get_results_as_JSON(self):
-    results_dict = {
-      "flat_results" : self.result.qscore_dataframe.to_dict(orient="records")
-    }
-    return json.dumps(results_dict,indent=2)
-
     # write bild files
     if self.params.qscore.write_probes:
       print("Writing probe debug files...Using a small selection is recommended",
@@ -169,3 +160,14 @@ class Program(ProgramTemplate):
         probe_xyz_flat = probe_xyz.reshape((n_atoms*n_probes,3))
         out_file = Path(debug_path,"probes_shell_"+shell+".bild")
         write_bild_spheres(probe_xyz_flat,str(out_file),r=0.2)
+
+
+  def get_results(self):
+    return self.result
+
+  def get_results_as_JSON(self):
+    results_dict = {
+      "flat_results" : self.result.qscore_dataframe.to_dict(orient="records")
+    }
+    return json.dumps(results_dict,indent=2)
+
