@@ -15,9 +15,13 @@ from libtbx import Auto, table_utils
 from libtbx.mpi4py import MPI
 from xfel.util.drift import params_from_phil, read_experiments
 
-from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
-import matplotlib.pyplot as plt
-from matplotlib.gridspec import GridSpec
+try:
+  from mpl_toolkits.mplot3d import Axes3D  # noqa: required to use 3D axes
+  import matplotlib.pyplot as plt
+  from matplotlib.gridspec import GridSpec
+except ModuleNotFoundError as e:
+  plt, GridSpec = None, None
+  matplotlib_import_error = e
 import numpy as np
 import scipy as sp
 
@@ -488,6 +492,8 @@ class BaseDistributionArtist(abc.ABC):
 
   def __init__(self) -> None:
     self.hedgehogs = []
+    if plt is None:
+      raise matplotlib_import_error
     self._init_figure()
 
   def _init_figure(self) -> None:
@@ -518,7 +524,7 @@ class HedgehogArtist(BaseDistributionArtist):
   """Class responsible for drawing distribution of vectors as "hedgehogs"."""
   PROJECTION = '3d'
 
-  def _plot_hedgehog(self, axes: plt.Axes, hedgehog: Hedgehog) -> None:
+  def _plot_hedgehog(self, axes: 'plt.Axes', hedgehog: Hedgehog) -> None:
     origin = [0., 0., 0.]
     name = hedgehog.name
     v = hedgehog.distribution.vectors
@@ -564,13 +570,12 @@ def calculate_geographic_heat(vectors: np.ndarray, n_bins: int = 10,
 
 class HammerArtist(BaseDistributionArtist):
   """Class responsible for drawing distributions as hammer heatmaps"""
-  CMAP = plt.get_cmap('viridis')
   PROJECTION = 'hammer'
 
-  def _plot_hammer(self, ax: plt.Axes, hedgehog: Hedgehog) -> None:
+  def _plot_hammer(self, ax: 'plt.Axes', hedgehog: Hedgehog) -> None:
     geo_heat = calculate_geographic_heat(vectors=hedgehog.distribution.vectors)
     ax.grid(False)
-    ax.pcolor(*geo_heat, cmap=self.CMAP)
+    ax.pcolor(*geo_heat, cmap=plt.get_cmap('viridis'))
     axes_params = {'ls': '', 'marker': 'o', 'mec': 'w'}  # lab x, y, and z-axes
     ax.plot(0., 0., c='r', **axes_params)
     ax.plot([-np.pi / 2, np.pi / 2], [0., 0.], c='g', **axes_params)
