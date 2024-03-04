@@ -589,6 +589,7 @@ class chiralities(restraint_validation):
         self.n_pseudochiral_by_model[model_id] = 0
         self.n_tetrahedral_by_model[model_id] = 0
         self.n_chiral_by_model[model_id] = 0
+        self.n_outliers_by_model[model_id] = 0
       if not outlier.is_pseudochiral():
         self.n_chiral_by_model[model_id] += 1
       if (outlier.score > sigma_cutoff):
