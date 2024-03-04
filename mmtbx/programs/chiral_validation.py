@@ -16,6 +16,7 @@ class Program(ProgramTemplate):
 Options:
 
   model=input_file      input PDB or mmCIF file
+  outliers_only=True    Only return chiral outliers
   kinemage=False        Create kinemage markup (overrides text output)
   json=False            Outputs results as JSON compatible dictionary
   help = False          Prints this help message if true
