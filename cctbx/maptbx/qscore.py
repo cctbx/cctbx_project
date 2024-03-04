@@ -186,9 +186,7 @@ def shell_probes_precalculate(
 
   # Do input validation
   if not atoms_tree:
-    assert atoms_tree is None, ("If not providing an atom tree,\
-      provide a 2d atom coordinate array to build tree")
-    assert atoms_tree is not None
+    atoms_tree = KDTree(np.array(sites_cart))
 
   # Manage log
   if log is None:

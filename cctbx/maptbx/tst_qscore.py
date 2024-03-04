@@ -206,7 +206,6 @@ def run_test(test):
   params = convert_group_args_to_dict(params)
   result = q_func(mmm,
                   **params,
-                  params=convert_dict_to_group_args(params),
                   log=null_out())
   test.results.calc = convert_dict_to_group_args(result)
   for key,value_expected in test.results.expected.__dict__.items():
