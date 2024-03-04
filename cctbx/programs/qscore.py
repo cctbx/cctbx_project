@@ -25,33 +25,22 @@ class Program(ProgramTemplate):
   datatypes = ['phil', 'model', 'real_map']
 
   master_phil_str = """
-
-
   include scope cctbx.maptbx.qscore.master_phil_str
   """
 
   def validate(self):
-    if not self.params.qscore.backend in [
-      "numpy","flex"
-      ]:
-      raise Sorry("Provide one of 'numpy', 'flex'")
-
-    if not self.params.qscore.probe_allocation_method in [
-      "progressive", "precalculate"
-    ]:
-      raise Sorry("Provide one of 'progressive' or 'precalculate'")
-
-    if not (8<=self.params.qscore.n_probes_max<=128) or (
-      not (8<=self.params.qscore.n_probes_max<=128)
-    ):
-      raise Sorry("Provide n_probe values in the range 8-128")
+    # test for sane parameters
+    if not (4<=self.params.qscore.n_probes<=512):
+      raise Sorry("Provide n_probe values in the range 4-512")
 
     if  not (4<=self.params.qscore.shell_radius_num<=128):
-      raise SOrry("Provide shell_radius_num values in range 4-128")
+      raise Sorry("Provide shell_radius_num values in range 4-128")
 
 
 
   def run(self):
+    self._print("Running")
+
     # get initial data
     mmm = self.data_manager.get_map_model_manager()
 
@@ -61,11 +50,7 @@ class Program(ProgramTemplate):
     start = self.params.qscore.shell_radius_start
     stop = self.params.qscore.shell_radius_stop
     num = self.params.qscore.shell_radius_num
-    shells = list(np.linspace(
-    start,
-    stop,
-    num,
-    endpoint=True))
+    shells = list(np.linspace(start,stop,num,endpoint=True))
 
     for shell in reversed(shells):
       self.shells.insert(0,shell)
@@ -79,28 +64,22 @@ class Program(ProgramTemplate):
     mmm.set_model(model,overwrite=True)
 
     # print output
-    print("Running Q-score:")
+    self._print("Running Q-score:")
     param_output = group_args(
-      n_probes_max=self.params.qscore.n_probes_max,
-      n_probes_target=self.params.qscore.n_probes_target,
+      n_probes=self.params.qscore.n_probes,
       rtol=self.params.qscore.rtol,
-      probe_allocation_method=self.params.qscore.probe_allocation_method,
       selection=self.params.qscore.selection,
     )
-    print(param_output)
-    print("\nRadial shells used:")
-    print([round(shell,2) for shell in shells])
+    self._print(param_output)
+    self._print("\nRadial shells used:")
+    self._print([round(shell,2) for shell in shells])
     # run qscore
     qscore_result= calc_qscore(
         mmm,
         selection=self.params.qscore.selection,
-        n_probes_target=self.params.qscore.n_probes_target,
-        n_probes_max=self.params.qscore.n_probes_max,
-        n_probes_min=self.params.qscore.n_probes_min,
+        n_probes=self.params.qscore.n_probes,
         rtol=self.params.qscore.rtol,
         shells=self.shells,
-        probe_allocation_method = self.params.qscore.probe_allocation_method,
-        backend=backend,
         nproc=self.params.qscore.nproc,
         log=self.logger)
 
@@ -117,8 +96,12 @@ class Program(ProgramTemplate):
     assert model.get_number_of_atoms()==len(df)
 
     # calculate some metrics
-    print("\nFinished running. Q-score results:")
     df = self.result.qscore_dataframe
+    if self.params.qscore.selection is not None:
+      model = model.select(model.selection(self.params.qscore.selection))
+    assert model.get_number_of_atoms()==len(df)
+    self._print("\nFinished running. Q-score results:")
+
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)
     sel_sc = ~sel_mc
@@ -139,13 +122,23 @@ class Program(ProgramTemplate):
     print("  Mean side chain Q-score:",round(q_sc,3))
     print("  Mean main chain Q-score:",round(q_mc,3))
     print("  Mean overall Q-score:",round(q_all,3))
-    print("  Use --json flat to get json output")
+    print("\n  Use --json flag to get json output")
+
 
     # store in results
     self.result.q_score_chain_df = q_chains
     self.result.q_score_side_chain = q_sc
     self.result.q_score_main_chain = q_mc
     self.result.q_score_overall = q_all
+
+  def get_results(self):
+    return self.result
+
+  def get_results_as_JSON(self):
+    results_dict = {
+      "flat_results" : self.result.qscore_dataframe.to_dict(orient="records")
+    }
+    return json.dumps(results_dict,indent=2)
 
     # write bild files
     if self.params.qscore.write_probes:
@@ -160,14 +153,3 @@ class Program(ProgramTemplate):
         probe_xyz_flat = probe_xyz.reshape((n_atoms*n_probes,3))
         out_file = Path(debug_path,"probes_shell_"+shell+".bild")
         write_bild_spheres(probe_xyz_flat,str(out_file),r=0.2)
-
-
-  def get_results(self):
-    return self.result
-
-  def get_results_as_JSON(self):
-    results_dict = {
-      "flat_results" : self.result.qscore_dataframe.to_dict(orient="records")
-    }
-    return json.dumps(results_dict,indent=2)
-

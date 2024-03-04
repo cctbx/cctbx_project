@@ -21,7 +21,7 @@ class RepresentationSelect(QWidget):
     }
     self.actions = {}
     for key,value in self.options.items():
-      action = QAction(key, self, checkable=True)
+      action = QAction(key, self, checkable=False)
       self.menu.addAction(action)
       self.actions[value] = action
 

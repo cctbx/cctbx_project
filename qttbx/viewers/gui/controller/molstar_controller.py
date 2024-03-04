@@ -69,7 +69,6 @@ class SyncManager:
 
 
   def try_sync(self,callback=None):
-
     self._has_synced = False
     # callback is run if successful sync
     #print(f"try_sync() ... sync called with count: {self._sync_count} at time: {time.time()}, has synced: {self.has_synced}")
@@ -129,6 +128,7 @@ class MolstarController(Controller):
     "load_model_from_string",
     "load_map",
     "log_message",
+    "select_from_phenix_string",
   ]
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
@@ -277,7 +277,7 @@ class MolstarController(Controller):
     if callback is not None:
       callback(query_dict)
 
-  def select_from_phenix_string(self,selection_phenix: str):
+  def select_from_phenix_string(self,selection_phenix=None):
     # convert to query
     query = self.state.mol.sites._select_query_from_str_phenix(selection_phenix)
     query.params.refId = self.state.active_model_ref.id

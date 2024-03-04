@@ -226,7 +226,7 @@ class PhenixMolstarViewer(ModelViewer):
   # Remote communication
 
   def _run_command(self, data):
-    print("DEBUG: _run_command() in molstar remote")
+    #print("DEBUG: _run_command() in molstar remote")
 
     try:
       # Template data
@@ -239,8 +239,8 @@ class PhenixMolstarViewer(ModelViewer):
       #           }
       #         }
       data = json.dumps(data,indent=2)
-      print("Data being sent: ")
-      print(data)
+      #print("Data being sent: ")
+      #print(data)
       response = requests.post(self.url, json=data)
       return response
 
@@ -249,7 +249,7 @@ class PhenixMolstarViewer(ModelViewer):
 
 
   def send_command(self, data):
-    print("DEBUG: send_command() in molstar remote")
+    #print("DEBUG: send_command() in molstar remote")
     if self._connected == True:
       return self._run_command(data)
 
@@ -261,7 +261,7 @@ class PhenixMolstarViewer(ModelViewer):
     """
     Load a model directly from file.
     """
-    print("Debug: load_model() in molstar remote")
+    #print("Debug: load_model() in molstar remote")
     filename = str(filename)
 
     command = {
@@ -272,7 +272,7 @@ class PhenixMolstarViewer(ModelViewer):
         "label":label,
       }
     }
-    print("command to send:")
+    #print("command to send:")
     self.send_command(command)
 
 
@@ -327,6 +327,14 @@ class PhenixMolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Selection
 
+  def select_from_phenix_string(self,phenix_string):
+    command = {
+      "command":"select_from_phenix_string",
+      "kwargs":{
+        "selection_phenix":phenix_string,
+      }
+    }
+    self.send_command(command)
 
   def select_from_query(self,query_json):
     command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
