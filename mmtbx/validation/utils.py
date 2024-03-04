@@ -4,6 +4,7 @@ from libtbx import easy_pickle
 from libtbx import group_args
 from libtbx.utils import Sorry
 from collections import defaultdict
+from iotbx.pdb import common_residue_names_get_class
 import os.path
 import math
 import sys
@@ -339,6 +340,15 @@ def build_name_hash(pdb_hierarchy):
   for atom in pdb_hierarchy.atoms():
     i_seq_name_hash[atom.i_seq]=atom.pdb_label_columns()
   return i_seq_name_hash
+
+def get_mmtype_from_resname(resname):
+  class_string = common_residue_names_get_class(resname)
+  if "amino_acid" in class_string:
+    return "PROTEIN"
+  elif "rna_dna" in class_string:
+    return "NA"
+  else:
+    return "OTHER"
 
 def exercise():
   from libtbx.test_utils import approx_equal

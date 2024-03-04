@@ -94,7 +94,7 @@ class mp_angle(atoms):
 # analysis objects
 class mp_bonds(validation):
   output_header = "#residue:atom_1:atom_2:num_sigmas"
-  label = "Backbone bond lenths"
+  label = "Bond lengths"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Sigmas"]
   gui_formats = ["%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 4
@@ -136,15 +136,14 @@ class mp_bonds(validation):
       labels = pdb_atoms[proxy.i_seqs[0]].fetch_labels()
       model_id = labels.model_id
       self.n_total += 1
+      #iotbx.pdb.common_residue_names_get_class
       self.n_total_by_model[model_id] += 1
-      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
-        mm_type="PROTEIN"
+      mm_type = utils.get_mmtype_from_resname(pdb_atoms[proxy.i_seqs[0]].parent().resname)
+      if mm_type=="PROTEIN":
         self.n_total_protein_by_model[model_id] += 1
-      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
-        mm_type="NA"
+      elif mm_type=="NA":
         self.n_total_na_by_model[model_id] += 1
       else:
-        mm_type="OTHER"
         self.n_total_other_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = - restraint.delta / sigma
@@ -207,7 +206,7 @@ class mp_bonds(validation):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print(prefix + "No atoms found.", file=out)
+      print(prefix + "No bond lengths found.", file=out)
     elif (self.n_outliers == 0):
       print(prefix + "All bonds within 4.0 sigma of ideal values.", file=out)
     else :
@@ -216,7 +215,7 @@ class mp_bonds(validation):
 
 class mp_angles(validation):
   output_header = "#residue:atom_1:atom_2:atom_3:num_sigmas"
-  label = "Backbone bond angles"
+  label = "Bond angles"
   gui_list_headers = ["Residue", "Atom 1", "Atom 2", "Atom 3", "Sigmas"]
   gui_formats = ["%s", "%s", "%s", "%s", "%.2f"]
   wx_column_widths = [160] * 5
@@ -257,14 +256,12 @@ class mp_angles(validation):
       model_id = labels.model_id
       self.n_total += 1
       self.n_total_by_model[model_id] += 1
-      if pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_protein():
-        mm_type="PROTEIN"
+      mm_type = utils.get_mmtype_from_resname(pdb_atoms[proxy.i_seqs[0]].parent().resname)
+      if mm_type=="PROTEIN":
         self.n_total_protein_by_model[model_id] += 1
-      elif pdb_atoms[proxy.i_seqs[0]].parent().parent().parent().is_na():
-        mm_type="NA"
+      elif mm_type=="NA":
         self.n_total_na_by_model[model_id] += 1
       else:
-        mm_type="OTHER"
         self.n_total_other_by_model[model_id] += 1
       sigma = sqrt(1 / restraint.weight)
       num_sigmas = - restraint.delta / sigma
@@ -328,7 +325,7 @@ class mp_angles(validation):
 
   def show_summary(self, out=sys.stdout, prefix=""):
     if (self.n_total == 0):
-      print(prefix + "No backbone atoms found.", file=out)
+      print(prefix + "No bond angles found.", file=out)
     elif (self.n_outliers == 0):
       print(prefix + "All angles within 4.0 sigma of ideal values.", file=out)
     else :
