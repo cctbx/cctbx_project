@@ -7396,6 +7396,67 @@ ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
   is_mmcif = (str(type(pdb_inp)).find('cif')>0)
   assert is_mmcif
 
+def exercise_interleave_alt_confs():
+  pdb_inp_lines_1 = flex.split_lines("""\
+CRYST1   14.600   26.100   29.200  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.068493 -0.000000 -0.000000        0.00000
+SCALE2      0.000000  0.038314 -0.000000        0.00000
+SCALE3      0.000000  0.000000  0.034247        0.00000
+ATOM     17  N  ASER     4      -0.155   3.125   4.014  1.00 17.55           N
+ATOM     18  CA ASER     4      -0.175   1.896   4.797  1.00 15.51           C
+ATOM     19  C  ASER     4       1.158   1.683   5.505  1.00 16.48           C
+ATOM     20  O  ASER     4       1.508   0.560   5.868  1.00  6.79           O
+ATOM     21  CB ASER     4      -0.490   0.698   3.899  1.00 17.79           C
+ATOM     22  OG ASER     4      -1.752   0.849   3.272  0.50 11.67           O
+ATOM     24  N  ALEU     5       1.898   2.771   5.698  1.00 10.29           N
+ATOM     25  CA ALEU     5       3.208   2.705   6.333  1.00  3.27           C
+ATOM     26  C  ALEU     5       3.407   3.868   7.301  1.00  7.66           C
+ATOM     27  O  ALEU     5       3.458   5.024   6.884  1.00 14.56           O
+ATOM     28  CB ALEU     5       4.310   2.711   5.272  1.00  3.87           C
+ATOM     29  CG ALEU     5       5.736   2.474   5.769  1.00 14.70           C
+ATOM     30  CD1ALEU     5       5.818   1.155   6.516  1.00 19.83           C
+ATOM     31  CD2ALEU     5       6.719   2.499   4.611  1.00 13.84           C
+  """)
+
+  pdb_inp_lines_2 = flex.split_lines("""\
+CRYST1   14.600   26.100   29.200  90.00  90.00  90.00 P 21 21 21
+SCALE1      0.068493 -0.000000 -0.000000        0.00000
+SCALE2      0.000000  0.038314 -0.000000        0.00000
+SCALE3      0.000000  0.000000  0.034247        0.00000
+ATOM     17  N  BSER     4      -0.155   3.125   4.014  1.00 17.55           N
+ATOM     18  CA BSER     4      -0.175   1.896   4.797  1.00 15.51           C
+ATOM     19  C  BSER     4       1.158   1.683   5.505  1.00 16.48           C
+ATOM     20  O  BSER     4       1.508   0.560   5.868  1.00  6.79           O
+ATOM     21  CB BSER     4      -0.490   0.698   3.899  1.00 17.79           C
+ATOM     23  OG BSER     4       0.484   0.555   2.880  0.50  2.71           O
+ATOM     24  N  BLEU     5       1.898   2.771   5.698  1.00 10.29           N
+ATOM     25  CA BLEU     5       3.208   2.705   6.333  1.00  3.27           C
+ATOM     26  C  BLEU     5       3.407   3.868   7.301  1.00  7.66           C
+ATOM     27  O  BLEU     5       3.458   5.024   6.884  1.00 14.56           O
+ATOM     28  CB BLEU     5       4.310   2.711   5.272  1.00  3.87           C
+ATOM     29  CG BLEU     5       5.736   2.474   5.769  1.00 14.70           C
+ATOM     30  CD1BLEU     5       5.818   1.155   6.516  1.00 19.83           C
+ATOM     31  CD2BLEU     5       6.719   2.499   4.611  1.00 13.84           C
+""")
+
+  h1 = pdb.input(source_info=None, lines=pdb_inp_lines_1).construct_hierarchy()
+  h2 = pdb.input(source_info=None, lines=pdb_inp_lines_2).construct_hierarchy()
+
+  # Interleave the alt confs
+  from iotbx.pdb.utils import interleave_alt_confs
+  new_h = interleave_alt_confs(h1,h2)
+
+  # Make sure we got both confs
+  new_h1 = new_h.apply_atom_selection('altloc A')
+  new_h2 = new_h.apply_atom_selection('altloc B')
+  assert new_h1.as_pdb_string() == h1.as_pdb_string()
+  assert new_h2.as_pdb_string() == h2.as_pdb_string()
+
+  assert new_h1.is_similar_hierarchy(h1)
+  assert new_h2.is_similar_hierarchy(h2)
+
+  assert not new_h1.is_similar_hierarchy(h2)
+  assert not new_h2.is_similar_hierarchy(h1)
 
 def exercise_fits_in_pdb_format():
   pdb_inp_lines = flex.split_lines("""\
@@ -7445,6 +7506,8 @@ def exercise(args):
       prev = key
   phenix_regression_pdb_file_names = get_phenix_regression_pdb_file_names()
   while True:
+    exercise_interleave_alt_confs()
+    break # ZZ
     exercise_remove_residue_groups_with_atoms_on_special_positions_selective()
     exercise_shift_to_origin()
     exercise_rename_chain_id()
@@ -7507,6 +7570,7 @@ def exercise(args):
     exercise_forward_compatibility()
     exercise_as_pdb_or_mmcif_string()
     exercise_write_pdb_or_mmcif_file()
+    exercise_interleave_alt_confs()
     if (not forever): break
   print(format_cpu_times())
 

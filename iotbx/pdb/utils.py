@@ -719,6 +719,46 @@ def get_cif_or_pdb_file_if_present(file_name):
    else:
      return "" # return empty string so os.path.isfile(return_value) works
 
+def interleave_alt_confs(ph1, ph2):
+  """ Method to interleave alternate conformations in two hierarchies
+   Requires that all atoms are present in both hierarchies, and that the
+   hierarchies have different altloc values for each atom
+  """
+
+  # Check that hierarchies are similar
+  ph1_no_alt = ph1.deep_copy()
+  ph1_no_alt.remove_alt_confs(always_keep_one_conformer=True)
+  ph2_no_alt = ph2.deep_copy()
+  ph2_no_alt.remove_alt_confs(always_keep_one_conformer=True)
+  assert ph1_no_alt.is_similar_hierarchy(ph2_no_alt), \
+     "Models do not have the same hierarchy"
+
+  # Interleave the hierarchies
+  from iotbx.pdb import hierarchy
+  new_ph = hierarchy.root()
+  for m0, m1 in zip(ph1.models(), ph2.models()):
+    m = hierarchy.model()
+    m.id = m0.id
+    new_ph.append_model(m)
+    for c0, c1 in zip(m0.chains(), m1.chains()):
+     c = hierarchy.chain()
+     c.id = c0.id
+     m.append_chain(c)
+     for rg0, rg1 in zip(c0.residue_groups(), c1.residue_groups()):
+       r = hierarchy.residue_group()
+       assert rg0.icode == rg1.icode, "Residue icodes must match"
+       assert rg0.resseq == rg1.resseq, "Residue resseqs must match"
+       r.resseq = rg0.resseq
+       r.icode = rg0.icode
+       c.append_residue_group(r)
+       for ag0, ag1 in zip(rg0.atom_groups(), rg1.atom_groups()):
+         assert ag0.resname == ag1.resname, "Atoms need matching residue names"
+         assert ag0.altloc != ag1.altloc, "Atoms need different altloc values"
+         # Append each conformer for this atom group
+         r.append_atom_group(ag0.detached_copy())
+         r.append_atom_group(ag1.detached_copy())
+  return new_ph
+
 class numbering_dict:
   ''' Set up a dict that keeps track of chain ID, residue ID and icode for
     residues relative to their initial values
