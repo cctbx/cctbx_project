@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import os
 import json
+import torch
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
@@ -24,7 +25,7 @@ from dials.array_family import flex
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters, PositiveParameter
 from simtbx.diffBragg.attr_list import NB_BEAM_ATTRS, NB_CRYST_ATTRS, DIFFBRAGG_ATTRS
-from simtbx.diffBragg import psf
+from simtbx.diffBragg import psf, kokkos_device
 
 try:
     from line_profiler import LineProfiler
@@ -1570,7 +1571,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
     J = None
     if compute_grad:
         # This should be all params save the Fhkl params
-        J = np.zeros((nparam-SIM.Num_ASU*SIM.num_Fhkl_channels, npix))  # gradients
+        J = torch.zeros((nparam-SIM.Num_ASU*SIM.num_Fhkl_channels, npix), device=kokkos_device())  # gradients
 
     model_pix = None
     #TODO check roiScales mode and if its broken, git rid of it!
@@ -1581,7 +1582,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
     if not Mod.params.fix.perRoiScale:
         perRoiParams = [Mod.P["scale_roi%d" % roi_id] for roi_id in Mod.roi_id_unique]
         perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
-        roiScalesPerPix = np.zeros(npix)
+        roiScalesPerPix = torch.zeros(npix, device=kokkos_device())
         for i_roi, roi_id in enumerate(Mod.roi_id_unique):
             slc = Mod.roi_id_slices[roi_id][0]
             roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
@@ -1615,8 +1616,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
 
         SIM.D.add_diffBragg_spots(pfs)
 
-        pix_noRoiScale = SIM.D.raw_pixels_roi[:npix]
-        pix_noRoiScale = pix_noRoiScale.as_numpy_array()
+        pix_noRoiScale = torch.from_dlpack(SIM.D.get_floatimage())[:npix]
 
         pix = pix_noRoiScale * roiScalesPerPix
 
@@ -1635,15 +1635,15 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
 
             if RotXYZ_params[0].refine:
                 for i_rot in range(3):
-                    rot_grad = scale * SIM.D.get_derivative_pixels(ROTXYZ_IDS[i_rot]).as_numpy_array()[:npix]
+                    rot_grad = scale * torch.from_dlpack(SIM.D.get_d_Umat_images())[:npix]
                     rot_p = RotXYZ_params[i_rot]
                     rot_grad = rot_p.get_deriv(x[rot_p.xpos], rot_grad)
                     J[rot_p.xpos] += rot_grad
 
             if Nabc_params[0].refine:
-                Nabc_grads = SIM.D.get_ncells_derivative_pixels()
+                Nabc_grads = scale * torch.from_dlpack(SIM.D.get_d_Ncells_images())[:3*npix]
                 for i_n in range(3):
-                    N_grad = scale*(Nabc_grads[i_n][:npix].as_numpy_array())
+                    N_grad = Nabc_grads[i_n*npix:(i_n+1)*npix]
                     p = Nabc_params[i_n]
                     N_grad = p.get_deriv(x[p.xpos], N_grad)
                     J[p.xpos] += N_grad
@@ -1651,53 +1651,51 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                         break
 
             if Ndef_params[0].refine:
-                Ndef_grads = SIM.D.get_ncells_def_derivative_pixels()
+                Ndef_grads = scale * torch.from_dlpack(SIM.D.get_d_Ncells_images())[3*npix:]
                 for i_n in range(3):
-                    N_grad = scale * (Ndef_grads[i_n][:npix].as_numpy_array())
+                    N_grad = Ndef_grads[i_n*npix:(i_n+1)*npix]
                     p = Ndef_params[i_n]
                     N_grad = p.get_deriv(x[p.xpos], N_grad)
                     J[p.xpos] += N_grad
 
             if SIM.D.use_diffuse:
                 for t in ['gamma','sigma']:
-                    diffuse_grads = getattr(SIM.D, "get_diffuse_%s_derivative_pixels" % t)()
+                    diffuse_grads = scale * torch.from_dlpack( getattr(SIM.D, "get_d_diffuse_%s_images" % t)() )
                     if diffuse_params_lookup[t][0].refine:
                         for i_diff in range(3):
-                            diff_grad = scale*(diffuse_grads[i_diff][:npix].as_numpy_array())
+                            diff_grad = diffuse_grads[i_diff*npix:(i_diff+1)*npix]
                             p = diffuse_params_lookup[t][i_diff]
                             diff_grad = p.get_deriv(x[p.xpos], diff_grad)
                             J[p.xpos] += diff_grad
 
             if eta_params[0].refine:
-                if SIM.D.has_anisotropic_mosaic_spread:
-                    eta_derivs = SIM.D.get_aniso_eta_deriv_pixels()
-                else:
-                    eta_derivs = [SIM.D.get_derivative_pixels(ETA_ID)]
+                eta_derivs = scale * torch.from_dlpack(SIM.D.get_d_eta_images())
                 num_eta = 3 if SIM.D.has_anisotropic_mosaic_spread else 1
                 for i_eta in range(num_eta):
                     p = eta_params[i_eta]
-                    eta_grad = scale * (eta_derivs[i_eta][:npix].as_numpy_array())
+                    eta_grad = eta_derivs[i_eta*npix:(i_eta+1)*npix]
                     eta_grad = p.get_deriv(x[p.xpos], eta_grad)
                     J[p.xpos] += eta_grad
 
             if ucell_params[0].refine:
+                ucell_grads = scale * torch.from_dlpack(SIM.D.get_d_Umat_images())
                 for i_ucell in range(nucell):
                     p = ucell_params[i_ucell]
-                    deriv = scale*SIM.D.get_derivative_pixels(UCELL_ID_OFFSET+i_ucell).as_numpy_array()[:npix]
+                    deriv = ucell_grads[i_ucell*npix: (i_ucell+1)*npix]
                     deriv = p.get_deriv(x[p.xpos], deriv)
                     J[p.xpos] += deriv
 
             if DetZ.refine:
-                d = SIM.D.get_derivative_pixels(DETZ_ID).as_numpy_array()[:npix]
+                d = torch.from_dlpack(SIM.D.get_d_panel_orig_images())[npix:2*npix]
                 d = DetZ.get_deriv(x[DetZ.xpos], d)
                 J[DetZ.xpos] += d
 
             if Mod.P["lambda_offset"].refine:
-                lambda_derivs = SIM.D.get_lambda_derivative_pixels()
+                lambda_derivs = torch.from_dlpack(SIM.D.get_d_lambda_images())
                 lambda_param_names = "lambda_offset", "lambda_scale"
-                for d,name in zip(lambda_derivs, lambda_param_names):
+                for i_lmbd,name in enumerate(lambda_param_names):
                     p = Mod.P[name]
-                    d = d.as_numpy_array()[:npix]
+                    d = lambda_derivs[i_lmbd*npix:(i_lmbd+1)*npix]
                     d = p.get_deriv(x[p.xpos], d)
                     J[p.xpos] += d
 
