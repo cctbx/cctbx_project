@@ -7,10 +7,17 @@ import json
 import time
 import os
 from collections import defaultdict
+from dataclasses import dataclass
+from .base import DataClassBase
+from typing import Dict
 
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from iotbx.data_manager import DataManager
 
+from .reference import Reference
+from .structure import Structure
+from .component import Component
+from .reference import Reference
 from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, CifFileRef
 from .results import ResultsRef
 from ...last.python_utils import DotDict
@@ -18,7 +25,7 @@ from .data import MolecularModelData, RealSpaceMapData
 
 
 class StateSignals(QObject):
-  style_change = Signal(str)# json
+  style_change = Signal(object,str)# (ref,style_json)
   tab_change = Signal(str) # tab name TOOD: Move? Not really a state thing...
   color_change = Signal(Ref)
   model_change = Signal(object) # model ref
@@ -38,6 +45,40 @@ class StateSignals(QObject):
   remove_ref = Signal(object) # ref
   update = Signal(object)
 
+@dataclass
+class PhenixState(DataClassBase):
+  references: Dict[str,Reference]
+
+  @classmethod
+  def from_dict(cls,state_dict):
+    phenix_state =  cls(references = {})
+
+    # update state from dict
+    for ref_id,ref_dict in state_dict["references"].items():
+      id_molstar = ref_dict["id_molstar"]
+      id_viewer = ref_dict["id_viewer"]
+      if id_viewer in phenix_state.references:
+        ref = phenix_state.references[ref_id]
+        ref.id_molstar = id_molstar
+        ref.structures = []
+      else:
+        ref = Reference(id_molstar=id_molstar,
+                        id_viewer = id_viewer,
+                        structures = [])
+        phenix_state.references[id_viewer] = ref
+      # now modify within a ref
+      for structure_dict in ref_dict['structures']:
+        structure = Structure(components=[])
+        ref.structures.append(structure)
+        for component_dict in structure_dict['components']:
+          component = Component(representations=[],key=component_dict["key"])
+          structure.components.append(component)
+
+          for representation_name in component_dict["representations"]:
+            component.representations.append(representation_name)
+
+    return phenix_state
+
 class State:
 
   @classmethod
@@ -55,6 +96,7 @@ class State:
     self._model = None
     self._map_manager = None
     self._has_synced = False
+    self._phenix_state = PhenixState(references={})
 
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
@@ -85,14 +127,22 @@ class State:
       if self.active_map_ref is None:
         self.active_map_ref = self.references_map[0]
 
+  @property
+  def phenixState(self):
+    return self._phenix_state
+  @phenixState.setter
+  def phenixState(self,value):
+    self._phenix_state = value
+
+
   def to_dict(self):
     d= {
       "class_name": self.__class__.__name__,
       "references": {ref_id: ref.to_dict() for ref_id,ref in self.references.items()},
-      "external_loaded": self.external_loaded,
-      "active_model_ref": self.active_model_ref.id if self.active_model_ref else None,
-      "active_map_ref": self.active_map_ref.id if self.active_map_ref else None,
-      "active_selection_ref": self.active_selection_ref.id if self.active_selection_ref else None
+      #"external_loaded": self.external_loaded,
+      #"active_model_ref": self.active_model_ref.id if self.active_model_ref else None,
+      #"active_map_ref": self.active_map_ref.id if self.active_map_ref else None,
+      #"active_selection_ref": self.active_selection_ref.id if self.active_selection_ref else None
     }
     return d
 
@@ -100,6 +150,17 @@ class State:
   def to_json(self,indent=None):
     d = self.to_dict()
     return json.dumps(d,indent=indent)
+
+  def show(self):
+    print(self.to_json(indent=2))
+
+  def update_from_remote_dict(self,remote_state_dict):
+    for ref_id,ref in remote_state_dict["references"].items():
+      if ref_id in self.references:
+        local_ref = self.state.references[ref_id]
+        local_ref.external_ids.update(ref["external_ids"])
+        local_ref.style.update(**ref["style"])
+
 
   def _sync(self):
     # Run this after all controllers are initialized

@@ -4,7 +4,6 @@ from typing import Optional, List
 from .base import DataClassBase
 @dataclass
 class Style(DataClassBase):
-  ref_id: str
   iso: float
   color_theme: str
   opacity: float
@@ -15,11 +14,10 @@ class Style(DataClassBase):
 
 
   @classmethod
-  def from_default(cls,ref_id):
+  def from_default(cls):
     return cls(
-      ref_id = ref_id,
       #query = SelectionQuery.from_all(ref_id=ref_id),
-      iso=1.0,
+      iso=0.5,
       color=None,
       color_theme='uniform',
       opacity=1.0,

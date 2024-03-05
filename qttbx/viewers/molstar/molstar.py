@@ -12,17 +12,12 @@ try:
 except:
   from viewers import ModelViewer
 
-try:
-  from selenium import webdriver
-  from webdriver_manager.chrome import ChromeDriverManager
-  from selenium.webdriver.chrome.service import Service
-except:
-  pass
 from iotbx.data_manager import DataManager
 from libtbx.utils import Sorry
 
 
 from .volume_streaming import VolumeStreamingManager
+from ..gui.state.state import PhenixState
 from ..gui.controller.controller import Controller
 from ..gui.controller.selection_controls import SelectionControlsController
 from .server_utils import  NodeHttpServer
@@ -31,135 +26,137 @@ from ..last.selection_utils import SelectionQuery
 from ..gui.controller.style import ModelStyleController, MapStyleController
 from ..last.python_utils import DotDict
 
-class CallbackManager:
-  """
-  Intermediate layer for callback functions to prevent undesired
-  repeated calls from subsequent events emitting the same signal.
-  """
-  def __init__(self):
-    super().__init__()
-    self.callback = None
-    self.cmd = None
+# class CallbackManager:
+#   """
+#   Intermediate layer for callback functions to prevent undesired
+#   repeated calls from subsequent events emitting the same signal.
+#   """
+#   def __init__(self):
+#     super().__init__()
+#     self.callback = None
+#     self.cmd = None
 
-  def call(self, *args, **kwargs):
+#   def call(self, *args, **kwargs):
 
-    if self.callback is not None:
-      #print(f"Callback manager calling: {self.callback}")
-      func = self.callback
-      self.callback = None
-      self.cmd = None
-      func(*args, **kwargs)
-
-
-  def add_callback(self,func,cmd=None):
-    if func is not None:
-      assert self.callback is None, f"A second callback was added ({func}) before the first was executed ({self.callback})"
-      self.callback = func
-      self.cmd = cmd
-
-class CommandQueue(QObject):
-  """
-  Enable batching commands. This is crucial to avoid async bugs, where the order of javascript commands given
-  is not necessarily the order they finish.
-  """
-  commandRequested = Signal(str, object,object,object,bool) # (cmd,web_view,selenium_driver,callback,sync)
-  #jsResultReady = Signal(str) # signal that the webview js command return value is ready
-  def __init__(self):
-    super().__init__()
-    self.commands = [] # list of commands
-    self.callback = None
-    self.callback_manager = CallbackManager()
+#     if self.callback is not None:
+#       #print(f"Callback manager calling: {self.callback}")
+#       func = self.callback
+#       self.callback = None
+#       self.cmd = None
+#       func(*args, **kwargs)
 
 
-    self.commandRequested.connect(self._execute_command)
+#   def add_callback(self,func,cmd=None):
+#     if func is not None:
+#       assert self.callback is None, f"A second callback was added ({func}) before the first was executed ({self.callback})"
+#       self.callback = func
+#       self.cmd = cmd
+
+# class CommandQueue(QObject):
+#   """
+#   Enable batching commands. This is crucial to avoid async bugs, where the order of javascript commands given
+#   is not necessarily the order they finish.
+#   """
+#   commandRequested = Signal(str, object,object,object,bool) # (cmd,web_view,selenium_driver,callback,sync)
+#   #jsResultReady = Signal(str) # signal that the webview js command return value is ready
+#   def __init__(self):
+#     super().__init__()
+#     self.commands = [] # list of commands
+#     self.callback = None
+#     self.callback_manager = CallbackManager()
+
+
+#     self.commandRequested.connect(self._execute_command)
 
 
 
-  def add(self,cmd,callback=None):
-    if callback is not None:
-      if self.callback is None:
-        self.callback = callback
-      else:
-        assert self.callback == callback, "Cannot form a command queue with multiple callbacks"
-    self.commands.append(cmd)
+#   def add(self,cmd,callback=None):
+#     if callback is not None:
+#       if self.callback is None:
+#         self.callback = callback
+#       else:
+#         assert self.callback == callback, "Cannot form a command queue with multiple callbacks"
+#     self.commands.append(cmd)
 
-  def run(self,web_view=None,selenium_driver=None,wrap_async=True,sync=False):
-    command = "\n".join(self.commands)
-    if wrap_async:
-      command= f"""
-      (async () => {{
-          {command}
-      }})();
-      """
-    self.commandRequested.emit(command,web_view,selenium_driver,self.callback,sync)
-    self.clear()
-
-
-  def clear(self):
-    self.commands = []
-    self.callback = None
+#   def run(self,web_view=None,selenium_driver=None,wrap_async=True,sync=False):
+#     command = "\n".join(self.commands)
+#     if wrap_async:
+#       command= f"""
+#       (async () => {{
+#           {command}
+#       }})();
+#       """
+#     self.commandRequested.emit(command,web_view,selenium_driver,self.callback,sync)
+#     self.clear()
 
 
-  def _execute_command(self,cmd,web_view,selenium_driver,callback=None,sync=False):
-    """
-    Actually execute a command in a web view. Requires a QT Web view to be
-    set up, and this function conencted to self.emitter.commandRequested
-    """
-    #print(f"Executing command at time: {time.time()}")
-    #print(cmd)
+#   def clear(self):
+#     self.commands = []
+#     self.callback = None
 
-    self.callback_manager.add_callback(callback)
 
-    # web view
-    if web_view is not None:
-      if not sync:
-        web_view.runJavaScript(cmd,self._handle_command_result)
-      else:
-        web_view.runJavaScriptSync(cmd,self._handle_command_result)
+#   def _execute_command(self,cmd,web_view,selenium_driver,callback=None,sync=False):
+#     """
+#     Actually execute a command in a web view. Requires a QT Web view to be
+#     set up, and this function conencted to self.emitter.commandRequested
+#     """
+#     #print(f"Executing command at time: {time.time()}")
+#     #print(cmd)
 
-    # selenium
-    if selenium_driver is not None:
-      result = selenium_driver.execute_script(cmd)
+#     self.callback_manager.add_callback(callback)
 
-      #print(f"Result going to selenium callback: {result}")
-      if callback is not None:
-        callback(result)
+#     # web view
+#     if web_view is not None:
+#       if not sync:
+#         web_view.runJavaScript(cmd,self._handle_command_result)
+#       else:
+#         web_view.runJavaScriptSync(cmd,self._handle_command_result)
 
-  def _handle_command_result(self,result):
-    """
-    The standing callback for all javascript run by _execute_command. It's only
-    function is to emit a signal that a Javascript result is ready. The callback manager
-    should be the one that listens to this signal, and runs actually usefull callbacks.
-    """
-    #(f"Handling callback for result at time: {time.time()}")
-    #print(result)
-    #print("Deliberately not running callback")
-    self.callback_manager.call(result)
-    #print(self.callback_manager.cmd)
-    #self.jsResultReady.emit(result) # Emit signal to run function specific callback after result is ready
+#     # selenium
+#     if selenium_driver is not None:
+#       result = selenium_driver.execute_script(cmd)
+
+#       #print(f"Result going to selenium callback: {result}")
+#       if callback is not None:
+#         callback(result)
+
+#   def _handle_command_result(self,result):
+#     """
+#     The standing callback for all javascript run by _execute_command. It's only
+#     function is to emit a signal that a Javascript result is ready. The callback manager
+#     should be the one that listens to this signal, and runs actually usefull callbacks.
+#     """
+#     #(f"Handling callback for result at time: {time.time()}")
+#     #print(result)
+#     #print("Deliberately not running callback")
+#     self.callback_manager.call(result)
+#     #print(self.callback_manager.cmd)
+#     #self.jsResultReady.emit(result) # Emit signal to run function specific callback after result is ready
 
 
 # =============================================================================
+
 class MolstarViewer(ModelViewer):
   """
   The Python interface for the molstar viewer. The specific Molstar plugin written to pair
   with this class. It functions as a controller for the 'viewer' tab in the GUI.
   """
   viewer_name = 'Molstar'
-  def __init__(self,web_view,use_web_view=True,use_selenium=False,config_json_file=None):
+  def __init__(self,web_view,use_web_view=True,config_json_file=None):
     if config_json_file is None:
       config_json_file = Path(__file__).parent / Path("config.json")
     ModelViewer.__init__(self)
 
     self.web_view = web_view
-    self.command_queue = CommandQueue()
+    #self.command_queue = CommandQueue()
     #self.references_remote_map={} # Keys: remote (molstar) ref_ids, Values: local ref_ids
 
-    # Use selenium to get interactive app in chrome
-    self.use_selenium = use_selenium
+
     self.use_web_view = use_web_view
     self.selenium_driver = None
     self.log_list = []
+
+
 
 
     # get config variables
@@ -282,15 +279,7 @@ class MolstarViewer(ModelViewer):
     self.url = self.view_server.url
     # Set url on web view
     self.web_view.setUrl(QUrl(self.url))
-    if self.use_selenium:
-      #service = Service(executable_path='/Users/user/software/phenix/modules/cctbx_project/qttbx/chromedriver-mac-arm64')
-      #self.selenium_driver = webdriver.Chrome(service=service)
-      self.selenium_driver = webdriver.Chrome()
-      #
-      #self.selenium_driver.set_script_timeout(30)
-      #self.selenium_driver = webdriver.Chrome(ChromeDriverManager().install())
 
-      self.selenium_driver.get(self.url)
 
 
 
@@ -338,48 +327,60 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Remote communication
 
-  def send_command(self, cmds,callback=None,queue=False,wrap_async=True,sync=False):
-    """
-    This function takes a list of commands or a single command.
-    Each command is a string of Javascript
-    code that will be executed.
-    """
-    # print("="*79)
-    # print(f"Molstar plugin command: (connected={self._connected})")
-    # print()
-    # if len(cmds)==1:
-    #   print(cmds[0])
-    # else:
-    #   print(cmds)
-    # print()
-    # print(f"wrap_async={wrap_async}")
-    # print("="*79)
-    out = None
-    if self._connected:
-      if self._blocking_commands:
-        print(f"Commands ignored due to not accepting commands: {cmds}")
-        return False
-      if not isinstance(cmds,list):
-        assert isinstance(cmds,str), "send_command takes a string or list of strings"
-        cmds = [cmds]
-      if not isinstance(callback,list):
-        callback= [callback for cmd in cmds]
-      for cmd,callback in zip(cmds,callback):
-        #self._run_command(cmd,callback=callback)
-        self.command_queue.add(cmd,callback)
-      if not queue:
-        if self.use_web_view:
-          web_view = self.web_view
-        else:
-          web_view = None
-        out = self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
-    return out
-  def execute_command_queue(self,wrap_async=True,sync=False):
-    if self.use_web_view:
-      web_view = self.web_view
+  def send_command(self, js_command,callback=None,sync=False):
+
+    if not sync:
+      js_command= f"""
+      (async () => {{
+          {js_command}
+      }})();
+      """
+      return self.web_view.runJavaScript(js_command,custom_callback=callback)
     else:
-      web_view = None
-    self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
+      return self.web_view.runJavaScriptSync(js_command,custom_callback=callback)
+
+  # def send_command(self, cmds,callback=None,queue=False,wrap_async=True,sync=False):
+  #   """
+  #   This function takes a list of commands or a single command.
+  #   Each command is a string of Javascript
+  #   code that will be executed.
+  #   """
+  #   # print("="*79)
+  #   # print(f"Molstar plugin command: (connected={self._connected})")
+  #   # print()
+  #   # if len(cmds)==1:
+  #   #   print(cmds[0])
+  #   # else:
+  #   #   print(cmds)
+  #   # print()
+  #   # print(f"wrap_async={wrap_async}")
+  #   # print("="*79)
+  #   out = None
+  #   if self._connected:
+  #     if self._blocking_commands:
+  #       print(f"Commands ignored due to not accepting commands: {cmds}")
+  #       return False
+  #     if not isinstance(cmds,list):
+  #       assert isinstance(cmds,str), "send_command takes a string or list of strings"
+  #       cmds = [cmds]
+  #     if not isinstance(callback,list):
+  #       callback= [callback for cmd in cmds]
+  #     for cmd,callback in zip(cmds,callback):
+  #       #self._run_command(cmd,callback=callback)
+  #       self.command_queue.add(cmd,callback)
+  #     if not queue:
+  #       if self.use_web_view:
+  #         web_view = self.web_view
+  #       else:
+  #         web_view = None
+  #       out = self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
+  #   return out
+  # def execute_command_queue(self,wrap_async=True,sync=False):
+  #   if self.use_web_view:
+  #     web_view = self.web_view
+  #   else:
+  #     web_view = None
+  #   self.command_queue.run(web_view,self.selenium_driver,wrap_async=wrap_async,sync=sync)
 
   # ---------------------------------------------------------------------------
   # Models
@@ -413,7 +414,7 @@ class MolstarViewer(ModelViewer):
       label = 'model'
 
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
-    self.send_command(command,callback=callback,queue=queue)
+    self.send_command(command,sync=False)
 
   # don't use this, it is confusing, but it loads without a ref
   # def load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
@@ -524,14 +525,19 @@ class MolstarViewer(ModelViewer):
       assert callback is None, "Cannot use custom callback and verbose together"
       def callback(x):
         print(json.dumps(json.loads(x),indent=2))
-    return self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
+    output = self.send_command(command,callback=callback,sync=True)
+    if isinstance(output,str):
+      output = json.loads(output)
+    phenixState = PhenixState.from_dict(output)
+    return phenixState
 
 
   def _set_sync_state(self,state_json):
-    command = f"""
-    {self.plugin_prefix}.phenix.setState('{state_json}')
-    """
-    self.send_command(command)
+    assert False
+    # command = f"""
+    # {self.plugin_prefix}.phenix.setState('{state_json}')
+    # """
+    # self.send_command(command)
 
   # ---------------------------------------------------------------------------
   # Style
@@ -562,7 +568,11 @@ class MolstarViewer(ModelViewer):
     raise NotImplementedError
 
   def show_query(self,model_id: str, query_json: str, representation_name: str):
-    self.transparency_query(model_id=model_id, query_json=query_json, representation_name=representation_name,value=0.0)
+    self.transparency_query(model_id=model_id,
+                            query_json=query_json,
+                            representation_name=representation_name,
+                            component_key="all",
+                            value=0.0)
 
 
   def hide_model(self,model_id,representation_name: Optional[str] = None):
@@ -572,7 +582,11 @@ class MolstarViewer(ModelViewer):
     raise NotImplementedError
 
   def hide_query(self,model_id: str, query_json: str, representation_name: str):
-    self.transparency_query(model_id=model_id, query_json=query_json, representation_name=representation_name,value=1.0)
+    self.transparency_query(model_id=model_id,
+                            query_json=query_json,
+                            representation_name=representation_name,
+                            component_key="all",
+                            value=1.0)
 
 
   # Transparency for model/selection
@@ -583,11 +597,11 @@ class MolstarViewer(ModelViewer):
   def transparency_selected(self,representation_name: Optional[str] = None):
     raise NotImplementedError
 
-  def transparency_query(self,model_id: str, query_json: str, representation_name: str, value: float):
+  def transparency_query(self,model_id: str, query_json: str, representation_name: str,component_key: str, value: float):
     command = f"""
     const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
     query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.phenix.setTransparencyFromQuery(query, '{representation_name}', '{value}')
+    await {self.plugin_prefix}.phenix.setTransparencyFromQuery(query, '{representation_name}', '{component_key}', '{value}')
     """
     self.send_command(command)
 

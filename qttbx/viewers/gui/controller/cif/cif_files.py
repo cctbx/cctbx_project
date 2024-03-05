@@ -50,10 +50,11 @@ class CifFileListController(ScrollableListController):
       filename = fname[0]
       filepath = str(Path(filename).absolute())
       #
-      data = CifFileData(filepath=filepath)
-      ref = CifFileRef(data=data)
-      ref.label = data.filename
-      self.state.add_ref(ref)
+      assert False
+      # data = CifFileData(filepath=filepath)
+      # ref = CifFileRef(data=data)
+      # ref.label = data.filename
+      # self.state.add_ref(ref)
 
 
 

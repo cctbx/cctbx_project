@@ -48,7 +48,7 @@ class Ref:
 
 
     if style is None:
-      style = Style.from_default(self.id)
+      style = Style.from_default()
     else:
       style = replace(style,ref_id=self.id,query=self.query)
     self._style = style
@@ -133,7 +133,7 @@ class Ref:
   @style.setter
   def style(self,value):
     assert isinstance(value,Style), "Set with Style class"
-    self.state.signals.style_change.emit(value.to_json())
+    self.state.signals.style_change.emit(self,value.to_json())
     self.style_history.append(self.style)
     self._style = value
 
@@ -218,10 +218,10 @@ class ModelRef(Ref):
     super().__init__(data=data,style=style)
     self._mol = None
     self._restraints = None
-    self._cif_data = None
-    self._file_ref =  None
-    if self.data.cif_data is not None:
-      self._file_ref =  CifFileRef(self.data.cif_data)
+    # self._cif_data = None
+    # self._file_ref =  None
+    # if self.data.cif_data is not None:
+    #   self._file_ref =  CifFileRef(self.data.cif_data)
 
 
 

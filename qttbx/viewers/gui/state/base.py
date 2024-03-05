@@ -1,10 +1,18 @@
 
 from dataclasses import dataclass, asdict
 import json
+import uuid
+import hashlib
 from typing import Optional
 
 @dataclass
 class DataClassBase:
+  def update(self, **kwargs):
+    for key, value in kwargs.items():
+      if hasattr(self, key):
+        if value is not None:
+          setattr(self, key, value)
+
 
   def __post_init__(self):
     pass
@@ -39,3 +47,15 @@ class DataClassBase:
     if 'class_name' in d:
       del d["class_name"]
     return cls(**d)
+
+  @staticmethod
+  def _generate_uuid(length: int=24):
+    # Generate a UUID
+    full_uuid = str(uuid.uuid4())
+
+    # Hash the UUID
+    hashed_uuid = hashlib.sha1(full_uuid.encode()).hexdigest()
+
+    # Truncate to the desired length
+    short_uuid = hashed_uuid[:length]
+    return short_uuid

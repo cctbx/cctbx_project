@@ -1,6 +1,6 @@
 from PySide2.QtWidgets import QSizePolicy, QVBoxLayout
 from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PySide2.QtCore import Signal, QEventLoop
+from PySide2.QtCore import Signal, QEventLoop, QObject
 from PySide2.QtGui import QDragEnterEvent, QDropEvent
 
 
@@ -8,6 +8,11 @@ from ..widgets.tab import GUITab
 from ..widgets.selection_controls import SelectionControlsView
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
+
+
+
+class Signals(QObject):
+  sync_signal = Signal()
 
 
 class WebEnginePage(QWebEnginePage):
@@ -25,36 +30,50 @@ class WebEnginePage(QWebEnginePage):
 
 
 
-
 class MolstarWebEngineView(QWebEngineView):
-  """
-  Subclassing this disables the "File drop" behavior of QWebEngineView
-  """
-
-  def dragEnterEvent(self, event: QDragEnterEvent):
-    event.ignore()
-
-  def dropEvent(self, event: QDropEvent):
-    event.ignore()
-
-  def runJavaScript(self,script,custom_callback=None):
-    return self.page().runJavaScript(script,0,custom_callback)
-
-  def runJavaScriptSync(self, script, custom_callback=None):
     """
-    Run javascript syncronously, meaning Python waits for it to finish.
-    Not using this should be preferred.
+    Subclassing this disables the "File drop" behavior of QWebEngineView
     """
-    self.loop = QEventLoop()  # Create an event loop
-    self.custom_callback = custom_callback
-    self.page().runJavaScript(script, 0, self.onJavaScriptResult)
-    self.loop.exec_()  # Block until loop.quit() is called
+    def __init__(self,*args,**kwargs):
+       super().__init__(*args,**kwargs)
+       self.signals = Signals()
 
-  def onJavaScriptResult(self, result):
-    if self.custom_callback:
-        self.custom_callback(result)  # Run the custom callback with the result
-    self.loop.quit()  # Quit the event loop to unblock
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        event.ignore()
 
+    def dropEvent(self, event: QDropEvent):
+        event.ignore()
+
+    def runJavaScript(self, script, custom_callback=None):
+        if custom_callback is None:
+            custom_callback = lambda x: None
+        return self.page().runJavaScript(script, 0, custom_callback)
+
+    def runJavaScriptSync(self, script, custom_callback=None):
+        """
+        Run javascript synchronously, meaning Python waits for it to finish.
+        """
+        self.js_result = None  # Initialize a placeholder for the JS execution result
+        self.custom_callback = custom_callback
+
+        # Define a temporary callback that stores the result and optionally calls a custom callback
+        def temp_callback(result):
+            self.js_result = result  # Store the JavaScript execution result
+            if self.custom_callback:
+                self.custom_callback(result)
+            self.loop.quit()  # Quit the event loop
+
+        self.loop = QEventLoop()  # Create an event loop
+        self.page().runJavaScript(script, 0, temp_callback)
+        self.loop.exec_()  # Block until loop.quit() is called in temp_callback
+
+        self.signals.sync_signal.emit()
+        return self.js_result  # Return the JavaScript execution result
+
+    def onJavaScriptResult(self, result):
+        if self.custom_callback:
+            self.custom_callback(result)  # Run the custom callback with the result
+        self.loop.quit()  # Quit the event loop
 class ViewerTabView(GUITab):
   """
   The QT GUI Tab for the viewer

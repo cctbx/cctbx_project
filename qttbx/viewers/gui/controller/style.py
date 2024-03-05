@@ -33,12 +33,11 @@ class ModelStyleController(Controller):
         self.parent.hide_ref(ref,representation=rep_name)
 
   # Generic apply of a style to a ref. Uses above transition_ functions
-  def apply_from_json(self,json_str):
+  def apply_from_json(self,ref,json_str):
     style = Style.from_json(json_str)
-    self.apply(style)
+    self.apply(ref,style)
 
-  def apply(self, style):
-    ref = self.state.references[style.ref_id]
+  def apply(self, ref,style):
     if isinstance(ref,(SelectionRef,RestraintsRef,ModelRef)): #TODO: Replace with 'model-like'
       prev_dict = ref.style.to_dict()
       new_dict = style.to_dict()
@@ -64,15 +63,14 @@ class MapStyleController(Controller):
     self.state.signals.style_change.connect(self.apply_from_json)
 
 
-  def apply_from_json(self,json_str):
+  def apply_from_json(self,ref,json_str):
     style = Style.from_json(json_str)
-    self.apply(style)
+    self.apply(ref,style)
 
-  def apply(self, style):
+  def apply(self, ref, style):
     # Apply a style
 
     # Get the ref the style applies to
-    ref = self.state.references[style.ref_id]
     if isinstance(ref,MapRef):
       prev_dict = ref.style.to_dict() # old style dict
       new_dict = style.to_dict() # new style dict
