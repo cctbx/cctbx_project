@@ -693,16 +693,17 @@ class DataModeler:
         self.all_q_perpix = np.array(all_q_perpix)
         pan_fast_slow = np.ascontiguousarray((np.vstack([all_pid, all_fast, all_slow]).T).ravel())
         self.pan_fast_slow = flex.size_t(pan_fast_slow)
-        self.all_background = np.array(all_background)
+        self.all_background = torch.tensor(all_background, device=kokkos_device())
         self.roi_id = np.array(roi_id)
-        self.all_data = np.array(all_data)
+        self.all_data = torch.tensor(all_data, device=kokkos_device())
         if np.allclose(all_sigma_rdout, self.nominal_sigma_rdout):
             self.all_sigma_rdout = self.nominal_sigma_rdout
         else:
             self.all_sigma_rdout = np.array(all_sigma_rdout)
-        self.all_sigmas = np.array(all_sigmas)
+        self.all_sigmas = torch.tensor(all_sigmas, device=kokkos_device())
         # note rare chance for sigmas to be nan if the args of sqrt is below 0
-        self.all_trusted = np.logical_and(np.array(all_trusted), ~np.isnan(all_sigmas))
+        all_trusted = torch.tensor(all_trusted, device=kokkos_device())
+        self.all_trusted = torch.logical_and(all_trusted, ~torch.isnan(self.all_sigmas))
 
         if self.params.roi.skip_roi_with_negative_bg:
             # Dont include pixels whose background model is below 0
@@ -1834,7 +1835,7 @@ class TargetFunc:
         self.old_J = J
         self.iteration += 1
         self.g = g
-        return f
+        return f.cpu()
 
 
 def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores=False):
@@ -1905,14 +1906,14 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
     V = model_pix + sigma_rdout**2
     # TODO:what if V is allowed to be negative? The logarithm/sqrt will explore below
     resid_square = resid**2
-    fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))
+    fLogLike = (.5*(torch.log(2*torch.pi*V) + resid_square / V))
     if params.roi.allow_overlapping_spots:
         fLogLike /= mod.all_freq
     fLogLike = fLogLike[trusted].sum()   # negative log Likelihood target
 
     # width of z-score should decrease as refinement proceeds
-    zscore_per = resid/np.sqrt(V)
-    zscore_sigma = np.std(zscore_per[trusted])
+    zscore_per = resid/torch.sqrt(V)
+    zscore_sigma = torch.std(zscore_per[trusted])
 
     restraint_terms = {}
     if params.use_restraints:
