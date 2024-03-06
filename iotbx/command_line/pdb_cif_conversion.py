@@ -95,11 +95,12 @@ III.  TOOLS ARE AVAILABLE TO FIND CODE THAT NEEDS TO BE MADE CIF-COMPATIBLE
 IV.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
     For any code that uses pdb/cif files or that uses the hierarchy object
     should be tested with models that do not fit in PDB format.  It is
-    recommended that each standard test using models should be duplicated
-    and run with non-PDB-compliant models.  The tool
-    convert_pdb_to_cif_for_pdb_str can be used to edit strings in place in
-    tests so that identical starting strings can be used in the original and
-    non-PDB-compliant tests.
+    recommended that each standard test using models should either be
+    duplicated  and run with non-PDB-compliant models, or run twice in the
+    same script, once as-is, and once after converting models to
+    non-PDB-compliant models.  The tool convert_pdb_to_cif_for_pdb_str 
+    can be used to edit strings in place in tests so that identical 
+    starting strings can be used in the original and non-PDB-compliant tests.
 
 ===========================================================================
 ===========================================================================
@@ -326,32 +327,48 @@ C. You can run libtbx.find_pdb_mmcif_problems with a file containing a list
 IV.  CREATING CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
 
   You will want to create a cif-only version of all your tests that use
-  models.  The purpose of this is to test all the code that handles
+  models.  This can be done for some tests just by adding a few lines of
+  code at the end of the test where the methods in the test script are
+  called.  The purpose of the extra testing is to test all the code that handles
   chain IDs and residue names.
 
 A. Simple conversion of tests to mmCIF if your test uses PDB strings.
    If your test has PDB strings like: pdb_str_1 = """pdb-text""" at the
-   top of the file, before any function definitions, you can convert
-   the test to mmCIF by placing two lines below all the pdb_str_xxx
-   definitions:
+   top of the file, you can make a small change at the end of your script
+   to run mmCIF tests.
 
-   from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
-   convert_pdb_to_cif_for_pdb_str(locals())
+   Suppose the end of your script looks like:
 
-  This will make all your PDB strings into mmCIF strings with long
-  chain IDS. You can choose how to edit your chain ids if you want:
+if __name__=="__main__":
+    tst_01()
+    tst_02()
 
-   convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="ZXLONG")
+  Then just paste all this in, and indent the tst_01() if necessary:
 
-  You might also want to rename some of your residue names
+if __name__=="__main__":
+  for as_cif in (False, True):  # XXX as_cif is one way so True must be last
+    if as_cif:
+      print("\n CONVERTING PDB STRINGS TO CIF AND CHANGING "+
+         "CHAIN ID/HETATM RESIDUE NAMES\n")
+      # Convert to mmcif and make long chain ID and HETATM resname:
+      from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
+      convert_pdb_to_cif_for_pdb_str(locals())
+    else:
+      print("\n USING PDB STRINGS AS IS\n")
 
-   You can also do this for strings that have some other name:
+    tst_01()
+    tst_02()
 
-   my_string="""text"""
-   convert_pdb_to_cif_for_pdb_str(locals(), key_str = 'my_string')
+  This will run tst_01 and tst_02 twice. The first time is as usual. The
+  second time all the pdb_str_xxxx text strings will be converted to mmCIF
+  format and chain names and HETATM residue names will be made incompatible
+  with PDB format.
 
-  Now your test should run just as it did before except that the
-  chain IDs (and optionally HETATM residue names) may be different.
+  If your test just produces numbers, the two versions of the tests should
+  give identical results and no other changes are necessary. If the test
+  depends on chain ID or on residue names, then it may be necessary to
+  pass in the value of "as_cif=as_cif" and have different checks in it
+  for each case.
 
 B. If your test uses models in PDB files, you may simply want to
  make copies of all your models, converting your PDB files into

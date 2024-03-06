@@ -144,6 +144,7 @@ ATOM   1032  CA  ARG   136     124.175  31.872  17.866  1.00 28.80      P9
 ATOM   1043  CA  VAL   137     127.877  32.680  17.955  1.00 32.92      P9
 ATOM   1050  CA  LYS   138     128.895  35.931  19.718  1.00 36.89      P9
 ATOM   1059  CA  GLY   139     126.242  36.878  22.264  0.67 38.21      P9
+HETATM 1060  CA  CA    140     126.242  36.878  22.264  0.67 38.21      P9  CA
 """
 
 pdb_str_query="""
@@ -561,10 +562,6 @@ ATOM     53  CA  LYS G  10     203.277 130.858  33.696  1.00 33.20      P9
 ATOM     62  CA  TYR G  11     200.215 131.269  31.467  1.00 29.03      P9
 """
 
-# Convert to mmcif:
-chain_addition = "XZLONG"
-from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
-convert_pdb_to_cif_for_pdb_str(locals(),chain_addition=chain_addition)
 
 def tst_01():
   print("Comparing mixed model with target...")
@@ -848,10 +845,19 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
   print("OK")
 
 if __name__=="__main__":
-  tst_06() # ZZZ
-  tst_01()
-  tst_02()
-  tst_03()
-  tst_04()
-  tst_05()
-  tst_06()
+  for as_cif in (False, True):  # XXX as_cif is one way so True must be last
+    if as_cif:
+      print("\n CONVERTING PDB STRINGS TO CIF AND CHANGING "+
+         "CHAIN ID/HETATM RESIDUE NAMES\n")
+      # Convert to mmcif and make long chain ID and HETATM resname:
+      from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
+      convert_pdb_to_cif_for_pdb_str(locals())
+    else:
+      print("\n USING PDB STRINGS AS IS\n")
+
+    tst_01()
+    tst_02()
+    tst_03()
+    tst_04()
+    tst_05()
+    tst_06()

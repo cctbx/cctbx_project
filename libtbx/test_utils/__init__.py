@@ -848,22 +848,40 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print("OK")
 
-def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG", key_str="pdb_str"):
+def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG", 
+   key_str="pdb_str", hetatm_name_addition = "ZY", print_new_string = True):
   #  Converts all the strings that start with "pdb_str" from PDB to mmcif
   #  format, adding chain_addition to chain names
+  #  If hetatm_name_addition is set, add to hetatm names
+  #  If print_new_string is set, print the new strings
   keys = list(locals.keys())
   for key in keys:
     if (not key.startswith(key_str)) or (type(locals[key]) != type("abc")):
       continue
     from iotbx.pdb.utils import get_pdb_input
-    pdb_inp = get_pdb_input(locals[key])
+    original_string = locals[key]
+    pdb_inp = get_pdb_input(original_string)
     ph = pdb_inp.construct_hierarchy()
     if ph.overall_counts().n_residues < 1:
       continue
     for model in ph.models():
      for chain in model.chains():
-       chain.id = "%s%s" %(chain.id,chain_addition)
-    new_string = ph.as_mmcif_string(crystal_symmetry = pdb_inp.crystal_symmetry())
+       chain.id = "%s%s" %(chain.id.strip(),chain_addition)
+       if hetatm_name_addition:
+         for rg in chain.residue_groups(): 
+           for ag in rg.atom_groups():
+             for at in ag.atoms():
+               if at.hetero and len(ag.resname)<=3:
+                 ag.resname = "%s%s" %(ag.resname.strip(), hetatm_name_addition)
+                 break
+    new_string = ph.as_mmcif_string(
+      crystal_symmetry = pdb_inp.crystal_symmetry())
     locals[key] = new_string
+    if print_new_string:
+       print("\n",79*"=","\n",
+          "ORIGINAL STRING '%s':\n%s" %(key, original_string))
+       print("\n",79*"=","\n",
+          "MODIFIED STRING '%s':\n%s" %(key, new_string),
+          "\n",79*"=","\n")
 if (__name__ == "__main__"):
   exercise()
