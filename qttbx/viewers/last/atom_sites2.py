@@ -2,7 +2,6 @@ from iotbx.data_manager import DataManager
 from iotbx.pdb import input as pdb_input
 import tempfile
 from collections import OrderedDict
-from pdbecif.mmcif_io import MMCIF2Dict
 import json
 import pandas as pd
 import numpy as np

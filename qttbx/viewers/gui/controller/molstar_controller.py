@@ -115,8 +115,7 @@ class MolstarController(Controller):
         callback=None
       )
       #self.sync_manager.has_synced = False
-      # DEBUG: add ball and stick
-      self.viewer.representation_query(ref.id_molstar,ref.query.to_json(),"ball-and-stick")
+
 
 
   def load_model_from_string(self,model_str=None,label=None,format='pdb'):

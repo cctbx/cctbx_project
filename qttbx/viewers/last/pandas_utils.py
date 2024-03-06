@@ -9,10 +9,6 @@ import numpy as np
 import pandas as pd
 
 from iotbx import cif
-try:
-  from pdbecif.mmcif_io import CifFileWriter, MMCIF2Dict
-except:
-  pass
 
 
 

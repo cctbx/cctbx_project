@@ -320,6 +320,7 @@ class MolstarViewer(ModelViewer):
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
     self.send_command(command,sync=False)
 
+
   # don't use this, it is confusing, but it loads without a ref
   # def load_model(self, filename=None,format='pdb',label=None,ref_id=None,callback=None):
   #   """

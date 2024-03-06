@@ -12,11 +12,6 @@ from iotbx.cif.model import block
 
 from .python_utils import find_key_path, get_value_by_path
 
-# Try import pdbecif (pip install)
-try:
-  from pdbecif.mmcif_io import CifFileWriter, MMCIF2Dict
-except:
-  pass
 
 """
 Tools for working with cif files in the context of pandas dataframes
