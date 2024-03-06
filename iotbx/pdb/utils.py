@@ -719,10 +719,12 @@ def get_cif_or_pdb_file_if_present(file_name):
    else:
      return "" # return empty string so os.path.isfile(return_value) works
 
-def interleave_alt_confs(ph1, ph2):
+def interleave_alt_confs(ph1, ph2, selection_string = None):
   """ Method to interleave alternate conformations in two hierarchies
    Requires that all atoms are present in both hierarchies, and that the
-   hierarchies have different altloc values for each atom
+   hierarchies have different altloc values for each atom.
+   If selection_string is supplied, remove all alternate conformations that
+   are not in the selection (keep just selected alternate conformations)
   """
 
   # Check that hierarchies are similar
@@ -757,6 +759,26 @@ def interleave_alt_confs(ph1, ph2):
          # Append each conformer for this atom group
          r.append_atom_group(ag0.detached_copy())
          r.append_atom_group(ag1.detached_copy())
+
+  if selection_string: # Identify atoms to save only one conformer by index
+    asc1=new_ph.atom_selection_cache()
+    sel1=asc1.selection(string = selection_string) # sel1[i] = True to keep
+
+    i = 0
+    for model in new_ph.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          remove = []
+          first = True
+          for ag in rg.atom_groups():
+            for at in ag.atoms():
+              if ((not first) and (not ag in remove) and (not sel1[i])):
+                remove.append(ag)
+              i += 1 # same indexing as sel1 with this traverse of hierarchy
+            first = False
+          for ag in remove: # remove all the unwanted atom groups
+            rg.remove_atom_group(atom_group=ag)
+
   return new_ph
 
 class numbering_dict:
