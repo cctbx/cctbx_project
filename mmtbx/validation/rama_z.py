@@ -15,6 +15,7 @@ from libtbx import group_args
 from scitbx.math import linear_interpolation_2d
 import numpy as np
 import math
+import json
 import os
 import sys
 
@@ -45,6 +46,15 @@ class result(object):
       "%s  loop : %s (%s), residues: %s"%(p, f(d,l.value),f(d,l.std).strip(),f(i,l.n))
     ]
     return "\n".join(strs)
+
+  def as_json(self):
+    data = {}
+    for name, obj in [('whole', self.whole), ('helix', self.helix),
+                      ('sheet', self.sheet), ('loop', self.loop)]:
+      data[name] = {'value':obj.value,
+                    'std':obj.std,
+                    'n_residues':obj.n}
+    return json.dumps(data, indent=2)
 
 class rama_z(object):
   def __init__(self, models, log):
