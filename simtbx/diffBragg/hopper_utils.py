@@ -1679,7 +1679,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                     J[p.xpos] += eta_grad
 
             if ucell_params[0].refine:
-                ucell_grads = scale * torch.from_dlpack(SIM.D.get_d_Umat_images())
+                ucell_grads = scale * torch.from_dlpack(SIM.D.get_d_Bmat_images())
                 for i_ucell in range(nucell):
                     p = ucell_params[i_ucell]
                     deriv = ucell_grads[i_ucell*npix: (i_ucell+1)*npix]
@@ -1835,7 +1835,7 @@ class TargetFunc:
         self.old_J = J
         self.iteration += 1
         self.g = g
-        return f.cpu()
+        return f
 
 
 def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores=False):
@@ -1909,11 +1909,11 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
     fLogLike = (.5*(torch.log(2*torch.pi*V) + resid_square / V))
     if params.roi.allow_overlapping_spots:
         fLogLike /= mod.all_freq
-    fLogLike = fLogLike[trusted].sum()   # negative log Likelihood target
+    fLogLike = fLogLike[trusted].sum().item()   # negative log Likelihood target
 
     # width of z-score should decrease as refinement proceeds
     zscore_per = resid/torch.sqrt(V)
-    zscore_sigma = torch.std(zscore_per[trusted])
+    zscore_sigma = torch.std(zscore_per[trusted]).item()
 
     restraint_terms = {}
     if params.use_restraints:
@@ -2188,12 +2188,12 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
     for i_roi in range(len(bragg_subimg)):
 
         ref_idx = Modeler.refls_idx[i_roi]
-
         #assert ref_idx==i_roi
-        if np.any(bragg_subimg[i_roi] > 0):
+        if torch.any(bragg_subimg[i_roi] > 0):
             I = bragg_subimg[i_roi]
-            assert np.all(I>=0)
-            Y, X = np.indices(bragg_subimg[i_roi].shape)
+            assert torch.all(I>=0)
+            ny, nx = bragg_subimg[i_roi].shape
+            X, Y = torch.meshgrid(torch.arange(nx, device=kokkos_device()), torch.arange(ny, device=kokkos_device()), indexing='xy')
             x1, _, y1, _ = Modeler.rois[i_roi]
 
             com_x, com_y, _ = new_refls[ref_idx]["xyzobs.px.value"]
@@ -2206,11 +2206,13 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
             except IndexError:
                 continue
 
-            X += x1
-            Y += y1
+            X = X + x1
+            Y = Y + y1
             Isum = I.sum()
             xcom = (X * I).sum() / Isum + .5
+            xcom = xcom.item()
             ycom = (Y * I).sum() / Isum + .5
+            ycom = ycom.item()
             com = xcom, ycom, 0
 
             pid = Modeler.pids[i_roi]
