@@ -224,7 +224,8 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Remote communication
 
-  def send_command(self, js_command,callback=None,sync=False,log_js=True):
+  def send_command(self, js_command,callback=None,sync=False,log_js=True,queue=False):
+    # queue needs to be refactored out
 
     if log_js:
       print("js_command:")

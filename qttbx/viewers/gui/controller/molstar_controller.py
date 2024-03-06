@@ -52,9 +52,9 @@ class MolstarController(Controller):
     self.state.signals.select.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
 
-    # timer for update
+    #timer for update
     self.timer = QTimer()
-    self.timer.setInterval(5000)
+    self.timer.setInterval(2000)
     self.timer.timeout.connect(self._update_state_from_remote)
     self.timer.start()
 
@@ -82,8 +82,9 @@ class MolstarController(Controller):
 
 
   def _update_state_from_remote(self):
-    self.state.phenixState = self.viewer._get_sync_state()
-    self.viewer.state = self.state
+    if self.state.is_updating:
+      self.state.phenixState = self.viewer._get_sync_state()
+      #self.viewer.state = self.state
 
   # API
   def start_viewer(self):
@@ -149,12 +150,11 @@ class MolstarController(Controller):
 
   def load_map_from_ref(self,map_ref=None,model_ref=None):
     if map_ref is not None and map_ref.id not in self.state.external_loaded["molstar"]:
-        self.viewer._set_sync_state(self.state.to_json())
+
         if model_ref is None and map_ref.model_ref is None:
           map_ref.model_ref = self.state.active_model_ref
 
         self.viewer.load_map(filename=map_ref.data.filepath,volume_id=map_ref.id,model_id=map_ref.model_ref.id)
-        self.sync_manager.has_synced = False
 
 
   # Selection

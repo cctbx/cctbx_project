@@ -272,7 +272,7 @@ class PhenixMolstarViewer(ModelViewer):
         "label":label,
       }
     }
-    #print("command to send:")
+    print("command to send:")
     self.send_command(command)
 
 

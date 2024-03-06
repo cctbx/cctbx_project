@@ -1,7 +1,6 @@
 
 from functools import partial
 from dataclasses import replace
-import os
 import platform
 import subprocess
 from pathlib import Path
@@ -40,13 +39,13 @@ class ModelLikeEntryController(ScrollEntryController):
     else:
       file_based_ref = self.ref
 
-    folder = None
+    folder = Path.home()
     if hasattr(file_based_ref.data,"filepath"):
       if file_based_ref.data.filepath is not None:
         folder = Path(file_based_ref.data.filepath).parent
 
     if folder is None or not folder.exists():
-      folder = "."
+      folder = Path.home()
 
     self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
 
@@ -127,7 +126,7 @@ class ModelEntryController(ModelLikeEntryController):
 class ModelListController(ScrollableListController):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-
+    self.openFileDialog = None
     # Load button
     self.view.load_button.clicked.connect(self.showFileDialog)
 
@@ -137,14 +136,18 @@ class ModelListController(ScrollableListController):
 
 
   def showFileDialog(self):
-    home_dir = os.path.expanduser("~")  # Cross-platform home directory
-    fname = QFileDialog.getOpenFileName(self.view, 'Open file', home_dir)
-    if fname[0]:
-      filename = fname[0]
-      filepath = str(Path(filename).absolute())
-      print(f"File selected: {filepath}")
-      _ = self.state.data_manager.process_model_file(filepath)
-      self.state._data_manager_changed()
+    self.state.is_updating = False
+    home_dir = str(Path.home())
+
+    self.openFileDialog = QFileDialog(self.view)
+    self.openFileDialog.setFileMode(QFileDialog.AnyFile)
+    if self.openFileDialog.exec_():
+        file_path = self.openFileDialog.selectedFiles()[0]
+
+        filepath = str(Path(file_path).absolute())
+        print(f"File selected: {filepath}")
+        _ = self.state.data_manager.process_model_file(filepath)
+        self.state._data_manager_changed()
 
 
 

@@ -3,7 +3,7 @@ from PySide2 import QtCore
 from ..view.widgets import  PandasTableModel
 from ..state.ref import SelectionRef
 from .controller import Controller
-
+from ...last.atom_sites2 import AtomSites
 
 class SitesTabController(Controller):
   def __init__(self,parent=None,view=None):
@@ -26,7 +26,7 @@ class SitesTabController(Controller):
       # switch to atom picking level
       self.view.parent_explicit.viewer_tab_view.selection_controls.combo_box.setCurrentIndex(1)
       sel = df_sel.index
-      sel_sites = self.state.mol.sites.__class__(self.state.mol.sites.loc[sel])
+      sel_sites = AtomSites(self.state.mol.sites.loc[sel])
       query = self.state.mol.sites._convert_sites_to_query(sel_sites)
       ref = SelectionRef(data=query,model_ref=self.state.active_model_ref,show=False)
       self.state.add_ref(ref)

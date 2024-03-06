@@ -97,6 +97,7 @@ class State:
     self._map_manager = None
     self._has_synced = False
     self._phenix_state = PhenixState(references={})
+    self.is_updating = True
 
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State

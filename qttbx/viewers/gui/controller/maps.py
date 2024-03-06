@@ -71,14 +71,18 @@ class MapListController(ScrollableListController):
     self.state.signals.update.connect(self.update)
 
   def showFileDialog(self):
-    home_dir = os.path.expanduser("~")  # Cross-platform home directory
-    fname = QFileDialog.getOpenFileName(self.view, 'Open file', home_dir)
-    if fname[0]:
-      filename = fname[0]
-      filepath = str(Path(filename).absolute())
-      #print(f"File selected: {filepath}")
-      _ = self.state.data_manager.process_real_map_file(filepath)
-      self.state._data_manager_changed()
+    self.state.is_updating = False
+    home_dir = str(Path.home())
+
+    self.openFileDialog = QFileDialog(self.view)
+    self.openFileDialog.setFileMode(QFileDialog.AnyFile)
+    if self.openFileDialog.exec_():
+        file_path = self.openFileDialog.selectedFiles()[0]
+
+        filepath = str(Path(file_path).absolute())
+        print(f"File selected: {filepath}")
+        _ = self.state.data_manager.process_real_map_file(filepath)
+        self.state._data_manager_changed()
 
   def update(self):
     for ref in self.state.references_map:
