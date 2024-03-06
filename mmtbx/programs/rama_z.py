@@ -113,12 +113,14 @@ Usage examples:
             self.data_manager.write_model_file(selected_model, filename=fn)
           self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
     result = self.get_results()
-    res_info = self.rama_z.get_detailed_values()
-    print ("Individual residues info:", file=self.logger)
-    print ("Residue name, type, SS, (phi, psi), Z", file=self.logger)
-    for i in res_info:
-      print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
-          i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
+    # This brings 0 value to the user. Per-residue numbers
+    # should not be analyzed, therefore no reason to print them.
+    # res_info = self.rama_z.get_detailed_values()
+    # print ("Individual residues info:", file=self.logger)
+    # print ("Residue name, type, SS, (phi, psi), Z", file=self.logger)
+    # for i in res_info:
+    #   print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
+    #       i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
 
     print(result.as_string(prefix=""), file = self.logger)
 
