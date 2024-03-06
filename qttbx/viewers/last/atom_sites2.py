@@ -1100,6 +1100,9 @@ class AtomSites(pd.DataFrame):
     # return new selected df
     return self.__class__(df_sel)#,attrs_map=self.attrs_map)
 
+  def query_from_phenix_string(self,str_phenix):
+    return self._select_query_from_str_phenix(str_phenix)
+
   def _select_query_from_str_phenix(self,str_phenix):
     converter = SelConverterPhenix()
     sel_str_common = converter.convert_phenix_to_common(str_phenix)

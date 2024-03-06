@@ -62,20 +62,26 @@ class ModelLikeEntryController(ScrollEntryController):
     #action = self.sender() # won't work why?
     if action:
       key = action.text()
-      option = self.view.button_rep.options[key]
-      selected_options = self.view.button_rep.selected_options
-      current_state = selected_options[option]
-      action.setChecked(not current_state)
-      selected_options[option] = not selected_options[option]
-      reps = [key for key,value in selected_options.items() if value]
-      #print("Replacing data for style from ref: ",self.ref, self.ref.id)
-      #print("Old:")
-      #print(self.ref.style.to_json(indent=2))
-      style = replace(self.ref.style,representation=reps)
-      #print("New:")
-      #print(style.to_json(indent=2))
-      self.ref.style = style
+      # option = self.view.button_rep.options[key]
+      # selected_options = self.view.button_rep.selected_options
+      # current_state = selected_options[option]
+      # action.setChecked(not current_state)
+      # selected_options[option] = not selected_options[option]
+      # reps = [key for key,value in selected_options.items() if value]
+      # #print("Replacing data for style from ref: ",self.ref, self.ref.id)
+      # #print("Old:")
+      # #print(self.ref.style.to_json(indent=2))
+      # style = replace(self.ref.style,representation=reps)
+      # #print("New:")
+      # #print(style.to_json(indent=2))
+      # self.ref.style = style
       #self.state.emitter.signal_repr_change.emit(*emission)
+      # DEBUG:
+      if key.startswith("Ball"):
+        key = 'ball-and-stick'
+      else:
+        key = 'ribbon'
+      self.parent.parent.parent.molstar.viewer.representation_query(self.ref.id_molstar,self.ref.query.to_json(),key)
 
   def open_file_explorer(self,path):
     if platform.system() == 'Windows':

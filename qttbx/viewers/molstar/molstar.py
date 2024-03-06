@@ -14,6 +14,8 @@ except:
 
 from iotbx.data_manager import DataManager
 from libtbx.utils import Sorry
+from libtbx import group_args
+
 
 
 from .volume_streaming import VolumeStreamingManager
@@ -26,112 +28,6 @@ from ..last.selection_utils import SelectionQuery
 from ..gui.controller.style import ModelStyleController, MapStyleController
 from ..last.python_utils import DotDict
 
-# class CallbackManager:
-#   """
-#   Intermediate layer for callback functions to prevent undesired
-#   repeated calls from subsequent events emitting the same signal.
-#   """
-#   def __init__(self):
-#     super().__init__()
-#     self.callback = None
-#     self.cmd = None
-
-#   def call(self, *args, **kwargs):
-
-#     if self.callback is not None:
-#       #print(f"Callback manager calling: {self.callback}")
-#       func = self.callback
-#       self.callback = None
-#       self.cmd = None
-#       func(*args, **kwargs)
-
-
-#   def add_callback(self,func,cmd=None):
-#     if func is not None:
-#       assert self.callback is None, f"A second callback was added ({func}) before the first was executed ({self.callback})"
-#       self.callback = func
-#       self.cmd = cmd
-
-# class CommandQueue(QObject):
-#   """
-#   Enable batching commands. This is crucial to avoid async bugs, where the order of javascript commands given
-#   is not necessarily the order they finish.
-#   """
-#   commandRequested = Signal(str, object,object,object,bool) # (cmd,web_view,selenium_driver,callback,sync)
-#   #jsResultReady = Signal(str) # signal that the webview js command return value is ready
-#   def __init__(self):
-#     super().__init__()
-#     self.commands = [] # list of commands
-#     self.callback = None
-#     self.callback_manager = CallbackManager()
-
-
-#     self.commandRequested.connect(self._execute_command)
-
-
-
-#   def add(self,cmd,callback=None):
-#     if callback is not None:
-#       if self.callback is None:
-#         self.callback = callback
-#       else:
-#         assert self.callback == callback, "Cannot form a command queue with multiple callbacks"
-#     self.commands.append(cmd)
-
-#   def run(self,web_view=None,selenium_driver=None,wrap_async=True,sync=False):
-#     command = "\n".join(self.commands)
-#     if wrap_async:
-#       command= f"""
-#       (async () => {{
-#           {command}
-#       }})();
-#       """
-#     self.commandRequested.emit(command,web_view,selenium_driver,self.callback,sync)
-#     self.clear()
-
-
-#   def clear(self):
-#     self.commands = []
-#     self.callback = None
-
-
-#   def _execute_command(self,cmd,web_view,selenium_driver,callback=None,sync=False):
-#     """
-#     Actually execute a command in a web view. Requires a QT Web view to be
-#     set up, and this function conencted to self.emitter.commandRequested
-#     """
-#     #print(f"Executing command at time: {time.time()}")
-#     #print(cmd)
-
-#     self.callback_manager.add_callback(callback)
-
-#     # web view
-#     if web_view is not None:
-#       if not sync:
-#         web_view.runJavaScript(cmd,self._handle_command_result)
-#       else:
-#         web_view.runJavaScriptSync(cmd,self._handle_command_result)
-
-#     # selenium
-#     if selenium_driver is not None:
-#       result = selenium_driver.execute_script(cmd)
-
-#       #print(f"Result going to selenium callback: {result}")
-#       if callback is not None:
-#         callback(result)
-
-#   def _handle_command_result(self,result):
-#     """
-#     The standing callback for all javascript run by _execute_command. It's only
-#     function is to emit a signal that a Javascript result is ready. The callback manager
-#     should be the one that listens to this signal, and runs actually usefull callbacks.
-#     """
-#     #(f"Handling callback for result at time: {time.time()}")
-#     #print(result)
-#     #print("Deliberately not running callback")
-#     self.callback_manager.call(result)
-#     #print(self.callback_manager.cmd)
-#     #self.jsResultReady.emit(result) # Emit signal to run function specific callback after result is ready
 
 
 # =============================================================================
@@ -148,6 +44,7 @@ class MolstarViewer(ModelViewer):
     ModelViewer.__init__(self)
 
     self.web_view = web_view
+    self.state = group_args(phenixState=None)
     #self.command_queue = CommandQueue()
     #self.references_remote_map={} # Keys: remote (molstar) ref_ids, Values: local ref_ids
 
@@ -327,17 +224,24 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Remote communication
 
-  def send_command(self, js_command,callback=None,sync=False):
+  def send_command(self, js_command,callback=None,sync=False,log_js=True):
 
+    if log_js:
+      print("js_command:")
+      print(js_command)
     if not sync:
       js_command= f"""
       (async () => {{
           {js_command}
       }})();
       """
-      return self.web_view.runJavaScript(js_command,custom_callback=callback)
+      result =  self.web_view.runJavaScript(js_command,custom_callback=callback)
     else:
-      return self.web_view.runJavaScriptSync(js_command,custom_callback=callback)
+      result =  self.web_view.runJavaScriptSync(js_command,custom_callback=callback)
+
+
+    return result
+
 
   # def send_command(self, cmds,callback=None,queue=False,wrap_async=True,sync=False):
   #   """
@@ -469,7 +373,7 @@ class MolstarViewer(ModelViewer):
   def select_from_query(self,query_json):
     print(json.dumps(json.loads(query_json),indent=2))
     command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
-    self.send_command(command,sync=True)
+    self.send_command(command)
 
 
   def poll_selection(self,callback=None,queue=False):
@@ -525,11 +429,12 @@ class MolstarViewer(ModelViewer):
       assert callback is None, "Cannot use custom callback and verbose together"
       def callback(x):
         print(json.dumps(json.loads(x),indent=2))
-    output = self.send_command(command,callback=callback,sync=True)
+    output = self.send_command(command,callback=callback,sync=True,log_js=False)
     if isinstance(output,str):
       output = json.loads(output)
-    phenixState = PhenixState.from_dict(output)
-    return phenixState
+    if isinstance(output,dict):
+      output = PhenixState.from_dict(output)
+    return output
 
 
   def _set_sync_state(self,state_json):
@@ -649,4 +554,4 @@ class MolstarViewer(ModelViewer):
     query.params.refId = '{model_id}'
     {self.plugin_prefix}.phenix.getRepresentationNames(query)
     """
-    result = self.send_command(command)
+    return self.send_command(command)

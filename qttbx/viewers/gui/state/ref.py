@@ -50,7 +50,7 @@ class Ref:
     if style is None:
       style = Style.from_default()
     else:
-      style = replace(style,ref_id=self.id,query=self.query)
+      style = replace(style,query=self.query)
     self._style = style
     self.style_history = []
 
@@ -114,6 +114,16 @@ class Ref:
   def external_ids(self):
     return self._external_ids
 
+  @property
+  def reference(self):
+    if self.state.phenixState.references:
+      if self.id in self.state.phenixState.references:
+        return self.state.phenixState.references[self.id]
+
+  @property
+  def id_molstar(self):
+    if self.reference:
+      return self.reference.id_molstar
 
 
   @property
@@ -128,11 +138,20 @@ class Ref:
 
   @property
   def style(self):
+    # sync
+    if self.state.phenixState.references and self.id in self.state.phenixState.references:
+      reference = self.state.phenixState.references[self.id]
+      self._style.representation = reference.representations
     return self._style
 
   @style.setter
   def style(self,value):
     assert isinstance(value,Style), "Set with Style class"
+    # sync
+    if self.state.phenixState.references and self.id in self.state.phenixState.references:
+      reference = self.state.phenixState.references[self.id]
+      self._style.representation = reference.representations
+
     self.state.signals.style_change.emit(self,value.to_json())
     self.style_history.append(self.style)
     self._style = value
