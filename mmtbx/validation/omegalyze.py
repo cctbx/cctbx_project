@@ -303,7 +303,8 @@ class omegalyze(validation):
         pdb_hierarchy,
         length=2,
         geometry=None,
-        include_non_standard_peptides=True):
+        include_non_standard_peptides=True,
+        include_d_amino_acids=True):
       main_residue = twores[1] #this is the relevant residue for id-ing cis-Pro
       conf_altloc = get_conformer_altloc(twores)
       omega_atoms = get_omega_atoms(twores)
