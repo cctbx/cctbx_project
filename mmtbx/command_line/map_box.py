@@ -1197,7 +1197,8 @@ def run(args,
       box_crystal_symmetry = mam.map_manager().crystal_symmetry(),
       pdb_outside_box_msg = "",
       gridding_first = getattr(mam, 'gridding_first', (0, 0, 0)),
-      gridding_last = getattr(mam, 'gridding_last', mam.map_manager().map_data().all()),
+      gridding_last = getattr(mam,
+          'gridding_last', mam.map_manager().map_data().all()),
       solvent_content = params.solvent_content,
       origin_shift_grid_units = [
          -x for x in mam.map_manager().origin_shift_grid_units],
@@ -1207,7 +1208,8 @@ def run(args,
     map_manager = mam.map_manager()
     ncs_object = mam.map_manager().ncs_object()
     from iotbx.data_manager import DataManager
-    dm = DataManager(datatypes = ['model', 'ncs_spec', 'real_map', 'miller_array'])
+    dm = DataManager(datatypes = [
+       'model', 'ncs_spec', 'real_map', 'miller_array'])
     dm.set_overwrite(True)
 
     # Write PDB file
