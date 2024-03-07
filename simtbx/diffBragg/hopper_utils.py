@@ -684,10 +684,10 @@ class DataModeler:
             x1, x2, y1, y2 = self.rois[i_roi]
             freq = pixel_counter[pid, y1:y2, x1:x2].ravel()
             all_freq += list(freq)
-        self.all_freq = np.array(all_freq, np.int32)  # if no overlapping pixels, this should be an array of 1's
+        self.all_freq = torch.tensor(all_freq, dtype=torch.int32, device=kokkos_device())  # if no overlapping pixels, this should be an array of 1's
         if not self.params.roi.allow_overlapping_spots:
-            if not np.all(self.all_freq==1):
-                print(set(self.all_freq))
+            if not torch.all(self.all_freq==1):
+                print(set(self.all_freq.cpu().numpy()))
                 raise ValueError("There are overlapping regions of interest, despite the command to not allow overlaps")
 
         self.all_q_perpix = np.array(all_q_perpix)
@@ -1635,8 +1635,9 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                 J[G.xpos] += scale_grad
 
             if RotXYZ_params[0].refine:
+                rot_grads = scale * torch.from_dlpack(SIM.D.get_d_Umat_images())
                 for i_rot in range(3):
-                    rot_grad = scale * torch.from_dlpack(SIM.D.get_d_Umat_images())[:npix]
+                    rot_grad = rot_grads[i_rot*npix:(i_rot+1)*npix]
                     rot_p = RotXYZ_params[i_rot]
                     rot_grad = rot_p.get_deriv(x[rot_p.xpos], rot_grad)
                     J[rot_p.xpos] += rot_grad
