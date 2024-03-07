@@ -79,6 +79,7 @@ Usage examples:
         self.plots[i].save_image(fn, dpi=300)
 
   def run(self):
+    self.result = None
     models = []
     for model_name in self.data_manager.get_model_names():
       models.append(self.data_manager.get_model(model_name))
@@ -112,16 +113,26 @@ Usage examples:
             print("Writing out partial model: %s" % fn, file=self.logger)
             self.data_manager.write_model_file(selected_model, filename=fn)
           self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
-    result = self.get_results()
-    res_info = self.rama_z.get_detailed_values()
-    print ("Individual residues info:", file=self.logger)
-    print ("Residue name, type, SS, (phi, psi), Z", file=self.logger)
-    for i in res_info:
-      print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
-          i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
+    self.result = self.get_results()
+    # This brings 0 value to the user. Per-residue numbers
+    # should not be analyzed, therefore no reason to print them.
+    # res_info = self.rama_z.get_detailed_values()
+    # print ("Individual residues info:", file=self.logger)
+    # print ("Residue name, type, SS, (phi, psi), Z", file=self.logger)
+    # for i in res_info:
+    #   print ('%4s %10s %1s (%7.2f, %7.2f) %7.4f' % (
+    #       i[2], res_type_labels[i[1]], i[3], i[4], i[5], i[6]), file=self.logger)
 
-    print(result.as_string(prefix=""), file = self.logger)
+    print(self.result.as_string(prefix=""), file = self.logger)
+    # print(self.result.as_json(), file=self.logger)
 
   # ---------------------------------------------------------------------------
   def get_results(self):
-    return self.rama_z.get_result()
+    if self.result is None:
+      self.result = self.rama_z.get_result()
+    return self.result
+
+  def get_results_as_JSON(self):
+    if self.result is None:
+      self.result = self.rama_z.get_result()
+    return self.result.as_json()

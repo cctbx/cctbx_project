@@ -217,6 +217,9 @@ namespace Kokkos {
 
     // for call for all panels at the same time
 
+      // set up cell basis vectors for the diffuse parameters (convert vec4 to vec3)
+      diffuse.a0 << SIM.a0[1],SIM.a0[2],SIM.a0[3]; diffuse.b0 << SIM.b0[1],SIM.b0[2],SIM.b0[3]; diffuse.c0 << SIM.c0[1],SIM.c0[2],SIM.c0[3];
+
       debranch_maskall_Kernel(
       kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
       SIM.oversample, SIM.point_pixel,
@@ -242,6 +245,7 @@ namespace Kokkos {
       SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       kdt.m_active_pixel_list,
+      diffuse,
       // return arrays:
       kdt.m_floatimage,
       kdt.m_omega_reduction,
@@ -301,6 +305,9 @@ namespace Kokkos {
       kokkostbx::transfer_double2kokkos(c_source_I, &(weighted_I), 1);
       kokkostbx::transfer_double2kokkos(c_source_lambda, &(SIM.source_lambda[ictr]), 1);
 
+      // set up cell basis vectors for the diffuse parameters (convert vec4 to vec3)
+      diffuse.a0 << SIM.a0[1],SIM.a0[2],SIM.a0[3]; diffuse.b0 << SIM.b0[1],SIM.b0[2],SIM.b0[3]; diffuse.c0 << SIM.c0[1],SIM.c0[2],SIM.c0[3];
+
       debranch_maskall_Kernel(
       kdt.m_panel_count, kdt.m_slow_dim_size, kdt.m_fast_dim_size, active_pixel_list.size(),
       SIM.oversample, SIM.point_pixel,
@@ -326,6 +333,7 @@ namespace Kokkos {
       SIM.nopolar,
       m_polar_vector, SIM.polarization, SIM.fudge,
       kdt.m_active_pixel_list,
+      diffuse,
       // return arrays:
       kdt.m_floatimage,
       kdt.m_omega_reduction,

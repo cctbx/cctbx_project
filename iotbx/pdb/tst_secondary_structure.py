@@ -5,6 +5,7 @@ from iotbx.pdb import secondary_structure as ss
 import iotbx
 from scitbx.array_family import flex
 from mmtbx.secondary_structure import sec_str_master_phil
+from libtbx.test_utils import assert_lines_in_text
 
 pdb_1ywf_cutted = """\
 HELIX    1   1 ALA A   16  THR A   18  5                                   3
@@ -2112,12 +2113,47 @@ SHEET    2   A 5 LEU A  27  SER A  30 -1  O  ARG A  29   N  ARG A  13
   assert ss_back.sheets[0].sheet_id == 'AF7'
   print("OK")
 
+def exercise_change_residue_numbering():
+  ss_records = """\
+HELIX   14  14 SER A  252  ALA A  260  1                                   9
+HELIX   15  15 SER A  263  LEU A  275  1                                  13
+SHEET    1   A 5 ARG B  13  ASP B  14  0
+SHEET    2   A 5 LEU B  27  SER B  30 -1  O  ARG B  29   N  ARG B  13
+SHEET    3   A 5 VAL B 156  HIS B 159  1  O  VAL B 156   N  PHE B  28
+SHEET    4   A 5 ASP B  51  ASP B  54  1  N  ALA B  51   O  LEU B 157
+SHEET    5   A 5 ASP B  74  LEU B  77  1  O  HIS B  74   N  VAL B  52
+"""
+  ss_annot = ss.annotation.from_records(records=ss_records.split('\n'))
+  renumbering_dictionary = {
+      'A':{
+        (' 252', ' '): (' 253', 'A'),
+        (' 275', ' '): (' 276', 'A'),
+      },
+      'B':{
+        ('  27', ' '): ('  28', 'C'),
+        ('  13', ' '): ('  13', 'D'),
+      }}
+  ss_annot.change_residue_numbering_in_place(renumbering_dictionary)
+  new_ss_str = ss_annot.as_pdb_str()
+  # print(new_ss_str)
+  assert_lines_in_text(new_ss_str, """\
+HELIX   14  14 SER A  253A ALA A  260  1                                   9
+HELIX   15  15 SER A  263  LEU A  276A 1                                  13
+SHEET    1   A 5 ARG B  13D ASP B  14  0
+SHEET    2   A 5 LEU B  28C SER B  30 -1  O  ARG B  29   N  ARG B  13D
+SHEET    3   A 5 VAL B 156  HIS B 159  1  O  VAL B 156   N  PHE B  28
+SHEET    4   A 5 ASP B  51  ASP B  54  1  N  ALA B  51   O  LEU B 157
+SHEET    5   A 5 ASP B  74  LEU B  77  1  O  HIS B  74   N  VAL B  52
+""".strip())
+
+
 def exercise(args):
   exercise_single()
   tst_pdb_file()
   tst_parsing_phil()
   exercise_only_b_altloc()
   exercise_multiplication()
+  exercise_change_residue_numbering()
 
 if (__name__ == "__main__"):
   exercise(sys.argv[1:])

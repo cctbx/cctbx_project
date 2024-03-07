@@ -1368,7 +1368,8 @@ pdb_str_two_chain_one_full_helix_text =  \
 # Convert to mmcif:
 chain_addition = "XZLONG"
 from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
-convert_pdb_to_cif_for_pdb_str(locals(),chain_addition=chain_addition)
+convert_pdb_to_cif_for_pdb_str(locals(),chain_addition=chain_addition,
+  hetatm_name_addition="")
 
 def tst_00():
   print("Finding sheets, splitting and merging...", end=' ')

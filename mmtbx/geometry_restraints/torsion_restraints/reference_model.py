@@ -62,7 +62,7 @@ reference_model
     .type = bool
     .short_caption = use starting model as reference
   sigma = 1.0
-    .type = float
+    .type = float(value_min=0.001)
   limit = 15.0
     .type = float
   hydrogens = False

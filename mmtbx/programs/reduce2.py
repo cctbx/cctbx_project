@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.1.0"
+version = "2.2.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1017,6 +1017,7 @@ NOTES:
     newParams.output.__inject__('atoms_are_masters', False)
     newParams.output.__inject__('default_point_color', 'gray')
     newParams.output.__inject__('compute_scores', True)
+    newParams.output.__inject__('altid_as_pointmaster', True)
     return newParams
 
 # ------------------------------------------------------------------------------
@@ -1166,7 +1167,8 @@ NOTES:
     if self.params.output.description_file_name is None:
       self.params.output.description_file_name=self.params.output.filename.replace('.pdb',
                                                                                    '.txt')
-      # raise Sorry("Must specify output.description_file_name")
+      self.params.output.description_file_name=self.params.output.description_file_name.replace('.cif',
+                                                                                   '.txt')
 
     # Check the model ID to make sure they didn't set it to 0
     if self.params.model_id == 0:
@@ -1224,7 +1226,8 @@ NOTES:
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        keepExistingH = self.params.keep_existing_H)
+        keepExistingH = self.params.keep_existing_H,
+        fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
       outString += opt.getInfo()
       outString += 'Time to Add Hydrogen = {:.3f} sec'.format(doneAdd-startAdd)+'\n'

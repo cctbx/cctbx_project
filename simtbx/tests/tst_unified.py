@@ -101,7 +101,7 @@ class several_wavelength_case:
     pythony_beams.append(BeamFactory.from_dict(beam_descr))
     SIM.xray_beams = pythony_beams
 
-  def modularized_exafel_api_for_GPU(self, params, argchk=False, gpu_background=True, sources=False):
+  def modularized_exafel_api_for_GPU(self, params, argchk=False, gpu_background=True, sources=False, diffuse=None):
     gpu_channels_type = get_exascale("gpu_energy_channels",params.context)
     gpu_channels_singleton = gpu_channels_type (deviceId = 0)
 
@@ -122,6 +122,7 @@ class several_wavelength_case:
     SIM.interpolate = 0
     # allocate GPU arrays
     gpu_simulation = get_exascale("exascale_api",params.context)(nanoBragg = SIM)
+    assert hasattr(gpu_simulation, "diffuse")==(params.context=="kokkos_gpu") # diffuse halo only implemented in kokkos
     gpu_simulation.allocate()
     gpu_detector = get_exascale("gpu_detector",params.context)(
                  deviceId=SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
@@ -143,6 +144,22 @@ class several_wavelength_case:
       for panel in self.DETECTOR:
           sz = panel.get_image_size()
           NN += sz[0]*sz[1]
+      if diffuse:
+        diffuse_param = gpu_simulation.diffuse # makes a copy of diffuse parameters for local editing
+        diffuse_param.enable=True
+        diffuse_param.stencil_size=1
+        diffuse_param.symmetrize_diffuse=True
+        diffuse_param.anisoG=[300.,100.,300.]
+        diffuse_param.anisoU=[0.48,0.16,0.16]
+        diffuse_param.rotate_principal_axes="a,b,c"
+        gpu_simulation.diffuse = diffuse_param
+        print("enable", gpu_simulation.diffuse.enable)
+        print("stencil_size", gpu_simulation.diffuse.stencil_size)
+        print("symmetrize_diffuse", gpu_simulation.diffuse.symmetrize_diffuse)
+        print("laue_group_num", gpu_simulation.diffuse.laue_group_num)
+        print("anisoG", gpu_simulation.diffuse.anisoG)
+        print("anisoU", gpu_simulation.diffuse.anisoU)
+        print("rotate_principal_axes", gpu_simulation.diffuse.rotate_principal_axes)
       gpu_simulation.add_energy_multichannel_mask_allpanel(
             ichannels = flex.int(range(len(self.flux))),
             gpu_amplitudes = gpu_channels_singleton,
@@ -150,6 +167,10 @@ class several_wavelength_case:
             pixel_active_list_ints = flex.size_t(range(NN)),
             weights = self.frac/len(self.frac)
       )
+      if diffuse:
+        diffuse_param.enable = False # disable so the next test isn't affected
+        gpu_simulation.diffuse = diffuse_param
+
     per_image_scale_factor = self.domains_per_crystal # 1.0
     gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
     if sources is False:
@@ -163,7 +184,8 @@ class several_wavelength_case:
     SIM.flux=1e12
     SIM.beamsize_mm=0.003 # square (not user specified)
     SIM.exposure_s=1.0 # multiplies flux x exposure
-    gpu_simulation.add_background(gpu_detector)
+    if gpu_background:
+      gpu_simulation.add_background(gpu_detector)
 
     gpu_detector.write_raw_pixels(SIM)  # updates SIM.raw_pixels from GPU
     if self.special == 1: #special test breaks encapsulation
@@ -252,10 +274,27 @@ if __name__=="__main__":
 
   if "kokkos" in params.context:
     print("\n# Use case 2 (%s). Monochromatic source"%params.context)#"sources=True": use multichannel API
-    SIM2 = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=True, sources=True)
+    SIM2 = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=True, sources=True, diffuse=False)
     SIM2.to_cbf("test_unified_%s_002.cbf"%(params.context), intfile_scale=scale)
   # Bragg spot intensity should scale exactly with weight, using multichannel API
     assert np.allclose(SIM1.raw_pixels, SIM2.raw_pixels) # equate monochromatic, two Bragg interfaces
+    print("\n# Use case diffuse 2 (%s). Monochromatic source"%params.context)
+    SIM2D = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=True, sources=True, diffuse=True)
+    SIM2D.to_cbf("test_unified_%s_diffuse_002.cbf"%(params.context), intfile_scale=scale)
+    #assert that the diffuse scattering simulation always adds photons to pixels
+    assert np.all(  (SIM2D.raw_pixels.as_1d() >= SIM2.raw_pixels.as_1d()).as_numpy_array()  )
+    print("Diffuse signal confirmed >= 0 for all pixels")
+
+  if "kokkos" in params.context: # same thing but with no background
+    print("\n# Use case 2 with no background (%s). Monochromatic source"%params.context)#"sources=True": use multichannel API
+    SIM2NB = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=False, sources=True, diffuse=False)
+    SIM2NB.to_cbf("test_unified_%s_nb_002.cbf"%(params.context), intfile_scale=scale)
+    print("\n# Use case diffuse 2 with no background (%s). Monochromatic source"%params.context)
+    SIM2DNB = SWC.modularized_exafel_api_for_GPU(params=params, argchk=False, gpu_background=False, sources=True, diffuse=True)
+    SIM2DNB.to_cbf("test_unified_%s_diffuse_nb_002.cbf"%(params.context), intfile_scale=scale)
+    #assert that the diffuse scattering simulation always adds photons to pixels
+    assert np.all(  (SIM2DNB.raw_pixels.as_1d() >= SIM2NB.raw_pixels.as_1d()).as_numpy_array()  )
+    print("Diffuse signal confirmed >= 0 for all pixels")
 
   # Use explicitly 3-color code and equate with explicitly 1-color:
   print ("\n Equate background")

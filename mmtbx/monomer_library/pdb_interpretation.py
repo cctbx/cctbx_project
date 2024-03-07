@@ -255,7 +255,7 @@ master_params_str = """\
     selection = all
       .type = atom_selection
     sigma = 0.2
-      .type = float
+      .type = float(value_min=0.001)
     limit = 1.0
       .type = float
     top_out = False
@@ -571,9 +571,9 @@ bond
             " Example: symmetry_operation = -x-1,-y,z"
     .type = str
   distance_ideal = None
-    .type = float
+    .type = float(value_min=0.001)
   sigma = None
-    .type = float
+    .type = float(value_min=0.001)
   slack = None
     .type = float
   limit = -1.0
@@ -601,7 +601,7 @@ angle
   angle_ideal = None
     .type = float
   sigma = None
-    .type = float
+    .type = float(value_min=0.001)
 }
 dihedral
   .optional = True
@@ -628,7 +628,7 @@ dihedral
   alt_angle_ideals = None
     .type = floats
   sigma = None
-    .type = float
+    .type = float(value_min=0.001)
   periodicity = 1
     .type = int
 }
@@ -644,7 +644,7 @@ planarity
     .type = atom_selection
     .input_size = 400
   sigma = None
-    .type = float
+    .type = float(value_min=0.001)
 }
 parallelity
   .optional = True
@@ -661,7 +661,7 @@ parallelity
     .type = atom_selection
     .input_size = 400
   sigma = 0.027
-    .type = float
+    .type = float(value_min=0.001)
   target_angle_deg = 0
     .type = float
 }

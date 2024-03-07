@@ -564,8 +564,18 @@ def exercise_2():
     args = [hkl_file, pdb_file]
     result = xtriage.run(args=args, out=null_out())
 
+def exercise_loggraph():
+  mtz_file = libtbx.env.find_in_repositories(
+    relative_path="mmtbx/regression/mtz/tst_xtriage_fmodel.mtz",
+    test=os.path.isfile)
+  result = xtriage.run(
+    args=[mtz_file, 'scaling.input.parameters.reporting.loggraphs=True'],
+    out=null_out()
+  )
+
 if (__name__ == "__main__"):
   #exercise_2()
   exercise_1()
   exercise_analyze_resolution_limits()
+  exercise_loggraph()
   print("OK")

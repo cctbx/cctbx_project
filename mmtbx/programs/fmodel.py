@@ -10,6 +10,7 @@ import iotbx.pdb
 import random
 from libtbx.utils import Sorry
 from cctbx.array_family import flex
+from libtbx import group_args
 
 fmodel_from_xray_structure_params_str = """\
 fmodel
@@ -50,6 +51,7 @@ mask
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
+
 high_resolution = None
   .type = float
   .expert_level=1
@@ -112,6 +114,7 @@ output
   format = *mtz cns
     .type = choice
     .short_caption = File format
+    .input_size = 100
   label = FMODEL
     .type = str
     .short_caption = Data label
@@ -155,6 +158,18 @@ anomalous_scatterers
       .type = float
       .short_caption = f''
   }
+}
+gui
+  .help = "GUI-specific parameter required for output directory"
+{
+  output_dir = None
+  .type = path
+  .style = output_dir
+
+  data_column_label = None
+  .type = str
+  .style = noauto renderer:draw_any_label_widget
+  .input_size = 300
 }
 '''%fmodel_from_xray_structure_params_str
 
@@ -253,6 +268,8 @@ See below for complete list of available parameters.
   datatypes = ['model', 'phil', 'miller_array']
 
   master_phil_str = master_phil_str
+
+#  show_data_manager_scope_by_default = True
 
   # ---------------------------------------------------------------------------
 
@@ -421,4 +438,10 @@ generate_fake_p1_symmetry=True.'''
     print("Output file name:", ofn, file=self.logger)
     print("All done.", file=self.logger)
     print("-"*79, file=self.logger)
-    return ofn
+    self.output_file = ofn
+
+  def get_results(self):
+    return group_args(
+     output_file=self.output_file,
+     model=self.data_manager.get_default_model_name())
+

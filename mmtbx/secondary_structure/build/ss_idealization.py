@@ -765,6 +765,8 @@ class substitute_ss(object):
     # print "="*80
     # print "="*80
     # print "="*80
+    if not self.model.restraints_manager_available():
+      self.model.process(make_restraints=True)
     grm = self.model.get_restraints_manager()
     ssm_log = null_out()
     if self.processed_params.verbose:

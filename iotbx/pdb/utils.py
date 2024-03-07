@@ -548,7 +548,7 @@ def add_models(model_list, create_new_chain_ids_if_necessary = True):
     return None # nothing to do
 
   if model_list[0].crystal_symmetry() is not None:
-    model_list[0] = model_list[0].deep_copy() 
+    model_list[0] = model_list[0].deep_copy()
     m_had_crystal_symmetry = True
   else: # Need crystal symmetry for deep_copy of model
     crystal_symmetry = None
@@ -718,6 +718,68 @@ def get_cif_or_pdb_file_if_present(file_name):
      return cif_file
    else:
      return "" # return empty string so os.path.isfile(return_value) works
+
+def interleave_alt_confs(ph1, ph2, selection_string = None):
+  """ Method to interleave alternate conformations in two hierarchies
+   Requires that all atoms are present in both hierarchies, and that the
+   hierarchies have different altloc values for each atom.
+   If selection_string is supplied, remove all alternate conformations that
+   are not in the selection (keep just selected alternate conformations)
+  """
+
+  # Check that hierarchies are similar
+  ph1_no_alt = ph1.deep_copy()
+  ph1_no_alt.remove_alt_confs(always_keep_one_conformer=True)
+  ph2_no_alt = ph2.deep_copy()
+  ph2_no_alt.remove_alt_confs(always_keep_one_conformer=True)
+  assert ph1_no_alt.is_similar_hierarchy(ph2_no_alt), \
+     "Models do not have the same hierarchy"
+
+  # Interleave the hierarchies
+  from iotbx.pdb import hierarchy
+  new_ph = hierarchy.root()
+  for m0, m1 in zip(ph1.models(), ph2.models()):
+    m = hierarchy.model()
+    m.id = m0.id
+    new_ph.append_model(m)
+    for c0, c1 in zip(m0.chains(), m1.chains()):
+     c = hierarchy.chain()
+     c.id = c0.id
+     m.append_chain(c)
+     for rg0, rg1 in zip(c0.residue_groups(), c1.residue_groups()):
+       r = hierarchy.residue_group()
+       assert rg0.icode == rg1.icode, "Residue icodes must match"
+       assert rg0.resseq == rg1.resseq, "Residue resseqs must match"
+       r.resseq = rg0.resseq
+       r.icode = rg0.icode
+       c.append_residue_group(r)
+       for ag0, ag1 in zip(rg0.atom_groups(), rg1.atom_groups()):
+         assert ag0.resname == ag1.resname, "Atoms need matching residue names"
+         assert ag0.altloc != ag1.altloc, "Atoms need different altloc values"
+         # Append each conformer for this atom group
+         r.append_atom_group(ag0.detached_copy())
+         r.append_atom_group(ag1.detached_copy())
+
+  if selection_string: # Identify atoms to save only one conformer by index
+    asc1=new_ph.atom_selection_cache()
+    sel1=asc1.selection(string = selection_string) # sel1[i] = True to keep
+
+    i = 0
+    for model in new_ph.models():
+      for chain in model.chains():
+        for rg in chain.residue_groups():
+          remove = []
+          first = True
+          for ag in rg.atom_groups():
+            for at in ag.atoms():
+              if ((not first) and (not ag in remove) and (not sel1[i])):
+                remove.append(ag)
+              i += 1 # same indexing as sel1 with this traverse of hierarchy
+            first = False
+          for ag in remove: # remove all the unwanted atom groups
+            rg.remove_atom_group(atom_group=ag)
+
+  return new_ph
 
 class numbering_dict:
   ''' Set up a dict that keeps track of chain ID, residue ID and icode for

@@ -7396,7 +7396,6 @@ ATOM     15  O   MET B   4      40.633 -70.625  61.911  1.00 23.73           O
   is_mmcif = (str(type(pdb_inp)).find('cif')>0)
   assert is_mmcif
 
-
 def exercise_fits_in_pdb_format():
   pdb_inp_lines = flex.split_lines("""\
 ATOM      1  CA  ASP A   1      47.975 -63.194  59.946  1.00 33.86           C

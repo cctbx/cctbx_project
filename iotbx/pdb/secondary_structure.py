@@ -498,6 +498,35 @@ class structure_base(object):
             return True
     return False
 
+  def _change_residue_numbering_in_place_helper(self, renumbering_dictionary, se=["start", "end"]):
+    """ Changes residue numbers and insertion codes in annotations.
+    For cases where one needs to renumber hierarchy and keep annotations
+    consisten with the new numbering.
+    Not for cases where residues removed or added.
+    Therefore residue name stays the same.
+
+    Called from derived classes.
+
+    Args:
+        renumbering_dictionary (_type_): data structure to match old and new numbering:
+        {'chain id':
+          {(old resseq, icode):(new resseq, icode)}
+        }
+        se: labels for start and end. Also can be ["cur", "prev"] in sheet registrations
+    """
+    for start_end in se:
+      chain_id_attr = "%s_chain_id" % start_end
+      resseq_attr  = "%s_resseq" % start_end
+      icode_attr = "%s_icode" % start_end
+      chain_dic = renumbering_dictionary.get(getattr(self, chain_id_attr), None)
+      if chain_dic is not None:
+          resseq, icode = getattr(self, resseq_attr), getattr(self, icode_attr)
+          new_resseq, new_icode = chain_dic.get((resseq, icode), (None, None))
+          if new_resseq is not None and new_icode is not None:
+              setattr(self, resseq_attr, new_resseq)
+              setattr(self, icode_attr, new_icode)
+
+
   def count_h_bonds(self,hierarchy=None,
        max_h_bond_length=None,ss_by_chain=False):
     "Count good and poor H-bonds in this hierarchy"
@@ -1070,6 +1099,24 @@ class annotation(structure_base):
       else:
         filtered_helices.append(h)
     self.helices = filtered_helices
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    """ Changes residue numbers and insertion codes in annotations.
+    For cases where one needs to renumber hierarchy and keep annotations
+    consisten with the new numbering.
+    Not for cases where residues removed or added.
+    Therefore residue name stays the same.
+
+    Args:
+        renumbering_dictionary (_type_): data structure to match old and new numbering:
+        {'chain id':
+          {(old resseq, icode):(new resseq, icode)}
+        }
+    """
+    for h in self.helices:
+      h.change_residue_numbering_in_place(renumbering_dictionary)
+    for sh in self.sheets:
+      sh.change_residue_numbering_in_place(renumbering_dictionary)
 
   def as_cif_loops(self):
     """
@@ -2216,6 +2263,10 @@ class pdb_helix(structure_base):
         return False
     return True
 
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary)
+
+
 #=============================================================================
 #       ad88888ba  88        88 88888888888 88888888888 888888888888
 #      d8"     "8b 88        88 88          88               88
@@ -2318,6 +2369,9 @@ class pdb_strand(structure_base):
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
     self.end_chain_id = new_chain_id
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary)
 
   def sense_as_cif(self):
     if self.sense == 0:
@@ -2506,6 +2560,9 @@ class pdb_strand_register(structure_base):
     sele_prev = sele_base % (self.prev_chain_id,segid_extra,
         resid_prev, self.prev_atom.strip())
     return sele_curr, sele_prev
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary, se=["cur", "prev"])
 
   def is_same_as(self,other=None):
 
@@ -2793,6 +2850,14 @@ class pdb_sheet(structure_base):
       if len(strand_indices_to_delete) > 0:
         self.renumber_strands()
         self.erase_hbond_list()
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self.erase_hbond_list()
+    for st in self.strands:
+      st.change_residue_numbering_in_place(renumbering_dictionary)
+    for reg in self.registrations:
+      if reg is not None:
+        reg.change_residue_numbering_in_place(renumbering_dictionary)
 
   def deep_copy(self):
     return copy.deepcopy(self)

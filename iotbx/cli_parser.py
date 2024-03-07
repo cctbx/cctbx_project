@@ -20,7 +20,7 @@ from iotbx.file_reader import any_file
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
-from libtbx.utils import multi_out, show_times, Sorry
+from libtbx.utils import multi_out, null_out, show_times, Sorry
 
 # =============================================================================
 class ParserBase(argparse.ArgumentParser):
@@ -248,8 +248,21 @@ class CCTBXParser(ParserBase):
     # return JSON output from program
     self.add_argument(
       '--json', action='store_true',
-      help='writes or overwrites the JSON output for the program to file (%s)' %
-      self.json_filename
+      help='''\
+writes or overwrites the JSON output for the program to file (%s).
+Use --json-filename to specify a different filename for the output.''' %
+      self.json_filename,
+    )
+
+    # --json-filename
+    # set a non-default filename for JSON output
+    self.add_argument(
+      '--json-filename', '--json_filename', action='store',
+      type=str, default=None,
+      help='''\
+optionally specify a filename for JSON output. If a filename is provided,
+the .json extension will be added automatically if it does not already exist.
+Also, specifying this flag implies that --json is also specified.'''
     )
 
     # --overwrite
@@ -275,12 +288,6 @@ class CCTBXParser(ParserBase):
       '--dry-run', '--dry_run', action='store_true',
       help='performs basic validation the input arguments, but does not run the program'
     )
-    # --get-parser
-    # proceeds until the validate step
-    self.add_argument(
-      '--get-parser', '--get_parser', action='store_true',
-      help='sets up the parameters only'
-    )
 
     # --citations will use the default format
     # --citations=<format> will use the specified format
@@ -305,11 +312,11 @@ class CCTBXParser(ParserBase):
     )
 
   # ---------------------------------------------------------------------------
-  def parse_args(self, args):
+  def parse_args(self, args, skip_help = False):
     '''
     '''
     # default behavior with no arguments
-    if len(args) == 0:
+    if (len(args) == 0) and (not skip_help):
       self.print_help()
       self.exit()
 
@@ -913,8 +920,6 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
                         unused_phil_raises_sorry=unused_phil_raises_sorry,
                         logger=logger)
   namespace = parser.parse_args(args)
-  if namespace.get_parser:
-    return parser
 
   # start program
   if namespace.dry_run:
@@ -947,15 +952,20 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
     pr.dump_stats('profile.out')
 
   # output JSON
-  if namespace.json:
+  if namespace.json or namespace.json_filename:
     result = task.get_results_as_JSON()
     if result is not None:
-      with open(parser.json_filename, 'w') as f:
+      json_filename = parser.json_filename
+      if namespace.json_filename is not None:
+        json_filename = namespace.json_filename
+        if not json_filename.endswith('.json'):
+          json_filename += '.json'
+      with open(json_filename, 'w') as f:
         f.write(result)
     else:
       print('', file=logger)
       print('!'*79, file=logger)
-      print('WARNING: The get_results_as_JSON function has not been defined for this program')
+      print('WARNING: The get_results_as_JSON function has not been defined for this program', file=logger)
       print('!'*79, file=logger)
 
   # stop timer
@@ -985,10 +995,10 @@ def get_program_params(run):
      from phenix.programs import map_to_model as run
     """
 
-    from iotbx.cli_parser import run_program
-    parser=run_program(program_class=run.Program,args=['--get_parser'],
-        logger=sys.stdout)
-    return  parser.working_phil.extract()
+    parser = CCTBXParser(program_class=run.Program,
+                         logger=null_out())
+    _ = parser.parse_args([], skip_help = True)
+    return parser.working_phil.extract()
 
-
+# =============================================================================
 # end
