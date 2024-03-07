@@ -98,8 +98,8 @@ IV.  CREATE CIF TESTS TO CHECK CODE WITH MODELS THAT CANNOT FIT IN PDB FORMAT
     recommended that each standard test using models should either be
     duplicated  and run with non-PDB-compliant models, or run twice in the
     same script, once as-is, and once after converting models to
-    non-PDB-compliant models.  The tool convert_pdb_to_cif_for_pdb_str 
-    can be used to edit strings in place in tests so that identical 
+    non-PDB-compliant models.  The tool convert_pdb_to_cif_for_pdb_str
+    can be used to edit strings in place in tests so that identical
     starting strings can be used in the original and non-PDB-compliant tests.
 
 ===========================================================================

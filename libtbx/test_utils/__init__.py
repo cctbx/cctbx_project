@@ -848,7 +848,7 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print("OK")
 
-def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG", 
+def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
    key_str="pdb_str", hetatm_name_addition = "ZY", print_new_string = True):
   #  Converts all the strings that start with "pdb_str" from PDB to mmcif
   #  format, adding chain_addition to chain names
@@ -868,7 +868,7 @@ def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
      for chain in model.chains():
        chain.id = "%s%s" %(chain.id.strip(),chain_addition)
        if hetatm_name_addition:
-         for rg in chain.residue_groups(): 
+         for rg in chain.residue_groups():
            for ag in rg.atom_groups():
              for at in ag.atoms():
                if at.hetero and len(ag.resname)<=3:
