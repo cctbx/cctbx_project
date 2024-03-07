@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from six.moves import range
 from libtbx.mpi4py import MPI
+import numpy as np
 from dials.array_family import flex
 
 import sys
@@ -86,3 +87,12 @@ class mpi_helper(object):
         sys.stderr.write("\nError reported by process %d: %s\n"%(error[0], error[1]))
       sys.stderr.flush()
       self.comm.Abort(1)
+
+  def gather_variable_length_numpy_arrays(self, send_arrays, root=0, dtype=float):
+    lengths = self.comm.gather(send_arrays.size, root=root)
+    if self.rank == root:
+      gathered_arrays = np.empty(np.sum(lengths), dtype=dtype)
+    else:
+      gathered_arrays = None
+    self.comm.Gatherv(sendbuf=send_arrays, recvbuf=(gathered_arrays, lengths), root=root)
+    return gathered_arrays

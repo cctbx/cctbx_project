@@ -174,6 +174,19 @@ class postrefinement_rs2(postrefinement_rs):
 
         assert result_observations_original_index.size() == result_observations.size()
         assert result_matches.pairs().size() == result_observations_original_index.size()
+        # Calculate the correlation of each frame after corrections.
+        # This is used in the MM24 error model to determine a per frame level of error
+        if "correlation_after_post" in self.params.input.persistent_refl_cols:
+          I_observed = result_observations.data()
+          matches = miller.match_multi_indices(
+            miller_indices_unique = miller_set.indices(),
+            miller_indices = result_observations.indices()
+          )
+          I_reference = flex.double([i_model.data()[pair[0]] for pair in matches.pairs()])
+          I_invalid = flex.bool([i_model.sigmas()[pair[0]] < 0. for pair in matches.pairs()])
+          I_weight = flex.double(len(result_observations.sigmas()), 1.)
+          I_weight.set_selected(I_invalid, 0.)
+          SWC_after_post = simple_weighted_correlation(I_weight, I_reference, I_observed)
       except (AssertionError, ValueError, RuntimeError) as e:
         error_detected = True
         reason = repr(e)
@@ -206,7 +219,9 @@ class postrefinement_rs2(postrefinement_rs):
         for key in self.params.input.persistent_refl_cols:
           if key not in new_exp_reflections.keys():
             new_exp_reflections[key] = exp_reflections_match_results[key]
-
+        if self.params.merging.error.model == 'mm24':
+          if "correlation_after_post" in self.params.input.persistent_refl_cols:
+            new_exp_reflections["correlation_after_post"] = flex.double(len(new_exp_reflections), SWC_after_post.corr)
         new_reflections.extend(new_exp_reflections)
 
     # report rejected experiments, reflections
@@ -284,8 +299,7 @@ class postrefinement_rs2(postrefinement_rs):
     partiality_array = self.refinery.get_partiality_array(values)
     p_scaler = flex.pow(partiality_array,
                         0.5*self.params.postrefinement.merge_partiality_exponent)
-
-    fat_selection = (partiality_array > 0.2)
+    fat_selection = (partiality_array > self.params.postrefinement.partiality_threshold_hcfix)
     fat_count = fat_selection.count(True)
     scaler_s = scaler.select(fat_selection)
     p_scaler_s = p_scaler.select(fat_selection)
