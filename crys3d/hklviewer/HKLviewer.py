@@ -61,7 +61,6 @@ class MakeNewDataForm(QDialog):
     layout.setRowStretch (0, 1)
     layout.setRowStretch (1 ,0)
     self.setLayout(layout)
-    m = self.fontMetrics().width( "asdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdfasdf")
 
 
 class AboutForm(QDialog):
@@ -2825,6 +2824,7 @@ def TestWebGL():
   if "WebGL works" in procout.decode():
     return True
   print(procout.decode())
+  print(procerr.decode())
   return False
 
 

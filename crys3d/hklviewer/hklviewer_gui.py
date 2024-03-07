@@ -1115,7 +1115,7 @@ class Ui_MainWindow(object):
         font2.setFamily(u"Courier New")
         font2.setPointSize(9)
         font2.setBold(True)
-        font2.setWeight(75)
+        font2.setWeight(QFont.Weight(75))
         self.textAlerts.setFont(font2)
         self.textAlerts.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.textAlerts.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)

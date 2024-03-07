@@ -1,7 +1,12 @@
 from __future__ import absolute_import, division, print_function
 
-from PySide2.QtCore import QTimer
-from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+try:
+  from PySide2.QtCore import QTimer
+  from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
+except Exception:
+  from PySide6.QtCore import QTimer
+  from PySide6.QtWebEngineWidgets import QWebEngineView
+  from PySide6.QtWebEngineCore import QWebEnginePage
 import sys, os
 
 
@@ -41,7 +46,10 @@ class MyQWebEnginePage(QWebEnginePage):
 
 
 if (__name__ == "__main__") :
-  from PySide2.QtWidgets import QApplication
+  try:
+    from PySide2.QtWidgets import QApplication
+  except Exception:
+    from PySide6.QtWidgets import QApplication
   app1 = QApplication(sys.argv)
   webglcheckscript = ""
   with open(WeblglChecklibpath, "r") as f:
