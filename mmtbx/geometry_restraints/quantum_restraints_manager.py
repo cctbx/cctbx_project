@@ -358,8 +358,9 @@ def validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=None):
                                          "ccp4_mon_lib_rna_dna"]:
       raise Sorry('QI cannot protonate RNA/DNA : "%s"' % atom_group.id_str())
 
-def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=None):
+def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=None, debug=False):
   if WRITE_STEPS_GLOBAL: write_steps=True
+  if debug: write_steps=True
   ligand_model = select_and_reindex(model, qmr.selection)
   #
   # check for to sparse selections like a ligand in two monomers
@@ -915,7 +916,8 @@ def setup_qm_jobs(model,
     #
     # get ligand and buffer region models
     #
-    ligand_model, buffer_model = get_ligand_buffer_models(model, qmr)
+    debug=getattr(params.qi, 'debug', False)
+    ligand_model, buffer_model = get_ligand_buffer_models(model, qmr, debug=debug)
     #
     # get appropriate QM manager
     #
