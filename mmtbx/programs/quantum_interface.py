@@ -989,6 +989,9 @@ Usage examples:
       elif de<6.:
         close_result.append(outl % args)
 
+    if units.lower()=='dirac':
+      raise Sorry('MOPAC not installed! Please install or update to Python3.')
+
     cmd += '\n\n'
     print(cmd)
     print(pymols)
