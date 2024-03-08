@@ -29,6 +29,12 @@ namespace smtbx { namespace ED
         frame.strong_beams.const_ref());
     }
 
+    /* builds the potential matrix in dc; init must be called before this
+    function!! */
+    void build(const std::pair<mat3_t, cart_t>& fi) {
+      dc->reset(A, fi.first, fi.second);
+    }
+
     complex_t calc_amp(const std::pair<mat3_t, cart_t> &fi, size_t idx=1) {
       return dc->reset(A, fi.first, fi.second)
         .calc_amps_1(idx);
@@ -63,6 +69,12 @@ namespace smtbx { namespace ED
     }
     // indices selected for the Ug matrix - intialised by 'build'
     af::shared<miller::index<> > indices;
+    const cmat_t& get_matrix() const {
+      return A;
+    }
+    a_dyn_calculator<FloatType>&  get_dc() const {
+      return *dc;
+    }
   protected:
     dyn_calculator_factory<FloatType> dc_f;
     const FrameInfo<FloatType>& frame;

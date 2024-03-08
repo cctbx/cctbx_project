@@ -58,9 +58,16 @@ namespace smtbx { namespace ED
 
     // returns angle in rads at which the excitation error is 0
     FloatType get_diffraction_angle(const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle=3) const
+      const cart_t& K) const
     {
-      return Sg_to_angle(0, h, K, sweep_angle);
+      //return Sg_to_angle(0, h, K);
+      FloatType ang = Sg_to_angle(0, h, K);
+      mat3_t m = compute_RMf_N(ang).first;
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(m, ang, h, K, 0.3);
+      ang = ang - k.first / k.second;
+      m = compute_RMf_N(ang).first;
+      k = Sg_to_angle_k(m, ang, h, K, 0.1);
+      return ang - k.first / k.second;
     }
 
     /* returns angle in rads at which the excitation error is Sg as
@@ -68,7 +75,7 @@ namespace smtbx { namespace ED
     */
     std::pair<FloatType, FloatType> Sg_to_angle_k(
       const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle = 3) const
+      const cart_t& K, FloatType sweep_angle = 0.5) const
     {
 #ifdef _DEBUG
       SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
@@ -82,24 +89,37 @@ namespace smtbx { namespace ED
       //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
       return std::make_pair(Sg1, k);
     }
-
-    /* returns angle in rads at which the excitation error is Sg */
-    FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle = 3) const
+    std::pair<FloatType, FloatType> Sg_to_angle_k(
+      const mat3_t &m, FloatType ang,
+      const miller::index<>& h,
+      const cart_t& K, FloatType sweep_angle = 0.5) const
     {
 #ifdef _DEBUG
       SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
 #endif
-      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K, sweep_angle);
+      FloatType Sg1 = utils<FloatType>::calc_Sg(m * h, K);
+      FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
+      std::pair<mat3_t, cart_t> r = compute_RMf_N(ang + ang_diff);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
+      FloatType k = (Sg2 - Sg1) / ang_diff;
+      //FloatType a = Sg1 - k*alpha;
+      //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
+      return std::make_pair(Sg1, k);
+    }
+
+    /* returns angle in rads at which the excitation error is Sg */
+    FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
+      const cart_t& K) const
+    {
+#ifdef _DEBUG
+      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
+#endif
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
       return alpha + (Sg - k.first) / k.second;
     }
 
-    /* returns Sg or the given angle.
-    This could be used to firther remove reflections from VF where
-    excitation andle is too hight at the edge of the frame
-    */
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle)
+      const cart_t& K, FloatType sweep_angle = 0.5)
     {
 #ifdef _DEBUG
       SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);

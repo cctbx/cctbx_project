@@ -5,16 +5,21 @@
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
 #include <boost/python/return_internal_reference.hpp>
+#include <boost/python/pure_virtual.hpp>
 
 #include <scitbx/array_family/boost_python/shared_wrapper.h>
+#include <scitbx/boost_python/std_pair.h>
 #include <smtbx/ED/ed_data.h>
 #include <smtbx/ED/utils.h>
 #include <smtbx/ED/frame_profiler.h>
+#include <smtbx/ED/dyn_calculator.h>
+#include <smtbx/ED/n_beam.h>
 
 // what is going on here???
 //#ifdef __WIN32__
 #include <scitbx/boost_python/slice.cpp>
 //#endif
+namespace bp = boost::python;
 
 namespace smtbx { namespace ED {
 
@@ -69,6 +74,9 @@ namespace boost_python {
         .def("get_angles_Sg", &wt::get_angles_Sg)
         .staticmethod("get_angles")
         .def("PL_correctionROD", &wt::PL_correctionROD)
+        .def("get_diffraction_angle", &wt::get_diffraction_angle,
+          (arg("h"), arg("K"), arg("sweep_angle")=3.0))
+        .def("compute_RMf_N", &wt::compute_RMf_N)
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_frame_info");
     }
@@ -110,6 +118,8 @@ namespace boost_python {
       using namespace boost::python;
       typedef frame_profiler<FloatType> wt;
       typedef refinement::least_squares::f_calc_function_base<FloatType> f_calc_f_t;
+      return_internal_reference<> rir;
+      return_value_policy<return_by_value> rbv;
 
       class_<wt, std::auto_ptr<wt> >("frame_profiler", no_init)
         .def(init< const FrameInfo<FloatType> &,
@@ -126,6 +136,8 @@ namespace boost_python {
               arg("params"))))
         .def("build_profile", &wt::build_profile)
         .def("build_incident_profile", &wt::build_incident_profile)
+        .add_property("mi_lookup", make_getter(&wt::mi_lookup, rir))
+        .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
         ;
     }
 
@@ -161,6 +173,8 @@ namespace boost_python {
 
   template <typename FloatType>
   struct ed_utils_wrapper {
+    ED_UTIL_TYPEDEFS;
+
     static void wrap_excited_beam() {
       using namespace boost::python;
       typedef typename utils<FloatType>::ExcitedBeam wt;
@@ -174,20 +188,36 @@ namespace boost_python {
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_excited_beams");
     }
 
+    typedef typename std::pair< af::shared<miller::index<> >, cmat_t> Ug_rt;
+    static Ug_rt build_Ug_matrix_N(
+      const af::shared<complex_t>& Fcs_k,
+      const lookup_t& mi_lookup,
+      const af::shared<miller::index<> >& index_selection,
+      const cart_t& K,
+      const miller::index<>& h,
+      const mat3_t& RMf,
+      size_t num, bool use_Sg, FloatType wght)
+    {
+      Ug_rt rv;
+      rv.first = utils<FloatType>::build_Ug_matrix_N(rv.second, Fcs_k,
+        mi_lookup, index_selection,
+        K, h, RMf, num, use_Sg, wght);
+      return rv;
+    }
+
     static void wrap_utils() {
       using namespace boost::python;
       typedef utils<FloatType> wt;
+      typedef FloatType(*calc_Sg_t1)(const mat3_t&,
+        const miller::index<>&, const cart_t&);
+
       class_<wt>("utils", no_init)
-        .def("build_eigen_matrix_recipro", &wt::build_eigen_matrix_recipro)
-        .staticmethod("build_eigen_matrix_recipro")
-
-        .def("calc_amps_recipro", &wt::calc_amps_recipro)
-        .staticmethod("calc_amps_recipro")
-
-        .def("is_excited_g", &wt::is_excited_g)
-        .staticmethod("is_excited_g")
-        .def("is_excited_h", &wt::is_excited_h)
-        .staticmethod("is_excited_h")
+        .def("build_Ug_matrix_N", &build_Ug_matrix_N)
+        .staticmethod("build_Ug_matrix_N")
+        .def("calc_Sg", (calc_Sg_t1) &wt::calc_Sg)
+        .staticmethod("calc_Sg")
+        .def("calc_g", &wt::calc_g)
+        .staticmethod("calc_g")
         //.def("generate_index_set", &wt::generate_index_set)
         //.staticmethod("generate_index_set")
         ;
@@ -197,11 +227,100 @@ namespace boost_python {
       wrap_utils();
     }
   };
+  template <typename FloatType>
+  struct dyn_calculator_wrapper {
+    ED_UTIL_TYPEDEFS;
+
+    static void wrap_base() {
+      using namespace boost::python;
+      typedef a_dyn_calculator<FloatType> wt;
+      typedef wt& (wt::*reset_t1)(const cmat_t&, const mat3_t&, const cart_t&);
+      typedef wt& (wt::*reset_t2)(const cmat_t&, const std::pair<mat3_t, cart_t>&);
+      typedef wt& (wt::*reset_t3)(const af::shared<miller::index<> >&,
+        const cmat_t&, const mat3_t&, const cart_t&);
+      return_value_policy<reference_existing_object> reo;
+      return_value_policy<return_by_value> rbv;
+      class_<wt, boost::noncopyable>("a_dyn_calculator", no_init)
+        .def("reset", (reset_t1)&wt::reset, (
+          arg("m"), arg("RMf"), arg("N")), reo)
+        .def("reset", (reset_t2) &wt::reset, (
+          arg("m"), arg("fi")), reo)
+        .def("reset", (reset_t3) &wt::reset, (
+          arg("indices"), arg("m"), arg("RMf"), arg("N")),
+          reo)
+        .def("calc_amps", &wt::calc_amps)
+        .def("calc_amps_ext", &wt::calc_amps_ext)
+        .def("calc_amps_ext_1", &wt::calc_amps_ext_1)
+        .def("build", pure_virtual(&wt::build), reo)
+        .def("matrix", &wt::get_matrix, rbv)
+        ;
+    }
+
+    static void wrap_factory() {
+      using namespace boost::python;
+      typedef dyn_calculator_factory<FloatType> wt;
+      typedef boost::shared_ptr<a_dyn_calculator<FloatType> >(wt::*make_t1)(
+        const af::shared<miller::index<> >&,
+        const cmat_t&, const cart_t&, const mat3_t&,
+        const cart_t&, FloatType) const;
+      typedef boost::shared_ptr<a_dyn_calculator<FloatType> >(wt::*make_t2)(
+        const af::shared<miller::index<> >&,
+        const cart_t&, FloatType) const;
+
+      class_<wt, boost::shared_ptr<wt>,
+        boost::noncopyable>("dyn_calculator_factory", no_init)
+        .def(init<int>((arg("type"))))
+        .def("make", (make_t1) &wt::make,
+          (arg("indices"), arg("mat_Ug"), arg("K"), arg("RMf"), arg("N"),
+            arg("thickness")))
+        .def("make", (make_t2) &wt::make,
+          (arg("indices"), arg("K"), arg("thickness")))
+        ;
+    }
+
+    static void wrap_n_beam() {
+      using namespace boost::python;
+      typedef dyn_calculator_n_beam<FloatType> wt;
+      return_value_policy<reference_existing_object> reo;
+      return_value_policy<return_by_value> rbv;
+
+      typedef wt& (wt::*init_t1)(const miller::index<> &, FloatType,
+        const af::shared<complex_t> &, const lookup_t &);
+      typedef wt& (wt::*init_t2)(const miller::index<>&,
+        const mat3_t&, const af::shared<complex_t>&, const lookup_t&);
+      
+      class_<wt, boost::shared_ptr<wt>,
+        boost::noncopyable>("dyn_calculator_n_beam", no_init)
+        .def(init<
+          size_t, int, const FrameInfo<FloatType>&,
+          const cart_t &, FloatType, bool, FloatType>(
+            (arg("N"), arg("mat_type"),arg("frame"), arg("K"),
+              arg("thickness"), arg("useSG"), arg("wght"))))
+        .def("calc_amp", &wt::calc_amp,
+          (arg("fi"), arg("idx")=1))
+        .def("init", (init_t1) & wt::init, reo)
+        .def("init", (init_t2)&wt::init, reo)
+        .def("build", &wt::build)
+        .def("indices", make_getter(&wt::indices, rbv))
+        .def("matrix", &wt::get_matrix, rbv)
+        .def("dc", &wt::get_dc, reo)
+        ;
+    }
+
+    static void wrap() {
+      wrap_base();
+      wrap_factory();
+      wrap_n_beam();
+    }
+  };
 
   namespace {
     void init_module() {
       ed_data_wrapper<double>::wrap();
       ed_utils_wrapper<double>::wrap();
+      dyn_calculator_wrapper<double>::wrap();
+
+      scitbx::boost_python::RegisterPyPair<scitbx::mat3<double>, scitbx::vec3<double> >();
     }
   }
 
