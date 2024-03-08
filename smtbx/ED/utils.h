@@ -94,6 +94,10 @@ namespace smtbx { namespace ED
               break;
             }
           }
+          else {
+            break;
+          }
+
         }
       }
       else {
@@ -104,7 +108,6 @@ namespace smtbx { namespace ED
       build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
       return indices;
     }
-
     static void build_D_matrices(
       const lookup_t& mi_lookup,
       const af::shared<miller::index<> >& indices,
@@ -351,6 +354,16 @@ namespace smtbx { namespace ED
       }
       return A[2] * std::exp(v[0] * exp_k) * std::conj(A[0]) +
         A[3].real() * std::exp(v[1] * exp_k) * A[1].real();
+    }
+
+    static FloatType calc_Sg(const mat3_t& RMf, const miller::index<> &h,
+      const cart_t& K)
+    {
+      return calc_Sg(RMf * cart_t(h[0], h[1], h[2]), K);
+     }
+
+    static cart_t calc_g(const mat3_t& RMf, const miller::index<>& h) {
+      return RMf * cart_t(h[0], h[1], h[2]);
     }
 
     static FloatType calc_Sg(const cart_t& g, const cart_t& K) {
