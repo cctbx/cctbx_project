@@ -75,6 +75,15 @@ def get_cif_filename(code):
   return os.path.join(
     data_dir, "%s" % code[0].lower(), "data_%s.cif" % code.upper())
 
+def is_chemical_components_file(filename):
+  try:
+    cif_model = iotbx.cif.reader(file_path=file_name).model()
+    for cif_block in cif_model.values():
+      if "_atom_site" in cif_block:
+        return True
+  except Exception as e:
+    return False
+
 def is_code(code):
   filename = get_cif_filename(code)
   if os.path.exists(filename): return True
@@ -247,8 +256,10 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False,
   for d in dirs:
     if not os.path.isdir(os.path.join(data_dir, d)): continue
     filenames += os.listdir(os.path.join(data_dir, d))
+    # if len(filenames)>100: break
   if sort_reverse_by_smiles:
-    filenames.sort(_cmp_smiles_length)
+    import functools
+    filenames = sorted(filenames, key=functools.cmp_to_key(_cmp_smiles_length))
   else:
     filenames.sort()
   for filename in filenames:
@@ -271,8 +282,9 @@ def get_header(code):
       break
   return outl
 
-def get_group(code, split_rna_dna=False, split_l_d=False):
+def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
   t = get_type(code)
+  if verbose: print('get_group',code, t)
   if t is not None:
     t=t.replace('"','').upper()
   else:
@@ -331,6 +343,86 @@ def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
           # 'saccharide' : 'pyranose',
           }[g]
   assert 0
+
+def get_as_atom_group(code):
+  import iotbx
+  from mmtbx.ligands.hierarchy_utils import _new_atom
+  cif = get_cif_dictionary(code)
+  if not cif: return cif
+  tmp = []
+  ag = iotbx.pdb.hierarchy.atom_group()
+  ag.resname=code
+  '''comp_id : BB9 <class 'str'>
+  atom_id : HG <class 'str'>
+  alt_atom_id : HG <class 'str'>
+  type_symbol : H <class 'str'>
+  charge : 0 <class 'int'>
+  pdbx_align : 1 <class 'int'>
+  pdbx_aromatic_flag : N <class 'str'>
+  pdbx_leaving_atom_flag : N <class 'str'>
+  pdbx_stereo_config : N <class 'str'>
+  model_Cartn_x : 14.295 <class 'float'>
+  model_Cartn_y : -4.046 <class 'float'>
+  model_Cartn_z : 26.134 <class 'float'>
+  pdbx_model_Cartn_x_ideal : -3.161 <class 'float'>
+  pdbx_model_Cartn_y_ideal : -1.326 <class 'float'>
+  pdbx_model_Cartn_z_ideal : -0.0 <class 'float'>
+  pdbx_component_atom_id : HG <class 'str'>
+  pdbx_component_comp_id : BB9 <class 'str'>
+  pdbx_ordinal : 12 <class 'int'>'''
+# def _new_atom(name, element, xyz, occ, b, hetero, segid=' '*4):
+  use_model=True
+  for item in cif["_chem_comp_atom"]:
+    xyz = (item.model_Cartn_x,
+           item.model_Cartn_y,
+           item.model_Cartn_z,
+           )
+    print(xyz)
+    if '?' in xyz:
+      xyz = (item.pdbx_model_Cartn_x_ideal,
+             item.pdbx_model_Cartn_y_ideal,
+             item.pdbx_model_Cartn_z_ideal,
+             )
+      print(xyz)
+      use_model=False
+      break
+  for item in cif["_chem_comp_atom"]:
+    if use_model:
+      xyz = (item.model_Cartn_x,
+             item.model_Cartn_y,
+             item.model_Cartn_z,
+             )
+    else:
+      xyz = (item.pdbx_model_Cartn_x_ideal,
+             item.pdbx_model_Cartn_y_ideal,
+             item.pdbx_model_Cartn_z_ideal,
+             )
+    assert '?' not in xyz
+    atom = _new_atom(item.atom_id,
+                     item.type_symbol,
+                     xyz,
+                     1.,
+                     20.,
+                     True,
+                     )
+    ag.append_atom(atom)
+  return ag
+
+def get_as_hierarchy(code):
+  import iotbx
+  ag = get_as_atom_group(code)
+  rg = iotbx.pdb.hierarchy.residue_group()
+  rg.resseq='1'
+  rg.append_atom_group(ag)
+  chain = iotbx.pdb.hierarchy.chain()
+  chain.id='A'
+  chain.append_residue_group(rg)
+  model = iotbx.pdb.hierarchy.model()
+  model.append_chain(chain)
+  ph = iotbx.pdb.hierarchy.root()
+  ph.append_model(model)
+  ph.reset_atom_i_seqs()
+  return ph
 
 if __name__=="__main__":
   print('\nSMILES')

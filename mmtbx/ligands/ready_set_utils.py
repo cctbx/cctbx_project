@@ -63,6 +63,8 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
                                            n_ca_c=None,
                                            verbose=False,
                                           ):
+  if bonds is None:
+    print('\n\t%s\n' % 'add_n_terminal_hydrogens_to_atom_group has not being given bonds')
   rc=[]
   if n_ca_c is not None:
     n, ca, c = n_ca_c
