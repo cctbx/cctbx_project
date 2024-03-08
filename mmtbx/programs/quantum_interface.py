@@ -21,6 +21,7 @@ from mmtbx.geometry_restraints.qi_utils import get_rotamers_via_filenames
 
 import iotbx.pdb
 import iotbx.phil
+from libtbx import Auto
 from libtbx.utils import Sorry
 from libtbx.utils import null_out
 from libtbx.utils import multi_out
@@ -301,7 +302,7 @@ Usage examples:
       .style = hidden
     format = *phenix_refine qi
       .type = choice
-    write_qmr_phil = False
+    write_qmr_phil = Auto
       .type = bool
     run_qmr = False
       .type = bool
@@ -351,6 +352,9 @@ Usage examples:
       self.params.output.prefix = prefix
     if self.params.qi.randomise_selection and self.params.qi.randomise_selection>0.5:
       raise Sorry('Random select value %s is too large' % self.params.qi.randomise_selection)
+    if self.params.qi.write_qmr_phil is Auto:
+      if self.params.qi.run_qmr:
+        self.params.qi.write_qmr_phil=False
 
   # ---------------------------------------------------------------------------
   def run(self, log=None):
@@ -400,7 +404,7 @@ Usage examples:
     if selection:
       selection_array = model.selection(selection)
       selected_model = model.select(selection_array)
-      print('Selected model  %s' % selected_model, file=self.logger)
+      print('Selected model:\n%s' % selected_model, file=self.logger)
       self.data_manager.add_model('ligand', selected_model)
       ags = selected_model.get_hierarchy().atom_groups()
       names = []
@@ -437,7 +441,7 @@ Usage examples:
         qi_phil_string = qi_phil_string.replace('ignore_x_h_distance_protein = False',
                                                 'ignore_x_h_distance_protein = True')
         qi_phil_string = qi_phil_string.replace(' pdb_final_buffer', ' *pdb_final_buffer')
-        print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
+        print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname), file=self.logger)
         outl += '%s' % qi_phil_string
       pf = '%s_all.phil' % (
         self.data_manager.get_default_model_name().replace('.pdb',''))
@@ -449,7 +453,7 @@ Usage examples:
       f.write('}\n')
       del f
       print('  phenix.refine %s %s qi.nproc=6' % (self.data_manager.get_default_model_name(),
-                                                  pf))
+                                                  pf), file=self.logger)
       return
 
     if self.params.qi.merge_water:
@@ -465,7 +469,7 @@ Usage examples:
           filenames.append(filename)
         merge_water(filenames)
       else:
-        print('no working directory')
+        print('no working directory', file=self.logger)
 
     if self.params.qi.each_water:
       if not self.params.qi.run_qmr:
@@ -485,7 +489,7 @@ Usage examples:
                                                   'ignore_x_h_distance_protein = True')
           qi_phil_string = qi_phil_string.replace('do_not_update_restraints = False',
                                                   'do_not_update_restraints = True')
-          print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname))
+          print('  writing phil for %s %s' % (rg.id_str(), rg.atom_groups()[0].resname), file=self.logger)
           outl += '%s' % qi_phil_string
         pf = '%s_water.phil' % (
           self.data_manager.get_default_model_name().replace('.pdb',''))
@@ -503,7 +507,7 @@ Usage examples:
         mmtbx.quantum_interface %s run_qmr=True %s %s
         ''' % (self.data_manager.get_default_model_name(),
                ih,
-               pf))
+               pf), file=self.logger)
 
       # if self.params.qi.run_qmr:
       else:
@@ -566,7 +570,7 @@ Usage examples:
              ih,
              pf,
              ih2,
-             ))
+             ), file=self.logger)
       return
 
     if self.params.qi.run_directory:
@@ -589,7 +593,7 @@ Usage examples:
       self.run_qmr(self.params.qi.format)
 
     if self.params.qi.iterate_NQH:
-      print('"%s"' % self.params.qi.iterate_NQH)
+      print('"%s"' % self.params.qi.iterate_NQH, file=self.logger)
       assert self.params.qi.randomise_selection==None
       if self.params.qi.iterate_NQH=='HIS':
         rc = self.iterate_histidine()
@@ -645,7 +649,7 @@ Usage examples:
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_metals=True)
-      print('Restart command with PHIL file')
+      print('Restart command with PHIL file', file=self.logger)
       return
     def generate_metals(s):
       if s.lower()=='all': s='LI,NA,MG,K,CA,CU,ZN'
@@ -668,7 +672,7 @@ Usage examples:
     filenames = []
     t0=time.time()
     for element in generate_metals(self.params.qi.iterate_metals):
-      print('Substituting element : %s' % element)
+      print('Substituting element : %s' % element, file=self.logger)
       model = self.data_manager.get_model()
       if nproc>1: model=model.deep_copy()
       hierarchy = model.get_hierarchy()
@@ -694,7 +698,7 @@ Usage examples:
       filenames.append('%s_cluster_final_%s.pdb' % (self.params.output.prefix,
                                                    preamble))
       if nproc==-1:
-        print('  Running metal swap %s' % (element), file=log)
+        print('  Running metal swap %s' % (element), file=self.logger)
         res = update_restraints(model,
                                 self.params,
                                 never_write_restraints=True,
@@ -703,9 +707,9 @@ Usage examples:
         energies.append(energies)
         units=res.units
         rmsds.append(res.rmsds[0][1])
-        print('    Energy : %s %s' % (energies[-1],units), file=log)
-        print('    Time   : %ds' % (time.time()-t0), file=log)
-        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
+        print('    Energy : %s %s' % (energies[-1],units), file=self.logger)
+        print('    Time   : %ds' % (time.time()-t0), file=self.logger)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=self.logger)
       else:
         params = copy.deepcopy(self.params)
         argstuples.append(( model,
@@ -725,7 +729,7 @@ Usage examples:
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(iterate_NQH=True)
-      print('Restart command with PHIL file')
+      print('Restart command with PHIL file', file=self.logger)
       return
     qm_work_dir = get_working_directory(self.data_manager.get_model(), self.params)
     nproc = self.params.qi.nproc
@@ -782,7 +786,7 @@ Usage examples:
                                                    preamble))
       #
       if nproc==-1:
-        print('  Running %s flip %d' % (nq_or_h, i+1), file=log)
+        print('  Running %s flip %d' % (nq_or_h, i+1), file=self.logger)
         res = update_restraints(model,
                                 self.params,
                                 never_write_restraints=True,
@@ -791,9 +795,9 @@ Usage examples:
         energies.append(energies)
         units=res.units
         rmsds.append(res.rmsds[0][1])
-        print('    Energy : %s %s' % (energies[-1],units), file=log)
-        print('    Time   : %ds' % (time.time()-t0), file=log)
-        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
+        print('    Energy : %s %s' % (energies[-1],units), file=self.logger)
+        print('    Time   : %ds' % (time.time()-t0), file=self.logger)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=self.logger)
       else:
         params = copy.deepcopy(self.params)
         argstuples.append(( model,
@@ -900,7 +904,7 @@ Usage examples:
         res.units,
         te[2],
         te[3],
-        ))
+        ), file=self.logger)
       energies.append(te)
       units=res.units
       rmsds.append(res.rmsds[0][1])
@@ -925,13 +929,13 @@ Usage examples:
     if resname not in ['radius']:
       hierarchy = self.get_selected_hierarchy()
       original_ch = classify_histidine(hierarchy, resname=resname)
-      print('\n\nEnergies in units of %s' % units, file=log)
-      print('%s\n' % outl, file=log)
+      print('\n\nEnergies in units of %s' % units, file=self.logger)
+      print('%s\n' % outl, file=self.logger)
       print('  %i. %-20s : rotamer "%s"' % (
         0,
         original_ch[1],
-        original_ch[0])
-      )
+        original_ch[0]),
+      file=self.logger)
     #
     final_result=None
     close_result=[]
@@ -968,7 +972,7 @@ Usage examples:
         rmsds[i],
         rotamers[i],
         )
-      print(outl % args, file=log)
+      print(outl % args, file=self.logger)
       update=False
       if de<1e-3:
         final_result = outl % args
@@ -993,20 +997,20 @@ Usage examples:
       raise Sorry('MOPAC not installed! Please install or update to Python3.')
 
     cmd += '\n\n'
-    print(cmd)
-    print(pymols)
-    print('!!! %s' % final_result)
+    print(cmd, file=self.logger)
+    print(pymols, file=self.logger)
+    print('!!! %s' % final_result, file=self.logger)
     if close_result:
-      print('\nClose')
+      print('\nClose', file=self.logger)
       for cl in close_result:
-        print('  >< %s' % cl)
+        print('  >< %s' % cl, file=self.logger)
     return update, filenames[j]
 
   def step_thru_buffer_radii(self, id_str=None, log=None):
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
       self.write_qmr_phil(step_buffer_radius=True)
-      print('Restart command with PHIL file')
+      print('Restart command with PHIL file', file=self.logger)
       return
     nproc = self.params.qi.nproc
     #
@@ -1040,7 +1044,7 @@ Usage examples:
                                                    preamble))
       #
       if nproc==-1:
-        print('  Running radius %d' % (r), file=log)
+        print('  Running radius %d' % (r), file=self.logger)
         res = update_restraints(model,
                                 params,
                                 never_write_restraints=True,
@@ -1049,9 +1053,9 @@ Usage examples:
         energies.append(res.energies)
         units=res.units
         rmsds.append(res.rmsds[0][1])
-        print('    Energy : %s %s' % (energies[-1],units), file=log)
-        print('    Time   : %ds' % (time.time()-t0), file=log)
-        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=log)
+        print('    Energy : %s %s' % (energies[-1],units), file=self.logger)
+        print('    Time   : %ds' % (time.time()-t0), file=self.logger)
+        print('    RMSD   : %8.3f' % res.rmsds[0][1], file=self.logger)
       else:
         argstuples.append(( model,
                             params,
@@ -1085,7 +1089,7 @@ Usage examples:
         )
       energies = digest_return_energy_object(rc, 1, energy_only=True)
       outl = energies.as_string()
-      print(outl, file=log)
+      print(outl, file=self.logger)
     #
     # minimise ligands geometry
     #
@@ -1098,7 +1102,7 @@ Usage examples:
     else:
       digest_return_energy_object(rc, 1, False, energies)
     outl = energies.as_string()
-    print(outl, file=log)
+    print(outl, file=self.logger)
     return rc
 
   def get_single_qm_restraints_scope(self, selection):
@@ -1177,7 +1181,6 @@ Usage examples:
       step=1
       tmp = 'qi {\n'
       for r in stepper(start, end, step):
-        print(r)
         tmp+=qi_phil_string.replace('buffer = 3.5', 'buffer = %s' % r)
       tmp += '\n}\n'
       qi_phil_string = tmp
@@ -1230,11 +1233,11 @@ Usage examples:
       self.data_manager.get_default_model_name().replace('.pdb',''),
       safe_filename(self.params.qi.selection[0]),
       )
-    print('  Writing QMR phil scope to %s' % pf, file=log)
+    print('  Writing QMR phil scope to %s' % pf, file=self.logger)
     f=open(pf, 'w')
     for line in qi_phil_string.splitlines():
       if line.strip().startswith('.'): continue
-      print('%s' % line)
+      print('%s' % line, file=self.logger)
       f.write('%s\n' % line)
     del f
     return pf

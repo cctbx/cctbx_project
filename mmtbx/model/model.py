@@ -652,8 +652,8 @@ class manager(object):
       sc = (0, 0, 0)
 
     return "Model manager "+\
-      "%s" %(self.model_number()) if self.model_number() is not None else "" + \
-      "\n%s\nChains: %s Residues %s (%s - %s)\nWorking coordinate shift %s)" %(
+      ("%s" %(self.model_number()) if self.model_number() is not None else "") + \
+      "\nSymmetry: %s Chains: %s Residues: %s (%s - %s)\nWorking coordinate shift %s)" %(
       str(self.unit_cell_crystal_symmetry()).replace("\n"," "),
       str(nchains),
       str(nres),
