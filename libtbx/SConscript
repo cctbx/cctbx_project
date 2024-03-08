@@ -972,6 +972,12 @@ int main() {
       min_macos = 11.0
     base_macos_flags = ['-stdlib=libc++', '-mmacosx-version-min=%s' % min_macos]
 
+    # Boost issue with newer versions of clang
+    # include/boost/mpl/aux_/integral_wrapper.hpp:73:31: error: integer value -1 is outside the valid range of values [0, 3] for this enumeration type
+    # https://reviews.llvm.org/D150226
+    if env_etc.clang_version[0] >= 15:
+      base_macos_flags.append('-Wno-enum-constexpr-conversion')
+
     link_flags = ["-w"] # suppress "source/lib does not exist" warning
     link_flags.extend(base_macos_flags)
     if libtbx.env.build_options.force_32bit:
