@@ -33,7 +33,7 @@ namespace smtbx { namespace ED
     virtual ~a_dyn_calculator() {}
 
     // mat_Ug will be NOT be affected - deep copied
-    a_dyn_calculator& reset(const cmat_t& m, const mat3_t &RMf, const cart_t &N) {
+    a_dyn_calculator& reset(const cmat_t& m, const mat3_t& RMf, const cart_t& N) {
       A = m.deep_copy();
       this->RMf = RMf;
       this->N = N;
@@ -41,8 +41,14 @@ namespace smtbx { namespace ED
     }
 
     // mat_Ug will be NOT be affected - deep copied
+    a_dyn_calculator& reset(const cmat_t& m, const std::pair <mat3_t, cart_t> &fi) {
+      return reset(m, fi.first, fi.second);
+    }
+
+    // mat_Ug will be NOT be affected - deep copied
     a_dyn_calculator& reset(const af::shared<miller::index<> > &indices_,
-      const cmat_t& m, const mat3_t& RMf, const cart_t& N) {
+      const cmat_t& m, const mat3_t& RMf, const cart_t& N)
+    {
       A = m.deep_copy();
       indices = indices_;
       this->RMf = RMf;
@@ -71,6 +77,9 @@ namespace smtbx { namespace ED
     // recomputes the Eigen matrix
     virtual a_dyn_calculator& build() = 0;
     const cart_t K;
+    const cmat_t& get_matrix() const {
+      return A;
+    }
   protected:
     af::shared<miller::index<> > indices;
     cmat_t A;

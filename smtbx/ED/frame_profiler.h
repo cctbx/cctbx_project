@@ -150,7 +150,6 @@ namespace smtbx { namespace ED {
                   n_beam_dc.init(h, RMf, parent.Fcs_k, parent.mi_lookup);
                 }
                 else {
-                  FloatType da = frame.get_diffraction_angle(h, parent.K);
                   n_beam_dc.init(h, da_r.first, parent.Fcs_k, parent.mi_lookup);
                 }
                 Is[i] = std::norm(
