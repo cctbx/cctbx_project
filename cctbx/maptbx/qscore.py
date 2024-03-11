@@ -166,7 +166,11 @@ def get_probes(
   probe_xyz = [result[0] for result in results]
   probe_mask = [result[1] for result in results]
 
-  return np.stack(probe_xyz), np.array(probe_mask)
+  n_shells = len(shells)
+  probe_xyz_stacked = np.empty((n_shells,*probe_xyz[0].shape))
+  for i,array in enumerate(probe_xyz):
+    probe_xyz_stacked[i] = array
+  return probe_xyz_stacked, np.array(probe_mask)
 
 
 def shell_probes_precalculate(
@@ -309,7 +313,6 @@ def calc_qscore(mmm,
 
   # g vals
   # create the reference data
-  radii = shells
   M = volume
   maxD = min(M.mean() + M.std() * 10, M.max())
   minD = max(M.mean() - M.std() * 1, M.min())
@@ -317,7 +320,7 @@ def calc_qscore(mmm,
   B = minD
   u = 0
   sigma = 0.6
-  x = np.array(radii)
+  x = np.array(shells)
   y = A * np.exp(-0.5 * ((x - u) / sigma) ** 2) + B
 
   # Stack and reshape data for correlation calc
@@ -345,7 +348,7 @@ def calc_qscore(mmm,
   model = model.select(flex.bool(selection_bool))
   qscore_df = aggregate_qscore_per_residue(model,q,window=3)
   q = flex.double(q)
-  qscore_per_residue = flex.double(qscore_df["Q-ResidueRolling"].values)
+  qscore_per_residue = flex.double(qscore_df["Q-Residue"].values)
 
   # Output
   result = {
@@ -402,38 +405,28 @@ def aggregate_qscore_per_residue(model,qscore_per_atom,window=3):
   # assign residue indices to each atom
 
   atoms = model.get_atoms()
-  res_seqs = [atom.parent().parent().resseq_as_int() for atom in atoms]
-  chain_ids = [atom.parent().parent().parent().id for atom in atoms]
-  res_names = [atom.parent().resname for atom in atoms]
-  names = [atom.name.strip() for atom in atoms]
-  df = pd.DataFrame({"resseq":res_seqs,
-                    "chain_id":chain_ids,
-                    "resname":res_names,
-                    "name":names,
-                    "Q-score":np.array(qscore_per_atom),
-
-                    })
-
+  df = cctbx_atoms_to_df(atoms)
+  df["Q-score"] = qscore_per_atom
   df["rg_index"] = df.groupby(["chain_id", "resseq", "resname"]).ngroup()
   grouped_means = df.groupby(['chain_id', "resseq", "resname", "rg_index"],
                              as_index=False)['Q-score'].mean().rename(
                                columns={'Q-score': 'Q-Residue'})
 
-  grouped_means['RollingMean'] = None  # Initialize column to avoid KeyError
+  #grouped_means['RollingMean'] = None  # Initialize column to avoid KeyError
 
   # Until pandas is updated, need to suppress warning
   warnings.filterwarnings("ignore", category=FutureWarning)
-  for chain_id, group in grouped_means.groupby("chain_id"):
-    rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
-    grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
+  # for chain_id, group in grouped_means.groupby("chain_id"):
+  #   rolling_means = variable_neighbors_rolling_mean(group['Q-Residue'], window)
+  #   grouped_means.loc[group.index, 'RollingMean'] = rolling_means.values
 
 
 
   # Merge the updated 'Q-Residue' and 'RollingMean' back into the original DataFrame
-  df = df.merge(grouped_means[['rg_index', 'Q-Residue', 'RollingMean']], on='rg_index', how='left')
+  df = df.merge(grouped_means[['rg_index', 'Q-Residue']], on='rg_index', how='left')
   df.drop("rg_index", axis=1, inplace=True)
-  df["Q-ResidueRolling"] = df["RollingMean"].astype(float)
-  df.drop(columns=["RollingMean"],inplace=True)
+  # df["Q-ResidueRolling"] = df["RollingMean"].astype(float)
+  # df.drop(columns=["RollingMean"],inplace=True)
   return df
 
 def variable_neighbors_rolling_mean(series, window=3):
@@ -490,12 +483,13 @@ def cctbx_atoms_to_df(atoms):
   func_mapper = {
                         #"model_id", # model
                         "id":lambda atom: atom.i_seq,
-                        "Chain":lambda atom: atom.parent().parent().parent().id,
-                        "Resseq":lambda atom: atom.parent().parent().resseq_as_int(),
-                        "Resname":lambda atom: atom.parent().parent().unique_resnames()[0],
-                        "Name":lambda atom: atom.name.strip(),
-                        "Element":lambda atom: atom.element,
-                        "Alt Loc": lambda atom: atom.parent().altloc
+                        "model_id":lambda atom: atom.parent().parent().parent().parent().id,
+                        "chain_id":lambda atom: atom.parent().parent().parent().id,
+                        "resseq":lambda atom: atom.parent().parent().resseq_as_int(),
+                        "resname":lambda atom: atom.parent().parent().unique_resnames()[0],
+                        "name":lambda atom: atom.name.strip(),
+                        "element":lambda atom: atom.element,
+                        "altloc": lambda atom: atom.parent().altloc
   }
 
   # Build as dictionaries

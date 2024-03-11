@@ -39,7 +39,10 @@ class Program(ProgramTemplate):
 
 
   def run(self):
-    self._print("Running")
+    # set up logging
+    log = open("qscore.log", "w")
+
+    self.logger.register("log", log, atexit_send_to=None)
 
     # get initial data
     mmm = self.data_manager.get_map_model_manager()
@@ -58,6 +61,7 @@ class Program(ProgramTemplate):
 
     # ignore hydrogens
     model = mmm.model()
+    model.add_crystal_symmetry_if_necessary()
     model = model.remove_hydrogens()
 
     # make mmm
@@ -65,8 +69,10 @@ class Program(ProgramTemplate):
 
     # print output
     self._print("Running Q-score:")
-    self._print("\nRadial shells used:")
-    self._print([round(shell,2) for shell in shells])
+    self._print("\nRadial shells (Radii used to place probes):")
+    self._print(",".join([str(round(shell,2)) for shell in shells]))
+    self._print("\n Number of probes per radial shell: "+str(self.params.qscore.n_probes))
+
     # run qscore
     qscore_result= calc_qscore(
         mmm,
@@ -81,33 +87,59 @@ class Program(ProgramTemplate):
     self.result = group_args(**qscore_result)
     # calculate some metrics
     df = self.result.qscore_dataframe
+    # round
+    df_numeric = df.select_dtypes(include=['number']).round(2)
+    df[df_numeric.columns] = df_numeric
+
     if self.params.qscore.selection is not None:
       model = model.select(model.selection(self.params.qscore.selection))
     assert model.get_number_of_atoms()==len(df)
 
 
-    self._print("\nFinished running. Q-score results:")
+    self._print("\nFinished running.\n\n Q-score results:")
     sel_mc = "protein and (name C or name N or name CA or name O or name CB)"
     sel_mc = model.selection(sel_mc)
     sel_sc = ~sel_mc
-    q_sc = flex.mean(self.result.qscore_per_atom.select(sel_sc))
-    q_mc = flex.mean(self.result.qscore_per_atom.select(sel_mc))
+
+    # Side chains
+    df["Side Chain"] = pd.NA
+    if sel_sc.count(True)>0:
+      q_sc = flex.mean(self.result.qscore_per_atom.select(sel_sc))
+      q_sc = round(q_sc,2)
+      df.loc[sel_sc.as_numpy_array(),"Side Chain"] = np.array(self.result.qscore_per_atom.select(sel_sc))
+    else:
+      q_sc = None
+    df["Side Chain"] = df["Side Chain"].astype("Float64")
+
+    # Main chain
+    df["Main Chain"] = pd.NA
+    if sel_mc.count(True)>0:
+      q_mc = flex.mean(self.result.qscore_per_atom.select(sel_mc))
+      q_mc = round(q_mc,2)
+      df.loc[sel_sc.as_numpy_array(),"Main Chain"] = np.array(self.result.qscore_per_atom.select(sel_mc))
+    else:
+      q_mc = None
+    df["Main Chain"] = df["Main Chain"].astype("Float64")
+    # All
     q_all = flex.mean(self.result.qscore_per_atom)
+    q_all = round(q_all,2)
+
+    # Per chain
     q_chains = df.groupby("chain_id").agg('mean',numeric_only=True)
-    q_chains = q_chains[["Q-score"]]
-    print("\nBy residue:")
-    print("----------------------------------------")
-    pd.set_option('display.max_rows', None)
-    print(df)
-    print("\nBy chain:")
-    print("----------------------------------------")
-    print(q_chains)
-    print("\nBy structure:")
-    print("----------------------------------------")
-    print("  Mean side chain Q-score:",round(q_sc,3))
-    print("  Mean main chain Q-score:",round(q_mc,3))
-    print("  Mean overall Q-score:",round(q_all,3))
-    print("\n  Use --json flag to get json output")
+    q_chains.drop(columns=["id","resseq","x","y","z","Q-Residue"],inplace=True)
+    q_chains = q_chains.round(2)
+    self._print("\n\nBy residue:")
+    self._print("----------------------------------------")
+    pd.set_option('display.max_rows', 20)
+    df.drop(columns=["x","y","z","id","Q-score"],inplace=True)
+    self._print(df.groupby(["model_id","chain_id","resseq","altloc"]).agg("mean"))
+    self._print("\n\nBy chain:")
+    self._print("----------------------------------------")
+    self._print(q_chains)
+    self._print("\n\nAll:")
+    self._print("----------------------------------------")
+    df = pd.DataFrame({"Main Chain":[q_mc],"Side Chain":[q_sc],"Overall":[q_all]})
+    self._print(df)
 
 
     # store in results
@@ -122,6 +154,7 @@ class Program(ProgramTemplate):
 
     if self.params.qscore.write_to_bfactor_pdb:
       self.write_to_bfactor_pdb(model,self.result.qscore_per_atom)
+
 
   def get_results(self):
     return self.result
@@ -141,7 +174,7 @@ class Program(ProgramTemplate):
   def write_bild_spheres(self):
     # write bild files
     if self.params.qscore.write_probes:
-      print("Writing probe debug files...Using a small selection is recommended",
+      self._print("Writing probe debug files...Using a small selection is recommended",
             file=self.logger)
       debug_path = Path("qscore_debug")
       debug_path.mkdir(exist_ok=True)
