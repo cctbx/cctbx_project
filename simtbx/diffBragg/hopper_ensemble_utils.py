@@ -5,6 +5,7 @@ import sys
 import socket
 import logging
 import os
+import torch
 import numpy as np
 from scipy.optimize import basinhopping
 
@@ -105,7 +106,7 @@ def target_func(x, modelers):
 
     f = 0  # target functional
     g = np.zeros(modelers.num_total_modelers * num_shot_params)
-    g_fhkl = np.zeros(num_fhkl_params)
+    g_fhkl = torch.zeros(num_fhkl_params)
     zscore_sigs = []
     fcell_params = x[-num_fhkl_params:]
     for ii, i_shot in enumerate(modelers):
@@ -126,13 +127,13 @@ def target_func(x, modelers):
         # data contributions to target function
         V = model_pix + shot_modeler.all_sigma_rdout**2
         resid_square = resid**2
-        shot_fLogLike = (.5*(np.log(2*np.pi*V) + resid_square / V))
+        shot_fLogLike = (.5*(torch.log(2*np.pi*V) + resid_square / V))
         if shot_modeler.params.roi.allow_overlapping_spots:
             shot_fLogLike /= shot_modeler.all_freq
         shot_fLogLike = shot_fLogLike[shot_modeler.all_trusted].sum()   # negative log Likelihood target
         f += shot_fLogLike
 
-        zscore_sig = np.std((resid / np.sqrt(V))[shot_modeler.all_trusted])
+        zscore_sig = torch.std((resid / torch.sqrt(V))[shot_modeler.all_trusted]).item()
         zscore_sigs.append(zscore_sig)
 
         # get this shots contribution to the gradient
@@ -145,7 +146,7 @@ def target_func(x, modelers):
         for name in shot_modeler.non_fhkl_params:
             p = shot_modeler.P[name]
             Jac_p = Jac[p.xpos]
-            shot_g[p.xpos] += (Jac_p[shot_modeler.all_trusted] * common_grad_term).sum()
+            shot_g[p.xpos] += (Jac_p[shot_modeler.all_trusted] * common_grad_term).sum().item()
         np.add.at(g, shot_x_slice, shot_g)
 
         spot_scale_p = shot_modeler.P["G_xtal0"]

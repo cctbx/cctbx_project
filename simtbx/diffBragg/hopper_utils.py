@@ -730,18 +730,18 @@ class DataModeler:
             roi_sel = self.roi_id==i_roi
             x1, x2, y1, y2 = self.rois[i_roi]
             roi_shape = y2-y1, x2-x1
-            roi_img = self.all_data[roi_sel].reshape(roi_shape).astype(np.float32)  #NOTE this has already been converted to photon units
-            roi_bg = self.all_background[roi_sel].reshape(roi_shape).astype(np.float32)
+            roi_img = self.all_data[roi_sel].reshape(roi_shape).float()  #NOTE this has already been converted to photon units
+            roi_bg = self.all_background[roi_sel].reshape(roi_shape).float()
 
             sb = Shoebox((x1, x2, y1, y2, 0, 1))
             sb.allocate()
-            sb.data = flex.float(np.ascontiguousarray(roi_img[None]))
-            sb.background = flex.float(np.ascontiguousarray(roi_bg[None]))
+            sb.data = flex.float(roi_img[None].cpu().contiguous().numpy())
+            sb.background = flex.float(roi_bg[None].cpu().contiguous().numpy())
 
-            dials_mask = np.zeros(roi_img.shape).astype(np.int32)
+            dials_mask = torch.zeros(roi_img.shape, device=kokkos_device()).int()
             mask = self.all_trusted[roi_sel].reshape(roi_shape)
             dials_mask[mask] = dials_mask[mask] + MaskCode.Valid
-            sb.mask = flex.int(np.ascontiguousarray(dials_mask[None]))
+            sb.mask = flex.int(dials_mask[None].cpu().contiguous().numpy())
 
             # quick sanity test
             if do_xyobs_sanity_check:
@@ -1250,7 +1250,7 @@ class DataModeler:
             SIM.D.force_cpu = True
             MAIN_LOGGER.info("Getting Fhkl errors (forcing CPUkernel usage)... might take some time")
             Fhkl_scale_errors = SIM.D.add_Fhkl_gradients(
-                self.pan_fast_slow, resid, V, self.all_trusted, self.all_freq,
+                self.pan_fast_slow, resid.cpu().numpy(), V.cpu().numpy(), self.all_trusted.cpu().numpy(), self.all_freq.cpu().numpy(),
                 SIM.num_Fhkl_channels, G, track=True, errors=True)
             SIM.D.force_gpu = force_cpu
             # ------------
@@ -1338,21 +1338,22 @@ class DataModeler:
                 fit = model_subimg[i_roi]
                 trust = trusted_subimg[i_roi]
                 if sigma_rdout_subimg is not None:
-                    sig = np.sqrt(fit + sigma_rdout_subimg[i_roi] ** 2)
+                    sig = torch.sqrt(fit + sigma_rdout_subimg[i_roi] ** 2)
                 else:
-                    sig = np.sqrt(fit + Modeler.nominal_sigma_rdout ** 2)
+                    sig = torch.sqrt(fit + Modeler.nominal_sigma_rdout ** 2)
                 Z = (dat - fit) / sig
                 sigmaZ = np.nan
-                if np.any(trust):
-                    sigmaZ = Z[trust].std()
+                if torch.any(trust):
+                    sigmaZ = Z[trust].std().item()
 
                 sigmaZs.append(sigmaZ)
                 if bragg_subimg[0] is not None:
-                    if np.any(bragg_subimg[i_roi] > 0):
+                    if torch.any(bragg_subimg[i_roi] > 0):
                         ref_idx = Modeler.refls_idx[i_roi]
                         ref = Modeler.refls[ref_idx]
                         I = bragg_subimg[i_roi]
-                        Y, X = np.indices(bragg_subimg[i_roi].shape)
+                        ny, nx = bragg_subimg[i_roi].shape
+                        Y, X = torch.meshgrid(torch.arange(ny, device=kokkos_device()), torch.arange(nx, device=kokkos_device()), indexing='ij')
                         x1, x2, y1, y2 = Modeler.rois[i_roi]
                         com_x, com_y, _ = ref["xyzobs.px.value"]
                         com_x = int(com_x - x1 - 0.5)
@@ -1363,11 +1364,11 @@ class DataModeler:
                                 continue
                         except IndexError:
                             continue
-                        X += x1
-                        Y += y1
-                        Isum = I.sum()
-                        xcom = (X * I).sum() / Isum
-                        ycom = (Y * I).sum() / Isum
+                        X = X + x1
+                        Y = Y + y1
+                        Isum = I.sum().item()
+                        xcom = (X * I).sum().item() / Isum
+                        ycom = (Y * I).sum().item() / Isum
                         com = xcom + .5, ycom + .5, 0
                         new_xycalcs[ref_idx] = com
                         if not Modeler.params.fix.perRoiScale:
@@ -2041,8 +2042,8 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
         if SIM.refining_Fhkl:
             spot_scale_p = mod.P["G_xtal0"]
             G = spot_scale_p.get_val(x[spot_scale_p.xpos])
-            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid, V, trusted,
-                                                 mod.all_freq, SIM.num_Fhkl_channels, G)
+            fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid.cpu().numpy(), V.cpu().numpy(), trusted.cpu().numpy(),
+                                                 mod.all_freq.cpu().numpy(), SIM.num_Fhkl_channels, G)
 
             if params.betas.Fhkl is not None:
                 for i_chan in range(SIM.num_Fhkl_channels):
@@ -2209,11 +2210,9 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
 
             X = X + x1
             Y = Y + y1
-            Isum = I.sum()
-            xcom = (X * I).sum() / Isum + .5
-            xcom = xcom.item()
-            ycom = (Y * I).sum() / Isum + .5
-            ycom = ycom.item()
+            Isum = I.sum().item()
+            xcom = (X * I).sum().item() / Isum + .5
+            ycom = (Y * I).sum().item() / Isum + .5
             com = xcom, ycom, 0
 
             pid = Modeler.pids[i_roi]
