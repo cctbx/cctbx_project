@@ -1517,28 +1517,27 @@ def assess_cryoem_errors(
 
   # Get map coefficients for maps after spherical masking
   # Define box big enough to hold sphere plus soft masking
-  # Attempt to cope with spheres too near edge of full map,
-  # and don't let box deviate too far from cubic
+  # Warn if sphere too near edge of full map for soft mask to reach zero
+  # or if less than about 85% of sphere would be within full map
+  # (outside by >= half-radius)
   boundary_to_smoothing_ratio = 2
   soft_mask_radius = d_min
   padding = soft_mask_radius * boundary_to_smoothing_ratio
   cushion = flex.double(3,radius+padding)
   cart_min = flex.double(sphere_cent_map) - cushion
   cart_max = flex.double(sphere_cent_map) + cushion
-  for i in range(3): # Keep within input map, check whether box has been reduced too much
-    cart_min[i] = max(cart_min[i],0)
-    cart_max[i] = min(cart_max[i],ucpars[i]-spacings[i])
-  min_box_width = flex.min(cart_max - cart_min)
-  if min_box_width < 2*(radius+padding):
-    radius_check = min_box_width/2. - padding
-    if radius_check < 0.8*radius: # Allowable sphere would be too small to consider
-      print("\nModel sphere has radius of ",radius, file=log)
-      print("Sphere that fits where requested has radius of ",radius_check, file=log)
-      raise Sorry("Target sphere too near edge of map")
-    elif radius_check < radius*0.99:
-      print("\nWARNING: Model sphere radius reduced from ",radius,
-            " to ",radius_check," to stay within map", file=log)
-      radius = radius_check
+  max_outside = 0.
+  for i in range(3):
+    if cart_min[i] < 0:
+      max_outside = max(max_outside, -cart_min[i])
+    if cart_max[i] > ucpars[i]-spacings[i]:
+      max_outside = max(max_outside, cart_max[i]-(ucpars[i]-spacings[i]))
+  if max_outside > padding + radius/2:
+    print("\nWARNING: substantial fraction of sphere is outside map volume", file=log)
+  elif max_outside > padding:
+    print("\nWARNING: sphere is partially outside map volume", file=log)
+  elif max_outside > 0:
+    print("\nWARNING: sphere too near map edge to allow full extent of smooth masking", file=log)
 
   cs = mmm.crystal_symmetry()
   uc = cs.unit_cell()
@@ -1936,7 +1935,7 @@ def run():
           defaults to narrowest extent of input map divided by 4
   --no_shift_map_origin: don't shift output mtz file to match input map on its origin
           default False
-  --no_define_ordered_volume: don't define ordered volume for comparison with cutout volume
+  --no_determine_ordered_volume: don't define ordered volume for comparison with cutout volume
           default False
   --file_root: root name for output files
   --mute (or -m): mute output
@@ -1997,7 +1996,8 @@ def run():
   protein_mw = None
   nucleic_mw = None
   if (args.protein_mw is None) and (args.nucleic_mw is None):
-    raise Sorry("At least one of protein_mw or nucleic_mw must be given")
+    if determine_ordered_volume:
+      raise Sorry("At least one of protein_mw or nucleic_mw must be given")
   if args.protein_mw is not None:
     protein_mw = args.protein_mw
   if args.nucleic_mw is not None:
