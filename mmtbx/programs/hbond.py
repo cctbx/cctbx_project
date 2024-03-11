@@ -18,17 +18,51 @@ Usage example:
 
   datatypes = ['model', 'phil', 'restraint']
 
-  master_phil_str = mmtbx.nci.hbond.master_phil_str
+
+  master_phil_str = '''
+  include scope mmtbx.nci.hbond.master_phil_str
+
+  output_skew_kurtosis_plot = False
+    .type = bool
+    .short_caption = Output skew-kurtosis plot with result in png format
+  plot_colorblind_friendly = True
+    .type = bool
+    .short_caption = Use colorblind friendly palette for skew-kurtosis plot
+  plot_parameters_override
+    .help = These parameters will override preset values in plots. The values \
+      will be passed directly to matplotlib functions, so should be valid \
+      matplotlib color names.
+  {
+    colormap = None
+      .type = str
+    contour_left = None
+      .type = str
+    contour_right = None
+      .type = str
+    contour_thick_left = None
+      .type = float(value_min=0.1, value_max=10)
+    contour_thick_right = None
+      .type = float(value_min=0.1, value_max=10)
+    theta_color = None
+      .type = str
+    theta_contour = None
+      .type = str
+    Rha_color = None
+      .type = str
+    Rha_contour = None
+      .type = str
+  }
+  '''
+  # % mmtbx.nci.hbond.master_phil_str
 
   # ---------------------------------------------------------------------------
   def validate(self):
-    print('Validating inputs', file=self.logger)
+    self._print('Validating inputs')
     self.data_manager.has_models(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
   def run(self):
-    print('Using model: %s' % self.data_manager.get_default_model_name(),
-      file=self.logger)
+    self._print('Using model: %s' % self.data_manager.get_default_model_name())
     inp_models = []
     for model_name in self.data_manager.get_model_names():
       inp_models.append((model_name, self.data_manager.get_model(model_name)))
@@ -47,7 +81,7 @@ Usage example:
       self.results = mmtbx.nci.hbond.find(model = model)
       if self.params.hbond.show_hbonds:
         self.results.show(log = self.logger)
-      print("-"*79, file=self.logger)
+      self._print("-"*79)
       #self.results.show_summary(log = self.logger)
       prefix=self.params.output.prefix
       if not prefix:
@@ -60,8 +94,7 @@ Usage example:
       stats = mmtbx.nci.hbond.stats(model = model, prefix="%s_stats" % prefix,
         output_stats_pdf = self.params.hbond.output_stats_pdf)
       if stats is None:
-        print('\n\tLimited number of H-bonds so statistics are not calculated.',
-              file=self.logger)
+        self._print('\n\tLimited number of H-bonds so statistics are not calculated.')
         return
       min_data_size=self.params.hbond.min_data_size
       # These are the values to be used for the plot!
@@ -70,21 +103,30 @@ Usage example:
         theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
         Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
 
-    if self.params.hbond.output_skew_kurtosis_plot and self.results.get_counts():
+    if self.params.output_skew_kurtosis_plot and len(theta1_data) > 0 and len(Rha_data) > 0:
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
       # like in stats().
       fn = '%s_skew_kurtosis' % prefix
-      if self.params.hbond.plot_colorblind_friendly:
+      if self.params.plot_colorblind_friendly:
         fn += "_cbf"
       theta1_c = [(x.skew, x.kurtosis) for x in theta1_data]
       Rha_c = [(x.skew, x.kurtosis) for x in Rha_data]
+      op = {}
+      for param_name in dir(self.params.plot_parameters_override):
+        if not param_name.startswith('__'):
+          param_value = getattr(self.params.plot_parameters_override, param_name)
+          if param_value != None:
+            op[param_name] = param_value
+
       mmtbx.nci.skew_kurt_plot.make_figure(
           file_name=fn,
           theta1_coords=theta1_c,
           Rha_coords=Rha_c,
           dot_size = self.params.hbond.dot_size,
           type='all',
-          colorblind_friendly=self.params.hbond.plot_colorblind_friendly)
+          override_palette = op,
+          colorblind_friendly=self.params.plot_colorblind_friendly)
+      self._print("\nOutputted plot as %s.png" % fn)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

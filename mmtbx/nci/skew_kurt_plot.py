@@ -5,6 +5,7 @@ from libtbx import easy_pickle
 from mmtbx.utils.grid2d import Grid2D
 import numpy as np
 import matplotlib.pyplot as plt
+from libtbx.utils import Sorry
 import os
 
 def get_filling_data(data, x_nbins, y_nbins, xmin, xmax, ymin, ymax,
@@ -49,6 +50,7 @@ def make_figure(
     dot_size,
     type='all',
     colorblind_friendly=True,
+    override_palette = {},
     resolution=300):
   """ Plots skew-kurtosis plot and saves it to .png file
 
@@ -58,6 +60,7 @@ def make_figure(
       Rha_coords (iterable): list of skew-kurtosis coordinates of Rha [(),(),..]
       type (str, optional): Type of contours to plot. Defaults to 'all'. Allowed 'all', 'alpha', 'beta'.
       colorblind_friendly (bool, optional): Use color-blind friendly palette. Defaults to True.
+      override_palette (dict, optional): keys and values to overide color_palette values.
       resolution (int, optional): Resolution of outputted figure. Defaults to 300.
   """
   assert type in ['all', 'alpha', 'beta']
@@ -65,11 +68,12 @@ def make_figure(
       relative_path="mmtbx/nci")+'/filtered_raw_data.pkl'
   assert os.path.isfile(pkl_fn)
   db = easy_pickle.load(pkl_fn)
-
   # settings
   color_palette = {'colormap': 'PiYG',
       'contour_left':'green',
       'contour_right':'mediumvioletred',
+      'contour_thick_left':1.5,
+      'contour_thick_right':1.5,
       'theta_color':'green',
       'theta_contour':'black',
       'Rha_color': 'deeppink',
@@ -79,11 +83,19 @@ def make_figure(
     color_palette = {'colormap': 'cividis',
         'contour_left':'yellow',
         'contour_right':'darkblue',
+        'contour_thick_left':1.5,
+        'contour_thick_right':1.5,
         'theta_color':'yellow',
         'theta_contour':'black',
         'Rha_color': 'darkblue',
         'Rha_contour': 'white',
         }
+  for k,v in override_palette.items():
+    if k in color_palette:
+      color_palette[k] = v
+    else:
+      raise Sorry("%s parameter is not in the used palette options." % k)
+
   contours = {'all': [-0.14, 0.14],
       'alpha': [-0.14, 0.14],
       'beta': [-0.14, 0.14]}
@@ -118,6 +130,7 @@ def make_figure(
       origin="lower",
       linestyles=['solid', 'solid'],
       colors=[color_palette['contour_right'],color_palette['contour_left']],
+      linewidths=[color_palette['contour_thick_right'], color_palette['contour_thick_left']],
       extent=[xmin, xmax, ymin, ymax],
       )
 
