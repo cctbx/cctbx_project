@@ -3,6 +3,7 @@ channels:
  - lcls-i
  - conda-forge
  - cctbx
+ - nodefaults
 
 dependencies:
  # conda compilers
