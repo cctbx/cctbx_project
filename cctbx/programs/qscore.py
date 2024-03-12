@@ -116,7 +116,7 @@ class Program(ProgramTemplate):
     if sel_mc.count(True)>0:
       q_mc = flex.mean(self.result.qscore_per_atom.select(sel_mc))
       q_mc = round(q_mc,2)
-      df.loc[sel_sc.as_numpy_array(),"Main Chain"] = np.array(self.result.qscore_per_atom.select(sel_mc))
+      df.loc[sel_mc.as_numpy_array(),"Main Chain"] = np.array(self.result.qscore_per_atom.select(sel_mc))
     else:
       q_mc = None
     df["Main Chain"] = df["Main Chain"].astype("Float64")
