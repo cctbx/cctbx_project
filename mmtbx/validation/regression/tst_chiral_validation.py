@@ -4,6 +4,7 @@ from libtbx.utils import null_out
 from libtbx.easy_pickle import loads
 from iotbx.data_manager import DataManager
 from mmtbx.model import manager
+from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
 import time
 import json
 import difflib
@@ -156,5 +157,7 @@ if (__name__ == "__main__"):
   t0 = time.time()
   chiral_list = calculate_results()
   exercise_chiral_validation(chiral_list)
+  exercise_chiral_json(chiral_list)
+  convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="ALONGCHAIN", key_str="pdb_")
   exercise_chiral_json(chiral_list)
   print("OK. Time: %8.3f"%(time.time()-t0))
