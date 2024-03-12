@@ -677,6 +677,10 @@ def modify_params(params = None,
        "keep_map_size is False\n", file = log)
     params.output_format = remove_element(params.output_format, element = 'mtz')
 
+  if params.output_external_origin and (not params.keep_origin):
+    raise Sorry(
+      "If you specify an external origin you must set keep_origin=True")
+
   if (write_output_files) and ("mtz" in params.output_format) and (
        (params.extract_unique)):
     print("\nNOTE: Skipping write of mtz file as extract_unique = True\n",
@@ -1164,6 +1168,7 @@ def run(args,
   #  keep_origin == False leave origin at (0, 0, 0)
   #  keep_origin == True: we shift everything back to where it was,
   #  output_origin_grid_units = 10, 10, 10: output origin is at (10, 10, 10)
+  #  output_external_origin = 10,10,10; set output_external_origin value
 
   print("\nBox cell dimensions: (%.2f, %.2f, %.2f) A" %(
       mam.map_manager().crystal_symmetry().unit_cell().parameters()[:3]),
@@ -1211,6 +1216,14 @@ def run(args,
     dm = DataManager(datatypes = [
        'model', 'ncs_spec', 'real_map', 'miller_array'])
     dm.set_overwrite(True)
+
+    if params.output_external_origin:
+      assert (isinstance(params.output_external_origin,tuple) or \
+             isinstance(params.output_external_origin,list)) and \
+             len(params.output_external_origin) == 3
+      map_manager.set_output_external_origin(params.output_external_origin)
+      print("Set output_external_origin to %s" %(
+       str(params.output_external_origin)), file = log)
 
     # Write PDB file
     if model:

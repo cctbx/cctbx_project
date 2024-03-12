@@ -286,6 +286,9 @@ class map_manager(map_reader, write_ccp4_map):
     # Initialize that this is not a dummy map_manager
     self._is_dummy_map_manager = False
 
+    # Initialize that there is no output_external_origin
+    self.output_external_origin = None
+
     # Initialize program_name, limitations, labels
     self.file_name = file_name # input file (source of this manager)
     self.program_name = None  # Name of program using this manager
@@ -455,6 +458,10 @@ class map_manager(map_reader, write_ccp4_map):
     # Now apply crystal symmetry and new shift cart to ncs object if any
     if self._ncs_object:
       self._ncs_object = self.shift_ncs_object_to_match_map_and_return_new_ncs_object(self._ncs_object)
+
+  def set_output_external_origin(self, value):
+    assert isinstance(value, tuple) or isinstance(value,list)
+    self.output_external_origin = tuple(value)
 
   def set_original_origin_and_gridding(self,
       original_origin = None,
@@ -819,6 +826,9 @@ class map_manager(map_reader, write_ccp4_map):
       Output labels are generated from existing self.labels,
       self.program_name, and self.limitations
 
+      If self.output_external_origin is specified, write that value to file
+
+
     '''
 
     # Make sure we have map_data
@@ -859,8 +869,11 @@ class map_manager(map_reader, write_ccp4_map):
         crystal_symmetry = crystal_symmetry, # unit cell and space group
         map_data    = map_data,
         unit_cell_grid = unit_cell_grid,  # optional gridding of full unit cell
-        origin_shift_grid_units = origin_shift_grid_units, # optional origin shift
+        origin_shift_grid_units = origin_shift_grid_units, # origin shift
         labels      = labels,
+        external_origin = self.output_external_origin,
+
+
         out = f)
       self._print(f.getvalue())
     else: # map_data has not been shifted to (0, 0, 0).  Shift it and then write
@@ -2812,11 +2825,11 @@ def add_tuples_int(t1, t2):
   except Exception as e: # not integers
     return tuple(
        flex.int(_round_tuple_int(t1)) + flex.int(_round_tuple_int(t2)))
-   
+
 def subtract_tuples_int(t1, t2):
   try:
     return tuple(flex.int(t1)-flex.int(t2))
-  except Exception as e: # not integers 
+  except Exception as e: # not integers
     return tuple(
        flex.int(_round_tuple_int(t1)) - flex.int(_round_tuple_int(t2)))
 
