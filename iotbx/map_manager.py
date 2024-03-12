@@ -2800,29 +2800,25 @@ def get_sites_cart_from_index(
     sites_cart = crystal_symmetry.unit_cell().orthogonalize(sites_frac)
     return sites_cart
 
-def subtract_tuples_int(t1, t2):
-  try:
-    return tuple(flex.int(t1)-flex.int(t2))
-  except Exception as e: # not integers
-    t1a = []
-    for x in t1:
-     t1a.append(int(round(x)))
-    t2a = []
-    for x in t2:
-     t2a.append(int(round(x)))
-    return tuple(flex.int(tuple(t1a))-flex.int(tuple(t2a)))
+def _round_tuple_int(t):
+  new_t = []
+  for x in t:
+    new_t.append(int(round(x)))
+  return new_t
 
 def add_tuples_int(t1, t2):
   try:
     return tuple(flex.int(t1)+flex.int(t2))
   except Exception as e: # not integers
-    t1a = []
-    for x in t1:
-     t1a.append(int(round(x)))
-    t2a = []
-    for x in t2:
-     t2a.append(int(round(x)))
-    return tuple(flex.int(tuple(t1a))+flex.int(tuple(t2a)))
+    return tuple(
+       flex.int(_round_tuple_int(t1)) + flex.int(_round_tuple_int(t2)))
+   
+def subtract_tuples_int(t1, t2):
+  try:
+    return tuple(flex.int(t1)-flex.int(t2))
+  except Exception as e: # not integers 
+    return tuple(
+       flex.int(_round_tuple_int(t1)) - flex.int(_round_tuple_int(t2)))
 
 def remove_site_with_most_neighbors(sites_cart):
   useful_norms_list = []
