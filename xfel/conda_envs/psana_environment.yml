@@ -3,7 +3,7 @@ channels:
  - lcls-i
  - conda-forge
  - cctbx
- - defaults
+
 dependencies:
  # conda compilers
  - c-compiler
@@ -45,6 +45,7 @@ dependencies:
  - pandas
  - pybind11
  - setuptools
+ - natsort
 
  # cctbx channel
  - libsvm_py
