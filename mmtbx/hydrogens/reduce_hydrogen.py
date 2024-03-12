@@ -208,6 +208,7 @@ class place_hydrogens():
                 ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
               if ag.get_atom('H'):
                 ag.remove_atom(ag.get_atom('H'))
+            #TODO this places NH3 at #1 even if there is a non-standard residue
             rc = add_n_terminal_hydrogens_to_residue_group(rgs)
             # rc is always empty list?
 
@@ -418,6 +419,7 @@ class place_hydrogens():
 # ------------------------------------------------------------------------------
 
   def validate_electrons(self):
+    #TODO maybe do this only for special places? Metal coordination or linking?
     from elbow.quantum import electrons
     atom_valences = electrons.electron_distribution(
       # XXX How do we get this working on models with alternate locations?
@@ -436,6 +438,9 @@ class place_hydrogens():
 
     An exception are HD1 and HE2 of HIS. The mover functionality in reduce will
     take care of those.
+
+    TODO: Could restraints manager have a list of links with relevant information?
+          Then we don't have to loop through all proxies here.
     """
     origin_ids = linking_class()
     grm = self.model.get_restraints_manager()
