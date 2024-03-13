@@ -93,6 +93,7 @@ public:
   {
     int order = scatterer->anharmonic_adp->order;
     af::shared<double> params;
+    value.resize(order > 3 ? 25 : 10);
     if(order >= 3){
       for (size_t i = 0; i < 10; i++) {
         value[i] = scatterer->anharmonic_adp->C[i];

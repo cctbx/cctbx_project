@@ -694,14 +694,13 @@ public:
     single_asu_scatterer_parameter(scatterer)
   {
     int order = scatterer->anharmonic_adp->order;
+    value.resize(order > 3 ? 25 : 10);
     if(order >= 3){
-      value.resize(10);
       for (size_t i = 0; i < 10; i++) {
         value[i] = scatterer->anharmonic_adp->C[i];
       }
     }
     if(order >= 4){
-      value.resize(25);
       for (size_t i = 0; i < 15; i++) {
         value[i+10] = scatterer->anharmonic_adp->D[i];
       }
