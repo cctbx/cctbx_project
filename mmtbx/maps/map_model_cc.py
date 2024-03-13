@@ -15,7 +15,8 @@ map_model_cc {
   resolution = None
     .type = float
     .help = Data (map) resolution
-    .expert_level=0
+    .short_caption = Resolution (optional in GUI)
+    .expert_level=1
   scattering_table = wk1995  it1992 n_gaussian  neutron *electron
     .type = choice
     .help = Scattering table (X-ray, neutron or electron)
@@ -23,6 +24,7 @@ map_model_cc {
   atom_radius = None
     .type = float
     .help = Atom radius for masking. If undefined then calculated automatically
+    .short_caption = Atom radius (optional)
     .expert_level=0
   keep_map_calc = False
     .type = bool
@@ -31,6 +33,7 @@ map_model_cc {
   wrapping = None
     .type = bool
     .help = You can specify whether your maps wrap around outside boundaries
+    .short_caption = Wrapping (optional)
     .expert_level=3
   ignore_symmetry_conflicts = False
     .type = bool
@@ -43,15 +46,19 @@ map_model_cc {
     cc_per_chain = True
       .type = bool
       .help = Compute local model-map CC for each chain
+      .short_caption = CC by chain
     cc_per_residue = True
       .type = bool
       .help = Compute local model-map CC for each residue
+      .short_caption = CC by residue
     cc_per_residue_group = False
       .type = bool
       .help = Compute local model-map CC for each residue group
+      .short_caption = CC by residue group
     fsc = True
       .type = bool
       .help = Compute FSC
+      .short_caption = FSC
     cc_mask = True
       .type = bool
     cc_volume = True
