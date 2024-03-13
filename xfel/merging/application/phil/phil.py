@@ -543,7 +543,7 @@ merging {
       tuning_param_opt = False
         .type = bool
         .help = If True, optimize the t-distribution's tuning parameter
-      likelihood = normal *t-dist
+      likelihood = normal *t-dist ghosh
         .help = Choice for likelihood function. Either 't-dist', 'normal'.
         .type = choice
         .multiple = False

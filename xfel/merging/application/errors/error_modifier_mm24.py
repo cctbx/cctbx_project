@@ -6,6 +6,7 @@ import os
 import scipy.optimize
 from scipy.special import gamma
 from scipy.special import polygamma
+from scipy.special import hyp2f1
 import scipy.stats
 from xfel.merging.application.worker import worker
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
@@ -49,14 +50,15 @@ class error_modifier_mm24(worker):
     self.calculate_intensity_bin_limits()
     # Once bin limits are determined, assign intensities on each rank to appropriate bin limits
     self.distribute_differences_over_intensity_bins()
-    self.initialize_ev11_params()
+    self.initialize_mm24_params()
     # Run LBFGSB minimizer
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
+    self.verify_derivatives()
     if self.params.merging.error.mm24.do_diagnostics:
       self.plot_diagnostics(reflections)
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
-    reflections['intensity.sum.variance'] = self._get_var_ev11(
+    reflections['intensity.sum.variance'] = self._get_var_mm24(
       reflections['intensity.sum.variance'],
       reflections['biased_mean'],
       reflections[self.cc_key]
@@ -65,6 +67,9 @@ class error_modifier_mm24(worker):
     return reflections
 
   def setup_work_arrays(self, reflections):
+    def pairing(k1, k2):
+      return int((k1 + k2) * (k1 + k2 + 1) / 2 + k2)
+
     self.work_table = flex.reflection_table()
     self.refl_biased_means = []
     biased_mean = flex.double() # Go with the pairwise differences in self.work_table
@@ -98,7 +103,11 @@ class error_modifier_mm24(worker):
           if N > self.params.merging.error.mm24.n_max_differences:
             # random number generation needs to be consistent between symmetry related reflections
             # for reproducibility
-            rng = np.random.default_rng(seed=self.params.merging.error.mm24.random_seed)
+            hkl = refls[0]['miller_index_asymmetric']
+            # Convert hkl to a hash with Cantor's pairing function.
+            # Add 1000 to keep inputs positive.
+            hkl_hash = pairing(pairing(hkl[0]+1000, hkl[1]+1000), hkl[2]+1000)
+            rng = np.random.default_rng(seed=hkl_hash + self.params.merging.error.mm24.random_seed)
             # Reflections are in different order when run with different numbers of ranks
             sort_indices = np.argsort(I)
             rng.shuffle(sort_indices)
@@ -188,7 +197,7 @@ class error_modifier_mm24(worker):
       % (number_of_differences_distributed, count)
       )
 
-  def initialize_ev11_params(self):
+  def initialize_mm24_params(self):
     mean_differences = np.zeros(self.number_of_intensity_bins)
     for bin_index, differences in enumerate(self.intensity_bins):
       summation = self.mpi_helper.comm.reduce(
@@ -198,18 +207,21 @@ class error_modifier_mm24(worker):
         len(differences['pairwise_differences']), op=self.mpi_helper.MPI.SUM, root=0
         )
       if self.mpi_helper.rank == 0:
-        mean_differences[bin_index] = summation / counts
+        if counts > 0:
+          mean_differences[bin_index] = summation / counts
+        else:
+          mean_differences[bin_index] = np.nan
 
     if self.mpi_helper.rank == 0:
-      def fitting_equation(params, y0, return_jac):
+      def fitting_equation(params, bin_centers, mean_differences_0, return_jac):
         sf = params[0]
         sadd = params[1]
         prefactor = 2 / np.sqrt(np.pi)
-        arg = sf**2 * (x + sadd**2 * x**2)
-        curve = prefactor * np.sqrt(arg) + y0
+        arg = sf**2 * (bin_centers + sadd**2 * bin_centers**2)
+        curve = prefactor * np.sqrt(arg) + mean_differences_0
         if return_jac:
-          darg_dsf = 2 * sf * (x + sadd**2 * x**2)
-          darg_dsadd = 2 * sf**2 * sadd * x**2
+          darg_dsf = 2 * sf * (bin_centers + sadd**2 * bin_centers**2)
+          darg_dsadd = 2 * sf**2 * sadd * bin_centers**2
           dcurve_darg = 1/2 * prefactor/np.sqrt(arg)
           dcurve_dsf = dcurve_darg * darg_dsf
           dcurve_dsadd = dcurve_darg * darg_dsadd
@@ -217,60 +229,61 @@ class error_modifier_mm24(worker):
         else:
           return curve
 
-      def target_fun_bfgs(params, x, y):
-        curve, dcurve_dsf, dcurve_dsadd = fitting_equation(params, y[0], True)
-        arg = (curve - y) / y
-        darg_dcurve = 1 / y
+      def target_fun_bfgs(params, bin_centers, mean_differences):
+        curve, dcurve_dsf, dcurve_dsadd = fitting_equation(params, bin_centers, mean_differences[0], True)
+        arg = (curve - mean_differences) / mean_differences
+        darg_dcurve = 1 / mean_differences
         loss = 0.5 * np.sum(arg**2)
         dloss_dsf = np.sum(arg * darg_dcurve * dcurve_dsf)
         dloss_dsadd = np.sum(arg * darg_dcurve * dcurve_dsadd)
         return loss, (dloss_dsf, dloss_dsadd)
 
-      def target_fun_scalar(sadd, x, y):
-        curve = fitting_equation([self.expected_sf, sadd], y[0], False)
-        arg = (curve - y) / y
-        darg_dcurve = 1 / y
+      def target_fun_scalar(sadd, bin_centers, mean_differences):
+        curve = fitting_equation([self.expected_sf, sadd], bin_centers, mean_differences[0], False)
+        arg = (curve - mean_differences) / mean_differences
+        darg_dcurve = 1 / mean_differences
         loss = 0.5 * np.sum(arg**2)
         return loss
 
       bin_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
+      good_indices = np.invert(np.isnan(mean_differences))
+      bin_centers = bin_centers[good_indices]
+      mean_differences = mean_differences[good_indices]
+
       positive_indices = bin_centers > 0
-      x = bin_centers[positive_indices]
-      y = mean_differences[positive_indices]
-      good_indices = np.invert(np.isnan(y))
-      x = x[good_indices]
-      y = y[good_indices]
+      bin_centers = bin_centers[positive_indices]
+      mean_differences = mean_differences[positive_indices]
 
       self.sadd = [0 for i in range(self.n_coefs)]
       if self.expected_sf is None:
         results = scipy.optimize.minimize(
           target_fun_bfgs,
           x0=(1, 1),
-          args=(x, y),
+          args=(bin_centers, mean_differences),
           jac=True,
           method='BFGS'
           )
         self.sfac = abs(float(results.x[0]))
         self.sadd[0] = abs(float(results.x[1]))
-        fit_curve = fitting_equation(results.x, y[0], False)
+        fit_curve = fitting_equation(results.x, bin_centers, mean_differences[0], False)
       else:
         results = scipy.optimize.minimize_scalar(
           target_fun_scalar,
           bounds=(0, 10),
-          args=(x, y),
+          args=(bin_centers, mean_differences),
           )
         self.sfac = self.expected_sf
         self.sadd[0] = abs(float(results.x))
 
       if self.params.merging.error.mm24.do_diagnostics:
         import matplotlib.pyplot as plt
-        fit_curve = fitting_equation([self.sfac, self.sadd[0]], y[0], False)
+        fit_curve = fitting_equation([self.sfac, self.sadd[0]], bin_centers, mean_differences[0], False)
         fig, axes = plt.subplots(1, 1, figsize=(5, 3))
         axes.plot(
           bin_centers, mean_differences,
           linestyle='none', marker='.', color=[0, 0, 0], label='Data'
           )
-        axes.plot(x, fit_curve, color=[0, 0.8, 0], label='Initialization')
+        axes.plot(bin_centers, fit_curve, color=[0, 0.8, 0], label='Initialization')
         axes.legend()
         fig.tight_layout()
         fig.savefig(os.path.join(
@@ -361,7 +374,7 @@ class error_modifier_mm24(worker):
       tuning_param = f'{self.tuning_param:0.3f}'
       sfac = f'{self.sfac:0.3f}'
       sadd = [f'{self.sadd[i]:0.3f}' for i in range(self.n_coefs)]
-      log_out = 'FINAL EV11 VALUES = '\
+      log_out = 'FINAL mm24 VALUES = '\
         + f'loss: {self.L:.2f} '\
         + f'sfac: {sfac} '\
         + f'sadd: {sadd} '
@@ -453,7 +466,7 @@ class error_modifier_mm24(worker):
           + f'analytical {der_wrt_sadd[degree_index]}'
           )
 
-  def _loss_function_gaus(self, differences, var_i, var_j):
+  def _loss_function_normal(self, differences, var_i, var_j):
     var = var_i + var_j
     z = differences / flex.sqrt(var)
     dz_dvar = -differences / (2 * var**(3/2))
@@ -482,7 +495,7 @@ class error_modifier_mm24(worker):
     dL_dvar_x = dL1_dvar + dL2_dvar
     return L, dL_dvar_x
 
-  def _loss_function_t_opt(self, differences, var_i, var_j):
+  def _loss_function_t_v_opt(self, differences, var_i, var_j):
     v = self.tuning_param
     var = var_i + var_j
     z = differences / flex.sqrt(var)
@@ -515,6 +528,54 @@ class error_modifier_mm24(worker):
     dL_dv = dL0_dv + dL2_dv + dL3_dv + dL5_dv
     return L, dL_dvar, dL_dv
 
+  def hyp2f1_(self, a, b, c, z):
+    # There is a function in scipy.special for this
+    # I needed the derivatives, so I am using my own implementation
+    # Setting the range to 100 results in an inf output.
+    # Iterations | nu | % error   Iterations | nu | % error
+    #         10 | 2. | 3.5               10 | 5. | 0.008
+    #         20 | 2. | 0.7               20 | 5. | 10**-7
+    #         30 | 2. | 0.1               30 | 5. | 10**-11
+    #         40 | 2. | 0.03              40 | 5. | 10**-14
+    #         50 | 2. | 0.007             50 | 5. | 10**-14
+    H = 0
+    dH_db = 0
+    dH_dz = 0
+    prefactor = gamma(c) / (gamma(a) * gamma(b))
+    for i in range(30):
+      term = prefactor * (gamma(a+i) * gamma(b+i))/gamma(c+i) * z**i / gamma(i + 1)
+      H += term
+      dH_db += term * (polygamma(0, b+i) -  polygamma(0, b))
+      if i != 0:
+        dH_dz += prefactor * (gamma(a+i) * gamma(b+i))/gamma(c+i) * i * z**(i-1) / gamma(i + 1)
+    return H, dH_db, dH_dz
+
+  def _loss_function_ghosh(self, differences_flex, var_i_flex, var_j_flex):
+    v = self.tuning_param
+    differences = differences_flex.as_numpy_array()
+    var = (var_i_flex + var_j_flex).as_numpy_array()
+    dvar_dvar_x = 1
+    z = differences / np.sqrt(var)
+    dz_dvar = -differences / (2 * var**(3/2))
+
+    L1 = -(v+1/2) * np.log(4*v / (4*v + z**2))
+    dL1_dz = -(v+1/2) * (4*v + z**2) / (4*v) * -4*v / (4*v + z**2)**2 * 2*z
+
+    z2 = z**2 / (4*v + z**2)
+    dz2_dz = 2*z / (4*v + z**2) - z**2 / (4*v + z**2)**2 * 2 * z
+    H = hyp2f1(1/2, v+1/2, v/2 + 1, z2)
+    dH_dz2 = (1/2) * (v+1/2) / (v/2 + 1) * hyp2f1(1/2 + 1, v+1/2 + 1, v/2 + 1 + 1, z2)
+    L2 = -np.log(H)
+    dL2_dH = -1/H
+    dL2_dz = dL2_dH * dH_dz2 * dz2_dz
+
+    L3 = 1/(2*np.sqrt(2)) * np.log(var)
+    dL3_dvar = 1/(2*np.sqrt(2)) * 1/var
+
+    L = L1 + L2 + L3
+    dL_dvar_x = (dL1_dz + dL2_dz) * dz_dvar * dvar_dvar_x + dL3_dvar * dvar_dvar_x
+    return flex.double(L), flex.double(dL_dvar_x)
+
   def _get_sadd(self, correlation):
     sadd = flex.double(len(correlation), 0)
     dsadd_dsaddi = [flex.double(len(correlation), 0) for i in range(self.n_coefs)]
@@ -523,7 +584,7 @@ class error_modifier_mm24(worker):
       dsadd_dsaddi[degree_index] = correlation**degree_index
     return sadd, dsadd_dsaddi
 
-  def _get_var_ev11(self, counting_err, biased_mean, correlation, return_der=False):
+  def _get_var_mm24(self, counting_err, biased_mean, correlation, return_der=False):
     sadd, dsadd_dsaddi = self._get_sadd(correlation)
     var = self.sfac**2 * (counting_err + sadd**2 * biased_mean**2)
     if return_der:
@@ -544,13 +605,13 @@ class error_modifier_mm24(worker):
 
     for bin_index, differences in enumerate(self.intensity_bins):
       if len(differences) > 0:
-        var_i, dvar_i_dsfac, dvar_i_dsadd, dsadd_i_dsaddi = self._get_var_ev11(
+        var_i, dvar_i_dsfac, dvar_i_dsadd, dsadd_i_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_i'],
           differences['biased_mean'],
           differences['correlation_i'],
           return_der=True
           )
-        var_j, dvar_j_dsfac, dvar_j_dsadd, dsadd_j_dsaddi = self._get_var_ev11(
+        var_j, dvar_j_dsfac, dvar_j_dsadd, dsadd_j_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_j'],
           differences['biased_mean'],
           differences['correlation_j'],
@@ -558,17 +619,28 @@ class error_modifier_mm24(worker):
           )
 
         if self.params.merging.error.mm24.likelihood == 'normal':
-          L_in_bin, dL_dvar_x = self._loss_function_gaus(
+          L_in_bin, dL_dvar_x = self._loss_function_normal(
             differences['pairwise_differences'], var_i, var_j
             )
         elif self.params.merging.error.mm24.likelihood == 't-dist':
           if self.params.merging.error.mm24.tuning_param_opt:
-            L_in_bin, dL_dvar_x, dL_dnu = self._loss_function_t_opt(
+            L_in_bin, dL_dvar_x, dL_dnu = self._loss_function_t_v_opt(
               differences['pairwise_differences'], var_i, var_j
               )
             dL_dnu_bin_rank[bin_index] = flex.sum(dL_dnu)
           else:
             L_in_bin, dL_dvar_x = self._loss_function_t(
+              differences['pairwise_differences'], var_i, var_j
+              )
+        elif self.params.merging.error.mm24.likelihood == 'ghosh':
+          if self.params.merging.error.mm24.tuning_param_opt:
+            assert False
+            L_in_bin, dL_dvar_x, dL_dnu = self._loss_function_ghosh_v_opt(
+              differences['pairwise_differences'], var_i, var_j
+              )
+            dL_dnu_bin_rank[bin_index] = flex.sum(dL_dnu)
+          else:
+            L_in_bin, dL_dvar_x = self._loss_function_ghosh(
               differences['pairwise_differences'], var_i, var_j
               )
         L_bin_rank[bin_index] = flex.sum(L_in_bin)
@@ -596,6 +668,7 @@ class error_modifier_mm24(worker):
         self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)
 
   def plot_diagnostics(self, reflections):
+    I_scale = 100000
     def get_rankits(n, down_sample, distribution):
       prob_level = (np.arange(1, n+1) - 0.5) / n
       if distribution == 'half normal':
@@ -620,7 +693,7 @@ class error_modifier_mm24(worker):
     if self.mpi_helper.rank == 0:
       if self.params.merging.error.mm24.likelihood == 'normal':
         conversion_factor = 1.1926
-      elif self.params.merging.error.mm24.likelihood == 't-dist':
+      elif self.params.merging.error.mm24.likelihood in ['t-dist', 'ghosh']:
         results = scipy.optimize.minimize_scalar(
           min_fun_t,
           bounds=(0.1, 2),
@@ -630,6 +703,27 @@ class error_modifier_mm24(worker):
     else:
       conversion_factor = None
     conversion_factor = self.mpi_helper.comm.bcast(conversion_factor)
+
+    # Setup for the ENCE calculation
+    variance = self._get_var_mm24(
+      reflections['intensity.sum.variance'],
+      reflections['biased_mean'],
+      reflections[self.cc_key]
+      ).as_numpy_array()
+    variance.sort()
+    lower = self.mpi_helper.comm.gather(variance[int(0.005 * variance.size)])
+    upper = self.mpi_helper.comm.gather(variance[int(0.995 * variance.size)])
+    n_ENCE_bins = 25
+    if self.mpi_helper.rank == 0:
+      ENCE_bins = np.linspace(np.sqrt(10*np.median(lower)), np.sqrt(np.median(upper)), n_ENCE_bins + 1)
+    else:
+      ENCE_bins = np.empty(n_ENCE_bins + 1)
+    self.mpi_helper.comm.Bcast(ENCE_bins, root=0)
+    ENCE_centers = (ENCE_bins[1:] + ENCE_bins[:-1]) / 2
+    ENCE_counts_rank = np.zeros(n_ENCE_bins, dtype=int)
+    ENCE_sum_V_rank = np.zeros(n_ENCE_bins)
+    ENCE_sum_D_rank = np.zeros(n_ENCE_bins)
+
     median_differences = [[] for i in range(self.number_of_intensity_bins)]
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_reflections = refls.size()
@@ -640,19 +734,57 @@ class error_modifier_mm24(worker):
         bin_index = np.searchsorted(self.intensity_bin_limits, biased_mean) - 1
         if biased_mean > self.intensity_bin_limits[0] and biased_mean < self.intensity_bin_limits[-1]:
           I = refls['intensity.sum.value'].as_numpy_array()
-          var_ev11_flex = self._get_var_ev11(
+          var_mm24 = self._get_var_mm24(
             refls['intensity.sum.variance'],
             flex.double(len(refls), biased_mean),
             refls[self.cc_key]
-            )
-          var_ev11 = var_ev11_flex.as_numpy_array()
+            ).as_numpy_array()
 
           # calculate the median difference for the pairwise differences
           differences = np.abs(I[np.newaxis] - I[:, np.newaxis])
-          variances = var_ev11[np.newaxis] + var_ev11[:, np.newaxis]
+          variances = var_mm24[np.newaxis] + var_mm24[:, np.newaxis]
           median_differences[bin_index].append(
             np.median(differences / np.sqrt(variances), axis=1)
             )
+          # Calculations for ENCE
+          triu_indices = np.triu_indices(n=I.size, k=1)
+          differences = differences[triu_indices[0], triu_indices[1]]
+          variances = variances[triu_indices[0], triu_indices[1]]
+          bin_indices = np.searchsorted(ENCE_bins, np.sqrt(variances))
+          in_range = np.logical_and(bin_indices >= 0, bin_indices < n_ENCE_bins)
+          ENCE_counts_rank[bin_indices[in_range]] += 1
+          ENCE_sum_V_rank[bin_indices[in_range]] += variances[in_range]
+          ENCE_sum_D_rank[bin_indices[in_range]] += differences[in_range]**2
+    ENCE_counts = np.empty(n_ENCE_bins, dtype=int)
+    ENCE_sum_V = np.empty(n_ENCE_bins)
+    ENCE_sum_D = np.empty(n_ENCE_bins)
+    self.mpi_helper.comm.Reduce(ENCE_counts_rank, ENCE_counts, op=self.mpi_helper.MPI.SUM, root=0)
+    self.mpi_helper.comm.Reduce(ENCE_sum_V_rank, ENCE_sum_V, op=self.mpi_helper.MPI.SUM, root=0)
+    self.mpi_helper.comm.Reduce(ENCE_sum_D_rank, ENCE_sum_D, op=self.mpi_helper.MPI.SUM, root=0)
+
+    # Reliability plot and ENCE
+    if self.mpi_helper.rank == 0:
+      import matplotlib.pyplot as plt
+      ENCE_RMV = np.sqrt(ENCE_sum_V / ENCE_counts) / I_scale
+      ENCE_RMD = np.sqrt(ENCE_sum_D / ENCE_counts) / I_scale
+      ENCE = np.abs(ENCE_RMV - ENCE_RMD) / ENCE_RMV
+      good_bins = ENCE_counts > 0
+      fig, axes = plt.subplots(2, 1, figsize=(3, 4), sharex=True)
+      lims = [ENCE_RMV[good_bins].min(), ENCE_RMV[good_bins].max()]
+      axes[0].plot(lims, lims, color=[0, 0, 0])
+      axes[0].plot(ENCE_RMV[good_bins], ENCE_RMD[good_bins])
+      axes[1].plot(ENCE_RMV[good_bins], ENCE[good_bins])
+      axes[0].set_title(f'ENCE: {ENCE.mean():0.03f}')
+      axes[0].set_ylabel('Root mean difference\n(x 100,000)')
+      axes[1].set_ylabel('ENCE')
+      axes[1].set_xlabel('Root mean variance\n(x 100,000)')
+      fig.tight_layout()
+      fig.savefig(os.path.join(
+        self.params.output.output_dir,
+        self.params.output.prefix + '_ENCE.png'
+        ))
+      plt.close()
+
     binned_scale = np.zeros(self.number_of_intensity_bins)
     for bin_index in range(self.number_of_intensity_bins):
       if len(median_differences[bin_index]) > 0:
@@ -667,13 +799,13 @@ class error_modifier_mm24(worker):
     pairwise_differences = []
     for bin_index, differences in enumerate(self.intensity_bins):
       if len(differences) > 0:
-        var_i = self._get_var_ev11(
+        var_i = self._get_var_mm24(
           differences['counting_stats_var_i'],
           differences['biased_mean'],
           differences['correlation_i'],
           return_der=False
           )
-        var_j = self._get_var_ev11(
+        var_j = self._get_var_mm24(
           differences['counting_stats_var_j'],
           differences['biased_mean'],
           differences['correlation_j'],
@@ -686,11 +818,9 @@ class error_modifier_mm24(worker):
         )
 
     if self.mpi_helper.rank == 0:
-      import matplotlib.pyplot as plt
       sorted_pairwise_differences = np.sort(all_pairwise_differences)
       lim = 5
       downsample = 10000
-      I_scale = 100000
       grey1 = np.array([99, 102, 106]) / 255
       grey2 = np.array([177, 179, 179]) / 255
 
@@ -711,7 +841,7 @@ class error_modifier_mm24(worker):
         scipy.stats.halfnorm.pdf(pairwise_differences_centers),
         color=grey1, label='Normal'
         )
-      if self.params.merging.error.mm24.likelihood == 't-dist':
+      if self.params.merging.error.mm24.likelihood in ['t-dist', 'ghosh']:
         axes[0].plot(
           pairwise_differences_centers,
           2*scipy.stats.t.pdf(pairwise_differences_centers, df=self.tuning_param),
@@ -730,7 +860,7 @@ class error_modifier_mm24(worker):
         get_rankits(sorted_pairwise_differences.size, downsample, 'half normal'),
         color=grey1
         )
-      if self.params.merging.error.mm24.likelihood == 't-dist':
+      if self.params.merging.error.mm24.likelihood in ['t-dist', 'ghosh']:
         axes[1].plot(
           sorted_pairwise_differences[::downsample],
           get_rankits(sorted_pairwise_differences.size, downsample, 'half t-dist'),
@@ -748,7 +878,7 @@ class error_modifier_mm24(worker):
 
       intensity_centers = (self.intensity_bin_limits[1:] + self.intensity_bin_limits[:-1]) / 2
       x = intensity_centers / I_scale
-      if self.params.merging.error.mm24.likelihood == 't-dist':
+      if self.params.merging.error.mm24.likelihood in ['t-dist', 'ghosh']:
         v = self.tuning_param
         term0 = v / (v - 2)
         term1 = 4*v / (np.pi * (v - 1)**2)
