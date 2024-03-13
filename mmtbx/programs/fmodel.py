@@ -389,7 +389,7 @@ generate_fake_p1_symmetry=True.'''
     xray_structure = pdb_hierarchy.extract_xray_structure(crystal_symmetry = cs)
     if (cs is None): cs = xray_structure.crystal_symmetry()
     print('\nCrystal symmetry used: ', file=self.logger)
-    cs.show_summary()
+    cs.show_summary(f=self.logger)
 
     if (miller_array is not None):
       if (miller_array.crystal_symmetry() is None):

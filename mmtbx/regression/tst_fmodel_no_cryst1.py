@@ -1,12 +1,12 @@
 from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
 from mmtbx.programs import fmodel
 from iotbx.cli_parser import run_program
 from libtbx.utils import null_out, Sorry
 import os
 
 def exercise():
-  with open("tmp_fmodel_fake_p1.pdb", "w") as f:
+  model_fn = "tmp_fmodel_fake_p1.pdb"
+  with open(model_fn, "w") as f:
     f.write("""\
 ATOM     47  N   TYR A   7       8.292   1.817   6.147  1.00 14.70           N
 ATOM     48  CA  TYR A   7       9.159   2.144   7.299  1.00 15.18           C
@@ -22,25 +22,35 @@ ATOM     57  CZ  TYR A   7       5.047   0.729   9.831  1.00 15.09           C
 ATOM     58  OH  TYR A   7       3.766   0.589  10.291  1.00 14.39           O
 ATOM     59  OXT TYR A   7      11.358   2.999   7.612  1.00 17.49           O
 """)
-  args = ["phenix.fmodel", "tmp_fmodel_fake_p1.pdb", "high_resolution=2",
+  args = [model_fn, "high_resolution=2",
     "output.file_name=tmp_fmodel_fake_p1.mtz"]
-  result = easy_run.fully_buffered(args)
-  assert (result.return_code != 0) and (len(result.stderr_lines) > 0)
-  args.append("generate_fake_p1_symmetry=True")
-  result = easy_run.fully_buffered(args).raise_if_errors()
-  assert (result.return_code == 0)
-  assert os.path.isfile("tmp_fmodel_fake_p1.mtz")
-  from iotbx import crystal_symmetry_from_any
-  symm = crystal_symmetry_from_any.extract_from("tmp_fmodel_fake_p1.mtz")
-  assert (str(symm.space_group_info()) == "P 1")
-  args.append("tmp_fmodel_fake_p1.mtz")
-  args.append("labels.name=FMODEL,PHIFMODEL")
-  try :
+  try:
     run_program(program_class=fmodel.Program, args=args, logger=null_out())
-  except Sorry :
-    pass
-  else :
+  except Sorry as s:
+    assert('Symmetry information in model file is incomplete or missing'
+      in str(s))
+  else:
     raise Exception_expected
+  args.append("generate_fake_p1_symmetry=True")
+  r = run_program(program_class=fmodel.Program, args=args, logger=null_out())
+  assert os.path.isfile(r.output_file)
+  from iotbx import crystal_symmetry_from_any
+  symm = crystal_symmetry_from_any.extract_from(r.output_file)
+  assert (str(symm.space_group_info()) == "P 1")
+  args.append(r.output_file)
+  args.append("labels.name=FMODEL,PHIFMODEL")
+  try:
+    run_program(program_class=fmodel.Program, args=args, logger=null_out())
+  except Sorry as s:
+    assert('high_resolution and low_resolution must be undefined if reflection'
+      in str(s))
+  else:
+    raise Exception_expected
+
+  # Clean up files
+  os.remove(r.output_file)
+  os.remove(model_fn)
+
   print("OK")
 
 if (__name__ == "__main__"):
