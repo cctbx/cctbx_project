@@ -55,7 +55,7 @@
  */
 
 #include <spotfinder/core_toolbox/libdistl.h>
-//#include <boost/timer.hpp>
+//#include <boost/timer/timer.hpp>
 //#include <omptbx/omp_or_stubs.h>
 #include <stack> // to implement std::stack fix for stack overflow, see search_border_spot
 

@@ -126,6 +126,18 @@ class clashscore(validation):
       verbose=False,
       do_flips=False,
       out=sys.stdout):
+    if (not pdb_hierarchy.fits_in_pdb_format()):
+      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+        import forward_compatible_pdb_cif_conversion
+      conversion_info = forward_compatible_pdb_cif_conversion(
+        hierarchy = pdb_hierarchy)
+      conversion_info.\
+       convert_hierarchy_to_forward_compatible_pdb_representation(pdb_hierarchy)
+      if verbose:
+        print(
+        "Converted model to forward_compatible PDB for clashscore",file = out)
+    else:
+      conversion_info = None
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
@@ -180,6 +192,10 @@ class clashscore(validation):
       if (save_modified_hierarchy):
         self.pdb_hierarchy = iotbx.pdb.input(
           pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
+        if conversion_info:
+          conversion_info.convert_hierarchy_to_full_representation(
+             self.pdb_hierarchy)
+
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
                                            clashscore_b_cutoff
@@ -190,6 +206,11 @@ class clashscore(validation):
         self.clashscore = self.probe_clashscore_manager.clashscore
         self.clashscore_b_cutoff = self.probe_clashscore_manager.\
                                    clashscore_b_cutoff
+
+    if conversion_info:
+      if verbose:
+        print("Converted model back to full representation", file = out)
+      conversion_info.convert_hierarchy_to_full_representation(pdb_hierarchy)
 
   def get_clashscore(self):
     return self.clashscore

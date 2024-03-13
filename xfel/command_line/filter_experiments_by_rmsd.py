@@ -21,11 +21,6 @@ from libtbx.phil import parse
 import libtbx.load_env
 import math
 
-try:
-  from matplotlib import pyplot as plt
-except ImportError: # Can happen on non-GUI nodes
-  pass
-
 help_message = '''
 Filter a set of experiments and reflections from a multi-experiment job by overall RMSD
 using Tukey's rule of thumb.  I.E, for each experiment, determine the RMSD of the
@@ -120,6 +115,7 @@ def run_with_preparsed(experiments, reflections, params):
   print(len(subset), "experiments with > 0 reflections")
 
   if params.show_plots:
+    from matplotlib import pyplot as plt
     h = flex.histogram(subset, n_slots=40)
     fig = plt.figure()
     ax = fig.add_subplot('111')

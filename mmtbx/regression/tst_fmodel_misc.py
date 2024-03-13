@@ -1,7 +1,8 @@
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.regression import make_fake_anomalous_data
-from mmtbx.command_line import fmodel
+from mmtbx.programs import fmodel
+from iotbx.cli_parser import run_program
 from iotbx import file_reader
 from cctbx import miller
 from scitbx.array_family import flex
@@ -26,7 +27,7 @@ def exercise():
     "output.file_name=tst_fmodel_anomalous.mtz",
     "r_free_flags_fraction=0.1",
   ]
-  fmodel.run(args=args, log=null_out())
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
   assert os.path.isfile("tst_fmodel_anomalous.mtz")
   mtz_in = file_reader.any_file("tst_fmodel_anomalous.mtz")
   array = mtz_in.file_server.miller_arrays[0]
@@ -55,18 +56,19 @@ def exercise_intensity_output():
     "r_free_flags_fraction=0.1",
   ]
   args2 = args + ["label=Imodel"]
-  fmodel.run(args=args2, log=null_out())
+  run_program(program_class=fmodel.Program, args=args2)
   assert os.path.isfile("tst_fmodel_intensity.mtz")
   mtz_in = file_reader.any_file("tst_fmodel_intensity.mtz")
   assert mtz_in.file_server.miller_arrays[0].is_xray_intensity_array()
   try :
-    fmodel.run(args=args, log=null_out())
+    run_program(program_class=fmodel.Program, args=args)
   except Sorry :
     pass
   else :
     raise Exception_expected
   try :
-    fmodel.run(args=args+["format=cns"], log=null_out())
+    run_program(program_class=fmodel.Program, args=args+["format=cns"],
+      logger=null_out())
   except Sorry :
     pass
   else :
@@ -110,7 +112,6 @@ ATOM    949  CD2 LEU A 125       6.533  11.408  15.996  1.00 26.02           C
     f.write(pdb_str)
   with open("tst_fmodel_misc.eff", "w") as f:
     f.write("""\
-pdb_file = tst_fmodel_misc.pdb
 high_resolution = 1.0
 output.file_name = tst_fmodel_misc.mtz
 generate_fake_p1_symmetry = True
@@ -122,7 +123,7 @@ anomalous_scatterers {
   }
 }
 """)
-  fmodel.run(args=["tst_fmodel_misc.eff"], log=null_out())
+  run_program(program_class=fmodel.Program, args=["tst_fmodel_misc.pdb","tst_fmodel_misc.eff"], logger=null_out())
   mtz_in = file_reader.any_file("tst_fmodel_misc.mtz")
   f_model = mtz_in.file_server.miller_arrays[0]
   dano = abs(f_model).anomalous_differences()

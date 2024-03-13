@@ -234,6 +234,7 @@ def possible_cyclic_peptide(atom1,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
+  if atom1.element_is_hydrogen() or atom2.element_is_hydrogen(): return False
   chain1 = atom1.parent().parent().parent()
   chain2 = atom1.parent().parent().parent()
   if not chain1.id == chain2.id:
@@ -517,7 +518,7 @@ class linking_mixins(object):
       #
       #
       if verbose:
-        print(i_seq, j_seq, atom1.quote(), end=' ')
+        print('nonbonded', i_seq, j_seq, atom1.quote(), end=' ')
         print(atom2.quote(), end=' ')
         print("Distance: %0.2f" % distance, rt_mx_ji, sym_op)
 

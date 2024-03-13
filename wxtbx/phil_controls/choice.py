@@ -15,7 +15,7 @@ class ChoiceCtrl(wx.Choice, phil_controls.PhilCtrl):
     is_selected = [ ("*" in choice) for choice in choices ]
     if (True in is_selected):
       selection = is_selected.index(True)
-    choices = [ re.sub("\*", "", choice) for choice in choices ]
+    choices = [ re.sub(r"\*", "", choice) for choice in choices ]
     if (captions is None):
       captions = list(choices) # XXX force copy
     if (len(captions) != len(choices)):

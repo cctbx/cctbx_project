@@ -35,52 +35,78 @@ B. Read a forward_compatible_pdb compatible string (forward_compatible_pdb_strin
 
 C. Get conversion info from any hierarchy (ph):
 
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+    import forward_compatible_pdb_cif_conversion
   conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
 
-D. Get conversion info from unique chain_ids and residue names (
+D. convert any hierarchy to a forward_compatible one (changes chain.id and
+   residue names:
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+    import forward_compatible_pdb_cif_conversion
+  conversion_info = forward_compatible_pdb_cif_conversion(hierarchy = ph)
+  conversion_info.convert_hierarchy_to_forward_compatible_pdb_representation(ph)
+
+E. Convert forward compatible pdb back (done in place)
+  conversion_info.convert_hierarchy_to_full_representation(ph)
+
+F. TODO: Convert any hierarchy to forward compatible (method of hierarchy):
+  ph.convert_to_forward_compatible_pdb()  # saves conversion info as attribute
+    # Optionally supply conversion_info
+    #  now ph._conversion_info is set
+
+E. Get conversion info from unique chain_ids and residue names (
     unique_values_dict):
 
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+     import forward_compatible_pdb_cif_conversion
   conversion_info = forward_compatible_pdb_cif_conversion(
     unique_values_dict = unique_values_dict)
 
-D. Get conversion info as REMARK and RESNAM string
+F. Get conversion info as REMARK and RESNAM string
 
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
-  remark_hetnam_string = forward_compatible_pdb_cif_conversion(ph).conversion_as_remark_hetnam_string()
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+     import forward_compatible_pdb_cif_conversion
+  remark_hetnam_string = \
+   forward_compatible_pdb_cif_conversion(ph).conversion_as_remark_hetnam_string()
 
-E. Convert a forward_compatible_pdb compatible hierarchy to a full hierarchy with
-   conversion information in conversion_info. This approach can be
+E. Convert a forward_compatible_pdb compatible hierarchy to a full hierarchy
+   with conversion information in conversion_info. This approach can be
    used to (1) save conversion information from a hierarchy,
-   (2) write a forward_compatible_pdb file, (3) do something with the forward_compatible_pdb file that loses
-   the header information, (4) read back the forward_compatible_pdb file that does not have
-   REMARK records, and (5) restore the original structure in the new
-   hierarchy.
+   (2) write a forward_compatible_pdb file, (3) do something with the
+     forward_compatible_pdb file that loses
+   the header information, (4) read back the forward_compatible_pdb file that
+   does not have REMARK records, and (5) restore the original structure in
+   the new hierarchy.
 
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import hierarchy_as_forward_compatible_pdb_string
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import pdb_or_mmcif_string_as_hierarchy
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+    import forward_compatible_pdb_cif_conversion
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+    import hierarchy_as_forward_compatible_pdb_string
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+    import pdb_or_mmcif_string_as_hierarchy
 
   # Get conversion information
   conversion_info = forward_compatible_pdb_cif_conversion(ph)
 
   # Get a forward_compatible_pdb string with no remarks
-  forward_compatible_pdb_string =  hierarchy_as_forward_compatible_pdb_string(ph)
-  forward_compatible_pdb_string_no_remarks = remove_remarks(forward_compatible_pdb_string)
+  forward_compatible_pdb_string = hierarchy_as_forward_compatible_pdb_string(ph)
+  forward_compatible_pdb_string_no_remarks = remove_remarks(
+     forward_compatible_pdb_string)
 
   # convert back to hierarchy (this can be a new pdb string obtained
   #  after manipulations of the model but with residue names and chain id
   #  values matching the forward_compatible_pdb_string)
-  ph = pdb_or_mmcif_string_as_hierarchy(forward_compatible_pdb_string_no_remarks).hierarchy
+  ph = pdb_or_mmcif_string_as_hierarchy(
+      forward_compatible_pdb_string_no_remarks).hierarchy
 
   # Apply the conversions to obtain a full representation in ph
   conversion_info.convert_hierarchy_to_full_representation(ph)
   '''
 
-def hierarchy_as_forward_compatible_pdb_string(ph, conversion_info = None, *args, **kw):
-  '''Convert a hierarchy into a forward_compatible_pdb compatible string, with any
-     conversion information written as REMARK records
+def hierarchy_as_forward_compatible_pdb_string(ph,
+      conversion_info = None, *args, **kw):
+  '''Convert a hierarchy into a forward_compatible_pdb compatible string,
+   with any conversion information written as REMARK records
 
     parameters:
       ph: hierarchy object
@@ -98,27 +124,31 @@ def hierarchy_as_forward_compatible_pdb_string(ph, conversion_info = None, *args
     return ph.as_pdb_string(*args, **kw)
   else:
     ph_forward_compatible_pdb = ph.deep_copy()
-    conversion_info.convert_hierarchy_to_forward_compatible_pdb_representation(ph_forward_compatible_pdb)
+    conversion_info.convert_hierarchy_to_forward_compatible_pdb_representation(
+       ph_forward_compatible_pdb)
     remark_hetnam_string = conversion_info.conversion_as_remark_hetnam_string()
-    forward_compatible_pdb_string = ph_forward_compatible_pdb.as_pdb_string(*args, **kw)
+    forward_compatible_pdb_string = ph_forward_compatible_pdb.as_pdb_string(
+       *args, **kw)
     full_string = remark_hetnam_string + forward_compatible_pdb_string
     return full_string
 
 def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
        conversion_info = None):
-  '''Convert an mmcif string or a forward_compatible_pdb compatible string into a
-      hierarchy object, using any conversion information written as
+  '''Convert an mmcif string or a forward_compatible_pdb compatible string
+      into a hierarchy object, using any conversion information written as
       REMARK records in the forward_compatible_pdb string, or using any supplied
       conversion information.
 
     parameters:
-      pdb_or_mmcif_string: mmcif string or a forward_compatible_pdb compatible string
-      conversion_info: optional forward_compatible_pdb_cif_conversion object to apply
+      pdb_or_mmcif_string: mmcif string or a forward_compatible_pdb compatible
+      string conversion_info: optional forward_compatible_pdb_cif_conversion
+      object to apply
 
     returns: group_args (hierarchy, pdb_inp, crystal_symmetry, conversion_info)
   '''
   import iotbx.pdb
-  from iotbx.pdb.forward_compatible_pdb_cif_conversion import forward_compatible_pdb_cif_conversion
+  from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+     import forward_compatible_pdb_cif_conversion
   inp = iotbx.pdb.input(lines=pdb_or_mmcif_string, source_info=None)
   remark_hetnam_string = "\n".join(inp.remark_section())
   hetnam_string = "\n".join(inp.heterogen_section())
@@ -142,24 +172,43 @@ def pdb_or_mmcif_string_as_hierarchy(pdb_or_mmcif_string,
     conversion_info = conversion_info)
 
   # Determine if this is already in full format
-  if forward_compatible_pdb_cif_conversion(ph).conversion_required(): # already set
+  if forward_compatible_pdb_cif_conversion(ph).conversion_required():
+    # already set
     assert not conversion_info.conversion_required(), \
-      "Cannot apply forward_compatible_pdb conversions to a hierarchy that is not forward_compatible_pdb"
-  elif conversion_info.conversion_required(): # convert it
+      "Cannot apply forward_compatible_pdb conversions to a "+\
+       "hierarchy that is not forward_compatible_pdb"
+  else:
     conversion_info.convert_hierarchy_to_full_representation(ph)
-  else: # nothing to convert
-    pass
   return result
 
+def get_unique_values_dict(hierarchy_list):
+  #  Get all the unique chain_id and resname values in all hierarchies
+
+  chain_id_list = []
+  resname_list = []
+  for hierarchy in hierarchy_list:
+    for model in hierarchy.models():
+      for chain in model.chains():
+        if not chain.id in chain_id_list:
+          chain_id_list.append(chain.id)
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if not atom_group.resname in resname_list:
+              resname_list.append(atom_group.resname)
+  unique_values_dict = {
+    'chain_id': chain_id_list,
+    'resname': resname_list}
+  return unique_values_dict
+
 class forward_compatible_pdb_cif_conversion:
-  ''' Class to generate and save forward_compatible_pdb representation of 5-character
-    residue names and n-character chain IDs. Used to convert between
-    forward_compatible_pdb and mmcif formatting.
+  ''' Class to generate and save forward_compatible_pdb representation
+    of 5-character residue names and n-character chain IDs. Used to convert
+    between forward_compatible_pdb and mmcif formatting.
 
     NOTE 1: marked as self._is_initialized when values are available
-    NOTE 2: hierarchy object that has been converted to forward_compatible_pdb compatible
-    will be marked with the attribute
-      self._is_forward_compatible_pdb_representation=True
+    NOTE 2: hierarchy object that has been converted to
+      forward_compatible_pdb compatible will be marked with the attribute
+       self._conversion_info, the conversion used.
 
 
     To modify these tables to add another field to check:
@@ -167,19 +216,20 @@ class forward_compatible_pdb_cif_conversion:
     2. Add new methods like "def _unique_chain_ids_from_hierarchy"
     3. Use these new methods in "def _set_up_conversion_table"
     4. Add code at "Modify hierarchy here to convert to forward_compatible_pdb"
-    5. Add code at "Modify hierarchy here to convert from forward_compatible_pdb"
-    6. Add code to regression test at iotbx/regression/tst_hierarchy_forward_compatible_pdb.py
+    5. Add at "Modify hierarchy here to convert from forward_compatible_pdb"
+    6. Add to regression test at
+       iotbx/regression/tst_hierarchy_forward_compatible_pdb.py
     '''
 
   def __init__(self, hierarchy = None,
      unique_values_dict = None,
      residue_conversion_as_remark = True,
      residue_conversion_as_hetnam = True,
-     end_residue_names_with_tilde_if_possible = True,
+     end_residue_names_with_tilde_if_possible = False,
      ):
     ''' Identify all unique chain_ids and residue names that are not compatible
-        with forward_compatible_pdb. Generate dictionary relating original names and
-        compatible names and for going backwards.
+        with forward_compatible_pdb. Generate dictionary relating original
+        names and compatible names and for going backwards.
 
     parameters:  iotbx.pdb.hierarchy object (required unless unique_values_dict
            is supplied)
@@ -196,7 +246,8 @@ class forward_compatible_pdb_cif_conversion:
     '''
 
 
-    # Fields in hierarchy that are limited in number of characters in forward_compatible_pdb
+    # Fields in hierarchy that are limited in number of characters
+    # in forward_compatible_pdb
     self._keys = ['chain_id', 'resname']
     self._max_chars_dict = {'chain_id':2, 'resname':3}
     self._end_with_tilde_dict = {'chain_id':False, 'resname':True}
@@ -244,7 +295,8 @@ class forward_compatible_pdb_cif_conversion:
 
   def conversion_required(self):
 
-    '''Public method to return True if conversion for forward_compatible_pdb is necessary
+    '''Public method to return True if conversion for forward_compatible_pdb
+     is necessary
     parameters:  None
     returns: True if conversion is necessary
     '''
@@ -265,7 +317,7 @@ class forward_compatible_pdb_cif_conversion:
     from six.moves import cStringIO as StringIO
     f = StringIO()
     print(
-       "REMARK 987 PDB_V3_CONVERSION  CONVERSIONS MADE FOR PDB_V3 COMPATIBILITY",
+      "REMARK 987 PDB_V3_CONVERSION  CONVERSIONS MADE FOR PDB_V3 COMPATIBILITY",
            file = f)
 
     # Set up conversion info that goes in REMARK records
@@ -306,12 +358,12 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
         for full_text, forward_compatible_pdb_text in zip(
            info.full_representation_list,
            info.forward_compatible_pdb_representation_list,
-           ):
+           ): # any text for 55 chars
           print("%6s  %2s %3s %55s%10s" %(
               "HETNAM".ljust(6),
               "".ljust(2),  # continuation chars
               forward_compatible_pdb_text.ljust(3),  # 3-char version
-              "PDB_V3_CONVERSION (FULL NAME IN COLS 71-80)".ljust(55),  # any text for 55 chars
+              "PDB_V3_CONVERSION (FULL NAME IN COLS 71-80)".ljust(55),
               full_text.ljust(10)),  # full version
             file = f)
     print(file = f)
@@ -320,47 +372,49 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     return f.getvalue()
 
 
-  def convert_hierarchy_to_forward_compatible_pdb_representation(self, hierarchy):
+  def convert_hierarchy_to_forward_compatible_pdb_representation(self,
+      hierarchy):
 
-    '''Public method to convert a hierarchy in place to forward_compatible_pdb compatible
-       hierarchy using information in self._conversion_table_info_dict
+    '''Public method to convert a hierarchy in place to
+     forward_compatible_pdb compatible hierarchy using information
+     in self._conversion_table_info_dict
     parameters: hierarchy (modified in place)
     output: None
+    Hierarchy is marked with attribute _conversion_info
 
     '''
 
     assert self.is_initialized(), "Need to initialize"
     assert hierarchy is not None, "Need hierarchy for conversion"
 
-    if hasattr(hierarchy, '_is_forward_compatible_pdb_representation') and (
-        hierarchy._is_forward_compatible_pdb_representation):
+    if hierarchy.is_forward_compatible_hierarchy():
       return # nothing to do because it was already converted
 
-    if not self.conversion_required():
-      return # nothing to do because no conversion is necessary
+    if self.conversion_required():
 
-    # Modify hierarchy here to convert to forward_compatible_pdb
+      # Modify hierarchy here to convert to forward_compatible_pdb
+      for model in hierarchy.models():
+        for chain in model.chains():
+          new_id = self.get_forward_compatible_pdb_text_from_full_text(
+             key = 'chain_id',
+             full_text = chain.id)
+          if new_id and new_id != chain.id:
+            chain.id = new_id  # Modify chain ID here
 
-    for model in hierarchy.models():
-      for chain in model.chains():
-        new_id = self.get_forward_compatible_pdb_text_from_full_text(
-           key = 'chain_id',
-           full_text = chain.id)
-        if new_id and new_id != chain.id:
-          chain.id = new_id  # Modify chain ID here
-
-        for residue_group in chain.residue_groups():
-          for atom_group in residue_group.atom_groups():
-            new_resname = self.get_forward_compatible_pdb_text_from_full_text('resname',
-                atom_group.resname)
-            if new_resname and (new_resname != atom_group.resname):
-              atom_group.resname = new_resname  # Modify residue name here
-
-    hierarchy._is_forward_compatible_pdb_representation = True
+          for residue_group in chain.residue_groups():
+            for atom_group in residue_group.atom_groups():
+              new_resname = self.get_forward_compatible_pdb_text_from_full_text(
+                  'resname',
+                  atom_group.resname)
+              if new_resname and (new_resname != atom_group.resname):
+                atom_group.resname = new_resname  # Modify residue name here
+    # Mark it
+    hierarchy._conversion_info = self
 
   def convert_hierarchy_to_full_representation(self, hierarchy):
-    '''Public method to convert a hierarchy in place from forward_compatible_pdb compatible
-       hierarchy using information in self._conversion_table_info_dict
+    '''Public method to convert a hierarchy in place from
+      forward_compatible_pdb compatible hierarchy back to original
+      hierarchy using information in self._conversion_table_info_dict
     parameters: hierarchy (modified in place)
     output: None
 
@@ -368,32 +422,28 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     assert hierarchy is not None, "Need hierarchy for conversion"
     assert self.is_initialized(), "Need to initialize"
 
-    if hasattr(hierarchy, '_is_forward_compatible_pdb_representation') and (
-        hierarchy._is_forward_compatible_pdb_representation):
-      return # nothing to do because it was already converted
 
-    if not self.conversion_required():
-      return # nothing to do because no conversion is necessary
+    if self.conversion_required():
+      # Modify hierarchy here to convert from forward_compatible_pdb
 
-    # Modify hierarchy here to convert from forward_compatible_pdb
+      for model in hierarchy.models():
+        for chain in model.chains():
+          new_id = self.get_full_text_from_forward_compatible_pdb_text(
+            key = 'chain_id',
+            forward_compatible_pdb_text = chain.id)
+          if new_id and new_id != chain.id:
+            chain.id = new_id  # Modify chain_id here
 
-    for model in hierarchy.models():
-      for chain in model.chains():
-        new_id = self.get_full_text_from_forward_compatible_pdb_text(
-          key = 'chain_id',
-          forward_compatible_pdb_text = chain.id)
-        if new_id and new_id != chain.id:
-          chain.id = new_id  # Modify chain_id here
+          for residue_group in chain.residue_groups():
+            for atom_group in residue_group.atom_groups():
+              new_resname = self.get_full_text_from_forward_compatible_pdb_text(
+                key = 'resname',
+                forward_compatible_pdb_text = atom_group.resname)
+              if new_resname and (new_resname != atom_group.resname):
+                atom_group.resname = new_resname # Modify residue name here
 
-        for residue_group in chain.residue_groups():
-          for atom_group in residue_group.atom_groups():
-            new_resname = self.get_full_text_from_forward_compatible_pdb_text(
-              key = 'resname',
-              forward_compatible_pdb_text = atom_group.resname)
-            if new_resname and (new_resname != atom_group.resname):
-              atom_group.resname = new_resname # Modify residue name here
-
-    hierarchy._is_forward_compatible_pdb_representation = False
+    if hasattr(hierarchy,'_conversion_info'):
+       delattr(hierarchy,'_conversion_info')
 
   def set_conversion_tables_from_remark_hetnam_records(
        self, remark_hetnam_records, add_to_existing = False):
@@ -429,7 +479,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     for line in remark_hetnam_records:
       if not line: continue
       spl = line.split()
-      if (spl[0] == "REMARK") and (spl[1] == "987") and (spl[2] == "PDB_V3_CONVERSION"):
+      if (spl[0] == "REMARK") and (spl[1] == "987") and \
+           (spl[2] == "PDB_V3_CONVERSION"):
         if len(spl) != 7: continue
         key = spl[3].lower()[:-1] # take off ":"
         if not key in self._remark_keys: continue
@@ -447,7 +498,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
       if not full in full_representation_list_dict[key]:
         full_representation_list_dict[key].append(full)
-        forward_compatible_pdb_representation_list_dict[key].append(forward_compatible_pdb)
+        forward_compatible_pdb_representation_list_dict[key].append(
+            forward_compatible_pdb)
 
       # there was something needing conversion
       self._conversion_required = True
@@ -463,7 +515,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
       self._conversion_table_info_dict[key] = group_args(
         group_args_type = 'conversion tables for %s' %(key),
         full_representation_list = full_representation_list_dict[key],
-        forward_compatible_pdb_representation_list =  forward_compatible_pdb_representation_list_dict[key])
+        forward_compatible_pdb_representation_list = \
+            forward_compatible_pdb_representation_list_dict[key])
 
 
   def _set_up_conversion_table(self, key, hierarchy, unique_values_dict = None):
@@ -488,20 +541,24 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
         unique_values,
         max_chars = max_chars)
 
-    forward_compatible_pdb_representation_list = self._get_any_forward_compatible_pdb_representation(
+    forward_compatible_pdb_representation_list = \
+      self._get_any_forward_compatible_pdb_representation(
         ids_needing_conversion, max_chars, exclude_list = allowed_ids,
         end_with_tilde = end_with_tilde)
 
     if ids_needing_conversion:
-      assert len(ids_needing_conversion) == len(forward_compatible_pdb_representation_list)
+      assert len(ids_needing_conversion) == len(
+        forward_compatible_pdb_representation_list)
 
     from libtbx import group_args
     self._conversion_table_info_dict[key] = group_args(
       group_args_type = 'conversion tables for %s' %(key),
       full_representation_list = ids_needing_conversion,
-      forward_compatible_pdb_representation_list = forward_compatible_pdb_representation_list)
+      forward_compatible_pdb_representation_list = \
+        forward_compatible_pdb_representation_list)
 
-    if forward_compatible_pdb_representation_list:  # there was something needing conversion
+    if forward_compatible_pdb_representation_list:
+      # there was something needing conversion
       self._conversion_required = True
 
   def _unique_chain_ids_from_hierarchy(self, hierarchy):
@@ -532,10 +589,12 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
               resnames.append(atom_group.resname)
     return resnames
 
-  def _get_any_forward_compatible_pdb_representation(self, ids_needing_conversion,
+  def _get_any_forward_compatible_pdb_representation(self,
+       ids_needing_conversion,
      max_chars, exclude_list = None,
      end_with_tilde = None):
-    '''Private method to try a few ways to generate unique forward_compatible_pdb
+    '''Private method to try a few ways to generate unique
+        forward_compatible_pdb
       representations for a set of strings.  Order to try:
       1. take first max_chars of each.
       2. if end_with_tilde, then generate max_chars-1 of numbers plus tilde,
@@ -546,7 +605,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
       exclude_list: list of strings not to use as output
       end_with_tilde: try to end strings with a tilde ("~")
     returns:
-      forward_compatible_pdb_representation_list: list of converted strings, same order and
+      forward_compatible_pdb_representation_list:
+       list of converted strings, same order and
         length as ids_needing_conversion
     '''
 
@@ -554,7 +614,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
        return [] # ok with nothing in it
 
     # Try just taking first n_chars of strings...ok if they are all unique
-    forward_compatible_pdb_representation_list = self._get_forward_compatible_pdb_representation(
+    forward_compatible_pdb_representation_list = \
+      self._get_forward_compatible_pdb_representation(
         ids_needing_conversion, max_chars, exclude_list = exclude_list,
         take_first_n_chars = True)
     if forward_compatible_pdb_representation_list:
@@ -562,7 +623,8 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
     # Generate unique strings for all the ids needing conversion, preventing
     #   duplications of existing ids
-    forward_compatible_pdb_representation_list = self._get_forward_compatible_pdb_representation(
+    forward_compatible_pdb_representation_list = \
+     self._get_forward_compatible_pdb_representation(
         ids_needing_conversion, max_chars, exclude_list = exclude_list,
         end_with_tilde = end_with_tilde)
     if forward_compatible_pdb_representation_list:
@@ -570,13 +632,15 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
 
     # Failed to get forward_compatible_pdb representation...
     from libtbx.utils import Sorry
-    raise Sorry("Unable to generate forward_compatible_pdb representation of %s" %(key))
+    raise Sorry(
+      "Unable to generate forward_compatible_pdb representation of %s" %(key))
 
   def _get_forward_compatible_pdb_representation(self, ids, max_chars,
       exclude_list = None, take_first_n_chars = False,
-      end_with_tilde = False):
+      end_with_tilde = None):
 
-    '''Private method to try and get forward_compatible_pdb representation of ids that fit in
+    '''Private method to try and get forward_compatible_pdb representation
+        of ids that fit in
        max_chars and do not duplicate anything in exclude_list
     parameters:
       ids:  strings to convert
@@ -698,52 +762,97 @@ COLUMNS       DATA  TYPE    FIELD           DEFINITION
     else:
       return self._conversion_table_info_dict[key]
 
-  def get_full_text_from_forward_compatible_pdb_text(self, key = None, forward_compatible_pdb_text = None):
-    '''Public method to return full text from forward_compatible_pdb_text based on
-       conversion table
+  def get_full_text_from_forward_compatible_pdb_text(self, key = None,
+          forward_compatible_pdb_text = None):
+    '''Public method to return full text from forward_compatible_pdb_text
+       based on conversion table. Applies to one word.
 
     parameters:
       key: field to convert (e.g., chain_id, resname)
-      forward_compatible_pdb_text: text to convert from forward_compatible_pdb to full text
+      forward_compatible_pdb_text: text to convert from
+          forward_compatible_pdb to full text
     '''
 
-    assert key is not None
     assert forward_compatible_pdb_text is not None
+
+    if key is None:
+      full_text = forward_compatible_pdb_text
+      for key in list(self._conversion_table_info_dict.keys()):
+        full_text = self.get_full_text_from_forward_compatible_pdb_text(
+          key = key, forward_compatible_pdb_text = full_text)
+      return full_text
 
     conversion_table_info = self._get_conversion_table_info(key)
 
     if conversion_table_info and (
-        forward_compatible_pdb_text in conversion_table_info.forward_compatible_pdb_representation_list):
-      index = conversion_table_info.forward_compatible_pdb_representation_list.index(
-        forward_compatible_pdb_text)
+        forward_compatible_pdb_text in
+          conversion_table_info.forward_compatible_pdb_representation_list):
+      index = \
+        conversion_table_info.forward_compatible_pdb_representation_list.index(
+          forward_compatible_pdb_text)
       full_text = conversion_table_info.full_representation_list[index]
     else:
       full_text = forward_compatible_pdb_text
 
     return full_text
 
-  def get_forward_compatible_pdb_text_from_full_text(self, key = None, full_text = None):
-    '''Public method to return forward_compatible_pdb text from full text based on
-       conversion table
+  def convert_multi_word_text_to_forward_compatible(self,
+     key = None, text = None):
+    ''' Public method to take a block of text and convert all the words that
+      are in the dictionary for key to forward_compatible_pdb.  Note:
+      cannot be reversed.  Spacing in lines is not maintained.
+       Suitable for converting restraint (mmcif) files).
+    '''
+    if key is None: # do all keys
+      for key in list(self._conversion_table_info_dict.keys()):
+        text = self.convert_multi_word_text_to_forward_compatible(
+          key, text = text)
+      return text
+
+    if not key in list(self._conversion_table_info_dict.keys()):
+      return text  # do nothing
+
+    info =  self._conversion_table_info_dict[key]
+    if info:
+      for full_text, forward_compatible_pdb_text in zip(
+           info.full_representation_list,
+           info.forward_compatible_pdb_representation_list,
+           ):
+        text = text.replace(full_text,forward_compatible_pdb_text)
+    return text
+
+  def get_forward_compatible_pdb_text_from_full_text(self,
+        key = None, full_text = None, require_allowed = True):
+    '''Public method to return forward_compatible_pdb text from
+      full text (full text is original text, just one word)
+      based on conversion table
 
     parameters:
       key: field to convert (e.g., chain_id, resname)
       full_text: text to convert to forward_compatible_pdb
     '''
 
-    assert key is not None
     assert full_text is not None
+
+    if key is None: # run all of them
+      for key in list(self._conversion_table_info_dict.keys()):
+        full_text = self.get_forward_compatible_pdb_text_from_full_text(
+          key, full_text = full_text)
+      return full_text
 
     conversion_table_info = self._get_conversion_table_info(key)
     if conversion_table_info and (
         full_text in conversion_table_info.full_representation_list):
       index = conversion_table_info.full_representation_list.index(
         full_text)
-      forward_compatible_pdb_text = conversion_table_info.forward_compatible_pdb_representation_list[index]
+      forward_compatible_pdb_text = \
+        conversion_table_info.forward_compatible_pdb_representation_list[index]
     else:
       forward_compatible_pdb_text = full_text
 
-    # Make sure that the resulting text is allowed in forward_compatible_pdb
-    assert self._is_allowed(forward_compatible_pdb_text, self._max_chars_dict[key])
+    if require_allowed:
+      # Make sure that the resulting text is allowed in forward_compatible_pdb
+      assert self._is_allowed(
+        forward_compatible_pdb_text, self._max_chars_dict[key])
 
     return forward_compatible_pdb_text

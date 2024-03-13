@@ -101,6 +101,44 @@ def attempt_to_squash_alt_loc(hierarchy):
     rg.remove_atom_group(ags[1])
   return squash_hierarchy
 
+def get_bonds_as_dict(geometry_restraints_manager, include_non_zero_origin_id=True):
+  bonds={}
+  for bond in geometry_restraints_manager.get_all_bond_proxies():
+    if not hasattr(bond, 'get_proxies_with_origin_id'): continue
+    for p in bond.get_proxies_with_origin_id():
+      tmp=bonds.setdefault(p.i_seqs[0], [])
+      tmp.append(p.i_seqs[1])
+      tmp=bonds.setdefault(p.i_seqs[1], [])
+      tmp.append(p.i_seqs[0])
+    if include_non_zero_origin_id:
+      for p in bond.get_proxies_without_origin_id(0):
+        tmp=bonds.setdefault(p.i_seqs[0], [])
+        tmp.append(p.i_seqs[1])
+        tmp=bonds.setdefault(p.i_seqs[1], [])
+        tmp.append(p.i_seqs[0])
+  return bonds
+
+def get_valences(element, charge):
+  valence = {
+    # 'C' : 4,
+    'N' : 3,
+    'O' : 2,
+  }
+  rc = valence.get(element)
+  if rc is None: return []
+  rc += charge
+  return [rc]
+
+def simple_valence_check(ph, geometry_restraints_manager):
+  bonds = get_bonds_as_dict(geometry_restraints_manager.geometry)
+  for atom in ph.atoms():
+    if atom.element_is_hydrogen(): continue
+    if atom.parent().resname in ['HOH']: continue
+    number_of_bonds = len(bonds.get(atom.i_seq, None))
+    # if number_of_bonds is None: continue
+    if number_of_bonds not in get_valences(atom.element, atom.charge_as_int()):
+      assert 0
+
 def main(filename):
   from iotbx import pdb
   pdb_inp=pdb.input(filename)

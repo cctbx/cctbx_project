@@ -49,8 +49,8 @@ class mod_filter(object):
     self.negate = cspad_tbx.getOptBool(negate)
 
     if (timestamps_path is not None):
-      p_old = re.compile("\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\d{2}\.\d{3}")
-      p_new = re.compile("\d{17}")
+      p_old = re.compile(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\d{2}\.\d{3}")
+      p_new = re.compile(r"\d{17}")
       f = open(timestamps_path, "r")
       self.timestamps_list = []
       for line in f.readlines():

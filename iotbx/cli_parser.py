@@ -20,7 +20,7 @@ from iotbx.file_reader import any_file
 from libtbx import citations
 from libtbx.program_template import ProgramTemplate
 from libtbx.str_utils import wordwrap
-from libtbx.utils import multi_out, show_times, Sorry
+from libtbx.utils import multi_out, null_out, show_times, Sorry
 
 # =============================================================================
 class ParserBase(argparse.ArgumentParser):
@@ -248,8 +248,21 @@ class CCTBXParser(ParserBase):
     # return JSON output from program
     self.add_argument(
       '--json', action='store_true',
-      help='writes or overwrites the JSON output for the program to file (%s)' %
-      self.json_filename
+      help='''\
+writes or overwrites the JSON output for the program to file (%s).
+Use --json-filename to specify a different filename for the output.''' %
+      self.json_filename,
+    )
+
+    # --json-filename
+    # set a non-default filename for JSON output
+    self.add_argument(
+      '--json-filename', '--json_filename', action='store',
+      type=str, default=None,
+      help='''\
+optionally specify a filename for JSON output. If a filename is provided,
+the .json extension will be added automatically if it does not already exist.
+Also, specifying this flag implies that --json is also specified.'''
     )
 
     # --overwrite
@@ -299,11 +312,11 @@ class CCTBXParser(ParserBase):
     )
 
   # ---------------------------------------------------------------------------
-  def parse_args(self, args):
+  def parse_args(self, args, skip_help = False):
     '''
     '''
     # default behavior with no arguments
-    if len(args) == 0:
+    if (len(args) == 0) and (not skip_help):
       self.print_help()
       self.exit()
 
@@ -939,15 +952,20 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
     pr.dump_stats('profile.out')
 
   # output JSON
-  if namespace.json:
+  if namespace.json or namespace.json_filename:
     result = task.get_results_as_JSON()
     if result is not None:
-      with open(parser.json_filename, 'w') as f:
+      json_filename = parser.json_filename
+      if namespace.json_filename is not None:
+        json_filename = namespace.json_filename
+        if not json_filename.endswith('.json'):
+          json_filename += '.json'
+      with open(json_filename, 'w') as f:
         f.write(result)
     else:
       print('', file=logger)
       print('!'*79, file=logger)
-      print('WARNING: The get_results_as_JSON function has not been defined for this program')
+      print('WARNING: The get_results_as_JSON function has not been defined for this program', file=logger)
       print('!'*79, file=logger)
 
   # stop timer
@@ -966,6 +984,21 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
     result = task.get_results()
 
   return result
+
+# =============================================================================
+def get_program_params(run):
+    """Tool to get parameters object for a program that runs with
+      the program template.
+    params: run:  the program template object
+    returns: parameters for this program as set up by the program template
+    Get the run something like this way:
+     from phenix.programs import map_to_model as run
+    """
+
+    parser = CCTBXParser(program_class=run.Program,
+                         logger=null_out())
+    _ = parser.parse_args([], skip_help = True)
+    return parser.working_phil.extract()
 
 # =============================================================================
 # end

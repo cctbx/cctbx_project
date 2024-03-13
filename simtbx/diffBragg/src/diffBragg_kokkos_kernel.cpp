@@ -156,6 +156,7 @@ void kokkos_sum_over_steps(
     const KOKKOS_MAT3 eig_Otranspose = eig_O.transpose();
     const KOKKOS_MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
     const KOKKOS_MAT3 Ainv = eig_U*(Bmat_realspace.transpose().inverse())* (eig_O.inverse());
+    const CUDAREAL reciprocal_space_volume = 8*M_PI*M_PI*M_PI*Ainv.determinant();
     const KOKKOS_MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
     const double NABC_det = _NABC.determinant();  // TODO is this slow ?
     const double NABC_det_sq = NABC_det * NABC_det;
@@ -164,6 +165,10 @@ void kokkos_sum_over_steps(
     KOKKOS_MAT3 anisoG_local;
     CUDAREAL anisoG_determ = 0;
     KOKKOS_MAT3 anisoU_local;
+    const CUDAREAL _tmpfac = M_PI * 0.63 / fudge;
+    const CUDAREAL diffuse_scale = reciprocal_space_volume * sqrt(_tmpfac*_tmpfac*_tmpfac);
+    // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+    KOKKOS_MAT3 diffuse_scale_mat3(diffuse_scale,0,0,0,0,0,0,0,0);
     vector_mat3_t laue_mats = vector_mat3_t("laue_mats", 24);
     vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam", 3);
     vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace", 3);
@@ -292,6 +297,9 @@ void kokkos_sum_over_steps(
         // reset photon count for this pixel
         double _I = 0;
         double Ilambda = 0;
+        double Imiller_h = 0;
+        double Imiller_k = 0;
+        double Imiller_l = 0;
 
         kokkos_manager dI, dI2;
         dI.reset();
@@ -441,7 +449,8 @@ void kokkos_sum_over_steps(
                             // are we doing diffuse scattering
                             CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                             if (use_diffuse) {
-                                calc_diffuse_at_hkl(H_vec,H0,dHH,h_min,k_min,l_min,h_max,k_max,l_max,h_range,k_range,l_range,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
+                                // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+                               calc_diffuse_at_hkl(H_vec,H0,dHH,h_min,k_min,l_min,h_max,k_max,l_max,h_range,k_range,l_range,diffuse_scale_mat3,FhklLinear,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
                             } // end s_use_diffuse outer
 
                             CUDAREAL _F_cell = default_F;
@@ -572,8 +581,12 @@ void kokkos_sum_over_steps(
                             CUDAREAL _I_total = hkl*_I_cell *I0;
                             CUDAREAL Iincrement = _I_total * texture_scale;
                             _I += Iincrement;
-                            if (save_wavelenimage)
+                            if (save_wavelenimage){
                                 Ilambda += Iincrement * lambda_ang;
+                                Imiller_h += Iincrement*_h;
+                                Imiller_k += Iincrement*_k;
+                                Imiller_l += Iincrement*_k;
+                            }
 
                             if (refine_flag & REFINE_DIFFUSE) {
                                 CUDAREAL step_scale = texture_scale * _F_cell * _F_cell;
@@ -927,8 +940,12 @@ void kokkos_sum_over_steps(
             } // end of fpos loop
         } // end of spos loop
         floatimage(pixIdx) = _I;
-        if (save_wavelenimage)
-            wavelenimage(pixIdx) = Ilambda / _I;
+        if (save_wavelenimage){
+            wavelenimage(pixIdx*4) = Ilambda / _I;
+            wavelenimage(pixIdx*4+1) = Imiller_h / _I;
+            wavelenimage(pixIdx*4+2) = Imiller_k / _I;
+            wavelenimage(pixIdx*4+3) = Imiller_l / _I;
+        }
 
         if (refine_flag) {
             manager_dI(pixIdx) = dI;
@@ -1323,6 +1340,7 @@ void kokkos_sum_over_steps(
     const KOKKOS_MAT3 eig_Otranspose = eig_O.transpose();
     const KOKKOS_MAT3 Amat_init = eig_U * Bmat_realspace * eig_Otranspose;
     const KOKKOS_MAT3 Ainv = eig_U*(Bmat_realspace.transpose().inverse())* (eig_O.inverse());
+    const CUDAREAL reciprocal_space_volume = 8*M_PI*M_PI*M_PI*Ainv.determinant();
     const KOKKOS_MAT3 _NABC {Na, Nd, Nf, Nd, Nb, Ne, Nf, Ne, Nc};
     const double NABC_det = _NABC.determinant();  // TODO is this slow ?
     const double NABC_det_sq = NABC_det * NABC_det;
@@ -1331,6 +1349,10 @@ void kokkos_sum_over_steps(
     KOKKOS_MAT3 anisoG_local;
     CUDAREAL anisoG_determ = 0;
     KOKKOS_MAT3 anisoU_local;
+    const CUDAREAL _tmpfac = M_PI * 0.63 / fudge;
+    const CUDAREAL diffuse_scale = reciprocal_space_volume * sqrt(_tmpfac*_tmpfac*_tmpfac);
+    // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+    KOKKOS_MAT3 diffuse_scale_mat3(diffuse_scale,0,0,0,0,0,0,0,0);
     vector_mat3_t laue_mats = vector_mat3_t("laue_mats", 24);
     vector_vec3_t dG_dgam = vector_vec3_t("dG_dgam", 3);
     vector_cudareal_t dG_trace = vector_cudareal_t("dG_trace", 3);
@@ -1608,7 +1630,8 @@ void kokkos_sum_over_steps(
                             // are we doing diffuse scattering
                             CUDAREAL step_diffuse_param[6] = {0, 0, 0, 0, 0, 0};
                             if (use_diffuse) {
-                                calc_diffuse_at_hkl(H_vec,H0,dHH,h_min,k_min,l_min,h_max,k_max,l_max,h_range,k_range,l_range,Ainv,FhklLinear,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
+                              // ***NEEDS UPDATE: use legacy API for passing diffuse scale as KOKKOS_MAT3
+                                calc_diffuse_at_hkl(H_vec,H0,dHH,h_min,k_min,l_min,h_max,k_max,l_max,h_range,k_range,l_range,diffuse_scale_mat3,FhklLinear,num_laue_mats,laue_mats,anisoG_local,dG_trace,anisoG_determ,anisoU_local,dG_dgam,(refine_flag & REFINE_DIFFUSE)>0,&I0,step_diffuse_param);
                             } // end s_use_diffuse outer
 
                             CUDAREAL _F_cell = default_F;

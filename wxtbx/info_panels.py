@@ -205,7 +205,7 @@ class PDBFileInfo(InfoPanelBase):
       str_value = to_str(value)
       alert = False
       if (str_value.endswith("***")):
-        str_value = re.sub("\s*\*\*\*", "", str_value)
+        str_value = re.sub(r"\s*\*\*\*", "", str_value)
         alert = True
       txt2 = wx.StaticText(self.info_panel, -1, str_value)
       font2 = txt2.GetFont()
@@ -415,7 +415,7 @@ class MapCoeffsInfo(InfoPanelBase):
       str_value = to_str(value)
       alert = False
       if (str_value.endswith("***")):
-        str_value = re.sub("\s*\*\*\*", "", str_value)
+        str_value = re.sub(r"\s*\*\*\*", "", str_value)
         alert = True
       txt2 = wx.StaticText(self.info_panel, -1, str_value)
       font2 = txt2.GetFont()

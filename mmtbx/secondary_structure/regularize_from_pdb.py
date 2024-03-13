@@ -16,8 +16,10 @@ from mmtbx.secondary_structure.find_ss_from_ca import \
    find_secondary_structure, \
    find_helix,find_beta_strand,find_other_structure,helix,strand,other,\
    get_atom_list,\
-   model_info,split_model,merge_hierarchies_from_models, \
-   get_pdb_hierarchy
+   model_info,split_model
+from mmtbx.secondary_structure.find_ss_from_ca import \
+   merge_hierarchies_from_models
+from iotbx.pdb.utils import get_pdb_hierarchy
 from six.moves import zip
 from six.moves import range
 
@@ -1668,11 +1670,11 @@ class replace_with_segments_from_pdb:
 
     # write out results
     if params.output_files.pdb_out:
+      params.output_files.pdb_out = \
+         replacement_model.hierarchy.write_pdb_or_mmcif_file(
+           target_filename = params.output_files.pdb_out)
       print("\nWriting output PDB file to %s" %(
         params.output_files.pdb_out), file=out)
-      f=open(params.output_files.pdb_out,'w')
-      print(replacement_model.hierarchy.as_pdb_string(), file=f)
-      f.close()
     self.replacement_model=replacement_model
 
   def replacement_hierarchy(self):
@@ -2209,7 +2211,7 @@ class replace_with_segments_from_pdb:
       for cg in connected_groups: print(cg.show_comprehensive_summary())
       for cg in connected_groups:
         print("\nGROUP:")
-        print(cg.as_model(is_left_end=True).hierarchy.as_pdb_string())
+        print(cg.as_model(is_left_end=True).hierarchy.as_pdb_string()) # PDB OK debug only
 
     connected_groups=self.sort_and_remove_overlapping_groups(connected_groups)
 
@@ -2218,7 +2220,7 @@ class replace_with_segments_from_pdb:
       for cg in connected_groups: print(cg.show_comprehensive_summary())
       for cg in connected_groups:
         print("\nGROUP:")
-        print(cg.as_model(is_left_end=True).hierarchy.as_pdb_string())
+        print(cg.as_model(is_left_end=True).hierarchy.as_pdb_string()) # PDB OK debug only
 
     connected_groups=self.combine_groups_by_residue(connected_groups,
        maximum_junction_rmsd=maximum_junction_rmsd,
@@ -2519,7 +2521,7 @@ if __name__=="__main__":
 
   print_output=False
   if print_output:
-    print("Output model:\n%s" %(r.replacement_hierarchy().as_pdb_string()))
+    print("Output model:\n%s" %(r.replacement_hierarchy().as_pdb_string())) # PDB OK debug only
 
 
   print("\nSummary by segment:")

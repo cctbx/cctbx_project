@@ -106,6 +106,13 @@ model
       valid = valid and (mt in self._possible_model_types)
     return valid
 
+  def set_target_output_format(self, target_output_format):
+   if target_output_format == 'mmcif': target_output_format='cif'
+   if not target_output_format in ['cif','pdb']:
+     raise  Sorry("Target output format (%s) not recognized, options are" %(
+       target_output_format) + "pdb or cif")
+   self._target_output_format = target_output_format
+
   def set_default_model_type(self, model_type):
     if not self._is_valid_model_type(model_type):
       raise Sorry('Unrecognized model type, "%s," possible choices are %s.' %
@@ -270,7 +277,7 @@ The choices are {}.
       filename += extension
     return filename
 
-  def write_model_file(self, model_str, filename=Auto, extension=Auto,
+  def write_model_file(self, model_str, filename=Auto,
                        format=Auto, overwrite=Auto):
     '''
     Function for writing a model to file
@@ -280,15 +287,16 @@ The choices are {}.
       model_str: str or mmtbx.model.manager object
         The string to be written or a model object. If a model object is
         provided, the format (PDB or mmCIF) of the original file is kept
-        unless specified with format below
+        unless specified with format or target_output_format below.
+        If a string is provided, the format must be specified as pdb or cif
       filename: str or Auto
         The output filename. If set to Auto, a default filename is
         generated based on params.output.prefix, params.output.suffix,
         and params.output.serial
-      extension: str or Auto
-        The extension to be added. If set to Auto, defaults to .cif
-      format: pdb or cif or Auto.  If set to Auto, defaults to format of
-        original file.
+      format: pdb or cif (mmcif treated as cif) or Auto.  If set to
+         Auto, defaults to format of original file.
+         If self._target_output_format is not None,
+         always write model objects to this format if possible.
       overwrite: bool or Auto
         Overwrite filename if it exists. If set to Auto, the overwrite
         state of the DataManager is used.
@@ -301,20 +309,69 @@ The choices are {}.
         extension to cif by default. This function may alter the extension
         based on the desired format.
     '''
+
+
+    if format == 'mmcif': format = 'cif'  # mmcif and cif are synonyms here
+
     if isinstance(model_str, mmtbx.model.manager):
-      if format == 'cif' or (
-          format is Auto and model_str.input_model_format_cif()):
+
+      # Get overall preference for output format
+      if (format is Auto) and hasattr(self,'_target_output_format') and (
+           self._target_output_format is not None):
+        format = self._target_output_format
+
+      # Write as mmCIF if:
+      #  1. format was supplied as 'cif' or
+      #  2. format was Auto and target_output_format was set to 'cif', or
+      #  3. format was Auto, no target_output_format set and this model was
+      #       cif when read in, or
+      #  4. model does not fit in PDB format
+      if (format == 'cif') or (format is Auto and
+            model_str.input_model_format_cif()) or (
+          not model_str.get_hierarchy().fits_in_pdb_format()):
         extension = '.cif'
+        format = 'cif'
         model_str = model_str.model_as_mmcif()
       else:
         extension = '.pdb'
+        format = 'pdb'
         model_str = model_str.model_as_pdb()
+
+    else:  # writing a string. Output format must be specified on input
+
+      if format == 'cif':
+        extension = '.cif'
+      elif format == 'pdb':
+        extension = '.pdb'
+      else:  # no extension
+        extension = Auto
+
+    # Get the filename and add extension if necessary
     if filename is Auto:
       filename = self.get_default_output_model_filename(extension=extension)
-    elif extension is not Auto and (not filename.endswith(extension)):
-      filename += extension
-    return self._write_text(ModelDataManager.datatype, model_str,
+    elif extension and (extension is not Auto) and (
+        not extension_matches_ending(filename, extension)):
+      other_extension = ".pdb" if extension == ".cif" else ".cif"
+      fn,ext = os.path.splitext(filename)
+      if ext == other_extension: # swap extension
+        filename = fn + extension
+      elif extension_matches_ending(filename, other_extension):
+        filename = fn + "%s_%s" %(extension, ext.split("_")[1])
+      else:
+        filename += extension
+    if model_str:
+      return self._write_text(ModelDataManager.datatype, model_str,
                             filename=filename, overwrite=overwrite)
+    else:
+      return ''
 
-# =============================================================================
+def extension_matches_ending(filename, extension):
+  if not extension:
+    return True
+  fn, ext = os.path.splitext(filename)
+  if ext == extension:
+    return True
+  if "_" in ext and ext.split("_")[0] == extension:
+    return True
+ # =============================================================================
 # end

@@ -3,7 +3,7 @@ import os, sys
 import copy
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
-import StringIO
+from six.moves import cStringIO as StringIO
 from libtbx import easy_run
 from six.moves import zip
 from six.moves import range
@@ -364,7 +364,7 @@ class afitt_object:
     assert len(elements) ==  len(sites_cart_ptrs), \
            "No. of atoms in residue %s, instance %d does not equal to \
            number of atom seq pointers." %(self.resname[resname_i], instance_i)
-    f=StringIO.StringIO()
+    f = StringIO()
     if len(self.covalent_data) == 0 or self.covalent_data[r_i][i_i] == None:
     # if True:
       f.write(  '%d\n' %self.n_atoms[r_i])
@@ -445,7 +445,7 @@ def get_afitt_command():
   cmd = "afitt_helper_mmff help" # used because afitt_helper_mmff hangs on no input
   ero = easy_run.fully_buffered(command=cmd,
                                )
-  out = StringIO.StringIO()
+  out = StringIO()
   ero.show_stderr(out=out)
   exe = "afitt_helper_mmff"
   if out.getvalue().find("OpenEye")>-1:
@@ -467,7 +467,7 @@ def call_afitt(afitt_input, ff):
   ero = easy_run.fully_buffered(command=cmd,
                                 stdin_lines=afitt_input,
                                )
-  out = StringIO.StringIO()
+  out = StringIO()
   ero.show_stdout(out=out)
   if 'ENERGYTAG' not in out.getvalue().split():
     ero.show_stderr()

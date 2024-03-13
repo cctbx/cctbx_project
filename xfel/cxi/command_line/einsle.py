@@ -5,7 +5,7 @@ import sys,os
 import iotbx.pdb
 import string
 from scitbx.array_family import flex
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import mmtbx.f_model
 
 """Fit the anomalous scattering parameters f' and f", given the pdb model (for phases) and the
@@ -24,7 +24,7 @@ class Model:
     self.pdb_inp = iotbx.pdb.input(file_name)
     self.xray_structure = self.pdb_inp.xray_structure_simple()
     self.xray_structure.show_summary()
-    phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+    phil2 = mmtbx.programs.fmodel.master_phil
     params2 = phil2.extract()
     # adjust the cutoff of the generated intensities to assure that
     # statistics will be reported to the desired high-resolution limit

@@ -1393,8 +1393,9 @@ Use keyword 'xray_data.unit_cell' to specify unit_cell
     from libtbx import easy_pickle
     easy_pickle.dump(data_file_name, raw_data)
   if (params.scaling.input.parameters.reporting.loggraphs):
-    graph_out = mmtbx.scaling.loggraph_output(output_file)
-    xtriage_results.show(out=graph_out)
+    with open(params.scaling.input.parameters.reporting.log, 'a') as output_file:
+      graph_out = mmtbx.scaling.loggraph_output(output_file)
+      xtriage_results.show(out=graph_out)
   return xtriage_results
 
 def change_symmetry(miller_array, space_group_symbol, file_name=None,

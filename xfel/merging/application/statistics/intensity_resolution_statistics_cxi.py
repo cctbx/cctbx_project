@@ -347,7 +347,7 @@ class intensity_resolution_statistics_cxi(worker):
 
   def r1_factor(self, this, other, scale_factor=None, assume_index_matching=False,
                   use_binning=False):
-      """Get the R1 factor according to this formula
+      r"""Get the R1 factor according to this formula
 
       .. math::
          R1 = \dfrac{\sum{||F| - k|F'||}}{\sum{|F|}}

@@ -145,6 +145,7 @@ class diffBragg: public nanoBragg{
   double* floatimage_roi;
   af::flex_double raw_pixels_roi;
   af::flex_double ave_wavelength_img();
+  boost::python::tuple ave_hkl_img();
   int Npix_total, Npix_to_model;
   void diffBragg_list_steps(step_arrays& db_steps);
 

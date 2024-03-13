@@ -138,7 +138,7 @@ def exercise():
       comp_comp_id = srv.get_comp_comp_id_direct(row["_chem_comp.id"])
       if (is_standard_aa):
         assert comp_comp_id is not None
-        assert comp_comp_id.chem_comp.group.strip() == "L-peptide"
+        assert comp_comp_id.chem_comp.group.strip() == "L-peptide", '%s %s' % (row["_chem_comp.id"], comp_comp_id.chem_comp.group)
       if (comp_comp_id is not None):
         print(comp_comp_id.chem_comp.id.strip(), end=' ')
         print(comp_comp_id.chem_comp.name.strip(), end=' ')

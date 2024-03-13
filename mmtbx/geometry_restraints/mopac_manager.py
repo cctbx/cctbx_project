@@ -171,20 +171,14 @@ class mopac_manager(base_qm_manager.base_qm_manager):
     f=open(filename, 'r')
     lines=f.read()
     del f
-    '''FINAL HEAT OF FORMATION =       -132.17152 KCAL/MOL =    -553.00562 KJ/MOL
-
-
-
-
-
-          TOTAL ENERGY            =      -1356.82771 EV'''
+    # FINAL HEAT OF FORMATION =       -132.17152 KCAL/MOL =    -553.00562 KJ/MOL
     for line in lines.splitlines():
       if line.find('FINAL HEAT OF FORMATION = ')>-1:
         self.energy = float(line.split()[5])
-        self.units = line.split()[6]
-      if line.find('TOTAL ENERGY            =')>-1:
-        self.energy = float(line.split()[3])
-        self.units = line.split()[4]
+        self.units = line.split()[6].lower()
+      # if line.find('TOTAL ENERGY            =')>-1:
+      #   self.energy = float(line.split()[3])
+      #   self.units = line.split()[4]
     return self.energy, self.units
 
   def cleanup(self, level=None, verbose=False):

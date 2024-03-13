@@ -2,7 +2,7 @@
 #include <boost/python/def.hpp>
 
 #include <boost_adaptbx/python_streambuf.h>
-#include <boost/timer.hpp>
+#include <boost/timer/timer.hpp>
 #include <fstream>
 
 namespace boost_adaptbx { namespace python { namespace {
@@ -104,14 +104,14 @@ namespace boost_adaptbx { namespace python { namespace {
   }
 
   void time_read(char const *path, streambuf& input) {
-    boost::timer t;
+    boost::timer::auto_cpu_timer t;
     streambuf::istream is(input);
     work_for_time_read(is);
-    double py_t = t.elapsed();
+    double py_t = t.elapsed().wall;
     std::ifstream std_is(path);
-    t.restart();
+    t.start();
     work_for_time_read(std_is);
-    double py_cpp = t.elapsed();
+    double py_cpp = t.elapsed().wall;
     std::cout << "- Reading -\nPython adaptor: " << py_t;
     std::cout << "\nPure C++: " << py_cpp;
     if (py_t > py_cpp) {
@@ -121,14 +121,14 @@ namespace boost_adaptbx { namespace python { namespace {
   }
 
   void time_write(char const *path, streambuf& output) {
-    boost::timer t;
+    boost::timer::auto_cpu_timer t;
     streambuf::ostream os(output);
     work_for_time_write(os);
-    double py_t = t.elapsed();
+    double py_t = t.elapsed().wall;
     std::ofstream std_os(path);
-    t.restart();
+    t.start();
     work_for_time_write(std_os);
-    double py_cpp = t.elapsed();
+    double py_cpp = t.elapsed().wall;
     std::cout << "- Writing -\nPython adaptor: " << py_t;
     std::cout << "\nPure C++: " << py_cpp;
     if (py_t > py_cpp) {

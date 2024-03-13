@@ -83,7 +83,7 @@ model = mmm.model()          #  get the model, origin matching the map_manager
 <p>If you write out either one then they will be written out in their original locations.</p>
 
 <pre class="codeDL"><code>dm.write_real_map_file(mm,filename="my_map_original_location.mrc")    # write map
-dm.write_model_file(model,filename="my_model_original_location", extension="pdb") # model
+dm.write_model_file(model,filename="my_model_original_location", format="pdb") # model
 </code></pre>
 
 <!----------------------------------------------------------------------------->
@@ -102,7 +102,7 @@ dm.write_model_file(model,filename="my_model_original_location", extension="pdb"
      filename="box_around_219-223.mrc")               # write the map out
 #
 dm.write_model_file(box_mmm.model(),                  # get the boxed model
-      filename="box_around_219-223", extension="pdb") # write out boxed model
+      filename="box_around_219-223", format="pdb") # write out boxed model
 </code></pre>
 
 <p>If you have a look at the map and model in box_around_219-223.mrc and box_around_219-223.pdb you will see that the map and model are only parts of the map and model that were in the original model.pdb and map.mrc that we started with.</p>

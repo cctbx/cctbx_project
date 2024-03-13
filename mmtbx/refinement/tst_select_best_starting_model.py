@@ -92,7 +92,6 @@ END
   params = """
     high_resolution = 1.75
     add_sigmas = True
-    pdb_file = tst_start_model_base.pdb
     output {
       label = F
       type = *real complex
@@ -102,7 +101,7 @@ END
   with open("tst_start_model_fmodel.eff", "w") as f:
     f.write(params)
   assert (easy_run.fully_buffered(
-    "phenix.fmodel tst_start_model_fmodel.eff"
+    "phenix.fmodel tst_start_model_base.pdb tst_start_model_fmodel.eff"
   ).raise_if_errors().return_code == 0)
   mtz_in = file_reader.any_file("tst_start_model_base.mtz")
   f_obs = mtz_in.file_server.miller_arrays[0]

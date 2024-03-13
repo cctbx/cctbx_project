@@ -60,7 +60,7 @@ class _():
 
     # this should be equivalent to column matrix of real space vectors
     a,b,c = crystal_reference.get_real_space_vectors()
-    assert sqr(a+b+c).transpose()==A
+    assert np.allclose(sqr(a+b+c).transpose().elems , A.elems)
 
     # get the originally set mosaic blocks
     mos_blocks = self.get_mosaic_blocks()[:orig_mos_domains]

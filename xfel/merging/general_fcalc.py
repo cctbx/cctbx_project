@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import mmtbx.command_line.fmodel
+import mmtbx.programs.fmodel
 import mmtbx.utils
 import iotbx.pdb
 import libtbx.phil.command_line
@@ -27,7 +27,7 @@ def run (params) :
   pdb_in = iotbx.pdb.input(params.model)
   xray_structure = pdb_in.xray_structure_simple()
   xray_structure.show_summary()
-  phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+  phil2 = mmtbx.programs.fmodel.master_phil
   params2 = phil2.extract()
   # adjust the cutoff of the generated intensities to assure that
   # statistics will be reported to the desired high-resolution limit
@@ -93,7 +93,7 @@ def random_structure (params) :
     elements=elements,
     min_distance=1.2)
   xs.show_summary()
-  phil2 = mmtbx.command_line.fmodel.fmodel_from_xray_structure_master_params
+  phil2 = mmtbx.programs.fmodel.master_phil
   params2 = phil2.extract()
   # adjust the cutoff of the generated intensities to assure that
   # statistics will be reported to the desired high-resolution limit

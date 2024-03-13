@@ -160,18 +160,17 @@ END
     high_resolution = 1.75
     r_free_flags_fraction = 0.1
     add_sigmas = True
-    pdb_file = %s
     random_seed = 12345
     output {
       label = F
       type = *real complex
       file_name = %s
     }
-  """ % (pdb_in, mtz_in)
+  """ % mtz_in
   with open("%s_fmodel.eff" % prefix, "w") as f:
     f.write(params)
   assert (easy_run.fully_buffered(
-      "phenix.fmodel %s_fmodel.eff" % prefix
+      "phenix.fmodel %s %s_fmodel.eff" % (pdb_in, prefix)
     ).raise_if_errors().return_code == 0)
   return pdb_in, mtz_in
 

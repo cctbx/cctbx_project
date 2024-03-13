@@ -221,6 +221,7 @@ class place_hydrogens():
     p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.automatic_linking.link_metals = True
+    p.pdb_interpretation.automatic_linking.link_residues = True
 
     t0 = time.time()
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
@@ -327,6 +328,9 @@ class place_hydrogens():
 #        crystal_symmetry  = self.model.crystal_symmetry(),
 #        restraint_objects = ro,
 #        log               = null_out())
+
+    if not self.exclude_water:
+      self.model.add_hydrogens(1., occupancy=0.)
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 

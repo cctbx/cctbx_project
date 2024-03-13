@@ -668,7 +668,8 @@ def calculate_fsc(**kw):
 
     if remove_anisotropy_before_analysis and aniso_scale_factor_as_u_cart:
       rms_fo_values = len(direction_vectors) * [None]
-    elif direction_vectors and direction_vectors[0] != None:
+    elif (direction_vectors and direction_vectors[0] != None) and (
+        aniso_scale_factor_array is not None):
       # Let's fit rms fo in just this shell
       rms_fo_values = get_rms_fo_values(
        fo = fo,
@@ -686,7 +687,8 @@ def calculate_fsc(**kw):
       if dv:
         weights_para_sel = weights_para.select(sel)
         weights_para_sel_sqrt = flex.sqrt(weights_para_sel)
-        if remove_anisotropy_before_analysis and aniso_scale_factor_as_u_cart:
+        if remove_anisotropy_before_analysis and aniso_scale_factor_as_u_cart\
+            and aniso_scale_factor_array and aniso_scale_factor_array.data():
           scale_sel = aniso_scale_factor_array.data().select(sel)
         else:
           scale_sel = None

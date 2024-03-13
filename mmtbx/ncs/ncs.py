@@ -3875,13 +3875,19 @@ class ncs:
   def shift_back_cart(self):
     return tuple([-a for a in self.shift_cart()])
 
-  def as_ncs_spec_string(self):
+  def as_ncs_spec_string(self, format = 'ncs_spec'):
     '''
      shifts to original location and returns text string
     '''
+    assert format in ['ncs_spec','phil']
     shifted_ncs=self.coordinate_offset(coordinate_offset=self.shift_back_cart())
-    return shifted_ncs.format_all_for_group_specification(
+    if format == 'ncs_spec':
+      return shifted_ncs.format_all_for_group_specification(
          log=null_out(),quiet=True,out=null_out())
+    elif format == 'phil':
+      return shifted_ncs.format_all_for_phenix_refine(
+         quiet=True,out=null_out())
+
 
   def format_all_for_group_specification(self,log=None,quiet=True,out=None,
        file_name=None):

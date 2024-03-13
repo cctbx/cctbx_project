@@ -406,7 +406,7 @@ TER
 '''
 
 
-test_ncs_spec = '''\
+test_ncs_spec = r'''\
 
 Summary of NCS information
 Fri Jun 13 13:18:12 2014

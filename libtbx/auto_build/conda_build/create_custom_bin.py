@@ -58,6 +58,16 @@ def copy_bin(prefix, custom_bin, packages=[]):
           if sys.platform == 'win32':
             print(f'Copying {prefix/bin_file} to {new_prefix/bin_name}')
             copy(prefix/bin_file, new_prefix/bin_name)
+            if (new_prefix/bin_name).suffix == '.bat':
+              print(f'Fixing LIBTBX_PREFIX in {new_prefix/bin_name}')
+              with open(new_prefix/bin_name, 'r') as f:
+                lines = f.readlines()
+              with open(new_prefix/bin_name, 'w') as f:
+                for line in lines:
+                  line = line.strip()
+                  if 'dp0' in line:  # make path relative to original location
+                    line += '\\..\\Library\\bin'
+                  f.write(line)
           else:
             print(f'Linking {prefix/bin_file} to {new_prefix/bin_name}')
             os.symlink(prefix/bin_file, new_prefix/bin_name)

@@ -2386,19 +2386,30 @@ pdb_interpretation.geometry_restraints.edits {
     atom_selection_2 = chain N and resname O and name NE
   }
   bond {
-    distance_ideal = -1
-  }
-  bond {
     distance_ideal = 2
+  }
+}"""
+  bad_edits = """\
+pdb_interpretation.geometry_restraints.edits {
+  bond {
+    distance_ideal = -1
   }
   bond {
     distance_ideal = 2
     sigma = -1
   }
-}"""
+}
+"""
   gm_phil = iotbx.phil.parse(
       monomer_library.pdb_interpretation.grand_master_phil_str,
       process_includes=True)
+  edits_phil = iotbx.phil.parse(edits+bad_edits)
+  try:
+    working_phil = gm_phil.fetch(edits_phil)
+  except RuntimeError as e:
+    assert str(e) == "geometry_restraints.edits.bond.distance_ideal element is less than the minimum allowed value: -1 < 0.001 (input line 25)", str(e)
+  else: raise Exception_expected
+
   edits_phil = iotbx.phil.parse(edits)
   working_phil = gm_phil.fetch(edits_phil)
   params = working_phil.extract()
@@ -2437,26 +2448,16 @@ pdb_interpretation.geometry_restraints.edits {
     Warning: Ignoring bond with distance_ideal = None:
       atom_selection_1 = None
       atom_selection_2 = "chain N and resname O and name NE"
-    Warning: Ignoring bond with distance_ideal < 0:
-      atom_selection_1 = None
-      atom_selection_2 = None
-      distance_ideal = -1
     Warning: Ignoring bond with sigma = None:
       atom_selection_1 = None
       atom_selection_2 = None
       distance_ideal = 2
-    Warning: Ignoring bond with sigma <= 0:
-      atom_selection_1 = None
-      atom_selection_2 = None
-      distance_ideal = 2
-      sigma = -1
-      slack = 0
     Total number of added/changed bonds: 2"""
   log = log.getvalue().splitlines()
   found = 0
   for e in expected.splitlines():
     if(e in log): found += 1
-  assert found > 39, found
+  assert found > 29, found
 
 def exercise_allow_polymer_cross_special_position(mon_lib_srv, ener_lib):
   raw_records = """\

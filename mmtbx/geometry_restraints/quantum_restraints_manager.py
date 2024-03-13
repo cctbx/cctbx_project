@@ -492,7 +492,9 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     specific_atom_charges=specific_atom_charges,
     log=log)
   if total_charge!=qmr.package.charge:
-    print(u'  Update charge %s ~> %s' % (qmr.package.charge, total_charge),
+    print(u'  Update charge for "%s" cluster : %s ~> %s' % (qmr.selection,
+                                                            qmr.package.charge,
+                                                            total_charge),
           file=log)
     qmr.package.charge=total_charge
   qmm = qmm(electron_model.get_atoms(),
@@ -969,7 +971,7 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
           key = (ligand_model.get_number_of_atoms(),
                  buffer_model.get_number_of_atoms())
           time_query = qmm.get_timings()
-          curve_fit_3d.load_and_display(key, time_query)
+          curve_fit_3d.load_and_display(qmm.program_goal, key, time_query, show=True)
       elif qmm.program_goal in ['energy', 'strain', 'bound']:
         energy=xyz
         units=xyz_buffer
@@ -1084,7 +1086,7 @@ def update_restraints(model,
   #
   assert objects
   if not objects: return None
-  working_dir = 'qm_work_dir'
+  working_dir = quantum_interface.get_working_directory(model, params)
   if not os.path.exists(working_dir):
     try: os.mkdir(working_dir)
     except Exception as e: pass
@@ -1159,7 +1161,7 @@ def update_restraints(model,
       write_pdb_file(buffer_model, '%s_cluster_final_%s.pdb' % (prefix, preamble), log)
       final_pdbs[-1].append('%s_cluster_final_%s.pdb' % (prefix, preamble))
     if qmr.do_not_update_restraints:
-      print('  Skipping updating restaints')
+      print('  Skipping updating restaints %s %s' % (prefix, preamble), file=log)
       continue
     #
     # transfer geometry to proxies

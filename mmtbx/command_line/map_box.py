@@ -1123,7 +1123,7 @@ def run(args,
        gridding = params.output_unit_cell_grid)
     if mam.map_manager().ncs_object():
       # mam.map_manager().ncs_object().display_all()
-      from scitbx.array_family import flex
+
       mam.map_manager().ncs_object().set_shift_cart(
         mam.map_manager().shift_cart())
 
@@ -1197,7 +1197,8 @@ def run(args,
       box_crystal_symmetry = mam.map_manager().crystal_symmetry(),
       pdb_outside_box_msg = "",
       gridding_first = getattr(mam, 'gridding_first', (0, 0, 0)),
-      gridding_last = getattr(mam, 'gridding_last', mam.map_manager().map_data().all()),
+      gridding_last = getattr(mam,
+          'gridding_last', mam.map_manager().map_data().all()),
       solvent_content = params.solvent_content,
       origin_shift_grid_units = [
          -x for x in mam.map_manager().origin_shift_grid_units],
@@ -1207,7 +1208,8 @@ def run(args,
     map_manager = mam.map_manager()
     ncs_object = mam.map_manager().ncs_object()
     from iotbx.data_manager import DataManager
-    dm = DataManager(datatypes = ['model', 'ncs_spec', 'real_map', 'miller_array'])
+    dm = DataManager(datatypes = [
+       'model', 'ncs_spec', 'real_map', 'miller_array'])
     dm.set_overwrite(True)
 
     # Write PDB file
@@ -1215,9 +1217,10 @@ def run(args,
       if(params.output_file_name_prefix is None):
         filename = "%s_box"%output_prefix
       else: filename = "%s"%params.output_file_name_prefix
-      dm.write_model_file(model, filename = filename, extension = ".pdb")
+      full_filename = dm.write_model_file(
+        model, filename = filename, format = "pdb")
       print("Writing boxed PDB with box unit cell to %s" %(
-          "%s.pdb" %filename), file = log)
+          "%s" %full_filename), file = log)
 
     # Write NCS file if NCS
     if ncs_object and ncs_object.max_operators()>0:

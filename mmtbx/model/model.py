@@ -24,7 +24,7 @@ from iotbx.cif import category_sort_function
 from cctbx.array_family import flex
 from cctbx import xray
 from cctbx import adptbx
-from cctbx import geometry_restraints
+
 from cctbx import adp_restraints
 from cctbx import crystal
 from cctbx import uctbx
@@ -37,8 +37,8 @@ import mmtbx.monomer_library.server
 from mmtbx.geometry_restraints.torsion_restraints.utils import check_for_internal_chain_ter_records
 import mmtbx.tls.tools as tls_tools
 from mmtbx import ias
-from mmtbx import utils
-from mmtbx import ncs
+
+
 from mmtbx.ncs.ncs_utils import apply_transforms
 from mmtbx.command_line import find_tls_groups
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
@@ -1552,6 +1552,7 @@ class manager(object):
       hierarchy_to_output = hierarchy_to_output.deep_copy()
     if (self._shift_cart is not None) and (not do_not_shift_back):
       self._shift_back(hierarchy_to_output)
+    hierarchy_to_output.clear_label_asym_id_lookups()
     return hierarchy_to_output
 
   def can_be_output_as_pdb(self):
@@ -1682,6 +1683,93 @@ class manager(object):
       return False
     return True
 
+  def as_pdb_or_mmcif_string(self,
+       target_format = None,
+       segid_as_auth_segid = True,
+       remark_section = None,
+       **kw):
+    '''
+     Shortcut for pdb_or_mmcif_string_info with write_file=False, returning
+       only the string representing this hierarchy. The string may be in
+       PDB or mmCIF format, with target_format used if it is feasible.
+
+     Method to allow shifting from general writing as pdb to
+     writing as mmcif, with the change in two places (here and model.py)
+     Use default of segid_as_auth_segid=True here (different than
+       as_mmcif_string())
+     :param target_format: desired output format, pdb or mmcif
+     :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
+          in mmcif output
+     :param remark_section: if supplied and format is pdb, add this text
+     :param **kw:  any keywords suitable for as_pdb_string()
+        and as_mmcif_string()
+     :returns text string representing this hierarchy
+    '''
+
+    info = self.pdb_or_mmcif_string_info(
+       target_format = target_format,
+       segid_as_auth_segid = segid_as_auth_segid,
+       remark_section = remark_section,
+       write_file = False,
+       **kw)
+    return info.pdb_string
+
+  def pdb_or_mmcif_string_info(self,
+      target_filename = None,
+      target_format = None,
+      segid_as_auth_segid = True,
+      write_file = False,
+      data_manager = None,
+      overwrite = True,
+      remark_section = None,
+      **kw):
+    # Method to allow shifting from general writing as pdb
+    # to writing as mmcif, with the change in two places (here and hierarchy.py)
+
+    # NOTE: Normally use the data_manager to write any files and use
+    #  tools in the hierarchy to manipulate any aspects of a hierarchy.
+
+    #  If you need a pdb string, normally use as_pdb_or_mmcif_string
+    #   instead of this general function
+    #  Note default of segid_as_auth_segid = True, different from
+    #     as_mmcif_string()
+
+    if target_format in ['None',None]:  # set the default format here
+      target_format = 'pdb'
+    assert target_format in ['pdb','mmcif']
+
+    if target_format == 'pdb':
+      if self.get_hierarchy().fits_in_pdb_format():
+        pdb_str = self.model_as_pdb(**kw)
+        is_mmcif = False
+        if remark_section:
+          pdb_str = "%s\n%s" %(remark_section, pdb_str)
+      else:
+        pdb_str = self.model_as_mmcif(
+          segid_as_auth_segid = segid_as_auth_segid,**kw)
+        is_mmcif = True
+    else:
+      pdb_str = self.model_as_mmcif(segid_as_auth_segid = segid_as_auth_segid,**kw)
+      is_mmcif = True
+    if target_filename:
+      import os
+      path,ext = os.path.splitext(target_filename)
+      if is_mmcif:
+        ext = ".cif"
+      else:
+        ext = ".pdb"
+      target_filename = "%s%s" %(path,ext)
+    if write_file and target_filename:
+      if not data_manager:
+        from iotbx.data_manager import DataManager
+        data_manager = DataManager()
+      target_filename = data_manager.write_model_file(pdb_str, target_filename,
+        overwrite = overwrite)
+    return group_args(group_args_type = 'pdb_string and filename',
+      pdb_string = pdb_str,
+      file_name = target_filename,
+      is_mmcif = is_mmcif)
+
   def model_as_mmcif(self,
       cif_block_name = "default",
       output_cs = True,
@@ -1785,7 +1873,7 @@ class manager(object):
     cif_block.sort(key=category_sort_function)
     cif[cif_block_name] = cif_block
 
-    if not skip_restraints:
+    if not skip_restraints and self.restraints_manager_available():
       restraints = self.extract_restraints_as_cif_blocks()
       cif.update(restraints)
 
@@ -3236,7 +3324,9 @@ class manager(object):
       b_isos                      = bs)
 
   def deep_copy(self):
-    return self.select(selection = flex.bool(self.size(), True))
+    new_model = self.select(selection = flex.bool(self.size(), True))
+    new_model.set_ss_annotation(self.get_ss_annotation())
+    return new_model
 
   def add_ias(self, fmodel=None, ias_params=None, file_name=None,
                                                              build_only=False):

@@ -822,9 +822,11 @@ boost::python::tuple OptimizerC::OptimizeSingleMoverFine(boost::python::object c
   molprobity::reduce::PositionReturn coarse =
     boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("CoarsePositions")());
 
-  double initialScore = m_highScores[mover.ptr()];
-  double maxScore = initialScore;
+  // Because other Movers in our clique may have been adjusted since we did coarse optimization,
+  // we need to recompute the score at our current position.
   unsigned coarseLoc = m_coarseLocations[mover.ptr()];
+  double initialScore = scorePosition(coarse, coarseLoc, 0);
+  double maxScore = initialScore;
   molprobity::reduce::PositionReturn fine =
     boost::python::extract<molprobity::reduce::PositionReturn>(mover.attr("FinePositions")(coarseLoc));
   if (fine.positions.size() > 0) {

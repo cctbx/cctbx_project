@@ -217,7 +217,10 @@ options are {options}.\
     self.load_custom_phil_extract = 'load_%s_phil_extract'
 
     # dynamically construct master PHIL string
-    self.master_phil_str = 'data_manager {\n'
+    self.master_phil_str = '''\
+data_manager
+  .style = noauto
+{'''
     for datatype in self.datatypes:
 
       # check if a datatype has a custom PHIL str

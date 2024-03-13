@@ -22,7 +22,7 @@ from iotbx import pdb
 import mmtbx_probe_ext as probe
 import traceback
 from mmtbx.probe.Helpers import rvec3, lvec3, dihedralChoicesForRotatableHydrogens
-from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir
+from mmtbx_reduce_ext import RotateAtomDegreesAroundAxisDir, FindPosesFor
 
 ##################################################################################
 # This is a set of classes that implement Reduce's "Movers".  These are sets of
@@ -313,14 +313,7 @@ class _MoverRotator(object):
        positions of all atoms when rotated about the axis by the associated angle.
        There is one entry in the list for each angle.
     """
-    # @todo Turn this into a flex array of flex arrays rather than a list of flex arrays.
-    poses = []
-    for agl in angles:
-      atoms = flex.vec3_double()
-      for atm in self._atoms:
-        atoms.append(RotateAtomDegreesAroundAxisDir(self._axis[0], self._axis[1], atm, agl))
-      poses.append(atoms)
-    return poses;
+    return FindPosesFor(angles, self._atoms, self._axis[0], self._axis[1])
 
   def _computeCoarsePositions(self):
     return PositionReturn(self._atoms,

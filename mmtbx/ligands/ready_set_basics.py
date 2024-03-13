@@ -69,9 +69,9 @@ def get_hierarchy_atom(name, element, xyz, occ=1., b=20.):
   atom.segid = ' '*4
   return atom
 
-def get_hierarchy_h_atom(name, xyz, heavy_atom):
+def get_hierarchy_h_atom(name, xyz, heavy_atom, proton_element='H'):
   return get_hierarchy_atom(name,
-                            'H',
+                            proton_element,
                             xyz,
                             heavy_atom.occ,
                             heavy_atom.b,

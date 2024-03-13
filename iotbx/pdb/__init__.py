@@ -568,13 +568,15 @@ class combine_unique_pdb_files(object):
     self.md5_registry = {}
     self.unique_file_names = []
     self.raw_records = []
+    self.raw_text_block_list = []
     for file_name in file_names:
       if (file_name in self.file_name_registry):
         self.file_name_registry[file_name] += 1
       else:
         self.file_name_registry[file_name] = 1
         with smart_open.for_reading(file_name=file_name) as f:
-          r = [s.expandtabs().rstrip() for s in f.read().splitlines()]
+          text = f.read()
+          r = [s.expandtabs().rstrip() for s in text.splitlines()]
         m = hashlib_md5()
         m.update(to_bytes("\n".join(r), codec='utf8'))
         m = m.hexdigest()
@@ -585,6 +587,7 @@ class combine_unique_pdb_files(object):
           self.md5_registry[m] = [file_name]
           self.unique_file_names.append(file_name)
           self.raw_records.extend(r)
+          self.raw_text_block_list.append(text)
 
   def report_non_unique(self, out=None, prefix=""):
     if (out is None): out = sys.stdout
@@ -1353,7 +1356,7 @@ class _():
       chain_ids        = chain_ids)
 
   def extract_f_model_core_constants(self):
-    import iotbx.pdb.remark_3_interpretation
+
     remark_3_records = self.extract_remark_iii_records(3)
     return remark_3_interpretation.extract_f_model_core_constants(remark_3_records)
 

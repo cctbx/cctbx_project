@@ -48,7 +48,7 @@ from __future__ import absolute_import, division, print_function
 #
 
 from libtbx.utils import Sorry
-import libtbx.phil
+
 from libtbx import adopt_init_args
 import sys
 from iotbx.pdb.hybrid_36 import hy36encode, hy36decode
@@ -358,8 +358,11 @@ class structure_base(object):
   def as_pdb_str(self):
     return None
 
+  def as_pdb_or_mmcif_str(self):
+    return None
+
   def __str__(self):
-    return self.as_pdb_str()
+    return self.as_pdb_or_mmcif_str()
 
   @staticmethod
   def convert_resseq(resseq):
@@ -495,6 +498,35 @@ class structure_base(object):
             return True
     return False
 
+  def _change_residue_numbering_in_place_helper(self, renumbering_dictionary, se=["start", "end"]):
+    """ Changes residue numbers and insertion codes in annotations.
+    For cases where one needs to renumber hierarchy and keep annotations
+    consisten with the new numbering.
+    Not for cases where residues removed or added.
+    Therefore residue name stays the same.
+
+    Called from derived classes.
+
+    Args:
+        renumbering_dictionary (_type_): data structure to match old and new numbering:
+        {'chain id':
+          {(old resseq, icode):(new resseq, icode)}
+        }
+        se: labels for start and end. Also can be ["cur", "prev"] in sheet registrations
+    """
+    for start_end in se:
+      chain_id_attr = "%s_chain_id" % start_end
+      resseq_attr  = "%s_resseq" % start_end
+      icode_attr = "%s_icode" % start_end
+      chain_dic = renumbering_dictionary.get(getattr(self, chain_id_attr), None)
+      if chain_dic is not None:
+          resseq, icode = getattr(self, resseq_attr), getattr(self, icode_attr)
+          new_resseq, new_icode = chain_dic.get((resseq, icode), (None, None))
+          if new_resseq is not None and new_icode is not None:
+              setattr(self, resseq_attr, new_resseq)
+              setattr(self, icode_attr, new_icode)
+
+
   def count_h_bonds(self,hierarchy=None,
        max_h_bond_length=None,ss_by_chain=False):
     "Count good and poor H-bonds in this hierarchy"
@@ -516,7 +548,7 @@ class structure_base(object):
     from mmtbx.secondary_structure.find_ss_from_ca import \
       find_secondary_structure
     fss=find_secondary_structure(hierarchy=ph,
-      user_annotation_text=self.as_pdb_str(),
+      user_annotation_text=self.as_pdb_or_mmcif_str(),
       force_secondary_structure_input=True,
       combine_annotations=False,
       ss_by_chain=ss_by_chain,
@@ -593,6 +625,7 @@ class structure_base(object):
       if ph.overall_counts().n_residues>0:
         return True
     return False
+
 
 
 class annotation(structure_base):
@@ -1067,6 +1100,24 @@ class annotation(structure_base):
         filtered_helices.append(h)
     self.helices = filtered_helices
 
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    """ Changes residue numbers and insertion codes in annotations.
+    For cases where one needs to renumber hierarchy and keep annotations
+    consisten with the new numbering.
+    Not for cases where residues removed or added.
+    Therefore residue name stays the same.
+
+    Args:
+        renumbering_dictionary (_type_): data structure to match old and new numbering:
+        {'chain id':
+          {(old resseq, icode):(new resseq, icode)}
+        }
+    """
+    for h in self.helices:
+      h.change_residue_numbering_in_place(renumbering_dictionary)
+    for sh in self.sheets:
+      sh.change_residue_numbering_in_place(renumbering_dictionary)
+
   def as_cif_loops(self):
     """
     Returns list of loops needed to represent SS annotation. The first for
@@ -1194,6 +1245,30 @@ class annotation(structure_base):
       loops.append(struct_sheet_hbond_loop)
     return loops
 
+  def as_mmcif_str(self, data_block_name=None):
+    cif_object = iotbx.cif.model.cif()
+    if data_block_name is None:
+      data_block_name = "phenix"
+    cif_object[data_block_name] = self.as_cif_block()
+    from six.moves import cStringIO as StringIO
+    f = StringIO()
+    cif_object.show(out = f)
+    return f.getvalue()
+
+  def as_cif_block(self):
+    cif_block = iotbx.cif.model.block()
+    ss_cif_loops = self.as_cif_loops()
+    for loop in ss_cif_loops:
+      cif_block.add_loop(loop)
+    return cif_block
+
+  def fits_in_pdb_format(self):
+    for helix in self.helices :
+      if (not helix.fits_in_pdb_format()):  return False
+    for sheet in self.sheets :
+      if (not sheet.fits_in_pdb_format()):  return False
+    return True
+
   def as_pdb_str(self):
     records = []
     for helix in self.helices :
@@ -1201,6 +1276,13 @@ class annotation(structure_base):
     for sheet in self.sheets :
       records.append(sheet.as_pdb_str())
     return "\n".join(records)
+
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
 
   def as_restraint_groups(self, log=sys.stdout, prefix_scope="",
       add_segid=None):
@@ -1744,7 +1826,7 @@ class annotation(structure_base):
     def sort_strings(h):
       sorted=[]
       for x in h:
-        sorted.append(x.as_pdb_str(set_id_zero=True))
+        sorted.append(x.as_pdb_str(set_id_zero=True, force_format = True))
       sorted.sort()
       return sorted
 
@@ -2072,7 +2154,30 @@ class pdb_helix(structure_base):
     result['pdbx_PDB_helix_length'] = self.length
     return result
 
-  def as_pdb_str(self, set_id_zero=False):
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
+
+  def fits_in_pdb_format(self):
+    if len(self.start_resname.strip()) > 3: return False
+    if len(self.end_resname.strip()) > 3: return False
+    if len(self.start_chain_id.strip()) > 2: return False
+    if len(self.end_chain_id.strip()) > 2: return False
+    return True
+
+  def as_mmcif_str(self):
+    ann = annotation(helices = [self], sheets = [])
+    text = ann.as_mmcif_str()
+    return text
+
+  def as_pdb_str(self, set_id_zero=False, force_format = False):
+    if (not force_format) and (not self.fits_in_pdb_format()):
+      raise AssertionError(
+       "Helix does not fit in PDB format. "+
+       "Please fix code to use as_pdb_or_mmcif_str instead of as_pdb_str")
     def h_class_to_pdb_int(h_class):
       h_class_int = self.helix_class_to_int(h_class)
       if h_class_int == 0:
@@ -2157,6 +2262,10 @@ class pdb_helix(structure_base):
       if getattr(self,key,None) != getattr(other,key,None):
         return False
     return True
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary)
+
 
 #=============================================================================
 #       ad88888ba  88        88 88888888888 88888888888 888888888888
@@ -2260,6 +2369,9 @@ class pdb_strand(structure_base):
   def set_new_chain_ids(self, new_chain_id):
     self.start_chain_id = new_chain_id
     self.end_chain_id = new_chain_id
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary)
 
   def sense_as_cif(self):
     if self.sense == 0:
@@ -2448,6 +2560,9 @@ class pdb_strand_register(structure_base):
     sele_prev = sele_base % (self.prev_chain_id,segid_extra,
         resid_prev, self.prev_atom.strip())
     return sele_curr, sele_prev
+
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self._change_residue_numbering_in_place_helper(renumbering_dictionary, se=["cur", "prev"])
 
   def is_same_as(self,other=None):
 
@@ -2736,6 +2851,14 @@ class pdb_sheet(structure_base):
         self.renumber_strands()
         self.erase_hbond_list()
 
+  def change_residue_numbering_in_place(self, renumbering_dictionary):
+    self.erase_hbond_list()
+    for st in self.strands:
+      st.change_residue_numbering_in_place(renumbering_dictionary)
+    for reg in self.registrations:
+      if reg is not None:
+        reg.change_residue_numbering_in_place(renumbering_dictionary)
+
   def deep_copy(self):
     return copy.deepcopy(self)
 
@@ -2766,7 +2889,30 @@ class pdb_sheet(structure_base):
       return len(self.hbond_list)
     return 0
 
-  def as_pdb_str(self, strand_id=None, set_id_zero=False):
+  def as_pdb_or_mmcif_str(self, target_format = 'pdb'):
+    # Return str in target format if possible, otherwise in mmcif
+    if target_format == 'pdb' and self.fits_in_pdb_format():
+      return self.as_pdb_str()
+    else:
+      return self.as_mmcif_str()
+
+  def fits_in_pdb_format(self):
+    for strand in self.strands:
+      if len(strand.start_resname.strip()) > 3: return False
+      if len(strand.end_resname.strip()) > 3: return False
+      if len(strand.start_chain_id.strip()) > 2: return False
+      if len(strand.end_chain_id.strip()) > 2: return False
+    return True
+
+  def as_mmcif_str(self):
+    ann = annotation(helices = [], sheets = [self])
+    text = ann.as_mmcif_str()
+    return text
+
+  def as_pdb_str(self, strand_id=None, set_id_zero=False, force_format = False):
+    if (not force_format) and (not self.fits_in_pdb_format()):
+      raise AssertionError("Sheet does not fit in PDB format"+
+       "Please fix code to use as_pdb_or_mmcif_str instead of as_pdb_str")
     assert len(self.strands) == len(self.registrations)
     lines = []
     for strand, reg in zip(self.strands, self.registrations):

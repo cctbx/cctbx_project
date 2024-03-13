@@ -425,7 +425,7 @@ def process_predicted_model(
     # Apply this selection to full hierarchy
     asc1 = ph.atom_selection_cache()
     sel = asc1.selection(selection_string_2)
-    working_ph = ph.select(sel)
+    working_ph = ph.select(sel).deep_copy() # XXX for double selection
 
     if p.minimum_sequential_residues:  #
       # Remove any very short segments
@@ -440,7 +440,7 @@ def process_predicted_model(
         sel2 = asc1.selection(selection_to_remove)
         sel = ~ (~sel | sel2)
 
-    new_ph = ph.select(sel)
+    new_ph = ph.select(sel).deep_copy()
     n_after = new_ph.overall_counts().n_residues
     print("Total of %s of %s residues kept after B-factor filtering" %(
        n_after, n_before), file = log)
@@ -472,7 +472,7 @@ def process_predicted_model(
          )
 
     if not keep_all:
-      removed_ph = ph.select(~sel)
+      removed_ph = ph.select(~sel).deep_copy()
       from mmtbx.secondary_structure.find_ss_from_ca import model_info, \
          split_model
       remainder_sequence_str = ""

@@ -1,3 +1,17 @@
+2024.2
+======
+
+* Improved handling of writing models in mmCIF or PDB formats
+* Speedups to reduce2 and probe2
+
+2024.1
+======
+
+* Added checks to see if a model can be outupt in the PDB format
+* Added custom scattering factors support to fmodel
+* Reogranize fmodel PHIL
+* Fixed boost::timer deprecation
+
 2023.12
 =======
 

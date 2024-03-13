@@ -129,6 +129,14 @@ output {
   serial_format = "%03d"
     .type = str
     .help = Format for serial number
+ target_output_format = *None pdb mmcif
+   .type = choice
+   .help = Desired output format (if possible). Choices are None (\
+            try to use input format), pdb, mmcif.  If output model\
+             does not fit in pdb format, mmcif will be used. \
+             Default is pdb.
+   .short_caption = Desired output format
+
   overwrite = False
     .type = bool
     .help = Overwrite files when set to True
@@ -207,6 +215,7 @@ output {
     if self.data_manager is not None:
       self.data_manager.set_default_output_filename(
         self.get_default_output_filename())
+      self.set_target_output_format()
       try:
         self.data_manager.set_overwrite(self.params.output.overwrite)
       except AttributeError:
@@ -387,6 +396,156 @@ output {
     return self.get_data_phil_str(diff=diff) + self.get_program_phil_str(diff=diff)
 
   # ---------------------------------------------------------------------------
+  def set_target_output_format(self):
+    """ Try to set the desired output format if not set by user (pdb or mmcif)
+    """
+    assert self.data_manager is not None
+    if not hasattr(self.data_manager,'set_target_output_format'):
+      return # No models in this data_manager
+
+    from iotbx.pdb.utils import set_target_output_format_in_params
+    if hasattr(self.data_manager, 'get_default_model_name'):
+      file_name = self.data_manager.get_default_model_name()
+    else:
+      file_name = None
+    target_output_format = set_target_output_format_in_params(self.params,
+      file_name = file_name,
+      out = self.logger)
+    self.data_manager.set_target_output_format(target_output_format)
+
+
+  # ---------------------------------------------------------------------------
+  def _params_as_dict(self, params = None, base_name_list = None):
+    """ Split up a params object into a dict of each individual parameter name
+       as key and value as value. Add base name on to attribute name,
+       Recursively traverse the params object."""
+    if not params: params = self.params
+    if not base_name_list: base_name_list = []
+    params_dict = {}
+    for x in dir(params):
+      if x.startswith("__"): continue
+      v = getattr(params,x)
+      b = base_name_list + [x]
+      if isinstance(v,libtbx.phil.scope_extract):
+        self._update_params_dict(params_dict,
+             self._params_as_dict(v, base_name_list = b))
+      elif isinstance(v, libtbx.phil.scope_extract_list):
+        for vv in v:
+          if hasattr(vv,'__phil_name__'):
+            self._update_params_dict(params_dict,
+             self._params_as_dict(vv, base_name_list = b))
+          else:
+            params_dict[".".join(b)] = vv
+      else:
+        params_dict[".".join(b)] = v
+    return params_dict
+
+  def _update_params_dict(self, params_dict, other_params_dict):
+    for key in other_params_dict.keys():
+      if not key in params_dict:
+        params_dict[key] = other_params_dict[key]
+      else:
+        if not other_params_dict[key]:
+          pass
+        elif not params_dict[key]:
+          params_dict[key] = other_params_dict[key]
+        else:
+          if not isinstance(params_dict[key], list):
+            params_dict[key] = [ params_dict[key]]
+          if not isinstance(other_params_dict[key], list):
+            other_params_dict[key] = [ other_params_dict[key]]
+          params_dict[key] += other_params_dict[key]
+    return params_dict
+  def _fn_is_assigned(self, fn = None):
+    """ Determine if fn is assigned to some parameter"""
+    for x in list(self._params_as_dict().values()):
+      if fn == x:
+        return True
+      if isinstance(x, list) and fn in x:
+        return True
+    else:
+      return False
+
+
+  def get_parameter_value(self, parameter_name, base = None):
+    """ Get the full scope and the parameter from a parameter name.
+     Then get value of this parameter
+     For example:  autobuild.data -> (self.params.autobuild, 'data')
+     returns value of self.params.autobuild.data
+
+     parameter: parameter_name:  text parameter name in context of self.params
+     parameter: base: base scope path to add before parameter name
+     returns: value of self.params.parameter_name
+    """
+
+    scope, par = self._get_scope_and_parameter(parameter_name, base = base)
+    if not hasattr(scope, par):
+      print("The parameter %s does not exist" %(parameter_name),
+         file = self.logger)
+    return getattr(scope, par)
+
+  def _get_scope_and_parameter(self, parameter_name = None, base = None):
+    """ Get the full scope and the parameter from a parameter name.
+     For example:  autobuild.data -> (self.params.autobuild, 'data')
+    """
+    if base is None:
+      base = self.params
+    assert parameter_name is not None, "Missing parameter name"
+    spl = parameter_name.split(".")
+    name = spl[-1]
+    path = spl[:-1]
+    for p in path:
+      assert hasattr(base, p), "Missing scope: %s" %(p)
+      base = getattr(base, p)
+    return base, name
+
+  def assign_if_value_is_unique_and_unassigned(self,
+      parameter_name = None,
+      possible_values = None):
+    """ Method to assign a value to a parameter that has no value so far,
+      choosing value from a list of possible values, eliminating all values
+      that have been assigned to another parameter already.
+      Normally used like this in a Program template:
+
+      self.assign_if_value_is_unique_and_unassigned(
+        parameter_name = 'autobuild.data',
+        possible_values = self.data_manager.get_miller_array_names())
+
+      Raises Sorry if there are multiple possibilities.
+
+     parameter: parameter_name:  The name of the parameter in the context
+                                 of self.params (self.params.autobuild.data is
+                                 autobuild.data)
+     parameter: possible_values: Possible values of this parameter, usually from
+                                 the data_manager
+
+     sets: value of full parameter to a unique value if present
+     returns: None
+    """
+    v = self.get_parameter_value(parameter_name)
+
+    has_value = not (v in ['Auto',Auto, 'None',None])
+    if has_value:
+      return # nothing to do, already assigned value to this parameter
+
+    possibilities = []
+    for p in possible_values:
+      if p in ['Auto',Auto, 'None',None]:
+        continue  # not relevant
+      elif (not self._fn_is_assigned(p)): # not already assigned
+        possibilities.append(p)
+    if len(possibilities) == 1:
+      scope, par = self._get_scope_and_parameter(parameter_name)
+      setattr(scope, par, possibilities[0])
+    elif len(possibilities) < 1:
+      return # No unused possibilities for this parameter
+    else:
+      from libtbx.utils import Sorry
+      raise Sorry("Please set these parameters with keywords: (%s), " %(
+        " ".join(possibilities)) + "\nFor example, '%s=%s'" %(
+        parameter_name, possibilities[0]))
+  # ---------------------------------------------------------------------------
+
   def get_default_output_filename(self, prefix=Auto, suffix=Auto, serial=Auto,
     filename=Auto):
     '''

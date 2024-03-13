@@ -163,7 +163,8 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                keepExistingH = False
+                keepExistingH = False,
+                fillAtomDump = True
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
     it implements the machinery that finds and optimizes Movers.
@@ -222,6 +223,8 @@ class Optimizer(object):
     for each clique, as another master. These are useful for determining why the cliques are as
     they are.
     :param keepExistingH: If True, then existing Hydrogens will be kept and not removed.
+    :param fillAtomDump: If true, fill in the atomDump string with the atom information.
+    This can take a long time to do, so the caller may want to turn it off if they don't need it.
     """
 
     ################################################################################
@@ -547,7 +550,7 @@ class Optimizer(object):
         # Fix up the donor status for all of the atoms now that we've added the final explicit
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
-        atomDump = Helpers.writeAtomInfoToString(self._atoms, self._extraAtomInfo)
+        self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
 
         ################################################################################
         # Construct dot-sphere cache.
@@ -730,7 +733,9 @@ class Optimizer(object):
 
       #################################################################################
       # Dump information about all of the atoms in the model into a string.
-      self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
+      if fillAtomDump:
+        self._atomDump = Helpers.writeAtomInfoToString(myModel.atoms(), self._extraAtomInfo)
+        self._infoString += _ReportTiming(self._verbosity, "dump atom info to string")
 
       #################################################################################
       # Report the fraction of atoms that were calculated and the fraction that were cached.
@@ -746,6 +751,8 @@ class Optimizer(object):
       detail on this can be set by setting the verbosity parameter during Optimizer construction.
       :return: the information so far collected in the string.  Calling this method also clears
       the information, so that later calls will not repeat it.
+      If the object was constructed with fillAtomDump = False, then the atom dump will always be
+      empty.
     """
     ret = self._infoString
     self._infoString = ""
@@ -824,9 +831,9 @@ class Optimizer(object):
     """Produce a list of Movers for atoms in a pdb.hierarchy.conformer that has added Hydrogens.
     :param atoms: flex array of atoms to search.  This must have all Hydrogens needed by the
     Movers present in the structure already.
-    :param rotateableHydrogenIDs: List of sequence IDs that include those of single hydrogens
-    that are rotatable. It might include additional rotatable hydrogens (three bonded to the
-    same parent atom) or it might not.
+    :param rotatableHydrogenIDs: List of sequence IDs that include those of single hydrogens
+    that are rotatable. These are hydrogens that are the only one bound to their neighbor
+    and they are rotatable.
     :param bondedNeighborLists: A dictionary that contains an entry for each atom in the
     structure that the atom from the first parameter interacts with that lists all of the
     bonded atoms.  Can be obtained by calling mmtbx.probe.Helpers.getBondedNeighborLists().
@@ -859,7 +866,7 @@ class Optimizer(object):
     # construct the appropriate Mover.  The construction may fail because not all required
     # atoms are present (especially the Hydrogens).  If the construction succeeds, add the
     # Mover to the list of those to return.  When they fail, add the output to the information
-    # string.
+    # string. We check single-hydrogen rotators later.
 
     for a in atoms:
       # Find the stripped upper-case atom and residue names and the residue ID,
@@ -867,77 +874,6 @@ class Optimizer(object):
       aName = a.name.strip().upper()
       resName = a.parent().resname.strip().upper()
       resNameAndID = _ResNameAndID(a)
-
-      # See if we should construct a MoverSingleHydrogenRotator here.
-      # @todo This is placing on atoms C and N in CYS 352; and on HE2 and CA in SER 500 of 4z4d
-      if a.i_seq in rotatableHydrogenIDs:
-        try:
-          # Skip Hydrogens that are not bound to an atom that only has a single other
-          # atom bound to it -- we will handle those in other cases.
-          neighbor = bondedNeighborLists[a][0]
-          if len(bondedNeighborLists[neighbor]) == 2:
-
-            # Get the list of atoms that are bonded in a chain to the hydrogen. They
-            # cannot be either hydrogen-bond acceptors nor touches/clashes with this atom.
-            bonded = Helpers.getAtomsWithinNBonds(a, bondedNeighborLists, self._extraAtomInfo,
-                                                  self._probeRadius, self._bondedNeighborDepth, 3)
-
-            # Construct a list of nearby atoms that are potential acceptors and potential touches.
-            # The potential acceptors are also potential touches.
-            potentialAcceptors = []
-            potentialTouches = []
-
-            # Get the list of nearby atoms.  The center of the search is the atom that
-            # the Hydrogen is bound to and its radius is 4 (these values are pulled from
-            # the Reduce C++ code). We skip ones whose radius is inside the neighbor so
-            # that we don't count the hydrogen itself.
-            maxDist = 4.0
-            nearby = self._spatialQuery.neighbors(neighbor.xyz,
-                                                  self._extraAtomInfo.getMappingFor(neighbor).vdwRadius,
-                                                  maxDist)
-
-            # Check each nearby atom to see if its distance from the neighbor is within
-            # the sum of the hydrogen-bond length of the neighbor atom, the radius of
-            # a polar Hydrogen, and the radius of the nearby atom, indicating potential
-            # overlap.
-            # O-H & N-H bond len == 1.0, S-H bond len == 1.3
-            XHbondlen = 1.0
-            if neighbor.element == "S":
-              XHbondlen = 1.3
-            candidates = []
-            for n in nearby:
-              # We don't count bonded atoms.
-              if not n in bonded:
-                # We treat them all as potential touches/clashes.
-                potentialTouches.append(n)
-                d = (Helpers.rvec3(neighbor.xyz) - Helpers.rvec3(n.xyz)).length()
-                if d <= XHbondlen + self._extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
-                  candidates.append(n)
-
-            # See if each candidate atom is a potential acceptor or a flip partner from
-            # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
-            # We check the partner (N's for GLN And ASN, C's for HIS) because if it is the O or
-            # N atom, we will already be checking it as an acceptor now.
-            # In any case, it is a potential touch.
-            for c in candidates:
-              cName = c.name.strip().upper()
-              resName = c.parent().resname.strip().upper()
-              flipPartner = (
-                (cName == 'ND2' and resName == 'ASN') or
-                (cName == 'NE2' and resName == 'GLN') or
-                (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
-              acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
-              if acceptor or flipPartner:
-                potentialAcceptors.append(c)
-
-            self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
-                                                                  hParameters, potentialAcceptors,
-                                                                  potentialTouches))
-            self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
-              " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
-            self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
-        except Exception as e:
-          self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
 
       # See if we should construct a MoverNH3Rotator here.
       # Find any Nitrogen that has four total bonded neighbors, three of which are Hydrogens.
@@ -1160,6 +1096,95 @@ class Optimizer(object):
         except Exception as e:
           self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverHisFlip to "+resNameAndID+": "+str(e)+"\n")
 
+    # Make a dictionary looked up up by i_seq that returns the relevant atom. We use this to
+    # look up the single-hydrogen rotators. We only place atoms that are in our current model
+    # index and alternate.
+    atomDict = {}
+    for a in atoms:
+      atomDict[a.i_seq] = a
+
+    # Insert all single-hydrogen rotators, which we have a list of. Do this after we've
+    # done all of the other Movers so that any lock-down placements will have been done
+    # before we check.
+    for i in rotatableHydrogenIDs:
+      # Find out the associated atom
+      try:
+        a = atomDict[i]
+      except KeyError:
+        # This atom is not in our current model index or alternate, so skip it.
+        continue
+
+      aName = a.name.strip().upper()
+      resName = a.parent().resname.strip().upper()
+      resNameAndID = _ResNameAndID(a)
+      try:
+        # Skip Hydrogens that are not bound to an atom that only has a single other
+        # atom bound to it -- we will handle those in other cases.
+        neighbor = bondedNeighborLists[a][0]
+        if len(bondedNeighborLists[neighbor]) == 2:
+
+          # Get the list of atoms that are bonded in a chain to the hydrogen. They
+          # cannot be either hydrogen-bond acceptors nor touches/clashes with this atom.
+          bonded = Helpers.getAtomsWithinNBonds(a, bondedNeighborLists, self._extraAtomInfo,
+                                                self._probeRadius, self._bondedNeighborDepth, 3)
+
+          # Construct a list of nearby atoms that are potential acceptors and potential touches.
+          # The potential acceptors are also potential touches.
+          potentialAcceptors = []
+          potentialTouches = []
+
+          # Get the list of nearby atoms.  The center of the search is the atom that
+          # the Hydrogen is bound to and its radius is 4 (these values are pulled from
+          # the Reduce C++ code). We skip ones whose radius is inside the neighbor so
+          # that we don't count the hydrogen itself.
+          maxDist = 4.0
+          nearby = self._spatialQuery.neighbors(neighbor.xyz,
+                                                self._extraAtomInfo.getMappingFor(neighbor).vdwRadius,
+                                                maxDist)
+
+          # Check each nearby atom to see if its distance from the neighbor is within
+          # the sum of the hydrogen-bond length of the neighbor atom, the radius of
+          # a polar Hydrogen, and the radius of the nearby atom, indicating potential
+          # overlap.
+          # O-H & N-H bond len == 1.0, S-H bond len == 1.3
+          XHbondlen = 1.0
+          if neighbor.element == "S":
+            XHbondlen = 1.3
+          candidates = []
+          for n in nearby:
+            # We don't count bonded atoms.
+            if not n in bonded:
+              # We treat them all as potential touches/clashes.
+              potentialTouches.append(n)
+              d = (Helpers.rvec3(neighbor.xyz) - Helpers.rvec3(n.xyz)).length()
+              if d <= XHbondlen + self._extraAtomInfo.getMappingFor(n).vdwRadius + polarHydrogenRadius:
+                candidates.append(n)
+
+          # See if each candidate atom is a potential acceptor or a flip partner from
+          # Histidine or NH2 flips (which may be moved into that atom's position during a flip).
+          # We check the partner (N's for GLN And ASN, C's for HIS) because if it is the O or
+          # N atom, we will already be checking it as an acceptor now.
+          # In any case, it is a potential touch.
+          for c in candidates:
+            cName = c.name.strip().upper()
+            resName = c.parent().resname.strip().upper()
+            flipPartner = (
+              (cName == 'ND2' and resName == 'ASN') or
+              (cName == 'NE2' and resName == 'GLN') or
+              (cName == 'CE1' and resName == 'HIS') or (cName == 'CD2' and resName == 'HIS') )
+            acceptor = self._extraAtomInfo.getMappingFor(c).isAcceptor
+            if acceptor or flipPartner:
+              potentialAcceptors.append(c)
+
+          self._movers.append(Movers.MoverSingleHydrogenRotator(a, bondedNeighborLists, self._extraAtomInfo,
+                                                                hParameters, potentialAcceptors,
+                                                                potentialTouches))
+          self._infoString += _VerboseCheck(self._verbosity, 1,"Added MoverSingleHydrogenRotator "+str(len(self._movers))+" to "+resNameAndID+" "+aName+
+            " with "+str(len(potentialAcceptors))+" potential nearby acceptors\n")
+          self._moverInfo[self._movers[-1]] = "SingleHydrogenRotator at "+resNameAndID+" "+aName;
+      except Exception as e:
+        self._infoString += _VerboseCheck(self._verbosity, 0,"Could not add MoverSingleHydrogenRotator to "+resNameAndID+" "+aName+": "+str(e)+"\n")
+
     return deleteAtoms
 
 
@@ -1316,7 +1341,7 @@ def _subsetGraph(g, keepLabels):
 
 # Class to pass default Probe parameters as if they were in a probePhil structure
 class _philLike:
-  def __init__(self, useImplicitHydrogenDistances = False):
+  def __init__(self):
     self.probe_radius = 0.25
     self.density = 16.0
     self.worse_clash_cutoff = 0.5
@@ -1328,7 +1353,6 @@ class _philLike:
     self.hydrogen_bond_weight = 4.0
     self.gap_weight = 0.25
     self.allow_weak_hydrogen_bonds = False
-    self.implicit_hydrogens = useImplicitHydrogenDistances
     self.ignore_ion_interactions = False
     self.set_polar_hydrogen_radius = True
     self.excluded_bond_chain_length = 4
@@ -1360,7 +1384,7 @@ def _optimizeFragment(pdb_raw, bondedNeighborDepth = 4):
   model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Optimization will place the movers.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   return Optimizer(probePhil, True, model, bondedNeighborDepth=bondedNeighborDepth)
 
 def Test(inFileName = None, dumpAtoms = False):
@@ -1704,7 +1728,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False, probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1727,7 +1751,7 @@ END
   # Optimization will place the movers, which should be none because the Histidine flip
   # will be constrained by the ionic bonds. There is a rotatable hydrogen placed at the
   # terminus, but no Flip Mover.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   opt = Optimizer(probePhil, True, model)
   movers = opt._movers
   if len(movers) != 1:
@@ -1828,7 +1852,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1842,7 +1866,7 @@ END
   # Make sure that the orientation for all of the movers is correct.
   # Test with each type of optimizer, from the base to the more derived, so
   # that we find out about failures on the base classes first.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
 
   global _DoCliqueOptimizationInC
 
@@ -1932,7 +1956,7 @@ END
   bondedNeighborLists = Helpers.getBondedNeighborLists(atoms, bondProxies)
 
   # Get the probeExt.ExtraAtomInfo needed to determine which atoms are potential acceptors.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   ret = Helpers.getExtraAtomInfo(model = model, bondedNeighborLists = bondedNeighborLists,
       useNeutronDistances=False,probePhil=probePhil)
   extra = ret.extraAtomInfo
@@ -1944,7 +1968,7 @@ END
 
   # Optimization will place the movers. Make sure we got as many as we expected.
   # Make sure that the orientation for all of the movers is correct.
-  probePhil = _philLike(False)
+  probePhil = _philLike()
   opt = Optimizer(probePhil, True, model, modelIndex = 0, altID = None,
                 bondedNeighborDepth = 4,
                 useNeutronDistances = False,

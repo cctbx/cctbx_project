@@ -36,13 +36,20 @@ def copy_cmd(src, dst, link):
   -------
     Nothing
   """
-  if link:
-    os.symlink(src, dst)
+  if not os.path.exists(src):
+    print('  {src} does not exist, skipping'.format(src=src))
+  elif os.path.exists(dst):
+    print('  {dst} already exists'.format(dst=dst))
   else:
-    if os.path.isdir(src):
-      copytree(src, dst, ignore=ignore_patterns('.git*', '.svn*'))
+    print('  source:      ' + src)
+    print('  destination: ' + dst)
+    if link:
+      os.symlink(src, dst)
     else:
-      copy(src, dst)
+      if os.path.isdir(src):
+        copytree(src, dst, ignore=ignore_patterns('.git*', '.svn*'))
+      else:
+        copy(src, dst)
 
 # =============================================================================
 def remove_cmd(src):
@@ -143,12 +150,7 @@ def copy_build(env, prefix=None, ext_dir=None, sp_dir=None, copy_egg=False, link
         print('  {src} does not exist'.format(src=src))
         continue
       dst = os.path.join(dst_path, src_file)
-      if os.path.exists(dst):
-        print('  {dst} already exists'.format(dst=dst))
-      else:
-        print('  source:      ' + src)
-        print('  destination: ' + dst)
-        copy_cmd(src, dst, link)
+      copy_cmd(src, dst, link)
     print('Done')
     print()
   # ---------------------------------------------------------------------------
@@ -262,28 +264,20 @@ def copy_modules(env, sp_dir=None, link=False):
           if module == 'boost' and src.endswith('boost'):
             continue
           # copy subdirectories for some modules
-          elif module == 'phenix':
-            for subdir in ['phenix', 'wxGUI2']:
-              src = abs(dist_path / subdir)
+          elif module in ['phenix', 'phaser_voyager']:
+            if module == 'phenix':
+              src_root = dist_path
+              subdirs = ['phenix', 'wxGUI2']
+            elif module == 'phaser_voyager':
+              src_root = dist_path / 'src'
+              subdirs = ['New_Voyager', 'Voyager']
+            for subdir in subdirs:
+              src = abs(src_root / subdir)
               dst = os.path.join(sp_dir, subdir)
-              if os.path.exists(dst):
-                print('  {dst} already exists'.format(dst=dst))
-                continue
-              if os.path.isdir(src):
-                print('  source:      ' + src)
-                print('  destination: ' + dst)
-                copy_cmd(src, dst, link)
-              else:
-                print('  Nothing done')
-                continue
+              copy_cmd(src, dst, link)
               # phenix/wxGUI2 is also an expected path (fix upstream)
               if subdir == 'wxGUI2':
                 dst = os.path.join(sp_dir, 'phenix', subdir)
-                print('  source:      ' + src)
-                print('  destination: ' + dst)
-                if os.path.exists(dst):
-                  print('  {dst} already exists'.format(dst=dst))
-                  continue
                 copy_cmd(src, dst, link)
             continue
           elif module in ['elbow', 'phaser', 'phasertng', 'PyQuante']:
@@ -292,26 +286,14 @@ def copy_modules(env, sp_dir=None, link=False):
               for m in ['yacc.py', 'resources']:
                 src = abs(dist_path / m)
                 dst = os.path.join(sp_dir, m)
-                print('  source:      ' + src)
-                print('  destination: ' + dst)
                 copy_cmd(src, dst, link)
             src = abs(dist_path / module)
           dst = os.path.join(sp_dir, os.path.basename(src))
-          if os.path.exists(dst):
-            print('  {dst} already exists'.format(dst=dst))
-            continue
-          if os.path.isdir(src):
-            print('  source:      ' + src)
-            print('  destination: ' + dst)
-            copy_cmd(src, dst, link)
-          else:
-            print('  Nothing done')
+          copy_cmd(src, dst, link)
           if module == 'tntbx':
             for f in ['__init__.py', 'eigensystem.py']:
               src = abs(dist_path / module / f)
               dst = os.path.join(sp_dir, module, f)
-              print('  source:      ' + src)
-              print('  destination: ' + dst)
               copy_cmd(src, dst, link)
     except KeyError:
       print(dist_path)
@@ -463,7 +445,10 @@ by the LIBTBX_BUILD environment variable''')
     for module_name, extra_stuff in [
       ('elbow', 'yacc.py'),
       ('elbow', 'resources'),
-      ('phenix', 'wxGUI2')]:
+      ('phenix', 'wxGUI2'),
+      ('phaser_voyager', 'New_Voyager'),
+      ('phaser_voyager', 'Voyager'),
+      ]:
       if module == module_name:
         src = os.path.join(sp_dir, extra_stuff)
         if os.path.exists(src):
