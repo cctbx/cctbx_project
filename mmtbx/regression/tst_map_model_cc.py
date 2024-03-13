@@ -83,6 +83,7 @@ def run(prefix="tst_map_model_cc"):
   checked = 0
   cmd = " ".join([
     "phenix.map_model_cc",
+    "force",
     "%s_shifted.pdb"%prefix,
     "%s_shifted.ccp4"%prefix,
     "resolution=1.5",
