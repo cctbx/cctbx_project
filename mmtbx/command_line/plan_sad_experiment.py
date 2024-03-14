@@ -1,5 +1,3 @@
-# LIBTBX_SET_DISPATCHER_NAME phenix.plan_sad_experiment
-
 from __future__ import absolute_import, division, print_function
 import mmtbx.scaling.plan_sad_experiment
 from mmtbx.scaling.plan_sad_experiment import get_fp_fdp, get_residues_and_ha
@@ -11,7 +9,7 @@ import os.path
 import sys
 from six.moves import range
 
-master_phil = iotbx.phil.parse("""
+master_params = """
 include scope libtbx.phil.interface.tracking_params
 input_files {
     data = None
@@ -263,8 +261,8 @@ crystal_info {
         .help = '''Verbose output'''
         .short_caption = Verbose output
    }
-""", process_includes=True)
-master_params = master_phil
+"""
+master_phil = iotbx.phil.parse(master_params, process_includes=True)
 
 def get_params(args,out=sys.stdout):
   command_line = iotbx.phil.process_command_line_with_files(
@@ -537,3 +535,4 @@ def finish_job(result):
 
 if __name__=="__main__":
   run(sys.argv[1:])
+
