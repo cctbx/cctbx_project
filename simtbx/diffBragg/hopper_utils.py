@@ -2081,6 +2081,11 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     SIM = get_simulator_for_data_modelers(Modeler)
     Modeler.set_parameters_for_experiment(best=best)
     SIM.D.device_Id = gpu_device
+    old_transfer = None
+    if os.environ.get("DIFFBRAGG_USE_KOKKOS") is not None:
+        if SIM.D.host_transfer == True:
+            old_transfer = True
+            SIM.D.host_transfer = False
 
     nparam = len(Modeler.P)
     if SIM.refining_Fhkl:
@@ -2107,6 +2112,9 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
 
     if free_mem:
         Modeler.clean_up(SIM)
+
+    if old_transfer is not None:
+        SIM.D.host_transfer = old_transfer
 
     if return_modeler:
         return new_exp, new_refl, Modeler, SIM, x

@@ -237,7 +237,7 @@ class diffBragg: public nanoBragg{
   af::flex_double get_raw_pixels_roi();
   boost::python::tuple get_fp_fdp_derivative_pixels();
   boost::python::tuple get_ncells_derivative_pixels();
-#ifdef DIFFBRAGG_HAVE_KOKKOS
+
   PyObject* PyCapsule_Wrapper(DLManagedTensor* (diffBraggKOKKOS::*func)());
   PyObject* get_floatimage();
   PyObject* get_wavelenimage();
@@ -261,7 +261,7 @@ class diffBragg: public nanoBragg{
   PyObject* get_d2_panel_orig_images();
   PyObject* get_d_fp_fdp_images();
   PyObject* get_Fhkl_scale_deriv();
-#endif
+
   boost::python::tuple get_diffuse_gamma_derivative_pixels();
   boost::python::tuple get_diffuse_sigma_derivative_pixels();
   boost::python::tuple get_ncells_def_derivative_pixels();
@@ -311,6 +311,7 @@ class diffBragg: public nanoBragg{
   bool update_oversample_during_refinement;
   bool oversample_omega;
   bool only_save_omega_kahn;
+  bool host_transfer;
 
   // miller array
   void quick_Fcell_update(boost::python::tuple const& value);

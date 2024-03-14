@@ -507,11 +507,8 @@ namespace boost_python { namespace {
 std::string kokkos_device() {
   std::string backend = "cpu:0";
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-  if (Kokkos::is_finalized()) {
-    throw std::runtime_error("Error: Kokkos has been finalized.\n");
-  }
-  if (!Kokkos::is_initialized()) {
-    throw std::runtime_error("Error: Kokkos not initialized.\n");
+  if (Kokkos::is_finalized() || !Kokkos::is_initialized()) {
+    return backend;
   }
 #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)
   backend = "cuda:" + std::to_string( Kokkos::device_id() );
@@ -878,6 +875,11 @@ struct DLPackAPI {
                      make_getter(&simtbx::nanoBragg::diffBragg::oversample_omega,rbv()),
                      make_setter(&simtbx::nanoBragg::diffBragg::oversample_omega,dcp()),
                     "whether to use an average solid angle correction per pixel, or one at the sub pixel level")
+
+      .add_property("host_transfer",
+                     make_getter(&simtbx::nanoBragg::diffBragg::host_transfer,rbv()),
+                     make_setter(&simtbx::nanoBragg::diffBragg::host_transfer,dcp()),
+                    "whether to transfer results from device to host")
 
       .add_property("force_cpu",
                      make_getter(&simtbx::nanoBragg::diffBragg::force_cpu,rbv()),
