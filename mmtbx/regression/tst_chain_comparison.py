@@ -3,6 +3,10 @@ from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 from mmtbx.validation.chain_comparison import run
 
+from iotbx.cli_parser import run_program
+
+
+
 def remove_blank(text):
   return text.replace(" ","").replace("\n","")
 
@@ -604,7 +608,7 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
      query.pdb 1.55   54      7     14      29      11   39.7   0.26     9.3        0.04    6.0          7               6"""
   found_text="\n".join(f.getvalue().splitlines()[-10:])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print("Expected: \n%s \nFound: \n%s" %(expected_text,found_text))
+    print("Expected at tst_03: \n%s \nFound: \n%s" %(expected_text,found_text))
     raise AssertionError("FAILED")
   print("OK")
 
@@ -802,6 +806,11 @@ def tst_05():
   print("OK")
 
 def tst_06():
+  try:
+    from phenix.programs import chain_comparison
+  except Exception as e:
+    return # no phenix
+
   print("Comparing mixed model with target with 2 chains...using ncs")
   import iotbx.pdb
   from cctbx.array_family import flex
@@ -820,7 +829,8 @@ def tst_06():
 
   f=StringIO()
   args=['model.pdb','query.pdb','ncs_file=ncs.ncs_spec']
-  r=run(args,out=f)
+  run_program(program_class=chain_comparison.Program, args = args, logger = f)
+  f.flush()
   expected_text="""
   SEQ SCORE is fraction (close and matching target sequence).
 MEAN LENGTH is the mean length of contiguous segments in the match with target sequence. (Each gap/reverse of direction starts new segment).
@@ -832,9 +842,9 @@ MEAN LENGTH is the mean length of contiguous segments in the match with target s
                RMSD   N      N       N       N      N          SCORE  SEQ MATCH(%)  SCORE  MEAN LENGTH  FRAGMENTS BAD CONNECTIONS
 
  Unique_target 1.67   58     64     15      29      14   42.6   0.25     8.6        0.04    4.5         16               8"""
-  found_text="\n".join(f.getvalue().splitlines()[-10:])
+  found_text="\n".join(f.getvalue().strip().splitlines()[-17:-6])
   if remove_blank(found_text)!=remove_blank(expected_text):
-    print("\n\nExpected: \n%s \n\nFound: \n%s" %(expected_text,found_text))
+    print("\n\nExpected tst_06: \n%s \n\nFound: \n%s" %(expected_text,found_text))
     raise AssertionError("FAILED")
 
   print("OK")

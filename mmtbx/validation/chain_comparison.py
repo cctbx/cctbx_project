@@ -16,7 +16,8 @@ from copy import deepcopy
 from six.moves import zip
 from six.moves import range
 
-master_phil = iotbx.phil.parse("""
+
+master_params = """
 
   input_files {
     pdb_in = None
@@ -179,8 +180,8 @@ master_phil = iotbx.phil.parse("""
     .type = path
     .style = output_dir
   }
-""", process_includes=True)
-master_params = master_phil
+"""
+master_phil = iotbx.phil.parse(master_params, process_includes=True)
 
 class rmsd_values:
   def __init__(self,params=None):
