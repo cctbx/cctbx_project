@@ -56,9 +56,16 @@ model = mmtbx.model.manager.from_sites_cart(
 
 <p>Save the model as PDB file:</p>
 <pre class="codeDL"><code># Write it into PDB file
-with open("model.pdb","w") as fo:
-  fo.write(model.model_as_pdb())
+from iotbx.data_manager import DataManager
+dm = DataManager()
+dm.set_overwrite(True)
+output_file_name = dm.write_model_file(model, "model.pdb")
+print("Output file name: %s" %(output_file_name))
 </code></pre>
+
+<p>Note that we have used the data_manager to write out the model file. If the
+model fits in PDB format it will write as PDB with the suffix .pdb, but if it
+does not fit it will write as mmCIF with the suffix .cif.</p>
 
 <p>Here is an example for a model that was created using this procedure (your model will look different, as the procedue will place the atoms at random places):</p>
 

@@ -77,8 +77,8 @@ for chain in pdb_hierarchy.only_model().chains():
         residue_group.remove_atom_group(atom_group)
     if (residue_group.atom_groups_size() == 0):
       chain.remove_residue_group(residue_group)
-with open("model_Zn_free.pdb", "w") as f:
-  f.write(m.model_as_pdb())
+model_file_name = dm.write_model_file(m, "model_Zn_free.pdb")
+print("File name written: %s" %(model_file_name))
 </code></pre>
 
 <p>This will change the hierarchy in place, i.e. we removed the ZN atoms from the hierarchy and cannot recover it.<br>
@@ -86,6 +86,10 @@ with open("model_Zn_free.pdb", "w") as f:
 
 <pre class="codeDL"><code>pdb_hierarchy = model.get_hierarchy() #   Get hierarchy object
 </code></pre>
+<p>We also wrote the model out using the data manager and obtained the
+actual file name written.  This last step is necessary because a model that
+does not fit in PDB format will be written out as mmCIF with the suffix .cif. 
+</p>
 
 <p>It is possible to get a <code>pdb_hierarchy()</code> object directly:</p>
 

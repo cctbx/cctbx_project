@@ -148,8 +148,10 @@ model = dm.get_model(model_filename)               #   Deliver model object with
 
 <p>Now <code>ca_only_model</code> is a new model that contains a piece of the original model object. In this case it contains all the atoms with the name “CA”. Let’s print it in PDB format to see what residues are present:</p>
 
-<pre class="codeDL"><code>print (ca_only_model.model_as_pdb())      #  print out the CA-only model in PDB format
+<pre class="codeDL"><code>print (ca_only_model.as_pdb_or_mmcif_string())      #  print out the CA-only model in PDB format
 </code></pre>
+<p>Note that if the model did not fit in PDB format it would write in mmCIF
+format instead. </p>
 
 <img src="{% static 'cctbx/img/doc_PDB_snippet_CA.png' %}" alt="map_and_model">
 
