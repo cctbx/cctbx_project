@@ -79,3 +79,19 @@ lone_pairs = ( -1,
                         0,  0,  1,  2,  3,  0,
                0,   0,
                )
+
+def get_valences(element, atomic_number=None, charge=0):
+  assert atomic_number!=0
+  assert type(charge) is type(1)
+  if atomic_number is None:
+    atomic_number = elements.index(element.title())
+  rc = valences[atomic_number]
+  if rc is None: return []
+  if type(rc)==type([]):
+    for i, j in enumerate(rc):
+      rc[i]+=charge
+    return rc
+  else:
+    rc += charge
+    return [rc]
+

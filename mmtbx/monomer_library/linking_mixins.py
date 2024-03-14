@@ -518,6 +518,7 @@ class linking_mixins(object):
       #
       #
       if verbose:
+        print('='*80)
         print('nonbonded', i_seq, j_seq, atom1.quote(), end=' ')
         print(atom2.quote(), end=' ')
         print("Distance: %0.2f" % distance, rt_mx_ji, sym_op)
@@ -583,10 +584,11 @@ Residue classes
         key.append(str(rt_mx_ji))
       key = tuple(key)
       # hydrogens
-      if atom1.element.strip() in hydrogens:
-        done[atom2.id_str()] = atom1.id_str()
-      if atom2.element.strip() in hydrogens:
-        done[atom1.id_str()] = atom2.id_str()
+      if atom1.parent().parent().resseq==atom2.parent().parent().resseq:
+        if atom1.element.strip() in hydrogens:
+          done[atom2.id_str()] = atom1.id_str()
+        if atom2.element.strip() in hydrogens:
+          done[atom1.id_str()] = atom2.id_str()
       # bond length cutoff & some logic
       aa_rc = linking_utils.is_atom_pair_linked(
           atom1,
@@ -621,6 +623,7 @@ Residue classes
           print('link_metals',link_metals)
         if ( atom1.element.strip().upper() in hydrogens or
              atom2.element.strip().upper() in hydrogens):
+          if verbose: print('hydrogens')
           pass
         else:
           done.setdefault(key, [])
@@ -691,6 +694,7 @@ Residue classes
         if atom2_key:
           if atom2_key in done: continue
           done[atom2_key] = key
+      if verbose: print(done)
       #
       current_number_of_links = len(done.setdefault(key, []))
       if(current_number_of_links >=

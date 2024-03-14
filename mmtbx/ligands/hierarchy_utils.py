@@ -118,26 +118,18 @@ def get_bonds_as_dict(geometry_restraints_manager, include_non_zero_origin_id=Tr
         tmp.append(p.i_seqs[0])
   return bonds
 
-def get_valences(element, charge):
-  valence = {
-    # 'C' : 4,
-    'N' : 3,
-    'O' : 2,
-  }
-  rc = valence.get(element)
-  if rc is None: return []
-  rc += charge
-  return [rc]
-
 def simple_valence_check(ph, geometry_restraints_manager):
+  from mmtbx.ligands.chemistry import get_valences
   bonds = get_bonds_as_dict(geometry_restraints_manager.geometry)
   for atom in ph.atoms():
     if atom.element_is_hydrogen(): continue
     if atom.parent().resname in ['HOH']: continue
     number_of_bonds = len(bonds.get(atom.i_seq, None))
     # if number_of_bonds is None: continue
-    if number_of_bonds not in get_valences(atom.element, atom.charge_as_int()):
-      assert 0
+    # print(atom.quote(), number_of_bonds, get_valences(atom.element, atom.charge_as_int()))
+    v = get_valences(atom.element, charge=atom.charge_as_int())
+    if number_of_bonds not in v:
+      print(atom.quote(), number_of_bonds, v)
 
 def main(filename):
   from iotbx import pdb

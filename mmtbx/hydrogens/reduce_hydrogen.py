@@ -404,6 +404,7 @@ class place_hydrogens():
 
             for mh in missing_h:
               # TODO: this should be probably in a central place
+              # NWM: I have something like this in ready_set_utils
               if len(mh) < 4: mh = (' ' + mh).ljust(4)
               a = (iotbx.pdb.hierarchy.atom()
                 .set_name(new_name=mh)
@@ -442,10 +443,12 @@ class place_hydrogens():
     TODO: Could restraints manager have a list of links with relevant information?
           Then we don't have to loop through all proxies here.
     """
+    from mmtbx.ligands.chemistry import get_valences
     origin_ids = linking_class()
     grm = self.model.get_restraints_manager()
     bond_proxies_simple, asu = grm.geometry.get_all_bond_proxies(
       sites_cart = self.model.get_sites_cart())
+    atoms = self.model.get_atoms()
     elements = self.model.get_hierarchy().atoms().extract_element()
     exclusion_iseqs = list()
     exclusion_dict = dict()
@@ -463,13 +466,18 @@ class place_hydrogens():
         exclusion_dict[j] = proxy.origin_id
     sel_remove = flex.size_t()
 
-    atoms = self.model.get_atoms()
     # Find H atoms bound to linked atoms
     removed_dict = dict()
+    parent_dict = dict()
+    bonds = dict()
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
       else: assert 0 # never goes here
+      bonds.setdefault(i,[])
+      bonds[i].append(j)
+      bonds.setdefault(j,[])
+      bonds[j].append(i)
       # Exception for HIS HD1 and HE2
       if (atoms[i].parent().resname == 'HIS' and
         atoms[i].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
@@ -478,9 +486,31 @@ class place_hydrogens():
       if(elements[i] in ["H","D"] and j in exclusion_iseqs):
         sel_remove.append(i)
         removed_dict[i] = exclusion_dict[j]
+        parent_dict[i]=j
       if(elements[j] in ["H","D"] and i in exclusion_iseqs):
         sel_remove.append(j)
         removed_dict[j] = exclusion_dict[i]
+        parent_dict[j]=i
+    # remove H atoms NOT to remove - double negative!
+    remove_from_sel_remove=[]
+    for ii, i_seq in reversed(list(enumerate(sel_remove))):
+      j_seq=parent_dict[i_seq]
+      # need to add the use of atomic charge
+      valences=get_valences(elements[j_seq])
+      number_of_bonds=len(bonds[j_seq])
+      if number_of_bonds in valences:
+        # remove this H from delection
+        remove_from_sel_remove.append(i_seq) # ??
+        del removed_dict[i_seq]
+      else:
+        bonds[j_seq].remove(i_seq)
+        bonds[i_seq].remove(j_seq)
+    if remove_from_sel_remove:
+      sel_remove=list(sel_remove)
+      for r in remove_from_sel_remove:
+        sel_remove.remove(r)
+        # print('keep',atoms[r].quote())
+      sel_remove=flex.size_t(sel_remove)
     #
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
                    origin_ids.get_origin_key(removed_dict[atom.i_seq]))

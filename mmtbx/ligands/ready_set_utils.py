@@ -149,6 +149,7 @@ def add_n_terminal_hydrogens_to_atom_group(ag,
     if ag.resname=='PRO':
       if i==0:
         continue
+    # _new_atom in heirarchy_utils.py
     atom = iotbx.pdb.hierarchy.atom()
     atom.name = name
     atom.element = proton_element

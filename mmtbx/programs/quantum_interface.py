@@ -229,6 +229,28 @@ def generate_flipping_NQ(ag,
     else:
       yield rc
 
+def should_get_selection_from_user(params):
+  def qm_restraints_has_selection(params):
+    if len(params.qi.qm_restraints)==0:
+      return True
+    if not params.qi.qm_restraints[0].selection:
+      return True
+    return False
+  bools = [
+    qm_restraints_has_selection(params),
+    not params.qi.each_amino_acid,
+    not params.qi.each_water,
+    not params.qi.merge_water,
+    ]
+  bc=0
+  if not params.qi.selection:
+    for i, boolean in enumerate(bools):
+      print(i, boolean)
+      if boolean: bc+=1
+  else:
+    return False
+  return bc==len(bools)
+
 def get_selection_from_user(hierarchy, include_amino_acids=None, log=None):
   j=0
   opts = []
@@ -383,15 +405,27 @@ Usage examples:
     include_amino_acids=self.params.qi.include_amino_acids
     if include_amino_acids:
       include_amino_acids=[include_amino_acids]
-    if (not self.params.qi.selection and
-        len(self.params.qi.qm_restraints)==0 and
-        not self.params.qi.each_amino_acid and
-        not self.params.qi.each_water and
-        not self.params.qi.merge_water
-        ):
+
+    rc = should_get_selection_from_user(self.params)
+    print(dir(self.params))
+    print('rc',rc)
+    if rc:
+    # if (not self.params.qi.selection and
+    #     len(self.params.qi.qm_restraints)==0 and
+    #     not self.params.qi.each_amino_acid and
+    #     not self.params.qi.each_water and
+    #     not self.params.qi.merge_water
+    #     ):
       rc = get_selection_from_user(model.get_hierarchy(),
                                    include_amino_acids=include_amino_acids)
+      print('rc',rc)
       self.params.qi.selection = rc
+      if len(self.params.qi.qm_restraints)!=0:
+        print(self.params.qi.qm_restraints)
+        for attr, item in self.params.qi.qm_restraints[0].__dict__.items():
+          print(attr, item)
+        #   print(self.params.qi.selection)
+        #   print(getattr(self.params.qi.selection, attr))
     #
     # validate selection
     #
@@ -509,7 +543,6 @@ Usage examples:
                ih,
                pf), file=self.logger)
 
-      # if self.params.qi.run_qmr:
       else:
         rc = self.run_qmr(self.params.qi.format)
         print(rc)
@@ -535,6 +568,8 @@ Usage examples:
       model.set_sites_cart(sites_cart)
 
     if self.params.qi.write_qmr_phil:
+      # for attr, item in self.params.qi.qm_restraints[0].__dict__.items():
+      #   print(attr, item)
       pf = self.write_qmr_phil(iterate_NQH=self.params.qi.iterate_NQH,
                                iterate_metals=self.params.qi.iterate_metals,
                                step_buffer_radius=self.params.qi.step_buffer_radius,
@@ -1229,6 +1264,7 @@ Usage examples:
       s=s.replace("'",'')
       return s
 
+    print(self.params.qi.selection)
     pf = '%s_%s.phil' % (
       self.data_manager.get_default_model_name().replace('.pdb',''),
       safe_filename(self.params.qi.selection[0]),

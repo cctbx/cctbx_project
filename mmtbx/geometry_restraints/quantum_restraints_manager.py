@@ -374,6 +374,7 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
   else:
     buffer_selection_string = 'residues_within(%s, %s)' % (qmr.buffer,
                                                            qmr.selection)
+  if debug: print('buffer_selection_string',buffer_selection_string)
   buffer_model = select_and_reindex(model, buffer_selection_string)
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
   if 0: retain_only_one_alternative_conformation(buffer_model, 'B')
@@ -408,7 +409,9 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
       return True
     return False
   for atom1 in ligand_atoms:
+    if debug: print('ligand',atom1.quote())
     for atom2 in buffer_atoms:
+      if debug: print('buffer',atom2.quote())
       if compare_id_str(atom1.id_str(), atom2.id_str()):
         break
     else:
@@ -633,12 +636,14 @@ def update_bond_restraints(ligand_model,
       else:
         if not(i_atom.tmp in ligand_i_seqs and j_atom.tmp in ligand_i_seqs):
           continue
-      print('    %-2d %s - %s %5.3f ~> %5.3f' % (
+      Z=(distance_model-bond.distance_ideal)/sigma
+      print('    %-2d %s - %s %5.3f ~> %5.3f (Z=%4.1f)' % (
         i,
         i_atom.id_str().replace('pdb=',''),
         j_atom.id_str().replace('pdb=',''),
         bond.distance_ideal,
-        distance_model), file=log)
+        distance_model,
+        Z), file=log)
       bond.distance_ideal=distance_model
       i_seqs=[i_atom.tmp, j_atom.tmp]
       bond=model_grm.geometry.bond_params_table.lookup(*list(i_seqs))
@@ -728,13 +733,15 @@ def update_angle_restraints(ligand_model,
     # ligand_lookup[key]=angle_model
     # key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
     i+=1
-    print('    %-2d %s - %s - %s %5.1f ~> %5.1f' % (
+    Z=(angle_model-angle_ideal)/sigma
+    print('    %-2d %s - %s - %s %5.1f ~> %5.1f (Z=%4.1f)' % (
       i,
       i_atom.id_str().replace('pdb=',''),
       j_atom.id_str().replace('pdb=',''),
       k_atom.id_str().replace('pdb=',''),
       angle_ideal,
-      angle_model), file=log)
+      angle_model,
+      Z), file=log)
     assert len(intersect)!=0, '%s' % intersect
     # key = (atoms[key[0]].tmp, atoms[key[1]].tmp, atoms[key[2]].tmp)
     # model_lookup[key]=angle_model
