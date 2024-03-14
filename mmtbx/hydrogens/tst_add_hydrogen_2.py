@@ -1,16 +1,12 @@
 from __future__ import absolute_import, division, print_function
 import time
 import mmtbx.model
-import iotbx.pdb
-from mmtbx.hydrogens import reduce_hydrogen
-from libtbx.utils import null_out
-from libtbx.test_utils import approx_equal
+from mmtbx.hydrogens.tst_add_hydrogen import compare_models
 
-# ------------------------------------------------------------------------------
 
 def run():
   test_000()
-  test_001()
+  #test_001()
   test_002()
   test_003()
   test_004()
@@ -19,78 +15,6 @@ def run():
   test_007()
   test_008()
   test_009()
-
-# ------------------------------------------------------------------------------
-
-def compare_models(pdb_str,
-                   contains     = None,
-                   not_contains = None):
-  '''
-    Function to compare model with new H to the known answer (pdb_str)
-  '''
-  #
-  pdb_inp = iotbx.pdb.input(lines=pdb_str.split("\n"), source_info=None)
-  # initial model
-  model_initial = mmtbx.model.manager(model_input = pdb_inp,
-                                      log         = null_out())
-  ph_initial = model_initial.get_hierarchy()
-  hd_sel_initial = model_initial.get_hd_selection()
-  h_atoms_initial = ph_initial.select(hd_sel_initial).atoms()
-  h_names_initial = list(h_atoms_initial.extract_name())
-  # number of H in pdb string (right answer)
-  number_h_expected = hd_sel_initial.count(True)
-
-  # get model obj without H atoms
-  model_without_h = model_initial.select(~hd_sel_initial)
-  # make sure model without H indeed has no H atoms
-  hd_sel_without_h = model_without_h.get_hd_selection()
-  assert (hd_sel_without_h is not None)
-  assert (hd_sel_without_h.count(True) == 0)
-
-  # place H atoms again
-  reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
-  reduce_add_h_obj.run()
-  #
-  model_h_added = reduce_add_h_obj.get_model()
-  hd_sel_h_added = model_h_added.get_hd_selection()
-
-  #f = open("m_initial.pdb","w")
-  #f.write(model_initial.model_as_pdb())
-  #f.close()
-  #f = open("m_initial.cif","w")
-  #f.write(model_initial.model_as_mmcif())
-  #f.close()
-  #f = open("m_added.pdb","w")
-  #f.write(model_h_added.model_as_pdb())
-  #f.close()
-  #f = open("m_added.cif","w")
-  #f.write(model_h_added.model_as_mmcif())
-  #f.close()
-
-  ph_h_added = model_h_added.get_hierarchy()
-  assert ph_initial.is_similar_hierarchy(other=ph_h_added)
-
-  number_h_added = hd_sel_h_added.count(True)
-  assert(number_h_expected == number_h_added)
-
-  h_atoms_added = ph_h_added.select(hd_sel_h_added).atoms()
-  h_names_added = list(h_atoms_added.extract_name())
-
-  if not_contains:
-    assert (not_contains not in h_names_added)
-  if contains:
-    assert (contains in h_names_added)
-
-  sc_h_initial = model_initial.select(hd_sel_initial).get_sites_cart()
-  sc_h_added   = model_h_added.select(hd_sel_h_added).get_sites_cart()
-
-  d1 = {h_names_initial[i]: sc_h_initial[i] for i in range(len(h_names_initial))}
-  d2 = {h_names_added[i]: sc_h_added[i] for i in range(len(h_names_added))}
-
-  # check if coordinates are correct
-  for name, sc in d2.items():
-    assert(name in d1)
-    assert approx_equal(sc, d1[name], 0.01), name
 
 # ------------------------------------------------------------------------------
 

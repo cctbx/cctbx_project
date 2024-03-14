@@ -55,11 +55,18 @@ def compare_models(pdb_str,
   model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()
 
+  # For debugging
 #  f = open("m_initial.pdb","w")
 #  f.write(model_initial.model_as_pdb())
 #  f.close()
+#  f = open("m_initial.cif","w")
+#  f.write(model_initial.model_as_mmcif())
+#  f.close()
 #  f = open("m_added.pdb","w")
 #  f.write(model_h_added.model_as_pdb())
+#  f.close()
+#  f = open("m_added.cif","w")
+#  f.write(model_h_added.model_as_mmcif())
 #  f.close()
 
   ph_h_added = model_h_added.get_hierarchy()
