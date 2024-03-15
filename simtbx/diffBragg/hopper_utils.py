@@ -2044,6 +2044,8 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
             G = spot_scale_p.get_val(x[spot_scale_p.xpos])
             fhkl_grad = SIM.D.add_Fhkl_gradients(pfs, resid.cpu().numpy(), V.cpu().numpy(), trusted.cpu().numpy(),
                                                  mod.all_freq.cpu().numpy(), SIM.num_Fhkl_channels, G)
+            if not SIM.D.host_transfer:
+                fhkl_grad = torch.from_dlpack(SIM.D.get_Fhkl_scale_deriv()).cpu().numpy()
 
             if params.betas.Fhkl is not None:
                 for i_chan in range(SIM.num_Fhkl_channels):
@@ -2057,7 +2059,6 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
 
 
         gnorm = np.linalg.norm(g)
-
 
     debug_s = "F=%10.7g sigZ=%10.7g (Fracs of F: %s), |g|=%10.7g" \
               % (f, zscore_sigma, restraint_debug_s, gnorm)

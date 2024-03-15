@@ -1666,7 +1666,7 @@ PyObject* diffBragg::get_d_fp_fdp_images() {
 PyObject* diffBragg::get_Fhkl_scale_deriv() {
 #ifdef DIFFBRAGG_HAVE_KOKKOS
     if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fp_fdp_images);
+        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_Fhkl_scale_deriv);
     }
 #endif
     return PyCapsule_New(array_to_dlpack(first_deriv_imgs.fp_fdp.data(), first_deriv_imgs.fp_fdp.size()), "dltensor", dlpack_destructor);    
