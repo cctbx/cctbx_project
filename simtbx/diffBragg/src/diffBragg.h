@@ -238,7 +238,7 @@ class diffBragg: public nanoBragg{
   boost::python::tuple get_fp_fdp_derivative_pixels();
   boost::python::tuple get_ncells_derivative_pixels();
 
-  PyObject* PyCapsule_Wrapper(DLManagedTensor* (diffBraggKOKKOS::*func)());
+  PyObject* PyCapsule_Wrapper(DLManagedTensor* (diffBraggKOKKOS::*func)(), image_type &vec);
   PyObject* get_floatimage();
   PyObject* get_wavelenimage();
   PyObject* get_d_diffuse_gamma_images();
@@ -261,6 +261,7 @@ class diffBragg: public nanoBragg{
   PyObject* get_d2_panel_orig_images();
   PyObject* get_d_fp_fdp_images();
   PyObject* get_Fhkl_scale_deriv();
+  PyObject* get_Fhkl_hessian();
 
   boost::python::tuple get_diffuse_gamma_derivative_pixels();
   boost::python::tuple get_diffuse_sigma_derivative_pixels();

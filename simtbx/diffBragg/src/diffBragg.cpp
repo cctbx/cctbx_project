@@ -1522,154 +1522,117 @@ void dlpack_destructor(PyObject* capsule) {
 
 
 // Fun with pointer-to-member-functions
-PyObject* diffBragg::PyCapsule_Wrapper( DLManagedTensor* (diffBraggKOKKOS::*func)()) {
-    if (diffBragg_runner == nullptr) {
-        return nullptr;
+PyObject* diffBragg::PyCapsule_Wrapper( DLManagedTensor* (diffBraggKOKKOS::*func)(), image_type &vec) {
+#ifdef DIFFBRAGG_HAVE_KOKKOS
+    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
+        if (diffBragg_runner == nullptr) {
+            return nullptr;
+        }
+        return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);        
     }
-    return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);
+#endif
+    return PyCapsule_New(array_to_dlpack(vec.data(), vec.size()), "dltensor", dlpack_destructor);
 }
 
 PyObject* diffBragg::get_floatimage() {
 #ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_floatimage);
+    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL) {
+        if (diffBragg_runner == nullptr) {
+            return nullptr;
+        }        
+        return PyCapsule_New(diffBragg_runner->get_floatimage(), "dltensor", dlpack_destructor);        
     }
 #endif
     return PyCapsule_New(array_to_dlpack(raw_pixels_roi.begin(), Npix_to_model), "dltensor", dlpack_destructor);
 }
 
 PyObject* diffBragg::get_wavelenimage() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_wavelenimage);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_wavelenimage, first_deriv_imgs.wavelength);
 }
 
 PyObject* diffBragg::get_d_diffuse_gamma_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_gamma_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_gamma_images, first_deriv_imgs.diffuse_gamma);
 }
 
 PyObject* diffBragg::get_d_diffuse_sigma_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_sigma_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_diffuse_sigma_images, first_deriv_imgs.diffuse_sigma);
 }
 
 PyObject* diffBragg::get_d_Umat_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Umat_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.Umat.data(), 3*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Umat_images, first_deriv_imgs.Umat);
 }
 
 PyObject* diffBragg::get_d2_Umat_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Umat_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Umat_images, second_deriv_imgs.Umat);
 }
 
 PyObject* diffBragg::get_d_Bmat_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Bmat_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.Bmat.data(), 6*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Bmat_images, first_deriv_imgs.Bmat);
 }    
 
 PyObject* diffBragg::get_d2_Bmat_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Bmat_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Bmat_images, second_deriv_imgs.Bmat);
 }
 
 PyObject* diffBragg::get_d_Ncells_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Ncells_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.Ncells.data(), 6*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Ncells_images, first_deriv_imgs.Ncells);
 }
 
 PyObject* diffBragg::get_d2_Ncells_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Ncells_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Ncells_images, second_deriv_imgs.Ncells);
 }
 
 PyObject* diffBragg::get_d_fcell_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fcell_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.fcell.data(), Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fcell_images, first_deriv_imgs.fcell);
 }
 
 PyObject* diffBragg::get_d2_fcell_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_fcell_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_fcell_images, second_deriv_imgs.fcell);
 }
 
 PyObject* diffBragg::get_d_eta_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_eta_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.eta.data(), first_deriv_imgs.eta.size()), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_eta_images, first_deriv_imgs.eta);
 }
 
 PyObject* diffBragg::get_d2_eta_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_eta_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_eta_images, second_deriv_imgs.eta);
 }
 
 PyObject* diffBragg::get_d_lambda_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_lambda_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.lambda.data(), 2*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_lambda_images, first_deriv_imgs.lambda);
 }
 
 PyObject* diffBragg::get_d2_lambda_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_lambda_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_lambda_images, second_deriv_imgs.lambda);
 }
 
 PyObject* diffBragg::get_d_panel_rot_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_rot_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.panel_rot.data(), 3*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_rot_images, first_deriv_imgs.panel_rot);
 }
 
 PyObject* diffBragg::get_d2_panel_rot_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_rot_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_rot_images, second_deriv_imgs.panel_rot);
 }
 
 PyObject* diffBragg::get_d_panel_orig_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_orig_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.panel_orig.data(), 3*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_panel_orig_images, first_deriv_imgs.panel_orig);
 }
 
 PyObject* diffBragg::get_d2_panel_orig_images() {
-    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_orig_images);
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_panel_orig_images, second_deriv_imgs.panel_orig);
 }
 
 PyObject* diffBragg::get_d_fp_fdp_images() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fp_fdp_images);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.fp_fdp.data(), 2*Npix_to_model), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_fp_fdp_images, first_deriv_imgs.fp_fdp);
 }
 
 PyObject* diffBragg::get_Fhkl_scale_deriv() {
-#ifdef DIFFBRAGG_HAVE_KOKKOS
-    if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL){
-        return PyCapsule_Wrapper(&diffBraggKOKKOS::get_Fhkl_scale_deriv);
-    }
-#endif
-    return PyCapsule_New(array_to_dlpack(first_deriv_imgs.fp_fdp.data(), first_deriv_imgs.fp_fdp.size()), "dltensor", dlpack_destructor);    
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_Fhkl_scale_deriv, first_deriv_imgs.Fhkl_scale_deriv);
+}
+
+PyObject* diffBragg::get_Fhkl_hessian() {
+    // Fhkl_scale_deriv is overloaded, depending on Fhkl_errors_mode
+    return PyCapsule_Wrapper(&diffBraggKOKKOS::get_Fhkl_scale_deriv, first_deriv_imgs.Fhkl_hessian);
 }
 
 
