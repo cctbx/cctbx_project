@@ -1528,7 +1528,7 @@ PyObject* diffBragg::PyCapsule_Wrapper( DLManagedTensor* (diffBraggKOKKOS::*func
         if (diffBragg_runner == nullptr) {
             return nullptr;
         }
-        return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);        
+        return PyCapsule_New((*diffBragg_runner.*func)(), "dltensor", dlpack_destructor);
     }
 #endif
     return PyCapsule_New(array_to_dlpack(vec.data(), vec.size()), "dltensor", dlpack_destructor);
@@ -1539,8 +1539,8 @@ PyObject* diffBragg::get_floatimage() {
     if (use_gpu || getenv("DIFFBRAGG_USE_KOKKOS")!=NULL) {
         if (diffBragg_runner == nullptr) {
             return nullptr;
-        }        
-        return PyCapsule_New(diffBragg_runner->get_floatimage(), "dltensor", dlpack_destructor);        
+        }
+        return PyCapsule_New(diffBragg_runner->get_floatimage(), "dltensor", dlpack_destructor);
     }
 #endif
     return PyCapsule_New(array_to_dlpack(raw_pixels_roi.begin(), Npix_to_model), "dltensor", dlpack_destructor);
@@ -1568,7 +1568,7 @@ PyObject* diffBragg::get_d2_Umat_images() {
 
 PyObject* diffBragg::get_d_Bmat_images() {
     return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d_Bmat_images, first_deriv_imgs.Bmat);
-}    
+}
 
 PyObject* diffBragg::get_d2_Bmat_images() {
     return PyCapsule_Wrapper(&diffBraggKOKKOS::get_d2_Bmat_images, second_deriv_imgs.Bmat);

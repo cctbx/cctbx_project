@@ -51,7 +51,7 @@ DLDataTypeCode getDLPackTypeCode() {
 
 template<typename DataType>
 DLManagedTensor* array_to_dlpack(DataType* pointer, int64_t length) {
-  
+
   int64_t* shape = new int64_t[1];
   shape[0] = length;
 
@@ -61,8 +61,8 @@ DLManagedTensor* array_to_dlpack(DataType* pointer, int64_t length) {
   dlpackTensor->dl_tensor.device = {kDLCPU, 0};
   dlpackTensor->dl_tensor.dtype.code = getDLPackTypeCode<DataType>();
   dlpackTensor->dl_tensor.dtype.bits = sizeof(DataType) * 8;
-  dlpackTensor->dl_tensor.dtype.lanes = 1;  
-  dlpackTensor->dl_tensor.ndim = 1;  
+  dlpackTensor->dl_tensor.dtype.lanes = 1;
+  dlpackTensor->dl_tensor.ndim = 1;
   dlpackTensor->dl_tensor.shape = shape;
   dlpackTensor->dl_tensor.strides = nullptr;
   dlpackTensor->dl_tensor.byte_offset = 0;
