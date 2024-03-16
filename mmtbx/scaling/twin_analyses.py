@@ -2198,11 +2198,11 @@ refinement might provide an answer.
           "data has a higher "+
           "crystallographic symmetry (%s)." % str(self.suspected_point_group),
           "Point group and R-factor analysis"))
-    if (self.patterson_height > 75):
+    if self.patterson_height and self.patterson_height > 75:
       issues.append((2, "Translational NCS is present at a level that might "+
         "be a result of a missed centering operation (one or more peaks "+
         "greater than 75% of the origin).", "Patterson analyses"))
-    elif (self.patterson_height > 20):
+    elif self.patterson_height and self.patterson_height > 20:
       issues.append((2, "Translational NCS is present at a level that may "+
         "complicate refinement (one or more peaks greater than 20% of the "+
         "origin)", "Patterson analyses"))
