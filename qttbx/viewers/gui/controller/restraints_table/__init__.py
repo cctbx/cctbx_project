@@ -14,6 +14,8 @@ from ...state.ref import SelectionRef
 from .bonds import BondsTableTabController
 from .angles import AnglesTableTabController
 
+from pathlib import Path
+
 class RestraintsTableTopTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
@@ -51,10 +53,36 @@ class RestraintsTableTopTabController(Controller):
       if not self.state.active_model_ref.has_restraints:
         ref = self.state.active_model_ref
         model = ref.model
+        model.add_crystal_symmetry_if_necessary()
         model.process(make_restraints=True)
-        restraints_ref = RestraintsRef.from_model_ref(self.state.active_model_ref)
-        ref.restraints = restraints_ref
-        self.state.signals.restraints_change.emit(restraints_ref)
+        if model.get_restraints_manager() is not None:
+          grm = model.get_restraints_manager().geometry
+        else:
+          msg = QMessageBox()
+          msg.setWindowTitle("Notification")
+          msg.setText("Failed to process model and make restraints...")
+          msg.setIcon(QMessageBox.Information)
+          msg.setStandardButtons(QMessageBox.Ok)
+          msg.exec_()
+          return
+
+
+        # write out geo file
+        geo_file_dir = Path.cwd()
+        if ref.data.filepath is not None:
+          geo_file_dir = Path(ref.data.filepath).parent
+        geo_file_path = geo_file_dir / Path(ref.label+".geo")
+        grm.write_geo_file(sites_cart=model.get_sites_cart(),
+                           site_labels = model.get_xray_structure().scatterers().extract_labels(),
+                           file_name=str(geo_file_path))
+
+        # notify
+        msg = QMessageBox()
+        msg.setWindowTitle("Notification")
+        msg.setText("Restraints written to .geo file:\n"+str(geo_file_path))
+        msg.setIcon(QMessageBox.Information)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec_()
 
 
 
