@@ -1059,6 +1059,7 @@ NOTES:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done
     # by Hydrogen placement will have flipped them, so we don't need to do it again.

@@ -1381,6 +1381,7 @@ def _optimizeFragment(pdb_raw, bondedNeighborDepth = 4):
   p.pdb_interpretation.allow_polymer_cross_special_position=True
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
   model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Optimization will place the movers.
