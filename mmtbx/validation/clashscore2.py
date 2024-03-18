@@ -24,6 +24,17 @@ import sys
 import six
 import json
 
+
+def remove_models_except_index(model_manager, model_index):
+    hierarchy = model_manager.get_hierarchy()
+    models = hierarchy.models()
+    if model_index < len(models):
+        selected_model = models[model_index]
+        for model in models:
+            if model != selected_model:
+                hierarchy.remove_model(model=model)
+    return model_manager
+
 class clashscore2(validation):
   __slots__ = validation.__slots__ + [
     "clashscore",
@@ -82,6 +93,12 @@ class clashscore2(validation):
     from scitbx.array_family import flex
     from mmtbx.validation import utils
 
+    # Fix up bogus unit cell when it occurs by checking crystal symmetry.
+    # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
+    cs = data_manager_model.crystal_symmetry()
+    if (cs is None) or (cs.unit_cell() is None):
+      data_manager_model = shift_and_box_model(model = data_manager_model)
+
     # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
     # associated with our data_manager_model.
     data_manager_model,_ = check_and_add_hydrogen(
@@ -108,13 +125,24 @@ class clashscore2(validation):
     else:
       conversion_info = None
 
+    # Make a copy of the original model to use for submodel processing, we'll trim atoms out
+    # of it for each submodel.
+    original_model = data_manager_model.deep_copy()
+
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
     for i_mod, model in enumerate(pdb_hierarchy.models()):
+
+      # Select only the current submodel from the hierarchy
+      submodule = original_model.deep_copy()
+      remove_models_except_index(submodule, i_mod)
+
+      # @todo
       r = iotbx.pdb.hierarchy.root()
       mdc = model.detached_copy()
       r.append_model(mdc)
+
       occ_max = flex.max(r.atoms().extract_occ())
       input_str = r.as_pdb_string()
       self.probe_clashscore_manager = probe_clashscore_manager(
@@ -478,8 +506,7 @@ class probe_clashscore_manager(object):
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
 
-    probe_out = easy_run.fully_buffered(self.probe_txt,
-      stdin_lines=pdb_string)
+    probe_out = easy_run.fully_buffered(self.probe_txt, stdin_lines=pdb_string)
     if (probe_out.return_code != 0):
       raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
         "\n".join(probe_out.stderr_lines))
