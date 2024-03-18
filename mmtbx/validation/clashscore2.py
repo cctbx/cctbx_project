@@ -17,6 +17,7 @@ from libtbx.utils import Sorry
 from libtbx import easy_run
 import libtbx.load_env
 import iotbx.pdb
+import mmtbx
 import os
 import re
 import sys
@@ -44,6 +45,7 @@ class clashscore2(validation):
   def get_result_class(self) : return clash
 
   def __init__(self,
+      probe_parameters,
       data_manager_model,
       fast = False, # do really fast clashscore, produce only the number
       condensed_probe = False, # Use -CON for probe. Reduces output 10x.
@@ -80,7 +82,16 @@ class clashscore2(validation):
     from scitbx.array_family import flex
     from mmtbx.validation import utils
 
-    # 
+    # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
+    # associated with our data_manager_model.
+    data_manager_model,_ = check_and_add_hydrogen(
+      probe_parameters=probe_parameters,
+      data_manager_model=data_manager_model,
+      nuclear=nuclear,
+      verbose=verbose,
+      keep_hydrogens=keep_hydrogens,
+      do_flips = do_flips,
+      log=out)
 
     # @todo Remove this conversion once we are using MMTBX reduce and probe
     pdb_hierarchy = data_manager_model.get_hierarchy()
@@ -101,19 +112,11 @@ class clashscore2(validation):
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
     for i_mod, model in enumerate(pdb_hierarchy.models()):
-      input_str,_ = check_and_add_hydrogen(
-        pdb_hierarchy=pdb_hierarchy,
-        model_number=i_mod,
-        nuclear=nuclear,
-        verbose=verbose,
-        time_limit=time_limit,
-        keep_hydrogens=keep_hydrogens,
-        do_flips = do_flips,
-        log=out)
       r = iotbx.pdb.hierarchy.root()
       mdc = model.detached_copy()
       r.append_model(mdc)
       occ_max = flex.max(r.atoms().extract_occ())
+      input_str = r.as_pdb_string()
       self.probe_clashscore_manager = probe_clashscore_manager(
         h_pdb_string=input_str,
         nuclear=nuclear,
@@ -578,13 +581,12 @@ def decode_atom_string(atom_str, use_segids=False, model_id=""):
       name=atom_str[13:17])
 
 def check_and_add_hydrogen(
-        pdb_hierarchy=None,
+        probe_parameters=None,
+        data_manager_model=None,
         nuclear=False,
         keep_hydrogens=True,
         verbose=False,
-        model_number=0,
         n_hydrogen_cut_off=0,
-        time_limit=120,
         do_flips=False,
         log=None):
   """
@@ -592,31 +594,23 @@ def check_and_add_hydrogen(
   Use REDUCE to add the hydrogen atoms.
 
   Args:
-    pdb_hierarchy : pdb hierarchy
-    file_name (str): pdb file name
+    data_manager_model : Model from the data_manager
     nuclear (bool): When True use nuclear cloud x-H distances and vdW radii,
       otherwise use electron cloud x-H distances and vdW radii
     keep_hydrogens (bool): when True, if there are hydrogen atoms, keep them
     verbose (bool): verbosity of printout
-    model_number (int): the number of model to use
-    time_limit (int): limit the time it takes to add hydrogen atoms
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
 
   Returns:
-    (str): PDB string
-    (bool): True when PDB string was updated
+    (model): Model with hydrogens added
+    (bool): True when the model was modified/replaced
   """
   if not log: log = sys.stdout
-  assert pdb_hierarchy
-  assert model_number < len(pdb_hierarchy.models())
-  models = pdb_hierarchy.models()
-  model = models[model_number]
-  r = iotbx.pdb.hierarchy.root()
-  mdc = model.detached_copy()
-  r.append_model(mdc)
+  assert probe_parameters
+  assert data_manager_model
   if keep_hydrogens:
-    elements = r.atoms().extract_element()
+    elements = data_manager_model.get_hierarchy.root().atoms().extract_element()
     # strangely the elements can have a space when coming from phenix.clashscore
     # but no space when coming from phenix.molprobity
     h_count = elements.count('H')
@@ -631,33 +625,60 @@ def check_and_add_hydrogen(
       if verbose:
         print("\nNo H/D atoms detected - forcing hydrogen addition!\n", file=log)
       keep_hydrogens = False
-  import libtbx.load_env
+
   # add hydrogen if needed
   if not keep_hydrogens:
-    # set reduce running parameters
+    # Remove hydrogens and add them back in
     if verbose:
-      print("\nAdding H/D atoms with mmtbx.reduce...\n")
-    build = "-oh -his -flip -keep -allalt -limit{}"
-    if not do_flips : build += " -pen9999"
-    if nuclear:
-      build += " -nuc -"
-    else:
-      build += " -"
-    build = build.format(time_limit)
-    trim = " -quiet -trim -"
-    stdin_lines = r.as_pdb_string()
-    clean_out = run_reduce_with_timeout(
-        parameters=trim,
-        stdin_lines=stdin_lines)
-    build_out = run_reduce_with_timeout(
-        parameters=build,
-        stdin_lines=clean_out.stdout_lines)
-    reduce_str = '\n'.join(build_out.stdout_lines)
-    return reduce_str,True
+      print("\nTrimming and adding hydrogens...\n")
+    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+      model = data_manager_model,
+      use_neutron_distances=nuclear,
+      n_terminal_charge="residue_one",
+      exclude_water=True,
+      stop_for_unknowns=False,
+      keep_existing_H=False
+    )
+    reduce_add_h_obj.run()
+    reduce_add_h_obj.show(None)
+    missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
+    if len(missed_residues) > 0:
+      bad = ""
+      for res in missed_residues:
+        bad += " " + res
+      raise Sorry("Restraints were not found for the following residues:"+bad)
+    data_manager_model = reduce_add_h_obj.get_model()
+
+    # Optimize H atoms with mmtbx.reduce
+    if verbose:
+      print("\nOptimizing H atoms with mmtbx.reduce...\n")
+    opt = Optimizers.Optimizer(probe_parameters, do_flips, data_manager_model, modelIndex=None,
+      fillAtomDump = False)
+
+    # Re-process the model because we have removed some atoms that were previously
+    # bonded.  Don't make restraints during the reprocessing.
+    # We had to do this to keep from crashing on a call to pair_proxies when generating
+    # mmCIF files, so we always do it for safety.
+    data_manager_model.get_hierarchy().sort_atoms_in_place()
+    data_manager_model.get_hierarchy().atoms().reset_serial()
+    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
+    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+    p.pdb_interpretation.use_neutron_distances = nuclear
+    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
+    # We need to turn this on because without it 1zz0.txt kept flipping the ring
+    # in A TYR 214 every time we re-interpreted. The original interpretation done
+    # by Hydrogen placement will have flipped them, so we don't need to do it again.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
+    #p.pdb_interpretation.sort_atoms=True
+    data_manager_model.process(make_restraints=False, pdb_interpretation_params=p)
+
+    return data_manager_model, True
   else:
     if verbose:
       print("\nUsing input model H/D atoms...\n")
-    return r.as_pdb_string(),False
+    return data_manager_model, False
 
   def show(self, out=sys.stdout, prefix=""):
     if (self.n_outliers == 0):

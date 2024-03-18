@@ -2,7 +2,8 @@
 All-atom contact analysis.
 This is a rewrite of the original clashscore.  This version uses mmtbx.reduce and
 mmtbx.probe to generate the contact information rather than stand-alone programs.
-It take the same parameters as the original clashscore.
+It take the same parameters as the original clashscore (except for time_limit)
+and it also takes mmtbx.probe parameters.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -11,6 +12,7 @@ import os
 from mmtbx.validation.clashscore2 import clashscore2
 from libtbx.program_template import ProgramTemplate
 from datetime import datetime
+from mmtbx.probe import Helpers
 
 try:
   from phenix.program_template import ProgramTemplate
@@ -73,10 +75,6 @@ Example:
     .type = bool
     .help = '''Use nuclear hydrogen positions'''
 
-  time_limit = 120
-    .type = int
-    .help = '''Time limit (sec) for Reduce optimization'''
-
   b_factor_cutoff = None
     .type = int
     .help = '''B factor cutoff for use with MolProbity'''
@@ -84,7 +82,13 @@ Example:
   clash_cutoff = -0.4
     .type = float
     .help = '''dummy variable for MolProbity, will be removed after MP update'''
-"""
+""" + Helpers.probe_phil_parameters
+
+# Removed time_limit from the phil parameters
+#  time_limit = 120
+#    .type = int
+#    .help = '''Time limit (sec) for Reduce optimization'''
+
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
@@ -97,6 +101,7 @@ Example:
     data_manager_model = self.data_manager.get_model()
 
     result = clashscore2(
+      self.params.probe,
       data_manager_model=data_manager_model,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
@@ -122,6 +127,7 @@ Example:
     self.info_json = {"model_name":self.data_manager.get_default_model_name(),
                       "time_analyzed": str(datetime.now())}
     self.results = clashscore2(
+      self.params.probe,
       data_manager_model=data_manager_model,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
