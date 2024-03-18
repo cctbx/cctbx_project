@@ -1227,7 +1227,6 @@ NOTES:
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        keepExistingH = self.params.keep_existing_H,
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
       outString += opt.getInfo()
@@ -1477,8 +1476,7 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3,
-            keepExistingH = self.params.keep_existing_H)
+            verbosity=3)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -1599,8 +1597,7 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3,
-            keepExistingH = self.params.keep_existing_H)
+            verbosity=3)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()

@@ -163,7 +163,6 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                keepExistingH = False,
                 fillAtomDump = True
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
@@ -222,7 +221,6 @@ class Optimizer(object):
     colors as one master. It shows the outlines expanded by the probe radius, with a single color
     for each clique, as another master. These are useful for determining why the cliques are as
     they are.
-    :param keepExistingH: If True, then existing Hydrogens will be kept and not removed.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
     """
