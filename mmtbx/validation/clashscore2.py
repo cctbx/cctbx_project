@@ -7,6 +7,8 @@ external reduce and probe programs.
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import clash
+from cctbx.maptbx.box import shift_and_box_model
+from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from mmtbx.utils import run_reduce_with_timeout
 from mmtbx.validation import validation, atoms, atom_info, residue
@@ -55,18 +57,6 @@ class clashscore2(validation):
       do_flips=False,
       out=sys.stdout):
     pdb_hierarchy = data_manager_model.get_hierarchy()
-    if (not pdb_hierarchy.fits_in_pdb_format()):
-      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
-        import forward_compatible_pdb_cif_conversion
-      conversion_info = forward_compatible_pdb_cif_conversion(
-        hierarchy = pdb_hierarchy)
-      conversion_info.\
-       convert_hierarchy_to_forward_compatible_pdb_representation(pdb_hierarchy)
-      if verbose:
-        print(
-        "Converted model to forward_compatible PDB for clashscore",file = out)
-    else:
-      conversion_info = None
     validation.__init__(self)
     self.b_factor_cutoff = b_factor_cutoff
     self.fast = fast
@@ -90,6 +80,21 @@ class clashscore2(validation):
     import iotbx.pdb
     from scitbx.array_family import flex
     from mmtbx.validation import utils
+
+    # @todo Remove this conversion once we are using MMTBX reduce and probe
+    if (not pdb_hierarchy.fits_in_pdb_format()):
+      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
+        import forward_compatible_pdb_cif_conversion
+      conversion_info = forward_compatible_pdb_cif_conversion(
+        hierarchy = pdb_hierarchy)
+      conversion_info.\
+       convert_hierarchy_to_forward_compatible_pdb_representation(pdb_hierarchy)
+      if verbose:
+        print(
+        "Converted model to forward_compatible PDB for clashscore",file = out)
+    else:
+      conversion_info = None
+
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
@@ -581,15 +586,12 @@ def check_and_report_reduce_failure(fb_object, input_lines, output_fname):
 
 def check_and_add_hydrogen(
         pdb_hierarchy=None,
-        file_name=None,
         nuclear=False,
         keep_hydrogens=True,
         verbose=False,
         model_number=0,
         n_hydrogen_cut_off=0,
         time_limit=120,
-        allow_multiple_models=True,
-        crystal_symmetry=None,
         do_flips=False,
         log=None):
   """
@@ -607,28 +609,15 @@ def check_and_add_hydrogen(
     time_limit (int): limit the time it takes to add hydrogen atoms
     n_hydrogen_cut_off (int): when number of hydrogen atoms < n_hydrogen_cut_off
       force keep_hydrogens tp True
-    allow_multiple_models (bool): Allow models that contain more than one model
-    crystal_symmetry : must provide crystal symmetry when using pdb_hierarchy
 
   Returns:
     (str): PDB string
     (bool): True when PDB string was updated
   """
   if not log: log = sys.stdout
-  if file_name:
-    pdb_inp = iotbx.pdb.input(file_name=file_name)
-    pdb_hierarchy = pdb_inp.construct_hierarchy()
-    cryst_sym = pdb_inp.crystal_symmetry()
-  elif not allow_multiple_models:
-    assert crystal_symmetry
-    cryst_sym = crystal_symmetry
-  else:
-    cryst_sym = None
   assert pdb_hierarchy
   assert model_number < len(pdb_hierarchy.models())
   models = pdb_hierarchy.models()
-  if (len(models) > 1) and (not allow_multiple_models):
-    raise Sorry("When using CCTBX clashscore, provide only a single model.")
   model = models[model_number]
   r = iotbx.pdb.hierarchy.root()
   mdc = model.detached_copy()
@@ -650,12 +639,11 @@ def check_and_add_hydrogen(
         print("\nNo H/D atoms detected - forcing hydrogen addition!\n", file=log)
       keep_hydrogens = False
   import libtbx.load_env
-  has_reduce = libtbx.env.has_module(name="reduce")
   # add hydrogen if needed
-  if has_reduce and (not keep_hydrogens):
+  if not keep_hydrogens:
     # set reduce running parameters
     if verbose:
-      print("\nAdding H/D atoms with reduce...\n")
+      print("\nAdding H/D atoms with mmtbx.reduce...\n")
     build = "-oh -his -flip -keep -allalt -limit{}"
     if not do_flips : build += " -pen9999"
     if nuclear:
@@ -664,7 +652,7 @@ def check_and_add_hydrogen(
       build += " -"
     build = build.format(time_limit)
     trim = " -quiet -trim -"
-    stdin_lines = r.as_pdb_string(cryst_sym)
+    stdin_lines = r.as_pdb_string()
     clean_out = run_reduce_with_timeout(
         parameters=trim,
         stdin_lines=stdin_lines)
@@ -683,13 +671,9 @@ def check_and_add_hydrogen(
     reduce_str = '\n'.join(build_out.stdout_lines)
     return reduce_str,True
   else:
-    if not has_reduce:
-      msg = 'molprobity.reduce could not be detected on your system.\n'
-      msg += 'Cannot add hydrogen to PDB file'
-      print(msg, file=log)
     if verbose:
       print("\nUsing input model H/D atoms...\n")
-    return r.as_pdb_string(cryst_sym),False
+    return r.as_pdb_string(),False
 
 #-----------------------------------------------------------------------
 # this isn't really enough code to justify a separate module...
