@@ -564,7 +564,7 @@ def Test():
 
 class Program(ProgramTemplate):
   description = '''
-Probe2 version {}
+probe2 version {}
 
 This program replaces the original "probe" program from the Richarson lab
 at Duke University and was developed by them as part of a supplemental award.

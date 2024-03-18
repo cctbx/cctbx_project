@@ -861,7 +861,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
 class Program(ProgramTemplate):
   description = '''
-Reduce2 version {}
+reduce2 version {}
 Add Hydrogens to a model and optimize their placement by adjusting movable groups and
 flippable groups of atoms.
 
