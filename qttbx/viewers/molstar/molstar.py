@@ -228,8 +228,15 @@ class MolstarViewer(ModelViewer):
     # queue needs to be refactored out
 
     if log_js:
-      print("js_command:")
-      print(js_command)
+      print("JavaScript command:")
+      lines = js_command.split("\n")
+      print("Total Lines: ",len(lines))
+      if len(lines)>40:
+        lines = lines[:20]+["","...",""]+ lines[-20:]
+        js_command_print = "\n".join(lines)
+      else:
+        js_command_print = js_command
+      print(js_command_print)
     if not sync:
       js_command= f"""
       (async () => {{
@@ -297,7 +304,6 @@ class MolstarViewer(ModelViewer):
     var model_str = `{model_str}`
     {self.plugin_prefix}.phenix.loadStructureFromPdbString(model_str,'{format}', '{label}', '{ref_id}')
     """
-    print(js_str)
     return js_str
 
 
@@ -422,19 +428,46 @@ class MolstarViewer(ModelViewer):
       command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
     self.send_command(command)
 
-  def _get_sync_state(self,callback=None,verbose=False):
+
+
+  def _get_sync_state(self,callback=None,verbose=True):
     # get the remote: local -> reference mapping from the web app
     command = f"""
     {self.plugin_prefix}.phenix.getState();
     """
+    # Inline sync check function
+    def _validate_sync_output(sync_output):
+      return_val = None
+      if isinstance(sync_output,(str,dict)):
+        try:
+          output = json.loads(sync_output)
+          #assert isinstance(output,dict)
+          return_val = output
+        except:
+          #raise
+          pass
+      return return_val
+
     if verbose:
       assert callback is None, "Cannot use custom callback and verbose together"
+
+      # Inline print callback
       def callback(x):
-        print(json.dumps(json.loads(x),indent=2))
-    output = self.send_command(command,callback=callback,sync=True,log_js=False)
-    if isinstance(output,str):
-      output = json.loads(output)
-    if isinstance(output,dict):
+        print("Verbose sync ouput: ",x,", type: ",type(x))
+        output =  _validate_sync_output(x)
+        if output is not None:
+          print(json.dumps(output,indent=2))
+
+    #Run and get output
+    output = self.send_command(command,callback=callback,sync=True,log_js=True)
+    print("Returned sync output:")
+    print(type(output))
+    print(output)
+    output = _validate_sync_output(output)
+    print("Building phenix state")
+    print(type(output))
+    print(output)
+    if output is not None:
       output = PhenixState.from_dict(output)
     return output
 

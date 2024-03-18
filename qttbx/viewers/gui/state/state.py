@@ -134,6 +134,16 @@ class State:
   @phenixState.setter
   def phenixState(self,value):
     self._phenix_state = value
+    if isinstance(value,PhenixState):
+      self.has_synced = True
+
+  @property
+  def has_synced(self):
+    return self._has_synced
+
+  @has_synced.setter
+  def has_synced(self,value):
+    self._has_synced = value
 
 
   def to_dict(self):
@@ -317,14 +327,6 @@ class State:
     ref = MapRef(data=data,model_ref=None)
     self.add_ref(ref)
     return ref
-
-  @property
-  def has_synced(self):
-    return self._has_synced
-
-  @has_synced.setter
-  def has_synced(self,value):
-    self._has_synced = value
 
   @property
   def references_model(self):

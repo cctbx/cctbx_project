@@ -1,7 +1,5 @@
 """
 Utilities for running the molstar web server. Mostly decoupled from the GUI
-
-TODO: Replace with nodejs http-server, which is also needed for Volume Streaming
 """
 import http.server
 import socketserver
@@ -11,32 +9,37 @@ import subprocess
 
 from PySide2.QtCore import QThread,Signal, Slot
 
-def find_open_port():
-  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-    s.bind(("", 0))
-    s.listen(1)
-    port = s.getsockname()[1]
-  return port
 
 class NodeHttpServer:
-  def __init__(self,command,default_port=8080):
+  def __init__(self,command,default_port=56000):
     assert isinstance(command,list), "Provide command as a list of strings"
     if not self.check_port_free(default_port):
-      default_port = find_open_port()
+      default_port = self.find_open_port()
     self.port = default_port
     self.url = f"http://localhost:{self.port}"
     self.process = None
     self.command_list = command+['--port',str(self.port)]
     self.command = ' '.join(self.command_list)
 
-  def check_port_free(self,port,ip='localhost'):
+  @staticmethod
+  def find_open_port():
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+      s.bind(("", 0))
+      s.listen(1)
+      port = s.getsockname()[1]
+    return port
+
+
+  @staticmethod
+  def check_port_free(port, ip='localhost'):
     try:
-      # Create a new socket using the AF_INET address family (IPv4)
-      # and the SOCK_STREAM socket type (TCP)
-      s = socket.create_connection((ip, port), timeout=1)
-      s.close()
-      return True
-    except ConnectionRefusedError:
+      with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((ip, port))
+        # If we get here, it means the bind was successful,
+        # indicating the port is free.
+        return True
+    except OSError:
+      # If an OSError is caught, it likely means the port is in use.
       return False
 
 
