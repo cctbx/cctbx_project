@@ -1125,7 +1125,7 @@ def run(args=None,params=None,
     offset_map_data.reshape(acc)
 
   if write_output_files and (not params.output_files.sharpened_map_file):
-    params.output_files.sharpened_map_file = 'sharpened_map_file.ccp4'
+    params.output_files.sharpened_map_file = 'sharpened_map.ccp4'
   if write_output_files and params.output_files.sharpened_map_file and \
       offset_map_data:
     output_map_file=os.path.join(params.output_files.output_directory,
