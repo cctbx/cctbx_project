@@ -2203,7 +2203,8 @@ class sharpening_info:
         self.k_sharpen = None
       return self
 
-  def show_summary(self, verbose = False, out = sys.stdout):
+  def show_summary(self, verbose = False, list_scale_factors = True,
+      out = sys.stdout):
     method_summary_dict = {
        'b_iso':"Overall b_iso sharpening",
        'b_iso_to_d_cut':"b_iso sharpening to high_resolution cutoff",
@@ -2262,7 +2263,7 @@ class sharpening_info:
 
     elif self.sharpening_method == "model_sharpening":
       print("Resolution-dependent model sharpening", file = out)
-      if self.d_min_list and self.target_scale_factors:
+      if self.d_min_list and self.target_scale_factors and list_scale_factors:
         print("Scale vs resolution:", file = out)
         for d_min, sc in zip(
           self.d_min_list,
@@ -2271,7 +2272,7 @@ class sharpening_info:
 
     elif self.sharpening_method == "half_map_sharpening":
       print("Resolution-dependent half-map sharpening", file = out)
-      if self.d_min_list and self.target_scale_factors:
+      if self.d_min_list and self.target_scale_factors and list_scale_factors:
         print("Scale vs resolution:", file = out)
         for d_min, sc in zip(
           self.d_min_list,

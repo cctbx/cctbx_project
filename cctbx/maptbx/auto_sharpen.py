@@ -2,197 +2,9 @@ from __future__ import absolute_import, division, print_function
 import sys, os
 import iotbx.phil
 from libtbx.utils import Sorry
+import libtbx.phil
 
-master_phil = iotbx.phil.parse("""
-
-  input_files
-    .style = menu_item auto_align
-  {
-
-    map_file = None
-      .type = path
-      .help = File with CCP4-style map
-      .short_caption = Map file
-      .style = file_type:ccp4_map bold input_file
-
-    half_map_file = None
-      .type = path
-      .multiple = True
-      .short_caption = Half map
-      .style = file_type:ccp4_map bold input_file
-      .help = Half map (two should be supplied) for FSC calculation. Must \
-               have grid identical to map_file
-
-    external_map_file = None
-      .type = path
-      .short_caption = External map
-      .style = file_type:ccp4_map bold input_file
-      .help = External map to be used to scale map_file (power vs resolution\
-              will be matched)
-
-    map_coeffs_file = None
-      .type = path
-      .help = Optional file with map coefficients
-      .short_caption = Map coefficients
-      .style = bold file_type:hkl input_file process_hkl \
-        child:map_labels:map_coeffs_labels \
-        child:space_group:space_group child:unit_cell:unit_cell
-
-    map_coeffs_labels = None
-      .type = str
-      .input_size = 160
-      .help = Optional label specifying which columns of of map coefficients \
-          to use
-      .short_caption = Map coeffs label
-      .style = renderer:draw_map_arrays_widget
-
-    pdb_file = None
-      .type = path
-      .help = If a model is supplied, the map will be adjusted to \
-                maximize map-model correlation.  This can be used \
-                to improve a map in regions where no model is yet \
-                built.
-      .style = file_type:pdb input_file
-      .short_caption = Model file (optional)
-
-    ncs_file = None
-      .type = path
-      .help = File with NCS information (typically point-group NCS with \
-               the center specified). Typically in  PDB format. \
-              Can also be a .ncs_spec file from phenix. \
-              Created automatically if symmetry is specified.
-      .short_caption = NCS info file
-
-    seq_file = None
-       .type = path
-       .short_caption = Sequence file
-       .style = file_type:seq input_file
-       .help = Sequence file (unique chains only,  \
-               1-letter code, chains separated by \
-               blank line or greater-than sign.)  \
-               Can have chains that are DNA/RNA/protein and\
-               all can be present in one file.
-
-    input_weight_map_pickle_file = None
-      .type = path
-      .short_caption = Input weight map pickle file
-      .help = Weight map pickle file
-
-  }
-
-  output_files
-    .style = menu_item auto_align
-  {
-
-    shifted_map_file = shifted_map.ccp4
-      .type = str
-      .help = Input map file shifted to new origin.
-      .short_caption = Shifted map file
-      .style = new_file
-
-    sharpened_map_file = sharpened_map.ccp4
-      .type = str
-      .help = Sharpened input map file. In the same location as input map.
-      .short_caption = Sharpened map file
-      .input_size = 400
-      .style = new_file
-
-    shifted_sharpened_map_file = None
-      .type = str
-      .help = Input map file shifted to place origin at 0,0,0 and sharpened.
-      .short_caption = Shifted sharpened map file
-      .input_size = 400
-      .style = new_file
-
-    sharpened_map_coeffs_file = sharpened_map_coeffs.mtz
-      .type = str
-      .help = Sharpened input map \
-              (shifted to new origin if original origin was not 0,0,0), \
-              written out as map coefficients
-      .short_caption = Sharpened map coeffs file
-      .input_size = 400
-      .style = new_file
-
-    output_weight_map_pickle_file = weight_map_pickle_file.pkl
-       .type = path
-       .short_caption = Output weight map pickle file
-       .help = Output weight map pickle file
-       .style = new_file
-
-    output_directory =  None
-      .type = path
-      .help = Directory where output files are to be written \
-                applied.
-      .short_caption = Output directory
-      .style = new_file directory
-
-  }
-
-  crystal_info
-    .style = menu_item auto_align
-  {
-
-     is_crystal = None
-       .type = bool
-       .short_caption = Is a crystal
-       .help = Defines whether this is a crystal (or cryo-EM).\
-                Default is True if use_sg_symmetry=True and False otherwise.
-
-     resolution = None
-       .type = float
-       .short_caption = Resolution
-       .help = Optional nominal resolution of the map.
-       .style = resolution
-
-
-     solvent_content = None
-       .type = float
-       .help = Optional solvent fraction of the cell.
-       .short_caption = Solvent content
-
-     solvent_content_iterations = 3
-       .type = int
-       .help = Iterations of solvent fraction estimation. Used for ID of \
-               solvent content in boxed maps.
-       .short_caption = Solvent fraction iterations
-       .style = hidden
-
-     molecular_mass = None
-       .type = float
-       .help = Molecular mass of molecule in Da. Used as alternative method \
-                 of specifying solvent content.
-       .short_caption = Molecular mass in Da
-
-      ncs_copies = None
-        .type = int
-        .help = You can specify ncs copies and seq file to define solvent \
-            content
-        .short_caption = NCS copies
-
-     wang_radius = None
-       .type = float
-       .help = Wang radius for solvent identification. \
-           Default is 1.5* resolution
-       .short_caption = Wang radius
-
-     buffer_radius = None
-       .type = float
-       .help = Buffer radius for mask smoothing. \
-           Default is resolution
-       .short_caption = Buffer radius
-
-     pseudo_likelihood = None
-       .type = bool
-       .help = Use pseudo-likelihood method for half-map sharpening. \
-               (In development)
-       .short_caption = Pseudo-likelihood
-       .style = hidden
-
-  }
-
-  map_modification
-    .style = menu_item auto_align
-  {
+map_modification_phil_str = """
 
      b_iso = None
        .type = float
@@ -598,6 +410,7 @@ master_phil = iotbx.phil.parse("""
         .type = int
         .short_caption = Resolution bins
         .help = Number of resolution bins for sharpening. Default is 20.
+        .expert_level = 1
 
      regions_to_keep = None
        .type = int
@@ -628,7 +441,206 @@ master_phil = iotbx.phil.parse("""
         .help = b_sol value for model map calculation. IGNORED (Not applied)
         .short_caption = b_sol IGNORED
         .style = hidden
+    """
+
+output_files = """
+
+    shifted_map_file = shifted_map.ccp4
+      .type = str
+      .help = Input map file shifted to new origin.
+      .short_caption = Shifted map file
+      .style = new_file
+
+    sharpened_map_file = None
+      .type = str
+      .help = Sharpened input map file. In the same location as input map.
+      .short_caption = Sharpened map file
+      .input_size = 400
+      .style = new_file
+      .expert_level = 1
+
+    shifted_sharpened_map_file = None
+      .type = str
+      .help = Input map file shifted to place origin at 0,0,0 and sharpened.
+      .short_caption = Shifted sharpened map file
+      .input_size = 400
+      .style = new_file
+
+    sharpened_map_coeffs_file = None
+      .type = str
+      .help = Sharpened input map \
+              (shifted to new origin if original origin was not 0,0,0), \
+              written out as map coefficients
+      .short_caption = Sharpened map coeffs file
+      .input_size = 400
+      .style = new_file
+
+    output_weight_map_pickle_file = weight_map_pickle_file.pkl
+       .type = path
+       .short_caption = Output weight map pickle file
+       .help = Output weight map pickle file
+       .style = new_file
+
+    output_directory =  None
+      .type = path
+      .help = Directory where output files are to be written \
+                applied.
+      .short_caption = Output directory
+      .style = new_file directory
+"""
+
+crystal_info = """
+     is_crystal = None
+       .type = bool
+       .short_caption = Is a crystal
+       .help = Defines whether this is a crystal (or cryo-EM).\
+                Default is True if use_sg_symmetry=True and False otherwise.
+
+     resolution = None
+       .type = float
+       .short_caption = Resolution
+       .help = Optional nominal resolution of the map.
+       .style = resolution
+       .expert_level = 1
+
+
+     solvent_content = None
+       .type = float
+       .help = Optional solvent fraction of the cell.
+       .short_caption = Solvent content
+
+     solvent_content_iterations = 3
+       .type = int
+       .help = Iterations of solvent fraction estimation. Used for ID of \
+               solvent content in boxed maps.
+       .short_caption = Solvent fraction iterations
+       .style = hidden
+
+     molecular_mass = None
+       .type = float
+       .help = Molecular mass of molecule in Da. Used as alternative method \
+                 of specifying solvent content.
+       .short_caption = Molecular mass in Da
+
+      ncs_copies = None
+        .type = int
+        .help = You can specify ncs copies and seq file to define solvent \
+            content
+        .short_caption = NCS copies
+
+     wang_radius = None
+       .type = float
+       .help = Wang radius for solvent identification. \
+           Default is 1.5* resolution
+       .short_caption = Wang radius
+
+     buffer_radius = None
+       .type = float
+       .help = Buffer radius for mask smoothing. \
+           Default is resolution
+       .short_caption = Buffer radius
+
+     pseudo_likelihood = None
+       .type = bool
+       .help = Use pseudo-likelihood method for half-map sharpening. \
+               (In development)
+       .short_caption = Pseudo-likelihood
+       .style = hidden
+"""
+
+master_phil = iotbx.phil.parse("""
+
+  input_files
+    .style = menu_item auto_align
+  {
+
+    map_file = None
+      .type = path
+      .help = File with CCP4-style map
+      .short_caption = Map file
+      .style = file_type:ccp4_map bold input_file
+
+    half_map_file = None
+      .type = path
+      .multiple = True
+      .short_caption = Half map
+      .style = file_type:ccp4_map bold input_file
+      .help = Half map (two should be supplied) for FSC calculation. Must \
+               have grid identical to map_file
+
+    external_map_file = None
+      .type = path
+      .short_caption = External map
+      .style = file_type:ccp4_map bold input_file
+      .help = External map to be used to scale map_file (power vs resolution\
+              will be matched)
+
+    map_coeffs_file = None
+      .type = path
+      .help = Optional file with map coefficients
+      .short_caption = Map coefficients
+      .style = bold file_type:hkl input_file process_hkl \
+        child:map_labels:map_coeffs_labels \
+        child:space_group:space_group child:unit_cell:unit_cell
+
+    map_coeffs_labels = None
+      .type = str
+      .input_size = 160
+      .help = Optional label specifying which columns of of map coefficients \
+          to use
+      .short_caption = Map coeffs label
+      .style = renderer:draw_map_arrays_widget
+
+    pdb_file = None
+      .type = path
+      .help = If a model is supplied, the map will be adjusted to \
+                maximize map-model correlation.  This can be used \
+                to improve a map in regions where no model is yet \
+                built.
+      .style = file_type:pdb input_file
+      .short_caption = Model file (optional)
+
+    ncs_file = None
+      .type = path
+      .help = File with NCS information (typically point-group NCS with \
+               the center specified). Typically in  PDB format. \
+              Can also be a .ncs_spec file from phenix. \
+              Created automatically if symmetry is specified.
+      .short_caption = NCS info file
+
+    seq_file = None
+       .type = path
+       .short_caption = Sequence file
+       .style = file_type:seq input_file
+       .help = Sequence file (unique chains only,  \
+               1-letter code, chains separated by \
+               blank line or greater-than sign.)  \
+               Can have chains that are DNA/RNA/protein and\
+               all can be present in one file.
+
+    input_weight_map_pickle_file = None
+      .type = path
+      .short_caption = Input weight map pickle file
+      .help = Weight map pickle file
+
   }
+
+  output_files
+    .style = menu_item auto_align
+  {
+   %s
+  }
+
+  crystal_info
+    .style = menu_item auto_align
+  {
+   %s
+  }
+
+  map_modification {
+    %s
+  }
+
 
    control
      .style = menu_item auto_align
@@ -676,7 +688,8 @@ master_phil = iotbx.phil.parse("""
     .style = output_dir
   }
 
-""", process_includes=True)
+""" %(output_files, crystal_info, map_modification_phil_str),
+  process_includes=True)
 master_params = master_phil
 
 def get_params(args,out=sys.stdout):
@@ -859,9 +872,9 @@ def get_map_and_model(params=None,
 
   if params.input_files.external_map_file and not \
       params.map_modification.auto_sharpen_methods==['external_map_sharpening']:
-    raise Sorry("Please specify external_map_file and "+
-        "auto_sharpen_methods=external_map_sharpening or"+
-         " neither")
+    raise Sorry("For external map sharpening, please do not set any other "+
+        "options in 'Sharpening methods' (options set: %s)" %(
+      ", ".join(params.map_modification.auto_sharpen_methods)))
 
 
   if params.map_modification.auto_sharpen_methods==['external_map_sharpening']:
@@ -902,7 +915,8 @@ def get_map_and_model(params=None,
       half_map_data_list.append(half_map_data)
 
   if params.crystal_info.resolution is None:
-    raise Sorry("Need resolution if map is supplied")
+    raise Sorry("Need resolution for b-sharpening if "+
+       "map is supplied and no model is supplied")
 
   if params.crystal_info.resolution >= 10:
     print("\n** WARNING: auto_sharpen is designed for maps at a "+\
