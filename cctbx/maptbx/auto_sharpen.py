@@ -1124,6 +1124,8 @@ def run(args=None,params=None,
   if acc is not None:  # offset the map to match original if possible
     offset_map_data.reshape(acc)
 
+  if write_output_files and (not params.output_files.sharpened_map_file):
+    params.output_files.sharpened_map_file = 'sharpened_map_file.ccp4'
   if write_output_files and params.output_files.sharpened_map_file and \
       offset_map_data:
     output_map_file=os.path.join(params.output_files.output_directory,
@@ -1161,6 +1163,8 @@ def run(args=None,params=None,
     print("\nWrote sharpened map (origin at %s)\nto %s" %(
      str(new_map_data.origin()),output_map_file), file=out)
 
+  if write_output_files and (not params.output_files.sharpened_map_coeffs_file):
+     params.output_files.sharpened_map_coeffs_file = 'sharpened_map_coeffs.mtz'
   if write_output_files and params.output_files.sharpened_map_coeffs_file and \
       new_map_coeffs:
     output_map_coeffs_file=os.path.join(params.output_files.output_directory,
