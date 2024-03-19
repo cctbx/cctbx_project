@@ -1,6 +1,6 @@
 from __future__ import division, print_function
 import json
-
+import pandas as pd
 from geo_file_parsing import parse_geo_file
 
 
@@ -751,6 +751,8 @@ geo_dict_2 = parse_geo_file("tst_geo_parsing_2.geo",return_format='dict')
 # define comparison functions
 
 def get_type(value):
+  if pd.isna(value):
+    return None
   try:
     f = float(value)
     if f.is_integer():
@@ -773,6 +775,12 @@ def compare_custom(d1,d2):
     #print(value1,value2)
     t1,t2 = get_type(value1), get_type(value2)
     assert t1==t2, '%s!=%s' % (t1, t2)
+
+    # get all none-like values to be None
+    if t1 is None:
+      value1 = None
+    if t2 is None:
+      value2 = None
     assert str(value1)==str(value2), "Invalid comparisons: "+str(value1)+" and "+str(value2)
   return True
 
