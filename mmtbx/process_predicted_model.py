@@ -33,6 +33,12 @@ master_phil_str = """
       .short_caption = Remove low-confidence residues
       .expert_level = 3
 
+    continuous_chain = False
+      .type = bool
+      .help = When removing low-confidence residues, only trim from ends
+      .short_caption = Maintain continuous chain
+      .expert_level = 3
+
     split_model_by_compact_regions = True
       .type = bool
       .help = Split model into compact regions after removing \
@@ -263,6 +269,7 @@ def process_predicted_model(
        If None, set to True if all plddt are from 0 to 1
     remove_low_confidence_residues: remove residues with low confidence
         (plddt or rmsd as set below)
+    continuous_chain: if removing low-confidence residues, trim ends only
     minimum_plddt: minimum plddt to keep residues (on same scale as b_value_field,
       if not set, calculated from maximum_rmsd).
     maximum_rmsd: alternative specification of minimum confidence based on rmsd.
@@ -419,6 +426,8 @@ def process_predicted_model(
     # Get selection based on CA/P atoms
     asc1 = ph.atom_selection_cache()
     sel1 = asc1.selection('(name ca or name P) and (%s) ' %selection_string)
+    if p.continuous_chain:  # trim ends only
+       restore_true_except_at_ends(sel1)
     ca_ph = ph.select(sel1)
     selection_string_2 = get_selection_for_short_segments(ca_ph,None)
 
@@ -540,6 +549,20 @@ def process_predicted_model(
     b_values = b_values,
     vrms_list = vrms_list,
     )
+
+def restore_true_except_at_ends(sel1):
+  ''' Set all values that are not at ends of sel1 to False (any number
+    at ends may be False)'''
+
+  values = list(sel1)
+  if not True in values:
+    return  # nothing to do
+  first_true = values.index(True)
+  values.reverse()
+  last_true_from_end = values.index(True)
+  last_true = len(values) - last_true_from_end
+  for i in range(first_true,last_true):
+    sel1[i] = True
 
 def get_vrms_list(p, model_list):
   vrms_list = []
