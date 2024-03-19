@@ -341,6 +341,9 @@ class map_model_mixins(object):
 
     # get filenames from PHIL
     map_model = None
+    if map_files and (not isinstance(map_files,list)):
+      map_files = [map_files]
+
     if from_phil:
       if model_file is not None or map_files is not None:
         raise Sorry(
