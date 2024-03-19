@@ -263,8 +263,8 @@ refinement.output.job_title = Test refinement run
 )
 
   expected_result = [
-    ('protein.pdb', 'Input model', 'refinement.gui.migration.refinement.input.pdb.file_name'),
-    ('ligand.pdb', 'Input model', 'refinement.gui.migration.refinement.input.pdb.file_name'),
+    ('protein.pdb', 'Input model (X-ray)', 'refinement.gui.migration.refinement.input.pdb.file_name'),
+    ('ligand.pdb', 'Input model (X-ray)', 'refinement.gui.migration.refinement.input.pdb.file_name'),
     ('ligand.cif', 'Restraints (CIF)', 'refinement.gui.migration.refinement.input.monomers.file_name')]
   for f in i.get_input_files():
     assert f in expected_result
@@ -289,13 +289,15 @@ refinement.output.job_title = Test refinement run
   assert (style.get_parent_params() == {"file_name" : "file_name"})
   file_map = i.get_file_type_map("pdb")
   expected_result = ['refinement.gui.migration.refinement.input.pdb.file_name',
+                     'refinement.gui.migration.refinement.input.pdb.electron_file_name',
+                     'refinement.gui.migration.refinement.input.pdb.neutron_file_name',
                      'refinement.reference_model.file']
   for p in file_map.get_multiple_params():
     assert p in expected_result, (p, expected_result)
   assert len(file_map.get_multiple_params()) == len(expected_result)
   assert (file_map.get_default_param() == "refinement.gui.migration.refinement.input.pdb.file_name")
   file_map = i.get_file_type_map("hkl")
-  assert (file_map.get_overall_max_count() == 5)
+  assert (file_map.get_overall_max_count() == 7)
   assert (len(file_map.get_multiple_params()) == 0)
   assert (file_map.get_max_count("refinement.gui.migration.refinement.input.xray_data.file_name") == 1)
   menu = i.get_menu_db()
