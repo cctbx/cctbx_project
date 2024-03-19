@@ -341,11 +341,11 @@ def add_i_seq_columns_from_id_str(restraint_dfs,model):
   Given a dict of pandas DataFrames, each containing one type of restraint data,
   add i_seq columns from a model by translating the existing id_str columns
   """
-  restraint_dfs = d
   mapping_dict = {atom.id_str():atom.i_seq for atom in model.get_atoms()}
   for restraint_name,df in restraint_dfs.items():
-    id_str_cols = [col for col in df.columns if "id_str" in col]
-    i_seq_cols = [col.replace("id_str","i_seq") for col in id_str_cols]
-    for i_seq_col,id_str_col in zip(i_seq_cols,id_str_cols):
-      df[i_seq_col] = df[id_str_col].map(mapping_dict)
-  return restraint_dfs
+    if isinstance(df,pd.DataFrame):
+      id_str_cols = [col for col in df.columns if "id_str" in col]
+      i_seq_cols = [col.replace("id_str","i_seq") for col in id_str_cols]
+      for i_seq_col,id_str_col in zip(i_seq_cols,id_str_cols):
+        df[i_seq_col] = df[id_str_col].map(mapping_dict)
+
