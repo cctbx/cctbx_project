@@ -395,11 +395,12 @@ class map_model_mixins(object):
 
       elif len(self.get_real_map_names()) in [2,3]:
         map_files = self.get_real_map_names()
-    new_map_files = []
-    for fn in map_files:
-      if (not files_to_exclude) or (not fn in files_to_exclude):
-        new_map_files.append(fn)
-    map_files = new_map_files
+    if isinstance(map_files, list):
+      new_map_files = []
+      for fn in map_files:
+        if (not files_to_exclude) or (not fn in files_to_exclude):
+          new_map_files.append(fn)
+      map_files = new_map_files
     # check map_files argument
     mm = None
     mm_1 = None
