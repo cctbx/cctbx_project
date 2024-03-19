@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 import re
 import json
-from collections import defaultdict
 import pandas as pd
 import numpy as np
 
