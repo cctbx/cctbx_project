@@ -109,6 +109,7 @@ class clashscore2(validation):
     # of it for each submodel.
     original_model = data_manager_model.deep_copy()
 
+    pdb_hierarchy = data_manager_model.get_hierarchy()
     n_models = len(pdb_hierarchy.models())
     use_segids = utils.use_segids_in_place_of_chainids(
                    hierarchy=pdb_hierarchy)
