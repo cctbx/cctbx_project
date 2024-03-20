@@ -284,10 +284,19 @@ def tst_02(log = sys.stdout):
   print("Segments found: %s" %(" ".join(chainid_list)), file = log)
   assert len(chainid_list) == 2
 
+def tst_03():
+  from mmtbx.process_predicted_model import restore_true_except_at_ends
+  from scitbx.array_family import flex
+  a = flex.bool((0,0,0,1,0,1,1,0,0,0,1,1,1,0,0))
+  restore_true_except_at_ends(a)
+  print(list(a))
+  assert list(a) == [False, False, False, True, True, True, True, True, True, True, True, True, True, False, False]
+
 if __name__ == "__main__":
 
   t0 = time.time()
   tst_01()
   tst_02()
+  tst_03()
   print ("Time:", time.time()-t0)
   print ("OK")
