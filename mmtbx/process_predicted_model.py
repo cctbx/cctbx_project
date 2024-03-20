@@ -269,7 +269,9 @@ def process_predicted_model(
        If None, set to True if all plddt are from 0 to 1
     remove_low_confidence_residues: remove residues with low confidence
         (plddt or rmsd as set below)
-    continuous_chain: if removing low-confidence residues, trim ends only
+    continuous_chain: if removing low-confidence residues, trim ends only. Note
+         that if this is set, only the pae_matrix method of finding domains
+         will work; the standard method will give a single domain.
     minimum_plddt: minimum plddt to keep residues (on same scale as b_value_field,
       if not set, calculated from maximum_rmsd).
     maximum_rmsd: alternative specification of minimum confidence based on rmsd.
