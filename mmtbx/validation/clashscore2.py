@@ -79,11 +79,6 @@ class clashscore2(validation):
     self.clash_dict_b_cutoff = {}
     self.list_dict = {}
     self.probe_file = None
-    if (not libtbx.env.has_module(name="probe")):
-      raise RuntimeError(
-        "Probe could not be detected on your system.  Please make sure "+
-        "Probe is in your path.\nProbe is available at "+
-        "http://kinemage.biochem.duke.edu/")
     if verbose:
       if not nuclear:
         print("\nUsing electron cloud x-H distances and vdW radii")
@@ -109,21 +104,6 @@ class clashscore2(validation):
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
       log=out)
-
-    # @todo Remove this conversion once we are using MMTBX reduce and probe
-    pdb_hierarchy = data_manager_model.get_hierarchy()
-    if (not pdb_hierarchy.fits_in_pdb_format()):
-      from iotbx.pdb.forward_compatible_pdb_cif_conversion \
-        import forward_compatible_pdb_cif_conversion
-      conversion_info = forward_compatible_pdb_cif_conversion(
-        hierarchy = pdb_hierarchy)
-      conversion_info.\
-       convert_hierarchy_to_forward_compatible_pdb_representation(pdb_hierarchy)
-      if verbose:
-        print(
-        "Converted model to forward_compatible PDB for clashscore",file = out)
-    else:
-      conversion_info = None
 
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
     # of it for each submodel.
@@ -159,9 +139,6 @@ class clashscore2(validation):
       if (save_modified_hierarchy):
         self.pdb_hierarchy = iotbx.pdb.input(
           pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
-        if conversion_info:
-          conversion_info.convert_hierarchy_to_full_representation(
-             self.pdb_hierarchy)
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
@@ -173,11 +150,6 @@ class clashscore2(validation):
         self.clashscore = self.probe_clashscore_manager.clashscore
         self.clashscore_b_cutoff = self.probe_clashscore_manager.\
                                    clashscore_b_cutoff
-
-    if conversion_info:
-      if verbose:
-        print("Converted model back to full representation", file = out)
-      conversion_info.convert_hierarchy_to_full_representation(pdb_hierarchy)
 
   def get_clashscore(self):
     return self.clashscore
