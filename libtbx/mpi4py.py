@@ -41,6 +41,12 @@ class mpiCommEmulator(object):
     items = []
     items.append(sendobj)
     return items
+  def Gatherv(self, sendbuf, recvbuf, root=0):
+    counter = 0
+    for i, item in enumerate(sendbuf):
+      n = len(item)
+      recvbuf[counter:counter+n] = item
+      counter += n
   def Abort(self,errorcode=0):
     import sys
     sys.exit()
