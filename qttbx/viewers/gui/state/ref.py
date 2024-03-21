@@ -393,9 +393,11 @@ class RestraintsRef(Ref):
     super().__init__(data=data,style=model_ref.style)
     self.model_ref = model_ref
     self.synchronize_with_model()
+    self.increment_column_suffixes()
     self.add_iseqs_column()
     self.add_atom_id_columns()
     self.add_chain_and_res_columns()
+
 
     # Set model restraint_ref value (will emit change signal)
     if self.model_ref is not None:
@@ -414,11 +416,31 @@ class RestraintsRef(Ref):
 
       _ = add_i_seq_columns_from_id_str(self.data.dataframes,self.model_ref.model)
 
+  def increment_column_suffixes(self):
+    for name, df in self.data.dataframes.items():
+      for prefix in ["id_str", "i_seq"]:
+        # Track columns to rename
+        columns_to_rename = {}
+        for col in df.columns:
+          if col.startswith(prefix) and col.split("_")[-1].isdigit():
+            parts = col.split("_")
+            if parts[-1] == "0":  # Check for zero indexing
+              zero_indexed = True
+            else:
+              zero_indexed = False
+            if zero_indexed or parts[-1].isdigit():
+              # Increment the suffix digit
+              new_digit = int(parts[-1]) + 1
+              # Reconstruct the column name with the new digit
+              new_col = "_".join(parts[:-1] + [str(new_digit)])
+              columns_to_rename[col] = new_col
+
+        # Rename columns after determining all necessary changes
+        df.rename(columns=columns_to_rename, inplace=True)
+
   def add_iseqs_column(self):
     # add a new column that is a list of the i_seqs
-    print(self.dfs)
     for name,df in self.dfs.items():
-      print(name,df)
       if df is not None:
         i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
         if len(i_seq_cols)>0:
@@ -463,21 +485,21 @@ class RestraintsRef(Ref):
             df.loc[not_na,label] = vals
 
 
-class RestraintRef(Ref):
-  _class_label_name = 'restraint'
-  def __init__(self,data: Restraint, model_ref: ModelRef):
-    self._selection_ref = None
-    self.model_ref = model_ref
+# class RestraintRef(Ref):
+#   _class_label_name = 'restraint'
+#   def __init__(self,data: Restraint, model_ref: ModelRef):
+#     self._selection_ref = None
+#     self.model_ref = model_ref
 
-    super().__init__(data=data, style=model_ref.style)
+#     super().__init__(data=data, style=model_ref.style)
 
 
-  @property
-  def selection_ref(self):
-    if self._selection_ref is None:
-      query = SelectionQuery.from_i_seqs(self.model_ref.mol.atom_sites,self.data.i_seqs)
-      self._selection_ref = SelectionRef(data=query,model_ref=self.model_ref,show=False)
-    return self._selection_ref
+#   @property
+#   def selection_ref(self):
+#     if self._selection_ref is None:
+#       query = SelectionQuery.from_i_seqs(self.model_ref.mol.atom_sites,self.data.i_seqs)
+#       self._selection_ref = SelectionRef(data=query,model_ref=self.model_ref,show=False)
+#     return self._selection_ref
 
 
 

@@ -20,7 +20,7 @@ from .reference import Reference
 from .structure import Structure
 from .component import Component
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef, RestraintRef, CifFileRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef,  CifFileRef
 from .results import ResultsRef
 from ...last.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
@@ -245,7 +245,7 @@ class State:
       #self.active_selection_ref = ref
       #self.signals.selection_change.emit(ref)
       pass
-    elif isinstance(ref,(RestraintRef,RestraintsRef)):
+    elif isinstance(ref,RestraintsRef):
       pass # access through model
       #self.signals.selection_change.emit(self.active_selection_ref)
 
