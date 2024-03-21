@@ -15,6 +15,10 @@ class MolDataFrame:
     return cls(sites,cif_input=cif_input)
 
   @classmethod
+  def from_mmtbx_model(cls,model):
+    return cls.from_mmtbx_model_via_mmcif(model)
+
+  @classmethod
   def from_mmtbx_model_via_mmcif(cls,model):
     cif_input = CifInput.from_mmtbx_model_via_mmcif(model)
     sites = AtomSites.from_cif_input(cif_input)

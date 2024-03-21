@@ -270,7 +270,7 @@ class ModelRef(Ref):
   @property
   def mol(self):
     if self._mol is None:
-      mol = MolDataFrame.from_mmtbx_model(self.model,insert_defaults=False)
+      mol = MolDataFrame.from_mmtbx_model(self.model)
       self._mol = mol
     return self._mol
 

@@ -220,6 +220,8 @@ class CifInput(UserDict):
   'label_entity_id': 'string'
   })
 
+
+
   def __init__(self,*args,**kwargs):
     """
     Initialize with regular dictionary args,

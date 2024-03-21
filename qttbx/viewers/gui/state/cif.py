@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional, Dict
 from pathlib import Path
 
-from ...last.cif_io import read_cif_file
+
 from .base import DataClassBase
 
 
@@ -17,9 +17,9 @@ class CifFileData(DataClassBase):
     if self.filepath and not self.filename:
         self.filename = Path(self.filepath).name
 
-  @property
-  def dataframes(self):
-    if not hasattr(self,"_pandas"):
-      self._pandas = read_cif_file(self.filepath,method="iotbx",return_as="pandas")
-      #self._pandas = read_cif_file(self.filepath,method="cifpd",return_as="pandas")
-    return self._pandas
+  # @property
+  # def dataframes(self):
+  #   if not hasattr(self,"_pandas"):
+  #     self._pandas = read_cif_file(self.filepath,method="iotbx",return_as="pandas")
+  #     #self._pandas = read_cif_file(self.filepath,method="cifpd",return_as="pandas")
+  #   return self._pandas

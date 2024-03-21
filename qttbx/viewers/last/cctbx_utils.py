@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from cctbx.array_family import flex
 
-from .cif_io import df_to_cif_lines
+from .pandas_utils import df_to_cif_lines
 
 
 
