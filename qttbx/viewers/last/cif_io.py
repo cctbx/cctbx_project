@@ -189,12 +189,26 @@ def clean_nested_dict(d):
     return d
 
 
+from io import StringIO
+import warnings
+from collections import UserDict, defaultdict
+import re
+from pathlib import Path
+import sys
+
+from iotbx import cif
+from iotbx.cif.builders import crystal_symmetry_builder
+from iotbx.cif.model import block
+import pandas as pd
+from pandas.errors import ParserWarning
+
+from libtbx.utils import null_out
+from .python_utils import find_key_path, get_value_by_path
+from .cif_io import convert_dataframes_to_iotbx_cif, convert_dict_to_dataframes
+
+
 
 class CifInput(UserDict):
-  """
-  This class is intented to be a container with CIF file data, and to be
-  separate from the parsing class
-  """
 
   # Define explicit dtypes, what isn't here become 'string'
   dtypes = defaultdict(lambda: 'string')
@@ -220,6 +234,15 @@ class CifInput(UserDict):
   'label_entity_id': 'string'
   })
 
+  @classmethod
+  def from_mmcif_file(cls,filename):
+    return cls(filename)
+
+  @classmethod
+  def from_mmtbx_model_via_mmcif(cls,model):
+    # use mmcif string as intermediate
+    string_obj = StringIO(model.model_as_mmcif())
+    return cls(string_obj)
 
 
   def __init__(self,*args,**kwargs):
@@ -229,15 +252,22 @@ class CifInput(UserDict):
     """
 
     # Check if initialized with a filename
+    d = None
     self.filename = None
-    if len(args) == 1 and isinstance(args[0], (Path,str)):
-      self.filename = args[0]
-      d = self._read_mmcif_file_to_dataframes(self.filename)
-      args = args[1:]
+    if len(args) == 1:
+      if isinstance(args[0], (Path,str)):
+        self.filename = args[0]
+        d = self._read_mmcif_file_to_dataframes(self.filename)
+        args = args[1:]
+      elif isinstance(args[0],StringIO):
+        d = self._read_mmcif_obj_to_dataframes(args[0])
+        args = args[1:]
 
-    super().__init__(*args[1:],**kwargs)
-    if self.filename is not None:
+    super().__init__(*args,**kwargs)
+    if d is not None:
       self.update(d)
+
+
 
   def read_mmcif_file_to_dataframes(self,file):
     d = self._read_mmcif_file_to_dataframes(file)
@@ -245,7 +275,14 @@ class CifInput(UserDict):
 
   def _read_mmcif_file_to_dataframes(self,file):
     with open(file, 'r') as fh:
-      lines = fh.readlines()
+      return self._read_mmcif_obj_to_dataframes(fh)
+
+  def read_mmcif_obj_to_dataframes(self,file_obj):
+    d = self._read_mmcif_obj_to_dataframes(file_obj)
+    self.update(d)
+
+  def _read_mmcif_obj_to_dataframes(self,file_obj):
+    lines = file_obj.readlines()
 
     self.parser= CifParser(lines)
     self.parser.run()
@@ -260,6 +297,10 @@ class CifInput(UserDict):
       return None
     df =  get_value_by_path(self,atom_site_path)
     return df
+
+
+
+
 
   def extract_crystal_symmetry(self):
     """
@@ -300,10 +341,6 @@ class CifInput(UserDict):
 
 
 class CifParser:
-  """
-  A class that only does cif parsing.
-  The end result is a nested dict of pandas dataframes
-  """
   def __init__(self,lines):
     self.lines = lines
     self.i = 0
