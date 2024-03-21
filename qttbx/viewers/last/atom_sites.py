@@ -8,6 +8,8 @@ from iotbx.pdb.utils import all_label_asym_ids
 from iotbx.pdb import hierarchy
 from .cif_io import CifInput
 from libtbx import group_args
+from cctbx.array_family import flex
+from libtbx.test_utils import approx_equal
 
 params = group_args(
 
@@ -120,14 +122,6 @@ import pandas as pd
 class AtomSites(pd.DataFrame):
   params = params
 
-  ########################
-  # Utility dict functions
-  ########################
-
-
-  ########################
-  # Constructors
-  ########################
 
   @classmethod
   def from_cif_input(cls,cif_input,name=None):
@@ -495,12 +489,12 @@ class AtomSites(pd.DataFrame):
      return self[self.xyz_keys].values
 
   def get_sites_cart(self):
-     #sites_cart = flex.vec3_double(self.xyz)
-    sites_cart = self.hierarchy.atoms().extract_xyz()
-    #  assert approx_equal(sites_cart,sites_cart_h), (
-    #     "Mismatch between dataframe cartesian sites and those in hierarchy"
-    #  )
-    return sites_cart
+    sites_cart = flex.vec3_double(self.xyz)
+    sites_cart_h = self.hierarchy.atoms().extract_xyz()
+    assert approx_equal(sites_cart,sites_cart_h), (
+        "Mismatch between dataframe cartesian sites and those in hierarchy"
+     )
+    return sites_cart_h
 
 
   @property
@@ -509,43 +503,6 @@ class AtomSites(pd.DataFrame):
     #    self._hierarchy = self._build_hierarchy()
 
     return self._hierarchy
-
-
-  # @property
-  # def crystal_symmetry(self):
-  #   if self._crystal_symmetry is None and self.cif_input is not None:
-  #     self._crystal_symmetry = extract_crystal_symmetry(self.cif_input)
-  #   return self._crystal_symmetry
-
-  # @crystal_symmetry.setter
-  # def crystal_symmetry(self,value):
-  #    self._crystal_symmetry = value
-
-  # @staticmethod
-  # def add_crystal_symmetry_if_necessary(sites, crystal_symmetry = None,
-  #    box_cushion = 3,
-  #    force = False):
-  #   '''
-  #   Copied from mmtbx.model.manager:
-
-  #     If this model does not have crystal_symmetry set, create a dummy
-  #     crystal_symmetry that goes around the model.  Do not shift position.
-  #     If force is True, make new crystal symmetry even if already present.
-  #   '''
-  #   self = sites
-  #   if (not force) and \
-  #      self.crystal_symmetry and self.crystal_symmetry.unit_cell() and \
-  #       self.crystal_symmetry.space_group() :
-  #     return  # nothing to do
-
-  #   sites_cart=self.get_sites_cart()
-  #   if not crystal_symmetry:
-  #     a,b,c = matrix.col(sites_cart.max()) - matrix.col(sites_cart.min()) + \
-  #       2 * matrix.col((box_cushion,box_cushion,box_cushion))
-  #     crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
-  #   self.crystal_symmetry = crystal_symmetry
-
-
 
   def add_i_seqs_from_index(self):
     # In theory this should always work, should never need the hierarchy method
