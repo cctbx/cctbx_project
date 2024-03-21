@@ -1,69 +1,15 @@
-from iotbx.data_manager import DataManager
-from iotbx.pdb import input as pdb_input
-import tempfile
-from collections import OrderedDict
 import json
 import pandas as pd
 import numpy as np
-import networkx as nx
 from collections import OrderedDict
 from collections import defaultdict
-from iotbx.pdb import hy36encode, hy36decode, common_residue_names_get_class
-from iotbx.pdb.utils import all_chain_ids, all_label_asym_ids
+from iotbx.pdb import common_residue_names_get_class
+from iotbx.pdb.utils import all_label_asym_ids
 from iotbx.pdb import hierarchy
-from .cif_io import read_cif_file, extract_crystal_symmetry
 from .cif_io2 import CifInput
-from .python_utils import find_key_path, get_value_by_path
-#The internal attribute names being managed
-import libtbx
 from libtbx import group_args
-from cctbx.array_family import flex
-from libtbx.test_utils import approx_equal
-from scitbx import matrix
-from cctbx import crystal
-import mmtbx
-from libtbx.utils import null_out
-
-from .selection_common import CommonSelectionParser
-from .selection_utils import (
-  df_nodes_group_to_query,
-  find_simplest_selected_nodes,
-  form_simple_str_common,
-  SelConverterPhenix,
-  Selection,
-  SelectionQuery
-)
-
 
 params = group_args(
-
-
-attrs_map_core = OrderedDict([
-    ("asym_id","auth_asym_id"),
-    ("seq_id","auth_seq_id"),
-    ("comp_id","auth_comp_id"),
-    ('alt_id','label_alt_id'),
-    ("atom_id","label_atom_id"),
-    ("id","id"),
-    ("type_symbol","type_symbol",),
-    ("x", "Cartn_x"),
-    ("y","Cartn_y"),
-    ("z","Cartn_z"),
-
-    ("occupancy",'occupancy'),
-    ("B_iso_or_equiv","B_iso_or_equiv")]),
-
-attrs_hierarchy_core= [
-    'asym_id',
-    'seq_id',
-    'comp_id',
-    'atom_id',
-    'id',
-    'type_symbol',
-    'occupancy',
-    'alt_id',
-    'B_iso_or_equiv'
-    ],
 
 # Maps internal attr name -> phenix name
 attrs_map_phenix = OrderedDict([
@@ -74,7 +20,6 @@ attrs_map_phenix = OrderedDict([
     ("asym_id","chain"),
     ("seq_id","resseq"),
     ("comp_id","resname"),
-    ("alt_id","altloc"),
     ("atom_id","atom"),
     ("id","serial"),
     ("type_symbol","element"),
@@ -85,7 +30,7 @@ attrs_map_phenix = OrderedDict([
     ("bfactor","b"),
     ('icode','icode'),
     ("charge","charge"),
-
+    ("alt_id","altloc")
     ]),
 
 dtypes_mmcif = {
@@ -93,7 +38,6 @@ dtypes_mmcif = {
  'label_asym_id': 'string',
  'auth_seq_id': 'Int64',
  'label_seq_id': 'Int64',
- 'label_alt_id':'string',
  'label_comp_id': 'string',
  'type_symbol': 'string',
  'label_alt_id': 'string',
@@ -120,9 +64,9 @@ fill_functions = {
  'auth_seq_id': lambda sites: sites["label_seq_id"],
  'label_seq_id': None,
  'auth_comp_id': lambda sites: sites["label_comp_id"],
- 'label_alt_id': None,
  'label_comp_id': None,
  'type_symbol': None,
+ 'label_alt_id': None,
  'pdbx_PDB_model_num': None,
  'pdbx_PDB_ins_code': None,
  'Cartn_x': None,
@@ -191,24 +135,26 @@ class AtomSites(pd.DataFrame):
      return cls.from_mmcif_df(sites,name=name)
 
   @classmethod
-  def from_mmcif_df(cls,df,name=None):
+  def from_mmcif_df(cls,df,name=None,build_hierarchy=True):
     replacements = {"?":pd.NA,
                     ".":pd.NA}
     df.replace(replacements,inplace=True)
     sites = cls(df,name=name)
-    sites = AtomSites._init_new_sites(sites)
+    sites = AtomSites._init_new_sites(sites,build_hierarchy=build_hierarchy)
     return sites
 
   @classmethod
-  def from_mmcif_file(cls,filename,name=None,method="cifpd"):
+  def from_mmcif_file(cls,filename,name=None,method="cifpd",build_hierarchy=True):
     assert method in ["cifpd"] # TODO: add iotbx cif
     filename = str(filename)
     cif_input = CifInput(filename)
     return cls.from_mmcif_df(cif_input.atom_sites,
-                                name=name)
+                                name=name,
+                                build_hierarchy=build_hierarchy,
+                                )
 
   @classmethod
-  def from_mmtbx_model(cls,model,name=None):
+  def from_cctbx_model(cls,model,name=None):
     atoms = model.get_atoms()
     return cls.from_cctbx_atoms(atoms,name=name)
 
@@ -273,7 +219,8 @@ class AtomSites(pd.DataFrame):
     hetatm_mask = np.array(atoms.extract_hetero())
     if len(hetatm_mask)>0:
       data["group_PDB"][hetatm_mask] = "HETATM"
-    data["id"] = np.array(atoms.extract_serial()).astype(int)
+    data["id"] = np.array(atoms.extract_serial()).astype('string')
+    data["id"] = data["id"].str.strip()
     data["label_atom_id"] = np.vectorize(str.strip)(np.array(atoms.extract_name()))
     if  segid_as_auth_segid:
       data["auth_asym_id"] = np.vectorize(str.strip)(np.array(atoms.extract_segid()))
@@ -314,14 +261,14 @@ class AtomSites(pd.DataFrame):
 
 
   @staticmethod
-  def _init_new_sites(sites):
+  def _init_new_sites(sites,build_hierarchy=True):
     """
     This is important. It is called by constructors to do most of what
-    would usually be in an __init__ method.
+    would usually be in an __init__ method. But it occurs AFTER __init__
 
     Call this when starting a new molecule.
     It avoids expensive and possibly undesired initialization upon
-    successive object creation.
+    successive dataframe creation.
     """
     sites._validate_and_fill_input_columns()
     sites._apply_dtypes_to_mmcif()
@@ -332,18 +279,10 @@ class AtomSites(pd.DataFrame):
     sites._prepare_hierarchy(sites)
     sites.detect_chain_breaks(sites)
     sites._annotate(sites)
+    if build_hierarchy:
+      sites._hierarchy = sites._build_hierarchy(sort=True)
     #sites.add_crystal_symmetry_if_necessary(sites)
     #sites.add_label_asym_id(sites)
-
-    # Copy columns with 'core' names
-    self = sites
-    attrs_map = self.params.attrs_map_core
-    for key,value in attrs_map.items():
-      if key not in self:
-        if value not in self:
-          self[key] = self.params.attr_fill_values[key]
-        else:
-          self[key] = self[value].copy()
 
     return sites
 
@@ -376,6 +315,7 @@ class AtomSites(pd.DataFrame):
     xyz_keys = ["Cartn_x","Cartn_y","Cartn_z"]
     object.__setattr__(sites, "_xyz_keys", xyz_keys)
 
+
   def __init__(self, *args,name=None,**kwargs):
     #self.custom_attribute = kwargs.pop('custom_attribute', None)
     super().__init__(*args, **kwargs)
@@ -386,30 +326,11 @@ class AtomSites(pd.DataFrame):
 
     # Initialize hierarchy keys.
     self._prepare_hierarchy(self)
-    #hierarchy graph
-    object.__setattr__(self, '_G', None)
 
     # TODO: Move this to config
     self.comp_id_key = "auth_comp_id"
     self.asym_id_key = "auth_asym_id"
 
-
-
-  @property
-  def core(self):
-     return self[self.params.attrs_map_core.keys()]
-
-  @property
-  def attrs_core(self):
-    return list(self.attrs_core_map.keys())
-
-  @property
-  def attrs_core_map(self):
-    return self.params.attrs_map_core
-
-  @property
-  def attrs_hierarchy_core(self):
-    return self.params.attrs_hierarchy_core
 
   @property
   def _constructor(self):
@@ -524,6 +445,14 @@ class AtomSites(pd.DataFrame):
     self._apply_dtypes_to_mmcif()
     return self
 
+  # def cleanup_columns(self):
+  #   """
+  #   Cleanup extra columns that have accumulated
+  #   """
+  #   self.drop(columns=self._cleanup_columns,inplace=True)
+  #   self._cleanup_columns = []
+
+
   def get_attrs_map_phenix_to_mmcif(self):
     attrs_map_phenix_to_mmcif = {}
 
@@ -576,8 +505,8 @@ class AtomSites(pd.DataFrame):
 
   @property
   def hierarchy(self):
-    if self._hierarchy is None:
-       self._hierarchy = self._build_hierarchy()
+    # if self._hierarchy is None:
+    #    self._hierarchy = self._build_hierarchy()
 
     return self._hierarchy
 
@@ -616,16 +545,7 @@ class AtomSites(pd.DataFrame):
   #     crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   #   self.crystal_symmetry = crystal_symmetry
 
-  def add_i_seqs_from_hierarchy(df,hierarchy):
-    i_seq_mapper = {atom.serial:atom.i_seq for atom in hierarchy.atoms()}
-    for id_col in df.columns:
-      if id_col.startswith("id"):
-        if id_col == "id":
-          iseq_col = "i_seq"
-        elif "id_" in id_col:
-          iseq_col = id_col.replace("id_","i_seq_")
-        # add iseq column
-        df[iseq_col] = df[id_col].map(i_seq_mapper)
+
 
   def add_i_seqs_from_index(self):
     # In theory this should always work, should never need the hierarchy method
@@ -652,7 +572,21 @@ class AtomSites(pd.DataFrame):
     # Add more custom handling as necessary
     raise TypeError(f"Object of type {obj.__class__.__name__} is not JSON serializable")
 
+  def _sort_with_hierarchy(sites,hierarchy):
+    # sort according to the serial values in a hierarchy
+    # NOTE: This MIGHT introduce issues with previously applied annotations...
+
+    # resort according to hierarchy
+    sorted_id = [atom.serial.strip() for atom in hierarchy.atoms()]
+    sites['id'] = pd.Categorical(sites['id'], categories=sorted_id, ordered=True)
+    # Sort the DataFrame by the 'id' column
+    sites.sort_values('id',inplace=True)
+    sites["id"] = sorted_id
+    sites["id"] = sites["id"].astype("string")
+    sites.reset_index(drop=True, inplace=True)
+
   def sort_ligand_atom_names(sites):
+    # TODO: Deprecated, use sort_with_hierarchy
     df = sites
     sort_col = "label_atom_id"
     check_col = "residue_class"
@@ -808,14 +742,11 @@ class AtomSites(pd.DataFrame):
     """
     Build hierarchy. Assumes standard mmcif keys present.
     """
-    # sort here
-    if sort:
-      _ = sites.sort_ligand_atom_names()
 
     # assemble some useful intermediate columns
     # for charge
 
-    sites["charge_sign"] = np.sign(sites.pdbx_formal_charge.values)
+    sites["charge_sign"] = np.sign(sites.pdbx_formal_charge.fillna(0))
     sites["charge_sign"] = sites["charge_sign"].astype('string')
     sites["charge_sign"].replace({"-1":'-',"1":"+"},inplace=True)
     sites["charge_abs"] = np.abs(sites.pdbx_formal_charge.values)
@@ -825,14 +756,14 @@ class AtomSites(pd.DataFrame):
     sites.loc[isna,'charge_string'] = "  " # charge blank to match pdbh
 
     # Element preprocessing
-    sites["element"] = sites["type_symbol"].copy()
+    sites["element"] = sites["type_symbol"]
     isna = sites["element"].isna()
     sites.loc[isna,"element"] = ""
-    sites["element"] = sites["element"].apply(lambda x: x.rjust(2))
+    #sites["element"] = sites["element"].apply(lambda x: x.rjust(2))
 
     # Serial preprocessing
-    sites["serial"] = sites["id"].copy()
-    sites["serial"] = sites["serial"].apply(lambda x: x.rjust(5))
+    sites["serial"] = sites["id"]
+    #sites["serial"] = sites["serial"].apply(lambda x: x.rjust(5))
 
 
     blanks = sites.params.blanks
@@ -948,6 +879,8 @@ class AtomSites(pd.DataFrame):
       ]
       sites.drop(columns=cols,inplace=True)
 
+    if sort:
+       sites._sort_with_hierarchy(h)
     return h
 
 
@@ -1010,165 +943,6 @@ class AtomSites(pd.DataFrame):
 
     # End Annotate
     return sites
-
-  @property
-  def G(self):
-    # the networkx graph for the macromolecular hierarchy
-    if self._G is None:
-      self._G = self._create_hierarchy_graph(self.attrs_hierarchy_core)
-    return self._G
-
-  def _create_hierarchy_graph(self,columns):
-      df = self.core
-      G = nx.DiGraph()
-
-      # Create root node
-      root = "root"
-      G.add_node(root, ids=[])
-
-      # Function to add IDs to a node and its ancestors
-      def add_id_to_ancestors(G, node, id_value):
-        G.nodes[node]['ids'].append(id_value)
-        for parent in G.predecessors(node):
-          add_id_to_ancestors(G, parent, id_value)
-
-      for row in df.itertuples(index=False):
-        cur_node = root  # Start at the root for each row
-        id_value = getattr(row, "id")
-
-        # Initialize a list of "*" values with the same length as "columns"
-        cur_level_columns = ["*" for _ in columns]
-
-        for idx, col in enumerate(columns):
-          parent_node = cur_node  # The current node becomes the parent
-
-          # Fill in the next value in "cur_level_columns"
-          cur_level_columns[idx] = getattr(row, col)
-
-          # Create a new node for the current row and column
-          cur_node = tuple(cur_level_columns.copy())  # Make a copy of the list and convert to tuple
-
-          # Add the node to the graph if it doesn't exist, then connect it to its parent
-          if cur_node not in G:
-            G.add_node(cur_node, ids=[])
-            G.add_edge(parent_node, cur_node)
-
-          # Add the ID to the current node and its ancestors
-          add_id_to_ancestors(G, cur_node, id_value)
-      return G
-
-  ###############################
-  #### Starting Selection Fresh #
-  ###############################
-  def select(self):
-    raise NotImplementedError
-
-  def select_from_query(self,query):
-    if len(query.selections)==0:
-      return self.__class__(self[self.index < 0]) # empty
-    else:
-      return self._convert_query_to_sites(query)
-
-  def _convert_query_to_sites(self,query):
-    """
-    Convert a SelectionQuery object to a
-    subset sites data frame (This class)
-    """
-    # get a pandas query
-    return self._pandas_query_to_sites(query.pandas_query)
-
-  def _pandas_query_to_sites(self,pandas_query,copy=False):
-    # rename columns
-    #self.rename(columns=self.attrs_core_map, inplace=True)
-
-    # perform query
-    if copy:
-      # returns a copy
-      df_sel = self.query(pandas_query).copy()
-      # must rename both
-      #self.rename(columns=self.attrs_map, inplace=True)
-      #df_sel.rename(columns=self.attrs_map, inplace=True)
-
-    else:
-      # returns a subset
-
-      df_sel = self.query(pandas_query)
-      # rename back (only one necessary)
-      #self.rename(columns=self.attrs_map, inplace=True)
-
-    # return new selected df
-    return self.__class__(df_sel)#,attrs_map=self.attrs_map)
-
-  def query_from_phenix_string(self,str_phenix):
-    return self._select_query_from_str_phenix(str_phenix)
-
-  def _select_query_from_str_phenix(self,str_phenix):
-    converter = SelConverterPhenix()
-    sel_str_common = converter.convert_phenix_to_common(str_phenix)
-    return self._select_query_from_str_common(sel_str_common)
-
-  def _select_query_from_str_common(self,str_common):
-    """
-    Given a selection string, go to sites -> query
-    """
-    sites_sel = self._select_sites_from_str_common(str_common)
-    query = self._convert_sites_to_query(sites_sel)
-    return query
-
-
-  def _find_simplest_nodes_from_sites(self,sites_sel):
-    """
-    Utility function to reduce a subset sites dataframe
-    together with a graph (self.G) to get the minimum number
-    of nodes to fullfill the subset.
-    """
-    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
-    nodes = find_simplest_selected_nodes(self.G,sites_sel.core["id"])
-    if nodes == ["root"]:
-      nodes = [["*" for _ in sites_sel.attrs_hierarchy_core]]
-      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
-    else:
-      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
-    return nodes
-
-  def _convert_sites_to_query(self,sites_sel):
-    """
-    With a subset sites data frame, convert to a
-    SelectionQuery object
-    """
-    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
-    # find the minimum selections required
-    nodes = self._find_simplest_nodes_from_sites(sites_sel)
-
-    # Group by seq range and convert to query
-    query = df_nodes_group_to_query(nodes)
-    return query
-
-  def _convert_sites_to_str_common(self,sites_sel):
-    str_common = form_simple_str_common(sites_sel)
-    return str_common
-
-  def _select_sites_from_str_common(self,str_common):
-    """
-    This is the main path from a Phenix/common string to an
-    atom sites dataframe, Going through an the ast.
-    """
-    sel_str_common = str_common
-    # remove 'sel' statements
-    if sel_str_common.startswith("select" ):
-      sel_str_common = sel_str_common[7:]
-    elif sel_str_common.startswith("sel "):
-      sel_str_common = sel_str_common[4:]
-
-    # parse to ast
-    parser = CommonSelectionParser(sel_str_common, debug=False)
-    parser.parse()
-
-    # interpret ast as pandas selection query
-    query = parser.to_pandas_query()
-    #print("Pandas query:")
-    #print(query)
-    return self._pandas_query_to_sites(query)
 
 def compare_hierarchies(h_left,h_right):
 
@@ -1256,10 +1030,8 @@ def compare_sites(sites1, sites2,skip_columns=[]):
     if diff_mask.any().any():
         diff = pd.concat([df1[diff_mask], df2[diff_mask]], axis=0, keys=['df1', 'df2'])
         #return f"DataFrames differ:\n{diff}"
-        return False
     else:
         return "DataFrames are identical."
-        return True
 
 
 
