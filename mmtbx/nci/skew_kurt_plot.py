@@ -8,6 +8,27 @@ import matplotlib.pyplot as plt
 from libtbx.utils import Sorry
 import os
 
+from matplotlib.ticker import FormatStrFormatter
+
+import math
+
+def rotate(origin, point, angle):
+    """
+    Rotate a point counterclockwise by a given angle around a given origin.
+
+    The angle should be given in radians.
+    """
+    ox, oy = origin
+    px, py = point
+
+    qx = ox + math.cos(angle) * (px - ox) - math.sin(angle) * (py - oy)
+    qy = oy + math.sin(angle) * (px - ox) + math.cos(angle) * (py - oy)
+    return qx, qy
+
+def rotate_translate(origin, point, angle, translate):
+  x,y = rotate(origin, point, angle)
+  return x+translate[0], y+translate[1]
+
 def get_filling_data(data, x_nbins, y_nbins, xmin, xmax, ymin, ymax,
     threshold=2, interpolation='linear'):
   grid = Grid2D.make_Grid2d(data, x_nbins=x_nbins, y_nbins=y_nbins,
@@ -51,7 +72,10 @@ def make_figure(
     type='all',
     colorblind_friendly=True,
     override_palette = {},
-    resolution=300):
+    resolution=300,
+    do_rotate=False,
+    do_y_log=False,
+    ):
   """ Plots skew-kurtosis plot and saves it to .png file
 
   Args:
@@ -100,21 +124,43 @@ def make_figure(
       'alpha': [-0.14, 0.14],
       'beta': [-0.14, 0.14]}
 
+  aspect = 0.5
+
   xmin = -2
   xmax = 2
   ymin = 0
   ymax = 7
 
+  ta = 0.3
+  tx = 1.
+  ty = 0.5
+  if do_rotate:
+    xmin = -1.5
+    xmax =  1.5
+  if do_y_log:
+    ymin = 1
+    aspect = 2.5
+
   data = []
   for x, y in zip(db[type]['t1o'][0], db['all']['t1o'][1]):
+    if do_rotate: x,y = rotate_translate((0,0), (x,y), -ta, (-tx,-ty))
     data.append([x,y])
   for x, y in zip(db[type]['dhao'][0], db['all']['dhao'][1]):
-    data.append([x,y])
+    if do_rotate: x,y = rotate_translate((0,0), (x,y), ta, (tx,-ty))
+    data.append([x ,y])
   blue_filling = get_filling_data(data, x_nbins=50, y_nbins=50,
       xmin=xmin, xmax=xmax, ymin=ymin, ymax=ymax,
       threshold=1, interpolation='cubic')
   fig = plt.figure(figsize=(10,10),)
   ax = plt.subplot(111)
+
+  if do_y_log:
+    ax.set_xscale('linear')
+    ax.set_yscale('log')
+    yax = ax.axes.get_yaxis()
+    yax.set_major_formatter(FormatStrFormatter('%d'))
+    yax.set_minor_formatter(FormatStrFormatter('%d'))
+
   ax.set_xlim(xmin, xmax)
   ax.set_ylim(ymin, ymax)
   im = ax.imshow(
@@ -122,7 +168,7 @@ def make_figure(
       origin="lower",
       cmap=plt.get_cmap(color_palette['colormap']),
       extent=[xmin, xmax, ymin, ymax],
-      aspect=0.5,
+      aspect=aspect,
       # interpolation='bicubic',
       # norm=norm,
       )
@@ -135,11 +181,21 @@ def make_figure(
       )
 
   for theta1_c in theta1_coords:
-    ax.scatter([theta1_c[0]], [theta1_c[1]], s=dot_size, c=color_palette['theta_color'], edgecolor=color_palette['theta_contour'])
+    x,y = theta1_c[0], theta1_c[1]
+    if do_rotate: x,y = rotate_translate((0,0), (x,y), -ta, (-tx,-ty))
+    ax.scatter([x], [y], s=dot_size, c=color_palette['theta_color'], edgecolor=color_palette['theta_contour'])
   for Rha_c in Rha_coords:
-    ax.scatter([Rha_c[0]], [Rha_c[1]], s=dot_size, c=color_palette['Rha_color'], edgecolor=color_palette['Rha_contour'])
-  ax.set_xlabel('Skew')
-  ax.set_ylabel('Kurtosis')
+    x,y = Rha_c[0], Rha_c[1]
+    if do_rotate: x,y = rotate_translate((0,0), (x,y), ta, (tx,-ty))
+    ax.scatter([x], [y], s=dot_size, c=color_palette['Rha_color'], edgecolor=color_palette['Rha_contour'])
+  if do_rotate:
+    xax = ax.axes.get_xaxis()
+    xax = xax.set_visible(False)
+    yax = ax.axes.get_yaxis()
+    yax = yax.set_visible(False)
+  else:
+    ax.set_xlabel('Skew')
+    ax.set_ylabel('Kurtosis')
   fig.savefig("%s.png" % file_name, dpi=resolution)
 
 if __name__ == '__main__':

@@ -28,6 +28,12 @@ Usage example:
   plot_colorblind_friendly = True
     .type = bool
     .short_caption = Use colorblind friendly palette for skew-kurtosis plot
+  do_rotate_translate = False
+    .type = bool
+    .style = hidden
+  do_y_log = False
+    .type = bool
+    .style = hidden
   plot_parameters_override
     .help = These parameters will override preset values in plots. The values \
       will be passed directly to matplotlib functions, so should be valid \
@@ -125,7 +131,10 @@ Usage example:
           dot_size = self.params.hbond.dot_size,
           type='all',
           override_palette = op,
-          colorblind_friendly=self.params.plot_colorblind_friendly)
+          colorblind_friendly=self.params.plot_colorblind_friendly,
+          do_rotate=self.params.do_rotate_translate,
+          do_y_log=self.params.do_y_log,
+          )
       self._print("\nOutputted plot as %s.png" % fn)
 
   # ---------------------------------------------------------------------------
