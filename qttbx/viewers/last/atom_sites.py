@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
+import networkx as nx
 from collections import OrderedDict
 from collections import defaultdict
 from iotbx.pdb import common_residue_names_get_class
@@ -10,7 +11,13 @@ from .cif_io import CifInput
 from libtbx import group_args
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-
+from .selection_common import CommonSelectionParser
+from .selection_utils import (
+  df_nodes_group_to_query,
+  find_simplest_selected_nodes,
+  form_simple_str_common,
+  SelConverterPhenix,
+)
 params = group_args(
 
 # Maps internal attr name -> phenix name
@@ -82,6 +89,27 @@ fill_functions = {
  'label_atom_id': None,
  'label_entity_id': None,
 },
+
+ # Regularize names to a consistent default name (no auth,label prefix)
+attr_aliases = {
+  'asym_id':"auth_asym_id",
+  'seq_id':"auth_seq_id",
+  'comp_id':"auth_comp_id",
+  'atom_id':"label_atom_id",
+  'type_symbol':"type_symbol",
+},
+
+attrs_core = [ # attributes assumed to exists
+    'asym_id',
+    'seq_id',
+    'comp_id',
+    'atom_id',
+    'id',
+    'type_symbol',
+    'occupancy',
+    'B_iso_or_equiv'
+    ],
+
 
 attr_fill_values = {
   # required
@@ -278,6 +306,10 @@ class AtomSites(pd.DataFrame):
     #sites.add_crystal_symmetry_if_necessary(sites)
     #sites.add_label_asym_id(sites)
 
+    # add aliases
+    for key,value in sites.params.attr_aliases.items():
+       sites[key] = sites[value]
+
     return sites
 
   @staticmethod
@@ -308,6 +340,7 @@ class AtomSites(pd.DataFrame):
 
     xyz_keys = ["Cartn_x","Cartn_y","Cartn_z"]
     object.__setattr__(sites, "_xyz_keys", xyz_keys)
+    object.__setattr__(sites, "_G", None)
 
 
   def __init__(self, *args,name=None,**kwargs):
@@ -386,6 +419,13 @@ class AtomSites(pd.DataFrame):
   @property
   def hierarchy_keys(self):
     return self._model_keys + self._chain_keys + self._rg_keys + self._ag_keys
+
+  @property
+  def attrs_hierarchy_core(self): # Is this the same as hierarchy_keys
+    return self.params.attrs_core
+  @property
+  def core(self):
+    return self[self.params.attrs_core]
   @property
   def xyz_keys(self):
      return self._xyz_keys
@@ -900,6 +940,165 @@ class AtomSites(pd.DataFrame):
 
     # End Annotate
     return sites
+  @property
+  def G(self):
+    # the networkx graph for the macromolecular hierarchy
+    if self._G is None:
+      self._G = self._create_hierarchy_graph(self.attrs_hierarchy_core)
+    return self._G
+
+  def _create_hierarchy_graph(self,columns):
+      df = self.core
+      G = nx.DiGraph()
+
+      # Create root node
+      root = "root"
+      G.add_node(root, ids=[])
+
+      # Function to add IDs to a node and its ancestors
+      def add_id_to_ancestors(G, node, id_value):
+        G.nodes[node]['ids'].append(id_value)
+        for parent in G.predecessors(node):
+          add_id_to_ancestors(G, parent, id_value)
+
+      for row in df.itertuples(index=False):
+        cur_node = root  # Start at the root for each row
+        id_value = getattr(row, "id")
+
+        # Initialize a list of "*" values with the same length as "columns"
+        cur_level_columns = ["*" for _ in columns]
+
+        for idx, col in enumerate(columns):
+          parent_node = cur_node  # The current node becomes the parent
+
+          # Fill in the next value in "cur_level_columns"
+          cur_level_columns[idx] = getattr(row, col)
+
+          # Create a new node for the current row and column
+          cur_node = tuple(cur_level_columns.copy())  # Make a copy of the list and convert to tuple
+
+          # Add the node to the graph if it doesn't exist, then connect it to its parent
+          if cur_node not in G:
+            G.add_node(cur_node, ids=[])
+            G.add_edge(parent_node, cur_node)
+
+          # Add the ID to the current node and its ancestors
+          add_id_to_ancestors(G, cur_node, id_value)
+      return G
+
+  ###############################
+  #### Starting Selection
+  ###############################
+  def select(self):
+    raise NotImplementedError
+
+  def select_from_query(self,query):
+    if len(query.selections)==0:
+      return self.__class__(self[self.index < 0]) # empty
+    else:
+      return self._convert_query_to_sites(query)
+
+  def _convert_query_to_sites(self,query):
+    """
+    Convert a SelectionQuery object to a
+    subset sites data frame (This class)
+    """
+    # get a pandas query
+    return self._pandas_query_to_sites(query.pandas_query)
+
+
+
+
+  def _pandas_query_to_sites(self,pandas_query,do_copy=True):
+    # rename columns
+    self.rename(columns=self.attrs_core_map, inplace=True)
+
+    # perform query
+    if do_copy:
+      # returns a copy
+      df_sel = self.query(pandas_query).copy()
+      # must rename both
+      self.rename(columns=self.attrs_map, inplace=True)
+      df_sel.rename(columns=self.attrs_map, inplace=True)
+
+    else:
+      # returns a subset
+      df_sel = self.query(pandas_query)
+      # rename back (only one necessary)
+      self.rename(columns=self.attrs_map, inplace=True)
+
+    # return new selected df
+    return self.__class__(df_sel,attrs_map=self.attrs_map)
+
+  def _select_query_from_str_phenix(self,str_phenix):
+    converter = SelConverterPhenix()
+    sel_str_common = converter.convert_phenix_to_common(str_phenix)
+    return self._select_query_from_str_common(sel_str_common)
+
+  def _select_query_from_str_common(self,str_common):
+    """
+    Given a selection string, go to sites -> query
+    """
+    sites_sel = self._select_sites_from_str_common(str_common)
+    query = self._convert_sites_to_query(sites_sel)
+    return query
+
+
+  def _find_simplest_nodes_from_sites(self,sites_sel):
+    """
+    Utility function to reduce a subset sites dataframe
+    together with a graph (self.G) to get the minimum number
+    of nodes to fullfill the subset.
+    """
+    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
+    nodes = find_simplest_selected_nodes(self.G,sites_sel.core["id"])
+    if nodes == ["root"]:
+      nodes = [["*" for _ in sites_sel.attrs_hierarchy_core]]
+      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
+    else:
+      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
+    return nodes
+
+  def _convert_sites_to_query(self,sites_sel):
+    """
+    With a subset sites data frame, convert to a
+    SelectionQuery object
+    """
+    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
+    # find the minimum selections required
+    nodes = self._find_simplest_nodes_from_sites(sites_sel)
+
+    # Group by seq range and convert to query
+    query = df_nodes_group_to_query(nodes)
+    return query
+
+  def _convert_sites_to_str_common(self,sites_sel):
+    str_common = form_simple_str_common(sites_sel)
+    return str_common
+
+  def _select_sites_from_str_common(self,str_common):
+    """
+    This is the main path from a Phenix/common string to an
+    atom sites dataframe, Going through an the ast.
+    """
+    sel_str_common = str_common
+    # remove 'sel' statements
+    if sel_str_common.startswith("select" ):
+      sel_str_common = sel_str_common[7:]
+    elif sel_str_common.startswith("sel "):
+      sel_str_common = sel_str_common[4:]
+
+    # parse to ast
+    parser = CommonSelectionParser(sel_str_common, debug=False)
+    parser.parse()
+
+    # interpret ast as pandas selection query
+    query = parser.to_pandas_query()
+    #print("Pandas query:")
+    #print(query)
+    return self._pandas_query_to_sites(query)
+
+# End AtomSites
 
 def compare_hierarchies(h_left,h_right):
 
