@@ -6,7 +6,7 @@ from collections import defaultdict
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb.utils import all_label_asym_ids
 from iotbx.pdb import hierarchy
-from .cif_io2 import CifInput
+from .cif_io import CifInput
 from libtbx import group_args
 
 params = group_args(

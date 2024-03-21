@@ -1,8 +1,8 @@
 from cctbx import crystal
 from libtbx.utils import null_out
-from .cif_io2 import CifInput
-from .atom_sites2 import AtomSites
-class DataFrameMol:
+from .cif_io import CifInput
+from .atom_sites import AtomSites
+class MolDataFrame:
   """
   A mol is a composition of Pandas dataframes for each component (sites,bonds,etc)
   """

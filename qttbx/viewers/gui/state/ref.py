@@ -20,7 +20,7 @@ from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase
 from .restraints import Restraint, Restraints
-from ...last.mol import MolDF
+from ...last.mol import MolDataFrame
 from typing import Optional
 
 from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
@@ -270,7 +270,7 @@ class ModelRef(Ref):
   @property
   def mol(self):
     if self._mol is None:
-      mol = MolDF.from_mmtbx_model(self.model,insert_defaults=False)
+      mol = MolDataFrame.from_mmtbx_model(self.model,insert_defaults=False)
       self._mol = mol
     return self._mol
 
