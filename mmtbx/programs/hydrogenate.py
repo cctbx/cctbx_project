@@ -19,6 +19,12 @@ n_terminal_charge = *residue_one first_in_chain no_charge
   .type = choice(multi=False)
   .help = Mode for placing H3 at terminal nitrogen.
 
+add_h_to_water = False
+  .type = bool
+
+add_d_to_water = False
+  .type = bool
+
 output
   .style = menu_item auto_align
 {
@@ -71,6 +77,11 @@ Inputs:
     #
     make_sub_header('Optimize H atoms', out=self.logger)
     self.model = reduce_hydrogen.optimize(model=self.model)
+    #
+    if self.params.add_h_to_water:
+      self.model.add_hydrogens(1., occupancy=1.)
+    elif self.params.add_d_to_water:
+      self.model.add_hydrogens(1., element="D", occupancy=1.)
     #
     if(self.params.output.file_name_prefix is not None):
       base = self.params.output.file_name_prefix
