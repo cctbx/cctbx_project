@@ -91,8 +91,7 @@ class experiment_scaler(worker):
       ):
         exp_reflections['intensity.sum.value'] *= result.slope
         exp_reflections['intensity.sum.variance'] *= (result.slope**2)
-      if self.params.merging.error.model == 'mm24':
-        exp_reflections['correlation'] = flex.double(len(exp_reflections), result.correlation)
+      exp_reflections['correlation'] = flex.double(len(exp_reflections), result.correlation)
       new_experiments.append(experiment)
       new_reflections.extend(exp_reflections)
 
