@@ -44,7 +44,7 @@ class CifFileListController(ScrollableListController):
 
 
   def showFileDialog(self):
-    home_dir = os.path.expanduser("~")  # Cross-platform home directory
+    home_dir = Path.home()  # Cross-platform home directory
     fname = QFileDialog.getOpenFileName(self.view, 'Open file', home_dir)
     if fname[0]:
       filename = fname[0]

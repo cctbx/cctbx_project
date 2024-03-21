@@ -53,7 +53,11 @@ class ModelLikeEntryView(ScrollEntryView):
     #button_color.setMaximumSize(QSize(maxs2,maxs2))
     self.layout.addWidget(self.button_color)
 
-
+    # Create the second vertical separator
+    separator2 = QFrame()
+    separator2.setFrameShape(QFrame.VLine)
+    separator2.setFrameShadow(QFrame.Sunken)
+    self.layout.addWidget(separator2)
 
     # Open in folder
     self.button_files = QPushButton()
@@ -64,6 +68,16 @@ class ModelLikeEntryView(ScrollEntryView):
     #button_color.setMaximumSize(50, 50)
     self.button_files.setFixedSize(self._all_button_width,self._all_button_height)
     self.layout.addWidget(self.button_files)
+
+    # Restraints
+    self.button_restraints = QPushButton()
+    icon_path = Path(__file__).parent / 'assets/icons/material/gears.svg'
+    icon = QIcon(str(icon_path))
+    self.button_restraints.setIcon(icon)
+    self.button_restraints.setToolTip("Manage restraints")
+    #button_color.setMaximumSize(50, 50)
+    self.button_restraints.setFixedSize(self._all_button_width,self._all_button_height)
+    self.layout.addWidget(self.button_restraints)
 
 
     # Close

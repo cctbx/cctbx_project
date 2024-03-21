@@ -12,6 +12,8 @@ from .base import DataClassBase
 from typing import Dict
 
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
+from PySide2.QtWidgets import QApplication, QMessageBox
+
 from iotbx.data_manager import DataManager
 
 from .reference import Reference
@@ -97,7 +99,7 @@ class State:
     self._map_manager = None
     self._has_synced = False
     self._phenix_state = PhenixState(references={})
-    self.is_updating = True
+    #self.is_updating = True
 
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
@@ -131,6 +133,7 @@ class State:
   @property
   def phenixState(self):
     return self._phenix_state
+
   @phenixState.setter
   def phenixState(self,value):
     self._phenix_state = value
@@ -178,6 +181,14 @@ class State:
     self.signals.model_change.emit(self.active_model_ref)
     self.signals.map_change.emit(self.active_map_ref)
 
+  def notify(self,message):
+    # Run a notification popup that must be click closed
+    msg = QMessageBox()
+    msg.setWindowTitle("Notification")
+    msg.setText(message)
+    msg.setIcon(QMessageBox.Information)
+    msg.setStandardButtons(QMessageBox.Ok)
+    msg.exec_()
 
   # def last_ref(self):
   #   # dictionaries maintain insertion order in >3.7
@@ -297,7 +308,7 @@ class State:
 
     # make data object and ref
     data = MolecularModelData(filepath=filepath,label=label,model=model)
-    ref = ModelRef(data=data)
+    ref = ModelRef(data=data,show=True)
     self.add_ref(ref)
     return ref
 

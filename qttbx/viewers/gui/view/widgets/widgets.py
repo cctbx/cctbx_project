@@ -7,6 +7,11 @@ from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Si
 from PySide2.QtWidgets import QWidget, QHeaderView, QListView,QTableView, QDialog, QLabel, QVBoxLayout, QHBoxLayout,QWidget, QComboBox, QStyle, QStyleOptionComboBox,  QTextEdit
 from PySide2.QtWidgets import  QVBoxLayout, QWidget,  QSlider
 from PySide2.QtGui import QMouseEvent, QPainter
+from PySide2.QtGui import QFontMetrics
+from PySide2.QtCore import QModelIndex
+
+from PySide2.QtWidgets import QApplication, QTableView, QMenu, QAction
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -201,18 +206,47 @@ class ClickableHistogramMatplotlib(FigureCanvas):
 
 
 
-class FastTableView(QTableView):
+class PandasTableView(QTableView):
     mouseReleased = QtCore.Signal()
+    MAX_COLUMN_WIDTH = 200
 
     def __init__(self, parent=None,default_col_width=75):
-        super(FastTableView, self).__init__(parent)
+        super(PandasTableView, self).__init__(parent)
         self.horizontalHeader().setDefaultSectionSize(default_col_width)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+        self.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.showContextMenu)
+        # make sortable
+        self.setSortingEnabled(True)
+
 
     def mouseReleaseEvent(self, event):
         super().mouseReleaseEvent(event)
         self.mouseReleased.emit()
 
+    def showContextMenu(self, position):
+      index = self.indexAt(position)
+      if not index.isValid():
+          return
+
+      menu = QMenu()
+      deleteAction = QAction('Delete', self)
+      menu.addAction(deleteAction)
+
+      # Connect the delete action
+      deleteAction.triggered.connect(lambda: self.deleteRow(index.row()))
+
+      menu.exec_(self.viewport().mapToGlobal(position))
+
+    def deleteRow(self, row):
+      # Check if the row index is valid
+      if row < 0 or row >= self.model().rowCount():
+          return
+
+      # Begin the row removal process
+      self.model().beginRemoveRows(QModelIndex(), row, row)
+      self.model()._df.drop(self.model()._df.index[row], inplace=True)
+      self.model().endRemoveRows()
 
     def selected_indices(self):
       # Get a list of all selected cell indexes.
@@ -229,15 +263,80 @@ class FastTableView(QTableView):
     def selected_rows(self):
       return self.model()._df.iloc[self.selected_indices()]
 
+    def keyPressEvent(self, event):
+      if event.key() == Qt.Key_Space:
+        # Get the current selection
+        selection = self.selectionModel()
+        current_index = selection.currentIndex()
+
+        # Calculate the next row index
+        next_row = current_index.row() + 1
+        if next_row < self.model().rowCount():
+          # Instead of maintaining the same column, move to the first column of the next row
+          next_index = self.model().index(next_row, 0)  # 0 for the first column
+
+          # Set the new index as the current index and select the entire row
+          selection.setCurrentIndex(next_index, selection.ClearAndSelect | selection.Rows)
+
+          event.accept()  # Mark the event as handled
+          self.mouseReleased.emit() # mimic clicking on the row, and get associated logic
+          return  # Exit the method to avoid processing the space key further
+      super(PandasTableView, self).keyPressEvent(event)  # Handle other key presses normally
+
+    def adjustColumnWidths(self,margin=20):
+      MAX_COLUMN_WIDTH = self.MAX_COLUMN_WIDTH
+      tableView = self
+      model = tableView.model()
+      if not model:
+          return
+
+      #header = tableView.horizontalHeader()
+      for column in range(model.columnCount(None)):
+          maxWidth = 0
+
+          # Use the font metrics from the table view's font
+          fontMetrics = QFontMetrics(tableView.font())
+
+          # Measure header text width
+          headerText = model.headerData(column, Qt.Horizontal)
+          headerWidth = fontMetrics.boundingRect(headerText).width()
+
+          # Measure cell content widths
+          for row in range(model.rowCount(None)):
+              index = model.index(row, column)
+              text = model.data(index, Qt.DisplayRole)
+              if text:  # Ensure text is not None
+                  textWidth = fontMetrics.boundingRect(str(text)).width()
+                  maxWidth = max(maxWidth, textWidth)
+
+          # Apply algorithm with added margin
+          finalWidth = min(max(headerWidth, maxWidth) + margin, MAX_COLUMN_WIDTH)
+          #header.setSectionResizeMode(column, QTableView.ResizeToContents)  # Optional: Resize to contents but limit to max
+          tableView.setColumnWidth(column, finalWidth)
 
 
-class PandasTableModel(QAbstractTableModel):
+class PandasTable(QAbstractTableModel):
   def __init__(self, df=pd.DataFrame(), parent=None, suppress_columns=[]):
-    QAbstractTableModel.__init__(self, parent=parent)
+    super().__init__(parent=parent)
     self._df = df
     self.suppress_columns = set(suppress_columns)
     self.visible_columns = [col for col in self._df.columns if col not in self.suppress_columns]
-    self.col_map = {i:list(self._df.columns).index(col) for i,col in enumerate(self.visible_columns) }
+    self.col_map = {i: list(self._df.columns).index(col) for i, col in enumerate(self.visible_columns)}
+    self.sort_order = Qt.AscendingOrder  # Keep track of the current sort order
+
+
+  @property
+  def df(self):
+    return self._df
+
+  def sort(self, column, order=Qt.AscendingOrder):
+    """Sort the table."""
+    col_name = self.visible_columns[column]
+    self.layoutAboutToBeChanged.emit()
+    self._df.sort_values(by=col_name, ascending=(order == Qt.AscendingOrder), inplace=True)
+    # Update the sort order for the next sort operation
+    self.sort_order = Qt.DescendingOrder if self.sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+    self.layoutChanged.emit()
 
   def headerData(self, section, orientation, role=Qt.DisplayRole):
     if role != Qt.DisplayRole:
@@ -250,7 +349,16 @@ class PandasTableModel(QAbstractTableModel):
   def data(self, index, role=Qt.DisplayRole):
     if role != Qt.DisplayRole:
       return None
-    return str(self._df.iloc[index.row(), self.col_map[index.column()]])
+
+
+    if role == Qt.DisplayRole:
+      value = self._df.iloc[index.row(), self.col_map[index.column()]]
+      if pd.isna(value):
+          return ""  # Return an empty string for pd.NA values
+      else:
+           return str(value)
+    return None
+
 
   def setData(self, index, value, role):
     if not index.isValid() or role != Qt.EditRole:
@@ -262,11 +370,12 @@ class PandasTableModel(QAbstractTableModel):
   def rowCount(self, parent=None):
     return len(self._df.values)
 
-  def columnCount(self, _, parent=None):
+  def columnCount(self,parent=None):
     return len(self.visible_columns)
 
   def flags(self, index):
-    return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+    #return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+    return Qt.ItemIsEnabled | Qt.ItemIsSelectable
 
 
 class NoCheckComboBox(QComboBox):

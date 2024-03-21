@@ -6,7 +6,7 @@ from ..data import DataTabController
 from ..sites import SitesTabController
 from ..chimerax_controller import ChimeraXController
 from ..molstar_controller import MolstarController
-from ..restraints import RestraintsTopTabController
+#from ..restraints import RestraintsTopTabController
 from ..restraints_table import RestraintsTableTopTabController
 from ..qscore import QscoreTabController
 from ..cif import CifTabController

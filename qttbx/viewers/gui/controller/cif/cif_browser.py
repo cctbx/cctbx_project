@@ -5,7 +5,7 @@ from PySide2.QtWidgets import  QVBoxLayout, QWidget, QMessageBox, QLabel, QFileD
 
 from iotbx.pdb.mmcif import cif_input
 
-from ...view.widgets import  PandasTableModel, FastTableView
+from ...view.widgets import  PandasTable, PandasTableView
 from ...state.ref import SelectionRef
 from ..controller import Controller
 #from ..view.tabs.cif import add_tabs
@@ -18,7 +18,7 @@ class CifBrowserController(Controller):
     super().__init__(parent=parent,view=view)
     self._df_dict = None
     self._cif_ref = None
-    self.table_model = PandasTableModel()
+    self.table_model = PandasTable()
     self.data_has_changed = False
     # Signals
     self.view.save_button.clicked.connect(self.save)
@@ -100,7 +100,7 @@ class CifBrowserController(Controller):
     if self.view.layout.count() > 0:
         # Get the last item in the layout
         last_item = self.view.layout.itemAt(self.view.layout.count() - 1)
-        if isinstance(last_item.widget(),FastTableView):
+        if isinstance(last_item.widget(),PandasTableView):
 
 
           # If the item is a widget, delete it
@@ -128,9 +128,9 @@ class CifBrowserController(Controller):
       if block_key in data:
         df = data[block_key]
         if isinstance(df,pd.DataFrame):
-          self.view.table = FastTableView()
+          self.view.table = PandasTableView()
           self.view.layout.addWidget(self.view.table)
-          self.table_model = PandasTableModel(df)
+          self.table_model = PandasTable(df)
           self.table_model.dataChanged.connect(self.on_data_changed)
           self.view.table.setModel(self.table_model)
 

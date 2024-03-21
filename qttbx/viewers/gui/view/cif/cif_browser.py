@@ -5,7 +5,7 @@ from PySide2.QtWidgets import  QFrame, QLabel,QPushButton, QHBoxLayout,QVBoxLayo
 from PySide2.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 
-from ..widgets import  FastTableView, PandasTableModel
+from ..widgets import  PandasTableView, PandasTable
 from ..widgets.tab import GUITab,GUITabWidget
 
 
@@ -52,6 +52,6 @@ class CifBrowserTabView(GUITab):
     self.setLayout(layout)
 
     # add empty dataframe
-    table = FastTableView()
+    table = PandasTableView()
     self.layout.addWidget(table)
 

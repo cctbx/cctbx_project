@@ -23,7 +23,7 @@ from .restraints import Restraint, Restraints
 from ...last.mol import MolDF
 from typing import Optional
 
-
+from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
 
 
 class Ref:
@@ -33,7 +33,7 @@ class Ref:
 
   _class_label_name = ""
 
-  def __init__(self,data: DataClassBase,style: Optional[Style] = None, show: bool =True):
+  def __init__(self,data: DataClassBase,style: Optional[Style] = None, show: bool = False):
     self._data = data
     self._id = self._generate_uuid()
     self._external_ids = {}
@@ -233,10 +233,10 @@ class Ref:
 
 class ModelRef(Ref):
   _class_label_name = "model"
-  def __init__(self,data: MolecularModelData, style: Optional[Style] = None):
-    super().__init__(data=data,style=style)
+  def __init__(self,data: MolecularModelData, style: Optional[Style] = None, show=True):
+    super().__init__(data=data,style=style,show=show)
     self._mol = None
-    self._restraints = None
+    self._restraints_ref = None
     # self._cif_data = None
     # self._file_ref =  None
     # if self.data.cif_data is not None:
@@ -254,18 +254,18 @@ class ModelRef(Ref):
     return self.data.model
 
   @property
-  def restraints(self):
-    return self._restraints
+  def restraints_ref(self):
+    return self._restraints_ref
 
-  @restraints.setter
-  def restraints(self,value):
+  @restraints_ref.setter
+  def restraints_ref(self,value):
     assert value.__class__.__name__ == "RestraintsRef", "Set restraints with a RestraintsRef"
-    self._restraints = value
+    self._restraints_ref = value
     self.state.signals.restraints_change.emit(value)
 
   @property
   def has_restraints(self):
-    return self.restraints is not None
+    return self.restraints_ref is not None
 
   @property
   def mol(self):
@@ -385,13 +385,92 @@ class SelectionRef(Ref):
          }
     return json.dumps(d,indent=indent)
 
+class RestraintsRef(Ref):
+  # TODO: Move most of this to the actual table not the ref, adding columns here
+  #       modifies the restraints data
+  _class_label_name = "restraints"
+  def __init__(self,data: Restraints, model_ref: ModelRef):
+    super().__init__(data=data,style=model_ref.style)
+    self.model_ref = model_ref
+    self.synchronize_with_model()
+    self.add_iseqs_column()
+    self.add_atom_id_columns()
+    self.add_chain_and_res_columns()
+
+    # Set model restraint_ref value (will emit change signal)
+    if self.model_ref is not None:
+      self.model_ref.restraints_ref = self
+
+  @property
+  def dfs(self):
+    return self.data.dataframes
+
+  def synchronize_with_model(self):
+    # reset i_seq values from model if possible
+    if self.data.has_id_str:
+      for name,df in self.data.dataframes.items():
+        if name in ["c-beta","cbeta"] and 'i_seq_0' in df and df["i_seq_0"][0]=="dihedral":
+          df.drop(columns=["i_seq_0"],inplace=True)
+
+      _ = add_i_seq_columns_from_id_str(self.data.dataframes,self.model_ref.model)
+
+  def add_iseqs_column(self):
+    # add a new column that is a list of the i_seqs
+    print(self.dfs)
+    for name,df in self.dfs.items():
+      print(name,df)
+      if df is not None:
+        i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
+        if len(i_seq_cols)>0:
+          df['i_seqs'] = df.apply(lambda row: [row[col] for col in i_seq_cols], axis=1)
+
+  def add_atom_id_columns(self):
+    for name,df in self.dfs.items():
+      if df is not None and self.model_ref is not None:
+        i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
+        if len(i_seq_cols)>0:
+          i_seq_suffixes = [col.replace('i_seq_','') for col in i_seq_cols]
+          name_cols = [f"atom_id_{suffix}" for suffix in i_seq_suffixes]
+          for i_seq_col,name_col in zip(i_seq_cols,name_cols):
+
+            df[name_col] = pd.NA
+            df.reset_index(drop=True, inplace=True)
+            not_na = df[i_seq_col].notna()
+
+            indices = df.loc[not_na, i_seq_col].to_numpy()  # Extract as numpy array for direct access
+            vals = self.model_ref.mol.sites["label_atom_id"].iloc[indices].to_numpy()  # Extract values as numpy array
+
+            # Directly assign values to df where not_na is True, bypassing index-based reindexing
+            df.loc[not_na, name_col] = vals
+
+  def add_chain_and_res_columns(self):
+    for name,df in self.dfs.items():
+      if df is not None and self.model_ref is not None:
+        i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
+        if len(i_seq_cols)>0:
+          # take the first atom to represent chain and res
+          i_seq_col = i_seq_cols[0]
+          df["Chain"] = pd.NA
+          df["Res"] = pd.NA
+          df["Seq"] = pd.NA
+          df.reset_index(drop=True, inplace=True)
+
+          for label, key in zip(["Chain","Res","Seq"],["asym_id","comp_id","seq_id"]):
+            not_na = df[i_seq_col].notna()
+
+            indices = df.loc[not_na, i_seq_col].to_numpy()  # Extract as numpy array for direct access
+            vals = self.model_ref.mol.sites[key].iloc[indices].to_numpy()  # Extract values as numpy array
+            df.loc[not_na,label] = vals
+
 
 class RestraintRef(Ref):
   _class_label_name = 'restraint'
   def __init__(self,data: Restraint, model_ref: ModelRef):
     self._selection_ref = None
     self.model_ref = model_ref
+
     super().__init__(data=data, style=model_ref.style)
+
 
   @property
   def selection_ref(self):
@@ -401,54 +480,56 @@ class RestraintRef(Ref):
     return self._selection_ref
 
 
-class RestraintsRef(Ref):
-  _class_label_name = 'restraint'
-  def __init__(self,data: Restraints, model_ref: ModelRef):
-    super().__init__(data=data,style=model_ref.style)
-    self.model_ref = model_ref
-    self.supported_restraints = ['bond','angle']
-    for field in fields(self.data.__class__):
-      field_name = field.name
-      field_value = getattr(self.data, field_name)
-      if field_name in self.supported_restraints and field_value is not None:
-          field_value = [RestraintRef(data=data,model_ref=model_ref) for data in field_value]
-      setattr(self,field_name,field_value)
-
-  @property
-  def dfs(self):
-    dfs = {}
-    for field in fields(self.data.__class__):
-      field_name = field.name
-      field_value = getattr(self, field_name)
-      if field_name in self.supported_restraints and field_value is not None:
-        df = pd.DataFrame([dataclass_instance.data.__dict__ for dataclass_instance in field_value])
-        df = df.round(2)
-        # Drop some columns for now
-        columns_to_drop = ['labels', 'slack', 'rt_mx',"sym_op_i"]
-        columns_to_drop = [col for col in columns_to_drop if col in df.columns]
-        df.drop(columns=columns_to_drop, inplace=True)
-        # Sort columns
-        sort_order = ['residual',"delta",'ideal','model','i_seq']
-        matched_columns = []
-        for string in sort_order:
-            matched_columns += [col for col in df.columns if string in col]
-
-        # append the remaining columns
-        remaining_columns = [col for col in df.columns if col not in matched_columns]
-        new_column_order = matched_columns + remaining_columns
-        df = df[new_column_order]
-
-        # sort rows
-        df = df.sort_values(by='residual',ascending=False)
-
-        dfs[field_name] = df
-    return dfs
 
 
-  @classmethod
-  def from_model_ref(cls,model_ref):
-    data = Restraints.from_model_ref(model_ref)
-    return cls(data=data,model_ref=model_ref)
+# class RestraintsRef(Ref):
+#   _class_label_name = 'restraint'
+#   def __init__(self,data: Restraints, model_ref: ModelRef):
+#     super().__init__(data=data,style=model_ref.style)
+#     self.model_ref = model_ref
+#     self.supported_restraints = ['bond','angle']
+#     for field in fields(self.data.__class__):
+#       field_name = field.name
+#       field_value = getattr(self.data, field_name)
+#       if field_name in self.supported_restraints and field_value is not None:
+#           field_value = [RestraintRef(data=data,model_ref=model_ref) for data in field_value]
+#       setattr(self,field_name,field_value)
+
+#   @property
+#   def dfs(self):
+#     dfs = {}
+#     for field in fields(self.data.__class__):
+#       field_name = field.name
+#       field_value = getattr(self, field_name)
+#       if field_name in self.supported_restraints and field_value is not None:
+#         df = pd.DataFrame([dataclass_instance.data.__dict__ for dataclass_instance in field_value])
+#         df = df.round(2)
+#         # Drop some columns for now
+#         columns_to_drop = ['labels', 'slack', 'rt_mx',"sym_op_i"]
+#         columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+#         df.drop(columns=columns_to_drop, inplace=True)
+#         # Sort columns
+#         sort_order = ['residual',"delta",'ideal','model','i_seq']
+#         matched_columns = []
+#         for string in sort_order:
+#             matched_columns += [col for col in df.columns if string in col]
+
+#         # append the remaining columns
+#         remaining_columns = [col for col in df.columns if col not in matched_columns]
+#         new_column_order = matched_columns + remaining_columns
+#         df = df[new_column_order]
+
+#         # sort rows
+#         df = df.sort_values(by='residual',ascending=False)
+
+#         dfs[field_name] = df
+#     return dfs
+
+
+#   @classmethod
+#   def from_model_ref(cls,model_ref):
+#     data = Restraints.from_model_ref(model_ref)
+#     return cls(data=data,model_ref=model_ref)
 
 
 

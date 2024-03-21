@@ -6,11 +6,14 @@ import subprocess
 from pathlib import Path
 
 from PySide2.QtWidgets import QFileDialog, QColorDialog
+from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
 
 from ..view.models import ModelEntryView
 from .scroll_entry import ScrollEntryController
 from .scroll_list import ScrollableListController
-from ..state.ref import SelectionRef, ModelRef
+from ..state.ref import SelectionRef, ModelRef, RestraintsRef
+from ..state.restraints import Restraints
 
 class ModelLikeEntryController(ScrollEntryController):
   def __init__(self,parent=None,view=None,ref=None):
@@ -48,6 +51,11 @@ class ModelLikeEntryController(ScrollEntryController):
       folder = Path.home()
 
     self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
+
+    # Restraints
+    self.view.button_restraints.setContextMenuPolicy(Qt.CustomContextMenu)
+    self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
+    self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
 
 
   def toggle_visibility(self,event):
@@ -89,6 +97,60 @@ class ModelLikeEntryController(ScrollEntryController):
       subprocess.run(['open', path])
     elif platform.system() == 'Linux':
       subprocess.run(['xdg-open', path])
+
+  def buttonMousePressEvent(self, event):
+    if event.button() == Qt.LeftButton:
+        self.showContextMenu(event.pos())
+    else:
+        QPushButton.mousePressEvent(self.view.button_restraints, event)  # Call the original mousePressEvent
+
+  def showContextMenu(self, position):
+    contextMenu = QMenu(self.view)
+
+    # Add actions to the context menu
+    action1 = contextMenu.addAction("Generate restraints")
+    action2 = contextMenu.addAction("Open restraints file")
+
+    # Connect actions to functions/slots
+    action1.triggered.connect(self.process_and_make_restraints)
+    action2.triggered.connect(self.load_restraints)
+
+    # Show the context menu at the button's position
+    contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
+
+  def process_and_make_restraints(self):
+      if self.ref.has_restraints:
+        self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
+      try:
+        restraints = Restraints.from_model_ref(self.ref)
+        ref = RestraintsRef(restraints,self.state.active_model_ref)
+        self.state.add_ref(ref)
+      except:
+        self.state.notify("Failed to process and make restraints.")
+        raise
+
+  def load_restraints(self):
+      if self.ref.has_restraints:
+        self.state.notify("Already have restraints loaded. New files will replace existing restraints.")
+      self.open_restraints_file_dialog()
+
+  def open_restraints_file_dialog(self):
+
+    self.openFileDialog = QFileDialog(self.view)
+    self.openFileDialog.setFileMode(QFileDialog.AnyFile)
+    if self.openFileDialog.exec_():
+        file_path = self.openFileDialog.selectedFiles()[0]
+
+        filepath = str(Path(file_path).absolute())
+        print(f"Restraints file selected: {filepath}")
+        try:
+          restraints = Restraints.from_geo_file(filepath)
+          ref = RestraintsRef(restraints,self.state.active_model_ref)
+          self.state.add_ref(ref)
+        except:
+          self.state.notify("Failed to load restraints from file: "+str(file_path))
+          #raise
+
 
   def show_color_dialog(self):
     color_dialog = QColorDialog(self.view)
@@ -136,7 +198,6 @@ class ModelListController(ScrollableListController):
 
 
   def showFileDialog(self):
-    self.state.is_updating = False
     home_dir = str(Path.home())
 
     self.openFileDialog = QFileDialog(self.view)

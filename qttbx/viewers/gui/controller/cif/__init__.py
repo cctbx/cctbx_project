@@ -8,7 +8,6 @@ from ..scroll_list import ScrollableListController
 from ..controller import Controller
 from ...state.restraints import Restraints
 from ...state.ref import RestraintsRef, RestraintRef
-from ..restraints.bonds import BondTabController
 from ..data import DataTabController
 from .cif_files import CifFileListController
 from .cif_browser import CifBrowserController

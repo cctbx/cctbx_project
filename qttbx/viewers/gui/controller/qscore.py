@@ -13,7 +13,7 @@ import numpy as np
 
 from .controller import Controller
 from ..state.results import  Result, ResultsRef
-from ..view.widgets import   PandasTableModel
+from ..view.widgets import   PandasTable
 from ..state.ref import SelectionRef
 
 class QscoreTabController(Controller):
@@ -82,7 +82,7 @@ class QscoreTabController(Controller):
         df = df.groupby(["chain_id","resseq","resname"]).agg('first').reset_index()
         df = df[["Q-Residue","chain_id","resseq","resname"]]
 
-      model = PandasTableModel(df)
+      model = PandasTable(df)
       self.view.table.setModel(model)
       #self.view.add_histogram()
 

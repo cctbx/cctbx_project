@@ -1,6 +1,6 @@
 from PySide2 import QtCore
 
-from ..view.widgets import  PandasTableModel
+from ..view.widgets import  PandasTable
 from ..state.ref import SelectionRef
 from .controller import Controller
 from ...last.atom_sites2 import AtomSites
@@ -16,7 +16,7 @@ class SitesTabController(Controller):
 
   def update(self,*args):
     if self.state.mol is not None:
-      model = PandasTableModel(self.state.mol.sites)
+      model = PandasTable(self.state.mol.sites)
       self.view.table.setModel(model)
 
 

@@ -3,8 +3,14 @@ from pathlib import Path
 from PySide2.QtCore import Signal
 
 from ..widgets.tab import GUITabWidget
-from ..restraints_table.bonds import BondsTableTabView
-from ..restraints_table.angles import AnglesTableTabView
+from ..restraints_table import (
+  BondsTableTabView,
+  AnglesTableTabView,
+  DihedralsTableTabView,
+  ChiralsTableTabView,
+  PlanarityTableTabView,
+  NonbondedTableTabView
+  )
 
 
 class RestraintsTableTopTabView(GUITabWidget):
@@ -20,3 +26,19 @@ class RestraintsTableTopTabView(GUITabWidget):
     # Angles
     self.angles = AnglesTableTabView(parent=self)
     self.addTab(self.angles, "Angles")
+
+    # Dihedrals
+    self.dihedrals = DihedralsTableTabView(parent=self)
+    self.addTab(self.dihedrals, "Dihedrals")
+
+    # Chirals
+    self.chirals = ChiralsTableTabView(parent=self)
+    self.addTab(self.chirals, "Chirals")
+
+    # Planes
+    self.planes = PlanarityTableTabView(parent=self)
+    self.addTab(self.planes, "Planes")
+
+    # Nonbonded
+    self.nonbonded = NonbondedTableTabView(parent=self)
+    self.addTab(self.nonbonded, "NonBonded")

@@ -4,7 +4,7 @@ from PySide2.QtWidgets import QWidget, QGridLayout, QTableView, QComboBox
 from ..widgets import ClickableHistogramSeaborn
 from ..widgets.tab import GUITab
 from ..tabs.preprocess import PreprocessTab
-from ..widgets import  FastTableView
+from ..widgets import  PandasTableView
 
 class QscoreTab(PreprocessTab):
   def __init__(self,parent=None):
@@ -20,7 +20,7 @@ class QscoreTab(PreprocessTab):
     self.layout.addWidget(self.combobox)
 
     # Table
-    self.table = FastTableView()
+    self.table = PandasTableView()
     self.table.setSelectionBehavior(QTableView.SelectRows)
 
     self.layout.addWidget(self.table)

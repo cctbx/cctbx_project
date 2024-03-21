@@ -6,6 +6,7 @@ import time
 import sys
 from functools import partial
 from typing import Optional
+from contextlib import contextmanager
 
 import pandas as pd
 from PySide2.QtCore import QUrl, Signal, QObject, QTimer
@@ -18,6 +19,23 @@ from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController
 from ...last.selection_utils import Selection, SelectionQuery
 from ...last.python_utils import DotDict
+
+class sync_manager:
+  """
+  Use this to run commands which require syncronization with the typescript app
+  """
+  def __init__(self, molstar_controller):
+      self.molstar_controller = molstar_controller
+      self.state = self.molstar_controller.state
+
+  def __enter__(self):
+      print("Entering sync manager")
+      self.state.has_synced = False
+
+
+  def __exit__(self, exc_type, exc_val, exc_tb):
+      self.molstar_controller.timer.start()
+
 
 class MolstarController(Controller):
   api_function_names = [
@@ -51,12 +69,15 @@ class MolstarController(Controller):
 
     self.state.signals.select.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
+    self.state.signals.selection_change.connect(self.select_from_ref)
 
     #timer for update
     self.timer = QTimer()
     self.timer.setInterval(2000)
     self.timer.timeout.connect(self._update_state_from_remote)
     self.timer.start()
+    self.timer_accumulator = 0
+    self.timer_max_retries = 10
 
     # Start by default
     self.start_viewer()
@@ -82,9 +103,12 @@ class MolstarController(Controller):
 
 
   def _update_state_from_remote(self):
-    if self.state.is_updating:
-      self.state.phenixState = self.viewer._get_sync_state()
-      #self.viewer.state = self.state
+    self.state.phenixState = self.viewer._get_sync_state()
+    if self.state.has_synced:
+      self.timer.stop()
+    self.timer_accumulator+=1
+    if self.timer_accumulator>self.timer_max_retries:
+      self.timer.stop() # give up
 
   # API
   def start_viewer(self):
@@ -105,17 +129,19 @@ class MolstarController(Controller):
 
 
   def load_model_from_ref(self,ref,label=None,format='pdb'):
-    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
-      #self.viewer._set_sync_state(self.state.to_json())
 
-      self.viewer.load_model_from_mmtbx(
-        model=ref.model,
-        format=format,
-        ref_id=ref.id,
-        label=label,
-        callback=None
-      )
-      #self.sync_manager.has_synced = False
+    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+      with sync_manager(self):
+        #self.viewer._set_sync_state(self.state.to_json())
+
+        self.viewer.load_model_from_mmtbx(
+          model=ref.model,
+          format=format,
+          ref_id=ref.id,
+          label=label,
+          callback=None
+        )
+        #self.sync_manager.has_synced = False
 
 
 
@@ -149,12 +175,13 @@ class MolstarController(Controller):
 
 
   def load_map_from_ref(self,map_ref=None,model_ref=None):
+
     if map_ref is not None and map_ref.id not in self.state.external_loaded["molstar"]:
+       with sync_manager(self):
+          if model_ref is None and map_ref.model_ref is None:
+            map_ref.model_ref = self.state.active_model_ref
 
-        if model_ref is None and map_ref.model_ref is None:
-          map_ref.model_ref = self.state.active_model_ref
-
-        self.viewer.load_map(filename=map_ref.data.filepath,volume_id=map_ref.id,model_id=map_ref.model_ref.id)
+          self.viewer.load_map(filename=map_ref.data.filepath,volume_id=map_ref.id,model_id=map_ref.model_ref.id)
 
 
   # Selection
@@ -254,5 +281,5 @@ class MolstarController(Controller):
       self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
 
   def color_ref(self,ref,color):
-    model_id = ref.model_ref.external_ids["molstar"]
+    model_id = ref.model_ref.id_molstar
     self.viewer.color_query(model_id,ref.query.to_json(),color)

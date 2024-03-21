@@ -71,7 +71,6 @@ class MapListController(ScrollableListController):
     self.state.signals.update.connect(self.update)
 
   def showFileDialog(self):
-    self.state.is_updating = False
     home_dir = str(Path.home())
 
     self.openFileDialog = QFileDialog(self.view)
