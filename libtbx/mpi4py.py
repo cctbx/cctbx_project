@@ -23,8 +23,12 @@ class mpiCommEmulator(object):
     return 1
   def barrier(self):
     pass
+  def Barrier(self):
+    pass
   def bcast(self, obj, root=0):
     return obj
+  def Bcast(self, buf, root=0):
+    pass
   def reduce(self, sendobj, op=mpiEmulator.SUM, root=0):
     if op == mpiEmulator.SUM or op == mpiEmulator.MAX or op == mpiEmulator.MIN:
       return sendobj
@@ -42,11 +46,14 @@ class mpiCommEmulator(object):
     items.append(sendobj)
     return items
   def Gatherv(self, sendbuf, recvbuf, root=0):
+    assert len(recvbuf) == 2, "Other ways of using Gatherv are not implemented"
+    rbuff, counts = recvbuf
+    if len(counts) == 1:
+      sendbuf = (sendbuf,)
     counter = 0
-    for i, item in enumerate(sendbuf):
-      n = len(item)
-      recvbuf[counter:counter+n] = item
-      counter += n
+    for item, count in zip(sendbuf, counts):
+      rbuff[counter:counter+count] = item
+      counter += count
   def Abort(self,errorcode=0):
     import sys
     sys.exit()
