@@ -28,7 +28,7 @@ from .experimental_interpret import (
 from cctbx import crystal
 from cctbx.crystal import special_position_settings
 from libtbx import group_args
-from mmtbx.model.views import ModelView
+from .views import ModelView
 
 def make_proxies(model=None,
                 bonds=None,
