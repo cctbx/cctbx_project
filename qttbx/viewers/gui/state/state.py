@@ -46,7 +46,7 @@ class StateSignals(QObject):
   select = Signal(object) # select a ref object
   remove_ref = Signal(object) # ref
   update = Signal(object)
-  stage_restraint = Signal(object) # send selection ref to be staged as restraint
+  stage_restraint = Signal(object,str) # send selection ref,type to be staged as restraint
 
 @dataclass
 class PhenixState(DataClassBase):

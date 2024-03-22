@@ -1,22 +1,26 @@
-from pathlib import Path
 
 from PySide2.QtCore import Signal
-
-from ..widgets.tab import GUITabWidget
-from ..restraints.restraints_table import (
+from .restraints_staging import RestraintStagingTabView
+from .restraints_table import (
   BondsTableTabView,
   AnglesTableTabView,
   DihedralsTableTabView,
   ChiralsTableTabView,
   PlanarityTableTabView,
   NonbondedTableTabView
-  )
+)
+from ..widgets.tab import GUITabWidget
 
 
-class RestraintsTableTopTabView(GUITabWidget):
-  trigger_processing = Signal(object)
+
+class RestraintsTabView(GUITabWidget): # Top view
   def __init__(self,parent=None):
     super().__init__(parent=parent)
+
+
+    # staging
+    #self.staging = RestraintStagingTabView(parent=self)
+    #self.addTab(self.staging, "Staging")
 
 
     # Bonds
@@ -32,10 +36,10 @@ class RestraintsTableTopTabView(GUITabWidget):
     self.addTab(self.dihedrals, "Dihedrals")
 
     # Chirals
-    self.chirals = ChiralsTableTabView(parent=self)
+    self.chirals= ChiralsTableTabView(parent=self)
     self.addTab(self.chirals, "Chirals")
 
-    # Planes
+    # Planarity
     self.planes = PlanarityTableTabView(parent=self)
     self.addTab(self.planes, "Planes")
 

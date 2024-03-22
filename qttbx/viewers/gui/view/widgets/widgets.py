@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-#import seaborn as sns
+from PySide2.QtGui import QColor
 
 from PySide2 import QtCore
 from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
@@ -11,7 +11,7 @@ from PySide2.QtGui import QFontMetrics
 from PySide2.QtCore import QModelIndex
 
 from PySide2.QtWidgets import QApplication, QTableView, QMenu, QAction
-
+from PySide2.QtWidgets import QTableView, QMenu, QAction, QHeaderView
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
@@ -205,12 +205,11 @@ class ClickableHistogramMatplotlib(FigureCanvas):
     self.draw()
 
 
-
 class PandasTableView(QTableView):
-    mouseReleased = QtCore.Signal()
+    mouseReleased = Signal()
     MAX_COLUMN_WIDTH = 200
 
-    def __init__(self, parent=None,default_col_width=75):
+    def __init__(self, parent=None, default_col_width=75):
         super(PandasTableView, self).__init__(parent)
         self.horizontalHeader().setDefaultSectionSize(default_col_width)
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
@@ -219,164 +218,156 @@ class PandasTableView(QTableView):
         # make sortable
         self.setSortingEnabled(True)
 
-
-    def mouseReleaseEvent(self, event):
-        super().mouseReleaseEvent(event)
-        self.mouseReleased.emit()
-
     def showContextMenu(self, position):
-      index = self.indexAt(position)
-      if not index.isValid():
-          return
+        index = self.indexAt(position)
+        if not index.isValid():
+            return
 
-      menu = QMenu()
-      deleteAction = QAction('Delete', self)
-      menu.addAction(deleteAction)
+        menu = QMenu(self)
+        #editAction = menu.addAction('Edit')
+        deleteAction = menu.addAction('Delete')
+        toggleEditAction = menu.addAction("Edit")
 
-      # Connect the delete action
-      deleteAction.triggered.connect(lambda: self.deleteRow(index.row()))
+        action = menu.exec_(self.viewport().mapToGlobal(position))
 
-      menu.exec_(self.viewport().mapToGlobal(position))
+        if action == deleteAction:
+            self.deleteRow(index.row())
+        elif action == toggleEditAction:
+            self.toggleRowEditability(index.row())
+        elif action == editAction:
+            # Implement edit action functionality here if needed
+            pass
+
+    def toggleRowEditability(self, row):
+        # Assuming your model has a 'toggleRowEditability' method to handle this
+        self.model().toggleRowEditability(row)
 
     def deleteRow(self, row):
-      # Check if the row index is valid
-      if row < 0 or row >= self.model().rowCount():
-          return
+        if row < 0 or row >= self.model().rowCount():
+            return
 
-      # Begin the row removal process
-      self.model().beginRemoveRows(QModelIndex(), row, row)
-      self.model()._df.drop(self.model()._df.index[row], inplace=True)
-      self.model().endRemoveRows()
+        self.model().beginRemoveRows(QModelIndex(), row, row)
+        self.model()._df.drop(self.model()._df.index[row], inplace=True)
+        self.model().endRemoveRows()
 
     def selected_indices(self):
-      # Get a list of all selected cell indexes.
-      indexes = self.selectedIndexes()
-
-      # Extract the row numbers for each index.
-      rows = [index.row() for index in indexes]
-
-      # Get a list of unique rows.
-      unique_rows = sorted(list(set(rows)))
-
-      return unique_rows
+        indexes = self.selectedIndexes()
+        rows = [index.row() for index in indexes]
+        unique_rows = sorted(list(set(rows)))
+        return unique_rows
 
     def selected_rows(self):
-      return self.model()._df.iloc[self.selected_indices()]
+        return self.model()._df.iloc[self.selected_indices()]
+    def mouseReleaseEvent(self, event):
+      super(PandasTableView, self).mouseReleaseEvent(event)
+      # Emit the signal whenever the mouse is released
+      self.mouseReleased.emit()
 
     def keyPressEvent(self, event):
-      if event.key() == Qt.Key_Space:
-        # Get the current selection
-        selection = self.selectionModel()
-        current_index = selection.currentIndex()
+        if event.key() == Qt.Key_Space:
+            selection = self.selectionModel()
+            current_index = selection.currentIndex()
+            next_row = current_index.row() + 1
+            if next_row < self.model().rowCount():
+                next_index = self.model().index(next_row, 0)  # Move to the first column of the next row
+                selection.setCurrentIndex(next_index, selection.ClearAndSelect | selection.Rows)
+                event.accept()
+                return
+        super(PandasTableView, self).keyPressEvent(event)
 
-        # Calculate the next row index
-        next_row = current_index.row() + 1
-        if next_row < self.model().rowCount():
-          # Instead of maintaining the same column, move to the first column of the next row
-          next_index = self.model().index(next_row, 0)  # 0 for the first column
+    def adjustColumnWidths(self, margin=20):
+        tableView = self
+        model = tableView.model()
+        if not model:
+            return
 
-          # Set the new index as the current index and select the entire row
-          selection.setCurrentIndex(next_index, selection.ClearAndSelect | selection.Rows)
+        for column in range(model.columnCount(None)):
+            maxWidth = 0
+            fontMetrics = QFontMetrics(tableView.font())
+            headerText = model.headerData(column, Qt.Horizontal)
+            headerWidth = fontMetrics.boundingRect(headerText).width()
 
-          event.accept()  # Mark the event as handled
-          self.mouseReleased.emit() # mimic clicking on the row, and get associated logic
-          return  # Exit the method to avoid processing the space key further
-      super(PandasTableView, self).keyPressEvent(event)  # Handle other key presses normally
+            for row in range(model.rowCount(None)):
+                index = model.index(row, column)
+                text = model.data(index, Qt.DisplayRole)
+                if text:
+                    textWidth = fontMetrics.boundingRect(str(text)).width()
+                    maxWidth = max(maxWidth, textWidth)
 
-    def adjustColumnWidths(self,margin=20):
-      MAX_COLUMN_WIDTH = self.MAX_COLUMN_WIDTH
-      tableView = self
-      model = tableView.model()
-      if not model:
-          return
-
-      #header = tableView.horizontalHeader()
-      for column in range(model.columnCount(None)):
-          maxWidth = 0
-
-          # Use the font metrics from the table view's font
-          fontMetrics = QFontMetrics(tableView.font())
-
-          # Measure header text width
-          headerText = model.headerData(column, Qt.Horizontal)
-          headerWidth = fontMetrics.boundingRect(headerText).width()
-
-          # Measure cell content widths
-          for row in range(model.rowCount(None)):
-              index = model.index(row, column)
-              text = model.data(index, Qt.DisplayRole)
-              if text:  # Ensure text is not None
-                  textWidth = fontMetrics.boundingRect(str(text)).width()
-                  maxWidth = max(maxWidth, textWidth)
-
-          # Apply algorithm with added margin
-          finalWidth = min(max(headerWidth, maxWidth) + margin, MAX_COLUMN_WIDTH)
-          #header.setSectionResizeMode(column, QTableView.ResizeToContents)  # Optional: Resize to contents but limit to max
-          tableView.setColumnWidth(column, finalWidth)
-
-
+            finalWidth = min(max(headerWidth, maxWidth) + margin, self.MAX_COLUMN_WIDTH)
+            tableView.setColumnWidth(column, finalWidth)
 class PandasTable(QAbstractTableModel):
-  def __init__(self, df=pd.DataFrame(), parent=None, suppress_columns=[]):
-    super().__init__(parent=parent)
-    self._df = df
-    self.suppress_columns = set(suppress_columns)
-    self.visible_columns = [col for col in self._df.columns if col not in self.suppress_columns]
-    self.col_map = {i: list(self._df.columns).index(col) for i, col in enumerate(self.visible_columns)}
-    self.sort_order = Qt.AscendingOrder  # Keep track of the current sort order
+    def __init__(self, df=pd.DataFrame(), parent=None, suppress_columns=[]):
+        super().__init__(parent=parent)
+        self._df = df
+        self.suppress_columns = set(suppress_columns)
+        self.visible_columns = [col for col in self._df.columns if col not in self.suppress_columns]
+        self.col_map = {i: list(self._df.columns).index(col) for i, col in enumerate(self.visible_columns)}
+        self.sort_order = Qt.AscendingOrder
+        self.editable_rows = set()  # Added to track editable rows
 
+    @property
+    def df(self):
+        return self._df
 
-  @property
-  def df(self):
-    return self._df
+    def sort(self, column, order=Qt.AscendingOrder):
+        """Sort the table."""
+        col_name = self.visible_columns[column]
+        self.layoutAboutToBeChanged.emit()
+        self._df.sort_values(by=col_name, ascending=(order == Qt.AscendingOrder), inplace=True)
+        self.sort_order = Qt.DescendingOrder if self.sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+        self.layoutChanged.emit()
 
-  def sort(self, column, order=Qt.AscendingOrder):
-    """Sort the table."""
-    col_name = self.visible_columns[column]
-    self.layoutAboutToBeChanged.emit()
-    self._df.sort_values(by=col_name, ascending=(order == Qt.AscendingOrder), inplace=True)
-    # Update the sort order for the next sort operation
-    self.sort_order = Qt.DescendingOrder if self.sort_order == Qt.AscendingOrder else Qt.AscendingOrder
-    self.layoutChanged.emit()
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Horizontal:
+            return self.visible_columns[section]
+        else:
+            return str(self._df.index[section])
 
-  def headerData(self, section, orientation, role=Qt.DisplayRole):
-    if role != Qt.DisplayRole:
-      return None
-    if orientation == Qt.Horizontal:
-      return self.visible_columns[section]
-    else:
-      return self._df.index[section]
+    def data(self, index, role=Qt.DisplayRole):
+        if not index.isValid():
+            return None
 
-  def data(self, index, role=Qt.DisplayRole):
-    if role != Qt.DisplayRole:
-      return None
+        if role == Qt.DisplayRole:
+            value = self.df.iloc[index.row(), self.col_map[index.column()]]
+            return "" if pd.isna(value) else str(value)
+        elif role == Qt.BackgroundRole:
+            if "action" in self.df.columns:
+                action_value = self.df.loc[self.df.index[index.row()], "action"]
+                if pd.notna(action_value):
+                    return QColor(Qt.yellow)
+        return None
 
+    def flags(self, index):
+        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+        if index.row() in self.editable_rows:
+            flags |= Qt.ItemIsEditable
+        return flags
 
-    if role == Qt.DisplayRole:
-      value = self._df.iloc[index.row(), self.col_map[index.column()]]
-      if pd.isna(value):
-          return ""  # Return an empty string for pd.NA values
-      else:
-           return str(value)
-    return None
+    def setData(self, index, value, role):
+        if not index.isValid() or role != Qt.EditRole:
+            return False
+        self._df.loc[index.row(), self.visible_columns[index.column()]] = value
+        self.dataChanged.emit(index, index, (Qt.DisplayRole,))
+        if "action" not in self.df.columns:
+           self.df["action"] = pd.NA
+        self._df.loc[index.row(), "action"] = "edit"
+        return True
 
+    def rowCount(self, parent=None):
+        return len(self._df)
 
-  def setData(self, index, value, role):
-    if not index.isValid() or role != Qt.EditRole:
-      return False
-    self._df.loc[index.row(), self.visible_columns[index.column()]] = value
-    self.dataChanged.emit(index, index, (Qt.DisplayRole,))
-    return True
+    def columnCount(self, parent=None):
+        return len(self.visible_columns)
 
-  def rowCount(self, parent=None):
-    return len(self._df.values)
-
-  def columnCount(self,parent=None):
-    return len(self.visible_columns)
-
-  def flags(self, index):
-    #return Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
-    return Qt.ItemIsEnabled | Qt.ItemIsSelectable
-
+    def toggleRowEditability(self, row):
+        if row in self.editable_rows:
+            self.editable_rows.remove(row)
+        else:
+            self.editable_rows.add(row)
+        self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount() - 1), [Qt.EditRole])
 
 class NoCheckComboBox(QComboBox):
   def paintEvent(self, event):

@@ -15,19 +15,16 @@ from ...core.cctbx_utils import get_restraint_dfs_from_model
 
 @dataclass(frozen=False)
 class Restraint(DataClassBase):
-  labels: Optional[List[str]] = None
+  #labels: Optional[List[str]] = None
   i_seqs: Optional[List[int]] = None
-  id_strs: Optional[List[str]] = None
+  #id_strs: Optional[List[str]] = None
 
 
 
 @dataclass(frozen=False)
 class BondRestraint(Restraint):
   ideal: Optional[float] = None
-  model: Optional[float] = None
   sigma: Optional[float] = None
-  delta: Optional[float] = None
-  residual: Optional[float] = None
   weight: Optional[float] = None
   slack: Optional[float] = None
   sym_op_j: Optional[object] = None
@@ -36,11 +33,31 @@ class BondRestraint(Restraint):
 @dataclass(frozen=False)
 class AngleRestraint(Restraint):
   ideal: Optional[float] = None
-  model: Optional[float] = None
-  delta: Optional[float] = None
-  residual: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
+
+@dataclass(frozen=False)
+class DihedralRestraint(Restraint):
+  ideal: Optional[float] = None
+  sigma: Optional[float] = None
+  weight: Optional[float] = None
+  harmonic: Optional[float] = None
+
+  @property
+  def sinusoidal(self):
+    return self.harmonic
+
+@dataclass(frozen=False)
+class ChiralRestraint(Restraint):
+  ideal: Optional[float] = None
+  sigma: Optional[float] = None
+  weight: Optional[float] = None
+  both_signs: Optional[bool] = None
+
+@dataclass(frozen=False)
+class PlaneRestraint(Restraint):
+  default_weight = 2500.0
+  weights: Optional[List[float]] = None
 
 
 @dataclass(frozen=False)
@@ -139,21 +156,41 @@ class Restraints(DataClassBase):
       temp_file.flush()  # Ensure all data is written to disk
       return cls.from_geo_file(temp_file.name)
 
+  # Add new restraint edits
+  def add_plane_restraint(self,restraint_data):
+    df = self.plane
+    new_row = pd.DataFrame([pd.Series([pd.NA] * len(df.columns), index=df.columns)], index=[0])
+    df = pd.concat([new_row, df]).reset_index(drop=True)
+    for prefix in ["i_seq","weight"]:
+      for i in range(1,len(restraint_data.i_seqs)+1):
+        col = f"{prefix}_{i}"
+        if col in df.columns:
+          value = getattr(restraint_data,prefix+"s")[i-1]
+          df.loc[0,col] = value
 
-  # @classmethod
-  # def from_geo_file(cls,geo_file_path):
-  #   dfs = parse_geo_file(geo_file_path,return_format="df")
-  #   instances_dict = {}
-  #   for key,restraint_class in cls.components.items():
-  #     df = dfs[key]
-  #     instances = []
-  #     for row in df.itertuples():
-  #       d = {
-  #       "i_seqs" :[v for k,v in row._asdict().items() if "i_seq" in k],
-  #       "id_strs":[v for k,v in row._asdict().items() if "id_str" in k],
-  #       }
-  #       d.update({k: v for k, v in row._asdict().items() if k in {field.name for field in fields(restraint_class)}})
-  #       instances.append(restraint_class(**d))
+    if "action" not in df:
+      df["action"] = pd.NA
+    df.loc[0,"action"] = "add"
+    self.plane = df
 
-  #     instances_dict[key] = instances
-  #   return cls(filename=None,**instances_dict,manager=None)
+
+  def add_bond_restraint(self,restraint_data):
+    n_atoms = 2
+    df = self.bond
+    new_row = pd.DataFrame([pd.Series([pd.NA] * len(df.columns), index=df.columns)], index=[0])
+    df = pd.concat([new_row, df]).reset_index(drop=True)
+    i_seq_cols = [f"i_seq_{i}" for i in range(1,n_atoms+1)]
+    i_seq_values = list(restraint_data.i_seqs)
+    cols = [field.name for field in fields(restraint_data) if field.name in df.columns]
+    values = [getattr(restraint_data,col) for col in cols]
+    cols = i_seq_cols+cols
+    values = i_seq_values+values
+    for col,value in zip(cols,values):
+      # if isinstance(value,list):
+      #   value = [value]
+      df.at[0,col] = value
+
+    if "action" not in df:
+      df["action"] = pd.NA
+    df.loc[0,"action"] = "add"
+    self.bond = df

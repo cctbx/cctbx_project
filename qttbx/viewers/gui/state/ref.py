@@ -19,7 +19,7 @@ from ...core.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase
-from .restraints import Restraint, Restraints
+from .restraints import Restraints
 from ...core.mol import MolDataFrame
 from typing import Optional
 

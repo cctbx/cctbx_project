@@ -6,6 +6,13 @@ from ..view.tabs.selection import SelectionEntryView
 from ..view.widgets import InfoDialog
 from .scroll_list import ScrollableListController
 from .controller import Controller
+from ..state.restraints import (
+  BondRestraint,
+  AngleRestraint,
+  DihedralRestraint,
+  ChiralRestraint,
+  PlaneRestraint
+)
 
 class SelectionEntryController(ModelLikeEntryController):
   def __init__(self,parent=None,view=None,ref=None):
@@ -36,19 +43,47 @@ class SelectionEntryController(ModelLikeEntryController):
     contextMenu = QMenu(self.view)
 
     # Add actions to the context menu
-    action1 = contextMenu.addAction("Send to restraints staging")
-    #action2 = contextMenu.addAction("Open restraints file")
+    action1 = contextMenu.addAction("Stage as Bond restraint")
+    action2 = contextMenu.addAction("Stage as Angle restraint")
+    action3 = contextMenu.addAction("Stage as Dihedral restraint")
+    action4 = contextMenu.addAction("Stage as Chiral restraint")
+    action5 = contextMenu.addAction("Stage as Plane restraint")
 
     # Connect actions to functions/slots
-    action1.triggered.connect(self.send_to_restraints_staging)
-    #action2.triggered.connect(self.load_restraints)
+    action1.triggered.connect(self.stage_as_bond_restraint)
+    action2.triggered.connect(self.stage_as_angle_restraint)
+    action3.triggered.connect(self.stage_as_dihedral_restraint)
+    action4.triggered.connect(self.stage_as_chiral_restraint)
+    action5.triggered.connect(self.stage_as_plane_restraint)
 
     # Show the context menu at the button's position
     contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
 
-  def send_to_restraints_staging(self):
-    self.state.signals.stage_restraint.emit(self.ref)
-    self.state.signals.tab_change.emit("Restraints") # show selection tab
+  def stage_as_bond_restraint(self):
+    restraints = self.ref.model_ref.restraints_ref.data
+    sel = self.state.mol.sites.select_from_query(self.ref.query)
+    i_seqs = list(sel.index.values)
+    new_restraint = BondRestraint(i_seqs=i_seqs)
+    restraints.add_bond_restraint(new_restraint)
+    self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
+
+  def stage_as_angle_restraint(self):
+    self.state.signals.stage_restraint.emit(self.ref,"angle")
+
+  def stage_as_dihedral_restraint(self):
+    self.state.signals.stage_restraint.emit(self.ref,"dihedral")
+
+  def stage_as_chiral_restraint(self):
+    self.state.signals.stage_restraint.emit(self.ref,"chiral")
+
+  def stage_as_plane_restraint(self):
+    restraints = self.ref.model_ref.restraints_ref.data
+    sel = self.state.mol.sites.select_from_query(self.ref.query)
+    i_seqs = list(sel.index.values)
+    new_restraint = PlaneRestraint(i_seqs=i_seqs,
+                                   weights=[PlaneRestraint.default_weight for i in range(len(sel))])
+    restraints.add_plane_restraint(new_restraint)
+    self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
 
   def display_info(self):
     # TODO: this is a view, should move to the view directory
