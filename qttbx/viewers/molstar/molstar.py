@@ -224,7 +224,7 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Remote communication
 
-  def send_command(self, js_command,callback=None,sync=False,log_js=True,queue=False):
+  def send_command(self, js_command,callback=None,sync=False,log_js=True):
     # queue needs to be refactored out
 
     if log_js:
@@ -237,6 +237,7 @@ class MolstarViewer(ModelViewer):
       else:
         js_command_print = js_command
       print(js_command_print)
+      print("Callback:",callback)
     if not sync:
       js_command= f"""
       (async () => {{
@@ -315,7 +316,7 @@ class MolstarViewer(ModelViewer):
     return self.load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
 
 
-  def load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None,queue=False):
+  def load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None):
     """
     Load a model using a raw string. ref_id is important
     """
@@ -384,31 +385,30 @@ class MolstarViewer(ModelViewer):
     self.send_command(command)
 
 
-  def poll_selection(self,callback=None,queue=False):
-    #print("Callback manager callback: ",self.command_queue.callback_manager.callback)
+  def poll_selection(self,callback=None):
     # get selection
     command = f"""
     {self.plugin_prefix}.phenix.pollSelection();
     """
-    self.send_command(command,callback=callback)
+    return self.send_command(command,callback=callback,sync=True)
 
 
-  def deselect_all(self,queue=False):
+  def deselect_all(self):
     command = f"{self.plugin_prefix}.phenix.deselectAll()"
-    self.send_command(command,queue=queue)
+    self.send_command(command)
 
 
   # ---------------------------------------------------------------------------
   # Other
 
-  def clear_viewer(self,queue=False):
+  def clear_viewer(self):
     # Remove all objects from the viewer
     command = f"{self.plugin_prefix}.plugin.clear()"
-    self.send_command(command,queue=queue)
+    self.send_command(command)
 
-  def reset_camera(self,queue=False):
+  def reset_camera(self):
     command = f"{self.plugin_prefix}.plugin.managers.camera.reset();"
-    self.send_command(command,queue=queue)
+    self.send_command(command)
 
   def _toggle_selection_mode(self,value):
     if value == True:

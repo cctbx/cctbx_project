@@ -1,5 +1,5 @@
 from PySide2.QtCore import Slot
-
+import json
 from .controller import Controller
 from ...core.selection_utils import SelectionQuery
 from ..state.ref import SelectionRef
@@ -117,20 +117,20 @@ class SelectionControlsController(Controller):
     """
     This is when the 'add selection'
     """
-    self.viewer.poll_selection(callback=self._add_selection)
+    selection_query_json = self.viewer.poll_selection()
 
-  def _add_selection(self,query_dict):
-    assert len(query_dict)==1, "Multi structure queries not yet supported"
-    ref_id = list(query_dict.keys())[0]
-    query = query_dict[ref_id]
+    query = SelectionQuery.from_json(selection_query_json)
+    #assert len(query_dict)==1, "Multi structure queries not yet supported"
+    ref_id = query.params.refId
     if ref_id not in self.state.references:
       ref_id = self.state.active_model_ref.id
     ref = self.state.references[ref_id]
-    sel_sites = self.state.active_mol.atom_sites.select_from_query(query)
+    sel_sites = self.state.active_mol.sites.select_from_query(query)
     if len(sel_sites)>0:
       sel_ref = SelectionRef(data=query,model_ref=ref,show=True)
       self.state.add_ref(sel_ref)
       self.state.active_selection_ref = sel_ref
+
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
       print("Skipping add selection due to empty selection")

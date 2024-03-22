@@ -1,3 +1,6 @@
+from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
+
+
 from .models import ModelLikeEntryController
 from ..view.tabs.selection import SelectionEntryView
 from ..view.widgets import InfoDialog
@@ -26,6 +29,26 @@ class SelectionEntryController(ModelLikeEntryController):
       #print("The entry is unchecked.")
       if self.state.active_selection_ref == self.ref:
         self.state.active_selection_ref = None
+
+
+  def showContextMenu(self, position):
+    # Override the model-like-entry context menu
+    contextMenu = QMenu(self.view)
+
+    # Add actions to the context menu
+    action1 = contextMenu.addAction("Send to restraints staging")
+    #action2 = contextMenu.addAction("Open restraints file")
+
+    # Connect actions to functions/slots
+    action1.triggered.connect(self.send_to_restraints_staging)
+    #action2.triggered.connect(self.load_restraints)
+
+    # Show the context menu at the button's position
+    contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
+
+  def send_to_restraints_staging(self):
+    self.state.signals.stage_restraint.emit(self.ref)
+    self.state.signals.tab_change.emit("Restraints") # show selection tab
 
   def display_info(self):
     # TODO: this is a view, should move to the view directory

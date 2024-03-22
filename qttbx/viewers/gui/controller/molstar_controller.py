@@ -187,13 +187,12 @@ class MolstarController(Controller):
   # Selection
 
   def poll_selection(self,callback=None):
-    self.viewer.poll_selection(callback=partial(self._poll_selection_callback,callback))
+    return self.viewer.poll_selection(callback=callback)
 
   def _poll_selection_callback(self,callback,selection_json):
     #print("Calling MolstarController._poll_selection_callback(callback, selection_json)")
     #print(f"where\n\tcallback:{callback}\n\n\tselection_json:{selection_json}")
-    if not isinstance(selection_json,str) or len(selection_json.strip())==0:
-      return None
+    assert isinstance(selection_json,str) and len(selection_json.strip())>0, "Failure to recieve selection json"
     query_atoms = SelectionQuery.from_json(selection_json)
 
     # get the relevant model ref (to get mol)

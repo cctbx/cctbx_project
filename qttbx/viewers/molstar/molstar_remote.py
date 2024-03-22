@@ -394,7 +394,7 @@ class PhenixMolstarViewer(ModelViewer):
       assert callback is None, "Cannot use custom callback and verbose together"
       def callback(x):
         print(json.dumps(json.loads(x),indent=2))
-    return self.send_command(command,callback=callback,wrap_async=False,queue=False,sync=True)
+    return self.send_command(command,callback=callback,sync=True)
 
 
   def _set_sync_state(self,state_json):

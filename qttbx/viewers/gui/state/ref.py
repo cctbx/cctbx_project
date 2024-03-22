@@ -344,23 +344,17 @@ class SelectionRef(Ref):
     assert show is not None, "Be explicit about whether to show selection ref in list of selections or not"
     assert ModelRef is not None, "Selection Ref cannot exist without reference model"
     assert data is not None, "Provide a Selection query as the data"
-    self._show_in_list = show
     self._debug_data = data
 
 
     self._model_ref = model_ref
     self._query_sel = data
     self._query_sel.params.refId=model_ref.id
-    super().__init__(data=data, style=model_ref.style)
+    super().__init__(data=data, style=model_ref.style, show=show)
     self._query_sel = data
     self._query_sel.params.refId=model_ref.id
 
-  @property
-  def show_in_list(self):
-    return self._show_in_list
-  @show_in_list.setter
-  def show_in_list(self,value):
-    self._show_in_list = value
+
 
   @property
   def query(self):

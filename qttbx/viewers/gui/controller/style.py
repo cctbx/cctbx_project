@@ -23,7 +23,7 @@ class ModelStyleController(Controller):
 
 
 
-  def transition_representation(self,ref,style,queue=False):
+  def transition_representation(self,ref,style):
     new_style = style
     old_style = ref.style
     for rep_name in set(new_style.representation + old_style.representation):
@@ -85,5 +85,5 @@ class MapStyleController(Controller):
             handler(ref,style)
 
 
-  def transition_iso(self,ref,style,queue=False):
+  def transition_iso(self,ref,style):
     self.parent.set_iso(ref,style.iso)

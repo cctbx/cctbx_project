@@ -320,7 +320,7 @@ class ChimeraXController(Controller):
       self.viewer.close_viewer()
 
 
-  def reset_camera(self,queue=False):
+  def reset_camera(self):
     self.viewer.reset_camera()
 
 
