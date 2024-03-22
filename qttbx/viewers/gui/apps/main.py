@@ -15,9 +15,9 @@ from iotbx.data_manager import DataManager
 from ..view.apps.main import ViewerGUIView
 from ..controller.apps.main import ViewerGUIController
 from ..state.state import State
-from ...last.selection_utils import Selection, SelectionQuery
+from ...core.selection_utils import Selection, SelectionQuery
 from . import ViewerChoiceDialog, check_program_access
-from ...last.python_utils import DotDict
+from ...core.python_utils import DotDict
 from flask import Flask, request, jsonify
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)

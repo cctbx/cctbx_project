@@ -15,12 +15,12 @@ from dataclasses import fields, replace
 import pandas as pd
 
 from .style import Style
-from ...last.selection_utils import SelectionQuery
+from ...core.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase
 from .restraints import Restraint, Restraints
-from ...last.mol import MolDataFrame
+from ...core.mol import MolDataFrame
 from typing import Optional
 
 from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str

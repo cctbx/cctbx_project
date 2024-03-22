@@ -9,7 +9,7 @@ from ...view.widgets import  PandasTable, PandasTableView
 from ...state.ref import SelectionRef
 from ..controller import Controller
 #from ..view.tabs.cif import add_tabs
-from ....last.pandas_utils import write_cif_file
+from ....core.pandas_utils import write_cif_file
 
 
 

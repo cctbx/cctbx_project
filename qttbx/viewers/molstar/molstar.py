@@ -24,9 +24,9 @@ from ..gui.controller.controller import Controller
 from ..gui.controller.selection_controls import SelectionControlsController
 from .server_utils import  NodeHttpServer
 from .volume_streaming import VolumeStreamingManager
-from ..last.selection_utils import SelectionQuery
+from ..core.selection_utils import SelectionQuery
 from ..gui.controller.style import ModelStyleController, MapStyleController
-from ..last.python_utils import DotDict
+from ..core.python_utils import DotDict
 
 
 
@@ -390,7 +390,7 @@ class MolstarViewer(ModelViewer):
     command = f"""
     {self.plugin_prefix}.phenix.pollSelection();
     """
-    self.send_command(command,callback=callback,queue=queue,wrap_async=False)
+    self.send_command(command,callback=callback)
 
 
   def deselect_all(self,queue=False):

@@ -2,8 +2,6 @@
 from PySide2.QtCore import Signal
 
 from ..widgets.tab import GUITabWidget
-from ..restraints.bonds import BondsTabView
-from ..restraints.angles import AnglesTabView
 from .cif_files import CifFileTabView
 from .cif_browser import CifBrowserTabView
 

@@ -11,7 +11,7 @@ from ..state.ref import ModelRef, MapRef
 from ...chimerax.chimerax import ChimeraXViewer
 from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController
-from ...last.selection_utils import Selection, SelectionQuery
+from ...core.selection_utils import Selection, SelectionQuery
 
 class ChimeraXController(Controller):
   def __init__(self,parent=None,view=None):

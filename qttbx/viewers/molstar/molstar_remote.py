@@ -347,7 +347,7 @@ class PhenixMolstarViewer(ModelViewer):
     command = f"""
     {self.plugin_prefix}.phenix.pollSelection();
     """
-    self.send_command(command,callback=callback,queue=queue,wrap_async=False)
+    self.send_command(command,callback=callback)
 
 
   def deselect_all(self,queue=False):

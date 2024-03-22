@@ -32,7 +32,7 @@ from PySide2.QtCore import QUrl, Signal, QObject
 from qttbx.viewers import ModelViewer
 
 
-from ..last.selection_utils import SelectionQuery
+from ..core.selection_utils import SelectionQuery
 from .sel_convert_chimera import (
   translate_phenix_selection_string,
   convert_selection_str_to_int,

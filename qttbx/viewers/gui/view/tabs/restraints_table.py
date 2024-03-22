@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide2.QtCore import Signal
 
 from ..widgets.tab import GUITabWidget
-from ..restraints_table import (
+from ..restraints.restraints_table import (
   BondsTableTabView,
   AnglesTableTabView,
   DihedralsTableTabView,
@@ -41,4 +41,4 @@ class RestraintsTableTopTabView(GUITabWidget):
 
     # Nonbonded
     self.nonbonded = NonbondedTableTabView(parent=self)
-    self.addTab(self.nonbonded, "NonBonded")
+    self.addTab(self.nonbonded, "Non-bonded")

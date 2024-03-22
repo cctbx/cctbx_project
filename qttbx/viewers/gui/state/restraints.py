@@ -11,7 +11,7 @@ from mmtbx.geometry_restraints.geo_file_parsing import (
   add_i_seq_columns_from_id_str
 )
 from .base import DataClassBase
-from ...last.cctbx_utils import get_restraint_dfs_from_model
+from ...core.cctbx_utils import get_restraint_dfs_from_model
 
 @dataclass(frozen=False)
 class Restraint(DataClassBase):

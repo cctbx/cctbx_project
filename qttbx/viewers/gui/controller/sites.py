@@ -3,7 +3,7 @@ from PySide2 import QtCore
 from ..view.widgets import  PandasTable
 from ..state.ref import SelectionRef
 from .controller import Controller
-from ...last.atom_sites import AtomSites
+from ...core.atom_sites import AtomSites
 
 class SitesTabController(Controller):
   def __init__(self,parent=None,view=None):

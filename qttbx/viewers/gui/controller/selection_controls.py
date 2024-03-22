@@ -1,7 +1,7 @@
 from PySide2.QtCore import Slot
 
 from .controller import Controller
-from ...last.selection_utils import SelectionQuery
+from ...core.selection_utils import SelectionQuery
 from ..state.ref import SelectionRef
 
 class SelectionControlsController(Controller):

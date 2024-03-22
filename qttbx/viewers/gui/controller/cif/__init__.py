@@ -11,8 +11,6 @@ from ..data import DataTabController
 from .cif_files import CifFileListController
 from .cif_browser import CifBrowserController
 
-import time
-
 class CifTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)

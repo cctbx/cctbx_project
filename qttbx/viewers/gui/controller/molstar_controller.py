@@ -17,8 +17,8 @@ from .controller import Controller
 from ...molstar.molstar import MolstarViewer
 from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController
-from ...last.selection_utils import Selection, SelectionQuery
-from ...last.python_utils import DotDict
+from ...core.selection_utils import Selection, SelectionQuery
+from ...core.python_utils import DotDict
 
 class sync_manager:
   """

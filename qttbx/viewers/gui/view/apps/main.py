@@ -12,9 +12,9 @@ from ..tabs.data import DataTabView
 from ..tabs.sites import SitesTabView
 from ..cif import CifTabView
 #from ..tabs.restraints import RestraintsTopTabView
-from ..tabs.restraints_table import RestraintsTableTopTabView
 from ..tabs.qscore import QscoreTab
 from ..widgets.tab import GUITabWidget
+from ..restraints import RestraintsTabView
 
 
 
@@ -89,7 +89,7 @@ class ViewerGUIView(QMainWindow):
     if 'all' in show_tab or 'restraints' in show_tab:
 
       # Restraints Table
-      self.restraints_table_tab_view = RestraintsTableTopTabView(parent=self)
+      self.restraints_table_tab_view = RestraintsTabView(parent=self)
       self.tabs.addTab(self.restraints_table_tab_view, "Restraints")
 
 
