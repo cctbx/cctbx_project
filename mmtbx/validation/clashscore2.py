@@ -10,19 +10,25 @@ from mmtbx.validation.clashscore import clash
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
+from mmtbx.programs import probe2
+from mmtbx.probe import Helpers
 from mmtbx.utils import run_reduce_with_timeout
 from mmtbx.validation import validation, atoms, atom_info, residue
+from libtbx import phil
 from libtbx.math_utils import cmp
-from libtbx.utils import Sorry
-from libtbx import easy_run
+from libtbx.utils import Sorry, null_out
 import libtbx.load_env
 import iotbx.pdb
+import iotbx.cli_parser
 import mmtbx
 import os
 import re
 import sys
 import six
 import json
+import copy
+import tempfile
+from libtbx import easy_run
 
 
 def remove_models_except_index(model_manager, model_index):
@@ -57,7 +63,7 @@ class clashscore2(validation):
 
   def __init__(self,
       probe_parameters,
-      data_manager_model,
+      data_manager,
       fast = False, # do really fast clashscore, produce only the number
       condensed_probe = False, # Use -CON for probe. Reduces output 10x.
       keep_hydrogens=True,
@@ -87,6 +93,7 @@ class clashscore2(validation):
     from scitbx.array_family import flex
     from mmtbx.validation import utils
 
+    data_manager_model = data_manager.get_model()
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
     cs = data_manager_model.crystal_symmetry()
@@ -133,6 +140,16 @@ class clashscore2(validation):
 
       occ_max = flex.max(r.atoms().extract_occ())
       input_str = r.as_pdb_string()
+
+      # Make yet another model for the new hierarchy
+      subset_model_manager = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = submodel.crystal_symmetry(),
+        restraint_objects = None,
+        log               = None)
+
       self.probe_clashscore_manager = probe_clashscore_manager(
         nuclear=nuclear,
         fast=self.fast,
@@ -142,7 +159,7 @@ class clashscore2(validation):
         use_segids=use_segids,
         verbose=verbose,
         model_id=model.id)
-      self.probe_clashscore_manager.run_probe_clashscore(input_str)
+      self.probe_clashscore_manager.run_probe_clashscore(data_manager, subset_model_manager)
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
@@ -333,10 +350,12 @@ class probe_clashscore_manager(object):
     self.condensed_probe = condensed_probe
     self.use_segids=use_segids
     self.model_id = model_id
-    ogt = 10
+    self.occumancy_frac = 0.1
+    if largest_occupancy/100 < self.occumancy_frac:
+      self.occupancy_frac = largest_occupancy / 100
+    ogt = int(self.occupancy_frac * 10)
+
     blt = self.b_factor_cutoff
-    if largest_occupancy < ogt:
-      ogt = largest_occupancy
 
     self.probe_atom_b_factor = None
     probe_command = libtbx.env.under_build(os.path.join('probe', 'exe', 'probe'))
@@ -468,7 +487,10 @@ class probe_clashscore_manager(object):
         # print "skipping", clash
     return n_clashes
 
-  def run_probe_clashscore(self, pdb_string):
+  # We have to take both the original data manager, which is from the model
+  # without hydrogens, and the hydrogenated modified model because we need one
+  # to construct a Probe2 program and the other to replace its model to run on.
+  def run_probe_clashscore(self, data_manager, hydrogenated_model):
     self.n_clashes = 0
     self.n_clashes_b_cutoff = 0
     self.clashscore_b_cutoff = None
@@ -477,11 +499,29 @@ class probe_clashscore_manager(object):
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
 
-    probe_out = easy_run.fully_buffered(self.probe_txt, stdin_lines=pdb_string)
-    if (probe_out.return_code != 0):
-      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
-        "\n".join(probe_out.stderr_lines))
-    probe_unformatted = probe_out.stdout_lines
+    '''
+    # Construct override parameters and then run probe2 using them and delete the resulting
+    # temporary file.
+    tempName = tempfile.mktemp()
+    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+    args = [
+      "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
+      "target_selection='occupancy > {}'".format(self.occupancy_frac),
+      "approach=once",
+      "output.filename='{}'".format(tempName),
+      "output.format=raw",
+      "output.condensed={}".format(self.condensed_probe),
+      "ignore_lack_of_explicit_hydrogens=True",
+    ]
+    parser.parse_args(args)
+
+    p2 = probe2.Program(data_manager, parser.working_phil.extract(),
+                       master_phil=parser.master_phil, logger=null_out())
+    p2.overrideModel(hydrogenated_model)
+    dots, output = p2.run()
+    probe_unformatted = output.splitlines()
+    os.unlink(tempName)
+    '''
 
     # Debugging facility, do not remove!
     # import random
@@ -495,6 +535,13 @@ class probe_clashscore_manager(object):
     # with open(tempdir + os.sep + 'probe_out.txt', 'w') as f:
     #   f.write('\n'.join(probe_unformatted))
 
+    # @todo
+    pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
+    probe_out = easy_run.fully_buffered(self.probe_txt, stdin_lines=pdb_string)
+    if (probe_out.return_code != 0):
+      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
+        "\n".join(probe_out.stderr_lines))
+    probe_unformatted = probe_out.stdout_lines
     if not self.fast:
       temp = self.process_raw_probe_output(probe_unformatted)
       self.n_clashes = len(temp)

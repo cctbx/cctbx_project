@@ -98,11 +98,10 @@ Example:
 
   def get_results_as_JSON(self):
     if self.params.do_flips : self.params.keep_hydrogens = False
-    data_manager_model = self.data_manager.get_model()
 
     result = clashscore2(
       self.params.probe,
-      data_manager_model=data_manager_model,
+      data_manager=self.data_manager,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
       keep_hydrogens=self.params.keep_hydrogens,
@@ -123,12 +122,11 @@ Example:
   """
     # if do_flips, make keep_hydrogens false
     if self.params.do_flips : self.params.keep_hydrogens = False
-    data_manager_model = self.data_manager.get_model()
     self.info_json = {"model_name":self.data_manager.get_default_model_name(),
                       "time_analyzed": str(datetime.now())}
     self.results = clashscore2(
       self.params.probe,
-      data_manager_model=data_manager_model,
+      data_manager=self.data_manager,
       fast = self.params.fast,
       condensed_probe = self.params.condensed_probe,
       keep_hydrogens=self.params.keep_hydrogens,
