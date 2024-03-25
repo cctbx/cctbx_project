@@ -331,6 +331,7 @@ class place_hydrogens():
 #        restraint_objects = ro,
 #        log               = null_out())
 
+    # TODO: this should be ideally done *after* reduce optimization
     if not self.exclude_water:
       self.model.add_hydrogens(1., occupancy=0.)
 
