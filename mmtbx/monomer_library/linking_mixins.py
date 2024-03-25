@@ -314,6 +314,7 @@ class linking_mixins(object):
                                   small_molecule_bond_cutoff  = 2.,
                                   include_selections          = None,
                                   exclude_selections          = None,
+                                  exclude_hydrogens_from_bonding_decisions = False,
                                   log                         = None,
                                   verbose                     = False,
                                   ):
@@ -584,7 +585,7 @@ Residue classes
         key.append(str(rt_mx_ji))
       key = tuple(key)
       # hydrogens
-      if atom1.parent().parent().resseq==atom2.parent().parent().resseq:
+      if not exclude_hydrogens_from_bonding_decisions:
         if atom1.element.strip() in hydrogens:
           done[atom2.id_str()] = atom1.id_str()
         if atom2.element.strip() in hydrogens:

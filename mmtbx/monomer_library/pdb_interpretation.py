@@ -317,6 +317,8 @@ master_params_str = """\
       .type = float
     small_molecule_bond_cutoff = 1.98
       .type = float
+    exclude_hydrogens_from_bonding_decisions = False
+      .type = bool
   }
   include_in_automatic_linking
     .optional = True
@@ -1895,20 +1897,44 @@ def get_restraints_loading_flags(params):
     rc["use_neutron_distances"] = params.use_neutron_distances
   return rc
 
+def special_dispensation(proxy_label, m_i, m_j, i_seqs):
+  atoms=[]
+  for afs in [m_i.pdb_atoms, m_j.pdb_atoms]:
+    for atom in afs:
+      if atom.i_seq in i_seqs:
+        atoms.append(atom)
+  names=[]
+  for atom in atoms:
+    if atom.name not in names: names.append(atom.name)
+  names.sort()
+  if names in [
+    [' H2 ', ' N  '],
+    ]:
+    return names
+  return False
+
 def evaluate_registry_process_result(
       proxy_label,
       m_i, m_j, i_seqs,
       registry_process_result,
       lines=[]):
   if (registry_process_result.is_conflicting):
-    raise Sorry(format_exception_message(
+    has_special_dispensation = special_dispensation(proxy_label,
+                                                    m_i,
+                                                    m_j,
+                                                    i_seqs)
+    outl = format_exception_message(
       m_i=m_i,
       m_j=m_j,
       i_seqs=i_seqs,
       base_message="Conflicting %s restraints:" % proxy_label,
       source_labels=registry_process_result.conflict_source_labels,
       show_residue_names=False,
-      lines=lines))
+      lines=lines)
+    if has_special_dispensation:
+      print('%s\n%s\n%s\n' %('!'*80, outl, '!'*80))
+    else:
+      raise Sorry(outl)
   pdb_atoms = m_i.pdb_atoms
   if (not registry_process_result.is_new
       and not all_atoms_are_in_main_conf(atoms=[pdb_atoms[i_seq] for i_seq in i_seqs])):
@@ -5462,6 +5488,7 @@ class build_all_chain_proxies(linking_mixins):
         second_row_buffer         = al_params.buffer_for_second_row_elements,
         exclude_selections        = exclude_selections,
         include_selections        = include_selections,
+        exclude_hydrogens_from_bonding_decisions = al_params.exclude_hydrogens_from_bonding_decisions,
         log=log,
         )
     self.geometry_proxy_registries.discard_tables()

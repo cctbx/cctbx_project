@@ -223,6 +223,7 @@ class place_hydrogens():
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     #p.pdb_interpretation.automatic_linking.link_metals = True
     p.pdb_interpretation.automatic_linking.link_residues = True
+    p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
 
     t0 = time.time()
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
@@ -434,7 +435,7 @@ class place_hydrogens():
 
 # ------------------------------------------------------------------------------
 
-  def exclude_H_on_links(self):
+  def exclude_H_on_links(self, verbose=False):
     """Remove H atoms bound to heavy atoms that form a link
 
     An exception are HD1 and HE2 of HIS. The mover functionality in reduce will
@@ -492,6 +493,10 @@ class place_hydrogens():
         removed_dict[j] = exclusion_dict[i]
         parent_dict[j]=i
     # remove H atoms NOT to remove - double negative!
+    if verbose:
+      print('removed_dict',removed_dict)
+      for i_seq in sel_remove:
+        print('remove?',atoms[i_seq].quote())
     remove_from_sel_remove=[]
     for ii, i_seq in reversed(list(enumerate(sel_remove))):
       j_seq=parent_dict[i_seq]
@@ -509,7 +514,7 @@ class place_hydrogens():
       sel_remove=list(sel_remove)
       for r in remove_from_sel_remove:
         sel_remove.remove(r)
-        # print('keep',atoms[r].quote())
+        if verbose: print('keep',atoms[r].quote())
       sel_remove=flex.size_t(sel_remove)
     #
     sl_removed = [(atom.id_str().replace('pdb=','').replace('"',''),
