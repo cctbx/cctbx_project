@@ -65,7 +65,6 @@ class clashscore2(validation):
       force_unique_chain_ids=False,
       time_limit=120,
       b_factor_cutoff=None,
-      save_modified_hierarchy=False,
       verbose=False,
       do_flips=False,
       out=sys.stdout):
@@ -135,7 +134,6 @@ class clashscore2(validation):
       occ_max = flex.max(r.atoms().extract_occ())
       input_str = r.as_pdb_string()
       self.probe_clashscore_manager = probe_clashscore_manager(
-        h_pdb_string=input_str,
         nuclear=nuclear,
         fast=self.fast,
         condensed_probe=self.condensed_probe,
@@ -145,9 +143,6 @@ class clashscore2(validation):
         verbose=verbose,
         model_id=model.id)
       self.probe_clashscore_manager.run_probe_clashscore(input_str)
-      if (save_modified_hierarchy):
-        self.pdb_hierarchy = iotbx.pdb.input(
-          pdb_string=self.probe_clashscore_manager.h_pdb_string).construct_hierarchy()
 
       self.clash_dict[model.id] = self.probe_clashscore_manager.clashscore
       self.clash_dict_b_cutoff[model.id] = self.probe_clashscore_manager.\
@@ -308,7 +303,6 @@ class raw_probe_line_info(probe_line_info):
 
 class probe_clashscore_manager(object):
   def __init__(self,
-               h_pdb_string,
                fast = False,
                condensed_probe=False,
                nuclear=False,
@@ -321,7 +315,6 @@ class probe_clashscore_manager(object):
     Calculate probe (MolProbity) clashscore
 
     Args:
-      h_pdb_string (str): PDB string that contains hydrogen atoms
       nuclear (bool): When True use nuclear cloud x-H distances and vdW radii,
         otherwise use electron cloud x-H distances and vdW radii
       largest_occupancy (int)
@@ -374,9 +367,6 @@ class probe_clashscore_manager(object):
       self.probe_atom_b_factor = \
         '%s -q -mc -het -dumpatominfo %s' % (probe_command, nuclear_flag) +\
           ' "blt%d ogt%d not water" -' % (blt, ogt)
-
-    self.h_pdb_string = h_pdb_string
-    #self.run_probe_clashscore(self.h_pdb_string)
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
