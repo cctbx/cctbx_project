@@ -105,8 +105,16 @@ class clashscore2(validation):
       do_flips = do_flips,
       log=out)
 
+    # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
     # of it for each submodel.
+    data_manager_model = mmtbx.model.manager(
+      model_input       = None,
+      pdb_hierarchy     = data_manager_model.get_hierarchy(),
+      stop_for_unknowns = False,
+      crystal_symmetry  = data_manager_model.crystal_symmetry(),
+      restraint_objects = None,
+      log               = None)
     original_model = data_manager_model.deep_copy()
 
     pdb_hierarchy = data_manager_model.get_hierarchy()
@@ -116,12 +124,12 @@ class clashscore2(validation):
     for i_mod, model in enumerate(pdb_hierarchy.models()):
 
       # Select only the current submodel from the hierarchy
-      submodule = original_model.deep_copy()
-      remove_models_except_index(submodule, i_mod)
+      submodel = original_model.deep_copy()
+      remove_models_except_index(submodel, i_mod)
 
-      # @todo
+      # Construct a hierarchy for the current submodel
       r = iotbx.pdb.hierarchy.root()
-      mdc = model.detached_copy()
+      mdc = submodel.get_hierarchy().models()[0].detached_copy()
       r.append_model(mdc)
 
       occ_max = flex.max(r.atoms().extract_occ())
