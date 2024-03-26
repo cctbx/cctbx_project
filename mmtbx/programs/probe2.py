@@ -1130,7 +1130,7 @@ Note:
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>3s} {}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1847,7 +1847,7 @@ Note:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
