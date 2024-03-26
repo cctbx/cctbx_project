@@ -221,6 +221,7 @@ class place_hydrogens():
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.allow_polymer_cross_special_position=True
     #p.pdb_interpretation.automatic_linking.link_metals = True
     p.pdb_interpretation.automatic_linking.link_residues = True
     p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
