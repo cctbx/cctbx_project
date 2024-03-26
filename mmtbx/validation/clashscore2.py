@@ -499,7 +499,6 @@ class probe_clashscore_manager(object):
     self.n_atoms = 0
     self.natoms_b_cutoff = 0
 
-    '''
     # Construct override parameters and then run probe2 using them and delete the resulting
     # temporary file.
     tempName = tempfile.mktemp()
@@ -521,10 +520,10 @@ class probe_clashscore_manager(object):
     dots, output = p2.run()
     probe_unformatted = output.splitlines()
     os.unlink(tempName)
-    '''
 
     # Debugging facility, do not remove!
     # import random
+    # pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
     # tempdir = "tmp_for_probe_debug_%d" % random.randint(1000,9999)
     # while os.path.isdir(tempdir):
     #   tempdir = "tmp_for_probe_debug_%d" % random.randint(1000,9999)
@@ -537,11 +536,7 @@ class probe_clashscore_manager(object):
 
     # @todo
     pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
-    probe_out = easy_run.fully_buffered(self.probe_txt, stdin_lines=pdb_string)
-    if (probe_out.return_code != 0):
-      raise RuntimeError("Probe crashed - dumping stderr:\n%s" %
-        "\n".join(probe_out.stderr_lines))
-    probe_unformatted = probe_out.stdout_lines
+
     if not self.fast:
       temp = self.process_raw_probe_output(probe_unformatted)
       self.n_clashes = len(temp)
