@@ -314,7 +314,7 @@ class Optimizer(object):
       # The command-line parameter matches the name of the model in the model file, which
       # starts with 1. The internal indexing starts with 0. So we subtract one.
       startModelIndex = (modelIndex - 1)
-      stopModelIndex = (modelIndex - 1) + 1
+      stopModelIndex = startModelIndex + 1
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
