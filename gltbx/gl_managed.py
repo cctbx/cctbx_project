@@ -6,10 +6,10 @@ class display_lists_owner:
 
   def __init__(self, range_values):
     self.range_values = range_values
-    self.list = gl.glGenLists(range_values=range_values)
+    self.list = gl.glGenLists(range_values)
 
   def __del__(self):
-    try: gl.glDeleteLists(list=self.list, range_values=self.range_values)
+    try: gl.glDeleteLists(self.list, self.range_values)
     except RuntimeError as e:
       if (str(e) != 'OpenGL: invalid operation'): raise
       # else: apparently the GL context was destroyed already
@@ -31,13 +31,13 @@ class display_list:
       mode = gl.GL_COMPILE_AND_EXECUTE
     else:
       mode = gl.GL_COMPILE
-    gl.glNewList(list=self.gl_index, mode=mode)
+    gl.glNewList(self.gl_index, mode)
 
   def end(self):
     gl.glEndList()
 
   def call(self):
-    gl.glCallList(list=self.gl_index)
+    gl.glCallList(self.gl_index)
 
 class display_lists:
 
