@@ -858,12 +858,27 @@ def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
   for key in keys:
     if (not key.startswith(key_str)) or (type(locals[key]) != type("abc")):
       continue
-    from iotbx.pdb.utils import get_pdb_input
+
     original_string = locals[key]
+
+    new_string = convert_string_to_cif_long(original_string,
+      chain_addition = chain_addition,
+      hetatm_name_addition = hetatm_name_addition)
+    locals[key] = new_string
+    if print_new_string:
+       print("\n",79*"=","\n",
+          "ORIGINAL STRING '%s':\n%s" %(key, original_string))
+       print("\n",79*"=","\n",
+          "MODIFIED STRING '%s':\n%s" %(key, new_string),
+          "\n",79*"=","\n")
+
+def convert_string_to_cif_long(original_string,  chain_addition = "ZXLONG",
+   hetatm_name_addition = "ZY"):
+    from iotbx.pdb.utils import get_pdb_input
     pdb_inp = get_pdb_input(original_string)
     ph = pdb_inp.construct_hierarchy()
     if ph.overall_counts().n_residues < 1:
-      continue
+      return ""
     for model in ph.models():
      for chain in model.chains():
        chain.id = "%s%s" %(chain.id.strip(),chain_addition)
@@ -876,12 +891,44 @@ def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
                  break
     new_string = ph.as_mmcif_string(
       crystal_symmetry = pdb_inp.crystal_symmetry())
-    locals[key] = new_string
-    if print_new_string:
-       print("\n",79*"=","\n",
-          "ORIGINAL STRING '%s':\n%s" %(key, original_string))
-       print("\n",79*"=","\n",
-          "MODIFIED STRING '%s':\n%s" %(key, new_string),
-          "\n",79*"=","\n")
+    return new_string
+def tst_convert():
+  text = """
+ATOM      1  N   VAL A   1      -5.111   0.049  13.245  1.00  9.36           N
+"""
+  assert convert_string_to_cif_long(text).strip() == """
+data_phenix
+loop_
+  _atom_site.group_PDB
+  _atom_site.id
+  _atom_site.label_atom_id
+  _atom_site.label_alt_id
+  _atom_site.label_comp_id
+  _atom_site.auth_asym_id
+  _atom_site.auth_seq_id
+  _atom_site.pdbx_PDB_ins_code
+  _atom_site.Cartn_x
+  _atom_site.Cartn_y
+  _atom_site.Cartn_z
+  _atom_site.occupancy
+  _atom_site.B_iso_or_equiv
+  _atom_site.type_symbol
+  _atom_site.pdbx_formal_charge
+  _atom_site.label_asym_id
+  _atom_site.label_entity_id
+  _atom_site.label_seq_id
+  _atom_site.pdbx_PDB_model_num
+  ATOM  1  N  .  VAL  AZXLONG  1  ?  -5.11100  0.04900  13.24500  1.000  9.36000  N  ?  A  ?  1  1
+
+loop_
+  _chem_comp.id
+  VAL
+
+loop_
+  _struct_asym.id
+  A
+""".strip()
+
 if (__name__ == "__main__"):
+  tst_convert()
   exercise()

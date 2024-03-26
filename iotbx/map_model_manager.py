@@ -4416,7 +4416,7 @@ class map_model_manager(object):
 
     kw = self.set_map_id_lists(kw)
 
-    print ("Running external map sharpening ", file = self.log)
+    print ("\nRunning external map sharpening ", file = self.log)
 
     kw['map_id_2'] = map_id_external_map
     kw['is_external_based'] = True
@@ -4569,6 +4569,7 @@ class map_model_manager(object):
       coordinate_shift_to_apply_before_tlso = None,
       sharpen_all_maps = False,
       remove_overall_anisotropy = True,
+      save_model_map = False,
     ):
     '''
      Scale map_id with scale factors identified from map_id vs model
@@ -4652,6 +4653,7 @@ class map_model_manager(object):
     del kw['optimize_with_model']  # REQUIRED
     del kw['find_tls_from_model']  # REQUIRED
     del kw['overall_sharpen_before_and_after_local']  # REQUIRED
+    del kw['save_model_map']  # REQUIRED
 
 
     # Make a copy of this map_model manager so we can modify it without
@@ -4745,6 +4747,15 @@ class map_model_manager(object):
       working_mmm._sharpen_map(**kw)
 
     # And set this map_manager
+    if save_model_map:
+      mm = working_mmm.get_map_manager_by_id(map_id_model_map)
+      if mm:
+        print("Copying map '%s' in map_manager '%s' to '%s'" %(
+          map_id_model_map,working_mmm.name,self.name),
+          file = self.log)
+        self.add_map_manager_by_id(
+          map_manager = working_mmm.get_map_manager_by_id(map_id_model_map),
+          map_id = map_id_model_map)
     for id in kw['map_id_scaled_list']:
       if working_mmm.get_map_manager_by_id(id):
         print("Copying map '%s' in map_manager '%s' to '%s'" %(
@@ -5023,7 +5034,6 @@ class map_model_manager(object):
         len(direction_vectors)), file = self.log)
     else:
       print("Estimating scale factors ", file = self.log)
-
     # Analyze spectrum in map_id (will apply it to map_id_to_be_scaled)
     scaling_group_info = working_mmm._get_weights_in_shells(n_bins,
         d_min,
