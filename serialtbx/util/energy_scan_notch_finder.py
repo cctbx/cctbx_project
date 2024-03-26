@@ -48,7 +48,7 @@ def find_notch(data_x, data_y, kernel_size, fit_half_range, baseline_cutoff, ref
   fitted_min_y = notch_shape.__call__(fitted_min_x)
   return ((fitted_min_x, fitted_min_y), notch_shape, smoothed_y, flattened_y)
 
-def plot_notches(runs, rundata, notches, per_run_plots=False):
+def plot_notches(runs, rundata, notches, per_run_plots=False, use_figure=None):
   """Plot the energy scan, optionally one plot per spectrum for troubleshooting misses when automatically identifying notch positions, and always as an overlay of spectra in the scan with notch positions marked."""
   if per_run_plots:
     for run, data_y, notch in zip(runs, rundata, notches):
@@ -64,36 +64,43 @@ def plot_notches(runs, rundata, notches, per_run_plots=False):
       plt.legend()
       plt.figure()
 
+  fig = use_figure or plt.figure()
+  ax = fig.subplots()
   for run, data, notch in zip(runs, rundata, notches):
     (notch_x, notch_y), notch_shape, smoothed_y, flattened_y = notch
-    plt.plot(range(len(data)), data, '-', label=f"run {run}: notch at {int(notch_x)} pixels".format())
-    plt.plot([notch_x], [notch_y], 'k+', label="_nolegend_")
+    ax.plot(range(len(data)), data, '-', label=f"run {run}: notch at {int(notch_x)} pixels".format())
+    ax.plot([notch_x], [notch_y], 'k+', label="_nolegend_")
   # repeat last one to add legend
-  plt.plot([notch_x], [notch_y], 'k+', label="identified notches")
+  ax.plot([notch_x], [notch_y], 'k+', label="identified notches")
 
-  plt.legend()
-  plt.title("Energy scan")
-  plt.xlabel("FEE spectrometer pixels")
-  plt.ylabel("Mean counts")
-  plt.figure()
+  ax.legend()
+  ax.set_title("Energy scan")
+  ax.set_xlabel("FEE spectrometer pixels")
+  ax.set_ylabel("Mean counts")
 
-def calibrate_energy(notches, energies):
+def calibrate_energy(notches, energies, return_trendline=False, use_figure=None):
   """Having identified the pixel positions on the FEE spectrometer corresponding to known energy values, get a linear fit of these ordered pairs and report the eV offset and eV per pixel matching the fit."""
   pixels = [n[0][0] for n in notches]
   linear_fit = Poly.fit(pixels, energies, 1).convert()
   eV_offset, eV_per_pixel = linear_fit.coef
   print(f"Calibrated eV offset of {eV_offset} and eV per pixel of {eV_per_pixel}".format())
-  plt.scatter(pixels, energies, color='k', label="known energy positions")
+  fig = use_figure or plt.figure()
+  ax = fig.subplots()
+  ax.scatter(pixels, energies, color='k', label="known energy positions")
   px_min = int(min(pixels))
   px_max = int(max(pixels))
   px_range = px_max - px_min
   trendline_x = np.arange(px_min-0.1*px_range, px_max+0.1*px_range, int(px_range/10))
   trendline_y = linear_fit.__call__(trendline_x)
-  plt.plot(trendline_x, trendline_y, 'b-', label=f"linear fit: y = {eV_per_pixel:.4f}*x + {eV_offset:.4f}".format())
-  plt.xlabel("FEE spectrometer pixels")
-  plt.ylabel("Energy (eV)")
-  plt.title("Energy calibration")
-  plt.legend()
-  plt.show()
-  return (eV_offset, eV_per_pixel)
+  ax.plot(trendline_x, trendline_y, 'b-', label=f"linear fit: y = {eV_per_pixel:.4f}*x + {eV_offset:.4f}".format())
+  ax.set_xlabel("FEE spectrometer pixels")
+  ax.set_ylabel("Energy (eV)")
+  ax.set_title("Energy calibration")
+  ax.legend()
+  if use_figure is None:
+    plt.show()
+  if return_trendline:
+    return ((eV_offset, eV_per_pixel), (linear_fit, trendline_x, trendline_y))
+  else:
+    return (eV_offset, eV_per_pixel)
 

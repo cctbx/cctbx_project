@@ -15,6 +15,9 @@ experiment = None
 verbose = False
   .type = bool
   .help = print all possible output
+output_phil = None
+  .type = path
+  .help = path where calibrated values should be written as a phil file
 """
 
 phil_scope = parse(fee_phil_string + notch_phil_string)
@@ -97,6 +100,15 @@ def run(args):
              for data in rundata]
   plot_notches(runs, rundata, notches, params.per_run_plots)
   eV_offset, eV_per_pixel = calibrate_energy(notches, energies)
+  args_str = ' '.join(args)
+  with open('fee_calib.out', 'a') as outfile:
+    outfile.write(f'using {args_str}, eV_offset={eV_offset} eV_per_pixel={eV_per_pixel}\n')
+  print('wrote calibrated values to fee_calib.out')
+  if params.output_phil:
+    with open(params.output_phil, 'w') as outfile:
+      outfile.write(f'spectrum_eV_offset={eV_offset}\n')
+      outfile.write(f'spectrum_eV_per_pixel={eV_per_pixel}\n')
+    print(f'wrote calibrated values to {params.output_phil}')
 
 if __name__ == "__main__":
   import sys
