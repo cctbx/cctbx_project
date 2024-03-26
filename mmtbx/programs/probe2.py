@@ -920,11 +920,11 @@ Note:
             # Main branch if we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and overlapType == probeExt.OverlapType.HydrogenBond:
+              if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
                 show = True
-              elif spo.report_clashes and overlapType == probeExt.OverlapType.Clash:
+              elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
                 show = True
-              elif spo.report_vdws and overlapType == probeExt.OverlapType.NoOverlap:
+              elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
                 show = True
             else:
               # We are only reporting bad clashes.  See if we're reporting clashes and this is
@@ -1163,7 +1163,7 @@ Note:
             else: # Hydrogen bond
               score = hydrogen_bond_weight * sl
 
-            if self.params.output.contact_summary:
+            if self.params.output.condensed:
               ret += "{}:".format(node.dotCount)
 
             ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
