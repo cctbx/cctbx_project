@@ -42,7 +42,7 @@ jobs:
         echo Removing $f
         rm $f; done
     displayName: Remove Python 3 only files for Python 2 syntax check
-    condition: eq(variables['PYTHON_VERSION'], '2.7')
+    condition: or(eq(variables['PYTHON_VERSION'], '2.7'), eq(variables['PYTHON_VERSION'], '3.7'))
 
   - script: |
       source activate py$(PYTHON_VERSION)
