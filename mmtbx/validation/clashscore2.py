@@ -350,10 +350,10 @@ class probe_clashscore_manager(object):
     self.condensed_probe = condensed_probe
     self.use_segids=use_segids
     self.model_id = model_id
-    self.occumancy_frac = 0.1
-    if largest_occupancy/100 < self.occumancy_frac:
+    self.occupancy_frac = 0.1
+    if largest_occupancy / 100 < self.occupancy_frac:
       self.occupancy_frac = largest_occupancy / 100
-    ogt = int(self.occupancy_frac * 10)
+    ogt = int(self.occupancy_frac * 100)
 
     blt = self.b_factor_cutoff
 
@@ -510,10 +510,10 @@ class probe_clashscore_manager(object):
       "output.filename='{}'".format(tempName),
       "output.format=raw",
       "output.condensed={}".format(self.condensed_probe),
+      "output.report_vdws=False",
       "ignore_lack_of_explicit_hydrogens=True",
     ]
     parser.parse_args(args)
-
     p2 = probe2.Program(data_manager, parser.working_phil.extract(),
                        master_phil=parser.master_phil, logger=null_out())
     p2.overrideModel(hydrogenated_model)
@@ -534,18 +534,36 @@ class probe_clashscore_manager(object):
     # with open(tempdir + os.sep + 'probe_out.txt', 'w') as f:
     #   f.write('\n'.join(probe_unformatted))
 
-    # @todo
-    pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
-
     if not self.fast:
       temp = self.process_raw_probe_output(probe_unformatted)
       self.n_clashes = len(temp)
-      # XXX Warning: one more probe call here
-      printable_probe_out = easy_run.fully_buffered(self.full_probe_txt,
-                                                    stdin_lines=pdb_string)
-      self.probe_unformatted = "\n".join(printable_probe_out.stdout_lines)
+
+      # If we're not running fast, call probe2 again to get non-condensed output
+      # including VDW contacts.  We make another temporary file for the output and
+      # then delete it.  This option is for printing to file for coot usage.  The
+      # no-VDWOUT option is used to speed up the parsing of the output.
+      tempName = tempfile.mktemp()
+      parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+      args = [
+        "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
+        "target_selection='occupancy > {}'".format(self.occupancy_frac),
+        "approach=once",
+        "output.filename='{}'".format(tempName),
+        "output.format=raw",
+        "ignore_lack_of_explicit_hydrogens=True",
+      ]
+      parser.parse_args(args)
+      p2 = probe2.Program(data_manager, parser.working_phil.extract(),
+                         master_phil=parser.master_phil, logger=null_out())
+      p2.overrideModel(hydrogenated_model)
+      dots, output = p2.run()
+      self.probe_unformatted = "\n".join(output.splitlines())
+      os.unlink(tempName)
     else:
       self.n_clashes = self.get_condensed_clashes(probe_unformatted)
+
+    # @todo
+    pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
 
     # getting number of atoms from probe
     probe_info = easy_run.fully_buffered(self.probe_atom_txt,
