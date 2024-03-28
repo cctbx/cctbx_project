@@ -11,13 +11,8 @@ from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from mmtbx.programs import probe2
-from mmtbx.probe import Helpers
-from mmtbx.utils import run_reduce_with_timeout
-from mmtbx.validation import validation, atoms, atom_info, residue
-from libtbx import phil
-from libtbx.math_utils import cmp
+from mmtbx.validation import validation, atoms, atom_info
 from libtbx.utils import Sorry, null_out
-import libtbx.load_env
 import iotbx.pdb
 import iotbx.cli_parser
 import mmtbx
