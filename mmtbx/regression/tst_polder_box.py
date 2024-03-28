@@ -1,12 +1,92 @@
 from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
-import time
+import time, os
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
 from iotbx import reflection_file_reader
-from cctbx import miller
 from cctbx import maptbx
-from scitbx.array_family import flex
+from mmtbx.regression.tst_polder import get_map, get_map_stats
+from iotbx.data_manager import DataManager
+from iotbx.cli_parser import run_program
+from mmtbx.programs import fmodel, polder
+from libtbx.utils import null_out
+
+def exercise_00(prefix="tst_polder_box"):
+  """
+  Test for phenix.polder using the compute_box=True option.
+  """
+  dm = DataManager(['model'])
+  dm.process_model_str('tst_polder_box.pdb', pdb_str)
+  dm.process_model_str('tst_polder_box_ligand.pdb', pdb_str + pdb_str_ligand)
+  dm.write_model_file(dm.get_model('tst_polder_box.pdb').model_as_pdb(),
+                      filename  = 'tst_polder_box.pdb',
+                      overwrite = True)
+  dm.write_model_file(dm.get_model('tst_polder_box_ligand.pdb').model_as_pdb(),
+                      filename  = 'tst_polder_box_ligand.pdb',
+                      overwrite = True)
+
+  # create test data with phenix.fmodel
+  mtz_fn = "tst_polder_box.mtz"
+  args = [
+    'tst_polder_box_ligand.pdb',
+    "high_res=2.0",
+    "type=real",
+    "label=f-obs",
+    "k_sol=0.4",
+    "b_sol=50",
+    "output.file_name=%s" % mtz_fn]
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
+
+  selection = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
+    resseq 183 or resseq 95 or (resseq 148 and name CG))'
+
+  args = [
+    "tst_polder_box.pdb",
+    "tst_polder_box.mtz",
+    "compute_box=True",
+    'solvent_exclusion_mask_selection="%s"' % selection]
+    #'mask_output=True']
+
+  r = run_program(program_class=polder.Program, args=args, logger=null_out())
+
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    r.output_file).as_miller_arrays()
+  mc_polder, mc_bias_omit, mc_omit = [None,]*3
+  for ma in miller_arrays:
+    lbl = ma.info().label_string()
+    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
+      mc_polder = ma.deep_copy()
+    if(lbl == "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"):
+      mc_bias_omit = ma.deep_copy()
+    if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
+      mc_omit = ma.deep_copy()
+  assert [mc_polder, mc_omit].count(None)==0
+  cg = maptbx.crystal_gridding(
+    unit_cell         = mc_polder.unit_cell(),
+    d_min             = mc_polder.d_min(),
+    resolution_factor = 0.25,
+    space_group_info  = mc_polder.space_group_info())
+  map_polder   = get_map(cg=cg, mc=mc_polder)
+  map_omit     = get_map(cg=cg, mc=mc_omit)
+  pdb_hierarchy = dm.get_model('tst_polder_box.pdb').get_hierarchy()
+  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
+  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
+  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
+  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
+  mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
+  #
+  mmm_mp = mp.min_max_mean().as_tuple()
+  mmm_o = mo.min_max_mean().as_tuple()
+  #print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
+  #print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
+  #
+  assert approx_equal(mmm_mp, [-2.051, 1.255, -0.162], eps=0.15)
+  assert approx_equal(mmm_o,  [-0.558, 0.138, -0.068], eps=0.15)
+
+  os.remove('tst_polder_box.pdb')
+  os.remove('tst_polder_box_ligand.pdb')
+  os.remove('tst_polder_box.mtz')
+  os.remove(r.output_file)
+
+# ---------------------------------------------------------------------------
 
 pdb_str = """\
 CRYST1   21.830   27.276   27.424  90.00  90.00  90.00 P 1
@@ -114,95 +194,7 @@ HETATM   87  O3S MES A  88      10.061  10.480  16.373  1.00 59.16           O
 HETATM   88  S   MES A  88       8.674  10.225  15.261  1.00 59.12           S
 """
 
-def get_map(cg, mc):
-  fft_map = miller.fft_map(
-    crystal_gridding     = cg,
-    fourier_coefficients = mc)
-  fft_map.apply_sigma_scaling()
-  return fft_map.real_map_unpadded()
-
-def get_map_stats(map, sites_frac):
-  map_values = flex.double()
-  for sf in sites_frac:
-    map_values.append(map.eight_point_interpolation(sf))
-  return map_values
-
-def format_map_stat(m):
-  return m.min_max_mean().as_tuple(), (m>flex.mean(m)).count(True)
-
-def exercise_00(prefix="tst_polder_box"):
-  """
-  Test for phenix.polder using the compute_box=True option.
-  """
-  f = open("%s.pdb" % prefix, "w")
-  f.write(pdb_str)
-  f.close()
-  f = open("%s_ligand.pdb" % prefix, "w")
-  f.write(pdb_str + pdb_str_ligand)
-  f.close()
-  cmd = " ".join([
-    "phenix.fmodel",
-    "%s_ligand.pdb" % prefix,
-    "high_res=2.0",
-    "type=real",
-    "label=f-obs",
-    "k_sol=0.4",
-    "b_sol=50",
-    "output.file_name=%s.mtz" % prefix,
-    "> %s.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-  #
-  selection_string = '((resseq 65 and name CG) or (resseq 7 and name OH) or \
-    resseq 183 or resseq 95 or (resseq 148 and name CG))'
-  cmd = " ".join([
-    "phenix.polder",
-    "%s.pdb" % prefix,
-    "%s.mtz" % prefix,
-    "compute_box=True",
-    'solvent_exclusion_mask_selection="%s" ' % selection_string,
-    'mask_output=True',
-    "> %s.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-  #
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "tst_polder_box_polder_map_coeffs.mtz").as_miller_arrays()
-  mc_polder, mc_bias_omit, mc_omit = [None,]*3
-  for ma in miller_arrays:
-    lbl = ma.info().label_string()
-    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
-      mc_polder = ma.deep_copy()
-    if(lbl == "mFo-DFc_bias_omit,PHImFo-DFc_bias_omit"):
-      mc_bias_omit = ma.deep_copy()
-    if(lbl == "mFo-DFc_omit,PHImFo-DFc_omit"):
-      mc_omit = ma.deep_copy()
-  assert [mc_polder, mc_omit].count(None)==0
-  cg = maptbx.crystal_gridding(
-    unit_cell         = mc_polder.unit_cell(),
-    d_min             = mc_polder.d_min(),
-    resolution_factor = 0.25,
-    space_group_info  = mc_polder.space_group_info())
-  map_polder   = get_map(cg=cg, mc=mc_polder)
-  map_omit     = get_map(cg=cg, mc=mc_omit)
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=pdb_str).construct_hierarchy()
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection_string)
-  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
-  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  mo  = get_map_stats(map=map_omit,     sites_frac=sites_frac_lig)
-  #
-  mmm_mp = mp.min_max_mean().as_tuple()
-  mmm_o = mo.min_max_mean().as_tuple()
-  print("Polder map : %7.3f %7.3f %7.3f"%mmm_mp)
-  print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
-  #
-  assert approx_equal(mmm_mp, [-2.051, 1.255, -0.162], eps=0.15)
-  assert approx_equal(mmm_o,  [-0.558, 0.138, -0.068], eps=0.15)
-
+# ---------------------------------------------------------------------------
 
 if (__name__ == "__main__"):
   t0 = time.time()

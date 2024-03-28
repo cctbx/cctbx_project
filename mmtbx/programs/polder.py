@@ -280,12 +280,12 @@ Optional output:
 
   # ---------------------------------------------------------------------------
 
-  def print_rfactors(self, results):
+  def print_rfactors(self):
     print ('*'*79, file=self.logger)
-    fmodel_input  = results.fmodel_input
-    fmodel_biased = results.fmodel_biased
-    fmodel_omit   = results.fmodel_omit
-    fmodel_polder = results.fmodel_polder
+    fmodel_input  = self.results.fmodel_input
+    fmodel_biased = self.results.fmodel_biased
+    fmodel_omit   = self.results.fmodel_omit
+    fmodel_polder = self.results.fmodel_polder
     print('R factors for unmodified input model and data:', file=self.logger)
     self.broadcast_rfactors(fmodel_input.r_work(), fmodel_input.r_free())
     if (self.params.debug):
@@ -300,9 +300,11 @@ Optional output:
 
   # ---------------------------------------------------------------------------
 
-  def write_files(self, results, f_obs):
+  def write_files(self, f_obs):
     if (self.params.mask_output):
-      masks = [results.mask_data_all, results.mask_data_omit, results.mask_data_polder]
+      masks = [self.results.mask_data_all,
+               self.results.mask_data_omit,
+               self.results.mask_data_polder]
       filenames = ["all", "omit", "polder"]
       for mask_data, filename in zip(masks, filenames):
         mrcfile.write_ccp4_map(
@@ -311,14 +313,14 @@ Optional output:
           space_group = f_obs.space_group(),
           map_data    = mask_data,
           labels      = flex.std_string([""]))
-    mtz_dataset = results.mc_polder.as_mtz_dataset(
+    mtz_dataset = self.results.mc_polder.as_mtz_dataset(
       column_root_label = "mFo-DFc_polder")
     mtz_dataset.add_miller_array(
-      miller_array      = results.mc_omit,
+      miller_array      = self.results.mc_omit,
       column_root_label = "mFo-DFc_omit")
     if (self.params.debug):
       mtz_dataset.add_miller_array(
-        miller_array      = results.mc_biased,
+        miller_array      = self.results.mc_biased,
         column_root_label = "mFo-DFc_bias_omit")
     mtz_object = mtz_dataset.mtz_object()
     polder_file_name = "polder_map_coeffs.mtz"
@@ -330,8 +332,8 @@ Optional output:
 
   # ---------------------------------------------------------------------------
 
-  def print_validation(self, results):
-    vr = results.validation_results
+  def print_validation(self):
+    vr = self.results.validation_results
     if vr is None:
       return ''
     print('Map 1: calculated Fobs with ligand', file=self.logger)
@@ -436,23 +438,20 @@ Optional output:
       model            = model,
       params           = self.params.polder,
       selection_string = self.params.solvent_exclusion_mask_selection)
-      #selection_bool = selection_bool)
+
     polder_object.validate()
     polder_object.run()
-    results = polder_object.get_results()
+    self.results = polder_object.get_results()
 
-    self.print_rfactors(results = results)
-    self.write_files(
-      results = results,
-      f_obs   = f_obs)
+    self.print_rfactors()
+    self.write_files(f_obs = f_obs)
     self.message = None
     if (not self.params.polder.compute_box):
-      self.message = self.print_validation(results = results)
+      self.message = self.print_validation()
 
     print ('*'*79, file=self.logger)
     print ('Finished', file=self.logger)
     # results object not returned because it contains maps
-
 
   def get_results(self):
     return group_args(

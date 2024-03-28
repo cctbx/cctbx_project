@@ -53,7 +53,6 @@ class compute_polder_map():
                model,
                params,
                selection_string):
-               #selection_bool):
     self.f_obs = f_obs
     self.r_free_flags = r_free_flags
     self.xray_structure = model.get_xray_structure()

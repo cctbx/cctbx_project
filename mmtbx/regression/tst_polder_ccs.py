@@ -1,12 +1,90 @@
 from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
-import time
+import time, os
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
+from libtbx.utils import null_out
+import iotbx.phil
+from iotbx.cli_parser import run_program
+from iotbx.data_manager import DataManager
 from iotbx import reflection_file_reader
-import mmtbx.model
-from mmtbx.maps.polder import master_params_str
+from mmtbx.programs import fmodel
 import mmtbx.maps.polder
+
+
+def exercise(prefix="tst_polder_ccs"):
+  """
+  Test for phenix.polder correlation coefficients.
+  """
+
+  # save test model as file
+  model_fn = "tst_polder_ccs.pdb"
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, pdb_str)
+  model = dm.get_model()
+  dm.write_model_file(model.model_as_pdb(),
+                      filename  = "tst_polder_ccs.pdb",
+                      overwrite = True)
+
+  # create test data with phenix.fmodel
+  mtz_fn = "tst_polder_ccs.mtz"
+  args = [
+    model_fn,
+    "high_res=2.0",
+    "type=real",
+    "label=f-obs",
+    "k_sol=0.4",
+    "b_sol=50",
+    "output.file_name=%s" % mtz_fn]
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
+
+  params_line = mmtbx.maps.polder.master_params_str
+  params = iotbx.phil.parse(
+      input_string=params_line, process_includes=True).extract()
+
+  pdb_hierarchy = model.get_hierarchy()
+
+  selection_string = 'resseq 88'
+  #selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+  #  string = 'resseq 88')
+  #f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
+  #mtz = f_obs.as_mtz_dataset(column_root_label = "Fobs")
+  #mtz.mtz_object().write("bla.mtz")
+
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    mtz_fn).as_miller_arrays()
+  fobs = [None]
+  for ma in miller_arrays:
+    if(ma.info().label_string() == "f-obs"):
+      fobs = ma.deep_copy()
+
+  # Calculate polder map and get results
+  polder_object = mmtbx.maps.polder.compute_polder_map(
+    f_obs             = fobs,
+    r_free_flags      = None,
+    model             = model,
+    params            = params.polder,
+    selection_string    = selection_string)
+  polder_object.validate()
+  polder_object.run()
+  results = polder_object.get_results()
+
+  #mtz_dataset = results.mc_polder.as_mtz_dataset(
+  #  column_root_label = "mFo-DFc_polder")
+  #mtz_dataset.add_miller_array(
+  #  miller_array      = results.mc_omit,
+  #  column_root_label = "mFo-DFc_omit")
+  #mtz_object = mtz_dataset.mtz_object()
+  #mtz_object.write(file_name = "bla.mtz")
+
+  vr = results.validation_results
+
+  assert approx_equal([vr.cc12, vr.cc13, vr.cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
+  assert approx_equal([vr.cc12_peak, vr.cc13_peak, vr.cc23_peak], [0.4310, 0.9966, 0.4379], eps = 0.1)
+
+  # Clean up files
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
 
 pdb_str = """\
 CRYST1   21.830   27.276   27.424  90.00  90.00  90.00 P 1
@@ -111,75 +189,7 @@ HETATM   87  O3S MES A  88      10.061  10.480  16.373  1.00 59.16           O
 HETATM   88  S   MES A  88       8.674  10.225  15.261  1.00 59.12           S
 """
 
-def exercise(prefix="tst_polder_ccs"):
-  """
-  Test for phenix.polder correlation coefficients.
-  """
-  # write pdb string to file
-  f = open("%s.pdb" % prefix, "w")
-  f.write(pdb_str)
-  f.close()
-
-  # get mtz file from model using fmodel
-  cmd = " ".join([
-    "phenix.fmodel",
-    "%s.pdb" % prefix,
-    "high_res=2.0",
-    "type=real",
-    "label=f-obs",
-    "k_sol=0.4",
-    "b_sol=50",
-    "output.file_name=%s.mtz" % prefix,
-    "> %s.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-
-  params_line = master_params_str
-  params = iotbx.phil.parse(
-      input_string=params_line, process_includes=True).extract()
-
-  pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_ccs.pdb')
-  model = mmtbx.model.manager(model_input = pdb_inp)
-  pdb_hierarchy = model.get_hierarchy()
-  selection_string = 'resseq 88'
-  #selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-  #  string = 'resseq 88')
-  #f_obs = abs(xray_structure.structure_factors(d_min=2).f_calc())
-  #mtz = f_obs.as_mtz_dataset(column_root_label = "Fobs")
-  #mtz.mtz_object().write("bla.mtz")
-
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "tst_polder_ccs.mtz").as_miller_arrays()
-  fobs = [None]
-  for ma in miller_arrays:
-    if(ma.info().label_string() == "f-obs"):
-      fobs = ma.deep_copy()
-
-  # Calculate polder map and get results
-  polder_object = mmtbx.maps.polder.compute_polder_map(
-    f_obs             = fobs,
-    r_free_flags      = None,
-    model             = model,
-    params            = params.polder,
-    selection_string    = selection_string)
-  polder_object.validate()
-  polder_object.run()
-  results = polder_object.get_results()
-
-  #mtz_dataset = results.mc_polder.as_mtz_dataset(
-  #  column_root_label = "mFo-DFc_polder")
-  #mtz_dataset.add_miller_array(
-  #  miller_array      = results.mc_omit,
-  #  column_root_label = "mFo-DFc_omit")
-  #mtz_object = mtz_dataset.mtz_object()
-  #mtz_object.write(file_name = "bla.mtz")
-
-
-  vr = results.validation_results
-
-  assert approx_equal([vr.cc12, vr.cc13, vr.cc23], [0.4153, 0.9980, 0.4213], eps = 0.1)
-  assert approx_equal([vr.cc12_peak, vr.cc13_peak, vr.cc23_peak], [0.4310, 0.9966, 0.4379], eps = 0.1)
+# ---------------------------------------------------------------------------
 
 if (__name__ == "__main__"):
   t0 = time.time()
