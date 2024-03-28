@@ -28,8 +28,6 @@ import six
 import json
 import copy
 import tempfile
-from libtbx import easy_run
-
 
 def remove_models_except_index(model_manager, model_index):
     hierarchy = model_manager.get_hierarchy()
@@ -340,7 +338,6 @@ class probe_clashscore_manager(object):
       verbose (bool): verbosity of printout
       model_id (str): model ID number, used in json output
     """
-    assert libtbx.env.has_module(name="probe")
     if fast and not condensed_probe:
       raise Sorry("Incompatible parameters: fast=True and condensed=False:\n"+\
         "There's no way to work fast without using condensed output.")
@@ -353,39 +350,7 @@ class probe_clashscore_manager(object):
     self.occupancy_frac = 0.1
     if largest_occupancy / 100 < self.occupancy_frac:
       self.occupancy_frac = largest_occupancy / 100
-    ogt = int(self.occupancy_frac * 100)
-
-    blt = self.b_factor_cutoff
-
-    self.probe_atom_b_factor = None
-    probe_command = libtbx.env.under_build(os.path.join('probe', 'exe', 'probe'))
-    if os.getenv('CCP4'):
-      ccp4_probe = os.path.join(os.environ['CCP4'],'bin','probe')
-      if (os.path.isfile(ccp4_probe) and not os.path.isfile(probe_command)):
-        probe_command = ccp4_probe
-    probe_command = '"%s"' % probe_command   # in case of spaces in path
-    self.probe_command = probe_command
-    nuclear_flag = ""
-    condensed_flag = ""
-    if nuclear:
-      nuclear_flag = "-nuclear"
-    if self.condensed_probe:
-      condensed_flag = "-CON"
-    self.probe_txt = \
-      '%s -u -q -mc -het -once -NOVDWOUT %s %s' % (probe_command, condensed_flag, nuclear_flag) +\
-        ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
-    #The -NOVDWOUT probe run above is faster for clashscore to parse,
-    # the full_probe_txt version below is for printing to file for coot usage
-    self.full_probe_txt = \
-      '%s -u -q -mc -het -once %s' % (probe_command, nuclear_flag) +\
-        ' "ogt%d not water" "ogt%d" -' % (ogt, ogt)
-    self.probe_atom_txt = \
-      '%s -q -mc -het -dumpatominfo %s' % (probe_command, nuclear_flag) +\
-        ' "ogt%d not water" -' % ogt
-    if blt is not None:
-      self.probe_atom_b_factor = \
-        '%s -q -mc -het -dumpatominfo %s' % (probe_command, nuclear_flag) +\
-          ' "blt%d ogt%d not water" -' % (blt, ogt)
+    self.nuclear = nuclear
 
   def put_group_into_dict(self, line_info, clash_hash, hbond_hash):
     key = line_info.targAtom+line_info.srcAtom
@@ -506,6 +471,7 @@ class probe_clashscore_manager(object):
     args = [
       "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
       "target_selection='occupancy > {}'".format(self.occupancy_frac),
+      "use_neutron_distances={}".format(self.nuclear),
       "approach=once",
       "output.filename='{}'".format(tempName),
       "output.format=raw",
@@ -547,6 +513,7 @@ class probe_clashscore_manager(object):
       args = [
         "source_selection='(occupancy > {}) and not water'".format(self.occupancy_frac),
         "target_selection='occupancy > {}'".format(self.occupancy_frac),
+        "use_neutron_distances={}".format(self.nuclear),
         "approach=once",
         "output.filename='{}'".format(tempName),
         "output.format=raw",
@@ -562,25 +529,13 @@ class probe_clashscore_manager(object):
     else:
       self.n_clashes = self.get_condensed_clashes(probe_unformatted)
 
-    # @todo
-    pdb_string = hydrogenated_model.get_hierarchy().as_pdb_string()
-
-    # getting number of atoms from probe
-    probe_info = easy_run.fully_buffered(self.probe_atom_txt,
-      stdin_lines=pdb_string) #.raise_if_errors().stdout_lines
-    err = probe_info.format_errors_if_any()
-    if err is not None and err.find("No atom data in input.")>-1:
-      return
-    #if (len(probe_info) == 0):
-    #  raise RuntimeError("Empty PROBE output.")
-    n_atoms = 0
-    for line in probe_info.stdout_lines:
-      try:
-        dump, n_atoms = line.split(":")
-      except KeyboardInterrupt: raise
-      except ValueError:
-        pass # something else (different from expected) got into output
-    self.n_atoms = int(n_atoms)
+    # Find the number of non-water atoms that pass the occupancy test
+    # and then use it to compute the clashscore.
+    self.n_atoms = 0
+    for a in hydrogenated_model.get_hierarchy().atoms():
+      isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
+      if a.occ > self.occupancy_frac and not isWater:
+        self.n_atoms += 1
     if self.n_atoms == 0:
       self.clashscore = 0.0
     else:
@@ -603,12 +558,13 @@ class probe_clashscore_manager(object):
           used.append(test_key)
           self.bad_clashes.append(clash_obj)
 
-      if self.probe_atom_b_factor is not None:
-        probe_info_b_factor = easy_run.fully_buffered(self.probe_atom_b_factor,
-          stdin_lines=pdb_string).raise_if_errors().stdout_lines
-        for line in probe_info_b_factor :
-          dump_b, natoms_b_cutoff = line.split(":")
-        self.natoms_b_cutoff = int(natoms_b_cutoff)
+      if self.b_factor_cutoff is not None:
+        # Find the number of non-water atoms who pass the B factor test and the occupancy test
+        self.natoms_b_cutoff = 0
+        for a in hydrogenated_model.get_hierarchy().atoms():
+          isWater = iotbx.pdb.common_residue_names_get_class(name=a.parent().resname) == "common_water"
+          if  (a.b < self.b_factor_cutoff) and (a.occ > self.occupancy_frac) and not isWater:
+            self.natoms_b_cutoff += 1
       self.clashscore_b_cutoff = None
       if self.natoms_b_cutoff == 0:
         self.clashscore_b_cutoff = 0.0
