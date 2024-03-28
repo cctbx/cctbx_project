@@ -1,15 +1,117 @@
 from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
-import time
+import time, os
 from libtbx.test_utils import approx_equal
-import iotbx.pdb
-import mmtbx.model
 from iotbx import reflection_file_reader
-from cctbx import miller
-from scitbx.array_family import flex
-from mmtbx.maps.polder import master_params_str
+from iotbx.cli_parser import run_program
+from libtbx.utils import null_out
+from iotbx.data_manager import DataManager
+from mmtbx.programs import fmodel
 import mmtbx.maps.polder
+import iotbx.phil
 from six.moves import range
+
+
+def exercise(prefix="tst_polder_3"):
+  """
+  Test for phenix.polder sphere radius and box buffer.
+  """
+
+  # save test model as file
+  model_fn = "tst_polder_3.pdb"
+  dm = DataManager(['model'])
+  dm.process_model_str(model_fn, pdb_str+pdb_str_ligand)
+  model = dm.get_model()
+  dm.write_model_file(model.model_as_pdb(),
+                      filename  = "tst_polder_3.pdb",
+                      overwrite = True)
+
+  # create test data with phenix.fmodel
+  mtz_fn = "tst_polder_3.mtz"
+  args = [
+    model_fn,
+    "high_res=2.0",
+    "type=real",
+    "label=f-obs",
+    "k_sol=0.4",
+    "b_sol=50",
+    "output.file_name=%s" % mtz_fn]
+  run_program(program_class=fmodel.Program, args=args, logger=null_out())
+
+  params_line = mmtbx.maps.polder.master_params_str
+  params = iotbx.phil.parse(
+      input_string=params_line, process_includes=True).extract()
+
+  pdb_hierarchy = model.get_hierarchy()
+
+  selection_string = 'chain A'
+
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    "tst_polder_3.mtz").as_miller_arrays()
+  fobs = [None]
+  for ma in miller_arrays:
+    if(ma.info().label_string() == "f-obs"):
+      fobs = ma.deep_copy()
+
+  mmm_list = []
+  mask_mmm = [[0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8901388888888889],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8583379629629629],
+              [0.0, 1.0, 0.9083055555555556],
+              [0.0, 1.0, 0.8025601851851852] ]
+
+  for radius in [3, 5, 7]:
+    params.polder.sphere_radius = radius
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs            = fobs,
+      r_free_flags     = None,
+      model            = model,
+      params           = params.polder,
+      selection_string = selection_string)
+    polder_object.validate()
+    polder_object.run()
+    results = polder_object.get_results()
+
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
+
+  for i in range(6):
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+    #print mask_mmm[i], mmm_list[i]
+
+  mmm_list = []
+  mask_mmm = [ [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.8642268518518519],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.7957083333333334],
+               [0.0, 1.0, 0.898712962962963],
+               [0.0, 1.0, 0.6772777777777778] ]
+
+  for box_buffer in [3, 5, 7]:
+    params.polder.box_buffer = box_buffer
+    params.polder.compute_box = True
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs               = fobs,
+      r_free_flags        = None,
+      model               = model,
+      params              = params.polder,
+      selection_string    = selection_string)
+    polder_object.validate()
+    polder_object.run()
+    results = polder_object.get_results()
+
+    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
+    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
+
+  for i in range(6):
+    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
+    #print mask_mmm[i], mmm_list[i]
+
+  # Clean up files
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+
+# ---------------------------------------------------------------------------
 
 pdb_str = """\
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
@@ -153,118 +255,7 @@ TER
 END
 """
 
-def get_map(cg, mc):
-  fft_map = miller.fft_map(
-    crystal_gridding     = cg,
-    fourier_coefficients = mc)
-  fft_map.apply_sigma_scaling()
-  return fft_map.real_map_unpadded()
-
-def get_map_stats(map, sites_frac):
-  map_values = flex.double()
-  for sf in sites_frac:
-    map_values.append(map.eight_point_interpolation(sf))
-  return map_values
-
-def exercise(prefix="tst_polder_3"):
-  """
-  Test for phenix.polder sphere radius and box buffer.
-  """
-  f = open("%s.pdb" % prefix, "w")
-  f.write(pdb_str+pdb_str_ligand)
-  f.close()
-
-  # get mtz file from model using fmodel
-  cmd = " ".join([
-    "phenix.fmodel",
-    "%s.pdb" % prefix,
-    "high_res=2.0",
-    "type=real",
-    "label=f-obs",
-    "k_sol=0.4",
-    "b_sol=50",
-    "output.file_name=%s.mtz" % prefix,
-    "> %s.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-
-  params_line = master_params_str
-  params = iotbx.phil.parse(
-      input_string=params_line, process_includes=True).extract()
-
-  pdb_inp = iotbx.pdb.input(file_name = 'tst_polder_3.pdb')
-  model = mmtbx.model.manager(model_input = pdb_inp)
-  pdb_hierarchy = model.get_hierarchy()
-
-  selection_string = 'chain A'
-#  selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-#    string = 'chain A')
-
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "tst_polder_3.mtz").as_miller_arrays()
-  fobs = [None]
-  for ma in miller_arrays:
-    if(ma.info().label_string() == "f-obs"):
-      fobs = ma.deep_copy()
-
-  mmm_list = []
-  mask_mmm = [[0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8901388888888889],
-              [0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8583379629629629],
-              [0.0, 1.0, 0.9083055555555556],
-              [0.0, 1.0, 0.8025601851851852] ]
-
-  for radius in [3, 5, 7]:
-    params.polder.sphere_radius = radius
-    polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs            = fobs,
-      r_free_flags     = None,
-      model            = model,
-      params           = params.polder,
-      selection_string = selection_string)
-    polder_object.validate()
-    polder_object.run()
-    results = polder_object.get_results()
-
-    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
-
-  for i in range(6):
-    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
-    #print mask_mmm[i], mmm_list[i]
-
-#-------------------------------------------------------------------------
-
-  mmm_list = []
-  mask_mmm = [ [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.8642268518518519],
-               [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.7957083333333334],
-               [0.0, 1.0, 0.898712962962963],
-               [0.0, 1.0, 0.6772777777777778] ]
-
-  for box_buffer in [3, 5, 7]:
-    params.polder.box_buffer = box_buffer
-    params.polder.compute_box = True
-    polder_object = mmtbx.maps.polder.compute_polder_map(
-      f_obs               = fobs,
-      r_free_flags        = None,
-      model               = model,
-      params              = params.polder,
-      selection_string    = selection_string)
-    polder_object.validate()
-    polder_object.run()
-    results = polder_object.get_results()
-
-    mmm_list.append(results.mask_data_omit.as_1d().min_max_mean().as_tuple())
-    mmm_list.append(results.mask_data_polder.as_1d().min_max_mean().as_tuple())
-
-  for i in range(6):
-    assert approx_equal(mask_mmm[i], mmm_list[i], eps = 0.1)
-    #print mask_mmm[i], mmm_list[i]
-
+# ---------------------------------------------------------------------------
 
 if (__name__ == "__main__"):
   t0 = time.time()
