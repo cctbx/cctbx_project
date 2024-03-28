@@ -861,7 +861,7 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
 class Program(ProgramTemplate):
   description = '''
-Reduce2 version {}
+reduce2 version {}
 Add Hydrogens to a model and optimize their placement by adjusting movable groups and
 flippable groups of atoms.
 
@@ -1059,6 +1059,7 @@ NOTES:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done
     # by Hydrogen placement will have flipped them, so we don't need to do it again.
@@ -1226,7 +1227,6 @@ NOTES:
         flipStates = self.params.set_flip_states,
         verbosity=self.params.verbosity,
         cliqueOutlineFileName=self.params.output.clique_outline_file_name,
-        keepExistingH = self.params.keep_existing_H,
         fillAtomDump = self.params.output.print_atom_info)
       doneOpt = time.time()
       outString += opt.getInfo()
@@ -1476,8 +1476,7 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3,
-            keepExistingH = self.params.keep_existing_H)
+            verbosity=3)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
@@ -1598,8 +1597,7 @@ NOTES:
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
             flipStates = flipStates,
-            verbosity=3,
-            keepExistingH = self.params.keep_existing_H)
+            verbosity=3)
           print('Results of optimization:', file=self.logger)
           print(opt.getInfo(), file=self.logger)
           self._ReinterpretModel()
