@@ -248,33 +248,34 @@ Optional output:
   # ---------------------------------------------------------------------------
 
   def check_selection(self, pdb_hierarchy):
-   print("*"*79, file=self.logger)
-   print('Selecting atoms...\n', file=self.logger)
-   print('Selection string:', self.params.solvent_exclusion_mask_selection)
+    print("*"*79, file=self.logger)
+    print('Selecting atoms...\n', file=self.logger)
+    print('Selection string:', self.params.solvent_exclusion_mask_selection,
+      file=self.logger)
 
-   selection_bool = pdb_hierarchy.atom_selection_cache().selection(
-     string = self.params.solvent_exclusion_mask_selection)
-   n_selected = selection_bool.count(True)
-   n_selected_all = pdb_hierarchy.atom_selection_cache().selection(
-     string = 'all').count(True)
-   if(n_selected == 0):
-     raise Sorry("No atoms where selected. Check selection syntax again.")
-   if (n_selected/n_selected_all > 0.5):
-     raise Sorry("""More than half of total number of atoms selected. Omit
-       selection should be smaller, such as one ligand or a few residues.""")
+    selection_bool = pdb_hierarchy.atom_selection_cache().selection(
+      string = self.params.solvent_exclusion_mask_selection)
+    n_selected = selection_bool.count(True)
+    n_selected_all = pdb_hierarchy.atom_selection_cache().selection(
+      string = 'all').count(True)
+    if(n_selected == 0):
+      raise Sorry("No atoms where selected. Check selection syntax again.")
+    if (n_selected/n_selected_all > 0.5):
+      raise Sorry("""More than half of total number of atoms selected. Omit
+        selection should be smaller, such as one ligand or a few residues.""")
 
-   print('Number of atoms selected:', n_selected, file=self.logger)
-   pdb_hierarchy_selected = pdb_hierarchy.select(selection_bool)
-   ligand_str = pdb_hierarchy_selected.as_pdb_string()
-   print(ligand_str, file=self.logger)
-   print("*"*79, file=self.logger)
+    print('Number of atoms selected:', n_selected, file=self.logger)
+    pdb_hierarchy_selected = pdb_hierarchy.select(selection_bool)
+    ligand_str = pdb_hierarchy_selected.as_pdb_string()
+    print(ligand_str, file=self.logger)
+    print("*"*79, file=self.logger)
 
-   return selection_bool
+    return selection_bool
 
   # ---------------------------------------------------------------------------
 
   def broadcast_rfactors(self, r_work, r_free):
-    print('R_work = %6.4f R_free = %6.4f' % (r_work, r_free))
+    print('R_work = %6.4f R_free = %6.4f' % (r_work, r_free), file=self.logger)
     print ('*'*79, file=self.logger)
 
   # ---------------------------------------------------------------------------
@@ -327,26 +328,26 @@ Optional output:
     print('File %s was written.' % polder_file_name, file=self.logger)
 
   # ---------------------------------------------------------------------------
+
   def print_validation(self, results):
     vr = results.validation_results
     if vr is None:
       return ''
-    print('Map 1: calculated Fobs with ligand')
-    print('Map 2: calculated Fobs without ligand')
-    print('Map 3: real Fobs data')
-    print('CC(1,2): %6.4f' % vr.cc12)
-    print('CC(1,3): %6.4f' % vr.cc13)
-    print('CC(2,3): %6.4f' % vr.cc23)
-    print('Peak CC:')
-    print('CC(1,2): %6.4f' % vr.cc12_peak)
-    print('CC(1,3): %6.4f' % vr.cc13_peak)
-    print('CC(2,3): %6.4f' % vr.cc23_peak)
-    print('q    D(1,2) D(1,3) D(2,3)')
+    print('Map 1: calculated Fobs with ligand', file=self.logger)
+    print('Map 2: calculated Fobs without ligand', file=self.logger)
+    print('Map 3: real Fobs data', file=self.logger)
+    print('CC(1,2): %6.4f' % vr.cc12, file=self.logger)
+    print('CC(1,3): %6.4f' % vr.cc13, file=self.logger)
+    print('CC(2,3): %6.4f' % vr.cc23, file=self.logger)
+    print('Peak CC:', file=self.logger)
+    print('CC(1,2): %6.4f' % vr.cc12_peak, file=self.logger)
+    print('CC(1,3): %6.4f' % vr.cc13_peak, file=self.logger)
+    print('CC(2,3): %6.4f' % vr.cc23_peak, file=self.logger)
+    print('q    D(1,2) D(1,3) D(2,3)', file=self.logger)
     for c,d12_,d13_,d23_ in zip(vr.cutoffs,vr.d12,vr.d13,vr.d23):
-      print('%4.2f %6.4f %6.4f %6.4f'%(c,d12_,d13_,d23_))
+      print('%4.2f %6.4f %6.4f %6.4f'%(c,d12_,d13_,d23_), file=self.logger)
     ###
     if(self.params.debug):
-      #box_1.write_ccp4_map(file_name="box_1_polder.ccp4")
       self.write_map_box(
         box      = vr.box_1,
         filename = "box_1_polder.ccp4")
@@ -401,6 +402,10 @@ Optional output:
     xrs = model.get_xray_structure()
     selection_bool = self.check_selection(pdb_hierarchy = ph)
 
+    #print(self.params.model_file_name)
+    #print(self.data_manager.get_default_model_name())
+    #STOP()
+
     f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
     print('Input data...', file=self.logger)
     print('  Reflection data:', f_obs.info().labels, file=self.logger)
@@ -449,4 +454,5 @@ Optional output:
 
 
   def get_results(self):
-    return group_args(message=self.message)
+    return group_args(
+      message=self.message)
