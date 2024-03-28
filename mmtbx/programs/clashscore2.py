@@ -96,22 +96,6 @@ Example:
   def validate(self):
     self.data_manager.has_models(raise_sorry=True)
 
-  def get_results_as_JSON(self):
-    if self.params.do_flips : self.params.keep_hydrogens = False
-
-    result = clashscore2(
-      self.params.probe,
-      data_manager=self.data_manager,
-      fast = self.params.fast,
-      condensed_probe = self.params.condensed_probe,
-      keep_hydrogens=self.params.keep_hydrogens,
-      nuclear=self.params.nuclear,
-      out=self.logger,
-      verbose=self.params.verbose and not quiet,
-      b_factor_cutoff=self.params.b_factor_cutoff,
-      do_flips=self.params.do_flips)
-    return result.as_JSON()
-
   def run(self, quiet=None): #preserved how quiet was passed to the old run, not sure why
     """
   Calculates nonbonded clashscore using MolProbity (PROBE)
