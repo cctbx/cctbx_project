@@ -325,6 +325,7 @@ Optional output:
     if (self.params.output_file_name_prefix is not None):
       polder_file_name = self.params.output_file_name_prefix + "_" + polder_file_name
     mtz_object.write(file_name = polder_file_name)
+    self.output_file_name = polder_file_name
     print('File %s was written.' % polder_file_name, file=self.logger)
 
   # ---------------------------------------------------------------------------
@@ -455,4 +456,5 @@ Optional output:
 
   def get_results(self):
     return group_args(
-      message=self.message)
+      message     = self.message,
+      output_file = self.output_file_name)

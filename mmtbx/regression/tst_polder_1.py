@@ -1,15 +1,194 @@
 from __future__ import absolute_import, division, print_function
-from libtbx import easy_run
-import time
+import time, os
 from libtbx.test_utils import approx_equal
+from iotbx.data_manager import DataManager
+from iotbx.cli_parser import run_program
 import iotbx.pdb
+from mmtbx.programs import polder
 from iotbx import reflection_file_reader
-from cctbx import miller
 from cctbx import maptbx
 from scitbx.array_family import flex
 from six.moves import range
+from libtbx.utils import null_out
+from mmtbx.regression.tst_polder import get_map, get_map_stats
 
-pdb_str = """\
+
+def generate_r_free_flags_systematic(miller_array):
+  result = flex.bool()
+  for i in range(miller_array.indices().size()):
+    if(i%10==0): result.append(True)
+    else: result.append(False)
+  return miller_array.array(data = result)
+
+# ---------------------------------------------------------------------------
+
+def exercise_01(fobs_1, fobs_2, flags_1, flags_2):
+  '''
+  Test reading one mtz with different choices for F and Rfree
+  '''
+  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
+  mtz.add_miller_array(fobs_2, column_root_label="FP2")
+  mtz.add_miller_array(flags_1, column_root_label="R-free-flags-1")
+  mtz.add_miller_array(flags_2, column_root_label="R-free-flags-2")
+  mtz.mtz_object().write("tst_polder_1_1.mtz")
+  #
+  selection = "chain A"
+
+  args = [
+    "tst_polder_1.pdb",
+    "tst_polder_1_1.mtz",
+    "sphere_radius=3",
+    'solvent_exclusion_mask_selection="%s"' % selection,
+    "data_labels=FP1",
+    "r_free_flags_labels=R-free-flags-1",
+    "output_file_name_prefix=tst_polder_1_1"]
+
+  r = run_program(program_class=polder.Program, args=args, logger=null_out())
+
+  check(
+    tuple_calc=[10.6, 16.0, 13.5],
+    selection=selection,
+    filename = r.output_file)
+
+  os.remove("tst_polder_1_1.mtz")
+  os.remove(r.output_file)
+
+# ---------------------------------------------------------------------------
+
+def exercise_02(fobs_1, flags_1):
+  '''
+  Test reading two cns files: one with Fobs, one with Rfree;
+  without specifying labels --> test automatic machinery
+  '''
+  with open("tst_polder_1_2.cns", "w") as file_object:
+    fobs_1.export_as_cns_hkl(
+      file_object=file_object,
+      file_name="tst_polder_1_2.cns",
+      info=["calculated structure factors FP1"])
+  #
+  with open("tst_polder_1_2_free.cns", "w") as file_object:
+    flags_1.export_as_cns_hkl(
+      file_object=file_object,
+      file_name="tst_polder_1_2_free.cns",
+      info=["R-free-flags for FP1"])
+  #
+  selection = "chain E and resseq 14"
+  args = [
+    "tst_polder_1.pdb",
+    "tst_polder_1_2.cns",
+    "tst_polder_1_2_free.cns",
+    "sphere_radius=5",
+    'solvent_exclusion_mask_selection="%s"' % selection,
+    "output_file_name_prefix=tst_polder_1_2"]
+
+  r = run_program(program_class=polder.Program, args=args, logger=null_out())
+
+  check(
+    tuple_calc=[10.7, 15.1, 13.4],
+    selection=selection,
+    filename = r.output_file)
+
+  os.remove("tst_polder_1_2.cns")
+  os.remove("tst_polder_1_2_free.cns")
+  os.remove(r.output_file)
+
+# ---------------------------------------------------------------------------
+
+def exercise_03(fobs_2, flags_2):
+  '''
+  Test reading model as cif, Fobs from mtz and Rfree from cns file
+  '''
+  mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
+  mtz.mtz_object().write("tst_polder_1_3.mtz")
+  with open("tst_polder_1_3.cns", "w") as file_object:
+    flags_2.export_as_cns_hkl(
+      file_object=file_object,
+      file_name="tst_polder_1_3.cns",
+      info=["R-free-flags for FP1"])
+  #
+  selection = "chain E and resseq 7"
+  args = [
+    "tst_polder_1.cif",
+    "tst_polder_1_3.mtz",
+    "tst_polder_1_3.cns",
+    "sphere_radius=5",
+    'solvent_exclusion_mask_selection="%s"' % selection,
+    "output_file_name_prefix=tst_polder_1_3"]
+
+  r = run_program(program_class=polder.Program, args=args, logger=null_out())
+
+  check(
+    tuple_calc=[13.7, 20.3, 18.4],
+    selection=selection,
+    filename = r.output_file)
+
+  # Clean up files
+  os.remove('tst_polder_1_3.mtz')
+  os.remove('tst_polder_1_3.cns')
+  os.remove(r.output_file)
+
+# ---------------------------------------------------------------------------
+
+def exercise():
+  """
+  Test for phenix.polder: Reading files.
+  """
+  dm = DataManager(['model'])
+  dm.process_model_str("tst_polder_1.pdb", pdb_str)
+  model = dm.get_model()
+  dm.write_model_file(model.model_as_pdb(),
+                      filename  = "tst_polder_1.pdb",
+                      overwrite = True)
+  dm.write_model_file(model.model_as_mmcif(),
+                      filename  = "tst_polder_1.cif",
+                      overwrite = True)
+  xrs = model.get_xray_structure()
+
+  fobs_1 = abs(xrs.structure_factors(d_min=3.0).f_calc())
+  fobs_2 = abs(xrs.structure_factors(d_min=2.5).f_calc())
+  flags_1 = generate_r_free_flags_systematic(miller_array=fobs_1)
+  flags_2 = generate_r_free_flags_systematic(miller_array=fobs_2)
+
+  exercise_01(fobs_1, fobs_2, flags_1, flags_2)
+  exercise_02(fobs_1, flags_1)
+  exercise_03(fobs_2, flags_2)
+
+  # Clean up files
+  os.remove('tst_polder_1.pdb')
+  os.remove('tst_polder_1.cif')
+
+# ---------------------------------------------------------------------------
+
+def check(tuple_calc, selection, filename):
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    filename).as_miller_arrays()
+  mc_polder = None
+  for ma in miller_arrays:
+    lbl = ma.info().label_string()
+    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
+      mc_polder = ma.deep_copy()
+  assert (mc_polder is not None)
+  cg = maptbx.crystal_gridding(
+    unit_cell         = mc_polder.unit_cell(),
+    d_min             = mc_polder.d_min(),
+    resolution_factor = 0.25,
+    space_group_info  = mc_polder.space_group_info())
+  map_polder   = get_map(cg=cg, mc=mc_polder)
+  pdb_hierarchy = iotbx.pdb.input(
+    source_info=None, lines=pdb_str).construct_hierarchy()
+  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
+  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
+  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
+  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
+  #
+  mmm_mp = mp.min_max_mean().as_tuple()
+  #print("Polder map : %7.3f %7.3f %7.3f" % mmm_mp)
+  assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
+   calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
+
+# ---------------------------------------------------------------------------
+
+pdb_str = """
 CRYST1   28.992   28.409   27.440  90.00  90.00  90.00 P 1
 ATOM      1  N   ALA E   1       9.731  23.364   9.222  1.00 20.00           N
 ATOM      2  CA  ALA E   1      10.928  22.678   9.693  1.00 20.00           C
@@ -149,175 +328,7 @@ TER
 END
 """
 
-def get_map(cg, mc):
-  fft_map = miller.fft_map(
-    crystal_gridding     = cg,
-    fourier_coefficients = mc)
-  fft_map.apply_sigma_scaling()
-  return fft_map.real_map_unpadded()
-
-def get_map_stats(map, sites_frac):
-  map_values = flex.double()
-  for sf in sites_frac:
-    map_values.append(map.eight_point_interpolation(sf))
-  return map_values
-
-def format_map_stat(m):
-  return m.min_max_mean().as_tuple(), (m>flex.mean(m)).count(True)
-
-def exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix):
-  mtz = fobs_1.as_mtz_dataset(column_root_label="FP1")
-  mtz.add_miller_array(fobs_2, column_root_label="FP2")
-  mtz.add_miller_array(flags_1, column_root_label="R-free-flags-1")
-  mtz.add_miller_array(flags_2, column_root_label="R-free-flags-2")
-  mtz.mtz_object().write(prefix+"_1.mtz")
-  #
-  selection = "chain A"
-  cmd = " ".join([
-    "phenix.polder",
-    "tst_polder_1.pdb",
-    "%s_1.mtz" % prefix,
-    "sphere_radius=3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "data_labels=FP1",
-    "output_file_name_prefix=tst_polder_1_1",
-    "r_free_flags_labels=R-free-flags-1",
-    "> %s_1.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-  #
-  check(
-    tuple_calc=[10.6, 16.0, 13.5],
-    selection=selection,
-    prefix = prefix + '_1_')
-
-def exercise_02(fobs_1, flags_1, prefix):
-  with open(prefix+"_2.cns", "w") as file_object:
-    fobs_1.export_as_cns_hkl(
-      file_object=file_object,
-      file_name=prefix+"_2.cns",
-      info=["calculated structure factors FP1"])
-  #
-  with open(prefix+"_2_free"+".cns", "w") as file_object:
-    flags_1.export_as_cns_hkl(
-      file_object=file_object,
-      file_name=prefix+"_2_free"+".cns",
-      info=["R-free-flags for FP1"])
-  #
-  selection = "chain E and resseq 14"
-  cmd = " ".join([
-    "phenix.polder",
-    "tst_polder_1.pdb",
-    "%s_2.cns" % prefix,
-    "%s_2_free.cns" % prefix,
-    "sphere_radius=5",
-    "output_file_name_prefix=tst_polder_1_2",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s_2.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-  check(
-    tuple_calc=[10.7, 15.1, 13.4],
-    selection=selection,
-    prefix = prefix + '_2_')
-
-def exercise_03(fobs_2, flags_2, prefix):
-  mtz = fobs_2.as_mtz_dataset(column_root_label="FP1")
-  mtz.mtz_object().write(prefix+"_3.mtz")
-  with open(prefix+"_3.cns", "w") as file_object:
-    flags_2.export_as_cns_hkl(
-      file_object=file_object,
-      file_name=prefix+"_3.cns",
-      info=["R-free-flags for FP1"])
-  #
-  selection = "chain E and resseq 7"
-  cmd = " ".join([
-    "phenix.polder",
-    "tst_polder_1.cif",
-    "%s_3.mtz" % prefix,
-    "%s_3.cns" % prefix,
-    "sphere_radius=5",
-    "output_file_name_prefix=tst_polder_1_3",
-    'solvent_exclusion_mask_selection="%s"' % selection,
-    "> %s_3.log" % prefix
-  ])
-  print(cmd)
-  easy_run.call(cmd)
-  check(
-    tuple_calc=[13.7, 20.3, 18.4],
-    selection=selection,
-    prefix = prefix + '_3_')
-
-def exercise(prefix="tst_polder_1"):
-  """
-  Test for phenix.polder: Reading files.
-  """
-  f = open("tst_polder_1.pdb", "w")
-  f.write(pdb_str)
-  f.close()
-  #
-  pdb_in = iotbx.pdb.input(source_info=None,lines=pdb_str)
-  xrs = pdb_in.xray_structure_simple()
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=pdb_str).construct_hierarchy()
-  pdb_hierarchy.write_mmcif_file(
-    file_name="tst_polder_1.cif", crystal_symmetry=xrs.crystal_symmetry())
-  #
-  def generate_r_free_flags_systematic(miller_array):
-    result = flex.bool()
-    for i in range(miller_array.indices().size()):
-      if(i%10==0): result.append(True)
-      else: result.append(False)
-    return miller_array.array(data = result)
-  fobs_1 = abs(xrs.structure_factors(d_min=3.0).f_calc())
-  fobs_2 = abs(xrs.structure_factors(d_min=2.5).f_calc())
-  flags_1 = generate_r_free_flags_systematic(miller_array=fobs_1)
-  flags_2 = generate_r_free_flags_systematic(miller_array=fobs_2)
-  #
-  print('*'*79)
-  print('Test reading one mtz with different choices for F and Rfree')
-  exercise_01(fobs_1, fobs_2, flags_1, flags_2, prefix="tst_polder_1")
-  print("command success")
-  print('*'*79)
-  print('Test reading two cns files: one with Fobs, one with Rfree')
-  print('Without specifying labels --> test automatic machinery')
-  exercise_02(fobs_1, flags_1, prefix="tst_polder_1")
-  print("command success")
-  print('*'*79)
-  print('Test reading model as cif, Fobs from mtz and Rfree from cns file')
-  exercise_03(fobs_2, flags_2, prefix="tst_polder_1")
-  print("command success")
-  print('*'*79)
-
-def check(tuple_calc, selection, prefix):
-  #print tuple_calc
-  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    prefix+"polder_map_coeffs.mtz").as_miller_arrays()
-  mc_polder = None
-  for ma in miller_arrays:
-    lbl = ma.info().label_string()
-    if(lbl == "mFo-DFc_polder,PHImFo-DFc_polder"):
-      mc_polder = ma.deep_copy()
-  assert (mc_polder is not None)
-  cg = maptbx.crystal_gridding(
-    unit_cell         = mc_polder.unit_cell(),
-    d_min             = mc_polder.d_min(),
-    resolution_factor = 0.25,
-    space_group_info  = mc_polder.space_group_info())
-  map_polder   = get_map(cg=cg, mc=mc_polder)
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=pdb_str).construct_hierarchy()
-  sel = pdb_hierarchy.atom_selection_cache().selection(string = selection)
-  sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
-  sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
-  mp  = get_map_stats(map=map_polder,   sites_frac=sites_frac_lig)
-  #
-  mmm_mp = mp.min_max_mean().as_tuple()
-  print("Polder map : %7.3f %7.3f %7.3f" % mmm_mp)
-  assert approx_equal(mmm_mp, tuple_calc, eps=1.0), "\
-   calculated is %s and expected is %s" % (mmm_mp, tuple_calc)
+# ---------------------------------------------------------------------------
 
 if (__name__ == "__main__"):
   t0 = time.time()
