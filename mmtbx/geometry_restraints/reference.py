@@ -25,6 +25,7 @@ def generate_torsion_restraints(
     from another source (reference model) which is not necessary
     of the same size as hierarchy.
   """
+  pdb_hierarchy.atoms().reset_i_seq()
   torsion_proxies = geometry_restraints.shared_dihedral_proxy()
   if pdb_hierarchy.atoms_size() < 4:
     return torsion_proxies
