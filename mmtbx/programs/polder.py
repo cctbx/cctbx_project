@@ -17,42 +17,11 @@ from iotbx import extract_xtal_data
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
 include scope mmtbx.maps.polder.master_params
-model_file_name = None
-  .type = path
-  .short_caption = Model file
-  .multiple = False
-  .help = Model file name
-  .style = file_type:pdb bold input_file
 solvent_exclusion_mask_selection = None
   .type = str
   .short_caption = Omit selection
   .help = Atoms around which bulk solvent mask is set to zero
   .input_size = 400
-reflection_file_name = None
-  .type = path
-  .short_caption = Data file
-  .help = File with experimental data (most of formats: CNS, SHELX, MTZ, etc).
-  .style = file_type:hkl bold input_file process_hkl child:fobs:data_labels \
-           child:rfree:r_free_flags_labels child:d_min:high_resolution \
-           child:d_max:low_resolution
-data_labels = None
-  .type = str
-  .short_caption = Data labels
-  .help = Labels for experimental data.
-  .style = renderer:draw_fobs_label_widget parent:file_name:reflection_file_name
-r_free_flags_labels = None
-  .type = str
-  .short_caption = Rfree labels
-  .help = Labels for free reflections.
-  .style = renderer:draw_rfree_label_widget parent:file_name:reflection_file_name
-high_resolution = None
-  .type = float
-  .short_caption = High resolution
-  .help = High resolution limit
-low_resolution = None
-  .type = float
-  .short_caption = Low resolution
-  .help = Low resolution limit
 scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .short_caption = Scattering table
@@ -140,10 +109,6 @@ Optional output:
     self.data_manager.has_miller_arrays(raise_sorry=True)
     if (len(self.data_manager.get_miller_array_names()) > 2):
       raise Sorry('Dont input more than 2 reflection files.')
-    if (self.params.reflection_file_name is None):
-      self.params.reflection_file_name = self.data_manager.get_default_miller_array_name()
-    if (self.params.model_file_name is None):
-      self.params.model_file_name = self.data_manager.get_default_model_name()
 
     if (self.params.solvent_exclusion_mask_selection is None):
       raise Sorry('''Selection for atoms to be omitted is required.
@@ -160,6 +125,22 @@ Optional output:
 
     if (self.params.polder.resolution_factor < 0.0):
       raise Sorry('Use a positive value for the resolution gridding factor.')
+
+    self.fmodel = None
+    try:
+      self.fmodel = self.data_manager.get_fmodel(
+        scattering_table = self.params.scattering_table)
+    except Sorry as s:
+      if 'previously used R-free flags are available run this command again' in str(s):
+        #TODO print stuff here to informa that there is no Rfree flag
+        fmodel_params = self.data_manager.get_fmodel_params()
+        fmodel_params.xray_data.r_free_flags.required = False
+        fmodel_params.xray_data.r_free_flags.ignore_r_free_flags = True
+        self.data_manager.set_fmodel_params(fmodel_params)
+        self.fmodel = self.data_manager.get_fmodel(
+          scattering_table = self.params.scattering_table)
+    if self.fmodel is None:
+      raise Sorry('Failed to create fmodel. Please submit a bug report.')
 
   # ---------------------------------------------------------------------------
 
@@ -194,55 +175,6 @@ Optional output:
       merged_free = r_free_flags.as_non_anomalous_array().merge_equivalents()
       r_free_flags = merged_free.array().set_observation_type(r_free_flags)
       f_obs, r_free_flags = f_obs.common_sets(r_free_flags)
-    return f_obs, r_free_flags
-
-  # ---------------------------------------------------------------------------
-
-  def get_fobs_rfree(self, crystal_symmetry):
-    f_obs, r_free_flags = None, None
-
-    rfs = self.data_manager.get_reflection_file_server(
-      filenames = self.data_manager.get_miller_array_names(),
-      crystal_symmetry = crystal_symmetry,
-      logger=null_out())
-
-    parameters = extract_xtal_data.data_and_flags_master_params().extract()
-    if (self.params.data_labels is not None):
-      parameters.labels = self.params.data_labels
-    if (self.params.r_free_flags_labels is not None):
-      parameters.r_free_flags.label = self.params.r_free_flags_labels
-    determined_data_and_flags = extract_xtal_data.run(
-      reflection_file_server = rfs,
-      parameters             = parameters,
-      keep_going             = True,
-      working_point_group = crystal_symmetry.space_group().build_derived_point_group())
-
-    f_obs = determined_data_and_flags.f_obs
-    r_free_flags = determined_data_and_flags.r_free_flags
-    assert (f_obs is not None)
-    if (self.params.data_labels is None):
-      self.params.data_labels = f_obs.info().label_string()
-    if (r_free_flags is not None):
-      self.params.r_free_flags_labels = r_free_flags.info().label_string()
-
-    return f_obs, r_free_flags
-
-  # ---------------------------------------------------------------------------
-
-  def prepare_fobs_rfree(self, f_obs, r_free_flags):
-    f_obs = f_obs.resolution_filter(
-      d_min = self.params.high_resolution,
-      d_max = self.params.low_resolution)
-    if (r_free_flags is not None):
-      r_free_flags = r_free_flags.resolution_filter(
-        d_min = self.params.high_resolution,
-        d_max = self.params.low_resolution)
-
-    if (f_obs.anomalous_flag()):
-      f_obs, r_free_flags = self.prepare_f_obs_and_flags_if_anomalous(
-        f_obs        = f_obs,
-        r_free_flags = r_free_flags)
-
     return f_obs, r_free_flags
 
   # ---------------------------------------------------------------------------
@@ -394,7 +326,8 @@ Optional output:
 
   def run(self):
 
-    print('Using model file:', self.params.model_file_name, file=self.logger)
+    print('Using model file:', self.data_manager.get_default_model_name(),
+      file=self.logger)
     print('Using reflection file(s):', self.data_manager.get_miller_array_names(),
       file=self.logger)
 
@@ -405,32 +338,31 @@ Optional output:
     xrs = model.get_xray_structure()
     selection_bool = self.check_selection(pdb_hierarchy = ph)
 
-    #print(self.params.model_file_name)
-    #print(self.data_manager.get_default_model_name())
-    #STOP()
+    f_obs, r_free_flags = self.fmodel.f_obs(), self.fmodel.r_free_flags()
 
-    f_obs, r_free_flags = self.get_fobs_rfree(crystal_symmetry = cs)
     print('Input data...', file=self.logger)
     print('  Reflection data:', f_obs.info().labels, file=self.logger)
-    if (r_free_flags is not None):
+    if (r_free_flags.info() is not None):
       print('  Free-R flags:', r_free_flags.info().labels, file=self.logger)
     else:
       print('  Free-R flags: not present or not found', file=self.logger)
     print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
     cs.show_summary(f=self.logger)
 
-    f_obs, r_free_flags = self.prepare_fobs_rfree(
+    if (f_obs.anomalous_flag()):
+      f_obs, r_free_flags = self.prepare_f_obs_and_flags_if_anomalous(
         f_obs        = f_obs,
         r_free_flags = r_free_flags)
 
-    model_basename = os.path.basename(self.params.model_file_name.split(".")[0])
+    model_basename = os.path.basename(
+      self.data_manager.get_default_model_name().split(".")[0])
     if (len(model_basename) > 0 and self.params.output_file_name_prefix is None):
       self.params.output_file_name_prefix = model_basename
 
-    mmtbx.utils.setup_scattering_dictionaries(
-      scattering_table = self.params.scattering_table,
-      xray_structure   = xrs,
-      d_min            = f_obs.d_min())
+    #mmtbx.utils.setup_scattering_dictionaries(
+    #  scattering_table = self.params.scattering_table,
+    #  xray_structure   = xrs,
+    #  d_min            = f_obs.d_min())
 
     polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs            = f_obs,
@@ -451,9 +383,10 @@ Optional output:
 
     print ('*'*79, file=self.logger)
     print ('Finished', file=self.logger)
-    # results object not returned because it contains maps
+
 
   def get_results(self):
+    # results object not returned because it contains maps
     return group_args(
       message     = self.message,
       output_file = self.output_file_name)

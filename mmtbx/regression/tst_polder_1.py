@@ -39,8 +39,8 @@ def exercise_01(fobs_1, fobs_2, flags_1, flags_2):
     "tst_polder_1_1.mtz",
     "sphere_radius=3",
     'solvent_exclusion_mask_selection="%s"' % selection,
-    "data_labels=FP1",
-    "r_free_flags_labels=R-free-flags-1",
+    "user_selected_labels=FP1",
+    "user_selected_labels=R-free-flags-1",
     "output_file_name_prefix=tst_polder_1_1"]
 
   r = run_program(program_class=polder.Program, args=args, logger=null_out())

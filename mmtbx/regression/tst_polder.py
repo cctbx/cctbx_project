@@ -40,6 +40,9 @@ def exercise_00(prefix="tst_polder"):
   with open(model_fn, "w") as f:
     f.write(pdb_str)
 
+  pdb_hierarchy = iotbx.pdb.input(
+    source_info=None, lines=pdb_str).construct_hierarchy()
+
   # create test data with phenix.fmodel
   mtz_fn = "tst_polder.mtz"
   args = [
@@ -60,10 +63,74 @@ def exercise_00(prefix="tst_polder"):
     'solvent_exclusion_mask_selection="chain A" ',
     'debug="True"'
   ]
-  run_program(program_class=polder.Program, args=args_polder, logger=null_out())
+  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
 
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
-    "tst_polder_polder_map_coeffs.mtz").as_miller_arrays()
+    r.output_file).as_miller_arrays()
+  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
+  assert approx_equal(mmm_mp, [0.329, 6.119, 3.333], eps=0.2)
+  assert approx_equal(mmm_o, [-2.838, 0.901, -1.385], eps=0.1)
+
+  os.remove("box_1_polder.ccp4")
+  os.remove("box_2_polder.ccp4")
+  os.remove("box_3_polder.ccp4")
+  os.remove("box_polder.pdb")
+  os.remove(r.output_file)
+
+  # now with high resolution cutoff
+  args_polder = [
+    model_fn,
+    mtz_fn,
+    "fmodel.xray_data.high_resolution=2.2",
+    "sphere_radius=3",
+    'solvent_exclusion_mask_selection="chain A" ',
+    'output_file_name_prefix=tst_cutoff',
+    'debug="True"'
+  ]
+  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
+
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    r.output_file).as_miller_arrays()
+  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
+  assert approx_equal(mmm_mp, [-0.358, 5.149, 2.882], eps=0.1)
+  assert approx_equal(mmm_o, [-3.708, -0.734, -2.217], eps=0.1)
+
+  os.remove(r.output_file)
+  os.remove("box_1_polder.ccp4")
+  os.remove("box_2_polder.ccp4")
+  os.remove("box_3_polder.ccp4")
+  os.remove("box_polder.pdb")
+
+  # now with low resolution cutoff
+  args_polder = [
+    model_fn,
+    mtz_fn,
+    "fmodel.xray_data.low_resolution=10",
+    "sphere_radius=3",
+    'solvent_exclusion_mask_selection="chain A" ',
+    'output_file_name_prefix=tst_cutoff_low',
+    'debug="True"'
+  ]
+  r = run_program(program_class=polder.Program, args=args_polder, logger=null_out())
+
+  miller_arrays = reflection_file_reader.any_reflection_file(file_name =
+    r.output_file).as_miller_arrays()
+  mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
+  assert approx_equal(mmm_mp, [2.547, 12.601, 5.798], eps=0.1)
+  assert approx_equal(mmm_o, [0.325, 5.589, 2.042], eps=0.1)
+
+  # Clean up files
+  os.remove(model_fn)
+  os.remove(mtz_fn)
+  os.remove(r.output_file)
+  os.remove("box_1_polder.ccp4")
+  os.remove("box_2_polder.ccp4")
+  os.remove("box_3_polder.ccp4")
+  os.remove("box_polder.pdb")
+
+# ---------------------------------------------------------------------------
+
+def check(miller_arrays, pdb_hierarchy):
   mc_polder, mc_bias_omit, mc_omit = [None,]*3
   for ma in miller_arrays:
     lbl = ma.info().label_string()
@@ -82,8 +149,7 @@ def exercise_00(prefix="tst_polder"):
   map_polder   = get_map(cg=cg, mc=mc_polder)
   map_bias_omit = get_map(cg=cg, mc=mc_bias_omit)
   map_omit     = get_map(cg=cg, mc=mc_omit)
-  pdb_hierarchy = iotbx.pdb.input(
-    source_info=None, lines=pdb_str).construct_hierarchy()
+
   sel = pdb_hierarchy.atom_selection_cache().selection(string = "chain A")
   sites_cart_lig = pdb_hierarchy.atoms().extract_xyz().select(sel)
   sites_frac_lig = mc_polder.unit_cell().fractionalize(sites_cart_lig)
@@ -97,17 +163,7 @@ def exercise_00(prefix="tst_polder"):
   #print("Biased map : %7.3f %7.3f %7.3f"%mlo.min_max_mean().as_tuple())
   #print("Omit       : %7.3f %7.3f %7.3f"%mmm_o)
   #
-  assert approx_equal(mmm_mp, [0.329, 6.119, 3.333], eps=0.1)
-  assert approx_equal(mmm_o, [-2.838, 0.901, -1.385], eps=0.1)
-
-  # Clean up files
-  os.remove(model_fn)
-  os.remove(mtz_fn)
-  os.remove("box_1_polder.ccp4")
-  os.remove("box_2_polder.ccp4")
-  os.remove("box_3_polder.ccp4")
-  os.remove("box_polder.pdb")
-  os.remove("tst_polder_polder_map_coeffs.mtz")
+  return(mmm_mp, mmm_o)
 
 # ---------------------------------------------------------------------------
 
