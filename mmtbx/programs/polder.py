@@ -5,14 +5,13 @@ try:
 except ImportError:
   from libtbx.program_template import ProgramTemplate
 import os
-from libtbx.utils import null_out, Sorry
+from libtbx.utils import Sorry
 import mmtbx.maps.polder
 from iotbx import crystal_symmetry_from_any
 import mmtbx.utils
 from iotbx import mrcfile
 from libtbx import group_args
 from cctbx.array_family import flex
-from iotbx import extract_xtal_data
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
