@@ -1942,7 +1942,7 @@ class _():
         if (len(chain.residue_groups()) == 0):
           model.remove_chain(chain=chain)
 
-  def remove_alt_confs(self, always_keep_one_conformer):
+  def remove_alt_confs(self, always_keep_one_conformer, altloc_to_keep = None):
     hierarchy = self
     for model in hierarchy.models():
       for chain in model.chains():
@@ -1954,19 +1954,35 @@ class _():
             if (len(atom_groups) == 1) and (atom_groups[0].altloc == ''):
               continue
             atom_groups_and_occupancies = []
+            altlocs_found = []
             for atom_group in atom_groups :
-              if (atom_group.altloc == ''):
+              if (atom_group.altloc == ''): # always keep ''
                 continue
+
               mean_occ = flex.mean(atom_group.atoms().extract_occ())
               atom_groups_and_occupancies.append((atom_group, mean_occ))
-            atom_groups_and_occupancies.sort(key=operator.itemgetter(1), reverse=True)
-            for atom_group, occ in atom_groups_and_occupancies[1:] :
+              altlocs_found.append(atom_group.altloc)
+
+            if (altloc_to_keep is not None) and (altloc_to_keep in
+                    altlocs_found): # put altloc_to_keep first
+              for atom_group_and_occupancy in atom_groups_and_occupancies:
+                if atom_group_and_occupancy[0].altloc == altloc_to_keep:
+                  atom_groups_and_occupancies.remove(atom_group_and_occupancy)
+                  atom_groups_and_occupancies = [atom_group_and_occupancy] + \
+                     atom_groups_and_occupancies
+                  break
+            else: # put atom_group with highest occupancy first
+              atom_groups_and_occupancies.sort(key=operator.itemgetter(1),
+                 reverse=True)
+
+            for atom_group, occ in atom_groups_and_occupancies[1:]:
               residue_group.remove_atom_group(atom_group=atom_group)
             single_conf, occ = atom_groups_and_occupancies[0]
             single_conf.altloc = ''
           else :
             for atom_group in atom_groups :
-              if (not atom_group.altloc in ["", "A"]):
+              if (not atom_group.altloc in ["",
+                  altloc_to_keep if (altloc_to_keep is not None) else "A"]):
                 residue_group.remove_atom_group(atom_group=atom_group)
               else :
                 atom_group.altloc = ""

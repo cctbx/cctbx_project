@@ -176,6 +176,12 @@ always_keep_one_conformer = False
   .help = Modifies behavior of remove_alt_confs so that residues with no \
     conformer labeled blank or A are not deleted.  Silent if remove_alt_confs \
     is False.
+altloc_to_keep = None
+  .type = str
+  .help = Modifies behavior of remove_alt_confs so that the altloc identifier \
+            to keep in addition to blank is this one (instead of 'A'). \
+            Silent if remove_alt_confs is False.
+  .short_caption = Conformer to keep
 set_chemical_element_simple_if_necessary = None
   .type = bool
   .short_caption = Guess element field if necessary
@@ -389,9 +395,9 @@ class modify(object):
   def _remove_alt_confs(self):
     if(self.params.remove_alt_confs):
       print("Remove altlocs", file=self.log)
-      always_keep_one_conformer = self.params.always_keep_one_conformer
       self.pdb_hierarchy.remove_alt_confs(
-        always_keep_one_conformer = self.params.always_keep_one_conformer)
+        always_keep_one_conformer = self.params.always_keep_one_conformer,
+        altloc_to_keep = self.params.altloc_to_keep)
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polygly):
