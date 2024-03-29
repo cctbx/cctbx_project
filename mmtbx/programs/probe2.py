@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.0.0"
+version = "4.1.0"
 
 master_phil_str = '''
 profile = False
@@ -564,7 +564,7 @@ def Test():
 
 class Program(ProgramTemplate):
   description = '''
-Probe2 version {}
+probe2 version {}
 
 This program replaces the original "probe" program from the Richarson lab
 at Duke University and was developed by them as part of a supplemental award.
@@ -920,11 +920,11 @@ Note:
             # Main branch if we're reporting other than bad clashes
             if (not spo.only_report_bad_clashes):
               # We are reporting other than bad clashes, see if our type is being reported
-              if spo.report_hydrogen_bonds and overlapType == probeExt.OverlapType.HydrogenBond:
+              if spo.report_hydrogen_bonds and (overlapType == probeExt.OverlapType.HydrogenBond):
                 show = True
-              elif spo.report_clashes and overlapType == probeExt.OverlapType.Clash:
+              elif spo.report_clashes and (overlapType == probeExt.OverlapType.Clash):
                 show = True
-              elif spo.report_vdws and overlapType == probeExt.OverlapType.NoOverlap:
+              elif spo.report_vdws and (overlapType == probeExt.OverlapType.NoOverlap):
                 show = True
             else:
               # We are only reporting bad clashes.  See if we're reporting clashes and this is
@@ -1130,7 +1130,7 @@ Note:
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>3s} {}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1163,7 +1163,7 @@ Note:
             else: # Hydrogen bond
               score = hydrogen_bond_weight * sl
 
-            if self.params.output.contact_summary:
+            if self.params.output.condensed:
               ret += "{}:".format(node.dotCount)
 
             ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
@@ -1847,7 +1847,7 @@ Note:
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
+      self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \

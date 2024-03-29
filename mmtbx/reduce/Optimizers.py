@@ -163,7 +163,6 @@ class Optimizer(object):
                 flipStates = '',
                 verbosity = 1,
                 cliqueOutlineFileName = None,
-                keepExistingH = False,
                 fillAtomDump = True
               ):
     """Constructor.  This is the wrapper class for the C++ OptimizerC and
@@ -222,7 +221,6 @@ class Optimizer(object):
     colors as one master. It shows the outlines expanded by the probe radius, with a single color
     for each clique, as another master. These are useful for determining why the cliques are as
     they are.
-    :param keepExistingH: If True, then existing Hydrogens will be kept and not removed.
     :param fillAtomDump: If true, fill in the atomDump string with the atom information.
     This can take a long time to do, so the caller may want to turn it off if they don't need it.
     """
@@ -316,7 +314,7 @@ class Optimizer(object):
       # The command-line parameter matches the name of the model in the model file, which
       # starts with 1. The internal indexing starts with 0. So we subtract one.
       startModelIndex = (modelIndex - 1)
-      stopModelIndex = (modelIndex - 1) + 1
+      stopModelIndex = startModelIndex + 1
     for mi in range(startModelIndex, stopModelIndex):
       # Get the specified model from the hierarchy.
       myModel = model.get_hierarchy().models()[mi]
@@ -1381,6 +1379,7 @@ def _optimizeFragment(pdb_raw, bondedNeighborDepth = 4):
   p.pdb_interpretation.allow_polymer_cross_special_position=True
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
   model.process(make_restraints=True,pdb_interpretation_params=p) # make restraints
 
   # Optimization will place the movers.
