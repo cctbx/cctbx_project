@@ -1942,6 +1942,19 @@ class _():
         if (len(chain.residue_groups()) == 0):
           model.remove_chain(chain=chain)
 
+  def altlocs_present(self, skip_blank = True):
+    hierarchy = self
+    altlocs_present = []
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            if skip_blank and (atom_group.altloc.strip() == ''):
+              continue  # ignore blanks
+            if not atom_group.altloc in altlocs_present:
+              altlocs_present.append(atom_group.altloc)
+    return altlocs_present
+
   def remove_alt_confs(self, always_keep_one_conformer, altloc_to_keep = None):
     hierarchy = self
     for model in hierarchy.models():
