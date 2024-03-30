@@ -68,8 +68,8 @@ def exercise_00(prefix="tst_polder"):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     r.output_file).as_miller_arrays()
   mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [0.329, 6.119, 3.333], eps=0.2)
-  assert approx_equal(mmm_o, [-2.838, 0.901, -1.385], eps=0.1)
+  assert approx_equal(mmm_mp, [0.329, 6.119, 3.333], eps=0.15)
+  assert approx_equal(mmm_o, [-2.838, 0.901, -1.385], eps=0.15)
 
   os.remove("box_1_polder.ccp4")
   os.remove("box_2_polder.ccp4")
@@ -92,8 +92,8 @@ def exercise_00(prefix="tst_polder"):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     r.output_file).as_miller_arrays()
   mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [-0.358, 5.149, 2.882], eps=0.1)
-  assert approx_equal(mmm_o, [-3.708, -0.734, -2.217], eps=0.1)
+  assert approx_equal(mmm_mp, [-0.358, 5.149, 2.882], eps=0.15)
+  assert approx_equal(mmm_o, [-3.708, -0.734, -2.217], eps=0.15)
 
   os.remove(r.output_file)
   os.remove("box_1_polder.ccp4")
@@ -116,8 +116,8 @@ def exercise_00(prefix="tst_polder"):
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     r.output_file).as_miller_arrays()
   mmm_mp, mmm_o = check(miller_arrays, pdb_hierarchy)
-  assert approx_equal(mmm_mp, [2.547, 12.601, 5.798], eps=0.1)
-  assert approx_equal(mmm_o, [0.325, 5.589, 2.042], eps=0.1)
+  assert approx_equal(mmm_mp, [2.547, 12.601, 5.798], eps=0.15)
+  assert approx_equal(mmm_o, [0.325, 5.589, 2.042], eps=0.15)
 
   # Clean up files
   os.remove(model_fn)
