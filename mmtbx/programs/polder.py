@@ -8,7 +8,6 @@ import os
 from libtbx.utils import Sorry
 import mmtbx.maps.polder
 from iotbx import crystal_symmetry_from_any
-import mmtbx.utils
 from iotbx import mrcfile
 from libtbx import group_args
 from cctbx.array_family import flex
@@ -47,6 +46,16 @@ gui
   output_dir = None
   .type = path
   .style = output_dir
+
+  data_column_label = None
+  .type = str
+  .style = noauto renderer:draw_any_label_widget
+  .input_size = 200
+
+  free_column_label = None
+  .type = str
+  .style = noauto renderer:draw_any_label_widget
+  .input_size = 200
 }
 '''
 
@@ -358,11 +367,6 @@ Optional output:
     if (len(model_basename) > 0 and self.params.output_file_name_prefix is None):
       self.params.output_file_name_prefix = model_basename
 
-    #mmtbx.utils.setup_scattering_dictionaries(
-    #  scattering_table = self.params.scattering_table,
-    #  xray_structure   = xrs,
-    #  d_min            = f_obs.d_min())
-
     polder_object = mmtbx.maps.polder.compute_polder_map(
       f_obs            = f_obs,
       r_free_flags     = r_free_flags,
@@ -388,4 +392,5 @@ Optional output:
     # results object not returned because it contains maps
     return group_args(
       message     = self.message,
-      output_file = self.output_file_name)
+      output_file = self.output_file_name,
+      model       = self.data_manager.get_default_model_name())
