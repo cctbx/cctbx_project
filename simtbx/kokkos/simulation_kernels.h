@@ -1,3 +1,5 @@
+#ifndef SIMTBX_KOKKOS_SIMULATION_KERNELS_H
+#define SIMTBX_KOKKOS_SIMULATION_KERNELS_H
 #include <kokkostbx/kokkos_types.h>
 #include <kokkostbx/kokkos_vector3.h>
 #include <kokkostbx/kokkos_matrix3.h>
@@ -792,3 +794,4 @@ void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int ove
         floatimage(pixIdx) += Ibg*r_e_sqr*fluence*amorphous_molecules/steps;
     }); // end of pixIdx loop
 }
+#endif // SIMTBX_KOKKOS_SIMULATION_KERNELS_H

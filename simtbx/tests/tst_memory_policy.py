@@ -211,9 +211,9 @@ class several_wavelength_case_policy (several_wavelength_case_unified):
     self.SIM.xtal_shape = shapetype.Gauss
     self.SIM.interpolate = 0
     # allocate GPU arrays
-    self.gpu_simulation = get_exascale("exascale_api",params.context)(nanoBragg = self.SIM)
+    self.gpu_simulation = get_exascale("exascale_api_small_whitelist",params.context)(nanoBragg = self.SIM)
     self.gpu_simulation.allocate()
-    self.gpu_detector = get_exascale("gpu_detector",params.context)(
+    self.gpu_detector = get_exascale("gpu_detector_small_whitelist",params.context)(
                  deviceId=self.SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
     self.gpu_detector.each_image_allocate()
     # self.gpu_detector.show_summary()
