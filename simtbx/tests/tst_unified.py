@@ -97,7 +97,7 @@ class several_wavelength_case:
              'polarization_normal': (0.0, 1.0, 0.0),
              'sigma_divergence': 0.0,
              'transmission': 1.0,
-             'wavelength': BEAM.get_wavelength()/1.e10} # not sure why this has to be in meters
+             'wavelength': basic_beam().get_wavelength()/1.e10} # not sure why this has to be in meters
     pythony_beams.append(BeamFactory.from_dict(beam_descr))
     SIM.xray_beams = pythony_beams
 
