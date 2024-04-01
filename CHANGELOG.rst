@@ -1,3 +1,12 @@
+2024.3
+======
+
+* Fixed loggraph output in xtriage
+* Added initial clashscore2 that uses reduce2 and probe2
+* Clean up MolProbity and clashscore code
+* Clean up Polder maps code
+* Added option to use pyopengl in gltbx if available
+
 2024.2
 ======
 
