@@ -67,14 +67,9 @@ Usage example:
     self.data_manager.has_models(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
-<<<<<<< HEAD
-  def run(self):
-    self._print('Using model: %s' % self.data_manager.get_default_model_name())
-=======
   def run(self, save_sk_coordinates=False):
     print('Using model: %s' % self.data_manager.get_default_model_name(),
       file=self.logger)
->>>>>>> Add a way to save SK coordinates (useful if runing on many files which takes forever) and wantto re-run again quickly
     inp_models = []
     for model_name in self.data_manager.get_model_names():
       inp_models.append((model_name, self.data_manager.get_model(model_name)))
@@ -127,14 +122,13 @@ Usage example:
         fn += "_cbf"
       theta1_c = [(x.skew, x.kurtosis) for x in theta1_data]
       Rha_c = [(x.skew, x.kurtosis) for x in Rha_data]
-<<<<<<< HEAD
+
       op = {}
       for param_name in dir(self.params.plot_parameters_override):
         if not param_name.startswith('__'):
           param_value = getattr(self.params.plot_parameters_override, param_name)
           if param_value != None:
             op[param_name] = param_value
-=======
 
       if save_sk_coordinates:
         from libtbx import group_args
@@ -144,7 +138,6 @@ Usage example:
           theta1_coords = theta1_c,
           Rha_coords    = Rha_c)
         easy_pickle.dump(file_name="coords.pkl", obj = o)
->>>>>>> Add a way to save SK coordinates (useful if runing on many files which takes forever) and wantto re-run again quickly
 
       mmtbx.nci.skew_kurt_plot.make_figure(
           file_name=fn,
