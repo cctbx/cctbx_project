@@ -186,7 +186,10 @@ def run(args, params=None, out=sys.stdout, log=sys.stderr):
     if (prefix_scope != ""):
       print("}", file=result_out)
   elif work_params.format == "pdb":
-    print(m.actual_sec_str.as_pdb_str(), file=result_out)
+    if m.actual_sec_str.fits_in_pdb_format():
+      print(m.actual_sec_str.as_pdb_str(), file=result_out)
+    else:
+      raise Sorry("Annotations could not fit in PDB format.")
   elif work_params.format == "phenix_bonds" :
     raise Sorry("Not yet implemented.")
   elif work_params.format in ["pymol", "refmac", "kinemage", 'csv'] :
