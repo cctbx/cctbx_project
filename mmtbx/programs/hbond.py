@@ -67,13 +67,21 @@ Usage example:
     self.data_manager.has_models(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
+<<<<<<< HEAD
   def run(self):
     self._print('Using model: %s' % self.data_manager.get_default_model_name())
+=======
+  def run(self, save_sk_coordinates=False):
+    print('Using model: %s' % self.data_manager.get_default_model_name(),
+      file=self.logger)
+>>>>>>> Add a way to save SK coordinates (useful if runing on many files which takes forever) and wantto re-run again quickly
     inp_models = []
     for model_name in self.data_manager.get_model_names():
       inp_models.append((model_name, self.data_manager.get_model(model_name)))
     theta1_data = []
     Rha_data = []
+    if save_sk_coordinates:
+      file_names = []
     for m_name, model in inp_models:
       model.set_log(log = null_out())
       if self.params.hbond.add_hydrogens_if_absent and not model.has_hd():
@@ -108,6 +116,8 @@ Usage example:
       if stats.all.get_counts(min_data_size=min_data_size):
         theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
         Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
+        if save_sk_coordinates:
+          file_names.append(m_name)
 
     if self.params.output_skew_kurtosis_plot and len(theta1_data) > 0 and len(Rha_data) > 0:
       # To use other than 'all' type, nci.hbond.find needs to be called with selected model again,
@@ -117,12 +127,24 @@ Usage example:
         fn += "_cbf"
       theta1_c = [(x.skew, x.kurtosis) for x in theta1_data]
       Rha_c = [(x.skew, x.kurtosis) for x in Rha_data]
+<<<<<<< HEAD
       op = {}
       for param_name in dir(self.params.plot_parameters_override):
         if not param_name.startswith('__'):
           param_value = getattr(self.params.plot_parameters_override, param_name)
           if param_value != None:
             op[param_name] = param_value
+=======
+
+      if save_sk_coordinates:
+        from libtbx import group_args
+        from libtbx import easy_pickle
+        o = group_args(
+          file_names    = file_names,
+          theta1_coords = theta1_c,
+          Rha_coords    = Rha_c)
+        easy_pickle.dump(file_name="coords.pkl", obj = o)
+>>>>>>> Add a way to save SK coordinates (useful if runing on many files which takes forever) and wantto re-run again quickly
 
       mmtbx.nci.skew_kurt_plot.make_figure(
           file_name=fn,
