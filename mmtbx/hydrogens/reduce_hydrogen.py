@@ -112,6 +112,20 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   return md
 
 # ==============================================================================
+def make_interpretation_parameters(use_neutron_distances):
+  # Fill in the interpretation parameters we want to use.  We do this in a
+  # function so that other programs (reduce2) can use the same parameters.
+  p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
+  p.pdb_interpretation.use_neutron_distances = use_neutron_distances
+  p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
+  #p.pdb_interpretation.automatic_linking.link_metals = True
+  p.pdb_interpretation.automatic_linking.link_residues = True
+  p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
+  return p
+
+# ==============================================================================
 
 class place_hydrogens():
   '''
@@ -217,14 +231,7 @@ class place_hydrogens():
 #    f = open("intermediate2.pdb","w")
 #    f.write(self.model.model_as_pdb())
 
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.use_neutron_distances = self.use_neutron_distances
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    #p.pdb_interpretation.automatic_linking.link_metals = True
-    p.pdb_interpretation.automatic_linking.link_residues = True
-    p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
+    p = make_interpretation_parameters(self.use_neutron_distances)
 
     t0 = time.time()
     #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
