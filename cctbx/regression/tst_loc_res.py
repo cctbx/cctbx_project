@@ -396,7 +396,8 @@ def make_map_from_pdb(raw_records=None,set_b_iso=None):
     ph.adopt_xray_structure(xrs)
     import mmtbx.model
     model=mmtbx.model.manager(
-          model_input = ph.as_pdb_input(),
+          model_input=None,
+          pdb_hierarchy = ph,
           crystal_symmetry = crystal_symmetry)
     return model,map_data,crystal_symmetry
 
