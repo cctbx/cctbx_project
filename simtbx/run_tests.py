@@ -74,7 +74,7 @@ tst_list_parallel = []
 
 tst_list = nb_tst_list
 if OPT.enable_cxx11 and sys.platform != 'win32':
-    tst_list += db_tst_list+db_tst_list_nonCuda
+  tst_list += db_tst_list+db_tst_list_nonCuda
 
 if OPT.enable_cuda:
   tst_list_parallel += [
@@ -89,26 +89,26 @@ else:
     ["$D/nanoBragg/tst_gauss_argchk.py","CPU"], # tests CPU argchk optimization
   )
 if OPT.enable_kokkos and sys.platform.startswith('linux'):
-   tst_list_parallel += [
-     ["$D/gpu/tst_gpu_multisource_background.py","context=kokkos_gpu"],# CPU / GPU background comparison
-     ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
-     ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
-     ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
-   ]
+  tst_list_parallel += [
+    ["$D/gpu/tst_gpu_multisource_background.py","context=kokkos_gpu"],# CPU / GPU background comparison
+    ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
+    ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
+    ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
+  ]
 if OPT.enable_kokkos and sys.platform.startswith('linux') and OPT.enable_cuda and libtbx.env.has_module('dials'):
-   tst_list_parallel += [
-     ["$D/tests/tst_memory_policy.py","context=kokkos_gpu"],
-   ]
+  tst_list_parallel += [
+    ["$D/tests/tst_memory_policy.py","context=kokkos_gpu"],
+  ]
 if OPT.enable_kokkos:
   if OPT.enable_cxx11 and sys.platform != 'win32':
-      for tst in db_tst_list:
-          if isinstance(tst, str):
-              par_tst = [tst, "--kokkos"]
-          else:
-              par_tst = tst + ["--kokkos"]
-          tst_list_parallel.append(par_tst)
+    for tst in db_tst_list:
+      if isinstance(tst, str):
+        par_tst = [tst, "--kokkos"]
+      else:
+        par_tst = tst + ["--kokkos"]
+      tst_list_parallel.append(par_tst)
 
-      tst_list_parallel += db_tst_list_onlyCuda
+    tst_list_parallel += db_tst_list_onlyCuda
 
 def run():
   build_dir = libtbx.env.under_build("simtbx")
