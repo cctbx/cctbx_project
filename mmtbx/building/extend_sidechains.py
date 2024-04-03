@@ -220,9 +220,16 @@ def extend_protein_model(
       residue          = new_residue,
       mon_lib_srv      = mon_lib_srv,
       ignore_hydrogens = False)
-    #
-    size = new_residue.atoms().size()
-    new_residue.atoms().set_occ(flex.double(size, 0.9))
+    # Set occupancy of newly added non-H atoms to small number so they can be
+    # refined later automatically and also don't 'shock' the data terms by
+    # coming in in full occupancy!
+    anames_old = []
+    for a in residue.atoms():
+      anames_old.append(a.name)
+    for a in new_residue.atoms():
+      if a.element_is_hydrogen(): continue
+      if a.name in anames_old: continue
+      a.set_occ(0.1)
     #
     #assert len(missing_atoms) == 0, missing_atoms
     rg = residue.parent()
