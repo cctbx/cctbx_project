@@ -45,6 +45,7 @@ general_tests = [
   "$D/regression/tls/tst_formula_t_S_10_vs_11_4muy.py",
   #
   "$D/regression/tst_angle.py",
+  "$D/regression/tst_holton_geometry_validation.py",
   "$D/rotamer/tst_rotamer_eval.py",
   "$D/rotamer/tst_geostd_vs_sidechain_angles_props.py",
   "$D/monomer_library/tst_idealized_aa.py",
