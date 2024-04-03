@@ -5,6 +5,7 @@ import scitbx.array_family.shared # import dependency
 import cctbx.geometry # import dependency
 from libtbx.test_utils import approx_equal
 from libtbx.str_utils import show_string
+from libtbx import group_args
 
 import boost_adaptbx.boost.python as bp
 from six.moves import range
@@ -444,7 +445,15 @@ def _bond_show_sorted_impl(self,
                            f=None,
                            prefix="",
                            max_items=None,
-                           origin_id=None):
+                           origin_id=None,
+                           return_result = False):
+  if return_result:
+      result = group_args(group_args_type = 'Bond restraints',
+        by_value = by_value,
+        max_items = max_items,
+        value_list = [],
+      )
+
   if unit_cell is None:
     sorted_table, n_not_shown = self.get_sorted(
       by_value=by_value,
@@ -489,8 +498,24 @@ def _bond_show_sorted_impl(self,
       if (rt_mx is not None):
         print(" " + str(rt_mx), end='', file=f)
       print(file=f)
+      if return_result:
+          value = group_args(
+            group_args_type =
+             'Bond distance:  ',
+            labels = labels,
+            delta = delta,
+            sigma = sigma,
+            residual = residual,
+            ideal = distance_ideal,
+	    model = distance_model,)
+          result.value_list.append(value)
+
+
   if (n_not_shown != 0):
     print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
+
+  if return_result:
+    return result
 
 @bp.inject_into(shared_bond_asu_proxy)
 class _():
@@ -640,17 +665,19 @@ class _():
                   f=None,
                   prefix="",
                   max_items=None,
-                  origin_id=None):
+                  origin_id=None,
+                  return_result = False):
     if f is None: f = sys.stdout
     # print >> f, "%sBond restraints: %d" % (prefix, self.size())
-    _bond_show_sorted_impl(self, by_value,
+    return _bond_show_sorted_impl(self, by_value,
                            sites_cart=sites_cart,
                            site_labels=site_labels,
                            unit_cell=unit_cell,
                            f=f,
                            prefix=prefix,
                            max_items=max_items,
-                           origin_id=origin_id)
+                           origin_id=origin_id,
+                           return_result = return_result)
 
   def deltas(self, sites_cart, unit_cell=None):
     if unit_cell is None:
@@ -912,7 +939,8 @@ class _():
         f=None,
         prefix="",
         max_items=None,
-        origin_id=None):
+        origin_id=None,
+        return_result = False,):
     if f is None: f = sys.stdout
     # print >> f, "%sBond restraints: %d" % (prefix, self.n_total())
     return _bond_show_sorted_impl(self, by_value,
@@ -921,7 +949,8 @@ class _():
                           f=f,
                           prefix=prefix,
                           max_items=max_items,
-                          origin_id=origin_id)
+                          origin_id=origin_id,
+                          return_result = return_result)
 
 @bp.inject_into(nonbonded_sorted_asu_proxies)
 class _():
@@ -1092,7 +1121,16 @@ class _():
         prefix="",
         max_items=None,
         suppress_model_minus_vdw_greater_than=0.2,
-        but_show_all_model_up_to=3.5):
+        but_show_all_model_up_to=3.5,
+        return_result = False):
+
+    if return_result:
+      result = group_args(group_args_type = 'Non-bonded restraints',
+        by_value = by_value,
+        max_items = max_items,
+        value_list = [],
+      )
+
     assert by_value in ["delta"]
     sorted_table, n_not_shown = self.get_sorted(
         by_value=by_value,
@@ -1124,8 +1162,24 @@ class _():
       if (rt_mx is not None):
         print(" " + str(rt_mx), end='', file=f)
       print(file=f)
+      if return_result:
+          value = group_args(
+            group_args_type =
+             'Non-bonded distance:  ideal is vdw_distance, '+
+                 'model is delta (actual)',
+            labels = labels,
+            delta = None,
+            sigma = None,
+            residual = None,
+            ideal = vdw_distance,
+	    model = delta,)
+          result.value_list.append(value)
+
     if (n_not_shown != 0):
       print(prefix + "... (remaining %d not shown)" % n_not_shown, file=f)
+
+    if return_result:
+      return result
 
 @bp.inject_into(angle)
 class _():
@@ -1225,14 +1279,16 @@ class _():
         f=None,
         prefix="",
         max_items=None,
-        origin_id=None):
-    _show_sorted_impl(O=self,
+        origin_id=None,
+        return_result = False):
+    return _show_sorted_impl(O=self,
         proxy_type=angle,
         proxy_label=proxy_label,
         item_label="angle",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
-        origin_id=origin_id)
+        origin_id=origin_id,
+        return_result = return_result)
 
   def get_sorted(self,
         by_value,
@@ -1316,15 +1372,16 @@ class _():
         f=None,
         prefix="",
         max_items=None,
-        origin_id=None):
-
-    _show_sorted_impl(O=self,
+        origin_id=None,
+        return_result = False):
+    return _show_sorted_impl(O=self,
         proxy_type=dihedral,
         proxy_label=proxy_label,
         item_label="dihedral",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
-        origin_id=origin_id)
+        origin_id=origin_id,
+        return_result = return_result)
 
   def get_sorted(self,
         by_value,
@@ -1401,14 +1458,18 @@ class _():
         f=None,
         prefix="",
         max_items=None,
-        origin_id=None):
-    _show_sorted_impl(O=self,
+        origin_id=None,
+        return_result = False,
+    ):
+
+    return _show_sorted_impl(O=self,
         proxy_type=chirality,
         proxy_label=proxy_label,
         item_label="chirality",
         by_value=by_value, unit_cell=unit_cell, sites_cart=sites_cart,
         site_labels=site_labels, f=f, prefix=prefix, max_items=max_items,
-        origin_id=origin_id)
+        origin_id=origin_id,
+        return_result = return_result)
 
   def get_sorted(self,
         by_value,
@@ -1514,7 +1575,18 @@ class _():
         f=None,
         prefix="",
         max_items=None,
-        origin_id=None):
+        origin_id=None,
+        return_result = False,
+    ):
+    if return_result:
+      result = group_args(group_args_type = 'Planarity restraints',
+        by_value = by_value,
+        max_items = max_items,
+        value_list = [],
+      )
+
+
+
     assert by_value in ["residual", "rms_deltas"]
     assert site_labels is None or len(site_labels) == sites_cart.size()
     if (f is None): f = sys.stdout
@@ -1578,6 +1650,20 @@ class _():
         rdr = ""
         rdr_spacer = " "*20
         s = ""
+        if return_result:
+          sigma = weight_as_sigma(weight=weight)
+          value = group_args(
+            group_args_type =
+             'Planarity restraint (energy for one atom, all atoms: %s)' %(
+              str(ls)),
+            labels = [l],
+            delta = delta,
+            sigma = sigma,
+            residual = (delta/max(1.e-10,sigma))**2,
+            ideal = None,
+            model = None,)
+          result.value_list.append(value)
+
     n_not_shown = O.size() - i_proxies_sorted.size()
     if (n_not_shown != 0):
       outl += prefix + "... (remaining %d not shown)\n" % n_not_shown
@@ -1587,6 +1673,9 @@ class _():
     if outl:
       print("%sSorted by %s:" % (prefix, by_value), file=f)
       print(outl[:-1], file=f)
+
+    if return_result:
+      return result
 
 @bp.inject_into(parallelity)
 class _():
@@ -1896,7 +1985,15 @@ def _show_sorted_impl(O,
         f,
         prefix,
         max_items,
-        origin_id=None):
+        origin_id=None,
+        return_result = False,
+      ):
+  if return_result:
+    result = group_args(group_args_type = '%s restraints' %(proxy_label),
+        by_value = by_value,
+        max_items = max_items,
+        value_list = [],)
+
   if (f is None): f = sys.stdout
   sorted_table, n_not_shown = _get_sorted_impl(O,
         proxy_type=proxy_type,
@@ -1926,6 +2023,32 @@ def _show_sorted_impl(O,
       print("%s%s %s" % (prefix, s, l), file=outl)
       s = item_label_blank
     restraint._show_sorted_item(f=outl, prefix=prefix)
+
+    if return_result:
+          def value_from_restraint(restraint, key_ending = None):
+            for x in dir(restraint):
+              if not x.startswith("__") and x.endswith(key_ending):
+                return getattr(restraint,x)
+
+          #angle_ideal, angle_model, delta, variance**0.5, weight, residual
+          delta = restraint.delta
+          sigma = weight_as_sigma(weight = restraint.weight)
+          ideal = value_from_restraint(restraint,'_ideal')
+          model = value_from_restraint(restraint,'_model')
+          residual = restraint.residual()
+          if proxy_label == 'Dihedral angle':
+            ideal = model + delta
+            if ideal<-180: ideal+=360
+
+          value = group_args(group_args_type = '%s result' %proxy_label,
+            labels = labels,
+            delta = delta,
+            sigma = sigma,
+            ideal = ideal,
+            model = model,
+            residual = residual)
+          result.value_list.append(value)
+
   if (n_not_shown != 0):
     if (proxy_type is dihedral):
       n_harmonic = O.count_harmonic()
@@ -1937,6 +2060,9 @@ def _show_sorted_impl(O,
     print(prefix+"    harmonic: %d" % n_harmonic, file=f)
   print("%sSorted by %s:" % (prefix, by_value), file=f)
   print(outl.getvalue()[:-1], file=f)
+
+  if return_result:
+    return result
 
 class pair_proxies(object):
 
