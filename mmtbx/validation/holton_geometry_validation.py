@@ -63,6 +63,7 @@ where proxPRO means a neighboring residue is proline
 def holton_geometry_validation(dm = None,
      filename = None,
      model = None,
+     get_individual_residue_scores = False,
      round_numbers = True,
      worst_clash_is_one_plus_worst_clash = True,
      minimum_nonbond_score_to_be_worst = -0.1,
@@ -122,6 +123,9 @@ def holton_geometry_validation(dm = None,
   # Get worst and average values for each and rescale if desired
   analyze_geometry_values(info)
 
+  # Get residue-based scores
+  get_residue_scores(info)
+
   print_results(info)
 
   return info
@@ -165,6 +169,7 @@ def add_clashscore_results(info):
       resseq = None,
       delta = delta,
       residual = energy,
+      labels = labels,
       )
     clashscore_result.value_list.append(v)
 
@@ -199,6 +204,8 @@ def add_rotamer_results(info):
       resseq= r.resseq,
       delta = None,
       residual = energy,
+      labels = [atom_label_from_info(
+          r.chain_id, r.resseq,  r.altloc, r.resname, 'CA' )],
       )
     rotamer_result.value_list.append(v)
 
@@ -225,6 +232,8 @@ def add_rama_results(info):
       resseq= r.resseq,
       delta = None,
       residual = energy,
+      labels = [atom_label_from_info(
+          r.chain_id, r.resseq,  r.altloc, r.resname, 'CA' )],
       )
     rama_result.value_list.append(v)
 
@@ -251,6 +260,8 @@ def add_cbetadev_results(info):
       resseq= r.resseq,
       delta = r.deviation,
       residual = energy,
+      labels = [atom_label_from_info(
+          r.chain_id, r.resseq,  r.altloc, r.resname, 'CA' )],
       )
     cbetadev_result.value_list.append(v)
 
@@ -263,16 +274,82 @@ def select_geometry_result(info, name = None, skip_name = None):
       result_list.append(info.geometry_results[key])
   return result_list
 
+def get_residue_scores(info):
+  ''' run through all residues, select those results that involve each residue,
+      recalculate overall score.
+  '''
+  # For now, only one chain_id
+  info.residue_scores = []
+  if not info.get_individual_residue_scores:
+    return # nothing to do
+
+  for chain_id in list(info.chain_dict.keys())[:1]:  # XXX ZZZ CHAIN ID
+    for resseq in info.chain_dict[chain_id].sequence_dict.keys():
+      working_info = select_residue_info(info, chain_id, resseq)
+      analyze_geometry_values(working_info)
+      info.residue_scores.append(working_info.sum_energy)
+      print("Residue score for %s: %.2f" %(resseq, working_info.sum_energy),
+        file = info.log)
+
+def select_residue_info(info, chain_id, resseq):
+  from copy import deepcopy
+
+  log = info.log
+  dm = info.dm
+  geometry_results = info.geometry_results
+  chain_dict = info.chain_dict
+  model = info.model
+
+  info.log = None
+  info.dm= None
+  info.geometry_results = {}
+  info.chain_dict = {}
+  info.model = None
+
+  new_info = deepcopy(info)
+
+  info.log = log
+  info.dm = dm
+  info.geometry_results = geometry_results
+  info.chain_dict = chain_dict
+  info.model = model
+
+  keys = list(info.geometry_results.keys())
+  for key in keys:
+    orig = info.geometry_results[key]
+    new_info.geometry_results[key] = group_args(
+       group_args_type = orig.group_args_type,
+       name = orig.name,
+       value_list = [])
+
+    for value in info.geometry_results[key].value_list:
+      if labels_contain(value.labels, chain_id = chain_id, resseq = resseq):
+        new_info.geometry_results[key].value_list.append(value)
+  sort_geometry_results(new_info)
+  return new_info
+
+def labels_contain(labels, chain_id = None, resseq = None):
+  for label in labels:
+    if ((chain_id is None) or (label.chain_id().strip() == chain_id.strip())) and \
+       ((resseq is None) or   (label.resseq().strip() == resseq.strip())):
+      return True
+
+  return False
+
 def analyze_geometry_values(info):
   keys = list(info.geometry_results.keys())
   keys.sort()
   sum_energy = 0.0
   for key in keys:
     result = info.geometry_results[key]
+    result.pnna = None
+    result.energy = None
+    result.chisq = None
+    result.energy_using_mean = None
+    result.worst_residual = None
+    result.mean_residual = None
 
     if not result.value_list:
-      result.worst_residual = None
-      result.average_residual = None
       continue
 
     worst_value = result.value_list[0]
@@ -308,6 +385,9 @@ def analyze_geometry_values(info):
       values.append(v.residual)
     result.mean_residual = values.min_max_mean().mean
     result.n = values.size()
+    if result.n < 1:
+
+      continue # nothing to do
 
     energy = max(0, min(info.overall_max_energy, result.worst_residual))
     delta = energy**0.5
@@ -613,7 +693,6 @@ def get_model(info):
     info.model = info.dm.get_model(info.filename)
   info.model.set_log(null_out())
   info.model.process(make_restraints=True)
-  info.model = info.model
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
     entry = group_args(group_args_type = 'chain entry', )
@@ -640,6 +719,13 @@ def get_site_labels(model):
   for at in model.get_hierarchy().atoms_with_labels():
     labels.append(atom_label(at))
   return labels
+
+class pseudo_atom:
+  def __init__(self, chain_id, resseq,  altloc, resname, name):
+     adopt_init_args(self,locals())
+
+def atom_label_from_info(chain_id, resseq,  altloc, resname, name):
+  return atom_label(pseudo_atom(chain_id, resseq,  altloc, resname, name))
 
 class atom_label:
   ''' Class to hold an atom_with_labels object and deliver
@@ -669,6 +755,8 @@ class atom_label:
     return self.__repr__() + a
   def resseq(self):
     return self.atom.resseq
+  def chain_id(self):
+    return self.atom.chain_id
 
 def energy(delta, sigma, round_numbers = None):
   if round_numbers:
