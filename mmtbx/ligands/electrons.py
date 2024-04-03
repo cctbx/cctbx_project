@@ -853,7 +853,7 @@ class electron_distribution(dict):
 
     terminals = {}
     for atom, charge in charged_atoms:
-      if atom.name in [' OXT']: terminals[ag.id_str()]=charge
+      if atom.name in [' OXT']: terminals[atom.parent().id_str()]=charge
       ag = atom.parent()
       if get_class(ag.resname) in ['common_amino_acid']:
         base = base_amino_acid_charges.get(ag.resname, 0)
