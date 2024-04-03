@@ -94,6 +94,9 @@ if OPT.enable_kokkos and sys.platform.startswith('linux'):
      ["$D/gpu/tst_exafel_api.py","context=kokkos_gpu"],# GPU in kokkos
      ["$D/tests/tst_unified.py","context=kokkos_gpu"],# GPU, exaFEL full API
      ["$D/gpu/tst_shoeboxes.py","context=kokkos_gpu"],# GPU, test whitelist API
+   ]
+if OPT.enable_kokkos and sys.platform.startswith('linux') and OPT.enable_cuda and libtbx.env.has_module('dials'):
+   tst_list_parallel += [
      ["$D/tests/tst_memory_policy.py","context=kokkos_gpu"],
    ]
 if OPT.enable_kokkos:
