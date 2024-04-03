@@ -843,8 +843,7 @@ def chisqhi(x,k):
   return 0.5 + 0.5 * erf((x**0.5)-(k**.5))
 
 def energy_from_probability(prob):
-  assert prob >= 0
-  assert prob <= 1
+  prob = max(0, min(1, prob))
   return (erfinv(1-prob))**2
 
 if __name__=="__main__":
