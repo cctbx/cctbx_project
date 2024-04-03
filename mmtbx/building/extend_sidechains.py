@@ -220,6 +220,10 @@ def extend_protein_model(
       residue          = new_residue,
       mon_lib_srv      = mon_lib_srv,
       ignore_hydrogens = False)
+    #
+    size = new_residue.atoms().size()
+    new_residue.atoms().set_occ(flex.double(size, 0.9))
+    #
     #assert len(missing_atoms) == 0, missing_atoms
     rg = residue.parent()
     rg.remove_atom_group(residue)
