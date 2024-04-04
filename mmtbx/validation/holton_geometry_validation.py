@@ -66,10 +66,10 @@ def holton_geometry_validation(dm = None,
      model = None,
      get_individual_residue_scores = False,
      round_numbers = True,
-     worst_clash_is_one_plus_worst_clash = True,
+     worst_clash_is_one_plus_n_times_worst_clash = True,
+     clash_energy_add_n = True,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
-     clash_added_energy = 1,
      ignore_cis_peptides = True,
      ignore_h_except_in_nonbond = True,
      ignore_arg_h_nonbond = True,
@@ -359,9 +359,10 @@ def analyze_geometry_values(info):
 
     # Some special cases allowed in choosing worst value
 
-    if info.worst_clash_is_one_plus_worst_clash and \
+    if info.worst_clash_is_one_plus_n_times_worst_clash and \
         result.name == 'CLASH': # Special case
-      result.worst_residual = abs(1 + worst_value.residual)
+      result.worst_residual = abs(
+         1 + len(result.value_list) * worst_value.residual)
 
     elif info.minimum_nonbond_score_to_be_worst is not None and \
         result.name == 'NONBOND' and (
@@ -394,11 +395,14 @@ def analyze_geometry_values(info):
     delta = energy**0.5
     result.pnna = softPnna(delta, result.n, info.softPnna_params)
 
-    # Special case for CLASH
-    if result.name == "CLASH" and info.clash_added_energy is not None:
-      energy += info.clash_added_energy
+    energy = filtered_energy(energy)
 
-    result.energy = filtered_energy(result.pnna * energy)
+    # Special case for CLASH
+    if result.name == "CLASH" and info.clash_energy_add_n:
+      energy += result.n
+
+    result.energy = result.pnna * energy
+
     sum_energy += result.energy
 
     # Repeat using mean instead of worst, multiplying mean energy * Chisq
@@ -406,12 +410,14 @@ def analyze_geometry_values(info):
     ssd = result.mean_residual * result.n
     result.chisq = chisq(ssd, result.n)
 
-    # Special case for CLASH
-    if result.name == "CLASH" and info.clash_added_energy is not None:
-      energy_mean += info.clash_added_energy
+    energy_mean = filtered_energy(energy_mean)
 
-    result.energy_using_mean = filtered_energy(
-       result.chisq * energy_mean)
+    # Special case for CLASH
+    if result.name == "CLASH" and info.clash_energy_add_n:
+      energy_mean += result.n
+
+    result.energy_using_mean = result.chisq * energy_mean
+
     sum_energy += result.energy_using_mean
 
   info.sum_energy = sum_energy
@@ -787,7 +793,7 @@ def filtered_energy(energy):
   elif energy <= 10:
     return energy
   else:
-    return 10 + math.log(energy) - math.log(10)
+    return 10 + math.log(energy/10)
 
 
 def softPnna(delta, n, params = None):
