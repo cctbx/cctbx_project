@@ -25,6 +25,9 @@ add_h_to_water = False
 add_d_to_water = False
   .type = bool
 
+print_time = False
+  .type = bool
+
 output
   .style = menu_item auto_align
 {
@@ -63,9 +66,10 @@ Inputs:
     #
     make_sub_header('Add H atoms', out=self.logger)
     reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
-      model = self.model,
+      model                 = self.model,
       use_neutron_distances = self.params.use_neutron_distances,
-      n_terminal_charge = self.params.n_terminal_charge)
+      n_terminal_charge     = self.params.n_terminal_charge,
+      print_time            = self.params.print_time)
     #import line_profiler
     #lp = line_profiler.LineProfiler(reduce_add_h_obj.run)
     #lp.enable()
@@ -75,8 +79,8 @@ Inputs:
     self.model = reduce_add_h_obj.get_model()
     reduce_add_h_obj.show(log = self.logger)
     #
-    make_sub_header('Optimize H atoms', out=self.logger)
-    self.model = reduce_hydrogen.optimize(model=self.model)
+    #make_sub_header('Optimize H atoms', out=self.logger)
+    #self.model = reduce_hydrogen.optimize(model=self.model)
     #
     if self.params.add_h_to_water:
       self.model.add_hydrogens(1., occupancy=1.)

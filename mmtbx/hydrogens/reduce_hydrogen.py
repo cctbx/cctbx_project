@@ -15,7 +15,7 @@ from cctbx.maptbx.box import shift_and_box_model
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 get_class = iotbx.pdb.common_residue_names_get_class
 # For development
-print_time = False
+save_time = True
 
 # ==============================================================================
 
@@ -98,6 +98,8 @@ def get_h_restraints(resname, strict=True):
       period='1'))
   return comp_comp_id
 
+# ==============================================================================
+
 def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   # if get_class(residue.resname) in ['common_rna_dna']:
   #   md = get_h_restraints(residue.resname)
@@ -112,10 +114,14 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   return md
 
 # ==============================================================================
-def make_interpretation_parameters(use_neutron_distances):
-  # Fill in the interpretation parameters we want to use.  We do this in a
-  # function so that other programs (reduce2) can use the same parameters.
+
+def get_reduce_pdb_interpretation_params(use_neutron_distances):
+  '''
+  Create pdb_interpretation parameter scope.
+  Do this in a function so other programs (reduce2) can use the same parameters
+  '''
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
+ #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
   p.pdb_interpretation.proceed_with_excessive_length_bonds=True
@@ -123,6 +129,7 @@ def make_interpretation_parameters(use_neutron_distances):
   #p.pdb_interpretation.automatic_linking.link_metals = True
   p.pdb_interpretation.automatic_linking.link_residues = True
   p.pdb_interpretation.automatic_linking.exclude_hydrogens_from_bonding_decisions = True
+  #
   return p
 
 # ==============================================================================
@@ -154,7 +161,8 @@ class place_hydrogens():
                exclude_water         = True,
                stop_for_unknowns     = False,
                keep_existing_H       = False,
-               validate_e            = False):
+               validate_e            = False,
+               print_time            = False):
 
     self.model                 = model
     self.use_neutron_distances = use_neutron_distances
@@ -164,6 +172,7 @@ class place_hydrogens():
     self.stop_for_unknowns     = stop_for_unknowns
     self.keep_existing_H       = keep_existing_H
     self.validate_e            = validate_e
+    self.print_time            = print_time
     #
     self.no_H_placed_mlq        = list()
     self.site_labels_disulfides = list()
@@ -187,55 +196,47 @@ class place_hydrogens():
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
       model_has_bogus_cs = True
+      #self.model.add_crystal_symmetry_if_necessary()
 
     # Remove existing H if requested
+    # ------------------------------
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
 
+    # Add missing H atoms and place them at bogus position
+    # ----------------------------------------------------
     t0 = time.time()
-    # Add H atoms and place them at center of coordinates
     pdb_hierarchy = self.add_missing_H_atoms_at_bogus_position()
-    if print_time:
+    if self.print_time:
       print("add_missing_H_atoms_at_bogus_position:", round(time.time()-t0, 2))
-
+      self.time_add_missing_H = round(time.time()-t0, 2)
+    # DEBUG
     #print(pdb_hierarchy.composition().n_hd)
+    #f = open("intermediate1.pdb","w")
+    #f.write(self.model.model_as_pdb())
 
-#    f = open("intermediate1.pdb","w")
-#    f.write(self.model.model_as_pdb())
-
-    # place N-terminal propeller hydrogens
-    #
-    # FYI PRO is not placed optimally according to the restraints with this routine
-    #
-    if self.n_terminal_charge != 'no_charge':
-      for m in pdb_hierarchy.models():
-        for chain in m.chains():
-          rgs = chain.residue_groups()[0]
-          # by default, place NH3 only at residue with resseq 1
-          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-            continue
-          elif (self.n_terminal_charge == 'first_in_chain'):
-            pass
-          for ag in rgs.atom_groups():
-            if (get_class(name=ag.resname) in
-                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-              if ag.get_atom('H'):
-                ag.remove_atom(ag.get_atom('H'))
-            #TODO this places NH3 at #1 even if there is a non-standard residue
-            rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-            # rc is always empty list?
+    # Place N-terminal propeller hydrogens
+    # TODO double check N-terminal position for PRO residues
+    # ------------------------------------
+    if self.n_terminal_charge in ['residue_one', 'first_in_chain']:
+      t0 = time.time()
+      self.place_n_terminal_propeller(pdb_hierarchy = pdb_hierarchy)
+      if self.print_time:
+        print('Add N-terminal propeller', round(time.time()-t0, 2))
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
-#    f = open("intermediate2.pdb","w")
-#    f.write(self.model.model_as_pdb())
 
-    p = make_interpretation_parameters(self.use_neutron_distances)
+    # DEBUG
+    #f = open("intermediate2.pdb","w")
+    #f.write(self.model.model_as_pdb())
 
-    t0 = time.time()
-    #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
+    # Make new model obj and get restraints manager
+    # ---------------------------------------------
+    p = get_reduce_pdb_interpretation_params(self.use_neutron_distances)
     ro = self.model.get_restraint_objects()
+    t0 = time.time()
     self.model = mmtbx.model.manager(
       model_input       = None,
       pdb_hierarchy     = pdb_hierarchy,
@@ -245,7 +246,7 @@ class place_hydrogens():
       log               = null_out())
     self.model.process(pdb_interpretation_params=p,
       make_restraints=True)
-    if print_time:
+    if self.print_time:
       print("get new model obj and grm:", round(time.time()-t0, 2))
 
     #f = open("intermediate3.pdb","w")
@@ -256,8 +257,9 @@ class place_hydrogens():
     if sel_h.count(True) == 0:
       return
 
-    # get rid of isolated H atoms.
-    #For example when heavy atom is missing, H needs not to be placed
+    # Remove isolated H atoms
+    # -----------------------
+    # (when heavy atom is missing, H needs not to be placed)
     sel_isolated = self.model.isolated_atoms_selection()
     self.sel_lone_H = sel_h & sel_isolated
     if not self.sel_lone_H.all_eq(False):
@@ -277,7 +279,7 @@ class place_hydrogens():
       for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para)]
     #
     self.model = self.model.select(~sel_h_not_in_para)
-    if print_time:
+    if self.print_time:
       print("set up riding H manager and some cleanup:", round(time.time()-t0, 2))
 
   #  f = open("intermediate4.pdb","w")
@@ -286,7 +288,7 @@ class place_hydrogens():
     if self.validate_e:
       t0 = time.time()
       self.validate_electrons()
-      if print_time:
+      if self.print_time:
         print("validate electrons:", round(time.time()-t0, 2))
 
     t0 = time.time()
@@ -294,50 +296,14 @@ class place_hydrogens():
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale)
     self.model.reset_occupancy_for_hydrogens_simple()
     self.model.idealize_h_riding()
-    if print_time:
+    if self.print_time:
       print("reset adp, occ; idealize:", round(time.time()-t0, 2))
 
     t0 = time.time()
     self.exclude_H_on_links()
-    if print_time:
+    if self.print_time:
       print("all links:", round(time.time()-t0, 2))
 
-    # place N-terminal propeller hydrogens
-#    if self.n_terminal_charge != 'no_charge':
-#      hierarchy = self.model.get_hierarchy()
-#      for m in hierarchy.models():
-#        for chain in m.chains():
-#          rgs = chain.residue_groups()[0]
-#          # by default, place NH3 only at residue with resseq 1
-#          if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
-#            continue
-#          elif (self.n_terminal_charge == 'first_in_chain'):
-#            pass
-#          add_charge = True
-#          for ag in rgs.atom_groups():
-#            if (get_class(name=ag.resname) in
-#                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
-#              if ag.get_atom('N'):
-#                N = ag.get_atom('N')
-#                if N.i_seq in self.exclusion_iseqs:
-#                  add_charge = False
-#              if ag.get_atom('H'):
-#                H = ag.get_atom('H')
-#                ag.remove_atom(H)
-#                H_label = H.id_str().replace('pdb=','').replace('"','')
-#                if H_label in self.site_labels_no_para:
-#                  self.site_labels_no_para.remove(H_label)
-#            if add_charge:
-#              rc = add_n_terminal_hydrogens_to_residue_group(rgs)
-#      hierarchy.sort_atoms_in_place()
-#      hierarchy.atoms().reset_serial()
-#      self.model = mmtbx.model.manager(
-#        model_input       = None,
-#        pdb_hierarchy     = hierarchy,
-#        stop_for_unknowns = self.stop_for_unknowns,
-#        crystal_symmetry  = self.model.crystal_symmetry(),
-#        restraint_objects = ro,
-#        log               = null_out())
 
     # TODO: this should be ideally done *after* reduce optimization
     if not self.exclude_water:
@@ -345,10 +311,33 @@ class place_hydrogens():
 
     self.n_H_final = self.model.get_hd_selection().count(True)
 
-# ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
+
+  def place_n_terminal_propeller(self, pdb_hierarchy):
+    '''
+    Place NH3 at residue #1 or at first residue in chain
+    Changes hierarchy in place
+    '''
+    for m in pdb_hierarchy.models():
+      for chain in m.chains():
+        rgs = chain.residue_groups()[0]
+        # by default, place NH3 only at residue with resseq 1
+        if (self.n_terminal_charge == 'residue_one' and rgs.resseq_as_int() != 1):
+          continue
+        elif (self.n_terminal_charge == 'first_in_chain'):
+          pass
+        for ag in rgs.atom_groups():
+          if (get_class(name=ag.resname) in
+              ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+            if ag.get_atom('H'):
+              ag.remove_atom(ag.get_atom('H'))
+          rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
+
+  # ----------------------------------------------------------------------------
 
   def add_missing_H_atoms_at_bogus_position(self):
-    '''Add missing H atoms at bogus positions to the pdb_hierarchy
+    '''
+    Add missing H atoms at bogus positions to the pdb_hierarchy
 
     This procedure changes the hierarchy in place.
     All H atoms are placed at center of coordinates + (0.5, 0.5, 0.5)
