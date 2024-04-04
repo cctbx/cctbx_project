@@ -154,13 +154,13 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
     </tr><tr>
       <td>Linux Python 3.12</td>
       <td>
-        <!-- <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20conda-forge?branchName=master&jobName=linux_64&configuration=linux_64%20python3.11" alt="variant">
-        </a> -->
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20conda-forge?branchName=master&jobName=linux_64&configuration=linux_64%20python3.12" alt="variant">
+        </a>
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=linux_64&configuration=linux_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=master&jobName=linux_64&configuration=linux_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr><tr>
@@ -226,13 +226,13 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
     </tr><tr>
       <td>macOS (Intel) Python 3.12</td>
       <td>
-        <!-- <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
           <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20conda-forge?branchName=master&jobName=osx_64&configuration=osx_64%20python3.12" alt="variant">
-        </a> -->
+        </a>
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=osx_64&configuration=osx_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=master&jobName=osx_64&configuration=osx_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr><tr>
@@ -286,9 +286,9 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
     </tr><tr>
       <td>macOS (Apple Silicon) Python 3.12</td>
       <td>
-        <!-- <a href="https://dev.azure.com/conda-forge/feedstock-builds/_build/latest?definitionId=10784&branchName=master">
-          <img src="https://dev.azure.com/conda-forge/feedstock-builds/_apis/build/status/cctbx-base-feedstock?branchName=master&jobName=osx&configuration=osx_arm64_python3.11.____cpython" alt="variant">
-        </a> -->
+        <a href="https://dev.azure.com/conda-forge/feedstock-builds/_build/latest?definitionId=10784&branchName=master">
+          <img src="https://dev.azure.com/conda-forge/feedstock-builds/_apis/build/status/cctbx-base-feedstock?branchName=master&jobName=osx&configuration=osx_arm64_python3.12.____cpython" alt="variant">
+        </a>
       </td>
       <td>
         <a href="https://dev.azure.com/cctbx-release/feedstock-builds/_build/latest?definitionId=11&branchName=main">
@@ -358,13 +358,13 @@ A subset of tests is run on the current `cctbx-base` packages every night (10 pm
     </tr><tr>
       <td>Windows Python 3.12</td>
       <td>
-        <!-- <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=2&branchName=master">
           <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20conda-forge?branchName=master&jobName=win_64&configuration=win_64%20python3.12" alt="variant">
-        </a> -->
+        </a>
       </td>
       <td>
-        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=py312_test">
-          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=py312_test&jobName=win_64&configuration=win_64%20python3.12" alt="variant">
+        <a href="https://dev.azure.com/cctbx-release/cctbx/_build/latest?definitionId=6&branchName=master">
+          <img src="https://dev.azure.com/cctbx-release/cctbx/_apis/build/status/test%20cctbx-nightly?branchName=master&jobName=win_64&configuration=win_64%20python3.12" alt="variant">
         </a>
       </td>
     </tr>
