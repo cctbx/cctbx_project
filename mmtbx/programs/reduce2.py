@@ -1032,7 +1032,8 @@ NOTES:
     self.model.get_hierarchy().sort_atoms_in_place()
     self.model.get_hierarchy().atoms().reset_serial()
 
-    p = reduce_hydrogen.make_interpretation_parameters(self.params.use_neutron_distances)
+    p = reduce_hydrogen.get_reduce_pdb_interpretation_params(
+      self.params.use_neutron_distances)
     p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done

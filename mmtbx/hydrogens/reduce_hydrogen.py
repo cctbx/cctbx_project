@@ -252,26 +252,36 @@ class place_hydrogens():
     #f = open("intermediate3.pdb","w")
     #f.write(self.model.model_as_pdb())
 
-    # Only keep H that have been parameterized in riding H procedure
+    # Return if no H have been placed
     sel_h = self.model.get_hd_selection()
-    if sel_h.count(True) == 0:
-      return
+    if sel_h.count(True) == 0: return
 
     # Remove isolated H atoms
     # -----------------------
     # (when heavy atom is missing, H needs not to be placed)
+    t0 = time.time()
     sel_isolated = self.model.isolated_atoms_selection()
     self.sel_lone_H = sel_h & sel_isolated
     if not self.sel_lone_H.all_eq(False):
       self.model = self.model.select(~self.sel_lone_H)
+    if self.print_time:
+      print("Remove isolated H:", round(time.time()-t0, 2))
 
-    t0 = time.time()
-    # get riding H manager --> parameterize all H atoms
     sel_h = self.model.get_hd_selection()
+
+    # Setup riding H manager
+    # ----------------------
+    t0 = time.time()
     self.model.setup_riding_h_manager(use_ideal_dihedral = True)
     riding_h_manager = self.model.riding_h_manager
     if riding_h_manager is None:
       return
+    if self.print_time:
+      print("Setup Riding manager:", round(time.time()-t0, 2))
+
+    # Remove H that could not be parameterized
+    # ----------------------------------------
+    t0 = time.time()
     sel_h_in_para = flex.bool(
       [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
@@ -280,19 +290,21 @@ class place_hydrogens():
     #
     self.model = self.model.select(~sel_h_not_in_para)
     if self.print_time:
-      print("set up riding H manager and some cleanup:", round(time.time()-t0, 2))
+      print("Remove H that were not parameterized:", round(time.time()-t0, 2))
 
   #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
 
-    if self.validate_e:
-      t0 = time.time()
-      self.validate_electrons()
-      if self.print_time:
-        print("validate electrons:", round(time.time()-t0, 2))
+# to be removed; was for curiosity only
+#    if self.validate_e:
+#      t0 = time.time()
+#      self.validate_electrons()
+#      if self.print_time:
+#        print("validate electrons:", round(time.time()-t0, 2))
 
-    t0 = time.time()
     # Reset occupancies, ADPs and idealize H atom positions
+    # -----------------------------------------------------
+    t0 = time.time()
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale)
     self.model.reset_occupancy_for_hydrogens_simple()
     self.model.idealize_h_riding()
