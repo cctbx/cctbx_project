@@ -182,21 +182,36 @@ class place_hydrogens():
     self.n_H_initial            = 0
     self.n_H_final              = 0
 
+    if self.print_time:
+      self.time_rebox_model        = 0
+      self.time_add_missing_H      = 0
+      self.time_terminal_propeller = 0
+      self.time_make_grm           = 0
+      self.time_remove_isolated    = 0
+      self.time_riding_manager     = 0
+      self.time_remove_H_nopara    = 0
+      self.time_reset_idealize     = 0
+      self.time_remove_H_on_links  = 0
+
 # ------------------------------------------------------------------------------
 
   def run(self):
     '''
     Function that places H atoms
     '''
-    model_has_bogus_cs = False
 
-    # TODO temporary fix until the code is moved to model class
-    # check if box cussion of 5 A is enough to prevent symm contacts
+    # Create symmetry if necessary
+    # ------------------------------
+    model_has_bogus_cs = False
+    t0 = time.time()
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
       model_has_bogus_cs = True
-      #self.model.add_crystal_symmetry_if_necessary()
+      #self.model.add_crystal_symmetry_if_necessary() # this is slower than shift_and_box_model!!!!
+    if self.print_time:
+      print("Rebox model:", round(time.time()-t0, 2))
+      self.time_rebox_model = round(time.time()-t0, 2)
 
     # Remove existing H if requested
     # ------------------------------
@@ -224,6 +239,7 @@ class place_hydrogens():
       self.place_n_terminal_propeller(pdb_hierarchy = pdb_hierarchy)
       if self.print_time:
         print('Add N-terminal propeller', round(time.time()-t0, 2))
+        self.time_terminal_propeller = round(time.time()-t0, 2)
 
     pdb_hierarchy.sort_atoms_in_place()
     pdb_hierarchy.atoms().reset_serial()
@@ -248,6 +264,7 @@ class place_hydrogens():
       make_restraints=True)
     if self.print_time:
       print("get new model obj and grm:", round(time.time()-t0, 2))
+      self.time_make_grm = round(time.time()-t0, 2)
 
     #f = open("intermediate3.pdb","w")
     #f.write(self.model.model_as_pdb())
@@ -266,6 +283,7 @@ class place_hydrogens():
       self.model = self.model.select(~self.sel_lone_H)
     if self.print_time:
       print("Remove isolated H:", round(time.time()-t0, 2))
+      self.time_remove_isolated = round(time.time()-t0, 2)
 
     sel_h = self.model.get_hd_selection()
 
@@ -278,6 +296,7 @@ class place_hydrogens():
       return
     if self.print_time:
       print("Setup Riding manager:", round(time.time()-t0, 2))
+      self.time_riding_manager = round(time.time()-t0, 2)
 
     # Remove H that could not be parameterized
     # ----------------------------------------
@@ -291,6 +310,7 @@ class place_hydrogens():
     self.model = self.model.select(~sel_h_not_in_para)
     if self.print_time:
       print("Remove H that were not parameterized:", round(time.time()-t0, 2))
+      self.time_remove_H_nopara = round(time.time()-t0, 2)
 
   #  f = open("intermediate4.pdb","w")
   #  f.write(model.model_as_pdb())
@@ -309,12 +329,16 @@ class place_hydrogens():
     self.model.reset_occupancy_for_hydrogens_simple()
     self.model.idealize_h_riding()
     if self.print_time:
-      print("reset adp, occ; idealize:", round(time.time()-t0, 2))
+      print("Reset adp, occ; idealize H positions:", round(time.time()-t0, 2))
+      self.time_reset_idealize = round(time.time()-t0, 2)
 
+    # Remove H atoms that are involved in links (bonds, metal coordination, etc)
+    # --------------------------------------------------------------------------
     t0 = time.time()
     self.exclude_H_on_links()
     if self.print_time:
-      print("all links:", round(time.time()-t0, 2))
+      print("Remove H on links:", round(time.time()-t0, 2))
+      self.time_remove_H_on_links = round(time.time()-t0, 2)
 
 
     # TODO: this should be ideally done *after* reduce optimization
@@ -596,12 +620,28 @@ heavy atoms or H atoms are missing.'''
   def get_model(self):
     return self.model
 
+# ------------------------------------------------------------------------------
+
   def get_counts(self):
     return group_args(
       number_h_final  = self.n_H_final,
       no_H_placed_mlq = self.no_H_placed_mlq,
       site_labels_disulfides = self.site_labels_disulfides,
       site_labels_no_para = self.site_labels_no_para)
+
+# ------------------------------------------------------------------------------
+
+  def get_times(self):
+    return group_args(
+      time_rebox_model        = self.time_rebox_model,
+      time_add_missing_H      = self.time_add_missing_H,
+      time_terminal_propeller = self.time_terminal_propeller,
+      time_make_grm           = self.time_make_grm,
+      time_remove_isolated    = self.time_remove_isolated,
+      time_riding_manager     = self.time_riding_manager,
+      time_remove_H_nopara    = self.time_remove_H_nopara,
+      time_reset_idealize     = self.time_reset_idealize,
+      time_remove_H_on_links  = self.time_remove_H_on_links)
 
 # ==============================================================================
 
