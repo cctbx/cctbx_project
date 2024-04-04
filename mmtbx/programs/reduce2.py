@@ -20,10 +20,10 @@ from datetime import datetime
 from libtbx.program_template import ProgramTemplate
 from libtbx import group_args, phil
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, null_out
 import mmtbx
 from mmtbx.probe import Helpers
-from iotbx import pdb
+from iotbx import pdb, cli_parser
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.2.0"
+version = "2.3.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -960,7 +960,11 @@ NOTES:
     return views
 # ------------------------------------------------------------------------------
 
-  def _MakeProbePhil(self, movers_to_check, temp_output_file_name):
+  # Create a parser for Probe2 PHIL parameters, overriding specific defaults.
+  # Use it to parse the parameters we need to change and return the parser so we
+  # can extract values from it.
+  def _MakeProbePhilParser(self, movers_to_check, temp_output_file_name, extraArgs = []):
+
     # Determine the source and target selections based on the Movers
     # that we are checking being tested against everything else.
     source_selection = 'sidechain and ('
@@ -974,51 +978,24 @@ NOTES:
     source_selection += ')'
     target_selection = 'all'
 
-    # Set default parameters and then only overwrite the ones we need
-    newParams = copy.deepcopy(self.params)
-    newParams.__inject__('source_selection', source_selection)      # Not default
-    newParams.__inject__('target_selection', target_selection)      # Not default
-    newParams.approach = 'both'                                     # Not default
-    newParams.__inject__('excluded_bond_chain_length', self._bondedNeighborDepth) # Not default
-    newParams.__inject__('minimum_water_hydrogen_occupancy', 0.66)  # Not default
-    newParams.__inject__('maximum_water_hydrogen_b', 40.0)          # Not default
-    newParams.__inject__('include_mainchain_mainchain', True)
-    newParams.__inject__('include_water_water', False)
-    newParams.__inject__('keep_unselected_atoms', True)
-    newParams.__inject__('atom_radius_scale', 1.0)
-    newParams.__inject__('atom_radius_offset', 0.0)
-    newParams.__inject__('minimum_occupancy', 0.01)                 # Not default
-    newParams.__inject__('overlap_scale_factor', 0.5)
-    newParams.__inject__('ignore_lack_of_explicit_hydrogens', True)
+    parser = cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+    args = [
+      "source_selection='{}'".format(source_selection),
+      "target_selection='{}'".format(target_selection),
+      "use_neutron_distances={}".format(self.params.use_neutron_distances),
+      "approach=both",
+      "excluded_bond_chain_length={}".format(self._bondedNeighborDepth),
+      "minimum_water_hydrogen_occupancy=0.66",
+      "maximum_water_hydrogen_b=40.0",
+      "minimum_occupancy=0.01",
+      "output.filename='{}'".format(temp_output_file_name),
+      "ignore_lack_of_explicit_hydrogens=True",
+      "output.add_group_line=False"
+    ]
+    args.extend(extraArgs)
+    parser.parse_args(args)
 
-    newParams.output.filename = temp_output_file_name               # Not default
-    newParams.output.__inject__('dump_file_name', None)
-    newParams.output.__inject__('format', 'kinemage')
-    newParams.output.__inject__('contact_summary', False)
-    newParams.output.__inject__('condensed', False)
-    newParams.output.__inject__('count_dots', False)
-    newParams.output.__inject__('hydrogen_bond_output', True)
-    newParams.output.__inject__('record_added_hydrogens', False)
-    newParams.output.__inject__('report_hydrogen_bonds', True)
-    newParams.output.__inject__('report_clashes', True)
-    newParams.output.__inject__('report_vdws', True)
-    newParams.output.__inject__('separate_worse_clashes', False)
-    newParams.output.__inject__('group_name', '')
-    newParams.output.__inject__('add_group_name_master_line', False)
-    newParams.output.__inject__('add_group_line', False)            # Not default
-    newParams.output.__inject__('add_kinemage_keyword', False)
-    newParams.output.__inject__('add_lens_keyword', False)
-    newParams.output.__inject__('color_by_na_base', False)
-    newParams.output.__inject__('color_by_gap', True)
-    newParams.output.__inject__('group_label', '')
-    newParams.output.__inject__('bin_gaps', False)
-    newParams.output.__inject__('merge_contacts', True)
-    newParams.output.__inject__('only_report_bad_clashes', False)
-    newParams.output.__inject__('atoms_are_masters', False)
-    newParams.output.__inject__('default_point_color', 'gray')
-    newParams.output.__inject__('compute_scores', True)
-    newParams.output.__inject__('altid_as_pointmaster', True)
-    return newParams
+    return parser
 
 # ------------------------------------------------------------------------------
 
@@ -1054,11 +1031,8 @@ NOTES:
     # :param make_restraints: Should we compute restraints during the interpretation?
     self.model.get_hierarchy().sort_atoms_in_place()
     self.model.get_hierarchy().atoms().reset_serial()
-    p = mmtbx.model.manager.get_default_pdb_interpretation_params()
-    p.pdb_interpretation.allow_polymer_cross_special_position=True
-    p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
-    p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
-    p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+
+    p = reduce_hydrogen.make_interpretation_parameters(self.params.use_neutron_distances)
     p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
     # We need to turn this on because without it 1zz0.txt kept flipping the ring
     # in A TYR 214 every time we re-interpreted. The original interpretation done
@@ -1297,16 +1271,18 @@ NOTES:
         # filled in with values that we want for our summaries.
         source = [ m ]
         tempName = tempfile.mktemp()
-        newParams = self._MakeProbePhil(source, tempName)
-        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
-        newParams.output.format = 'raw'
-        newParams.output.contact_summary = True
-        newParams.output.condensed = True
-        newParams.output.count_dots = True
+        extraArgs = [
+          "approach=once",
+          "output.format=raw",
+          "output.contact_summary=True",
+          "output.condensed=True",
+          "output.count_dots=True"
+          ]
+        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
 
         # Run Probe2
-        p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
-          logger=self.logger)
+        p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
+                            master_phil=probeParser.master_phil, logger=self.logger)
         p2.overrideModel(self.model)
         dots, output = p2.run()
 
@@ -1335,16 +1311,18 @@ NOTES:
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
         tempName = tempfile.mktemp()
-        newParams = self._MakeProbePhil(source, tempName)
-        newParams.approach = 'once'       # Reduce2/Reduce only check Mover atom to other
-        newParams.output.format = 'raw'
-        newParams.output.contact_summary = True
-        newParams.output.condensed = True
-        newParams.output.count_dots = True
+        extraArgs = [
+          "approach=once",
+          "output.format=raw",
+          "output.contact_summary=True",
+          "output.condensed=True",
+          "output.count_dots=True"
+          ]
+        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
 
         # Run Probe2
-        p2 = probe2.Program(dm, newParams, master_phil=probe2.master_phil_str,
-          logger=self.logger)
+        p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
+                            master_phil=probeParser.master_phil, logger=self.logger)
         p2.overrideModel(dm.get_model(self.params.comparison_file))
         dots, output = p2.run()
 
@@ -1507,12 +1485,13 @@ NOTES:
           # Specify a temporary file for the output of Probe2, which we'll
           # delete after running.
           tempName = tempfile.mktemp()
-          newParams = self._MakeProbePhil(amides, tempName)
+          probeParser = self._MakeProbePhilParser(amides, tempName)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
-          p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
-            logger=self.logger)
+          p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
+                              master_phil=probeParser.master_phil, logger=self.logger)
+
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
@@ -1628,12 +1607,12 @@ NOTES:
           # Specify a temporary file for the output of Probe2, which we'll
           # delete after running.
           tempName = tempfile.mktemp()
-          newParams = self._MakeProbePhil(hists, tempName)
+          probeParser = self._MakeProbePhilParser(hists, tempName)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
-          p2 = probe2.Program(self.data_manager, newParams, master_phil=probe2.master_phil_str,
-            logger=self.logger)
+          p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
+                              master_phil=probeParser.master_phil, logger=self.logger)
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
