@@ -10,7 +10,6 @@ import os
 from mmtbx.validation.holton_geometry_validation import \
     holton_geometry_validation
 from libtbx.program_template import ProgramTemplate
-from datetime import datetime
 
 try:
   from phenix.program_template import ProgramTemplate

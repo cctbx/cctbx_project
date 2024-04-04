@@ -507,7 +507,7 @@ def _bond_show_sorted_impl(self,
             sigma = sigma,
             residual = residual,
             ideal = distance_ideal,
-	    model = distance_model,)
+            model = distance_model,)
           result.value_list.append(value)
 
 
@@ -1172,7 +1172,7 @@ class _():
             sigma = None,
             residual = None,
             ideal = vdw_distance,
-	    model = delta,)
+            model = delta,)
           result.value_list.append(value)
 
     if (n_not_shown != 0):
