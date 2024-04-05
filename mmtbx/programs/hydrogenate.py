@@ -28,15 +28,6 @@ add_d_to_water = False
 print_time = False
   .type = bool
 
-output
-  .style = menu_item auto_align
-{
-  file_name_prefix = None
-    .type = path
-    .short_caption = Prefix for file name
-    .help = Prefix for file name
-    .input_size = 400
-}
 '''
 
 # ------------------------------------------------------------------------------
@@ -57,7 +48,10 @@ Inputs:
 # ------------------------------------------------------------------------------
 
   def validate(self):
-    self.data_manager.has_models(raise_sorry=True)
+    self.data_manager.has_models(
+      raise_sorry = True,
+      expected_n  = 1,
+      exact_count = True)
 
 # ------------------------------------------------------------------------------
 
@@ -65,7 +59,7 @@ Inputs:
     self.model = self.data_manager.get_model()
     #
     make_sub_header('Add H atoms', out=self.logger)
-    reduce_add_h_obj = reduce_hydrogen.place_hydrogens(
+    hydrogenate_obj = reduce_hydrogen.place_hydrogens(
       model                 = self.model,
       use_neutron_distances = self.params.use_neutron_distances,
       n_terminal_charge     = self.params.n_terminal_charge,
@@ -73,31 +67,50 @@ Inputs:
     #import line_profiler
     #lp = line_profiler.LineProfiler(reduce_add_h_obj.run)
     #lp.enable()
-    reduce_add_h_obj.run()
+    hydrogenate_obj.run()
     #lp.disable()
     #lp.print_stats()
-    self.model = reduce_add_h_obj.get_model()
-    reduce_add_h_obj.show(log = self.logger)
-    #
-    #make_sub_header('Optimize H atoms', out=self.logger)
-    #self.model = reduce_hydrogen.optimize(model=self.model)
-    #
+    self.model = hydrogenate_obj.get_model()
+    hydrogenate_obj.show(log = self.logger)
+
+    # Why is this done here and in the class?
     if self.params.add_h_to_water:
       self.model.add_hydrogens(1., occupancy=1.)
     elif self.params.add_d_to_water:
       self.model.add_hydrogens(1., element="D", occupancy=1.)
-    #
-    if(self.params.output.file_name_prefix is not None):
-      base = self.params.output.file_name_prefix
+
+
+    if self.params.output.prefix is None:
+      self.params.output.prefix = os.path.split(os.path.splitext(
+        self.data_manager.get_default_model_name())[0])[1]
+
+
+    if self.data_manager.get_model().input_model_format_cif():
+      self.output_file_name = self.params.output.prefix+"_hydrogenate.cif"
+      self.data_manager.write_model_file(
+        model_str = self.model.model_as_mmcif(),
+        filename  = self.output_file_name)
     else:
-      fp = self.data_manager.get_default_model_name()
-      base = os.path.splitext(os.path.basename(fp))[0]
-    of = open("%s_hydrogenate.pdb"%base,"w")
-    of.write(self.model.model_as_pdb())
-    of.close()
+      self.output_file_name = self.params.output.prefix+"_hydrogenate.pdb"
+      self.data_manager.write_model_file(
+        model_str = self.model.model_as_pdb(),
+        filename  = self.output_file_name)
+
+    print("Wrote file: %s" % self.output_file_name, file=self.logger)
+
+  def get_results(self):
+    return group_args(
+     output_file_name=self.output_file_name)
+
 
 # ------------------------------------------------------------------------------
 
-  def get_results(self):
-    return group_args(model = self.model)
+#  def get_results(self):
+#    return group_args(model = self.model)
+#  def get_results(self):
+#    # results object not returned because it contains maps
+#    return group_args(
+#      message     = self.message,
+#      output_file = self.output_file_name,
+#      model       = self.data_manager.get_default_model_name())
 
