@@ -1493,6 +1493,11 @@ class manager(object):
       self._ener_lib = mmtbx.monomer_library.server.ener_lib()
     return self._ener_lib
 
+  def get_states_collector(self):
+    return mmtbx.utils.states(
+      xray_structure = self.get_xray_structure(),
+      pdb_hierarchy  = self.get_hierarchy())
+
   def rotamer_outlier_selection(self):
     rm = self.get_rotamer_manager()
     result = flex.bool(self.size(), False)
