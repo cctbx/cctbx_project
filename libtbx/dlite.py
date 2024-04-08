@@ -29,7 +29,7 @@ def try_loading_db(file_name):
   db = None
   try:
     db = target_db(file_name)
-  except Sorry as s:
+  except (Sorry, ValueError) as s:
     if 'unsupported pickle protocol' in str(s):
       os.remove(file_name)
       db = target_db(file_name)
