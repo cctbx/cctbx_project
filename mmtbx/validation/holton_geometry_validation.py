@@ -434,10 +434,9 @@ def sort_geometry_results(info):
 
 def print_results(info):
 
-  print("SUMMARY of Holton geometry validation scoring for %s" %(info.filename),
-    file = info.log)
+  print("\nSUMMARY of Holton geometry validation scoring for %s" %(
+    info.filename), file = info.log)
   print(file = info.log)
-  print("Overall geometry energy: %.4f" %(info.sum_energy), file = info.log)
 
   info.result_table = {}
   info.result_header_row = [
@@ -496,6 +495,8 @@ def print_results(info):
   if info.ignore_bond_lengths_with_h:
     print("Total bonds with H removed: %s" %(
        info.ignore_bond_lengths_with_h_removed), file = info.log)
+  print("\nOverall geometry energy for %s: %.4f\n" %(info.filename,
+     info.sum_energy), file = info.log)
 
 def filter_geometry_results(info):
 
