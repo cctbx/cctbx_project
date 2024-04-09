@@ -41,10 +41,8 @@ struct packed_metrology{
   af::shared<double>Ybeam;
 };
 
-struct large_array_policy {
-};
-struct small_whitelist_policy {
-};
+struct large_array_policy {};
+struct small_whitelist_policy {};
 
 template <typename MemoryPolicy>
 struct kokkos_detector
@@ -63,7 +61,7 @@ struct kokkos_detector
   //void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
   //af::flex_double get_raw_pixels();
   //void set_active_pixels_on_GPU(af::shared<std::size_t>);
-  //af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
+  af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   inline void each_image_free(){} //no op in Kokkos
   int h_deviceID;
 
@@ -157,46 +155,7 @@ struct kokkos_detector
     return view_floatimage;
   };
 
-  inline void
-  each_image_allocate() {
-    resize(m_rangemap, m_total_pixel_count);
-    resize(m_omega_reduction, m_total_pixel_count);
-    resize(m_max_I_x_reduction, m_total_pixel_count);
-    resize(m_max_I_y_reduction, m_total_pixel_count);
-
-    resize(m_maskimage, m_total_pixel_count);
-    resize(m_floatimage, m_total_pixel_count);
-
-    kokkostbx::transfer_shared2kokkos(m_sdet_vector, metrology.sdet);
-    kokkostbx::transfer_shared2kokkos(m_fdet_vector, metrology.fdet);
-    kokkostbx::transfer_shared2kokkos(m_odet_vector, metrology.odet);
-    kokkostbx::transfer_shared2kokkos(m_pix0_vector, metrology.pix0);
-    kokkostbx::transfer_shared2kokkos(m_distance, metrology.dists);
-    kokkostbx::transfer_shared2kokkos(m_Xbeam, metrology.Xbeam);
-    kokkostbx::transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
-    fence();
-
-    // metrology.show();
-
-    // printf(" rangemap size:%d\n", m_rangemap.span());
-    // printf(" omega_reduction size:%d\n", m_omega_reduction.span());
-    // printf(" max_I_x_reduction size:%d\n", m_max_I_x_reduction.span());
-    // printf(" max_I_y_reduction size:%d\n", m_max_I_y_reduction.span());
-    // printf(" maskimage size:%d\n", m_maskimage.span());
-    // printf(" floatimage size:%d\n", m_floatimage.span());
-    // printf(" sdet_vector size:%d\n", m_sdet_vector.span());
-    // printf(" fdet_vector size:%d\n", m_fdet_vector.span());
-    // printf(" odet_vector size:%d\n", m_odet_vector.span());
-    // printf(" pix0_vector size:%d\n", m_pix0_vector.span());
-    // printf(" distance size:%d\n", m_distance.span());
-    // printf(" Xbeam size:%d\n", m_Xbeam.span());
-    // printf(" Ybeam size:%d\n", m_Ybeam.span());
-
-    // print_view(m_fdet_vector);
-    // print_view(m_odet_vector, 1, 3);
-
-    // printf("DONE.\n");
-  }
+  void each_image_allocate();
 
   inline void
   scale_in_place(const double& factor){
@@ -205,6 +164,8 @@ struct kokkos_detector
       local_accumulate_floatimage( i ) = local_accumulate_floatimage( i ) * factor;
     });
   }
+
+  void set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value);
 
   inline void
   write_raw_pixels(simtbx::nanoBragg::nanoBragg& nB) {
@@ -242,37 +203,8 @@ struct kokkos_detector
     return output_array;
   }
 
-  inline void
-  set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {
-    m_active_pixel_size = active_pixel_list_value.size();
-    kokkostbx::transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
-    active_pixel_list = active_pixel_list_value;
-  }
+  void hello();
 
-  inline af::shared<double>
-  get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
-    //return the data array for the multipanel detector case, but only for whitelist pixels
-    vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
-    kokkostbx::transfer_shared2kokkos(active_pixel_selection, selection);
-
-    size_t output_pixel_size = selection.size();
-    vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
-
-    auto temp = m_accumulate_floatimage;
-
-    parallel_for("get_active_pixel_selection",
-                  range_policy(0, output_pixel_size),
-                  KOKKOS_LAMBDA (const int i) {
-      size_t index = active_pixel_selection( i );
-      active_pixel_results( i ) = temp( index );
-    });
-
-    af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
-    kokkostbx::transfer_kokkos2shared(output_array, active_pixel_results);
-
-    SCITBX_ASSERT(output_array.size() == output_pixel_size);
-    return output_array;
-  }
 };
 
 
