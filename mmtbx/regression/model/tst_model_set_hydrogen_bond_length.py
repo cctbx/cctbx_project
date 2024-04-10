@@ -25,11 +25,13 @@ def get_dist(s1, s2):
 def tst_0():
   """
   Check going back and forth does not accumulate errors.
+  Also, confirm: the change cannot be undone.
   """
   pdb_inp = iotbx.pdb.input(lines=pdb_str1, source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
+  sites_cart_o = model.get_sites_cart()
   model.set_hydrogen_bond_length(
     use_neutron_distances=True, show=False, log=null_out)
   sites_cart_n = model.get_sites_cart()
@@ -50,6 +52,10 @@ def tst_0():
   sites_cart_x1 = model.get_sites_cart()
   dist_mean = flex.mean(get_dist(sites_cart_x, sites_cart_x1))
   assert approx_equal(dist_mean, 0)
+  # This is irreversible
+  for sites_cart in [sites_cart_n, sites_cart_n1, sites_cart_x, sites_cart_x1]:
+    dist_mean = flex.mean(get_dist(sites_cart, sites_cart_o))
+    assert dist_mean > 0.005
 
 #-------------------------------------------------------------------------------
 
