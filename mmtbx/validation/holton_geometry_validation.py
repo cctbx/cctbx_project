@@ -64,12 +64,13 @@ where proxPRO means a neighboring residue is proline
 def holton_geometry_validation(dm = None,
      filename = None,
      model = None,
-     get_individual_residue_scores = False,
+     get_individual_residue_scores = None,
      round_numbers = True,
      worst_clash_is_one_plus_n_times_worst_clash = True,
      clash_energy_add_n = True,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
+     keep_hydrogens = False,  # redo the hydrogens
      ignore_cis_peptides = True,
      ignore_h_except_in_nonbond = True,
      ignore_arg_h_nonbond = True,
@@ -279,21 +280,25 @@ def get_residue_scores(info):
   ''' run through all residues, select those results that involve each residue,
       recalculate overall score.
   '''
-  # For now, only one chain_id
   info.residue_scores = []
   if not info.get_individual_residue_scores:
     return # nothing to do
 
-  for chain_id in list(info.chain_dict.keys())[:1]:  # XXX ZZZ CHAIN ID
+  # For now, only one chain_id
+  assert len(list(info.chain_dict.keys())) == 1 # only one chain for residue_scores
+  base_info = get_base_info(info)
+
+  for chain_id in list(info.chain_dict.keys()):
     for resseq in info.chain_dict[chain_id].sequence_dict.keys():
-      working_info = select_residue_info(info, chain_id, resseq)
+      working_info = select_residue_info(info, base_info, chain_id, resseq)
       analyze_geometry_values(working_info)
       info.residue_scores.append(working_info.sum_energy)
       print("Residue score for %s: %.2f" %(resseq, working_info.sum_energy),
         file = info.log)
 
-def select_residue_info(info, chain_id, resseq):
-  from copy import deepcopy
+
+def get_base_info(info):
+  ''' just get everything except geometry'''
 
   log = info.log
   dm = info.dm
@@ -307,13 +312,18 @@ def select_residue_info(info, chain_id, resseq):
   info.chain_dict = {}
   info.model = None
 
-  new_info = deepcopy(info)
+  from copy import deepcopy
+  base_info = deepcopy(info)
 
   info.log = log
   info.dm = dm
   info.geometry_results = geometry_results
   info.chain_dict = chain_dict
   info.model = model
+  return base_info
+
+def select_residue_info(info, base_info, chain_id, resseq):
+  new_info = base_info # overwrite base_info each time
 
   keys = list(info.geometry_results.keys())
   for key in keys:
@@ -689,9 +699,9 @@ def get_geometry_results(info):
     geometry_results[key].name = name_dict[key]
 
 def get_model(info):
+  if not info.filename:
+    raise Sorry("Please supply a filename even if a model object is supplied")
   if not info.model:
-    if not info.filename:
-      raise Sorry("Please supply a filename")
     if not os.path.isfile(info.filename):
       raise Sorry("The filename %s is missing" %(info.filename))
   if not info.dm:
@@ -699,7 +709,12 @@ def get_model(info):
     info.dm = DataManager()
   if not info.model:
     info.model = info.dm.get_model(info.filename)
+  if not os.path.isfile(info.filename):  # write to it
+    info.dm.write_model_file(info.model, info.filename)
   info.model.set_log(null_out())
+  if (not info.keep_hydrogens):
+    info.model.add_crystal_symmetry_if_necessary()
+    info.model = info.model.apply_selection_string("not element H")
   info.model.process(make_restraints=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):

@@ -5960,7 +5960,7 @@ ATOM     48  CA  TYR A   9       9.159   2.144   7.299  1.00 15.18           C
   assert not pdb_hierarchy.contains_dna()
   assert pdb_hierarchy.as_sequence() == ['G', 'N', 'N', 'Q', 'Q', 'N', 'Y']
   assert pdb_hierarchy.as_sequence(as_string = True) == 'GNNQQNY'
-  dd = pdb_hierarchy.as_dict_of_resseq_as_int_residue_names()
+  dd = pdb_hierarchy.as_dict_of_chain_id_resseq_as_int_residue_names()
   keys = list(dd.keys())
   keys.sort()
   values = [dd[key] for key in keys]
