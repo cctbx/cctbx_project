@@ -1008,9 +1008,8 @@ class _():
 
 
   def as_dict_of_chain_id_resseq_residue_names(self):
-    max_models = 1
     dd =  {}
-    for m in self.models()[:max_models]:
+    for m in self.only_model():
       for c in m.chains():
         new_dd = c.as_dict_of_resseq_residue_names()
         dd[c.id] = new_dd
