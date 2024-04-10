@@ -151,28 +151,3 @@ def show(
   for line in print_list:
     print(line, file=log)
 
-def run(args):
-  if (len(args) == 0 or "--help" in args or "--h" in args or "-h" in args):
-    raise Usage(usage())
-  import iotbx.pdb
-  import iotbx.phil
-  master_phil = get_master_phil()
-  args = list(args)
-  input_objects = iotbx.phil.process_command_line_with_files(
-    args=args,
-    master_phil=master_phil,
-    pdb_file_def="analyze_peptides.pdb")
-  work_params = input_objects.work.extract()
-  if len(work_params.analyze_peptides.pdb) != 1:
-    raise Usage(usage())
-  file_name = work_params.analyze_peptides.pdb[0]
-  pdb_io = iotbx.pdb.input(file_name)
-  pdb_hierarchy = pdb_io.construct_hierarchy()
-  pdb_hierarchy.reset_i_seq_if_necessary()
-  cis_peptides, trans_peptides, outliers = \
-    analyze(pdb_hierarchy=pdb_hierarchy)
-  show(cis_peptides=cis_peptides,
-       trans_peptides=trans_peptides,
-       outliers=outliers,
-       cis_only=work_params.analyze_peptides.cis_only)
-

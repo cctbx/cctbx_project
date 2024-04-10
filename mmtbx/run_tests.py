@@ -209,7 +209,6 @@ general_tests = [
   "$D/conformation_dependent_library/tst_mcl_03.py",
   "$D/regression/tst_find_ss_structure.py",
   "$D/regression/tst_find_ss_structure_cif.py",
-  "$D/regression/tst_fix_rotamer_outliers.py",
   "$D/regression/tst_chain_comparison.py",
   "$D/regression/tst_chain_comparison_cif.py",
   "$D/regression/tst_regularize_from_pdb.py",
