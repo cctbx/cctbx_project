@@ -176,6 +176,9 @@ always_keep_one_conformer = False
   .help = Modifies behavior of remove_alt_confs so that residues with no \
     conformer labeled blank or A are not deleted.  Silent if remove_alt_confs \
     is False.
+keep_occupancy = False
+  .type = bool
+  .help = Do not reset occupancy to 1 after removing altlocs
 altloc_to_keep = None
   .type = str
   .help = Modifies behavior of remove_alt_confs so that the altloc identifier \

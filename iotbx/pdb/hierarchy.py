@@ -1963,7 +1963,8 @@ class _():
               altlocs_present.append(atom_group.altloc)
     return altlocs_present
 
-  def remove_alt_confs(self, always_keep_one_conformer, altloc_to_keep = None):
+  def remove_alt_confs(self, always_keep_one_conformer, altloc_to_keep = None,
+                             keep_occupancy = False):
     hierarchy = self
     for model in hierarchy.models():
       for chain in model.chains():
@@ -2017,9 +2018,10 @@ class _():
               residue_group.remove_atom_group(ags[i])
         if (len(chain.residue_groups()) == 0):
           model.remove_chain(chain=chain)
-    atoms = hierarchy.atoms()
-    new_occ = flex.double(atoms.size(), 1.0)
-    atoms.set_occ(new_occ)
+    if not keep_occupancy:
+      atoms = hierarchy.atoms()
+      new_occ = flex.double(atoms.size(), 1.0)
+      atoms.set_occ(new_occ)
 
   def rename_chain_id(self, old_id, new_id):
     for model in self.models():
