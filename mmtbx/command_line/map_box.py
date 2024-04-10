@@ -375,7 +375,8 @@ master_phil = libtbx.phil.parse("""
     .type = bool
     .help = Just before writing out the map, swap the order of all sections \
              in Z.  This will change the hand of the map. Note that this\
-             removes any correspondence to models (these are not inverted).
+             removes any correspondence to models (these are not inverted). \
+             If you use this, be sure to apply it to all your starting maps.\
     .short_caption = Invert hand of map
 
   gui
