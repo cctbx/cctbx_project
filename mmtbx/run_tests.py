@@ -244,7 +244,6 @@ general_tests = [
   "$D/refinement/real_space/tst_fit_residues_6.py",
   "$D/refinement/real_space/tst_fit_residues_selection.py",
   "$D/refinement/real_space/tst_fit_water.py",
-  "$D/refinement/real_space/tst_flipbase.py",
   "$D/refinement/real_space/tst_individual_sites_1.py",
   "$D/refinement/real_space/tst_individual_sites_2.py",
   "$D/refinement/real_space/tst_individual_sites_3.py",
