@@ -1009,10 +1009,10 @@ class _():
 
   def as_dict_of_chain_id_resseq_residue_names(self):
     dd =  {}
-    for m in self.only_model():
-      for c in m.chains():
-        new_dd = c.as_dict_of_resseq_residue_names()
-        dd[c.id] = new_dd
+    m = self.only_model()
+    for c in m.chains():
+      new_dd = c.as_dict_of_resseq_residue_names()
+      dd[c.id] = new_dd
     return dd
 
   def as_dict_of_chain_id_resseq_as_int_residue_names(self):
