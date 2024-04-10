@@ -6,9 +6,9 @@
 # macos-14 will test the Apple Silicon packages
 
 name: Nightly conda package tests
-on:
-  schedule:
-    - cron: '0 5 * * *'
+on: workflow_dispatch
+  # schedule:
+  #   - cron: '0 5 * * *'
 
 jobs:
   test_conda_packages:
