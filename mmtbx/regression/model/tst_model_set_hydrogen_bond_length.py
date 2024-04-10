@@ -4,8 +4,7 @@ import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
-
-
+from scitbx.array_family import flex
 
 def compare_XH_bond_length_to_ideal(model):
   geometry = model.get_restraints_manager().geometry
@@ -20,6 +19,37 @@ def compare_XH_bond_length_to_ideal(model):
       assert approx_equal(atoms[i].distance(atoms[j]),
                           bp.distance_ideal,
                           eps=0.001)
+def get_dist(s1, s2):
+  return flex.sqrt((s1 - s2).dot())
+
+def tst_0():
+  """
+  Check going back and forth does not accumulate errors.
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str1, source_info=None)
+  model = mmtbx.model.manager(
+    model_input = pdb_inp,
+    log         = null_out())
+  model.set_hydrogen_bond_length(
+    use_neutron_distances=True, show=False, log=null_out)
+  sites_cart_n = model.get_sites_cart()
+  model.set_hydrogen_bond_length(
+    use_neutron_distances=False, show=False, log=null_out)
+  sites_cart_x = model.get_sites_cart()
+  dist_mean = flex.mean(get_dist(sites_cart_n, sites_cart_x))
+  assert dist_mean > 0.07
+  #
+  model.set_hydrogen_bond_length(
+    use_neutron_distances=True, show=False, log=null_out)
+  sites_cart_n1 = model.get_sites_cart()
+  dist_mean = flex.mean(get_dist(sites_cart_n, sites_cart_n1))
+  assert approx_equal(dist_mean, 0)
+  #
+  model.set_hydrogen_bond_length(
+    use_neutron_distances=False, show=False, log=null_out)
+  sites_cart_x1 = model.get_sites_cart()
+  dist_mean = flex.mean(get_dist(sites_cart_x, sites_cart_x1))
+  assert approx_equal(dist_mean, 0)
 
 #-------------------------------------------------------------------------------
 
@@ -358,6 +388,7 @@ _chem_comp_plane_atom.dist_esd
 
 if (__name__ == "__main__"):
   t0 = time.time()
+  tst_0()
   tst_1()
   tst_2()
   tst_3()
