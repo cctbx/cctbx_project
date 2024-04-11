@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import sys
 import mmtbx.rotamer
-from libtbx.utils import Sorry, Usage
+from libtbx.utils import Sorry
 
 def get_master_phil():
   import libtbx.phil
@@ -150,4 +150,3 @@ def show(
   print("residue1:residue2:classification", file=log)
   for line in print_list:
     print(line, file=log)
-
