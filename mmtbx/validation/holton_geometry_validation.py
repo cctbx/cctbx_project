@@ -89,6 +89,7 @@ def holton_geometry_validation(dm = None,
        a0 = 1.12482,
        mx = 0.21805,
        my = 0.736621),
+     verbose = False,
      log = sys.stdout,
     ):
 
@@ -293,8 +294,9 @@ def get_residue_scores(info):
       working_info = select_residue_info(info, base_info, chain_id, resseq)
       analyze_geometry_values(working_info)
       info.residue_scores.append(working_info.sum_energy)
-      print("Residue score for %s: %.2f" %(resseq, working_info.sum_energy),
-        file = info.log)
+      if info.verbose:
+        print("Residue score for %s: %.2f" %(resseq, working_info.sum_energy),
+          file = info.log)
 
 
 def get_base_info(info):
