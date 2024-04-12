@@ -2,6 +2,14 @@ from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 import os.path
 import iotbx.pdb.hierarchy
+from mmtbx.command_line import extend_sidechains
+from mmtbx.regression import model_1yjp
+from iotbx.data_manager import DataManager
+from libtbx.utils import null_out
+import mmtbx.model
+from mmtbx.building.extend_sidechains import master_params
+import iotbx.pdb
+from mmtbx.validation import rotalyze
 
 from six.moves import zip
 
@@ -36,48 +44,99 @@ TER
 """)
 
 def exercise_cmdline():
-  from mmtbx.command_line import extend_sidechains
-  from mmtbx.regression import model_1yjp
-  pdb_file = "tst_extend_sidechains.pdb"
-  mtz_file = "tst_extend_sidechains.mtz"
+  #
+  params = iotbx.phil.parse(input_string = master_params).extract()
+  #
   pdb_in = iotbx.pdb.input(source_info=None, lines=model_1yjp)
-  xrs = pdb_in.xray_structure_simple()
-  h_in = pdb_in.construct_hierarchy()
+  m1 = mmtbx.model.manager(model_input = pdb_in, log = null_out())
+  h_in = m1.get_hierarchy()
+  #
+  mtz_file = "tst_extend_sidechains.mtz"
+  xrs = m1.get_xray_structure()
   f_calc = abs(xrs.structure_factors(d_min=1.5).f_calc())
-  sel = h_in.atom_selection_cache().selection(
-    "not (resname TYR and not (name c or name o or name n or name oxt or name ca or name cb))")
-  hierarchy = h_in.select(sel)
-  f = open(pdb_file, "w")
-  f.write(hierarchy.as_pdb_string(crystal_symmetry=xrs))
-  f.close()
   flags = f_calc.generate_r_free_flags(fraction=0.1)
   mtz = f_calc.as_mtz_dataset(column_root_label="F")
   mtz.add_miller_array(flags, column_root_label="FreeR_flag")
   mtz.mtz_object().write(mtz_file)
+  sel_str = "not (resname TYR and not (name c or name o or name n or name oxt or name ca or name cb))"
+  sel = m1.selection(sel_str)
+  h_trimmed = h_in.select(sel)
+
+  pdb_file = "tst_extend_sidechains.pdb"
+  h_trimmed.write_pdb_file(pdb_file)
+
   pdb_out = "tst_extend_sidechains_out.pdb"
-  if os.path.isfile(pdb_out):
-    os.remove(pdb_out)
-  out = StringIO()
-  extend_sidechains.run(
-    args=[pdb_file, mtz_file, "output_model=%s" % pdb_out],
-    out=out)
-  assert ("1 sidechains extended." in out.getvalue()), out.getvalue()
-  from mmtbx.validation import rotalyze
+  prefix=os.path.splitext(os.path.basename(pdb_out))[0]
+
+  dm = DataManager()
+  m3 = dm.get_model(pdb_file)
+  ma = dm.get_miller_arrays(filename = mtz_file)
+  fmo3 = dm.get_fmodel(scattering_table="n_gaussian")
+  out1 = StringIO()
+  mmtbx.building.extend_sidechains.extend_and_refine(
+    pdb_hierarchy=m3.get_hierarchy(),
+    xray_structure=m3.get_xray_structure(),
+    fmodel=fmo3,
+    params=params,
+    prefix=prefix,
+    out=out1,
+    output_model=pdb_out)
+
+  assert ("1 sidechains extended." in out1.getvalue()), out1.getvalue()
+
   pdb_new = iotbx.pdb.input(file_name=pdb_out)
   h_new = pdb_new.construct_hierarchy()
   r1 = rotalyze.rotalyze(pdb_hierarchy=h_in, outliers_only=False)
   r2 = rotalyze.rotalyze(pdb_hierarchy=h_new, outliers_only=False)
   for o1, o2 in zip(r1.results, r2.results):
     assert o1.rotamer_name == o2.rotamer_name
+  # Cleanup
+  if os.path.isfile(pdb_out): os.remove(pdb_out)
+  if os.path.isfile(pdb_file): os.remove(pdb_file)
+  if os.path.isfile(prefix+'_maps.mtz'): os.remove(prefix+'_maps.mtz')
+  #
   # Part 2: with sequence corrections
-  seq_file = "tst_extend_sidechains.fa"
-  with open(seq_file, "w") as f:
-    f.write(">1yjp_new\nGNDQQNY")
+  #
+  out2 = StringIO()
+  #seq_file = "tst_extend_sidechains.fa"
+  #with open(seq_file, "w") as f:
+  #  f.write(">1yjp_new\nGNDQQNY")
+
+  sequences = [iotbx.bioinformatics.sequence("GNDQQNY")]
+  h_in_mod = h_trimmed.deep_copy()
+  n_changed = mmtbx.building.extend_sidechains.correct_sequence(
+    pdb_hierarchy=h_in_mod,
+    sequences=sequences,
+    out=out2)
+  #print(h_in.as_sequence())
+  #print(h_in_mod.as_sequence())
+
+  pdb_file = "tst_extend_sidechains_2.pdb"
+  h_in_mod.write_pdb_file(pdb_file)
+
+  dm = DataManager()
+  m4 = dm.get_model(pdb_file)
+  ma = dm.get_miller_arrays(filename = mtz_file)
+  fmo4 = dm.get_fmodel(scattering_table="n_gaussian")
+
   pdb_out = "tst_extend_sidechains_out2.pdb"
-  extend_sidechains.run(
-    args=[pdb_file, mtz_file, seq_file, "output_model=%s" % pdb_out],
-    out=out)
-  assert ("1 sidechains extended." in out.getvalue())
+  prefix=os.path.splitext(os.path.basename(pdb_out))[0]
+
+  mmtbx.building.extend_sidechains.extend_and_refine(
+    pdb_hierarchy=m4.get_hierarchy(),
+    xray_structure=m4.get_xray_structure(),
+    fmodel=fmo4,
+    params=params,
+    prefix=prefix,
+    out=out2,
+    output_model=pdb_out)
+
+  assert ("2 sidechains extended." in out2.getvalue()), out2.getvalue()
+  # Cleanup
+  if os.path.isfile(pdb_out): os.remove(pdb_out)
+  if os.path.isfile(pdb_file): os.remove(pdb_file)
+  if os.path.isfile(prefix+'_map.mtz'): os.remove(prefix+'_map.mtz')
+  if os.path.isfile(mtz_file): os.remove(mtz_file)
 
 def exercise_correct_sequence():
   from mmtbx.building import extend_sidechains
