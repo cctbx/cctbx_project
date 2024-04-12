@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 import os.path
 import iotbx.pdb.hierarchy
-from mmtbx.command_line import extend_sidechains
 from mmtbx.regression import model_1yjp
 from iotbx.data_manager import DataManager
 from libtbx.utils import null_out
