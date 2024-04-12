@@ -134,7 +134,7 @@ def exercise_cmdline():
   # Cleanup
   if os.path.isfile(pdb_out): os.remove(pdb_out)
   if os.path.isfile(pdb_file): os.remove(pdb_file)
-  if os.path.isfile(prefix+'_map.mtz'): os.remove(prefix+'_map.mtz')
+  if os.path.isfile(prefix+'_maps.mtz'): os.remove(prefix+'_maps.mtz')
   if os.path.isfile(mtz_file): os.remove(mtz_file)
 
 def exercise_correct_sequence():
