@@ -1006,22 +1006,12 @@ class _():
           shift_cart = shift_cart)
     return mm
 
-
-  def as_dict_of_chain_id_resseq_residue_names(self):
+  def as_dict_of_chain_id_resseq_as_int_residue_names(self):
     dd =  {}
     m = self.only_model()
     for c in m.chains():
-      new_dd = c.as_dict_of_resseq_residue_names()
+      new_dd = c.as_dict_of_resseq_as_int_residue_names()
       dd[c.id] = new_dd
-    return dd
-
-  def as_dict_of_chain_id_resseq_as_int_residue_names(self):
-    max_models = 1
-    dd =  {}
-    for m in self.models()[:max_models]:
-      for c in m.chains():
-        new_dd = c.as_dict_of_resseq_as_int_residue_names()
-        dd[c.id] = new_dd
     return dd
 
   def as_sequence(self,
@@ -2529,6 +2519,13 @@ class _():
     return last_resno
 
 
+  def has_icodes(self):
+    for m in self.models():
+      for chain in m.chains():
+        for rg in chain.residue_groups():
+          if rg.icode and rg.icode != ' ':
+            return True
+
   def chain_ids(self, unique_only = False):
     ''' Get list of chain IDS, return unique set if unique_only=True'''
     chain_ids=[]
@@ -2856,11 +2853,15 @@ class _():
         break
     return sequence
 
-  def as_dict_of_resseq_residue_names(self):
+  def as_dict_of_resseq_residue_names(self, strip_resseq = True):
     dd = {}
     for rg in self.residue_groups():
       for atom_group in rg.atom_groups():
-        dd[rg.resseq] = atom_group.resname
+        if strip_resseq:
+          resseq = rg.resseq.strip()
+        else:
+          resseq = rg.resseq
+        dd[resseq] = atom_group.resname
         break
     return dd
 

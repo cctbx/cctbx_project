@@ -286,7 +286,6 @@ def get_residue_scores(info):
     return # nothing to do
 
   # For now, only one chain_id
-  assert len(list(info.chain_dict.keys())) == 1 # only one chain for residue_scores
   base_info = get_base_info(info)
 
   for chain_id in list(info.chain_dict.keys()):
@@ -767,8 +766,8 @@ class atom_label:
   def as_string(self):
     ''' Print a longer string that has all fields separated '''
     atom = self.atom
-    return "%3s %s %3s %2s %4s" %(atom.name,atom.altloc,atom.resname,
-       atom.chain_id,atom.resseq)
+    return "%3s %s %3s %2s %4s%s" %(atom.name,atom.altloc,atom.resname,
+       atom.chain_id,atom.resseq,atom.icode)
 
   def __repr__(self):
     #  pdb=" CG1AVAL A   1 "  Mimics model.get_site_labels()
@@ -783,6 +782,8 @@ class atom_label:
     return self.atom.resseq
   def chain_id(self):
     return self.atom.chain_id
+  def icode(self):
+    return self.atom.icode
 
 def energy(delta, sigma, round_numbers = None):
   if round_numbers:
