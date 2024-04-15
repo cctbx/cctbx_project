@@ -77,7 +77,7 @@ Usage example:
       inp_models.append((model_name, self.data_manager.get_model(model_name)))
     theta1_data = []
     Rha_data = []
-    if save_sk_coordinates:
+    if self.params.output_sk_coordinates:
       file_names = []
     for m_name, model in inp_models:
       model.set_log(log = null_out())
@@ -113,7 +113,7 @@ Usage example:
       if stats.all.get_counts(min_data_size=min_data_size):
         theta1_data.append(stats.all.get_counts(min_data_size=min_data_size).theta_1)
         Rha_data.append(   stats.all.get_counts(min_data_size=min_data_size).d_HA)
-        if save_sk_coordinates:
+        if self.params.output_sk_coordinates:
           file_names.append(m_name)
 
     if self.params.output_skew_kurtosis_plot and len(theta1_data) > 0 and len(Rha_data) > 0:
