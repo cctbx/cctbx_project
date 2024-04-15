@@ -4,7 +4,25 @@ import os
 from libtbx.utils import null_out
 from libtbx import group_args
 import iotbx.pdb
+from libtbx import Auto
+import iotbx.phil
 from six.moves import cStringIO as StringIO
+import mmtbx.ions.identify
+from iotbx.data_manager import DataManager
+
+water_screen_master_phil = '''
+include scope mmtbx.ions.identify.ion_master_phil
+include scope mmtbx.ions.svm.svm_phil_str
+debug = True
+  .type = bool
+elements = Auto
+  .type = str
+use_svm = False
+  .type = bool
+nproc = Auto
+  .type = int
+'''
+
 
 def exercise():
   from mmtbx.regression import make_fake_anomalous_data
@@ -124,23 +142,49 @@ TER
       selection="element CA",
       fp=0.0,
       fdp=0.4)])
-  args = [
-    file_base + "_in.pdb",
-    file_base + ".mtz",
-    "wavelength=0.9792",
-    "use_phaser=False",
-    "nproc=1",
-    "skip_twin_test=True",
-    "elements=CA",
-  ]
+
+  dm = DataManager()
+  m = dm.get_model(file_base + "_in.pdb")
+  ma = dm.get_miller_arrays(filename = file_base + ".mtz")
+  fmo = dm.get_fmodel(scattering_table="n_gaussian")
+  params = iotbx.phil.parse(input_string = water_screen_master_phil,
+    process_includes=True).extract()
+  params.use_phaser=False
+  #params.skip_twin_test=True
+  params.elements='CA'
   out = StringIO()
-  mmtbx.command_line.water_screen.run(args=args, out=out)
+  results = get_analyze_waters_result(m,fmo,params,out)
   assert "Valence sum:  1.916" in out.getvalue()
   assert out.getvalue().count("Probable cation: CA+2") >= 1
   os.remove(file_base + ".pdb")
   os.remove(file_base + "_in.pdb")
   os.remove(file_base + ".mtz")
   os.remove(file_base + "_fmodel.eff")
+
+
+def get_analyze_waters_result(m,fmo,params,out):
+  m.process(make_restraints=True)
+  grm = m.get_restraints_manager()
+  manager = mmtbx.ions.identify.create_manager(
+    pdb_hierarchy = m.get_hierarchy(),
+    fmodel = fmo,
+    geometry_restraints_manager = grm.geometry,
+    wavelength = 0.9792,
+    params = params,
+    log = out,
+    manager_class = None)
+  candidates = Auto
+  from cctbx.eltbx import chemical_elements
+  lu = chemical_elements.proper_upper_list()
+  elements = params.elements.replace(",", " ")
+  candidates = elements.split()
+  for elem in candidates :
+    if (elem.upper() not in lu):
+      raise Sorry("Unrecognized element '%s'" % elem)
+  results = manager.analyze_waters(
+    out = out,
+    candidates = candidates)
+  return results
 
 if (__name__ == "__main__"):
   exercise()
