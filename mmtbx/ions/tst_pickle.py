@@ -1,60 +1,53 @@
- # -*- coding: utf-8; py-indent-offset: 2 -*-
-
 from __future__ import absolute_import, division, print_function
-
 import os
 from pickle import loads, dumps
 from types import MethodType
-
 import libtbx
-from mmtbx.command_line.water_screen import master_phil
-import mmtbx.command_line
 from mmtbx import ions
 from mmtbx.ions import environment
 from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
 import mmtbx.utils
+import iotbx.phil
+from iotbx.data_manager import DataManager
 
 def exercise():
   wavelength = 1.025
   mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
   null_out = libtbx.utils.null_out()
 
-  cmdline = mmtbx.command_line.load_model_and_data(
-    args = [pdb_file, mtz_file, "wavelength={}".format(wavelength),
-            "use_phaser=False"],
-    master_phil = master_phil(),
-    out = null_out,
-    process_pdb_file = True,
-    create_fmodel = True,
-    prefer_anomalous = True
-    )
+  dm = DataManager()
+  m = dm.get_model(pdb_file)
+  xrs = m.get_xray_structure()
+  dm.process_miller_array_file(mtz_file)
+  fmo = dm.get_fmodel(scattering_table="n_gaussian")
 
   os.remove(pdb_file)
   os.remove(mtz_file)
 
-  cmdline.xray_structure.set_inelastic_form_factors(
-    photon = cmdline.params.input.wavelength,
-    table = "sasaki"
-    )
+  xrs.set_inelastic_form_factors(photon = wavelength, table = "sasaki")
 
-  cmdline.fmodel.update_xray_structure(
-    cmdline.xray_structure,
-    update_f_calc = True
-    )
+
+  fmo.update_xray_structure(xrs, update_f_calc = True)
+  m.process(make_restraints=True)
+
+  phil_str = '''
+include scope mmtbx.ions.identify.ion_master_phil
+include scope mmtbx.ions.svm.svm_phil_str
+'''
+  params = iotbx.phil.parse(input_string = phil_str,
+    process_includes=True).extract()
 
   manager = ions.identify.create_manager(
-    pdb_hierarchy = cmdline.pdb_hierarchy,
-    fmodel = cmdline.fmodel,
-    geometry_restraints_manager = cmdline.geometry,
-    wavelength = cmdline.params.input.wavelength,
-    params = cmdline.params,
-    nproc = cmdline.params.nproc,
+    pdb_hierarchy = m.get_hierarchy(),
+    fmodel = fmo,
+    geometry_restraints_manager = m.get_restraints_manager().geometry,
+    wavelength = wavelength,
+    params = params,
+    nproc = 1,
     log = null_out
     )
 
-  manager.validate_ions(
-    out = null_out
-    )
+  manager.validate_ions(out = null_out)
 
   fo_map = manager.get_map("mFo")
   fofc_map = manager.get_map("mFo-DFc")
