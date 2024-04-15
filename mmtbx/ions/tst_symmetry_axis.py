@@ -26,7 +26,6 @@ nproc = Auto
 
 def exercise():
   from mmtbx.regression import make_fake_anomalous_data
-  import mmtbx.command_line.water_screen
   import mmtbx.ions.utils
   pdb_in = """\
 CRYST1   51.491   51.491   35.389  90.00  90.00 120.00 P 31 2 1
