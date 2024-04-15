@@ -34,6 +34,8 @@ Usage example:
   do_y_log = False
     .type = bool
     .style = hidden
+  output_sk_coordinates = False
+    .type = bool
   plot_parameters_override
     .help = These parameters will override preset values in plots. The values \
       will be passed directly to matplotlib functions, so should be valid \
@@ -67,7 +69,7 @@ Usage example:
     self.data_manager.has_models(raise_sorry=True)
 
   # ---------------------------------------------------------------------------
-  def run(self, save_sk_coordinates=False):
+  def run(self):
     print('Using model: %s' % self.data_manager.get_default_model_name(),
       file=self.logger)
     inp_models = []
@@ -130,14 +132,14 @@ Usage example:
           if param_value != None:
             op[param_name] = param_value
 
-      if save_sk_coordinates:
+      if self.params.output_sk_coordinates:
         from libtbx import group_args
         from libtbx import easy_pickle
         o = group_args(
           file_names    = file_names,
           theta1_coords = theta1_c,
           Rha_coords    = Rha_c)
-        easy_pickle.dump(file_name="coords.pkl", obj = o)
+        easy_pickle.dump(file_name="%s_coords.pkl"%prefix, obj = o)
 
       mmtbx.nci.skew_kurt_plot.make_figure(
           file_name=fn,
