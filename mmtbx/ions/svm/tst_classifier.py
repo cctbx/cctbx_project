@@ -1,7 +1,7 @@
  # -*- coding: utf-8; py-indent-offset: 2 -*-
 
 from __future__ import absolute_import, division, print_function
-from mmtbx.command_line.water_screen import master_phil
+from mmtbx.ions.svm.dump_sites import master_phil
 from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx import ions
 from mmtbx.ions.identify import WATER_RES_NAMES, AtomProperties
@@ -114,7 +114,7 @@ if __name__ == "__main__":
       warnings.warn("libsvm not available, skipping this test")
     else :
       print("WARNING: TEST TOO SLOW. MAKE IT RUN UNDER 300s AND ENABLE BACK.")
-      if 0: #XXX FIXME disabled
+      if 1: #XXX FIXME disabled
         t0 = time.time()
         exercise()
         print("Time: %6.2f"%(time.time()-t0))

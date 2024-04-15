@@ -26,7 +26,6 @@ def exercise():
 
   xrs.set_inelastic_form_factors(photon = wavelength, table = "sasaki")
 
-
   fmo.update_xray_structure(xrs, update_f_calc = True)
   m.process(make_restraints=True)
 
