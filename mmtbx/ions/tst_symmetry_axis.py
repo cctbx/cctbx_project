@@ -1,27 +1,13 @@
 
 from __future__ import absolute_import, division, print_function
 import os
-from libtbx.utils import null_out
-from libtbx import group_args
-import iotbx.pdb
-from libtbx import Auto
-import iotbx.phil
 from six.moves import cStringIO as StringIO
+from libtbx.utils import null_out
+from libtbx import group_args, Auto
+import iotbx.pdb
 import mmtbx.ions.identify
+from mmtbx.ions.svm.dump_sites import master_phil
 from iotbx.data_manager import DataManager
-
-water_screen_master_phil = '''
-include scope mmtbx.ions.identify.ion_master_phil
-include scope mmtbx.ions.svm.svm_phil_str
-debug = True
-  .type = bool
-elements = Auto
-  .type = str
-use_svm = False
-  .type = bool
-nproc = Auto
-  .type = int
-'''
 
 
 def exercise():
@@ -144,13 +130,13 @@ TER
 
   dm = DataManager()
   m = dm.get_model(file_base + "_in.pdb")
-  ma = dm.get_miller_arrays(filename = file_base + ".mtz")
+  dm.process_miller_array_file(mtz_file)
   fmo = dm.get_fmodel(scattering_table="n_gaussian")
-  params = iotbx.phil.parse(input_string = water_screen_master_phil,
-    process_includes=True).extract()
+  params = master_phil().extract()
   params.use_phaser=False
   #params.skip_twin_test=True
   params.elements='CA'
+  params.input.wavelength = 0.9792
   out = StringIO()
   results = get_analyze_waters_result(m,fmo,params,out)
   assert "Valence sum:  1.916" in out.getvalue()
@@ -161,28 +147,32 @@ TER
   os.remove(file_base + "_fmodel.eff")
 
 
-def get_analyze_waters_result(m,fmo,params,out):
+def get_analyze_waters_result(m,fmo,params,out,manager_class = None):
   m.process(make_restraints=True)
   grm = m.get_restraints_manager()
   manager = mmtbx.ions.identify.create_manager(
     pdb_hierarchy = m.get_hierarchy(),
     fmodel = fmo,
     geometry_restraints_manager = grm.geometry,
-    wavelength = 0.9792,
+    wavelength = params.input.wavelength,
     params = params,
+    nproc = params.nproc,
     log = out,
-    manager_class = None)
+    manager_class = manager_class)
   candidates = Auto
-  from cctbx.eltbx import chemical_elements
-  lu = chemical_elements.proper_upper_list()
-  elements = params.elements.replace(",", " ")
-  candidates = elements.split()
-  for elem in candidates :
-    if (elem.upper() not in lu):
-      raise Sorry("Unrecognized element '%s'" % elem)
+  if (params.elements is not Auto) and (params.elements is not None):
+    from cctbx.eltbx import chemical_elements
+    lu = chemical_elements.proper_upper_list()
+    elements = params.elements.replace(",", " ")
+    candidates = elements.split()
+    for elem in candidates :
+      if (elem.upper() not in lu):
+        raise Sorry("Unrecognized element '%s'" % elem)
+
   results = manager.analyze_waters(
     out = out,
     candidates = candidates)
+
   return results
 
 if (__name__ == "__main__"):

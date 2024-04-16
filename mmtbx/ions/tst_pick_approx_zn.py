@@ -1,24 +1,38 @@
 
 from __future__ import absolute_import, division, print_function
-import os
-from libtbx import easy_run
-import time
+import os, time
+from six.moves import cStringIO as StringIO
+from mmtbx.ions.svm.dump_sites import master_phil
+from mmtbx.ions.tst_symmetry_axis import get_analyze_waters_result
+from iotbx.data_manager import DataManager
 
 def exercise():
   from mmtbx.regression.make_fake_anomalous_data import generate_zinc_inputs
   base = "tst_pick_approx_zn"
   mtz_file, pdb_file = generate_zinc_inputs(file_base=base, anonymize = True)
   time.sleep(2)
-  args = ["\"%s\"" % pdb_file, "\"%s\"" % mtz_file, "wavelength=1.54",
-          "nproc=1", "elements=CA,ZN", "use_phaser=False"]
-  result = easy_run.fully_buffered("mmtbx.water_screen %s" % " ".join(args)
-    ).raise_if_errors()
+
+  dm = DataManager()
+  m = dm.get_model(pdb_file)
+  dm.process_miller_array_file(mtz_file)
+  fmo = dm.get_fmodel(scattering_table="n_gaussian")
+  xrs = m.get_xray_structure()
+  xrs.set_inelastic_form_factors(photon = 1.54, table = "sasaki")
+  fmo.update_xray_structure(xrs, update_f_calc = True)
+  params = master_phil().extract()
+  params.input.wavelength = 1.54
+  params.use_phaser=False
+  params.elements='CA,ZN'
+  params.nproc=1
+  out = StringIO()
+  result = get_analyze_waters_result(m,fmo,params,out)
+
   n_zn = 0
-  for line in result.stdout_lines:
+  for line in out.getvalue().splitlines():
     if "Probable cation: ZN+2" in line:
       n_zn += 1
   if n_zn != 1:
-    print("\n".join(result.stdout_lines))
+    print(out.getvalue().splitlines())
     raise RuntimeError("Expected 1 ZN+2, found %d" % n_zn)
   os.remove(pdb_file)
   os.remove(mtz_file)

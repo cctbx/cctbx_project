@@ -15,7 +15,7 @@ def exercise():
   m = dm.get_model(pdb_file)
   m.process(make_restraints=True)
   grm = m.get_restraints_manager()
-  ma = dm.get_miller_arrays(filename = mtz_file)
+  dm.process_miller_array_file(mtz_file)
   fmo = dm.get_fmodel(scattering_table="n_gaussian")
   from mmtbx.ions.identify import ion_identification_phil_str
   params = iotbx.phil.parse(input_string = ion_identification_phil_str).extract()

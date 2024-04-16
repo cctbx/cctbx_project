@@ -20,7 +20,6 @@ from mmtbx.ions.environment import ChemicalEnvironment, ScatteringEnvironment
 from mmtbx.ions.identify import WATER_RES_NAMES
 from mmtbx.ions.svm.utils import iterate_sites
 from mmtbx.command_line import load_model_and_data
-#from mmtbx.command_line.water_screen import master_phil
 
 def master_phil():
   from mmtbx.command_line import generate_master_phil_with_inputs
