@@ -1,13 +1,11 @@
 
-# TODO tests
-
 from __future__ import absolute_import, division, print_function
+import sys
 from iotbx import crystal_symmetry_from_any
 import iotbx.bioinformatics
-import iotbx.phil
 from cctbx import crystal
 from libtbx.utils import Sorry
-import sys
+import iotbx.phil
 
 master_phil_str = """
 data = None
@@ -31,6 +29,8 @@ n_bases = None
 """
 
 def run(args, out=sys.stdout):
+  import iotbx.phil
+  # this crashes without the import being on the previous line. why?
   cmdline = iotbx.phil.process_command_line_with_files(
     args=args,
     master_phil_string=master_phil_str,
@@ -91,12 +91,13 @@ crystallized molecule(s).
         params.n_bases += chain.residue_groups_size()
   print("Space group: %s" % params.space_group, file=out)
   print("Unit cell: %s" % params.unit_cell, file=out)
-  if (params.n_residues > 0):
+  if (params.n_residues is not None):
     print("Number of residues: %d" % params.n_residues, file=out)
-  if (params.n_bases > 0):
+  if (params.n_bases is not None):
     print("Number of bases: %d" % params.n_bases, file=out)
+
   symm = crystal.symmetry(
-    space_group_info=params.space_group,
+    space_group_info=params.space_group.info(),
     unit_cell=params.unit_cell)
   from mmtbx.scaling import matthews
   result = matthews.matthews_rupp(
