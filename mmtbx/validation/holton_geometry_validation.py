@@ -167,7 +167,7 @@ def add_clashscore_results(info):
 
     v = group_args(group_args_type = 'clashscore result as standard value ',
       clashscore_result = r, # contains all results
-      as_string = "CLASH %.4f %.3f | %s - %s " %(
+      as_string = "CLASH: Energy = %.4f dev = %.3f \n   Atom 1:   %s \n   Atom 2:   %s " %(
         tuple([energy, delta] + [l.as_string() for l in labels])),
       resseq = None,
       delta = delta,
@@ -202,8 +202,8 @@ def add_rotamer_results(info):
       energy = min(energy, info.rotalyze_max_energy)
     v = group_args(group_args_type = 'rotamer result as standard value ',
       rotamer_result = r, # contains resseq, resseq_as_int, resname, chain_id
-      as_string = "ROTA %.4f %s | %.2f %s %s %s %s" %(
-        energy, r.resseq, r.score, r.altloc, r.resname, r.chain_id, r.resseq),
+      as_string = "ROTA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
+        energy, r.altloc, r.resname, r.chain_id, r.resseq),
       resseq= r.resseq,
       delta = None,
       residual = energy,
@@ -230,8 +230,8 @@ def add_rama_results(info):
     energy = energy_from_probability(prob)
     v = group_args(group_args_type = 'rama result as standard value ',
       rama_result = r, # contains resseq, resseq_as_int, resname, chain_id
-      as_string = "RAMA %.4f %s | %.2f %s %s %s %s" %(
-        energy, r.resseq, r.score, r.altloc, r.resname, r.chain_id, r.resseq),
+      as_string = "RAMA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
+        energy, r.altloc, r.resname, r.chain_id, r.resseq),
       resseq= r.resseq,
       delta = None,
       residual = energy,
@@ -258,8 +258,9 @@ def add_cbetadev_results(info):
     energy = (delta/info.cbetadev_sigma)**2
     v = group_args(group_args_type = 'cbetadev result as standard value ',
       cbetadev_result = r, # contains resseq, resseq_as_int, resname, chain_id
-      as_string = "CBETADEV %.4f %s | %s %s %s %s" %(
-        energy, r.resseq, r.altloc, r.resname, r.chain_id, r.resseq),
+      as_string =
+        "CBETADEV: Energy = %.4f dev = %.3f A \n   Residue: %s %s %s %s" %(
+        energy, r.deviation, r.altloc, r.resname, r.chain_id, r.resseq),
       resseq= r.resseq,
       delta = r.deviation,
       residual = energy,
@@ -452,7 +453,7 @@ def print_results(info):
   info.result_table = {}
   info.result_header_row = [
        'Category','N','Mean','Worst','Chisq','Pnna','Energy','Using mean']
-  fmt = len(info.result_header_row) * " %8s "
+  fmt = len(info.result_header_row) * "%8s "
   print(file = info.log)
   print(fmt  %(tuple(info.result_header_row)), file = info.log)
   print(file = info.log)
@@ -481,7 +482,7 @@ def print_results(info):
          file = info.log)
 
   info.worst_table = {}
-  info.worst_header_row = ['Worst in each category']
+  info.worst_header_row = ['   -----  Worst deviation in each category -----']
   fmt = "%s"
   print(file = info.log)
   print(fmt %(tuple(info.worst_header_row)), file = info.log)
@@ -589,9 +590,11 @@ def add_omega_results(info):
       sigma = float("%.3f" %(sigma))
     new_v.residual=((math.sin(omega)/sigma)**2+
          (1+math.cos(omega))**10)/(n_pro+1)
-    new_v.as_string = "OMEGA %.6f %s %s %.2f | %s" %(
-        new_v.residual, resseq, new_v.n_pro, new_v.model,
-         new_v.labels[0].as_string())
+    at = new_v.labels[0].atom
+    new_v.as_string = "OMEGA: Energy = "+\
+     "%.6f (%s Proline) Angle: %.2f deg\n   Residue:  %s %s %s %s" %(
+        new_v.residual,  new_v.n_pro, new_v.model,
+         at.altloc, at.resname, at.chain_id, at.resseq)
     if info.ignore_cis_peptides and math.cos(omega) > 0:
       continue # skip it
     omega_result.value_list.append(new_v)
@@ -644,7 +647,7 @@ def get_geometry_results(info):
             round_numbers = info.round_numbers)
       v.delta = v.ideal - v.model
       v.group_args_type += " residual is LJ(model, ideal)"
-      v.as_string = "NONBOND %.6f %.3f %.3f %.3f 1 | %s  - %s" %(
+      v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
         v.residual, v.delta, v.model, v.ideal,
          v.labels[0].as_string(), v.labels[1].as_string())
     geometry_results[proxy_name] = result
@@ -669,26 +672,27 @@ def get_geometry_results(info):
       geometry_results[proxy_name] = result
       if result.group_args_type == 'Bond restraints':
         for v in result.value_list:
-          v.as_string = "BOND %.2f %.3f %.3f %.3f %.2f | %s -  %s " %(
+          v.as_string = "BOND: Energy = %.2f dev = %.3f A  obs = %.3f target = %.3f sigma = %.2f\n   Atom 1:  %s\n   Atom 2:  %s " %(
             v.residual, v.delta, v.model, v.ideal, v.sigma,
              v.labels[0].as_string(), v.labels[1].as_string())
       elif result.group_args_type == 'Bond angle restraints':
         for v in result.value_list:
-          v.as_string = "ANGLE %.2f %.2f %.2f %.2f %.1f | %s  - %s  - %s " %(
+          v.as_string = "ANGLE: Energy = "+\
+           "%.2f dev = %.2f deg  obs = %.2f target = %.2f sigma = %.1f\n   Atom 1:  %s\n   Atom 2:  %s\n   Atom 3:  %s " %(
             v.residual, v.delta, v.model, v.ideal, v.sigma,
              v.labels[0].as_string(), v.labels[1].as_string(),
              v.labels[2].as_string())
       elif result.group_args_type == 'Dihedral angle restraints':
         for v in result.value_list:
           v.as_string = \
-          "TORSION %.4f %.2f %.2f %.2f %.1f | %s  - %s  - %s  - %s" %(
+          "TORSION: Energy = %.4f dev = %.1f deg  obs = %.1f target = %.0f sigma = %.1f\n   Atom 1:  %s\n   Atom 2:  %s\n   Atom 3:  %s\n   Atom 4:  %s" %(
             v.residual, v.delta, v.model, v.ideal, v.sigma,
              v.labels[0].as_string(), v.labels[1].as_string(),
              v.labels[2].as_string(), v.labels[3].as_string())
       elif result.group_args_type == 'Chirality restraints':
         for v in result.value_list:
           v.as_string = \
-          "CHIR %.3f %.2f %.2f %.2f %.1f | %s  - %s  - %s  - %s" %(
+          "CHIR: Energy = %.3f delta = %.2f A**3  obs = %.2f target = %.2f sigma = %.1f\n   Atom 1:  %s\n   Atom 2:  %s\n   Atom 3:  %s\n   Atom 4:  %s" %(
             v.residual, v.delta, v.model, v.ideal, v.sigma,
              v.labels[0].as_string(), v.labels[1].as_string(),
              v.labels[2].as_string(), v.labels[3].as_string())
@@ -697,9 +701,12 @@ def get_geometry_results(info):
           v.residual = energy(v.delta, v.sigma,
              round_numbers = info.round_numbers)
           v.as_string = \
-          "PLANE %.4f %.3f %.3f %.0f %.2f | %s" %(
-            v.residual, -v.delta, v.delta, 0, v.sigma,
-             v.labels[0].as_string())
+          "PLANE: Energy = %.4f dev = %.3f A  sigma = %.2f" %(
+            v.residual, -v.delta, v.sigma)
+          i_at = 0
+          for x in v.labels:
+            i_at += 1
+            v.as_string += "\n   Atom %s:  %s" %(i_at, x.as_string())
   for key in name_dict.keys():
     geometry_results[key].name = name_dict[key]
 
