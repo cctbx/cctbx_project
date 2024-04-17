@@ -620,6 +620,10 @@ def get_geometry_results(info):
         'planarity_proxies': 'PLANE',}
   geometry_results = {}
   info.geometry_results = geometry_results
+  for key in name_dict.keys():
+    geometry_results[key] = group_args(group_args_type = '%s result' %(key),
+      name = key,
+      value_list = [])
 
   # Non-bonded
   if pair_proxies.nonbonded_proxies is not None:
