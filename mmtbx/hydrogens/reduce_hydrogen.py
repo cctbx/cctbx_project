@@ -254,6 +254,8 @@ class place_hydrogens():
       restraint_objects = ro,
       log               = null_out())
     self.model.process(pdb_interpretation_params=p, make_restraints=True)
+    #self.model.idealize_h_minimization()
+    #STOP()
     self.time_make_grm = round(time.time()-t0, 2)
 
     #f = open("intermediate3.pdb","w")
@@ -345,6 +347,7 @@ class place_hydrogens():
         elif (self.n_terminal_charge == 'first_in_chain'):
           pass
         for ag in rgs.atom_groups():
+          #if ag.resname == 'AYA': return
           if (get_class(name=ag.resname) in
               ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
             if ag.get_atom('H'):
@@ -396,18 +399,25 @@ class place_hydrogens():
               self.no_H_placed_mlq.append(ag.resname)
               continue
 
-            expected_h = list()
+            expected_h = []
+            #expected_ha = []
             atom_dict = mlq.atom_dict()
             for k, v in six.iteritems(atom_dict):
               if(v.type_symbol=="H"):
                 expected_h.append(k)
+              #else:
+              #  expected_ha.append(k)
             # TODO start: temporary fix until v3 names are in mon lib
-            for altname in alternative_names:
-              if (altname[0] in expected_h and altname[1] in expected_h):
-                if (atom_dict[altname[0]].type_energy == 'HCH2' and
-                    atom_dict[altname[1]].type_energy == 'HCH2'):
-                  expected_h.append(altname[2])
-                  expected_h.remove(altname[0])
+            #print('expected H', expected_h)
+            if (get_class(name=ag.resname) in
+                ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
+              for altname in alternative_names:
+                if (altname[0] in expected_h and altname[1] in expected_h):
+                  if (atom_dict[altname[0]].type_energy == 'HCH2' and
+                      atom_dict[altname[1]].type_energy == 'HCH2'):
+                    expected_h.append(altname[2])
+                    expected_h.remove(altname[0])
+                    #print('renamed %s to %s' % (altname[0], altname[2]))
             # TODO end
             missing_h = list(set(expected_h).difference(set(actual)))
             if 0: print(ag.resname, missing_h)
@@ -420,6 +430,7 @@ class place_hydrogens():
             segid = ag.atoms()[0].segid
 
             for mh in missing_h:
+              #if ag.resname == 'PTR' and mh == 'HN2': continue
               # TODO: this should be probably in a central place
               # NWM: I have something like this in ready_set_utils
               if len(mh) < 4: mh = (' ' + mh).ljust(4)
