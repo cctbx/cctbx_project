@@ -862,10 +862,10 @@ or omission of reflections by data-processing software.""")
         issues.append((0,
           "The resolution cutoff appears to be similar in all directions.",
           "Analysis of resolution limits"))
-    if (0 < self.low_resolution_completeness_overall < 0.75):
+    if self.low_resolution_completeness_overall and 0 < self.low_resolution_completeness_overall < 0.75:
       issues.append((2, "The overall completeness in low-resolution shells "+
         "is less than 90%.", "Low resolution completeness analyses"))
-    elif (0.75 <= self.low_resolution_completeness_overall < 0.9):
+    elif self.low_resolution_completeness_overall and 0.75 <= self.low_resolution_completeness_overall < 0.9:
       issues.append((1, "The overall completeness in low-resolution shells "+
         "is less than 90%.", "Low resolution completeness analyses"))
     else :
