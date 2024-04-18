@@ -50,7 +50,10 @@ def compare_models(pdb_str,
   #model_h_added = reduce.add(model = model_without_h)
   # place H atoms again
   reduce_add_h_obj = reduce_hydrogen.place_hydrogens(model = model_without_h)
-  reduce_add_h_obj.run()
+  try:
+    reduce_add_h_obj.run()
+  except Exception as e:
+    assert 0
   #
   model_h_added = reduce_add_h_obj.get_model()
   hd_sel_h_added = model_h_added.get_hd_selection()

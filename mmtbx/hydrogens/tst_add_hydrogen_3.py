@@ -15,6 +15,7 @@ def run():
   test_003()
   test_004()
   test_005()
+  test_006()
 
 # ------------------------------------------------------------------------------
 
@@ -125,6 +126,17 @@ def test_005():
     the NAG and protein links. This example is from Russel (6vw1).
   '''
   compare_models(pdb_str = pdb_str_005)
+
+# ------------------------------------------------------------------------------
+
+def test_006():
+  '''
+    Ligand in double conformation. If atom v3 naming is not restricted to aa's,
+    then two atoms in the ligand will be renamed, leading to seemingly missing
+    atoms; then pH dependent restraints kick in and they will create
+    nonsensical restraints involving A and B conformers, which throws off riding H.
+  '''
+  compare_models(pdb_str = pdb_str_006)
 
 # ------------------------------------------------------------------------------
 
@@ -597,6 +609,135 @@ HETATM   94  HO4 BMA C   3      65.175  -6.362 166.344  1.00164.98           H
 HETATM   95  HO6 BMA C   3      65.881  -6.399 167.190  1.00154.88           H
 END
 """
+
+pdb_str_006 = '''
+CRYST1   56.620   56.620  181.790  90.00  90.00  90.00 P 41 21 2
+SCALE1      0.017662  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.017662  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.005501        0.00000
+HETATM    1  CB1ACNZ A 301      21.699  31.831  83.042  0.42 31.90           C
+HETATM    2  CB2ACNZ A 301      20.840  35.774  78.508  0.42 36.67           C
+HETATM    3  CG1ACNZ A 301      20.748  32.695  82.223  0.42 32.30           C
+HETATM    4  SG2ACNZ A 301      21.831  34.484  77.712  0.42 38.01           S
+HETATM    5  CD1ACNZ A 301      21.433  33.671  81.296  0.42 32.98           C
+HETATM    6  OE1ACNZ A 301      22.657  33.747  81.222  0.42 32.67           O
+HETATM    7  C1 ACNZ A 301      20.264  29.771  83.305  0.42 30.73           C
+HETATM    8  C13ACNZ A 301      23.480  35.240  77.602  0.42 38.76           C
+HETATM    9  C14ACNZ A 301      24.306  34.544  76.542  0.42 39.44           C
+HETATM   10  C2 ACNZ A 301      20.164  36.824  80.647  0.42 35.25           C
+HETATM   11  C3 ACNZ A 301      20.811  40.295  81.232  0.42 36.72           C
+HETATM   12  CA1ACNZ A 301      20.988  30.898  84.024  0.42 31.32           C
+HETATM   13  CA2ACNZ A 301      21.019  35.721  80.028  0.42 35.21           C
+HETATM   14  CA3ACNZ A 301      20.125  39.024  81.660  0.42 36.22           C
+HETATM   15  CB4ACNZ A 301      30.740  35.079  78.050  0.42 38.90           C
+HETATM   16  CB5ACNZ A 301      27.945  33.837  75.863  0.42 38.95           C
+HETATM   17  CD4ACNZ A 301      32.849  34.182  77.341  0.42 38.95           C
+HETATM   18  CD5ACNZ A 301      25.785  34.478  76.724  0.42 39.23           C
+HETATM   19  CE4ACNZ A 301      32.199  33.407  76.406  0.42 38.70           C
+HETATM   20  CE5ACNZ A 301      26.419  34.990  77.854  0.42 39.19           C
+HETATM   21  CG4ACNZ A 301      32.120  35.018  78.161  0.42 39.01           C
+HETATM   22  CG5ACNZ A 301      26.569  33.894  75.734  0.42 39.12           C
+HETATM   23  CH4ACNZ A 301      30.067  34.300  77.110  0.42 38.71           C
+HETATM   24  CH5ACNZ A 301      28.589  34.355  76.985  0.42 38.89           C
+HETATM   25  CZ4ACNZ A 301      30.821  33.462  76.288  0.42 38.64           C
+HETATM   26  CZ5ACNZ A 301      27.797  34.927  77.981  0.42 39.11           C
+HETATM   27  N1 ACNZ A 301      21.971  30.290  84.963  0.42 31.34           N
+HETATM   28  N2 ACNZ A 301      20.617  34.430  80.560  0.42 33.98           N
+HETATM   29  N3 ACNZ A 301      20.820  37.838  81.211  0.42 35.82           N
+HETATM   30  O11ACNZ A 301      18.995  30.026  83.078  0.42 30.27           O
+HETATM   31  O12ACNZ A 301      20.816  28.737  83.002  0.42 30.57           O
+HETATM   32  O2 ACNZ A 301      18.939  36.766  80.595  0.42 34.92           O
+HETATM   33  O31ACNZ A 301      21.252  40.487  80.111  0.42 36.85           O
+HETATM   34  O32ACNZ A 301      20.885  41.163  82.211  0.42 36.84           O
+HETATM   35  O5 ACNZ A 301      23.775  34.065  75.554  0.42 39.70           O
+HETATM   36  H1 ACNZ A 301      22.793  30.250  84.624  0.42 31.34           H
+HETATM   37  H2 ACNZ A 301      19.822  34.147  80.392  0.42 33.98           H
+HETATM   38  H3 ACNZ A 301      21.672  37.827  81.328  0.42 35.82           H
+HETATM   39  HA1ACNZ A 301      20.347  31.361  84.585  0.42 31.32           H
+HETATM   40  HA2ACNZ A 301      21.958  35.873  80.218  0.42 35.21           H
+HETATM   41 HA31ACNZ A 301      20.051  39.024  82.627  0.42 36.22           H
+HETATM   42 HA32ACNZ A 301      19.218  39.033  81.316  0.42 36.22           H
+HETATM   43 HB11ACNZ A 301      22.306  32.400  83.541  0.42 31.90           H
+HETATM   44 HB12ACNZ A 301      22.245  31.294  82.446  0.42 31.90           H
+HETATM   45 HB21ACNZ A 301      21.113  36.646  78.181  0.42 36.67           H
+HETATM   46 HB22ACNZ A 301      19.903  35.650  78.289  0.42 36.67           H
+HETATM   47 HG11ACNZ A 301      20.164  33.218  82.794  0.42 32.30           H
+HETATM   48 HG12ACNZ A 301      20.163  32.153  81.671  0.42 32.30           H
+HETATM   49  HB4ACNZ A 301      30.261  35.647  78.610  0.42 38.90           H
+HETATM   50  HB5ACNZ A 301      28.443  33.444  75.183  0.42 38.95           H
+HETATM   51  HD4ACNZ A 301      33.775  34.142  77.419  0.42 38.95           H
+HETATM   52  HE4ACNZ A 301      32.685  32.843  75.849  0.42 38.70           H
+HETATM   53  HE5ACNZ A 301      25.931  35.382  78.542  0.42 39.19           H
+HETATM   54  HG4ACNZ A 301      32.553  35.545  78.793  0.42 39.01           H
+HETATM   55  HG5ACNZ A 301      26.167  33.537  74.975  0.42 39.12           H
+HETATM   56  HZ4ACNZ A 301      30.397  32.932  75.652  0.42 38.64           H
+HETATM   57  HZ5ACNZ A 301      28.195  35.274  78.747  0.42 39.11           H
+HETATM   58 H11NACNZ A 301      22.044  30.742  85.726  0.42 31.34           H
+HETATM   59 H12NACNZ A 301      21.760  29.456  85.192  0.42 31.34           H
+HETATM   60 H131ACNZ A 301      23.934  35.181  78.457  0.42 38.76           H
+HETATM   61 H132ACNZ A 301      23.403  36.183  77.386  0.42 38.76           H
+HETATM   62  CB1BCNZ A 301      21.628  31.747  83.072  0.58 24.44           C
+HETATM   63  CB2BCNZ A 301      20.928  35.615  78.523  0.58 32.96           C
+HETATM   64  CG1BCNZ A 301      20.751  32.485  82.072  0.58 25.13           C
+HETATM   65  SG2BCNZ A 301      21.870  34.251  77.786  0.58 35.21           S
+HETATM   66  CD1BCNZ A 301      21.399  33.719  81.489  0.58 26.54           C
+HETATM   67  OE1BCNZ A 301      22.558  34.030  81.757  0.58 26.24           O
+HETATM   68  C1 BCNZ A 301      20.084  29.772  83.397  0.58 21.85           C
+HETATM   69  C13BCNZ A 301      23.611  34.725  78.008  0.58 36.08           C
+HETATM   70  C14BCNZ A 301      24.428  34.553  76.745  0.58 36.66           C
+HETATM   71  C2 BCNZ A 301      20.268  36.859  80.558  0.58 31.00           C
+HETATM   72  C3 BCNZ A 301      20.953  40.442  81.245  0.58 35.20           C
+HETATM   73  CA1BCNZ A 301      20.838  30.909  84.075  0.58 23.32           C
+HETATM   74  CA2BCNZ A 301      21.083  35.672  80.046  0.58 30.56           C
+HETATM   75  CA3BCNZ A 301      20.362  39.080  81.531  0.58 33.89           C
+HETATM   76  CB4BCNZ A 301      29.376  30.173  77.597  0.58 27.67           C
+HETATM   77  CB5BCNZ A 301      26.920  32.007  75.501  0.58 33.10           C
+HETATM   78  CD4BCNZ A 301      30.221  28.218  76.489  0.58 26.53           C
+HETATM   79  CD5BCNZ A 301      25.519  33.534  76.736  0.58 35.16           C
+HETATM   80  CE4BCNZ A 301      29.225  28.329  75.545  0.58 26.68           C
+HETATM   81  CE5BCNZ A 301      26.041  33.009  77.917  0.58 34.37           C
+HETATM   82  CG4BCNZ A 301      30.291  29.135  77.520  0.58 26.89           C
+HETATM   83  CG5BCNZ A 301      25.993  33.034  75.528  0.58 34.22           C
+HETATM   84  CH4BCNZ A 301      28.371  30.309  76.639  0.58 28.91           C
+HETATM   85  CH5BCNZ A 301      27.424  31.454  76.677  0.58 31.80           C
+HETATM   86  CZ4BCNZ A 301      28.306  29.363  75.614  0.58 27.81           C
+HETATM   87  CZ5BCNZ A 301      26.976  31.988  77.885  0.58 33.11           C
+HETATM   88  N1 BCNZ A 301      21.748  30.353  85.116  0.58 23.71           N
+HETATM   89  N2 BCNZ A 301      20.625  34.442  80.675  0.58 28.24           N
+HETATM   90  N3 BCNZ A 301      20.934  38.001  80.752  0.58 32.37           N
+HETATM   91  O11BCNZ A 301      20.774  28.662  83.286  0.58 21.59           O
+HETATM   92  O12BCNZ A 301      18.936  29.904  82.989  0.58 20.54           O
+HETATM   93  O2 BCNZ A 301      19.059  36.753  80.739  0.58 30.28           O
+HETATM   94  O31BCNZ A 301      20.309  41.472  81.325  0.58 35.67           O
+HETATM   95  O32BCNZ A 301      22.229  40.420  80.923  0.58 35.87           O
+HETATM   96  O5 BCNZ A 301      24.172  35.209  75.746  0.58 37.96           O
+HETATM   97  H1 BCNZ A 301      22.583  30.252  84.826  0.58 23.71           H
+HETATM   98  H2 BCNZ A 301      19.824  34.173  80.514  0.58 28.24           H
+HETATM   99  H3 BCNZ A 301      21.718  38.138  80.426  0.58 32.37           H
+HETATM  100  HA1BCNZ A 301      20.186  31.424  84.576  0.58 23.32           H
+HETATM  101  HA2BCNZ A 301      22.025  35.797  80.242  0.58 30.56           H
+HETATM  102 HA31BCNZ A 301      20.474  38.898  82.477  0.58 33.89           H
+HETATM  103 HA32BCNZ A 301      19.406  39.129  81.373  0.58 33.89           H
+HETATM  104 HB11BCNZ A 301      22.242  31.164  82.598  0.58 24.44           H
+HETATM  105 HB12BCNZ A 301      22.170  32.385  83.562  0.58 24.44           H
+HETATM  106 HB21BCNZ A 301      21.231  36.455  78.144  0.58 32.96           H
+HETATM  107 HB22BCNZ A 301      19.988  35.509  78.306  0.58 32.96           H
+HETATM  108 HG11BCNZ A 301      20.506  31.917  81.325  0.58 25.13           H
+HETATM  109 HG12BCNZ A 301      19.915  32.770  82.473  0.58 25.13           H
+HETATM  110  HB4BCNZ A 301      29.436  30.783  78.296  0.58 27.67           H
+HETATM  111  HB5BCNZ A 301      27.207  31.685  74.677  0.58 33.10           H
+HETATM  112  HD4BCNZ A 301      30.844  27.529  76.433  0.58 26.53           H
+HETATM  113  HE4BCNZ A 301      29.166  27.708  74.855  0.58 26.68           H
+HETATM  114  HE5BCNZ A 301      25.772  33.333  78.746  0.58 34.37           H
+HETATM  115  HG4BCNZ A 301      30.954  29.059  78.168  0.58 26.89           H
+HETATM  116  HG5BCNZ A 301      25.686  33.391  74.726  0.58 34.22           H
+HETATM  117  HZ4BCNZ A 301      27.640  29.424  74.968  0.58 27.81           H
+HETATM  118  HZ5BCNZ A 301      27.307  31.657  78.688  0.58 33.11           H
+HETATM  119 H11NBCNZ A 301      21.801  30.869  85.839  0.58 23.71           H
+HETATM  120 H12NBCNZ A 301      21.491  29.552  85.406  0.58 23.71           H
+HETATM  121 H131BCNZ A 301      24.007  34.190  78.713  0.58 36.08           H
+HETATM  122 H132BCNZ A 301      23.663  35.651  78.292  0.58 36.08           H
+END'''
 
 # ------------------------------------------------------------------------------
 
