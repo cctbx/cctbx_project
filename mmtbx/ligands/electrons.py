@@ -27,7 +27,7 @@ other_charges = {
   'HOH' : 0,
 }
 disallowed_element_charges = {
-  'N' :  2,
+  'N' :  1,
   'O' : -1,
   'C' :  1,
 }
@@ -889,7 +889,7 @@ class electron_distribution(dict):
     answers = {
       'Residue HOH has a problem with the charge : 2!=0' : \
         'Hydrogen atoms not added to water',
-      'Element has strange number of electrons  N  : 2' : \
+      'Element has strange number of electrons  N  : 1' : \
         'N terminal (or break) missing hydrogen atoms',
       'Element has strange number of electrons  O  : -1' : \
         'C terminal (or break) missing oxygen atoms',
