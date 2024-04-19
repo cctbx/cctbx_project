@@ -183,6 +183,7 @@ class place_hydrogens():
 
     if self.print_time:
       self.time_rebox_model        = None
+      self.time_remove_element_X   = None
       self.time_add_missing_H      = None
       self.time_terminal_propeller = None
       self.time_make_grm           = None
@@ -210,8 +211,19 @@ class place_hydrogens():
       #self.model.add_crystal_symmetry_if_necessary() # this is slower than shift_and_box_model!!!!
     self.time_rebox_model = round(time.time()-t0, 2)
 
+
+    # Don't stop if model contains element X atoms
+    # This needs more discussion before being made final
+    # ---------------------------------------------
+    t0 = time.time()
+    if ' X' in self.model.get_hierarchy().atoms().extract_element():
+      self.model = self.model.select(~self.model.selection('element X'))
+    self.time_remove_element_X = round(time.time()-t0, 2)
+
+
     # Remove existing H if requested
     # ------------------------------
+    self.model.get_xray_structure()
     self.n_H_initial = self.model.get_hd_selection().count(True)
     if not self.keep_existing_H:
       self.model = self.model.select(~self.model.get_hd_selection())
@@ -352,6 +364,9 @@ class place_hydrogens():
               ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
             if ag.get_atom('H'):
               ag.remove_atom(ag.get_atom('H'))
+          # TODO make the function below smart, so it
+          # 1) knows when to add H1H2H3 or not
+          # 2) renames H to H1 (so no need to remove it beforehand)
           rc = add_n_terminal_hydrogens_to_residue_group(rgs) # rc is always empty list?
 
   # ----------------------------------------------------------------------------
@@ -624,6 +639,7 @@ The following H atoms were not placed because they could not be parameterized
   def get_times(self):
     return group_args(
       time_rebox_model        = self.time_rebox_model,
+      time_remove_element_X   = self.time_remove_element_X,
       time_add_missing_H      = self.time_add_missing_H,
       time_terminal_propeller = self.time_terminal_propeller,
       time_make_grm           = self.time_make_grm,
@@ -638,6 +654,7 @@ The following H atoms were not placed because they could not be parameterized
   def print_times(self):
     print('Detailed timings:')
     print("Rebox model:", self.time_rebox_model)
+    print('Remove element X:', self.time_remove_element_X)
     print("Add_missing_H_atoms_at_bogus_position:", self.time_add_missing_H)
     print('Add N-terminal propeller', self.time_terminal_propeller)
     print("Get new model obj and grm:", self.time_make_grm )
