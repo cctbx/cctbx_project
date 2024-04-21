@@ -5,6 +5,8 @@ import json
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
+from simtbx.diffBragg import multi_gauss_spec
+from itertools import groupby
 
 from simtbx.diffBragg import hopper_io
 import numpy as np
@@ -502,7 +504,7 @@ class DataModeler:
 
         refls = self.load_refls(ref, exp_idx=exp_idx)
         if len(refls)==0:
-            MAIN_LOGGER.warning("no refls loaded!")
+            MAIN_LOGGER.critical("!!!!!!!!!!!No refls loaded!")
             return False
 
         if "rlp" not in list(refls[0].keys()):
@@ -536,6 +538,7 @@ class DataModeler:
             only_high=self.params.roi.only_filter_zingers_above_mean, centroid=self.params.roi.centroid)
 
         if roi_packet is None:
+            MAIN_LOGGER.critical("!!!!!!!!!ROIpacket is None!")
             return False
 
         self.rois, self.pids, self.tilt_abc, self.selection_flags, background, self.tilt_cov = roi_packet
@@ -569,7 +572,7 @@ class DataModeler:
                 self.Hi_asu = self.Hi
 
         if sum(self.selection_flags) == 0:
-            MAIN_LOGGER.info("No pixels slected, continuing")
+            MAIN_LOGGER.critical("!!!!!!!!No pixels slected, continuing")
             return False
         self.refls = refls
         self.refls_idx = [i_roi for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
@@ -583,6 +586,11 @@ class DataModeler:
 
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
+
+        if self.params.filter_jungfrau_gain_mode:
+            from serialtbx.detector import jungfrau
+            gain_mode = np.array(jungfrau.get_2bit_from_jungfrau(self.E))
+            is_trusted[gain_mode==3] = False
 
         self.data_to_one_dim(img_data, is_trusted, background)
         return True
@@ -848,19 +856,20 @@ class DataModeler:
             init.Nabc = np.random.choice(self.params.init.random_Nabcs, replace=True, size=3)
         for ii in range(3):
             # Mosaic domain tensor
-            p = ParameterTypes[types.Nabc](init=init.Nabc[ii], sigma=sigma.Nabc[ii],
-                              minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
-                              fix=fix_Nabc[ii], name="Nabc%d" % (ii,),
-                              center=centers.Nabc[ii] if centers.Nabc is not None else None,
-                              beta=betas.Nabc[ii] if betas.Nabc is not None else None)
-            P.add(p)
+            for i_xtal in range(self.num_xtals):
+                p = ParameterTypes[types.Nabc](init=init.Nabc[ii], sigma=sigma.Nabc[ii],
+                                  minval=mins.Nabc[ii], maxval=maxs.Nabc[ii],
+                                  fix=fix_Nabc[ii], name="Nabc%d_xtal%d" % (ii,i_xtal),
+                                  center=centers.Nabc[ii] if centers.Nabc is not None else None,
+                                  beta=betas.Nabc[ii] if betas.Nabc is not None else None)
+                P.add(p)
 
-            p = ParameterType(init=init.Ndef[ii], sigma=sigma.Ndef[ii],
-                              minval=mins.Ndef[ii], maxval=maxs.Ndef[ii],
-                              fix=fix.Ndef, name="Ndef%d" % (ii,),
-                              center=centers.Ndef[ii] if centers.Ndef is not None else None,
-                              beta=betas.Ndef[ii] if betas.Ndef is not None else None)
-            P.add(p)
+                p = ParameterType(init=init.Ndef[ii], sigma=sigma.Ndef[ii],
+                                  minval=mins.Ndef[ii], maxval=maxs.Ndef[ii],
+                                  fix=fix.Ndef, name="Ndef%d_xtal%d" % (ii,i_xtal),
+                                  center=centers.Ndef[ii] if centers.Ndef is not None else None,
+                                  beta=betas.Ndef[ii] if betas.Ndef is not None else None)
+                P.add(p)
 
             # diffuse gamma and sigma
             p = ParameterTypes[types.diffuse_gamma](init=init.diffuse_gamma[ii], sigma=sigma.diffuse_gamma[ii],
@@ -1075,9 +1084,9 @@ class DataModeler:
                 SIM.D.refine(ROTX_ID)
                 SIM.D.refine(ROTY_ID)
                 SIM.D.refine(ROTZ_ID)
-            if self.P["Nabc0"].refine:
+            if self.P["Nabc0_xtal0"].refine:
                 SIM.D.refine(NCELLS_ID)
-            if self.P["Ndef0"].refine:
+            if self.P["Ndef0_xtal0"].refine:
                 SIM.D.refine(NCELLS_ID_OFFDIAG)
             if self.P["ucell0"].refine:
                 for i_ucell in range(len(self.ucell_man.variables)):
@@ -1113,6 +1122,10 @@ class DataModeler:
                                    disp=False,
                                    stepsize=self.params.stepsize)
                 target.x0[vary] = out.x
+                MAIN_LOGGER.debug("Optimal results after basinhopping:")
+                f, g, modelpix, J, sigZ, debug_s = target_func(target.x0, None, self, SIM,
+                                                            compute_grad=False, return_all_zscores=False)
+                MAIN_LOGGER.debug("<><><><><><><><><\n"+debug_s+"\n<><><><><><><><>")
             except StopIteration:
                 pass
 
@@ -1138,6 +1151,30 @@ class DataModeler:
             target.x0[vary] = out.x
 
         return target.x0
+
+    def get_best_hop(self):
+        """
+        after refinement, explore all_hop_id, all_sigz, and all_f to find which basinhop resulted in the best minimization
+        """
+        assert self.target.all_f
+        assert self.target.all_hop_id
+        assert self.target.all_sigZ
+        funcs_hops_sigz = list(zip(self.target.all_f, self.target.all_hop_id, self.target.all_sigZ))
+        hop_id = lambda x: x[1] # group by hop id
+        gb = groupby(sorted(funcs_hops_sigz,key=hop_id), key=hop_id)
+        info = {hop_id:list(traces) for hop_id,traces in gb}
+
+        min_f = np.inf
+        min_sigz = np.inf
+        hop_winner = 0
+        for hop_id in info:
+            f, _, sigz = zip(*info[hop_id])
+            if min(f) < min_f:
+                min_f = min(f)
+                min_sigz = min(sigz)
+                hop_winner = hop_id
+                niter = len(f)
+        return min_sigz, niter, hop_winner
 
     def callback(self, x, kwargs):
         save_freq = kwargs["save_freq"]
@@ -1474,9 +1511,11 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                 if name == "detz_shift":
                     val = val * 1e3
                     name = p.name + "_mm"
-                val_s += "%s=%.3f, " % (name, val)
+                if "Rot" in name:
+                    val = val*180 / np.pi
+                    name = p.name +"_deg"
+                val_s += "%s=%.4f, " % (name, val)
         MAIN_LOGGER.debug(val_s)
-
 
     pfs = Mod.pan_fast_slow
 
@@ -1531,19 +1570,19 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         SIM.D.lambda_coefficients = lambda_coef
 
     # Mosaic block
-    Nabc_params = [Mod.P["Nabc%d" % (i_n,)] for i_n in range(3)]
-    Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
-    if SIM.D.isotropic_ncells:
-        Nb = Na
-        Nc = Na
-    SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
+    #Nabc_params = [Mod.P["Nabc%d_xtal0" % (i_n,)] for i_n in range(3)]
+    #Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
+    #if SIM.D.isotropic_ncells:
+    #    Nb = Na
+    #    Nc = Na
+    #SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
 
-    Ndef_params = [Mod.P["Ndef%d" % (i_n,)] for i_n in range(3)]
-    Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
-    if SIM.D.isotropic_ncells:
-        Ne = Nd
-        Nf = Nd
-    SIM.D.Ncells_def = Nd, Ne, Nf
+    #Ndef_params = [Mod.P["Ndef%d_xtal0" % (i_n,)] for i_n in range(3)]
+    #Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
+    #if SIM.D.isotropic_ncells:
+    #    Ne = Nd
+    #    Nf = Nd
+    #SIM.D.Ncells_def = Nd, Ne, Nf
 
     # diffuse signals
     if SIM.D.use_diffuse:
@@ -1587,6 +1626,19 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
             roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
 
     for i_xtal in range(Mod.num_xtals):
+        Nabc_params = [Mod.P["Nabc%d_xtal%d" % (i_n,i_xtal)] for i_n in range(3)]
+        Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
+        if SIM.D.isotropic_ncells:
+           Nb = Na
+           Nc = Na
+        SIM.D.set_ncells_values(tuple([Na, Nb, Nc]))
+
+        Ndef_params = [Mod.P["Ndef%d_xtal%d" % (i_n,i_xtal)] for i_n in range(3)]
+        Nd, Ne, Nf = [n_param.get_val(x[n_param.xpos]) for n_param in Ndef_params]
+        if SIM.D.isotropic_ncells:
+           Ne = Nd
+           Nf = Nd
+        SIM.D.Ncells_def = Nd, Ne, Nf
 
         if hasattr(Mod, "Umatrices"):  # reflects new change for modeling multi-crystal experiments
             SIM.D.Umatrix = Mod.Umatrices[i_xtal]
@@ -1733,10 +1785,10 @@ def get_param_from_x(x, Mod, i_xtal=0, as_dict=False):
     RotXYZ = [Mod.P["RotXYZ%d_xtal%d" % (i, i_xtal)] for i in range(3)]
     rotX, rotY, rotZ = [r.get_val(x[r.xpos]) for r in RotXYZ]
 
-    Nabc = [Mod.P["Nabc%d" % (i, )] for i in range(3)]
+    Nabc = [Mod.P["Nabc%d_xtal%d" % (i, i_xtal )] for i in range(3)]
     Na, Nb, Nc = [p.get_val(x[p.xpos]) for p in Nabc]
 
-    Ndef = [Mod.P["Ndef%d" % (i, )] for i in range(3)]
+    Ndef = [Mod.P["Ndef%d_xtal%d" % (i, i_xtal )] for i in range(3)]
     Nd, Ne, Nf = [p.get_val(x[p.xpos]) for p in Ndef]
 
     diff_gam_abc = [Mod.P["diffuse_gamma%d" % i] for i in range(3)]
@@ -1864,7 +1916,7 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
     elif compute_grad:
         # actually compute the gradients
         _compute_grad = True
-        if mod.P["Nabc0"].refine:
+        if mod.P["Nabc0_xtal0"].refine:
             SIM.D.let_loose(NCELLS_ID)
         if mod.P["RotXYZ0_xtal0"].refine:
             SIM.D.let_loose(ROTX_ID)
@@ -2029,9 +2081,10 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
                               0,0,0,
                               1,0,0]
                     if i_N < 3:
-                        p = mod.P["Nabc%d" % i_N]
+                        # TODO fix Nabc multi xtal for restraints=True
+                        p = mod.P["Nabc%d_xtal0" % i_N]
                     else:
-                        p = mod.P["Ndef%d" % (i_N-3)]
+                        p = mod.P["Ndef%d_xtal0" % (i_N-3)]
                     dN = np.reshape(dN, (3,3))
                     dVol_dN = Nvol * np.trace(np.dot(Nmat_inv, dN))
                     dVol_dN_vals.append( dVol_dN)
@@ -2306,6 +2359,9 @@ def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
         spec_wave = spec_wave[::stride]
         spec_wt = spec_wt[::stride]
         spectrum = list(zip(spec_wave, spec_wt))
+    elif params.downsamp_spec.multi_gauss:
+        spectrum = downsamp_spec(None, params, expt,return_and_dont_set=True, 
+                spec_en=spec_en, spec_wt=spec_wt  ) 
     else:
         spec_en = dxtbx_spec.get_energies_eV()
         spec_wt = dxtbx_spec.get_weights()
@@ -2341,16 +2397,33 @@ def downsamp_spec_from_params(params, expt=None, imgset=None, i_img=0):
 
 
 # set the X-ray spectra for this shot
-def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
-    SIM.dxtbx_spec = expt.imageset.get_spectrum(0)
-    spec_en = SIM.dxtbx_spec.get_energies_eV()
-    spec_wt = SIM.dxtbx_spec.get_weights()
+def downsamp_spec(SIM, params, expt, return_and_dont_set=False, spec_en=None, spec_wt=None):
+    if SIM is not None and expt is not None:
+        SIM.dxtbx_spec = expt.imageset.get_spectrum(0)
+        spec_en = SIM.dxtbx_spec.get_energies_eV()
+        spec_wt = SIM.dxtbx_spec.get_weights()
+    else:
+        assert spec_en is not None
+        assert spec_wt is not None
+
     if params.downsamp_spec.skip:
         spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
         stride = params.simulator.spectrum.stride
         spec_wave = spec_wave[::stride]
         spec_wt = spec_wt[::stride]
-        SIM.beam.spectrum = list(zip(spec_wave, spec_wt))
+        spectrum = list(zip(spec_wave, spec_wt))
+
+    elif params.downsamp_spec.multi_gauss:
+        spec_wave = utils.ENERGY_CONV / spec_en.as_numpy_array()
+        stride = params.simulator.spectrum.stride
+        fitx,fity,spec_wt,fitp = multi_gauss_spec.fit_spec(spec_en.as_numpy_array(), spec_wt.as_numpy_array(), False)
+        spec_wave = spec_wave[::stride]
+        spec_wt = spec_wt[::stride]
+        #tot_fl = params.simulator.total_flux
+        #if tot_fl is not None:
+        #    spec_wt = spec_wt / sum(spec_wt) * tot_fl
+        spectrum = list(zip(spec_wave, spec_wt))
+
     else:
         spec_en = SIM.dxtbx_spec.get_energies_eV()
         spec_wt = SIM.dxtbx_spec.get_weights()
@@ -2373,16 +2446,20 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
             downsamp_wt = downsamp_wt / sum(downsamp_wt) * tot_fl
 
         downsamp_wave = utils.ENERGY_CONV / downsamp_en
-        SIM.beam.spectrum = list(zip(downsamp_wave, downsamp_wt))
+        spectrum = list(zip(downsamp_wave, downsamp_wt))
     # the nanoBragg beam has an xray_beams property that is used internally in diffBragg
+    if SIM is not None:
+        SIM.beam.spectrum = spectrum
     starting_wave = expt.beam.get_wavelength()
-    waves, specs = map(np.array, zip(*SIM.beam.spectrum))
+    waves, specs = map(np.array, zip(*spectrum))
     ave_wave = sum(waves*specs) / sum(specs)
     expt.beam.set_wavelength(ave_wave)
     MAIN_LOGGER.debug("Shifting wavelength from %f to %f" % (starting_wave, ave_wave))
-    MAIN_LOGGER.debug("Using %d energy channels" % len(SIM.beam.spectrum))
+    MAIN_LOGGER.debug("Using %d energy channels" % len(spectrum))
+    #SIM.beam.divergence_mrad=6
+    #SIM.beam.divsteps=4 
     if return_and_dont_set:
-        return SIM.beam.spectrum
+        return spectrum
     else:
         SIM.D.xray_beams = SIM.beam.xray_beams
 

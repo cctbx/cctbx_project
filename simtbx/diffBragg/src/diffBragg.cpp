@@ -414,7 +414,7 @@ diffBragg::diffBragg(const dxtbx::model::Detector& detector, const dxtbx::model:
 
     set_close_distances();
 
-    linearize_Fhkl(false);
+    linearize_Fhkl(false, false);
     //sanity_check_linear_Fhkl();
     //
     last_kernel_on_GPU=boost::python::object(); // object() returns  None
@@ -1145,7 +1145,7 @@ void diffBragg::print_if_refining(){
 }
 
 void diffBragg::update_Fhkl_channels(np::ndarray& channels){
-    SCITBX_ASSERT (channels.shape(0)==sources);
+    //SCITBX_ASSERT (channels.shape(0)==sources);
     db_beam.Fhkl_channels.clear();
     int* channels_ptr = reinterpret_cast<int*>(channels.get_data());
     for (int i=0; i < sources; i++){
@@ -1967,7 +1967,7 @@ void diffBragg::add_diffBragg_spots(const af::shared<size_t>& panels_fasts_slows
     db_cryst.Nd = Nd;
     db_cryst.Ne = Ne;
     db_cryst.Nf = Nf;
-
+    db_cryst.xtal_shape = xtal_shape;
 
     db_beam.number_of_sources = sources;
     db_beam.source_X = source_X;
@@ -2340,7 +2340,7 @@ std::string get_hkl_key(int h, int k , int l){
     return hkl_s;
 }
 
-void diffBragg::linearize_Fhkl(bool compute_dists){
+void diffBragg::linearize_Fhkl(bool compute_dists, bool track_equiv_fhkl){
 //      TODO assert eig_O and hall_symbol are properly set before proceeding
         cctbx::sgtbx::space_group sg = cctbx::sgtbx::space_group(db_cryst.hall_symbol);
         Eigen::Matrix3d O_inv = db_cryst.eig_O.inverse();
@@ -2378,7 +2378,12 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
                 for (int k = 0; k < k_range; k++) {
                         for (int l = 0; l < l_range; l++) {
                                 double fhkl_val = Fhkl[h][k][l];
-
+                                db_cryst.FhklLinear.push_back(fhkl_val);
+                                if (complex_miller)
+                                    db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
+                                if (! db_flags.Fhkl_have_scale_factors)
+                                    continue;
+                                // TODO add a boolean flag to check whether ASUid has been set!
                                 int h0 = h+ h_min;
                                 int k0 = k+ k_min;
                                 int l0 = l+ l_min;
@@ -2410,9 +2415,6 @@ void diffBragg::linearize_Fhkl(bool compute_dists){
                                 int asu_id = db_cryst.ASUid_map[key];
                                 db_cryst.FhklLinear_ASUid.push_back(asu_id);
 
-                                db_cryst.FhklLinear.push_back(fhkl_val);
-                                if (complex_miller)
-                                    db_cryst.Fhkl2Linear.push_back(Fhkl2[h][k][l]);
                         }
                 }
         }

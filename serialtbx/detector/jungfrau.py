@@ -66,6 +66,13 @@ def pad_stacked_format(raw, num_panels=32, divide=False, keep_stacked=True):
     padded = np.vstack(padded)
   return padded
 
+def get_2bit_from_jungfrau(expt):
+  iset = expt.imageset
+  F = iset.get_format_class()
+  if len(iset.paths()) != 1:
+    raise ValueError("imageset should have exactly 1 path")
+  fclass = F.get_instance(iset.paths()[0])
+  return fclass.get_2bit_component(iset.indices()[0])
 
 def get_14bit_from_jungfrau(expt):
   iset = expt.imageset

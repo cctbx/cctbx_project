@@ -220,7 +220,8 @@ def get_xray_beams(spectrum, beam):
 
 class H5AttributeGeomWriter:
 
-  def __init__(self, filename, image_shape, num_images, detector, beam, dtype=None, compression_args=None, detector_and_beam_are_dicts=False):
+  def __init__(self, filename, image_shape, num_images, detector, beam, dtype=None, compression_args=None, detector_and_beam_are_dicts=False,
+               image_dset="images"):
     """
     Simple class for writing dxtbx compatible HDF5 files
 
@@ -247,7 +248,8 @@ class H5AttributeGeomWriter:
       dtype = np.float64
     dset_shape = (
                    num_images,) + tuple(image_shape)
-    self.image_dset = (self.file_handle.create_dataset)('images', shape=dset_shape, dtype=dtype, **compression_args)
+    self.file_handle.attrs["image_dset"] = image_dset
+    self.image_dset = (self.file_handle.create_dataset)(image_dset, shape=dset_shape, dtype=dtype, **compression_args)
     self._write_geom()
     self._counter = 0
 

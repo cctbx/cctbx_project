@@ -16,7 +16,7 @@ from simtbx.nanoBragg import nanoBragg, shapetype
 from simtbx.nanoBragg.tst_gauss_argchk import water, basic_crystal, basic_beam, basic_detector, amplitudes
 
 class several_wavelength_case:
- def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model):
+ def __init__(self, BEAM, DETECTOR, CRYSTAL, SF_model, gaussian_star_Flatt=False):
   SIM = nanoBragg(DETECTOR, BEAM, panel_id=0)
   print("\nassume three energy channels")
   self.wavlen = flex.double([BEAM.get_wavelength()-0.002, BEAM.get_wavelength(), BEAM.get_wavelength()+0.002])
@@ -27,6 +27,7 @@ class several_wavelength_case:
   self.DETECTOR = DETECTOR
   self.BEAM = BEAM
   self.CRYSTAL = CRYSTAL
+  self.gaussian_star_Flatt=gaussian_star_Flatt
 
  def several_wavelength_case_for_CPU(self):
   SIM = nanoBragg(self.DETECTOR, self.BEAM, panel_id=0)
@@ -39,7 +40,10 @@ class several_wavelength_case:
     SIM.Ncells_abc = (20,20,20)
     SIM.Amatrix = sqr(self.CRYSTAL.get_A()).transpose()
     SIM.oversample = 2
-    SIM.xtal_shape = shapetype.Gauss
+    if self.gaussian_star_Flatt:
+        SIM.xtal_shape = shapetype.Gauss_star
+    else:
+        SIM.xtal_shape = shapetype.Gauss
     SIM.interpolate = 0
     SIM.add_nanoBragg_spots()
 
@@ -146,6 +150,9 @@ class several_wavelength_case:
   if argchk:
     print("\npolychromatic KOKKOS argchk")
     SIM.xtal_shape = shapetype.Gauss_argchk
+  elif self.gaussian_star_Flatt:
+    print("\npolychromatic KOKKOS gauss star")
+    SIM.xtal_shape = shapetype.Gauss_star
   else:
     print("\npolychromatic KOKKOS no argchk")
     SIM.xtal_shape = shapetype.Gauss
@@ -208,6 +215,8 @@ def diffs(labelA, A, labelB, B):
 
 if __name__=="__main__":
   # make the dxtbx objects
+  import sys
+  use_gauss_star = int(sys.argv[1])
   BEAM = basic_beam()
   DETECTOR = basic_detector()
   CRYSTAL = basic_crystal()
@@ -217,30 +226,31 @@ if __name__=="__main__":
   SF_model.ersatz_correct_to_P1()
 
   print("\n# Use case 2.  Three-wavelength polychromatic source")
-  SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model)
+  SWC = several_wavelength_case(BEAM, DETECTOR, CRYSTAL, SF_model, gaussian_star_Flatt=use_gauss_star==1)
   SIM = SWC.several_wavelength_case_for_CPU()
   SIM.to_smv_format(fileout="test_full_e_002.img")
   SIM.to_cbf("test_full_e_002.cbf")
 
   print("\n# Use case: modularized api argchk=False, cuda_background=False")
-  try:
-    SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
-  except ImportError:
-    print(" - Skipped, no cuda module simtbx_gpu_ext found.")
-  else:
-    SIM3.to_smv_format(fileout="test_full_e_003.img")
-    SIM3.to_cbf("test_full_e_003.cbf")
-    diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
+  if not use_gauss_star:
+    try:
+      SIM3 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=False)
+    except ImportError:
+      print(" - Skipped, no cuda module simtbx_gpu_ext found.")
+    else:
+      SIM3.to_smv_format(fileout="test_full_e_003.img")
+      SIM3.to_cbf("test_full_e_003.cbf")
+      diffs("CPU",SIM.raw_pixels, "GPU",SIM3.raw_pixels)
 
-  print("\n# Use case: modularized api argchk=False, cuda_background=True")
-  try:
-    SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
-  except ImportError:
-    print(" - Skipped, no cuda module simtbx_gpu_ext found.")
-  else:
-    SIM4.to_smv_format(fileout="test_full_e_004.img")
-    SIM4.to_cbf("test_full_e_004.cbf")
-    diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
+    print("\n# Use case: modularized api argchk=False, cuda_background=True")
+    try:
+      SIM4 = SWC.modularized_exafel_api_for_GPU(argchk=False, cuda_background=True)
+    except ImportError:
+      print(" - Skipped, no cuda module simtbx_gpu_ext found.")
+    else:
+      SIM4.to_smv_format(fileout="test_full_e_004.img")
+      SIM4.to_cbf("test_full_e_004.cbf")
+      diffs("CPU",SIM.raw_pixels, "GPU",SIM4.raw_pixels)
 
   from simtbx.kokkos import gpu_instance
   kokkos_run = gpu_instance(deviceId = 0)
@@ -250,10 +260,11 @@ if __name__=="__main__":
   SIM5.to_cbf("test_full_e_005.cbf")
   diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM5.raw_pixels)
 
-  print("\n# Use case: modularized api argchk=True, cuda_background=True")
-  SIM6 = SWC.modularized_exafel_api_for_KOKKOS(argchk=True, cuda_background=True)
-  SIM6.to_smv_format(fileout="test_full_e_006.img")
-  SIM6.to_cbf("test_full_e_006.cbf")
-  diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM6.raw_pixels)
+  if not use_gauss_star:
+    print("\n# Use case: modularized api argchk=True, cuda_background=True")
+    SIM6 = SWC.modularized_exafel_api_for_KOKKOS(argchk=True, cuda_background=True)
+    SIM6.to_smv_format(fileout="test_full_e_006.img")
+    SIM6.to_cbf("test_full_e_006.cbf")
+    diffs("CPU",SIM.raw_pixels, "KOKKOS",SIM6.raw_pixels)
 
 print("OK")

@@ -140,6 +140,7 @@ while FIG.loop_counter < num_spots:
     # you could put a filter here to choose only those refls in a certain resolution
     sel = M.roi_id == i_h
     x1, x2, y1, y2 = M.rois[i_h]
+    pid = M.pids[i_h]
     sh = y2 - y1, x2 - x1
     data = M.all_data[sel].reshape(sh)
     trusted = M.all_trusted[sel].reshape(sh)
@@ -197,11 +198,11 @@ while FIG.loop_counter < num_spots:
         AX.grid(1, color='#777777', ls='--', lw=0.4)
         AX.set_xticklabels([])
         AX.set_yticklabels([])
-    ax0.set_title("data %d,%d,%d,%d"% (x1,x2,y1,y2), pad=0, fontsize=8)
+    ax0.set_title("data %d: %d,%d,%d,%d"% (pid, x1,x2,y1,y2), pad=0, fontsize=8)
     ax1.set_title("model", pad=0, fontsize=8)
     ax2.set_title("Z (sigZ=%f)" % sigZ_val, pad=0, fontsize=8)
 
-    FIG.suptitle("spot %d" % i_h)
+    FIG.suptitle("spot %d (%d/%d trusted)" % (i_h, trusted.sum(), trusted.size))
     if a is not None:
         a.remove()
     if b is not None:

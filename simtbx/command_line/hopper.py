@@ -5,6 +5,8 @@ from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 import time
 import sys
+from scitbx.matrix import sqr
+from cctbx.sgtbx.literal_description import literal_description
 try:
     import pandas
 except ImportError:
@@ -238,9 +240,34 @@ class Script:
                     MAIN_LOGGER.debug("%.4f %.4f %.4f %.4f %.4f %.4f" % xtal.get_unit_cell().parameters())
             if self.params.record_device_timings and COMM.rank >0:
                 self.params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
+            Modeler.num_xtals = self.params.number_of_xtals
             SIM = hopper_utils.get_simulator_for_data_modelers(Modeler)
             Modeler.set_parameters_for_experiment(best)
-            Modeler.Umatrices = [Modeler.E.crystal.get_U()]
+            Modeler.Umatrices = [Modeler.E.crystal.get_U()] *Modeler.num_xtals
+            if self.params.threefold is not None:
+                assert self.params.threefold in [-1,1]
+                sg = Modeler.E.crystal.get_space_group()
+                A = sqr(Modeler.E.crystal.get_A()).inverse().transpose()
+                ops = sg.build_derived_laue_group().all_ops()
+                R = None
+                for op in ops:
+                    if op.r().determinant()==-1:
+                        continue
+                    descr = literal_description(op).long_form()
+                    if "3-fold" in descr:
+                        if self.params.threefold==1 and "fwd" in descr:
+                            R = sqr(op.r().as_double())
+                            break
+                        elif self.params.threefold==-1 and "rev" in descr:
+                            R = sqr(op.r().as_double())
+                            break
+                        # we want to operate about the crystal basis hence we use A*R*A^-1
+                assert R is not None
+                Rcryst = A * R * A.inverse()
+                U = Rcryst*sqr(Modeler.E.crystal.get_U())
+                Modeler.Umatrices = [U]*Modeler.num_xtals
+
+
 
             # TODO: move this to SimulatorFromExperiment
             # TODO: fix multi crystal shot mode
@@ -273,6 +300,8 @@ class Script:
             try:
                 x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
                 for i_rep in range(self.params.filter_after_refinement.max_attempts):
+                    if not self.params.filter_after_refinement.enable:
+                        continue
                     final_sigz = Modeler.target.all_sigZ[-1]
                     niter = len(Modeler.target.all_sigZ)
                     too_few_iter = niter < self.params.filter_after_refinement.min_prev_niter
@@ -286,8 +315,7 @@ class Script:
             tref = time.time()-tref
             sigz = niter = None
             try:
-                niter = len(Modeler.target.all_hop_id)
-                sigz = Modeler.target.all_sigZ[-1]
+                sigz, niter, _ = Modeler.get_best_hop()
             except Exception:
                 pass
 

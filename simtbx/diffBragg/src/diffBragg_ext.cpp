@@ -3,6 +3,7 @@
 #include <simtbx/diffBragg/src/diffBragg.h>
 #include <simtbx/nanoBragg/nanoBragg.h>
 #include <iostream>
+#include <chrono>
 #include <boost/python/numpy.hpp>
 
 using namespace boost::python;
@@ -458,7 +459,10 @@ namespace boost_python { namespace {
       diffBragg.db_cu_flags.update_Fhkl=true;
       diffBragg.pythony_indices = extract<nanoBragg::indices >(value[0]);
       diffBragg.pythony_amplitudes = extract<nanoBragg::af::shared<double> >(value[1]);
+      std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
       diffBragg.init_Fhkl();
+      std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+      //std::cout << "init Fhkl Time difference (sec) = " <<  (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0  <<std::endl;
       diffBragg.complex_miller = false;
       if (boost::python::len(value)==3){
           if (value[2]!=boost::python::object()){ // check if it is not None
@@ -467,7 +471,11 @@ namespace boost_python { namespace {
               diffBragg.complex_miller = true;
           }
       }
-      diffBragg.linearize_Fhkl(true);
+      begin = std::chrono::steady_clock::now();
+      // TODO properly handle linearize_Fhkl boolean options
+      diffBragg.linearize_Fhkl(true,false);
+      end = std::chrono::steady_clock::now();
+      //std::cout << "linearize Fhkl Time difference (sec) = " <<  (std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count()) /1000000.0  <<std::endl;
   }
 
   static boost::python::tuple get_Fhkl_tuple(nanoBragg::diffBragg diffBragg) {

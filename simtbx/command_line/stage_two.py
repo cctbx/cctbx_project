@@ -1,12 +1,14 @@
 from __future__ import absolute_import, division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME simtbx.diffBragg.stage_two
+# LIBTBX_SET_DISPATCHER_NAME diffBragg.stage_two
 
 from libtbx.mpi4py import MPI
 from simtbx.command_line.hopper import hopper_phil
 import time
 import logging
 import os
+#from simtbx.diffBragg.utils import find_diffBragg_instances
 from simtbx.diffBragg import mpi_logger
 
 from simtbx.diffBragg.device import DeviceWrapper
@@ -77,6 +79,10 @@ class Script:
         refine_starttime = time.time()
         refiner = ensemble_refine_launcher.global_refiner_from_parameters(self.params)
         print("Time to refine experiment: %f" % (time.time()- refine_starttime))
+        #refiner.S.D.free_all()
+        #refiner.S.D.free_Fhkl2()
+        #del refiner.S.D
+        #for name in find_diffBragg_instances(globals()): del globals()[name]
 
         #TODO save MTZ
 

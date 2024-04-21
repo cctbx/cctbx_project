@@ -103,7 +103,7 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
 
     Nabc_init = []
     for i in [0,1,2]:
-        p = Mod.P["Nabc%d" % i]
+        p = Mod.P["Nabc%d_xtal0" % i]
         Nabc_init.append(p.init)
     Nabc_init = tuple(Nabc_init)
 
@@ -129,6 +129,8 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
     Amat = new_cryst.get_A()
     other_Umats = []
     other_spotscales = []
+    other_ncells = []
+    other_ncells_def = []
     if Mod.num_xtals > 1:
         for i_xtal in range(1,Mod.num_xtals,1):
             par = hopper_utils.get_param_from_x(x, Mod, i_xtal=i_xtal, as_dict=True)
@@ -136,9 +138,17 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
             rotX_xt = par['rotX']
             rotY_xt = par['rotY']
             rotZ_xt = par['rotZ']
-            U_xt = diffBragg_Umat(rotX_xt, rotY_xt, rotZ_xt, SIM.Umatrices[i_xtal])
+            U_xt = diffBragg_Umat(rotX_xt, rotY_xt, rotZ_xt, Mod.Umatrices[i_xtal])
             other_Umats.append(U_xt)
             other_spotscales.append(scale_xt)
+            Na_xt = par['Na']
+            Nb_xt = par['Nb']
+            Nc_xt = par['Nc']
+            Nd_xt = par['Nd']
+            Ne_xt = par['Ne']
+            Nf_xt = par['Nf']
+            other_ncells.append((Na_xt, Nb_xt, Nc_xt))
+            other_ncells_def.append((Nd_xt, Ne_xt, Nf_xt))
 
     eta = [0]
     lam_coefs = [0], [1]
@@ -193,6 +203,10 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         num_mosaicity_samples=params.simulator.crystal.num_mosaicity_samples)
 
     df['exp_idx'] = exp_idx
+    if other_ncells:
+        df['other_ncells'] = [tuple(other_ncells)]
+    if other_ncells_def:
+        df['other_ncells_def'] = [tuple(other_ncells_def)]
 
     if hasattr(Mod, "sigz"):
         df['sigz'] = [Mod.sigz]

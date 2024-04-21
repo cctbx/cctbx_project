@@ -301,7 +301,7 @@ class diffBragg: public nanoBragg{
   void show_fp_fdp();
   bool track_Fhkl;
   std::vector<int> nominal_hkl;
-  void linearize_Fhkl(bool compute_dists);
+  void linearize_Fhkl(bool compute_dists, bool track_equiv_fhkl);
   void sanity_check_linear_Fhkl();
   void update_linear_Fhkl();
 

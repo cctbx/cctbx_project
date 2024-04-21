@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.mpi4py import MPI
 from simtbx.diffBragg import stage_two_utils
+from simtbx.diffBragg.utils import is_outlier
 
 COMM = MPI.COMM_WORLD
 if not hasattr(COMM, "rank"):
@@ -373,7 +374,7 @@ class StageTwoRefiner(BaseRefiner):
             self.Modelers[i_shot].all_nominal_hkl_p1 = nom_h_p1
 
     def _setup_fcell_params(self):
-        if self.refine_Fcell:
+        if True:#self.refine_Fcell:
             LOGGER.info("----loading fcell data")
             # this is the number of observations of hkl (accessed like a dictionary via global_fcell_index)
             LOGGER.info("---- -- counting hkl totes")
@@ -436,8 +437,10 @@ class StageTwoRefiner(BaseRefiner):
     def _get_detector_distance_val(self, i_shot):
         return self.Modelers[i_shot].PAR.detz_shift.init
 
-    def _get_ncells_def_vals(self, i_shot):
-        pass
+    def _get_ncells_def(self, i_shot):
+        vals = [self.Modelers[i_shot].PAR.Ndef[i_N].init for i_N in range(3)]
+        LOGGER.info(f"Ndef VALS: {vals[0]} {vals[1]} {vals[2]}")
+        return vals
 
     def _get_ncells_abc(self, i_shot):
         if self.params.refiner.refine_Nabc:
@@ -491,8 +494,8 @@ class StageTwoRefiner(BaseRefiner):
         LOGGER.info("finished diffBragg for shot %d" % self._i_shot)
 
     def _store_updated_Fcell(self):
-        if not self.refine_Fcell:
-            return
+        #if not self.refine_Fcell:
+        #    return
         xvals = self.x[self.fcell_xstart: self.fcell_xstart+self.n_global_fcell]
         if self.rescale_params and self.log_fcells:
             sigs = self.fcell_sigmas_from_i_fcell
@@ -564,7 +567,8 @@ class StageTwoRefiner(BaseRefiner):
         self.D.set_ncells_values(tuple(vals))
 
     def _update_ncells_def(self):
-        pass
+        vals = self._get_ncells_def(self._i_shot)
+        self.D.Ncells_def = tuple(vals)
 
     def _update_dxtbx_detector(self):
         shiftZ = self._get_detector_distance_val(self._i_shot)
@@ -745,37 +749,26 @@ class StageTwoRefiner(BaseRefiner):
 
             self._derivative_convenience_factors()
 
-            if self.saveZ_freq is not None and self.target_eval_count % self.saveZ_freq == 0:
+
+            save_Z =self.saveZ_freq is not None and self.target_eval_count % self.saveZ_freq == 0
+            filt = self.params.filter_during_refinement
+            i_ev = self.target_eval_count
+            filt_Z = filt.enable and i_ev > i_ev % filt.after_n == 0
+            if save_Z or filt_Z:
                 MOD = self.Modelers[self._i_shot]
                 self._spot_Zscores = []
                 for i_fcell in MOD.unique_i_fcell:
-                    for slc in MOD.i_fcell_slices[i_fcell]:
+                    for i_slc, slc in enumerate(MOD.i_fcell_slices[i_fcell]):
                         sigZ = self._Zscore[slc]
                         trus = MOD.all_trusted[slc]
                         sigZ = sigZ[trus].std()
-                        self._spot_Zscores.append((i_fcell, sigZ))
+                        self._spot_Zscores.append((COMM.rank, self._i_shot, i_fcell, i_slc, sigZ))
                 self._shot_Zscores.append(self._spot_Zscores)
 
             if save_model:
                 MOD = self.Modelers[self._i_shot]
-                P = MOD.all_pid
-                F = MOD.all_fast
-                S = MOD.all_slow
-                #G = MOD.all_gain
-                M = self.model_Lambda
-                B = MOD.all_background
-                D = MOD.all_data
-                C = self.model_bragg_spots
-                Z = self._Zscore
-                iF = MOD.all_fcell_global_idx
-                iROI = MOD.roi_id
-                trust = MOD.all_trusted
-
-                model_info = {"p": P, "f": F, "s": S, "model": M,
-                        "background": B, "data": D, "bragg": C,
-                        "Zscore": Z, "i_fcell": iF, "trust": trust,
-                        "i_roi": iROI}
-                self._save_model(model_info)
+                MOD.best_model = self.model_bragg_spots
+                self._save_model(MOD)
             self._is_trusted = self.Modelers[self._i_shot].all_trusted
             self.target_functional += self._target_accumulate()
             self._spot_scale_derivatives()
@@ -811,6 +804,7 @@ class StageTwoRefiner(BaseRefiner):
 
         tsave = time.time()
         LOGGER.info("DUMP param and Zscore data")
+        self._filter_by_Zscore()
         self._save_Zscore_data()
         tsave = time.time()-tsave
         LOGGER.info("Time to dump param and Zscore data: %.4f" % tsave)
@@ -828,13 +822,62 @@ class StageTwoRefiner(BaseRefiner):
     def callback_after_step(self, minimizer):
         self.iterations = minimizer.iter()
 
-    def _save_model(self, model_info):
+    def _save_model(self, Mod):
         LOGGER.info("SAVING MODEL FOR SHOT %d" % self._i_shot)
-        df = pandas.DataFrame(model_info)
-        df["shot_id"] = self._i_shot
+        #df = pandas.DataFrame(model_info)
+        #df["shot_id"] = self._i_shot
         outdir = self._save_model_dir
-        outname = os.path.join(outdir, "rank%d_shot%d_EVAL%d_ITER%d.pkl" % (COMM.rank, self._i_shot, self.target_eval_count, self.iterations))
-        df.to_pickle(outname)
+        outname = os.path.join(outdir, "rank%d_shot%d_EVAL%d_ITER%d.npy" % (COMM.rank, self._i_shot, self.target_eval_count, self.iterations))
+        np.save(outname, Mod)
+
+    def _find_Zscore_outliers(self, all_shot_Z):
+        """
+        :param all_shot_Z:
+        :return: a dictionary where key is the COMM.rank and the values are lists of i_fcell, i_slc corresponding to outliers
+        """
+        # this should be binned by resolution, and then outliers found in each
+        all_rank, all_i_shot, all_i_fcell, all_i_slc, all_Z = np.array(all_shot_Z).T
+        Z_is_out = is_outlier(all_Z, self.params.filter_during_refinement.threshold)
+        # send a message to each rank if it has an outlier...
+        outlier_info = {}
+        for i in np.where(Z_is_out)[0]:
+            rank = int(all_rank[i])
+            i_fcell = int(all_i_fcell[i])
+            i_slc = int(all_i_slc[i])
+            i_shot = int(all_i_shot[i])
+            msg = i_shot, i_fcell, i_slc  # filter this i_shot, i_fcell, i_slc
+            if rank not in outlier_info:
+                outlier_info[rank] = [msg]
+            else:
+                outlier_info[rank].append(msg)
+
+        return outlier_info
+
+    def _filter_by_Zscore(self):
+        filt = self.params.filter_during_refinement
+        i_ev = self.target_eval_count
+        if filt.enable and i_ev > 0 and i_ev % filt.after_n == 0:
+            all_shot_Zscore = COMM.reduce(self._shot_Zscores)
+            outlier_info = None
+            ntotal_shoeboxes = 0
+            if COMM.rank == 0:
+                # flatten the list of lists
+                all_shot_Zscore = [i for sl in all_shot_Zscore for i in sl]
+                ntotal_shoeboxes = len(all_shot_Zscore)
+                # pass to the outlier detector
+                outlier_info = self._find_Zscore_outliers(all_shot_Zscore)
+            outlier_info = COMM.bcast(outlier_info)
+            ntotal_shoeboxes = COMM.reduce(ntotal_shoeboxes)
+            num_filt = 0
+            if COMM.rank in outlier_info:
+                num_filt = len(outlier_info[COMM.rank])
+                for i_shot, i_fcell, i_slc in outlier_info[COMM.rank]:
+                    MOD = self.Modelers[i_shot]
+                    slc = MOD.i_fcell_slices[i_fcell][i_slc]
+                    MOD.all_trusted[slc] = False
+            num_filt = COMM.reduce(num_filt)
+            if COMM.rank==0:
+                LOGGER.info("Zscore Filter removed %d / %d shoeboxes (%.2f%%)" % (num_filt, ntotal_shoeboxes, num_filt / ntotal_shoeboxes*100.))
 
     def _save_Zscore_data(self):
         if self.saveZ_freq is None or not self.target_eval_count % self.saveZ_freq == 0:
@@ -1055,7 +1098,7 @@ class StageTwoRefiner(BaseRefiner):
             LOGGER.info("Done Saving detector gain map!")
 
     def _MPI_save_state_of_refiner(self):
-        if self.I_AM_ROOT and self.output_dir is not None and self.refine_Fcell:
+        if self.I_AM_ROOT and self.output_dir is not None:# and self.refine_Fcell:
             outf = os.path.join(self.output_dir, "_fcell_trial%d_eval%d_iter%d" % (self.trial_id, self.target_eval_count, self.iterations))
             np.savez(outf, fvals=self._fcell_at_i_fcell)
 
@@ -1143,9 +1186,9 @@ class StageTwoRefiner(BaseRefiner):
             self.resolution_ids_from_i_fcell = self.fcell_sigmas_from_i_fcell = self.fcell_init_from_i_fcell = None
 
         if self.rescale_params:
-            if self.refine_Fcell:
-                self.fcell_sigmas_from_i_fcell = COMM.bcast(self.fcell_sigmas_from_i_fcell)
-                self.fcell_init_from_i_fcell = COMM.bcast(self.fcell_init_from_i_fcell)
+            #if self.refine_Fcell:
+            self.fcell_sigmas_from_i_fcell = COMM.bcast(self.fcell_sigmas_from_i_fcell)
+            self.fcell_init_from_i_fcell = COMM.bcast(self.fcell_init_from_i_fcell)
 
     def _MPI_sync_panel_params(self):
         if not self.I_AM_ROOT:

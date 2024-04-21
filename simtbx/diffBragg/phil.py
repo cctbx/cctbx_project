@@ -6,7 +6,15 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
-
+filter_jungfrau_gain_mode = False
+  .type = bool
+  .help = if True, filter the highest gain mode in Jungfrau 4M / 16M formats
+threefold = None
+  .type = int
+  .help = something
+shuffle_stage2_inputs = False
+  .type = bool
+  .help = optionally shuffle the pandas input pickle for stage 2, so then max_process can be used to select random subsets
 filter_during_refinement {
   enable = False
     .type = bool
@@ -146,6 +154,9 @@ isotropic {
     .help = refine a single diffuse gamma parameter as opposed to 3
 }
 downsamp_spec {
+  multi_gauss = False
+    .type = bool
+    .help = fit a multiple gaussian function to each spectrum
   skip = False
     .type = bool
     .help = if reading spectra from imageset, optionally skip the downsample portion
@@ -1319,6 +1330,9 @@ predictions {
     .help = diffbragg offers CUDA support via the DIFFBRAGG_USE_CUDA=1 environment variable specification
     .help = or openmp support using the OMP_NUM_THREADS flag
     .help = The exascale only uses CUDA (will raise error if CUDA is not confugured)
+  mosaic_samples_override = None
+    .type = int
+    .help = Specify the number of mosaic spread samples
 }
 """
 

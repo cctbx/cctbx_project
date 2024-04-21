@@ -14,15 +14,17 @@ from scipy.interpolate import interp1d
 from cctbx import miller
 
 F = any_reflection_file(args.mtzin).as_miller_arrays()[0]
-F = F.as_amplitude_array()
 if not F.is_xray_amplitude_array():
-    F = F.set_observation_type_xray_amplitude()
+    F = F.as_amplitude_array()
+assert F.is_xray_amplitude_array()
+#    F = F.set_observation_type_xray_amplitude()
 
 print("Bin-ID    Res-range    Completeness    #ASU-indices")
 F.show_completeness()
 d_max,d_min = F.resolution_range()
 print("d_min, d_max (Angstrom): ", d_min, d_max)
-mset_full = F.build_miller_set(False, d_min=d_min)
+#mset_full = F.build_miller_set(False, d_min=d_min)
+mset_full = F.build_miller_set(True, d_min=d_min)
 mset_full_d = {h: d for h,d in zip(mset_full.d_spacings().indices(), mset_full.d_spacings().data())}
 Fmap = {h:val for h,val in zip(F.indices(), F.data())}
 xvals = np.array(F.d_spacings().data())
