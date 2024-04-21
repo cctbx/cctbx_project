@@ -211,7 +211,8 @@ namespace Kokkos {
     //don't want to free the kec data when the nanoBragg goes out of scope, so switch the pointer
     // cu_current_channel_Fhkl = NULL;
 
-      add_array(kdt.m_accumulate_floatimage, kdt.m_floatimage);
+      //for the small_whitelist specialization, have a special version of add_array() that specifies size
+      add_array_limit(kdt.m_accumulate_floatimage, kdt.m_floatimage, kdt.m_floatimage.span());
     }// loop over channels
   }
 
