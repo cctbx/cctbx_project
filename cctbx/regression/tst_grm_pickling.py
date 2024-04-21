@@ -437,7 +437,7 @@ def test_reference_model(mon_lib_srv, ener_lib, prefix="tst_reference_model"):
          model = model,
          reference_hierarchy_list=reference_hierarchy_list,
          params=work_params.reference_model,
-         log=mstream)
+         log=null_out())  # XXX changed from mstream which cannot be pickled
   assert rm.get_n_proxies() == 5, "Got %d, expected 5" % rm.get_n_proxies()
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, model_raw_records)
   geometry.adopt_reference_dihedral_manager(rm)
