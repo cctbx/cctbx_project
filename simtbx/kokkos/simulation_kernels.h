@@ -955,6 +955,14 @@ void add_array( view_1d_t<T> lhs, const view_1d_t<U> rhs ) {
   });
 }
 
+template <typename T, typename U>
+void add_array_limit( view_1d_t<T> lhs, const view_1d_t<U> rhs, const std::size_t& limit ) {
+  Kokkos::parallel_for("add_arrays", limit, KOKKOS_LAMBDA(const int& i) {
+    lhs( i ) = lhs( i ) + (T)rhs( i );
+    rhs( i ) = 0;
+  });
+}
+
 void add_background_kokkos_kernel(int sources, int nanoBragg_oversample, int override_source,
     CUDAREAL pixel_size, int spixels, int fpixels, int detector_thicksteps,
     CUDAREAL detector_thickstep, CUDAREAL detector_attnlen,

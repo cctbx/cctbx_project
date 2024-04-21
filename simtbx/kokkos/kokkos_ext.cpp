@@ -87,6 +87,7 @@ namespace simtbx { namespace Kokkos {
         .def("show_summary",&simtbx::Kokkos::kokkos_detector<memory_t>::show_summary)
         .def("each_image_allocate",
               &simtbx::Kokkos::kokkos_detector<memory_t>::each_image_allocate,
+              ( arg_("n_pixels")=0 ),
              "Allocate large pixel arrays")
         .def("scale_in_place", &simtbx::Kokkos::kokkos_detector<memory_t>::scale_in_place,
              "Multiply by a scale factor on the GPU")
@@ -95,7 +96,6 @@ namespace simtbx { namespace Kokkos {
         .def("get_raw_pixels",&simtbx::Kokkos::kokkos_detector<memory_t>::get_raw_pixels,
              "return multipanel detector raw pixels as a flex array")
         .def("get_whitelist_raw_pixels",
-             (af::shared<double> (simtbx::Kokkos::kokkos_detector<memory_t>::*)(af::shared<std::size_t>))
              &simtbx::Kokkos::kokkos_detector<memory_t>::get_whitelist_raw_pixels,
             "return only those raw pixels requested by the whitelist selection, as a 1D flex array")
         .def("each_image_free", &simtbx::Kokkos::kokkos_detector<memory_t>::each_image_free)
