@@ -406,10 +406,13 @@ class SimData:
       self.D.Omatrix = self.crystal.Omatrix
       self.D.Bmatrix = self.crystal.dxtbx_crystal.get_B() #
       self.D.Umatrix = self.crystal.dxtbx_crystal.get_U()
-    self.update_Fhkl_tuple()
-    self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
 
     if self.using_diffBragg_spots:
+      shape = str(self.crystal.xtal_shape)
+      if shape not in ["Gauss", "Gauss_star", "Square"]:
+        raise ValueError("nanoBragg_crystal xtal_shape should be square, gauss or gauss_star")
+      self.update_Fhkl_tuple()
+      self.D.unit_cell_tuple = self.crystal.dxtbx_crystal.get_unit_cell().parameters()
       # init mosaic domain size:
       if self.crystal.isotropic_ncells:
         self.D.Ncells_abc = self.crystal.Ncells_abc[0]
