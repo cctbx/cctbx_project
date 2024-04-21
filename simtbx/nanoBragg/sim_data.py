@@ -371,9 +371,11 @@ class SimData:
         Fimag = flex.double(Fimag)
         self.D.Fhkl_tuple = ma_on_detector.indices(), Freal, Fimag
       elif self.using_diffBragg_spots:
-        self.D.Fhkl_tuple = ma_on_detector.indices(), ma_on_detector.data(), None
+        inds = ma_on_detector.indices()
+        dat = ma_on_detector.data()
+        self.D.Fhkl_tuple = inds, dat, None
       else:
-        self.D.Fhkl_tuple = self.crystal.miller_array.indices(), self.crystal.miller_array.data(), None
+        self.D.Fhkl_tuple = ma_on_detector.indices(), ma_on_detector.data(), None
 
   def set_dspace_binning(self, nbins, verbose=False):
     dsp = self.D.Fhkl.d_spacings().data().as_numpy_array()
