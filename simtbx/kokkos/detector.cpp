@@ -93,16 +93,16 @@ namespace simtbx { namespace Kokkos {
   }
 
   template<>
-  void kokkos_detector<small_whitelist_policy>::hello(){
-    SCITBX_EXAMINE("small small small");
+  std::string kokkos_detector<small_whitelist_policy>::hello(){
+    return("small small small");
   }
   template<>
-  void kokkos_detector<large_array_policy>::hello(){
-    SCITBX_EXAMINE("large large large");
+  std::string kokkos_detector<large_array_policy>::hello(){
+    return("large large large");
   }
 
   template<> void
-  kokkos_detector<large_array_policy>::each_image_allocate() {
+  kokkos_detector<large_array_policy>::each_image_allocate(const std::size_t& n_pixels) {
     resize(m_rangemap, m_total_pixel_count);
     resize(m_omega_reduction, m_total_pixel_count);
     resize(m_max_I_x_reduction, m_total_pixel_count);
@@ -140,9 +140,17 @@ namespace simtbx { namespace Kokkos {
 
     // printf("DONE.\n");
   }
+
   template<> void
-  kokkos_detector<small_whitelist_policy>::each_image_allocate() {
-    resize(m_maskimage, m_total_pixel_count);
+  kokkos_detector<small_whitelist_policy>::each_image_allocate(const std::size_t& n_pixels) {
+    SCITBX_ASSERT(n_pixels > 0);
+    resize(m_rangemap, n_pixels);
+    resize(m_omega_reduction, n_pixels);
+    resize(m_max_I_x_reduction, n_pixels);
+    resize(m_max_I_y_reduction, n_pixels);
+    resize(m_floatimage, n_pixels);
+
+    resize(m_maskimage, n_pixels);
     kokkostbx::transfer_shared2kokkos(m_sdet_vector, metrology.sdet);
     kokkostbx::transfer_shared2kokkos(m_fdet_vector, metrology.fdet);
     kokkostbx::transfer_shared2kokkos(m_odet_vector, metrology.odet);
@@ -152,80 +160,5 @@ namespace simtbx { namespace Kokkos {
     kokkostbx::transfer_shared2kokkos(m_Ybeam, metrology.Ybeam);
     fence();
   }
-
-  template<>
-  void
-  kokkos_detector<large_array_policy>::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {
-    m_active_pixel_size = active_pixel_list_value.size();
-    kokkostbx::transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
-    active_pixel_list = active_pixel_list_value;
-  }
-
-  template<>
-  void
-  kokkos_detector<small_whitelist_policy>::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {
-    m_active_pixel_size = active_pixel_list_value.size();
-    kokkostbx::transfer_shared2kokkos(m_active_pixel_list, active_pixel_list_value);
-    active_pixel_list = active_pixel_list_value;
-    resize(m_rangemap, m_active_pixel_size);
-    resize(m_omega_reduction, m_active_pixel_size);
-    resize(m_max_I_x_reduction, m_active_pixel_size);
-    resize(m_max_I_y_reduction, m_active_pixel_size);
-    resize(m_floatimage, m_active_pixel_size);
-    resize(m_accumulate_floatimage, m_active_pixel_size);
-    fence();
-  }
-
-  template<> af::shared<double>
-  kokkos_detector<large_array_policy>::get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
-    hello();
-    //return the data array for the multipanel detector case, but only for whitelist pixels
-    vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
-    kokkostbx::transfer_shared2kokkos(active_pixel_selection, selection);
-
-    size_t output_pixel_size = selection.size();
-    vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
-
-    auto temp = m_accumulate_floatimage;
-
-    parallel_for("get_active_pixel_selection",
-                  range_policy(0, output_pixel_size),
-                  KOKKOS_LAMBDA (const int i) {
-      size_t index = active_pixel_selection( i );
-      active_pixel_results( i ) = temp( index );
-    });
-
-    af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
-    kokkostbx::transfer_kokkos2shared(output_array, active_pixel_results);
-
-    SCITBX_ASSERT(output_array.size() == output_pixel_size);
-    return output_array;
-  }
-  template<> af::shared<double>
-  kokkos_detector<small_whitelist_policy>::get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
-    SCITBX_CHECK_POINT;
-    hello();
-    //return the data array for the multipanel detector case, but only for whitelist pixels
-
-    std::size_t output_pixel_size = selection.size();
-    //vector_cudareal_t active_pixel_results = vector_cudareal_t("active_pixel_results", output_pixel_size);
-
-    //auto temp = m_accumulate_floatimage;
-
-    //parallel_for("get_active_pixel_selection2",
-    //              range_policy(0, output_pixel_size),
-    //              KOKKOS_LAMBDA (const int i) {
-    //  active_pixel_results( i ) = temp( i );
-    //});
-
-    af::shared<double> output_array(output_pixel_size, af::init_functor_null<double>());
-    SCITBX_CHECK_POINT;
-    kokkostbx::transfer_kokkos2shared(output_array, m_accumulate_floatimage);//active_pixel_results);
-    SCITBX_CHECK_POINT;
-
-    SCITBX_ASSERT(output_array.size() == output_pixel_size);
-    return output_array;
-  }
-
 } // Kokkos
 } // simtbx

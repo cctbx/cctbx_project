@@ -215,7 +215,8 @@ class several_wavelength_case_policy (several_wavelength_case_unified):
     self.gpu_simulation.allocate()
     self.gpu_detector = get_exascale("gpu_detector_small_whitelist",params.context)(
                  deviceId=self.SIM.device_Id, detector=self.DETECTOR, beam=self.BEAM)
-    self.gpu_detector.each_image_allocate()
+
+    self.gpu_detector.each_image_allocate(n_pixels = whitelist_pixels.size() )
     # self.gpu_detector.show_summary()
 
     assert sources
@@ -233,9 +234,8 @@ class several_wavelength_case_policy (several_wavelength_case_unified):
     per_image_scale_factor = self.domains_per_crystal # 1.0
     self.gpu_detector.scale_in_place(per_image_scale_factor) # apply scale directly on GPU
     self.reset_pythony_beams(self.SIM)
-    print("AAA")
-    self.whitelist_values = self.gpu_detector.get_whitelist_raw_pixels(whitelist_pixels)
-    print("BBB")
+    whitelist_idx = flex.size_t(range(whitelist_pixels.size()))
+    self.whitelist_values = self.gpu_detector.get_whitelist_raw_pixels(whitelist_idx)
 
 def get_whitelist_from_refls(prefix,SIM=None):
     #image_size = len(SIM.raw_pixels)
@@ -347,7 +347,7 @@ def run_all(params):
   # Now reproduce whitelist sims showing accumulation of large persistent memory
   SWCs=[]
   for x in range(NTRIALS):
-    print("Whitelist-only iteration",x)
+    print("\nWhitelist-only iteration",x)
     SWCs.append(several_wavelength_case_policy(BEAM,DETECTOR,CRYSTAL,SF_model,weights=flex.double([1.])))
     SWCs[-1].specialized_api_for_whitelist(whitelist_pixels=whitelist_pixels,params=params,argchk=False,sources=True)
 
@@ -365,7 +365,7 @@ def run_all(params):
   # Reproduce whitelist sims with small-memory mechanism
   SWCs=[]
   for x in range(NTRIALS):
-    print("Whitelist-only iteration with small memory",x)
+    print("\nWhitelist-only iteration with small memory",x)
     SWCs.append(several_wavelength_case_policy(BEAM,DETECTOR,CRYSTAL,SF_model,weights=flex.double([1.])))
     SWCs[-1].specialized_api_for_whitelist_low_memory(whitelist_pixels=whitelist_pixels,params=params,argchk=False,sources=True)
   #produce an output image file for intermediate debugging
@@ -407,25 +407,15 @@ def run_subset_for_NESAP_debug(params):
   # Reproduce whitelist sims with small-memory mechanism
   SWCs=[]
   for x in range(NTRIALS):
-    print("Whitelist-only iteration with small memory",x)
+    print("\n Whitelist-only iteration with small memory",x)
     SWCs.append(several_wavelength_case_policy(BEAM,DETECTOR,CRYSTAL,SF_model,weights=flex.double([1.])))
     SWCs[-1].specialized_api_for_whitelist_low_memory(whitelist_pixels=whitelist_pixels,params=params,argchk=False,sources=True)
-  #produce an output image file for intermediate debugging
-  working_raw_pixels = flex.double(image_size) # blank array
-  working_raw_pixels.set_selected(whitelist_pixels, SWCs[-1].whitelist_values)
-  working_raw_pixels.reshape(flex.grid(SWCs[-1].SIM.raw_pixels.focus()))
-
-  free_gpu_before = get_gpu_memory()[0]
-  del SWCs
-  free_gpu_after = get_gpu_memory()[0]
-  new_memory_use = (free_gpu_after - free_gpu_before)/NTRIALS
-  print(new_memory_use,"free")
 
 if __name__=="__main__":
   params,options = parse_input()
   # Initialize based on GPU context
   gpu_instance_type = get_exascale("gpu_instance", params.context)
   gpu_instance = gpu_instance_type(deviceId = 0)
-  #run_all(params)
-  run_subset_for_NESAP_debug(params)
+  run_all(params)
+  #run_subset_for_NESAP_debug(params)
 print("OK")
