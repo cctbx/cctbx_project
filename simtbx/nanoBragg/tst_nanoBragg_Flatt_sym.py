@@ -8,7 +8,6 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("sym", type=str, choices=["C","I","F","P1","P2","P3","P4","P6"], help="crystal system")
 parser.add_argument("--cuda", action="store_true", help="Uses Giles nanoBragg CUDA kernel")
-parser.add_argument("--flat", action="store_true", help="flat structure factors (all same value)")
 parser.add_argument("--fix", action="store_true", help="fix using symmetric mosaic blocks (exaFEL fix)")
 parser.add_argument("--mos", action="store_true", help="add mosaic spread")
 parser.add_argument("--plot", action="store_true", help="display plots at the end")
@@ -99,10 +98,6 @@ syms = {
 ucell_p, symbol = syms[args.sym]
 ucell = uctbx.unit_cell(ucell_p)
 F = db_utils.make_miller_array(unit_cell=ucell_p, symbol=symbol)
-if args.flat:
-    ave_F = np.mean(F.data())
-    flat_data = flex.double(len(F.data()), ave_F)
-    F = miller.array(F.set(), flat_data)
 
 sg = F.space_group()
 sgi = sg.info()
