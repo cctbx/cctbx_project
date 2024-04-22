@@ -165,7 +165,7 @@ These categories are general suggestions. Check your electron density; trust you
       verbose=verbose,
       keep_hydrogens=keep_hydrogens,
       do_flips = do_flips,
-      log=out)
+      log=null_out())
 
     # First we must rebuild the model from the new hierarchy so that the copy can succeed.
     # Make a copy of the original model to use for submodel processing, we'll trim atoms out
@@ -176,7 +176,7 @@ These categories are general suggestions. Check your electron density; trust you
       stop_for_unknowns = False,
       crystal_symmetry  = data_manager_model.crystal_symmetry(),
       restraint_objects = None,
-      log               = None)
+      log               = null_out())
     original_model = data_manager_model.deep_copy()
 
     pdb_hierarchy = data_manager_model.get_hierarchy()
@@ -221,7 +221,7 @@ These categories are general suggestions. Check your electron density; trust you
         stop_for_unknowns = False,
         crystal_symmetry  = submodel.crystal_symmetry(),
         restraint_objects = None,
-        log               = None)
+        log               = null_out())
 
       self.probe_undowser_manager = probe_undowser_manager(
         nuclear=nuclear,

@@ -648,7 +648,7 @@ def check_and_add_hydrogen(
       keep_existing_H=False
     )
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(None)
+    reduce_add_h_obj.show(log)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if len(missed_residues) > 0:
       bad = ""
