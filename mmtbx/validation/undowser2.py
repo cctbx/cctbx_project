@@ -586,7 +586,7 @@ class probe_undowser_manager(probe_clashscore_manager):
       "include_water_water=True",
       "output.filename='{}'".format(tempName),
       "output.format=raw",
-      "output.condensed={}".format(self.condensed_probe),
+      "output.condensed=True",
       "output.report_vdws=False",
       "output.only_report_bad_clashes=True",
       "ignore_lack_of_explicit_hydrogens=True",
