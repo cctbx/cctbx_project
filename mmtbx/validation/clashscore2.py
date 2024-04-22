@@ -132,7 +132,6 @@ class clashscore2(validation):
       r.append_model(mdc)
 
       occ_max = flex.max(r.atoms().extract_occ())
-      input_str = r.as_pdb_string()
 
       # Make yet another model for the new hierarchy
       subset_model_manager = mmtbx.model.manager(
