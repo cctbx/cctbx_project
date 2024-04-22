@@ -637,7 +637,7 @@ def update_bond_restraints(ligand_model,
         if not(i_atom.tmp in ligand_i_seqs and j_atom.tmp in ligand_i_seqs):
           continue
       Z=(distance_model-bond.distance_ideal)/sigma
-      print('    %-2d %s - %s %5.3f ~> %5.3f (Z=%4.1f)' % (
+      print('    %-5d %s - %s %5.3f ~> %5.3f (Z=%4.1f)' % (
         i,
         i_atom.id_str().replace('pdb=',''),
         j_atom.id_str().replace('pdb=',''),
@@ -651,7 +651,7 @@ def update_bond_restraints(ligand_model,
     else:
       if ( i_atom.element_is_hydrogen() or j_atom.element_is_hydrogen()):
         if distance_model>1.5:
-          print('    %-2d %s - %s %5.3f ~> %5.3f' % (
+          print('    %-5d %s - %s %5.3f ~> %5.3f' % (
             i,
             i_atom.id_str().replace('pdb=',''),
             j_atom.id_str().replace('pdb=',''),
@@ -734,7 +734,7 @@ def update_angle_restraints(ligand_model,
     # key = (int(i_seqs[0]), int(i_seqs[1]), int(i_seqs[2]))
     i+=1
     Z=(angle_model-angle_ideal)/sigma
-    print('    %-2d %s - %s - %s %5.1f ~> %5.1f (Z=%4.1f)' % (
+    print('    %-5d %s - %s - %s %5.1f ~> %5.1f (Z=%4.1f)' % (
       i,
       i_atom.id_str().replace('pdb=',''),
       j_atom.id_str().replace('pdb=',''),
@@ -831,7 +831,7 @@ def update_dihedral_restraints( ligand_model,
     else:
       if len(intersect)!=4: continue
     i+=1
-    print('    %-2d %s - %s - %s - %s %5.1f ~> %5.1f' % (
+    print('    %-5d %s - %s - %s - %s %6.1f ~> %6.1f' % (
       i,
       i_atom.id_str().replace('pdb=',''),
       j_atom.id_str().replace('pdb=',''),
@@ -911,14 +911,15 @@ def setup_qm_jobs(model,
     number_of_macro_cycles = 1
     if hasattr(params, 'main'):
       number_of_macro_cycles = params.main.number_of_macro_cycles
+    if macro_cycle==99: number_of_macro_cycles = 99
     if macro_cycle is not None and not running_this_macro_cycle(
         qmr,
         macro_cycle,
         energy_only=energy_only,
         number_of_macro_cycles=number_of_macro_cycles,
         pre_refinement=pre_refinement):
-      # print('    Skipping this selection in this macro_cycle : %s' % qmr.selection,
-      #       file=log)
+      print('    Skipping this selection in this macro_cycle : %s' % qmr.selection,
+            file=log)
       continue
     #
     # get ligand and buffer region models
@@ -1041,16 +1042,20 @@ def run_energies(model,
   #
   # run jobs
   #
+  working_dir = quantum_interface.get_working_directory(model, params)
+  if not os.path.exists(working_dir):
+    try: os.mkdir(working_dir)
+    except Exception as e: pass
+  os.chdir(working_dir)
   xyzs, xyzs_buffer, energies, units = run_jobs(objects,
                                                 macro_cycle=macro_cycle,
                                                 nproc=nproc,
                                                 log=log)
+  os.chdir('..')
   print('  Total time for QM energies: %0.1fs' % (time.time()-t0), file=log)
   print('%s%s' % ('<'*40, '>'*40), file=log)
   return group_args(energies=energies,
                     units=units,
-                    # rmsds=rmsds,
-                    # times=times,
                     )
 
 def update_restraints(model,
@@ -1098,6 +1103,7 @@ def update_restraints(model,
   #
   assert objects
   if not objects: return None
+  cwd_dir = os.getcwd()
   working_dir = quantum_interface.get_working_directory(model, params)
   if not os.path.exists(working_dir):
     try: os.mkdir(working_dir)
@@ -1236,7 +1242,7 @@ Restraints written by QMR process in phenix.refine
       if qmr.restraints_filename is not Auto:
         tmp_cif_filename = qmr.restraints_filename
       else:
-        tmp_cif_filename = '%s.cif' % qmm.preamble
+        tmp_cif_filename = os.path.join(cwd_dir, '%s.cif' % qmm.preamble)
       if not tmp_cif_filename.endswith('.cif'):
         tmp_cif_filename = '%s.cif' % tmp_cif_filename
       write_restraints(ligand_model,

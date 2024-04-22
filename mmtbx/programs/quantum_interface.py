@@ -245,7 +245,6 @@ def should_get_selection_from_user(params):
   bc=0
   if not params.qi.selection:
     for i, boolean in enumerate(bools):
-      print(i, boolean)
       if boolean: bc+=1
   else:
     return False
@@ -407,21 +406,11 @@ Usage examples:
       include_amino_acids=[include_amino_acids]
 
     rc = should_get_selection_from_user(self.params)
-    print(dir(self.params))
-    print('rc',rc)
     if rc:
-    # if (not self.params.qi.selection and
-    #     len(self.params.qi.qm_restraints)==0 and
-    #     not self.params.qi.each_amino_acid and
-    #     not self.params.qi.each_water and
-    #     not self.params.qi.merge_water
-    #     ):
       rc = get_selection_from_user(model.get_hierarchy(),
                                    include_amino_acids=include_amino_acids)
-      print('rc',rc)
       self.params.qi.selection = rc
       if len(self.params.qi.qm_restraints)!=0:
-        print(self.params.qi.qm_restraints)
         for attr, item in self.params.qi.qm_restraints[0].__dict__.items():
           print(attr, item)
         #   print(self.params.qi.selection)
@@ -545,7 +534,7 @@ Usage examples:
 
       else:
         rc = self.run_qmr(self.params.qi.format)
-        print(rc)
+        rc=rc[0]
         args = []
         for filenames in rc.final_pdbs:
           print(filenames)
@@ -625,7 +614,15 @@ Usage examples:
          not (self.params.qi.iterate_NQH or
               self.params.qi.iterate_metals)):
       self.params.qi.qm_restraints.selection=self.params.qi.selection
-      self.run_qmr(self.params.qi.format)
+      rcs = self.run_qmr(self.params.qi.format)
+      cmd = '\n\n\tphenix.start_coot %s' % self.data_manager.get_default_model_name()
+      for rc in rcs:
+        filenames = getattr(rc, 'final_pdbs', [])
+        if filenames:
+          for f in filenames:
+            for g in f:
+              cmd += ' %s' % os.path.join('qm_work_dir', g)
+      print('%s\n\n' % cmd)
 
     if self.params.qi.iterate_NQH:
       print('"%s"' % self.params.qi.iterate_NQH, file=self.logger)
@@ -1113,6 +1110,7 @@ Usage examples:
     qmr = self.params.qi.qm_restraints[0]
     checks = 'starting_strain starting_energy starting_bound'
     energies = None
+    rcs=[]
     if any(item in checks for item in qmr.calculate):
       rc = run_energies(
         model,
@@ -1125,6 +1123,7 @@ Usage examples:
       energies = digest_return_energy_object(rc, 1, energy_only=True)
       outl = energies.as_string()
       print(outl, file=self.logger)
+      rcs.append(rc)
     #
     # minimise ligands geometry
     #
@@ -1132,13 +1131,39 @@ Usage examples:
                             self.params,
                             log=log,
                             )
+    rcs.append(rc)
     if energies is None:
       energies = digest_return_energy_object(rc, 1, energy_only=False)
     else:
       digest_return_energy_object(rc, 1, False, energies)
     outl = energies.as_string()
     print(outl, file=self.logger)
-    return rc
+    #
+    cannot_run_final_energies=False
+    if len(rc.final_pdbs)>1:
+      cannot_run_final_energies=True
+    checks = 'final_strain final_energy final_bound'
+    fn = os.path.join('qm_work_dir', rc.final_pdbs[0][0])
+    self.data_manager.process_model_file(fn)
+    model = self.data_manager.get_model(fn)
+    if any(item in checks for item in qmr.calculate):
+      if cannot_run_final_energies:
+        print('Cannot run final energies. Restart with only one ligand selection.',
+              file=self.logger)
+      else:
+        rc = run_energies(
+          model,
+          self.params,
+          macro_cycle=99,
+          pre_refinement=False,
+          nproc=self.params.qi.nproc,
+          log=log,
+          )
+        energies = digest_return_energy_object(rc, 99, True, energies)
+        outl = energies.as_string()
+        print(outl, file=self.logger)
+        rcs.append(rc)
+    return rcs
 
   def get_single_qm_restraints_scope(self, selection):
     qi_phil_string = get_qm_restraints_scope()
