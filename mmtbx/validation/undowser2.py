@@ -5,7 +5,6 @@ from mmtbx.programs import probe2
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.validation import validation, atoms, residue, atom_info
 from mmtbx.validation.clashscore2 import check_and_add_hydrogen, probe_clashscore_manager
-import libtbx.load_env
 from libtbx.utils import null_out
 import json
 import iotbx.cli_parser
@@ -573,7 +572,7 @@ class probe_undowser_manager(probe_clashscore_manager):
     self.water_contacts = {}
 
   def run_probe_undowser(self, data_manager, hydrogenated_model):
-    
+
     # Construct override parameters and then run probe2 using them and delete the resulting
     # temporary file.
     tempName = tempfile.mktemp()
