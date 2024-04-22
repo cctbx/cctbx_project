@@ -222,7 +222,7 @@ if args.plot:
         ax1.imshow(reference, vmin=0, vmax=vmax)
         ax2.imshow(results[0][1], vmin=0, vmax=vmax)
         ax1.set_title("+x,+y,+z", fontsize=16)
-        suptitle("%s (%s)" % (pdb_id, str(sgi)), fontsize=16)
+        suptitle("%s" % str(sgi), fontsize=16)
         for ax in (ax1, ax2):
             ax.set_xlim(300, 700)
             ax.set_ylim(700, 300)
