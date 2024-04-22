@@ -5,6 +5,7 @@ from mmtbx.programs import probe2
 from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.validation import validation, atoms, residue, atom_info
 from mmtbx.validation.clashscore2 import check_and_add_hydrogen, probe_clashscore_manager
+from mmtbx.validation.clashscore2 import remove_models_except_index
 from libtbx.utils import null_out
 import json
 import iotbx.cli_parser
@@ -556,7 +557,6 @@ def count_waters(pdb_string):
 #this subclasses probe_clashscore_manager but doesn't really use most of it. It's mainly to reuse the code for checking for probe existance
 class probe_undowser_manager(probe_clashscore_manager):
   def __init__(self,
-               h_pdb_string,
                nuclear=False,
                verbose=False,
                model_id=""):

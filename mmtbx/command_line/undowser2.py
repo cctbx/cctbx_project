@@ -8,7 +8,7 @@ import sys
 
 from iotbx.cli_parser import CCTBXParser
 from libtbx.utils import multi_out, show_total_time
-from mmtbx.programs import undowser
+from mmtbx.programs import undowser2
 from iotbx.cli_parser import run_program
 
 # =============================================================================
@@ -21,14 +21,14 @@ def old_run(args):
   logger2.register('stdout', sys.stdout)
 
   parser = CCTBXParser(
-    program_class=undowser.Program,
+    program_class=undowser2.Program,
     logger=logger)
   namespace = parser.parse_args(sys.argv[1:])
 
   # start program
   print('Starting job', file=logger)
   print('='*79, file=logger)
-  task = undowser.Program(
+  task = undowser2.Program(
     parser.data_manager, parser.working_phil.extract(), logger=logger2)
 
   # validate inputs
@@ -46,4 +46,4 @@ def old_run(args):
 # =============================================================================
 if __name__ == '__main__':
   #run(sys.argv[1:])
-  run_program(program_class=undowser.Program, hide_parsing_output=True)
+  run_program(program_class=undowser2.Program, hide_parsing_output=True)

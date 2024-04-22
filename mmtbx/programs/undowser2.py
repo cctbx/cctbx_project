@@ -1,9 +1,18 @@
+"""
+Water-atom clash analysis.
+This is a rewrite of the original undowser.  This version uses mmtbx.reduce and
+mmtbx.probe to generate the contact information rather than stand-alone programs.
+It take the same parameters as the original clashscore (except for time_limit)
+and it also takes mmtbx.probe parameters.
+"""
+
 from __future__ import absolute_import, division, print_function
 
 import os
 from mmtbx.validation.undowser2 import undowserlyze
 from libtbx.program_template import ProgramTemplate
 from datetime import datetime
+from mmtbx.probe import Helpers
 
 class Program(ProgramTemplate):
   prog = os.getenv('LIBTBX_DISPATCHER_NAME')
@@ -40,7 +49,7 @@ Example:
     .help = "Prints results as JSON format dictionary"
   use_parent = False
     .type = bool
-  """
+  """ + Helpers.probe_phil_parameters
   datatypes = ['model','phil']
   data_manager_options = ['model_skip_expand_with_mtrix']
   known_article_ids = ['molprobity']
