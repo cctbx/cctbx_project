@@ -700,6 +700,15 @@ Note:
       raise Sorry("Invalid radius for atom look-up: "+myFullName+"; rad = "+str(rad))
     return self.params.atom_radius_offset + (rad * self.params.atom_radius_scale)
 
+
+  def _describe_atom_for_debug(self, a):
+      resName = a.parent().resname.strip().upper()
+      resID = str(a.parent().parent().resseq_as_int())
+      chainID = a.parent().parent().parent().id
+      iCode = a.parent().parent().icode
+      alt = a.parent().altloc
+      return "{:>2s}{:>4s}{}{} {}{:1s}".format(chainID, resID, iCode, resName, a.name, alt)
+
 # ------------------------------------------------------------------------------
 
   def _atom_class_for(self, a):
@@ -1913,7 +1922,8 @@ Note:
         # For hydrogen, assign based on what it is bonded to.
         if len(self._allBondedNeighborLists[a]) != 1:
           raise Sorry("Found Hydrogen with number of bonds other than 1: "+
-                      str(len(self._allBondedNeighborLists[a])))
+                      str(len(self._allBondedNeighborLists[a])) +
+                      " for " + self._describe_atom_for_debug(a))
         else:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
@@ -1935,8 +1945,9 @@ Note:
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
         if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                      str(len(self._allBondedNeighborLists[a])))
+          raise Sorry("Found Hydrogen with number of neigbors other than 1: " +
+                      str(len(self._allBondedNeighborLists[a])) +
+                      " for " + self._describe_atom_for_debug(a))
         else:
           self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
@@ -1953,7 +1964,8 @@ Note:
         elif a.element_is_hydrogen():
           if len(self._allBondedNeighborLists[a]) != 1:
             raise Sorry("Found Hydrogen with number of neighbors other than 1: "+
-                        str(len(self._allBondedNeighborLists[a])))
+                        str(len(self._allBondedNeighborLists[a])) +
+                      " for " + self._describe_atom_for_debug(a))
           else:
             neighbor = self._allBondedNeighborLists[a][0]
             if neighbor.element == 'C':
