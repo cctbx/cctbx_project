@@ -1,4 +1,4 @@
-
+from __future__ import division
 """
 The script attempts to simulate diffraction patterns
 for symmetrically equivalent crystal orientations, and tests if the intensities change.
@@ -16,7 +16,6 @@ parser.add_argument("--gauss", action="store_true", help="Use the original Gauss
 parser.add_argument("--square", action="store_true", help="Use the Square RELP shape")
 args = parser.parse_args()
 from scipy.spatial.transform import Rotation
-from simtbx.nanoBragg import shapetype  # implicit
 import numpy as np
 from simtbx.diffBragg import utils as db_utils
 
