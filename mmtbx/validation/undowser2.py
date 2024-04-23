@@ -588,6 +588,7 @@ class probe_undowser_manager(probe_clashscore_manager):
       "output.format=raw",
       "output.condensed=True",
       "output.report_vdws=False",
+      "output.report_hydrogen_bonds=False",
       "output.only_report_bad_clashes=True",
       "ignore_lack_of_explicit_hydrogens=True",
     ]

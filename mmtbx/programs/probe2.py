@@ -145,11 +145,6 @@ output
     .short_caption = Count dots, don't list
     .help = Count dots rather than listing all contacts (-countdots in probe)
 
-  hydrogen_bond_output = True
-    .type = bool
-    .short_caption = Output hydrogen-bond contacts
-    .help = Output hydrogen-bond contacts (-nohbout in probe)
-
   record_added_hydrogens = False
     .type = bool
     .short_caption = Record Phantom Hydrogens
@@ -1251,13 +1246,13 @@ Note:
 
     # Report count legend if any counts are nonzero.
     if _totalInteractionCount(self._MCMCCount) > 0:
-      ret += "@pointmaster 'M' {{McMc contacts}}\n"
+      ret += "@pointmaster 'M' {McMc contacts}\n"
     if _totalInteractionCount(self._SCSCCount) > 0:
-      ret += "@pointmaster 'S' {{ScSc contacts}}\n"
+      ret += "@pointmaster 'S' {ScSc contacts}\n"
     if _totalInteractionCount(self._MCSCCount) > 0:
-      ret += "@pointmaster 'P' {{McSc contacts}}\n"
+      ret += "@pointmaster 'P' {McSc contacts}\n"
     if _totalInteractionCount(self._otherCount) > 0:
-      ret += "@pointmaster 'O' {{Hets contacts}}\n"
+      ret += "@pointmaster 'O' {Hets contacts}\n"
 
     # Report binned gap legend if we're binning gaps
     if self.params.output.bin_gaps:
