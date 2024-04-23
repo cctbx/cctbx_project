@@ -153,6 +153,7 @@ class GUITabWidget(DraggableTabWidget):
   def __init__(self,parent=None):
     super().__init__(parent=parent)
     self.currentChanged.connect(self.on_tab_changed)
+    self.hiddenTabs = {}  # Track hidden tabs as {tabName: widget}
 
   def on_tab_changed(self,index):
     current_tab_widget = self.widget(index)
@@ -162,21 +163,24 @@ class GUITabWidget(DraggableTabWidget):
         current_tab_widget.was_visited = True
 
   def toggle_tab_visible(self, tab_name, show=True):
-    # Find the index of the tab by name
-    index = None
-    for i in range(self.count()):
-        if self.tabText(i) == tab_name:
-            index = i
-            break
+      if show:
+          if tab_name in self.hiddenTabs:
+              # Re-add the tab
+              widget = self.hiddenTabs.pop(tab_name)
+              self.addTab(widget, tab_name)
+      else:
+          index = self.findTabByName(tab_name)
+          if index != -1:
+              widget = self.widget(index)
+              self.removeTab(index)
+              self.hiddenTabs[tab_name] = widget  # Keep track of the widget
 
-    # Show or hide the tab if it exists
-    if index is not None:
-        if show:
-            self.tabBar().showTab(index)
-        else:
-            self.tabBar().hideTab(index)
-    else:
-        print(f"Tab named '{tab_name}' not found.")
+  def findTabByName(self, tab_name):
+      print("findtabname:",tab_name)
+      for i in range(self.count()):
+          if self.tabText(i) ==tab_name:
+              return i
+      return -1
 
 
   @property

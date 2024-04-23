@@ -2,24 +2,25 @@
 from dataclasses import dataclass
 from typing import Optional, Dict
 from pathlib import Path
-
+from ...core.cif_io import CifInput
 
 from .base import DataClassBase
 
 
-@dataclass
+@dataclass(frozen=True)
 class CifFileData(DataClassBase):
-  filepath: Optional[str] = None
-  filename: Optional[str] = None
+  filepath: Optional[Path] = None
 
-  def __post_init__(self):
-    super().__post_init__()
-    if self.filepath and not self.filename:
-        self.filename = Path(self.filepath).name
+  @property
+  def filename(self):
+    if self.filepath is not None:
+      return self.filepath.name
 
-  # @property
-  # def dataframes(self):
-  #   if not hasattr(self,"_pandas"):
-  #     self._pandas = read_cif_file(self.filepath,method="iotbx",return_as="pandas")
-  #     #self._pandas = read_cif_file(self.filepath,method="cifpd",return_as="pandas")
-  #   return self._pandas
+  @property
+  def cif_input(self):
+    cif_input = CifInput(self.filepath)
+    return cif_input
+
+  @property
+  def dataframes(self):
+    return self.cif_input

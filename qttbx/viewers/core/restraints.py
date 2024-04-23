@@ -334,7 +334,7 @@ def build_grm(model, # mmtbx.model.manager
   return grm
 
 
-class RestraintsBuilder:
+class GeometryBuilder:
   def __init__(self):
     pass
 

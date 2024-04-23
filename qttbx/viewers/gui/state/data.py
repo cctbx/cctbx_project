@@ -9,36 +9,24 @@ from .base import DataClassBase
 from .cif import CifFileData
 
 
-@dataclass
+@dataclass(frozen=True)
 class MolecularModelData(DataClassBase):
-  label: Optional[str] = None
-  filepath: Optional[str] = None
-  filename: Optional[str] = None
+  filepath: Optional[Path] = None
   model: Optional[object] = None
-  #cif_data: Optional[CifFileData] = None
 
-  def __post_init__(self):
-    super().__post_init__()
-    if self.filepath is not None and self.filename is None:
-        self.filename = Path(self.filepath).name
-    # if self.filename is not None:
-    #   if ".cif" in Path(self.filename).suffixes or ".mmcif" in Path(self.filename).suffixes:
-    #     cif_data = CifFileData(filepath = self.filepath)
-    #     self.cif_data = cif_data
-
-    # if self.filename is None:
-    #    self.filename = "model_"+str(id(self))
+  @property
+  def filename(self):
+     if self.filepath is not None:
+      return self.filepath.name
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class RealSpaceMapData(DataClassBase):
   label: Optional[str] = None
   filepath: Optional[str] = None
-  filename: Optional[str] = None
   map_manager: Optional[object] = None
 
-  def __post_init__(self):
-    super().__post_init__()
-    if self.filepath and not self.filename:
-        self.filename = Path(self.filepath).name
+  @property
+  def filename(self):
+     return self.filepath.name

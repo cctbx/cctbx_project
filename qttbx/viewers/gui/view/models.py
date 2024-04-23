@@ -69,7 +69,7 @@ class ModelLikeEntryView(ScrollEntryView):
     self.button_files.setFixedSize(self._all_button_width,self._all_button_height)
     self.layout.addWidget(self.button_files)
 
-    # Restraints
+    # Geometry
     self.button_restraints = QPushButton()
     icon_path = Path(__file__).parent / 'assets/icons/material/gears.svg'
     icon = QIcon(str(icon_path))

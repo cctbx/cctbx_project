@@ -1,6 +1,6 @@
 from .controller import Controller
 from ..state.style import Style
-from ..state.ref import SelectionRef, MapRef, ModelRef, RestraintsRef
+from ..state.ref import SelectionRef, MapRef, ModelRef, GeometryRef
 
 class ModelStyleController(Controller):
   """
@@ -38,7 +38,7 @@ class ModelStyleController(Controller):
     self.apply(ref,style)
 
   def apply(self, ref,style):
-    if isinstance(ref,(SelectionRef,RestraintsRef,ModelRef)): #TODO: Replace with 'model-like'
+    if isinstance(ref,(SelectionRef,GeometryRef,ModelRef)): #TODO: Replace with 'model-like'
       prev_dict = ref.style.to_dict()
       new_dict = style.to_dict()
 

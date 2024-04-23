@@ -12,8 +12,10 @@ from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVB
 from ..view.models import ModelEntryView
 from .scroll_entry import ScrollEntryController
 from .scroll_list import ScrollableListController
-from ..state.ref import SelectionRef, ModelRef, RestraintsRef
-from ..state.restraints import Restraints
+from ..state.ref import SelectionRef, ModelRef, GeometryRef
+from ..state.geometry import Geometry
+from .widgets import InputDialog
+
 
 class ModelLikeEntryController(ScrollEntryController):
   def __init__(self,parent=None,view=None,ref=None):
@@ -52,13 +54,14 @@ class ModelLikeEntryController(ScrollEntryController):
 
     self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
 
-    # Restraints
+    # Geometry
     self.view.button_restraints.setContextMenuPolicy(Qt.CustomContextMenu)
     self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
     self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
 
 
   def toggle_visibility(self,event):
+
       value= self.view.button_viz.is_on
       #self.state.emitter.signal_viz_change.emit(self.ref.id,value)
       style = replace(self.ref.style,visible=(not self.ref.style.visible))
@@ -108,8 +111,8 @@ class ModelLikeEntryController(ScrollEntryController):
     contextMenu = QMenu(self.view)
 
     # Add actions to the context menu
-    action1 = contextMenu.addAction("Generate restraints")
-    action2 = contextMenu.addAction("Open restraints file")
+    action1 = contextMenu.addAction("Generate geometry")
+    action2 = contextMenu.addAction("Open geometry file")
 
     # Connect actions to functions/slots
     action1.triggered.connect(self.process_and_make_restraints)
@@ -122,8 +125,8 @@ class ModelLikeEntryController(ScrollEntryController):
       if self.ref.has_restraints:
         self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
       try:
-        restraints = Restraints.from_model_ref(self.ref)
-        ref = RestraintsRef(restraints,self.state.active_model_ref)
+        restraints = Geometry.from_model_ref(self.ref)
+        ref = GeometryRef(restraints,self.state.active_model_ref)
         self.state.add_ref(ref)
       except:
         self.state.notify("Failed to process and make restraints.")
@@ -142,10 +145,10 @@ class ModelLikeEntryController(ScrollEntryController):
         file_path = self.openFileDialog.selectedFiles()[0]
 
         filepath = str(Path(file_path).absolute())
-        print(f"Restraints file selected: {filepath}")
+        print(f"Geometry file selected: {filepath}")
         try:
-          restraints = Restraints.from_geo_file(filepath)
-          ref = RestraintsRef(restraints,self.state.active_model_ref)
+          restraints = Geometry.from_geo_file(filepath)
+          ref = GeometryRef(restraints,self.state.active_model_ref)
           self.state.add_ref(ref)
         except:
           self.state.notify("Failed to load restraints from file: "+str(file_path))

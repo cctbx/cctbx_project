@@ -11,11 +11,12 @@ from ..tabs.selection import SelectionsTabView
 from ..tabs.data import DataTabView
 from ..tabs.sites import SitesTabView
 from ..cif import CifTabView
-#from ..tabs.restraints import RestraintsTopTabView
+
 from ..tabs.qscore import QscoreTab
 from ..widgets.tab import GUITabWidget
-from ..restraints import RestraintsTabView
-
+from ..geometry.top_tab import GeometryTabView
+from ..restraint_edits.top_tab import EditsTabView
+from ..restraints.top_tab import RestraintsTabView
 
 
 class ViewerGUIView(QMainWindow):
@@ -85,12 +86,20 @@ class ViewerGUIView(QMainWindow):
       self.cif_tab_view = CifTabView(parent=self)
       self.tabs.addTab(self.cif_tab_view, "CIF")
 
-    # # Restraints
+    # # Geometry
     if 'all' in show_tab or 'restraints' in show_tab:
 
-      # Restraints Table
-      self.restraints_table_tab_view = RestraintsTabView(parent=self)
-      self.tabs.addTab(self.restraints_table_tab_view, "Restraints")
+      # Geometry
+      self.geo = GeometryTabView(parent=self)
+      self.tabs.addTab(self.geo, "Geometry")
+
+      # Restraints
+      self.restraints = RestraintsTabView(parent=self)
+      self.tabs.addTab(self.restraints, "Restraints")
+
+      # Edits
+      self.edits = EditsTabView(parent=self)
+      self.tabs.addTab(self.edits, "Edits")
 
 
     # Qscore

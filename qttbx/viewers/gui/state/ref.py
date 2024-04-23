@@ -8,6 +8,7 @@ A Ref is a top level container for data. It provides:
 
 from pathlib import Path
 import uuid
+import networkx as nx
 import hashlib
 import json
 import copy
@@ -18,19 +19,28 @@ from .style import Style
 from ...core.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
-from .base import DataClassBase
-from .restraints import Restraints
+from .base import DataClassBase, ObjectFrame
+from .geometry import Geometry
 from ...core.mol import MolDataFrame
 from typing import Optional
 
 from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
+from PySide2.QtCore import QObject, QTimer, Signal, Slot
 
+class RefSignals(QObject):
+  """
+  Signals that Ref objects emit upstream to the State singleton
+  """
+  ref_connect = Signal(object,object) # upstream ref, downstream ref
+  style_change = Signal(object,object) # Ref, style
 
 class Ref:
   """
-  The fundamental object in the app.
+  The fundamental object, manages the relationship between data and defines
+  the data present in the State singleton
   """
-
+  # Signals
+  signals = RefSignals()
   _class_label_name = ""
 
   def __init__(self,data: DataClassBase,style: Optional[Style] = None, show: bool = False):
@@ -38,7 +48,6 @@ class Ref:
     self._id = self._generate_uuid()
     self._external_ids = {}
     self._file_ref = None
-    self._state = None
     self._label = None
     self._show_in_list = show
     self.entry = None # set later the entry controller object
@@ -46,24 +55,27 @@ class Ref:
     self._active = False
     self._query = None
 
-
-    if style is None:
-      style = Style.from_default()
-    else:
-      style = replace(style,query=self.query)
-    self._style = style
-    self.style_history = []
-
-  def _connections(self):
-    self.state.signals.remove_ref.connect(self._remove)
+    self._other_ref_connections = {} # Keep track of connections to other refs
+    self._is_top_level = False # whether a ref was created without upstream nodes
+    self._reference = None
 
 
+    # Style
+    if not isinstance(style,Style):
+      if style is None:
+        style = Style.from_default()
+      self._style = style
+      self.style_history = []
 
-  def _remove(self,ref):
-    if self.file_ref ==ref:
-      self.file_ref = None
-    if self.model_ref == ref:
-      self._model_ref = None
+  # def _connections(self):
+  #   #self.state.signals.remove_ref.connect(self._remove)
+  #   pass
+
+
+  def _clear_ref_connections(self, value):
+    for name,ref in self._other_ref_connections.items():
+      if value == ref:
+        setattr(self,name,None)
 
   @property
   def file_ref(self):
@@ -95,12 +107,18 @@ class Ref:
     self._active = value
 
 
-  def _set_active_ref(self,ref):
-    if ref == self:
-      self.active = True
-    else:
-      self.active = False
+  # def _set_active_ref(self,ref):
+  #   if ref == self:
+  #     self.active = True
+  #   else:
+  #     self.active = False
 
+  def __setattr__(self, name, value):
+    # Emit a signal if connecting two refs
+    if isinstance(value, Ref):
+      self.signals.ref_connect.emit(self,value)
+      self._other_ref_connections[name] = value
+    super().__setattr__(name, value)
 
   @property
   def id(self):
@@ -116,9 +134,13 @@ class Ref:
 
   @property
   def reference(self):
-    if self.state.phenixState.references:
-      if self.id in self.state.phenixState.references:
-        return self.state.phenixState.references[self.id]
+    return self._reference
+    # if self.state.phenixState.references:
+    #   if self.id in self.state.phenixState.references:
+    #     return self.state.phenixState.references[self.id]
+  @reference.setter
+  def reference(self,value):
+    self._reference = value
 
   @property
   def id_molstar(self):
@@ -128,31 +150,31 @@ class Ref:
 
   @property
   def state(self):
-    assert self._state is not None, "State was never set for this ref"
-    return self._state
+    assert False, "Ref should not have direct access to state"
+    # assert self._state is not None, "State was never set for this ref"
+    # return self._state
 
   @state.setter
   def state(self,value):
-    self._state = value
-    self._connections()
+    assert False, "Ref should not have direct access to state"
+    # self._state = value
+    # self._connections()
 
   @property
   def style(self):
-    # sync
-    if self.state.phenixState.references and self.id in self.state.phenixState.references:
-      reference = self.state.phenixState.references[self.id]
-      self._style.representation = reference.representations
     return self._style
 
   @style.setter
   def style(self,value):
     assert isinstance(value,Style), "Set with Style class"
     # sync
-    if self.state.phenixState.references and self.id in self.state.phenixState.references:
-      reference = self.state.phenixState.references[self.id]
-      self._style.representation = reference.representations
+    #if self.state.phenixState.references and self.id in self.state.phenixState.references:
+      #reference = self.state.phenixState.references[self.id]
+    if self.reference:
+      value = replace(value,representation=self.reference.representations)
 
-    self.state.signals.style_change.emit(self,value.to_json())
+
+    self.signals.style_change.emit(self,value)
     self.style_history.append(self.style)
     self._style = value
 
@@ -229,14 +251,24 @@ class Ref:
     return short_uuid
 
 
+class CifFileRef(Ref):
+  _class_label_name = 'file'
+  def __init__(self,data: CifFileData,show: bool = False):
+    super().__init__(data=data,show=show)
 
+  @property
+  def label(self):
+    if self.data.filename is not None:
+      return self.data.filename
+    return super().label
 
 class ModelRef(Ref):
   _class_label_name = "model"
-  def __init__(self,data: MolecularModelData, style: Optional[Style] = None, show=True):
+  def __init__(self,data: MolecularModelData, ciffile_ref: Optional[CifFileRef], style: Optional[Style] = None, show=True):
     super().__init__(data=data,style=style,show=show)
     self._mol = None
     self._restraints_ref = None
+    self._ciffile_ref = ciffile_ref
     # self._cif_data = None
     # self._file_ref =  None
     # if self.data.cif_data is not None:
@@ -253,15 +285,19 @@ class ModelRef(Ref):
   def model(self):
     return self.data.model
 
+
+  @property
+  def ciffile_ref(self):
+    return self._ciffile_ref
+
   @property
   def restraints_ref(self):
     return self._restraints_ref
 
   @restraints_ref.setter
   def restraints_ref(self,value):
-    assert value.__class__.__name__ == "RestraintsRef", "Set restraints with a RestraintsRef"
+    assert isinstance(value,(GeometryRef,type(None)))
     self._restraints_ref = value
-    self.state.signals.restraints_change.emit(value)
 
   @property
   def has_restraints(self):
@@ -293,11 +329,13 @@ class ModelRef(Ref):
     return self
   @property
   def query(self):
-    return SelectionQuery.from_model_ref(self)
+    query = SelectionQuery.from_model_ref(self)
+    query.params.refId = self.id
+    return query
 
-  def _connections(self):
-    super()._connections()
-    self.state.signals.model_change.connect(self._set_active_ref)
+  # def _connections(self):
+  #   super()._connections()
+  #   self.state.signals.model_change.connect(self._set_active_ref)
 
 
 class MapRef(Ref):
@@ -344,13 +382,14 @@ class SelectionRef(Ref):
     assert show is not None, "Be explicit about whether to show selection ref in list of selections or not"
     assert ModelRef is not None, "Selection Ref cannot exist without reference model"
     assert data is not None, "Provide a Selection query as the data"
+    super().__init__(data=data, style=model_ref.style, show=show)
     self._debug_data = data
-
+    # # TODO: Setting model_ref before super init is messy, can this be fixed?
+    # self._model_ref = model_ref
+    # self._query_sel = data
+    # self._query_sel.params.refId=model_ref.id
 
     self._model_ref = model_ref
-    self._query_sel = data
-    self._query_sel.params.refId=model_ref.id
-    super().__init__(data=data, style=model_ref.style, show=show)
     self._query_sel = data
     self._query_sel.params.refId=model_ref.id
 
@@ -359,9 +398,8 @@ class SelectionRef(Ref):
   @property
   def query(self):
     query = SelectionQuery.from_model_ref(self.model_ref)
-    # import pdb
-    # pdb.set_trace()
     query.selections = self._query_sel.selections
+    query.params.refId = self.model_ref.id
     return query
 
   @property
@@ -379,11 +417,11 @@ class SelectionRef(Ref):
          }
     return json.dumps(d,indent=indent)
 
-class RestraintsRef(Ref):
+class GeometryRef(Ref):
   # TODO: Move most of this to the actual table not the ref, adding columns here
   #       modifies the restraints data
   _class_label_name = "restraints"
-  def __init__(self,data: Restraints, model_ref: ModelRef):
+  def __init__(self,data: Geometry, model_ref: ModelRef):
     super().__init__(data=data,style=model_ref.style)
     self.model_ref = model_ref
     self.synchronize_with_model()
@@ -479,28 +517,31 @@ class RestraintsRef(Ref):
             df.loc[not_na,label] = vals
 
 
-# class RestraintRef(Ref):
+
+class EditsRef(Ref):
+  # A collection of edits of a single type
+  _class_label_name = "edits"
+  def __init__(self,data: ObjectFrame,restraints_ref: GeometryRef):
+    super().__init__(data=data)
+    self.restraints_ref = restraints_ref
+
+
+class StyleRef(Ref):
+  # A collection of edits of a single type
+  _class_label_name = "style"
+  def __init__(self,data: Style):
+    super().__init__(data=data)
+
+  @classmethod
+  def from_default(cls):
+    style = Style.from_default()
+    return cls(data=style)
+
+
+
+# class GeometryRef(Ref):
 #   _class_label_name = 'restraint'
-#   def __init__(self,data: Restraint, model_ref: ModelRef):
-#     self._selection_ref = None
-#     self.model_ref = model_ref
-
-#     super().__init__(data=data, style=model_ref.style)
-
-
-#   @property
-#   def selection_ref(self):
-#     if self._selection_ref is None:
-#       query = SelectionQuery.from_i_seqs(self.model_ref.mol.atom_sites,self.data.i_seqs)
-#       self._selection_ref = SelectionRef(data=query,model_ref=self.model_ref,show=False)
-#     return self._selection_ref
-
-
-
-
-# class RestraintsRef(Ref):
-#   _class_label_name = 'restraint'
-#   def __init__(self,data: Restraints, model_ref: ModelRef):
+#   def __init__(self,data: Geometry, model_ref: ModelRef):
 #     super().__init__(data=data,style=model_ref.style)
 #     self.model_ref = model_ref
 #     self.supported_restraints = ['bond','angle']
@@ -508,7 +549,7 @@ class RestraintsRef(Ref):
 #       field_name = field.name
 #       field_value = getattr(self.data, field_name)
 #       if field_name in self.supported_restraints and field_value is not None:
-#           field_value = [RestraintRef(data=data,model_ref=model_ref) for data in field_value]
+#           field_value = [GeometryRef(data=data,model_ref=model_ref) for data in field_value]
 #       setattr(self,field_name,field_value)
 
 #   @property
@@ -544,7 +585,7 @@ class RestraintsRef(Ref):
 
 #   @classmethod
 #   def from_model_ref(cls,model_ref):
-#     data = Restraints.from_model_ref(model_ref)
+#     data = Geometry.from_model_ref(model_ref)
 #     return cls(data=data,model_ref=model_ref)
 
 
@@ -554,14 +595,10 @@ class RestraintsRef(Ref):
 #       super().__init__(data=data,model_ref=model_ref,selection_ref=selection_ref)
 #       self.model_ref.results["qscore"] = self
 
-class CifFileRef(Ref):
-  _class_label_name = 'file'
-  def __init__(self,data: CifFileData):
-    super().__init__(data=data)
 
 
-  def _connections(self):
-    self.state.signals.ciffile_change.connect(self._set_active_ref)
+  # def _connections(self):
+  #   self.state.signals.ciffile_change.connect(self._set_active_ref)
 
   # @property
   # def label(self):

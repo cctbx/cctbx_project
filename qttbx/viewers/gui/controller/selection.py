@@ -6,12 +6,12 @@ from ..view.tabs.selection import SelectionEntryView
 from ..view.widgets import InfoDialog
 from .scroll_list import ScrollableListController
 from .controller import Controller
-from ..state.restraints import (
-  BondRestraint,
-  AngleRestraint,
-  DihedralRestraint,
-  ChiralRestraint,
-  PlaneRestraint
+from ..state.geometry import (
+  BondGeometry,
+  AngleGeometry,
+  DihedralGeometry,
+  ChiralGeometry,
+  PlaneGeometry
 )
 
 class SelectionEntryController(ModelLikeEntryController):
@@ -63,7 +63,7 @@ class SelectionEntryController(ModelLikeEntryController):
     restraints = self.ref.model_ref.restraints_ref.data
     sel = self.state.mol.sites.select_from_query(self.ref.query)
     i_seqs = list(sel.index.values)
-    new_restraint = BondRestraint(i_seqs=i_seqs)
+    new_restraint = BondGeometry(i_seqs=i_seqs)
     restraints.add_bond_restraint(new_restraint)
     self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
 
@@ -80,8 +80,8 @@ class SelectionEntryController(ModelLikeEntryController):
     restraints = self.ref.model_ref.restraints_ref.data
     sel = self.state.mol.sites.select_from_query(self.ref.query)
     i_seqs = list(sel.index.values)
-    new_restraint = PlaneRestraint(i_seqs=i_seqs,
-                                   weights=[PlaneRestraint.default_weight for i in range(len(sel))])
+    new_restraint = PlaneGeometry(i_seqs=i_seqs,
+                                   weights=[PlaneGeometry.default_weight for i in range(len(sel))])
     restraints.add_plane_restraint(new_restraint)
     self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
 

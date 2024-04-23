@@ -7,7 +7,7 @@ import json
 import time
 import os
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from .base import DataClassBase
 from typing import Dict
 
@@ -15,15 +15,17 @@ from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from PySide2.QtWidgets import QApplication, QMessageBox
 
 from iotbx.data_manager import DataManager
+import networkx as nx
 
 from .reference import Reference
 from .structure import Structure
 from .component import Component
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, RestraintsRef,  CifFileRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef
 from .results import ResultsRef
 from ...core.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
+from .cif import CifFileData
 
 
 class StateSignals(QObject):
@@ -38,6 +40,7 @@ class StateSignals(QObject):
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
   ciffile_change = Signal(object) # cif file ref
+  edits_change = Signal(object) # edits ref
   repr_change = Signal(str,list) # (ref_id, list of desired reprs)
   viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
   picking_level = Signal(int) # one of:  1 for "residue" or  0 for "element"
@@ -48,14 +51,13 @@ class StateSignals(QObject):
   update = Signal(object)
   stage_restraint = Signal(object,str) # send selection ref,type to be staged as restraint
 
-@dataclass
+@dataclass(frozen=True)
 class PhenixState(DataClassBase):
   references: Dict[str,Reference]
 
   @classmethod
   def from_dict(cls,state_dict):
     phenix_state =  cls(references = {})
-
     # update state from dict
     for ref_id,ref_dict in state_dict["references"].items():
       id_molstar = ref_dict["id_molstar"]
@@ -65,9 +67,7 @@ class PhenixState(DataClassBase):
         ref.id_molstar = id_molstar
         ref.structures = []
       else:
-        ref = Reference(id_molstar=id_molstar,
-                        id_viewer = id_viewer,
-                        structures = [])
+        ref = Reference(id_molstar=id_molstar, id_viewer = id_viewer, structures = [])
         phenix_state.references[id_viewer] = ref
       # now modify within a ref
       for structure_dict in ref_dict['structures']:
@@ -102,17 +102,24 @@ class State:
     self._phenix_state = PhenixState(references={})
     #self.is_updating = True
 
+    # Graph
+    self.G = nx.DiGraph()
+
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
     self.external_loaded = defaultdict(list) # external name: [internal ref_ids]
     self.params = DotDict()
     self.params.default_format = 'pdb'
 
+    # Signals
     self.signals = StateSignals()
     self.signals.data_change.connect(self._data_manager_changed)
+    self.signals.remove_ref.connect(self.remove_ref)
+    Ref.signals.ref_connect.connect(self._ref_connect_graph)
+    Ref.signals.ref_connect.connect(self._ref_connect_signals)
+    Ref.signals.style_change.connect(self.apply_style)
 
-    # Initialize references
-
+  def init_from_datamanager(self):
     # models
     for name in self.data_manager.get_model_names():
       model = self.data_manager.get_model(filename=name)
@@ -131,15 +138,86 @@ class State:
       if self.active_map_ref is None:
         self.active_map_ref = self.references_map[0]
 
+
+  def apply_style(self,ref,style):
+    self.signals.style_change.emit(ref,style.to_json())
+
+  def _ref_connect_graph(self,ref_upstream,ref_downstream):
+    """
+    Two refs are being connected, update nx graph
+    """
+    if ref_upstream not in self.state.G:
+      self.state.G.add_node(ref_upstream,id=ref_upstream.id)
+    if ref_downstream not in self.state.G:
+      self.state.G.add_node(ref_downstream,id=ref_downstream.id)
+    self.state.G.add_edge(ref_upstream,ref_downstream)
+    ref_upstream._is_top_level = self.G.in_degree(ref_upstream) == 0
+
+  def _ref_connect_signals(self,ref_upstream,ref_downstream):
+    """
+    Two refs are being connected, determine which signals to emit
+    """
+    # adding restraints to model
+    if (isinstance(ref_upstream,ModelRef) and
+        isinstance(ref_downstream,GeometryRef)):
+      self.signals.restraints_change.emit(ref_downstream)
+    elif (isinstance(ref_upstream,ModelRef) and
+        isinstance(ref_downstream,CifFileRef)):
+      self.signals.ciffile_change.emit(ref_downstream)
+
+
+  def remove_node_and_downstream(self, start_node):
+    graph = self.G
+
+    # Step 1: Find all nodes downstream of the start_node (including start_node)
+    downstream_nodes = set(nx.dfs_preorder_nodes(graph, source=start_node))
+
+    # Step 2: Identify nodes to remove - those that are not "top level"
+    nodes_to_remove = set()
+    for node in downstream_nodes:
+      # Check if the node has incoming edges from nodes not in downstream_nodes
+      has_external_incoming_edges = any(
+        pred not in downstream_nodes for pred in graph.predecessors(node)
+      )
+      # If a node has no incoming edges from outside downstream_nodes, mark it for removal
+      if not has_external_incoming_edges and not node._is_top_level:
+        nodes_to_remove.add(node)
+
+    # Collect edges that will be removed
+    edges_to_remove = set()
+    for node in nodes_to_remove:
+      # Incoming edges
+      edges_to_remove.update(graph.in_edges(node))
+      # Outgoing edges
+      edges_to_remove.update(graph.out_edges(node))
+
+    # Perform checks on edges_to_remove before actually removing them
+    for upstream_ref,downstream_ref in edges_to_remove:
+      upstream_ref._clear_ref_connections(downstream_ref)
+
+    # Optionally, based on checks, decide whether to proceed with node removal
+    # For now, we'll proceed with removing the identified nodes
+    graph.remove_nodes_from(nodes_to_remove)
+    for node in nodes_to_remove:
+      if node.id in self.references:
+        del self.references[node.id]
+
+
   @property
   def phenixState(self):
     return self._phenix_state
 
   @phenixState.setter
-  def phenixState(self,value):
-    self._phenix_state = value
-    if isinstance(value,PhenixState):
+  def phenixState(self,phenixState):
+    self._phenix_state = phenixState
+    if isinstance(phenixState,PhenixState):
+      # Sync with remote
       self.has_synced = True
+      for ref_id,ref in self.references.items():
+        if ref_id in phenixState.references:
+          ref.reference = phenixState.references[ref_id]
+          ref.style = replace(ref.style,representation=ref.reference.representations)
+
 
   @property
   def has_synced(self):
@@ -177,7 +255,9 @@ class State:
         local_ref.style.update(**ref["style"])
 
 
-  def _sync(self):
+  def start(self):
+    # get data out of datamanager
+    self.init_from_datamanager()
     # Run this after all controllers are initialized
     self.signals.model_change.emit(self.active_model_ref)
     self.signals.map_change.emit(self.active_map_ref)
@@ -191,44 +271,13 @@ class State:
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()
 
-  # def last_ref(self):
-  #   # dictionaries maintain insertion order in >3.7
-  #   if len(self.references)==0:
-  #     return None
-  #   else:
-  #     last_key, last_ref = list(self.references.items())[-1]
-  #     return last_ref
-
-  # def last_ref_from_filename(self,filename):
-  #   # Return the last inserted reference matching a given filename
-  #   for key,ref in reversed(list(self.references.items())):
-  #     if hasattr(ref.data,"filename"):
-  #       if filename == ref.data.filename or filename == ref.data.filepath:
-  #         return ref
-  #   return None
-
-
-
-  # def get_ref_from_mmtbx_model(self,model):
-  #   if model in list(self.data_manager._models.values()):
-  #     rev_d = {value:key for key,value in self.data_manager._models}
-  #     filename = rev_d[model]
-  #     ref = self.last_ref_from_filename(filename)
-  #     assert isinstance(ref,ModelRef),f"Expected model ref, got: {type(ref)}"
-  #     return ref
-  #   else:
-  #     pass
-
   def add_ref(self,ref):
-    if ref in self.references:
-      return
 
     # Add the new reference
     #print(f"Adding ref of type {ref.__class__.__name__}: {ref.id}")
 
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     self.references[ref.id] = ref
-    ref.state = self
 
     if isinstance(ref,ModelRef):
       #self.active_model_ref = ref
@@ -246,7 +295,7 @@ class State:
       #self.active_selection_ref = ref
       #self.signals.selection_change.emit(ref)
       pass
-    elif isinstance(ref,RestraintsRef):
+    elif isinstance(ref,GeometryRef):
       pass # access through model
       #self.signals.selection_change.emit(self.active_selection_ref)
 
@@ -255,15 +304,21 @@ class State:
 
     elif isinstance(ref,(CifFileRef)):
       self.signals.ciffile_change.emit(ref)
+    elif isinstance(ref,EditsRef):
+      self.signals.edits_change.emit(ref)
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
     # update other controllers
     self.signals.update.emit(ref)
 
 
-  def _remove_ref(self,ref):
+
+
+
+
+  def remove_ref(self,ref):
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
-    del self.references[ref.id]
+    self.remove_node_and_downstream(ref)
 
   def add_ref_from_model_file(self,filename=None,label=None,format=None):
     if label is None:
@@ -280,38 +335,31 @@ class State:
     dm = DataManager()
     dm.process_model_str(label,model_string)
     model = dm.get_model()
+
     return self.add_ref_from_mmtbx_model(model,label=label,filename=None)
 
   def add_ref_from_mmtbx_model(self,model,label=None,filename=None):
-    # filepath = None
-    # name = filename
-    # if name is None:
-    #   input = model.get_model_input()
-    #   if input is not None:
-    #     if hasattr(input,"_source_info"):
-    #       filename = input._source_info.split("file")[1]
-    #       if filename not in ["",None]:
-    #         filename = Path(filename)
-    #         if filename.exists():
-    #           name = filename
-    # get filepath
-    #assert label is not None
     if model.get_number_of_atoms()==0:
       print("Model with zero atoms, not added")
       return
 
     if filename is not None:
-      filepath = str(Path(filename).absolute())
-      if label is None:
-        label = os.path.basename(filename)
-    else:
-      filepath = None
+      filepath = Path(filename).absolute()
 
-    # make data object and ref
-    data = MolecularModelData(filepath=filepath,label=label,model=model)
-    ref = ModelRef(data=data,show=True)
-    self.add_ref(ref)
-    return ref
+
+    # Add the file
+    data = CifFileData(filepath=filepath)
+    cif_ref = CifFileRef(data=data,show=True)
+    self.add_ref(cif_ref)
+
+    # add the model
+    data = MolecularModelData(filepath=filepath,model=model)
+    model_ref = ModelRef(data=data,ciffile_ref=cif_ref,show=True)
+    self.add_ref(model_ref)
+
+
+
+    return model_ref
 
 
   def add_ref_from_map_manager(self,filepath=None,map_manager=None,volume_id=None,model_id=None,label=None):
@@ -355,6 +403,9 @@ class State:
   def references_ciffile(self):
     return [value for key,value in self.references.items() if isinstance(value,CifFileRef)]
 
+  @property
+  def references_edits(self):
+    return [value for key,value in self.references.items() if isinstance(value,EditsRef)]
 
   @property
   def state(self):
@@ -516,7 +567,7 @@ class State:
 
 
   #####################################
-  # Restraints
+  # Geometry
   #####################################
 
   @property

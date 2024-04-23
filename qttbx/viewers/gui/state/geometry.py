@@ -13,16 +13,16 @@ from mmtbx.geometry_restraints.geo_file_parsing import (
 from .base import DataClassBase
 from ...core.cctbx_utils import get_restraint_dfs_from_model
 
-@dataclass(frozen=False)
-class Restraint(DataClassBase):
+@dataclass(frozen=True)
+class Geometry(DataClassBase):
   #labels: Optional[List[str]] = None
   i_seqs: Optional[List[int]] = None
   #id_strs: Optional[List[str]] = None
 
 
 
-@dataclass(frozen=False)
-class BondRestraint(Restraint):
+@dataclass(frozen=True)
+class BondGeometry(Geometry):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
@@ -30,14 +30,14 @@ class BondRestraint(Restraint):
   sym_op_j: Optional[object] = None
   rt_mx: Optional[object] = None
 
-@dataclass(frozen=False)
-class AngleRestraint(Restraint):
+@dataclass(frozen=True)
+class AngleGeometry(Geometry):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
 
-@dataclass(frozen=False)
-class DihedralRestraint(Restraint):
+@dataclass(frozen=True)
+class DihedralGeometry(Geometry):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
@@ -47,21 +47,21 @@ class DihedralRestraint(Restraint):
   def sinusoidal(self):
     return self.harmonic
 
-@dataclass(frozen=False)
-class ChiralRestraint(Restraint):
+@dataclass(frozen=True)
+class ChiralGeometry(Geometry):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
   both_signs: Optional[bool] = None
 
-@dataclass(frozen=False)
-class PlaneRestraint(Restraint):
+@dataclass(frozen=True)
+class PlaneGeometry(Geometry):
   default_weight = 2500.0
   weights: Optional[List[float]] = None
 
 
-@dataclass(frozen=False)
-class Restraints(DataClassBase):
+@dataclass(frozen=True)
+class Geometry(DataClassBase):
   file: Optional[str] = None
   bond: Optional[pd.DataFrame] = None
   angle: Optional[pd.DataFrame] = None

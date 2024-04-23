@@ -1,6 +1,6 @@
 from PySide2.QtWidgets import  QVBoxLayout, QTableView, QComboBox
 
-from ..widgets import  PandasTableView
+from ..table import  PandasTableView
 from ..widgets.tab import GUITab
 
 class SitesTabView(GUITab):

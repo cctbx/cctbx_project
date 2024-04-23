@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from .base import DataClassBase
-@dataclass
+@dataclass(frozen=True)
 class Style(DataClassBase):
   iso: float
   color_theme: str

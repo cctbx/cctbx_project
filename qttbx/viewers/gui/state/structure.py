@@ -3,7 +3,7 @@ from typing import List, Dict, Optional
 from .component import Component
 from .base import DataClassBase
 
-@dataclass
+@dataclass(frozen=True)
 class Structure(DataClassBase):
   components: List[Component]
 

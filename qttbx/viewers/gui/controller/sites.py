@@ -1,7 +1,6 @@
 from PySide2 import QtCore
 
-from ..view.widgets import  PandasTable
-from ..state.ref import SelectionRef
+from ..state.table import PandasTableModel as PandasTable
 from .controller import Controller
 from ...core.atom_sites import AtomSites
 
@@ -10,18 +9,18 @@ class SitesTabController(Controller):
     super().__init__(parent=parent,view=view)
 
     # Signals
-    self.view.table.mouseReleased.connect(self.on_mouse_released)
+    self.view.table_view.mouseReleased.connect(self.on_mouse_released)
     self.state.signals.model_change.connect(self.update)
 
 
   def update(self,*args):
     if self.state.mol is not None:
       model = PandasTable(self.state.mol.sites)
-      self.view.table.setModel(model)
+      self.view.table_view.setModel(model)
 
 
   def on_selection_changed(self, selected, deselected):
-    df_sel = self.view.table.selected_rows()
+    df_sel = self.view.table_view.selected_rows()
     if df_sel is not None:
       # switch to atom picking level
       self.view.parent_explicit.viewer_tab_view.selection_controls.combo_box.setCurrentIndex(1)
@@ -38,6 +37,6 @@ class SitesTabController(Controller):
 
 
   def on_mouse_released(self):
-    selected = self.view.table.selectionModel().selection()
+    selected = self.view.table_view.selectionModel().selection()
     deselected = QtCore.QItemSelection()
     self.on_selection_changed(selected, deselected)

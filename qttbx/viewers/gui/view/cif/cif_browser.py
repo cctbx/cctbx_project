@@ -5,8 +5,16 @@ from PySide2.QtWidgets import  QFrame, QLabel,QPushButton, QHBoxLayout,QVBoxLayo
 from PySide2.QtGui import QStandardItemModel, QStandardItem, QIcon
 
 
-from ..widgets import  PandasTableView, PandasTable
+from ..table import PandasTableView
+from ...state.table import PandasTableModel
 from ..widgets.tab import GUITab,GUITabWidget
+
+
+
+class CifTableView(PandasTableView):
+
+  def __init__(self, parent=None):
+    super().__init__(parent=parent)
 
 
 class CifBrowserTabView(GUITab):
@@ -15,12 +23,21 @@ class CifBrowserTabView(GUITab):
   """
   def __init__(self,parent=None):
     super().__init__(parent=parent)
-    layout = QVBoxLayout()
-    self.layout = layout
+    self.layout = QVBoxLayout()
+    self.combo_button_layout = self.build_comboboxes()
+    self.layout.addItem(self.combo_button_layout)
+    self.table_view = CifTableView()
+    self.layout.addWidget(self.table_view)
+    self.setLayout(self.layout)
 
 
+  def build_comboboxes(self):
     # Horizontal layout for comboboxes and save button
     combo_button_layout = QHBoxLayout()
+
+    # combobox for files
+    self.combobox_files = QComboBox()
+    combo_button_layout.addWidget(self.combobox_files,4)
 
     # Create a combobox for data level keys
     self.combobox_data = QComboBox()
@@ -46,12 +63,33 @@ class CifBrowserTabView(GUITab):
     #self.layout.setAlignment(Qt.AlignVCenter)
     combo_button_layout.addWidget(self.save_button,1)
 
-    # Add the horizontal layout to the main layout
-    layout.addLayout(combo_button_layout)
+    return combo_button_layout
 
-    self.setLayout(layout)
+  def setComboBoxToValue(self,comboBox, value):
+    index = comboBox.findText(value)
+    if index >= 0:  # The value was found
+      comboBox.setCurrentIndex(index)
+    else:
+      print(f"Value '{value}' not found in ComboBox.")
 
-    # add empty dataframe
-    table = PandasTableView()
-    self.layout.addWidget(table)
+
+# class CifBrowserTabView(GUITab):
+#   """
+#   View cif structure
+#   """
+#   def __init__(self,parent=None):
+#     super().__init__(parent=parent)
+#     layout = QVBoxLayout()
+#     self.layout = layout
+
+
+
+
+
+#     # add empty dataframe
+#     self.setLayout(layout)
+#     self.table_view = CifTableView()
+#     layout.addWidget(self.table_view)
+
+
 

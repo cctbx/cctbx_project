@@ -6,7 +6,7 @@ from ..scroll_entry import ScrollEntryController
 from ...view.widgets.scroll_entry import ScrollEntryView
 from ..scroll_list import ScrollableListController
 from ..controller import Controller
-from ...state.restraints import Restraints
+from ...state.geometry import Geometry
 from ..data import DataTabController
 from .cif_files import CifFileListController
 from .cif_browser import CifBrowserController

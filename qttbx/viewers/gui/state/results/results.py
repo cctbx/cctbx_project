@@ -6,7 +6,7 @@ from libtbx import group_args
 from ..base import DataClassBase
 from ..ref import Ref
 
-@dataclass
+@dataclass(frozen=True)
 class Result(DataClassBase):
   program_name: str
   results: group_args

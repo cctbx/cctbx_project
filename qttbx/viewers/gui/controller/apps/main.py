@@ -6,8 +6,9 @@ from ..data import DataTabController
 from ..sites import SitesTabController
 from ..chimerax_controller import ChimeraXController
 from ..molstar_controller import MolstarController
-#from ..restraints import RestraintsTopTabController
-from ..restraints.restraints_table import RestraintsTableTopTabController
+from ..geometry.top_tab import GeometryTableTopTabController
+from ..restraints.top_tab import RestraintTableTopTabController
+from ..restraint_edits.top_tab import EditsTableTopTabController
 from ..qscore import QscoreTabController
 from ..cif import CifTabController
 from ..controller import Controller
@@ -51,8 +52,10 @@ class ViewerGUIController(Controller):
     if 'all' in show_tab  or 'cif' in show_tab:
       self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
     if 'all' in show_tab  or 'restraints' in show_tab:
-      #self.restraints = RestraintsTopTabController(parent=self,view=self.view.restraints_tab_view)
-      self.restraints_table = RestraintsTableTopTabController(parent=self,view=self.view.restraints_table_tab_view)
+      #self.restraints = GeometryTopTabController(parent=self,view=self.view.restraints_tab_view)
+      self.geometry = GeometryTableTopTabController(parent=self,view=self.view.geo)
+      self.restraints = RestraintTableTopTabController(parent=self,view=self.view.restraints)
+      self.edits = EditsTableTopTabController(parent=self,view=self.view.edits)
     if 'all' in show_tab  or 'qscore' in show_tab:
       self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
 
@@ -64,7 +67,9 @@ class ViewerGUIController(Controller):
 
 
     # Finish
-    self.state._sync()
+    self.state.start()
+    if hasattr(self,"molstar"):
+      self.molstar._update_state_from_remote()
 
 
   def update_from_remote(self, json_data):

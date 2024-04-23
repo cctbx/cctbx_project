@@ -13,7 +13,7 @@ import numpy as np
 
 from .controller import Controller
 from ..state.results import  Result, ResultsRef
-from ..view.widgets import   PandasTable
+from ..state.table import PandasTableModel as PandasTable
 from ..state.ref import SelectionRef
 
 class QscoreTabController(Controller):
@@ -22,7 +22,7 @@ class QscoreTabController(Controller):
 
 
     # Signals
-    self.view.table.mouseReleased.connect(self.on_mouse_released)
+    self.view.table_view.mouseReleased.connect(self.on_mouse_released)
     self.view.process_button.clicked.connect(self.calculate_qscore)
     self.state.signals.results_change.connect(self.update)
     self.state.signals.model_change.connect(self.handle_model_change)
@@ -83,7 +83,7 @@ class QscoreTabController(Controller):
         df = df[["Q-Residue","chain_id","resseq","resname"]]
 
       model = PandasTable(df)
-      self.view.table.setModel(model)
+      self.view.table_view.setModel(model)
       #self.view.add_histogram()
 
 
@@ -151,7 +151,7 @@ class QscoreTabController(Controller):
 
 
   def on_selection_changed(self, selected, deselected):
-    df_sel = self.view.table.selected_rows()
+    df_sel = self.view.table_view.selected_rows()
     if df_sel is not None:
       df_sel = df_sel.drop(columns=["Q-score"])
       # switch to atom picking level
@@ -169,6 +169,6 @@ class QscoreTabController(Controller):
 
 
   def on_mouse_released(self):
-    selected = self.view.table.selectionModel().selection()
+    selected = self.view.table_view.selectionModel().selection()
     deselected = QtCore.QItemSelection()
     self.on_selection_changed(selected, deselected)

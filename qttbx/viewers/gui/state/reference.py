@@ -3,7 +3,7 @@ from typing import List, Optional
 from .structure import Structure
 from .base import DataClassBase
 
-@dataclass
+@dataclass(frozen=True)
 class Reference(DataClassBase):
   id_viewer: Optional[str]
   id_molstar: Optional[str]

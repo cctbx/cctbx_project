@@ -214,7 +214,7 @@ class Selection:
 
   def to_json(self,indent=None):
     return json.dumps(self.data,indent=indent)
-# @dataclass
+# @dataclass(frozen=True)
 # class Selection:
 #   asym_id: Dict[str, str] = field(default_factory=lambda: {'op': '==', 'value': '*'})
 #   comp_id: Dict[str, str] = field(default_factory=lambda: {'op': '==', 'value': '*'})
@@ -273,7 +273,7 @@ class Selection:
 #   def to_json(self):
 #     return json.dumps(self.to_dict())
 
-# @dataclass
+# @dataclass(frozen=True)
 # class SelectionQuery:
 #   site_params: List[Selection] = field(default_factory=list)
 #   model_key: str = '' # The key for the applicable model in State
@@ -318,7 +318,7 @@ class Selection:
 #     parsed_json = json.loads(self.to_json())
 #     pretty_json_str = json.dumps(parsed_json, indent=2)
 #     return pretty_json_str
-# @dataclass
+# @dataclass(frozen=True)
 # class Selection:
 #   # A simple selection, a single value for each field
 #   #entity_id: str = '*'
@@ -340,7 +340,7 @@ class Selection:
 #             raise ValueError(f'The field '{field_name}' must be convertible to int, or all,none ('*', '') ')
 #           setattr(self, field_name, int_value)
 
-# @dataclass
+# @dataclass(frozen=True)
 # class SelectionQuery:
 #   # The highest level object to pass around to contain selection data
 #   selections: List[Selection] = field(default_factory=list)
