@@ -8,10 +8,10 @@
 @master {bad overlap}
 @master {worse overlap}
 @master {H-bond}
-@pointmaster 'M' {{McMc contacts}}
-@pointmaster 'S' {{ScSc contacts}}
-@pointmaster 'P' {{McSc contacts}}
-@pointmaster 'O' {{Hets contacts}}
+@pointmaster 'M' {McMc contacts}
+@pointmaster 'S' {ScSc contacts}
+@pointmaster 'P' {McSc contacts}
+@pointmaster 'O' {Hets contacts}
 @dotlist {x} color=white master={vdw contact}
 { CA  ALA   1  A}sky  'O' 22.726,-1.645,3.714
 {"}sky  'O' 22.641,-1.401,3.725
