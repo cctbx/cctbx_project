@@ -1920,10 +1920,8 @@ Note:
         self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of bonds other than 1: "+
-                      str(len(self._allBondedNeighborLists[a])) +
-                      " for " + self._describe_atom_for_debug(a))
+        if len(self._allBondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
         else:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
@@ -1944,10 +1942,8 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: " +
-                      str(len(self._allBondedNeighborLists[a])) +
-                      " for " + self._describe_atom_for_debug(a))
+        if len(self._allBondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
         else:
           self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
@@ -1962,10 +1958,8 @@ Note:
         if Helpers.isPolarHydrogen(a, self._allBondedNeighborLists):
           foundPolar = True
         elif a.element_is_hydrogen():
-          if len(self._allBondedNeighborLists[a]) != 1:
-            raise Sorry("Found Hydrogen with number of neighbors other than 1: "+
-                        str(len(self._allBondedNeighborLists[a])) +
-                      " for " + self._describe_atom_for_debug(a))
+          if len(self._allBondedNeighborLists[a]) < 1:
+            raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
           else:
             neighbor = self._allBondedNeighborLists[a][0]
             if neighbor.element == 'C':

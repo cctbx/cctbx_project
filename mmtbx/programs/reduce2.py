@@ -1076,9 +1076,8 @@ NOTES:
         inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        if len(bondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                      str(len(bondedNeighborLists[a])))
+        if len(bondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors.")
         else:
           inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
       inSideChain[a] = sidechain_sel[a.i_seq]
