@@ -651,7 +651,11 @@ std::string DotScorer::test()
     // Check the source atom just overlapping with the target.
     source.set_xyz(vec3(targetRad + sourceRad - 0.1, 0, 0));
 
-    std::vector<std::string> altlocs = { "", " ", "A", "B" };
+    std::vector<std::string> altlocs;
+    altlocs.push_back("");
+    altlocs.push_back(" ");
+    altlocs.push_back("A");
+    altlocs.push_back("B");
     for (size_t i = 0; i < altlocs.size(); i++) {
       e.setAltLoc(altlocs[i]);
 
