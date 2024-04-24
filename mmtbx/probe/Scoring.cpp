@@ -168,6 +168,11 @@ DotScorer::CheckDotResult DotScorer::check_dot(
       continue;
     }
 
+    // If we're in incompatible conformations, then we can't interact.
+    if (!compatible_conformations(sourceExtra.getAltLoc(), bExtra.getAltLoc())) {
+      continue;
+    }
+
     // At this point, we are within the probe radius past the edge, so we're in contention
     // to be the nearest atom.  Find the distance from the dot rather than from the probe
     // to check our actual interaction behavior.
@@ -509,6 +514,14 @@ unsigned DotScorer::count_surface_dots(iotbx::pdb::hierarchy::atom const &source
   return ret;
 }
 
+bool DotScorer::compatible_conformations(std::string const& a1, std::string const& a2)
+{
+  if (a1.size() == 0 || a1[0] == ' ' || a2.size() == 0 || a2[0] == ' ') {
+    return true;
+  }
+  return a1 == a2;
+}
+
 //===========================================================================================================
 // Testing code below here
 
@@ -520,6 +533,34 @@ static bool closeTo(double a, double b) {
 std::string DotScorer::test()
 {
   /// @todo Check the annular-dots behavior.
+
+  // Check compatible_conformations() for all combinations of altlocs.
+  {
+    if (!compatible_conformations("", "")) {
+      return "DotScorer::test(): Compatible conformations failed for both nul";
+    }
+    if (!compatible_conformations("A", "")) {
+      return "DotScorer::test(): Compatible conformations failed for A and nul";
+    }
+    if (!compatible_conformations("", "A")) {
+      return "DotScorer::test(): Compatible conformations failed for nul and A";
+    }
+    if (!compatible_conformations(" ", " ")) {
+      return "DotScorer::test(): Compatible conformations failed for both blank";
+    }
+    if (!compatible_conformations("A", " ")) {
+      return "DotScorer::test(): Compatible conformations failed for A and blank";
+    }
+    if (!compatible_conformations(" ", "A")) {
+      return "DotScorer::test(): Compatible conformations failed for blank and A";
+    }
+    if (!compatible_conformations("A", "A")) {
+      return "DotScorer::test(): Compatible conformations failed for both A";
+    }
+    if (compatible_conformations("A", "B")) {
+      return "DotScorer::test(): Compatible conformations falsely succeeded for A and B";
+    }
+  }
 
   // Check trim_dots(), which along with check_dot() will also check point_inside_atoms().
   {
@@ -575,6 +616,67 @@ std::string DotScorer::test()
     kept = as.trim_dots(source, ds.dots(), exclude);
     if ((kept.size() == 0) || (kept.size() >= ds.dots().size())) {
       return "DotScorer::test(): Unexpected non-excluded dot count for partially-overlapping case";
+    }
+  }
+
+  // Test the check_dot() function for atoms in different alternate conformations
+  {
+    double targetRad = 1.5, sourceRad = 1.0, probeRad = 0.25;
+    DotSphere ds(sourceRad, 200);
+    unsigned int atomSeq = 0;
+
+    // Construct and fill the SpatialQuery information
+    // with a vector of a single target atom, including its extra info.
+    iotbx::pdb::hierarchy::atom a;
+    a.set_xyz(vec3(0, 0, 0));
+    a.set_occ(1.0);
+    a.data->i_seq = atomSeq++;
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> atoms;
+    atoms.push_back(a);
+    SpatialQuery sq(atoms);
+    ExtraAtomInfo e(targetRad, true);
+
+    // Construct an empty exclusion list.
+    scitbx::af::shared<iotbx::pdb::hierarchy::atom> exclude;
+
+    // Construct a source atom, including its extra info.
+    // This will be a hydrogen but not a donor.
+    iotbx::pdb::hierarchy::atom source;
+    source.set_occ(1.0);
+    source.data->i_seq = atomSeq++;
+    ExtraAtomInfo se(sourceRad);
+    atoms.push_back(source);
+    ScoreDotsResult res;
+
+    // Check the source atom just overlapping with the target.
+    source.set_xyz(vec3(targetRad + sourceRad - 0.1, 0, 0));
+
+    std::vector<std::string> altlocs = { "", " ", "A", "B" };
+    for (size_t i = 0; i < altlocs.size(); i++) {
+      e.setAltLoc(altlocs[i]);
+
+      for (size_t j = 0; j < altlocs.size(); j++) {
+        se.setAltLoc(altlocs[j]);
+
+        // Make the extra atom info map match the new state.
+        scitbx::af::shared<ExtraAtomInfo> infos;
+        infos.push_back(e);
+        infos.push_back(se);
+
+        // Construct the scorer with updated information.
+        DotScorer as(ExtraAtomInfoMap(atoms, infos));
+
+        res = as.score_dots(source, 1, sq, sourceRad + targetRad,
+          probeRad, exclude, ds.dots(), ds.density(), false);
+        if (!res.valid) {
+          return "DotScorer::test(): Could not score dots for alternate conformation test case";
+        }
+        bool zero = res.totalScore() == 0;
+        if (zero != !DotScorer::compatible_conformations(e.getAltLoc(), se.getAltLoc())) {
+          return "DotScorer::test(): Unexpected nonzero value for alternate conformation test case '" + e.getAltLoc() +
+            "' vs. '" + se.getAltLoc() + "'";
+        }
+      }
     }
   }
 
@@ -1421,7 +1523,7 @@ std::string DotScorer::test()
     unsigned int atomSeq = 0;
 
     // Construct and fill the SpatialQuery information
-    // with a vector of a single target atom, including its extra info looked up by
+    // with a vector of a single target atom, including its extra info.
     iotbx::pdb::hierarchy::atom a;
     a.set_xyz(vec3( 0,0,0 ));
     a.set_occ(1);
