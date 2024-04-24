@@ -3,7 +3,7 @@ from mmtbx.validation import undowser2
 from libtbx.easy_pickle import loads
 from iotbx.data_manager import DataManager
 import libtbx.load_env
-from libtbx.utils import Sorry, null_out
+from libtbx.utils import null_out
 import iotbx
 from mmtbx.programs import probe2
 import time
