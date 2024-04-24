@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.4.0"
+version = "2.5.0"
 
 master_phil_str = '''
 approach = *add remove
