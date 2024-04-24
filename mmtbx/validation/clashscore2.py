@@ -618,7 +618,7 @@ def check_and_add_hydrogen(
   assert probe_parameters
   assert data_manager_model
   if keep_hydrogens:
-    elements = data_manager_model.get_hierarchy.root().atoms().extract_element()
+    elements = data_manager_model.get_hierarchy().atoms().extract_element()
     # strangely the elements can have a space when coming from phenix.clashscore
     # but no space when coming from phenix.molprobity
     h_count = elements.count('H')
