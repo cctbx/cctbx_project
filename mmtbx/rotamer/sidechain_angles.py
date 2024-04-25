@@ -236,13 +236,9 @@ def collect_sidechain_chi_angles(pdb_hierarchy, atom_selection=None):
               pass
             else :
               i_seqs = [ atom.i_seq for atom in atoms ]
-              chis.append(group_args(chi_id=i, i_seqs=i_seqs))
-          atoms_in_selection = True
-          for i_seq in i_seqs:
-            if not actual_selection[i_seq]:
-              atoms_in_selection = False
-              break
-          if len(chis) > 0 and atoms_in_selection:
+              if actual_selection.select(flex.size_t(i_seqs)).all_eq(True):
+                chis.append(group_args(chi_id=i, i_seqs=i_seqs))
+          if len(chis) > 0:
             residue_info = group_args(
               residue_name=residue.resname,
               chain_id=chain.id,
