@@ -58,7 +58,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     ;
 
   class_<ExtraAtomInfo>("ExtraAtomInfo")
-    .def(init< optional<double, bool, bool, bool> >())
+    .def(init< optional<double, bool, bool, bool, bool, int, std::string> >())
     .def(init<ExtraAtomInfo const &>())
     .add_property("vdwRadius", &ExtraAtomInfo::getVdwRadius, &ExtraAtomInfo::setVdwRadius)
     .add_property("isAcceptor", &ExtraAtomInfo::getIsAcceptor, &ExtraAtomInfo::setIsAcceptor)
@@ -66,6 +66,7 @@ BOOST_PYTHON_MODULE(mmtbx_probe_ext)
     .add_property("isDummyHydrogen", &ExtraAtomInfo::getIsDummyHydrogen, &ExtraAtomInfo::setIsDummyHydrogen)
     .add_property("isIon", &ExtraAtomInfo::getIsIon, &ExtraAtomInfo::setIsIon)
     .add_property("charge", &ExtraAtomInfo::getCharge, &ExtraAtomInfo::setCharge)
+    .add_property("altLoc", &ExtraAtomInfo::getAltLoc, &ExtraAtomInfo::setAltLoc)
     ;
   // Define the flex array wrapping for this class because we take it as a parameter.
   scitbx::boost_python::container_conversions::tuple_mapping_variable_capacity<

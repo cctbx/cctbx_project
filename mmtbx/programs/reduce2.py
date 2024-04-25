@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.4.0"
+version = "2.5.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1019,7 +1019,7 @@ NOTES:
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(None)
+    reduce_add_h_obj.show(self.logger)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if len(missed_residues) > 0:
       bad = ""
@@ -1076,9 +1076,8 @@ NOTES:
         inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        if len(bondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                      str(len(bondedNeighborLists[a])))
+        if len(bondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors.")
         else:
           inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
       inSideChain[a] = sidechain_sel[a.i_seq]

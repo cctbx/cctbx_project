@@ -386,6 +386,12 @@ def getExtraAtomInfo(model, bondedNeighborLists, useNeutronDistances = False, pr
                 if hb_type == "D" or hb_type == "B":
                   extra.isDonor = True
 
+                # Get the first non-blank character of the alternate for this atom.
+                # If there is none, set the value to the empty string.  If there is, set
+                # it to a string with just that character.
+                alt = a.parent().altloc.strip()
+                extra.altLoc = alt
+
                 extra.charge = probeExt.atom_charge(a)
 
                 # For ions, the Richardsons determined in discussion with
@@ -848,7 +854,7 @@ ATOM    444  C   HIS A  61      28.929  31.763   6.641  1.00  7.38           C
 ATOM    445  O   HIS A  61      29.744  32.217   7.397  1.00  9.97           O
 ATOM    446  CB  HIS A  61      27.707  33.547   5.385  1.00  9.38           C
 ATOM    447  CG  HIS A  61      26.382  33.956   4.808  1.00  8.78           C
-ATOM    448  ND1 HIS A  61      26.168  34.981   3.980  1.00  9.06           N
+ATOM    448  ND1AHIS A  61      26.168  34.981   3.980  1.00  9.06           N
 ATOM    449  CD2 HIS A  61      25.174  33.397   5.004  1.00 11.08           C
 ATOM    450  CE1 HIS A  61      24.867  35.060   3.688  1.00 12.84           C
 ATOM    451  NE2 HIS A  61      24.251  34.003   4.297  1.00 11.66           N
@@ -905,24 +911,24 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
   # Spot check the values on the atoms for standard, neutron distances,
   # and original Probe results.
   standardChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor, isIon
-    ["CU",  0.72,  False, False,  True],
-    ["N",   1.55, False,  True, False],
-    ["ND1", 1.55, False,  True, False],
-    ["C",   1.65, False, False, False],
-    ["CB",  1.7,  False, False, False],
-    ["O",   1.4,  True,  False, False],
-    ["CD2", 1.75, False, False, False]
+    # Name, vdwRadius, isAcceptor, isDonor, isDummyHydrogen, isIon, charge, altLoc
+    ["CU",  0.72, False, False, False,  True, 0, ''],
+    ["N",   1.55, False,  True, False, False, 0, ''],
+    ["ND1", 1.55, False,  True, False, False, 0, 'A'],
+    ["C",   1.65, False, False, False, False, 0, ''],
+    ["CB",  1.7,  False, False, False, False, 0, ''],
+    ["O",   1.4,  True,  False, False, False, 0, ''],
+    ["CD2", 1.75, False, False, False, False, 0, '']
   ]
   neutronChecks = [
-    # Name, vdwRadius, isAcceptor, isDonor, isIon
-    ["CU",  0.72, False, False,  True],
-    ["N",   1.55, False,  True, False],
-    ["ND1", 1.55, False,  True, False],
-    ["C",   1.65, False, False, False],
-    ["CB",  1.7,  False, False, False],
-    ["O",   1.4,  True,  False, False],
-    ["CD2", 1.75, False, False, False]
+    # Name, vdwRadius, isAcceptor, isDummyHydrogen, isDonor, isIon, charge, altLoc
+    ["CU",  0.72, False, False, False,  True, 0, ''],
+    ["N",   1.55, False,  True, False, False, 0, ''],
+    ["ND1", 1.55, False,  True, False, False, 0, 'A'],
+    ["C",   1.65, False, False, False, False, 0, ''],
+    ["CB",  1.7,  False, False, False, False, 0, ''],
+    ["O",   1.4,  True,  False, False, False, 0, ''],
+    ["CD2", 1.75, False, False, False, False, 0, '']
   ]
 
   # Situations to run the test in and expected results:
@@ -979,7 +985,9 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
           assert e.isDummyHydrogen == False, "Helpers.Test(): Bad Dummy Hydrogen status for "+a.name+runType
           e.isDummyHydrogen = True
           assert e.isDummyHydrogen == True, "Helpers.Test(): Can't set DummyHydrogen status for "+a.name+runType
-          assert e.isIon == c[4], "Helpers.Test(): Bad Ion status for "+a.name+": "+str(e.isIon)+runType
+          assert e.isIon == c[5], "Helpers.Test(): Bad Ion status for "+a.name+": "+str(e.isIon)+runType
+          assert e.charge == c[6], "Helpers.Test(): Bad charge for "+a.name+": "+str(e.charge)+runType
+          assert e.altLoc == c[7], "Helpers.Test(): Bad altLoc for "+a.name+": "+str(e.altLoc)+", wanted "+str(c[7])+runType
 
   #========================================================================
   # Run unit test on getPhantomHydrogensFor().
