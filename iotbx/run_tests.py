@@ -62,6 +62,7 @@ tst_list_base = [
   "$D/pdb/modified_rna_dna_names.py",
   "$D/regression/secondary_structure/tst_sheet.py",
   "$D/regression/secondary_structure/tst_annotation.py",
+  "$D/regression/secondary_structure/tst_annotation_long.py",
   "$D/pdb/secondary_structure.py",
   "$D/pdb/tst_atom_selection_string.py",
   "$D/pdb/tst_secondary_structure.py",
