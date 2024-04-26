@@ -48,7 +48,7 @@ namespace smtbx { namespace ED {
       else {
         use_n_beam = false;
       }
-      K = utils<FloatType>::Kl_as_K(Kl_);
+      K = frame.geometry->Kl_as_K(Kl_);
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
       // treat equivalents independently inside the frames
@@ -176,7 +176,7 @@ namespace smtbx { namespace ED {
               dyn_calculator_factory<FloatType>(parent.mat_type)
               .make(parent.strong_indices, parent.K, parent.thickness);
             af::shared<complex_t> amps =
-              dc->reset(parent.A, RMf, frame.normal).calc_amps(
+              dc->reset(parent.A, RMf, frame.geometry->get_normal()).calc_amps(
                 frame.strong_measured_beams.size());
             for (size_t i = 0; i < amps.size(); i++) {
               Is[i] = std::norm(amps[i]);

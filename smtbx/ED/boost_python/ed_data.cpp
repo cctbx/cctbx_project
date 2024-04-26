@@ -33,21 +33,15 @@ namespace boost_python {
       typedef return_internal_reference<> rir_t;
       return_value_policy<return_by_value> rbv;
       typedef FrameInfo<FloatType> wt;
+      typedef typename utils<FloatType>::a_geometry geometry_t;
 
       class_<wt, std::auto_ptr<wt> >("frame_info", no_init)
-        .def(init<int, typename wt::cart_t const&,
-          FloatType, FloatType, FloatType, FloatType, FloatType,
-          typename wt::mat3_t const&>
-          ((arg("id"), arg("normal"),
-            arg("alpha"), arg("beta"), arg("omega"), arg("angle"), arg("scale"),
-            arg("UB"))))
+        .def(init<int, boost::shared_ptr<geometry_t>,
+          FloatType, FloatType>
+          ((arg("id"), arg("geometry"), arg("angle"), arg("scale"))))
         .def_readonly("id", &wt::id)
         .def_readwrite("tag", &wt::tag)
-        .add_property("normal", make_getter(&wt::normal, rbv))
         .add_property("RMf", make_getter(&wt::RMf, rbv))
-        .add_property("alpha", &wt::alpha)
-        .add_property("beta", &wt::beta)
-        .add_property("omega", &wt::omega)
         .add_property("angle", &wt::angle)
         .add_property("scale", &wt::scale)
         .add_property("indices", make_getter(&wt::indices, rbv))
@@ -65,8 +59,6 @@ namespace boost_python {
         .def("unify", &wt::unify)
         .def("add_indices", &wt::add_indices)
         .def("analyse_strength", &wt::analyse_strength)
-        .def("update_alpha", &wt::update_alpha)
-        .def("update_angles", &wt::update_angles)
         .def("Sg_to_angle", &wt::Sg_to_angle)
         .def("angle_to_Sg", &wt::angle_to_Sg)
         .def("get_int_angles", &wt::get_int_angles)
@@ -314,11 +306,57 @@ namespace boost_python {
     }
   };
 
+  template <typename FloatType>
+  struct geometry_wrapper {
+    ED_UTIL_TYPEDEFS;
+
+    static void wrap_base() {
+      using namespace boost::python;
+      return_value_policy<return_by_value> rbv;
+      typedef typename utils<FloatType>::a_geometry wt;
+      typedef mat3_t (wt::* get_RMf_1)(const mat3_t&) const;
+      typedef mat3_t (wt::* get_RMf_2)(FloatType) const;
+
+      class_<wt, boost::noncopyable>("a_geometry", no_init)
+        .def("get_normal", pure_virtual(&wt::get_normal), rbv)
+        .def("get_RM", pure_virtual(&wt::get_RM), rbv)
+        .def("get_RMf", (get_RMf_1)&wt::get_RMf, rbv)
+        .def("get_RMf", (get_RMf_2)&wt::get_RMf, rbv)
+        .def("Kl_as_K", &wt::Kl_as_K, rbv)
+        ;
+    }
+
+    static void wrap_PETS() {
+      using namespace boost::python;
+      typedef typename utils<FloatType>::a_geometry base_t;
+      typedef typename utils<FloatType>::PETS_geometry wt;
+
+      class_<wt, bases<base_t>, std::auto_ptr<wt> >("PETS_geometry", no_init)
+        .def(init<const mat3_t&>((arg("UB"))));
+    }
+
+    static void wrap_CAP() {
+      using namespace boost::python;
+      typedef typename utils<FloatType>::a_geometry base_t;
+      typedef typename utils<FloatType>::CAP_geometry wt;
+
+      class_<wt, bases<base_t>, std::auto_ptr<wt> >("CAP_geometry", no_init)
+        .def(init<const mat3_t&>((arg("UB"))));
+    }
+
+    static void wrap() {
+      wrap_base();
+      wrap_PETS();
+      wrap_CAP();
+    }
+  };
+
   namespace {
     void init_module() {
       ed_data_wrapper<double>::wrap();
       ed_utils_wrapper<double>::wrap();
       dyn_calculator_wrapper<double>::wrap();
+      geometry_wrapper<double>::wrap();
 
       scitbx::boost_python::RegisterPyPair<scitbx::mat3<double>, scitbx::vec3<double> >();
     }

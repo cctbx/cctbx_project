@@ -39,7 +39,7 @@ namespace smtbx {  namespace ED
     virtual ~frame_processor() {}
 
     void operator()() {
-      process(frame.RMf, frame.normal);
+      process(frame.RMf, frame.geometry.get_normal());
     }
 
     void process(const mat3_t& RM, const cart_t& N) {

@@ -11,9 +11,56 @@ namespace smtbx { namespace ED
   struct utils {
     ED_UTIL_TYPEDEFS;
 
-    static cart_t Kl_as_K(FloatType Kl) {
-      return cart_t(0, 0, -Kl);
-    }
+    class a_geometry {
+    protected:
+      mat3_t UB;
+    public:
+      a_geometry(const mat3_t &UB)
+        : UB(UB)
+      {}
+      virtual ~a_geometry() {}
+      virtual const cart_t& get_normal() const = 0;
+      virtual mat3_t get_RM(FloatType angle) const = 0;
+      cart_t Kl_as_K(FloatType Kl) const {
+        return get_normal() * -Kl;
+      }
+      mat3_t get_RMf(FloatType angle) const {
+        return get_RM(angle) * UB;
+      }
+      mat3_t get_RMf(const mat3_t &rm) const {
+        return rm * UB;
+      }
+    };
+
+    class PETS_geometry : public a_geometry {
+    public:
+      PETS_geometry(const mat3_t& UB)
+        : a_geometry(UB)
+      {}
+      const cart_t& get_normal() const {
+        static cart_t n(0, 0, 1);
+        return n;
+      }
+      mat3_t get_RM(FloatType angle) const {
+        FloatType ca = std::cos(angle), sa = std::sin(angle);
+        return mat3_t(1, 0, 0, 0, ca, -sa, 0, sa, ca);
+      }
+    };
+
+    class CAP_geometry : public a_geometry {
+    public:
+      CAP_geometry(const mat3_t& UB)
+        : a_geometry(UB)
+      {}
+      const cart_t& get_normal() const {
+        static cart_t n(1, 0, 0);
+        return n;
+      }
+      mat3_t get_RM(FloatType angle) const {
+        FloatType ca = std::cos(angle), sa = std::sin(angle);
+        return mat3_t(ca, sa, 0, -sa, ca, 0, 0, 0, 1);
+      }
+    };
 
     static void build_Ug_matrix(
       cmat_t& A,
@@ -367,9 +414,6 @@ namespace smtbx { namespace ED
     }
 
     static FloatType calc_Sg(const cart_t& g, const cart_t& K) {
-#ifdef _DEBUG
-      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
-#endif
       FloatType Kl = K.length();
       cart_t Kg = K + g;
       return (Kl * Kl - Kg.length_sq()) / (2 * Kl);
