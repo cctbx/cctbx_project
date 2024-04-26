@@ -100,13 +100,13 @@ TER
 ENDMDL
 END
 """
-#cctbx.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
+#phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
 def exercise():
   fo = open("tst_diffuse.pdb","w")
   print(pdb_str, file=fo)
   fo.close()
   cmd = " ".join([
-    "cctbx.diffuse",
+    "phenix.diffuse",
     "pdb=tst_diffuse.pdb",
     "probabilities=0.5,0.5",
     "resolution=4.0",
