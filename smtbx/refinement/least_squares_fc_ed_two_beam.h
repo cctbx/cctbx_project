@@ -46,7 +46,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       compute_grad(compute_grad),
       thread_n(params.getThreadN())
     {
-      K = utils<FloatType>::Kl_as_K(Kl);
+      K = frames[0].geometry->Kl_as_K(Kl);
       // build lookups for each frame + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
       // treat equivalents independently inside the frames
@@ -330,14 +330,15 @@ namespace smtbx {  namespace refinement  { namespace least_squares
           data.params.getIntStep());
       }
 
-      std::pair<mat3_t, cart_t> da_r = frame->compute_RMf_N(da);
+      mat3_t da_rm = frame->geometry->get_RM(da);
+      cart_t da_n = da_rm.transpose() * frame->geometry->get_normal();
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
         data.params.getMatrixType(),
         *frame, data.K, data.thickness.value,
         data.params.useNBeamSg(), data.params.getNBeamWght());
 
       if (!data.params.isNBeamFloating()) {
-        n_beam_dc.init(h, da_r.first, data.Fcs_kin, data.mi_lookup);
+        n_beam_dc.init(h, frame->geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
       }
 
       mat_t D_dyn;
@@ -353,9 +354,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         grads1;
       FloatType I1 = -1, g1 = -1, I_sum = 0;
       for (size_t ai=0; ai < angles.size(); ai++) {
-        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
+        std::pair<mat3_t, cart_t> r;
+        mat3_t rm = frame->geometry->get_RM(angles[ai]);
+        r.first = frame->geometry->get_RMf(rm);
         // keep the original normal
-        r.second = da_r.second;
+        //r.second = da_r.second;
+        r.second = rm * da_n;
         cart_t g = r.first * cart_t(h[0], h[1], h[2]);
         cart_t K_g = g + data.K;
         FloatType K_g_l = K_g.length();

@@ -1,6 +1,7 @@
 #pragma once
 #include <smtbx/ED/utils.h>
 #include <scitbx/constants.h>
+#include <boost/shared_ptr.hpp>
 
 namespace smtbx { namespace ED
 {
@@ -12,48 +13,25 @@ namespace smtbx { namespace ED
   class FrameInfo {
   public:
     ED_UTIL_TYPEDEFS;
-
+    typedef typename utils<FloatType>::a_geometry geometry_t;
     FrameInfo() {}
 
-    FrameInfo(int id, const cart_t &c_normal,
-      FloatType alpha, FloatType beta, FloatType omega,
-      FloatType angle, FloatType scale, mat3_t const& UB)
-      : id(id), tag(-1), original_normal(c_normal),
-      UB(UB),
-      alpha(alpha), beta(beta), omega(omega),
+    FrameInfo(int id,
+      boost::shared_ptr<geometry_t> geometry,
+      FloatType angle, FloatType scale)
+      : id(id), tag(-1), geometry(geometry),
       angle(angle), scale(scale),
       offset(~0)
     {
-      update_alpha(alpha);
+      mat3_t rm = geometry->get_RM(angle);
+      RMf = geometry->get_RMf(rm);
+      original_normal = rm.transpose() * geometry->get_normal();
     }
 
-    std::pair<mat3_t, cart_t> compute_RMf_N(FloatType alpha_) const {
-      FloatType ca = std::cos(alpha_), sa = std::sin(alpha_),
-        cb = std::cos(beta), sb = std::sin(beta),
-        co = std::cos(omega), so = std::sin(omega);
-      mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca),
-        ryb(cb, 0, sb, 0, 1, 0, -sb, 0, cb),
-        rzo(co, -so, 0, so, co, 0, 0, 0, 1);
-      mat3_t rm = rzo * rxa * ryb;
-      mat3_t rmf = rm * UB;
-      cart_t N = rm * original_normal;
-      return std::make_pair(rmf, N / N.length());
-    }
-
-    void update_alpha(FloatType alpha_) {
-      alpha = alpha_;
-      std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha_);
-      RMf = r.first;
-      normal = r.second;
-    }
-
-    void update_angles(FloatType alpha_, FloatType beta_, FloatType omega_) {
-      alpha = alpha_;
-      beta = beta_;
-      omega = omega_;
-      std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha_);
-      RMf = r.first;
-      normal = r.second;
+    std::pair<mat3_t, cart_t> compute_RMf_N(FloatType ang) const {
+      mat3_t rm = geometry->get_RM(ang);
+      return std::make_pair(geometry->get_RMf(rm),
+        rm * original_normal);
     }
 
     // returns angle in rads at which the excitation error is 0
@@ -62,48 +40,43 @@ namespace smtbx { namespace ED
     {
       //return Sg_to_angle(0, h, K);
       FloatType ang = Sg_to_angle(0, h, K);
-      mat3_t m = compute_RMf_N(ang).first;
+      mat3_t m = geometry->get_RMf(ang);
       std::pair<FloatType, FloatType> k = Sg_to_angle_k(m, ang, h, K, 0.3);
       ang = ang - k.first / k.second;
-      m = compute_RMf_N(ang).first;
+      m = geometry->get_RMf(ang);
       k = Sg_to_angle_k(m, ang, h, K, 0.1);
       return ang - k.first / k.second;
     }
 
     /* returns angle in rads at which the excitation error is Sg as
-    angle = alpha + (Sg-rv.first)/rv.second
+    angle = angle + (Sg-rv.first)/rv.second
     */
     std::pair<FloatType, FloatType> Sg_to_angle_k(
       const miller::index<>& h,
       const cart_t& K, FloatType sweep_angle = 0.5) const
     {
-#ifdef _DEBUG
-      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
-#endif
       FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
+      mat3_t m = geometry->get_RMf(angle + ang_diff);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(m * h, K);
       FloatType k = (Sg2 - Sg1) / ang_diff;
-      //FloatType a = Sg1 - k*alpha;
-      //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
+      //FloatType a = Sg1 - k*angle;
+      //return (Sg - a) / k = (Sg + k*angle - sg1)/k = angle + (Sg - Sg1)/k;
       return std::make_pair(Sg1, k);
     }
+
     std::pair<FloatType, FloatType> Sg_to_angle_k(
       const mat3_t &m, FloatType ang,
       const miller::index<>& h,
       const cart_t& K, FloatType sweep_angle = 0.5) const
     {
-#ifdef _DEBUG
-      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
-#endif
       FloatType Sg1 = utils<FloatType>::calc_Sg(m * h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      std::pair<mat3_t, cart_t> r = compute_RMf_N(ang + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
+      mat3_t rmf = geometry->get_RMf(ang + ang_diff);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(rmf * h, K);
       FloatType k = (Sg2 - Sg1) / ang_diff;
-      //FloatType a = Sg1 - k*alpha;
-      //return (Sg - a) / k = (Sg + k*alpha - sg1)/k = alpha + (Sg - Sg1)/k;
+      //FloatType a = Sg1 - k*angle;
+      //return (Sg - a) / k = (Sg + k*angle - sg1)/k = angle + (Sg - Sg1)/k;
       return std::make_pair(Sg1, k);
     }
 
@@ -111,27 +84,21 @@ namespace smtbx { namespace ED
     FloatType Sg_to_angle(FloatType Sg, const miller::index<>& h,
       const cart_t& K) const
     {
-#ifdef _DEBUG
-      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
-#endif
       std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
-      return alpha + (Sg - k.first) / k.second;
+      return angle + (Sg - k.first) / k.second;
     }
 
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
       const cart_t& K, FloatType sweep_angle = 0.5)
     {
-#ifdef _DEBUG
-      SMTBX_ASSERT(std::abs(K.length() - std::abs(K[2])) < 1e-6);
-#endif
       FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      std::pair<mat3_t, cart_t> r = compute_RMf_N(alpha + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(r.first * h, K);
+      mat3_t m = geometry->get_RMf(angle + ang_diff);
+      FloatType Sg2 = utils<FloatType>::calc_Sg(m * h, K);
       FloatType k = (Sg2 - Sg1) / ang_diff;
-      //FloatType a = Sg1 - k*alpha;
-      //return k * ang + a = k*(ang-alpha) + Sg1;
-      return Sg1 + k*(ang-alpha);
+      //FloatType a = Sg1 - k*angle;
+      //return k * ang + a = k*(ang-angle) + Sg1;
+      return Sg1 + k*(ang-angle);
     }
 
     FloatType PL_correctionROD(const miller::index<>& h) const {
@@ -189,9 +156,10 @@ namespace smtbx { namespace ED
       const cart_t& K, FloatType Sg_span, FloatType Sg_step) const;
 
     int id, tag;
-    cart_t normal, original_normal;
-    mat3_t UB, RMf;
-    FloatType alpha, beta, omega, angle, scale;
+    cart_t original_normal;
+    boost::shared_ptr<geometry_t> geometry;
+    mat3_t RMf;
+    FloatType angle, scale;
     size_t offset; // for internal bookeeping
     // experimental data
     af::shared<BeamInfo<FloatType> > beams;
@@ -398,7 +366,7 @@ namespace smtbx { namespace ED
     std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
     af::shared<FloatType> rv(af::reserve(std::abs(Sg_span * 2 / Sg_step) + 1));
     for (FloatType Sg = -Sg_span; Sg <= Sg_span; Sg += Sg_step) {
-      FloatType ang = alpha + (Sg - k.first) / k.second;
+      FloatType ang = angle + (Sg - k.first) / k.second;
       rv.push_back(ang);
     }
     return rv;
@@ -434,7 +402,7 @@ namespace smtbx { namespace ED
         b_angles = get_angles_Sg(h, K, span_, step_);
       }
       else {
-        b_angles = get_angles(alpha, span_, step_);
+        b_angles = get_angles(angle, span_, step_);
       }
       angles.extend(b_angles.begin(), b_angles.end());
     }
