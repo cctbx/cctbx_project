@@ -127,7 +127,7 @@ namespace least_squares {
 
       void operator()() {
         try {
-          const cart_t K = utils<FloatType>::Kl_as_K(parent.Kl);
+          const cart_t K = frame.geometry->Kl_as_K(parent.Kl);
           if (parent.use_n_beam) {
             int beam_n = parent.params.getBeamN();
             cmat_t A;
@@ -207,7 +207,7 @@ namespace least_squares {
 
             af::shared<FloatType> ExpDen;
             utils<FloatType>::build_eigen_matrix_modified(
-              A, K, frame.normal,
+              A, K, frame.geometry->get_normal(),
               af::select(frame.gs.const_ref(), frame.strong_beams.const_ref()),
               af::select(frame.excitation_errors.const_ref(), frame.strong_beams.const_ref()),
               ExpDen);
