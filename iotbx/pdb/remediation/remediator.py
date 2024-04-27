@@ -384,9 +384,9 @@ def remediate(filename, remediated_out, f=None):
       remark_flag = True
     if previous == current:
       print_line += line + "\n"
-    elif previous != None and previous != current: # appears to check an entire residue for dna residue/atom names
+    elif previous != current: # appears to check an entire residue for dna residue/atom names
       if re.search(r'^.{12}.\S..  .[ACTGIU]',print_line):
-        if re.search(r'O2[\'|\*]   .',print_line) == None:
+        if re.search(r'O2[\'|\*]   .',print_line) == None and previous != None:
           DNA_base = previous[1]
           if remediated_out == True:
             print_line = re.sub(r'(?m)(^.{12}.\S..)   '+DNA_base+' ',r'\g<1>  D'+DNA_base+' ',print_line)
