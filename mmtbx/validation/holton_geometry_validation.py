@@ -77,7 +77,7 @@ def holton_geometry_validation(dm = None,
      ignore_bond_lengths_with_h = False,
      ignore_water_h_bonds = False,
      rotalyze_max_energy = 99,
-     overall_max_energy = 400,
+     overall_max_energy = None,
      omega_angle_sigma = 4,  # Sigma for omega angle
      cbetadev_sigma = 0.05,  # Sigma for CB position
      clashscore_ideal_dist = 3,  # Ideal distance in LJ for clashscore result
@@ -403,7 +403,10 @@ def analyze_geometry_values(info):
 
       continue # nothing to do
 
-    energy = max(0, min(info.overall_max_energy, result.worst_residual))
+    if info.overall_max_energy is not None:
+      energy = max(0, min(info.overall_max_energy, result.worst_residual))
+    else:
+      energy = max(0, result.worst_residual)
     delta = energy**0.5
     result.pnna = softPnna(delta, result.n, info.softPnna_params)
 
@@ -418,7 +421,10 @@ def analyze_geometry_values(info):
     sum_energy += result.energy
 
     # Repeat using mean instead of worst, multiplying mean energy * Chisq
-    energy_mean = max(0, min(info.overall_max_energy, result.mean_residual))
+    if info.overall_max_energy is not None:
+      energy_mean = max(0, min(info.overall_max_energy, result.mean_residual))
+    else:
+      energy_mean = max(0, result.mean_residual)
     ssd = result.mean_residual * result.n
     result.chisq = chisq(ssd, result.n)
 
