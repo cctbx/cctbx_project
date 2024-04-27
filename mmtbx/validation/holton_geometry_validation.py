@@ -721,13 +721,15 @@ def get_model(info):
     info.dm = DataManager()
   if not info.model:
     info.model = info.dm.get_model(info.filename)
-  if not os.path.isfile(info.filename):  # write to it
-    info.dm.write_model_file(info.model, info.filename)
   info.model.set_log(null_out())
   if (not info.keep_hydrogens):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
+  for m in list(info.model.get_hierarchy().models())[1:]:
+     info.model.get_hierarchy().remove_model(m)
+  if not os.path.isfile(info.filename):  # write to it
+    info.dm.write_model_file(info.model, info.filename)
   info.model.set_stop_for_unknowns(False)
   info.model.process(make_restraints=True)
   info.chain_dict = {}
