@@ -3712,7 +3712,7 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def add_solvent(self, solvent_xray_structure,
-                        conformer_indices,
+                        conformer_indices=None,
                         atom_name    = "O",
                         residue_name = "HOH",
                         chain_id     = " ",
@@ -3825,7 +3825,11 @@ class manager(object):
       if(geometry.conformer_indices is None):
         conformer_indices = None
       else:
-        assert conformer_indices.conformer_indices.size() == number_of_new_atoms
+        if conformer_indices is not None:
+          assert conformer_indices.conformer_indices.size() == number_of_new_atoms
+          conformer_indices = conformer_indices.conformer_indices
+        else:
+          conformer_indices = flex.size_t(number_of_new_atoms, 0)
       if (geometry.sym_excl_indices is None):
         sym_excl_indices = None
       else:
@@ -3839,7 +3843,7 @@ class manager(object):
       geometry = geometry.new_including_isolated_sites(
         n_additional_sites =number_of_new_atoms,
         model_indices=model_indices,
-        conformer_indices=conformer_indices.conformer_indices,
+        conformer_indices=conformer_indices,
         sym_excl_indices=sym_excl_indices,
         donor_acceptor_excl_groups=donor_acceptor_excl_groups,
         site_symmetry_table=new_xray_structure.site_symmetry_table(),
@@ -3865,10 +3869,10 @@ class manager(object):
 
   def _append_pdb_atoms(self,
       new_xray_structure,
-      conformer_indices,
       atom_names,
       residue_names,
       chain_id,
+      conformer_indices=None,
       segids=None,
       i_seq_start=0,
       reset_labels=False):
@@ -3883,11 +3887,11 @@ class manager(object):
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
-
-      ci = conformer_indices.conformer_indices[j_seq]
-      cm = conformer_indices.index_altloc_mapping
-      altloc = list(cm.keys())[list(cm.values()).index(ci)]
-
+      altloc=""
+      if conformer_indices is not None:
+        ci = conformer_indices.conformer_indices[j_seq]
+        cm = conformer_indices.index_altloc_mapping
+        altloc = list(cm.keys())[list(cm.values()).index(ci)]
       element, charge = sc.element_and_charge_symbols()
       new_atom = (iotbx.pdb.hierarchy.atom()
         .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=n_seq+i_seq))

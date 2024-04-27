@@ -261,8 +261,26 @@ def show_highest_peaks_and_deepest_holes(fmodel,
   fp_params.map_next_to_model.use_hydrogens = True
   for par in [(map_cutoff_plus,"peaks"), (map_cutoff_minus,"holes")]:
     print_statistics.make_sub_header(par[1], out = log)
-    result = manager(fmodel     = fmodel,
-                     map_type   = "mFobs-DFmodel",
+    #
+    from cctbx import maptbx
+    e_map = fmodel.electron_density_map()
+    crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = crystal_symmetry.unit_cell(),
+      space_group_info = crystal_symmetry.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.6)
+    coeffs = e_map.map_coefficients(
+      map_type     = "mFobs-DFmodel",
+      fill_missing = False,
+      isotropize   = True)
+    fft_map = coeffs.fft_map(crystal_gridding = crystal_gridding)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    #
+
+    result = manager(map_data = map_data,
+                     xray_structure = fmodel.xray_structure,
                      map_cutoff = par[0],
                      params     = fp_params,
                      log        = log)
