@@ -728,6 +728,7 @@ def get_model(info):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
+  info.model.set_stop_for_unknowns(False)
   info.model.process(make_restraints=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
