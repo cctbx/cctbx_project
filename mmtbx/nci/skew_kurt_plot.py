@@ -171,6 +171,7 @@ def make_figure(
       aspect=aspect,
       # interpolation='bicubic',
       # norm=norm,
+      alpha=0.5
       )
   plt.contour( blue_filling, contours[type],
       origin="lower",
