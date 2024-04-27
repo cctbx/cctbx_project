@@ -70,7 +70,7 @@ def holton_geometry_validation(dm = None,
      clash_energy_add_n = True,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
-     keep_hydrogens = False,  # redo the hydrogens
+     keep_hydrogens = True, # keep the hydrogens (but add any nec riding H)
      ignore_cis_peptides = False,
      ignore_h_except_in_nonbond = True,
      ignore_arg_h_nonbond = True,
@@ -144,7 +144,7 @@ def add_clashscore_results(info):
   clashes = clashscore(
       info.model.get_hierarchy(),
       fast = False,
-      keep_hydrogens=True,
+      keep_hydrogens=False, # redo them here even if supplied
       time_limit=120,
       save_modified_hierarchy=False,
       verbose=False,
@@ -722,16 +722,17 @@ def get_model(info):
   if not info.model:
     info.model = info.dm.get_model(info.filename)
   info.model.set_log(null_out())
+  for m in list(info.model.get_hierarchy().models())[1:]:
+     info.model.get_hierarchy().remove_model(m)
   if (not info.keep_hydrogens):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
-  for m in list(info.model.get_hierarchy().models())[1:]:
-     info.model.get_hierarchy().remove_model(m)
   if not os.path.isfile(info.filename):  # write to it
     info.dm.write_model_file(info.model, info.filename)
   info.model.set_stop_for_unknowns(False)
   info.model.process(make_restraints=True)
+  info.model.setup_riding_h_manager(idealize=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
     entry = group_args(group_args_type = 'chain entry', )
