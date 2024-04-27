@@ -2391,7 +2391,7 @@ class _():
     atoms.set_chemical_element_simple_if_necessary()
     sites_cart = atoms.extract_xyz()
     elements = atoms.extract_element()
-    conformer_indices = self.get_conformer_indices()
+    conformer_indices = self.get_conformer_indices().conformer_indices
     return distance_based_connectivity.build_simple_two_way_bond_sets(
       sites_cart=sites_cart,
       elements=elements,
