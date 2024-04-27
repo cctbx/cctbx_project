@@ -71,7 +71,7 @@ def holton_geometry_validation(dm = None,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
      keep_hydrogens = False,  # redo the hydrogens
-     ignore_cis_peptides = True,
+     ignore_cis_peptides = False,
      ignore_h_except_in_nonbond = True,
      ignore_arg_h_nonbond = True,
      ignore_bond_lengths_with_h = False,
@@ -148,7 +148,7 @@ def add_clashscore_results(info):
       time_limit=120,
       save_modified_hierarchy=False,
       verbose=False,
-      do_flips=True,
+      do_flips=False,
       out=null_out())
 
   for r in clashes.results:
@@ -373,8 +373,8 @@ def analyze_geometry_values(info):
 
     if info.worst_clash_is_one_plus_n_times_worst_clash and \
         result.name == 'CLASH': # Special case
-      result.worst_residual = abs(
-         1 + len(result.value_list) * worst_value.residual)
+      result.worst_residual = \
+          1 + (len(result.value_list) * worst_value.residual)
 
     elif info.minimum_nonbond_score_to_be_worst is not None and \
         result.name == 'NONBOND' and (
@@ -589,7 +589,7 @@ def add_omega_results(info):
     if info.round_numbers:
       sigma = float("%.3f" %(sigma))
     new_v.residual=((math.sin(omega)/sigma)**2+
-         (1+math.cos(omega))**10)/(n_pro+1)
+         (1+math.cos(omega))**10)/(n_pro*2+1)
     at = new_v.labels[0].atom
     new_v.as_string = "OMEGA: Energy = "+\
      "%.6f (%s Proline) Angle: %.2f deg\n   Residue:  %s %s %s %s" %(
