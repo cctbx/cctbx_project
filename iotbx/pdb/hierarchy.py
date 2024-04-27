@@ -1830,10 +1830,16 @@ class _():
     if ("" in altloc_indices): p = 0
     else:                      p = 1
     altlocs = sorted(altloc_indices.keys())
+    index_altloc_mapping = {}
     for i,altloc in enumerate(altlocs):
-      if (altloc == ""): continue
+      if (altloc == ""):
+        index_altloc_mapping[altloc]=0
+        continue
       conformer_indices.set_selected(altloc_indices[altloc], i+p)
-    return conformer_indices
+      index_altloc_mapping[altloc]=i+p
+    return group_args(
+      conformer_indices = conformer_indices,
+      index_altloc_mapping = index_altloc_mapping)
 
   def sort_chains_by_id(self):
     chain_ids = self.chain_ids()

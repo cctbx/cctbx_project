@@ -128,7 +128,7 @@ class electron_distribution(dict):
     else:
       self.logger = log
     self.verbose=verbose
-    if [_f for _f in hierarchy.get_conformer_indices() if _f]:
+    if [_f for _f in hierarchy.get_conformer_indices().conformer_indices if _f]:
       assert (alternative_location_id is not None or
               alternative_location_index is not None)
     for atom in self.atoms:
