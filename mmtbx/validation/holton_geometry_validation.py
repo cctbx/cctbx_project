@@ -656,18 +656,21 @@ def get_geometry_results(info):
       v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
         v.residual, v.delta, v.model, v.ideal,
          v.labels[0].as_string(), v.labels[1].as_string())
-    geometry_results[proxy_name] = result
+    geometry_results[proxy_name].value_list += result.value_list
 
   for proxy_name in ['bond_proxies', 'angle_proxies', 'dihedral_proxies',
        'chirality_proxies', 'planarity_proxies']:
     proxies = getattr(pair_proxies, proxy_name,
                 getattr(geometry, proxy_name,
                   getattr(geometry, proxy_name, None)))
+
+    origin_id_list = []
     if proxy_name in ['bond_proxies', 'angle_proxies']:
-      origin_id=origin_ids.get_origin_id('covalent geometry')
+       for key in origin_ids.get_bond_origin_id_labels():
+         origin_id_list.append(origin_ids.get_origin_id(key))
     else:
-      origin_id=None
-    if proxies:
+      origin_id_list.append(None)
+    for origin_id in origin_id_list:
       result = proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
@@ -675,7 +678,7 @@ def get_geometry_results(info):
           f=null_out(),
           origin_id=origin_id,
           return_result = True)
-      geometry_results[proxy_name] = result
+      if not result: continue
       if result.group_args_type == 'Bond restraints':
         for v in result.value_list:
           v.as_string = "BOND: Energy = %.2f dev = %.3f A  obs = %.3f target = %.3f sigma = %.2f\n   Atom 1:  %s\n   Atom 2:  %s " %(
@@ -713,6 +716,10 @@ def get_geometry_results(info):
           for x in v.labels:
             i_at += 1
             v.as_string += "\n   Atom %s:  %s" %(i_at, x.as_string())
+      else:
+        print("Unknown result type:",result.group_args_type)
+        raise Sorry("Unknown result type: %s" %result.group_args_type)
+      geometry_results[proxy_name].value_list += result.value_list
   for key in name_dict.keys():
     geometry_results[key].name = name_dict[key]
 
