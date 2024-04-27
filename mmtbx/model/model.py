@@ -3712,6 +3712,7 @@ class manager(object):
     time_model_show += timer.elapsed()
 
   def add_solvent(self, solvent_xray_structure,
+                        conformer_indices,
                         atom_name    = "O",
                         residue_name = "HOH",
                         chain_id     = " ",
@@ -3729,6 +3730,7 @@ class manager(object):
     if (i_seq is None or i_seq < 0): i_seq = 0
     self.append_single_atoms(
       new_xray_structure=solvent_xray_structure,
+      conformer_indices=conformer_indices,
       atom_names=atom_names,
       residue_names=residue_names,
       nonbonded_types=nonbonded_types,
@@ -3744,6 +3746,7 @@ class manager(object):
 
   def append_single_atoms(self,
       new_xray_structure,
+      conformer_indices,
       atom_names,
       residue_names,
       nonbonded_types,
@@ -3763,11 +3766,13 @@ class manager(object):
     number_of_new_atoms = new_xray_structure.scatterers().size()
     self._xray_structure = \
       self._xray_structure.concatenate(new_xray_structure)
+    # Occupancy
     occupancy_flags = None
     if(refine_occupancies):
       occupancy_flags = []
       for i in range(1, new_xray_structure.scatterers().size()+1):
         occupancy_flags.append([flex.size_t([ms+i-1])])
+    #
     if(self.refinement_flags is not None and
        self.refinement_flags.individual_sites):
       ssites = flex.bool(new_xray_structure.scatterers().size(), True)
@@ -3804,23 +3809,23 @@ class manager(object):
     #
     self._append_pdb_atoms(
       new_xray_structure=new_xray_structure,
+      conformer_indices=conformer_indices,
       atom_names=atom_names,
       residue_names=residue_names,
       chain_id=chain_id,
       segids=segids,
       i_seq_start=i_seq_start,
       reset_labels=reset_labels)
-   #
     if(self.restraints_manager is not None):
       geometry = self.restraints_manager.geometry
       if (geometry.model_indices is None):
         model_indices = None
       else:
         model_indices = flex.size_t(number_of_new_atoms, 0)
-      if (geometry.conformer_indices is None):
+      if(geometry.conformer_indices is None):
         conformer_indices = None
       else:
-        conformer_indices = flex.size_t(number_of_new_atoms, 0)
+        assert conformer_indices.conformer_indices.size() == number_of_new_atoms
       if (geometry.sym_excl_indices is None):
         sym_excl_indices = None
       else:
@@ -3834,7 +3839,7 @@ class manager(object):
       geometry = geometry.new_including_isolated_sites(
         n_additional_sites =number_of_new_atoms,
         model_indices=model_indices,
-        conformer_indices=conformer_indices,
+        conformer_indices=conformer_indices.conformer_indices,
         sym_excl_indices=sym_excl_indices,
         donor_acceptor_excl_groups=donor_acceptor_excl_groups,
         site_symmetry_table=new_xray_structure.site_symmetry_table(),
@@ -3860,6 +3865,7 @@ class manager(object):
 
   def _append_pdb_atoms(self,
       new_xray_structure,
+      conformer_indices,
       atom_names,
       residue_names,
       chain_id,
@@ -3877,6 +3883,11 @@ class manager(object):
     i_seq = i_seq_start
     for j_seq, sc in enumerate(new_xray_structure.scatterers()):
       i_seq += 1
+
+      ci = conformer_indices.conformer_indices[j_seq]
+      cm = conformer_indices.index_altloc_mapping
+      altloc = list(cm.keys())[list(cm.values()).index(ci)]
+
       element, charge = sc.element_and_charge_symbols()
       new_atom = (iotbx.pdb.hierarchy.atom()
         .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=n_seq+i_seq))
@@ -3889,7 +3900,7 @@ class manager(object):
         .set_hetero(new_hetero=True))
       if (segids is not None):
         new_atom.segid = segids[j_seq]
-      new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc="",
+      new_atom_group = iotbx.pdb.hierarchy.atom_group(altloc=altloc,
         resname=residue_names[j_seq])
       new_atom_group.append_atom(atom=new_atom)
       new_residue_group = iotbx.pdb.hierarchy.residue_group(
