@@ -140,6 +140,152 @@ class density_distribution_per_atom
 
 template <typename FloatType>
 af::shared<std::size_t>
+  filter_water_fsr(
+    af::shared<bool> const&             interaction_selection,
+    af::shared<vec3<FloatType> > const& sites_frac,
+    af::shared<bool> const&             solvent_selection,
+    af::shared<bool> const&             skip_selection,
+    af::ref<std::size_t>                conformer_indices,
+    FloatType const& dist_max,
+    FloatType const& dist_min,
+    FloatType const& dist_min_altloc,
+    cctbx::uctbx::unit_cell const& unit_cell)
+{
+  af::shared<std::size_t> result;
+  af::shared<std::size_t> first_shell;
+  af::shared<std::size_t> second_shell;
+  MMTBX_ASSERT(interaction_selection.size()==sites_frac.size());
+  MMTBX_ASSERT(solvent_selection.size()    ==sites_frac.size());
+  MMTBX_ASSERT(conformer_indices.size()    ==sites_frac.size());
+  // Select water that a) do not clash with any of non-water atom and b) are
+  // within prescribed limits (first_shell).
+  // Set aside others non-clashing (second_shell).
+
+  for(std::size_t i=0; i<sites_frac.size(); i+=1) { // loop over water
+    if(!solvent_selection[i]) continue;
+    if(skip_selection[i]) continue;
+    FloatType dist_closest_int = 1.e+9;
+    std::size_t j_closest = -1;
+    cctbx::fractional<> sfw = sites_frac[i]; // water
+    bool skip = false;
+    std::size_t ci = conformer_indices[i];
+    for(std::size_t j=0; j<sites_frac.size(); j+=1) { // loop over nonwater
+      if(solvent_selection[j]) continue;
+      if(skip_selection[j]) continue;
+      std::size_t cj = conformer_indices[j];
+      cctbx::fractional<> sfo = sites_frac[j]; // other than water
+      FloatType dist = unit_cell.distance(sfo, sfw);
+      if(dist<dist_min && cj==0) { // clash detected
+        skip = true;
+        break;
+      }
+      if(dist<dist_closest_int && interaction_selection[j]) {
+        dist_closest_int = dist;
+        j_closest = j;
+      }
+    }
+    if(skip) continue;
+    std::size_t cj_closest = conformer_indices[j_closest];
+
+    if(dist_closest_int<=dist_max) {
+      if(cj_closest==0) {
+        MMTBX_ASSERT(dist_closest_int>=dist_min);
+      }
+      if(dist_closest_int>=dist_min) {
+        first_shell.push_back(i);
+      }
+      else {
+        if(dist_closest_int>=dist_min_altloc) {
+          first_shell.push_back(i);
+          MMTBX_ASSERT(cj_closest>0);
+          if(ci==cj_closest || ci==0) {
+            if(cj_closest==1) {
+              conformer_indices[i] = cj_closest+1;
+            }
+            else {
+              conformer_indices[i] = cj_closest-1;
+            }
+          }
+        }
+      }
+    }
+    else { // This may need a more carefull re-thinking.. Not sure what ends up here.
+      second_shell.push_back(i);
+    }
+  }
+  // Now check those set aside (second_shell) and fill into result
+  for(std::size_t i=0; i<second_shell.size(); i+=1) {
+    FloatType dist_closest = 1.e+9;
+    cctbx::fractional<> sfi = sites_frac[second_shell[i]];
+    bool skip = false;
+    for(std::size_t j=0; j<first_shell.size(); j+=1) {
+      cctbx::fractional<> sfj = sites_frac[first_shell[j]];
+      FloatType dist = unit_cell.distance(sfi, sfj);
+      if(dist<dist_min) {
+        break; // clash detected
+        skip = true;
+      }
+      if(dist < dist_closest) dist_closest = dist;
+    }
+    if(skip) continue;
+    if(dist_closest<=dist_max && dist_closest>=dist_min) {
+      result.push_back(second_shell[i]);
+    }
+  }
+  // Add first shell into result
+  for(std::size_t i=0; i<first_shell.size(); i+=1) {
+    result.push_back(first_shell[i]);
+  }
+  // sanity check and setting conformer_indices for water based on water-water only
+  for(std::size_t i=0; i<result.size(); i+=1) {
+    if(!solvent_selection[result[i]]) {
+      throw MMTBX_ERROR("result must select water only");
+    }
+    std::size_t ii = result[i];
+    cctbx::fractional<> sfii = sites_frac[ii];
+    FloatType dist_best = 1.e+9;
+    std::size_t jj_best = -1;
+    for(std::size_t j=0; j<result.size(); j+=1) {
+      if(j<=i) continue;
+      std::size_t jj = result[j];
+      cctbx::fractional<> sfjj = sites_frac[jj];
+      FloatType dist = unit_cell.distance(sfii, sfjj);
+      if(dist < dist_best) {
+        dist_best = dist;
+        jj_best = jj;
+      }
+    }
+    if(dist_best<dist_min && dist_best>=dist_min_altloc) {
+      std::size_t cii = conformer_indices[ii];
+      std::size_t cjj = conformer_indices[jj_best];
+
+      if(cii==cjj) { // both are the same
+        if(cii==0) { // both are zero
+          conformer_indices[ii]=1;
+          conformer_indices[jj_best]=2;
+        }
+        else { // both are the same and not zero
+          if(cii==1) conformer_indices[jj_best]=cii+1;
+          else       conformer_indices[jj_best]=cii-1;
+        }
+      }
+      else { // not the same
+        if(cii==0) {
+          if(cjj==1) conformer_indices[ii]=cjj+1;
+          else       conformer_indices[ii]=cjj-1;
+        }
+        else {
+          if(cii==1) conformer_indices[jj_best]=cii+1;
+          else       conformer_indices[jj_best]=cii-1;
+        }
+      }
+    }
+  }
+  return result;
+}
+
+template <typename FloatType>
+af::shared<std::size_t>
   filter_water(
     af::shared<bool> const& interaction_selection,
     af::shared<vec3<FloatType> > const& sites_frac_other,
