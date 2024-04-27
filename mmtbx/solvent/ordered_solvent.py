@@ -349,11 +349,8 @@ class manager(object):
                  atom.occ < self.params.occupancy_min): keep = False
               assert approx_equal(atom.occ, occ[i_seq], 1.e-3)
               if(anisotropy[i_seq] < self.params.anisotropy_min): keep = False
-
-              print(b_isos[i_seq], self.params.b_iso_min, self.params.b_iso_max)
-
-              #if(b_isos[i_seq] < self.params.b_iso_min or
-              #   b_isos[i_seq] > self.params.b_iso_max): keep = False
+              if(b_isos[i_seq] < self.params.b_iso_min or
+                 b_isos[i_seq] > self.params.b_iso_max): keep = False
               good_map = self._maps.score_atom(
                 atom      = atom,
                 min_cc    = mfp.poor_cc_threshold,
