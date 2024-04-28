@@ -850,10 +850,13 @@ def filtered_energy(energy):
     return 10 + math.log(energy/10)
 
 
-def softPnna(delta, n, params = None):
-  return  1 - 2.0**clip(
-     -abs(delta/asigma_Pnn50(safelog(n), params))**exponent(
-         delta,safelog(n), params) ,1000)
+def softPnna(delta, n, params = None, max_value = 1000):
+  try:
+    value = -abs(delta/asigma_Pnn50(safelog(n), params))**exponent(
+         delta,safelog(n), params)
+  except Exception as e:
+    value = -max_value
+  return  1 - 2.0**clip(value, max_value)
 
 def Pnn(delta,n):
   return erf(abs(delta)/math.sqrt(2))**n
