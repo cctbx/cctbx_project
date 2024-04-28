@@ -76,7 +76,7 @@ def holton_geometry_validation(dm = None,
      ignore_arg_h_nonbond = True,
      ignore_bond_lengths_with_h = False,
      ignore_water_h_bonds = False,
-     rotalyze_max_energy = 99,
+     rotalyze_ramalyze_max_energy = 99,
      overall_max_energy = None,
      omega_angle_sigma = 4,  # Sigma for omega angle
      cbetadev_sigma = 0.05,  # Sigma for CB position
@@ -195,11 +195,11 @@ def add_rotamer_results(info):
 
     prob = min(1.0, max(0.0, prob))
     if prob == 1:
-      energy = info.rotalyze_max_energy
+      energy = info.rotalyze_ramalyze_max_energy
     else:
       prob = float("%.35g" %(prob)) -1.0e-16
       energy = energy_from_probability(prob)
-      energy = min(energy, info.rotalyze_max_energy)
+      energy = min(energy, info.rotalyze_ramalyze_max_energy)
     v = group_args(group_args_type = 'rotamer result as standard value ',
       rotamer_result = r, # contains resseq, resseq_as_int, resname, chain_id
       as_string = "ROTA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
@@ -227,7 +227,13 @@ def add_rama_results(info):
       prob = float("%.2f" %(r.score))/100
     else:
       prob = r.score/100
-    energy = energy_from_probability(prob)
+
+    if prob == 1:
+      energy = info.rotalyze_ramalyze_max_energy
+    else:
+      prob = float("%.35g" %(prob)) -1.0e-16
+      energy = energy_from_probability(prob)
+      energy = min(energy, info.rotalyze_ramalyze_max_energy)
     v = group_args(group_args_type = 'rama result as standard value ',
       rama_result = r, # contains resseq, resseq_as_int, resname, chain_id
       as_string = "RAMA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
