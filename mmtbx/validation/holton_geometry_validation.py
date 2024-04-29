@@ -195,7 +195,7 @@ def add_rotamer_results(info):
       prob = r.score/100
 
     prob = min(1.0, max(0.0, prob))
-    if prob == 1:
+    if prob == 0:
       energy = info.rotalyze_ramalyze_max_energy
     else:
       prob = float("%.35g" %(prob)) -1.0e-16
@@ -229,7 +229,7 @@ def add_rama_results(info):
     else:
       prob = r.score/100
 
-    if prob == 1:
+    if prob == 0:
       energy = info.rotalyze_ramalyze_max_energy
     else:
       prob = float("%.35g" %(prob)) -1.0e-16
