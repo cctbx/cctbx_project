@@ -70,6 +70,7 @@ def holton_geometry_validation(dm = None,
      clash_energy_add_n = True,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
+     include_full_nonbond_score = True,
      keep_hydrogens = True, # keep the hydrogens (but add any nec riding H)
      ignore_cis_peptides = False,
      ignore_h_except_in_nonbond = True,
@@ -275,12 +276,13 @@ def add_cbetadev_results(info):
       )
     cbetadev_result.value_list.append(v)
 
-def select_geometry_result(info, name = None, skip_name = None):
+def select_geometry_result(info, name = None, skip_name_list = None):
   result_list = []
   for key in info.geometry_results.keys():
     if name and info.geometry_results[key].name == name:
       return info.geometry_results[key]
-    elif skip_name and info.geometry_results[key].name != skip_name:
+    elif skip_name_list and (
+         not info.geometry_results[key].name in skip_name_list):
       result_list.append(info.geometry_results[key])
   return result_list
 
@@ -349,7 +351,8 @@ def select_residue_info(info, base_info, chain_id, resseq):
 
 def labels_contain(labels, chain_id = None, resseq = None):
   for label in labels:
-    if ((chain_id is None) or (label.chain_id().strip() == chain_id.strip())) and \
+    if ((chain_id is None) or \
+       (label.chain_id().strip() == chain_id.strip())) and \
        ((resseq is None) or   (label.resseq().strip() == resseq.strip())):
       return True
 
@@ -386,6 +389,8 @@ def analyze_geometry_values(info):
         result.name == 'NONBOND' and (
           worst_value.residual < info.minimum_nonbond_score_to_be_worst):
       result.worst_residual = None
+    elif result.name == 'FULL_NONBOND':
+      result.worst_residual = None # do not include worst for FULL_NONBOND
     else: # usual
       result.worst_residual = worst_value.residual
 
@@ -393,6 +398,7 @@ def analyze_geometry_values(info):
     value_list = result.value_list
 
     # Special case: non bond scores with low values may be excluded
+    # Note: FULL_NONBOND does include these
     if info.minimum_nonbond_score_to_be_included_in_average is not None and \
        result.name == 'NONBOND':
       value_list = []
@@ -411,8 +417,10 @@ def analyze_geometry_values(info):
 
     if info.overall_max_energy is not None:
       energy = max(0, min(info.overall_max_energy, result.worst_residual))
-    else:
+    elif result.worst_residual is not None:
       energy = max(0, result.worst_residual)
+    else:
+      energy = 0
     delta = energy**0.5
     result.pnna = softPnna(delta, result.n, info.softPnna_params)
 
@@ -429,9 +437,11 @@ def analyze_geometry_values(info):
     # Repeat using mean instead of worst, multiplying mean energy * Chisq
     if info.overall_max_energy is not None:
       energy_mean = max(0, min(info.overall_max_energy, result.mean_residual))
-    else:
+    elif result.mean_residual is not None:
       energy_mean = max(0, result.mean_residual)
-    ssd = result.mean_residual * result.n
+    else:
+      energy_mean = 0
+    ssd = energy_mean * result.n
     result.chisq = chisq(ssd, result.n)
 
     energy_mean = filtered_energy(energy_mean)
@@ -500,6 +510,7 @@ def print_results(info):
   print(fmt %(tuple(info.worst_header_row)), file = info.log)
   print(file = info.log)
   for key in keys:
+    if key == 'full_nonbonded': continue # duplicate of nonbonded
     result = info.geometry_results[key]
     value_list = result.value_list
     info.worst_table[result.name] = [
@@ -534,8 +545,9 @@ def filter_geometry_results(info):
     return # nothing to do
 
   if info.ignore_h_except_in_nonbond:
-    # Remove anything with element H except in NONBOND
-    for result in select_geometry_result(info,skip_name = 'NONBOND'):
+    # Remove anything with element H except in NONBOND and FULL_NONBOND
+    for result in select_geometry_result(info,skip_name_list = [
+       'NONBOND', 'FULL_NONBOND']):
       for v in result.value_list:
         elements = [l.atom.element for l in v.labels]
         if 'H' in elements:
@@ -544,26 +556,27 @@ def filter_geometry_results(info):
           continue
 
   if info.ignore_arg_h_nonbond or info.ignore_water_h_bonds:
-    nonbond_result = select_geometry_result(info,'NONBOND')
-    for v in nonbond_result.value_list:
-      elements = [l.atom.element for l in v.labels]
-      residues = [l.atom.resname for l in v.labels]
+    for category in ['NONBOND','FULL_NONBOND']:
+      nonbond_result = select_geometry_result(info,category)
+      for v in nonbond_result.value_list:
+        elements = [l.atom.element for l in v.labels]
+        residues = [l.atom.resname for l in v.labels]
 
-      if info.ignore_arg_h_nonbond:
-        if elements == ['H','H'] and residues == ['ARG','ARG']:
-          nonbond_result.value_list.remove(v)
-          info.ignore_arg_h_nonbond_removed += 1
-          continue
-
-      if info.ignore_water_h_bonds:
-        found = False
-        for element, res in zip(elements, residues):
-          if element == 'H' and res in ['WAT','HOH']:
+        if info.ignore_arg_h_nonbond:
+          if elements == ['H','H'] and residues == ['ARG','ARG']:
             nonbond_result.value_list.remove(v)
-            found = True
-        if found:
-          info.ignore_water_h_bonds_removed += 1
-          continue
+            info.ignore_arg_h_nonbond_removed += 1
+            continue
+
+        if info.ignore_water_h_bonds:
+          found = False
+          for element, res in zip(elements, residues):
+            if element == 'H' and res in ['WAT','HOH']:
+              nonbond_result.value_list.remove(v)
+              found = True
+          if found:
+            info.ignore_water_h_bonds_removed += 1
+            continue
 
   if info.ignore_bond_lengths_with_h:
     bond_result = select_geometry_result(info,'BOND')
@@ -627,7 +640,9 @@ def get_geometry_results(info):
   origin_ids = linking_class()
   pair_proxies = geometry.pair_proxies(sites_cart=sites_cart)
 
-  name_dict = {'nonbonded': 'NONBOND',
+  name_dict = {
+        'nonbonded': 'NONBOND',
+        'full_nonbonded': 'FULL_NONBOND',
         'angle_proxies': 'ANGLE',
         'bond_proxies': 'BOND',
         'chirality_proxies': 'CHIR',
@@ -642,7 +657,10 @@ def get_geometry_results(info):
 
   # Non-bonded
   if pair_proxies.nonbonded_proxies is not None:
-    proxy_name = 'nonbonded'
+    # Note: make two copies if full_nonbonded is going to be used
+    proxy_name_list = ['nonbonded']
+    if info.include_full_nonbond_score:
+      proxy_name_list.append('full_nonbonded')
     result = pair_proxies.nonbonded_proxies.show_sorted(
           by_value="delta",
           sites_cart=sites_cart,
@@ -662,7 +680,8 @@ def get_geometry_results(info):
       v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
         v.residual, v.delta, v.model, v.ideal,
          v.labels[0].as_string(), v.labels[1].as_string())
-    geometry_results[proxy_name].value_list += result.value_list
+    for proxy_name in proxy_name_list:
+      geometry_results[proxy_name].value_list += result.value_list
 
   for proxy_name in ['bond_proxies', 'angle_proxies', 'dihedral_proxies',
        'chirality_proxies', 'planarity_proxies']:
