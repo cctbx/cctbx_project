@@ -1,5 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
+import os
 from mmtbx.regression import make_fake_anomalous_data
 from mmtbx.programs import fmodel
 from iotbx.cli_parser import run_program
@@ -8,9 +9,8 @@ from cctbx import miller
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, Exception_expected
 from libtbx.utils import null_out, Sorry
-from libtbx import easy_run
 import iotbx.pdb
-import os
+
 
 def exercise():
   if (os.path.isfile("tst_fmodel_anomalous.mtz")):
@@ -34,11 +34,9 @@ def exercise():
   assert (array.anomalous_flag())
   anom_diffs = array.anomalous_differences()
   assert approx_equal(flex.max(anom_diffs.data()), 5.72, eps=0.01)
-  # mmtbx.fmodel_simple
-  result = easy_run.call(
-    "mmtbx.fmodel_simple \"%s\" tst_fmodel_anomalous.mtz high_resolution=2.0"
-      % pdb_file)
   print("OK")
+  os.remove('tst_fmodel_anomalous.mtz')
+  os.remove('tst_fmodel_anomalous.pdb')
 
 def exercise_intensity_output():
   if (os.path.isfile("tst_fmodel_anomalous.mtz")):
@@ -73,6 +71,8 @@ def exercise_intensity_output():
     pass
   else :
     raise Exception_expected
+
+  os.remove('tst_fmodel_intensity.mtz')
 
 def exercise_selection_consistency():
   """
@@ -146,6 +146,11 @@ anomalous_scatterers {
       site = f_model.unit_cell().fractionalize(site_cart=atom.xyz)
       map_val = real_map.eight_point_interpolation(site)
       assert (map_val < 5)
+
+  os.remove('tst_fmodel_misc.mtz')
+  os.remove('tst_fmodel_misc.pdb')
+  os.remove('tst_fmodel_misc.eff')
+  os.remove('anom.mtz')
 
 if (__name__ == "__main__"):
   exercise_intensity_output()
