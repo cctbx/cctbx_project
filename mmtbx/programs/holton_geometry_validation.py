@@ -30,6 +30,7 @@ Example:
   %(prog)s model=1ubq.pdb
 """ % locals()
 
+
   master_phil_str = """
     model = None
       .type = path
@@ -100,7 +101,7 @@ Example:
     ignore_water_h_bonds = False
       .type = bool
       .short_caption = Ignore water H bonds
-      .help = If set, ignore H-bonds involving water
+      .help = If set, ignore nonbonded contacts with water hydrogens
 
     rotalyze_ramalyze_max_energy = 99
       .type = float
@@ -206,3 +207,7 @@ Example:
 
   def get_results_as_JSON(self):
     return self.results.as_JSON(self.info_json)
+
+# =============================================================================
+# for reference documentation keywords
+master_phil_str = Program.master_phil_str

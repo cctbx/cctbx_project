@@ -475,7 +475,7 @@ def print_results(info):
   info.result_table = {}
   info.result_header_row = [
        'Category','N','Mean','Worst','Chisq','Pnna','Energy','Using mean']
-  fmt = len(info.result_header_row) * "%8s "
+  fmt = "%12s " + (len(info.result_header_row)-1) * "%8s "
   print(file = info.log)
   print(fmt  %(tuple(info.result_header_row)), file = info.log)
   print(file = info.log)
