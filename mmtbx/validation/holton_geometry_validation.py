@@ -519,7 +519,7 @@ def print_results(info):
          file = info.log)
 
   if info.ignore_h_except_in_nonbond:
-    print("\nTotal H interactions (not in non-bonded) removed: %s" %(
+    print("\nTotal H interactions removed: %s (not removed from nonbonded)" %(
        info.ignore_h_except_in_nonbond_removed), file = info.log)
   if info.ignore_arg_h_nonbond:
     print("Total ARG H-nonbond removed: %s" %(
@@ -546,14 +546,22 @@ def filter_geometry_results(info):
 
   if info.ignore_h_except_in_nonbond:
     # Remove anything with element H except in NONBOND and FULL_NONBOND
+    max_removed = 0
     for result in select_geometry_result(info,skip_name_list = [
        'NONBOND', 'FULL_NONBOND']):
+      remove_list = []
       for v in result.value_list:
         elements = [l.atom.element for l in v.labels]
-        if 'H' in elements:
-          result.value_list.remove(v)
-          info.ignore_h_except_in_nonbond_removed += 1
+        if 'H' in elements and (not v in remove_list):
+          remove_list.append(v)
           continue
+      n = 0
+      for v in remove_list:
+        if v in result.value_list:
+          result.value_list.remove(v)
+          n += 1
+      max_removed = max(max_removed, n)
+    info.ignore_h_except_in_nonbond_removed += max_removed
 
   if info.ignore_arg_h_nonbond or info.ignore_water_h_bonds:
     for category in ['NONBOND','FULL_NONBOND']:
