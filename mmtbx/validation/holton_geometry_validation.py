@@ -671,17 +671,18 @@ def get_geometry_results(info):
           max_items=None,
           return_result = True)
     # Calculate residual from Lennard-Jones potential
-    for v in result.value_list:
-      v.residual = lj(v.model,v.ideal,
-           dist_that_yields_zero = info.lj_dist_that_yields_zero,
-            round_numbers = info.round_numbers)
-      v.delta = v.ideal - v.model
-      v.group_args_type += " residual is LJ(model, ideal)"
-      v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
-        v.residual, v.delta, v.model, v.ideal,
-         v.labels[0].as_string(), v.labels[1].as_string())
-    for proxy_name in proxy_name_list:
-      geometry_results[proxy_name].value_list += result.value_list
+    if result:
+      for v in result.value_list:
+        v.residual = lj(v.model,v.ideal,
+             dist_that_yields_zero = info.lj_dist_that_yields_zero,
+              round_numbers = info.round_numbers)
+        v.delta = v.ideal - v.model
+        v.group_args_type += " residual is LJ(model, ideal)"
+        v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
+          v.residual, v.delta, v.model, v.ideal,
+           v.labels[0].as_string(), v.labels[1].as_string())
+      for proxy_name in proxy_name_list:
+        geometry_results[proxy_name].value_list += result.value_list
 
   for proxy_name in ['bond_proxies', 'angle_proxies', 'dihedral_proxies',
        'chirality_proxies', 'planarity_proxies']:
