@@ -188,7 +188,13 @@ def run():
 
   expected_result_table = {'CBETADEV': ['CBETADEV', '20', '3.25', '8.18', '1.0000', '0.7974', '6.5225', '3.2475'], 'CLASH': ['CLASH', '1', '1.08', '2.08', '0.7016', '0.6177', '1.9033', '1.4603'], 'OMEGA': ['OMEGA', '4', '2.16', '4.47', '0.9289', '0.7053', '3.1541', '2.0039'], 'RAMA': ['RAMA', '2', '3.23', '3.42', '0.9604', '0.6856', '2.3459', '3.1020'], 'ROTA': ['ROTA', '20', '0.82', '5.41', '0.3079', '0.6033', '3.2660', '0.2523'], 'ANGLE': ['ANGLE', '176', '0.35', '4.70', '0.0000', '0.2904', '1.3655', '0.0000'], 'BOND': ['BOND', '154', '0.08', '2.42', '0.0000', '0.1301', '0.3144', '0.0000'], 'CHIR': ['CHIR', '22', '0.32', '1.31', '0.0010', '0.1638', '0.2154', '0.0003'], 'TORSION': ['TORSION', '94', '1.57', '8.96', '0.9996', '0.6876', '6.1589', '1.5671'], 'FULL_NONBOND': ['FULL_NONBOND', '531', '-0.45', 'None', '0.0000', '0.0000', '0.0000', '0.0000'], 'NONBOND': ['NONBOND', '531', '1.05', '1.74', '0.6123', '0.3741', '0.6523', '0.6412'], 'PLANE': ['PLANE', '56', '0.07', '1.44', '0.0000', '0.1139', '0.1640', '0.0000']}
 
+  if 0:
+    print(result.worst_table)
+    print(expected_worst_table)
   compare_tables(result.worst_table, expected_worst_table)
+  if 0:
+    print(result.result_table)
+    print(expected_result_table)
   compare_tables(result.result_table, expected_result_table)
 
 
