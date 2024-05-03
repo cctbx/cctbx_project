@@ -5,7 +5,6 @@
   * [Creating structure factor input](#sf)
 * [Per-image refinement of crystal models with `diffBragg.stills_process`](#hopper_process)
   * [X-ray energy spectra](#spectra)
-  * [Monochromatic model refinement](#mono)
   * [Polychromatic model refinement](#poly)
 * [Multi-image refinement of detector models with `diffBragg.geometry_refine`](#geometry)
 * [API FAQ](#apifaq)
@@ -131,13 +130,13 @@ plt.show()
 
 The spectra are encoded in the format class `FormatD9114.py` which was installed above using `dxtbx`.
 
-<a name="mono"></a>
-## Monochromatic `diffBragg.stills_process`
+<a name="poly"></a>
+## Running `diffBragg.stills_process`
 
-Let's assume that we do not have spectra - we can still run `diffBragg.stills_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
+Run `diffBragg.stills_process` in the same way you would run `dials.stills_process`. If you have a kokkos or a cuda build, and are working on a machine with configured GPU devices, add the flags `DIFFBRAGG_USE_CUDA=1` or `DIFFBRAGG_USE_KOKKOS=1` (note these cannot be toggled off with `DIFFBRAGG_USE_CUDA=0`: the flags can be set to anything, so long as they are set). And if using an mpi environment, use the correct wrapper (mpirun for openmpi, srun for SLURM). For example, on a Perlmutter allocation (NERSC), the following would work (where each compute node has 4 GPUs , hence the `num_devices=4`):
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.nproc=8 num_devices=4  dispatch.integrate=True spectrum_from_imageset=False  output.output_dir=poly_images/procMono
+DIFFBRAGG_USE_CUDA=1 srun -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.method=mpi num_devices=4  dispatch.integrate=True output.output_dir=poly_images/procPoly
 ``` 
 
 The configuration file `process.phil` contains
@@ -233,12 +232,16 @@ diffBragg {
 ```
 </details>
 
-however command line parameters supersede whats in the PHIL file. Notice the command line argument `spectrum_from_imageset=False`. This tells `diffBrag.stills_process` to use a single nominal wavelength, and ignore any X-ray spectra that might be present in the data. By setting this flag, a monochromatic diffraction model is refined for each shot. The command takes 71 seconds to run on a single NERSC compute node utilizing 8 GPUs and 8 processors (1 GPU per process), and optimizing models for 104 shots. We have prepared a simple script called `quick_detresid.py` for analyzing the results
+however command line parameters supersede whats in the PHIL file. We have prepared a simple script called `quick_detresid.py` for analyzing the results. Grab the script using
 
+```
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/quick_detresid.py
+```
 
 <details>
   <summary>quick_detresid.py</summary>
-  
+ 
+ 
 ```python
 """quick_detresid.py"""
 import glob
@@ -336,29 +339,6 @@ os.system("cctbx.xfel.detector_residuals %s/comb.* _detresid.phil" % dirname)
 It simply combines the relevant outputs and wraps the command line program `cctbx.xfel.detector_residuals`. We are interested at this point to see how well the refined model predicts the strong spot observations. Issue the command
 
 ```
-libtbx.python quick_detresid.py poly_images/procMono
-```
-
-and you will see an image display, as well as some numbers print to the screen indicating how well the monochromatic model predicts the data:
-
-```
-RMSD (microns) 94.76634677545071
-Overall radial RMSD (microns) 65.9469202178172
-Overall transverse RMSD (microns) 68.05633104237863
-```
-
-<p align="center">
-<img src="https://user-images.githubusercontent.com/2335439/136640760-7fb111b0-1ff1-48d6-b5d2-0c8296b691cf.png" />
-</p>
-
-The image is referred to as the detector residuals, where each point represents an observed reflection, and the color represents the distance to its corresponding predicted reflection according to the optimized model. Not bad for a CSPAD with 110 micron pixels.
-
-<a name="poly"></a>
-## Polychromatic `diffBragg.stills_process`
-Can a polychromatic model predict spots more accurately? To use the spectra associated with each image, drop the flag ```spectrum_from_imageset=False``` from the command line (it's set to `True` in ```process.phil```):
-
-```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5"  mp.method=mpi num_devices=4  dispatch.integrate=True   output.output_dir=poly_images/procPoly
 libtbx.python quick_detresid.py poly_images/procPoly
 
 #RMSD (microns) 61.79812988365175
@@ -366,11 +346,13 @@ libtbx.python quick_detresid.py poly_images/procPoly
 #Overall transverse RMSD (microns) 40.285340970907185
 ```
 
+and you will see an image display, as well as some numbers print to the screen indicating how well the monochromatic model predicts the data:
+
 <p align="center">
 <img src="https://user-images.githubusercontent.com/2335439/136640765-d2d0b274-cd0c-4613-9ea8-42e2f497a418.png" />
 </p>
 
-These new numbers indicate a more accurate model, owing to the fact that we used a polychromatic energy spread. In fact these numbers represent the best we can do when we know our detector geometry perfectly. This time, the command took 200 seconds to process, as more photon energies were simulated per shot.
+The image is referred to as the detector residuals, where each point represents an observed reflection, and the color represents the distance to its corresponding predicted reflection according to the optimized model. Not bad for a CSPAD with 110 micron pixels.
 
 ## Output files
 
@@ -529,7 +511,7 @@ Here, we will use the 32 panel model.
 To run geometry refinement, we must provide a hopper process summary file (see above), as it points to all of the experiments and their optimized models. Issue the command
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=10 outdir=geom
+DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=20 outdir=geom
 ```
 
 The configuration file contains:
@@ -782,7 +764,7 @@ show()
 </details>
 
 ```
-libtbx.python pred_offsets.py  poly_images/procMono/ poly_images/procPoly/ poly_images/procBad/ poly_images/procOpt/
+libtbx.python pred_offsets.py poly_images/procPoly/ poly_images/procBad/ poly_images/procOpt/
 ```
 
 <p align="center">
@@ -801,10 +783,10 @@ libtbx.python pred_offsets.py  poly_images/procMono/ poly_images/procPoly/ poly_
 
 # more on `diffBragg.stills_process`
 
-The script runs dials.stills_process with a few alterations
+The script runs `dials.stills_process` with a few alterations
 
 * diffBragg refinement is performed after indexing, unless `skip_hopper=False` is set. 
-* `reidx_obs=True` will re-index the strong spot observations after running the normal stills indexing algorithm, *prior* to running refinement. This is useful when obtaining an indexing solution warrants using a high-res cutoff. In such a case, one can detect strong spots out to the corners of the detector, use the indexing_refinement phil param [TODO lookup name] to limit the spots which are fed into indexing, and then re-index the strong spots out to the corners of the camera to grab more spots for diffBragg refinement. 
+* `reidx_obs=True` will re-index the strong spot observations after running the normal stills indexing algorithm, *prior* to running refinement. This is useful when obtaining an indexing solution warrants using a high-res cutoff. In such a case, one can detect strong spots out to the corners of the detector, use the `indexing_refinement` phil param [TODO lookup name] to limit the spots which are fed into indexing, and then re-index the strong spots out to the corners of the camera to grab more spots for diffBragg refinement. 
 * After refinement, the diffBragg model is used to predict integration positions on the detector, and then the dials integration program is used to compute integrated spot intensities.
 
 
