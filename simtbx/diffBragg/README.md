@@ -3,7 +3,7 @@
 * [Acquiring test data](#testdata)
   * [Simulating test data](#simulating)
   * [Creating structure factor input](#sf)
-* [Per-image refinement of crystal models with `diffBragg.hopper_process`](#hopper_process)
+* [Per-image refinement of crystal models with `diffBragg.stills_process`](#hopper_process)
   * [X-ray energy spectra](#spectra)
   * [Monochromatic model refinement](#mono)
   * [Polychromatic model refinement](#poly)
@@ -52,7 +52,7 @@ To view the background image, install the proper image format provided in the re
 
 ```
 dxtbx.install_format  -u $MOD/cxid9114/format/FormatD9114.py
-dials.image_viewer mybackground.h5
+dials.image_viewer mybackground.h5 brightness=75
 ```
 
 should produce the image:
@@ -65,13 +65,13 @@ Now, we can simulate the diffraction using this image as background. The command
 
 
 ```
-srun -n8 -c2 libtbx.python $MOD/cxid9114/sim/d9114_mpi_sims.py  -o test -odir poly_images --add-bg --add-noise --profile gauss --bg-name mybackground.h5 -trials 13  --oversample 0 --Ncells 10 --xtal_size_mm 0.00015 --mos_doms 1 --mos_spread_deg 0.01  --saveh5 --readout  --masterscale 1150 --sad --bs7real --masterscalejitter 115 --overwrite --gpu -g 8
+srun -c2 libtbx.python $MOD/cxid9114/sim/d9114_mpi_sims.py  -o test -odir poly_images --add-bg --add-noise --profile gauss --bg-name mybackground.h5 -trials 13  --oversample 0 --Ncells 10 --xtal_size_mm 0.00015 --mos_doms 1 --mos_spread_deg 0.01  --saveh5 --readout  --masterscale 1150 --sad --bs7real --masterscalejitter 115 --overwrite --gpu -g 4
 ```
 
-the above command will simulate 13 diffraction patterns per rank from randomly oriented crystals. If you are not on NERSC, then drop the `srun -n8 -c2` prefix , and if you do not have GPU support, drop the `--gpu -g8` flags at the end of the command, and instead add the flag `--force-mono` in order to only simulate a single wavelength per pattern. The images can also be opened with the image viewer:
+the above command will simulate 13 diffraction patterns per rank from randomly oriented crystals. If you are not on NERSC, then drop the `srun -c2` prefix or use `mpirun` , and if you do not have GPU support, drop the `--gpu -g4` flags at the end of the command, and instead add the flag `--force-mono` in order to only simulate a single wavelength per pattern. The images can also be opened with the image viewer:
 
 ```
-dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5
+dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5 brightness=75
 ```
 
 <p align="center">
@@ -79,7 +79,7 @@ dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5
 </p>
 
 
-Now that we have patterns, we can process them using the diffBragg wrapper script `diffBragg.hopper_process`.
+Now that we have patterns, we can process them using the diffBragg wrapper script `diffBragg.stills_process`.
 
 <a name="sf"></a>
 ## Structure factors
@@ -97,9 +97,9 @@ iotbx.reflection_file_converter  --unit_cell="79.09619904, 79.09619904, 38.41749
 and then note the location so it can be included in your processing configuration files below, described below. 
 
 <a name="hopper_process"></a>
-# Using `diffBragg.hopper_process`
+# Using `diffBragg.stills_process`
 
-We have simulated 104 images, and now we shall process them using the command line tool `diffBragg.hopper_process`, a child program of `dials.stills_process`. Crucially, we will be disabling outlier rejection and all forms of refinement that are usually done during `dials.stills_process` analysis, in favor of the pixel refinement tools in diffBragg, which are wrapped in `diffBragg.hopper_process`. 
+We have simulated 104 images, and now we shall process them using the command line tool `diffBragg.stills_process`, a child program of `dials.stills_process`. Crucially, we will be disabling outlier rejection and all forms of refinement that are usually done during `dials.stills_process` analysis, in favor of the pixel refinement tools in diffBragg, which are wrapped in `diffBragg.stills_process`. 
 
 <a name="spectra"></a>
 ## X-ray spectra
@@ -108,7 +108,7 @@ If X-ray spectra are available for your data, then they should be encoded in the
 ```python
 import h5py
 h = h5py.File("poly_images/job0/test_rank0_data0_fluence0.h5", "r")
-a,b = h['wavelengths'][()], h['spectrum'][()]. # `spectrum` was a poor choice of name here, these are just the spectrum weights
+a,b = h['wavelengths'][()], h['spectrum'][()] # `spectrum` was a poor choice of name here, these are just the spectrum weights
 h.close()
 
 import pylab as plt
@@ -132,12 +132,12 @@ plt.show()
 The spectra are encoded in the format class `FormatD9114.py` which was installed above using `dxtbx`.
 
 <a name="mono"></a>
-## Monochromatic `hopper_process`
+## Monochromatic `diffBragg.stills_process`
 
-Let's assume that we do not have spectra - we can still run `hopper_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
+Let's assume that we do not have spectra - we can still run `diffBragg.stills_process` using the wavelength associated with each image (e.g. a weighted mean). To do that, execute the following command
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True spectrum_from_imageset=False  output.output_dir=poly_images/procMono
+DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.nproc=8 num_devices=4  dispatch.integrate=True spectrum_from_imageset=False  output.output_dir=poly_images/procMono
 ``` 
 
 The configuration file `process.phil` contains
@@ -170,14 +170,15 @@ indexing {
 integration.summation.detector_gain=28
 input.sync_reference_geom = False
 output.composite_output = False
+dispatch.hit_finder.enable=False
 
 # hopper process config:
-save_modelers=True
 silence_dials_loggers=True
 partial_correct=False
 reidx_obs=False  
 
 diffBragg {
+  debug_mode=True
   no_Nabc_scale=False
   method="L-BFGS-B"
   use_restraints=False
@@ -232,7 +233,7 @@ diffBragg {
 ```
 </details>
 
-however command line parameters supersede whats in the PHIL file. Notice the command line argument `spectrum_from_imageset=False`. This tells `diffBrag.hopper_process` to use a single nominal wavelength, and ignore any X-ray spectra that might be present in the data. By setting this flag, a monochromatic diffraction model is refined for each shot. The command takes 71 seconds to run on a single NERSC compute node utilizing 8 GPUs and 8 processors (1 GPU per process), and optimizing models for 104 shots. We have prepared a simple script called `quick_detresid.py` for analyzing the results
+however command line parameters supersede whats in the PHIL file. Notice the command line argument `spectrum_from_imageset=False`. This tells `diffBrag.stills_process` to use a single nominal wavelength, and ignore any X-ray spectra that might be present in the data. By setting this flag, a monochromatic diffraction model is refined for each shot. The command takes 71 seconds to run on a single NERSC compute node utilizing 8 GPUs and 8 processors (1 GPU per process), and optimizing models for 104 shots. We have prepared a simple script called `quick_detresid.py` for analyzing the results
 
 
 <details>
@@ -353,11 +354,11 @@ Overall transverse RMSD (microns) 68.05633104237863
 The image is referred to as the detector residuals, where each point represents an observed reflection, and the color represents the distance to its corresponding predicted reflection according to the optimized model. Not bad for a CSPAD with 110 micron pixels.
 
 <a name="poly"></a>
-## Polychromatic `hopper_process`
+## Polychromatic `diffBragg.stills_process`
 Can a polychromatic model predict spots more accurately? To use the spectra associated with each image, drop the flag ```spectrum_from_imageset=False``` from the command line (it's set to `True` in ```process.phil```):
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True   output.output_dir=poly_images/procPoly
+DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5"  mp.method=mpi num_devices=4  dispatch.integrate=True   output.output_dir=poly_images/procPoly
 libtbx.python quick_detresid.py poly_images/procPoly
 
 #RMSD (microns) 61.79812988365175
@@ -373,7 +374,7 @@ These new numbers indicate a more accurate model, owing to the fact that we used
 
 ## Output files
 
-In addition to the files provided by `stills_process`, `hopper_process` creates some output data. 
+In addition to the files provided by `dials.stills_process`, `diffBragg.stills_process` creates some output data. 
 
 <a name="pandas"></a>
 ### pandas dataframes
@@ -387,7 +388,7 @@ df = pandas.concat([pandas.read_pickle(f) for f in fnames])
 df.to_pickle("poly_images/procBad/hopper_process_summary.pkl") # for example
 ```
 
-You can examine the spread of parameters to provide key insights into e.g restraints settings for reprocessing (`hopper_process` has a restraints framework explained [TODO: HERE]). Here is an example script which reports on some of the main model parameters:
+You can examine the spread of parameters to provide key insights into e.g restraints settings for reprocessing (`diffBragg.stills_process` has a restraints framework explained [TODO: HERE]). Here is an example script which reports on some of the main model parameters:
 
 ```python
 import pandas
@@ -458,9 +459,10 @@ For every shot, up to 3 files are written to the modelers folder. These are
 # Correcting a faulty geometry with `diffBragg.geometry_refiner`
 
 
->:warning: Geometry refinement is currently using the `lmfit` module. <br>Install it using pip:
+>:known issue: If running the kokkos kernel (by setting `DIFFBRAGG_USE_KOKKOS=1` in a kokkos build) , geometry refinement will print out an error message upon termination... It can safely be disregarded!<br>:
 ```
-libtbx.python -m pip install lmfit
+terminate called after throwing an instance of 'std::runtime_error'
+  what():  Kokkos allocation "m_Fhkl_scale_deriv" is being deallocated after Kokkos::finalize was called
 ```
 
 ## Getting the faulty geometry
@@ -481,8 +483,7 @@ El.as_json("badGeo.expt")
 Now, we can process the simulated images using the faulty geometry and observe the effect it has on the prediction offsets (they should get worse!). Issue the command
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  
-diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procBad reference_geometry=badGeo.expt 
+DIFFBRAGG_USE_CUDA=1 srun -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5"  mp.method=mpi num_devices=4  dispatch.integrate=True  output.output_dir=poly_images/procBad reference_geometry=badGeo.expt 
 ```
 
 The flag `reference_geometry=badGeo.expt` forces the geometry file stored in `badGeo.expt` to override the geometry defined by the image format. In this way, all models we optimize are subject to the errors in the geometry. Indeed we find that the prediction errors are much worse when using a faulty geometry
@@ -501,7 +502,7 @@ libtbx.python quick_detresid.py poly_images/procBad
 
 ## Optimizing the faulty geometry
 
-Whereas `diffBragg.hopper_process` operates on single images, `diffBragg.geometry_refiner` operates on multiple images together that all share the same detector model. 
+Whereas `diffBragg.stills_process` operates on single images, `diffBragg.geometry_refiner` operates on multiple images together that all share the same detector model. 
 
 ### panel groups
 `diffBragg` does not currently understand the `dxtbx` detector hierarchy models, so it is up to the user to provide a panel group mapping in the form of a 2-column text file (the first column specifies the panel number, and the second column specifies its group number). In order to create a panel group file, one needs to know the panel numbering visually. The detector residuals plots shown above display this information, and there is also the program `dxtbx.plot_detector_models` which takes experiment list files as arguments and plots the detector with its panel numbers displayed. Also, the image viewer displays the panel numbers as you hover over pixels (look for the value readout in the pixel info underbar). The following shows how to create three different panel grouping files for the CSPAD which are understood by `geometry_refiner`:
@@ -514,12 +515,12 @@ with open("single_panel.txt", "w") as o:
 with open("cspad_32panel.txt", "w") as o:
     for pid in range(64):
         groupid = int(pid/2)
-        o.write("%d %d\n" % (pid, group_id))
+        o.write("%d %d\n" % (pid, groupid))
 
 with open("cspad_quads.txt", "w") as o:
     for pid in range(64):
         groupid = int(pid/16)
-        o.write("%d %d\n" % (pid, group_id))
+        o.write("%d %d\n" % (pid, groupid))
 ```
 
 Here, we will use the 32 panel model. 
@@ -528,7 +529,7 @@ Here, we will use the 32 panel model.
 To run geometry refinement, we must provide a hopper process summary file (see above), as it points to all of the experiments and their optimized models. Issue the command
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n8 -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=8 geometry.first_n=80
+DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=10 outdir=geom
 ```
 
 The configuration file contains:
@@ -612,10 +613,10 @@ geometry {
 Geometry refinement supports restraints on the misorientation matrices, as well as the panel geometries. Panel geometry corrections come in the form of (x,y,z) perturbations (about the panel group's 3 lab-frame coordinates) and rotational perturbations (about the panel group's orthogonal axis, fast-scan axis, and slow-scan axis). By default, all of these perturbations are initialized to 0, and the restraint target for each perturbation is also set to 0. The configuration parameter beta specifies the variance of the parameter that's expected during refinement. In practice you will need to experiment with these values in order to achieve optimal results. Looking at distriubtions of unrestrained parameters (as shown [here](#pandas)) can help you estimate beta.
 
 ### Reprocess data with refined geometry
-Now, we can re-run `hopper_process` using this optimized geometry by adding the flag `reference_geometry=optGeo.expt`:
+Now, we can re-run `diffBragg.stills_process` using this optimized geometry by adding the flag `reference_geometry=optGeo.expt`:
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -n 8 -c2  diffBragg.hopper_process process.phil "poly_images/job*/*.h5"  mp.method=mpi mp.nproc=8 num_devices=8  dispatch.integrate=True  output.output_dir=poly_images/procOpt reference_geometry=optGeo.expt
+DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.stills_process process.phil "poly_images/job*/*.h5"  mp.method=mpi num_devices=4  dispatch.integrate=True  output.output_dir=poly_images/procOpt reference_geometry=geom/optGeo.expt
 libtbx.python quick_detresid.py poly_images/procOpt
 
 #RMSD (microns) 66.94415897822252
@@ -645,7 +646,7 @@ from joblib import Parallel, delayed
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
-parser.add_argument("dirnames", type=str, nargs="+", help="hopper_process output folders")
+parser.add_argument("dirnames", type=str, nargs="+", help="diffBragg.stills_process output folders")
 parser.add_argument("-j", type=int, default=1, help="number of procs")
 parser.add_argument("-nbins", type=int, default=10, help="number of resolution bins")
 args = parser.parse_args()
@@ -798,7 +799,7 @@ libtbx.python pred_offsets.py  poly_images/procMono/ poly_images/procPoly/ poly_
 
 
 
-# more on `hopper_process`
+# more on `diffBragg.stills_process`
 
 The script runs dials.stills_process with a few alterations
 
@@ -840,13 +841,13 @@ To ensure usage of the GPU, set the environment variable `DIFFBRAGG_USE_CUDA=1`.
 
 Setting verbose>0 on the diffBragg object itself will show a printout indicating whether GPU executed the kernel, however direct calls to hopper_utils.refine() apparently dont expose this verbose flag.
 
-Calls to `hopper_utils.refine` can optionally return the data modeler object used, and from the modeler, you can inspect whether the GPU kernel was exectued:
+Calls to `hopper_utils.refine` can optionally return the simulator object used (`SIM` below), and from that, you can inspect whether the GPU kernel was exectued:
 
 ```python
 # the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+Eopt,_, Mod, SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True)
 
-if Mod.SIM.D.most_recent_kernel_used_GPU:
+if SIM.D.most_recent_kernel_used_GPU:
     print("Kernel ran on GPU")
 else:
     print("Kernel ran on CPU")
@@ -876,9 +877,9 @@ Check the diffBragg attribute `use_diffuse`:
 
 ```python
 # the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+Eopt,_, Mod, SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True)
 
-if Mod.SIM.D.use_diffuse:
+if SIM.D.use_diffuse:
     print("used diffuse models")
 else:
     print("did not use diffuse models")
@@ -918,9 +919,9 @@ For mosaic rotations, look for e.g. `refining eta 0` . To verify whether these g
 
 ```python
 # the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+Eopt,_, Mod, SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True)
 
-eta_a = Mod.SIM.P["eta_abc0"]
+eta_a = Mod.P["eta_abc0"]
 init = eta_a.init
 curr = eta_a.get_val( x[eta_a.xpos])
 if not eta_a.refine:
@@ -944,8 +945,8 @@ In all cases, to verify the spectrum that was actually used during refinement, c
 
 ```python
 # the following line of code is taken from diffBragg/tests/tst_diffBragg_hopper_refined.py
-Eopt,_, Mod, x = hopper_utils.refine(E, refls, P, return_modeler=True)
-print(Mod.SIM.beam.spectrum)
+Eopt,_, Mod, SIM, x = hopper_utils.refine(E, refls, P, return_modeler=True)
+print(SIM.beam.spectrum)
 [(1.8, 1000000000000.0)]  # list of (wavelength, fluence) 
 print("Number of energy channels: %d" % len(Mod.SIM.beam.spectrum))
 ```
@@ -972,7 +973,7 @@ This is done through PHIL, e.g.
 params.simulator.crystal.num_mosaicity_samples = 50
 ```
 
-## Can I verify that the output reflection table has the diffBragg model centroid position as xyzcal?
+## Can I verify that the output reflection table has for the `xyzcal` column the diffBragg model centroid positions?
 
-If one calls `hopper_utils.refine`, the returned reflection table will contain an `xyzcal.px` column that includes the diffBragg model dervied centroids. Look for a call to `get_new_xycalcs` in the source code of `hopper_utils.refine` for details. If the refl table passed to `hopper_utils.refine` already contained `xyzcal.px` (e.g. indexed refls), then this column will be renamed to `dials.xyzcal.px`. (same for `xyzcal.mm` and `xyzobs.mm.value`).
+If one calls `hopper_utils.refine`, the returned reflection table will contain an `xyzcal.px` column that includes the diffBragg model dervied centroids. Look for a call to `get_new_xycalcs` in the source code of `hopper_utils.refine` for details. If the refl table passed to `hopper_utils.refine` already contains `xyzcal.px` (e.g. indexed refls), then this column will be renamed to `dials.xyzcal.px`. (same for `xyzcal.mm` and `xyzobs.mm.value`).
 

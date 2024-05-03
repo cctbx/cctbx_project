@@ -197,7 +197,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         if "num_mosaicity_samples" in list(df):
             mos_dom = int(df.num_mosaicity_samples.values[0])
         eta_abc = df.eta_abc.values[0]
-        LOGGER.debug("Num mos samples=%d, eta_abc=" % mos_dom, eta_abc)
+        LOGGER.debug("Num mos samples=%d, eta_abc=%f %f %f" % ((mos_dom,)+ eta_abc )  )
         LOGGER.debug("Num energy channels=%d" % len(energies))
         results = diffBragg_forward(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                     fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,
