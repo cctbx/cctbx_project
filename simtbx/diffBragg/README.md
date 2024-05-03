@@ -12,7 +12,7 @@
 <a name="testdata"></a>
 # setup test data
 
-These instructions assume you have a working CCTBX environment, and that the command `libtbx.python` is in your path. Also, this tutorial will assume you are using NERSC (instructions for private linux clusters will be provided in due time).
+These instructions assume you have a working CCTBX environment, and that the command `libtbx.python` is in your path. Also, this tutorial will assume you are using an MPI environment with `mpirun` or `slurm` installed.
 
 Start by navigating to your CCTBX build's modules folder on your computer. If you are unsure where this is, try issuing the following command
 
@@ -47,7 +47,7 @@ The first step in simulating data using `cxid9114` is to create a background ima
 libtbx.python $MOD/cxid9114/sim/d9114_mpi_sims.py -odir . --bg-name mybackground.h5 --make-background   --sad 
 ```
 
-To view the background image, install the proper image format provided in the repository.
+To view the background image, install the proper image format reader provided in the repository.
 
 ```
 dxtbx.install_format  -u $MOD/cxid9114/format/FormatD9114.py
@@ -78,7 +78,7 @@ dials.image_viewer  poly_images/job0/test_rank0_data0_fluence0.h5 brightness=75
 </p>
 
 
-Now that we have patterns, we can process them using the diffBragg wrapper script `diffBragg.stills_process`.
+Now that we have patterns, we can process them using `diffBragg.stills_process`.
 
 <a name="sf"></a>
 ## Structure factors
@@ -93,12 +93,12 @@ cd $MOD/cxid9114
 iotbx.reflection_file_converter  --unit_cell="79.09619904, 79.09619904, 38.41749954, 90, 90, 90" --space_group=P43212 --mtz=iobs_all.mtz --mtz_root_label=I iobs_all.hkl=intensities
 ```
 
-and then note the location so it can be included in your processing configuration files below, described below. 
+and then note the location so it can be included in your processing configuration files, described below. 
 
 <a name="hopper_process"></a>
 # Using `diffBragg.stills_process`
 
-We have simulated 104 images, and now we shall process them using the command line tool `diffBragg.stills_process`, a child program of `dials.stills_process`. Crucially, we will be disabling outlier rejection and all forms of refinement that are usually done during `dials.stills_process` analysis, in favor of the pixel refinement tools in diffBragg, which are wrapped in `diffBragg.stills_process`. 
+We have simulated 104 images, and now we shall process them using the command line tool `diffBragg.stills_process`, a version of `dials.stills_process` which optionally uses `diffBragg` refinement. Crucially, we will be disabling outlier rejection and all forms of refinement that are usually done during `dials.stills_process` analysis, in favor of the pixel refinement tools in diffBragg, which are wrapped in `diffBragg.stills_process`. 
 
 <a name="spectra"></a>
 ## X-ray spectra
@@ -133,7 +133,7 @@ The spectra are encoded in the format class `FormatD9114.py` which was installed
 <a name="poly"></a>
 ## Running `diffBragg.stills_process`
 
-Run `diffBragg.stills_process` in the same way you would run `dials.stills_process`. If you have a kokkos or a cuda build, and are working on a machine with configured GPU devices, add the flags `DIFFBRAGG_USE_CUDA=1` or `DIFFBRAGG_USE_KOKKOS=1` (note these cannot be toggled off with `DIFFBRAGG_USE_CUDA=0`: the flags can be set to anything, so long as they are set). And if using an mpi environment, use the correct wrapper (mpirun for openmpi, srun for SLURM). For example, on a Perlmutter allocation (NERSC), the following would work (where each compute node has 4 GPUs , hence the `num_devices=4`):
+Run `diffBragg.stills_process` in the same way you would run `dials.stills_process`. If you have a kokkos or a cuda build, and are working on a machine with configured GPU devices, add the flags `DIFFBRAGG_USE_CUDA=1` or `DIFFBRAGG_USE_KOKKOS=1` (NOTE: these flags can be set to anything, you could equally set `DIFFBRAGG_USE_CUDA=0`, so long as they are present in the environment, the corresponding kernels will be triggered!). And if using an MPI environment with `mpi4py` installed, use the correct wrapper (mpirun for openmpi, srun for SLURM). For example, on a Perlmutter allocation (NERSC), the following would work (where each compute node has 4 GPUs , hence the `num_devices=4`):
 
 ```
 DIFFBRAGG_USE_CUDA=1 srun -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.method=mpi num_devices=4  dispatch.integrate=True output.output_dir=poly_images/procPoly
@@ -174,7 +174,7 @@ dispatch.hit_finder.enable=False
 # hopper process config:
 silence_dials_loggers=True
 partial_correct=False
-reidx_obs=False  
+reidx_obs=False
 
 diffBragg {
   debug_mode=True
@@ -356,7 +356,7 @@ The image is referred to as the detector residuals, where each point represents 
 
 ## Output files
 
-In addition to the files provided by `dials.stills_process`, `diffBragg.stills_process` creates some output data. 
+In addition to the files provided by `dials.stills_process`, `diffBragg.stills_process` creates a pandas dataframe, stored in a python pickle format. The files can be read using the method `pandas.read_pickle` and contain relevant simulation parameters.
 
 <a name="pandas"></a>
 ### pandas dataframes
@@ -430,12 +430,18 @@ The previous script produces histograms of the unit cell parameters, as well as 
 For a full description of the pandas output file see [TODO].
 
 ### modelers folder
-For every shot, up to 3 files are written to the modelers folder. These are 
+For every shot, if the PHIL parameter `diffBragg.debug_mode` is `True`,  3 more files are written to the modelers folder. These are 
 
 * The simulator state file (`*SimState.txt`), showing the values of almost every diffBragg attribute. This is useful for reproducing the results
 * The `*.lam` file, which is a 2-column text file containing the spectrum that was used by the refiner. It can be loaded using `diffBragg/utils.py:load_spectra_file`
-* if the flag `save_modelers=True` was passed, then a data modeler file will be written containing the pixel data that was used during refinement (final model values, data, mask, background, etc). These files can be loaded using `mod=np.load("modeler.npy", allow_pickle=True)[()]`. The phil parameters are also stored in this pickle as well, for reference. See the class `DataModeler` defined in `diffBragg/hopper_utils.py` for more details.
+* A data modeler file containing the pixel data that was used during refinement (final model values, data, mask, background, etc). These files can be loaded using 
 
+```
+from simtbx.diffBragg import hopper_utils # necessary import
+mod=np.load("modeler.npy", allow_pickle=True)[()]`. 
+```
+
+The phil parameters are also stored in this pickle as well, for reference. See the class `DataModeler` defined in `diffBragg/hopper_utils.py` for more details.
 
 <a name="geometry"></a>
 # Correcting a faulty geometry with `diffBragg.geometry_refiner`
@@ -448,7 +454,16 @@ terminate called after throwing an instance of 'std::runtime_error'
 ```
 
 ## Getting the faulty geometry
-We have prepared a faulty experimental geometry with which to process the data, derived from real experimental errors associated with the CSPAD geometry. We can use diffBragg to optimize the geometry using polychromatic pixel refinement, therefore extending geometry refinement to more complex scenarios (e.g. Laue or two-color diffraction). One must extract the faulty geometry from a raw form and write it to disk, using the following simple script:
+We have prepared a faulty experimental geometry with which to process the data, derived from real experimental errors associated with the CSPAD geometry. We can use diffBragg to optimize the geometry using polychromatic pixel refinement, therefore extending geometry refinement to more complex scenarios (e.g. Laue or two-color diffraction). Get the faulty geometry here: 
+
+```
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/badGeo.expt
+```
+
+or, alternatively, grab it from the `cxid9114` respository:
+
+<details>
+  <summary>get badGeo.expt from cxid9114</summary>
 
 ```python
 from cxid9114.geom.multi_panel import CSPAD2
@@ -459,6 +474,7 @@ E.detector = CSPAD2
 El.append(E)
 El.as_json("badGeo.expt")
 ```
+</details>
 
 ### Processing with a faulty geometry
 
@@ -487,7 +503,16 @@ libtbx.python quick_detresid.py poly_images/procBad
 Whereas `diffBragg.stills_process` operates on single images, `diffBragg.geometry_refiner` operates on multiple images together that all share the same detector model. 
 
 ### panel groups
-`diffBragg` does not currently understand the `dxtbx` detector hierarchy models, so it is up to the user to provide a panel group mapping in the form of a 2-column text file (the first column specifies the panel number, and the second column specifies its group number). In order to create a panel group file, one needs to know the panel numbering visually. The detector residuals plots shown above display this information, and there is also the program `dxtbx.plot_detector_models` which takes experiment list files as arguments and plots the detector with its panel numbers displayed. Also, the image viewer displays the panel numbers as you hover over pixels (look for the value readout in the pixel info underbar). The following shows how to create three different panel grouping files for the CSPAD which are understood by `geometry_refiner`:
+`diffBragg` does not currently understand the `dxtbx` detector hierarchy models, so it is up to the user to provide a panel group mapping in the form of a 2-column text file (the first column specifies the panel number, and the second column specifies its group number). In order to create a panel group file, one needs to know the panel numbering visually. The detector residuals plots shown above display this information, and there is also the program `dxtbx.plot_detector_models` which takes experiment list files as arguments and plots the detector with its panel numbers displayed., e.g. `dxtbx.plot_detector_models badGeo.expt`. Also, the image viewer displays the panel numbers as you hover over pixels with the mouse pointer (look for the updating value for `readout` in the lower right of the window). Grab the panel group file for this detector here:
+
+```
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/cspad_32panel.txt
+```
+
+Alternatively, create the panel group file yourself in Python:
+
+<details>
+  <summary>examples of making panel group files</summary>
 
 ```python
 with open("single_panel.txt", "w") as o:
@@ -504,15 +529,19 @@ with open("cspad_quads.txt", "w") as o:
         groupid = int(pid/16)
         o.write("%d %d\n" % (pid, groupid))
 ```
+</details>
 
-Here, we will use the 32 panel model. 
+
+Here, we will use the 32-panel model (moving all 32 panels separately).
 
 ### Running geometry refiner
-To run geometry refinement, we must provide a hopper process summary file (see above), as it points to all of the experiments and their optimized models. Issue the command
+To run geometry refinement, we must provide as input the saved models from `diffBragg.stills_process`, which are stored in the pandas pickles. For multiple image refinement, proviuded a concatenated version of the pandas pickles. If the program `diffBragg.stills_process` ran to completion, this will be written to the output folder (`hopper_process_summery.pkl`). With that, to run geometry refinement, issue the command
 
 ```
 DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=20 outdir=geom
 ```
+
+The `optimized_detector_name` specifies the name of the geometry file that will be created,  `lbfgs_maxiter` specifies the maximum number of L-BFGS iterations, `max_process` specifies the total number of images to read from the `input_pkl`, and the `outdir` is where results will be stored (the folder will be created if it doesn't already exist).  
 
 The configuration file contains:
 
@@ -612,7 +641,11 @@ libtbx.python quick_detresid.py poly_images/procOpt
 
 The result shows significant improvement with the optimized geometry!
 
-This particular dataset has rather fat spots that are dominated by the mosaic domain size as opposed to the spot spectra, but nonetheless we get better results using polychromatic models. Plotting the average prediction offset as a function of resolution shows this readily. The script
+This particular dataset has rather fat spots that are dominated by the mosaic domain size as opposed to the spot spectra, but nonetheless we get better results using polychromatic models. Plotting the average prediction offset as a function of resolution shows this readily. We provide a script for doing this here: 
+
+```
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/pred_offsets.py
+```
 
 <details>
   <summary>pred_offsets.py</summary>
