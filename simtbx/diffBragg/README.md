@@ -346,7 +346,7 @@ libtbx.python quick_detresid.py poly_images/procPoly
 #Overall transverse RMSD (microns) 40.285340970907185
 ```
 
-and you will see an image display, as well as some numbers print to the screen indicating how well the monochromatic model predicts the data:
+and you will see an image display, as well as some numbers print to the screen indicating how well the model predicts the data:
 
 <p align="center">
 <img src="https://user-images.githubusercontent.com/2335439/136640765-d2d0b274-cd0c-4613-9ea8-42e2f497a418.png" />
@@ -610,7 +610,7 @@ libtbx.python quick_detresid.py poly_images/procOpt
 <img src="https://user-images.githubusercontent.com/2335439/136643005-b32b09bb-547b-4360-8f7f-73f14125b243.png" />
 </p>
 
-The result shows significant improvement with the optimized geometry, more so than even the monochromatic models that were subjected to zero detector inaccuracy!
+The result shows significant improvement with the optimized geometry!
 
 This particular dataset has rather fat spots that are dominated by the mosaic domain size as opposed to the spot spectra, but nonetheless we get better results using polychromatic models. Plotting the average prediction offset as a function of resolution shows this readily. The script
 
