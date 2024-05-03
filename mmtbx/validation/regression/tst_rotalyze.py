@@ -9,6 +9,7 @@ import libtbx.load_env
 from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long
 import os.path
 import json
 from six.moves import zip
@@ -290,7 +291,7 @@ ATOM    476  NZ  LYS A  49       0.899   4.110  12.980  1.00 19.97           N
         results.append(cur_rot)
   assert results == ['Cg_exo', 'OUTLIER', 'OUTLIER']
 
-def exercise_rotalyze_json():
+def exercise_rotalyze_json(test_mmcif=False):
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
@@ -301,10 +302,17 @@ def exercise_rotalyze_json():
     print("Skipping exercise_rotalyze(): rotarama_data directory not available")
     return
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_jcm_str = f.read()
+    pdb_jcm_str = convert_string_to_cif_long(pdb_jcm_str, chain_addition="LONGCHAIN")
+    dm.process_model_str("1", pdb_jcm_str)
+    m = dm.get_model("1")
+  else:
+    m = dm.get_model(regression_pdb)
   rotalyze_json = rotalyze.rotalyze(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
   rtjson_dict = json.loads(rotalyze_json)
-  import pprint
+  #import pprint
   #pprint.pprint(rtjson_dict)
   assert len(rtjson_dict['flat_results'])==123, "tst_rotalyze json output not returning correct number of values"
   assert approx_equal(rtjson_dict['flat_results'][0]['chi_angles'][0], 229.02299329063914), "tst_rotalyze json output first calculated chi dihedral angle not matching previous value"
@@ -318,9 +326,13 @@ def exercise_rotalyze_json():
   assert rtjson_dict['summary_results'][""]['num_favored'] == 404, "tst_rotalyze json output summary total num_favored not matching previous value"
   assert rtjson_dict['summary_results'][""]['num_outliers'] == 123, "tst_rotalyze json output summary total num_outliers not matching previous value"
   assert rtjson_dict['summary_results'][""]['num_residues'] == 643, "tst_rotalyze json output summary total num_residues not matching previous value"
+  return rtjson_dict
 
 if (__name__ == "__main__"):
   exercise_rotalyze()
   exercise_2()
-  exercise_rotalyze_json()
+  rt_dict = exercise_rotalyze_json()
+  rt_dict_cif = exercise_rotalyze_json(test_mmcif=True)
+  assert rt_dict['summary_results'] == rt_dict_cif['summary_results'], "tst_rotalyze summary results changed between pdb and cif version"
+
   print("OK")

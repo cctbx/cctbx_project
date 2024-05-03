@@ -8,6 +8,7 @@ from libtbx.test_utils import approx_equal
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long
 import sys, os
 import json
 import time
@@ -16,7 +17,7 @@ from mmtbx.validation import test_utils
 
 # This actually tests expected output - the remaining tests guard against
 # fixed bugs.
-def exercise_1():
+def exercise_1(test_mmcif=False):
   # derived from 2goz
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb2goz_refmac_tls.ent",
@@ -25,7 +26,14 @@ def exercise_1():
     print("Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available")
     return
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_2goz_str = f.read()
+    pdb_2goz_str = convert_string_to_cif_long(pdb_2goz_str, chain_addition="LONGCHAIN", hetatm_name_addition = "")
+    dm.process_model_str("1", pdb_2goz_str)
+    m = dm.get_model("1")
+  else:
+    m = dm.get_model(regression_pdb)
   rv = rna_validation(m.get_hierarchy())
   assert len(rv.puckers.results) == 2, len(rv.puckers.results)
   assert len(rv.bonds.results) == 4, len(rv.bonds.results)
@@ -43,7 +51,8 @@ def exercise_1():
   angles_json = json.loads(rv.angles.as_JSON())
   puckers_json = json.loads(rv.puckers.as_JSON())
   suites_json = json.loads(rv.suites.as_JSON())
-  #print(bonds_json)
+  #import pprint
+  #pprint.pprint(puckers_json)
   assert len(bonds_json["flat_results"]) == 4, "tst_rna_validate json output not returning correct number of bond outliers, changed to: "+str(len(bonds_json["flat_results"]))
   assert approx_equal(bonds_json['flat_results'][0]["score"], 4.40664), "tst_rna_validate json output first bond outlier score changed to: "+str(bonds_json['flat_results'][0]["score"])
   assert approx_equal(bonds_json['flat_results'][0]["xyz"][0], -17.61949), "tst_rna_validate json output first bond x changed to: "+str(bonds_json['flat_results'][0]["xyz"][0])
@@ -56,16 +65,31 @@ def exercise_1():
   assert approx_equal(angles_json['flat_results'][0]["xyz"][0], -16.161), "tst_rna_validate json output first angle x score changed to: " + str(angles_json['flat_results'][0]["xyz"][0])
   assert approx_equal(angles_json['flat_results'][0]["xyz"][1], -6.863), "tst_rna_validate json output first angle y score changed to: " + str(angles_json['flat_results'][0]["xyz"][1])
   assert approx_equal(angles_json['flat_results'][0]["xyz"][2], -20.773), "tst_rna_validate json output first angle z score changed to: " + str(angles_json['flat_results'][0]["xyz"][2])
-  assert test_utils.count_dict_values(angles_json['hierarchical_results'], ["A", "A", "A"])==11, "tst_rna_validate json hierarchical output number of angle outliers in chain A changed to: "+str(test_utils.count_dict_values(angles_json['hierarchical_results'], ["A", "A", "A"]))
+  assert test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0])==14, "tst_rna_validate json hierarchical output number of angle outliers changed to: "+str(test_utils.count_dict_values(angles_json['hierarchical_results'], [1.0, 1.0, 1.0]))
   assert angles_json['summary_results']['']["num_outliers_too_large"]==6, "tst_rna_validate json output summary result number of angle outliers too large changed to: "+str(angles_json['summary_results']['']["num_outliers_too_large"])
   assert len(puckers_json["flat_results"]) == 2, "tst_rna_validate json output not returning correct number of pucker outliers, changed to: " + str(len(puckers_json["flat_results"]))
   assert approx_equal(puckers_json['flat_results'][0]["delta_angle"], 106.454213), "tst_rna_validate json output first pucker outlier delta changed to: " + str(puckers_json['flat_results'][0]["delta_angle"])
-  assert test_utils.count_dict_values(puckers_json['hierarchical_results'], "A")==2, "tst_rna_validate json hierarchical output number of pucker outliers changed to: "+str(test_utils.count_dict_values(puckers_json['hierarchical_results'], "A", "A", "A"))
+  assert test_utils.count_dict_values(puckers_json['hierarchical_results'], " ")==2, "tst_rna_validate json hierarchical output number of pucker outliers changed to: "+str(test_utils.count_dict_values(puckers_json['hierarchical_results'], " "))
   assert puckers_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
   assert len(suites_json["flat_results"]) == 5, "tst_rna_validate json output not returning correct number of suite outliers, changed to: " + str(len(suites_json["flat_results"]))
   assert suites_json['flat_results'][0]["suiteness"]==0, "tst_rna_validate json output first suite outlier suiteness changed to: " + str(suites_json['flat_results'][0]["suiteness"])
   assert test_utils.count_dict_values(suites_json['hierarchical_results'], "!!")==5, "tst_rna_validate json hierarchical output number of suite outliers changed to: "+str(test_utils.count_dict_values(suites_json['hierarchical_results'], "!!"))
   #assert suites_json['summary_results']['']["num_outliers"]==2, "tst_rna_validate json output summary result number of pucker outliers changed to: "+str(puckers_json['summary_results']['']["num_outliers"])
+  return rv
+
+def exercise_pdbvcif(rv, rv_cif):
+  bonds_json = json.loads(rv.bonds.as_JSON())
+  angles_json = json.loads(rv.angles.as_JSON())
+  puckers_json = json.loads(rv.puckers.as_JSON())
+  suites_json = json.loads(rv.suites.as_JSON())
+  bonds_json_cif = json.loads(rv_cif.bonds.as_JSON())
+  angles_json_cif = json.loads(rv_cif.angles.as_JSON())
+  puckers_json_cif = json.loads(rv_cif.puckers.as_JSON())
+  suites_json_cif = json.loads(rv_cif.suites.as_JSON())
+  assert bonds_json['summary_results'] == bonds_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
+  assert angles_json['summary_results'] == angles_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
+  assert puckers_json['summary_results'] == puckers_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
+  assert suites_json['summary_results'] == suites_json_cif['summary_results'], "tst_rna_validate summary results changed between pdb and cif version"
 
 def exercise_2():
   # fragment from 3g8t
@@ -199,7 +223,9 @@ def pickle_unpickle(result):
 def run():
   t0 = time.time()
   verbose = "--verbose" in sys.argv[1:]
-  exercise_1()
+  rv = exercise_1()
+  rv_cif = exercise_1(test_mmcif=True)
+  exercise_pdbvcif(rv, rv_cif)
   exercise_2()
   exercise_3()
   print("OK. Time: %8.3f"%(time.time()-t0))

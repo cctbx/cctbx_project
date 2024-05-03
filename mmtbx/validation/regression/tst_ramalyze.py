@@ -8,6 +8,8 @@ import os.path
 from mmtbx.validation import ramalyze
 from mmtbx.rotamer.rotamer_eval import find_rotarama_data_dir
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long
+
 import time
 import json
 
@@ -231,7 +233,7 @@ def exercise_constants():
   assert ramalyze.RAMALYZE_ANY == 3
   assert ramalyze.RAMALYZE_NOT_FAVORED == 4
 
-def exercise_ramalyze_json():
+def exercise_ramalyze_json(test_mmcif=False):
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/jcm.pdb",
     test=os.path.isfile)
@@ -242,10 +244,17 @@ def exercise_ramalyze_json():
     print("Skipping exercise_ramalyze(): rotarama_data directory not available")
     return
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_jcm_str = f.read()
+    pdb_jcm_str = convert_string_to_cif_long(pdb_jcm_str, chain_addition="LONGCHAIN")
+    dm.process_model_str("1", pdb_jcm_str)
+    m = dm.get_model("1")
+  else:
+    m = dm.get_model(regression_pdb)
   ramalyze_json = ramalyze.ramalyze(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
   rmjson_dict = json.loads(ramalyze_json)
-  import pprint
+  #import pprint
   #pprint.pprint(rmjson_dict)
   assert len(rmjson_dict['flat_results'])==100, "tst_ramalyze json output not returning correct number of values"
   assert approx_equal(rmjson_dict['flat_results'][0]['phi'], 50.51521639791719), "tst_ramalyze json output first calculated phi dihedral angle not matching previous value"
@@ -260,12 +269,15 @@ def exercise_ramalyze_json():
   assert rmjson_dict['summary_results'][""]['num_favored'] == 463, "tst_ramalyze json output summary total num_favored not matching previous value"
   assert rmjson_dict['summary_results'][""]['num_outliers'] == 100, "tst_ramalyze json output summary total num_outliers not matching previous value"
   assert rmjson_dict['summary_results'][""]['num_residues'] == 725, "tst_ramalyze json output summary total num_residues not matching previous value"
+  return rmjson_dict
 
 if (__name__ == "__main__"):
   t0=time.time()
   exercise_ramalyze()
   exercise_favored_regions()
   exercise_constants()
-  exercise_ramalyze_json()
+  rm_dict = exercise_ramalyze_json()
+  rm_dict_cif = exercise_ramalyze_json(test_mmcif=True)
+  assert rm_dict['summary_results'] == rm_dict_cif['summary_results'], "tst_ramalyze summary results changed between pdb and cif version"
   print("Time: %6.4f"%(time.time()-t0))
   print("OK")

@@ -5,7 +5,7 @@ from iotbx.data_manager import DataManager
 from mmtbx.model import manager
 from libtbx.utils import null_out
 from libtbx.test_utils import approx_equal
-
+from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
 import time
 import json
 
@@ -173,8 +173,9 @@ def exercise_mp_validate_bonds():
     pdb_atoms=atoms,
     geometry_restraints_manager=geometry,
     outliers_only=False)
-
+  #import pprint
   bonds_json = json.loads(bonds.as_JSON())
+  #pprint.pprint(bonds_json)
   assert len(bonds_json['flat_results'])==19, "tst_mp_validate_bonds total number of bonds changed, now: "+str(len(bonds_json['flat_results']))
   assert approx_equal(bonds_json['flat_results'][18]["sigma"], 0.019), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(bonds_json['flat_results'][18]["sigma"])
   assert bonds_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(bonds_json['summary_results'][""]["num_outliers"])
@@ -182,14 +183,20 @@ def exercise_mp_validate_bonds():
   assert bonds_json['summary_results'][""]["num_outliers_too_small"] == 0, "tst_mp_validate_bonds json summary output total number of bonds too small changed, now: "+str(bonds_json['summary_results'][""]["num_outliers_too_small"])
   assert bonds_json['summary_results'][""]["num_outliers_too_large"] == 1, "tst_mp_validate_bonds json summary output total number of bonds too large changed, now: "+str(bonds_json['summary_results'][""]["num_outliers_too_large"])
   angles_json = json.loads(angles.as_JSON())
+  #pprint.pprint(angles_json)
   assert len(angles_json['flat_results'])==24, "tst_mp_validate_bonds total number of angles changed, now: "+str(len(angles_json['flat_results']))
   assert approx_equal(angles_json['flat_results'][23]["sigma"], 2.3), "tst_mp_validate_bonds json output last sigma value changed, now: "+str(angles_json['flat_results'][23]["sigma"])
   assert angles_json['summary_results'][""]["num_outliers"] == 1, "tst_mp_validate_bonds json summary output total number of outliers changed, now: "+str(angles_json['summary_results'][""]["num_outliers"])
   assert angles_json['summary_results'][""]["num_total"]==24, "tst_mp_validate_bonds json summary output total number of angles changed, now: "+str(angles_json['summary_results'][""]["num_total"])
   assert angles_json['summary_results'][""]["num_outliers_too_small"]==1, "tst_mp_validate_bonds json summary output total number of angles too small changed, now: "+str(angles_json['summary_results'][""]["num_outliers_too_small"])
   assert angles_json['summary_results'][""]["num_outliers_too_large"]==0, "tst_mp_validate_bonds json summary output total number of angles too large changed, now: "+str(angles_json['summary_results'][""]["num_outliers_too_large"])
+  return bonds_json, angles_json
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  exercise_mp_validate_bonds()
+  bonds_dict, angles_dict = exercise_mp_validate_bonds()
+  convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="LONGCHAIN", hetatm_name_addition = "", key_str="pdb_", print_new_string = False)
+  bonds_dict_cif, angles_dict_cif = exercise_mp_validate_bonds()
+  assert bonds_dict['summary_results'] == bonds_dict_cif['summary_results'], "tst_mp_validate_bonds summary results changed between pdb and cif version"
+  assert angles_dict['summary_results'] == angles_dict_cif['summary_results'], "tst_mp_validate_bonds summary results changed between pdb and cif version"
   print("OK. Time: %8.3f"%(time.time()-t0))
