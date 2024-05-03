@@ -133,13 +133,11 @@ The spectra are encoded in the format class `FormatD9114.py` which was installed
 <a name="poly"></a>
 ## Running `diffBragg.stills_process`
 
-Run `diffBragg.stills_process` in the same way you would run `dials.stills_process`. If you have a kokkos or a cuda build, and are working on a machine with configured GPU devices, add the flags `DIFFBRAGG_USE_CUDA=1` or `DIFFBRAGG_USE_KOKKOS=1` (NOTE: these flags can be set to anything, you could equally set `DIFFBRAGG_USE_CUDA=0`, so long as they are present in the environment, the corresponding kernels will be triggered!). And if using an MPI environment with `mpi4py` installed, use the correct wrapper (mpirun for openmpi, srun for SLURM). For example, on a Perlmutter allocation (NERSC), the following would work (where each compute node has 4 GPUs , hence the `num_devices=4`):
+Run `diffBragg.stills_process` in the same way you would run `dials.stills_process`. If you have a kokkos or a cuda build, and are working on a machine with configured GPU devices, add the flags `DIFFBRAGG_USE_CUDA=1` or `DIFFBRAGG_USE_KOKKOS=1` (NOTE: these flags can be set to anything, you could equally set `DIFFBRAGG_USE_CUDA=0`, so long as they are present in the environment, the corresponding kernels will be triggered!). And if using an MPI environment with `mpi4py` installed, use the correct wrapper (mpirun for openmpi, srun for SLURM). For example, on a Perlmutter allocation (NERSC), the following would work (where each compute node has 4 GPUs , hence the `num_devices=4`. Before running, download the processing config file
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.method=mpi num_devices=4  dispatch.integrate=True output.output_dir=poly_images/procPoly
-``` 
-
-The configuration file `process.phil` contains
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/process.phil
+```
 
 <details>
   <summary>Example process.phil</summary>
@@ -232,7 +230,13 @@ diffBragg {
 ```
 </details>
 
-however command line parameters supersede whats in the PHIL file. We have prepared a simple script called `quick_detresid.py` for analyzing the results. Grab the script using
+and run the command, noting that command line parameters supersede whats in the PHIL file:
+
+```
+DIFFBRAGG_USE_CUDA=1 srun -c2  diffBragg.stills_process process.phil "poly_images/job*/*.h5" mp.method=mpi num_devices=4  dispatch.integrate=True output.output_dir=poly_images/procPoly
+``` 
+
+We have prepared a simple script called `quick_detresid.py` for analyzing the results. Grab the script using
 
 ```
 wget https://smb.slac.stanford.edu/~dermen/diffBragg/quick_detresid.py
@@ -535,15 +539,11 @@ with open("cspad_quads.txt", "w") as o:
 Here, we will use the 32-panel model (moving all 32 panels separately).
 
 ### Running geometry refiner
-To run geometry refinement, we must provide as input the saved models from `diffBragg.stills_process`, which are stored in the pandas pickles. For multiple image refinement, proviuded a concatenated version of the pandas pickles. If the program `diffBragg.stills_process` ran to completion, this will be written to the output folder (`hopper_process_summery.pkl`). With that, to run geometry refinement, issue the command
+To run geometry refinement, we must provide as input the saved models from `diffBragg.stills_process`, which are stored in the pandas pickles. For multiple image refinement, proviuded a concatenated version of the pandas pickles. If the program `diffBragg.stills_process` ran to completion, this will be written to the output folder (`hopper_process_summery.pkl`). With that, to run geometry refinement, grad the config file
 
 ```
-DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=20 outdir=geom
+wget https://smb.slac.stanford.edu/~dermen/diffBragg/geom.phil
 ```
-
-The `optimized_detector_name` specifies the name of the geometry file that will be created,  `lbfgs_maxiter` specifies the maximum number of L-BFGS iterations, `max_process` specifies the total number of images to read from the `input_pkl`, and the `outdir` is where results will be stored (the folder will be created if it doesn't already exist).  
-
-The configuration file contains:
 
 <details>
   <summary>geom.phil</summary>
@@ -618,6 +618,14 @@ geometry {
 
 ```
 </details>
+
+and issue the command
+
+```
+DIFFBRAGG_USE_CUDA=1 srun -c2 diffBragg.geometry_refiner --phil geom.phil --cmdlinePhil  optimized_detector_name=optGeo.expt input_pkl=poly_images/procBad/hopper_process_summary.pkl lbfgs_maxiter=2000 num_devices=4 max_process=20 outdir=geom
+```
+
+The `optimized_detector_name` specifies the name of the geometry file that will be created,  `lbfgs_maxiter` specifies the maximum number of L-BFGS iterations, `max_process` specifies the total number of images to read from the `input_pkl`, and the `outdir` is where results will be stored (the folder will be created if it doesn't already exist).
 
 
 ### optional restraints
