@@ -103,7 +103,7 @@ class NBcrystal(object):
         self.miller_is_complex = True
       else:
         self.miller_is_complex = False
-        if str(val.observation_type) == "xray.intensity":
+        if str(val.observation_type()) == "xray.intensity":
           val = val.as_amplitude_array()
       self.cb_op = val.space_group_info().change_of_basis_op_to_primitive_setting()
       val = val.expand_to_p1()
