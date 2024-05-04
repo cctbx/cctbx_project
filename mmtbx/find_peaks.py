@@ -101,56 +101,48 @@ class peaks_holder(object):
 
 class manager(object):
   def __init__(self,
-               fmodel,
-               map_type,
                map_cutoff,
+               xray_structure,
                params = None,
                log = None,
-               use_all_data = True,
-               silent = False,
-               map_coeffs=None
+               # Fourier map or...
+               map_coeffs=None,
+               # ...real-space map or...
+               map_data = None,
                ):
     adopt_init_args(self, locals())
-    assert (map_type is not None) or (map_coeffs is not None)
+    # Make sure unique only-needed maps or map source is given
+    assert [map_coeffs, map_data].count(None) == 1
+    #
     self.mapped = False
     self.peaks_ = None
     if(self.log is None): self.log = sys.stdout
     if(self.params is None): self.params = master_params.extract()
-    self.crystal_symmetry = self.fmodel.xray_structure.crystal_symmetry()
-    self.crystal_gridding = maptbx.crystal_gridding(
-      unit_cell        = self.crystal_symmetry.unit_cell(),
-      space_group_info = self.crystal_symmetry.space_group_info(),
+    #
+    crystal_symmetry = xray_structure.crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = crystal_symmetry.unit_cell(),
+      space_group_info = crystal_symmetry.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = self.params.grid_step)
-    if (map_coeffs is not None):
+    crystal_gridding_tags = maptbx.crystal_gridding_tags(
+      gridding = crystal_gridding)
+    #
+    if(map_coeffs is not None):
       fft_map = map_coeffs.fft_map(
-        crystal_gridding = self.crystal_gridding,
+        crystal_gridding = crystal_gridding,
         symmetry_flags=maptbx.use_space_group_symmetry)
       if(self.params.use_sigma_scaled_maps):
         fft_map.apply_sigma_scaling()
-        map_units = "sigma"
       else:
         fft_map.apply_volume_scaling()
-        map_units = "e/A**3"
       fft_map_data = fft_map.real_map_unpadded()
-    else:
-      fft_map = self.fmodel.electron_density_map().map_coefficients(
-        map_type     = self.map_type,
-        fill_missing = False,
-        isotropize   = True).fft_map(
-          crystal_gridding = self.crystal_gridding,
-          symmetry_flags=maptbx.use_space_group_symmetry)
-      if(self.params.use_sigma_scaled_maps):
-        fft_map.apply_sigma_scaling()
-        map_units = "sigma"
-      else:
-        fft_map.apply_volume_scaling()
-        map_units = "e/A**3"
-      fft_map_data = fft_map.real_map_unpadded()
-    crystal_gridding_tags = fft_map.tags()
+    elif(map_data is not None):
+      fft_map_data = map_data
+    #
     max_number_of_peaks = self.params.max_number_of_peaks
     if(self.params.max_number_of_peaks is None):
-      max_number_of_peaks = self.fmodel.xray_structure.scatterers().size() * 5
+      max_number_of_peaks = self.xray_structure.scatterers().size() * 5
     negative = False
     if(self.map_cutoff < 0):
       self.map_cutoff *= -1
@@ -158,8 +150,7 @@ class manager(object):
       fft_map_data *= -1
     min_distance_sym_equiv = self.params.peak_search.min_distance_sym_equiv
     if(min_distance_sym_equiv is None):
-      min_distance_sym_equiv = \
-        self.fmodel.xray_structure.min_distance_sym_equiv()
+      min_distance_sym_equiv = self.xray_structure.min_distance_sym_equiv()
     peak_search_parameters = maptbx.peak_search_parameters(
       peak_search_level      = self.params.peak_search.peak_search_level,
       max_peaks              = self.params.peak_search.max_peaks,
@@ -169,19 +160,18 @@ class manager(object):
       general_positions_only = self.params.peak_search.general_positions_only,
       min_cross_distance     = self.params.peak_search.min_cross_distance,
       min_cubicle_edge       = self.params.peak_search.min_cubicle_edge)
-    if(self.fmodel.r_work() > 0.00001 and self.fmodel.r_free() > 0.00001):
-      cluster_analysis = crystal_gridding_tags.peak_search(
-        parameters = peak_search_parameters,
-        map = fft_map_data).all(max_clusters = max_number_of_peaks)
-      heights = cluster_analysis.heights()
-      if(negative):
-        heights *= -1.
-      self.peaks_ = peaks_holder(heights = heights,
-                                 sites   = cluster_analysis.sites())
-      if(not self.silent):
-        print("Number of peaks found at %s map (map cutoff=%s %s)= %s"%(
-          self.map_type, format_value("%-5.2f", self.map_cutoff).strip(),
-          map_units, format_value("%-12d", self.peaks_.sites.size())), file=self.log)
+    cluster_analysis = crystal_gridding_tags.peak_search(
+      parameters = peak_search_parameters,
+      map = fft_map_data).all(max_clusters = max_number_of_peaks)
+    heights = cluster_analysis.heights()
+    if(negative):
+      heights *= -1.
+    self.peaks_ = peaks_holder(heights = heights,
+                               sites   = cluster_analysis.sites())
+    if(self.log is not None):
+      print("Number of peaks found (map cutoff=%s)= %s"%(
+        format_value("%-5.2f", self.map_cutoff).strip(),
+        format_value("%-12d", self.peaks_.sites.size())), file=self.log)
 
   def peaks(self):
     return self.peaks_
@@ -195,12 +185,12 @@ class manager(object):
       min_dist = 0.
     if (max_dist is None):
       max_dist = float(sys.maxsize)
-    xray_structure = self.fmodel.xray_structure.deep_copy_scatterers()
+    xray_structure = self.xray_structure.deep_copy_scatterers()
     use_selection = None
     if(not self.params.map_next_to_model.use_hydrogens):
       use_selection = ~xray_structure.hd_selection()
     initial_number_of_sites = self.peaks_.sites.size()
-    if(not self.silent):
+    if(self.log is not None):
       print("Filter by distance & map next to the model:", file=self.log)
     result = xray_structure.closest_distances(sites_frac = self.peaks_.sites,
       distance_cutoff = max_dist, use_selection = use_selection)
@@ -218,7 +208,7 @@ class manager(object):
     sd = flex.sqrt(smallest_distances_sq.select(in_box))
     d_min = flex.min_default(sd, 0)
     d_max = flex.max_default(sd, 0)
-    if(not self.silent):
+    if(self.log is not None):
       print("   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max), file=self.log)
       print("   number of sites selected in [dist_min=%5.2f, " \
         "dist_max=%5.2f]: %d from: %d" % (min_dist, max_dist, peaks.sites.size(),
@@ -226,7 +216,7 @@ class manager(object):
     smallest_distances = flex.sqrt(smallest_distances_sq.select(selection))
     d_min = flex.min_default(smallest_distances, 0)
     d_max = flex.max_default(smallest_distances, 0)
-    if(not self.silent):
+    if(self.log is not None):
       print("   mapped sites are within: %5.3f - %5.3f"%(d_min,d_max), file=self.log)
     self.mapped = True
     self.peaks_ = peaks
@@ -237,12 +227,12 @@ class manager(object):
     peaks = self.peaks()
     if(peaks.iseqs_of_closest_atoms is None):
       raise RuntimeError("iseqs_of_closest_atoms is None")
-    scatterers = self.fmodel.xray_structure.scatterers()
+    scatterers = self.xray_structure.scatterers()
     assert scatterers.size() == pdb_atoms.size()
     assert peaks.sites.size() == peaks.heights.size()
     assert peaks.heights.size() == peaks.iseqs_of_closest_atoms.size()
     print(file=self.log)
-    dist = self.fmodel.xray_structure.unit_cell().distance
+    dist = self.xray_structure.unit_cell().distance
     for i in flex.sort_permutation(data=peaks.iseqs_of_closest_atoms):
       s = peaks.sites[i]
       h = peaks.heights[i]
@@ -271,8 +261,26 @@ def show_highest_peaks_and_deepest_holes(fmodel,
   fp_params.map_next_to_model.use_hydrogens = True
   for par in [(map_cutoff_plus,"peaks"), (map_cutoff_minus,"holes")]:
     print_statistics.make_sub_header(par[1], out = log)
-    result = manager(fmodel     = fmodel,
-                     map_type   = "mFobs-DFmodel",
+    #
+    from cctbx import maptbx
+    e_map = fmodel.electron_density_map()
+    crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
+    crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = crystal_symmetry.unit_cell(),
+      space_group_info = crystal_symmetry.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.6)
+    coeffs = e_map.map_coefficients(
+      map_type     = "mFobs-DFmodel",
+      fill_missing = False,
+      isotropize   = True)
+    fft_map = coeffs.fft_map(crystal_gridding = crystal_gridding)
+    fft_map.apply_sigma_scaling()
+    map_data = fft_map.real_map_unpadded()
+    #
+
+    result = manager(map_data = map_data,
+                     xray_structure = fmodel.xray_structure,
                      map_cutoff = par[0],
                      params     = fp_params,
                      log        = log)

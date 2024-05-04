@@ -113,8 +113,25 @@ def find_hydrogen_peaks(fmodel,
                         pdb_atoms,
                         params,
                         log):
-  fp_manager = find_peaks.manager(fmodel     = fmodel,
-                                  map_type   = params.map_type,
+  #
+  from cctbx import maptbx
+  e_map = fmodel.electron_density_map()
+  crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
+  crystal_gridding = maptbx.crystal_gridding(
+    unit_cell        = crystal_symmetry.unit_cell(),
+    space_group_info = crystal_symmetry.space_group_info(),
+    symmetry_flags   = maptbx.use_space_group_symmetry,
+    step             = 0.6)
+  coeffs = e_map.map_coefficients(
+    map_type     = params.map_type,
+    fill_missing = False,
+    isotropize   = True)
+  fft_map = coeffs.fft_map(crystal_gridding = crystal_gridding)
+  fft_map.apply_sigma_scaling()
+  map_data = fft_map.real_map_unpadded()
+  #
+  fp_manager = find_peaks.manager(map_data       = map_data,
+                                  xray_structure = fmodel.xray_structure,
                                   map_cutoff = params.map_cutoff,
                                   params     = params,
                                   log        = log)

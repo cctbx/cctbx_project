@@ -54,6 +54,28 @@ namespace {
     ;
     //
 
+    def("filter_water_fsr",
+         (af::shared<std::size_t>(*)
+               (af::shared<bool> const&,
+                af::shared<vec3<double> > const&,
+                af::shared<bool> const&,
+                af::shared<bool> const&,
+                af::ref<std::size_t>,
+                double const&,
+                double const&,
+                double const&,
+                cctbx::uctbx::unit_cell const&)) filter_water_fsr,
+                  (arg("interaction_selection"),
+                   arg("sites_frac"),
+                   arg("solvent_selection"),
+                   arg("skip_selection"),
+                   arg("conformer_indices"),
+                   arg("dist_max"),
+                   arg("dist_min"),
+                   arg("dist_min_altloc"),
+                   arg("unit_cell")))
+   ;
+
     def("filter_water",
          (af::shared<std::size_t>(*)
                (af::shared<bool> const&,

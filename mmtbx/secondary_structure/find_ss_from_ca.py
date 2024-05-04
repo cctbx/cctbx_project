@@ -1770,6 +1770,8 @@ class segment:  # object for holding a helix or a strand or other
   def get_centroid(self,start_res=None,end_res=None):
     # get centroid of residues from start_res to end_res
     sites=self.get_sites(start_res=start_res,end_res=end_res)
+    if sites.size() < 1:
+      return None
     return sites.mean()
 
 class helix(segment): # Methods specific to helices
@@ -1842,8 +1844,10 @@ class helix(segment): # Methods specific to helices
       im=(start_res+end_res)//2 # middle residue
       cm1=self.get_centroid(start_res=im-2,end_res=im+1)
       cm2=self.get_centroid(start_res=im-1,end_res=im+2)
-      center_middle=0.5*(matrix.col(cm1)+matrix.col(cm2))
-
+      if (cm1 is not None) and (cm2 is not None):
+        center_middle=0.5*(matrix.col(cm1)+matrix.col(cm2))
+      else:
+        return None # cannot do it
     center_1=self.get_centroid(start_res=start_res,end_res=start_res+3)
     center_2=self.get_centroid(start_res=end_res-3,end_res=end_res)
     ca_1=self.get_site(resno=start_res)
@@ -1917,7 +1921,9 @@ class strand(segment):
     else:  # odd number of residues average just before and after
       im=(start_res+end_res)//2 # middle residue
       cm1=self.get_centroid(start_res=im-1,end_res=im)
+      if cm1 is None: return None
       cm2=self.get_centroid(start_res=im,end_res=im+1)
+      if cm2 is None: return None
       center_middle=0.5*(matrix.col(cm1)+matrix.col(cm2))
 
     center_1=self.get_centroid(start_res=start_res,end_res=start_res+1)
@@ -2082,7 +2088,7 @@ class find_segment: # class to look for a type of segment
       overall_start_res=i
       overall_end_res=segment_dict[i]+self.last_residue_offset
       overall_length=overall_end_res-overall_start_res+1
-      optimal_delta_length=optimal_delta_length_dict[overall_start_res]
+      optimal_delta_length=optimal_delta_length_dict.get(overall_start_res, 0)
       if (optimal_delta_length > 0 and not self.allow_insertions) or \
          (optimal_delta_length < 0 and not self.allow_deletions):
         optimal_delta_length=0
@@ -2144,7 +2150,8 @@ class find_segment: # class to look for a type of segment
       else:
         is_c_terminus=False
 
-      assert len(sites)>=end_res  # make sure we are in bounds
+      if len(sites) < end_res: # make sure we are in bounds
+        return False
 
       # get the hierarchy if necessary
       if self.extract_segments_from_pdb or self.model_as_segment:

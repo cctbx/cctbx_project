@@ -1,8 +1,11 @@
 from __future__ import absolute_import, division, print_function
-from mmtbx.validation import undowser
+from mmtbx.validation import undowser2
 from libtbx.easy_pickle import loads
 from iotbx.data_manager import DataManager
 import libtbx.load_env
+from libtbx.utils import null_out
+import iotbx
+from mmtbx.programs import probe2
 import time
 import json
 import difflib
@@ -195,7 +198,7 @@ These categories are general suggestions. Check your electron density; trust you
 <br>
 <hr>
 <br>
-SUMMARY: 6 waters out of 7 have clashes (85.71%)
+SUMMARY: 7 waters out of 7 have clashes (100.00%)
 <br><br>
 <hr>
 <br>
@@ -225,17 +228,19 @@ SUMMARY: 6 waters out of 7 have clashes (85.71%)
 <tr bgcolor=#ffffff><td><pre><code> CG1 of A: 216 :VAL: </code></pre></td><td>71.06</td><td>23.77</td><td bgcolor='#ffb3cc'>0.446</td><td></td><td align='center' bgcolor='#ffb3cc'>&times;</td><td></td><td></td></tr>
 <tr bgcolor=#eaeaea><td rowspan='1' ><pre><code>A: 530 :HOH: </code></pre></td>
 <td><pre><code> O   of A: 577 :HOH: </code></pre></td><td>24.67</td><td>31.45</td><td bgcolor='#ff76a9'>0.579</td><td></td><td></td><td align='center' bgcolor='#ff76a9'>&times;</td><td></td></tr>
-<tr bgcolor=#ffffff><td rowspan='1' ><pre><code>A: 537 :HOH: </code></pre></td>
+<tr bgcolor=#ffffff><td rowspan='1' ><pre><code>A: 577 :HOH: </code></pre></td>
+<td><pre><code> O   of A: 530 :HOH: </code></pre></td><td>31.45</td><td>24.67</td><td bgcolor='#ff76a9'>0.579</td><td></td><td></td><td align='center' bgcolor='#ff76a9'>&times;</td><td></td></tr>
+<tr bgcolor=#eaeaea><td rowspan='1' ><pre><code>A: 537 :HOH: </code></pre></td>
 <td><pre><code> OE2 of A: 153 :GLU: </code></pre></td><td>27.98</td><td>36.90</td><td bgcolor='#ff76a9'>0.548</td><td align='center' bgcolor='#ff76a9'>&plus; ion</td><td></td><td></td><td></td></tr>
 </table>
 """
 
-def exercise_undowser():
+def exercise_undowser(probe_params):
   dm = DataManager()
   #print(help(dm))
   dm.process_model_str("1",pdb_1lpl_str)
   m = dm.get_model("1")
-  uz = undowser.undowserlyze(pdb_hierarchy=m.get_hierarchy())
+  uz = undowser2.undowserlyze(probe_params, dm)
   undowser_html = uz.as_HTML()
   diff = difflib.unified_diff(undowser_html.splitlines(), expected_undowser_html.splitlines(), fromfile="testvalue", tofile="expectedvalue")
   changed_lines = ""
@@ -244,30 +249,34 @@ def exercise_undowser():
       changed_lines = changed_lines+"\n"+line
   assert changed_lines == "", "undowser html output changed, at the following lines: "+changed_lines
 
-def exercise_undowser_json():
+def exercise_undowser_json(probe_params):
   dm = DataManager()
   #print(help(dm))
   dm.process_model_str("1",pdb_1lpl_str)
   m = dm.get_model("1")
-  uz = undowser.undowserlyze(pdb_hierarchy=m.get_hierarchy())
+  uz = undowser2.undowserlyze(probe_params, dm)
   uz_dict = json.loads(uz.as_JSON())
   #import pprint
   #pprint.pprint(csjson_dict)
-  assert len(uz_dict['flat_results']) == 11, "tst_undowser json output not returning correct number of water clashes, now: "+str(len(uz_dict['flat_results']))
-  assert uz_dict['flat_results'][0]["src_atom_id"] == " A 503 HOH  O   ", "tst_undowser json output first src_atom_id value changed, now: "+uz_dict['flat_results'][0]["src_atom_id"]
+  assert len(uz_dict['flat_results']) == 13, "tst_undowser2 json output not returning correct number of water clashes, now: "+str(len(uz_dict['flat_results']))
+  assert uz_dict['flat_results'][0]["src_atom_id"] == " A 503 HOH  O   ", "tst_undowser2 json output first src_atom_id value changed, now: "+uz_dict['flat_results'][0]["src_atom_id"]
   from mmtbx.validation import test_utils
-  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "water clash")==10, "tst_undowser json hierarchical output total number of water clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "water clash"))
-  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "nonpolar clash")==8, "tst_undowser json hierarchical output total number of nonpolar clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "nonpolar clash"))
-  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "polar clash")==2, "tst_undowser json hierarchical output total number of polar clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "polar clash"))
-  assert uz_dict['summary_results']["   1"]["num_outliers"] == 6, "tst_undowser json summary output total number of water clashes changed"
-  assert uz_dict['summary_results']["   1"]["num_waters"] == 7, "tst_undowser json summary output total number of waters changed"
+  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "water clash")==12, "tst_undowser2 json hierarchical output total number of water clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "water clash"))
+  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "nonpolar clash")==8, "tst_undowser2 json hierarchical output total number of nonpolar clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "nonpolar clash"))
+  assert test_utils.count_dict_values(uz_dict['hierarchical_results'], "polar clash")==2, "tst_undowser2 json hierarchical output total number of polar clashes changed, now: "+str(test_utils.count_dict_values(uz_dict['hierarchical_results'], "polar clash"))
+  assert uz_dict['summary_results']["   1"]["num_outliers"] == 7, "tst_undowser2 json summary output total number of water clashes changed, now: "+str(uz_dict['summary_results']["   1"]["num_outliers"])
+  assert uz_dict['summary_results']["   1"]["num_waters"] == 7, "tst_undowser2 json summary output total number of waters changed"
 
 if (__name__ == "__main__"):
   if (not libtbx.env.has_module(name="probe")):
     print("Skipping exercise_undowser(): probe not configured")
     print("OK")
   else:
+    parser = iotbx.cli_parser.CCTBXParser(program_class=probe2.Program, logger=null_out())
+    args = [ 'approach=once' ]
+    parser.parse_args(args)
+    probe_params = parser.working_phil.extract()
     t0 = time.time()
-    exercise_undowser()
-    exercise_undowser_json()
+    exercise_undowser(probe_params)
+    exercise_undowser_json(probe_params)
     print("OK. Time: %8.3f"%(time.time()-t0))

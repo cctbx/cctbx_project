@@ -6,9 +6,9 @@ to_kcal_mol = {'ev':23.0609,
 
 def _print_energy_in_kcal(e, units):
   if units.lower() in to_kcal_mol:
-    return '%15.3f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
+    return '%15.1f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
   else:
-    return '%15.3f %s' % (e, units)
+    return '%15.1f %s' % (e, units)
 
 def print_energy_in_kcal(ga):
   s=[]
@@ -75,7 +75,7 @@ class energies(list):
                 b1=e1[2]==e2[2]
               if b1:
                 de = e2[1]-e1[1]
-                s+='%s%-12s %s\n' % (' '*6,
+                s+='%s%-22s %s\n' % (' '*6,
                                      '%s dE' % e2[0],
                                      _print_energy_in_kcal(e2[1]-e1[1],units))
           return s

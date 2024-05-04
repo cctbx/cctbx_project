@@ -5,8 +5,11 @@ from cctbx.geometry_restraints.linking_class import linking_class
 from libtbx import adopt_init_args
 from scitbx.array_family import flex
 from scipy.special import erf, erfinv, gammainc
+from scipy.stats import poisson
 import math
+import random
 import os, sys
+from copy import deepcopy
 
 ''' Port of James Holton's untangle_score.py in Python. Header from original
 file follows.
@@ -70,18 +73,20 @@ def holton_geometry_validation(dm = None,
      clash_energy_add_n = True,
      minimum_nonbond_score_to_be_worst = -0.1,
      minimum_nonbond_score_to_be_included_in_average = 0,
-     keep_hydrogens = False,  # redo the hydrogens
-     ignore_cis_peptides = True,
+     include_full_nonbond_score = True,
+     keep_hydrogens = True, # keep the hydrogens (but add any nec riding H)
+     ignore_cis_peptides = False,
      ignore_h_except_in_nonbond = True,
      ignore_arg_h_nonbond = True,
      ignore_bond_lengths_with_h = False,
      ignore_water_h_bonds = False,
-     rotalyze_max_energy = 99,
-     overall_max_energy = 400,
+     rotalyze_ramalyze_max_energy = 99,
+     overall_max_energy = None,
      omega_angle_sigma = 4,  # Sigma for omega angle
      cbetadev_sigma = 0.05,  # Sigma for CB position
      clashscore_ideal_dist = 3,  # Ideal distance in LJ for clashscore result
      lj_dist_that_yields_zero = 6, # Distance for modified LJ to cross zero
+     n_random = 20,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
        y0= 1,
        a2= -0.0192266,
@@ -123,10 +128,14 @@ def holton_geometry_validation(dm = None,
   # Sort them all
   sort_geometry_results(info)
 
+  # Get expected values for a structure that has a normal distribution of
+  #   everything
+  analyze_geometry_values_random(info)
+
   # Get worst and average values for each and rescale if desired
   analyze_geometry_values(info)
 
-  # Get residue-based scores
+  # Get residue-based scores if desired
   get_residue_scores(info)
 
   print_results(info)
@@ -144,11 +153,11 @@ def add_clashscore_results(info):
   clashes = clashscore(
       info.model.get_hierarchy(),
       fast = False,
-      keep_hydrogens=True,
+      keep_hydrogens=False, # redo them here even if supplied
       time_limit=120,
       save_modified_hierarchy=False,
       verbose=False,
-      do_flips=True,
+      do_flips=False,
       out=null_out())
 
   for r in clashes.results:
@@ -194,12 +203,12 @@ def add_rotamer_results(info):
       prob = r.score/100
 
     prob = min(1.0, max(0.0, prob))
-    if prob == 1:
-      energy = info.rotalyze_max_energy
+    if prob == 0:
+      energy = info.rotalyze_ramalyze_max_energy
     else:
       prob = float("%.35g" %(prob)) -1.0e-16
       energy = energy_from_probability(prob)
-      energy = min(energy, info.rotalyze_max_energy)
+      energy = min(energy, info.rotalyze_ramalyze_max_energy)
     v = group_args(group_args_type = 'rotamer result as standard value ',
       rotamer_result = r, # contains resseq, resseq_as_int, resname, chain_id
       as_string = "ROTA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
@@ -227,7 +236,13 @@ def add_rama_results(info):
       prob = float("%.2f" %(r.score))/100
     else:
       prob = r.score/100
-    energy = energy_from_probability(prob)
+
+    if prob == 0:
+      energy = info.rotalyze_ramalyze_max_energy
+    else:
+      prob = float("%.35g" %(prob)) -1.0e-16
+      energy = energy_from_probability(prob)
+      energy = min(energy, info.rotalyze_ramalyze_max_energy)
     v = group_args(group_args_type = 'rama result as standard value ',
       rama_result = r, # contains resseq, resseq_as_int, resname, chain_id
       as_string = "RAMA: Energy = %.4f \n   Residue:  %s %s %s %s" %(
@@ -269,12 +284,13 @@ def add_cbetadev_results(info):
       )
     cbetadev_result.value_list.append(v)
 
-def select_geometry_result(info, name = None, skip_name = None):
+def select_geometry_result(info, name = None, skip_name_list = None):
   result_list = []
   for key in info.geometry_results.keys():
     if name and info.geometry_results[key].name == name:
       return info.geometry_results[key]
-    elif skip_name and info.geometry_results[key].name != skip_name:
+    elif skip_name_list and (
+         not info.geometry_results[key].name in skip_name_list):
       result_list.append(info.geometry_results[key])
   return result_list
 
@@ -314,7 +330,6 @@ def get_base_info(info):
   info.chain_dict = {}
   info.model = None
 
-  from copy import deepcopy
   base_info = deepcopy(info)
 
   info.log = log
@@ -343,13 +358,142 @@ def select_residue_info(info, base_info, chain_id, resseq):
 
 def labels_contain(labels, chain_id = None, resseq = None):
   for label in labels:
-    if ((chain_id is None) or (label.chain_id().strip() == chain_id.strip())) and \
+    if ((chain_id is None) or \
+       (label.chain_id().strip() == chain_id.strip())) and \
        ((resseq is None) or   (label.resseq().strip() == resseq.strip())):
       return True
 
   return False
 
-def analyze_geometry_values(info):
+def analyze_geometry_values_random(info):
+  keys = list(info.geometry_results.keys())
+  original_result_dict = {}
+  average_dict = {}
+  for key in keys:
+    average_dict[key] = {}
+    average_dict[key]['pnna'] = flex.double()
+    average_dict[key]['energy'] = flex.double()
+    average_dict[key]['chisq'] = flex.double()
+    average_dict[key]['energy_using_mean'] = flex.double()
+    average_dict[key]['worst_residual'] = flex.double()
+    average_dict[key]['mean_residual'] = flex.double()
+
+  for key in keys:
+    original_result_dict[key] = deepcopy(info.geometry_results[key])
+
+  for i in range(info.n_random):
+    analyze_geometry_values(info, randomize = True)
+    for key in keys:
+      if info.geometry_results[key].pnna is not None:
+        average_dict[key]['pnna'].append(info.geometry_results[key].pnna)
+      else:
+        average_dict[key]['pnna'].append(0)
+
+      if info.geometry_results[key].energy is not None:
+        average_dict[key]['energy'].append(info.geometry_results[key].energy)
+      else:
+        average_dict[key]['energy'].append(0)
+
+      if info.geometry_results[key].chisq is not None:
+        average_dict[key]['chisq'].append(info.geometry_results[key].chisq)
+      else:
+        average_dict[key]['chisq'].append(0)
+
+      if info.geometry_results[key].energy_using_mean is not None:
+        average_dict[key]['energy_using_mean'].append(
+           info.geometry_results[key].energy_using_mean)
+      else:
+        average_dict[key]['energy_using_mean'].append(0)
+
+      if info.geometry_results[key].worst_residual is not None:
+        average_dict[key]['worst_residual'].append(
+          info.geometry_results[key].worst_residual)
+      else:
+        average_dict[key]['worst_residual'].append(0)
+
+  # Print out results for randomized value
+  print( "\n"+79*"=",
+    "\n     VALUES EXPECTED FOR IDEAL STRUCTURE WITH NORMAL DIST OF ERRORS",
+     "\n"+79*"=",  file = info.log)
+
+  for key in keys:
+    info.geometry_results[key].pnna = average_dict[key]['pnna'
+       ].min_max_mean().mean
+
+    info.geometry_results[key].energy = average_dict[key]['energy'
+       ].min_max_mean().mean
+
+    info.geometry_results[key].chisq = average_dict[key]['chisq'
+       ].min_max_mean().mean
+
+    info.geometry_results[key].energy_using_mean = \
+         average_dict[key]['energy_using_mean'].min_max_mean().mean
+
+    info.geometry_results[key].worst_residual = \
+         average_dict[key]['worst_residual'].min_max_mean().mean
+
+  sum_random_energy = 0
+  for key in keys:
+    for x in (info.geometry_results[key].energy,
+              info.geometry_results[key].energy_using_mean):
+      if x is not None:
+        sum_random_energy += x
+
+  print_results(info, by_category_only = True )
+
+  print("\n      EXPECTED STANDARD DEVIATIONS OF VALUES ",
+      file = info.log)
+
+  # Copy over SD instead:
+  for key in keys:
+    info.geometry_results[key].pnna = average_dict[key]['pnna'
+       ].standard_deviation_of_the_sample()
+
+    info.geometry_results[key].energy = average_dict[key]['energy'
+       ].standard_deviation_of_the_sample()
+
+    info.geometry_results[key].chisq = average_dict[key]['chisq'
+       ].standard_deviation_of_the_sample()
+
+    info.geometry_results[key].energy_using_mean = \
+         average_dict[key]['energy_using_mean'
+            ].standard_deviation_of_the_sample()
+
+    info.geometry_results[key].worst_residual = \
+         average_dict[key]['worst_residual'
+            ].standard_deviation_of_the_sample()
+
+  print_results(info, by_category_only = True )
+
+  sum_random_energy_sd_list = flex.double()
+  for key in keys:
+    for x in (info.geometry_results[key].energy,
+              info.geometry_results[key].energy_using_mean):
+      if x is not None:
+        sum_random_energy_sd_list.append(x**2)
+  n = sum_random_energy_sd_list.size()
+  if n > 0:  # sum of squares ** 0.5
+    random_energy_sd = (sum_random_energy_sd_list.min_max_mean().mean * n)**0.5
+  else:
+    random_energy_sd = None
+
+  if sum_random_energy and random_energy_sd:
+    print("\nExpected total energy for ideal structure: %.2f +/- %.2f" %(
+      sum_random_energy, random_energy_sd), file = info.log)
+  else:
+    print("Expected total energy for ideal structure: None +/- None",
+      file = info.log)
+  print( "\n"+79*"=",
+    "\n     END OF EXPECTATIONS FOR IDEAL STRUCTURE WITH NORMAL DIST OF ERRORS",
+     "\n"+79*"=",  file = info.log)
+  info.sum_random_energy = sum_random_energy
+  info.random_energy_sd = random_energy_sd
+
+  # Restore original
+  for key in keys:
+    info.geometry_results[key] = deepcopy(original_result_dict[key])
+
+def analyze_geometry_values(info, randomize = False):
   keys = list(info.geometry_results.keys())
   keys.sort()
   sum_energy = 0.0
@@ -362,6 +506,10 @@ def analyze_geometry_values(info):
     result.worst_residual = None
     result.mean_residual = None
 
+
+    if randomize:
+      randomize_result(info, result)
+
     if not result.value_list:
       continue
 
@@ -373,13 +521,15 @@ def analyze_geometry_values(info):
 
     if info.worst_clash_is_one_plus_n_times_worst_clash and \
         result.name == 'CLASH': # Special case
-      result.worst_residual = abs(
-         1 + len(result.value_list) * worst_value.residual)
+      result.worst_residual = \
+          1 + (len(result.value_list) * worst_value.residual)
 
     elif info.minimum_nonbond_score_to_be_worst is not None and \
         result.name == 'NONBOND' and (
           worst_value.residual < info.minimum_nonbond_score_to_be_worst):
       result.worst_residual = None
+    elif result.name == 'FULL_NONBOND':
+      result.worst_residual = None # do not include worst for FULL_NONBOND
     else: # usual
       result.worst_residual = worst_value.residual
 
@@ -387,6 +537,7 @@ def analyze_geometry_values(info):
     value_list = result.value_list
 
     # Special case: non bond scores with low values may be excluded
+    # Note: FULL_NONBOND does include these
     if info.minimum_nonbond_score_to_be_included_in_average is not None and \
        result.name == 'NONBOND':
       value_list = []
@@ -403,14 +554,19 @@ def analyze_geometry_values(info):
 
       continue # nothing to do
 
-    energy = max(0, min(info.overall_max_energy, result.worst_residual))
+    if info.overall_max_energy is not None:
+      energy = max(0, min(info.overall_max_energy, result.worst_residual))
+    elif result.worst_residual is not None:
+      energy = max(0, result.worst_residual)
+    else:
+      energy = 0
     delta = energy**0.5
     result.pnna = softPnna(delta, result.n, info.softPnna_params)
 
     energy = filtered_energy(energy)
 
     # Special case for CLASH
-    if result.name == "CLASH" and info.clash_energy_add_n:
+    if result.name == 'CLASH' and info.clash_energy_add_n:
       energy += result.n
 
     result.energy = result.pnna * energy
@@ -418,14 +574,19 @@ def analyze_geometry_values(info):
     sum_energy += result.energy
 
     # Repeat using mean instead of worst, multiplying mean energy * Chisq
-    energy_mean = max(0, min(info.overall_max_energy, result.mean_residual))
-    ssd = result.mean_residual * result.n
+    if info.overall_max_energy is not None:
+      energy_mean = max(0, min(info.overall_max_energy, result.mean_residual))
+    elif result.mean_residual is not None:
+      energy_mean = max(0, result.mean_residual)
+    else:
+      energy_mean = 0
+    ssd = energy_mean * result.n
     result.chisq = chisq(ssd, result.n)
 
     energy_mean = filtered_energy(energy_mean)
 
     # Special case for CLASH
-    if result.name == "CLASH" and info.clash_energy_add_n:
+    if result.name == 'CLASH' and info.clash_energy_add_n:
       energy_mean += result.n
 
     result.energy_using_mean = result.chisq * energy_mean
@@ -433,6 +594,37 @@ def analyze_geometry_values(info):
     sum_energy += result.energy_using_mean
 
   info.sum_energy = sum_energy
+
+def randomize_result(info, result):
+  if result.name == 'CLASH':
+    randomize_clash(info, result)
+  else: # usual
+    for v in result.value_list:
+       x = random.gauss(0,1)
+       r = x**2
+       v.residual = r
+
+  result.value_list = sorted(result.value_list, key = lambda v: v.residual,
+    reverse = True)
+  result.worst_residual = result.value_list[0].residual \
+     if result.value_list else None
+
+def randomize_clash(info, result):
+  r = flex.double(
+  poisson.rvs(0.001, size=info.model.get_sites_cart().size()))
+  sel =  (r > 0)
+  nn = sel.count(True)
+  result.value_list = []
+  for i in range(nn):
+    clash_overlap = -0.4
+    delta = clash_overlap
+    dist = info.clashscore_ideal_dist + delta
+    energy = lj(dist, info.clashscore_ideal_dist,
+       dist_that_yields_zero = info.lj_dist_that_yields_zero,
+       round_numbers = info.round_numbers)
+    value = group_args(group_args_type = 'dummy value',
+      residual=energy, as_string="None")
+    result.value_list.append(value)
 
 def sort_geometry_results(info):
   keys = list(info.geometry_results.keys())
@@ -444,16 +636,17 @@ def sort_geometry_results(info):
        v.residual, reverse = True)
 
 
-def print_results(info):
+def print_results(info, by_category_only = False):
 
-  print("\nSUMMARY of Holton geometry validation scoring for %s" %(
-    info.filename), file = info.log)
-  print(file = info.log)
+  if (not by_category_only):
+    print("\nSUMMARY of Holton geometry validation scoring for %s" %(
+      info.filename), file = info.log)
+    print(file = info.log)
 
   info.result_table = {}
   info.result_header_row = [
        'Category','N','Mean','Worst','Chisq','Pnna','Energy','Using mean']
-  fmt = len(info.result_header_row) * "%8s "
+  fmt = "%12s " + (len(info.result_header_row)-1) * "%8s "
   print(file = info.log)
   print(fmt  %(tuple(info.result_header_row)), file = info.log)
   print(file = info.log)
@@ -481,6 +674,9 @@ def print_results(info):
     print(fmt  %(tuple(info.result_table[result.name])),
          file = info.log)
 
+  if (by_category_only):
+    return # done
+
   info.worst_table = {}
   info.worst_header_row = ['   -----  Worst deviation in each category -----']
   fmt = "%s"
@@ -488,6 +684,7 @@ def print_results(info):
   print(fmt %(tuple(info.worst_header_row)), file = info.log)
   print(file = info.log)
   for key in keys:
+    if key == 'full_nonbonded': continue # duplicate of nonbonded
     result = info.geometry_results[key]
     value_list = result.value_list
     info.worst_table[result.name] = [
@@ -496,7 +693,7 @@ def print_results(info):
          file = info.log)
 
   if info.ignore_h_except_in_nonbond:
-    print("\nTotal H interactions (not in non-bonded) removed: %s" %(
+    print("\nTotal H interactions removed: %s (not removed from nonbonded)" %(
        info.ignore_h_except_in_nonbond_removed), file = info.log)
   if info.ignore_arg_h_nonbond:
     print("Total ARG H-nonbond removed: %s" %(
@@ -507,7 +704,14 @@ def print_results(info):
   if info.ignore_bond_lengths_with_h:
     print("Total bonds with H removed: %s" %(
        info.ignore_bond_lengths_with_h_removed), file = info.log)
-  print("\nOverall geometry energy for %s: %.4f\n" %(info.filename,
+
+  print(file = info.log)
+  if hasattr(info,'sum_random_energy'):
+    print("Expected energy for ideal structure with normal dist "+
+     "of errors: %.1f +/- %.1f" %(
+      info.sum_random_energy, info.random_energy_sd), file = info.log)
+
+  print("Overall geometry energy for %s: %.4f\n" %(info.filename,
      info.sum_energy), file = info.log)
 
 def filter_geometry_results(info):
@@ -522,36 +726,46 @@ def filter_geometry_results(info):
     return # nothing to do
 
   if info.ignore_h_except_in_nonbond:
-    # Remove anything with element H except in NONBOND
-    for result in select_geometry_result(info,skip_name = 'NONBOND'):
+    # Remove anything with element H except in NONBOND and FULL_NONBOND
+    max_removed = 0
+    for result in select_geometry_result(info,skip_name_list = [
+       'NONBOND', 'FULL_NONBOND']):
+      remove_list = []
       for v in result.value_list:
         elements = [l.atom.element for l in v.labels]
-        if 'H' in elements:
-          result.value_list.remove(v)
-          info.ignore_h_except_in_nonbond_removed += 1
+        if 'H' in elements and (not v in remove_list):
+          remove_list.append(v)
           continue
+      n = 0
+      for v in remove_list:
+        if v in result.value_list:
+          result.value_list.remove(v)
+          n += 1
+      max_removed = max(max_removed, n)
+    info.ignore_h_except_in_nonbond_removed += max_removed
 
   if info.ignore_arg_h_nonbond or info.ignore_water_h_bonds:
-    nonbond_result = select_geometry_result(info,'NONBOND')
-    for v in nonbond_result.value_list:
-      elements = [l.atom.element for l in v.labels]
-      residues = [l.atom.resname for l in v.labels]
+    for category in ['NONBOND','FULL_NONBOND']:
+      nonbond_result = select_geometry_result(info,category)
+      for v in nonbond_result.value_list:
+        elements = [l.atom.element for l in v.labels]
+        residues = [l.atom.resname for l in v.labels]
 
-      if info.ignore_arg_h_nonbond:
-        if elements == ['H','H'] and residues == ['ARG','ARG']:
-          nonbond_result.value_list.remove(v)
-          info.ignore_arg_h_nonbond_removed += 1
-          continue
-
-      if info.ignore_water_h_bonds:
-        found = False
-        for element, res in zip(elements, residues):
-          if element == 'H' and res in ['WAT','HOH']:
+        if info.ignore_arg_h_nonbond:
+          if elements == ['H','H'] and residues == ['ARG','ARG']:
             nonbond_result.value_list.remove(v)
-            found = True
-        if found:
-          info.ignore_water_h_bonds_removed += 1
-          continue
+            info.ignore_arg_h_nonbond_removed += 1
+            continue
+
+        if info.ignore_water_h_bonds:
+          found = False
+          for element, res in zip(elements, residues):
+            if element == 'H' and res in ['WAT','HOH']:
+              nonbond_result.value_list.remove(v)
+              found = True
+          if found:
+            info.ignore_water_h_bonds_removed += 1
+            continue
 
   if info.ignore_bond_lengths_with_h:
     bond_result = select_geometry_result(info,'BOND')
@@ -589,7 +803,7 @@ def add_omega_results(info):
     if info.round_numbers:
       sigma = float("%.3f" %(sigma))
     new_v.residual=((math.sin(omega)/sigma)**2+
-         (1+math.cos(omega))**10)/(n_pro+1)
+         (1+math.cos(omega))**10)/(n_pro*2+1)
     at = new_v.labels[0].atom
     new_v.as_string = "OMEGA: Energy = "+\
      "%.6f (%s Proline) Angle: %.2f deg\n   Residue:  %s %s %s %s" %(
@@ -615,7 +829,9 @@ def get_geometry_results(info):
   origin_ids = linking_class()
   pair_proxies = geometry.pair_proxies(sites_cart=sites_cart)
 
-  name_dict = {'nonbonded': 'NONBOND',
+  name_dict = {
+        'nonbonded': 'NONBOND',
+        'full_nonbonded': 'FULL_NONBOND',
         'angle_proxies': 'ANGLE',
         'bond_proxies': 'BOND',
         'chirality_proxies': 'CHIR',
@@ -630,7 +846,10 @@ def get_geometry_results(info):
 
   # Non-bonded
   if pair_proxies.nonbonded_proxies is not None:
-    proxy_name = 'nonbonded'
+    # Note: make two copies if full_nonbonded is going to be used
+    proxy_name_list = ['nonbonded']
+    if info.include_full_nonbond_score:
+      proxy_name_list.append('full_nonbonded')
     result = pair_proxies.nonbonded_proxies.show_sorted(
           by_value="delta",
           sites_cart=sites_cart,
@@ -641,27 +860,32 @@ def get_geometry_results(info):
           max_items=None,
           return_result = True)
     # Calculate residual from Lennard-Jones potential
-    for v in result.value_list:
-      v.residual = lj(v.model,v.ideal,
-           dist_that_yields_zero = info.lj_dist_that_yields_zero,
-            round_numbers = info.round_numbers)
-      v.delta = v.ideal - v.model
-      v.group_args_type += " residual is LJ(model, ideal)"
-      v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
-        v.residual, v.delta, v.model, v.ideal,
-         v.labels[0].as_string(), v.labels[1].as_string())
-    geometry_results[proxy_name] = result
+    if result:
+      for v in result.value_list:
+        v.residual = lj(v.model,v.ideal,
+             dist_that_yields_zero = info.lj_dist_that_yields_zero,
+              round_numbers = info.round_numbers)
+        v.delta = v.ideal - v.model
+        v.group_args_type += " residual is LJ(model, ideal)"
+        v.as_string = "NONBOND: Energy = %.6f dev = %.3f A  obs = %.3f target = %.3f\n   Atom 1:  %s\n   Atom 2:  %s" %(
+          v.residual, v.delta, v.model, v.ideal,
+           v.labels[0].as_string(), v.labels[1].as_string())
+      for proxy_name in proxy_name_list:
+        geometry_results[proxy_name].value_list += result.value_list
 
   for proxy_name in ['bond_proxies', 'angle_proxies', 'dihedral_proxies',
        'chirality_proxies', 'planarity_proxies']:
     proxies = getattr(pair_proxies, proxy_name,
                 getattr(geometry, proxy_name,
                   getattr(geometry, proxy_name, None)))
+
+    origin_id_list = []
     if proxy_name in ['bond_proxies', 'angle_proxies']:
-      origin_id=origin_ids.get_origin_id('covalent geometry')
+       for key in origin_ids.get_bond_origin_id_labels():
+         origin_id_list.append(origin_ids.get_origin_id(key))
     else:
-      origin_id=None
-    if proxies:
+      origin_id_list.append(None)
+    for origin_id in origin_id_list:
       result = proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
@@ -669,7 +893,7 @@ def get_geometry_results(info):
           f=null_out(),
           origin_id=origin_id,
           return_result = True)
-      geometry_results[proxy_name] = result
+      if not result: continue
       if result.group_args_type == 'Bond restraints':
         for v in result.value_list:
           v.as_string = "BOND: Energy = %.2f dev = %.3f A  obs = %.3f target = %.3f sigma = %.2f\n   Atom 1:  %s\n   Atom 2:  %s " %(
@@ -707,6 +931,10 @@ def get_geometry_results(info):
           for x in v.labels:
             i_at += 1
             v.as_string += "\n   Atom %s:  %s" %(i_at, x.as_string())
+      else:
+        print("Unknown result type:",result.group_args_type)
+        raise Sorry("Unknown result type: %s" %result.group_args_type)
+      geometry_results[proxy_name].value_list += result.value_list
   for key in name_dict.keys():
     geometry_results[key].name = name_dict[key]
 
@@ -721,14 +949,18 @@ def get_model(info):
     info.dm = DataManager()
   if not info.model:
     info.model = info.dm.get_model(info.filename)
-  if not os.path.isfile(info.filename):  # write to it
-    info.dm.write_model_file(info.model, info.filename)
   info.model.set_log(null_out())
+  for m in list(info.model.get_hierarchy().models())[1:]:
+     info.model.get_hierarchy().remove_model(m)
   if (not info.keep_hydrogens):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
+  if not os.path.isfile(info.filename):  # write to it
+    info.dm.write_model_file(info.model, info.filename)
+  info.model.set_stop_for_unknowns(False)
   info.model.process(make_restraints=True)
+  info.model.setup_riding_h_manager(idealize=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
     entry = group_args(group_args_type = 'chain entry', )
@@ -827,10 +1059,13 @@ def filtered_energy(energy):
     return 10 + math.log(energy/10)
 
 
-def softPnna(delta, n, params = None):
-  return  1 - 2.0**clip(
-     -abs(delta/asigma_Pnn50(safelog(n), params))**exponent(
-         delta,safelog(n), params) ,1000)
+def softPnna(delta, n, params = None, max_value = 1000):
+  try:
+    value = -abs(delta/asigma_Pnn50(safelog(n), params))**exponent(
+         delta,safelog(n), params)
+  except Exception as e:
+    value = -max_value
+  return  1 - 2.0**clip(value, max_value)
 
 def Pnn(delta,n):
   return erf(abs(delta)/math.sqrt(2))**n

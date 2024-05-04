@@ -10218,7 +10218,7 @@ def run_local_sharpening(si = None,
         return_bsi = True, # just return the bsi of sharpened data
         out = out)
 
-      if not bsi.map_data:
+      if not bsi or not bsi.map_data:
         print("\nNo result for local map %s ...skipping" %(i), file = out)
         continue
 
@@ -11385,7 +11385,8 @@ def run_auto_sharpen(
           print("This is the current best score\n", file = out)
 
   if (best_si.score is not None )  and (
-     not best_si.is_model_sharpening() )  and (not best_si.is_half_map_sharpening()):
+     not best_si.is_model_sharpening() )  and (
+     not best_si.is_half_map_sharpening()):
     print("\nOverall best sharpening method: %s Score: %7.3f\n" %(
        best_si.sharpening_method, best_si.score), file = out)
     best_si.show_summary(out = out)
@@ -11397,6 +11398,8 @@ def run_auto_sharpen(
       print("Did not improve score with sharpening...", file = out)
   if return_bsi:
     map_data = best_map_and_b.map_data
+    if not map_data: # no result
+       return None
     map_data = set_mean_sd_of_map(map_data = map_data,
       target_mean = starting_mean, target_sd = starting_sd)
     box_sharpening_info_obj.map_data = map_data

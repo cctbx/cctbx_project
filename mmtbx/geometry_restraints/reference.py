@@ -33,6 +33,7 @@ def generate_torsion_restraints(
   bool_pdbh_selection = flex.bool(pdb_hierarchy.atoms_size(), False)
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
+      assert len(selection) == pdb_hierarchy.atoms_size()
       bool_pdbh_selection = selection
     elif (isinstance(selection, flex.size_t)):
       bool_pdbh_selection.set_selected(selection, True)

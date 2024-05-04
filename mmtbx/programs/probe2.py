@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.1.0"
+version = "4.2.0"
 
 master_phil_str = '''
 profile = False
@@ -144,11 +144,6 @@ output
     .type = bool
     .short_caption = Count dots, don't list
     .help = Count dots rather than listing all contacts (-countdots in probe)
-
-  hydrogen_bond_output = True
-    .type = bool
-    .short_caption = Output hydrogen-bond contacts
-    .help = Output hydrogen-bond contacts (-nohbout in probe)
 
   record_added_hydrogens = False
     .type = bool
@@ -700,6 +695,15 @@ Note:
       raise Sorry("Invalid radius for atom look-up: "+myFullName+"; rad = "+str(rad))
     return self.params.atom_radius_offset + (rad * self.params.atom_radius_scale)
 
+
+  def _describe_atom_for_debug(self, a):
+      resName = a.parent().resname.strip().upper()
+      resID = str(a.parent().parent().resseq_as_int())
+      chainID = a.parent().parent().parent().id
+      iCode = a.parent().parent().icode
+      alt = a.parent().altloc
+      return "{:>2s}{:>4s}{}{} {}{:1s}".format(chainID, resID, iCode, resName, a.name, alt)
+
 # ------------------------------------------------------------------------------
 
   def _atom_class_for(self, a):
@@ -1242,13 +1246,13 @@ Note:
 
     # Report count legend if any counts are nonzero.
     if _totalInteractionCount(self._MCMCCount) > 0:
-      ret += "@pointmaster 'M' {{McMc contacts}}\n"
+      ret += "@pointmaster 'M' {McMc contacts}\n"
     if _totalInteractionCount(self._SCSCCount) > 0:
-      ret += "@pointmaster 'S' {{ScSc contacts}}\n"
+      ret += "@pointmaster 'S' {ScSc contacts}\n"
     if _totalInteractionCount(self._MCSCCount) > 0:
-      ret += "@pointmaster 'P' {{McSc contacts}}\n"
+      ret += "@pointmaster 'P' {McSc contacts}\n"
     if _totalInteractionCount(self._otherCount) > 0:
-      ret += "@pointmaster 'O' {{Hets contacts}}\n"
+      ret += "@pointmaster 'O' {Hets contacts}\n"
 
     # Report binned gap legend if we're binning gaps
     if self.params.output.bin_gaps:
@@ -1911,9 +1915,8 @@ Note:
         self._atomClasses[a] = self._atom_class_for(a)
       else:
         # For hydrogen, assign based on what it is bonded to.
-        if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of bonds other than 1: "+
-                      str(len(self._allBondedNeighborLists[a])))
+        if len(self._allBondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
         else:
           self._atomClasses[a] = self._atom_class_for(self._allBondedNeighborLists[a][0])
 
@@ -1934,9 +1937,8 @@ Note:
         self._inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        if len(self._allBondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                      str(len(self._allBondedNeighborLists[a])))
+        if len(self._allBondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
         else:
           self._inMainChain[a] = mainchain_sel[self._allBondedNeighborLists[a][0].i_seq]
       self._inSideChain[a] = sidechain_sel[a.i_seq]
@@ -1951,9 +1953,8 @@ Note:
         if Helpers.isPolarHydrogen(a, self._allBondedNeighborLists):
           foundPolar = True
         elif a.element_is_hydrogen():
-          if len(self._allBondedNeighborLists[a]) != 1:
-            raise Sorry("Found Hydrogen with number of neighbors other than 1: "+
-                        str(len(self._allBondedNeighborLists[a])))
+          if len(self._allBondedNeighborLists[a]) < 1:
+            raise Sorry("Found Hydrogen with no neigbors: " + self._describe_atom_for_debug(a))
           else:
             neighbor = self._allBondedNeighborLists[a][0]
             if neighbor.element == 'C':

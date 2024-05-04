@@ -132,7 +132,6 @@ class clashscore2(validation):
       r.append_model(mdc)
 
       occ_max = flex.max(r.atoms().extract_occ())
-      input_str = r.as_pdb_string()
 
       # Make yet another model for the new hierarchy
       subset_model_manager = mmtbx.model.manager(
@@ -619,7 +618,7 @@ def check_and_add_hydrogen(
   assert probe_parameters
   assert data_manager_model
   if keep_hydrogens:
-    elements = data_manager_model.get_hierarchy.root().atoms().extract_element()
+    elements = data_manager_model.get_hierarchy().atoms().extract_element()
     # strangely the elements can have a space when coming from phenix.clashscore
     # but no space when coming from phenix.molprobity
     h_count = elements.count('H')
@@ -649,7 +648,7 @@ def check_and_add_hydrogen(
       keep_existing_H=False
     )
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(None)
+    reduce_add_h_obj.show(log)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if len(missed_residues) > 0:
       bad = ""

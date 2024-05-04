@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
+import libtbx.load_env
 import iotbx.mtz
 from libtbx.test_utils import approx_equal
-import time
+import os, time
 
 pdb_str = """
 CRYST1   50.840   42.770   28.950  90.00  90.00  90.00 P 21 21 21
@@ -100,17 +101,27 @@ TER
 ENDMDL
 END
 """
-#cctbx.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
+#phenix.diffuse pdb=m.pdb probabilities=0.5,0.5 resolution=4.0 prefix=tst
 def exercise():
   fo = open("tst_diffuse.pdb","w")
   print(pdb_str, file=fo)
   fo.close()
-  cmd = " ".join([
-    "cctbx.diffuse",
+  cmd_list = [
     "pdb=tst_diffuse.pdb",
     "probabilities=0.5,0.5",
     "resolution=4.0",
-    "prefix=tst_diffuse"])
+    "prefix=tst_diffuse"]
+  file_location = os.path.join(abs(libtbx.env.bin_path), 'phenix.diffuse')
+  if os.path.isfile(file_location):
+    cmd_list.insert(0, 'phenix.diffuse')
+  else:
+    import cctbx
+    file_location = os.path.join(
+      os.path.dirname(cctbx.__file__),
+      'command_line',
+      'diffuse.py')
+    cmd_list.insert(0, 'python %s ' % file_location)
+  cmd = " ".join(cmd_list)
   if 0: print(cmd)
   easy_run.call(cmd)
   mas = iotbx.mtz.object(file_name="tst_diffuse.mtz").as_miller_arrays()

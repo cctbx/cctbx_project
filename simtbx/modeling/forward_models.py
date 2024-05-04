@@ -199,7 +199,7 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
         if mosaic_samples_override is not None:
             mos_dom = mosaic_samples_override
         eta_abc = df.eta_abc.values[0]
-        LOGGER.debug("Num mos samples=%d, eta_abc=" % mos_dom, eta_abc)
+        LOGGER.debug("Num mos samples=%d, eta_abc=%f %f %f" % ((mos_dom,)+ eta_abc )  )
         LOGGER.debug("Num energy channels=%d" % len(energies))
         results = diffBragg_forward(CRYSTAL=expt.crystal, DETECTOR=expt.detector, BEAM=expt.beam, Famp=Famp,
                                     fluxes=fluxes, energies=energies, beamsize_mm=beamsize_mm,

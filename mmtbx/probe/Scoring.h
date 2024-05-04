@@ -88,13 +88,15 @@ namespace molprobity {
     public:
       /// @brief Constructor with default parameters
       ExtraAtomInfo(double vdwRadius = 0, bool isAcceptor = false, bool isDonor = false,
-        bool isDummyHydrogen = false, bool isIon = false, int charge = 0)
+        bool isDummyHydrogen = false, bool isIon = false, int charge = 0, std::string altLoc = " ")
         : m_vdwRadius(vdwRadius), m_isAcceptor(isAcceptor), m_isDonor(isDonor)
-        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon), m_charge(charge) {}
+        , m_isDummyHydrogen(isDummyHydrogen), m_isIon(isIon), m_charge(charge)
+        , m_altLoc(altLoc) {}
       /// @brief Constructor from another ExtraAtomInfo
       ExtraAtomInfo(const ExtraAtomInfo &e)
         : m_vdwRadius(e.m_vdwRadius), m_isAcceptor(e.m_isAcceptor), m_isDonor(e.m_isDonor)
-        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon), m_charge(e.m_charge) {}
+        , m_isDummyHydrogen(e.m_isDummyHydrogen), m_isIon(e.m_isIon), m_charge(e.m_charge)
+        , m_altLoc(e.m_altLoc) {}
 
       /// @brief Get and set methods
       double getVdwRadius() const { return m_vdwRadius; }
@@ -102,14 +104,21 @@ namespace molprobity {
 
       bool getIsAcceptor() const { return m_isAcceptor; }
       void setIsAcceptor(bool val) { m_isAcceptor = val; }
+
       bool getIsDonor() const { return m_isDonor; }
       void setIsDonor(bool val) { m_isDonor = val; }
+
       bool getIsDummyHydrogen() const { return m_isDummyHydrogen; }
       void setIsDummyHydrogen(bool val) { m_isDummyHydrogen = val; }
+
       bool getIsIon() const { return m_isIon; }
       void setIsIon(bool val) { m_isIon = val; }
+
       int getCharge() const { return m_charge; }
       void setCharge(int val) { m_charge = val; }
+
+      std::string getAltLoc() const { return m_altLoc; }
+      void setAltLoc(std::string val) { m_altLoc = val; }
 
       /// @brief == operator is required so that we can wrap the standard vector operators in Boost::Python
       bool operator ==(ExtraAtomInfo const& o) {
@@ -119,6 +128,7 @@ namespace molprobity {
           && (getIsDummyHydrogen() == o.getIsDummyHydrogen())
           && (getIsIon() == o.getIsIon())
           && (getCharge() == o.getCharge())
+          && (getAltLoc() == o.getAltLoc())
           );
       }
       bool operator !=(ExtraAtomInfo const& o) { return !(*this == o); }
@@ -131,6 +141,7 @@ namespace molprobity {
                                ///  hydrogen bonds to nearby acceptors.
       bool m_isIon;            ///< Is this an ion?
       int m_charge;            ///< The integer charge of the atom: -2, -1, 0, 1, 2
+      std::string m_altLoc;    ///< The alternate location indicator for the atom
     };
 
     //=====================================================================================================
@@ -386,6 +397,12 @@ namespace molprobity {
 
       //===========================================================================
       // Seldom-used methods below here.
+
+      /// @brief See if the two atoms are in compatible conformations.
+      /// @param [in] a1 First atom altloc to compare
+      /// @param [in] a2 Second atom altloc to compare
+      /// @return True if the atoms are in compatible conformations, false otherwise.
+      static bool compatible_conformations(std::string const& a1, std::string const& a2);
 
       /// @brief Test method to verify that the class is behaving as intended.
       /// @return Empty string on success, string telling what went wrong on failure.

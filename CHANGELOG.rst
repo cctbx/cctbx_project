@@ -1,3 +1,11 @@
+2024.4
+======
+
+* Added mmtbx.holton_geometry_validation tool
+* Removed unused or not maintained tools in mmtbx
+* Fixed bug in PDB remediator for RNA
+* Added ability to add water with alternative conformations
+
 2024.3
 ======
 

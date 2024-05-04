@@ -204,8 +204,8 @@ class Remediator():
           atom_exch[old_atom+" "+residue_name] = new_atom+" "+residue_name
         else:
           atom_exch[new_atom+" "+residue_name] = old_atom+" "+residue_name
-    na_old_atom_name_exceptions = ["H5T ","5HO*", "H3T "] # it's difficult in 2020 to figure out the proper spacing for this old style atom name
-    na_new_atom_name_exceptions = ["HO5'","HO5'", "HO3'"] # old remediator uses 5HO* but other examples on the web use H5T for HO5'
+    na_old_atom_name_exceptions = ["H5T ","5HO*", "H3T ", "3HO*"] # it's difficult in 2020 to figure out the proper spacing for this old style atom name
+    na_new_atom_name_exceptions = ["HO5'","HO5'", "HO3'", "HO3'"] # old remediator uses 5HO* but other examples on the web use H5T for HO5'
     residues_to_test = [ residue_name ]
     if (residue_name in self.na_bases) or (residue_name in self.dna_bases):
       if (residue_name in self.na_bases):
@@ -386,7 +386,7 @@ def remediate(filename, remediated_out, f=None):
       print_line += line + "\n"
     elif previous != current: # appears to check an entire residue for dna residue/atom names
       if re.search(r'^.{12}.\S..  .[ACTGIU]',print_line):
-        if re.search(r'O2[\'|\*]   .',print_line) == None:
+        if re.search(r'O2[\'|\*]   .',print_line) == None and previous != None:
           DNA_base = previous[1]
           if remediated_out == True:
             print_line = re.sub(r'(?m)(^.{12}.\S..)   '+DNA_base+' ',r'\g<1>  D'+DNA_base+' ',print_line)

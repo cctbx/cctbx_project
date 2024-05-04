@@ -1,4 +1,3 @@
-
 from __future__ import absolute_import, division, print_function
 from mmtbx.chemical_components import cif_parser
 from libtbx.utils import Sorry
@@ -310,7 +309,7 @@ def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
     assert not split_l_d
     return 'non-alpha peptide'
   elif t in terminii:
-    assert not split_l_d
+    # assert not split_l_d
     return 'amino_acid_terminal'
   elif t in rna_dna_types:
     # assert not split_rna_dna
@@ -338,8 +337,9 @@ def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
            'RNA', 'DNA',
           ]:
     return g
-  return {'amino_acid' : 'peptide',
-          'non-polymer': 'ligand',
+  return {'amino_acid'          : 'peptide',
+          'amino_acid_terminal' : 'peptide',
+          'non-polymer'         : 'ligand',
           # 'saccharide' : 'pyranose',
           }[g]
   assert 0

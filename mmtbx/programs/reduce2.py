@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.3.0"
+version = "2.5.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -66,7 +66,7 @@ alt_id = None
 model_id = None
   .type = int
   .short_caption = Model ID to optimize
-  .help = Model ID to optimize.  The default is to optimize all of them.
+  .help = Model ID to optimize.  The default is to optimize all of them.  If one is selected, the others are removed from the output file.
 add_flip_movers = False
   .type = bool
   .short_caption = Add flip movers
@@ -857,6 +857,16 @@ def _AddFlipkinMovers(states, fileBaseName, name, color, model, alts, bondedNeig
 
   return ret
 
+def _RemoveModelsExceptIndex(model_manager, model_index):
+    hierarchy = model_manager.get_hierarchy()
+    models = hierarchy.models()
+    if model_index < len(models):
+        selected_model = models[model_index]
+        for model in models:
+            if model != selected_model:
+                hierarchy.remove_model(model=model)
+    return model_manager
+
 # ------------------------------------------------------------------------------
 
 class Program(ProgramTemplate):
@@ -1009,7 +1019,7 @@ NOTES:
       keep_existing_H=self.params.keep_existing_H
     )
     reduce_add_h_obj.run()
-    reduce_add_h_obj.show(None)
+    reduce_add_h_obj.show(self.logger)
     missed_residues = set(reduce_add_h_obj.no_H_placed_mlq)
     if len(missed_residues) > 0:
       bad = ""
@@ -1066,9 +1076,8 @@ NOTES:
         inMainChain[a] = mainchain_sel[a.i_seq]
       else:
         # Check our bonded neighbor to see if it is on the mainchain if we are a Hydrogen
-        if len(bondedNeighborLists[a]) != 1:
-          raise Sorry("Found Hydrogen with number of neigbors other than 1: "+
-                      str(len(bondedNeighborLists[a])))
+        if len(bondedNeighborLists[a]) < 1:
+          raise Sorry("Found Hydrogen with no neigbors.")
         else:
           inMainChain[a] = mainchain_sel[bondedNeighborLists[a][0].i_seq]
       inSideChain[a] = sidechain_sel[a.i_seq]
@@ -1124,7 +1133,7 @@ NOTES:
     return '{} {} {} {} {}{} {} {}'.format(flipMover.modelId+1, altId.lower(), flipMover.chain,
       flipMover.resName, flipMover.resId, flipMover.iCode, flipStateString, adjustedString)
 
-# ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
 
   def validate(self):
     # Set the default output file name if one has not been given.
@@ -1156,7 +1165,7 @@ NOTES:
       self._pr = cProfile.Profile()
       self._pr.enable()
 
-# ------------------------------------------------------------------------------
+  # ------------------------------------------------------------------------------
 
   def run(self):
 
@@ -1180,6 +1189,31 @@ NOTES:
     if (cs is None) or (cs.unit_cell() is None):
       self.model = shift_and_box_model(model = self.model)
 
+    # If we've been asked to only to a single model index from the file, strip the model down to
+    # only that index.
+    if self.params.model_id is not None:
+      make_sub_header('Selecting Model ID ' + str(self.params.model_id), out=self.logger)
+
+      # Select only the current submodel from the hierarchy
+      submodel = self.model.deep_copy()
+      _RemoveModelsExceptIndex(submodel, self.params.model_id)
+
+      # Construct a hierarchy for the current submodel
+      r = pdb.hierarchy.root()
+      mdc = submodel.get_hierarchy().models()[0].detached_copy()
+      r.append_model(mdc)
+
+      # Make yet another model for the new hierarchy
+      subset_model_manager = mmtbx.model.manager(
+        model_input       = None,
+        pdb_hierarchy     = r,
+        stop_for_unknowns = False,
+        crystal_symmetry  = submodel.crystal_symmetry(),
+        restraint_objects = None,
+        log               = None)
+
+      self.model = subset_model_manager
+
     # Stores the initial coordinates for all of the atoms and the rest of the information
     # about the original model for use by Kinemages.
     initialModel = self.model.deep_copy()
@@ -1191,10 +1225,12 @@ NOTES:
       self._AddHydrogens()
       doneAdd = time.time()
 
+      # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
+      # but the desired model ID structure from the model.
       make_sub_header('Optimizing', out=self.logger)
       startOpt = time.time()
       opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
-        self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
+        self.model, altID=self.params.alt_id,
         preferenceMagnitude=self.params.preference_magnitude,
         bondedNeighborDepth = self._bondedNeighborDepth,
         nonFlipPreference=self.params.non_flip_preference,
@@ -1449,8 +1485,10 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
+          # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
+          # but the desired model ID structure from the model.
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,
@@ -1571,8 +1609,10 @@ NOTES:
 
           # Optimize the model and then reinterpret it so that we can get all of the information we
           # need for the resulting set of atoms (which may be fewer after Hydrogen removal).
+          # NOTE: We always optimize all models (leave modelIndex alone) because we've removed all
+          # but the desired model ID structure from the model.
           opt = Optimizers.Optimizer(self.params.probe, self.params.add_flip_movers,
-            self.model, altID=self.params.alt_id, modelIndex=self.params.model_id,
+            self.model, altID=self.params.alt_id,
             preferenceMagnitude=self.params.preference_magnitude,
             nonFlipPreference=self.params.non_flip_preference,
             skipBondFixup=self.params.skip_bond_fix_up,

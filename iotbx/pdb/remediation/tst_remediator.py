@@ -7,6 +7,7 @@ import remediator
 import iotbx.pdb
 import libtbx
 from iotbx.data_manager import DataManager
+from libtbx import easy_run
 
 multimodel_tst_str = """MODEL        1
 ATOM     21  P     A C   2      33.564  25.095  49.676  0.50 58.86           P
@@ -202,7 +203,25 @@ def get_regression_folder_file_path(file_name):
   assert os.path.isfile(file_path), file_name + " test file is missing from " + regression_folder
   return file_path
 
+def test_full_str_convert(old_file, new_file):
+  print("testing full file remediation")
+  prefix = os.path.basename(__file__).replace(".py","")
+  easy_run.call("iotbx.pdb_remediator %s > %s.pdb"%(old_file, prefix))
+  with open(prefix+".pdb") as file:
+    remediated_list = [line.rstrip() for line in file]
+    remediated_pdb = "\n".join(remediated_list)
+  with open(new_file) as file:
+    new_list = [line.rstrip() for line in file]
+    new_pdb = "\n".join(new_list)
+  if new_pdb != remediated_pdb:
+
+    diff = list(difflib.unified_diff(new_pdb.splitlines(), remediated_pdb.splitlines()))
+    assert False, "remediation test of "+old_file+" to v3 failed with these differences:\n" + '\n'.join(diff)
+
+  print("OK")
+
 def run_tests():
+  test_full_str_convert(get_regression_folder_file_path("dna-rna-testv23.pdb"), get_regression_folder_file_path("dna-rna-test.pdb"))
   test_pdb_to_v3(get_regression_folder_file_path("protein-dna-testv23.pdb"), get_regression_folder_file_path("protein-dna-test.pdb"))
   test_pdb_to_v3(get_regression_folder_file_path("dna-rna-testv23.pdb"), get_regression_folder_file_path("dna-rna-test.pdb"))
 
