@@ -394,6 +394,7 @@ class mask_from_xray_structure(object):
         for_structure_factors,
         n_real,
         atom_radii=None,
+        atom_radius=None,
         solvent_radius=None,
         shrink_truncation_radius=None,
         in_asu=False,
@@ -406,8 +407,11 @@ class mask_from_xray_structure(object):
     xrs = xray_structure
     sgt = xrs.space_group().type() # must be BEFORE going to P1, obviously!
     if(p1): xrs = xrs.expand_to_p1(sites_mod_positive=True)
-    if(atom_radii is None):
+    if([atom_radii,atom_radius].count(None)==2):
       atom_radii = vdw_radii_from_xray_structure(xray_structure = xrs)
+    elif atom_radius is not None:
+      assert atom_radii is None
+      atom_radii = flex.double(xrs.scatterers().size(), atom_radius)
     if(rad_extra is not None):
       atom_radii = atom_radii+rad_extra
     self.asu_mask = mmtbx.masks.atom_mask(

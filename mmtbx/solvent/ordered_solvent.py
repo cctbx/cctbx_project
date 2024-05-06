@@ -100,6 +100,9 @@ master_params_str = """\
             after ferst few macro-cycles, filter_only - remove water only, \
             every_macro_cycle - do water update every macro-cycle
     .short_caption = Mode
+  mask_atoms_selection = protein and (name CA or name CB or name N or name C or name O)
+    .type = str
+    .help = Mask macromolecule atoms in peak picking map
   keep_existing = False
     .type = bool
     .help = Keep existing in the model water
@@ -127,7 +130,7 @@ master_params_str = """\
     cc_map_2_type = 2mFo-DFmodel
       .type = str
       .short_caption = Experimental map type for CC calculation
-    poor_cc_threshold = 0.50
+    poor_cc_threshold = 0.70
       .type = float
       .short_caption = Minimum map correlation
     poor_map_value_threshold = 1.0
@@ -192,10 +195,18 @@ def master_params():
   return iotbx.phil.parse(master_params_str)
 
 class maps(object):
-  def __init__(self, fmodel, map_0_type, map_1_type, map_2_type,
-                     grid_step=0.6, radius=2.0):
+  def __init__(self,
+               fmodel,
+               model,
+               mask_atoms_selection,
+               difference_map_type,
+               model_map_type,
+               data_map_type,
+               grid_step=0.6,
+               radius=2.0):
     self.radius = radius
     self.fmodel = fmodel
+    self.model  = model
     self.e_map = fmodel.electron_density_map()
     self.crystal_symmetry = fmodel.xray_structure.crystal_symmetry()
     self.crystal_gridding = maptbx.crystal_gridding(
@@ -203,10 +214,47 @@ class maps(object):
       space_group_info = self.crystal_symmetry.space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
       step             = grid_step)
-    self.map_0 = self._get_real_map(map_type = map_0_type)
-    self.map_1 = self._get_real_map(map_type = map_1_type)
-    self.map_2 = self._get_real_map(map_type = map_2_type)
+    self.difference_map = self._get_real_map(map_type = difference_map_type)
+    self.model_map      = self._get_real_map(map_type = model_map_type)
+    self.data_map       = self._get_real_map(map_type = data_map_type)
     #self._estimate_diff_map_cutoff()
+    # Compute mask in P1 to mask out desired regions
+    if mask_atoms_selection is not None:
+      bb_sel = self.model.selection(string=mask_atoms_selection)
+      if bb_sel.count(True)>0:
+        xrs = fmodel.xray_structure.select(bb_sel)
+        #
+        # Both ways to compute mask should be the same, but they are slighly not,
+        # expectedly.
+        #
+        mask_p1 = mmtbx.masks.mask_from_xray_structure(
+          xray_structure           = xrs,
+          p1                       = True,
+          for_structure_factors    = True,
+          solvent_radius           = 0,
+          shrink_truncation_radius = 0,
+          atom_radius              = 1.2,
+          n_real                   = self.crystal_gridding.n_real(),
+          in_asu                   = False).mask_data
+        maptbx.unpad_in_place(map=mask_p1)
+        sel0 = mask_p1 > 0.1
+        mask_p1 = mask_p1.set_selected(sel0,  1)
+        mask_p1 = mask_p1.set_selected(~sel0, 0)
+
+        #xrs = xrs.expand_to_p1()
+        #import boost_adaptbx.boost.python as bp
+        #cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
+        #radii = flex.double(xrs.scatterers().size(), 1.2)
+        #mask_p1 = cctbx_maptbx_ext.mask(
+        #  sites_frac                  = xrs.sites_frac(),
+        #  unit_cell                   = xrs.unit_cell(),
+        #  n_real                      = self.crystal_gridding.n_real(),
+        #  mask_value_inside_molecule  = 0,
+        #  mask_value_outside_molecule = 1,
+        #  radii                       = radii,
+        #  wrapping                    = True)
+
+        self.difference_map = self.difference_map * mask_p1
 
   def _get_real_map(self, map_type):
     coeffs = self.e_map.map_coefficients(
@@ -223,14 +271,14 @@ class maps(object):
     site_frac = uc.fractionalize(site_cart)
     sel = maptbx.grid_indices_around_sites(
       unit_cell  = uc,
-      fft_n_real = self.map_1.focus(),
-      fft_m_real = self.map_1.all(),
+      fft_n_real = self.model_map.focus(),
+      fft_m_real = self.model_map.all(),
       sites_cart = flex.vec3_double([site_cart]),
       site_radii = flex.double([self.radius]))
     cc = flex.linear_correlation(
-      x=self.map_1.select(sel),
-      y=self.map_2.select(sel)).coefficient()
-    value_2 = self.map_2.eight_point_interpolation(site_frac)
+      x=self.model_map.select(sel),
+      y=self.data_map.select(sel)).coefficient()
+    value_2 = self.data_map.eight_point_interpolation(site_frac)
     result = cc > min_cc and value_2 > min_value*atom.occ
     return group_args(result = result, cc=cc, value_2=value_2)
 
@@ -291,7 +339,9 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
       #
       skip = False
       for j in selection_around_ai:
-        agj = atoms[j].parent()
+        aj = atoms[j]
+        if aj.element_is_hydrogen(): continue
+        agj = aj.parent()
         if(agj.altloc in [' ', '']):
           if(get_class(name=agj.resname) != "common_water"):
             remove_sel.extend(agi.atoms().extract_i_seq())
@@ -364,6 +414,7 @@ def filter_by_distance(model, dist_min=1.8, dist_max=3.2):
       for j in selection_shell:
         if not interaction_selection[j]: continue
         aj = atoms[j]
+        if aj.element_is_hydrogen(): continue
         agj = aj.parent()
         altloc_j = agj.altloc.strip()
         if altloc_i=="" or altloc_j=="":        found = True
@@ -452,11 +503,14 @@ class manager(object):
       eps=1.e-3)
 
   def _get_maps(self):
+    p = self.params
     self._maps = maps(
-      fmodel     = self.fmodel,
-      map_0_type = self.params.primary_map_type,
-      map_1_type = self.params.secondary_map_and_map_cc_filter.cc_map_1_type,
-      map_2_type = self.params.secondary_map_and_map_cc_filter.cc_map_2_type)
+      fmodel               = self.fmodel,
+      model                = self.model,
+      mask_atoms_selection = p.mask_atoms_selection,
+      difference_map_type  = p.primary_map_type,
+      model_map_type       = p.secondary_map_and_map_cc_filter.cc_map_1_type,
+      data_map_type        = p.secondary_map_and_map_cc_filter.cc_map_2_type)
 
   def _filter_dist_fix_altlocs(self):
     if self.params.include_altlocs:
@@ -538,7 +592,7 @@ class manager(object):
     assert self.params.primary_map_type is not None
     self._peaks = find_peaks.manager(
       xray_structure = self.fmodel.xray_structure,
-      map_data       = self._maps.map_0, # diff-map
+      map_data       = self._maps.difference_map, # diff-map
       map_cutoff     = self.params.primary_map_cutoff,
       params         = self.find_peaks_params,
       log            = null_out()).peaks_mapped()
@@ -646,7 +700,7 @@ class manager(object):
         #  r_start, r_omit, r_final, oo.rw_best), "|", oo.o_best, oo.b_best)
       self.model.adopt_xray_structure(
         xray_structure = self.fmodel.xray_structure)
-      print("  ADP (water only), final r_work=%6.4f r_free=%6.4f"%(
+      print("  ADP+occupancy (water only), OAT, final r_work=%6.4f r_free=%6.4f"%(
         self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
       #
     if(self.params.refine_adp and self.params.refine_occupancies and
@@ -660,7 +714,7 @@ class manager(object):
         log       = self.log)
       self.model.adopt_xray_structure(
           xray_structure = self.fmodel.xray_structure)
-      print("  ADP (water only), final r_work=%6.4f r_free=%6.4f"%(
+      print("  ADP+occupancy (water only), MIN, final r_work=%6.4f r_free=%6.4f"%(
           self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
 
   def _correct_drifted_waters(self):
@@ -678,7 +732,7 @@ class manager(object):
     find_peaks_params_drifted.peak_search.min_cross_distance=0.5
     peaks = find_peaks.manager(
       xray_structure = self.fmodel.xray_structure,
-      map_data       = self._maps.map_2,
+      map_data       = self._maps.data_map,
       map_cutoff     = map_cutoff,
       params         = find_peaks_params_drifted,
       log            = null_out()).peaks_mapped()
