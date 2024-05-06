@@ -19,6 +19,7 @@ from simtbx.diffBragg.hopper_io import single_expt_pandas
 from simtbx.diffBragg import hopper_utils, ensemble_refine_launcher
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 from simtbx.diffBragg import psf
+from simtbx.diffBragg.prep_stage2_input import prep_dataframe
 
 # diffBragg internal indices for derivative manager
 ROTXYZ_ID = 0, 1, 2
@@ -280,7 +281,7 @@ class Target:
                 params = args[-1]  # phil params
                 temp_pandas_dir = params.outdir
                 params.outdir=params.outdir + "-iter%d" % self.iternum
-            med_offset = write_output_files(self.x0, self.ref_params, *args, **kwargs)
+            med_offset = write_output_files(self.x0, self.ref_params, iternum=self.iternum, *args, **kwargs)
             self.med_offsets.append(med_offset)
             self.med_iternums.append(self.iternum)
             if self.plot:
@@ -761,7 +762,8 @@ def geom_min(params):
     from simtbx.diffBragg import mpi_logger
     mpi_logger.setup_logging_from_params(params)
     df.reset_index(drop=True, inplace=True)
-    launcher.load_inputs(df, refls_key=params.geometry.refls_key)
+    df, work_distribution = prep_dataframe(df, res_ranges_string=params.refiner.res_ranges, refls_key=params.geometry.refls_key)
+    launcher.load_inputs(df, refls_key=params.geometry.refls_key, work_distribution=work_distribution)
 
     for i_shot in launcher.Modelers:
         Modeler = launcher.Modelers[i_shot]
@@ -848,7 +850,7 @@ def geom_min(params):
         save_opt_det(params, target.x0, target.ref_params, launcher.SIM)
 
 
-def write_output_files(Xopt, LMP, Modelers, SIM, params):
+def write_output_files(Xopt, LMP, Modelers, SIM, params, iternum=None):
     """
     Writes refl and exper files for each experiment modeled during
     the ensemble refiner
@@ -862,6 +864,8 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params):
     if COMM.rank==0:
         temp = params.geometry.optimized_detector_name
         params.geometry.optimized_detector_name = os.path.splitext(temp)[0] + "_current.expt"
+        if iternum is not None:
+            params.geometry.optimized_detector_name = os.path.splitext(temp)[0] + "_%d.expt" % iternum
         save_opt_det(params, Xopt, LMP, SIM)
         params.geometry.optimized_detector_name = temp
 
