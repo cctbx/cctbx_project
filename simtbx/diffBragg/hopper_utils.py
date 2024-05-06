@@ -2350,6 +2350,9 @@ def downsamp_spec(SIM, params, expt, return_and_dont_set=False):
         stride = params.simulator.spectrum.stride
         spec_wave = spec_wave[::stride]
         spec_wt = spec_wt[::stride]
+        tot_fl = params.simulator.total_flux
+        if tot_fl is not None:
+            spec_wt = spec_wt / sum(spec_wt) * tot_fl
         SIM.beam.spectrum = list(zip(spec_wave, spec_wt))
     else:
         spec_en = SIM.dxtbx_spec.get_energies_eV()
