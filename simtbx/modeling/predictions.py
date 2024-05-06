@@ -13,8 +13,9 @@ from dxtbx.model import ExperimentList
 from numpy import logical_not as logi_not
 
 
-def get_spot_wave(predictions, expt, wavelen_images):
+def get_spot_wave(predictions, expt, wavelen_images, h_images, k_images, l_images):
     perSpotWave = flex.double()
+    perSpotHKL = flex.miller_index()
     for i_sb, sb in enumerate(predictions['shoebox']):
         x1,x2,y1,y2,_,_ = sb.bbox
         pid = predictions[i_sb]['panel']
@@ -22,12 +23,25 @@ def get_spot_wave(predictions, expt, wavelen_images):
         xdim, ydim = expt.detector[pid].get_image_size()
         assert x2 <= xdim and y2 <= ydim
         wavelen_subimg = wavelen_images[pid, y1:y2, x1:x2]
+        h_subimg = h_images[pid, y1:y2, x1:x2]
+        k_subimg = k_images[pid, y1:y2, x1:x2]
+        l_subimg = l_images[pid, y1:y2, x1:x2]
         where_signal  = sb.mask.as_numpy_array()[0] == SIGNAL_MASK
         wave_where_sig = wavelen_subimg[where_signal]
+        h_where_sig = h_subimg[where_signal]
+        k_where_sig = k_subimg[where_signal]
+        l_where_sig = l_subimg[where_signal]
         assert not  np.any(np.isnan(wave_where_sig))
         ave_wave = wave_where_sig.mean()
+        ave_h = h_where_sig.mean()
+        ave_k = k_where_sig.mean()
+        ave_l = l_where_sig.mean()
+        h = int(round(ave_h))
+        k = int(round(ave_k))
+        l = int(round(ave_l))
         perSpotWave.append(ave_wave)
-    return perSpotWave
+        perSpotHKL.append((h,k,l))
+    return perSpotWave, perSpotHKL
 
 
 def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spectrum_override=None):
@@ -77,7 +91,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
     if not params.predictions.laue_mode:
         panel_images, expt = model_out
     else:
-        (panel_images, wavelen_images), expt = model_out
+        (panel_images, wavelen_images, h_images, k_images, l_images), expt = model_out
     # NOTE:  panel-images contains per-pixel model, and wavelen_images contains per-pixel wavelength
 
     predictions = refls_from_sims(panel_images, expt.detector,
@@ -102,10 +116,12 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
     if params.predictions.laue_mode:
         # need to alter rlp according to wavelength ?
         predictions['rlp'] *= expt.beam.get_wavelength()
-        predictions['ave_wavelen'] = get_spot_wave(predictions, expt, wavelen_images)
+        spot_wave, updated_hkl = get_spot_wave(predictions, expt, wavelen_images, h_images, k_images, l_images)
+        predictions['ave_wavelen'] = spot_wave
         predictions['rlp'] /= predictions['ave_wavelen']
-
-    refls_to_hkl(predictions, expt.detector, expt.beam, expt.crystal, update_table=True)
+        predictions['miller_index'] = updated_hkl
+    else:
+        refls_to_hkl(predictions, expt.detector, expt.beam, expt.crystal, update_table=True)
 
     predictions['xyzcal.px'] = predictions['xyzobs.px.value']
     predictions['xyzcal.mm'] = predictions['xyzobs.mm.value']
@@ -116,6 +132,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         return predictions
 
     strong.centroid_px_to_mm(El)
+    # TODO: fix this for spot wavelengths
     strong.map_centroids_to_reciprocal_space(El)
 
     # separate out the weak from the strong
