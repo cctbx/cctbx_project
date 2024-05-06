@@ -3891,7 +3891,9 @@ class manager(object):
       if conformer_indices is not None:
         ci = conformer_indices.conformer_indices[j_seq]
         cm = conformer_indices.index_altloc_mapping
-        altloc = list(cm.keys())[list(cm.values()).index(ci)]
+        if not ci in cm.values() and ci==0: altloc = ""
+        else:
+          altloc = list(cm.keys())[list(cm.values()).index(ci)]
       element, charge = sc.element_and_charge_symbols()
       new_atom = (iotbx.pdb.hierarchy.atom()
         .set_serial(new_serial=iotbx.pdb.hy36encode(width=5, value=n_seq+i_seq))
