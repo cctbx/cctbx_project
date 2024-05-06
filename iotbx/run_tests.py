@@ -99,6 +99,7 @@ tst_list_base = [
   "$D/regression/tst_bioinformatics.py",
   "$D/regression/tst_box_around_molecule.py",
   "$D/regression/tst_mmcif_segids.py",
+  "$D/regression/tst_mmcif_input.py",
   "$D/regression/tst_hierarchy_forward_compatible_pdb.py",
   "$D/regression/tst_map_model_manager_cif.py",
   "$D/regression/tst_map_model_manager_9_remove_origin_shift_and_unit_cell_crystal_symmetry_cif.py",

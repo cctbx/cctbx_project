@@ -473,7 +473,11 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def extract_header_year(self):
     yyyymmdd = self.deposition_date()
     if yyyymmdd is not None:
-      return int(yyyymmdd[:4])
+      try:
+        return int(yyyymmdd[:4])
+      except ValueError:
+        raise Sorry("Cannot extract year of deposition from mmCIF file: '%s'" % yyyymmdd )
+
 
   def deposition_date(self, us_style=True):
     # date format: yyyy-mm-dd
