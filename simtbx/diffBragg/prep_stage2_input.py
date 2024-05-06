@@ -37,6 +37,7 @@ def prep_dataframe(df, refls_key="predictions", res_ranges_string=None):
     :return:
     """
     # TODO make sure all pred files exist
+    df.reset_index(drop=True, inplace=True)
 
     res_ranges = None
     if res_ranges_string is not None:
@@ -79,21 +80,27 @@ def prep_dataframe(df, refls_key="predictions", res_ranges_string=None):
             num_ref = len(R)
 
         if num_ref==0:
-            LOGGER.critical("Reflection %s id=%d has 0 reflections !" % (name, expt_id, num_ref))
+            LOGGER.critical("Reflection %s id=%d has 0 reflections !" % (name, expt_id))
         refls_per_shot.append((i_shot, num_ref))
 
     refls_per_shot = COMM.reduce(refls_per_shot, root=0)
     work_distribution = None
+    first_nonzero_weight = None
     if COMM.rank==0:
-        print("Found %d shots" % nshots)
         refls_per_shot = sorted(refls_per_shot)
         indices, weights = zip(*refls_per_shot)
-        assert list(indices) == list(range(nshots)) # new sanity test
-
+        first_nonzero_weight = [i for i, w in refls_per_shot if w > 0]
+        assert first_nonzero_weight, "All reflection tables have 0 finite refls in the desired resolution ranges"
+        first_nonzero_weight = first_nonzero_weight[0]
+        weights = weights[first_nonzero_weight:]
+        print("Found %d shots originally, but only %d had finite number of refls to model" % (nshots, len(weights) ))
         work_distribution = get_equal_partition(weights, COMM.size)
+
+    first_nonzero_weight = COMM.bcast(first_nonzero_weight)
+    df = df.iloc[first_nonzero_weight:].reset_index(drop=True)
     work_distribution = COMM.bcast(work_distribution, root=0)
     assert work_distribution is not None, "ERROR! Rank %d has no work_distribution!" % COMM.rank
-    return work_distribution
+    return df, work_distribution
 
 
 if __name__ == "__main__":

@@ -40,8 +40,9 @@ def global_refiner_from_parameters(params):
     LOGGER.info("EVENT: BEGIN prep dataframe")
     if "exp_idx" not in list(pandas_table):
         pandas_table["exp_idx"] = 0
-    work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges)
+    pandas_table, work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges, refls_key=params.refls_key)
     LOGGER.info("EVENT: DONE prep dataframe")
+
     return launcher.launch_refiner(pandas_table, work_distribution=work_distribution, refls_key=params.refls_key)
 
 
@@ -257,6 +258,7 @@ class RefineLauncher:
                 # Note: no need to pass exper_id here because expt and refls have already been sliced out
                 gathered = shot_modeler.GatherFromExperiment(expt, refls, sg_symbol=self.symbol)
             if not gathered:
+                continue # is it ok to continue ?
                 raise IOError("Failed to gather data from experiment %s", exper_name)
                 COMM.abort()
 
