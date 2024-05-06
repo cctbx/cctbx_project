@@ -87,6 +87,7 @@ def holton_geometry_validation(dm = None,
      clashscore_ideal_dist = 3,  # Ideal distance in LJ for clashscore result
      lj_dist_that_yields_zero = 6, # Distance for modified LJ to cross zero
      n_random = 20,
+     sd_to_use = 3,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
        y0= 1,
        a2= -0.0192266,
@@ -497,6 +498,7 @@ def analyze_geometry_values(info, randomize = False):
   keys = list(info.geometry_results.keys())
   keys.sort()
   sum_energy = 0.0
+  dev_list = flex.double()
   for key in keys:
     result = info.geometry_results[key]
     result.pnna = None
@@ -554,6 +556,10 @@ def analyze_geometry_values(info, randomize = False):
 
       continue # nothing to do
 
+    if result.name not in ['NONBOND']:
+      # leave NONBOND out because FULL_NONBOND has all
+      dev_list.extend(flex.sqrt(values.select(values > 0)))
+
     if info.overall_max_energy is not None:
       energy = max(0, min(info.overall_max_energy, result.worst_residual))
     elif result.worst_residual is not None:
@@ -594,6 +600,18 @@ def analyze_geometry_values(info, randomize = False):
     sum_energy += result.energy_using_mean
 
   info.sum_energy = sum_energy
+
+  # Get percentile-based spread
+  from libtbx.math_utils import percentile_based_spread
+  if info.sd_to_use == 3:
+    info.pbs_included = 0.9974
+  elif info.sd_to_use == 2:
+    info.pbs_included = 0.95
+  else:
+    info.sd_to_use = 1
+    info.pbs_included = 0.68
+  info.pbs = percentile_based_spread(dev_list,
+      pbs_fraction = info.pbs_included) / info.sd_to_use
 
 def randomize_result(info, result):
   if result.name == 'CLASH':
@@ -706,12 +724,20 @@ def print_results(info, by_category_only = False):
        info.ignore_bond_lengths_with_h_removed), file = info.log)
 
   print(file = info.log)
+
+  dev_to_sigma = info.pbs if info.pbs else None
+  if dev_to_sigma:
+    print("Ratio of geometry deviations to sigmas (excluding worst "+
+      "%.1f%%):   %.2f " %(
+       100*(1.-info.pbs_included),dev_to_sigma), file = info.log)
+
   if hasattr(info,'sum_random_energy'):
     print("Expected energy for ideal structure with normal dist "+
-     "of errors: %.1f +/- %.1f" %(
+     "of errors: %.2f +/- %.2f" %(
       info.sum_random_energy, info.random_energy_sd), file = info.log)
 
-  print("Overall geometry energy for %s: %.4f\n" %(info.filename,
+
+  print("Overall geometry energy:                                   %10.2f\n" %(
      info.sum_energy), file = info.log)
 
 def filter_geometry_results(info):
