@@ -1,4 +1,4 @@
-from __future__ import division
+from __future__ import division, print_function
 from libtbx import adopt_init_args
 from scitbx import minimizers
 from scitbx.array_family import flex
