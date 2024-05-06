@@ -86,7 +86,8 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         quiet=(not params.predictions.verbose),
         perpixel_wavelen=params.predictions.laue_mode,
         det_thicksteps=params.predictions.thicksteps_override,
-        from_pdb=from_pdb)
+        from_pdb=from_pdb,
+        mosaic_samples_override=params.predictions.mosaic_samples_override)
 
     if not params.predictions.laue_mode:
         panel_images, expt = model_out

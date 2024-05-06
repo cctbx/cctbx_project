@@ -247,7 +247,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       show_timings=False,perpixel_wavelen=False,
                       det_thicksteps=None, eta_abc=None, Ncells_def=None,
                       num_phi_steps=1, delta_phi=None, div_mrad=0, divsteps=0,
-                      spindle_axis=(1,0,0)):
+                      spindle_axis=(1,0,0), fudge=1):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -288,6 +288,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
     S.instantiate_diffBragg(verbose=verbose, oversample=oversample, interpolate=interpolate, device_Id=device_Id,
                             default_F=default_F,
                             auto_set_spotscale=crystal_size_mm is not None and spot_scale_override is None)
+    S.D.fudge = fudge
 
     if spot_scale_override is not None:
         S.update_nanoBragg_instance("spot_scale", spot_scale_override)
