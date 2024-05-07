@@ -875,7 +875,9 @@ void diffBragg_sum_over_steps(
 
                     double N_i = NABC(i_nc, i_nc);
                     Eigen::Vector3d dV_dN = dN*delta_H;
-                    double determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    double determ_deriv=0;
+                    if (!db_flags.no_Nabc_scale)
+                        determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
                     double deriv_coef = determ_deriv - C* ( dV_dN.dot(V));
                     double value = 2*Iincrement*deriv_coef;
                     double value2=0;
@@ -900,7 +902,9 @@ void diffBragg_sum_over_steps(
                     else
                         dN << 0,0,1,0,0,0,1,0,0;
                     Eigen::Vector3d dV_dN = dN*delta_H;
-                    double determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    double determ_deriv =0;
+                    if (!db_flags.no_Nabc_scale)
+                        determ_deriv = (NABC.inverse()*dN).trace(); // TODO speedops: precompute these
                     //double deriv_coef = -C* (2* dV_dN.dot(V));
                     double deriv_coef = determ_deriv - C* (dV_dN.dot(V));
                     double value = 2*Iincrement*deriv_coef;
