@@ -1113,6 +1113,10 @@ class DataModeler:
                                    disp=False,
                                    stepsize=self.params.stepsize)
                 target.x0[vary] = out.x
+                MAIN_LOGGER.debug("Optimal results after basinhopping:")
+                f, g, modelpix, J, sigZ, debug_s = target_func(target.x0, None, self, SIM,
+                                                            compute_grad=False, return_all_zscores=False)
+                MAIN_LOGGER.debug("<><><><><><><><><\n"+debug_s+"\n<><><><><><><><>")
             except StopIteration:
                 pass
 
@@ -1138,6 +1142,30 @@ class DataModeler:
             target.x0[vary] = out.x
 
         return target.x0
+
+    def get_best_hop(self):
+        """
+        after refinement, explore all_hop_id, all_sigz, and all_f to find which basinhop resulted in the best minimization
+        """
+        assert self.target.all_f
+        assert self.target.all_hop_id
+        assert self.target.all_sigZ
+        funcs_hops_sigz = list(zip(self.target.all_f, self.target.all_hop_id, self.target.all_sigZ))
+        hop_id = lambda x: x[1] # group by hop id
+        gb = groupby(sorted(funcs_hops_sigz,key=hop_id), key=hop_id)
+        info = {hop_id:list(traces) for hop_id,traces in gb}
+
+        min_f = np.inf
+        min_sigz = np.inf
+        hop_winner = 0
+        for hop_id in info:
+            f, _, sigz = zip(*info[hop_id])
+            if min(f) < min_f:
+                min_f = min(f)
+                min_sigz = min(sigz)
+                hop_winner = hop_id
+                niter = len(f)
+        return min_sigz, niter, hop_winner
 
     def callback(self, x, kwargs):
         save_freq = kwargs["save_freq"]
@@ -1474,9 +1502,11 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                 if name == "detz_shift":
                     val = val * 1e3
                     name = p.name + "_mm"
-                val_s += "%s=%.3f, " % (name, val)
+                if "Rot" in name:
+                    val = val*180 / np.pi
+                    name = p.name +"_deg"
+                val_s += "%s=%.4f, " % (name, val)
         MAIN_LOGGER.debug(val_s)
-
 
     pfs = Mod.pan_fast_slow
 
