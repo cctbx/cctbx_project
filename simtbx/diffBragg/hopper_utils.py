@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import time
 import os
 import json
+from itertools import groupby
 from dials.algorithms.shoebox import MaskCode
 from copy import deepcopy
 from dials.model.data import Shoebox
@@ -2119,6 +2120,10 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     x = Modeler.Minimize(x0, SIM)
     Modeler.best_model, _ = model(x, Modeler, SIM, compute_grad=False)
     Modeler.best_model_includes_background = False
+    try:
+        sigz, niter, _ = Modeler.get_best_hop()
+    except Exception:
+        pass
 
     new_crystal = update_crystal_from_x(Modeler, SIM, x)
     new_exp = deepcopy(Modeler.E)
