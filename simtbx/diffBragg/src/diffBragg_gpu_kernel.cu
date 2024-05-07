@@ -757,7 +757,9 @@ void gpu_sum_over_steps(
                     }
                     CUDAREAL N_i = _NABC(i_nc, i_nc);
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these, store shared var _NABC.inverse
+                    CUDAREAL determ_deriv =0;
+                    if (! s_no_Nabc_scale)
+                        determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these, store shared var _NABC.inverse
                     CUDAREAL deriv_coef= determ_deriv - C* ( dV_dN.dot(V));
                     CUDAREAL value = 2*Iincrement*deriv_coef;
                     CUDAREAL value2=0;
@@ -781,7 +783,9 @@ void gpu_sum_over_steps(
                     else
                         dN << 0,0,1,0,0,0,1,0,0;
                     VEC3 dV_dN = dN*delta_H;
-                    CUDAREAL determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these
+                    CUDAREAL determ_deriv =0;
+                    if (! s_no_Nabc_scale)
+                        determ_deriv = (_NABC.inverse()*dN).trace(); // TODO speedops: precompute these
                     CUDAREAL deriv_coef = determ_deriv - C* (dV_dN.dot(V));
                     CUDAREAL value = 2*Iincrement*deriv_coef;
                     Ncells_manager_dI[i_nc] += value;
