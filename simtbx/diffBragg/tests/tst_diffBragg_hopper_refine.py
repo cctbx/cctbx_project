@@ -10,6 +10,7 @@ parser.add_argument("--plot", action="store_true", help="shows the ground truth 
 parser.add_argument("--typeG", choices=["ranged", "positive"], default="ranged", type=str,  help="shows the ground truth image")
 parser.add_argument("--typeNabc", choices=["ranged", "positive"], default="ranged", type=str,  help="shows the ground truth image")
 parser.add_argument("--cmdlineHopper", action="store_true", help="test the command line program simtbx/command_line/hopper.py")
+parser.add_argument("--noNabcScale", action="store_true", help="Flatt no longer has multiplicative factor of (Na*Nb*Nc)^2")
 args = parser.parse_args()
 name = "hopper_refine_%s" % "-".join(args.perturb)
 import os
@@ -128,6 +129,10 @@ with DeviceWrapper(0) as _:
     SIM.add_Water = True
     SIM.include_noise = True
     SIM.D.verbose = 2
+    if args.noNabcScale:
+        SIM.D.no_Nabc_scale = True
+        na,nb,nc = nbcryst.Ncells_abc
+        SIM.D.spot_scale = SIM.D.spot_scale * (na*nb*nc)**2
     SIM.D.add_diffBragg_spots()
     SIM.D.verbose = 0
     spots = SIM.D.raw_pixels.as_numpy_array()
@@ -242,6 +247,9 @@ with DeviceWrapper(0) as _:
     import sys
     h = logging.StreamHandler(sys.stdout)
     logging.basicConfig(level=logging.DEBUG, handlers=[h])
+    if args.noNabcScale:
+        P.no_Nabc_scale = True
+        P.maxs.G = 1e16
 
     from simtbx.diffBragg import hopper_utils
     spec = None
