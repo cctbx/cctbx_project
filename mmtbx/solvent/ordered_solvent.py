@@ -378,7 +378,8 @@ def get_sphere_selection(
     selection_around_i_seq.remove(i_seq)
   return selection_around_i_seq
 
-def filter_by_distance(model, dist_min=1.8, dist_max=3.2):
+def filter_by_distance(model, fix_altlocs_and_filter_was_run, dist_min=1.8,
+                       dist_max=3.2):
   interaction_selection = model.selection(
     map_to_water.selection_string_interaction)
   sps = model.crystal_symmetry().special_position_settings()
@@ -407,8 +408,9 @@ def filter_by_distance(model, dist_min=1.8, dist_max=3.2):
         aj = atoms[j]
         altloc_j = aj.parent().altloc
         d = ai.distance(aj)
-        if(d<dist_min): # assumes fix_altlocs_and_filter was run, or else remove ai
-          assert len(altloc_i)>0 and len(altloc_j)>0
+        if fix_altlocs_and_filter_was_run:
+          if(d<dist_min): # assumes fix_altlocs_and_filter was run, or else remove ai
+            assert len(altloc_i)>0 and len(altloc_j)>0
       # Check water inside shell dist_min < dist < dist_max
       found = False
       for j in selection_shell:
@@ -518,9 +520,10 @@ class manager(object):
         model    = self.model,
         dist_min = self.params.dist_min)
     self.model = filter_by_distance(
-      model    = self.model,
-      dist_min = self.params.dist_min,
-      dist_max = self.params.dist_max)
+      model                          = self.model,
+      fix_altlocs_and_filter_was_run = self.params.include_altlocs,
+      dist_min                       = self.params.dist_min,
+      dist_max                       = self.params.dist_max)
 
   def _filter_q_b(self):
     self._filter(filter_occ=True, filter_adp=True)
@@ -672,6 +675,7 @@ class manager(object):
     ###
 
   def refine_oat(self):
+    if self.new_solvent_selection is None: return
     if(self.params.refine_oat and self.new_solvent_selection.count(True)>0):
       from phenix.programs import oat
       from cctbx import adptbx
