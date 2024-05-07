@@ -18,6 +18,7 @@ parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help
 parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
 parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
 parser.add_argument("--scanWeakFracs", action="store_true", help="optionally stores a variety of inputs for stage2 based filtering different fractions of weak reflections")
+parser.add_argument("--maxProcess", type=int,default=-1, help="maximum number of shots to process before program termination")
 
 args = parser.parse_args()
 
@@ -399,6 +400,9 @@ if __name__=="__main__":
 
     shots_per_df = COMM.bcast(COMM.reduce( shots_per_df))
     Nf = COMM.bcast(COMM.reduce(Nf))
+    if args.maxProcess is not None:
+        Nf = args.maxProcess
+        shots_per_df = shots_per_df[:Nf]
     print0("total num shots is %d" % Nf)
     df_rows_per_rank = np.array_split(shots_per_df, COMM.size)[COMM.rank]
 
@@ -460,7 +464,7 @@ if __name__=="__main__":
                     df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
                 if args.filterDupes:
                     pred = filter_refls(pred)
-            except ValueError:
+            except Exception:
                 #os.remove(new_expt_name)
                 continue
 
@@ -540,13 +544,13 @@ if __name__=="__main__":
             df['predicted_refs'] = rank_pred_file
             df['num_pred'] = len(pred)
 
-            all_dfs.append(df)
-            rank_shot_count += 1
-
             spec_name = df.spectrum_filename.values[0]
             if spec_name is None:
                 spec_name = ""
             exp_ref_spec_lines.append("%s %s %s %d\n" % (rank_expt_file, rank_pred_file, spec_name, rank_shot_count))
+
+            all_dfs.append(df)
+            rank_shot_count += 1
 
         all_rank_pred.as_file(rank_pred_file)
         # NOTE: all_rank_expt is a dictionary to avoid weird OOM, so we write a simple json
