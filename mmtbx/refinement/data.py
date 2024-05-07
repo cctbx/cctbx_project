@@ -24,17 +24,16 @@ class fs(object):
       selection = selection.iselection()
     sc = self.fmodel.xray_structure.scatterers()
     self.size = sc.size()
-    if  (self.sites_cart): sc.flags_set_grad_site(iselection = selection)
-    elif(self.u_iso):      sc.flags_set_grad_u_iso(iselection = selection)
+    if  (self.sites_cart): sc.flags_set_grad_site(     iselection = selection)
+    elif(self.u_iso):      sc.flags_set_grad_u_iso(    iselection = selection)
     elif(self.occupancy):  sc.flags_set_grad_occupancy(iselection = selection)
 
   def update(self, x):
+    xrs = self.fmodel.xray_structure
     if  (self.sites_cart):
       pass
-    elif(self.u_iso):
-      self.fmodel.xray_structure.set_u_iso(values = x)
-    elif(self.occupancy):
-      self.fmodel.xray_structure.set_occupancies(value=x)
+    elif(self.u_iso):     xrs.set_u_iso(      values=x, selection=self.selection)
+    elif(self.occupancy): xrs.set_occupancies(value =x, selection=self.selection)
     self.fmodel.update_xray_structure(update_f_calc = True)
     self.tg = self.target_functor_xray(compute_gradients = True)
 

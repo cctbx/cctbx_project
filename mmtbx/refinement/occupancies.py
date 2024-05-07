@@ -438,13 +438,36 @@ def occupancy_selections(
       iselection            = True,
       allow_empty_selection = True,
       one_selection_array   = True)
+    def flatten(lst):
+      flat_list = []
+      for item in lst:
+          if isinstance(item, list):
+              flat_list.extend(flatten(item))
+          else:
+              flat_list.append(item)
+      return flat_list
+    occ_groups_of_more_than_one = []
+    for g in result:
+      if len(g)>1:
+        occ_groups_of_more_than_one.extend( flatten(g) )
+    water_selection = list(water_selection)
+    wocc = model.get_hierarchy().atoms().extract_occ()
+    wsel = model.solvent_selection().iselection()
+    wremove = []
+    for i in wsel:
+       if wocc[i]<1.e-6:
+         water_selection.remove(i)
+       if i in occ_groups_of_more_than_one:
+         water_selection.remove(i)
     result = add_occupancy_selection(
       result     = result,
       size       = model.get_number_of_atoms(),
-      selection  = water_selection,
+      selection  = flex.size_t(water_selection),
       hd_special = None)
+
   list_3d_as_bool_selection(
     list_3d=result, size=model.get_number_of_atoms())
+
   if(len(result) == 0): result = None
   if(as_flex_arrays and result is not None):
     result_ = []
