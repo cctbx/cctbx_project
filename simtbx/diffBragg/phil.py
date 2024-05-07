@@ -1287,9 +1287,6 @@ predictions {
   thicksteps_override = None
     .type = int
     .help = Use to force the number of detector thickness steps to a specific value
-  mosaic_samples_override = None
-    .type = int
-    .help = Force the number of mosaic spread samples used during prediction
   oversample_override = None
     .type = int
     .help = force the pixel oversample rate to this value during the forward model simulation
