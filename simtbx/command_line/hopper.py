@@ -273,6 +273,8 @@ class Script:
             try:
                 x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
                 for i_rep in range(self.params.filter_after_refinement.max_attempts):
+                    if not self.params.filter_after_refinement.enable:
+                        continue
                     final_sigz = Modeler.target.all_sigZ[-1]
                     niter = len(Modeler.target.all_sigZ)
                     too_few_iter = niter < self.params.filter_after_refinement.min_prev_niter
@@ -286,8 +288,7 @@ class Script:
             tref = time.time()-tref
             sigz = niter = None
             try:
-                niter = len(Modeler.target.all_hop_id)
-                sigz = Modeler.target.all_sigZ[-1]
+                sigz, niter, _ = Modeler.get_best_hop()
             except Exception:
                 pass
 
