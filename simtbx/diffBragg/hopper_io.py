@@ -198,6 +198,8 @@ def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_
         df['sigz'] = [Mod.sigz]
     if hasattr(Mod, "niter"):
         df['niter'] = [Mod.niter]
+    if hasattr(Mod, "nidx"):
+        df['nidx'] = [Mod.nidx]
     df['phi_deg'] = SIM.D.phi_deg
     df['osc_deg'] = SIM.D.osc_deg
     if write_pandas:

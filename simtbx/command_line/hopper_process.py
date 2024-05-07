@@ -196,8 +196,13 @@ class Hopper_Processor(Processor):
             self.params.diffBragg.outdir = self.params.output.output_dir
             # TODO: what about composite mode ?
 
-            #def save_to_pandas(x, Mod, SIM, orig_exp_name, params, expt, rank_exp_idx, stg1_refls, stg1_img_path=None,
-            #                   rank=0, write_expt=True, write_pandas=True, exp_idx=0):
+            try:
+                sigz, niter, _ = self.stage1_modeler.get_best_hop()
+                self.stage1_modeler.sigz = sigz
+                self.stage1_modeler.niter = niter
+                self.stage1_modeler.nidx = len(ref) # TODO do some of these get filtered more before writing...
+            except Exception:
+                pass
             self.stage1_df = save_to_pandas(x, self.stage1_modeler, self.SIM, orig_exp_name, self.params.diffBragg,
                                             self.stage1_modeler.E, rank_exp_idx=0, stg1_refls=refls_name, stg1_img_path=None, rank=COMM.rank,
                                             write_expt=False, write_pandas=True, exp_idx=0)
