@@ -5,6 +5,7 @@ parser = ArgumentParser()
 parser.add_argument("dirname", help="stage1 output folder with pandas and diff.phil", type=str)
 parser.add_argument("newPhil", default=None, help="new stage 1 phil file", type=str)
 parser.add_argument("--setGlim", action="store_true", help="Use unrestrained stage1 to set bounds on G")
+parser.add_argument("--restrainEta", action="store_true", help="Configure restraints for mosaic spread")
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 #parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
 args = parser.parse_args()
@@ -27,8 +28,10 @@ a,b,c,al,be,ga = df1[['a', 'b', 'c', 'al', 'be', 'ga']].median()
 
 # Ncells abc and Nvol
 na, nb, nc = np.vstack(df1.ncells).T
-nvol = na*nb*nc
-nvol = np.median(na*nb*nc)
+nd, ne, nf = np.vstack(df1.ncells_def).T
+nvol = na*nb*nc + 2*nd*ne*nf - nb*nf**2 - nc*nd**2 -na*ne**2
+nvol = np.median(nvol)
+#nvol = np.median(na*nb*nc)
 na, nb, nc = map(np.median, (na, nb, nc))
 
 # eta
@@ -66,12 +69,20 @@ betas {{
 use_restraints = True
 """.format(G=Gmed,na=na, nb=nb, nc=nb, ea=ea, eb=eb, ec=ec,a=a,b=b,c=c,al=al,be=be,ga=ga, nvol=nvol)
 
+
 Gmin_Gmax="""
 mins.G={Gmin}
 maxs.G={Gmax}\n""".format(Gmin=Gmin, Gmax=Gmax)
 
+eta_phil="""
+centers.eta_abc=[{ea},{eb},{ec}]
+betas.eta_abc=[1e-7,1e-7,1e-7]\n""".format(ea=ea,eb=eb,ec=ec)
+
 if args.setGlim:
     update_phil += Gmin_Gmax
+
+if args.restrainEta:
+    update_phil += eta_phil
 
 diff_phil_name = os.path.join(args.dirname, "diff.phil")
 assert os.path.exists(diff_phil_name)
