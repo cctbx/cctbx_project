@@ -13,7 +13,6 @@ _cell.angle_gamma        90.00
 _cell.Z_PDB              2
 _cell.pdbx_unique_axis   ?
 _pdbx_database_status.recvd_initial_deposition_date   2005-01-15
-# _pdbx_database_status.recvd_initial_deposition_date   ?
 loop_
 _atom_site.group_PDB
 _atom_site.id
@@ -50,6 +49,14 @@ def exercise_extract_header_year(prefix="iotbx_tst_mmcif_segids"):
   assert cif_inp.deposition_date() == "2005-01-15"
   assert cif_inp.extract_header_year() == 2005
 
+  # now the same but with ?
+
+  cif_str_2 = cif_str.replace('2005-01-15', '?')
+  cif_inp_2 = iotbx.pdb.input(lines=cif_str_2, source_info=None)
+  # print(cif_inp_2.deposition_date())
+  # print(cif_inp_2.extract_header_year())
+  assert cif_inp_2.deposition_date() == '?'
+  assert cif_inp_2.extract_header_year() == None
 
 if __name__ == "__main__":
   exercise_extract_header_year()

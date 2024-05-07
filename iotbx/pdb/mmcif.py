@@ -476,7 +476,8 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       try:
         return int(yyyymmdd[:4])
       except ValueError:
-        raise Sorry("Cannot extract year of deposition from mmCIF file: '%s'" % yyyymmdd )
+        pass
+    return None
 
 
   def deposition_date(self, us_style=True):
