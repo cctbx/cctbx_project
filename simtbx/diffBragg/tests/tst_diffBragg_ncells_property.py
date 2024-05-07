@@ -10,6 +10,7 @@ parser = ArgumentParser()
 parser.add_argument("--kokkos", action="store_true")
 parser.add_argument("--plot", action='store_true')
 parser.add_argument("--curvatures", action='store_true')
+parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 if args.kokkos:
     import os
@@ -66,75 +67,81 @@ with DeviceWrapper(0) as _:
 
     S.D.refine(Ncells_id)
     S.D.initialize_managers()
-    S.D.Ncells_abc = 20
-    #S.D.printout_pixel_fastslow = 10, 10
-    S.D.verbose = 1
-    assert S.D.isotropic_ncells
-    #S.D.isotropic_ncells = True
-    S.D.add_diffBragg_spots()
-    S.D.verbose = 0
-    img = S.D.raw_pixels_roi.as_numpy_array()
-    deriv = S.D.get_ncells_derivative_pixels()[0].as_numpy_array()
-    if args.curvatures:
-        deriv2 = S.D.get_ncells_second_derivative_pixels()[0].as_numpy_array()
+    S.D.verbose = int(args.verbose)
 
-    N = S.D.get_value(Ncells_id)
-    perc = 0.001, 0.01, 0.1, 1, 10
-
-    bragg = img > 1e-1  # select bragg scattering regions
-
-    all_error = []
-    all_error2 = []
-    shifts = []
-    shifts2 = []
-    for i_shift, p in enumerate(perc):
-        delta_N = N*p*0.001
-        #S.D.set_value(Ncells_id, N-delta_N)
-
-        Nabc = [N+delta_N, N+delta_N, N+delta_N]
-        shifts.append(delta_N)
-        S.D.Ncells_abc_aniso = tuple(Nabc)
-        S.D.raw_pixels_roi *= 0
+    for noNabcScale, spot_scale in zip([False, True], [S.D.spot_scale, S.D.spot_scale*20**6]):
+        S.D.Ncells_abc = 20
+        assert S.D.isotropic_ncells
+        S.D.spot_scale = spot_scale
+        S.D.no_Nabc_scale = noNabcScale
+        #S.D.printout_pixel_fastslow = 10, 10
+        S.D.verbose = 1
+        #S.D.isotropic_ncells = True
         S.D.add_diffBragg_spots()
-        img2 = S.D.raw_pixels_roi.as_numpy_array()
-
-        fdiff = (img2-img) / delta_N
-        error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
-        all_error.append(error)
-
+        S.D.verbose = 0
+        S.D.raw_pixels*=0
+        img = S.D.raw_pixels_roi.as_numpy_array()
+        deriv = S.D.get_ncells_derivative_pixels()[0].as_numpy_array()
         if args.curvatures:
-            S.D.set_value(Ncells_id, N - delta_N)
-            shifts2.append(delta_N**2)
+            deriv2 = S.D.get_ncells_second_derivative_pixels()[0].as_numpy_array()
 
+        N = S.D.get_value(Ncells_id)
+        perc = 0.001, 0.01, 0.1, 1, 10
+
+        bragg = img > 1e-1  # select bragg scattering regions
+
+        all_error = []
+        all_error2 = []
+        shifts = []
+        shifts2 = []
+        for i_shift, p in enumerate(perc):
+            delta_N = N*p*0.001
+            #S.D.set_value(Ncells_id, N-delta_N)
+
+            Nabc = [N+delta_N, N+delta_N, N+delta_N]
+            shifts.append(delta_N)
+            S.D.Ncells_abc_aniso = tuple(Nabc)
             S.D.raw_pixels_roi *= 0
             S.D.add_diffBragg_spots()
-            img_backward = S.D.raw_pixels.as_numpy_array()
+            img2 = S.D.raw_pixels_roi.as_numpy_array()
 
-            fdiff2 = (img2 - 2*img + img_backward) / delta_N / delta_N
+            fdiff = (img2-img) / delta_N
+            error = np.abs(fdiff[bragg] - deriv[bragg]).mean()
+            all_error.append(error)
 
-            error2 = (np.abs(fdiff2[bragg] - deriv2[bragg]) / 1).mean()
-            all_error2.append(error2)
+            if args.curvatures:
+                S.D.set_value(Ncells_id, N - delta_N)
+                shifts2.append(delta_N**2)
 
-        print ("error=%f, step=%f" % (error, delta_N))
+                S.D.raw_pixels_roi *= 0
+                S.D.add_diffBragg_spots()
+                img_backward = S.D.raw_pixels.as_numpy_array()
 
-    if args.plot:
-        plt.plot(shifts, all_error, 'o')
-        plt.show()
-        if args.curvatures:
-            plt.plot(shifts2, all_error2, 'o')
+                fdiff2 = (img2 - 2*img + img_backward) / delta_N / delta_N
+
+                error2 = (np.abs(fdiff2[bragg] - deriv2[bragg]) / 1).mean()
+                all_error2.append(error2)
+
+            print ("error=%f, step=%f" % (error, delta_N))
+
+        if args.plot:
+            plt.plot(shifts, all_error, 'o')
             plt.show()
+            if args.curvatures:
+                plt.plot(shifts2, all_error2, 'o')
+                plt.show()
 
-    l = linregress(shifts, all_error)
-    assert l.rvalue > .9999, l  # this is definitely a line!
-    assert l.slope > 0
-    assert l.pvalue < 1e-6
-    assert l.intercept < 0.1*l.slope # line should go through origin
-    if args.curvatures:
-        l = linregress(shifts2, all_error2)
-        assert l.rvalue > .9999  # this is definitely a line!
+        l = linregress(shifts, all_error)
+        assert l.rvalue > .9999, l  # this is definitely a line!
         assert l.slope > 0
         assert l.pvalue < 1e-6
         assert l.intercept < 0.1*l.slope # line should go through origin
+        if args.curvatures:
+            l = linregress(shifts2, all_error2)
+            assert l.rvalue > .9999  # this is definitely a line!
+            assert l.slope > 0
+            assert l.pvalue < 1e-6
+            assert l.intercept < 0.1*l.slope # line should go through origin
 
     print("OK!")
     for name in find_diffBragg_instances(globals()): del globals()[name]

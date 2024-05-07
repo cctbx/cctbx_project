@@ -738,7 +738,9 @@ void kokkos_sum_over_steps(
                                     KOKKOS_VEC3 dV_dN = dN.dot(delta_H);
                                     // TODO speedops: precompute these, store shared var
                                     // _NABC.inverse
-                                    CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
+                                    CUDAREAL determ_deriv = 0;
+                                    if (! no_Nabc_scale)
+                                        determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                     CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                     CUDAREAL value = 2 * Iincrement * deriv_coef;
                                     CUDAREAL value2 = 0;
@@ -763,7 +765,9 @@ void kokkos_sum_over_steps(
                                         dN = KOKKOS_MAT3{0, 0, 1, 0, 0, 0, 1, 0, 0};
                                     KOKKOS_VEC3 dV_dN = dN.dot(delta_H);
                                     // TODO speedops: precompute these
-                                    CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
+                                    CUDAREAL determ_deriv=0;
+                                    if (! no_Nabc_scale)
+                                        determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                     CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                     CUDAREAL value = 2 * Iincrement * deriv_coef;
                                     dI.Ncells[i_nc] += value;
@@ -1964,7 +1968,9 @@ void kokkos_sum_over_steps(
                                     KOKKOS_VEC3 dV_dN = dN.dot(delta_H);
                                     // TODO speedops: precompute these, store shared var
                                     // _NABC.inverse
-                                    CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
+                                    CUDAREAL determ_deriv=0;
+                                    if (!no_Nabc_scale)
+                                        determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                     CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                     CUDAREAL value = 2 * Iincrement * deriv_coef;
                                     CUDAREAL value2 = 0;
@@ -1989,7 +1995,9 @@ void kokkos_sum_over_steps(
                                         dN = KOKKOS_MAT3{0, 0, 1, 0, 0, 0, 1, 0, 0};
                                     KOKKOS_VEC3 dV_dN = dN.dot(delta_H);
                                     // TODO speedops: precompute these
-                                    CUDAREAL determ_deriv = (_NABC.inverse().dot(dN)).trace();
+                                    CUDAREAL determ_deriv=0;
+                                    if (!no_Nabc_scale)
+                                        determ_deriv = (_NABC.inverse().dot(dN)).trace();
                                     CUDAREAL deriv_coef = determ_deriv - C * (dV_dN.dot(V));
                                     CUDAREAL value = 2 * Iincrement * deriv_coef;
                                     dI.Ncells[i_nc] += value;
