@@ -2266,7 +2266,8 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
         nbefore = len(new_refls)
         new_refls = new_refls.select(flex.bool(sel))
         nafter = len(new_refls)
-        MAIN_LOGGER.info("Filtered %d / %d reflections which did not show peaks in model" % (nbefore-nafter, nbefore))
+        if nbefore != nafter:
+            MAIN_LOGGER.debug("Filtered %d / %d reflections which did not show peaks in model" % (nbefore-nafter, nbefore))
 
     return new_refls
 
