@@ -320,7 +320,7 @@ def check_for_missing_elements(hierarchy, file_name = None):
         "Up to 10 listed below: \n%s" % ("\n".join(missing_list[:10])))
 
 def get_pdb_info(text = None, file_name = None, lines = None,
-     check_pseudo = False, return_pdb_hierarchy = False,
+     check_pseudo = False,
      return_group_args = False,
      allow_incorrect_spacing = False):
   ''' Get a pdb_input object from pdb or mmcif file, construct a
@@ -353,9 +353,20 @@ def get_pdb_hierarchy(text=None, file_name = None,
      check_pseudo = check_pseudo, return_pdb_hierarchy = True,
      allow_incorrect_spacing = allow_incorrect_spacing)
 
+def get_model(text=None, file_name = None,
+     lines = None, check_pseudo = None,
+     allow_incorrect_spacing = False):
+  ''' Get pdb_input object and construct model object.
+  '''
+  return get_pdb_input(text = text, file_name = file_name, lines = lines,
+     check_pseudo = check_pseudo, return_model= True,
+     allow_incorrect_spacing = allow_incorrect_spacing)
+
 
 def get_pdb_input(text = None, file_name = None, lines = None,
-    check_pseudo = False, return_pdb_hierarchy = False,
+    check_pseudo = False,
+    return_pdb_hierarchy = False,
+    return_model = False,
     return_group_args = False,
      allow_incorrect_spacing = False):
 
@@ -401,8 +412,12 @@ def get_pdb_input(text = None, file_name = None, lines = None,
 
   elif return_pdb_hierarchy:
     return ph
+  elif return_model:
+    return ph.as_model_manager(crystal_symmetry = pdb_inp.crystal_symmetry())
   else:
     return pdb_inp
+
+
 
 def set_element_ignoring_spacings(hierarchy):
   ''' Set missing elements ignoring spacings. This allows
