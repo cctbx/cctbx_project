@@ -263,7 +263,7 @@ class manager(object):
       new_scatterers = flex.xray_scatterer(
         peaks_fo_fc.sites.size(),
         xray.scatterer(occupancy       = self.params.occupancy,
-        b                              = self.params.b_iso,
+        b                              = 20,
         scattering_type                = self.params.scattering_type,
         label                          = 'HOH'))
       new_scatterers.set_sites(peaks_fo_fc.sites)
@@ -404,7 +404,7 @@ class manager(object):
                               log             = self.log)
 
   def add_new_solvent(self):
-    b_solv = self.params.b_iso
+    b_solv = 20
     new_scatterers = flex.xray_scatterer(
               self.sites.size(),
               xray.scatterer(occupancy       = self.params.occupancy,
