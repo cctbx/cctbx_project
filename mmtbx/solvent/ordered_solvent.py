@@ -103,9 +103,6 @@ master_params_str = """\
   mask_atoms_selection = protein and (name CA or name CB or name N or name C or name O)
     .type = str
     .help = Mask macromolecule atoms in peak picking map
-  keep_existing = False
-    .type = bool
-    .help = Keep existing in the model water
   include_altlocs = False
     .type = bool
     .help = Search for water with altlocs
@@ -456,9 +453,6 @@ class manager(object):
     self.n_water    = None
     self.model_size_init = self.model.size()
     self.new_solvent_selection = None
-    self.existing_solvent = None
-    if(self.params.keep_existing):
-      self.existing_solvent = self.model.solvent_selection().iselection()
     #
     self._call(msg="Start",            func=None)
     self._call(msg="Filter (dist)",    func=self._filter_dist_fix_altlocs)
@@ -556,8 +550,6 @@ class manager(object):
               if(atom.element.strip().upper()=="O"): has_oxygen = True
               if(atom.element_is_hydrogen()): continue
               i_seq = atom.i_seq
-              if(self.params.keep_existing and i_seq in self.existing_solvent):
-                continue
               # Occupancy
               if filter_occ:
                 if(atom.occ > self.params.occupancy_max or
@@ -725,7 +717,7 @@ class manager(object):
   def _correct_drifted_waters(self):
     if(self.params.mode != "filter_only"): return
     if(not self.params.correct_drifted_waters): return
-    sol_sel = self.model.solvent_selection(offset=self.existing_solvent)
+    sol_sel = self.model.solvent_selection()
     hd_sel  = self.model.get_hd_selection()
     hd_sol = sol_sel & hd_sel
     if(hd_sol.count(True)>0): return

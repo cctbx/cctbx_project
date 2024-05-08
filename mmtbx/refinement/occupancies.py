@@ -432,6 +432,14 @@ def occupancy_selections(
       if(len(cg_sel) > 0):
         result.append(cg_sel)
   if(add_water):
+
+    if (constrain_correlated_3d_groups) and (len(result) > 0):
+      result = assemble_constraint_groups_3d(
+        xray_structure=model.get_xray_structure(),
+        pdb_atoms=model.get_atoms(),
+        constraint_groups=result,
+        log=log)
+
     water_selection = get_atom_selections(
       model                 = model,
       selection_strings     = ['water'],
@@ -477,12 +485,6 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
-    if (constrain_correlated_3d_groups) and (len(result) > 0):
-      result = assemble_constraint_groups_3d(
-        xray_structure=model.get_xray_structure(),
-        pdb_atoms=model.get_atoms(),
-        constraint_groups=result,
-        log=log)
   return result
 
 def occupancy_regroupping(pdb_hierarchy, cgs):
