@@ -103,7 +103,7 @@ class MolstarController(Controller):
 
 
   def _update_state_from_remote(self):
-    self.state.phenixState = self.viewer._get_sync_state()
+    self.state.phenixState = self.viewer.sync_remote()
     if self.state.has_synced:
       self.timer.stop()
     self.timer_accumulator+=1
@@ -130,7 +130,14 @@ class MolstarController(Controller):
 
   def load_model_from_ref(self,ref,label=None,format='pdb'):
 
-    if ref is not None and ref.id not in self.state.external_loaded["molstar"]:
+    if ref is not None:
+      if ref.id_molstar is not None and ref.id_molstar in self.state.external_loaded["molstar"]:
+        print("Not loading model because already loaded into molstar")
+        print(self.state.external_loaded)
+        print(ref.id_molstar)
+
+        return
+      # Ref needs to be loaded
       with sync_manager(self):
         #self.viewer._set_sync_state(self.state.to_json())
 

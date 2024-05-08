@@ -45,7 +45,6 @@ class ScrollEntryController(Controller, QObject):
     if not self.view.is_destroyed and not self.is_destroyed:
       assert isinstance(value,bool), "Active must be boolean"
       self.view.active_toggle.is_checked=value
-      self.toggle_active_func(value)
 
   @property
   def is_destroyed(self):
@@ -81,6 +80,8 @@ class ScrollEntryController(Controller, QObject):
         name = self.ref.data.filepath
       elif self.ref.data.filename in self.state.data_manager.get_model_names():
         name = self.ref.data.filepath
+      else:
+        name = None
       if name:
         self.state.data_manager.remove_model(name)
 
@@ -98,8 +99,9 @@ class ScrollEntryController(Controller, QObject):
     for ref_id,ref in list(self.state.references.items()):
       if not isinstance(ref,ModelRef):
         if hasattr(ref,"model_ref") and ref.model_ref == self.ref:
-          if ref.entry in ref.entry.parent_list.entries:
-            ref.entry.parent_list.remove_entry(ref.entry)
+          if ref.entry is not None:
+            if ref.entry in ref.entry.parent_list.entries:
+              ref.entry.parent_list.remove_entry(ref.entry)
     if self.ref.id in self.state.references:
       del self.state.references[self.ref.id]
 

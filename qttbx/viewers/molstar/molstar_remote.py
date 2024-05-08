@@ -385,7 +385,7 @@ class PhenixMolstarViewer(ModelViewer):
       command = f"{self.plugin_prefix}.plugin.managers.interactivity.setProps({{ granularity: 'residue' }})"
     self.send_command(command)
 
-  def _get_sync_state(self,callback=None,verbose=False):
+  def sync_remote(self,callback=None,verbose=False):
     # get the remote: local -> reference mapping from the web app
     command = f"""
     {self.plugin_prefix}.phenix.getState();

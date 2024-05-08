@@ -430,7 +430,7 @@ class MolstarViewer(ModelViewer):
 
 
 
-  def _get_sync_state(self,callback=None,verbose=True):
+  def sync_remote(self,callback=None,verbose=True):
     # get the remote: local -> reference mapping from the web app
     command = f"""
     {self.plugin_prefix}.phenix.getState();
@@ -453,20 +453,20 @@ class MolstarViewer(ModelViewer):
 
       # Inline print callback
       def callback(x):
-        print("Verbose sync ouput: ",x,", type: ",type(x))
+        print("Verbose sync ouput: ")#,x,", type: ",type(x))
         output =  _validate_sync_output(x)
         if output is not None:
           print(json.dumps(output,indent=2))
 
     #Run and get output
     output = self.send_command(command,callback=callback,sync=True,log_js=True)
-    print("Returned sync output:")
-    print(type(output))
-    print(output)
+    #print("Returned sync output:")
+    #print(type(output))
+    #print(output)
     output = _validate_sync_output(output)
-    print("Building phenix state")
-    print(type(output))
-    print(output)
+    #print("Building phenix state")
+    #print(type(output))
+    #print(output)
     if output is not None:
       output = PhenixState.from_dict(output)
     return output

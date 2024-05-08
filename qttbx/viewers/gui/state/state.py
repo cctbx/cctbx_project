@@ -65,8 +65,9 @@ class PhenixState(DataClassBase):
     for ref_id,ref_dict in state_dict["references"].items():
       id_molstar = ref_dict["id_molstar"]
       id_viewer = ref_dict["id_viewer"]
+
       if id_viewer in phenix_state.references:
-        ref = phenix_state.references[ref_id]
+        ref = phenix_state.references[id_viewer]
         ref.id_molstar = id_molstar
         ref.structures = []
       else:
@@ -110,7 +111,7 @@ class State:
 
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
-    self.external_loaded = defaultdict(list) # external name: [internal ref_ids]
+    #self.external_loaded = defaultdict(list) # external name: [internal ref_ids]
     self.params = DotDict()
     self.params.default_format = 'pdb'
 
@@ -221,6 +222,9 @@ class State:
           ref.reference = phenixState.references[ref_id]
           ref.style = replace(ref.style,representation=ref.reference.representations)
 
+  @property
+  def external_loaded(self):
+    return {"molstar":[ref.id_molstar for ref_id,ref in self.references.items()]}
 
   @property
   def has_synced(self):
@@ -438,9 +442,9 @@ class State:
     # be called explicitly/manually if the data manager changes.
     #self.signals.data_manager_changed.emit()
     model_refs = [ref for ref in self.references_model]
-    model_keys = [ref.data.filepath for ref in model_refs]
+    model_keys = [str(ref.data.filepath) for ref in model_refs]
     for filename in self.data_manager.get_model_names():
-      if filename not in model_keys:
+      if str(filename) not in model_keys:
         print(f"New file found in data manager: {filename} and not found in references: {model_keys}")
         model = self.data_manager.get_model(filename=filename)
         ref = self.add_ref_from_mmtbx_model(model,filename=filename)
@@ -466,6 +470,11 @@ class State:
 
   @active_model_ref.setter
   def active_model_ref(self,value):
+
+    if value == self._active_model_ref:
+      return # do nothing if already the active ref
+
+    
     ref = value
     if value is None:
       self._active_model_ref = None

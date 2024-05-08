@@ -13,6 +13,10 @@ class ScrollableListController(Controller):
   def refs(self):
     return [entry.ref for entry in self.entries]
 
+  @property
+  def model_entries(self):
+    return [entry for entry in self.entries if "ModelEntryController" in str(type(entry))]
+
   def add_entry(self, entry):
     assert entry.parent_list == self, 'This entry was not initialized with this parent list'
     self.entries.append(entry)

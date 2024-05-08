@@ -18,6 +18,7 @@ from .widgets import InputDialog
 
 
 class ModelLikeEntryController(ScrollEntryController):
+  # An abstract base class
   def __init__(self,parent=None,view=None,ref=None):
     super().__init__(parent=parent,view=view,ref=ref)
 
@@ -173,6 +174,7 @@ class ModelLikeEntryController(ScrollEntryController):
 class ModelEntryController(ModelLikeEntryController):
   def __init__(self,parent=None,view=None,ref=None):
     super().__init__(parent=parent,view=view,ref=ref)
+
     self.state.signals.model_change.connect(self.handle_model_change)
 
 
@@ -181,16 +183,17 @@ class ModelEntryController(ModelLikeEntryController):
       self.view.active_toggle.is_checked = False
 
   def toggle_active_func(self,is_checked):
-    # TODO: here
     if is_checked:
       self.state.active_model_ref = self.ref
     else:
+      # Deactivate this as active model ref
       if self.state.active_model_ref == self.ref:
         self.state.active_model_ref = None
 
 class ModelListController(ScrollableListController):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
+    self._first_load_completed = False
     self.openFileDialog = None
     # Load button
     self.view.load_button.clicked.connect(self.showFileDialog)
@@ -213,6 +216,15 @@ class ModelListController(ScrollableListController):
         _ = self.state.data_manager.process_model_file(filepath)
         self.state._data_manager_changed()
 
+  def check_only_model_is_active(self):
+    # Upon first load, a single model should be made active
+    if self._first_load_completed:
+      return 
+    else:
+      if len(self.model_entries)==1:
+        entry = self.model_entries[0]
+        entry.active = True
+        self._first_load_completed = True
 
 
   def update(self):
@@ -224,3 +236,4 @@ class ModelListController(ScrollableListController):
           self.add_entry(entry_controller)
           if ref == self.state.active_model_ref:
             entry_controller.active = True # display radio button
+    self.check_only_model_is_active()
