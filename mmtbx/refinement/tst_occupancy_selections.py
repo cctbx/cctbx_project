@@ -82,7 +82,7 @@ def exercise_00(verbose):
     as_flex_arrays    = False)
   res = extract_serials(model.get_atoms(), res)
   base_21_23 = target[:]
-  target.extend([[[18]], [[19]], [[20]], [[22]]])
+  target.extend([[[18]], [[19]], [[20]]])
   assert approx_equal(res, target)
   # 1
   res = occupancy_selections(
@@ -99,7 +99,7 @@ def exercise_00(verbose):
     as_flex_arrays    = False,
     other_individual_selection_strings = ['resseq 0 and not (altloc A or altloc B)'])
   res = extract_serials(model.get_atoms(), res)
-  target.extend([[[18]], [[19]], [[20]], [[22]]])
+  target.extend([[[18]], [[19]], [[20]]])
   assert approx_equal(res, target)
   # 2
   other_constrained_groups = make_up_other_constrained_groups_obj(
@@ -120,7 +120,7 @@ def exercise_00(verbose):
     as_flex_arrays    = False,
     other_constrained_groups = other_constrained_groups)
   res = extract_serials(model.get_atoms(), res)
-  target.extend([[[18]], [[19]], [[20]], [[22]]])
+  target.extend([[[18]], [[19]], [[20]]])
   assert approx_equal(res, target)
   # 3
   other_constrained_groups = make_up_other_constrained_groups_obj(

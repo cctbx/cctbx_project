@@ -715,6 +715,7 @@ class manager(object):
         selection = self.new_solvent_selection,
         q_min     = 0.004,
         b_max     = 60,
+        b_min     = self.params.b_iso_min,
         log       = self.log)
       self.model.adopt_xray_structure(
           xray_structure = self.fmodel.xray_structure)
