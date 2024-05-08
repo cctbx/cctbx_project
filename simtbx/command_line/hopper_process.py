@@ -19,6 +19,7 @@ COMM = MPI.COMM_WORLD
 import logging
 from libtbx.utils import Sorry
 from simtbx.modeling import predictions
+from simtbx.diffBragg import mpi_logger
 
 logger = logging.getLogger("dials.command_line.stills_process")
 
@@ -33,9 +34,6 @@ skip_hopper=False
   .type = bool
   .help = if True, then skip the hopper refinement, i.e. just run stills
   .help = process without refinement like usual
-silence_dials_loggers = False
-  .type = bool
-  .help = if True, reduce the output clutter from the dials.refine and dials.index methods
 save_pandas = True
   .type = bool
   .help = save the model parameters in a pandas frame
@@ -89,26 +87,16 @@ class Hopper_Processor(Processor):
         self.known_crystal_models = None  # default flag, should be defined in stills_process init
         self.SIM = None # place holder for simtbx/nanoBragg/sim_data.SimData instance
 
-        if self.params.silence_dials_loggers:
-            #dials.algorithms.indexing.indexer: model
-            logging.getLogger("dials.algorithms.indexing.nave_parameters").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.indexing.stills_indexer").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.refiner").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
-            logging.getLogger("dials.algorithms.refinement.reflection_manager").setLevel(logging.ERROR)
         # configure the diffBragg logger
-        dblog = logging.getLogger("diffBragg.main")
-        H = logging.StreamHandler()
-        if self.params.db_loglevel=='2':
-            dblog.setLevel(logging.DEBUG)
-            H.setLevel(logging.DEBUG)
-        elif self.params.db_loglevel=='1':
-            dblog.setLevel(logging.INFO)
-            H.setLevel(logging.INFO)
+        if self.params.diffBragg.logging.logname is None:
+            self.params.diffBragg.logging.logname = "main_dbproc.log"
+        if self.params.diffBragg.profile_name is None:
+            self.params.diffBragg.profile_name = "prof_dbproc.log"
+        if self.params.diffBragg.logging.disable:
+            logging.disable(level=logging.CRITICAL)  # disables CRITICAL and below
         else:
-            dblog.setLevel(logging.CRITICAL)
-            H.setLevel(logging.CRITICAL)
-        dblog.addHandler(H)
+            self.params.diffBragg.outdir = self.params.output.output_dir
+            mpi_logger.setup_logging_from_params(self.params.diffBragg)
 
         self._create_modeler_dir()
 
@@ -133,7 +121,7 @@ class Hopper_Processor(Processor):
     @property
     def device_id(self):
         dev = COMM.rank % self.params.diffBragg.refiner.num_devices
-        print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        #print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
         return dev
 
     def find_spots(self, experiments):
@@ -316,14 +304,14 @@ class Hopper_Processor(Processor):
         predicted, model = predictions.get_predicted_from_pandas(
             self.stage1_df, self.params.diffBragg, self.observed,
             experiments[0].identifier, self.device_id,
-            spectrum_override=self.SIM.beam.spectrum)
+            spectrum_override=self.SIM.beam.spectrum, verbose=self.params.diffBragg.debug_mode)
         if self.params.refine_predictions:
             experiments, rnd2_refls = self.refine(experiments, predicted, refining_predictions=True, best=self.stage1_df)
             # TODO: match rnd2_refls with indexed.refl and re-save indexed.refl
             predicted, model = predictions.get_predicted_from_pandas(
                 self.stage1_df, self.params.diffBragg, self.observed,
                 experiments[0].identifier, self.device_id,
-                spectrum_override=self.SIM.beam.spectrum)
+                spectrum_override=self.SIM.beam.spectrum, verbose=self.params.diffBragg.debug_mode)
 
         predicted.match_with_reference(indexed)
         integrator = create_integrator(self.params, experiments, predicted)
@@ -456,42 +444,54 @@ class Hopper_Processor(Processor):
         return integrated
 
 
-def run(args=None):
-    from dials.command_line import stills_process
-    stills_process.Processor = Hopper_Processor
-    stills_process.phil_scope = phil_scope
-    script = stills_process.Script()
-    from simtbx.diffBragg.device import DeviceWrapper
-    params, options, all_paths = script.parser.parse_args(
-        args, show_diff_phil=True, return_unhandled=True, quick_parse=True
-    )
-    if params.output.composite_output:
-        raise NotImplementedError("diffBragg.stills_process currently does not support composite_output mode")
-    dev = COMM.rank % params.diffBragg.refiner.num_devices
-    with DeviceWrapper(dev) as _:
-        script.run(args)
-    return script
+
+class Runner:
+    def __init__(self, args=None):
+        from dials.command_line import stills_process
+        stills_process.Processor = Hopper_Processor
+        stills_process.phil_scope = phil_scope
+        self.script = stills_process.Script()
+        params, _, _ = self.script.parser.parse_args(
+            args, show_diff_phil=COMM.rank==0, return_unhandled=True, quick_parse=True
+        )
+        if params.output.composite_output:
+            raise NotImplementedError("diffBragg.stills_process currently does not support composite_output mode")
+        self.args = args
+        self.dev = COMM.rank % params.diffBragg.refiner.num_devices
+
+    def run(self):
+        self.script.run(self.args)
+        return self.script
 
 
 if __name__ == "__main__":
-    script_that_was_run = run()
-    if COMM.rank==0:
-        try:
-            params = script_that_was_run.params
-        except AttributeError as err:
-            print(err)
-            print("Looks like the program never launched, check input paths, image files, phil files, current working dir etc.. ")
-            sys.exit()
-        if params.combine_pandas:
-            if not params.save_pandas:
-                print("No pandas tables saved, so will not combine")
-                exit()
-            import pandas
-            import glob
-            fnames = glob.glob("%s/pandas/rank*/*pkl" % params.output.output_dir)
-            logging.info("There are %d pandas output files to combine" % len(fnames))
-            if fnames:
-                df = pandas.concat([pandas.read_pickle(f) for f in fnames])
-                combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
-                df.to_pickle(combined_table)
-                logging.info("Saved summary pandas table: %s" % combined_table)
+    from simtbx.diffBragg.device import DeviceWrapper
+    runner = Runner()
+    with DeviceWrapper(runner.dev) as _:
+        script_that_was_run = runner.run()
+        if COMM.rank==0:
+            try:
+                params = script_that_was_run.params
+            except AttributeError as err:
+                print(err)
+                print("Looks like the program never launched, check input paths, image files, phil files, current working dir etc.. ")
+                sys.exit()
+            if params.combine_pandas:
+                if not params.save_pandas:
+                    print("No pandas tables saved, so will not combine")
+                    exit()
+                import pandas
+                import glob
+                fnames = glob.glob("%s/pandas/rank*/*pkl" % params.output.output_dir)
+                logging.info("There are %d pandas output files to combine" % len(fnames))
+                if fnames:
+                    df = pandas.concat([pandas.read_pickle(f) for f in fnames])
+                    combined_table = os.path.join(params.output.output_dir, "hopper_process_summary.pkl")
+                    df.to_pickle(combined_table)
+                    logging.info("Saved summary pandas table: %s" % combined_table)
+
+        # Need the barrier here to ensure all processes exit AFTER rank0 combines the pandas pickles
+        # Because of kokkos exit errors that can cause Rank0 to abort before writing...
+        from simtbx.diffBragg.utils import find_diffBragg_instances
+        for name in find_diffBragg_instances(globals()): del globals()[name]
+        COMM.barrier()
