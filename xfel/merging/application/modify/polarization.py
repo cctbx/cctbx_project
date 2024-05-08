@@ -45,8 +45,12 @@ class polarization(worker):
       cos_two_polar_angle = flex.cos(2.0*theta)
       # gives same as old answer to ~1% but not exact.  Not sure why, should not matter.
 
+      wavelen = beam.get_wavelength()
+      if self.params.modify.nominal_wavelength is not None:
+        wavelen = self.params.modify.nominal_wavelength
+        print("Using wavelen", wavelen)
       tt_vec = experiment.crystal.get_unit_cell().two_theta(miller_indices = refls['miller_index'],
-                                                            wavelength = beam.get_wavelength())
+                                                            wavelength = wavelen)
       cos_tt_vec = flex.cos(tt_vec)
       sin_tt_vec = flex.sin(tt_vec)
       cos_sq_tt_vec = cos_tt_vec * cos_tt_vec

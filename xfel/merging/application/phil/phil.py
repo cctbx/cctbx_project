@@ -19,6 +19,14 @@ input {
   override_identifiers = False
     .type = bool
     .help = override whatever identifiers may be present in experiments, replacing with auto-generated hash
+  filter_col {
+    name = None
+      .type = str
+      .help = name of a numerical column to filter input refls according to
+    bounds = None
+      .type = floats(size=2)
+      .help = provide a [lower,upper] bound for the column being filtered.
+  }
   alist {
     file = None
       .type = str
@@ -239,6 +247,9 @@ modify_phil = """
 modify
   .help = The MODIFY section defines operations on the integrated intensities
   {
+  nominal_wavelength = None
+    .type = float
+    .help = wavelength override for computing polarization correction
   algorithm = *polarization
     .type = choice
     .multiple = True
