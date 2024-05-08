@@ -6,7 +6,7 @@ from mmtbx.programs import fmodel
 import mmtbx.model
 import iotbx.pdb
 import iotbx.phil
-from libtbx.test_utils import approx_equal, Exception_expected
+from libtbx.test_utils import approx_equal
 from libtbx.utils import format_cpu_times, null_out, Sorry
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
