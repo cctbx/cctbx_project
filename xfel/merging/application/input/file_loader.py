@@ -145,6 +145,11 @@ class simple_file_loader(worker):
         self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = self.params.input.read_image_headers)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        if self.params.input.filter_col.name is not None:
+          lower, upper = self.params.input.filter_col.bounds
+          vals = reflections[self.params.input.filter_col.name]
+          filter_sel = (vals >= lower) & (vals <= upper)
+          reflections = reflections.select(filter_sel)
         if self.params.output.expanded_bookkeeping:
           # NOTE: these are un-prunable
           reflections["input_refl_index"] = flex.int(
