@@ -65,10 +65,11 @@ class PandasTableModel(QAbstractTableModel):
 
             return "" if pd.isna(value) else str(value)
         elif role == Qt.BackgroundRole:
-            if "action" in self.df.columns:
-                action_value = self.df.loc[self.df.index[index.row()], "action"]
-                if pd.notna(action_value):
-                    return QColor(Qt.yellow)
+            pass # Commented out turning yellow if an edit (has action column)
+            # if "action" in self.df.columns:
+            #     action_value = self.df.loc[self.df.index[index.row()], "action"]
+            #     if pd.notna(action_value):
+            #         return QColor(Qt.yellow)
         return None
 
     def flags(self, index):

@@ -1,17 +1,38 @@
 from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
-
+import numpy as np
+import math
 
 from .models import ModelLikeEntryController
 from ..view.tabs.selection import SelectionEntryView
 from ..view.widgets import InfoDialog
 from .scroll_list import ScrollableListController
 from .controller import Controller
+from ..state.base import ObjectFrame
 from ..state.geometry import (
   BondGeometry,
   AngleGeometry,
   DihedralGeometry,
   ChiralGeometry,
   PlaneGeometry
+)
+from ..state.edits import (
+  BondEdit,
+  AngleEdit,
+  DihedralEdit
+)
+
+from ..view.widgets import (
+  BondEditDialog,
+  AngleEditDialog,
+  DihedralEditDialog,
+  ChiralEditDialog,
+  PlaneEditDialog
+)
+from ..state.ref import (
+  BondEditsRef,
+  AngleEditsRef,
+  DihedralEditsRef
+
 )
 
 class SelectionEntryController(ModelLikeEntryController):
@@ -60,15 +81,120 @@ class SelectionEntryController(ModelLikeEntryController):
     contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
 
   def stage_as_bond_restraint(self):
-    restraints = self.ref.model_ref.restraints_ref.data
-    sel = self.state.mol.sites.select_from_query(self.ref.query)
-    i_seqs = list(sel.index.values)
-    new_restraint = BondGeometry(i_seqs=i_seqs)
-    restraints.add_bond_restraint(new_restraint)
-    self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
+    # NOTE: Commented out old way of modifying restraint data object
+    # restraints = self.ref.model_ref.restraints_ref.data
+    # sel = self.state.mol.sites.select_from_query(self.ref.query)
+    # i_seqs = list(sel.index.values)
+    # new_restraint = BondGeometry(i_seqs=i_seqs)
+    # restraints.add_bond_restraint(new_restraint)
+    # self.state.signals.restraints_change.emit(self.ref.model_ref.restraints_ref)
+
+    # New way is to create an edit
+    mol = self.state.active_model_ref.mol
+    sel = mol.sites.select_from_query(self.ref.query)
+    assert len(sel)==2, "Bond restraint must only have two atoms"
+    i_seqs = list(sel.index)
+    xyz = sel.xyz.astype(float)
+    d = round(np.linalg.norm(xyz[1]-xyz[0]),3)
+    defaults_dict = {
+      "action":"add",
+      "ideal":d,
+      }
+
+    other_defaults = BondEdit.defaults(BondEdit)
+    for k,v in other_defaults.items():
+      if k not in defaults_dict:
+        if k.endswith("_new"):
+          k = k.replace("_new","")
+          defaults_dict[k] = v
+
+    dialog = BondEditDialog(defaults_dict=defaults_dict)
+    if dialog.exec_():
+      print("Making edit")
+      row = BondEdit(
+        i_seqs = i_seqs,
+        sel_strings = [mol.sites.select_query_from_i_seqs([i]).phenix_string for i in i_seqs],
+        ideal_old=d,
+        ideal_new = dialog.collectInputValues()["ideal"],
+        sigma_old=None,
+        sigma_new = dialog.collectInputValues()["sigma"],
+        action="add"
+        )
+
+      edit_ref = None
+      for ref_id,ref in self.state.references.items():
+        if isinstance(ref,BondEditsRef):
+          if ref.restraints_ref == self.state.active_model_ref.geometry_ref:
+            edit_ref = ref
+            edit_ref.data.rows.append(row)
+      if edit_ref is None:
+        objframe = ObjectFrame.from_rows([row])
+        edit_ref = BondEditsRef(data=objframe,restraints_ref=self.state.active_model_ref.geometry_ref)
+      self.state.add_ref(edit_ref)
+    else:
+      print("Dialog Cancelled")
 
   def stage_as_angle_restraint(self):
-    self.state.signals.stage_restraint.emit(self.ref,"angle")
+    #self.state.signals.stage_restraint.emit(self.ref,"angle")
+    mol = self.state.active_model_ref.mol
+    sel = mol.sites.select_from_query(self.ref.query)
+    assert len(sel)==3, "Angle restraint must only have two atoms"
+    i_seqs = list(sel.index)
+    xyz = sel.xyz.astype(float)
+    a,b,c = xyz
+
+    def calculate_angle(A, B, C):
+      # Calculate the lengths of the sides
+      AB = math.sqrt((B[0] - A[0])**2 + (B[1] - A[1])**2)
+      BC = math.sqrt((C[0] - B[0])**2 + (C[1] - B[1])**2)
+      CA = math.sqrt((C[0] - A[0])**2 + (C[1] - A[1])**2)
+      # Calculate the angle using the Law of Cosines
+      cos_theta = (AB**2 + BC**2 - CA**2) / (2 * AB * BC)
+      theta = math.acos(cos_theta)  # This gives the angle in radians
+      
+      # Convert to degrees, if desired
+      angle_in_degrees = math.degrees(theta)
+      
+      return angle_in_degrees
+
+    angle = round(calculate_angle(a,b,c),2)
+
+    defaults_dict = {
+      "action":"add",
+      "ideal":angle,
+      }
+
+    other_defaults = AngleEdit.defaults(AngleEdit)
+    for k,v in other_defaults.items():
+      if k not in defaults_dict:
+        if k.endswith("_new"):
+          k = k.replace("_new","")
+          defaults_dict[k] = v
+
+    dialog = AngleEditDialog(defaults_dict=defaults_dict)
+    if dialog.exec_():
+      row = AngleEdit(
+        i_seqs = i_seqs,
+        sel_strings = [mol.sites.select_query_from_i_seqs([i]).phenix_string for i in i_seqs],
+        ideal_old=angle,
+        ideal_new = dialog.collectInputValues()["ideal"],
+        sigma_old=None,
+        sigma_new = dialog.collectInputValues()["sigma"],
+        action="add"
+        )
+
+      edit_ref = None
+      for ref_id,ref in self.state.references.items():
+        if isinstance(ref,AngleEditsRef):
+          #if ref.restraints_ref == self.state.active_model_ref.geometry_ref:
+          edit_ref = ref
+          edit_ref.data.rows.append(row)
+      if edit_ref is None:
+        objframe = ObjectFrame.from_rows([row])
+        edit_ref = AngleEditsRef(data=objframe,restraints_ref=self.state.active_model_ref.geometry_ref)
+      self.state.add_ref(edit_ref)
+    else:
+      print("Dialog Cancelled")
 
   def stage_as_dihedral_restraint(self):
     self.state.signals.stage_restraint.emit(self.ref,"dihedral")

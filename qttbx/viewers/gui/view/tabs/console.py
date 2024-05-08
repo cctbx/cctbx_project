@@ -1,9 +1,10 @@
 from PySide2.QtWidgets import QVBoxLayout
-try:
-  from qtconsole.rich_jupyter_widget import RichJupyterWidget
-  from qtconsole.inprocess import QtInProcessKernelManager
-except:
-  pass
+# DEBUG: Trying to switch to pyside2 version of qtconsole
+import sys
+sys.path.append("/Users/user/Desktop/pyside2_convert/qtconsole_pyside2")
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
+from qtconsole.inprocess import QtInProcessKernelManager
+
 from PySide2.QtCore import Slot
 from PySide2.QtWidgets import QVBoxLayout,QLineEdit, QPlainTextEdit
 from PySide2.QtCore import Slot

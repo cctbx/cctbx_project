@@ -2,6 +2,7 @@ from dataclasses import dataclass, fields
 from typing import List, Optional
 from io import StringIO
 import tempfile
+from pathlib import Path
 
 import pandas as pd
 
@@ -13,16 +14,28 @@ from mmtbx.geometry_restraints.geo_file_parsing import (
 from .base import DataClassBase
 from ...core.cctbx_utils import get_restraint_dfs_from_model
 
+
 @dataclass(frozen=True)
-class Geometry(DataClassBase):
+class GeoFileData(DataClassBase):
+  filepath: Optional[Path] = None
+    
+  @property
+  def filename(self):
+    if self.filepath is not None:
+      return self.filepath.name
+
+  
+
+
+@dataclass(frozen=True)
+class Geo(DataClassBase):
   #labels: Optional[List[str]] = None
   i_seqs: Optional[List[int]] = None
   #id_strs: Optional[List[str]] = None
 
 
-
 @dataclass(frozen=True)
-class BondGeometry(Geometry):
+class BondGeometry(Geo):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
@@ -31,13 +44,13 @@ class BondGeometry(Geometry):
   rt_mx: Optional[object] = None
 
 @dataclass(frozen=True)
-class AngleGeometry(Geometry):
+class AngleGeometry(Geo):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
 
 @dataclass(frozen=True)
-class DihedralGeometry(Geometry):
+class DihedralGeometry(Geo):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
@@ -48,14 +61,14 @@ class DihedralGeometry(Geometry):
     return self.harmonic
 
 @dataclass(frozen=True)
-class ChiralGeometry(Geometry):
+class ChiralGeometry(Geo):
   ideal: Optional[float] = None
   sigma: Optional[float] = None
   weight: Optional[float] = None
   both_signs: Optional[bool] = None
 
 @dataclass(frozen=True)
-class PlaneGeometry(Geometry):
+class PlaneGeometry(Geo):
   default_weight = 2500.0
   weights: Optional[List[float]] = None
 

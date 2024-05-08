@@ -21,11 +21,12 @@ from .reference import Reference
 from .structure import Structure
 from .component import Component
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef, GeoFileRef
 from .results import ResultsRef
 from ...core.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
+
 
 
 class StateSignals(QObject):
@@ -40,6 +41,7 @@ class StateSignals(QObject):
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
   ciffile_change = Signal(object) # cif file ref
+  geofile_change = Signal(object) # geo file ref
   edits_change = Signal(object) # edits ref
   repr_change = Signal(str,list) # (ref_id, list of desired reprs)
   viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
@@ -50,6 +52,7 @@ class StateSignals(QObject):
   remove_ref = Signal(object) # ref
   update = Signal(object)
   stage_restraint = Signal(object,str) # send selection ref,type to be staged as restraint
+  filter_update = Signal(object) # emit a filter controller to apply
 
 @dataclass(frozen=True)
 class PhenixState(DataClassBase):
@@ -306,6 +309,9 @@ class State:
       self.signals.ciffile_change.emit(ref)
     elif isinstance(ref,EditsRef):
       self.signals.edits_change.emit(ref)
+
+    elif isinstance(ref,GeoFileRef):
+      self.signals.geofile_change.emit(ref)
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
     # update other controllers
@@ -565,14 +571,13 @@ class State:
     #self.signals.select.emit(value)
     self.signals.references_change.emit()
 
-
   #####################################
   # Geometry
   #####################################
 
-  @property
-  def active_restraint_ref(self):
-    return self.active_model_ref.restraints
+  # @property
+  # def active_restraint_ref(self):
+  #   return self.active_model_ref.restraints
 
 
   #####################################

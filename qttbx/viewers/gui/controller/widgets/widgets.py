@@ -95,14 +95,41 @@ class InputDialog(QDialog):
 
     self.setLayout(mainLayout)
 
-  def otherAction(self):
-    # Placeholder for another action
-    print("Another Action triggered")
-
   def exec_(self):
-    # Move the dialog to the cursor's current position
+    # Get the cursor's current position
     cursorPos = QCursor.pos()
-    self.move(cursorPos.x(), cursorPos.y())  # Move the dialog to cursor position
+
+    # Get the dimensions of the dialog
+    dialog_width = self.frameSize().width()
+    dialog_height = self.frameSize().height()
+
+    # Calculate the new top-left position to center the dialog on the cursor
+    new_x = cursorPos.x() - dialog_width // 2
+    new_y = cursorPos.y() - dialog_height // 2
+
+    # Get the screen geometry based on the cursor's position
+    screen = QApplication.desktop().screenNumber(cursorPos)
+    screen_geom = QApplication.desktop().screenGeometry(screen)
+
+    # Adjust the dialog's position to ensure it stays within the screen boundaries
+    # Check right boundary
+    if new_x + dialog_width > screen_geom.right():
+        new_x = screen_geom.right() - dialog_width
+
+    # Check bottom boundary
+    if new_y + dialog_height > screen_geom.bottom():
+        new_y = screen_geom.bottom() - dialog_height
+
+    # Check left boundary
+    if new_x < screen_geom.left():
+        new_x = screen_geom.left()
+
+    # Check top boundary
+    if new_y < screen_geom.top():
+        new_y = screen_geom.top()
+
+    # Move dialog to the adjusted position
+    self.move(new_x, new_y)
 
     # Call the base class exec_ method to show the dialog
     return super().exec_()

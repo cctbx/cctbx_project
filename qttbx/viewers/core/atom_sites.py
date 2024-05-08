@@ -998,6 +998,14 @@ class AtomSites(pd.DataFrame):
     else:
       return self._convert_query_to_sites(query)
 
+  def select_query_from_i_seqs(self,i_seqs):
+    # Use an iterable of integers
+    sel =  self.iloc[[int(i) for i in i_seqs]]
+    return self._convert_sites_to_query(sel)
+
+
+  # End public selection interface
+
   def _convert_query_to_sites(self,query):
     """
     Convert a SelectionQuery object to a
@@ -1044,7 +1052,7 @@ class AtomSites(pd.DataFrame):
     else:
       nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
     return nodes
-
+  
   def _convert_sites_to_query(self,sites_sel):
     """
     With a subset sites data frame, convert to a

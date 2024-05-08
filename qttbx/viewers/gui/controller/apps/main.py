@@ -53,8 +53,10 @@ class ViewerGUIController(Controller):
       self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
     if 'all' in show_tab  or 'restraints' in show_tab:
       #self.restraints = GeometryTopTabController(parent=self,view=self.view.restraints_tab_view)
-      self.geometry = GeometryTableTopTabController(parent=self,view=self.view.geo)
       self.restraints = RestraintTableTopTabController(parent=self,view=self.view.restraints)
+
+    if 'all' in show_tab  or 'geometry' in show_tab:
+      self.geometry = GeometryTableTopTabController(parent=self,view=self.view.geo)
       self.edits = EditsTableTopTabController(parent=self,view=self.view.edits)
     if 'all' in show_tab  or 'qscore' in show_tab:
       self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)

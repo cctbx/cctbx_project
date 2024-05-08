@@ -87,20 +87,20 @@ class ViewerGUIView(QMainWindow):
       self.tabs.addTab(self.cif_tab_view, "CIF")
 
     # # Geometry
-    if 'all' in show_tab or 'restraints' in show_tab:
-
+    if 'all' in show_tab or 'geometry' in show_tab:
       # Geometry
       self.geo = GeometryTabView(parent=self)
       self.tabs.addTab(self.geo, "Geometry")
-
-      # Restraints
-      self.restraints = RestraintsTabView(parent=self)
-      self.tabs.addTab(self.restraints, "Restraints")
 
       # Edits
       self.edits = EditsTabView(parent=self)
       self.tabs.addTab(self.edits, "Edits")
 
+    if 'all' in show_tab or 'restraints' in show_tab:
+
+      # Restraints
+      self.restraints = RestraintsTabView(parent=self)
+      self.tabs.addTab(self.restraints, "Restraints")
 
     # Qscore
     if 'all' in show_tab or 'qscore' in show_tab:

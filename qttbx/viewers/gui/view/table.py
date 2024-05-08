@@ -86,16 +86,22 @@ class PandasTableView(QTableView):
 
         for column in range(model.columnCount(None)):
             maxWidth = 0
+            # Ensure using the correct font for metrics
             fontMetrics = QFontMetrics(tableView.font())
-            headerText = model.headerData(column, Qt.Horizontal)
-            headerWidth = fontMetrics.boundingRect(headerText).width()
 
+            # Calculate header width with margin
+            headerText = model.headerData(column, Qt.Horizontal)
+            headerWidth = fontMetrics.boundingRect(headerText).width() + margin
+
+            # Iterate over each row to find the maximum required width
             for row in range(model.rowCount(None)):
                 index = model.index(row, column)
                 text = model.data(index, Qt.DisplayRole)
                 if text:
-                    textWidth = fontMetrics.boundingRect(str(text)).width()
+                    # Calculate text width and consider margin
+                    textWidth = fontMetrics.boundingRect(str(text)).width() + margin
                     maxWidth = max(maxWidth, textWidth)
 
-            finalWidth = min(max(headerWidth, maxWidth) + margin, self.MAX_COLUMN_WIDTH)
+            # Set column width to the maximum of header and cell width, constrained by MAX_COLUMN_WIDTH
+            finalWidth = min(max(headerWidth, maxWidth), self.MAX_COLUMN_WIDTH)
             tableView.setColumnWidth(column, finalWidth)

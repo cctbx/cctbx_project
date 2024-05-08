@@ -1,4 +1,5 @@
 
+import dataclasses
 from dataclasses import dataclass, asdict
 import json
 import uuid
@@ -12,6 +13,16 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class DataClassBase:
+
+  @staticmethod
+  def defaults(cls):
+    result = {}
+    for f in fields(cls):
+        # Check if the field has a default value
+        if f.default is not dataclasses.MISSING:
+            result[f.name] = f.default
+    return result
+
   def update(self, **kwargs):
     for key, value in kwargs.items():
       if hasattr(self, key):

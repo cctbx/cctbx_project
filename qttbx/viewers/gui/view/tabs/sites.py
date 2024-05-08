@@ -11,10 +11,10 @@ class SitesTabView(GUITab):
     super().__init__(parent=parent)
     layout = QVBoxLayout()
     # Atoms tab
-    self.table = PandasTableView()
+    self.table_view = PandasTableView()
     #self.tab2_content.clicked.connect(self.on_atom_select)
-    self.table.setSelectionBehavior(QTableView.SelectRows)
-    layout.addWidget(self.table)
+    self.table_view.setSelectionBehavior(QTableView.SelectRows)
+    layout.addWidget(self.table_view)
     self.setLayout(layout)
 
 

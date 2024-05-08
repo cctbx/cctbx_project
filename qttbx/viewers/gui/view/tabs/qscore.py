@@ -20,10 +20,10 @@ class QscoreTab(PreprocessTab):
     self.layout.addWidget(self.combobox)
 
     # Table
-    self.table = PandasTableView()
-    self.table.setSelectionBehavior(QTableView.SelectRows)
+    self.table_view = PandasTableView()
+    self.table_view.setSelectionBehavior(QTableView.SelectRows)
 
-    self.layout.addWidget(self.table)
+    self.layout.addWidget(self.table_view)
 
 
   def add_histogram(self):
@@ -33,7 +33,7 @@ class QscoreTab(PreprocessTab):
     g_layout = QGridLayout()
 
 
-    ch = ClickableHistogramSeaborn(self.table.model()._df["Qscore"].values)
+    ch = ClickableHistogramSeaborn(self.table_view.model()._df["Qscore"].values)
 
     g_layout.addWidget(ch,0,0)
 

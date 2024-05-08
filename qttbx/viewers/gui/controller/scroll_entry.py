@@ -45,6 +45,7 @@ class ScrollEntryController(Controller, QObject):
     if not self.view.is_destroyed and not self.is_destroyed:
       assert isinstance(value,bool), "Active must be boolean"
       self.view.active_toggle.is_checked=value
+      self.toggle_active_func(value)
 
   @property
   def is_destroyed(self):

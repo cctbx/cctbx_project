@@ -20,7 +20,7 @@ from ...core.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase, ObjectFrame
-from .geometry import Geometry
+from .geometry import Geometry, GeoFileData
 from ...core.mol import MolDataFrame
 from typing import Optional
 
@@ -61,11 +61,12 @@ class Ref:
 
 
     # Style
-    if not isinstance(style,Style):
-      if style is None:
-        style = Style.from_default()
-      self._style = style
-      self.style_history = []
+    assert isinstance(style,(Style,type(None)))
+    if style is None:
+      style = Style.from_default()
+    self._style = style
+    self.style_history = []
+ 
 
   # def _connections(self):
   #   #self.state.signals.remove_ref.connect(self._remove)
@@ -262,6 +263,18 @@ class CifFileRef(Ref):
       return self.data.filename
     return super().label
 
+
+class GeoFileRef(Ref):
+  _class_label_name = 'file'
+  def __init__(self,data: GeoFileData,show: bool = False):
+    super().__init__(data=data,show=show)
+
+  @property
+  def label(self):
+    if self.data.filename is not None:
+      return self.data.filename
+    return super().label
+
 class ModelRef(Ref):
   _class_label_name = "model"
   def __init__(self,data: MolecularModelData, ciffile_ref: Optional[CifFileRef], style: Optional[Style] = None, show=True):
@@ -296,6 +309,15 @@ class ModelRef(Ref):
 
   @restraints_ref.setter
   def restraints_ref(self,value):
+    assert isinstance(value,(GeometryRef,type(None)))
+    self._restraints_ref = value
+  # Alias
+  @property
+  def geometry_ref(self):
+    return self._restraints_ref
+
+  @geometry_ref.setter
+  def geometry_ref(self,value):
     assert isinstance(value,(GeometryRef,type(None)))
     self._restraints_ref = value
 
@@ -525,6 +547,14 @@ class EditsRef(Ref):
     super().__init__(data=data)
     self.restraints_ref = restraints_ref
 
+class BondEditsRef(EditsRef):
+  _class_label_name = "bond_edits"
+
+class AngleEditsRef(EditsRef):
+  _class_label_name = "angle_edits"
+
+class DihedralEditsRef(EditsRef):
+  _class_label_name = "dihedral_edits"
 
 class StyleRef(Ref):
   # A collection of edits of a single type
