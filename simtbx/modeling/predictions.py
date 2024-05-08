@@ -44,7 +44,8 @@ def get_spot_wave(predictions, expt, wavelen_images, h_images, k_images, l_image
     return perSpotWave, perSpotHKL
 
 
-def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spectrum_override=None):
+def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spectrum_override=None,
+                              verbose=True):
     """
     :param df: pandas dataframe, stage1_df attribute of simtbx.command_line.hopper_process.HopperProcess
     :param params: instance of diffBragg/phil.py phil params
@@ -100,7 +101,8 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
                                 expt.beam, thresh=params.predictions.threshold,
                                 max_spot_size=1000,
                                 use_detect_peaks=params.predictions.use_peak_detection)
-    print("Found %d Bragg peak predictions above the threshold" %len(predictions))
+    if verbose:
+        print("Found %d Bragg peak predictions above the threshold" %len(predictions))
 
     # TODO: pulled these from comparing to a normal stills_process prediction table, not sure what they imply
     # TODO: multiple experiments per shot
@@ -134,19 +136,23 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         return predictions
 
     strong.centroid_px_to_mm(El)
-    # TODO: fix this for spot wavelengths
+    if params.predictions.laue_mode:
+        if not params.predictions.label_weak_col=="xyzobs.px.value":
+            raise NotImplementedError("if laue_mode = True, we only support label_weak_col=xyzobs.px.value")
     strong.map_centroids_to_reciprocal_space(El)
 
     # separate out the weak from the strong
-    label_weak_predictions(predictions, strong,params.predictions.qcut)
+    label_weak_predictions(predictions, strong, params.predictions.qcut, col=params.predictions.label_weak_col)
     n_weak = sum(predictions["is_weak"])
     predictions["is_strong"] = flex.bool(np.logical_not(predictions["is_weak"]))
     n_pred = len(predictions)
     n_strong = np.sum(predictions["is_strong"])
-    print("%d / %d predicted refls are near strongs" % (n_strong, n_pred))
+    if verbose:
+        print("%d / %d predicted refls are near strongs" % (n_strong, n_pred))
 
     label_weak_spots_for_integration(params.predictions.weak_fraction, predictions)
-    print("Will use %d spots for integration" % sum(predictions["is_for_integration"]))
+    if verbose:
+        print("Will use %d spots for integration" % sum(predictions["is_for_integration"]))
     predictions = predictions.select(predictions["is_for_integration"])
 
     return predictions, panel_images

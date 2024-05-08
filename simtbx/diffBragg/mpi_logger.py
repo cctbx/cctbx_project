@@ -82,6 +82,8 @@ def setup_logging_from_params(params):
             console.setFormatter(logging.Formatter(SIMPLE_FORMAT))
             console.setLevel(LEVELS[params.logging.rank0_level])
             main_logger.addHandler(console)
+            if console.level < main_logger.level:
+                main_logger.setLevel(console.level)
 
     else:
         if COMM.rank == 0:
