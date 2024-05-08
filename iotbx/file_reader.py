@@ -94,6 +94,12 @@ ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln", "a3m",
 def get_wildcard_string(format):
   assert (format in standard_file_extensions), format
   wildcards = [ "*.%s" % ext for ext in standard_file_extensions[format] ]
+  # Add wildcard without breaking other features by having cif in two places
+  if format == 'pdb':
+    cif_format = "*.%s" % "cif"
+    if not cif_format in wildcards:
+      wildcards.append(cif_format)
+
   wildcard_str = "%s file (%s)|%s" % (standard_file_descriptions[format],
     ", ".join(wildcards), ";".join(wildcards))
   return wildcard_str
