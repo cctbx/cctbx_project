@@ -436,8 +436,10 @@ class StageTwoRefiner(BaseRefiner):
     def _get_detector_distance_val(self, i_shot):
         return self.Modelers[i_shot].PAR.detz_shift.init
 
-    def _get_ncells_def_vals(self, i_shot):
-        pass
+    def _get_ncells_def(self, i_shot):
+        vals = [self.Modelers[i_shot].PAR.Ndef[i_N].init for i_N in range(3)]
+        LOGGER.info(f"Ndef VALS: {vals[0]} {vals[1]} {vals[2]}")
+        return vals
 
     def _get_ncells_abc(self, i_shot):
         if self.params.refiner.refine_Nabc:
@@ -564,7 +566,8 @@ class StageTwoRefiner(BaseRefiner):
         self.D.set_ncells_values(tuple(vals))
 
     def _update_ncells_def(self):
-        pass
+        vals = self._get_ncells_def(self._i_shot)
+        self.D.Ncells_def = tuple(vals)
 
     def _update_dxtbx_detector(self):
         shiftZ = self._get_detector_distance_val(self._i_shot)
