@@ -70,7 +70,8 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                           symbol_override=None, quiet=False, reset_Bmatrix=False, nopolar=False,
                           force_no_detector_thickness=False, printout_pix=None, norm_by_nsource=False,
                           use_exascale_api=False, use_db=False, show_timings=False, perpixel_wavelen=False,
-                          det_thicksteps=None, from_pdb=None, mosaic_samples_override=None):
+                          det_thicksteps=None, from_pdb=None, mosaic_samples_override=None,
+                          no_Nabc_scale=False):
     if perpixel_wavelen and not use_db:
         raise NotImplementedError("to get perpixel wavelengths set use_db=True to use the diffBragg backend")
     if use_exascale_api:
@@ -213,7 +214,8 @@ def model_spots_from_pandas(pandas_frame,  rois_per_panel=None,
                                     diffuse_params=diffuse_params, cuda=cuda,
                                     show_timings=show_timings,
                                     perpixel_wavelen=perpixel_wavelen,
-                                    det_thicksteps=det_thicksteps, Ncells_def=Ncells_def)
+                                    det_thicksteps=det_thicksteps, Ncells_def=Ncells_def,
+                                    no_Nabc_scale=no_Nabc_scale)
         return results, expt
 
     else:
@@ -247,7 +249,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                       show_timings=False,perpixel_wavelen=False,
                       det_thicksteps=None, eta_abc=None, Ncells_def=None,
                       num_phi_steps=1, delta_phi=None, div_mrad=0, divsteps=0,
-                      spindle_axis=(1,0,0), fudge=1):
+                      spindle_axis=(1,0,0), fudge=1, no_Nabc_scale=False):
 
     if cuda:
         os.environ["DIFFBRAGG_USE_CUDA"] = "1"
@@ -289,6 +291,7 @@ def diffBragg_forward(CRYSTAL, DETECTOR, BEAM, Famp, energies, fluxes,
                             default_F=default_F,
                             auto_set_spotscale=crystal_size_mm is not None and spot_scale_override is None)
     S.D.fudge = fudge
+    S.D.no_Nabc_scale = no_Nabc_scale
 
     if spot_scale_override is not None:
         S.update_nanoBragg_instance("spot_scale", spot_scale_override)
