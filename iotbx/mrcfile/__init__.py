@@ -11,7 +11,7 @@ from cctbx import maptbx
 import numpy as np
 from six.moves import range
 from six.moves import zip
-
+import math
 
 # ====== HARD-WIRED DEFAULTS SEE DOC STRINGS BELOW FOR INFO =====
 
@@ -229,6 +229,10 @@ class map_reader:
     # Get the data with map_data=self.data or map_data=self.map_data()
 
     map_all=self.data.all()
+
+    # Check if self.data contains 'nan'
+    if math.isnan(flex.sum(self.data)):
+       raise Sorry("Input map file contains 'nan':  not a valid map file")
 
     # Set self._crystal_symmetry which is crystal symmetry of part of map
     #  that is present
