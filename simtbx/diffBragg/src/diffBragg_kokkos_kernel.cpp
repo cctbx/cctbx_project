@@ -632,7 +632,7 @@ void kokkos_sum_over_steps(
                                 Ilambda += Iincrement * lambda_ang;
                                 Imiller_h += Iincrement*_h;
                                 Imiller_k += Iincrement*_k;
-                                Imiller_l += Iincrement*_k;
+                                Imiller_l += Iincrement*_l;
                             }
 
                             if (refine_flag & REFINE_DIFFUSE) {
