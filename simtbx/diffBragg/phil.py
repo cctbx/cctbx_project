@@ -6,7 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
-
+shuffle_stage2_inputs = False
+  .type = bool
+  .help = optionally shuffle the pandas input pickle for stage 2, so then max_process can be used to select random subsets
 filter_during_refinement {
   enable = False
     .type = bool

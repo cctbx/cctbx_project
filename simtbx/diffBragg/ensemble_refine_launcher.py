@@ -24,6 +24,25 @@ import logging
 LOGGER = logging.getLogger("diffBragg.main")
 
 
+def randomize_df(df, n=None):
+    """
+    :param df: pandas dataframe
+    :param n: number of entries to keep
+    :return:
+    """
+    #if COMM.rank==0:
+    #    df.sample(frac=1)
+    #df = COMM.bcast(df)
+    df = df.reset_index(drop=True)
+    perm = None
+    if COMM.rank==0:
+        perm = np.random.permutation(len(df))
+    perm = COMM.bcast(perm)
+    if n is not None:
+        perm = perm[:n]
+    return df.iloc[perm].reset_index(drop=True)
+
+
 def global_refiner_from_parameters(params):
     launcher = RefineLauncher(params)
     # TODO read on each rank, or read and broadcast ?
@@ -35,6 +54,9 @@ def global_refiner_from_parameters(params):
         pandas_table.reset_index(drop=True, inplace=True)
         LOGGER.info("Removed %d / %d dataframes due to max_sigz=%.2f filter"
                     % (Nframe - len(pandas_table), Nframe, params.max_sigz))
+    if params.shuffle_stage2_inputs:
+        pandas_table = randomize_df(pandas_table)
+        LOGGER.info("RANDOMIZED DF")
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
@@ -42,6 +64,9 @@ def global_refiner_from_parameters(params):
         pandas_table["exp_idx"] = 0
     pandas_table, work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges, refls_key=params.refls_key)
     LOGGER.info("EVENT: DONE prep dataframe")
+    if COMM.rank == 0:
+        pickle_name = os.path.join(params.refiner.io.output_dir, "filtered.pkl")
+        pandas_table.to_pickle(pickle_name)
 
     return launcher.launch_refiner(pandas_table, work_distribution=work_distribution, refls_key=params.refls_key)
 
