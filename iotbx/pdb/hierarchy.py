@@ -1004,6 +1004,7 @@ class _():
     mm.set_unit_cell_crystal_symmetry_and_shift_cart(
           unit_cell_crystal_symmetry = unit_cell_crystal_symmetry,
           shift_cart = shift_cart)
+    mm.info().file_name = None
     return mm
 
   def as_dict_of_chain_id_resseq_as_int_residue_names(self):
