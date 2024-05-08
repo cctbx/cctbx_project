@@ -431,15 +431,15 @@ def occupancy_selections(
           cg_sel.append(list(sel))
       if(len(cg_sel) > 0):
         result.append(cg_sel)
-  if(add_water):
 
-    if (constrain_correlated_3d_groups) and (len(result) > 0):
+  if (constrain_correlated_3d_groups) and (len(result) > 0):
       result = assemble_constraint_groups_3d(
         xray_structure=model.get_xray_structure(),
         pdb_atoms=model.get_atoms(),
         constraint_groups=result,
         log=log)
 
+  if(add_water):
     water_selection = get_atom_selections(
       model                 = model,
       selection_strings     = ['water'],

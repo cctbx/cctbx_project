@@ -1245,23 +1245,26 @@ def exercise_regroup_3d(verbose):
     "tst_group_correlated_occupancy_start.pdb",
     "tst_group_correlated_occupancy_in.pdb",
   ]
-  for i_file, pdb_file in enumerate(pdb_files):
-    model = get_model(pdb_file, log)
-    try :
-      constraint_groups = occupancy_selections(
-        model = model,
+  #
+  constraint_groups = occupancy_selections(
+        model = get_model("tst_group_correlated_occupancy_start.pdb", log),
         constrain_correlated_3d_groups=True,
         log=null_out())
-    except Sorry as s :
-      if (i_file == 0):
-        raise
-      else :
-        assert ("Inconsistent occupancies" in str(s)), str(s)
-    else :
-      if (i_file == 1):
-        raise Exception_expected
-      else :
-        assert (len(constraint_groups) == 1)
+  for g in constraint_groups:
+     assert [ [ggg for ggg in gg] for gg in g ] == \
+       [[29, 30, 31, 32, 33, 34, 35, 36, 37, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 84, 85],
+        [38, 39, 40, 41, 42, 43, 44, 45, 46, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80]]
+  #
+  sorry_found = False
+  try:
+    constraint_groups = occupancy_selections(
+      model = get_model("tst_group_correlated_occupancy_in.pdb", log),
+      constrain_correlated_3d_groups=True,
+      log=null_out())
+  except Sorry as s:
+    assert ("Inconsistent occupancies" in str(s)), str(s)
+    sorry_found = True
+  assert sorry_found
 
 def run():
   verbose = "--verbose" in sys.argv[1:]
