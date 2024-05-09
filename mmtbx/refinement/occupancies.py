@@ -135,12 +135,7 @@ class minimizer(object):
     from phenix.refinement import weight_xray_chem
     self.weights = weight_xray_chem.weights(wx       = 1,
                                             wx_scale = 1,
-                                            angle_x  = None,
-                                            wn       = 1,
-                                            wn_scale = 1,
-                                            angle_n  = None,
-                                            w        = 0,
-                                            wxn      = 1) # XXX
+                                            w        = 0) # XXX
     self.par_min = self.par_initial.deep_copy()
     self.x = self.pack(self.par_min)
     self.n = self.x.size()

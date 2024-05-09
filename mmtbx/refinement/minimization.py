@@ -62,12 +62,7 @@ class lbfgs(object):
       from phenix.refinement import weight_xray_chem
       self.weights = weight_xray_chem.weights(wx       = 1,
                                               wx_scale = 1,
-                                              angle_x  = None,
-                                              wn       = 1,
-                                              wn_scale = 1,
-                                              angle_n  = None,
-                                              w        = 0,
-                                              wxn      = 1)
+                                              w        = 0)
     if(self.collect_monitor):
       self.monitor = monitor(
         weights        = self.weights,
