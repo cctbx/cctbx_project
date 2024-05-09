@@ -438,7 +438,6 @@ class StageTwoRefiner(BaseRefiner):
 
     def _get_ncells_def(self, i_shot):
         vals = [self.Modelers[i_shot].PAR.Ndef[i_N].init for i_N in range(3)]
-        LOGGER.info(f"Ndef VALS: {vals[0]} {vals[1]} {vals[2]}")
         return vals
 
     def _get_ncells_abc(self, i_shot):

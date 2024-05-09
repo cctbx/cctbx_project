@@ -60,15 +60,16 @@ def global_refiner_from_parameters(params):
     if params.max_process > 0:
         pandas_table = pandas_table.iloc[:params.max_process]
     LOGGER.info("EVENT: BEGIN prep dataframe")
-    if "exp_idx" not in list(pandas_table):
-        pandas_table["exp_idx"] = 0
+    if params.exp_idx_key not in list(pandas_table):
+        pandas_table[params.exp_idx_key] = 0
     pandas_table, work_distribution = prep_dataframe(pandas_table, res_ranges_string=params.refiner.res_ranges, refls_key=params.refls_key)
     LOGGER.info("EVENT: DONE prep dataframe")
-    if COMM.rank == 0:
+    if COMM.rank == 0 and params.shuffle_stage2_inputs:
         pickle_name = os.path.join(params.refiner.io.output_dir, "filtered.pkl")
         pandas_table.to_pickle(pickle_name)
 
-    return launcher.launch_refiner(pandas_table, work_distribution=work_distribution, refls_key=params.refls_key)
+    return launcher.launch_refiner(pandas_table, work_distribution=work_distribution, refls_key=params.refls_key,
+                                   exp_key=params.exp_key, exp_idx_key=params.exp_idx_key)
 
 
 class RefineLauncher:
@@ -151,13 +152,16 @@ class RefineLauncher:
             if not hasattr(expt, model):
                 raise ValueError("No %s in experiment, exiting. " % model)
 
-    def launch_refiner(self, pandas_table, miller_data=None, work_distribution=None, refls_key="predictions"):
-        self.load_inputs(pandas_table, miller_data=miller_data, work_distribution=work_distribution, refls_key=refls_key)
+    def launch_refiner(self, pandas_table, miller_data=None, work_distribution=None, refls_key="predictions",
+                       exp_key="exp_name", exp_idx_key="exp_idx"):
+        self.load_inputs(pandas_table, miller_data=miller_data, work_distribution=work_distribution, refls_key=refls_key,
+                         exp_key=exp_key, exp_idx_key=exp_idx_key)
         LOGGER.info("EVENT: launch refiner")
         self._launch()
         return self.RUC
 
-    def load_inputs(self, pandas_table, miller_data=None, work_distribution=None, refls_key='predictions'):
+    def load_inputs(self, pandas_table, miller_data=None, work_distribution=None, refls_key='predictions',
+                    exp_key="exp_name", exp_idx_key="exp_idx"):
         """
 
         :param pandas_table: contains path to the experiments (pandas column exp_name) to be loaded
@@ -177,13 +181,15 @@ class RefineLauncher:
         :param miller_data: Optional miller array for the structure factor component of the model
         :param refls_key: key specifying the reflection tables in the pandas table
             Modeled pixels will lie in shoeboxes centered on each x,y,z in xyzobs.px.value
+        :param exp_key: key specifiying which experiment list file to load
+        :param exp_idx_key: key specifiying the experiment index to load
         :return:
         """
         COMM.Barrier()
         num_exp = len(pandas_table)
-        if "exp_idx" not in list(pandas_table):
-            pandas_table["exp_idx"] = 0
-        first_exper_file = pandas_table.exp_name.values[0]
+        if exp_idx_key not in list(pandas_table):
+            pandas_table[exp_idx_key] = 0
+        first_exper_file = pandas_table[exp_key].values[0]
         detector = ExperimentListFactory.from_json_file(first_exper_file, check_format=False)[0].detector
         if detector is None and self.params.refiner.reference_geom is None:
             raise RuntimeError("No detector in experiment, must provide a reference geom.")
@@ -206,8 +212,8 @@ class RefineLauncher:
         COMM.barrier()
         shot_idx = 0  # each rank keeps index of the shots local to it
         rank_panel_groups_refined = set()
-        exper_names = pandas_table.exp_name
-        exper_ids = pandas_table.exp_idx.values
+        exper_names = pandas_table[exp_key]
+        exper_ids = pandas_table[exp_idx_key].values
         shot_ids = list(zip(exper_names, exper_ids))
         assert len(shot_ids) == len(set(shot_ids))
         # TODO assert all exper are single-file, probably way before this point
@@ -239,7 +245,10 @@ class RefineLauncher:
             expt.detector = detector  # in case of supplied ref geom
             self._check_experiment_integrity(expt)
 
-            exper_dataframe = pandas_table.query("exp_name=='%s'" % exper_name).query("exp_idx==%d" % exper_id)
+            is_exp = pandas_table[exp_key]==exper_name
+            is_exp_idx = pandas_table[exp_idx_key] == exper_id
+            # note, this should always be exactly 1 row
+            exper_dataframe = pandas_table.loc[is_exp & is_exp_idx]
 
             refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)

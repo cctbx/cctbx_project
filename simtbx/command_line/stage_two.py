@@ -32,6 +32,12 @@ pandas_table = None
 refls_key = predictions
   .type = str
   .help = name of the predicted refls column in the pandas table input
+exp_key = exp_name
+  .type = str
+  .help = name of the experiments column in the pandas table input
+exp_idx_key = exp_idx
+  .type = str
+  .help = name of the experiment index column in the pandas table input
 max_sigz = 10.
   .type = float
   .help = Maximum allowed value ot sigz in the input pandas table  (dataframe)
@@ -130,3 +136,4 @@ if __name__ == '__main__':
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
                      "_update_Fcell", "_scale_pixel_data", "_Fcell_derivatives", "_mpi_aggregation",
                      "GatherFromExperiment", "_setup", "load_inputs"])
+    COMM.barrier()
