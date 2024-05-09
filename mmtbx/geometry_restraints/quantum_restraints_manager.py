@@ -976,6 +976,7 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
       units=''
       if qmm.program_goal in ['opt']:
         energy, units = qmm.read_energy()
+        charge = qmm.read_charge()
         if 0 : #os.getlogin()=='NWMoriarty':
           from mmtbx.geometry_restraints import curve_fit_3d
           key = (ligand_model.get_number_of_atoms(),
@@ -987,13 +988,18 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
         units=xyz_buffer
         xyz=None
         xyz_buffer=None
+        qmm.preamble += '_%s' % qmm.program_goal
+        if qmm.program_goal in ['bound']: qmm.preamble += '_energy'
+        charge = qmm.read_charge()
+        # except: charge=-99
       else:
         assert 0, 'program_goal %s not in list' % qmm.program_goal
       energies.setdefault(qmr.selection,[])
       energies[qmr.selection].append([qmm.program_goal,
                                       energy,
                                       ligand_model.get_number_of_atoms(),
-                                      buffer_model.get_number_of_atoms()
+                                      buffer_model.get_number_of_atoms(),
+                                      charge,
                                       ])
       xyzs.append(xyz)
       xyzs_buffer.append(xyz_buffer)

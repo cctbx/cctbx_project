@@ -56,24 +56,41 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                                   optimise_h=optimise_h)
       tmp = ''
       if constrain_torsions:
-        if opt and atom.element not in ['H', 'D']:
-          torsions = self.get_torsion(i)
-          # C         1.5 0 120 1 180 1 2 5 3
-          tmp = ' %s %12.5f 1 %12.5f 1 %12.5f 0' % (
-            atom.element,
-            get_internal_coordinate_value(self.atoms[torsions[0]],
+        def _get_B_A_D(torsions, round_d=False):
+          b=get_internal_coordinate_value(self.atoms[torsions[0]],
                                           self.atoms[torsions[1]],
-                                          ),
-            get_internal_coordinate_value(self.atoms[torsions[0]],
+                                          )
+          a=get_internal_coordinate_value(self.atoms[torsions[0]],
                                           self.atoms[torsions[1]],
                                           self.atoms[torsions[2]],
-                                          ),
-            get_internal_coordinate_value(self.atoms[torsions[0]],
+                                          )
+          d=get_internal_coordinate_value(self.atoms[torsions[0]],
                                           self.atoms[torsions[1]],
                                           self.atoms[torsions[2]],
                                           self.atoms[torsions[3]],
-                                          ),
-            )
+                                          )
+          if round_d:
+            if abs(d)<45:
+              d=0.
+            elif abs(180-abs(d))<45:
+              d=180.
+            else:
+              assert 0
+          return b,a,d
+        bad=None
+        if opt and not atom.element_is_hydrogen():
+          torsions = self.get_torsion(i)
+          # C         1.5 0 120 1 180 1 2 5 3
+          bad=list(_get_B_A_D(torsions))
+          bad.insert(0, atom.element)
+        if opt and atom.element_is_hydrogen():
+          ligand_atom = self.ligand_atoms_array[i]
+          if ligand_atom and atom.name in [' HD1', ' HE2']:
+            torsions = self.get_torsion(i)
+            bad = list(_get_B_A_D(torsions, round_d=True))
+            bad.insert(0, atom.element)
+        if bad:
+          tmp = ' %s %12.5f 1 %12.5f 1 %12.5f 0' % tuple(bad)
           for j in torsions[1:]: tmp += ' %s' % (j+1)
           tmp += '\n'
       if tmp:
@@ -126,26 +143,6 @@ class mopac_manager(base_qm_manager.base_qm_manager):
         i_done=i+2
     return rc
 
-  def read_xyz_output_old(self):
-    filename = self.get_coordinate_filename()
-    print(filename)
-    if not os.path.exists(filename):
-      raise Sorry('QM output filename not found: %s' % filename)
-    f=open(filename, 'r')
-    lines = f.read()
-    del f
-    rc = flex.vec3_double()
-    read_xyz = False
-    for i, line in enumerate(lines.splitlines()):
-      print(i,line)
-      if read_xyz:
-        tmp = line.split()
-        if len(tmp) in [7,10]:
-          rc.append((float(tmp[1]), float(tmp[3]), float(tmp[5])))
-      if line.find('FINAL GEOMETRY OBTAINED')>-1:
-        read_xyz=True
-    return rc
-
   def get_cmd(self):
     cmd = '%s mopac_%s' % (
       get_exe(),
@@ -164,22 +161,28 @@ class mopac_manager(base_qm_manager.base_qm_manager):
                                )
     self.times.append(time.time()-t0)
 
-
   def read_energy(self, filename=None):
-    if filename is None:
-      filename = self.get_log_filename()
-    f=open(filename, 'r')
-    lines=f.read()
-    del f
+    lines = self.get_lines(filename=filename)
     # FINAL HEAT OF FORMATION =       -132.17152 KCAL/MOL =    -553.00562 KJ/MOL
     for line in lines.splitlines():
       if line.find('FINAL HEAT OF FORMATION = ')>-1:
         self.energy = float(line.split()[5])
         self.units = line.split()[6].lower()
-      # if line.find('TOTAL ENERGY            =')>-1:
-      #   self.energy = float(line.split()[3])
-      #   self.units = line.split()[4]
     return self.energy, self.units
+
+  def read_charge(self, filename=None):
+    lines = self.get_lines(filename=filename)
+    #  CHARGE ON SYSTEM =
+    for line in lines.splitlines():
+      if line.find('CHARGE ON SYSTEM = ')>-1:
+        self.charge = float(line.split()[5])
+        break
+    return self.charge
+
+  def read_gradients(self, filename=None):
+    lines = self.get_lines(filename=filename)
+    print(lines)
+    assert 0
 
   def cleanup(self, level=None, verbose=False):
     if level=='all':

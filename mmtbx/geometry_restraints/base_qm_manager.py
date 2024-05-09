@@ -232,8 +232,20 @@ class base_manager():
       rc=tmp
     return flex.vec3_double(rc), flex.vec3_double(rc_buffer)
 
+  def get_gradients(self):
+    assert 0
+
   def get_timings(self, energy=False):
     return '-'
+
+  def get_lines(self, filename=None):
+    if filename is None:
+      filename = self.get_log_filename()
+    assert os.path.exists(filename), 'filename not found %s' % filename
+    f=open(filename, 'r')
+    lines=f.read()
+    del f
+    return lines
 
 class base_qm_manager(base_manager):
 
@@ -407,6 +419,9 @@ class base_qm_manager(base_manager):
     self.preamble = old_preamble
     return energy, units
 
+  def get_gradients(self):
+    assert 0
+
   def get_timings(self, energy=None):
     if not self.times: return '-'
     f='  Timings : %0.2fs (%ss)' % (
@@ -425,7 +440,7 @@ class base_qm_manager(base_manager):
         opt=0
     else:
       opt=0
-    if optimise_h and atom.element in ['H', 'D']:
+    if optimise_h and atom.element_is_hydrogen():
       opt=1
     return opt
 
@@ -436,7 +451,14 @@ class base_qm_manager(base_manager):
       for j, atom2 in enumerate(self.atoms):
         if i==j: continue
         d2 = dist2(atom1.xyz, atom2.xyz)
-        if d2<2.5:
+        d2_limit=2.5
+        if atom1.element_is_hydrogen() and atom2.element_is_hydrogen():
+          continue
+        elif atom1.element_is_hydrogen() or atom2.element_is_hydrogen():
+          d2_limit=1.3
+        elif atom1.element in ['P'] or atom2.element in ['P']:
+          d2_limit=4
+        if d2<d2_limit:
           bonds[i].append(j)
     # for i, atom1 in enumerate(self.atoms):
     #   print(i, atom1.quote())
@@ -447,14 +469,16 @@ class base_qm_manager(base_manager):
   def get_torsion(self, i):
     if not hasattr(self, 'bonds'):
       self.bonds = self.guess_bonds()
+    if self.atoms[i].parent().resname in ['HOH']: return None
     rc = [i]
     next = i
+    j=0
     while len(rc)<4:
-      j=0
       next_i=self.bonds[i][j]
       if next_i not in rc:
         rc.append(next_i)
         i=next_i
+        j=0
       else:
         j+=1
     return rc

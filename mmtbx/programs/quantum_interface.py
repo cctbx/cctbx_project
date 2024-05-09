@@ -253,6 +253,9 @@ def should_get_selection_from_user(params):
 def get_selection_from_user(hierarchy, include_amino_acids=None, log=None):
   j=0
   opts = []
+  if include_amino_acids is not None:
+    for a,b in enumerate(include_amino_acids):
+      include_amino_acids[a]=b.upper()
   for residue_group in hierarchy.residue_groups():
     atom_group = residue_group.atom_groups()[0]
     rc = get_class(atom_group.resname)
@@ -382,8 +385,15 @@ Usage examples:
     self.logger = multi_out()
     self.logger.register("stdout", sys.stdout)
     log_filename = '%s.log' % self.data_manager.get_default_output_filename()
-    log_file = open(log_filename, 'w')
-    self.logger.register('logfile', log_file)
+    if self.params.qi.run_qmr:
+      if os.path.exists(log_filename):
+        for i in range(1,1000):
+          tf = log_filename.replace('000', '%03d'% i)
+          if not os.path.exists(tf):
+            log_filename=tf
+            break
+      log_file = open(log_filename, 'w')
+      self.logger.register('logfile', log_file)
     model = self.data_manager.get_model()
     self.restraint_filenames = []
     rc = self.data_manager.get_restraint_names()
@@ -536,11 +546,12 @@ Usage examples:
         rc = self.run_qmr(self.params.qi.format)
         rc=rc[0]
         args = []
+        cmd = '\n\tphenix.start_coot'
         for filenames in rc.final_pdbs:
           print(filenames)
           args.append(filenames[-1])
-        print('args'*10)
-        print(args)
+          cmd += ' %s' % args[-1]
+        print(cmd)
         os.chdir(qm_work_dir)
         merge_water(args)
       return
@@ -615,13 +626,19 @@ Usage examples:
               self.params.qi.iterate_metals)):
       self.params.qi.qm_restraints.selection=self.params.qi.selection
       rcs = self.run_qmr(self.params.qi.format)
-      cmd = '\n\n\tphenix.start_coot %s' % self.data_manager.get_default_model_name()
+      dmn = self.data_manager.get_default_model_name()
+      cmd = '\n\n\tphenix.start_coot %s' % dmn
       for rc in rcs:
         filenames = getattr(rc, 'final_pdbs', [])
         if filenames:
           for f in filenames:
             for g in f:
               cmd += ' %s' % os.path.join('qm_work_dir', g)
+      for r in ['.pdb', '.updated.pdb']:
+        mf = dmn.replace(r, '_map_coeffs.mtz')
+        if os.path.exists(mf):
+          cmd += ' --auto=%s' % mf
+          break
       print('%s\n\n' % cmd)
 
     if self.params.qi.iterate_NQH:
@@ -641,7 +658,7 @@ Usage examples:
       model = self.data_manager.get_model()
       fn=self.data_manager.get_default_model_name()
       self.data_manager.write_model_file(model,
-                                         fn.replace('.pdb', '_flipped.pdb'),
+                                         fn.replace('.pdb', '_best.pdb'),
                                          overwrite=True)
 
     if self.params.qi.iterate_metals:
@@ -929,13 +946,14 @@ Usage examples:
     for i, res in enumerate(rc):
       for selection, te in res.energies.items(): pass
       te=te[0]
-      print('  Energy %d %s : %9.1f %s # ligand atoms : %d # cluster atoms : %d' % (
+      print('  Energy %d %s : %9.1f %s # ligand atoms : %d # cluster atoms : %d cluster charge :%3d' % (
         i+1,
         te[0],
         te[1],
         res.units,
         te[2],
         te[3],
+        te[4],
         ), file=self.logger)
       energies.append(te)
       units=res.units
@@ -973,6 +991,7 @@ Usage examples:
     close_result=[]
     outl = '  %i. %-20s : %12.3f %s ~> %10.2f kcal/mol. H-Bonds : %2d rmsd : %7.2f rotamer "%s"'
     # outl = '%i|%-20s|%7.5f|%s|%10.2f|%2d|%7.2f|%s'
+    min_i=None
     for i, filename in enumerate(filenames):
       assert os.path.exists(filename), '"%s"' % filename
       if self.params.qi.run_directory:
@@ -1008,6 +1027,7 @@ Usage examples:
       update=False
       if de<1e-3:
         final_result = outl % args
+        min_i=i
         tmp = protonation[i]
         tmp=tmp.replace('only','')
         # tmp=tmp.replace('flipped', '')
@@ -1022,11 +1042,15 @@ Usage examples:
         else:
           update=i
         j=i
-      elif de<6.:
+      elif de<5.:
         close_result.append(outl % args)
 
     if units.lower()=='dirac':
       raise Sorry('MOPAC not installed! Please install or update to Python3.')
+
+    import shutil
+    nf = filenames[min_i].replace('%02d_cluster' % (min_i+1), 'best_cluster')
+    shutil.copy(filenames[min_i], nf)
 
     cmd += '\n\n'
     print(cmd, file=self.logger)
