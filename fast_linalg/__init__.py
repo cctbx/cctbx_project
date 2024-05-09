@@ -30,7 +30,7 @@ def find_old_layout_libs():
 def find_new_layout_libs():
   import numpy, scipy
   from pathlib import Path
-  dir_name = ".dylibs" if sys.platform == 'darwin' else ".lib"
+  dir_name = ".dylibs" if sys.platform == 'darwin' else ".libs"
   dirs = [os.path.join(Path(os.path.dirname(scipy.__file__)).parent.absolute(), "scipy%s" %dir_name),
           os.path.join(Path(os.path.dirname(numpy.__file__)).parent.absolute(), "numpy%s" %dir_name)]
   return find_dlls(dirs)
