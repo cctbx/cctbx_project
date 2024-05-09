@@ -37,7 +37,7 @@ def exercise(
     remove_file_if_necessary(file_name=obj)
     cmd = comp_env.compilation_command(file_name_cpp=file_name_cpp)
     if (verbose): print(cmd)
-    easy_run.call(command=cmd)
+    assert not easy_run.call(command=cmd)
     assert op.exists(obj)
     file_names_obj.append(obj)
   exe_root = "tst_separate_files"
@@ -45,7 +45,7 @@ def exercise(
   remove_file_if_necessary(file_name=exe)
   cmd = comp_env.link_command(file_names_obj=file_names_obj, exe_root=exe_root)
   if (verbose): print(cmd)
-  easy_run.call(command=cmd)
+  assert not easy_run.call(command=cmd)
   cmd = op.join(".", exe)
   if (verbose): print(cmd)
   assert op.exists(cmd)

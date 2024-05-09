@@ -117,10 +117,10 @@ def run(filename):
     f.close()
     cmd="phenix.pdb_interpretation rdl=True write_geo=1 mse.pdb"
     print(cmd)
-    easy_run.call(cmd)
+    assert not easy_run.call(cmd)
     cmd="phenix.pdb_interpretation rdl=True write_geo=1 met.pdb"
     print(cmd)
-    easy_run.call(cmd)
+    assert not easy_run.call(cmd)
   #
   pdb_inp = pdb.input(filename)
   pdb_hierarchy = pdb_inp.construct_hierarchy()

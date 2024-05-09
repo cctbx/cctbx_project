@@ -18,7 +18,7 @@ END
   mtz_object.write(file_name = "tst_mem_2.mtz")
   assert fc.anomalous_flag()
   cmd = "phenix.maximum_entropy_map tst_mem_2.mtz > tst_mem_2.log"
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   o = mtz.object(file_name="tst_mem_2_mem.mtz")
   mas = o.as_miller_arrays()
   assert len(mas) == 2

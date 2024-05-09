@@ -87,7 +87,7 @@ def run():
   if 0:
     with open("development.aev.pdb", "w") as fo:
       fo.write(pdb_str)
-    easy_run.call("mmtbx.development.aev development.aev.pdb 0.9")
+    assert not easy_run.call("mmtbx.development.aev development.aev.pdb 0.9")
 
 if __name__ == '__main__':
   run()

@@ -540,11 +540,11 @@ def exercise_000(file_name="tst_mtrix_biomt_cmdl_000.pdb"):
   print(pdb_str_0, file=of)
   of.close()
   # template when pdb_as_cif will handle BIOMT records as well...
-  # easy_run.call("phenix.pdb_as_cif %s"%file_name)
+  # assert not easy_run.call("phenix.pdb_as_cif %s"%file_name)
   # for file_type in ['pdb', 'cif']:
   for file_type in ['pdb']:
     print("file_type:", file_type)
-    easy_run.call("phenix.pdb.biomt_reconstruction %s.%s" % (file_name[:-4], file_type))
+    assert not easy_run.call("phenix.pdb.biomt_reconstruction %s.%s" % (file_name[:-4], file_type))
     pdb_inp = iotbx.pdb.input(
       file_name="%s_BIOMT_expanded.%s" % (file_name[:-4], file_type))
     a = pdb_inp.extract_secondary_structure()
@@ -575,7 +575,7 @@ def exercise_001(file_name="tst_mtrix_biomt_cmdl_001.pdb"):
   of = open(file_name,"w")
   print(pdb_str_2b, file=of)
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_001_MTRIX_expanded.pdb")
   a = pdb_inp.extract_secondary_structure()
@@ -605,7 +605,7 @@ def exercise_002(file_name="tst_mtrix_biomt_cmdl_002.pdb"):
   of = open(file_name,"w")
   print(pdb_str_0, file=of)
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_002_MTRIX_expanded.pdb")
   a = pdb_inp.extract_secondary_structure()
@@ -634,7 +634,7 @@ def exercise_003(file_name="tst_mtrix_biomt_cmdl_003.pdb"):
   of = open(file_name,"w")
   print(pdb_str_2b, file=of)
   of.close()
-  easy_run.call("phenix.pdb.biomt_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.biomt_reconstruction %s"%file_name)
   pdb_inp = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_003_BIOMT_expanded.pdb")
   a = pdb_inp.extract_secondary_structure()
@@ -663,7 +663,7 @@ def exercise_01(file_name="tst_mtrix_biomt_cmdl_01.pdb"):
   of = open(file_name,"w")
   print(pdb_str_1, file=of)
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_01_MTRIX_expanded.pdb")
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_1a)
@@ -684,7 +684,7 @@ def exercise_02(file_name="tst_mtrix_biomt_cmdl_02.pdb"):
   of = open(file_name,"w")
   print(pdb_str_2, file=of)
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_02_MTRIX_expanded.pdb")
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_2a)
@@ -701,7 +701,7 @@ def exercise_03(file_name="tst_mtrix_biomt_cmdl_03.cif"):
   of = open(file_name,"w")
   print(pdb_str_3, file=of)
   of.close()
-  easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
+  assert not easy_run.call("phenix.pdb.mtrix_reconstruction %s"%file_name)
   pdb_inp1 = iotbx.pdb.input(
     file_name="tst_mtrix_biomt_cmdl_03_MTRIX_expanded.cif")
   pdb_inp2 = iotbx.pdb.input(source_info=None, lines=pdb_str_3a)

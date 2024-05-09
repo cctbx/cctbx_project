@@ -123,7 +123,7 @@ def exercise():
     cmd_list.insert(0, 'python %s ' % file_location)
   cmd = " ".join(cmd_list)
   if 0: print(cmd)
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   mas = iotbx.mtz.object(file_name="tst_diffuse.mtz").as_miller_arrays()
   assert len(mas) == 1
   ma = mas[0]

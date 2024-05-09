@@ -206,7 +206,7 @@ def get_regression_folder_file_path(file_name):
 def test_full_str_convert(old_file, new_file):
   print("testing full file remediation")
   prefix = os.path.basename(__file__).replace(".py","")
-  easy_run.call("iotbx.pdb_remediator %s > %s.pdb"%(old_file, prefix))
+  assert not easy_run.call("iotbx.pdb_remediator %s > %s.pdb"%(old_file, prefix))
   with open(prefix+".pdb") as file:
     remediated_list = [line.rstrip() for line in file]
     remediated_pdb = "\n".join(remediated_list)

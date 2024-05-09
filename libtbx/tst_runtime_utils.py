@@ -27,7 +27,7 @@ def exercise():
   with open(eff_file, "w") as f:
     working_phil.show(out=f)
   easy_pickle.dump(params.run_file, run)
-  easy_run.call("libtbx.start_process %s &" % eff_file) #params.run_file)
+  assert not easy_run.call("libtbx.start_process %s &" % eff_file) #params.run_file)
   client = runtime_utils.simple_client(params)
   client.run()
   assert (client.out.getvalue() == """\

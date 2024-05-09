@@ -803,7 +803,7 @@ END
       "%s.pdb" % prefix,
       ])
   print(cmd)
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   assert os.path.isfile("%s_sorted.pdb" % prefix)
   out_f = open("%s_sorted.pdb" % prefix, 'r')
   out_str = out_f.read()

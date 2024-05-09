@@ -133,7 +133,7 @@ def run(filename=None):
     f.close()
     cmd = "phenix.pdb_interpretation %s write_geo=1 hpdl=%s" % (filename, True)
     print(cmd)
-    easy_run.call(cmd)
+    assert not easy_run.call(cmd)
     if filename.find("his_double")>-1: key="ND1 and NE2 protonated"
     elif filename.find("his_nd1")>-1: key="Only ND1 protonated"
     elif filename.find("his_ne2")>-1: key="Only NE2 protonated"
