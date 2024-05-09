@@ -5343,6 +5343,77 @@ sites = None
   params = master_phil.fetch(sources=user_phil).extract()
   assert (params.sites == 2)
 
+def exercise_command_line_assume():
+  master_string = """\
+foo {
+  min=0
+  max=10
+    .expert_level = 0
+  index=3
+  limit=6
+}
+bar {
+  max=5
+    .expert_level = 1
+  sub {
+    limit=8
+  }
+  flag=None
+}
+"""
+  master_phil = phil.parse(input_string=master_string)
+  # do not assume
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=False)
+  try: assert itpr_neutral.process(arg="max=5")
+  except Sorry as e:
+    assert not show_diff(str(e), """\
+Ambiguous parameter definition: max = 5
+Best matches:
+  foo.max
+  bar.max""")
+  else: raise Exception_expected
+  # assume with different expert levels
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=True)
+  old_stdout = sys.stdout
+  output = StringIO()
+  sys.stdout = output
+  itpr_neutral.process(arg="max=5")
+  sys.stdout = old_stdout
+  output = output.getvalue()
+  assert '''\
+Best matches:
+  foo.max
+  bar.max
+Assuming foo.max was intended.''' in output
+  # assume with the same expert levels (same as do not assume)
+  master_string = """\
+foo {
+  min=0
+  max=10
+    .expert_level = 2
+  index=3
+  limit=6
+}
+bar {
+  max=5
+    .expert_level = 2
+  sub {
+    limit=8
+  }
+  flag=None
+}
+"""
+  master_phil = phil.parse(input_string=master_string)
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=True)
+  try: assert itpr_neutral.process(arg="max=5")
+  except Sorry as e:
+    assert not show_diff(str(e), """\
+Ambiguous parameter definition: max = 5
+Best matches:
+  foo.max
+  bar.max""")
+  else: raise Exception_expected
+
 def exercise_choice_multi_plus_support():
   master_phil = libtbx.phil.parse("""\
   u = a b c
@@ -5945,6 +6016,7 @@ def exercise():
   exercise_ints_and_floats()
   exercise_definition_validate_etc()
   exercise_command_line()
+  exercise_command_line_assume()
   exercise_choice_multi_plus_support()
   exercise_deprecation()
   exercise_change_default()
