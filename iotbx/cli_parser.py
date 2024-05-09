@@ -511,8 +511,10 @@ Also, specifying this flag implies that --json is also specified.'''
     # command-line PHIL arguments override any previous settings and are
     # processed in given order
     if len(phil_list) > 0:
-      interpreter = self.master_phil.command_line_argument_interpreter()
-      data_manager_interpreter = self.data_manager.master_phil.command_line_argument_interpreter()
+      interpreter = self.master_phil.command_line_argument_interpreter(
+        assume_when_ambigious=self.program_class.assume_when_ambigious)
+      data_manager_interpreter = self.data_manager.master_phil.command_line_argument_interpreter(
+        assume_when_ambigious=self.program_class.assume_when_ambigious)
       print('  Adding command-line PHIL:', file=self.logger)
       print('  -------------------------', file=self.logger)
       for phil in phil_list:
