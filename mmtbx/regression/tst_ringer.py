@@ -210,7 +210,7 @@ def exercise():
     "output.file_name=%s" % mtz_file,
   ])
   print(cmd)
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   result = easy_run.fully_buffered(
     "phenix.maps \"%s\" \"%s\" output.prefix=tmp_ringer" %
     (pdb_file, mtz_file)).raise_if_errors()

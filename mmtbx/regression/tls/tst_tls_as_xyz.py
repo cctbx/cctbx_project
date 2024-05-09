@@ -166,7 +166,7 @@ def run(file_name = "tst_tls_as_xyz.pdb"):
   uc = iotbx.pdb.input(file_name=file_name).crystal_symmetry().unit_cell()
   #for n in range(10,100,10)+range(100,1000,100)+range(1000,10001,1000)+[15000,20000]:
   for n in [1000,]:
-    easy_run.call("phenix.tls_as_xyz %s n_models=%s > tst_tls_as_xyz.log"%(
+    assert not easy_run.call("phenix.tls_as_xyz %s n_models=%s > tst_tls_as_xyz.log"%(
       file_name,str(n)))
     for i in [0,1]:
       u1 = iotbx.pdb.input(file_name=

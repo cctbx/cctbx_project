@@ -4,7 +4,7 @@ from time import time
 import libtbx.load_env
 
 def exercise_01():
-  easy_run.call("phenix.fetch_pdb 5o61 -c")
+  assert not easy_run.call("phenix.fetch_pdb 5o61 -c")
   fb = easy_run.fully_buffered("phenix.cablam 5o61.cif")
   assert fb.return_code == 0, fb.return_code
 

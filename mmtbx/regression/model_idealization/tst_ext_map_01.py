@@ -135,13 +135,13 @@ def exercise_01(prefix="tst_mi_ext_map_test_01"):
       # "generate_fake_p1_symmetry=True",
       ])
   print(fmodel_cmd)
-  easy_run.call(fmodel_cmd)
+  assert not easy_run.call(fmodel_cmd)
   mtz2map_cmd = " ".join([
     "phenix.mtz2map",
     "%s_start.pdb.mtz" % prefix,
     "include_fmodel=True"])
   print(mtz2map_cmd)
-  easy_run.call(mtz2map_cmd)
+  assert not easy_run.call(mtz2map_cmd)
   # STOP()
   cmd = " ".join([
       "phenix.model_idealization",
