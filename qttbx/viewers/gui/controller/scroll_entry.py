@@ -26,7 +26,8 @@ class ScrollEntryController(Controller, QObject):
     # Connect signals from view
 
     # Active
-    self.view.active_toggle.stateChanged.connect(self._toggle_active_func)
+    if self.view.active_toggle is not None:
+      self.view.active_toggle.stateChanged.connect(self._toggle_active_func)
 
 
     # Close

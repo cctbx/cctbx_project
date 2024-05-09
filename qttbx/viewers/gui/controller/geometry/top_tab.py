@@ -13,7 +13,7 @@ from .tables import (
   PlanarityTableController,
   NonbondedTableController
 )
-from .geo_files import GeoFileListController
+from . import GeoListController
 from pathlib import Path
 import pandas as pd
 
@@ -25,8 +25,10 @@ class GeometryTableTopTabController(Controller):
   """
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
+
+    self.state.signals.geo_change.connect(self.view.set_focus_on)
     
-    self.files = GeoFileListController(parent=self,view=view.files)
+    #self.files = GeoListController(parent=self,view=view.files)
     self.bonds = BondTableController(parent=self,view=view.bonds)
     self.angles = AngleTableController(parent=self,view=view.angles)
     self.dihedrals = DihedralTableController(parent=self,view=view.dihedrals)

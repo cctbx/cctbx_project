@@ -15,23 +15,13 @@ from .base import DataClassBase
 from ...core.cctbx_utils import get_restraint_dfs_from_model
 
 
-@dataclass(frozen=True)
-class GeoFileData(DataClassBase):
-  filepath: Optional[Path] = None
-    
-  @property
-  def filename(self):
-    if self.filepath is not None:
-      return self.filepath.name
-
-  
-
 
 @dataclass(frozen=True)
 class Geo(DataClassBase):
   #labels: Optional[List[str]] = None
   i_seqs: Optional[List[int]] = None
   #id_strs: Optional[List[str]] = None
+
 
 
 @dataclass(frozen=True)
@@ -75,7 +65,7 @@ class PlaneGeometry(Geo):
 
 @dataclass(frozen=True)
 class Geometry(DataClassBase):
-  file: Optional[str] = None
+  filepath: Optional[Path] = None
   bond: Optional[pd.DataFrame] = None
   angle: Optional[pd.DataFrame] = None
   dihedral: Optional[pd.DataFrame] = None
@@ -85,6 +75,10 @@ class Geometry(DataClassBase):
   nonbonded: Optional[pd.DataFrame] = None
   #manager: Optional[object] = None # GRM
 
+  @property
+  def filename(self):
+    if self.filepath is not None:
+      return self.filepath.name
 
   @property
   def dataframes(self):
@@ -152,7 +146,7 @@ class Geometry(DataClassBase):
     if "c-beta" in dfs:
       dfs["cbeta"] = dfs.pop("c-beta")
     kwargs = {k:v for k,v in dfs.items() if k in {field.name for field in fields(cls)}}
-    kwargs.update({"file":geo_file_path})
+    kwargs.update({"filepath":Path(geo_file_path)})
     return cls(**kwargs)
 
   @classmethod

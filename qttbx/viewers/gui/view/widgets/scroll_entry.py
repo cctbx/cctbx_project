@@ -10,7 +10,7 @@ from .editable_label import EditableLabel
 
 
 class ScrollEntryView(QWidget):
-  def __init__(self,parent=None):
+  def __init__(self,parent=None,active_toggle=True):
     super().__init__(parent)
     # state
     self.parent_explicit = parent
@@ -40,14 +40,16 @@ class ScrollEntryView(QWidget):
 
 
     # Active toggle
-    icon_path_checked = Path(__file__).parent / '../assets/icons/material/radio_checked.svg'
-    icon_path_unchecked = Path(__file__).parent / '../assets/icons/material/radio_unchecked.svg'
-    self.active_toggle = ToggleIconLabel(str(icon_path_checked),str(icon_path_unchecked))
-    scale = 0.6
-    self.active_toggle.setMaximumSize(QSize(self.height()*scale,self.height()*scale))
-    self.active_toggle.setMinimumSize(QSize(self.height()*scale,self.height()*scale))
-    self.active_toggle.setToolTip("Is active?")
-    self.layout.addWidget(self.active_toggle)
+    self.active_toggle = None
+    if active_toggle:
+      icon_path_checked = Path(__file__).parent / '../assets/icons/material/radio_checked.svg'
+      icon_path_unchecked = Path(__file__).parent / '../assets/icons/material/radio_unchecked.svg'
+      self.active_toggle = ToggleIconLabel(str(icon_path_checked),str(icon_path_unchecked))
+      scale = 0.6
+      self.active_toggle.setMaximumSize(QSize(self.height()*scale,self.height()*scale))
+      self.active_toggle.setMinimumSize(QSize(self.height()*scale,self.height()*scale))
+      self.active_toggle.setToolTip("Is active?")
+      self.layout.addWidget(self.active_toggle)
 
     # Name Label Widget
 
@@ -73,7 +75,8 @@ class ScrollEntryView(QWidget):
   @is_destroyed.setter
   def is_destroyed(self,value):
     self._is_destroyed = value
-    self.active_toggle.is_destroyed = True
+    if self.active_toggle:
+      self.active_toggle.is_destroyed = True
 
 
 

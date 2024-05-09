@@ -21,7 +21,7 @@ from .reference import Reference
 from .structure import Structure
 from .component import Component
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef, GeoFileRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef
 from .results import ResultsRef
 from ...core.python_utils import DotDict
 from .data import MolecularModelData, RealSpaceMapData
@@ -41,7 +41,7 @@ class StateSignals(QObject):
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
   ciffile_change = Signal(object) # cif file ref
-  geofile_change = Signal(object) # geo file ref
+  geo_change = Signal(object) # geo file ref
   edits_change = Signal(object) # edits ref
   repr_change = Signal(str,list) # (ref_id, list of desired reprs)
   viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
@@ -303,7 +303,7 @@ class State:
       #self.signals.selection_change.emit(ref)
       pass
     elif isinstance(ref,GeometryRef):
-      pass # access through model
+      self.signals.geo_change.emit(ref)
       #self.signals.selection_change.emit(self.active_selection_ref)
 
     elif isinstance(ref,(ResultsRef)):
@@ -314,8 +314,6 @@ class State:
     elif isinstance(ref,EditsRef):
       self.signals.edits_change.emit(ref)
 
-    elif isinstance(ref,GeoFileRef):
-      self.signals.geofile_change.emit(ref)
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
     # update other controllers
@@ -416,6 +414,10 @@ class State:
   @property
   def references_edits(self):
     return [value for key,value in self.references.items() if isinstance(value,EditsRef)]
+
+  @property
+  def references_geo(self):
+    return [value for key,value in self.references.items() if isinstance(value,GeometryRef)]
 
   @property
   def state(self):

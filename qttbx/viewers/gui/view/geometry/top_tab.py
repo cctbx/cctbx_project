@@ -8,15 +8,15 @@ from .tables import (
   PlanarityTableTabView,
   NonbondedTableTabView
 )
-from .geo_files import GeoFileTabView
+from . import GeoTabView
 
 class GeometryTabView(GUITabWidget): # Top view
   def __init__(self,parent=None):
     super().__init__(parent=parent)
 
-    # Files
-    self.files = GeoFileTabView(parent=self)
-    self.addTab(self.files, "Files")
+    # # Files
+    # self.files = GeoTabView(parent=self)
+    # self.addTab(self.files, "Files")
 
     # Bonds
     self.bonds = BondsTableTabView(parent=self)

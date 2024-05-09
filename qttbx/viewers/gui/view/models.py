@@ -7,8 +7,15 @@ from .widgets.scroll_list import ScrollableListView
 from .widgets.scroll_entry import ScrollEntryView
 from .widgets.representation_select import RepresentationSelect
 from .widgets.toggles import ToggleIconButton
+from .widgets.checkbox import ConditionalCheckBox
 
 
+class GeoCheckBox(ConditionalCheckBox):
+  def __init__(self, label, parent=None):
+    super().__init__(label, parent)
+
+  def can_toggle(self):
+    return False # just disable
 
 class ModelLikeEntryView(ScrollEntryView):
   def __init__(self,parent=None):
@@ -69,6 +76,12 @@ class ModelLikeEntryView(ScrollEntryView):
     self.button_files.setFixedSize(self._all_button_width,self._all_button_height)
     self.layout.addWidget(self.button_files)
 
+    # vertical separator
+    separator = QFrame()
+    separator.setFrameShape(QFrame.VLine)
+    separator.setFrameShadow(QFrame.Sunken)
+    self.layout.addWidget(separator)
+
     # Geometry
     self.button_restraints = QPushButton()
     icon_path = Path(__file__).parent / 'assets/icons/material/gears.svg'
@@ -79,6 +92,16 @@ class ModelLikeEntryView(ScrollEntryView):
     self.button_restraints.setFixedSize(self._all_button_width,self._all_button_height)
     self.layout.addWidget(self.button_restraints)
 
+    self.geo_checkbox = GeoCheckBox("Geo", self)
+    #self.geo_checkbox.stateChanged.connect(self.showState)
+    self.layout.addWidget(self.geo_checkbox)
+
+
+    # vertical separator
+    separator = QFrame()
+    separator.setFrameShape(QFrame.VLine)
+    separator.setFrameShadow(QFrame.Sunken)
+    self.layout.addWidget(separator)
 
     # Close
     self.button_close = QPushButton()
@@ -91,6 +114,9 @@ class ModelLikeEntryView(ScrollEntryView):
 
 
     self._insert_index = 2 # a hint on where to insert widgets for subclasses. From back
+
+
+    
 
 class ModelEntryView(ModelLikeEntryView):
   def __init__(self,parent=None):

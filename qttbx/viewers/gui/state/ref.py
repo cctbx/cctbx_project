@@ -20,7 +20,7 @@ from ...core.selection_utils import SelectionQuery
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase, ObjectFrame
-from .geometry import Geometry, GeoFileData
+from .geometry import Geometry
 from ...core.mol import MolDataFrame
 from typing import Optional
 
@@ -42,6 +42,8 @@ class Ref:
   # Signals
   signals = RefSignals()
   _class_label_name = ""
+  EntryViewClass = None
+  EntryControllerClass = None
 
   def __init__(self,data: DataClassBase,style: Optional[Style] = None, show: bool = False):
     self._data = data
@@ -68,10 +70,13 @@ class Ref:
     self.style_history = []
  
 
-  # def _connections(self):
-  #   #self.state.signals.remove_ref.connect(self._remove)
-  #   pass
+  @property
+  def EntryControllerClass(self):
+    raise NotImplementedError
 
+  @property
+  def EntryViewClass(self):
+    raise NotImplementedError
 
   def _clear_ref_connections(self, value):
     for name,ref in self._other_ref_connections.items():
@@ -264,17 +269,6 @@ class CifFileRef(Ref):
     return super().label
 
 
-class GeoFileRef(Ref):
-  _class_label_name = 'file'
-  def __init__(self,data: GeoFileData,show: bool = False):
-    super().__init__(data=data,show=show)
-
-  @property
-  def label(self):
-    if self.data.filename is not None:
-      return self.data.filename
-    return super().label
-
 class ModelRef(Ref):
   _class_label_name = "model"
   def __init__(self,data: MolecularModelData, ciffile_ref: Optional[CifFileRef], style: Optional[Style] = None, show=True):
@@ -287,6 +281,15 @@ class ModelRef(Ref):
     # if self.data.cif_data is not None:
     #   self._file_ref =  CifFileRef(self.data.cif_data)
 
+  @property
+  def EntryControllerClass(self):
+    from ..controller.models import ModelEntryController
+    return ModelEntryController
+
+  @property
+  def EntryViewClass(self):
+      from ..view.models import ModelEntryView
+      return ModelEntryView
 
 
   @classmethod
@@ -456,6 +459,16 @@ class GeometryRef(Ref):
     # Set model restraint_ref value (will emit change signal)
     if self.model_ref is not None:
       self.model_ref.restraints_ref = self
+
+  @property
+  def EntryControllerClass(self):
+    from ..controller.geometry import GeoEntryController
+    return GeoEntryController
+
+  @property
+  def EntryViewClass(self):
+      from ..view.geometry import GeoEntryView
+      return GeoEntryView
 
   @property
   def dfs(self):

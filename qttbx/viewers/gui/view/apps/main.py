@@ -62,53 +62,62 @@ class ViewerGUIView(QMainWindow):
     self.setCentralWidget(self.tabs)
 
     # Required tabs
-     # Viewer
-    if self.viewer_choice == 'molstar':
-      self.viewer_tab_view = ViewerTabView(parent=self)
-      self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
-    else:
-      # ChimeraX Viewer
-      self.viewer_tab_view = ChimeraXTabView(parent=self)
-      self.tabs.insertTab(0,self.viewer_tab_view, "ChimeraX")
+    # Viewer
+    self.viewer_tab_view = ViewerTabView(parent=self)
+    self.viewer_tab_view.order_index=0
+    self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
+    # else:
+    #   # ChimeraX Viewer
+    #   self.viewer_tab_view = ChimeraXTabView(parent=self)
+    #   self.tabs.insertTab(0,self.viewer_tab_view, "ChimeraX")
 
     self.selection_tab_view = SelectionsTabView(parent=self)
+    self.selection_tab_view.order_index=1
     self.tabs.addTab(self.selection_tab_view, "Selections")
+    #self.tabs.toggle_tab_visible("Selections",show=False)
 
     self.data_tab_view = DataTabView(parent=self)
+    self.data_tab_view.order_index=2
     self.tabs.addTab(self.data_tab_view, "Files")
 
-    # Optional tabs
-    if 'all' in show_tab or 'atoms' in show_tab:
-      self.sites_tab_view = SitesTabView(parent=self)
-      self.tabs.addTab(self.sites_tab_view, "Atoms")
+    # # Optional tabs
+    # if 'all' in show_tab or 'atoms' in show_tab:
+    #   self.sites_tab_view = SitesTabView(parent=self)
+    #   self.tabs.addTab(self.sites_tab_view, "Atoms")
 
-    if 'all' in show_tab  or 'cif' in show_tab:
-      self.cif_tab_view = CifTabView(parent=self)
-      self.tabs.addTab(self.cif_tab_view, "CIF")
+    #if 'all' in show_tab  or 'cif' in show_tab:
+    self.cif_tab_view = CifTabView(parent=self)
+    self.cif_tab_view.order_index=3
+    self.tabs.addTab(self.cif_tab_view, "CIF")
+    #self.tabs.toggle_tab_visible("CIF",show=False)
 
     # # Geometry
-    if 'all' in show_tab or 'geometry' in show_tab:
-      # Geometry
-      self.geo = GeometryTabView(parent=self)
-      self.tabs.addTab(self.geo, "Geometry")
+    #if 'all' in show_tab or 'geometry' in show_tab:
+    # Geometry
+    self.geo = GeometryTabView(parent=self)
+    self.geo.order_index=4
+    self.tabs.addTab(self.geo, "Geometry")
+    #self.tabs.toggle_tab_visible("Geometry",show=False)
 
-      # Edits
-      self.edits = EditsTabView(parent=self)
-      self.tabs.addTab(self.edits, "Edits")
+    # Edits
+    self.edits = EditsTabView(parent=self)
+    self.edits.order_index=5
+    self.tabs.addTab(self.edits, "Edits")
+    #self.tabs.toggle_tab_visible("Edits",show=False)
 
-    if 'all' in show_tab or 'restraints' in show_tab:
+    # if 'all' in show_tab or 'restraints' in show_tab:
 
-      # Restraints
-      self.restraints = RestraintsTabView(parent=self)
-      self.tabs.addTab(self.restraints, "Restraints")
+    #   # Restraints
+    #   self.restraints = RestraintsTabView(parent=self)
+    #   self.tabs.addTab(self.restraints, "Restraints")
 
-    # Qscore
-    if 'all' in show_tab or 'qscore' in show_tab:
-      self.qscore_tab_view = QscoreTab(parent=self)
-      self.tabs.addTab(self.qscore_tab_view, "Qscore")
+    # # Qscore
+    # if 'all' in show_tab or 'qscore' in show_tab:
+    #   self.qscore_tab_view = QscoreTab(parent=self)
+    #   self.tabs.addTab(self.qscore_tab_view, "Qscore")
 
     # Consoles
-    if 'all' in show_tab or 'console' in show_tab:
+    if True:
       try:
         import qtconsole
         self.consoles = GUITabWidget(parent=self)
@@ -125,6 +134,12 @@ class ViewerGUIView(QMainWindow):
         print("Console tab not included. Install qtconsole")
         #raise
 
+
+    # Not visible by default
+    self.tabs.toggle_tab_visible("Selections",show=False)
+    self.tabs.toggle_tab_visible("CIF",show=False)
+    self.tabs.toggle_tab_visible("Geometry",show=False)
+    self.tabs.toggle_tab_visible("Edits",show=False)
 
   def child_window_handler(self,event):
     self._has_child_window = True

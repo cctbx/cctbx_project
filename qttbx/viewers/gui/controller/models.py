@@ -24,7 +24,7 @@ class ModelLikeEntryController(ScrollEntryController):
 
     # Signals
     self.view.button_viz.clicked.connect(self.toggle_visibility)
-    #self.state.signals.update.connect(self.update)
+    self.state.signals.geo_change.connect(self.update_geo)
 
     # Representation
     for key,action in self.view.button_rep.actions.items():
@@ -60,6 +60,9 @@ class ModelLikeEntryController(ScrollEntryController):
     self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
     self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
 
+  def update_geo(self,**args):
+    if self.ref.geometry_ref is not None:
+      self.view.geo_checkbox.setChecked(True)
 
   def toggle_visibility(self,event):
 
@@ -135,7 +138,7 @@ class ModelLikeEntryController(ScrollEntryController):
 
   def load_restraints(self):
       if self.ref.has_restraints:
-        self.state.notify("Already have restraints loaded. New files will replace existing restraints.")
+        self.state.notify("Already have restraints loaded. Will now replace existing restraints.")
       self.open_restraints_file_dialog()
 
   def open_restraints_file_dialog(self):
@@ -147,14 +150,10 @@ class ModelLikeEntryController(ScrollEntryController):
 
         filepath = str(Path(file_path).absolute())
         print(f"Geometry file selected: {filepath}")
-        try:
-          restraints = Geometry.from_geo_file(filepath)
-          ref = GeometryRef(restraints,self.state.active_model_ref)
-          self.state.add_ref(ref)
-        except:
-          self.state.notify("Failed to load restraints from file: "+str(file_path))
-          #raise
 
+        data = Geometry.from_geo_file(filepath)
+        ref = GeometryRef(data,self.state.active_model_ref)
+        self.state.add_ref(ref)
 
   def show_color_dialog(self):
     color_dialog = QColorDialog(self.view)

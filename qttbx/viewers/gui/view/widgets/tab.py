@@ -8,15 +8,29 @@ from PySide2.QtGui import QGuiApplication, QDrag, QCursor
 _active_toasts = []
 
 class GUITab(QTabWidget):
-  def __init__(self,parent=None):
+  def __init__(self,parent=None,order_index=None):
     self.parent_explicit = parent # often the implicit parent, self.parent(), is not what you want
     super().__init__(parent)
     self.was_visited = False
+    self.order_index=order_index
 
   def on_first_visit(self):
     #print("First time visiting: "+str(self))
      pass
 
+  def set_focus_on(self,*args):
+    self.set_visible_on()
+    name = self.parent_explicit.tabs.findNameByTab(self)
+    i = self.parent_explicit.tabs.findIndexByName(name)
+    self.parent_explicit.tabs.setCurrentIndex(i)
+
+  def set_visible_on(self,*args):
+    name = self.parent_explicit.tabs.findNameByTab(self)
+    self.parent_explicit.tabs.toggle_tab_visible(name,show=True)
+
+  def set_visible_off(self,*args):
+    name = self.parent_explicit.tabs.findNameByTab(self)
+    self.parent_explicit.tabs.toggle_tab_visible(name,show=False)
 
 class ChildWindow(QMainWindow):
 
@@ -150,10 +164,24 @@ class DraggableTabWidget(QTabWidget):
     event.acceptProposedAction()
 
 class GUITabWidget(DraggableTabWidget):
-  def __init__(self,parent=None):
+  def __init__(self,parent=None,order_index=None):
     super().__init__(parent=parent)
+    self.parent_explicit = parent
+    self.order_index = order_index
     self.currentChanged.connect(self.on_tab_changed)
     self.hiddenTabs = {}  # Track hidden tabs as {tabName: widget}
+
+  def set_focus_on(self,*args):
+    self.set_visible_on()
+    name = self.parent_explicit.tabs.findNameByTab(self)
+    i = self.parent_explicit.tabs.findIndexByName(name)
+    self.parent_explicit.tabs.setCurrentIndex(i)
+
+  def set_visible_on(self,*args):
+    # This differs from toggle_tab_visible in that this makes self
+    # visible, toggle_tab_visible operates on child tabs
+    name = self.parent_explicit.tabs.findNameByTab(self)
+    self.parent_explicit.tabs.toggle_tab_visible(name,show=True)
 
   def on_tab_changed(self,index):
     current_tab_widget = self.widget(index)
@@ -167,21 +195,35 @@ class GUITabWidget(DraggableTabWidget):
           if tab_name in self.hiddenTabs:
               # Re-add the tab
               widget = self.hiddenTabs.pop(tab_name)
-              self.addTab(widget, tab_name)
+              i = widget.order_index
+              if i is None:
+                self.addTab(widget,tab_name)
+              else:
+                self.insertTab(i,widget, tab_name)
       else:
-          index = self.findTabByName(tab_name)
+          index = self.findIndexByName(tab_name)
           if index != -1:
               widget = self.widget(index)
               self.removeTab(index)
               self.hiddenTabs[tab_name] = widget  # Keep track of the widget
 
-  def findTabByName(self, tab_name):
-      print("findtabname:",tab_name)
+  def tabDict(self):
+    d = {self.tabText(i):self.widget(i)  for i in range(self.count())}
+    d.update(self.hiddenTabs)
+    return d
+
+  def findTabByName(self,tab_name):
+    return self.tabDict()[tab_name]
+
+  def findIndexByName(self, tab_name):
       for i in range(self.count()):
           if self.tabText(i) ==tab_name:
               return i
       return -1
 
+  def findNameByTab(self,tab_widget):
+    d = {v:k for k,v in self.tabDict().items()}
+    return d[tab_widget]
 
   @property
   def widgets(self):
