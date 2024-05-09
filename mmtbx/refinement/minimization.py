@@ -59,10 +59,8 @@ class lbfgs(object):
     elif(refine_adp and target_weights is not None):
       self.weights = target_weights.adp_weights_result
     else:
-      from phenix.refinement import weight_xray_chem
-      self.weights = weight_xray_chem.weights(wx       = 1,
-                                              wx_scale = 1,
-                                              w        = 0)
+      from phenix.refinement import weights
+      self.weights = weights.weights(wx = 1, wx_scale = 1, w = 0)
     if(self.collect_monitor):
       self.monitor = monitor(
         weights        = self.weights,

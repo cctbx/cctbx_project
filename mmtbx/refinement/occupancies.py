@@ -132,10 +132,8 @@ class minimizer(object):
     adopt_init_args(self, locals())
     self.fmodels.create_target_functors()
     self.fmodels.prepare_target_functors_for_minimization()
-    from phenix.refinement import weight_xray_chem
-    self.weights = weight_xray_chem.weights(wx       = 1,
-                                            wx_scale = 1,
-                                            w        = 0) # XXX
+    from phenix.refinement import weights
+    self.weights = weights.weights(wx = 1, wx_scale = 1, w = 0)
     self.par_min = self.par_initial.deep_copy()
     self.x = self.pack(self.par_min)
     self.n = self.x.size()
