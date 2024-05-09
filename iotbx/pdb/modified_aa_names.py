@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Thu Jan 11 09:02:01 2024
+The date of file generation: Wed May  8 17:01:20 2024
 """
 from __future__ import absolute_import, division, print_function
 
@@ -469,6 +469,9 @@ lookup = {
   "A02" : "?",
   "A03" : "?",
   "A0G" : "?",
+  "A1ADW" : "?",
+  "A1ADY" : "?",
+  "A1ADZ" : "?",
   "A5R" : "?",
   "A66" : "?",
   "A67" : "?",
@@ -934,6 +937,7 @@ lookup = {
   "SAO" : "?",
   "SBD" : "?",
   "SC2" : "?",
+  "SD0" : "?",
   "SD2" : "?",
   "SDR" : "?",
   "SFE" : "?",
@@ -1042,6 +1046,8 @@ lookup = {
   "YEN" : "?",
   "YNM" : "?",
   "YYA" : "?",
+  "Z50" : "?",
+  "Z9J" : "?",
   "ZAE" : "?",
   "ZAL" : "?",
   "ZFB" : "?",
@@ -1051,6 +1057,7 @@ lookup = {
   "ZPR" : "?",
   "ZRA" : "?",
   "ZRG" : "?",
+  "ZRJ" : "?",
   "ZSN" : "?",
   "ZT9" : "?",
   "ZTC" : "?",
@@ -1248,6 +1255,7 @@ lookup = {
   "PAS" : "D",
   "PHD" : "D",
   "TAV" : "D",
+  "ZJU" : "D",
   "03Y" : "C",
   "07O" : "C",
   "08P" : "C",
@@ -1269,6 +1277,7 @@ lookup = {
   "85F" : "C",
   "85L" : "C",
   "8JB" : "C",
+  "A1D64" : "C",
   "AEA" : "C",
   "AGT" : "C",
   "BB6" : "C",
@@ -1390,7 +1399,9 @@ lookup = {
   "VI3" : "C",
   "XCN" : "C",
   "YCM" : "C",
+  "YRV" : "C",
   "ZBZ" : "C",
+  "ZLF" : "C",
   "ZZD" : "C",
   "ECC" : "Q",
   "GHG" : "Q",
@@ -1405,6 +1416,7 @@ lookup = {
   "QMM" : "Q",
   "QQ8" : "Q",
   "YTF" : "Q",
+  "ZKO" : "Q",
   "11W" : "E",
   "3GL" : "E",
   "3O3" : "E",
@@ -1582,6 +1594,7 @@ lookup = {
   "9TU" : "K",
   "9TX" : "K",
   "9U0" : "K",
+  "A1LWV" : "K",
   "ALY" : "K",
   "API" : "K",
   "APK" : "K",
@@ -1723,6 +1736,7 @@ lookup = {
   "7W2" : "F",
   "7XC" : "F",
   "9NF" : "F",
+  "A1H2H" : "F",
   "A3U" : "F",
   "B1F" : "F",
   "B2F" : "F",
@@ -1970,6 +1984,8 @@ lookup = {
   "54C" : "W",
   "5CW" : "W",
   "6CW" : "W",
+  "A1H2I" : "W",
+  "A1H45" : "W",
   "BTR" : "W",
   "CTE" : "W",
   "E9M" : "W",
