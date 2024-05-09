@@ -96,6 +96,7 @@ def run():
   #
   xrs.shake_occupancies(selection = sel)
   xrs.shake_adp(selection = sel)
+  xrs.shake_sites_in_place(mean_distance=0.3, selection=sel)
   #
   fmodel = mmtbx.f_model.manager(
     f_obs          = f_obs,
