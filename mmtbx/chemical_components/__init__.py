@@ -325,6 +325,8 @@ def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
              'PEPTIDE-LIKE',
             ]:
     return t.lower()
+  elif t in ['OTHER']:
+    return t.lower()
   print(t)
   assert 0
 

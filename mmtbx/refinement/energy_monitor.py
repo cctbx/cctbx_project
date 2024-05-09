@@ -13,12 +13,12 @@ def _print_energy_in_kcal(e, units):
 def print_energy_in_kcal(ga):
   s=[]
   if ga is None: return s
-  for d, e, l, b in ga.energies:
+  for d, e, l, b, c in ga.energies:
     units=ga.units.lower()
     if d in ['opt', 'bound']: atoms=b
     elif d in ['energy', 'strain']: atoms=l
-    s.append('%-22s %s (atoms %4d)  ' % (d,
-                                          _print_energy_in_kcal(e, units), atoms))
+    s.append('%-22s %s (atoms %4d, charge %2d)  ' % (d,
+                                          _print_energy_in_kcal(e, units), atoms, c))
   return s
 
 class energies(list):
@@ -42,7 +42,7 @@ class energies(list):
       for j, ga in enumerate(gas):
         if ga:
           units=ga.units
-          for d, e, l, b in ga.energies:
+          for d, e, l, b, c in ga.energies:
             tmp[i][d]=e
             t_atoms[i][d]=b
         rc = print_energy_in_kcal(ga)
