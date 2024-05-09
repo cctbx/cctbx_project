@@ -212,6 +212,8 @@ class base_manager():
 
   def read_energy(self, *args, **kwds): return 0, 'dirac'
 
+  def read_charge(self, *args, **kwds): return 99
+
   def get_strain(self, *args, **kwds): return 0, 'dirac'
 
   def get_bound(self, *args, **kwds): return 0, 'dirac'
