@@ -90,7 +90,7 @@ def run(prefix="tst_map_model_cc"):
     "> %s.zlog"%prefix
   ])
   print(cmd)
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   # check results
   fo = open("%s.zlog"%prefix,"r")
   for l in fo.readlines():

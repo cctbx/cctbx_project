@@ -86,7 +86,7 @@ def exercise(prefix="tst_models_to_from_chains"):
   fc = complete_set.structure_factors_from_scatterers(
     xray_structure=xrs).f_calc()
   # models -> chains
-  easy_run.call("phenix.models_as_chains %s"%input_file_name)
+  assert not easy_run.call("phenix.models_as_chains %s"%input_file_name)
   pdb_inp = iotbx.pdb.input(file_name="chains_"+input_file_name)
   h = pdb_inp.construct_hierarchy()
   assert len(list(h.chains()))==expected_n
@@ -95,7 +95,7 @@ def exercise(prefix="tst_models_to_from_chains"):
   fc_c = complete_set.structure_factors_from_scatterers(
     xray_structure=xrs_c).f_calc()
   #
-  easy_run.call("phenix.chains_as_models chains_%s"%input_file_name)
+  assert not easy_run.call("phenix.chains_as_models chains_%s"%input_file_name)
   pdb_inp = iotbx.pdb.input(file_name="models_chains_"+input_file_name)
   h = pdb_inp.construct_hierarchy()
   assert len(list(h.chains()))==expected_n

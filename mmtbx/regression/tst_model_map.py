@@ -89,7 +89,7 @@ def run(prefix="tst_model_map"):
   xrs = pdb_inp.xray_structure_simple()
   fc0 = xrs.structure_factors(d_min=3.0).f_calc()
   #
-  easy_run.call("phenix.model_map %s.pdb output_file_name_prefix=%s"%(
+  assert not easy_run.call("phenix.model_map %s.pdb output_file_name_prefix=%s"%(
     prefix, prefix))
   m1 = iotbx.mrcfile.map_reader(file_name="%s.ccp4"%prefix).data.as_double()
   m2 = iotbx.xplor.map.reader(file_name="%s.xplor"%prefix).data

@@ -223,7 +223,7 @@ def _run_and_get_target(pdb_str):
   file_name_prefix = "tst_pdb_interpretation_3"
   with open("%s.pdb"%file_name_prefix, "w") as fo:
     fo.write(pdb_str)
-  easy_run.call("phenix.pdb_interpretation %s.pdb > %s.log"%(
+  assert not easy_run.call("phenix.pdb_interpretation %s.pdb > %s.log"%(
     file_name_prefix,file_name_prefix))
   with open("%s.log"%file_name_prefix, "r") as fo:
     for l in fo.readlines():

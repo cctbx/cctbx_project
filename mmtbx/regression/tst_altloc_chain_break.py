@@ -58,7 +58,7 @@ def exercise(args):
     "tmp_altloc_chain_break.pdb",
     "pdb_interpretation.nonbonded_weight=16",
     ">tmp_altloc_chain_break.zlog"])
-  easy_run.call(command=command)
+  assert not easy_run.call(command=command)
   target_values = []
   for line in open("tmp_altloc_chain_break.zlog","r").readlines():
     line = line.strip()

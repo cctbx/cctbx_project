@@ -136,7 +136,7 @@ def exercise(prefix="tst_helix_sheet_recs_as_pdb_files"):
   print(pdb_str, file=of)
   of.close()
   xrs1 = iotbx.pdb.input(file_name=prefix+".pdb").xray_structure_simple()
-  easy_run.call("phenix.helix_sheet_recs_as_pdb_files %s"%(prefix+".pdb"))
+  assert not easy_run.call("phenix.helix_sheet_recs_as_pdb_files %s"%(prefix+".pdb"))
   xrs2 = iotbx.pdb.input(
     file_name="HELIX_1_1_ALA_E_1_ALA_E_16_1_16.pdb").xray_structure_simple(crystal_symmetry=xrs1.crystal_symmetry())
   fc1 = xrs1.structure_factors(d_min=3).f_calc()

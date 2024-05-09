@@ -1024,7 +1024,7 @@ def run(prefix="tst_fmodel_2"):
     "type=real",
     "high_res=1.0",
     "> %s.zlog"%prefix])
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   miller_arrays = reflection_file_reader.any_reflection_file(file_name =
     "tst_fmodel_2.pdb.mtz").as_miller_arrays()
   for ma in miller_arrays:

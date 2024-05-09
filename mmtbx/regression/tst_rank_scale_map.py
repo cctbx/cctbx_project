@@ -24,7 +24,7 @@ def exercise_00(prefix="tst_rank_scale_map"):
     #gridding_last=n_real,  # This causes a bug (map gets shifted)
     map_data=m,
     labels=flex.std_string([""]))
-  easy_run.call("phenix.rank_scale_map %s.ccp4"%prefix)
+  assert not easy_run.call("phenix.rank_scale_map %s.ccp4"%prefix)
   #
   ccp4_map = iotbx.mrcfile.map_reader(
     file_name="%s.ccp4_rank_scaled.ccp4"%prefix)

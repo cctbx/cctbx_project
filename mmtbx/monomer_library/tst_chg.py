@@ -329,7 +329,7 @@ def run():
   ero.show_stdout(out=err)
 
   cmd = "phenix.fmodel high_res=4.5 format=mtz label=FOBS type=real r_free=0.1 l1r.pdb generate_fake_p1_symmetry=1"
-  easy_run.call(cmd)
+  assert not easy_run.call(cmd)
   cmd = 'phenix.refine'
   cmd += " l1r.pdb l1r.pdb.mtz l1r.cif"
   cmd += " main.number_of_macro_cycles=1"
