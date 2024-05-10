@@ -174,8 +174,10 @@ class CalibWorker(Thread):
     self.db = xfel_db_application(self.parent.params)
 
     from serialtbx.util.energy_scan_notch_finder import notch_phil_string
+    from xfel.command_line.fee_calibration import fee_phil_string
     from libtbx.phil import parse
-    self.fee_params = parse(notch_phil_string).extract()
+    self.fee_params = parse(notch_phil_string + fee_phil_string).extract()
+    self.fee_params.max_events=100
     self.energy_tab.refresh_runs()
 
     while self.active:
@@ -209,7 +211,7 @@ class CalibWorker(Thread):
 
     runs = self.energy_tab.fee_runs
     energies = self.energy_tab.fee_energies
-    rundata = tally_fee_data(self.energy_tab.experiment, runs, plot=False, verbose=True)
+    rundata = tally_fee_data(self.energy_tab.experiment, runs, plot=False, verbose=True, max_events=self.fee_params.max_events)
     notches = [find_notch(range(len(data)),
                           data,
                           self.fee_params.kernel_size,
@@ -254,8 +256,14 @@ class CalibWorker(Thread):
           self.loc_dir = loc_dir
 
     loc_parts = []
-    if self.energy_tab.experiment is not None:
-      loc_parts.append(f'experiment={self.energy_tab.experiment}')
+    if self.energy_tab.experiment is None:
+      print("Experiment not set")
+      return
+    loc_parts.append(f'experiment={self.energy_tab.experiment}')
+    if self.energy_tab.fee_eV_offset is None:
+      print("Calibrate spectrometer first")
+      return
+
     loc_parts.append(f'spectrum_eV_offset={self.energy_tab.fee_eV_offset:.2f}')
     loc_parts.append(f'spectrum_eV_per_pixel={self.energy_tab.fee_eV_per_pixel:.2f}')
 
@@ -276,9 +284,8 @@ class CalibWorker(Thread):
         if 'rayonix' in det_addr:
           this_loc_parts.append(f'rayonix.bin_size={rungroup.binning}')
         loc_path = os.path.join(self.loc_dir, f'{run.run}.loc')
-        if not os.path.exists(loc_path):
-          with open(loc_path, 'w') as locf:
-            locf.write('\n'.join(this_loc_parts))
+        with open(loc_path, 'w') as locf:
+          locf.write('\n'.join(this_loc_parts))
         locfiles.append(loc_path)
         reordered_run_strings.append(str(run.run))
       except Exception as e:
@@ -295,7 +302,8 @@ class CalibWorker(Thread):
         locfiles,
         runs=reordered_run_strings,
         plot=True,
-        use_figure=self.energy_tab.ebeam_figure)
+        use_figure=self.energy_tab.ebeam_figure,
+        max_events=100)
     self.energy_tab.ebeam_figure.canvas.draw_idle()
 
     self.energy_tab.ebeam_eV_offset = ebeam_eV_offset
@@ -1858,6 +1866,7 @@ class EnergyTab(BaseTab):
     self.fee_calib_stale = False
     self.ebeam_calib_stale = False
     self.size_stale = False
+    self.experiment = main.params.facility.lcls.experiment
 
     self.calib_panel = ScrolledPanel(self)
     self.calib_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -1883,6 +1892,7 @@ class EnergyTab(BaseTab):
     self.scan_runs_experiment = wx.TextCtrl(self.expt_id_panel, size=(118, -1))
     self.expt_id_sizer.Add(self.scan_runs_experiment_label)
     self.expt_id_sizer.Add(self.scan_runs_experiment)
+    self.scan_runs_experiment.SetValue(self.experiment)
     self.expt_id_panel.SetSizer(self.expt_id_sizer)
     self.scan_runs_sizer.Add(self.expt_id_panel)
 
@@ -1893,8 +1903,6 @@ class EnergyTab(BaseTab):
     self.scan_runs_list.InsertColumn(0, 'Run', width=60)
     self.scan_runs_list.InsertColumn(1, 'Notch Energy (eV)', width=140)
     self.scan_runs_list.integer_columns = {0}
-    for i in range(5):
-      self.scan_runs_list.InsertItem(0, 0)
 
     self.scan_runs_sizer.Add(self.scan_runs_list, 1)
 
@@ -2069,13 +2077,8 @@ class EnergyTab(BaseTab):
     self.scan_runs_list.InsertItem(n_rows, 0)
 
   def onClearScanRuns(self, e):
-    self.scan_runs_experiment.SetValue('mfxl1028322')
     n_rows = self.scan_runs_list.GetItemCount()
     self.scan_runs_list.DeleteAllItems()
-    for i in range(n_rows):
-    #  self.scan_runs_list.InsertItem(0, 0)
-      self.scan_runs_list.InsertItem(i, str(i+1))
-      self.scan_runs_list.SetItem(i, 1, str(10190 + 5*i))
     e.Skip()
 
   def onRunFEECalib(self, e):

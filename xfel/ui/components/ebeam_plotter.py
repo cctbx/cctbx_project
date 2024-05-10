@@ -6,7 +6,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from simtbx.nanoBragg.utils import ENERGY_CONV
 
-def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None):
+def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, max_events=None):
   if plot:
     fig = use_figure or plt.figure()
     ax = fig.subplots()
@@ -22,6 +22,8 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None):
 
     img = dxtbx.load(locfiles[i])
     n_img = img.get_num_images()
+    if max_events is not None:
+      n_img = min(n_img, max_events)
 
     ebeams_eV = []
     ebeams_wav = []
