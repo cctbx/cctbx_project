@@ -457,8 +457,8 @@ def small_cell_index_lattice_detail(experiments, reflections, horiz_phil):
 
   for spot in all_spots:
     dist = col(spot.spot_dict['radial_lab']).length()
-    inner = dist - (spot.spot_dict['radial_size']/2)
-    outer = dist + (spot.spot_dict['radial_size']/2)
+    inner = dist - (spot.spot_dict['radial_size']/2) # try changing this tolerance?
+    outer = dist + (spot.spot_dict['radial_size']/2) # try changing this tolerance?
 
     # L = 2dsinT
     inner_angle = math.atan2(inner, col(spot.spot_dict['s0_proj']).length())

@@ -17,23 +17,37 @@ class Spotfinder_radial_average:
     self.reflections = reflections
     self.experiments = experiments
     self.params = params
-    n_panels = len(experiments[0].detector)
-    self.panelsums = [np.zeros(params.n_bins) for _ in range(n_panels)]
+    self.n_panels = len(experiments[0].detector)
+    self.panelsums = [np.zeros(params.n_bins) for _ in range(self.n_panels)]
+    self.filtered_panelsums = [
+        np.zeros(params.n_bins) for _ in range(self.n_panels)
+    ]
+    self.antifiltered_panelsums = [
+        np.zeros(params.n_bins) for _ in range(self.n_panels)
+    ]
+    self.expt_count = 0
+    self.filtered_expt_count = 0
+    self.antifiltered_expt_count = 0
 
   def _process_pixel(self, i_panel, s0, panel, xy, value):
     value -= self.params.downweight_weak
     d_max_inv = 1/self.params.d_max
     d_min_inv = 1/self.params.d_min
     res_inv = 1 / panel.get_resolution_at_pixel(s0, xy)
+    res = 1/res_inv
+    if self.params.filter.enable:
+      if self.params.filter.d_max > res > self.params.filter.d_min:
+        self.filter_counts += 1
     n_bins = self.params.n_bins
     i_bin = int(
         n_bins * (res_inv - d_max_inv ) / (d_min_inv - d_max_inv)
         )
     if i_bin < 0 or i_bin >= n_bins: return
-    self.panelsums[i_panel][i_bin] += value
+    self.current_panelsums[i_panel][i_bin] += value
 
   def _nearest_peak(self, x, xvalues, yvalues):
     i = np.searchsorted(xvalues, x, side="left")
+
     #Exclude (before) first and (after) last points
     if i < 1 or i >= len(xvalues):
       print ("Not a valid peak.")
@@ -82,6 +96,15 @@ class Spotfinder_radial_average:
       expt.detector = detector
 
     for i, expt in enumerate(expts):
+      self.current_panelsums = [
+          np.zeros(params.n_bins) for _ in range(self.n_panels)
+      ]
+      self.filter_counts = 0
+      if self.params.filter.d_max is not None:
+        assert self.params.filter.d_min is not None
+        self.use_current_expt = False
+      else:
+        self.use_current_expt = True
       if i % 1000 == 0: print("experiment ", i)
       s0 = expt.beam.get_s0()
       sel = refls['id'] == i
@@ -92,6 +115,7 @@ class Spotfinder_radial_average:
       shoeboxes = refls_sel['shoebox']
 
       for i_refl in range(len(refls_sel)):
+        self.expt_count += 1
         i_panel = panels[i_refl]
         panel = expt.detector[i_panel]
 
@@ -108,6 +132,22 @@ class Spotfinder_radial_average:
           sbpixels = zip(sb.coords(), sb.values())
           for (x,y,_), value in sbpixels:
             self._process_pixel(i_panel, s0, panel, (x,y), value)
+      for i in range(len(self.panelsums)):
+        self.panelsums[i] = self.panelsums[i] + self.current_panelsums[i]
+      if self.params.filter.enable:
+        use_current_expt = self.filter_counts >= 1
+      else:
+        use_current_expt = True
+      if use_current_expt:
+        self.filtered_expt_count += 1
+        for i in range(len(self.panelsums)):
+          self.filtered_panelsums[i] = \
+              self.filtered_panelsums[i] + self.current_panelsums[i]
+      else:
+        self.antifiltered_expt_count += 1
+        for i in range(len(self.panelsums)):
+          self.antifiltered_panelsums[i] = \
+              self.antifiltered_panelsums[i] + self.current_panelsums[i]
 
 
   def plot(self):
@@ -125,9 +165,20 @@ class Spotfinder_radial_average:
       for i_sums, sums in enumerate(self.panelsums):
         yvalues = np.array(sums)
         plt.plot(xvalues, yvalues+0.5*i_sums*offset)
-    else:
-      yvalues = sum(self.panelsums)
+    elif params.filter.enable:
+      for x in self.filtered_panelsums:
+        x /= self.filtered_expt_count
+      for x in self.antifiltered_panelsums:
+        x /= self.antifiltered_expt_count
+      yvalues = sum(self.filtered_panelsums) - sum(self.antifiltered_panelsums)
       plt.plot(xvalues, yvalues)
+
+    else:
+      yvalues = sum(self.filtered_panelsums)
+      plt.plot(xvalues, yvalues)
+
+    if params.augment:
+      plt.plot(*augment(self.experiments, self.reflections, params.d_min, params.d_max))
     ax.set_xlim(d_max_inv, d_min_inv)
     ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
       lambda x, _: "{:.3f}".format(1/x)))
@@ -289,3 +340,51 @@ class Center_scan:
     print(f'end: {width_end:.5f}')
     print(f'net shift: {self.net_origin_shift}')
     return width_start, width_end, self.net_origin_shift
+
+def augment(expts, refls, d_min, d_max):
+  """ Add pairwise 3D spot distances to the d-spacing histogram """
+  lab = flex.vec3_double()
+  det = expts[0].detector
+  filtered = flex.reflection_table()
+  for panel_id, panel in enumerate(det):
+    print("Processing panel", panel_id)
+    subset = refls.select(refls['panel'] == panel_id)
+    mm = panel.pixel_to_millimeter(flex.vec2_double(*subset['xyzobs.px.value'].parts()[0:2]))
+    lab.extend(panel.get_lab_coord(mm))
+    filtered.extend(subset)
+  refls = filtered
+
+  s0 = flex.vec3_double(len(refls))
+  for expt_id, expt in enumerate(expts):
+    if expt_id % 500 == 0:
+      print("Processing experiment", expt_id)
+    sel = refls['id'] == expt_id
+    s0.set_selected(sel, expt.beam.get_s0())
+
+  s1 = lab / lab.norms() * s0.norms()
+  rlp = s1 - s0
+
+  refls['rlp'] = rlp
+  refls['d'] = 1/rlp.norms()
+
+  sel = (refls['d'] >= d_min) & (refls['d'] <= d_max)
+  refls = refls.select(sel)
+  print("After filtering by resolution,", len(refls), "reflections remain")
+
+  _, x_sf = np.histogram((1/refls['d']).as_numpy_array(), bins=2000, range = (1/d_max,1/d_min))
+  y = None
+
+  for expt_id, expt in enumerate(expts):
+    if expt_id % 500 == 0:
+      print("Processing experiment", expt_id)
+    subset = refls.select(refls['id'] == expt_id)
+    if len(subset) <= 1: continue
+    for i in range(len(subset)):
+      diffs = 1/(subset['rlp']-flex.vec3_double(len(subset), subset['rlp'][i])).norms()
+      if y is None:
+        y = np.histogram((1/diffs).as_numpy_array(), bins=2000, range = (1/d_max,1/d_min))[0]
+      else:
+        y += np.histogram((1/diffs).as_numpy_array(), bins=2000, range = (1/d_max,1/d_min))[0]
+
+  return x_sf[:-1], y
+

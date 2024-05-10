@@ -77,6 +77,9 @@ master_phil = parse(
   split_panels = False
     .type = bool
     .help = Plot a pattern for each detector panel.
+  augment = False
+    .type = bool
+    .help = Plot an additional augmented pattern.
   xyz_offset = 0. 0. 0.
     .type = floats
     .help = origin offset in millimeters
@@ -88,6 +91,19 @@ master_phil = parse(
     .type = space_group
     .help = Show positions of miller indices from this unit_cell and space \
             group. Not implemented.
+filter {
+  enable = False
+    .type = bool
+    .help = Instead of counts, plot the likelihood that a d-spacing is observed \
+            together with a reference peak identified by filter.d_max and \
+            filter.d_min.
+  d_max = None
+    .type = float
+    .help = Max resolution of the peak to filter on
+  d_min = None
+    .type = float
+    .help = Min resolution of the peak to filter on
+}
 output {
   log = dials.powder_from_spots.log
     .type = str
