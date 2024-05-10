@@ -1,6 +1,6 @@
 from __future__ import division
 from libtbx import adopt_init_args
-from scitbx.array_family import flex
+from cctbx import adptbx
 
 class individual(object):
   def __init__(self,
@@ -8,16 +8,16 @@ class individual(object):
                x,
                data_weight=1,
                restraints=None,
-               restraints_weight=None,
-               lower_bound=None,
-               upper_bound=None,
-               bound_flags=None):
+               restraints_weight=None):
     adopt_init_args(self, locals())
     self.t = None
     self.g = None
     self.d = None
     self.use_curvatures=False
     self.n = x.size()
+    self.lower_bound = restraints.lower_bound()
+    self.upper_bound = restraints.upper_bound()
+    self.bound_flags = restraints.bound_flags()
     #
     self.update(x = self.x)
     self.f_start = self.t
@@ -33,9 +33,11 @@ class individual(object):
     for p in [[self.data,       self.data_weight],
               [self.restraints, self.restraints_weight]]:
       source, weight = p
-      if source is not None:
-        self.t += source.target()*weight
-        self.g += source.gradients()*weight
+      if not None in [source, weight]:
+        t,g = source.target(), source.gradients()
+        if t is not None:
+          self.t += t*weight
+          self.g += g*weight
 
   def target_and_gradients(self):
     self.update(x = self.x)
@@ -49,24 +51,24 @@ class xyz(object):
                data              = None,
                restraints        = None,
                selection         = None,
-               data_weight       = 1,
-               restraints_weight = None,
+               data_weight       = 1.,
+               restraints_weight = 1.,
                max_shift         = None):
     adopt_init_args(self, locals())
     assert isinstance(max_shift, float)
-    data.set_refine_sites(selection = selection)
-    x = flex.vec3_double(data.get_x())
-    shift = flex.vec3_double(x.size(), [max_shift, max_shift, max_shift])
-    lower_bound = x.deep_copy()
-    lower_bound.set_selected(selection, x-shift)
-    upper_bound = x.deep_copy()
-    upper_bound.set_selected(selection, x+shift)
+    assert [data, restraints].count(None) != 2
+    if data is not None:
+      data.set_refine_sites(selection = selection)
+      x = data.get_x()
+    if restraints is not None:
+      restraints.set_use_xyz(selection = selection, max_shift = max_shift)
+      x = restraints.get_x()
     self._calculator = individual(
-      data        = data,
-      x           = x.as_double(),
-      lower_bound = lower_bound.as_double(),
-      upper_bound = upper_bound.as_double(),
-      bound_flags = flex.int(x.size()*3, 2))
+      data              = data,
+      restraints        = restraints,
+      data_weight       = data_weight,
+      restraints_weight = restraints_weight,
+      x                 = x)
 
   def calculator(self):
     return self._calculator
@@ -81,18 +83,22 @@ class adp(object):
                u_min             = None,
                u_max             = None):
     adopt_init_args(self, locals())
-    data.set_refine_u_iso(selection = selection)
-    x = data.get_x()
-    lower_bound = x.deep_copy()
-    lower_bound.set_selected(selection, u_min)
-    upper_bound = x.deep_copy()
-    upper_bound.set_selected(selection, u_max)
+    assert [data, restraints].count(None) != 2
+    if data is not None:
+      data.set_refine_u_iso(selection = selection)
+      x = data.get_x()
+    if restraints is not None:
+      restraints.set_use_adp(
+        selection = selection,
+        b_min     = adptbx.u_as_b(u_min),
+        b_max     = adptbx.u_as_b(u_max))
+      x = restraints.get_x()
     self._calculator = individual(
-      data        = data,
-      x           = x,
-      lower_bound = lower_bound,
-      upper_bound = upper_bound,
-      bound_flags = flex.int(x.size(), 2))
+      data              = data,
+      restraints        = restraints,
+      data_weight       = data_weight,
+      restraints_weight = restraints_weight,
+      x                 = x)
 
   def calculator(self):
     return self._calculator
@@ -107,18 +113,22 @@ class occ(object):
                q_min             = None,
                q_max             = None):
     adopt_init_args(self, locals())
-    data.set_refine_occupancy(selection = selection)
-    x = data.get_x()
-    lower_bound = x.deep_copy()
-    lower_bound.set_selected(selection, q_min)
-    upper_bound = x.deep_copy()
-    upper_bound.set_selected(selection, q_max)
+    assert [data, restraints].count(None) != 2
+    if data is not None:
+      data.set_refine_occupancy(selection = selection)
+      x = data.get_x()
+    if restraints is not None:
+      restraints.set_use_occ(
+        selection = selection,
+        q_min     = q_min,
+        q_max     = q_max)
+      x = restraints.get_x()
     self._calculator = individual(
-      data        = data,
-      x           = x,
-      lower_bound = lower_bound,
-      upper_bound = upper_bound,
-      bound_flags = flex.int(x.size(), 2))
+      data              = data,
+      restraints        = restraints,
+      data_weight       = data_weight,
+      restraints_weight = restraints_weight,
+      x                 = x)
 
   def calculator(self):
     return self._calculator

@@ -11,8 +11,7 @@ class fs(object):
                fmodel,
                sites_cart = False,
                u_iso = False,
-               occupancy = False,
-               selection = None):
+               occupancy = False):
     adopt_init_args(self, locals())
     self.scatterers = self.fmodel.xray_structure.scatterers()
     self.size = self.scatterers.size()
@@ -34,7 +33,11 @@ class fs(object):
 
   def _set_flags(self, scf, selection):
     assert [self.sites_cart, self.u_iso, self.occupancy].count(True) == 1
+
+    #self.scatterers = self.fmodel.xray_structure.scatterers()
+
     self.scatterers.flags_set_grads(state=False)
+
     if selection is not None:
       assert isinstance(selection, flex.bool)
       self.selection = selection

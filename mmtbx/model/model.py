@@ -1062,6 +1062,9 @@ class manager(object):
   def set_refinement_flags(self, flags):
     self.refinement_flags = flags
 
+  def get_refinement_flags(self):
+    return self.refinement_flags
+
   def get_number_of_atoms(self):
     return self.get_hierarchy().atoms().size()
 
@@ -4118,7 +4121,12 @@ class manager(object):
     self.adp_statistics().show(log = out, prefix = prefix)
 
   def energies_adp(self, iso_restraints, compute_gradients, use_hd):
+    if self.restraints_manager is None: return None
     assert self.refinement_flags is not None
+    if iso_restraints is None:
+      import mmtbx.refinement.adp_refinement
+      iso_restraints = mmtbx.refinement.adp_refinement.\
+        adp_restraints_master_params.extract().iso
     xrs = self._xray_structure
     sel_ = xrs.use_u_iso() | xrs.use_u_aniso()
     selection = sel_

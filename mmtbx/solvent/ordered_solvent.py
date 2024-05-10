@@ -16,6 +16,7 @@ from libtbx.utils import null_out
 from mmtbx.solvent import map_to_water
 from libtbx import group_args
 import string
+import libtbx.log
 
 def get_unique_altloc(exclude):
   for l in string.ascii_uppercase:
@@ -160,33 +161,6 @@ master_params_str = """\
     .type = bool
     .expert_level=2
 """ % (output_params_str, h_bond_params_str, adp_occ_params_str)
-
-# XXX
-# XXX Consolidate with phenix.douse and may be more
-# XXX
-class msg_accumulator(object):
-  def __init__(self, log=None):
-    self.log = log
-    self.messages = []
-    self.prefix=""
-
-  def set_prefix(self, prefix):
-    self.prefix=prefix
-
-  def add(self, msg):
-    msg = "%s%s"%(self.prefix, msg)
-    self.messages.append(msg)
-    if(self.log is not None): print(msg, file=self.log)
-
-  def show(self, log=None):
-    assert [self.log, log].count(None) == 1
-    if(log is not None):
-      assert self.log is None
-    else:
-      assert self.log is not None
-      log = self.log
-    for msg in self.messages:
-      print(msg, file=log)
 
 def master_params():
   return iotbx.phil.parse(master_params_str)
@@ -446,7 +420,7 @@ class manager(object):
       self.find_peaks_params.map_next_to_model.min_model_peak_dist=0.5
       self.find_peaks_params.map_next_to_model.min_peak_peak_dist=0.5
 
-    self.ma         = msg_accumulator(log = self.log)
+    self.ma         = libtbx.log.manager(log = self.log)
     self.total_time = 0
     self._maps      = None
     self._peaks     = None
@@ -467,7 +441,7 @@ class manager(object):
 
   def _call(self, msg, func = None):
     timer = user_plus_sys_time()
-    self.ma.add(msg)
+    self.ma.add_and_show(msg)
     self._assert_same_model()
     if(func is not None): func()
     self._get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps()
@@ -479,7 +453,7 @@ class manager(object):
   def _add_to_message(self, this_step_time):
     rs="r_work=%6.4f r_free=%6.4f"%(self.fmodel.r_work(), self.fmodel.r_free())
     nw="n_water=%3d"%(self.n_water)
-    self.ma.add("  %s | %s | time (s): %s (total time: %s)"%(rs, nw,
+    self.ma.add_and_show("  %s | %s | time (s): %s (total time: %s)"%(rs, nw,
       ("%8.3f"%this_step_time).strip(), ("%8.3f"%self.total_time).strip()))
 
   def _get_and_set_n_water_and_sync_fmodel_and_model_and_update_maps(self):
@@ -702,8 +676,10 @@ class manager(object):
     if(self.params.refine_adp and self.params.refine_occupancies and
        self.new_solvent_selection.count(True)>0):
       from mmtbx.refinement import wrappers
-      o = wrappers.unrestrained_qb_fsr(
+      o = wrappers.unrestrained_qbr_fsr(
         fmodel    = self.fmodel,
+        model     = self.model,
+        refine_xyz = True,
         selection = self.new_solvent_selection,
         q_min     = 0.004,
         b_max     = 60,

@@ -105,8 +105,9 @@ def run():
     sf_and_grads_accuracy_params = sfg_params)
   print("r_work=%6.4f r_free=%6.4f"%(fmodel.r_work(), fmodel.r_free()))
   #
-  o = wrappers.unrestrained_qb_fsr(
+  o = wrappers.unrestrained_qbr_fsr(
     fmodel    = fmodel,
+    model     = model,
     selection = sel,
     log       = sys.stdout,
     macro_cycles = 20)

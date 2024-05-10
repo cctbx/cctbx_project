@@ -3,6 +3,35 @@ from __future__ import absolute_import, division, print_function
 import logging
 import sys
 
+class manager(object):
+  def __init__(self, log=None):
+    self.log      = log
+    self.messages = []
+    self.prefix   = ""
+
+  def set_prefix(self, prefix):
+    self.prefix=prefix
+
+  def add(self, msg):
+    msg = "%s%s"%(self.prefix, msg)
+    self.messages.append(msg)
+
+  def add_and_show(self, msg):
+    self.add(msg)
+    self.show_last()
+
+  def show(self):
+    print(msg, file=self.log)
+
+  def show_last(self):
+    if len(self.messages)>0:
+      print(self.messages[-1], file=self.log)
+
+  def show_all(self):
+    for msg in self.messages:
+      print(msg, file=self.log)
+
+
 class logger(object):
   """A basic wrapper over Python standard library logging module.
 
