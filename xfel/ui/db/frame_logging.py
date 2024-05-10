@@ -107,10 +107,15 @@ class DialsProcessorWithLogging(Processor):
     assert len(imageset) == 1
     format_obj = imageset.data().reader().format_class._current_instance_ # XXX
     try: # XTC specific version
-      run = str(format_obj.get_run_from_index(imageset.indices()[0]))
+      import psana
+      run = str(format_obj.get_run_from_index(imageset.indices()[0]).run())
       timestamp = format_obj.get_psana_timestamp(imageset.indices()[0])
-      return run.run(), timestamp
-    except AttributeError: # General version
+      evt = format_obj._get_event(imageset.indices()[0])
+      if evt:
+        fid = evt.get(psana.EventId).fiducials()
+        timestamp += ", fid:" + str(fid)
+      return run, timestamp
+    except (ImportError, AttributeError): # General version
       run = self.params.input.run_num
       timestamp = self.tag
       return run, timestamp
@@ -124,7 +129,10 @@ class DialsProcessorWithLogging(Processor):
 
       if self.params.radial_average.verbose:
         run, timestamp = self.get_run_and_timestamp(experiments)
-        print("Radial average of run %s, timestamp %s"%(str(run), timestamp))
+        if timestamp == self.tag:
+          print("Radial average of run %s, timestamp %s"%(str(run), self.tag))
+        else:
+          print("Radial average of run %s, tag %s, timestamp %s"%(str(run), self.tag, timestamp))
 
       imageset = experiments.imagesets()[0]
       two_thetas, radial_average_values = radial_run(self.params.radial_average, imageset = imageset)
