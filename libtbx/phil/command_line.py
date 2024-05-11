@@ -12,7 +12,7 @@ class argument_interpreter(object):
         home_scope=None,
         argument_description=None,
         master_params=None,
-        assume_when_ambigious=True):
+        assume_when_ambiguous=True):
     if (argument_description is None):
       argument_description = "command line "
     assert [master_params, master_phil].count(None) == 1
@@ -28,7 +28,7 @@ class argument_interpreter(object):
     self.home_scope = home_scope
     self.argument_description = argument_description
     self.target_paths = None
-    self.assume_when_ambigious = assume_when_ambigious
+    self.assume_when_ambiguous = assume_when_ambiguous
 
   def get_path_score(self, source_path, target_path):
     i = target_path.find(source_path)
@@ -92,7 +92,7 @@ class argument_interpreter(object):
           if (score == max_score):
             error.append("  " + target_path)
 
-        if self.assume_when_ambigious:
+        if self.assume_when_ambiguous:
           # Calculate and apply tie-breaker value depending on expert level.
           # Arguments with lower expert level are preferentially
           # chosen if otherwise they would be ambiguous.
@@ -100,7 +100,7 @@ class argument_interpreter(object):
           max_score = max(scores)
         if (scores.count(max_score) > 1):  # if there is still a tie, a Sorry is still raised
           raise Sorry("\n".join(error))
-        if self.assume_when_ambigious:
+        if self.assume_when_ambiguous:
           print("Warning: " + "\n".join(error) + "\nAssuming %s was intended." % self.target_paths[scores.index(max_score)])
 
       complete_definitions += object.customized_copy(

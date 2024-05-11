@@ -5363,7 +5363,7 @@ bar {
 """
   master_phil = phil.parse(input_string=master_string)
   # do not assume
-  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=False)
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambiguous=False)
   try: assert itpr_neutral.process(arg="max=5")
   except Sorry as e:
     assert not show_diff(str(e), """\
@@ -5373,7 +5373,7 @@ Best matches:
   bar.max""")
   else: raise Exception_expected
   # assume with different expert levels
-  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=True)
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambiguous=True)
   old_stdout = sys.stdout
   output = StringIO()
   sys.stdout = output
@@ -5404,7 +5404,7 @@ bar {
 }
 """
   master_phil = phil.parse(input_string=master_string)
-  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambigious=True)
+  itpr_neutral = master_phil.command_line_argument_interpreter(assume_when_ambiguous=True)
   try: assert itpr_neutral.process(arg="max=5")
   except Sorry as e:
     assert not show_diff(str(e), """\
