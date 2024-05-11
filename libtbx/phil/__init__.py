@@ -2020,13 +2020,13 @@ class scope(slots_getstate_setstate):
   def command_line_argument_interpreter(self,
         home_scope=None,
         argument_description=None,
-        assume_when_ambigious=True):
+        assume_when_ambiguous=True):
     from libtbx.phil.command_line import argument_interpreter as _
     return _(
       master_phil=self,
       home_scope=home_scope,
       argument_description=argument_description,
-      assume_when_ambigious=assume_when_ambigious)
+      assume_when_ambiguous=assume_when_ambiguous)
 
 def process_include_scope(
       converter_registry,
