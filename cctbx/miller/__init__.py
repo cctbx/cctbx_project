@@ -4598,6 +4598,7 @@ class array(set):
     temp = miller.structure_factor_box_from_map(
        map           = flex.pow2(fft.real_map_unpadded()-mean_solvent_density),
        crystal_symmetry = self.crystal_symmetry(),
+       d_min = self.d_min(),
        include_000      = True)
 
     sphere_reciprocal = self.g_function(R=radius, s=temp.d_spacings().data())
