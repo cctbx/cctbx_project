@@ -52,19 +52,20 @@ class _():
 def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
      non_negative = True):
   from cctbx import miller
-  assert method in ["exp", "box_average"]
+  assert method in ["exp", "box_average", "top_hat"]
   map_smooth = None
-  if(method == "exp"):
+  if (method == "exp"):
     f_map = miller.structure_factor_box_from_map(
       map              = map,
       crystal_symmetry = crystal_symmetry,
       include_000      = True)
     ddd = f_map.d_spacings().data()
-    ddd.set_selected(ddd  ==  -1 , 1.e+10)  # d_spacing for (0, 0, 0) was set to -1
+    ddd.set_selected(ddd  ==  -1 , 1.e+10)  # d for (0, 0, 0) was set to -1
     ss = 1./flex.pow2(ddd) / 4.
     b_smooth = 8*math.pi**2*rad_smooth**2
     smooth_scale = flex.exp(-b_smooth*ss)
     f_map = f_map.array(data = f_map.data()*smooth_scale)
+    from cctbx.maptbx import crystal_gridding
     cg = crystal_gridding(
       unit_cell             = crystal_symmetry.unit_cell(),
       space_group_info      = crystal_symmetry.space_group_info(),
@@ -76,6 +77,46 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
     map_smooth = fft_map.real_map_unpadded()
     if non_negative:
       map_smooth = map_smooth.set_selected(map_smooth<0., 0)
+
+  elif(method  == "top_hat"):
+
+    # use same grid as original
+    from cctbx.maptbx import crystal_gridding
+    cg = crystal_gridding(
+        unit_cell = crystal_symmetry.unit_cell(),
+        space_group_info = crystal_symmetry.space_group_info(),
+        pre_determined_n_real = map.all())
+
+    average_value = map.as_1d().min_max_mean().mean
+
+    # Get structure factors with f_000
+    f_map = miller.structure_factor_box_from_map(
+      map              = map,
+      crystal_symmetry = crystal_symmetry,
+      include_000      = True)
+
+    # The d_spacings get a value of -1 for the f000 term. Set it to a big number
+    ddd = f_map.d_spacings().data()
+    ddd.set_selected(ddd < 0, 1.e+10)
+    d_min = f_map.d_min()
+
+    # G-function for top hat (FT of top hat)
+    #complete_set = f_map.complete_set(include_f000 = True)
+    sphere_reciprocal = f_map.g_function(R=rad_smooth, # top hat function
+         s=f_map.d_spacings().data(), volume_scale=True)
+
+    # FT (map) * FT(top hat) = FT (convolution of map and top hat)
+    fourier_coeff = f_map.array(data=f_map.data()*sphere_reciprocal)
+
+    # Convolution of map and top hat
+    fft_map = fourier_coeff.fft_map(d_min = d_min, crystal_gridding = cg)
+    fft_map.apply_volume_scaling()
+    map_smooth = fft_map.real_map_unpadded()
+
+
+    if non_negative:
+      map_smooth = map_smooth.set_selected(map_smooth<0., 0)
+
   elif(method == "box_average"): # assume 0/1 binary map
     assert abs(flex.max(map)-1.)<1.e-6
     mmin = flex.min(map)

@@ -91,6 +91,9 @@ binary_types = ["hkl","ccp4_map","img","pkl"]
 ascii_types = ["hkl","xplor_map","pdb","cif","phil","hhr", "ncs", "aln", "a3m",
    "seq", "xml", "txt"]
 
+# Try files with these extensions only with their associated file types
+extensions_absolutely_defining_type = ['ccp4','mrc']
+
 def get_wildcard_string(format):
   assert (format in standard_file_extensions), format
   wildcards = [ "*.%s" % ext for ext in standard_file_extensions[format] ]
@@ -185,6 +188,8 @@ def sort_by_file_type(file_names, sort_order=None):
 def any_file(file_name,
               get_processed_file=False,
               valid_types=supported_file_types,
+              extensions_absolutely_defining_type=
+                  extensions_absolutely_defining_type,
               allow_directories=False,
               force_type=None,
               input_class=None,
@@ -204,12 +209,25 @@ def any_file(file_name,
     with force_type)
   :param raise_sorry_if_not_expected_format: raise a Sorry exception if the
     file extension does not match the parsed file type
+  :param extensions_absolutely_defining_type: if the file has one of these
+    extensions, only try the associated file type
   :returns: any_file_input object, or an instance of the input_class param
   """
   file_name_raw = file_name
   file_name = strip_shelx_format_extension(file_name)
   if (file_name != file_name_raw) and (force_type is None):
     force_type = "hkl"
+  # See if extension is in extensions_absolutely_defining_type
+  _, ext = os.path.splitext(file_name_raw)
+  ext = ext[1:]  # remove . in .ccp4
+  if (force_type is None) and extensions_absolutely_defining_type and (
+      ext in extensions_absolutely_defining_type):
+    for ft in supported_file_types:
+      if ext in standard_file_extensions[ft]:
+        force_type = ft
+        break
+    assert force_type is not None
+
   if not os.path.exists(file_name):
     raise Sorry("Couldn't find the file %s" % file_name)
   elif os.path.isdir(file_name):

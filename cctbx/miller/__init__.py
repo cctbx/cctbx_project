@@ -2352,12 +2352,13 @@ class array(set):
   def g_function(self, R, s=None, volume_scale=False):
     # reciprocal sphere
     if s is None:
-      s = 1./self.d_spacings().data()
+      s = 1./self.d_spacings().data() # Note f000 term will get s = -1
     else:
       s = 1./s
     arg = 2*math.pi*s*R
     vol=1
     if(volume_scale): vol = 4*math.pi*R**3/3
+    arg.set_selected(arg < 1.e-5, 1.e-5) # calculation below fails for f000 term
     return vol*3*(flex.sin(arg) - arg*flex.cos(arg))/(arg)**3
 
   def as_double(self):
@@ -4583,8 +4584,6 @@ class array(set):
     # J. P. Abrahams and A. G. W. Leslie, Acta Cryst. (1996). D52, 30-42
     # This should really have been called "local_variance_map" because the
     # square root is not taken after local averaging of density-squared
-    complete_set = self.complete_set()
-    sphere_reciprocal = self.g_function(R=radius, s=complete_set.d_spacings().data())
     fft = self.fft_map(
       resolution_factor=resolution_factor,
       d_min=d_min,
@@ -4595,9 +4594,14 @@ class array(set):
       assert_shannon_sampling=assert_shannon_sampling,
       f_000=f_000)
     fft.apply_volume_scaling()
-    temp = complete_set.structure_factors_from_map(
-      flex.pow2(fft.real_map_unpadded()-mean_solvent_density))
-    fourier_coeff = complete_set.array(data=temp.data()*sphere_reciprocal)
+    from cctbx import miller
+    temp = miller.structure_factor_box_from_map(
+       map           = flex.pow2(fft.real_map_unpadded()-mean_solvent_density),
+       crystal_symmetry = self.crystal_symmetry(),
+       include_000      = True)
+
+    sphere_reciprocal = self.g_function(R=radius, s=temp.d_spacings().data())
+    fourier_coeff = temp.array(data=temp.data()*sphere_reciprocal)
     fft = fft_map(
       crystal_gridding=self.crystal_gridding(
         d_min=d_min,
