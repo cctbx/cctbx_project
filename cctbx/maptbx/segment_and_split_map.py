@@ -4398,6 +4398,50 @@ def apply_soft_mask(map_data = None,
      out = out)
   return masked_map, smoothed_mask_data
 
+def smooth_one_map(map_data, crystal_symmetry = None, smoothing_radius = None,
+     non_negative = False, method = 'exp'):
+  from cctbx.maptbx import smooth_map, unpad_in_place
+  unpad_in_place(map = map_data.deep_copy())
+  smoothed_map = smooth_map(
+      map              = map_data,
+      crystal_symmetry = crystal_symmetry,
+      rad_smooth       = smoothing_radius,
+      non_negative     = non_negative,
+      method = method)
+  return smoothed_map
+
+def get_smoothed_cc_map(map_data_1, map_data_2,
+   crystal_symmetry = None, weighting_radius = None,
+   method = 'top_hat'):
+  avg1 = map_data_1.as_1d().min_max_mean().mean
+  avg2 = map_data_2.as_1d().min_max_mean().mean
+  map_data_1 = map_data_1.deep_copy() -  avg1
+  map_data_2 = map_data_2.deep_copy() -  avg2
+  avg_product_map = smooth_one_map(map_data_1 * map_data_2,
+     crystal_symmetry = crystal_symmetry,
+      smoothing_radius = weighting_radius,
+      non_negative = True, method = method)
+
+  squared_map_1 = flex.pow2(map_data_1)
+  squared_map_2 = flex.pow2(map_data_2)
+  sm1 = smooth_one_map(squared_map_1,
+      crystal_symmetry = crystal_symmetry,
+      smoothing_radius = weighting_radius,
+      non_negative = True, method = method)
+  sm2 = smooth_one_map(squared_map_2,
+      crystal_symmetry = crystal_symmetry,
+      smoothing_radius = weighting_radius,
+      non_negative = True, method = method)
+  sm = flex.sqrt(sm1) * flex.sqrt(sm2)
+  diffs = (squared_map_1 - squared_map_2)
+  sm.as_1d().set_selected(sm.as_1d() <0.001, 0.001)
+  cc_map = avg_product_map/sm
+  cc_map.as_1d().set_selected(cc_map.as_1d() < 0, 0)
+  cc_map.as_1d().set_selected(cc_map.as_1d() > 1, 1)
+
+  return cc_map
+
+
 def smooth_mask_data(mask_data = None,
     crystal_symmetry = None,
     threshold = None,

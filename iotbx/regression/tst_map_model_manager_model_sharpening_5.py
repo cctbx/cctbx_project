@@ -50,18 +50,26 @@ def test_01(method = 'model_sharpen',
   sharpen_method = getattr(mmm,method)
 
   # sharpen by method (can be model_sharpen, half_map_sharpen or
-  #     external_sharpen)
+  #     external_sharpen and also local_resolution_map)
 
-  sharpen_method(anisotropic_sharpen = False, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = False, n_bins=10,
-     local_sharpen = True)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = True, n_bins=10)
-  assert mmm.map_model_cc() > 0.9
-  sharpen_method(anisotropic_sharpen = True, n_bins=10,
-     local_sharpen = True, n_boxes = 1)
-  assert mmm.map_model_cc() > 0.9
+  if method == 'local_resolution_map':
+    mm = sharpen_method()
+    x = mm.map_data().as_1d().min_max_mean()
+    from libtbx.test_utils import approx_equal
+    assert approx_equal((x.min,x.max,x.mean),
+      (1.850492557716066,2.159605614905797,2.0194400724786665), eps = 0.01)
+
+  else: # usual
+    sharpen_method(anisotropic_sharpen = False, n_bins=10)
+    assert mmm.map_model_cc() > 0.9
+    sharpen_method(anisotropic_sharpen = False, n_bins=10,
+       local_sharpen = True)
+    assert mmm.map_model_cc() > 0.9
+    sharpen_method(anisotropic_sharpen = True, n_bins=10)
+    assert mmm.map_model_cc() > 0.9
+    sharpen_method(anisotropic_sharpen = True, n_bins=10,
+       local_sharpen = True, n_boxes = 1)
+    assert mmm.map_model_cc() > 0.9
 
 
 # ----------------------------------------------------------------------------

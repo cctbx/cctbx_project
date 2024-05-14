@@ -7618,7 +7618,111 @@ class map_model_manager(object):
       found_number_of_samples_with_ncs), file = self.log)
     return all_results
 
+  def local_resolution_map(self,
+      map_id_1 = 'map_manager_1',
+      map_id_2 = 'map_manager_2',
+      d_min = None,
+      n_bins = 20,
+      fsc_cutoff = 0.143,
+      smoothing_radius = None,
+      smoothing_radius_ratio = 2):
 
+
+    from cctbx.maptbx.segment_and_split_map import smooth_one_map
+    from cctbx.maptbx.segment_and_split_map import get_smoothed_cc_map
+
+    hm1 = self.get_map_manager_by_id(map_id_1)
+    hm2 = self.get_map_manager_by_id(map_id_2)
+    assert hm1 and hm2
+    if d_min is None:
+      resolution = self.resolution()
+      d_min = self._get_d_min_from_resolution(resolution)
+    if smoothing_radius is None:
+      smoothing_radius = smoothing_radius_ratio * self.resolution()
+
+    from cctbx.maptbx.segment_and_split_map import get_f_phases_from_map
+    from cctbx.development.create_models_or_maps import get_map_from_map_coeffs
+
+    crystal_symmetry = hm1.crystal_symmetry()
+    mc_list = []
+    for hm in [hm1, hm2]:
+      mc, dummy = get_f_phases_from_map(map_data = hm.map_data(),
+         crystal_symmetry = crystal_symmetry,
+         d_min = d_min,
+         return_as_map_coeffs = True,
+         out = null_out())
+      mc_list.append(mc)
+
+    base_map_coeffs = mc_list[0]
+    (d_max, d_min) = base_map_coeffs.d_max_min()
+    n_bins = base_map_coeffs.safe_setup_binner(
+        n_bins = n_bins, d_max = d_max, d_min = d_min)
+    dsd = base_map_coeffs.d_spacings().data()
+    all_bins = list(base_map_coeffs.binner().range_used())
+
+    dsd = base_map_coeffs.d_spacings().data()
+
+    just_above_dmin = hm1.map_data().deep_copy()
+    just_above_dmin *= 0  # zero map
+    just_above_cc = just_above_dmin.deep_copy()
+    just_below_dmin = just_above_dmin.deep_copy()
+    just_below_cc = just_above_dmin.deep_copy()
+    just_above_dmin += 999 # all 999
+    m = hm1.deep_copy()
+
+    n_real = hm1.map_data().all()
+
+    for i_bin in all_bins:
+      sel       = base_map_coeffs.binner().selection(i_bin)
+      dd         = dsd.select(sel)
+      local_d_mean     = dd.min_max_mean().mean
+      map_data_list = []
+      for mc in mc_list:
+        mc_sel = mc.select(sel)
+        map_data_list.append(get_map_from_map_coeffs(
+           map_coeffs = mc_sel,
+           crystal_symmetry = crystal_symmetry,
+           n_real = n_real,
+           apply_sigma_scaling = False))
+      map_data_1, map_data_2 = map_data_list
+
+      local_cc_map = get_smoothed_cc_map(
+        map_data_1, map_data_2,
+        crystal_symmetry = crystal_symmetry, weighting_radius = smoothing_radius)
+
+      ss = (local_cc_map.as_1d() >= fsc_cutoff) & (
+         just_above_dmin.as_1d() > local_d_mean)
+      just_above_dmin.as_1d().set_selected(ss, local_d_mean)
+      just_above_cc.as_1d().set_selected(ss, local_cc_map.as_1d())
+
+      ss = (local_cc_map.as_1d() < fsc_cutoff) & (
+         just_below_dmin.as_1d() < local_d_mean)
+      just_below_dmin.as_1d().set_selected(ss, local_d_mean)
+      just_below_cc.as_1d().set_selected(ss, local_cc_map.as_1d())
+
+    # All set
+
+    #  just_above_cc = smallest resolution (d-spacing) where cc >= fsc_cutoff
+    # just_below_cc = largest resolution where cc < fsc_cutoff
+
+    delta = just_above_cc - just_below_cc
+    ss_neg = (delta.as_1d() <= 1.e-10)
+                              # smallest d-spacing with cc >= fsc_cutoff is
+                              # less than largest d_spacing with cc < fsc_cutoff
+                              # happens if cc vs resolution is noisy
+
+    delta.as_1d().set_selected(delta.as_1d() < 1.e-10, 1.e-10)
+    frac = fsc_cutoff - just_below_cc
+    w1 = frac / delta
+    w1.as_1d().set_selected(w1.as_1d() < 0, 0)
+    w1.as_1d().set_selected(w1.as_1d() > 1, 1)
+
+    w1.as_1d().set_selected(ss_neg, 0.5) # just average if overlap
+    w2 = 1 - w1
+    map_data = (w1 * just_below_dmin) + (w2 * just_above_dmin)
+    m.set_map_data(map_data)
+
+    return m
 
 
   def map_map_fsc(self,

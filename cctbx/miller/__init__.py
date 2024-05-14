@@ -1653,6 +1653,25 @@ class set(crystal.symmetry):
       binning=binning(self.unit_cell(), n_bins, self.indices(), d_max, d_min))
     return self.binner()
 
+  def safe_setup_binner(self, n_bins = None, d_max = None, d_min = None,
+     min_in_bin = 10):
+    # purpose: make sure there are data in all bins
+    # Returns: actual n_bins created
+
+    while n_bins >= 1:
+      self.setup_binner(n_bins = n_bins, d_max = d_max, d_min = d_min)
+      ok = True
+      for i_bin in self.binner().range_used():
+        sel = self.binner().selection(i_bin)
+        if sel.count(True)<min_in_bin:
+          n_bins = min(n_bins-1, max(1, int(0.5+n_bins*0.8)))
+          ok = False
+          break
+      if ok: break  # found it
+    if n_bins < 1:
+      raise Sorry("Unable to set up bins...perhaps no data?")
+    return n_bins  # binner is also set up in self.
+
   def log_binning(self, n_reflections_in_lowest_resolution_bin=100, eps=1.e-4,
                   max_number_of_bins = 30, min_reflections_in_bin=50):
     """
