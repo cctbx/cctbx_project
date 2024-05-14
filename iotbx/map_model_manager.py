@@ -7628,7 +7628,6 @@ class map_model_manager(object):
       smoothing_radius_ratio = 2):
 
 
-    from cctbx.maptbx.segment_and_split_map import smooth_one_map
     from cctbx.maptbx.segment_and_split_map import get_smoothed_cc_map
 
     hm1 = self.get_map_manager_by_id(map_id_1)
