@@ -1,6 +1,5 @@
 
 from __future__ import absolute_import, division, print_function
-from iotbx.pdb import hierarchy
 from libtbx import easy_run
 import libtbx.load_env
 import os
