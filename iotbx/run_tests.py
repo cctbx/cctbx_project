@@ -26,7 +26,7 @@ tst_list_base = [
   "$D/regression/tst_map_model_manager_cif.py",
   "$D/regression/tst_map_model_manager_9_remove_origin_shift_and_unit_cell_crystal_symmetry.py",
   "$D/regression/tst_map_model_manager_9_remove_origin_shift_and_unit_cell_crystal_symmetry_cif.py",
-  "$D/regression/tst_map_model_manager_local_resolution_10.py,
+  "$D/regression/tst_map_model_manager_local_resolution_10.py",
   "$D/regression/tst_map_tools.py",
   "$D/regression/tst_patterson.py",
   "$D/regression/tst_restraints_merge.py",
