@@ -10,9 +10,11 @@ import mmtbx.utils
 import iotbx.phil
 from iotbx.data_manager import DataManager
 
-def exercise():
+def exercise(prefix="mmtbx_ions_tst_pickle"):
   wavelength = 1.025
-  mtz_file, pdb_file = generate_zinc_inputs(anonymize = False)
+  mtz_file, pdb_file = generate_zinc_inputs(
+      file_base=prefix,
+      anonymize = False)
   null_out = libtbx.utils.null_out()
 
   dm = DataManager()

@@ -16,7 +16,8 @@ general_tests = [
   "$D/pair_interaction/tst_04.py",
   "$D/pair_interaction/tst_05.py",
   # ions SVM
-  "$D/ions/svm/tst_classifier.py",
+  "$D/ions/svm/tst_classifier_01.py",
+  "$D/ions/svm/tst_classifier_02.py",
   "$D/ions/tst_pick_ca_svm.py",
   "$D/ions/tst_pickle.py",
   # ion picking
