@@ -7625,16 +7625,40 @@ class map_model_manager(object):
       n_bins = 20,
       fsc_cutoff = 0.143,
       smoothing_radius = None,
-      smoothing_radius_ratio = 2):
+      smoothing_radius_ratio = 1,
+      smooth_at_end = True):
 
+    """
+     Calculate local resolution map by finding resolution where local
+      map correlation is fsc_cutoff at each point in the map.
+     Method:  calculate local map correlation in resolution shells,
+       at each point in map find the resolution where this local map
+       correlation drops below fsc_cutoff.
+
+     parameter: map_id_1:  ID of one half-map
+     parameter: map_id_2:  ID of other half-map
+     parameter: d_min: Finest resolution at which to calculate correlations
+     parameter: n_bins: Number of resolution bins
+     parameter: fsc_cutoff : value of correlation corresponding to
+                             an estimated average map correlation to true map
+                             of 0.5 (normally 0.143 is used)
+     parameter: smoothing_radius:  radius for local correlation calculation
+     parameter: smoothing_radius_ratio:  Ratio of smoothing_radius to map
+                                         resolution (NOTE: to map
+                                         resolution as specified in
+                                         self.resolution, not to d_min).
+                                         Used if smoothing_radius is None.
+     parameter: smooth_at_end: smooth final local resolution map
+    """
 
     from cctbx.maptbx.segment_and_split_map import get_smoothed_cc_map
+    from cctbx.maptbx.segment_and_split_map import smooth_one_map
 
     hm1 = self.get_map_manager_by_id(map_id_1)
     hm2 = self.get_map_manager_by_id(map_id_2)
     assert hm1 and hm2
+    resolution = self.resolution()
     if d_min is None:
-      resolution = self.resolution()
       d_min = self._get_d_min_from_resolution(resolution)
     if smoothing_radius is None:
       smoothing_radius = smoothing_radius_ratio * self.resolution()
@@ -7666,11 +7690,14 @@ class map_model_manager(object):
     just_above_cc = just_above_dmin.deep_copy()
     just_below_dmin = just_above_dmin.deep_copy()
     just_below_cc = just_above_dmin.deep_copy()
-    just_above_dmin += 999 # all 999
+    sel       = base_map_coeffs.binner().selection(all_bins[0])
+    dd         = dsd.select(sel)
+    local_d_mean     = dd.min_max_mean().mean
+    just_above_dmin += local_d_mean # all at high end
+    just_below_dmin += d_min # all at low end
     m = hm1.deep_copy()
 
     n_real = hm1.map_data().all()
-
     for i_bin in all_bins:
       sel       = base_map_coeffs.binner().selection(i_bin)
       dd         = dsd.select(sel)
@@ -7687,8 +7714,8 @@ class map_model_manager(object):
 
       local_cc_map = get_smoothed_cc_map(
         map_data_1, map_data_2,
-        crystal_symmetry = crystal_symmetry, weighting_radius = smoothing_radius)
-
+        crystal_symmetry = crystal_symmetry,
+         weighting_radius = smoothing_radius)
       ss = (local_cc_map.as_1d() >= fsc_cutoff) & (
          just_above_dmin.as_1d() > local_d_mean)
       just_above_dmin.as_1d().set_selected(ss, local_d_mean)
@@ -7719,6 +7746,14 @@ class map_model_manager(object):
     w1.as_1d().set_selected(ss_neg, 0.5) # just average if overlap
     w2 = 1 - w1
     map_data = (w1 * just_below_dmin) + (w2 * just_above_dmin)
+
+    if smooth_at_end:
+      # Finally, smooth the local resolution map
+      map_data = smooth_one_map(map_data,
+        crystal_symmetry = crystal_symmetry,
+        smoothing_radius = smoothing_radius,
+        method='exp')
+
     m.set_map_data(map_data)
 
     return m

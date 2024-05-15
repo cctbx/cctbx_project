@@ -4415,26 +4415,21 @@ def get_smoothed_cc_map(map_data_1, map_data_2,
    method = 'top_hat'):
   avg1 = map_data_1.as_1d().min_max_mean().mean
   avg2 = map_data_2.as_1d().min_max_mean().mean
-  map_data_1 = map_data_1.deep_copy() -  avg1
-  map_data_2 = map_data_2.deep_copy() -  avg2
-  avg_product_map = smooth_one_map(map_data_1 * map_data_2,
+  avg_product_map = smooth_one_map((map_data_1 - avg1) * (map_data_2 - avg2),
      crystal_symmetry = crystal_symmetry,
       smoothing_radius = weighting_radius,
       non_negative = True, method = method)
 
-  squared_map_1 = flex.pow2(map_data_1)
-  squared_map_2 = flex.pow2(map_data_2)
-  sm1 = smooth_one_map(squared_map_1,
+  sm1 = smooth_one_map (flex.pow2(map_data_1 - avg1),
       crystal_symmetry = crystal_symmetry,
       smoothing_radius = weighting_radius,
       non_negative = True, method = method)
-  sm2 = smooth_one_map(squared_map_2,
+  sm2 = smooth_one_map(flex.pow2(map_data_2 - avg2),
       crystal_symmetry = crystal_symmetry,
       smoothing_radius = weighting_radius,
       non_negative = True, method = method)
   sm = flex.sqrt(sm1) * flex.sqrt(sm2)
-  diffs = (squared_map_1 - squared_map_2)
-  sm.as_1d().set_selected(sm.as_1d() <0.001, 0.001)
+  sm.as_1d().set_selected(sm.as_1d() < 1.e-20, 1.e-20)
   cc_map = avg_product_map/sm
   cc_map.as_1d().set_selected(cc_map.as_1d() < 0, 0)
   cc_map.as_1d().set_selected(cc_map.as_1d() > 1, 1)

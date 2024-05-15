@@ -78,7 +78,7 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
     if non_negative:
       map_smooth = map_smooth.set_selected(map_smooth<0., 0)
 
-  elif(method  == "top_hat"):
+  elif (method  == "top_hat"):
 
     # use same grid as original
     from cctbx.maptbx import crystal_gridding
@@ -103,7 +103,7 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
     # G-function for top hat (FT of top hat)
     #complete_set = f_map.complete_set(include_f000 = True)
     sphere_reciprocal = f_map.g_function(R=rad_smooth, # top hat function
-         s=f_map.d_spacings().data(), volume_scale=True)
+         s=f_map.d_spacings().data(), volume_scale=False)
 
     # FT (map) * FT(top hat) = FT (convolution of map and top hat)
     fourier_coeff = f_map.array(data=f_map.data()*sphere_reciprocal)
