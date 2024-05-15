@@ -1,9 +1,10 @@
 import copy
 import json
+import re
 import networkx as nx
-
+import numpy as np
 from .python_utils import DotDict
-
+import ast
 
 """
 Selection API
@@ -38,7 +39,7 @@ class SelectionQuery:
     assert isinstance(other,self.__class__), 'Compare with same class'
     return self.to_json()==other.to_json()
   def to_dict(self):
-    d = {'selections':[s.to_dict() for s in self.selections],'params':self.params}
+    d = {'selections':[s.to_dict() for s in self.selections],'params':dict(self.params)}
     return d
   def to_json(self,indent=None):
     d = self.to_dict()
@@ -121,13 +122,18 @@ class SelectionQuery:
   @property
   def phenix_string(self):
     # Use similar logic as for pandas query
-    converter = SelConverterPhenix2()
+    converter = SelConverterPhenix()
     return converter.convert_pandas_to_phenix(self.pandas_query)
 
   @property
   def common_string(self):
-    # use similar logic as for pandas query
-    raise NotImplementedError
+    converter = SelConverterPhenix()
+    phenix_string =  converter.convert_pandas_to_phenix(self.pandas_query)
+    common_string = converter.convert_phenix_to_common(phenix_string)
+    return common_string
+  @property
+  def pandas_string(self):
+    return self.pandas_query # alias
 
 class Selection:
   default_select_all = {
@@ -150,9 +156,10 @@ class Selection:
     self.data = self._rename_keys_for_auth_label(data,auth_label_pref=self.auth_label_pref)
 
     # check case for consistency
-    for keyword in ['comp_id','atom_id']: # asym_id ???
-      for op in self.data[keyword]["ops"]:
-        op['value'] =  op['value'].upper()
+    for keyword in ['comp_id','atom_id',"alt_id","asym_id","type_symbol"]:
+      if keyword in self.data:
+        for op in self.data[keyword]["ops"]:
+          op['value'] =  op['value'].upper()
 
   @staticmethod
   def _rename_keys_for_auth_label(d,auth_label_pref='auth'):
@@ -379,73 +386,130 @@ class Selection:
 #     return pretty_json_str
 
 
-class SelConverterPhenix2:
-
-  phenix_keyword_map_default = {
-        # phenix : pandas query with mmcif names
-        'chain':'asym_id',
-        'resseq':'seq_id',
-        'name':'atom_id',
-        'bfactor':'B_iso_or_equiv',
-        'bfac':'B_iso_or_equiv',
-        'occupancy':'occupancy',
-        'resname':'comp_id',
-        '':"==",
-        "or":"|",
-        "and":"&",
-        "all":"index >= 0",
-      }
-  @staticmethod
-  def replace_keys_in_str(input_str, replacements):
-    # replace keys with values in string
-    for key, value in replacements.items():
-      input_str = input_str.replace(key, str(value))
-    return input_str
-
-  def __init__(self,phenix_keyword_map=None):
-    if phenix_keyword_map is None:
-      phenix_keyword_map = self.phenix_keyword_map_default
-
-    # store forward and reverse mapping
-    self.phenix_keyword_map = phenix_keyword_map
-    self.phenix_keyword_map_rev = {v:k for k,v in phenix_keyword_map.items()}
-
-  def convert_pandas_to_phenix(self,sel_str):
-    return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_rev)
-
-
 
 class SelConverterPhenix:
-  phenix_keyword_map_default = {
-        'chain':'asym_id',
-        'resseq':'seq_id',
-        'name':'atom_id',
-        'bfactor':'B_iso_or_equiv',
-        'bfac':'B_iso_or_equiv',
-        'occupancy':'occupancy',
-        'resname':'comp_id',
+  def __init__(self):
+      # Bidirectional phenix and pandas
+      self.bidirectional_map = {
+          "element":"type_symbol",
+          'chain': 'asym_id',
+          'resseq': 'seq_id',
+          'name': 'atom_id',
+          'bfactor': 'B_iso_or_equiv',
+          'bfac': 'B_iso_or_equiv',
+          'occupancy': 'occupancy',
+          'resname': 'comp_id',
+          'altloc': 'alt_id',
+          'or': '|',
+          'and': '&',
+      }
+      # Unidirectional mapping from Pandas to Phenix
+      self.unidirectional_pandas_to_phenix = {
+          '==': '',  # Remove '==' when converting from Pandas to Phenix
+      }
+      # Combining maps for specific direction
+      self.pandas_to_phenix_map = {**{v: k for k, v in self.bidirectional_map.items()}, **self.unidirectional_pandas_to_phenix}
+      self.phenix_to_pandas_map =  self.bidirectional_map
+
+
+      self.phenix_keyword_map_to_common = {
+      'chain': 'asym_id',
+      'resseq': 'seq_id',
+      'name': 'atom_id',
+      'bfactor': 'B_iso_or_equiv',
+      'bfac': 'B_iso_or_equiv',
+      'occupancy': 'occupancy',
+      'resname': 'comp_id',
+      'altloc': 'alt_id',
+      'element':"type_symbol",
       }
 
-  @staticmethod
-  def replace_keys_in_str(input_str, replacements):
-    # replace keys with values in string
+  def replace_keys_in_str(self, input_str, replacements):
+    # Separate dictionary entries into word and non-word items
+    word_replacements = {}
+    non_word_replacements = {}
     for key, value in replacements.items():
-      input_str = input_str.replace(key, str(value))
+        # Check if key consists entirely of word characters
+        if re.match(r'^\w+$', key):
+            word_replacements[key] = value
+        else:
+            non_word_replacements[re.escape(key)] = value
+
+    # Create patterns for word and non-word replacements
+    # Word replacements use word boundaries
+    if word_replacements:
+        word_pattern = r'\b(' + '|'.join(re.escape(k) for k in word_replacements) + r')\b'
+        input_str = re.sub(word_pattern, lambda match: word_replacements[match.group(0)], input_str)
+
+    # Non-word replacements do not use word boundaries
+    if non_word_replacements:
+        non_word_pattern = '|'.join(non_word_replacements.keys())
+        input_str = re.sub(non_word_pattern, lambda match: non_word_replacements[re.escape(match.group(0))], input_str)
+
     return input_str
 
-  def __init__(self,phenix_keyword_map=None):
-    if phenix_keyword_map is None:
-      phenix_keyword_map = self.phenix_keyword_map_default
+  def phenix_postprocess(self,s):
+    s = self.replace_dots(s)
+    s = self.unquote_string(s)
+    return s
 
-    # store forward and reverse mapping
-    self.phenix_keyword_map = phenix_keyword_map
-    self.phenix_keyword_map_rev = {v:k for k,v in phenix_keyword_map.items()}
+  @staticmethod
+  def unquote_string(s):
+    return s.replace("'","").replace('"','')
+
+  @staticmethod
+  def replace_dots(input_string):
+    # Replace single-quoted and double-quoted periods
+    modified_string = input_string.replace("'.'", "'*'")
+    modified_string = modified_string.replace('"."', '"*"')
+    return modified_string
+
+  def convert_phenix_to_pandas(self, sel_str):
+      return self.replace_keys_in_str(sel_str, self.phenix_to_pandas_map)
+
+  def convert_pandas_to_phenix(self, sel_str):
+      return self.phenix_postprocess(self.replace_keys_in_str(sel_str, self.pandas_to_phenix_map))
 
   def convert_phenix_to_common(self,sel_str):
-    return self.replace_keys_in_str(sel_str,self.phenix_keyword_map)
+    return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_to_common)
 
   def convert_common_to_phenix(self,sel_str):
-    return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_rev)
+    return self.phenix_postprocess(self.replace_keys_in_str(sel_str,self.reversed_kw_map(self.phenix_keyword_map_to_common)))
+
+
+# class SelConverterPhenix:
+#   phenix_keyword_map_default = {
+#         'chain':'asym_id',
+#         'resseq':'seq_id',
+#         'name':'atom_id',
+#         'bfactor':'B_iso_or_equiv',
+#         'bfac':'B_iso_or_equiv',
+#         'occupancy':'occupancy',
+#         'resname':'comp_id',
+#         'altloc':'alt_id'
+#       }
+
+#   @staticmethod
+#   def replace_keys_in_str(input_str, replacements):
+#     # Sort keys by length in descending order to handle substrings correctly
+#     sorted_keys = sorted(replacements.keys(), key=len, reverse=True)
+#     pattern = r'\b(' + '|'.join(re.escape(key) for key in sorted_keys) + r')\b'
+#     return re.sub(pattern, lambda match: replacements[match.group()], input_str)
+
+
+#   def __init__(self,phenix_keyword_map=None):
+#     if phenix_keyword_map is None:
+#       phenix_keyword_map = self.phenix_keyword_map_default
+
+#     # store forward and reverse mapping
+#     self.phenix_keyword_map = phenix_keyword_map
+#     self.phenix_keyword_map_rev = {v:k for k,v in phenix_keyword_map.items()}
+
+#   def convert_phenix_to_common(self,sel_str):
+#     return self.replace_keys_in_str(sel_str,self.phenix_keyword_map)
+
+#   def convert_common_to_phenix(self,sel_str):
+#     return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_rev)
 
 
 
@@ -512,75 +576,107 @@ def find_simplest_selected_nodes(graph, selected_atoms):
 
   return simplest_nodes
 
-def df_nodes_group_to_query(df):
-  '''
-  Nodes is a dataframe obtained from
-  simplifying a selection with a graph. Each
-  row is a selection, which is possible grouped by seq_id
+# def df_nodes_group_to_query(df):
+#   '''
+#   Nodes is a dataframe obtained from
+#   simplifying a selection with a graph. Each
+#   row is a selection, which is possible grouped by seq_id
 
-  An alternative to group_seq_range
-  '''
-  selections = []
+#   An alternative to group_seq_range
+#   '''
+#   selections = []
 
-  # Group by all columns except 'seq_id'
-  grouped = df.groupby(['asym_id', 'comp_id', 'atom_id'])  # Add more columns if needed
+#   # Group by all columns except 'seq_id'
+#   excluded = ["seq_id"]
+#   grouped = df.groupby([col for col in df.columns if col not in excluded])  # Add more columns if needed
 
-  for name, group in grouped:
-    # Sort and reset index for convenience
-    group = group.sort_values('seq_id').reset_index(drop=True)
+#   for name, group in grouped:
+#     # Sort and reset index for convenience
+#     group = group.sort_values('seq_id').reset_index(drop=True)
 
-    # Initialize variables for sequence detection
-    start_seq = end_seq = group.loc[0, 'seq_id']
-    data = {}
+#     # Initialize variables for sequence detection
+#     start_seq = end_seq = group.loc[0, 'seq_id']
+#     data = {}
 
-    for i in range(1, len(group)):
-      curr_seq = group.loc[i, 'seq_id']
+#     for i in range(1, len(group)):
+#       curr_seq = group.loc[i, 'seq_id']
 
-      if curr_seq == end_seq + 1:
-        # Continue the sequence
-        end_seq = curr_seq
-      else:
-        # Break the sequence
-        if start_seq == end_seq:
-          seq_ops = [{'op': '==', 'value': int(start_seq)}]
-        else:
-          seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
+#       if curr_seq == end_seq + 1:
+#         # Continue the sequence
+#         end_seq = curr_seq
+#       else:
+#         # Break the sequence
+#         if start_seq == end_seq:
+#           seq_ops = [{'op': '==', 'value': int(start_seq)}]
+#         else:
+#           seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
 
-        data = {
-          'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
-          'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
-          'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
-          'seq_id': {'ops': seq_ops},
-          # ... other columns?
-        }
+#         data = {
+#           'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
+#           'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
+#           'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
+#           'seq_id': {'ops': seq_ops},
+#           # ... other columns?
+#         }
 
-        selections.append(Selection(data, None))  # Add the Selection object
-        start_seq = end_seq = curr_seq  # Reset sequence variables
+#         selections.append(Selection(data, None))  # Add the Selection object
+#         start_seq = end_seq = curr_seq  # Reset sequence variables
 
-    # Don't forget the last sequence
-    if not (start_seq == "*" and end_seq =="*"):
-      if start_seq == end_seq:
-        seq_ops = [{'op': '==', 'value': int(start_seq)}]
-      else:
-        seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
+#     # Don't forget the last sequence
+#     if not (start_seq == "*" and end_seq =="*"):
+#       if start_seq == end_seq:
+#         seq_ops = [{'op': '==', 'value': int(start_seq)}]
+#       else:
+#         seq_ops = [{'op': '>=', 'value': int(start_seq)}, {'op': '<=', 'value': int(end_seq)}]
 
 
-      data = {
-        'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
-        'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
-        'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
-        'seq_id': {'ops': seq_ops},
-        # ... other columns?
-      }
+#       data = {
+#         'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
+#         'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
+#         'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
+#         'seq_id': {'ops': seq_ops},
+#         # ... other columns?
+#       }
+#     else:
+#       data = {
+#         'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
+#         'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
+#         'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
+#         # ... other columns?
+#       }
+
+
+#     selections.append(Selection(data, None))
+
+#   query = SelectionQuery(selections=selections)
+#   return query
+
+def df_nodes_group_to_query(df,composition_cols):
+  # A new query building function, here we ignore seq ranges for simplicity
+
+  def to_python_type(obj):
+    if isinstance(obj, np.generic):
+      return obj.item()
+    return obj
+
+
+  selection_dicts = []
+  is_single = False
+  if len(composition_cols)==1:
+    composition_cols = composition_cols[0]
+    is_single = True
+  for name,group in df.groupby(composition_cols):
+    if is_single:
+      name = [name]
+      labels = [composition_cols]
     else:
-      data = {
-        'asym_id': {'ops': [{'op': '==', 'value': name[0]}]},
-        'comp_id': {'ops': [{'op': '==', 'value': name[1]}]},
-        'atom_id': {'ops': [{'op': '==', 'value': name[2]}]},
-        # ... other columns?
-      }
+      labels = composition_cols
+    d = dict(zip(labels,name)) # simple key value dict
+    d = {k: {'ops': [{'op': '==', 'value': to_python_type(value)}]} for k,value in d.items() if value != "*"}
+    selection_dicts.append(d)
 
-
+  selections = []
+  for data in selection_dicts:
     selections.append(Selection(data, None))
 
   query = SelectionQuery(selections=selections)

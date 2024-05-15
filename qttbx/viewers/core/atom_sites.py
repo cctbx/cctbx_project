@@ -1,4 +1,6 @@
 import json
+import re
+import random
 import pandas as pd
 import numpy as np
 import networkx as nx
@@ -97,6 +99,7 @@ attr_aliases = {
   'comp_id':"auth_comp_id",
   'atom_id':"label_atom_id",
   'type_symbol':"type_symbol",
+  'alt_id':'label_alt_id',
 },
 
 attrs_core = [ # attributes assumed to exists
@@ -104,12 +107,20 @@ attrs_core = [ # attributes assumed to exists
     'seq_id',
     'comp_id',
     'atom_id',
+    'alt_id',
     'id',
     'type_symbol',
     'occupancy',
     'B_iso_or_equiv'
     ],
-
+attrs_core_compositional = [
+    'asym_id',
+    'comp_id',
+    'atom_id',
+    'alt_id',
+    'type_symbol',
+    'seq_id',
+    ],
 
 attr_fill_values = {
   # required
@@ -152,9 +163,9 @@ class AtomSites(pd.DataFrame):
 
 
   @classmethod
-  def from_cif_input(cls,cif_input,name=None):
+  def from_cif_input(cls,cif_input,name=None,build_hierarchy=True):
      sites = cif_input.atom_sites
-     return cls.from_mmcif_df(sites,name=name)
+     return cls.from_mmcif_df(sites,name=name,build_hierarchy=build_hierarchy)
 
   @classmethod
   def from_mmcif_df(cls,df,name=None,build_hierarchy=True):
@@ -176,21 +187,21 @@ class AtomSites(pd.DataFrame):
                                 )
 
   @classmethod
-  def from_cctbx_model(cls,model,name=None):
+  def from_cctbx_model(cls,model,name=None,build_hierarchy=True):
     atoms = model.get_atoms()
-    return cls.from_cctbx_atoms(atoms,name=name)
+    return cls.from_cctbx_atoms(atoms,name=name,build_hierarchy=build_hierarchy)
 
   @classmethod
-  def from_cctbx_hierarchy(cls,hierarchy,name=None):
+  def from_cctbx_hierarchy(cls,hierarchy,name=None,build_hierarchy=True):
     atoms = hierarchy.atoms()
-    return cls.from_cctbx_atoms(atoms,name=name)
+    return cls.from_cctbx_atoms(atoms,name=name,build_hierarchy=build_hierarchy)
 
 
   @classmethod
-  def from_cctbx_atoms(cls,atoms,name=None):
+  def from_cctbx_atoms(cls,atoms,name=None,build_hierarchy=True):
     df_atoms=AtomSites.create_atom_df_from_atoms(atoms)
     sites = cls(df_atoms,name=name)
-    sites = AtomSites._init_new_sites(sites)
+    sites = AtomSites._init_new_sites(sites,build_hierarchy=build_hierarchy)
     return sites
 
   @staticmethod
@@ -423,6 +434,11 @@ class AtomSites(pd.DataFrame):
   @property
   def attrs_hierarchy_core(self): # Is this the same as hierarchy_keys
     return self.params.attrs_core
+  
+  @property
+  def attrs_hierarchy_core_compositional(self): # Is this the same as hierarchy_keys
+    return self.params.attrs_core_compositional
+
   @property
   def core(self):
     return self[self.params.attrs_core]
@@ -947,11 +963,16 @@ class AtomSites(pd.DataFrame):
       self._G = self._create_hierarchy_graph(self.attrs_hierarchy_core)
     return self._G
 
+  @property
+  def G_df(self):
+    # Return hierarchy graph as a dataframe with each row a node
+    return pd.DataFrame(list(self.G.nodes)[1:],columns=self.attrs_hierarchy_core)
   def _create_hierarchy_graph(self,columns):
       df = self.core
       G = nx.DiGraph()
 
       # Create root node
+      #root = tuple(["*" for col in columns])
       root = "root"
       G.add_node(root, ids=[])
 
@@ -992,17 +1013,37 @@ class AtomSites(pd.DataFrame):
   def select(self):
     raise NotImplementedError
 
+  def select_from_phenix_string(self,phenix_string):
+    query = self.select_query_from_phenix_string(phenix_string)
+    return self.select_from_query(query)
+    
+  def select_query_from_phenix_string(self,phenix_string):
+    query = self._select_query_from_str_phenix(phenix_string)
+    return query
+
   def select_from_query(self,query):
     if len(query.selections)==0:
       return self.__class__(self[self.index < 0]) # empty
     else:
       return self._convert_query_to_sites(query)
 
+  def select_from_i_seqs(self,i_seqs):
+    query = self.select_query_from_i_seqs(i_seqs)
+    return self.select_from_query(query)
+
   def select_query_from_i_seqs(self,i_seqs):
     # Use an iterable of integers
     sel =  self.iloc[[int(i) for i in i_seqs]]
-    return self._convert_sites_to_query(sel)
+    cols = self.attrs_hierarchy_core_compositional
+    G = self._create_hierarchy_graph(cols)
+    return self._convert_sites_to_query(sel,G,cols)
 
+  def select_random_query_from_iseqs(self,k=10):
+    low = 0
+    high = len(self)
+    # Generate a random sequence of integers
+    random_sequence = [random.randint(low, high) for _ in range(k)]
+    return self.select_query_from_i_seqs(random_sequence)
 
   # End public selection interface
 
@@ -1033,38 +1074,74 @@ class AtomSites(pd.DataFrame):
     """
     Given a selection string, go to sites -> query
     """
-    sites_sel = self._select_sites_from_str_common(str_common)
-    query = self._convert_sites_to_query(sites_sel)
-    return query
+    # sites_sel = self._select_sites_from_str_common(str_common)
+    # query = self._convert_sites_to_query(sites_sel,search_string=str_common)
+    # return query
+    common_string= str_common
+    parser = CommonSelectionParser(common_string)
+    parser.parse()
+    #print(parser.ast)
+    pandas_query = parser.to_pandas_query()
+    sel = self.query(pandas_query)
 
+    
+    def relevant_cols(sites,search_string):
+      relevant = []
+      for col in [col for col in sites[sites.attrs_hierarchy_core_compositional].columns if col != "id"]:
+        pattern = r'\b' + re.escape(col) + r'\b'
+        if re.search(pattern, search_string):
+          relevant.append(col)
+      return relevant
+    
+    
+    cols = relevant_cols(sel,common_string)
+    G_rel = self._create_hierarchy_graph(cols)
+    return self._convert_sites_to_query(sel,G_rel,cols)
 
-  def _find_simplest_nodes_from_sites(self,sites_sel):
-    """
-    Utility function to reduce a subset sites dataframe
-    together with a graph (self.G) to get the minimum number
-    of nodes to fullfill the subset.
-    """
-    assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
-    nodes = find_simplest_selected_nodes(self.G,sites_sel.core["id"])
-    if nodes == ["root"]:
-      nodes = [["*" for _ in sites_sel.attrs_hierarchy_core]]
-      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
-    else:
-      nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
-    return nodes
+    
+  # def _find_simplest_nodes_from_sites(self,sites_sel,search_string=None):
+  #   """
+  #   Utility function to reduce a subset sites dataframe
+  #   together with a graph (self.G) to get the minimum number
+  #   of nodes to fullfill the subset.
+  #   """
+  #   assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
+  #   nodes = find_simplest_selected_nodes(self.G,sites_sel.core["id"])
+  #   if nodes == ["root"]:
+  #     nodes = [["*" for _ in sites_sel.attrs_hierarchy_core]]
+  #     nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
+  #   else:
+  #     nodes = pd.DataFrame(nodes,columns=sites_sel.attrs_hierarchy_core)
+
+  #   # collapse columns that do not need to be distinguished
+  #   if search_string is not None:
+  #     for col in [col for col in nodes.columns if col != "id"]:
+  #       pattern = r'\b' + re.escape(col) + r'\b'
+  #       if not re.search(pattern, search_string):
+  #         # this column was not specified in the search string, so don't care
+  #         nodes[col] = "*"
+  #   return nodes
   
-  def _convert_sites_to_query(self,sites_sel):
+  def _convert_sites_to_query(self,sites_sel,G,cols):
     """
     With a subset sites data frame, convert to a
     SelectionQuery object
+
     """
     assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
     # find the minimum selections required
-    nodes = self._find_simplest_nodes_from_sites(sites_sel)
 
-    # Group by seq range and convert to query
-    query = df_nodes_group_to_query(nodes)
+    nodes = find_simplest_selected_nodes(G,sites_sel["id"])
+    if nodes == ["root"]:
+      nodes = [["*" for _ in cols]]
+      nodes = pd.DataFrame(nodes,columns=cols)
+    else:
+      nodes = pd.DataFrame(nodes,columns=cols)
+    
+    composition_cols = [col for col in self.attrs_hierarchy_core_compositional if col in nodes.columns]
+    query = df_nodes_group_to_query(nodes,composition_cols)
     return query
+
 
   def _convert_sites_to_str_common(self,sites_sel):
     str_common = form_simple_str_common(sites_sel)

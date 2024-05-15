@@ -3,6 +3,10 @@ import json
 
 
 class CommonSelectionParser:
+  """
+  Parse a 'common' selection string. ie, Phenix logical syntax with mmcif-like keywords.
+  It can build an AST then translate that to other outputs
+  """
 
   @staticmethod
   def remove_whitespace_around_colon(s):
@@ -30,8 +34,9 @@ class CommonSelectionParser:
     return expr[start:end+1]
 
 
-  def __init__(self, input_str, debug=False):
+  def __init__(self, input_str, debug=False,verify=True):
     self.debug = debug
+    self.verify=verify # Do round trip verifications
     # preprocessing
     input_str = self.remove_whitespace_around_colon(input_str)
     input_str = self.remove_top_level_parentheses(input_str)
@@ -55,19 +60,19 @@ class CommonSelectionParser:
 
   def lexer(self,input_str):
     token_specification = [
+      ('ID_QUOTED', r"'[^']*'"),  # recognize strings enclosed in single quotes
+      ('KEYWORD', r'\b(asym_id|seq_id|comp_id|atom_id|id|type_symbol|B_iso_or_equiv|occupancy|alt_id)\b'),  # recognize keywords
       ('OPEN_PAREN', r'\('),
       ('CLOSE_PAREN', r'\)'),
       ('LOGICAL', r'\b(and|or|not)\b'),  # recognize logic
-      ('KEYWORD', r'\b(asym_id|seq_id|comp_id|atom_id|id|type_symbol|B_iso_or_equiv|occupancy)\b'),  # recognize keywords
       ('OPERATOR', r'[<>]=?|==|!='),
       ('RANGE', r'\b\d+:\d+\b'),  # recognize ranges like "10:20" as single token
       ('INT', r'\b\d+\b'),  # recognize integers
-      ('ID', r'[A-Za-z_][A-Za-z_0-9]*'),  # recognize identifiers
-      ('WILDCARD',r"\*"), # recognize *
+      ('ID', r'[A-Za-z0-9_][A-Za-z_0-9]*'),  # modified to recognize identifiers starting with digits
+      ('WILDCARD', r'\*'),  # recognize *
       ('COLON', r':'),
       ('WHITESPACE', r'\s+'),
     ]
-
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     tokens = []
     for mo in re.finditer(tok_regex, input_str):
@@ -75,15 +80,17 @@ class CommonSelectionParser:
       value = mo.group(type)
       token = {"type":type,
                "value": value}
+      
       tokens.append(token)
 
     # Regularize
 
     # Test round trip
-    reconstructed = ""
-    for token in tokens:
-      reconstructed+=token["value"]
-    assert input_str == reconstructed, f"Input str and reconstructed str do not match\n{input_str}\n{reconstructed}"
+    if self.verify:
+      reconstructed = ""
+      for token in tokens:
+        reconstructed+=token["value"]
+      assert input_str == reconstructed, f"Input str and reconstructed str do not match\n{input_str}\n{reconstructed}"
 
 
     # Check for whitespace in values
@@ -95,9 +102,12 @@ class CommonSelectionParser:
     tokens = [token for token in tokens if token["type"] != "WHITESPACE"]
 
     # Create regularized string
-    regular_string = " ".join([token["value"] for token in tokens])
+    regular_str = ""
+    for i,token in enumerate(tokens):
+      regular_str+=" "
+      regular_str+=token["value"]
 
-    return tokens, regular_string
+    return tokens, regular_str
 
   def consume(self):
     if self.index < len(self.tokens):
@@ -121,12 +131,17 @@ class CommonSelectionParser:
     if self.debug:
       self.debug_tokens(self.tokens,tokens_out)
     assert self.tokens==tokens_out, f"Parsing failed round trip check:\n{self.input_str}\n{self.tokens}\n{tokens_out}"
-    reconstructed_regular_str = " ".join([token["value"] for token in tokens_out])
+    reconstructed_regular_str = ""
+    for i,token in enumerate(tokens_out):
+      reconstructed_regular_str+=" "
+      reconstructed_regular_str+=token["value"]
+    
     if self.debug:
       print("original vs reconstructed: ")
       print(self.regular_str)
       print(reconstructed_regular_str)
-    assert self.regular_str == reconstructed_regular_str, "Lexer + Parsing failed round trip check"
+    if self.verify:
+      assert self.regular_str == reconstructed_regular_str, "Lexer + Parsing failed round trip check"
     self.ast = ast
 
   def parse_expression(self):
@@ -211,7 +226,7 @@ class CommonSelectionParser:
 
   def handle_keyword_with_value(self, keyword_token):
     # Handle keyword followed by a value
-    if self.current_token["type"] in ["ID", "INT", "RANGE", "WILDCARD"]:
+    if self.current_token["type"] in ["ID", "ID_QUOTED","INT", "RANGE", "WILDCARD"]:
       node = {'type': 'Keyword', 'keyword': keyword_token, 'value': self.current_token}
       self.consume()
       return node
@@ -221,12 +236,37 @@ class CommonSelectionParser:
   def parse_value(self):
     # Handle value types like ID, INT, etc.
     token = self.current_token
-    if token["type"] in ["ID", "INT", "RANGE", "WILDCARD"]:
+    if token["type"] in ["ID","ID_QUOTED", "INT", "RANGE", "WILDCARD"]:
       node = {'type': 'Value', 'value': token}
       self.consume()
       return node
     else:
       raise Exception(f"Expected value token, got {token['type']}")
+
+  def _postprocess_ast(self,ast):
+    # Capitalize certain values, etc
+    self._capitalize_ast(ast)
+
+  def _capitalize_ast(self,ast):
+    d = ast
+    if isinstance(d, dict):
+      # Check if this node is the target type
+      if d.get('type') in ['ID',"ID_QUOTED"]:
+        # Check if 'value' is present and is a string
+        if 'value' in d and isinstance(d['value'], str):
+          # Convert the 'value' string to uppercase
+          d['value'] = d['value'].upper()
+
+      # Recurse into each dictionary value
+      for key, value in d.items():
+        if isinstance(value, dict):
+          self._capitalize_ast(value)
+        elif isinstance(value, list):
+          for item in value:
+            if isinstance(item, dict):
+              self._capitalize_ast(item)
+
+
   # def consume(self):
   #   if self.index < len(self.tokens):
   #     self.current_token = self.tokens[self.index]
@@ -403,7 +443,9 @@ class CommonSelectionParser:
 
   def to_pandas_query(self):
     assert self.ast is not None, "Parse first to get ast"
+    self._postprocess_ast(self.ast)
     query = self._to_pandas_query(self.ast)
+    
     if self.debug:
       print(f"Pandas query:\n{query}")
     return query
@@ -435,8 +477,10 @@ class CommonSelectionParser:
       keyword = ast['keyword']['value']
       value = ast['value']
 
-      if value['type'] == 'ID':
+      if value['type'] =='ID':
         return f"{keyword} == '{value['value']}'"
+      elif value['type'] =='ID_QUOTED':
+        return f"{keyword} == {value['value']}"
       elif value['type'] == 'RANGE':
         start, end = value['value'].split(':')
         return f"{start} <= {keyword} <= {end}"

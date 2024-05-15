@@ -16,12 +16,14 @@ class MolDataFrame:
 
   @classmethod
   def from_mmtbx_model(cls,model):
-    return cls.from_mmtbx_model_via_mmcif(model)
+    obj =  cls.from_mmtbx_model_via_mmcif(model)
+    obj.sites._hierarchy = model.get_hierarchy()
+    return obj
 
   @classmethod
   def from_mmtbx_model_via_mmcif(cls,model):
     cif_input = CifInput.from_mmtbx_model_via_mmcif(model)
-    sites = AtomSites.from_cif_input(cif_input)
+    sites = AtomSites.from_cif_input(cif_input,build_hierarchy=False)
     cmol = cls(sites,cif_input=cif_input)
     cmol.model = model
     return cmol

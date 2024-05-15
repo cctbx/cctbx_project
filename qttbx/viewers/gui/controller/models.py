@@ -59,9 +59,15 @@ class ModelLikeEntryController(ScrollEntryController):
     self.view.button_restraints.setContextMenuPolicy(Qt.CustomContextMenu)
     self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
     self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
+    
+    # set geo checkbox if applicable
+    self.update_geo()
 
   def update_geo(self,**args):
-    if self.ref.geometry_ref is not None:
+    ref = self.ref
+    if hasattr(self.ref,"model_ref"):
+      ref = self.ref.model_ref
+    if ref.geometry_ref is not None:
       self.view.geo_checkbox.setChecked(True)
 
   def toggle_visibility(self,event):

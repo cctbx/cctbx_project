@@ -64,11 +64,11 @@ class SelectionEntryController(ModelLikeEntryController):
     contextMenu = QMenu(self.view)
 
     # Add actions to the context menu
-    action1 = contextMenu.addAction("Stage as Bond restraint")
-    action2 = contextMenu.addAction("Stage as Angle restraint")
-    action3 = contextMenu.addAction("Stage as Dihedral restraint")
-    action4 = contextMenu.addAction("Stage as Chiral restraint")
-    action5 = contextMenu.addAction("Stage as Plane restraint")
+    action1 = contextMenu.addAction("Edit as Bond restraint")
+    action2 = contextMenu.addAction("Edit as Angle restraint")
+    action3 = contextMenu.addAction("Edit as Dihedral restraint")
+    action4 = contextMenu.addAction("Edit as Chiral restraint")
+    action5 = contextMenu.addAction("Edit as Plane restraint")
 
     # Connect actions to functions/slots
     action1.triggered.connect(self.stage_as_bond_restraint)
@@ -216,8 +216,6 @@ class SelectionEntryController(ModelLikeEntryController):
     text = f"""
     Reference id: {self.ref.id}
     Model Reference id: {self.ref.model_ref.id}
-    External ids:
-    {self.ref.model_ref.external_ids}
 
     Phenix string: {self.ref.query.phenix_string}
     """
@@ -255,5 +253,6 @@ class SelectionListController(ScrollableListController):
 class SelectionTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
+    self.state.signals.selection_change.connect(self.view.set_focus_on)
 
     self.selection_list_controller = SelectionListController(parent=self,view=self.view.selection_list_view)
