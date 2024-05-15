@@ -13,7 +13,6 @@ import warnings
 import os
 import sys
 import time
-from six.moves import zip
 
 def exercise(prefix="tst_classifier_02"):
   wavelength = 1.54

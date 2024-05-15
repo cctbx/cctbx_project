@@ -13,7 +13,6 @@ import warnings
 import os
 import sys
 import time
-from six.moves import zip
 
 def exercise(prefix="ions_svm_classifier_01"):
   wavelength = 1.025
