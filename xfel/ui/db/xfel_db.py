@@ -21,6 +21,8 @@ from six.moves import zip
 
 from xfel.command_line.experiment_manager import initialize as initialize_base
 
+CACHED_CONNECT_TIMEOUT = 300
+
 class initialize(initialize_base):
   expected_tables = ["run", "job", "rungroup", "trial", "tag", "run_tag", "event", "trial_rungroup",
                      "imageset", "imageset_event", "beam", "detector", "experiment",
@@ -293,6 +295,7 @@ class db_application(object):
   def __init__(self, params, cache_connection = True, mode = 'execute'):
     self.params = params
     self.dbobj = None
+    self.dbobj_refreshed_time = None
     self.cache_connection = cache_connection
     self.query_count = 0
     self.mode = mode
@@ -326,8 +329,12 @@ class db_application(object):
         # https://stackoverflow.com/questions/1617637/pythons-mysqldb-not-getting-updated-row
         if not commit: # connection caching is not attempted if commit=False
           dbobj = get_db_connection(self.params, autocommit=False)
-        elif self.dbobj is None:
+        elif (
+            self.dbobj is None
+            or time.time() - self.dbobj_refreshed_time > CACHED_CONNECT_TIMEOUT
+        ):
           dbobj = get_db_connection(self.params, autocommit=True)
+          self.dbobj_refreshed_time = time.time()
           if self.cache_connection:
             self.dbobj = dbobj
         else:
