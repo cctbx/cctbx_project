@@ -21,7 +21,7 @@ parser.add_argument("--scanWeakFracs", action="store_true", help="optionally sto
 
 args = parser.parse_args()
 
-from mpi4py import MPI
+from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 
 import logging

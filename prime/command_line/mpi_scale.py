@@ -3,7 +3,7 @@
 Find initial scaling factors for all integration results
 """
 from __future__ import absolute_import, division, print_function
-from mpi4py import MPI
+from libtbx.mpi4py import MPI
 import sys, os
 from prime.postrefine.mod_input import process_input, read_pickles
 from prime.postrefine.mod_util import intensities_scaler
