@@ -16,14 +16,14 @@ mp.use('PS')
 
 from xfel.ui.components.xfel_gui_init import MainWindow
 from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
-from xfel.ui import save_cached_settings
+from xfel.ui import load_cached_settings, save_cached_settings
 
 class MainApp(wx.App):
   ''' App for the main GUI window  '''
 
   def OnInit(self):
-
-    self.frame = MainWindow(None, -1, title='CCTBX.XFEL')
+    params = load_cached_settings()
+    self.frame = MainWindow(None, -1, title='CCTBX.XFEL', params=params)
 
     # select primary display and center on that
     self.frame.SetSize((800, -1))
@@ -33,11 +33,11 @@ class MainApp(wx.App):
     self.frame.Center()
 
     # Start with login dialog before opening main window
-    self.login = SettingsDialog(self.frame, self.frame.params)
+    self.login = SettingsDialog(self.frame, params=params)
     self.login.SetTitle('CCTBX.XFEL Login')
     self.login.Center()
     if (self.login.ShowModal() == wx.ID_OK):
-      save_cached_settings(self.frame.params)
+      save_cached_settings(params)
       if self.frame.connect_to_db(drop_tables=self.login.drop_tables):
         self.exp_tag = '| {}'.format(self.login.db_cred.ctr.GetValue())
         self.exp = '| {}'.format(self.login.experiment.ctr.GetValue())
@@ -48,6 +48,7 @@ class MainApp(wx.App):
         #self.frame.start_run_sentinel()
         #self.frame.start_job_monitor()
         #self.frame.start_prg_sentinel()
+        self.frame.run_window.show_hide_tabs()
         return True
       else:
         return False

@@ -42,6 +42,9 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, ma
       ebeams_eV.append(eeV:=ENERGY_CONV/ewav)
       print(f'{i}: {int(feV)} eV FEE / {int(eeV)} eV Ebeam')
 
+    if len(ebeams_eV) == 0:
+      print("No events found with both FEE and eBeam")
+      return None, None
     if plot:
       ax.hist(ebeams_eV, alpha=0.5, bins=40, label=f'run {runs[i]} ebeams ({int(eeV)} eV)')
       ax.hist(fee_coms_eV, alpha=0.5, bins=40, label=f'run {runs[i]} FEE COMs ({int(feV)} eV)')

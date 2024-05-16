@@ -177,7 +177,6 @@ class CalibWorker(Thread):
     from xfel.command_line.fee_calibration import fee_phil_string
     from libtbx.phil import parse
     self.fee_params = parse(notch_phil_string + fee_phil_string).extract()
-    self.fee_params.max_events=100
     self.energy_tab.refresh_runs()
 
     while self.active:
@@ -189,8 +188,6 @@ class CalibWorker(Thread):
         if self.energy_tab.ebeam_calib_stale:
           self.run_ebeam_calib()
           self.post_refresh_energy()
-        if self.energy_tab.size_stale:
-          self.resize()
         self.parent.run_window.calib_light.change_status('on') # green-- actually means idle
         time.sleep(1)
       except Exception as e:
@@ -198,20 +195,13 @@ class CalibWorker(Thread):
         self.parent.run_window.calib_light.change_status('alert') # red -- means crashed
         break
 
-  def resize(self):
-    #for fig in (self.energy_tab.trendline_figure, self.energy_tab.spectra_figure, self.energy_tab.ebeam_figure):
-    #  fig.set_figwidth(self.energy_tab.plotx)
-    #  fig.set_figheight(self.energy_tab.ploty)
-    self.energy_tab.Layout()
-    #self.energy_tab.Fit()
-
   def run_fee_calib(self):
     from serialtbx.util.energy_scan_notch_finder import find_notch, plot_notches, calibrate_energy
     from xfel.command_line.fee_calibration import tally_fee_data
 
     runs = self.energy_tab.fee_runs
     energies = self.energy_tab.fee_energies
-    rundata = tally_fee_data(self.energy_tab.experiment, runs, plot=False, verbose=True, max_events=self.fee_params.max_events)
+    rundata = tally_fee_data(self.energy_tab.experiment, runs, plot=False, verbose=True, max_events=self.energy_tab.max_events)
     notches = [find_notch(range(len(data)),
                           data,
                           self.fee_params.kernel_size,
@@ -299,18 +289,19 @@ class CalibWorker(Thread):
 
     self.energy_tab.ebeam_figure.clear()
     ebeam_eV_offset, ebeam_wavelength_offset = compare_ebeams_with_fees(
-        locfiles,
-        runs=reordered_run_strings,
-        plot=True,
-        use_figure=self.energy_tab.ebeam_figure,
-        max_events=100)
+      locfiles,
+      runs=reordered_run_strings,
+      plot=True,
+      use_figure=self.energy_tab.ebeam_figure,
+      max_events=self.energy_tab.max_events)
     self.energy_tab.ebeam_figure.canvas.draw_idle()
 
-    self.energy_tab.ebeam_eV_offset = ebeam_eV_offset
-    self.energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
-    ang = u'\u212b' # Angstrom
-    self.energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
-    self.energy_tab.ebeam_calib_stale = False
+    if ebeam_eV_offset is not None:
+      self.energy_tab.ebeam_eV_offset = ebeam_eV_offset
+      self.energy_tab.ebeam_wavelength_offset = ebeam_wavelength_offset
+      ang = u'\u212b' # Angstrom
+      self.energy_tab.ebeam_offset_text.SetLabel(f'{ebeam_eV_offset:.2f} eV ({ebeam_wavelength_offset:.6f} {ang})')
+      self.energy_tab.ebeam_calib_stale = False
 
     #try:
     #  locfile = os.path.join(db.params.output_folder, f'r{run.run:04d}', f'{trial.trial:03d}_rg{rg.rungroup_id:03d', 'data.loc')
@@ -1267,7 +1258,7 @@ class MergingStatsSentinel(Thread):
 
 class MainWindow(wx.Frame):
 
-  def __init__(self, parent, id, title):
+  def __init__(self, parent, id, title, params=None):
     wx.Frame.__init__(self, parent, id, title, size=(200, 200))
 
     self.run_sentinel = None
@@ -1279,7 +1270,9 @@ class MainWindow(wx.Frame):
     self.unitcell_sentinel = None
     self.mergingstats_sentinel = None
 
-    self.params = load_cached_settings()
+    if not params:
+      params = load_cached_settings()
+    self.params = params
     self.db = None
 
     self.high_vis = False
@@ -1701,17 +1694,30 @@ class RunWindow(wx.Panel):
     main_sizer.Add(self.main_panel, 1, flag=wx.EXPAND | wx.ALL, border=3)
     self.SetSizer(main_sizer)
 
+    self.show_hide_tabs()
+
+  def show_hide_tabs(self):
     if self.parent.params.monitoring_mode:
       self.runs_tab.Hide()
-      self.energy_tab.Hide()
       self.trials_tab.Hide()
       self.jobs_tab.Hide()
       self.datasets_tab.Hide()
       self.run_light.Hide()
       self.job_light.Hide()
       self.jmn_light.Hide()
+    else:
+      self.runs_tab.Show()
+      self.trials_tab.Show()
+      self.jobs_tab.Show()
+      self.datasets_tab.Show()
+      self.run_light.Show()
+      self.job_light.Show()
+      self.jmn_light.Show()
 
-
+    if self.parent.params.facility.name == "lcls" and not self.parent.params.monitoring_mode:
+      self.energy_tab.Show()
+    else:
+      self.energy_tab.Hide()
 
 # --------------------------------- UI Tabs ---------------------------------- #
 
@@ -1879,7 +1885,7 @@ class EnergyTab(BaseTab):
       NavigationToolbar2WxAgg as NavigationToolbar)
 
     # FEE scan section
-    self.scan_runs_panel = ScrolledPanel(self.calib_panel, size=(220, 300))
+    self.scan_runs_panel = ScrolledPanel(self.calib_panel, size=(220, 325))
     self.scan_runs_sizer = wx.BoxSizer(wx.VERTICAL)
     self.scan_runs_panel.SetSizer(self.scan_runs_sizer)
 
@@ -1896,6 +1902,16 @@ class EnergyTab(BaseTab):
     self.expt_id_panel.SetSizer(self.expt_id_sizer)
     self.scan_runs_sizer.Add(self.expt_id_panel)
 
+    self.max_evts_panel = wx.Panel(self.scan_runs_panel)
+    self.max_evts_sizer = wx.BoxSizer(wx.HORIZONTAL)
+    self.max_evts_label = wx.StaticText(self.max_evts_panel, label='Max events:', size=(80, -1))
+    self.max_evts = wx.TextCtrl(self.max_evts_panel, size=(118, -1))
+    self.max_evts_sizer.Add(self.max_evts_label)
+    self.max_evts_sizer.Add(self.max_evts)
+    self.max_evts.SetValue("200")
+    self.max_evts_panel.SetSizer(self.max_evts_sizer)
+    self.scan_runs_sizer.Add(self.max_evts_panel)
+
     self.scan_runs_list = dlg.EdListCtrl(self.scan_runs_panel,
                                          style=wx.LC_EDIT_LABELS | wx.LC_REPORT,
                                          size=(200,165))
@@ -1903,6 +1919,8 @@ class EnergyTab(BaseTab):
     self.scan_runs_list.InsertColumn(0, 'Run', width=60)
     self.scan_runs_list.InsertColumn(1, 'Notch Energy (eV)', width=140)
     self.scan_runs_list.integer_columns = {0}
+    self.scan_runs_list.InsertItem(0, 0)
+    self.scan_runs_list.Select(0)
 
     self.scan_runs_sizer.Add(self.scan_runs_list, 1)
 
@@ -2060,25 +2078,20 @@ class EnergyTab(BaseTab):
     self.Bind(wx.EVT_BUTTON, self.onRunsClear, self.ebeam_runs_clear_button)
     self.Bind(wx.EVT_BUTTON, self.onRunEbeamCalib, self.ebeam_runs_launch_button)
     self.Bind(wx.EVT_BUTTON, self.onSaveCalib, self.export_button)
-    self.Bind(wx.EVT_SIZE, self.onSize)
 
     self.Layout()
     self.Fit()
-    self.onSize()
-
-  def onSize(self, e=None):
-    self.size_stale = True
-    # Caution: attempting to resize causes frequent core dumps!!
-    if e is not None:
-      e.Skip()
 
   def onAddScanRuns(self, e):
     n_rows = self.scan_runs_list.GetItemCount()
     self.scan_runs_list.InsertItem(n_rows, 0)
+    self.scan_runs_list.Select(n_rows)
 
   def onClearScanRuns(self, e):
     n_rows = self.scan_runs_list.GetItemCount()
     self.scan_runs_list.DeleteAllItems()
+    self.scan_runs_list.InsertItem(0, 0)
+    self.scan_runs_list.Select(0)
     e.Skip()
 
   def onRunFEECalib(self, e):
@@ -2093,6 +2106,7 @@ class EnergyTab(BaseTab):
         self.experiment = self.main.params.facility.lcls.experiment
       else:
         self.experiment = None
+    self.max_events = int(self.max_evts.GetValue())
 
     #TODO: validation during input instead?
     self.fee_runs = []
@@ -2124,6 +2138,7 @@ class EnergyTab(BaseTab):
   def onRunEbeamCalib(self, e):
     #self.ebeam_offset_text.SetLabel('')
     self.selected_runs = self.ebeam_runs_selection.ctr.GetCheckedStrings()
+    self.max_events = int(self.max_evts.GetValue())
     self.ebeam_calib_stale = True
     e.Skip()
 

@@ -52,6 +52,11 @@ class EdListCtrl(wx.ListCtrl, TextEditMixin):
     TextEditMixin.__init__(self)
     self.curRow = -1
 
+  def OnLeftDown(self, evt=None):
+    try:
+      return super(EdListCtrl, self).OnLeftDown(evt)
+    except wx._core.wxAssertionError:
+      pass
 
 class BaseDialog(wx.Dialog):
   def __init__(self, parent,
