@@ -15,10 +15,30 @@ FloatType Gfunction(FloatType twoPiRS)
 {
   // G-function (Fourier transform of a sphere of radius r at resolution s).
   static FloatType EPS(0.001);
-  if(std::abs(twoPiRS) > EPS)
+  if(twoPiRS > EPS) {
     return 3*(std::sin(twoPiRS)-twoPiRS*std::cos(twoPiRS))/fn::pow3(twoPiRS);
-  else
-    return 1-fn::pow2(twoPiRS)/10;
+  }
+  else {
+    if(twoPiRS > 0) return 1-fn::pow2(twoPiRS)/10;
+    else            return 1;
+  }
+}
+
+template <typename FloatType>
+af::shared<FloatType> Gfunction(af::const_ref<FloatType> const& s,
+                                FloatType const& R,
+                                bool const& volume_scale)
+{
+  // G-function (Fourier transform of a sphere of radius R at resolution s).
+  static FloatType EPS(0.001);
+  af::shared<FloatType> r(s.size());
+  FloatType volume=1;
+  if(volume_scale) volume = 4*scitbx::constants::pi*fn::pow3(R)/3;
+  for(std::size_t i = 0; i < s.size(); i++) {
+    FloatType twoPiRS = scitbx::constants::two_pi*s[i]*R;
+    r[i] = volume * Gfunction(twoPiRS);
+  }
+  return r;
 }
 
 template <typename FloatType>

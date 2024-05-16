@@ -321,6 +321,10 @@ namespace {
     def("GfuncOfRSsqr_approx", (double(*)(double))
       g_function::GfuncOfRSsqr_approx);
 
+    def("g_function", (scitbx::af::shared<double>(*)(
+        af::const_ref<double> const&, double const&, bool const&))
+      g_function::Gfunction);
+
     def("bessel_i1_over_i0", (double(*)(double const&)) bessel::i1_over_i0);
     def("bessel_i1_over_i0",
       (scitbx::af::shared<double>(*)(scitbx::af::const_ref<double> const&))

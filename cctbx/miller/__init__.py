@@ -2369,16 +2369,9 @@ class array(set):
     return result.set_info(info)
 
   def g_function(self, R, s=None, volume_scale=False):
-    # reciprocal sphere
     if s is None:
       s = 1./self.d_spacings().data() # Note f000 term will get s = -1
-    else:
-      s = 1./s
-    arg = 2*math.pi*s*R
-    vol=1
-    if(volume_scale): vol = 4*math.pi*R**3/3
-    arg.set_selected(arg < 1.e-5, 1.e-5) # calculation below fails for f000 term
-    return vol*3*(flex.sin(arg) - arg*flex.cos(arg))/(arg)**3
+    return scitbx.math.g_function(s, R, volume_scale)
 
   def as_double(self):
     """
@@ -4620,7 +4613,7 @@ class array(set):
        d_min = self.d_min(),
        include_000      = True)
 
-    sphere_reciprocal = self.g_function(R=radius, s=temp.d_spacings().data())
+    sphere_reciprocal = self.g_function(R=radius, s=1./temp.d_spacings().data())
     fourier_coeff = temp.array(data=temp.data()*sphere_reciprocal)
     fft = fft_map(
       crystal_gridding=self.crystal_gridding(
@@ -4647,7 +4640,7 @@ class array(set):
     assert self.crystal_symmetry().unit_cell().is_similar_to(
         other.crystal_symmetry().unit_cell())
     complete_set = self.complete_set()
-    sphere_reciprocal = self.g_function(R=radius, s=complete_set.d_spacings().data())
+    sphere_reciprocal = self.g_function(R=radius, s=1./complete_set.d_spacings().data())
     if d_min is None:
       d_min=self.d_min()
     fft = self.fft_map(

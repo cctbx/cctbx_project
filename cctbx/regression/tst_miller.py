@@ -1791,8 +1791,7 @@ def exercise_lsd_map():
     shrink_truncation_radius=1)
   corr = flex.linear_correlation(
     mask.as_double().as_1d(), m1.data.as_double().as_1d())
-  assert corr.coefficient() > 0.90
-
+  assert corr.coefficient() > 0.90, corr.coefficient()
 
 def exercise_phased_translation_coeff(d_min = 1.0,
                                       algorithm = "direct",
@@ -2394,6 +2393,18 @@ def exercise_permute():
   assert fc.indices().all_eq(fc_perm.indices())
   assert fc_other.data().all_eq(fc_perm_other.data())
   assert not fc_high.data().all_eq(fc_perm_high.data())
+  #
+  # Ad hoc test for G-function
+  #
+  fc_high._data.append(123)
+  fc_high._indices.append([0,0,0])
+  s = 1./fc_high.d_spacings().data()
+  sel = flex.sort_permutation(s, reverse=False)
+  s = s.select(sel)
+  assert approx_equal(s[0], -1)
+  fc_high=fc_high.select(sel)
+  vals = fc_high.g_function(R=3, volume_scale=False)
+  assert approx_equal(vals[:3], [1.0, 0.000863211, 0.0008627407])
 
 def exercise_diagnostics():
   xs = crystal.symmetry((30,40,50), "P 2 2 2")
