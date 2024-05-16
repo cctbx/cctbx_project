@@ -24,7 +24,11 @@ def get_h_restraints(resname, strict=True):
   from mmtbx.ligands.rdkit_utils import read_chemical_component_filename
   filename = get_cif_filename(resname)
   if not os.path.exists(filename): return None
-  molecule = read_chemical_component_filename(filename)
+  try:
+    molecule = read_chemical_component_filename(filename)
+  except Exception as e:
+    print(e)
+    return None
   cc_cif = get_cif_dictionary(resname)
   cc = cc_cif['_chem_comp'][0]
   hs = []
@@ -526,14 +530,17 @@ class place_hydrogens():
       if (atoms[j].parent().resname == 'HIS' and
         atoms[j].name.strip() in ['HD1','DD1', 'HE2', 'DE2']): continue
       if(elements[i] in ["H","D"] and j in exclusion_iseqs):
-        sel_remove.append(i)
-        removed_dict[i] = exclusion_dict[j]
-        parent_dict[i]=j
+        if i not in sel_remove:
+          sel_remove.append(i)
+          removed_dict[i] = exclusion_dict[j]
+          parent_dict[i]=j
       if(elements[j] in ["H","D"] and i in exclusion_iseqs):
-        sel_remove.append(j)
-        removed_dict[j] = exclusion_dict[i]
-        parent_dict[j]=i
+        if j not in sel_remove:
+          sel_remove.append(j)
+          removed_dict[j] = exclusion_dict[i]
+          parent_dict[j]=i
     # remove H atoms NOT to remove - double negative!
+    #verbose=True
     if verbose:
       print('removed_dict',removed_dict)
       for i_seq in sel_remove:
