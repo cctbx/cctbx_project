@@ -67,7 +67,7 @@ def read_chemical_component_filename(filename):
     # if atom is None: continue
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
-      print(tmp)
+      #print(tmp)
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
       new.SetFormalCharge(int(tmp.get('_chem_comp_atom.charge')))
       for prop in ['atom_id', 'type_symbol']:
@@ -85,24 +85,24 @@ def read_chemical_component_filename(filename):
         atom2 = lookup.get(atom2)
         order = tmp.get('_chem_comp_bond.value_order')
         order = bond_order_ccd[order]
-        print('---')
+        #print('---')
         rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
   Chem.SanitizeMol(rwmol)
   # from rdkit.Chem.PropertyMol import PropertyMol
   molecule = rwmol.GetMol()
   # molecule = PropertyMol(molecule)
-  print(dir(molecule))
-  print(desc)
-  print(dir(desc))
-  for key, item in desc.items():
-    key = key.split('.')[1]
-    print(key,list(item))
-    molecule.SetProp(key,item[0])
-    print(molecule.HasProp(key))
-    print(molecule.GetProp(key))
-  print(dir(molecule.GetPropNames()))
-  print(molecule.GetPropsAsDict())
+#  print(dir(molecule))
+#  print(desc)
+#  print(dir(desc))
+#  for key, item in desc.items():
+#    key = key.split('.')[1]
+#    print(key,list(item))
+#    molecule.SetProp(key,item[0])
+#    print(molecule.HasProp(key))
+#    print(molecule.GetProp(key))
+#  print(dir(molecule.GetPropNames()))
+#  print(molecule.GetPropsAsDict())
   # print(dir(rwmol))
   return molecule
 
