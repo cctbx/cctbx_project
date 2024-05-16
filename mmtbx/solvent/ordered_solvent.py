@@ -677,14 +677,14 @@ class manager(object):
        self.new_solvent_selection.count(True)>0):
       from mmtbx.refinement import wrappers
       o = wrappers.unrestrained_qbr_fsr(
-        fmodel    = self.fmodel,
-        model     = self.model,
-        refine_xyz = True,
-        selection = self.new_solvent_selection,
-        q_min     = 0.004,
-        b_max     = 60,
-        b_min     = self.params.b_iso_min,
-        log       = self.log)
+        fmodel     = self.fmodel,
+        model      = self.model,
+        refine_xyz = False,
+        selection  = self.new_solvent_selection,
+        q_min      = 0.004,
+        b_max      = 60,
+        b_min      = self.params.b_iso_min,
+        log        = self.log)
       self.model.adopt_xray_structure(
           xray_structure = self.fmodel.xray_structure)
       print("  ADP+occupancy (water only), MIN, final r_work=%6.4f r_free=%6.4f"%(

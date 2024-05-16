@@ -336,7 +336,7 @@ class run(object):
     if extract_experimental_phases:
       self.experimental_phases = self._determine_experimental_phases(
         parameters      = experimental_phases_params,
-        parameter_scope = "")
+        parameter_scope = 'miller_array.labels.name')
     # Fill in log
     self._show_summary()
 
@@ -454,8 +454,10 @@ class run(object):
           file_name        = file_name,
           labels           = labels,
           raise_no_array   = False,
+          parameter_name   = "",
           ignore_all_zeros = ignore_all_zeros,
           parameter_scope  = parameter_scope)
+
       if(experimental_phases is None): return None
     except reflection_file_utils.Sorry_No_array_of_the_required_type:
       experimental_phases = None
