@@ -46,7 +46,8 @@ def run(args,
    start_test=None,
    tests_to_skip=None,
    expected_failures_from_phenix_regression=[],
-   unstables_from_phenix_regression = []):
+   unstables_from_phenix_regression = [],
+   supplied_list_of_tests = None):
 
   if (len(args) == 0):
     raise Usage("""libtbx.run_tests_parallel [module=NAME] [directory=path]""")
@@ -81,49 +82,54 @@ def run(args,
   expected_failure_list = []
   expected_unstable_list = []
   parallel_list = []
-  if not return_list_of_tests: # (this fails with return_list_of_tests)
+  if (not return_list_of_tests) and (not supplied_list_of_tests): # (this
+       #fails with return_list_of_tests)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script,
       python_keyword_text=python_keyword_text))
-  for dir_name in params.directory :
-    if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
-      print('DANGER '*10)
-      print('Using the directory option in cctbx_project can be very time consuming')
-      print('DANGER '*10)
-    dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
-    all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests,
-      python_keyword_text=python_keyword_text))
-  for module_name in params.module :
-    module_tests = libtbx.test_utils.parallel.get_module_tests(module_name,
-       slow_tests = params.slow_tests,
-       python_keyword_text=python_keyword_text,
-        skip_missing = params.skip_missing)
-    fail_tests = libtbx.test_utils.parallel.\
-      get_module_expected_test_failures(module_name,
-        skip_missing = params.skip_missing)
-    unstable_tests = libtbx.test_utils.\
-      parallel.get_module_expected_unstable_tests(module_name,
-        skip_missing = params.skip_missing)
-    parallel_tests = libtbx.test_utils.parallel.\
-      get_module_parallel_tests(module_name,
-        skip_missing = params.skip_missing)
-    all_tests.extend(module_tests)
-    all_tests.extend(fail_tests)
-    all_tests.extend(unstable_tests)
-    expected_failure_list.extend(fail_tests)
-    expected_unstable_list.extend(unstable_tests)
-    parallel_list.extend(parallel_tests)
+  if (supplied_list_of_tests):
+    all_tests = libtbx.test_utils.parallel.make_commands(supplied_list_of_tests,
+        python_keyword_text=python_keyword_text)
+  else: # usual
+    for dir_name in params.directory :
+      if os.path.split(dir_name)[-1].find("cctbx_project")>-1:
+        print('DANGER '*10)
+        print('Using the directory option in cctbx_project can be very time consuming')
+        print('DANGER '*10)
+      dir_tests = libtbx.test_utils.parallel.find_tests(dir_name)
+      all_tests.extend(libtbx.test_utils.parallel.make_commands(dir_tests,
+        python_keyword_text=python_keyword_text))
+    for module_name in params.module :
+      module_tests = libtbx.test_utils.parallel.get_module_tests(module_name,
+         slow_tests = params.slow_tests,
+         python_keyword_text=python_keyword_text,
+          skip_missing = params.skip_missing)
+      fail_tests = libtbx.test_utils.parallel.\
+        get_module_expected_test_failures(module_name,
+          skip_missing = params.skip_missing)
+      unstable_tests = libtbx.test_utils.\
+        parallel.get_module_expected_unstable_tests(module_name,
+          skip_missing = params.skip_missing)
+      parallel_tests = libtbx.test_utils.parallel.\
+        get_module_parallel_tests(module_name,
+          skip_missing = params.skip_missing)
+      all_tests.extend(module_tests)
+      all_tests.extend(fail_tests)
+      all_tests.extend(unstable_tests)
+      expected_failure_list.extend(fail_tests)
+      expected_unstable_list.extend(unstable_tests)
+      parallel_list.extend(parallel_tests)
 
-  # add expected failures from phenix regression
-  for ef in expected_failures_from_phenix_regression:
-    for t in all_tests:
-      if t.find(ef) > -1:
-        expected_failure_list.append(t)
+    # add expected failures from phenix regression
+    for ef in expected_failures_from_phenix_regression:
+      for t in all_tests:
+        if t.find(ef) > -1:
+          expected_failure_list.append(t)
 
-  # add unstables from phenix regression
-  for u in unstables_from_phenix_regression:
-    for t in all_tests:
-      if t.find(u) > -1:
-        expected_unstable_list.append(t)
+    # add unstables from phenix regression
+    for u in unstables_from_phenix_regression:
+      for t in all_tests:
+        if t.find(u) > -1:
+          expected_unstable_list.append(t)
 
   # remove any specified tests:
   if tests_to_skip:
@@ -138,7 +144,6 @@ def run(args,
         else:
           print ("Skipping the test %s" %(t))
       all_tests=new_tests
-
   # check that test lists are unique
   seen = set()
   duplicates = set()
