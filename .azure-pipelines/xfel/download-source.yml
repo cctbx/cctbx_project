@@ -13,12 +13,28 @@ jobs:
   - checkout: self
     path: ./modules/cctbx_project
 
+  # add conda to path
+  # https://docs.microsoft.com/en-us/azure/devops/pipelines/ecosystems/anaconda?view=azure-devops&tabs=ubuntu-16-04#add-conda-to-your-system-path
+  - bash: echo "##vso[task.prependpath]$CONDA/bin"
+    displayName: Add conda to PATH
+
+  # create environment with earlier version of git
+  # https://github.com/git-lfs/git-lfs/issues/5749
+  - script: |
+      set -xe
+      conda create -n git -c conda-forge -y git=2.44
+    displayName: Create environment with git
+    retryCountOnTaskFailure: 3
+
   - script: |
       cd $(Pipeline.Workspace)
       ln -s modules/cctbx_project/libtbx/auto_build/bootstrap.py
     displayName: Link bootstrap.py
 
   - script: |
+      set -xe
+      source $(CONDA)/etc/profile.d/conda.sh
+      conda activate git
       cd $(Pipeline.Workspace)
       python bootstrap.py hot update --builder=xfel --python=39 --no-boost-src
       cd modules
