@@ -82,11 +82,11 @@ def run(args,
   expected_failure_list = []
   expected_unstable_list = []
   parallel_list = []
-  if (not return_list_of_tests) and (not supplied_list_of_tests): # (this
+  if (not return_list_of_tests) and (supplied_list_of_tests is None): # (this
        #fails with return_list_of_tests)
     all_tests.extend(libtbx.test_utils.parallel.make_commands(params.script,
       python_keyword_text=python_keyword_text))
-  if (supplied_list_of_tests):
+  if (supplied_list_of_tests is not None):
     all_tests = libtbx.test_utils.parallel.make_commands(supplied_list_of_tests,
         python_keyword_text=python_keyword_text)
   else: # usual
