@@ -102,8 +102,7 @@ def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
 
     # G-function for top hat (FT of top hat)
     #complete_set = f_map.complete_set(include_f000 = True)
-    sphere_reciprocal = f_map.g_function(R=rad_smooth, # top hat function
-         s=f_map.d_spacings().data(), volume_scale=False)
+    sphere_reciprocal = f_map.g_function(R=rad_smooth) # top hat function
 
     # FT (map) * FT(top hat) = FT (convolution of map and top hat)
     fourier_coeff = f_map.array(data=f_map.data()*sphere_reciprocal)
