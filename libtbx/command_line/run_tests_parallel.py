@@ -163,7 +163,10 @@ def run(args,
   if return_list_of_tests:
     return all_tests
   if (len(all_tests) == 0):
-    raise Sorry("No test scripts found in %s." % params.directory)
+    if (supplied_list_of_tests is not None):
+      raise Sorry("No tests to run")
+    else: # usual
+      raise Sorry("No test scripts found in %s." % params.directory)
   if (params.shuffle):
     random.shuffle(all_tests)
   if (params.quiet):
