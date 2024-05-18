@@ -293,12 +293,12 @@ class intensity_resolution_statistics(worker):
         self.cc_sum_y[i_bin]    += I_y
 
     # Accumulate binned counts (cc_N) and sums (cc_sum) from all ranks
-    all_ranks_cc_N          = self.mpi_helper.cumulative_flex(self.cc_N)
-    all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex(self.cc_sum_xx)
-    all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex(self.cc_sum_yy)
-    all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex(self.cc_sum_xy)
-    all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex(self.cc_sum_x)
-    all_ranks_cc_sum_y      = self.mpi_helper.cumulative_flex(self.cc_sum_y)
+    all_ranks_cc_N          = self.mpi_helper.cumulative_flex(self.cc_N,      flex.int)
+    all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex(self.cc_sum_xx, flex.double)
+    all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex(self.cc_sum_yy, flex.double)
+    all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex(self.cc_sum_xy, flex.double)
+    all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex(self.cc_sum_x,  flex.double)
+    all_ranks_cc_sum_y      = self.mpi_helper.cumulative_flex(self.cc_sum_y,  flex.double)
 
     # Reduce all binned counts (cc_N) and sums (cc_sum) from all ranks
     if self.mpi_helper.rank == 0:
@@ -344,11 +344,11 @@ class intensity_resolution_statistics(worker):
       self.logger.log(Intensity_Table.get_table_text(), rank_prepend=False)
 
     # Accumulate statistics from all ranks
-    all_ranks_I_sum       = self.mpi_helper.cumulative_flex(self.I_sum)
-    all_ranks_Isig_sum    = self.mpi_helper.cumulative_flex(self.Isig_sum)
-    all_ranks_n_sum       = self.mpi_helper.cumulative_flex(self.n_sum)
-    all_ranks_m_sum       = self.mpi_helper.cumulative_flex(self.m_sum)
-    all_ranks_mm_sum      = self.mpi_helper.cumulative_flex(self.mm_sum)
+    all_ranks_I_sum       = self.mpi_helper.cumulative_flex(self.I_sum, flex.double)
+    all_ranks_Isig_sum    = self.mpi_helper.cumulative_flex(self.Isig_sum, flex.double)
+    all_ranks_n_sum       = self.mpi_helper.cumulative_flex(self.n_sum, flex.int)
+    all_ranks_m_sum       = self.mpi_helper.cumulative_flex(self.m_sum, flex.int)
+    all_ranks_mm_sum      = self.mpi_helper.cumulative_flex(self.mm_sum, flex.int)
 
     all_ranks_unmerged_meanIsig = []
     all_ranks_unmerged_stddevIsig = []
