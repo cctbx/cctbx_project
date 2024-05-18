@@ -35,7 +35,7 @@ class experiment_resolution_statistics(worker):
       self.logger.log(Experiment_Table_text)
 
     # Accumulate statistics from all ranks
-    all_ranks_experiment_count_per_resolution_bins = self.mpi_helper.cumulative_flex(self.experiment_count_per_resolution_bins, flex.int)
+    all_ranks_experiment_count_per_resolution_bins = self.mpi_helper.cumulative_flex(self.experiment_count_per_resolution_bins)
     all_ranks_total_experiment_count = self.mpi_helper.sum(len(experiments))
 
     # Format and output all-rank total statistics

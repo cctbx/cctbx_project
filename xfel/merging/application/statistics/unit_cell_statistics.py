@@ -49,13 +49,13 @@ class unit_cell_distribution(object):
     self.uc_gamma_values.append(gamma)
 
   def collect_from_all_ranks(self):
-    self.all_uc_a_values = self.mpi_helper.aggregate_flex(self.uc_a_values, flex.double)
-    self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values, flex.double)
-    self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values, flex.double)
+    self.all_uc_a_values = self.mpi_helper.aggregate_flex(self.uc_a_values)
+    self.all_uc_b_values = self.mpi_helper.aggregate_flex(self.uc_b_values)
+    self.all_uc_c_values = self.mpi_helper.aggregate_flex(self.uc_c_values)
 
-    self.all_uc_alpha_values  = self.mpi_helper.aggregate_flex(self.uc_alpha_values, flex.double)
-    self.all_uc_beta_values   = self.mpi_helper.aggregate_flex(self.uc_beta_values, flex.double)
-    self.all_uc_gamma_values  = self.mpi_helper.aggregate_flex(self.uc_gamma_values, flex.double)
+    self.all_uc_alpha_values  = self.mpi_helper.aggregate_flex(self.uc_alpha_values)
+    self.all_uc_beta_values   = self.mpi_helper.aggregate_flex(self.uc_beta_values)
+    self.all_uc_gamma_values  = self.mpi_helper.aggregate_flex(self.uc_gamma_values)
 
   def is_valid(self):
     return len(self.all_uc_a_values) > 0 and len(self.all_uc_b_values) > 0 and len(self.all_uc_c_values) > 0 and \
