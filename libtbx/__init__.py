@@ -68,6 +68,9 @@ class AutoType(object):
 
 Auto = AutoType()
 
+class mpi_import_guard:
+  disable_mpi = False
+
 class slots_getstate_setstate(object):
   """
   Implements getstate and setstate for classes with __slots__ defined. Allows an

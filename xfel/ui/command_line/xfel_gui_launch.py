@@ -14,6 +14,9 @@ import wx, sys
 import matplotlib as mp
 mp.use('PS')
 
+import libtbx
+libtbx.mpi_import_guard.disable_mpi = True
+
 from xfel.ui.components.xfel_gui_init import MainWindow
 from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
 from xfel.ui import load_cached_settings, save_cached_settings
