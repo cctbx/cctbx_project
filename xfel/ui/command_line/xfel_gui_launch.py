@@ -14,8 +14,6 @@ import wx, sys
 import matplotlib as mp
 mp.use('PS')
 
-import libtbx
-libtbx.mpi_import_guard.disable_mpi = True
 
 from xfel.ui.components.xfel_gui_init import MainWindow
 from xfel.ui.components.xfel_gui_dialogs import SettingsDialog
@@ -59,6 +57,9 @@ class MainApp(wx.App):
       return False
 
 def run(args):
+  import libtbx
+  libtbx.mpi_import_guard.disable_mpi = True
+
   if '-h' in args or '--help' in args or '-c' in args:
     from xfel.ui import master_phil_str
     from libtbx.phil import parse
