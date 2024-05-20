@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-from six.moves import range
+from collections import Counter
 from libtbx.mpi4py import MPI
 import numpy as np
 from dials.array_family import flex
@@ -22,6 +22,7 @@ def system_exception_handler(exception_type, value, traceback):
       raise e
 sys.excepthook = system_exception_handler
 
+
 class mpi_helper(object):
   def __init__(self):
     self.MPI = MPI
@@ -36,43 +37,49 @@ class mpi_helper(object):
   def finalize(self):
     self.MPI.Finalize()
 
-  def cumulative_flex(self, flex_array, flex_type):
-    '''Build a cumulative sum flex array out of multiple same-size flex arrays.'''
-    # Example: (a1,a2,a3) + (b1, b2, b3) = (a1+b1, a2+b2, a3+b3)
-    if self.rank == 0:
-      cumulative = flex_type(flex_array.size(), 0)
-    else:
-      cumulative = None
-
-    list_of_all_flex_arrays = self.comm.gather(flex_array, 0)
-
-    if self.rank == 0:
-      for i in range(len(list_of_all_flex_arrays)):
-        flex_array = list_of_all_flex_arrays[i]
-        if flex_array is not None:
-          cumulative += flex_array
-
+  def cumulative_flex(self, flex_array, flex_type=None, root=0):
+    """
+    Build a cumulative sum flex array out of multiple same-size flex arrays.
+    Example: (a1,a2,a3) + (b1, b2, b3) = (a1+b1, a2+b2, a3+b3)
+    """
+    flex_type = flex_type if flex_type is not None else type(flex_array)
+    list_of_all_flex_arrays = self.comm.gather(flex_array, root=root)
+    if self.rank != root:
+      return None
+    cumulative = flex_type(flex_array.size(), 0)
+    for flex_array in list_of_all_flex_arrays:
+      if flex_array is not None:
+        cumulative += flex_array
     return cumulative
 
-  def aggregate_flex(self, flex_array, flex_type):
-    '''Build an aggregate flex array out of multiple flex arrays'''
-    # Example: (a1,a2,a3) + (b1, b2, b3) = (a1, a2, a3, b1, b2, b3)
-    if self.rank == 0:
-      aggregate = flex_type()
-    else:
-      aggregate = None
-
-    list_of_all_flex_arrays = self.comm.gather(flex_array, 0)
-
-    if self.rank == 0:
-      for i in range(len(list_of_all_flex_arrays)):
-        flex_array = list_of_all_flex_arrays[i]
-        if flex_array is not None:
-          aggregate.extend(flex_array)
-
+  def aggregate_flex(self, flex_array, flex_type=None, root=0):
+    """
+    Build an aggregate flex array out of multiple flex arrays
+    Example: (a1,a2,a3) + (b1, b2, b3) = (a1, a2, a3, b1, b2, b3)
+    """
+    flex_type = flex_type if flex_type is not None else type(flex_array)
+    list_of_all_flex_arrays = self.comm.gather(flex_array, root=root)
+    if self.rank != root:
+      return None
+    aggregate = flex_type()
+    for flex_array in list_of_all_flex_arrays:
+      if flex_array is not None:
+        aggregate.extend(flex_array)
     return aggregate
 
+  def count(self, data, root=0):
+    """
+    Return total `Counter` of occurrences of each element in data across ranks.
+    Example: (a1, a1, a2) + (a1, a2, a3) = {a1: 3, a2: 2, a1: 1}
+    """
+    counters = self.comm.gather(Counter(data), rank=root)
+    return sum(counters, Counter()) if self.rank == root else None
+
   def sum(self, data, root=0):
+    """
+    Sum values of data across all ranks.
+    Example: a1 + a2 + a3 = a1+a2+a3
+    """
     return self.comm.reduce(data, self.MPI.SUM, root=root)
 
   def set_error(self, description):
