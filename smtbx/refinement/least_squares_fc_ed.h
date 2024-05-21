@@ -32,7 +32,7 @@ namespace smtbx {
           f_calc_function_base_t& f_calc_function,
           sgtbx::space_group const& space_group,
           bool anomalous_flag,
-          af::shared<FrameInfo<FloatType> > frames,
+          af::shared<BeamGroup<FloatType> > beam_groups,
           cctbx::xray::thickness<FloatType> const& thickness,
           const RefinementParams<FloatType>& params,
           bool compute_grad,
@@ -44,36 +44,36 @@ namespace smtbx {
           Kl(params.getKl()),
           Fc2Ug(params.getFc2Ug()),
           mat_type(params.getMatrixType()),
-          frames(frames),
+          beam_groups(beam_groups),
           thickness(thickness),
           compute_grad(compute_grad),
           thread_n(params.getThreadN())
         {
-          K = frames[0].geometry->Kl_as_K(Kl);
-          // build lookups for each frame + collect all indices and they diffs
+          K = beam_groups[0].geometry->Kl_as_K(Kl);
+          // build lookups for each beam_group + collect all indices and they diffs
           af::shared<miller::index<> > all_indices;
           size_t offset = 0;
-          // treat equivalents independently inside the frames
+          // treat equivalents independently inside the beam_groups
           sgtbx::space_group P1("P 1");
-          for (size_t i = 0; i < frames.size(); i++) {
-            FrameInfo<FloatType>& frame = frames[i];
-            frames_map.insert(std::make_pair(frame.id, &frame));
-            frame.offset = offset;
-            offset += frame.strong_measured_beams.size();
+          for (size_t i = 0; i < beam_groups.size(); i++) {
+            BeamGroup<FloatType>& beam_group = beam_groups[i];
+            beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
+            beam_group.offset = offset;
+            offset += beam_group.strong_measured_beams.size();
             // need only strong beams here??
-            for (size_t hi = 0; hi < frame.indices.size(); hi++) {
-              all_indices.push_back(frame.indices[hi]);
-              for (size_t hj = hi + 1; hj < frame.indices.size(); hj++) {
-                all_indices.push_back(frame.indices[hi] - frame.indices[hj]);
-                all_indices.push_back(frame.indices[hj] - frame.indices[hi]);
+            for (size_t hi = 0; hi < beam_group.indices.size(); hi++) {
+              all_indices.push_back(beam_group.indices[hi]);
+              for (size_t hj = hi + 1; hj < beam_group.indices.size(); hj++) {
+                all_indices.push_back(beam_group.indices[hi] - beam_group.indices[hj]);
+                all_indices.push_back(beam_group.indices[hj] - beam_group.indices[hi]);
               }
             }
             lookup_ptr_t mi_l(new lookup_t(
-              af::select(frame.indices.const_ref(),
-                frame.strong_measured_beams.const_ref()).const_ref(),
+              af::select(beam_group.indices.const_ref(),
+                beam_group.strong_measured_beams.const_ref()).const_ref(),
               P1,
               true));
-            frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
+            beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
           }
           beam_n = offset;
           // a tricky way of getting unique only...
@@ -91,12 +91,12 @@ namespace smtbx {
           }
         }
 
-        void build_Ug_matrix(const FrameInfo<FloatType>& frame,
+        void build_Ug_matrix(const BeamGroup<FloatType>& beam_group,
           cmat_t &Ugs, af::shared<cmat_t> &Ds_kin)
         {
           af::shared<miller::index<> >
-            strong_indices = af::select(frame.indices.const_ref(),
-              frame.strong_beams.const_ref());
+            strong_indices = af::select(beam_group.indices.const_ref(),
+              beam_group.strong_beams.const_ref());
           utils<FloatType>::build_Ug_matrix(
             Ugs, Fcs_kin,
             mi_lookup,
@@ -120,41 +120,41 @@ namespace smtbx {
             indices, Fcs_kin, design_matrix_kin, compute_grad);
         }
 
-        void process_frames_mt() {
+        void process_beam_groups_mt() {
           if (thread_n < 0) {
             thread_n = builder_base<FloatType>::get_available_threads();
           }
 
-          FrameInfo<FloatType> f0 = frames[0];
+          BeamGroup<FloatType> f0 = beam_groups[0];
 
           boost::thread_group pool;
-          typedef frame_integrator<FloatType> integrator_t;
-          typedef typename boost::shared_ptr<integrator_t> frame_integrator_ptr_t;
+          typedef beam_group_integrator<FloatType> integrator_t;
+          typedef typename boost::shared_ptr<integrator_t> beam_group_integrator_ptr_t;
           size_t to = 0,
             n_param = design_matrix.accessor().n_columns();
 
           dyn_calculator_factory<FloatType> dc_f(mat_type);
 
-          for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
-            size_t t_end = std::min(thread_n, (int)(frames.size() - fi));
+          for (size_t fi = 0; fi < beam_groups.size(); fi += thread_n) {
+            size_t t_end = std::min(thread_n, (int)(beam_groups.size() - fi));
             if (t_end == 0) {
               break;
             }
-            std::vector<frame_integrator_ptr_t> accumulators;
+            std::vector<beam_group_integrator_ptr_t> accumulators;
             for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
               cmat_t Ugs;
               af::shared<FloatType> angles =
-                frames[to].get_int_angles(K, params.getIntSpan(),
+                beam_groups[to].get_int_angles(K, params.getIntSpan(),
                   params.getIntStep(),
                   params.getIntPoints(),
                   !params.isAngleInt());
               af::shared<cmat_t> Ds_kin;
-              build_Ug_matrix(frames[to], Ugs, Ds_kin);
-              frame_integrator_ptr_t pf(
+              build_Ug_matrix(beam_groups[to], Ugs, Ds_kin);
+              beam_group_integrator_ptr_t pf(
                 new integrator_t(
-                  new frame_processor<FloatType>(
+                  new beam_group_processor<FloatType>(
                     dc_f,
-                    frames[to],
+                    beam_groups[to],
                     Ugs, K, thickness,
                     Ds_kin,
                     compute_grad),
@@ -170,7 +170,7 @@ namespace smtbx {
               if (p.exception_) {
                 throw* p.exception_.get();
               }
-              const FrameInfo<FloatType>& fi = p.processor->frame;
+              const BeamGroup<FloatType>& fi = p.processor->beam_group;
               //std::copy(p.Is.begin(), p.Is.end(), &Is[fi.offset]);
               for (size_t i = 0; i < p.beam_n; i++) {
                 Is[fi.offset + i] = p.Is[i];
@@ -197,11 +197,11 @@ namespace smtbx {
             }
             Fcs_kin.resize(indices.size());
             do_build_kin_mt();
-            // expand uniq Fc to frame indices
+            // expand uniq Fc to beam_group indices
             size_t offset = 0;
-            for (size_t i = 0; i < frames.size(); i++) {
-              const af::shared<miller::index<> >& fidx = frames[i].indices;
-              size_t measured = frames[i].strong_measured_beams.size();
+            for (size_t i = 0; i < beam_groups.size(); i++) {
+              const af::shared<miller::index<> >& fidx = beam_groups[i].indices;
+              size_t measured = beam_groups[i].strong_measured_beams.size();
               for (size_t i = 0; i < measured; i++) {
                 long idx = mi_lookup.find_hkl(fidx[i]);
                 Fcs[offset + i] = Fcs_kin[idx];
@@ -213,19 +213,19 @@ namespace smtbx {
             design_matrix.resize(af::mat_grid(indices.size(),
               Jt_matching_grad_fc.n_rows()));
           }
-          process_frames_mt();
+          process_beam_groups_mt();
         }
 
 
         /* computes the position of the given miller index of the given
-        frame in the uniform arrays
+        beam_group in the uniform arrays
         */
-        size_t find_hkl(int frame_id, miller::index<> const& h) const {
+        size_t find_hkl(int beam_group_id, miller::index<> const& h) const {
           typename std::map<int, lookup_ptr_t>::const_iterator i =
-            frame_lookups.find(frame_id);
-          SMTBX_ASSERT(i != frame_lookups.end());
-          typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
-            frames_map.find(frame_id);
+            beam_group_lookups.find(beam_group_id);
+          SMTBX_ASSERT(i != beam_group_lookups.end());
+          typename std::map<int, BeamGroup<FloatType>*>::const_iterator fi =
+            beam_groups_map.find(beam_group_id);
           long hi = i->second->find_hkl(h);
           SMTBX_ASSERT(hi >= 0);
           return hi + fi->second->offset;
@@ -240,15 +240,15 @@ namespace smtbx {
         int mat_type;
         cart_t K;
         size_t beam_n;
-        /* to lookup an index in particular frame, have to keep a copy of the
+        /* to lookup an index in particular beam_group, have to keep a copy of the
         indices
         */
-        typename std::map<int, lookup_ptr_t> frame_lookups;
-        typename std::map<int, FrameInfo<FloatType>*> frames_map;
-        af::shared<FrameInfo<FloatType> > frames;
+        typename std::map<int, lookup_ptr_t> beam_group_lookups;
+        typename std::map<int, BeamGroup<FloatType>*> beam_groups_map;
+        af::shared<BeamGroup<FloatType> > beam_groups;
         cctbx::xray::thickness<FloatType> const& thickness;
         bool compute_grad;
-        // newly-calculated, aligned by frames
+        // newly-calculated, aligned by beam_groups
         af::shared<complex_t> Fcs, Fcs_kin;
         af::shared<FloatType> Is;
         // 

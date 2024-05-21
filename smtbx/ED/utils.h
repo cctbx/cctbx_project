@@ -33,17 +33,38 @@ namespace smtbx { namespace ED
     };
 
     class PETS_geometry : public a_geometry {
+      mat3_t ryb, rzo;
+      FloatType beta, omega;
     public:
-      PETS_geometry(const mat3_t& UB)
-        : a_geometry(UB)
-      {}
+      PETS_geometry(const mat3_t& UB, FloatType beta, FloatType omega)
+        : a_geometry(UB), beta(beta), omega(omega)
+      {
+        if (beta != 0) {
+          FloatType cb = std::cos(beta), sb = std::sin(beta);
+          ryb = mat3_t(cb, 0, sb, 0, 1, 0, -sb, 0, cb);
+        }
+        if (omega != 0) {
+          FloatType co = std::cos(omega), so = std::sin(omega);
+          rzo = mat3_t(co, -so, 0, so, co, 0, 0, 0, 1);
+        }
+      }
       const cart_t& get_normal() const {
         static cart_t n(0, 0, 1);
         return n;
       }
       mat3_t get_RM(FloatType angle) const {
         FloatType ca = std::cos(angle), sa = std::sin(angle);
-        return mat3_t(1, 0, 0, 0, ca, -sa, 0, sa, ca);
+        mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca);
+        if (beta != 0 && omega != 0) {
+          return rzo * rxa * ryb;
+        }
+        if (beta != 0) {
+          return rxa * ryb;
+        }
+        if (omega != 0) {
+          return rzo * rxa;
+        }
+        return rxa;
       }
     };
 
@@ -227,34 +248,6 @@ namespace smtbx { namespace ED
       }
     }
 
-    /* J. Appl. Cryst. (2022). 55 */
-    static void build_eigen_matrix_recipro(
-      cmat_t& A,
-      af::shared<miller::index<> > const& indices,
-      cart_t const& K,
-      mat3_t const& RMf,
-      cart_t const& N,
-      af::shared<FloatType>& Pgs)
-    {
-      // Projection of K onto normal of frame normal, K*frame.normal
-      const FloatType Kn = N * K;
-      const size_t n_beams = indices.size() + 1;
-      A.resize(af::mat_grid(n_beams, n_beams));
-      Pgs.resize(n_beams);
-      for (size_t i = 0; i < n_beams; i++) {
-        miller::index<> h_i = i == 0 ? miller::index<>(0, 0, 0) : indices[i - 1];
-        cart_t g_i = RMf * cart_t(h_i[0], h_i[1], h_i[2]);
-        FloatType Pg = 2 * (N * (K + g_i));
-        Pgs[i] = Pg;
-        for (size_t j = 0; j < n_beams; j++) {
-          if (i == j) {
-            A(i, i) += -(g_i * (K + K + g_i));
-          }
-          A(i, j) /= Pg;
-        }
-      }
-    }
-
     static void build_eigen_matrix_modified(
       cmat_t& A, // Ug matrix modified
       cart_t const& K,
@@ -273,57 +266,6 @@ namespace smtbx { namespace ED
       }
     }
 
-    static af::shared<complex_t> calc_amps_recipro(
-      cmat_t& A,
-      const af::shared<FloatType>& Pgs,
-      FloatType Kvac,
-      FloatType thickness,
-      size_t num)
-    {
-      using namespace fast_linalg;
-      const size_t n_beams = A.accessor().n_columns();
-
-      // eigenvalues, this is for generic matrix
-      af::shared<complex_t> ev(n_beams);
-      // right eigenvectors
-      af::versa<complex_t, af::c_grid<2> > B(af::c_grid<2>(n_beams, n_beams));
-      lapack_int info = geev(LAPACK_ROW_MAJOR, 'N', 'V', n_beams,
-        A.begin(), n_beams, ev.begin(), 0, n_beams, B.begin(), n_beams);
-      SMTBX_ASSERT(!info)(info);
-      cmat_t Bi = B.deep_copy();
-      // invert Bi now
-      {
-        af::shared<lapack_int> pivots(n_beams);
-        info = getrf(LAPACK_ROW_MAJOR, n_beams, n_beams, Bi.begin(),
-          n_beams, pivots.begin());
-        SMTBX_ASSERT(!info)(info);
-        info = getri(LAPACK_ROW_MAJOR, n_beams, Bi.begin(),
-          n_beams, pivots.begin());
-        SMTBX_ASSERT(!info)(info);
-      }
-      af::shared<complex_t> im(n_beams);
-      const complex_t exp_k(0, 2 * scitbx::constants::pi * thickness);
-      const complex_t exp_k1(0, scitbx::constants::pi * thickness);
-      // apply diagonal matrix on the left
-      for (size_t i = 0; i < n_beams; i++) {
-        complex_t p = std::exp(exp_k1 * (Pgs[i] + 2 * Kvac));
-        for (size_t j = 0; j < n_beams; j++) {
-          B(i, j) *= p;
-        }
-      }
-      for (size_t i = 0; i < n_beams; i++) {
-        im[i] = std::exp(ev[i] * exp_k) * Bi(i, 0);
-      }
-      af::shared<complex_t> res = af::matrix_multiply(B.const_ref(), im.const_ref());
-      af::shared<complex_t> rv;
-      for (size_t i = 1; i < n_beams; i++) {
-        rv.push_back(res[i]);
-        if (rv.size() >= num) {
-          break;
-        }
-      }
-      return rv;
-    }
 
     static af::shared<complex_t> calc_amps_modified(
       cmat_t& A,
@@ -428,7 +370,7 @@ namespace smtbx { namespace ED
     }
 
     static bool is_excited_h(miller::index<> const& index,
-      mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
+      mat3_t const& RMf, // matrix to orthogonalise and rotate into the given basis
       cart_t const& K, FloatType MaxSg, FloatType MaxG, FloatType precession_angle)
     {
       return is_excited_g(RMf * cart_t(index[0], index[1], index[2]), K,
@@ -484,10 +426,10 @@ namespace smtbx { namespace ED
     * The indices will fulfil the MaxSg and MaxG parameters and sorted by Sg
     */
     static af::shared<ExcitedBeam> generate_index_set(
-      mat3_t const& RMf, // matrix to orthogonalise and rotate into the frame basis
+      mat3_t const& RMf, // matrix to orthogonalise and rotate into the given basis
       cart_t const& K,
       FloatType min_d,
-      FloatType MaxG, FloatType MaxSg,
+      FloatType MaxSg,
       uctbx::unit_cell const& unit_cell)
     {
       using namespace cctbx::miller;
@@ -499,15 +441,11 @@ namespace smtbx { namespace ED
       miller::index<> h;
       af::shared<ExcitedBeam> all;
 
-      const FloatType max_f_sq = MaxG * MaxG,
-        Kl = K.length(),
+      const FloatType Kl = K.length(),
         Kl_sq = Kl * Kl;
       while (!(h = h_generator.next()).is_zero()) {
         cart_t g = RMf * cart_t(h[0], h[1], h[2]);
         FloatType g_sq = g.length_sq();
-        if (g_sq > max_f_sq) {
-          continue;
-        }
         FloatType Kg_sq = (K + g).length_sq();
         FloatType s = Kl_sq - Kg_sq;
         FloatType Sg = std::abs(s / (2 * Kl));
@@ -522,10 +460,11 @@ namespace smtbx { namespace ED
     }
 
     static af::shared<ExcitedBeam> generate_index_set(
-      af::shared<mat3_t> const& RMfs, // matrix to orthogonalise and rotate into the frame basis
+      // matrices to orthogonalise and rotate into the beams' basis
+      af::shared<mat3_t> const& RMfs,
       cart_t const& K,
       FloatType min_d,
-      FloatType MaxG, FloatType MaxSg,
+      FloatType MaxSg,
       uctbx::unit_cell const& unit_cell)
     {
       using namespace cctbx::miller;
@@ -537,20 +476,13 @@ namespace smtbx { namespace ED
       miller::index<> h;
       af::shared<ExcitedBeam> all;
 
-      const FloatType max_f_sq = MaxG * MaxG,
-        Kl = K.length(),
+      const FloatType Kl = K.length(),
         Kl_sq = Kl * Kl;
       while (!(h = h_generator.next()).is_zero()) {
         FloatType min_sg = MaxSg;
         cart_t g;
         for (size_t mi = 0; mi < RMfs.size(); mi++) {
           g = RMfs[mi] * cart_t(h[0], h[1], h[2]);
-          if (mi == 0) {
-            FloatType g_sq = g.length_sq();
-            if (g_sq > max_f_sq) {
-              break;
-            }
-          }
           FloatType Kg_sq = (K + g).length_sq();
           FloatType s = Kl_sq - Kg_sq;
           FloatType Sg = std::abs(s / (2 * Kl));

@@ -29,7 +29,7 @@ namespace least_squares {
       const fc_correction_t& fc_cr,
       const sgtbx::space_group& space_group,
       bool anomalous_flag,
-      af::shared<FrameInfo<FloatType> > frames,
+      af::shared<BeamGroup<FloatType> > beam_groups,
       const cctbx::xray::thickness<FloatType>& thickness,
       const RefinementParams<FloatType> &params,
       bool compute_grad,
@@ -44,7 +44,7 @@ namespace least_squares {
       Fc2Ug(params.getFc2Ug()),
       eps(params.getEpsilon()),
       mat_type(params.getMatrixType()),
-      frames(frames),
+      beam_groups(beam_groups),
       thickness(thickness),
       compute_grad(compute_grad),
       thread_n(params.getThreadN())
@@ -56,29 +56,29 @@ namespace least_squares {
       else {
         use_n_beam = false;
       }
-      // build lookups for each frame + collect all indices and they diffs
+      // build lookups for each beam_group + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
       size_t offset = 0;
-      // treat equivalents independently inside the frames
+      // treat equivalents independently inside the beam_groups
       sgtbx::space_group P1("P 1");
-      for (size_t i=0; i < frames.size(); i++) {
-        FrameInfo<FloatType>& frame = frames[i];
-        frames_map.insert(std::make_pair(frame.id, &frame));
-        frame.offset = offset;
-        offset += frame.strong_measured_beams.size();
-        for (size_t hi = 0; hi < frame.indices.size(); hi++) {
-          all_indices.push_back(frame.indices[hi]);
-          for (size_t hj = hi+1; hj < frame.indices.size(); hj++) {
-            all_indices.push_back(frame.indices[hi] - frame.indices[hj]);
-            all_indices.push_back(frame.indices[hj] - frame.indices[hi]);
+      for (size_t i=0; i < beam_groups.size(); i++) {
+        BeamGroup<FloatType>& beam_group = beam_groups[i];
+        beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
+        beam_group.offset = offset;
+        offset += beam_group.strong_measured_beams.size();
+        for (size_t hi = 0; hi < beam_group.indices.size(); hi++) {
+          all_indices.push_back(beam_group.indices[hi]);
+          for (size_t hj = hi+1; hj < beam_group.indices.size(); hj++) {
+            all_indices.push_back(beam_group.indices[hi] - beam_group.indices[hj]);
+            all_indices.push_back(beam_group.indices[hj] - beam_group.indices[hi]);
           }
         }
         lookup_ptr_t mi_l(new lookup_t(
-          af::select(frame.indices.const_ref(),
-            frame.strong_measured_beams.const_ref()).const_ref(),
+          af::select(beam_group.indices.const_ref(),
+            beam_group.strong_measured_beams.const_ref()).const_ref(),
           P1,
           true));
-        frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
+        beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
       }
       beam_n = offset;
       // a tricky way of getting unique only...
@@ -106,52 +106,52 @@ namespace least_squares {
     }
 
     /* could be used for both - values and derivatives calculation for the given
-    set of beams of a frame. The result is written to Fcs starting at the given
+    set of beams of a beam_group. The result is written to Fcs starting at the given
     offset
     */
-    struct process_frame {
-      process_frame(ed_n_shared_data const& parent,
-        FrameInfo<FloatType> &frame,
+    struct process_beam_group {
+      process_beam_group(ed_n_shared_data const& parent,
+        BeamGroup<FloatType> &beam_group,
         // source kinematic Fcs, Fc, Fc_+e, Fc_-e
         const af::shared<complex_t> &Fcs_k,
         af::shared<FloatType>& Is,
         af::shared<complex_t>& CIs, bool use_offset)
         : parent(parent),
-        frame(frame),
+        beam_group(beam_group),
         thickness(parent.thickness.value),
         Fcs_k(Fcs_k),
         Is(Is),
         CIs(CIs),
-        offset(use_offset ? frame.offset : 0)
+        offset(use_offset ? beam_group.offset : 0)
       {}
 
       void operator()() {
         try {
-          const cart_t K = frame.geometry->Kl_as_K(parent.Kl);
+          const cart_t K = beam_group.geometry->Kl_as_K(parent.Kl);
           if (parent.use_n_beam) {
             int beam_n = parent.params.getBeamN();
             cmat_t A;
             af::shared<miller::index<> > indices, strong_indices;
             boost::shared_ptr<a_dyn_calculator<FloatType> > dc;
             if (beam_n > 2) {
-              strong_indices = af::select(frame.indices.const_ref(),
-                frame.strong_beams.const_ref());
+              strong_indices = af::select(beam_group.indices.const_ref(),
+                beam_group.strong_beams.const_ref());
             }
-            af::shared<FloatType> angles = frame.get_int_angles(
+            af::shared<FloatType> angles = beam_group.get_int_angles(
               parent.Kl,
               parent.params.getIntSpan(),
               parent.params.getIntStep(),
               parent.params.getIntPoints(),
               !parent.params.isAngleInt());
-            for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-              size_t beam_idx = frame.strong_measured_beams[i];
-              miller::index<> h = frame.indices[beam_idx];
+            for (size_t i = 0; i < beam_group.strong_measured_beams.size(); i++) {
+              size_t beam_idx = beam_group.strong_measured_beams[i];
+              miller::index<> h = beam_group.indices[beam_idx];
               complex_t Fc;
               FloatType I1 = -1, g1 = -1, I_sum=0;
               
-              FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+              FloatType da = beam_group.get_diffraction_angle(h, parent.Kl);
               if (beam_n > 2) {
-                std::pair<mat3_t, cart_t> FI = frame.compute_RMf_N(da);
+                std::pair<mat3_t, cart_t> FI = beam_group.compute_RMf_N(da);
                 indices = utils<FloatType>::build_Ug_matrix_N(A,
                   Fcs_k, parent.mi_lookup,
                   strong_indices, K, h, FI.first, beam_n,
@@ -165,7 +165,7 @@ namespace least_squares {
               }
 
               for (size_t ai = 0; ai < angles.size(); ai++) {
-                std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
+                std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(angles[ai]);
                 cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
                 FloatType I;
                 if (beam_n == 2) {
@@ -191,7 +191,7 @@ namespace least_squares {
           if (parent.mat_type == 4) {
             cmat_t A;
             af::shared<miller::index<> >
-              s = af::select(frame.indices.const_ref(), frame.strong_beams.const_ref());
+              s = af::select(beam_group.indices.const_ref(), beam_group.strong_beams.const_ref());
 
             utils<FloatType>::build_Ug_matrix(
               A, Fcs_k,
@@ -202,19 +202,19 @@ namespace least_squares {
             utils<FloatType>::modify_Ug_matrix(
               A, s, Fcs_k,
               parent.mi_lookup,
-              af::select(frame.indices.const_ref(), frame.weak_beams.const_ref()),
-              af::select(frame.excitation_errors.const_ref(), frame.weak_beams.const_ref()));
+              af::select(beam_group.indices.const_ref(), beam_group.weak_beams.const_ref()),
+              af::select(beam_group.excitation_errors.const_ref(), beam_group.weak_beams.const_ref()));
 
             af::shared<FloatType> ExpDen;
             utils<FloatType>::build_eigen_matrix_modified(
-              A, K, frame.geometry->get_normal(),
-              af::select(frame.gs.const_ref(), frame.strong_beams.const_ref()),
-              af::select(frame.excitation_errors.const_ref(), frame.strong_beams.const_ref()),
+              A, K, beam_group.geometry->get_normal(),
+              af::select(beam_group.gs.const_ref(), beam_group.strong_beams.const_ref()),
+              af::select(beam_group.excitation_errors.const_ref(), beam_group.strong_beams.const_ref()),
               ExpDen);
 
             af::shared<complex_t> amps =
               utils<FloatType>::calc_amps_modified(A, ExpDen, thickness,
-                frame.strong_measured_beams.size());
+                beam_group.strong_measured_beams.size());
             
             for (size_t i = 0; i < amps.size(); i++) {
               Is[offset + i] = std::norm(amps[i]);
@@ -226,8 +226,8 @@ namespace least_squares {
           }
           cmat_t A;
           af::shared<miller::index<> >
-            strong_indices = af::select(frame.indices.const_ref(),
-              frame.strong_beams.const_ref());
+            strong_indices = af::select(beam_group.indices.const_ref(),
+              beam_group.strong_beams.const_ref());
           utils<FloatType>::build_Ug_matrix(
             A, Fcs_k,
             parent.mi_lookup,
@@ -237,19 +237,19 @@ namespace least_squares {
             dyn_calculator_factory<FloatType>(parent.mat_type)
             .make(strong_indices, K, thickness);
           af::shared<FloatType> angles =
-            frame.get_int_angles(parent.Kl, parent.params.getIntSpan(),
+            beam_group.get_int_angles(parent.Kl, parent.params.getIntSpan(),
               parent.params.getIntStep(),
               parent.params.getIntPoints(),
               !parent.params.isAngleInt());
-          for (size_t i = 0; i < frame.strong_measured_beams.size(); i++) {
-            size_t beam_idx = frame.strong_measured_beams[i];
-            miller::index<> h = frame.indices[beam_idx];
+          for (size_t i = 0; i < beam_group.strong_measured_beams.size(); i++) {
+            size_t beam_idx = beam_group.strong_measured_beams[i];
+            miller::index<> h = beam_group.indices[beam_idx];
             int ii = parent.mi_lookup.find_hkl(h);
             complex_t Fc = ii != -1 ? Fcs_k[ii] : 0;
             FloatType I1 = -1, g1 = -1;
-            FloatType da = frame.get_diffraction_angle(h, parent.Kl);
+            FloatType da = beam_group.get_diffraction_angle(h, parent.Kl);
             for (size_t ai = 0; ai < angles.size(); ai++) {
-              std::pair<mat3_t, cart_t> r = frame.compute_RMf_N(angles[ai]);
+              std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(angles[ai]);
               cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
               FloatType I = std::norm(dc->reset(A, r.first, r.second).calc_amps_1(i));
               FloatType g = K_g.length();
@@ -269,7 +269,7 @@ namespace least_squares {
         }
       }
       ed_n_shared_data const& parent;
-      FrameInfo<FloatType>& frame;
+      BeamGroup<FloatType>& beam_group;
       FloatType thickness;
       const af::shared<complex_t>& Fcs_k;
       af::shared<FloatType>& Is;
@@ -278,21 +278,21 @@ namespace least_squares {
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
-    af::shared<FloatType> process_frame_id(int frame_id,
+    af::shared<FloatType> process_beam_group_id(int beam_group_id,
       const af::shared<complex_t> &Fcs_k)
     {
-      typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
-        frames_map.find(frame_id);
-      SMTBX_ASSERT(fi != frames_map.end());
-      FrameInfo<FloatType> &frame= *fi->second;
-      af::shared<FloatType> Is_(frame.beams.size());
+      typename std::map<int, BeamGroup<FloatType>*>::const_iterator fi =
+        beam_groups_map.find(beam_group_id);
+      SMTBX_ASSERT(fi != beam_groups_map.end());
+      BeamGroup<FloatType> &beam_group= *fi->second;
+      af::shared<FloatType> Is_(beam_group.beams.size());
       af::shared<complex_t> CIs_;
-      process_frame(*this, frame, Fcs_k, Is_, CIs_,
+      process_beam_group(*this, beam_group, Fcs_k, Is_, CIs_,
         false)(); // no offset - write to Is_ at 0;
       return Is_;
     }
 
-    void process_frames_mt(af::shared<FloatType> &Is_,
+    void process_beam_groups_mt(af::shared<FloatType> &Is_,
       af::shared<complex_t>& CIs_,
       af::shared<complex_t> const& Fcs_k)
     {
@@ -300,18 +300,18 @@ namespace least_squares {
         thread_n = builder_base<FloatType>::get_available_threads();
       }
       boost::thread_group pool;
-      typedef boost::shared_ptr<process_frame> frame_processor_t;
+      typedef boost::shared_ptr<process_beam_group> beam_group_processor_t;
       size_t to = 0;
-      for (size_t fi = 0; fi < frames.size(); fi += thread_n) {
-        size_t t_end = std::min(thread_n, (int)(frames.size() - fi));
+      for (size_t fi = 0; fi < beam_groups.size(); fi += thread_n) {
+        size_t t_end = std::min(thread_n, (int)(beam_groups.size() - fi));
         if (t_end == 0) {
           break;
         }
-        std::vector<frame_processor_t> accumulators;
+        std::vector<beam_group_processor_t> accumulators;
         for (int thread_idx = 0; thread_idx < t_end; thread_idx++) {
-          frame_processor_t pf(
-            new process_frame(*this,
-              frames[to],
+          beam_group_processor_t pf(
+            new process_beam_group(*this,
+              beam_groups[to],
               Fcs_k,
               Is_,
               CIs_, true)
@@ -339,11 +339,11 @@ namespace least_squares {
           for (size_t ih = 0; ih < indices.size(); ih++) {
             Fcs_k[ih] = calc_one_h(indices[ih]) * Fc2Ug;
           }
-          // expand uniq Fc to frame indices
+          // expand uniq Fc to beam_group indices
           size_t offset = 0;
-          for (size_t i = 0; i < frames.size(); i++) {
-            const af::shared<miller::index<> >& fidx = frames[i].indices;
-            size_t measured = frames[i].strong_measured_beams.size();
+          for (size_t i = 0; i < beam_groups.size(); i++) {
+            const af::shared<miller::index<> >& fidx = beam_groups[i].indices;
+            size_t measured = beam_groups[i].strong_measured_beams.size();
             for (size_t i = 0; i < measured; i++) {
               long idx = mi_lookup.find_hkl(fidx[i]);
               Fcs[offset + i] = Fcs_k[idx];
@@ -354,7 +354,7 @@ namespace least_squares {
         // replacing dummy with Fc will allow to collect complex amplitudes
         af::shared<complex_t> dummy;
         std::fill(Is.begin(), Is.end(), 0);
-        process_frames_mt(Is, dummy, Fcs_k);
+        process_beam_groups_mt(Is, dummy, Fcs_k);
         if (!compute_grad) {
           return;
         }
@@ -386,7 +386,7 @@ namespace least_squares {
           }
           //Generate Fcs at x+eps
           std::fill(Is_p.begin(), Is_p.end(), 0);
-          process_frames_mt(Is_p, dummy, Fc_eps);
+          process_beam_groups_mt(Is_p, dummy, Fc_eps);
 
           x[j] -= t_eps;
           if (cp != 0) {
@@ -398,7 +398,7 @@ namespace least_squares {
           }
           //Generate Fcs at x-eps
           std::fill(Is_m.begin(), Is_m.end(), 0);
-          process_frames_mt(Is_m, dummy, Fc_eps);
+          process_beam_groups_mt(Is_m, dummy, Fc_eps);
           
           // compute grads
           for (size_t bi = 0; bi < beam_n; bi++) {
@@ -417,14 +417,14 @@ namespace least_squares {
   
 
     /* computes the position of the given miller index of the given
-    frame in the uniform arrays
+    beam_group in the uniform arrays
     */
-    size_t find_hkl(int frame_id, miller::index<> const& h) const {
+    size_t find_hkl(int beam_group_id, miller::index<> const& h) const {
       typename std::map<int, lookup_ptr_t>::const_iterator i =
-        frame_lookups.find(frame_id);
-      SMTBX_ASSERT(i != frame_lookups.end());
-      typename std::map<int, FrameInfo<FloatType> *>::const_iterator fi =
-        frames_map.find(frame_id);
+        beam_group_lookups.find(beam_group_id);
+      SMTBX_ASSERT(i != beam_group_lookups.end());
+      typename std::map<int, BeamGroup<FloatType> *>::const_iterator fi =
+        beam_groups_map.find(beam_group_id);
       long hi = i->second->find_hkl(h);
       SMTBX_ASSERT(hi >= 0);
       return hi + fi->second->offset;
@@ -439,15 +439,15 @@ namespace least_squares {
     FloatType Kvac, Kl, Fc2Ug, eps;
     int mat_type;
     size_t beam_n;
-    /* to lookup an index in particular frame, have to keep a copy of the
+    /* to lookup an index in particular beam_group, have to keep a copy of the
     indices
     */
-    typename std::map<int, lookup_ptr_t> frame_lookups;
-    typename std::map<int, FrameInfo<FloatType>*> frames_map;
-    af::shared<FrameInfo<FloatType> > frames;
+    typename std::map<int, lookup_ptr_t> beam_group_lookups;
+    typename std::map<int, BeamGroup<FloatType>*> beam_groups_map;
+    af::shared<BeamGroup<FloatType> > beam_groups;
     const cctbx::xray::thickness<FloatType>& thickness;
     bool compute_grad;
-    // newly-calculated, aligned by frames
+    // newly-calculated, aligned by beam_groups
     af::shared<complex_t> Fcs, Fcs_k;
     af::shared<FloatType> Is;
     // 
