@@ -209,17 +209,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
             f_calc_function_base<FloatType>&,
             sgtbx::space_group const&,
             bool,
-            af::shared<FrameInfo<FloatType> >,
+            af::shared<BeamGroup<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("Jt_matching_grad_fc"),
                 arg("f_calc_function"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("frames"), arg("thickness"),
+                arg("beam_groups"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
-          .add_property("frames", make_getter(&wt::frames, rbv))
+          .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
           ;
       }
 
@@ -243,17 +243,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
             f_calc_function_base<FloatType>&,
             sgtbx::space_group const&,
             bool,
-            af::shared<FrameInfo<FloatType> >,
+            af::shared<BeamGroup<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("Jt_matching_grad_fc"),
                 arg("f_calc_function"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("frames"), arg("thickness"),
+                arg("beam_groups"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
-          .add_property("frames", make_getter(&wt::frames, rbv))
+          .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
           ;
       }
 
@@ -282,17 +282,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
             cctbx::xray::fc_correction<FloatType> const&,
             sgtbx::space_group const&,
             bool,
-            af::shared<FrameInfo<FloatType> >,
+            af::shared<BeamGroup<FloatType> >,
             cctbx::xray::thickness<FloatType> const&,
             RefinementParams<FloatType> const&,
             bool, bool>(
               (arg("reparametrisation"),
                 arg("f_calc_function"), arg("fc_correction"),
                 arg("space_group"), arg("anomalous_flag"),
-                arg("frames"), arg("thickness"),
+                arg("beam_groups"), arg("thickness"),
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
-          .def("process_frame_id", &wt::process_frame_id)
+          .def("process_beam_group_id", &wt::process_beam_group_id)
           .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
           ;
       }

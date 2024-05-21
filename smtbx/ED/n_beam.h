@@ -15,18 +15,18 @@ namespace smtbx { namespace ED
     dyn_calculator_n_beam(
       size_t N,
       int mat_type,
-      const FrameInfo<FloatType>& frame,
+      const BeamGroup<FloatType>& beam_group,
       const cart_t& K,
       FloatType thickness, bool useSg, FloatType wght)
       : dc_f(mat_type),
-      frame(frame), beam_n(N),
+      beam_group(beam_group), beam_n(N),
       K(K),
       thickness(thickness),
       wght(wght),
       useSg(useSg)
     {
-      strong_indices = af::select(frame.indices.const_ref(),
-        frame.strong_beams.const_ref());
+      strong_indices = af::select(beam_group.indices.const_ref(),
+        beam_group.strong_beams.const_ref());
     }
 
     /* builds the potential matrix in dc; init must be called before this
@@ -54,7 +54,7 @@ namespace smtbx { namespace ED
     dyn_calculator_n_beam& init(const miller::index<> &h, FloatType angle,
       const af::shared<complex_t> & Fcs_kin, const lookup_t  &mi_lookup)
     {
-      return init(h, frame.compute_RMf_N(angle).first, Fcs_kin, mi_lookup);
+      return init(h, beam_group.compute_RMf_N(angle).first, Fcs_kin, mi_lookup);
     }
 
     // recomputes the Eigen matrix
@@ -77,7 +77,7 @@ namespace smtbx { namespace ED
     }
   protected:
     dyn_calculator_factory<FloatType> dc_f;
-    const FrameInfo<FloatType>& frame;
+    const BeamGroup<FloatType>& beam_group;
     af::shared<miller::index<> > strong_indices;
     boost::shared_ptr<a_dyn_calculator<FloatType> > dc;
     size_t beam_n;
