@@ -12,39 +12,39 @@ namespace smtbx {  namespace ED
 {
   using namespace refinement::least_squares;
   template <typename FloatType>
-  class frame_processor {
+  class beam_group_processor {
   public:
     ED_UTIL_TYPEDEFS;
     typedef boost::shared_ptr<a_dyn_calculator<FloatType> > dyn_calculator_ptr_t;
-    frame_processor(
+    beam_group_processor(
       const dyn_calculator_factory<FloatType>& dc_f,
-      const FrameInfo<FloatType>& frame,
+      const BeamGroup<FloatType>& beam_group,
       const cmat_t& Ugs,
       const cart_t& K,
       const cctbx::xray::thickness<FloatType>& thickness,
       // kinematic dFc_dP
       const af::shared<cmat_t>& Ds_kin,
       bool calc_grad)
-      : frame(frame),
+      : beam_group(beam_group),
       Ugs(Ugs),
       thickness(thickness),
       Ds_kin(Ds_kin),
       calc_grad(calc_grad)
     {
-      strong_indices = af::select(frame.indices.const_ref(),
-        frame.strong_beams.const_ref());
+      strong_indices = af::select(beam_group.indices.const_ref(),
+        beam_group.strong_beams.const_ref());
       dyn_calculator = dc_f.make(strong_indices, K, thickness.value);
     }
 
-    virtual ~frame_processor() {}
+    virtual ~beam_group_processor() {}
 
     void operator()() {
-      process(frame.RMf, frame.geometry.get_normal());
+      process(beam_group.RMf, beam_group.geometry.get_normal());
     }
 
     void process(const mat3_t& RM, const cart_t& N) {
       try {
-        size_t beam_n = frame.strong_measured_beams.size();
+        size_t beam_n = beam_group.strong_measured_beams.size();
         if (calc_grad) {
           CIs = dyn_calculator->reset(Ugs, RM, N).calc_amps_ext(Ds_kin,
             thickness.grad,
@@ -93,7 +93,7 @@ namespace smtbx {  namespace ED
     dyn_calculator_ptr_t dyn_calculator;
     af::shared<miller::index<> > strong_indices;
   public:
-    const FrameInfo<FloatType>& frame;
+    const BeamGroup<FloatType>& beam_group;
     cmat_t Ugs;
     const cctbx::xray::thickness<FloatType>& thickness;
     af::shared<cmat_t> Ds_kin;

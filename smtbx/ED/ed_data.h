@@ -8,15 +8,42 @@ namespace smtbx { namespace ED
   using namespace cctbx;
 
   template <typename FloatType> struct BeamInfo;
+  template <typename FloatType> struct BeamGroup;
+  template <typename FloatType>
+  class EDData {
+    //ED_UTIL_TYPEDEFS;
+    typedef typename utils<FloatType>::a_geometry geometry_t;
+    struct Beam {
+      miller::index<> h;
+      FloatType start, middle, end;
+      Beam(const miller::index<>& h,
+        FloatType start, FloatType middle, FloatType end)
+        : h(h), start(start), middle(middle), end(end)
+      {}
+    };
+    af::shared<Beam> beams;
+  public:
+    EDData(boost::shared_ptr<geometry_t> geometry)
+      : geometry(geometry)
+    {}
+    void add(const miller::index<>& h,
+      FloatType start, FloatType middle, FloatType end)
+    {
+      beams.push_back(Beam(h, start, middle, end));
+    }
+    af::shared<BeamGroup<FloatType> > generate_groups(FloatType width) const;
+
+    boost::shared_ptr<geometry_t> geometry;
+  };
 
   template <typename FloatType>
-  class FrameInfo {
+  class BeamGroup {
   public:
     ED_UTIL_TYPEDEFS;
     typedef typename utils<FloatType>::a_geometry geometry_t;
-    FrameInfo() {}
+    BeamGroup() {}
 
-    FrameInfo(int id,
+    BeamGroup(int id,
       boost::shared_ptr<geometry_t> geometry,
       FloatType angle, FloatType scale)
       : id(id), tag(-1), geometry(geometry),
@@ -119,10 +146,10 @@ namespace smtbx { namespace ED
 
     void top_up(cart_t const& K,
       size_t num, FloatType min_d,
-      FloatType MaxSg, FloatType MaxG,
+      FloatType MaxSg,
       uctbx::unit_cell const& unit_cell,
       sgtbx::space_group const& space_group,
-      sgtbx::space_group const& uniq_sg, bool force_frame_normal
+      sgtbx::space_group const& uniq_sg
     );
 
     void add_indices(const af::shared<miller::index<> >& indices);
@@ -140,7 +167,6 @@ namespace smtbx { namespace ED
     void analyse_strength(
       af::shared<complex_t> const& Fcs_k,
       cart_t const& K,
-      FloatType MaxG,
       FloatType MaxSg,
       FloatType MinP,
       bool force_Sg);
@@ -187,21 +213,21 @@ namespace smtbx { namespace ED
   };
 
   template <typename FloatType>
-  bool FrameInfo<FloatType>::is_excited_index(const miller::index<>& h,
+  bool BeamGroup<FloatType>::is_excited_index(const miller::index<>& h,
     const cart_t& K, FloatType MaxSg, FloatType MaxG) const
   {
     return utils<FloatType>::is_excited_h(h, RMf, K, MaxSg, MaxG, angle);
   }
 
   template <typename FloatType>
-  bool FrameInfo<FloatType>::is_excited_beam(const BeamInfo<FloatType>& beam,
+  bool BeamGroup<FloatType>::is_excited_beam(const BeamInfo<FloatType>& beam,
     const cart_t& K, FloatType MaxSg, FloatType MaxG) const
   {
     return is_excited_index(beam.index, K, MaxSg, MaxG);
   }
 
   template <typename FloatType>
-  void FrameInfo<FloatType>::add_beam(
+  void BeamGroup<FloatType>::add_beam(
     const miller::index<>& index,
     FloatType I, FloatType sig)
   {
@@ -210,7 +236,7 @@ namespace smtbx { namespace ED
   }
 
   template <typename FloatType>
-  void FrameInfo<FloatType>::set_beams(af::shared<BeamInfo<FloatType> > const& beams) {
+  void BeamGroup<FloatType>::set_beams(af::shared<BeamInfo<FloatType> > const& beams) {
     this->beams = beams.deep_copy();
     indices.clear();
     indices.reserve(beams.size());
@@ -220,7 +246,7 @@ namespace smtbx { namespace ED
   }
 
   template <typename FloatType>
-  void FrameInfo<FloatType>::add_indices(
+  void BeamGroup<FloatType>::add_indices(
     const af::shared<miller::index<> >& indices)
   {
     this->indices.reserve(this->indices.size() + indices.size());
@@ -230,13 +256,13 @@ namespace smtbx { namespace ED
   }
 
   template <typename FloatType>
-  void FrameInfo<FloatType>::top_up(
+  void BeamGroup<FloatType>::top_up(
     cart_t const& K,
     size_t num, FloatType min_d,
-    FloatType MaxSg, FloatType MaxG,
+    FloatType MaxSg,
     uctbx::unit_cell const& unit_cell,
     sgtbx::space_group const &space_group,
-    sgtbx::space_group const& uniq_sg, bool force_frame_normal)
+    sgtbx::space_group const& uniq_sg)
   {
     if (indices.size() >= num) {
       return;
@@ -244,19 +270,13 @@ namespace smtbx { namespace ED
     typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
 
     af::shared<typename utils<FloatType>::ExcitedBeam> ebeams;
-    if (force_frame_normal) {
-      ebeams = utils<FloatType>::generate_index_set(RMf, K, min_d,
-        MaxG, MaxSg, unit_cell);
+    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
+    for (size_t i = 0; i < beams.size(); i++) {
+      FloatType da = this->get_diffraction_angle(beams[i].index, K);
+      RMfs.push_back(this->compute_RMf_N(da).first);
     }
-    else {
-      af::shared<mat3_t> RMfs(af::reserve(beams.size()));
-      for (size_t i = 0; i < beams.size(); i++) {
-        FloatType da = this->get_diffraction_angle(beams[i].index, K);
-        RMfs.push_back(this->compute_RMf_N(da).first);
-      }
-      ebeams = utils<FloatType>::generate_index_set(RMfs, K, min_d,
-        MaxG, MaxSg, unit_cell);
-    }
+    ebeams = utils<FloatType>::generate_index_set(RMfs, K, min_d,
+      MaxSg, unit_cell);
 
     lookup_t existing = lookup_t(
       indices.const_ref(),
@@ -278,10 +298,9 @@ namespace smtbx { namespace ED
 
   // J.M. Zuo, A.L. Weickenmeier / Ultramicroscopy 57 (1995) 375-383
   template <typename FloatType>
-  void FrameInfo<FloatType>::analyse_strength(
+  void BeamGroup<FloatType>::analyse_strength(
     af::shared<complex_t> const& Ugs,
     cart_t const& K,
-    FloatType MaxG,
     FloatType MaxSg,
     FloatType MinP,
     bool force_Sg)
@@ -296,16 +315,10 @@ namespace smtbx { namespace ED
 
     FloatType Kl_sq = K.length_sq(),
       Kl = std::sqrt(Kl_sq);
-    const FloatType max_f_sq = MaxG * MaxG,
-      p_ang_sq = angle * angle;
     for (size_t i = 0; i < indices.size(); i++) {
       miller::index<> const& h = indices[i];
       cart_t g = RMf * cart_t(h[0], h[1], h[2]);
       gs[i] = g;
-      //FloatType g_sq = g.length_sq();
-      //if (g_sq > max_f_sq) { // || g_sq * p_ang_sq > 1.0) {
-      //  continue;
-      //}
       cart_t K_g = K + g;
       FloatType s = Kl_sq - K_g.length_sq();
       excitation_errors[i] = s;
@@ -338,7 +351,7 @@ namespace smtbx { namespace ED
   }
 
   template <typename FloatType>
-  size_t FrameInfo<FloatType>::unify(sgtbx::space_group const& space_group,
+  size_t BeamGroup<FloatType>::unify(sgtbx::space_group const& space_group,
     sgtbx::space_group const& uniq_sg,
     bool anomalous, bool exclude_sys_abs)
   {
@@ -359,7 +372,7 @@ namespace smtbx { namespace ED
 
   }
   template <typename FloatType>
-  af::shared<FloatType> FrameInfo<FloatType>::get_angles_Sg(
+  af::shared<FloatType> BeamGroup<FloatType>::get_angles_Sg(
     const miller::index<>& h,
     const cart_t& K, FloatType Sg_span, FloatType Sg_step) const
   {
@@ -374,7 +387,7 @@ namespace smtbx { namespace ED
 
   /* input span and step are in degrees */
   template <typename FloatType>
-  af::shared<FloatType> FrameInfo<FloatType>::get_angles(FloatType ang,
+  af::shared<FloatType> BeamGroup<FloatType>::get_angles(FloatType ang,
     FloatType sn, FloatType st)
   {
     FloatType angle = scitbx::deg_as_rad(sn),
@@ -389,7 +402,7 @@ namespace smtbx { namespace ED
 
   /* input span and step are in degrees */
   template <typename FloatType>
-  af::shared<FloatType> FrameInfo<FloatType>::get_int_angles(
+  af::shared<FloatType> BeamGroup<FloatType>::get_int_angles(
     const cart_t& K, FloatType span_, FloatType step_, size_t N, bool use_Sg) const
   {
     af::shared<FloatType> angles, d_angles, res;

@@ -30,7 +30,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       f_calc_function_base_t& f_calc_function,
       sgtbx::space_group const& space_group,
       bool anomalous_flag,
-      af::shared<FrameInfo<FloatType> > frames,
+      af::shared<BeamGroup<FloatType> > beam_groups,
       cctbx::xray::thickness<FloatType> const& thickness,
       const RefinementParams<FloatType>& params,
       bool compute_grad,
@@ -41,49 +41,49 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       params(params),
       Kl(params.getKl()),
       Fc2Ug(params.getFc2Ug()),
-      frames(frames),
+      beam_groups(beam_groups),
       thickness(thickness),
       compute_grad(compute_grad),
       thread_n(params.getThreadN())
     {
-      K = frames[0].geometry->Kl_as_K(Kl);
-      // build lookups for each frame + collect all indices and they diffs
+      K = beam_groups[0].geometry->Kl_as_K(Kl);
+      // build lookups for each beam_group + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
-      // treat equivalents independently inside the frames
+      // treat equivalents independently inside the beam_groups
       sgtbx::space_group P1("P 1");
       if (params.getBeamN() == 2) {
-        for (size_t i = 0; i < frames.size(); i++) {
-          FrameInfo<FloatType>& frame = frames[i];
-          frames_map.insert(std::make_pair(frame.id, &frame));
+        for (size_t i = 0; i < beam_groups.size(); i++) {
+          BeamGroup<FloatType>& beam_group = beam_groups[i];
+          beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
           af::shared<miller::index<> > indices =
-            af::select(frame.indices.const_ref(),
-              frame.strong_measured_beams.const_ref());
+            af::select(beam_group.indices.const_ref(),
+              beam_group.strong_measured_beams.const_ref());
           lookup_ptr_t mi_l(new lookup_t(indices.const_ref(), P1, true));
-          frame_lookups.insert(std::make_pair(frame.id, mi_l));
+          beam_group_lookups.insert(std::make_pair(beam_group.id, mi_l));
           all_indices.extend(indices.begin(), indices.end());
         }
       }
       else {
         SMTBX_ASSERT(params.getBeamN() > 2);
-        for (size_t i = 0; i < frames.size(); i++) {
-          FrameInfo<FloatType>& frame = frames[i];
-          frames_map.insert(std::make_pair(frame.id, &frame));
-          for (size_t hi = 0; hi < frame.strong_beams.size(); hi++) {
-            const miller::index<>& h = frame.indices[frame.strong_beams[hi]];
+        for (size_t i = 0; i < beam_groups.size(); i++) {
+          BeamGroup<FloatType>& beam_group = beam_groups[i];
+          beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
+          for (size_t hi = 0; hi < beam_group.strong_beams.size(); hi++) {
+            const miller::index<>& h = beam_group.indices[beam_group.strong_beams[hi]];
             all_indices.push_back(h);
             all_indices.push_back(-h);
-            for (size_t hj = hi + 1; hj < frame.strong_beams.size(); hj++) {
-              const miller::index<>& k = frame.indices[frame.strong_beams[hj]];
+            for (size_t hj = hi + 1; hj < beam_group.strong_beams.size(); hj++) {
+              const miller::index<>& k = beam_group.indices[beam_group.strong_beams[hj]];
               all_indices.push_back(h - k);
               all_indices.push_back(k - h);
             }
           }
           lookup_ptr_t mi_l(new lookup_t(
-            af::select(frame.indices.const_ref(),
-              frame.strong_measured_beams.const_ref()).const_ref(),
+            af::select(beam_group.indices.const_ref(),
+              beam_group.strong_measured_beams.const_ref()).const_ref(),
             P1,
             true));
-          frame_lookups.insert(std::make_pair(frames[i].id, mi_l));
+          beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
         }
       }
       // a tricky way of getting unique only...
@@ -133,12 +133,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     RefinementParams<FloatType> params;
     FloatType Kl, Fc2Ug;
     cart_t K;
-    /* to lookup an index in particular frame, have to keep a copy of the
+    /* to lookup an index in particular beam_group, have to keep a copy of the
     indices
     */
-    typename std::map<int, lookup_ptr_t> frame_lookups;
-    typename std::map<int, FrameInfo<FloatType>*> frames_map;
-    af::shared<FrameInfo<FloatType> > frames;
+    typename std::map<int, lookup_ptr_t> beam_group_lookups;
+    typename std::map<int, BeamGroup<FloatType>*> beam_groups_map;
+    af::shared<BeamGroup<FloatType> > beam_groups;
     cctbx::xray::thickness<FloatType> const& thickness;
     bool compute_grad;
     af::shared<complex_t> Fcs_kin;
@@ -163,7 +163,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       observable_updated(false),
       computed(false)
     {
-      frame = 0;
+      beam_group = 0;
     }
 
     f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const& other)
@@ -193,10 +193,10 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         Fc = data.Fcs_kin[index];
         Fsq = std::norm(Fc);
       }
-      typename std::map<int, FrameInfo<FloatType>*>::const_iterator fi =
-        data.frames_map.find(fraction->tag);
-      SMTBX_ASSERT(fi != data.frames_map.end());
-      frame = fi->second;
+      typename std::map<int, BeamGroup<FloatType>*>::const_iterator fi =
+        data.beam_groups_map.find(fraction->tag);
+      SMTBX_ASSERT(fi != data.beam_groups_map.end());
+      beam_group = fi->second;
       this->h = h;
       this->compute_grad = compute_grad;
       computed = true;
@@ -220,17 +220,17 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     // Acta Cryst. (2013). A69, 171–188
     FloatType get_observable_pltns_2013() const {
-      FloatType da = frame->get_diffraction_angle(h, data.K);
+      FloatType da = beam_group->get_diffraction_angle(h, data.K);
       size_t n_param = data.Jt_matching_grad_fc.n_rows();
       size_t coln = data.design_matrix_kin.accessor().n_columns();
       af::shared<FloatType> grads_sum(coln);
       FloatType I1 = -1, g1 = -1, grad_fsq1 = 0, grad_t1 = 0, I_sum = 0,
         dT_sum = 0;
-    af::shared<FloatType> angles = frame->get_angles(da,
+    af::shared<FloatType> angles = beam_group->get_angles(da,
       data.params.getIntSpan(),
       data.params.getIntStep());
     for (size_t ai = 0; ai < angles.size(); ai++) {
-        std::pair<mat3_t, cart_t> r = frame->compute_RMf_N(angles[ai]);
+        std::pair<mat3_t, cart_t> r = beam_group->compute_RMf_N(angles[ai]);
         cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
         FloatType g = K_g.length();
         af::shared<FloatType> res = get_observable_pltns_2013_(angles[ai]);
@@ -271,7 +271,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> get_observable_pltns_2013_(FloatType angle) const {
       FloatType Kl = data.Kl;
       cart_t K = data.K;
-      std::pair<mat3_t, cart_t> FI = frame->compute_RMf_N(angle);
+      std::pair<mat3_t, cart_t> FI = beam_group->compute_RMf_N(angle);
 
       cart_t g = FI.first * cart_t(h[0], h[1], h[2]);
 
@@ -302,43 +302,43 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         }
         /* Testing derivatives shows consistensy with analytical expressions above */
         //FloatType eps = 1e-6;
-        //FloatType v1 = calc(Fsq - eps, K, t, Sg, frame->normal);
-        //FloatType v2 = calc(Fsq + eps, K, t, Sg, frame->normal);
+        //FloatType v1 = calc(Fsq - eps, K, t, Sg, beam_group->normal);
+        //FloatType v2 = calc(Fsq + eps, K, t, Sg, beam_group->normal);
         //FloatType diff = (v2 - v1) / (2*eps);
         //
-        //v1 = calc(Fsq, K, t - eps, Sg, frame->normal);
-        //v2 = calc(Fsq, K, t + eps, Sg, frame->normal);
+        //v1 = calc(Fsq, K, t - eps, Sg, beam_group->normal);
+        //v2 = calc(Fsq, K, t + eps, Sg, beam_group->normal);
         //diff = (v2 - v1) / (2 * eps);
         //FloatType grad_t = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
-        //FloatType v = calc(Fsq, K, Sg, t, frame->normal);
+        //FloatType v = calc(Fsq, K, Sg, t, beam_group->normal);
         //v = 0; // allow for a breakpoint here
       }
       return rv;
     }
 
     FloatType get_observable_N() const {
-      FloatType da = frame->get_diffraction_angle(h, data.K);
+      FloatType da = beam_group->get_diffraction_angle(h, data.K);
       af::shared<FloatType> angles;
       if (data.params.isAngleInt()) {
-        angles = frame->get_angles(da,
+        angles = beam_group->get_angles(da,
           data.params.getIntSpan(),
           data.params.getIntStep());
       }
       else {
-        angles = frame->get_angles_Sg(h, data.K,
+        angles = beam_group->get_angles_Sg(h, data.K,
           data.params.getIntSpan(),
           data.params.getIntStep());
       }
 
-      mat3_t da_rm = frame->geometry->get_RM(da);
-      cart_t da_n = da_rm.transpose() * frame->geometry->get_normal();
+      mat3_t da_rm = beam_group->geometry->get_RM(da);
+      cart_t da_n = da_rm.transpose() * beam_group->geometry->get_normal();
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
         data.params.getMatrixType(),
-        *frame, data.K, data.thickness.value,
+        *beam_group, data.K, data.thickness.value,
         data.params.useNBeamSg(), data.params.getNBeamWght());
 
       if (!data.params.isNBeamFloating()) {
-        n_beam_dc.init(h, frame->geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
+        n_beam_dc.init(h, beam_group->geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
       }
 
       mat_t D_dyn;
@@ -355,8 +355,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       FloatType I1 = -1, g1 = -1, I_sum = 0;
       for (size_t ai=0; ai < angles.size(); ai++) {
         std::pair<mat3_t, cart_t> r;
-        mat3_t rm = frame->geometry->get_RM(angles[ai]);
-        r.first = frame->geometry->get_RMf(rm);
+        mat3_t rm = beam_group->geometry->get_RM(angles[ai]);
+        r.first = beam_group->geometry->get_RMf(rm);
         // keep the original normal
         //r.second = da_r.second;
         r.second = rm * da_n;
@@ -406,7 +406,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       if (observable_updated || !computed) {
         return Fsq;
       }
-      SMTBX_ASSERT(frame != 0);
+      SMTBX_ASSERT(beam_group != 0);
       if (data.params.getBeamN() == 2) {
         Fsq = get_observable_pltns_2013();
       }
@@ -439,7 +439,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   private:
     data_t const& data;
     long index;
-    const FrameInfo<FloatType>* frame;
+    const BeamGroup<FloatType>* beam_group;
     bool compute_grad;
     mutable bool observable_updated, computed;
     mutable complex_t Fc;
