@@ -692,7 +692,7 @@ class dataset_statistics(object):
       force_exact_x_labels=True)
     for bin in self.bins :
       data = bin.table_data()
-      table.add_row([ data[0] ] + data[7:11] + [ data[-1] ])
+      table.add_row([ data[0] ] + data[7:10] + [ data[11] ] + [ data[-1] ])
     return table
 
   @property
