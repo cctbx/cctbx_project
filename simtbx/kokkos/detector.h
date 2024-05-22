@@ -208,7 +208,7 @@ struct kokkos_detector{
 
   inline af::shared<double>
   get_whitelist_raw_pixels(af::shared<std::size_t> selection) {
-    printf("algorithm: %20s selection size %10d\n",hello().c_str(), selection.size());
+    //printf("algorithm: %20s selection size %10d\n",hello().c_str(), selection.size());
     //return the data array for the multipanel detector case, but only for whitelist pixels
     vector_size_t active_pixel_selection = vector_size_t("active_pixel_selection", selection.size());
     kokkostbx::transfer_shared2kokkos(active_pixel_selection, selection);
