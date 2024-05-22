@@ -21,7 +21,6 @@ from libtbx import group_args
 from .volume_streaming import VolumeStreamingManager
 from ..gui.state.state import PhenixState
 from ..gui.controller.controller import Controller
-from ..gui.controller.selection_controls import SelectionControlsController
 from .server_utils import  NodeHttpServer
 from .volume_streaming import VolumeStreamingManager
 from ..core.selection_utils import SelectionQuery
@@ -379,7 +378,8 @@ class MolstarViewer(ModelViewer):
   # Selection
 
 
-  def select_from_query(self,query_json):
+  def select_from_query(self,query):
+    query_json = query.to_json()
     print(json.dumps(json.loads(query_json),indent=2))
     command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
     self.send_command(command)

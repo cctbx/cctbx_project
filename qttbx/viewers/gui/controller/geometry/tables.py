@@ -99,7 +99,7 @@ class GeometryTableTabController(TableController):
     self.table_model = PandasTableModel(df_filtered,suppress_columns=suppress_cols)
 
   def reform_columns(self,df):
-    cols = ["Chain","Res","Seq"]
+    cols = ["i_seqs","Chain","Res","Seq"]
     # add atom_id prefix columns
     for col in df.columns:
       if col.startswith("atom_id"):
@@ -112,14 +112,14 @@ class GeometryTableTabController(TableController):
       if col.startswith("atom_id"):
         number = col.split("atom_id")[-1]
         number = number.strip("_")
-        col_name = f"Atom {number}"
+        col_name = f"Atom{number}"
         self.rename_columns[col] = col_name
 
     df.rename(columns=self.rename_columns,inplace=True)
     
 
     # capitalize
-    capitalize = {c:c.capitalize() for c in df.columns}
+    capitalize = {c:c.capitalize() for c in df.columns if c not in ["i_seqs"]}
     df.rename(columns=capitalize,inplace=True)
 
     self.col_names = list(df.columns)
@@ -131,7 +131,7 @@ class GeometryTableTabController(TableController):
     if hasattr(restraint_ref.data,self.restraint_name):
       df = getattr(restraint_ref.data,self.restraint_name)
       self.dataframe = self.reform_columns(df)
-      self.table_model = PandasTableModel(self.dataframe,suppress_columns=[])
+      self.table_model = PandasTableModel(self.dataframe,suppress_columns=["i_seqs"])
       # self.table = table
       # self.table._parent_explicit = self
     if restraint_ref is not None:
@@ -145,6 +145,20 @@ class GeometryTableTabController(TableController):
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
   @staticmethod 
   def find_matching_row(df, dict_subset):
+    # hack to match keys
+    new_d = {}
+    for key,value in dict_subset.items():
+      if "Atom" in key:
+        i = key[-1]
+        new_d[f"atom_id_{i}"] = value
+      elif key.lower() in df.columns:
+        new_d[key.lower()] = value
+      elif key in df.columns:
+        new_d[key] = value
+      else:
+        assert False, "Unable to match key between named tuple and actual df"
+
+    dict_subset = new_d
     # Convert the dictionary to a pandas Series for comparison
     series = pd.Series(dict_subset)
     

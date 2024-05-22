@@ -140,17 +140,18 @@ def main(dm=None,params=None,log=None):
 
 
   # Reach into the Console tab to make variables accessible
-  if params and params.show_tab:
-    if 'all' in params.show_tab or 'console' in params.show_tab:
-      try:
-        import qtconsole
-        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
-        #include Selection dataclasses to build querys in console
-        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
-        app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
+  # if params and params.show_tab:
+  #   if 'all' in params.show_tab or 'console' in params.show_tab:
+  #     try:
+  # Change to enable console always by default
+  import qtconsole
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
+  #include Selection dataclasses to build querys in console
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
+  app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
-      except:
-        print("No qtconsole found")
+      # except:
+      #   print("No qtconsole found")
 
   # # Create an instance of the event filter
   # globalEventFilter = GlobalEventFilter()

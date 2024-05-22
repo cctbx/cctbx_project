@@ -16,7 +16,8 @@ from PySide2.QtWidgets import QFileDialog, QMessageBox
 from .controller import Controller
 from ...molstar.molstar import MolstarViewer
 from .style import ModelStyleController, MapStyleController
-from ..controller.selection_controls import SelectionControlsController
+#from ..controller.selection_controls import SelectionControlsController
+from ..controller.viewer_controls import ViewerControlsController
 from ...core.selection_utils import Selection, SelectionQuery
 from ...core.python_utils import DotDict
 
@@ -52,7 +53,8 @@ class MolstarController(Controller):
     self.viewer.state = self.state
     self.model_style_controller = ModelStyleController(parent=self,view=None)
     self.map_style_controller = MapStyleController(parent=self,view=None)
-    self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
+    #self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
+    self.viewer_controls = ViewerControlsController(parent=self,view=self.view.viewer_controls)
 
     self._blocking_commands = False
     self._picking_granularity = "residue"
@@ -205,6 +207,7 @@ class MolstarController(Controller):
     # get the relevant model ref (to get mol)
     ref_id = query_atoms.params.refId
     model_ref = self.state.references[ref_id]
+    query_atoms.params.keymap = self.state.mmcif_column_map
 
     # select sites
     sites_sel = model_ref.mol.atom_sites.select_from_query(query_atoms)
@@ -221,10 +224,10 @@ class MolstarController(Controller):
     # convert to query
     query = self.state.mol.sites._select_query_from_str_phenix(selection_phenix)
     query.params.refId = self.state.active_model_ref.id
-    self.viewer.select_from_query(query.to_json())
+    self.viewer.select_from_query(query)
 
   def select_from_ref(self,ref):
-    self.viewer.select_from_query(ref.query.to_json())
+    self.viewer.select_from_query(ref.query)
 
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'

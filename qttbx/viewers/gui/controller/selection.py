@@ -253,6 +253,11 @@ class SelectionListController(ScrollableListController):
 class SelectionTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-    self.state.signals.selection_change.connect(self.view.set_focus_on)
+    self.state.signals.selection_change.connect(self.set_focus_on)
 
     self.selection_list_controller = SelectionListController(parent=self,view=self.view.selection_list_view)
+
+  def set_focus_on(self):
+    # only set focus if populated
+    if len(self.selection_list_controller.entries)>0:
+      self.view.set_focus_on()

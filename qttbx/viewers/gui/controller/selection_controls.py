@@ -39,7 +39,7 @@ class SelectionControlsController(Controller):
     if self.state.active_selection_ref is None:
       self.viewer.deselect_all()
     else:
-      self.viewer.select_from_json(self.state.active_selection_ref.query.to_json())
+      self.viewer.select_from_query(self.state.active_selection_ref.query)
 
   def deselect(self):
     self.state.active_selection = None
@@ -55,16 +55,16 @@ class SelectionControlsController(Controller):
   def validate_selection(self,text):
     fail_reason = None
     passed = True
-    if "altloc" in text:
-      fail_reason = "altlocs not supported"
-    if "occ" in text or "occupancy" in text:
-      fail_reason = "occupancy not supported"
-    if "b" in text or "bfactor" in text:
-      fail_reason = "bfactor not supported"
-    if "resid" in text:
-      fail_reason = "resid not supported"
-    if fail_reason is not None:
-      passed = False
+    # if "altloc" in text:
+    #   fail_reason = "altlocs not supported"
+    # if "occ" in text or "occupancy" in text:
+    #   fail_reason = "occupancy not supported"
+    # if "b" in text or "bfactor" in text:
+    #   fail_reason = "bfactor not supported"
+    # if "resid" in text:
+    #   fail_reason = "resid not supported"
+    # if fail_reason is not None:
+    #   passed = False
     return passed, fail_reason
   @Slot()
   def execute_selection(self):
@@ -125,12 +125,12 @@ class SelectionControlsController(Controller):
     if ref_id not in self.state.references:
       ref_id = self.state.active_model_ref.id
     ref = self.state.references[ref_id]
+    query.params.keymap = self.state.mmcif_column_map
     sel_sites = self.state.active_mol.sites.select_from_query(query)
     if len(sel_sites)>0:
       sel_ref = SelectionRef(data=query,model_ref=ref,show=True)
       self.state.add_ref(sel_ref)
       self.state.active_selection_ref = sel_ref
-
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
       print("Skipping add selection due to empty selection")

@@ -138,8 +138,8 @@ class ViewerGUIView(QMainWindow):
     # Not visible by default
     self.tabs.toggle_tab_visible("Selections",show=False)
     self.tabs.toggle_tab_visible("CIF",show=False)
-    self.tabs.toggle_tab_visible("Geometry",show=False)
-    self.tabs.toggle_tab_visible("Edits",show=False)
+    self.tabs.toggle_tab_visible("Geometry",show=True)
+    self.tabs.toggle_tab_visible("Edits",show=True)
 
   def child_window_handler(self,event):
     self._has_child_window = True

@@ -191,6 +191,7 @@ class GUITabWidget(DraggableTabWidget):
         current_tab_widget.was_visited = True
 
   def toggle_tab_visible(self, tab_name, show=True):
+      print("toggle_tab_visible: ",tab_name)
       if show:
           if tab_name in self.hiddenTabs:
               # Re-add the tab

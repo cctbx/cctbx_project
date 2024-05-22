@@ -206,6 +206,10 @@ class State:
       if node.id in self.references:
         del self.references[node.id]
 
+  @property
+  def mmcif_column_map(self):
+    from ...core.selection_utils import core_keys_to_mmcif_keys_default
+    return core_keys_to_mmcif_keys_default
 
   @property
   def phenixState(self):

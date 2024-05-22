@@ -5,7 +5,8 @@ from PySide2.QtGui import QDragEnterEvent, QDropEvent
 
 
 from ..widgets.tab import GUITab
-from ..widgets.selection_controls import SelectionControlsView
+#from ..widgets.selection_controls import SelectionControlsView
+from ..widgets.viewer_controls import ViewerControlsView
 
 from PySide2.QtWebEngineWidgets import QWebEngineView
 
@@ -96,8 +97,11 @@ class ViewerTabView(GUITab):
     self.web_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.layout.addWidget(self.web_view)
 
-    self.selection_controls = SelectionControlsView()
-    self.layout.addWidget(self.selection_controls)
+    #self.selection_controls = SelectionControlsView()
+    #self.layout.addWidget(self.selection_controls)
+    self.viewer_controls = ViewerControlsView()
+    self.layout.addWidget(self.viewer_controls)
+    
 
 
     # Set the layout for the whole viewer

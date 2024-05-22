@@ -9,17 +9,35 @@ import ast
 """
 Selection API
 
+Rationale:
 The basic idea is to define a common way to specify selections among all the relevant other programs.
 Each program will have corner cases that can't be translated. This api serves as a filter, if a selection can be
 formatted using this api, it should be translatable to any other relevant program.
 
+Basics:
+1. The universal language is mmcif keys. 
+    In cases where it is ambiguous and unspecified, (auth_ vs label_) there is a default.
+2. All selections are disjunctive, ie the list of selections = [s1,s2,s3] means that returns atoms that match s1 OR s2
 """
+
+core_keys_to_mmcif_keys_default = {
+  # Maps a 'core' attribute key to a default 'real' attribute key
+  'asym_id':"auth_asym_id",
+  'seq_id':"auth_seq_id",
+  'comp_id':"label_comp_id",
+  'atom_id':"label_atom_id",
+  'type_symbol':"type_symbol",
+  'alt_id':'label_alt_id',
+}
+mmcif_keys_to_core_keys_default = {v:k for k,v in core_keys_to_mmcif_keys_default.items()}
+
 class SelectionQuery:
-  default_params = DotDict({'auth_label_pref':'auth','refId':'','model_id':''})
+  default_params = DotDict({"keymap":core_keys_to_mmcif_keys_default,'refId':'','model_id':''})
 
   @staticmethod
   def get_default_params():
     return copy.deepcopy(SelectionQuery.default_params)
+
   def __init__(self,selections,params=None):
 
     # set up params
@@ -33,22 +51,32 @@ class SelectionQuery:
 
     self.selections = selections
 
+    # DEBUG
+    for sel in self.selections:
+      for key,value in list(sel.data.items()):
+        if key not in mmcif_keys_to_core_keys_default:
+          del sel.data[key]
+
 
 
   def __eq__(self,other):
     assert isinstance(other,self.__class__), 'Compare with same class'
     return self.to_json()==other.to_json()
+
+  def print(self):
+    print(self.to_json(indent=2))
+
   def to_dict(self):
-    d = {'selections':[s.to_dict() for s in self.selections],'params':dict(self.params)}
+    d = {'selections':[s.resolve_keys(self).to_dict() for s in self.selections],"params":self.params}
     return d
+
   def to_json(self,indent=None):
     d = self.to_dict()
     return json.dumps(d,indent=indent)
 
   @classmethod
-  def from_model_ref(cls,ref,auth_label_pref='auth'):
+  def from_model_ref(cls,ref):
     params = cls.get_default_params()
-    params.auth_label_pref = auth_label_pref
     for key,value in ref.external_ids.items():
       params[key] = value
     params.refId = ref.id
@@ -58,7 +86,7 @@ class SelectionQuery:
 
 
   @classmethod
-  def from_i_seqs(cls,atom_sites,i_seqs,auth_label_pref='auth'):
+  def from_i_seqs(cls,atom_sites,i_seqs):
     try:
       i_seqs = [int(i) for i in i_seqs]
       sel_sites = atom_sites.__class__(atom_sites.loc[i_seqs],attrs_map=atom_sites.attrs_map)
@@ -78,7 +106,7 @@ class SelectionQuery:
       params = None
     if ref_id is not None:
       params["refId"] = ref_id
-    selections = [Selection(s,params=params) for s in d['selections']]
+    selections = [Selection(s) for s in d['selections']]
     return cls(selections,params=params)
 
   @classmethod
@@ -145,53 +173,47 @@ class Selection:
     'atom_id':{'ops':[{'op': '==', 'value': '*'}]},
     # 'id':{'ops':[{'op': '==', 'value': '*'}]},
     }
-  default_params = {'auth_label_pref':'auth'}
 
-  def __init__(self,data,params):
-    if params is None:
-      params = self.default_params
+  def __init__(self,data):
     # data is a dict representing a selection, same structure as default_select_all
-    for key,value in params.items():
-      setattr(self,key,value)
-    self.data = self._rename_keys_for_auth_label(data,auth_label_pref=self.auth_label_pref)
-
+    self.data = data
     # check case for consistency
     for keyword in ['comp_id','atom_id',"alt_id","asym_id","type_symbol"]:
       if keyword in self.data:
         for op in self.data[keyword]["ops"]:
           op['value'] =  op['value'].upper()
 
-  @staticmethod
-  def _rename_keys_for_auth_label(d,auth_label_pref='auth'):
-    new_columns = {}
-    for col in d.keys():
-      if 'auth_' in col and auth_label_pref == 'label':
-        continue
-      elif 'label_' in col and auth_label_pref == 'auth':
-        continue
-      elif 'auth_' in col and auth_label_pref == 'auth':
-        newcol = col.replace('auth_','')
-      elif 'label_' in col and auth_label_pref == 'label':
-        newcol = col.replace('label_','')
-      else:
-        newcol = col
-      new_columns[col] = newcol
+    
+  # def _rename_keys_for_auth_label(self,d,auth_label_pref='auth'):
+  #   new_columns = {}
+  #   for col in d.keys():
+  #     if 'auth_' in col and auth_label_pref == 'label':
+  #       continue
+  #     elif 'label_' in col and auth_label_pref == 'auth':
+  #       continue
+  #     elif 'auth_' in col and auth_label_pref == 'auth':
+  #       newcol = col.replace('auth_','')
+  #     elif 'label_' in col and auth_label_pref == 'label':
+  #       newcol = col.replace('label_','')
+  #     else:
+  #       newcol = col
+  #     new_columns[col] = newcol
 
-    out = {}
-    for key,value in d.items():
-      if 'auth' in key and  auth_label_pref == 'label':
-        pass # skip
-      elif 'label' in key and auth_label_pref == 'auth':
-        pass
-      else:
-        out[new_columns[key]] = value
-    return out
+  #   out = {}
+  #   for key,value in d.items():
+  #     if 'auth' in key and  auth_label_pref == 'label':
+  #       pass # skip
+  #     elif 'label' in key and auth_label_pref == 'auth':
+  #       pass
+  #     else:
+  #       out[new_columns[key]] = value
+  #   return out
 
 
   @classmethod
-  def from_default(cls,params=None):
+  def from_default(cls):
     data = cls.default_select_all
-    return cls(data,params=params)
+    return cls(data)
 
   @classmethod
   def from_df_record(cls,record,params=None):
@@ -211,6 +233,7 @@ class Selection:
 
   def to_dict(self):
     return self.data
+  
 
   @classmethod
   def from_json(cls,json_str,params=None):
@@ -220,7 +243,16 @@ class Selection:
     return cls(d,params=params)
 
   def to_json(self,indent=None):
-    return json.dumps(self.data,indent=indent)
+    return json.dumps(self.to_dict(),indent=indent)
+
+  def resolve_keys(self,query):
+    # If a query is present, where auth_ label_ ambiguity is resolved (if needed),
+    # settle explicitly what the keys are
+    for k,v in list(self.data.items()):
+      if k in query.params.keymap:
+        newkey = query.params.keymap[k]
+        self.data[newkey] = self.data.pop(k)
+    return self
 # @dataclass(frozen=True)
 # class Selection:
 #   asym_id: Dict[str, str] = field(default_factory=lambda: {'op': '==', 'value': '*'})
@@ -677,7 +709,7 @@ def df_nodes_group_to_query(df,composition_cols):
 
   selections = []
   for data in selection_dicts:
-    selections.append(Selection(data, None))
+    selections.append(Selection(data))
 
   query = SelectionQuery(selections=selections)
   return query

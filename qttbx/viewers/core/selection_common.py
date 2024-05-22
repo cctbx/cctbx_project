@@ -1,5 +1,6 @@
 import re
 import json
+from .selection_utils import SelConverterPhenix
 
 
 class CommonSelectionParser:
@@ -33,6 +34,11 @@ class CommonSelectionParser:
         break
     return expr[start:end+1]
 
+  @classmethod
+  def from_phenix_string(cls,phenix_string,debug=False,verify=True):
+    converter = SelConverterPhenix()
+    common_str = converter.convert_phenix_to_common(phenix_string)
+    return cls(common_str,debug=debug,verify=verify)
 
   def __init__(self, input_str, debug=False,verify=True):
     self.debug = debug
@@ -57,22 +63,24 @@ class CommonSelectionParser:
     self.ast = None
     self.current_token = None
     self.index = 0
-
-  def lexer(self,input_str):
+  @staticmethod
+  def lexer(input_str):
     token_specification = [
-      ('ID_QUOTED', r"'[^']*'"),  # recognize strings enclosed in single quotes
-      ('KEYWORD', r'\b(asym_id|seq_id|comp_id|atom_id|id|type_symbol|B_iso_or_equiv|occupancy|alt_id)\b'),  # recognize keywords
-      ('OPEN_PAREN', r'\('),
-      ('CLOSE_PAREN', r'\)'),
-      ('LOGICAL', r'\b(and|or|not)\b'),  # recognize logic
-      ('OPERATOR', r'[<>]=?|==|!='),
-      ('RANGE', r'\b\d+:\d+\b'),  # recognize ranges like "10:20" as single token
-      ('INT', r'\b\d+\b'),  # recognize integers
-      ('ID', r'[A-Za-z0-9_][A-Za-z_0-9]*'),  # modified to recognize identifiers starting with digits
-      ('WILDCARD', r'\*'),  # recognize *
-      ('COLON', r':'),
-      ('WHITESPACE', r'\s+'),
+    ('ID_QUOTED', r"'[^']*'"),  # recognize strings enclosed in single quotes
+    ('KEYWORD', r'\b(asym_id|seq_id|comp_id|atom_id|id|type_symbol|B_iso_or_equiv|occupancy|alt_id)\b'),  # recognize keywords
+    ('OPEN_PAREN', r'\('),
+    ('CLOSE_PAREN', r'\)'),
+    ('LOGICAL', r'\b(and|or|not)\b'),  # recognize logic
+    ('OPERATOR', r'[<>]=?|==|!='),
+    ('RANGE', r'\b\d+:\d+\b'),  # recognize ranges like "10:20" as single token
+    ('FLOAT', r'\b\d+\.\d+\b'),  # recognize floating-point numbers
+    ('INT', r'\b\d+\b'),  # recognize integers
+    ('ID', r'[A-Za-z0-9_][A-Za-z_0-9]*'),  # recognize identifiers starting with digits
+    ('WILDCARD', r'\*'),  # recognize *
+    ('COLON', r':'),
+    ('WHITESPACE', r'\s+'),  # recognize whitespace
     ]
+
     tok_regex = '|'.join('(?P<%s>%s)' % pair for pair in token_specification)
     tokens = []
     for mo in re.finditer(tok_regex, input_str):
@@ -86,11 +94,11 @@ class CommonSelectionParser:
     # Regularize
 
     # Test round trip
-    if self.verify:
-      reconstructed = ""
-      for token in tokens:
-        reconstructed+=token["value"]
-      assert input_str == reconstructed, f"Input str and reconstructed str do not match\n{input_str}\n{reconstructed}"
+    #if self.verify:
+    reconstructed = ""
+    for token in tokens:
+      reconstructed+=token["value"]
+    assert input_str == reconstructed, f"Input str and reconstructed str do not match\n{input_str}\n{reconstructed}"
 
 
     # Check for whitespace in values
@@ -101,7 +109,7 @@ class CommonSelectionParser:
     # Remove whitespace tokens
     tokens = [token for token in tokens if token["type"] != "WHITESPACE"]
 
-    # Create regularized string
+    # Create standardized whitespace string.
     regular_str = ""
     for i,token in enumerate(tokens):
       regular_str+=" "
@@ -212,7 +220,7 @@ class CommonSelectionParser:
     # Handle keyword followed by an operator
     operator_token = self.current_token
     self.consume()
-    if self.current_token["type"] == "INT":
+    if self.current_token["type"] in ["FLOAT","INT"]:
       node = {
         'type': 'KeywordComparison',
         'keyword': keyword_token,
@@ -226,7 +234,7 @@ class CommonSelectionParser:
 
   def handle_keyword_with_value(self, keyword_token):
     # Handle keyword followed by a value
-    if self.current_token["type"] in ["ID", "ID_QUOTED","INT", "RANGE", "WILDCARD"]:
+    if self.current_token["type"] in ["ID", "ID_QUOTED","FLOAT","INT", "RANGE", "WILDCARD"]:
       node = {'type': 'Keyword', 'keyword': keyword_token, 'value': self.current_token}
       self.consume()
       return node
@@ -236,7 +244,7 @@ class CommonSelectionParser:
   def parse_value(self):
     # Handle value types like ID, INT, etc.
     token = self.current_token
-    if token["type"] in ["ID","ID_QUOTED", "INT", "RANGE", "WILDCARD"]:
+    if token["type"] in ["ID","ID_QUOTED", "FLOAT","INT", "RANGE", "WILDCARD"]:
       node = {'type': 'Value', 'value': token}
       self.consume()
       return node
@@ -389,57 +397,62 @@ class CommonSelectionParser:
   #   else:
   #     raise Exception(f"Expected value token, got {token['type']}")
 
-
-
   def unparse_ast(self, node):
     if node['type'] == 'BinaryLogical':
       left_tokens = self.unparse_ast(node['left'])
       right_tokens = self.unparse_ast(node['right'])
       operator_token = [{'type': 'LOGICAL', 'value': node['operator']['value']}]
+
+      # Ensure correct parenthesization
       if node['left']['type'] == 'BinaryLogical' and node['left']['operator']['value'] != node['operator']['value']:
         left_tokens = [{'type': 'OPEN_PAREN', 'value': '('}] + left_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
 
       if node['right']['type'] == 'BinaryLogical' and node['right']['operator']['value'] != node['operator']['value']:
         right_tokens = [{'type': 'OPEN_PAREN', 'value': '('}] + right_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
+      print(f"BinaryLogical: {left_tokens} {operator_token} {right_tokens}\n")
       return left_tokens + operator_token + right_tokens
 
     elif node['type'] == 'UnaryLogical':
       operator_token = [{'type': 'LOGICAL', 'value': node['operator']['value']}]
       operand_tokens = self.unparse_ast(node['operand'])
+      print(f"UnaryLogical: {operator_token} {operand_tokens}\n")
       return operator_token + operand_tokens
 
     elif node['type'] == 'Keyword':
       keyword_token = [{'type': 'KEYWORD', 'value': node['keyword']['value']}]
       value_token = [{'type': node['value']['type'], 'value': node['value']['value']}]
+      print(f"Keyword: {keyword_token} {value_token}\n")
       return keyword_token + value_token
 
     elif node['type'] == 'KeywordComparison':
       keyword_token = [{'type': 'KEYWORD', 'value': node['keyword']['value']}]
       operator_token = [{'type': 'OPERATOR', 'value': node['operator']['value']}]
       value_token = [{'type': node['value']['type'], 'value': node['value']['value']}]
+      print(f"KeywordComparison: {keyword_tokens} {operator_token} {value_tokens}\n")
       return keyword_token + operator_token + value_token
 
     elif node['type'] == 'ParenthesizedExpression':
       operand_tokens = self.unparse_ast(node['operand'])
+      print(f"ParenthesizedExpression: ( {operand_tokens} )\n")
       return [{'type': 'OPEN_PAREN', 'value': '('}] + operand_tokens + [{'type': 'CLOSE_PAREN', 'value': ')'}]
-
 
     else:
       raise Exception(f"Unrecognized node type: {node['type']}")
 
 
+
   def debug_tokens(self,tokens1, tokens2):
-    N = max([len(tokens1),len(tokens2)])
-    for i in range(N):
-      if i< len(tokens1):
-        t1 = tokens1[i]
-      else:
-        t1 = ""
-      if i< len(tokens2):
-        t2 = tokens2[i]
-      else:
-        t2 = ""
-      print(t1,"\t",t2)
+    print("\nOriginal Tokens:")
+    for token in tokens1:
+      print(token)
+
+    unparsed_tokens = tokens2
+
+    print("\nUnparsed Tokens:")
+    for token in unparsed_tokens:
+      print(token)
+
+    assert tokens1 == unparsed_tokens, "The original and unparsed tokens do not match!"
 
   def to_pandas_query(self):
     assert self.ast is not None, "Parse first to get ast"

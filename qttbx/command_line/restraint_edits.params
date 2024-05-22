@@ -1,0 +1,23 @@
+
+    bond {
+      action: *add
+      atom_selection_1 = ((chain  'A') and (resname  'ASN') and (name  'O') and (resseq  6))
+      atom_selection_2 = ((chain  'A') and (resname  'TYR') and (name  'OH') and (resseq  7))
+      symmetry_operation = None
+      distance_ideal = 7.433
+      sigma = 0.001
+      slack = None
+      }
+    
+
+    angle {
+      action: *mod
+      atom_selection_1 = ((chain  'A') and (resname  'GLN') and (name  'CA') and (resseq  4))
+      atom_selection_2 = ((chain  'A') and (resname  'GLN') and (name  'C') and (resseq  4))
+      atom_selection_3 = ((chain  'A') and (resname  'GLN') and (name  'O') and (resseq  4))
+      symmetry_operation = None
+      distance_ideal = 120.33
+      sigma = 120.33
+      slack = None
+      }
+    

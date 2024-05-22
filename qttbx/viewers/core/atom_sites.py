@@ -15,6 +15,7 @@ from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from .selection_common import CommonSelectionParser
 from .selection_utils import (
+  core_keys_to_mmcif_keys_default,
   df_nodes_group_to_query,
   find_simplest_selected_nodes,
   form_simple_str_common,
@@ -70,12 +71,18 @@ dtypes_mmcif = {
 # Define functions to fill missing columns.
 # 'None' indicates an absolutely required initial column
 fill_functions = {
- 'auth_asym_id': lambda sites: sites["label_asym_id"],
- 'label_asym_id': None,
- 'auth_seq_id': lambda sites: sites["label_seq_id"],
- 'label_seq_id': None,
- 'auth_comp_id': lambda sites: sites["label_comp_id"],
- 'label_comp_id': None,
+ #'auth_asym_id': lambda sites: sites["label_asym_id"],
+ #'auth_asym_id': None,#lambda sites: sites["label_asym_id"],
+ #'label_asym_id': None,
+
+ #'auth_seq_id': lambda sites: sites["label_seq_id"],
+ #'auth_seq_id': None, #lambda sites: sites["label_seq_id"],
+ #'label_seq_id': None,
+
+ #'auth_comp_id': lambda sites: sites["label_comp_id"],
+ #'auth_comp_id':None, #lambda sites: sites["label_comp_id"],
+ #'label_comp_id': None,
+
  'type_symbol': None,
  'label_alt_id': None,
  'pdbx_PDB_model_num': None,
@@ -93,14 +100,8 @@ fill_functions = {
 },
 
  # Regularize names to a consistent default name (no auth,label prefix)
-attr_aliases = {
-  'asym_id':"auth_asym_id",
-  'seq_id':"auth_seq_id",
-  'comp_id':"auth_comp_id",
-  'atom_id':"label_atom_id",
-  'type_symbol':"type_symbol",
-  'alt_id':'label_alt_id',
-},
+attr_aliases = core_keys_to_mmcif_keys_default, # core:real
+#attr_aliases_reverse = {v:k for k,v in core_keys_to_mmcif_keys_default.items()}, # real:core
 
 attrs_core = [ # attributes assumed to exists
     'asym_id',
@@ -343,7 +344,7 @@ class AtomSites(pd.DataFrame):
     object.__setattr__(sites, "_rg_keys", rg_keys)
 
     ag_keys = ([
-                "auth_comp_id",
+                "label_comp_id",
                 "label_alt_id",
               ]
               )
@@ -364,10 +365,16 @@ class AtomSites(pd.DataFrame):
 
     # Initialize hierarchy keys.
     self._prepare_hierarchy(self)
+    object.__setattr__(self, "_hierarchy", None)
 
-    # TODO: Move this to config
-    self.comp_id_key = "auth_comp_id"
-    self.asym_id_key = "auth_asym_id"
+
+  @property
+  def comp_id_key(self):
+    return self.params.attr_aliases["comp_id"]
+
+  @property
+  def asym_id_key(self):
+    return self.params.attr_aliases["asym_id"]
 
 
   @property
@@ -636,9 +643,8 @@ class AtomSites(pd.DataFrame):
 
 
 
-  @staticmethod
-  def detect_chain_breaks(sites,cleanup_columns=True):
-    resname_key = "auth_comp_id"
+  def detect_chain_breaks(self,sites,cleanup_columns=True):
+    resname_key = self.comp_id_key
 
     blanks = sites.params.blanks
     def add_residue_class(resname):
@@ -967,6 +973,8 @@ class AtomSites(pd.DataFrame):
   def G_df(self):
     # Return hierarchy graph as a dataframe with each row a node
     return pd.DataFrame(list(self.G.nodes)[1:],columns=self.attrs_hierarchy_core)
+
+
   def _create_hierarchy_graph(self,columns):
       df = self.core
       G = nx.DiGraph()
@@ -1016,7 +1024,7 @@ class AtomSites(pd.DataFrame):
   def select_from_phenix_string(self,phenix_string):
     query = self.select_query_from_phenix_string(phenix_string)
     return self.select_from_query(query)
-    
+
   def select_query_from_phenix_string(self,phenix_string):
     query = self._select_query_from_str_phenix(phenix_string)
     return query
@@ -1026,6 +1034,14 @@ class AtomSites(pd.DataFrame):
       return self.__class__(self[self.index < 0]) # empty
     else:
       return self._convert_query_to_sites(query)
+
+  def query_from_i_seqs(self,i_seqs):
+    query = self.select_query_from_i_seqs(i_seqs)
+    return query
+    
+  def query_from_slice(self,slice):
+    i_seqs = slice.index
+    return self.query_from_i_seqs(i_seqs)
 
   def select_from_i_seqs(self,i_seqs):
     query = self.select_query_from_i_seqs(i_seqs)
@@ -1053,6 +1069,8 @@ class AtomSites(pd.DataFrame):
     subset sites data frame (This class)
     """
     # get a pandas query
+    import pdb
+    pdb.set_trace()
     return self._pandas_query_to_sites(query.pandas_query)
 
 
@@ -1080,14 +1098,14 @@ class AtomSites(pd.DataFrame):
     common_string= str_common
     parser = CommonSelectionParser(common_string)
     parser.parse()
-    #print(parser.ast)
+
     pandas_query = parser.to_pandas_query()
     sel = self.query(pandas_query)
 
     
     def relevant_cols(sites,search_string):
       relevant = []
-      for col in [col for col in sites[sites.attrs_hierarchy_core_compositional].columns if col != "id"]:
+      for col in [col for col in sites.core[sites.attrs_hierarchy_core_compositional].columns if col != "id"]:
         pattern = r'\b' + re.escape(col) + r'\b'
         if re.search(pattern, search_string):
           relevant.append(col)
@@ -1122,7 +1140,7 @@ class AtomSites(pd.DataFrame):
   #         nodes[col] = "*"
   #   return nodes
   
-  def _convert_sites_to_query(self,sites_sel,G,cols):
+  def _convert_sites_to_query(self,sites_sel,G=None,cols=None):
     """
     With a subset sites data frame, convert to a
     SelectionQuery object
@@ -1130,6 +1148,11 @@ class AtomSites(pd.DataFrame):
     """
     assert isinstance(sites_sel,self.__class__), f"Provide an atom sites object, not: {type(sites_sel), {print(sites_sel)}}"
     # find the minimum selections required
+
+    if G is None:
+      g = sites_sel.G
+    if cols == None:
+      cols = sites_sel.attrs_hierarchy_core_compositional
 
     nodes = find_simplest_selected_nodes(G,sites_sel["id"])
     if nodes == ["root"]:

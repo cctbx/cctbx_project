@@ -36,6 +36,7 @@ class TableController(Controller):
 
     # adjust column widths. TODO: Move elsewhere... view?
     self.view.table_view.adjustColumnWidths()
+    print("Showing tab due to dataframe setter: ",self.title)
     self.parent.view.toggle_tab_visible(self.title,show=True)
 
   @property
@@ -86,8 +87,9 @@ class TableController(Controller):
         self.state.signals.picking_level.emit(1) # element
         flattened_i_seqs = [item for sublist in df_sel['i_seqs'] for item in sublist]
         flattened_i_seqs = [int(e) for e in flattened_i_seqs if pd.notna(e)]
-        sel_sites = self.state.mol.sites.iloc[flattened_i_seqs]
-        query = self.state.mol.sites._convert_sites_to_query(sel_sites)
+        #sel_sites = self.state.mol.sites.iloc[flattened_i_seqs]
+        #query = self.state.mol.sites._convert_sites_to_query(sel_sites)
+        query = self.state.mol.sites.select_query_from_i_seqs(flattened_i_seqs)
         ref = SelectionRef(data=query,model_ref=self.state.active_model_ref,show=False)
         self.state.add_ref(ref)
         self.state.active_selection_ref = ref
