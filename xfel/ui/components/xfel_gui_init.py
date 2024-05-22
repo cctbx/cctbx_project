@@ -1633,7 +1633,8 @@ class MainWindow(wx.Frame):
   def onQuit(self, e):
     self.stop_sentinels()
     save_cached_settings(self.params)
-    if self.run_window.runstats_tab.sf_frame is not None:
+    # wx windows resolve to False if closed
+    if self.run_window.runstats_tab.sf_frame:
       self.run_window.runstats_tab.sf_frame.Close()
     self.Destroy()
 
@@ -3065,7 +3066,7 @@ class RunStatsTab(SpotfinderTab):
     from dials.command_line.image_viewer import phil_scope
     from dials.util.image_viewer.spotfinder_frame import SpotFrame, chooser_wrapper
     from dxtbx.model.experiment_list import ExperimentListFactory
-    if tab.sf_frame is None:
+    if not tab.sf_frame: # if closed, wx windows resolve to False
       expts = ExperimentListFactory.from_filenames([locator_path], load_models=False)
       tab.sf_frame = SpotFrame(tab.main, params=phil_scope.extract(), experiments=[expts], reflections=[])
       tab.sf_frame.SetSize((1024, 780))
