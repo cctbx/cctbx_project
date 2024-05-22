@@ -2225,6 +2225,8 @@ class _():
           rg.remove_atom_group(ag)
           chain = rg.parent()
           chain.remove_residue_group(rg)
+          if chain.atoms_size() == 0:
+            model.remove_chain(chain)
         else:
           residues[key] = ag
 
