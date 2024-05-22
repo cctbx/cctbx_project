@@ -305,17 +305,6 @@ def plot_run_stats(stats,
   if title is not None:
     plt.title(title)
   if interactive:
-    def onclick(event):
-      ts = event.xdata
-      if ts is None: return
-      diffs = flex.abs(t - ts)
-      ts = t[flex.first_index(diffs, flex.min(diffs))]
-      print(get_paths_from_timestamps([ts], tag="shot", ext=ext)[0])
-
-    if hasattr(f, '_cid'):
-      f.canvas.mpl_disconnect(f._cid)
-    f._cid = f.canvas.mpl_connect('button_press_event', onclick)
-
     if not figure:
       plt.show()
   else:
@@ -361,7 +350,7 @@ def plot_multirun_stats(runs,
     if len(r[0]) > 0:
       if compress_runs:
         tslice = r[0] - r[0][0] + offset
-        offset += (r[0][-1] - r[0][0] + 1/120.)
+        offset += (r[0][-1] - r[0][0] + 1)
       else:
         tslice = r[0]
       last_end = r[0][-1]

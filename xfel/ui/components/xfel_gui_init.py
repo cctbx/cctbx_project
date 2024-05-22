@@ -1633,6 +1633,8 @@ class MainWindow(wx.Frame):
   def onQuit(self, e):
     self.stop_sentinels()
     save_cached_settings(self.params)
+    if self.run_window.runstats_tab.sf_frame is not None:
+      self.run_window.runstats_tab.sf_frame.Close()
     self.Destroy()
 
 
@@ -2752,6 +2754,8 @@ class RunStatsTab(SpotfinderTab):
     self.strong_indexed_image_paths = None
     self.strong_indexed_image_timestamps = None
     self.auto_update = True
+    self.sf_frame = None
+    self.cached_run = None
 
     self.runstats_panel = wx.Panel(self, size=(100, 100))
     self.runstats_box = wx.StaticBox(self.runstats_panel, label='Run Statistics')
@@ -2961,6 +2965,10 @@ class RunStatsTab(SpotfinderTab):
     self.Bind(EVT_RUNSTATS_REFRESH, self.onRefresh)
     self.Bind(wx.EVT_SIZE, self.OnSize)
 
+    if hasattr(self.figure, '_cid'):
+      self.figure.canvas.mpl_disconnect(self.figure._cid)
+    self.figure._cid = self.figure.canvas.mpl_connect('button_press_event', self.onCanvasClick)
+
     self.Layout()
     self.Fit()
     self.runstats_panelsize = self.runstats_box.GetSize()
@@ -3018,6 +3026,57 @@ class RunStatsTab(SpotfinderTab):
         self.should_have_indexed_box.Show()
     self.Layout()
     self.Fit()
+
+  @staticmethod
+  def onCanvasClick(event):
+    if event.canvas.toolbar.mode: return
+    if event.xdata is None: return
+    tab = event.canvas.GetParent().GetParent().GetParent()
+    all_stats = tab.main.runstats_sentinel.stats
+    if not all_stats:
+      return
+    x = round(event.xdata)
+    run_numbers = tab.main.runstats_sentinel.run_numbers
+    found_it = False
+    for run_number, stats in zip(run_numbers, all_stats):
+      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices = stats
+      if x < len(timestamps):
+        found_it = True
+        break
+      else:
+        x -= len(timestamps)
+    assert found_it, x
+
+    trial = tab.trial
+    found_it = False
+    for rg in trial.rungroups:
+      for run in rg.runs:
+        if run.run == run_number:
+          found_it = True
+          break
+      if found_it:
+        break
+    assert found_it, run_number
+
+    params = tab.main.params
+    locator_path = os.path.join(params.output_folder, "r%04d"%int(run_number), \
+                                "%03d_rg%03d"%(trial.trial, rg.id), 'data.loc')
+
+    from dials.command_line.image_viewer import phil_scope
+    from dials.util.image_viewer.spotfinder_frame import SpotFrame, chooser_wrapper
+    from dxtbx.model.experiment_list import ExperimentListFactory
+    if tab.sf_frame is None:
+      expts = ExperimentListFactory.from_filenames([locator_path], load_models=False)
+      tab.sf_frame = SpotFrame(tab.main, params=phil_scope.extract(), experiments=[expts], reflections=[])
+      tab.sf_frame.SetSize((1024, 780))
+    elif tab.cached_run.run != run.run:
+      expts = ExperimentListFactory.from_filenames([locator_path], load_models=False)
+      tab.sf_frame.imagesets = expts.imagesets()
+    tab.sf_frame.add_file_name_or_data(chooser_wrapper(tab.sf_frame.imagesets[x], 0))
+    print("Loading run %s, image %d"%(run.run, x+1))
+    tab.sf_frame.load_image(chooser_wrapper(tab.sf_frame.imagesets[x], 0))
+    tab.sf_frame.Show()
+    tab.cached_run = run
 
   def onChkAutoUpdate(self, e):
     self.auto_update = self.chk_auto_update.GetValue()
