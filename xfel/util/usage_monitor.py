@@ -9,9 +9,10 @@ from typing import List
 
 from libtbx.mpi4py import MPI
 comm = MPI.COMM_WORLD
-log = logging.getLogger("cctbx.usage")
 log_path = f'usage_{comm.rank}.log'
-logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename=log_path, encoding='utf-8', level=logging.ERROR)
+log = logging.getLogger("cctbx.usage")
+log.setLevel(logging.DEBUG)
 
 
 class UsageMonitor(ContextDecorator):
