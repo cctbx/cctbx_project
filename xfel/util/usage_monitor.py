@@ -1,4 +1,5 @@
 from contextlib import ContextDecorator
+from enum import Enum
 import logging
 import platform
 import psutil
@@ -17,7 +18,16 @@ log.setLevel(logging.DEBUG)
 
 class UsageMonitor(ContextDecorator):
   """This class can be used both as context manager (with) and @decorator"""
-  def __init__(self) -> None:
+
+  class Detail(Enum):
+    off = 'off'
+    single = 'single'
+    node = 'node'
+    rank = 'rank'
+
+  def __init__(self, detail: str = 'node', every: float = 1.0) -> None:
+    self.detail = self.Detail(detail)
+    self.every = every
     self._gpu_count = None
 
   def __enter__(self) -> None:
@@ -69,11 +79,12 @@ class UsageMonitor(ContextDecorator):
   def logging_deamon(self) -> None:
     """Warning: call as threading daemon only, otherwise will never stop"""
     while True:
-      threading.Thread(self.log_usage, args=(self, ))
-      time.sleep(1.0)
+      threading.Thread(target=self.log_usage, args=(self, ))
+      time.sleep(self.every)
 
   def start_logging_deamon(self) -> threading.Thread:
-    return threading.Thread(self.logging_deamon, args=(self,), daemon=True)
+    return threading.Thread(target=self.logging_deamon,
+                            args=(self,), daemon=True)
 
 
 
