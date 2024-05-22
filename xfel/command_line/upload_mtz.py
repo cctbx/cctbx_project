@@ -6,7 +6,6 @@ from dials.util import Sorry
 import os, sys
 import re
 import fcntl
-import time
 
 
 help_message = """
