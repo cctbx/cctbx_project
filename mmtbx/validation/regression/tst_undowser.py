@@ -252,8 +252,8 @@ def exercise_undowser_json():
   m = dm.get_model("1")
   uz = undowser.undowserlyze(pdb_hierarchy=m.get_hierarchy())
   uz_dict = json.loads(uz.as_JSON())
-  import pprint
-  pprint.pprint(uz_dict)
+  #import pprint
+  #pprint.pprint(uz_dict)
   assert len(uz_dict['flat_results']) == 11, "tst_undowser json output not returning correct number of water clashes, now: "+str(len(uz_dict['flat_results']))
   assert uz_dict['flat_results'][0]["src_atom_id"] == " A 503 HOH  O   ", "tst_undowser json output first src_atom_id value changed, now: "+uz_dict['flat_results'][0]["src_atom_id"]
   from mmtbx.validation import test_utils
