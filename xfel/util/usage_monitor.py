@@ -40,9 +40,8 @@ class UsageStats:
 
 
 class UsageStatsHistory(UserDict):
-
   def get_deltas_in_minutes(self) -> np.ndarray:
-    times = np.array(self.keys(), dtype='datetime64')
+    times = np.array(list(self.keys()), dtype='datetime64')
     return (times - times[0]) / np.timedelta64(1, 'm')
 
   def get_stats(self, key: str) -> np.ndarray:
@@ -192,8 +191,6 @@ class UsageMonitor(ContextDecorator):
     log_iter_counter = itertools.count(start=0, step=1)
     for log_iter in log_iter_counter:
       threading.Thread(target=self.log_current_usage, args=()).start()
-      if log_iter % 10 == 0:
-        threading.Thread(target=self.plot_usage_stats_history, args=()).start()
       next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
       time.sleep((next_iter_time - datetime.now()).total_seconds())
 
