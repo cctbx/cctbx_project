@@ -82,7 +82,7 @@ class RankInfo:
             '--format=csv,noheader,nounits']
     out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
     values = [float(v) for v in out.replace(',', ' ').strip().split()]
-    return mean(values[::3]), mean(values[1::3]) / mean(values[1::3])
+    return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
 
   @property
   def rank_usage_stats(self) -> UsageStats:
