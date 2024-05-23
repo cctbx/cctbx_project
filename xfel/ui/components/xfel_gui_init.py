@@ -3033,6 +3033,8 @@ class RunStatsTab(SpotfinderTab):
     if event.canvas.toolbar.mode: return
     if event.xdata is None: return
     tab = event.canvas.GetParent().GetParent().GetParent()
+    params = tab.main.params
+    if params.facility.name != 'lcls': return
     all_stats = tab.main.runstats_sentinel.stats
     if not all_stats:
       return
@@ -3059,7 +3061,6 @@ class RunStatsTab(SpotfinderTab):
         break
     assert found_it, run_number
 
-    params = tab.main.params
     locator_path = os.path.join(params.output_folder, "r%04d"%int(run_number), \
                                 "%03d_rg%03d"%(trial.trial, rg.id), 'data.loc')
 
