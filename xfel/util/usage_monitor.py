@@ -166,10 +166,10 @@ class UsageMonitor(ContextDecorator):
   def log_usage_every_period(self) -> None:
     """Warning: call as threading daemon only, otherwise will never stop"""
     while True:
-      threading.Thread(target=self.log_current_usage, args=(self,)).start()
+      threading.Thread(target=self.log_current_usage, args=()).start()
       time.sleep(self.period)
 
   def start_logging_daemon(self) -> None:
     self._daemon = threading.Thread(target=self.log_usage_every_period,
-                                    args=(self,), daemon=True)
+                                    args=(), daemon=True)
     self.daemon.start()
