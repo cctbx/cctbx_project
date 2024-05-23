@@ -71,11 +71,12 @@ class RankInfo:
 
   @property
   def gpu_usage_and_memory(self) -> Tuple[float, float]:
-    args = ['nvidia-smi', '--query-gpu=utilization.gpu,utilization.memory',
+    args = ['nvidia-smi',
+            '--query-gpu=utilization.gpu,memory.used,memory.total',
             '--format=csv,noheader,nounits']
     out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
     values = [float(v) for v in out.replace(',', ' ').strip().split()]
-    return mean(values[::2]), mean(values[1::2])
+    return mean(values[::3]), mean(values[1::3]) / mean(values[1::3])
 
   @property
   def rank_usage_stats(self) -> UsageStats:
@@ -111,9 +112,9 @@ class UsageMonitor(ContextDecorator):
     single = 'single'
     none = 'none'
 
-  def __init__(self, detail: str = 'node', period: float = 1.0) -> None:
+  def __init__(self, detail: str = 'node', period: float = 5.0) -> None:
     self.detail = self.Detail(detail)
-    self.period: float = period
+    self.period: float = period  # <5 de-prioritizes sub-procs & they stop...
     self.log: logging.Logger = self.configure_logger()
     self.usage_stats_history = UsageStatsHistory()
     self._daemon = None
@@ -129,7 +130,7 @@ class UsageMonitor(ContextDecorator):
     return {
       self.Detail.rank: rank_info.rank_usage_stats,
       self.Detail.node: rank_info.node_usage_stats,
-      self.Detail.single: rank_info.node_usage_stats,
+      self.Detail.single: rank_info.rank_usage_stats,
       self.Detail.none: None
     }[self.detail]
 
