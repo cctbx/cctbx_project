@@ -1,9 +1,10 @@
 from collections import UserDict
 from contextlib import ContextDecorator
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from functools import cached_property
+import itertools
 import logging
 import platform
 import psutil
@@ -36,6 +37,9 @@ class UsageStats:
 
 class UsageStatsHistory(UserDict):
   pass
+
+  def plot(self):
+    print('In lieu of plotting usage stats')  # TODO implement
 
 
 class RankInfo:
@@ -111,16 +115,14 @@ class UsageMonitor(ContextDecorator):
     self.detail = self.Detail(detail)
     self.period: float = period
     self.log: logging.Logger = self.configure_logger()
-    self.log.info('Post-sample-or-nothing')
     self.usage_stats_history = UsageStatsHistory()
     self._daemon = None
 
   def __enter__(self) -> None:
-    if self.is_logging:
-      self.start_logging_daemon()
+    self.start_logging_daemon()
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    pass
+    self.summarize_usage_stats_history()
 
   @property
   def usage_stats(self) -> UsageStats:
@@ -162,29 +164,32 @@ class UsageMonitor(ContextDecorator):
       formatter = logging.Formatter('%(asctime)s - %(message)s')
       file_handler.setFormatter(formatter)
       log.addHandler(file_handler)
-      print(f'I am rank {rank_info.rank}, logging sample text')
-      log.info('Sample text')
     else:
       log = logging.getLogger("cctbx.usage")
       log.setLevel(logging.CRITICAL + 1)
       log.addHandler(logging.NullHandler())
-      print(f'I am rank {rank_info.rank}, logging nothing')
-      log.info('Nothing')
     return log
 
   def log_current_usage(self) -> None:
     usage_stats = self.usage_stats
-    if rank_info.rank == 0:
+    if self.is_logging:
       self.usage_stats_history[datetime.now()] = usage_stats
     self.log.info(msg=f'{usage_stats}')
 
   def log_usage_every_period(self) -> None:
     """Warning: call as threading daemon only, otherwise will never stop"""
-    while True:
+    start = datetime.now()
+    log_iter_counter = itertools.count(start=0, step=1)
+    for log_iter in log_iter_counter:
       threading.Thread(target=self.log_current_usage, args=()).start()
-      time.sleep(self.period)
+      next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
+      time.sleep((next_iter_time - datetime.now()).total_seconds())
 
   def start_logging_daemon(self) -> None:
     self._daemon = threading.Thread(target=self.log_usage_every_period,
                                     args=(), daemon=True)
     self.daemon.start()
+
+  def summarize_usage_stats_history(self):
+    if self.is_logging:
+      self.usage_stats_history.plot()
