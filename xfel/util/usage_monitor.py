@@ -111,6 +111,7 @@ class UsageMonitor(ContextDecorator):
     self.detail = self.Detail(detail)
     self.period: float = period
     self.log: logging.Logger = self.configure_logger()
+    self.log.info('Post-sample-or-nothing')
     self.usage_stats_history = UsageStatsHistory()
     self._daemon = None
 
@@ -161,10 +162,14 @@ class UsageMonitor(ContextDecorator):
       formatter = logging.Formatter('%(asctime)s - %(message)s')
       file_handler.setFormatter(formatter)
       log.addHandler(file_handler)
+      print(f'I am rank {rank_info.rank}, logging sample text')
+      log.info('Sample text')
     else:
       log = logging.getLogger("cctbx.usage")
       log.setLevel(logging.CRITICAL + 1)
       log.addHandler(logging.NullHandler())
+      print(f'I am rank {rank_info.rank}, logging nothing')
+      log.info('Nothing')
     return log
 
   def log_current_usage(self) -> None:
