@@ -12,7 +12,11 @@ from statistics import mean
 import subprocess
 import threading
 import time
-from typing import Tuple
+from typing import List, Tuple
+
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 
 from libtbx.mpi4py import MPI
 comm = MPI.COMM_WORLD
@@ -36,10 +40,13 @@ class UsageStats:
 
 
 class UsageStatsHistory(UserDict):
-  pass
 
-  def plot(self):
-    print('In lieu of plotting usage stats')  # TODO implement
+  def get_deltas_in_minutes(self) -> np.ndarray:
+    times = np.array(self.keys(), dtype='datetime64')
+    return (times - times[0]) / np.timedelta64(1, 'm')
+
+  def get_stats(self, key: str) -> np.ndarray:
+    return np.array([getattr(u, key) for u in self.values()])
 
 
 class RankInfo:
@@ -123,7 +130,7 @@ class UsageMonitor(ContextDecorator):
     self.start_logging_daemon()
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    self.summarize_usage_stats_history()
+    self.plot_usage_stats_history()
 
   @property
   def usage_stats(self) -> UsageStats:
@@ -185,6 +192,8 @@ class UsageMonitor(ContextDecorator):
     log_iter_counter = itertools.count(start=0, step=1)
     for log_iter in log_iter_counter:
       threading.Thread(target=self.log_current_usage, args=()).start()
+      if log_iter % 10 == 0:
+        threading.Thread(target=self.plot_usage_stats_history, args=()).start()
       next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
       time.sleep((next_iter_time - datetime.now()).total_seconds())
 
@@ -193,6 +202,34 @@ class UsageMonitor(ContextDecorator):
                                     args=(), daemon=True)
     self.daemon.start()
 
-  def summarize_usage_stats_history(self):
-    if self.is_logging:
-      self.usage_stats_history.plot()
+  def plot_usage_stats_history(self):
+    usage_stats_histories = comm.gather(self.usage_stats_history, root=0)
+    usage_stats_histories = [u for u in usage_stats_histories if u is not None]
+    if rank_info.rank == 0:
+      UsageArtist().plot(usage_stats_histories)
+
+
+class UsageArtist:
+  def __init__(self) -> None:
+    self.colormap = plt.get_cmap('tab10')
+    self.colormap_period = 10
+    self.fig = plt.figure(tight_layout=True)
+    gs = GridSpec(4, 1, hspace=0, wspace=0)
+    self.ax_cu = self.fig.add_subplot(gs[0, 0])  # cu = (c)pu (u)sage
+    self.ax_cm = self.fig.add_subplot(gs[1, 0], sharex=self.ax_cu)
+    self.ax_gu = self.fig.add_subplot(gs[2, 0], sharex=self.ax_cu)
+    self.ax_gm = self.fig.add_subplot(gs[3, 0], sharex=self.ax_cu)
+
+  def plot(self, usage_stats_histories: List[UsageStatsHistory]) -> None:
+    axes = self.ax_cu, self.ax_cm, self.ax_gu, self.ax_gm
+    stats = ['cpu_usage', 'cpu_memory', 'gpu_usage', 'gpu_memory']
+    labels = ['CPU usage', 'CPU memory', 'GPU usage', 'GPU memory']
+    for i, ush in enumerate(usage_stats_histories):
+      minutes = ush.get_deltas_in_minutes()
+      color = self.colormap(i % self.colormap_period)
+      for ax, stat in zip(axes, stats):
+        ax.plot(minutes, ush.get_stats(stat), color=color)
+    for ax, label in zip(axes, labels):
+      ax.set_ylabel(label)
+    self.fig.set_size_inches(12, 10)
+    self.fig.savefig('usage.png')
