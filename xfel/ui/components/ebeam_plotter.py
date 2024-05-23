@@ -42,14 +42,25 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, ma
       ebeams_eV.append(eeV:=ENERGY_CONV/ewav)
       print(f'{i}: {int(feV)} eV FEE / {int(eeV)} eV Ebeam')
 
-    if plot:
-      ax.hist(ebeams_eV, alpha=0.5, bins=40, label=f'run {runs[i]} ebeams ({int(eeV)} eV)')
-      ax.hist(fee_coms_eV, alpha=0.5, bins=40, label=f'run {runs[i]} FEE COMs ({int(feV)} eV)')
+    if len(ebeams_eV) == 0:
+      print("No events found with both FEE and eBeam")
+      return None, None
+    fee_coms_eV = np.array(fee_coms_eV)
+    ebeam_eV = np.array(ebeams_eV)
+    fee_coms_wav = np.array(fee_coms_wav)
+    ebeams_wav = np.array(ebeams_wav)
 
-    diffs_eV = np.array(fee_coms_eV) - np.array(ebeams_eV)
+    diffs_eV = fee_coms_eV - ebeam_eV
     ebeam_eV_offsets.append(sum(diffs_eV)/len(diffs_eV))
-    diffs_wav = np.array(fee_coms_wav) - np.array(ebeams_wav)
+    diffs_wav = fee_coms_wav - ebeams_wav
     ebeam_wav_offsets.append(sum(diffs_wav)/len(diffs_wav))
+
+    mean_fee_eV = np.mean(fee_coms_eV)
+    mean_ebeam_eV = np.mean(ebeam_eV)
+
+    if plot:
+      ax.hist(ebeams_eV, alpha=0.5, bins=40, label=f'run {runs[i]} ebeams ({int(mean_ebeam_eV)} eV)')
+      ax.hist(fee_coms_eV, alpha=0.5, bins=40, label=f'run {runs[i]} FEE COMs ({int(mean_fee_eV)} eV)')
 
   if plot:
     ax.legend()

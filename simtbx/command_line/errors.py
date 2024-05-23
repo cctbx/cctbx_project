@@ -10,7 +10,7 @@ parser.add_argument("outdir", type=str, help="output folder where integration ta
 parser.add_argument("--ndev", type=int, default=1, help="number of gpu devices")
 args = parser.parse_args()
 
-from mpi4py import MPI
+from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 
 import os

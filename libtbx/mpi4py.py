@@ -67,13 +67,23 @@ class mpiCommEmulator(object):
 
 mpiEmulator.COMM_WORLD = mpiCommEmulator()
 
+class MpiDisabledError(Exception):
+  pass
+
 try:
+  import libtbx
+  if libtbx.mpi_import_guard.disable_mpi:
+    raise MpiDisabledError
   from mpi4py import MPI
   using_mpi = True
 except ImportError:
   print ("\nWarning: could not import mpi4py. Running as a single process.\n")
   MPI = mpiEmulator()
   using_mpi = False
+except MpiDisabledError:
+  MPI = mpiEmulator()
+  using_mpi = False
+
 
 def mpi_abort_on_exception(func):
   """

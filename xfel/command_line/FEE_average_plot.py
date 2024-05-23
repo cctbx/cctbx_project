@@ -92,7 +92,7 @@ def run(args):
   ds = DataSource(dataset_name)
   src = Source('DetInfo(%s)'%params.input.address)
   # set up multiprocessing with MPI
-  from mpi4py import MPI
+  from libtbx.mpi4py import MPI
   comm = MPI.COMM_WORLD
   rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
   size = comm.Get_size() # size: number of processes running in this job

@@ -76,6 +76,7 @@ dependencies:
  # xfel gui
  - mysql
  - mysqlclient
+ - pydrive2
 
  # Avoid numpy 1.21.[01234]
  # See https://github.com/cctbx/cctbx_project/issues/627

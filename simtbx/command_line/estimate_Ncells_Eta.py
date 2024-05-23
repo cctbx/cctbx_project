@@ -17,7 +17,7 @@ parser.add_argument("--EtaMin", type=float, default=1e-3, help="If estimated Eta
 #parser.add_argument("--njobs", type=int, default=5, help="number of jobs (only runs on single node, no MPI)")
 parser.add_argument("--plot", action="store_true", help="show a histogram at the end")
 args = parser.parse_args()
-from mpi4py import MPI
+from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 #from joblib import Parallel, delayed
 import json

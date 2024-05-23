@@ -5,6 +5,7 @@ from libtbx.phil import parse
 from dials.util import Sorry
 import os, sys
 import re
+import fcntl
 
 
 help_message = """
@@ -71,6 +72,21 @@ def _get_log_fname(mtz_fname):
   assert len(hit.groups()) == 1
   return hit.groups()[0] + '_main.log'
 
+class Locker:
+  """ See https://stackoverflow.com/a/60214222
+  """
+  def __enter__(self):
+    try:
+      self.fp = open(os.path.expanduser('~/.upload_mtz.lock'), 'wb')
+    except FileNotFoundError:
+      self.fp = None
+    if self.fp is not None:
+      fcntl.flock(self.fp.fileno(), fcntl.LOCK_EX)
+  def __exit__(self, *args, **kwargs):
+    if self.fp is not None:
+      fcntl.flock(self.fp.fileno(), fcntl.LOCK_UN)
+      self.fp.close()
+
 class pydrive2_interface:
   """
   Wrapper for uploading versioned mtzs and logs using Pydrive2. Constructed from
@@ -92,26 +108,29 @@ class pydrive2_interface:
     self.drive = GoogleDrive(gauth)
     self.top_folder_id = folder_id
 
+
+
   def _fetch_or_create_folder(self, fname, parent_id):
-    query = {
-        "q": "'{}' in parents and title='{}'".format(parent_id, fname),
-        "supportsTeamDrives": "true",
-        "includeItemsFromAllDrives": "true",
-        "corpora": "allDrives"
-    }
-    hits = self.drive.ListFile(query).GetList()
-    if hits:
-      assert len(hits)==1
-      return hits[0]['id']
-    else:
+    with Locker():
       query = {
-        "title": fname,
-        "mimeType": "application/vnd.google-apps.folder",
-        "parents": [{"kind": "drive#fileLink", "id": parent_id}]
+          "q": "'{}' in parents and title='{}'".format(parent_id, fname),
+          "supportsTeamDrives": "true",
+          "includeItemsFromAllDrives": "true",
+          "corpora": "allDrives"
       }
-      f = self.drive.CreateFile(query)
-      f.Upload()
-      return f['id']
+      hits = self.drive.ListFile(query).GetList()
+      if hits:
+        assert len(hits)==1
+        return hits[0]['id']
+      else:
+        query = {
+          "title": fname,
+          "mimeType": "application/vnd.google-apps.folder",
+          "parents": [{"kind": "drive#fileLink", "id": parent_id}]
+        }
+        f = self.drive.CreateFile(query)
+        f.Upload()
+        return f['id']
 
   def _upload_detail(self, file_path, parent_id):
     title = os.path.split(file_path)[1]

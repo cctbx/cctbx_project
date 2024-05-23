@@ -50,7 +50,7 @@ class mod_event_code(object):
         self.size = int(os.environ['SGE_TASK_LAST']) - int(os.environ['SGE_TASK_FIRST']) + 1
     else:
       try:
-        from mpi4py import MPI
+        from libtbx.mpi4py import MPI
       except ImportError:
         self.rank = 0
         self.size = 1

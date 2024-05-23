@@ -77,7 +77,7 @@ def launch(argv=None) :
      argv = sys.argv[1:]
 
   try:
-     from mpi4py import MPI
+     from libtbx.mpi4py import MPI
   except ImportError:
      raise Sorry("MPI not found")
 
