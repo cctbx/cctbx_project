@@ -1,18 +1,95 @@
 from contextlib import ContextDecorator
+from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
 import logging
 import platform
 import psutil
+from statistics import mean
 import subprocess
 import threading
 import time
-from typing import List
+from typing import Tuple
 
 from libtbx.mpi4py import MPI
 comm = MPI.COMM_WORLD
-node = platform.node()
-node_ranks = [r for n, r in comm.allgather((node, comm.rank)) if n == node]
+process = psutil.Process()
+
+
+@dataclass
+class UsageStats:
+  cpu_usage: float = 0.0
+  cpu_memory: float = 0.0
+  gpu_usage: float = 0.0
+  gpu_memory: float = 0.0
+
+  def __add__(self, other: 'UsageStats') -> 'UsageStats':
+    return UsageStats(
+      cpu_usage=(self.cpu_usage + other.cpu_usage),
+      cpu_memory=(self.cpu_memory + other.cpu_memory),
+      gpu_usage=(self.gpu_usage + other.gpu_usage),
+      gpu_memory=(self.gpu_memory + other.gpu_memory),
+    )
+
+
+class RankInfo:
+  """Helper object that stores info about self and nearby ranks"""
+  def __init__(self):
+    self.rank = comm.rank
+    self.node = platform.node()
+    self.gpu = self.get_gpu_name()
+    self.same_node_ranks = [r for r, n in comm.allgather((self.rank, self.node))
+                            if n == self.node]
+    self.same_gpu_ranks = [r for r, g in comm.allgather((self.rank, self.gpu))
+                           if g == self.gpu]
+    self.is_gpu_ambassador = self.rank == min(self.same_gpu_ranks)
+    self.is_node_ambassador = self.rank == min(self.same_node_ranks)
+
+  @staticmethod
+  def get_gpu_name() -> str:
+    args = ['nvidia-smi', '--list-gpus']
+    out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
+    return out.strip()
+
+  @property
+  def rank_cpu_memory(self) -> float:
+    return process.memory_percent()
+
+  @property
+  def rank_cpu_usage(self) -> float:
+    return process.cpu_percent(interval=None)
+
+  @property
+  def gpu_usage_and_memory(self) -> Tuple[float, float]:
+    args = ['nvidia-smi', '--query-gpu=utilization.gpu,utilization.memory',
+            '--format=csv,noheader,nounits']
+    out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
+    values = [float(v) for v in out.replace(',', ' ').strip().split()]
+    return mean(values[::2]), mean(values[1::2])
+
+  @property
+  def rank_usage_stats(self) -> UsageStats:
+    gu, gm = self.gpu_usage_and_memory
+    return UsageStats(self.rank_cpu_usage, self.rank_cpu_memory, gu, gm)
+
+  @property
+  def node_usage_stats(self) -> UsageStats:
+    usage_stats = self.rank_usage_stats
+    ri_and_usage = comm.allgather((rank_info, usage_stats))
+    cpu_usage_stats = [u for ri, u in ri_and_usage if ri.node == self.node]
+    gpu_usage_stats = [u for ri, u in ri_and_usage
+                       if ri.node == self.node and ri.is_gpu_ambassador]
+    cpu_usage_stat_sum = sum(cpu_usage_stats, UsageStats())
+    gpu_usage_stat_sum = sum(gpu_usage_stats, UsageStats())
+    return UsageStats(
+      cpu_usage=cpu_usage_stat_sum.cpu_usage,
+      cpu_memory=cpu_usage_stat_sum.cpu_memory,
+      gpu_usage=gpu_usage_stat_sum.gpu_usage,
+      gpu_memory=gpu_usage_stat_sum.gpu_memory,
+    )
+
+
+rank_info = RankInfo()
 
 
 class UsageMonitor(ContextDecorator):
@@ -31,47 +108,30 @@ class UsageMonitor(ContextDecorator):
     self._daemon = None
 
   def __enter__(self) -> None:
-    if comm.rank == 0:
+    if self.is_logging:
       self.start_logging_daemon()
 
   def __exit__(self, exc_type, exc_val, exc_tb):
     pass
 
   @property
-  def cpu_memory(self) -> float:
-    mem = psutil.virtual_memory()
-    return mem.used / mem.total
-
-  @property
-  def cpu_usage(self) -> float:
-    return psutil.cpu_percent(interval=None)
+  def usage_stats(self) -> float:
+    return {
+      self.Detail.rank: rank_info.rank_usage_stats,
+      self.Detail.node: rank_info.node_usage_stats,
+      self.Detail.single: rank_info.node_usage_stats,
+      self.Detail.none: None
+    }[self.detail]
 
   @property
   def daemon(self) -> threading.Thread:
     return self._daemon
 
-  @property
-  def gpus_memory(self) -> List[float]:
-    smi = subprocess.run(['nvidia-smi', '--query-gpu=utilization.memory',
-                          '--format=csv,noheader,nounits'],
-                         stdout=subprocess.PIPE)
-    return [float(u) for u in smi.stdout.decode('utf-8').strip().split()]
-
-  @property
-  def gpus_usage(self) -> List[float]:
-    smi = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu',
-                          '--format=csv,noheader,nounits'], stdout=subprocess.PIPE)
-    return [float(u) for u in smi.stdout.decode('utf-8').strip().split()]
-
-  @cached_property
-  def gpu_count(self) -> int:
-    return len(self.gpus_usage)
-
   @cached_property
   def is_logging(self) -> bool:
     return {
       self.Detail.rank: True,
-      self.Detail.node: comm.rank == min(node_ranks),
+      self.Detail.node: rank_info.is_node_ambassador,
       self.Detail.single: comm.rank == 0,
       self.Detail.none: False
     }[self.detail]
@@ -79,18 +139,21 @@ class UsageMonitor(ContextDecorator):
   @cached_property
   def log_path(self) -> str:
     return {
-      self.Detail.rank: f'usage_{comm.rank}.log',
-      self.Detail.node: f'usage_{node}.log',
+      self.Detail.rank: f'usage_{rank_info.rank}.log',
+      self.Detail.node: f'usage_{rank_info.node}.log',
       self.Detail.single: 'usage.log',
-      self.Detail.none: ValueError
+      self.Detail.none: None
     }[self.detail]
 
   def configure_logger(self) -> logging.Logger:
     if self.is_logging:
-      logging.basicConfig(filename=self.log_path, encoding='utf-8',
-                          level=logging.ERROR)
       log = logging.getLogger("cctbx.usage")
-      log.setLevel(logging.DEBUG)
+      file_handler = logging.FileHandler(self.log_path)
+      file_handler.setLevel(logging.DEBUG)
+      format_ = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+      formatter = logging.Formatter(format_)
+      file_handler.setFormatter(formatter)
+      log.addHandler(file_handler)
     else:
       log = logging.getLogger("cctbx.usage")
       log.setLevel(logging.CRITICAL + 1)
@@ -98,11 +161,7 @@ class UsageMonitor(ContextDecorator):
     return log
 
   def log_current_usage(self) -> None:
-    cpu_usage = self.cpu_usage
-    cpu_memory = self.cpu_memory
-    gpu_usage = self.gpus_usage
-    gpu_memory = self.gpus_memory
-    self.log.info(msg=f'{cpu_usage=}, {cpu_memory=}, {gpu_usage=}, {gpu_memory=}.')
+    self.log.info(msg=f'{self.usage_stats}')
 
   def log_usage_every_period(self) -> None:
     """Warning: call as threading daemon only, otherwise will never stop"""
