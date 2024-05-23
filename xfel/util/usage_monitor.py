@@ -1,5 +1,7 @@
+from collections import UserDict
 from contextlib import ContextDecorator
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from functools import cached_property
 import logging
@@ -30,6 +32,10 @@ class UsageStats:
       gpu_usage=(self.gpu_usage + other.gpu_usage),
       gpu_memory=(self.gpu_memory + other.gpu_memory),
     )
+
+
+class UsageStatsHistory(UserDict):
+  pass
 
 
 class RankInfo:
@@ -105,6 +111,7 @@ class UsageMonitor(ContextDecorator):
     self.detail = self.Detail(detail)
     self.period: float = period
     self.log: logging.Logger = self.configure_logger()
+    self.usage_stats_history = UsageStatsHistory()
     self._daemon = None
 
   def __enter__(self) -> None:
@@ -115,7 +122,7 @@ class UsageMonitor(ContextDecorator):
     pass
 
   @property
-  def usage_stats(self) -> float:
+  def usage_stats(self) -> UsageStats:
     return {
       self.Detail.rank: rank_info.rank_usage_stats,
       self.Detail.node: rank_info.node_usage_stats,
@@ -132,7 +139,7 @@ class UsageMonitor(ContextDecorator):
     return {
       self.Detail.rank: True,
       self.Detail.node: rank_info.is_node_ambassador,
-      self.Detail.single: comm.rank == 0,
+      self.Detail.single: rank_info.rank == 0,
       self.Detail.none: False
     }[self.detail]
 
@@ -148,10 +155,10 @@ class UsageMonitor(ContextDecorator):
   def configure_logger(self) -> logging.Logger:
     if self.is_logging:
       log = logging.getLogger("cctbx.usage")
+      log.setLevel(logging.DEBUG)
       file_handler = logging.FileHandler(self.log_path)
       file_handler.setLevel(logging.DEBUG)
-      format_ = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-      formatter = logging.Formatter(format_)
+      formatter = logging.Formatter('%(asctime)s - %(message)s')
       file_handler.setFormatter(formatter)
       log.addHandler(file_handler)
     else:
@@ -161,7 +168,10 @@ class UsageMonitor(ContextDecorator):
     return log
 
   def log_current_usage(self) -> None:
-    self.log.info(msg=f'{self.usage_stats}')
+    usage_stats = self.usage_stats
+    if rank_info.rank == 0:
+      self.usage_stats_history[datetime.now()] = usage_stats
+    self.log.info(msg=f'{usage_stats}')
 
   def log_usage_every_period(self) -> None:
     """Warning: call as threading daemon only, otherwise will never stop"""
