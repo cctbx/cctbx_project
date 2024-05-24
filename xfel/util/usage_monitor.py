@@ -84,14 +84,12 @@ class RankInfo:
     values = [float(v) for v in out.replace(',', ' ').strip().split()]
     return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
 
-  @property
-  def rank_usage_stats(self) -> UsageStats:
+  def get_rank_usage_stats(self) -> UsageStats:
     gu, gm = self.gpu_usage_and_memory
     return UsageStats(self.rank_cpu_usage, self.rank_cpu_memory, gu, gm)
 
-  @property
-  def node_usage_stats(self) -> UsageStats:
-    usage_stats = self.rank_usage_stats
+  def get_node_usage_stats(self) -> UsageStats:
+    usage_stats = self.get_rank_usage_stats()
     ri_and_usage = comm.allgather((rank_info, usage_stats))
     cpu_usage_stats = [u for ri, u in ri_and_usage if ri.node == self.node]
     gpu_usage_stats = [u for ri, u in ri_and_usage
@@ -134,11 +132,11 @@ class UsageMonitor(ContextDecorator):
   @property
   def usage_stats(self) -> UsageStats:
     return {
-      self.Detail.rank: rank_info.rank_usage_stats,
-      self.Detail.node: rank_info.node_usage_stats,
-      self.Detail.single: rank_info.rank_usage_stats,
-      self.Detail.none: None
-    }[self.detail]
+      self.Detail.rank: rank_info.get_rank_usage_stats,
+      self.Detail.node: rank_info.get_node_usage_stats,
+      self.Detail.single: rank_info.get_rank_usage_stats,
+      self.Detail.none: (lambda _: None)
+    }[self.detail]()
 
   @property
   def daemon(self) -> threading.Thread:
