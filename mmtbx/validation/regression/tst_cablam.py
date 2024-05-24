@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.validation import cablam
 from libtbx.test_utils import show_diff
 from iotbx.data_manager import DataManager
-from libtbx.test_utils import convert_string_to_cif_long, convert_pdb_to_cif_for_pdb_str
+from libtbx.test_utils import convert_string_to_cif_long
 
 from iotbx import pdb
 import libtbx.load_env
