@@ -127,6 +127,10 @@ def run(args,
     for t in all_tests:
       if t.find(u) > -1:
         expected_unstable_list.append(t)
+  # Run all above to get expected failures etc
+
+  if (supplied_list_of_tests is not None):
+    all_tests = supplied_list_of_tests  # just use supplied tests
 
   # run only specified tests:
   if tests_to_run:
@@ -157,9 +161,6 @@ def run(args,
           print ("Skipping the test %s" %(t))
       all_tests=new_tests
 
-  if (supplied_list_of_tests is not None):
-    all_tests = supplied_list_of_tests  # just use supplied tests
-    # Run all above to get expected failures etc
 
   # check that test lists are unique
   seen = set()
