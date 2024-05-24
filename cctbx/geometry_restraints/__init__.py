@@ -65,7 +65,6 @@ class proxy_registry_base(object):
     self.proxies = proxies
     self.strict_conflict_handling = strict_conflict_handling
     self.n_resolved_conflicts = 0
-    self.counts = flex.size_t()
     self.discard_table()
 
   def initialize_table(self):
@@ -81,11 +80,9 @@ class proxy_registry_base(object):
   def append_custom_proxy(self, proxy):
     assert self.table is None
     self.proxies.append(proxy)
-    self.counts.append(1)
 
   def _append_proxy(self, source_info, proxy, process_result):
     self.proxies.append(proxy)
-    self.counts.append(1)
     self.source_labels.append(source_info.labels())
     self.source_n_expected_atoms.append(source_info.n_expected_atoms())
     process_result.tabulated_proxy = proxy
@@ -96,6 +93,7 @@ class proxy_registry_base(object):
         proxy,
         i_list,
         process_result):
+    # Almost never called.
     source_n_expected_atoms = source_info.n_expected_atoms()
     if (self.strict_conflict_handling
         or self.source_n_expected_atoms[i_list]
@@ -156,8 +154,6 @@ class bond_simple_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1
     return result
 
 class angle_proxy_registry(proxy_registry_base):
@@ -175,7 +171,6 @@ class angle_proxy_registry(proxy_registry_base):
     if (i_seqs_0_2 not in tab_i_seq_1):
       tab_i_seq_1[i_seqs_0_2] = self.proxies.size()
       self.proxies.append(proxy)
-      self.counts.append(1)
       return True
     return False
 
@@ -202,8 +197,6 @@ class angle_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1
     return result
 
   def lookup_i_proxy(self, i_seqs):
@@ -231,7 +224,6 @@ class dihedral_proxy_registry(proxy_registry_base):
     if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
-      self.counts.append(1)
       return True
     return False
 
@@ -260,8 +252,6 @@ class dihedral_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1
     return result
 
   def lookup_i_proxy(self, i_seqs):
@@ -293,7 +283,6 @@ class chirality_proxy_registry(proxy_registry_base):
     if (i_seqs_1_2_3 not in tab_i_seq_0):
       tab_i_seq_0[i_seqs_1_2_3] = self.proxies.size()
       self.proxies.append(proxy)
-      self.counts.append(1)
       return True
     return False
 
@@ -321,8 +310,6 @@ class chirality_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1
     return result
 
 class planarity_proxy_registry(proxy_registry_base):
@@ -341,7 +328,6 @@ class planarity_proxy_registry(proxy_registry_base):
       tab_i_seq_0[i_seqs_1_up] = self.proxies.size()
       # saving proxy number in list
       self.proxies.append(proxy)
-      self.counts.append(1)
       return True
     return False
 
@@ -367,8 +353,6 @@ class planarity_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1
     return result
 
 class parallelity_proxy_registry(proxy_registry_base):
@@ -388,7 +372,6 @@ class parallelity_proxy_registry(proxy_registry_base):
       # saving proxy number in list
       self.table[(tab_i_seqs, tab_j_seqs)]= self.proxies.size()
       self.proxies.append(proxy)
-      self.counts.append(1)
       return True
     return False
 
@@ -422,8 +405,6 @@ class parallelity_proxy_registry(proxy_registry_base):
           proxy=proxy,
           i_list=i_list,
           process_result=result)
-      if (not result.is_conflicting):
-        self.counts[i_list] += 1 # mark somewhere that this is duplicated
     return result
 
 @bp.inject_into(prolsq_repulsion_function)
