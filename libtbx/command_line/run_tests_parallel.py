@@ -45,6 +45,7 @@ def run(args,
    max_tests=None,
    start_test=None,
    tests_to_skip=None,
+   tests_to_run=None,
    expected_failures_from_phenix_regression=[],
    unstables_from_phenix_regression = [],
    supplied_list_of_tests = None):
@@ -126,6 +127,21 @@ def run(args,
     for t in all_tests:
       if t.find(u) > -1:
         expected_unstable_list.append(t)
+
+  # run only specified tests:
+  if tests_to_run:
+      new_tests=[]
+      for t in all_tests:
+        keep=False
+        for tts in tests_to_run:
+          if t.find(tts)>-1:
+            keep=True
+        if keep:
+          print ("Keeping the test %s" %(t))
+          new_tests.append(t)
+        else:
+          pass
+      all_tests=new_tests
 
   # remove any specified tests:
   if tests_to_skip:
