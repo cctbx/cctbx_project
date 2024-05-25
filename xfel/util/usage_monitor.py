@@ -81,9 +81,11 @@ class RankInfo:
             '--query-gpu=utilization.gpu,memory.used,memory.total',
             '--format=csv,noheader,nounits']
     out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
-    print(out)
-    values = [float(v) for v in out.replace(',', ' ').strip().split()]
-    return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
+    try:
+      values = [float(v) for v in out.replace(',', ' ').strip().split()]
+      return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
+    except ValueError:  # can occur if no GPU is attached
+      return -1.0, -1.0
 
   def get_rank_usage_stats(self) -> UsageStats:
     gu, gm = self.gpu_usage_and_memory
