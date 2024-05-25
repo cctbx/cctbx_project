@@ -1145,11 +1145,10 @@ class _():
     """
     if(self.atoms_size() != xray_structure.scatterers().size()):
       raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
-    awl = self.atoms_with_labels()
     scatterers = xray_structure.scatterers()
     uc = xray_structure.unit_cell()
     orth = uc.orthogonalize
-    for sc, a in zip(scatterers, awl):
+    for sc, a in zip(scatterers, self.atoms()):
       a.set_xyz(new_xyz=orth(sc.site))
       a.set_occ(new_occ=sc.occupancy)
       a.set_b(new_b=adptbx.u_as_b(sc.u_iso_or_equiv(uc)))
