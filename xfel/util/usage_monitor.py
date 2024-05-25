@@ -81,6 +81,7 @@ class RankInfo:
             '--query-gpu=utilization.gpu,memory.used,memory.total',
             '--format=csv,noheader,nounits']
     out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
+    print(out)
     values = [float(v) for v in out.replace(',', ' ').strip().split()]
     return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
 
@@ -199,8 +200,8 @@ class UsageMonitor(ContextDecorator):
 
   def plot_usage_stats_history(self):
     usage_stats_histories = comm.gather(self.usage_stats_history, root=0)
-    usage_stats_histories = [u for u in usage_stats_histories if u is not None]
     if rank_info.rank == 0:
+      usage_stats_histories = [u for u in usage_stats_histories if u is not None]
       UsageArtist().plot(usage_stats_histories)
 
 
