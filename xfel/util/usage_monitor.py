@@ -179,9 +179,7 @@ class UsageMonitor(ContextDecorator):
     return log
 
   def log_current_usage(self) -> None:
-    print('Logging usage... ' + str(datetime.now()))
     usage_stats = self.usage_stats
-    print('logged usage! ' + str(datetime.now()))
     if self.is_logging:
       self.usage_stats_history[datetime.now()] = usage_stats
     self.log.info(msg=f'{usage_stats}')
