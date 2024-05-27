@@ -191,7 +191,7 @@ class UsageMonitor(ContextDecorator):
     for log_iter in log_iter_counter:
       threading.Thread(target=self.log_current_usage, args=()).start()
       next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
-      time.sleep((next_iter_time - datetime.now()).total_seconds())
+      time.sleep(max((next_iter_time - datetime.now()).total_seconds(), 0))
 
   def start_logging_daemon(self) -> None:
     self._daemon = threading.Thread(target=self.log_usage_every_period,
