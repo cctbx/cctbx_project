@@ -2946,7 +2946,7 @@ class manager(object):
     pi_scope = self.get_current_pdb_interpretation_params()
     # check if current pi_params is consistent with requested X-H length mode
     if (pi_scope.pdb_interpretation.use_neutron_distances
-         is not use_neutron_distances and self._model_input is not None):
+         is not use_neutron_distances):
       pi_scope.pdb_interpretation.use_neutron_distances = use_neutron_distances
       # this will take care of resetting everything (grm, processed pdb)
       self.process(make_restraints=True,
