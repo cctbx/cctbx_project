@@ -74,6 +74,26 @@ def exercise_align():
   assert i_seqs == flex.size_t([0, 1, 2, 7, 8, 9]) and \
          j_seqs == flex.size_t([0, 1, 2, 8, 9, 10])
 
+def exercise_exact_mismatch_selection():
+  """ examples from exercise_aligh function
+  """
+  def get_mismatch_sel(s1, s2):
+    i, j = align(s1, s2).extract_alignment().exact_mismatch_selection()
+    return list(i), list(j)
+  i_seqs, j_seqs = get_mismatch_sel("EASYA",
+                                    "AETSYT")
+  assert i_seqs == [1,4] and j_seqs == [2,5]
+
+  i_seqs, j_seqs = get_mismatch_sel("EASY",
+                                    "KMST")
+  assert i_seqs == [0,1,3] and j_seqs == [0,1,3]
+
+  i_seqs, j_seqs = get_mismatch_sel("EASY",
+                                    "KMT")
+  assert i_seqs == [1,2,3] and j_seqs == [0,1,2]
+  i_seqs, j_seqs = get_mismatch_sel("EASY",
+                                    "EASY")
+  assert i_seqs == [] and j_seqs == []
 
 def exercise_2():
   A = "AAAGGTT"
@@ -232,6 +252,7 @@ alltests = unittest.TestSuite(
 def exercise():
   exercise_align_mask()
   exercise_align()
+  exercise_exact_mismatch_selection()
   exercise_2()
   exercise_similarity_scores()
   exercise_ext
