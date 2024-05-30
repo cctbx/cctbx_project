@@ -16,14 +16,16 @@ import subprocess
 import threading
 import time
 from typing import List, Type, Union
-PathLike = Union[str, bytes, os.PathLike]
 
-import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+import numpy as np
 
 from libtbx.mpi4py import MPI
+
+
 comm = MPI.COMM_WORLD
+PathLike = Union[str, bytes, os.PathLike]
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ LOGGING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -221,7 +223,7 @@ class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
 
 class RankInfo:
   """Manage info about this and neighbor ranks using auto-discovered probes"""
-  def __init__(self):
+  def __init__(self) -> None:
     self.rank = comm.rank
     self.cpu_probe = CPUResourceProbeType.discover()()
     self.gpu_probe = GPUResourceProbeType.discover()()
