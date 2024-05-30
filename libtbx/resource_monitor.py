@@ -33,6 +33,7 @@ PathLike = Union[str, bytes, os.PathLike]
 
 class ResourceLogManager:
   """Create appropriate resource logger for each rank and control its format"""
+  date_fmt = '%Y-%m-%d %H:%M:%S,%f'  # exposed logging default, do not change
   fmt = '%(asctime)s - %(message)s'
   formatter = logging.Formatter(fmt=fmt)
   line_regex = re.compile(
