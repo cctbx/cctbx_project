@@ -107,7 +107,7 @@ class ResourceStatsHistory(UserDict[datetime, ResourceStats]):
   def get_deltas_array(self) -> np.ndarray:  # result in minutes
     times = np.array(list(self.keys()), dtype=np.datetime64)
     return (times - times[0]) / np.timedelta64(1, 'm') \
-        if times else np.empty((0,), dtype=np.float64)
+        if times.size else np.empty((0,), dtype=np.float64)
 
   def get_stats_array(self, key: str) -> np.ndarray:
     return np.array([getattr(u, key) for u in self.values()])
