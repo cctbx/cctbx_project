@@ -209,7 +209,7 @@ class BaseGPUResourceProbe(metaclass=GPUResourceProbeType):
   kind = None
 
 
-class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
+class NvidiaGPUResourceProbe(BaseGPUResourceProbe):
   """GPU resource probe that attempts collecting GPU resource via nvidia-smi"""
   kind = 'Nvidia'
 
