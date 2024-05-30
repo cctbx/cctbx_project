@@ -30,6 +30,7 @@ comm = MPI.COMM_WORLD
 
 
 class UsageLogManager:
+  """Create appropriate usage logger for each rank and control its format"""
   date_fmt = '%Y-%m-%d %H:%M:%S,uuu'
   fmt = '%(asctime)s - %(message)s'
   formatter = logging.Formatter(fmt=fmt, datefmt=date_fmt)
@@ -69,6 +70,7 @@ class UnitIntervalFloat(float):
 
 @dataclass
 class UsageStats:
+  """Convenient dataclass used to pass info about CPU/GPU usage/memory"""
   cpu_usage: UnitIntervalFloat = 0.0
   cpu_memory: UnitIntervalFloat = 0.0
   gpu_usage: UnitIntervalFloat = 0.0
@@ -88,8 +90,8 @@ class UsageStats:
     return self.__class__(*(self.vector / other))  # noqa
 
 
-class UsageStatsHistory(UserDict):
-  """A convenience class to store and manipulate"""
+class UsageStatsHistory(UserDict[datetime, UsageStats]):
+  """Store and easily handle a dictionary of datetime-UsageStats pairs"""
 
   @classmethod
   def from_file(cls, path: PathLike) -> 'UsageStatsHistory':
@@ -102,11 +104,11 @@ class UsageStatsHistory(UserDict):
           new[t] = us
     return new
 
-  def get_deltas_in_minutes(self) -> np.ndarray:
+  def get_deltas_array(self) -> np.ndarray:
     times = np.array(list(self.keys()), dtype='datetime64')
-    return (times - times[0]) / np.timedelta64(1, 'm')
+    return (times - times[0]) / np.timedelta64(1, 'm')  # result in minutes
 
-  def get_stats(self, key: str) -> np.ndarray:
+  def get_stats_array(self, key: str) -> np.ndarray:
     return np.array([getattr(u, key) for u in self.values()])
 
 
@@ -114,14 +116,15 @@ class UsageStatsHistory(UserDict):
 
 
 class ResourceProbeException(OSError):
-  pass
+  """Raised if a `ResourceProbe` fails during `get_usage_stats()`"""
 
 
 class NoSuitableResourceProbeException(OSError):
-  pass
+  """Raised if all of available `ResourceProbe`s fail `get_usage_stats()`"""
 
 
 class BaseResourceProbeType(type):
+  """Metaclass that implements automatic probe `REGISTRY` and `discover`y"""
   REGISTRY: dict
 
   def __new__(mcs, *args, **kwargs):
@@ -136,7 +139,6 @@ class BaseResourceProbeType(type):
     for _, probe_class in mcs.REGISTRY.items():
       try:
         probe_instance = probe_class()
-        _ = probe_instance.get_name()
         _ = probe_instance.get_usage_stats()
       except ResourceProbeException:
         continue
@@ -146,14 +148,12 @@ class BaseResourceProbeType(type):
 
 
 class CPUResourceProbeType(BaseResourceProbeType):
-  REGISTRY = {}
-
-
-class GPUResourceProbeType(BaseResourceProbeType):
+  """Metaclass for CPU resource probes"""
   REGISTRY = {}
 
 
 class BaseCPUResourceProbe(metaclass=CPUResourceProbeType):
+  """Base class for CPU resource probes to be inherited by all CPU probes"""
   kind = None
 
   def get_name(self) -> str:  # noqa
@@ -163,17 +163,8 @@ class BaseCPUResourceProbe(metaclass=CPUResourceProbeType):
     return NotImplemented
 
 
-class BaseGPUResourceProbe(metaclass=CPUResourceProbeType):
-  kind = None
-
-  def get_name(self) -> str:  # noqa
-    return NotImplemented
-
-  def get_usage_stats(self) -> UsageStats:  # noqa
-    return NotImplemented
-
-
 class PsutilCPUResourceProbe(BaseCPUResourceProbe):
+  """CPU resource probe that attempts collecting CPU usage via psutil"""
   kind = 'psutil'
 
   def __init__(self):
@@ -189,7 +180,24 @@ class PsutilCPUResourceProbe(BaseCPUResourceProbe):
     return UsageStats(cpu_usage=cpu_usage, cpu_memory=cpu_memory)
 
 
+class GPUResourceProbeType(BaseResourceProbeType):
+  """Metaclass for GPU resource probes"""
+  REGISTRY = {}
+
+
+class BaseGPUResourceProbe(metaclass=CPUResourceProbeType):
+  """Base class for GPU resource probes to be inherited by all GPU probes"""
+  kind = None
+
+  def get_name(self) -> str:  # noqa
+    return NotImplemented
+
+  def get_usage_stats(self) -> UsageStats:  # noqa
+    return NotImplemented
+
+
 class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
+  """GPU resource probe that attempts collecting GPU usage via nvidia-smi"""
   kind = 'Nvidia'
 
   def get_name(self) -> str:  # noqa
@@ -212,7 +220,7 @@ class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
 
 
 class RankInfo:
-  """Helper object that stores info about self and nearby ranks"""
+  """Manage info about this and neighbor ranks using auto-discovered probes"""
   def __init__(self):
     self.rank = comm.rank
     self.cpu_probe = CPUResourceProbeType.discover()()
@@ -255,17 +263,40 @@ rank_info = RankInfo()
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MONITORING USAGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-#from xfel.util.usage_monitor import UsageMonitor#\
-#
-#@UsageMonitor(detail='rank', period=1.0)
-#function_to_be_timed()
-#
-#with UsageMonitor(detail='rank', period=1.0):
-#  function_to_be_timed()
-
-
 class UsageMonitor(ContextDecorator):
-  """This class can be used both as context manager (with) and @decorator"""
+  """
+  Collect and log information about CPU and GPU usage in decorated processes.
+  This object can be used in several ways listed below:
+
+  - As a decorator – to monitor every call of a given function, decorate the
+    function definition itself. The monitor will start every time the fucntion
+    is called and stop every time the function is terminated:
+    ```
+    @UsageMonitor(*args)
+    def function_to_be_monitored()
+      stuff_to_be_timed()
+    ```
+
+  - As a context manager – to monitor a part of the code, place it withing
+    a context manager using a `with` statement. The monitor will start at the
+    start of the `with` block and terminate at the end of the `with` block:
+    ```
+    with UsageMonitor(*args):
+      stuff_to_be_timed()
+    ```
+
+  - As a standalone instance – for more advanced or customizable application,
+    the context manager can be manually instantiated, started, stopped, etc.
+    The following would be roughly equivalent to context manager approach:
+    ```
+    um = UsageMonitor(*args):
+    try:
+      um.start()
+      stuff_to_be_timed()
+    finally:
+      self.stop()
+    ```
+  """
 
   class Detail(Enum):
     rank = 'rank'
@@ -273,7 +304,11 @@ class UsageMonitor(ContextDecorator):
     single = 'single'
     none = 'none'
 
-  def __init__(self, detail: str = 'node', period: float = 5.0) -> None:
+  def __init__(self,
+               detail: str = 'node',
+               period: float = 5.0,
+               ) -> None:
+    self.active = False
     self.detail = self.Detail(detail)
     self.period: float = period  # <5 de-prioritizes sub-procs & they stop...
     self.log: logging.Logger = self.get_logger()
@@ -283,10 +318,10 @@ class UsageMonitor(ContextDecorator):
     self._daemon = None
 
   def __enter__(self) -> None:
-    self.start_logging_daemon()
+    self.start()
 
   def __exit__(self, exc_type, exc_val, exc_tb):
-    self.plot_usage_stats_history()
+    self.stop()
 
   @property
   def usage_stats(self) -> UsageStats:
@@ -324,24 +359,32 @@ class UsageMonitor(ContextDecorator):
       if self.is_logging else usage_log_manager.get_null_logger()
 
   def log_current_usage(self) -> None:
+    """Get current usage stats and log + save them"""
     usage_stats = self.usage_stats
     if self.is_logging:
       self.usage_stats_history[datetime.now()] = usage_stats
     self.log.info(msg=f'{usage_stats}')
 
   def log_usage_every_period(self) -> None:
-    """Warning: call as threading daemon only, otherwise will never stop"""
+    """Call in thread only, can be stopped only upon `self.active` = False"""
     start = datetime.now()
     log_iter_counter = itertools.count(start=0, step=1)
     for log_iter in log_iter_counter:
       threading.Thread(target=self.log_current_usage, args=()).start()
       next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
       time.sleep(max((next_iter_time - datetime.now()).total_seconds(), 0))
+      if not self.active:
+        break
 
-  def start_logging_daemon(self) -> None:
+  def start(self) -> None:
+    self.active = True
     self._daemon = threading.Thread(target=self.log_usage_every_period,
                                     args=(), daemon=True)
     self.daemon.start()
+
+  def stop(self):
+    self.active = False
+    self.plot_usage_stats_history()
 
   def plot_usage_stats_history(self):
     usage_stats_histories = comm.gather(self.usage_stats_history, root=0)
@@ -369,10 +412,10 @@ class UsageArtist:
     stats = ['cpu_usage', 'cpu_memory', 'gpu_usage', 'gpu_memory']
     labels = ['CPU usage', 'CPU memory', 'GPU usage', 'GPU memory']
     for i, ush in enumerate(usage_stats_histories):
-      minutes = ush.get_deltas_in_minutes()
+      minutes = ush.get_deltas_array()
       color = self.colormap(i % self.colormap_period)
       for ax, stat in zip(axes, stats):
-        ax.plot(minutes, ush.get_stats(stat), color=color)
+        ax.plot(minutes, ush.get_stats_array(stat), color=color)
     for ax, label in zip(axes, labels):
       ax.set_ylabel(label)
     self.fig.set_size_inches(12, 10)
