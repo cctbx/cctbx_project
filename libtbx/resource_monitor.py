@@ -128,7 +128,8 @@ class BaseResourceProbeType(type):
   """Metaclass that implements automatic probe `REGISTRY` and `discover`y"""
   REGISTRY: dict
 
-  def __new__(mcs, *args, **kwargs):
+  def __new__(mcs, *args, **kwargs) -> Union[Type['BaseCPUResourceProbe'],
+                                             Type['BaseGPUResourceProbe']]:
     new_cls = type.__new__(mcs, *args, **kwargs)
     if kind := getattr(mcs, 'kind', ''):
       mcs.REGISTRY[kind] = new_cls
@@ -168,7 +169,7 @@ class PsutilCPUResourceProbe(BaseCPUResourceProbe):
   """CPU resource probe that attempts collecting CPU usage via psutil"""
   kind = 'psutil'
 
-  def __init__(self):
+  def __init__(self) -> None:
     try:
       import psutil
     except ImportError as e:
@@ -321,7 +322,7 @@ class ResourceMonitor(ContextDecorator):
   def __enter__(self) -> None:
     self.start()
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
+  def __exit__(self, exc_type, exc_val, exc_tb) -> None:
     self.stop()
 
   @property
@@ -379,11 +380,11 @@ class ResourceMonitor(ContextDecorator):
                                    args=(), daemon=True)
     self.daemon.start()
 
-  def stop(self):
+  def stop(self) -> None:
     self.active = False
     self.plot_resource_stats_history()
 
-  def plot_resource_stats_history(self):
+  def plot_resource_stats_history(self) -> None:
     resource_stats_histories = comm.gather(self.resource_stats_history, root=0)
     if self.rank_info.rank == 0:
       resource_stats_histories = [h for h in resource_stats_histories if h]
