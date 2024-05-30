@@ -64,19 +64,19 @@ usage_log_manager = UsageLogManager('cctbx.usage')
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~ STORING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
-class UnitIntervalFloat(float):
+class PerCentFloat(float):
   """Convenience wrapper that always returns float of value between 0 and 1"""
-  def __new__(cls, value) -> 'UnitIntervalFloat':
-    return float.__new__(float, max(min(value, 1.0), 0.0))
+  def __new__(cls, value) -> 'PerCentFloat':
+    return float.__new__(float, max(min(value, 100.0), 0.0))
 
 
 @dataclass
 class UsageStats:
   """Convenient dataclass used to pass info about CPU/GPU usage/memory"""
-  cpu_usage: UnitIntervalFloat = 0.0
-  cpu_memory: UnitIntervalFloat = 0.0
-  gpu_usage: UnitIntervalFloat = 0.0
-  gpu_memory: UnitIntervalFloat = 0.0
+  cpu_usage: PerCentFloat = 0.0
+  cpu_memory: PerCentFloat = 0.0
+  gpu_usage: PerCentFloat = 0.0
+  gpu_memory: PerCentFloat = 0.0
 
   @property
   def vector(self) -> np.ndarray:
@@ -177,8 +177,8 @@ class PsutilCPUResourceProbe(BaseCPUResourceProbe):
     self.process = psutil.Process()
 
   def get_usage_stats(self) -> UsageStats:
-    cpu_usage = UnitIntervalFloat(self.process.cpu_percent(interval=None))
-    cpu_memory = UnitIntervalFloat(self.process.memory_percent())
+    cpu_usage = PerCentFloat(self.process.cpu_percent(interval=None))
+    cpu_memory = PerCentFloat(self.process.memory_percent())
     return UsageStats(cpu_usage=cpu_usage, cpu_memory=cpu_memory)
 
 
@@ -214,8 +214,8 @@ class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
     try:
       out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
       values = [float(v) for v in out.replace(',', ' ').strip().split()]
-      gpu_usage = UnitIntervalFloat(mean(values[::3]))
-      gpu_memory = UnitIntervalFloat(mean(values[1::3]) / mean(values[2::3]))
+      gpu_usage = PerCentFloat(mean(values[::3]))
+      gpu_memory = PerCentFloat(100. * mean(values[1::3]) / mean(values[2::3]))
       return UsageStats(gpu_usage=gpu_usage, gpu_memory=gpu_memory)
     except (FileNotFoundError, ValueError) as e:
       raise ResourceProbeException from e
