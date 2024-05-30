@@ -263,7 +263,8 @@ class RankInfo:
     node_comm_color = min(self.same_node_ranks)
     node_comm_rank = self.rank - node_comm_color
     node_comm = comm.Split(node_comm_color, node_comm_rank)
-    stats_ambassadors = comm.allgather((resource_stats, self.is_gpu_ambassador))
+    stats_ambassador = (resource_stats, self.is_gpu_ambassador)
+    stats_ambassadors = node_comm.allgather(stats_ambassador)
     node_comm.Free()
     cpu_resource_stats = [u for u, _ in stats_ambassadors]
     gpu_resource_stats = [u for u, a in stats_ambassadors if a]
