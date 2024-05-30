@@ -262,6 +262,7 @@ class RankInfo:
     resource_stats = self.get_rank_resource_stats()
     node_comm_color = min(self.same_node_ranks)
     node_comm_rank = self.rank - node_comm_color
+    comm.barrier()
     node_comm = comm.Split(node_comm_color, node_comm_rank)
     stats_ambassador = (resource_stats, self.is_gpu_ambassador)
     stats_ambassadors = node_comm.allgather(stats_ambassador)
