@@ -417,8 +417,8 @@ class ResourceStatsArtist:
   def __init__(self) -> None:
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.fig = plt.figure(tight_layout=True)
-    gs = GridSpec(4, 1, hspace=0, wspace=0)
+    self.fig = plt.figure(constrained_layout=True, figsize=(12, 10))
+    gs = GridSpec(4, 1, figure=self.fig, hspace=0, wspace=0)
     self.ax_cu = self.fig.add_subplot(gs[0, 0])  # cu = (c)pu (u)sage
     self.ax_cm = self.fig.add_subplot(gs[1, 0], sharex=self.ax_cu)
     self.ax_gu = self.fig.add_subplot(gs[2, 0], sharex=self.ax_cu)
@@ -439,7 +439,6 @@ class ResourceStatsArtist:
     self.ax_cm.set_xlabel('Time since first probe [min]')
     for ax, label in zip(axes, labels):
       ax.set_ylabel(label + ' [%]')
-    self.fig.set_size_inches(12, 10)
     if save_path:
       self.fig.savefig(f'{save_path}.png')
     else:
