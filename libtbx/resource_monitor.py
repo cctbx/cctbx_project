@@ -33,9 +33,8 @@ PathLike = Union[str, bytes, os.PathLike]
 
 class ResourceLogManager:
   """Create appropriate resource logger for each rank and control its format"""
-  date_fmt = '%Y-%m-%d %H:%M:%S,%f'
   fmt = '%(asctime)s - %(message)s'
-  formatter = logging.Formatter(fmt=fmt, datefmt=date_fmt)
+  formatter = logging.Formatter(fmt=fmt)
   line_regex = re.compile(
     r'(\d{2,4}-\d\d-\d\d \d\d:\d\d:\d\d,\d+) - '
     r'UsageStats\(cpu_usage=(-?\d+\.?\d*), ?cpu_memory=(-?\d+\.?\d*), ?'
@@ -418,7 +417,7 @@ class ResourceStatsArtist:
   def __init__(self) -> None:
     self.colormap = plt.get_cmap('tab10')
     self.colormap_period = 10
-    self.fig = plt.figure(constrained_layout=True, figsize=(12, 10))
+    self.fig = plt.figure(tight_layout=True, figsize=(12, 10))
     gs = GridSpec(4, 1, figure=self.fig, hspace=0, wspace=0)
     self.ax_cu = self.fig.add_subplot(gs[0, 0])  # cu = (c)pu (u)sage
     self.ax_cm = self.fig.add_subplot(gs[1, 0], sharex=self.ax_cu)
@@ -437,7 +436,7 @@ class ResourceStatsArtist:
       color = self.colormap(i % self.colormap_period)
       for ax, stat in zip(axes, stats):
         ax.plot(minutes, rsh.get_stats_array(stat), color=color)
-    self.ax_cm.set_xlabel('Time since first probe [min]')
+    self.ax_gm.set_xlabel('Time since first probe [min]')
     for ax, label in zip(axes, labels):
       ax.set_ylabel(label + ' [%]')
     if save_path:
