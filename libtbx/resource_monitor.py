@@ -131,7 +131,7 @@ class BaseResourceProbeType(type):
   def __new__(mcs, *args, **kwargs) -> Union[Type['BaseCPUResourceProbe'],
                                              Type['BaseGPUResourceProbe']]:
     new_cls = type.__new__(mcs, *args, **kwargs)
-    if kind := getattr(mcs, 'kind', ''):
+    if kind := getattr(new_cls, 'kind', ''):
       mcs.REGISTRY[kind] = new_cls
     return new_cls
 
