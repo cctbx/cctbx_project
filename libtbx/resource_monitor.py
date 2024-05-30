@@ -194,6 +194,7 @@ class PsutilCPUResourceProbe(BaseCPUResourceProbe):
 
 class DummyCPUResourceProbe(BaseCPUResourceProbe, DummyResourceProbe):
   """CPU resource probe that reports dummy data when no good probe is found"""
+  kind = 'dummy'
 
 
 class GPUResourceProbeType(BaseResourceProbeType):
@@ -234,6 +235,7 @@ class NvidiaGPUResourceProbe(BaseGPUResourceProbe):
 
 class DummyGPUResourceProbe(BaseGPUResourceProbe, DummyResourceProbe):
   """CPU resource probe that reports dummy data when no good probe is found"""
+  kind = 'dummy'
 
 
 class RankInfo:
