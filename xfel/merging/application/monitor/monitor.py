@@ -20,11 +20,15 @@ class MonitorWorker(worker):
   def run(self, experiments, reflections):
     global resource_monitor
     if resource_monitor is None:
-      resource_monitor = ResourceMonitor()
+      resource_monitor = ResourceMonitor(
+        detail=self.params.monitor.detail,
+        period=self.params.monitor.period,
+        prefix=self.params.monitor.prefix,
+      )
     if resource_monitor.active:
-      self.logger.main_log('Stopping resource monitor')
+      self.logger.log('Stopping resource monitor')
       resource_monitor.stop()
     else:  # if resource_monitor.active == False
-      self.logger.main_log('Starting resource monitor')
+      self.logger.log('Starting resource monitor')
       resource_monitor.start()
     return experiments, reflections
