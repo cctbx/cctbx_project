@@ -201,7 +201,7 @@ class GPUResourceProbeType(BaseResourceProbeType):
   REGISTRY = {}
 
 
-class BaseGPUResourceProbe(metaclass=CPUResourceProbeType):
+class BaseGPUResourceProbe(metaclass=GPUResourceProbeType):
   """
   Base class for GPU resource probes to be inherited by all GPU probes
   Every subclass should define `kind`, `get_name()`, `get_resource_stats()`.
