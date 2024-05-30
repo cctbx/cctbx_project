@@ -419,8 +419,9 @@ class ResourceStatsArtist:
       color = self.colormap(i % self.colormap_period)
       for ax, stat in zip(axes, stats):
         ax.plot(minutes, rsh.get_stats_array(stat), color=color)
+    self.ax_cm.set_xlabel('Time since first probe [min]')
     for ax, label in zip(axes, labels):
-      ax.set_ylabel(label)
+      ax.set_ylabel(label + ' [%]')
     self.fig.set_size_inches(12, 10)
     if save_path:
       self.fig.savefig(f'{save_path}.png')
