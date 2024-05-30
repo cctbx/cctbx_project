@@ -298,13 +298,14 @@ class ResourceMonitor(ContextDecorator):
   """
 
   class Detail(Enum):
-    rank = 'rank'
     node = 'node'
-    single = 'single'
+    rank = 'rank'
+    node0 = 'node0'
+    rank0 = 'rank0'
     none = 'none'
 
   def __init__(self,
-               detail: str = 'node',
+               detail: str = 'rank',
                period: float = 5.0,
                prefix: str = 'monitor',
                ) -> None:
@@ -312,7 +313,7 @@ class ResourceMonitor(ContextDecorator):
     self.daemon: threading.Thread = None
     self.detail: 'ResourceMonitor.Detail' = self.Detail(detail)
     self.period: float = period  # <5 sec. de-prioritizes sub-procs & they stop
-    self.prefix: str = prefix
+    self.prefix: str = prefix if prefix else 'monitor'
     self.rank_info: RankInfo = RankInfo()
     self.log: logging.Logger = self.get_logger()
     self.log.info(f'Collecting CPU stats with {self.rank_info.cpu_probe.kind=}')
@@ -328,27 +329,30 @@ class ResourceMonitor(ContextDecorator):
   @property
   def resource_stats(self) -> ResourceStats:
     return {
-      self.Detail.rank: self.rank_info.get_rank_resource_stats,
       self.Detail.node: self.rank_info.get_node_resource_stats,
-      self.Detail.single: self.rank_info.get_rank_resource_stats,
+      self.Detail.rank: self.rank_info.get_rank_resource_stats,
+      self.Detail.node0: self.rank_info.get_node_resource_stats,
+      self.Detail.rank0: self.rank_info.get_rank_resource_stats,
       self.Detail.none: (lambda _: None)
     }[self.detail]()
 
   @cached_property
   def is_logging(self) -> bool:
     return {
-      self.Detail.rank: True,
       self.Detail.node: self.rank_info.is_node_ambassador,
-      self.Detail.single: self.rank_info.rank == 0,
+      self.Detail.rank: True,
+      self.Detail.node0: self.rank_info.rank == 0,
+      self.Detail.rank0: self.rank_info.rank == 0,
       self.Detail.none: False
     }[self.detail]
 
   @cached_property
   def log_path(self) -> str:
     return {
-      self.Detail.rank: f'{self.prefix}_{self.rank_info.rank}.log',
       self.Detail.node: f'{self.prefix}_{self.rank_info.node}.log',
-      self.Detail.single: f'{self.prefix}.log',
+      self.Detail.rank: f'{self.prefix}_{self.rank_info.rank}.log',
+      self.Detail.node0: f'{self.prefix}.log',
+      self.Detail.rank0: f'{self.prefix}.log',
       self.Detail.none: None
     }[self.detail]
 
