@@ -471,7 +471,7 @@ class merging_stats(object):
     print(prefix+"Resolution: %.2f - %.2f" % (self.d_max, self.d_min), file=out)
     print(prefix+"Observations: %d" % self.n_obs, file=out)
     print(prefix+"Unique reflections: %d" % self.n_uniq, file=out)
-    print(prefix+"Redundancy: %.1f" % self.mean_redundancy, file=out)
+    print(prefix+"Multiplicity: %.1f" % self.mean_redundancy, file=out)
     print(prefix+"Completeness: %.2f%%" % (self.completeness*100), file=out)
     print(prefix+"Mean intensity: %.1f" % self.i_mean, file=out)
     print(prefix+"Mean I/sigma(I): %.1f" % self.i_over_sigma_mean, file=out)
@@ -611,10 +611,10 @@ class dataset_statistics(object):
     )
     self.bins = []
     title = "Intensity merging statistics"
-    column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+    column_labels = ["1/d**2","N(obs)","N(unique)","Multiplicity","Completeness",
         "Mean(I)", "Mean(I/sigma)", "R-merge", "R-meas", "R-pim", "R-anom", "CC1/2",
         "CC(anom)"]
-    graph_names = ["Reflection counts", "Redundancy", "Completeness",
+    graph_names = ["Reflection counts", "Multiplicity", "Completeness",
         "Mean(I)", "Mean(I/sigma)", "R-factors", "CC1/2", "CC(anom)"]
     graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],[0,7,8,9],[0,11],[0,13]]
     if cc_one_half_significance_level is not None:
@@ -658,13 +658,13 @@ class dataset_statistics(object):
 
   @property
   def signal_table(self):
-    column_labels = ["1/d**2","N(obs)","N(unique)","Redundancy","Completeness",
+    column_labels = ["1/d**2","N(obs)","N(unique)","Multiplicity","Completeness",
         "Mean(I)", "Mean(I/sigma)", ]
-    graph_names = ["Reflection counts", "Redundancy", "Completeness",
+    graph_names = ["Reflection counts", "Multiplicity", "Completeness",
         "Mean(I)", "Mean(I/sigma)",]
     graph_columns = [[0,1,2],[0,3],[0,4],[0,5],[0,6],]
     table = data_plots.table_data(
-      title="Statistics for redundancy, completeness, and signal",
+      title="Statistics for multiplicity, completeness, and signal",
       column_labels=column_labels,
       graph_names=graph_names,
       graph_columns=graph_columns,
@@ -728,7 +728,7 @@ class dataset_statistics(object):
     if self.overall.anom_probability_plot_all_data is not None:
       self.overall.show_anomalous_probability_plot(out)
       print("", file=out)
-    print("Redundancies%s:" % self.anom_extra, file=out)
+    print("Multiplicities%s:" % self.anom_extra, file=out)
     n_obs = sorted(self.overall.redundancies.keys())
     for x in n_obs :
       print("  %d : %d" % (x, self.overall.redundancies[x]), file=out)
@@ -915,7 +915,7 @@ class dataset_statistics(object):
       outer_shell.d_min), file=out)
     print(prefix + "  Mean(I/sigmaI)  : %6.3f (%.3f)" % (
       self.overall.i_over_sigma_mean, outer_shell.i_over_sigma_mean), file=out)
-    print(prefix + "  Redundancy      :  %4.2f  (%.2f)" % (
+    print(prefix + "  Multiplicity    :  %4.2f  (%.2f)" % (
       self.overall.mean_redundancy, outer_shell.mean_redundancy), file=out)
     print(prefix + "  R-merge         :  %5.3f (%.3f)" % (
       self.overall.r_merge, outer_shell.r_merge), file=out)
