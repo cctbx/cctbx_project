@@ -440,7 +440,7 @@ class ResourceStatsArtist:
     for ax, label in zip(axes, labels):
       ax.set_ylabel(label + ' [%]')
     if save_path:
-      self.fig.savefig(f'{save_path}.png')
+      self.fig.savefig(f'{save_path}')
     else:
       plt.show()
 
