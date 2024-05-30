@@ -9,14 +9,13 @@ import itertools
 import logging
 from pathlib import Path
 import platform
-import psutil
 import re
 import os
 from statistics import mean
 import subprocess
 import threading
 import time
-from typing import List, Tuple, Union
+from typing import List, Type, Union
 PathLike = Union[str, bytes, os.PathLike]
 
 import numpy as np
@@ -25,9 +24,9 @@ from matplotlib.gridspec import GridSpec
 
 from libtbx.mpi4py import MPI
 comm = MPI.COMM_WORLD
-process = psutil.Process()
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ LOGGING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class UsageLogManager:
@@ -59,12 +58,21 @@ class UsageLogManager:
 usage_log_manager = UsageLogManager('cctbx.usage')
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~ STORING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+
+class UnitIntervalFloat(float):
+  """Convenience wrapper that always returns float of value between 0 and 1"""
+  def __new__(cls, value) -> 'UnitIntervalFloat':
+    return float.__new__(float, max(min(value, 1.0), 0.0))
+
+
 @dataclass
 class UsageStats:
-  cpu_usage: float = 0.0
-  cpu_memory: float = 0.0
-  gpu_usage: float = 0.0
-  gpu_memory: float = 0.0
+  cpu_usage: UnitIntervalFloat = 0.0
+  cpu_memory: UnitIntervalFloat = 0.0
+  gpu_usage: UnitIntervalFloat = 0.0
+  gpu_memory: UnitIntervalFloat = 0.0
 
   @property
   def vector(self) -> np.ndarray:
@@ -102,66 +110,150 @@ class UsageStatsHistory(UserDict):
     return np.array([getattr(u, key) for u in self.values()])
 
 
-class RankInfo:
-  """Helper object that stores info about self and nearby ranks"""
-  def __init__(self):
-    self.rank = comm.rank
-    self.node = platform.node()
-    self.gpu = self.get_gpu_name()
-    self.same_node_ranks = [r for r, n in comm.allgather((self.rank, self.node))
-                            if n == self.node]
-    self.same_gpu_ranks = [r for r, g in comm.allgather((self.rank, self.gpu))
-                           if g == self.gpu]
-    self.is_gpu_ambassador = self.rank == min(self.same_gpu_ranks)
-    self.is_node_ambassador = self.rank == min(self.same_node_ranks)
+# ~~~~~~~~~~~~~~~~~~~~~~~~~ COLLECTING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
-  @staticmethod
-  def get_gpu_name() -> str:
+
+class ResourceProbeException(OSError):
+  pass
+
+
+class NoSuitableResourceProbeException(OSError):
+  pass
+
+
+class BaseResourceProbeType(type):
+  REGISTRY: dict
+
+  def __new__(mcs, *args, **kwargs):
+    new_cls = type.__new__(mcs, *args, **kwargs)
+    if kind := getattr(mcs, 'kind', ''):
+      mcs.REGISTRY[kind] = new_cls
+    return new_cls
+
+  @classmethod
+  def discover(mcs) -> Union[Type['BaseCPUResourceProbe'],
+                             Type['BaseGPUResourceProbe']]:
+    for _, probe_class in mcs.REGISTRY.items():
+      try:
+        probe_instance = probe_class()
+        _ = probe_instance.get_name()
+        _ = probe_instance.get_usage_stats()
+      except ResourceProbeException:
+        continue
+      else:
+        return probe_class
+    raise NoSuitableResourceProbeException
+
+
+class CPUResourceProbeType(BaseResourceProbeType):
+  REGISTRY = {}
+
+
+class GPUResourceProbeType(BaseResourceProbeType):
+  REGISTRY = {}
+
+
+class BaseCPUResourceProbe(metaclass=CPUResourceProbeType):
+  kind = None
+
+  def get_name(self) -> str:  # noqa
+    return platform.node()
+
+  def get_usage_stats(self) -> UsageStats:  # noqa
+    return NotImplemented
+
+
+class BaseGPUResourceProbe(metaclass=CPUResourceProbeType):
+  kind = None
+
+  def get_name(self) -> str:  # noqa
+    return NotImplemented
+
+  def get_usage_stats(self) -> UsageStats:  # noqa
+    return NotImplemented
+
+
+class PsutilCPUResourceProbe(BaseCPUResourceProbe):
+  kind = 'psutil'
+
+  def __init__(self):
+    try:
+      import psutil
+    except ImportError as e:
+      raise ResourceProbeException from e
+    self.process = psutil.Process()
+
+  def get_usage_stats(self) -> UsageStats:
+    cpu_usage = UnitIntervalFloat(self.process.cpu_percent(interval=None))
+    cpu_memory = UnitIntervalFloat(self.process.memory_percent())
+    return UsageStats(cpu_usage=cpu_usage, cpu_memory=cpu_memory)
+
+
+class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
+  kind = 'Nvidia'
+
+  def get_name(self) -> str:  # noqa
     args = ['nvidia-smi', '--list-gpus']
     out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
     return out.strip()
 
-  @property
-  def rank_cpu_memory(self) -> float:
-    return process.memory_percent()
-
-  @property
-  def rank_cpu_usage(self) -> float:
-    return process.cpu_percent(interval=None)
-
-  @property
-  def gpu_usage_and_memory(self) -> Tuple[float, float]:
+  def get_usage_stats(self) -> UsageStats:  # noqa
     args = ['nvidia-smi',
             '--query-gpu=utilization.gpu,memory.used,memory.total',
             '--format=csv,noheader,nounits']
-    out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
     try:
+      out = subprocess.run(args, stdout=subprocess.PIPE).stdout.decode('utf-8')
       values = [float(v) for v in out.replace(',', ' ').strip().split()]
-      return mean(values[::3]), mean(values[1::3]) / max(mean(values[2::3]), 1)
-    except ValueError:  # can occur if no GPU is attached
-      return -1.0, -1.0
+      gpu_usage = UnitIntervalFloat(mean(values[::3]))
+      gpu_memory = UnitIntervalFloat(mean(values[1::3]) / mean(values[2::3]))
+      return UsageStats(gpu_usage=gpu_usage, gpu_memory=gpu_memory)
+    except (FileNotFoundError, ValueError) as e:
+      raise ResourceProbeException from e
+
+
+class RankInfo:
+  """Helper object that stores info about self and nearby ranks"""
+  def __init__(self):
+    self.rank = comm.rank
+    self.cpu_probe = CPUResourceProbeType.discover()()
+    self.gpu_probe = GPUResourceProbeType.discover()()
+    self.node = self.cpu_probe.get_name()
+    self.gpu = self.gpu_probe.get_name()
+    neighborhood = comm.allgather((self.rank, self.node, self.gpu))
+    self.same_node_ranks = [r for r, n, g in neighborhood if n == self.node]
+    self.same_gpu_ranks = [r for r, n, g in neighborhood if g == self.gpu]
+    self.is_gpu_ambassador = self.rank == min(self.same_gpu_ranks)
+    self.is_node_ambassador = self.rank == min(self.same_node_ranks)
 
   def get_rank_usage_stats(self) -> UsageStats:
-    gu, gm = self.gpu_usage_and_memory
-    return UsageStats(self.rank_cpu_usage, self.rank_cpu_memory, gu, gm)
+    cpu_usage_stats = self.cpu_probe.get_usage_stats()
+    gpu_usage_stats = self.gpu_probe.get_usage_stats()
+    return cpu_usage_stats + gpu_usage_stats
 
   def get_node_usage_stats(self) -> UsageStats:
     usage_stats = self.get_rank_usage_stats()
+    node_comm_color = min(self.same_node_ranks)
+    node_comm_rank = self.rank - node_comm_color
+    node_comm = comm.Split(node_comm_color, node_comm_rank)
     ri_and_usage = comm.allgather((rank_info, usage_stats))
-    cpu_usage_stats = [u for ri, u in ri_and_usage if ri.node == self.node]
-    gpu_usage_stats = [u for ri, u in ri_and_usage
-                       if ri.node == self.node and ri.is_gpu_ambassador]
+    node_comm.Free()
+    cpu_usage_stats = [u for ri, u in ri_and_usage]
+    gpu_usage_stats = [u for ri, u in ri_and_usage if ri.is_gpu_ambassador]
     cpu_usage_stat_sum = sum(cpu_usage_stats, UsageStats())
     gpu_usage_stat_sum = sum(gpu_usage_stats, UsageStats())
     return UsageStats(
-      cpu_usage=cpu_usage_stat_sum.cpu_usage,
+      cpu_usage=cpu_usage_stat_sum.cpu_usage / len(cpu_usage_stats),
       cpu_memory=cpu_usage_stat_sum.cpu_memory,
-      gpu_usage=gpu_usage_stat_sum.gpu_usage,
-      gpu_memory=gpu_usage_stat_sum.gpu_memory,
+      gpu_usage=gpu_usage_stat_sum.gpu_usage / len(gpu_usage_stats),
+      gpu_memory=gpu_usage_stat_sum.gpu_memory / len(gpu_usage_stats),
     )
 
 
 rank_info = RankInfo()
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MONITORING USAGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
 
 #from xfel.util.usage_monitor import UsageMonitor#\
 #
@@ -185,6 +277,8 @@ class UsageMonitor(ContextDecorator):
     self.detail = self.Detail(detail)
     self.period: float = period  # <5 de-prioritizes sub-procs & they stop...
     self.log: logging.Logger = self.get_logger()
+    self.log.info(f'Collecting CPU usage with {rank_info.cpu_probe.kind=}')
+    self.log.info(f'Collecting GPU usage with {rank_info.gpu_probe.kind=}')
     self.usage_stats_history = UsageStatsHistory()
     self._daemon = None
 
