@@ -149,20 +149,30 @@ class BaseResourceProbeType(type):
     raise NoSuitableResourceProbeException
 
 
+class DummyResourceProbe:
+  kind = 'dummy'
+
+  def get_name(self) -> str:  # noqa
+    return 'unknown'
+
+  def get_resource_stats(self) -> ResourceStats:  # noqa
+    return ResourceStats(-1., -1., -1., -1.)
+
+
 class CPUResourceProbeType(BaseResourceProbeType):
   """Metaclass for CPU resource probes"""
   REGISTRY = {}
 
 
 class BaseCPUResourceProbe(metaclass=CPUResourceProbeType):
-  """Base class for CPU resource probes to be inherited by all CPU probes"""
+  """
+  Base class for CPU resource probes to be inherited by all CPU probes.
+  Every subclass should define `kind`, `get_name()`, `get_resource_stats()`.
+  """
   kind = None
 
   def get_name(self) -> str:  # noqa
     return platform.node()
-
-  def get_resource_stats(self) -> ResourceStats:  # noqa
-    return NotImplemented
 
 
 class PsutilCPUResourceProbe(BaseCPUResourceProbe):
@@ -182,20 +192,21 @@ class PsutilCPUResourceProbe(BaseCPUResourceProbe):
     return ResourceStats(cpu_usage=cpu_usage, cpu_memory=cpu_memory)
 
 
+class DummyCPUResourceProbe(BaseCPUResourceProbe, DummyResourceProbe):
+  """CPU resource probe that reports dummy data when no good probe is found"""
+
+
 class GPUResourceProbeType(BaseResourceProbeType):
   """Metaclass for GPU resource probes"""
   REGISTRY = {}
 
 
 class BaseGPUResourceProbe(metaclass=CPUResourceProbeType):
-  """Base class for GPU resource probes to be inherited by all GPU probes"""
+  """
+  Base class for GPU resource probes to be inherited by all GPU probes
+  Every subclass should define `kind`, `get_name()`, `get_resource_stats()`.
+  """
   kind = None
-
-  def get_name(self) -> str:  # noqa
-    return NotImplemented
-
-  def get_resource_stats(self) -> ResourceStats:  # noqa
-    return NotImplemented
 
 
 class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
@@ -219,6 +230,10 @@ class NvidiaGPUResourceProbe(metaclass=BaseGPUResourceProbe):
       return ResourceStats(gpu_usage=gpu_usage, gpu_memory=gpu_memory)
     except (FileNotFoundError, ValueError) as e:
       raise ResourceProbeException from e
+
+
+class DummyGPUResourceProbe(BaseGPUResourceProbe, DummyResourceProbe):
+  """CPU resource probe that reports dummy data when no good probe is found"""
 
 
 class RankInfo:
