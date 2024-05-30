@@ -691,6 +691,23 @@ diffBragg {
 }
 """
 
+monitor_phil = """
+monitor {
+  detail = *rank node rank0 node0 none
+    .type = choice
+    .help = Detail of data to be collected: from every rank, from rank 0 only,
+    .help = collectively for all ranks on every node, on node 0 only, or none.
+  period = 5.0
+    .type = float
+    .help = Interval between subsequent resource statistics checks in seconds.
+    .help = Short periods might lead to inconsistent logging.
+  prefix = monitor
+    .type = str
+    .help = Filename prefix for log files and summary plot.
+}
+"""
+
+
 # A place to override any defaults included from elsewhere
 program_defaults_phil_str = """
 modify.cosym.use_curvatures=False
@@ -698,7 +715,8 @@ modify.cosym.use_curvatures=False
 
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
-              output_phil + statistics_phil + group_phil + lunus_phil + publish_phil + diffbragg_phil
+              output_phil + statistics_phil + group_phil + lunus_phil + \
+              publish_phil + diffbragg_phil + monitor_phil
 
 import os, importlib
 custom_phil_pathstr = os.environ.get('XFEL_CUSTOM_WORKER_PATH')
