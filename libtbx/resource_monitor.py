@@ -390,19 +390,25 @@ class ResourceMonitor(ContextDecorator):
     start = datetime.now()
     log_iter_counter = itertools.count(start=0, step=1)
     for log_iter in log_iter_counter:
-      threading.Thread(target=self.log_current_resource_stats, args=()).start()
+      self.snapshot()
       next_iter_time = start + timedelta(seconds=self.period) * (log_iter + 1)
       time.sleep(max((next_iter_time - datetime.now()).total_seconds(), 0))
       if not self.active:
         break
 
   def start(self) -> None:
+    """Call to start probing resources"""
     self.active = True
     self.daemon = threading.Thread(target=self.log_resource_stats_every_period,
                                    args=(), daemon=True)
     self.daemon.start()
 
+  def snapshot(self) -> None:
+    """Call to probe resources in current single moment only"""
+    threading.Thread(target=self.log_current_resource_stats, args=()).start()
+
   def stop(self) -> None:
+    """Call to stop probing resources"""
     self.active = False
     self.plot_resource_stats_history()
 
