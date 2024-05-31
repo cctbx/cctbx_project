@@ -703,13 +703,13 @@ monitor {
     .help = Short periods might lead to inconsistent logging.
   plot = True
     .type = bool
-    .help = Plot the resource usage history after the monitor is stopped
+    .help = Plot the resource usage history after the monitor is stopped.
   prefix = monitor
     .type = str
     .help = Filename prefix for log files and summary plot.
   write = True
     .type = bool
-    .help = Write collected resource information to log files
+    .help = Write collected resource information to log files.
 }
 """
 
