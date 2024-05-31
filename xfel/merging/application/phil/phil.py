@@ -701,9 +701,15 @@ monitor {
     .type = float
     .help = Interval between subsequent resource statistics checks in seconds.
     .help = Short periods might lead to inconsistent logging.
+  plot = True
+    .type = bool
+    .help = Plot a summary of resources usage after the monitor is stopped
   prefix = monitor
     .type = str
     .help = Filename prefix for log files and summary plot.
+  write = True
+    .type = bool
+    .help = Write collected resource information to log files
 }
 """
 

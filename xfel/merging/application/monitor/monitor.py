@@ -23,7 +23,9 @@ class MonitorWorker(worker):
       resource_monitor = ResourceMonitor(
         detail=self.params.monitor.detail,
         period=self.params.monitor.period,
+        plot=self.params.plot,
         prefix=self.params.monitor.prefix,
+        write=self.params.write,
       )
     if resource_monitor.active:
       self.logger.log('Stopping resource monitor')

@@ -58,7 +58,7 @@ class ResourceLogManager:
     return self.log
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~ STORING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ STORING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class PerCentFloat(float):
@@ -111,7 +111,7 @@ class ResourceStatsHistory(UserDict[datetime, ResourceStats]):
     return np.array([getattr(u, key) for u in self.values()])
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~ COLLECTING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PROBING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class ResourceProbeException(OSError):
@@ -256,7 +256,7 @@ class RankInfo:
     return cpu_resource_stats + gpu_stats
 
 
-# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MONITORING USAGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MONITORING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class ResourceMonitor(ContextDecorator):
@@ -304,13 +304,17 @@ class ResourceMonitor(ContextDecorator):
   def __init__(self,
                detail: str = 'rank',
                period: float = 5.0,
+               plot: bool = True,
                prefix: str = 'monitor',
+               write: bool = True,
                ) -> None:
     self.active: bool = False
     self.daemon: threading.Thread = None
     self.detail: 'ResourceMonitor.Detail' = self.Detail(detail)
     self.period: float = period  # <5 sec. de-prioritizes sub-procs & they stop
+    self.plot: bool = plot
     self.prefix: str = prefix if prefix else 'monitor'
+    self.write: bool = write
     self.rank_info: RankInfo = RankInfo()
     logger_name = 'libtbx.resource_monitor.' + self.prefix
     self.log_manager = ResourceLogManager(logger_name)
@@ -354,7 +358,7 @@ class ResourceMonitor(ContextDecorator):
 
   def get_logger(self) -> logging.Logger:
     return self.log_manager.get_file_logger(self.log_path) \
-      if self.is_logging else self.log_manager.get_null_logger()
+      if self.is_logging and self.write else self.log_manager.get_null_logger()
 
   def log_current_resource_stats(self) -> None:
     """Get current usage stats and log + save them"""
@@ -388,7 +392,8 @@ class ResourceMonitor(ContextDecorator):
   def stop(self) -> None:
     """Call to stop probing resources"""
     self.active = False
-    self.plot_resource_stats_history()
+    if self.plot:
+      self.plot_resource_stats_history()
 
   def plot_resource_stats_history(self) -> None:
     resource_stats_histories = comm.gather(self.resource_stats_history, root=0)
@@ -396,6 +401,9 @@ class ResourceMonitor(ContextDecorator):
       resource_stats_histories = [h for h in resource_stats_histories if h]
       rsa = ResourceStatsArtist()
       rsa.plot(resource_stats_histories, f'{self.prefix}.png')
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ PLOTTING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
 class ResourceStatsArtist:
