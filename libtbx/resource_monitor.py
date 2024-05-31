@@ -1,3 +1,5 @@
+from __future__ import division
+
 from collections import UserDict
 from contextlib import ContextDecorator
 from dataclasses import astuple, dataclass
