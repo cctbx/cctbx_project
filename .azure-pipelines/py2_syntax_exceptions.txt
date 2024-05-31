@@ -18,7 +18,6 @@ xfel/command_line/fee_calibration.py
 xfel/util/drift.py
 xfel/merging/application/errors/error_modifier_mm24.py
 xfel/util/preference.py
-xfel/util/usage_monitor.py
 cctbx/maptbx/qscore.py
 cctbx/maptbx/tst_qscore.py
 mmtbx/geometry_restraints/geo_file_parsing.py
