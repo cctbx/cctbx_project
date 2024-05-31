@@ -258,26 +258,6 @@ class RankInfo:
     gpu_stats = self.gpu_probe.get_resource_stats()
     return cpu_resource_stats + gpu_stats
 
-  def get_node_resource_stats(self) -> ResourceStats:
-    resource_stats = self.get_rank_resource_stats()
-    node_comm_color = min(self.same_node_ranks)
-    node_comm_rank = self.rank - node_comm_color
-    comm.barrier()
-    node_comm = comm.Split(node_comm_color, node_comm_rank)
-    stats_ambassador = (resource_stats, self.is_gpu_ambassador)
-    stats_ambassadors = node_comm.allgather(stats_ambassador)
-    node_comm.Free()
-    cpu_resource_stats = [u for u, _ in stats_ambassadors]
-    gpu_resource_stats = [u for u, a in stats_ambassadors if a]
-    cpu_resource_stats_sum = sum(cpu_resource_stats, ResourceStats())
-    gpu_resource_stats_sum = sum(gpu_resource_stats, ResourceStats())
-    return ResourceStats(
-      cpu_usage=cpu_resource_stats_sum.cpu_usage / len(cpu_resource_stats),
-      cpu_memory=cpu_resource_stats_sum.cpu_memory,
-      gpu_usage=gpu_resource_stats_sum.gpu_usage / len(gpu_resource_stats),
-      gpu_memory=gpu_resource_stats_sum.gpu_memory / len(gpu_resource_stats),
-    )
-
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ MONITORING USAGE ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
@@ -285,6 +265,7 @@ class RankInfo:
 class ResourceMonitor(ContextDecorator):
   """
   Collect and log information about CPU & GPU resources in decorated processes.
+  In each case the information is limited to single rank to avoid mpi comm.
   This class can be used in several ways listed below:
 
   - As a decorator – to monitor every call of a given function, decorate the
@@ -320,7 +301,6 @@ class ResourceMonitor(ContextDecorator):
   class Detail(Enum):
     node = 'node'
     rank = 'rank'
-    node0 = 'node0'
     rank0 = 'rank0'
     none = 'none'
 
@@ -349,9 +329,8 @@ class ResourceMonitor(ContextDecorator):
   @property
   def resource_stats(self) -> ResourceStats:
     return {
-      self.Detail.node: self.rank_info.get_node_resource_stats,
+      self.Detail.node: self.rank_info.get_rank_resource_stats,
       self.Detail.rank: self.rank_info.get_rank_resource_stats,
-      self.Detail.node0: self.rank_info.get_node_resource_stats,
       self.Detail.rank0: self.rank_info.get_rank_resource_stats,
       self.Detail.none: (lambda _: None)
     }[self.detail]()
@@ -361,7 +340,6 @@ class ResourceMonitor(ContextDecorator):
     return {
       self.Detail.node: self.rank_info.is_node_ambassador,
       self.Detail.rank: True,
-      self.Detail.node0: self.rank_info.rank == 0,
       self.Detail.rank0: self.rank_info.rank == 0,
       self.Detail.none: False
     }[self.detail]
@@ -371,7 +349,6 @@ class ResourceMonitor(ContextDecorator):
     return {
       self.Detail.node: f'{self.prefix}_{self.rank_info.node}.log',
       self.Detail.rank: f'{self.prefix}_{self.rank_info.rank}.log',
-      self.Detail.node0: f'{self.prefix}.log',
       self.Detail.rank0: f'{self.prefix}.log',
       self.Detail.none: None
     }[self.detail]

@@ -693,10 +693,10 @@ diffBragg {
 
 monitor_phil = """
 monitor {
-  detail = *rank node rank0 node0 none
+  detail = *rank node rank0 none
     .type = choice
     .help = Detail of data to be collected: from every rank, from rank 0 only,
-    .help = collectively for all ranks on every node, on node 0 only, or none.
+    .help = from first rank on every node, or none.
   period = 5.0
     .type = float
     .help = Interval between subsequent resource statistics checks in seconds.
