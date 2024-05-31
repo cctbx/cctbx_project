@@ -231,12 +231,18 @@ class cablam_chain():
     self.conf_names = []
     self.confs = {}
 
+  def __repr__(self):
+    return str(self.conf_names)+str(self.confs)
+
 class cablam_conf():
   #conformer-level organization for cablam results
   def __init__(self):
     self.conf_name = None
     self.results = {}
     self.sec_struc_records = []
+
+  def __repr__(self):
+    return str(self.conf_name)+str(self.results)+str(self.sec_struc_records)
 
 class secondary_structure_segment():
   #holds a secondary structure element identified by cablam
@@ -331,6 +337,9 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   #}}}
 
+  def __repr__(self):
+    return self.as_string()
+
   #{{{ mp_id
   #-----------------------------------------------------------------------------
   def mp_id(self):
@@ -372,9 +381,11 @@ class cablam_result(residue):
   #-----------------------------------------------------------------------------
   #returns the desired atom from a hierarchy residue object
   def get_atom(self, atom_name):
-    for atom in self.residue.atoms():
-      if atom.name == atom_name: return atom
-    else: return None
+    #for atom in self.residue.atoms():
+    #  if atom.name == atom_name: return atom
+    atom = self.residue.find_atom_by(atom_name)
+    return atom
+    #else: return None
   #-----------------------------------------------------------------------------
   #}}}
 
@@ -919,9 +930,11 @@ class cablamalyze(validation):
           if conf.is_protein(): break #at least one conformer must be protein
         else: continue
         if use_segids:
-          chain_id = utils.get_segid_as_chainid(chain=chain).rjust(2)
+          chain_id = utils.get_segid_as_chainid(chain=chain)
         else:
-          chain_id = chain.id.rjust(2)
+          chain_id = chain.id
+        if len(chain_id) < 2:
+          chain_id = chain_id.rjust(2)
         #The above .rjust(2)'s are to force 2-char chain ids
         current_chain = cablam_chain()
         self.all_results[model.id][chain_id] = current_chain

@@ -687,7 +687,7 @@ lunus {
 
 diffbragg_phil = """
 diffBragg {
-  include scope simtbx.command_line.hopper.phil_scope
+  include scope simtbx.diffBragg.phil.phil_scope
 }
 """
 

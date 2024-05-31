@@ -3,6 +3,7 @@
 # LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.process
 
 from __future__ import absolute_import, division, print_function
+from libtbx.mpi4py import mpi_abort_on_exception
 
 help_message = '''
 
@@ -84,6 +85,12 @@ class Script(DialsScript):
       phil=phil_scope,
       epilog=help_message
       )
+
+  @mpi_abort_on_exception
+  def run(self):
+    super().run()
+
+
 
 if __name__ == '__main__':
   import dials.command_line.stills_process

@@ -1,12 +1,14 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx.suitename import suitealyze
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long, convert_pdb_to_cif_for_pdb_str
+
 import libtbx.load_env
 import time
 import json
 import os
 
-def exercise_suitename_json():
+def exercise_suitename_json(test_mmcif=False):
   # derived from 2goz
   # note: chain B, residue 20 of 2goz is a DNA residue (DC). As of 2023, DNA conformations are not handled by suitename,
   #   and this residue is skipped.
@@ -17,11 +19,22 @@ def exercise_suitename_json():
     print("Skipping exercise: input pdb (pdb2goz_refmac_tls.ent) not available")
     return
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_2goz_str = f.read()
+    pdb_2goz_str = convert_string_to_cif_long(pdb_2goz_str, hetatm_name_addition = "", chain_addition="LONGCHAIN")
+    dm.process_model_str("1", pdb_2goz_str)
+    m = dm.get_model("1")
+    chainA = "ALONGCHAIN"
+    chainB = "BLONGCHAIN"
+  else:
+    m = dm.get_model(regression_pdb)
+    chainA = "A"
+    chainB = "B"
   sz = suitealyze.suitealyze(pdb_hierarchy=m.get_hierarchy())
   sz_dict = json.loads(sz.as_JSON())
   #import pprint
-  #pprint.pprint(csjson_dict)
+  #pprint.pprint(sz_dict)
   assert len(sz_dict['flat_results']) == 62, "tst_suitename json output not returning correct number of suites, now: "+str(len(sz_dict['flat_results']))
   assert sz_dict['flat_results'][0]["cluster"] == "__", "tst_suitename json output first cluster value changed, now: "+sz_dict['flat_results'][0]["cluster"]
   from mmtbx.validation import test_utils
@@ -32,8 +45,8 @@ def exercise_suitename_json():
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "__")==2, "tst_suitename json hierarchical output total number of __ changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "__"))
   assert sz_dict['summary_results'][""]["num_outliers"] == 5, "tst_suitename json summary output total number of outliers changed"
   assert sz_dict['summary_results'][""]["num_suites"] == 62, "tst_suitename json summary output total number of suites changed"
-  assert sz_dict['suitestrings'][""]["A"] == "__G1aG1aA1aU1aG1aU1aA7rC0aU1aA1aC1aC1aA1cG1bC4aU1gG1aA1[U6gG9aA1aG1aU1aC1aC1aC1aA!!A!!A2aU1bA!!G1aG1aA1aC1aG&aA1aA1aA1aC1aG1aC1cC", "model 1 chain A suitestring changed"
-  assert sz_dict['suitestrings'][""]["B"] == "__G1aG1aC1aG1aU1bC!!C1aU1aG1cG1a?1aA1bU4aC1bC!!A1aA1a?1aC", "model 1 chain B suitestring changed"
+  assert sz_dict['suitestrings'][""][chainA] == "__G1aG1aA1aU1aG1aU1aA7rC0aU1aA1aC1aC1aA1cG1bC4aU1gG1aA1[U6gG9aA1aG1aU1aC1aC1aC1aA!!A!!A2aU1bA!!G1aG1aA1aC1aG&aA1aA1aA1aC1aG1aC1cC", "model 1 chain A suitestring changed"
+  assert sz_dict['suitestrings'][""][chainB] == "__G1aG1aC1aG1aU1bC!!C1aU1aG1cG1a?1aA1bU4aC1bC!!A1aA1a?1aC", "model 1 chain B suitestring changed"
 
 multimod_2goz_pdb_str = """MODEL        1
 ATOM    539  P     C A  26     -19.024  25.068  -5.945  1.00 46.81           P
@@ -254,13 +267,19 @@ ENDMDL
 END
 """
 
-def exercise_multimodel_suitename_json():
+def exercise_multimodel_suitename_json(test_mmcif=False):
   # derived from 2goz
   dm = DataManager()
   dm.process_model_str("1",multimod_2goz_pdb_str)
   m = dm.get_model("1")
   sz = suitealyze.suitealyze(pdb_hierarchy=m.get_hierarchy())
   sz_dict = json.loads(sz.as_JSON())
+  if test_mmcif:
+    model_1 = "1"
+    model_2 = "2"
+  else:
+    model_1 = "   1"
+    model_2 = "   2"
   #import pprint
   #pprint.pprint(sz_dict)
   assert len(sz_dict['flat_results']) == 10, "tst_suitename json output not returning correct number of suites, now: "+str(len(sz_dict['flat_results']))
@@ -270,13 +289,20 @@ def exercise_multimodel_suitename_json():
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "2a")==2, "tst_suitename json hierarchical output total number of 1b changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "2a"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "!!")==4, "tst_suitename json hierarchical output total number of !! changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "!!"))
   assert test_utils.count_dict_values(sz_dict['hierarchical_results'], "__")==2, "tst_suitename json hierarchical output total number of __ changed, now: "+str(test_utils.count_dict_values(sz_dict['hierarchical_results'], "__"))
-  assert sz_dict['summary_results']["   1"]["num_outliers"] == 2, "tst_suitename json summary output total number of outliers changed"
-  assert sz_dict['summary_results']["   1"]["num_suites"] == 5, "tst_suitename json summary output total number of suites changed"
-  assert sz_dict['summary_results']["   2"]["num_outliers"] == 2, "tst_suitename json summary output total number of outliers changed"
-  assert sz_dict['summary_results']["   2"]["num_suites"] == 5, "tst_suitename json summary output total number of suites changed"
+  assert sz_dict['summary_results'][model_1]["num_outliers"] == 2, "tst_suitename json summary output total number of outliers changed"
+  assert sz_dict['summary_results'][model_1]["num_suites"] == 5, "tst_suitename json summary output total number of suites changed"
+  assert sz_dict['summary_results'][model_2]["num_outliers"] == 2, "tst_suitename json summary output total number of outliers changed"
+  assert sz_dict['summary_results'][model_2]["num_suites"] == 5, "tst_suitename json summary output total number of suites changed"
+  return sz_dict
 
 if (__name__ == "__main__"):
   t0 = time.time()
   exercise_suitename_json()
-  exercise_multimodel_suitename_json()
+  suite_json = exercise_multimodel_suitename_json()
+  exercise_suitename_json(test_mmcif=True)
+  convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="LONGCHAIN", hetatm_name_addition = "", key_str="multimod_", print_new_string = False)
+  suite_json_cif = exercise_multimodel_suitename_json(test_mmcif=True)
+  assert suite_json['summary_results']['   1'] == suite_json_cif['summary_results']['1'], "tst_suitename summary results changed between pdb and cif version"
+  assert suite_json['summary_results']['   2'] == suite_json_cif['summary_results']['2'], "tst_suitename summary results changed between pdb and cif version"
+
   print("OK. Time: %8.3f"%(time.time()-t0))

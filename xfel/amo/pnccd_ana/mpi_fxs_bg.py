@@ -17,7 +17,7 @@ plt.ion()
 #times. Here ignoring those errors.
 np.seterr(divide='ignore', invalid='ignore')
 
-from mpi4py import MPI
+from libtbx.mpi4py import MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 size = comm.Get_size()
@@ -141,7 +141,7 @@ def compute_bg(argv=None) :
     argv = sys.argv[1:]
 
   try:
-     from mpi4py import MPI
+     from libtbx.mpi4py import MPI
   except ImportError:
      raise Sorry("MPI not found")
 

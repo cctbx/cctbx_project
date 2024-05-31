@@ -615,7 +615,7 @@ class InMemScript(DialsProcessScript, DialsProcessorWithLogging):
     self.options = options
 
     if params.mp.method == "mpi":
-      from mpi4py import MPI
+      from libtbx.mpi4py import MPI
       comm = MPI.COMM_WORLD
       rank = comm.Get_rank() # each process in MPI has a unique id, 0-indexed
       size = comm.Get_size() # size: number of processes running in this job

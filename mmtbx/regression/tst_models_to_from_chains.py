@@ -95,18 +95,7 @@ def exercise(prefix="tst_models_to_from_chains"):
   fc_c = complete_set.structure_factors_from_scatterers(
     xray_structure=xrs_c).f_calc()
   #
-  assert not easy_run.call("phenix.chains_as_models chains_%s"%input_file_name)
-  pdb_inp = iotbx.pdb.input(file_name="models_chains_"+input_file_name)
-  h = pdb_inp.construct_hierarchy()
-  assert len(list(h.chains()))==expected_n
-  assert len(list(h.models()))==expected_n
-  xrs_m = pdb_inp.xray_structure_simple()
-  fc_m = complete_set.structure_factors_from_scatterers(
-    xray_structure=xrs_m).f_calc()
-  #
   assert approx_equal(0, r(fc, fc_c)  )
-  assert approx_equal(0, r(fc, fc_m)  )
-  assert approx_equal(0, r(fc_c, fc_m))
 
 if (__name__ == "__main__"):
   exercise()

@@ -141,23 +141,34 @@ def exercise_chiral_validation(chiral_list):
 def exercise_chiral_json(chiral_list):
   ch_dict = json.loads(chiral_list.as_JSON())
   #import pprint
-  #pprint.pprint(csjson_dict)
+  #pprint.pprint(ch_dict)
   assert len(ch_dict['flat_results']) == 6, "tst_chiral_validation json output not returning correct number of water clashes, now: "+str(len(ch_dict['flat_results']))
   assert ch_dict['flat_results'][0]["outlier_type"] == "Tetrahedral geometry outlier", "tst_chiral_validation json output first outlier_type value changed, now: "+ch_dict['flat_results'][0]["outlier_type"]
   from mmtbx.validation import test_utils
   assert test_utils.count_dict_values(ch_dict['hierarchical_results'], "Tetrahedral geometry outlier")==2, "tst_chiral_validation json hierarchical output total number of Tetrahedral geometry outlier changed, now: "+str(test_utils.count_dict_values(ch_dict['hierarchical_results'], "Tetrahedral geometry outlier"))
   assert test_utils.count_dict_values(ch_dict['hierarchical_results'], "Pseudochiral naming error")==2, "tst_chiral_validation json hierarchical output total number of Pseudochiral naming error changed, now: "+str(test_utils.count_dict_values(ch_dict['hierarchical_results'], "Pseudochiral naming error"))
   assert test_utils.count_dict_values(ch_dict['hierarchical_results'], "Chiral handedness swap")==2, "tst_chiral_validation json hierarchical output total number of Chiral handedness swap changed, now: "+str(test_utils.count_dict_values(ch_dict['hierarchical_results'], "Chiral handedness swap"))
-  assert ch_dict['summary_results']["   1"]["num_outliers"] == 3, "tst_chiral_validation json summary output total number of outliers changed, now: "+str(ch_dict['summary_results']["   1"]["num_outliers"])
-  assert ch_dict['summary_results']["   1"]["num_chiral_centers"] == 1, "tst_chiral_validation json summary output total number of true chiral centers changed, now: "+str(ch_dict['summary_results']["   1"]["num_chiral_centers"])
-  assert ch_dict['summary_results']["   1"]["num_total"] == 3, "tst_chiral_validation json summary output total number of tetrahedral changed, now: "+str(ch_dict['summary_results']["   1"]["num_total"])
-  assert ch_dict['summary_results']["   2"]["num_outliers"] == 3, "tst_chiral_validation json summary output model 2 total number of outliers changed, now: "+str(ch_dict['summary_results']["   1"]["num_outliers"])
+  summary_results_dict = ch_dict['summary_results']
+  if "   1" in summary_results_dict:
+    summary_results_1_dict = summary_results_dict["   1"]
+    summary_results_2_dict = summary_results_dict["   2"]
+  else:
+    summary_results_1_dict = summary_results_dict["1"]
+    summary_results_2_dict = summary_results_dict["2"]
+  assert summary_results_1_dict["num_outliers"] == 3, "tst_chiral_validation json summary output total number of outliers changed, now: "+str(ch_dict['summary_results']["   1"]["num_outliers"])
+  assert summary_results_1_dict["num_chiral_centers"] == 1, "tst_chiral_validation json summary output total number of true chiral centers changed, now: "+str(ch_dict['summary_results']["   1"]["num_chiral_centers"])
+  assert summary_results_1_dict["num_total"] == 3, "tst_chiral_validation json summary output total number of tetrahedral changed, now: "+str(ch_dict['summary_results']["   1"]["num_total"])
+  assert summary_results_2_dict["num_outliers"] == 3, "tst_chiral_validation json summary output model 2 total number of outliers changed, now: "+str(ch_dict['summary_results']["   1"]["num_outliers"])
+  return ch_dict
 
 if (__name__ == "__main__"):
   t0 = time.time()
   chiral_list = calculate_results()
   exercise_chiral_validation(chiral_list)
-  exercise_chiral_json(chiral_list)
-  convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="ALONGCHAIN", key_str="pdb_")
-  exercise_chiral_json(chiral_list)
+  ch_dict = exercise_chiral_json(chiral_list)
+  convert_pdb_to_cif_for_pdb_str(locals(), chain_addition="LONGCHAIN", hetatm_name_addition = "", key_str="pdb_", print_new_string = False)
+  chiral_list = calculate_results()
+  ch_dict_cif = exercise_chiral_json(chiral_list)
+  assert ch_dict['summary_results']['   1'] == ch_dict_cif['summary_results']['1'], "tst_chiral_validation summary results changed between pdb and cif version"
+  assert ch_dict['summary_results']['   2'] == ch_dict_cif['summary_results']['2'], "tst_chiral_validation summary results changed between pdb and cif version"
   print("OK. Time: %8.3f"%(time.time()-t0))

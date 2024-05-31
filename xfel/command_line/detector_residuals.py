@@ -1541,7 +1541,7 @@ class ResidualsPlotter(object):
     if sm is not None and color_vals is not None:
       if colorbar_units is None:
         colorbar_units = "mm"
-      cb = ax.figure.colorbar(sm, ticks=color_vals)
+      cb = ax.figure.colorbar(sm, ticks=color_vals, ax=ax)
       cb.ax.set_yticklabels(["%3.2f %s"%(i,colorbar_units) for i in color_vals])
 
     plt.title(title)

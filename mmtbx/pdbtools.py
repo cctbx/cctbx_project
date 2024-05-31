@@ -400,7 +400,8 @@ class modify(object):
       print("Remove altlocs", file=self.log)
       self.pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer = self.params.always_keep_one_conformer,
-        altloc_to_keep = self.params.altloc_to_keep)
+        altloc_to_keep = self.params.altloc_to_keep,
+        keep_occupancy = self.params.keep_occupancy)
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polygly):

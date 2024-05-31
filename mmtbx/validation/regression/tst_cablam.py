@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.validation import cablam
 from libtbx.test_utils import show_diff
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long
 
 from iotbx import pdb
 import libtbx.load_env
@@ -212,101 +213,105 @@ def exercise_cablam():
   assert not show_diff(output_holder.output , ref_cablam_text)
 
 cablam_json_multimodel_pdb = """MODEL        1
-ATOM    120  N   LEU    15      47.483  17.606  20.296  1.00 24.69      103L 218
-ATOM    121  CA  LEU    15      47.208  17.724  21.716  1.00 28.08      103L 219
-ATOM    122  C   LEU    15      46.866  19.132  22.189  1.00 47.52      103L 220
-ATOM    123  O   LEU    15      46.551  19.411  23.375  1.00 42.41      103L 221
-ATOM    124  CB  LEU    15      48.364  17.085  22.505  1.00 31.96      103L 222
-ATOM    125  CG  LEU    15      48.460  15.567  22.290  1.00 33.79      103L 223
-ATOM    126  CD1 LEU    15      49.627  14.978  23.088  1.00 56.11      103L 224
-ATOM    127  CD2 LEU    15      47.145  14.911  22.717  1.00 70.78      103L 225
-ATOM    128  N   LYS    16      46.925  20.028  21.225  1.00 27.45      103L 226
-ATOM    129  CA  LYS    16      46.714  21.414  21.506  1.00 50.37      103L 227
-ATOM    130  C   LYS    16      45.623  21.941  20.637  1.00 31.00      103L 228
-ATOM    131  O   LYS    16      45.582  21.634  19.451  1.00 60.11      103L 229
-ATOM    132  CB  LYS    16      48.019  22.163  21.214  1.00 55.51      103L 230
-ATOM    133  CG  LYS    16      48.021  23.610  21.660  1.00 83.77      103L 231
-ATOM    134  CD  LYS    16      48.087  23.790  23.175  1.00100.00      103L 232
-ATOM    135  CE  LYS    16      46.895  24.555  23.771  1.00100.00      103L 233
-ATOM    136  NZ  LYS    16      46.850  26.013  23.485  1.00100.00      103L 234
-ATOM    137  N   ILE    17      44.688  22.708  21.196  1.00 56.16      103L 235
-ATOM    138  CA  ILE    17      43.629  23.210  20.321  1.00 19.13      103L 236
-ATOM    139  C   ILE    17      44.193  23.624  18.967  1.00 40.60      103L 237
-ATOM    140  O   ILE    17      45.370  23.978  18.830  1.00 68.25      103L 238
-ATOM    141  CB  ILE    17      42.830  24.404  20.896  1.00 47.36      103L 239
-ATOM    142  CG1 ILE    17      42.267  24.102  22.265  1.00 43.38      103L 240
-ATOM    143  CG2 ILE    17      41.684  24.855  19.952  1.00 16.95      103L 241
-ATOM    144  CD1 ILE    17      40.965  24.845  22.441  1.00 27.07      103L 242
-ATOM    145  N   TYR    18      43.324  23.628  17.965  1.00 20.84      103L 243
-ATOM    146  CA  TYR    18      43.767  24.010  16.657  1.00 17.35      103L 244
-ATOM    147  C   TYR    18      42.604  24.316  15.754  1.00 20.49      103L 245
-ATOM    148  O   TYR    18      41.441  24.001  16.010  1.00 36.50      103L 246
-ATOM    149  CB  TYR    18      44.788  23.023  16.018  1.00 42.02      103L 247
-ATOM    150  CG  TYR    18      44.181  21.700  15.576  1.00 53.94      103L 248
-ATOM    151  CD1 TYR    18      44.040  20.596  16.425  1.00 30.37      103L 249
-ATOM    152  CD2 TYR    18      43.736  21.576  14.262  1.00 27.24      103L 250
-ATOM    153  CE1 TYR    18      43.447  19.409  15.988  1.00 71.37      103L 251
-ATOM    154  CE2 TYR    18      43.188  20.385  13.783  1.00 25.76      103L 252
-ATOM    155  CZ  TYR    18      43.014  19.319  14.661  1.00 38.01      103L 253
-ATOM    156  OH  TYR    18      42.461  18.164  14.150  1.00 42.56      103L 254
-ATOM    157  N   LYS    19      42.908  24.929  14.651  1.00 27.49      103L 255
-ATOM    158  CA  LYS    19      41.887  25.242  13.695  1.00 22.06      103L 256
-ATOM    159  C   LYS    19      41.905  24.288  12.552  1.00 73.84      103L 257
-ATOM    160  O   LYS    19      42.947  23.965  11.971  1.00 50.03      103L 258
-ATOM    161  CB  LYS    19      41.983  26.625  13.131  1.00 32.98      103L 259
-ATOM    162  CG  LYS    19      41.434  27.679  14.049  1.00 94.12      103L 260
-ATOM    163  CD  LYS    19      41.484  29.058  13.414  1.00100.00      103L 261
-ATOM    164  CE  LYS    19      42.332  30.073  14.190  1.00 71.32      103L 262
-ATOM    165  NZ  LYS    19      42.244  31.445  13.655  1.00100.00      103L 263
+ATOM    120  N   LEU A  15      47.483  17.606  20.296  1.00 24.69           N
+ATOM    121  CA  LEU A  15      47.208  17.724  21.716  1.00 28.08           C
+ATOM    122  C   LEU A  15      46.866  19.132  22.189  1.00 47.52           C
+ATOM    123  O   LEU A  15      46.551  19.411  23.375  1.00 42.41           O
+ATOM    124  CB  LEU A  15      48.364  17.085  22.505  1.00 31.96           C
+ATOM    125  CG  LEU A  15      48.460  15.567  22.290  1.00 33.79           C
+ATOM    126  CD1 LEU A  15      49.627  14.978  23.088  1.00 56.11           C
+ATOM    127  CD2 LEU A  15      47.145  14.911  22.717  1.00 70.78           C
+ATOM    128  N   LYS A  16      46.925  20.028  21.225  1.00 27.45           N
+ATOM    129  CA  LYS A  16      46.714  21.414  21.506  1.00 50.37           C
+ATOM    130  C   LYS A  16      45.623  21.941  20.637  1.00 31.00           C
+ATOM    131  O   LYS A  16      45.582  21.634  19.451  1.00 60.11           O
+ATOM    132  CB  LYS A  16      48.019  22.163  21.214  1.00 55.51           C
+ATOM    133  CG  LYS A  16      48.021  23.610  21.660  1.00 83.77           C
+ATOM    134  CD  LYS A  16      48.087  23.790  23.175  1.00100.00           C
+ATOM    135  CE  LYS A  16      46.895  24.555  23.771  1.00100.00           C
+ATOM    136  NZ  LYS A  16      46.850  26.013  23.485  1.00100.00           N
+ATOM    137  N   ILE A  17      44.688  22.708  21.196  1.00 56.16           N
+ATOM    138  CA  ILE A  17      43.629  23.210  20.321  1.00 19.13           C
+ATOM    139  C   ILE A  17      44.193  23.624  18.967  1.00 40.60           C
+ATOM    140  O   ILE A  17      45.370  23.978  18.830  1.00 68.25           O
+ATOM    141  CB  ILE A  17      42.830  24.404  20.896  1.00 47.36           C
+ATOM    142  CG1 ILE A  17      42.267  24.102  22.265  1.00 43.38           C
+ATOM    143  CG2 ILE A  17      41.684  24.855  19.952  1.00 16.95           C
+ATOM    144  CD1 ILE A  17      40.965  24.845  22.441  1.00 27.07           C
+ATOM    145  N   TYR A  18      43.324  23.628  17.965  1.00 20.84           N
+ATOM    146  CA  TYR A  18      43.767  24.010  16.657  1.00 17.35           C
+ATOM    147  C   TYR A  18      42.604  24.316  15.754  1.00 20.49           C
+ATOM    148  O   TYR A  18      41.441  24.001  16.010  1.00 36.50           O
+ATOM    149  CB  TYR A  18      44.788  23.023  16.018  1.00 42.02           C
+ATOM    150  CG  TYR A  18      44.181  21.700  15.576  1.00 53.94           C
+ATOM    151  CD1 TYR A  18      44.040  20.596  16.425  1.00 30.37           C
+ATOM    152  CD2 TYR A  18      43.736  21.576  14.262  1.00 27.24           C
+ATOM    153  CE1 TYR A  18      43.447  19.409  15.988  1.00 71.37           C
+ATOM    154  CE2 TYR A  18      43.188  20.385  13.783  1.00 25.76           C
+ATOM    155  CZ  TYR A  18      43.014  19.319  14.661  1.00 38.01           C
+ATOM    156  OH  TYR A  18      42.461  18.164  14.150  1.00 42.56           O
+ATOM    157  N   LYS A  19      42.908  24.929  14.651  1.00 27.49           N
+ATOM    158  CA  LYS A  19      41.887  25.242  13.695  1.00 22.06           C
+ATOM    159  C   LYS A  19      41.905  24.288  12.552  1.00 73.84           C
+ATOM    160  O   LYS A  19      42.947  23.965  11.971  1.00 50.03           O
+ATOM    161  CB  LYS A  19      41.983  26.625  13.131  1.00 32.98           C
+ATOM    162  CG  LYS A  19      41.434  27.679  14.049  1.00 94.12           C
+ATOM    163  CD  LYS A  19      41.484  29.058  13.414  1.00100.00           C
+ATOM    164  CE  LYS A  19      42.332  30.073  14.190  1.00 71.32           C
+ATOM    165  NZ  LYS A  19      42.244  31.445  13.655  1.00100.00           N
 ENDMDL
 MODEL        2
-ATOM   1014  N   LEU   133      30.536  10.928  -6.190  1.00 16.93      103L1112
-ATOM   1015  CA  LEU   133      31.011  11.480  -4.927  1.00 19.63      103L1113
-ATOM   1016  C   LEU   133      31.992  12.625  -5.134  1.00 26.72      103L1114
-ATOM   1017  O   LEU   133      32.125  13.484  -4.270  1.00 23.28      103L1115
-ATOM   1018  CB  LEU   133      31.707  10.402  -4.052  1.00 14.35      103L1116
-ATOM   1019  CG  LEU   133      30.760   9.425  -3.342  1.00 31.49      103L1117
-ATOM   1020  CD1 LEU   133      31.551   8.266  -2.745  1.00 37.78      103L1118
-ATOM   1021  CD2 LEU   133      30.076  10.146  -2.198  1.00 14.00      103L1119
-ATOM   1022  N   ALA   134      32.750  12.572  -6.245  1.00 21.52      103L1120
-ATOM   1023  CA  ALA   134      33.801  13.544  -6.549  1.00 21.07      103L1121
-ATOM   1024  C   ALA   134      33.292  14.934  -6.866  1.00 21.47      103L1122
-ATOM   1025  O   ALA   134      34.032  15.932  -6.804  1.00 19.33      103L1123
-ATOM   1026  CB  ALA   134      34.720  13.025  -7.662  1.00 17.54      103L1124
-ATOM   1027  N   LYS   135      32.011  14.996  -7.224  1.00 21.06      103L1125
-ATOM   1028  CA  LYS   135      31.347  16.250  -7.554  1.00 25.54      103L1126
-ATOM   1029  C   LYS   135      30.774  16.866  -6.309  1.00 19.56      103L1127
-ATOM   1030  O   LYS   135      29.550  16.919  -6.156  1.00 24.91      103L1128
-ATOM   1031  CB  LYS   135      30.214  16.106  -8.570  1.00 12.97      103L1129
-ATOM   1032  CG  LYS   135      30.558  15.217  -9.733  1.00 22.54      103L1130
-ATOM   1033  CD  LYS   135      29.544  15.351 -10.840  1.00 46.13      103L1131
-ATOM   1034  CE  LYS   135      30.178  15.191 -12.206  1.00 71.90      103L1132
-ATOM   1035  NZ  LYS   135      29.730  13.985 -12.903  1.00 97.93      103L1133
-ATOM   1036  N   SER   136      31.642  17.287  -5.410  1.00 13.65      103L1134
-ATOM   1037  CA  SER   136      31.181  17.859  -4.158  1.00 14.56      103L1135
-ATOM   1038  C   SER   136      32.180  18.868  -3.601  1.00 27.10      103L1136
-ATOM   1039  O   SER   136      33.388  18.832  -3.911  1.00 22.82      103L1137
-ATOM   1040  CB  SER   136      31.008  16.717  -3.136  1.00 17.51      103L1138
-ATOM   1041  OG  SER   136      32.237  15.971  -3.070  1.00 15.66      103L1139
-ATOM   1042  N   ARG   137      31.700  19.738  -2.728  1.00 19.66      103L1140
-ATOM   1043  CA  ARG   137      32.576  20.679  -2.052  1.00 18.34      103L1141
-ATOM   1044  C   ARG   137      33.630  19.903  -1.265  1.00 15.29      103L1142
-ATOM   1045  O   ARG   137      34.808  20.230  -1.267  1.00 20.30      103L1143
-ATOM   1046  CB  ARG   137      31.754  21.450  -1.038  1.00 22.08      103L1144
-ATOM   1047  CG  ARG   137      32.616  22.258  -0.087  1.00 29.17      103L1145
-ATOM   1048  CD  ARG   137      31.813  23.256   0.761  1.00 24.81      103L1146
-ATOM   1049  NE  ARG   137      32.564  24.474   1.087  1.00100.00      103L1147
-ATOM   1050  CZ  ARG   137      33.415  24.547   2.121  1.00100.00      103L1148
-ATOM   1051  NH1 ARG   137      33.629  23.496   2.928  1.00100.00      103L1149
-ATOM   1052  NH2 ARG   137      34.073  25.698   2.345  1.00100.00      103L1150
+ATOM   1014  N   LEU A 133      30.536  10.928  -6.190  1.00 16.93           N
+ATOM   1015  CA  LEU A 133      31.011  11.480  -4.927  1.00 19.63           C
+ATOM   1016  C   LEU A 133      31.992  12.625  -5.134  1.00 26.72           C
+ATOM   1017  O   LEU A 133      32.125  13.484  -4.270  1.00 23.28           O
+ATOM   1018  CB  LEU A 133      31.707  10.402  -4.052  1.00 14.35           C
+ATOM   1019  CG  LEU A 133      30.760   9.425  -3.342  1.00 31.49           C
+ATOM   1020  CD1 LEU A 133      31.551   8.266  -2.745  1.00 37.78           C
+ATOM   1021  CD2 LEU A 133      30.076  10.146  -2.198  1.00 14.00           C
+ATOM   1022  N   ALA A 134      32.750  12.572  -6.245  1.00 21.52           N
+ATOM   1023  CA  ALA A 134      33.801  13.544  -6.549  1.00 21.07           C
+ATOM   1024  C   ALA A 134      33.292  14.934  -6.866  1.00 21.47           C
+ATOM   1025  O   ALA A 134      34.032  15.932  -6.804  1.00 19.33           O
+ATOM   1026  CB  ALA A 134      34.720  13.025  -7.662  1.00 17.54           C
+ATOM   1027  N   LYS A 135      32.011  14.996  -7.224  1.00 21.06           N
+ATOM   1028  CA  LYS A 135      31.347  16.250  -7.554  1.00 25.54           C
+ATOM   1029  C   LYS A 135      30.774  16.866  -6.309  1.00 19.56           C
+ATOM   1030  O   LYS A 135      29.550  16.919  -6.156  1.00 24.91           O
+ATOM   1031  CB  LYS A 135      30.214  16.106  -8.570  1.00 12.97           C
+ATOM   1032  CG  LYS A 135      30.558  15.217  -9.733  1.00 22.54           C
+ATOM   1033  CD  LYS A 135      29.544  15.351 -10.840  1.00 46.13           C
+ATOM   1034  CE  LYS A 135      30.178  15.191 -12.206  1.00 71.90           C
+ATOM   1035  NZ  LYS A 135      29.730  13.985 -12.903  1.00 97.93           N
+ATOM   1036  N   SER A 136      31.642  17.287  -5.410  1.00 13.65           N
+ATOM   1037  CA  SER A 136      31.181  17.859  -4.158  1.00 14.56           C
+ATOM   1038  C   SER A 136      32.180  18.868  -3.601  1.00 27.10           C
+ATOM   1039  O   SER A 136      33.388  18.832  -3.911  1.00 22.82           O
+ATOM   1040  CB  SER A 136      31.008  16.717  -3.136  1.00 17.51           C
+ATOM   1041  OG  SER A 136      32.237  15.971  -3.070  1.00 15.66           O
+ATOM   1042  N   ARG A 137      31.700  19.738  -2.728  1.00 19.66           N
+ATOM   1043  CA  ARG A 137      32.576  20.679  -2.052  1.00 18.34           C
+ATOM   1044  C   ARG A 137      33.630  19.903  -1.265  1.00 15.29           C
+ATOM   1045  O   ARG A 137      34.808  20.230  -1.267  1.00 20.30           O
+ATOM   1046  CB  ARG A 137      31.754  21.450  -1.038  1.00 22.08           C
+ATOM   1047  CG  ARG A 137      32.616  22.258  -0.087  1.00 29.17           C
+ATOM   1048  CD  ARG A 137      31.813  23.256   0.761  1.00 24.81           C
+ATOM   1049  NE  ARG A 137      32.564  24.474   1.087  1.00100.00           N
+ATOM   1050  CZ  ARG A 137      33.415  24.547   2.121  1.00100.00           C
+ATOM   1051  NH1 ARG A 137      33.629  23.496   2.928  1.00100.00           N
+ATOM   1052  NH2 ARG A 137      34.073  25.698   2.345  1.00100.00           N
 ENDMDL
 END
 """
 
-def exercise_cablam_json2():
+def exercise_cablam_json2(test_mmcif=False):
   dm = DataManager()
   #print(help(dm))
-  dm.process_model_str("1",cablam_json_multimodel_pdb)
+  if test_mmcif:
+    pdb_test_string = convert_string_to_cif_long(cablam_json_multimodel_pdb, hetatm_name_addition = "", chain_addition="LONGCHAIN")
+  else:
+    pdb_test_string = cablam_json_multimodel_pdb
+  dm.process_model_str("1",pdb_test_string)
   m = dm.get_model("1")
   output_holder = cablam_test_string()
 
@@ -318,10 +323,20 @@ def exercise_cablam_json2():
 
   cablam_json = cablamalyze.as_JSON()
   cablam_dict = json.loads(cablam_json)
-  assert cablam_dict['summary_results']["   2"]["num_cablam_disfavored"]==1, "tst_cablam summary json model 2 num_disfavored value changed, now: "+str(cablam_dict['summary_results']["   2"]["num_cablam_disfavored"])
-  assert cablam_dict['summary_results']["   1"]["num_cablam_outliers"]==1, "tst_cablam summary json model 1 num_outliers value changed, now: "+str(cablam_dict['summary_results']["   1"]["num_cablam_outliers"])
+  #import pprint
+  #pprint.pprint(cablam_dict)
+  summary_results_dict = cablam_dict['summary_results']
+  if "   1" in summary_results_dict:
+    summary_results_1_dict = summary_results_dict["   1"]
+    summary_results_2_dict = summary_results_dict["   2"]
+  else:
+    summary_results_1_dict = summary_results_dict["1"]
+    summary_results_2_dict = summary_results_dict["2"]
+  assert summary_results_2_dict["num_cablam_disfavored"]==1, "tst_cablam summary json model 2 num_disfavored value changed, now: "+str(cablam_dict['summary_results']["   2"]["num_cablam_disfavored"])
+  assert summary_results_1_dict["num_cablam_outliers"]==1, "tst_cablam summary json model 1 num_outliers value changed, now: "+str(cablam_dict['summary_results']["   1"]["num_cablam_outliers"])
+  return cablam_dict
 
-def exercise_cablam_json():
+def exercise_cablam_json(test_mmcif=False):
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb103l.ent",
     test=os.path.isfile) #This is the same file used for tst_kinemage.py
@@ -330,8 +345,17 @@ def exercise_cablam_json():
     return
   #-----
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_103l_str = f.read()
+    pdb_103l_str = convert_string_to_cif_long(pdb_103l_str, hetatm_name_addition = "", chain_addition="LONGCHAIN")
+    dm.process_model_str("1", pdb_103l_str)
+    m = dm.get_model("1")
+  else:
+    m = dm.get_model(regression_pdb)
   output_holder = cablam_test_string()
+
+  pdb_hierarchy_tst = m.get_hierarchy()
 
   cablamalyze = cablam.cablamalyze(
     pdb_hierarchy = m.get_hierarchy(),
@@ -354,9 +378,15 @@ def exercise_cablam_json():
 def run():
   t0 = time.time()
   exercise_cablam()
+  print("Cablam Text test OK")
   exercise_cablam_json()
-  exercise_cablam_json2()
-  print("OK")
+  exercise_cablam_json(test_mmcif=True)
+  print("Cablam JSON 1 OK")
+  cablam_dict2 = exercise_cablam_json2()
+  cablam_dict2cif = exercise_cablam_json2(test_mmcif=True)
+  assert cablam_dict2['summary_results']['   1'] == cablam_dict2cif['summary_results']['1']
+  assert cablam_dict2['summary_results']['   2'] == cablam_dict2cif['summary_results']['2']
+  print("Cablam JSON 2 OK")
   print("OK. Time: %8.3f"%(time.time()-t0))
 
 if (__name__ == "__main__"):

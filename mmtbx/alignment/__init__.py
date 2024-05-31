@@ -379,6 +379,22 @@ class alignment(object):
           j_seqs.append(j)
     return i_seqs, j_seqs
 
+  def exact_mismatch_selection(self):
+    """Returns i_seqs and j_seqs of residues that do not match, excluding
+    insertions and deletions.
+
+    Returns:
+        (flex.size_t, flex.size_t): i_seqs that mismatch
+    """
+    i_seqs = flex.size_t()
+    j_seqs = flex.size_t()
+    for a, b, i, j in zip(self.a, self.b, self.i_seqs_a, self.i_seqs_b):
+      if(a != b and a not in ["-", None] and b not in ["-", None]):
+        if(i is not None and j is not None):
+          i_seqs.append(i)
+          j_seqs.append(j)
+    return i_seqs, j_seqs
+
 # amino acid similarity scores from Dayhoff's 1978 paper; like PAM250?
 dayhoff_mdm78_similarity_scores = [
   [ 18,-20,  3,  3,-35, 13,-14, -5,-12,-19,-11,  2, 11, -4,-15, 11, 12,  2,-58,-35],

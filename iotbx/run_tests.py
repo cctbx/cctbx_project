@@ -153,6 +153,7 @@ tst_list_base = [
   "$D/regression/tst_mtz_as_cif.py",
   "$D/regression/tst_group_rounding.py",
   "$D/regression/tst_hierarchy_occupancies_rounding.py",
+  "$D/regression/tst_hierarchy_merge_atoms_at_end_to_residues.py",
   "$D/regression/tst_hierarchy_long_chain_ids_1.py",
   "$D/regression/tst_hierarchy_long_resname_1.py",
   "$D/regression/tst_hierarchy_long_resname_2.py",
@@ -160,6 +161,7 @@ tst_list_base = [
   "$D/regression/tst_hierarchy_long_resname_4.py",
   "$D/regression/tst_hierarchy_copy_select.py",
   "$D/regression/tst_hierarchy_id_str.py",
+  "$D/regression/tst_hierarchy_altlocs.py",
   "$D/regression/tst_fetch.py",
   ]
 

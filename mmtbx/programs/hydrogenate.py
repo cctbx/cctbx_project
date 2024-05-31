@@ -27,7 +27,6 @@ add_d_to_water = False
 
 print_time = False
   .type = bool
-
 '''
 
 # ------------------------------------------------------------------------------
@@ -45,7 +44,7 @@ Inputs:
   data_manager_options = ['model_skip_expand_with_mtrix',
                           'model_skip_ss_annotations']
 
-# ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
 
   def validate(self):
     self.data_manager.has_models(
@@ -53,11 +52,12 @@ Inputs:
       expected_n  = 1,
       exact_count = True)
 
-# ------------------------------------------------------------------------------
+  # ----------------------------------------------------------------------------
 
   def run(self):
     self.model = self.data_manager.get_model()
-    #
+    self.model.process(make_restraints=False)
+
     make_sub_header('Add H atoms', out=self.logger)
     hydrogenate_obj = reduce_hydrogen.place_hydrogens(
       model                 = self.model,
@@ -79,11 +79,9 @@ Inputs:
     elif self.params.add_d_to_water:
       self.model.add_hydrogens(1., element="D", occupancy=1.)
 
-
     if self.params.output.prefix is None:
       self.params.output.prefix = os.path.split(os.path.splitext(
         self.data_manager.get_default_model_name())[0])[1]
-
 
     if self.data_manager.get_model().input_model_format_cif():
       self.output_file_name = self.params.output.prefix+"_hydrogenate.cif"
@@ -98,19 +96,8 @@ Inputs:
 
     print("Wrote file: %s" % self.output_file_name, file=self.logger)
 
+  # ----------------------------------------------------------------------------
+
   def get_results(self):
     return group_args(
      output_file_name=self.output_file_name)
-
-
-# ------------------------------------------------------------------------------
-
-#  def get_results(self):
-#    return group_args(model = self.model)
-#  def get_results(self):
-#    # results object not returned because it contains maps
-#    return group_args(
-#      message     = self.message,
-#      output_file = self.output_file_name,
-#      model       = self.data_manager.get_default_model_name())
-

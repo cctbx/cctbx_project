@@ -3055,8 +3055,6 @@ class geometry_restraints_proxy_registries(object):
     self.parallelity = geometry_restraints.parallelity_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
 
-  # XXX TODO use counts to modify weights
-
   def initialize_tables(self):
     self.bond_simple.initialize_table()
     self.angle.initialize_table()

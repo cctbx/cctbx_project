@@ -118,7 +118,7 @@ def run(argv=None):
       files = os.listdir(path)
 
       try:
-        from mpi4py import MPI
+        from libtbx.mpi4py import MPI
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()

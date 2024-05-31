@@ -330,6 +330,114 @@ def count_rotatable(selections):
     result += len(s[1])
   return result
 
+class map_manager(object):
+
+  def __init__(self, fmodel, map_type):
+    self.fmodel = fmodel
+    self.map_type = map_type
+    cs = fmodel.f_obs().crystal_symmetry()
+    self.unit_cell = cs.unit_cell()
+    self.crystal_gridding = maptbx.crystal_gridding(
+      unit_cell        = self.unit_cell,
+      space_group_info = cs.space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      step             = 0.25)
+    self.omit_map = None
+    self.size = self.fmodel.xray_structure.scatterers().size()
+
+  def update_omit_map(self, omit_selection):
+    sel_keep = ~flex.bool(self.size, omit_selection)
+    fmodel = self.fmodel.deep_copy()
+    fmodel.update_xray_structure(
+      xray_structure = fmodel.xray_structure.select(sel_keep),
+      update_f_calc  = True,
+      update_f_mask  = False)
+    mc = fmodel.electron_density_map().map_coefficients(
+      map_type   = "mFobs-DFmodel",
+      isotropize = False,
+      exclude_free_r_reflections = True)
+    fft_map = mc.fft_map(crystal_gridding = self.crystal_gridding)
+    fft_map.apply_sigma_scaling()
+    self.omit_map = fft_map.real_map_unpadded()
+
+  def score(self, sites_cart):
+    return maptbx.real_space_target_simple(
+      unit_cell   = self.unit_cell,
+      density_map = self.omit_map,
+      sites_cart  = sites_cart)
+
+def fit_rotatable2(model, fmodel, use_electron_xh=True):
+  """
+  Slow, OMIT map based fitting of rotatable H.
+  """
+  # Reset mask params if needed
+  mask_params = fmodel.mask_params
+  mpih = mask_params.ignore_hydrogens
+  if(mpih):
+    mask_params.ignore_hydrogens=False
+    fmodel.update(mask_params=mask_params)
+    fmodel.update_all_scales()
+  # Set X-H bonds to shorter (electron) distances
+  model.set_hydrogen_bond_length(use_neutron_distances = False)
+  #
+  fmodel.update_all_scales()
+  # FIT
+  mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
+  get_class = iotbx.pdb.common_residue_names_get_class
+  sites_cart = model.get_sites_cart()
+  for m in model.get_hierarchy().models():
+    for c in m.chains():
+      first=True
+      for r in c.residues():
+        if not get_class(r.resname)=="common_amino_acid": continue
+        s = mmtbx.hydrogens.shortcut(residue=r, first=first, log=model.log)
+        first=False
+        if s is None: continue
+        # print(r.resname, s)
+        omit_selection = flex.size_t()
+        for cl in s:
+          omit_selection.extend(flex.size_t(cl[1]))
+        mm.update_omit_map(omit_selection = omit_selection)
+        for cl in s:
+          axis = cl[0]
+          a1, a2               = sites_cart[axis[0]], sites_cart[axis[1]]
+          sel_to_rotate        = flex.size_t(cl[1])
+          sites_cart_to_rotate = sites_cart.select(sel_to_rotate)
+          score_start          = mm.score(sites_cart = sites_cart_to_rotate)
+          score_best           = score_start
+          sites_cart_moved     = flex.vec3_double(sites_cart_to_rotate.size())
+          sites_cart_best      = None
+          assert len(sel_to_rotate) in [1,3]
+          if len(sel_to_rotate)==1: stop=360
+          else:                     stop=60
+          for angle in range(0, stop, 1):
+            sites_cart_moved = flex.vec3_double(sites_cart_to_rotate.size())
+            for isite, site_cart in enumerate(sites_cart_to_rotate):
+              site_cart_rotated = rotate_point_around_axis(
+                axis_point_1 = a1,
+                axis_point_2 = a2,
+                point        = site_cart,
+                angle        = angle,
+                deg          = True)
+              sites_cart_moved[isite] = site_cart_rotated
+            score = mm.score(sites_cart = sites_cart_moved)
+            if score > score_best:
+              score_best = score
+              sites_cart_best = sites_cart_moved.deep_copy()
+          if sites_cart_best is not None:
+            sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
+  model.set_sites_cart(sites_cart)
+  # Reset X-H bonds
+  if not use_electron_xh:
+    model.set_hydrogen_bond_length(use_neutron_distances = True)
+  # Update fmodel with new sites_cart
+  fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
+  if(mpih):
+    mask_params.ignore_hydrogens=False
+    fmodel.update(mask_params=mask_params)
+  fmodel.update_xray_structure(update_f_calc=True, update_f_mask=True)
+  fmodel.update_all_scales()
+
 def fit_rotatable(
       pdb_hierarchy,
       xray_structure,

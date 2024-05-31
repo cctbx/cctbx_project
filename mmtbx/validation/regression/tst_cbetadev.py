@@ -6,6 +6,7 @@ from libtbx.easy_pickle import loads, dumps
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
 from iotbx.data_manager import DataManager
+from libtbx.test_utils import convert_string_to_cif_long
 import os.path
 import json
 import time
@@ -311,7 +312,7 @@ HETATM 3185  CB  LY? D   3      -4.176  -5.939  53.836  1.00 34.68           C''
       assert cb.deviation<1.
   print('OK')
 
-def exercise_cbetadev_json():
+def exercise_cbetadev_json(test_mmcif=False):
   regression_pdb = libtbx.env.find_in_repositories(
     relative_path="phenix_regression/pdb/pdb1jxt.ent",
     test=os.path.isfile)
@@ -320,15 +321,25 @@ def exercise_cbetadev_json():
     return
   from mmtbx.validation import cbetadev
   dm = DataManager()
-  m = dm.get_model(regression_pdb)
+  if test_mmcif:
+    with open(regression_pdb) as f:
+      pdb_1jxt_str = f.read()
+    pdb_1jxt_str = convert_string_to_cif_long(pdb_1jxt_str, hetatm_name_addition = "", chain_addition="LONGCHAIN")
+    dm.process_model_str("1", pdb_1jxt_str)
+    m = dm.get_model("1")
+    chainA = "ALONGCHAIN"
+  else:
+    m = dm.get_model(regression_pdb)
+    chainA = "A"
   cbeta_json = cbetadev.cbetadev(pdb_hierarchy=m.get_hierarchy(), outliers_only=True).as_JSON()
   cbeta_dict = json.loads(cbeta_json)
   assert len(cbeta_dict['flat_results'])==6, "tst_cbetadev json output not returning correct number of outliers, now: "+str(len(cbeta_dict['flat_results']))
   assert approx_equal(cbeta_dict['flat_results'][0]['deviation'], 0.25977096732623106), "tst_cbetadev json output first deviation not approx_equal, now: "+str(cbeta_dict['flat_results'][0]['deviation'])
   assert approx_equal(cbeta_dict['flat_results'][-1]['deviation'], 0.5001892640352836), "tst_cbetadev json output last deviation not approx_equal, now: "+str(cbeta_dict['flat_results'][-1]['deviation'])
-  assert approx_equal(cbeta_dict['hierarchical_results']['']["A"]["   8 "]['B']["dihedral_NABB"], 80.92016704402938), "tst_cbetadev json output hierarchical result changed dihedral_NABB result, now: "+str(cbeta_dict['hierarchical_results']['']["A"]["   8 "]['B']["dihedral_NABB"])
+  assert approx_equal(cbeta_dict['hierarchical_results'][''][chainA]["   8 "]['B']["dihedral_NABB"], 80.92016704402938), "tst_cbetadev json output hierarchical result changed dihedral_NABB result, now: "+str(cbeta_dict['hierarchical_results'][''][chainA]["   8 "]['B']["dihedral_NABB"])
   assert cbeta_dict['summary_results'][""]['num_outliers']==6, "tst_cbetadev json output summary results num_outliers changed, now: "+str(cbeta_dict['summary_results'][""]['num_outliers'])
   assert cbeta_dict['summary_results'][""]['num_cbeta_residues']==51, "tst_cbetadev json output summary results num_cbeta_residues changed, now: "+str(cbeta_dict['summary_results'][""]['num_cbeta_residues'])
+  return cbeta_dict
 
 if (__name__ == "__main__"):
   t0 = time.time()
@@ -337,5 +348,7 @@ if (__name__ == "__main__"):
   exercise_cbetadev_misnamed_peptides()
   exercise_cbetadev_nonstandard_peptide()
   exercise_cbetadev_unknown_peptide()
-  exercise_cbetadev_json()
+  cb_dict = exercise_cbetadev_json()
+  cb_dict_cif = exercise_cbetadev_json(test_mmcif=True)
+  assert cb_dict['summary_results'] == cb_dict_cif['summary_results'], "tst_cbetadev summary results changed between pdb and cif version"
   print("OK. Time: %8.3f"%(time.time()-t0))
