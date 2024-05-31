@@ -58,9 +58,6 @@ class ResourceLogManager:
     return self.log
 
 
-resource_log_manager = ResourceLogManager('libtbx.resource_monitor')
-
-
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~ STORING USAGE STATS ~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
 
@@ -315,6 +312,8 @@ class ResourceMonitor(ContextDecorator):
     self.period: float = period  # <5 sec. de-prioritizes sub-procs & they stop
     self.prefix: str = prefix if prefix else 'monitor'
     self.rank_info: RankInfo = RankInfo()
+    logger_name = 'libtbx.resource_monitor.' + self.prefix
+    self.log_manager = ResourceLogManager(logger_name)
     self.log: logging.Logger = self.get_logger()
     self.log.info(f'Collecting CPU stats with {self.rank_info.cpu_probe.kind=}')
     self.log.info(f'Collecting GPU stats with {self.rank_info.gpu_probe.kind=}')
@@ -354,8 +353,8 @@ class ResourceMonitor(ContextDecorator):
     }[self.detail]
 
   def get_logger(self) -> logging.Logger:
-    return resource_log_manager.get_file_logger(self.log_path) \
-      if self.is_logging else resource_log_manager.get_null_logger()
+    return self.log_manager.get_file_logger(self.log_path) \
+      if self.is_logging else self.log_manager.get_null_logger()
 
   def log_current_resource_stats(self) -> None:
     """Get current usage stats and log + save them"""
