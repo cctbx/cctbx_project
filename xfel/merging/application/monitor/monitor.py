@@ -4,7 +4,7 @@ from libtbx.resource_monitor import ResourceMonitor
 from xfel.merging.application.worker import worker
 
 
-resource_monitor: ResourceMonitor = None
+resource_monitor = None
 
 
 class MonitorWorker(worker):
