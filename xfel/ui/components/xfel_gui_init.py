@@ -1925,7 +1925,7 @@ class EnergyTab(BaseTab):
     self.scan_runs_list.InsertItem(0, 0)
     self.scan_runs_list.Select(0)
 
-    self.scan_runs_sizer.Add(self.scan_runs_list, 1)
+    self.scan_runs_sizer.Add(self.scan_runs_list, 0)
 
     self.scan_runs_button_panel = wx.Panel(self.scan_runs_panel)
     self.scan_runs_button_sizer = wx.GridBagSizer(0,0)
@@ -2087,6 +2087,8 @@ class EnergyTab(BaseTab):
 
   def onAddScanRuns(self, e):
     n_rows = self.scan_runs_list.GetItemCount()
+    for i in range(n_rows):
+      self.scan_runs_list.Select(i, on=0)
     self.scan_runs_list.InsertItem(n_rows, 0)
     self.scan_runs_list.Select(n_rows)
 
