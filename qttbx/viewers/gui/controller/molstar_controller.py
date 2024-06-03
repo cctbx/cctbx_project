@@ -18,7 +18,8 @@ from ...molstar.molstar import MolstarViewer
 from .style import ModelStyleController, MapStyleController
 #from ..controller.selection_controls import SelectionControlsController
 from ..controller.viewer_controls import ViewerControlsController
-from ...core.selection_utils import Selection, SelectionQuery
+from ...core.selection import Selection
+from ..state.ref import SelectionRef
 from ...core.python_utils import DotDict
 
 class sync_manager:
@@ -56,6 +57,7 @@ class MolstarController(Controller):
     #self.selection_controls = SelectionControlsController(parent=self,view=self.view.selection_controls)
     self.viewer_controls = ViewerControlsController(parent=self,view=self.view.viewer_controls)
 
+
     self._blocking_commands = False
     self._picking_granularity = "residue"
     self.references_remote_map = {} # Local ref_id : molstar_ref_id
@@ -69,9 +71,10 @@ class MolstarController(Controller):
     self.state.signals.model_change.connect(self.load_model_from_ref)
     self.state.signals.map_change.connect(self.load_map_from_ref)
 
-    self.state.signals.select.connect(self.select_from_ref)
+    #self.state.signals.selection_activated.connect(self.select_from_ref) # Need to re-select?
+    self.state.signals.focus_selected.connect(self.focus_selected)
     self.state.signals.clear.connect(self.clear_viewer)
-    self.state.signals.selection_change.connect(self.select_from_ref)
+    self.state.signals.picking_level.connect(self.picking_level)
 
     #timer for update
     self.timer = QTimer()
@@ -195,8 +198,8 @@ class MolstarController(Controller):
 
   # Selection
 
-  def poll_selection(self,callback=None):
-    return self.viewer.poll_selection(callback=callback)
+  def poll_selection(self):
+    return self.viewer.poll_selection()
 
   def _poll_selection_callback(self,callback,selection_json):
     #print("Calling MolstarController._poll_selection_callback(callback, selection_json)")
@@ -220,14 +223,23 @@ class MolstarController(Controller):
     if callback is not None:
       callback(query_dict)
 
-  def select_from_phenix_string(self,selection_phenix=None):
-    # convert to query
-    query = self.state.mol.sites._select_query_from_str_phenix(selection_phenix)
-    query.params.refId = self.state.active_model_ref.id
-    self.viewer.select_from_query(query)
+  def select_from_phenix_string(self,phenix_string):
+    return self.viewer.select_from_phenix_string(phenix_string)
 
-  def select_from_ref(self,ref):
-    self.viewer.select_from_query(ref.query)
+  def select_from_ref(self,ref: SelectionRef):
+    return self.select_from_selection(ref.data)
+
+  def select_from_selection(self,selection: Selection):
+    return self.viewer.select_from_selection(selection)
+
+  def focus_selected(self):
+    return self.viewer.focus_selected()
+
+  def picking_level(self,picking_int):
+    if picking_int ==1:
+      self.set_granularity("element")
+    else:
+      self.set_granularity("residue")
 
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'
@@ -283,6 +295,13 @@ class MolstarController(Controller):
 
 
   def hide_ref(self,ref,representation: Optional[str] = None):
+    for phenixRef in self.state.phenixState.references:
+      if phenixRef==ref.id:
+        for phenixComponent in phenixRef.components:
+          for phenixRepresentation in phenixComponents.representations:
+            if phenixRepresentation == representation or representation == None:
+              # Hide
+              self.viewer.hide_ref
     phenix_ref = self.state.phenixState.references[ref.id]
     model_id = phenix_ref.id_molstar
     representations = phenix_ref.representations

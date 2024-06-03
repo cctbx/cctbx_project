@@ -13,156 +13,20 @@ from .cif_io import CifInput
 from libtbx import group_args
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
-from .selection_common import CommonSelectionParser
+from .selection import PhenixParser, Selection
 from .selection_utils import (
-  core_keys_to_mmcif_keys_default,
   df_nodes_group_to_query,
   find_simplest_selected_nodes,
   form_simple_str_common,
   SelConverterPhenix,
 )
-params = group_args(
-
-# Maps internal attr name -> phenix name
-attrs_map_phenix = OrderedDict([
-
-    ("group_id","group"), # ?
-    ("model_id","model"),
-    ("entity_id","entity_id"), #?
-    ("asym_id","chain"),
-    ("seq_id","resseq"),
-    ("comp_id","resname"),
-    ("atom_id","atom"),
-    ("id","serial"),
-    ("type_symbol","element"),
-    ("x", "x"),
-    ("y","y"),
-    ("z","z"),
-    ("occupancy",'occ'),
-    ("bfactor","b"),
-    ('icode','icode'),
-    ("charge","charge"),
-    ("alt_id","altloc")
-    ]),
-
-dtypes_mmcif = {
- 'auth_asym_id': 'string',
- 'label_asym_id': 'string',
- 'auth_seq_id': 'Int64',
- 'label_seq_id': 'Int64',
- 'label_comp_id': 'string',
- 'type_symbol': 'string',
- 'label_alt_id': 'string',
- 'pdbx_PDB_model_num': 'string',
- 'pdbx_PDB_ins_code': 'string',
- 'Cartn_x': 'Float64',
- 'Cartn_y': 'Float64',
- 'Cartn_z': 'Float64',
- 'B_iso_or_equiv': 'Float64',
- 'occupancy': 'Float64',
- 'pdbx_formal_charge': 'Int64',
- 'group_PDB': 'string',
- 'id': 'string',
- 'label_atom_id': 'string',
- 'label_entity_id': 'string'
-},
-
-
-# Define functions to fill missing columns.
-# 'None' indicates an absolutely required initial column
-fill_functions = {
- #'auth_asym_id': lambda sites: sites["label_asym_id"],
- #'auth_asym_id': None,#lambda sites: sites["label_asym_id"],
- #'label_asym_id': None,
-
- #'auth_seq_id': lambda sites: sites["label_seq_id"],
- #'auth_seq_id': None, #lambda sites: sites["label_seq_id"],
- #'label_seq_id': None,
-
- #'auth_comp_id': lambda sites: sites["label_comp_id"],
- #'auth_comp_id':None, #lambda sites: sites["label_comp_id"],
- #'label_comp_id': None,
-
- 'type_symbol': None,
- 'label_alt_id': None,
- 'pdbx_PDB_model_num': None,
- 'pdbx_PDB_ins_code': None,
- 'Cartn_x': None,
- 'Cartn_y': None,
- 'Cartn_z': None,
- 'B_iso_or_equiv': None,
- 'occupancy': None,
- 'pdbx_formal_charge': None,
- 'group_PDB': None,
- 'id': None,
- 'label_atom_id': None,
- 'label_entity_id': None,
-},
-
- # Regularize names to a consistent default name (no auth,label prefix)
-attr_aliases = core_keys_to_mmcif_keys_default, # core:real
-#attr_aliases_reverse = {v:k for k,v in core_keys_to_mmcif_keys_default.items()}, # real:core
-
-attrs_core = [ # attributes assumed to exists
-    'asym_id',
-    'seq_id',
-    'comp_id',
-    'atom_id',
-    'alt_id',
-    'id',
-    'type_symbol',
-    'occupancy',
-    'B_iso_or_equiv'
-    ],
-attrs_core_compositional = [
-    'asym_id',
-    'comp_id',
-    'atom_id',
-    'alt_id',
-    'type_symbol',
-    'seq_id',
-    ],
-
-attr_fill_values = {
-  # required
-  'asym_id':"?",
-  'seq_id':"?",
-  'comp_id':"?",
-  'atom_id':"?",
-  'id':"?",
-  'type_symbol':"?",
-
-  # other
-  'x':np.nan,
-  'y':np.nan,
-  'z':np.nan,
-  'group_id':"ATOM",
-  'entity_id':"",
-  'model_id':"1",
-  'occupancy':np.nan,
-  'bfactor':np.nan,
-  'icode':" ",
-  'charge':"",
-  'alt_id':"",
-},
-rounding = {
-   "Cartn_x":3,
-   "Cartn_y":3,
-   "Cartn_Z":3,
-   "B_iso_or_equiv":2,
-   "occupancy":2,
-
-},
-blanks = set([""," ",".","?",np.nan,pd.NA]),
-
-)
+from .parameters import params
 
 import pandas as pd
 
 class AtomSites(pd.DataFrame):
+  
   params = params
-
-
   @classmethod
   def from_cif_input(cls,cif_input,name=None,build_hierarchy=True):
      sites = cif_input.atom_sites
@@ -548,8 +412,7 @@ class AtomSites(pd.DataFrame):
 
   @property
   def xyz(self):
-
-     return self[self.xyz_keys].values
+     return self[self.xyz_keys].values.astype(float)
 
   def get_sites_cart(self):
     sites_cart = flex.vec3_double(self.xyz)
@@ -1015,53 +878,129 @@ class AtomSites(pd.DataFrame):
           add_id_to_ancestors(G, cur_node, id_value)
       return G
 
+  def _verify_selection_with_cctbx(self,pandas_string=None,phenix_string=None):
+    """
+    Verify that a pandas string is the exact same subset of self as would be returned
+    by cctbx selection on self.hierarchy
+    """
+    try:
+      sites_sel = self.query(pandas_string)
+    except:
+      print("Failed to query a selection on the dataframe using string:")
+      print(pandas_string)
+      print()
+      print("Comparison Phenix string:")
+      print(phenix_string)
+      raise
+    assert pandas_string is not None and phenix_string is not None, "Provide both a pandas and phenix string"
+    asc = self.hierarchy.atom_selection_cache()
+    
+    sel_bool = asc.selection(phenix_string)
+    sel_h = self.hierarchy.select(sel_bool)
+    xyz_sel_cctbx = sel_h.atoms().extract_xyz().as_numpy_array()
+    xyz_sel = sites_sel.xyz
+    if not np.all(np.isclose(xyz_sel,xyz_sel_cctbx)):
+      print("Failed to match cartesian coordinates between selection and cctbx selection")
+      print("CCTBX string: ",phenix_string)
+      print("Pandas string: ",pandas_string)
+    return True, sites_sel
+
   ###############################
   #### Starting Selection
   ###############################
-  def select(self):
-    raise NotImplementedError
-
-  def select_from_phenix_string(self,phenix_string):
-    query = self.select_query_from_phenix_string(phenix_string)
-    return self.select_from_query(query)
-
-  def select_query_from_phenix_string(self,phenix_string):
-    query = self._select_query_from_str_phenix(phenix_string)
-    return query
-
-  def select_from_query(self,query):
-    if len(query.selections)==0:
-      return self.__class__(self[self.index < 0]) # empty
+  def select_from_pandas_string(self,pandas_str,verify_phenix_str=None):
+    """
+    A thin wrapper of df.query()
+    Option to verify result against cctbx
+    """
+    if verify_phenix_str:
+      passed, sites_sel = self._verify_selection_with_cctbx(pandas_string=pandas_str,phenix_string=verify_phenix_str)
+      assert passed
+      print("PASSED CCTBX CHECK")
     else:
-      return self._convert_query_to_sites(query)
+      try:
+        sites_sel = self.query(pandas_str)
+      except:
+        print("Failed to select from pandas string:")
+        print(pandas_str)
+    return sites_sel
 
-  def query_from_i_seqs(self,i_seqs):
-    query = self.select_query_from_i_seqs(i_seqs)
-    return query
+  
+  def select_from_phenix_string(self,phenix_string):
+    # make sure valid string
+    self._validate_phenix_selection_string(phenix_string)
+
+    # Parse
+    parser = PhenixParser(phenix_string)
+    pandas_string = parser.pandas_string
+    return self.select_from_pandas_string(pandas_string,verify_phenix_str=phenix_string)
+
+  def select_from_selection(self,selection):
+    return self.select_from_pandas_string(selection.pandas_string)
+
+  def selection_from_phenix_string(self,phenix_string):
+    selection = Selection.from_phenix_string(phenix_string)
+    return selection
+
+
+  # def select_query_from_phenix_string(self,phenix_string):
+  #   self._validate_phenix_selection_string(phenix_string)
+  #   query = self._select_query_from_str_phenix(phenix_string)
+  #   return query
+
+  # def select_from_query(self,query):
+  #   if len(query.selections)==0:
+  #     return self.__class__(self[self.index < 0]) # empty
+  #   else:
+  #     return self._convert_query_to_sites(query)
+
+  # def query_from_i_seqs(self,i_seqs):
+  #   query = self.select_query_from_i_seqs(i_seqs)
+  #   return query
     
-  def query_from_slice(self,slice):
-    i_seqs = slice.index
-    return self.query_from_i_seqs(i_seqs)
+  # def query_from_slice(self,slice):
+  #   i_seqs = slice.index
+  #   return self.query_from_i_seqs(i_seqs)
 
   def select_from_i_seqs(self,i_seqs):
-    query = self.select_query_from_i_seqs(i_seqs)
-    return self.select_from_query(query)
+    return self.iloc[i_seqs]
 
-  def select_query_from_i_seqs(self,i_seqs):
-    # Use an iterable of integers
-    sel =  self.iloc[[int(i) for i in i_seqs]]
-    cols = self.attrs_hierarchy_core_compositional
-    G = self._create_hierarchy_graph(cols)
-    return self._convert_sites_to_query(sel,G,cols)
+  # def select_query_from_i_seqs(self,i_seqs):
+  #   # Use an iterable of integers
+  #   sel =  self.iloc[[int(i) for i in i_seqs]]
+  #   cols = self.attrs_hierarchy_core_compositional
+  #   G = self._create_hierarchy_graph(cols)
+  #   return self._convert_sites_to_query(sel,G,cols)
 
-  def select_random_query_from_iseqs(self,k=10):
-    low = 0
-    high = len(self)
-    # Generate a random sequence of integers
-    random_sequence = [random.randint(low, high) for _ in range(k)]
-    return self.select_query_from_i_seqs(random_sequence)
+  # def select_random_query_from_iseqs(self,k=10):
+  #   low = 0
+  #   high = len(self)
+  #   # Generate a random sequence of integers
+  #   random_sequence = [random.randint(low, high) for _ in range(k)]
+  #   return self.select_query_from_i_seqs(random_sequence)
 
   # End public selection interface
+
+  def to_records_compositional(self):
+    cols = params.attrs_compositional
+    records =  self[cols].to_dict("records")
+    output = []
+    for d in records:
+      d_out = {}
+      for k,v in d.items():
+        if v not in params.blanks:
+          d_out[k] = v
+      output.append(d_out)
+    return output
+  
+  def to_records_id(self):
+    return self[["id"]].to_dict("records")
+
+  def _validate_phenix_selection_string(self,phenix_string):
+    print("Validating phenix string....")
+    sel_cache = self.hierarchy.atom_selection_cache()
+    sel = sel_cache.selection(phenix_string)
+    print(f"  selected {sel.count(True)} atoms")
 
   def _convert_query_to_sites(self,query):
     """
@@ -1069,16 +1008,17 @@ class AtomSites(pd.DataFrame):
     subset sites data frame (This class)
     """
     # get a pandas query
-    import pdb
-    pdb.set_trace()
     return self._pandas_query_to_sites(query.pandas_query)
 
 
 
 
   def _pandas_query_to_sites(self,pandas_query,do_copy=True):
-
-    df_sel = self.query(pandas_query)
+    try:
+      df_sel = self.query(pandas_query)
+    except:
+      print("Failed to query from pandas query:")
+      print(pandas_query)
 
     # return new selected df
     return self.__class__(df_sel)
@@ -1096,11 +1036,15 @@ class AtomSites(pd.DataFrame):
     # query = self._convert_sites_to_query(sites_sel,search_string=str_common)
     # return query
     common_string= str_common
-    parser = CommonSelectionParser(common_string)
+    parser = PhenixParser(common_string)
     parser.parse()
 
     pandas_query = parser.to_pandas_query()
-    sel = self.query(pandas_query)
+    try:
+      sel = self.query(pandas_query)
+    except:
+      print("Failed to select from pandas query:")
+      print(pandas_query)
 
     
     def relevant_cols(sites,search_string):
@@ -1150,7 +1094,7 @@ class AtomSites(pd.DataFrame):
     # find the minimum selections required
 
     if G is None:
-      g = sites_sel.G
+      G = sites_sel.G
     if cols == None:
       cols = sites_sel.attrs_hierarchy_core_compositional
 
@@ -1183,10 +1127,11 @@ class AtomSites(pd.DataFrame):
       sel_str_common = sel_str_common[4:]
 
     # parse to ast
-    parser = CommonSelectionParser(sel_str_common, debug=False)
+    parser = PhenixParser(sel_str_common, debug=False)
     parser.parse()
 
     # interpret ast as pandas selection query
+
     query = parser.to_pandas_query()
     #print("Pandas query:")
     #print(query)

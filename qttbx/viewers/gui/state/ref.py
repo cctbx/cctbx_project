@@ -1,8 +1,8 @@
 """
 A Ref is a top level container for data. It provides:
- 1. unification of indentifiers across various programs.
+ 1. Compositions of basic data types
  2. 'Instances' of data, where identical data appears in multiple objects
- 3. An additional unique identifier to pass around in signals
+ 3. An unique identifier to keep track of data
 """
 
 
@@ -16,7 +16,7 @@ from dataclasses import fields, replace
 import pandas as pd
 
 from .style import Style
-from ...core.selection_utils import SelectionQuery
+from ...core.selection import Selection
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 from .base import DataClassBase, ObjectFrame
@@ -403,44 +403,45 @@ class MapRef(Ref):
 
 class SelectionRef(Ref):
   _class_label_name = 'selection'
-  def __init__(self,data: SelectionQuery,model_ref: ModelRef,  show: Optional[bool] = True):
+  def __init__(self,data: Selection,model_ref: ModelRef,  show: Optional[bool] = True):
     assert show is not None, "Be explicit about whether to show selection ref in list of selections or not"
     assert ModelRef is not None, "Selection Ref cannot exist without reference model"
     assert data is not None, "Provide a Selection query as the data"
     super().__init__(data=data, style=model_ref.style, show=show)
-    self._debug_data = data
+    #self._debug_data = data
     # # TODO: Setting model_ref before super init is messy, can this be fixed?
     # self._model_ref = model_ref
     # self._query_sel = data
     # self._query_sel.params.refId=model_ref.id
 
     self._model_ref = model_ref
-    self._query_sel = data
-    self._query_sel.params.refId=model_ref.id
+    self._sites_sel = None
+    self._number_of_atoms = None
 
 
 
   @property
-  def query(self):
-    query = SelectionQuery.from_model_ref(self.model_ref)
-    query.selections = self._query_sel.selections
-    query.params.refId = self.model_ref.id
-    return query
+  def selection(self):
+    return self.data
 
   @property
   def model_ref(self):
     return self._model_ref
 
-  @property
-  def phenix_string(self):
-    raise NotImplementedError
 
   def to_json(self,indent=2):
-    d = {"phenix_string":self.query.phenix_string,
-         "pandas_string":self.query.pandas_query,
-         "query":self.query.to_json()
-         }
+    raise NotImplementedError
     return json.dumps(d,indent=indent)
+  @property
+  def sites_sel(self):
+    if not self._sites_sel:
+      self._sites_sel = self.model_ref.mol.select_from_selection(self.selection)
+    return self._sites_sel
+  @property
+  def number_of_atoms(self):
+    if not self._number_of_atoms:
+      self._number_of_atoms = len(self.sites_sel)
+    return self._number_of_atoms
 
 class GeometryRef(Ref):
   # TODO: Move most of this to the actual table not the ref, adding columns here

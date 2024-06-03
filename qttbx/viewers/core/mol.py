@@ -44,7 +44,8 @@ class MolDataFrame:
     self._grm = None
     self._model = None # mmtbx.model.manager
 
-
+  def __len__(self):
+    return len(self.sites)
   # Component dataframes
 
   @property
@@ -151,6 +152,9 @@ class MolDataFrame:
     self.planes = restraints_data.plane
     self.nonboned = restraints_data.nonbonded
 
+  def select_from_selection(self,selection):
+    # alias for sites.select_from_selection
+    return self.__class__(self.sites.select_from_selection(selection))
 
   # Functions for conversion
   @property

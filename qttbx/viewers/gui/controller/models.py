@@ -24,7 +24,6 @@ class ModelLikeEntryController(ScrollEntryController):
 
     # Signals
     self.view.button_viz.clicked.connect(self.toggle_visibility)
-    self.state.signals.geo_change.connect(self.update_geo)
 
     # Representation
     for key,action in self.view.button_rep.actions.items():
@@ -53,22 +52,22 @@ class ModelLikeEntryController(ScrollEntryController):
     if folder is None or not folder.exists():
       folder = Path.home()
 
-    self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
+    #self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
 
-    # Geometry
-    self.view.button_restraints.setContextMenuPolicy(Qt.CustomContextMenu)
-    self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
-    self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
+  #   # Geometry
+  #   self.view.button_restraints.setContextMenuPolicy(Qt.CustomContextMenu)
+  #   self.view.button_restraints.customContextMenuRequested.connect(self.showContextMenu)
+  #   self.view.button_restraints.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
     
-    # set geo checkbox if applicable
-    self.update_geo()
+  #   # set geo checkbox if applicable
+  #   self.update_geo()
 
-  def update_geo(self,**args):
-    ref = self.ref
-    if hasattr(self.ref,"model_ref"):
-      ref = self.ref.model_ref
-    if ref.geometry_ref is not None:
-      self.view.geo_checkbox.setChecked(True)
+  # def update_geo(self,**args):
+  #   ref = self.ref
+  #   if hasattr(self.ref,"model_ref"):
+  #     ref = self.ref.model_ref
+  #   if ref.geometry_ref is not None:
+  #     self.view.geo_checkbox.setChecked(True)
 
   def toggle_visibility(self,event):
 

@@ -76,9 +76,9 @@ class ViewerGUIView(QMainWindow):
     self.tabs.addTab(self.selection_tab_view, "Selections")
     #self.tabs.toggle_tab_visible("Selections",show=False)
 
-    self.data_tab_view = DataTabView(parent=self)
-    self.data_tab_view.order_index=2
-    self.tabs.addTab(self.data_tab_view, "Files")
+    # self.data_tab_view = DataTabView(parent=self)
+    # self.data_tab_view.order_index=2
+    # self.tabs.addTab(self.data_tab_view, "Files")
 
     # # Optional tabs
     # if 'all' in show_tab or 'atoms' in show_tab:
@@ -136,7 +136,7 @@ class ViewerGUIView(QMainWindow):
 
 
     # Not visible by default
-    self.tabs.toggle_tab_visible("Selections",show=False)
+    self.tabs.toggle_tab_visible("Selections",show=True)
     self.tabs.toggle_tab_visible("CIF",show=False)
     self.tabs.toggle_tab_visible("Geometry",show=True)
     self.tabs.toggle_tab_visible("Edits",show=True)

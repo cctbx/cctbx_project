@@ -162,7 +162,6 @@ class QscoreTabController(Controller):
       ref = SelectionRef(data=query,model_ref=self.state.active_model_ref,show=False)
       self.state.add_ref(ref)
       self.state.active_selection_ref = ref
-      self.state.signals.select.emit(ref)
 
     else:
       print("no atoms returned as query")

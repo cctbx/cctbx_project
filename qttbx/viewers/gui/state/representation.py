@@ -3,7 +3,6 @@ from typing import List, Dict
 from .base import DataClassBase
 
 @dataclass(frozen=True)
-class Component(DataClassBase):
+class Representation(DataClassBase):
   phenixKey: str
-  key: str
-  representations: List[str]
+  name: str

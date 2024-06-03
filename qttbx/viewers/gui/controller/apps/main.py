@@ -39,7 +39,7 @@ class ViewerGUIController(Controller):
     self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
 
 
-    self.data = DataTabController(parent=self,view=self.view.data_tab_view)
+    #self.data = DataTabController(parent=self,view=self.view.data_tab_view)
 
     # if 'all' in show_tab  or 'atoms' in show_tab:
     #   self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)

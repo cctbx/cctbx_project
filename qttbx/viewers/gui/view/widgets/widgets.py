@@ -326,6 +326,7 @@ class ClickableHistogramMatplotlib(FigureCanvas):
     self.draw()
 
 class NoCheckComboBox(QComboBox):
+  
   def paintEvent(self, event):
     painter = QPainter(self)
     option = QStyleOptionComboBox()

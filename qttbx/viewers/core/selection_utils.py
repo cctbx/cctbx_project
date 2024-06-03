@@ -4,7 +4,11 @@ import re
 import networkx as nx
 import numpy as np
 from .python_utils import DotDict
+from .selection_common import PhenixParser
 import ast
+from .parameters import core_map_to_mmcif
+from dataclasses import dataclass, asdict
+from typing import List, Dict, Optional
 
 """
 Selection API
@@ -15,244 +19,289 @@ Each program will have corner cases that can't be translated. This api serves as
 formatted using this api, it should be translatable to any other relevant program.
 
 Basics:
-1. The universal language is mmcif keys. 
-    In cases where it is ambiguous and unspecified, (auth_ vs label_) there is a default.
-2. All selections are disjunctive, ie the list of selections = [s1,s2,s3] means that returns atoms that match s1 OR s2
+1. The universal language is mmcif keys and logic understood by df.query()
+    In cases where it is ambiguous and unspecified, (auth_ vs label_) there is a default choice.
 """
 
-core_keys_to_mmcif_keys_default = {
-  # Maps a 'core' attribute key to a default 'real' attribute key
-  'asym_id':"auth_asym_id",
-  'seq_id':"auth_seq_id",
-  'comp_id':"label_comp_id",
-  'atom_id':"label_atom_id",
-  'type_symbol':"type_symbol",
-  'alt_id':'label_alt_id',
-}
-mmcif_keys_to_core_keys_default = {v:k for k,v in core_keys_to_mmcif_keys_default.items()}
-
 class SelectionQuery:
-  default_params = DotDict({"keymap":core_keys_to_mmcif_keys_default,'refId':'','model_id':''})
+  pass # TODO: remove
 
-  @staticmethod
-  def get_default_params():
-    return copy.deepcopy(SelectionQuery.default_params)
-
-  def __init__(self,selections,params=None):
-
-    # set up params
-
-    if params is None:
-      params = self.get_default_params()
-    for key,value in params.items():
-      setattr(self,key,value)
-    self.params = DotDict(params)
-
-
-    self.selections = selections
-
-    # DEBUG
-    for sel in self.selections:
-      for key,value in list(sel.data.items()):
-        if key not in mmcif_keys_to_core_keys_default:
-          del sel.data[key]
-
-
-
-  def __eq__(self,other):
-    assert isinstance(other,self.__class__), 'Compare with same class'
-    return self.to_json()==other.to_json()
-
-  def print(self):
-    print(self.to_json(indent=2))
-
-  def to_dict(self):
-    d = {'selections':[s.resolve_keys(self).to_dict() for s in self.selections],"params":self.params}
-    return d
-
-  def to_json(self,indent=None):
-    d = self.to_dict()
-    return json.dumps(d,indent=indent)
-
-  @classmethod
-  def from_model_ref(cls,ref):
-    params = cls.get_default_params()
-    for key,value in ref.external_ids.items():
-      params[key] = value
-    params.refId = ref.id
-    selections = [Selection.from_default()]
-
-    return cls(selections=selections,params=params)
-
-
-  @classmethod
-  def from_i_seqs(cls,atom_sites,i_seqs):
-    try:
-      i_seqs = [int(i) for i in i_seqs]
-      sel_sites = atom_sites.__class__(atom_sites.loc[i_seqs],attrs_map=atom_sites.attrs_map)
-      # Use machinery in atom_sites class. TODO: Move that here.
-      query = atom_sites._convert_sites_to_query(sel_sites)
-    except:
-      print("Failed to load from i_seqs:",i_seqs)
-    return query
-
-  @classmethod
-  def from_json(cls,json_str,ref_id=None):
-    d = json.loads(json_str)
-    assert 'selections' in d, 'Must have "selections" entry in json input'
-    if 'params' in d:
-      params = d['params']
-    else:
-      params = None
-    if ref_id is not None:
-      params["refId"] = ref_id
-    selections = [Selection(s) for s in d['selections']]
-    return cls(selections,params=params)
-
-  @classmethod
-  def from_all(cls,ref_id=None):
-    selection = Selection.from_default()
-    selections = [selection]
-    params = cls.get_default_params()
-    if ref_id is not None:
-      params["refId"] = ref_id
-    return cls(selections,params=params)
-
-  @property
-  def pandas_query(self):
-    full_query_list = []
-    for selection in self.selections:
-      query_list = []
-      for keyword, conditions in selection.data.items():
-        keyword_conditions = []
-        for op in conditions['ops']:
-          operator = op['op']
-          value = op['value']
-          if value == '*':
-            continue  # skip any
-          if isinstance(value, str):
-            value = f"'{value}'"  # Quote strings
-          keyword_conditions.append(f'{keyword} {operator} {value}')
-        if keyword_conditions:  # Only append if keyword_conditions is not empty
-          keyword_query = ' & '.join(keyword_conditions)
-          query_list.append(f'({keyword_query})')
-      if query_list:  # Only append if query_list is not empty
-        query = ' & '.join(query_list)
-        full_query_list.append(f'({query})')
-
-    if len(full_query_list)==0:
-      output =  "index >= 0" # all
-    else:
-      output =  ' | '.join(full_query_list)
-    return output
-
-
-  @property
-  def phenix_string(self):
-    # Use similar logic as for pandas query
-    converter = SelConverterPhenix()
-    return converter.convert_pandas_to_phenix(self.pandas_query)
-
-  @property
-  def common_string(self):
-    converter = SelConverterPhenix()
-    phenix_string =  converter.convert_pandas_to_phenix(self.pandas_query)
-    common_string = converter.convert_phenix_to_common(phenix_string)
-    return common_string
-  @property
-  def pandas_string(self):
-    return self.pandas_query # alias
-
+@dataclass(frozen=True)
 class Selection:
-  default_select_all = {
-    # keyword, op, value
-    #'entity_id':{'ops':[{'op': '==', 'value': '*'}]},
-    'asym_id':{'ops':[{'op': '==', 'value': '*'}]},
-    'comp_id':{'ops':[{'op': '==', 'value': '*'}]},
-    'seq_id':{'ops':[{'op': '==', 'value': '*'},{'op': '==', 'value': '*'}]},
-    'atom_id':{'ops':[{'op': '==', 'value': '*'}]},
-    # 'id':{'ops':[{'op': '==', 'value': '*'}]},
-    }
+  # Molstar code in string form, 
+  #   to specify a StructureSelectionQuery object
+  molstar_syntax: Optional[str] = None
 
-  def __init__(self,data):
-    # data is a dict representing a selection, same structure as default_select_all
-    self.data = data
-    # check case for consistency
-    for keyword in ['comp_id','atom_id',"alt_id","asym_id","type_symbol"]:
-      if keyword in self.data:
-        for op in self.data[keyword]["ops"]:
-          op['value'] =  op['value'].upper()
+  # A selection string that runs with model.selection()
+  phenix_string: Optional[str] = None
 
-    
-  # def _rename_keys_for_auth_label(self,d,auth_label_pref='auth'):
-  #   new_columns = {}
-  #   for col in d.keys():
-  #     if 'auth_' in col and auth_label_pref == 'label':
-  #       continue
-  #     elif 'label_' in col and auth_label_pref == 'auth':
-  #       continue
-  #     elif 'auth_' in col and auth_label_pref == 'auth':
-  #       newcol = col.replace('auth_','')
-  #     elif 'label_' in col and auth_label_pref == 'label':
-  #       newcol = col.replace('label_','')
-  #     else:
-  #       newcol = col
-  #     new_columns[col] = newcol
+  # A selection string that runs with df.query()
+  pandas_string: Optional[str] = None
 
-  #   out = {}
-  #   for key,value in d.items():
-  #     if 'auth' in key and  auth_label_pref == 'label':
-  #       pass # skip
-  #     elif 'label' in key and auth_label_pref == 'auth':
-  #       pass
-  #     else:
-  #       out[new_columns[key]] = value
-  #   return out
+  # Dictionary with enough key:value pairs to
+  #   uniquely identify 1 atom
+  atom_list: Optional[List[dict]] = None 
 
-
-  @classmethod
-  def from_default(cls):
-    data = cls.default_select_all
-    return cls(data)
-
-  @classmethod
-  def from_df_record(cls,record,params=None):
-    d = {}
-    for key1,value1 in record.items():
-      if isinstance(value1,dict):
-
-        for key2,value2 in value1.items():
-          if key2 == 'ops':
-            d[key1] = value1
-            continue
-      # add op entries if not present (probably not)
-      d[key1] = {'ops':[{'op':'==','value':value1}]}
-
-    return cls(d,params=params)
-
-
-  def to_dict(self):
-    return self.data
   
 
+
   @classmethod
-  def from_json(cls,json_str,params=None):
-    d = {"class_name":cls.__class__.__name__}
-    d.update(json.loads(json_str))
-
-    return cls(d,params=params)
-
-  def to_json(self,indent=None):
+  def from_phenix_string(cls,phenix_string):
+    parser = PhenixParser(phenix_string)
+    pandas_string = parser.pandas_string
+    molstar_syntax = parser.molstar_syntax
+    return cls(phenix_string=phenix_string,
+              pandas_string=pandas_string,
+              molstar_syntax=molstar_syntax,
+    )
+  def to_dict(self):
+    return asdict(self)
+  def to_json(self,indent=2):
     return json.dumps(self.to_dict(),indent=indent)
 
-  def resolve_keys(self,query):
-    # If a query is present, where auth_ label_ ambiguity is resolved (if needed),
-    # settle explicitly what the keys are
-    for k,v in list(self.data.items()):
-      if k in query.params.keymap:
-        newkey = query.params.keymap[k]
-        self.data[newkey] = self.data.pop(k)
-    return self
+  # def __post_init__(self):
+  #   # The parser does not read molstar code, need to 
+  #   #   specify at least one other form of input
+  #   assert [self.phenix_string,self.pandas_string,self.atom_list].count(None) >0, (
+  #     "Specify at least one form of input"
+  #   )
+  #   if self.phenix_string is not None:
+      
+  #     self.pandas_string = parser.pandas_string
+  #     self.molstar_syntax = parser.molstar_syntax
+  #   elif self.pandas_string is not None:
+  #     raise NotImplementedError
+  #   elif self.atom_list is not None:
+  #     raise NotImplementedError
+    
+    
+
+
+
+# class SelectionQuery:
+#   """
+#   A class to specify a selection. 
+#   """
+#   default_params = DotDict({"keymap":core_map_to_mmcif,'refId':'','model_id':''})
+
+#   @staticmethod
+#   def get_default_params():
+#     return copy.deepcopy(SelectionQuery.default_params)
+
+#   def __init__(self,selections,params=None):
+
+#     # set up params
+#     if params is None:
+#       params = self.get_default_params()
+#     for key,value in params.items():
+#       setattr(self,key,value)
+#     self.params = DotDict(params)
+
+
+#     self.selections = selections
+
+#     # DEBUG
+#     for sel in self.selections:
+#       for key,value in list(sel.data.items()):
+#         if key not in mmcif_keys_to_core_keys_default:
+#           del sel.data[key]
+
+
+
+#   def __eq__(self,other):
+#     assert isinstance(other,self.__class__), 'Compare with same class'
+#     return self.to_json()==other.to_json()
+
+#   def print(self):
+#     print(self.to_json(indent=2))
+
+#   def to_dict(self):
+#     d = {'selections':[s.resolve_keys(self).to_dict() for s in self.selections],"params":self.params}
+#     return d
+
+#   def to_json(self,indent=None):
+#     d = self.to_dict()
+#     return json.dumps(d,indent=indent)
+
+#   @classmethod
+#   def from_model_ref(cls,ref):
+#     params = cls.get_default_params()
+#     for key,value in ref.external_ids.items():
+#       params[key] = value
+#     params.refId = ref.id
+#     selections = [Selection.from_default()]
+
+#     return cls(selections=selections,params=params)
+
+
+#   @classmethod
+#   def from_i_seqs(cls,atom_sites,i_seqs):
+#     try:
+#       i_seqs = [int(i) for i in i_seqs]
+#       sel_sites = atom_sites.__class__(atom_sites.iloc[i_seqs],attrs_map=atom_sites.attrs_map)
+#       # Use machinery in atom_sites class. TODO: Move that here.
+#       query = atom_sites._convert_sites_to_query(sel_sites)
+#     except:
+#       print("Failed to load from i_seqs:",i_seqs)
+#     return query
+
+#   @classmethod
+#   def from_json(cls,json_str,ref_id=None):
+#     d = json.loads(json_str)
+#     assert 'selections' in d, 'Must have "selections" entry in json input'
+#     if 'params' in d:
+#       params = d['params']
+#     else:
+#       params = None
+#     if ref_id is not None:
+#       params["refId"] = ref_id
+#     selections = [Selection(s) for s in d['selections']]
+#     return cls(selections,params=params)
+
+#   @classmethod
+#   def from_all(cls,ref_id=None):
+#     selection = Selection.from_default()
+#     selections = [selection]
+#     params = cls.get_default_params()
+#     if ref_id is not None:
+#       params["refId"] = ref_id
+#     return cls(selections,params=params)
+
+#   @property
+#   def pandas_query(self):
+#     full_query_list = []
+#     for selection in self.selections:
+#       query_list = []
+#       for keyword, conditions in selection.data.items():
+#         keyword_conditions = []
+#         for op in conditions['ops']:
+#           operator = op['op']
+#           value = op['value']
+#           if value == '*':
+#             continue  # skip any
+#           if isinstance(value, str):
+#             value = f"'{value}'"  # Quote strings
+#           keyword_conditions.append(f'{keyword} {operator} {value}')
+#         if keyword_conditions:  # Only append if keyword_conditions is not empty
+#           keyword_query = ' & '.join(keyword_conditions)
+#           query_list.append(f'({keyword_query})')
+#       if query_list:  # Only append if query_list is not empty
+#         query = ' & '.join(query_list)
+#         full_query_list.append(f'({query})')
+
+#     if len(full_query_list)==0:
+#       output =  "index >= 0" # all
+#     else:
+#       output =  ' | '.join(full_query_list)
+#     return output
+
+
+#   @property
+#   def phenix_string(self):
+#     # Use similar logic as for pandas query
+#     converter = SelConverterPhenix()
+#     return converter.convert_pandas_to_phenix(self.pandas_query)
+
+#   @property
+#   def common_string(self):
+#     converter = SelConverterPhenix()
+#     phenix_string =  converter.convert_pandas_to_phenix(self.pandas_query)
+#     common_string = converter.convert_phenix_to_common(phenix_string)
+#     return common_string
+#   @property
+#   def pandas_string(self):
+#     return self.pandas_query # alias
+
+# class Selection:
+#   default_select_all = {
+#     # keyword, op, value
+#     #'entity_id':{'ops':[{'op': '==', 'value': '*'}]},
+#     'asym_id':{'ops':[{'op': '==', 'value': '*'}]},
+#     'comp_id':{'ops':[{'op': '==', 'value': '*'}]},
+#     'seq_id':{'ops':[{'op': '==', 'value': '*'},{'op': '==', 'value': '*'}]},
+#     'atom_id':{'ops':[{'op': '==', 'value': '*'}]},
+#     # 'id':{'ops':[{'op': '==', 'value': '*'}]},
+#     }
+
+#   def __init__(self,data):
+#     # data is a dict representing a selection, same structure as default_select_all
+#     self.data = data
+#     # check case for consistency
+#     for keyword in ['comp_id','atom_id',"alt_id","asym_id","type_symbol"]:
+#       if keyword in self.data:
+#         for op in self.data[keyword]["ops"]:
+#           op['value'] =  op['value'].upper()
+
+    
+#   # def _rename_keys_for_auth_label(self,d,auth_label_pref='auth'):
+#   #   new_columns = {}
+#   #   for col in d.keys():
+#   #     if 'auth_' in col and auth_label_pref == 'label':
+#   #       continue
+#   #     elif 'label_' in col and auth_label_pref == 'auth':
+#   #       continue
+#   #     elif 'auth_' in col and auth_label_pref == 'auth':
+#   #       newcol = col.replace('auth_','')
+#   #     elif 'label_' in col and auth_label_pref == 'label':
+#   #       newcol = col.replace('label_','')
+#   #     else:
+#   #       newcol = col
+#   #     new_columns[col] = newcol
+
+#   #   out = {}
+#   #   for key,value in d.items():
+#   #     if 'auth' in key and  auth_label_pref == 'label':
+#   #       pass # skip
+#   #     elif 'label' in key and auth_label_pref == 'auth':
+#   #       pass
+#   #     else:
+#   #       out[new_columns[key]] = value
+#   #   return out
+
+
+#   @classmethod
+#   def from_default(cls):
+#     data = cls.default_select_all
+#     return cls(data)
+
+#   @classmethod
+#   def from_df_record(cls,record,params=None):
+#     d = {}
+#     for key1,value1 in record.items():
+#       if isinstance(value1,dict):
+
+#         for key2,value2 in value1.items():
+#           if key2 == 'ops':
+#             d[key1] = value1
+#             continue
+#       # add op entries if not present (probably not)
+#       d[key1] = {'ops':[{'op':'==','value':value1}]}
+
+#     return cls(d,params=params)
+
+
+#   def to_dict(self):
+#     return self.data
+  
+
+#   @classmethod
+#   def from_json(cls,json_str,params=None):
+#     d = {"class_name":cls.__class__.__name__}
+#     d.update(json.loads(json_str))
+
+#     return cls(d,params=params)
+
+#   def to_json(self,indent=None):
+#     return json.dumps(self.to_dict(),indent=indent)
+
+#   def resolve_keys(self,query):
+#     # If a query is present, where auth_ label_ ambiguity is resolved (if needed),
+#     # settle explicitly what the keys are
+#     for k,v in list(self.data.items()):
+#       if k in query.params.keymap:
+#         newkey = query.params.keymap[k]
+#         self.data[newkey] = self.data.pop(k)
+#     return self
 # @dataclass(frozen=True)
 # class Selection:
 #   asym_id: Dict[str, str] = field(default_factory=lambda: {'op': '==', 'value': '*'})
@@ -420,6 +469,10 @@ class Selection:
 
 
 class SelConverterPhenix:
+  """
+  A basic conversion between selection syntax that doesn't require
+  an abstract syntax tree. (Just simple word replacement)
+  """
   def __init__(self):
       # Bidirectional phenix and pandas
       self.bidirectional_map = {
@@ -434,6 +487,7 @@ class SelConverterPhenix:
           'altloc': 'alt_id',
           'or': '|',
           'and': '&',
+          'not': '~',
       }
       # Unidirectional mapping from Pandas to Phenix
       self.unidirectional_pandas_to_phenix = {
@@ -441,20 +495,18 @@ class SelConverterPhenix:
       }
       # Combining maps for specific direction
       self.pandas_to_phenix_map = {**{v: k for k, v in self.bidirectional_map.items()}, **self.unidirectional_pandas_to_phenix}
-      self.phenix_to_pandas_map =  self.bidirectional_map
+      auth_label_supplement = {}
+      for key,value in self.pandas_to_phenix_map.items():
+        auth_label_supplement["auth_"+value] = key
+        auth_label_supplement["label_"+value] = key
+      self.pandas_to_phenix_map.update(auth_label_supplement)
 
+      # Phenix to pandas
+      #self.phenix_to_pandas_map = self.bidirectional_map
 
-      self.phenix_keyword_map_to_common = {
-      'chain': 'asym_id',
-      'resseq': 'seq_id',
-      'name': 'atom_id',
-      'bfactor': 'B_iso_or_equiv',
-      'bfac': 'B_iso_or_equiv',
-      'occupancy': 'occupancy',
-      'resname': 'comp_id',
-      'altloc': 'alt_id',
-      'element':"type_symbol",
-      }
+      # Common
+      #self.phenix_keyword_map_to_common = {k:v for k,v in copy.deepcopy(self.bidirectional_map).items() if k not in ['and','or','not']
+
 
   def replace_keys_in_str(self, input_str, replacements):
     # Separate dictionary entries into word and non-word items
@@ -503,7 +555,8 @@ class SelConverterPhenix:
       return self.phenix_postprocess(self.replace_keys_in_str(sel_str, self.pandas_to_phenix_map))
 
   def convert_phenix_to_common(self,sel_str):
-    return self.replace_keys_in_str(sel_str,self.phenix_keyword_map_to_common)
+    core_names_str =  self.replace_keys_in_str(sel_str,self.phenix_keyword_map_to_common)
+    return self.replace_keys_in_str(core_names_str,core_keys_to_mmcif_keys_default) # TODO: don't hardcode default
 
   def convert_common_to_phenix(self,sel_str):
     return self.phenix_postprocess(self.replace_keys_in_str(sel_str,self.reversed_kw_map(self.phenix_keyword_map_to_common)))

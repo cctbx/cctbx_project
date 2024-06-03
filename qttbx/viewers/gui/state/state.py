@@ -20,10 +20,12 @@ import networkx as nx
 from .reference import Reference
 from .structure import Structure
 from .component import Component
+from .representation import Representation
 from .reference import Reference
 from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef
 from .results import ResultsRef
 from ...core.python_utils import DotDict
+from ...core.selection import Selection
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
 
@@ -37,7 +39,9 @@ class StateSignals(QObject):
   map_change = Signal(object) # map ref
   data_change = Signal() # The data manager has changed
   restraints_change = Signal(object) # restraits ref
-  selection_change = Signal(object) # selection  ref
+  #selection_change = Signal(object) # selection  ref
+  selection_added = Signal(object) # selection ref *
+  selection_activated = Signal(object) # selection ref *
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
   ciffile_change = Signal(object) # cif file ref
@@ -48,11 +52,15 @@ class StateSignals(QObject):
   picking_level = Signal(int) # one of:  1 for "residue" or  0 for "element"
   sync = Signal()
   clear = Signal(str) # reload all active objects, send the messagebox message
-  select = Signal(object) # select a ref object
+  #select = Signal(object) # select a ref object
   remove_ref = Signal(object) # ref
   update = Signal(object)
   stage_restraint = Signal(object,str) # send selection ref,type to be staged as restraint
   filter_update = Signal(object) # emit a filter controller to apply
+  #select_ref = Signal(object)
+  focus_selected= Signal()
+
+
 
 @dataclass(frozen=True)
 class PhenixState(DataClassBase):
@@ -62,27 +70,31 @@ class PhenixState(DataClassBase):
   def from_dict(cls,state_dict):
     phenix_state =  cls(references = {})
     # update state from dict
-    for ref_id,ref_dict in state_dict["references"].items():
-      id_molstar = ref_dict["id_molstar"]
-      id_viewer = ref_dict["id_viewer"]
+    for ref_dict in state_dict["references"]:
 
-      if id_viewer in phenix_state.references:
-        ref = phenix_state.references[id_viewer]
-        ref.id_molstar = id_molstar
-        ref.structures = []
-      else:
-        ref = Reference(id_molstar=id_molstar, id_viewer = id_viewer, structures = [])
-        phenix_state.references[id_viewer] = ref
+      id_molstar = ref_dict["molstarKey"]
+      id_viewer = ref_dict["phenixKey"]
+
+
+      ref = Reference(id_molstar=id_molstar, id_viewer = id_viewer, structures = [])
+      phenix_state.references[id_viewer] = ref
       # now modify within a ref
       for structure_dict in ref_dict['structures']:
-        structure = Structure(components=[])
+        structure = Structure(
+          phenixKey=structure_dict["phenixKey"],
+          phenixReferenceKey=structure_dict['phenixReferenceKey'],
+          data_id=structure_dict["data_id"],
+          key=structure_dict["key"],
+          components=[])
         ref.structures.append(structure)
         for component_dict in structure_dict['components']:
-          component = Component(representations=[],key=component_dict["key"])
+          component = Component(phenixKey=component_dict["phenixKey"],representations=[],key=component_dict["key"])
           structure.components.append(component)
 
-          for representation_name in component_dict["representations"]:
-            component.representations.append(representation_name)
+          for representation_dict in component_dict["representations"]:
+            representation = Representation(phenixKey=representation_dict["phenixKey"],name=representation_dict["name"])
+
+            component.representations.append(representation)
 
     return phenix_state
 
@@ -218,13 +230,13 @@ class State:
   @phenixState.setter
   def phenixState(self,phenixState):
     self._phenix_state = phenixState
-    if isinstance(phenixState,PhenixState):
+    if isinstance(phenixState,PhenixState): # we got a valid phenix state
       # Sync with remote
       self.has_synced = True
-      for ref_id,ref in self.references.items():
-        if ref_id in phenixState.references:
-          ref.reference = phenixState.references[ref_id]
-          ref.style = replace(ref.style,representation=ref.reference.representations)
+    #   for ref_id,ref in self.references.items():
+    #     if ref_id in phenixState.references:
+    #       ref.reference = phenixState.references[ref_id]
+    #       ref.style = replace(ref.style,representation=ref.reference.representations)
 
   @property
   def external_loaded(self):
@@ -294,6 +306,11 @@ class State:
       #self.active_model_ref = ref
       #self.signals.model_change.emit(ref)
 
+      # Add 'all' selection ref
+      selection = Selection.from_phenix_string("all")
+      selection_ref = SelectionRef(selection,ref)
+      self.add_ref(selection_ref)
+
       # Optionally add a cif file ref
       if ref.file_ref is not None:
         self.add_ref(ref.file_ref)
@@ -304,11 +321,10 @@ class State:
       pass
     elif isinstance(ref,SelectionRef):
       #self.active_selection_ref = ref
-      #self.signals.selection_change.emit(ref)
+      self.signals.selection_added.emit(ref)
       pass
     elif isinstance(ref,GeometryRef):
       self.signals.geo_change.emit(ref)
-      #self.signals.selection_change.emit(self.active_selection_ref)
 
     elif isinstance(ref,(ResultsRef)):
       self.signals.results_change.emit(ref)
@@ -331,6 +347,17 @@ class State:
   def remove_ref(self,ref):
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     self.remove_node_and_downstream(ref)
+
+  def add_ref_from_phenix_selection_string(self,phenix_string):
+    selection = Selection.from_phenix_string(phenix_string)
+    return self.add_ref_from_selection(selection)
+
+  def add_ref_from_selection(self,selection,model_ref=None,show=True):
+    if model_ref is None:
+      model_ref = self.active_model_ref
+    ref = SelectionRef(data=selection,model_ref=model_ref,show=show)
+    self.add_ref(ref)
+    return ref
 
   def add_ref_from_model_file(self,filename=None,label=None,format=None):
     if label is None:
@@ -573,6 +600,10 @@ class State:
 
   @active_selection_ref.setter
   def active_selection_ref(self,value):
+    """
+    Assigning a SelectionRef to be 'active' emits a signal.
+
+    """
     ref = value
     if value is None:
       self._active_selection_ref =None
@@ -580,11 +611,8 @@ class State:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_selection_ref = value
-
-
-    self.signals.selection_change.emit(value)
-    #self.signals.select.emit(value)
-    self.signals.references_change.emit()
+    self.signals.selection_activated.emit(value)
+    #self.signals.references_change.emit()
 
   #####################################
   # Geometry

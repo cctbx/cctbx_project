@@ -20,10 +20,13 @@ from libtbx import group_args
 
 from .volume_streaming import VolumeStreamingManager
 from ..gui.state.state import PhenixState
+from ..gui.state.color import Color
 from ..gui.controller.controller import Controller
 from .server_utils import  NodeHttpServer
 from .volume_streaming import VolumeStreamingManager
-from ..core.selection_utils import SelectionQuery
+from ..core.selection_utils import SelectionQuery # TODO: REMOVE
+# from ..core.selection_common import PhenixParser, parse_ast
+from ..core.selection import Selection
 from ..gui.controller.style import ModelStyleController, MapStyleController
 from ..core.python_utils import DotDict
 
@@ -223,7 +226,7 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Remote communication
 
-  def send_command(self, js_command,callback=None,sync=False,log_js=True):
+  def send_command(self, js_command,callback=print,sync=False,log_js=True):
     # queue needs to be refactored out
 
     if log_js:
@@ -325,7 +328,7 @@ class MolstarViewer(ModelViewer):
       label = 'model'
 
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
-    self.send_command(command,sync=False)
+    self.send_command(command,sync=True)
 
 
   # don't use this, it is confusing, but it loads without a ref
@@ -377,21 +380,65 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Selection
 
-
-  def select_from_query(self,query):
-    query_json = query.to_json()
-    print(json.dumps(json.loads(query_json),indent=2))
-    command = f"result = await {self.plugin_prefix}.phenix.select("+query_json+");"
+  def select_from_selection(self,selection: Selection):
+    self.deselect_all()
+    molstar_syntax = selection.molstar_syntax
+    command = f"""
+    const MS = {self.plugin_prefix}.MS
+    const sel = MS.struct.generator.atomGroups({{
+              'atom-test': {molstar_syntax}}})
+    {self.plugin_prefix}.phenix.selectFromSel(sel);
+    """
     self.send_command(command)
 
+  # def _select_from_json(self,selectionJSON):
+  #   self.deselect_all()
+  #   selection_dict = json.loads(selectionJSON)
+  #   molstar_syntax = selection_dict["molstar_syntax"]
+  #   command = f"""
+  #   const MS = {self.plugin_prefix}.MS
+  #   const.StructureSelectionQuery = {self.plugin_prefix}.StructureSelectionQuery
+  #   const selectionQuery = StructureSelectionQuery('Custom Query',
+  #           MS.struct.generator.atomGroups({{
+  #             'atom-test': {molstar_syntax}}}),
+  #       )
+  #   {self.plugin_prefix}.phenix.selectFromQuery(selectionQuery);
+  #   """
+  #   self.send_command(command)
+  #   # self.send_command(command)
+  #   # command = f"""
+  #   # const molstarSelection = '{}'
+  #   # {self.plugin_prefix}.phenix.selectFromJSON('{selectionJSON}');
+  #   # """
+
+  def select_from_phenix_string(self,phenix_string):
+    selection = Selection.from_phenix_string(phenix_string)
+    self.select_from_selection(selection)
 
   def poll_selection(self,callback=None):
     # get selection
     command = f"""
     {self.plugin_prefix}.phenix.pollSelection();
     """
-    return self.send_command(command,callback=callback,sync=True)
+    result_str = self.send_command(command,callback=callback,sync=True)
+    try:
+      atom_records = json.loads(result_str)
+      selection = Selection.from_atom_records(atom_records)
+      return selection
+    except:
+      print(result_str)
+      raise
+      return None
+  def focus_selected(self):
 
+    command = f"""
+    {self.plugin_prefix}.phenix.focusSelected();
+    """
+    self.send_command(command,sync=True)
+
+  def select_all(self):
+    command = f"{self.plugin_prefix}.phenix.selectAll()"
+    self.send_command(command)
 
   def deselect_all(self):
     command = f"{self.plugin_prefix}.phenix.deselectAll()"
@@ -519,9 +566,9 @@ class MolstarViewer(ModelViewer):
     raise NotImplementedError
 
   def hide_selected(self,representation_name: Optional[str] = None):
-    raise NotImplementedError
+    self.transparency_selected()
 
-  def hide_query(self,model_id: str, query_json: str, representation_name: str):
+  def hide_query(self,query: SelectionQuery, representation_name:  Optional[str] = None):
     self.transparency_query(model_id=model_id,
                             query_json=query_json,
                             representation_name=representation_name,
@@ -534,59 +581,88 @@ class MolstarViewer(ModelViewer):
   def transparency_model(self,model_id: str, representation_name: Optional[str] = None):
     raise NotImplementedError
 
-  def transparency_selected(self,representation_name: Optional[str] = None):
-    raise NotImplementedError
-
-  def transparency_query(self,model_id: str, query_json: str, representation_name: str,component_key: str, value: float):
+  
+  def transparency_selected(self,component_name: Optional[str] = None, representation_name: Optional[str] = None, value: Optional[float] = None):
+    if component_name is None:
+      component_name = 'undefined'
+    else:
+      component_name = f"'{component_name}'"
+    if representation_name is None:
+      representation_name = 'undefined'
+    else:
+      representation_name = f"'{representation_name}'"
+    if value is None:
+      value = 0.0
     command = f"""
-    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
-    query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.phenix.setTransparencyFromQuery(query, '{representation_name}', '{component_key}', '{value}')
+    await {self.plugin_prefix}.phenix.setTransparencySelected({component_name},{representation_name},'{value}')
+    """
+    self.send_command(command)
+
+  def transparency_query(self,selection: str, model_id: str, representation_name: str,component_key: str, value: float):
+    """
+    Set transparency. The primary method to show/hide molecules.
+    Params:
+      model_id: the Python side identifier for what to operate on. (refId)
+      selection: What to operate on. Is The json format of a Selection type.
+      representation_name: Specify what representation to operate on (ball-and-stick, cartoon, etc)
+      component_key: Spcify what component to operate on (structure-component-static-polymer)
+      opacity: A float 0-1 (visible-invisible)
+    """
+    command = f"""
+    const selection = {self.plugin_prefix}.phenix.selectionFromJSON('{query_json}');
+    await {self.plugin_prefix}.phenix.setTranfsparencyFromQuery(selection, {model_id}, '{representation_name}', '{component_key}', '{value}')
     """
     self.send_command(command)
 
 
   # Color for model/selection
 
-  def color_model(self,model_id: str, color: str):
-    raise NotImplementedError
 
   def color_selected(self, color: str):
-    raise NotImplementedError
+    color = Color(color)
 
-  def color_query(self,model_id: str, query_json: str, color: str):
     command = f"""
-    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
-    query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.phenix.setQueryColor(query,'{color}')
-    this.viewer.phenix.deselectAll();
+    await {self.plugin_prefix}.phenix.setColorSelected({color.R},{color.G},{color.B})
     """
     self.send_command(command)
+    
+
+  # def color_query(self,model_id: str, query_json: str, color: str):
+  #   command = f"""
+  #   const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
+  #   query.params.refId = '{model_id}'
+  #   await {self.plugin_prefix}.phenix.setQueryColor(query,'{color}')
+  #   this.viewer.phenix.deselectAll();
+  #   """
+  #   self.send_command(command)
 
   # Representation for model/selection
 
-  def representation_model(self,model_id: str, representation_name: str):
-    query = SelectionQuery.from_model_ref()
+  # def representation_model(self,model_id: str, representation_name: str):
+  #   query = SelectionQuery.from_model_ref()
 
   def representation_selected(self, representation_name: str):
-    raise NotImplementedError
-
-
-  def representation_query(self,model_id: str, query_json: str, representation_name: str):
-    assert representation_name in ['ball-and-stick','ribbon']
-
     # add representation
     command = f"""
-    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
-    query.params.refId = '{model_id}'
-    await {self.plugin_prefix}.phenix.addRepr(query,'{representation_name}')
+
+    await {self.plugin_prefix}.phenix.addRepresentationSelected('{representation_name}')
     """
     self.send_command(command)
 
-  def _get_representation_names(self,model_id: str, query_json: str):
+
+  # def representation_query(self,model_id: str, query_json: str, representation_name: str):
+  #   assert representation_name in ['ball-and-stick','ribbon']
+
+  #   # add representation
+  #   command = f"""
+  #   const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
+  #   query.params.refId = '{model_id}'
+  #   await {self.plugin_prefix}.phenix.addRepr(query,'{representation_name}')
+  #   """
+  #   self.send_command(command)
+
+  def _get_representation_names(self,model_id: str):
     command = f"""
-    const query = {self.plugin_prefix}.phenix.queryFromJSON('{query_json}');
-    query.params.refId = '{model_id}'
-    {self.plugin_prefix}.phenix.getRepresentationNames(query)
+    {self.plugin_prefix}.phenix.getRepresentationNames('{model_id}')
     """
     return self.send_command(command)

@@ -2,6 +2,7 @@ from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVB
 import numpy as np
 import math
 
+from ..state.ref import SelectionRef
 from .models import ModelLikeEntryController
 from ..view.tabs.selection import SelectionEntryView
 from ..view.widgets import InfoDialog
@@ -38,14 +39,14 @@ from ..state.ref import (
 class SelectionEntryController(ModelLikeEntryController):
   def __init__(self,parent=None,view=None,ref=None):
     super().__init__(parent=parent,view=view,ref=ref)
-    self.state.signals.selection_change.connect(self.handle_selection_change)
+    self.state.signals.selection_activated.connect(self.handle_selection_change)
     self.view.button_info.clicked.connect(self.display_info)
 
 
-  def handle_selection_change(self):
+  def handle_selection_change(self,new_selection_ref):
     # Just disable the toggle if self is not active
-    if (self.state.active_selection_ref is  None  or
-     self.state.active_selection_ref.id != self.ref.id):
+    if (new_selection_ref is  None  or
+     new_selection_ref.id != self.ref.id):
       self.view.active_toggle.is_checked = False
 
   def toggle_active_func(self,is_checked):
@@ -217,7 +218,7 @@ class SelectionEntryController(ModelLikeEntryController):
     Reference id: {self.ref.id}
     Model Reference id: {self.ref.model_ref.id}
 
-    Phenix string: {self.ref.query.phenix_string}
+    Phenix string: {self.ref.selection.phenix_string}
     """
     dialog = InfoDialog(text, title="Selection Info", parent=self.view)
     default_width = dialog.width()
@@ -231,29 +232,44 @@ class SelectionListController(ScrollableListController):
     super().__init__(parent=parent,view=view)
     self.next_selection_number = 1 # for labeling new selections
 
-    self.state.signals.selection_change.connect(self.update)
+
+    self.state.signals.selection_added.connect(self.update)
+
+
+  def add_entry_from_ref(self,ref: SelectionRef,force_show=True,label=None):
+    if ref not in self.refs:
+      if not force_show and not ref.show_in_list:
+        return 
+      entry_view = SelectionEntryView()
+      entry_controller = SelectionEntryController(parent=self,view=entry_view,ref=ref)
+      entry_controller.view.active_toggle.is_checked = True
+      if label is None:
+        label = ref.selection.phenix_string
+        if label.strip() == "all":
+          label = f"(all) {ref.model_ref.label}"
+        elif len(label)<30:
+          pass # keep phenix selection
+
+        elif len(label)< 100:
+          label = label[:30]+"..." # truncate
+        else:
+          # convert to number of atoms
+          label = f"{ref.number_of_atoms} atoms selected"
+        ref.label = label
+      entry_controller.view.label_name.setText(ref.label)
+      self.add_entry(entry_controller)
+      self.next_selection_number+=1
 
 
   def update(self):
-    selection_list = self
     for ref in self.state.references_selection:
-      if ref not in selection_list.refs:
-        if ref.show_in_list:
-          entry_view = SelectionEntryView()
-          entry_controller = SelectionEntryController(parent=self,view=entry_view,ref=ref)
-          entry_controller.view.active_toggle.is_checked = True
-          selection_list.add_entry(entry_controller)
-          ref.label = f"Selection {selection_list.next_selection_number}"
-          entry_controller.view.label_name.setText(ref.label)
-          selection_list.next_selection_number+=1
-          # make new selection active
+      self.add_entry_from_ref(ref,force_show=False)
 
 
 
 class SelectionTabController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-    self.state.signals.selection_change.connect(self.set_focus_on)
 
     self.selection_list_controller = SelectionListController(parent=self,view=self.view.selection_list_view)
 

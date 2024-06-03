@@ -75,6 +75,7 @@ class MolstarWebEngineView(QWebEngineView):
         if self.custom_callback:
             self.custom_callback(result)  # Run the custom callback with the result
         self.loop.quit()  # Quit the event loop
+
 class ViewerTabView(GUITab):
   """
   The QT GUI Tab for the viewer

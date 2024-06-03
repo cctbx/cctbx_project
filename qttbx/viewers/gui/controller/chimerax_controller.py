@@ -32,7 +32,7 @@ class ChimeraXController(Controller):
     self.view.button_start.clicked.connect(self.start_viewer)
     self.state.signals.model_change.connect(self.load_model_from_ref)
     self.state.signals.map_change.connect(self.load_map_from_ref)
-    self.state.signals.select.connect(self.select_from_ref)
+    self.state.signals.selection_activated.connect(self.select_from_ref)
     self.state.signals.clear.connect(self.clear_viewer)
 
     # # self.state.signals.selection_change.connect(self.selection_controls.select_active_selection)
