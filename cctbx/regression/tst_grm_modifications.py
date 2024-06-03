@@ -61,6 +61,19 @@ ATOM      8  CE  MET A   1       5.000   6.694   6.892  1.00 74.93           C
 END
 """.splitlines()
 
+raw_records4b = """\
+CRYST1   15.775   12.565   13.187  90.00  90.00  90.00 P 1
+ATOM      1  N   MET A   1       9.821   6.568   5.000  1.00 66.07           N
+ATOM      2  CA  MET A   1       9.946   7.171   6.357  1.00 66.55           C
+ATOM      3  C   MET A   1      10.571   6.157   7.305  1.00 64.57           C
+ATOM      4  O   MET A   1      10.775   5.000   6.933  1.00 66.25           O
+ATOM      5  CB  MET A   1       8.570   7.565   6.897  1.00 69.08           C
+ATOM      6  CG  MET A   1       7.723   6.373   7.299  1.00 71.37           C
+ATOM      7  SD  MET A   1       6.247   6.862   8.187  1.00 76.22           S
+ATOM      8  CE  MET A   1      -1.000   6.694   6.892  1.00 74.93           C
+END
+""".splitlines()
+
 raw_records5 = """\
 CRYST1  258.687  258.687   47.103  90.00  90.00 120.00 P 63          6
 ATOM    213  N   ILE A  78      87.236 -55.209   0.578  1.00179.51           N
@@ -304,6 +317,41 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
   assert simple.size() + asu.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.simple.size() == 8
   assert geometry.pair_proxies().nonbonded_proxies.asu.size() == 0
+
+def exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib):
+  '''
+  raw_records4b is same as raw_records4, except that CE is in another ASU
+  --> 6A long bond to SD --> this will choke the call of
+  all_bonds_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
+  in add_new_bond_restraints_in_place
+  root of the issue is that there is >5 A long bond (i.e. longer than the
+  default of max_distance_between_connecting_atoms, which is 5) between
+  atoms where one atom is in another ASU
+  see also test
+  '''
+  geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records4b)
+
+  proxy = geometry_restraints.bond_simple_proxy(
+    i_seqs=(0,3),
+    distance_ideal=2.0,
+    weight=3000)
+  assert not geometry.is_bonded_atoms(0,3)
+  assert not geometry.is_bonded_atoms(3,0)
+  # DL: this will fail
+  #geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart())
+  # DL: this works
+  geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
+    max_distance_between_connecting_atoms=10)
+
+  assert geometry.is_bonded_atoms(0,3)
+  assert geometry.is_bonded_atoms(3,0)
+  assert geometry.pair_proxies().bond_proxies.simple.size() == 8
+  assert geometry.pair_proxies().bond_proxies.asu.size() == 0
+  simple, asu = geometry.get_covalent_bond_proxies()
+  assert simple.size() + asu.size() == 8
+  # DL: these numbers will need to be adapted
+  #assert geometry.pair_proxies().nonbonded_proxies.simple.size() == 8
+  #assert geometry.pair_proxies().nonbonded_proxies.asu.size() == 0
 
 def exercise_add_super_long_bond(mon_lib_srv, ener_lib):
   # distance between the two is 26A, they are not added because of
@@ -682,6 +730,7 @@ def exercise():
     exercise_bond_near_symmetry3(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
+    exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
