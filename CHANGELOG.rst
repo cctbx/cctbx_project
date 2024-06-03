@@ -1,3 +1,10 @@
+2024.5
+======
+
+* Added water picking with alternate conformations
+* Removed more unused or not maintained tools in iotbx and mmtbx
+* Added check for NaN in ccp4/mrc maps
+
 2024.4
 ======
 
