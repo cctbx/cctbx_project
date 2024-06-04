@@ -40,7 +40,7 @@ class ResourceLogManager:
   formatter = logging.Formatter(fmt=fmt)
   line_regex = re.compile(
     r'(\d{2,4}-\d\d-\d\d \d\d:\d\d:\d\d,\d+) - '
-    r'UsageStats\(cpu_usage=(-?\d+\.?\d*), ?cpu_memory=(-?\d+\.?\d*), ?'
+    r'ResourceStats\(cpu_usage=(-?\d+\.?\d*), ?cpu_memory=(-?\d+\.?\d*), ?'
     r'gpu_usage=(-?\d+\.?\d*), ?gpu_memory=(-?\d+\.?\d*)')
 
   def __init__(self, logger_name: str) -> None:
