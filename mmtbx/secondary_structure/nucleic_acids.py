@@ -20,13 +20,6 @@ hbond_distance_cutoff = 3.4
   .short_caption = Distance cutoff for hydrogen bonds
   .help = Hydrogen bonds with length exceeding this limit will not be \
     established
-angle_between_bond_and_nucleobase_cutoff = 35.0
-  .type = float
-  .short_caption = Angle between bond and nucleobase cutoff for \
-    hydrogen bonds
-  .help = If angle between supposed hydrogen bond and \
-    basepair plane (defined by C4, C5, C6 atoms) is less than this \
-    value (in degrees), the bond will not be established.
 scale_bonds_sigma = 1.
   .type = float
   .short_caption = Scale h-bond sigma
@@ -420,7 +413,7 @@ def get_plane_i_seqs_from_residues(r1, r2, grm,mon_lib_srv, plane_cache):
     # print resname
     # print r.resname
     # print new_res.resname.strip()
-    print("Warning, Cannot make NA restraints for %s residue" % resname)
+    print("Warning, Cannot make NA restraints for %s residue (no planarity definition)" % rn)
   i_seqs = []
   result = []
   r1_i_seqs = {}
