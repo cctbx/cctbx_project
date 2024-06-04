@@ -64,7 +64,7 @@ class ResourceLogManager:
 class PerCentFloat(float):
   """Convenience wrapper that clamps float between 0 and 100"""
   def __new__(cls, value) -> 'PerCentFloat':
-    return float.__new__(float, max(min(value, 100.0), 0.0))
+    return float.__new__(float, max(min(float(value), 100.0), 0.0))
 
 
 @dataclass
@@ -74,6 +74,10 @@ class ResourceStats:
   cpu_memory: PerCentFloat = 0.0
   gpu_usage: PerCentFloat = 0.0
   gpu_memory: PerCentFloat = 0.0
+
+  def __post_init__(self):
+    for attr in ['cpu_usage', 'cpu_memory', 'gpu_usage', 'gpu_memory']:
+      setattr(self, attr, PerCentFloat(getattr(self, attr)))
 
   @property
   def vector(self) -> np.ndarray:
@@ -99,7 +103,8 @@ class ResourceStatsHistory(UserDict[datetime, ResourceStats]):
       for line in file.readlines():
         if match := ResourceLogManager.line_regex.match(line):
           t = datetime.strptime(match.group(1), ResourceLogManager.date_fmt)
-          new[t] = ResourceStats(*match.group(2, 3, 4, 5))
+          stats = [PerCentFloat(s) for s in match.group(2, 3, 4, 5)]
+          new[t] = ResourceStats(*stats)
     return new
 
   def get_deltas_array(self) -> np.ndarray:  # result in minutes
