@@ -993,11 +993,18 @@ class _():
        unit_cell_crystal_symmetry = None,
        shift_cart = None):
     ''' Returns simple version of model object based on this hierarchy
-     Requires crystal_symmetry.  Optional unit_cell_crystal_symmetry and
-     shift_cart
+     Expects but does not require crystal_symmetry.
+     Optional unit_cell_crystal_symmetry and shift_cart.
      '''
     import mmtbx.model
-    mm = mmtbx.model.manager(
+    if crystal_symmetry: # usual
+      mm = mmtbx.model.manager(
+          model_input = None, # REQUIRED
+          pdb_hierarchy = self,
+          crystal_symmetry = crystal_symmetry,
+          )
+    else:  # usual, make a deep_copy and supply as_pdb_input:
+      mm = mmtbx.model.manager(
           model_input = self.deep_copy().as_pdb_input(),
           crystal_symmetry = crystal_symmetry,
           )
