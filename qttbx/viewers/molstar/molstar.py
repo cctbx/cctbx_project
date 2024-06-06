@@ -2,17 +2,14 @@ import requests
 from pathlib import Path
 import time
 import json
-from functools import partial
-from typing import Optional, List
+from typing import Optional
 
-from PySide2.QtCore import QObject, Signal
-from PySide2.QtCore import QUrl, Signal, QObject, QTimer
+from PySide2.QtCore import QUrl
 try:
   from qttbx.viewers import ModelViewer
 except:
   from viewers import ModelViewer
 
-from iotbx.data_manager import DataManager
 from libtbx.utils import Sorry
 from libtbx import group_args
 
@@ -21,13 +18,11 @@ from libtbx import group_args
 from .volume_streaming import VolumeStreamingManager
 from ..gui.state.state import PhenixState
 from ..gui.state.color import Color
-from ..gui.controller.controller import Controller
 from .server_utils import  NodeHttpServer
 from .volume_streaming import VolumeStreamingManager
 from ..core.selection_utils import SelectionQuery # TODO: REMOVE
 # from ..core.selection_common import PhenixParser, parse_ast
 from ..core.selection import Selection
-from ..gui.controller.style import ModelStyleController, MapStyleController
 from ..core.python_utils import DotDict
 
 
@@ -184,7 +179,7 @@ class MolstarViewer(ModelViewer):
 
     counter = 0
     while counter<timeout:
-      output = self._check_status()
+      self._check_status()
       if self._connected:
         break
       counter += 1

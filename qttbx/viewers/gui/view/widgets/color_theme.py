@@ -58,6 +58,6 @@ class ColorThemeButton(QWidget):
     action = self.sender()
     if action:
       key = action.text()
-      theme = self.themes[key]
+      self.themes[key]
       color = '#FFFF00'
       raise NotImplementedError

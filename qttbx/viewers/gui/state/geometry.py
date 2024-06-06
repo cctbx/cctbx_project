@@ -1,6 +1,5 @@
 from dataclasses import dataclass, fields
 from typing import List, Optional
-from io import StringIO
 import tempfile
 from pathlib import Path
 
@@ -8,11 +7,9 @@ import pandas as pd
 
 
 from mmtbx.geometry_restraints.geo_file_parsing import (
-  parse_geo_file,
-  add_i_seq_columns_from_id_str
+  parse_geo_file
 )
 from .base import DataClassBase
-from ...core.cctbx_utils import get_restraint_dfs_from_model
 
 geometry_names = [
       "bond",

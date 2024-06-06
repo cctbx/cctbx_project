@@ -1,10 +1,8 @@
 
 from dataclasses import dataclass
-from typing import Optional, Dict, List
-from pathlib import Path
+from typing import List, Optional
 
 from ..state.base import ObjectRow
-from ...core.mol import MolDataFrame
 
 @dataclass(frozen=True)
 class EditData(ObjectRow):

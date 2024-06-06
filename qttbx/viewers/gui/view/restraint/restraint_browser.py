@@ -1,14 +1,11 @@
 from pathlib import Path
 
-import pandas as pd
-from PySide2.QtWidgets import  QFrame, QLabel,QPushButton, QHBoxLayout,QVBoxLayout, QApplication, QMainWindow, QTabWidget, QTableView, QWidget, QComboBox
-from PySide2.QtGui import QStandardItemModel, QStandardItem, QIcon
+from PySide2.QtWidgets import QComboBox, QFrame, QHBoxLayout, QPushButton, QVBoxLayout
+from PySide2.QtGui import QIcon
 
 
 from ..table import PandasTableView
-from ...state.table import PandasTableModel
-from ..widgets.tab import GUITab,GUITabWidget
-from ..cif.cif_browser import CifTableView
+from ..widgets.tab import GUITab
 
 
 

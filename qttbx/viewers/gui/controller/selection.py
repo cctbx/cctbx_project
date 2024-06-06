@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
+from PySide2.QtWidgets import QMenu
 import numpy as np
 import math
 
@@ -10,29 +10,20 @@ from .scroll_list import ScrollableListController
 from .controller import Controller
 from ..state.base import ObjectFrame
 from ..state.geometry import (
-  BondGeometry,
-  AngleGeometry,
-  DihedralGeometry,
-  ChiralGeometry,
   PlaneGeometry
 )
 from ..state.edits import (
   BondEdit,
-  AngleEdit,
-  DihedralEdit
+  AngleEdit
 )
 
 from ..view.widgets import (
   BondEditDialog,
-  AngleEditDialog,
-  DihedralEditDialog,
-  ChiralEditDialog,
-  PlaneEditDialog
+  AngleEditDialog
 )
 from ..state.ref import (
   BondEditsRef,
-  AngleEditsRef,
-  DihedralEditsRef
+  AngleEditsRef
 
 )
 

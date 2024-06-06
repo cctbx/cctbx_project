@@ -1,6 +1,5 @@
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 from cctbx.array_family import flex
 
@@ -51,7 +50,6 @@ def get_restraint_df(model,geometry_type="bond"):
 
     flags=None
     sites_cart=model.get_sites_cart()
-    site_labels=None
 
     if geometry_type == "bond":
         pair_proxies = grm.pair_proxies(flags=flags, sites_cart=sites_cart)

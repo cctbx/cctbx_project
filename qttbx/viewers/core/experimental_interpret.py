@@ -1,17 +1,7 @@
-from cctbx.array_family import flex
-import sys
 import pandas as pd
 import numpy as np
-from cctbx import geometry_restraints
-import mmtbx
 from collections import defaultdict
 import gemmi
-from mmtbx.monomer_library.pdb_interpretation import (
-geometry_restraints_proxy_registries,
-ener_lib_as_nonbonded_params,
-nonbonded_energy_type_registry,
-master_params,
-)
 monlib_path = "/Applications/ccp4-8.0/lib/data/monomers/"
 
 def extract_restraint_dataframes_with_gemmi(model):
@@ -143,8 +133,8 @@ def check_proxy(proxy_left,proxy_right,assertion=True,proxy_type="any",ignore_or
 def is_similar_grm(grm_left,grm_right,model):
 
 
-  pair_proxies_left = grm_left.pair_proxies(model.get_sites_cart())
-  pair_proxies_right = grm_right.pair_proxies(model.get_sites_cart())
+  grm_left.pair_proxies(model.get_sites_cart())
+  grm_right.pair_proxies(model.get_sites_cart())
 
   # Bonds simple
   for proxy_left,proxy_right in zip(grm_left.get_all_bond_proxies()[0],
@@ -257,7 +247,7 @@ def extract_processed_model_to_dataframes(model,do_nonbonded=False):
 
   # Bonds
   grm = model.restraints_manager.geometry
-  pair_proxies = grm.pair_proxies(model.get_sites_cart())
+  grm.pair_proxies(model.get_sites_cart())
   simple_bonds, asu = grm.get_all_bond_proxies()
   func_mapper = {
     "i_seq_1":lambda proxy: proxy.i_seqs[0],

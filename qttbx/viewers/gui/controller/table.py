@@ -3,7 +3,6 @@ from PySide2 import QtCore
 
 from .controller import Controller
 from ..state.ref import SelectionRef
-from ..state.table import PandasTableModel
 from ..state.base import ObjectFrame
 from ...core.selection import Selection
 

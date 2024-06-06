@@ -1,16 +1,9 @@
 
-from .scroll_entry import ScrollEntryController
 from .scroll_list import ScrollableListController
-from .models import ModelEntryController, ModelListController
-from .maps import MapEntryController, MapListController
-from ..view.models import ModelEntryView, ModelListView
-from ..view.maps import MapEntryView, MapListView
 from .controller import Controller
-from ..state.ref import GeometryRef
-from ..state.geometry import Geometry
 
 from pathlib import Path
-from PySide2.QtWidgets import QFileDialog, QMessageBox
+from PySide2.QtWidgets import QFileDialog
 
 
 class DataTabController(Controller):
@@ -39,7 +32,7 @@ class GenericDataListController(ScrollableListController):
 
 
   def showFileDialog(self):
-    home_dir = str(Path.home())
+    str(Path.home())
 
     self.openFileDialog = QFileDialog(self.view)
     self.openFileDialog.setFileMode(QFileDialog.AnyFile)

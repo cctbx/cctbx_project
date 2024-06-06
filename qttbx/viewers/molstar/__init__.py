@@ -1,4 +1,3 @@
-from .molstar import MolstarViewer
 
 def is_available():
   module_dir = __file__

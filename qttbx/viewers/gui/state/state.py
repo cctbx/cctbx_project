@@ -4,15 +4,13 @@ The origin of any signal related to changes of state.
 """
 from pathlib import Path
 import json
-import time
 import os
-from collections import defaultdict
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from .base import DataClassBase
 from typing import Dict
 
-from PySide2.QtCore import QObject, QTimer, Signal, Slot
-from PySide2.QtWidgets import QApplication, QMessageBox
+from PySide2.QtCore import QObject, Signal
+from PySide2.QtWidgets import QMessageBox
 
 from iotbx.data_manager import DataManager
 import networkx as nx
@@ -349,7 +347,6 @@ class State:
     elif isinstance(ref,SelectionRef):
       if emit:
         self.signals.selection_added.emit(ref)
-      pass
     elif isinstance(ref,GeometryRef):
       if emit:
         self.signals.geo_change.emit(ref)
@@ -569,7 +566,6 @@ class State:
       return # do nothing if already the active ref
 
     
-    ref = value
     if value is None:
       self._active_model_ref = None
     else:
@@ -621,7 +617,6 @@ class State:
 
   @active_map_ref.setter
   def active_map_ref(self,value):
-    ref = value
     if value is None:
       self._active_map_ref = None
     else:
@@ -668,7 +663,6 @@ class State:
     Assigning a SelectionRef to be 'active' emits a signal.
 
     """
-    ref = value
     if value is None:
       self._active_selection_ref =None
     else:

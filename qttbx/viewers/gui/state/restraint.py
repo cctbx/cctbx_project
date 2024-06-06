@@ -1,6 +1,5 @@
-from dataclasses import dataclass, fields
-from pathlib import Path
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List
 
 from elbow.command_line.where_is_that_cif_file import run as where_is_that_cif_file
 

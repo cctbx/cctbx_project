@@ -1,21 +1,13 @@
 
-from PySide2.QtWidgets import QApplication, QMessageBox
-from PySide2 import QtCore
-from ..controller import Controller
 from ..table import TableController
 
-from ...state.geometry import Geometry
-from ...state.ref import GeometryRef
 from ...state.table import  PandasTableModel
-from ...state.ref import SelectionRef, EditsRef
 from ...state.edits import (
   EditData,
   BondEdit,
   AngleEdit,
   DihedralEdit,
 )
-from pathlib import Path
-import pandas as pd
 
 
 

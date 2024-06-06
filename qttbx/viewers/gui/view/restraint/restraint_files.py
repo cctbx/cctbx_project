@@ -2,12 +2,9 @@ from pathlib import Path
 from PySide2.QtWidgets import QVBoxLayout
 
 from ..widgets.tab import GUITab
-from ..models import ModelListView
-from ..maps import MapListView
 from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSpacerItem, QSizePolicy
 from PySide2.QtGui import QIcon
 
-from ..cif.cif_files import CifFileEntryView, CifFileListView, CifFileTabView
 from ..widgets.tab import GUITab
 from ..widgets.scroll_list import ScrollableListView
 from ..widgets.scroll_entry import ScrollEntryView

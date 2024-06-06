@@ -1,23 +1,14 @@
 
-from PySide2.QtWidgets import QApplication, QMessageBox
-from PySide2 import QtCore
-from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
 
-from ..controller import Controller
 from ..filter import TableFilterController
-from ...state.geometry import Geometry
-from ...state.ref import GeometryRef
 from ..table import TableController
 from ...state.table import PandasTableModel
-from ...state.ref import SelectionRef
 from ....core.selection import Selection
 from ...state.base import ObjectFrame
 from ...view.widgets import (
   BondEditDialog,
   AngleEditDialog,
-  DihedralEditDialog,
-  ChiralEditDialog,
-  PlaneEditDialog
+  DihedralEditDialog
 )
 from ...state.edits import (
   BondEdit,
@@ -31,7 +22,6 @@ from ...state.ref import (
 
 )
 
-from pathlib import Path
 import pandas as pd
 
 """

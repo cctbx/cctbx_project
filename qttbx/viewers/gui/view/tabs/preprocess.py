@@ -3,7 +3,7 @@ from pathlib import Path
 from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QPushButton
 from PySide2.QtGui import QIcon
 
-from ..widgets.tab import GUITabWidget, GUITab
+from ..widgets.tab import GUITab
 
 
 class PreprocessTab(GUITab):

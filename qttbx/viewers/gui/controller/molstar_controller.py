@@ -1,16 +1,7 @@
-from pathlib import Path
-import json
-import re
-import copy
 import time
-import sys
-from functools import partial
-from typing import Optional
-from contextlib import contextmanager
 
-import pandas as pd
-from PySide2.QtCore import QUrl, Signal, QObject, QTimer
-from PySide2.QtWidgets import QFileDialog, QMessageBox
+from PySide2.QtCore import QTimer
+from PySide2.QtWidgets import QMessageBox
 
 
 from .controller import Controller
@@ -20,7 +11,6 @@ from .style import ModelStyleController, MapStyleController
 from ..controller.viewer_controls import ViewerControlsController
 from ...core.selection import Selection
 from ..state.ref import SelectionRef
-from ...core.python_utils import DotDict
 
 class sync_manager:
   """

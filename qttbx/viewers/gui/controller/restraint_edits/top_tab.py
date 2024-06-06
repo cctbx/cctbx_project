@@ -1,21 +1,17 @@
 
-from PySide2.QtWidgets import QApplication, QMessageBox
-from PySide2.QtWidgets import QApplication, QWidget, QVBoxLayout, QPushButton, QFileDialog
+from PySide2.QtWidgets import QFileDialog
 
-from PySide2 import QtCore
 from ..controller import Controller
 from .tables import (
   BondTableController,
   AngleTableController,
   DihedralTableController,
   ChiralTableController,
-  PlanarityTableController,
-  NonbondedTableController
+  PlanarityTableController
 )
 from pathlib import Path
 import webbrowser
 import os
-import pandas as pd
 
 
 

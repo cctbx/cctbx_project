@@ -1,21 +1,15 @@
-import json
-import threading
 
 from ..selection import SelectionTabController
-from ..data import DataTabController
-from ..sites import SitesTabController
-from ..chimerax_controller import ChimeraXController
 from ..molstar_controller import MolstarController
 from ..geometry.top_tab import GeometryTableTopTabController
 from ..restraint_edits.top_tab import EditsTableTopTabController
-from ..qscore import QscoreTabController
 from ..cif import CifTabController
 from ..restraint import RestraintTabController
 from ..controller import Controller
 
 
 from PySide2.QtWidgets import QApplication
-from PySide2.QtCore import QEvent, QObject, Signal
+from PySide2.QtCore import QEvent
 
 
 class ViewerGUIController(Controller):

@@ -194,7 +194,6 @@ import warnings
 from collections import UserDict, defaultdict
 import re
 from pathlib import Path
-import sys
 
 from iotbx import cif
 from iotbx.cif.builders import crystal_symmetry_builder
@@ -202,9 +201,8 @@ from iotbx.cif.model import block
 import pandas as pd
 from pandas.errors import ParserWarning
 
-from libtbx.utils import null_out
 from .python_utils import find_key_path, get_value_by_path
-from .cif_io import convert_dataframes_to_iotbx_cif, convert_dict_to_dataframes
+from .cif_io import convert_dict_to_dataframes
 
 
 
@@ -782,7 +780,6 @@ def quote_strings_with_spaces(df):
 
 def format_dataframe_for_cif(df):
     # Determine padding for each column
-    col_format = {}
     for col in df.columns:
         if df[col].dtype == float or df[col].apply(lambda x: isinstance(x, float)).any():
             max_left_len = df[col].apply(lambda x: len(str(int(x)) if isinstance(x, float) and not pd.isna(x) else str(x))).max()

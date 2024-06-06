@@ -1,10 +1,9 @@
-from PySide2.QtWidgets import QTableView
-from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
-from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
-from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
+from PySide2.QtCore import Qt, Signal
+from PySide2.QtWidgets import QMenu, QVBoxLayout
+from PySide2.QtCore import Qt, Signal
 
 from ..table import PandasTableView
-from PySide2.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton)
+from PySide2.QtWidgets import QVBoxLayout
 from ..widgets.tab import GUITab
 from ..widgets.filter import TableFilter
 

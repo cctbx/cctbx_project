@@ -8,7 +8,6 @@ from .tables import (
   PlanarityTableTabView,
   NonbondedTableTabView
 )
-from . import GeoTabView
 
 class GeometryTabView(GUITabWidget): # Top view
   def __init__(self,parent=None):

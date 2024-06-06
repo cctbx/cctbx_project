@@ -1,15 +1,10 @@
 import re
-import json
 #from .selection_utils import SelConverterPhenix
 
 import re
-import json
-from itertools import chain
-import ast
 from .parameters import params
 
 import re
-from itertools import chain
 
 class PhenixParser:
   """

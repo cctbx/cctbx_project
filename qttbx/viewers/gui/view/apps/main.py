@@ -1,19 +1,14 @@
-import time
 
 from PySide2.QtCore import Signal
 from PySide2.QtWidgets import QMainWindow
 from PySide2.QtGui import QGuiApplication
 
-from ..tabs.viewer_chimerax import ChimeraXTabView
 from ..tabs.viewer_molstar import ViewerTabView
 from ..tabs.console import JupyterTabWidget, JSConsoleTab
 from ..tabs.selection import SelectionsTabView
-from ..tabs.data import DataTabView
-from ..tabs.sites import SitesTabView
 from ..cif import CifTabView
 from ..restraint import RestraintTabView
 
-from ..tabs.qscore import QscoreTab
 from ..widgets.tab import GUITabWidget
 from ..geometry.top_tab import GeometryTabView
 from ..restraint_edits.top_tab import EditsTabView
@@ -49,11 +44,11 @@ class ViewerGUIView(QMainWindow):
     # Main Level Components
 
     if params and params.show_tab:
-      show_tab = params.show_tab
+      params.show_tab
       if 'all' in params.show_tab:
-        show_tab = 'all'
+        pass
     else:
-      show_tab = []
+      pass
 
 
 
@@ -123,7 +118,6 @@ class ViewerGUIView(QMainWindow):
     # Consoles
     if True:
       try:
-        import qtconsole
         self.consoles = GUITabWidget(parent=self)
         # Python console subtab
         self.python_console = JupyterTabWidget(parent=self.consoles)

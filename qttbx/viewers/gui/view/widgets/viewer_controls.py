@@ -1,23 +1,13 @@
-from PySide2.QtWidgets import QWidget, QFrame, QDialog, QTextEdit, QLabel, QSizePolicy, QVBoxLayout,QHBoxLayout, QPushButton, QComboBox
+from PySide2.QtWidgets import QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
 from PySide2.QtWidgets import QSpacerItem,QLayoutItem, QApplication, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QLabel, QScrollArea
 from PySide2.QtGui import QIcon
 from PySide2.QtCore import Qt, QEvent
-from PySide2.QtCore import QObject, QTimer, Signal, Slot
-from PySide2.QtGui import QGuiApplication, QDrag, QCursor
-from PySide2.QtGui import QIcon, QPixmap, QPainter
-from PySide2.QtSvg import QSvgRenderer
+from PySide2.QtCore import QObject, Signal
+from PySide2.QtGui import QIcon
 import qtawesome as qta
 
 from .history_line_edit import HistoryLineEdit
-from .widgets import NoCheckComboBox
-from .toggles import ToggleIconButton
 
-from ..widgets.scroll_list import ScrollableListView
-from ..widgets.scroll_entry import ScrollEntryView
-from ..widgets.representation_select import RepresentationSelect
-from ..widgets.toggles import ToggleIconButton
-from ..widgets.checkbox import ConditionalCheckBox
-from ..models import GeoCheckBox
 
 from pathlib import Path
 

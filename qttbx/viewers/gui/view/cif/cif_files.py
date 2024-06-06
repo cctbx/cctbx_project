@@ -2,8 +2,6 @@ from pathlib import Path
 from PySide2.QtWidgets import QVBoxLayout
 
 from ..widgets.tab import GUITab
-from ..models import ModelListView
-from ..maps import MapListView
 from PySide2.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton)
 from PySide2.QtGui import QIcon
 

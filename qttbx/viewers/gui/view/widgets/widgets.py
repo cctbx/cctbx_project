@@ -1,18 +1,12 @@
-import pandas as pd
 import numpy as np
-from PySide2.QtGui import QColor
 
-from PySide2 import QtCore
-from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
-from PySide2.QtWidgets import QWidget, QHeaderView, QListView,QTableView, QDialog, QLabel, QVBoxLayout, QHBoxLayout,QWidget, QComboBox, QStyle, QStyleOptionComboBox,  QTextEdit
+from PySide2.QtCore import QObject, QPoint, QTimer, Qt, Signal
+from PySide2.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLabel, QListView, QStyle, QStyleOptionComboBox, QTextEdit, QVBoxLayout, QWidget, QWidget
 from PySide2.QtWidgets import  QVBoxLayout, QWidget,  QSlider
 from PySide2.QtGui import QMouseEvent, QPainter
-from PySide2.QtGui import QFontMetrics
-from PySide2.QtCore import QModelIndex
 from PySide2.QtGui import QCursor
 
-from PySide2.QtWidgets import QApplication, QTableView, QMenu, QAction
-from PySide2.QtWidgets import QTableView, QMenu, QAction, QHeaderView
+from PySide2.QtWidgets import QApplication
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
@@ -251,7 +245,7 @@ class ClickableHistogramSeaborn(FigureCanvas):
 
     # Convert to data coordinates
     data_x = x_min + rel_x * (x_max - x_min)
-    data_y = y_min + rel_y * (y_max - y_min)
+    y_min + rel_y * (y_max - y_min)
 
     print(f"Clicked on x = {data_x:.2f}")
     self.emitter.histogram_click_value.emit(data_x)
@@ -307,7 +301,7 @@ class ClickableHistogramMatplotlib(FigureCanvas):
 
     # Convert to data coordinates
     data_x = x_min + rel_x * (x_max - x_min)
-    data_y = y_min + rel_y * (y_max - y_min)
+    y_min + rel_y * (y_max - y_min)
 
     print(f"Clicked on x = {data_x:.2f}")
 

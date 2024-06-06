@@ -107,7 +107,7 @@ class TableFilterController(Controller):
 
 
   def update_quiet(self):
-    table = self.table
+    self.table
 
   def _init_comps(self):
     # Do all

@@ -5,7 +5,6 @@ from pathlib import Path
 from functools import reduce
 from itertools import zip_longest
 from collections import defaultdict
-import numpy as np
 import pandas as pd
 
 from iotbx import cif
@@ -104,7 +103,7 @@ def get_df_residues(model):
                     "auth_comp_id",
                    ]
   groupby_labels = [label for label in groupby_labels if label in df_atoms.columns]
-  drop_labels = [label for label in df_atoms.columns if label not in groupby_labels]
+  [label for label in df_atoms.columns if label not in groupby_labels]
   agg_dict = {label:"first" for label in groupby_labels}
   df_residues = df_atoms.groupby(groupby_labels).agg(agg_dict).reset_index(drop=True)
   return df_residues

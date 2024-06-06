@@ -1,6 +1,5 @@
 
 from dataclasses import dataclass
-from typing import Optional, Dict
 from pathlib import Path
 from ...core.cif_io import CifInput
 

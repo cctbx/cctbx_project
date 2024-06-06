@@ -1,23 +1,15 @@
-import copy
 import json
 import re
-import networkx as nx
-import numpy as np
-from .python_utils import DotDict
 from .selection_common import PhenixParser
-import ast
-from .parameters import core_map_to_mmcif, core_map_to_core, attrs_map_to_phenix, logic_map_to_phenix, blanks, protein_comp_ids, solvent_comp_ids
+from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix, protein_comp_ids
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 import re
 import json
-from itertools import chain
-import ast
 from .parameters import params
 
 import re
-from itertools import chain
 
 
 @dataclass(frozen=True)

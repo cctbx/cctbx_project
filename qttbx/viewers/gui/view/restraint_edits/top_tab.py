@@ -5,8 +5,7 @@ from .tables import (
   AnglesTableTabView,
   DihedralsTableTabView,
   ChiralsTableTabView,
-  PlanarityTableTabView,
-  NonbondedTableTabView
+  PlanarityTableTabView
 )
 
 class EditsTabView(GUITabWidget):

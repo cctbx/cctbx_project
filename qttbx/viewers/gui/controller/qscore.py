@@ -3,13 +3,9 @@ import pandas as pd
 from PySide2.QtWidgets import QApplication
 from PySide2 import QtCore
 
-from cctbx.maptbx.qscore import calc_qscore
-from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.programs.qscore import Program as QscoreProgram
-from iotbx.cli_parser import run_program
 from libtbx import phil
-import numpy as np
 
 from .controller import Controller
 from ..state.results import  Result, ResultsRef

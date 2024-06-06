@@ -1,8 +1,6 @@
-import numpy as np
 from PySide2.QtWidgets import QWidget, QGridLayout, QTableView, QComboBox
 
 from ..widgets import ClickableHistogramSeaborn
-from ..widgets.tab import GUITab
 from ..tabs.preprocess import PreprocessTab
 from ..table import PandasTableView
 

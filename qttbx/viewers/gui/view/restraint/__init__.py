@@ -1,7 +1,6 @@
 
 from PySide2.QtCore import Signal
 
-from ..cif import CifTabView
 from ..widgets.tab import GUITabWidget
 from .restraint_files import RestraintFileTabView
 from .restraint_browser import RestraintBrowserTabView

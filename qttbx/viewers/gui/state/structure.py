@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict, Optional
+from typing import List
 from .component import Component
 from .base import DataClassBase
 

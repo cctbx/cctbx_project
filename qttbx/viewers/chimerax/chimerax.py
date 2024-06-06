@@ -2,17 +2,14 @@ from __future__ import absolute_import, division, print_function
 
 
 import requests
-from pathlib import Path
 import sys
 import time
-import json
 import tempfile
 import glob
 import os
 import random
 import requests
 from typing import Optional
-from requests.exceptions import RequestException
 
 import subprocess
 import sys
@@ -27,16 +24,12 @@ from libtbx.utils import Sorry
 
 
 
-from PySide2.QtCore import QObject, Signal
-from PySide2.QtCore import QUrl, Signal, QObject
 from qttbx.viewers import ModelViewer
 
 
 from ..core.selection_utils import SelectionQuery
 from .sel_convert_chimera import (
-  translate_phenix_selection_string,
-  convert_selection_str_to_int,
-  convert_selection_int_to_str
+  translate_phenix_selection_string
 )
 
 
@@ -183,7 +176,7 @@ class ChimeraXViewer(ModelViewer):
     print(self.url)
     counter = 0
     while counter<timeout:
-      output = self._check_status()
+      self._check_status()
       if self._connected:
         break
       counter += 1
@@ -217,7 +210,7 @@ class ChimeraXViewer(ModelViewer):
       self._run_command(params)
     else:
       print('ChimeraX already shut down')
-    rc = self.process.returncode
+    self.process.returncode
     stdout, stderr = self.process.communicate()
     # print('-'*79)
     # print(stdout)
@@ -327,11 +320,11 @@ class ChimeraXViewer(ModelViewer):
     return response
 
   def _select_up_residues(self):
-    response = self.send_command("select sel residues true")
+    self.send_command("select sel residues true")
 
 
   def deselect_all(self):
-    response = self.send_command('~select')
+    self.send_command('~select')
 
   def select_from_query(self,model_id: str, query_json: str):
     """
@@ -363,10 +356,10 @@ class ChimeraXViewer(ModelViewer):
   # Other
   def clear_viewer(self):
     # Remove all objects from the viewer
-    response = self.send_command('close')
+    self.send_command('close')
 
   def reset_camera(self,queue=False):
-    response = self.send_command("view")
+    self.send_command("view")
 
 
   # ---------------------------------------------------------------------------

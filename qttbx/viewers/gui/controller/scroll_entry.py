@@ -1,13 +1,7 @@
-import subprocess
-import platform
-from functools import partial
-from dataclasses import replace
 
 from PySide2.QtCore import QObject
-from PySide2.QtWidgets import QMessageBox
 
 from .controller import Controller
-from ..state.ref import ModelRef, MapRef
 
 
 class ScrollEntryController(Controller, QObject):

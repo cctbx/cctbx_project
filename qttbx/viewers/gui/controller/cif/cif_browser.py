@@ -1,14 +1,9 @@
 from pathlib import Path
 import pandas as pd
-from PySide2 import QtCore
-from PySide2.QtWidgets import  QVBoxLayout, QWidget, QMessageBox, QLabel, QFileDialog
+from PySide2.QtWidgets import QFileDialog, QLabel
 
-from iotbx.pdb.mmcif import cif_input
 
-from ...view.cif.cif_browser import CifTableView
 from ...state.table import  PandasTableModel
-from ...state.ref import SelectionRef
-from ..controller import Controller
 #from ..view.tabs.cif import add_tabs
 from ....core.pandas_utils import write_cif_file
 from ..table import TableController

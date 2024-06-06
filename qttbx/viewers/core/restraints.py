@@ -1,12 +1,8 @@
 from cctbx.array_family import flex
 import sys
 import pandas as pd
-import numpy as np
 from cctbx import geometry_restraints
 import mmtbx
-from iotbx.data_manager import DataManager
-from collections import defaultdict
-import gemmi
 from mmtbx.monomer_library.pdb_interpretation import (
 geometry_restraints_proxy_registries,
 ener_lib_as_nonbonded_params,
@@ -17,7 +13,6 @@ from .experimental_interpret import (
 )
 from cctbx import crystal
 from cctbx.crystal import special_position_settings
-from libtbx import group_args
 from .views import ModelView
 
 def make_proxies(model=None,
@@ -40,7 +35,7 @@ def make_proxies(model=None,
 
   # extract basic objects
   hierarchy = model.get_hierarchy()
-  crystal_symmetry = model.crystal_symmetry()
+  model.crystal_symmetry()
   n_seq = len(hierarchy.atoms())
 
 
@@ -51,7 +46,7 @@ def make_proxies(model=None,
     n_seq=n_seq,
     strict_conflict_handling=False)
   geometry_proxy_registries.initialize_tables()
-  sites_cart = model.get_sites_cart()
+  model.get_sites_cart()
 
 
   # Bonds

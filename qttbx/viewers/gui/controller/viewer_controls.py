@@ -1,44 +1,30 @@
 from PySide2.QtCore import Slot
-import json
-import time
 from pathlib import Path
 import platform
 import subprocess
 import numpy as np
 from .controller import Controller
-from ...core.selection_utils import SelectionQuery
 from ..state.ref import SelectionRef
 from ..view.widgets.viewer_controls import SearchSelectDialog
-from PySide2.QtCore import QObject, QTimer, Signal, Slot
-from PySide2.QtWidgets import QApplication
-from PySide2.QtWidgets import QFileDialog, QColorDialog
-from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
+from PySide2.QtCore import Slot
+from PySide2.QtWidgets import QFileDialog
+from PySide2.QtWidgets import QMenu, QPushButton
 
 from PySide2.QtCore import Qt
-from .scroll_list import ScrollableListController
-from ..state.ref import SelectionRef, ModelRef, GeometryRef, RestraintsRef
+from ..state.ref import GeometryRef, RestraintsRef, SelectionRef
 from ..state.geometry import Geometry
 from ..state.restraint import Restraints
 from ..state.base import ObjectFrame
 
-from .widgets import InputDialog
 from .geometry.tables import GeometryTableTabController
 from ..view.widgets import (
-  BondEditDialog,
-  AngleEditDialog,
-  DihedralEditDialog,
-  ChiralEditDialog,
-  PlaneEditDialog
+  BondEditDialog
 )
 from ..state.edits import (
-  BondEdit,
-  AngleEdit,
-  DihedralEdit
+  BondEdit
 )
 from ..state.ref import (
-  BondEditsRef,
-  AngleEditsRef,
-  DihedralEditsRef
+  BondEditsRef
 
 )
 
@@ -246,7 +232,7 @@ class ViewerControlsController(Controller):
     mol = self.state.active_model_ref.mol
     sel = mol.sites.select_from_query(self.ref.query)
     assert len(sel)==3, "Angle restraint must only have two atoms"
-    i_seqs = list(sel.index)
+    list(sel.index)
     xyz = sel.xyz.astype(float)
     a,b,c = xyz
 
@@ -457,7 +443,7 @@ class SearchSelectDialogController(Controller):
     self.atom_scroller_controller.reset()
 
     mol = self.state.active_model_ref.mol
-    chain = self.chain_scroller_controller.selected
+    self.chain_scroller_controller.selected
     comp = self.comp_scroller_controller.selected
     seq = self.seq_scroller_controller.selected 
     atom = self.atom_scroller_controller.selected
@@ -568,7 +554,7 @@ class SearchSelectDialogController(Controller):
 
   def atom_change(self,selected):
     self.parent.viewer.set_granularity(value="element")
-    mol = self.state.active_model_ref.mol
+    self.state.active_model_ref.mol
     chain = self.chain_scroller_controller.selected
     seq = self.seq_scroller_controller.selected
     comp = self.comp_scroller_controller.selected

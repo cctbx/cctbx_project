@@ -1,13 +1,6 @@
 
-from PySide2.QtWidgets import QApplication, QMessageBox
 
-from PySide2.QtCore import QUrl, QThread, Signal, Slot, QObject, QThreadPool, QRunnable
-from ..scroll_entry import ScrollEntryController
-from ...view.widgets.scroll_entry import ScrollEntryView
-from ..scroll_list import ScrollableListController
 from ..controller import Controller
-from ...state.geometry import Geometry
-from ..data import DataTabController
 from .restraint_browser import RestraintBrowserController
 from .restraint_files import RestraintFileListController
 

@@ -23,7 +23,7 @@ Selection statement: A single key,value selection: "name N"
 
 def is_int(s):
     try:
-        i = int(s)
+        int(s)
         return True
     except:
         return False

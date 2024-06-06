@@ -1,12 +1,10 @@
 
 from dataclasses import dataclass
-from typing import Optional, Dict
+from typing import Optional
 from pathlib import Path
 
-import pandas as pd
 
 from .base import DataClassBase
-from .cif import CifFileData
 
 
 @dataclass(frozen=True)

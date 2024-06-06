@@ -1,16 +1,9 @@
-import sys
 from cctbx.array_family import flex
 import mmtbx
 from mmtbx.monomer_library.pdb_interpretation import monomer_mapping
-from libtbx.utils import null_out
 from mmtbx.monomer_library.pdb_interpretation import (
-geometry_restraints_proxy_registries,
-ener_lib_as_nonbonded_params,
 nonbonded_energy_type_registry,
-master_params,
-build_all_chain_proxies,
-monomer_mapping,
-is_same_model_as_before
+monomer_mapping
 )
 
 
@@ -190,7 +183,7 @@ class ModelView:
         for j_conformer,conformer in enumerate(conformers):
           if (is_unique_model and log is not None):
             print('      Conformer: "%s"' % conformer.altloc, file=log)
-          i_conformer = self.altloc_i_conformer[conformer.altloc]
+          self.altloc_i_conformer[conformer.altloc]
           # residues
           residues = conformer.residues()
           print("        Number of residues:", len(residues), file=log)

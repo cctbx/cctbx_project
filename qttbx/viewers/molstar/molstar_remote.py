@@ -3,33 +3,25 @@ from __future__ import absolute_import, division, print_function
 
 import requests
 from pathlib import Path
-import sys
 import time
 import json
 import tempfile
-import glob
 import os
-import random
 import requests
-import threading
 from typing import Optional
-from requests.exceptions import RequestException
 
 import subprocess
-import sys
 import time
 
 try:
-  from urllib.parse import urlencode
+  pass
 except ImportError:
-  from urllib import urlencode
+  pass
 
 from libtbx.utils import Sorry
 
 
 
-from PySide2.QtCore import QObject, Signal
-from PySide2.QtCore import QUrl, Signal, QObject
 from qttbx.viewers import ModelViewer
 from .server_utils import find_open_port
 
@@ -143,7 +135,7 @@ class PhenixMolstarViewer(ModelViewer):
     )
 
     # clean environment for launching
-    env = os.environ.copy()
+    os.environ.copy()
     # for v in ['PYTHONPATH', 'LD_LIBRARY_PATH', 'DYLD_LIBRARY_PATH', 'DYLD_FALLBACK_LIBRARY_PATH']:
     #   env.pop(v, None)
 
@@ -165,7 +157,7 @@ class PhenixMolstarViewer(ModelViewer):
     print(self.url)
     counter = 0
     while counter<timeout:
-      output = self._check_status()
+      self._check_status()
       if self._connected:
         break
       counter += 1
@@ -202,7 +194,7 @@ class PhenixMolstarViewer(ModelViewer):
       self._run_command(params)
     else:
       print('Phenix Molstar  already shut down')
-    rc = self.process.returncode
+    self.process.returncode
     stdout, stderr = self.process.communicate()
     # if self.process:
     #   self.process.wait()
@@ -482,7 +474,7 @@ class PhenixMolstarViewer(ModelViewer):
   # Representation for model/selection
 
   def representation_model(self,model_id: str, representation_name: str):
-    query = SelectionQuery.from_model_ref()
+    SelectionQuery.from_model_ref()
 
   def representation_selected(self, representation_name: str):
     raise NotImplementedError
@@ -506,4 +498,4 @@ class PhenixMolstarViewer(ModelViewer):
     query.params.refId = '{model_id}'
     {self.plugin_prefix}.phenix.getRepresentationNames(query)
     """
-    result = self.send_command(command)
+    self.send_command(command)

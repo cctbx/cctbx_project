@@ -1,5 +1,4 @@
-from PySide2.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QCheckBox
-from PySide2.QtCore import Qt
+from PySide2.QtWidgets import QCheckBox
 from PySide2.QtGui import QMouseEvent
 
 class ConditionalCheckBox(QCheckBox):

@@ -1,14 +1,10 @@
-import copy
 import json
 import re
 import networkx as nx
 import numpy as np
-from .python_utils import DotDict
 from .selection_common import PhenixParser
-import ast
-from .parameters import core_map_to_mmcif
 from dataclasses import dataclass, asdict
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 """
 Selection API

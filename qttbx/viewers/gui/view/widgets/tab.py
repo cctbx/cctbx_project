@@ -1,6 +1,4 @@
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from PySide2.QtWidgets import QTabWidget, QTabBar, QApplication, QMainWindow
+from PySide2.QtWidgets import QMainWindow, QTabBar, QTabWidget
 from PySide2.QtCore import Qt, QMimeData, Signal
 from PySide2.QtGui import QGuiApplication, QDrag, QCursor
 
@@ -154,7 +152,7 @@ class DraggableTabWidget(QTabWidget):
 
   def dropEvent(self, event):
     #print("Drop event")
-    tab_name = event.mimeData().text()
+    event.mimeData().text()
     # Handle the drop: create a new window, add the tab, etc.
     new_window = QMainWindow()
     new_tab_widget = DraggableTabWidget()

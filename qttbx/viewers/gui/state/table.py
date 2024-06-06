@@ -1,21 +1,7 @@
 import pandas as pd
-import numpy as np
-from PySide2.QtGui import QColor
 
-from PySide2 import QtCore
-from PySide2.QtCore import QObject, QAbstractTableModel,  Qt, QTimer, QPoint, Signal
-from PySide2.QtWidgets import QWidget, QHeaderView, QListView,QTableView, QDialog, QLabel, QVBoxLayout, QHBoxLayout,QWidget, QComboBox, QStyle, QStyleOptionComboBox,  QTextEdit
-from PySide2.QtWidgets import  QVBoxLayout, QWidget,  QSlider
-from PySide2.QtGui import QMouseEvent, QPainter
-from PySide2.QtGui import QFontMetrics
-from PySide2.QtCore import QModelIndex
-from PySide2.QtGui import QCursor
+from PySide2.QtCore import QAbstractTableModel, Qt
 
-from PySide2.QtWidgets import QApplication, QTableView, QMenu, QAction
-from PySide2.QtWidgets import QTableView, QMenu, QAction, QHeaderView
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
 
 """
 Model for Pandas Table generally

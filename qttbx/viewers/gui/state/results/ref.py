@@ -1,6 +1,5 @@
-from typing import Optional
 
-from ..ref import Ref, ModelRef, SelectionRef
+from ..ref import Ref
 from .results import Result
 
 class ResultsRef(Ref):

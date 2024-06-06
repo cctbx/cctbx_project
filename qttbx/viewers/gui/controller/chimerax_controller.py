@@ -7,7 +7,6 @@ from typing import Optional
 import pandas as pd
 
 from .controller import Controller
-from ..state.ref import ModelRef, MapRef
 from ...chimerax.chimerax import ChimeraXViewer
 from .style import ModelStyleController, MapStyleController
 from ..controller.selection_controls import SelectionControlsController

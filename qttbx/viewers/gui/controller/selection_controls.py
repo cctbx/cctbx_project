@@ -1,5 +1,4 @@
 from PySide2.QtCore import Slot
-import json
 from .controller import Controller
 from ...core.selection_utils import SelectionQuery
 from ..state.ref import SelectionRef

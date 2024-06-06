@@ -1,16 +1,13 @@
 import json
 import re
-import random
 import pandas as pd
 import numpy as np
 import networkx as nx
-from collections import OrderedDict
 from collections import defaultdict
 from iotbx.pdb import common_residue_names_get_class
 from iotbx.pdb.utils import all_label_asym_ids
 from iotbx.pdb import hierarchy
 from .cif_io import CifInput
-from libtbx import group_args
 from cctbx.array_family import flex
 from libtbx.test_utils import approx_equal
 from .selection import PhenixParser, Selection
@@ -490,9 +487,7 @@ class AtomSites(pd.DataFrame):
     # TODO: Deprecated, use sort_with_hierarchy
     df = sites
     sort_col = "label_atom_id"
-    check_col = "residue_class"
-    check_list = ["ligand","other"]
-    group_cols = sites.ag_keys
+    sites.ag_keys
 
     # Define groups to be sorted
     groups_to_sort = ["ligand","other"]  # Groups to sort
@@ -623,7 +618,7 @@ class AtomSites(pd.DataFrame):
     assert "chain_break_idx" in sites
 
         # add the labels
-    label_asym_ids = all_label_asym_ids()
+    all_label_asym_ids()
     label_asym_ids_array = np.array(all_label_asym_ids())
     sites["label_asym_id"] = label_asym_ids_array[sites['chain_break_idx'].values]
     sites["label_asym_id"] = sites["label_asym_id"].astype("string")
@@ -667,7 +662,6 @@ class AtomSites(pd.DataFrame):
 
 
     blanks = sites.params.blanks
-    h_keys = ["model_idx","chain_idx","rg_idx","ag_idx"]
 
     h_dict = {}
     h = hierarchy.root()
@@ -1245,8 +1239,8 @@ def compare_sites(sites1, sites2,skip_columns=[]):
     columns_df2 = set(df2.columns)
 
     # Find columns in df1 not in df2 and vice versa
-    missing_in_df2 = columns_df1.difference(columns_df2)
-    missing_in_df1 = columns_df2.difference(columns_df1)
+    columns_df1.difference(columns_df2)
+    columns_df2.difference(columns_df1)
     # Display the results
     #print("Columns in df1 missing in df2:", missing_in_df2)
     #print("Columns in df2 missing in df1:", missing_in_df1)

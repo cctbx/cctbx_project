@@ -1,19 +1,12 @@
-import os
 from pathlib import Path
 import platform
 import subprocess
 
-from PySide2.QtWidgets import QFileDialog, QColorDialog
+from PySide2.QtWidgets import QFileDialog
 
-from ..models import ModelEntryController, ModelListController
-from ..maps import MapEntryController, MapListController
-from ...view.models import ModelEntryView, ModelListView
 from ...view.restraint.restraint_files import RestraintFileEntryView
-from ...view.maps import MapEntryView, MapListView
 from ..scroll_entry import ScrollEntryController
 from ..scroll_list import ScrollableListController
-from ..controller import Controller
-from ...state.cif import CifFileData
 from ...state.ref import RestraintRef
 from ...state.restraint import Restraint
 

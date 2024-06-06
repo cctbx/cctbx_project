@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List, Dict
+from typing import List
 from .base import DataClassBase
 
 @dataclass(frozen=True)

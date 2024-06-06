@@ -1,4 +1,4 @@
-from PySide2.QtWidgets import  QVBoxLayout, QTableView, QComboBox
+from PySide2.QtWidgets import QTableView, QVBoxLayout
 
 from ..table import  PandasTableView
 from ..widgets.tab import GUITab

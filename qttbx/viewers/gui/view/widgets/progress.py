@@ -6,7 +6,6 @@ from PySide2.QtWidgets import QGraphicsView, QGraphicsScene, QVBoxLayout, QDialo
 from PySide2.QtCore import QTimer
 from PySide2.QtSvg import QGraphicsSvgItem
 
-import time
 from pathlib import Path
 
 class CircularProgressIndicator(QDialog):

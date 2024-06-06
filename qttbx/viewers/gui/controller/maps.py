@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-import traceback
 import time
 
 from PySide2.QtWidgets import QFileDialog, QMessageBox
@@ -71,7 +69,7 @@ class MapListController(ScrollableListController):
     self.state.signals.update.connect(self.update)
 
   def showFileDialog(self):
-    home_dir = str(Path.home())
+    str(Path.home())
 
     self.openFileDialog = QFileDialog(self.view)
     self.openFileDialog.setFileMode(QFileDialog.AnyFile)

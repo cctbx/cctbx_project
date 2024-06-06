@@ -7,14 +7,13 @@ from pathlib import Path
 
 from PySide2.QtWidgets import QFileDialog, QColorDialog
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVBoxLayout, QWidget
+from PySide2.QtWidgets import QMenu, QPushButton
 
 from ..view.models import ModelEntryView
 from .scroll_entry import ScrollEntryController
 from .scroll_list import ScrollableListController
 from ..state.ref import SelectionRef, ModelRef, GeometryRef
 from ..state.geometry import Geometry
-from .widgets import InputDialog
 
 
 class ModelLikeEntryController(ScrollEntryController):
@@ -195,7 +194,7 @@ class ModelListController(ScrollableListController):
 
 
   def showFileDialog(self):
-    home_dir = str(Path.home())
+    str(Path.home())
 
     self.openFileDialog = QFileDialog(self.view)
     self.openFileDialog.setFileMode(QFileDialog.AnyFile)

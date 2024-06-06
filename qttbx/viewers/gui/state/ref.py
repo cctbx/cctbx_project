@@ -8,11 +8,9 @@ A Ref is a top level container for data. It provides:
 from __future__ import annotations # backwards compat string literal types
 from pathlib import Path
 import uuid
-import networkx as nx
 import hashlib
 import json
-import copy
-from dataclasses import fields, replace
+from dataclasses import replace
 import pandas as pd
 
 from .style import Style
@@ -25,7 +23,7 @@ from ...core.mol import MolDataFrame
 from typing import Optional
 
 from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
-from PySide2.QtCore import QObject, QTimer, Signal, Slot
+from PySide2.QtCore import QObject, Signal
 
 class RefSignals(QObject):
   """

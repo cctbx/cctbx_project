@@ -5,11 +5,10 @@ from pathlib import Path
 #import argparse
 
 from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import QApplication, QWidget, QApplication, QWidget, QPushButton, QVBoxLayout
-from PySide2.QtWidgets import QApplication, QDialog, QVBoxLayout, QPushButton, QMessageBox, QMainWindow
+from PySide2.QtWidgets import QApplication, QApplication
+from PySide2.QtWidgets import QApplication, QDialog, QMessageBox
 
-from PySide2.QtCore import QObject, QEvent, Qt,  QEvent, QSize, Signal
-from PySide2.QtSvg import QSvgRenderer
+from PySide2.QtCore import QObject, Qt, Signal
 
 from iotbx.data_manager import DataManager
 from ..view.apps.main import ViewerGUIView
@@ -144,7 +143,6 @@ def main(dm=None,params=None,log=None):
   #   if 'all' in params.show_tab or 'console' in params.show_tab:
   #     try:
   # Change to enable console always by default
-  import qtconsole
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
   #include Selection dataclasses to build querys in console
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})

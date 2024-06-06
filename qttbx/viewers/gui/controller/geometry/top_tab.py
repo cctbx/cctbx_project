@@ -1,10 +1,5 @@
 
-from PySide2.QtWidgets import QApplication, QMessageBox
-from PySide2 import QtCore
 from ..controller import Controller
-from ...state.geometry import Geometry
-from ...state.ref import GeometryRef
-from ...state.ref import SelectionRef
 from .tables import (
   BondTableController,
   AngleTableController,
@@ -13,9 +8,6 @@ from .tables import (
   PlanarityTableController,
   NonbondedTableController
 )
-from . import GeoListController
-from pathlib import Path
-import pandas as pd
 
 
 

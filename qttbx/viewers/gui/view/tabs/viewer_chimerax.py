@@ -1,7 +1,4 @@
 from PySide2.QtWidgets import QSizePolicy, QVBoxLayout, QPushButton, QSpacerItem, QLabel, QLineEdit
-from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PySide2.QtCore import Signal
-from PySide2.QtGui import QDragEnterEvent, QDropEvent
 
 
 from ..widgets.tab import GUITab

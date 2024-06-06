@@ -1,5 +1,4 @@
 from pathlib import Path
-from functools import partial
 
 from PySide2.QtCore import Qt, QSize
 from PySide2.QtWidgets import QWidget, QHBoxLayout
