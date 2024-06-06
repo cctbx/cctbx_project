@@ -22,7 +22,7 @@ from .structure import Structure
 from .component import Component
 from .representation import Representation
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef, RestraintRef, RestraintsRef
 from .results import ResultsRef
 from ...core.python_utils import DotDict
 from ...core.selection import Selection
@@ -38,27 +38,53 @@ class StateSignals(QObject):
   model_change = Signal(object) # model ref
   map_change = Signal(object) # map ref
   data_change = Signal() # The data manager has changed
-  restraints_change = Signal(object) # restraits ref
-  #selection_change = Signal(object) # selection  ref
+  geometry_change = Signal(object) # restraits ref
+
+
+  ### Start new
+  # Generic state changes
+  new_active_ref = Signal(object) # Any ref type, now active
+
+  # Selection signals
+  select_all = Signal(bool)
+  deselect_all = Signal(bool)
   selection_added = Signal(object) # selection ref *
-  selection_activated = Signal(object) # selection ref *
+  selection_activated = Signal(object)
+  selection_deactivated = Signal(object)
+
+  selection_hide = Signal(object)
+  selection_show = Signal(object)
+  selection_focus= Signal(object)
+  selection_rep_show = Signal(object,str) # Ref, representation_name
+
+  # Geometry signals
+  edits_added = Signal(object) # edits ref
+
+  # Restraints signals
+  restraints_change = Signal(object) # Restraint ref
+  restraint_activated = Signal(object)
+
+  # Cif file signals
+  #ciffile_change = Signal(object)
+
+
+  #  End new
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)
   ciffile_change = Signal(object) # cif file ref
   geo_change = Signal(object) # geo file ref
-  edits_change = Signal(object) # edits ref
   repr_change = Signal(str,list) # (ref_id, list of desired reprs)
   viz_change = Signal(str,bool) # change visibility (ref_id, on/off)
-  picking_level = Signal(int) # one of:  1 for "residue" or  0 for "element"
+  picking_level = Signal(str) # one of 'residue', 'atom'
   sync = Signal()
   clear = Signal(str) # reload all active objects, send the messagebox message
   #select = Signal(object) # select a ref object
   remove_ref = Signal(object) # ref
   update = Signal(object)
   stage_restraint = Signal(object,str) # send selection ref,type to be staged as restraint
-  filter_update = Signal(object) # emit a filter controller to apply
+  filter_update = Signal(object,bool) # emit a filter controller to apply, with debug flag
   #select_ref = Signal(object)
-  focus_selected= Signal()
+  
 
 
 
@@ -176,7 +202,7 @@ class State:
     # adding restraints to model
     if (isinstance(ref_upstream,ModelRef) and
         isinstance(ref_downstream,GeometryRef)):
-      self.signals.restraints_change.emit(ref_downstream)
+      self.signals.geometry_change.emit(ref_downstream)
     elif (isinstance(ref_upstream,ModelRef) and
         isinstance(ref_downstream,CifFileRef)):
       self.signals.ciffile_change.emit(ref_downstream)
@@ -294,10 +320,11 @@ class State:
     msg.setStandardButtons(QMessageBox.Ok)
     msg.exec_()
 
-  def add_ref(self,ref):
-
-    # Add the new reference
-    #print(f"Adding ref of type {ref.__class__.__name__}: {ref.id}")
+  def add_ref(self,ref,emit=True):
+    """
+    Add a reference object to the state. 
+      If emit=True, a signal will be emitted about the change.
+    """
 
     assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
     self.references[ref.id] = ref
@@ -320,24 +347,45 @@ class State:
       #self.signals.model_change.emit(ref)
       pass
     elif isinstance(ref,SelectionRef):
-      #self.active_selection_ref = ref
-      self.signals.selection_added.emit(ref)
+      if emit:
+        self.signals.selection_added.emit(ref)
       pass
     elif isinstance(ref,GeometryRef):
-      self.signals.geo_change.emit(ref)
+      if emit:
+        self.signals.geo_change.emit(ref)
+
+    elif isinstance(ref,RestraintRef):
+      # Singular
+      if emit:
+        self.signals.restraints_change.emit(ref)
+
+    elif isinstance(ref,RestraintsRef):
+      # Plural, add sub refs then emit
+      for restraint in ref.data.restraints:
+        sub_ref = RestraintRef(data=restraint,restraints_ref=ref,show=True)
+        ref.children.append(sub_ref)
+        self.add_ref(sub_ref,emit=False) # don't emit until the end
+
+      # emit at the end
+      self.signals.restraints_change.emit(ref)
 
     elif isinstance(ref,(ResultsRef)):
-      self.signals.results_change.emit(ref)
+      if emit:
+        self.signals.results_change.emit(ref)
 
     elif isinstance(ref,(CifFileRef)):
-      self.signals.ciffile_change.emit(ref)
+      if emit:
+        self.signals.ciffile_change.emit(ref)
+
     elif isinstance(ref,EditsRef):
-      self.signals.edits_change.emit(ref)
+      if emit:
+        self.signals.edits_added.emit(ref)
 
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
-    # update other controllers
-    self.signals.update.emit(ref)
+    # # update other controllers
+    # if emit:
+    #   self.signals.update.emit(ref)
 
 
 
@@ -345,18 +393,23 @@ class State:
 
 
   def remove_ref(self,ref):
-    assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
-    self.remove_node_and_downstream(ref)
+    assert isinstance(ref,Ref), f"Must add instance of Ref or subclass, not {type(ref)}"
+    #self.remove_node_and_downstream(ref) #TODO: Deleting refs could lead to dependency issues
+    if ref.entry:
+      ref.entry.remove()
+    del self.references[ref.id]
 
   def add_ref_from_phenix_selection_string(self,phenix_string):
     selection = Selection.from_phenix_string(phenix_string)
     return self.add_ref_from_selection(selection)
 
-  def add_ref_from_selection(self,selection,model_ref=None,show=True):
+  def add_ref_from_selection(self,selection,model_ref=None,show=True,make_active=False):
     if model_ref is None:
       model_ref = self.active_model_ref
     ref = SelectionRef(data=selection,model_ref=model_ref,show=show)
     self.add_ref(ref)
+    if make_active:
+      self.active_selection_ref = ref
     return ref
 
   def add_ref_from_model_file(self,filename=None,label=None,format=None):
@@ -445,6 +498,14 @@ class State:
   @property
   def references_edits(self):
     return [value for key,value in self.references.items() if isinstance(value,EditsRef)]
+
+  @property # Singular
+  def references_restraint(self):
+    return [value for key,value in self.references.items() if isinstance(value,RestraintRef)]
+  
+  @property # Plural
+  def references_restraints(self):
+    return [value for key,value in self.references.items() if isinstance(value,RestraintsRef)]
 
   @property
   def references_geo(self):
@@ -547,7 +608,10 @@ class State:
     # alias
     return self.active_mol
 
-
+  @property
+  def sites(self):
+    # alias
+    return self.mol.sites
   #####################################
   # Maps
   #####################################
@@ -611,7 +675,8 @@ class State:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_selection_ref = value
-    self.signals.selection_activated.emit(value)
+      self.signals.selection_activated.emit(value)
+      self.signals.selection_focus.emit(value)
     #self.signals.references_change.emit()
 
   #####################################

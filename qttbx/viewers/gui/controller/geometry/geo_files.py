@@ -55,7 +55,7 @@ class GeoFileListController(ScrollableListController):
   def update(self):
     for ref in self.state.references_geo:
       if ref not in self.refs:
-        if ref.show_in_list:
+        if ref.show:
           entry_view = GeoFileEntryView()
           entry_controller = GeoFileEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)

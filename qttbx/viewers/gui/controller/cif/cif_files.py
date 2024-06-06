@@ -61,7 +61,7 @@ class CifFileListController(ScrollableListController):
     references_ciffiles = [value for key,value in self.state.references.items() if isinstance(value,CifFileRef)]
     for ref in references_ciffiles:
       if ref not in self.refs:
-        if ref.show_in_list:
+        if ref.show:
           entry_view = CifFileEntryView()
           entry_controller = CifFileEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)

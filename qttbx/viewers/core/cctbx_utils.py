@@ -40,11 +40,11 @@ def obj_to_dict(obj):
                 d[attr]=value
     return d
 
-def get_restraint_df(model,restraint_type="bond"):
+def get_restraint_df(model,geometry_type="bond"):
     """
     Access the cctbx model's geometry restraints as pandas dataframes
     """
-    assert restraint_type in ["bond","nonbonded","angle","dihedral","chirality","planarity","parallelity"]
+    assert geometry_type in ["bond","nonbonded","angle","dihedral","chirality","planarity","parallelity"]
     grm = model.get_restraints_manager()
     assert grm is not None, "Process model to build restraints manager first."
     grm = grm.geometry
@@ -53,43 +53,43 @@ def get_restraint_df(model,restraint_type="bond"):
     sites_cart=model.get_sites_cart()
     site_labels=None
 
-    if restraint_type == "bond":
+    if geometry_type == "bond":
         pair_proxies = grm.pair_proxies(flags=flags, sites_cart=sites_cart)
         keys = ["i_seq", "j_seq","labels", "distance_ideal", "distance_model", "slack", "delta", "sigma", "weight", "residual", "sym_op_j", "rt_mx"]
         simple,asu = pair_proxies.bond_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
 
 
-    elif restraint_type=="nonbonded":
+    elif geometry_type=="nonbonded":
         pair_proxies = grm.pair_proxies(flags=flags, sites_cart=sites_cart)
         keys = ["labels", "i_seq", "j_seq", "delta", "vdw_distance", "sym_op_j", "rt_mx"]
         simple,asu = pair_proxies.nonbonded_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple if info[-1]==None]
         # check for not simple, for some reason simple,asu not working like others
 
-    elif restraint_type == "angle":
+    elif geometry_type == "angle":
         keys = ["i_seqs", "angle_ideal", "angle_model", "delta", "sigma", "weight", "residual"]
         simple,asu =  grm.angle_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
 
-    elif restraint_type == "dihedral":
+    elif geometry_type == "dihedral":
         keys = ["i_seqs", "angle_ideal", "angle_model", "delta", "period", "sigma", "weight", "residual"]
         simple,asu =  grm.dihedral_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
 
-    elif restraint_type == "chirality":
+    elif geometry_type == "chirality":
         keys = ["i_seqs","both_signs","ideal","model","delta","sigma","weight","residual"]
         simple,asu =  grm.chirality_proxies.get_sorted("delta",model.get_sites_cart())
         records = [dict(zip(keys,info)) for info in simple]
 
     # TODO: This code does not put actual model values in for planarity and parallelity
-    elif restraint_type == "planarity":
+    elif geometry_type == "planarity":
         proxies = grm.planarity_proxies
         records = []
         for proxy in proxies:
             record = obj_to_dict(proxy)
             records.append(record)
-    elif restraint_type == "parallelity":
+    elif geometry_type == "parallelity":
         proxies = grm.parallelity_proxies
         records = []
         for proxy in proxies:
@@ -143,8 +143,8 @@ def get_restraint_dfs_from_model(model,lazy_build=False):
 
   # these are the key,values for supported restraints
   restraint_dfs = {
-      restraint_type:get_restraint_df(model,restraint_type=restraint_type)
-    for restraint_type in ["bond","nonbonded","angle","dihedral","chirality","planarity","parallelity"]
+      geometry_type:get_restraint_df(model,geometry_type=geometry_type)
+    for geometry_type in ["bond","nonbonded","angle","dihedral","chirality","planarity","parallelity"]
     }
 
   return restraint_dfs

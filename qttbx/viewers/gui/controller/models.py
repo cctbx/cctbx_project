@@ -28,10 +28,7 @@ class ModelLikeEntryController(ScrollEntryController):
     # Representation
     for key,action in self.view.button_rep.actions.items():
       action.triggered.connect(partial(self.representation_selected, action))
-      for rep_name in ref.style.representation:
-        # if representations are preselected in the style, enable them
-        self.view.button_rep.selected_options[rep_name] = True
-        self.view.button_rep.actions[rep_name].setChecked(True)
+
 
     # Color
     self.view.button_color.clicked.connect(self.show_color_dialog)
@@ -71,36 +68,26 @@ class ModelLikeEntryController(ScrollEntryController):
 
   def toggle_visibility(self,event):
 
-      value= self.view.button_viz.is_on
-      #self.state.emitter.signal_viz_change.emit(self.ref.id,value)
-      style = replace(self.ref.style,visible=(not self.ref.style.visible))
-      self.ref.style = style
+      is_on= self.view.button_viz.is_on
+      # For some reason this is inverted
+      is_on = not is_on
+      print("Toggling visibility, is on? : ",is_on)
+      if is_on:
+        self.state.signals.selection_hide.emit(self.ref)
+      else:
+        self.state.signals.selection_show.emit(self.ref)
 
   def representation_selected(self,action):
 
     #action = self.sender() # won't work why?
     if action:
       key = action.text()
-      # option = self.view.button_rep.options[key]
-      # selected_options = self.view.button_rep.selected_options
-      # current_state = selected_options[option]
-      # action.setChecked(not current_state)
-      # selected_options[option] = not selected_options[option]
-      # reps = [key for key,value in selected_options.items() if value]
-      # #print("Replacing data for style from ref: ",self.ref, self.ref.id)
-      # #print("Old:")
-      # #print(self.ref.style.to_json(indent=2))
-      # style = replace(self.ref.style,representation=reps)
-      # #print("New:")
-      # #print(style.to_json(indent=2))
-      # self.ref.style = style
-      #self.state.emitter.signal_repr_change.emit(*emission)
-      # DEBUG:
       if key.startswith("Ball"):
         key = 'ball-and-stick'
       else:
         key = 'ribbon'
-      self.parent.parent.parent.molstar.viewer.representation_query(self.ref.id_molstar,self.ref.query.to_json(),key)
+      self.state.signals.selection_rep_show.emit(self.ref,key)
+      #self.parent.parent.parent.molstar.viewer.representation_query(self.ref.id_molstar,self.ref.query.to_json(),key)
 
   def open_file_explorer(self,path):
     if platform.system() == 'Windows':
@@ -125,13 +112,13 @@ class ModelLikeEntryController(ScrollEntryController):
 
     # Connect actions to functions/slots
     action1.triggered.connect(self.process_and_make_restraints)
-    action2.triggered.connect(self.load_restraints)
+    action2.triggered.connect(self.load_geometry)
 
     # Show the context menu at the button's position
     contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
 
   def process_and_make_restraints(self):
-      if self.ref.has_restraints:
+      if self.ref.has_geometry:
         self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
       try:
         restraints = Geometry.from_model_ref(self.ref)
@@ -141,12 +128,12 @@ class ModelLikeEntryController(ScrollEntryController):
         self.state.notify("Failed to process and make restraints.")
         raise
 
-  def load_restraints(self):
-      if self.ref.has_restraints:
+  def load_geometry(self):
+      if self.ref.has_geometry:
         self.state.notify("Already have restraints loaded. Will now replace existing restraints.")
-      self.open_restraints_file_dialog()
+      self.open_geometry_file_dialog()
 
-  def open_restraints_file_dialog(self):
+  def open_geometry_file_dialog(self):
 
     self.openFileDialog = QFileDialog(self.view)
     self.openFileDialog.setFileMode(QFileDialog.AnyFile)
@@ -234,7 +221,7 @@ class ModelListController(ScrollableListController):
   def update(self):
     for ref in self.state.references_model:
       if ref not in self.refs:
-        if ref.show_in_list:
+        if ref.show:
           entry_view = ModelEntryView()
           entry_controller = ModelEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)

@@ -24,6 +24,24 @@ from .parameters import params
 
 import pandas as pd
 
+"""
+AtomSites subclasses pandas DataFrame. 
+  1. Stores the atom_site table of mmcif file
+
+  2. Maintains a table view of a cctbx hierarchy object. 
+
+  3. Provides consistent 'core' attributes to resolve auth_ label_ ambiguity
+
+  4. A companion object to Selection class, it acts as a common data structure 
+      across other data structures (cctbx, chimera, molstar, etc) to address the
+      issue that that data structures are not comprehsively convertable. This 
+      class acts as a bottleneck, if it can't be expressed using this data structure, 
+      it can't be converted.
+      
+  5. EXPERIMENTAL: code to build a hierarchy from mmcif file very quickly using groupby
+
+"""
+
 class AtomSites(pd.DataFrame):
   
   params = params
@@ -908,6 +926,7 @@ class AtomSites(pd.DataFrame):
   ###############################
   #### Starting Selection
   ###############################
+  
   def select_from_pandas_string(self,pandas_str,verify_phenix_str=None):
     """
     A thin wrapper of df.query()
@@ -981,15 +1000,50 @@ class AtomSites(pd.DataFrame):
 
   # End public selection interface
 
+  # def to_labels_compositional(self):
+  #   # form a string similar to id_str in cctbx hierarchy.
+  #   records = self.to_records_compositional()
+  #   for record in records:
+
+  def to_labels_compositional(self):
+    justify_map = { # What to include, and how much space for each attribute
+      "asym_id":4,
+      "comp_id":5,
+      "seq_id":5,
+      "atom_id":4,
+      "alt_id": 2,
+    }
+    records = self.to_records_compositional_core()
+    labels = []
+    for record in records:
+      label = ""
+      for attr,j in justify_map.items():
+        value = record[attr]
+        label+=str(value).ljust(j)
+      labels.append(label)
+    return labels
+
+  def to_records_compositional_core(self):
+    records = self.to_records_compositional()
+    core_records = []
+    for record in records:
+      core_record = {}
+      for key,value in record.items():
+        core_key = self.params.core_map_to_core[key]
+        core_record[core_key] = value
+      core_records.append(core_record)
+    return core_records
+
   def to_records_compositional(self):
-    cols = params.attrs_compositional
+    # a subset of atom_records with only compositional attrs
+    cols = self.params.attrs_compositional
     records =  self[cols].to_dict("records")
     output = []
     for d in records:
       d_out = {}
       for k,v in d.items():
-        if v not in params.blanks:
-          d_out[k] = v
+        #if v not in params.blanks:
+        d_out[k] = v
       output.append(d_out)
     return output
   

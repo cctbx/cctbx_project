@@ -6,7 +6,7 @@ import numpy as np
 from .python_utils import DotDict
 from .selection_common import PhenixParser
 import ast
-from .parameters import core_map_to_mmcif, core_map_to_core, attrs_map_to_phenix, logic_map_to_phenix, blanks
+from .parameters import core_map_to_mmcif, core_map_to_core, attrs_map_to_phenix, logic_map_to_phenix, blanks, protein_comp_ids, solvent_comp_ids
 from dataclasses import dataclass, asdict
 from typing import List, Dict, Optional
 
@@ -134,7 +134,7 @@ class Selection:
   @classmethod 
   def from_i_seqs(cls,sites,i_seqs):
     sel_sites = sites.select_from_i_seqs(i_seqs)
-    atom_records = sel_sites.to_records_id()
+    atom_records = sel_sites.to_records_compositional()
     return cls.from_atom_records(atom_records)
 
   def to_dict(self):
@@ -480,7 +480,7 @@ class Node:
     elif value_type == "FLOAT":
       return float(value)
     else:
-      return f"'{value}'"  # re-quote
+      return f"'{value.upper()}'"  # re-quote
 
   @staticmethod
   def format_keyword(keyword):
@@ -510,8 +510,7 @@ class Node:
 
 
 class Alias(Node):
-  from iotbx.pdb.amino_acid_codes import three_letter_given_one_letter
-  aas = list(three_letter_given_one_letter.values())
+  aas = protein_comp_ids
   alias_map_pd = {
     "all":"index>=0",
     "protein":"(" + "|".join([f"label_comp_id == '{aa}'" for aa in aas]) + ")"

@@ -56,9 +56,6 @@ class EditsTab(GUITab):
     self.setLayout(self.layout)
 
 
-    # Edits table
-    self.table_view = EditsTableView()
-    self.layout.addWidget(self.table_view)
 
     # add controls at bottom to write edits file
     hlayout = QHBoxLayout()
@@ -71,6 +68,10 @@ class EditsTab(GUITab):
     hlayout.addWidget(self.write_button)
     self.layout.addLayout(hlayout)
 
+
+    # Edits table
+    self.table_view = EditsTableView()
+    self.layout.addWidget(self.table_view)
 
 
 class BondsTableTabView(EditsTab):

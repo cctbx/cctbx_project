@@ -17,6 +17,8 @@ class SelectionControlsController(Controller):
     self.view.load_button.clicked.connect(self.add_selection)
     self.view.combo_box.currentIndexChanged.connect(self.on_picking_change)
     self.view.button_clear.clicked.connect(self.clear_viewer) # TODO: Move out of selection controls
+    self.view.combo_box.currentIndexChanged.connect(self.on_picking_change)
+
     self.state.signals.picking_level.connect(self.on_picking_change)
 
   @property

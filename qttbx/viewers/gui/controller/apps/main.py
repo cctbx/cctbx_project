@@ -7,10 +7,10 @@ from ..sites import SitesTabController
 from ..chimerax_controller import ChimeraXController
 from ..molstar_controller import MolstarController
 from ..geometry.top_tab import GeometryTableTopTabController
-from ..restraints.top_tab import RestraintTableTopTabController
 from ..restraint_edits.top_tab import EditsTableTopTabController
 from ..qscore import QscoreTabController
 from ..cif import CifTabController
+from ..restraint import RestraintTabController
 from ..controller import Controller
 
 
@@ -52,6 +52,7 @@ class ViewerGUIController(Controller):
 
     self.geometry = GeometryTableTopTabController(parent=self,view=self.view.geo)
     self.edits = EditsTableTopTabController(parent=self,view=self.view.edits)
+    self.restraints = RestraintTabController(parent=self,view=self.view.restraints_tab_view)
     #self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
 
 

@@ -1,0 +1,19 @@
+
+from PySide2.QtWidgets import QApplication, QMessageBox
+
+from PySide2.QtCore import QUrl, QThread, Signal, Slot, QObject, QThreadPool, QRunnable
+from ..scroll_entry import ScrollEntryController
+from ...view.widgets.scroll_entry import ScrollEntryView
+from ..scroll_list import ScrollableListController
+from ..controller import Controller
+from ...state.geometry import Geometry
+from ..data import DataTabController
+from .restraint_browser import RestraintBrowserController
+from .restraint_files import RestraintFileListController
+
+class RestraintTabController(Controller):
+  def __init__(self,parent=None,view=None):
+    super().__init__(parent=parent,view=view)
+
+    self.files = RestraintFileListController(parent=self,view=self.view.files.list_view)
+    self.browser = RestraintBrowserController(parent=self,view=self.view.browser)

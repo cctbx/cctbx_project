@@ -5,6 +5,7 @@ import random
 import numpy as np
 try:
   from tqdm import tqdm
+  
 except ImportError:
   def tqdm(iterable, *args, **kwargs):
     return iterable

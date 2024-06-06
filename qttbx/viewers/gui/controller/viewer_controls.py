@@ -1,6 +1,10 @@
 from PySide2.QtCore import Slot
 import json
 import time
+from pathlib import Path
+import platform
+import subprocess
+import numpy as np
 from .controller import Controller
 from ...core.selection_utils import SelectionQuery
 from ..state.ref import SelectionRef
@@ -12,17 +16,56 @@ from PySide2.QtWidgets import QApplication, QPushButton, QMenu, QMainWindow, QVB
 
 from PySide2.QtCore import Qt
 from .scroll_list import ScrollableListController
-from ..state.ref import SelectionRef, ModelRef, GeometryRef
+from ..state.ref import SelectionRef, ModelRef, GeometryRef, RestraintsRef
 from ..state.geometry import Geometry
+from ..state.restraint import Restraints
+from ..state.base import ObjectFrame
+
 from .widgets import InputDialog
+from .geometry.tables import GeometryTableTabController
+from ..view.widgets import (
+  BondEditDialog,
+  AngleEditDialog,
+  DihedralEditDialog,
+  ChiralEditDialog,
+  PlaneEditDialog
+)
+from ..state.edits import (
+  BondEdit,
+  AngleEdit,
+  DihedralEdit
+)
+from ..state.ref import (
+  BondEditsRef,
+  AngleEditsRef,
+  DihedralEditsRef
+
+)
 
 class ViewerControlsController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
+
+
+    ## Signals
+
+    # Picking level
+    self.view.picking_level.currentIndexChanged.connect(self.on_picking_change)
+    self.state.signals.picking_level.connect(self.on_picking_change)
+
+    # Edits
+    self.view.button_edits.setContextMenuPolicy(Qt.CustomContextMenu)
+    self.view.button_edits.customContextMenuRequested.connect(self.showContextMenuEdits)
+    self.view.button_edits.mousePressEvent = self.buttonMousePressEventEdits  # Override mousePressEvent
+
+    # Restraints
+    self.view.button_restraints.clicked.connect(self.load_restraints)
+
     # Enable return key to execute selection
     self.view.selection_edit.returnPressed.connect(self.execute_selection)
     self.view.button_select.clicked.connect(self.start_selecting)
     self.view.button_clear.clicked.connect(self.clear_selection)
+
     self.view.add_selection_button.clicked.connect(self.add_selection)
     # # self.view.start_selecting.clicked.connect(self.start_selecting)
     # # self.view.button_deselect.clicked.connect(self.deselect)
@@ -32,14 +75,19 @@ class ViewerControlsController(Controller):
     # self.view.combo_box.currentIndexChanged.connect(self.on_picking_change)
     # self.view.button_clear.clicked.connect(self.clear_viewer) # TODO: Move out of selection controls
     # self.state.signals.picking_level.connect(self.on_picking_change)
+
    # Geometry
     self.view.button_geo.setContextMenuPolicy(Qt.CustomContextMenu)
-    self.view.button_geo.customContextMenuRequested.connect(self.showContextMenu)
-    self.view.button_geo.mousePressEvent = self.buttonMousePressEvent  # Override mousePressEvent
-    
+    self.view.button_geo.customContextMenuRequested.connect(self.showContextMenuGeo)
+    self.view.button_geo.mousePressEvent = self.buttonMousePressEventGeo  # Override mousePressEvent
+
 
     # Hierarchy Selector
     self.search_select_dialog_controller = None
+
+  
+
+
 
   @property
   def viewer(self):
@@ -55,6 +103,169 @@ class ViewerControlsController(Controller):
     self.view.active_model_label.addItem(label)
 
 
+  def open_file_explorer(self,path):
+    if platform.system() == 'Windows':
+      subprocess.run(['explorer', path])
+    elif platform.system() == 'Darwin':
+      subprocess.run(['open', path])
+    elif platform.system() == 'Linux':
+      subprocess.run(['xdg-open', path])
+
+  @property
+  def file_folder(self):
+
+    folder = Path.home()
+    if self.state.active_model_ref is not None:
+      folder = Path(self.state.active_model_ref.data.filepath).parent
+
+    if folder is None or not folder.exists():
+      folder = Path.home()
+
+    return folder
+
+  @Slot()
+  def on_picking_change(self,choice):
+    current_index = self.view.picking_level.currentIndex()
+    if 'residue' in choice:
+      if current_index != 0:
+        self.view.picking_level.setCurrentIndex(0)
+        self.state.signals.picking_level.emit("residue")
+
+    elif 'atom' in choice:
+      if current_index != 1:
+        self.view.picking_level.setCurrentIndex(1)
+        self.state.signals.picking_level.emit("atom")
+
+    
+
+
+  def buttonMousePressEventEdits(self, event):
+    if event.button() == Qt.LeftButton:
+        self.showContextMenuEdits(event.pos())
+    else:
+        QPushButton.mousePressEvent(self.view.button_edits, event)  # Call the original mousePressEvent
+
+
+  def showContextMenuEdits(self, position):
+    # Override the default context menu
+    contextMenu = QMenu(self.view)
+
+    # Add actions to the context menu
+    action1 = contextMenu.addAction("Edit as Bond restraint")
+    action2 = contextMenu.addAction("Edit as Angle restraint")
+    action3 = contextMenu.addAction("Edit as Dihedral restraint")
+    action4 = contextMenu.addAction("Edit as Chiral restraint")
+    action5 = contextMenu.addAction("Edit as Plane restraint")
+
+    # Connect actions to functions/slots
+    action1.triggered.connect(self.stage_as_bond_restraint)
+    action2.triggered.connect(self.stage_as_angle_restraint)
+    action3.triggered.connect(self.stage_as_dihedral_restraint)
+    action4.triggered.connect(self.stage_as_chiral_restraint)
+    action5.triggered.connect(self.stage_as_plane_restraint)
+
+    # Show the context menu at the button's position
+    contextMenu.exec_(self.view.button_edits.mapToGlobal(position))
+    #contextMenu.exec_()
+
+  def load_restraints(self,is_checked):
+    # Restraints button clicked, is_checked is the NEW state
+    if not self.view.button_restraints.isChecked():
+      # clear restraints
+      ref = self.state.active_model_ref.restraints_ref
+      for sub_ref in ref.children:
+        self.state.remove_ref(sub_ref)
+      self.state.remove_ref(ref)
+
+    else:
+      print("loading, not checked")
+      # add restraints
+      restraints = Restraints.from_sites(self.state.sites)
+      ref = RestraintsRef(data=restraints,model_ref=self.state.active_model_ref,show=True)
+      self.state.add_ref(ref) # will emit signals.restraints_change
+      # switch to tab
+      self.state.signals.tab_change.emit("Restraints")
+
+
+  def stage_as_bond_restraint(self):
+
+    # Create an 'add' edit for a new restraint
+    sites = self.state.mol.sites
+    if not self.state.active_selection_ref:
+      selection = self.viewer.poll_selection()
+      self.state.add_ref_from_selection(selection,make_active=True,show=False)
+    ref = self.state.active_selection_ref
+    selection = ref.selection
+    sel_sites = sites.select_from_selection(selection)
+    n_atoms = len(sel_sites)
+    assert n_atoms==2, "Bond restraint must only have two atoms"
+    i_seqs = list(sel_sites.index)
+    xyz = sel_sites.xyz.astype(float)
+    d = round(np.linalg.norm(xyz[1]-xyz[0]),3)
+    defaults_dict = {
+      "action":"add",
+      "ideal":d,
+      }
+
+    other_defaults = BondEdit.defaults(BondEdit)
+    for k,v in other_defaults.items():
+      if k not in defaults_dict:
+        if k.endswith("_new"):
+          k = k.replace("_new","")
+          defaults_dict[k] = v
+
+    dialog = BondEditDialog(defaults_dict=defaults_dict)
+    if dialog.exec_():
+      labels_compositional = GeometryTableTabController.get_labels_compositional_from_iseqs(sites,i_seqs)
+      row = BondEdit(
+        i_seqs = i_seqs,
+        sel_strings = GeometryTableTabController.get_sel_strings_from_iseqs(self.state.mol,i_seqs),
+        labels_compositional = labels_compositional,
+        ideal_old=d,
+        ideal_new = dialog.collectInputValues()["ideal"],
+        sigma_old=None,
+        sigma_new = dialog.collectInputValues()["sigma"],
+        action="add"
+        )
+
+      edit_ref = None
+      for ref_id,ref in self.state.references.items():
+        if isinstance(ref,BondEditsRef):
+          if ref.geometry_ref == self.state.active_model_ref.geometry_ref:
+            edit_ref = ref
+            edit_ref.data.rows.append(row)
+      if edit_ref is None:
+        objframe = ObjectFrame.from_rows([row])
+        edit_ref = BondEditsRef(data=objframe,geometry_ref=self.state.active_model_ref.geometry_ref)
+      self.state.add_ref(edit_ref)
+    else:
+      print("Dialog Cancelled")
+
+  def stage_as_angle_restraint(self):
+    #self.state.signals.stage_restraint.emit(self.ref,"angle")
+    mol = self.state.active_model_ref.mol
+    sel = mol.sites.select_from_query(self.ref.query)
+    assert len(sel)==3, "Angle restraint must only have two atoms"
+    i_seqs = list(sel.index)
+    xyz = sel.xyz.astype(float)
+    a,b,c = xyz
+
+  def stage_as_dihedral_restraint(self):
+    self.state.signals.stage_restraint.emit(self.ref,"dihedral")
+
+  def stage_as_chiral_restraint(self):
+    self.state.signals.stage_restraint.emit(self.ref,"chiral")
+
+  def stage_as_plane_restraint(self):
+    geometry = self.ref.model_ref.geometry_ref.data
+    sel = self.state.mol.sites.select_from_query(self.ref.query)
+    i_seqs = list(sel.index.values)
+    new_restraint = PlaneGeometry(i_seqs=i_seqs,
+                                   weights=[PlaneGeometry.default_weight for i in range(len(sel))])
+    geometry.add_plane_restraint(new_restraint)
+    self.state.signals.geometry_change.emit(self.ref.model_ref.geometry_ref)
+
+
   @Slot()
   def select_active_selection(self):
     #self.highlight_persist(None,value=True) # set the highlight persist automatically when selecting
@@ -66,13 +277,14 @@ class ViewerControlsController(Controller):
   def clear_selection(self):
     self.state.active_selection = None
     self.viewer.deselect_all()
-    self.viewer.toggle_selection_mode(False)
 
   @Slot()
-  def start_selecting(self):
-    # selection button was clicked
-    self.viewer.toggle_selection_mode(True)
-    #self.execute_selection()
+  def start_selecting(self,is_checked):
+    # selection button was clicked. is_checked is NEW state
+    if is_checked:
+      self.viewer.toggle_selection_mode(True)
+    else:
+      self.viewer.toggle_selection_mode(False)
 
 
   @Slot()
@@ -96,13 +308,14 @@ class ViewerControlsController(Controller):
       self.view.selection_edit.clear()
       self.view.selection_edit.setPlaceholderText(f"Unable to interpret selection: {text}")
   
-  def buttonMousePressEvent(self, event):
+  def buttonMousePressEventGeo(self, event):
+    self.view.button_geo.setChecked(True)
     if event.button() == Qt.LeftButton:
-        self.showContextMenu(event.pos())
+        self.showContextMenuGeo(event.pos())
     else:
         QPushButton.mousePressEvent(self.view.button_geo, event)  # Call the original mousePressEvent
 
-  def showContextMenu(self, position):
+  def showContextMenuGeo(self, position):
     contextMenu = QMenu(self.view)
 
     # Add actions to the context menu
@@ -110,39 +323,39 @@ class ViewerControlsController(Controller):
     action2 = contextMenu.addAction("Open geometry file")
 
     # Connect actions to functions/slots
-    action1.triggered.connect(self.process_and_make_restraints)
-    action2.triggered.connect(self.load_restraints)
+    action1.triggered.connect(self.process_and_make_geometry)
+    action2.triggered.connect(self.load_geometry)
 
     # Show the context menu at the button's position
     contextMenu.exec_(self.view.button_geo.mapToGlobal(position))
+    #self.update_geo_checkbox()
 
-  def process_and_make_restraints(self):
-      ref = self.state.active_model_ref
-      if ref.has_restraints:
-        self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
-      try:
-        restraints = Geometry.from_model_ref(ref)
-        georef = GeometryRef(restraints,ref)
-        self.state.add_ref(georef)
-      except:
-        self.state.notify("Failed to process and make restraints.")
-        raise
+  def process_and_make_geometry(self):
+    ref = self.state.active_model_ref
+    if ref.has_geometry:
+      self.state.notify("Already have geometry loaded. New processing will replace existing geometry.")
+    try:
+      geodata = Geometry.from_mmtbx_model(ref.model)
+      georef = GeometryRef(geodata,ref)
+      self.state.add_ref(georef)
+    except:
+      self.state.notify("Failed to process and make geometry.")
+      raise
 
-  def load_restraints(self):
-      if self.ref.has_restraints:
-        self.state.notify("Already have restraints loaded. Will now replace existing restraints.")
-      self.open_restraints_file_dialog()
-
-  def open_restraints_file_dialog(self):
+  def load_geometry(self):
+    ref = self.state.active_model_ref
+    if ref.has_geometry:
+      self.state.notify("Already have geometry loaded. Will now replace existing geometry.")
+    self.open_geometry_file_dialog()
+  
+  def open_geometry_file_dialog(self):
 
     self.openFileDialog = QFileDialog(self.view)
     self.openFileDialog.setFileMode(QFileDialog.AnyFile)
     if self.openFileDialog.exec_():
         file_path = self.openFileDialog.selectedFiles()[0]
-
         filepath = str(Path(file_path).absolute())
         print(f"Geometry file selected: {filepath}")
-
         data = Geometry.from_geo_file(filepath)
         ref = GeometryRef(data,self.state.active_model_ref)
         self.state.add_ref(ref)
@@ -153,13 +366,6 @@ class ViewerControlsController(Controller):
       self.view.selection_edit.history.insert(0, text)
       self.view.selection_edit.index = -1
       self.view.selection_edit.clear()
-
-  @Slot()
-  def on_picking_change(self,index):
-    if index == 0:
-      self.viewer.set_granularity(value='residue')
-    elif index == 1:
-      self.viewer.set_granularity(value='element')
 
   def add_selection(self):
     """
@@ -383,6 +589,8 @@ class SearchSelectDialogController(Controller):
       sel_str = " and ".join(sel_str_parts)
     print("Sel str: ",sel_str)
     self.parent.viewer.select_from_phenix_string(sel_str)
+    print("emitting atom")
+    self.state.signals.picking_level.emit("atom")
     self.parent.viewer.focus_selected()
 
   def reset(self):

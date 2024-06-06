@@ -10,6 +10,7 @@ from ...core.mol import MolDataFrame
 class EditData(ObjectRow):
   action: str # "add", "mod"
   i_seqs: List[int]
+  labels_compositional: List[str]
   sel_strings: List[str]  
     
   def to_edits_string(self):
@@ -71,4 +72,7 @@ class DihedralEdit(EditData):
   weight_new: Optional[float] = None
   harmonic_old: Optional[float] = None
   harmonic_new: Optional[float] = None
+
+  def to_edits_string(self):
+    raise NotImplementedError
 

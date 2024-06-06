@@ -26,15 +26,41 @@ class EditsTableTabController(TableController):
   row_class = EditData # Generic, use subclasses
   restraint_name =  None # Subclass and fill this in (bond,angle,etc)
   #columns_to_include= ['ideal','model',"sigma","delta",'residual',"vdw","action"]
-  supress_columns = ["i_seqs","sel_strings","ideal_old","sigma_old"]
-  rename_columns = {"ideal_new":"Ideal","sigma_new":"Sigma","action":"Action"}
+  supress_columns = ["i_seqs","sel_strings","ideal_old","sigma_old", "labels_compositional"]
+  rename_columns = {"ideal_new":"Ideal",
+                    "sigma_new":"Sigma",
+                    "action":"Action",
+                    "atom_id_1":"Atom 1",
+                    "atom_id_2":"Atom 2"}
+
   column_prefixes_to_include = ["atom_id"]
+  @staticmethod
+  def transform_to_dict(nested_list,prefix="Label"):
+    # Transform a list of lists to a dictionary of lists
+    # Determine the number of sublists
+      num_sublists = len(nested_list)
+      # Determine the length of each sublist
+      sublist_length = len(nested_list[0])
+      
+      # Initialize an empty dictionary to store the results
+      result_dict = {}
+      
+      # Iterate over the indices of the sublists
+      for i in range(sublist_length):
+        # Create a label for each index
+        label = f'{prefix} {i+1}'
+        # Gather all elements at index i from each sublist
+        result_dict[label] = [nested_list[j][i] for j in range(num_sublists)]
+      
+      return result_dict
+
+
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
     self.edits_ref = None
 
     # Signals
-    self.state.signals.edits_change.connect(self.update)
+    self.state.signals.edits_added.connect(self.update)
     self.view.table_view.removeEdit.connect(self.remove_edit)
     self.view.write_button.clicked.connect(self.write_edits)
 
@@ -44,6 +70,12 @@ class EditsTableTabController(TableController):
       self.dataframe = edits_ref.data.df
       if len(self.dataframe)>0:
         self.dataframe = self.dataframe.rename(columns=self.rename_columns)
+        # add labels
+        label_dict = self.transform_to_dict(self.dataframe["labels_compositional"].tolist())
+        for key,value in label_dict.items():
+          self.dataframe[key] = value
+        
+        self.dataframe.drop(columns=["labels_compositional"],inplace=True) # Why not suppress?
         self.table_model = PandasTableModel(self.dataframe,suppress_columns=self.supress_columns)
         self.parent.view.toggle_tab_visible(self.title,show=True)
       else:

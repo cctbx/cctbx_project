@@ -71,8 +71,19 @@ class MolstarController(Controller):
     self.state.signals.model_change.connect(self.load_model_from_ref)
     self.state.signals.map_change.connect(self.load_map_from_ref)
 
-    #self.state.signals.selection_activated.connect(self.select_from_ref) # Need to re-select?
-    self.state.signals.focus_selected.connect(self.focus_selected)
+    # Selections
+    self.state.signals.select_all.connect(self.select_all)
+    self.state.signals.selection_activated.connect(self.select_from_ref)
+
+
+    self.state.signals.deselect_all.connect(self.deselect_all)
+    self.state.signals.selection_deactivated.connect(self.deselect_from_ref)
+    
+    self.state.signals.selection_hide.connect(self.selection_hide)
+    self.state.signals.selection_show.connect(self.selection_show)
+    self.state.signals.selection_rep_show.connect(self.selection_show)
+
+    self.state.signals.selection_focus.connect(self.focus_selected)
     self.state.signals.clear.connect(self.clear_viewer)
     self.state.signals.picking_level.connect(self.picking_level)
 
@@ -228,18 +239,22 @@ class MolstarController(Controller):
 
   def select_from_ref(self,ref: SelectionRef):
     return self.select_from_selection(ref.data)
-
+  def deselect_from_ref(self,ref:SelectionRef):
+    return self.deselect_all()
+    
   def select_from_selection(self,selection: Selection):
     return self.viewer.select_from_selection(selection)
 
   def focus_selected(self):
     return self.viewer.focus_selected()
 
-  def picking_level(self,picking_int):
-    if picking_int ==1:
+  def picking_level(self,picking_level):
+    if 'atom' in picking_level:
       self.set_granularity("element")
-    else:
+    elif "residue" in picking_level:
       self.set_granularity("residue")
+    else:
+      pass
 
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'
@@ -248,6 +263,9 @@ class MolstarController(Controller):
 
   def toggle_selection_mode(self,value):
     self.viewer._toggle_selection_mode(value)
+
+  def select_all(self):
+    self.viewer.select_all()
 
   def deselect_all(self):
     self.viewer.deselect_all()
@@ -285,28 +303,49 @@ class MolstarController(Controller):
     # This one is unusual in that remote uses local id
     self.viewer.set_iso(ref.id,value)
 
+  
+  def selection_hide(self,selection_ref,representation_name=None):
 
-  def show_ref(self,ref,representation: Optional[str] = None):
-    phenix_ref = self.state.phenixState.references[ref.id]
-    model_id = phenix_ref.id_molstar
-    representations = phenix_ref.representations
-    for rep_name in representations:
-      self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
+    # Make sure it is selected (it probably already is)
+    if self.state.active_selection_ref != selection_ref:
+      self.state.active_selection_ref = selection_ref
+
+    # Tell molstar to just hide what it has selected
+    self.viewer.selection_hide() # No arguments is all representations
+
+  
+  def selection_show(self,selection_ref,representation_name=None):
+
+    # Make sure it is selected (it probably already is)
+    if self.state.active_selection_ref != selection_ref:
+      self.state.active_selection_ref = selection_ref
+
+    # Tell molstar to just hide what it has selected
+    self.viewer.selection_show(representation_name=representation_name) # No arguments is all representations
 
 
-  def hide_ref(self,ref,representation: Optional[str] = None):
-    for phenixRef in self.state.phenixState.references:
-      if phenixRef==ref.id:
-        for phenixComponent in phenixRef.components:
-          for phenixRepresentation in phenixComponents.representations:
-            if phenixRepresentation == representation or representation == None:
-              # Hide
-              self.viewer.hide_ref
-    phenix_ref = self.state.phenixState.references[ref.id]
-    model_id = phenix_ref.id_molstar
-    representations = phenix_ref.representations
-    for rep_name in representations:
-      self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
+
+  # def show_ref(self,ref,representation: Optional[str] = None):
+  #   phenix_ref = self.state.phenixState.references[ref.id]
+  #   model_id = phenix_ref.id_molstar
+  #   representations = phenix_ref.representations
+  #   for rep_name in representations:
+  #     self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
+
+
+  # def hide_ref(self,ref,representation: Optional[str] = None):
+  #   for phenixRef in self.state.phenixState.references:
+  #     if phenixRef==ref.id:
+  #       for phenixComponent in phenixRef.components:
+  #         for phenixRepresentation in phenixComponents.representations:
+  #           if phenixRepresentation == representation or representation == None:
+  #             # Hide
+  #             self.viewer.hide_ref
+  #   phenix_ref = self.state.phenixState.references[ref.id]
+  #   model_id = phenix_ref.id_molstar
+  #   representations = phenix_ref.representations
+  #   for rep_name in representations:
+  #     self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
 
   def color_ref(self,ref,color):
     model_id = ref.model_ref.id_molstar

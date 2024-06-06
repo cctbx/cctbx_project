@@ -86,7 +86,7 @@ class MapListController(ScrollableListController):
   def update(self):
     for ref in self.state.references_map:
       if ref not in self.refs:
-        if ref.show_in_list:
+        if ref.show:
           entry_view = MapEntryView()
           entry_controller = MapEntryController(parent=self,view=entry_view,ref=ref)
           self.add_entry(entry_controller)

@@ -61,20 +61,6 @@ class TableController(Controller):
     self.view.table_view.setModel(value)
 
 
-  def update(self,table_ref):
-    """
-    This is a slot for any changes to the subclass of table_ref that this subclass
-    is associated with. The sequence is to:
-      1. Decide if an update is actually required for this controller
-      2. Create/obtain the dataframe to show (possibly via an objectframe)
-      3. Set the PandasTableModel
-      4. Turn on visibility of the table
-
-    Example:
-      self.table_model = PandasTable(df,suppress_columns=[])
-    """
-    raise NotImplementedError
-
   def on_mouse_released(self):
     selected = self.view.table_view.selectionModel().selection()
     deselected = QtCore.QItemSelection()
@@ -86,7 +72,7 @@ class TableController(Controller):
     if len(df_sel)==1:
       if df_sel is not None:
         # switch to atom picking level
-        self.state.signals.picking_level.emit(1) # element
+        self.state.signals.picking_level.emit("atom")
         flattened_i_seqs = [item for sublist in df_sel['i_seqs'] for item in sublist]
         flattened_i_seqs = [int(e) for e in flattened_i_seqs if pd.notna(e)]
         selection = Selection.from_i_seqs(self.state.mol.sites,flattened_i_seqs)

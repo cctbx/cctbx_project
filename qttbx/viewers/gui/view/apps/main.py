@@ -11,12 +11,12 @@ from ..tabs.selection import SelectionsTabView
 from ..tabs.data import DataTabView
 from ..tabs.sites import SitesTabView
 from ..cif import CifTabView
+from ..restraint import RestraintTabView
 
 from ..tabs.qscore import QscoreTab
 from ..widgets.tab import GUITabWidget
 from ..geometry.top_tab import GeometryTabView
 from ..restraint_edits.top_tab import EditsTabView
-from ..restraints.top_tab import RestraintsTabView
 
 
 class ViewerGUIView(QMainWindow):
@@ -105,7 +105,11 @@ class ViewerGUIView(QMainWindow):
     self.tabs.addTab(self.edits, "Edits")
     #self.tabs.toggle_tab_visible("Edits",show=False)
 
-    # if 'all' in show_tab or 'restraints' in show_tab:
+
+    # Restraints
+    self.restraints_tab_view = RestraintTabView(parent=self)
+    self.restraints_tab_view.order_index=3
+    self.tabs.addTab(self.restraints_tab_view, "Restraints")
 
     #   # Restraints
     #   self.restraints = RestraintsTabView(parent=self)
@@ -140,6 +144,8 @@ class ViewerGUIView(QMainWindow):
     self.tabs.toggle_tab_visible("CIF",show=False)
     self.tabs.toggle_tab_visible("Geometry",show=True)
     self.tabs.toggle_tab_visible("Edits",show=True)
+    self.tabs.toggle_tab_visible("Restraints",show=True)
+
 
   def child_window_handler(self,event):
     self._has_child_window = True

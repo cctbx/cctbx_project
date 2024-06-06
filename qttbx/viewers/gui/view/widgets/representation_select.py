@@ -21,7 +21,7 @@ class RepresentationSelect(QWidget):
     }
     self.actions = {}
     for key,value in self.options.items():
-      action = QAction(key, self, checkable=False)
+      action = QAction(key, self, checkable=True)
       self.menu.addAction(action)
       self.actions[value] = action
 
@@ -30,10 +30,12 @@ class RepresentationSelect(QWidget):
     layout = QVBoxLayout(self)
     layout.setContentsMargins(0,0,0,0)
     layout.addWidget(self.button)
-
+    # maintain a registry of checked state
     self.selected_options = {value:False for key,value in self.options.items()}
-    self.selected_options['ball-and-stick'] = True
-    self.actions['ball-and-stick'].setChecked(True)
+
+    # initialize with all checked as false
+    for key,value in self.selected_options.items():
+      self.actions[key].setChecked(False)
 
 
   @Slot()

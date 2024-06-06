@@ -16,7 +16,6 @@ class ScrollEntryView(QWidget):
     self.parent_explicit = parent
     self._is_destroyed = False
 
-    # self.ref = ref
 
     # Start Components
     self.layout = QHBoxLayout(self)
@@ -52,7 +51,6 @@ class ScrollEntryView(QWidget):
       self.layout.addWidget(self.active_toggle)
 
     # Name Label Widget
-
     name = "entry name"
     tooltip = 'entry tooltip'
     self.visible_name = self._truncate_string(name,max_len=30).ljust(30)
@@ -67,6 +65,8 @@ class ScrollEntryView(QWidget):
 
     # Add stretch to pushsubsequent widgets to the right
     self.layout.addStretch()
+
+
 
   @property
   def is_destroyed(self):

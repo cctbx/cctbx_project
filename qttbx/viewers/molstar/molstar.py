@@ -554,27 +554,29 @@ class MolstarViewer(ModelViewer):
   def show_selected(self,representation_name: Optional[str] = None):
     raise NotImplementedError
 
-  def show_query(self,model_id: str, query_json: str, representation_name: str):
-    self.transparency_query(model_id=model_id,
-                            query_json=query_json,
-                            representation_name=representation_name,
-                            component_key="all",
-                            value=0.0)
+  # def show_query(self,model_id: str, query_json: str, representation_name: str):
+  #   self.transparency_query(model_id=model_id,
+  #                           query_json=query_json,
+  #                           representation_name=representation_name,
+  #                           component_key="all",
+  #                           value=0.0)
 
 
   def hide_model(self,model_id,representation_name: Optional[str] = None):
     raise NotImplementedError
 
-  def hide_selected(self,representation_name: Optional[str] = None):
-    self.transparency_selected()
+  def selection_hide(self,component_name: Optional[str] = None, representation_name: Optional[str] = None):
+    self.transparency_selected(component_name=component_name, representation_name=representation_name,value=1.0)
 
-  def hide_query(self,query: SelectionQuery, representation_name:  Optional[str] = None):
-    self.transparency_query(model_id=model_id,
-                            query_json=query_json,
-                            representation_name=representation_name,
-                            component_key="all",
-                            value=1.0)
 
+  def selection_show(self,component_name: Optional[str] = None, representation_name: Optional[str] = None):
+    self.transparency_selected(component_name=component_name, representation_name=representation_name,value=0.0)
+
+  def representation_add(self,representation_name):
+    command = f"""
+    await {self.plugin_prefix}.phenix.addRepresentationSelected('{representation_name}')
+    """
+    self.send_command(command)
 
   # Transparency for model/selection
 

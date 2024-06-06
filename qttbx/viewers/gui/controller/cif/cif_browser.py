@@ -20,7 +20,7 @@ class CifBrowserController(TableController):
     self._df_dict = None
     self._cif_ref = None
     self.table_model = PandasTableModel()
-    self.parent.view.toggle_tab_visible("Browser",show=True)
+    #self.parent.view.toggle_tab_visible("Browser",show=True)
     self.data_has_changed = False
 
 
@@ -35,7 +35,9 @@ class CifBrowserController(TableController):
     self.table_model.dataChanged.connect(self.on_data_changed)
 
 
-
+  @property
+  def cif_refs(self):
+    return self.state.references_ciffile 
 
   @property
   def df_dict(self):
@@ -78,20 +80,19 @@ class CifBrowserController(TableController):
     self.view.layout.insertWidget(0,notification)
 
   def update_file_from_label(self,label):
-    refs = [ref for ref in self.state.references_ciffile if ref.data.filename==label]
+    refs = [ref for ref in self.cif_refs if ref.data.filename==label]
     if len(refs)>0:
       self.update_file(refs[0])
 
   def update_file(self,ref):
-    print("cif browser update_file")
-
     self.view.combobox_files.blockSignals(True)
 
     if ref and ref != self.cif_ref:
       # load existing cif files
       current_filename = self.view.combobox_files.currentText()
       self.view.combobox_files.clear()
-      filenames = [ref.data.filename for ref in self.state.references_ciffile]
+      
+      filenames = [ref.data.filename for ref in self.cif_refs]
       self.view.combobox_files.addItems(filenames)
       if current_filename in filenames:
         self.view.setComboBoxToValue(self.view.combobox_files,current_filename)
@@ -112,7 +113,7 @@ class CifBrowserController(TableController):
       #self.view.combobox_data.setCurrentIndex(0)
 
       # switch to browser tab
-      self.parent.view.setCurrentIndex(1)
+      #self.parent.view.setCurrentIndex(1)
 
     self.view.combobox_files.blockSignals(False)
 
@@ -139,7 +140,6 @@ class CifBrowserController(TableController):
 
 
   def update_block(self,data_key=None,block_key=None):
-
     print(f"cif browser update block: data_key={data_key} block_key={block_key}")
     if "" not in [data_key,block_key]:
       if data_key is None:

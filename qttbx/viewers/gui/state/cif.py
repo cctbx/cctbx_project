@@ -9,12 +9,16 @@ from .base import DataClassBase
 
 @dataclass(frozen=True)
 class CifFileData(DataClassBase):
-  filepath: Optional[Path] = None
+  filepath: Path
+
+  def __post_init__(self):
+    if not isinstance(self.filepath,Path):
+      # Workaround for frozen=True
+      object.__setattr__(self, 'filepath', Path(self.filepath))
 
   @property
   def filename(self):
-    if self.filepath is not None:
-      return self.filepath.name
+    return self.filepath.name
 
   @property
   def cif_input(self):

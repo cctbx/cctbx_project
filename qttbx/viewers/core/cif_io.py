@@ -735,3 +735,122 @@ def handle_multiline(lines, current_index):
           break
       multiline_content.append(line)
   return "\n".join(multiline_content), j  # Return the concatenated multiline value and the last index
+
+
+
+## Writing
+###########
+
+# Format and write cif text directly from dataframes
+
+def infer_type(element):
+    try:
+        # Convert to float first
+        float_val = float(element)
+        # If the float is actually an integer, convert to int
+        if float_val.is_integer():
+            return int(float_val)
+        return float
+    except ValueError:
+        # If conversion fails, it's a string
+        return str
+
+def convert_column_types_based_on_first(df):
+    # Get the first row of the DataFrame
+    sample_row = df.iloc[0]
+
+    # Infer the type for each column based on the first row
+    inferred_types = {col: infer_type(sample_row[col]) for col in df.columns}
+
+    # Convert entire columns to the inferred types
+    for col, dtype in inferred_types.items():
+        if dtype is float or dtype is int:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+        # Else, it's a string, no need to convert
+
+    return df
+
+
+
+def quote_strings_with_spaces(df):
+  # Iterate over columns
+  for col in df.columns:
+      if df[col].dtype == 'object':  # Check if column is string type
+          # Add quotes to strings with spaces
+          df[col] = df[col].apply(lambda x: f'"{x}"' if isinstance(x, str) and ' ' in x else x)
+  return df
+
+def format_dataframe_for_cif(df):
+    # Determine padding for each column
+    col_format = {}
+    for col in df.columns:
+        if df[col].dtype == float or df[col].apply(lambda x: isinstance(x, float)).any():
+            max_left_len = df[col].apply(lambda x: len(str(int(x)) if isinstance(x, float) and not pd.isna(x) else str(x))).max()
+            max_right_len = df[col].apply(lambda x: len(str(x).split('.')[1]) if isinstance(x, float) and '.' in str(x) else 0).max()
+            total_width = max_left_len + max_right_len + 1  # +1 for decimal
+            df[col] = df[col].apply(lambda x: f"{x:>{total_width}.{max_right_len}f}" if isinstance(x, float) else str(x).ljust(total_width))
+        else:
+            max_len = df[col].astype(str).str.len().max()
+            df[col] = df[col].astype(str).str.ljust(max_len)
+
+    # Concatenate the formatted columns
+    formatted_df = df.apply(lambda x: ' '.join(x), axis=1)
+
+    return '\n'.join(formatted_df)
+
+# Example DataFrame (replace with your actual Da
+
+
+def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
+
+  # replace python uncertain values with cif ones
+  df.replace(to_replace=[None,""," "], value='.', inplace=True)
+
+  if len(df)>1: #a loop
+    lines_header = ["loop_"]
+    for column in df.columns:
+      if column_prefix is not None:
+        column = column_prefix+"."+column
+      if not column.startswith("_"):
+        column = "_"+column
+      lines_header.append(column)
+
+    lines_body = format_dataframe_for_cif(df).splitlines()
+    lines = lines_header+lines_body
+
+  else: # not a loop
+    kv_list = list(df.to_dict("list").items())
+    column_prefix_keys = [".".join([column_prefix,key]) for key,values in kv_list]
+    max_len = max([len(key) for key in column_prefix_keys])
+
+    lines = []
+    for i,(key,values) in enumerate(kv_list):
+      assert len(values)==1
+      value = values[0]
+      column_prefix_key = column_prefix_keys[i]
+      line = column_prefix_key.ljust(max_len+2)+str(value).ljust(max_len)
+      lines.append(line)
+
+  if data_name is not None:
+    lines = ["data_"+data_name]+lines
+  return lines
+
+def write_dataframes_to_cif_file(dataframe_dict,filename):
+  lines_out = []
+  for data_key,data_value in dataframe_dict.items():
+    lines_out.append("data_"+data_key)
+    for group_key,group_value in data_value.items():
+      if isinstance(group_value,pd.DataFrame):
+        df = convert_column_types_based_on_first(group_value)
+        df = quote_strings_with_spaces(df)
+        #df = group_value
+
+        #df = group_value.applymap(str)
+        lines = df_to_cif_lines(df,column_prefix=group_key)
+        lines_out+=lines
+        lines_out.append("#")
+      else:
+        assert False, f"Encountered non-dataframe value: {type(group_value)}"
+  s = "\n".join(lines_out)
+  with open(filename,"w") as fh:
+    fh.write(s)

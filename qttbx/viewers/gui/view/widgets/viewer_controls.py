@@ -4,7 +4,9 @@ from PySide2.QtGui import QIcon
 from PySide2.QtCore import Qt, QEvent
 from PySide2.QtCore import QObject, QTimer, Signal, Slot
 from PySide2.QtGui import QGuiApplication, QDrag, QCursor
-
+from PySide2.QtGui import QIcon, QPixmap, QPainter
+from PySide2.QtSvg import QSvgRenderer
+import qtawesome as qta
 
 from .history_line_edit import HistoryLineEdit
 from .widgets import NoCheckComboBox
@@ -19,6 +21,9 @@ from ..models import GeoCheckBox
 
 from pathlib import Path
 
+# Enable high DPI scaling
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
 
 
 class ViewerControlsView(QWidget):
@@ -26,22 +31,11 @@ class ViewerControlsView(QWidget):
     super().__init__(parent=parent)
     self._all_button_width = 48
     self._all_button_height = 48
-
-    # Start settings/selection area
-
-    # policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    # self.setSizePolicy(policy)
+    self._all_icon_size = 16
 
 
-    # Open in folder
-    ################
-    self.button_files = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/folder.svg'
-    icon = QIcon(str(icon_path))
-    self.button_files.setIcon(icon)
-    self.button_files.setToolTip("Open containing folder")
-    self.button_files.setMaximumWidth(self._all_button_width)
 
+    # Model label
     self.active_model_label = QComboBox()
 
 
@@ -49,24 +43,37 @@ class ViewerControlsView(QWidget):
     # Geometry
     #################
     self.button_geo = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/gears.svg'
-    icon = QIcon(str(icon_path))
+    self.button_geo.setCheckable(True)
+    icon = qta.icon("mdi.cogs")
     self.button_geo.setIcon(icon)
     self.button_geo.setToolTip("Manage geometry")
     self.button_geo.setMaximumWidth(self._all_button_width)
-    self.geo_checkbox = GeoCheckBox("", self)
-    geo_hbox = QHBoxLayout()
-    geo_hbox.addWidget(self.button_geo)
-    geo_hbox.addWidget(self.geo_checkbox)
+    #self.geo_checkbox = GeoCheckBox("", self)
+    #geo_hbox = QHBoxLayout()
+    #geo_hbox.addWidget(self.button_geo)
+    #geo_hbox.addWidget(self.geo_checkbox)
 
     # Use as restraint edit
     #####################
-    self.button_restraint = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/measure.svg'
-    icon = QIcon(str(icon_path))
-    self.button_restraint.setIcon(icon)
-    self.button_restraint.setToolTip("Selection as geometry edit")
-    self.button_restraint.setMaximumWidth(self._all_button_width)
+    self.button_edits = QPushButton()
+    # icon_path = Path(__file__).parent / '../assets/icons/material/edit.svg'
+    # icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.pencil")
+    self.button_edits.setIcon(icon)
+    self.button_edits.setToolTip("Selection as geometry edit")
+    self.button_edits.setMaximumWidth(self._all_button_width)
+
+    # Load restraints
+    self.button_restraints = QPushButton()
+    self.button_restraints.setCheckable(True)
+
+    #icon_path = Path(__file__).parent / '../assets/icons/material/measure.svg'
+    #icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.set-square")
+
+    self.button_restraints.setIcon(icon)
+    self.button_restraints.setToolTip("Load restraints from library")
+    self.button_restraints.setMaximumWidth(self._all_button_width)
 
 
     def spacer_max():
@@ -76,8 +83,9 @@ class ViewerControlsView(QWidget):
     # Selection Search
     #####################
     self.button_search = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/search.svg'
-    icon = QIcon(str(icon_path))
+    # icon_path = Path(__file__).parent / '../assets/icons/material/search.svg'
+    # icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.magnify")
     self.button_search.setIcon(icon)
     self.button_search.setToolTip("Specify a selection")
     self.button_search.setMaximumWidth(self._all_button_width)    
@@ -87,27 +95,41 @@ class ViewerControlsView(QWidget):
 
     # Selection pick
     #################
+    # Version 1: two distinct buttons
+    # self.button_select = QPushButton()
+    # icon_path = Path(__file__).parent / '../assets/icons/material/target_searching.svg'
+    # icon = QIcon(str(icon_path))
+    # self.button_select.setIcon(icon)
+    # self.button_select.setToolTip("Start selecting")
+    # self.button_select.setMaximumWidth(self._all_button_width)    
+ 
+
+    # Version 2: Checkable buttons
     self.button_select = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/target_searching.svg'
-    icon = QIcon(str(icon_path))
+    self.button_select.setCheckable(True)
+    #icon_path = Path(__file__).parent / '../assets/icons/material/target_searching.svg'
+    #icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.crosshairs")
     self.button_select.setIcon(icon)
-    self.button_select.setToolTip("Start selecting")
-    self.button_select.setMaximumWidth(self._all_button_width)    
+    self.button_select.setToolTip("Toggle selecting")
+    self.button_select.setMaximumWidth(self._all_button_width)   
 
+    # New button creation func
     self.button_clear = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/target_stop_searching.svg'
-    icon = QIcon(str(icon_path))
+    #icon_path = Path(__file__).parent / '../assets/icons/material/cancel.svg'
+    #icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.close-circle-outline")
     self.button_clear.setIcon(icon)
-    self.button_clear.setToolTip("Clear selection")
-    self.button_clear.setMaximumWidth(self._all_button_width)    
-
+    self.button_clear.setToolTip("Clear all selection")
+    self.button_clear.setMaximumWidth(self._all_button_width)   
 
     # Selection Add
     #################
     self.add_selection_button = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/plus.svg'
-    load_icon = QIcon(str(icon_path))
-    self.add_selection_button.setIcon(load_icon)
+    #icon_path = Path(__file__).parent / '../assets/icons/material/plus.svg'
+    #load_icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.plus")
+    self.add_selection_button.setIcon(icon)
     self.add_selection_button.setToolTip("Add selection to list")
     self.add_selection_button.setMaximumWidth(self._all_button_width)    
 
@@ -134,9 +156,10 @@ class ViewerControlsView(QWidget):
     active_model_components = {
       #"":spacer_max(),
       "Filename:": self.active_model_label,
-      "File":self.button_files,
-      "Geometry": geo_hbox,
-      "Edits": self.button_restraint,
+      #"File":self.button_files,
+      "Geo": self.button_geo,
+      "Edits": self.button_edits,
+      "Restraints": self.button_restraints,
       "":spacer_min(),
     }
     selection_components = {
@@ -193,18 +216,6 @@ class ViewerControlsView(QWidget):
 
 
   
-
-    
-  #   # set geo checkbox if applicable
-  #   self.update_geo()
-
-  # def update_geo(self,**args):
-  #   ref = self.ref
-  #   if hasattr(self.ref,"model_ref"):
-  #     ref = self.ref.model_ref
-  #   if ref.geometry_ref is not None:
-  #     self.view.geo_checkbox.setChecked(True)
-
 class ScrollableHierarchyWidget(QWidget):
   selected_change = Signal(str) # the value that was changed to
 
