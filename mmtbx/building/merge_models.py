@@ -498,10 +498,9 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
-    pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
-    ph=pdb_inp.construct_hierarchy()
-
-    xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
+    sel_hierarchy.atoms().reset_i_seq()
+    xrs = sel_hierarchy.extract_xray_structure(
+      crystal_symmetry=crystal_symmetry)
     xrs.scattering_type_registry(table = table)
 
     cc_calculator=mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
@@ -509,7 +508,7 @@ def get_cc_dict(hierarchy=None,crystal_symmetry=None,
       map_data       = map_data,
       d_min          = d_min)
 
-    for m in ph.models():
+    for m in sel_hierarchy.models():
       for chain in m.chains():
         cc_list=flex.double()
         cc_dict[model.id]=cc_list
@@ -651,7 +650,6 @@ def run(
   if n_models==1:  # nothing to do
     return hierarchy
 
-  #xrs = pdb_inp.xray_structure_simple(crystal_symmetry=crystal_symmetry)
   xrs = hierarchy.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   xrs.scattering_type_registry(table=scattering_table)
   if not resolution:
@@ -696,8 +694,8 @@ def run(
     asc=hierarchy.atom_selection_cache()
     sel=asc.selection(string = atom_selection)
     sel_hierarchy=hierarchy.select(sel)
-    pdb_inp=sel_hierarchy.as_pdb_input(crystal_symmetry=crystal_symmetry)
-    ph=pdb_inp.construct_hierarchy()
+    sel_hierarchy.atoms().reset_i_seq()
+    ph=sel_hierarchy
 
     print("\nWorking on chain_id='%s' resseq %d:%d\n" %(
        chain_id_and_resseq[0],chain_id_and_resseq[1][0],chain_id_and_resseq[1][1]), file=out)
@@ -823,7 +821,6 @@ def run(
   from iotbx.pdb.utils import add_hierarchies
   pdb_hierarchy = remove_ter_or_break(add_hierarchies(sel_ph_list,
     create_new_chain_ids_if_necessary = False))
-  print(pdb_hierarchy.as_pdb_string())
 
   if pdb_out:
     pdb_out = pdb_hierarchy.write_pdb_or_mmcif_file(target_filename = pdb_out,
