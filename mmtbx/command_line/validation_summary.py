@@ -30,15 +30,13 @@ def summary(pdb_file=None,
   else :
     assert (pdb_file is None)
   #
+  assert crystal_symmetry is not None
+
   cache = pdb_hierarchy.atom_selection_cache()
   sel = cache.selection('protein')
   pdb_hierarchy = pdb_hierarchy.select(sel)
   #
-  model = mmtbx.model.manager(model_input = pdb_hierarchy.as_pdb_input())
-  if crystal_symmetry and model.crystal_symmetry() is None:
-    model.set_crystal_symmetry(crystal_symmetry) # Somehow pdb_hiearchy lacks cs
-  if not model.crystal_symmetry():
-    aaa=bbb
+  model = pdb_hierarchy.as_model_manager(crystal_symmetry = crystal_symmetry)
   return molprobity.molprobity(
     model=model,
     keep_hydrogens=False,

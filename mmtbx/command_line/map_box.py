@@ -406,10 +406,7 @@ def get_model_from_inputs(
   print_statistics.make_sub_header("pdb model", out = log)
 
   if pdb_hierarchy:  # convert to model object . XXX should come in this way
-    model =  mmtbx.model.manager(
-          model_input = pdb_hierarchy.as_pdb_input(),
-          crystal_symmetry = crystal_symmetry,
-          log = log)
+    model =  pdb_hierarchy.as_model_manager(crystal_symmetry = crystal_symmetry)
 
   if len(file_names)>0:
     file_name = file_names[0]
