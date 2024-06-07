@@ -1956,7 +1956,7 @@ class sharpening_info:
       d_min_list = None,
       verbose = None,
       resolve_size = None,
-      pdb_inp = None,  # XXX probably do not need this
+      pdb_inp = None,  # XXX probably do not need this, just used to set params
       local_solvent_fraction = None,
       wang_radius = None,
       buffer_radius = None,
@@ -1969,7 +1969,6 @@ class sharpening_info:
     adopt_init_args(self, locals())
     del self.tracking_data  # don't need it as part of the object
     del self.box_sharpening_info_obj# don't need it as part of the object
-    del self.pdb_inp # don't need it as part of the object
 
     if tracking_data:  # use tracking data information
       self.update_with_tracking_data(tracking_data = tracking_data)
@@ -2688,9 +2687,10 @@ def map_coeffs_to_fp(map_coeffs):
   assert amplitudes.is_real_array()
   return amplitudes
 
-def get_f_phases_from_model(f_array = None, pdb_inp = None, overall_b = None,
+def get_f_phases_from_model(f_array = None, pdb_hierarchy= None,
+      overall_b = None,
      k_sol = None, b_sol = None, out = sys.stdout):
-  xray_structure = pdb_inp.construct_hierarchy().extract_xray_structure(
+  xray_structure = pdb_hierarchy.extract_xray_structure(
      crystal_symmetry = f_array.crystal_symmetry())
   print("Getting map coeffs from model with %s atoms.." %(
     xray_structure.sites_frac().size()), file = out)
@@ -8439,7 +8439,6 @@ def apply_origin_shift(origin_shift = None,
     shifted_pdb_file = None,
     shifted_ncs_file = None,
     tracking_data = None,
-    sharpening_target_pdb_inp = None,
     out = sys.stdout):
 
   if shifted_map_file:
@@ -8461,13 +8460,6 @@ def apply_origin_shift(origin_shift = None,
        crystal_symmetry = tracking_data.crystal_symmetry,
        pdb_hierarchy = pdb_hierarchy,
        out = out)
-
-    if sharpening_target_pdb_inp:
-      sharpening_target_pdb_inp = apply_shift_to_pdb_hierarchy(
-       origin_shift = origin_shift,
-       crystal_symmetry = tracking_data.crystal_symmetry,
-       pdb_hierarchy = sharpening_target_pdb_inp.construct_hierarchy(),
-       out = out).as_pdb_input()
 
     if target_hierarchy:
       target_hierarchy = apply_shift_to_pdb_hierarchy(
@@ -8508,7 +8500,7 @@ def apply_origin_shift(origin_shift = None,
       tracking_data.shifted_ncs_info.show_summary(out = out)
 
   return shifted_pdb_file, shifted_ncs_object, pdb_hierarchy, \
-     target_hierarchy, tracking_data, sharpening_target_pdb_inp
+     target_hierarchy, tracking_data
 
 def restore_pdb(params, tracking_data = None, out = sys.stdout):
   if not params.output_files.restored_pdb:
@@ -9265,7 +9257,8 @@ def get_solvent_fraction_from_molecular_mass(
 def set_up_si(var_dict = None, crystal_symmetry = None,
       is_crystal = None,
       ncs_copies = None, n_residues = None,
-      solvent_fraction = None, molecular_mass = None, pdb_inp = None, map = None,
+      solvent_fraction = None, molecular_mass = None,
+      pdb_inp = None, map = None,
       auto_sharpen = True, half_map_data_list = None, verbose = None,
       out = sys.stdout):
     si = sharpening_info(n_real = map.all())
@@ -9473,7 +9466,7 @@ def select_box_map_data(si = None,
            map_data = None,
            first_half_map_data = None,
            second_half_map_data = None,
-           pdb_inp = None,
+           pdb_hierarchy = None,
            get_solvent_fraction = True, # XXX test not doing this...
            n_min = 30, # at least 30 atoms to run model sharpening
            restrict_map_size = None,
@@ -9489,7 +9482,7 @@ def select_box_map_data(si = None,
   original_box_map_data = None #
   n_buffer = None
 
-  if  (not pdb_inp and not si.box_in_auto_sharpen) and (
+  if  (not pdb_hierarchy and not si.box_in_auto_sharpen) and (
       first_half_map_data and second_half_map_data):
       print("Creating density-based soft mask and applying to half-map data", file = out)
 
@@ -9513,27 +9506,24 @@ def select_box_map_data(si = None,
 
       box_first_half_map, box_second_half_map = half_map_data_list
       box_crystal_symmetry = crystal_symmetry
-      box_pdb_inp = pdb_inp
+      box_pdb_hierarchy = None
 
-  elif pdb_inp or (
+  elif pdb_hierarchy or (
      si.density_select_in_auto_sharpen and not si.box_in_auto_sharpen):
 
-  #   use map_box for pdb_inp (mask with model)
+  #   use map_box for pdb_hierarchy (mask with model)
   #   also use map_box for density_select_in_auto_sharpen sharpening because
   #     need to use the same density select for all 3 maps.
 
-  # XXX Perhaps we canuse above method for pdb_inp
 
     assert not si.local_sharpening
 
-    if pdb_inp:
+    if pdb_hierarchy:
       print("Using map_box based on input model", file = out)
-      hierarchy = pdb_inp.construct_hierarchy()
       max_box_fraction = si.max_box_fraction
       si.density_select_in_auto_sharpen = False
     else:
       #print >>out, "Using density_select in map_box"
-      hierarchy = None
       assert si.density_select_in_auto_sharpen
       max_box_fraction = si.density_select_max_box_fraction
 
@@ -9603,8 +9593,9 @@ def select_box_map_data(si = None,
       args.append('restrict_map_size = True')
     print("Getting map as box now", file = out)
     local_hierarchy = None
-    if hierarchy:
-       local_hierarchy = hierarchy.deep_copy() # run_map_box modifies its argument
+    if pdb_hierarchy:
+       local_hierarchy = pdb_hierarchy.deep_copy()
+       # run_map_box modifies its argument
     assert isinstance(si.wrapping, bool) # wrapping must be defined
     box = run_map_box(args,
         map_data = map_data, pdb_hierarchy = local_hierarchy,
@@ -9619,13 +9610,13 @@ def select_box_map_data(si = None,
     box_map = scale_map(box_map, out = out)
     box_crystal_symmetry = box.box_crystal_symmetry
     if box.hierarchy:
-      box_pdb_inp = box.hierarchy.as_pdb_input()
+      box_pdb_hierarchy = box.hierarchy
     else:
-      box_pdb_inp = None
+      box_pdb_hierarchy = None
     if first_half_map_data:
       print("Getting first map as box", file = out)
-      if hierarchy:
-        local_hierarchy = hierarchy.deep_copy() # required
+      if pdb_hierarchy:
+        local_hierarchy = pdb_hierarchy.deep_copy() # required
       box_first = run_map_box(args,
         map_data = first_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -9640,8 +9631,8 @@ def select_box_map_data(si = None,
 
     if second_half_map_data:
       print("Getting second map as box", file = out)
-      if hierarchy:
-        local_hierarchy = hierarchy.deep_copy() # required
+      if pdb_hierarchy:
+        local_hierarchy = pdb_hierarchy.deep_copy() # required
       box_second = run_map_box(args,
         map_data = second_half_map_data, pdb_hierarchy = local_hierarchy,
        write_output_files = False,
@@ -9694,7 +9685,7 @@ def select_box_map_data(si = None,
        resolution = si.resolution,
        shift_origin = True,
        min_point = lower_bounds, max_point = upper_bounds, out = out)
-    box_pdb_inp = None
+    box_pdb_hierarchy = None
 
     if first_half_map_data:
       box_first_half_map, box_first_crystal_symmetry, \
@@ -9723,7 +9714,7 @@ def select_box_map_data(si = None,
       box_second_half_map = None
 
   if not box_map or (
-       (not pdb_inp and not second_half_map_data) and \
+       (not pdb_hierarchy and not second_half_map_data) and \
       box_map.size() > si.max_box_fraction* map_data.size()):
 
     return None, map_data, first_half_map_data, \
@@ -9755,7 +9746,7 @@ def select_box_map_data(si = None,
     wrapping = False,
     crystal_symmetry = box_crystal_symmetry,
     solvent_fraction = box_solvent_fraction)
-  return box_pdb_inp, box_map, box_first_half_map, box_second_half_map, \
+  return box_pdb_hierarchy, box_map, box_first_half_map, box_second_half_map, \
       box_crystal_symmetry, box_sharpening_info_obj, \
       smoothed_box_mask_data, original_box_map_data, n_buffer
 
@@ -10792,11 +10783,16 @@ def run_auto_sharpen(
 
   smoothed_box_mask_data = None
   original_box_map_data = None
+  if pdb_inp:
+    pdb_hierarchy = pdb_inp.construct_hierarchy()
+  else:
+    pdb_hierarchy = None
   if si.auto_sharpen and (
-    si.box_in_auto_sharpen or si.density_select_in_auto_sharpen or pdb_inp):
+    si.box_in_auto_sharpen or
+    si.density_select_in_auto_sharpen or pdb_hierarchy):
 
     original_box_sharpening_info_obj = deepcopy(si)  # should really not be box
-    box_pdb_inp, box_map_data, box_first_half_map_data, \
+    box_pdb_hierarchy, box_map_data, box_first_half_map_data, \
          box_second_half_map_data, \
          box_crystal_symmetry, box_sharpening_info_obj, \
          smoothed_box_mask_data, original_box_map_data, n_buffer = \
@@ -10804,7 +10800,7 @@ def run_auto_sharpen(
            map_data = map_data,
            first_half_map_data = first_half_map_data,
            second_half_map_data = second_half_map_data,
-           pdb_inp = pdb_inp,
+           pdb_hierarchy = pdb_hierarchy,
            restrict_map_size = si.restrict_map_size,
            out = out, local_out = local_out)
 
@@ -10823,11 +10819,11 @@ def run_auto_sharpen(
       original_crystal_symmetry = si.crystal_symmetry
 
       map_data = box_map_data
-      pdb_inp = box_pdb_inp
-      if si.density_select_in_auto_sharpen and ( # catch empty pdb_inp
-         not pdb_inp or not \
-           pdb_inp.construct_hierarchy().overall_counts().n_residues):
-        pdb_inp = None
+      pdb_hierarchy = box_pdb_hierarchy
+      if si.density_select_in_auto_sharpen and ( # catch empty pdb_hierarchy
+         (not pdb_hierarchy) or (not
+           pdb_hierarchy.overall_counts().n_residues)):
+        pdb_hierarchy = None
 
       crystal_symmetry = box_crystal_symmetry
       if box_first_half_map_data:
@@ -10887,16 +10883,17 @@ def run_auto_sharpen(
   else:
     second_half_map_coeffs = None
 
-  if pdb_inp:
-    # Getting model information if pdb_inp present ---------------------------
+  if pdb_hierarchy:
+    # Getting model information if pdb_hierarchy present -------------------
     from cctbx.maptbx.refine_sharpening import get_model_map_coeffs_normalized
-    model_map_coeffs = get_model_map_coeffs_normalized(pdb_inp = pdb_inp,
+    model_map_coeffs = get_model_map_coeffs_normalized(
+     pdb_hierarchy = pdb_hierarchy,
        si = si,
        f_array = f_array,
        resolution = si.resolution,
        out = out)
     if not model_map_coeffs:  # give up
-      pdb_inp = None
+      pdb_hierarchy = None
       if si.is_model_sharpening():
         raise Sorry("Cannot carry out model sharpening without a model."+
             " It could be that the model was outside the map")
@@ -11841,7 +11838,7 @@ def run(args,
     else:
       shifted_pdb_file = None
     shifted_pdb_file, ncs_obj, pdb_hierarchy, target_hierarchy, \
-      tracking_data, sharpening_target_pdb_inp = apply_origin_shift(
+      tracking_data= apply_origin_shift(
         shifted_map_file = shifted_map_file,
         shifted_pdb_file = shifted_pdb_file,
         shifted_ncs_file = shifted_ncs_file,
@@ -11851,7 +11848,6 @@ def run(args,
         target_hierarchy = target_hierarchy,
         map_data = map_data,
         tracking_data = tracking_data,
-        sharpening_target_pdb_inp = sharpening_target_pdb_inp,
         out = out)
     if shifted_pdb_file:
       params.output_files.shifted_pdb_file = os.path.split(shifted_pdb_file)[-1]

@@ -184,7 +184,7 @@ def adjust_amplitudes_linear(f_array,b1,b2,b3,resolution=None,
   data_array=data_array*scale_array
   return f_array.customized_copy(data=data_array)
 
-def get_model_map_coeffs_normalized(pdb_inp=None,
+def get_model_map_coeffs_normalized(pdb_hierarchy=None,
    si=None,
    f_array=None,
    overall_b=None,
@@ -193,7 +193,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
    target_b_iso_model_scale=0,
    target_b_iso_ratio = 5.9,  # empirical, see params for segment_and_split_map
    out=sys.stdout):
-  if not pdb_inp: return None
+  if not pdb_hierarchy: return None
   if not si:
     from cctbx.maptbx.segment_and_split_map import sharpening_info
     si=sharpening_info(resolution=resolution,
@@ -212,7 +212,7 @@ def get_model_map_coeffs_normalized(pdb_inp=None,
   from cctbx.maptbx.segment_and_split_map import get_f_phases_from_model
   try:
     model_map_coeffs=get_f_phases_from_model(
-     pdb_inp=pdb_inp,
+     pdb_hierarchy=pdb_hierarchy,
      f_array=f_array,
      overall_b=overall_b,
      k_sol=si.k_sol,
