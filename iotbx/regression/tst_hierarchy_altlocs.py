@@ -1,5 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
+from six.moves import cStringIO as StringIO
+from libtbx.test_utils import show_diff
 
 pdb_str1 = """
 ATOM      1  N  AVAL A   1      -4.898   0.072  13.387  0.49  7.34           N
@@ -34,25 +36,104 @@ HETATM 2174  O   HOH S 179      -6.781   7.569   9.276  0.24 14.70           H
 END
 """
 
-def get_h(s):
-  return iotbx.pdb.input(source_info=None, lines=s).construct_hierarchy()
+pdb_str4 = """
+ATOM      1  N   ALA A   1      -4.898   0.072  13.387  0.49  7.34           N
+ATOM      2  CA  ALA A   1      -4.626   0.703  12.080  0.49  7.71           C
+ATOM      3  C   ALA A   1      -3.475   1.680  12.227  0.49  7.52           C
+ATOM      4  O   ALA A   1      -3.125   2.100  13.335  0.49  7.59           O
+ATOM      5  CB  ALA A   1      -5.882   1.390  11.495  0.49  7.79           C
+ATOM      5  CB AALA A   1      -5.882   1.390  11.495  0.49  7.79           C
+"""
 
-def run():
-  #
-  # This is current state of affairs. This was also the case in
-  # Phenix 1.20 and 1.18.
-  #
-  altlocs = [ag.altloc for ag in get_h(pdb_str1).only_model().atom_groups()]
+def get_h_oc(s):
+  h = iotbx.pdb.input(source_info=None, lines=s).construct_hierarchy()
+  oc = h.overall_counts()
+  return h, oc
+
+#
+# This is current state of affairs. This was also the case in
+# Phenix 1.20 and 1.18.
+#
+
+def tst1():
+  """Everything is good here, empty altloc as expected.
+  """
+  h, oc = get_h_oc(pdb_str1)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
   assert altlocs == ['A', '', 'B'], altlocs
+  assert oc.n_alt_conf_improper == 0, oc.n_alt_conf_improper
+  assert oc.duplicate_atom_labels == [], list(oc.duplicate_atom_labels)
   #
-  print("------------")
-  altlocs = [ag.altloc for ag in get_h(pdb_str2).only_model().atom_groups()]
-  assert altlocs == [' ', 'A', 'C'], altlocs
 
-  print("------------")
-  altlocs = [ag.altloc for ag in get_h(pdb_str3).only_model().atom_groups()]
+def tst2():
+  """There's duplicated atom - HOH without altloc. It gets whitespace: ' ',
+  but overall_counts has several warnings.
+  """
+  h, oc = get_h_oc(pdb_str2)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  assert altlocs == [' ', 'A', 'C'], altlocs
+  # for a in h.atoms():
+  #   print("%s '%s'" % (a.id_str(), a.parent().altloc))
+
+  # Things that let one know about improper alt conf:
+  assert oc.n_alt_conf_improper == 1, oc.n_alt_conf_improper
+  assert len(oc.duplicate_atom_labels) == 1, list(oc.duplicate_atom_labels)
+
+  duplicate_output = StringIO()
+  oc.show_duplicate_atom_labels(out=duplicate_output)
+  do_value = duplicate_output.getvalue()
+  assert not show_diff(do_value, """\
+number of groups of duplicate atom labels: 1
+  total number of affected atoms:          2
+  group "HETA    .*.  O   HOH S 179 .*.     O  "
+        "HETA    .*.  O   HOH S 179 .*.     H  "
+""")
+
+def tst3():
+  """ This is a simple case of duplicated atom labels:
+  no n_alt_conf_improper
+  """
+  h, oc = get_h_oc(pdb_str3)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
   assert altlocs == [''], altlocs
+  assert oc.n_alt_conf_improper == 0, oc.n_alt_conf_improper
+  assert len(oc.duplicate_atom_labels) == 1, list(oc.duplicate_atom_labels)
+
+  duplicate_output = StringIO()
+  oc.show_duplicate_atom_labels(out=duplicate_output)
+  do_value = duplicate_output.getvalue()
+  assert not show_diff(do_value, """\
+number of groups of duplicate atom labels: 1
+  total number of affected atoms:          4
+  group "HETA    .*.  O   HOH S 179 .*.     O  "
+        "HETA    .*.  O   HOH S 179 .*.     O  "
+        "HETA    .*.  O   HOH S 179 .*.     H  "
+        "HETA    .*.  O   HOH S 179 .*.     H  "
+""")
+
+def tst4():
+  """This is pure case where only n_alt_conf_improper shows problem,
+  but no duplicated atom labels.
+  """
+  # Here we have a residue with one atom duplicated out of several.
+  # CB atoms get ' ' and 'A' altlocs, while the rest get ''.
+  h, oc = get_h_oc(pdb_str4)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  # for a in h.atoms():
+  #   print("%s '%s'" % (a.id_str(), a.parent().altloc))
+  assert altlocs == ['', ' ', 'A'], altlocs
+  assert oc.n_alt_conf_improper == 1, oc.n_alt_conf_improper
+  assert len(oc.duplicate_atom_labels) == 0, list(oc.duplicate_atom_labels)
+
+  duplicate_output = StringIO()
+  oc.show_duplicate_atom_labels(out=duplicate_output)
+  do_value = duplicate_output.getvalue()
+  assert not show_diff(do_value, "")
+
 
 if (__name__ == "__main__"):
-  run()
+  tst1()
+  tst2()
+  tst3()
+  tst4()
   print("OK")
