@@ -790,21 +790,20 @@ def get_map_coeffs_from_file(
       if not map_coeffs_labels or labels==map_coeffs_labels:  # take it
          return ma
 
-def map_inside_cell(pdb_inp,crystal_symmetry=None):
-  ph=pdb_inp.construct_hierarchy()
-  pa=ph.atoms()
+def map_inside_cell(pdb_hierarchy,crystal_symmetry=None):
+  pa=pdb_hierarchy.atoms()
   sites_cart=pa.extract_xyz()
   from cctbx.maptbx.segment_and_split_map import move_xyz_inside_cell
   new_sites_cart=move_xyz_inside_cell(xyz_cart=sites_cart,
      crystal_symmetry=crystal_symmetry)
   pa.set_xyz(new_sites_cart)
-  return ph.as_pdb_input()
+  return pdb_hierarchy
 
 
 def get_map_and_model(params=None,
     map_data=None,
     crystal_symmetry=None,
-    pdb_inp=None,
+    pdb_hierarchy=None,
     ncs_obj=None,
     half_map_data_list=None,
     map_coords_inside_cell=True,
@@ -924,27 +923,27 @@ def get_map_and_model(params=None,
       "poor at %7.0f A" %(params.crystal_info.resolution), file=out)
 
 
-  if params.input_files.pdb_file and not pdb_inp: # get model
+  if params.input_files.pdb_file and not pdb_hierarchy: # get model
     model_file=params.input_files.pdb_file
     if not os.path.isfile(model_file):
       raise Sorry("Missing the model file: %s" %(model_file))
-    from iotbx.pdb.utils import get_pdb_input
-    pdb_inp = get_pdb_input(file_name = model_file)
-  if pdb_inp: # XXX added 2019-05-05
+    from iotbx.pdb.utils import get_pdb_hierarchy
+    pdb_hierarchy= get_pdb_hierarchy(file_name = model_file)
+  if pdb_hierarchy: # XXX added 2019-05-05
     if origin_frac != (0,0,0):
       print("Shifting model by %s" %(str(origin_frac)), file=out)
       from cctbx.maptbx.segment_and_split_map import \
          apply_shift_to_pdb_hierarchy
       origin_shift=crystal_symmetry.unit_cell().orthogonalize(
          (-origin_frac[0],-origin_frac[1],-origin_frac[2]))
-      pdb_inp=apply_shift_to_pdb_hierarchy(
+      pdb_hierarchy=apply_shift_to_pdb_hierarchy(
        origin_shift=origin_shift,
        crystal_symmetry=crystal_symmetry,
-       pdb_hierarchy=pdb_inp.construct_hierarchy(),
-       out=out).as_pdb_input()
+       pdb_hierarchy=pdb_hierarchy,
+       out=out)
     if map_coords_inside_cell:
       # put inside (0,1)
-      pdb_inp=map_inside_cell(pdb_inp,crystal_symmetry=crystal_symmetry)
+      pdb_hierarchy=map_inside_cell(pdb_hierarchy,crystal_symmetry=crystal_symmetry)
 
   if params.input_files.ncs_file and not ncs_obj: # NCS
     from cctbx.maptbx.segment_and_split_map import get_ncs
@@ -958,10 +957,12 @@ def get_map_and_model(params=None,
        coordinate_offset=matrix.col(origin_shift))
 
   if get_map_labels:
-    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+    return pdb_hierarchy,\
+       map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid,map_labels
   else:
-    return pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+    return pdb_hierarchy,\
+      map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid
 
 
@@ -969,7 +970,7 @@ def run(args=None,params=None,
     map_data=None,crystal_symmetry=None,
     wrapping = None,
     write_output_files=True,
-    pdb_inp=None,
+    pdb_hierarchy=None,
     ncs_obj=None,
     return_map_data_only=False,
     return_unshifted_map=False,
@@ -986,12 +987,12 @@ def run(args=None,params=None,
 
   # get map_data and crystal_symmetry
 
-  pdb_inp,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
+  pdb_hierarchy,map_data,half_map_data_list,ncs_obj,crystal_symmetry,acc,\
        original_crystal_symmetry,original_unit_cell_grid,map_labels=\
         get_map_and_model(
      map_data=map_data,
      half_map_data_list=half_map_data_list,
-     pdb_inp=pdb_inp,
+     pdb_hierarchy=pdb_hierarchy,
      ncs_obj=ncs_obj,
      map_coords_inside_cell=False,
      crystal_symmetry=crystal_symmetry,
@@ -1090,7 +1091,7 @@ def run(args=None,params=None,
            params.map_modification.resolution_dependent_b,
         normalize_amplitudes_in_resdep=\
            params.map_modification.normalize_amplitudes_in_resdep,
-        pdb_inp=pdb_inp,
+        pdb_hierarchy=pdb_hierarchy,
         ncs_obj=ncs_obj,
         rmsd=params.map_modification.rmsd,
         rmsd_resolution_factor=params.map_modification.rmsd_resolution_factor,
