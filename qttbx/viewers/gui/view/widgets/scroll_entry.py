@@ -1,8 +1,11 @@
 from pathlib import Path
 
 from PySide2.QtCore import Qt, QSize
-from PySide2.QtWidgets import QWidget, QHBoxLayout
 from PySide2.QtGui import QPalette, QPainter
+from PySide2.QtWidgets import (
+    QHBoxLayout,
+    QWidget
+)
 
 from .toggles import ToggleIconLabel
 from .editable_label import EditableLabel

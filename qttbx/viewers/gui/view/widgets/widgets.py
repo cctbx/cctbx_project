@@ -3,13 +3,24 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 
 from PySide2.QtCore import QObject, QPoint, QTimer, Qt, Signal
-from PySide2.QtWidgets import QComboBox, QDialog, QHBoxLayout, QLabel, QListView, QStyle, QStyleOptionComboBox, QTextEdit, QVBoxLayout, QWidget, QWidget
-from PySide2.QtWidgets import  QVBoxLayout, QWidget,  QSlider
 from PySide2.QtGui import QMouseEvent, QPainter
 from PySide2.QtGui import QCursor
-from PySide2.QtWidgets import QApplication
-from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
-
+from PySide2.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListView,
+    QPushButton,
+    QSlider,
+    QStyle,
+    QStyleOptionComboBox,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget
+)
 
 _active_toasts = []
 

@@ -5,10 +5,12 @@ from pathlib import Path
 
 from flask import Flask, request, jsonify
 from PySide2.QtGui import QIcon
-from PySide2.QtWidgets import QApplication, QApplication
-from PySide2.QtWidgets import QApplication, QDialog, QMessageBox
 from PySide2.QtCore import QObject, Qt, Signal
-
+from PySide2.QtWidgets import (
+    QApplication,
+    QDialog,
+    QMessageBox
+)
 from iotbx.data_manager import DataManager
 
 from ..view.apps.main import ViewerGUIView

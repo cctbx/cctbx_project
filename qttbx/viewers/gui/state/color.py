@@ -1,3 +1,4 @@
+
 import matplotlib.colors as mcolors
 
 class Color:

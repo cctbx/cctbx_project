@@ -1,12 +1,27 @@
 from pathlib import Path
 
 import qtawesome as qta
-from PySide2.QtWidgets import QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
-from PySide2.QtWidgets import QSpacerItem,QLayoutItem, QApplication, QWidget, QVBoxLayout, QListWidget, QListWidgetItem, QLabel, QScrollArea
 from PySide2.QtGui import QIcon
 from PySide2.QtCore import Qt, QEvent
 from PySide2.QtCore import QObject, Signal
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QApplication,
+    QComboBox,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLayoutItem,
+    QListWidget,
+    QListWidgetItem,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout,
+    QWidget
+)
 
 from .history_line_edit import HistoryLineEdit
 

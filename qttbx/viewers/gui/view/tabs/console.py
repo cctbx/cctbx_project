@@ -7,11 +7,12 @@ except:
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 
-from PySide2.QtWidgets import QVBoxLayout
 from PySide2.QtCore import Slot
-from PySide2.QtWidgets import QVBoxLayout,QLineEdit, QPlainTextEdit
-from PySide2.QtCore import Slot
-
+from PySide2.QtWidgets import (
+    QLineEdit,
+    QPlainTextEdit,
+    QVBoxLayout
+)
 from ..widgets.tab import GUITab
 
 class JSConsoleTab(GUITab):

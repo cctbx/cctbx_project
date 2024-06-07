@@ -1,4 +1,3 @@
-
 from PySide2.QtCore import QObject
 
 from .controller import Controller

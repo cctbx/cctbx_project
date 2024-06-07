@@ -1,4 +1,5 @@
 
+
 from __future__ import absolute_import, division, print_function
 
 
@@ -11,20 +12,15 @@ import os
 import random
 import requests
 from typing import Optional
-
 import subprocess
 import sys
 import time
-
 try:
   from urllib.parse import urlencode
 except ImportError:
   from urllib import urlencode
 
 from libtbx.utils import Sorry
-
-
-
 from qttbx.viewers import ModelViewer
 
 

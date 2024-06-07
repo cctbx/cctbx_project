@@ -1,6 +1,10 @@
-from PySide2.QtWidgets import QMainWindow, QTabBar, QTabWidget
 from PySide2.QtCore import Qt, QMimeData, Signal
 from PySide2.QtGui import QGuiApplication, QDrag, QCursor
+from PySide2.QtWidgets import (
+    QMainWindow,
+    QTabBar,
+    QTabWidget
+)
 
 # Keep track of active toasts at module level
 _active_toasts = []

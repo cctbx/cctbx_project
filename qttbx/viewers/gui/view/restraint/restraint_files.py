@@ -1,8 +1,14 @@
 from pathlib import Path
 
-from PySide2.QtWidgets import QVBoxLayout
-from PySide2.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QSpacerItem, QSizePolicy
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout
+)
 
 from ..widgets.tab import GUITab
 from ..widgets.tab import GUITab

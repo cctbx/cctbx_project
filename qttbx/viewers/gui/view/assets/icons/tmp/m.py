@@ -1,3 +1,4 @@
+
 from PIL import Image, ImageDraw
 
 def draw_stylized_mandelbrot(draw, size):

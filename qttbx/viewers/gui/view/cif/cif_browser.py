@@ -1,7 +1,13 @@
 from pathlib import Path
 
-from PySide2.QtWidgets import QComboBox, QFrame, QHBoxLayout, QPushButton, QVBoxLayout
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QComboBox,
+    QFrame,
+    QHBoxLayout,
+    QPushButton,
+    QVBoxLayout
+)
 
 from ..table import PandasTableView
 from ..widgets.tab import GUITab

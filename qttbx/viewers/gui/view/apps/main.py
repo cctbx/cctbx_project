@@ -1,7 +1,6 @@
-
 from PySide2.QtCore import Signal
-from PySide2.QtWidgets import QMainWindow
 from PySide2.QtGui import QGuiApplication
+from PySide2.QtWidgets import QMainWindow
 
 from ..tabs.viewer_molstar import ViewerTabView
 from ..tabs.console import JupyterTabWidget, JSConsoleTab

@@ -1,4 +1,9 @@
-from PySide2.QtWidgets import QWidget, QGridLayout, QTableView, QComboBox
+from PySide2.QtWidgets import (
+    QComboBox,
+    QGridLayout,
+    QTableView,
+    QWidget
+)
 
 from ..widgets import ClickableHistogramSeaborn
 from ..tabs.preprocess import PreprocessTab

@@ -1,8 +1,15 @@
 from pathlib import Path
 
-from PySide2.QtWidgets import QWidget, QFrame, QSizePolicy, QVBoxLayout,QHBoxLayout, QPushButton
 from PySide2.QtGui import QIcon
 from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QPushButton,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget
+)
 
 from .history_line_edit import HistoryLineEdit
 from .widgets import NoCheckComboBox

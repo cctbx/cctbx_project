@@ -1,13 +1,16 @@
-
 from functools import partial
 from dataclasses import replace
 import platform
 import subprocess
 from pathlib import Path
 
-from PySide2.QtWidgets import QFileDialog, QColorDialog
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QMenu, QPushButton
+from PySide2.QtWidgets import (
+    QColorDialog,
+    QFileDialog,
+    QMenu,
+    QPushButton
+)
 
 from ..view.models import ModelEntryView
 from .scroll_entry import ScrollEntryController

@@ -1,11 +1,16 @@
 from dataclasses import replace
 
-from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
-from PySide2.QtWidgets import QMessageBox
-from PySide2.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout
-from PySide2.QtWidgets import QVBoxLayout
 from PySide2.QtGui import QCursor
-from PySide2.QtWidgets import QApplication
+from PySide2.QtWidgets import (
+    QApplication,
+    QDialog,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout
+)
 
 from ..controller import Controller
 

@@ -1,12 +1,16 @@
 """
 An attempt to make a circular progress indicator. Does not work yet.
 """
+from pathlib import Path
 
-from PySide2.QtWidgets import QGraphicsView, QGraphicsScene, QVBoxLayout, QDialog
 from PySide2.QtCore import QTimer
 from PySide2.QtSvg import QGraphicsSvgItem
-
-from pathlib import Path
+from PySide2.QtWidgets import (
+    QDialog,
+    QGraphicsScene,
+    QGraphicsView,
+    QVBoxLayout
+)
 
 class CircularProgressIndicator(QDialog):
   def __init__(self):

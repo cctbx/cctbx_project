@@ -1,6 +1,12 @@
-from PySide2.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenu, QAction
 from PySide2.QtCore import Slot
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QAction,
+    QMenu,
+    QPushButton,
+    QVBoxLayout,
+    QWidget
+)
 
 from pathlib import Path
 

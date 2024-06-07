@@ -1,5 +1,8 @@
 from PySide2.QtCore import Qt, Signal
-from PySide2.QtWidgets import QMenu, QVBoxLayout
+from PySide2.QtWidgets import (
+    QMenu,
+    QVBoxLayout
+)
 
 from ..table import PandasTableView
 from ..widgets.tab import GUITab

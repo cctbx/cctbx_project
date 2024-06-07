@@ -1,5 +1,10 @@
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QLabel, QLineEdit, QWidget, QVBoxLayout, QWidget, QVBoxLayout,QVBoxLayout, QLabel, QLineEdit
+from PySide2.QtWidgets import (
+    QLabel,
+    QLineEdit,
+    QVBoxLayout,
+    QWidget
+)
 
 class DefocusLineEdit(QLineEdit):
   def __init__(self,parent=None,text=''):

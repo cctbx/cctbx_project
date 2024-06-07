@@ -1,7 +1,12 @@
 import subprocess
 
 from PySide2.QtCore import QObject, QEvent, QSize
-from PySide2.QtWidgets import QWidget,QDialog, QVBoxLayout, QPushButton
+from PySide2.QtWidgets import (
+    QDialog,
+    QPushButton,
+    QVBoxLayout,
+    QWidget
+)
 
 class GlobalEventFilter(QObject):
   def eventFilter(self, watched, event):

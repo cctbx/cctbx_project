@@ -1,6 +1,10 @@
-from PySide2.QtWidgets import QMenu, QPushButton, QVBoxLayout
 from PySide2.QtCore import Qt, Signal
-from PySide2.QtWidgets import (QHBoxLayout, QVBoxLayout, QPushButton)
+from PySide2.QtWidgets import (
+    QHBoxLayout,
+    QMenu,
+    QPushButton,
+    QVBoxLayout
+)
 
 from ..widgets.tab import GUITab
 from ..table import PandasTableView

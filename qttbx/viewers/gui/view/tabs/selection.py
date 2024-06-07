@@ -1,7 +1,10 @@
 from pathlib import Path
 
-from PySide2.QtWidgets import QVBoxLayout, QPushButton
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QPushButton,
+    QVBoxLayout
+)
 
 from ..widgets.tab import GUITab
 from ..widgets.scroll_list import ScrollableListView

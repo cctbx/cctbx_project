@@ -1,4 +1,11 @@
-from PySide2.QtWidgets import QSizePolicy, QVBoxLayout, QPushButton, QSpacerItem, QLabel, QLineEdit
+from PySide2.QtWidgets import (
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QSizePolicy,
+    QSpacerItem,
+    QVBoxLayout
+)
 
 from ..widgets.tab import GUITab
 from ..widgets.selection_controls import SelectionControlsView

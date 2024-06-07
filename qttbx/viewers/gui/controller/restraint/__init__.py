@@ -1,5 +1,3 @@
-
-
 from ..controller import Controller
 from .restraint_browser import RestraintBrowserController
 from .restraint_files import RestraintFileListController

@@ -1,7 +1,10 @@
 from pathlib import Path
 import time
 
-from PySide2.QtWidgets import QFileDialog, QMessageBox
+from PySide2.QtWidgets import (
+    QFileDialog,
+    QMessageBox
+)
 
 from ..view.maps import MapEntryView
 from .scroll_entry import ScrollEntryController

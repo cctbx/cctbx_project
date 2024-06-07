@@ -1,7 +1,12 @@
 from pathlib import Path
 
-from PySide2.QtWidgets import QHBoxLayout, QFrame, QLabel, QPushButton
 from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton
+)
 
 from .widgets.scroll_list import ScrollableListView
 from .widgets.scroll_entry import ScrollEntryView

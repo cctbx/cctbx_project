@@ -1,6 +1,10 @@
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QWidget, QVBoxLayout, QScrollArea
 from PySide2.QtGui import QPalette, QColor
+from PySide2.QtWidgets import (
+    QScrollArea,
+    QVBoxLayout,
+    QWidget
+)
 
 class CustomScrollArea(QScrollArea):
   def __init__(self, widget, parent=None):

@@ -1,6 +1,9 @@
-from PySide2.QtWidgets import QPushButton, QLabel
 from PySide2.QtGui import QIcon
 from PySide2.QtCore import Slot, Signal
+from PySide2.QtWidgets import (
+    QLabel,
+    QPushButton
+)
 
 class ToggleIconButton(QPushButton):
   def __init__(self, on_path, off_path, parent=None):

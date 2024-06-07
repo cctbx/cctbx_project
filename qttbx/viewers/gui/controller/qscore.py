@@ -1,7 +1,7 @@
 import pandas as pd
 
-from PySide2.QtWidgets import QApplication
 from PySide2 import QtCore
+from PySide2.QtWidgets import QApplication
 
 from iotbx.data_manager import DataManager
 from cctbx.programs.qscore import Program as QscoreProgram

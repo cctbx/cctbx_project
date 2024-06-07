@@ -1,4 +1,5 @@
 
+
 from PySide2.QtCore import Signal
 
 from ..widgets.tab import GUITabWidget

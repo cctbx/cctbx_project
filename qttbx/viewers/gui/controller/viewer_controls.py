@@ -5,9 +5,12 @@ import subprocess
 import numpy as np
 from PySide2.QtCore import Slot
 from PySide2.QtCore import Slot
-from PySide2.QtWidgets import QFileDialog
-from PySide2.QtWidgets import QMenu, QPushButton
 from PySide2.QtCore import Qt
+from PySide2.QtWidgets import (
+    QFileDialog,
+    QMenu,
+    QPushButton
+)
 
 from .controller import Controller
 from ..state.ref import SelectionRef
