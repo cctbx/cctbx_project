@@ -1,25 +1,26 @@
 import json
 import re
-import pandas as pd
-import numpy as np
-import networkx as nx
 from collections import defaultdict
-from iotbx.pdb import common_residue_names_get_class
-from iotbx.pdb.utils import all_label_asym_ids
-from iotbx.pdb import hierarchy
-from .cif_io import CifInput
+
+import networkx as nx
+import numpy as np
+import pandas as pd
+
 from cctbx.array_family import flex
+from iotbx.pdb import common_residue_names_get_class, hierarchy
+from iotbx.pdb.utils import all_label_asym_ids
 from libtbx.test_utils import approx_equal
+
+from .cif_io import CifInput
+from .parameters import params
 from .selection import PhenixParser, Selection
 from .selection_utils import (
-  df_nodes_group_to_query,
-  find_simplest_selected_nodes,
-  form_simple_str_common,
-  SelConverterPhenix,
+    SelConverterPhenix,
+    df_nodes_group_to_query,
+    find_simplest_selected_nodes,
+    form_simple_str_common,
 )
-from .parameters import params
 
-import pandas as pd
 
 """
 AtomSites subclasses pandas DataFrame. 

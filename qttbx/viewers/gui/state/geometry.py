@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pandas as pd
 
-
 from mmtbx.geometry_restraints.geo_file_parsing import (
   parse_geo_file
 )
+
 from .base import DataClassBase
 
 geometry_names = [

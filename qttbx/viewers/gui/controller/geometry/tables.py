@@ -1,4 +1,4 @@
-
+import pandas as pd
 
 from ..filter import TableFilterController
 from ..table import TableController
@@ -22,7 +22,7 @@ from ...state.ref import (
 
 )
 
-import pandas as pd
+
 
 """
 Controller for a Pandas Table in geometry

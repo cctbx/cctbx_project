@@ -1,14 +1,10 @@
-#from lastmol import LastMol # TODO: Remove
-from atom_sites import AtomSites
-from iotbx.data_manager import DataManager
 import random
+
 import numpy as np
-try:
-  from tqdm import tqdm
-  
-except ImportError:
-  def tqdm(iterable, *args, **kwargs):
-    return iterable
+
+from iotbx.data_manager import DataManager
+
+from atom_sites import AtomSites
 
 
 # A fundamental concept here is that integer selections are NEVER trustworthy between objects.

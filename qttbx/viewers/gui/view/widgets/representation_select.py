@@ -1,8 +1,9 @@
+from pathlib import Path
+
 from PySide2.QtWidgets import QWidget, QVBoxLayout, QPushButton, QMenu, QAction
 from PySide2.QtCore import Slot
 from PySide2.QtGui import QIcon
 
-from pathlib import Path
 
 class RepresentationSelect(QWidget):
   def __init__(self,parent=None):

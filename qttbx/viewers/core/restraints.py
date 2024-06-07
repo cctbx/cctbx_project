@@ -1,18 +1,19 @@
-from cctbx.array_family import flex
 import sys
+
 import pandas as pd
+
 from cctbx import geometry_restraints
+from cctbx.array_family import flex
+from cctbx import crystal
+from cctbx.crystal import special_position_settings
 import mmtbx
 from mmtbx.monomer_library.pdb_interpretation import (
 geometry_restraints_proxy_registries,
 ener_lib_as_nonbonded_params,
 master_params,
 )
-from .experimental_interpret import (
-  DummySourceInfo,
-)
-from cctbx import crystal
-from cctbx.crystal import special_position_settings
+
+from .experimental_interpret import DummySourceInfo
 from .views import ModelView
 
 def make_proxies(model=None,

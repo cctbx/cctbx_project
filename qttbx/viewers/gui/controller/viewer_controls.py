@@ -1,21 +1,21 @@
-from PySide2.QtCore import Slot
 from pathlib import Path
 import platform
 import subprocess
+
 import numpy as np
-from .controller import Controller
-from ..state.ref import SelectionRef
-from ..view.widgets.viewer_controls import SearchSelectDialog
+from PySide2.QtCore import Slot
 from PySide2.QtCore import Slot
 from PySide2.QtWidgets import QFileDialog
 from PySide2.QtWidgets import QMenu, QPushButton
-
 from PySide2.QtCore import Qt
+
+from .controller import Controller
+from ..state.ref import SelectionRef
+from ..view.widgets.viewer_controls import SearchSelectDialog
 from ..state.ref import GeometryRef, RestraintsRef, SelectionRef
 from ..state.geometry import Geometry
 from ..state.restraint import Restraints
 from ..state.base import ObjectFrame
-
 from .geometry.tables import GeometryTableTabController
 from ..view.widgets import (
   BondEditDialog

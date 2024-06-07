@@ -1,3 +1,6 @@
+from PySide2.QtWidgets import QApplication
+from PySide2.QtCore import QEvent
+
 
 from ..selection import SelectionTabController
 from ..molstar_controller import MolstarController
@@ -6,10 +9,6 @@ from ..restraint_edits.top_tab import EditsTableTopTabController
 from ..cif import CifTabController
 from ..restraint import RestraintTabController
 from ..controller import Controller
-
-
-from PySide2.QtWidgets import QApplication
-from PySide2.QtCore import QEvent
 
 
 class ViewerGUIController(Controller):

@@ -1,10 +1,11 @@
+from pathlib import Path
 from PySide2.QtWidgets import QVBoxLayout
+
+from PySide2.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton)
+from PySide2.QtGui import QIcon
 
 from ..widgets.tab import GUITab
 from ..widgets.scroll_list import ScrollableListView
-from PySide2.QtWidgets import (QHBoxLayout, QVBoxLayout, QLabel, QPushButton)
-from PySide2.QtGui import QIcon
-from pathlib import Path
 
 class DataTabView(GUITab):
   def __init__(self,parent=None):

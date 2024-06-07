@@ -1,27 +1,16 @@
 from __future__ import absolute_import, division, print_function
-
-
 import requests
 from pathlib import Path
-import time
 import json
 import tempfile
 import os
 import requests
 from typing import Optional
-
 import subprocess
 import time
 
-try:
-  pass
-except ImportError:
-  pass
 
 from libtbx.utils import Sorry
-
-
-
 from qttbx.viewers import ModelViewer
 from .server_utils import find_open_port
 

@@ -1,16 +1,11 @@
 from PySide2.QtWidgets import QVBoxLayout
-# DEBUG: Trying to switch to pyside2 version of qtconsole
-import sys
-sys.path.append("/Users/user/Desktop/pyside2_convert/qtconsole_pyside2")
-from qtconsole.rich_jupyter_widget import RichJupyterWidget
-from qtconsole.inprocess import QtInProcessKernelManager
-
 from PySide2.QtCore import Slot
 from PySide2.QtWidgets import QVBoxLayout,QLineEdit, QPlainTextEdit
 from PySide2.QtCore import Slot
 
+from ...qtconsole.rich_jupyter_widget import RichJupyterWidget
+from ...qtconsole.inprocess import QtInProcessKernelManager
 from ..widgets.tab import GUITab
-#from ..widgets import Toast, _active_toasts
 
 class JSConsoleTab(GUITab):
   def __init__(self, parent=None,web_view=None):

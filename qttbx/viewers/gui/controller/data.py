@@ -1,9 +1,9 @@
+from pathlib import Path
+
+from PySide2.QtWidgets import QFileDialog
 
 from .scroll_list import ScrollableListController
 from .controller import Controller
-
-from pathlib import Path
-from PySide2.QtWidgets import QFileDialog
 
 
 class DataTabController(Controller):

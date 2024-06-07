@@ -6,22 +6,21 @@ from pathlib import Path
 import json
 import os
 from dataclasses import dataclass
-from .base import DataClassBase
 from typing import Dict
 
+import networkx as nx
 from PySide2.QtCore import QObject, Signal
 from PySide2.QtWidgets import QMessageBox
 
 from iotbx.data_manager import DataManager
-import networkx as nx
 
+from .base import DataClassBase
 from .reference import Reference
 from .structure import Structure
 from .component import Component
 from .representation import Representation
 from .reference import Reference
-from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef, RestraintRef, RestraintsRef
-from .results import ResultsRef
+from .ref import Ref,ModelRef,MapRef,SelectionRef, GeometryRef,  CifFileRef, EditsRef, RestraintRef, RestraintsRef, ResultsRef
 from ...core.python_utils import DotDict
 from ...core.selection import Selection
 from .data import MolecularModelData, RealSpaceMapData

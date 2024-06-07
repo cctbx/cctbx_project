@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from .base import DataClassBase
+
 @dataclass(frozen=True)
 class Style(DataClassBase):
   iso: float

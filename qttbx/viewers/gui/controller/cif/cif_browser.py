@@ -1,10 +1,10 @@
 from pathlib import Path
+
 import pandas as pd
 from PySide2.QtWidgets import QFileDialog, QLabel
 
 
 from ...state.table import  PandasTableModel
-#from ..view.tabs.cif import add_tabs
 from ....core.pandas_utils import write_cif_file
 from ..table import TableController
 

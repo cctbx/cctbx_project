@@ -4,11 +4,12 @@ from collections import UserDict, defaultdict
 import re
 from pathlib import Path
 
+import pandas as pd
+from pandas.errors import ParserWarning
+
 from iotbx import cif
 from iotbx.cif.builders import crystal_symmetry_builder
 from iotbx.cif.model import block
-import pandas as pd
-from pandas.errors import ParserWarning
 
 from .python_utils import find_key_path, get_value_by_path
 

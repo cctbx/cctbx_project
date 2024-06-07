@@ -1,15 +1,11 @@
 import json
 import re
-from .selection_common import PhenixParser
-from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix, protein_comp_ids
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
-import re
-import json
+from .selection_common import PhenixParser
+from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix, protein_comp_ids
 from .parameters import params
-
-import re
 
 
 @dataclass(frozen=True)

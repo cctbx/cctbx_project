@@ -11,7 +11,12 @@ import uuid
 import hashlib
 import json
 from dataclasses import replace
+from typing import Optional
+
 import pandas as pd
+from PySide2.QtCore import QObject, Signal
+
+from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
 
 from .style import Style
 from ...core.selection import Selection
@@ -20,10 +25,6 @@ from .cif import CifFileData
 from .base import DataClassBase, ObjectFrame
 from .geometry import Geometry
 from ...core.mol import MolDataFrame
-from typing import Optional
-
-from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
-from PySide2.QtCore import QObject, Signal
 
 class RefSignals(QObject):
   """
@@ -719,3 +720,12 @@ class SelectionRef(Ref):
   #       self._label = "file"
 
   #   return self._label
+
+class ResultsRef(Ref):
+  def __init__(self,data: Result):
+    super().__init__(data=data)
+
+    for model_ref in self.data.model_refs:
+      model_ref.results[self.data.program_name] = self
+    for map_ref in self.data.map_refs:
+      map_ref.results[self.data.program_name] = self

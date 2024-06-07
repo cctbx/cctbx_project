@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List, Optional
+
 from .structure import Structure
 from .base import DataClassBase
 

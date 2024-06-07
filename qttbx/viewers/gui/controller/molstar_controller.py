@@ -3,11 +3,9 @@ import time
 from PySide2.QtCore import QTimer
 from PySide2.QtWidgets import QMessageBox
 
-
 from .controller import Controller
 from ...molstar.molstar import MolstarViewer
 from .style import ModelStyleController, MapStyleController
-#from ..controller.selection_controls import SelectionControlsController
 from ..controller.viewer_controls import ViewerControlsController
 from ...core.selection import Selection
 from ..state.ref import SelectionRef

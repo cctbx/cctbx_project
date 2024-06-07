@@ -8,7 +8,6 @@ from ..tabs.console import JupyterTabWidget, JSConsoleTab
 from ..tabs.selection import SelectionsTabView
 from ..cif import CifTabView
 from ..restraint import RestraintTabView
-
 from ..widgets.tab import GUITabWidget
 from ..geometry.top_tab import GeometryTabView
 from ..restraint_edits.top_tab import EditsTabView

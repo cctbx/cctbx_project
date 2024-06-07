@@ -1,7 +1,9 @@
+from collections import defaultdict
+
 import pandas as pd
 import numpy as np
-from collections import defaultdict
 import gemmi
+
 monlib_path = "/Applications/ccp4-8.0/lib/data/monomers/"
 
 def extract_restraint_dataframes_with_gemmi(model):

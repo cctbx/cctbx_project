@@ -5,6 +5,7 @@ from pathlib import Path
 from functools import reduce
 from itertools import zip_longest
 from collections import defaultdict
+
 import pandas as pd
 
 from iotbx import cif

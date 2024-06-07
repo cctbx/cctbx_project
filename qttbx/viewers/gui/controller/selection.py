@@ -1,11 +1,12 @@
-from PySide2.QtWidgets import QMenu
-import numpy as np
 import math
+
+import numpy as np
+from PySide2.QtWidgets import QMenu
 
 from ..state.ref import SelectionRef
 from .models import ModelLikeEntryController
 from ..view.tabs.selection import SelectionEntryView
-from ..view.widgets import InfoDialog
+from ..view.widgets.widgets import InfoDialog
 from .scroll_list import ScrollableListController
 from .controller import Controller
 from ..state.base import ObjectFrame

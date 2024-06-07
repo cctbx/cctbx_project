@@ -2,14 +2,10 @@ from PySide2.QtWidgets import QSizePolicy, QVBoxLayout
 from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
 from PySide2.QtCore import Signal, QEventLoop, QObject
 from PySide2.QtGui import QDragEnterEvent, QDropEvent
-
-
-from ..widgets.tab import GUITab
-#from ..widgets.selection_controls import SelectionControlsView
-from ..widgets.viewer_controls import ViewerControlsView
-
 from PySide2.QtWebEngineWidgets import QWebEngineView
 
+from ..widgets.tab import GUITab
+from ..widgets.viewer_controls import ViewerControlsView
 
 
 class Signals(QObject):

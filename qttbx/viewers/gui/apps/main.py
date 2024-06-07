@@ -2,22 +2,21 @@ import json
 import sys
 import threading
 from pathlib import Path
-#import argparse
 
+from flask import Flask, request, jsonify
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import QApplication, QApplication
 from PySide2.QtWidgets import QApplication, QDialog, QMessageBox
-
 from PySide2.QtCore import QObject, Qt, Signal
 
 from iotbx.data_manager import DataManager
+
 from ..view.apps.main import ViewerGUIView
 from ..controller.apps.main import ViewerGUIController
 from ..state.state import State
 from ...core.selection_utils import Selection, SelectionQuery
 from . import ViewerChoiceDialog, check_program_access
 from ...core.python_utils import DotDict
-from flask import Flask, request, jsonify
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 

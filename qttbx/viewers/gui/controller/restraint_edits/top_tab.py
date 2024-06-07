@@ -1,3 +1,6 @@
+from pathlib import Path
+import webbrowser
+import os
 
 from PySide2.QtWidgets import QFileDialog
 
@@ -9,9 +12,7 @@ from .tables import (
   ChiralTableController,
   PlanarityTableController
 )
-from pathlib import Path
-import webbrowser
-import os
+
 
 
 

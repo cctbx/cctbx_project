@@ -1,8 +1,9 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from ...core.cif_io import CifInput
 
+
+from ...core.cif_io import CifInput
 from .base import DataClassBase
 
 

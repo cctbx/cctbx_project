@@ -3,7 +3,6 @@ from PySide2.QtCore import Qt, Signal
 from PySide2.QtWidgets import QHeaderView, QTableView
 from PySide2.QtGui import QFontMetrics
 from PySide2.QtCore import QModelIndex
-
 from PySide2.QtWidgets import QTableView
 from PySide2.QtWidgets import QHeaderView, QTableView
 

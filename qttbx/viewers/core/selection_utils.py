@@ -1,10 +1,14 @@
 import json
 import re
-import networkx as nx
-import numpy as np
-from .selection_common import PhenixParser
 from dataclasses import dataclass, asdict
 from typing import List, Optional
+
+import networkx as nx
+import numpy as np
+
+from .selection_common import PhenixParser
+
+
 
 """
 Selection API

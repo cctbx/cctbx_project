@@ -1,19 +1,16 @@
-from PySide2.QtWidgets import QMessageBox
+from dataclasses import replace
 
+from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
+from PySide2.QtWidgets import QMessageBox
 from PySide2.QtWidgets import QDialog, QHBoxLayout, QLabel, QVBoxLayout
 from PySide2.QtWidgets import QVBoxLayout
 from PySide2.QtGui import QCursor
-
 from PySide2.QtWidgets import QApplication
 
-
+from ..controller import Controller
 
 _active_toasts = []
 
-from PySide2.QtWidgets import QApplication, QDialog, QLineEdit, QPushButton, QVBoxLayout, QLabel
-
-from ..controller import Controller
-from dataclasses import replace
 
 class InputDialog(QDialog):
   def __init__(self, parent=None,defaults_dict=None):
