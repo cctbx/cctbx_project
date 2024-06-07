@@ -45,6 +45,15 @@ ATOM      5  CB  ALA A   1      -5.882   1.390  11.495  0.49  7.79           C
 ATOM      5  CB AALA A   1      -5.882   1.390  11.495  0.49  7.79           C
 """
 
+pdb_str5 = """
+ATOM      1  N   ALA A   1      -4.898   0.072  13.387  0.49  7.34           N
+ATOM      2  CA  ALA A   1      -4.626   0.703  12.080  0.49  7.71           C
+ATOM      3  C   ALA A   1      -3.475   1.680  12.227  0.49  7.52           C
+ATOM      4  O   ALA A   1      -3.125   2.100  13.335  0.49  7.59           O
+ATOM      5  CB AALA A   1      -5.882   1.390  11.495  0.49  7.79           C
+ATOM      5  CB BALA A   1      -5.882   1.390  11.495  0.49  7.79           C
+"""
+
 def get_h_oc(s):
   h = iotbx.pdb.input(source_info=None, lines=s).construct_hierarchy()
   oc = h.overall_counts()
@@ -130,10 +139,32 @@ def tst4():
   do_value = duplicate_output.getvalue()
   assert not show_diff(do_value, "")
 
+def tst5():
+  """putting whitespace into already created hierarchy results
+  in exactly same behavior as having incorrect one:
+  here we transform good hierarchy into one from tst4 by changing
+  altloc A to ' ' and get the same n_alt_conf_improper == 1."""
+  h, oc = get_h_oc(pdb_str5)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  assert altlocs == ['', 'A', 'B'], altlocs
+  assert oc.n_alt_conf_improper == 0, oc.n_alt_conf_improper
+  assert len(oc.duplicate_atom_labels) == 0, list(oc.duplicate_atom_labels)
+
+  # Now we change altloc A to ' '
+  h.atoms()[-2].parent().altloc = ' '
+  # h.atoms()[-1].parent().altloc = ' '
+
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  assert altlocs == ['', ' ', 'B'], altlocs
+  # print(h.as_pdb_string())
+  oc2 = h.overall_counts()
+  assert oc2.n_alt_conf_improper == 1, oc2.n_alt_conf_improper
+  assert len(oc2.duplicate_atom_labels) == 0, list(oc2.duplicate_atom_labels)
 
 if (__name__ == "__main__"):
   tst1()
   tst2()
   tst3()
   tst4()
+  tst5()
   print("OK")
