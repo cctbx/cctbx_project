@@ -1,6 +1,3 @@
-
-
-#from ..view.tabs.cif import add_tabs
 from ..cif.cif_browser import CifBrowserController
 
 

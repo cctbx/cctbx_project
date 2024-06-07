@@ -6,7 +6,6 @@ import socketserver
 import socket
 import subprocess
 
-
 from PySide2.QtCore import QThread,Signal, Slot
 
 

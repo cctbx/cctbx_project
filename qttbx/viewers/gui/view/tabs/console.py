@@ -1,10 +1,17 @@
+import sys
+from pathlib import Path
+try:
+  sys.path.append("/Users/user/software/phenix/modules/cctbx_project/qttbx/viewers/gui/qtconsole")
+except:
+  pass
+from qtconsole.rich_jupyter_widget import RichJupyterWidget
+from qtconsole.inprocess import QtInProcessKernelManager
+
 from PySide2.QtWidgets import QVBoxLayout
 from PySide2.QtCore import Slot
 from PySide2.QtWidgets import QVBoxLayout,QLineEdit, QPlainTextEdit
 from PySide2.QtCore import Slot
 
-from ...qtconsole.rich_jupyter_widget import RichJupyterWidget
-from ...qtconsole.inprocess import QtInProcessKernelManager
 from ..widgets.tab import GUITab
 
 class JSConsoleTab(GUITab):

@@ -1,9 +1,7 @@
 from PySide2.QtWidgets import QSizePolicy, QVBoxLayout, QPushButton, QSpacerItem, QLabel, QLineEdit
 
-
 from ..widgets.tab import GUITab
 from ..widgets.selection_controls import SelectionControlsView
-
 
 
 class ChimeraXTabView(GUITab):

@@ -3,10 +3,8 @@ from pathlib import Path
 from PySide2.QtWidgets import QComboBox, QFrame, QHBoxLayout, QPushButton, QVBoxLayout
 from PySide2.QtGui import QIcon
 
-
 from ..table import PandasTableView
 from ..widgets.tab import GUITab
-
 
 
 class CifTableView(PandasTableView):

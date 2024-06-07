@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import pandas as pd
+
 from cctbx.array_family import flex
 
 from .pandas_utils import df_to_cif_lines

@@ -6,8 +6,6 @@ from typing import List, Optional
 import networkx as nx
 import numpy as np
 
-from .selection_common import PhenixParser
-
 
 
 """
