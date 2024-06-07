@@ -37,7 +37,7 @@ class data_counter(object):
 
     # rank 0: log data statistics
     if self.mpi_helper.rank == 0 and verbose:
-      max_count = int(log10(max(max(image_count_list), max(reflection_count_list))))
+      max_count = int(log10(max(image_count_list + reflection_count_list)))
       count_fmt = '%' + str(max_count + 1) + 'd'
       self.logger.main_log('Experiments by rank: ' + ', '.join([count_fmt % i for i in experiment_count_list]))
       self.logger.main_log('Images by rank:      ' + ', '.join([count_fmt % i for i in image_count_list]))
