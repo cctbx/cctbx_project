@@ -54,6 +54,9 @@ ATOM      5  CB AALA A   1      -5.882   1.390  11.495  0.49  7.79           C
 ATOM      5  CB BALA A   1      -5.882   1.390  11.495  0.49  7.79           C
 """
 
+pdb_str6 = """
+HETATM 2174  O   HOH S 179      -5.781   7.569   9.276  0.24 14.70           O
+"""
 def get_h_oc(s):
   h = iotbx.pdb.input(source_info=None, lines=s).construct_hierarchy()
   oc = h.overall_counts()
@@ -161,10 +164,30 @@ def tst5():
   assert oc2.n_alt_conf_improper == 1, oc2.n_alt_conf_improper
   assert len(oc2.duplicate_atom_labels) == 0, list(oc2.duplicate_atom_labels)
 
+def tst6():
+  """Putting whitespace into altloc seem to always result
+  in n_alt_conf_improper.
+  """
+  h, oc = get_h_oc(pdb_str6)
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  assert altlocs == [''], altlocs
+  assert oc.n_alt_conf_improper == 0, oc.n_alt_conf_improper
+  assert len(oc.duplicate_atom_labels) == 0, list(oc.duplicate_atom_labels)
+
+  # Now we change altloc A to ' '
+  h.atoms()[0].parent().altloc = ' '
+  altlocs = [ag.altloc for ag in h.only_model().atom_groups()]
+  assert altlocs == [' '], altlocs
+  oc2 = h.overall_counts()
+  assert oc2.n_alt_conf_improper == 1, oc2.n_alt_conf_improper
+  assert len(oc2.duplicate_atom_labels) == 0, list(oc2.duplicate_atom_labels)
+
+
 if (__name__ == "__main__"):
   tst1()
   tst2()
   tst3()
   tst4()
   tst5()
+  tst6()
   print("OK")
