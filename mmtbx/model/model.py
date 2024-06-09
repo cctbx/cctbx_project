@@ -472,6 +472,24 @@ class manager(object):
       filename = None
     return filename
 
+  def distances_symmetric(self, other):
+    """
+    Min distances between matching atoms accounting for pseudo-symmetric
+    residues. Slow.
+    """
+    assert self.size() == other.size()
+    atoms_1 = self.get_hierarchy().atoms()
+    atoms_2 = other.get_hierarchy().atoms()
+    result = flex.double()
+    for i, ai in enumerate(atoms_1):
+      dbest = 1.e9
+      for j, aj in enumerate(atoms_2):
+        d = ai.distance(aj)
+        if d<dbest:
+          dbest=d
+      result.append(dbest)
+    return result
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
