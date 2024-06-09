@@ -321,9 +321,13 @@ def find_peaks_holes(
     f_map_.apply_sigma_scaling()
     f_map = f_map_.real_map()
   make_header("Positive difference map peaks", out=out)
+  coeffs = fmodel.electron_density_map().map_coefficients(
+    map_type     = "mFo-DFc",
+    fill_missing = False,
+    isotropize   = False)
   peaks_result = find_peaks.manager(
-    fmodel=fmodel,
-    map_type="mFo-DFc",
+    map_coeffs = coeffs,
+    xray_structure = fmodel.xray_structure,
     map_cutoff=map_cutoff,
     params=params,
     log=out)
@@ -342,9 +346,13 @@ def find_peaks_holes(
   print("", file=out)
   out.flush()
   make_header("Negative difference map holes", out=out)
+  coeffs = fmodel.electron_density_map().map_coefficients(
+    map_type     = "mFo-DFc",
+    fill_missing = False,
+    isotropize   = False)
   holes_result = find_peaks.manager(
-    fmodel=fmodel,
-    map_type="mFo-DFc",
+    map_coeffs = coeffs,
+    xray_structure = fmodel.xray_structure,
     map_cutoff=-map_cutoff,
     params=params,
     log=out)
