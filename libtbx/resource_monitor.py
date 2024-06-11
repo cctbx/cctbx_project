@@ -95,7 +95,11 @@ class ResourceStats:
     return self.__class__(*(self.vector / other))  # noqa
 
 
-class ResourceStatsHistory(UserDict[datetime, ResourceStats]):
+try:
+  _UD = UserDict[datetime, ResourceStats]
+except TypeError:
+  _UD = UserDict # Needed for PyVer < 3.9
+class ResourceStatsHistory(_UD):
   """Store and easily handle a dictionary of datetime-ResourceStats pairs"""
 
   @classmethod
