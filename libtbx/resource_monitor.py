@@ -26,8 +26,19 @@ import numpy as np
 from libtbx.mpi4py import MPI
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~ TYPING AND UTILITY ~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
+
+
 comm = MPI.COMM_WORLD
 PathLike = Union[str, bytes, os.PathLike]
+
+
+def _mkdir_if_missing(path: PathLike) -> None:
+  path: Path = Path(path)
+  if comm.rank == 0:
+    if dir_name := Path(path).parent:
+      dir_name.mkdir(parents=True, exist_ok=True)
+  comm.barrier()
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ LOGGING ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
@@ -46,9 +57,9 @@ class ResourceLogManager:
   def __init__(self, logger_name: str) -> None:
     self.log = logging.getLogger(logger_name)
 
-  def get_file_logger(self, file_name: str) -> logging.Logger:
+  def get_file_logger(self, file_path: PathLike) -> logging.Logger:
     self.log.setLevel(logging.DEBUG)
-    file_handler = logging.FileHandler(filename=file_name)
+    file_handler = logging.FileHandler(filename=file_path)
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(self.formatter)
     self.log.addHandler(file_handler)
@@ -323,10 +334,11 @@ class ResourceMonitor(ContextDecorator):
     self.detail: 'ResourceMonitor.Detail' = self.Detail(detail)
     self.period: float = period  # <5 sec. de-prioritizes sub-procs & they stop
     self.plot: bool = plot
-    self.prefix: str = prefix if prefix else 'monitor'
+    self.prefix: PathLike = prefix if prefix else 'monitor'
     self.write: bool = write
     self.rank_info: RankInfo = RankInfo()
-    logger_name = 'libtbx.resource_monitor.' + self.prefix
+    _mkdir_if_missing(prefix)
+    logger_name = 'libtbx.resource_monitor.' + Path(self.prefix).name
     self.log_manager = ResourceLogManager(logger_name)
     self.log: logging.Logger = self.get_logger()
     self.log.info(f'Collecting CPU stats with {self.rank_info.cpu_probe.kind=}')
