@@ -447,7 +447,6 @@ class ResourceStatsArtist:
            resource_stats_histories: Iterable[ResourceStatsHistory],
            save_path: PathLike = None,
            ) -> None:
-    plt.rcParams.update({'font.size': 16})  # default is 10
     axes = self.ax_cu, self.ax_cm, self.ax_gu, self.ax_gm
     stats = ['cpu_usage', 'cpu_memory', 'gpu_usage', 'gpu_memory']
     labels = ['CPU usage', 'CPU memory', 'GPU usage', 'GPU memory']
@@ -456,10 +455,11 @@ class ResourceStatsArtist:
       color = self.colormap(i % self.colormap_period)
       for ax, stat in zip(axes, stats):
         ax.plot(minutes, rsh.get_stats_array(stat), color=color)
-    self.ax_gm.set_xlabel('Time since first probe [min]')
+    self.ax_gm.set_xlabel('Time since first probe [min]', fontsize=12)
     for ax, label in zip(axes, labels):
       ax.grid(True)
-      ax.set_ylabel(label + ' [%]')
+      ax.tick_params(axis='both', which='major', labelsize=12)
+      ax.set_ylabel(label + ' [%]', fontsize=12)
     if save_path:
       self.fig.savefig(f'{save_path}')
     else:
