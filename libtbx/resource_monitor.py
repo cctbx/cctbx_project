@@ -454,6 +454,7 @@ class ResourceStatsArtist:
         ax.plot(minutes, rsh.get_stats_array(stat), color=color)
     self.ax_gm.set_xlabel('Time since first probe [min]')
     for ax, label in zip(axes, labels):
+      ax.grid(True)
       ax.set_ylabel(label + ' [%]')
     if save_path:
       self.fig.savefig(f'{save_path}')
