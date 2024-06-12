@@ -431,6 +431,7 @@ class ResourceStatsArtist:
            resource_stats_histories: Iterable[ResourceStatsHistory],
            save_path: PathLike = None,
            ) -> None:
+    plt.rcParams.update({'font.size': 16})  # default is 10
     axes = self.ax_cu, self.ax_cm, self.ax_gu, self.ax_gm
     stats = ['cpu_usage', 'cpu_memory', 'gpu_usage', 'gpu_memory']
     labels = ['CPU usage', 'CPU memory', 'GPU usage', 'GPU memory']
