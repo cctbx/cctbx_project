@@ -1060,12 +1060,10 @@ class manager(Base_geometry):
           max_p_distance = distance_model
       bonded_distance_cutoff = max(bonded_distance_cutoff,
           max_p_distance)
-    bonded_distance_cutoff = max(
-        [existing_max_bonded_distance,
-        max_p_distance,
-        max_distance_between_connecting_atoms])
     bonded_distance_cutoff = min(bonded_distance_cutoff,
         max_distance_between_connecting_atoms)+0.1
+    bonded_distance_cutoff = max(bonded_distance_cutoff,
+        existing_max_bonded_distance)
     t2 = time.time()
     # print("bonded_distance_cutoff", bonded_distance_cutoff)
     # make asu mappings

@@ -338,7 +338,7 @@ def exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib):
   assert not geometry.is_bonded_atoms(0,3)
   assert not geometry.is_bonded_atoms(3,0)
   # DL: this will fail
-  #geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart())
+  geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart())
   # DL: this works
   geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
     max_distance_between_connecting_atoms=10)
@@ -370,9 +370,10 @@ def exercise_add_super_long_bond(mon_lib_srv, ener_lib):
       max_distance_between_connecting_atoms=5)
   assert not geometry.is_bonded_atoms(0,1)
   assert not geometry.is_bonded_atoms(1,0)
-  # !!! This will fail, but should not. Left for future investigation.
-  # geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
-  #     max_distance_between_connecting_atoms=30)
+  geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
+      max_distance_between_connecting_atoms=30)
+  assert geometry.is_bonded_atoms(0,1)
+  assert geometry.is_bonded_atoms(1,0)
 
 def exercise_bond_near_symmetry(mon_lib_srv, ener_lib):
   """ Making bond near symmetry mate:
