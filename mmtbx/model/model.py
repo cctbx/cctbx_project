@@ -1942,13 +1942,6 @@ class manager(object):
   def input_model_format_pdb(self):
     return self._original_model_format == "pdb"
 
-  def model_as_str(self, output_cs=True):
-    if(  self.input_model_format_cif()):
-      return self.model_as_mmcif(output_cs=output_cs)
-    elif(self.input_model_format_pdb()):
-      return self.model_as_pdb(output_cs=output_cs)
-    else: raise RuntimeError("Model source is unknown.")
-
   def get_current_pdb_interpretation_params(self):
     if(self._pdb_interpretation_params is not None):
       return self._pdb_interpretation_params
