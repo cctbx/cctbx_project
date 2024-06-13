@@ -962,6 +962,8 @@ class _():
      segid_as_auth_segid = True):
     """
     Generate corresponding pdb.input object.
+    Note that this uses a text representation of the hierarchy so that
+    values for xyz, occ, b, and crystal_symmetry are all rounded.
     """
     import iotbx.pdb
     if self.fits_in_pdb_format():
@@ -993,11 +995,22 @@ class _():
        unit_cell_crystal_symmetry = None,
        shift_cart = None):
     ''' Returns simple version of model object based on this hierarchy
-     Requires crystal_symmetry.  Optional unit_cell_crystal_symmetry and
-     shift_cart
+     Expects but does not require crystal_symmetry.
+     Optional unit_cell_crystal_symmetry and shift_cart.
+
+     Note that if crystal_symmetry is not supplied,
+     this uses a text representation of the hierarchy so that
+     values for xyz, occ, b, and crystal_symmetry are all rounded.
      '''
     import mmtbx.model
-    mm = mmtbx.model.manager(
+    if crystal_symmetry: # usual
+      mm = mmtbx.model.manager(
+          model_input = None, # REQUIRED
+          pdb_hierarchy = self,
+          crystal_symmetry = crystal_symmetry,
+          )
+    else:  # usual, make a deep_copy and supply as_pdb_input:
+      mm = mmtbx.model.manager(
           model_input = self.deep_copy().as_pdb_input(),
           crystal_symmetry = crystal_symmetry,
           )

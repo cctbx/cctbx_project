@@ -9,6 +9,8 @@ import scitbx.math
 import mmtbx.idealized_aa_residues.rotamer_manager
 import collections
 from libtbx import group_args
+from collections import OrderedDict
+from scitbx.matrix import rotate_point_around_axis
 
 import boost_adaptbx.boost.python as bp
 from six.moves import range
@@ -92,6 +94,184 @@ class monitor(object):
         for k_,v_ in zip(v.vals.keys(), v.vals.values())])
       print("  %7s: score: %7.3f %s %s"%(k, v.target, vals, v.rot), file=self.log)
 
+def find_peak(angles, values, threshold):
+  peaks = []
+  s = len(values)
+  #print("looking at peaks", s)
+  for i, a in enumerate(angles):
+    v = values[i]
+    if v < threshold: continue
+    ip1 = i+1 if i+1 < s else abs(s-(i+1))
+    ip2 = i+2 if i+2 < s else abs(s-(i+2))
+    ip3 = i+3 if i+3 < s else abs(s-(i+3))
+    vip1 = values[ip1]
+    vip2 = values[ip2]
+    vip3 = values[ip3]
+    im1 = i-1
+    im2 = i-2
+    im3 = i-3
+    vim1 = values[im1]
+    vim2 = values[im2]
+    vim3 = values[im3]
+    #print("   ", a, v, "|", vim1,vim2,vim3,  vip1,vip2,vip3)
+    stop = False
+    for vv in [vip1,vip2,vip3, vim1,vim2,vim3]:
+      if vv < threshold: stop=True
+    if stop: continue
+    fl=vim1<v and vim2<vim1 and vim3<vim2 and  vip1<v and vip2<vip1 and vip3<vip2
+    #print(fl, "<>", vim1<v , vim2<vim1 , vim3<vim2 ,  vip1<v , vip2<vip1 , vip3<vip2)
+    if(fl):
+      peaks.append(a)
+  return peaks
+
+class find_all_conformers(object):
+
+  def __init__(self, residue, map_data, mon_lib_srv, unit_cell, threshold,
+                     rotamer_evaluator):
+    adopt_init_args(self, locals())
+    sites_cart = residue.atoms().extract_xyz()
+    self.side_chain_selection = flex.size_t()
+    for a in residue.atoms():
+      if a.name.strip().upper() in ["CA","O","C","N","CB"]: continue
+      if a.element_is_hydrogen(): continue
+      self.side_chain_selection.append(a.i_seq)
+    #
+    self.target_start, _ = self._get_target(sites_cart)
+    #
+    co = mmtbx.refinement.real_space.aa_residue_axes_and_clusters(
+      residue         = residue,
+      mon_lib_srv     = mon_lib_srv,
+      backbone_sample = False)
+    clusters = co.clusters
+    self.rsr_eval_selection = co.rsr_eval_selection
+
+    #print()
+    #print(residue.resname, residue.resseq)
+    #print("hd_selection", list(self.hd_selection))
+    #print("rsr_eval_selection", list(co.rsr_eval_selection))
+    #for c in clusters:
+    #  print(list(c.axis))
+    #  print(list(c.atoms_to_rotate))
+    #
+    self.sites_cart_conformers_all = []
+    last=False
+    for i, cl in enumerate(clusters):
+      if i == len(clusters)-1: last=True
+      if i==0:
+        self.func(cl=cl, sites_cart=sites_cart,  last=last)
+      else:
+        for sites_cart_ in self.sites_cart_conformers_all[:]:
+          self.func(cl=cl, sites_cart=sites_cart_, last=last)
+    #
+    self.rotamers = {}
+    tbest = None
+    tmp = []
+    for sites_cart in self.sites_cart_conformers_all:
+      residue.atoms().set_xyz(sites_cart)
+      rotamer_status = rotamer_evaluator.evaluate_residue(residue)
+      if rotamer_status == "OUTLIER": continue
+      t, vals = self._get_target(sites_cart=sites_cart)
+      #print(rotamer_status, " ".join(["%6.2f"%v for v in vals]))
+      #
+      sel = vals < threshold
+      if sel.count(True)>0: continue
+      #if t<=self.target_start: continue
+      #print(rotamer_status, " ".join(["%6.2f"%v for v in vals]), "<<<<<<<<", t)
+      self.rotamers.setdefault(rotamer_status, []).append([t,sites_cart])
+      tmp.append(sites_cart)
+    self.sites_cart_conformers_all = tmp
+    #
+    #print("rotamers")
+    #for k,v in self.rotamers.items():
+    #  print("      ", k,[vv[0] for vv in v])
+
+    self.unique = {}
+    for k,v in self.rotamers.items():
+      vbest  = -1.e9
+      ssbest = None
+      for it in v:
+        vv, ss = it
+        if vv > vbest:
+          vbest = vv
+          ssbest = ss
+      self.unique[k] = [vbest, ssbest]
+    #print("unique")
+    #for k, v in self.unique.items():
+    #  print("   ", k, v)
+    #
+    self.unique_sorted = None
+
+  def _get_target(self, sites_cart):
+    vals = flex.double()
+    for sc in sites_cart.select(self.side_chain_selection):
+      vals.append(self.map_data.tricubic_interpolation(
+        self.unit_cell.fractionalize(sc)))
+    return flex.mean(vals), vals
+
+  def sorted_by_map_value(self, n=None):
+    tbest=-9999
+    scbest = None
+    if self.unique=={}: return None
+    for k, v in self.unique.items():
+      t = v[0]
+      if t > tbest:
+        tbest = t
+        scbest = v[1].deep_copy()
+    return [scbest]
+
+    #if self.unique_sorted is not None: return self.unique_sorted
+    #self.unique_sorted = OrderedDict()
+    #for k,v in self.unique.items():
+    #  self.unique_sorted[v[0]] = v[1]
+    #self.unique_sorted = OrderedDict(reversed(list(self.unique_sorted.items())))
+    ##for k,v in self.unique_sorted.items():
+    ##  print("LOOK", k,v)
+    #if n is None: return self.unique_sorted
+    #else:
+    #  rv = list(self.unique_sorted.values())[:n]
+    #  return rv
+
+  def func(self, cl, sites_cart, last):
+    if not last: points = [sites_cart[cl.atoms_to_rotate[0]]]
+    else:
+      points = []
+      for i in cl.atoms_to_rotate:
+        if not i in self.rsr_eval_selection: continue
+        points.append(sites_cart[i])
+    angles = flex.double()
+    values = flex.double()
+
+    #print("using axis", list(cl.axis))
+
+    if last and len(points)>1: end=180
+    else:                      end=360
+    for angle in range(0, end, 1):
+      vals = flex.double()
+      for point in points:
+        new_point = rotate_point_around_axis(
+          axis_point_1 = sites_cart[cl.axis[0]],
+          axis_point_2 = sites_cart[cl.axis[1]],
+          point        = point,
+          angle        = angle, deg=True)
+        value = self.map_data.eight_point_interpolation(
+          self.unit_cell.fractionalize(new_point))
+        vals.append(value)
+      #print(angle, flex.mean(vals))
+      angles.append(angle)
+      values.append(flex.mean(vals))
+    peaks = find_peak(angles=angles, values=values, threshold=self.threshold)
+    #print(peaks)
+    for peak in peaks:
+      sites_cart_ = sites_cart.deep_copy()
+      for atom in cl.atoms_to_rotate:
+        new_xyz = rotate_point_around_axis(
+          axis_point_1 = sites_cart_[cl.axis[0]],
+          axis_point_2 = sites_cart_[cl.axis[1]],
+          point        = sites_cart_[atom],
+          angle        = peak, deg=True)
+        sites_cart_[atom] = new_xyz
+      self.sites_cart_conformers_all.append(sites_cart_)
+
 class run(object):
   def __init__(self,
                residue,
@@ -107,6 +287,7 @@ class run(object):
                target_map_for_cb=None,
                backbone_sample=False,
                accept_only_if_max_shift_is_smaller_than=None,
+               trust_map_values_real=True,
                log=None):
     adopt_init_args(self, locals())
     if(self.log is None): self.log = sys.stdout
@@ -259,14 +440,20 @@ class run(object):
       # Ad hoc: S or SE have larger peaks!
       if(self.residue.resname in ["MET","MSE"]): scale=100
       else:                                      scale=3
+      if self.trust_map_values_real:
+        scaleup=1
+        scaledown=1
+      else:
+        scaleup=10000
+        scaledown=0
       moving = ext.moving(
         sites_cart       = self.residue.atoms().extract_xyz(),
         sites_cart_start = sites_cart_start,
         radii            = radii,
         weights          = self.weights,
         bonded_pairs     = self.pairs,
-        ref_map_max      = ref_map_vals * scale,
-        ref_map_min      = ref_map_vals / 10)
+        ref_map_max      = ref_map_vals * scale*scaleup,
+        ref_map_min      = ref_map_vals / 10   *scaledown)
       #
       ro = ext.fit(
         fixed                    = self.xyzrad_bumpers,

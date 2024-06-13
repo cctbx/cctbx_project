@@ -402,20 +402,18 @@ class place_hydrogens():
     pdb_hierarchy = self.model.get_hierarchy()
     mon_lib_srv = self.model.get_mon_lib_srv()
     #XXX This breaks for 1jxt, residue 2, TYR
-    #no_H_placed_resnames = list()
     for m in pdb_hierarchy.models():
       for chain in m.chains():
         for rg in chain.residue_groups():
           n_atom_groups = len(rg.atom_groups())
           for ag in rg.atom_groups():
-            if n_atom_groups == 3 and ag.altloc == '':
+            if n_atom_groups > 2 and ag.altloc == '':
               continue
             #print list(ag.atoms().extract_name())
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
             mlq = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
-            #if (get_class(name=ag.resname) in ['modified_rna_dna', 'other']):
             if mlq is None:
               self.no_H_placed_mlq.append(ag.resname)
               continue
@@ -428,8 +426,10 @@ class place_hydrogens():
                 expected_h.append(k)
               #else:
               #  expected_ha.append(k)
-            # TODO start: temporary fix until v3 names are in mon lib
             #print('expected H', expected_h)
+            #
+            # TODO start
+            # temporary fix until v3 names are in mon lib
             if (get_class(name=ag.resname) in
                 ['common_amino_acid', 'modified_amino_acid', 'd_amino_acid']):
               for altname in alternative_names:
@@ -451,9 +451,6 @@ class place_hydrogens():
             segid = ag.atoms()[0].segid
 
             for mh in missing_h:
-              #if ag.resname == 'PTR' and mh == 'HN2': continue
-              # TODO: this should be probably in a central place
-              # NWM: I have something like this in ready_set_utils
               if len(mh) < 4: mh = (' ' + mh).ljust(4)
               a = (iotbx.pdb.hierarchy.atom()
                 .set_name(new_name=mh)

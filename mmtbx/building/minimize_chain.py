@@ -164,8 +164,9 @@ def get_map_coeffs(
   reflection_file=reflection_file_reader.any_reflection_file(map_coeffs_file)
   miller_arrays=reflection_file.as_miller_arrays()
   for ma in miller_arrays:
-    if not ma.is_complex_array: continue
-    if not map_coeffs_labels or map_coeffs_labels==ma.info().labels[0]:
+    if not ma.is_complex_array(): continue
+    if (not map_coeffs_labels) or map_coeffs_labels==ma.info().labels[0] or \
+       map_coeffs_labels == ",".join(ma.info().labels):
       return ma
   raise Sorry("Unable to find map coeffs in the file %s with labels %s" %(
       map_coeffs_file,str(map_coeffs_labels)))

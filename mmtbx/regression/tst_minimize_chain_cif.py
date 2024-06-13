@@ -582,8 +582,9 @@ def tst_01():
       dist_max=100,
       verbose=True)
 
-  pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
-  xrs=pdb_inp.xray_structure_simple()
+  xrs=hierarchy.extract_xray_structure(
+      crystal_symmetry=fc.crystal_symmetry())
+
   refined_ph=pdb_inp.construct_hierarchy()
   fn = refined_ph.write_pdb_or_mmcif_file(
        target_filename = "%s_refined.cif"%prefix,
@@ -635,8 +636,8 @@ def tst_02(args,prefix=None):
      crystal_symmetry=fc.crystal_symmetry(),
      pdb_string=pdb_str_poor_full)
 
-  pdb_inp=hierarchy.as_pdb_input(crystal_symmetry=fc.crystal_symmetry())
-  xrs_refined=pdb_inp.xray_structure_simple()
+  xrs_refined=hierarchy.extract_xray_structure(
+      crystal_symmetry=fc.crystal_symmetry())
   fn = hierarchy.write_pdb_or_mmcif_file(
        target_filename = "%s_refined.cif"%prefix,
        crystal_symmetry = pdb_inp.crystal_symmetry())

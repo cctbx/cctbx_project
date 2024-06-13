@@ -1,4 +1,6 @@
 from __future__ import absolute_import, division, print_function
+from math import log10
+
 
 class data_counter(object):
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
@@ -18,7 +20,6 @@ class data_counter(object):
 
     # MPI-gather individual counts
     comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
 
     # count experiments and reflections
     experiment_count = len(experiments) if experiments != None else 0
@@ -36,9 +37,11 @@ class data_counter(object):
 
     # rank 0: log data statistics
     if self.mpi_helper.rank == 0 and verbose:
-      self.logger.main_log('Experiments by rank: ' + ', '.join(experiment_count_list))
-      self.logger.main_log('Images by rank: ' + ', '.join(image_count_list))
-      self.logger.main_log('Reflections by rank: ' + ', '.join(reflection_count_list))
+      max_count = int(log10(max(image_count_list + reflection_count_list)))
+      count_fmt = '%' + str(max_count + 1) + 'd'
+      self.logger.main_log('Experiments by rank: ' + ', '.join([count_fmt % i for i in experiment_count_list]))
+      self.logger.main_log('Images by rank:      ' + ', '.join([count_fmt % i for i in image_count_list]))
+      self.logger.main_log('Reflections by rank: ' + ', '.join([count_fmt % i for i in reflection_count_list]))
 
     self.logger.log_step_time("CALC_LOAD_STATISTICS", True)
 

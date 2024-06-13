@@ -1754,7 +1754,9 @@ class segment:  # object for holding a helix or a strand or other
     xyz = new_ph.atoms().extract_xyz()
     new_xyz = lsq_fit_obj.r.elems * xyz + lsq_fit_obj.t.elems
     new_ph.atoms().set_xyz(new_xyz)
-    return new_ph.as_pdb_input().construct_hierarchy() # XXX seems to reformat
+    new_ph.sort_atoms_in_place()
+    new_ph.atoms().reset_i_seq()
+    return new_ph
 
   def get_site(self,resno=None):
     first_residue=self.get_start_resno()

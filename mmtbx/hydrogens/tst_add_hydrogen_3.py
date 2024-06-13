@@ -16,6 +16,7 @@ def run():
   test_004()
   test_005()
   test_006()
+  test_007()
 
 # ------------------------------------------------------------------------------
 
@@ -137,6 +138,15 @@ def test_006():
     nonsensical restraints involving A and B conformers, which throws off riding H.
   '''
   compare_models(pdb_str = pdb_str_006)
+
+# ------------------------------------------------------------------------------
+
+def test_007():
+  '''
+    MET in triple conformation, with split at CAlpha (i.e. N-C-O have altloc
+    blank). Make sure that H atoms are added at each alt conf.
+  '''
+  compare_models(pdb_str = pdb_str_007)
 
 # ------------------------------------------------------------------------------
 
@@ -738,6 +748,57 @@ HETATM  120 H12NBCNZ A 301      21.491  29.552  85.406  0.58 23.71           H
 HETATM  121 H131BCNZ A 301      24.007  34.190  78.713  0.58 36.08           H
 HETATM  122 H132BCNZ A 301      23.663  35.651  78.292  0.58 36.08           H
 END'''
+
+pdb_str_007 = '''
+REMARK scenario for 3 alt confs with split at Calpha (1ssx)
+CRYST1   14.055   14.336   16.437  90.00  90.00  90.00 P 1
+ATOM      1  N   MET A 190       8.147   8.228   5.841  1.00  5.11           N
+ATOM      2  C   MET A 190       6.079   7.001   6.145  1.00  4.90           C
+ATOM      3  O   MET A 190       5.489   8.085   6.030  1.00  5.59           O
+ATOM      4  CA AMET A 190       7.607   6.937   6.231  0.64  5.00           C
+ATOM      5  CB AMET A 190       8.086   6.534   7.644  0.64  5.98           C
+ATOM      6  CG AMET A 190       7.600   7.386   8.781  0.64  8.55           C
+ATOM      7  SD AMET A 190       5.950   7.100   9.364  0.64  9.70           S
+ATOM      8  CE AMET A 190       6.057   5.778  10.487  0.64 19.81           C
+ATOM      9  H  AMET A 190       8.372   8.277   5.013  1.00  5.11           H
+ATOM     10  HA AMET A 190       7.935   6.240   5.642  0.64  5.00           H
+ATOM     11  HB2AMET A 190       7.785   5.628   7.818  0.64  5.98           H
+ATOM     12  HB3AMET A 190       9.055   6.569   7.655  0.64  5.98           H
+ATOM     13  HG2AMET A 190       8.193   7.243   9.535  0.64  8.55           H
+ATOM     14  HG3AMET A 190       7.641   8.313   8.498  0.64  8.55           H
+ATOM     15  HE1AMET A 190       6.408   5.000  10.026  0.64 19.81           H
+ATOM     16  HE2AMET A 190       5.172   5.586  10.834  0.64 19.81           H
+ATOM     17  HE3AMET A 190       6.649   6.028  11.213  0.64 19.81           H
+ATOM     18  CA BMET A 190       7.599   6.926   6.172  0.21  4.35           C
+ATOM     19  CB BMET A 190       8.059   6.429   7.549  0.21  3.88           C
+ATOM     20  CG BMET A 190       7.945   7.470   8.646  0.21  3.81           C
+ATOM     21  SD BMET A 190       6.333   8.029   9.240  0.21  5.37           S
+ATOM     22  CE BMET A 190       5.873   6.543  10.201  0.21  7.00           C
+ATOM     23  H  BMET A 190       8.283   8.347   5.000  1.00  5.11           H
+ATOM     24  HA BMET A 190       7.929   6.282   5.526  0.21  4.35           H
+ATOM     25  HB2BMET A 190       7.513   5.669   7.804  0.21  3.88           H
+ATOM     26  HB3BMET A 190       8.990   6.163   7.489  0.21  3.88           H
+ATOM     27  HG2BMET A 190       8.403   7.114   9.423  0.21  3.81           H
+ATOM     28  HG3BMET A 190       8.400   8.266   8.329  0.21  3.81           H
+ATOM     29  HE1BMET A 190       5.845   5.778   9.605  0.21  7.00           H
+ATOM     30  HE2BMET A 190       5.000   6.683  10.601  0.21  7.00           H
+ATOM     31  HE3BMET A 190       6.535   6.398  10.895  0.21  7.00           H
+ATOM     32  CA CMET A 190       7.592   6.970   6.290  0.15  4.69           C
+ATOM     33  CB CMET A 190       7.939   6.723   7.773  0.15  5.99           C
+ATOM     34  CG CMET A 190       7.637   7.940   8.598  0.15  7.61           C
+ATOM     35  SD CMET A 190       7.421   7.776  10.371  0.15  6.55           S
+ATOM     36  CE CMET A 190       5.808   8.422  10.506  0.15  6.32           C
+ATOM     37  H  CMET A 190       8.470   8.203   5.044  1.00  5.11           H
+ATOM     38  HA CMET A 190       7.972   6.249   5.764  0.15  4.69           H
+ATOM     39  HB2CMET A 190       8.884   6.521   7.855  0.15  5.99           H
+ATOM     40  HB3CMET A 190       7.411   5.982   8.110  0.15  5.99           H
+ATOM     41  HG2CMET A 190       8.368   8.564   8.471  0.15  7.61           H
+ATOM     42  HG3CMET A 190       6.812   8.322   8.259  0.15  7.61           H
+ATOM     43  HE1CMET A 190       5.536   8.401  11.437  0.15  6.32           H
+ATOM     44  HE2CMET A 190       5.205   7.880   9.973  0.15  6.32           H
+ATOM     45  HE3CMET A 190       5.806   9.336  10.181  0.15  6.32           H
+END
+'''
 
 # ------------------------------------------------------------------------------
 

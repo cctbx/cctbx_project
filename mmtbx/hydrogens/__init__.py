@@ -385,47 +385,57 @@ def fit_rotatable2(model, fmodel, use_electron_xh=True):
   mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
   get_class = iotbx.pdb.common_residue_names_get_class
   sites_cart = model.get_sites_cart()
+
+  #for m in model.get_hierarchy().models():
+  #  for c in m.chains():
+  #    first=True
+  #    for r in c.residues():
+
   for m in model.get_hierarchy().models():
     for c in m.chains():
       first=True
-      for r in c.residues():
-        if not get_class(r.resname)=="common_amino_acid": continue
-        s = mmtbx.hydrogens.shortcut(residue=r, first=first, log=model.log)
-        first=False
-        if s is None: continue
-        # print(r.resname, s)
-        omit_selection = flex.size_t()
-        for cl in s:
-          omit_selection.extend(flex.size_t(cl[1]))
-        mm.update_omit_map(omit_selection = omit_selection)
-        for cl in s:
-          axis = cl[0]
-          a1, a2               = sites_cart[axis[0]], sites_cart[axis[1]]
-          sel_to_rotate        = flex.size_t(cl[1])
-          sites_cart_to_rotate = sites_cart.select(sel_to_rotate)
-          score_start          = mm.score(sites_cart = sites_cart_to_rotate)
-          score_best           = score_start
-          sites_cart_moved     = flex.vec3_double(sites_cart_to_rotate.size())
-          sites_cart_best      = None
-          assert len(sel_to_rotate) in [1,3]
-          if len(sel_to_rotate)==1: stop=360
-          else:                     stop=60
-          for angle in range(0, stop, 1):
-            sites_cart_moved = flex.vec3_double(sites_cart_to_rotate.size())
-            for isite, site_cart in enumerate(sites_cart_to_rotate):
-              site_cart_rotated = rotate_point_around_axis(
-                axis_point_1 = a1,
-                axis_point_2 = a2,
-                point        = site_cart,
-                angle        = angle,
-                deg          = True)
-              sites_cart_moved[isite] = site_cart_rotated
-            score = mm.score(sites_cart = sites_cart_moved)
-            if score > score_best:
-              score_best = score
-              sites_cart_best = sites_cart_moved.deep_copy()
-          if sites_cart_best is not None:
-            sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
+      for residue_group in c.residue_groups():
+        conformers = residue_group.conformers()
+        for conformer in conformers:
+          r = conformer.only_residue()
+
+          if not get_class(r.resname)=="common_amino_acid": continue
+          s = mmtbx.hydrogens.shortcut(residue=r, first=first, log=model.log)
+          first=False
+          if s is None: continue
+          # print(r.resname, s)
+          omit_selection = flex.size_t()
+          for cl in s:
+            omit_selection.extend(flex.size_t(cl[1]))
+          mm.update_omit_map(omit_selection = omit_selection)
+          for cl in s:
+            axis = cl[0]
+            a1, a2               = sites_cart[axis[0]], sites_cart[axis[1]]
+            sel_to_rotate        = flex.size_t(cl[1])
+            sites_cart_to_rotate = sites_cart.select(sel_to_rotate)
+            score_start          = mm.score(sites_cart = sites_cart_to_rotate)
+            score_best           = score_start
+            sites_cart_moved     = flex.vec3_double(sites_cart_to_rotate.size())
+            sites_cart_best      = None
+            assert len(sel_to_rotate) in [1,3]
+            if len(sel_to_rotate)==1: stop=360
+            else:                     stop=60
+            for angle in range(0, stop, 1):
+              sites_cart_moved = flex.vec3_double(sites_cart_to_rotate.size())
+              for isite, site_cart in enumerate(sites_cart_to_rotate):
+                site_cart_rotated = rotate_point_around_axis(
+                  axis_point_1 = a1,
+                  axis_point_2 = a2,
+                  point        = site_cart,
+                  angle        = angle,
+                  deg          = True)
+                sites_cart_moved[isite] = site_cart_rotated
+              score = mm.score(sites_cart = sites_cart_moved)
+              if score > score_best:
+                score_best = score
+                sites_cart_best = sites_cart_moved.deep_copy()
+            if sites_cart_best is not None:
+              sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
   model.set_sites_cart(sites_cart)
   # Reset X-H bonds
   if not use_electron_xh:
