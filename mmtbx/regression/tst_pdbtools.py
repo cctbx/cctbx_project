@@ -865,6 +865,16 @@ loop_
   hierarchy = pdb_inp.construct_hierarchy()
   assert [chain.id for chain in hierarchy.chains()] == ['C', 'B']
 
+  # check target_output_format=pdb
+  cmd = " ".join(["phenix.pdbtools", "\"%s\"" % f.name,
+    "rename_chain_id.old_id=A",
+    "rename_chain_id.new_id=C",
+    "target_output_format=pdb",])
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+  ofn = f.name[:].replace(".cif","_modified.pdb")
+  assert os.path.isfile(ofn)
+
 def exercise_mmcif_support_2(prefix="tst_pdbtools_mmcif2"):
   f = open("%s.pdb" % prefix, 'w')
   f.write("""\

@@ -90,8 +90,7 @@ gui
     output_cs=True
     if(cs is None): output_cs = False
 
-    self.data_manager.write_model_file(self.model.model_as_str(
-      output_cs=output_cs), ofn)
+    self.data_manager.write_model_file(self.model, ofn, output_cs=output_cs)
     self.result = ofn
 
   def get_results(self):
