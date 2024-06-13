@@ -1,8 +1,5 @@
-# LIBTBX_SET_DISPATCHER_NAME libtbx.resource_monitor_plot
-
 from __future__ import division
 
-import argparse
 from collections import UserDict
 from contextlib import ContextDecorator
 from dataclasses import astuple, dataclass
@@ -10,7 +7,6 @@ from datetime import datetime, timedelta
 from enum import Enum
 from functools import cached_property
 from glob import glob
-import inspect
 import itertools
 import logging
 from pathlib import Path
@@ -471,13 +467,3 @@ def plot_logs(log_glob: PathLike, save_path: PathLike) -> None:
   histories = [ResourceStatsHistory.from_file(Path(p)) for p in glob(log_glob)]
   rsa = ResourceStatsArtist()
   rsa.plot(resource_stats_histories=histories, save_path=save_path)
-
-
-if __name__ == '__main__':  # make the plot in case the original monitor failed
-  parser = argparse.ArgumentParser(description=str(inspect.getdoc(plot_logs)))
-  parser.add_argument('prefix', type=str, default='monitor*.log',
-                      help='Glob matching all log files to be plotted')
-  parser.add_argument('-o', '--output', type=str, default='monitor.png',
-                      help='Filepath to save the final plot under')
-  args = parser.parse_args()
-  plot_logs(log_glob=args.prefix, save_path=args.output)
