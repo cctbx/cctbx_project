@@ -9,7 +9,7 @@ from libtbx.resource_monitor import plot_logs
 
 if __name__ == '__main__':  # make the plot in case the original monitor failed
   parser = argparse.ArgumentParser(description=str(inspect.getdoc(plot_logs)))
-  parser.add_argument('prefix', type=str, default='monitor*.log',
+  parser.add_argument('prefix', nargs='?', type=str, default='monitor*.log',
                       help='Glob matching all log files to be plotted')
   parser.add_argument('-o', '--output', type=str, default='monitor.png',
                       help='Filepath to save the final plot under')
