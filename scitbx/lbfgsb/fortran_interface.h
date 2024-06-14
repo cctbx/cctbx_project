@@ -104,7 +104,7 @@ namespace scitbx { namespace lbfgsb { namespace fortran_interface {
     SCITBX_ASSERT(u.size() == n);
     SCITBX_ASSERT(nbd.size() == n);
     SCITBX_ASSERT(g.size() == n);
-    SCITBX_ASSERT(wa.size() == 2*m*n+4*n+12*m*m+12*m);
+    SCITBX_ASSERT(wa.size() == 2*m*n+5*n+11*m*m+8*m);
     SCITBX_ASSERT(iwa.size() == 3*n);
     SCITBX_ASSERT(lsave.size() == 4);
     SCITBX_ASSERT(isave.size() == 44);

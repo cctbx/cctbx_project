@@ -195,6 +195,52 @@ namespace raw {
     printf("\n");
   }
 
+  //! Emulation of write statement with implicit loop - modified.
+  template <typename ElementType>
+  void
+  write_ref1_mod(
+    std::string const& label,
+    ref1<ElementType> const& a,
+    const char* fmt=" %25.18f") //no formatting
+  {
+    printf("\n%s", label.c_str());
+    for(int i=1;i<=a.size();i++) {
+      if ((i-1)%6 == 0) {
+        if (i != 1) {
+          printf("\n");
+          for(int j=0;j<label.size();j++) {
+            printf(" ");
+          }
+        }
+      }
+      printf(fmt, a(i));
+    }
+    printf("\n");
+  }
+
+  //! Emulation of write statement with implicit loop - modified for integers
+  template <typename ElementType>
+  void
+  write_ref1_mod_int(
+    std::string const& label,
+    ref1<ElementType> const& a,
+    const char* fmt=" %d")
+  {
+    printf("\n%s", label.c_str());
+    for(int i=1;i<=a.size();i++) {
+      if ((i-1)%6 == 0) {
+        if (i != 1) {
+          printf("\n");
+          for(int j=0;j<label.size();j++) {
+            printf(" ");
+          }
+        }
+      }
+      printf(fmt, a(i));
+    }
+    printf("\n");
+  }
+
   //===============    L-BFGS-B (version 2.1)   ==========================
 
   //! copies a vector, x, to a vector, y.
@@ -770,7 +816,7 @@ namespace raw {
         printf("it    = iteration number\n");
         printf("nf    = number of function evaluations\n");
         printf(
-          "nint  = number of segments explored during the Cauchy search\n");
+          "nseg  = number of segments explored during the Cauchy search\n");
         printf(
           "nact  = number of active bounds at the generalized Cauchy point\n");
         printf(
@@ -787,7 +833,7 @@ namespace raw {
         printf("Machine precision =%10.3E\n", epsmch);
         printf(" N = %12d    M = %12d\n", n, m);
         printf("\n");
-        printf("   it   nf  nint  nact  sub  itls  stepl"
+        printf("   it   nf  nseg  nact  sub  itls  stepl"
                "    tstep     projg        f\n");
         if (true || iprint > 100) {
           write_ref1(" L =", l);
@@ -825,7 +871,7 @@ namespace raw {
     int const& nfgv,
     int const& nact,
     FloatType const& sbgnrm,
-    int const& nint,
+    int const& nseg,
     std::string& word,
     int const& iword,
     int const& iback,
@@ -868,7 +914,7 @@ namespace raw {
     if (iprint >= 1) {
       // iterate.dat
       printf(" %4d %4d %5d %5d  %-3.3s %4d  %7.1E  %7.1E %10.3E %10.3E\n",
-             iter,nfgv,nint,nact,word.c_str(),iback,stp,xstep,sbgnrm,f);
+             iter,nfgv,nseg,nact,word.c_str(),iback,stp,xstep,sbgnrm,f);
     }
   }
 
@@ -904,7 +950,7 @@ namespace raw {
     int const& nact,
     FloatType const& sbgnrm,
     FloatType const& time,
-    int const& nint,
+    int const& nseg,
     std::string const& word,
     int const& iback,
     FloatType const& stp,
@@ -921,14 +967,14 @@ namespace raw {
       "           * * *\n\n"
       "Tit   = total number of iterations\n"
       "Tnf   = total number of function evaluations\n"
-      "Tnint = total number of segments explored during Cauchy searches\n"
+      "Tnseg = total number of segments explored during Cauchy searches\n"
       "Skip  = number of BFGS updates skipped\n"
       "Nact  = number of active bounds at final generalized Cauchy point\n"
       "Projg = norm of the final projected gradient\n"
       "F     = final function value\n\n"
       "           * * *\n";
     static const char* fmt_3004 =
-      "\n   N   Tit  Tnf  Tnint  Skip  Nact     Projg        F\n";
+      "\n   N   Tit  Tnf  Tnseg  Skip  Nact     Projg        F\n";
     static const char* fmt_3005 =
       "%5d %4d %4d %6d  %4d %5d  %10.3E  %10.3E\n";
     static const char* fmt_3007 =
@@ -998,7 +1044,7 @@ namespace raw {
       if (iprint >= 1) {
         if (info == -4 || info == -9) {
           printf(fmt_3002,
-                 iter,nfgv,nint,nact,word.c_str(),iback,stp,xstep); // itfile
+                 iter,nfgv,nseg,nact,word.c_str(),iback,stp,xstep); // itfile
         }
         printf(fmt_3009, task.c_str()); // itfile
         if (info != 0) {
@@ -1135,7 +1181,7 @@ namespace raw {
     ref1<FloatType> const& c,
     ref1<FloatType> const& wbp,
     ref1<FloatType> const& v,
-    int& nint,
+    int& nseg,
     int const& iprint,
     int& info,
     FloatType const& epsmch,
@@ -1186,7 +1232,7 @@ namespace raw {
       FloatType dt = tj - tj0;
       if (dt != zero && iprint >= 100) {
         printf("\nPiece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
-               nint,f1,f2);
+               nseg,f1,f2);
         printf("Distance to the next break point =  %11.4E\n", dt);
         printf("Distance to the stationary point =  %11.4E\n", dtm);
       }
@@ -1220,7 +1266,7 @@ namespace raw {
         return true; // goto lbl_999;
       }
       // Update the derivative information.
-      nint = nint + 1;
+      nseg = nseg + 1;
       FloatType dibp2 = dibp*dibp;
       // Update f1 and f2.
       // temporarily set f1 and f2 for col=0.
@@ -1383,8 +1429,8 @@ namespace raw {
 
       v is a double precision working array of dimension 2m.
 
-      nint is an integer variable.
-        On exit nint records the number of quadratic segments explored
+      nseg is an integer variable.
+        On exit nseg records the number of quadratic segments explored
           in searching for the GCP.
 
       sg and yg are double precision arrays of dimension m.
@@ -1468,17 +1514,17 @@ namespace raw {
     ref1<FloatType> const& c,
     ref1<FloatType> const& wbp,
     ref1<FloatType> const& v,
-    int& nint,
-    ref1<FloatType> const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    sg
-#endif
-    ,
-    ref1<FloatType> const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    yg
-#endif
-    ,
+    int& nseg,
+//    ref1<FloatType> const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    sg
+//#endif
+//    ,
+//    ref1<FloatType> const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    yg
+//#endif
+//    ,
     int const& iprint,
     FloatType const& sbgnrm,
     int& info,
@@ -1498,8 +1544,8 @@ namespace raw {
     SCITBX_ASSERT(c.size() == 2*m);
     SCITBX_ASSERT(wbp.size() == 2*m);
     SCITBX_ASSERT(v.size() == 2*m);
-    SCITBX_ASSERT(sg.size() == m);
-    SCITBX_ASSERT(yg.size() == m);
+    //SCITBX_ASSERT(sg.size() == m);
+    //SCITBX_ASSERT(yg.size() == m);
 #endif
     FloatType one = 1;
     FloatType zero = 0;
@@ -1629,7 +1675,7 @@ namespace raw {
     }
     FloatType dtm = -f1/f2;
     FloatType tsum = zero;
-    nint = 1;
+    nseg = 1;
     if (iprint >= 99) {
       printf(" There are %12d  breakpoints \n", nbreak);
     }
@@ -1639,7 +1685,7 @@ namespace raw {
       skip_lbl_888 = cauchy_loop(
         n, x, l, u, iorder, iwhere, t, d, xcp,
         m, wy, ws, sy, wt, theta, col, head, p, c, wbp,
-        v, nint, iprint, info, epsmch,
+        v, nseg, iprint, info, epsmch,
         bkmin, bnded, col2, dtm, f1, f2, f2_org, ibkmin, nbreak, tsum);
       // goto lbl_999;
     }
@@ -1649,7 +1695,7 @@ namespace raw {
         printf(" \n");
         printf(" GCP found in this segment\n");
         printf("Piece    %3d --f1, f2 at start point  %11.4E %11.4E\n",
-               nint,f1,f2);
+               nseg,f1,f2);
         printf("Distance to the stationary point =  %11.4E\n", dtm);
       }
       if (dtm <= zero) dtm = zero;
@@ -2319,6 +2365,17 @@ namespace raw {
         On entry d is the reduced gradient of Q at xcp.
         On exit d is the Newton direction of Q.
 
+     xp is a double precision array of dimension n.
+        used to safeguard the projected Newton direction
+
+     xx is a double precision array of dimension n
+        On entry it holds the current iterate
+        On output it is unchanged
+
+     gg is a double precision array of dimension n
+        On entry it holds the gradient at the current iterate
+        On output it is unchanged
+
       ws and wy are double precision arrays;
       theta is a double precision variable;
       col is an integer variable;
@@ -2389,11 +2446,12 @@ namespace raw {
   template <typename FloatType>
   void
   subsm(
-    int const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    n
-#endif
-    ,
+    int const& n,
+//    int const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    n
+//#endif
+//    ,
     int const& m,
     int const& nsub,
     ref1<int> const& ind,
@@ -2402,9 +2460,12 @@ namespace raw {
     ref1<int> const& nbd,
     ref1<FloatType> const& x,
     ref1<FloatType> const& d,
+    ref1<FloatType> const& xp,
     ref2<FloatType> const& ws,
     ref2<FloatType> const& wy,
     FloatType const& theta,
+    ref1<FloatType> const& xx,
+    ref1<FloatType> const& gg,
     int const& col,
     int const& head,
     int& iword,
@@ -2416,6 +2477,9 @@ namespace raw {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
     SCITBX_ASSERT(ind.size() == nsub);
     SCITBX_ASSERT(d.size() == n);
+    SCITBX_ASSERT(xp.size() == n);
+    SCITBX_ASSERT(xx.size() == n);
+    SCITBX_ASSERT(gg.size() == n);
     SCITBX_ASSERT(ws.size() == n*m);
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(wv.size() == 2*m);
@@ -2425,6 +2489,25 @@ namespace raw {
     if (iprint >= 99) {
       printf("\n----------------SUBSM entered-----------------\n\n");
     }
+
+
+    std::cout << "variables when entering subsm" << std::endl;
+    std::cout << " n = " << n << std::endl;
+    std::cout << " m = " << m << std::endl;
+    std::cout << " nsub = " << nsub << std::endl;
+    //write_ref1_mod_int(" ind =", ind);
+    write_ref1_mod(" l =", l);
+    write_ref1_mod(" u =", u);
+    //write_ref1_mod_int(" nbd =", nbd);
+    write_ref1_mod(" x =", x);
+    write_ref1_mod(" d =", d);
+    write_ref1_mod(" xp =", xp);
+
+    //std::cout << "Debug stop" << std::endl;
+    //std::exit(0);
+
+
+
     // Compute wv = W'Zd.
     FloatType zero = 0;
     FloatType one = 1;
@@ -2462,13 +2545,66 @@ namespace raw {
       }
       pointr = pointr % m + 1;
     }
-    for(int i=1;i<=nsub;i++) {
-      d(i) = d(i)/theta;
+
+    dscal(nsub,one/theta,d,1);
+
+    // Let us try the projection, d is the Newton direction
+
+    iword = 0;
+    dcopy(n,x,1,xp,1);
+    for (int i=1; i<=nsub; i++) {
+      int k  = ind(i);
+      FloatType dk = d(i);
+      FloatType xk = x(k);
+      if (nbd(k) != 0) {
+        if (nbd(k) == 1) { // Lower bounds only
+          x(k) = std::max(l(k), xk + dk);
+          if (x(k) == l(k)) iword = 1;
+        }
+        else if (nbd(k) == 2) { // Upper and lower bounds
+          xk   = std::max(l(k), xk + dk);
+          x(k) = std::min(u(k), xk);
+          if (x(k) == l(k) || x(k) == u(k)) iword = 1;
+        }
+        else if (nbd(k) == 3) { // Upper bounds only
+          x(k) = std::min(u(k), xk + dk);
+          if (x(k) == u(k)) iword = 1;
+        }
+      }
+      else { // Free variables
+        x(k) = xk + dk;
+      }
     }
-    // Backtrack to the feasible region.
+
     FloatType alpha = one;
     FloatType temp1 = alpha;
     int ibd = 0; // uninitialized
+    FloatType dd_p = zero;
+
+    if (iword == 0) {
+      goto lbl_911;
+    }
+    //check sign of the directional derivative
+
+
+    for (int i=1; i<=n; i++) {
+      dd_p = dd_p + (x(i) - xx(i)) * gg(i);
+    }
+    if (dd_p > zero) {
+      dcopy(n,xp,1,x,1);
+      printf("Positive dir derivative in projection");
+      printf("Using the backtracking step");
+    }
+    else {
+      goto lbl_911;
+    }
+
+// end modification
+
+    //for(int i=1;i<=nsub;i++) {
+    //  d(i) = d(i)/theta;
+    //}
+    //// Backtrack to the feasible region.
     for(int i=1;i<=nsub;i++) {
       int k = ind(i);
       FloatType dk = d(i);
@@ -2518,24 +2654,35 @@ namespace raw {
       int k = ind(i);
       x(k) = x(k) + alpha*d(i);
     }
-    if (iprint >= 99) {
-      if (alpha < one) {
-        printf("ALPHA = %7.5f backtrack to the BOX\n", alpha);
-      }
-      else {
-        printf(" SM solution inside the box\n");
-      }
-      if (iprint >100) {
-        printf("Subspace solution X =  ");
-        write_ref1("    ", x);
-      }
-    }
-    if (alpha < one) {
-      iword = 1;
-    }
-    else {
-      iword = 0;
-    }
+
+//    if (iprint >= 99) {
+//      if (alpha < one) {
+//        printf("ALPHA = %7.5f backtrack to the BOX\n", alpha);
+//      }
+//      else {
+//        printf(" SM solution inside the box\n");
+//      }
+//      if (iprint >100) {
+//        printf("Subspace solution X =  ");
+//        write_ref1("    ", x);
+//      }
+//    }
+//    if (alpha < one) {
+//      iword = 1;
+//    }
+//    else {
+//      iword = 0;
+//    }
+    lbl_911:
+
+    std::cout << "variables when exiting subsm" << std::endl;
+    write_ref1_mod(" x =", x);
+    write_ref1_mod(" d =", d);
+
+
+    //std::cout << "Debug stop" << std::endl;
+    //std::exit(0);
+
     if (iprint >= 99) {
       printf("\n----------------exit SUBSM --------------------\n\n");
     }
@@ -3511,7 +3658,7 @@ namespace raw {
            wy, of dimension n x m, stores Y, the matrix of y-vectors;
            sy, of dimension m x m, stores S'Y;
            ss, of dimension m x m, stores S'S;
-           yy, of dimension m x m, stores Y'Y;
+           yy, of dimension m x m, stores Y'Y; --> not used anymore
            wt, of dimension m x m, stores the Cholesky factorization
                                    of (theta*S'S+LD^(-1)L'); see eq.
                                    (2.26) in [3].
@@ -3529,9 +3676,10 @@ namespace raw {
                   N = [Y' ZZ'Y   L_a'+R_z']
                       [L_a +R_z  S'AA'S   ]
 
-      z(n),r(n),d(n),t(n),wa(8*m) are double precision working arrays.
+      z(n),r(n),d(n),t(n),xp(n),wa(8*m) are double precision working arrays.
         z is used at different times to store the Cauchy point and
         the Newton point.
+        xp is used to safeguard the projected Newton direction
 
       sg(m),sgo(m),yg(m),ygo(m) are double precision working arrays.
 
@@ -3632,11 +3780,11 @@ namespace raw {
     ref2<FloatType> const& wy,
     ref2<FloatType> const& sy,
     ref2<FloatType> const& ss,
-    ref2<FloatType> const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    yy
-#endif
-    ,
+//    ref2<FloatType> const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    yy
+//#endif
+//    ,
     ref2<FloatType> const& wt,
     ref2<FloatType> const& wn,
     ref2<FloatType> const& snd,
@@ -3644,19 +3792,20 @@ namespace raw {
     ref1<FloatType> const& r,
     ref1<FloatType> const& d,
     ref1<FloatType> const& t,
+    ref1<FloatType> const& xp,
     ref1<FloatType> const& wa,
-    ref1<FloatType> const& sg,
-    ref1<FloatType> const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    sgo
-#endif
-    ,
-    ref1<FloatType> const& yg,
-    ref1<FloatType> const&
-#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    ygo
-#endif
-    ,
+    //ref1<FloatType> const& sg,
+//    ref1<FloatType> const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    sgo
+//#endif
+//    ,
+//    ref1<FloatType> const& yg,
+//    ref1<FloatType> const&
+//#if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
+//    ygo
+//#endif
+//    ,
     ref1<int> const& index,
     ref1<int> const& iwhere,
     ref1<int> const& indx2,
@@ -3678,7 +3827,7 @@ namespace raw {
     SCITBX_ASSERT(wy.size() == n*m);
     SCITBX_ASSERT(sy.size() == m*m);
     SCITBX_ASSERT(ss.size() == m*m);
-    SCITBX_ASSERT(yy.size() == m*m);
+    //SCITBX_ASSERT(yy.size() == m*m);
     SCITBX_ASSERT(wt.size() == m*m);
     SCITBX_ASSERT(wn.size() == 2*m*2*m);
     SCITBX_ASSERT(snd.size() == 2*m*2*m);
@@ -3686,11 +3835,12 @@ namespace raw {
     SCITBX_ASSERT(r.size() == n);
     SCITBX_ASSERT(d.size() == n);
     SCITBX_ASSERT(t.size() == n);
+    SCITBX_ASSERT(xp.size() == n);
     SCITBX_ASSERT(wa.size() == 8*m);
-    SCITBX_ASSERT(sg.size() == m);
-    SCITBX_ASSERT(sgo.size() == m);
-    SCITBX_ASSERT(yg.size() == m);
-    SCITBX_ASSERT(ygo.size() == m);
+    //SCITBX_ASSERT(sg.size() == m);
+    //SCITBX_ASSERT(sgo.size() == m);
+    //SCITBX_ASSERT(yg.size() == m);
+    //SCITBX_ASSERT(ygo.size() == m);
     SCITBX_ASSERT(index.size() == n);
     SCITBX_ASSERT(iwhere.size() == n);
     SCITBX_ASSERT(indx2.size() == n);
@@ -3714,7 +3864,7 @@ namespace raw {
     int itail = 0; // uninitialized
     int iter = 0; // uninitialized
     int iupdat = 0; // uninitialized
-    int nint = 0; // uninitialized
+    int nseg = 0; // uninitialized
     int nfgv = 0; // uninitialized
     int info = 0; // uninitialized
     int ifun = 0; // uninitialized
@@ -3761,10 +3911,11 @@ namespace raw {
       // for operation counts:
       iter   = 0;
       nfgv   = 0;
-      nint   = 0;
+      nseg   = 0;
       nintol = 0;
       nskip  = 0;
       nfree  = n;
+      ifun   = 0; //DL: needed?
       // for stopping tolerance:
       tol = factr*epsmch;
       // for measuring running time:
@@ -3785,7 +3936,7 @@ namespace raw {
       if (task.substr(0,5) == "ERROR") {
         prn3lb(n,x,f,task,iprint,info,itfile,
                iter,nfgv,nintol,nskip,nact,sbgnrm,
-               zero,nint,word,iback,stp,xstep,k,
+               zero,nseg,word,iback,stp,xstep,k,
                cachyt,sbtime,lnscht);
         return;
       }
@@ -3808,7 +3959,7 @@ namespace raw {
       itail  = isave(8);
       iter   = isave(9);
       iupdat = isave(10);
-      nint   = isave(12);
+      nseg   = isave(12);
       nfgv   = isave(13);
       info   = isave(14);
       ifun   = isave(15);
@@ -3879,7 +4030,7 @@ namespace raw {
       // skip the search for GCP.
       dcopy(n,x,1,z,1);
       wrk = updatd;
-      nint = 0;
+      nseg = 0;
       goto lbl_333;
     }
     //cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -3895,7 +4046,7 @@ namespace raw {
            wa.get1(2*m+1, 2*m),
            wa.get1(4*m+1, 2*m),
            wa.get1(6*m+1, 2*m),
-           nint,sg,yg,iprint,sbgnrm,info,epsmch);
+           nseg,iprint,sbgnrm,info,epsmch);
     static const char* fmt_1005 =
       "\n"
       " Singular triangular system detected;\n"
@@ -3915,7 +4066,7 @@ namespace raw {
     }
     timer(cpu2);
     cachyt = cachyt + cpu2 - cpu1;
-    nintol = nintol + nint;
+    nintol = nintol + nseg;
     // Count the entering and leaving variables for iter > 0;
     // find the index set of free and active variables at the GCP.
     freev(n,nfree,index,nenter,ileave,indx2,
@@ -3962,8 +4113,8 @@ namespace raw {
            theta,col,head,nfree,cnstnd,info);
     if (info == 0) {
       // call the direct method.
-      subsm(n,m,nfree,index.get1(1,nfree),l,u,nbd,z,r,ws,wy,theta,
-            col,head,iword,wa.get1(1,2*m),wn,iprint,info);
+      subsm(n,m,nfree,index.get1(1,nfree),l,u,nbd,z,r,xp,ws,wy,theta,
+            x,g,col,head,iword,wa.get1(1,2*m),wn,iprint,info);
     }
     if (info != 0) {
       // singular triangular system detected;
@@ -4051,7 +4202,7 @@ namespace raw {
       projgr(n,l,u,nbd,x,g,sbgnrm);
       // Print iteration information.
       prn2lb(n,x,f,g,iprint,itfile,iter,nfgv,nact,
-             sbgnrm,nint,word,iword,iback,stp,xstep);
+             sbgnrm,nseg,word,iword,iback,stp,xstep);
       goto lbl_1000;
     }
     lbl_777:
@@ -4139,7 +4290,7 @@ namespace raw {
       FloatType time = time2 - time1;
       prn3lb(n,x,f,task,iprint,info,itfile,
              iter,nfgv,nintol,nskip,nact,sbgnrm,
-             time,nint,word,iback,stp,xstep,k,
+             time,nseg,word,iback,stp,xstep,k,
              cachyt,sbtime,lnscht);
     }
     lbl_1000:
@@ -4157,7 +4308,7 @@ namespace raw {
     isave(8)  = itail;
     isave(9)  = iter;
     isave(10) = iupdat;
-    isave(12) = nint;
+    isave(12) = nseg;
     isave(13) = nfgv;
     isave(14) = info;
     isave(15) = ifun;
@@ -4382,7 +4533,7 @@ namespace raw {
     bool enable_stp_init=false)
   {
 #if (SCITBX_LBFGSB_RAW_ASSERTION_FLAG != 0)
-    SCITBX_ASSERT(wa.size() == 2*m*n+4*n+12*m*m+12*m);
+    SCITBX_ASSERT(wa.size() == 2*m*n+5*n+11*m*m+8*m);
     SCITBX_ASSERT(iwa.size() == 3*n);
     SCITBX_ASSERT(lsave.size() == 4);
     SCITBX_ASSERT(isave.size() == 44);
@@ -4392,23 +4543,23 @@ namespace raw {
       isave(1)  = m*n;
       isave(2)  = m*m;
       isave(3)  = 4*m*m;
-      isave(4)  = 1;
-      isave(5)  = isave(4)  + isave(1);
-      isave(6)  = isave(5)  + isave(1);
-      isave(7)  = isave(6)  + isave(2);
-      isave(8)  = isave(7)  + isave(2);
-      isave(9)  = isave(8)  + isave(2);
-      isave(10) = isave(9)  + isave(2);
-      isave(11) = isave(10) + isave(3);
-      isave(12) = isave(11) + isave(3);
-      isave(13) = isave(12) + n;
-      isave(14) = isave(13) + n;
-      isave(15) = isave(14) + n;
-      isave(16) = isave(15) + n;
-      isave(17) = isave(16) + 8*m;
-      isave(18) = isave(17) + m;
-      isave(19) = isave(18) + m;
-      isave(20) = isave(19) + m;
+      isave(4)  = 1;                    // ws      m*n
+      isave(5)  = isave(4)  + isave(1); // wy      m*n
+      isave(6)  = isave(5)  + isave(1); // wsy     m**2
+      isave(7)  = isave(6)  + isave(2); // wss     m**2
+      isave(8)  = isave(7)  + isave(2); // wt      m**2
+      isave(9)  = isave(8)  + isave(2); // wn      4*m**2
+      isave(10) = isave(9)  + isave(3); // wsnd    4*m**2
+      isave(11) = isave(10) + isave(3); // wz      n
+      isave(12) = isave(11) + n;        // wr      n
+      isave(13) = isave(12) + n;        // wd      n
+      isave(14) = isave(13) + n;        // wt      n
+      isave(15) = isave(14) + n;        // wxp     n
+      isave(16) = isave(15) + n;        // wa      8*m
+      //isave(17) = isave(16) + 8*m;
+      //isave(18) = isave(17) + m;
+      //isave(19) = isave(18) + m;
+      //isave(20) = isave(19) + m;
     }
     //int l1   = isave(1); // unused
     //int l2   = isave(2); // unused
@@ -4417,25 +4568,24 @@ namespace raw {
     int lwy  = isave(5);
     int lsy  = isave(6);
     int lss  = isave(7);
-    int lyy  = isave(8);
-    int lwt  = isave(9);
-    int lwn  = isave(10);
-    int lsnd = isave(11);
-    int lz   = isave(12);
-    int lr   = isave(13);
-    int ld   = isave(14);
-    int lt   = isave(15);
+    int lwt  = isave(8);
+    int lwn  = isave(9);
+    int lsnd = isave(10);
+    int lz   = isave(11);
+    int lr   = isave(12);
+    int ld   = isave(13);
+    int lt   = isave(14);
+    int lxp  = isave(15);
     int lwa  = isave(16);
-    int lsg  = isave(17);
-    int lsgo = isave(18);
-    int lyg  = isave(19);
-    int lygo = isave(20);
+    //int lsg  = isave(17);
+    //int lsgo = isave(18);
+    //int lyg  = isave(19);
+    //int lygo = isave(20);
     mainlb(n,m,x,l,u,nbd,f,g,factr,pgtol,
       wa.get2(lws, n, m),
       wa.get2(lwy, n, m),
       wa.get2(lsy, m, m),
       wa.get2(lss, m, m),
-      wa.get2(lyy, m, m),
       wa.get2(lwt, m, m),
       wa.get2(lwn, 2*m, 2*m),
       wa.get2(lsnd, 2*m, 2*m),
@@ -4443,11 +4593,12 @@ namespace raw {
       wa.get1(lr, n),
       wa.get1(ld, n),
       wa.get1(lt, n),
+      wa.get1(lxp, n),
       wa.get1(lwa, 8*m),
-      wa.get1(lsg, m),
-      wa.get1(lsgo, m),
-      wa.get1(lyg, m),
-      wa.get1(lygo, m),
+      //wa.get1(lsg, m),
+      //wa.get1(lsgo, m),
+      //wa.get1(lyg, m),
+      //wa.get1(lygo, m),
       iwa.get1(1, n),
       iwa.get1(n+1, n),
       iwa.get1(2*n+1, n),

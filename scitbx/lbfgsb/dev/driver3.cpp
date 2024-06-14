@@ -41,7 +41,7 @@ namespace {
     ref1<double> g = make_ref1(g_);
     shared<double> dsave_(29);
     ref1<double> dsave = make_ref1(dsave_);
-    shared<double> wa_(2*m*n+4*n+12*m*m+12*m);
+    shared<double> wa_(2*m*n+5*n+11*m*m+8*m);
     ref1<double> wa = make_ref1(wa_);
     double t1, t2, time1, time2, tlimit;
     tlimit = 0.2;

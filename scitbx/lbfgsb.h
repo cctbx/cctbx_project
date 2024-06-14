@@ -103,7 +103,7 @@ namespace lbfgsb {
         f_(0),
         factr_(factr),
         pgtol_(pgtol),
-        wa_(2*m*n+4*n+12*m*m+12*m, FloatType(0)),
+        wa_(2*m*n+5*n+11*m*m+8*m, FloatType(0)),
         iwa_(3*n, int(0)),
         task_("START"),
         iprint_(iprint),
