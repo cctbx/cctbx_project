@@ -321,13 +321,15 @@ def exercise_add_new_bond_restraint_in_place(mon_lib_srv, ener_lib):
 def exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib):
   '''
   raw_records4b is same as raw_records4, except that CE is in another ASU
-  --> 6A long bond to SD --> this will choke the call of
+  --> 6A long bond to SD --> this broke the call of
   all_bonds_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
-  in add_new_bond_restraints_in_place
-  root of the issue is that there is >5 A long bond (i.e. longer than the
+  in add_new_bond_restraints_in_place() method.
+  Reason for the fail: there is >5 A long bond (i.e. longer than the
   default of max_distance_between_connecting_atoms, which is 5) between
   atoms where one atom is in another ASU
-  see also test
+  see also test phenix_regression/mmtbx/tst_pdb_interpretation_3.py
+  Fixed with
+  https://github.com/cctbx/cctbx_project/commit/3f84e12b8ae2cc9ec354122b231f0c69c01155f9
   '''
   geometry, xrs = make_initial_grm(mon_lib_srv, ener_lib, raw_records4b)
 
@@ -337,9 +339,7 @@ def exercise_add_new_bond_when_long_bond_across_ASU(mon_lib_srv, ener_lib):
     weight=3000)
   assert not geometry.is_bonded_atoms(0,3)
   assert not geometry.is_bonded_atoms(3,0)
-  # DL: this will fail
   geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart())
-  # DL: this works
   geometry.add_new_bond_restraints_in_place([proxy], xrs.sites_cart(),
     max_distance_between_connecting_atoms=10)
 
@@ -735,3 +735,4 @@ def exercise():
 
 if (__name__ == "__main__"):
   exercise()
+  print("OK")
