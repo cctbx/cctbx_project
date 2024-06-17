@@ -195,52 +195,6 @@ namespace raw {
     printf("\n");
   }
 
-  //! Emulation of write statement with implicit loop - modified.
-  template <typename ElementType>
-  void
-  write_ref1_mod(
-    std::string const& label,
-    ref1<ElementType> const& a,
-    const char* fmt=" %25.18f") //no formatting
-  {
-    printf("\n%s", label.c_str());
-    for(int i=1;i<=a.size();i++) {
-      if ((i-1)%6 == 0) {
-        if (i != 1) {
-          printf("\n");
-          for(int j=0;j<label.size();j++) {
-            printf(" ");
-          }
-        }
-      }
-      printf(fmt, a(i));
-    }
-    printf("\n");
-  }
-
-  //! Emulation of write statement with implicit loop - modified for integers
-  template <typename ElementType>
-  void
-  write_ref1_mod_int(
-    std::string const& label,
-    ref1<ElementType> const& a,
-    const char* fmt=" %d")
-  {
-    printf("\n%s", label.c_str());
-    for(int i=1;i<=a.size();i++) {
-      if ((i-1)%6 == 0) {
-        if (i != 1) {
-          printf("\n");
-          for(int j=0;j<label.size();j++) {
-            printf(" ");
-          }
-        }
-      }
-      printf(fmt, a(i));
-    }
-    printf("\n");
-  }
-
   //===============    L-BFGS-B (version 2.1)   ==========================
 
   //! copies a vector, x, to a vector, y.
@@ -2490,24 +2444,6 @@ namespace raw {
       printf("\n----------------SUBSM entered-----------------\n\n");
     }
 
-
-    std::cout << "variables when entering subsm" << std::endl;
-    std::cout << " n = " << n << std::endl;
-    std::cout << " m = " << m << std::endl;
-    std::cout << " nsub = " << nsub << std::endl;
-    //write_ref1_mod_int(" ind =", ind);
-    write_ref1_mod(" l =", l);
-    write_ref1_mod(" u =", u);
-    //write_ref1_mod_int(" nbd =", nbd);
-    write_ref1_mod(" x =", x);
-    write_ref1_mod(" d =", d);
-    write_ref1_mod(" xp =", xp);
-
-    //std::cout << "Debug stop" << std::endl;
-    //std::exit(0);
-
-
-
     // Compute wv = W'Zd.
     FloatType zero = 0;
     FloatType one = 1;
@@ -2674,14 +2610,6 @@ namespace raw {
 //      iword = 0;
 //    }
     lbl_911:
-
-    std::cout << "variables when exiting subsm" << std::endl;
-    write_ref1_mod(" x =", x);
-    write_ref1_mod(" d =", d);
-
-
-    //std::cout << "Debug stop" << std::endl;
-    //std::exit(0);
 
     if (iprint >= 99) {
       printf("\n----------------exit SUBSM --------------------\n\n");
