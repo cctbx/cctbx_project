@@ -25,7 +25,8 @@ class Program(ProgramTemplate):
 mmtbx.ribbons version {}: Given PDB file produce Kinemage file with ribbons representation.
 
 This program produces a kinemage file with ribbons representation of the input file using the
-same algorithm as the Richardson lab's MolProbity server.
+same algorithm as the Richardson lab's MolProbity server.  The code is based on the Java code
+within the javadev repository.
 
 How to run:
   mmtbx.ribbons model.pdb
