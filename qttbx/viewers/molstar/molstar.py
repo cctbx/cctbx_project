@@ -322,7 +322,7 @@ class MolstarViewer(ModelViewer):
       label = 'model'
 
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
-    self.send_command(command,sync=True)
+    self.send_command(command,sync=False)
 
 
   # don't use this, it is confusing, but it loads without a ref

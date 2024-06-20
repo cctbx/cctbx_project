@@ -39,8 +39,8 @@ class ViewerControlsController(Controller):
     ## Signals
 
     # Picking level
-    self.view.picking_level.currentIndexChanged.connect(self.on_picking_change)
-    self.state.signals.picking_level.connect(self.on_picking_change)
+    self.view.picking_level.currentTextChanged.connect(self.picking_level_change) # user initiates new level
+    self.state.signals.picking_level.connect(self.picking_level_change) # update view to reflect new level
 
     # Edits
     self.view.button_edits.setContextMenuPolicy(Qt.CustomContextMenu)
@@ -73,6 +73,8 @@ class ViewerControlsController(Controller):
 
     # Hierarchy Selector
     self.search_select_dialog_controller = None
+
+    self.picking_level = self.picking_level_displayed
 
   
 
@@ -112,19 +114,28 @@ class ViewerControlsController(Controller):
 
     return folder
 
-  @Slot()
-  def on_picking_change(self,choice):
-    current_index = self.view.picking_level.currentIndex()
-    if 'residue' in choice:
-      if current_index != 0:
+  @property
+  def picking_level_displayed(self):
+    current_text = self.view.picking_level.currentText().lower()
+    return current_text
+
+  def picking_level_change(self, picking_level):
+    # User changed level
+    picking_level = picking_level.lower()
+    assert picking_level in ["atom","residue"]
+    if picking_level != self.picking_level: # only do stuff if needed
+      # update internal state
+      self.picking_level = picking_level
+
+      # Update widget, emit signal
+      if picking_level == "residue":
         self.view.picking_level.setCurrentIndex(0)
         self.state.signals.picking_level.emit("residue")
-
-    elif 'atom' in choice:
-      if current_index != 1:
+      elif picking_level == "atom":
         self.view.picking_level.setCurrentIndex(1)
         self.state.signals.picking_level.emit("atom")
-
+    
+    assert self.picking_level_displayed == picking_level, f"picking level displayed: {self.picking_level_displayed}, picking level set: {picking_level}"
     
 
 
