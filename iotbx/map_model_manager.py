@@ -3603,6 +3603,8 @@ class map_model_manager(object):
         shift_cart = coordinate_shift,
         crystal_symmetry=map_manager.crystal_symmetry())
 
+    model.reset_after_changing_hierarchy()
+
     if set_unit_cell_crystal_symmetry and self.map_manager():
        self.set_model_symmetries_and_shift_cart_to_match_map(model)
 
