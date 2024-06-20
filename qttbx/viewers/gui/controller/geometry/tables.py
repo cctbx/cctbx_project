@@ -23,7 +23,7 @@ from ...state.ref import (
 
 )
 
-
+from ..filter import CompositeFilter
 
 """
 Controller for a Pandas Table in geometry
@@ -34,7 +34,7 @@ class GeometryTableTabController(TableController):
   """
   Base class which manipulates the Dataframe
   """
-  geometry_name = None # Subclass and fill this in (bond,angle,etc)
+  geometry_type = None # Subclass and fill this in (bond,angle,etc)
   column_order =  ['ideal','model',"sigma","delta",'residual',"vdw","action"]
   suppress_columns = ["i_seqs","sel_strings","ideal_old","sigma_old"]
   rename_columns = {"ideal_new":"Ideal","sigma_new":"Sigma","action":"Action"}
@@ -50,76 +50,83 @@ class GeometryTableTabController(TableController):
     # Signals
     self.view.table_view.addEdit.connect(self.addEdit)
     self.state.signals.geometry_change.connect(self.update)
-    self.state.signals.filter_update.connect(self.update_from_filter)
+    #self.state.signals.filter_update.connect(self.update_from_filter)
 
   def addEdit(self,row_dict):
     raise NotImplementedError
 
-  def update_from_filter(self,filter_obj,debug_flag):
-    df = self.dataframe
-
-    #comp = filter_obj.comp_id
+  # def update_from_filter(self,filter_obj,debug_flag):
+  #   df = self.dataframe
+  #   if df is None:
+  #     return
+  #   #comp = filter_obj.comp_id
     
-    # # Determine the quantile based on the direction
-    # if direction == "Ascending":
-    #     quantile = (float(filter.current_percentile) / 100)
-    # else:  # Descending
-    #     quantile = 1 - (float(filter.current_percentile) / 100)
+  #   # # Determine the quantile based on the direction
+  #   # if direction == "Ascending":
+  #   #     quantile = (float(filter.current_percentile) / 100)
+  #   # else:  # Descending
+  #   #     quantile = 1 - (float(filter.current_percentile) / 100)
 
-    # Filter by component
-    # if comp == "All":
-    #     comp_test = pd.Series([True] * len(df))
-    # else:
-    #     comp_test = df["Res"] == comp
+  #   # Filter by component
+  #   # if comp == "All":
+  #   #     comp_test = pd.Series([True] * len(df))
+  #   # else:
+  #   #     comp_test = df["Res"] == comp
 
-    # # Apply the quantile filtering
-    # if metric in df.columns:
-    #     percentile_cutoff = df[metric].quantile(quantile)
-    #     if direction == "Ascending":
-    #         percentile_test = df[metric] <= percentile_cutoff
-    #     else:  # Descending
-    #         percentile_test = df[metric] >= percentile_cutoff
-    # else:
-    #     percentile_test = pd.Series([True] * len(df))
+  #   # # Apply the quantile filtering
+  #   # if metric in df.columns:
+  #   #     percentile_cutoff = df[metric].quantile(quantile)
+  #   #     if direction == "Ascending":
+  #   #         percentile_test = df[metric] <= percentile_cutoff
+  #   #     else:  # Descending
+  #   #         percentile_test = df[metric] >= percentile_cutoff
+  #   # else:
+  #   #     percentile_test = pd.Series([True] * len(df))
 
-    # Apply both conditions to filter the DataFrame
-    df_filtered = filter_obj.filter_df(df)
-    df_filtered = df_filtered.rename(columns=self.rename_columns)
-    suppress_cols = [c.lower() for c in self.suppress_columns]
-    suppress_cols+= [c.capitalize() for c in self.suppress_columns]
-    table_model = PandasTableModel(df_filtered,suppress_columns=suppress_cols)
-    self.table_model = table_model
+  #   # Apply both conditions to filter the DataFrame
+
+  #   df_filtered = filter_obj.filter_df(df)
+  #   df_filtered = df_filtered.rename(columns=self.rename_columns)
+  #   suppress_cols = [c.lower() for c in self.suppress_columns]
+  #   suppress_cols+= [c.capitalize() for c in self.suppress_columns]
+  #   table_model = PandasTableModel(df_filtered,suppress_columns=suppress_cols)
+  #   self.table_model = table_model
+  #   #self.filter_obj = filter_obj
+
 
   def reform_columns(self,df):
-    cols = ["i_seqs","Chain","Res","Seq"]
-    # add atom_id prefix columns
-    for col in df.columns:
-      if col.startswith("atom_id"):
-        cols.append(col)
+    cols = ["i_seqs"]
+    prefixes = self.state.params.core_map_to_mmcif.keys()
+    for prefix in prefixes:
+      for col in df.columns:
+        if col.startswith(prefix):
+          if not col.startswith("id_str"):
+            cols.append(col)
 
     cols+= [col for col in self.column_order if col in df.columns]
     df = df[cols].copy()
-    # add atom_id prefix columns
-    for col in cols:
-      if col.startswith("atom_id"):
-        number = col.split("atom_id")[-1]
-        number = number.strip("_")
-        col_name = f"Atom{number}"
-        self.rename_columns[col] = col_name
+    # # add prefix columns
+    # for prefix in prefixes:
+    #   for col in cols:
+    #     if col.startswith(prefix):
+    #       number = col.split(prefix)[-1]
+    #       number = number.strip("_")
+    #       col_name = f"Atom{number}"
+    #       #self.rename_columns[col] = col_name
 
-    df.rename(columns=self.rename_columns,inplace=True)
+    # df.rename(columns=self.rename_columns,inplace=True)
     
 
-    # capitalize
-    capitalize = {c:c.capitalize() for c in df.columns if c not in ["i_seqs"]}
-    df.rename(columns=capitalize,inplace=True)
+    # # capitalize
+    # capitalize = {c:c.capitalize() for c in df.columns if c not in ["i_seqs"]}
+    # df.rename(columns=capitalize,inplace=True)
 
     self.col_names = list(df.columns)
     return df
 
   def update(self,geometry_ref):
-    if hasattr(geometry_ref.data,self.geometry_name):
-      df = getattr(geometry_ref.data,self.geometry_name)
+    if hasattr(geometry_ref.data,self.geometry_type):
+      df = getattr(geometry_ref.data,self.geometry_type)
       self.dataframe = self.reform_columns(df)
       self.table_model = PandasTableModel(self.dataframe,suppress_columns=["i_seqs"])
       # self.table = table
@@ -135,20 +142,20 @@ class GeometryTableTabController(TableController):
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
   @staticmethod 
   def find_matching_row(df, dict_subset):
-    # hack to match keys
-    new_d = {}
-    for key,value in dict_subset.items():
-      if "Atom" in key:
-        i = key[-1]
-        new_d[f"atom_id_{i}"] = value
-      elif key.lower() in df.columns:
-        new_d[key.lower()] = value
-      elif key in df.columns:
-        new_d[key] = value
-      else:
-        assert False, "Unable to match key between named tuple and actual df"
+    # # hack to match keys
+    # new_d = {}
+    # for key,value in dict_subset.items():
+    #   if "Atom" in key:
+    #     i = key[-1]
+    #     new_d[f"atom_id_{i}"] = value
+    #   elif key.lower() in df.columns:
+    #     new_d[key.lower()] = value
+    #   elif key in df.columns:
+    #     new_d[key] = value
+    #   else:
+    #     assert False, "Unable to match key between named tuple and actual df"
 
-    dict_subset = new_d
+    # dict_subset = new_d
     # Convert the dictionary to a pandas Series for comparison
     series = pd.Series(dict_subset)
     
@@ -191,10 +198,10 @@ class GeometryTableTabController(TableController):
 
 class BondTableController(GeometryTableTabController):
   title="Bonds"
-  geometry_name = "bond"
+  geometry_type = "bond"
 
   def addEdit(self,row_dict):
-    df = getattr(self.geometry_ref.data,self.geometry_name)
+    df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     dialog = BondEditDialog(defaults_dict=row_dict)
     if dialog.exec_():
@@ -227,10 +234,10 @@ class BondTableController(GeometryTableTabController):
 
 class AngleTableController(GeometryTableTabController):
   title = "Angles"
-  geometry_name = "angle"
+  geometry_type = "angle"
 
   def addEdit(self,row_dict):
-    df = getattr(self.geometry_ref.data,self.geometry_name)
+    df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     dialog = AngleEditDialog(defaults_dict=row_dict)
     if dialog.exec_():
@@ -264,10 +271,10 @@ class AngleTableController(GeometryTableTabController):
 
 class DihedralTableController(GeometryTableTabController):
   title = "Dihedrals"
-  geometry_name = "dihedral"
+  geometry_type = "dihedral"
 
   def addEdit(self,row_dict):
-    df = getattr(self.geometry_ref.data,self.geometry_name)
+    df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     dialog = DihedralEditDialog(defaults_dict=row_dict)
     if dialog.exec_():
@@ -307,19 +314,19 @@ class DihedralTableController(GeometryTableTabController):
 
 class ChiralTableController(GeometryTableTabController):
   title = "Chirals"
-  geometry_name = "chirality"
+  geometry_type = "chirality"
 
 class PlanarityTableController(GeometryTableTabController):
   title = "Planes"
-  geometry_name = "plane"
+  geometry_type = "plane"
 
 class NonbondedTableController(GeometryTableTabController):
   title = "Non-bonded"
-  geometry_name = "nonbonded"
+  geometry_type = "nonbonded"
   
   def addEdit(self,row_dict):
     # Create edit considering it as a bond
-    df = getattr(self.geometry_ref.data,self.geometry_name)
+    df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     # calc distance
     # TODO: for now just standard

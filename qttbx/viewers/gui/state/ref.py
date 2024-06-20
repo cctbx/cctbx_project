@@ -303,20 +303,22 @@ class GeometryRef(Ref):
   def __init__(self,
       data: Geometry, 
       model_ref: 'ModelRef'):
-      
-    super().__init__(data=data,style=model_ref.style)
+    assert model_ref is not None
+    super().__init__(data=data)
     self.model_ref = model_ref
-    self.model_ref.geometry_ref = self
+    self.has_synchronized_with_model = False
     self.synchronize_with_model() # add individual i_seq columns from model
+    self.has_incremented_column_suffixes = False
     self.increment_column_suffixes() # Make consistent per-atom suffixes (i_seq_1, i_seq_2, etc)
     self.add_iseqs_column() # Add a plural i_seqs column (column of lists)
-    self.add_atom_id_columns() # Add atom_id_1, atom_id_2, etc columns for each dataframe
-    self.add_chain_and_res_columns() # Add SINGLE 'Chain' 'Res' 'Seq' columns
+    
+    self.add_other_columns(prefix="asym_id")
+    self.add_other_columns(prefix="comp_id")
+    self.add_other_columns(prefix="atom_id")
+    self.add_other_columns(prefix="alt_id")
 
-
-    # Set model restraint_ref value (will emit change signal)
-    if self.model_ref is not None:
-      self.model_ref.geometry_ref = self
+    # Set model restraint_ref value (do last, will emit signal that assumes a complete object)
+    self.model_ref.geometry_ref = self
 
   @property
   def EntryControllerClass(self):
@@ -341,6 +343,7 @@ class GeometryRef(Ref):
           df.drop(columns=["i_seq_0"],inplace=True)
 
       _ = add_i_seq_columns_from_id_str(self.data.dataframes,self.model_ref.model)
+    self.has_synchronized_with_model = True
 
   def increment_column_suffixes(self):
     for name, df in self.data.dataframes.items():
@@ -363,7 +366,7 @@ class GeometryRef(Ref):
 
         # Rename columns after determining all necessary changes
         df.rename(columns=columns_to_rename, inplace=True)
-
+    self.has_incremented_column_suffixes = True
   def add_iseqs_column(self):
     # add a new column that is a list of the i_seqs
     for name,df in self.dfs.items():
@@ -372,13 +375,14 @@ class GeometryRef(Ref):
         if len(i_seq_cols)>0:
           df['i_seqs'] = df.apply(lambda row: [row[col] for col in i_seq_cols], axis=1)
 
-  def add_atom_id_columns(self):
+
+  def add_other_columns(self,prefix):
     for name,df in self.dfs.items():
       if df is not None and self.model_ref is not None:
         i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
         if len(i_seq_cols)>0:
           i_seq_suffixes = [col.replace('i_seq_','') for col in i_seq_cols]
-          name_cols = [f"atom_id_{suffix}" for suffix in i_seq_suffixes]
+          name_cols = [f"{prefix}_{suffix}" for suffix in i_seq_suffixes]
           for i_seq_col,name_col in zip(i_seq_cols,name_cols):
 
             df[name_col] = pd.NA
@@ -386,31 +390,10 @@ class GeometryRef(Ref):
             not_na = df[i_seq_col].notna()
 
             indices = df.loc[not_na, i_seq_col].to_numpy()  # Extract as numpy array for direct access
-            vals = self.model_ref.mol.sites["label_atom_id"].iloc[indices].to_numpy()  # Extract values as numpy array
+            vals = self.model_ref.mol.sites[prefix].iloc[indices].to_numpy()  # Extract values as numpy array
 
             # Directly assign values to df where not_na is True, bypassing index-based reindexing
             df.loc[not_na, name_col] = vals
-
-  def add_chain_and_res_columns(self):
-    for name,df in self.dfs.items():
-      if df is not None and self.model_ref is not None:
-        i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
-        if len(i_seq_cols)>0:
-          # take the first atom to represent chain and res
-          i_seq_col = i_seq_cols[0]
-          df["Chain"] = pd.NA
-          df["Res"] = pd.NA
-          df["Seq"] = pd.NA
-          df.reset_index(drop=True, inplace=True)
-
-          for label, key in zip(["Chain","Res","Seq"],["asym_id","comp_id","seq_id"]):
-            not_na = df[i_seq_col].notna()
-
-            indices = df.loc[not_na, i_seq_col].to_numpy()  # Extract as numpy array for direct access
-            vals = self.model_ref.mol.sites[key].iloc[indices].to_numpy()  # Extract values as numpy array
-            df.loc[not_na,label] = vals
-
-
 
 class EditsRef(Ref):
   # A collection of edits of a single type

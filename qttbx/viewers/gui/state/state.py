@@ -25,7 +25,7 @@ from ...core.python_utils import DotDict
 from ...core.selection import Selection
 from .data import MolecularModelData, RealSpaceMapData
 from .cif import CifFileData
-
+from ...core.parameters import params
 
 
 class StateSignals(QObject):
@@ -56,6 +56,7 @@ class StateSignals(QObject):
 
   # Geometry signals
   edits_added = Signal(object) # edits ref
+  geometry_filter_from_restraint = Signal(object) # a FilterObj, apply to geometry filters
 
   # Restraints signals
   restraints_change = Signal(object) # Restraint ref
@@ -147,8 +148,7 @@ class State:
       #self.associations = {} # model: map associations
     self.references = {} # dictionary of all 'objects' tracked by the State
     #self.external_loaded = defaultdict(list) # external name: [internal ref_ids]
-    self.params = DotDict()
-    self.params.default_format = 'pdb'
+    self.params = params
 
     # Signals
     self.signals = StateSignals()

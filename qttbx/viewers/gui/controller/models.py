@@ -120,15 +120,16 @@ class ModelLikeEntryController(ScrollEntryController):
     contextMenu.exec_(self.view.button_restraints.mapToGlobal(position))
 
   def process_and_make_restraints(self):
-      if self.ref.has_geometry:
-        self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
-      try:
-        restraints = Geometry.from_model_ref(self.ref)
-        ref = GeometryRef(restraints,self.state.active_model_ref)
-        self.state.add_ref(ref)
-      except:
-        self.state.notify("Failed to process and make restraints.")
-        raise
+    assert False, "Deprecated"
+      # if self.ref.has_geometry:
+      #   self.state.notify("Already have restraints loaded. New processing will replace existing restraints.")
+      # try:
+      #   restraints = Geometry.from_model_ref(self.ref)
+      #   ref = GeometryRef(restraints,self.state.active_model_ref)
+      #   self.state.add_ref(ref)
+      # except:
+      #   self.state.notify("Failed to process and make restraints.")
+      #   raise
 
   def load_geometry(self):
       if self.ref.has_geometry:
@@ -136,18 +137,18 @@ class ModelLikeEntryController(ScrollEntryController):
       self.open_geometry_file_dialog()
 
   def open_geometry_file_dialog(self):
+    assert False, "Deprecated"
+    # self.openFileDialog = QFileDialog(self.view)
+    # self.openFileDialog.setFileMode(QFileDialog.AnyFile)
+    # if self.openFileDialog.exec_():
+    #     file_path = self.openFileDialog.selectedFiles()[0]
 
-    self.openFileDialog = QFileDialog(self.view)
-    self.openFileDialog.setFileMode(QFileDialog.AnyFile)
-    if self.openFileDialog.exec_():
-        file_path = self.openFileDialog.selectedFiles()[0]
+    #     filepath = str(Path(file_path).absolute())
+    #     print(f"Geometry file selected: {filepath}")
 
-        filepath = str(Path(file_path).absolute())
-        print(f"Geometry file selected: {filepath}")
-
-        data = Geometry.from_geo_file(filepath)
-        ref = GeometryRef(data,self.state.active_model_ref)
-        self.state.add_ref(ref)
+    #     data = Geometry.from_geo_file(filepath)
+    #     ref = GeometryRef(data,self.state.active_model_ref)
+    #     self.state.add_ref(ref)
 
   def show_color_dialog(self):
     color_dialog = QColorDialog(self.view)

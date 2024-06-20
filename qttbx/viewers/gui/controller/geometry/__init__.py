@@ -24,23 +24,23 @@ class GeoListController(ScrollableListController):
     super().__init__(parent=parent,view=view)
 
     # Load button
-    self.view.list_view.load_button.clicked.connect(self.showFileDialog)
+    # self.view.list_view.load_button.clicked.connect(self.showFileDialog)
 
     # update list
     self.state.signals.geo_change.connect(self.update)
 
 
-  def showFileDialog(self):
-    home_dir = Path.home()  # Cross-platform home directory
-    fname = QFileDialog.getOpenFileName(self.view, 'Open file', str(home_dir))
-    if fname[0]:
-      filename = fname[0]
-      filepath = Path(filename).absolute()
+  # def showFileDialog(self):
+  #   home_dir = Path.home()  # Cross-platform home directory
+  #   fname = QFileDialog.getOpenFileName(self.view, 'Open file', str(home_dir))
+  #   if fname[0]:
+  #     filename = fname[0]
+  #     filepath = Path(filename).absolute()
 
-      # add to state
-      data = Geometry(filepath=filepath)
-      ref = GeometryRef(data=data,show=True)
-      self.state.add_ref(ref)
+  #     # add to state
+  #     data = Geometry(filepath=filepath)
+  #     ref = GeometryRef(data=data,show=True)
+  #     self.state.add_ref(ref)
 
 
 
