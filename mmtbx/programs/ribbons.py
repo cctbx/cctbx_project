@@ -3,6 +3,7 @@ from libtbx.program_template import ProgramTemplate
 import iotbx.pdb
 from pathlib import Path
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
+from mmtbx.kinemage.ribbons import make_protein_guidepoints
 
 version = "1.0.0"
 
@@ -67,6 +68,9 @@ Output:
       # Find the contiguous protein residues by CA distance
       contiguous_residues = find_contiguous_protein_residues(structure)
       print('Found {} contiguous protein residue lists'.format(len(contiguous_residues)))
+      for contig in contiguous_residues:
+        guidepoints = make_protein_guidepoints(contig, structure)
+        print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)))
 
       # @todo
       
