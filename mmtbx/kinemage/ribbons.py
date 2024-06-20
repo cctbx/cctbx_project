@@ -135,8 +135,8 @@ class GuidePoint:
 
 def make_protein_guidepoints(contiguous_residues, structure):
   '''Return a list of GuidePoint objects for the protein residues.
-  :param contiguous_residues: list of iotbx.pdb.hierarchy.residue_group entries, the contiguous protein residues
-  returned by find_contiguous_protein_residues().
+  :param contiguous_residues: list of iotbx.pdb.hierarchy.residue_group entries, on of
+  the contiguous residue lists returned by find_contiguous_protein_residues().
   :param structure: iotbx.pdb.hierarchy.root object holding the structure to find the guidepoints for.
   '''
 
@@ -149,7 +149,7 @@ def make_protein_guidepoints(contiguous_residues, structure):
   maxOffset = 1.5   # Maximum displacement of guidepoint based on curvature
   anchorAtoms = ["CA"]  # Atoms to use for anchor points
 
-  # Make normal guidepoints between each pair of peptides.
+  # Make normal guidepoints between each pair of residues.
   for i in range(numResidues - 1):
 
     # Find the guidepoint to work on.
@@ -159,7 +159,7 @@ def make_protein_guidepoints(contiguous_residues, structure):
     g.prevRes = contiguous_residues[i]
     g.nextRes = contiguous_residues[i+1]
 
-    # Find the CA atoms for the current and previous residues.
+    # Find the anchor atoms for the current and previous residues.
     # We know they are there because we found the residues in the contiguous_residues list.
     ca1 = _FindNamedAtomInResidue(g.prevRes, anchorAtoms)
     ca2 = _FindNamedAtomInResidue(g.nextRes, anchorAtoms)
@@ -208,10 +208,11 @@ def make_protein_guidepoints(contiguous_residues, structure):
     # Do this last so that for CA-only structures, everything above has been calculated
     # before we might have to bail on this guidepoint.
     ox1 = _FindNamedAtomInResidue(g.prevRes, ["O"])
-    avec = col(ca2.xyz) - col(ca1.xyz)
-    bvec = col(ox1.xyz) - col(ca1.xyz)
-    g.cvec = avec.cross(bvec).normalize()
-    g.dvec = g.cvec.cross(avec).normalize()
+    if ox1 is not None:
+      avec = col(ca2.xyz) - col(ca1.xyz)
+      bvec = col(ox1.xyz) - col(ca1.xyz)
+      g.cvec = avec.cross(bvec).normalize()
+      g.dvec = g.cvec.cross(avec).normalize()
 
   # Check on widthFactors -- only apply for 3+ in a row > 0
   i = 2
@@ -246,3 +247,115 @@ def make_protein_guidepoints(contiguous_residues, structure):
   guidepoints[-2] = lastGuides
 
   return guidepoints
+
+def make_nucleic_acid_guidepoints(contiguous_residues, structure):
+  '''Return a list of GuidePoint objects for the nucleic acid residues.
+  :param contiguous_residues: list of iotbx.pdb.hierarchy.residue_group entries, one of
+ the contiguous residue lists returned by find_contiguous_amino_acid_residues().
+  :param structure: iotbx.pdb.hierarchy.root object holding the structure to find the guidepoints for.
+  '''
+
+  # Initialize an empty list of guiepoints that lie between residues (one less than the number of residues)
+  # plus two at the beginning and two at the end.  These will be filled in below.
+  numResidues = len(contiguous_residues)
+  guidepoints = [GuidePoint()] * (numResidues - 1 + 2 + 2)
+
+  # Initialize some values for the calculations
+  maxOffset = 1.5   # Maximum displacement of guidepoint based on curvature
+  anchorAtoms = ["P", "O5*", "O5'"]  # Atoms to use for anchor points
+
+  # Make normal guidepoints between each pair of residues.
+  for i in range(numResidues - 1):
+
+    # Find the guidepoint to work on.
+    g = guidepoints[i+2]
+
+    # Set the residues before and after the guidepoint
+    g.prevRes = contiguous_residues[i]
+    g.nextRes = contiguous_residues[i+1]
+
+    # Find the anchor atoms for the current and previous residues.
+    # We know they are there because we found the residues in the contiguous_residues list.
+    phos1 = _FindNamedAtomInResidue(g.prevRes, anchorAtoms)
+    phos2 = _FindNamedAtomInResidue(g.nextRes, anchorAtoms)
+
+    # Calculate the position of the guide point, which is halfway between them.
+    g.pos = (col(phos1.xyz) + col(phos2.xyz)) / 2
+
+    # Based on P(i-1) to P(i+1) or P(i) to P(i+2) distance, we may offset guide points.
+    # For areas of high curvature, the guide point is offset towards the C4'Based
+    # on P(i-1) to P(i+2) distance, we may adjust ribbon width.
+
+    if (1 <= i and i <= numResidues - 3):
+      p0 = _FindNamedAtomInResidue(contiguous_residues[i-1], anchorAtoms)
+      p3 = _FindNamedAtomInResidue(contiguous_residues[i+2], anchorAtoms)
+      ppDist1 = (g.pos - col(p0.xyz)).length()
+      ppDist2 = (g.pos - col(p3.xyz)).length()
+
+      # Default values for regions of low curvature
+      isTightlyCurved = False
+      ppDistance = ppDist1
+      maxOffset = 0.0
+      g.offsetFactor = 0.0
+      g.widthFactor = 0.0   # There is never width hinting for nucleic acids
+      if ppDist1 <= 9.0 or ppDist2 <= 9.0:
+        isTightlyCurved = True
+        ppDistance = min(ppDist1, ppDist2)
+        carbon4 = _FindNamedAtomInResidue(g.prevRes, ["C4*", "C4'"])
+        if carbon4 is not None:
+          maxOffset = (g.pos - col(carbon4.xyz)).length() + 1.0  # Allows guidepoint to go past the C4'
+          g.offsetFactor = (9.0 - ppDistance) / (9.0 - 7.0)
+          g.offsetFactor = min(1.0, g.offsetFactor)   # Reaches full offset at 7A curvature
+          offsetVec = (col(carbon4.xyz) - g.pos).normalize()
+          g.pos += maxOffset * g.offsetFactor * offsetVec
+
+  # We do this last so that if there are missing atoms everying above has been calculated
+  # before we might have to bail on this guidepoint.
+  carbon3 = _FindNamedAtomInResidue(g.prevRes, ["C3*", "C3'"])
+  carbon1 = _FindNamedAtomInResidue(g.nextRes, ["C1*", "C1'"])
+  if carbon3 is not None and carbon1 is not None:
+    avec = col(phos2.xyz) - col(phos1.xyz)
+    bvec = col(carbon1.xyz) - col(carbon3.xyz)
+    g.cvec = avec.cross(bvec).normalize()
+    g.dvec = g.cvec.cross(avec).normalize()
+
+  # Make dummy guidepoints at the beginning and end of the chain.
+  firstGuides = GuidePoint(col(_FindNamedAtomInResidue(contiguous_residues[0], anchorAtoms).xyz),
+                            guidepoints[2].cvec, guidepoints[2].dvec,
+                            guidepoints[2].offsetFactor, guidepoints[2].widthFactor,
+                            contiguous_residues[0], contiguous_residues[0])
+  guidepoints[0] = firstGuides
+  guidepoints[1] = firstGuides
+  # Prekin: 3' guide point is 2/3 of the way to the O3' from the last guide point,
+  # but we just use the C3 atom.
+  carbon3 = _FindNamedAtomInResidue(contiguous_residues[-1], ["C3*", "C3'", "P", "O5'", "O5*"])
+  if carbon3 is not None:
+    lastGuides = GuidePoint(col(carbon3.xyz),
+                            guidepoints[-3].cvec, guidepoints[-3].dvec,
+                            guidepoints[-3].offsetFactor, guidepoints[-3].widthFactor,
+                            contiguous_residues[-1], contiguous_residues[-1])
+    guidepoints[-1] = lastGuides
+    guidepoints[-2] = lastGuides
+
+  return guidepoints
+
+# ------------------------------------------------------------------------------
+
+def swap_edge_and_face(guidepoints):
+  '''Converts a RNA-style ribbon (the default) to a DNA-style one,
+    and vice versa, by swapping the "c" and "d" vectors.
+    This results in a 90 degree rotation of the ribbon around the ribbon axis.
+  :param guidepoints: list of GuidePoint objects to swap the edge and face vectors for.
+  '''
+  for g in guidepoints:
+    g.cvec, g.dvec = g.dvec, g.cvec
+
+def untwist_ribbon(guidepoints):
+  '''Removes excess twist from a ribbon by reversing the sign of the GuidePoint
+    "d" vectors as necessary. A vector is flipped if it has a negative dot product
+    with the previous one (i.e. the angle between them is greater than 90 degrees).
+  :param guidepoints: list of GuidePoint objects to untwist.
+  '''
+  for i in range(len(guidepoints)-1):
+    if guidepoints[i].dvec.dot(guidepoints[i+1].dvec) < 0:
+      guidepoints[i+1].dvec *= -1.0

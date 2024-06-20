@@ -3,7 +3,8 @@ from libtbx.program_template import ProgramTemplate
 import iotbx.pdb
 from pathlib import Path
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
-from mmtbx.kinemage.ribbons import make_protein_guidepoints
+from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face
 
 version = "1.0.0"
 
@@ -17,6 +18,16 @@ doNA = True
   .type = bool
   .short_caption = Construct nucleic acid ribbons
   .help = Construct ribbons for the nucleic acid sections of the model
+
+doUntwistRibbons = True
+  .type = bool
+  .short_caption = Untwist ribbons
+  .help = Remove excess twist from ribbons by making the neighboring dot products positive
+
+doDNAStyle = False
+  .type = bool
+  .short_caption = DNA style ribbons
+  .help = Use the DNA style ribbons instead of the default RNA style ribbons (rotates them by 90 degrees)
 '''
 
 # ------------------------------------------------------------------------------
@@ -68,9 +79,15 @@ Output:
       # Find the contiguous protein residues by CA distance
       contiguous_residues = find_contiguous_protein_residues(structure)
       print('Found {} contiguous protein residue lists'.format(len(contiguous_residues)))
+
+      # @todo
+
       for contig in contiguous_residues:
         guidepoints = make_protein_guidepoints(contig, structure)
         print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)))
+        if self.params.doUntwistRibbons:
+          print('  Untwisted ribbon')
+          untwist_ribbon(guidepoints)
 
       # @todo
       
@@ -78,6 +95,20 @@ Output:
       # Find the contiguous nucleic acid residues by CA distance
       contiguous_residues = find_contiguous_nucleic_acid_residues(structure)
       print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residues)))
+
+      # @todo
+
+      for contig in contiguous_residues:
+        guidepoints = make_nucleic_acid_guidepoints(contig, structure)
+        print(' Made {} NA guidepoints for {} residues'.format(len(guidepoints),len(contig)))
+        if self.params.doUntwistRibbons:
+          print('  Untwisted ribbon')
+          untwist_ribbon(guidepoints)
+        if self.params.doDNAStyle:
+          print('  Swapped edge and face (DNA style)')
+          swap_edge_and_face(guidepoints)
+        else:
+          print('  Using RNA style ribbons')
 
       # @todo
 
