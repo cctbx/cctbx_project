@@ -56,7 +56,7 @@ class integrate(worker):
 
       all_integrated_expts.append(expt)
       if all_integrated_refls:
-        flex.reflection_table.concat([all_integrated_refls, integrated])
+        all_integrated_refls = flex.reflection_table.concat([all_integrated_refls, integrated])
       else:
         all_integrated_refls = integrated
 
