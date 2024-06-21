@@ -4,7 +4,7 @@ import iotbx.pdb
 from pathlib import Path
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
-from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present
 
 version = "1.0.0"
 
@@ -29,6 +29,10 @@ color_by = *rainbow secondary_structure
   .type = choice(multi=False)
   .short_caption = How to color the ribbons
   .help = How to color the ribbons
+do_plain_coils = False
+  .type = bool
+  .short_caption = Do plain coils
+  .help = Do plain coils (no halo) even for the helix and sheet parts of the protein
 '''
 
 # ------------------------------------------------------------------------------
@@ -73,8 +77,20 @@ Output:
     self.model = self.data_manager.get_model()
     structure = self.model.get_hierarchy()
 
+    # The name of the structure, which is the root of the input file name (no path, no extension)
+    self.idCode = self.data_manager.get_default_model_name().split('.')[0]
+    if self.idCode is None or self.idCode == "":
+      self.idCode = "macromol"
+
+    # Round-robin colors for the backbone of the ribbons
+    self.backBoneColors = [ "white", "yellowtint", "peachtint", "greentint", "bluetint", "lilactint", "pinktint" ]
+
     # Create the output string that will be written to the output file.  It will be filled in during the run.
     outString = ""
+
+    # Fill in the header information
+    outString += "@kinemage 1\n"
+    outString += "@onewidth\n"
     
     if self.params.do_protein:
       # Find the contiguous protein residues by CA distance

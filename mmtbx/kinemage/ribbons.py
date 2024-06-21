@@ -359,3 +359,17 @@ def untwist_ribbon(guidepoints):
   for i in range(len(guidepoints)-1):
     if guidepoints[i].dvec.dot(guidepoints[i+1].dvec) < 0:
       guidepoints[i+1].dvec *= -1.0
+
+# ------------------------------------------------------------------------------
+
+def non_CA_atoms_present(structure):
+  '''Return True if any atom other than CA is present in the structure.
+  :param structure: iotbx.pdb.hierarchy.root object holding the structure to check.
+  '''
+  for model in structure.models():
+    for chain in model.chains():
+      for residue_group in chain.residue_groups():
+        for atom in residue_group.atoms():
+          if atom.name.strip().upper() != "CA":
+            return True
+  return False
