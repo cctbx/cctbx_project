@@ -577,19 +577,19 @@ newarray._sigmas = sigs
 
 
   def onOpenHelpFile(self):
-    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/doc_hklviewer/")
+    QDesktopServices.openUrl(QUrl("https://cci.lbl.gov/docs/cctbx/doc_hklviewer/"))
 
 
   def onOpenTutorialHelpFile(self):
-    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/tuto_hklviewer/")
+    QDesktopServices.openUrl(QUrl("https://cci.lbl.gov/docs/cctbx/tuto_hklviewer/"))
 
 
   def onOpenCCTBXwebsite(self):
-    QDesktopServices.openUrl("http://cci.lbl.gov/docs/cctbx/")
+    QDesktopServices.openUrl(QUrl("https://cci.lbl.gov/docs/cctbx/"))
 
 
   def onNGLmouseControlswebsite(self):
-    QDesktopServices.openUrl("http://nglviewer.org/ngl/api/manual/interaction-controls.html#controls")
+    QDesktopServices.openUrl(QUrl("https://nglviewer.org/ngl/api/manual/interaction-controls.html#controls"))
 
 
   def onPresetbtn_click(self):
