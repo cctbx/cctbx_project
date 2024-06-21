@@ -380,8 +380,8 @@ def filter_by_distance(model, fix_altlocs_and_filter_was_run, dist_min=1.8,
         altloc_j = aj.parent().altloc
         d = ai.distance(aj)
         if fix_altlocs_and_filter_was_run:
-          if(d<dist_min): # assumes fix_altlocs_and_filter was run, or else remove ai
-            assert len(altloc_i)>0 and len(altloc_j)>0
+          if(abs(d-dist_min)>1.e-3): # assumes fix_altlocs_and_filter was run, or else remove ai
+            assert len(altloc_i)>0 and len(altloc_j)>0, [d, dist_min]
       # Check water inside shell dist_min < dist < dist_max
       found = False
       for j in selection_shell:
