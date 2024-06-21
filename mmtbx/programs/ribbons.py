@@ -9,25 +9,26 @@ from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face
 version = "1.0.0"
 
 master_phil_str = '''
-doProtein = True
+do_protein = True
   .type = bool
   .short_caption = Construct protein ribbons
   .help = Construct ribbons for the protein sections of the model
-
-doNA = True
+do_nucleic_acid = True
   .type = bool
   .short_caption = Construct nucleic acid ribbons
   .help = Construct ribbons for the nucleic acid sections of the model
-
-doUntwistRibbons = True
+untwist_ribbons = True
   .type = bool
   .short_caption = Untwist ribbons
   .help = Remove excess twist from ribbons by making the neighboring dot products positive
-
-doDNAStyle = False
+DNA_style = False
   .type = bool
   .short_caption = DNA style ribbons
   .help = Use the DNA style ribbons instead of the default RNA style ribbons (rotates them by 90 degrees)
+color_by = *rainbow secondary_structure
+  .type = choice(multi=False)
+  .short_caption = How to color the ribbons
+  .help = How to color the ribbons
 '''
 
 # ------------------------------------------------------------------------------
@@ -75,7 +76,7 @@ Output:
     # Create the output string that will be written to the output file.  It will be filled in during the run.
     outString = ""
     
-    if self.params.doProtein:
+    if self.params.do_protein:
       # Find the contiguous protein residues by CA distance
       contiguous_residues = find_contiguous_protein_residues(structure)
       print('Found {} contiguous protein residue lists'.format(len(contiguous_residues)))
@@ -85,13 +86,13 @@ Output:
       for contig in contiguous_residues:
         guidepoints = make_protein_guidepoints(contig, structure)
         print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)))
-        if self.params.doUntwistRibbons:
+        if self.params.untwist_ribbons:
           print('  Untwisted ribbon')
           untwist_ribbon(guidepoints)
 
       # @todo
       
-    if self.params.doNA:
+    if self.params.do_nucleic_acid:
       # Find the contiguous nucleic acid residues by CA distance
       contiguous_residues = find_contiguous_nucleic_acid_residues(structure)
       print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residues)))
@@ -101,10 +102,10 @@ Output:
       for contig in contiguous_residues:
         guidepoints = make_nucleic_acid_guidepoints(contig, structure)
         print(' Made {} NA guidepoints for {} residues'.format(len(guidepoints),len(contig)))
-        if self.params.doUntwistRibbons:
+        if self.params.untwist_ribbons:
           print('  Untwisted ribbon')
           untwist_ribbon(guidepoints)
-        if self.params.doDNAStyle:
+        if self.params.DNA_style:
           print('  Swapped edge and face (DNA style)')
           swap_edge_and_face(guidepoints)
         else:
