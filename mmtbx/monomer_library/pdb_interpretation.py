@@ -3885,7 +3885,7 @@ class build_all_chain_proxies(linking_mixins):
 
   def _check_for_capitalised_element(self):
     for atom in self.pdb_hierarchy.atoms():
-      if atom.element==atom.element.upper():
+      if atom.element!=atom.element.upper():
         atom.element=atom.element.upper()
 
   def __getstate__(self):
