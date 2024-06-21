@@ -818,56 +818,25 @@ def sphere_enclosing_model(model):
   model_radius = math.sqrt(dsqrmax)
   return model_centre, model_radius
 
-def sphere_sampling_model(model):
-  sites_cart = model.get_sites_cart()
-  cart_min = flex.double(sites_cart.min())
-  cart_max = flex.double(sites_cart.max())
-  model_midpoint = (cart_max + cart_min) / 2
-  meansqr = flex.mean((sites_cart - tuple(model_midpoint)).norms() ** 2)
-  rms_model_radius = math.sqrt(meansqr)
-  return model_midpoint, rms_model_radius
+def mask_fixed_model_region(mmm, d_min,
+                                 fixed_model=None,
+                                 ordered_mask_id='ordered_volume_mask',
+                                 fixed_mask_id='mask_around_atoms'):
+  # Flatten the region of the mask covered by the fixed model
+  # and keep the mask for the fixed model.
 
-def flatten_model_region(mmm, d_min):
-  # Flatten the region covered by the model
-  # For map_manager, replace it by the mask-weighted mean within this region
-  # For half-maps, replace by the mean and put back the original half-map
-  # map difference to preserve the error signal.
-  mm = mmm.map_manager()
-  mm1 = mmm.map_manager_1()
-  mm2 = mmm.map_manager_2()
-  delta_mm = mm1.customized_copy(map_data = mm1.map_data() - mm2.map_data())
-  model = mmm.model()
-  mmm.create_mask_around_atoms(model=model, soft_mask=True, soft_mask_radius=d_min/2)
-  working_mmm = mmm.deep_copy() # Save a copy before masking to work on later
+  # Do nothing if no fixed model
+  if fixed_model is None:
+    return
 
-  working_mmm.add_map_manager_by_id(delta_mm, map_id = 'delta_map')
-
-  # Invert original mask and apply to original maps to flatten density under model
-  mask_mm_inverse = mmm.get_map_manager_by_id('mask')
-  mask_mm_inverse.set_map_data(map_data = 1. - mask_mm_inverse.map_data())
-  mmm.apply_mask_to_maps(set_outside_to_mean_inside = False)
-
-  # Apply original mask to working_mmm to get density and difference density under model
-  mask_mm = working_mmm.get_map_manager_by_id('mask')
-  working_mmm.apply_mask_to_maps(set_outside_to_mean_inside = False)
-
-  # Get mean density for part of each map under model, to add back to
-  # flattened region of each map
-  mask_info = working_mmm.mask_info()
-  weighted_points = mask_info.size*mask_info.mean
-  wmm = working_mmm.map_manager()
-  mean_map = flex.sum(wmm.map_data()) / weighted_points
-  mask_data = mask_mm.map_data()
-  mm.set_map_data(map_data = mm.map_data() + mean_map * mask_data)
-  wmm1 = working_mmm.map_manager_1()
-  mean_map1 = flex.sum(wmm1.map_data()) / weighted_points
-  mm1.set_map_data(map_data = mm1.map_data() +
-      mean_map1 * mask_data + delta_mm.map_data()/2)
-  wmm2 = working_mmm.map_manager_2()
-  mean_map2 = flex.sum(wmm2.map_data()) / weighted_points
-  mm2.set_map_data(map_data = mm2.map_data() +
-      mean_map2 * mask_data - delta_mm.map_data()/2)
-  mmm.remove_map_manager_by_id('mask')
+  radius = max(3., d_min)
+  mmm.create_mask_around_atoms(model=fixed_model, mask_atoms_atom_radius=radius, mask_id=fixed_mask_id)
+  fixed_model_mask = mmm.get_map_manager_by_id(map_id=fixed_mask_id)
+  # Invert fixed_model_mask before flattening
+  fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
+  mmm.apply_mask_to_map(map_id=ordered_mask_id, mask_id=fixed_mask_id)
+  # Invert back so we can use to assess fraction of fixed model in masked sphere
+  fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
 
 def add_local_squared_deviation_map(
     mmm, coeffs_in, radius, d_min, map_id_out):
@@ -1922,29 +1891,21 @@ def run():
   Optional command-line arguments (keyworded):
   --protein_mw*: molecular weight expected for protein component of ordered density
   --nucleic_mw*: same for nucleic acid component
-  --model: PDB file for model that can either be used to flatten the map around
-          the model, to search for the next component, or to cut out a sphere
-          of density to refine and score the fit of the model
-  --flatten_model: Use model to define region where map should be flattened
-  --cutout_model: Use model to define sphere to process for refining and
-          scoring the docking of this model
   --sphere_cent: Centre of sphere defining target map region (3 floats)
           defaults to centre of map
   --radius: radius of sphere (1 float)
           must be given if sphere_cent defined, otherwise
-          defaults to narrowest extent of input map divided by 4
+          defaults to either radius enclosing 98% of ordered volume (if determined)
+          or narrowest extent of input map divided by 4
   --no_shift_map_origin: don't shift output mtz file to match input map on its origin
           default False
-  --no_determine_ordered_volume: don't define ordered volume for comparison with cutout volume
+  --no_determine_ordered_volume: don't determine ordered volume
           default False
   --file_root: root name for output files
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
   * NB: At least one of protein_mw or nucleic_mw must be given
-        Either a model or a sphere can be used to specify a cutout region, but
-        not both
-        The flatten_model option cannot be combined with cutting out a sphere.
   """
   import argparse
   dm = DataManager()
@@ -1952,7 +1913,7 @@ def run():
 
   parser = argparse.ArgumentParser(
           description='Prepare cryo-EM map for docking')
-  parser.add_argument('map1',help='Map file for half-map 1')
+  parser.add_argument('map1', help='Map file for half-map 1')
   parser.add_argument('map2', help='Map file for half-map 2')
   parser.add_argument('d_min', help='d_min for maps', type=float)
   parser.add_argument('--protein_mw',
@@ -1963,11 +1924,7 @@ def run():
                       type=float)
   parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
                       type=float, default=500.)
-  parser.add_argument('--model',help='Placed model')
-  parser.add_argument('--flatten_model',help='Flatten map around model',
-                      action='store_true')
-  parser.add_argument('--cutout_model',help='Cut out sphere around model',
-                      action='store_true')
+  parser.add_argument('--fixed_model', help='Fixed model')
   parser.add_argument('--sphere_cent',help='Centre of sphere for docking',
                       nargs=3, type=float)
   parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
@@ -1991,7 +1948,10 @@ def run():
   cutout_specified = False
   sphere_cent = None
   radius = None
-  model = None
+  fixed_model = None
+  if args.fixed_model is not None:
+    model_file = args.fixed_model
+    fixed_model = dm.get_model(model_file)
 
   protein_mw = None
   nucleic_mw = None
@@ -2005,25 +1965,11 @@ def run():
 
   sphere_points = args.sphere_points
 
-  if args.model is not None:
-    if not (args.cutout_model or args.flatten_model):
-      raise Sorry("Use for model must be specified (flatten or cut out map)")
-    model_file = args.model
-    model = dm.get_model(model_file)
-
-  if (args.sphere_cent is not None) and args.cutout_model:
-    raise Sorry("Only one method to define region to cut out (sphere or model) can be given")
   if args.sphere_cent is not None:
     if args.radius is None:
       raise Sorry("Radius must be provided if sphere_cent is defined")
     sphere_cent = tuple(args.sphere_cent)
     radius = args.radius
-    cutout_specified = True
-  if args.cutout_model:
-    if args.model is None:
-      raise Sorry("Model must be provided if cutout_model is defined")
-    sphere_cent, radius = sphere_enclosing_model(model)
-    radius = radius + d_min # Expand to allow width for density
     cutout_specified = True
   if (not determine_ordered_volume and not cutout_specified):
     raise Sorry("Must determine ordered volume if cutout not specified")
@@ -2033,19 +1979,15 @@ def run():
   mm1 = dm.get_real_map(map1_filename)
   map2_filename = args.map2
   mm2 = dm.get_real_map(map2_filename)
-  mmm = map_model_manager(model=model, map_manager_1=mm1, map_manager_2=mm2)
-
-  # Prepare maps by flattening model volume if desired
-  if args.flatten_model:
-    if args.model is None:
-      raise Sorry("Model must be provided if flatten_model is defined")
-    flatten_model_region(mmm, d_min)
+  mmm = map_model_manager(model=fixed_model, map_manager_1=mm1, map_manager_2=mm2)
 
   if determine_ordered_volume:
     mask_id = 'ordered_volume_mask'
     add_ordered_volume_mask(mmm, d_min,
         protein_mw=protein_mw, nucleic_mw=nucleic_mw,
         map_id_out=mask_id)
+    if fixed_model:
+      mask_fixed_model_region(mmm, d_min, fixed_model=fixed_model)
     if verbosity>1:
       ordered_mm = mmm.get_map_manager_by_id(map_id=mask_id)
       if args.file_root is not None:
@@ -2056,10 +1998,13 @@ def run():
 
   # Default to sphere containing most of ordered volume
   if not cutout_specified:
-    target_completeness = 0.98
-    radius = get_mask_radius(mmm.get_map_manager_by_id(mask_id),target_completeness)
     ucpars = mm1.unit_cell().parameters()
     sphere_cent = (ucpars[0]/2,ucpars[1]/2,ucpars[2]/2)
+    if determine_ordered_volume:
+      target_completeness = 0.98
+      radius = get_mask_radius(mmm.get_map_manager_by_id(mask_id),target_completeness)
+    else:
+      radius = min(ucpars[0],ucpars[1],ucpars[2])/4.
 
   # Refine to get scale and error parameters for docking region
   results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
