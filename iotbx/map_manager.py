@@ -2273,7 +2273,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     assert n_real or target_grid_spacing
 
-    if self.origin_shift_grid_units != (0,0,0):
+    if tuple(self.origin_shift_grid_units) != (0,0,0):
       return self._resample_on_different_grid_and_rebox(n_real = n_real,
        target_grid_spacing = target_grid_spacing)
 
