@@ -402,14 +402,9 @@ def filter_by_distance(model, fix_altlocs_and_filter_was_run, dist_min=1.8,
         aj = atoms[j]
         altloc_j = aj.parent().altloc
         if fix_altlocs_and_filter_was_run:
-<<<<<<< HEAD
-          if(abs(d-dist_min)>1.e-3): # assumes fix_altlocs_and_filter was run, or else remove ai
-            assert len(altloc_i)>0 and len(altloc_j)>0, [d, dist_min]
-=======
           if altloc_i =="" or altloc_i==" " or altloc_j =="" or altloc_j==" " or altloc_i==altloc_j:
             remove_sel.extend(agi.atoms().extract_i_seq())
 
->>>>>>> 9e7c5df37e (Bug fix and make sure no lone water is added (no matching altloc))
       # Check water inside shell dist_min < dist < dist_max
       found = False
       for j in selection_shell:
