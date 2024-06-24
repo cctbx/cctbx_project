@@ -23,6 +23,14 @@ def get_unique_altloc(exclude):
     if not l in exclude:
       return l
 
+def get_unique_altloc2(available, exclude):
+  l = None
+  for l in available:
+    if l in [' ', '']: continue
+    if not l in exclude:
+      return l
+  return l
+
 output_params_str = """
   output_residue_name = HOH
     .type=str
@@ -250,7 +258,9 @@ class maps(object):
       x=self.model_map.select(sel),
       y=self.data_map.select(sel)).coefficient()
     value_2 = self.data_map.eight_point_interpolation(site_frac)
-    result = cc > min_cc and value_2 > min_value*atom.occ
+    diff_map_val = self.difference_map.eight_point_interpolation(site_frac)
+    result = (cc > min_cc and value_2 > min_value*atom.occ) and \
+             not (diff_map_val < -3)
     return group_args(result = result, cc=cc, value_2=value_2)
 
   def _estimate_diff_map_cutoff(self):
@@ -286,6 +296,8 @@ class maps(object):
     if mean/2 > 3: cutoff = 3
 
 def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
+  present_altlocs = list(
+    model.get_hierarchy().get_conformer_indices().index_altloc_mapping.keys())
   sps = model.crystal_symmetry().special_position_settings()
   get_class = iotbx.pdb.common_residue_names_get_class
   only_model = model.get_hierarchy().only_model()
@@ -318,8 +330,13 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
             remove_sel.extend(agi.atoms().extract_i_seq())
             skip=True
           else:
-            new_altloc = get_unique_altloc(exclude=altlocs_inside+[agi.altloc])
-            agj.altloc = new_altloc
+            new_altloc = get_unique_altloc2(
+              available = present_altlocs,
+              exclude   = altlocs_inside+[agi.altloc])
+            if new_altloc is not None: agj.altloc = new_altloc
+            else:
+              remove_sel.extend(agi.atoms().extract_i_seq())
+              skip = True
       if skip: continue
       #
       altlocs_inside = []
@@ -328,8 +345,14 @@ def fix_altlocs_and_filter(model, dist_min=1.8, fix_only=False):
       #
       if agi.altloc in altlocs_inside or agi.altloc in [' ', '']:
         #print(ai.i_seq, selection_around_ai, altlocs_inside, [agi.altloc])
-        new_altloc = get_unique_altloc(exclude=altlocs_inside+[agi.altloc])
-        agi.altloc = new_altloc
+        #new_altloc = get_unique_altloc(exclude=altlocs_inside+[agi.altloc])
+        new_altloc = get_unique_altloc2(
+              available = present_altlocs,
+              exclude   = altlocs_inside+[agi.altloc])
+        if new_altloc is not None:
+          agi.altloc = new_altloc
+        else:
+          remove_sel.extend(agi.atoms().extract_i_seq())
   #
   if remove_sel.size() > 0 and not fix_only:
     remove_sel = ~flex.bool(model.size(), remove_sel)
@@ -378,10 +401,15 @@ def filter_by_distance(model, fix_altlocs_and_filter_was_run, dist_min=1.8,
       for j in selection_around_ai_min:
         aj = atoms[j]
         altloc_j = aj.parent().altloc
-        d = ai.distance(aj)
         if fix_altlocs_and_filter_was_run:
+<<<<<<< HEAD
           if(abs(d-dist_min)>1.e-3): # assumes fix_altlocs_and_filter was run, or else remove ai
             assert len(altloc_i)>0 and len(altloc_j)>0, [d, dist_min]
+=======
+          if altloc_i =="" or altloc_i==" " or altloc_j =="" or altloc_j==" " or altloc_i==altloc_j:
+            remove_sel.extend(agi.atoms().extract_i_seq())
+
+>>>>>>> 9e7c5df37e (Bug fix and make sure no lone water is added (no matching altloc))
       # Check water inside shell dist_min < dist < dist_max
       found = False
       for j in selection_shell:
@@ -436,7 +464,8 @@ class manager(object):
     self._call(msg="Find peaks",       func=self._find_peaks)
     self._call(msg="Add new water",    func=self._add_new_solvent)
     self._call(msg="Refine new water", func=self._refine)
-    self._call(msg="Filter (q & B)",  func=self._filter_q_b)
+    self._call(msg="Filter (q & B)",   func=self._filter_q_b)
+    self._call(msg="Filter (dist only)",   func=self._filter_dist)
     #self._call(msg="Correct drifted",  func=self._correct_drifted_waters)
 
   def _call(self, msg, func = None):
@@ -487,6 +516,13 @@ class manager(object):
       self.model = fix_altlocs_and_filter(
         model    = self.model,
         dist_min = self.params.dist_min)
+    self.model = filter_by_distance(
+      model                          = self.model,
+      fix_altlocs_and_filter_was_run = self.params.include_altlocs,
+      dist_min                       = self.params.dist_min,
+      dist_max                       = self.params.dist_max)
+
+  def _filter_dist(self):
     self.model = filter_by_distance(
       model                          = self.model,
       fix_altlocs_and_filter_was_run = self.params.include_altlocs,
