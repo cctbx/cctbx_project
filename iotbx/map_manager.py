@@ -1430,18 +1430,38 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Deepcopy this object and then set map_data and origin_shift_grid_units
 
-    mm = deepcopy(self)
 
+    mm = map_manager(
+     file_name = None,
+     map_data = map_data,
+     unit_cell_grid = self.unit_cell_grid,
+     unit_cell_crystal_symmetry = self._unit_cell_crystal_symmetry,
+     origin_shift_grid_units = origin_shift_grid_units,
+     ncs_object = self._ncs_object.deep_copy() if self._ncs_object else None,
+     wrapping = False,
+     experiment_type = self._experiment_type,
+     scattering_table = self._scattering_table,
+     resolution = self._resolution,
+     log = self.log,)
+
+    mm._is_mask = self._is_mask
+    mm._is_dummy_map_manager = self._is_dummy_map_manager
     # Set things that are not necessarily the same as in self:
-    mm.log=self.log
-    mm.origin_shift_grid_units = origin_shift_grid_units  # specified above
-    mm.data = map_data  # using self.data or a deepcopy (specified above)
     mm._created_mask = created_mask  # using self._created_mask or a
-                                     #deepcopy (specified above)
-    if wrapping is not None:
-      mm.set_wrapping(wrapping)
+    mm.file_name = self.file_name
+    mm.program_name = self.program_name
+    mm.limitations = self.limitations
+    mm.labels = self.labels
+    
 
-    if not mm.is_full_size():
+    if wrapping is not None:
+      desired_wrapping = wrapping
+    else:
+      desired_wrapping = self._wrapping
+
+    if mm.is_full_size():
+      mm.set_wrapping(desired_wrapping)
+    else: #
       mm.set_wrapping(False)
 
     # Set up _crystal_symmetry for the new object
