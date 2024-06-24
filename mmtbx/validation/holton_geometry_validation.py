@@ -973,6 +973,7 @@ def get_model(info):
   if not info.dm:
     from iotbx.data_manager import DataManager
     info.dm = DataManager()
+    info.dm.set_overwrite(True)
   if not info.model:
     info.model = info.dm.get_model(info.filename)
   info.model.set_log(null_out())
@@ -982,7 +983,9 @@ def get_model(info):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
-  if not os.path.isfile(info.filename):  # write to it
+  if (not os.path.isfile(info.filename)) or \
+       (not open(info.filename).read().strip()):
+    # write to it
     info.dm.write_model_file(info.model, info.filename)
   info.model.set_stop_for_unknowns(False)
   info.model.process(make_restraints=True)
