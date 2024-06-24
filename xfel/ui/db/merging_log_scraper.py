@@ -192,7 +192,7 @@ class Scraper(object):
     def resolution(y, pos):
       if y <= 0:
         return '-'
-      return "%.1f"%(1/math.sqrt(y))
+      return "%.2f"%(1/math.sqrt(y))
     formatter = FuncFormatter(resolution)
     ax2.yaxis.set_major_formatter(formatter)
 

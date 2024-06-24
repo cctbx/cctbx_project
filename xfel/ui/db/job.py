@@ -1065,7 +1065,7 @@ def submit_all_jobs(app):
               print ("Task %s cannot start due to unexpected status for job %d (%s) for trial %d, rungroup %d, run %s, task %d" % \
                 (next_task.type, submitted_job.id, submitted_job.status, trial.trial, rungroup.id, run.run, next_task.id))
             break
-          if submitted_job.status in ("SUBMIT_FAIL", "DELETED") and job.task and job.task.type == "ensemble_refinement":
+          if submitted_job.status in ("SUBMIT_FAIL", "DELETED", "UNKWN") and job.task and job.task.type == "ensemble_refinement":
             break # XXX need a better way to indicate that a job has failed and shouldn't go through the pipeline due to no data
           submit_next_task = True
           previous_job = submitted_job

@@ -2744,7 +2744,7 @@ class RunStatsTab(SpotfinderTab):
     self.tag_runs_changed = True
     self.tag_last_five = False
     self.entire_expt = False
-    self.d_min = 2.5
+    self.d_min = 2
     self.n_multiples = 2
     self.ratio = 1
     self.n_strong = 16
@@ -2797,7 +2797,7 @@ class RunStatsTab(SpotfinderTab):
                                         sub_labels=[''],
                                         label_size=(160, -1),
                                         ctrl_size=(30, -1),
-                                        items=[('d_min', 2.5)])
+                                        items=[('d_min', 2.0)])
     self.n_multiples_selector = gctr.OptionCtrl(self.options_box,
                                                name='rs_multiples',
                                                label='# multiples threshold:',
@@ -2913,6 +2913,7 @@ class RunStatsTab(SpotfinderTab):
 
     self.manage_panel = wx.Panel(self)
     self.manage_sizer = wx.BoxSizer(wx.HORIZONTAL)
+
     self.btn_toggle_options = wx.ToggleButton(self.manage_panel,
                                               label='Hide options')
     self.chk_auto_update = wx.CheckBox(self.manage_panel, label='Auto update')
@@ -3063,6 +3064,7 @@ class RunStatsTab(SpotfinderTab):
 
     locator_path = os.path.join(params.output_folder, "r%04d"%int(run_number), \
                                 "%03d_rg%03d"%(trial.trial, rg.id), 'data.loc')
+    print("Loading run %s, image %d"%(run.run, x+1))
 
     from dials.command_line.image_viewer import phil_scope
     from dials.util.image_viewer.spotfinder_frame import SpotFrame, chooser_wrapper
@@ -3075,7 +3077,6 @@ class RunStatsTab(SpotfinderTab):
       expts = ExperimentListFactory.from_filenames([locator_path], load_models=False)
       tab.sf_frame.imagesets = expts.imagesets()
     tab.sf_frame.add_file_name_or_data(chooser_wrapper(tab.sf_frame.imagesets[x], 0))
-    print("Loading run %s, image %d"%(run.run, x+1))
     tab.sf_frame.load_image(chooser_wrapper(tab.sf_frame.imagesets[x], 0))
     tab.sf_frame.Show()
     tab.cached_run = run
@@ -3488,8 +3489,17 @@ class DatasetTab(BaseTab):
     self.dataset_sizer = wx.BoxSizer(wx.HORIZONTAL)
     self.dataset_panel.SetSizer(self.dataset_sizer)
 
-    self.btn_sizer = wx.FlexGridSizer(1, 2, 0, 10)
+    self.btn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
     self.btn_sizer.AddGrowableCol(0)
+
+    self.filter = gctr.TextButtonCtrl(self,
+                                      name='filter',
+                                      label='Filter',
+                                      label_style='bold',
+                                      label_size=(100, -1),
+                                      value="")
+    self.btn_sizer.Add(self.filter, flag=wx.ALIGN_RIGHT)
+
     self.btn_add_dataset = wx.Button(self, label='New Dataset', size=(120, -1))
     self.btn_active_only = wx.ToggleButton(self,
                                            label='Show Only Active Datasets',
@@ -3501,6 +3511,7 @@ class DatasetTab(BaseTab):
     self.main_sizer.Add(self.btn_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     # Bindings
+    self.Bind(wx.EVT_TEXT, self.onFilter, self.filter.ctr)
     self.Bind(wx.EVT_BUTTON, self.onAddDataset, self.btn_add_dataset)
     self.Bind(wx.EVT_TOGGLEBUTTON, self.onActiveOnly, self.btn_active_only)
 
@@ -3509,7 +3520,12 @@ class DatasetTab(BaseTab):
   def refresh_datasets(self):
     self.dataset_sizer.Clear(delete_windows=True)
     self.all_datasets = self.main.db.get_all_datasets()
+
+    filter_str = self.filter.ctr.GetValue()
+
     for dataset in self.all_datasets:
+      if filter_str and filter_str not in dataset.name:
+        continue
       if self.show_active_only:
         if dataset.active:
           self.add_dataset(dataset=dataset)
@@ -3534,6 +3550,9 @@ class DatasetTab(BaseTab):
 
     if new_dataset_dlg.ShowModal() == wx.ID_OK:
       self.refresh_datasets()
+
+  def onFilter(self, e):
+    self.refresh_datasets()
 
   def onActiveOnly(self, e):
     self.show_active_only = self.btn_active_only.GetValue()
