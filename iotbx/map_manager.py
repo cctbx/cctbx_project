@@ -1452,7 +1452,7 @@ class map_manager(map_reader, write_ccp4_map):
     mm.program_name = self.program_name
     mm.limitations = self.limitations
     mm.labels = self.labels
-    
+
 
     if wrapping is not None:
       desired_wrapping = wrapping
