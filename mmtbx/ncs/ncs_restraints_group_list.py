@@ -70,6 +70,10 @@ class NCS_restraint_group(object):
       result &= sc == oc
     return result
 
+  def setup_selection_set(self):
+    self.set_master_iselection = set(self.master_iselection)
+    self.list_master_iselection = list(self.master_iselection)
+
   def get_iselections_list(self):
     """
     Returns all iselections in the group in one list
@@ -232,6 +236,40 @@ class class_ncs_restraints_group_list(list):
     for sg, og in zip(self, other):
       result &= (sg == og)
     return result
+
+  def setup_sets(self):
+    for g in self:
+      g.setup_selection_set()
+
+  def get_copy_iseqs(self, iseqs):
+    """get iseqs from copies for proxy. E.g. for bond:
+    iseqs = [1,2]
+
+    Args:
+        iseqs (iterable): iseqs of original proxy
+
+    Returns:
+        [[3,4], [5,6], [7,8]]
+    """
+    result = []
+    # self.setup_sets()
+    # print("iseqs in get_copy_iseqs:", iseqs)
+    for gr in self:
+      if iseqs[0] in gr.set_master_iselection:
+        # check the rest are in:
+        for iseq in iseqs[1:]:
+          assert iseq in gr.set_master_iselection
+        # now iterate over input iseqs and populate the result
+        for i in range(gr.get_number_of_copies()):
+          result.append([])
+        for in_iseq in iseqs:
+          # find the index:
+          iseq_idex = gr.list_master_iselection.index(in_iseq)
+          for i, c in enumerate(gr.copies):
+            result[i].append(c.iselection[iseq_idex])
+        return result
+
+
 
   def get_n_groups(self):
     return len(self)

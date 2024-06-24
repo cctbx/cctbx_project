@@ -1157,7 +1157,8 @@ class _():
     object to the atoms in the PDB hierarchy.
     """
     if(self.atoms_size() != xray_structure.scatterers().size()):
-      raise RuntimeError("Incompatible size of hierarchy and scatterers array.")
+      raise RuntimeError("Incompatible size of hierarchy and scatterers array: %d and %d" % (
+        self.atoms_size(), xray_structure.scatterers().size()))
     scatterers = xray_structure.scatterers()
     uc = xray_structure.unit_cell()
     orth = uc.orthogonalize

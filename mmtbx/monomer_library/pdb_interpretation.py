@@ -19,7 +19,7 @@ from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
 from libtbx.str_utils import show_string
-from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s
+from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s, null_out
 from libtbx.utils import format_exception, greek_time
 from libtbx import Auto, group_args, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
@@ -896,6 +896,36 @@ class type_symbol_registry_base(object):
     self.source_labels = flex.std_string(symbols.size())
     self.source_n_expected_atoms = flex.int(symbols.size(), -1)
     self.charges = flex.int(symbols.size(), 0)
+
+  def _show(self):
+    print ('self.type_label', self.type_label)
+    print ('size: ', self.symbols.size())
+    print (list(self.symbols))
+    print (self.strict_conflict_handling)
+    print (self.n_resolved_conflicts)
+    print (list(self.source_labels))
+    print (list(self.source_n_expected_atoms))
+    print (list(self.charges))
+
+  def expand_with_ncs(self, nrgl, n_atoms):
+    new_symbols = flex.std_string(n_atoms)
+    new_source_labels = flex.std_string(n_atoms)
+    new_source_n_expected_atoms = flex.int(new_symbols.size(), -1)
+    new_charges = flex.int(new_symbols.size(), 0)
+    for ncs_group in nrgl:
+      new_symbols.set_selected(ncs_group.master_iselection, self.symbols)
+      new_source_labels.set_selected(ncs_group.master_iselection, self.source_labels)
+      new_source_n_expected_atoms.set_selected(ncs_group.master_iselection, self.source_n_expected_atoms)
+      new_charges.set_selected(ncs_group.master_iselection, self.charges)
+      for c in ncs_group.copies:
+        new_symbols.set_selected(c.iselection, self.symbols)
+        new_source_labels.set_selected(c.iselection, self.source_labels)
+        new_source_n_expected_atoms.set_selected(c.iselection, self.source_n_expected_atoms)
+        new_charges.set_selected(c.iselection, self.charges)
+    self.symbols = new_symbols
+    self.source_labels = new_source_labels
+    self.source_n_expected_atoms = new_source_n_expected_atoms
+    self.charges = new_charges
 
   def discard_tables(self):
     self.source_labels = None
@@ -3055,6 +3085,15 @@ class geometry_restraints_proxy_registries(object):
     self.parallelity = geometry_restraints.parallelity_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
 
+  def expand_with_ncs(self, nrgl):
+    self.bond_simple.expand_with_ncs(nrgl)
+    # self.angle.expand_with_ncs()
+    # self.dihedral.expand_with_ncs()
+    # self.chirality.expand_with_ncs()
+    # self.planarity.expand_with_ncs()
+    # self.parallelity.expand_with_ncs()
+
+
   def initialize_tables(self):
     self.bond_simple.initialize_table()
     self.angle.initialize_table()
@@ -3531,6 +3570,58 @@ class build_all_chain_proxies(linking_mixins):
     self.conformation_dependent_restraints_list = []
     model_type_indices = [-1] * len(models)
     self.all_monomer_mappings = []
+    # self.scattering_type_registry = scattering_type_registry(
+    #   # XXX should be same as in pdb_inp.xray_structure_simple
+    #   scattering_types=self.pdb_atoms.extract_element(strip=True),
+    #   strict_conflict_handling=strict_conflict_handling)
+    # self.nonbonded_energy_type_registry = nonbonded_energy_type_registry(
+    #   n_seq=self.pdb_atoms.size(),
+    #   strict_conflict_handling=strict_conflict_handling)
+    self.geometry_proxy_registries = geometry_restraints_proxy_registries(
+      n_seq=self.pdb_atoms.size(),
+      strict_conflict_handling=strict_conflict_handling)
+    self.cystein_sulphur_i_seqs = flex.size_t()
+    self.cystein_monomer_mappings = []
+    n_unique_models = 0
+
+    ncs_will_be_used = False
+    # trying NCS shortcut here
+    if len(models) == 1:
+      # search for NCS
+      ncs_params = iotbx.ncs.input.get_default_params()
+      ncs_params.ncs_search.try_shortcuts = True
+      ncs_obj = iotbx.ncs.input(
+          ncs_phil_groups             = None,
+          hierarchy                   = self.pdb_hierarchy.deep_copy(),
+          params                      = ncs_params.ncs_search,
+          log                         = None)
+      nrgl = ncs_obj.get_ncs_restraints_group_list()
+      f_nrgl = nrgl.filter_ncs_restraints_group_list(self.pdb_hierarchy, ncs_obj)
+      print("Found NCS")
+      ncs_obj.show(format='phil')
+      # max_rmsd = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, null_out())
+      nrgl_ok = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, sys.stdout)
+      ncs_will_be_used = (nrgl.get_n_groups()>0) and (nrgl == f_nrgl) and nrgl_ok
+      if ncs_will_be_used:
+        print("  will use NCS in pdb_interpretation")
+        self._full_pdb_hierarchy = self.pdb_hierarchy
+        self._old_models = models
+        # self._full_pdb_atoms=self.pdb_atoms,
+        # self._full_sites_cart=self.sites_cart,
+        # print("nrgl[0].master_iselection", list(nrgl[0].master_iselection))
+
+        # nrgl._show(self.pdb_hierarchy, brief=False)
+        self.pdb_hierarchy = self.pdb_hierarchy.select(nrgl[0].master_iselection)
+        # print(self.pdb_hierarchy.as_pdb_string())
+        self.pdb_atoms = self.pdb_hierarchy.atoms()
+        self.sites_cart = self.pdb_atoms.extract_xyz()
+        models = self.pdb_hierarchy.models()
+        # !!!
+
+        # self.scattering_type_registry
+        # self.nonbonded_energy_type_registry
+      # STOP()
+
     self.scattering_type_registry = scattering_type_registry(
       # XXX should be same as in pdb_inp.xray_structure_simple
       scattering_types=self.pdb_atoms.extract_element(strip=True),
@@ -3538,12 +3629,7 @@ class build_all_chain_proxies(linking_mixins):
     self.nonbonded_energy_type_registry = nonbonded_energy_type_registry(
       n_seq=self.pdb_atoms.size(),
       strict_conflict_handling=strict_conflict_handling)
-    self.geometry_proxy_registries = geometry_restraints_proxy_registries(
-      n_seq=self.pdb_atoms.size(),
-      strict_conflict_handling=strict_conflict_handling)
-    self.cystein_sulphur_i_seqs = flex.size_t()
-    self.cystein_monomer_mappings = []
-    n_unique_models = 0
+
     for i_model,model in enumerate(models):
       if (log is not None):
         print('  Model: "%s"' % model.id, file=log)
@@ -3832,6 +3918,22 @@ class build_all_chain_proxies(linking_mixins):
           print("          Unresolved apply_cif_link planarities:", \
             n_unresolved_apply_cif_link_planarities, file=log)
         flush_log(log)
+    # multiply by NCS and restore all others
+    # self.scattering_type_registry._show()
+    if ncs_will_be_used:
+      # multiply first?
+      print("  NCS: Multiplying, restoring")
+      self.pdb_hierarchy = self._full_pdb_hierarchy
+      self.pdb_atoms = self.pdb_hierarchy.atoms()
+      self.sites_cart = self.pdb_atoms.extract_xyz()
+      # We have to expand the tables using ncs information...
+      nrgl.setup_sets()
+      self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      self.geometry_proxy_registries.expand_with_ncs(nrgl)
+      # self.scattering_type_registry._show()
+    # STOP()
+
     for apply in self.apply_cif_links:
       if (not apply.was_used):
         raise RuntimeError(
@@ -3873,8 +3975,8 @@ class build_all_chain_proxies(linking_mixins):
     self.type_h_bonds = self.type_h_bonds.convert()
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
-    if(self.special_position_settings is not None):
-      self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
+    # if(self.special_position_settings is not None):
+    #   self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
     # Create selection_manager
     self.selman = selection_manager(
       all_monomer_mappings      = self.all_monomer_mappings,
@@ -5674,9 +5776,11 @@ class build_all_chain_proxies(linking_mixins):
     if (site_symmetry_table is not None):
       assert site_symmetry_table.indices().size() == sites_frac.size()
     scattering_types = self.scattering_type_registry.symbols
-    if (scattering_types is None):
-      scattering_types = self.get_element_symbols(strip_symbols=True)
+    # if (scattering_types is None):
+    #   assert 0 # Never used, the function is not defined:
+    #   scattering_types = self.get_element_symbols(strip_symbols=True)
     site_symmetry_ops = None
+    print("in extract xrs: ", len(self.pdb_atoms), len(sites_frac), len(scattering_types))
     for i_seq,atom,site_frac,scattering_type in zip(
           count(),
           self.pdb_atoms,

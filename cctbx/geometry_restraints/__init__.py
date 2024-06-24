@@ -12,6 +12,7 @@ from six.moves import range
 from six.moves import zip
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
+from cctbx import geometry_restraints
 
 import scitbx.stl.map
 import math
@@ -116,6 +117,28 @@ class bond_simple_proxy_registry(proxy_registry_base):
       proxies=shared_bond_simple_proxy(),
       strict_conflict_handling=strict_conflict_handling)
     self.n_seq = n_seq
+
+  def expand_with_ncs(self, nrgl):
+    # print("original proxies:", [p.i_seqs for p in self.proxies])
+    n_proxies = len(self.proxies)
+    for i, p in enumerate(self.proxies):
+      if i == n_proxies:
+        break
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      # print('  all_new_iseqs', all_new_iseqs)
+      for new_iseqs in all_new_iseqs:
+        new_proxy = bond_simple_proxy(
+            i_seqs=new_iseqs,
+            distance_ideal=p.distance_ideal,
+            weight=p.weight,
+            origin_id=p.origin_id)
+        # marking table
+        self.table[new_iseqs[0]][new_iseqs[1]] = self.proxies.size()
+        # ~ self._append_proxy
+        self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+
 
   def initialize_table(self):
     proxy_registry_base.initialize_table(self)

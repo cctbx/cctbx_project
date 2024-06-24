@@ -64,9 +64,11 @@ class manager(Base_geometry):
       assert len(shell_sym_tables) > 0
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
-      assert nonbonded_types.size() == site_symmetry_table.indices().size()
+      assert nonbonded_types.size() == site_symmetry_table.indices().size(), "%d != %d" % (
+          nonbonded_types.size(), site_symmetry_table.indices().size())
     if (nonbonded_types is not None) and (nonbonded_charges is not None):
-      assert (nonbonded_charges.size() == nonbonded_types.size())
+      assert nonbonded_charges.size() == nonbonded_types.size(), "%d != %d" % (
+          nonbonded_charges.size(), nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
 
