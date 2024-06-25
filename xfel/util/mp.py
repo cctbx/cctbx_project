@@ -174,7 +174,7 @@ class get_submit_command(object):
     @param err_name Filename for stderr (if None, combined with the stdout).
     @param job_name For applicable queueing systems, identifier for the job (optional).
     """
-    self.shell_path = "/bin/sh"
+    self.shell_path = "/bin/bash"
     self.source_env_scripts = []
     self.options_inside_submit_script = []
     self.submit_head = "qsub"
