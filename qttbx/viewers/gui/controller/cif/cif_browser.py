@@ -25,6 +25,7 @@ class CifBrowserController(TableController):
     # Signals
     #self.view.save_button.clicked.connect(self.save)
     self.state.signals.ciffile_change.connect(self.update_file)
+
     # Problem here:
     self.view.combobox_files.currentIndexChanged.connect(lambda: self.update_file_from_label(self.view.combobox_files.currentText()))
     self.view.combobox_data.currentIndexChanged.connect(lambda: self.update_data(data_key=self.view.combobox_data.currentText()))
@@ -72,7 +73,8 @@ class CifBrowserController(TableController):
 
 
 
-  def on_data_changed(self):
+  def on_data_changed(self,*args):
+    print("** Data has been manually changed **")
     notification = QLabel("** Data has been manually changed **")
     self.view.layout.insertWidget(0,notification)
 

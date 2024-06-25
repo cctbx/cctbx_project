@@ -56,13 +56,17 @@ class FilterSolvent(ComponentFilterObj):
     cols = self._get_filter_cols(df)
     return df[df[cols].isin(params.solvent_comp_ids).all(axis=1)]
 
-class FilterLigands(ComponentFilterObj):
-  def __init__(self):
-    super().__init__(name="Ligands")
+class FilterByClass(FilterObj):
+  def __init__(self,class_name):
+    # class_name is return value from iotbx.pdb.common_residue_get_class
+    name = " ".join([s.capitalize() for s in class_name.split("_")])
+    self.class_name = class_name
+    super().__init__(name=name,mmcif_prefix="residue_class")
 
   def filter_df(self,df):
     cols = self._get_filter_cols(df)
-    return df[(~df[cols].isin(params.solvent_comp_ids) & ~df[cols].isin(params.protein_comp_ids)).all(axis=1)]
+    classes = [self.class_name] 
+    return df[df[cols].isin(classes).all(axis=1)]
 
 class CompositeFilter:
   def __init__(self,filters):
@@ -100,9 +104,10 @@ class TableFilterController(Controller):
     self.view.combobox_comp.currentIndexChanged[str].connect(self.update_filter)
     self.view.combobox_filter.currentIndexChanged[str].connect(self.update_filter)
     self.state.signals.geometry_filter_from_restraint.connect(self.add_restraint_filter)
+    self.view.reset_button.clicked.connect(self.reset_filters)
 
     self.comp_filters = []
-    self.other_filters = [FilterAll(),FilterPercentile("5% Worst"),FilterPercentile("5% Best"),FilterLigands(),FilterSolvent(),FilterProtein()]
+    self.other_filters = [FilterAll()]
     self.restraint_filters = [FilterAll()]
   
   @property
@@ -132,14 +137,32 @@ class TableFilterController(Controller):
     #self.state.signals.filter_update.emit(filter_obj,False)
 
     df_filtered = filter_obj.filter_df(df)
+    #rename_columns = {old:new for old,new in self.parent.rename_columns.items() if old in df_filtered}
     df_filtered = df_filtered.rename(columns=self.parent.rename_columns)
-    suppress_cols = [c.lower() for c in self.parent.suppress_columns]
-    suppress_cols+= [c.capitalize() for c in self.parent.suppress_columns]
-    table_model = PandasTableModel(df_filtered,suppress_columns=suppress_cols)
+    suppress_columns = self.parent.suppress_columns
+    for col in df_filtered.columns:
+      for name in self.state.params.core_map_to_mmcif.keys():
+        if name in col:
+          suppress_columns.append(col)
+    suppress_columns = ["i_seqs"] + suppress_columns
+
+    suppress_columns += [c.lower() for c in self.parent.suppress_columns]
+    suppress_columns+= [c.capitalize() for c in self.parent.suppress_columns]
+
+    table_model = PandasTableModel(df_filtered,suppress_columns=suppress_columns)
     self.parent.table_model = table_model
 
   def update_quiet(self):
     self.table
+
+  def reset_filters(self):
+    self.comp_filters = []
+    self.other_filters = [FilterAll(),FilterPercentile("5% Worst"),FilterPercentile("5% Best"),FilterLigands(),FilterSolvent(),FilterProtein()]
+    self.restraint_filters = [FilterAll()]
+    self._init_comps()
+    self._init_filters()
+    self.update_quiet()
+    self.update_filter()
 
   def _init_comps(self):
     # Do all
@@ -154,8 +177,24 @@ class TableFilterController(Controller):
       self.add_item_if_not_exists(self.view.combobox_comp,filter_obj.name)
 
   def _init_filters(self):
+    self.other_filters = [FilterAll()]
+    # add component class filters
+    if self.state.mol:
+      for class_name in list(self.state.mol.sites.residue_class.unique()):
+        class_name = str(class_name)
+        filter_obj = FilterByClass(class_name)
+        self.other_filters.append(filter_obj)
+
     for filter_obj in self.other_filters:
       self.add_item_if_not_exists(self.view.combobox_filter,filter_obj.name)
+
+  def _init_restraint_filters(self):
+    for filter_obj in self.restraint_filters:
+      if isinstance(filter_obj,FilterAll):
+        name = "All"
+      else:
+        name = "selected restraint"
+      self.add_item_if_not_exists(self.view.combobox_filter,name)
 
   @property
   def current_comp(self):
@@ -187,6 +226,7 @@ class TableFilterController(Controller):
       self._table = self.parent.table_model
       self._init_comps()
       self._init_filters()
+      #self._init_restraint_filters()
     
     return self._table
 

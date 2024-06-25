@@ -316,6 +316,9 @@ class GeometryRef(Ref):
     self.add_other_columns(prefix="comp_id")
     self.add_other_columns(prefix="atom_id")
     self.add_other_columns(prefix="alt_id")
+    self.add_other_columns(prefix="residue_class")
+
+    self.add_compositional_labels()
 
     # Set model restraint_ref value (do last, will emit signal that assumes a complete object)
     self.model_ref.geometry_ref = self
@@ -367,6 +370,7 @@ class GeometryRef(Ref):
         # Rename columns after determining all necessary changes
         df.rename(columns=columns_to_rename, inplace=True)
     self.has_incremented_column_suffixes = True
+
   def add_iseqs_column(self):
     # add a new column that is a list of the i_seqs
     for name,df in self.dfs.items():
@@ -377,6 +381,8 @@ class GeometryRef(Ref):
 
 
   def add_other_columns(self,prefix):
+    # prefix is a column name assumed to be in sites
+    # It addes columns prefix_1, prefix_2, etc for each atom
     for name,df in self.dfs.items():
       if df is not None and self.model_ref is not None:
         i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
@@ -384,6 +390,7 @@ class GeometryRef(Ref):
           i_seq_suffixes = [col.replace('i_seq_','') for col in i_seq_cols]
           name_cols = [f"{prefix}_{suffix}" for suffix in i_seq_suffixes]
           for i_seq_col,name_col in zip(i_seq_cols,name_cols):
+     
 
             df[name_col] = pd.NA
             df.reset_index(drop=True, inplace=True)
@@ -395,6 +402,27 @@ class GeometryRef(Ref):
             # Directly assign values to df where not_na is True, bypassing index-based reindexing
             df.loc[not_na, name_col] = vals
 
+  def add_compositional_labels(self):
+    for name,df in self.dfs.items():
+      if df is not None and self.model_ref is not None:
+        i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
+        if len(i_seq_cols)>0:
+          i_seq_suffixes = [col.replace('i_seq_','') for col in i_seq_cols]
+          name_cols = [f"Label_{suffix}" for suffix in i_seq_suffixes]
+          for i_seq_col,name_col in zip(i_seq_cols,name_cols):
+
+            df[name_col] = pd.NA
+            df.reset_index(drop=True, inplace=True)
+            not_na = df[i_seq_col].notna()
+
+            i_seqs = df.loc[not_na, i_seq_col].to_numpy()  # Extract as numpy array for direct access
+            sites = self.model_ref.mol.sites
+            labels_compositional = sites.select_from_i_seqs(i_seqs).to_labels_compositional()
+
+            # Directly assign values to df where not_na is True, bypassing index-based reindexing
+            df.loc[not_na, name_col] = labels_compositional
+  
+     
 class EditsRef(Ref):
   # A collection of edits of a single type
   _class_label_name = "edits"

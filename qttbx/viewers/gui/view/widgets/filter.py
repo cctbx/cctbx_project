@@ -12,10 +12,6 @@ from PySide2.QtWidgets import (
 )
 
 
-
-
-
-
 class EditsEditDialog(QDialog):
   input_names = ["ideal", "sigma"]
 
@@ -116,6 +112,10 @@ class TableFilter(QWidget):
     self.combobox_comp.setMaximumWidth(160)
     self.layout.addWidget(self.combobox_comp)
 
+    # Reset
+    self.reset_button = QPushButton("Reset")
+    self.reset_button.setMaximumWidth(80)
+    self.layout.addWidget(self.reset_button)
 
     # Set the layout to the QWidget
     self.setLayout(self.layout)

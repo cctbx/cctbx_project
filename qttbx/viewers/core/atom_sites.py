@@ -10,6 +10,7 @@ import pandas as pd
 
 from cctbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, hierarchy
+
 from iotbx.pdb.utils import all_label_asym_ids
 from libtbx.test_utils import approx_equal
 
@@ -135,7 +136,7 @@ class AtomSites(pd.DataFrame):
     hetatm_mask = np.array(atoms.extract_hetero())
     if len(hetatm_mask)>0:
       data["group_PDB"][hetatm_mask] = "HETATM"
-    data["id"] = np.array(atoms.extract_serial()).astype('string')
+    data["id"] = pd.Series(np.array(atoms.extract_serial()).astype(str))
     data["id"] = data["id"].str.strip()
     data["label_atom_id"] = np.vectorize(str.strip)(np.array(atoms.extract_name()))
     if  segid_as_auth_segid:

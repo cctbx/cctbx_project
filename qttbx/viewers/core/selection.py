@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
-from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix, protein_comp_ids
+from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix
 from .parameters import params
 from .parser import PhenixParser, And, Or, Comparison, SelectionTree
 

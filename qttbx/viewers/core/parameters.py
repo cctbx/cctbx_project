@@ -211,44 +211,4 @@ rounding = {
 blanks = set([""," ",".","?",np.nan,pd.NA])
 
 
-protein_comp_ids = [v.upper() for v in list(three_letter_given_one_letter.values())]
-
-
-# Solvent/Ligands
-
-solv_group_1 = ["HOH"]
-
-solv_group_2 = [
-  "NA",  # Sodium
-  "K",   # Potassium
-  "MG",  # Magnesium
-  "CA",  # Calcium
-  "ZN",  # Zinc
-  "FE",  # Iron
-  "MN",  # Manganese
-  "CO",  # Cobalt
-  "CU",  # Copper
-  "NI",  # Nickel
-  "AG",  # Silver
-  "CD",  # Cadmium
-  "HG"   # Mercury
-]
-
-solv_group_3 = [
-  "CL",  # Chloride
-  "BR",  # Bromide
-  "I",   # Iodide
-  "F"    # Fluoride
-]
-
-solv_group_4 = [
-  "SO4",  # Sulfate
-  "PO4",  # Phosphate
-  "NO3",  # Nitrate
-  "NH4"   # Ammonium
-]
-
-solvent_comp_ids = solv_group_1 + solv_group_2 + solv_group_3 + solv_group_4
-
-
 params = group_args(**locals())

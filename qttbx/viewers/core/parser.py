@@ -3,7 +3,7 @@
 import json
 import re
 
-from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix, protein_comp_ids
+from .parameters import attrs_map_to_phenix, blanks, core_map_to_mmcif, logic_map_to_phenix
 from .parameters import params
 
 class PhenixParser:
@@ -368,14 +368,13 @@ class Node:
 
 
 class Alias(Node):
-  aas = protein_comp_ids
   alias_map_pd = {
     "all":"index>=0",
-    "protein":"(" + "|".join([f"label_comp_id == '{aa}'" for aa in aas]) + ")"
+    #"protein":"(" + "|".join([f"label_comp_id == '{aa}'" for aa in aas]) + ")"
   }
   alias_map_ms = {
     "all":"MS.struct.generator.all()",
-    "protein":"MS.core.rel.eq([MS.ammp('entityType'), 'protein'])"
+    #"protein":"MS.core.rel.eq([MS.ammp('entityType'), 'protein'])"
 
   }
   def __init__(self, value):
