@@ -27,7 +27,6 @@ from cctbx import adptbx
 
 from cctbx import adp_restraints
 from cctbx import crystal
-from cctbx import uctbx
 
 import mmtbx.restraints
 import mmtbx.hydrogens
