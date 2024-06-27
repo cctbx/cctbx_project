@@ -214,6 +214,9 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
+  use_ncs_to_build_restraints = True
+    .type = bool
+    .short_caption = Look for NCS and use it to speed up building restraints
   flip_symmetric_amino_acids = True
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -3586,7 +3589,7 @@ class build_all_chain_proxies(linking_mixins):
 
     ncs_will_be_used = False
     # trying NCS shortcut here
-    if len(models) == 1:
+    if len(models) == 1 and self.params.use_ncs_to_build_restraints:
       # search for NCS
       ncs_params = iotbx.ncs.input.get_default_params()
       ncs_params.ncs_search.try_shortcuts = True
