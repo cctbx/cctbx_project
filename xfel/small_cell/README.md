@@ -161,7 +161,6 @@ dispatch.hit_finder {
   maximum_number_of_reflections = 40
 }
 dispatch.index=False
-output.composite_output=True
 spotfinder.filter.min_spot_size=3
 ```
 
@@ -257,12 +256,6 @@ dispatch {
 dispatch {
   refine = True
 }
-output {
-  composite_output=True
-  experiments_filename = None
-  strong_filename = None
-}
-
 spotfinder {
   filter {
     min_spot_size = 3
@@ -283,11 +276,6 @@ refinement {
 small_cell {
   powdercell = "1,2,3,90,90,90"
   spacegroup = "P2"
-  high_res_limit = 1.2
-  min_spots_to_integrate = 3
-  faked_mosaicity = 0.1
-  spot_connection_epsilon = 0.01
-  d_ring_overlap_limit = None
 }
 ```
 
@@ -378,12 +366,6 @@ dispatch {
 dispatch {
   refine = True
 }
-output {
-  composite_output=True
-  experiments_filename = None
-  strong_filename = None
-}
-
 spotfinder {
   filter {
     min_spot_size = 3
@@ -404,11 +386,6 @@ refinement {
 small_cell {
   powdercell = "5.93762, 7.32461, 29.202, 90, 95.4404, 90"
   spacegroup = "C2"
-  high_res_limit = 0.8
-  min_spots_to_integrate = 3
-  faked_mosaicity = 0.1
-  spot_connection_epsilon = 0.004
-  d_ring_overlap_limit = None
 }
 ```
 
