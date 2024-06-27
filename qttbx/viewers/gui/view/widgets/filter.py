@@ -98,24 +98,30 @@ class TableFilter(QWidget):
     spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
     self.layout.addSpacerItem(spacer)
 
-    # Label for filters
-    filter_label = QLabel("Filters")
-    self.layout.addWidget(filter_label)
-
     # Dropdown for filter selections
+    generic_filter_layout = QVBoxLayout()
     self.combobox_filter = QComboBox()
-    self.combobox_filter.setMaximumWidth(160)
-    self.layout.addWidget(self.combobox_filter)
+    self.combobox_filter.setMaximumWidth(200)
+    generic_filter_layout.addWidget(QLabel("Filters"))
+    generic_filter_layout.addWidget(self.combobox_filter)
+    self.layout.addLayout(generic_filter_layout)
+
 
     # Dropdown for component selections
+    component_filter_layout = QVBoxLayout()
     self.combobox_comp = QComboBox()
-    self.combobox_comp.setMaximumWidth(160)
-    self.layout.addWidget(self.combobox_comp)
+    self.combobox_comp.setMaximumWidth(80)
+    component_filter_layout.addWidget(QLabel("Components"))
+    component_filter_layout.addWidget(self.combobox_comp)
+    self.layout.addLayout(component_filter_layout)
 
     # Reset
+    reset_filter_layout = QVBoxLayout()
     self.reset_button = QPushButton("Reset")
     self.reset_button.setMaximumWidth(80)
-    self.layout.addWidget(self.reset_button)
+    reset_filter_layout.addWidget(QLabel(""))
+    reset_filter_layout.addWidget(self.reset_button)
+    self.layout.addLayout(reset_filter_layout)
 
     # Set the layout to the QWidget
     self.setLayout(self.layout)

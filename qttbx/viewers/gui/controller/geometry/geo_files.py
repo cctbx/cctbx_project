@@ -46,7 +46,6 @@ class GeoFileListController(ScrollableListController):
   #     self.state.add_ref(ref)
 
 
-
   def update(self):
     for ref in self.state.references_geo:
       if ref not in self.refs:

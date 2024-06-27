@@ -20,7 +20,6 @@ from ...state.ref import (
   BondEditsRef,
   AngleEditsRef,
   DihedralEditsRef
-
 )
 
 from ..filter import CompositeFilter
@@ -35,17 +34,16 @@ class GeometryTableTabController(TableController):
   Base class which manipulates the Dataframe
   """
   geometry_type = None # Subclass and fill this in (bond,angle,etc)
-  column_order =  ['ideal','model',"sigma","delta",'residual',"vdw","action"]
-  suppress_columns = ["i_seqs","sel_strings","ideal_old","sigma_old"]
-  rename_columns = {"ideal_new":"Ideal","sigma_new":"Sigma","action":"Action"}
 
+  # Define display cols (or col prefixes) and specify order
+  display_columns = ['ideal','model',"sigma","delta",'residual','Label'] 
 
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
     self.geometry_ref = None
     self.col_names = None
     self.debug_flag = False
-    self.rename_columns.update({key:key.capitalize() for key in self.column_order})
+    #self.rename_columns.update({key:key.capitalize() for key in self.column_order})
 
     # Filter panel
     self.filter = TableFilterController(parent=self,view=self.view.filter)
@@ -54,6 +52,21 @@ class GeometryTableTabController(TableController):
     self.view.table_view.addEdit.connect(self.addEdit)
     self.state.signals.geometry_change.connect(self.update)
     #self.state.signals.filter_update.connect(self.update_from_filter)
+
+  # def get_suppress_columns(self,df):
+  #   suppress_columns = []
+  #   for col in self.dataframe.columns:
+  #     for name in self.column_prefixes:
+  #       added = False
+  #       if not added:
+  #         if self.split_cif_key_prefix(col) == name:
+  #           suppress_columns.append(col)
+  #           added = True
+
+      
+  #   suppress_columns = ["i_seqs"] + suppress_columns
+  #   return suppress_columns
+
 
   def addEdit(self,row_dict):
     raise NotImplementedError
@@ -96,23 +109,23 @@ class GeometryTableTabController(TableController):
   #   self.table_model = table_model
   #   #self.filter_obj = filter_obj
 
-  @property
-  def column_prefixes(self):
-    # Columns that are maintained in the geometry dataframes
-    return list(self.state.params.core_map_to_mmcif.keys()) + ["residue_class","Label"]
+  # @property
+  # def column_prefixes(self):
+  #   # Columns that are maintained in the geometry dataframes
+  #   return list(self.state.params.core_map_to_mmcif.keys()) + ["residue_class"]
 
-  def reform_columns(self,df):
-    cols = ["i_seqs"]
-    #prefixes =  ["Label"]
+  # def reform_columns(self,df):
+  #   cols = ["i_seqs"]
+  #   #prefixes =  ["Label"]
 
-    for prefix in self.column_prefixes:
-      for col in df.columns:
-        if col.startswith(prefix):
-          if not col.startswith("id_str"):
-            cols.append(col)
+  #   for prefix in self.column_prefixes:
+  #     for col in df.columns:
+  #       if col.startswith(prefix):
+  #         if not col.startswith("id_str"):
+  #           cols.append(col)
 
-    cols+= [col for col in self.column_order if col in df.columns]
-    df = df[cols].copy()
+  #   cols+= [col for col in self.column_order if col in df.columns]
+  #   df = df[cols].copy()
     # # add prefix columns
     # for prefix in prefixes:
     #   for col in cols:
@@ -127,7 +140,7 @@ class GeometryTableTabController(TableController):
 
     # # capitalize
     # capitalize = {c:c.capitalize() for c in df.columns if c not in ["i_seqs"]}
-    df.rename(columns=self.rename_columns,inplace=True)
+    #df.rename(columns=self.rename_columns,inplace=True)
 
     self.col_names = list(df.columns)
     return df
@@ -136,14 +149,9 @@ class GeometryTableTabController(TableController):
     self.geometry_ref = geometry_ref
     if hasattr(geometry_ref.data,self.geometry_type):
       df = getattr(geometry_ref.data,self.geometry_type)
-      self.dataframe = self.reform_columns(df)
-      suppress_columns = []
-      for col in self.dataframe.columns:
-        for name in self.column_prefixes:
-          if name in col:
-            suppress_columns.append(col)
-      suppress_columns = ["i_seqs"] + suppress_columns
-      self.table_model = PandasTableModel(self.dataframe,suppress_columns=suppress_columns)
+      self.dataframe = df#self.reform_columns(df)
+      #suppress_columns = self.get_suppress_columns(df)
+      self.table_model = PandasTableModel(self.dataframe,display_columns=self.display_columns)
       # self.table = table
       # self.table._parent_explicit = self
     if geometry_ref is not None:

@@ -1,3 +1,4 @@
+from itertools import chain
 
 import pandas as pd
 
@@ -8,14 +9,26 @@ from PySide2.QtCore import QAbstractTableModel, Qt
 Model for Pandas Table generally
 """
 class PandasTableModel(QAbstractTableModel):
-  def __init__(self, df=pd.DataFrame(), parent=None, suppress_columns=[]):
+  def __init__(self, df=pd.DataFrame(), parent=None, display_columns=[], column_display_names=None, capitalize=True, remove_underscores=True):
     super().__init__(parent=parent)
-    self._df = df
-    self.suppress_columns = set(suppress_columns)
-    self.visible_columns = [col for col in self._df.columns if col not in self.suppress_columns]
-    self.col_map = {i: list(self._df.columns).index(col) for i, col in enumerate(self.visible_columns)}
+    if len(display_columns) == 0:
+      display_columns = list(df.columns)
+    self.display_columns = display_columns
+    self.visible_columns = self.generate_visible_columns(df, self.display_columns)
+    self._df = df[self.visible_columns]
+    self.col_map = {i: list(self.df.columns).index(col) for i, col in enumerate(self.visible_columns)}
     self.sort_order = Qt.AscendingOrder
     self.editable_rows = set(range(len(df)))  # All rows are editable by default
+    
+    # Initialize column display names mapping
+    if column_display_names is None:
+      column_display_names = {col:col for col in self.visible_columns}
+    if capitalize:
+      column_display_names = {col: new_col.capitalize() for col,new_col in column_display_names.items()}
+    if remove_underscores:
+      column_display_names = {col: new_col.replace("_"," ") for col,new_col in column_display_names.items()}
+
+    self.column_display_names = column_display_names
 
   def __len__(self):
     return self.df.shape[0]
@@ -23,6 +36,27 @@ class PandasTableModel(QAbstractTableModel):
   @property
   def df(self):
     return self._df
+
+  @staticmethod
+  def split_cif_key_prefix(cif_key):
+    # return everything prior to the last _ separated suffix
+    return "_".join(cif_key.split("_")[:-1]) 
+
+  def generate_visible_columns(self, df, display_columns):
+    # Takes display columns as a list of column names OR prefixes
+    # Returns 'real' column names in the df that match
+    visible_columns = [[] for _ in range(len(display_columns))]
+    for col in df.columns:
+      if col in display_columns:
+        idx = display_columns.index(col)
+        visible_columns[idx].append(col)
+      else:
+        prefix = self.split_cif_key_prefix(col)
+        if prefix in display_columns:
+          idx = display_columns.index(prefix)
+          visible_columns[idx].append(col)
+    visible_columns = list(chain.from_iterable(visible_columns))
+    return visible_columns
 
   def sort(self, column, order=Qt.AscendingOrder):
     if len(self) > 0:
@@ -37,7 +71,10 @@ class PandasTableModel(QAbstractTableModel):
       if role != Qt.DisplayRole:
         return None
       if orientation == Qt.Horizontal:
-        return self.visible_columns[section]
+        if section < len(self.visible_columns):
+          return self.column_display_names.get(self.visible_columns[section], self.visible_columns[section])
+        else:
+          return None
       else:
         return str(self._df.index[section])
 
@@ -63,19 +100,20 @@ class PandasTableModel(QAbstractTableModel):
 
   def setData(self, index, value, role):
     if not index.isValid() or role != Qt.EditRole:
-        return False
+      return False
 
     if value == "":
-        value = self._df.iloc[index.row(), self.col_map[index.column()]]  # Keep original value
+      value = self._df.iloc[index.row(), self.col_map[index.column()]]  # Keep original value
 
     self._df.loc[index.row(), self.visible_columns[index.column()]] = value
     self.dataChanged.emit(index, index, (Qt.DisplayRole,))
 
     if "action" not in self.df.columns:
-        self.df["action"] = pd.NA
+      self.df["action"] = pd.NA
     self._df.loc[index.row(), "action"] = "edit"
 
     return True
+
   def rowCount(self, parent=None):
     return len(self._df)
 
@@ -88,3 +126,8 @@ class PandasTableModel(QAbstractTableModel):
     else:
       self.editable_rows.add(row)
     self.dataChanged.emit(self.index(row, 0), self.index(row, self.columnCount() - 1), [Qt.EditRole])
+
+  def set_column_display_names(self, column_display_names):
+    """Update the column display names mapping."""
+    self.column_display_names.update(column_display_names)
+    self.headerDataChanged.emit(Qt.Horizontal, 0, self.columnCount())

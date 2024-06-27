@@ -138,18 +138,18 @@ class TableFilterController(Controller):
 
     df_filtered = filter_obj.filter_df(df)
     #rename_columns = {old:new for old,new in self.parent.rename_columns.items() if old in df_filtered}
-    df_filtered = df_filtered.rename(columns=self.parent.rename_columns)
-    suppress_columns = self.parent.suppress_columns
-    for col in df_filtered.columns:
-      for name in self.state.params.core_map_to_mmcif.keys():
-        if name in col:
-          suppress_columns.append(col)
-    suppress_columns = ["i_seqs"] + suppress_columns
+    #df_filtered = df_filtered.rename(columns=self.parent.rename_columns)
+    #suppress_columns = self.parent.get_suppress_columns(df_filtered)
+    # for col in df_filtered.columns:
+    #   for name in self.state.params.core_map_to_mmcif.keys():
+    #     if name in col:
+    #       suppress_columns.append(col)
+    # suppress_columns = ["i_seqs"] + suppress_columns
 
-    suppress_columns += [c.lower() for c in self.parent.suppress_columns]
-    suppress_columns+= [c.capitalize() for c in self.parent.suppress_columns]
+    # suppress_columns += [c.lower() for c in self.parent.suppress_columns]
+    # suppress_columns+= [c.capitalize() for c in self.parent.suppress_columns]
 
-    table_model = PandasTableModel(df_filtered,suppress_columns=suppress_columns)
+    table_model = PandasTableModel(df_filtered,display_columns=self.parent.display_columns)
     self.parent.table_model = table_model
 
   def update_quiet(self):
@@ -157,7 +157,7 @@ class TableFilterController(Controller):
 
   def reset_filters(self):
     self.comp_filters = []
-    self.other_filters = [FilterAll(),FilterPercentile("5% Worst"),FilterPercentile("5% Best"),FilterLigands(),FilterSolvent(),FilterProtein()]
+    self.other_filters = [FilterAll()]
     self.restraint_filters = [FilterAll()]
     self._init_comps()
     self._init_filters()
