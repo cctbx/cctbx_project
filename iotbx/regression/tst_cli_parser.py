@@ -469,7 +469,7 @@ def test_diff_params():
   run_function_in_process(args)
   with open(expected_filename, 'r') as f:
     text = f.read()
-    assert text.count(model_1yjp) == 2, text
+    assert text.count('1yjp.pdb') == 2, text
     assert 'diff_test_parameter' not in text.strip(), text
 
   # both diff
@@ -477,7 +477,7 @@ def test_diff_params():
   run_function_in_process(args)
   with open(expected_filename, 'r') as f:
     text = f.read()
-    assert text.count(model_1yjp) == 2, text
+    assert text.count('1yjp.pdb') == 2, text
     assert 'diff_test_parameter' in text.strip(), text
 
   if os.path.exists(expected_filename):
