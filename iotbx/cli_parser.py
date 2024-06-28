@@ -780,10 +780,10 @@ Also, specifying this flag implies that --json is also specified.'''
 
     # write differences
     if self.namespace.write_modified or self.namespace.diff_params:
-      if phil_is_different:
+      if is_different:
         ow = overwrite or self.namespace.diff_params
         self.data_manager.write_phil_file(
-          phil_diff.as_str(), filename=self.modified_filename,
+          data_diff.as_str() + phil_diff.as_str(), filename=self.modified_filename,
           overwrite=ow)
         print('  Modified PHIL parameters written to %s.' %
               self.modified_filename, file=self.logger)

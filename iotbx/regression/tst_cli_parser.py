@@ -3,6 +3,7 @@ from __future__ import absolute_import, division, print_function
 import os
 import json
 
+from multiprocessing import Process
 from six.moves import cStringIO as StringIO
 
 from iotbx.cli_parser import run_program
@@ -422,6 +423,66 @@ def test_json():
   assert result == expected_result
   os.remove(expected_filename)
 
+# -----------------------------------------------------------------------------
+# since --diff-params calls sys.exit, run in a separate process
+class testProgram(ProgramTemplate):
+  program_name = 'test_diff_params'
+  master_phil_str = '''
+diff_test_parameter = None
+.type = str
+'''
+  def run():
+    pass
+  def validate(self):
+    pass
+
+def run_diff_program(args):
+  return run_program(program_class=testProgram, args=args)
+
+def run_function_in_process(args):
+  p = Process(target=run_diff_program, args=[args])
+  p.start()
+  p.join()
+
+def test_diff_params():
+
+  expected_filename = 'test_diff_params_modified.eff'
+  if os.path.exists(expected_filename):
+    os.remove(expected_filename)
+
+  # no diff
+  args = ['--quiet', '--diff-params']
+  run_function_in_process(args)
+  assert not os.path.exists(expected_filename)
+
+  # program diff
+  args = ['--quiet', '--diff-params', 'diff_test=abc']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert 'diff_test_parameter = abc' in text.strip(), text
+
+  # DataManager diff
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  args = [model_1yjp, '--quiet', '--diff-params']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count(model_1yjp) == 2, text
+    assert 'diff_test_parameter' not in text.strip(), text
+
+  # both diff
+  args = ['--quiet', '--diff-params', model_1yjp, 'diff_test=abc']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count(model_1yjp) == 2, text
+    assert 'diff_test_parameter' in text.strip(), text
+
+  if os.path.exists(expected_filename):
+    os.remove(expected_filename)
+
 # =============================================================================
 if __name__ == '__main__':
   test_dry_run()
@@ -429,5 +490,6 @@ if __name__ == '__main__':
   test_model_type_parsing()
   test_user_selected_labels()
   test_json()
+  test_diff_params()
 
   print("OK")
