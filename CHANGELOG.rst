@@ -1,3 +1,10 @@
+2024.6
+======
+
+* Update pdbtools to use target_output_format
+* Update known residue codes
+* Update CCTBXParser to show diff of DataManager scope with --diff-params
+
 2024.5
 ======
 
