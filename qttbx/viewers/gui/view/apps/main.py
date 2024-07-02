@@ -139,6 +139,10 @@ class ViewerGUIView(QMainWindow):
     self.tabs.toggle_tab_visible("Restraints",show=True)
 
 
+    # Pop out viewer by default
+    self.tabs.simulate_drag_out(0)
+
+
   def child_window_handler(self,event):
     self._has_child_window = True
     pass #TODO: Setting window to half of screen causes it to freeze. Why?

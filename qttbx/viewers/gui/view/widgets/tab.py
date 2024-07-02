@@ -1,10 +1,11 @@
-from PySide2.QtCore import Qt, QMimeData, QByteArray, QDataStream, QIODevice, Signal
-from PySide2.QtGui import QGuiApplication, QDrag, QCursor
+from PySide2.QtCore import Qt, QMimeData, QByteArray, QDataStream, QIODevice, Signal, QEvent, QPoint, QCoreApplication
+from PySide2.QtGui import QGuiApplication, QDrag, QCursor, QMouseEvent
 from PySide2.QtWidgets import QApplication, QMainWindow, QTabWidget, QTabBar, QWidget, QVBoxLayout, QLabel
 
 
 # Keep track of active toasts at module level
 _active_toasts = []
+
 class GUITab(QTabWidget):
   def __init__(self, parent=None, order_index=None):
     self.parent_explicit = parent  # often the implicit parent, self.parent(), is not what you want
@@ -64,11 +65,16 @@ class DraggableTabBar(QTabBar):
     self.drag_start_index = 0
 
   def mousePressEvent(self, event):
-    self.drag_start_index = self.tabAt(event.pos())
+    print("mousePressEvent on QTabBar")
+    drag_start_index = self.tabAt(event.pos())
+    if not drag_start_index or drag_start_index<0:
+      drag_start_index = 0
+    self.drag_start_index = drag_start_index
     self.drag_start_pos = event.pos()
     super().mousePressEvent(event)
 
   def mouseMoveEvent(self, event):
+    print("mouseMoveEvent on QTabBar")
     if not event.buttons() & Qt.LeftButton:
       return
 
@@ -81,9 +87,9 @@ class DraggableTabBar(QTabBar):
     # Use a custom MIME type to prevent the default file drop behavior
     custom_data = QByteArray()
     stream = QDataStream(custom_data, QIODevice.WriteOnly)
-    stream.writeInt32(self.drag_start_index)  # Correct method to write an integer
-
+    stream.writeInt32(self.drag_start_index)
     mime_data.setData('application/x-qtabbar-index', custom_data)
+
     drag.setMimeData(mime_data)
     result = drag.exec_(Qt.CopyAction | Qt.MoveAction)
 
@@ -92,6 +98,7 @@ class DraggableTabBar(QTabBar):
       global_pos = QCursor.pos()
       window = self.window()
       window_rect = window.geometry()
+      print("global_cursor_pos: ",global_pos)
 
       if not window_rect.contains(global_pos):
         tab_widget = self.parentWidget()
@@ -136,10 +143,68 @@ class DraggableTabWidget(QTabWidget):
     self.setAcceptDrops(True)
 
   def dragEnterEvent(self, event):
+    print("dragEnterEvent on QTabWidget")
     event.acceptProposedAction()
 
   def dropEvent(self, event):
+    print("dropEvent on QTabWidget")
     event.ignore()  # Ignore drop events to prevent unintended behavior
+    
+  def simulate_drag_out(tab_widget, index):
+    tab_bar = tab_widget.tabBar()
+    drag_start_pos = tab_bar.tabRect(index).center()
+
+    # Calculate the global position of the drag start
+    drag_start_global_pos = tab_bar.mapToGlobal(drag_start_pos)
+
+    # Print debug information
+    print(f"Starting drag simulation for tab at index {index}")
+    print(f"Drag start position: {drag_start_pos}")
+    print(f"Drag start global position: {drag_start_global_pos}")
+
+    # Manually set the drag start index and position in the tab bar
+    tab_bar.drag_start_index = index
+    tab_bar.drag_start_pos = drag_start_pos
+
+    # Directly call the pop-out logic from DraggableTabBar
+    global_pos = QPoint(-1000, drag_start_pos.y())  # Simulate a position far outside the window
+    window = tab_bar.window()
+    window_rect = window.geometry()
+    
+    if not window_rect.contains(global_pos):
+      tab_widget = tab_bar.parentWidget()
+      if tab_widget:
+        old_content = tab_widget.widget(tab_bar.drag_start_index)
+        tab_text = tab_bar.tabText(tab_bar.drag_start_index)
+
+        # Remove the tab without deleting the content
+        tab_widget.removeTab(tab_bar.drag_start_index)
+
+        # Create a new QTabWidget
+        new_tab_widget = QTabWidget(tab_bar)
+
+        # Create a new QMainWindow
+        new_window = ChildWindow(tab_widget, new_tab_widget, tab_bar.drag_start_index, tab_text)
+
+        # Add the old content to the new QTabWidget
+        new_tab_widget.addTab(old_content, tab_text)
+
+        # Make sure it's visible
+        old_content.show()
+
+        # Set central widget
+        new_window.setCentralWidget(new_tab_widget)
+
+        # Show the new window
+        new_window.show()
+        new_window.raise_()
+        new_window.activateWindow()
+
+        # Persistence
+        tab_bar.new_window = new_window
+
+        # Notify main window
+        tab_bar.childSignal.emit("created")
 
 class GUITabWidget(DraggableTabWidget):
   def __init__(self,parent=None,order_index=None):
