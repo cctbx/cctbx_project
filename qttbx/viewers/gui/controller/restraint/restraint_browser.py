@@ -106,8 +106,6 @@ class RestraintBrowserController(CifBrowserController):
           atom_filters.append(filter_obj_atom)
         filter_obj = CompositeFilter([filter_obj_comp]+atom_filters)
         self.state.signals.geometry_filter_from_restraint.emit(filter_obj)
-        print(dir(filter_obj))
-
         
       else:
         print("Not a candidate row for filtering by restraint")

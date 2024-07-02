@@ -21,7 +21,7 @@ class ScrollEntryController(Controller, QObject):
     # Active
     if self.view.active_toggle is not None:
       self.view.active_toggle.stateChanged.connect(self._toggle_active_func)  
-      self.state.signals.new_active_ref.connect(self._check_active)
+      #self.state.signals.new_active_ref.connect(self._check_active)
 
 
     # Close
@@ -107,26 +107,15 @@ class ScrollEntryController(Controller, QObject):
 
 
   def _toggle_active_func(self,is_checked):
+    # 1. set active (change visual state)
+    # 2. call toggle_active_func (implemented by subclasses)
     if is_checked:
-      self.state.signals.new_active_ref.emit(self.ref)
-
-  def _check_active(self,ref):
-    
-    if ref != self.ref:
-      self.active = False
-    elif ref == self.ref:
       self.active = True
-      self.toggle_active_func(True) # backwards compat
+      self.toggle_active_func(True)
+    else:
+      self.active = False
+      self.toggle_active_func(False)
 
-
-    # self.ref.active = is_checked
-    # if self.view._is_destroyed:
-    #     return
-    # else:
-    #   if not is_checked:
-    #     self.state.signals.deselect_all.emit(True)
-    #   return self.toggle_active_func(is_checked)
-
-  # def toggle_active_func(self,is_checked):
-  #   # implement for subclasses. Called when toggle is switched
-  #   raise NotImplementedError
+  def toggle_active_func(self,is_checked):
+    # implement for subclasses. Called when toggle is switched
+    raise NotImplementedError

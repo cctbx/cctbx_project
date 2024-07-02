@@ -47,7 +47,7 @@ class SelectionEntryController(ModelLikeEntryController):
       self.state.active_selection_ref = self.ref
 
     else:
-      #print("The entry is unchecked.")
+      print("The entry is unchecked.")
       if self.state.active_selection_ref == self.ref:
         self.state.active_selection_ref = None
 

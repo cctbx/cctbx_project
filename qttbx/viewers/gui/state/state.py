@@ -40,7 +40,7 @@ class StateSignals(QObject):
 
   ### Start new
   # Generic state changes
-  new_active_ref = Signal(object) # Any ref type, now active
+  #new_active_ref = Signal(object) # Any ref type, now active
 
   # Selection signals
   select_all = Signal(bool)
@@ -659,11 +659,12 @@ class State:
   @active_selection_ref.setter
   def active_selection_ref(self,value):
     """
-    Assigning a SelectionRef to be 'active' emits a signal.
+    Assigning a SelectionRef to be 'active' emits a signal handled by the graphics controller
 
     """
     if value is None:
       self._active_selection_ref =None
+      self.signals.deselect_all.emit(True)
     else:
       assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
