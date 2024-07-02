@@ -24,14 +24,12 @@ from ...state.ref import (
 
 from ..filter import CompositeFilter
 
-"""
-Controller for a Pandas Table in geometry
-"""
+
 
 
 class GeometryTableTabController(TableController):
   """
-  Base class which manipulates the Dataframe
+  Controller for a Pandas Table in geometry tab
   """
   geometry_type = None # Subclass and fill this in (bond,angle,etc)
 
@@ -50,6 +48,7 @@ class GeometryTableTabController(TableController):
 
     # Signals
     self.view.table_view.addEdit.connect(self.addEdit)
+    self.view.edit_controls.edit_button.clicked.connect(self.on_edit_pressed)
     self.state.signals.geometry_change.connect(self.update)
     #self.state.signals.filter_update.connect(self.update_from_filter)
 
@@ -66,7 +65,15 @@ class GeometryTableTabController(TableController):
       
   #   suppress_columns = ["i_seqs"] + suppress_columns
   #   return suppress_columns
+  @property
+  def selected(self):
+    return self.view.table_view.selected_rows()
 
+  def on_edit_pressed(self):
+    sel = self.selected
+    if len(sel)==1:
+      row_dict = sel.to_dict("records")[0]
+      self.addEdit(row_dict)
 
   def addEdit(self,row_dict):
     raise NotImplementedError
@@ -151,7 +158,7 @@ class GeometryTableTabController(TableController):
       df = getattr(geometry_ref.data,self.geometry_type)
       self.dataframe = df#self.reform_columns(df)
       #suppress_columns = self.get_suppress_columns(df)
-      self.table_model = PandasTableModel(self.dataframe,display_columns=self.display_columns)
+      self.table_model = PandasTableModel(self.dataframe,display_columns=self.display_columns,capitalize=True,remove_underscores=True)
       # self.table = table
       # self.table._parent_explicit = self
     if geometry_ref is not None:
@@ -226,7 +233,7 @@ class BondTableController(GeometryTableTabController):
   def addEdit(self,row_dict):
     df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
-    dialog = BondEditDialog(defaults_dict=row_dict)
+    dialog = BondEditDialog(defaults_dict=row_dict,action="mod")
     if dialog.exec_():
       sites = self.state.mol.sites
       i_seqs = row_dict["i_seqs"]
@@ -262,7 +269,7 @@ class AngleTableController(GeometryTableTabController):
   def addEdit(self,row_dict):
     df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
-    dialog = AngleEditDialog(defaults_dict=row_dict)
+    dialog = AngleEditDialog(defaults_dict=row_dict,action="mod")
     if dialog.exec_():
       sites = self.state.mol.sites
       i_seqs = row_dict["i_seqs"]
@@ -299,7 +306,7 @@ class DihedralTableController(GeometryTableTabController):
   def addEdit(self,row_dict):
     df = getattr(self.geometry_ref.data,self.geometry_type)
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
-    dialog = DihedralEditDialog(defaults_dict=row_dict)
+    dialog = DihedralEditDialog(defaults_dict=row_dict,action="mod")
     if dialog.exec_():
       sites = self.state.mol.sites
       i_seqs = row_dict["i_seqs"]
@@ -355,7 +362,7 @@ class NonbondedTableController(GeometryTableTabController):
     # TODO: for now just standard
     row_dict["ideal"] = 3
     row_dict["sigma"] = 0.01
-    dialog = BondEditDialog(defaults_dict=row_dict)
+    dialog = BondEditDialog(defaults_dict=row_dict,action="add")
     if dialog.exec_():
       sites = self.state.mol.sites
       i_seqs = row_dict["i_seqs"]

@@ -13,9 +13,9 @@ class RestraintTabView(GUITabWidget): # Top view
     super().__init__(parent=parent)
 
 
-    # Files
-    self.files = RestraintFileTabView(parent=self)
-    self.addTab(self.files, "Files")
+    # # Files
+    # self.files = RestraintFileTabView(parent=self)
+    # self.addTab(self.files, "Files")
 
     # Browser
     self.browser = RestraintBrowserTabView(parent=self)

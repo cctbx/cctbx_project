@@ -173,12 +173,11 @@ class ViewerControlsController(Controller):
     if not self.view.button_restraints.isChecked():
       # clear restraints
       ref = self.state.active_model_ref.restraints_ref
-      for sub_ref in ref.children:
+      for sub_ref in ref.restraints:
         self.state.remove_ref(sub_ref)
       self.state.remove_ref(ref)
 
-    else:
-      print("loading, not checked")
+    else: # Actually load
       # add restraints
       restraints = Restraints.from_sites(self.state.sites)
       ref = RestraintsRef(data=restraints,model_ref=self.state.active_model_ref,show=True)
@@ -214,7 +213,7 @@ class ViewerControlsController(Controller):
           k = k.replace("_new","")
           defaults_dict[k] = v
 
-    dialog = BondEditDialog(defaults_dict=defaults_dict)
+    dialog = BondEditDialog(defaults_dict=defaults_dict,action="add")
     if dialog.exec_():
       labels_compositional = GeometryTableTabController.get_labels_compositional_from_iseqs(sites,i_seqs)
       row = BondEdit(

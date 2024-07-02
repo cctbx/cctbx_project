@@ -461,10 +461,10 @@ class RestraintsRef(Ref):
     super().__init__(data=data,show=show)
     self.model_ref = model_ref
     self.model_ref.restraints_ref = self
-    self.children = [] # RestraintRef
+    self.restraints = [] # RestraintRef list
 
 
-class RestraintRef(Ref):
+class RestraintRef(CifFileRef):
   """
   A singular reference to a restraint file
   """

@@ -359,7 +359,7 @@ class State:
       # Plural, add sub refs then emit
       for restraint in ref.data.restraints:
         sub_ref = RestraintRef(data=restraint,restraints_ref=ref,show=True)
-        ref.children.append(sub_ref)
+        ref.restraints.append(sub_ref)
         self.add_ref(sub_ref,emit=False) # don't emit until the end
 
       # emit at the end

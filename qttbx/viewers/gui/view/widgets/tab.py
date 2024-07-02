@@ -1,6 +1,7 @@
 from PySide2.QtCore import Qt, QMimeData, Signal
 from PySide2.QtGui import QGuiApplication, QDrag, QCursor
 from PySide2.QtWidgets import (
+    QWidget,
     QMainWindow,
     QTabBar,
     QTabWidget
@@ -15,6 +16,19 @@ class GUITab(QTabWidget):
     super().__init__(parent)
     self.was_visited = False
     self.order_index=order_index
+
+
+  # def clear_layout(self):
+  #   # Method to clear the existing layout
+  #   old_layout = self.layout
+  #   if old_layout is not None:
+  #     while old_layout.count():
+  #       item = old_layout.takeAt(0)
+  #       widget = item.widget()
+  #       if widget is not None:
+  #         widget.setParent(None)
+  #     QWidget().setLayout(old_layout)  # This effectively deletes the layout
+
 
   def on_first_visit(self):
     #print("First time visiting: "+str(self))

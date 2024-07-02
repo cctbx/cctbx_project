@@ -3,32 +3,44 @@ from itertools import chain
 import pandas as pd
 
 from PySide2.QtCore import QAbstractTableModel, Qt
-
+from PySide2.QtWidgets import QApplication, QTableView, QStyledItemDelegate, QAbstractItemView, QPushButton, QVBoxLayout, QWidget
+from PySide2.QtGui import QBrush, QColor
 
 """
 Model for Pandas Table generally
 """
+
+
+
 class PandasTableModel(QAbstractTableModel):
-  def __init__(self, df=pd.DataFrame(), parent=None, display_columns=[], column_display_names=None, capitalize=True, remove_underscores=True):
-    super().__init__(parent=parent)
+  def __init__(self, df=pd.DataFrame(), display_columns=[], column_display_names={}, capitalize=False, remove_underscores=False):
+    super().__init__()
+    self._df = df
     if len(display_columns) == 0:
       display_columns = list(df.columns)
     self.display_columns = display_columns
     self.visible_columns = self.generate_visible_columns(df, self.display_columns)
-    self._df = df[self.visible_columns]
     self.col_map = {i: list(self.df.columns).index(col) for i, col in enumerate(self.visible_columns)}
     self.sort_order = Qt.AscendingOrder
     self.editable_rows = set(range(len(df)))  # All rows are editable by default
+    self.was_modified = False
+    self.color_map = {}
+    self.font_map = {}
     
     # Initialize column display names mapping
-    if column_display_names is None:
-      column_display_names = {col:col for col in self.visible_columns}
-    if capitalize:
-      column_display_names = {col: new_col.capitalize() for col,new_col in column_display_names.items()}
-    if remove_underscores:
-      column_display_names = {col: new_col.replace("_"," ") for col,new_col in column_display_names.items()}
+    self.column_display_names = {}
+    for col in self.visible_columns:
+      if col in column_display_names:
+        new_col = column_display_names[col]
+      else:
+        new_col = col
+      self.column_display_names[col] = new_col
 
-    self.column_display_names = column_display_names
+    if capitalize:
+      self.column_display_names = {col: new_col.capitalize() for col,new_col in self.column_display_names.items()}
+    if remove_underscores:
+      self.column_display_names = {col: new_col.replace("_"," ") for col,new_col in self.column_display_names.items()}
+
 
   def __len__(self):
     return self.df.shape[0]
@@ -58,11 +70,13 @@ class PandasTableModel(QAbstractTableModel):
     visible_columns = list(chain.from_iterable(visible_columns))
     return visible_columns
 
+
+    
   def sort(self, column, order=Qt.AscendingOrder):
     if len(self) > 0:
       col_name = self.visible_columns[column]
       self.layoutAboutToBeChanged.emit()
-      self._df.sort_values(by=col_name, ascending=(order == Qt.AscendingOrder), inplace=True)
+      self.df.sort_values(by=col_name, ascending=(order == Qt.AscendingOrder), inplace=True)
       self.sort_order = Qt.DescendingOrder if self.sort_order == Qt.AscendingOrder else Qt.AscendingOrder
       self.layoutChanged.emit()
 
@@ -76,7 +90,12 @@ class PandasTableModel(QAbstractTableModel):
         else:
           return None
       else:
-        return str(self._df.index[section])
+        return str(self.df.index[section])
+
+  # def data(self, index, role):
+  #   if role == Qt.DisplayRole:
+  #     return self._data[index.row()][index.column()]
+  #   return None
 
   def data(self, index, role=Qt.DisplayRole):
     if not index.isValid():
@@ -88,34 +107,35 @@ class PandasTableModel(QAbstractTableModel):
         return "" if pd.isna(value).any() else str(value)
 
       return "" if pd.isna(value) else str(value)
-    elif role == Qt.BackgroundRole:
-      pass
-    return None
 
+
+  # def flags(self, index):
+  #   flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+  #   if index.row() in self.editable_rows:
+  #     flags |= Qt.ItemIsEditable
+  #   return flags
   def flags(self, index):
-    flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-    if index.row() in self.editable_rows:
-      flags |= Qt.ItemIsEditable
-    return flags
+    # Make items selectable and enabled, but not editable
+    return Qt.ItemIsSelectable | Qt.ItemIsEnabled
 
   def setData(self, index, value, role):
     if not index.isValid() or role != Qt.EditRole:
       return False
 
     if value == "":
-      value = self._df.iloc[index.row(), self.col_map[index.column()]]  # Keep original value
+      value = self.df.iloc[index.row(), self.col_map[index.column()]]  # Keep original value
 
-    self._df.loc[index.row(), self.visible_columns[index.column()]] = value
+    self.df.loc[index.row(), self.visible_columns[index.column()]] = value
     self.dataChanged.emit(index, index, (Qt.DisplayRole,))
 
     if "action" not in self.df.columns:
       self.df["action"] = pd.NA
-    self._df.loc[index.row(), "action"] = "edit"
+    self.df.loc[index.row(), "action"] = "edit"
 
     return True
 
   def rowCount(self, parent=None):
-    return len(self._df)
+    return len(self.df)
 
   def columnCount(self, parent=None):
     return len(self.visible_columns)

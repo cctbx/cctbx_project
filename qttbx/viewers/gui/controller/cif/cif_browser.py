@@ -1,4 +1,5 @@
 from pathlib import Path
+from collections import UserDict
 
 import pandas as pd
 from PySide2.QtWidgets import (
@@ -7,36 +8,126 @@ from PySide2.QtWidgets import (
 )
 
 from ...state.table import  PandasTableModel
-from ....core.pandas_utils import write_cif_file
+from ....core.cif_io import write_dataframes_to_cif_file
 from ..table import TableController
+from ...state.cif import CifFileData
+from ...state.ref import CifFileRef
 
+
+
+
+
+
+def remove_values_for_key(d, key_to_remove):
+  """
+  Recursively remove any key-value pairs for a given key in a nested dictionary.
+  """
+  if isinstance(d, (dict,UserDict)):
+    # First, process the current dictionary level
+    keys_to_delete = [key for key in d if key == key_to_remove]
+    for key in keys_to_delete:
+      del d[key]
+    
+    # Then, recursively process nested dictionaries and lists
+    for key, value in d.items():
+      remove_values_for_key(value, key_to_remove)
+  elif isinstance(d, list):
+    for item in d:
+      remove_values_for_key(item, key_to_remove)
+
+def rename_key_in_nested_dict(d, old_key, new_key):
+  """
+  Recursively rename a key in a nested dictionary.
+  """
+  if isinstance(d, (dict,UserDict)):
+    # First, process the current dictionary level
+    if old_key in d:
+      d[new_key] = d.pop(old_key)
+    
+    # Then, recursively process nested dictionaries and lists
+    for key, value in d.items():
+      rename_key_in_nested_dict(value, old_key, new_key)
+  elif isinstance(d, list):
+    for item in d:
+      rename_key_in_nested_dict(item, old_key, new_key)
 
 class CifBrowserController(TableController):
+
+  # Modifications to files
+  rename_files = {} # More likely to use an object with getitem than dict
+  suppress_files = {}
+
+  # Modifications to data blocks and items
+  rename_data_blocks = {}
+  suppress_data_blocks = []
+
+  rename_data_items = {}
+  suppress_data_items = []
+
+
+  # Modifications to columns
+  display_columns = [] 
+  column_display_names = {}
+  editable_columns = [] # if not empty, enforced as exclusive
+  non_editable_columns = [] # excluded regardless of presence in editable list
+
+
+
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
     self._df_dict = None
+    self._table_model_dict = {}
     self._cif_ref = None
-    self.table_model = PandasTableModel()
-    #self.parent.view.toggle_tab_visible("Browser",show=True)
-    self.data_has_changed = False
+    self._table_model = PandasTableModel()
 
 
 
     # Signals
-    #self.view.save_button.clicked.connect(self.save)
+    self.view.save_button.clicked.connect(self.save)
     self.state.signals.ciffile_change.connect(self.update_file)
-
-    # Problem here:
     self.view.combobox_files.currentIndexChanged.connect(lambda: self.update_file_from_label(self.view.combobox_files.currentText()))
-    self.view.combobox_data.currentIndexChanged.connect(lambda: self.update_data(data_key=self.view.combobox_data.currentText()))
-    self.view.combobox_block.currentIndexChanged.connect(lambda: self.update_block(block_key=self.view.combobox_block.currentText()))
+    self.view.combobox_data_block.currentIndexChanged.connect(lambda: self.update_data_block(data_block_key=self.view.combobox_data_block.currentText()))
+    self.view.combobox_data_item.currentIndexChanged.connect(lambda: self.update_data_block_item(data_item_key=self.view.combobox_data_item.currentText()))
     self.table_model.dataChanged.connect(self.on_data_changed)
+    if hasattr(self.view,"load_button"):
+      self.view.load_button.clicked.connect(self.showFileDialog)
+    if hasattr(self.view,"edit_button"):
+      #pass
+      self.view.edit_button.clicked.connect(self.edit_button_clicked)
 
+
+  def showFileDialog(self):
+    home_dir = Path.home()  # Cross-platform home directory
+    fname = QFileDialog.getOpenFileName(self.view, 'Open file', str(home_dir))
+    if fname[0]:
+      filename = fname[0]
+      filepath = Path(filename).absolute()
+
+      # add to state
+      data = CifFileData(filepath=filepath)
+      ref = CifFileRef(data=data,show=True)
+      self.state.add_ref(ref)
+
+      # update file combobox
+      self.update_file(ref)
+      self.view.setComboBoxToValue(self.view.combobox_files,ref.data.filename)
+
+
+  def edit_button_clicked(self):
+    indices = self.view.table_view.selectedIndexes()
+    if not len(indices)==1:
+        return
+    else:
+      self.view.table_view.editRequested.emit(indices[0])
 
   @property
   def cif_refs(self):
     return self.state.references_ciffile 
-
+  @property
+  def filenames(self):
+    # implemented to enable modification in subclasses
+    filenames = [ref.data.filename for ref in self.cif_refs]
+    return filenames
   @property
   def df_dict(self):
     return self._df_dict
@@ -45,10 +136,32 @@ class CifBrowserController(TableController):
   def df_dict(self,value):
     print("Changing df_dict")
     assert value is not None
-    key1,value1 = list(value.items())[0]
-    if isinstance(value1,pd.DataFrame):
-      value = {"data":value}
     self._df_dict = value
+    self.rename_df_dict()
+
+    # make table models
+    self._table_model_dict = self.transform_nested_dict(value,self._make_table_model)
+  
+  def _make_table_model(self,df):
+    if isinstance(df,pd.DataFrame):
+      model = PandasTableModel(df=df,display_columns=self.display_columns,column_display_names=self.column_display_names)
+      return model
+    else:
+      return df
+
+  def transform_nested_dict(self,d, func):
+    if isinstance(d, (dict,UserDict)):
+      return {k: self.transform_nested_dict(v, func) for k, v in d.items()}
+    else:
+      return func(d)
+  @property
+  def table_model_dict(self):
+    # follows from df_dict but table model objects
+    return self._table_model_dict
+
+  @table_model_dict.setter
+  def table_model_dict(self,value):
+    self._table_model_dict = value
 
   @property
   def cif_ref(self):
@@ -58,6 +171,23 @@ class CifBrowserController(TableController):
   def cif_ref(self,value):
     self._cif_ref = value
 
+  def rename_df_dict(self):
+    value = self.df_dict
+    for old_name,new_name in self.rename_data_blocks.items():
+      rename_key_in_nested_dict(value,old_name,new_name)
+    for old_name,new_name in self.rename_data_items.items():
+      rename_key_in_nested_dict(value,old_name,new_name)
+
+  def rename_df_dict_undo(self):
+    value = self.df_dict
+    reverse_d = {v:k for k,v in self.rename_data_blocks.items()}
+    for old_name,new_name in reverse_d.items():
+      rename_key_in_nested_dict(value,old_name,new_name)
+
+    reverse_d = {v:k for k,v in self.rename_data_items.items()}
+    for old_name,new_name in reverse_d.items():
+      rename_key_in_nested_dict(value,old_name,new_name)
+
   def save(self,*args):
     # Opens a save file dialog and returns the selected file path and filter
 
@@ -65,10 +195,10 @@ class CifBrowserController(TableController):
     suggested_path = str(Path(path.parent,path.stem+"_edited"+"".join(path.suffixes)))
     filepath, _ = QFileDialog.getSaveFileName(self.view, "Save File", suggested_path, "All Files (*);")
 
+    self.rename_df_dict_undo()
     if filepath:
         print(f"File selected for saving: {filepath}")
-
-        write_cif_file(self.df_dict,str(Path(filepath)),inp_type='pandas',method='iotbx')
+        write_dataframes_to_cif_file(self.df_dict,str(Path(filepath)))
 
 
 
@@ -90,75 +220,80 @@ class CifBrowserController(TableController):
       # load existing cif files
       current_filename = self.view.combobox_files.currentText()
       self.view.combobox_files.clear()
-      
-      filenames = [ref.data.filename for ref in self.cif_refs]
-      self.view.combobox_files.addItems(filenames)
-      if current_filename in filenames:
+    
+
+      self.view.combobox_files.addItems(self.filenames)
+      if current_filename in self.filenames:
         self.view.setComboBoxToValue(self.view.combobox_files,current_filename)
 
       self.cif_ref = ref
       df_dict = ref.data.dataframes
       self.df_dict = df_dict
-      current_data_key = self.view.combobox_data.currentText()
-      self.view.combobox_data.clear()
-      keys = list(self.df_dict.keys())
-      self.view.combobox_data.addItems(keys)
-      if current_data_key in keys:
-        self.view.setComboBoxToValue(self.view.combobox_data,current_data_key)
-      data_key = self.view.combobox_data.currentText()
+      current_data_block_key = self.view.combobox_data_block.currentText()
+      self.view.combobox_data_block.clear()
+      data_block_list = [item for item in self.df_dict.keys() if item not in self.suppress_data_blocks]
+      self.view.combobox_data_block.addItems(data_block_list)
+      if current_data_block_key in  data_block_list:
+        self.view.setComboBoxToValue(self.view.combobox_data_block,current_data_block_key)
+      data_block_key = self.view.combobox_data_block.currentText()
 
-      # trigger update_data
-      self.update_data(data_key=data_key)
-      #self.view.combobox_data.setCurrentIndex(0)
+      # trigger update_data_block
+      self.update_data_block(data_block_key=data_block_key)
+      #self.view.combobox_data_block.setCurrentIndex(0)
 
       # switch to browser tab
       #self.parent.view.setCurrentIndex(1)
 
     self.view.combobox_files.blockSignals(False)
 
-  def update_data(self,data_key=None):
+  def update_data_block(self,data_block_key=None):
 
-    print("cif browser update_data: data_key="+data_key)
-    # if data_key is None:
-    #   data_key = self.view.combobox_data.itemText(index)
-    if data_key not in  [None,""]:
-      assert data_key in self.df_dict, f"{type(data_key)}, {data_key}"
-      self.view.combobox_block.clear()
-      self.view.combobox_block.addItems(list(self.df_dict[data_key].keys()))
-
-
-      current_block_key = self.view.combobox_block.currentText()
-      keys = list(self.df_dict[data_key].keys())
-      self.view.combobox_block.clear()
-      self.view.combobox_block.addItems(keys)
-      if current_block_key in keys:
-        self.view.setComboBoxToValue(self.view.combobox_block,current_block_key)
-      block_key = self.view.combobox_block.currentText()
-      self.update_block(data_key=data_key,block_key=block_key)
+    print("cif browser update_data_block: data_block_key="+data_block_key)
+    # if data_block_key is None:
+    #   data_block_key = self.view.combobox_data_block.itemText(index)
+    if data_block_key not in  [None,""]:
+      assert data_block_key in self.df_dict, f"{type(data_block_key)}, {data_block_key}"
+      self.view.combobox_data_item.clear()
+      data_block_item_list = [item for item in self.df_dict[data_block_key].keys() if item not in self.suppress_data_items]
+      self.view.combobox_data_item.addItems(data_block_item_list)
 
 
+      current_data_item_key = self.view.combobox_data_item.currentText()
+      self.view.combobox_data_item.clear()
+      self.view.combobox_data_item.addItems(data_block_item_list) # need to do twice?
+      if current_data_item_key in data_block_item_list:
+        self.view.setComboBoxToValue(self.view.combobox_data_item,current_data_item_key)
+      data_item_key = self.view.combobox_data_item.currentText()
+      self.update_data_block_item(data_block_key=data_block_key,data_item_key=data_item_key)
 
-  def update_block(self,data_key=None,block_key=None):
-    print(f"cif browser update block: data_key={data_key} block_key={block_key}")
-    if "" not in [data_key,block_key]:
-      if data_key is None:
-        data_key = self.view.combobox_data.currentText()
 
-      if block_key is None:
-        block_key = self.view.combobox_block.currentText()
 
-      assert None not in [data_key,block_key]
+  def update_data_block_item(self,data_block_key=None,data_item_key=None):
+    print(f"cif browser update block: data_block_key={data_block_key} data_item_key={data_item_key}")
+    if "" not in [data_block_key,data_item_key]:
+      if data_block_key is None:
+        data_block_key = self.view.combobox_data_block.currentText()
 
-      data = self.df_dict[data_key]
-      #assert block_key in list(data, f"{data.keys()}, {block_key}"
-      df = data[block_key]
+      if data_item_key is None:
+        data_item_key = self.view.combobox_data_item.currentText()
+
+      assert None not in [data_block_key,data_item_key]
+
+      data = self.df_dict[data_block_key]
+      #was_modified = self.was_modified_dict[(data_block_key,data_item_key)]
+      #assert data_item_key in list(data, f"{data.keys()}, {data_item_key}"
+      df = data[data_item_key]
       if isinstance(df,pd.DataFrame):
         # import pdb
         # pdb.set_trace()
         #self.view.table_view = CifTableView()
         #self.view.layout.addWidget(self.view.table_view)
-        model = PandasTableModel(df)
+        #model = PandasTableModel(df=df,display_columns=self.display_columns,column_display_names=self.column_display_names)
+        model = self.table_model_dict[data_block_key][data_item_key]
         #self.table_model.dataChanged.connect(self.on_data_changed)
-        self.view.table_view.setModel(model)
+
+        # Set the new model on the view (For Pyside2, not used directly), and the controller (self))
+        self.table_model = model
+        
         print("Set new table model")
 

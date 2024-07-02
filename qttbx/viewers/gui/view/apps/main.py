@@ -133,7 +133,7 @@ class ViewerGUIView(QMainWindow):
 
     # Not visible by default
     self.tabs.toggle_tab_visible("Selections",show=True)
-    self.tabs.toggle_tab_visible("CIF",show=False)
+    self.tabs.toggle_tab_visible("CIF",show=True)
     self.tabs.toggle_tab_visible("Geometry",show=True)
     self.tabs.toggle_tab_visible("Edits",show=True)
     self.tabs.toggle_tab_visible("Restraints",show=True)

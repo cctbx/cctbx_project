@@ -28,12 +28,9 @@ _active_toasts = []
 class EditsEditDialog(QDialog):
   input_names = ["ideal", "sigma"]
 
-  def __init__(self, parent=None, input_names=None, defaults_dict=None):
+  def __init__(self, parent=None, input_names=None, defaults_dict=None,action="add"):
     super().__init__(parent)
-    action = "add"
-    if defaults_dict and "action" in defaults_dict:
-      if defaults_dict["action"] == "mod":
-        action = "mod"
+    
     if action == "add":
       title = "Add"
     elif action == "mod":

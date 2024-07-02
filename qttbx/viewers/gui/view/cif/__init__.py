@@ -13,9 +13,9 @@ class CifTabView(GUITabWidget): # Top view
     super().__init__(parent=parent)
 
 
-    # Files
-    self.files = CifFileTabView(parent=self)
-    self.addTab(self.files, "Files")
+    # # Files
+    # self.files = CifFileTabView(parent=self)
+    # self.addTab(self.files, "Files")
 
     # Browser
     self.browser = CifBrowserTabView(parent=self)

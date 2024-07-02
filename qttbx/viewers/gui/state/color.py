@@ -2,36 +2,40 @@
 import matplotlib.colors as mcolors
 
 class Color:
-  def __init__(self, color):
-    if isinstance(color, str):
-      self.from_string(color)
-    elif isinstance(color, tuple) and len(color) == 3:
-      if all(isinstance(c, int) for c in color):
-        self.from_rgb_int(color)
-      elif all(isinstance(c, float) for c in color):
-        self.from_rgb_float(color)
+  def __init__(self, r,g,b,transparency=1.0):
+    # a tuple of floats (r,g,b) is the internal state
+    rgb = (r,g,b)
+    if all(0.0 <= c <= 1.0 for c in rgb):
+      self.rgb = rgb
+      self.transparency = transparency
     else:
-      raise ValueError("Invalid color format")
+      raise ValueError("RGB float values must be between 0.0 and 1.0")
 
-  def from_string(self, color):
+  @classmethod
+  def from_string(cls, color,transparency=1.0):
     if color in mcolors.CSS4_COLORS:
-      self.rgb = mcolors.to_rgb(mcolors.CSS4_COLORS[color])
+      rgb = mcolors.to_rgb(mcolors.CSS4_COLORS[color])
+      return cls(*rgb,transparency=transparency)
     elif color.startswith('#'):
-      self.rgb = mcolors.to_rgb(color)
+      rgb = mcolors.to_rgb(color)
+      return cls(*rgb,transparency=transparency)
     else:
       raise ValueError("Unknown named color or invalid hex code")
 
-  def from_rgb_int(self, rgb):
-    if all(0 <= c <= 255 for c in rgb):
-      self.rgb = tuple(c / 255 for c in rgb)
+  @classmethod
+  def from_rgb_int(cls, rgb,transparency=255):
+    if all(0 <= c <= 255 for c in (*rgb,transparency)):
+      # Convert to float for single instantiation
+      rgb = tuple(c / 255 for c in rgb)
+      transparency = transparency/255
+      return cls(*rgb,transparency=transparency)
     else:
       raise ValueError("RGB integer values must be between 0 and 255")
 
-  def from_rgb_float(self, rgb):
-    if all(0.0 <= c <= 1.0 for c in rgb):
-      self.rgb = rgb
-    else:
-      raise ValueError("RGB float values must be between 0.0 and 1.0")
+  @classmethod
+  def from_rgb_float(cls,rgb,transparency=1.0):
+    return cls(rgb,transparency=transparency)
+ 
 
   def __repr__(self):
     return f"Color(rgb={self.rgb})"
@@ -49,6 +53,10 @@ class Color:
     return self.rgb[2]
 
   @property
+  def a(self):
+    return self.transparency
+
+  @property
   def R(self):
     return int(self.rgb[0] * 255)
 
@@ -61,5 +69,13 @@ class Color:
     return int(self.rgb[2] * 255)
 
   @property
+  def A(self):
+    return int(self.transparency * 255)
+
+  @property
   def RGB(self):
     return (self.R, self.G, self.B)
+
+  @property
+  def RGBA(self):
+    return (self.R, self.G, self.B, self.A)

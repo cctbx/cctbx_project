@@ -1,7 +1,14 @@
+import qtawesome as qta
 from PySide2.QtCore import Qt, Signal
 from PySide2.QtWidgets import (
     QMenu,
-    QVBoxLayout
+    QLabel,
+    QWidget,
+    QSpacerItem,
+    QSizePolicy,
+    QVBoxLayout,
+    QHBoxLayout,
+    QPushButton
 )
 
 from ..table import PandasTableView
@@ -12,8 +19,6 @@ from ..widgets.filter import TableFilter
 """
 View for the Pandas table tabs for geometry
 """
-
-
 class GeometryTableView(PandasTableView):
   addEdit = Signal(dict) # row dict corresponding to the restraint being edited
 
@@ -44,6 +49,31 @@ class GeometryTableView(PandasTableView):
       row_dict = specific_row._asdict()
       self.addEdit.emit(row_dict)
 
+class EditControls(QWidget):
+  """
+  Controls to edit entries
+  """
+  def __init__(self, parent=None):
+    super().__init__(parent=parent)
+    
+    # Main vertical layout
+    self.layout = QHBoxLayout()
+
+    spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
+    self.layout.addSpacerItem(spacer)
+
+    # Dropdown for filter selections
+    edit_layout = QVBoxLayout()
+
+    edit_layout.addWidget(QLabel("Modify/delete entry"))
+    self.edit_button = QPushButton("Create Edit")
+    icon = qta.icon("mdi.pencil")
+    self.edit_button.setIcon(icon)
+    edit_layout.addWidget(self.edit_button)
+    self.layout.addLayout(edit_layout)
+
+    self.setLayout(self.layout)
+
 
 
 class GeometryTab(GUITab):
@@ -57,9 +87,17 @@ class GeometryTab(GUITab):
     self.layout = QVBoxLayout()
     self.setLayout(self.layout)
 
+    # Create edit button
+    self.edit_controls =  EditControls()
+
+
     # Filter controls
     self.filter = TableFilter()
-    self.layout.addWidget(self.filter)
+
+    controls_layout = QHBoxLayout()
+    controls_layout.addWidget(self.edit_controls)
+    controls_layout.addWidget(self.filter)
+    self.layout.addLayout(controls_layout)
 
     # Table
     self.table_view = GeometryTableView()

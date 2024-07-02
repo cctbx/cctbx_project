@@ -246,7 +246,7 @@ class CifInput(UserDict):
     return cls(string_obj)
 
 
-  def __init__(self,*args,**kwargs):
+  def __init__(self,*args,method="iotbx",**kwargs):
     """
     Initialize with regular dictionary args,
       or a filename of a cif file
@@ -258,10 +258,10 @@ class CifInput(UserDict):
     if len(args) == 1:
       if isinstance(args[0], (Path,str)):
         self.filename = args[0]
-        d = self._read_mmcif_file_to_dataframes(self.filename)
+        d = self._read_mmcif_file_to_dataframes(self.filename,method=method)
         args = args[1:]
       elif isinstance(args[0],StringIO):
-        d = self._read_mmcif_obj_to_dataframes(args[0])
+        d = self._read_mmcif_obj_to_dataframes(args[0],method=method)
         args = args[1:]
 
     super().__init__(*args,**kwargs)
@@ -270,26 +270,38 @@ class CifInput(UserDict):
 
 
 
-  def read_mmcif_file_to_dataframes(self,file):
-    d = self._read_mmcif_file_to_dataframes(file)
+  def read_mmcif_file_to_dataframes(self,file,method=None):
+    d = self._read_mmcif_file_to_dataframes(file,method=method)
     self.update(d)
 
-  def _read_mmcif_file_to_dataframes(self,file):
+  def _read_mmcif_file_to_dataframes(self,file,method=None):
     with open(file, 'r') as fh:
-      return self._read_mmcif_obj_to_dataframes(fh)
+      return self._read_mmcif_obj_to_dataframes(fh,method=method)
 
-  def read_mmcif_obj_to_dataframes(self,file_obj):
-    d = self._read_mmcif_obj_to_dataframes(file_obj)
+  def read_mmcif_obj_to_dataframes(self,file_obj,method=None):
+    d = self._read_mmcif_obj_to_dataframes(file_obj,method=method)
     self.update(d)
 
-  def _read_mmcif_obj_to_dataframes(self,file_obj):
-    lines = file_obj.readlines()
+  def _read_mmcif_obj_to_dataframes(self,file_obj,method=None):
+    assert method in ["iotbx","cifpd"]
+    if method == "cifpd":
+      assert False, "Not fully functional"
+      lines = file_obj.readlines()
 
-    self.parser= CifParser(lines)
-    self.parser.run()
-    dataframes = self.parser.process_to_pandas()
-    return dataframes
+      self.parser= CifParser(lines)
+      self.parser.run()
+      dataframes = self.parser.process_to_pandas()
+      return dataframes
 
+    elif method == "iotbx":
+      reader = cif.reader(file_object=file_obj)
+      cif_model = reader.model()
+      dicts = convert_iotbx_cif_to_dict(cif_model)
+      for key in list(dicts.keys()):
+        if not key.startswith("data_"):
+          dicts["data_"+key] = dicts.pop(key)
+      dfs = convert_dict_to_dataframes(dicts)
+      return dfs
   @property
   def atom_sites(self):
     # Search rather than assume location
@@ -298,10 +310,6 @@ class CifInput(UserDict):
       return None
     df =  get_value_by_path(self,atom_site_path)
     return df
-
-
-
-
 
   def extract_crystal_symmetry(self):
     """
@@ -339,10 +347,31 @@ class CifInput(UserDict):
       return None
     d = get_value_by_path(self,key_path)
     return d
-
+import pandas as pd
+import re
 
 class CifParser:
-  def __init__(self,lines):
+  def __init__(self, lines):
+    self.lines = lines
+    self.data_idxs = [i for i, line in enumerate(lines) if line.startswith("data_")]
+    self.data_idxs.append(len(lines))
+
+  def run(self):
+    self.results = {}
+    for i, start in enumerate(self.data_idxs[:-1]):
+      block_name = self.lines[start].strip()
+      end = self.data_idxs[i + 1]
+      block_lines = self.lines[start:end]
+      parser = CifBlockParser(block_lines)
+      parser.run()
+      dfs = parser.process_to_pandas()
+      self.results[block_name] = dfs
+
+  def process_to_pandas(self):
+    return self.results
+
+class CifBlockParser:
+  def __init__(self, lines):
     self.lines = lines
     self.i = 0
     self.columns = []
@@ -357,13 +386,14 @@ class CifParser:
     self.loop_marker = "loop_"
     self.last_result_key = None
     self.current_result = {}
+    self.in_loop = False
 
   @property
   def line(self):
     return self.lines[self.i]
 
   def run(self):
-    while self.i < len(self.lines)-1:
+    while self.i < len(self.lines):
       self.read_next_line()
       self.end_line()
     self.finish_file()
@@ -377,365 +407,208 @@ class CifParser:
     self.ready_to_eat_block = False
     self.ready_to_eat_key_value = False
 
-  def eat(self,is_loop=False,is_block=False):
-
-    if is_loop or is_block:
-      key = self.current_prefix
-      # if key is None:
-      #   key = self.columns[0].split(".")[0]
-      assert key is not None
-      # if self.i ==3:
-      #   import pdb
-      #   pdb.set_trace()
-      self.current_result["columns"] = self.columns
-      self.current_result["data"] = self.data
-      self.current_result["is_loop"] = is_loop
-      self.current_result["is_block"] = is_block
-      self.current_result["is_single_value"] = False
-      self.current_result["prefix"]  = key
-      self.current_result["stop"] = self.i
-
-      if is_loop: # get the last line of a loop
-        self.data.append(self.i)
-      self.results[key] = self.current_result
-    else:
-      # simple key value pair
-      assert len(self.columns)==1 and len(self.data)==1
-      self.current_result["is_loop"] = False
-      self.current_result["is_block"] = False
-      self.current_result["is_single_value"] = True
-      key = self.columns[0]
-      value = self.data[0]
-      self.current_result["key"] = key
-      self.current_result["value"] = value
-      assert key is not None
-      self.results[key] = self.current_result
-
-    # Finish eating
+  def eat(self, is_loop=False, is_block=False):
+    key = self.current_prefix if is_loop or is_block else self.columns[0]
+    self.current_result = {
+      "columns": self.columns,
+      "data": self.data,
+      "is_loop": is_loop,
+      "is_block": is_block,
+      "is_single_value": not (is_loop or is_block),
+      "prefix": self.current_prefix if is_loop or is_block else None,
+      "stop": self.i
+    }
+    self.results[key] = self.current_result
     self.last_result_key = key
-    self.current_result = {"start":self.i+1}
+    self.current_result = {"start": self.i + 1}
     self.clear()
-
 
   def end_line(self):
     if self.ready_to_eat_key_value:
-      self.eat(is_loop=False,is_block=False)
+      self.eat(is_loop=False, is_block=False)
     elif self.ready_to_eat_loop:
-      self.eat(is_loop=True,is_block=False)
+      self.eat(is_loop=True, is_block=False)
     elif self.ready_to_eat_block:
-      self.eat(is_loop=False,is_block=True)
-
+      self.eat(is_loop=False, is_block=True)
     self.i += 1
-    #print("\n\n\n")
 
   def finish_file(self):
     if self.loop_parsing:
       self.ready_to_eat_loop = True
     elif self.block_parsing:
       self.ready_to_eat_block = True
-    elif len(self.columns)>0:
+    elif self.columns:
       self.ready_to_eat_key_value = True
     self.end_line()
 
-  def process_block_line(self,line):
-    #print("Processing block line: ",self.i)
-    #print(line)
-    #print()
+  def process_block_line(self, line):
     if line.startswith("_"):
-      prefix,key,value = self.process_single_line_data(line,log=False)
+      prefix, key, value = self.process_single_line_data(line)
       if prefix is not None:
-        key = ".".join([prefix,key])
+        key = f"{prefix}.{key}"
       self.current_prefix = prefix
       self.columns.append(key)
       self.data.append(value)
     else:
       self.current_result["is_strange"] = True
-      if len(self.data)>0:
-        if self.data[-1] == "":
-          self.data[-1] = line # newline value without comment
+      if self.data and self.data[-1] == "":
+        self.data[-1] = line
 
-
-
-  def start_block(self,prefix,key,value):
-    #print("Starting block with (prefix,key):",prefix,key)
+  def start_block(self, prefix, key, value):
     self.current_prefix = prefix
     self.columns.append(key)
     self.data.append(value)
     self.block_parsing = True
-    #print("Start block on line:",self.i)
 
   def start_loop(self):
-    #print("Start loop on line:",self.i)
     self.current_prefix = None
     self.loop_parsing = True
+    self.in_loop = True
 
-  def process_single_line_data(self,line,log=False):
-    if log:
-      #print("Processing single value line: ",self.i)
-      pass
+  def process_single_line_data(self, line):
     line_split = split_with_quotes(line)
-    if len(line_split)==1:
-      line_split = (line_split[0],"")
-    assert len(line_split)==2, f"Failed to split key,value pair into two parts: {line} was split to: {line_split}"
-    # check prefix
+    if len(line_split) == 1:
+      line_split.append("")
+    assert len(line_split) == 2, f"Failed to split key,value pair: {line_split}"
     prefix = None
-    key,value = line_split
+    key, value = line_split
     prefix_split = key.split(".")
-    if len(prefix_split)>1:
-      assert len(prefix_split)==2
-      prefix,key = prefix_split
-
-    return prefix,key,value
-
+    if len(prefix_split) > 1:
+      assert len(prefix_split) == 2
+      prefix, key = prefix_split
+    return prefix, key, value
 
   def read_next_line(self):
-    #print("Reading line: ",self.i)
-
     line = self.lines[self.i]
     stripped_line = line.strip()
     is_key_row = stripped_line.startswith('_')
-    is_break_row = (len(stripped_line)==0 or
-                     stripped_line.startswith("#")
-                     )
+    is_break_row = not stripped_line or stripped_line.startswith("#")
     is_loop_entry_row = stripped_line.startswith(self.loop_marker)
     is_multi_line = stripped_line.startswith(";")
 
-    # First, handle multi line
     if is_multi_line:
-      self.current_result["is_strange"] = True
-      #print("multi line start",self.i)
-      multiline_value, last_index = handle_multiline(self.lines, self.i + 1)
-      if len(self.columns)==0:
-
-        if isinstance(self.results[self.last_result_key],dict):
-          self.results[self.last_result_key]["data"][-1] = multiline_value
-        else:
-          assert self.last_result_key in self.results
-          assert self.last_result_key is not None
-          self.results[self.last_result_key] = multiline_value
+      multiline_value, last_index = handle_multiline(self.lines, self.i)
+      if not self.columns:
+        self.results[self.last_result_key]["data"][-1] = multiline_value
       else:
         self.data[-1] = multiline_value
-      self.i = last_index  # Skip processed lines
+      self.i = last_index
       return
-
-
-    # Now consider block or loop parsing...
-    # Handle the case of no obvious separator
 
     is_no_sep_break = False
     if self.loop_parsing or self.block_parsing:
       if not is_break_row and (is_key_row or is_loop_entry_row):
         if is_loop_entry_row:
           is_no_sep_break = True
-        elif self.current_prefix is not None and not stripped_line.startswith(self.current_prefix):
-          #print("setting sep break",self.current_prefix,self.line)
+        elif self.current_prefix and not stripped_line.startswith(self.current_prefix):
           is_no_sep_break = True
 
-
-
-    # Handle blocks
     if self.block_parsing:
       if is_break_row or is_no_sep_break:
-        if is_no_sep_break:
-          #self.i-=1
-          pass
         self.ready_to_eat_block = True
         return
       else:
-        # Not breaking
         self.process_block_line(stripped_line)
         return
 
-
-
-    # Handle loops
     if self.loop_parsing:
       if is_break_row or is_no_sep_break:
-        if is_no_sep_break:
-          self.i-=1
         self.ready_to_eat_loop = True
         return
       elif is_key_row:
-        #print("Processing loop column line:",self.i)
         self.columns.append(stripped_line)
-        if self.current_prefix is None:
-          prefix,columns,data = self.process_single_line_data(stripped_line,log=False)
+        if not self.current_prefix:
+          prefix, _, _ = self.process_single_line_data(stripped_line)
           self.current_prefix = prefix
         return
-
       else:
-        # assume loop data line
-        #print("Processing loop data line:",self.i)
-        self.data.append(self.i)
+        if self.data and isinstance(self.data[-1], str) and self.data[-1].startswith(";"):
+          multiline_value, last_index = handle_multiline(self.lines, self.i)
+          self.data[-1] = multiline_value
+          self.i = last_index
+        else:
+          self.data.append(self.process_loop_data(stripped_line))
         return
 
-
-    # Check for new things
-    assert not self.loop_parsing and not self.block_parsing
     if is_loop_entry_row:
-      # start loop
       self.start_loop()
       return
 
-    elif is_key_row:
-      prefix,key,value = self.process_single_line_data(stripped_line)
+    if is_key_row:
+      prefix, key, value = self.process_single_line_data(stripped_line)
       if prefix is not None:
-        self.start_block(prefix,key,value)
+        self.start_block(prefix, key, value)
         return
       else:
-        # simple key value
         self.columns.append(key)
         self.data.append(value)
         self.ready_to_eat_key_value = True
         return
 
-    # Should never reach here
     self.current_result["is_strange"] = True
 
-
   def process_to_pandas(self):
-    """
-    Process the output of parse_mmcif_file. This function
-    separates all the pandas functionality from the file io
-    """
-    lines = self.lines
     output_dfs = {}
-    for i,(df_name,result) in enumerate(self.results.items()):
-      if not isinstance(result,dict):
-        output_dfs[df_name] = result
+    for key, result in self.results.items():
+      if not isinstance(result, dict):
+        output_dfs[key] = result
         continue
 
-      # inline iotbx function alternative
-      def do_iotbx_cif_parsing(string):
-
-        reader = cif.reader(file_object=StringIO(string))
-        model = reader.model()
-        d = convert_iotbx_cif_to_dict(model)
-        d = d[f"loop_{i}"]
-        assert len(d.keys())==1 and list(d.keys())[0] == loop_name, f"Expected loop to have 1 stem key: {loop_name}, got: {d.keys()}"
-        d = d[loop_name]
-        df = convert_dict_to_dataframes(d)
-        return df
-
-      if "is_strange" in result:
-        try:
-          start = result["start"]
-          stop = result["stop"]
-          strange_lines = lines[start:stop]
-          string =  "\n".join(strange_lines)
-          df = do_iotbx_cif_parsing(string)
-          output_dfs[loop_name] = df
-          continue
-        except:
-          continue
-
-      # determine column stem name
       columns = result["columns"]
-      has_prefix = "prefix" in result
-      if has_prefix:
-        prefix = result["prefix"]
-        col_stem = prefix # alias
-        col_names = [col.replace(prefix,"") for col in columns]
-      # Process loop
       if result["is_loop"]:
-        loop_name = df_name
-        start = result["data"][0]
-        stop = result["data"][-1]
-        columns = result["columns"]
-
-
-        # prepare file io object with the loop string
-        loop_data_string = "".join(lines[start:stop])
-        loop_data = StringIO(loop_data_string)
-
-
-        # set dtypes for each column
-        if has_prefix:
-          dtype_keys = col_names
+        data = result["data"]
+        if isinstance(data[0], int):
+          data = self.lines[data[0]:data[-1] + 1]
         else:
-          dtype_keys = columns
-        dtypes = {col:CifInput.dtypes[col] for col in dtype_keys}
-
-
-        with warnings.catch_warnings(record=True) as w:
-          warnings.simplefilter("always", ParserWarning)
-          try:
-            loop_df = pd.read_csv(loop_data,
-                            sep='\s+',
-                            engine='c',
-                            quotechar="'",
-                            dtype=dtypes,
-                            quoting=0,
-                            names=columns,
-                            index_col=False,
-                            low_memory=False,
-                            keep_default_na=False
-                            )
-
-
-            if has_prefix:
-              loop_df.rename(columns={col:col.replace(col_stem+".","") for col in loop_df.columns},inplace=True)
-              output_dfs[loop_name] = loop_df
-            else:
-              for col in loop_df.columns:
-                output_dfs[col] = loop_df[col].values
-          except ParserWarning:
-            print(f"ParserWarning caught: Mismatch between column names and data. Attempting iotbx parsing method for loop: {loop_name}")
-            loop_string =  f"data_loop_{i}\n" + "\n".join(["loop_"]+columns)+"\n"+loop_data_string
-            df = do_iotbx_cif_parsing(loop_string)
-            output_dfs[loop_name] = df
-          except Exception as e:
-              print(f"An unexpected error occurred: {e}")
-              print(f"Failed with: {loop_name}")
+          data = [" ".join(row) for row in data]
+        if len(data) == 1 and data[0].startswith(";"):
+          data = self.process_multiline_loop_data(data[0])
+        df = pd.DataFrame([data], columns=columns)
+        if result["prefix"]:
+          df.columns = [col.replace(result["prefix"] + ".", "") for col in df.columns]
+        output_dfs[key] = df
       elif result["is_block"]:
-        assert has_prefix, "The term 'block' here requires a _prefix."
-        # Process data block
-        columns, data = result["columns"], result["data"]
-        if len(data)==len(columns):
+        data = result["data"]
+        if len(data) == len(columns):
           data = [data]
-        assert len(data)==1, f"Expected a single row for key,value cif block, got: {data}"
-        assert len(columns) == len(data[0]), f"Failed to interpret key,value cif block for columns: {columns} and data: {data}"
-
-        if has_prefix:
-          # transpose
-          data = [list(row) for row in zip(*data)]
-          block_df_data = {col:d for col,d in zip(columns,data)}
-
-          block_df = pd.DataFrame(block_df_data)
-          block_df.rename(columns={col:col.replace(df_name+".","") for col in block_df.columns},inplace=True)
-          output_dfs[df_name] = block_df
-      elif result["is_single"]:
-        # Single data line, just add to the top level dict
-        for col,value in zip(columns,data[0]):
-          output_dfs[col] = value
-
-    # Postprocess
-    for df_name,df in output_dfs.items():
-      for col in df.select_dtypes(include=[object,"string"]):
-        df[col] = df[col].str.replace("\\'", "'",regex=False)
-        output_dfs[df_name] = df
+        df = pd.DataFrame(data, columns=columns)
+        if result["prefix"]:
+          df.columns = [col.replace(result["prefix"] + ".", "") for col in df.columns]
+        output_dfs[key] = df
+      elif result["is_single_value"]:
+        output_dfs[key] = result["value"]
 
     return output_dfs
 
+  def process_multiline_loop_data(self, data):
+    data = data.strip().strip(";").split("\n")
+    processed_data = []
+    for line in data:
+      line = line.strip()
+      if line:
+        processed_data.append(line)
+    return [" ".join(processed_data)]
 
+  def process_loop_data(self, line):
+    if line.startswith("'") or line.startswith('"'):
+      return [line.strip()]
+    return line.split()
 
-
-# compile re and inline split function
 QUOTES_REGEX = re.compile(r'"[^"]*"|\'[^\']*\'|\S+')
+
 def split_with_quotes(line):
   parts = QUOTES_REGEX.findall(line)
-  return [part[1:-1] if (part[0]=="'" or part[0]=='"') else part for part in parts]
+  return [part[1:-1] if part[0] in ("'", '"') else part for part in parts]
 
-# inline multiline handler
 def handle_multiline(lines, current_index):
-  multiline_content = [";"]
+  multiline_content = []
   for j in range(current_index, len(lines)):
-      line = lines[j].strip()
-      if line == ";":  # End of multiline value
-          multiline_content.append(";")
-          break
-      multiline_content.append(line)
-  return "\n".join(multiline_content), j  # Return the concatenated multiline value and the last index
+    line = lines[j]
+    multiline_content.append(line)
+    if line.strip() == ";":
+      break
+  return "\n".join(multiline_content), j
+
 
 
 
@@ -745,112 +618,84 @@ def handle_multiline(lines, current_index):
 # Format and write cif text directly from dataframes
 
 def infer_type(element):
-    try:
-        # Convert to float first
-        float_val = float(element)
-        # If the float is actually an integer, convert to int
-        if float_val.is_integer():
-            return int(float_val)
-        return float
-    except ValueError:
-        # If conversion fails, it's a string
-        return str
+  try:
+    float_val = float(element)
+    if float_val.is_integer():
+      return int
+    return float
+  except ValueError:
+    return str
 
 def convert_column_types_based_on_first(df):
-    # Get the first row of the DataFrame
-    sample_row = df.iloc[0]
-
-    # Infer the type for each column based on the first row
-    inferred_types = {col: infer_type(sample_row[col]) for col in df.columns}
-
-    # Convert entire columns to the inferred types
-    for col, dtype in inferred_types.items():
-        if dtype is float or dtype is int:
-            df[col] = pd.to_numeric(df[col], errors='coerce')
-        # Else, it's a string, no need to convert
-
-    return df
-
-
+  sample_row = df.iloc[0]
+  inferred_types = {col: infer_type(sample_row[col]) for col in df.columns}
+  for col, dtype in inferred_types.items():
+    if dtype in {float, int}:
+      df[col] = pd.to_numeric(df[col], errors='coerce')
+  return df
 
 def quote_strings_with_spaces(df):
-  # Iterate over columns
   for col in df.columns:
-      if df[col].dtype == 'object':  # Check if column is string type
-          # Add quotes to strings with spaces
-          df[col] = df[col].apply(lambda x: f'"{x}"' if isinstance(x, str) and ' ' in x else x)
+    if df[col].dtype == 'object':
+      df[col] = df[col].apply(lambda x: f'"{x}"' if isinstance(x, str) and ' ' in x else x)
   return df
 
 def format_dataframe_for_cif(df):
-    # Determine padding for each column
-    for col in df.columns:
-        if df[col].dtype == float or df[col].apply(lambda x: isinstance(x, float)).any():
-            max_left_len = df[col].apply(lambda x: len(str(int(x)) if isinstance(x, float) and not pd.isna(x) else str(x))).max()
-            max_right_len = df[col].apply(lambda x: len(str(x).split('.')[1]) if isinstance(x, float) and '.' in str(x) else 0).max()
-            total_width = max_left_len + max_right_len + 1  # +1 for decimal
-            df[col] = df[col].apply(lambda x: f"{x:>{total_width}.{max_right_len}f}" if isinstance(x, float) else str(x).ljust(total_width))
-        else:
-            max_len = df[col].astype(str).str.len().max()
-            df[col] = df[col].astype(str).str.ljust(max_len)
+  for col in df.columns:
+    if df[col].dtype == float or df[col].apply(lambda x: isinstance(x, float)).any():
+      max_left_len = df[col].apply(lambda x: len(str(int(x))) if isinstance(x, float) and not pd.isna(x) else len(str(x))).max()
+      max_right_len = df[col].apply(lambda x: len(str(x).split('.')[1]) if isinstance(x, float) and '.' in str(x) else 0).max()
+      total_width = max_left_len + max_right_len + 1
+      df[col] = df[col].apply(lambda x: f"{x:>{total_width}.{max_right_len}f}" if isinstance(x, float) else str(x).ljust(total_width))
+    else:
+      max_len = df[col].astype(str).str.len().max()
+      df[col] = df[col].astype(str).str.ljust(max_len)
+  formatted_df = df.apply(lambda x: ' '.join(x), axis=1)
+  return '\n'.join(formatted_df)
 
-    # Concatenate the formatted columns
-    formatted_df = df.apply(lambda x: ' '.join(x), axis=1)
-
-    return '\n'.join(formatted_df)
-
-# Example DataFrame (replace with your actual Da
-
-
-def df_to_cif_lines(df,decimal_places=3,integer_padding=4,decimal_padding=4,column_prefix=None,data_name=None):
-
-  # replace python uncertain values with cif ones
-  df.replace(to_replace=[None,""," "], value='.', inplace=True)
-
-  if len(df)>1: #a loop
+def df_to_cif_lines(df, column_prefix=None, data_name=None):
+  df.replace(to_replace=[None, "", " "], value='.', inplace=True)
+  if len(df) > 1:
     lines_header = ["loop_"]
     for column in df.columns:
-      if column_prefix is not None:
-        column = column_prefix+"."+column
-      if not column.startswith("_"):
-        column = "_"+column
-      lines_header.append(column)
-
+      column_name = column_prefix + "." + column if column_prefix else column
+      if not column_name.startswith("_"):
+        column_name = "_" + column_name
+      lines_header.append(column_name)
     lines_body = format_dataframe_for_cif(df).splitlines()
-    lines = lines_header+lines_body
-
-  else: # not a loop
+    lines = lines_header + lines_body
+  else:
     kv_list = list(df.to_dict("list").items())
-    column_prefix_keys = [".".join([column_prefix,key]) for key,values in kv_list]
-    max_len = max([len(key) for key in column_prefix_keys])
-
+    column_prefix_keys = [".".join([column_prefix, key]) for key, _ in kv_list]
+    max_len = max(len(key) for key in column_prefix_keys)
     lines = []
-    for i,(key,values) in enumerate(kv_list):
-      assert len(values)==1
+    for i, (key, values) in enumerate(kv_list):
+      assert len(values) == 1
       value = values[0]
       column_prefix_key = column_prefix_keys[i]
-      line = column_prefix_key.ljust(max_len+2)+str(value).ljust(max_len)
+      line = column_prefix_key.ljust(max_len + 2) + str(value)
       lines.append(line)
-
-  if data_name is not None:
-    lines = ["data_"+data_name]+lines
+  if data_name:
+    if not data_name.startswith("data_"):
+      data_name = "data_"+ data_name 
+    lines = [data_name] + lines
   return lines
 
-def write_dataframes_to_cif_file(dataframe_dict,filename):
+def write_dataframes_to_cif_file(dataframe_dict, filename):
   lines_out = []
-  for data_key,data_value in dataframe_dict.items():
-    lines_out.append("data_"+data_key)
-    for group_key,group_value in data_value.items():
-      if isinstance(group_value,pd.DataFrame):
+  for data_key, data_value in dataframe_dict.items():
+    if not data_key.startswith("data_"):
+      data_key = "data_" + data_key
+    lines_out.append(data_key)
+    for group_key, group_value in data_value.items():
+      if isinstance(group_value, pd.DataFrame):
         df = convert_column_types_based_on_first(group_value)
         df = quote_strings_with_spaces(df)
-        #df = group_value
-
-        #df = group_value.applymap(str)
-        lines = df_to_cif_lines(df,column_prefix=group_key)
-        lines_out+=lines
+        lines = df_to_cif_lines(df, column_prefix=group_key)
+        lines_out += lines
         lines_out.append("#")
       else:
-        assert False, f"Encountered non-dataframe value: {type(group_value)}"
+        raise ValueError(f"Encountered non-dataframe value: {type(group_value)}")
   s = "\n".join(lines_out)
-  with open(filename,"w") as fh:
+  with open(filename, "w") as fh:
     fh.write(s)
