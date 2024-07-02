@@ -3090,11 +3090,11 @@ class geometry_restraints_proxy_registries(object):
 
   def expand_with_ncs(self, nrgl):
     self.bond_simple.expand_with_ncs(nrgl)
-    # self.angle.expand_with_ncs()
-    # self.dihedral.expand_with_ncs()
-    # self.chirality.expand_with_ncs()
-    # self.planarity.expand_with_ncs()
-    # self.parallelity.expand_with_ncs()
+    self.angle.expand_with_ncs(nrgl)
+    self.dihedral.expand_with_ncs(nrgl)
+    self.chirality.expand_with_ncs(nrgl)
+    self.planarity.expand_with_ncs(nrgl)
+    self.parallelity.expand_with_ncs(nrgl)
 
 
   def initialize_tables(self):

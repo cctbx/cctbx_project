@@ -111,6 +111,10 @@ class proxy_registry_base(object):
         process_result.tabulated_proxy = proxy
 
 class bond_simple_proxy_registry(proxy_registry_base):
+  """
+  self.table:
+  [ {iseq1: Nproxy} ] , index in this array is iseq0
+  """
 
   def __init__(self, n_seq, strict_conflict_handling):
     proxy_registry_base.__init__(self,
@@ -120,10 +124,9 @@ class bond_simple_proxy_registry(proxy_registry_base):
 
   def expand_with_ncs(self, nrgl):
     # print("original proxies:", [p.i_seqs for p in self.proxies])
-    n_proxies = len(self.proxies)
+    # n_proxies = len(self.proxies)
+    additional_proxies = []
     for i, p in enumerate(self.proxies):
-      if i == n_proxies:
-        break
       all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
       # print('  all_new_iseqs', all_new_iseqs)
       for new_iseqs in all_new_iseqs:
@@ -131,13 +134,17 @@ class bond_simple_proxy_registry(proxy_registry_base):
             i_seqs=new_iseqs,
             distance_ideal=p.distance_ideal,
             weight=p.weight,
-            origin_id=p.origin_id)
+            slack=p.slack,
+            limit=p.limit,
+            top_out=p.top_out,
+            origin_id=p.origin_id).sort_i_seqs()
         # marking table
         self.table[new_iseqs[0]][new_iseqs[1]] = self.proxies.size()
         # ~ self._append_proxy
-        self.proxies.append(new_proxy)
+        additional_proxies.append(new_proxy)
         self.source_labels.append(self.source_labels[i])
         self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
 
   def initialize_table(self):
@@ -180,11 +187,39 @@ class bond_simple_proxy_registry(proxy_registry_base):
     return result
 
 class angle_proxy_registry(proxy_registry_base):
+  #
+  """
+  self.table: nested dicts
+    { iseq1:
+      {
+        (iseq0, iseq2) : Nproxy
+      }
+    }
+  """
 
   def __init__(self, strict_conflict_handling):
     proxy_registry_base.__init__(self,
       proxies=shared_angle_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def expand_with_ncs(self, nrgl):
+    additional_proxies = []
+    # n_proxies = len(self.proxies)
+    for i, p in enumerate(self.proxies):
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      for new_iseqs in all_new_iseqs:
+        new_proxy = angle_proxy(
+            i_seqs=new_iseqs,
+            proxy=p).sort_i_seqs()
+        # marking table
+        tab_i_seq_1 = self.table.setdefault(new_proxy.i_seqs[1], {})
+        tab_i_seq_1[(new_proxy.i_seqs[0], new_proxy.i_seqs[2])] = self.proxies.size()
+        # ~ self._append_proxy
+        additional_proxies.append(new_proxy)
+        # self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
     assert len(proxy.i_seqs) == 3
@@ -233,11 +268,37 @@ class angle_proxy_registry(proxy_registry_base):
     return tab_i_seq_1.get((i0, i2))
 
 class dihedral_proxy_registry(proxy_registry_base):
+  """
+  self.table - similar to angle:
+    { iseq0:
+      {
+        (iseq1, iseq2, iseq3) : Nproxy
+      }
+    }
+  """
 
   def __init__(self, strict_conflict_handling):
     proxy_registry_base.__init__(self,
       proxies=shared_dihedral_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def expand_with_ncs(self, nrgl):
+    additional_proxies = []
+    for i, p in enumerate(self.proxies):
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      for new_iseqs in all_new_iseqs:
+        new_proxy = dihedral_proxy(
+            i_seqs=new_iseqs,
+            proxy=p).sort_i_seqs()
+        # marking table
+        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+        tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
+        # ~ self._append_proxy
+        additional_proxies.append(new_proxy)
+        # self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
     assert len(proxy.i_seqs) == 4
@@ -293,11 +354,37 @@ class dihedral_proxy_registry(proxy_registry_base):
     return (tab_i_seq_0.get((i1, i2, i3)), angle_sign)
 
 class chirality_proxy_registry(proxy_registry_base):
+  """
+  self.table - same as dihedral:
+    { iseq0:
+      {
+        (iseq1, iseq2, iseq3) : Nproxy
+      }
+    }
+  """
 
   def __init__(self, strict_conflict_handling):
     proxy_registry_base.__init__(self,
       proxies=shared_chirality_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def expand_with_ncs(self, nrgl):
+    additional_proxies = []
+    for i, p in enumerate(self.proxies):
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      for new_iseqs in all_new_iseqs:
+        new_proxy = chirality_proxy(
+            i_seqs=new_iseqs,
+            proxy=p).sort_i_seqs()
+        # marking table
+        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+        tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
+        # ~ self._append_proxy
+        additional_proxies.append(new_proxy)
+        # self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
     proxy = proxy.sort_i_seqs()
@@ -336,11 +423,41 @@ class chirality_proxy_registry(proxy_registry_base):
     return result
 
 class planarity_proxy_registry(proxy_registry_base):
+  """
+  self.table:
+
+    self.table - similar to dihedral, chiralities, but undefined
+      number of iseqs in the nested dictionary keys:
+    { iseq0:
+      {
+        (iseq1, iseq2, iseq3, ... ) : Nproxy
+      }
+    }
+
+  """
 
   def __init__(self, strict_conflict_handling):
     proxy_registry_base.__init__(self,
       proxies=shared_planarity_proxy(),
       strict_conflict_handling=strict_conflict_handling)
+
+  def expand_with_ncs(self, nrgl):
+    additional_proxies = []
+    for i, p in enumerate(self.proxies):
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      for new_iseqs in all_new_iseqs:
+        new_proxy = planarity_proxy(
+            i_seqs=new_iseqs,
+            proxy=p).sort_i_seqs()
+        # marking table
+        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+        tab_i_seq_0[(new_proxy.i_seqs[1:])] = self.proxies.size()
+        # ~ self._append_proxy
+        additional_proxies.append(new_proxy)
+        # self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 2
@@ -379,10 +496,34 @@ class planarity_proxy_registry(proxy_registry_base):
     return result
 
 class parallelity_proxy_registry(proxy_registry_base):
+  """
+  self.table:
+  { ( (iseqs), (jseqs) ) : Nproxy }
+  """
+
   def __init__(self, strict_conflict_handling):
     proxy_registry_base.__init__(self,
         proxies=shared_parallelity_proxy(),
         strict_conflict_handling=strict_conflict_handling)
+
+  def expand_with_ncs(self, nrgl):
+    additional_proxies = []
+    for i, p in enumerate(self.proxies):
+      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      all_new_jseqs = nrgl.get_copy_iseqs(p.i_seqs)
+      for new_iseqs, new_jseqs in zip(all_new_iseqs, all_new_jseqs):
+        new_proxy = parallelity_proxy(
+            i_seqs=new_iseqs,
+            j_seqs=new_jseqs,
+            proxy=p).sort_i_seqs()
+        # marking table
+        self.table[(tuple(new_proxy.i_seqs), tuple(new_proxy.j_seqs))] = self.proxies.size()
+        # ~ self._append_proxy
+        additional_proxies.append(new_proxy)
+        # self.proxies.append(new_proxy)
+        self.source_labels.append(self.source_labels[i])
+        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+    self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 2
@@ -397,7 +538,6 @@ class parallelity_proxy_registry(proxy_registry_base):
       self.proxies.append(proxy)
       return True
     return False
-
 
   def process(self, source_info, proxy, tolerance=1.e-6):
     assert proxy.i_seqs.size() > 2
