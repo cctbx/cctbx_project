@@ -940,11 +940,10 @@ def get_chains_info(ph, selection_list=None):
       chains_info[ch.id].resid.append(rg.resid())
       chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
       # atoms = res.atoms()
-      ag0 = rg.atom_groups()[0]
-      atoms = ag0.atoms()
-      present_anames = [a.name for a in atoms]
+      atoms = rg.atom_groups()[0].atoms()
       # print "rg.atom_groups_size()", rg.atom_groups_size()
       if rg.atom_groups_size() > 1:
+        present_anames = [a.name for a in atoms]
         for add_rgs in rg.atom_groups()[1:]:
           for a in add_rgs.atoms():
             # print "       getting atom '%s'" % a.name, a.name not in present_anames
