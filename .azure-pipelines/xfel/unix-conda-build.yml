@@ -56,7 +56,7 @@ steps:
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/modules/dials/.conda-envs/$(OS).txt python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n $(PYTHON_VERSION) junit-xml
-    conda install -y -c conda-forge cmake pandas distro -n $(PYTHON_VERSION)
+    conda install -y -c conda-forge cmake make pandas distro -n $(PYTHON_VERSION)
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 

@@ -9,9 +9,9 @@ jobs:
       modules: modules
   - template: ./conda-linux.yml
     parameters:
-      distribution: centos
-      version: [7]
-      modules: modules
+      distribution: rockylinux
+      version: [8]
+      modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
