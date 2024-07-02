@@ -564,13 +564,11 @@ class MolstarViewer(ModelViewer):
 
 
   def selection_show(self,component_name: Optional[str] = None, representation_name: Optional[str] = None):
+    if representation_name:
+      self.representation_add_selected(representation_name)
     self.transparency_selected(component_name=component_name, representation_name=representation_name,value=0.0)
 
-  def representation_add(self,representation_name):
-    command = f"""
-    await {self.plugin_prefix}.phenix.addRepresentationSelected('{representation_name}')
-    """
-    self.send_command(command)
+
 
   # Transparency for model/selection
 
@@ -637,14 +635,19 @@ class MolstarViewer(ModelViewer):
   # def representation_model(self,model_id: str, representation_name: str):
   #   query = SelectionQuery.from_model_ref()
 
-  def representation_selected(self, representation_name: str):
-    # add representation
-    command = f"""
+  # def representation_selected(self, representation_name: str):
+  #   # add representation
+  #   command = f"""
 
+  #   await {self.plugin_prefix}.phenix.addRepresentationSelected('{representation_name}')
+  #   """
+  #   self.send_command(command)
+
+  def representation_add_selected(self,representation_name):
+    command = f"""
     await {self.plugin_prefix}.phenix.addRepresentationSelected('{representation_name}')
     """
     self.send_command(command)
-
 
   # def representation_query(self,model_id: str, query_json: str, representation_name: str):
   #   assert representation_name in ['ball-and-stick','ribbon']
