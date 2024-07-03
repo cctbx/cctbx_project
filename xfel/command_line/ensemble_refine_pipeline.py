@@ -57,8 +57,8 @@ class Script(object):
     if rank == 0:
       try:
         if params.combine_experiments_phil:
-          from dials.command_line.combine_experiments import run as run_combine
-          run_combine(args=[params.combine_experiments_phil])
+          from dials.command_line.combine_experiments import run
+          run(args=[params.combine_experiments_phil])
         if params.refine_phil:
           from dials.command_line.refine import run
           run(args=[params.refine_phil])
