@@ -506,8 +506,6 @@ class input(object):
     chain_ids = {x.id for x in pdb_h.models()[0].chains()}
     if len(chain_ids) > 1:
       t0 = time()
-      print("self.params.try_shortcuts", self.params.try_shortcuts)
-      import sys
       if self.params.try_shortcuts:
         # probably the most parameters are not necessary, since
         # we are going after cases where molecule was multiplied using
@@ -517,8 +515,7 @@ class input(object):
             chains_info=self.chains_info,
             chain_similarity_threshold=self.params.chain_similarity_threshold,
             chain_max_rmsd=self.params.chain_max_rmsd,
-            log=sys.stdout,
-            # log=null_out(),
+            log=null_out(),
             residue_match_radius=self.params.residue_match_radius)
       print ("Time spend for trying shortcut: %.2f" % (time()-t0), file=self.log)
       if self.ncs_restraints_group_list.get_n_groups() == 0:

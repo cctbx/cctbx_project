@@ -214,7 +214,7 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  use_ncs_to_build_restraints = True
+  use_ncs_to_build_restraints = False
     .type = bool
     .short_caption = Look for NCS and use it to speed up building restraints
   flip_symmetric_amino_acids = True
@@ -916,15 +916,16 @@ class type_symbol_registry_base(object):
     new_source_n_expected_atoms = flex.int(new_symbols.size(), -1)
     new_charges = flex.int(new_symbols.size(), 0)
     for ncs_group in nrgl:
-      new_symbols.set_selected(ncs_group.master_iselection, self.symbols)
-      new_source_labels.set_selected(ncs_group.master_iselection, self.source_labels)
-      new_source_n_expected_atoms.set_selected(ncs_group.master_iselection, self.source_n_expected_atoms)
-      new_charges.set_selected(ncs_group.master_iselection, self.charges)
+      # print("len(ncs_group.master_iselection), len(self.symbols), n_atoms", len(ncs_group.master_iselection), len(self.symbols), n_atoms)
+      new_symbols.set_selected(ncs_group.master_iselection, self.symbols.select(ncs_group.master_iselection))
+      new_source_labels.set_selected(ncs_group.master_iselection, self.source_labels.select(ncs_group.master_iselection))
+      new_source_n_expected_atoms.set_selected(ncs_group.master_iselection, self.source_n_expected_atoms.select(ncs_group.master_iselection))
+      new_charges.set_selected(ncs_group.master_iselection, self.charges.select(ncs_group.master_iselection))
       for c in ncs_group.copies:
-        new_symbols.set_selected(c.iselection, self.symbols)
-        new_source_labels.set_selected(c.iselection, self.source_labels)
-        new_source_n_expected_atoms.set_selected(c.iselection, self.source_n_expected_atoms)
-        new_charges.set_selected(c.iselection, self.charges)
+        new_symbols.set_selected(c.iselection, self.symbols.select(ncs_group.master_iselection))
+        new_source_labels.set_selected(c.iselection, self.source_labels.select(ncs_group.master_iselection))
+        new_source_n_expected_atoms.set_selected(c.iselection, self.source_n_expected_atoms.select(ncs_group.master_iselection))
+        new_charges.set_selected(c.iselection, self.charges.select(ncs_group.master_iselection))
     self.symbols = new_symbols
     self.source_labels = new_source_labels
     self.source_n_expected_atoms = new_source_n_expected_atoms
@@ -3587,7 +3588,7 @@ class build_all_chain_proxies(linking_mixins):
     self.cystein_monomer_mappings = []
     n_unique_models = 0
 
-    ncs_will_be_used = False
+    use_ncs_for_interpretation = False
     # trying NCS shortcut here
     if len(models) == 1 and self.params.use_ncs_to_build_restraints:
       # search for NCS
@@ -3600,12 +3601,12 @@ class build_all_chain_proxies(linking_mixins):
           log                         = None)
       nrgl = ncs_obj.get_ncs_restraints_group_list()
       f_nrgl = nrgl.filter_ncs_restraints_group_list(self.pdb_hierarchy, ncs_obj)
-      print("Found NCS")
-      ncs_obj.show(format='phil')
+      # print("Found NCS")
+      # ncs_obj.show(format='phil')
       # max_rmsd = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, null_out())
-      nrgl_ok = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, sys.stdout)
-      ncs_will_be_used = (nrgl.get_n_groups()>0) and (nrgl == f_nrgl) and nrgl_ok
-      if ncs_will_be_used:
+      nrgl_ok = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, null_out())
+      use_ncs_for_interpretation = (nrgl.get_n_groups()>0) and (nrgl == f_nrgl) and nrgl_ok
+      if use_ncs_for_interpretation:
         print("  will use NCS in pdb_interpretation")
         self._full_pdb_hierarchy = self.pdb_hierarchy
         self._old_models = models
@@ -3614,7 +3615,9 @@ class build_all_chain_proxies(linking_mixins):
         # print("nrgl[0].master_iselection", list(nrgl[0].master_iselection))
 
         # nrgl._show(self.pdb_hierarchy, brief=False)
-        self.pdb_hierarchy = self.pdb_hierarchy.select(nrgl[0].master_iselection)
+        master_and_rest_bool_selection = ~flex.bool(self._full_pdb_hierarchy.atoms_size(), nrgl.get_all_copies_selection())
+        self.pdb_hierarchy = self.pdb_hierarchy.select(master_and_rest_bool_selection)
+
         # print(self.pdb_hierarchy.as_pdb_string())
         self.pdb_atoms = self.pdb_hierarchy.atoms()
         self.sites_cart = self.pdb_atoms.extract_xyz()
@@ -3923,9 +3926,9 @@ class build_all_chain_proxies(linking_mixins):
         flush_log(log)
     # multiply by NCS and restore all others
     # self.scattering_type_registry._show()
-    if ncs_will_be_used:
+    if use_ncs_for_interpretation:
       # multiply first?
-      print("  NCS: Multiplying, restoring")
+      # print("  NCS: Multiplying, restoring")
       self.pdb_hierarchy = self._full_pdb_hierarchy
       self.pdb_atoms = self.pdb_hierarchy.atoms()
       self.sites_cart = self.pdb_atoms.extract_xyz()
@@ -3978,8 +3981,8 @@ class build_all_chain_proxies(linking_mixins):
     self.type_h_bonds = self.type_h_bonds.convert()
     self.time_building_chain_proxies = timer.elapsed()
     # Make sure pdb_hierarchy and xray_structure are consistent
-    # if(self.special_position_settings is not None):
-    #   self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
+    if(self.special_position_settings is not None):
+      self.pdb_hierarchy.adopt_xray_structure(self.extract_xray_structure())
     # Create selection_manager
     self.selman = selection_manager(
       all_monomer_mappings      = self.all_monomer_mappings,
@@ -5783,7 +5786,6 @@ class build_all_chain_proxies(linking_mixins):
     #   assert 0 # Never used, the function is not defined:
     #   scattering_types = self.get_element_symbols(strip_symbols=True)
     site_symmetry_ops = None
-    print("in extract xrs: ", len(self.pdb_atoms), len(sites_frac), len(scattering_types))
     for i_seq,atom,site_frac,scattering_type in zip(
           count(),
           self.pdb_atoms,
@@ -6097,6 +6099,7 @@ class process(object):
         print("  Total time for adding SS restraints: %.2f" % (t3-t1), file=self.log)
         print(file=self.log)
       if (self.log is not None):
+      # if False:
         print("  Time building geometry restraints manager: %.2f seconds" % (
             self.all_chain_proxies.time_building_geometry_restraints_manager), file=self.log)
         print(file=self.log)
