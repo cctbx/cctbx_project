@@ -389,6 +389,12 @@ class run(object):
     """
     if(self.target_map is None): return
     rotamer_iterator = self.get_rotamer_iterator()
+    if rotamer_iterator is None:
+      id_str="chain: %s"%(self.residue.parent().parent().id)
+      id_str+=" residue: %s %s"%(
+        self.residue.resname, self.residue.resseq.strip())
+      print("Corrupt residue: %s >>> skipping"%id_str, file=self.log)
+      return None
     scorer = mmtbx.refinement.real_space.score3(
       unit_cell    = self.unit_cell,
       target_map   = self.target_map,
