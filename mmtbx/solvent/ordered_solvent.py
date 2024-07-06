@@ -133,7 +133,7 @@ master_params_str = """\
     cc_map_1_type = "Fmodel"
       .type = str
       .short_caption = Model map type for CC calculation
-    cc_map_2_type = 2mFo-DFmodel
+    cc_map_2_type = 2mFobs-DFmodel
       .type = str
       .short_caption = Experimental map type for CC calculation
     poor_cc_threshold = 0.70
@@ -276,7 +276,7 @@ class maps(object):
       self.fmodel.update_xray_structure(update_f_calc=True)
 
       coeffs = self.fmodel.electron_density_map().map_coefficients(
-        map_type     = "mFo-DFmodel",
+        map_type     = "mFobs-DFmodel",
         fill_missing = False,
         isotropize   = True)
       fft_map = coeffs.fft_map(crystal_gridding = self.crystal_gridding)
