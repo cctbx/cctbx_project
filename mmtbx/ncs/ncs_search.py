@@ -547,13 +547,9 @@ def my_selection(ph, ch_id, sel_list_extended):
 
 def get_match_rmsd(ph, match):
   assert len(ph.models()) == 1
-  [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-  sel_list_extended_a = [x for y in list_a for x in y]
-  sel_list_extended_b = [x for y in list_b for x in y]
-  sel_list_extended_a.sort()
-  sel_list_extended_b.sort()
+  [ch_a_id,ch_b_id,list_a,list_b] = match
 
-  if len(sel_list_extended_a) == 0 or len(sel_list_extended_b) == 0:
+  if len(list_a) == 0 or len(list_b) == 0:
     # e.g. 3liy (whole chain in AC)
     return None, None, None, None, None
   #
@@ -568,8 +564,8 @@ def get_match_rmsd(ph, match):
   # even larger molecules (1.2Gb is currently the max).
   # At this point no hierarchy selections left in this module.
   #
-  other_h = my_selection(ph, ch_a_id, sel_list_extended_a)
-  ref_h = my_selection(ph, ch_b_id, sel_list_extended_b)
+  other_h = my_selection(ph, ch_a_id, list_a)
+  ref_h = my_selection(ph, ch_b_id, list_b)
   #
   other_atoms = other_h.atoms()
   ref_atoms = ref_h.atoms()
@@ -721,13 +717,14 @@ def search_ncs_relations(ph=None,
       res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
           seq_a=seq_m,seq_b=seq_c,
           min_percent=chain_similarity_threshold)
-      sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
+      sel_m, sel_c, sel_m_flat, sel_c_flat, res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
       if len(res_sel_m) > 0 and len(res_sel_c) > 0:
         msg += new_msg
-        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         if similarity > chain_similarity_threshold:
-          rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(ph, rec)
+          rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(
+              ph,
+              [m_ch_id,c_ch_id,sel_m_flat,sel_c_flat])
           if rmsd is not None and rmsd <= chain_max_rmsd:
             # get the chains atoms and convert selection to flex bool
             sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
@@ -821,11 +818,16 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
 
   Returns:
     sel_a/b (list of lists): matching atoms selection
+    sel_a/b_flat (list): matching atoms (sel_a/b) flattened selection -
+      faster to create on the go then convert sel_a/b later. Literally:
+      sel_a_flat = [x for y in sel_a for x in y].sort()
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
   sel_a = []
   sel_b = []
+  sel_a_flat = flex.size_t([])
+  sel_b_flat = flex.size_t([])
   # check if any of the residues has alternate locations
   a_altloc = bool(chains_info[a_id].no_altloc)
   if a_altloc:
@@ -882,6 +884,8 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
       res_num_b_updated.append(j)
       sel_a.append(sa)
       sel_b.append(sb)
+      sel_a_flat.extend(sa)
+      sel_b_flat.extend(sb)
   if residues_with_different_n_atoms:
     problem_res_nums = [x.strip() for x in residues_with_different_n_atoms]
     msg = "NCS related residues with different number of atoms, selection "
@@ -889,7 +893,18 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
-  return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
+
+  # Not faster downstream when working with resulting arrays.
+  # a_perm = flex.sort_permutation(sel_a_flat)
+  # sel_a_flat = sel_a_flat.select(a_perm)
+  # b_perm = flex.sort_permutation(sel_b_flat)
+  # sel_b_flat = sel_b_flat.select(b_perm)
+
+  sel_a_flat = list(sel_a_flat)
+  sel_b_flat = list(sel_b_flat)
+  sel_a_flat.sort()
+  sel_b_flat.sort()
+  return sel_a,sel_b,sel_a_flat,sel_b_flat,res_num_a_updated,res_num_b_updated,msg
 
 def get_chains_info(ph, selection_list=None):
   """
