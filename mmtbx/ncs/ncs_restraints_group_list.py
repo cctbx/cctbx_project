@@ -301,8 +301,7 @@ class class_ncs_restraints_group_list(list):
     This leads to undesired artefacts in refinement.
     """
     def whole_chain_in_ncs(whole_h, master_iselection):
-      m_c = whole_h.select(master_iselection)
-      m_c_id = m_c.only_model().chains()[0].id
+      m_c_id = whole_h.atoms()[master_iselection[0]].parent().parent().parent().id
       for chain in ncs_obj.truncated_hierarchy.only_model().chains():
         if chain.id == m_c_id:
           if chain.atoms_size() <= master_iselection.size():
