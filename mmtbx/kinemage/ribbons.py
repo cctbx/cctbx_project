@@ -25,10 +25,10 @@ def _FindNamedAtomInResidue(residue_group, atom_names):
         return atom
   return None
 
-def _FindContiguousResiduesByAtomDistances(structure, type_function, desired_atoms, distance_threshold):
-  '''Return a list of contiguous nucleic acid residues in the structure based on the distance between P atoms,
+def _FindContiguousResiduesByAtomDistances(chain, type_function, desired_atoms, distance_threshold):
+  '''Return a list of contiguous nucleic acid residues in the chain based on the distance between P atoms,
   or O5* or O5' if the P atom is not found.
-  :param structure: iotbx.pdb.hierarchy.root object holding the structure
+  :param chain: PDB chain to be searched for contiguous residues.
   :param type_function: function, a function that takes a residue name and returns True if the residue is of the desired type.
   :param desired_atoms: list of strings, the names of the atoms to use for distance calculations.  The first
   one found in the residue will be used.
@@ -36,69 +36,67 @@ def _FindContiguousResiduesByAtomDistances(structure, type_function, desired_ato
   '''
   contiguous_residues = []
 
-  for model in structure.models():
-    for chain in model.chains():
-      current_contig_residues = []
-      prev_atom = None
+  current_contig_residues = []
+  prev_atom = None
 
-      for residue_group in chain.residue_groups():
-        # Check if the residue is of the desired type, based on its name
-        if not type_function(residue_group.unique_resnames()[0]):
-          continue
+  for residue_group in chain.residue_groups():
+    # Check if the residue is of the desired type, based on its name
+    if not type_function(residue_group.unique_resnames()[0]):
+      continue
 
-        # Attempt to find the desired atom in the current residue.  Search all atoms for the
-        # first one in the desired_atoms list, then later ones if it is not found.
-        # If no atom is found, skip to the next residue
-        atom = _FindNamedAtomInResidue(residue_group, desired_atoms)
-        if atom is None:
-          continue
+    # Attempt to find the desired atom in the current residue.  Search all atoms for the
+    # first one in the desired_atoms list, then later ones if it is not found.
+    # If no atom is found, skip to the next residue
+    atom = _FindNamedAtomInResidue(residue_group, desired_atoms)
+    if atom is None:
+      continue
 
-        # If this is the first residue being examined, initialize the list
-        if prev_atom is None:
-          current_contig_residues.append(residue_group)
-        else:
-          # Calculate the distance between the current and previous atoms
-          current_pos = col(atom.xyz)
-          prev_pos = col(prev_atom.xyz)
-          distance = (current_pos - prev_pos).length()
+    # If this is the first residue being examined, initialize the list
+    if prev_atom is None:
+      current_contig_residues.append(residue_group)
+    else:
+      # Calculate the distance between the current and previous atoms
+      current_pos = col(atom.xyz)
+      prev_pos = col(prev_atom.xyz)
+      distance = (current_pos - prev_pos).length()
 
-          if distance < distance_threshold:
-            # If the distance is within the threshold, add to the current list
-            current_contig_residues.append(residue_group)
-          else:
-            # If not, start a new list for the current residue if we have at least two residues
-            if len(current_contig_residues) > 1:
-              contiguous_residues.append(current_contig_residues)
-            current_contig_residues = [residue_group]
+      if distance < distance_threshold:
+        # If the distance is within the threshold, add to the current list
+        current_contig_residues.append(residue_group)
+      else:
+        # If not, start a new list for the current residue if we have at least two residues
+        if len(current_contig_residues) > 1:
+          contiguous_residues.append(current_contig_residues)
+        current_contig_residues = [residue_group]
 
-        # Update the previous atom to the current one
-        prev_atom = atom
+    # Update the previous atom to the current one
+    prev_atom = atom
 
-      # After iterating through the chain, add any remaining contiguous residues to the main list
-      # if there are at least two.  
-      if len(current_contig_residues) > 1:
-        contiguous_residues.append(current_contig_residues)
+  # After iterating through the chain, add any remaining contiguous residues to the main list
+  # if there are at least two.
+  if len(current_contig_residues) > 1:
+    contiguous_residues.append(current_contig_residues)
 
   return contiguous_residues
 
 # ------------------------------------------------------------------------------
 
-def find_contiguous_protein_residues(structure, distance_threshold=5.0):
-  '''Return a list of contiguous protein residues in the structure based on the distance between CA atoms.
-  :param structure: iotbx.pdb.hierarchy.root object holding the structure
+def find_contiguous_protein_residues(chain, distance_threshold=5.0):
+  '''Return a list of contiguous protein residues in the chain based on the distance between CA atoms.
+  :param chain: PDB chain to be searched for contiguous residues.
   :param distance_threshold: float, the maximum distance between CA atoms to consider them contiguous.
   The empirical 5.0 default value comes from the Richardson lab's Prekin code; the ideal length is 3.80.
   '''
-  return _FindContiguousResiduesByAtomDistances(structure, _IsStandardResidue, ["CA"], distance_threshold)
+  return _FindContiguousResiduesByAtomDistances(chain, _IsStandardResidue, ["CA"], distance_threshold)
 
-def find_contiguous_nucleic_acid_residues(structure, distance_threshold=10.0):
-  '''Return a list of contiguous nucleic acid residues in the structure based on the distance between P atoms,
+def find_contiguous_nucleic_acid_residues(chain, distance_threshold=10.0):
+  '''Return a list of contiguous nucleic acid residues in the chain based on the distance between P atoms,
   or O5* or O5' if the P atom is not found.
-  :param structure: iotbx.pdb.hierarchy.root object holding the structure
+  :param chain: PDB chain to be searched for contiguous residues.
   :param distance_threshold: float, the maximum distance between CA atoms to consider them contiguous.
   The empirical 10.0 default value comes from the Richardson lab's Prekin code; the ideal length is ~7.
   '''
-  return _FindContiguousResiduesByAtomDistances(structure, _IsNucleicAcidResidue, ["P", "O5*", "O5'"], distance_threshold)
+  return _FindContiguousResiduesByAtomDistances(chain, _IsNucleicAcidResidue, ["P", "O5*", "O5'"], distance_threshold)
 
 # ------------------------------------------------------------------------------
 
@@ -133,11 +131,10 @@ class GuidePoint:
 
 # ------------------------------------------------------------------------------
 
-def make_protein_guidepoints(contiguous_residues, structure):
+def make_protein_guidepoints(contiguous_residues):
   '''Return a list of GuidePoint objects for the protein residues.
   :param contiguous_residues: list of iotbx.pdb.hierarchy.residue_group entries, on of
   the contiguous residue lists returned by find_contiguous_protein_residues().
-  :param structure: iotbx.pdb.hierarchy.root object holding the structure to find the guidepoints for.
   '''
 
   # Initialize an empty list of guiepoints that lie between residues (one less than the number of residues)
@@ -248,11 +245,10 @@ def make_protein_guidepoints(contiguous_residues, structure):
 
   return guidepoints
 
-def make_nucleic_acid_guidepoints(contiguous_residues, structure):
+def make_nucleic_acid_guidepoints(contiguous_residues):
   '''Return a list of GuidePoint objects for the nucleic acid residues.
   :param contiguous_residues: list of iotbx.pdb.hierarchy.residue_group entries, one of
  the contiguous residue lists returned by find_contiguous_amino_acid_residues().
-  :param structure: iotbx.pdb.hierarchy.root object holding the structure to find the guidepoints for.
   '''
 
   # Initialize an empty list of guiepoints that lie between residues (one less than the number of residues)
