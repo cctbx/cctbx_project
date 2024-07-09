@@ -477,6 +477,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   flipped_other_selection = flex.size_t([])
   ch_const = const_h.only_model().chains()
   ch_flip = flip_h.only_model().chains()
+  # looks like moving residue groups when there are 2 chains with the same id
   for another_ch in ch_const[1:]:
     if another_ch.id == ch_const[0].id:
       for rg in another_ch.residue_groups():
@@ -494,7 +495,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
     if (residue.resname in flippable_sidechains
         and should_be_flipped(residue, res_flip)):
       fl_atom_list = flippable_sidechains[residue.resname]
-      iseqs = [0]*residue.atoms_size()
+      iseqs = flex.size_t([0]*residue.atoms_size())
       for i, a in enumerate(residue.atoms()):
         try:
           ind = fl_atom_list.index(a.name)
@@ -510,11 +511,9 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
           if i == len(iseqs)-1:
             # this is for case where the last atom is not present
             iseqs[i] = a.i_seq
-      for i in iseqs:
-        flipped_other_selection.append(i)
+      flipped_other_selection.extend(iseqs)
     else:
-      for a in residue.atoms():
-        flipped_other_selection.append(a.i_seq)
+      flipped_other_selection.extend(residue.atoms().extract_i_seq())
   assert flipped_other_selection.size() == original_atoms_size, "%d %d" % (
       flipped_other_selection.size(), original_atoms_size)
   # assert flipped_other_selection.size() == const_h.atoms_size()
@@ -751,7 +750,8 @@ def mmtbx_res_alignment(seq_a, seq_b,
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
-  if seq_a == seq_b: return list(range(a)), list(range(a)), 1.0
+  if ",".join(seq_a) == ",".join(seq_b):
+    return list(range(a)), list(range(a)), 1.0
   norm_seq_a = seq_a
   norm_seq_b = seq_b
   if not atomnames:
@@ -965,8 +965,8 @@ def get_chains_info(ph, selection_list=None):
             if a.name not in present_anames:
               atoms.append(a)
               present_anames.append(a.name)
-      chains_info[ch.id].atom_names.append(list(atoms.extract_name()))
-      chains_info[ch.id].atom_selection.append(list(atoms.extract_i_seq()))
+      chains_info[ch.id].atom_names.append(atoms.extract_name())
+      chains_info[ch.id].atom_selection.append(atoms.extract_i_seq())
       chains_info[ch.id].no_altloc.append(not rg.have_conformers() or len_conf==1)
       chains_info[ch.id].gap_residue.append(gr)
       # print "  ", rg.id_str(), rg.have_conformers(), not res.is_pure_main_conf, "|noaltloc:", (not rg.have_conformers() or len_conf==1), "size:", atoms.size(), "gr:", gr
