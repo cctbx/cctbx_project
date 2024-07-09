@@ -888,13 +888,12 @@ def selection_string_from_selection(pdb_h,
   Args:
     pdb_h : iotbx.pdb.hierarchy
     selection (flex.bool or flex.size_t)
-    chains_info : object containing
-      chains (str): chain IDs OR selections string
+    chains_info (dict): values are object containing
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
 
   Returns:
     sel_str (str): atom selection string

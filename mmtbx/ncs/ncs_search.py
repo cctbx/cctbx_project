@@ -662,12 +662,11 @@ def search_ncs_relations(ph=None,
   Args:
     ph (object): hierarchy
     chains_info (dict): values are object containing
-      chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -806,13 +805,7 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   Residues with alternative locations and of different size are excluded
 
   Args:
-    chains_info (object): object containing
-      chains (str): chain IDs or selections string
-      res_name (list of str): list of residues names
-      resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+    chains_info
     a_id,b_id (str): Chain IDs
     res_num_a/b (list of int): indices of matching residues position
 
@@ -918,12 +911,11 @@ def get_chains_info(ph, selection_list=None):
 
   Returns:
     chains_info (dict): values are object containing
-      chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
     exclude_water (bool): exclude water
   """
 
