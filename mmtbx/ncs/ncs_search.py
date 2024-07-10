@@ -10,7 +10,6 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
     NCS_restraint_group, NCS_copy
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
-from copy import deepcopy
 
 import six
 from six.moves import zip
@@ -517,8 +516,19 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   return flipped_other_selection
 
 def my_selection(ph, ch_id, sel_list_extended_original):
+  """custom-made selection function for selecting one
+    chain - whole or parts. Speed reasons.
+
+  Args:
+      ph (_type_): hierarchy
+      ch_id (str): chain id which will be selected
+      sel_list_extended_original (flex.size_t): selection
+
+  Returns:
+      root: new hierarchy
+  """
   # Make sure we are not changing incoming array
-  sel_list_extended = deepcopy(sel_list_extended_original)
+  sel_list_extended = sel_list_extended_original.deep_copy()
   min_iseq = sel_list_extended[0]
   new_h = None
   prev_minus = 0
@@ -528,8 +538,7 @@ def my_selection(ph, ch_id, sel_list_extended_original):
         # append first chain and tweak selections
         new_h = new_hierarchy_from_chain(chain)
         min_iseq = chain.atoms()[0].i_seq
-        for i in range(len(sel_list_extended)):
-          sel_list_extended[i] -= min_iseq
+        sel_list_extended -= min_iseq
       else:
         # append extra chain and tweak selection
         new_start_iseq = new_h.atoms_size()
@@ -541,11 +550,23 @@ def my_selection(ph, ch_id, sel_list_extended_original):
             # new = old - old + new
             sel_list_extended[i] -= dif
         prev_minus += dif
-  return new_h.select(flex.size_t(sel_list_extended))
+  return new_h.select(sel_list_extended)
 
-def get_match_rmsd(ph, match):
+def get_match_rmsd(ph, ch_a_id,ch_b_id,list_a,list_b):
+  """get RMSD of the match
+
+  Args:
+      ph (_type_): hierarchy
+      ch_a_id (str): one chain id
+      ch_b_id (str): another chain id
+      list_a (flex.size_t): one selection
+      list_b (flex.size_t): another selection
+
+  Returns:
+      rmsd, ref_sites, other_sites_best, r,t
+  """
   assert len(ph.models()) == 1
-  [ch_a_id,ch_b_id,list_a,list_b] = match
+  # [ch_a_id,ch_b_id,list_a,list_b] = match
 
   if len(list_a) == 0 or len(list_b) == 0:
     # e.g. 3liy (whole chain in AC)
@@ -720,8 +741,7 @@ def search_ncs_relations(ph=None,
         msg += new_msg
         if similarity > chain_similarity_threshold:
           rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(
-              ph,
-              [m_ch_id,c_ch_id,sel_m_flat,sel_c_flat])
+              ph,m_ch_id,c_ch_id,sel_m_flat,sel_c_flat)
           if rmsd is not None and rmsd <= chain_max_rmsd:
             # get the chains atoms and convert selection to flex bool
             sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
@@ -886,16 +906,12 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   else:
     msg = ''
 
-  # Not faster downstream when working with resulting arrays.
-  # a_perm = flex.sort_permutation(sel_a_flat)
-  # sel_a_flat = sel_a_flat.select(a_perm)
-  # b_perm = flex.sort_permutation(sel_b_flat)
-  # sel_b_flat = sel_b_flat.select(b_perm)
-
-  sel_a_flat = list(sel_a_flat)
-  sel_b_flat = list(sel_b_flat)
-  sel_a_flat.sort()
-  sel_b_flat.sort()
+  # Not faster downstream when working with resulting arrays but keep
+  # as flex.size_t
+  a_perm = flex.sort_permutation(sel_a_flat)
+  sel_a_flat = sel_a_flat.select(a_perm)
+  b_perm = flex.sort_permutation(sel_b_flat)
+  sel_b_flat = sel_b_flat.select(b_perm)
   return sel_a,sel_b,sel_a_flat,sel_b_flat,res_num_a_updated,res_num_b_updated,msg
 
 def get_chains_info(ph, selection_list=None):
@@ -989,8 +1005,8 @@ def my_get_rot_trans(
     master/copy_selection: master and copy iselections
   """
 
-  other_h = my_selection(ph,master_chain_id, list(master_selection))
-  ref_h = my_selection(ph,copy_chain_id, list(copy_selection))
+  other_h = my_selection(ph,master_chain_id, master_selection)
+  ref_h = my_selection(ph,copy_chain_id, copy_selection)
   other_sites = other_h.atoms().extract_xyz()
   ref_sites = ref_h.atoms().extract_xyz()
 
