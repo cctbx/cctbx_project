@@ -2508,6 +2508,19 @@ class array(set):
     else :
       return self.select(self.sigmas() > 0)
 
+  def enforce_positive_amplitudes_shelx(self, omit_s):
+    if omit_s > 0:
+      return self
+    new_data = len(self.data())*[None]
+    s = -omit_s/2
+    for i, I in enumerate(self.data()):
+      sig = self.sigmas()[i]
+      new_data[i] = s*sig if I < s*sig else I
+    return self.customized_copy(
+      data=flex.double(new_data),
+      sigmas=self.sigmas())
+        
+      
   def enforce_positive_amplitudes(self,i_sig_level=-4.0):
     """
     Takes in an intensity array (including negatives) and spits out amplitudes.
