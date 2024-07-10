@@ -917,7 +917,7 @@ def selection_string_from_selection(pdb_h,
     # this "unfolds" the atom_selection array which is [[],[],[],[]...] into
     # a set
     if not chain_is_needed(selection, chains_info[ch_id].atom_selection): continue
-    a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
+    a_sel = set(chains_info[ch_id].flat_atom_selection)
     test_set = a_sel.intersection(selection_set)
     if not test_set: continue
     ch_sel = "chain '%s'" % convert_wildcards_in_chain_id(ch_id)

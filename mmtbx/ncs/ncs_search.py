@@ -10,6 +10,7 @@ from mmtbx.ncs.ncs_restraints_group_list import class_ncs_restraints_group_list,
     NCS_restraint_group, NCS_copy
 from mmtbx.refinement.flip_peptide_side_chain import should_be_flipped, \
     flippable_sidechains
+from copy import deepcopy
 
 import six
 from six.moves import zip
@@ -25,6 +26,7 @@ class Chains_info(object):
     self.resid = []
     self.atom_names = []
     self.atom_selection = []
+    self.flat_atom_selection = flex.size_t([])
     self.chains_atom_number = 0
     self.no_altloc = []
     self.gap_residue = []
@@ -37,6 +39,7 @@ class Chains_info(object):
     print("self.resid", self.resid, file=res)
     print("self.atom_names", self.atom_names, file=res)
     print("self.atom_selection", self.atom_selection, file=res)
+    print("self.flat_atom_selection", list(self.flat_atom_selection), file=res)
     print("self.chains_atom_number", self.chains_atom_number, file=res)
     print("self.no_altloc", self.no_altloc, file=res)
     print("self.center_of_coordinates", self.center_of_coordinates, file=res)
@@ -59,8 +62,6 @@ def shortcut_1(
   molecule with BIOMT or MTRIX matrices (or both). In this case we are expecting
   to find identical chains with 0 rmsd between them.
   """
-  def flatten_list_of_list(lofl):
-    return [x for y in lofl for x in y]
   assert chains_info is not None
   assert len(chains_info) > 1
   empty_result = class_ncs_restraints_group_list()
@@ -84,10 +85,8 @@ def shortcut_1(
   for n_atoms, chains_list in six.iteritems(n_atom_chain_id_dict):
     # this should make one ncs group
     master_chain_id = chains_list[0]
-    master_iselection = flatten_list_of_list(
-        chains_info[master_chain_id].atom_selection)
     ncs_gr = NCS_restraint_group(
-        master_iselection=flex.size_t(master_iselection),
+        master_iselection=chains_info[master_chain_id].flat_atom_selection.deep_copy(),
         str_selection="chain '%s'" % master_chain_id)
     master_xyz = get_chain_xyz(hierarchy, master_chain_id)
     for copy_chain_id in chains_list[1:]:
@@ -95,8 +94,6 @@ def shortcut_1(
       if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
         print("No shortcut, atom names are not identical", file=log)
         return empty_result
-      copy_iselection = flatten_list_of_list(
-        chains_info[copy_chain_id].atom_selection)
       copy_xyz = get_chain_xyz(hierarchy, copy_chain_id)
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = copy_xyz,
@@ -114,7 +111,7 @@ def shortcut_1(
         return empty_result
       # seems like a good enough copy
       c = NCS_copy(
-          copy_iselection=flex.size_t(copy_iselection),
+          copy_iselection=chains_info[copy_chain_id].flat_atom_selection.deep_copy(),
           rot=r,
           tran=t,
           str_selection="chain '%s'" % copy_chain_id,
@@ -519,7 +516,9 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   # assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
-def my_selection(ph, ch_id, sel_list_extended):
+def my_selection(ph, ch_id, sel_list_extended_original):
+  # Make sure we are not changing incoming array
+  sel_list_extended = deepcopy(sel_list_extended_original)
   min_iseq = sel_list_extended[0]
   new_h = None
   prev_minus = 0
@@ -937,6 +936,7 @@ def get_chains_info(ph, selection_list=None):
       # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
       # chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].center_of_coordinates = None
+    chains_info[ch.id].flat_atom_selection.extend(ch.atoms().extract_i_seq())
     chains_info[ch.id].chains_atom_number += ch.atoms_size()
     conf = ch.conformers()[0]
     len_conf = len(ch.conformers())
