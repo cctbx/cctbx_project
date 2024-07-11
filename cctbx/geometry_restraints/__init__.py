@@ -12,7 +12,6 @@ from six.moves import range
 from six.moves import zip
 ext = bp.import_ext("cctbx_geometry_restraints_ext")
 from cctbx_geometry_restraints_ext import *
-from cctbx import geometry_restraints
 
 import scitbx.stl.map
 import math
