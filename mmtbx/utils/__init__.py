@@ -266,8 +266,6 @@ class process_pdb_file_srv(object):
         use_neutron_distances=use_neutron_distances,
         )
     else: self.ener_lib = ener_lib
-    if(self.log is None): self.log = sys.stdout
-    if(self.log == False): self.log = None
 
   def process_pdb_files(self, pdb_file_names = None, raw_records = None,
                         pdb_inp=None,

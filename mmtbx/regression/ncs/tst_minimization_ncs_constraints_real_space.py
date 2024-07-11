@@ -108,7 +108,7 @@ def run(prefix="tst", d_min=1.0):
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
   #
-  ppf = mmtbx.utils.process_pdb_file_srv(log=False).process_pdb_files(
+  ppf = mmtbx.utils.process_pdb_file_srv().process_pdb_files(
     raw_records=pdb_str_poor.splitlines())[0]
   mmtbx.utils.assert_xray_structures_equal(
     x1=ppf.xray_structure(show_summary = False),

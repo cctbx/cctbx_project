@@ -500,7 +500,7 @@ TER
 """
 
 def get_pdb_inputs(pdb_str, restraints):
-  ppf = mmtbx.utils.process_pdb_file_srv(log=False).process_pdb_files(
+  ppf = mmtbx.utils.process_pdb_file_srv().process_pdb_files(
     raw_records=pdb_str.splitlines())[0]
   xrs = ppf.xray_structure(show_summary = False)
   restraints_manager=None
