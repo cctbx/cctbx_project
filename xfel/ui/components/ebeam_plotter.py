@@ -51,16 +51,16 @@ def compare_ebeams_with_fees(locfiles, runs=None, plot=True, use_figure=None, ma
     ebeams_wav = np.array(ebeams_wav)
 
     diffs_eV = fee_coms_eV - ebeam_eV
-    ebeam_eV_offsets.append(sum(diffs_eV)/len(diffs_eV))
+    ebeam_eV_offsets.append(np.median(diffs_eV))
     diffs_wav = fee_coms_wav - ebeams_wav
-    ebeam_wav_offsets.append(sum(diffs_wav)/len(diffs_wav))
+    ebeam_wav_offsets.append(np.median(diffs_wav))
 
-    mean_fee_eV = np.mean(fee_coms_eV)
-    mean_ebeam_eV = np.mean(ebeam_eV)
+    median_fee_eV = np.median(fee_coms_eV)
+    median_ebeam_eV = np.median(ebeam_eV)
 
     if plot:
-      ax.hist(ebeams_eV, alpha=0.5, bins=40, label=f'run {runs[i]} ebeams ({int(mean_ebeam_eV)} eV)')
-      ax.hist(fee_coms_eV, alpha=0.5, bins=40, label=f'run {runs[i]} FEE COMs ({int(mean_fee_eV)} eV)')
+      ax.hist(ebeams_eV, alpha=0.5, bins=40, label=f'run {runs[i]} ebeams ({round(median_ebeam_eV)} eV)')
+      ax.hist(fee_coms_eV, alpha=0.5, bins=40, label=f'run {runs[i]} FEE COMs ({round(median_fee_eV)} eV)')
 
   if plot:
     ax.legend()

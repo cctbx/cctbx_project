@@ -2426,7 +2426,7 @@ pdb_interpretation.geometry_restraints.edits {
   expected = """
   Custom bonds:
     bond:
-      atom 1: "HETATM   64 FE   HEM A 154 .*.    Fe  "
+      atom 1: "HETATM   64 FE   HEM A 154 .*.    FE  "
       atom 2: "ATOM     16  NE2 HIS A  93 .*.     N  "
       symmetry operation: x,y,z
       distance_model:   2.146
@@ -2436,7 +2436,7 @@ pdb_interpretation.geometry_restraints.edits {
       delta_slack:     -0.046
       sigma:            0.0100
     bond:
-      atom 1: "HETATM   64 FE   HEM A 154 .*.    Fe  "
+      atom 1: "HETATM   64 FE   HEM A 154 .*.    FE  "
       atom 2: "HETATM   65  O   MTO A 155 .*.     O  "
       symmetry operation: x,y,z
       distance_model:   2.164

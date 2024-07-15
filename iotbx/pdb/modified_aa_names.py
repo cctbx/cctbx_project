@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Wed May  8 17:01:20 2024
+The date of file generation: Mon Jun 24 07:02:52 2024
 """
 from __future__ import absolute_import, division, print_function
 
@@ -472,6 +472,7 @@ lookup = {
   "A1ADW" : "?",
   "A1ADY" : "?",
   "A1ADZ" : "?",
+  "A1AQ4" : "?",
   "A5R" : "?",
   "A66" : "?",
   "A67" : "?",
@@ -898,6 +899,7 @@ lookup = {
   "QAC" : "?",
   "QQB" : "?",
   "QRG" : "?",
+  "QUK" : "?",
   "QWE" : "?",
   "QXV" : "?",
   "R00" : "?",
@@ -1066,6 +1068,7 @@ lookup = {
   "ZU5" : "?",
   "ZUK" : "?",
   "ZXX" : "?",
+  "ZY9" : "?",
   "ZYA" : "?",
   "ZZU" : "?",
   "02K" : "A",
@@ -1095,6 +1098,7 @@ lookup = {
   "7OZ" : "A",
   "7VN" : "A",
   "9WV" : "A",
+  "A1H5W" : "A",
   "AA3" : "A",
   "AA4" : "A",
   "ABA" : "A",
@@ -1533,6 +1537,7 @@ lookup = {
   "2LU" : "L",
   "2ML" : "L",
   "8WY" : "L",
+  "A1ADO" : "L",
   "AN6" : "L",
   "BL2" : "L",
   "BLE" : "L",
@@ -2044,6 +2049,7 @@ lookup = {
   "4LZ" : "Y",
   "51T" : "Y",
   "73O" : "Y",
+  "A1D5P" : "Y",
   "A30" : "Y",
   "AGQ" : "Y",
   "AZY" : "Y",
@@ -2134,6 +2140,7 @@ lookup = {
   "VAI" : "V",
   "WVL" : "V",
   "X60" : "V",
+  "ZQN" : "V",
 }
 if __name__ == '__main__':
   print(len(lookup.keys()))

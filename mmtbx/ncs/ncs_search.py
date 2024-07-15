@@ -25,6 +25,7 @@ class Chains_info(object):
     self.resid = []
     self.atom_names = []
     self.atom_selection = []
+    self.flat_atom_selection = flex.size_t([])
     self.chains_atom_number = 0
     self.no_altloc = []
     self.gap_residue = []
@@ -37,6 +38,7 @@ class Chains_info(object):
     print("self.resid", self.resid, file=res)
     print("self.atom_names", self.atom_names, file=res)
     print("self.atom_selection", self.atom_selection, file=res)
+    print("self.flat_atom_selection", list(self.flat_atom_selection), file=res)
     print("self.chains_atom_number", self.chains_atom_number, file=res)
     print("self.no_altloc", self.no_altloc, file=res)
     print("self.center_of_coordinates", self.center_of_coordinates, file=res)
@@ -59,8 +61,6 @@ def shortcut_1(
   molecule with BIOMT or MTRIX matrices (or both). In this case we are expecting
   to find identical chains with 0 rmsd between them.
   """
-  def flatten_list_of_list(lofl):
-    return [x for y in lofl for x in y]
   assert chains_info is not None
   assert len(chains_info) > 1
   empty_result = class_ncs_restraints_group_list()
@@ -84,10 +84,8 @@ def shortcut_1(
   for n_atoms, chains_list in six.iteritems(n_atom_chain_id_dict):
     # this should make one ncs group
     master_chain_id = chains_list[0]
-    master_iselection = flatten_list_of_list(
-        chains_info[master_chain_id].atom_selection)
     ncs_gr = NCS_restraint_group(
-        master_iselection=flex.size_t(master_iselection),
+        master_iselection=chains_info[master_chain_id].flat_atom_selection.deep_copy(),
         str_selection="chain '%s'" % master_chain_id)
     master_xyz = get_chain_xyz(hierarchy, master_chain_id)
     for copy_chain_id in chains_list[1:]:
@@ -95,8 +93,6 @@ def shortcut_1(
       if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
         print("No shortcut, atom names are not identical", file=log)
         return empty_result
-      copy_iselection = flatten_list_of_list(
-        chains_info[copy_chain_id].atom_selection)
       copy_xyz = get_chain_xyz(hierarchy, copy_chain_id)
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = copy_xyz,
@@ -114,7 +110,7 @@ def shortcut_1(
         return empty_result
       # seems like a good enough copy
       c = NCS_copy(
-          copy_iselection=flex.size_t(copy_iselection),
+          copy_iselection=chains_info[copy_chain_id].flat_atom_selection.deep_copy(),
           rot=r,
           tran=t,
           str_selection="chain '%s'" % copy_chain_id,
@@ -477,6 +473,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   flipped_other_selection = flex.size_t([])
   ch_const = const_h.only_model().chains()
   ch_flip = flip_h.only_model().chains()
+  # looks like moving residue groups when there are 2 chains with the same id
   for another_ch in ch_const[1:]:
     if another_ch.id == ch_const[0].id:
       for rg in another_ch.residue_groups():
@@ -494,7 +491,7 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
     if (residue.resname in flippable_sidechains
         and should_be_flipped(residue, res_flip)):
       fl_atom_list = flippable_sidechains[residue.resname]
-      iseqs = [0]*residue.atoms_size()
+      iseqs = flex.size_t([0]*residue.atoms_size())
       for i, a in enumerate(residue.atoms()):
         try:
           ind = fl_atom_list.index(a.name)
@@ -510,17 +507,28 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
           if i == len(iseqs)-1:
             # this is for case where the last atom is not present
             iseqs[i] = a.i_seq
-      for i in iseqs:
-        flipped_other_selection.append(i)
+      flipped_other_selection.extend(iseqs)
     else:
-      for a in residue.atoms():
-        flipped_other_selection.append(a.i_seq)
+      flipped_other_selection.extend(residue.atoms().extract_i_seq())
   assert flipped_other_selection.size() == original_atoms_size, "%d %d" % (
       flipped_other_selection.size(), original_atoms_size)
   # assert flipped_other_selection.size() == const_h.atoms_size()
   return flipped_other_selection
 
-def my_selection(ph, ch_id, sel_list_extended):
+def my_selection(ph, ch_id, sel_list_extended_original):
+  """custom-made selection function for selecting one
+    chain - whole or parts. Speed reasons.
+
+  Args:
+      ph (_type_): hierarchy
+      ch_id (str): chain id which will be selected
+      sel_list_extended_original (flex.size_t): selection
+
+  Returns:
+      root: new hierarchy
+  """
+  # Make sure we are not changing incoming array
+  sel_list_extended = sel_list_extended_original.deep_copy()
   min_iseq = sel_list_extended[0]
   new_h = None
   prev_minus = 0
@@ -530,8 +538,7 @@ def my_selection(ph, ch_id, sel_list_extended):
         # append first chain and tweak selections
         new_h = new_hierarchy_from_chain(chain)
         min_iseq = chain.atoms()[0].i_seq
-        for i in range(len(sel_list_extended)):
-          sel_list_extended[i] -= min_iseq
+        sel_list_extended -= min_iseq
       else:
         # append extra chain and tweak selection
         new_start_iseq = new_h.atoms_size()
@@ -543,17 +550,25 @@ def my_selection(ph, ch_id, sel_list_extended):
             # new = old - old + new
             sel_list_extended[i] -= dif
         prev_minus += dif
-  return new_h.select(flex.size_t(sel_list_extended))
+  return new_h.select(sel_list_extended)
 
-def get_match_rmsd(ph, match):
+def get_match_rmsd(ph, ch_a_id,ch_b_id,list_a,list_b):
+  """get RMSD of the match
+
+  Args:
+      ph (_type_): hierarchy
+      ch_a_id (str): one chain id
+      ch_b_id (str): another chain id
+      list_a (flex.size_t): one selection
+      list_b (flex.size_t): another selection
+
+  Returns:
+      rmsd, ref_sites, other_sites_best, r,t
+  """
   assert len(ph.models()) == 1
-  [ch_a_id,ch_b_id,list_a,list_b,res_list_a,res_list_b,similarity] = match
-  sel_list_extended_a = [x for y in list_a for x in y]
-  sel_list_extended_b = [x for y in list_b for x in y]
-  sel_list_extended_a.sort()
-  sel_list_extended_b.sort()
+  # [ch_a_id,ch_b_id,list_a,list_b] = match
 
-  if len(sel_list_extended_a) == 0 or len(sel_list_extended_b) == 0:
+  if len(list_a) == 0 or len(list_b) == 0:
     # e.g. 3liy (whole chain in AC)
     return None, None, None, None, None
   #
@@ -568,8 +583,8 @@ def get_match_rmsd(ph, match):
   # even larger molecules (1.2Gb is currently the max).
   # At this point no hierarchy selections left in this module.
   #
-  other_h = my_selection(ph, ch_a_id, sel_list_extended_a)
-  ref_h = my_selection(ph, ch_b_id, sel_list_extended_b)
+  other_h = my_selection(ph, ch_a_id, list_a)
+  ref_h = my_selection(ph, ch_b_id, list_b)
   #
   other_atoms = other_h.atoms()
   ref_atoms = ref_h.atoms()
@@ -667,12 +682,11 @@ def search_ncs_relations(ph=None,
   Args:
     ph (object): hierarchy
     chains_info (dict): values are object containing
-      chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
 
   Returns:
     msg (str): message regarding matching residues with different atom number
@@ -721,13 +735,13 @@ def search_ncs_relations(ph=None,
       res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
           seq_a=seq_m,seq_b=seq_c,
           min_percent=chain_similarity_threshold)
-      sel_m, sel_c,res_sel_m,res_sel_c,new_msg = get_matching_atoms(
+      sel_m, sel_c, sel_m_flat, sel_c_flat, res_sel_m,res_sel_c,new_msg = get_matching_atoms(
         chains_info,m_ch_id,c_ch_id,res_sel_m,res_sel_c)
       if len(res_sel_m) > 0 and len(res_sel_c) > 0:
         msg += new_msg
-        rec = [m_ch_id,c_ch_id,sel_m,sel_c,res_sel_m,res_sel_c,similarity]
         if similarity > chain_similarity_threshold:
-          rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(ph, rec)
+          rmsd, ref_sites, other_sites_best, r,t = get_match_rmsd(
+              ph,m_ch_id,c_ch_id,sel_m_flat,sel_c_flat)
           if rmsd is not None and rmsd <= chain_max_rmsd:
             # get the chains atoms and convert selection to flex bool
             sel_aa,sel_bb,res_list_a,res_list_b,ref_sites,other_sites_best = \
@@ -754,7 +768,8 @@ def mmtbx_res_alignment(seq_a, seq_b,
   a = len(seq_a)
   b = len(seq_b)
   if (a == 0) or (b == 0): return [], [], 0
-  if seq_a == seq_b: return list(range(a)), list(range(a)), 1.0
+  if ",".join(seq_a) == ",".join(seq_b):
+    return list(range(a)), list(range(a)), 1.0
   norm_seq_a = seq_a
   norm_seq_b = seq_b
   if not atomnames:
@@ -809,23 +824,22 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
   Residues with alternative locations and of different size are excluded
 
   Args:
-    chains_info (object): object containing
-      chains (str): chain IDs or selections string
-      res_name (list of str): list of residues names
-      resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+    chains_info
     a_id,b_id (str): Chain IDs
     res_num_a/b (list of int): indices of matching residues position
 
   Returns:
     sel_a/b (list of lists): matching atoms selection
+    sel_a/b_flat (list): matching atoms (sel_a/b) flattened selection -
+      faster to create on the go then convert sel_a/b later. Literally:
+      sel_a_flat = [x for y in sel_a for x in y].sort()
     res_num_a/b (list of int): updated res_num_a/b
     msg (str): message regarding matching residues with different atom number
   """
   sel_a = []
   sel_b = []
+  sel_a_flat = flex.size_t([])
+  sel_b_flat = flex.size_t([])
   # check if any of the residues has alternate locations
   a_altloc = bool(chains_info[a_id].no_altloc)
   if a_altloc:
@@ -882,6 +896,8 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
       res_num_b_updated.append(j)
       sel_a.append(sa)
       sel_b.append(sb)
+      sel_a_flat.extend(sa)
+      sel_b_flat.extend(sb)
   if residues_with_different_n_atoms:
     problem_res_nums = [x.strip() for x in residues_with_different_n_atoms]
     msg = "NCS related residues with different number of atoms, selection "
@@ -889,7 +905,14 @@ def get_matching_atoms(chains_info,a_id,b_id,res_num_a,res_num_b):
     msg += ','.join(problem_res_nums) + ']\n'
   else:
     msg = ''
-  return sel_a,sel_b,res_num_a_updated,res_num_b_updated,msg
+
+  # Not faster downstream when working with resulting arrays but keep
+  # as flex.size_t
+  a_perm = flex.sort_permutation(sel_a_flat)
+  sel_a_flat = sel_a_flat.select(a_perm)
+  b_perm = flex.sort_permutation(sel_b_flat)
+  sel_b_flat = sel_b_flat.select(b_perm)
+  return sel_a,sel_b,sel_a_flat,sel_b_flat,res_num_a_updated,res_num_b_updated,msg
 
 def get_chains_info(ph, selection_list=None):
   """
@@ -903,12 +926,11 @@ def get_chains_info(ph, selection_list=None):
 
   Returns:
     chains_info (dict): values are object containing
-      chains (str): chain IDs OR selections string
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
     exclude_water (bool): exclude water
   """
 
@@ -930,6 +952,7 @@ def get_chains_info(ph, selection_list=None):
       # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
       # chains_info[ch.id].center_of_coordinates = coc
       chains_info[ch.id].center_of_coordinates = None
+    chains_info[ch.id].flat_atom_selection.extend(ch.atoms().extract_i_seq())
     chains_info[ch.id].chains_atom_number += ch.atoms_size()
     conf = ch.conformers()[0]
     len_conf = len(ch.conformers())
@@ -940,19 +963,18 @@ def get_chains_info(ph, selection_list=None):
       chains_info[ch.id].resid.append(rg.resid())
       chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
       # atoms = res.atoms()
-      ag0 = rg.atom_groups()[0]
-      atoms = ag0.atoms()
-      present_anames = [a.name for a in atoms]
+      atoms = rg.atom_groups()[0].atoms()
       # print "rg.atom_groups_size()", rg.atom_groups_size()
       if rg.atom_groups_size() > 1:
+        present_anames = [a.name for a in atoms]
         for add_rgs in rg.atom_groups()[1:]:
           for a in add_rgs.atoms():
             # print "       getting atom '%s'" % a.name, a.name not in present_anames
             if a.name not in present_anames:
               atoms.append(a)
               present_anames.append(a.name)
-      chains_info[ch.id].atom_names.append(list(atoms.extract_name()))
-      chains_info[ch.id].atom_selection.append(list(atoms.extract_i_seq()))
+      chains_info[ch.id].atom_names.append(atoms.extract_name())
+      chains_info[ch.id].atom_selection.append(atoms.extract_i_seq())
       chains_info[ch.id].no_altloc.append(not rg.have_conformers() or len_conf==1)
       chains_info[ch.id].gap_residue.append(gr)
       # print "  ", rg.id_str(), rg.have_conformers(), not res.is_pure_main_conf, "|noaltloc:", (not rg.have_conformers() or len_conf==1), "size:", atoms.size(), "gr:", gr
@@ -983,8 +1005,8 @@ def my_get_rot_trans(
     master/copy_selection: master and copy iselections
   """
 
-  other_h = my_selection(ph,master_chain_id, list(master_selection))
-  ref_h = my_selection(ph,copy_chain_id, list(copy_selection))
+  other_h = my_selection(ph,master_chain_id, master_selection)
+  ref_h = my_selection(ph,copy_chain_id, copy_selection)
   other_sites = other_h.atoms().extract_xyz()
   ref_sites = ref_h.atoms().extract_xyz()
 

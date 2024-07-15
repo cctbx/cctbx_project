@@ -517,7 +517,7 @@ class input(object):
             chain_max_rmsd=self.params.chain_max_rmsd,
             log=null_out(),
             residue_match_radius=self.params.residue_match_radius)
-      # print >> self.log, "Time spend for trying shortcut: %.2f" % (time()-t0)
+      print ("Time spend for trying shortcut: %.2f" % (time()-t0), file=self.log)
       if self.ncs_restraints_group_list.get_n_groups() == 0:
         # shortcuts failed
         self.ncs_restraints_group_list = ncs_search.find_ncs_in_hierarchy(

@@ -64,9 +64,11 @@ class manager(Base_geometry):
       assert len(shell_sym_tables) > 0
       assert shell_sym_tables[0].size() == site_symmetry_table.indices().size()
     if (nonbonded_types is not None and site_symmetry_table is not None):
-      assert nonbonded_types.size() == site_symmetry_table.indices().size()
+      assert nonbonded_types.size() == site_symmetry_table.indices().size(), "%d != %d" % (
+          nonbonded_types.size(), site_symmetry_table.indices().size())
     if (nonbonded_types is not None) and (nonbonded_charges is not None):
-      assert (nonbonded_charges.size() == nonbonded_types.size())
+      assert nonbonded_charges.size() == nonbonded_types.size(), "%d != %d" % (
+          nonbonded_charges.size(), nonbonded_types.size())
     adopt_init_args(self, locals(), exclude=["log"])
     self.reset_internals()
 
@@ -1060,12 +1062,10 @@ class manager(Base_geometry):
           max_p_distance = distance_model
       bonded_distance_cutoff = max(bonded_distance_cutoff,
           max_p_distance)
-    bonded_distance_cutoff = max(
-        [existing_max_bonded_distance,
-        max_p_distance,
-        max_distance_between_connecting_atoms])
     bonded_distance_cutoff = min(bonded_distance_cutoff,
         max_distance_between_connecting_atoms)+0.1
+    bonded_distance_cutoff = max(bonded_distance_cutoff,
+        existing_max_bonded_distance)
     t2 = time.time()
     # print("bonded_distance_cutoff", bonded_distance_cutoff)
     # make asu mappings

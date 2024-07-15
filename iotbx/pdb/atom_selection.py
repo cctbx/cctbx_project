@@ -888,13 +888,12 @@ def selection_string_from_selection(pdb_h,
   Args:
     pdb_h : iotbx.pdb.hierarchy
     selection (flex.bool or flex.size_t)
-    chains_info : object containing
-      chains (str): chain IDs OR selections string
+    chains_info (dict): values are object containing
       res_name (list of str): list of residues names
       resid (list of str): list of residues sequence number, resid
-      atom_names (list of list of str): list of atoms in residues
-      atom_selection (list of list of list of int): the location of atoms in ph
-      chains_atom_number (list of int): list of number of atoms in each chain
+      atom_names (list of flex.str): per residue atom names
+      atom_selection (list of flex.size_t()): per residue atom selections
+      chains_atom_number (int): list of number of atoms in each chain
 
   Returns:
     sel_str (str): atom selection string
@@ -918,7 +917,7 @@ def selection_string_from_selection(pdb_h,
     # this "unfolds" the atom_selection array which is [[],[],[],[]...] into
     # a set
     if not chain_is_needed(selection, chains_info[ch_id].atom_selection): continue
-    a_sel = {x for xi in chains_info[ch_id].atom_selection for x in xi}
+    a_sel = set(chains_info[ch_id].flat_atom_selection)
     test_set = a_sel.intersection(selection_set)
     if not test_set: continue
     ch_sel = "chain '%s'" % convert_wildcards_in_chain_id(ch_id)

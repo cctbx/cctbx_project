@@ -281,7 +281,7 @@ class load_balancer(worker):
       recv_ids = set([e.identifier for e in received_expt_i])
       assert current_ids.isdisjoint(recv_ids)
       experiments.extend(received_expt_i)
-      flex.reflection_table.concat([reflections, received_refl_i])
+      reflections = flex.reflection_table.concat([reflections, received_refl_i])
 
     self.logger.log_step_time("LB_EXPTS_AND_REFLS_ALLTOALL", True)
 

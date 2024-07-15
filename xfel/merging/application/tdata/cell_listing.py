@@ -28,14 +28,14 @@ class simple_cell_listing(worker):
 
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
-    global_results = comm.reduce(all_results, MPI.SUM, 0)
+    self.global_results = comm.reduce(all_results, MPI.SUM, 0)
     if self.mpi_helper.rank == 0:
       file_cells = open("%s.tdata"%(self.params.tdata.output_path), "w")
-      for result in global_results:
+      for result in self.global_results:
         line =  str(result) + "\n"
         file_cells.write(line)
       file_cells.close()
-      self.logger.main_log("output a list of %d unit cells"%len(global_results))
+      self.logger.main_log("output a list of %d unit cells"%len(self.global_results))
   # END OUTPUT ALL UNIT CELLS
 
     return all_experiments, all_reflections

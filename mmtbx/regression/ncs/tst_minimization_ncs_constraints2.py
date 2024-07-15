@@ -230,7 +230,7 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
   #
-  ppf = mmtbx.utils.process_pdb_file_srv(log=False).process_pdb_files(
+  ppf = mmtbx.utils.process_pdb_file_srv().process_pdb_files(
     raw_records=pdb_poor.splitlines())[0]
   mmtbx.utils.assert_xray_structures_equal(
     x1=ppf.xray_structure(show_summary = False),

@@ -54,21 +54,21 @@ def get_atom_database():
   from mmtbx.ligands.chemistry import non_metal_indices
   atom_database = atoms()
   for i, element in enumerate(elements):
-    atom_database[element]={'number':i}
+    atom_database[element.upper()]={'number':i}
   for element, valence in zip(elements, valences):
     if valence>-1:
-      atom_database[element]['valence'] = valence
+      atom_database[element.upper()]['valence'] = valence
   for element, lone_pair in zip(elements, lone_pairs):
     if lone_pair>0:
-      atom_database[element]['lone pairs'] = lone_pair
+      atom_database[element.upper()]['lone pairs'] = lone_pair
   for i, element in enumerate(elements):
     if i not in non_metal_indices:
-      atom_database[element]['metal']=True
+      atom_database[element.upper()]['metal']=True
       if element in default_metal_charges:
         # atom_database['valence'] = default_metal_charges[element]*-1
-        atom_database[element]['charge'] = default_metal_charges[element]
+        atom_database[element.upper()]['charge'] = default_metal_charges[element]
       else:
-        atom_database[element]['charge'] = None
+        atom_database[element.upper()]['charge'] = None
   atom_database['D']=atom_database['H']
   return atom_database
 
@@ -95,7 +95,7 @@ class atom_property(dict):
     return self.get(element.strip(), {}).get('number', 0)
 
   def is_metal(self, element):
-    return self.get(element.strip().capitalize(), {}).get('metal', False)
+    return self.get(element.strip(), {}).get('metal', False)
 
   def get_charge(self):
     return self.get(element.strip(), {}).get('charge', None)
@@ -136,8 +136,8 @@ class electron_distribution(dict):
       assert e is not None, ' element %s not found' % atom.element
       metal = self.properties.is_metal(atom.element)
       if metal:
-        if atom.element in default_metal_charges:
-          self[atom.i_seq]=default_metal_charges[atom.element]*-1
+        if atom.element.capitalize() in default_metal_charges:
+          self[atom.i_seq]=default_metal_charges[atom.element.capitalize()]*-1
           # self[atom.i_seq]=None
         else:
           print(atom.quote())
@@ -264,8 +264,8 @@ class electron_distribution(dict):
     atoms = self.hierarchy.atoms()
     for key, electrons in self.items():
       element = atoms[key].element.strip()
-      if element in default_metal_charges:
-        self[key]=default_metal_charges[element]*-1
+      if element.capitalize() in default_metal_charges:
+        self[key]=default_metal_charges[element.capitalize()]*-1
 
     for atom in atoms:
       element = atom.element.strip()

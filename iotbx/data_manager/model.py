@@ -278,7 +278,8 @@ The choices are {}.
     return filename
 
   def write_model_file(self, model_str, filename=Auto,
-                       format=Auto, overwrite=Auto):
+                       format=Auto, overwrite=Auto,
+                       output_cs=True):
     '''
     Function for writing a model to file
 
@@ -300,6 +301,9 @@ The choices are {}.
       overwrite: bool or Auto
         Overwrite filename if it exists. If set to Auto, the overwrite
         state of the DataManager is used.
+      output_cs: bool
+        Defines if crystal symmetry needs to be outputted. Passed directly
+        into model_as_mmcif() and model_as_pdb()
 
     Returns
     -------
@@ -331,11 +335,11 @@ The choices are {}.
           not model_str.get_hierarchy().fits_in_pdb_format()):
         extension = '.cif'
         format = 'cif'
-        model_str = model_str.model_as_mmcif()
+        model_str = model_str.model_as_mmcif(output_cs=output_cs)
       else:
         extension = '.pdb'
         format = 'pdb'
-        model_str = model_str.model_as_pdb()
+        model_str = model_str.model_as_pdb(output_cs=output_cs)
 
     else:  # writing a string. Output format must be specified on input
 

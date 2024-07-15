@@ -1,22 +1,22 @@
 jobs:
   - template: ./conda-linux.yml
     parameters:
-      distribution: centos
-      version: [7]
+      distribution: rockylinux
+      version: [8]
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_
   - template: ./conda-linux.yml
     parameters:
-      distribution: centos
-      version: [7]
+      distribution: rockylinux
+      version: [8]
       modules: xfel_modules
       template: ./unix-psana-build.yml
       prefix: xfel_psana_
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [11]
-      xcode_version: [12, 5, 1]
+      vmImage: [12]
+      xcode_version: [14, 2]
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_

@@ -18,12 +18,12 @@ jobs:
       version: [9]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
-  - template: ./conda-linux.yml
-    parameters:
-      distribution: centos
-      version: [7]
-      modules: ${{ parameters.modules }}
-      template: ./unix-conda-build.yml
+  # - template: ./conda-linux.yml
+  #   parameters:
+  #     distribution: centos
+  #     version: [7]
+  #     modules: ${{ parameters.modules }}
+  #     template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
       distribution: rockylinux
