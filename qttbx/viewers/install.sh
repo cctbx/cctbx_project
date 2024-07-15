@@ -29,13 +29,13 @@ echo "Conda environment activated. Running subsequent commands..."
 mamba install pyside2 nodejs qtawesome ipykernel qt-webengine
 
 
-# clone github repos
+# Get github repos
 
-# Phenix molstar
+# Clone Phenix molstar
 cd molstar
 git clone https://github.com/phenix-project/phenix-molstar.git
 
-# pyside2 version of qtconsole
+# Clone pyside2 version of qtconsole
 cd ../gui
 git clone https://github.com/cschlick/qtconsole_pyside2.git
 
