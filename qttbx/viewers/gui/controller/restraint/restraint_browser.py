@@ -22,12 +22,20 @@ class RestraintBrowserController(CifBrowserController):
 
   # Modifications to columns
   display_columns = [] 
-  column_display_names = {}
+  column_display_names = {
+    "value_dist":"Ideal",
+    "value_dist_neutron":"Ideal neutron",
+    "value_angle":"Ideal",
+    "value_dist_esd":"Sigma",
+    "value_angle_esd":"Sigma",
+    "dist_esd":"Sigma"
+  
+  }
   editable_columns = ["value_dist","value_dist_neutron","value_dist_esd", #bonds
                       "value_angle", "value_angle_esd", # angles
                        "period",# Dihedrals
                        "volume_sign", # Chirals
-                       "dist_est", # planes
+                       "dist_esd", # planes
                       ] # if not empty, enforced as exclusive
   non_editable_columns = [] # excluded regardless of presence in editable list
   

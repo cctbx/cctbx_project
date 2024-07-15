@@ -1004,6 +1004,11 @@ class AtomSites(pd.DataFrame):
   #   for record in records:
 
   def to_labels_compositional(self):
+    """
+    Create a text label, analogous to the old id_str. 
+
+    TODO: vectorize the justification
+    """
     justify_map = { # What to include, and how much space for each attribute
       "asym_id":4,
       "comp_id":5,
@@ -1017,7 +1022,11 @@ class AtomSites(pd.DataFrame):
       label = ""
       for attr,j in justify_map.items():
         value = record[attr]
-        label+=str(value).ljust(j)
+        part = str(value).ljust(j)
+        # Replace mmcif "." with a blank space for cosmetic reasons
+        if part.strip()==".":
+          part = part.replace("."," ")
+        label+=part
       labels.append(label)
     return labels
 

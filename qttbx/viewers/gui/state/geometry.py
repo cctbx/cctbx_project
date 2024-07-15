@@ -149,12 +149,36 @@ class Geometry(DataClassBase):
     else:
       return False
 
+  @staticmethod
+  def guess_and_convert_to_float(df, threshold=1.0):
+    """
+    Iterates through each column of a DataFrame and converts it to float if appropriate.
+    df (pd.DataFrame): The input DataFrame.
+    threshold (float): The minimum proportion of valid numeric values needed to convert the column to float.
+
+    """
+    for idx, col in enumerate(df.columns):
+      try:
+        # Attempt to convert the column to numeric values
+        converted_col = pd.to_numeric(df[col], errors='coerce')
+        # Determine the ratio of numeric values to the total number of values
+        non_na_ratio = converted_col.notna().sum() / len(converted_col)
+        if non_na_ratio > threshold:  # If ratio of numeric values is above the threshold, convert to float
+          df[col] = converted_col
+      except:
+        pass
+    return df
 
   @classmethod
   def from_geo_file(cls,geo_file_path):
     dfs = parse_geo_file(geo_file_path,return_format="df")
     if dfs is None or all([v is None for k,v in dfs.items()]):
       assert False, "Unable to parse geo file"
+
+    # TODO: Converting here to float guesses, should be defined clearly by field name
+    #dfs = {name:cls.guess_and_convert_to_float(df) for name,df in dfs.items()}
+
+
     # rename c beta for dataclasses
     if "c-beta" in dfs:
       dfs["cbeta"] = dfs.pop("c-beta")

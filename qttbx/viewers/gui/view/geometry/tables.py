@@ -1,5 +1,6 @@
 import qtawesome as qta
 from PySide2.QtCore import Qt, Signal
+from PySide2.QtGui import QFont
 from PySide2.QtWidgets import (
     QMenu,
     QLabel,
@@ -102,6 +103,14 @@ class GeometryTab(GUITab):
     # Table
     self.table_view = GeometryTableView()
     self.layout.addWidget(self.table_view)
+
+    # Sort Footer
+    sorted_by = ""
+    order = ""
+    self.sort_label = QLabel(f"Sorted by: {sorted_by} Order: {order}")
+    self.layout.addWidget(self.sort_label)
+
+
 
 
 class BondsTableTabView(GeometryTab):

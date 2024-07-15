@@ -1,7 +1,8 @@
 from collections import defaultdict
+import pandas as pd
 
-from PySide2.QtCore import Qt, Signal
-from PySide2.QtGui import QFontMetrics, QCursor, QBrush, QColor
+from PySide2.QtCore import Qt, Signal, QAbstractTableModel, QRectF
+from PySide2.QtGui import QFontMetrics, QCursor, QBrush, QColor, QFont, QPainter
 from PySide2.QtCore import QModelIndex
 from PySide2.QtWidgets import (
     QApplication,
@@ -15,17 +16,32 @@ from PySide2.QtWidgets import (
     QMenu,
     QDialog, 
     QFormLayout, 
-    QStyledItemDelegate
+    QStyledItemDelegate,
+    QAbstractItemView,
 )
-class CustomDelegate(QStyledItemDelegate):
-  def __init__(self, color_map={}, font_map={}, parent=None):
-    super().__init__(parent)
-    self.color_map = color_map # (row,col): state.color.Color object
-    self.font_map = font_map   # (row,col): {'bold': True and/or 'italic': True} 
 
+class CustomDelegate(QStyledItemDelegate):
+  def __init__(self, color_map={}, font_map={}, dtype_map={}, parent=None):
+    super().__init__(parent)
+    self.color_map = color_map
+    self.font_map = font_map
+    self.dtype_map = dtype_map # TODO: dtype map is unreliable, needs refactor
+
+  @staticmethod
+  def is_float_like(value):
+    # crude float check moving toward decimal aligned columns
+    value = str(value)
+    value = value.replace("-","") # ignore sign
+    split = value.split(".")
+    if len(split)==2:
+      if split[0].isdigit() and split[1].isdigit():
+        return True
+    return False
+    
   def paint(self, painter, option, index):
     row = index.row()
     col = index.column()
+    value = index.data(Qt.DisplayRole)
 
     # Set background color
     if (row, col) in self.color_map:
@@ -43,9 +59,35 @@ class CustomDelegate(QStyledItemDelegate):
       painter.setFont(font)
     else:
       painter.setFont(option.font)
-    
-    # Draw the text
-    painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignHCenter, index.data())
+
+    # Align floats on the decimal point if dtype is 'float'
+    if self.is_float_like(value):
+      value = float(value)
+      text = f"{value:.2f}"
+      font_metrics = QFontMetrics(option.font)
+
+      max_integer_width = 4  # Hardcoded max integer width
+      max_decimal_width = 3  # Hardcoded max decimal width
+
+      # Split text by the decimal point
+      parts = text.split('.')
+      integer_part = parts[0]
+      decimal_part = '.' + parts[1]
+
+      # Calculate widths
+      integer_width = font_metrics.width(integer_part)
+      decimal_width = font_metrics.width(decimal_part)
+
+      # Create padded text for alignment
+      padded_text = f"{integer_part:>{max_integer_width}}{decimal_part:<{max_decimal_width}}"
+
+
+      # Draw the padded text aligned to the right
+      painter.drawText(option.rect, Qt.AlignRight | Qt.AlignVCenter, padded_text)
+    else:
+      # Draw the text normally
+      painter.drawText(option.rect, Qt.AlignVCenter | Qt.AlignHCenter, str(value))
+
     painter.restore()
 
   def update_color_map(self, row, col, color):
@@ -53,6 +95,39 @@ class CustomDelegate(QStyledItemDelegate):
 
   def update_font_map(self, row, col, bold=False, italic=False):
     self.font_map[(row, col)] = {'bold': bold, 'italic': italic}
+
+  @staticmethod
+  def get_dtype_map(df):
+    dtype_map = {}
+    for idx, col in enumerate(df.columns):
+      idx-=1 # TODO: Why?
+      dtype = df[col].dtype
+      if pd.api.types.is_float_dtype(dtype):
+        dtype_map[idx] = "float"
+      elif pd.api.types.is_integer_dtype(dtype):
+        dtype_map[idx] = "int"
+      elif pd.api.types.is_string_dtype(dtype):
+        dtype_map[idx] = "string"
+      else:
+        dtype_map[idx] = None
+    return dtype_map
+
+  def calculate_max_widths(self, model, col, font):
+    font_metrics = QFontMetrics(font)
+    max_integer_width = 0
+    max_decimal_width = 0
+    for row in range(model.rowCount()):
+      value = model.index(row, col).data(Qt.DisplayRole)
+      if isinstance(value, float):
+        text = f"{value:.2f}"
+        parts = text.split('.')
+        integer_part = parts[0]
+        decimal_part = '.' + parts[1]
+        max_integer_width = max(max_integer_width, font_metrics.width(integer_part))
+        max_decimal_width = max(max_decimal_width, font_metrics.width(decimal_part))
+    self.max_integer_widths[col] = max_integer_width
+    self.max_decimal_widths[col] = max_decimal_width
+
 
 class GenericEditDialog(QDialog):
 
@@ -180,6 +255,9 @@ class PandasTableView(QTableView):
     editRequested = Signal(object) # QModelIndex
     edit_dialog = GenericEditDialog
     MAX_COLUMN_WIDTH = 200
+    FONT = "Monaco"
+    FONT_SIZE = 12
+
 
     def __init__(self, parent=None, default_col_width=75):
         super().__init__(parent)
@@ -187,13 +265,15 @@ class PandasTableView(QTableView):
         self.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.setContextMenuPolicy(Qt.CustomContextMenu)
         self.customContextMenuRequested.connect(self.showContextMenu)
+        self.setFont(QFont(self.FONT, self.FONT_SIZE))  # Monospaced font for better alignment
 
         # make sortable
         self.setSortingEnabled(True)
+        
 
         # Set table selection granularity
         self.setSelectionBehavior(QTableView.SelectRows)
-
+    
     def showContextMenu(self, position):
         index = self.indexAt(position)
         if not index.isValid():

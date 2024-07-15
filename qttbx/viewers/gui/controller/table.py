@@ -1,5 +1,6 @@
 import pandas as pd
 from PySide2 import QtCore
+from PySide2.QtCore import QAbstractTableModel, Qt
 from PySide2.QtGui import QBrush, QColor
 from PySide2.QtWidgets import  QStyledItemDelegate, QAbstractItemView
 
@@ -26,12 +27,13 @@ class TableController(Controller):
     self._dataframe = None
     self._table_model = None
     self._objectframe = None
-    self.delegate = None # For changing color of cells
+    self.delegate = None # For changing cosmetics of cells
     self.was_modified = False
 
     # Signals
     self.view.table_view.mouseReleased.connect(self.on_mouse_released)
     self.view.table_view.editRequested.connect(self.on_edit_requested)
+
 
 
   @property
@@ -72,6 +74,13 @@ class TableController(Controller):
  
     self.reset_delegate()
     self.update_delegate()
+
+  def column_name_exists(self, column_name):
+    for i in range(self.table_model.columnCount(None)):
+      if self.table_model.headerData(i, Qt.Horizontal, Qt.DisplayRole) == column_name:
+        return True
+    return False
+  
 
   def on_edit_requested(self,index):
     df = self.table_model.df
@@ -125,6 +134,7 @@ class TableController(Controller):
     # TODO: Why manual reset necessary?
     delegate.color_map = {}
     delegate.font_map = {}
+    delegate.dtype_map = CustomDelegate.get_dtype_map(self.table_model.df)
     view.setItemDelegate(delegate)
     view.setSelectionBehavior(QAbstractItemView.SelectRows)
     self.delegate = delegate

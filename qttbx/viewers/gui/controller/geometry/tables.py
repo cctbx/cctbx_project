@@ -1,5 +1,6 @@
 
 import pandas as pd
+from PySide2.QtCore import Qt
 
 from ..filter import TableFilterController
 from ..table import TableController
@@ -34,14 +35,13 @@ class GeometryTableTabController(TableController):
   geometry_type = None # Subclass and fill this in (bond,angle,etc)
 
   # Define display cols (or col prefixes) and specify order
-  display_columns = ['ideal','model',"sigma","delta",'residual','Label'] 
+  display_columns = ['Label','ideal','model',"sigma","delta",'residual'] 
 
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
     self.geometry_ref = None
     self.col_names = None
     self.debug_flag = False
-    #self.rename_columns.update({key:key.capitalize() for key in self.column_order})
 
     # Filter panel
     self.filter = TableFilterController(parent=self,view=self.view.filter)
@@ -50,6 +50,9 @@ class GeometryTableTabController(TableController):
     self.view.table_view.addEdit.connect(self.addEdit)
     self.view.edit_controls.edit_button.clicked.connect(self.on_edit_pressed)
     self.state.signals.geometry_change.connect(self.update)
+    self.view.table_view.horizontalHeader().sortIndicatorChanged.connect(self.on_sort_indicator_changed)
+
+      
     #self.state.signals.filter_update.connect(self.update_from_filter)
 
   # def get_suppress_columns(self,df):
@@ -166,8 +169,38 @@ class GeometryTableTabController(TableController):
     
     # update filter
     self.filter.update_quiet()
+    self.initialize_sort()
 
+  def initialize_sort(self):
+    # Initialize sorting by residual
+    if self.table_model:
+      col_name = None
+      if self.column_name_exists("Residual"):
+        col_name = "Residual"
+      elif self.column_name_exists("Residual 1"):
+        col_name = "Residual 1"
+      if col_name:
+        self.sort_table_by_column_name(col_name,Qt.DescendingOrder)
 
+  # Sorting machineray. Candidate to move up to superclass
+  def on_sort_indicator_changed(self,logicalIndex, order):
+    #print(f"Sorting changed. Column: {logicalIndex}, Order: {'Ascending' if order == Qt.AscendingOrder else 'Descending'}")
+    sorted_by = self.table_model.headerData(logicalIndex, Qt.Horizontal, Qt.DisplayRole)
+    order = 'Ascending' if order == Qt.AscendingOrder else 'Descending'
+    self.view.sort_label.setText(f"Sorted by: {sorted_by}, Order: {order}")
+
+  def sort_table_by_column_name(self,column_name, order):
+    model = self.table_model
+    view = self.view.table_view
+    logical_index = None
+    for i in range(model.columnCount(None)):
+      if model.headerData(i, Qt.Horizontal, Qt.DisplayRole) == column_name:
+        logical_index = i
+        break
+    if logical_index is not None:
+      view.sortByColumn(logical_index, order)
+    else:
+      print(f"Column '{column_name}' not found in the model")
 
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
   @staticmethod 

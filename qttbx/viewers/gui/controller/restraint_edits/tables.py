@@ -84,7 +84,7 @@ class EditsTableTabController(TableController):
     self.parent.write_all_edits()
 
 
-
+# TODO: Rename to include 'edit' name
 class BondTableController(EditsTableTabController):
   title = "Bonds"
   restraint_name = "bond"

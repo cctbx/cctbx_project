@@ -92,17 +92,25 @@ class TableFilter(QWidget):
   def __init__(self, parent=None):
     super().__init__(parent=parent)
     
-    # Main vertical layout
+
+    # Main horizontal layout
     self.layout = QHBoxLayout()
 
     spacer = QSpacerItem(40, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
     self.layout.addSpacerItem(spacer)
 
+    # Filter label
+    label = QLabel("Filters:")
+    # font = label.font()
+    # font.setBold(True)
+    # label.setFont(font)
+    self.layout.addWidget(label)
+
     # Dropdown for filter selections
     generic_filter_layout = QVBoxLayout()
     self.combobox_filter = QComboBox()
     self.combobox_filter.setMaximumWidth(200)
-    generic_filter_layout.addWidget(QLabel("Filters"))
+    generic_filter_layout.addWidget(QLabel("Categorical"))
     generic_filter_layout.addWidget(self.combobox_filter)
     self.layout.addLayout(generic_filter_layout)
 

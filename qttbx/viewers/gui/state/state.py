@@ -160,22 +160,24 @@ class State:
 
   def init_from_datamanager(self):
     # models
-    for name in self.data_manager.get_model_names():
-      model = self.data_manager.get_model(filename=name)
-      self.add_ref_from_mmtbx_model(model,filename=name)
-      # set the first model in dm as active
-      if self.active_model_ref is None:
-        self.active_model_ref = self.references_model[0]
+    if hasattr(self.data_manager,"get_model_names"):
+      for name in self.data_manager.get_model_names():
+        model = self.data_manager.get_model(filename=name)
+        self.add_ref_from_mmtbx_model(model,filename=name)
+        # set the first model in dm as active
+        if self.active_model_ref is None:
+          self.active_model_ref = self.references_model[0]
 
     # maps
-    for name in self.data_manager.get_real_map_names():
-      map_manager = self.data_manager.get_real_map(filename=name)
-      label = os.path.basename(name)
-      self.add_ref_from_map_manager(map_manager=map_manager,filepath=name,label=label)
+    if hasattr(self.data_manager,"get_real_map_names"):
+      for name in self.data_manager.get_real_map_names():
+        map_manager = self.data_manager.get_real_map(filename=name)
+        label = os.path.basename(name)
+        self.add_ref_from_map_manager(map_manager=map_manager,filepath=name,label=label)
 
-      # set the first map in dm as active
-      if self.active_map_ref is None:
-        self.active_map_ref = self.references_map[0]
+        # set the first map in dm as active
+        if self.active_map_ref is None:
+          self.active_map_ref = self.references_map[0]
 
 
   def apply_style(self,ref,style):

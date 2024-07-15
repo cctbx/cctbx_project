@@ -1,3 +1,4 @@
+import numpy as np
 
 from .controller import Controller
 from ..state.table import PandasTableModel
@@ -40,26 +41,40 @@ class ComponentFilterObj(FilterObj):
     cols = self._get_filter_cols(df)
     return df[(df[cols]==self.name).all(axis=1)]
 
-class FilterProtein(ComponentFilterObj):
+# class FilterProtein(ComponentFilterObj):
+#   def __init__(self):
+#     super().__init__(name="Protein")
+
+#   def filter_df(self,df):
+#     cols = self._get_filter_cols(df)
+#     return df[df[cols].isin(params.protein_comp_ids).all(axis=1)]
+
+class FilterOutliers(FilterObj):
   def __init__(self):
-    super().__init__(name="Protein")
+    super().__init__(name="Outliers")
 
   def filter_df(self,df):
-    cols = self._get_filter_cols(df)
-    return df[df[cols].isin(params.protein_comp_ids).all(axis=1)]
+    if "delta" in df.columns and "sigma" in df.columns:
+      is_outlier = df["delta"].abs()>df["sigma"]*4
+    else:
+      is_outlier = np.full(False,len(df))
+    return df[is_outlier]
 
-class FilterSolvent(ComponentFilterObj):
-  def __init__(self):
-    super().__init__(name="Solvent")
 
-  def filter_df(self,df):
-    cols = self._get_filter_cols(df)
-    return df[df[cols].isin(params.solvent_comp_ids).all(axis=1)]
+# class FilterSolvent(ComponentFilterObj):
+#   def __init__(self):
+#     super().__init__(name="Solvent")
+
+#   def filter_df(self,df):
+#     cols = self._get_filter_cols(df)
+#     return df[df[cols].isin(params.solvent_comp_ids).all(axis=1)]
 
 class FilterByClass(FilterObj):
   def __init__(self,class_name):
     # class_name is return value from iotbx.pdb.common_residue_get_class
     name = " ".join([s.capitalize() for s in class_name.split("_")])
+    if name == "Other":
+      name = "Ligand/Other"
     self.class_name = class_name
     super().__init__(name=name,mmcif_prefix="residue_class")
 
@@ -157,7 +172,7 @@ class TableFilterController(Controller):
 
   def reset_filters(self):
     self.comp_filters = []
-    self.other_filters = [FilterAll()]
+    self.other_filters = [FilterAll(),FilterOutliers()]
     self.restraint_filters = [FilterAll()]
     self._init_comps()
     self._init_filters()
@@ -177,7 +192,7 @@ class TableFilterController(Controller):
       self.add_item_if_not_exists(self.view.combobox_comp,filter_obj.name)
 
   def _init_filters(self):
-    self.other_filters = [FilterAll()]
+    self.other_filters = [FilterAll(),FilterOutliers()]
     # add component class filters
     if self.state.mol:
       for class_name in list(self.state.mol.sites.residue_class.unique()):

@@ -1,9 +1,12 @@
 import sys
 from pathlib import Path
-try:
-  sys.path.append("/Users/user/software/phenix/modules/cctbx_project/qttbx/viewers/gui/qtconsole")
-except:
-  pass
+
+# Hack together import of modified qtconsole using relative paths
+current_folder = Path(__file__).parent
+path = Path(current_folder,"../../../gui/qtconsole")
+sys.path.append(str(path.absolute()))
+#TODO: Make this a separate repo/module
+
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 
