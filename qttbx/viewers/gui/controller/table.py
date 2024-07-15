@@ -115,7 +115,7 @@ class TableController(Controller):
 
         # Alert that data has changed
         for col_idx in col_idxs:
-          color = Color.from_string("red")
+          color = Color.from_string("powderblue")
           self.table_model.color_map[(idx,col_idx)] = color
           self.table_model.font_map[(idx,col_idx)] = {"bold":True,"italic":True}
           #self.delegate.update_color_map(idx,col_idx,color)

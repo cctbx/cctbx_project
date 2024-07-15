@@ -79,9 +79,9 @@ class ViewerGUIView(QMainWindow):
     #   self.tabs.addTab(self.sites_tab_view, "Atoms")
 
     #if 'all' in show_tab  or 'cif' in show_tab:
-    self.cif_tab_view = CifTabView(parent=self)
-    self.cif_tab_view.order_index=3
-    self.tabs.addTab(self.cif_tab_view, "CIF")
+    # self.cif_tab_view = CifTabView(parent=self)
+    # self.cif_tab_view.order_index=3
+    # self.tabs.addTab(self.cif_tab_view, "CIF")
     #self.tabs.toggle_tab_visible("CIF",show=False)
 
     # # Geometry
@@ -133,7 +133,7 @@ class ViewerGUIView(QMainWindow):
 
     # Not visible by default
     self.tabs.toggle_tab_visible("Selections",show=True)
-    self.tabs.toggle_tab_visible("CIF",show=True)
+    #self.tabs.toggle_tab_visible("CIF",show=True)
     self.tabs.toggle_tab_visible("Geometry",show=True)
     self.tabs.toggle_tab_visible("Edits",show=True)
     self.tabs.toggle_tab_visible("Restraints",show=True)

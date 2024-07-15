@@ -37,7 +37,7 @@ class ViewerGUIController(Controller):
     # if 'all' in show_tab  or 'atoms' in show_tab:
     #   self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
     # if 'all' in show_tab  or 'cif' in show_tab:
-    self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
+    #self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
 
     # if 'all' in show_tab  or 'restraints' in show_tab:
     #   #self.restraints = GeometryTopTabController(parent=self,view=self.view.restraints_tab_view)

@@ -10,12 +10,14 @@ from ...state.base import ObjectFrame
 from ...view.widgets import (
   BondEditDialog,
   AngleEditDialog,
-  DihedralEditDialog
+  DihedralEditDialog,
+  ChiralEditDialog
 )
 from ...state.edits import (
   BondEdit,
   AngleEdit,
-  DihedralEdit
+  DihedralEdit,
+  ChiralEdit
 )
 from ...state.ref import (
   BondEditsRef,
@@ -24,8 +26,6 @@ from ...state.ref import (
 )
 
 from ..filter import CompositeFilter
-
-
 
 
 class GeometryTableTabController(TableController):
@@ -203,33 +203,25 @@ class GeometryTableTabController(TableController):
       print(f"Column '{column_name}' not found in the model")
 
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
-  @staticmethod 
+  @staticmethod
   def find_matching_row(df, dict_subset):
-    # # hack to match keys
-    # new_d = {}
-    # for key,value in dict_subset.items():
-    #   if "Atom" in key:
-    #     i = key[-1]
-    #     new_d[f"atom_id_{i}"] = value
-    #   elif key.lower() in df.columns:
-    #     new_d[key.lower()] = value
-    #   elif key in df.columns:
-    #     new_d[key] = value
-    #   else:
-    #     assert False, "Unable to match key between named tuple and actual df"
+    # Start with a mask of all True values
+    mask = pd.Series([True] * len(df))
 
-    # dict_subset = new_d
-    # Convert the dictionary to a pandas Series for comparison
-    series = pd.Series(dict_subset)
-    
-    # Check if each column in the DataFrame contains the corresponding series value
-    mask = df[list(dict_subset.keys())].eq(series)
-    
+    for key, value in dict_subset.items():
+      if value is None:
+        # Check for NaN values in the DataFrame
+        mask &= df[key].isnull()
+      else:
+        # Check for matching values in the DataFrame
+        mask &= df[key] == value
+
     # Find rows where all specified dictionary key-value pairs match
-    matching_rows = df[mask.all(axis=1)]
-    
+    matching_rows = df[mask]
+
     # Return the first matching row or None if no match is found
     return matching_rows.iloc[0] if not matching_rows.empty else None
+
 
   @staticmethod
   def get_sel_strings_from_iseqs(mol,i_seqs):
@@ -338,6 +330,8 @@ class DihedralTableController(GeometryTableTabController):
 
   def addEdit(self,row_dict):
     df = getattr(self.geometry_ref.data,self.geometry_type)
+    #import pdb
+    #pdb.set_trace()
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     dialog = DihedralEditDialog(defaults_dict=row_dict,action="mod")
     if dialog.exec_():
