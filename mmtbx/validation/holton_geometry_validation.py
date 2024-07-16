@@ -988,7 +988,11 @@ def get_model(info):
     # write to it
     info.dm.write_model_file(info.model, info.filename)
   info.model.set_stop_for_unknowns(False)
-  info.model.process(make_restraints=True)
+  # Allow polymer to cross special positions if necessary
+  p = info.model.get_current_pdb_interpretation_params()
+  p.pdb_interpretation.allow_polymer_cross_special_position=True 
+  info.model.process(make_restraints=True,
+     pdb_interpretation_params = p)
   info.model.setup_riding_h_manager(idealize=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
