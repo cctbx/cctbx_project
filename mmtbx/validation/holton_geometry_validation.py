@@ -990,7 +990,7 @@ def get_model(info):
   info.model.set_stop_for_unknowns(False)
   # Allow polymer to cross special positions if necessary
   p = info.model.get_current_pdb_interpretation_params()
-  p.pdb_interpretation.allow_polymer_cross_special_position=True 
+  p.pdb_interpretation.allow_polymer_cross_special_position=True
   info.model.process(make_restraints=True,
      pdb_interpretation_params = p)
   info.model.setup_riding_h_manager(idealize=True)
