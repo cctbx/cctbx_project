@@ -85,7 +85,7 @@ class ObjectRow(DataClassBase):
 
 
 class ObjectFrame(list):
-    def __init__(self, rows: List[Any], row_class: Type[Any]):
+    def __init__(self, rows: List[Any] = [], row_class: Type[Any] = DataClassBase):
       super().__init__(rows)
       self.row_class = row_class
 
