@@ -18,10 +18,6 @@ do_nucleic_acid = True
   .type = bool
   .short_caption = Construct nucleic acid ribbons
   .help = Construct ribbons for the nucleic acid sections of the model
-do_het_atoms = True
-  .type = bool
-  .short_caption = Make ribbons for HETATM residues
-  .help = Construct ribbons for HETATM residue sections of the model
 untwist_ribbons = True
   .type = bool
   .short_caption = Untwist ribbons
@@ -183,10 +179,10 @@ Output:
 
         if self.params.do_protein:
           # Find the contiguous protein residues by CA distance
-          contiguous_residues = find_contiguous_protein_residues(chain)
-          print('Found {} contiguous protein residue lists'.format(len(contiguous_residues)))
+          contiguous_residue_lists = find_contiguous_protein_residues(chain)
+          print('Found {} contiguous protein residue lists'.format(len(contiguous_residue_lists)))
 
-          if len(contiguous_residues) > 0:
+          if len(contiguous_residue_lists) > 0:
             if groupByModel:
               outString += "@subgroup {{chain{}}} dominant master= {chain {}}}\n".format(chain.id, chain.id)
             else:
@@ -203,7 +199,7 @@ Output:
               outString += "@colorset {{beta{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{coil{}}} {}\n".format(chain.id, bbColor)
 
-            for contig in contiguous_residues:
+            for contig in contiguous_residue_lists:
               guidepoints = make_protein_guidepoints(contig)
               print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)))
               if self.params.untwist_ribbons:
@@ -228,10 +224,10 @@ Output:
       
         if self.params.do_nucleic_acid:
           # Find the contiguous nucleic acid residues by CA distance
-          contiguous_residues = find_contiguous_nucleic_acid_residues(chain)
-          print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residues)))
+          contiguous_residue_lists = find_contiguous_nucleic_acid_residues(chain)
+          print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residue_lists)))
 
-          if len(contiguous_residues) > 0:
+          if len(contiguous_residue_lists) > 0:
             if groupByModel:
               outString += "@subgroup {{chain{}}} dominant master= {chain {}}}\n".format(chain.id, chain.id)
             else:
@@ -246,7 +242,7 @@ Output:
               outString += "@colorset {{nucl{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{ncoi{}}} {}\n".format(chain.id, bbColor)
 
-            for contig in contiguous_residues:
+            for contig in contiguous_residue_lists:
               guidepoints = make_nucleic_acid_guidepoints(contig)
               print(' Made {} NA guidepoints for {} residues'.format(len(guidepoints),len(contig)))
               if self.params.untwist_ribbons:
