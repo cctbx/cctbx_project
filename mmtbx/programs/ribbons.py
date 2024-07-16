@@ -34,6 +34,10 @@ do_plain_coils = False
   .type = bool
   .short_caption = Do plain coils
   .help = Do plain coils (no halo) even for the helix and sheet parts of the protein
+coil_width = 1.0
+  .type = float
+  .short_caption = Coil width
+  .help = Width of the coil part of the ribbon
 '''
 
 # ------------------------------------------------------------------------------
@@ -75,10 +79,28 @@ Output:
 # ------------------------------------------------------------------------------
 
   def printFancyRibbon(self, guides, widthAlpha, widthBeta, listAlpha, listBeta, listCoil, listCoilOutline, doRainbow, rnaPointIDs):
+    # Constructs a kinemage string for a ribbon representation of a protein or nucleic acid chain.
+    # Makes a triangulated ribbon with arrowheads, etc.
+    # @param guides: The guidepoints for the ribbon
+    # @param widthAlpha: The width of the alpha helix part of the ribbon
+    # @param widthBeta: The width of the beta sheet part of the ribbon
+    # @param listAlpha: The kinemage string describing the alpha helix part of the ribbon
+    # @param listBeta: The kinemage string describing the beta sheet part of the ribbon
+    # @param listCoil: The kinemage string describing the coil part of the ribbon
+    # @param listCoilOutline: The kinemage string describing the outline of the coil part of the ribbon
+    # @param doRainbow: Whether or not to color the ribbon by rainbow
+    # @param rnaPointIDs: If true, residue names in point IDs will be decided based on the RNA/DNA alignment of guidepoints to residues.
+    # If false (the default), the protein style will be used instead.
+    # @return: The kinemage string for the ribbon representation
+
     ret = ""
 
+    # Initialize local references
+    widthCoil = self.params.coil_width
     secStruct = self.secondaryStructure
+
     # @todo
+
     return ret
 
 # ------------------------------------------------------------------------------
@@ -122,16 +144,13 @@ Output:
         for i in range(firstResID,lastResID+1):
           self.secondaryStructure[i] = 'turn'
 
-    # Strip out the hetatoms if we are not doing them
-    # @todo
-
     # The name of the structure, which is the root of the input file name (no path, no extension)
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
     if self.idCode is None or self.idCode == "":
       self.idCode = "macromol"
 
     # Round-robin colors for the backbone of the ribbons for when we are coloring each chain or model.
-    self.backBoneColors = [ "white", "yellowtint", "peachtint", "greentint", "bluetint", "lilactint", "pinktint" ]
+    self.backBoneColors = [ "white", "yellowtint", "peachtint", "pinktint", "lilactint", "bluetint", "greentint" ]
 
     # Rainbow colors when we are coloring by rainbow
     self.rainbowColors = [ "blue", "sky", "cyan", "sea", "green", "lime", "yellow" ,"gold" ,"orange" ,"red" ]
@@ -191,10 +210,12 @@ Output:
 
             bbColor = chainColors[chain.id]
             if bbColor == "white":
+              # Distinguish between the different types of secondary structure for the first chain
               outString += "@colorset {{alph{}}} red\n".format(chain.id)
               outString += "@colorset {{beta{}}} lime\n".format(chain.id)
               outString += "@colorset {{coil{}}} white\n".format(chain.id)
             else:
+              # Do all secondary structure in the same color for all but the first chain to clean up the display
               outString += "@colorset {{alph{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{beta{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{coil{}}} {}\n".format(chain.id, bbColor)
@@ -205,7 +226,8 @@ Output:
               if self.params.untwist_ribbons:
                 print('  Untwisted ribbon')
                 untwist_ribbon(guidepoints)
-              # There is always secondary structure looked up for protein residues, so we skip the missing case from the Java code.
+              # There is always secondary structure looked up for protein residues, so we skip the case from the Java code
+              # where it can be missing.
               if self.params.do_plain_coils:
                 outString += self.printFancyRibbon(guidepoints, 2, 2.2,
                       "color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
