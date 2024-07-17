@@ -55,14 +55,14 @@ namespace smtbx { namespace ED
       mat3_t get_RM(FloatType angle) const {
         FloatType ca = std::cos(angle), sa = std::sin(angle);
         mat3_t rxa(1, 0, 0, 0, ca, -sa, 0, sa, ca);
-        if (beta != 0 && omega != 0) {
-          return rzo * rxa * ryb;
+        if (omega != 0) {
+          if (beta != 0) {
+            return rzo * rxa * ryb;
+          }
+          return rzo * rxa;
         }
         if (beta != 0) {
           return rxa * ryb;
-        }
-        if (omega != 0) {
-          return rzo * rxa;
         }
         return rxa;
       }
