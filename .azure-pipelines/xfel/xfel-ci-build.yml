@@ -1,8 +1,8 @@
 jobs:
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
-      version: [8]
+      distribution: centos
+      version: [7]
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_
