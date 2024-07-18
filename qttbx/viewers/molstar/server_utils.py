@@ -12,7 +12,7 @@ from PySide2.QtCore import QThread,Signal, Slot
 
 
 class NodeHttpServer:
-  def __init__(self,command,default_port=56000):
+  def __init__(self,command,default_port=8080):
     assert isinstance(command,list), "Provide command as a list of strings"
     if not self.check_port_free(default_port):
       default_port = self.find_open_port()
