@@ -21,12 +21,10 @@ if [ $? -ne 0 ]; then
   echo "Failed to activate conda environment: $conda_env_path"
   exit 1
 fi
-
-# Your subsequent commands go here
 echo "Conda environment activated. Running subsequent commands..."
 
 # Install additional packages
-mamba install pyside2 nodejs qtawesome ipykernel qt-webengine
+mamba install pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
 
 
 # Get github repos
@@ -34,10 +32,6 @@ mamba install pyside2 nodejs qtawesome ipykernel qt-webengine
 # Clone Phenix molstar
 cd molstar
 git clone https://github.com/phenix-project/phenix-molstar.git
-
-# Clone pyside2 version of qtconsole
-cd ../gui
-git clone https://github.com/cschlick/qtconsole_pyside2.git
 
 # Compile phenix molstar to javascript
 cd ../molstar/phenix-molstar

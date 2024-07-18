@@ -1,12 +1,6 @@
 import sys
 from pathlib import Path
 
-# Hack together import of modified qtconsole using relative paths
-current_folder = Path(__file__).parent
-path = Path(current_folder,"../../../gui/qtconsole_pyside2/")
-sys.path.append(str(path.absolute()))
-#TODO: Make this a separate repo/module
-
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 from qtconsole.inprocess import QtInProcessKernelManager
 
