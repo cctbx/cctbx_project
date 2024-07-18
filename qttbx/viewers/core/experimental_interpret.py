@@ -4,9 +4,9 @@ from collections import defaultdict
 
 import pandas as pd
 import numpy as np
-import gemmi
+##import gemmi
 
-monlib_path = "/Applications/ccp4-8.0/lib/data/monomers/"
+#monlib_path = "/Applications/ccp4-8.0/lib/data/monomers/"
 
 def extract_restraint_dataframes_with_gemmi(model):
   st = gemmi.read_pdb_string(model.model_as_pdb())
@@ -289,6 +289,7 @@ def extract_processed_model_to_dataframes(model,do_nonbonded=False):
     "alt_angle_ideals": lambda proxy: proxy.alt_angle_ideals,
     "origin_id":lambda proxy: proxy.origin_id
   }
+  
   torsions = pd.DataFrame(unpack_func_mapper(func_mapper,grm.dihedral_proxies))
   torsions["atom_id_1"] = sites["name"].values[torsions["i_seq_1"].values]
   torsions["atom_id_2"] = sites["name"].values[torsions["i_seq_2"].values]

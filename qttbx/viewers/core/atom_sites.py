@@ -24,6 +24,8 @@ from .selection_utils import (
     form_simple_str_common,
 )
 
+from ..gui.state.atom import Atom
+from ..gui.state.base import ObjectFrame
 
 """
 AtomSites subclasses pandas DataFrame. 
@@ -1056,6 +1058,10 @@ class AtomSites(pd.DataFrame):
   
   def to_records_id(self):
     return self[["id"]].to_dict("records")
+
+  def to_objectFrame(self) -> ObjectFrame:
+    self["i_seq"] = self.index.values
+    return ObjectFrame.from_df(self, row_class=Atom, name="atom_sites")
 
   def _validate_phenix_selection_string(self,phenix_string):
     print("Validating phenix string....")

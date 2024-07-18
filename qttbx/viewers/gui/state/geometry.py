@@ -4,12 +4,12 @@ import tempfile
 from pathlib import Path
 
 import pandas as pd
-
+from mmtbx.geometry_restraints.geo_file_parsing import add_i_seq_columns_from_id_str
 from mmtbx.geometry_restraints.geo_file_parsing import (
   parse_geo_file
 )
 
-from .base import DataClassBase
+from .base import DataClassBase, ObjectFrame
 
 geometry_names = [
       "bond",
@@ -95,6 +95,21 @@ class Geometry(DataClassBase):
       if isinstance(value,pd.DataFrame) and "restraint_type" in value:
         value["geometry_type"] = value["restraint_type"]
         value.drop(columns=["geometry_type"],inplace=True)
+  @staticmethod
+  def add_i_seqs_from_model(self,model):
+    # add i_seqs
+    d = {}
+    for field in fields(self):
+      key = field.name
+      value = getattr(self, key)
+      if isinstance(value,pd.DataFrame):
+        d[key] = value
+    add_i_seq_columns_from_id_str(d,model)
+
+
+    # collapse to list
+    for key,value in d.items():
+      object.__setattr__(self,key,ObjectFrame.collapse_cols(value,"i_seq"))
 
   @property
   def filename(self):
@@ -198,7 +213,9 @@ class Geometry(DataClassBase):
                           site_labels = model.get_xray_structure().scatterers().extract_labels(),
                           file_descriptor=temp_file)
       temp_file.flush()  # Ensure all data is written to disk
-      return cls.from_geo_file(temp_file.name)
+      obj = cls.from_geo_file(temp_file.name)
+      cls.add_i_seqs_from_model(obj,model)
+      return obj
 
   # Add new geometry edits
   def add_plane_geometry(self,geometry_data):
@@ -238,3 +255,9 @@ class Geometry(DataClassBase):
       df["action"] = pd.NA
     df.loc[0,"action"] = "add"
     self.bond = df
+  @staticmethod
+  def add_iseqs_column(df):
+    # add a new column that is a list of the i_seqs
+    i_seq_cols = [col for col in df.columns if "i_seq" in col and col != 'i_seqs']
+    if len(i_seq_cols)>0:
+      df['i_seqs'] = df.apply(lambda row: [row[col] for col in i_seq_cols], axis=1)
