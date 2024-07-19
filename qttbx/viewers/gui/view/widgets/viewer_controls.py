@@ -267,6 +267,7 @@ class SearchSelectDialog(QDialog):
   def __init__(self,title="Selection search",parent=None):
     super().__init__(parent)
     self.setWindowTitle(title)
+    self.center_on_right_half()
     self.list_width = 150
     self.chain_scroller = ScrollableHierarchyWidget(self)
     self.comp_scroller = ScrollableHierarchyWidget(self)
@@ -329,6 +330,20 @@ class SearchSelectDialog(QDialog):
     selection_edit.setToolTip("Enter a Phenix selection string")
     layout.addWidget(search_label)
     layout.addWidget(selection_edit)
+
+  def center_on_right_half(self):
+    screen_geometry = QApplication.desktop().screenGeometry()
+    screen_width = screen_geometry.width()
+    screen_height = screen_geometry.height()
+
+    dialog_width = self.width()
+    dialog_height = self.height()
+
+    # Calculate the center position for the right half of the screen
+    right_half_center_x = screen_width * 1 / 2 - dialog_width / 2
+    center_y = screen_height / 2 - dialog_height / 2
+
+    self.move(int(right_half_center_x), int(center_y))
 
   
 

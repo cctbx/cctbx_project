@@ -285,26 +285,61 @@ class ViewerControlsController(Controller):
       self.viewer.toggle_selection_mode(False)
 
 
+  def validate_selection(self,text):
+    fail_reason = None
+    passed = True
+    if "*" in text:
+      fail_reason = "wildcards not currently supported"
+      passed = False
+    if "\\" in text:
+      fail_reason = "backslashes not currently supported"
+      passed = False
+    if "segid" in text:
+      fail_reason = "segid not currently supported"
+      passed = False
+
+    try:
+      self.state.model.selection(text)
+    except:
+      passed = False
+      fail_reason = f"invalid phenix selection"
+    # if "b" in text or "bfactor" in text:
+    #   fail_reason = "bfactor not supported"
+    # if "resid" in text:
+    #   fail_reason = "'resid' not supported"
+    # if "resid" in text:
+    #   fail_reason = "'resid' not supported"
+    # if fail_reason is not None:
+    #   passed = False
+    return passed, fail_reason
   @Slot()
   def execute_selection(self):
     """
     This is a selection from the text box
     """
-    text = self.view.selection_edit.text()
-    if text.startswith("select"):
-      text = text[7:]
-    elif text.startswith("sel "):
-      text = text[4:]
-    
-    try:
-      self.viewer.select_from_phenix_string(text)
-      self.viewer.focus_selected()
 
-      self.save_text_to_history()
-    except:
-      raise
-      self.view.selection_edit.clear()
-      self.view.selection_edit.setPlaceholderText(f"Unable to interpret selection: {text}")
+    text = self.view.selection_edit.text()
+    if text:
+      passed, fail_reason = self.validate_selection(text)
+      print("Selection validation paseed: ",passed,fail_reason)
+      if not passed:
+        self.view.selection_edit.clear()
+        self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}: {text}")
+        return
+      if text.startswith("select"):
+        text = text[7:]
+      elif text.startswith("sel "):
+        text = text[4:]
+      try:
+        self.viewer.select_from_phenix_string(text)
+        self.viewer.focus_selected()
+        self.save_text_to_history()
+        self.view.selection_edit.setPlaceholderText(text)
+      except:
+        #raise
+        self.view.selection_edit.clear()
+        self.view.selection_edit.setPlaceholderText(f"Unsupported selection: syntax not currently supported: {text}")
+  
   
   def buttonMousePressEventGeo(self, event):
     self.view.button_geo.setChecked(True)

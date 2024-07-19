@@ -8,7 +8,7 @@ class SelectionControlsController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
     # Enable return key to execute selection
-    self.view.selection_edit.returnPressed.connect(self.execute_selection)
+    #self.view.selection_edit.returnPressed.connect(self.execute_selection)
     self.view.selector_toggle.clicked.connect(self.toggle_selection)
     # self.view.start_selecting.clicked.connect(self.start_selecting)
     # self.view.button_deselect.clicked.connect(self.deselect)
@@ -54,51 +54,53 @@ class SelectionControlsController(Controller):
     self.viewer.toggle_selection_mode(True)
     self.execute_selection()
 
-  def validate_selection(self,text):
-    fail_reason = None
-    passed = True
-    # if "altloc" in text:
-    #   fail_reason = "altlocs not supported"
-    # if "occ" in text or "occupancy" in text:
-    #   fail_reason = "occupancy not supported"
-    # if "b" in text or "bfactor" in text:
-    #   fail_reason = "bfactor not supported"
-    # if "resid" in text:
-    #   fail_reason = "resid not supported"
-    # if fail_reason is not None:
-    #   passed = False
-    return passed, fail_reason
-  @Slot()
-  def execute_selection(self):
-    """
-    This is a selection from the text box
-    """
+  # def validate_selection(self,text):
+  #   fail_reason = None
+  #   passed = True
+  #   if "*" in text:
+  #     fail_reason = "wildcards not currently supported"
+  #     passed = False
+  #   if "\\" in text:
+  #     fail_reason = "backslashes not currently supported"
+  #     passed = False
+  #   if "segid" in text:
+  #     fail_reason = "segid not currently supported"
+  #     passed = False
+  #   # if "b" in text or "bfactor" in text:
+  #   #   fail_reason = "bfactor not supported"
+  #   # if "resid" in text:
+  #   #   fail_reason = "resid not supported"
+  #   # if fail_reason is not None:
+  #   #   passed = False
+  #   return passed, fail_reason
 
-    text = self.view.selection_edit.text()
-    if text:
-      passed, fail_reason = self.validate_selection(text)
-      if not passed:
-        self.view.selection_edit.clear()
-        self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}")
-        return
-      try:
-        if text.startswith("select"):
-          text = text[7:]
-        elif text.startswith("sel "):
-          text = text[4:]
-        self.viewer.select_from_phenix_string(selection_phenix=text)
-        self.save_text_to_history()
-      except:
-        raise
-        self.view.selection_edit.clear()
-        self.view.selection_edit.setPlaceholderText(f"Unable to interpret selection: {text}")
+  # @Slot()
+  # def execute_selection(self):
+  #   """
+  #   This is a selection from the text box
+  #   """
 
-  def exec_selection_box(self):
-    sel_str = self.view.selection_edit.text()
-    if len(sel_str.strip())>0:
-      query = self.state.mol.atom_sites.select_as_query(sel_str)
-      return query
-
+  #   text = self.view.selection_edit.text()
+  #   if text:
+  #     passed, fail_reason = self.validate_selection(text)
+  #     import pdb
+  #     pdb.set_trace()
+  #     print("Selection validation paseed: ",passed,fail_reason)
+  #     if not passed:
+  #       self.view.selection_edit.clear()
+  #       self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}")
+  #       return
+  #     try:
+  #       if text.startswith("select"):
+  #         text = text[7:]
+  #       elif text.startswith("sel "):
+  #         text = text[4:]
+  #       self.viewer.select_from_phenix_string(selection_phenix=text)
+  #       self.save_text_to_history()
+  #     except:
+  #       raise
+  #       self.view.selection_edit.clear()
+  #       self.view.selection_edit.setPlaceholderText(f"Unable to interpret selection: {text}")
 
 
   def save_text_to_history(self):
