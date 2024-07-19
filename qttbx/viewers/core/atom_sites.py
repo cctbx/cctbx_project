@@ -20,7 +20,7 @@ from .selection import PhenixParser, Selection
 from .selection_utils import (
     SelConverterPhenix,
     df_nodes_group_to_query,
-    find_simplest_selected_nodes,
+    #find_simplest_selected_nodes,
     form_simple_str_common,
 )
 

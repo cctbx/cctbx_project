@@ -24,7 +24,8 @@ fi
 echo "Conda environment activated. Running subsequent commands..."
 
 # Install additional packages
-mamba install pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
+mamba -c conda-forge install pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
+# conda -c conda-forge install pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
 
 
 # Get github repos
