@@ -138,13 +138,24 @@ class RefineLauncher:
             reference_panel = detector[panels_per_group[group_id][0]]
             self.panel_reference_from_id[pid] = reference_panel.get_origin()
 
-    def _init_simulator(self, expt, miller_data):
-        self.SIM = utils.simulator_for_refinement(expt, self.params)
+    def _init_simulator(self, modeler, expt, miller_data):
+        self.SIM = hopper_utils.get_simulator_for_data_modelers(modeler)
+        #self.SIM = utils.simulator_for_refinement(expt, self.params)
         # note self.SIM.D is a now diffBragg instance
-        # update the miller data ?
         if miller_data is not None:
             self.SIM.crystal.miller_array = miller_data.as_amplitude_array()
             self.SIM.update_Fhkl_tuple()
+            hopper_utils._set_Fhkl_refinement_flags(self.params, self.SIM)
+            modeler.set_Fhkl_channels(self.SIM)
+
+        if self.params.refiner.res_ranges is not None:
+            res_ranges = utils.parse_reso_string(self.params.refiner.res_ranges)
+            d_min = min([d_min for d_min, _ in res_ranges])
+            d_max = max([d_max for _, d_max in res_ranges])
+            self.SIM.update_Fhkl_tuple(d_min=d_min, d_max=d_max)
+            hopper_utils._set_Fhkl_refinement_flags(self.params, self.SIM)
+            modeler.set_Fhkl_channels(self.SIM)
+
 
     @staticmethod
     def _check_experiment_integrity(expt):
@@ -196,7 +207,7 @@ class RefineLauncher:
         # TODO verify all shots have the same detector ?
         if self.params.refiner.reference_geom is not None:
             detector = ExperimentListFactory.from_json_file(self.params.refiner.reference_geom, check_format=False)[0].detector
-            print("Using reference geom from expt %s" % self.params.refiner.reference_geom)
+            LOGGER.debug("Using reference geom from expt %s" % self.params.refiner.reference_geom)
 
         if COMM.size > num_exp:
             raise ValueError("Requested %d MPI ranks to process %d shots. Reduce number of ranks to %d"
@@ -230,7 +241,40 @@ class RefineLauncher:
         if self.params.refiner.force_symbol is not None:
             self.symbol = self.params.refiner.force_symbol
         LOGGER.info("Will use space group symbol %s" % self.symbol)
-        Fhkl_model_p1 = Fhkl_model.expand_to_p1().generate_bijvoet_mates()
+        # grad the average cell
+        from cctbx import crystal, uctbx
+        from scitbx.matrix import sqr
+
+        O = Fhkl_model.unit_cell().orthogonalization_matrix() 
+        # real space vectors
+        real_a = O[0], O[3], O[6]
+        real_b = O[1], O[4], O[7]
+        real_c = O[2], O[5], O[8]
+        from dxtbx.model import Crystal
+        C_sg = Crystal(real_a,real_b,real_c,Fhkl_model.space_group())
+        A = np.reshape(sqr(C_sg.get_A()).inverse().elems, (3,3))
+
+        # compute new indices using the global median unit cell
+        a,b,c,al,be,ga = pandas_table[["a","b","c","al","be","ga"]].median()
+        uc = uctbx.unit_cell((a,b,c,al,be,ga))
+        O2 = Fhkl_model.unit_cell().orthogonalization_matrix() 
+        real_a2 = O2[0], O2[3], O2[6]
+        real_b2 = O2[1], O2[4], O2[7]
+        real_c2 = O2[2], O2[5], O2[8]
+        C_sg2 = Crystal(real_a2,real_b2,real_c2,Fhkl_model.space_group())
+        A2 = np.reshape(sqr(C_sg2.get_A()).inverse().elems, (3,3))
+
+        midx = np.array(Fhkl_model.indices()).astype(np.int32)
+        new_midx = np.dot( A2, np.dot(np.linalg.inv(A),midx.T)).T
+        new_midx = np.round(new_midx, 0).astype(np.int32) 
+        midx_changed = np.sum(new_midx==midx, axis=1) < 3
+        if np.any(midx_changed):
+            LOGGER.warning("WARNING: Changing the unit cell changed the indices significantly...")
+        sym = crystal.symmetry((a,b,c,al,be,ga), space_group=Fhkl_model.space_group())
+        flex_inds = flex.miller_index(new_midx)
+        mset = miller.set(sym,flex_inds , True)
+        ma = miller.array(mset, Fhkl_model.data())
+        Fhkl_model_p1 = ma.expand_to_p1().generate_bijvoet_mates()
         Fhkl_model_p1_indices = set(Fhkl_model_p1.indices())
 
         for i_work, i_df in enumerate(worklist):
@@ -253,32 +297,37 @@ class RefineLauncher:
             refl_name = exper_dataframe[refls_key].values[0]
             refls = flex.reflection_table.from_file(refl_name)
             refls = refls.select(refls['id'] == exper_id)
-
-            try:
-                miller_inds = list(refls["miller_index"])
-                is_not_000 = [h != (0, 0, 0) for h in miller_inds]
-                is_in_Fhkl_model = [h in Fhkl_model_p1_indices for h in miller_inds]
-                LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" % (
-                    np.sum(is_in_Fhkl_model), len(refls)))
-                refl_sel = flex.bool(np.logical_and(is_not_000, is_in_Fhkl_model))
-                refls = refls.select(refl_sel)
-            except KeyError:
-                pass
-
+            
             opt_uc_param = exper_dataframe[["a","b","c","al","be","ga"]].values[0]
             UcellMan = utils.manager_from_params(opt_uc_param)
 
-            if shot_idx == 0:  # each rank initializes a simulator only once
-                if self.params.simulator.init_scale != 1:
-                    print("WARNING: For stage_two , it is assumed that total scale is stored in the pandas dataframe")
-                    print("WARNING: resetting params.simulator.init_scale to 1!")
-                    self.params.simulator.init_scale = 1
-                self._init_simulator(expt, miller_data)
-                if self.params.profile:
-                    self.SIM.record_timings = True
-                if self.params.refiner.stage_two.Fref_mtzname is not None:
-                    self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
-                                               self.params.refiner.stage_two.Fref_mtzcol)
+            try:
+                miller_inds = np.array(refls["miller_index"])
+                # re-calc miller indices using the global unit cell, and see if they change.. If they change, then dont model that spot... 
+                opt_uc = uctbx.unit_cell(tuple(opt_uc_param))
+                opt_O = opt_uc.orthogonalization_matrix()
+                # real space vectors
+                opt_real_a = opt_O[0], opt_O[3], opt_O[6]
+                opt_real_b = opt_O[1], opt_O[4], opt_O[7]
+                opt_real_c = opt_O[2], opt_O[5], opt_O[8]
+                opt_C_sg = Crystal(opt_real_a,opt_real_b,opt_real_c,Fhkl_model.space_group())
+                opt_A = np.reshape(sqr(opt_C_sg.get_A()).inverse().elems, (3,3))
+                
+                new_miller_inds = np.dot( A2, np.dot(np.linalg.inv(opt_A),miller_inds.T)).T
+                new_miller_inds = np.round(new_miller_inds, 0).astype(np.int32) 
+
+                is_not_changed = np.sum(miller_inds==new_miller_inds, axis=1) == 3
+                is_not_000 = [tuple(h) != (0, 0, 0) for h in miller_inds]
+                is_in_Fhkl_model = [tuple(h) in Fhkl_model_p1_indices for h in miller_inds]
+                LOGGER.debug("Only refining %d/%d refls whose HKL are in structure factor model" % (
+                    np.sum(is_in_Fhkl_model), len(refls)))
+                if np.any(~is_not_changed):
+                    nchanged = np.sum(~is_not_changed)
+                    LOGGER.warning("!!!!!!!!!!!!!!!!!! %d HKLS changed upon shifting to the global unit cell. Removing those from refinement" % nchanged)
+                refl_sel = flex.bool(is_not_000) & flex.bool(is_in_Fhkl_model) & flex.bool(is_not_changed)
+                refls = refls.select(refl_sel)
+            except KeyError:
+                pass
 
             LOGGER.info("EVENT: LOADING ROI DATA")
             shot_modeler = hopper_utils.DataModeler(self.params)
@@ -295,6 +344,20 @@ class RefineLauncher:
                 continue # is it ok to continue ?
                 raise IOError("Failed to gather data from experiment %s", exper_name)
                 COMM.abort()
+
+            if shot_idx == 0:  # each rank initializes a simulator only once
+                if self.params.simulator.init_scale != 1:
+                    print("WARNING: For stage_two , it is assumed that total scale is stored in the pandas dataframe")
+                    print("WARNING: resetting params.simulator.init_scale to 1!")
+                    self.params.simulator.init_scale = 1
+                if miller_data is None:
+                    miller_data = ma
+                self._init_simulator(shot_modeler, expt, miller_data)
+                if self.params.profile:
+                    self.SIM.record_timings = True
+                if self.params.refiner.stage_two.Fref_mtzname is not None:
+                    self.Fref = utils.open_mtz(self.params.refiner.stage_two.Fref_mtzname,
+                                               self.params.refiner.stage_two.Fref_mtzcol)
 
             if self.params.refiner.gather_dir is not None:
                 gathered_name = os.path.splitext(os.path.basename(exper_name))[0]
@@ -348,6 +411,7 @@ class RefineLauncher:
                     shot_spectra = [(expt.beam.get_wavelength(), total_flux)]
 
             shot_modeler.spectra = shot_spectra
+            shot_modeler.nanoBragg_beam_spectrum = shot_spectra
             if self.params.refiner.gather_dir is not None and not self.params.refiner.load_data_from_refl:
                 spec_wave, spec_weights = map(np.array, zip(*shot_spectra))
                 spec_filename = os.path.splitext(os.path.basename(exper_name))[0]
@@ -377,6 +441,7 @@ class RefineLauncher:
             shot_modeler.PAR = PAR_from_params(self.params, expt, best=exper_dataframe)
             self.Modelers[i_df] = shot_modeler  # TODO: verify that i_df as a key is ok everywhere
 
+        assert self.Modelers
         LOGGER.info("DONE LOADING DATA; ENTER BARRIER")
         COMM.Barrier()
         LOGGER.info("DONE LOADING DATA; EXIT BARRIER")
@@ -415,6 +480,13 @@ class RefineLauncher:
         LOGGER.info(utils.memory_report('Mem after determine max num pix'))
 
         self.DEVICE_ID = COMM.rank % self.params.refiner.num_devices
+
+        if self.SIM.refining_Fhkl:
+            for i_shot in self.Modelers:
+                mod = self.Modelers[i_shot]
+                mod.set_Fhkl_channels(self.SIM, set_in_diffBragg=False)
+                self.Modelers[i_shot] = mod
+
         LOGGER.info(utils.memory_report('Mem after load_inputs'))
 
     def determine_refined_panel_groups(self, pids):

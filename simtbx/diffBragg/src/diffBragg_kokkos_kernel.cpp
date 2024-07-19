@@ -480,7 +480,7 @@ void kokkos_sum_over_steps(
                                     KOKKOS_MAT3 Ainv = UBO.inverse();
                                     KOKKOS_VEC3 delta_Q = Ainv*delta_H;
                                     CUDAREAL rad_star_sqr = delta_Q.dot(delta_Q)*xtal_size_sq;
-                                    exparg = rad_star_sqr*1.9*fudge ;
+                                    exparg = rad_star_sqr*1.75*fudge ;
                                 }
                                 else
                                     exparg = _hrad_sqr * C / 2;
@@ -1714,7 +1714,7 @@ void kokkos_sum_over_steps(
                                     KOKKOS_MAT3 Ainv = UBO.inverse();
                                     KOKKOS_VEC3 delta_Q = Ainv*delta_H;
                                     CUDAREAL rad_star_sqr = delta_Q.dot(delta_Q)*xtal_size_sq;
-                                    exparg = rad_star_sqr*1.9*fudge ;
+                                    exparg = rad_star_sqr*1.75*fudge ;
                                 }
                                 else
                                     exparg = _hrad_sqr * C / 2;

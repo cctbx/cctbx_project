@@ -307,7 +307,7 @@ void kokkosSpotsKernel(int spixels, int fpixels, int roi_xmin, int roi_xmax,
                                                                         CUDAREAL Nvol=Na*Nb*Nc;
                                                                         CUDAREAL xtal_size_sq = pow(Nvol*V_cell, double(2)/double(3));
                                                                         CUDAREAL rad_star_sqr = delta_Q.dot(delta_Q)*xtal_size_sq;
-                                                                        F_latt = Nvol*exp(-( rad_star_sqr *1.9 * fudge ));
+                                                                        F_latt = Nvol*exp(-( rad_star_sqr *1.75 * fudge ));
                                                                 }
 
                                                                 if (xtal_shape == TOPHAT) {

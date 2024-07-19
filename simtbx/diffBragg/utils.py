@@ -874,6 +874,7 @@ def simulator_from_expt_and_params(expt, params=None):
         init_spectrum = [(expt.beam.get_wavelength(), total_flux)]
     beam.spectrum = init_spectrum
     SIM.beam = beam
+    # TODO what about spectrum from imageset ?
 
     # create the diffbragg object, which is the D attribute of SIM
     SIM.panel_id = 0
@@ -886,9 +887,10 @@ def simulator_from_expt_and_params(expt, params=None):
     if test_panel.get_thickness() > 0:
         SIM.update_nanoBragg_instance(
             "detector_thicksteps", params.simulator.detector.thicksteps)
-    MAIN_LOGGER.debug("Detector thicksteps = %d" % SIM.D.detector_thicksteps )
-    MAIN_LOGGER.debug("Detector thick = %f mm" % SIM.D.detector_thick_mm )
-    MAIN_LOGGER.debug("Detector atten len = %f mm" % SIM.D.detector_attenuation_length_mm )
+    if SIM.D.detector_thicksteps is not None:
+        MAIN_LOGGER.debug("Detector thicksteps = %d" % SIM.D.detector_thicksteps )
+        MAIN_LOGGER.debug("Detector thick = %f mm" % SIM.D.detector_thick_mm )
+        MAIN_LOGGER.debug("Detector atten len = %f mm" % SIM.D.detector_attenuation_length_mm )
     if params.simulator.psf.use:
         SIM.use_psf = True
         SIM.psf_args = {'pixel_size': SIM.detector[0].get_pixel_size()[0]*1e3,

@@ -20,6 +20,7 @@ from simtbx.diffBragg import hopper_utils, ensemble_refine_launcher
 from simtbx.diffBragg.refiners.parameters import RangedParameter, Parameters
 from simtbx.diffBragg import psf
 from simtbx.diffBragg.prep_stage2_input import prep_dataframe
+from cctbx import miller
 
 # diffBragg internal indices for derivative manager
 ROTXYZ_ID = 0, 1, 2
@@ -107,6 +108,38 @@ class BeamParameters:
                                 beta=beta,
                                 is_global=True)
             self.parameters.append(p)
+
+
+class FhklParameter:
+    def __init__(self):
+        self.name = None
+        self.xpos = None
+        self.scale_idx = None
+        self.value = None
+        self.fix = True
+        self.is_global = True
+        self.amp = None
+        self.scale = None
+
+class FhklParameters:
+    def __init__(self, SIM, hiasu):
+        self.parameters = []
+        for h in hiasu.to_idx:
+            assert h in SIM.asu_map_int
+            for i_chan in range(SIM.num_Fhkl_channels):
+                asu_idx = SIM.asu_map_int[h]
+                is_centric = SIM.is_centric[asu_idx]
+                if is_centric and i_chan > 0: # only refine one energy channel Fhkl if its centric
+                    continue
+
+                p = FhklParameter()
+                p.scale_idx = SIM.asu_map_int[h] + i_chan*SIM.Num_ASU
+                p.fix = False
+                if is_centric:
+                    p.name = "Fhkl_%d,%d,%d_centric" % h
+                else:
+                    p.name = "Fhkl_%d,%d,%d_channel%d" % (h+ (i_chan,))
+                self.parameters.append(p)
 
 
 class DetectorParameters:
@@ -235,6 +268,18 @@ class CrystalParameters:
                 self.parameters.append(ref_p)
 
 
+def hkl_vary_flags(SIM):
+    num_fhkl_param = SIM.Num_ASU*SIM.num_Fhkl_channels
+    fhkl_vary = np.ones(num_fhkl_param, int)
+
+    if SIM.num_Fhkl_channels > 1:
+        assert SIM.is_centric is not None
+        for i_chan in range(1, SIM.num_Fhkl_channels):
+            channel_slc = slice(i_chan*SIM.Num_ASU, (i_chan+1) *SIM.Num_ASU, 1)
+            np.subtract.at(fhkl_vary, channel_slc, SIM.is_centric.astype(int))
+    return fhkl_vary.astype(bool)
+
+
 class Target:
     def __init__(self, ref_params, save_state_freq=500, overwrite_state=True, plot=False):
         """
@@ -338,6 +383,15 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
     lam0 = ref_params["lambda0"]
     lam1 = ref_params["lambda1"]
 
+    if SIM.refining_Fhkl and SIM.update_Fhkl_scales:
+        current_Fhkl_xvals = np.ones_like(SIM.Fhkl_scales_init)
+        for name in ref_params:
+            if name.startswith("Fhkl"):
+                p = ref_params[name]
+                current_Fhkl_xvals[p.scale_idx] = x[p.xpos]
+        SIM.Fhkl_scales = SIM.Fhkl_scales_init * np.exp(Modeler.params.sigmas.Fhkl *(current_Fhkl_xvals-1))
+        SIM.D.update_Fhkl_scale_factors(SIM.Fhkl_scales, SIM.num_Fhkl_channels)
+
     # update the rotational mosaicity here
     # update the mosaicity here
     eta_params = [eta_a, eta_b, eta_c]
@@ -354,35 +408,6 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
     # update the lambda coeff
     lambda_coef = lam0.get_val(x[lam0.xpos]), lam1.get_val(x[lam1.xpos])
     SIM.D.lambda_coefficients = lambda_coef
-
-    # update the Bmatrix
-    Modeler.ucell_man.variables = [p.get_val(x[p.xpos]) for p in ucell_pars]
-    Bmatrix = Modeler.ucell_man.B_recipspace
-    SIM.D.Bmatrix = Bmatrix
-    for i_ucell in range(len(ucell_pars)):
-        SIM.D.set_ucell_derivative_matrix(
-            i_ucell + hopper_utils.UCELL_ID_OFFSET,
-            Modeler.ucell_man.derivative_matrices[i_ucell])
-    eta_a = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 0)]
-    eta_b = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 1)]
-    eta_c = ref_params["rank%d_shot%d_eta%d" % (COMM.rank, i_shot, 2)]
-    G = ref_params["rank%d_shot%d_Scale" % (COMM.rank, i_shot)]
-    num_uc_p = len(Modeler.ucell_man.variables)
-    ucell_pars = [ref_params["rank%d_shot%d_Ucell%d" % (COMM.rank, i_shot, i_uc)] for i_uc in range(num_uc_p)]
-
-    # update the rotational mosaicity here
-    # update the mosaicity here
-    eta_params = [eta_a, eta_b, eta_c]
-    if SIM.umat_maker is not None:
-        # we are modeling mosaic spread
-        eta_abc = [p.get_val(x[p.xpos]) for p in eta_params]
-        #if not SIM.D.has_anisotropic_mosaic_spread:
-        #    eta_abc = eta_abc[0]
-        SIM.update_umats_for_refinement(eta_abc)
-
-    # update the photon energy spectrum for this shot
-    SIM.beam.spectrum = Modeler.spectra
-    SIM.D.xray_beams = SIM.beam.xray_beams
 
     # update the Bmatrix
     Modeler.ucell_man.variables = [p.get_val(x[p.xpos]) for p in ucell_pars]
@@ -565,6 +590,26 @@ def model(x, ref_params, i_shot, Modeler, SIM, return_bragg_model=False):
                 pixderivs = det_param.get_deriv(x[det_param.xpos], pixderivs)
                 J[par_name] += pixderivs.sum()
 
+    if SIM.refining_Fhkl:
+        Gscale = G.get_val(x[G.xpos])
+        fhkl_grad = SIM.D.add_Fhkl_gradients(Modeler.pan_fast_slow, resid, V, Modeler.all_trusted,
+                                             Modeler.all_freq, SIM.num_Fhkl_channels, Gscale)
+        # TODO: fix these restraints:
+        #if params.betas.Fhkl is not None:
+        #    for i_chan in range(SIM.num_Fhkl_channels):
+        #        restraint_contribution_to_grad = fhkl_grad_channels[i_chan]
+        #        fhkl_slice = slice(i_chan * SIM.Num_ASU, (i_chan + 1) * SIM.Num_ASU, 1)
+        #        np.add.at(fhkl_grad, fhkl_slice, restraint_contribution_to_grad)
+
+        fhkl_grad *= SIM.Fhkl_scales * Modeler.params.sigmas.Fhkl  # sigma is always 1 for now..
+        for name in ref_params:
+            if name.startswith("Fhkl"):
+                p = ref_params[name]
+                if name in J:
+                    J[name] += fhkl_grad[p.scale_idx]
+                else:
+                    J[name] = fhkl_grad[p.scale_idx]
+
     return neg_LL, J, model_pix, zscore_sigma
 
 
@@ -668,10 +713,14 @@ def target_and_grad(x, ref_params, data_modelers, SIM, params):
     update_detector(x, ref_params, SIM, save_name)
 
     all_shot_sigZ = []
+    if SIM.refining_Fhkl:
+        #TODO add this boolean to the __init__ of nanoBragg/sim_data.SimData
+        SIM.update_Fhkl_scales=True  # toggle this to on before iterating over modelers
     for i_shot in data_modelers:
         Modeler = data_modelers[i_shot]
 
         neg_LL, neg_LL_grad, model_pix, per_shot_sigZ = model(x, ref_params, i_shot, Modeler, SIM)
+        SIM.update_Fhkl_scales = False # toggle this to off after first modeler (only needs to be done once, as its global)
         all_shot_sigZ.append(per_shot_sigZ)
 
         # accumulate the target functional for this rank/shot
@@ -711,6 +760,7 @@ def target_and_grad(x, ref_params, data_modelers, SIM, params):
             if par.is_global and not par.fix and par.beta is not None:
                 target_functional += par.get_restraint_val(x[par.xpos])
                 grad[par.xpos] += par.get_restraint_deriv(x[par.xpos])
+    # TODO Fhkl restraints
 
     all_shot_sigZ = COMM.reduce(all_shot_sigZ)
     if COMM.rank == 0:
@@ -763,11 +813,15 @@ def geom_min(params):
     mpi_logger.setup_logging_from_params(params)
     df.reset_index(drop=True, inplace=True)
     df, work_distribution = prep_dataframe(df, res_ranges_string=params.refiner.res_ranges, refls_key=params.geometry.refls_key)
-    launcher.load_inputs(df, refls_key=params.geometry.refls_key, work_distribution=work_distribution)
+    launcher.load_inputs(df, refls_key=params.geometry.refls_key, exp_key=params.geometry.exp_key,
+                         exp_idx_key=params.geometry.exp_idx_key,
+                         work_distribution=work_distribution)
 
     for i_shot in launcher.Modelers:
         Modeler = launcher.Modelers[i_shot]
         set_group_id_slices(Modeler, launcher.panel_group_from_id)
+        if launcher.SIM.refining_Fhkl:
+            Modeler.set_Fhkl_channels(launcher.SIM, set_in_diffBragg=False)
 
     # same on every rank:
     det_params = DetectorParameters(params, launcher.panel_groups_refined, launcher.n_panel_groups)
@@ -781,6 +835,11 @@ def geom_min(params):
     LMP = Parameters()
     for p in crystal_params.parameters + det_params.parameters + beam_params.parameters:
         LMP.add(p)
+    if launcher.SIM.refining_Fhkl:
+        fhkl_params = FhklParameters(launcher.SIM, launcher.hiasu)
+        print("ADDING %d FHKL parameters!" % len(fhkl_params.parameters))
+        for p in fhkl_params.parameters:
+            LMP.add(p)
 
     # use spectrum coefficients
     launcher.SIM.D.use_lambda_coefficients = True
@@ -849,6 +908,33 @@ def geom_min(params):
     if COMM.rank == 0:
         save_opt_det(params, target.x0, target.ref_params, launcher.SIM)
 
+def save_opt_Fhkl(params, LMP, SIM, tag='current'):
+    assert hasattr(SIM, "Fhkl_scales")
+    assert len(SIM.Fhkl_scales) == SIM.Num_ASU*SIM.num_Fhkl_channels
+    orig_amps = {h:val for h,val in zip(SIM.crystal.miller_array.indices(), SIM.crystal.miller_array.data())}
+    for i_chan in range(SIM.num_Fhkl_channels):
+        scaled_amps = flex.double()
+        hkl_inds = flex.miller_index()
+        for name in LMP:
+            if name.startswith("Fhkl"):
+                if "channel" in name and "channel%d"%i_chan not in name:
+                    continue
+                p = LMP[name]
+                hkl = tuple(map(int, name.split("_")[1].split(",")))
+                assert hkl in orig_amps
+                scale = SIM.Fhkl_scales[p.scale_idx]
+                scaled_amp = scale*orig_amps[hkl]
+                scaled_amps.append(scaled_amp)
+                hkl_inds.append(hkl)
+        mtz_dir = os.path.join(params.outdir, "Fhkl")
+        if not os.path.exists(mtz_dir):
+            os.makedirs(mtz_dir)
+        mtz_name = os.path.join(mtz_dir, "chan%d_iter%s.mtz" % (i_chan, tag))
+        sym = SIM.crystal.miller_array.crystal_symmetry()
+        mset = miller.set(sym, hkl_inds, True)
+        ma = miller.array(mset, data=scaled_amps).set_observation_type_xray_amplitude()
+        ma.as_mtz_dataset(column_root_label="F").mtz_object().write(mtz_name)
+
 
 def write_output_files(Xopt, LMP, Modelers, SIM, params, iternum=None):
     """
@@ -868,6 +954,9 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params, iternum=None):
             params.geometry.optimized_detector_name = os.path.splitext(temp)[0] + "_%d.expt" % iternum
         save_opt_det(params, Xopt, LMP, SIM)
         params.geometry.optimized_detector_name = temp
+
+        if SIM.refining_Fhkl:
+            save_opt_Fhkl(params, LMP, SIM, tag=str(iternum) if iternum is not None else 'current')
 
     if params.outdir is not None and COMM.rank == 0:
         if not os.path.exists(params.outdir):
@@ -917,6 +1006,8 @@ def write_output_files(Xopt, LMP, Modelers, SIM, params, iternum=None):
         new_exp.beam.set_wavelength(ave_wave)
         new_exp.detector = opt_det
 
+        if SIM.refining_Fhkl:
+            SIM.update_Fhkl_scales = True
         Modeler.best_model = model(Xopt, LMP, i_shot, Modeler, SIM, return_bragg_model=True)
         Modeler.best_model_includes_background = False
 

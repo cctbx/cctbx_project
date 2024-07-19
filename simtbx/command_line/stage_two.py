@@ -136,4 +136,4 @@ if __name__ == '__main__':
                     ["launch_refiner", "_compute_functional_and_gradients", "_run_diffBragg_current",
                      "_update_Fcell", "_scale_pixel_data", "_Fcell_derivatives", "_mpi_aggregation",
                      "GatherFromExperiment", "_setup", "load_inputs"])
-    COMM.barrier()
+        COMM.barrier()

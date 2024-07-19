@@ -402,6 +402,7 @@ void diffBragg_sum_over_steps(
         double dI_latt_diffuse[6] = {0,0,0,0,0,0};
 
         // compute unit cell volume
+        // TODO: this should be computed using the P1 unit cell
         Eigen::Vector3d ap_vec(1e10*db_cryst.eig_B(0,0), 1e10*db_cryst.eig_B(1,0), 1e10*db_cryst.eig_B(2,0));
         Eigen::Vector3d bp_vec(1e10*db_cryst.eig_B(0,1), 1e10*db_cryst.eig_B(1,1), 1e10*db_cryst.eig_B(2,1));
         Eigen::Vector3d cp_vec(1e10*db_cryst.eig_B(0,2), 1e10*db_cryst.eig_B(1,2), 1e10*db_cryst.eig_B(2,2));
@@ -565,7 +566,7 @@ void diffBragg_sum_over_steps(
                 if (db_cryst.xtal_shape==GAUSS_STAR){
                     Eigen::Vector3d delta_Q = UBO.inverse()*delta_H;
                     double rad_star_sqr = delta_Q.dot(delta_Q)*xtal_size*xtal_size;
-                    exparg = rad_star_sqr *1.9* db_cryst.fudge ;
+                    exparg = rad_star_sqr *1.75* db_cryst.fudge ;
                 }
                 else
                     exparg = hrad_sqr / 0.63 * db_cryst.fudge;
@@ -784,6 +785,16 @@ void diffBragg_sum_over_steps(
                 fp_fdp_manager_dI[0] += 2*I_noFcell * (c_deriv_Fcell);
                 fp_fdp_manager_dI[1] += 2*I_noFcell * (d_deriv_Fcell);
             }
+
+            //if (db_flags.refine_gauss_spec){
+            //    for (int i_peak=0; i_peak < db_beam.n_gauss_peaks; i_peak++){
+            //        double damp = gauss_spec_amp_derivs[i_peak];
+            //        double dwid = gauss_spec_wid_derivs[i_peak];
+            //        double Iincrement_div_sourceI = Iincrement / source_I[source];
+            //        gauss_spec_dI[i_peak] += Iincrement_div_sourceI* damp;
+            //        gauss_spec_dI[db_beam.n_gauss_peaks + i_peak] += Iincrement_div_sourceI * dwid;
+            //    }
+            //}
 
             //if(verbose > 3)
             //    printf("hkl= %f %f %f  hkl1= %d %d %d  Fcell=%f\n", h,k,l,h0,k0,l0, F_cell);
@@ -1237,6 +1248,14 @@ void diffBragg_sum_over_steps(
             d_image.fp_fdp[Npix_to_model + i_pix] = value;
         }
 
+        //if (db_flags.refine_gauss_spec){
+        //    for (int i_peak=0; i_peak < db_beam.n_gauss_peaks; i_peak++){
+        //        double amp_value = scale_term*gauss_spec_dI[i_peak];
+        //        d_image.gauss_spec[Npix_to_model*i_peak + i_pix] = amp_value;
+        //        double wid_value = scale_term*gauss_spec_dI[db_beam.n_gauss_peaks + i_peak];
+        //        d_image.gauss_spec[Npix_to_model*db_beam.n_gauss_peaks + Npix_to_model*i_peak + i_pix] = wid_value;
+        //    }
+        //}
         /* update eta derivative image */
         if(db_flags.refine_eta){
             //double value = scale_term*eta_manager_dI[0];
