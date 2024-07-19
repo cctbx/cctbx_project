@@ -80,7 +80,7 @@ def main(dm=None,params=None,log=None):
   inaccessible_programs = check_program_access(programs_to_check)
 
   if inaccessible_programs:
-    self.log(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
+    print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
     sys.exit()
   else:
     #self.log("All programs are accessible.")
