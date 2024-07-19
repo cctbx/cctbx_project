@@ -35,7 +35,13 @@ class Color:
   @classmethod
   def from_rgb_float(cls,rgb,transparency=1.0):
     return cls(rgb,transparency=transparency)
- 
+  
+  @classmethod
+  def from_rgb(cls,rgb,transparency=1.0):
+    if isinstance(rgb[0],int):
+      return cls.from_rgb_int(rgb,int(transparency*255))
+    else:
+      return cls.from_rgb_float(rgb,transparency=transparency)
 
   def __repr__(self):
     return f"Color(rgb={self.rgb})"

@@ -58,7 +58,10 @@ class RestraintBrowserController(CifBrowserController):
 
   @property
   def cif_refs(self):
-    return self.state.active_model_ref.restraints_ref.restraints
+    if self.state.active_model_ref:
+      return self.state.active_model_ref.restraints_ref.restraints
+    else:
+      return []
 
   @property
   def filenames(self):

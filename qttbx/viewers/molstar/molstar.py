@@ -6,8 +6,11 @@ import json
 from typing import Optional
 
 import requests
+import urllib.parse
+
 
 from PySide2.QtCore import QUrl
+from PySide2.QtWebEngineWidgets import QWebEnginePage, QWebEngineSettings
 try:
   from qttbx.viewers import ModelViewer
 except:
@@ -170,6 +173,9 @@ class MolstarViewer(ModelViewer):
     self.command = self.view_server.command
     self.port = self.view_server.port
     self.url = self.view_server.url
+
+
+
     # Set url on web view
     self.web_view.setUrl(QUrl(self.url))
 
@@ -374,14 +380,23 @@ class MolstarViewer(ModelViewer):
   # ---------------------------------------------------------------------------
   # Selection
 
-  def select_from_selection(self,selection: Selection):
-    self.deselect_all()
+  def _set_query_string(self,selection: Selection):
+    # Returns js string to set 'query' from a Selection object
     molstar_syntax = selection.molstar_syntax
-    command = f"""
+    js_str = f"""
     const MS = {self.plugin_prefix}.MS
     const sel = MS.struct.generator.atomGroups({{
               'atom-test': {molstar_syntax}}})
-    {self.plugin_prefix}.phenix.selectFromSel(sel);
+    const query = {self.plugin_prefix}.StructureSelectionQuery('Phenix Query',sel)
+    """
+    return js_str
+    
+
+  def select_from_selection(self,selection: Selection):
+    self.deselect_all()
+    command = f"""
+    {self._set_query_string(selection)}
+    {self.plugin_prefix}.phenix.selectFromQuery(query);
     """
     self.send_command(command)
 
@@ -572,53 +587,57 @@ class MolstarViewer(ModelViewer):
 
   # Transparency for model/selection
 
-  def transparency_model(self,model_id: str, representation_name: Optional[str] = None):
-    raise NotImplementedError
+  # def transparency_model(self,model_id: str, representation_name: Optional[str] = None):
+  #   raise NotImplementedError
 
   
-  def transparency_selected(self,component_name: Optional[str] = None, representation_name: Optional[str] = None, value: Optional[float] = None):
-    if component_name is None:
-      component_name = 'undefined'
-    else:
-      component_name = f"'{component_name}'"
-    if representation_name is None:
+  # def transparency_selected(self,component_name: Optional[str] = None, representation_name: Optional[str] = None, value: Optional[float] = None):
+  #   if component_name is None:
+  #     component_name = 'undefined'
+  #   else:
+  #     component_name = f"'{component_name}'"
+  #   if representation_name is None:
+  #     representation_name = 'undefined'
+  #   else:
+  #     representation_name = f"'{representation_name}'"
+  #   if value is None:
+  #     value = 0.0
+  #   command = f"""
+  #   await {self.plugin_prefix}.phenix.setTransparencySelected({component_name},{representation_name},'{value}')
+  #   """
+  #   self.send_command(command)
+
+  def transparency_selection(self,selection: Selection, representation_name: str,component_key: str, value: float):
+    if representation_name == "all":
       representation_name = 'undefined'
     else:
-      representation_name = f"'{representation_name}'"
-    if value is None:
-      value = 0.0
+      representation_name = f"'{urllib.parse.unquote(representation_name)}'"
+    if component_key == "all":
+      component_key = 'undefined'
+    else:
+      component_key = f"'{urllib.parse.unquote(component_key)}'"
+
     command = f"""
-    await {self.plugin_prefix}.phenix.setTransparencySelected({component_name},{representation_name},'{value}')
+    {self._set_query_string(selection)}
+    await {self.plugin_prefix}.phenix.setTransparencyQuery(query,{representation_name},{component_key},{value})
     """
     self.send_command(command)
 
-  def transparency_query(self,selection: str, model_id: str, representation_name: str,component_key: str, value: float):
-    """
-    Set transparency. The primary method to show/hide molecules.
-    Params:
-      model_id: the Python side identifier for what to operate on. (refId)
-      selection: What to operate on. Is The json format of a Selection type.
-      representation_name: Specify what representation to operate on (ball-and-stick, cartoon, etc)
-      component_key: Spcify what component to operate on (structure-component-static-polymer)
-      opacity: A float 0-1 (visible-invisible)
-    """
+  def color_selection(self, selection: Selection, color: Color):
     command = f"""
-    const selection = {self.plugin_prefix}.phenix.selectionFromJSON('{query_json}');
-    await {self.plugin_prefix}.phenix.setTranfsparencyFromQuery(selection, {model_id}, '{representation_name}', '{component_key}', '{value}')
+    {self._set_query_string(selection)}
+    await {self.plugin_prefix}.phenix.colorSelection(query,{color.R},{color.G},{color.B})
     """
     self.send_command(command)
 
+  # # Color for model/selection
+  # def color_selected(self, color: str):
+  #   color = Color(color)
 
-  # Color for model/selection
-
-
-  def color_selected(self, color: str):
-    color = Color(color)
-
-    command = f"""
-    await {self.plugin_prefix}.phenix.setColorSelected({color.R},{color.G},{color.B})
-    """
-    self.send_command(command)
+  #   command = f"""
+  #   await {self.plugin_prefix}.phenix.setColorSelected({color.R},{color.G},{color.B})
+  #   """
+  #   self.send_command(command)
     
 
   # def color_query(self,model_id: str, query_json: str, color: str):

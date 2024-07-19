@@ -75,7 +75,6 @@ class ViewerControlsController(Controller):
     self.search_select_dialog_controller = None
 
     self.picking_level = self.picking_level_displayed
-
   
 
 
@@ -129,10 +128,10 @@ class ViewerControlsController(Controller):
 
       # Update widget, emit signal
       if picking_level == "residue":
-        self.view.picking_level.setCurrentIndex(0)
+        self.view.picking_level.setCurrentIndex(1)
         self.state.signals.picking_level.emit("residue")
       elif picking_level == "atom":
-        self.view.picking_level.setCurrentIndex(1)
+        self.view.picking_level.setCurrentIndex(0)
         self.state.signals.picking_level.emit("atom")
     
     assert self.picking_level_displayed == picking_level, f"picking level displayed: {self.picking_level_displayed}, picking level set: {picking_level}"

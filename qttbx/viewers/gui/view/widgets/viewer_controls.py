@@ -141,12 +141,12 @@ class ViewerControlsView(QWidget):
     # Picking level
     #################
     self.picking_level = QComboBox()
-    icon_path = Path(__file__).parent / '../assets/icons/other/WaterFull.svg'
-    icon = QIcon(str(icon_path))
-    self.picking_level.addItem("Residue")
-    icon_path = Path(__file__).parent / '../assets/icons/other/WaterSingle.svg'
-    icon = QIcon(str(icon_path))
+    #icon_path = Path(__file__).parent / '../assets/icons/other/WaterFull.svg'
+    #icon = QIcon(str(icon_path))
     self.picking_level.addItem("Atom")
+    #icon_path = Path(__file__).parent / '../assets/icons/other/WaterSingle.svg'
+    #icon = QIcon(str(icon_path))
+    self.picking_level.addItem("Residue")
     self.picking_level.setToolTip("Pick atoms or residues")
 
    

@@ -66,6 +66,10 @@ class StateSignals(QObject):
   #ciffile_change = Signal(object)
 
 
+  # Style signals
+  color_selection = Signal(object,object) # Selection ref, color
+  representation_selection = Signal(object,str,bool) # Selection ref, rep string, on/off
+
   #  End new
   references_change = Signal() # generic, TODO: refactor out
   results_change = Signal(object)

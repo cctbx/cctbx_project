@@ -75,6 +75,10 @@ class MolstarController(Controller):
     self.state.signals.clear.connect(self.clear_viewer)
     self.state.signals.picking_level.connect(self.picking_level)
 
+    # Styles
+    self.state.signals.color_selection.connect(self.color_selection)
+    self.state.signals.representation_selection.connect(self.representation_selection)
+
     #timer for update
     self.timer = QTimer()
     self.timer.setInterval(2000)
@@ -291,6 +295,16 @@ class MolstarController(Controller):
     # This one is unusual in that remote uses local id
     self.viewer.set_iso(ref.id,value)
 
+
+
+  def representation_selection(self,selection_ref,representation_name,show):
+    if self.state.active_selection_ref != selection_ref:
+      self.state.active_selection_ref = selection_ref
+    if show:
+      transparency = 0.0
+    else:
+      transparency = 1.0
+    self.viewer.transparency_selection(selection_ref.selection,"all",representation_name,transparency)
   
   def selection_hide(self,selection_ref,representation_name=None):
 
@@ -299,7 +313,8 @@ class MolstarController(Controller):
       self.state.active_selection_ref = selection_ref
 
     # Tell molstar to just hide what it has selected
-    self.viewer.selection_hide() # No arguments is all representations
+    #self.viewer.selection_hide() # No arguments is all representations
+    self.viewer.transparency_selection(selection_ref.selection,"all","all",1.0)
 
   
   def selection_show(self,selection_ref,representation_name=None):
@@ -309,7 +324,8 @@ class MolstarController(Controller):
       self.state.active_selection_ref = selection_ref
 
     # Tell molstar to just hide what it has selected
-    self.viewer.selection_show(representation_name=representation_name) # No arguments is all representations
+    self.viewer.transparency_selection(selection_ref.selection,"all","all",0.0)
+    #self.viewer.selection_show(representation_name=representation_name) # No arguments is all representations
 
 
 
@@ -335,6 +351,8 @@ class MolstarController(Controller):
   #   for rep_name in representations:
   #     self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
 
-  def color_ref(self,ref,color):
-    model_id = ref.model_ref.id_molstar
-    self.viewer.color_query(model_id,ref.query.to_json(),color)
+  def color_selection(self,selection_ref,color):
+    # Make sure it is selected (it probably already is)
+    if self.state.active_selection_ref != selection_ref:
+      self.state.active_selection_ref = selection_ref
+    self.viewer.color_selection(selection_ref.selection,color)

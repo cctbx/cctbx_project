@@ -17,6 +17,7 @@ from .scroll_entry import ScrollEntryController
 from .scroll_list import ScrollableListController
 from ..state.ref import SelectionRef, ModelRef, GeometryRef
 from ..state.geometry import Geometry
+from ..state.color import Color
 
 
 class ModelLikeEntryController(ScrollEntryController):
@@ -31,6 +32,7 @@ class ModelLikeEntryController(ScrollEntryController):
     for key,action in self.view.button_rep.actions.items():
       action.triggered.connect(partial(self.representation_selected, action))
 
+    self.representation_toggles = {'ball-and-stick':False,"cartoon":False}
 
     # Color
     self.view.button_color.clicked.connect(self.show_color_dialog)
@@ -87,8 +89,10 @@ class ModelLikeEntryController(ScrollEntryController):
       if key.startswith("Ball"):
         key = 'ball-and-stick'
       else:
-        key = 'ribbon'
-      self.state.signals.selection_rep_show.emit(self.ref,key)
+        key = 'cartoon'
+      self.representation_toggles[key] = not self.representation_toggles[key]
+      show = self.representation_toggles[key]
+      self.state.signals.representation_selection.emit(self.ref,key,show)
       #self.parent.parent.parent.molstar.viewer.representation_query(self.ref.id_molstar,self.ref.query.to_json(),key)
 
   def open_file_explorer(self,path):
@@ -157,10 +161,8 @@ class ModelLikeEntryController(ScrollEntryController):
     color = color_dialog.getColor()
 
     if color.isValid():
-      #print("User selected color:", color.name())
-
-      style = replace(self.ref.style,color_theme='uniform',color=color.name())
-      self.ref.style = style
+      color = Color.from_rgb((color.red(),color.green(),color.blue()),1.0)
+      self.state.signals.color_selection.emit(self.ref,color)
 
 
 
