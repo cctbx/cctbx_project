@@ -2681,7 +2681,7 @@ nanoBragg::add_nanoBragg_spots()
                                         mat3 Ainverse =  (1e10*At).inverse();
                                         vec3 delta_Q = Ainverse*delta_H;
                                         double rad_star_sqr = (delta_Q*delta_Q)*xtal_size_sq; // dot product
-                                        F_latt = Na*Nb*Nc*exp(-( rad_star_sqr*1.9*fudge ));
+                                        F_latt = Na*Nb*Nc*exp(-( rad_star_sqr*1.75*fudge ));
                                     }
 
                                     if(xtal_shape == TOPHAT)

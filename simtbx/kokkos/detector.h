@@ -52,8 +52,10 @@ struct kokkos_detector{
   }
   void each_image_allocate();
   void scale_in_place(const double&);
+  void scale_in_place_perpixel(af::flex_double);
   void write_raw_pixels(simtbx::nanoBragg::nanoBragg&);
   af::flex_double get_raw_pixels();
+  //void set_raw_pixels(af::flex_double input);
   void set_active_pixels_on_GPU(af::shared<std::size_t>);
   af::shared<double> get_whitelist_raw_pixels(af::shared<std::size_t>);
   inline void each_image_free(){} //no op in Kokkos

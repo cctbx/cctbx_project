@@ -352,18 +352,27 @@ class SimData:
     self._include_noise = val
 
   def get_detector_corner_res(self):
+    s0 = self.beam.unit_s0
+    wave, _ = zip(*self.beam.spectrum)
+    wave = min(wave)
+    s0 = s0[0] / wave, s0[1] / wave, s0[2] / wave
     dmin = np.inf
     for p in self.detector:
-      panel_corner_res = p.get_max_resolution_at_corners(self.beam.nanoBragg_constructor_beam.get_s0())
+      panel_corner_res = p.get_max_resolution_at_corners(s0)
       dmin = np.min([dmin, panel_corner_res])
     return dmin
 
-  def update_Fhkl_tuple(self):
+  def update_Fhkl_tuple(self, d_min=None, d_max=None):
     if self.crystal.miller_array is not None:
       if np.all(self.crystal.miller_array.data().as_numpy_array()==0):
         raise ValueError("Seems all miller indices are 0")
-      d_max, _ = self.crystal.miller_array.resolution_range()
-      d_min = self.get_detector_corner_res()
+      if d_max is None:
+        d_max, _ = self.crystal.miller_array.resolution_range()
+        if d_max == -1:
+          d_max = 999
+      if d_min is None:
+        # note, not the best solution here... maybe best to assert that a d_min and a d_max are supplied..
+        d_min = self.get_detector_corner_res()
       ma_on_detector = self.crystal.miller_array.resolution_filter(d_min=d_min, d_max=d_max)
       if self.using_diffBragg_spots and self.crystal.miller_is_complex:
         Freal, Fimag = zip(*[(val.real, val.imag) for val in ma_on_detector.data()])

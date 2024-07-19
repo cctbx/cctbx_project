@@ -937,6 +937,24 @@ namespace boost_python { namespace {
                     make_function(&get_beams,rbv()),
                     make_function(&set_beams,dcp()),
                     "list of dxtbx::Beam objects corresponding to each zero-divergence and monochromatic x-ray point source in the numerical simulation ")
+      .add_property("h_min",
+            make_getter(&simtbx::nanoBragg::diffBragg::h_min,rbv()),
+            "h min")
+      .add_property("k_min",
+            make_getter(&simtbx::nanoBragg::diffBragg::k_min,rbv()),
+            "k min")
+      .add_property("l_min",
+            make_getter(&simtbx::nanoBragg::diffBragg::l_min,rbv()),
+            "l min")
+      .add_property("h_range",
+            make_getter(&simtbx::nanoBragg::diffBragg::h_range,rbv()),
+            "h rng")
+      .add_property("k_range",
+            make_getter(&simtbx::nanoBragg::diffBragg::k_range,rbv()),
+            "k rng")
+      .add_property("l_range",
+            make_getter(&simtbx::nanoBragg::diffBragg::l_range,rbv()),
+            "l rng")
 
     ; // end of diffBragg extention
 

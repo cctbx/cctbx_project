@@ -772,7 +772,7 @@ CUDAREAL pixel_size, CUDAREAL subpixel_size, int steps, CUDAREAL detector_thicks
                                    CUDAREAL xtal_size_sq = pow(Nvol*V_cell, CUDAREAL(2)/CUDAREAL(3));
                                    CUDAREAL rad_star_sqr = ( dx_star*dx_star + dy_star*dy_star + dz_star*dz_star )
                                                   *xtal_size_sq;
-                                   F_latt = Nvol*exp(-( rad_star_sqr *1.9 * fudge ));
+                                   F_latt = Nvol*exp(-( rad_star_sqr *1.75 * fudge ));
                                 }
 								if (s_xtal_shape == TOPHAT) {
 									/* make a flat-top spot of same height and volume as square_xtal spots */

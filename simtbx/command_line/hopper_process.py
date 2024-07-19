@@ -26,6 +26,8 @@ logger = logging.getLogger("dials.command_line.stills_process")
 
 #include scope dials.command_line.stills_process.phil_scope
 phil_str = """
+device_Id_override = None
+  .type = int
 include scope xfel.small_cell.command_line.small_cell_process.phil_scope
 diffBragg {
   include scope simtbx.command_line.hopper.phil_scope
@@ -97,6 +99,8 @@ class Hopper_Processor(Processor):
         else:
             self.params.diffBragg.outdir = self.params.output.output_dir
             mpi_logger.setup_logging_from_params(self.params.diffBragg)
+        if self.params.output.logging_option=='disabled' and COMM.rank==0:
+            logging.disable(logging.NOTSET)
 
         self._create_modeler_dir()
 
@@ -120,8 +124,9 @@ class Hopper_Processor(Processor):
 
     @property
     def device_id(self):
-        dev = COMM.rank % self.params.diffBragg.refiner.num_devices
-        #print("Rank %d will use fixed device %d on host %s" % (COMM.rank, dev, socket.gethostname()), flush=True)
+        dev = self.params.device_Id_override
+        if dev is None:
+            dev = COMM.rank % self.params.diffBragg.refiner.num_devices
         return dev
 
     def find_spots(self, experiments):
@@ -178,7 +183,8 @@ class Hopper_Processor(Processor):
             exp, ref, self.stage1_modeler, self.SIM, x = hopper_utils.refine(exps[0], ref,
                                                self.params.diffBragg,
                                                spec=self.params.refspec,
-                                               gpu_device=self.device_id, return_modeler=True, best=best)
+                                               gpu_device=self.device_id, return_modeler=True, best=best,
+                                               free_mem=False)
             orig_exp_name = os.path.abspath(self.params.output.refined_experiments_filename)
             refls_name = os.path.abspath(self.params.output.indexed_filename)
             self.params.diffBragg.outdir = self.params.output.output_dir
@@ -199,6 +205,14 @@ class Hopper_Processor(Processor):
 
             basename = os.path.splitext(os.path.basename(refls_name))[0]
             self._save_modeler_info(basename)
+
+            if not self.params.diffBragg.fix.Fhkl:
+                self.stage1_modeler.exper_name = orig_exp_name 
+                self.stage1_modeler.refl_name = refls_name 
+                self.stage1_modeler.save_up(x, self.SIM, rank=COMM.rank, i_shot=0,
+                    save_fhkl_data=True, save_modeler_file=False,
+                    save_refl=False, save_sim_info=False, save_traces=False, save_pandas=False, save_expt=False)
+            self.stage1_modeler.clean_up(self.SIM)
 
         out = super(Hopper_Processor, self).refine(exps_out, ref)
         return out
@@ -438,9 +452,10 @@ class Hopper_Processor(Processor):
                 )
 
         logger.info(log_str)
-
+        integrated['bbox'] = integrated['shoebox'].bounding_boxes()
         logger.info("")
         logger.info("Time Taken = %f seconds", time.time() - st)
+
         return integrated
 
 

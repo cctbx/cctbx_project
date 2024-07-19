@@ -177,7 +177,7 @@ class StageTwoRefiner(BaseRefiner):
 
     def _set_current_gain_per_pixel(self):
         M = self.Modelers[self._i_shot]
-        #M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
+        M._gain_region_per_pixel = self.REGIONS[M.all_pid, M.all_slow, M.all_fast]
         M.all_gain = self._gain_per_region[M._gain_region_per_pixel]
 
     def _evaluate_averageI(self):
@@ -520,6 +520,13 @@ class StageTwoRefiner(BaseRefiner):
             update_amps += [new_Fcell_amplitude] * self.num_equivs_for_i_fcell[i_fcell]
 
         update_amps = flex.double(update_amps)
+        #hkl_min = self.S.D.h_min, self.S.D.k_min, self.S.D.l_min
+        #hkl_range = self.S.D.h_range, self.S.D.k_range, self.S.D.l_range
+        #hkl_min = COMM.gather(hkl_min)
+        #hkl_range = COMM.gather(hkl_range)
+        #if COMM.rank==0:
+        #    assert len(set(hkl_min))==1
+        #    assert len(set(hkl_range)) == 1
         self.S.D.quick_Fhkl_update((self.update_indices, update_amps))
 
     def _update_spectra_coefficients(self):

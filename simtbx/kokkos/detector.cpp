@@ -147,6 +147,22 @@ namespace simtbx { namespace Kokkos {
   }
 
   void
+  kokkos_detector::scale_in_place_perpixel(af::flex_double factors){
+    vector_double_t m_scale_factors = vector_double_t("m_scale_factors", 0);
+    // TODO: avoid this copy by making a flex2kokkos kokkostbx method?
+    af::shared<double> temp = af::shared<double>(m_total_pixel_count,0);
+    for (int i=0; i < m_total_pixel_count; i++)
+        temp[i] = factors[i];
+    kokkostbx::transfer_shared2kokkos(m_scale_factors, temp);
+
+    auto local_scale_factors = m_scale_factors;
+    auto local_accumulate_floatimage = m_accumulate_floatimage;
+    parallel_for("scale_in_place_perpixel", range_policy(0,m_total_pixel_count), KOKKOS_LAMBDA (const int i) {
+      local_accumulate_floatimage( i ) = local_accumulate_floatimage( i ) * local_scale_factors(i);
+    });
+  }
+
+  void
   kokkos_detector::write_raw_pixels(simtbx::nanoBragg::nanoBragg& nB) {
     //only implement the monolithic detector case, one panel
     SCITBX_ASSERT(nB.spixels == m_slow_dim_size);
@@ -180,7 +196,15 @@ namespace simtbx { namespace Kokkos {
     //   output_array_ptr[ i ] = host_floatimage( i );
     // }
     return output_array;
+
   }
+
+  //void
+  //kokkos_detector::set_raw_pixels(af::flex_double input){
+  //  //set the data array for the multipanel detector case
+  //  kokkostbx::transfer_double2kokkos(m_accumulate_floatimage, input );
+
+  //}
 
   void
   kokkos_detector::set_active_pixels_on_GPU(af::shared<std::size_t> active_pixel_list_value) {

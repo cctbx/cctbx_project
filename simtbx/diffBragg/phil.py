@@ -1192,6 +1192,12 @@ geometry {
     .type = str
     .help = optional tagname, if provided,write optimized refls/expts alongside the
     .help = input refls/expts however using this tag suffix
+  exp_key = exp_name
+    .type = str
+    .help = name of experiment name col in input pandas pkl
+  exp_idx_key = exp_idx
+    .type = str
+    .help = name of experiment index col in input pandas pkl
   refls_key = stage1_refls
     .type = str
     .help = column name for the input pickle which contains the reflection tables to be modeled

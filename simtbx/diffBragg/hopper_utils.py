@@ -980,6 +980,7 @@ class DataModeler:
                 raise RuntimeError("To use restraints, must specify both center and beta for param %s" % name)
 
     def get_data_model_pairs(self, reorder=False):
+        """returns data,model,trusted,bragg"""
         if self.best_model is None:
             raise ValueError("cannot get the best model, there is no best_model attribute")
         all_dat_img, all_mod_img = [], []
@@ -1561,6 +1562,21 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         lambda_coef = p0.get_val(x[p0.xpos]), p1.get_val(x[p1.xpos])
         SIM.D.lambda_coefficients = lambda_coef
 
+    #if Mod.refine_gauss_spec:
+    #    amp_params = [Mod.P["gauss_spec_amp%d"%i] for i in range(SIM.n_spec_peaks)]
+    #    wid_params = [Mod.P["gauss_spec_wid%d"%i] for i in range(SIM.n_spec_peaks)]
+    #    amp_vals = [p.get_val(x[p.xpos]) for p in amp_params]
+    #    wid_vals = [p.get_val(x[p.xpos]) for p in wid_params]
+    #    gauss_spec = []
+    #    Mod.nanoBragg_beam_spectrum = guass_spec
+    #    SIM.beam.spectrum = Mod.nanoBragg_beam_spectrum
+    #    SIM.D.xray_beams = SIM.beam.xray_beams
+    #    # update Fhkl channels
+    #    SIM.D.update_gauss_spec_amps(amp_vals)
+    #    SIM.D.update_gauss_spec_wids(wid_vals)
+    #    if Mod.Fhkl_channel_ids is not None:
+    #        SIM.D.update_Fhkl_channels(Mod.Fhkl_channel_ids)
+
     # Mosaic block
     Nabc_params = [Mod.P["Nabc%d" % (i_n,)] for i_n in range(3)]
     Na, Nb, Nc = [n_param.get_val(x[n_param.xpos]) for n_param in Nabc_params]
@@ -1653,6 +1669,10 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
 
         if model_pix is None:
             model_pix = scale*pix
+            #Mod.best_model = model_pix
+            #dat,model,trust,brg = Mod.get_data_model_pairs()
+            #from IPython import embed;
+            #embed()
             model_pix_noRoi = scale*pix_noRoiScale
         else:
             model_pix += scale*pix
@@ -1731,6 +1751,19 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                     d = d.as_numpy_array()[:npix]
                     d = p.get_deriv(x[p.xpos], d)
                     J[p.xpos] += d
+            #if Mod.refine_gauss_spec:
+            #    amp_p_deriv = SIM.D.get_gauss_spec_amp_deriv_pixels(SIM.n_spec_peaks).as_numpy_array()
+            #    wid_p_deriv = SIM.D.get_gauss_spec_wid_deriv_pixels(SIM.n_spec_peaks).as_numpy_array()
+            #    for i_peak in range(SIM.n_spec_peaks):
+            #        amp_p = Mod.P["gauss_spec_amp%d" % i_peak]
+            #        wid_p = Mod.P["gauss_spec_wid%d" % i_peak]
+            #        deriv_s = slice(i_peak*npix, (i_peak+1)*npix, 1)
+            #        amp_d = amp_p_deriv[deriv_s]
+            #        wid_d = wid_p_deriv[deriv_s]
+            #        J[amp_p.xpos] += amp_d
+            #        J[wid_p.xpos] += wid_d
+
+
 
     if not Mod.params.fix.perRoiScale and compute_grad:
         if compute_grad:

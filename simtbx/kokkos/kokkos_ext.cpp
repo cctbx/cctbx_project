@@ -89,6 +89,8 @@ namespace simtbx { namespace Kokkos {
              "Allocate large pixel arrays")
         .def("scale_in_place", &simtbx::Kokkos::kokkos_detector::scale_in_place,
              "Multiply by a scale factor on the GPU")
+        .def("scale_in_place_perpixel", &simtbx::Kokkos::kokkos_detector::scale_in_place_perpixel,
+             "Multiply each pixel by a unique scale factor on the GPU")
         .def("write_raw_pixels",&simtbx::Kokkos::kokkos_detector::write_raw_pixels,
              "Update raw_pixels on host with array from GPU")
         .def("get_raw_pixels",&simtbx::Kokkos::kokkos_detector::get_raw_pixels,
