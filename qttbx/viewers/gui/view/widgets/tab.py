@@ -67,8 +67,10 @@ class DraggableTabBar(QTabBar):
     super().__init__(parent)
     self.drag_start_index = 0
 
+  def log(self,*args):
+    pass
+
   def mousePressEvent(self, event):
-    self.log("mousePressEvent on QTabBar")
     drag_start_index = self.tabAt(event.pos())
     if not drag_start_index or drag_start_index<0:
       drag_start_index = 0
@@ -77,7 +79,6 @@ class DraggableTabBar(QTabBar):
     super().mousePressEvent(event)
 
   def mouseMoveEvent(self, event):
-    self.log("mouseMoveEvent on QTabBar")
     if not event.buttons() & Qt.LeftButton:
       return
 
