@@ -20,15 +20,7 @@ class EditsTableTabController(TableController):
   """
   row_class = EditData # Generic, use subclasses
   restraint_name =  None # Subclass and fill this in (bond,angle,etc)
-  #columns_to_include= ['ideal','model',"sigma","delta",'residual',"vdw","action"]
-  # supress_columns = ["i_seqs","sel_strings","ideal_old","sigma_old", "labels_compositional"]
-  # rename_columns = {"ideal_new":"Ideal",
-  #                   "sigma_new":"Sigma",
-  #                   "action":"Action",
-  #                   "atom_id_1":"Atom 1",
-  #                   "atom_id_2":"Atom 2"}
 
-  # column_prefixes_to_include = ["atom_id"]
 
   @staticmethod
   def transform_to_dict(nested_list,prefix="Label"):

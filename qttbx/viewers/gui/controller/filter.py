@@ -66,14 +66,6 @@ class FilterOutliers(FilterObj):
     return df[is_outlier]
 
 
-# class FilterSolvent(ComponentFilterObj):
-#   def __init__(self):
-#     super().__init__(name="Solvent")
-
-#   def filter_df(self,df):
-#     cols = self._get_filter_cols(df)
-#     return df[df[cols].isin(params.solvent_comp_ids).all(axis=1)]
-
 class FilterByClass(FilterObj):
   def __init__(self,class_name):
     # class_name is return value from iotbx.pdb.common_residue_get_class

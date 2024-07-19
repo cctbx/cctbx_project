@@ -31,7 +31,6 @@ class CifEditorGUIApp:
 
 
 
-
 def main(dm=None,params=None,log=None):
 
   # first check that the necessary programs are available
@@ -107,10 +106,6 @@ def main(dm=None,params=None,log=None):
     app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
   controller.view.show()
-
-  # Redirect stdout and stderr
-  sys.stdout = open(os.devnull, 'w')
-  sys.stderr = open(os.devnull, 'w')
 
   sys.exit(qapp.exec_())
 

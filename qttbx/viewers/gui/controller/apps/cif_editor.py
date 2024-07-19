@@ -24,31 +24,7 @@ class CifEditorGUIController(Controller):
 
     # Main Level Components
 
-
-    #self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
-    # else:
-    #   self.chimerax = ChimeraXController(parent=self,view=self.view.viewer_tab_view)
-
-    #self.selection = SelectionTabController(parent=self,view=self.view.selection_tab_view)
-
-
-    #self.data = DataTabController(parent=self,view=self.view.data_tab_view)
-
-    # if 'all' in show_tab  or 'atoms' in show_tab:
-    #   self.sites = SitesTabController(parent=self,view=self.view.sites_tab_view)
-    # if 'all' in show_tab  or 'cif' in show_tab:
     self.cif = CifTabController(parent=self,view=self.view.cif_tab_view)
-
-    # if 'all' in show_tab  or 'restraints' in show_tab:
-    #   #self.restraints = GeometryTopTabController(parent=self,view=self.view.restraints_tab_view)
-    #   self.restraints = RestraintTableTopTabController(parent=self,view=self.view.restraints)
-
-    #self.geometry = GeometryTableTopTabController(parent=self,view=self.view.geo)
-    #self.edits = EditsTableTopTabController(parent=self,view=self.view.edits)
-    #self.restraints = RestraintTabController(parent=self,view=self.view.restraints_tab_view)
-    #self.qscore = QscoreTabController(parent=self,view=self.view.qscore_tab_view)
-
-
     # signals
     self.view.signal_close.connect(self.close_event)
     self.state.signals.tab_change.connect(self.change_tab_to)

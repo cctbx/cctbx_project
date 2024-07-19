@@ -64,37 +64,6 @@ class JSConsoleTab(GUITab):
     self.console_output.appendPlainText(f"[Out]:\n{result}")
 
 
-# class JSConsoleTab(GUITab):
-#   def __init__(self,parent, web_view=None, *args, **kwargs):
-#     assert web_view is not None, "Initialize with a WebView object"
-#     super().__init__(parent,*args, **kwargs)
-#     self.web_view = web_view
-
-#     self.console_input = QTextEdit()
-#     self.console_output = QTextEdit()
-#     self.console_output.setReadOnly(True)
-
-#     execute_button = QPushButton("Execute JS")
-#     execute_button.clicked.connect(self.execute_js)
-
-#     layout = QVBoxLayout()
-#     layout.addWidget(self.console_input)
-#     layout.addWidget(execute_button)
-#     layout.addWidget(self.console_output)
-
-#     self.setLayout(layout)
-
-#   @Slot()
-#   def execute_js(self):
-#     js_code = self.console_input.toPlainText()
-#     world_id = 0  # default world
-#     self.web_view.page().runJavaScript(js_code, world_id, self.js_callback)
-
-#   def js_callback(self, result):
-#     self.log(result)
-#     self.console_output.append(f"Result: {result}")
-
-
 class JupyterTabWidget(GUITab):
   def __init__(self,parent=None):
     super().__init__(parent=parent)

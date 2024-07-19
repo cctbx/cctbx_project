@@ -33,18 +33,6 @@ class GeoFileListController(ScrollableListController):
     self.state.signals.geofile_change.connect(self.update)
 
 
-  # def showFileDialog(self):
-  #   home_dir = Path.home()  # Cross-platform home directory
-  #   fname = QFileDialog.getOpenFileName(self.view, 'Open file', str(home_dir))
-  #   if fname[0]:
-  #     filename = fname[0]
-  #     filepath = Path(filename).absolute()
-
-  #     # add to state
-  #     data = Geometry(filepath=filepath)
-  #     ref = GeometryRef(data=data,show=True)
-  #     self.state.add_ref(ref)
-
 
   def update(self):
     for ref in self.state.references_geo:

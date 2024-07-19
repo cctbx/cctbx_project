@@ -59,45 +59,6 @@ class ScrollEntryController(Controller, QObject):
 
     self.ref.show = False
 
-    # # remove from active
-    # if (self.ref == self.state.active_model_ref):
-    #   self.state.active_model_entry = None
-    # if (self.ref == self.state.active_map_ref):
-    #   self.state.active_map_entry = None
-    # if (self.ref == self.state.active_selection_ref):
-    #   self.state.active_selection_entry = None
-
-    # # delete from data manager
-    # if isinstance(self.ref,ModelRef):
-    #   if self.ref.data.filepath in self.state.data_manager.get_model_names():
-    #     name = self.ref.data.filepath
-    #   elif self.ref.data.filename in self.state.data_manager.get_model_names():
-    #     name = self.ref.data.filepath
-    #   else:
-    #     name = None
-    #   if name:
-    #     self.state.data_manager.remove_model(name)
-
-    # if isinstance(self.ref,MapRef):
-    #   if self.ref.data.filepath in self.state.data_manager.get_real_map_names():
-    #     name = self.ref.data.filepath
-    #   elif self.ref.data.filename in self.state.data_manager.get_real_map_names():
-    #     name = self.ref.data.filepath
-    #   if name:
-    #     self.state.data_manager.remove_real_map(name)
-
-
-    # # delete children
-
-    # for ref_id,ref in list(self.state.references.items()):
-    #   if not isinstance(ref,ModelRef):
-    #     if hasattr(ref,"model_ref") and ref.model_ref == self.ref:
-    #       if ref.entry is not None:
-    #         if ref.entry in ref.entry.parent_list.entries:
-    #           ref.entry.parent_list.remove_entry(ref.entry)
-    # if self.ref.id in self.state.references:
-    #   del self.state.references[self.ref.id]
-
     # harsh reset of viewer, the problem is that the viewer will send back old pairings if same model
     self.is_destroyed = True
     self.parent_list.remove_entry(self) # remove from gui

@@ -71,43 +71,6 @@ class ModelLikeEntryView(ScrollEntryView):
     separator2.setFrameShadow(QFrame.Sunken)
     self.layout.addWidget(separator2)
 
-    # # Open in folder
-    # self.button_files = QPushButton()
-    # icon_path = Path(__file__).parent / 'assets/icons/material/folder.svg'
-    # icon = QIcon(str(icon_path))
-    # self.button_files.setIcon(icon)
-    # self.button_files.setToolTip("Open containing folder")
-    # #button_color.setMaximumSize(50, 50)
-    # self.button_files.setFixedSize(self._all_button_width,self._all_button_height)
-    # self.layout.addWidget(self.button_files)
-
-    # # vertical separator
-    # separator = QFrame()
-    # separator.setFrameShape(QFrame.VLine)
-    # separator.setFrameShadow(QFrame.Sunken)
-    # self.layout.addWidget(separator)
-
-    # # Geometry
-    # self.button_restraints = QPushButton()
-    # icon_path = Path(__file__).parent / 'assets/icons/material/gears.svg'
-    # icon = QIcon(str(icon_path))
-    # self.button_restraints.setIcon(icon)
-    # self.button_restraints.setToolTip("Manage restraints")
-    # #button_color.setMaximumSize(50, 50)
-    # self.button_restraints.setFixedSize(self._all_button_width,self._all_button_height)
-    # self.layout.addWidget(self.button_restraints)
-
-    # self.geo_checkbox = GeoCheckBox("Geo", self)
-    # #self.geo_checkbox.stateChanged.connect(self.showState)
-    # self.layout.addWidget(self.geo_checkbox)
-
-
-    # # vertical separator
-    # separator = QFrame()
-    # separator.setFrameShape(QFrame.VLine)
-    # separator.setFrameShadow(QFrame.Sunken)
-    # self.layout.addWidget(separator)
-
     # Close
     self.button_close = QPushButton()
     icon_path = Path(__file__).parent / 'assets/icons/material/close.svg'

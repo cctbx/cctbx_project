@@ -26,9 +26,6 @@ class CifEditorGUIView(QMainWindow):
 
     # set title
     self.setWindowTitle("Phenix Cif Editor")
-    #self.setWindowFlags(Qt.FramelessWindowHint)
-    # titlebar = SnapTitleBar(self)
-    # self.setMenuWidget(titlebar)
 
     # Retrieve screen size
     screen = self.screen().availableGeometry()
@@ -48,16 +45,7 @@ class CifEditorGUIView(QMainWindow):
     self.cif_tab_view = CifTabView(parent=self)
     self.cif_tab_view.order_index=0
     self.tabs.addTab(self.cif_tab_view, "CIF")
-   
-    # # Consoles
-    # self.consoles = GUITabWidget(parent=self)
-    # # Python console subtab
-    # self.python_console = JupyterTabWidget(parent=self.consoles)
-    # self.consoles.addTab(self.python_console, "Python")
-
-
-    # self.tabs.addTab(self.consoles,"Console")
-
+  
 
 
 

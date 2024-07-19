@@ -160,24 +160,3 @@ class CifBrowserTabView(GUITab):
     else:
       self.log(f"Value '{value}' not found in ComboBox.")
 
-
-# class CifBrowserTabView(GUITab):
-#   """
-#   View cif structure
-#   """
-#   def __init__(self,parent=None):
-#     super().__init__(parent=parent)
-#     layout = QVBoxLayout()
-#     self.layout = layout
-
-
-
-
-
-#     # add empty dataframe
-#     self.setLayout(layout)
-#     self.table_view = CifTableView()
-#     layout.addWidget(self.table_view)
-
-
-

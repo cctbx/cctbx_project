@@ -57,21 +57,6 @@ class GeometryTableTabController(TableController):
     self.view.table_view.horizontalHeader().sortIndicatorChanged.connect(self.on_sort_indicator_changed)
 
       
-    #self.state.signals.filter_update.connect(self.update_from_filter)
-
-  # def get_suppress_columns(self,df):
-  #   suppress_columns = []
-  #   for col in self.dataframe.columns:
-  #     for name in self.column_prefixes:
-  #       added = False
-  #       if not added:
-  #         if self.split_cif_key_prefix(col) == name:
-  #           suppress_columns.append(col)
-  #           added = True
-
-      
-  #   suppress_columns = ["i_seqs"] + suppress_columns
-  #   return suppress_columns
   @property
   def selected(self):
     return self.view.table_view.selected_rows()
@@ -86,76 +71,6 @@ class GeometryTableTabController(TableController):
   def addEdit(self,row_dict):
     raise NotImplementedError
 
-  # def update_from_filter(self,filter_obj,debug_flag):
-  #   df = self.dataframe
-  #   if df is None:
-  #     return
-  #   #comp = filter_obj.comp_id
-    
-  #   # # Determine the quantile based on the direction
-  #   # if direction == "Ascending":
-  #   #     quantile = (float(filter.current_percentile) / 100)
-  #   # else:  # Descending
-  #   #     quantile = 1 - (float(filter.current_percentile) / 100)
-
-  #   # Filter by component
-  #   # if comp == "All":
-  #   #     comp_test = pd.Series([True] * len(df))
-  #   # else:
-  #   #     comp_test = df["Res"] == comp
-
-  #   # # Apply the quantile filtering
-  #   # if metric in df.columns:
-  #   #     percentile_cutoff = df[metric].quantile(quantile)
-  #   #     if direction == "Ascending":
-  #   #         percentile_test = df[metric] <= percentile_cutoff
-  #   #     else:  # Descending
-  #   #         percentile_test = df[metric] >= percentile_cutoff
-  #   # else:
-  #   #     percentile_test = pd.Series([True] * len(df))
-
-  #   # Apply both conditions to filter the DataFrame
-
-  #   df_filtered = filter_obj.filter_df(df)
-  #   df_filtered = df_filtered.rename(columns=self.rename_columns)
-  #   suppress_cols = [c.lower() for c in self.suppress_columns]
-  #   suppress_cols+= [c.capitalize() for c in self.suppress_columns]
-  #   table_model = PandasTableModel(df_filtered,suppress_columns=suppress_cols)
-  #   self.table_model = table_model
-  #   #self.filter_obj = filter_obj
-
-  # @property
-  # def column_prefixes(self):
-  #   # Columns that are maintained in the geometry dataframes
-  #   return list(self.state.params.core_map_to_mmcif.keys()) + ["residue_class"]
-
-  # def reform_columns(self,df):
-  #   cols = ["i_seqs"]
-  #   #prefixes =  ["Label"]
-
-  #   for prefix in self.column_prefixes:
-  #     for col in df.columns:
-  #       if col.startswith(prefix):
-  #         if not col.startswith("id_str"):
-  #           cols.append(col)
-
-  #   cols+= [col for col in self.column_order if col in df.columns]
-  #   df = df[cols].copy()
-    # # add prefix columns
-    # for prefix in prefixes:
-    #   for col in cols:
-    #     if col.startswith(prefix):
-    #       number = col.split(prefix)[-1]
-    #       number = number.strip("_")
-    #       col_name = f"Atom{number}"
-    #       #self.rename_columns[col] = col_name
-
-    # df.rename(columns=self.rename_columns,inplace=True)
-    
-
-    # # capitalize
-    # capitalize = {c:c.capitalize() for c in df.columns if c not in ["i_seqs"]}
-    #df.rename(columns=self.rename_columns,inplace=True)
 
     self.col_names = list(df.columns)
     return df

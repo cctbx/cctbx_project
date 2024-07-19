@@ -330,30 +330,6 @@ class MolstarController(Controller):
     self.viewer.transparency_selection(selection_ref.selection,"all","all",0.0)
     #self.viewer.selection_show(representation_name=representation_name) # No arguments is all representations
 
-
-
-  # def show_ref(self,ref,representation: Optional[str] = None):
-  #   phenix_ref = self.state.phenixState.references[ref.id]
-  #   model_id = phenix_ref.id_molstar
-  #   representations = phenix_ref.representations
-  #   for rep_name in representations:
-  #     self.viewer.show_query(model_id,ref.query.to_json(),rep_name)
-
-
-  # def hide_ref(self,ref,representation: Optional[str] = None):
-  #   for phenixRef in self.state.phenixState.references:
-  #     if phenixRef==ref.id:
-  #       for phenixComponent in phenixRef.components:
-  #         for phenixRepresentation in phenixComponents.representations:
-  #           if phenixRepresentation == representation or representation == None:
-  #             # Hide
-  #             self.viewer.hide_ref
-  #   phenix_ref = self.state.phenixState.references[ref.id]
-  #   model_id = phenix_ref.id_molstar
-  #   representations = phenix_ref.representations
-  #   for rep_name in representations:
-  #     self.viewer.hide_query(model_id,ref.query.to_json(),rep_name)
-
   def color_selection(self,selection_ref,color):
     # Make sure it is selected (it probably already is)
     if self.state.active_selection_ref != selection_ref:

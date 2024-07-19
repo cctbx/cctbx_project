@@ -54,55 +54,6 @@ class SelectionControlsController(Controller):
     self.viewer.toggle_selection_mode(True)
     self.execute_selection()
 
-  # def validate_selection(self,text):
-  #   fail_reason = None
-  #   passed = True
-  #   if "*" in text:
-  #     fail_reason = "wildcards not currently supported"
-  #     passed = False
-  #   if "\\" in text:
-  #     fail_reason = "backslashes not currently supported"
-  #     passed = False
-  #   if "segid" in text:
-  #     fail_reason = "segid not currently supported"
-  #     passed = False
-  #   # if "b" in text or "bfactor" in text:
-  #   #   fail_reason = "bfactor not supported"
-  #   # if "resid" in text:
-  #   #   fail_reason = "resid not supported"
-  #   # if fail_reason is not None:
-  #   #   passed = False
-  #   return passed, fail_reason
-
-  # @Slot()
-  # def execute_selection(self):
-  #   """
-  #   This is a selection from the text box
-  #   """
-
-  #   text = self.view.selection_edit.text()
-  #   if text:
-  #     passed, fail_reason = self.validate_selection(text)
-  #     import pdb
-  #     pdb.set_trace()
-  #     self.log("Selection validation paseed: ",passed,fail_reason)
-  #     if not passed:
-  #       self.view.selection_edit.clear()
-  #       self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}")
-  #       return
-  #     try:
-  #       if text.startswith("select"):
-  #         text = text[7:]
-  #       elif text.startswith("sel "):
-  #         text = text[4:]
-  #       self.viewer.select_from_phenix_string(selection_phenix=text)
-  #       self.save_text_to_history()
-  #     except:
-  #       raise
-  #       self.view.selection_edit.clear()
-  #       self.view.selection_edit.setPlaceholderText(f"Unable to interpret selection: {text}")
-
-
   def save_text_to_history(self):
     text = self.view.selection_edit.text()
     if text:

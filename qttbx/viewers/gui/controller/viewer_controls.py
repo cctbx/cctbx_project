@@ -407,14 +407,6 @@ class ViewerControlsController(Controller):
     selection = self.viewer.poll_selection()
     
     sel = self.state.active_mol.select_from_selection(selection)
-    # query = SelectionQuery.from_json(selection_query_json)
-    # #assert len(query_dict)==1, "Multi structure queries not yet supported"
-    # ref_id = query.params.refId
-    # if ref_id not in self.state.references:
-    #   ref_id = self.state.active_model_ref.id
-    # ref = self.state.references[ref_id]
-    # query.params.keymap = self.state.mmcif_column_map
-    # sel_sites = self.state.active_mol.sites.select_from_query(query)
     if len(sel)>0:
       sel_ref = SelectionRef(selection,model_ref=self.state.active_model_ref,show=True)
       self.state.add_ref(sel_ref)
