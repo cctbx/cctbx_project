@@ -14,7 +14,7 @@ class ConditionalCheckBox(QCheckBox):
             super().mousePressEvent(event)
         else:
             # Optionally handle the event if the condition is not met
-            #print("Condition not met, checkbox state not toggled.")
+            #self.log("Condition not met, checkbox state not toggled.")
             pass
 
     def can_toggle(self):

@@ -78,6 +78,8 @@ class MolstarViewer(ModelViewer):
     # Flags
     self._blocking_commands = False
 
+  def log(self,*args):
+    pass
 
   # ---------------------------------------------------------------------------
   # Start API
@@ -147,9 +149,9 @@ class MolstarViewer(ModelViewer):
 
 
     # Start volume streaming server TODO: This should only occur if volumes will be used
-    print()
-    print('-'*79)
-    print('Starting volume streaming server')
+    self.log()
+    self.log('-'*79)
+    self.log('Starting volume streaming server')
     self.volume_streamer = VolumeStreamingManager(
               node_js_path = self.config.node_js_path,
               volume_server_relative_path = self.config.volume_server_relative_path,
@@ -158,15 +160,15 @@ class MolstarViewer(ModelViewer):
               debug = True
     )
     self.volume_streamer.start_server()
-    print(self.volume_streamer.url)
-    print('-'*79)
-    print()
+    self.log(self.volume_streamer.url)
+    self.log('-'*79)
+    self.log()
 
 
     # Start node http-server
-    print()
-    print('-'*79)
-    print('Starting HTTP server for Molstar')
+    self.log()
+    self.log('-'*79)
+    self.log('Starting HTTP server for Molstar')
     self.command = self.find_viewer()
     self.view_server = NodeHttpServer(self.command)
     self.view_server.start()
@@ -192,10 +194,10 @@ class MolstarViewer(ModelViewer):
     if not self._connected:
       raise Sorry('The Molstar on the QT web view is not reachable at {} after '
                   '{} seconds.'.format(self.url, counter))
-    print('Molstar is ready')
+    self.log('Molstar is ready')
     #self.send_command(f"{self.plugin_prefix}.postInit()")
-    print('-'*79)
-    print()
+    self.log('-'*79)
+    self.log()
 
 
 
@@ -218,7 +220,7 @@ class MolstarViewer(ModelViewer):
   def close_viewer(self):
     self.view_server.stop()
     self.volume_streamer.stop_server()
-    print('='*79)
+    self.log('='*79)
 
   def log_message(self,message):
     self.log_list.append(message)
@@ -230,16 +232,16 @@ class MolstarViewer(ModelViewer):
     # queue needs to be refactored out
 
     if log_js:
-      print("JavaScript command:")
+      self.log("JavaScript command:")
       lines = js_command.split("\n")
-      print("Total Lines: ",len(lines))
+      self.log("Total Lines: ",len(lines))
       if len(lines)>40:
         lines = lines[:20]+["","...",""]+ lines[-20:]
         js_command_print = "\n".join(lines)
       else:
         js_command_print = js_command
-      print(js_command_print)
-      print("Callback:",callback)
+      self.log(js_command_print)
+      self.log("Callback:",callback)
     if not sync:
       js_command= f"""
       (async () => {{
@@ -260,20 +262,20 @@ class MolstarViewer(ModelViewer):
   #   Each command is a string of Javascript
   #   code that will be executed.
   #   """
-  #   # print("="*79)
-  #   # print(f"Molstar plugin command: (connected={self._connected})")
-  #   # print()
+  #   # self.log("="*79)
+  #   # self.log(f"Molstar plugin command: (connected={self._connected})")
+  #   # self.log()
   #   # if len(cmds)==1:
-  #   #   print(cmds[0])
+  #   #   self.log(cmds[0])
   #   # else:
-  #   #   print(cmds)
-  #   # print()
-  #   # print(f"wrap_async={wrap_async}")
-  #   # print("="*79)
+  #   #   self.log(cmds)
+  #   # self.log()
+  #   # self.log(f"wrap_async={wrap_async}")
+  #   # self.log("="*79)
   #   out = None
   #   if self._connected:
   #     if self._blocking_commands:
-  #       print(f"Commands ignored due to not accepting commands: {cmds}")
+  #       self.log(f"Commands ignored due to not accepting commands: {cmds}")
   #       return False
   #     if not isinstance(cmds,list):
   #       assert isinstance(cmds,str), "send_command takes a string or list of strings"
@@ -435,7 +437,7 @@ class MolstarViewer(ModelViewer):
       selection = Selection.from_atom_records(atom_records)
       return selection
     except:
-      print(result_str)
+      self.log(result_str)
       raise
       return None
   def focus_selected(self):
@@ -509,20 +511,20 @@ class MolstarViewer(ModelViewer):
 
       # Inline print callback
       def callback(x):
-        print("Verbose sync ouput: ")#,x,", type: ",type(x))
+        self.log("Verbose sync ouput: ")#,x,", type: ",type(x))
         output =  _validate_sync_output(x)
         if output is not None:
-          print(json.dumps(output,indent=2))
+          self.log(json.dumps(output,indent=2))
 
     #Run and get output
     output = self.send_command(command,callback=callback,sync=True,log_js=True)
-    #print("Returned sync output:")
-    #print(type(output))
-    #print(output)
+    #self.log("Returned sync output:")
+    #self.log(type(output))
+    #self.log(output)
     output = _validate_sync_output(output)
-    #print("Building phenix state")
-    #print(type(output))
-    #print(output)
+    #self.log("Building phenix state")
+    #self.log(type(output))
+    #self.log(output)
     if output is not None:
       output = PhenixState.from_dict(output)
     return output

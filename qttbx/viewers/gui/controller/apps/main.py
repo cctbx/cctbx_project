@@ -78,7 +78,7 @@ class ViewerGUIController(Controller):
 
     # Ensure command is allowed to prevent unauthorized access
     if command not in self.molstar.api_function_names:
-      print(f"Command {command} is not allowed.")
+      self.log(f"Command {command} is not allowed.")
       return
 
     # Look for the function on the controller
@@ -87,18 +87,18 @@ class ViewerGUIController(Controller):
       # Look for it on the viewer
       func = getattr(self.molstar.viewer, command, None)
       if func is None:
-        print(f"No such command: {command}")
+        self.log(f"No such command: {command}")
         return
 
     # Ensure args and kwargs are lists and dicts respectively
     if not isinstance(args, list) or not isinstance(kwargs, dict):
-      print("Invalid args or kwargs format.")
+      self.log("Invalid args or kwargs format.")
       return
     func(**kwargs)
     # except json.JSONDecodeError as e:
-    #   print(f"Error decoding JSON: {e}")
+    #   self.log(f"Error decoding JSON: {e}")
     # except Exception as e:
-    #   print(f"An error occurred: {e}")
+    #   self.log(f"An error occurred: {e}")
 
 
   def close_application(self):
@@ -119,7 +119,7 @@ class ViewerGUIController(Controller):
     """
     # TODO: Clean up tab change behavior for Selection and Viewer as child
     #if self.view._has_child_window:
-    #print("Change to tab: ",name)
+    #self.log("Change to tab: ",name)
     tab_widget = self.view.tabs
     for index in range(tab_widget.count()):
       if tab_widget.tabText(index) == name:

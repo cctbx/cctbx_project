@@ -98,9 +98,9 @@ class Ref:
 
   @active.setter
   def active(self,value):
-    # print("#"*80)
-    # print(f"setting ref: {self} to active: ",value)
-    # print("#"*80)
+    # self.log("#"*80)
+    # self.log(f"setting ref: {self} to active: ",value)
+    # self.log("#"*80)
 
     # toggle entry as active
     if self.entry:

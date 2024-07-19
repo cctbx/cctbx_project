@@ -57,7 +57,7 @@ class EditsTableTopTabController(Controller):
     fileName, _ = QFileDialog.getSaveFileName(self.view, 'Save File', defaultFileName,
                                               'All Files (*);;Text Files (*.txt)')
     if fileName:
-      print(f'File selected for saving: {fileName}')
+      self.log(f'File selected for saving: {fileName}')
       with open(fileName,"w") as fh:
         fh.write(edit_string)
 

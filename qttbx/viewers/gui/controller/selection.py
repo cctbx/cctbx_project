@@ -47,7 +47,7 @@ class SelectionEntryController(ModelLikeEntryController):
       self.state.active_selection_ref = self.ref
 
     else:
-      print("The entry is unchecked.")
+      self.log("The entry is unchecked.")
       if self.state.active_selection_ref == self.ref:
         self.state.active_selection_ref = None
 
@@ -103,7 +103,7 @@ class SelectionEntryController(ModelLikeEntryController):
 
     dialog = BondEditDialog(defaults_dict=defaults_dict)
     if dialog.exec_():
-      print("Making edit")
+      self.log("Making edit")
       row = BondEdit(
         i_seqs = i_seqs,
         sel_strings = [mol.sites.select_query_from_i_seqs([i]).phenix_string for i in i_seqs],
@@ -125,7 +125,7 @@ class SelectionEntryController(ModelLikeEntryController):
         edit_ref = BondEditsRef(data=objframe,geometry_ref=self.state.active_model_ref.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
   def stage_as_angle_restraint(self):
     #self.state.signals.stage_restraint.emit(self.ref,"angle")
@@ -188,7 +188,7 @@ class SelectionEntryController(ModelLikeEntryController):
         edit_ref = AngleEditsRef(data=objframe,geometry_ref=self.state.active_model_ref.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
   def stage_as_dihedral_restraint(self):
     self.state.signals.stage_restraint.emit(self.ref,"dihedral")

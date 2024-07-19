@@ -23,9 +23,11 @@ class WebEnginePage(QWebEnginePage):
   def __init__(self, *args, **kwargs):
       super().__init__(*args, **kwargs)
 
+  def log(self,*args):
+    pass
 
   def javaScriptConsoleMessage(self, level, msg, line, sourceID):
-    print(f"JS console message: {msg}, line: {line}, sourceID: {sourceID}") #get as stdout
+    self.log(f"JS console message: {msg}, line: {line}, sourceID: {sourceID}") #get as stdout
     self.console_message.emit(msg, line, sourceID) # get for a gui tab
 
 

@@ -136,7 +136,7 @@ class ISOWidgetController(Controller):
 
 
   def iso_update(self,value):
-    #print("slider update: active_map_ref",self.map_ref.id)
+    #self.log("slider update: active_map_ref",self.map_ref.id)
     real_value = self.view.slider.slider_iso_to_real(value,self.view.slider.slider_iso_granularity)
     self.view.parent().iso_label.setText(f"ISO: {round(real_value,2)}")
     style = replace(self.map_ref.style,iso=real_value)

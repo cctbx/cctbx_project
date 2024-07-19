@@ -39,7 +39,7 @@ class GenericDataListController(ScrollableListController):
     if self.openFileDialog.exec_():
         file_path = self.openFileDialog.selectedFiles()[0]
         if str(file_path).endswith(".geo"):
-          print("Unable to open .geo file from here")
+          self.log("Unable to open .geo file from here")
           # # add to state
           # data = Geometry(filepath=file_path)
           # ref = GeometryRef(data=data,show=True)
@@ -47,7 +47,7 @@ class GenericDataListController(ScrollableListController):
         else:
           # All other files handled through datamanager
           filepath = str(Path(file_path).absolute())
-          print(f"File selected: {filepath}")
+          self.log(f"File selected: {filepath}")
           _ = self.state.data_manager.process_model_file(filepath)
           self.state._data_manager_changed()
 

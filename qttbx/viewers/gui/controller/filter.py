@@ -150,7 +150,7 @@ class TableFilterController(Controller):
     if filter_obj.geometry_type == "All" or filter_obj.geometry_type == self.parent.geometry_type:
       same = False
       if self.restraint_filters[0] == filter_obj:
-        print("SAME!")
+        self.log("SAME!")
         same = True
         
         
@@ -163,7 +163,7 @@ class TableFilterController(Controller):
           self._restraint_instance_counter = 0
         else:
           self._restraint_instance_counter+=1
-      print("Selecting row:",self._restraint_instance_counter)
+      self.log("Selecting row:",self._restraint_instance_counter)
       self.parent.select_row(self._restraint_instance_counter)
       self.parent.on_mouse_released()
 
@@ -280,11 +280,11 @@ class TableFilterController(Controller):
   def add_item_if_not_exists(self,combo_box,item):
     if combo_box.findText(item) == -1:  # Item not found
       combo_box.addItem(item)
-      #print(f"Added: {item}")
+      #self.log(f"Added: {item}")
     
   def setComboBoxToValue(self,comboBox, value):
     index = comboBox.findText(value)
     if index >= 0:  # The value was found
       comboBox.setCurrentIndex(index)
     else:
-      print(f"Value '{value}' not found in ComboBox.")
+      self.log(f"Value '{value}' not found in ComboBox.")

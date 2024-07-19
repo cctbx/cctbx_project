@@ -19,6 +19,9 @@ class Controller:
   def state(self):
     return self.parent.state
 
+  def log(self,*args):
+    pass
+
 
 class ViewController:
   """

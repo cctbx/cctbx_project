@@ -134,7 +134,7 @@ class State:
     return cls(dm)
 
   def __init__(self, data_manager,log=None):
-    self.log = log
+    self._log = log
     self._active_model_ref = None
     self._active_map_ref = None
     self._active_selection_ref = None
@@ -183,6 +183,9 @@ class State:
         if self.active_map_ref is None:
           self.active_map_ref = self.references_map[0]
 
+
+  def log(self,*args):
+    pass
 
   def apply_style(self,ref,style):
     self.signals.style_change.emit(ref,style.to_json())
@@ -297,7 +300,7 @@ class State:
     return json.dumps(d,indent=indent)
 
   def show(self):
-    print(self.to_json(indent=2))
+    self.log(self.to_json(indent=2))
 
   def update_from_remote_dict(self,remote_state_dict):
     for ref_id,ref in remote_state_dict["references"].items():
@@ -434,7 +437,7 @@ class State:
 
   def add_ref_from_mmtbx_model(self,model,label=None,filename=None):
     if model.get_number_of_atoms()==0:
-      print("Model with zero atoms, not added")
+      self.log("Model with zero atoms, not added")
       return
 
     if filename is not None:
@@ -541,7 +544,7 @@ class State:
     model_keys = [str(ref.data.filepath) for ref in model_refs]
     for filename in self.data_manager.get_model_names():
       if str(filename) not in model_keys:
-        print(f"New file found in data manager: {filename} and not found in references: {model_keys}")
+        self.log(f"New file found in data manager: {filename} and not found in references: {model_keys}")
         model = self.data_manager.get_model(filename=filename)
         ref = self.add_ref_from_mmtbx_model(model,filename=filename)
 
@@ -552,7 +555,7 @@ class State:
     map_keys = [ref.data.filepath for ref in map_refs]
     for filename in self.data_manager.get_real_map_names():
       if filename not in map_keys:
-        print(f"New file found in data manager: {filename} and not found in references: {map_keys}")
+        self.log(f"New file found in data manager: {filename} and not found in references: {map_keys}")
         map_manager = self.data_manager.get_real_map(filename=filename)
         self.add_ref_from_map_manager(map_manager=map_manager,filepath=filename,label=os.path.basename(filename))
         self.signals.map_change.emit(self.active_map_ref) # No change, just trigger update

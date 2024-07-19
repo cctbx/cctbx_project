@@ -49,7 +49,7 @@ class TableController(Controller):
 
     # adjust column widths. TODO: Move elsewhere... view?
     self.view.table_view.adjustColumnWidths()
-    print("Showing tab due to dataframe setter: ",self.title)
+    self.log("Showing tab due to dataframe setter: ",self.title)
     self.parent.view.toggle_tab_visible(self.title,show=True)
 
   @property
@@ -97,7 +97,7 @@ class TableController(Controller):
       new_data = dialog.collectInputValues()
       # Check if a change will occur
       modified_fields = dialog.getModifiedFields()
-      print("modified fields:",modified_fields)
+      self.log("modified fields:",modified_fields)
 
       if len(modified_fields)>0:
 
@@ -175,4 +175,4 @@ class TableController(Controller):
         self.state.add_ref(ref)
         self.state.active_selection_ref = ref
       else:
-        print("no atoms returned as query")
+        self.log("no atoms returned as query")

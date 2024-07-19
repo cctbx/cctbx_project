@@ -75,7 +75,7 @@ class ModelLikeEntryController(ScrollEntryController):
       is_on= self.view.button_viz.is_on
       # For some reason this is inverted
       is_on = not is_on
-      print("Toggling visibility, is on? : ",is_on)
+      self.log("Toggling visibility, is on? : ",is_on)
       if is_on:
         self.state.signals.selection_hide.emit(self.ref)
       else:
@@ -148,7 +148,7 @@ class ModelLikeEntryController(ScrollEntryController):
     #     file_path = self.openFileDialog.selectedFiles()[0]
 
     #     filepath = str(Path(file_path).absolute())
-    #     print(f"Geometry file selected: {filepath}")
+    #     self.log(f"Geometry file selected: {filepath}")
 
     #     data = Geometry.from_geo_file(filepath)
     #     ref = GeometryRef(data,self.state.active_model_ref)
@@ -208,7 +208,7 @@ class ModelListController(ScrollableListController):
         file_path = self.openFileDialog.selectedFiles()[0]
 
         filepath = str(Path(file_path).absolute())
-        print(f"File selected: {filepath}")
+        self.log(f"File selected: {filepath}")
         _ = self.state.data_manager.process_model_file(filepath)
         self.state._data_manager_changed()
 

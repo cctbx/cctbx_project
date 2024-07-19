@@ -189,7 +189,7 @@ class GeometryTableTabController(TableController):
 
   # Sorting machineray. Candidate to move up to superclass
   def on_sort_indicator_changed(self,logicalIndex, order):
-    #print(f"Sorting changed. Column: {logicalIndex}, Order: {'Ascending' if order == Qt.AscendingOrder else 'Descending'}")
+    #self.log(f"Sorting changed. Column: {logicalIndex}, Order: {'Ascending' if order == Qt.AscendingOrder else 'Descending'}")
     sorted_by = self.table_model.headerData(logicalIndex, Qt.Horizontal, Qt.DisplayRole)
     order = 'Ascending' if order == Qt.AscendingOrder else 'Descending'
     self.view.sort_label.setText(f"Sorted by: {sorted_by}, Order: {order}")
@@ -205,7 +205,7 @@ class GeometryTableTabController(TableController):
     if logical_index is not None:
       view.sortByColumn(logical_index, order)
     else:
-      print(f"Column '{column_name}' not found in the model")
+      self.log(f"Column '{column_name}' not found in the model")
 
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
 
@@ -305,7 +305,7 @@ class BondTableController(GeometryTableTabController):
         edit_ref = BondEditsRef(data=objframe,geometry_ref=self.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
 class AngleTableController(GeometryTableTabController):
   title = "Angles"
@@ -342,7 +342,7 @@ class AngleTableController(GeometryTableTabController):
         edit_ref = AngleEditsRef(data=objframe,geometry_ref=self.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
 class DihedralTableController(GeometryTableTabController):
   title = "Dihedrals"
@@ -385,7 +385,7 @@ class DihedralTableController(GeometryTableTabController):
         edit_ref = DihedralEditsRef(data=objframe,geometry_ref=self.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
 class ChiralTableController(GeometryTableTabController):
   title = "Chirals"
@@ -422,7 +422,7 @@ class ChiralTableController(GeometryTableTabController):
         edit_ref = ChiralEditsRef(data=objframe,geometry_ref=self.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
 class PlanarityTableController(GeometryTableTabController):
   title = "Planes"
@@ -467,4 +467,4 @@ class NonbondedTableController(GeometryTableTabController):
         edit_ref = BondEditsRef(data=objframe,geometry_ref=self.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")

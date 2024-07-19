@@ -45,7 +45,7 @@ class QscoreTabController(Controller):
         self._show_header()
 
   def update(self):
-    print("update")
+    self.log("update")
     model_ref = self.state.active_model_ref
     if "qscore" in model_ref.results:
       results_ref = model_ref.results["qscore"]
@@ -73,7 +73,7 @@ class QscoreTabController(Controller):
       # Check granularity
       index = self.view.combobox.currentIndex()
       label = self.view.combobox.itemText(index)
-      print("label:",label)
+      self.log("label:",label)
       if label == "Q-Residues":
         df = df.groupby(["chain_id","resseq","resname"]).agg('first').reset_index()
         df = df[["Q-Residue","chain_id","resseq","resname"]]
@@ -160,7 +160,7 @@ class QscoreTabController(Controller):
       self.state.active_selection_ref = ref
 
     else:
-      print("no atoms returned as query")
+      self.log("no atoms returned as query")
 
 
   def on_mouse_released(self):

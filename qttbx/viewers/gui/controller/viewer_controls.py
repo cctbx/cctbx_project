@@ -237,7 +237,7 @@ class ViewerControlsController(Controller):
         edit_ref = BondEditsRef(data=objframe,geometry_ref=self.state.active_model_ref.geometry_ref)
       self.state.add_ref(edit_ref)
     else:
-      print("Dialog Cancelled")
+      self.log("Dialog Cancelled")
 
   def stage_as_angle_restraint(self):
     #self.state.signals.stage_restraint.emit(self.ref,"angle")
@@ -321,7 +321,7 @@ class ViewerControlsController(Controller):
     text = self.view.selection_edit.text()
     if text:
       passed, fail_reason = self.validate_selection(text)
-      print("Selection validation paseed: ",passed,fail_reason)
+      self.log("Selection validation paseed: ",passed,fail_reason)
       if not passed:
         self.view.selection_edit.clear()
         self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}: {text}")
@@ -388,7 +388,7 @@ class ViewerControlsController(Controller):
     if self.openFileDialog.exec_():
         file_path = self.openFileDialog.selectedFiles()[0]
         filepath = str(Path(file_path).absolute())
-        print(f"Geometry file selected: {filepath}")
+        self.log(f"Geometry file selected: {filepath}")
         data = Geometry.from_geo_file(filepath)
         ref = GeometryRef(data,self.state.active_model_ref)
         self.state.add_ref(ref)
@@ -421,7 +421,7 @@ class ViewerControlsController(Controller):
       self.state.active_selection_ref = sel_ref
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
-      print("Skipping add selection due to empty selection")
+      self.log("Skipping add selection due to empty selection")
 
 
   def search_select_dialog(self):
@@ -513,7 +513,7 @@ class SearchSelectDialogController(Controller):
       sel_str = "all"
     else:
       sel_str = " and ".join(sel_str_parts)
-    print("Sel str: ",sel_str)
+    self.log("Sel str: ",sel_str)
     comp_options = self.update_options(comp,self.comp_scroller_controller, mol, filters, "comp_id")
     seq_options = self.update_options(seq,self.seq_scroller_controller, mol, filters, "seq_id", sort_as_int=True)
     atom_options = self.update_options(atom,self.atom_scroller_controller, mol,filters, "atom_id")
@@ -552,7 +552,7 @@ class SearchSelectDialogController(Controller):
       sel_str = "all"
     else:
       sel_str = " and ".join(sel_str_parts)
-    print("Sel str: ",sel_str)
+    self.log("Sel str: ",sel_str)
     seq_options = self.update_options(seq,self.seq_scroller_controller, mol, filters, "seq_id", sort_as_int=True)
     atom_options = self.update_options(atom,self.atom_scroller_controller, mol, filters, "atom_id")
     all_options = seq_options + atom_options
@@ -590,7 +590,7 @@ class SearchSelectDialogController(Controller):
       sel_str = "all"
     else:
       sel_str = " and ".join(sel_str_parts)
-    print("Sel str: ",sel_str)
+    self.log("Sel str: ",sel_str)
     atom_options = self.update_options(atom,self.atom_scroller_controller, mol, filters, "atom_id")
     all_options = atom_options
     if len(all_options)==0:
@@ -620,9 +620,9 @@ class SearchSelectDialogController(Controller):
       sel_str = "all"
     else:
       sel_str = " and ".join(sel_str_parts)
-    print("Sel str: ",sel_str)
+    self.log("Sel str: ",sel_str)
     self.parent.viewer.select_from_phenix_string(sel_str)
-    print("emitting atom")
+    self.log("emitting atom")
     self.state.signals.picking_level.emit("atom")
     self.parent.viewer.focus_selected()
 

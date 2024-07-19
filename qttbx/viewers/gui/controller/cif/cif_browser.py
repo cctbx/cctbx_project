@@ -131,7 +131,7 @@ class CifBrowserController(TableController):
 
   @df_dict.setter
   def df_dict(self,value):
-    print("Changing df_dict")
+    self.log("Changing df_dict")
     assert value is not None
     self._df_dict = value
     self.rename_df_dict()
@@ -194,14 +194,14 @@ class CifBrowserController(TableController):
 
     self.rename_df_dict_undo()
     if filepath:
-        print(f"File selected for saving: {filepath}")
+        self.log(f"File selected for saving: {filepath}")
         write_dataframes_to_cif_file(self.df_dict,str(Path(filepath)))
 
 
 
 
   def on_data_changed(self,*args):
-    print("** Data has been manually changed **")
+    self.log("** Data has been manually changed **")
     notification = QLabel("** Data has been manually changed **")
     self.view.layout.insertWidget(0,notification)
 
@@ -211,7 +211,7 @@ class CifBrowserController(TableController):
       self.update_file(refs[0])
 
   def update_file(self,ref):
-    print("updating file: ",ref)
+    self.log("updating file: ",ref)
     self.view.combobox_files.blockSignals(True)
 
     if ref and ref != self.cif_ref:
@@ -248,7 +248,7 @@ class CifBrowserController(TableController):
 
   def update_data_block(self,data_block_key=None):
 
-    print("cif browser update_data_block: data_block_key="+data_block_key)
+    self.log("cif browser update_data_block: data_block_key="+data_block_key)
     # if data_block_key is None:
     #   data_block_key = self.view.combobox_data_block.itemText(index)
     if data_block_key not in  [None,""]:
@@ -269,7 +269,7 @@ class CifBrowserController(TableController):
 
 
   def update_data_block_item(self,data_block_key=None,data_item_key=None):
-    print(f"cif browser update block: data_block_key={data_block_key} data_item_key={data_item_key}")
+    self.log(f"cif browser update block: data_block_key={data_block_key} data_item_key={data_item_key}")
     if "" not in [data_block_key,data_item_key]:
       if data_block_key is None:
         data_block_key = self.view.combobox_data_block.currentText()
@@ -295,5 +295,5 @@ class CifBrowserController(TableController):
         # Set the new model on the view (For Pyside2, not used directly), and the controller (self))
         self.table_model = model
         
-        print("Set new table model")
+        self.log("Set new table model")
 

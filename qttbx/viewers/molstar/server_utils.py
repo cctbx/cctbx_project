@@ -22,6 +22,8 @@ class NodeHttpServer:
     self.command_list = command+['--port',str(self.port)]
     self.command = ' '.join(self.command_list)
 
+  def log(self,*args):
+    pass
   @staticmethod
   def find_open_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

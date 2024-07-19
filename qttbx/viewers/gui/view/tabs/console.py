@@ -91,7 +91,7 @@ class JSConsoleTab(GUITab):
 #     self.web_view.page().runJavaScript(js_code, world_id, self.js_callback)
 
 #   def js_callback(self, result):
-#     print(result)
+#     self.log(result)
 #     self.console_output.append(f"Result: {result}")
 
 

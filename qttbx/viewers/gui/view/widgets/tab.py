@@ -13,6 +13,9 @@ class GUITab(QTabWidget):
     self.was_visited = False
     self.order_index = order_index
 
+  def log(self,*args):
+    pass
+
   def on_first_visit(self):
     pass
 
@@ -65,7 +68,7 @@ class DraggableTabBar(QTabBar):
     self.drag_start_index = 0
 
   def mousePressEvent(self, event):
-    print("mousePressEvent on QTabBar")
+    self.log("mousePressEvent on QTabBar")
     drag_start_index = self.tabAt(event.pos())
     if not drag_start_index or drag_start_index<0:
       drag_start_index = 0
@@ -74,7 +77,7 @@ class DraggableTabBar(QTabBar):
     super().mousePressEvent(event)
 
   def mouseMoveEvent(self, event):
-    print("mouseMoveEvent on QTabBar")
+    self.log("mouseMoveEvent on QTabBar")
     if not event.buttons() & Qt.LeftButton:
       return
 
@@ -98,7 +101,7 @@ class DraggableTabBar(QTabBar):
       global_pos = QCursor.pos()
       window = self.window()
       window_rect = window.geometry()
-      print("global_cursor_pos: ",global_pos)
+      self.log("global_cursor_pos: ",global_pos)
 
       if not window_rect.contains(global_pos):
         tab_widget = self.parentWidget()
@@ -143,11 +146,11 @@ class DraggableTabWidget(QTabWidget):
     self.setAcceptDrops(True)
 
   def dragEnterEvent(self, event):
-    print("dragEnterEvent on QTabWidget")
+    self.log("dragEnterEvent on QTabWidget")
     event.acceptProposedAction()
 
   def dropEvent(self, event):
-    print("dropEvent on QTabWidget")
+    self.log("dropEvent on QTabWidget")
     event.ignore()  # Ignore drop events to prevent unintended behavior
     
   def simulate_drag_out(tab_widget, index):
@@ -158,9 +161,10 @@ class DraggableTabWidget(QTabWidget):
     drag_start_global_pos = tab_bar.mapToGlobal(drag_start_pos)
 
     # Print debug information
-    print(f"Starting drag simulation for tab at index {index}")
-    print(f"Drag start position: {drag_start_pos}")
-    print(f"Drag start global position: {drag_start_global_pos}")
+    self = tab_widget
+    self.log(f"Starting drag simulation for tab at index {index}")
+    self.log(f"Drag start position: {drag_start_pos}")
+    self.log(f"Drag start global position: {drag_start_global_pos}")
 
     # Manually set the drag start index and position in the tab bar
     tab_bar.drag_start_index = index
@@ -214,6 +218,9 @@ class GUITabWidget(DraggableTabWidget):
     self.currentChanged.connect(self.on_tab_changed)
     self.hiddenTabs = {}  # Track hidden tabs as {tabName: widget}
 
+  def log(self,*args):
+    pass
+
   def set_focus_on(self,*args):
     self.set_visible_on()
     name = self.parent_explicit.tabs.findNameByTab(self)
@@ -234,7 +241,7 @@ class GUITabWidget(DraggableTabWidget):
         current_tab_widget.was_visited = True
 
   def toggle_tab_visible(self, tab_name, show=True):
-      print("toggle_tab_visible: ",tab_name)
+      self.log("toggle_tab_visible: ",tab_name)
       if show:
           if tab_name in self.hiddenTabs:
               # Re-add the tab

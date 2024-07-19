@@ -55,24 +55,24 @@ class ChimeraXController(Controller):
   # Parsing the output of a response is kept in the controller for now because it is messy
   def _interpret_response_text(self,response_text,debug=False):
     if debug:
-      print("0: Response text:",type(response_text))
-      print(response_text)
-      print("1: Response json:",type(json.loads(response_text)))
+      self.log("0: Response text:",type(response_text))
+      self.log(response_text)
+      self.log("1: Response json:",type(json.loads(response_text)))
       response_json = json.loads(response_text)
-      print(response_json)
-      print("2: 'json values' key:",type(response_json["json values"]))
+      self.log(response_json)
+      self.log("2: 'json values' key:",type(response_json["json values"]))
       json_values = response_json["json values"]
-      print("3: json value 0:",type(json_values[0]))
-      print(json_values[0])
+      self.log("3: json value 0:",type(json_values[0]))
+      self.log(json_values[0])
       if json_values[0] is None:
         return None
-      print("4: json value 0 as json:",type(json.loads(json_values[0])))
+      self.log("4: json value 0 as json:",type(json.loads(json_values[0])))
       json_values_0 = json.loads(json_values[0])
-      print(json_values_0)
+      self.log(json_values_0)
       if not isinstance(json_values_0,list):
         json_values_0 = [json_values_0]
-      print("5: json value 00:",type(json_values_0[0]))
-      print(json_values_0[0])
+      self.log("5: json value 00:",type(json_values_0[0]))
+      self.log(json_values_0[0])
 
     objects = [json.loads(e) for e in json.loads(response_text)["json values"]][0]
     return objects
@@ -113,11 +113,11 @@ class ChimeraXController(Controller):
 
         if response is not None and response.status_code == 200:
           remote_ref_id = self._process_remote_ref_response_model(response)
-          #print("ADDING CHIMERAX REMOTE MODEL ID FOR MODEL: ",remote_ref_id)
+          #self.log("ADDING CHIMERAX REMOTE MODEL ID FOR MODEL: ",remote_ref_id)
           ref.external_ids["chimerax"] = remote_ref_id
           self.state.external_loaded["chimerax"].append(ref.id)
         else:
-          print(f"Not adding remote ref from response: {response}")
+          self.log(f"Not adding remote ref from response: {response}")
         self.loaded_model_refs.append(ref)
         return response
 
@@ -132,7 +132,7 @@ class ChimeraXController(Controller):
         found_text = match.group(1)  # The text between "as " and ","
         return found_text
     else:
-        print("No match found for volume spec value")
+        self.log("No match found for volume spec value")
 
   def _load_active_map(self,ref):
     assert ref is None or ref is self.state.active_map_ref
@@ -164,10 +164,10 @@ class ChimeraXController(Controller):
         if response is not None and response.status_code == 200:
           remote_ref_id = self._process_remote_ref_response_map(response)
           if remote_ref_id is not None:
-            #print("ADDING CHIMERAX REMOTE MODEL ID FOR MAP: ",remote_ref_id)
+            #self.log("ADDING CHIMERAX REMOTE MODEL ID FOR MAP: ",remote_ref_id)
             ref.external_ids["chimerax"] = remote_ref_id
         else:
-          print(f"Not adding remote ref from response: {response}")
+          self.log(f"Not adding remote ref from response: {response}")
         self.loaded_map_refs.append(ref)
         self.viewer.set_transparency_map(ref.external_ids['chimerax'],0.7)
         return response
@@ -177,21 +177,21 @@ class ChimeraXController(Controller):
   def _process_remote_ref_response_selection(self,response,debug=False):
     response_text = response.text
     if debug:
-      print("0: Response text:",type(response_text))
-      print(response_text)
-      print("1: Response json:",type(json.loads(response_text)))
+      self.log("0: Response text:",type(response_text))
+      self.log(response_text)
+      self.log("1: Response json:",type(json.loads(response_text)))
     response_json = json.loads(response_text)
     if debug:
-      print(response_json)
-      print("2: 'json values' key:",type(response_json["json values"]))
+      self.log(response_json)
+      self.log("2: 'json values' key:",type(response_json["json values"]))
     json_values = response_json["json values"]
     if debug:
-      print("3: json value 0:",type(json_values[0]))
-      print(json_values[0])
+      self.log("3: json value 0:",type(json_values[0]))
+      self.log(json_values[0])
     if json_values[0] is None:
       return None
     if debug:
-      print("4: json value 0 as json:",type(json.loads(json_values[0])))
+      self.log("4: json value 0 as json:",type(json.loads(json_values[0])))
     json_values_0 = json.loads(json_values[0])
     return json_values_0
 
@@ -208,7 +208,7 @@ class ChimeraXController(Controller):
 
     json_objects = self._process_remote_ref_response_selection(response)
 
-    #print("chimerax controller poll_selection() json_objects:")
+    #self.log("chimerax controller poll_selection() json_objects:")
     if json_objects is None:
       return None
 
@@ -228,11 +228,11 @@ class ChimeraXController(Controller):
           if ref_id is None:
             ref_id = self.state.active_model_ref.id
 
-          # print(spec)
-          # print(f"Value before '/': {value0}")
-          # print(f"Value after '/': {value1}")
-          # print(f"Value after ':': {value2}")
-          # print(f"Value after '@': {value3}")
+          # self.log(spec)
+          # self.log(f"Value before '/': {value0}")
+          # self.log(f"Value after '/': {value1}")
+          # self.log(f"Value after ':': {value2}")
+          # self.log(f"Value after '@': {value3}")
 
           atom_dict["ref_id"] = ref_id
           atom_dict["asym_id"] = asym_id
@@ -242,7 +242,7 @@ class ChimeraXController(Controller):
 
 
         else:
-            print("No match found")
+            self.log("No match found")
             assert False, f"Must be able to translate atom spec... {spec}"
 
 

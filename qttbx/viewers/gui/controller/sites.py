@@ -32,7 +32,7 @@ class SitesTabController(Controller):
       self.state.active_selection_ref = ref
 
     else:
-      print("no atoms returned as query")
+      self.log("no atoms returned as query")
 
 
   def on_mouse_released(self):

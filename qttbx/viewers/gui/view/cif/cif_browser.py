@@ -158,7 +158,7 @@ class CifBrowserTabView(GUITab):
     if index >= 0:  # The value was found
       comboBox.setCurrentIndex(index)
     else:
-      print(f"Value '{value}' not found in ComboBox.")
+      self.log(f"Value '{value}' not found in ComboBox.")
 
 
 # class CifBrowserTabView(GUITab):

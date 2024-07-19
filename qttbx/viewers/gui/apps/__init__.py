@@ -12,11 +12,11 @@ class GlobalEventFilter(QObject):
   def eventFilter(self, watched, event):
     if event.type() == QEvent.Enter:
       if isinstance(watched, QWidget):
-        #print(f"Mouse entered: {watched.objectName()} ({type(watched).__name__})")
+        #self.log(f"Mouse entered: {watched.objectName()} ({type(watched).__name__})")
          pass
     elif event.type() == QEvent.Leave:
       if isinstance(watched, QWidget):
-        #print(f"Mouse left: {watched.objectName()} ({type(watched).__name__})")
+        #self.log(f"Mouse left: {watched.objectName()} ({type(watched).__name__})")
         pass
     return super().eventFilter(watched, event)
 

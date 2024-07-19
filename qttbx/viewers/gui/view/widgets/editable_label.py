@@ -98,13 +98,13 @@ class EditableLabel(QWidget):
 #     self.label.mousePressEvent = self.switch_to_edit
 
 #   def switch_to_edit(self, event):
-#     print("switching to edit")
+#     self.log("switching to edit")
 #     self.label.hide()
 #     self.lineEdit.show()
 #     self.lineEdit.setFocus()
 
 #   def switch_to_label(self):
-#     print("switching to label")
+#     self.log("switching to label")
 #     self.text = self.lineEdit.text()
 #     self.label.setText(self.text)
 #     self.lineEdit.hide()

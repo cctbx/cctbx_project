@@ -253,7 +253,7 @@ class ClickableHistogramSeaborn(FigureCanvas):
     data_x = x_min + rel_x * (x_max - x_min)
     y_min + rel_y * (y_max - y_min)
 
-    print(f"Clicked on x = {data_x:.2f}")
+    self.log(f"Clicked on x = {data_x:.2f}")
     self.emitter.histogram_click_value.emit(data_x)
 
     if self.vline:  # Remove the previous line if it exists
@@ -309,7 +309,7 @@ class ClickableHistogramMatplotlib(FigureCanvas):
     data_x = x_min + rel_x * (x_max - x_min)
     y_min + rel_y * (y_max - y_min)
 
-    print(f"Clicked on x = {data_x:.2f}")
+    self.log(f"Clicked on x = {data_x:.2f}")
 
     if self.vline:  # Remove the previous line if it exists
       self.vline.remove()

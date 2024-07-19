@@ -127,7 +127,7 @@ class ViewerGUIView(QMainWindow):
 
         self.tabs.addTab(self.consoles,"Console")
       except:
-        print("Console tab not included. Install qtconsole")
+        self.log("Console tab not included. Install qtconsole")
         #raise
 
 

@@ -79,7 +79,7 @@ class RestraintBrowserController(CifBrowserController):
 
     self.rename_df_dict_undo()
     if filepath:
-        print(f"File selected for saving: {filepath}")
+        self.log(f"File selected for saving: {filepath}")
         write_dataframes_to_cif_file(self.df_dict,str(Path(filepath)))
   
   def on_selection_changed(self, selected, deselected):
@@ -91,7 +91,7 @@ class RestraintBrowserController(CifBrowserController):
     if len(df_sel)==1:
       if "comp_id" in df_sel.columns and "atom_id_1" in df_sel.columns:
         # a candidate for filtering
-        print("Will try to filter by restraint")
+        self.log("Will try to filter by restraint")
         comp_id = df_sel["comp_id"].iloc[0]
         item_key = self.view.combobox_data_item.currentText()
         item_suffix = item_key.replace("_chem_comp_","")
@@ -123,6 +123,7 @@ class RestraintBrowserController(CifBrowserController):
         
         
         
+        
       else:
-        print("Not a candidate row for filtering by restraint")
+        self.log("Not a candidate row for filtering by restraint")
 

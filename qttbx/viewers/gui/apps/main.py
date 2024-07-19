@@ -1,5 +1,6 @@
 import json
 import sys
+import os
 import threading
 from pathlib import Path
 
@@ -35,23 +36,23 @@ flask_app = Flask(__name__)
 @flask_app.route('/process_json', methods=['POST'])
 def process_json():
     json_data = request.get_json()
-    print("type:",type(json_data))
-    print(json_data)
+    self.log("type:",type(json_data))
+    self.log(json_data)
     # Continue with actual json message
     if isinstance(json_data,str):
       json_data = json.loads(json_data)
-    print("JSON Message recieved:")
+    self.log("JSON Message recieved:")
     has_command = False
     has_kwargs = False
     for key,value in json_data.items():
       if key != "kwargs":
-        print(key,":",value)
+        self.log(key,":",value)
     if "kwargs" in json_data:
       has_kwargs = True
       for k,value in json_data["kwargs"].items():
-        print(k,":")
-        print(value)
-        print()
+        self.log(k,":")
+        self.log(value)
+        self.log()
     if "command" in json_data:
       has_command = True
     assert isinstance(json_data,dict), (
@@ -79,10 +80,10 @@ def main(dm=None,params=None,log=None):
   inaccessible_programs = check_program_access(programs_to_check)
 
   if inaccessible_programs:
-    print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
+    self.log(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
     sys.exit()
   else:
-    #print("All programs are accessible.")
+    #self.log("All programs are accessible.")
     pass
 
   choice = None
@@ -150,7 +151,7 @@ def main(dm=None,params=None,log=None):
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
       # except:
-      #   print("No qtconsole found")
+      #   self.log("No qtconsole found")
 
   # # Create an instance of the event filter
   # globalEventFilter = GlobalEventFilter()
@@ -165,7 +166,7 @@ def main(dm=None,params=None,log=None):
   controller.flask_signal_emitter.flask_signal.connect(controller.update_from_remote)
 
   def run_flask_app():
-    print("Running flask app on port: ",params.rest_server_port)
+    state.log("Running flask app on port: ",params.rest_server_port)
     flask_app.run(debug=True, port=params.rest_server_port, use_reloader=False)
 
   threading.Thread(target=run_flask_app, daemon=True).start()

@@ -18,8 +18,11 @@ class sync_manager:
       self.molstar_controller = molstar_controller
       self.state = self.molstar_controller.state
 
+  def log(self,*args):
+    pass
+    
   def __enter__(self):
-      print("Entering sync manager")
+      self.log("Entering sync manager")
       self.state.has_synced = False
 
 
@@ -98,14 +101,14 @@ class MolstarController(Controller):
   def _on_load_finished(self, ok):
     self.view.parent_explicit.setEnabled(True)
     if ok:
-      print("Page loaded successfully. Accepting commands")
+      self.log("Page loaded successfully. Accepting commands")
       self._blocking_commands = False
       self.viewer._blocking_commands = False
       time.sleep(0.5)
       self._load_all_from_ref()
 
     else:
-      print("An error occurred while loading web app.")
+      self.log("An error occurred while loading web app.")
       self._blocking_commands = True
 
 
@@ -140,9 +143,9 @@ class MolstarController(Controller):
 
     if ref is not None:
       if ref.id_molstar is not None and ref.id_molstar in self.state.external_loaded["molstar"]:
-        print("Not loading model because already loaded into molstar")
-        print(self.state.external_loaded)
-        print(ref.id_molstar)
+        self.log("Not loading model because already loaded into molstar")
+        self.log(self.state.external_loaded)
+        self.log(ref.id_molstar)
 
         return
       # Ref needs to be loaded
@@ -205,8 +208,8 @@ class MolstarController(Controller):
     return self.viewer.poll_selection()
 
   def _poll_selection_callback(self,callback,selection_json):
-    #print("Calling MolstarController._poll_selection_callback(callback, selection_json)")
-    #print(f"where\n\tcallback:{callback}\n\n\tselection_json:{selection_json}")
+    #self.log("Calling MolstarController._poll_selection_callback(callback, selection_json)")
+    #self.log(f"where\n\tcallback:{callback}\n\n\tselection_json:{selection_json}")
     assert isinstance(selection_json,str) and len(selection_json.strip())>0, "Failure to recieve selection json"
     query_atoms = SelectionQuery.from_json(selection_json)
 

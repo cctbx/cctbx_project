@@ -85,7 +85,7 @@ class SelectionControlsController(Controller):
   #     passed, fail_reason = self.validate_selection(text)
   #     import pdb
   #     pdb.set_trace()
-  #     print("Selection validation paseed: ",passed,fail_reason)
+  #     self.log("Selection validation paseed: ",passed,fail_reason)
   #     if not passed:
   #       self.view.selection_edit.clear()
   #       self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}")
@@ -137,4 +137,4 @@ class SelectionControlsController(Controller):
       self.state.active_selection_ref = sel_ref
       self.state.signals.tab_change.emit("Selections") # show selection tab
     else:
-      print("Skipping add selection due to empty selection")
+      self.log("Skipping add selection due to empty selection")
