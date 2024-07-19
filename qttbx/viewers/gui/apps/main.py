@@ -23,45 +23,45 @@ from ...core.python_utils import DotDict
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 
-class FlaskSignalEmitter(QObject):
-    flask_signal = Signal(dict)
 
-# Create an instance of the signal emitter
-flask_signal_emitter = FlaskSignalEmitter()
+# # Start flask app to communicate with old Phenix GUI
+# class FlaskSignalEmitter(QObject):
+#     flask_signal = Signal(dict)
 
+# # Create an instance of the signal emitter
+# flask_signal_emitter = FlaskSignalEmitter()
 
+# flask_app = Flask(__name__)
 
-flask_app = Flask(__name__)
+# @flask_app.route('/process_json', methods=['POST'])
+# def process_json():
+#     json_data = request.get_json()
+#     self.log("type:",type(json_data))
+#     self.log(json_data)
+#     # Continue with actual json message
+#     if isinstance(json_data,str):
+#       json_data = json.loads(json_data)
+#     self.log("JSON Message recieved:")
+#     has_command = False
+#     has_kwargs = False
+#     for key,value in json_data.items():
+#       if key != "kwargs":
+#         self.log(key,":",value)
+#     if "kwargs" in json_data:
+#       has_kwargs = True
+#       for k,value in json_data["kwargs"].items():
+#         self.log(k,":")
+#         self.log(value)
+#         self.log()
+#     if "command" in json_data:
+#       has_command = True
+#     assert isinstance(json_data,dict), (
+#         f"Expected json data ({json_data}) to be parsed to a dict, got: {type(json_data)}")
 
-@flask_app.route('/process_json', methods=['POST'])
-def process_json():
-    json_data = request.get_json()
-    self.log("type:",type(json_data))
-    self.log(json_data)
-    # Continue with actual json message
-    if isinstance(json_data,str):
-      json_data = json.loads(json_data)
-    self.log("JSON Message recieved:")
-    has_command = False
-    has_kwargs = False
-    for key,value in json_data.items():
-      if key != "kwargs":
-        self.log(key,":",value)
-    if "kwargs" in json_data:
-      has_kwargs = True
-      for k,value in json_data["kwargs"].items():
-        self.log(k,":")
-        self.log(value)
-        self.log()
-    if "command" in json_data:
-      has_command = True
-    assert isinstance(json_data,dict), (
-        f"Expected json data ({json_data}) to be parsed to a dict, got: {type(json_data)}")
+#     if has_command and has_kwargs:
+#       flask_signal_emitter.flask_signal.emit(json_data)
 
-    if has_command and has_kwargs:
-      flask_signal_emitter.flask_signal.emit(json_data)
-
-    return jsonify({'status_ok': "ok"})
+#     return jsonify({'status_ok': "ok"})
 
 
 class ViewerGUIApp:
@@ -141,35 +141,24 @@ def main(dm=None,params=None,log=None):
 
 
   # Reach into the Console tab to make variables accessible
-  # if params and params.show_tab:
-  #   if 'all' in params.show_tab or 'console' in params.show_tab:
-  #     try:
-  # Change to enable console always by default
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'app': app})
   #include Selection dataclasses to build querys in console
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'Selection':Selection})
   app.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'SelectionQuery':SelectionQuery})
 
-      # except:
-      #   self.log("No qtconsole found")
 
-  # # Create an instance of the event filter
-  # globalEventFilter = GlobalEventFilter()
-
-  # # Install the event filter on the QApplication instance
-  # qapp.installEventFilter(globalEventFilter)
-
-
-  # Flask set up
   controller.view.show()
-  controller.flask_signal_emitter = flask_signal_emitter
-  controller.flask_signal_emitter.flask_signal.connect(controller.update_from_remote)
 
-  def run_flask_app():
-    state.log("Running flask app on port: ",params.rest_server_port)
-    flask_app.run(debug=True, port=params.rest_server_port, use_reloader=False)
 
-  threading.Thread(target=run_flask_app, daemon=True).start()
+  # # Flask set up
+  # controller.flask_signal_emitter = flask_signal_emitter
+  # controller.flask_signal_emitter.flask_signal.connect(controller.update_from_remote)
+
+  # def run_flask_app():
+  #   state.log("Running flask app on port: ",params.rest_server_port)
+  #   flask_app.run(debug=True, port=params.rest_server_port, use_reloader=False)
+
+  # threading.Thread(target=run_flask_app, daemon=True).start()
 
 
 
