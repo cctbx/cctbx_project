@@ -8,6 +8,8 @@ from ...state.edits import (
   BondEdit,
   AngleEdit,
   DihedralEdit,
+  ChiralEdit,
+  PlaneEdit,
 )
 
 
@@ -68,7 +70,7 @@ class EditsTableTabController(TableController):
         for key,value in label_dict.items():
           self.dataframe[key] = value
         
-        self.table_model = PandasTableModel(self.dataframe,display_columns=self.display_columns)
+        self.table_model = PandasTableModel(self.dataframe,display_columns=self.display_columns,transpose=True)
         self.parent.view.toggle_tab_visible(self.title,show=True)
       else:
         self.state.signals.remove_ref.emit(edits_ref)
@@ -102,10 +104,15 @@ class DihedralTableController(EditsTableTabController):
   title = "Dihedrals"
   restraint_name = "dihedral"
   row_class = DihedralEdit
+  display_columns = ["action","ideal_old","ideal_new","sigma_old","sigma_new","weight_old","weight_new","harmonic_old","harmonic_new","Label"]
+
 
 class ChiralTableController(EditsTableTabController):
   title = "Chirals"
   restraint_name = "chirality"
+  row_class = ChiralEdit
+  display_columns = ["action","ideal_old","ideal_new","sigma_old","sigma_new","Label"]
+
 
 class PlanarityTableController(EditsTableTabController):
   title = "Planes"

@@ -52,7 +52,7 @@ angle {{
   atom_selection_2 = {self.sel_strings[1]}
   atom_selection_3 = {self.sel_strings[2]}
   symmetry_operation = {None}
-  distance_ideal = {self.ideal_new}
+  angle_ideal = {self.ideal_new}
   sigma = {self.ideal_new}
   slack = {None}
   }}
@@ -72,7 +72,22 @@ class DihedralEdit(EditData):
   harmonic_new: Optional[float] = None
 
   def to_edits_string(self):
-    raise NotImplementedError
+    s = f"""
+dihedral {{
+  action: *{self.action}
+  atom_selection_1 = {self.sel_strings[0]}
+  atom_selection_2 = {self.sel_strings[1]}
+  atom_selection_3 = {self.sel_strings[2]}
+  atom_selection_3 = {self.sel_strings[3]}
+  symmetry_operation = {None}
+  angle_ideal = {self.ideal_new}
+  sigma = {self.ideal_new}
+  weight = {self.weight_new}
+  harmonic = {self.harmonic_new}
+  slack = {None}
+  }}
+    """
+    return s
 
 
 @dataclass(frozen=True)
@@ -84,6 +99,25 @@ class ChiralEdit(EditData):
   sigma_new: float
 
   def to_edits_string(self):
+    s = f"""
+chiral {{
+  action: *{self.action}
+  atom_selection_1 = {self.sel_strings[0]}
+  atom_selection_2 = {self.sel_strings[1]}
+  atom_selection_3 = {self.sel_strings[2]}
+  symmetry_operation = {None}
+  ideal = {self.ideal_new}
+  sigma = {self.ideal_new}
+  slack = {None}
+  }}
+    """
+    return s
+
+
+@dataclass(frozen=True)
+class PlaneEdit(EditData):
+  i_seqs: List[int]
+
+
+  def to_edits_string(self):
     raise NotImplementedError
-
-

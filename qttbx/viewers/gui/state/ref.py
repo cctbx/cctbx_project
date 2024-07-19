@@ -439,6 +439,12 @@ class AngleEditsRef(EditsRef):
 class DihedralEditsRef(EditsRef):
   _class_label_name = "dihedral_edits"
 
+class ChiralEditsRef(EditsRef):
+  _class_label_name = "chiral_edits"
+
+class PlaneEditsRef(EditsRef):
+  _class_label_name = "plane_edits"
+
 class StyleRef(Ref):
   # A collection of edits of a single type
   _class_label_name = "style"

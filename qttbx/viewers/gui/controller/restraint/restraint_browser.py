@@ -65,9 +65,10 @@ class RestraintBrowserController(CifBrowserController):
 
   @property
   def filenames(self):
+    return super().filenames
     # implemented to enable modification in subclasses
-    filenames = [ref.data.filename.replace("data_","").replace(".cif","") for ref in self.cif_refs]
-    return filenames
+    # filenames = [ref.data.filename.replace("data_","").replace(".cif","") for ref in self.cif_refs]
+    # return filenames
 
   def save(self,*args):
     # Opens a save file dialog and returns the selected file path and filter
@@ -110,28 +111,18 @@ class RestraintBrowserController(CifBrowserController):
         filter_obj_comp = ComponentFilterObj(name=comp_id,geometry_type=item_suffix)
         atom_columns = [col for col in df_sel.columns if "atom_id" in col]
         atom_filters = []
+        atom_ids = []
         for atom_col in atom_columns:
 
           atom_id = df_sel[atom_col].iloc[0]
+          atom_ids.append(atom_id)
           filter_obj_atom = AtomFilterObj(name=atom_id,geometry_type=item_suffix,mmcif_prefix=atom_col)
           atom_filters.append(filter_obj_atom)
         filter_obj = CompositeFilter([filter_obj_comp]+atom_filters)
         self.state.signals.geometry_filter_from_restraint.emit(filter_obj)
         
+        
+        
       else:
         print("Not a candidate row for filtering by restraint")
 
-
-
-    # if len(df_sel)==1:
-    #   if df_sel is not None:
-    #     # switch to atom picking level
-    #     self.state.signals.picking_level.emit("atom")
-    #     flattened_i_seqs = [item for sublist in df_sel['i_seqs'] for item in sublist]
-    #     flattened_i_seqs = [int(e) for e in flattened_i_seqs if pd.notna(e)]
-    #     selection = Selection.from_i_seqs(self.state.mol.sites,flattened_i_seqs)
-    #     ref = SelectionRef(data=selection,model_ref=self.state.active_model_ref,show=False)
-    #     self.state.add_ref(ref)
-    #     self.state.active_selection_ref = ref
-    #   else:
-    #     print("no atoms returned as query")

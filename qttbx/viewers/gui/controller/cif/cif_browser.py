@@ -14,10 +14,6 @@ from ...state.cif import CifFileData
 from ...state.ref import CifFileRef
 
 
-
-
-
-
 def remove_values_for_key(d, key_to_remove):
   """
   Recursively remove any key-value pairs for a given key in a nested dictionary.
@@ -94,7 +90,8 @@ class CifBrowserController(TableController):
     if hasattr(self.view,"edit_button"):
       #pass
       self.view.edit_button.clicked.connect(self.edit_button_clicked)
-
+    if hasattr(self.view,"next_button"):
+      self.view.next_button.clicked.connect(self.on_mouse_released)
 
   def showFileDialog(self):
     home_dir = Path.home()  # Cross-platform home directory
@@ -214,11 +211,14 @@ class CifBrowserController(TableController):
       self.update_file(refs[0])
 
   def update_file(self,ref):
+    print("updating file: ",ref)
     self.view.combobox_files.blockSignals(True)
 
     if ref and ref != self.cif_ref:
       # load existing cif files
       current_filename = self.view.combobox_files.currentText()
+
+
       self.view.combobox_files.clear()
     
 

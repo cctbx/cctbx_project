@@ -11,18 +11,22 @@ from ...view.widgets import (
   BondEditDialog,
   AngleEditDialog,
   DihedralEditDialog,
-  ChiralEditDialog
+  ChiralEditDialog,
+  PlaneEditDialog
 )
 from ...state.edits import (
   BondEdit,
   AngleEdit,
   DihedralEdit,
-  ChiralEdit
+  ChiralEdit,
+  PlaneEdit
 )
 from ...state.ref import (
   BondEditsRef,
   AngleEditsRef,
-  DihedralEditsRef
+  DihedralEditsRef,
+  ChiralEditsRef,
+  PlaneEditsRef
 )
 
 from ..filter import CompositeFilter
@@ -77,6 +81,7 @@ class GeometryTableTabController(TableController):
     if len(sel)==1:
       row_dict = sel.to_dict("records")[0]
       self.addEdit(row_dict)
+      self.state.signals.tab_change.emit("Edits")
 
   def addEdit(self,row_dict):
     raise NotImplementedError
@@ -203,8 +208,18 @@ class GeometryTableTabController(TableController):
       print(f"Column '{column_name}' not found in the model")
 
   # A generic pandas helper function to match a row_dict with an actual row in a dataframe
+
   @staticmethod
   def find_matching_row(df, dict_subset):
+    # Check if all keys in dict_subset exist in the DataFrame
+    for key in dict_subset.keys():
+      if key not in df.columns:
+        raise KeyError(f"Column '{key}' not found in DataFrame")
+    
+    # Ensure DataFrame columns have consistent lengths
+    if not all(len(df[col]) == len(df) for col in df.columns):
+      raise ValueError("All columns in the DataFrame must have the same length")
+
     # Start with a mask of all True values
     mask = pd.Series([True] * len(df))
 
@@ -212,16 +227,21 @@ class GeometryTableTabController(TableController):
       if value is None:
         # Check for NaN values in the DataFrame
         mask &= df[key].isnull()
+      elif isinstance(value, list):
+        # Special case: value is a list
+        mask &= df[key].apply(lambda x: isinstance(x, list) and all(item in x for item in value))
       else:
-        # Check for matching values in the DataFrame
-        mask &= df[key] == value
+        # Check for matching values in the DataFrame, handling potential type mismatches
+        try:
+          mask &= df[key] == value
+        except ValueError as e:
+          raise ValueError(f"Error comparing column '{key}' with value '{value}': {e}")
 
     # Find rows where all specified dictionary key-value pairs match
     matching_rows = df[mask]
 
     # Return the first matching row or None if no match is found
     return matching_rows.iloc[0] if not matching_rows.empty else None
-
 
   @staticmethod
   def get_sel_strings_from_iseqs(mol,i_seqs):
@@ -330,8 +350,6 @@ class DihedralTableController(GeometryTableTabController):
 
   def addEdit(self,row_dict):
     df = getattr(self.geometry_ref.data,self.geometry_type)
-    #import pdb
-    #pdb.set_trace()
     row_dict = self.find_matching_row(df,row_dict).to_dict() # get full row from geometry
     dialog = DihedralEditDialog(defaults_dict=row_dict,action="mod")
     if dialog.exec_():
@@ -372,6 +390,39 @@ class DihedralTableController(GeometryTableTabController):
 class ChiralTableController(GeometryTableTabController):
   title = "Chirals"
   geometry_type = "chirality"
+
+  def addEdit(self,row_dict):
+    df = getattr(self.geometry_ref.data,self.geometry_type)
+    row_dict = self.find_matching_row(df,row_dict).to_dict()
+    dialog = ChiralEditDialog(defaults_dict=row_dict,action="mod")
+    if dialog.exec_():
+      sites = self.state.mol.sites
+      i_seqs = row_dict["i_seqs"]
+      labels_compositional = self.get_labels_compositional_from_iseqs(sites,i_seqs)
+
+      row =  ChiralEdit(
+        i_seqs = row_dict["i_seqs"],
+        sel_strings = self.get_sel_strings_from_iseqs(self.state.mol,row_dict["i_seqs"]),
+        labels_compositional = labels_compositional,
+        ideal_old=row_dict["ideal"],
+        ideal_new = dialog.collectInputValues()["ideal"],
+        sigma_old=row_dict["sigma"],
+        sigma_new = dialog.collectInputValues()["sigma"],
+        action="mod"
+        )
+
+      edit_ref = None
+      for ref_id,ref in self.state.references.items():
+        if isinstance(ref,ChiralEditsRef):
+          if ref.geometry_ref == self.geometry_ref:
+            edit_ref = ref
+            edit_ref.data.rows.append(row)
+      if edit_ref is None:
+        objframe = ObjectFrame.from_rows([row])
+        edit_ref = ChiralEditsRef(data=objframe,geometry_ref=self.geometry_ref)
+      self.state.add_ref(edit_ref)
+    else:
+      print("Dialog Cancelled")
 
 class PlanarityTableController(GeometryTableTabController):
   title = "Planes"

@@ -32,13 +32,13 @@ class CifBrowserTabView(GUITab):
   #new_block = Signal(str)
   #was_modified = Signal(bool)
 
-  def __init__(self,parent=None,load_button=True):
+  def __init__(self,parent=None,load_button=True,next_button=False):
     super().__init__(parent=parent)
     self.layout = QVBoxLayout()
     
 
     # combo boxes
-    self.combo_button_layout = self.build_comboboxes(load_button=load_button)
+    self.combo_button_layout = self.build_comboboxes(load_button=load_button,next_button=next_button)
     self.layout.addItem(self.combo_button_layout)
 
 
@@ -49,7 +49,7 @@ class CifBrowserTabView(GUITab):
 
 
 
-  def build_comboboxes(self,load_button=True):
+  def build_comboboxes(self,load_button=True,next_button=False):
     # Horizontal layout for comboboxes and save button
     combo_button_layout = QHBoxLayout()
 
@@ -104,6 +104,16 @@ class CifBrowserTabView(GUITab):
     # separator.setFrameShape(QFrame.VLine)
     # separator.setFrameShadow(QFrame.Sunken)
     # combo_button_layout.addWidget(separator,1)
+
+    if next_button:
+      # Next button
+      next_button_layout = QVBoxLayout()
+      self.next_button = QPushButton()
+      self.next_button.setToolTip("Move to 'next' instance")
+      next_icon = qta.icon("mdi.arrow-right")
+      self.next_button.setIcon(next_icon)
+      next_button_layout.addWidget(self.next_button)
+      combo_button_layout.addLayout(next_button_layout)
 
     # Edit button
     edit_button_layout = QVBoxLayout()

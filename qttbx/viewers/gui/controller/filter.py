@@ -13,6 +13,11 @@ class FilterObj:
     self.name = name
     self.geometry_type = geometry_type
     self.mmcif_prefix = mmcif_prefix
+  
+  def __eq__(self,other):
+    if type(self) != type(other):
+      return False
+    return self.name==other.name and self.geometry_type==other.geometry_type and self.mmcif_prefix == other.mmcif_prefix
 
   def filter_df(self,df):
     raise NotImplementedError
@@ -87,6 +92,12 @@ class CompositeFilter:
   def __init__(self,filters):
     self.filters = filters
 
+  def __eq__(self,other):
+    if type(self) != type(other):
+      return False
+    if len(self.filters)!=len(other.filters):
+      return False
+    return all([f1==f2 for f1,f2 in zip(self.filters,other.filters)])
   @property
   def geometry_type(self):
     types = [filter_obj.geometry_type for filter_obj in self.filters]
@@ -124,6 +135,7 @@ class TableFilterController(Controller):
     self.comp_filters = []
     self.other_filters = [FilterAll()]
     self.restraint_filters = [FilterAll()]
+    self._restraint_instance_counter = 0
   
   @property
   def comp_filter_dict(self):
@@ -136,8 +148,27 @@ class TableFilterController(Controller):
 
   def add_restraint_filter(self,filter_obj):
     if filter_obj.geometry_type == "All" or filter_obj.geometry_type == self.parent.geometry_type:
+      same = False
+      if self.restraint_filters[0] == filter_obj:
+        print("SAME!")
+        same = True
+        
+        
       self.restraint_filters = [filter_obj]
       self.update_filter()
+
+      # Same filter as last time, iterate selected
+      if same:
+        if self._restraint_instance_counter>=len(self.parent.table_model.df)-1:
+          self._restraint_instance_counter = 0
+        else:
+          self._restraint_instance_counter+=1
+      print("Selecting row:",self._restraint_instance_counter)
+      self.parent.select_row(self._restraint_instance_counter)
+      self.parent.on_mouse_released()
+
+
+
 
   def update_filter(self):
     df = self.parent.dataframe
