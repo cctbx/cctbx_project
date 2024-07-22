@@ -1,8 +1,11 @@
 from __future__ import absolute_import, division, print_function
+from turtle import window_width
 from libtbx.program_template import ProgramTemplate
 import iotbx.pdb
 import mmtbx.secondary_structure
 from pathlib import Path
+import numpy as np
+from scipy.interpolate import make_interp_spline
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present
@@ -78,6 +81,87 @@ Output:
 
 # ------------------------------------------------------------------------------
 
+  def splineInterplate(self, pts, nIntervals):
+    # Returns a list of interpolated points between the points using a spline interpolation.
+    # Based on https://docs.scipy.org/doc/scipy/tutorial/interpolate/1D.html#parametric-spline-curves
+    # @param pts: The guidepoints to interpolate between (a list of 3D points with at least 6 points in it).
+    # The first and last points are duplciates to form knots, so are not interpolated between.
+    # @param nIntervals: The number of intervals to interpolate between each pair of guidepoints, skipping the first and last.
+    # @return: The list of interpolated points
+
+    # Construct the parametric spline for a curve in 3D space.
+    # We stick the end points in like any other points, but we don't use them in the interpolation.
+    u = range(len(pts))
+    x = [pt[0] for pt in pts]
+    y = [pt[1] for pt in pts]
+    z = [pt[2] for pt in pts]
+    p = np.stack( (x, y, z) )
+    spl = make_interp_spline(u, p, axis=1)
+
+    # Compute the interpolated points
+    count = (len(pts) - 1) * nIntervals + 1
+    uu = np.linspace(0, len(pts) - 1, count)
+    xx, yy, zz = spl(uu)
+
+    ret = []
+    for i in range(count):
+      ret.append( (xx[i], yy[i], zz[i]) )
+    return ret
+
+# ------------------------------------------------------------------------------
+
+  # Commented out the fields and did not include methods that we don't need for our implementation
+  # Switched getType() to making type public.
+  # Its fields should be based on the PDB secondary structure records.
+  class Range:
+    def __init__(self, pType = 'COIL', pInit = 0, pEnd = 0, pSense = 0, pStrand = 1, pSheet = ' ', pFlipped = False):
+      # self._rangeIndex = 0
+      self.type = pType
+      #self._chainId = ''
+      self.initSeqNum = pInit
+      self.endSeqNum = pEnd
+      #self._initICode = ' '
+      #self._endICode = ' '
+      self.sense = pSense    # 0 if first strand, 1 if parallel, -1 if anti-parallel
+      self.strand = pStrand   # Starts at 1 for each strand within a sheet and increases by 1
+      self.sheetID = pSheet
+      self.flipped = pFlipped  # Used by printing code to make the tops within a set of ribbons all point the same way
+      #self.previous = None
+      #self.next = None
+      #self.duplicateOf = None
+
+  class RibbonElement:
+    def __init__(self, other=None, setRange=None):
+      self.start = 0
+      self.end = 0
+      self.type = 'COIL'
+      self.range = setRange
+      if other is not None:
+        self.start = other.start
+        self.end = other.end
+        self.type = other.type
+        self.range = other.range
+      if self.range is not None:
+        if self.range.type == 'turn':
+          self.type = 'COIL'
+        else:
+          self.type = self.range.type
+
+    def sameSSE(self, that):
+      return self.type == that.type and self.range == that.range
+
+    def like(self, that):
+      return self.sameSSE(that) and self.start == that.start and self.end == that.end
+
+    def __lt__(self, that):
+      a = 0
+      b = 0
+      if self.range is not None:
+        a = self.range.strand
+      if that.range is not None:
+        b = that.range.strand
+      return a < b
+
   def printFancyRibbon(self, guides, widthAlpha, widthBeta, listAlpha, listBeta, listCoil, listCoilOutline, doRainbow, rnaPointIDs):
     # Constructs a kinemage string for a ribbon representation of a protein or nucleic acid chain.
     # Makes a triangulated ribbon with arrowheads, etc.
@@ -99,6 +183,29 @@ Output:
     widthCoil = self.params.coil_width
     secStruct = self.secondaryStructure
 
+    # Seven strands of guidpoints: coil, +/-alpha, +/-beta, +/-beta arrowheads.
+    # Each strand is a list of 3D points and there is a strand for each offset from the center spline.
+    halfWidths = [0.0, -widthAlpha/2, widthAlpha/2, -widthBeta/2, widthBeta/2, -widthBeta, widthBeta]
+    strands = [[] for _ in range(len(halfWidths))]
+    for g in guides:
+      for i in range(len(halfWidths)):
+        strands[i].append(g.pos + g.dvec * halfWidths[i])
+
+    # Seven strands of interpolated points
+    splinepts = []
+    for i in range(len(strands)):
+      splinepts.append(self.splineInterplate(strands[i], self.nIntervals))
+
+    # Discovery of ribbon elements: ribbons, ropes, and arrows.
+    # We skip the regions associated with the first and last points, which are present to cause the
+    # curve to pass through those points (like knots) but are not interpolated between.
+    # We do that by looping through fewer entries and by adding 1 to the index.
+    # @todo Figure out what this code is doing with its secondary structure class and reproduce with ours.  
+    for i in range(len(guides) - 1 - 2):
+      g1 = guides[i + 1]
+      g2 = guides[i + 2]
+
+
     # @todo
 
     return ret
@@ -107,11 +214,11 @@ Output:
 
   def run(self):
     self.model = self.data_manager.get_model()
+    self.nIntervals = 4
 
-    # Analyze the secondary structure and make a dictionary that maps from residue sequnce number to secondary structure type
-    # by filling in 'coil' as a default value for each and then parsing all of the secondary structure records in the
+    # Analyze the secondary structure and make a dictionary that maps from residue sequence number to secondary structure type
+    # by filling in 'COIL' as a default value for each and then parsing all of the secondary structure records in the
     # model and filling in the relevant values for them.
-    # @todo Maybe we only mark the residues just past one end of a helix or sheet as coil, not sure what to mark others.
     # @todo Can pass it an atom selection cache, so maybe we do this after we have selected the atoms we want to use?
     print('Finding secondary structure:')
     ss_manager = mmtbx.secondary_structure.manager(self.model.get_hierarchy())
@@ -119,30 +226,27 @@ Output:
     for model in self.model.get_hierarchy().models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          self.secondaryStructure[residue_group.resseq] = 'coil'
+          self.secondaryStructure[residue_group.resseq] = 'COIL'
     for line in ss_manager.records_for_pdb_file().splitlines():
-      rType = line[0:5].strip()
-      if rType == 'HELIX':
-        id = line[11:14].strip()
-        firstResID = int(line[21:26].strip())
-        lastResID = int(line[33:38].strip())
-        helixID = int(id) - 1
-        helixType = ss_manager.get_helix_types()[helixID]
-        for i in range(firstResID,lastResID+1):
-          self.secondaryStructure[i] = 'alpha'
-      elif rType == 'SHEET':  # Java code marks this internally as STRAND but we leave it as SHEET
-        id = line[11:14].strip()
-        firstResID = int(line[23:28].strip())
-        lastResID = int(line[33:38].strip())
-        for i in range(firstResID,lastResID+1):
-          self.secondaryStructure[i] = 'beta'
-      elif rType == 'TURN':
+      r = self.Range(line[0:5].strip())
+      if r.type == 'HELIX':
+        r.sheetID = line[11:14].strip()
+        r.initSeqNum = int(line[21:26].strip())
+        r.endSeqNum = int(line[33:38].strip())
+      elif r.type == 'SHEET':  # Java code marks this internally as STRAND but we leave it as SHEET
+        r.sheetID = line[11:14].strip()
+        r.initSeqNum = int(line[23:28].strip())
+        r.endSeqNum = int(line[33:38].strip())
+        r.sense = int(line[38:40].strip())
+        r.strand = int(line[7:10].strip())
+      elif r.type == 'TURN':
         # @todo Test this code on a file that actually has turns to see if it works
-        id = line[11:14].strip()
-        firstResID = int(line[22:26].strip())
-        lastResID = int(line[33:37].strip())
-        for i in range(firstResID,lastResID+1):
-          self.secondaryStructure[i] = 'turn'
+        # In fact, we turn turns int coils, so we really don't care.
+        # r.sheetID = line[11:14].strip()
+        r.initSeqNum = int(line[22:26].strip())
+        r.endSeqNum = int(line[33:37].strip())
+      for i in range(r.initSeqNum,r.endSeqNum+1):
+        self.secondaryStructure[i] = r
 
     # The name of the structure, which is the root of the input file name (no path, no extension)
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
