@@ -1,7 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from libtbx import group_args
 
-to_kcal_mol = {'ev':23.0609,
+to_kcal_mol = { 'ev'      : 23.0609,
+                'hartree' : 627.503,
   }
 
 def _print_energy_in_kcal(e, units):
