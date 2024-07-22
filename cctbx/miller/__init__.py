@@ -2512,7 +2512,7 @@ class array(set):
     if omit_s > 0:
       return self
     new_data = len(self.data())*[None]
-    s = -omit_s/2
+    s = omit_s/2
     for i, I in enumerate(self.data()):
       sig = self.sigmas()[i]
       new_data[i] = s*sig if I < s*sig else I
