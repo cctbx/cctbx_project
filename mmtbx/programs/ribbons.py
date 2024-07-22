@@ -130,6 +130,10 @@ Output:
       #self.next = None
       #self.duplicateOf = None
 
+    def __str__(self):
+      return 'Range: type={}, init={}, end={}, sense={}, strand={}, sheet={}, flipped={}'.format(
+        self.type, self.initSeqNum, self.endSeqNum, self.sense, self.strand, self.sheetID, self.flipped)
+
   class RibbonElement:
     def __init__(self, other=None, setRange=None):
       self.start = 0
@@ -137,12 +141,9 @@ Output:
       self.type = 'COIL'
       self.range = setRange
       if other is not None:
-        self.start = other.start
-        self.end = other.end
-        self.type = other.type
-        self.range = other.range
+        self.like(other)
       if self.range is not None:
-        if self.range.type == 'turn':
+        if self.range.type is None or self.range.type == 'TURN':
           self.type = 'COIL'
         else:
           self.type = self.range.type
@@ -151,7 +152,10 @@ Output:
       return self.type == that.type and self.range == that.range
 
     def like(self, that):
-      return self.sameSSE(that) and self.start == that.start and self.end == that.end
+      self.start = that.start
+      self.end = that.end
+      self.type = that.type
+      self.range = that.range
 
     def __lt__(self, that):
       a = 0
@@ -200,11 +204,42 @@ Output:
     # We skip the regions associated with the first and last points, which are present to cause the
     # curve to pass through those points (like knots) but are not interpolated between.
     # We do that by looping through fewer entries and by adding 1 to the index.
-    # @todo Figure out what this code is doing with its secondary structure class and reproduce with ours.  
+    ribbonElements = []
+    ribElement = self.RibbonElement()
+    prevRibElt = self.RibbonElement()
+    ribbonElements.append(ribElement)
+    # Element that is reused and copied when creating a new list entry
+    ribElement.type = None
     for i in range(len(guides) - 1 - 2):
       g1 = guides[i + 1]
       g2 = guides[i + 2]
 
+      curSS = self.RibbonElement(setRange=secStruct[g1.nextRes.resseq])
+      nextSS = self.RibbonElement(setRange=secStruct[g2.nextRes.resseq])
+
+      # Otherwise, we get one unit of coil before alpha or beta at start
+      if ribElement.type is None:
+        ribElement.like(curSS)
+
+      if not ribElement.sameSSE(curSS): # Helix / sheet starting
+        if curSS.type == 'HELIX' or curSS.type == 'SHEET':
+          ribElement.end = self.nIntervals*i + 1
+          ribbonElements.append(self.RibbonElement(curSS))
+          # Every helix or sheet starts with a coil; see below
+          ribElement.start = self.nIntervals*i + 1
+      if not ribElement.sameSSE(nextSS): # Helix / sheet ending
+        if nextSS.type == 'HELIX' or nextSS.type == 'SHEET':
+          end = self.nIntervals*i + 0
+          if currSS.type == 'SHEET':
+            end += self.nIntervals - 1
+          ribElement.end = end
+          ribbonElements.append(self.RibbonElement())
+          # Every helix or sheet flows into coil
+          ribElement.type = 'COIL'
+          ribElement.start = end
+    ribElement.end = len(splinepts[0]) - 1
+
+    # "Crayons" to use for coloring the ribbon, juggling them around to keep the edges black
 
     # @todo
 
@@ -226,7 +261,7 @@ Output:
     for model in self.model.get_hierarchy().models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          self.secondaryStructure[residue_group.resseq] = 'COIL'
+          self.secondaryStructure[residue_group.resseq] = self.Range()
     for line in ss_manager.records_for_pdb_file().splitlines():
       r = self.Range(line[0:5].strip())
       if r.type == 'HELIX':
