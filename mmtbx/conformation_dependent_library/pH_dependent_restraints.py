@@ -8,7 +8,7 @@ import time
 from mmtbx.monomer_library import server
 from cctbx import geometry_restraints
 
-def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, neutron2):
+def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, neutron2, atoms=None):
   atoms_added = {}
   bond_counters = [0,0]
   i_seqs = [atom1.i_seq, atom2.i_seq]
@@ -20,7 +20,22 @@ def process_bonds(gpr, bond, atom_dict, atom1, atom2, name1, name2, neutron1, ne
     k=1
     l=0
     bond_table_entry = gpr.bond_simple.table[i_seqs[k]]
+  print(atom1.quote(), atom2.quote())
+  print(bond_table_entry)
+  # print(atom_dict)
+  # for atom, item in atom_dict.items():
+  #   print('-'*80)
+  #   print(atom, item.show())
+  print('='*80)
+  print(gpr.bond_simple.proxies)
+  # print(dir(gpr.bond_simple.proxies))
+  for i, proxy in enumerate(gpr.bond_simple.proxies):
+    # print(dir(proxy))
+    print(i, proxy.i_seqs)
   if i_seqs[l] in bond_table_entry:
+    print(i_seqs[l], i_seqs[k])
+    print(atoms[i_seqs[l]].quote())
+    print(atoms[i_seqs[k]].quote())
     bond_simple = gpr.bond_simple.proxies[i_seqs[k]]
     bond_simple.distance_ideal = bond.value_dist
     bond_simple.weight=1/bond.value_dist_esd**2
@@ -144,7 +159,9 @@ def adjust_geometry_proxies_registeries(hierarchy,
                                name1,
                                name2,
                                neutron1,
-                               neutron2)
+                               neutron2,
+                               atoms=pdb_atoms,
+                               )
         for i in range(2):
           bond_counters[i]+=bc[i]
         if ad:
