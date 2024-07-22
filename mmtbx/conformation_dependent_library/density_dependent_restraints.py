@@ -8,6 +8,12 @@ ddr
 {
   enable = False
     .type = bool
+  weighting_factor = 0.5
+    .type = float
+  cc_minimum = 0.
+    .type = float
+  map_value_minimum = 0.5
+    .type = float
   bond_weighting = True
     .type = bool
   angle_weighting = True
@@ -56,7 +62,7 @@ def expand_i_seqs_to_neighbouring_residue(hierarchy, ddr_i_seqs):
     rg_set = []
     for atom in rg.atoms(): rg_set.append(atom.i_seq)
     intersection = ddr_set.intersection(set(rg_set))
-    if intersection:
+    if intersection and previous:
       total_i_seqs += rg_set
       rc = get_selected_i_seqs(previous, [' CA ', ' C  ', ' O  '])
       total_i_seqs += rc
