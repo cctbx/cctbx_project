@@ -14,6 +14,7 @@ from scipy.optimize import dual_annealing, basinhopping
 from collections import Counter
 from scitbx.matrix import sqr, col
 from scipy.ndimage import binary_dilation
+from scipy.stats import pearsonr
 from dxtbx.model.experiment_list import ExperimentListFactory
 from dxtbx.model import Spectrum
 try:  # TODO keep backwards compatibility until we close the nxmx_writer_experimental branch
@@ -980,7 +981,10 @@ class DataModeler:
                 raise RuntimeError("To use restraints, must specify both center and beta for param %s" % name)
 
     def get_data_model_pairs(self, reorder=False):
-        """returns data,model,trusted,bragg"""
+        """
+        :param reorder: whether to reorder sort by resolution
+        :return: 4 lists of sub-images: data, models, trusted, bragg
+        """
         if self.best_model is None:
             raise ValueError("cannot get the best model, there is no best_model attribute")
         all_dat_img, all_mod_img = [], []
@@ -1443,9 +1447,9 @@ def convolve_model_with_psf(model_pix, J, mod, SIM, PSF=None, psf_args=None,
         psf_args = SIM.psf_args
         assert psf_args is not None
     if roi_id_slices is None:
-        roi_id_slices = SIM.roi_id_slices
+        roi_id_slices = mod.roi_id_slices
     if roi_id_unique is None:
-        roi_id_unique = SIM.roi_id_unique
+        roi_id_unique = mod.roi_id_unique
 
     coords = mod.pan_fast_slow.as_numpy_array()
     pid = coords[0::3]
@@ -1763,8 +1767,6 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
             #        J[amp_p.xpos] += amp_d
             #        J[wid_p.xpos] += wid_d
 
-
-
     if not Mod.params.fix.perRoiScale and compute_grad:
         if compute_grad:
             for p in perRoiParams:
@@ -1775,7 +1777,6 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
                 else:
                     d = p.get_deriv(x[p.xpos], model_pix_noRoi[slc])
                 J[p.xpos, slc] += d
-
 
     return model_pix, J
 
@@ -2039,7 +2040,7 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
                 p = mod.P[name]
                 Jac_p = Jac[p.xpos]
                 roi_id = int(p.name.split("scale_roi")[1])
-                slc = SIM.roi_id_slices[roi_id][0]
+                slc = mod.roi_id_slices[roi_id][0]
                 common_grad_slc = common_grad_term_all[slc]
                 Jac_slc = Jac_p[slc]
                 trusted_slc = trusted[slc]
@@ -2131,7 +2132,8 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
     return return_data
 
 
-def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True):
+def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, best=None, free_mem=True,
+           diffBragg_intensity=False):
     if gpu_device is None:
         gpu_device = 0
     params.simulator.spectrum.filename = spec
@@ -2151,11 +2153,12 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     x0 = [1] * nparam
 
     x = Modeler.Minimize(x0, SIM)
-    Modeler.best_model, _ = model(x, Modeler, SIM, compute_grad=False)
+    Modeler.best_model, best_Jac = model(x, Modeler, SIM, compute_grad=True, dont_rescale_gradient=True)
     Modeler.best_model_includes_background = False
     try:
         sigz, niter, _ = Modeler.get_best_hop()
     except Exception:
+        sigz = niter = None
         pass
 
     new_crystal = update_crystal_from_x(Modeler, SIM, x)
@@ -2170,7 +2173,14 @@ def refine(exp, ref, params, spec=None, gpu_device=None, return_modeler=False, b
     new_det = update_detector_from_x(Modeler, SIM, x)
     new_exp.detector = new_det
 
-    new_refl = get_new_xycalcs(Modeler, new_exp)
+    if diffBragg_intensity:
+        new_refl = get_new_xycalcs(Modeler, new_exp, x=x, SIM=SIM, Jac=best_Jac)
+    else:
+        new_refl = get_new_xycalcs(Modeler, new_exp, x=x)
+
+    if niter is not None:
+        new_refl["shot_niter"] = flex.double(len(new_refl), niter)
+        new_refl["shot_sigz"] = flex.double(len(new_refl), sigz)
 
     if free_mem:
         Modeler.clean_up(SIM)
@@ -2229,18 +2239,21 @@ def update_crystal_from_x(Mod, SIM, x):
     return new_cryst_from_rotXYZ_and_ucell((rotX,rotY,rotZ), ucparam, SIM.crystal.dxtbx_crystal)
 
 
-def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
+def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials", x=None, Jac=None, SIM=None):
     """
 
     :param Modeler: data modeler instance after refinement
     :param new_exp: post-refinement dxtbx experiment obj
-    :param old_refl_tag: exisiting columns will be renamed with this tag as a prefix
+    :param old_refl_tag: existing columns will be renamed with this tag as a prefix
+    :param x: refinement parameter values *scaled
+    :param Jac: the modeler Jacobian
+    :param SIM: sim_data.SimData instance used by the refiner
     :return: refl table with xyzcalcs derived from the modeling results
     """
     if isinstance(Modeler.all_sigma_rdout, np.ndarray):
-        _, _, _, bragg_subimg, _ = Modeler.get_data_model_pairs()
+        data_subimg, model_subimg, trust_subimg, bragg_subimg, _ = Modeler.get_data_model_pairs()
     else:
-        _,_,_, bragg_subimg = Modeler.get_data_model_pairs()
+        data_subimg, model_subimg, trust_subimg, bragg_subimg = Modeler.get_data_model_pairs()
     new_refls = deepcopy(Modeler.refls)
 
     reflkeys = list(new_refls.keys())
@@ -2254,6 +2267,23 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
     new_xycalcs = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     new_xycalcs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
     new_xyobs_mm = flex.vec3_double(len(Modeler.refls), (np.nan, np.nan, np.nan))
+    per_refl_scales = flex.double(len(Modeler.refls), 1)
+    # for storing diffBragg intensity and variance
+    flex_varI = flex.double(len(Modeler.refls),0)
+    flex_I = flex.double(len(Modeler.refls),0)
+    flex_sigZ = flex.double(len(Modeler.refls), 1)
+    flex_meanZ = flex.double(len(Modeler.refls), 0)
+    flex_ccModel = flex.double(len(Modeler.refls),0)
+    # for filtering reflections based on the diffBragg intensity/variance
+    sel2 = flex.bool(len(Modeler.refls), True)
+
+    variance_s = Fp1_map = None
+    if Jac is not None:
+        variance_s = get_variance_s(Modeler, Jac)
+    if SIM is not None:
+        Fp1 = SIM.D.Fhkl #crystal.miller_array
+        Fp1_map = {h:amp for h,amp in zip(Fp1.indices(), Fp1.data())}
+
     for i_roi in range(len(bragg_subimg)):
 
         ref_idx = Modeler.refls_idx[i_roi]
@@ -2295,12 +2325,59 @@ def get_new_xycalcs(Modeler, new_exp, old_refl_tag="dials"):
             new_xycalcs_mm[ref_idx] = com_mm
             new_xyobs_mm[ref_idx] = obs_com_mm
 
+            # compute the sigma-Z per pixel
+            sigma_rdout = Modeler.params.refiner.sigma_r / Modeler.params.refiner.adu_per_photon
+            Zscores = (model_subimg[i_roi] - data_subimg[i_roi]) / np.sqrt(model_subimg[i_roi] + sigma_rdout ** 2)
+            #sigma_Z = np.std(Zscores)
+            #mean_Z = np.mean(Zscores)
+            if not Modeler.params.fix.perRoiScale:
+                assert x is not None
+                scale_p = Modeler.P["scale_roi%d" % i_roi]
+
+                scale = scale_p.get_val(x[scale_p.xpos])
+                per_refl_scales[ref_idx] = scale
+                if variance_s is not None and Fp1_map is not None:
+                    var_s = variance_s[scale_p.xpos]
+                    h,k,l = new_refls[ref_idx]['miller_index']
+                    hkl = int(h), int(k), int(l)
+                    if hkl not in Fp1_map:
+                        sel2[ref_idx] = False
+                        continue
+
+                    amp = Fp1_map[hkl]
+                    I_hkl = amp ** 2
+                    var_I = I_hkl ** 2 * var_s
+                    if var_I <= 1e-6 or var_I > 1e16:
+                        sel2[ref_idx] = False
+
+                    flex_I[ref_idx] = I_hkl*scale
+                    flex_varI[ref_idx] = var_I
+
+                    tr = trust_subimg[i_roi]
+                    if np.any(tr):
+                        data_model_cc = pearsonr(model_subimg[i_roi][tr].ravel(), data_subimg[i_roi][tr].ravel())[0]
+                        flex_ccModel[ref_idx] = data_model_cc
+
+                        Ztrust = Zscores[tr]
+                        flex_sigZ[ref_idx] = np.std(Ztrust)
+                        flex_meanZ[ref_idx] = np.mean(Ztrust)
+
     new_refls["xyzcal.px"] = new_xycalcs
     new_refls["xyzcal.mm"] = new_xycalcs_mm
     new_refls["xyzobs.mm.value"] = new_xyobs_mm
+    if not Modeler.params.fix.perRoiScale:
+        new_refls["scale_factor"] = per_refl_scales
+    if variance_s is not None and Fp1_map is not None:
+        new_refls["diffBragg.intensity.value"] = flex_I
+        new_refls["diffBragg.intensity.variance"] = flex_varI
+        new_refls["sigma_z"] = flex_sigZ
+        new_refls["mean_z"] = flex_meanZ
+        new_refls["dat_mod_cc"] = flex_ccModel
 
     if Modeler.params.filter_unpredicted_refls_in_output:
         sel = [not np.isnan(x) for x,_,_ in new_refls['xyzcal.px']]
+        if variance_s is not None and Fp1_map is not None:
+            sel = [s and s2 for s,s2 in zip(sel, sel2)]
         nbefore = len(new_refls)
         new_refls = new_refls.select(flex.bool(sel))
         nafter = len(new_refls)
@@ -2631,3 +2708,33 @@ def _set_Fhkl_refinement_flags(params, SIM):
                 SIM.is_centric[idx] = is_centric
 
             SIM.where_is_centric = np.where(SIM.is_centric)[0]
+
+
+def get_variance_s(Mod, Jac):
+    """
+    Gets the variance associated with per-reflection scale factors fit using diffBragg
+    The Jacobian passed to this method should be computed using the hopper_utils.model method with dont_rescale_gradient=True
+    with the optimized parameters (e.g., after minimization)
+    :param Mod: data modeler
+    :param Jac: Jacobian at the minimum
+    :return: the diagonal of the inverse Hessian
+    """
+    model_pix = Mod.best_model
+    if not Mod.best_model_includes_background:
+        model_pix += Mod.all_background
+
+    u = Mod.all_data - model_pix  # residuals, named "u" in notes
+
+    sigma_rdout = Mod.params.refiner.sigma_r / Mod.params.refiner.adu_per_photon
+    v = model_pix + sigma_rdout**2
+    one_by_v = 1/v
+    G = 1-2*u - u*u*one_by_v
+    coef = one_by_v*(one_by_v*G - 2  - 2*u*one_by_v -u*u*one_by_v*one_by_v)
+
+    coef_t = coef[Mod.all_trusted]
+    Jac_t = Jac[:,Mod.all_trusted]
+    # if we are only optimizing Fhkl, then the Hess is diagonal matrix
+    diag_Hess = -.5*np.sum(coef_t*(Jac_t)**2, axis=1)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        variance_s = 1/diag_Hess
+    return variance_s

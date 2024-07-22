@@ -36,11 +36,21 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
     :param verbose:
     :return:
     """
-    params = utils.get_extracted_params_from_phil_sources(phil_file)
+    if isinstance(phil_file, str):
+        params = utils.get_extracted_params_from_phil_sources(phil_file)
+    else:
+        params = phil_file
     Mod = hopper_utils.DataModeler(params)
-    if not Mod.GatherFromExperiment(expt_name, refl_name):
+    E = expt_name
+    if not isinstance(expt_name, str):
+        E = expt_name[0]
+    if not Mod.GatherFromExperiment(E, refl_name):
         return
-    df = pandas.read_pickle(pkl_name)
+    if isinstance(pkl_name, str):
+        df = pandas.read_pickle(pkl_name)
+    else:
+        assert isinstance(pkl_name, pandas.DataFrame)
+        df = pkl_name
     Mod.SimulatorFromExperiment(df)
     if params.spectrum_from_imageset:
         data_expt = load_expt_from_df(df)
@@ -213,7 +223,10 @@ def get_errors(phil_file,expt_name, refl_name, pkl_name, outfile_prefix=None, ve
     hopper_utils.free_SIM_mem(Mod.SIM)
     if outfile_prefix is not None:
         integ_refls.as_file(outfile_prefix+"_integrated.refl")
-        copyfile(expt_name, outfile_prefix+"_integrated.expt")
+        if isinstance(expt_name, str):
+            copyfile(expt_name, outfile_prefix+"_integrated.expt")
+        else:
+            expt_name.as_file(outfile_prefix + "_integrated.expt")
     if verbose:
         print("Done.")
 
