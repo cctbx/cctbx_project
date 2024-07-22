@@ -78,6 +78,20 @@ class orca_manager(base_qm_manager.base_qm_manager):
     self.gradients = gradients
     return self.energy, self.gradients
 
+  def read_charge(self):
+    filename = self.get_log_filename()
+    f=open(filename, 'r')
+    lines=f.readlines()
+    del f
+    #Sum of atomic charges:   -1.0000000
+    for line in lines:
+      if line.find('Sum of atomic charges:')>-1:
+        if len(line.split())==5:
+          self.charge = float(line.split()[-1])
+        else:
+          self.charge = 99
+    return self.charge
+
   def read_energy(self):
     filename = self.get_log_filename()
     f=open(filename, 'r')
