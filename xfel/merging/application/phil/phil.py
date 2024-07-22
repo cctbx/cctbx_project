@@ -16,6 +16,12 @@ dispatch {
 
 input_phil = """
 input {
+  intensity_key = None
+    .type = str
+    .help = replace intensity.sum.value with this column
+  intensity_variance_key = None
+    .type = str
+    .help = replace intensity.sum.variance with this column
   override_identifiers = False
     .type = bool
     .help = override whatever identifiers may be present in experiments, replacing with auto-generated hash

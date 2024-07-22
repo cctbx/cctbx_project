@@ -172,7 +172,10 @@ class Script:
 
             best = None
             if best_models is not None:
-                best = best_models.query("exp_name=='%s'" % exp).query("exp_idx==%d" % exp_idx)
+                if "exp_idx" not in list(best_models):
+                    best_models["exp_idx"]= 0
+                best = best_models#.query("exp_name=='%s'" % os.path.abspath(exp)).query("exp_idx==%d" % exp_idx)
+
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
             self.params.simulator.spectrum.filename = spec
@@ -304,6 +307,25 @@ class Script:
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 
+            #from IPython import embed;embed()
+
+            #new_crystal = hopper_utils.update_crystal_from_x(Modeler, SIM, x)
+            #from copy import deepcopy
+            #new_exp = deepcopy(Modeler.E)
+            #new_exp.crystal = new_crystal
+
+            #try:
+            #    new_exp.beam.set_wavelength(SIM.dxtbx_spec.get_weighted_wavelength())
+            #except Exception: pass
+            ## if we strip the thickness from the detector, then update it here:
+            ##new_exp.detector. shift Z mm
+            #new_det = hopper_utils.update_detector_from_x(Modeler, SIM, x)
+            #new_exp.detector = new_det
+            ## if we are re-scaling the intensity:
+            #Modeler.best_model, best_Jac = hopper_utils.model(x, Modeler, SIM, compute_grad=True, dont_rescale_gradient=True)
+            #Modeler.best_model_includes_background = False
+            #new_refl = hopper_utils.get_new_xycalcs(Modeler, new_exp, x=x, SIM=SIM, Jac=best_Jac)
+            #from IPython import embed;embed()
             dbg = self.params.debug_mode
             shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_shot=i_shot,
                             save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,

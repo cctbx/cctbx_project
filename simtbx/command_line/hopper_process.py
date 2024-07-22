@@ -5,6 +5,7 @@ import sys
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.stills_process
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.hopper_process
 
+from libtbx.resource_monitor import ResourceMonitor
 from dials.command_line.stills_process import Processor
 from xfel.small_cell.small_cell import small_cell_index_detail
 from simtbx.diffBragg import hopper_utils
@@ -26,12 +27,18 @@ logger = logging.getLogger("dials.command_line.stills_process")
 
 #include scope dials.command_line.stills_process.phil_scope
 phil_str = """
+monitor_resources = False
+  .type = bool
+  .help = run the libtbx.resource_monitor to log and chart resource usage (including CPU and GPU) for each MPI rank
 device_Id_override = None
   .type = int
 include scope xfel.small_cell.command_line.small_cell_process.phil_scope
 diffBragg {
   include scope simtbx.command_line.hopper.phil_scope
 }
+diffBragg_intensity_fit = False
+  .type = bool
+  .help = Use diffBragg model to estimate the integrated intensity.
 skip_hopper=False
   .type = bool
   .help = if True, then skip the hopper refinement, i.e. just run stills
@@ -333,6 +340,7 @@ class Hopper_Processor(Processor):
         # Integrate the reflections
         integrated = integrator.integrate()
 
+
         if self.params.partial_correct:
             integrated = predictions.normalize_by_partiality(
                 integrated, model, default_F=self.params.diffBragg.predictions.default_Famplitude,
@@ -384,6 +392,41 @@ class Hopper_Processor(Processor):
                 raise Sorry("No reflections left after applying significance filter")
             experiments = accepted_expts
             integrated = accepted_refls
+
+        if self.params.diffBragg_intensity_fit:
+            temp_roi = self.params.diffBragg.fix.perRoiScale
+            temp_rot_fix = self.params.diffBragg.fix.RotXYZ
+            temp_ucell_fix = self.params.diffBragg.fix.ucell
+            temp_G_fix = self.params.diffBragg.fix.G
+            temp_Nabc_fix = self.params.diffBragg.fix.Nabc
+            temp_Ndef_fix = self.params.diffBragg.fix.Ndef
+
+            #self.params.diffBragg.fix.RotXYZ = True
+            #self.params.diffBragg.fix.ucell = True
+            self.params.diffBragg.fix.G = True
+            #self.params.diffBragg.fix.Nabc = True
+            #self.params.diffBragg.fix.Ndef = True
+            self.params.diffBragg.fix.perRoiScale = False
+            temp_fix = self.params.diffBragg.fix.Fhkl
+            temp_bound = self.params.diffBragg.Fhkl_channel_bounds
+            #self.params.diffBragg.fix.Fhkl = False
+            #self.params.diffBragg.Fhkl_channel_bounds = [8000]
+            integrated['bbox'] = integrated['shoebox'].bounding_boxes()
+            experiment, integrated = hopper_utils.refine(experiments[0], integrated,
+                                                          self.params.diffBragg,
+                                                          spec=self.params.refspec,
+                                                          gpu_device=self.device_id,
+                                                          return_modeler=False, best=self.stage1_df,
+                                                          free_mem=True, diffBragg_intensity=True)
+            experiments[0] = experiment
+            self.params.diffBragg.Fhkl_channel_bounds = temp_bound
+            self.params.diffBragg.fix.Fhkl = temp_fix
+            self.params.diffBragg.fix.perRoiScale = temp_roi
+            self.params.diffBragg.fix.ucell = temp_ucell_fix
+            self.params.diffBragg.fix.RotXYZ = temp_rot_fix
+            self.params.diffBragg.fix.G = temp_G_fix
+            self.params.diffBragg.fix.Nabc = temp_Nabc_fix
+            self.params.diffBragg.fix.Ndef = temp_Ndef_fix
 
         # Delete the shoeboxes used for intermediate calculations, if requested
         if self.params.integration.debug.delete_shoeboxes and "shoebox" in integrated:
@@ -473,6 +516,7 @@ class Runner:
             raise NotImplementedError("diffBragg.stills_process currently does not support composite_output mode")
         self.args = args
         self.dev = COMM.rank % params.diffBragg.refiner.num_devices
+        self.params = params
 
     def run(self):
         self.script.run(self.args)
@@ -483,7 +527,11 @@ if __name__ == "__main__":
     from simtbx.diffBragg.device import DeviceWrapper
     runner = Runner()
     with DeviceWrapper(runner.dev) as _:
-        script_that_was_run = runner.run()
+        if runner.params.monitor_resources:
+            with ResourceMonitor(prefix=os.path.join(runner.params.output.output_dir, "resources/monitor")):
+                script_that_was_run = runner.run()
+        else:
+            script_that_was_run = runner.run()
         if COMM.rank==0:
             try:
                 params = script_that_was_run.params

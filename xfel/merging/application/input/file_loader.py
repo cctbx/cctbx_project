@@ -145,6 +145,10 @@ class simple_file_loader(worker):
         self.logger.log("Reading %s %s"%(experiments_filename, reflections_filename))
         experiments = ExperimentListFactory.from_json_file(experiments_filename, check_format = self.params.input.read_image_headers)
         reflections = flex.reflection_table.from_file(reflections_filename)
+        if self.params.input.intensity_key is not None:
+          reflections["intensity.sum.value"] = reflections[self.params.input.intensity_key]
+        if self.params.input.intensity_variance_key is not None:
+          reflections["intensity.sum.variance"] = reflections[self.params.input.intensity_variance_key]
         if self.params.input.filter_col.name is not None:
           lower, upper = self.params.input.filter_col.bounds
           vals = reflections[self.params.input.filter_col.name]
