@@ -1641,3 +1641,11 @@ citation {
   pmid = 36762856
   doi_id = 10.1107/S2059798323000025
 }
+
+citation {
+  article_id = qmr_nqh
+  authors = Moriarty NW, Moussa J, Adams PD
+  title = Protonation of histidine rings using quantum mechanical methods
+  journal = Acta Cryst. D
+  year = 2024
+}
