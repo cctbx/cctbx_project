@@ -1277,7 +1277,6 @@ Usage examples:
         'protein_optimisation_freeze = *all None main_chain main_chain_to_beta main_chain_to_delta torsions',
         'protein_optimisation_freeze = all None main_chain main_chain_to_beta *main_chain_to_delta *torsions')
       qi_phil_string = qi_phil_string.replace(
-        # 'solvent_model = None', 'solvent_model = EPS=78.4 PRECISE LET DDMIN=0.0 NSPA=92',
         'solvent_model = None', 'solvent_model = EPS=78.4',
         )
       # qi_phil_string = qi_phil_string.replace('buffer = 3.5', 'buffer = 4.')

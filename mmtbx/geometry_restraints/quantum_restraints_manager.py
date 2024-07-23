@@ -469,22 +469,25 @@ def get_specific_atom_charges(qmr):
 
 def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()):
   program = qmr.package.program
+  default_solvent_model=''
   if program=='test':
     qmm = qm_manager.base_qm_manager.base_qm_manager
   elif program=='orca':
     qmm = orca_manager.orca_manager
+    default_solvent_model='CPCM'
   elif program=='mopac':
     qmm = mopac_manager.mopac_manager
+    default_solvent_model='EPS=78.4'
   else:
     assert 0
   qmr = quantum_interface.populate_qmr_defaults(qmr)
+  if qmr.package.solvent_model: default_solvent_model=qmr.package.solvent_model
 
   electron_model = None
   solvent_model = qmr.package.solvent_model
   if program_goal in ['energy', 'strain']:
     electron_model = ligand_model
-    solvent_model = 'EPS=78.4 PRECISE NSPA=92' # maybe not the best place as it's
-                                               # not in the input file???
+    solvent_model = default_solvent_model
   elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
   else:
