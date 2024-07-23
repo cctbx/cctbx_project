@@ -48,6 +48,7 @@ def process_qm_log_file(log_filename=None,
                         generator=None,
                         error_lines=None,
                         log=None,
+                        verbose=False,
                         ):
   if log_filename is not None: generator=loop_over_file(log_filename)
   error_line = None
@@ -55,7 +56,7 @@ def process_qm_log_file(log_filename=None,
   for i, line in enumerate(generator):
     if line.find('GEOMETRY OPTIMIZATION CYCLE')>-1:
       cycle = int(line.split()[4])
-      if cycle==1: print('  QM minimisation started', file=log)
+      if verbose and cycle==1: print('  QM minimisation started', file=log)
     # if line.find('Max(Improp)')>-1:
     #   conv = process_orca_convergence(last_ten)
       # if cycle%10==0:
