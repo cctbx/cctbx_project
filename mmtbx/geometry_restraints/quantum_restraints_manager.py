@@ -481,8 +481,12 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   else:
     assert 0
   qmr = quantum_interface.populate_qmr_defaults(qmr)
-  if qmr.package.solvent_model: default_solvent_model=qmr.package.solvent_model
-
+  if qmr.package.solvent_model:
+    default_solvent_model=qmr.package.solvent_model
+  else:
+    print(u'  Update solvent model for "%s" ligand to %s' % (qmr.selection,
+                                                             default_solvent_model,
+                                                             )
   electron_model = None
   solvent_model = qmr.package.solvent_model
   if program_goal in ['energy', 'strain']:
