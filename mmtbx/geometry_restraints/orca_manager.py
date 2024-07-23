@@ -227,7 +227,7 @@ end
     tf = 'orca_%s.trj' % self.preamble
     if os.path.exists(tf):
       uf = 'orca_%s_trj.xyz' % self.preamble
-      print('rename',tf,uf)
+      # print('rename',tf,uf)
       os.rename(tf, uf)
     most_keepers = ['.xyz', '.log', '.in', '.engrad', '.trj']
     for filename in os.listdir('.'):
