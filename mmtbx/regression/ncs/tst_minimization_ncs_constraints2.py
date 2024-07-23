@@ -3,12 +3,12 @@ import mmtbx.refinement.minimization_ncs_constraints
 from scitbx.array_family import flex
 from libtbx import group_args
 import iotbx.ncs as ncs
-import mmtbx.utils
 import iotbx.pdb
 import time
 from iotbx.ncs import ncs_group_master_phil
 import iotbx.phil
 from six.moves import range
+import mmtbx.model
 
 pdb_answer_0 = """\
 CRYST1   18.415   14.419   12.493  90.00  90.00  90.00 P 1
@@ -230,14 +230,12 @@ def get_inputs(prefix, pdb_answer, pdb_poor, ncs_params_str, real_space, d_min):
   ph_poor.atoms().reset_i_seq()
   xrs_poor = pdb_inp_poor.xray_structure_simple()
   #
-  ppf = mmtbx.utils.process_pdb_file_srv().process_pdb_files(
-    raw_records=pdb_poor.splitlines())[0]
-  mmtbx.utils.assert_xray_structures_equal(
-    x1=ppf.xray_structure(show_summary = False),
-    x2=xrs_poor)
-  restraints_manager = mmtbx.restraints.manager(
-    geometry      = ppf.geometry_restraints_manager(show_energies = False),
-    normalization = True)
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_poor)
+  model = mmtbx.model.manager(model_input=pdb_inp)
+  p = model.get_default_pdb_interpretation_params()
+  p.pdb_interpretation.const_shrink_donor_acceptor=0.6
+  model.process(pdb_interpretation_params=p, make_restraints=True)
+  restraints_manager = model.get_restraints_manager()
   restraints_manager.geometry.remove_c_beta_torsion_restraints_in_place()
   #
   phil_groups = ncs_group_master_phil.fetch(

@@ -180,7 +180,7 @@ def tst_adding_side_chain_acid_hydrogen_atoms(switch):
     hierarchy = pdb_inp.construct_hierarchy()
     add_side_chain_acid_hydrogens(hierarchy, configuration_index=i, element=element)
     hierarchy.write_pdb_file(fn.replace('.pdb', '_updated.pdb'))
-    cmd='phenix.pdb_interpretation %s flip_sym=0 write_geo=True' % fn.replace('.pdb', '_updated.pdb')
+    cmd='phenix.pdb_interpretation const_shrink_donor_acceptor=0.6 %s flip_sym=0 write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
     easy_run.go(cmd)
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),
@@ -203,7 +203,7 @@ def tst_adding_disulfur_hydrogen_atoms(switch):
       lines = f.read()
     assert lines.find('HG')==-1
   else:
-    cmd='phenix.pdb_interpretation %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
+    cmd='phenix.pdb_interpretation const_shrink_donor_acceptor=0.6 %s write_geo=True' % fn.replace('.pdb', '_updated.pdb')
     print(cmd)
     easy_run.go(cmd)
     assert_lines_in_file(file_name='%s.geo' % fn.replace('.pdb', '_updated.pdb'),

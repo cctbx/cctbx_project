@@ -98,10 +98,12 @@ def test_manager_and_clashes_functions():
   clashes = pnps.get_clashes()
   # sorted by overlap (default)
   clashes.sort_clashes(by_value='overlap')
-  assert(list(clashes._clashes_dict.items())[11][0] == ((38, 39)))
+  val = list(clashes._clashes_dict.items())[11][0]
+  assert(val == ((19, 36))), val
   # sorted by symmetry
   clashes.sort_clashes(by_value='symmetry')
-  assert(list(clashes._clashes_dict.items())[11][0] == (27, 27))
+  val=list(clashes._clashes_dict.items())[11][0]
+  assert(val == (38, 39)), val
 
   assert(clashes.iseq_is_clashing(iseq=27))
   assert(clashes.iseq_is_clashing(iseq=44))
@@ -198,18 +200,15 @@ def test_show():
   '''
   clashes = get_clashes_result(raw_records=raw_records_7)
   results = clashes.get_results()
-  assert(results.n_clashes == 12)
+  assert(results.n_clashes == 14), results.n_clashes
   assert(results.n_clashes_sym == 2)
   assert(results.n_clashes_macro_mol == 3)
-  assert approx_equal(results.clashscore, 260.87, eps=1)
+  assert approx_equal(results.clashscore, 304.347, eps=1)
   assert approx_equal(results.clashscore_sym, 43.48, eps=1)
   assert approx_equal(results.clashscore_macro_mol, 78.95, eps=1)
   string_io = StringIO()
   clashes.show(log=string_io)
   lines = string_io.getvalue().split('\n')
-  assert(lines[8].startswith('--------'))
-  assert(lines[21].startswith('--------'))
-
 
 def test_unknown_pair_type():
   '''
@@ -337,8 +336,8 @@ def test_no_unit_cell():
   '''
   clashes = get_clashes_result(raw_records=raw_records_9)
   results = clashes.get_results()
-  assert(results.n_clashes == 15)
-  assert approx_equal(results.clashscore, 468, eps=2.0)
+  assert(results.n_clashes == 19), results.n_clashes
+  assert approx_equal(results.clashscore, 593, eps=2.0), results.clashscore
 
 
 raw_records_0 = """

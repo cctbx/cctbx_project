@@ -773,7 +773,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
 
     results = results_str.split('\n')
     # check number of lines in output
-    self.assertEqual(len(results),19)
+    self.assertEqual(len(results),21)
     # check general table structure
     self.assertTrue(results[4].startswith('========'))
     self.assertTrue(results[6].startswith('--------'))
@@ -871,13 +871,13 @@ class test_nonbonded_overlaps(unittest.TestCase):
     results = overlaps_count_info.result
     self.assertEqual(len(results.nb_overlaps_proxies_due_to_sym_op),2)
     self.assertEqual(len(results.nb_overlaps_proxies_macro_molecule),3)
-    self.assertEqual(len(results.nb_overlaps_proxies_all),12)
+    self.assertEqual(len(results.nb_overlaps_proxies_all),14)
     # results
     r_overlaps_all = round(results.nb_overlaps_all,2)
     r_overlaps_sym = round(results.nb_overlaps_due_to_sym_op,2)
     r_overlaps_macro_mol = round(results.nb_overlaps_macro_molecule,2)
     # test
-    self.assertEqual(r_overlaps_all,12)
+    self.assertEqual(r_overlaps_all,14)
     self.assertEqual(r_overlaps_sym,2)
     self.assertEqual(r_overlaps_macro_mol,3)
     # results
@@ -885,7 +885,7 @@ class test_nonbonded_overlaps(unittest.TestCase):
     r_overlaps_sym = round(results.normalized_nbo_sym,2)
     r_overlaps_macro_mol = round(results.normalized_nbo_macro_molecule,2)
     #
-    overlaps_all = round(1000*12/n_atoms,2)
+    overlaps_all = round(1000*14/n_atoms,2)
     overlaps_sym = round(1000*2/n_atoms,2)
     overlaps_macro_mol = round(1000*3/n_atoms_macro_mol,2)
     # test

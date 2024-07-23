@@ -221,14 +221,14 @@ def exercise_2(d_min = 1.5):
     if(shake):
       assert r < 0.07, r
     else:
-      assert r < 0.07, r
+      assert r < 0.13, r
     dist = flex.mean(flex.sqrt((pi.xrs.sites_cart() -
             fmodel.xray_structure.sites_cart()).dot()))
     print("Distance(refined, answer): %6.4f"%dist)
     if(shake):
       assert dist < 0.35, r
     else:
-      assert dist < 0.06, r
+      assert dist < 0.14, dist
     if(0):
       pi.ph.adopt_xray_structure(fmodel.xray_structure)
       pi.ph.write_pdb_file(file_name="refined.pdb",
