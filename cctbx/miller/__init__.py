@@ -2508,7 +2508,7 @@ class array(set):
     else :
       return self.select(self.sigmas() > 0)
 
-  def enforce_positive_amplitudes_shelx(self, omit_s):
+  def treat_negative_amplitudes_shelx(self, omit_s):
     if omit_s > 0:
       return self
     new_data = len(self.data())*[None]
