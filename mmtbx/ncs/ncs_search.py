@@ -90,9 +90,10 @@ def shortcut_1(
     master_xyz = get_chain_xyz(hierarchy, master_chain_id)
     for copy_chain_id in chains_list[1:]:
       # these are copies
-      if chains_info[master_chain_id].atom_names != chains_info[copy_chain_id].atom_names:
-        print("No shortcut, atom names are not identical", file=log)
-        return empty_result
+      for a, b in zip(chains_info[master_chain_id].atom_names, chains_info[copy_chain_id].atom_names):
+        if list(a)!=list(b):
+          print("No shortcut, atom names are not identical", file=log)
+          return empty_result
       copy_xyz = get_chain_xyz(hierarchy, copy_chain_id)
       lsq_fit_obj = superpose.least_squares_fit(
           reference_sites = copy_xyz,

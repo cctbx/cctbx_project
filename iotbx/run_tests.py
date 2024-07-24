@@ -130,6 +130,7 @@ tst_list_base = [
   "$D/regression/ncs/tst_mmcif_biomt_reduction_output.py",
   "$D/regression/ncs/tst_ncs_search_ligs.py",
   "$D/regression/ncs/tst_ncs_search_broken_chain.py",
+  "$D/regression/ncs/tst_ncs_search_shortcut_1.py",
   "$D/regression/ncs/tst_ncs_groups_preprocessing.py",
   "$D/regression/ncs/tst_ncs_input.py",
   "$D/regression/ncs/tst_ncs_user_selections.py",
