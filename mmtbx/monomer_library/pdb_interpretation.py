@@ -18,6 +18,7 @@ import cctbx.crystal.coordination_sequences
 from cctbx import sgtbx
 from cctbx.array_family import flex
 from scitbx.python_utils import dicts
+from scitbx_array_family_flex_ext import reindexing_array
 from libtbx.str_utils import show_string
 from libtbx.utils import flat_list, Sorry, user_plus_sys_time, plural_s, null_out
 from libtbx.utils import format_exception, greek_time
@@ -901,31 +902,42 @@ class type_symbol_registry_base(object):
     self.charges = flex.int(symbols.size(), 0)
 
   def _show(self):
+    print ('==== show symbol registry base:')
     print ('self.type_label', self.type_label)
     print ('size: ', self.symbols.size())
-    print (list(self.symbols))
-    print (self.strict_conflict_handling)
-    print (self.n_resolved_conflicts)
-    print (list(self.source_labels))
-    print (list(self.source_n_expected_atoms))
-    print (list(self.charges))
+    print ('symbols: ', list(self.symbols))
+    print ('strict_conflict_handling:', self.strict_conflict_handling)
+    print ('n_resolved_conflicts:', self.n_resolved_conflicts)
+    print ('source_labels:', list(self.source_labels))
+    print ('source_n_expected_atoms:', list(self.source_n_expected_atoms))
+    print ('charges', list(self.charges))
+    print ('==== end of symbol registry base:')
 
-  def expand_with_ncs(self, nrgl, n_atoms):
-    new_symbols = flex.std_string(n_atoms)
-    new_source_labels = flex.std_string(n_atoms)
+  def expand_with_ncs(self, nrgl, n_atoms_full):
+    new_symbols = flex.std_string(n_atoms_full)
+    new_source_labels = flex.std_string(new_symbols.size())
     new_source_n_expected_atoms = flex.int(new_symbols.size(), -1)
     new_charges = flex.int(new_symbols.size(), 0)
+    masters_and_rest_bool_selection = ~flex.bool(n_atoms_full, nrgl.get_all_copies_selection())
+    masters_and_rest_iselection = masters_and_rest_bool_selection.iselection()
+    assert len(masters_and_rest_iselection) == len(self.symbols)
+    ra = reindexing_array(n_atoms_full, masters_and_rest_iselection.as_int())
+    new_symbols.set_selected(masters_and_rest_iselection, self.symbols)
+    new_source_labels.set_selected(masters_and_rest_iselection, self.source_labels)
+    new_source_n_expected_atoms.set_selected(masters_and_rest_iselection, self.source_n_expected_atoms)
+    new_charges.set_selected(masters_and_rest_iselection, self.charges)
     for ncs_group in nrgl:
-      # print("len(ncs_group.master_iselection), len(self.symbols), n_atoms", len(ncs_group.master_iselection), len(self.symbols), n_atoms)
-      new_symbols.set_selected(ncs_group.master_iselection, self.symbols.select(ncs_group.master_iselection))
-      new_source_labels.set_selected(ncs_group.master_iselection, self.source_labels.select(ncs_group.master_iselection))
-      new_source_n_expected_atoms.set_selected(ncs_group.master_iselection, self.source_n_expected_atoms.select(ncs_group.master_iselection))
-      new_charges.set_selected(ncs_group.master_iselection, self.charges.select(ncs_group.master_iselection))
+      # print("list(ncs_group.master_iselection)", list(ncs_group.master_iselection))
+      # here we need to translate master_iselection iseqs from applicable to whole molecule to this new
+      # masters_and_rest arrays....
+      translated_master_iselection = flex.size_t([ra[i] for i in ncs_group.master_iselection])
       for c in ncs_group.copies:
-        new_symbols.set_selected(c.iselection, self.symbols.select(ncs_group.master_iselection))
-        new_source_labels.set_selected(c.iselection, self.source_labels.select(ncs_group.master_iselection))
-        new_source_n_expected_atoms.set_selected(c.iselection, self.source_n_expected_atoms.select(ncs_group.master_iselection))
-        new_charges.set_selected(c.iselection, self.charges.select(ncs_group.master_iselection))
+        # print ("len c.iselection: ", len(c.iselection), len(ncs_group.master_iselection))
+        # print ("c.iselection: ", list(c.iselection), list(ncs_group.master_iselection), list(translated_master_iselection))
+        new_symbols.set_selected(c.iselection, self.symbols.select(translated_master_iselection))
+        new_source_labels.set_selected(c.iselection, self.source_labels.select(translated_master_iselection))
+        new_source_n_expected_atoms.set_selected(c.iselection, self.source_n_expected_atoms.select(translated_master_iselection))
+        new_charges.set_selected(c.iselection, self.charges.select(translated_master_iselection))
     self.symbols = new_symbols
     self.source_labels = new_source_labels
     self.source_n_expected_atoms = new_source_n_expected_atoms
@@ -3089,13 +3101,15 @@ class geometry_restraints_proxy_registries(object):
     self.parallelity = geometry_restraints.parallelity_proxy_registry(
       strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
-    self.bond_simple.expand_with_ncs(nrgl)
-    self.angle.expand_with_ncs(nrgl)
-    self.dihedral.expand_with_ncs(nrgl)
-    self.chirality.expand_with_ncs(nrgl)
-    self.planarity.expand_with_ncs(nrgl)
-    self.parallelity.expand_with_ncs(nrgl)
+  def expand_with_ncs(self, nrgl, n_atoms_full):
+    masters_and_rest_bool_selection = ~flex.bool(n_atoms_full, nrgl.get_all_copies_selection())
+    masters_and_rest_iselection = masters_and_rest_bool_selection.iselection()
+    self.bond_simple.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.angle.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.dihedral.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.chirality.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.planarity.expand_with_ncs(nrgl, masters_and_rest_iselection)
+    self.parallelity.expand_with_ncs(nrgl, masters_and_rest_iselection)
 
 
   def initialize_tables(self):
@@ -3594,11 +3608,12 @@ class build_all_chain_proxies(linking_mixins):
       # search for NCS
       ncs_params = iotbx.ncs.input.get_default_params()
       ncs_params.ncs_search.try_shortcuts = True
+      ncs_params.ncs_search.exclude_selection="water"
       ncs_obj = iotbx.ncs.input(
           ncs_phil_groups             = None,
           hierarchy                   = self.pdb_hierarchy.deep_copy(),
           params                      = ncs_params.ncs_search,
-          log                         = None)
+          log                         = null_out())
       nrgl = ncs_obj.get_ncs_restraints_group_list()
       f_nrgl = nrgl.filter_ncs_restraints_group_list(self.pdb_hierarchy, ncs_obj)
       # print("Found NCS")
@@ -3607,7 +3622,7 @@ class build_all_chain_proxies(linking_mixins):
       nrgl_ok = nrgl.check_for_max_rmsd(self.sites_cart, 0.01, null_out())
       use_ncs_for_interpretation = (nrgl.get_n_groups()>0) and (nrgl == f_nrgl) and nrgl_ok
       if use_ncs_for_interpretation:
-        print("  will use NCS in pdb_interpretation")
+        # print("  will use NCS in pdb_interpretation")
         self._full_pdb_hierarchy = self.pdb_hierarchy
         self._old_models = models
         # self._full_pdb_atoms=self.pdb_atoms,
@@ -3616,7 +3631,8 @@ class build_all_chain_proxies(linking_mixins):
 
         # nrgl._show(self.pdb_hierarchy, brief=False)
         master_and_rest_bool_selection = ~flex.bool(self._full_pdb_hierarchy.atoms_size(), nrgl.get_all_copies_selection())
-        self.pdb_hierarchy = self.pdb_hierarchy.select(master_and_rest_bool_selection)
+        self.pdb_hierarchy = self.pdb_hierarchy.select(master_and_rest_bool_selection,copy_atoms=True)
+        self.pdb_hierarchy.reset_atom_i_seqs()
 
         # print(self.pdb_hierarchy.as_pdb_string())
         self.pdb_atoms = self.pdb_hierarchy.atoms()
@@ -3936,7 +3952,7 @@ class build_all_chain_proxies(linking_mixins):
       nrgl.setup_sets()
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
-      self.geometry_proxy_registries.expand_with_ncs(nrgl)
+      self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       # self.scattering_type_registry._show()
     # STOP()
 
@@ -5791,7 +5807,7 @@ class build_all_chain_proxies(linking_mixins):
           self.pdb_atoms,
           sites_frac,
           scattering_types):
-      assert atom.i_seq == i_seq
+      assert atom.i_seq == i_seq, "%d != %d" % (atom.i_seq, i_seq)
       from cctbx.eltbx.xray_scattering import get_standard_label
       scattering_type = get_standard_label(
         label=scattering_type, exact=True, optional=True)

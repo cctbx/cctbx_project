@@ -121,28 +121,42 @@ class bond_simple_proxy_registry(proxy_registry_base):
       strict_conflict_handling=strict_conflict_handling)
     self.n_seq = n_seq
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     # print("original proxies:", [p.i_seqs for p in self.proxies])
-    # n_proxies = len(self.proxies)
+    # nrgl._show(brief=False)
     additional_proxies = []
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = (masters_and_rest_iselection[p.i_seqs[0]],
+                                 masters_and_rest_iselection[p.i_seqs[1]])
+      new_master_p = bond_simple_proxy(
+          i_seqs = new_current_proxy_iseqs,
+          distance_ideal=p.distance_ideal,
+          weight=p.weight,
+          slack=p.slack,
+          limit=p.limit,
+          top_out=p.top_out,
+          origin_id=p.origin_id).sort_i_seqs()
+      self.proxies[i] = new_master_p
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      # print('  i, p.i_seqs', i, p.i_seqs)
       # print('  all_new_iseqs', all_new_iseqs)
-      for new_iseqs in all_new_iseqs:
-        new_proxy = bond_simple_proxy(
-            i_seqs=new_iseqs,
-            distance_ideal=p.distance_ideal,
-            weight=p.weight,
-            slack=p.slack,
-            limit=p.limit,
-            top_out=p.top_out,
-            origin_id=p.origin_id).sort_i_seqs()
-        # marking table
-        self.table[new_iseqs[0]][new_iseqs[1]] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      if all_new_iseqs is not None:
+        for new_iseqs in all_new_iseqs:
+          new_proxy = bond_simple_proxy(
+              i_seqs=new_iseqs,
+              distance_ideal=p.distance_ideal,
+              weight=p.weight,
+              slack=p.slack,
+              limit=p.limit,
+              top_out=p.top_out,
+              origin_id=p.origin_id).sort_i_seqs()
+          # marking table
+          self.table[new_iseqs[0]][new_iseqs[1]] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
 
@@ -201,23 +215,30 @@ class angle_proxy_registry(proxy_registry_base):
       proxies=shared_angle_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     additional_proxies = []
     # n_proxies = len(self.proxies)
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      for new_iseqs in all_new_iseqs:
-        new_proxy = angle_proxy(
-            i_seqs=new_iseqs,
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = [ masters_and_rest_iselection[iseq] for iseq in p.i_seqs]
+      new_master_p = angle_proxy(
+            i_seqs=new_current_proxy_iseqs,
             proxy=p).sort_i_seqs()
-        # marking table
-        tab_i_seq_1 = self.table.setdefault(new_proxy.i_seqs[1], {})
-        tab_i_seq_1[(new_proxy.i_seqs[0], new_proxy.i_seqs[2])] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        # self.proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      self.proxies[i] = new_master_p
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      if all_new_iseqs is not None:
+        for new_iseqs in all_new_iseqs:
+          new_proxy = angle_proxy(
+              i_seqs=new_iseqs,
+              proxy=p).sort_i_seqs()
+          # marking table
+          tab_i_seq_1 = self.table.setdefault(new_proxy.i_seqs[1], {})
+          tab_i_seq_1[(new_proxy.i_seqs[0], new_proxy.i_seqs[2])] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          # self.proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
@@ -281,22 +302,29 @@ class dihedral_proxy_registry(proxy_registry_base):
       proxies=shared_dihedral_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     additional_proxies = []
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      for new_iseqs in all_new_iseqs:
-        new_proxy = dihedral_proxy(
-            i_seqs=new_iseqs,
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = [ masters_and_rest_iselection[iseq] for iseq in p.i_seqs]
+      new_master_p = dihedral_proxy(
+            i_seqs=new_current_proxy_iseqs,
             proxy=p).sort_i_seqs()
-        # marking table
-        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
-        tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        # self.proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      self.proxies[i] = new_master_p
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      if all_new_iseqs is not None:
+        for new_iseqs in all_new_iseqs:
+          new_proxy = dihedral_proxy(
+              i_seqs=new_iseqs,
+              proxy=p).sort_i_seqs()
+          # marking table
+          tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+          tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          # self.proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
@@ -367,22 +395,29 @@ class chirality_proxy_registry(proxy_registry_base):
       proxies=shared_chirality_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     additional_proxies = []
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      for new_iseqs in all_new_iseqs:
-        new_proxy = chirality_proxy(
-            i_seqs=new_iseqs,
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = [ masters_and_rest_iselection[iseq] for iseq in p.i_seqs]
+      new_master_p = chirality_proxy(
+            i_seqs=new_current_proxy_iseqs,
             proxy=p).sort_i_seqs()
-        # marking table
-        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
-        tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        # self.proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      self.proxies[i] = new_master_p
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      if all_new_iseqs is not None:
+        for new_iseqs in all_new_iseqs:
+          new_proxy = chirality_proxy(
+              i_seqs=new_iseqs,
+              proxy=p).sort_i_seqs()
+          # marking table
+          tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+          tab_i_seq_0[(new_proxy.i_seqs[1], new_proxy.i_seqs[2], new_proxy.i_seqs[3])] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          # self.proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
@@ -440,22 +475,29 @@ class planarity_proxy_registry(proxy_registry_base):
       proxies=shared_planarity_proxy(),
       strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     additional_proxies = []
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      for new_iseqs in all_new_iseqs:
-        new_proxy = planarity_proxy(
-            i_seqs=new_iseqs,
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = [ masters_and_rest_iselection[iseq] for iseq in p.i_seqs]
+      new_master_p = planarity_proxy(
+            i_seqs=new_current_proxy_iseqs,
             proxy=p).sort_i_seqs()
-        # marking table
-        tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
-        tab_i_seq_0[(new_proxy.i_seqs[1:])] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        # self.proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      self.proxies[i] = new_master_p
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      if all_new_iseqs is not None:
+        for new_iseqs in all_new_iseqs:
+          new_proxy = planarity_proxy(
+              i_seqs=new_iseqs,
+              proxy=p).sort_i_seqs()
+          # marking table
+          tab_i_seq_0 = self.table.setdefault(new_proxy.i_seqs[0], {})
+          tab_i_seq_0[(new_proxy.i_seqs[1:])] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          # self.proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
@@ -505,23 +547,33 @@ class parallelity_proxy_registry(proxy_registry_base):
         proxies=shared_parallelity_proxy(),
         strict_conflict_handling=strict_conflict_handling)
 
-  def expand_with_ncs(self, nrgl):
+  def expand_with_ncs(self, nrgl, masters_and_rest_iselection):
     additional_proxies = []
-    for i, p in enumerate(self.proxies):
-      all_new_iseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      all_new_jseqs = nrgl.get_copy_iseqs(p.i_seqs)
-      for new_iseqs, new_jseqs in zip(all_new_iseqs, all_new_jseqs):
-        new_proxy = parallelity_proxy(
-            i_seqs=new_iseqs,
-            j_seqs=new_jseqs,
+    for i in range(len(self.proxies)):
+      p = self.proxies[i]
+      new_current_proxy_iseqs = [ masters_and_rest_iselection[iseq] for iseq in p.i_seqs]
+      new_current_proxy_jseqs = [ masters_and_rest_iselection[jseq] for jseq in p.j_seqs]
+      new_master_p = parallelity_proxy(
+            i_seqs=new_current_proxy_iseqs,
+            j_seqs=new_current_proxy_jseqs,
             proxy=p).sort_i_seqs()
-        # marking table
-        self.table[(tuple(new_proxy.i_seqs), tuple(new_proxy.j_seqs))] = self.proxies.size()
-        # ~ self._append_proxy
-        additional_proxies.append(new_proxy)
-        # self.proxies.append(new_proxy)
-        self.source_labels.append(self.source_labels[i])
-        self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
+      self.proxies[i] = new_master_p
+      # all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      all_new_iseqs = nrgl.get_copy_iseqs(new_current_proxy_iseqs)
+      all_new_jseqs = nrgl.get_copy_iseqs(new_current_proxy_jseqs)
+      if all_new_iseqs is not None and all_new_jseqs is not None:
+        for new_iseqs, new_jseqs in zip(all_new_iseqs, all_new_jseqs):
+          new_proxy = parallelity_proxy(
+              i_seqs=new_iseqs,
+              j_seqs=new_jseqs,
+              proxy=p).sort_i_seqs()
+          # marking table
+          self.table[(tuple(new_proxy.i_seqs), tuple(new_proxy.j_seqs))] = self.proxies.size()
+          # ~ self._append_proxy
+          additional_proxies.append(new_proxy)
+          # self.proxies.append(new_proxy)
+          self.source_labels.append(self.source_labels[i])
+          self.source_n_expected_atoms.append(self.source_n_expected_atoms[i])
     self.proxies.extend(additional_proxies)
 
   def add_if_not_duplicated(self, proxy, tolerance=1.e-6):
