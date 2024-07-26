@@ -822,7 +822,7 @@ def mask_fixed_model_region(mmm, d_min,
                                  fixed_model=None,
                                  ordered_mask_id='ordered_volume_mask',
                                  fixed_mask_id='mask_around_atoms'):
-  # Flatten the region of the mask covered by the fixed model
+  # Flatten the region of the ordered volume mask covered by the fixed model
   # and keep the mask for the fixed model.
 
   # Do nothing if no fixed model
@@ -1436,6 +1436,13 @@ def assess_cryoem_errors(
     raise Sorry("Provided maps must be full-size")
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
+  # Determine voxel count for fixed model mask
+  mm_model_mask = mmm.get_map_manager_by_id('mask_around_atoms')
+  voxels_in_model = 0
+  if mm_model_mask is not None:
+    model_mask_data = mm_model_mask.map_data()
+    mask_sel = model_mask_data > 0
+    voxels_in_model = mask_sel.count(True)
 
   # Keep track of shifted origin
   origin_shift = mmm.map_manager().origin_shift_grid_units
@@ -1534,9 +1541,17 @@ def assess_cryoem_errors(
     working_mmm.apply_mask_to_maps()
     mask_info = working_mmm.mask_info()
 
+    working_map_size = working_mmm.map_data().size()
     box_volume = uc.volume() * (
-        working_mmm.map_data().size()/mmm.map_data().size())
+        working_map_size/mmm.map_data().size())
     weighted_masked_volume = box_volume * mask_info.mean
+
+    voxels_in_masked_model = 0
+    if voxels_in_model > 0:
+      mask_info = working_mmm.mask_info(mask_id='mask_around_atoms')
+      mm_model_mask = working_mmm.get_map_manager_by_id('mask_around_atoms')
+      model_mask_data = mm_model_mask.map_data()
+      voxels_in_masked_model = working_map_size * mask_info.mean
 
     # Calculate an oversampling ratio defined as the ratio between the size of
     # the cut-out cube and the size of a cube that could contain a sphere
@@ -1846,6 +1861,22 @@ def assess_cryoem_errors(
   working_mmm.remove_map_manager_by_id('map_manager_1')
   working_mmm.remove_map_manager_by_id('map_manager_2')
 
+  # If there is a fixed model and it occupies a significant part of the sphere,
+  # compute the structure factors corresponding to the cutout density for the fixed
+  # model.
+
+  masked_model_contributes = False
+  masked_model_E = None
+  masked_model_sigmaA = None
+  fraction_masked = voxels_in_masked_model/working_map_size
+  if fraction_masked > 0.01:
+    print("Masked voxels from fixed model, total in box, fraction: ",
+          voxels_in_masked_model, working_map_size, fraction_masked, file=log)
+    masked_model_contributes = True
+    mm_masked_model = working_mmm.get_map_manager_by_id(map_id='fixed_atom_map')
+    mm_masked_model.write_map('masked_model.map')
+    masked_model_E = mm_masked_model.map_as_fourier_coefficients(d_min=d_min,d_max=d_max)
+
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
     ucwork = expectE.crystal_symmetry().unit_cell()
@@ -1855,6 +1886,116 @@ def assess_cryoem_errors(
     shift_frac = ucwork.fractionalize(shift_cart)
     shift_frac = tuple(-flex.double(shift_frac))
     expectE = expectE.translational_shift(shift_frac)
+    if masked_model_contributes:
+      masked_model_E = masked_model_E.translational_shift(shift_frac)
+      # write_mtz(expectE,"expectE.mtz","eE")
+      # write_mtz(masked_model_E,"masked_model.mtz","masked_model")
+
+  expectE_mod = expectE.deep_copy() # For temporary kludge where expectE is modified instead of adding fixed contribution in phasertng
+  if masked_model_contributes:
+    masked_model_sigmaA = expectE.customized_copy(data=flex.double(expectE.size(),0))
+    xdat = []
+    ydat = []
+    wdat = []
+    expectE.use_binner_of(mc1)
+    for i_bin in mc1.binner().range_used():
+      sel = expectE.binner().selection(i_bin)
+      eEsel = expectE.select(sel)
+      abseE = eEsel.amplitudes().data()
+      p1 = eEsel.phases().data()
+      masked_coeffs_sel = masked_model_E.select(sel)
+      absEc = masked_coeffs_sel.amplitudes().data()
+      sigmaP = flex.mean_default(flex.pow2(absEc),0.)
+      absEc /= math.sqrt(sigmaP)
+      masked_model_E.data().set_selected(sel,
+                    masked_model_E.data().select(sel) / math.sqrt(sigmaP))
+      masked_coeffs_sel /= math.sqrt(sigmaP)
+      p2 = masked_coeffs_sel.phases().data()
+      cosdphi = flex.cos(p2 - p1)
+      dobssel = dobs.data().select(sel)
+
+      # Solve for sigmaA yielding 1st derivative of LLG approximately equal to zero (assuming only numerator matters)
+      sum0 = flex.sum(2.*dobssel*abseE*absEc*cosdphi)
+      sum1 = flex.sum(2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))
+      sum2 = flex.sum(2*flex.pow(dobssel,3)*abseE*absEc*cosdphi)
+      sum3 = flex.sum(- 2*flex.pow(dobssel,4))
+      u1 = -2*sum2**3 + 9*sum1*sum2*sum3 - 27*sum0*sum3**2
+      sqrt_arg = u1**2 - 4*(sum2**2 - 3*sum1*sum3)**3
+      if sqrt_arg < 0: # Paranoia: haven't run into this in a wide variety of calculations
+        raise Sorry("Argument of square root in sigmaA calculation is negative")
+      third = 1./3
+      x1 = (u1 + math.sqrt(sqrt_arg))**third
+      sigmaA = ( (2 * 2.**third * sum2**2 - 6 * 2.**third*sum1*sum3
+                  - 2*sum2*x1 + 2.**(2*third) * x1**2) /
+                (6 * sum3 * x1) )
+      sigmaA = max(min(sigmaA,0.999),1.E-6)
+      # Now work out approximate e.s.d. of sigmaA estimate from 2nd derivative of LLG at optimal sigmaA
+      denom = flex.pow((1-flex.pow2(dobssel)*sigmaA**2),3)
+      sum0 = flex.sum((2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))/denom)
+      sum1 = flex.sum((12*flex.pow(dobssel,3)*abseE*absEc*cosdphi)/denom)
+      sum2 = flex.sum((-6*flex.pow(dobssel,4)*(flex.pow2(abseE) + flex.pow2(absEc)))/denom)
+      sum3 = flex.sum((4*flex.pow(dobssel,5)*abseE*absEc*cosdphi)/denom)
+      sum4 = flex.sum((-2*flex.pow(dobssel,6))/denom)
+      d2LLGbydsigmaA = sum0 + sum1*sigmaA + sum2*sigmaA**2 + sum3*sigmaA**3 + sum4*sigmaA**4
+      d2LLGbydsigmaA /= over_sampling_factor
+      sigma_sigmaA = 1./math.sqrt(abs(d2LLGbydsigmaA))
+      ssqr = flex.mean_default(eEsel.d_star_sq().data(),0)
+      ndat = dobssel.size()
+      print(ndat,ssqr,sigmaA,sigma_sigmaA)
+      xdat.append(ssqr)
+      ydat.append(math.log(sigmaA))
+      wdat.append(abs(d2LLGbydsigmaA)) # Inverse variance estimate
+
+    xdat = flex.double(xdat)
+    ydat = flex.double(ydat)
+    wdat = flex.double(wdat)
+    W = flex.sum(wdat)
+    Wx = flex.sum(wdat * xdat)
+    Wy = flex.sum(wdat * ydat)
+    Wxx = flex.sum(wdat * xdat * xdat)
+    Wxy = flex.sum(wdat * xdat * ydat)
+    slope = (W * Wxy - Wx * Wy) / (W * Wxx - Wx * Wx)
+    intercept = (Wy * Wxx - Wx * Wxy) / (W * Wxx - Wx * Wx)
+    frac_complete = math.exp(2.*intercept)
+    print("Slope and intercept of sigmaA plot: ",slope,intercept,file=log)
+    print("Approximate fraction of scattering: ",frac_complete,file=log)
+    linlogsiga = flex.double()
+    logsiga_combined = flex.double()
+    sigma_linlog = math.log(1.5) # Allow 50% error in linear fit
+    i_bin_used = 0
+    for i_bin in mc1.binner().range_used():
+      sigmaA = math.exp(ydat[i_bin_used])
+      # For complete model, slope should be negative, but can be positive if the
+      # modelled part is much better ordered than the larger unmodelled part
+      linlog = min(math.log(0.999),(intercept + slope*xdat[i_bin_used]))
+      linlogsiga.append(linlog)
+      sigma_sigmaA = 1./math.sqrt(wdat[i_bin_used])
+      sigma_lnsigmaA = math.exp(-ydat[i_bin_used])*sigma_sigmaA
+      combined_logsiga = ((ydat[i_bin_used]/sigma_lnsigmaA**2 + linlog/sigma_linlog**2) /
+                         (1./sigma_lnsigmaA**2 + 1./sigma_linlog**2) )
+      logsiga_combined.append(combined_logsiga)
+      combined_siga = math.exp(combined_logsiga)
+
+      sel = expectE.binner().selection(i_bin)
+      expectE_mod.data().set_selected(sel, expectE_mod.data().select(sel)
+            - math.exp(combined_logsiga)*dobs.data().select(sel)
+              * masked_model_E.data().select(sel) )
+      masked_model_sigmaA.data().set_selected(sel, combined_siga)
+      i_bin_used += 1
+
+    if False:
+      import matplotlib.pyplot as plt
+      fig, ax = plt.subplots(2,1)
+      ax[0].plot(xdat,ydat,label="ln(sigmaA)")
+      ax[0].plot(xdat,linlogsiga,label="line fit")
+      ax[0].plot(xdat,logsiga_combined,label="combined")
+      ax[0].legend(loc="upper right")
+      ax[1].plot(xdat,flex.exp(ydat),label="sigmaA")
+      ax[1].plot(xdat,flex.exp(linlogsiga),label="line fit")
+      ax[1].plot(xdat,flex.exp(logsiga_combined),label="combined")
+      ax[1].legend(loc="lower left")
+      plt.show()
+    # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
 
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
@@ -1872,7 +2013,9 @@ def assess_cryoem_errors(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
     sphere_center = list(sphere_cent_map),
-    expectE = expectE, dobs = dobs,
+    expectE = expectE_mod, dobs = dobs, # Temporary kludge
+    # expectE = expectE, dobs = dobs,
+    masked_model_E = masked_model_E, masked_model_sigmaA = masked_model_sigmaA,
     over_sampling_factor = over_sampling_factor,
     fraction_scattering = fraction_scattering,
     weighted_map_noise = weighted_map_noise,
@@ -1979,7 +2122,11 @@ def run():
   mm1 = dm.get_real_map(map1_filename)
   map2_filename = args.map2
   mm2 = dm.get_real_map(map2_filename)
-  mmm = map_model_manager(model=fixed_model, map_manager_1=mm1, map_manager_2=mm2)
+  mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2)
+
+  if (fixed_model):
+    mmm.add_model_by_id(model=fixed_model, model_id='fixed_model')
+    mmm.generate_map(model=fixed_model, d_min=d_min, map_id='fixed_atom_map')
 
   if determine_ordered_volume:
     mask_id = 'ordered_volume_mask'
