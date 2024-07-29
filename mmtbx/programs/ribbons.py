@@ -6,6 +6,7 @@ import mmtbx.secondary_structure
 from pathlib import Path
 import numpy as np
 from scipy.interpolate import make_interp_spline
+from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present
@@ -288,9 +289,6 @@ Output:
     if self.idCode is None or self.idCode == "":
       self.idCode = "macromol"
 
-    # Round-robin colors for the backbone of the ribbons for when we are coloring each chain or model.
-    self.backBoneColors = [ "white", "yellowtint", "peachtint", "pinktint", "lilactint", "bluetint", "greentint" ]
-
     # Rainbow colors when we are coloring by rainbow
     self.rainbowColors = [ "blue", "sky", "cyan", "sea", "green", "lime", "yellow" ,"gold" ,"orange" ,"red" ]
 
@@ -324,9 +322,9 @@ Output:
       for name in chainNames:
         # Backbone color by model ID if we have multiple models, or by chain ID if we have multiple chains in a model.
         if groupByModel:
-          c = self.backBoneColors[modelID % len(self.backBoneColors)]
+          c = get_chain_color(modelID)
         else:
-          c = self.backBoneColors[chainCount % len(self.backBoneColors)]
+          c = get_chain_color(chainCount)
         chainColors[name] = c
         chainCount += 1
 
