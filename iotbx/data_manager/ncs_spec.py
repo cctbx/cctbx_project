@@ -30,7 +30,7 @@ class NcsSpecDataManager(DataManagerBase):
   def remove_ncs_spec(self, filename):
     return self._remove(NcsSpecDataManager.datatype, filename)
 
-  def has_ncs_specs(self, expected_n=1, exact_count=False, raise_sorry=False):
+  def has_ncs_spec(self, expected_n=1, exact_count=False, raise_sorry=False):
     return self._has_data(NcsSpecDataManager.datatype, expected_n=expected_n,
                           exact_count=exact_count, raise_sorry=raise_sorry)
 
