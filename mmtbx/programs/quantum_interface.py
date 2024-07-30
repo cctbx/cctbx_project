@@ -250,7 +250,7 @@ def should_get_selection_from_user(params):
     return False
   return bc==len(bools)
 
-def get_selection_from_user(hierarchy, include_amino_acids=None, log=None):
+def get_selection_from_user(hierarchy, include_amino_acids=None, return_list=False, log=None):
   j=0
   opts = []
   if include_amino_acids is not None:
@@ -285,6 +285,7 @@ def get_selection_from_user(hierarchy, include_amino_acids=None, log=None):
           opts.append(' or '.join(ts))
     j+=1
   print('\n\n', file=log)
+  if return_list: return opts
   for i, sel in enumerate(opts):
     print('    %2d : "%s"' % (i+1,sel), file=log)
   if len(opts)==1:
@@ -777,8 +778,8 @@ Usage examples:
   def iterate_NQH(self, nq_or_h, classify_nqh, add_nqh_H_atoms, generate_flipping, log=None):
     from mmtbx.geometry_restraints.quantum_interface import get_preamble
     if len(self.params.qi.qm_restraints)<1:
-      self.write_qmr_phil(iterate_NQH=True)
-      print('Restart command with PHIL file', file=self.logger)
+      pf = self.write_qmr_phil(iterate_NQH=True)
+      print('Restart command with PHIL file : %s' % pf, file=self.logger)
       return
     qm_work_dir = get_working_directory(self.data_manager.get_model(), self.params)
     nproc = self.params.qi.nproc
