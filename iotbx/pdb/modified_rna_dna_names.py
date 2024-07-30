@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Mon Jun 24 07:02:53 2024
+The date of file generation: Tue Jul 30 14:45:49 2024
 """
 from __future__ import absolute_import, division, print_function
 

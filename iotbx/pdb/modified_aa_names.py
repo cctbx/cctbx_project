@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Mon Jun 24 07:02:52 2024
+The date of file generation: Tue Jul 30 14:45:49 2024
 """
 from __future__ import absolute_import, division, print_function
 
@@ -1046,6 +1046,7 @@ lookup = {
   "Y28" : "?",
   "YCP" : "?",
   "YEN" : "?",
+  "YFZ" : "?",
   "YNM" : "?",
   "YYA" : "?",
   "Z50" : "?",
@@ -1098,6 +1099,7 @@ lookup = {
   "7OZ" : "A",
   "7VN" : "A",
   "9WV" : "A",
+  "A1ALE" : "A",
   "A1H5W" : "A",
   "AA3" : "A",
   "AA4" : "A",
@@ -1164,6 +1166,7 @@ lookup = {
   "X5P" : "A",
   "XW1" : "A",
   "XYC" : "A",
+  "YFQ" : "A",
   "Z01" : "A",
   "ZTK" : "A",
   "ZZJ" : "A",
@@ -1176,6 +1179,7 @@ lookup = {
   "4J5" : "R",
   "73N" : "R",
   "9NR" : "R",
+  "A1LTQ" : "R",
   "AAR" : "R",
   "ACL" : "R",
   "AGM" : "R",
@@ -1599,6 +1603,7 @@ lookup = {
   "9TU" : "K",
   "9TX" : "K",
   "9U0" : "K",
+  "A1D5B" : "K",
   "A1LWV" : "K",
   "ALY" : "K",
   "API" : "K",
@@ -1817,6 +1822,7 @@ lookup = {
   "4N9" : "P",
   "6Y9" : "P",
   "8LJ" : "P",
+  "A1D5E" : "P",
   "DPL" : "P",
   "DYJ" : "P",
   "E0Y" : "P",
