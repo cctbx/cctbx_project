@@ -138,9 +138,12 @@ def make_protein_guidepoints(contiguous_residues):
   '''
 
   # Initialize an empty list of guiepoints that lie between residues (one less than the number of residues)
-  # plus two at the beginning and two at the end.  These will be filled in below.
+  # plus two at the beginning and two at the end.  These will be filled in below.  These mist be independent
+  # GuidePoint objects, not references to the same object, because they will be modified in place.
   numResidues = len(contiguous_residues)
-  guidepoints = [GuidePoint()] * (numResidues - 1 + 2 + 2)
+  guidepoints = []
+  for i in range(numResidues - 1 + 2 + 2):
+    guidepoints.append(GuidePoint())
 
   # Initialize some values for the calculations
   maxOffset = 1.5   # Maximum displacement of guidepoint based on curvature
@@ -210,6 +213,9 @@ def make_protein_guidepoints(contiguous_residues):
       bvec = col(ox1.xyz) - col(ca1.xyz)
       g.cvec = avec.cross(bvec).normalize()
       g.dvec = g.cvec.cross(avec).normalize()
+    else:
+      g.cvec = col({0, 0, 0})
+      g.dvec = col({0, 0, 0})
 
   # Check on widthFactors -- only apply for 3+ in a row > 0
   i = 2
@@ -252,9 +258,12 @@ def make_nucleic_acid_guidepoints(contiguous_residues):
   '''
 
   # Initialize an empty list of guiepoints that lie between residues (one less than the number of residues)
-  # plus two at the beginning and two at the end.  These will be filled in below.
+  # plus two at the beginning and two at the end.  These will be filled in below.  These mist be independent
+  # GuidePoint objects, not references to the same object, because they will be modified in place.
   numResidues = len(contiguous_residues)
-  guidepoints = [GuidePoint()] * (numResidues - 1 + 2 + 2)
+  guidepoints = []
+  for i in range(numResidues - 1 + 2 + 2):
+    guidepoints.append(GuidePoint())
 
   # Initialize some values for the calculations
   maxOffset = 1.5   # Maximum displacement of guidepoint based on curvature
@@ -305,15 +314,18 @@ def make_nucleic_acid_guidepoints(contiguous_residues):
           offsetVec = (col(carbon4.xyz) - g.pos).normalize()
           g.pos += maxOffset * g.offsetFactor * offsetVec
 
-  # We do this last so that if there are missing atoms everying above has been calculated
-  # before we might have to bail on this guidepoint.
-  carbon3 = _FindNamedAtomInResidue(g.prevRes, ["C3*", "C3'"])
-  carbon1 = _FindNamedAtomInResidue(g.nextRes, ["C1*", "C1'"])
-  if carbon3 is not None and carbon1 is not None:
-    avec = col(phos2.xyz) - col(phos1.xyz)
-    bvec = col(carbon1.xyz) - col(carbon3.xyz)
-    g.cvec = avec.cross(bvec).normalize()
-    g.dvec = g.cvec.cross(avec).normalize()
+    # We do this last so that if there are missing atoms everying above has been calculated
+    # before we might have to bail on this guidepoint.
+    carbon3 = _FindNamedAtomInResidue(g.prevRes, ["C3*", "C3'"])
+    carbon1 = _FindNamedAtomInResidue(g.nextRes, ["C1*", "C1'"])
+    if carbon3 is not None and carbon1 is not None:
+      avec = col(phos2.xyz) - col(phos1.xyz)
+      bvec = col(carbon1.xyz) - col(carbon3.xyz)
+      g.cvec = avec.cross(bvec).normalize()
+      g.dvec = g.cvec.cross(avec).normalize()
+    else:
+      g.cvec = col({0, 0, 0})
+      g.dvec = col({0, 0, 0})
 
   # Make dummy guidepoints at the beginning and end of the chain.
   firstGuides = GuidePoint(col(_FindNamedAtomInResidue(contiguous_residues[0], anchorAtoms).xyz),
