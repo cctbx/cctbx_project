@@ -230,9 +230,6 @@ class postrefinement_rs2(postrefinement_rs):
     for reason, count in six.iteritems(experiments_rejected_by_reason):
       self.logger.log("Experiments rejected due to %s: %d"%(reason,count))
 
-    comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
-
     # Now that each rank has all reasons from all ranks, we can treat the reasons in a uniform way.
     total_experiments_rejected_by_reason = self.mpi_helper.count(experiments_rejected_by_reason)
     total_accepted_experiment_count = self.mpi_helper.sum(len(new_experiments))
