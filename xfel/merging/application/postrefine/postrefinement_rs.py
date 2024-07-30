@@ -13,7 +13,7 @@ from cctbx.crystal import symmetry
 from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
-from intensity_sanitizer import IntensitySanitizer
+from xfel.merging.application.postrefine.intensity_sanitizer import IntensitySanitizer
 
 
 class postrefinement_rs(worker):

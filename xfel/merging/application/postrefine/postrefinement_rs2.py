@@ -13,7 +13,7 @@ from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
 from xfel.merging.application.postrefine.postrefinement_rs import postrefinement_rs, rs_refinery, rs_parameterization, lbfgs_minimizer_base
-from intensity_sanitizer import IntensitySanitizer
+from xfel.merging.application.postrefine.intensity_sanitizer import IntensitySanitizer
 
 
 def chosen_weights(observation_set, params):
