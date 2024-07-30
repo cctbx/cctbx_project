@@ -72,7 +72,7 @@ class mpi_helper(object):
     Return total `Counter` of occurrences of each element in data across ranks.
     Example: (a1, a1, a2) + (a1, a2, a3) = {a1: 3, a2: 2, a1: 1}
     """
-    counters = self.comm.gather(Counter(data), rank=root)
+    counters = self.comm.gather(Counter(data), root=root)
     return sum(counters, Counter()) if self.rank == root else None
 
   def sum(self, data, root=0):
