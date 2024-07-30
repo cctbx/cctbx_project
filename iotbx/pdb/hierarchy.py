@@ -1003,15 +1003,13 @@ class _():
      values for xyz, occ, b, and crystal_symmetry are all rounded.
      '''
     import mmtbx.model
-    if crystal_symmetry: # usual
-      mm = mmtbx.model.manager(
+
+    # make up crystal_symmetry if not present
+    crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
+
+    mm = mmtbx.model.manager(
           model_input = None, # REQUIRED
           pdb_hierarchy = self,
-          crystal_symmetry = crystal_symmetry,
-          )
-    else:  # usual, make a deep_copy and supply as_pdb_input:
-      mm = mmtbx.model.manager(
-          model_input = self.deep_copy().as_pdb_input(),
           crystal_symmetry = crystal_symmetry,
           )
     mm.set_unit_cell_crystal_symmetry_and_shift_cart(
@@ -1084,29 +1082,8 @@ class _():
     else: # usual
       return seq_fasta_lines
 
-  def extract_xray_structure(self, crystal_symmetry=None,
-     min_distance_sym_equiv=None):
-    """
-    Generate the equivalent cctbx.xray.structure object.  If the crystal
-    symmetry is not provided, this will be placed in a P1 box.  In practice it
-    is usually best to keep the original xray structure object around, but this
-    method is helpful in corner cases.
-    """
-    # if min_distance_sym_equiv is not None: # use it
-    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple(
-    #     min_distance_sym_equiv=min_distance_sym_equiv)
-    # else:  # usual just use whatever is default in xray_structure_simple
-    #   return self.as_pdb_input(crystal_symmetry).xray_structure_simple()
-    #
-    # Abbreviated copy-paste from iotbx/pdb/__init__.py: def xray_structures_simple()
-    # Better than getting iotbx.pdb.input from hierarchy.as_pdb_string()
-    from cctbx import xray
-    import scitbx.stl.set
+  def generate_crystal_symmetry(self, crystal_symmetry):
     cryst1_substitution_buffer_layer = None
-    non_unit_occupancy_implies_min_distance_sym_equiv_zero = True
-    if min_distance_sym_equiv is None:
-      min_distance_sym_equiv = 0.5
-    #
     if (crystal_symmetry is None):
       crystal_symmetry = crystal.symmetry()
     if (crystal_symmetry.unit_cell() is None):
@@ -1116,6 +1093,27 @@ class _():
           buffer_layer=cryst1_substitution_buffer_layer))
     if (crystal_symmetry.space_group_info() is None):
       crystal_symmetry = crystal_symmetry.cell_equivalent_p1()
+    return crystal_symmetry
+
+  def extract_xray_structure(self, crystal_symmetry=None,
+     enable_scattering_type_unknown = False,
+     min_distance_sym_equiv=None):
+    """
+    Generate the equivalent cctbx.xray.structure object.  If the crystal
+    symmetry is not provided, this will be placed in a P1 box.  In practice it
+    is usually best to keep the original xray structure object around, but this
+    method is helpful in corner cases.
+    """
+    # Abbreviated copy-paste from iotbx/pdb/__init__.py: def xray_structures_simple()
+    # Better than getting iotbx.pdb.input from hierarchy.as_pdb_string()
+    from cctbx import xray
+    import scitbx.stl.set
+    non_unit_occupancy_implies_min_distance_sym_equiv_zero = True
+    if min_distance_sym_equiv is None:
+      min_distance_sym_equiv = 0.5
+
+    # Make up crystal symmetry if not present
+    crystal_symmetry = self.generate_crystal_symmetry(crystal_symmetry)
     unit_cell = crystal_symmetry.unit_cell()
     scale_r = (0,0,0,0,0,0,0,0,0)
     scale_t = (0,0,0)
@@ -1131,7 +1129,7 @@ class _():
       False, # unit_cube_pseudo_crystal,
       False, # fractional_coordinates,
       False, # scattering_type_exact,
-      False, # enable_scattering_type_unknown,
+      enable_scattering_type_unknown,
       self.atoms_with_labels(),
       mi,
       scitbx.stl.set.stl_string(atom_names_scattering_type_const),

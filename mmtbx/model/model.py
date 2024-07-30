@@ -191,7 +191,7 @@ class manager(object):
   """
 
   def __init__(self,
-      model_input,
+      model_input               = None,
       pdb_hierarchy             = None,
       crystal_symmetry          = None,
       restraint_objects         = None,
@@ -205,7 +205,7 @@ class manager(object):
     if(model_input is not None): assert pdb_hierarchy is None
     if(pdb_hierarchy is not None):
       assert model_input is None
-      assert crystal_symmetry is not None
+      # assert crystal_symmetry is not None
     # Internals
     self._processed         = False
     self._xray_structure    = None

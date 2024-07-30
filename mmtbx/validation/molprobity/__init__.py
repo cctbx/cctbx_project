@@ -182,7 +182,7 @@ class molprobity(slots_getstate_setstate):
     if(self.model is None and pdb_hierarchy is not None):
       import mmtbx.model
       self.model = mmtbx.model.manager(
-        model_input = pdb_hierarchy.as_pdb_input())
+        pdb_hierarchy = pdb_hierarchy)
       self.model.process(make_restraints=True)
 
     pdb_hierarchy = self.model.get_hierarchy()

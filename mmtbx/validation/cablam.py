@@ -1462,11 +1462,10 @@ class cablamalyze(validation):
     sites_cart=self.pdb_hierarchy.atoms().extract_xyz()
     mon_lib_srv = monomer_library.server.server()
     ener_lib = monomer_library.server.ener_lib()
-    pdb_io=self.pdb_hierarchy.as_pdb_input()
     processed_pdb_file = pdb_interpretation.process(
         mon_lib_srv=mon_lib_srv,
         ener_lib=ener_lib,
-        pdb_inp=pdb_io,
+        pdb_hierarchy=self.pdb_hierarchy,
         #params=work_params.kinemage.pdb_interpretation,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
     geometry = processed_pdb_file.geometry_restraints_manager()

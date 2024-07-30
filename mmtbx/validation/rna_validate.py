@@ -487,7 +487,7 @@ class rna_validation(slots_getstate_setstate):
       processed_pdb_file = pdb_interpretation.process(
         mon_lib_srv=mon_lib_srv,
         ener_lib=ener_lib,
-        pdb_inp=pdb_hierarchy.as_pdb_input(),
+        pdb_hierarchy=pdb_hierarchy,
         substitute_non_crystallographic_unit_cell_if_necessary=True)
       geometry_restraints_manager = \
         processed_pdb_file.geometry_restraints_manager()
