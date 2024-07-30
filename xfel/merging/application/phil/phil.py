@@ -436,7 +436,7 @@ postrefinement {
     .type = float ( value_min = 0.0001 )
     .help = Throw out observations below this value. Hard coded as 0.2 for rs2
     .help = Minimum positive value is required because partiality appears in the denominator
-  intensity_extrema_iqr_distance_threshold = 100.0
+  intensity_extrema_iqr_dist_threshold = 100.0
     .type = float(value_min=0, value_max=None)
     .help = Maximum tolerated deviation of max(intensity.sum.value.unmodified)
     .help = and min(intensity.sum.value.unmodified) from expts' population's
