@@ -438,8 +438,8 @@ postrefinement {
     .help = Minimum positive value is required because partiality appears in the denominator
   intensity_extrema_iqr_dist_threshold = 100.0
     .type = float(value_min=0, value_max=None)
-    .help = Maximum tolerated deviation of max(intensity.sum.value.unmodified)
-    .help = and min(intensity.sum.value.unmodified) from expts' population's
+    .help = Maximum tolerated deviation of max(intensity.sum.value)
+    .help = and min(intensity.sum.value) from expts' population's
     .help = respective medians, expressed in population's IQR units.
   rs {
     fix = thetax thetay *RS G BFACTOR
