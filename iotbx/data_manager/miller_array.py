@@ -11,7 +11,8 @@ import iotbx.phil
 
 from cctbx import crystal
 from iotbx.data_manager import DataManagerBase
-from iotbx.reflection_file_utils import label_table, reflection_file_server
+from iotbx.reflection_file_utils import label_table, get_experimental_phases_scores, \
+  get_phase_scores, get_r_free_flags_scores, reflection_file_server
 from libtbx import Auto
 from libtbx.utils import Sorry
 
@@ -329,6 +330,7 @@ class MillerArrayDataManager(DataManagerBase):
     if len(filenames) > len(labels):
       labels += [None]*(len(filenames) - len(labels))
     assert len(filenames) == len(labels)
+
     # determine types of selected arrays across all files and decide
     # whether to ignore intensity arrays that are not explicitly selected
     selected_types = set()
@@ -340,10 +342,11 @@ class MillerArrayDataManager(DataManagerBase):
           selected_types.add(self.get_miller_array_array_types(filename)[label])
     if 'amplitude' in selected_types and ignore_intensities_if_amplitudes_present:
       selected_types.add('intensity')
+
     # check for user selected labels
     selected_labels = deepcopy(labels)
     for i, filename in enumerate(filenames):
-      current_selected_labels = self.get_miller_array_user_selected_labels(filename)
+      current_selected_labels = deepcopy(self.get_miller_array_user_selected_labels(filename))
       current_all_labels = labels[i]
       if labels[i] is None:
         current_all_labels = self.get_miller_array_all_labels(filename)
@@ -359,6 +362,7 @@ class MillerArrayDataManager(DataManagerBase):
             current_selected_labels.append(label)
         selected_labels[i] = current_selected_labels
     labels = selected_labels
+
     # force crystal symmetry if a crystal symmetry is provided
     if crystal_symmetry is not None and force_symmetry is None:
       force_symmetry = True
@@ -382,6 +386,12 @@ class MillerArrayDataManager(DataManagerBase):
 
     # crystal_symmetry and force_symmetry should be set by now
     miller_arrays = []
+    miller_array_labels = []  # filename:array_label
+    def get_array_label(filename, array):
+      '''
+      Convenience function for creating filename:array_label label
+      '''
+      return filename + ':' + array.info().label_string()
     merge_equivalents = 'miller_array_skip_merge' not in self.custom_options
     for filename, file_labels in zip(filenames, labels):
       file_arrays = self.get_miller_array(filename).\
@@ -398,6 +408,40 @@ class MillerArrayDataManager(DataManagerBase):
           if (array_type is None
               or array_type in self.get_miller_array_type(filename, label_name)):
             miller_arrays.append(miller_array)
+            miller_array_labels.append(get_array_label(filename, miller_array))
+
+    # final check of selected labels with scores
+    problem_arrays = set()  # arrays with the same score as selected arrays
+    # -------------------------------------------------------------------------
+    def filter_arrays_by_scores(filename, arrays, test_scores):
+      '''
+      Convenience function for using scores to select arrays for removal
+      '''
+      remove_set = set()
+      for selected_array in arrays:
+        selected_array_label = get_array_label(filename, selected_array)
+        score = score_dict[selected_array_label]
+        if score > 0 and test_scores.count(score) > 1:
+          for array, array_label in zip(miller_arrays, miller_array_labels):
+            if score_dict[array_label] == score and array_label != selected_array_label:
+              remove_set.add(array)
+      return remove_set
+    # -------------------------------------------------------------------------
+    for scores in [
+      get_experimental_phases_scores(miller_arrays, False),
+      get_phase_scores(miller_arrays),
+      get_r_free_flags_scores(miller_arrays, None).scores,
+      ]:
+      score_dict = {miller_array_labels[i]:scores[i] for i in range(len(miller_arrays))}
+      for filename in filenames:
+        selected_arrays = self.get_miller_arrays(
+          labels=self.get_miller_array_user_selected_labels(filename=filename),
+          filename=filename)
+        problem_arrays.update(filter_arrays_by_scores(filename, selected_arrays, scores))
+    new_arrays = [ma for ma in miller_arrays if ma not in problem_arrays]
+
+    miller_arrays = new_arrays
+
     file_server = reflection_file_server(
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
