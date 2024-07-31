@@ -1192,6 +1192,29 @@ class _():
       i_proxies_sorted = i_proxies_sorted[:max_items]
     return i_proxies_sorted
 
+  def sorted_value_proxies_generator(self,
+                           by_value,
+                           sites_cart):
+    assert by_value in ["delta"]
+    deltas = nonbonded_deltas(sites_cart=sites_cart, sorted_asu_proxies=self)
+    if (deltas.size() == 0): return
+    i_proxies_sorted = flex.sort_permutation(data=deltas)
+    n_simple = self.simple.size()
+    asu_mappings = self.asu_mappings()
+    for i_proxy in i_proxies_sorted:
+      if (i_proxy < n_simple):
+        yield (
+            deltas[i_proxy],
+            self.simple[i_proxy],
+            None,
+            "")
+      else:
+        yield (
+            deltas[i_proxy],
+            self.asu[i_proxy-n_simple],
+            asu_mappings.get_rt_mx_ji(pair=self.asu[i_proxy-n_simple]),
+            " sym.op.")
+
   def get_sorted_proxies(self,
                          by_value,
                          sites_cart,

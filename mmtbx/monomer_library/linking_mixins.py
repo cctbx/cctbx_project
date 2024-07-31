@@ -391,14 +391,16 @@ class linking_mixins(object):
     def _nonbonded_pair_generator_geometry_restraints_sort(
         nonbonded_proxies,
         max_bonded_cutoff=3.):
-      rc = nonbonded_proxies.get_sorted(by_value="delta",
-                                        sites_cart=sites_cart,
-                                        include_proxy=True,
-        )
-      if rc is None: return
-      rc, junk = rc
+      rc = nonbonded_proxies.sorted_value_proxies_generator(by_value="delta",
+                                                            sites_cart=sites_cart)
       for item in rc:
-        yield item
+        distance, proxy, rt_mx_ji, sym_op = item
+        try:
+          i_seq, j_seq = proxy.i_seqs
+        except AttributeError:
+          i_seq, j_seq = proxy.i_seq, proxy.j_seq
+        yield i_seq, j_seq, distance, sym_op, rt_mx_ji, proxy
+
     #
     if(log is not None):
       print("""
@@ -448,7 +450,7 @@ class linking_mixins(object):
           max_bonded_cutoff=max_bonded_cutoff,
           )
         ):
-      labels, i_seq, j_seq, distance, vdw_distance, sym_op, rt_mx_ji, proxy = item
+      i_seq, j_seq, distance, sym_op, rt_mx_ji, proxy = item
       #
       # include & exclude selection
       #
