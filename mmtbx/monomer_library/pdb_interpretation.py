@@ -218,6 +218,9 @@ master_params_str = """\
   use_ncs_to_build_restraints = False
     .type = bool
     .short_caption = Look for NCS and use it to speed up building restraints
+  show_restraints_histograms = True
+    .type = bool
+    .short_caption = Show histograms. Disable for speed.
   flip_symmetric_amino_acids = True
     .type = bool
     .short_caption = Flip symmetric amino acids to conform to IUPAC convention
@@ -6114,7 +6117,7 @@ class process(object):
         t3=time.time()
         print("  Total time for adding SS restraints: %.2f" % (t3-t1), file=self.log)
         print(file=self.log)
-      if (self.log is not None):
+      if self.log is not None and self.all_chain_proxies.params.show_restraints_histograms:
       # if False:
         print("  Time building geometry restraints manager: %.2f seconds" % (
             self.all_chain_proxies.time_building_geometry_restraints_manager), file=self.log)
