@@ -179,7 +179,7 @@ class DataModeler:
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                       "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow", "best_model_includes_background",
-                      "all_q_perpix", "all_sigma_rdout"]
+                      "all_q_perpix", "all_sigma_rdout", "all_zscore"]
 
     def filter_pixels(self, thresh):
         assert self.roi_id is not None
@@ -394,6 +394,8 @@ class DataModeler:
         else:
             # assert is a reflection table. ..
             refls = ref
+        if self.params.roi.strong_only and "is_strong" in list(refls.keys()):
+            refls = refls.select(refls["is_strong"])
         return refls
 
     def is_duplicate_hkl(self, refls):
@@ -580,8 +582,9 @@ class DataModeler:
         self.tilt_abc = [abc for i_roi, abc in enumerate(self.tilt_abc) if self.selection_flags[i_roi]]
         self.pids = [pid for i_roi, pid in enumerate(self.pids) if self.selection_flags[i_roi]]
         self.tilt_cov = [cov for i_roi, cov in enumerate(self.tilt_cov) if self.selection_flags[i_roi]]
-        self.Hi =[hi for i_roi, hi in enumerate(self.Hi) if self.selection_flags[i_roi]]
-        self.Hi_asu =[hi_asu for i_roi, hi_asu in enumerate(self.Hi_asu) if self.selection_flags[i_roi]]
+        if self.Hi is not None:
+            self.Hi =[hi for i_roi, hi in enumerate(self.Hi) if self.selection_flags[i_roi]]
+            self.Hi_asu =[hi_asu for i_roi, hi_asu in enumerate(self.Hi_asu) if self.selection_flags[i_roi]]
 
         if not self.no_rlp_info:
             self.Q = [np.linalg.norm(refls[i_roi]["rlp"]) for i_roi in range(len(refls)) if self.selection_flags[i_roi]]
@@ -614,6 +617,7 @@ class DataModeler:
         if self.params.try_strong_mask_only:
             strong_mask_img = utils.strong_spot_mask(self.refls, self.E.detector)
 
+        roi_datamax = []
         for i_roi in range(len(self.rois)):
             pid = self.pids[i_roi]
             x1, x2, y1, y2 = self.rois[i_roi]
@@ -624,6 +628,8 @@ class DataModeler:
             data = data.ravel()
             all_background += list(background[pid, y1:y2, x1:x2].ravel())
             trusted = is_trusted[pid, y1:y2, x1:x2].ravel()
+            datamax = data[trusted].max()
+            roi_datamax.append(datamax)
             if perpixel_dark_rms is not None:
                 sigma_rdout = perpixel_dark_rms[pid, y1:y2, x1:x2].ravel()
             else:
@@ -704,6 +710,13 @@ class DataModeler:
         self.all_sigmas = np.array(all_sigmas)
         # note rare chance for sigmas to be nan if the args of sqrt is below 0
         self.all_trusted = np.logical_and(np.array(all_trusted), ~np.isnan(all_sigmas))
+
+        if self.params.roi.filter_bright_peaks.enable:
+            roi_datamax = np.array(roi_datamax)
+            is_bright_peak = utils.is_outlier(roi_datamax, thresh=self.params.roi.filter_bright_peaks.thresh)
+            for i_roi in range(len(self.rois)):
+                if is_bright_peak[i_roi]:
+                    self.all_trusted[self.roi_id==i_roi] = False
 
         if self.params.roi.skip_roi_with_negative_bg:
             # Dont include pixels whose background model is below 0
@@ -980,7 +993,7 @@ class DataModeler:
             if (p.beta is not None and p.center is None) or (p.center is not None and p.beta is None):
                 raise RuntimeError("To use restraints, must specify both center and beta for param %s" % name)
 
-    def get_data_model_pairs(self, reorder=False):
+    def get_data_model_pairs(self, reorder=False, return_stats=False):
         """
         :param reorder: whether to reorder sort by resolution
         :return: 4 lists of sub-images: data, models, trusted, bragg
@@ -992,13 +1005,24 @@ class DataModeler:
         all_bragg = []
         all_sigma_rdout = []
         all_d_perpix = 1/self.all_q_perpix
-        all_d = []
+        spot_d = []
+        spot_hkl = []
+        spot_pid_and_cent = []
+
         for i_roi in range(len(self.rois)):
             x1, x2, y1, y2 = self.rois[i_roi]
             mod = self.best_model[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
             try:
                 res = all_d_perpix[self.roi_id==i_roi] .mean()
-                all_d.append(res)
+                cent_x = (x1+x2) /2.
+                cent_y = (y1+y2) / 2.
+                pid = self.all_pid[self.roi_id==i_roi].ravel()[0]
+                spot_pid_and_cent.append((pid, cent_x, cent_y))
+                hkl = None
+                if self.Hi:
+                    hkl = self.Hi[i_roi]
+                spot_hkl.append(hkl)
+                spot_d.append(res)
             except IndexError:
                 pass
             if self.all_trusted is not None:
@@ -1027,13 +1051,20 @@ class DataModeler:
         if all_sigma_rdout:
             ret_subimgs += [all_sigma_rdout]
         if reorder:
-            order = np.argsort(all_d)[::-1]
+            order = np.argsort(spot_d)[::-1]
+            spot_d = np.array(spot_d)[order]
+            spot_hkl = np.array(spot_hkl)[order]
+            spot_pid_and_cent = np.array(spot_pid_and_cent)[order]
+
             for i in range(len(ret_subimgs)):
                 imgs = ret_subimgs[i]
                 imgs = [imgs[i] for i in order]
                 ret_subimgs[i] = imgs
-
-        return ret_subimgs
+        if return_stats:
+            stats = {"spot_d": spot_d, "spot_hkl": spot_hkl, "spot_pid_and_cent": spot_pid_and_cent}
+            return ret_subimgs + [stats]
+        else:
+            return ret_subimgs
 
     def Minimize(self, x0, SIM, i_shot=0):
         self.target = target = TargetFunc(SIM=SIM, niter_per_J=self.params.niter_per_J, profile=self.params.profile)
@@ -1983,12 +2014,15 @@ def target_func(x, udpate_terms, mod, SIM, compute_grad=True, return_all_zscores
 
     restraint_terms = {}
     if params.use_restraints:
-        # scale factor restraint
+        restraint_s = ""
         for name in mod.non_fhkl_params:
             p = mod.P[name]
             if p.beta is not None:
                 val = p.get_restraint_val(x[p.xpos])
                 restraint_terms[name] = val
+                restraint_s += "%s " % name
+        if restraint_s != "":
+            MAIN_LOGGER.debug("Restrained vars (non-Fhkl related): %s"%restraint_s )
 
         if params.centers.Nvol is not None:
             na,nb,nc = SIM.D.Ncells_abc_aniso
@@ -2578,6 +2612,7 @@ def sanity_test_input_lines(input_lines):
 
 
 def full_img_pfs(img_sh):
+    """shape in numpy style"""
     Panel_inds, Slow_inds, Fast_inds = map(np.ravel, np.indices(img_sh) )
     pfs_coords = np.vstack([Panel_inds, Fast_inds, Slow_inds]).T
     pfs_coords_flattened = pfs_coords.ravel()
@@ -2738,3 +2773,23 @@ def get_variance_s(Mod, Jac):
     with np.errstate(divide='ignore', invalid='ignore'):
         variance_s = 1/diag_Hess
     return variance_s
+
+
+def split_line(line):
+    line_fields = line.strip().split()
+    num_fields = len(line_fields)
+    assert num_fields in [2, 3, 4]
+    exp, ref = line_fields[:2]
+    spec = None
+    exp_idx = 0
+    if num_fields == 3:
+        try:
+            exp_idx = int(line_fields[2])
+        except ValueError:
+            spec = line_fields[2]
+            exp_idx = 0
+    elif num_fields == 4:
+        assert os.path.isfile(line_fields[2])
+        spec = line_fields[2]
+        exp_idx = int(line_fields[3])
+    return exp, ref, exp_idx, spec

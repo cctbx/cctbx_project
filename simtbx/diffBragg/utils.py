@@ -774,6 +774,7 @@ def simulator_for_refinement(expt, params):
 
     #  GET SIMULATOR #
     SIM = simulator_from_expt_and_params(expt, params)
+    MAIN_LOGGER.info("Loaded simulator")
 
     if SIM.D.mosaic_domains > 1:
         MAIN_LOGGER.info("Will use mosaic models: %d domains" % SIM.D.mosaic_domains)

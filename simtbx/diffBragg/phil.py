@@ -1099,6 +1099,17 @@ refiner {
 
 roi_phil = """
 roi {
+  filter_bright_peaks {
+    enable = False
+      .type = bool
+      .help = whether to filter shoeboxes if the pixels are exceptionally bright
+    thresh = 3.5
+      .type = float
+      .help = threshold for median absolute deviaion filter (lower rejects more shoeboxes)
+  }
+  strong_only = False
+    .type = bool
+    .help = check for the column is_strong in the reflection table, and if it exists, only load refls where is_strong=True
   centroid = *obs cal
     .type = choice
     .help = Determines which refl table column contains the spot centroids
