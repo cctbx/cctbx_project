@@ -47,9 +47,9 @@ class RangedParameter:
     self._current_val = None  # place holder for the last value (output of get_val)
     # TODO use _rescaled_val in get_restraint_term and get_deriv in order to limit the valls to get_val
     self.xpos = 0  # position of parameter in list of params
-    if fix:
-      self.minval = init - 1
-      self.maxval = init + 1
+    #if fix:
+    #  self.minval = init - 1
+    #  self.maxval = init + 1
     self._arcsin_term = None
 
   def get_restraint_deriv(self, reparam_val):
@@ -71,12 +71,22 @@ class RangedParameter:
     return not self.fix
 
   @property
+  def init(self):
+    return self._init
+
+  @init.setter
+  def init(self, val):
+    self._init = val
+    self._arcsin_term = None
+
+  @property
   def maxval(self):
     return self._maxval
 
   @maxval.setter
   def maxval(self, val):
     self._maxval = val
+    self._arcsin_term = None
 
   @property
   def minval(self):
@@ -85,6 +95,7 @@ class RangedParameter:
   @minval.setter
   def minval(self, val):
     self._minval = val
+    self._arcsin_term = None
 
   @property
   def rng(self):

@@ -6,6 +6,9 @@ from iotbx.phil import parse
 #'''
 
 hopper_phil = """
+perRoi_finish = False
+  .type = bool
+  .help = optionally finish the refinement by fixing all other params and optimizing per-reflection scale factors
 shuffle_stage2_inputs = False
   .type = bool
   .help = optionally shuffle the pandas input pickle for stage 2, so then max_process can be used to select random subsets

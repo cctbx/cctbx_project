@@ -959,8 +959,8 @@ class DataModeler:
                     init_scale = self.refls[refl_idx]["scale_factor"]
                 else:
                     init_scale = 1
-                p = RangedParameter(init=init_scale, sigma=self.params.sigmas.roiPerScale,
-                                  minval=0, maxval=1e12,
+                p = PositiveParameter(init=init_scale, sigma=self.params.sigmas.roiPerScale,
+                                  maxval=1e12,
                                   fix=fix.perRoiScale, name="scale_roi%d" % roi_id,
                                   center=1,
                                   beta=1e12)

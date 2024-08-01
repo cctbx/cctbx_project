@@ -100,6 +100,8 @@ for i_dir, dirname in enumerate(args.dirnames):
                   %(i_f+1, len(expt_fnames), i_dir+1, len(args.dirnames) ))
         ref_f = f.replace(args.exptSuffix, args.reflSuffix)
         if not os.path.exists(ref_f):
+            ref_f = f.replace(".expt", ".refl")
+        if not os.path.exists(ref_f):
             raise FileNotFoundError("No matching refl file for expt %s" % f)
         El = ExperimentList.from_file(f, False)
         if len(El.imagesets()) > 1 or len(El.crystals()) > 1:
@@ -124,7 +126,6 @@ if COMM.rank==0:
 
     if args.write:
         print("Saving the input file for diffBragg")
-        #from IPython import embed;embed()
         hopper_io.save_expt_refl_file(args.filename, exp_names, ref_names, check_exists=True)
         print("Saved %s" % args.filename)
         jname = args.filename + ".json"
