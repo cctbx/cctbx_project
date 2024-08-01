@@ -732,7 +732,7 @@ modify.cosym.use_curvatures=False
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
-              publish_phil + diffbragg_phil + monitor_phil
+              publish_phil + diffbragg_phil + monitor_phil + truncate_phil
 
 import os, importlib
 custom_phil_pathstr = os.environ.get('XFEL_CUSTOM_WORKER_PATH')
