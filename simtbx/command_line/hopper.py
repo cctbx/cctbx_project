@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import socket
+from copy import deepcopy
 import glob
 from simtbx.diffBragg import hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
@@ -271,6 +272,30 @@ class Script:
                     if too_few_iter or too_high_sigz:
                         Modeler.filter_pixels(self.params.filter_after_refinement.threshold)
                         x = Modeler.Minimize(x0, SIM, i_shot=i_shot)
+
+                if self.params.perRoi_finish:
+                    old_params = deepcopy(self.params)
+                    old_P = deepcopy(Modeler.P)
+                    # fix all of the refinement variables except for perRoiScale
+                    for fix_name in dir(self.params.fix):
+                        if fix_name.startswith("_"):
+                            continue
+                        setattr(self.params.fix, fix_name, True)
+                    self.params.fix.perRoiScale = False
+                    Modeler.params = self.params
+                    Modeler.set_parameters_for_experiment(best)
+                    new_x = np.array([1.]*len(Modeler.P))
+                    for name in old_P:
+                        new_p = Modeler.P[name]
+                        old_p = old_P[name]
+                        new_x[new_p.xpos] = x[old_p.xpos]
+                        assert not new_p.refine
+
+                    x = Modeler.Minimize(new_x, SIM, i_shot=i_shot)
+
+                    # reset the params?
+                    #self.params = old_params
+                    #Modeler.params = old_params
 
             except StopIteration:
                 x = Modeler.target.x0

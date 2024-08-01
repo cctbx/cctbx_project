@@ -8,8 +8,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument("modeler_file", type=str, help="path to a diffBragg modeler file (output from hopper, see the imgs folder in the outdir)")
 parser.add_argument("--scroll", action="store_true", help="if provided, scroll through shoeboxes one-by-one using arrow keys")
-parser.add_argument("--model_clim", nargs=2, default=[0,None], type=float)
-parser.add_argument("--data_clim", nargs=2, default=[0,None], type=float)
+parser.add_argument("--stateFile", type=str, help="Optional path to the roi checker file (requires pytorch). Will be used to label rois as good/bad fits")
 args = parser.parse_args()
 
 
@@ -79,17 +78,25 @@ if not args.scroll:
         data_subimg, model_subimg, trusted_subimg, bragg_subimg, stats = M.get_data_model_pairs(reorder=True, return_stats=True)
         sigma_rdout_subimg = None
 
+    scores = None
+    if args.stateFile is not None:
+        try:
+            from simtbx.tests import roi_check
+            checker = roi_check.roiCheck(args.stateFile)
+            scores = checker.score(data_subimg, model_subimg)
+        except:
+            pass
+
     sub_sh = tuple(np.max([im.shape for im in model_subimg], axis=0))
     size_edg = int(np.sqrt(len(data_subimg))) + 1
     full_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
     full_dat_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1]))
     full_trust_im = np.zeros((size_edg * sub_sh[0], size_edg * sub_sh[1])).astype(bool)
-    labs = {"res":[], "hkl":[], "pfs":[], "sigZ":[], "xy":[], "dat_max":[], "mod_max":[]}
+    labs = {"res":[], "hkl":[], "pfs":[], "sigZ":[], "xy":[], "dat_max":[], "mod_max":[], "scores":[]}
     contour_kwargs = []
     for j in range(size_edg):
         for i in range(size_edg):
             mod_idx = j * size_edg + i
-
 
             if mod_idx >= len(model_subimg):
                 continue
@@ -138,6 +145,7 @@ if not args.scroll:
             labs["sigZ"].append(spot_sigZ_lab)
             labs["dat_max"].append(dat_max_lab)
             labs["mod_max"].append(mod_max_lab)
+            labs["scores"].append( "NA" if scores is None else "%d" % (scores[mod_idx]*100) )
             xlab = (Xsl.start+Xsl.stop)*.5
             ylab = Ysl.start + (Ysl.stop-Ysl.start)*.25
             labs["xy"].append( (xlab, ylab))
@@ -147,7 +155,7 @@ if not args.scroll:
     gca().set_title("DATA", fontsize=18)
     masked_dat_vals = full_dat_im[~full_trust_im]
     full_dat_im[~full_trust_im] = np.nan
-    imshow(full_dat_im, vmin=args.data_clim[0], vmax=args.data_clim[1], cmap='gray_r')
+    imshow(full_dat_im,  cmap='gray_r')
     xt = np.arange(sub_sh[1], size_edg*sub_sh[1], sub_sh[1])-0.5
     yt = np.arange(sub_sh[0], size_edg * sub_sh[0], sub_sh[0])-0.5
     gca().set_xticks(xt)
@@ -174,7 +182,7 @@ if not args.scroll:
     masked_mod_vals = full_im[~full_trust_im]
     full_im[~full_trust_im] = np.nan
     gca().set_facecolor('tomato')
-    imshow(full_im, vmin=args.model_clim[0], vmax=args.model_clim[1], cmap='gray_r')#gnuplot')
+    imshow(full_im, cmap='gray_r')#gnuplot')
     xt = np.arange(sub_sh[1], size_edg*sub_sh[1], sub_sh[1])-.5
     yt = np.arange(sub_sh[0], size_edg*sub_sh[0], sub_sh[0])-.5
     gca().set_xticks(xt)
@@ -245,7 +253,7 @@ if not args.scroll:
     overlay_contours("no contours")
     contour_check.on_clicked(overlay_contours)
 
-    lab_buttons = RadioButtons(toggle_label_ax, ('none',r'$d$ ($\AA$)','hkl','panel','X (fast dim.)', 'Y (slow dim.)', r'$\sigma_Z$', 'max pixel'), active=0)
+    lab_buttons = RadioButtons(toggle_label_ax, ('none',r'$d$ ($\AA$)','hkl','panel','X (fast dim.)', 'Y (slow dim.)', r'$\sigma_Z$', 'max pixel', 'score (%)'), active=0)
     def toggle_label(label):
         for i_txt,( mod_txt, dat_txt) in enumerate(zip(mod_ax.texts, dat_ax.texts)):
             if label=='none':
@@ -264,6 +272,8 @@ if not args.scroll:
                 s = labs["sigZ"][i_txt]
             elif label=="max pixel":
                 s = labs["mod_max"][i_txt]
+            elif label=="score (%)":
+                s = labs["scores"][i_txt]
             mod_txt.set_text(s)
 
             if label=="max pixel" :
