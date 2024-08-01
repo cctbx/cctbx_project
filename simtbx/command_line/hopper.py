@@ -46,7 +46,6 @@ from simtbx.diffBragg.phil import philz
 import logging
 from simtbx.diffBragg.phil import hopper_phil
 
-
 philz = hopper_phil + philz
 phil_scope = parse(philz)
 
@@ -140,22 +139,7 @@ class Script:
                 continue
 
             logging.info("COMM.rank %d on shot  %d / %d" % (COMM.rank, i_shot + 1, len(input_lines)))
-            line_fields = line.strip().split()
-            num_fields = len(line_fields)
-            assert num_fields in [2, 3, 4]
-            exp, ref = line_fields[:2]
-            spec = None
-            exp_idx = 0
-            if num_fields==3:
-                try:
-                    exp_idx = int(line_fields[2])
-                except ValueError:
-                    spec = line_fields[2]
-                    exp_idx = 0
-            elif num_fields==4:
-                assert os.path.isfile(line_fields[2])
-                spec = line_fields[2]
-                exp_idx = int(line_fields[3])
+            exp, ref, exp_idx, spec = hopper_utils.split_line(line)
 
             if self.params.ignore_existing:
                 basename = os.path.splitext(os.path.basename(exp))[0]
@@ -185,6 +169,7 @@ class Script:
             Modeler.refl_name = ref
             Modeler.rank = COMM.rank
             Modeler.i_shot = i_shot
+            # Optional prediction step?
             if self.params.load_data_from_refls:
                 gathered = Modeler.GatherFromReflectionTable(exp, ref, sg_symbol=self.params.space_group)
             else:
@@ -243,6 +228,7 @@ class Script:
                 self.params.record_device_timings = False  # only record for rank 0 otherwise there's too much output
             SIM = hopper_utils.get_simulator_for_data_modelers(Modeler)
             Modeler.set_parameters_for_experiment(best)
+            MAIN_LOGGER.debug("Set parameters for experiment")
             Modeler.Umatrices = [Modeler.E.crystal.get_U()]
 
             # TODO: move this to SimulatorFromExperiment

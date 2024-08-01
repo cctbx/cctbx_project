@@ -53,29 +53,6 @@ from dials.algorithms.indexing.stills_indexer import calc_2D_rmsd_and_displaceme
 import sys
 
 
-def filter_weak_reflections(refls, weak_fraction):
-    """
-    :param pred:  reflection table created by this script
-    :param weak_fraction: number from 0-1 (if 0, only strong spots are saved)
-    :return: new reflection table with weak reflections filtered according to weak_fraction
-    """
-    new_refls = None
-    for idx in set(refls['id']):
-        pred = refls.select(refls['id']==idx)
-        weaks = pred.select(pred['is_weak'])
-        nweak = len(weaks)
-        weaks_sorted = np.argsort(weaks["scatter"])[::-1]
-        num_keep = int(nweak * weak_fraction)
-        weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
-        weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
-        keeps = np.logical_or(pred['is_strong'], weak_sel)
-        pred = pred.select(flex.bool(keeps))
-        if new_refls is None:
-            new_refls = deepcopy(pred)
-        else:
-            new_refls.extend(pred)
-    return new_refls
-
 
 # Note: these imports and following 3 methods will eventually be in CCTBX/simtbx/diffBragg/utils
 from dials.algorithms.spot_finding.factory import SpotFinderFactory
@@ -90,43 +67,10 @@ from dxtbx.model import ExperimentList
 from dials.array_family import flex
 
 from copy import deepcopy
-from collections import Counter
 
 from simtbx.diffBragg.device import DeviceWrapper
 
-def filter_refls(R):
-    vec3_dbl_keys = 'xyzcal.px', 'xyzcal.mm', 'xyzobs.px.value', 'xyzobs.px.value', 'rlp', 's1'
 
-    hkl_dupes = [h for h,count in Counter(R['miller_index']).items() if count > 1]
-    print("%d miller indices are duplicates" % len(hkl_dupes))
-    hkls = list(R['miller_index'])
-    Rnew = None #flex.reflection_table()
-    ndupe = 0
-    for hkl in hkl_dupes:
-        is_h = [h==hkl for h in hkls]
-        ndupe += np.sum(is_h)
-        Rdupes = R.select(flex.bool(is_h))
-        R0 = deepcopy(Rdupes[0:1])
-        for k in vec3_dbl_keys:
-            xyz = np.mean(Rdupes[k].as_numpy_array(),axis=0)
-            R0[k] = flex.vec3_double(1, tuple(xyz))
-        if Rnew is None:
-            Rnew = R0
-        else:
-            Rnew.extend(R0)
-    print("%d refls belong to duplicates hkls" % ndupe)
-
-    hkl_singles = set(hkls).difference(hkl_dupes)
-    for hkl in hkl_singles:
-        is_h = [h==hkl for h in hkls]
-        i_R = np.where(is_h)[0][0]
-        refl = R[i_R: i_R+1]
-        if Rnew is None:
-            Rnew = refl
-        else:
-            Rnew.extend(refl)
-    print("filtered %d / %d refls" % (len(Rnew), len(R)))
-    return Rnew
 
 
 for i,arg in enumerate(sys.argv):
@@ -463,7 +407,7 @@ if __name__=="__main__":
                 pred = predictions.get_predicted_from_pandas(
                     df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
                 if args.filterDupes:
-                    pred = filter_refls(pred)
+                    pred = predictions.filter_refls(pred)
             except Exception:
                 #os.remove(new_expt_name)
                 continue
@@ -493,7 +437,7 @@ if __name__=="__main__":
             #keeps = np.logical_or( pred['is_strong'], weak_sel)
             #printR("Sum keeps=%d; num_strong=%d, num_kept_weak=%d" % (sum(keeps), sum(strong_sel), sum(weak_sel)))
             #pred = pred.select(flex.bool(keeps))
-            pred = filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
+            pred = predictions.filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
 
             nstrong = np.sum(strong_sel)
             printR("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(pred["is_strong"]), np.sum(pred["is_weak"])))
@@ -527,7 +471,9 @@ if __name__=="__main__":
                 # TODO: save these files as multi-shot experiment/refls
                 try:
                     int_expt, int_refl = integrate(args.procPhil, data_exptList, Rindexed, pred)
-                    int_expt_name = "%s/%s_%d_integrated.expt" % (rank_outdir, tag, i_f)
+                    #int_expt_name = "%s/%s_%d_integrated.expt" % (rank_outdir, tag, i_f)
+                    # TODO:check whether this works...
+                    int_expt_name = "%s/%s_%d_integrated.expt" % (EXPT_DIRS, tag, i_f)
                     int_expt.as_file(int_expt_name)
                     int_refl['bbox'] = int_refl['shoebox'].bounding_boxes()
                     int_refl_name = int_expt_name.replace(".expt", ".refl")

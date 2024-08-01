@@ -11,6 +11,9 @@ from numpy import logical_or as logi_or
 from numpy import logical_and as logi_and
 from dxtbx.model import ExperimentList
 from numpy import logical_not as logi_not
+from simtbx.diffBragg import hopper_utils
+from copy import deepcopy
+from collections import Counter
 
 
 def get_spot_wave(predictions, expt, wavelen_images, h_images, k_images, l_images):
@@ -280,3 +283,106 @@ def normalize_by_partiality(refls, model, default_F=1, gain=1):
     refls['intensity.sum.value'] = new_Isum
     refls['intensity.sum.variance'] = new_Ivar
     return refls
+
+
+def filter_refls(R):
+    vec3_dbl_keys = 'xyzcal.px', 'xyzcal.mm', 'xyzobs.px.value', 'xyzobs.px.value', 'rlp', 's1'
+
+    hkl_dupes = [h for h,count in Counter(R['miller_index']).items() if count > 1]
+    print("%d miller indices are duplicates" % len(hkl_dupes))
+    hkls = list(R['miller_index'])
+    Rnew = None #flex.reflection_table()
+    ndupe = 0
+    for hkl in hkl_dupes:
+        is_h = [h==hkl for h in hkls]
+        ndupe += np.sum(is_h)
+        Rdupes = R.select(flex.bool(is_h))
+        R0 = deepcopy(Rdupes[0:1])
+        for k in vec3_dbl_keys:
+            xyz = np.mean(Rdupes[k].as_numpy_array(),axis=0)
+            R0[k] = flex.vec3_double(1, tuple(xyz))
+        if Rnew is None:
+            Rnew = R0
+        else:
+            Rnew.extend(R0)
+    print("%d refls belong to duplicates hkls" % ndupe)
+
+    hkl_singles = set(hkls).difference(hkl_dupes)
+    for hkl in hkl_singles:
+        is_h = [h==hkl for h in hkls]
+        i_R = np.where(is_h)[0][0]
+        refl = R[i_R: i_R+1]
+        if Rnew is None:
+            Rnew = refl
+        else:
+            Rnew.extend(refl)
+    print("filtered %d / %d refls" % (len(Rnew), len(R)))
+    return Rnew
+
+
+def filter_weak_reflections(refls, weak_fraction):
+    """
+    :param pred:  reflection table created by this script
+    :param weak_fraction: number from 0-1 (if 0, only strong spots are saved)
+    :return: new reflection table with weak reflections filtered according to weak_fraction
+    """
+    new_refls = None
+    for idx in set(refls['id']):
+        pred = refls.select(refls['id']==idx)
+        weaks = pred.select(pred['is_weak'])
+        nweak = len(weaks)
+        weaks_sorted = np.argsort(weaks["scatter"])[::-1]
+        num_keep = int(nweak * weak_fraction)
+        weak_refl_inds_keep = set(np.array(weaks["refl_idx"])[weaks_sorted[:num_keep]])
+        weak_sel = flex.bool([i in weak_refl_inds_keep for i in pred['refl_idx']])
+        keeps = np.logical_or(pred['is_strong'], weak_sel)
+        pred = pred.select(flex.bool(keeps))
+        if new_refls is None:
+            new_refls = deepcopy(pred)
+        else:
+            new_refls.extend(pred)
+    return new_refls
+
+
+def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_shoeboxes=False):
+    """
+    :param data_expt:  Experiment list
+    :param Rstrong: Strong spots refl table
+    :param params: instance of hopper params with simulator{} and prediction{} params set
+    :param filter_dupes: whether to filter duplicate reflections
+    :return: predicted refl table with is_strong column set
+    """
+    data_exptList = ExperimentList()
+    data_exptList.append(data_expt)
+
+    try:
+        spectrum_override = None
+        if params.spectrum_from_imageset:
+            spectrum_override = hopper_utils.downsamp_spec_from_params(params, data_expt)
+        pred = get_predicted_from_pandas(
+            df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
+        if filter_dupes:
+            pred = filter_refls(pred)
+    except Exception:
+        return None
+
+    Rstrong['id'] = flex.int(len(Rstrong), 0)
+    num_panels = len(data_expt.detector)
+    if num_panels > 1:
+        assert params.predictions.label_weak_col == "rlp"
+
+    Rstrong.centroid_px_to_mm(data_exptList)
+    Rstrong.map_centroids_to_reciprocal_space(data_exptList)
+    label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut,
+                                       col=params.predictions.label_weak_col)
+
+    pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
+
+    pred["refl_idx"] = flex.int(np.arange(len(pred)))
+    pred = filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
+
+    print("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(pred["is_strong"]), np.sum(pred["is_weak"])))
+    if 'shoebox' in list(pred) and not keep_shoeboxes:
+        del pred['shoebox']
+
+    return pred
