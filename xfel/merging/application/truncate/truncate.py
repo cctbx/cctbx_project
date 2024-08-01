@@ -73,8 +73,9 @@ class Truncate(worker):
     truncated_refls = flex.reflection_table()
     for expt, refl, minimum, maximum in zip(expts, refl_list, minima, maxima):
       if minimum < minima_lower_lim or maximum > maxima_upper_lim:
-        self.expt_truncate_reasons += 1
-        self.refl_truncate_reasons += refl.size()
+        truncate_reason = TruncationReasons.intensity_extremum_iqr_dist
+        self.expt_truncate_reasons[truncate_reason] += 1
+        self.refl_truncate_reasons[truncate_reason] += refl.size()
       else:
         truncated_expts.append(expt)
         truncated_refls.extend(refl)
