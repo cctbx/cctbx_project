@@ -420,11 +420,12 @@ class MillerArrayDataManager(DataManagerBase):
       remove_set = set()
       for selected_array in arrays:
         selected_array_label = get_array_label(filename, selected_array)
-        score = score_dict[selected_array_label]
-        if score > 0 and test_scores.count(score) > 1:
-          for array, array_label in zip(miller_arrays, miller_array_labels):
-            if score_dict[array_label] == score and array_label != selected_array_label:
-              remove_set.add(array)
+        if selected_array_label in score_dict:
+          score = score_dict[selected_array_label]
+          if score > 0 and test_scores.count(score) > 1:
+            for array, array_label in zip(miller_arrays, miller_array_labels):
+              if score_dict[array_label] == score and array_label != selected_array_label:
+                remove_set.add(array)
       return remove_set
     # -------------------------------------------------------------------------
     for scores in [
