@@ -34,7 +34,7 @@ class TruncationReasons(Enum):
   @classmethod
   def report_line(cls, reason, truncated_expts, truncated_refls):
     """Return a line for the report listing all input in nice format"""
-    fmt = '- {:' + str(cls.max_reason_len() + 1) + '} {:6d} expt, {:9d} refl'
+    fmt = '- {:' + str(cls.max_reason_len() + 1) + '} {:6d} expts, {:9d} refls'
     return fmt.format(str(reason) + ':', truncated_expts, truncated_refls)
 
 
