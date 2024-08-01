@@ -950,38 +950,6 @@ class _():
       return cstringio
     return cstringio.getvalue()
 
-# MARKED_FOR_DELETION_OLEG
-# REASON: This is not equivalent conversion. Hierarchy does not have a lot
-# of information pdb_input and cif_input should have. Therefore this
-# function should not be used at all to avoid confusion and having crippled
-# input objects. Moreover, the use of mmtbx.model should eliminate the
-# need in this tranformation.
-# Currently used exclusively in Tom's code.
-
-  def as_pdb_input(self, crystal_symmetry=None,
-     segid_as_auth_segid = True):
-    """
-    Generate corresponding pdb.input object.
-    Note that this uses a text representation of the hierarchy so that
-    values for xyz, occ, b, and crystal_symmetry are all rounded.
-    """
-    import iotbx.pdb
-    if self.fits_in_pdb_format():
-      h_str = self.as_pdb_string(crystal_symmetry=crystal_symmetry)
-      inp = iotbx.pdb.input(
-        source_info="pdb_hierarchy",
-        lines=flex.split_lines(h_str))
-    else:
-      h_str = self.deep_copy().as_mmcif_string(
-        segid_as_auth_segid=segid_as_auth_segid,
-       crystal_symmetry=crystal_symmetry) # deep_copy needed to preserve parents
-      inp = iotbx.pdb.mmcif.cif_input(
-        source_info="pdb_hierarchy",
-        lines=flex.split_lines(h_str))
-    return inp
-
-# END_MARKED_FOR_DELETION_OLEG
-
   def as_list_of_residue_names(self):
     sequence=[]
     for model in self.models():
