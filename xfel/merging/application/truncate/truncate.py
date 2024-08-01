@@ -29,7 +29,7 @@ class TruncationReasons(Enum):
 
   @classmethod
   def max_reason_len(cls):
-    return str(max(len(r.value) for r in cls))
+    return max(len(r.value) for r in cls)
 
   @classmethod
   def report_line(cls, reason, truncated_expts, truncated_refls):
