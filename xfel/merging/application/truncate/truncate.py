@@ -25,6 +25,7 @@ def uniques(*iterables):
 class TruncationReasons(Enum):
   """Enumerator documenting all possible reasons for truncating expts/refls"""
   intensity_extremum_iqr_dist = "Intensity extremum outside IQR dist threshold"
+  # add subsequent truncation reasons here
 
   @classmethod
   def max_reason_len(cls):
@@ -79,6 +80,8 @@ class Truncate(worker):
         truncated_refls.extend(refl)
     return truncated_expts, truncated_refls
 
+  # implement subsequent truncation algorithms here
+
   def report_truncation_reasons(self):
     self.logger.log('Experiments/reflections truncated locally due to:')
     for r in uniques(self.expt_truncate_reasons, self.refl_truncate_reasons):
@@ -102,6 +105,7 @@ class Truncate(worker):
 
   def run(self, experiments, reflections):
     expts, refls = self.truncate_intensity_extrema(experiments, reflections)
+    # call subsequent truncation algorithms here
     self.report_truncation_reasons()
     data_counter(self.params).count(expts, refls)
     return expts, refls
