@@ -19,7 +19,7 @@ def flat_array(iterable):
 
 def uniques(*iterables):
   """Return a set of unique elements across all input iterables"""
-  return set(sum(iterables, []))
+  return set(sum([list(i) for i in iterables], []))
 
 
 class TruncationReasons(Enum):
