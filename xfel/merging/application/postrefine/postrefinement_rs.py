@@ -13,8 +13,6 @@ from cctbx.crystal import symmetry
 from scitbx import matrix
 from scitbx.math.tests.tst_weighted_correlation import simple_weighted_correlation
 from cctbx.crystal_orientation import crystal_orientation, basis_type
-from xfel.merging.application.postrefine.intensity_sanitizer import IntensitySanitizer
-
 
 class postrefinement_rs(worker):
 
@@ -220,13 +218,6 @@ class postrefinement_rs(worker):
             new_exp_reflections[key] = exp_reflections_match_results[key]
         new_exp_reflections["correlation_after_post"] = flex.double(len(new_exp_reflections), SWC_after_post.corr)
         new_reflections.extend(new_exp_reflections)
-
-    # Reject experiments whose intensity extrema do not match the population
-    is_ = IntensitySanitizer(self.mpi_helper.comm, self.params.postrefinement)
-    is_.sanitize(new_experiments, new_reflections)
-    new_experiments = is_.sanitized_expts
-    new_reflections = is_.sanitized_refls
-    experiments_rejected_by_reason += is_.exception_counter
 
     # report rejected experiments, reflections
     experiments_rejected_by_postrefinement = len(experiments) - len(new_experiments)
