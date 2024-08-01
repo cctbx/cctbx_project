@@ -88,7 +88,7 @@ class Truncate(worker):
     for r in uniques(self.expt_truncate_reasons, self.refl_truncate_reasons):
       te = self.expt_truncate_reasons[r]
       tr = self.refl_truncate_reasons[r]
-      self.logger.log(TruncationReasons.report_line(r, te, tr))
+      self.logger.log(TruncationReasons.report_line(r.value, te, tr))
     te = sum(self.expt_truncate_reasons.values())
     tr = sum(self.refl_truncate_reasons.values())
     self.logger.log(TruncationReasons.report_line('TOTAL', te, tr))
@@ -99,7 +99,7 @@ class Truncate(worker):
       for r in uniques(expt_truncate_reasons, refl_truncate_reasons):
         te = expt_truncate_reasons[r]
         tr = refl_truncate_reasons[r]
-        self.logger.main_log(TruncationReasons.report_line(r, te, tr))
+        self.logger.main_log(TruncationReasons.report_line(r.value, te, tr))
       te = sum(expt_truncate_reasons.values())
       tr = sum(refl_truncate_reasons.values())
       self.logger.main_log(TruncationReasons.report_line('TOTAL', te, tr))
