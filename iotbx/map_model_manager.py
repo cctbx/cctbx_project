@@ -6278,7 +6278,7 @@ class map_model_manager(object):
              getattr(scaling_group_info.overall_si,key))
 
 
-    if scaling_group_info_list:
+    if scaling_group_info_list and average_scaling_group_info.scaling_info_list:
       for key in ('target_scale_factors','cc_list','rms_fo_list'):
         for si in average_scaling_group_info.scaling_info_list:
           setattr(si,key, getattr(si,key)/max(1,n_used))
