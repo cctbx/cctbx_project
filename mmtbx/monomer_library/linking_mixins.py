@@ -388,18 +388,6 @@ class linking_mixins(object):
         shell_asu_tables=[pair_asu_table])
       return nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, i_seqs
     #
-    def _nonbonded_pair_generator_geometry_restraints_sort(
-        nonbonded_proxies,
-        max_bonded_cutoff=3.):
-      rc = nonbonded_proxies.sorted_value_proxies_generator(by_value="delta",
-                                                            sites_cart=sites_cart)
-      for item in rc:
-        distance, proxy, rt_mx_ji, sym_op = item
-        try:
-          i_seq, j_seq = proxy.i_seqs
-        except AttributeError:
-          i_seq, j_seq = proxy.i_seq, proxy.j_seq
-        yield i_seq, j_seq, distance, sym_op, rt_mx_ji, proxy
 
     #
     if(log is not None):
@@ -444,12 +432,10 @@ class linking_mixins(object):
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
     initial_pair_asu_table_table = bond_asu_table.table().deep_copy()
-    for ii, item in enumerate(
-        _nonbonded_pair_generator_geometry_restraints_sort(
-          nonbonded_proxies=nonbonded_proxies,
-          max_bonded_cutoff=max_bonded_cutoff,
-          )
-        ):
+    for ii, item in enumerate(nonbonded_proxies.sorted_value_proxies_generator(
+        by_value="delta",
+        sites_cart=sites_cart,
+        cutoff=max_bonded_cutoff)):
       i_seq, j_seq, distance, sym_op, rt_mx_ji, proxy = item
       #
       # include & exclude selection

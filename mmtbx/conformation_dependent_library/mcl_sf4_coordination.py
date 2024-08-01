@@ -122,21 +122,11 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   done_aa = []
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
-  get_sorted_result = sorted_nb_proxies_res
-  if sorted_nb_proxies_res is None:
-    get_sorted_result = nonbonded_proxies.get_sorted(
-        by_value="delta",
-        sites_cart=sites_cart)
-    if get_sorted_result is None:
-      return None
-  sorted_nonb, n_not_shown = get_sorted_result
-
-  # Get potential hbonds
-  n_nonb = len(sorted_nonb)
-  i = 0
-  while i < n_nonb and sorted_nonb[i][3] < coordination_distance_cutoff:
-    (labels, i_seq, j_seq, dist, vdw_distance, sym_op_j, rt_mx) = sorted_nonb[i]
-    i += 1
+  for item in nonbonded_proxies.sorted_value_proxies_generator(
+      by_value="delta",
+      sites_cart=sites_cart,
+      cutoff=coordination_distance_cutoff):
+    i_seq, j_seq, dist, sym_op_j, rt_mx, proxy = item
     a1 = atoms[i_seq]
     ag1 = a1.parent()
     a2 = atoms[j_seq]
