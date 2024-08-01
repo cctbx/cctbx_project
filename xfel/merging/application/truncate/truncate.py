@@ -7,7 +7,7 @@ from itertools import chain
 import numpy as np
 
 from dials.array_family import flex
-from dxtbx.model import Experiment, ExperimentList
+from dxtbx.model import ExperimentList
 from xfel.merging.application.utils.data_counter import data_counter
 from xfel.merging.application.worker import worker
 
