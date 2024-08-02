@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import six
 from six.moves import range
 from six.moves import cStringIO as StringIO
+from collections import Counter
 import math
 from xfel.merging.application.worker import worker
 from libtbx import adopt_init_args, group_args
@@ -46,7 +47,7 @@ class postrefinement_rs(worker):
     new_experiments = ExperimentList()
     new_reflections = flex.reflection_table()
 
-    experiments_rejected_by_reason = {} # reason:how_many_rejected
+    experiments_rejected_by_reason = Counter()  # reason:how_many_rejected
 
     for expt_id, experiment in enumerate(experiments):
 
@@ -191,10 +192,7 @@ class postrefinement_rs(worker):
         reason = repr(e)
         if not reason:
           reason = "Unknown error"
-        if not reason in experiments_rejected_by_reason:
-          experiments_rejected_by_reason[reason] = 1
-        else:
-          experiments_rejected_by_reason[reason] += 1
+        experiments_rejected_by_reason[reason] += 1
 
       if not error_detected:
         new_experiments.append(experiment)
@@ -228,27 +226,12 @@ class postrefinement_rs(worker):
     self.logger.log("Experiments rejected by post-refinement: %d"%experiments_rejected_by_postrefinement)
     self.logger.log("Reflections rejected by post-refinement: %d"%reflections_rejected_by_postrefinement)
 
-    all_reasons = []
     for reason, count in six.iteritems(experiments_rejected_by_reason):
       self.logger.log("Experiments rejected due to %s: %d"%(reason,count))
-      all_reasons.append(reason)
-
-    comm = self.mpi_helper.comm
-    MPI = self.mpi_helper.MPI
-
-    # Collect all rejection reasons from all ranks. Use allreduce to let each rank have all reasons.
-    all_reasons  = comm.allreduce(all_reasons, MPI.SUM)
-    all_reasons = set(all_reasons)
 
     # Now that each rank has all reasons from all ranks, we can treat the reasons in a uniform way.
-    total_experiments_rejected_by_reason = {}
-    for reason in all_reasons:
-      rejected_experiment_count = 0
-      if reason in experiments_rejected_by_reason:
-        rejected_experiment_count = experiments_rejected_by_reason[reason]
-      total_experiments_rejected_by_reason[reason] = comm.reduce(rejected_experiment_count, MPI.SUM, 0)
-
-    total_accepted_experiment_count = comm.reduce(len(new_experiments), MPI.SUM, 0)
+    total_experiments_rejected_by_reason = self.mpi_helper.count(experiments_rejected_by_reason)
+    total_accepted_experiment_count = self.mpi_helper.sum(len(new_experiments))
 
     # how many reflections have we rejected due to post-refinement?
     rejected_reflections = len(reflections) - len(new_reflections);

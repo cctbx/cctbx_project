@@ -54,6 +54,8 @@ class mpiCommEmulator(object):
     for item, count in zip(sendbuf, counts):
       rbuff[counter:counter+count] = item
       counter += count
+  def allgather(self, sendobj):
+    return [sendobj]
   def Abort(self,errorcode=0):
     import sys
     sys.exit()
