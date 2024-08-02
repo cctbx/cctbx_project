@@ -337,6 +337,8 @@ class Script:
             #new_refl = hopper_utils.get_new_xycalcs(Modeler, new_exp, x=x, SIM=SIM, Jac=best_Jac)
             #from IPython import embed;embed()
             dbg = self.params.debug_mode
+            if dbg and COMM.rank > 0 and self.params.debug_mode_rank0_only:
+                dbg = False
             shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_shot=i_shot,
                             save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,
                             save_sim_info=dbg, save_pandas=dbg, save_traces=dbg, save_expt=dbg)
