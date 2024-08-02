@@ -293,9 +293,8 @@ class Script:
 
                     x = Modeler.Minimize(new_x, SIM, i_shot=i_shot)
 
-                    # reset the params?
-                    #self.params = old_params
-                    #Modeler.params = old_params
+                    # reset the params
+                    self.params = old_params
 
             except StopIteration:
                 x = Modeler.target.x0
