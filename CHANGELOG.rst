@@ -1,3 +1,9 @@
+2024.7
+======
+
+* Speed improvements in NCS search and process non-bonded links
+* DataManager: add scoring layer to filter arrays for fmodel
+
 2024.6
 ======
 
