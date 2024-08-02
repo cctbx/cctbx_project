@@ -714,6 +714,17 @@ monitor {
 """
 
 
+filter_global_phil = """
+filter_global {
+  intensity_extrema_iqr_dist_threshold = 1000.0
+    .type = float(value_min=0, value_max=None)
+    .help = Maximum tolerated deviation of max(intensity.sum.value)
+    .help = and min(intensity.sum.value) from expts' population's respective
+    .help = medians, expressed in population's interquartile range units.
+}
+"""
+
+
 # A place to override any defaults included from elsewhere
 program_defaults_phil_str = """
 modify.cosym.use_curvatures=False
@@ -722,7 +733,7 @@ modify.cosym.use_curvatures=False
 master_phil = dispatch_phil + input_phil + tdata_phil + filter_phil + modify_phil + \
               select_phil + scaling_phil + postrefinement_phil + merging_phil + \
               output_phil + statistics_phil + group_phil + lunus_phil + \
-              publish_phil + diffbragg_phil + monitor_phil
+              publish_phil + diffbragg_phil + monitor_phil + filter_global_phil
 
 import os, importlib
 custom_phil_pathstr = os.environ.get('XFEL_CUSTOM_WORKER_PATH')
