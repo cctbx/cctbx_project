@@ -52,7 +52,7 @@ class GlobalFilter(worker):
 
   def filter_intensity_extrema(self, expts, refls):
     """Filter expts whose refls' intensity extrema don't fit the population"""
-    iqr_lim = self.params.filter.global_.intensity_extrema_iqr_dist_threshold
+    iqr_lim = self.params.filter_global.intensity_extrema_iqr_dist_threshold
     maxima = []
     minima = []
     refl_list = []
