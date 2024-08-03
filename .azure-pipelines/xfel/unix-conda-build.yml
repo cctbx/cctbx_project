@@ -67,13 +67,6 @@ steps:
   displayName: Create conda environment
   condition: eq('${{ parameters.distribution }}', 'centos')
 
-- script: |
-    set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda install -y -c conda-forge -n $(PYTHON_VERSION) libcxx=17
-  displayName: Select libcxx on macOS
-  condition: eq(variables.OS, 'macos')
-
 # build
 - script: |
     set -xe
