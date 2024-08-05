@@ -10,6 +10,7 @@ from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present
+from copy import copy
 
 version = "1.0.0"
 
@@ -106,7 +107,7 @@ Output:
 
     ret = []
     for i in range(count):
-      ret.append( (xx[i], yy[i], zz[i]) )
+      ret.append( np.array((xx[i], yy[i], zz[i])) )
     return ret
 
 # ------------------------------------------------------------------------------
@@ -135,6 +136,35 @@ Output:
       return 'Range: type={}, init={}, end={}, sense={}, strand={}, sheet={}, flipped={}'.format(
         self.type, self.initSeqNum, self.endSeqNum, self.sense, self.strand, self.sheetID, self.flipped)
 
+  # The original code constructed a NONE crayon for the fancy print, which did not add color to
+  # the output, re-using the colors specified by model or chain.  It sometimes also specified
+  # the RAINBOW crayon, which overwrites the colors with a rainbow color scheme and selects a new
+  # one for each residue.  For the edges, it specified a constant crayon whose string value is deadblack
+  # and it adds "U " to make it un-pickable.
+  # We pull that logic into here by implementing the forRibbon() and shouldPrint() and
+  # getKinString() methods in our own class.
+  class Crayon:
+    def __init__(self, doRainBow, color=None):
+      self._doRainBow = doRainBow
+      self._color = color
+      self._rainbowColors = [ "blue", "sky", "cyan", "sea", "green", "lime", "yellow" ,"gold" ,"orange" ,"red" ]
+
+    # Rainbow color map changes the color when we switch residues (the next residue in the guidepoint).
+    # We do that by using the modulo of the residue sequence ID.
+    # The non-rainbow, constant-colored map does not change.
+    def forRibbon(self, startGuide):
+      if self._doRainBow:
+        self._color = self._rainbowColors[int(startGuide.nextRes.resseq) % len(self._rainbowColors)]
+
+    def getKinString(self):
+      if self._color is None:
+        return ""
+      return self._color
+
+    # All of our elements should be visible in the output.
+    def shouldPrint(self):
+      return True
+
   class RibbonElement:
     def __init__(self, other=None, setRange=None):
       self.start = 0
@@ -153,10 +183,10 @@ Output:
       return self.type == that.type and self.range == that.range
 
     def like(self, that):
-      self.start = that.start
-      self.end = that.end
-      self.type = that.type
-      self.range = that.range
+      self.start = copy(that.start)
+      self.end = copy(that.end)
+      self.type = copy(that.type)
+      self.range = copy(that.range)
 
     def __lt__(self, that):
       a = 0
@@ -167,7 +197,38 @@ Output:
         b = that.range.strand
       return a < b
 
-  def printFancyRibbon(self, guides, widthAlpha, widthBeta, listAlpha, listBeta, listCoil, listCoilOutline, doRainbow, rnaPointIDs):
+  def getPointID(self, point, start, end, interval, nIntervals):
+    res = start.nextRes
+    if self.params.DNA_style and interval <= nIntervals // 2:
+      res = start.prevRes   # == first res, for RNA/DNA only
+
+    buf = res.atom_groups()[0].resname.strip() + " " + res.parent().id.strip() + " " + res.resseq.strip() + res.icode
+    return buf.lower().strip()
+
+  def printFancy(self, guides, splines, i, lineBreak = False):
+    # Prints a fancy ribbon element with the given guidepoints and splines.
+    # @param guides: The guidepoints for the ribbon
+    # @param splines: The interpolated points for the ribbon
+    # @param i: The index of the guidepoint to print
+
+    ret = ""
+    # Not self.nIntervals, we want a local variable here
+    nIntervals = (len(splines) - 1) // (len(guides) - 3)
+    interval = i % nIntervals
+    startGuide = i // nIntervals + 1
+    ret += "{"
+    ret += self.getPointID(splines[i], guides[startGuide], guides[startGuide + 1], interval, nIntervals)
+    ret += "}"
+    self.crayon.forRibbon(guides[startGuide])
+    if lineBreak:
+      ret += "P "
+    ret += self.crayon.getKinString()
+    ret += " "
+    ret += str(splines[i][0]) + " " + str(splines[i][1]) + " " + str(splines[i][2]) + "\n"
+
+    return ret
+
+  def printFancyRibbon(self, guides, widthAlpha, widthBeta, listAlpha, listBeta, listCoil, listCoilOutline, doRainbow):
     # Constructs a kinemage string for a ribbon representation of a protein or nucleic acid chain.
     # Makes a triangulated ribbon with arrowheads, etc.
     # @param guides: The guidepoints for the ribbon
@@ -178,7 +239,6 @@ Output:
     # @param listCoil: The kinemage string describing the coil part of the ribbon
     # @param listCoilOutline: The kinemage string describing the outline of the coil part of the ribbon
     # @param doRainbow: Whether or not to color the ribbon by rainbow
-    # @param rnaPointIDs: If true, residue names in point IDs will be decided based on the RNA/DNA alignment of guidepoints to residues.
     # If false (the default), the protein style will be used instead.
     # @return: The kinemage string for the ribbon representation
 
@@ -191,7 +251,10 @@ Output:
     # Seven strands of guidpoints: coil, +/-alpha, +/-beta, +/-beta arrowheads.
     # Each strand is a list of 3D points and there is a strand for each offset from the center spline.
     halfWidths = [0.0, -widthAlpha/2, widthAlpha/2, -widthBeta/2, widthBeta/2, -widthBeta, widthBeta]
-    strands = [[] for _ in range(len(halfWidths))]
+    # Make a different empty list for each strand
+    strands = []
+    for _ in range(len(halfWidths)):
+      strands.append([])
     for g in guides:
       for i in range(len(halfWidths)):
         strands[i].append(g.pos + g.dvec * halfWidths[i])
@@ -215,32 +278,91 @@ Output:
       g1 = guides[i + 1]
       g2 = guides[i + 2]
 
-      curSS = self.RibbonElement(setRange=secStruct[g1.nextRes.resseq])
-      nextSS = self.RibbonElement(setRange=secStruct[g2.nextRes.resseq])
+      # The Java code reports that we're not really using ribbon elements, just reusing the
+      # class for convenience.  So not all of the member variables may be filled in.
+      currSS = self.RibbonElement(setRange=secStruct[int(g1.nextRes.resseq)])
+      nextSS = self.RibbonElement(setRange=secStruct[int(g2.nextRes.resseq)])
 
       # Otherwise, we get one unit of coil before alpha or beta at start
       if ribElement.type is None:
-        ribElement.like(curSS)
+        ribElement.like(currSS)
 
-      if not ribElement.sameSSE(curSS): # Helix / sheet starting
-        if curSS.type == 'HELIX' or curSS.type == 'SHEET':
+      if not ribElement.sameSSE(currSS): # Helix / sheet starting
+        if currSS.type == 'HELIX' or currSS.type == 'SHEET':
           ribElement.end = self.nIntervals*i + 1
-          ribbonElements.append(self.RibbonElement(curSS))
+          # @todo Why do we need to set these start and end values here but the Java code does not?
+          currSS.start = ribElement.start
+          currSS.end = ribElement.end
+          ribbonElements.append(self.RibbonElement(currSS))
+          #print('XXX starting', ribElement.start, ribElement.end, currSS.range)
+          #print('  XXX', ribbonElements[-1].start, ribbonElements[-1].end, ribbonElements[-1].range)
           # Every helix or sheet starts with a coil; see below
           ribElement.start = self.nIntervals*i + 1
       if not ribElement.sameSSE(nextSS): # Helix / sheet ending
-        if nextSS.type == 'HELIX' or nextSS.type == 'SHEET':
+        if currSS.type == 'HELIX' or currSS.type == 'SHEET':
           end = self.nIntervals*i + 0
           if currSS.type == 'SHEET':
             end += self.nIntervals - 1
           ribElement.end = end
           ribbonElements.append(self.RibbonElement())
+          #print('XXX ending', ribElement.start, ribElement.end)
           # Every helix or sheet flows into coil
           ribElement.type = 'COIL'
           ribElement.start = end
     ribElement.end = len(splinepts[0]) - 1
 
-    # "Crayons" to use for coloring the ribbon, juggling them around to keep the edges black
+    # "Crayons" to use for coloring the ribbon, juggling them around to keep the edges black.
+    normalCrayon = self.Crayon(doRainbow)
+    edgeCrayon = self.Crayon(False)  # Default no color; the deadblack will be set on the vectorlist
+
+    # Sort the ribbon elements by strand number
+    ribbonElements.sort()
+
+    # Create a list of just sheets (Java STRANDs) for searching through
+    strands = [r for r in ribbonElements if r.type == 'SHEET']
+
+    for ribElement in ribbonElements:
+      stGuide = ribElement.start / self.nIntervals + 2
+      endGuide = ribElement.end / self.nIntervals - 1
+
+      if ribElement.type == 'HELIX':
+        #print("XXX start end =", ribElement.start, ribElement.end)
+        k = (ribElement.start + ribElement.end) // 2
+        pt = splinepts[2][k]
+        v1 = splinepts[1][k] - pt
+        v2 = splinepts[1][k+1] - pt
+        cross = np.cross(v1, v2)
+        dot = np.dot( np.linalg.norm(cross), np.linalg.norm(np.array(guides[k//self.nIntervals+1].cvec)))
+
+        self.crayon = normalCrayon
+        ret += "@ribbonlist {fancy helix} " + listAlpha + "\n"
+
+        for i in range(ribElement.start, ribElement.end):
+          if dot > 0:
+            # Flip the normals (for sidedness) by switching the order of these two lines.
+            ret += self.printFancy(guides, splinepts[2], i)
+            ret += self.printFancy(guides, splinepts[1], i)
+          else:
+            ret += self.printFancy(guides, splinepts[1], i)
+            ret += self.printFancy(guides, splinepts[2], i)
+        self.printFancy(guides, splinepts[0], ribElement.end)  # Angled tip at end of helix
+        self.crayon = edgeCrayon
+        ret += "@vectorlist {fancy helix edges} width=1 " + listCoilOutline + "\n"
+        # Black edge, left side
+        ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
+        #print('XXX', self.printFancy(guides, splinepts[0], ribElement.start))
+        #print('XXX', ribElement.start, ribElement.end, splinepts[ribElement.start:ribElement.end])
+        for i in range(ribElement.start, ribElement.end):
+          ret += self.printFancy(guides, splinepts[1], i)
+        ret += self.printFancy(guides, splinepts[0], ribElement.end)
+        #print(' XXX', self.printFancy(guides, splinepts[0], ribElement.end))
+        # Black edge, right side
+        ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
+        for i in range(ribElement.start, ribElement.end):
+          ret += self.printFancy(guides, splinepts[2], i)
+        ret += self.printFancy(guides, splinepts[0], ribElement.end)
+
+      # @todo
 
     # @todo
 
@@ -262,7 +384,7 @@ Output:
     for model in self.model.get_hierarchy().models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          self.secondaryStructure[residue_group.resseq] = self.Range()
+          self.secondaryStructure[int(residue_group.resseq)] = self.Range()
     for line in ss_manager.records_for_pdb_file().splitlines():
       r = self.Range(line[0:5].strip())
       if r.type == 'HELIX':
@@ -288,9 +410,6 @@ Output:
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
     if self.idCode is None or self.idCode == "":
       self.idCode = "macromol"
-
-    # Rainbow colors when we are coloring by rainbow
-    self.rainbowColors = [ "blue", "sky", "cyan", "sea", "green", "lime", "yellow" ,"gold" ,"orange" ,"red" ]
 
     # Create the output string that will be written to the output file.  It will be filled in during the run.
     outString = ""
@@ -370,16 +489,14 @@ Output:
                       "color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
                       "color= {beta"+chain.id+"} master= {protein} master= {ribbon} master= {beta}",
                       "width= 4 color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
-                      self.params.color_by == "rainbow",
-                      False);
+                      self.params.color_by == "rainbow");
               else:
                 outString += self.printFancyRibbon(guidepoints, 2, 2.2,
                       "color= {alph"+chain.id+"} master= {protein} master= {ribbon} master= {alpha}",
                       "color= {beta"+chain.id+"} master= {protein} master= {ribbon} master= {beta}",
                       "width= 4 fore color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
                       "width= 6 rear color= deadblack master= {protein} master= {ribbon} master= {coil}",
-                      self.params.color_by == "rainbow",
-                      False)
+                      self.params.color_by == "rainbow")
       
         if self.params.do_nucleic_acid:
           # Find the contiguous nucleic acid residues by CA distance
@@ -418,8 +535,7 @@ Output:
                     "color= {nucl"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {A-form}",
                     "width= 4 color= {ncoi"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {coil}",
                     None,
-                    self.params.color_by == "rainbow",
-                    True)
+                    self.params.color_by == "rainbow")
 
           # @todo
 
