@@ -138,9 +138,9 @@ Output:
 
   # The original code constructed a NONE crayon for the fancy print, which did not add color to
   # the output, re-using the colors specified by model or chain.  It sometimes also specified
-  # the RAINBOW crayon, which overwrites the colors with a rainbow color scheme and selects a new
-  # one for each residue.  For the edges, it specified a constant crayon whose string value is deadblack
-  # and it adds "U " to make it un-pickable.
+  # the RAINBOW crayon, which overwrites the colors with a rainbow color scheme across each chain.
+  # For the edges, it specified a constant crayon whose string value is deadblack
+  # and it adds "U " to make it un-pickable. @todo Add unpickable somewhere.
   # We pull that logic into here by implementing the forRibbon() and shouldPrint() and
   # getKinString() methods in our own class.
   class Crayon:
@@ -149,12 +149,20 @@ Output:
       self._color = color
       self._rainbowColors = [ "blue", "sky", "cyan", "sea", "green", "lime", "yellow" ,"gold" ,"orange" ,"red" ]
 
-    # Rainbow color map changes the color when we switch residues (the next residue in the guidepoint).
-    # We do that by using the modulo of the residue sequence ID.
+    # Rainbow color map changes the color once across the rainbow for each chain (the chain goes from
+    # blue to red).
     # The non-rainbow, constant-colored map does not change.
     def forRibbon(self, startGuide):
       if self._doRainBow:
-        self._color = self._rainbowColors[int(startGuide.nextRes.resseq) % len(self._rainbowColors)]
+        res = startGuide.prevRes
+        chain = res.parent()
+        firstChainResID = chain.residue_groups()[0].resseq
+        lastChainResID = chain.residue_groups()[-1].resseq
+        normRes = (int(res.resseq) - int(firstChainResID)) / (int(lastChainResID) - int(firstChainResID))
+        scaledIndex = int(normRes * len(self._rainbowColors))
+        if scaledIndex == len(self._rainbowColors):
+          scaledIndex -= 1
+        self._color = self._rainbowColors[scaledIndex]
 
     def getKinString(self):
       if self._color is None:
@@ -347,7 +355,7 @@ Output:
             ret += self.printFancy(guides, splinepts[2], i)
         self.printFancy(guides, splinepts[0], ribElement.end)  # Angled tip at end of helix
         self.crayon = edgeCrayon
-        ret += "@vectorlist {fancy helix edges} width=1 " + listCoilOutline + "\n"
+        ret += "@vectorlist {fancy helix edges} width=1 " + listAlpha + " color= deadblack\n"
         # Black edge, left side
         ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
         #print('XXX', self.printFancy(guides, splinepts[0], ribElement.start))
