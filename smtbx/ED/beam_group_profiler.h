@@ -254,7 +254,9 @@ namespace smtbx { namespace ED {
     af::shared<PeakProfilePoint<FloatType> > build_profile(
       const af::shared<FloatType>& angles, bool inc_incident)
     {
-      af::shared<PeakProfilePoint<FloatType> > rv;
+      af::shared<PeakProfilePoint<FloatType> > rv(
+        af::reserve((angles.size() + (inc_incident ? 1 : 0))
+          * beam_group.strong_measured_beams.size()));
       for (size_t ai = 0; ai < angles.size(); ai++) {
         FloatType ang = angles[ai];
         std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(ang);

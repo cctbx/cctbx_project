@@ -1,5 +1,4 @@
-#ifndef SMTBX_REFINEMENT_LEAST_SQUARES_FC_ED_TB_H
-#define SMTBX_REFINEMENT_LEAST_SQUARES_FC_ED_TB_H
+#pragma once
 
 #include <cctbx/miller/lookup_utils.h>
 #include <cctbx/xray/thickness.h>
@@ -14,7 +13,13 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   using namespace smtbx::ED;
 
   template <typename FloatType>
-  struct two_beam_shared_data {
+  struct beam_width_cache {
+    typedef std::map<miller::index<>, FloatType> cache_t;
+    cache_t cache;
+  };
+
+  template <typename FloatType>
+  struct N_beam_shared_data {
     ED_UTIL_TYPEDEFS;
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
     typedef boost::shared_ptr< f_calc_function_base_t> f_calc_function_base_ptr_t;
@@ -25,7 +30,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     typedef cctbx::xray::fc_correction<FloatType> fc_correction_t;
     typedef boost::shared_ptr< fc_correction_t> fc_correction_ptr_t;
 
-    two_beam_shared_data(const scitbx::sparse::matrix<FloatType>&
+    N_beam_shared_data(const scitbx::sparse::matrix<FloatType>&
       Jt_matching_grad_fc,
       f_calc_function_base_t& f_calc_function,
       sgtbx::space_group const& space_group,
@@ -101,7 +106,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
     }
 
-    ~two_beam_shared_data() {
+    ~N_beam_shared_data() {
     }
 
     void do_build_kin_mt() {
@@ -126,6 +131,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
     }
 
+    void build_width_cache();
+
+    void set_width_cache(const beam_width_cache<FloatType>& width_cache) {
+      this->width_cache = width_cache;
+    }
+
     scitbx::sparse::matrix<FloatType> Jt_matching_grad_fc;
     f_calc_function_base_t& f_calc_function;
     sgtbx::space_group const& space_group;
@@ -146,18 +157,19 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     cmat_t design_matrix_kin;
     lookup_t mi_lookup;
     int thread_n;
+    beam_width_cache<FloatType> width_cache;
   };
 
   template <typename FloatType>
-  class f_calc_function_ed_two_beam : public f_calc_function_base<FloatType> {
+  class f_calc_function_ed_N_beam : public f_calc_function_base<FloatType> {
   public:
     ED_UTIL_TYPEDEFS;
     typedef f_calc_function_base<FloatType> f_calc_function_base_t;
-    typedef two_beam_shared_data<FloatType> data_t;
+    typedef N_beam_shared_data<FloatType> data_t;
     typedef af::versa_plain<FloatType> one_dim_type;
     typedef typename one_dim_type::accessor_type one_dim_accessor_type;
 
-    f_calc_function_ed_two_beam(data_t const& data)
+    f_calc_function_ed_N_beam(data_t const& data)
       : data(data),
       index(-1),
       observable_updated(false),
@@ -166,7 +178,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       beam_group = 0;
     }
 
-    f_calc_function_ed_two_beam(f_calc_function_ed_two_beam const& other)
+    f_calc_function_ed_N_beam(f_calc_function_ed_N_beam const& other)
       : data(other.data),
       observable_updated(false),
       computed(false)
@@ -204,130 +216,40 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
     virtual boost::shared_ptr<f_calc_function_base_t> fork() const {
       return boost::shared_ptr<f_calc_function_base_t>(
-        new f_calc_function_ed_two_beam(*this));
+        new f_calc_function_ed_N_beam(*this));
     }
 
-    // for derivatives testing
-    FloatType calc(FloatType Fsq, cart_t const& K, FloatType t,
-      FloatType Sg, cart_t const& n) const
-    {
-      FloatType Kl = K.length(),
-        t_part = ((scitbx::constants::pi * t) / (K * n));
-      FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
-        sin_part = scitbx::fn::pow2(std::sin(t_part * std::sqrt(X)));
-      return Fsq * sin_part / X;
-    }
-
-    // Acta Cryst. (2013). A69, 171–188
-    FloatType get_observable_pltns_2013() const {
-      FloatType da = beam_group->get_diffraction_angle(h, data.K);
-      size_t n_param = data.Jt_matching_grad_fc.n_rows();
-      size_t coln = data.design_matrix_kin.accessor().n_columns();
-      af::shared<FloatType> grads_sum(coln);
-      FloatType I1 = -1, g1 = -1, grad_fsq1 = 0, grad_t1 = 0, I_sum = 0,
-        dT_sum = 0;
-    af::shared<FloatType> angles = beam_group->get_angles(da,
-      data.params.getIntSpan(),
-      data.params.getIntStep());
-    for (size_t ai = 0; ai < angles.size(); ai++) {
-        std::pair<mat3_t, cart_t> r = beam_group->compute_RMf_N(angles[ai]);
-        cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + data.K;
-        FloatType g = K_g.length();
-        af::shared<FloatType> res = get_observable_pltns_2013_(angles[ai]);
-        if (g1 >= 0) {
-          FloatType d = std::abs(g - g1) / 2;
-          I_sum += (res[0] + I1) * d;
-          if (compute_grad) {
-            for (size_t i = 0; i < coln; i++) {
-              grads_sum[i] += (res[1] + grad_fsq1) * d;
-            }
-            if (data.thickness.grad) {
-              dT_sum += (res[2] + grad_t1) * d;
-            }
-          }
-        }
-        I1 = res[0];
-        g1 = g;
-        grad_fsq1 = res[1];
-        grad_t1 = res[2];
-      }
-      if (compute_grad) {
-        grads = af::shared<FloatType>(n_param);
-        for (size_t i = 0; i < coln; i++) {
-          complex_t dFc = data.design_matrix_kin(index, i);
-          FloatType dFc_sq = 2.0 * (dFc.real() * Fc.real() + dFc.imag() * Fc.imag());
-          grads[i] = dFc_sq * grads_sum[i];
-        }
-        if (data.thickness.grad) {
-          int grad_index = data.thickness.grad_index;
-          SMTBX_ASSERT(!(grad_index < 0 || grad_index >= grads.size()));
-          grads[grad_index] = dT_sum;
-        }
-
-      }
-      return I_sum;
-    }
-    // returns I, d_I_d_F_sq, d_I_d_EDT
-    af::shared<FloatType> get_observable_pltns_2013_(FloatType angle) const {
-      FloatType Kl = data.Kl;
-      cart_t K = data.K;
-      std::pair<mat3_t, cart_t> FI = beam_group->compute_RMf_N(angle);
-
-      cart_t g = FI.first * cart_t(h[0], h[1], h[2]);
-
-      FloatType Sg = (Kl * Kl - (K + g).length_sq()) / (2 * Kl);
-      FloatType X = scitbx::fn::pow2(Kl * Sg) + Fsq,
-        t = data.thickness.value,
-        t_part = ((scitbx::constants::pi * t) / (K * FI.second)),
-        P = t_part * std::sqrt(X);
-      FloatType sin_part = scitbx::fn::pow2(std::sin(P)),
-        I = Fsq * sin_part / X;
-      af::shared<FloatType> rv;
-      rv.push_back(I);
-      // update gradients...
-      if (compute_grad && index >= 0) {
-        if (data.Jt_matching_grad_fc.n_cols() > 0) {
-          FloatType grad_fsq = sin_part / X + Fsq *
-            (2 * std::sin(P) * std::cos(P) * (t_part * std::pow(X, -0.5) / 2.0) * X - sin_part) / (X * X);
-          rv.push_back(grad_fsq);
-        }
-        else {
-          rv.push_back(0);
-        }
-        if (data.thickness.grad) {
-          rv.push_back(Fsq * 2 * std::sin(P) * std::cos(P) * P / t / X);
-        }
-        else {
-          rv.push_back(0);
-        }
-        /* Testing derivatives shows consistensy with analytical expressions above */
-        //FloatType eps = 1e-6;
-        //FloatType v1 = calc(Fsq - eps, K, t, Sg, beam_group->normal);
-        //FloatType v2 = calc(Fsq + eps, K, t, Sg, beam_group->normal);
-        //FloatType diff = (v2 - v1) / (2*eps);
-        //
-        //v1 = calc(Fsq, K, t - eps, Sg, beam_group->normal);
-        //v2 = calc(Fsq, K, t + eps, Sg, beam_group->normal);
-        //diff = (v2 - v1) / (2 * eps);
-        //FloatType grad_t = Fsq * 2 * std::sin(P) * std::cos(P) * P / thickness.value / X;
-        //FloatType v = calc(Fsq, K, Sg, t, beam_group->normal);
-        //v = 0; // allow for a breakpoint here
-      }
-      return rv;
+    f_calc_function_ed_N_beam<FloatType> * raw_fork() const {
+      return new f_calc_function_ed_N_beam(*this);
     }
 
     FloatType get_observable_N() const {
       FloatType da = beam_group->get_diffraction_angle(h, data.K);
       af::shared<FloatType> angles;
-      if (data.params.isAngleInt()) {
-        angles = beam_group->get_angles(da,
-          data.params.getIntSpan(),
-          data.params.getIntStep());
+
+      FloatType width_Sg = 0;
+      typename std::map<miller::index<>, FloatType>::const_iterator
+        width_itr = data.width_cache.cache.find(h);
+      if (width_itr != data.width_cache.cache.end()) {
+        width_Sg = width_itr->second;
+      }
+      //
+      if (width_Sg > 0) {
+        angles = beam_group->get_angles_Sg(h, data.K,
+          width_Sg,
+          width_Sg * data.params.getIntStep() / data.params.getIntSpan());
       }
       else {
-        angles = beam_group->get_angles_Sg(h, data.K,
-          data.params.getIntSpan(),
-          data.params.getIntStep());
+        if (data.params.isAngleInt()) {
+          angles = beam_group->get_angles(da,
+            data.params.getIntSpan(),
+            data.params.getIntStep());
+        }
+        else {
+          angles = beam_group->get_angles_Sg(h, data.K,
+            data.params.getIntSpan(),
+            data.params.getIntStep());
+        }
       }
 
       mat3_t da_rm = beam_group->geometry->get_RM(da);
@@ -339,6 +261,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
       if (!data.params.isNBeamFloating()) {
         n_beam_dc.init(h, beam_group->geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
+        //n_beam_dc.init(h, angles, data.Fcs_kin, data.mi_lookup);
       }
 
       mat_t D_dyn;
@@ -352,14 +275,14 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         (data.thickness.grad ? 1 : 0);
       af::shared<FloatType> grads_sum(coln),
         grads1;
+
       FloatType I1 = -1, g1 = -1, I_sum = 0;
-      for (size_t ai=0; ai < angles.size(); ai++) {
-        std::pair<mat3_t, cart_t> r;
+      std::pair<mat3_t, cart_t> r;
+      r.second = beam_group->geometry->get_normal();
+      for (size_t ai = 0; ai < angles.size(); ai++) {
         mat3_t rm = beam_group->geometry->get_RM(angles[ai]);
         r.first = beam_group->geometry->get_RMf(rm);
-        // keep the original normal
-        //r.second = da_r.second;
-        r.second = rm * da_n;
+        //r.second = rm * da_n;
         cart_t g = r.first * cart_t(h[0], h[1], h[2]);
         cart_t K_g = g + data.K;
         FloatType K_g_l = K_g.length();
@@ -407,12 +330,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         return Fsq;
       }
       SMTBX_ASSERT(beam_group != 0);
-      if (data.params.getBeamN() == 2) {
-        Fsq = get_observable_pltns_2013();
-      }
-      else {
-        Fsq = get_observable_N();
-      }
+      Fsq = get_observable_N();
       observable_updated = true;
       return Fsq;
     }
@@ -436,8 +354,81 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     virtual bool raw_gradients() const { return false; }
+
+    FloatType compute_width(const miller::index<>& index,
+      const BeamGroup<FloatType>& group,
+      FloatType test_span, size_t test_points) const
+    {
+      FloatType da = group.get_diffraction_angle(index, data.K);
+      af::shared<FloatType> angles = group.get_angles_Sg(index, data.K,
+        test_span,
+        test_span / test_points);
+
+      mat3_t da_rm = group.geometry->get_RM(da);
+      cart_t da_n = da_rm.transpose() * group.geometry->get_normal();
+      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
+        data.params.getMatrixType(),
+        group, data.K, data.thickness.value,
+        data.params.useNBeamSg(), data.params.getNBeamWght());
+
+      if (!data.params.isNBeamFloating()) {
+        n_beam_dc.init(index, group.geometry->get_RMf(da_rm), data.Fcs_kin, data.mi_lookup);
+      }
+      size_t start_idx = ~0, end_idx = ~0;
+      af::shared<FloatType> amps(angles.size());
+      FloatType maxI = 0, minI = 1e6;
+      for (size_t ai = 0; ai < angles.size(); ai++) {
+        std::pair<mat3_t, cart_t> r;
+        mat3_t rm = group.geometry->get_RM(angles[ai]);
+        r.first = group.geometry->get_RMf(rm);
+        r.second = rm * da_n;
+        if (data.params.isNBeamFloating()) {
+          n_beam_dc.init(index, r.first, data.Fcs_kin, data.mi_lookup);
+        }
+        FloatType I = std::norm(n_beam_dc.calc_amp(r));
+        if (I > maxI) {
+          maxI = I;
+        }
+        if (I < minI) {
+          minI = I;
+        }
+        amps[ai] = I;
+      }
+      const FloatType I_th = data.params.getIntProfileStartTh(),
+        I_range = maxI - minI;
+      for (size_t i = 0; i < amps.size(); i++) {
+        if ((amps[i] - minI) >= I_th * I_range) {
+          if (start_idx == ~0) {
+            start_idx = (i == 0 ? i : i - 1);
+            if (end_idx != ~0) {
+              break;
+            }
+          }
+        }
+        if ((amps[amps.size() - i - 1] - minI) >= I_th * I_range) {
+          if (end_idx == ~0) {
+            end_idx = (i > 0 ? amps.size() - i : amps.size() - 1);
+            if (start_idx != ~0) {
+              break;
+            }
+          }
+        }
+      }
+      if (start_idx == ~0 || end_idx == ~0 || start_idx == end_idx) {
+        return 0;
+      }
+      else {
+        std::pair<FloatType, FloatType> k = group.Sg_to_angle_k(index, data.K);
+        FloatType s = k.second * (angles[start_idx] - group.angle) + k.first;
+        FloatType e = k.second * (angles[end_idx] - group.angle) + k.first;
+        return std::max(std::abs(s), std::abs(e));
+      }
+    }
+    const data_t& get_data() const {
+      return data;
+    }
   private:
-    data_t const& data;
+    const data_t& data;
     long index;
     const BeamGroup<FloatType>* beam_group;
     bool compute_grad;
@@ -448,6 +439,65 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     miller::index<> h;
   };
 
-}}}
 
-#endif // GUARD
+  template <typename FloatType>
+  struct beam_width_thread {
+    ED_UTIL_TYPEDEFS;
+    typedef f_calc_function_ed_N_beam<FloatType> f_calc_function_t;
+    typedef typename boost::shared_ptr<f_calc_function_t> f_calc_function_ptr_t;
+    typedef std::map<miller::index<>, FloatType> cache_t;
+
+    beam_width_thread(const BeamGroup<FloatType>& beam_group,
+      const f_calc_function_t& f_calc_function)
+    : beam_group(beam_group),
+      f_calc_function(f_calc_function.raw_fork())
+    {}
+    
+    void operator ()() {
+      af::shared<miller::index<> > indices =
+        af::select(beam_group.indices.const_ref(),
+          beam_group.strong_measured_beams.const_ref());
+      FloatType Sg_span = f_calc_function->get_data().params.getIntProfileSpan_Sg();
+      size_t pts_N = f_calc_function->get_data().params.getIntProfilePoints();
+      for (size_t i = 0; i < indices.size(); i++) {
+        FloatType width = f_calc_function->compute_width(indices[i], beam_group, Sg_span, pts_N);
+        cache.insert(std::make_pair(indices[i], width));
+      }
+    }
+    const BeamGroup<FloatType>& beam_group;
+    f_calc_function_ptr_t f_calc_function;
+    cache_t cache;
+
+  };
+
+  template <typename FloatType>
+  void N_beam_shared_data<FloatType>::build_width_cache() {
+    typedef beam_width_thread<FloatType> builder_t;
+    typedef typename boost::shared_ptr<builder_t> build_bw_t;
+
+    if (thread_n < 0) {
+      thread_n = builder_base<FloatType>::get_available_threads();
+    }
+    boost::thread_group pool;
+    f_calc_function_ed_N_beam<FloatType> calc_func(*this);
+    size_t start = 0;
+    while (start < beam_groups.size()) {
+      std::vector<build_bw_t> accumulators;
+      size_t end = std::min(beam_groups.size() - start, (size_t)thread_n);
+      for (size_t th = 0; th < end; th++) {
+        build_bw_t pf(
+          new builder_t(beam_groups[start + th], calc_func)
+        );
+        accumulators.push_back(pf);
+        pool.create_thread(boost::ref(*pf));
+      }
+      pool.join_all();
+      for (size_t th = 0; th < end; th++) {
+        width_cache.cache.insert(
+          accumulators[th]->cache.begin(),
+          accumulators[th]->cache.end());
+      }
+      start += thread_n;
+    }
+  }
+}}}

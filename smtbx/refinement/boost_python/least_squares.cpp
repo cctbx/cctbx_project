@@ -7,7 +7,7 @@
 #include <smtbx/refinement/weighting_schemes.h>
 #include <smtbx/refinement/least_squares_fc_ed.h>
 #include <smtbx/refinement/least_squares_fc_ed_n.h>
-#include <smtbx/refinement/least_squares_fc_ed_two_beam.h>
+#include <smtbx/refinement/least_squares_fc_ed_N_beam.h>
 
 
 void SetRefinementProgressListener(ProgressListener l) {
@@ -233,12 +233,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
           ;
       }
 
-      static void wrap_two_beam_shared_data() {
+      static void wrap_N_beam_shared_data() {
         using namespace boost::python;
-        typedef two_beam_shared_data<FloatType> wt;
+        typedef N_beam_shared_data<FloatType> wt;
         return_value_policy<return_by_value> rbv;
 
-        class_<wt, std::auto_ptr<wt> >("two_beam_shared_data", no_init)
+        class_<wt, std::auto_ptr<wt> >("N_beam_shared_data", no_init)
           .def(init<const scitbx::sparse::matrix<FloatType>&,
             f_calc_function_base<FloatType>&,
             sgtbx::space_group const&,
@@ -254,19 +254,31 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
           .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
+          .def("build_width_cache", &wt::build_width_cache)
+          .add_property("width_cache", make_getter(&wt::width_cache, rbv), &wt::set_width_cache)
           ;
       }
 
-      static void wrap_ed_two_beam() {
+      static void wrap_ed_N_beam() {
         using namespace boost::python;
-        typedef f_calc_function_ed_two_beam<FloatType> wt;
+        typedef f_calc_function_ed_N_beam<FloatType> wt;
         typedef f_calc_function_base<FloatType> f_calc_f_t;
 
         class_<wt, bases<f_calc_function_base<FloatType> >,
-          std::auto_ptr<wt> >("f_calc_function_ed_two_beam", no_init)
-          .def(init<two_beam_shared_data<FloatType> const&>(
+          std::auto_ptr<wt> >("f_calc_function_ed_N_beam", no_init)
+          .def(init<N_beam_shared_data<FloatType> const&>(
               (arg("data"),
                 arg("params"))))
+          ;
+      }
+
+      static void wrap_beam_width_cache() {
+        using namespace boost::python;
+        typedef beam_width_cache<FloatType> wt;
+
+        class_<wt, std::auto_ptr<wt> >("beam_width_cache", no_init)
+          .def(init<beam_width_cache<FloatType> const&>(
+            (arg("cache"))))
           ;
       }
 
@@ -339,8 +351,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
         wrap_ed();
         wrap_ed_n_shared_data();
         wrap_ed_n();
-        wrap_two_beam_shared_data();
-        wrap_ed_two_beam();
+        wrap_beam_width_cache();
+        wrap_N_beam_shared_data();
+        wrap_ed_N_beam();
         wrap_mask_data();
       }
     };
