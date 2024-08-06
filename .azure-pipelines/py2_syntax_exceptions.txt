@@ -20,5 +20,3 @@ xfel/merging/application/errors/error_modifier_mm24.py
 xfel/util/preference.py
 cctbx/maptbx/qscore.py
 cctbx/maptbx/tst_qscore.py
-mmtbx/geometry_restraints/geo_file_parsing.py
-mmtbx/geometry_restraints/tst_geo_file_parsing.py
