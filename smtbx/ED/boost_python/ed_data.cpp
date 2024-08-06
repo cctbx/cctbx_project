@@ -56,6 +56,7 @@ namespace boost_python {
         .def("add_beam", &wt::add_beam)
         .def("set_beams", &wt::set_beams)
         .def("top_up", &wt::top_up)
+        .def("top_up_N", &wt::top_up_N)
         .def("unify", &wt::unify)
         .def("add_indices", &wt::add_indices)
         .def("analyse_strength", &wt::analyse_strength)
@@ -151,6 +152,13 @@ namespace boost_python {
         .add_property("int_span", &wt::getIntSpan)
         .add_property("int_step", &wt::getIntStep)
         .add_property("int_points", &wt::getIntPoints)
+        .add_property("int_angle", &wt::isAngleInt)
+        .add_property("use_N_beam_Sg", &wt::useNBeamSg)
+        .add_property("N_beam_wght", &wt::getNBeamWght)
+        .add_property("N_beam_floating", &wt::isNBeamFloating)
+        .add_property("int_profile_start_th", &wt::getIntProfileStartTh)
+        .add_property("int_profile_span_sg", &wt::getIntProfileSpan_Sg)
+        .add_property("int_profile_points", &wt::getIntProfilePoints)
         ;
     }
 

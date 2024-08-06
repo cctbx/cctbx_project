@@ -11,14 +11,26 @@ namespace smtbx { namespace ED
   template <typename FloatType> struct BeamGroup;
   template <typename FloatType>
   class EDData {
-    //ED_UTIL_TYPEDEFS;
+    ED_UTIL_TYPEDEFS;
     typedef typename utils<FloatType>::a_geometry geometry_t;
+    struct Frame {
+      cart_t normal;
+      FloatType start, end, scale;
+      Frame(const cart_t& n,
+        FloatType start, FloatType end)
+        : normal(n), start(start), end(end)
+      {}
+    };
     struct Beam {
       miller::index<> h;
-      FloatType start, middle, end;
-      Beam(const miller::index<>& h,
-        FloatType start, FloatType middle, FloatType end)
-        : h(h), start(start), middle(middle), end(end)
+      FloatType I, sig, scale, start, end;
+      const Frame* frame;
+      Beam(const Frame& f, const miller::index<>& h,
+        FloatType I, FloatType sig, FloatType scale,
+        FloatType start, FloatType end)
+        : frame(&f),
+        h(h), I(I), sig(sig), scale(scale),
+        start(start), end(end)
       {}
     };
     af::shared<Beam> beams;
@@ -116,16 +128,10 @@ namespace smtbx { namespace ED
     }
 
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle = 0.5)
+      const cart_t& K, FloatType sweep_angle = 0.5) const
     {
-      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
-      FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      mat3_t m = geometry->get_RMf(angle + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(m * h, K);
-      FloatType k = (Sg2 - Sg1) / ang_diff;
-      //FloatType a = Sg1 - k*angle;
-      //return k * ang + a = k*(ang-angle) + Sg1;
-      return Sg1 + k*(ang-angle);
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
+      return k.second*(ang - angle) + k.first;
     }
 
     FloatType PL_correctionROD(const miller::index<>& h) const {
@@ -145,6 +151,14 @@ namespace smtbx { namespace ED
     ) const;
 
     void top_up(cart_t const& K,
+      size_t num, FloatType min_d,
+      FloatType MaxSg,
+      uctbx::unit_cell const& unit_cell,
+      sgtbx::space_group const& space_group,
+      sgtbx::space_group const& uniq_sg
+    );
+
+    void top_up_N(cart_t const& K,
       size_t num, FloatType min_d,
       FloatType MaxSg,
       uctbx::unit_cell const& unit_cell,
@@ -180,6 +194,8 @@ namespace smtbx { namespace ED
       FloatType span, FloatType step);
     af::shared<FloatType> get_angles_Sg(const miller::index<> &h,
       const cart_t& K, FloatType Sg_span, FloatType Sg_step) const;
+    af::shared<FloatType> get_angles_Sg_for_angles(const miller::index<>& h,
+      const cart_t& K, FloatType start_ang, FloatType end_ang, size_t N) const;
 
     int id, tag;
     cart_t original_normal;
@@ -296,6 +312,47 @@ namespace smtbx { namespace ED
     }
   }
 
+  template <typename FloatType>
+  void BeamGroup<FloatType>::top_up_N(
+    cart_t const& K,
+    size_t num, FloatType min_d,
+    FloatType MaxSg,
+    uctbx::unit_cell const& unit_cell,
+    sgtbx::space_group const& space_group,
+    sgtbx::space_group const& uniq_sg)
+  {
+    typedef miller::lookup_utils::lookup_tensor<FloatType> lookup_t;
+
+    af::shared<af::shared<typename utils<FloatType>::ExcitedBeam> > ebeams;
+    af::shared<mat3_t> RMfs(af::reserve(beams.size()));
+    for (size_t i = 0; i < beams.size(); i++) {
+      FloatType da = this->get_diffraction_angle(beams[i].index, K);
+      RMfs.push_back(this->compute_RMf_N(da).first);
+    }
+    ebeams = utils<FloatType>::generate_index_set_N(RMfs, K, min_d,
+      MaxSg, unit_cell);
+
+    lookup_t existing = lookup_t(
+      indices.const_ref(),
+      uniq_sg,
+      true);
+
+    for (size_t i = 0; i < ebeams.size(); i++) {
+      size_t added = 0;
+      for (size_t j = 0; j < ebeams[i].size(); j++) {
+        if (space_group.is_sys_absent(ebeams[i][j].h)) {
+          continue;
+        }
+        if (existing.add_hkl(ebeams[i][j].h)) {
+          indices.push_back(ebeams[i][j].h);
+        }
+        if (++added >= num) {
+          break;
+        }
+      }
+    }
+  }
+
   // J.M. Zuo, A.L. Weickenmeier / Ultramicroscopy 57 (1995) 375-383
   template <typename FloatType>
   void BeamGroup<FloatType>::analyse_strength(
@@ -385,6 +442,46 @@ namespace smtbx { namespace ED
     return rv;
   }
 
+  template <typename FloatType>
+  af::shared<FloatType> BeamGroup<FloatType>::get_angles_Sg_for_angles(
+    const miller::index<>& h,
+    const cart_t& K, FloatType start_ang, FloatType end_ang, size_t N) const
+  {
+    //std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
+    //FloatType start_Sg = angle_to_Sg(start_ang, h, K),
+    //  end_Sg = angle_to_Sg(end_ang, h, K);
+    //if (start_Sg > end_Sg) {
+    //  std::swap(start_Sg, end_Sg);
+    //}
+    //af::shared<FloatType> rv(af::reserve(N + 1));
+    //FloatType Sg_step = (end_Sg - start_Sg) / N;
+    //for (size_t i = 0; i <= N; i++) {
+    //  FloatType ang = angle + (start_Sg + Sg_step*N - k.first) / k.second;
+    //  rv.push_back(ang);
+    //}
+
+    //FloatType dang = get_diffraction_angle(h, K);
+    //bool da_added = false;
+    //af::shared<FloatType> rv(af::reserve(N + 1));
+    //FloatType ang_step = (end_ang - start_ang) / N;
+    //for (size_t i = 0; i <= N; i++) {
+    //  FloatType ang = start_ang + ang_step*N;
+    //  if (!da_added && ((ang_step > 0 && dang > ang) || (ang_step < 0 && dang < ang))) {
+    //    rv.push_back(ang);
+    //    da_added = true;
+    //  }
+    //  rv.push_back(ang);
+    //}
+    //return rv;
+
+    FloatType start_Sg = angle_to_Sg(start_ang, h, K),
+      end_Sg = angle_to_Sg(end_ang, h, K);
+    FloatType Sg_span = std::max(std::abs(start_Sg), std::abs(end_Sg));
+    FloatType Sg_step = Sg_span / N;
+    return get_angles_Sg(h, K, Sg_span, Sg_step);
+
+  }
+
   /* input span and step are in degrees */
   template <typename FloatType>
   af::shared<FloatType> BeamGroup<FloatType>::get_angles(FloatType ang,
@@ -465,7 +562,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() >= 14);
+      SMTBX_ASSERT(values.size() >= 16);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -487,6 +584,13 @@ namespace smtbx { namespace ED
     // with useNBeamSg - maxSg, otherwise is used as weight in |Fc|/(Sg+weight) 
     FloatType getNBeamWght() const { return values[12]; }
     bool isNBeamFloating() const { return values[13] != 0; }
+    /* The following three params are used in reflection profile 'detection'
+    threshold is a fraction of the intensity to the intensity range to determine
+    when the reflection 'starts'
+    */
+    FloatType getIntProfileStartTh() const { return values[14]; }
+    FloatType getIntProfileSpan_Sg() const { return values[15]; }
+    size_t getIntProfilePoints() const { return static_cast<size_t>(values[16]); }
   };
 
 }}
