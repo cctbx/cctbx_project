@@ -829,7 +829,9 @@ def mask_fixed_model_region(mmm, d_min,
   if fixed_model is None:
     return
 
-  radius = max(3., d_min)
+  radius = 3.
+  if d_min is not None:
+    radius = max(radius, d_min)
   mmm.create_mask_around_atoms(model=fixed_model, mask_atoms_atom_radius=radius, mask_id=fixed_mask_id)
   fixed_model_mask = mmm.get_map_manager_by_id(map_id=fixed_mask_id)
   # Invert fixed_model_mask before flattening
