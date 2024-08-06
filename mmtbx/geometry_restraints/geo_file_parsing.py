@@ -20,7 +20,11 @@ class BondRestraint:
   restraint_label = 'bond'
   @classmethod
   def from_geo_lines(cls, lines, settings):
+    # lines are tuples of (line_number,line)
     # start make restraint
+    line_number_start = lines[0][0]
+    lines = [line for line_number,line in lines]
+
     n_atoms = settings["n_atoms"]
     restraint_key = cls.restraint_label
     key_index = n_atoms
@@ -48,6 +52,7 @@ class BondRestraint:
         d[k] = i_seq
 
     d.update({key: value for key, value in zip(keys, values)})
+    d["line_number_start"] = line_number_start
     return cls(d)
 
   def __init__(self, data_dict):
@@ -69,6 +74,10 @@ class PlanarityRestraint:
 
   @classmethod
   def from_geo_lines(cls, lines, settings):
+    # lines are tuples of (line_number,line)
+    line_number_start = lines[0][0]
+    lines = [line for line_number,line in lines]
+
     planes_data = []
     headers = None
     current_plane_data = {}
@@ -130,6 +139,7 @@ class PlanarityRestraint:
         else:
           plane_data["i_seq"] = value
         del plane_data["plane_indices"]
+    plane_data["line_number_start"] = line_number_start
 
     return cls({"plane": plane_data})
 
@@ -140,11 +150,14 @@ class PlanarityRestraint:
   @staticmethod
   def form_dataframe(planes):
     planes = [d["plane"] for d in planes]
+    line_numbers = [plane["line_number_start"] for plane in planes]
+    for i in range(len(planes)):
+      del planes[i]["line_number_start"]
 
     # Find max length
     max_len = 0
     for plane in planes:
-      lens = [len(value) for value in plane.values()]
+      lens = [len(value) for key,value in plane.items()]
       assert len(set(lens))==1, "Error: mismatched data lens"
       if max(lens)>max_len:
         max_len = max(lens)
@@ -169,10 +182,21 @@ class PlanarityRestraint:
       expanded_planes.append(expanded_plane)
     # make df
     df = pd.DataFrame.from_records(expanded_planes)
+    df["line_number_start"] = line_numbers
     return df
 
+# Not implemented yet
+class RamachandranRestraint:
+  restraint_label = 'rama'
+
+  @classmethod
+  def from_geo_lines(cls, lines, settings):
+    return None
+
+  
+
 restraint_settings = {
- "nonbonded":{                              # name of restraint
+ "nonbonded":{                             # name of restraint
   "header_label":"Nonbonded interactions", # search string
   "n_atoms":2,                             # n_atoms to look for
   "cif_key":"_phenix_restraint_nonbonded", # key for restraint in result
@@ -214,7 +238,14 @@ restraint_settings = {
    "cif_key":"_phenix_restraint_planarity",
    "restraint_class":PlanarityRestraint,
  },
+  "rama":{
+   "header_label":"Ramachandran plot",
+   "n_atoms":None,
+   "cif_key":"_phenix_restraint_rama",
+   "restraint_class":RamachandranRestraint,
+ },
 }
+
 def split_into_sections(lines):
   """
   Split a .geo file lines into sub-sections of lines for each restraint type
@@ -226,13 +257,15 @@ def split_into_sections(lines):
     if not line:
       continue
     # Check if the line is a section header
-    if ':' in line and any(keyword in line for keyword in ['restraints', 'interactions']):
+    if any([(setting["header_label"] in line) for name,setting in restraint_settings.items()]):
+    #if ':' in line and any(keyword in line for keyword in ['restraints', 'interactions']):
       current_section = line
       sections[current_section] = []
     elif current_section is not None:
       # if 'plane' in line:
       #     sections[current_section].append(lines[idx-1])
-      sections[current_section].append(line)
+      sections[current_section].append((idx,line))
+
   # Rename labels
   output = {}
   for section_label,section_value in sections.items():
@@ -247,6 +280,7 @@ def extract_restraint_objs_from_group(group,
                    restraint_key=None):
   """
   Given a 'group' of lines for a given restraint, extract the data to a restraint instance
+  A 'group' is a list of tuples (line_number,line)
   """
   n_atoms = settings["n_atoms"]
   restraints = []
@@ -257,37 +291,40 @@ def extract_restraint_objs_from_group(group,
     new_entry_indicator = restraint_key
 
   restraint_label = restraint_key
-  for idx,line in enumerate(group):
+  for idx,(line_number,line) in enumerate(group):
     # Check if the line is the start of a new entry within the restraint
     if new_entry_indicator in line:
       if restraint_lines:
         # If there are already lines collected for a previous entry, save them
         if restraint_key == "plane":
           restraint_lines = restraint_lines[:-1]
-        restraints.append(restraint_lines)
+        if restraint_key != "plane" and len(restraint_lines) >= settings["n_atoms"]:
+          restraints.append(restraint_lines)
         restraint_lines = []
         if restraint_key == "plane":
           if idx>1:
             restraint_lines.append(group[idx-1])
-        restraint_lines.append(line)
+        restraint_lines.append((line_number,line))
       else:
         # This is the first entry in the restraint
         if restraint_key == "plane":
           if idx>1:
             restraint_lines.append(group[idx-1])
-        restraint_lines.append(line)
+        restraint_lines.append((line_number,line) )
     elif restraint_lines:
       # Continue adding lines to the current entry
-      restraint_lines.append(line)
+      restraint_lines.append((line_number,line) )
   # Add the last set of lines if not empty
   if restraint_lines:
     if restraint_key == "plane":
       restraint_lines = restraint_lines[:-1]
-    restraints.append(restraint_lines)
+    if len(restraint_lines)>=3:
+      restraints.append(restraint_lines)
+
   s = set([len(r) for r in restraints])
-  if restraint_key != "plane":
-    assert len(s)==1, "Failed .geo parsing\n"+"\n".join(restraint_lines)
-    assert next(iter(s))==n_atoms+2, "Failed .geo parsing"+"\n".join(restraints)
+  # if restraint_key != "plane":
+  #   assert len(s)==1, "Failed .geo parsing\n"+"\n".join([line for idx,line in restraint_lines])
+  #   assert next(iter(s))==n_atoms+2, "Failed .geo parsing"+"\n".join(restraints)
   restraint_objs = []
   for restraint_lines in restraints:
     settings = restraint_settings[restraint_label]
@@ -297,6 +334,28 @@ def extract_restraint_objs_from_group(group,
       restraint_objs.append(restraint_instance)
   return restraint_objs
 
+def assign_categories(dfs,lines):
+  # at the end of parsing, assign subcategories like Secondary structure
+  for name,df in dfs.items():
+    df["origin"] = "General"
+  category_open = None
+  category_prefixes = ["Secondary Structure restraints", "User supplied"]
+  for idx,line in enumerate(lines):
+    for prefix in category_prefixes:
+      if line.startswith(prefix):
+        category_open = prefix
+        category_number = int(line.split(":")[-1])
+        for restraint_name,df in dfs.items():
+          # Check if the query is within the range of the 'Numbers' column
+          min_val = df['line_number_start'].min()
+          max_val = df['line_number_start'].max()
+          if min_val <= idx <= max_val:
+            #print(restraint_name)
+            # Find the index of the closest number less than or equal to the query
+            idx_found = df['line_number_start'].searchsorted(idx, side='right')
+            closest_value = df.loc[idx_found, 'line_number_start']
+            df.loc[idx_found:idx_found+category_number,"origin"] = prefix
+  
 def parse_geo_file(filename,return_format='dict'):
   """
   Args:
@@ -318,11 +377,21 @@ def parse_geo_file(filename,return_format='dict'):
       restraint_dicts_all[restraint_label] = [obj.data_dict for obj in restraint_objs]
   # convert dicts to dataframes and fill nan with None
   dfs = {key:pd.DataFrame(value).replace({np.nan: None}) for key,value in restraint_dicts_all.items() if key != "plane"}
+  
+
 
   # add planes
   if "plane" in restraint_dicts_all:
     df = PlanarityRestraint.form_dataframe(restraint_dicts_all["plane"])
     dfs["plane"] = df
+
+  # Remove empty
+  dfs = {key:df for key,df in dfs.items() if len(df)>0}
+
+  # assign categories like ss
+  assign_categories(dfs,lines)
+
+
   if return_format == "df":
     return dfs
   elif return_format == "dict":
@@ -341,11 +410,13 @@ def add_i_seq_columns_from_id_str(restraint_dfs,model):
   Given a dict of pandas DataFrames, each containing one type of restraint data,
   add i_seq columns from a model by translating the existing id_str columns
   """
-  restraint_dfs = d
   mapping_dict = {atom.id_str():atom.i_seq for atom in model.get_atoms()}
   for restraint_name,df in restraint_dfs.items():
-    id_str_cols = [col for col in df.columns if "id_str" in col]
-    i_seq_cols = [col.replace("id_str","i_seq") for col in id_str_cols]
-    for i_seq_col,id_str_col in zip(i_seq_cols,id_str_cols):
-      df[i_seq_col] = df[id_str_col].map(mapping_dict)
-  return restraint_dfs
+    if isinstance(df,pd.DataFrame):
+      id_str_cols = [col for col in df.columns if "id_str" in col]
+      i_seq_cols = [col.replace("id_str","i_seq") for col in id_str_cols]
+      for i_seq_col,id_str_col in zip(i_seq_cols,id_str_cols):
+        df[i_seq_col] = df[id_str_col].map(mapping_dict)
+
+
+

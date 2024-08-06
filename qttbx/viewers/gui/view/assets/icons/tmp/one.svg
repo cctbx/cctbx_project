@@ -1,0 +1,21 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="200" height="200" fill="white"/>
+
+  <!-- Carbon Atom (represented by a complex curve path) -->
+  <path d="M100,90 C110,90 110,110 100,110 C90,110 90,90 100,90 Z" fill="black" stroke="black"/>
+
+  <!-- Hydrogen Atoms (represented by smaller complex curve paths) -->
+  <path d="M70,60 C75,60 75,70 70,70 C65,70 65,60 70,60 Z" fill="grey" stroke="black"/>
+  <path d="M130,60 C135,60 135,70 130,70 C125,70 125,60 130,60 Z" fill="grey" stroke="black"/>
+
+  <!-- Oxygen Atom (represented by a more complex curve) -->
+  <path d="M100,130 C110,130 110,145 100,145 C95,145 95,135 90,130 Z" fill="red" stroke="black"/>
+
+  <!-- Bonds (represented by simpler line paths) -->
+  <path d="M 100,100 L 70,70" stroke="black"/>
+  <path d="M 100,100 L 130,70" stroke="black"/>
+  <path d="M 100,100 L 100,130" stroke="black"/>
+  <path d="M 100,110 L 100,140" stroke="black"/>
+</svg>
+

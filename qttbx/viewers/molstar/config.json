@@ -1,0 +1,6 @@
+{
+  "node_js_path":"../../../../../conda_base/bin/node",
+  "volume_server_relative_path": "../../../../../modules/phenix-molstar/lib/commonjs/servers/volume/server.js",
+  "pack_script_relative_path": "../../../../../modules/phenix-molstar/lib/commonjs/servers/volume/pack.js",
+  "molstar_app_relative_path": "../../../../../modules/phenix-molstar/build/viewer"
+}

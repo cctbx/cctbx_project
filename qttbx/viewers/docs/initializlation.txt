@@ -1,0 +1,6 @@
+Initializing the Molstar viewer is tricky because of the separation between Python and Javascript. We must wait in Python until the Javascript web app has finished loading before we can reliably send Javascript commands. Furthermore, it is useful to disable the Qt GUI until the Molstar web app has fully loaded to prevent users from sending commands that will not be recieved. The code sequence is:
+
+1. We load the WebView, when that has loaded it calls controller.molstar._on_load_finished_pre_sync()
+2. Within that function, we start the sync timer. This does repeated polls of the web view until we get expected output, indicating that the Molstar web app has loaded. The polling process involves periodically calling: controller.molstar_update_state_from_remote() which checks to see if self.state.phenixState.has_synced has been set to True, if so, it stops the polling. This all happens asynchronously in a Qt thread, so there is no direct codepath after this. 
+3. Instead, when state.phenixState.has_synced is set to True, the state will emit a signal (state.signals.has_synced(True))
+4. This has_synced signal is caught by the molstar controller, which runs controller.molstar._on_load_finished_post_sync(). This function enables the Qt viewer, and then loads refs into the viewer.
