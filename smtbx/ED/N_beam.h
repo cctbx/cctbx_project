@@ -59,11 +59,34 @@ namespace smtbx { namespace ED
 
     // recomputes the Eigen matrix
     dyn_calculator_n_beam& init(const miller::index<>& h,
+      const af::shared<FloatType> &angles,
+      const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
+    {
+      af::shared<mat3_t> RMfs(af::reserve(angles.size()));
+      for (size_t i = 0; i < angles.size(); i++) {
+        RMfs.push_back(beam_group.compute_RMf_N(angles[i]).first);
+      }
+      return init(h, RMfs, Fcs_kin, mi_lookup);
+    }
+
+    // recomputes the Eigen matrix
+    dyn_calculator_n_beam& init(const miller::index<>& h,
       const mat3_t& RMf,
       const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
     {
       indices = utils<FloatType>::build_Ug_matrix_N(A, Fcs_kin, mi_lookup,
         strong_indices, K, h, RMf, beam_n, useSg, wght);
+      dc = dc_f.make(indices, K, thickness);
+      return *this;
+    }
+
+    // recomputes the Eigen matrix
+    dyn_calculator_n_beam& init(const miller::index<>& h,
+      const af::shared<mat3_t>& RMfs,
+      const af::shared<complex_t>& Fcs_kin, const lookup_t& mi_lookup)
+    {
+      indices = utils<FloatType>::build_Ug_matrix_N_ext(A, Fcs_kin, mi_lookup,
+        strong_indices, K, h, RMfs, beam_n, wght);
       dc = dc_f.make(indices, K, thickness);
       return *this;
     }

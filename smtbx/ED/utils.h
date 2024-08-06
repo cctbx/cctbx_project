@@ -2,6 +2,7 @@
 #include <cctbx/miller.h>
 #include <cctbx/miller/index_generator.h>
 #include <smtbx/ED/math_utils.h>
+#include <set>
 
 namespace smtbx { namespace ED
 {
@@ -134,7 +135,7 @@ namespace smtbx { namespace ED
     {
       typedef std::pair<size_t, FloatType> se_t;
       std::vector<se_t> beams;
-      cart_t g0 = RMf * cart_t(h[0], h[1], h[2]);
+      beams.reserve(index_selection.size());
       for (size_t i = 0; i < index_selection.size(); i++) {
         miller::index<> h_ = index_selection[i];
         if (h_ == h) {
@@ -176,6 +177,97 @@ namespace smtbx { namespace ED
       build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
       return indices;
     }
+
+    static af::shared<miller::index<> > build_Ug_matrix_N(cmat_t& A,
+      const af::shared<complex_t>& Fcs_k,
+      const lookup_t& mi_lookup,
+      const af::shared<miller::index<> >& index_selection,
+      const cart_t& K,
+      const miller::index<>& h,
+      const af::shared<mat3_t>& RMfs,
+      size_t num, FloatType wght)
+    {
+      typedef std::pair<size_t, FloatType> se_t;
+      std::vector<se_t> beams;
+      beams.reserve(index_selection.size());
+      for (size_t i = 0; i < index_selection.size(); i++) {
+        miller::index<> h_ = index_selection[i];
+        if (h_ == h) {
+          continue;
+        }
+        long idx = mi_lookup.find_hkl(h_);
+        cart_t h1(h_[0], h_[1], h_[2]);
+        for (size_t mi = 0; mi < RMfs.size(); mi++) {
+          cart_t g = RMfs[mi] * h1;
+          FloatType Sg = std::abs(calc_Sg(g, K));
+          FloatType w = std::abs(Fcs_k[idx]) / (Sg + wght);
+          if (mi == 0) {
+            beams.push_back(std::make_pair(i, w));
+          }
+          else if (w > beams[i].second) {
+            beams[i].second = w;
+          }
+        }
+      }
+      std::sort(beams.begin(), beams.end(), sort_beams);
+      af::shared<miller::index<> > indices;
+      indices.push_back(h);
+      for (size_t i = 0; i < std::min(num, beams.size()) - 1; i++) {
+        indices.push_back(index_selection[beams[beams.size() - i - 1].first]);
+      }
+      build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
+      return indices;
+    }
+
+    static af::shared<miller::index<> > build_Ug_matrix_N_ext(cmat_t& A,
+      const af::shared<complex_t>& Fcs_k,
+      const lookup_t& mi_lookup,
+      const af::shared<miller::index<> >& index_selection,
+      const cart_t& K,
+      const miller::index<>& h,
+      const af::shared<mat3_t>& RMfs,
+      size_t num, FloatType wght)
+    {
+      typedef std::pair<size_t, FloatType> se_t;
+      std::vector<std::vector<se_t> > beams(RMfs.size());
+      for (size_t mi = 0; mi < RMfs.size(); mi++) {
+        beams[mi].reserve(index_selection.size());
+      }
+      for (size_t i = 0; i < index_selection.size(); i++) {
+        miller::index<> h_ = index_selection[i];
+        if (h_ == h) {
+          continue;
+        }
+        long idx = mi_lookup.find_hkl(h_);
+        cart_t h1(h_[0], h_[1], h_[2]);
+        for (size_t mi = 0; mi < RMfs.size(); mi++) {
+          cart_t g = RMfs[mi] * h1;
+          FloatType Sg = std::abs(calc_Sg(g, K));
+          FloatType w = std::abs(Fcs_k[idx]) / (Sg + wght);
+          beams[mi].push_back(std::make_pair(i, w));
+        }
+      }
+      typedef std::set<miller::index<>, miller::fast_less_than<> > uniq_h_t;
+      std::pair<typename uniq_h_t::iterator, bool> ires;
+      uniq_h_t uniq_h;
+
+      af::shared<miller::index<> > indices;
+      indices.push_back(h);
+      for (size_t i = 0; i < beams.size(); i++) {
+        std::sort(beams[i].begin(), beams[i].end(), sort_beams);
+        size_t sz = beams[i].size();
+        for (size_t j = 0; j < std::min(num, sz) - 1; j++) {
+          const miller::index<>& h1 = index_selection[beams[i][sz - j - 1].first];
+          ires = uniq_h.insert(h1);
+          if (ires.second) {
+            indices.push_back(h1);
+          }
+        }
+      }
+      build_Ug_matrix(A, Fcs_k, mi_lookup, indices);
+      return indices;
+    }
+
     static void build_D_matrices(
       const lookup_t& mi_lookup,
       const af::shared<miller::index<> >& indices,
@@ -498,6 +590,43 @@ namespace smtbx { namespace ED
         }
       }
       std::sort(all.begin(), all.end(), &ExcitedBeam::compare);
+      return all;
+    }
+
+    static af::shared<af::shared<ExcitedBeam> > generate_index_set_N(
+      // matrices to orthogonalise and rotate into the beams' basis
+      af::shared<mat3_t> const& RMfs,
+      cart_t const& K,
+      FloatType min_d,
+      FloatType MaxSg,
+      uctbx::unit_cell const& unit_cell)
+    {
+      using namespace cctbx::miller;
+
+      index_generator h_generator(unit_cell, sgtbx::space_group_type("P1"),
+        true,
+        min_d, false);
+
+      miller::index<> h;
+      af::shared<af::shared<ExcitedBeam> > all(RMfs.size());
+
+      const FloatType Kl = K.length(),
+        Kl_sq = Kl * Kl;
+      while (!(h = h_generator.next()).is_zero()) {
+        for (size_t mi = 0; mi < RMfs.size(); mi++) {
+          cart_t g = RMfs[mi] * cart_t(h[0], h[1], h[2]);
+          FloatType Kg_sq = (K + g).length_sq();
+          FloatType s = Kl_sq - Kg_sq;
+          FloatType Sg = std::abs(s / (2 * Kl));
+          if (MaxSg > 0 && Sg > MaxSg) {
+            continue;
+          }
+          all[mi].push_back(ExcitedBeam(h, g, Sg, Sg));
+        }
+      }
+      for (size_t i = 0; i < all.size(); i++) {
+        std::sort(all[i].begin(), all[i].end(), &ExcitedBeam::compare);
+      }
       return all;
     }
   }; //struct smtbx::ED::utils
