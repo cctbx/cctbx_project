@@ -1874,7 +1874,7 @@ def assess_cryoem_errors(
           voxels_in_masked_model, working_map_size, fraction_masked, file=log)
     masked_model_contributes = True
     mm_masked_model = working_mmm.get_map_manager_by_id(map_id='fixed_atom_map')
-    mm_masked_model.write_map('masked_model.map')
+    # mm_masked_model.write_map('masked_model.map')
     masked_model_E = mm_masked_model.map_as_fourier_coefficients(d_min=d_min,d_max=d_max)
 
   shift_cart = working_mmm.shift_cart()
