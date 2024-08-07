@@ -1872,8 +1872,9 @@ def assess_cryoem_errors(
   masked_model_sigmaA = None
   fraction_masked = voxels_in_masked_model/working_map_size
   if fraction_masked > 0.01:
-    print("Masked voxels from fixed model, total in box, fraction: ",
-          voxels_in_masked_model, working_map_size, fraction_masked, file=log)
+    if verbosity > 1:
+      print("Masked voxels from fixed model, total in box, fraction: ",
+            voxels_in_masked_model, working_map_size, fraction_masked, file=log)
     masked_model_contributes = True
     mm_masked_model = working_mmm.get_map_manager_by_id(map_id='fixed_atom_map')
     # mm_masked_model.write_map('masked_model.map')
@@ -1900,6 +1901,9 @@ def assess_cryoem_errors(
     ydat = []
     wdat = []
     expectE.use_binner_of(mc1)
+    if verbosity > 1:
+      print("SigmaA curve for fixed model contribution",file=log)
+      print(" # of terms   mean(ssqr)  sigmaA   sigma(sigmaA)")
     for i_bin in mc1.binner().range_used():
       sel = expectE.binner().selection(i_bin)
       eEsel = expectE.select(sel)
@@ -1943,7 +1947,8 @@ def assess_cryoem_errors(
       sigma_sigmaA = 1./math.sqrt(abs(d2LLGbydsigmaA))
       ssqr = flex.mean_default(eEsel.d_star_sq().data(),0)
       ndat = dobssel.size()
-      print(ndat,ssqr,sigmaA,sigma_sigmaA)
+      if verbosity > 1:
+        print(ndat,ssqr,sigmaA,sigma_sigmaA,file=log)
       xdat.append(ssqr)
       ydat.append(math.log(sigmaA))
       wdat.append(abs(d2LLGbydsigmaA)) # Inverse variance estimate
@@ -1959,8 +1964,9 @@ def assess_cryoem_errors(
     slope = (W * Wxy - Wx * Wy) / (W * Wxx - Wx * Wx)
     intercept = (Wy * Wxx - Wx * Wxy) / (W * Wxx - Wx * Wx)
     frac_complete = math.exp(2.*intercept)
-    print("Slope and intercept of sigmaA plot: ",slope,intercept,file=log)
-    print("Approximate fraction of scattering: ",frac_complete,file=log)
+    if verbosity > 0:
+      print("Slope and intercept of sigmaA plot for fixed model contribution: ",slope,intercept,file=log)
+      print("Approximate fraction of scattering: ",frac_complete,file=log)
     linlogsiga = flex.double()
     logsiga_combined = flex.double()
     sigma_linlog = math.log(1.5) # Allow 50% error in linear fit
