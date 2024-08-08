@@ -326,8 +326,8 @@ Output:
     strands = [r for r in ribbonElements if r.type == 'SHEET']
 
     for ribElement in ribbonElements:
-      stGuide = ribElement.start / self.nIntervals + 2
-      endGuide = ribElement.end / self.nIntervals - 1
+      stGuide = (ribElement.start // self.nIntervals) + 2
+      endGuide = (ribElement.end // self.nIntervals) - 1
 
       if ribElement.type == 'HELIX':
         k = (ribElement.start + ribElement.end) // 2
