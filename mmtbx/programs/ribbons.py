@@ -112,30 +112,6 @@ Output:
 
 # ------------------------------------------------------------------------------
 
-  # Commented out the fields and did not include methods that we don't need for our implementation
-  # Switched getType() to making type public.
-  # Its fields should be based on the PDB secondary structure records.
-  class Range:
-    def __init__(self, pType = 'COIL', pInit = 0, pEnd = 0, pSense = 0, pStrand = 1, pSheet = ' ', pFlipped = False):
-      # self._rangeIndex = 0
-      self.type = pType
-      #self._chainId = ''
-      self.initSeqNum = pInit
-      self.endSeqNum = pEnd
-      #self._initICode = ' '
-      #self._endICode = ' '
-      self.sense = pSense    # 0 if first strand, 1 if parallel, -1 if anti-parallel
-      self.strand = pStrand   # Starts at 1 for each strand within a sheet and increases by 1
-      self.sheetID = pSheet
-      self.flipped = pFlipped  # Used by printing code to make the tops within a set of ribbons all point the same way
-      #self.previous = None
-      #self.next = None
-      #self.duplicateOf = None
-
-    def __str__(self):
-      return 'Range: type={}, init={}, end={}, sense={}, strand={}, sheet={}, flipped={}'.format(
-        self.type, self.initSeqNum, self.endSeqNum, self.sense, self.strand, self.sheetID, self.flipped)
-
   # The original code constructed a NONE crayon for the fancy print, which did not add color to
   # the output, re-using the colors specified by model or chain.  It sometimes also specified
   # the RAINBOW crayon, which overwrites the colors with a rainbow color scheme across each chain.
@@ -173,6 +149,30 @@ Output:
     def shouldPrint(self):
       return True
 
+  # Commented out the fields and did not include methods that we don't need for our implementation
+  # Switched getType() to making type public.
+  # Its fields should be based on the PDB secondary structure records.
+  class Range:
+    def __init__(self, pType = 'COIL', pInit = 0, pEnd = 0, pSense = 0, pStrand = 1, pSheet = ' ', pFlipped = False):
+      # self._rangeIndex = 0
+      self.type = pType
+      #self._chainId = ''
+      self.initSeqNum = pInit
+      self.endSeqNum = pEnd
+      #self._initICode = ' '
+      #self._endICode = ' '
+      self.sense = pSense    # 0 if first strand, 1 if parallel, -1 if anti-parallel
+      self.strand = pStrand   # Starts at 1 for each strand within a sheet and increases by 1
+      self.sheetID = pSheet
+      self.flipped = pFlipped  # Used by printing code to make the tops within a set of ribbons all point the same way
+      #self.previous = None
+      #self.next = None
+      #self.duplicateOf = None
+
+    def __str__(self):
+      return 'Range: type={}, init={}, end={}, sense={}, strand={}, sheet={}, flipped={}'.format(
+        self.type, self.initSeqNum, self.endSeqNum, self.sense, self.strand, self.sheetID, self.flipped)
+
   class RibbonElement:
     def __init__(self, other=None, setRange=None):
       self.start = 0
@@ -191,10 +191,10 @@ Output:
       return self.type == that.type and self.range == that.range
 
     def like(self, that):
-      self.start = copy(that.start)
-      self.end = copy(that.end)
-      self.type = copy(that.type)
-      self.range = copy(that.range)
+      self.start = that.start
+      self.end = that.end
+      self.type = that.type
+      self.range = that.range
 
     def __lt__(self, that):
       a = 0
@@ -298,12 +298,8 @@ Output:
       if not ribElement.sameSSE(currSS): # Helix / sheet starting
         if currSS.type == 'HELIX' or currSS.type == 'SHEET':
           ribElement.end = self.nIntervals*i + 1
-          # @todo Why do we need to set these start and end values here but the Java code does not?
-          currSS.start = ribElement.start
-          currSS.end = ribElement.end
-          ribbonElements.append(self.RibbonElement(currSS))
-          #print('XXX starting', ribElement.start, ribElement.end, currSS.range)
-          #print('  XXX', ribbonElements[-1].start, ribbonElements[-1].end, ribbonElements[-1].range)
+          ribElement = self.RibbonElement(currSS)
+          ribbonElements.append(ribElement)
           # Every helix or sheet starts with a coil; see below
           ribElement.start = self.nIntervals*i + 1
       if not ribElement.sameSSE(nextSS): # Helix / sheet ending
@@ -312,8 +308,8 @@ Output:
           if currSS.type == 'SHEET':
             end += self.nIntervals - 1
           ribElement.end = end
-          ribbonElements.append(self.RibbonElement())
-          #print('XXX ending', ribElement.start, ribElement.end)
+          ribElement = self.RibbonElement()
+          ribbonElements.append(ribElement)
           # Every helix or sheet flows into coil
           ribElement.type = 'COIL'
           ribElement.start = end
@@ -334,7 +330,6 @@ Output:
       endGuide = ribElement.end / self.nIntervals - 1
 
       if ribElement.type == 'HELIX':
-        #print("XXX start end =", ribElement.start, ribElement.end)
         k = (ribElement.start + ribElement.end) // 2
         pt = splinepts[2][k]
         v1 = splinepts[1][k] - pt
@@ -358,12 +353,9 @@ Output:
         ret += "@vectorlist {fancy helix edges} width=1 " + listAlpha + " color= deadblack\n"
         # Black edge, left side
         ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
-        #print('XXX', self.printFancy(guides, splinepts[0], ribElement.start))
-        #print('XXX', ribElement.start, ribElement.end, splinepts[ribElement.start:ribElement.end])
         for i in range(ribElement.start, ribElement.end):
           ret += self.printFancy(guides, splinepts[1], i)
         ret += self.printFancy(guides, splinepts[0], ribElement.end)
-        #print(' XXX', self.printFancy(guides, splinepts[0], ribElement.end))
         # Black edge, right side
         ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
         for i in range(ribElement.start, ribElement.end):
