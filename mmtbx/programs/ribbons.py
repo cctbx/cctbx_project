@@ -223,13 +223,13 @@ Output:
     # Not self.nIntervals, we want a local variable here
     nIntervals = (len(splines) - 1) // (len(guides) - 3)
     interval = i % nIntervals
-    startGuide = i // nIntervals + 1
+    startGuide = (i // nIntervals) + 1
     ret += "{"
     ret += self.getPointID(splines[i], guides[startGuide], guides[startGuide + 1], interval, nIntervals)
     ret += "}"
-    self.crayon.forRibbon(guides[startGuide])
     if lineBreak:
       ret += "P "
+    self.crayon.forRibbon(guides[startGuide])
     ret += self.crayon.getKinString()
     ret += " "
     ret += str(splines[i][0]) + " " + str(splines[i][1]) + " " + str(splines[i][2]) + "\n"
@@ -340,6 +340,7 @@ Output:
         self.crayon = normalCrayon
         ret += "@ribbonlist {fancy helix} " + listAlpha + "\n"
 
+        # @todo The Java code has a "P X " at the start of the first line in the ribbon
         for i in range(ribElement.start, ribElement.end):
           if dot > 0:
             # Flip the normals (for sidedness) by switching the order of these two lines.
@@ -348,7 +349,7 @@ Output:
           else:
             ret += self.printFancy(guides, splinepts[1], i)
             ret += self.printFancy(guides, splinepts[2], i)
-        self.printFancy(guides, splinepts[0], ribElement.end)  # Angled tip at end of helix
+        ret += self.printFancy(guides, splinepts[0], ribElement.end)  # Angled tip at end of helix
         self.crayon = edgeCrayon
         ret += "@vectorlist {fancy helix edges} width=1 " + listAlpha + " color= deadblack\n"
         # Black edge, left side

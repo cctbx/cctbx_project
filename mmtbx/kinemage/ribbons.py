@@ -64,8 +64,8 @@ def _FindContiguousResiduesByAtomDistances(chain, type_function, desired_atoms, 
         # If the distance is within the threshold, add to the current list
         current_contig_residues.append(residue_group)
       else:
-        # If not, start a new list for the current residue if we have at least two residues
-        if len(current_contig_residues) > 1:
+        # If not, start a new list for the current residue if we have at least one residue
+        if len(current_contig_residues) > 0:
           contiguous_residues.append(current_contig_residues)
         current_contig_residues = [residue_group]
 
