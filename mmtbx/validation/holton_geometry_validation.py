@@ -991,6 +991,7 @@ def get_model(info):
   # Allow polymer to cross special positions if necessary
   p = info.model.get_current_pdb_interpretation_params()
   p.pdb_interpretation.allow_polymer_cross_special_position=True
+  p.pdb_interpretation.const_shrink_donor_acceptor=0.6 # REINSTATES ORIGINAL
   info.model.process(make_restraints=True,
      pdb_interpretation_params = p)
   info.model.setup_riding_h_manager(idealize=True)
