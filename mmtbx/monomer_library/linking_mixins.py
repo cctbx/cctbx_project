@@ -254,9 +254,9 @@ def possible_cyclic_peptide(atom1,
 
 def check_for_peptide_links(atom1,
                             atom2,
+                            classes1,
+                            classes2,
                             ):
-  classes1 = linking_utils.get_classes(atom1)
-  classes2 = linking_utils.get_classes(atom2)
   atom_group1 = atom1.parent()
   atom_group2 = atom2.parent()
   if classes1.common_amino_acid or classes2.common_amino_acid:
@@ -432,6 +432,7 @@ class linking_mixins(object):
     exclude_out_lines = {}
 
     # main loop
+    atom_classes = [linking_utils.get_classes(a) for a in atoms]
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
@@ -532,8 +533,8 @@ class linking_mixins(object):
       elif atom_group2.altloc.strip()=="": pass
       else: continue
       # don't link some classes
-      classes1 = linking_utils.get_classes(atom1)
-      classes2 = linking_utils.get_classes(atom2)
+      classes1 = atom_classes[i_seq]
+      classes2 = atom_classes[j_seq]
       use_only_bond_cutoff = False
       if verbose:
         print("""
@@ -588,6 +589,8 @@ Residue classes
       aa_rc = linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
+          classes1.important_only,
+          classes2.important_only,
           distance=distance,
           max_bonded_cutoff=max_bonded_cutoff,
           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
@@ -602,6 +605,8 @@ Residue classes
       if not linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
+          classes1.important_only,
+          classes2.important_only,
           distance=distance,
           max_bonded_cutoff=max_bonded_cutoff,
           amino_acid_bond_cutoff=amino_acid_bond_cutoff,
@@ -634,12 +639,8 @@ Residue classes
           continue
       # got a link....
 
-      class1 = linking_utils.get_classes(atom1, #_group1.resname,
-                                         important_only=True,
-        )
-      class2 = linking_utils.get_classes(atom2, #_group2.resname,
-                                         important_only=True,
-        )
+      class1 = classes1.important_only
+      class2 = classes2.important_only
       class_key = [class1, class2]
       class_key.sort()
       class_key = tuple(class_key)
@@ -747,6 +748,8 @@ Residue classes
       if link is None:
         link, swap, key = linking_utils.is_atom_pair_linked_tuple(atom1,
                                                                   atom2,
+                                                                  classes1.important_only,
+                                                                  classes2.important_only,
                                                                   )
         if link=='TRANS':
           key=link
@@ -870,7 +873,7 @@ Residue classes
         continue
       else:
         # possible peptide or rna/dna link
-        rc = check_for_peptide_links(atom1, atom2)
+        rc = check_for_peptide_links(atom1, atom2, classes1, classes2)
         # no peptide links across symmetry
         if len(done_key)==3:
           rc = None
@@ -933,8 +936,8 @@ Residue classes
        (classes2.common_rna_dna or classes2.ccp4_mon_lib_rna_dna)):
         bond_name = "h-dna"
         assert 0
-      elif (linking_utils.get_classes(atom1, important_only=True)=="metal" or
-            linking_utils.get_classes(atom2, important_only=True)=="metal"):
+      elif (class1=="metal" or
+            class2=="metal"):
         origin_id = origin_ids['metal coordination']
       if sym_op:
         sym_bonds += 1
@@ -987,8 +990,8 @@ Residue classes
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
       # check for NA linkage
-      classes1 = linking_utils.get_classes(atom1)
-      classes2 = linking_utils.get_classes(atom2)
+      classes1 = atom_classes[i_seq]
+      classes2 = atom_classes[j_seq]
       ans = bondlength_defaults.run(atom1, atom2)
       equil = 2.3
       weight = 0.02

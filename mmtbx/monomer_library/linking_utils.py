@@ -217,7 +217,7 @@ def get_hand(c_atom, o_atom, angles, verbose=False):
   else:
     return "ALPHA"
 
-def get_classes(atom, important_only=False, verbose=False):
+def get_classes(atom, verbose=False):
   def _num_atoms_residue(atom):
     return len(atom.parent().parent().atoms())
   def _filter_for_metal(atom, class_name):
@@ -230,6 +230,7 @@ def get_classes(atom, important_only=False, verbose=False):
           return "metal"
     return class_name
   #
+  important_only_value = None
   attrs = [
     "common_saccharide",
     "common_water",
@@ -291,7 +292,9 @@ def get_classes(atom, important_only=False, verbose=False):
           rc = attr
       #
     if rc==attr:
-      if important_only: return _filter_for_metal(atom, rc)
+      if not important_only_value:
+        important_only_value = _filter_for_metal(atom, rc)
+        setattr(classes, "important_only", important_only_value)
       setattr(classes, attr, True)
   return classes
 
@@ -335,10 +338,10 @@ def _get_cis_trans():
   return 'TRANS'
 
 def is_atom_pair_linked_tuple(atom1,
-                              atom2):
-  class1 = get_classes(atom1, important_only=True)
-  class2 = get_classes(atom2, important_only=True)
-  if class1=='common_amino_acid' and class2==class1:
+                              atom2,
+                              class_important_1,
+                              class_important_2):
+  if class_important_1=='common_amino_acid' and class_important_2==class_important_1:
     if atom1.name==' N  ' and atom2.name==' C  ':
       return _get_cis_trans(), False, '?'
     elif atom1.name==' C  ' and atom2.name==' N  ':
@@ -349,6 +352,8 @@ def is_atom_pair_linked_tuple(atom1,
 
 def is_atom_pair_linked(atom1,
                         atom2,
+                        class_important_1,
+                        class_important_2,
                         distance=None,
                         max_bonded_cutoff=3.,
                         amino_acid_bond_cutoff=1.9,
@@ -381,10 +386,8 @@ def is_atom_pair_linked(atom1,
                                                        sulfur_bond_cutoff,
                                                        other_bond_cutoff,
                                                        )
-  class1 = get_classes(atom1, important_only=True)
-  class2 = get_classes(atom2, important_only=True)
-  class1 = linking_setup.adjust_class(atom1, class1)
-  class2 = linking_setup.adjust_class(atom2, class2)
+  class1 = linking_setup.adjust_class(atom1, class_important_1)
+  class2 = linking_setup.adjust_class(atom2, class_important_2)
   # python3
   # assert type(class1)==type(''), 'class1 of %s not singular : %s' % (atom1.quote(), class1)
   # assert type(class2)==type(''), 'class2 of %s not singular : %s' % (atom2.quote(), class2)
