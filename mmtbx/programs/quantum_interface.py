@@ -1168,9 +1168,10 @@ Usage examples:
     if len(rc.final_pdbs)>1:
       cannot_run_final_energies=True
     checks = 'final_strain final_energy final_bound'
-    fn = os.path.join('qm_work_dir', rc.final_pdbs[0][0])
-    self.data_manager.process_model_file(fn)
-    model = self.data_manager.get_model(fn)
+    if rc.final_pdbs[0]:
+      fn = os.path.join('qm_work_dir', rc.final_pdbs[0][0])
+      self.data_manager.process_model_file(fn)
+      model = self.data_manager.get_model(fn)
     if any(item in checks for item in qmr.calculate):
       if cannot_run_final_energies:
         print('Cannot run final energies. Restart with only one ligand selection.',
