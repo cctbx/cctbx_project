@@ -328,7 +328,7 @@ class geometry(object):
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
     az, bz = res.angle_z, res.bond_z
-    result = """
+    result = """%s
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
 %s  Bond      : %s
@@ -338,6 +338,7 @@ class geometry(object):
 %s  Dihedral  : %s
 %s  Min Nonbonded Distance : %s
 %s"""%(#prefix.strip(),
+       prefix,
        prefix,
        self.restraints_source,
        prefix,
@@ -349,7 +350,7 @@ class geometry(object):
        prefix, fmt2(n.min).strip(),
        prefix)
     if not exclude_protein_only_stats:
-      result += """
+      result += """%s
 %sMolprobity Statistics.
 %s  All-atom Clashscore : %s
 %s  Ramachandran Plot:
@@ -366,6 +367,7 @@ class geometry(object):
 %s    Cis-general     : %s %%
 %s    Twisted Proline : %s %%
 %s    Twisted General : %s %%"""%(
+        prefix,
         prefix,
         prefix, format_value("%5.2f", res.clash.score).strip(),
         prefix,

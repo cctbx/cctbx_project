@@ -577,7 +577,7 @@ Residue classes
         ]
       key.sort()
       if sym_op:
-        key.append(str(rt_mx_ji))
+        key.append(str(sym_op))
       key = tuple(key)
       # hydrogens
       if not exclude_hydrogens_from_bonding_decisions:
