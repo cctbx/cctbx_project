@@ -283,6 +283,10 @@ def check_for_peptide_links(atom1,
   return False
 
 def check_all_classes(pdb_hierarchy, class_type):
+  """ This one is not used anywhere.
+  If start using it, beware of getting classes for all atoms
+  """
+  assert 0
   found = False
   for residue_group in pdb_hierarchy.residue_groups():
     for atom in residue_group.atoms():
@@ -513,9 +517,11 @@ class linking_mixins(object):
         print("Distance: %0.2f" % distance, rt_mx_ji, sym_op)
 
       # don't link atoms not in the same conformer (works for models also)...
-      if not atom1.is_in_same_conformer_as(atom2):
-        assert 0
-        continue
+      # They will never be in different conformers, we are looping over
+      # nonbonded interactions here! This check takes 14% of this whole function.
+      # if not atom1.is_in_same_conformer_as(atom2):
+      #   assert 0
+      #   continue
       # don't link atoms in same residue group
       if atom1.parent().parent()==atom2.parent().parent(): continue
       atom_group1 = atom1.parent()
