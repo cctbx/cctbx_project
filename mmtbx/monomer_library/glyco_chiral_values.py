@@ -313,6 +313,8 @@ volumes = {
   'Z6J' :   2.5,
   'Z9M' :   2.4,
   'Z9N' :   2.7,
+  # edited
+  'SIA' :   2.5,
 }
 alpha_beta = {
   '0AT' : 'alpha',
@@ -627,6 +629,8 @@ alpha_beta = {
   'Z6J' : 'alpha',
   'Z9M' : 'beta',
   'Z9N' : 'alpha',
+  # edited
+  'SIA' : 'alpha',
 }
 
 if __name__=="__main__":
@@ -635,5 +639,6 @@ if __name__=="__main__":
                "NAG",
                "FUL",
                "FUC",
+               'SIA',
               ]:
     print(code, alpha_beta.get(code, None),volumes.get(code, None))
