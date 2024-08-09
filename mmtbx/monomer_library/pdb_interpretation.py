@@ -1868,6 +1868,7 @@ def get_lib_link(mon_lib_srv,
   group_1 = comp_1.chem_comp.group
   group_2 = comp_2.chem_comp.group
   matches = []
+  # this list seems to be only from GeoStd - NWM
   for link_link_id in mon_lib_srv.link_link_id_list:
     chem_link = link_link_id.chem_link
     if (chem_link.name in cif_types.non_chain_links): continue
