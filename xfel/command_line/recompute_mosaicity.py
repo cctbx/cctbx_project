@@ -64,11 +64,14 @@ class Script(object):
       check_format=False,
       epilog=help_message)
 
-  def run(self):
-    ''' Parse the options. '''
+  def run(self, args=None):
+    """Execute the script."""
+    params, options = self.parser.parse_args(args, show_diff_phil=True)
+    self.run_with_preparsed(params, options)
+
+  def run_with_preparsed(self, params, options):
+    """Run recompute_mosaicity, but allow passing in of parameters"""
     from dials.util.options import flatten_experiments, flatten_reflections
-    # Parse the command line arguments
-    params, options = self.parser.parse_args(show_diff_phil=True)
     experiments = flatten_experiments(params.input.experiments)
     reflections = flatten_reflections(params.input.reflections)
     assert len(reflections) == 1
