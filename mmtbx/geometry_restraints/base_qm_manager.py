@@ -426,7 +426,23 @@ class base_qm_manager(base_manager):
     assert 0
 
   def get_timings(self, energy=None):
-    if not self.times: return '-'
+    if not self.times:
+      filename = self.get_log_filename()
+      if os.path.exists(filename):
+        f=open(filename, 'r')
+        lines=f.read()
+        del f
+        for line in lines.splitlines():
+          #TOTAL JOB TIME:          1622.77 SECONDS
+          if line.find('TOTAL JOB TIME:')>-1:
+            print(line)
+            # print(energy)
+            # if energy is None:
+            #   rc=self.read_energy()
+            #   print(rc)
+            return '  Timings : %0.2fs' % float(line.split()[3])
+      # assert 0
+      return '-'
     f='  Timings : %0.2fs (%ss)' % (
       self.times[-1],
       self.times.format_mean(format='%.2f'))
