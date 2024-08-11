@@ -227,6 +227,10 @@ class fmodel_mixins(object):
     dpg = None
     if(model.crystal_symmetry() is not None):
       dpg = model.crystal_symmetry().space_group().build_derived_point_group()
+    # if both low_resolution and high_resolution are set, check that low_resolution > high_resolution
+    if parameters.low_resolution is not None and parameters.high_resolution is not None \
+      and parameters.low_resolution < parameters.high_resolution:
+        raise Sorry('The low_resolution parameter is less than the high_resolution parameter. Please swap those values.')
     data = extract_xtal_data.run(
       keep_going                        = not tmp_p.r_free_flags.required,
       extract_r_free_flags              = not tmp_p.r_free_flags.ignore_r_free_flags,
