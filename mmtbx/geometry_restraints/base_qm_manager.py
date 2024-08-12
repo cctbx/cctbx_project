@@ -426,6 +426,7 @@ class base_qm_manager(base_manager):
     assert 0
 
   def get_timings(self, energy=None):
+    return '-'
     if not self.times:
       filename = self.get_log_filename()
       if os.path.exists(filename):
