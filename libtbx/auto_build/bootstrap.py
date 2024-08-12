@@ -483,7 +483,19 @@ class Toolbox(object):
     destpath, destdir = os.path.split(destination)
 
     # default to using ssh for private phenix repositories
-    if module in ['phenix', 'solve_resolve', 'phenix_pathwalker', 'labelit']:
+    if module in ['elbow',
+                  'ksdssp',
+                  'labelit',
+                  'muscle',
+                  'opt_resources',
+                  'phenix',
+                  'phenix_pathwalker',
+                  'Plex',
+                  'PyQuante',
+                  'pulchra',
+                  'reel',
+                  'solve_resolve',
+                  ]:
       use_ssh = True
 
     if os.path.exists(destination):
@@ -827,7 +839,7 @@ class gui_resources_module(SourceModule):
 
 class opt_resources_module(SourceModule):
   module = 'opt_resources'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/opt_resources/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/opt_resources.git']
 
 class eigen_module(SourceModule):
   module = 'eigen'
@@ -871,11 +883,11 @@ class phenix_colabs(SourceModule):
 
 class plex_module(SourceModule):
   module = 'Plex'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/Plex/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/Plex.git']
 
 class pyquante_module(SourceModule):
   module = 'PyQuante'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/PyQuante/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/PyQuante.git']
 
 class chem_data_module(SourceModule):
   module = 'chem_data'
@@ -883,15 +895,15 @@ class chem_data_module(SourceModule):
 
 class elbow_module(SourceModule):
   module = 'elbow'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/elbow/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/elbow.git']
 
 class ksdssp_module(SourceModule):
   module = 'ksdssp'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/ksdssp/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/ksdssp.git']
 
 class pulchra_module(SourceModule):
   module = 'pulchra'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/pulchra/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/pulchra.git']
 
 class solve_resolve_module(SourceModule):
   module = 'solve_resolve'
@@ -899,11 +911,11 @@ class solve_resolve_module(SourceModule):
 
 class reel_module(SourceModule):
   module = 'reel'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/reel/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/reel.git']
 
 class muscle_module(SourceModule):
   module = 'muscle'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/muscle/trunk']
+  authenticated = ['git', 'git@github.com:phenix-project/muscle.git']
 
 class cxi_xdr_xes_module(SourceModule):
   module = 'cxi_xdr_xes'
@@ -911,7 +923,7 @@ class cxi_xdr_xes_module(SourceModule):
 
 class buildbot_module(SourceModule):
   module = 'buildbot'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/buildbot/trunk']
+  authenticated = ['git', 'git@github.com:cci-lbl/buildbot.git']
 
 class phenix_pathwalker_module(SourceModule):
   module = 'phenix_pathwalker'
@@ -994,8 +1006,9 @@ class msgpack_module(SourceModule):
 
 class xfel_regression_module(SourceModule):
   module = 'xfel_regression'
-  authenticated = ['svn',
-                   'svn+ssh://%(cciuser)s@boa.lbl.gov/xfel_regression/trunk']
+  authenticated = ['git',
+                   'git@gitlab.com:cctbx/xfel_regression.git',
+                   'https://gitlab.com/cctbx/xfel_regression.git']
 
 class xia2_module(SourceModule):
   module = 'xia2'
