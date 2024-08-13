@@ -293,21 +293,22 @@ class ThreeProteinResiduesWithCDL(ThreeProteinResidues):
       else:
         assert 0, 'names %s not found' % names
     # adjust X-N-H angles to obtain planar
-    nh_atoms = {}
-    error_atoms = []
-    for atom in self[0].atoms():
-      error_atoms.append('%s\n' %atom.quote())
-      if atom.name.strip() in ['C']:
-        nh_atoms[atom.name.strip()] = atom
-    for atom in self[1].atoms():
-      error_atoms.append('%s\n' %atom.quote())
-      if atom.name.strip() in ['N', 'H', 'CA']:
-        nh_atoms[atom.name.strip()] = atom
-    if len(nh_atoms)==4:
+    nh_atoms = 0
+    if self[0].find_atom_by(name=" C  "):
+      nh_atoms += 1
+    for name in [" N  ", " CA ", ' H  ']:
+      if self[1].find_atom_by(name=name):
+        nh_atoms += 1
+    if nh_atoms == 4:
       CNCA = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "CA_i"]))
       CNH = _get_angle_proxy(_get_i_seqs(["C_minus_1", "N_i", "H_i"]))
       CANH = _get_angle_proxy(_get_i_seqs(["CA_i", "N_i", "H_i"]))
       if not (CNH and CANH):
+        error_atoms = []
+        for atom in self[0].atoms():
+          error_atoms.append('%s\n' %atom.quote())
+        for atom in self[1].atoms():
+          error_atoms.append('%s\n' %atom.quote())
         raise Sorry('''
   Certain angles in the protein chain (C-N-H or CA-N-H) have not been found
   in the restraints by the Conformational Dependent Library. This usually
