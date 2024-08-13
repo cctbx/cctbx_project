@@ -637,6 +637,7 @@ class EnsembleRefinementJob(Job):
     mp.wall_time={}
     mp.use_mpi=False
     mp.mpi_command={}
+    {}
     mp.shifter.submit_command={}
     mp.shifter.shifter_image={}
     mp.shifter.sbatch_script_template={}
@@ -659,13 +660,14 @@ class EnsembleRefinementJob(Job):
     reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
-               1,#self.app.params.mp.nproc,
+               self.app.params.mp.nnodes_tder or self.app.params.mp.nnodes,
                self.app.params.mp.nproc_per_node,
                self.app.params.mp.method,
                '\n'.join(['mp.env_script={}'.format(p) for p in self.app.params.mp.env_script if p]),
                '\n'.join(['mp.phenix_script={}'.format(p) for p in self.app.params.mp.phenix_script if p]),
                self.app.params.mp.wall_time,
                self.app.params.mp.mpi_command,
+               "\n".join(["mp.extra_options={}".format(opt) for opt in self.app.params.mp.extra_options]),
                self.app.params.mp.shifter.submit_command,
                self.app.params.mp.shifter.shifter_image,
                self.app.params.mp.shifter.sbatch_script_template,
@@ -683,8 +685,8 @@ class EnsembleRefinementJob(Job):
                target_phil_path,
                path,
                self.rungroup.untrusted_pixel_mask_path,
-               ).split()
-    arguments.extend(["mp.extra_options={}".format(opt) for opt in self.app.params.mp.extra_options])
+               ).split('\n')
+    arguments = [arg.strip() for arg in arguments]
 
     try:
       commands = Script(arguments).run()
