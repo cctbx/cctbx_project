@@ -9,6 +9,7 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                                selection=None,
                                sigma=2.5):
   origin_ids = cctbx.geometry_restraints.linking_class.linking_class()
+  c_beta_origin_id = origin_ids.get_origin_id('C-beta')
   if (selection is not None):
     if (isinstance(selection, flex.bool)):
       actual_bselection = selection
@@ -66,7 +67,7 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 i_seqs=i_seqs,
                 angle_ideal=dihedralNCAB,
                 weight=1/sigma**2,
-                origin_id=origin_ids.get_origin_id('C-beta'))
+                origin_id=c_beta_origin_id)
               c_beta_dihedral_proxies.append(dp_add)
               #CNAB
               i_seqs = [C_atom.i_seq,N_atom.i_seq,CA_atom.i_seq,CB_atom.i_seq]
@@ -74,7 +75,7 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 i_seqs=i_seqs,
                 angle_ideal=dihedralCNAB,
                 weight=1/sigma**2,
-                origin_id=origin_ids.get_origin_id('C-beta'))
+                origin_id=c_beta_origin_id)
               c_beta_dihedral_proxies.append(dp_add)
   return c_beta_dihedral_proxies, c_beta_residues_skipped # BAD
 
