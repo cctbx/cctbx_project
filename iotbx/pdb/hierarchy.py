@@ -2307,6 +2307,7 @@ class _():
     sites_cart = self.atoms().extract_xyz()
     t0=time.time()
     info = ""
+    flips=0
     for rg in self.residue_groups():
       flip_it=False
       for ag in rg.atom_groups():
@@ -2338,11 +2339,6 @@ class _():
             if abs(delta)>2.:
               flip_it=True
         if flip_it:
-          info += '    Residue "%s %s %s":' % (
-            rg.parent().id,
-            ag.resname,
-            rg.resseq,
-          )
           flips_stored = []
           atoms = ag.atoms()
           for pair in flip_data["pairs"]:
@@ -2351,7 +2347,11 @@ class _():
             if atom1 is None and atom2 is None: continue
             if len(list(filter(None, [atom1, atom2]))) == 1:
               flips_stored=[]
-              info += ' not complete - not flipped'
+              info += '    Residue "%s %s %s": not complete - not flipped' % (
+                rg.parent().id,
+                ag.resname,
+                rg.resseq,
+              )
               break
             flips_stored.append([atom1,atom2])
           for atom1, atom2 in flips_stored:
@@ -2359,11 +2359,9 @@ class _():
               tmp = getattr(atom1, attr)
               setattr(atom1, attr, getattr(atom2, attr))
               setattr(atom2, attr, tmp)
-            info += ' "%s" <-> "%s"' % (atom1.name.strip(),
-                                        atom2.name.strip())
-          info += '\n'
-    if not info: info = '    None\n'
-    info += '  Time to flip residues: %0.2fs\n' % (time.time()-t0)
+          flips+=1
+    if flips or info:
+      info += '  Time to flip %d residue(s): %0.2fs\n' % (flips, time.time()-t0)
     return info
 
   def distance_based_simple_two_way_bond_sets(self,

@@ -3427,8 +3427,7 @@ class build_all_chain_proxies(linking_mixins):
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
-        print("\n  Symmetric amino acids flipped", file=log)
-        print(info, file=log)
+        print("\n  Symmetric amino acids flipped. %s\n" % info.strip(), file=log)
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
