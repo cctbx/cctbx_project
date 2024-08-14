@@ -550,11 +550,11 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   Bond restraints: 87""",
   '''\
   Histogram of bond angle deviations from ideal:
-       99.49 -   105.87: 23
-      105.87 -   112.26: 36
-      112.26 -   118.65: 28
-      118.65 -   125.04: 30
-      125.04 -   131.42: 13
+        0.00 -     1.10: 75
+        1.10 -     2.19: 30
+        2.19 -     3.29: 13
+        3.29 -     4.38: 8
+        4.38 -     5.48: 4
   Bond angle restraints: 130''',
   ]
   with open("tst_cctbx_geometry_restraints_2_na.pdb", "w") as f:

@@ -2105,19 +2105,14 @@ def _show_histogram_of_deltas_impl(O,
     if (f is None): f = sys.stdout
     print("%sHistogram of %s deviations from ideal:" % (
       prefix, proxy_label), file=f)
+    selected_proxies = O
     if origin_id is not None:
-      sorted_table, n_not_shown = O.get_sorted(
-                        by_value="delta",
-                        sites_cart=sites_cart,
-                        origin_id=origin_id)
-      hd = [x[2] for x in sorted_table]
-      data = flex.double(hd)
+      selected_proxies = O.proxy_select(origin_id=origin_id)
+    if unit_cell is None:
+      data = flex.abs(selected_proxies.deltas(sites_cart=sites_cart))
     else:
-      if unit_cell is None:
-        data = flex.abs(O.deltas(sites_cart=sites_cart))
-      else:
-        data = flex.abs(
-          O.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
+      data = flex.abs(
+        selected_proxies.deltas(unit_cell=unit_cell, sites_cart=sites_cart))
     histogram = flex.histogram(
       data=data,
       n_slots=n_slots)
