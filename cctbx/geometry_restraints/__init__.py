@@ -923,12 +923,18 @@ class _():
         sites_cart=sites_cart,
         sorted_asu_proxies=self)
     else:
-      sorted_table, n_not_shown = self.get_sorted(
-                        by_value="delta",
-                        sites_cart=sites_cart,
-                        origin_id=origin_id)
-      hd = [x[4] for x in sorted_table]
-      hdata = flex.double(hd)
+      selected_simple = self.simple.proxy_select(origin_id = origin_id)
+      selected_asu = self.asu.proxy_select(origin_id = origin_id)
+      hdata_simple = bond_distances_model(
+        sites_cart=sites_cart,
+        proxies=selected_simple)
+      sap = bond_sorted_asu_proxies(asu_mappings=self.asu_mappings())
+      sap.process(selected_asu)
+      hdata_asu = bond_distances_model(
+        sites_cart=sites_cart,
+        sorted_asu_proxies=sap)
+      hdata_simple.extend(hdata_asu)
+      hdata = hdata_simple
     histogram = flex.histogram(
       data=flex.double(hdata),
       n_slots=n_slots)
