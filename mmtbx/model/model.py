@@ -1954,9 +1954,11 @@ class manager(object):
     #
     if(not self._pdb_interpretation_params.pdb_interpretation.sort_atoms and
        self._pdb_hierarchy is not None):
-      self._xray_structure = None
-      self._pdb_hierarchy = None
-      assert not self._mtrix_expanded
+      if self._model_input is not None:
+        # otherwise it fails here: = processed_pdb_files_srv.process_pdb_files(
+        self._xray_structure = None
+        self._pdb_hierarchy = None
+        assert not self._mtrix_expanded
     #
     if(self._pdb_interpretation_params.pdb_interpretation.sort_atoms and
        self._pdb_hierarchy is not None):
