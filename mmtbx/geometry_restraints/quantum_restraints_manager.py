@@ -334,8 +334,14 @@ def validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=None):
   #
   if not ligand_model.has_hd():
     for atom_group in ligand_model.get_hierarchy().atom_groups():
-      if get_class(atom_group.resname) in [ 'common_small_molecule',
-                                            'common_element',
+      if qmr.ignore_lack_of_h_on_ligand:
+        print('    Selection %s has no H/D but is skipped via PHIL - continue' % (
+              qmr.selection,
+              ),
+              file=log)
+        break
+      elif get_class(atom_group.resname) in [ 'common_small_molecule',
+                                              'common_element',
         ]:
         print('    Selection %s has no H/D but is %s - continue' % (
               qmr.selection,
@@ -357,6 +363,17 @@ def validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=None):
                                          "modified_rna_dna",
                                          "ccp4_mon_lib_rna_dna"]:
       raise Sorry('QI cannot protonate RNA/DNA : "%s"' % atom_group.id_str())
+  for atom_group in buffer_model.get_hierarchy().atom_groups():
+    if atom_group.resname in ['HOH', 'DOD']: continue
+    if get_class(atom_group.resname) in [ 'common_small_molecule',
+                                          'common_element',
+                                          ]: continue
+    hs=0
+    for atom in atom_group.atoms():
+      if atom.element_is_hydrogen(): hs+=1
+    if not hs:
+      print('  Warning: Atom group %s has no H/D atoms' % (atom_group.id_str()),
+            file=log)
 
 def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=None, debug=False):
   if WRITE_STEPS_GLOBAL: write_steps=True

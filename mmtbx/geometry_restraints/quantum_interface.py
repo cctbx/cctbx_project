@@ -124,6 +124,10 @@ starting_higher_single_point final_higher_single_point
     .type = choice
   ignore_x_h_distance_protein = False
     .type = bool
+    .help = skip check on transfer of proton during QM optimisation
+  ignore_lack_of_h_on_ligand = False
+    .type = bool
+    .help = skip check on protonation of ligand for entities such as MgF3
   capping_groups = True
     .type = bool
 
