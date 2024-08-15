@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
-from qttbx.viewers.gui.state.selection.parser import (
+from qttbx.viewers.gui.modelselection.parser import (
   PhenixParser,
   And,
   Or,

@@ -21,7 +21,7 @@ from libtbx import group_args
 
 from qttbx.viewers.gui.view.apps.molstar_base_app import MolstarBaseAppView
 from qttbx.viewers.gui.controller.apps.molstar_base_app import MolstarBaseAppController
-from qttbx.viewers.gui.state.state import State
+from qttbx.viewers.gui.modelstate import State
 #from ...core.selection import Selection
 from qttbx.viewers.gui.apps import check_program_access
 

@@ -3,7 +3,6 @@ import platform
 import subprocess
 import time
 
-import numpy as np
 from PySide2.QtCore import Slot
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import (
@@ -18,8 +17,8 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from .controller import Controller
 from .selection_controls import ScrollableHierarchyController, SearchSelectDialogController
 from ..view.selection_controls import SearchSelectDialog
-from ..state.ref import Ref, SelectionRef
-from ..state.selection import Selection
+from ..modelref import Ref, SelectionRef
+from ..modelselection import Selection
 
 
 class MolstarControlsController(Controller):

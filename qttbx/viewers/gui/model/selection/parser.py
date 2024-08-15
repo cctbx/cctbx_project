@@ -649,7 +649,6 @@ class Comparison(Node):
     return f"{self.type}({self.keyword} {self.operator} {self.value})"
 
 
-
 class And(Node):
   def __init__(self):
     super().__init__('AND')

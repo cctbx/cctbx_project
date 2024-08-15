@@ -10,8 +10,8 @@ from .controller import Controller
 from ...molstar.molstar import MolstarGraphics
 from .molstar_controls_base import MolstarControlsController
 from ..controller.molstar_controls_base import MolstarControlsController
-from ..state.selection import Selection
-from ..state.ref import ModelRef, SelectionRef
+from ..modelselection import Selection
+from ..modelref import ModelRef, SelectionRef
 
 class sync_manager:
   """
@@ -224,7 +224,7 @@ class MolstarController(Controller):
 
   def close_viewer(self):
     self.graphics.close_viewer()
-    
+
   def picking_level(self,picking_level):
     if 'atom' in picking_level:
       self.set_granularity("element")
