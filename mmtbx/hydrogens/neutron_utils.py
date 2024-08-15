@@ -1,3 +1,4 @@
+from __future__ import division
 from string import ascii_uppercase
 
 import iotbx
