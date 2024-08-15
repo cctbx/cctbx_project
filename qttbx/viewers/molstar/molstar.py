@@ -18,10 +18,10 @@ from qttbx.viewers import ModelViewer
 from libtbx.utils import Sorry
 from libtbx import group_args
 
-from ..gui.state.molstar import MolstarState
-from ..gui.state.color import Color
+from ..gui.modelmolstar import MolstarState
+from ..gui.modelcolor import Color
 from .server_utils import  NodeHttpServer
-from ..gui.state.selection import Selection
+from ..gui.modelselection import Selection
 
 
 # =============================================================================
