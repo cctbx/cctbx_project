@@ -9,7 +9,6 @@ from mmtbx.monomer_library import glyco_utils
 from mmtbx.monomer_library import bondlength_defaults
 from libtbx.utils import Sorry
 from functools import cmp_to_key
-from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 
