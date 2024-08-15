@@ -125,7 +125,7 @@ def get_reduce_pdb_interpretation_params(use_neutron_distances):
   Do this in a function so other programs (reduce2) can use the same parameters
   '''
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
- #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
+  p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
