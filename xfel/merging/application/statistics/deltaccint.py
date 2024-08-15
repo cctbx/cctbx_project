@@ -163,7 +163,7 @@ class deltaccint(worker):
       self.logger.main_log("")
 
       if self.params.statistics.deltaccint.iqr_ratio:
-        cut = med + iqr * self.params.statistics.deltaccint.iqr_ratio
+        cut = q3 + iqr * self.params.statistics.deltaccint.iqr_ratio
         sel = data > cut
         worst_expts_ = flex.std_string(all_expt_ids).select(sel)
 
