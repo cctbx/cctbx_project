@@ -22,10 +22,7 @@ class MolstarBaseAppView(QMainWindow):
 
   def __init__(self,parent=None,params=None):
     super().__init__(parent=parent)
-    if params and params.viewer_choice:
-      self.viewer_choice = params.viewer_choice
-    else:
-      self.viewer_choice = 'molstar'
+    self.params = params
     self._has_child_window = False
 
 
