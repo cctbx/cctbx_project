@@ -38,4 +38,24 @@ Alternatively, run directly if command line files not recognized:
 ```sh
 phenix.python <MODULES_DIRECTORY>/cctbx_project/qttbx/command_line/start_molstar.py 1yjp.cif
 ```
+
+### Development guide
+The code is structured with the intention to follow a strict model-view-controller (MVC) architecture, to the degree that each component has its own subdirectory in the source code. 
+```
+cctbx_project/
+└── qttbx/
+    ├── command_line/
+    │   └── start_molstar.py
+    ├── programs/
+    │   └── start_molstar.py
+    └── viewers/
+        ├── molstar/
+        │   └── molstar.py
+        └── gui/
+            ├── README.md
+            ├── apps/
+            │   └── molstar_base_app.py
+            ├── controller/
+            ├── state/
+            └── view/
 ```
