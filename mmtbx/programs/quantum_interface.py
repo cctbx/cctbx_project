@@ -137,7 +137,6 @@ def assert_histidine_double_protonated(ag):
   for atom in ag.atoms():
     if atom.name.strip() in ['HD1', 'HE2', 'DD1', 'DE2']:
       count+=1
-      print(atom.name)
   if count not in [2]:
     raise Sorry('incorrect protonation of %s' % ag.id_str())
 
