@@ -230,27 +230,21 @@ def _apply_link_using_proxies(link,
 
 def possible_cyclic_peptide(atom1,
                             atom2,
+                            atoms_in_first_last_rgs,
                             verbose=False,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
   if atom1.element_is_hydrogen() or atom2.element_is_hydrogen(): return False
   chain1 = atom1.parent().parent().parent()
-  chain2 = atom1.parent().parent().parent()
+  chain2 = atom2.parent().parent().parent()
   if not chain1.id == chain2.id:
     if verbose: print('chain id differs', chain1.id, chain2.id)
     return False
-  fl = {}
-  rgs = chain1.residue_groups()
-  for i in range(0,-2,-1):
-    for atom in rgs[i].atoms():
-      if atom.quote()==atom1.quote():
-        fl[i]=atom1
-        break
-      elif atom.quote()==atom2.quote():
-        fl[i]=atom2
-        break
-  return len(fl)==2
+  len_fl = 0
+  len_fl += atoms_in_first_last_rgs.get(atom1.quote(), -1)
+  len_fl += atoms_in_first_last_rgs.get(atom2.quote(), -1)
+  return len_fl == 1
 
 def check_for_peptide_links(atom1,
                             atom2,
@@ -431,8 +425,15 @@ class linking_mixins(object):
     custom_links = {}
     exclude_out_lines = {}
 
-    # main loop
     atom_classes = [linking_utils.get_classes(a) for a in atoms]
+    atoms_in_first_last_rgs = {}
+    for c in self.pdb_hierarchy.chains():
+      for i in [0,-1]:
+        rg = c.residue_groups()[i]
+        abs_i = abs(i)
+        for a in rg.atoms():
+          atoms_in_first_last_rgs[a.quote()] = abs_i
+    # main loop
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
@@ -553,7 +554,7 @@ Residue classes
         # special amino acid linking
         #  - cyclic
         #  - beta, delta ???
-        if possible_cyclic_peptide(atom1, atom2): # first & last peptide
+        if possible_cyclic_peptide(atom1, atom2, atoms_in_first_last_rgs): # first & last peptide
           use_only_bond_cutoff = True
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
