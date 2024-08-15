@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 from six.moves import range
 from dxtbx import flumpy
 from dials.array_family import flex
+import itertools
 import numpy as np
 from scitbx.math import five_number_summary
 from xfel.merging.application.reflection_table_utils import reflection_table_utils
@@ -28,16 +29,7 @@ class deltaccint(worker):
       if len(set(refls['id'])) >= min_mult:
         filtered.extend(refls)
 
-    # Get list of all experiment identifiers
-    expt_ids = comm.gather(filtered.experiment_identifiers().values(), 0)
-    if self.mpi_helper.rank == 0:
-      all_expt_ids = flex.std_string()
-      for expt_ids_ in expt_ids:
-        all_expt_ids.extend(expt_ids_)
-      expt_ids = list(set(all_expt_ids))
-    else:
-      expt_ids = None
-    all_expt_ids = comm.bcast(expt_ids, 0)
+    all_expt_ids = list(sorted(set(itertools.chain.from_iterable(comm.allgather(filtered.experiment_identifiers().values())))))
     all_expts_map = dict(zip(all_expt_ids, range(len(all_expt_ids))))
 
     if self.mpi_helper.rank == 0:
