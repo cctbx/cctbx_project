@@ -18,10 +18,10 @@ from qttbx.viewers import ModelViewer
 from libtbx.utils import Sorry
 from libtbx import group_args
 
-from ..gui.modelmolstar import MolstarState
-from ..gui.modelcolor import Color
+from ..gui.model.molstar import MolstarState
+from ..gui.model.color import Color
 from .server_utils import  NodeHttpServer
-from ..gui.modelselection import Selection
+from ..gui.model.selection import Selection
 
 
 # =============================================================================
@@ -305,13 +305,13 @@ class MolstarGraphics(ModelViewer):
     self.send_command(command)
 
   
-  def select_from_selection_string(self,phenix_string):
-    """
-    Make a selection from a Phenix selection string. Is converted to molstar
-      syntax via a Selection instance
-    """
-    selection = Selection.from_selection_string(phenix_string)
-    self.select_from_selection(selection)
+  # def select_from_selection_string(self,phenix_string):
+  #   """
+  #   Make a selection from a Phenix selection string. Is converted to molstar
+  #     syntax via a Selection instance
+  #   """
+  #   selection = Selection.from_selection_string(phenix_string)
+  #   self.select_from_selection(selection)
 
   def poll_selection(self,callback=None):
     """

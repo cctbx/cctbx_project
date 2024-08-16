@@ -17,11 +17,6 @@ class MolstarBaseAppController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
 
-    if self.params and self.params.viewer_choice:
-      self.viewer_choice = self.params.viewer_choice
-    else:
-      self.viewer_choice = 'molstar'
-
 
     # Main Level Components
     self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)

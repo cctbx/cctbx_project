@@ -6,7 +6,7 @@ import re
 from dataclasses import dataclass, asdict
 from typing import List, Optional
 
-from qttbx.viewers.gui.modelselection.parser import (
+from qttbx.viewers.gui.model.selection.parser import (
   PhenixParser,
   And,
   Or,
@@ -61,19 +61,17 @@ class Selection:
     Returns:
       Selection: instance of this class
     """
+    assert model, "Must instantiate with mmtbx.model.manager"
     self.model = model
     self.is_validated = False
     if not selection_bool and not selection_string:
       selection_string = "all"
-    elif model and not selection_bool:
+    elif not selection_bool:
       selection_bool = self.model.selection(selection_string)
-    elif model:
-      assert selection_bool.size() == self._n_atoms_initial,(
-        f"Cannot provide selection of different size ({selection_bool.size()}) than number of atoms ({self._n_atoms_initial})"
-      )
-    else:
-      # Only initialized with a selection string
-      pass
+    assert selection_bool.size() == self._n_atoms_initial,(
+      f"Cannot provide selection of different size ({selection_bool.size()}) than number of atoms ({self._n_atoms_initial})"
+    )
+
     
     if not data:
       data = {"selections":[]}
@@ -84,26 +82,22 @@ class Selection:
             "selection_bool":selection_bool,
         }
     )
-    if self.model:
-      compatible, fail_reason, sel_str = self.validate()
-      self.data["selections"][-1]["phenix_string"] = sel_str
+    compatible, fail_reason, sel_str = self.validate()
+    self.data["selections"][-1]["phenix_string"] = sel_str
     
   @property
   def _h(self):
     # Shortcut to the iotbx.pdb.hierarchy that fails silently if model not set
-    if self.model:
-      return self.model.get_hierarchy()
+    return self.model.get_hierarchy()
 
   @property
   def _atoms(self):
     # Shortcut to the iotbx shared atoms that fails silently if model not set
-    if self.model:
-      return self._h.atoms()
+    return self._h.atoms()
   @property
   def _n_atoms_initial(self):
     # Shortcut to the total number of atoms if model is set
-    if self.model:
-      return self.model.get_number_of_atoms()
+    return self.model.get_number_of_atoms()
 
 
   @classmethod
@@ -274,12 +268,10 @@ class Selection:
   def validate(self):
     # Validate that a string is consistent with what PhenixParser can process. 
     #  Requires that self.model be set
-    if self.model:
-      compatible, fail_reason, sel_str = PhenixParser.is_compatible_string(self.string,self.model)
-      self.is_validated = compatible
-      self.fail_reason = fail_reason
-      return compatible, fail_reason, sel_str
-
+    compatible, fail_reason, sel_str = PhenixParser.is_compatible_string(self.string,self.model)
+    self.is_validated = compatible
+    self.fail_reason = fail_reason
+    return compatible, fail_reason, sel_str
 
   # Molstar
   @property

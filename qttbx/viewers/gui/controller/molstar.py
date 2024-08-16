@@ -10,8 +10,8 @@ from .controller import Controller
 from ...molstar.molstar import MolstarGraphics
 from .molstar_controls_base import MolstarControlsController
 from ..controller.molstar_controls_base import MolstarControlsController
-from ..modelselection import Selection
-from ..modelref import ModelRef, SelectionRef
+from ..model.selection import Selection
+from ..model.ref import ModelRef, SelectionRef
 
 class sync_manager:
   """
@@ -210,8 +210,8 @@ class MolstarController(Controller):
   def select_from_selection(self,selection: Selection):
     return self.graphics.select_from_selection(selection)
 
-  def select_from_selection_string(self,selection_string: str):
-    return self.graphics.select_from_selection_string(selection_string)
+  # def select_from_selection_string(self,selection_string: str):
+  #   return self.graphics.select_from_selection_string(selection_string)
 
   def focus_selected(self):
     return self.graphics.focus_selected()

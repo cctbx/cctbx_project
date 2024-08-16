@@ -161,7 +161,7 @@ class State:
       #self.signals.model_change.emit(ref)
 
       # Add 'all' selection ref
-      selection = Selection.from_selection_string("all")
+      selection = Selection.from_selection_string("all",model=ref.data.model)
       selection_ref = SelectionRef(selection,ref)
       self.add_ref(selection_ref)
 

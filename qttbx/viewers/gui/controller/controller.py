@@ -3,7 +3,7 @@ The Controller base class in the model-view-controller (MVC) architecture as imp
 """
 import time
 from PySide2.QtWidgets import QMessageBox
-from ..modelstate import State
+from ..model.state import State
 
 class Controller:
   """
