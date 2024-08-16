@@ -13,7 +13,7 @@ git checkout molstar-veiwer-base
 ```
 3. Install dependencies from conda (or mamba)
 ```
-mamba -c conda-forge install pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
+mamba install -c conda-forge pyside2 nodejs qtawesome ipykernel qt-webengine qtconsole-base
 ```
 4. Change to Phenix modules directory
 5. Download the Molstar branch
