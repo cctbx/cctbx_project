@@ -28,8 +28,9 @@ npm install
 8. Compile Typescript to Javascript
 ```
 npm run build
-9. Refresh the build to register the command line files.
 ```
+9. Refresh the build to register the command line files.
+
 10. Start the viewer with a model as an argument
 ```
 phenix.start_molstar 1yjp.cif
@@ -81,7 +82,7 @@ Here is a simplified example showing how different object might interact using c
 #
 
 class SignalBus(QObject):                        # Define a list of signals for the state
-  active_selection = Signal()                    # A signal for a new active selection
+  active_selection = Signal()                    # Specifically, a signal for a new active selection
 
 class State:                                     # Define an object to store program state
   def __init__(self,dm):                         # Initialize the state with only the data manager
