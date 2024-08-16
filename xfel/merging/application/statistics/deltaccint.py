@@ -30,7 +30,7 @@ class deltaccint(worker):
         filtered.extend(refls)
 
     all_expt_ids = list(sorted(set(itertools.chain.from_iterable(comm.allgather(filtered.experiment_identifiers().values())))))
-    all_expts_map = dict(zip(all_expt_ids, range(len(all_expt_ids))))
+    all_expts_map = {v: k for k, v in enumerate(all_expt_ids)}
 
     if self.mpi_helper.rank == 0:
       self.logger.main_log("Beginning ΔCC½ analysis (σ-τ method from Assmann 2016)")
@@ -47,7 +47,7 @@ class deltaccint(worker):
 
     hkl_set = [hkl for hkl in list(set(filtered['miller_index_asymmetric'])) if hkl in hkl_resolution_bins]
     n_hkl = len(hkl_set)
-    hkl_map = dict(zip(hkl_set, range(n_hkl)))
+    hkl_map = {v: k for k, v in enumerate(hkl_set)}
 
     expt_map = filtered.experiment_identifiers()
 
@@ -85,7 +85,7 @@ class deltaccint(worker):
         mean_intensity = merged[expt_idx,hkl_idx]
         diff_sq_[expt_idx] -= (intensity[i] - mean_intensity)**2
 
-      variance[:,hkl_idx] = diff_sq_ / n[:,hkl_idx]
+      variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1)
 
     # N expts (all ranks) x N bins
     n_bins = resolution_binner.n_bins_used()
@@ -128,7 +128,7 @@ class deltaccint(worker):
 
     # Report
     if self.mpi_helper.rank == 0:
-      sigma_sq_y = total_diff_sq_sum / all_i_n
+      sigma_sq_y = total_diff_sq_sum / (all_i_n-1)
       sigma_sq_e = total_var_sums / total_i_n
       deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + sigma_sq_e)
 
