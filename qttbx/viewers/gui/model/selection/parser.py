@@ -569,6 +569,9 @@ class Comparison(Node):
     keyword = attrs_map_to_phenix[keyword]
     return keyword
 
+  @property
+  def keyword_molstar(self):
+    return self.ms_test_text(self.keyword)
 
   @property
   def operator(self):
@@ -591,6 +594,9 @@ class Comparison(Node):
       return logic_map_to_phenix[operator]
 
   @property
+  def operator_molstar(self):
+    return self.ms_operator_map[self.operator]
+  @property
   def value(self):
     return self.value_token["value"]
 
@@ -605,7 +611,7 @@ class Comparison(Node):
       if self.value_token["type"] != "RANGE":
         if isinstance(self.value,str):
           value = int(self.unquote_string(self.value))
-    return value
+    return f"'{value}'"
   
 
   def phenix_string(self):
@@ -627,23 +633,21 @@ class Comparison(Node):
       return f"( {self.keyword} {self.operator} {self.value} )"
 
   def molstar_syntax(self, level=0):
-    if self.keyword == "id": # convert to int for id for molstar
-      if isinstance(self.value,str):
-        self.value = int(self.unquote_string(self.value))
-      else:
-        self.value = self.value
+
     indent = ' ' * (level * Node.indent_padding)
+    # Handle range
     if self.value_token["type"] == "RANGE":
-      value = self.unquote_string(self.value)
+      value = self.value_molstar
       low, high = value.split(":")
       return f"""
 {indent}  MS.core.logic.and([
-{indent}    MS.core.rel.gre([{self.ms_test_text(self.keyword)}, {low}]),
-{indent}    MS.core.rel.lt([{self.ms_test_text(self.keyword)}, {high}])
+{indent}    MS.core.rel.gre([{self.ms_test_text(self.keyword_molstar)}, {low}]),
+{indent}    MS.core.rel.lt([{self.ms_test_text(self.keyword_molstar)}, {high}])
 {indent}  ])
 """
     else:
-      return f"{indent}MS.core.rel.{self.ms_operator_map[self.operator]}([{self.ms_test_text(self.keyword)}, {self.value}])"
+      # Not range
+      return f"{indent}MS.core.rel.{self.operator_molstar}([{self.keyword_molstar}, {self.value_molstar}])"
 
   def __repr__(self):
     return f"{self.type}({self.keyword} {self.operator} {self.value})"

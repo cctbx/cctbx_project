@@ -17,8 +17,8 @@ from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 from .controller import Controller
 from .selection_controls import ScrollableHierarchyController, SearchSelectDialogController
 from ..view.selection_controls import SearchSelectDialog
-from ..modelref import Ref, SelectionRef
-from ..modelselection import Selection
+from ..model.ref import Ref, SelectionRef
+from ..model.selection import Selection
 
 
 class MolstarControlsController(Controller):
@@ -100,7 +100,8 @@ class MolstarControlsController(Controller):
       elif text.startswith("sel "):
         text = text[4:]
       try:
-        self.viewer.select_from_selection_string(text)
+        selection = Selection.from_selection_string(text,model=self.state.active_model)
+        self.viewer.select_from_selection(selection)
         self.viewer.focus_selected()
         self.save_text_to_history()
         self.view.selection_edit.setPlaceholderText(text)

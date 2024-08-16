@@ -7,6 +7,7 @@ from PySide2.QtCore import Slot
 from PySide2.QtCore import Qt
 
 from qttbx.viewers.gui.controller import Controller
+from qttbx.viewers.gui.model.selection import Selection
 
 class SearchSelectDialogController(Controller):
   """
@@ -107,7 +108,8 @@ class SearchSelectDialogController(Controller):
     if len(all_options)==0:
       self.reset()
     else:
-      self.parent.viewer.select_from_selection_string(sel_str)
+      selection = Selection.from_selection_string(sel_str,model=self.state.active_model)
+      self.parent.viewer.select_from_selection(selection)
       self.parent.viewer.focus_selected()
 
   def comp_change(self, selected):
@@ -145,7 +147,8 @@ class SearchSelectDialogController(Controller):
     if len(all_options)==0:
       self.reset()
     else:
-      self.parent.viewer.select_from_selection_string(sel_str)
+      selection = Selection.from_selection_string(sel_str,model=self.state.active_model)
+      self.parent.viewer.select_from_selection(selection)
       self.parent.viewer.focus_selected()
 
   def seq_change(self, selected):
@@ -180,7 +183,8 @@ class SearchSelectDialogController(Controller):
     if len(all_options)==0:
       self.reset()
     else:
-      self.parent.viewer.select_from_selection_string(sel_str)
+      selection = Selection.from_selection_string(sel_str,model=self.state.active_model)
+      self.parent.viewer.select_from_selection(selection)
       self.parent.viewer.focus_selected()
 
   def atom_change(self,selected):
@@ -204,7 +208,8 @@ class SearchSelectDialogController(Controller):
     else:
       sel_str = " and ".join(sel_str_parts)
     self.log("Sel str: ",sel_str)
-    self.parent.viewer.select_from_selection_string(sel_str)
+    selection = Selection.from_selection_string(sel_str,model=self.state.active_model)
+    self.parent.viewer.select_from_selection(selection)
     self.log("emitting atom")
     self.state.signals.picking_level.emit("atom")
     self.parent.viewer.focus_selected()
