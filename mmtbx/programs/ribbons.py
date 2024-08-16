@@ -91,18 +91,22 @@ Output:
     # @param nIntervals: The number of intervals to interpolate between each pair of guidepoints, skipping the first and last.
     # @return: The list of interpolated points
 
+    # Adjust the points to match what is expected by the Java code.
+    # The Java code expects the first and last points to be duplicates of the second and second-to-last points.
+    points = pts[1:-1]
+
     # Construct the parametric spline for a curve in 3D space.
     # We stick the end points in like any other points, but we don't use them in the interpolation.
-    u = range(len(pts))
-    x = [pt[0] for pt in pts]
-    y = [pt[1] for pt in pts]
-    z = [pt[2] for pt in pts]
+    u = range(len(points))
+    x = [pt[0] for pt in points]
+    y = [pt[1] for pt in points]
+    z = [pt[2] for pt in points]
     p = np.stack( (x, y, z) )
     spl = make_interp_spline(u, p, axis=1)
 
     # Compute the interpolated points
-    count = (len(pts) - 1) * nIntervals + 1
-    uu = np.linspace(0, len(pts) - 1, count)
+    count = (len(points) - 1) * nIntervals + 1
+    uu = np.linspace(0, len(points) - 1, count)
     xx, yy, zz = spl(uu)
 
     ret = []
