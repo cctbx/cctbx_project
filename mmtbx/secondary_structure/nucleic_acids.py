@@ -600,7 +600,7 @@ def get_angle_proxies_for_bond(atoms):
           angle_ideal=vals[i][0],
           weight=1./vals[i][1]**2,
           origin_id=origin_ids.get_origin_id('hydrogen bonds'))
-      proxies.append(p)
+        proxies.append(p)
   return proxies
 
 def get_h_bonds_for_particular_basepair(atoms, saenger_class=0):
