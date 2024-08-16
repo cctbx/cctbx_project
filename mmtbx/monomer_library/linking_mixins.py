@@ -241,8 +241,8 @@ def possible_cyclic_peptide(atom1,
     if verbose: print('chain id differs', chain1.id, chain2.id)
     return False
   len_fl = 0
-  len_fl += atoms_in_first_last_rgs.get(atom1.quote(), -1)
-  len_fl += atoms_in_first_last_rgs.get(atom2.quote(), -1)
+  len_fl += atoms_in_first_last_rgs.get(atom1.i_seq, -1)
+  len_fl += atoms_in_first_last_rgs.get(atom2.i_seq, -1)
   return len_fl == 1
 
 def check_for_peptide_links(atom1,
@@ -431,7 +431,7 @@ class linking_mixins(object):
         rg = c.residue_groups()[i]
         abs_i = abs(i)
         for a in rg.atoms():
-          atoms_in_first_last_rgs[a.quote()] = abs_i
+          atoms_in_first_last_rgs[a.i_seq] = abs_i
     # main loop
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
