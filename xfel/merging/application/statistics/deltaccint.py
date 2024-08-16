@@ -29,7 +29,7 @@ class deltaccint(worker):
       if len(set(refls['id'])) >= min_mult:
         filtered.extend(refls)
 
-    all_expt_ids = list(sorted(set(itertools.chain.from_iterable(comm.allgather(filtered.experiment_identifiers().values())))))
+    all_expt_ids = sorted(set(itertools.chain.from_iterable(comm.allgather(filtered.experiment_identifiers().values()))))
     all_expts_map = {v: k for k, v in enumerate(all_expt_ids)}
 
     if self.mpi_helper.rank == 0:
@@ -45,7 +45,7 @@ class deltaccint(worker):
     resolution_binner = self.params.statistics.resolution_binner
     hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
 
-    hkl_set = [hkl for hkl in list(set(filtered['miller_index_asymmetric'])) if hkl in hkl_resolution_bins]
+    hkl_set = [hkl for hkl in set(filtered['miller_index_asymmetric']) if hkl in hkl_resolution_bins]
     n_hkl = len(hkl_set)
     hkl_map = {v: k for k, v in enumerate(hkl_set)}
 
@@ -100,16 +100,13 @@ class deltaccint(worker):
       all_i_n     [:,bin_idx] += 1
       all_var_sums[:,bin_idx] += variance[:,hkl_map[hkl]]
 
-    total_i_sums   = comm.reduce(all_i_sums,   MPI.SUM, 0)
-    total_i_n      = comm.reduce(all_i_n,      MPI.SUM, 0)
     total_var_sums = comm.reduce(all_var_sums, MPI.SUM, 0)
 
     # Broadcast the average intensities
-    if self.mpi_helper.rank == 0:
-      total_i_average_ = total_i_sums / total_i_n
-    else:
-      total_i_average_ = None
-    total_i_average = comm.bcast(total_i_average_, 0)
+    total_i_sums   = comm.allreduce(all_i_sums, op=MPI.SUM)
+    total_i_n      = comm.allreduce(all_i_n,    op=MPI.SUM)
+    total_var_sums = comm.reduce(all_var_sums,  op=MPI.SUM)
+    total_i_average = total_i_sums / total_i_n
 
     # Compute the variance of the average intensities
     # First, the numerator, the difference between each hkl and the average for that hkl's bin (ommiting each experiment once)
