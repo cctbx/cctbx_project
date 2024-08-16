@@ -639,6 +639,18 @@ statistics {
       .help = As an example, could be intensity from *sf.cif
       .help = Specifically this is a tag searched for in the array name, could be 'tensity' from 'intensity'
   }
+  deltaccint
+    .help = Parameters used when computing ΔCC½ (aka ΔCC internal), a means of filtering out lattices that
+    .help = degrade the overall CC½. Uses the σ-τ method from Assmann 2016 to avoid splitting the data into
+    .help = odd/even datasets. Enable by adding the deltaccint worker after the group worker.
+  {
+    iqr_ratio = 10
+      .type = float
+      .help = If the ΔCC½ filter is enabled, first compute CC½ when removing every image one at a time, then
+      .help = compute the IQR of these CC½s. Remove all lattices whose contribution degrades CC½ by more than
+      .help = IQR * iqr_ratio above the median. You can discover a good IQR by running the program once,
+      .help = examining the log file where possible values are listed, and running it again with the best value.
+  }
   predictions_to_edge {
     apply = False
       .type = bool
