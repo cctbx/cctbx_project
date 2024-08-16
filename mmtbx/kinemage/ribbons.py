@@ -21,7 +21,7 @@ def _FindNamedAtomInResidue(residue_group, atom_names):
   for name in atom_names:
     name = name.strip().upper()
     for atom in residue_group.atoms():
-      if atom.name.strip().upper() == name:
+      if atom.name.strip().upper() == name.upper():
         return atom
   return None
 
@@ -188,7 +188,7 @@ def make_protein_guidepoints(contiguous_residues):
     # 10.5        1               0               } from 1.0 to 0.0
     # 11.0        1               0               ~limit for extended protein
 
-    if (1 <= i and i <= numResidues - 3):
+    if 1 <= i and i <= numResidues - 3:
       ca0 = _FindNamedAtomInResidue(contiguous_residues[i-1], anchorAtoms)
       ca3 = _FindNamedAtomInResidue(contiguous_residues[i+2], anchorAtoms)
       cacaDist = (col(ca0.xyz) - col(ca3.xyz)).length()
