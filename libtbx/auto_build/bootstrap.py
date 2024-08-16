@@ -891,7 +891,9 @@ class pyquante_module(SourceModule):
 
 class chem_data_module(SourceModule):
   module = 'chem_data'
-  authenticated = ['svn', 'svn+ssh://%(cciuser)s@boa.lbl.gov/chem_data/trunk']
+  anonymous = ['git',
+               'git@gitlab.com:phenix_project/chem_data.git',
+               'https://gitlab.com/phenix_project/chem_data.git']
 
 class elbow_module(SourceModule):
   module = 'elbow'
@@ -1570,6 +1572,12 @@ class Builder(object):
     if module == 'cctbx_project':
       workdir = ['modules', module]
       self.add_step(self.shell(command=[sys.executable, os.path.join('libtbx', 'version.py')], workdir=workdir))
+
+    # add geostd to chem_data
+    if module == 'chem_data':
+      action = MODULES.get_module('geostd')().get_url(auth=self.get_auth())
+      method, parameters = action[0], action[1:]
+      self._add_git('geostd', parameters, destination=self.opjoin('modules', 'chem_data', 'geostd'))
 
     # Use dials-2.2 branches for Python 2
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:

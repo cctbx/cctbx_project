@@ -22,12 +22,18 @@ steps:
   displayName: Download chem_data
 
 - script: |
-    export SVN_SSH="ssh -F $(ssh_config.secureFilePath)"
-    if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
-      svn co svn+ssh://builder@boa.lbl.gov/chem_data/trunk chem_data
+    if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.git" ]; then
+      rm -fr $(System.DefaultWorkingDirectory)/chem_data
+      cd $(System.DefaultWorkingDirectory)
+      git clone https://gitlab.com/phenix_project/chem_data.git
+      git lfs install --local
+      git lfs pull
     fi
-    cd $(Pipeline.Workspace)/modules/chem_data
-    svn update
+    cd $(System.DefaultWorkingDirectory)/chem_data
+    git reset --hard origin/main
+    git lfs install --local
+    git pull --rebase
+    git lfs pull
   displayName: Update chem_data
   continueOnError: true
 
