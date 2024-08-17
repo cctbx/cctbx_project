@@ -22,14 +22,13 @@ steps:
   displayName: Download chem_data
 
 - script: |
-    if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.git" ]; then
-      rm -fr $(System.DefaultWorkingDirectory)/chem_data
-      cd $(System.DefaultWorkingDirectory)
+    if [ ! -d "$(Pipeline.Workspace)/modules/chem_data" ]; then
+      cd $(Pipeline.Workspace)/modules
       git clone https://gitlab.com/phenix_project/chem_data.git
       git lfs install --local
       git lfs pull
     fi
-    cd $(System.DefaultWorkingDirectory)/chem_data
+    cd $(Pipeline.Workspace)/modules/chem_data
     git reset --hard origin/main
     git lfs install --local
     git pull --rebase
