@@ -1576,8 +1576,8 @@ class Builder(object):
     # add geostd to chem_data
     if module == 'chem_data':
       action = MODULES.get_module('geostd')().get_url(auth=self.get_auth())
-      method, parameters = action[0], action[1:]
-      self._add_git('geostd', parameters, destination=self.opjoin('modules', 'chem_data', 'geostd'))
+      method, geostd_parameters = action[0], action[1:]
+      self._add_git('geostd', geostd_parameters, destination=self.opjoin('modules', 'chem_data', 'geostd'))
 
     # Use dials-2.2 branches for Python 2
     if (module == 'dials' or module == 'dxtbx' or module == 'xia2') and not self.python3:
