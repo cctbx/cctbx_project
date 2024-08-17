@@ -89,6 +89,7 @@ qm_restraints
 
   calculate = *in_situ_opt starting_energy final_energy \
 starting_strain final_strain starting_bound final_bound \
+starting_binding final_binding \
 starting_higher_single_point final_higher_single_point
     .type = choice(multi=True)
     .help = Choose QM calculations to run
@@ -97,6 +98,7 @@ starting_higher_single_point final_higher_single_point
       strain_energy_of_starting_ligand_geometry \
       strain_energy_of_final_ligand_geometry \
       starting_energy_of_bound_ligand_cluster \
+      starting_binding_energy_of)ligand final_binding_energy_of_ligand \
       final_energy_of_bound_ligand_cluster not_implemented not_implemented
 
   write_files = *restraints pdb_core pdb_buffer pdb_final_core pdb_final_buffer

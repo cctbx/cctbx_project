@@ -390,12 +390,22 @@ class base_qm_manager(base_manager):
                  redirect_output=False,
                  log=StringIO(),
                  **kwds):
+    #
+    # Get the strain energy of a ligand. Only works? when this is applied to
+    # the ligand.
+    #
     old_preamble = self.preamble
+    #
+    # get energy with just the H opt
+    #
     start_energy, junk = self.get_energy(optimise_h=True,
                                          redirect_output=redirect_output,
                                          cleanup=cleanup,
                                          log=log)
     self.preamble = old_preamble+'_strain'
+    #
+    # optimise all atoms positions and get energy
+    #
     final_energy, units = self.get_opt(redirect_output=redirect_output,
                                        cleanup=cleanup,
                                        log=log)
@@ -406,21 +416,32 @@ class base_qm_manager(base_manager):
     self.preamble = old_preamble
     return self.strain, self.units
 
-  def get_bound(self,
-                cleanup=False,
-                file_read=True,
-                redirect_output=False,
-                log=StringIO(),
-                **kwds
-                ):
+  def get_something_energy( self,
+                            preamble,
+                            cleanup=False,
+                            file_read=True,
+                            redirect_output=False,
+                            log=StringIO(),
+                            verbose=False,
+                            **kwds
+                            ):
+    if verbose:
+      print('get %s' % preamble)
+      print(self)
     old_preamble = self.preamble
-    self.preamble += '_bound'
+    self.preamble += '_%s' % preamble
     energy, units = self.get_energy(optimise_h=True,
                                     redirect_output=redirect_output,
                                     cleanup=cleanup,
                                     log=log)
     self.preamble = old_preamble
     return energy, units
+
+  def get_bound(self, **kwds):
+    return self.get_something_energy('bound', **kwds)
+
+  def get_pocket(self, **kwds):
+    return self.get_something_energy('pocket', **kwds)
 
   def get_gradients(self):
     assert 0

@@ -514,9 +514,16 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     solvent_model = default_solvent_model
   elif program_goal in ['opt', 'bound']:
     electron_model = buffer_model
+  elif program_goal in ['pocket']:
+    tmps=[]
+    for atom in ligand_model.get_atoms(): tmps.append(atom.tmp)
+    list_of_i_seqs=[]
+    for atom in buffer_model.get_atoms():
+      if atom.tmp not in tmps: list_of_i_seqs.append(atom.i_seq)
+    pocket_model=buffer_model.select(flex.size_t(list_of_i_seqs))
+    electron_model=pocket_model
   else:
     assert 0, 'program_goal %s not in list' % program_goal
-  # specific_atom_charges = get_specific_atom_charges(qmr)
   specific_atom_charges = qmr.specific_atom_charges
   total_charge = quantum_interface.electrons(
     electron_model,
@@ -598,6 +605,12 @@ def running_this_macro_cycle(qmr,
                              pre_refinement=True,
                              verbose=False,
                              ):
+  if verbose:
+    print(qmr)
+    print('macro_cycle',macro_cycle)
+    print('number_of_macro_cycles',number_of_macro_cycles)
+    print('energy_only',energy_only)
+    print('pre_refinement',pre_refinement)
   from mmtbx.geometry_restraints.quantum_interface import get_qi_macro_cycle_array
   if not energy_only:
     if 'in_situ_opt' not in qmr.calculate: return False
@@ -612,13 +625,13 @@ def running_this_macro_cycle(qmr,
       return 'restraints'
   else:
     if pre_refinement:
-      checks = 'starting_strain starting_energy starting_bound'
+      checks = 'starting_strain starting_energy starting_bound starting_binding'
       tmp = set(checks.split())
       inter = tmp.intersection(set(qmr.calculate))
       if macro_cycle==1:
         return list(inter)
     else:
-      checks = 'final_strain final_energy final_bound'
+      checks = 'final_strain final_energy final_bound final_binding'
       tmp = set(checks.split())
       inter = tmp.intersection(set(qmr.calculate))
       if macro_cycle==number_of_macro_cycles or macro_cycle==-1:
@@ -892,7 +905,7 @@ def update_dihedral_restraints_simple(model):
     angle_proxy.angle_ideal=angle
 
 def get_program_goal(qmr, macro_cycle=None, energy_only=False):
-  program_goal=[] # can be 'opt', 'energy', 'strain'
+  program_goal=[]
   if not energy_only:
     program_goal=['opt']
     return program_goal
@@ -903,6 +916,11 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('strain')
     if qmr.calculate.count('starting_bound'):
       program_goal.append('bound')
+    if qmr.calculate.count('starting_binding'):
+      program_goal.append('energy')
+      program_goal.append('strain')
+      program_goal.append('bound')
+      program_goal.append('pocket')
   else: # only called with final energy on final macro cycle
     if qmr.calculate.count('final_energy'):
       program_goal.append('energy')
@@ -910,6 +928,11 @@ def get_program_goal(qmr, macro_cycle=None, energy_only=False):
       program_goal.append('strain')
     if qmr.calculate.count('final_bound'):
       program_goal.append('bound')
+    if qmr.calculate.count('final_binding'):
+      program_goal.append('energy')
+      program_goal.append('strain')
+      program_goal.append('bound')
+      program_goal.append('pocket')
   return program_goal
 
 def setup_qm_jobs(model,
@@ -1010,13 +1033,15 @@ def run_jobs(objects, macro_cycle, nproc=1, log=StringIO()):
                  buffer_model.get_number_of_atoms())
           time_query = qmm.get_timings()
           curve_fit_3d.load_and_display(qmm.program_goal, key, time_query, show=True)
-      elif qmm.program_goal in ['energy', 'strain', 'bound']:
+      elif qmm.program_goal in ['energy', 'strain', 'bound', 'pocket']:
         energy=xyz
         units=xyz_buffer
         xyz=None
         xyz_buffer=None
         qmm.preamble += '_%s' % qmm.program_goal
         if qmm.program_goal in ['bound']: qmm.preamble += '_energy'
+        elif qmm.program_goal in ['pocket']: qmm.preamble += '_energy'
+          # qmm.preamble=qmm.preamble.replace(qmm.program_goal, 'pocket_energy')
         charge = qmm.read_charge()
         # except: charge=-99
       else:
