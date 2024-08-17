@@ -1133,7 +1133,7 @@ Usage examples:
     from mmtbx.refinement.energy_monitor import digest_return_energy_object
     model = self.data_manager.get_model()
     qmr = self.params.qi.qm_restraints[0]
-    checks = 'starting_strain starting_energy starting_bound'
+    checks = 'starting_strain starting_energy starting_bound starting_binding'
     energies = None
     rcs=[]
     if any(item in checks for item in qmr.calculate):
