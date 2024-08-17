@@ -2439,7 +2439,7 @@ class PhenixBuilder(CCIBuilder):
     super(PhenixBuilder, self).add_module(module, workdir, module_directory)
 
     # update phenix_regression and phenix_examples with git-lfs
-    if module == 'phenix_examples' or module == 'phenix_regression':
+    if module == 'phenix_examples' or module == 'phenix_regression' or module == 'chem_data':
       # prepend path for check
       dev_env = os.path.join('.', 'dev_env', 'bin')
       if sys.platform == 'win32':
