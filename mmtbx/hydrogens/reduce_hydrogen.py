@@ -288,9 +288,12 @@ class place_hydrogens():
     # (when heavy atom is missing, H needs not to be placed)
     t0 = time.time()
     sel_isolated = self.model.isolated_atoms_selection()
-    self.sel_lone_H = sel_h & sel_isolated
-    if not self.sel_lone_H.all_eq(False):
-      self.model = self.model.select(~self.sel_lone_H)
+    sel_lone_H = sel_h & sel_isolated
+    # As h_parameterization will not include these, they can be removed in the
+    # next step; for book-keeping it is useful to keep track of lone H as a
+    # selection
+    #if not sel_lone_H.all_eq(False):
+    #  self.model = self.model.select(~sel_lone_H)
     self.time_remove_isolated = round(time.time()-t0, 2)
 
     sel_h = self.model.get_hd_selection()
@@ -310,9 +313,12 @@ class place_hydrogens():
     sel_h_in_para = flex.bool(
       [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
+    # no need to display lone H atoms in the log, so remove from labels
+    sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
-      for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para)]
-    self.model = self.model.select(~sel_h_not_in_para)
+      for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
+    if not sel_h_not_in_para.all_eq(False):
+      self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
 
   #  f = open("intermediate4.pdb","w")
