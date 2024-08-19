@@ -6058,6 +6058,8 @@ class process(object):
             outl += "      Input volumes are d-peptide like\n"
           elif key=="d-peptide":
             outl += "      Input residue name is d-peptide\n"
+          elif key=='CA---C':
+            outl += "      Input residue is complicated and confusing\n"
           for cb_atom in item:
             outl += "        %s\n"% cb_atom.id_str()
         if outl:

@@ -351,9 +351,7 @@ class linking_mixins(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     #
-    def _nonbonded_pair_objects(max_bonded_cutoff=3.,
-                                i_seqs=None,
-                                ):
+    def _nonbonded_pair_objects(max_bonded_cutoff=3., i_seqs=None):
       if i_seqs is None:
         atoms = self.pdb_hierarchy.atoms()
         i_seqs = flex.size_t()
@@ -384,8 +382,6 @@ class linking_mixins(object):
         min_cubicle_edge=5,
         shell_asu_tables=[pair_asu_table])
       return nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, i_seqs
-    #
-
     #
     if(log is not None):
       print("""
