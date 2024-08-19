@@ -316,7 +316,7 @@ class base_qm_manager(base_manager):
 
     coordinates = None
     rc=True
-    if check_file_read_safe:
+    if file_read and check_file_read_safe:
       if verbose: print('check_file_read_safe',check_file_read_safe)
       rc = self.check_file_read_safe(optimise_ligand=optimise_ligand,
                                      optimise_h=optimise_h,
@@ -401,6 +401,7 @@ class base_qm_manager(base_manager):
     start_energy, junk = self.get_energy(optimise_h=True,
                                          redirect_output=redirect_output,
                                          cleanup=cleanup,
+                                         file_read=file_read,
                                          log=log)
     self.preamble = old_preamble+'_strain'
     #
@@ -408,6 +409,7 @@ class base_qm_manager(base_manager):
     #
     final_energy, units = self.get_opt(redirect_output=redirect_output,
                                        cleanup=cleanup,
+                                       file_read=file_read,
                                        log=log)
     final_energy, units = self.read_energy()
     self.strain = start_energy-final_energy
@@ -433,6 +435,7 @@ class base_qm_manager(base_manager):
     energy, units = self.get_energy(optimise_h=True,
                                     redirect_output=redirect_output,
                                     cleanup=cleanup,
+                                    file_read=file_read,
                                     log=log)
     self.preamble = old_preamble
     return energy, units
