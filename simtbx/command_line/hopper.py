@@ -2,7 +2,7 @@ from __future__ import absolute_import, division, print_function
 import socket
 from copy import deepcopy
 import glob
-from simtbx.diffBragg import hopper_utils
+from simtbx.diffBragg import utils, hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 import time
 import sys
@@ -133,11 +133,12 @@ class Script:
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         trefs = []
         this_rank_dfs = []  # dataframes storing the modeling results for each shot
-        try:
-            from simtbx.tests import roi_check
-            CHECKER = roi_check.roiCheck(self.params.roi.filter_scores.state_file)
-        except:
-            CHECKER = None
+        CHECKER = None
+        #try:
+        #    from simtbx.tests import roi_check
+        #    CHECKER = roi_check.roiCheck(self.params.roi.filter_scores.state_file)
+        #except:
+        #    CHECKER = None
         for i_shot, line in enumerate(input_lines):
             if i_shot == self.params.max_process:
                 break
@@ -413,6 +414,7 @@ if __name__ == '__main__':
     from dials.util import show_mail_on_error
 
     with show_mail_on_error():
+        print("Starting script")
         script = Script()
         RUN = script.run
         lp = None
@@ -420,6 +422,12 @@ if __name__ == '__main__':
             lp = LineProfiler()
             lp.add_function(hopper_utils.model)
             lp.add_function(hopper_utils.target_func)
+            lp.add_function(RUN)
+            lp.add_function(utils.get_roi_background_and_selection_flags)
+            lp.add_function(hopper_utils.DataModeler.GatherFromExperiment)
+            lp.add_function(utils.simulator_for_refinement)
+            lp.add_function(utils.simulator_from_expt_and_params)
+            lp.add_function(hopper_utils.get_simulator_for_data_modelers)
             RUN = lp(script.run)
         elif script.params.profile:
             print("Install line_profiler in order to use logging: libtbx.python -m pip install line_profiler")
@@ -431,4 +439,5 @@ if __name__ == '__main__':
 
         if lp is not None:
             stats = lp.get_stats()
-            hopper_utils.print_profile(stats, ["model", "target_func"])
+            hopper_utils.print_profile(stats, ["model", "target_func", "run", "get_roi_background_and_selection_flags", "GatherFromExperiment",
+                                               "simulator_for_refinement", "simulator_from_expt_and_params", "get_simulator_for_data_modelers"])
