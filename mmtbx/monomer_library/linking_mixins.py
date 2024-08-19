@@ -428,6 +428,7 @@ class linking_mixins(object):
     atoms_in_first_last_rgs = {}
     for c in self.pdb_hierarchy.chains():
       for i in [0,-1]:
+        if not c.residue_groups(): continue
         rg = c.residue_groups()[i]
         abs_i = abs(i)
         for a in rg.atoms():
