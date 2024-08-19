@@ -133,6 +133,11 @@ class Script:
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         trefs = []
         this_rank_dfs = []  # dataframes storing the modeling results for each shot
+        try:
+            from simtbx.tests import roi_check
+            CHECKER = roi_check.roiCheck(self.params.roi.filter_scores.state_file)
+        except:
+            CHECKER = None
         for i_shot, line in enumerate(input_lines):
             if i_shot == self.params.max_process:
                 break
@@ -159,7 +164,7 @@ class Script:
             if best_models is not None:
                 if "exp_idx" not in list(best_models):
                     best_models["exp_idx"]= 0
-                best = best_models#.query("exp_name=='%s'" % os.path.abspath(exp)).query("exp_idx==%d" % exp_idx)
+                best = best_models.query("exp_name=='%s'" % os.path.abspath(exp)).query("exp_idx==%d" % exp_idx)
 
                 if len(best) != 1:
                     raise ValueError("Should be 1 entry for exp %s in best pickle %s" % (exp, self.params.best_pickle))
@@ -296,6 +301,26 @@ class Script:
                     # reset the params
                     self.params = old_params
 
+                    # Filter poor fits
+                    if self.params.roi.filter_scores.enable and CHECKER is not None:
+                        Modeler.best_model, _ = hopper_utils.model(x, Modeler, SIM, compute_grad=False)
+                        Modeler.best_model_includes_background = False
+                        num_good = Modeler.filter_bad_scores(CHECKER)
+                        if num_good == 0:
+                            Modeler.clean_up(SIM)
+                            continue
+
+                    # Then repeat minimization, fixing roi fits
+                    Modeler.params = self.params
+                    Modeler.set_parameters_for_experiment(best)
+                    new_x = np.array([1.] * len(Modeler.P))
+                    old_P = deepcopy(Modeler.P)
+                    for name in old_P:
+                        new_p = Modeler.P[name]
+                        old_p = old_P[name]
+                        new_x[new_p.xpos] = x[old_p.xpos]
+                    x = Modeler.Minimize(new_x, SIM, i_shot=i_shot)
+
             except StopIteration:
                 x = Modeler.target.x0
             tref = time.time()-tref
@@ -342,6 +367,12 @@ class Script:
             shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_shot=i_shot,
                             save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,
                             save_sim_info=dbg, save_pandas=dbg, save_traces=dbg, save_expt=dbg)
+            #from IPython import embed;embed()
+            #from simtbx.modeling import predictions
+            #Rstrong = None
+            #pred = predictions.get_predict(Modeler.E, Rstrong, Modeler.params, dev=self.dev, df=shot_df, filter_dupes=True)
+            # verify the prediction is identical to the best model
+
             this_rank_dfs.append(shot_df)
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
@@ -378,8 +409,6 @@ class Script:
         #    all_rank_dfs.to_pickle(all_df_name)
 
 
-
-
 if __name__ == '__main__':
     from dials.util import show_mail_on_error
 
@@ -398,6 +427,7 @@ if __name__ == '__main__':
         with DeviceWrapper(script.dev) as _:
             #with np.errstate(all='raise'):
             RUN()
+        COMM.barrier()
 
         if lp is not None:
             stats = lp.get_stats()

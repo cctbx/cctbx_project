@@ -1105,6 +1105,14 @@ refiner {
 
 roi_phil = """
 roi {
+  filter_scores {
+    enable = False
+      .type = bool
+    state_file = None
+      .type = str
+    cutoff = 0.5
+      .type = float
+  }
   filter_bright_peaks {
     enable = False
       .type = bool
@@ -1116,7 +1124,7 @@ roi {
   strong_only = False
     .type = bool
     .help = check for the column is_strong in the reflection table, and if it exists, only load refls where is_strong=True
-  centroid = *obs cal
+  centroid = *obs cal origobs
     .type = choice
     .help = Determines which refl table column contains the spot centroids
     .help = Shoeboxes are drawn around the centroids, and refinement uses pixels

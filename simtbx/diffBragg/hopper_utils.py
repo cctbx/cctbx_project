@@ -130,6 +130,7 @@ class DataModeler:
 
     def __init__(self, params):
         """ params is a simtbx.diffBragg.hopper phil"""
+        self.roiScalesPerPix = 1
         self.Fhkl_channel_ids = None # this should be a list the same length as the spectrum. specifies which Fhkl to refine, depending on the energy (for eg. two color experiment)
         self.no_rlp_info = False  # whether rlps are stored in the refls table
         self.params = params  # phil params (see diffBragg/phil.py)
@@ -179,7 +180,37 @@ class DataModeler:
         self.saves = ["all_data", "all_background", "all_trusted", "best_model", "nominal_sigma_rdout",
                       "rois", "pids", "tilt_abc", "selection_flags", "refls_idx", "pan_fast_slow",
                       "Hi", "Hi_asu", "roi_id", "params", "all_pid", "all_fast", "all_slow", "best_model_includes_background",
-                      "all_q_perpix", "all_sigma_rdout", "all_zscore"]
+                      "all_q_perpix", "all_sigma_rdout", "all_zscore", "roiScalesPerPix"]
+
+    def filter_bad_scores(self, checker):
+        assert self.params.roi.filter_scores.enable
+        assert checker is not None
+        if self.best_model is None:
+            raise ValueError("cannot get the best model, there is no best_model attribute")
+
+        ave_good = num_good = 0
+        for i_roi, roi_id in enumerate(self.roi_id_unique):
+            roi_slc = self.roi_id_slices[roi_id][0]
+            x1, x2, y1, y2 = self.rois[roi_id]
+            roi_sh = y2-y1, x2-x1
+            #roi_sel = self.roi_id==i_roi
+            mod = self.best_model[roi_slc].reshape(roi_sh)
+            if not self.best_model_includes_background:
+                bg = self.all_background[roi_slc].reshape(roi_sh)
+                mod += bg
+            dat = self.all_data[roi_slc].reshape(roi_sh)
+            score = checker.score(dat, mod)
+            if score < self.params.roi.filter_scores.cutoff:
+                self.all_trusted[roi_slc] = False
+            else:
+                num_good += 1
+                ave_good += score
+        if num_good > 0:
+            ave_good = ave_good / num_good
+            MAIN_LOGGER.info("Found %d good roi fits (average good score = %.2f)" % (num_good, ave_good))
+        else:
+            MAIN_LOGGER.info("Score filter removed all spots, bad fit overall!")
+        return num_good
 
     def filter_pixels(self, thresh):
         assert self.roi_id is not None
@@ -1008,15 +1039,23 @@ class DataModeler:
         spot_d = []
         spot_hkl = []
         spot_pid_and_cent = []
+        spot_scale = []
 
         for i_roi in range(len(self.rois)):
             x1, x2, y1, y2 = self.rois[i_roi]
-            mod = self.best_model[self.roi_id == i_roi].reshape((y2 - y1, x2 - x1))
+            roi_sel = self.roi_id==i_roi
+            mod = self.best_model[roi_sel].reshape((y2 - y1, x2 - x1))
             try:
-                res = all_d_perpix[self.roi_id==i_roi] .mean()
+                res = all_d_perpix[roi_sel] .mean()
                 cent_x = (x1+x2) /2.
                 cent_y = (y1+y2) / 2.
-                pid = self.all_pid[self.roi_id==i_roi].ravel()[0]
+                pid = self.all_pid[roi_sel].ravel()[0]
+                scale = 1
+                try:
+                    scale = self.roiScalesPerPix[roi_sel].ravel()[0]
+                except:
+                    pass
+                spot_scale.append(scale)
                 spot_pid_and_cent.append((pid, cent_x, cent_y))
                 hkl = None
                 if self.Hi:
@@ -1054,6 +1093,7 @@ class DataModeler:
             order = np.argsort(spot_d)[::-1]
             spot_d = np.array(spot_d)[order]
             spot_hkl = np.array(spot_hkl)[order]
+            spot_scale = np.array(spot_scale)[order]
             spot_pid_and_cent = np.array(spot_pid_and_cent)[order]
 
             for i in range(len(ret_subimgs)):
@@ -1061,7 +1101,8 @@ class DataModeler:
                 imgs = [imgs[i] for i in order]
                 ret_subimgs[i] = imgs
         if return_stats:
-            stats = {"spot_d": spot_d, "spot_hkl": spot_hkl, "spot_pid_and_cent": spot_pid_and_cent}
+            stats = {"spot_d": spot_d, "spot_hkl": spot_hkl, "spot_pid_and_cent": spot_pid_and_cent,
+                     "spot_scale": spot_scale}
             return ret_subimgs + [stats]
         else:
             return ret_subimgs
@@ -1659,14 +1700,14 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
     model_pix_noRoi = None
 
     # extract the scale factors per ROI, these might correspond to structure factor intensity scale factors, and quite possibly might result in overfits!
-    roiScalesPerPix = 1
     if not Mod.params.fix.perRoiScale:
         perRoiParams = [Mod.P["scale_roi%d" % roi_id] for roi_id in Mod.roi_id_unique]
         perRoiScaleFactors = [p.get_val(x[p.xpos]) for p in perRoiParams]
-        roiScalesPerPix = np.zeros(npix)
+        if not isinstance(Mod.roiScalesPerPix, np.ndarray):
+            Mod.roiScalesPerPix = np.ones(npix)
         for i_roi, roi_id in enumerate(Mod.roi_id_unique):
             slc = Mod.roi_id_slices[roi_id][0]
-            roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
+            Mod.roiScalesPerPix[slc] = perRoiScaleFactors[i_roi]
 
     for i_xtal in range(Mod.num_xtals):
 
@@ -1700,7 +1741,7 @@ def model(x, Mod, SIM,  compute_grad=True, dont_rescale_gradient=False, update_s
         pix_noRoiScale = SIM.D.raw_pixels_roi[:npix]
         pix_noRoiScale = pix_noRoiScale.as_numpy_array()
 
-        pix = pix_noRoiScale * roiScalesPerPix
+        pix = pix_noRoiScale * Mod.roiScalesPerPix
 
         if model_pix is None:
             model_pix = scale*pix

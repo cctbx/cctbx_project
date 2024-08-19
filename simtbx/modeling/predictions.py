@@ -344,7 +344,7 @@ def filter_weak_reflections(refls, weak_fraction):
     return new_refls
 
 
-def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_shoeboxes=False):
+def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_shoeboxes=False, return_pix=False):
     """
     :param data_expt:  Experiment list
     :param Rstrong: Strong spots refl table
@@ -366,23 +366,27 @@ def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_sho
     except Exception:
         return None
 
-    Rstrong['id'] = flex.int(len(Rstrong), 0)
     num_panels = len(data_expt.detector)
     if num_panels > 1:
         assert params.predictions.label_weak_col == "rlp"
 
-    Rstrong.centroid_px_to_mm(data_exptList)
-    Rstrong.map_centroids_to_reciprocal_space(data_exptList)
-    label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut,
-                                       col=params.predictions.label_weak_col)
+    if Rstrong is not None:
+        Rstrong['id'] = flex.int(len(Rstrong), 0)
+        Rstrong.centroid_px_to_mm(data_exptList)
+        Rstrong.map_centroids_to_reciprocal_space(data_exptList)
 
-    pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
+        label_weak_predictions(pred, Rstrong, q_cutoff=params.predictions.qcut,
+                                           col=params.predictions.label_weak_col)
 
-    pred["refl_idx"] = flex.int(np.arange(len(pred)))
-    pred = filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
+        pred['is_strong'] = flex.bool(np.logical_not(pred['is_weak']))
 
-    print("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(pred["is_strong"]), np.sum(pred["is_weak"])))
+        pred["refl_idx"] = flex.int(np.arange(len(pred)))
+        pred = filter_weak_reflections(pred, weak_fraction=params.predictions.weak_fraction)
+
+        print("Will save %d refls (%d strong, %d weak)" % (len(pred), np.sum(pred["is_strong"]), np.sum(pred["is_weak"])))
     if 'shoebox' in list(pred) and not keep_shoeboxes:
         del pred['shoebox']
 
+    if return_imgs:
+        return pred,pan
     return pred

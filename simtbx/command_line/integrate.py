@@ -19,6 +19,7 @@ parser.add_argument("--filterDupes", action="store_true", help="filter refls wit
 parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
 parser.add_argument("--scanWeakFracs", action="store_true", help="optionally stores a variety of inputs for stage2 based filtering different fractions of weak reflections")
 parser.add_argument("--maxProcess", type=int,default=-1, help="maximum number of shots to process before program termination")
+parser.add_argument("--raiseErrors", action="store_true")
 
 args = parser.parse_args()
 
@@ -70,9 +71,6 @@ from copy import deepcopy
 
 from simtbx.diffBragg.device import DeviceWrapper
 
-
-
-
 for i,arg in enumerate(sys.argv):
     if os.path.isfile(arg) or os.path.isdir(arg):
         sys.argv[i] = os.path.abspath(arg)
@@ -90,7 +88,6 @@ def stills_process_params_from_file(phil_file):
         sources=phil_sources, track_unused_definitions=True)
     params = working_phil.extract()
     return params
-
 
 
 def process_reference(reference):
@@ -123,7 +120,6 @@ def process_reference(reference):
             % mask.count(True)
         )
     return reference, rubbish
-
 
 
 def integrate(phil_file, experiments, indexed, predicted):
@@ -221,8 +217,6 @@ def integrate(phil_file, experiments, indexed, predicted):
 
     #print0(log_str)
     return experiments, integrated
-
-
 
 
 def dials_find_spots(data_img, params, trusted_flags=None):
@@ -408,7 +402,9 @@ if __name__=="__main__":
                     df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
                 if args.filterDupes:
                     pred = predictions.filter_refls(pred)
-            except Exception:
+            except Exception as err:
+                if args.raiseErrors:
+                    raise(err)
                 #os.remove(new_expt_name)
                 continue
 
@@ -517,7 +513,7 @@ if __name__=="__main__":
             weak_fracs = [.11,.22,.33,.44,.55,.66,.77,.88]
             labels = []
             for i_frac, weak_frac in enumerate(weak_fracs):
-                filt_refls = filter_weak_reflections(all_rank_pred, weak_frac)
+                filt_refls = predictions.filter_weak_reflections(all_rank_pred, weak_frac)
                 label="%dperc"%(weak_frac*100,)
                 labels.append(label)
                 new_pred_file = os.path.splitext(pred_file)[0]+"_%s.refl" % label

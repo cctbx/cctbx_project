@@ -342,6 +342,8 @@ def get_roi_from_spot(refls, fdim, sdim, shoebox_sz=10, centroid='obs'):
         fs_spot, ss_spot, _ = zip(*refls['xyzobs.px.value'])
     elif centroid=='cal':
         fs_spot, ss_spot, _ = zip(*refls['xyzcal.px'])
+    elif centroid=='origobs':
+        fs_spot, ss_spot, _ = zip(*refls['orig.xyzobs.px'])
     else:
         raise NotImplementedError("No instruction to get centroid position from %s" % centroid)
     rois = []
@@ -387,7 +389,7 @@ def get_roi_deltaQ(refls, delta_Q, experiment, centroid='obs'):
     :param refls: reflection table (needs rlp column)
     :param delta_Q:  width of the ROI in inverse Angstromg (e.g. 0.05)
     :param experiment:
-    :param centroid: flag, obs, cal, or bbox
+    :param centroid: flag, obs, cal, origobs, or bbox
     :return:
     """
     nref = len(refls)
@@ -440,7 +442,7 @@ def get_roi_background_and_selection_flags(refls, imgs, shoebox_sz=10, reject_ed
     :param allow_overlaps: allow overlapping ROIS, otherwise shrink ROIS until the no longer overlap
     :param skip_roi_with_negative_bg: if an ROI has negative signal, dont include it in refinement
     :param only_high: only filter zingers that are above the mean (default is True)
-    :param centroid: obs or cal (get centroids from refl column xyzobs.px.value or xyzcal.px)
+    :param centroid: obs or cal or origobs (get centroids from refl column xyzobs.px.value or xyzcal.px)
     :return:
     """
 
@@ -612,6 +614,8 @@ def determine_shoebox_ROI(detector, delta_Q, wavelength_A, refl, centroid="obs")
         i_com, j_com,_ = refl['xyzobs.px.value']
     elif centroid=='cal':
         i_com, j_com,_ = refl['xyzcal.px']
+    elif centroid=='origobs':
+        i_com, j_com, _ = refl['orig.xyzobs.px']
     else:
         i1,i2,j1,j2,_,_ = refl['bbox']  # super weird funky spots can skew bbox such that its a bad measure of centroid
         i_com = (i1+i2) * .5

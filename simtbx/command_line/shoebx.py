@@ -298,8 +298,11 @@ if not args.scroll:
             vmin, vmax = [float(l.strip()) for l in text.split(",")]
         else:
             vmin, vmax = [float(l.strip()) for l in text.split()]
-        ax.images[0].set_clim(vmin,vmax)
-        display_fig.canvas.draw_idle()
+        if vmax <= vmin:
+            print("VMIN needs to be less than VMAX!")
+        else:
+            ax.images[0].set_clim(vmin,vmax)
+            display_fig.canvas.draw_idle()
 
     def update_dat_clim(text):
         update_clim(text, dat_ax)
