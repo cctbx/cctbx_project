@@ -122,6 +122,10 @@ def get_sulfur_iron_cluster_coordination(pdb_hierarchy,
   done_aa = []
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
+  selection_string = " or ".join(['resname %s' %x for x in sf_clusters])
+  s = pdb_hierarchy.atom_selection_cache().selection(selection_string)
+  if s.all_eq(False):
+    return coordination
   for item in nonbonded_proxies.sorted_value_proxies_generator(
       by_value="delta",
       sites_cart=sites_cart,
