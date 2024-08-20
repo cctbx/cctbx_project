@@ -8,6 +8,7 @@
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/python/extract.hpp>
+#include <chrono>
 
 namespace cctbx { namespace miller {
 
@@ -21,8 +22,10 @@ namespace cctbx { namespace miller {
                                  af::shared<double> const &data2,
                                  boost::python::object hkl_bin_pydict,
                                  int n_bins) {
+      auto t0 = std::chrono::high_resolution_clock::now();
       boost::python::extract<boost::python::dict> hkl_bin_dict_(hkl_bin_pydict);
       boost::python::dict hkl_bin_dict = hkl_bin_dict_;
+      auto t_pydict = std::chrono::high_resolution_clock::now()-t0;
       count = af::shared<int>(n_bins, 0);
       sum_xx = af::shared<double>(n_bins, 0.0);
       sum_yy = af::shared<double>(n_bins, 0.0);
@@ -38,8 +41,13 @@ namespace cctbx { namespace miller {
         index<> hkl = indices1[i1];
         CCTBX_ASSERT(indices2[i2] == hkl);
         //int i_bin = hkl_bin_dict[hkl];
-        if (! hkl_bin_dict.has_key(hkl)) continue;
+        auto t1 = std::chrono::high_resolution_clock::now();
+        if (! hkl_bin_dict.has_key(hkl)) {
+          t_pydict += std::chrono::high_resolution_clock::now()-t1;
+          continue;
+        }
         int i_bin = boost::python::extract<int>(hkl_bin_dict[hkl]);
+        t_pydict += std::chrono::high_resolution_clock::now()-t1;
         double I_x = data1[i1];
         double I_y = data2[i2];
         count[i_bin] += 1;
@@ -49,6 +57,8 @@ namespace cctbx { namespace miller {
         sum_x[i_bin] += I_x;
         sum_y[i_bin] += I_y;
       }
+      auto t_total = std::chrono::high_resolution_clock::now()-t0;
+      std::cout<<"pydict: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t_pydict).count()<<", total: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t_total).count()<<std::endl;
     }
 
     af::shared<int> get_count() {
