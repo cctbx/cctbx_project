@@ -9,7 +9,7 @@ from scipy.interpolate import make_interp_spline
 from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
-from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present, _FindNamedAtomInResidue
 from copy import copy
 
 version = "1.0.0"
@@ -365,6 +365,7 @@ Output:
       endGuide = (ribElement.end // self.nIntervals) - 1
 
       if ribElement.type == 'HELIX':
+
         k = (ribElement.start + ribElement.end) // 2
         pt = splinepts[2][k]
         v1 = splinepts[1][k] - pt
@@ -410,18 +411,95 @@ Output:
             if curElt.range == ribElement.range.previous:
               prevRibElt = curElt
               break
-        # @todo
+
+          prevRange = prevRibElt.range
+          if prevRange is None:
+            prevRibElt = ribElement
+
+          # Detrmine sidedness using splinepts and normals
+          prevStGuide = (prevRibElt.start // self.nIntervals) + 2
+          prevEndGuide = (prevRibElt.end // self.nIntervals) + 1
+          curClosest = stGuide      # Find the pair of guidepoints closest to each other
+          prevClosest = prevStGuide # (one on each strand) to perform the test
+          closeDist = 1e10
+          for i in range(stGuide, endGuide+2 + 1):
+            for j in range(prevStGuide, endGuide+2 + 1):
+              # Look for closest pair of H-bonding partners
+              try:
+                O = _FindNamedAtomInResidue(guides[i].prevRes, "O")
+                N = _FindNamedAtomInResidue(guides[i].prevRes, "N")
+                dist = np.linalg.norm(O.pos - N.pos)
+                if dist < closeDist:
+                  closeDist = dist
+                  curClosest = i
+                  prevClosest = j
+              except:
+                pass
+          kCur = min(self.nIntervals*(curClosest-1), len(splinepts[4]))
+          kPrev = min(self.nIntervals*(prevClosest-1), len(splinepts[4]))
+          ptCur = splinepts[4][kCur]
+          v1Cur = splinepts[3][kCur] - ptCur
+          # VBC Hack to get 1jj2 at least generating ribbons kins.  Doesn't seem to 
+          # correctly generate beta sides though.  Error is kCur+1 generates an ArrayIndexOutOfBoundsException in splinepts[3]
+          if kCur+1 < len(splinepts[3]):
+            v2Cur = splinepts[3][kCur+1] - ptCur
+            crossCur = np.cross(v1Cur, v2Cur)
+            ptPrev = splinepts[4][kPrev]
+            v1Prev = splinepts[3][kPrev] - ptPrev
+            v2Prev = splinepts[3][kPrev+1] - ptPrev
+            crossPrev = np.cross(v1Prev, v2Prev)
+            dot = np.dot( crossCur, crossPrev)
+
+        self.crayon = normalCrayon
+        ret += "@ribbonlist {fancy sheet} " + listBeta + "\n"
+        for i in range(ribElement.start, ribElement.end - 1):
+          # If strands are not "facing" the same way,
+          # flip the normals (for sidedness) by switching the order of these two lines, (ARK Spring2010)
+          if (dot < 0 and not prevRibElt.range.flipped) or (dot > 0 and prevRibElt.range.flipped):
+            ret += self.printFancy(guides, splinepts[4], i)
+            ret += self.printFancy(guides, splinepts[3], i)
+            ribElement.range.flipped = True
+          else:
+            ret += self.printFancy(guides, splinepts[3], i)
+            ret += self.printFancy(guides, splinepts[4], i)
+
+        # Ending *exactly* like this is critical to avoiding a break
+        # between the arrow body and arrow head!
+        if (dot < 0 and not prevRibElt.range.flipped) or (dot > 0 and prevRibElt.range.flipped):
+          ret += self.printFancy(guides, splinepts[6], ribElement.end - 2)
+          ret += self.printFancy(guides, splinepts[5], ribElement.end - 2)
+          ret += self.printFancy(guides, splinepts[0], ribElement.end)
+        else:
+          ret += self.printFancy(guides, splinepts[5], ribElement.end - 2)
+          ret += self.printFancy(guides, splinepts[6], ribElement.end - 2)
+          ret += self.printFancy(guides, splinepts[0], ribElement.end)
+        # Borders
+        self.crayon = edgeCrayon
+        ret += "@vectorlist {fancy sheet edges} width=1 " + listBeta + " color= deadblack\n"
+        # Black edge, left side
+        ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
+        for i in range(ribElement.start, ribElement.end - 1):
+          ret += self.printFancy(guides, splinepts[3], i)
+        ret += self.printFancy(guides, splinepts[5], ribElement.end - 2)
+        ret += self.printFancy(guides, splinepts[0], ribElement.end)
+        # Black edge, right side
+        ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
+        for i in range(ribElement.start, ribElement.end - 1):
+          ret += self.printFancy(guides, splinepts[4], i)
+        ret += self.printFancy(guides, splinepts[6], ribElement.end - 2)
+        ret += self.printFancy(guides, splinepts[0], ribElement.end)
 
       else: # Coil
+
         # for black outlines on coils
         if listCoilOutline is not None:
           self.crayon = normalCrayon
-          ret += "@vectorlist {fancy coil edges} " + listCoilOutline
+          ret += "@vectorlist {fancy coil edges} " + listCoilOutline + "\n"
           for i in range(ribElement.start, ribElement.end+1):
             ret += self.printFancy(guides, splinepts[0], i)
 
         self.crayon = normalCrayon
-        ret += "@vectorlist {fancy coil} " + listCoil
+        ret += "@vectorlist {fancy coil} " + listCoil + "\n"
         for i in range(ribElement.start, ribElement.end+1):
           ret += self.printFancy(guides, splinepts[0], i)
 
@@ -462,7 +540,6 @@ Output:
         r.sense = int(line[38:40].strip())
         r.strand = int(line[7:10].strip())
       elif r.type == 'TURN':
-        # @todo Test this code on a file that actually has turns to see if it works
         # In fact, we turn turns int coils, so we really don't care.
         # r.sheetID = line[11:14].strip()
         r._chainId = line[20:21].strip()
