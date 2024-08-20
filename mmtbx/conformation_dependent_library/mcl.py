@@ -66,10 +66,10 @@ def update(grm,
      metal_coordination_library.get_metal_coordination_proxies,
      metal_coordination_library.get_proxies_zn,
       ],
-    ['Mg2+ Nucleotide coordination',
-     metal_coordination_library.get_metal_coordination_proxies,
-     metal_coordination_library.get_proxies_mg_nuc,
-      ],
+    # ['Mg2+ Nucleotide coordination',
+    #  metal_coordination_library.get_metal_coordination_proxies,
+    #  metal_coordination_library.get_proxies_mg_nuc,
+    #   ],
     ]
   outl = ''
   outl_debug = ''
@@ -77,7 +77,6 @@ def update(grm,
   sites_c = pdb_hierarchy.atoms().extract_xyz()
   nb_proxies = grm.pair_proxies(
         sites_cart=sites_c).nonbonded_proxies
-
   for label, get_coordination, get_all_proxies in hooks:
     rc = get_coordination(
       pdb_hierarchy=pdb_hierarchy,

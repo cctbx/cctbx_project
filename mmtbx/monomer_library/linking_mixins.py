@@ -478,6 +478,8 @@ class linking_mixins(object):
       if bond_asu_table.contains(i_seq, j_seq, 1): continue
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
+      if atom1.element_is_hydrogen() or atom2.element_is_hydrogen():
+        continue
       if exclude_this_nonbonded:
         key = (selection_1,selection_2)
         if key not in exclude_out_lines:

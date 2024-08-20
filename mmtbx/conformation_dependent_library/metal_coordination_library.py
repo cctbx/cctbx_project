@@ -95,6 +95,10 @@ def get_metal_coordination_proxies(pdb_hierarchy,
   if params is not None:
     hbond_distance_cutoff = params.hbond_distance_cutoff
   mbonds = {}
+  selection_string = " or ".join(["element ZN"])
+  s = pdb_hierarchy.atom_selection_cache().selection(selection_string)
+  if s.all_eq(False):
+    return mbonds
   atoms = pdb_hierarchy.atoms()
   sites_cart = atoms.extract_xyz()
   for item in nonbonded_proxies.sorted_value_proxies_generator(
