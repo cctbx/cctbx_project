@@ -162,7 +162,7 @@ class State:
 
       # Add 'all' selection ref
       selection = Selection.from_selection_string("all",model=ref.data.model)
-      selection_ref = SelectionRef(selection,ref)
+      selection_ref = SelectionRef(selection,ref,show=True)
       self.add_ref(selection_ref)
 
     elif isinstance(ref,SelectionRef):
@@ -189,7 +189,7 @@ class State:
   def add_ref_from_selection(self,selection,model_ref=None,show=True,make_active=False):
     if model_ref is None:
       model_ref = self.active_model_ref
-    ref = SelectionRef(data=selection,model_ref=model_ref,show=show)
+    ref = SelectionRef(data=selection,model_ref=model,show=show)
     self.add_ref(ref)
     if make_active:
       self.active_selection_ref = ref
@@ -214,6 +214,10 @@ class State:
   @property
   def references_model(self):
     return [value for key,value in self.references.items() if isinstance(value,ModelRef)]
+
+  @property
+  def references_selection(self):
+    return [value for key,value in self.references.items() if isinstance(value,SelectionRef)]
 
   @property
   def state(self):

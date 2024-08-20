@@ -292,6 +292,11 @@ class Selection:
   def phenix_syntax(self):
     # The default string selection is Phenix string selection
     return self.string
+    
+  @property
+  def phenix_string(self):
+    # The default string selection is Phenix string selection
+    return self.string
 
   @property
   def pandas_syntax(self):
