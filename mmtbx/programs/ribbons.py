@@ -157,10 +157,10 @@ Output:
   # Switched getType() to making type public.
   # Its fields should be based on the PDB secondary structure records.
   class Range:
-    def __init__(self, pType = 'COIL', pInit = 0, pEnd = 0, pSense = 0, pStrand = 1, pSheet = ' ', pFlipped = False):
+    def __init__(self, pType = 'COIL', pChainId = '', pInit = 0, pEnd = 0, pSense = 0, pStrand = 1, pSheet = ' ', pFlipped = False):
       # self._rangeIndex = 0
       self.type = pType
-      #self._chainId = ''
+      self._chainId = pChainId
       self.initSeqNum = pInit
       self.endSeqNum = pEnd
       #self._initICode = ' '
@@ -169,13 +169,44 @@ Output:
       self.strand = pStrand   # Starts at 1 for each strand within a sheet and increases by 1
       self.sheetID = pSheet
       self.flipped = pFlipped  # Used by printing code to make the tops within a set of ribbons all point the same way
-      #self.previous = None
-      #self.next = None
-      #self.duplicateOf = None
+      self.previous = None
+      self.next = None
+      self.duplicateOf = None
 
     def __str__(self):
       return 'Range: type={}, init={}, end={}, sense={}, strand={}, sheet={}, flipped={}'.format(
         self.type, self.initSeqNum, self.endSeqNum, self.sense, self.strand, self.sheetID, self.flipped)
+
+  def ConsolidateSheets(self):
+    uniqueStrands = {}
+
+    # For each ribbon, record its predecessor in sheet, and check for duplicates
+    for rng in self.secondaryStructure.values():
+      if not rng.type == 'SHEET':
+        continue
+
+      key = str(int(rng.initSeqNum)) + rng._chainId
+      if not key in uniqueStrands:
+        uniqueStrands[key] = rng
+      else:
+        rng.duplicateOf = uniqueStrands[key]
+
+      # Now find this strand's previous and next strand.
+      for rng2 in self.secondaryStructure.values():
+        if not rng2.type == 'SHEET':
+          continue
+        if rng2.sheetID == rng.sheetID and rng2.strand == rng.strand-1:
+          rng.previous = rng2
+          rng2.next = rng
+
+      # Now go through and reassign previous/next fields in duplicates
+      for rng in self.secondaryStructure.values():
+        if not rng.type == 'SHEET':
+          continue
+        if rng.duplicateOf is None and rng.next is not None and rng.next.duplicateOf is not None:
+          rng.next.duplicateOf.previous = rng
+        if rng.duplicateOf is None and rng.previous is not None and rng.previous.duplicateOf is not None:
+          rng.previous = rng.previous.duplicateOf
 
   class RibbonElement:
     def __init__(self, other=None, setRange=None):
@@ -367,9 +398,35 @@ Output:
           ret += self.printFancy(guides, splinepts[2], i)
         ret += self.printFancy(guides, splinepts[0], ribElement.end)
 
-      # @todo
+      elif ribElement.type == 'SHEET':
 
-    # @todo
+        dot = 0.0     # Used to determine sidedness
+
+        # Don't do for the first strand in the sheet
+        if ribElement.range.strand != 1:
+          # Look for previous strand
+          for i in range(len(strands)):
+            curElt = strands[i]
+            if curElt.range == ribElement.range.previous:
+              prevRibElt = curElt
+              break
+        # @todo
+
+      else: # Coil
+        # for black outlines on coils
+        if listCoilOutline is not None:
+          self.crayon = normalCrayon
+          ret += "@vectorlist {fancy coil edges} " + listCoilOutline
+          for i in range(ribElement.start, ribElement.end+1):
+            ret += self.printFancy(guides, splinepts[0], i)
+
+        self.crayon = normalCrayon
+        ret += "@vectorlist {fancy coil} " + listCoil
+        for i in range(ribElement.start, ribElement.end+1):
+          ret += self.printFancy(guides, splinepts[0], i)
+
+      # Reset the crayon for the next pass
+      self.crayon = normalCrayon
 
     return ret
 
@@ -394,10 +451,12 @@ Output:
       r = self.Range(line[0:5].strip())
       if r.type == 'HELIX':
         r.sheetID = line[11:14].strip()
-        r.initSeqNum = int(line[21:26].strip())
+        r._chainId = line[19:21].strip()
+        r.initSeqNum = int(line[22:26].strip())
         r.endSeqNum = int(line[33:38].strip())
       elif r.type == 'SHEET':  # Java code marks this internally as STRAND but we leave it as SHEET
         r.sheetID = line[11:14].strip()
+        r._chainId = line[21:22].strip()
         r.initSeqNum = int(line[23:28].strip())
         r.endSeqNum = int(line[33:38].strip())
         r.sense = int(line[38:40].strip())
@@ -406,10 +465,13 @@ Output:
         # @todo Test this code on a file that actually has turns to see if it works
         # In fact, we turn turns int coils, so we really don't care.
         # r.sheetID = line[11:14].strip()
+        r._chainId = line[20:21].strip()
         r.initSeqNum = int(line[22:26].strip())
         r.endSeqNum = int(line[33:37].strip())
       for i in range(r.initSeqNum,r.endSeqNum+1):
         self.secondaryStructure[i] = r
+
+    self.ConsolidateSheets()
 
     # The name of the structure, which is the root of the input file name (no path, no extension)
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
@@ -541,8 +603,6 @@ Output:
                     "width= 4 color= {ncoi"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {coil}",
                     None,
                     self.params.color_by == "rainbow")
-
-          # @todo
 
     # Write the output to the specified file.
     self.data_manager._write_text("Text", outString, self.params.output.filename)
