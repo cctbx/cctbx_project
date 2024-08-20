@@ -10,21 +10,34 @@ class reflection_table_utils(object):
   @staticmethod
   def get_next_hkl_reflection_table(reflections):
     '''Generate asu hkl slices from an asu hkl-sorted reflection table'''
+    reflections.initialize_next_hkl()
+    counter = 0
     if reflections.size() == 0:
       yield reflections
 
-    i_begin = 0
-    hkl_ref = reflections['miller_index_asymmetric'][0]
-    for i in range(reflections.size()):
-      hkl = reflections['miller_index_asymmetric'][i]
-      if hkl == hkl_ref:
-        continue
-      else:
-        yield reflections[i_begin:i]
-        i_begin = i
-        hkl_ref = hkl
+    result = reflections.get_next_hkl_reflection_table_()
+    while result:
+      
 
-    yield reflections[i_begin:i+1]
+      yield result
+      result = reflections.get_next_hkl_reflection_table_()
+
+#    i_begin = 0
+#    counter = 0
+#    hkl_ref = reflections['miller_index_asymmetric'][0]
+#    indices = reflections['miller_index_asymmetric']
+#    for i, hkl in enumerate(indices):
+#      if hkl == hkl_ref:
+#        continue
+#      else:
+#        result = reflections[i_begin:i]
+#        counter += 1
+#        print(result.size())
+#        yield result
+#        i_begin = i
+#        hkl_ref = hkl
+#
+#    yield reflections[i_begin:i+1]
 
   @staticmethod
   def select_odd_experiment_reflections(reflections, col='id'):
@@ -52,6 +65,20 @@ class reflection_table_utils(object):
   @staticmethod
   def merge_reflections(reflections, min_multiplicity, nameprefix=None, thresh=None):
     '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
+    if thresh is None:
+      result_ = reflections.merge_reflections_(min_multiplicity)
+      #dummy = dict()
+      dummy = flex.reflection_table(result_.size())
+      merged_reflections = reflection_table_utils.merged_reflection_table()
+      for key, type_ in zip(
+          ['miller_index', 'intensity', 'sigma', 'multiplicity'],
+          [flex.miller_index, flex.double, flex.double, flex.int]):
+        #new_col = type_(result_[key])
+        #dummy[key] = new_col
+        dummy[key] = result_[key]
+      #merged_reflections.append(dummy)
+      return dummy
+
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for i_refls,refls in enumerate(reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections)):
       if refls.size() == 0:
@@ -61,7 +88,8 @@ class reflection_table_utils(object):
       # This assert is timeconsuming when using a small number of cores
       #assert not (hkl in merged_reflections['miller_index']) # i.e. assert that the input reflection table came in sorted
 
-      refls = refls.select(refls['intensity.sum.variance'] > 0.0)
+      mask = refls['intensity.sum.variance'] > 0.0
+      refls = refls.select(mask)
 
       if refls.size() >= min_multiplicity:
         weighted_intensity_array = refls['intensity.sum.value'] / refls['intensity.sum.variance']
@@ -83,6 +111,15 @@ class reflection_table_utils(object):
                                   'intensity' : weighted_mean_intensity,
                                   'sigma' : standard_error_of_weighted_mean_intensity,
                                   'multiplicity' : refls.size()})
+#    result_2 = reflections.merge_reflections_(min_multiplicity)
+#    print(list(merged_reflections['miller_index'][-5:]))
+#    print(list(result_2['miller_index'][-5:]))
+#    print(list(merged_reflections['intensity'][-5:]))
+#    print(list(result_2['intensity'][-5:]))
+#    print(list(merged_reflections['sigma'][-5:]))
+#    print(list(result_2['sigma'][-5:]))
+#    print(list(merged_reflections['multiplicity'][-5:]))
+#    print(list(result_2['multiplicity'][-5:]))
     return merged_reflections
 
   @staticmethod

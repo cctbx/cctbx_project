@@ -60,6 +60,9 @@ class hkl_group(worker):
     # split the full miller set into chunks; the number of chunks is equal to the number of ranks
     import numpy as np
     self.hkl_split_set = np.array_split(self.params.scaling.miller_set.indices(), self.mpi_helper.size)
+    indices = self.params.scaling.miller_set.indices()
+    size = self.mpi_helper.size
+    self.hkl_split_set = [[]] + [indices[n::size-1] for n in range(size-1)]
 
     # initialize a list of hkl chunks - reflection tables to store distributed reflections
     self.hkl_chunks = []

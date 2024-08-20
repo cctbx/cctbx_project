@@ -11,6 +11,7 @@ namespace cctbx { namespace miller { namespace boost_python {
   void wrap_asu();
   void wrap_bins();
   void wrap_change_basis();
+  void wrap_cross_correl_components();
   void wrap_expand_to_p1();
   void wrap_index_generator();
   void wrap_index_span();
@@ -75,6 +76,7 @@ namespace {
     wrap_asu();
     wrap_bins();
     wrap_change_basis();
+    wrap_cross_correl_components();
     wrap_expand_to_p1();
     wrap_index_generator();
     wrap_index_span();

@@ -72,7 +72,7 @@ class merger(worker):
       self.logger.log_step_time("MERGE")
       final_merged_reflection_table = rt_util.merged_reflection_table()
       self.logger.log("Concatenating merged %s HKLs at rank 0..."%selection_name)
-      for table in all_merged_reflection_tables:
+      for i, table in enumerate(all_merged_reflection_tables):
         final_merged_reflection_table.extend(table)
       self.logger.main_log("Total (not limited by resolution) merged %s HKLs: %d"%(selection_name, final_merged_reflection_table.size()))
       self.logger.log_step_time("MERGE", True)

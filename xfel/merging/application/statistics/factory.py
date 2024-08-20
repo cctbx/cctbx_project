@@ -3,6 +3,8 @@ from xfel.merging.application.statistics.unit_cell_statistics import unit_cell_s
 from xfel.merging.application.statistics.beam_statistics import beam_statistics
 from xfel.merging.application.statistics.intensity_resolution_statistics import intensity_resolution_statistics
 from xfel.merging.application.statistics.intensity_resolution_statistics_cxi import intensity_resolution_statistics_cxi
+from xfel.merging.application.statistics.intensity_resolution_statistics_deltaccint import intensity_resolution_statistics_deltaccint
+from xfel.merging.application.statistics.intensity_resolution_statistics_deltaccint_st import intensity_resolution_statistics_deltaccint_st
 from xfel.merging.application.statistics.experiment_resolution_statistics import experiment_resolution_statistics
 from xfel.merging.application.statistics.intensity_histogram import intensity_histogram
 from xfel.merging.application.worker import factory as factory_base
@@ -25,6 +27,11 @@ class factory(factory_base):
         return [intensity_resolution_statistics(params, mpi_helper, mpi_logger)]
       elif info_count > 1 and additional_info[1] == 'cxi':
         return [intensity_resolution_statistics_cxi(params, mpi_helper, mpi_logger)]
+      elif info_count > 1 and additional_info[1] == 'deltaccint':
+        if info_count > 2 and additional_info[2] == 'st':
+          return [intensity_resolution_statistics_deltaccint_st(params, mpi_helper, mpi_logger)]
+        else:
+          return [intensity_resolution_statistics_deltaccint(params, mpi_helper, mpi_logger)]
       elif info_count > 1 and additional_info[1] == 'histogram':
         return [intensity_histogram(params, mpi_helper, mpi_logger)]
 

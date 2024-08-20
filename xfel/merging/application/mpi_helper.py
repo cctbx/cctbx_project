@@ -22,6 +22,10 @@ def system_exception_handler(exception_type, value, traceback):
       raise e
 sys.excepthook = system_exception_handler
 
+flex_np_type_map = {
+    flex.double: np.double,
+    flex.int: np.int32,
+    }
 
 class mpi_helper(object):
   def __init__(self):
@@ -51,6 +55,31 @@ class mpi_helper(object):
       if flex_array is not None:
         cumulative += flex_array
     return cumulative
+
+  def cumulative_flex_2(self, flex_array, flex_type=None, root=0):
+    flex_type = flex_type if flex_type is not None else type(flex_array)
+    result_type = flex_np_type_map[flex_type]
+    result = np.zeros(flex_array.size(), dtype=result_type)
+    self.comm.Reduce(flex_array.as_numpy_array(), result, op=MPI.SUM, root=root)
+    return result if self.rank==0 else None
+
+  def cumulative_flex_multi(self, flex_array_array, flex_type_array=None, root=0):
+    list_of_all_flex_array_arrays = self.comm.gather(flex_array_array, root=root)
+    if self.rank != root:
+      return [None] * len(flex_array_array)
+    result = []
+    if flex_type_array is not None:
+      for i, f_t in enumerate(flex_type_array):
+        result.append(f_t(flex_array_array[i].size(), 0))
+    else:
+      for i, arr in enumerate(flex_array_array):
+        result.append(type(arr)(arr.size(), 0))
+    for i, col in enumerate(zip(*list_of_all_flex_array_arrays)):
+      for item in col:
+        result[i] += item
+    return result
+
+
 
   def aggregate_flex(self, flex_array, flex_type=None, root=0):
     """

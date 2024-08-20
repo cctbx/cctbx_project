@@ -186,7 +186,14 @@ class Script(object):
         self.mpi_logger.main_log(step_desc)
 
       # Execute worker
+#      if self.mpi_helper.rank in [0,1] and worker.__repr__() == 'Intensity resolution statistics deltaccint':
+#        import line_profiler
+#        lp=line_profiler.LineProfiler(worker.run)
+#        lp.enable()
       experiments, reflections = worker.run(experiments, reflections)
+#      if self.mpi_helper.rank in [0,1] and worker.__repr__() == 'Intensity resolution statistics deltaccint':
+#        lp.disable()
+#        lp.print_stats()
       self.mpi_logger.log_step_time("STEP_" + worker.__repr__(), True)
       if experiments:
         self.mpi_logger.log("Ending step with %d experiments"%len(experiments))

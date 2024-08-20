@@ -6,6 +6,7 @@ env.SharedLibrary(target="#lib/cctbx_miller_ext", source=[
   "asu.cpp",
   "bins.cpp",
   "change_basis.cpp",
+  "cross_correl_components.cpp",
   "expand_to_p1.cpp",
   "index_generator.cpp",
   "index_span.cpp",

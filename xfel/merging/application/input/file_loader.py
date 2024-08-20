@@ -135,6 +135,7 @@ class simple_file_loader(worker):
     self.logger.log_step_time("BROADCAST_FILE_LIST")
     new_file_list, file_names_mapping = self.mpi_helper.comm.bcast(transmitted, root = 0)
     new_file_list = new_file_list[self.mpi_helper.rank] if self.mpi_helper.rank < len(new_file_list) else None
+    #if self.mpi_helper.rank==0: new_file_list = None
     self.logger.log_step_time("BROADCAST_FILE_LIST", True)
 
     # Load the data

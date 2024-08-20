@@ -229,7 +229,14 @@ class intensity_resolution_statistics(worker):
     self.Total_CC_Iso_Table = self.calculate_cross_correlation(self.params.scaling.i_model, exp_intensities)
 
   def calculate_cc_int(self, odd_reflections, even_reflections):
+#    if self.mpi_helper.rank in [1,2]:
+#      import line_profiler
+#      lp = line_profiler.LineProfiler(reflection_table_utils.merge_reflections)
+#      lp.enable()
     odd_reflections_merged = reflection_table_utils.merge_reflections(odd_reflections, self.params.merging.minimum_multiplicity)
+#    if self.mpi_helper.rank in [1,2]:
+#      lp.disable()
+#      lp.print_stats()
     even_reflections_merged = reflection_table_utils.merge_reflections(even_reflections, self.params.merging.minimum_multiplicity)
 
     # Create target symmetry
@@ -251,7 +258,14 @@ class intensity_resolution_statistics(worker):
                                     flex.double(even_reflections_merged.size(), 1.0))
 
     # Calculate crosss-correlation
+#    if self.mpi_helper.rank in [0,1]:
+#      import line_profiler
+#      lp = line_profiler.LineProfiler(self.calculate_cross_correlation)
+#      lp.enable()
     self.Total_CC_OneHalf_Table = self.calculate_cross_correlation(intensities_odd, intensities_even)
+#    if self.mpi_helper.rank in [0,1]:
+#      lp.disable()
+#      lp.print_stats()
 
   def calculate_cross_correlation(self, miller_array_1, miller_array_2):
     # Get pre-created resolution binning objects from the parameters
@@ -262,53 +276,82 @@ class intensity_resolution_statistics(worker):
     n_bins = self.resolution_binner.n_bins_all() # (self.params.statistics.n_bins + 2), 2 - to account for the hkls outside of the binner resolution range
 
     # To enable MPI all-rank reduction, every rank must initialize statistics array(s), even if the rank doesn't have any reflections.
-    self.cc_N         = flex.int(n_bins, 0)
-    self.cc_sum_xx    = flex.double(n_bins, 0.0)
-    self.cc_sum_xy    = flex.double(n_bins, 0.0)
-    self.cc_sum_yy    = flex.double(n_bins, 0.0)
-    self.cc_sum_x     = flex.double(n_bins, 0.0)
-    self.cc_sum_y     = flex.double(n_bins, 0.0)
+    from cctbx.miller import cross_correl_components
+    ccc = cross_correl_components(
+        miller_array_1.indices(),
+        miller_array_2.indices(),
+        miller_array_1.data(),
+        miller_array_2.data(),
+        self.hkl_resolution_bins,
+        n_bins)
 
-    # Find matching indices in the two data sets
-    matching_indices = miller.match_multi_indices(miller_indices_unique = miller_array_1.indices(),
-                                                  miller_indices = miller_array_2.indices())
+    self.cc_N         = ccc.N()
+    self.cc_sum_xx    = ccc.sum_xx()
+    self.cc_sum_xy    = ccc.sum_xy()
+    self.cc_sum_yy    = ccc.sum_yy()
+    self.cc_sum_x     = ccc.sum_x()
+    self.cc_sum_y     = ccc.sum_y()
 
-    # Perform binned summations for all components of the cross-correlation formula
-    for pair in matching_indices.pairs():
+#    # Find matching indices in the two data sets
+#    matching_indices = miller.match_multi_indices(miller_indices_unique = miller_array_1.indices(),
+#                                                  miller_indices = miller_array_2.indices())
+#
+#    # Perform binned summations for all components of the cross-correlation formula
+#    for pair in matching_indices.pairs():
+#
+#      hkl = miller_array_1.indices()[pair[0]]
+#      assert hkl == miller_array_2.indices()[pair[1]]
+#
+#      if hkl in self.hkl_resolution_bins:
+#        i_bin = self.hkl_resolution_bins[hkl]
+#
+#        I_x = miller_array_1.data()[pair[0]]
+#        I_y = miller_array_2.data()[pair[1]]
+#
+#        self.cc_N[i_bin]        += 1
+#        self.cc_sum_xx[i_bin]   += I_x**2
+#        self.cc_sum_yy[i_bin]   += I_y**2
+#        self.cc_sum_xy[i_bin]   += I_x * I_y
+#        self.cc_sum_x[i_bin]    += I_x
+#        self.cc_sum_y[i_bin]    += I_y
 
-      hkl = miller_array_1.indices()[pair[0]]
-      assert hkl == miller_array_2.indices()[pair[1]]
+#    for i in range(20):
+#      assert (self.cc_N[i] == ccc.N()[i])
+#      assert (self.cc_sum_xx[i] == ccc.sum_xx()[i])
+#      assert (self.cc_sum_xy[i] == ccc.sum_xy()[i])
+#      assert (self.cc_sum_x[i] == ccc.sum_x()[i])
+#      assert (self.cc_sum_y[i] == ccc.sum_y()[i])
+#      assert (self.cc_sum_yy[i] == ccc.sum_yy()[i])
 
-      if hkl in self.hkl_resolution_bins:
-        i_bin = self.hkl_resolution_bins[hkl]
-
-        I_x = miller_array_1.data()[pair[0]]
-        I_y = miller_array_2.data()[pair[1]]
-
-        self.cc_N[i_bin]        += 1
-        self.cc_sum_xx[i_bin]   += I_x**2
-        self.cc_sum_yy[i_bin]   += I_y**2
-        self.cc_sum_xy[i_bin]   += I_x * I_y
-        self.cc_sum_x[i_bin]    += I_x
-        self.cc_sum_y[i_bin]    += I_y
 
     # Accumulate binned counts (cc_N) and sums (cc_sum) from all ranks
-    all_ranks_cc_N          = self.mpi_helper.cumulative_flex(self.cc_N,      flex.int)
-    all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex(self.cc_sum_xx, flex.double)
-    all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex(self.cc_sum_yy, flex.double)
-    all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex(self.cc_sum_xy, flex.double)
-    all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex(self.cc_sum_x,  flex.double)
-    all_ranks_cc_sum_y      = self.mpi_helper.cumulative_flex(self.cc_sum_y,  flex.double)
+    all_ranks_cc_N          = self.mpi_helper.cumulative_flex_2(self.cc_N,      flex.int)
+    all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex_2(self.cc_sum_xx, flex.double)
+    all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex_2(self.cc_sum_yy, flex.double)
+    all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex_2(self.cc_sum_xy, flex.double)
+    all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex_2(self.cc_sum_x,  flex.double)
+    all_ranks_cc_sum_y      = self.mpi_helper.cumulative_flex_2(self.cc_sum_y,  flex.double)
+
+#    accumulated_results = self.mpi_helper.cumulative_flex_multi(
+#            [self.cc_N, self.cc_sum_xx, self.cc_sum_yy, self.cc_sum_xy, self.cc_sum_x, self.cc_sum_y],
+#            [flex.int, flex.double, flex.double, flex.double, flex.double, flex.double])
+#    all_ranks_cc_N          = accumulated_results[0]
+#    all_ranks_cc_sum_xx     = accumulated_results[1]
+#    all_ranks_cc_sum_yy     = accumulated_results[2]
+#    all_ranks_cc_sum_xy     = accumulated_results[3]
+#    all_ranks_cc_sum_x      = accumulated_results[4]
+#    all_ranks_cc_sum_y      = accumulated_results[5]
 
     # Reduce all binned counts (cc_N) and sums (cc_sum) from all ranks
     if self.mpi_helper.rank == 0:
-      return self.build_cross_correlation_table(
+      result = self.build_cross_correlation_table(
                                                 all_ranks_cc_N,
                                                 all_ranks_cc_sum_xx,
                                                 all_ranks_cc_sum_yy,
                                                 all_ranks_cc_sum_xy,
                                                 all_ranks_cc_sum_x,
                                                 all_ranks_cc_sum_y)
+      return result
     else:
       return None
 
@@ -548,6 +591,7 @@ class intensity_resolution_statistics(worker):
     cumulative_sum_x   = 0.0
     cumulative_sum_y   = 0.0
 
+    bin_counts = self.resolution_binner.counts()
     for i_bin in self.resolution_binner.range_used():
       count   = count_array[i_bin]
       sum_xx  = sum_xx_array[i_bin]
@@ -566,12 +610,13 @@ class intensity_resolution_statistics(worker):
       Cross_Correlation_Table.table.append(
                     cross_correlation_resolution_bin(
                             i_bin = i_bin,
-                            theor_asu_count = self.resolution_binner.counts()[i_bin],
+                            theor_asu_count = bin_counts[i_bin],
                             observed_matching_asu_count = count,
                             cross_correlation = cross_correlation))
 
       cumulative_observed_matching_asu_count += count
-      cumulative_theor_asu_count += self.resolution_binner.counts()[i_bin]
+
+      cumulative_theor_asu_count += bin_counts[i_bin]
       cumulative_sum_xx  += sum_xx
       cumulative_sum_yy  += sum_yy
       cumulative_sum_xy  += sum_xy
