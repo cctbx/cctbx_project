@@ -354,6 +354,9 @@ select
     sigma = 0.5
       .type = float
       .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
+    d_min = None
+      .type = float
+      .help = Remove the entire lattice if the resolution is not at least this d_min
     }
 }
 """
