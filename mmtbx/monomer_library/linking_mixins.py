@@ -585,22 +585,6 @@ Residue classes
         if atom2.element.strip() in hydrogens:
           done[atom1.id_str()] = atom2.id_str()
       # bond length cutoff & some logic
-      aa_rc = linking_utils.is_atom_pair_linked(
-          atom1,
-          atom2,
-          classes1.important_only,
-          classes2.important_only,
-          distance=distance,
-          max_bonded_cutoff=max_bonded_cutoff,
-          amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          inter_residue_bond_cutoff=inter_residue_bond_cutoff,
-          second_row_buffer=second_row_buffer,
-          saccharide_bond_cutoff=carbohydrate_bond_cutoff,
-          metal_coordination_cutoff=metal_coordination_cutoff,
-          use_only_bond_cutoff=use_only_bond_cutoff,
-          link_metals=link_metals,
-          verbose=verbose,
-          )
       if not linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
