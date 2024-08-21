@@ -355,20 +355,18 @@ def is_atom_pair_linked(atom1,
                         class_important_1,
                         class_important_2,
                         distance=None,
-                        max_bonded_cutoff=3.,
-                        amino_acid_bond_cutoff=1.9,
-                        rna_dna_bond_cutoff=3.4,
-                        rna_dna_angle_cutoff=35,
-                        inter_residue_bond_cutoff=1.99,
+                        skip_if_longer=None,
                         second_row_buffer=.5,
                         metal_coordination_cutoff=3.,
                         saccharide_bond_cutoff=3.,
-                        sulfur_bond_cutoff=2.5,
-                        other_bond_cutoff=2., # this is the ligand distance
                         use_only_bond_cutoff=False,
                         link_metals=True,
                         verbose=False,
                         ):
+  #
+  #  TODO: wrap metal_coordination_cutoff and saccharide_bond_cutoff
+  #  into skip_if_longer too.
+  #
   if atom1.element.strip().upper() in ad_hoc_non_linking_elements:
     return False
   if atom2.element.strip().upper() in ad_hoc_non_linking_elements:
@@ -378,14 +376,6 @@ def is_atom_pair_linked(atom1,
   if atom_pair in ad_hoc_non_linking_pairs:
     return False
   skip_if_both = linking_setup.skip_if_both
-  skip_if_longer = linking_setup.update_skip_if_longer(amino_acid_bond_cutoff,
-                                                       rna_dna_bond_cutoff,
-                                                       inter_residue_bond_cutoff,
-                                                       saccharide_bond_cutoff,
-                                                       metal_coordination_cutoff,
-                                                       sulfur_bond_cutoff,
-                                                       other_bond_cutoff,
-                                                       )
   class1 = linking_setup.adjust_class(atom1, class_important_1)
   class2 = linking_setup.adjust_class(atom2, class_important_2)
   # python3
