@@ -429,6 +429,15 @@ class linking_mixins(object):
         abs_i = abs(i)
         for a in rg.atoms():
           atoms_in_first_last_rgs[a.i_seq] = abs_i
+    skip_if_longer = linking_setup.update_skip_if_longer(amino_acid_bond_cutoff,
+                                                        rna_dna_bond_cutoff=3.4,
+                                                        intra_residue_bond_cutoff=inter_residue_bond_cutoff,
+                                                        saccharide_bond_cutoff=carbohydrate_bond_cutoff,
+                                                        metal_coordination_cutoff=metal_coordination_cutoff,
+                                                        sulfur_bond_cutoff=2.5,
+                                                        other_bond_cutoff=2,
+                                                        )
+
     # main loop
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
@@ -443,6 +452,7 @@ class linking_mixins(object):
       # include & exclude selection
       #
       origin_id = None
+      updated_skip_if_longer = None
       if ( include_selections and
            distance>=max_bonded_cutoff_standard
            ):
@@ -458,6 +468,15 @@ class linking_mixins(object):
             inter_residue_bond_cutoff=bond_cutoff
             saccharide_bond_cutoff=bond_cutoff
             link_residues=True
+            updated_skip_if_longer = linking_setup.update_skip_if_longer(
+                amino_acid_bond_cutoff,
+                rna_dna_bond_cutoff=3.4,
+                intra_residue_bond_cutoff=inter_residue_bond_cutoff,
+                saccharide_bond_cutoff=saccharide_bond_cutoff,
+                metal_coordination_cutoff=metal_coordination_cutoff,
+                sulfur_bond_cutoff=2.5,
+                other_bond_cutoff=2,
+                )
             break
         else:
           continue # exclude this nonbond from consideration
@@ -591,9 +610,7 @@ Residue classes
           classes1.important_only,
           classes2.important_only,
           distance=distance,
-          max_bonded_cutoff=max_bonded_cutoff,
-          amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          inter_residue_bond_cutoff=inter_residue_bond_cutoff,
+          skip_if_longer=updated_skip_if_longer if updated_skip_if_longer is not None else skip_if_longer,
           second_row_buffer=second_row_buffer,
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
           metal_coordination_cutoff=metal_coordination_cutoff,
