@@ -112,6 +112,9 @@ class reflection_filter(worker):
               %(expt_id, imposed_res_filter)
             )
 
+          if self.params.select.significance_filter.d_min and imposed_res_filter > self.params.select.significance_filter.d_min:
+            self.logger.log("Resolution below %f, rejecting"%self.params.select.significance_filter.d_min)
+            continue
           imposed_res_sel = exp_observations.resolution_filter_selection(d_min=imposed_res_filter)
 
           assert imposed_res_sel.size() == refls.size()
