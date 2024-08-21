@@ -234,16 +234,16 @@ def possible_cyclic_peptide(atom1,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
-  if atom1.element_is_hydrogen() or atom2.element_is_hydrogen(): return False
-  chain1 = atom1.parent().parent().parent()
-  chain2 = atom2.parent().parent().parent()
-  if not chain1.id == chain2.id:
-    if verbose: print('chain id differs', chain1.id, chain2.id)
-    return False
   len_fl = 0
   len_fl += atoms_in_first_last_rgs.get(atom1.i_seq, -1)
   len_fl += atoms_in_first_last_rgs.get(atom2.i_seq, -1)
-  return len_fl == 1
+  if len_fl == 1:
+    chain1 = atom1.parent().parent().parent()
+    chain2 = atom2.parent().parent().parent()
+    if chain1.id == chain2.id:
+      return True
+    elif verbose: print('chain id differs', chain1.id, chain2.id)
+  return False
 
 def check_for_peptide_links(atom1,
                             atom2,
