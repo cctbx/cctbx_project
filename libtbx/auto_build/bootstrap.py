@@ -768,6 +768,13 @@ class amber_library_module(SourceModule):
                'https://github.com/phenix-project/amber_library.git',
                ]
 
+class aimnet2calc_module(SourceModule):
+  module = 'aimnet2calc'
+  anonymous = ['git',
+               'git@github.com:zubatyuk/aimnet2calc.git',
+               'https://github.com/zubatyuk/aimnet2calc.git',
+               ]
+
 class qrefine_module(SourceModule):
   module = 'qrefine'
   anonymous = ['git',
