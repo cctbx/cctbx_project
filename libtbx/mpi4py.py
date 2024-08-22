@@ -9,6 +9,9 @@ class mpiEmulator(object):
   SUM = "SUM"
   MAX = "MAX"
   MIN = "MIN"
+  LAND = "LAND"
+  LOR = "LOR"
+  LXOR = "LXOR"
   # TODO: implement more operations as needed
 
   def Wtime(self):
@@ -30,7 +33,8 @@ class mpiCommEmulator(object):
   def Bcast(self, buf, root=0):
     pass
   def reduce(self, sendobj, op=mpiEmulator.SUM, root=0):
-    if op == mpiEmulator.SUM or op == mpiEmulator.MAX or op == mpiEmulator.MIN:
+    if op in {mpiEmulator.SUM, mpiEmulator.MAX, mpiEmulator.MIN,
+              mpiEmulator.LAND, mpiEmulator.LOR, mpiEmulator.LXOR}:
       return sendobj
     else:
       assert False, "Unsupported MPI reduce operation %s"%(op)
