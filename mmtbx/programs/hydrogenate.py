@@ -56,6 +56,7 @@ Inputs:
 
   def run(self):
     self.model = self.data_manager.get_model()
+    self.model.set_stop_for_unknowns(False)
     self.model.process(make_restraints=False)
 
     make_sub_header('Add H atoms', out=self.logger)
