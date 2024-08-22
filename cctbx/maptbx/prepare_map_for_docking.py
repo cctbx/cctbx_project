@@ -2062,7 +2062,11 @@ def run():
 
   Optional command-line arguments (keyworded):
   --protein_mw*: molecular weight expected for protein component of ordered density
+          in full map
   --nucleic_mw*: same for nucleic acid component
+  --sphere_points: number of reflections to be used for averaging in Fourier space
+  --model: PDB file for placed model used to define the centre and radius of
+          the cut-out sphere, used as an alternative to sphere_cent and radius
   --sphere_cent: Centre of sphere defining target map region (3 floats)
           defaults to centre of map
   --radius: radius of sphere (1 float)
@@ -2077,7 +2081,8 @@ def run():
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
-  * NB: At least one of protein_mw or nucleic_mw must be given
+  * NB: At least one of protein_mw or nucleic_mw must be given if sphere
+  parameters are not defined either explicitly or through model
   """
   import argparse
   dm = DataManager()
@@ -2089,17 +2094,23 @@ def run():
   parser.add_argument('map2', help='Map file for half-map 2')
   parser.add_argument('d_min', help='d_min for maps', type=float)
   parser.add_argument('--protein_mw',
-                      help='Molecular weight of protein component of map',
+                      help='Molecular weight of protein component of full map',
                       type=float)
   parser.add_argument('--nucleic_mw',
-                      help='Molecular weight of nucleic acid component of map',
+                      help='Molecular weight of nucleic acid component of full map',
                       type=float)
   parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
                       type=float, default=500.)
-  parser.add_argument('--fixed_model', help='Fixed model')
-  parser.add_argument('--sphere_cent',help='Centre of sphere for docking',
+  parser.add_argument('--model',
+                      help='Optional placed model defining size and position of cut-out sphere')
+  parser.add_argument('--fixed_model',
+                      help='Optional fixed model accounting for explained map features')
+  parser.add_argument('--sphere_cent',
+                      help='Centre of sphere for docking, if no model provided',
                       nargs=3, type=float)
-  parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
+  parser.add_argument('--radius',
+                      help='Radius of sphere for docking, if no model provided',
+                      type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
   parser.add_argument('--no_shift_map_origin', action='store_true')
@@ -2117,25 +2128,26 @@ def run():
   shift_map_origin = not(args.no_shift_map_origin)
   determine_ordered_volume = not(args.no_determine_ordered_volume)
 
+  sphere_points = args.sphere_points
+
   cutout_specified = False
   sphere_cent = None
   radius = None
+
+  model = None
+  if args.model is not None:
+    model_file = args.model
+    model = dm.get_model(model_file)
+    if args.sphere_cent is not None:
+      raise Sorry('Either model or sphere specification may be given but not both')
+    sphere_cent, radius = sphere_enclosing_model(model)
+    radius = radius + d_min # Expand to allow width for density
+    cutout_specified = True
+
   fixed_model = None
   if args.fixed_model is not None:
     model_file = args.fixed_model
     fixed_model = dm.get_model(model_file)
-
-  protein_mw = None
-  nucleic_mw = None
-  if (args.protein_mw is None) and (args.nucleic_mw is None):
-    if determine_ordered_volume:
-      raise Sorry("At least one of protein_mw or nucleic_mw must be given")
-  if args.protein_mw is not None:
-    protein_mw = args.protein_mw
-  if args.nucleic_mw is not None:
-    nucleic_mw = args.nucleic_mw
-
-  sphere_points = args.sphere_points
 
   if args.sphere_cent is not None:
     if args.radius is None:
@@ -2145,6 +2157,18 @@ def run():
     cutout_specified = True
   if (not determine_ordered_volume and not cutout_specified):
     raise Sorry("Must determine ordered volume if cutout not specified")
+
+  protein_mw = None
+  nucleic_mw = None
+  if (args.protein_mw is None) and (args.nucleic_mw is None):
+    if cutout_specified:
+      determine_ordered_volume = False
+    if determine_ordered_volume and not cutout_specified:
+      raise Sorry("At least one of protein_mw or nucleic_mw must be given")
+  if args.protein_mw is not None:
+    protein_mw = args.protein_mw
+  if args.nucleic_mw is not None:
+    nucleic_mw = args.nucleic_mw
 
   # Create map_model_manager containing half-maps
   map1_filename = args.map1
