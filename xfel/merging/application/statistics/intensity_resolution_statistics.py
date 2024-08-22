@@ -282,7 +282,7 @@ class intensity_resolution_statistics(worker):
         miller_array_2.indices(),
         miller_array_1.data(),
         miller_array_2.data(),
-        self.hkl_resolution_bins,
+        self.params.statistics.hkl_resolution_bins_cpp.get_mapping(),
         n_bins)
 
     self.cc_N         = ccc.N()
@@ -326,7 +326,14 @@ class intensity_resolution_statistics(worker):
 
     # Accumulate binned counts (cc_N) and sums (cc_sum) from all ranks
     all_ranks_cc_N          = self.mpi_helper.cumulative_flex_2(self.cc_N,      flex.int)
+#    if self.mpi_helper.rank in [0,1,2,3]:
+#      import line_profiler
+#      lp = line_profiler.LineProfiler(self.mpi_helper.cumulative_flex_2)
+#      lp.enable()
     all_ranks_cc_sum_xx     = self.mpi_helper.cumulative_flex_2(self.cc_sum_xx, flex.double)
+#    if self.mpi_helper.rank in [0,1,2,3]:
+#      lp.disable()
+#      lp.print_stats()
     all_ranks_cc_sum_yy     = self.mpi_helper.cumulative_flex_2(self.cc_sum_yy, flex.double)
     all_ranks_cc_sum_xy     = self.mpi_helper.cumulative_flex_2(self.cc_sum_xy, flex.double)
     all_ranks_cc_sum_x      = self.mpi_helper.cumulative_flex_2(self.cc_sum_x,  flex.double)

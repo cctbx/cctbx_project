@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 from xfel.merging.application.worker import worker
 from xfel.merging.application.utils.memory_usage import get_memory_usage
+from dials.array_family import flex
 
 class resolution_binner(worker):
 
@@ -47,11 +48,20 @@ class resolution_binner(worker):
         hkls_with_assigned_bin += 1
     self.logger.log("Provided resolution bin number for %d asu hkls"%(hkls_with_assigned_bin))
 
+    from xfel import hkl_resolution_bins_cpp
+    bins_cpp = hkl_resolution_bins_cpp(
+          flex.miller_index(list(hkl_resolution_bins.keys())),
+          flex.int(list(hkl_resolution_bins.values()))
+        )
     # Save hkl bin asignments to the parameters
     if not 'hkl_resolution_bins' in (self.params.statistics).__dict__:
       self.params.statistics.__inject__('hkl_resolution_bins', hkl_resolution_bins)
     else:
       self.params.statistics.__setattr__('hkl_resolution_bins', hkl_resolution_bins)
+    if not 'hkl_resolution_bins_cpp' in (self.params.statistics).__dict__:
+      self.params.statistics.__inject__('hkl_resolution_bins_cpp', bins_cpp)
+    else:
+      self.params.statistics.__setattr__('hkl_resolution_bins_cpp', bins_cpp)
 
     return experiments, reflections
 

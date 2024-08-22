@@ -18,13 +18,20 @@ class intensity_resolution_statistics_deltaccint(intensity_resolution_statistics
   '''Calculates hkl intensity statistics for resolution bins'''
 
   def barrier(self):
+    print(f'rank {self.mpi_helper.rank} at barrier')
     self.mpi_helper.comm.barrier()
+  def select_fast_(self, refl, mask):
+    return refl.select_fast(mask)
+  def select_(self, refl, mask):
+    return refl.select(mask)
 
   def __repr__(self):
     return 'Intensity resolution statistics deltaccint'
 
   def run(self, experiments, reflections):
     self.mpi_helper.comm.barrier()
+    if self.mpi_helper.rank==0:
+      self.log_cache = []
     self.logger.log_step_time("INTENSITY_STATISTICS_DELTACCINT")
 
     assert experiments == None, "Must be run after group"
@@ -54,14 +61,14 @@ class intensity_resolution_statistics_deltaccint(intensity_resolution_statistics
     reflections_even = reflection_table_utils.select_even_experiment_reflections(refl_pruned)
     assert len(reflections_even) + len(reflections_odd) == len(refl_pruned)
 
-    for i, expt_id in enumerate(all_expt_ids[:2]):
+    for i, expt_id in enumerate(all_expt_ids):
       if expt_id in mapping:
         assert len(mapping[expt_id]) == 1
         expt_idx = mapping[expt_id][0]
         mask_odd = (reflections_odd['id'] != expt_idx)
         mask_even = (reflections_even['id'] != expt_idx)
-        subset_odd = reflections_odd.select_fast(mask_odd)
-        subset_even = reflections_even.select_fast(mask_even)
+        subset_odd = self.select_fast_(reflections_odd, mask_odd)
+        subset_even = self.select_fast_(reflections_even, mask_even)
       else:
         subset_odd = reflections_odd
         subset_even = reflections_even
@@ -69,17 +76,19 @@ class intensity_resolution_statistics_deltaccint(intensity_resolution_statistics
 #        import line_profiler
 #        lp = line_profiler.LineProfiler(self.run_single_delta)
 #        lp.enable()
-      self.run_single_delta(subset_odd, subset_even, expt_id)
+      self.run_single_delta(subset_odd, subset_even, expt_id, i)
 #      if self.mpi_helper.rank in [0,1]:
 #        lp.disable()
 #        lp.print_stats()
 
+    if self.mpi_helper.rank == 0:
+      self.logger.main_log('\n'.join(self.log_cache))
     self.logger.log_step_time("INTENSITY_STATISTICS_DELTACCINT", True)
 
     self.barrier()
     return experiments, reflections
 
-  def run_single_delta(self, subset_odd, subset_even, delta_expt_id):
+  def run_single_delta(self, subset_odd, subset_even, delta_expt_id, i_expt):
     self.last_bin_incomplete = False
     self.suggested_resolution_scalar = -1.0
 
@@ -94,9 +103,11 @@ class intensity_resolution_statistics_deltaccint(intensity_resolution_statistics
 #      lp.print_stats()
 
     if self.mpi_helper.rank == 0:
+      if i_expt%100==0:
+        self.logger.main_log("%d done"%(i_expt))
       Table = self.Total_CC_OneHalf_Table
       if Table is not None:
-        self.logger.main_log("%s %d/%d\t\t%f"%(delta_expt_id,
+        self.log_cache.append("%s %d/%d\t\t%f"%(delta_expt_id,
                                                  Table.cumulative_observed_matching_asu_count,
                                                  Table.cumulative_theor_asu_count,
                                                  Table.cumulative_cross_correlation))

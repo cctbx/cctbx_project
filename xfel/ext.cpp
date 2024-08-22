@@ -20,12 +20,30 @@
 #include <cctbx/uctbx.h>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <set>
 #include <boost/python/extract.hpp>
+#include <boost/python/return_internal_reference.hpp>
 
 using namespace boost::python;
 
 namespace xfel {
+
+struct hkl_resolution_bins_cpp {
+  typedef std::unordered_map<cctbx::miller::index<>, int, cctbx::miller::hash_index<> > hkl_bin_map_type;
+  hkl_bin_map_type hkl_bin_mapping;
+  hkl_resolution_bins_cpp(
+      scitbx::af::shared<cctbx::miller::index<> > const& indices,
+      scitbx::af::shared<int> const& bins) {
+    SCITBX_ASSERT(indices.size() == bins.size());
+    for (int i=0; i<indices.size(); i++) {
+      hkl_bin_mapping[indices[i]] = bins[i];
+    }
+  }
+  hkl_bin_map_type* get_mapping() {
+    return &hkl_bin_mapping;
+  }
+};
 
 struct correction_vector_store {
   typedef scitbx::vec2<double> vec2;
@@ -744,6 +762,13 @@ namespace boost_python { namespace {
     typedef return_value_policy<return_by_value> rbv;
     typedef default_call_policies dcp;
 
+    class_<hkl_resolution_bins_cpp>("hkl_resolution_bins_cpp",no_init)
+      .def(init<
+          scitbx::af::shared<cctbx::miller::index<> > const&, 
+          scitbx::af::shared<int> const&>())
+      .def("get_mapping", &hkl_resolution_bins_cpp::get_mapping,
+            return_internal_reference<>());
+    class_<hkl_resolution_bins_cpp::hkl_bin_map_type>("hkl_bin_map_type");
     def("get_correction_vector_xy", &get_correction_vector_xy);
     def("get_radial_tangential_vectors",
         (boost::python::tuple(*)(correction_vector_store const&, int const&))

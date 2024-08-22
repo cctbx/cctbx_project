@@ -20,7 +20,7 @@ namespace {
                   af::shared<index<> > const&,
                   af::shared<double> const&,
                   af::shared<double> const&,
-                  object,
+                  xfel::hkl_resolution_bins_cpp::hkl_bin_map_type const&,
                   int>())
         .def("N", &w_t::get_count)
         .def("sum_xx", &w_t::get_sum_xx)

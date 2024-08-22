@@ -8,7 +8,7 @@
 #include <boost/python/object.hpp>
 #include <boost/python/dict.hpp>
 #include <boost/python/extract.hpp>
-#include <chrono>
+#include <xfel/ext.cpp>
 
 namespace cctbx { namespace miller {
 
@@ -20,12 +20,8 @@ namespace cctbx { namespace miller {
                                  af::shared<index<> > const &indices2,
                                  af::shared<double> const &data1,
                                  af::shared<double> const &data2,
-                                 boost::python::object hkl_bin_pydict,
+                                 xfel::hkl_resolution_bins_cpp::hkl_bin_map_type const &hkl_bin_map,
                                  int n_bins) {
-      auto t0 = std::chrono::high_resolution_clock::now();
-      boost::python::extract<boost::python::dict> hkl_bin_dict_(hkl_bin_pydict);
-      boost::python::dict hkl_bin_dict = hkl_bin_dict_;
-      auto t_pydict = std::chrono::high_resolution_clock::now()-t0;
       count = af::shared<int>(n_bins, 0);
       sum_xx = af::shared<double>(n_bins, 0.0);
       sum_yy = af::shared<double>(n_bins, 0.0);
@@ -40,14 +36,11 @@ namespace cctbx { namespace miller {
         int i2 = pair[1];
         index<> hkl = indices1[i1];
         CCTBX_ASSERT(indices2[i2] == hkl);
-        //int i_bin = hkl_bin_dict[hkl];
-        auto t1 = std::chrono::high_resolution_clock::now();
-        if (! hkl_bin_dict.has_key(hkl)) {
-          t_pydict += std::chrono::high_resolution_clock::now()-t1;
+        auto found = hkl_bin_map.find(hkl);
+        if (found == hkl_bin_map.end()) {
           continue;
         }
-        int i_bin = boost::python::extract<int>(hkl_bin_dict[hkl]);
-        t_pydict += std::chrono::high_resolution_clock::now()-t1;
+        int i_bin = found->second;
         double I_x = data1[i1];
         double I_y = data2[i2];
         count[i_bin] += 1;
@@ -57,8 +50,6 @@ namespace cctbx { namespace miller {
         sum_x[i_bin] += I_x;
         sum_y[i_bin] += I_y;
       }
-      auto t_total = std::chrono::high_resolution_clock::now()-t0;
-      std::cout<<"pydict: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t_pydict).count()<<", total: "<<std::chrono::duration_cast<std::chrono::nanoseconds>(t_total).count()<<std::endl;
     }
 
     af::shared<int> get_count() {

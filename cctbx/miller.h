@@ -111,6 +111,16 @@ namespace cctbx {
       }
   };
 
+  template <typename NumType=int>
+  struct hash_index {
+    std::size_t operator()(const index<NumType> index_) const
+    {
+      return 1000000*index_[0] + 1000*index_[1] + index_[2];
+//      return ((std::hash<NumType>()(index_[0])
+//             ^ (std::hash<NumType>()(index_[1]) << 1)) >> 1)
+//             ^ (std::hash<NumType>()(index_[2]) << 1);
+    }
+  };
   /*! \brief Definition of fast comparison for use in,
       e.g., std::map<miller::index<> >.
    */

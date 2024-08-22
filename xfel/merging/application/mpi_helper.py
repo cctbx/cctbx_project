@@ -63,6 +63,15 @@ class mpi_helper(object):
     self.comm.Reduce(flex_array.as_numpy_array(), result, op=MPI.SUM, root=root)
     return result if self.rank==0 else None
 
+  def cumulative_flex_2_multi(self, *arrs, flex_type=None, root=0):
+    flex_type = flex_type if flex_type is not None else type(arrs[0])
+    for arr in arrs: assert type(arr) == flex_type
+    result_type = flex_np_type_map[flex_type]
+    all_inputs = np.vstack(arrs, dtype=result_type)
+    result = np.zeros(all_inputs.shape, dtype=result_type)
+    self.comm.Reduce(all_inputs, result, op=MPI.SUM, root=root)
+    return tuple(result)
+
   def cumulative_flex_multi(self, flex_array_array, flex_type_array=None, root=0):
     list_of_all_flex_array_arrays = self.comm.gather(flex_array_array, root=root)
     if self.rank != root:
