@@ -323,8 +323,7 @@ class MolstarGraphics(ModelViewer):
     result_str = self.send_command(command,callback=callback,sync=True)
     try:
       atom_records = json.loads(result_str)
-      selection = Selection.from_atom_records(atom_records)
-      return selection
+      return atom_records
     except:
       self.log(result_str)
       raise

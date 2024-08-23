@@ -3,6 +3,8 @@ The controller for the molstar web app
 """
 import time
 
+from libtbx.test_utils import approx_equal
+from libtbx.utils import null_out, Sorry
 from PySide2.QtCore import QTimer
 from PySide2.QtWidgets import QMessageBox
 
@@ -180,27 +182,27 @@ class MolstarController(Controller):
     Poll selection from molstar viewer
     Returns selection object
     """
-    return self.graphics.poll_selection()
+    atom_records = self.graphics.poll_selection()
+    selection = Selection.from_atom_records(atom_records,self.state.active_model)
+    return selection
+  
+  def test_selection_string(self,phenix_string):
+    # Do raw selection
+    model = self.state.active_model
+    xyz1 = model.get_hierarchy().atoms().extract_xyz()
 
-  def _poll_selection_callback(self,callback,selection_json):
-    assert isinstance(selection_json,str) and len(selection_json.strip())>0, "Failure to recieve selection json"
-    query_atoms = SelectionQuery.from_json(selection_json)
+    # Select in molstar and poll back
+    self.select_from_selection_string(phenix_string)
+    selection = self.poll_selection()
+    model2 = model.select(model.selection(selection.string))
+    xyz2 = model2.get_hierarchy().atoms().extract_xyz()
+    if approx_equal(xyz1,xyz1,eps=3):
+      return True
+    else:
+      return False
+    
 
-    # get the relevant model ref (to get mol)
-    ref_id = query_atoms.params.refId
-    model_ref = self.state.references[ref_id]
-    query_atoms.params.keymap = self.state.mmcif_column_map
 
-    # select sites
-    sites_sel = model_ref.mol.atom_sites.select_from_query(query_atoms)
-
-    # make condensed query
-    query_condensed = model_ref.mol.atom_sites._convert_sites_to_query(sites_sel)
-    query_condensed.params.refId = ref_id
-
-    query_dict = {ref_id:query_condensed}
-    if callback is not None:
-      callback(query_dict)
 
   def select_from_ref(self,ref: SelectionRef):
     return self.select_from_selection(ref.data)
@@ -210,8 +212,9 @@ class MolstarController(Controller):
   def select_from_selection(self,selection: Selection):
     return self.graphics.select_from_selection(selection)
 
-  # def select_from_selection_string(self,selection_string: str):
-  #   return self.graphics.select_from_selection_string(selection_string)
+  def select_from_selection_string(self,selection_string: str):
+    selection = Selection.from_selection_string(selection_string,model=self.state.active_model)
+    return self.graphics.select_from_selection(selection)
 
   def focus_selected(self):
     return self.graphics.focus_selected()

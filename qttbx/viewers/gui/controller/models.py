@@ -16,7 +16,7 @@ from ..view.models import ModelEntryView
 from .scroll_list import ScrollableListController, ScrollEntryController
 from ..model.ref import SelectionRef, ModelRef#, GeometryRef
 #from ..state.geometry import Geometry
-#from ..state.color import Color
+from ..model.color import Color
 
 
 class ModelLikeEntryController(ScrollEntryController):
@@ -36,21 +36,8 @@ class ModelLikeEntryController(ScrollEntryController):
     # Color
     self.view.button_color.clicked.connect(self.show_color_dialog)
 
-    # Folder
-    file_based_ref = None
-    if isinstance(self.ref,SelectionRef):
-      if isinstance(self.ref.model,ModelRef):
-        file_based_ref = self.ref.model
-    else:
-      file_based_ref = self.ref
 
     folder = Path.home()
-    if hasattr(file_based_ref.data,"filepath"):
-      if file_based_ref.data.filepath is not None:
-        folder = Path(file_based_ref.data.filepath).parent
-
-    if folder is None or not folder.exists():
-      folder = Path.home()
 
     #self.view.button_files.clicked.connect(lambda: self.open_file_explorer(str(folder)))
 
@@ -92,7 +79,6 @@ class ModelLikeEntryController(ScrollEntryController):
       self.representation_toggles[key] = not self.representation_toggles[key]
       show = self.representation_toggles[key]
       self.state.signals.representation_selection.emit(self.ref,key,show)
-      #self.parent.parent.parent.molstar.viewer.representation_query(self.ref.id_molstar,self.ref.query.to_json(),key)
 
   def open_file_explorer(self,path):
     if platform.system() == 'Windows':
@@ -155,7 +141,7 @@ class ModelEntryController(ModelLikeEntryController):
 
 
   def handle_model_change(self,ref):
-    if ref is None or ref.id != self.ref.id:
+    if ref is None or ref.uuid != self.ref.uuid:
       self.view.active_toggle.is_checked = False
 
   def toggle_active_func(self,is_checked):

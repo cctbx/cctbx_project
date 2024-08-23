@@ -47,6 +47,8 @@ class Selection:
 
   """
   model = None
+  blanks = set([""," ",".","?"])
+
 
   def __init__(self,model=None,data=None,selection_string=None,selection_bool=None):
     """
@@ -68,7 +70,8 @@ class Selection:
       selection_string = "all"
     elif not selection_bool:
       selection_bool = self.model.selection(selection_string)
-    assert selection_bool.size() == self._n_atoms_initial,(
+    
+    assert selection_bool.size() in [0,self._n_atoms_initial],(
       f"Cannot provide selection of different size ({selection_bool.size()}) than number of atoms ({self._n_atoms_initial})"
     )
 
@@ -160,7 +163,7 @@ class Selection:
                           selection_bool=sel_bool)    
 
   @classmethod
-  def from_atom_records(cls,atom_records,debug=True):
+  def from_atom_records(cls,atom_records,model,debug=True):
     """
     New instance of Selection from a list of atom records. An atom record is a group of 
       key:value associations using mmcif keys that is unique to a single atom. 
@@ -180,22 +183,25 @@ class Selection:
     # filter by keys
     atom_records_reduced = [{k:v for k,v in atom_dict.items() if k in core_map_to_mmcif.values()} for atom_dict in atom_records]
     # filter by values
-    atom_records_reduced = [{k:v for k,v in atom_dict.items() if  v not in blanks} for atom_dict in atom_records_reduced]
+    atom_records_reduced = [{k:v for k,v in atom_dict.items() if  v not in Selection.blanks} for atom_dict in atom_records_reduced]
 
     # remove id, no way to access with phenix
     atom_records_reduced = [{k:v for k,v in atom_dict.items() if  k != "id"} for atom_dict in atom_records_reduced]
 
     root = Or()
-    for d in atom_records_reduced:
+    for record in atom_records_reduced:
       and_node = And()
-      for k,v in d.items():         
-        comparison = Comparison(k,"==",str(v))
+      for k,v in record.items(): 
+        keyword_token = {"type":"RECORD_KEYWORD","value":k}      
+        operator_token = {"type":"RECORD_OPERATOR","value":"=="}     
+        value_token = {"type":"RECORD_VALUE","value":str(v)}  
+        comparison = Comparison(keyword_token,operator_token,value_token)
         and_node.children.append(comparison)
       root.children.append(and_node)
     tree = SelectionTree(root=root)
 
     phenix_string = tree.phenix_string
-    return cls.from_string(phenix_string)
+    return cls.from_selection_string(phenix_string,model=model)
 
 
   @property

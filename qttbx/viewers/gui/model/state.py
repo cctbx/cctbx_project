@@ -53,7 +53,7 @@ class StateSignals(QObject):
   selection_focus= Signal(object)
   selection_rep_show = Signal(object,str) # Ref, representation_name
 
-
+  color_selection = Signal(object,object) # Ref, Color
 
 class State:
   """
@@ -300,7 +300,7 @@ class State:
       self._active_selection_ref =None
       self.signals.deselect_all.emit(True)
     else:
-      assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
+      assert isinstance(value,SelectionRef), "Set active_model_ref with instance of Ref or subclass"
       assert value in self.references.values(), "Cannot set active ref before adding to state"
       self._active_selection_ref = value
       self.signals.selection_activated.emit(value)

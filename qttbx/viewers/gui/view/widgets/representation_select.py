@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import qtawesome as qta
 from PySide2.QtCore import Slot
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import (
@@ -15,8 +15,7 @@ class RepresentationSelect(QWidget):
     super().__init__(parent)
     self.parent_explicit = parent
     self.button = QPushButton(self)
-    icon_path = Path(__file__).parent / '../assets/icons/material/color_palette.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.palette")
     self.button.setIcon(icon)
     self.button.setToolTip("Visual styling")
     self.menu = QMenu(self)

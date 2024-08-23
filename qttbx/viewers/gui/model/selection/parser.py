@@ -442,7 +442,10 @@ class SelectionTree:
 
   @property
   def phenix_string(self):
-    return self.root.phenix_string()
+    s =  self.root.phenix_string()
+    if s == "":
+      s = "none"
+    return s
 
   @property
   def pandas_string(self):
@@ -551,6 +554,9 @@ class Comparison(Node):
 
   def __init__(self, keyword_token, operator_token, value_token):
     super().__init__('COMPARISON')
+    assert isinstance(keyword_token,dict)
+    assert isinstance(operator_token,dict)
+    assert isinstance(value_token,dict)
     self.keyword_token = keyword_token
     self.operator_token = operator_token
     self.value_token = value_token

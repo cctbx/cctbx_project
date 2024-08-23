@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import qtawesome as qta
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import (
     QPushButton,
@@ -18,8 +18,7 @@ class SelectionEntryView(ModelLikeEntryView):
 
     # Get info
     self.button_info = QPushButton()
-    icon_path = Path(__file__).parent / '../assets/icons/material/info.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.information-outline")
     self.button_info.setIcon(icon)
     self.button_info.setToolTip("View selection info")
     self.button_info.setFixedSize(self._all_button_width,self._all_button_height)

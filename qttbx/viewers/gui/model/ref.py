@@ -219,5 +219,9 @@ class SelectionRef(Ref):
 
   @property
   def model(self):
-    return self._model_ref
+    return self.model_ref.model
 
+ 
+  @property
+  def model_ref(self):
+    return self._model_ref

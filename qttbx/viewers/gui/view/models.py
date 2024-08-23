@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import qtawesome as qta
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import (
     QFrame,
@@ -12,7 +12,6 @@ from .scroll_list import ScrollableListView, ScrollEntryView
 from .widgets.representation_select import RepresentationSelect
 from .widgets.toggles import ToggleIconButton
 from .widgets.checkbox import ConditionalCheckBox
-
 
 class GeoCheckBox(ConditionalCheckBox):
   def __init__(self, label, parent=None):
@@ -33,9 +32,9 @@ class ModelLikeEntryView(ScrollEntryView):
 
 
      # Visibility
-    on_icon_path = Path(__file__).parent / 'assets/icons/material/eye_open.svg'
-    off_icon_path = Path(__file__).parent / 'assets/icons/material/eye_closed.svg'
-    self.button_viz = ToggleIconButton(on_icon_path, off_icon_path, parent=self)
+    on_icon = qta.icon("mdi.eye")
+    off_icon = qta.icon("mdi.eye-off")
+    self.button_viz = ToggleIconButton(on_icon, off_icon, parent=self)
     self.button_viz.setToolTip("Toggle visibility")
     self.button_viz.setFixedSize(self._all_button_width,self._all_button_height)
     #button_color.setContentsMargins(0,0,0,0)
@@ -55,8 +54,7 @@ class ModelLikeEntryView(ScrollEntryView):
 
     # Color picking widget
     self.button_color = QPushButton()
-    icon_path = Path(__file__).parent / 'assets/icons/material/paint_bucket.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.format-color-fill")
     self.button_color.setIcon(icon)
     self.button_color.setToolTip("Color fill")
     self.button_color.setFixedSize(self._all_button_width,self._all_button_height)
@@ -72,8 +70,7 @@ class ModelLikeEntryView(ScrollEntryView):
 
     # Close
     self.button_close = QPushButton()
-    icon_path = Path(__file__).parent / 'assets/icons/material/close.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.close")
     self.button_close.setIcon(icon)
     self.button_close.setToolTip("Remove")
     self.button_close.setFixedSize(self._all_button_width,self._all_button_height)
@@ -101,8 +98,7 @@ class ModelListView(ScrollableListView):
     label.setFont(current_font)
 
     self.load_button = QPushButton()
-    icon_path = Path(__file__).parent / './assets/icons/material/plus.svg'
-    load_icon = QIcon(str(icon_path))
+    load_icon = qta.icon("mdi.plus")
     self.load_button.setIcon(load_icon)
     self.load_button.setMaximumSize(50, 50)
     self.load_button.setContentsMargins(10, 10, 0, 0)

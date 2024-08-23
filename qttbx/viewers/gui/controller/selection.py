@@ -20,7 +20,7 @@ class SelectionEntryController(ModelLikeEntryController):
   def handle_selection_change(self,new_selection_ref):
     # Just disable the toggle if self is not active
     if (new_selection_ref is  None  or
-     new_selection_ref.id != self.ref.id):
+     new_selection_ref.uuid != self.ref.uuid):
       self.view.active_toggle.is_checked = False
 
   def toggle_active_func(self,is_checked):
@@ -36,8 +36,8 @@ class SelectionEntryController(ModelLikeEntryController):
 
   def display_info(self):
     text = f"""
-    Model Reference label: {self.ref.model.label}
-    Number of atoms: {self.ref.number_of_atoms}
+    Model Reference label: {self.ref.model_ref.label}
+    Number of atoms: {self.ref.model.get_number_of_atoms()}
 
     Phenix string: {self.ref.selection.phenix_string}
     """
@@ -66,7 +66,7 @@ class SelectionListController(ScrollableListController):
       is_checked = True
       label = ref.selection.phenix_string
       if label.strip() == "all":
-        label = f"(all) {ref.model.label}"
+        label = f"(all) {ref.model_ref.label}"
         is_checked = False # don't select full model at first
       elif len(label)<30:
         pass # keep phenix selection
