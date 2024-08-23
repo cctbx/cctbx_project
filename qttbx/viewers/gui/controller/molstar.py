@@ -47,7 +47,7 @@ class MolstarController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
 
-    self.graphics = MolstarGraphics(self.view.web_view)
+    self.graphics = MolstarGraphics(self.view.web_view,dm=self.state.data_manager)
     self.graphics.state = self.state
     self.graphics_controls = MolstarControlsController(parent=self,view=self.view.viewer_controls)
 
@@ -142,16 +142,10 @@ class MolstarController(Controller):
 
       # Ref needs to be loaded
       with sync_manager(self):
-        #self.graphics._set_sync_state(self.state.to_json())
-
-        self.graphics.load_model_from_mmtbx(
-          model=ref.data.model, # mmtbx model
-          format=format,
+        self.graphics.load_model(
+          filename=str(ref.data.filepath), # mmtbx model
           ref_id=ref.uuid,
-          label=label,
-          callback=None
         )
-        #self.sync_manager.has_synced = False
 
 
   # Selection

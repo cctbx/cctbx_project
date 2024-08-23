@@ -19,7 +19,6 @@ from libtbx.utils import Sorry
 from libtbx import group_args
 
 from ..gui.model.molstar import MolstarState
-from ..gui.model.color import Color
 from .server_utils import  NodeHttpServer
 from ..gui.model.selection import Selection
 
@@ -32,15 +31,14 @@ class MolstarGraphics(ModelViewer):
   with this class.
   """
   viewer_name = 'Molstar'
-  def __init__(self,web_view,use_web_view=True,config_json_file=None):
+  def __init__(self,web_view,use_web_view=True,dm=None,config_json_file=None):
     if config_json_file is None:
       config_json_file = Path(__file__).parent / Path("config.json")
     ModelViewer.__init__(self)
 
     self.web_view = web_view
     self.state = group_args(molstarState=None)
-    #self.command_queue = CommandQueue()
-    #self.references_remote_map={} # Keys: remote (molstar) ref_ids, Values: local ref_ids
+    self.dm = dm
 
 
     self.use_web_view = use_web_view
@@ -256,26 +254,18 @@ class MolstarGraphics(ModelViewer):
     return js_str
 
 
-  def load_model_from_mmtbx(self,model,format='pdb',label=None,ref_id=None,callback=None):
+  def load_model(self,filename=None,ref_id=None):
+    model = self.dm.get_model(filename=filename)
+    format='pdb'
+    label="model"
+    callback=None
 
     func_name = f"model_as_{format}"
     func = getattr(model,func_name)
-    model_string = func()
-    return self.load_model_from_string(model_string,format=format,label=label,ref_id=ref_id,callback=callback)
-
-
-  def load_model_from_string(self, model_str,format='pdb',label=None,ref_id=None,callback=None):
-    """
-    Load a model using a raw string. ref_id is important
-    """
-    if ref_id is None:
-      ref_id = 'null'
-    if label is None:
-      label = 'model'
+    model_str = func()
 
     command =  self._load_model_build_js(model_str,format=format,label=label,ref_id=ref_id)
     self.send_command(command,sync=False)
-
 
 
   # ---------------------------------------------------------------------------

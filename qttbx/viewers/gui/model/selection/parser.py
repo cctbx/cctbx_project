@@ -73,8 +73,8 @@ keywords_all = list((set(list(attrs_map_to_mmcif.keys())) |
                      set(list(core_map_to_mmcif.keys())) | 
                      set(list(core_map_to_mmcif.values()))))
 
-# Convert logic operators between pandas query and phenix selection
-logic_map_to_pandas ={ 
+# Convert logic operators between common operators and phenix selection syntax
+logic_map_to_common ={ 
     'or': '|',
     'and': '&',
     'not': '~',
@@ -90,7 +90,7 @@ logic_map_to_pandas ={
     "==":"==",
 }
 # The reverse
-logic_map_to_phenix = {v:k for k,v in logic_map_to_pandas.items()}
+logic_map_to_phenix = {v:k for k,v in logic_map_to_common.items()}
 
 logic_map_molstar = {
     "==": "eq",
@@ -420,9 +420,7 @@ class PhenixParser:
   @property
   def phenix_string(self):
     return self.tree.phenix_string
-  @property
-  def pandas_string(self):
-    return self.tree.pandas_string
+
   @property
   def molstar_syntax(self):
     s = self.tree.molstar_syntax
@@ -443,10 +441,6 @@ class SelectionTree:
   @property
   def phenix_string(self):
     return self.root.phenix_string()
-
-  @property
-  def pandas_string(self):
-    return self.root.pandas_string()
 
   @property
   def molstar_syntax(self):
@@ -506,9 +500,6 @@ class Node:
   def molstar_syntax(self, level=0):
     raise NotImplementedError("Subclasses should implement this method")
 
-  def pandas_string(self, level=0):
-    raise NotImplementedError("Subclasses should implement this method")
-
   def phenix_string(self,level=0):
     raise NotImplementedError("Subclasses should implement this method")
 
@@ -530,14 +521,6 @@ class Alias(Node):
   def __init__(self, value):
     super().__init__('ALIAS')
     self.value = value
-
-  def pandas_string(self, level=0):
-    indent = ' ' * (level * Node.indent_padding)
-    return f"{indent}{self.value}"
-
-  def pandas_string(self, level=0):
-    indent = ' ' * (level * Node.indent_padding)
-    return f"{indent}{self.alias_map_pd[self.value]}"
 
   def molstar_syntax(self, level=0):
     indent = ' ' * (level * Node.indent_padding)
@@ -576,13 +559,13 @@ class Comparison(Node):
   @property
   def operator(self):
     operator =  self.operator_token["value"]
-    operator = logic_map_to_pandas[operator]
+    operator = logic_map_to_common[operator]
     return operator
 
   @property
   def operator_phenix(self):
     operator =  self.operator_token["value"]
-    operator = logic_map_to_pandas[operator]
+    operator = logic_map_to_common[operator]
     if operator == "==":
       if (self.value_token["type"] == "FLOAT" or
           self.keyword in ["B_iso_or_equiv","occupancy"]
@@ -618,20 +601,6 @@ class Comparison(Node):
     return f"( {self.keyword_phenix} {self.operator_phenix} {self.value_phenix} )"
     
 
-  def pandas_string(self):
-    if "seq_id" in self.keyword: # convert to int for seq
-      if self.value_type != "RANGE":
-        if isinstance(self.value,str):
-          self.value = int(self.unquote_string(self.value))
-        else:
-          self.value = self.value
-    if self.value_type == "RANGE":
-      value = self.unquote_string(self.value)
-      low, high = value.split(":")
-      return f"( {low} <= {self.keyword} <= {high} )"
-    else:
-      return f"( {self.keyword} {self.operator} {self.value} )"
-
   def molstar_syntax(self, level=0):
 
     indent = ' ' * (level * Node.indent_padding)
@@ -661,10 +630,6 @@ class And(Node):
     children_syntax = ' and '.join(child.phenix_string() for child in self.children)
     return f"{children_syntax}"
 
-  def pandas_string(self):
-    children_syntax = ' & '.join(child.pandas_string() for child in self.children)
-    return f"{children_syntax}"
-
   def molstar_syntax(self, level=0):
     indent = ' ' * (level * Node.indent_padding)
     children_syntax = ',\n'.join(child.molstar_syntax(level + 1) for child in self.children)
@@ -679,9 +644,6 @@ class Or(Node):
     children_syntax = ' or '.join(child.phenix_string() for child in self.children)
     return f"{children_syntax}"
 
-  def pandas_string(self):
-    children_syntax = ' | '.join(child.pandas_string() for child in self.children)
-    return f"{children_syntax}"
 
   def molstar_syntax(self, level=0):
     indent = ' ' * (level * Node.indent_padding)
@@ -696,10 +658,6 @@ class Not(Node):
   def phenix_string(self):
     children_syntax = ' '.join(child.phenix_string() for child in self.children)
     return f"not {children_syntax}"
-
-  def pandas_string(self):
-    children_syntax = ' '.join(child.pandas_string() for child in self.children)
-    return f"~{children_syntax}"
 
 
   def molstar_syntax(self, level=0):
@@ -716,9 +674,6 @@ class ParenGroup(Node):
     children_syntax = ' '.join(child.phenix_string() for child in self.children)
     return f"({children_syntax})"
 
-  def pandas_string(self):
-    children_syntax = ' '.join(child.pandas_string() for child in self.children)
-    return f"({children_syntax})"
 
   def molstar_syntax(self, level=0):
     indent = ' ' * (level * Node.indent_padding)
