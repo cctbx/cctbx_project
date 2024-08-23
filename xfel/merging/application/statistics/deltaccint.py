@@ -75,16 +75,21 @@ class deltaccint(worker):
       merged[:,hkl_idx] = sums[:,hkl_idx]/n[:,hkl_idx]
 
       # compute variance for each hkl (less the intensity from each experiment)
-      diff_sq_ = np.zeros(len(all_expt_ids))
-      for expt_idx in range(len(all_expt_ids)):
-        mean_intensity = merged[expt_idx,hkl_idx]
-        diff_sq_[expt_idx] = np.sum((intensity-mean_intensity)**2)
+      diff_sq_ = np.full(len(all_expt_ids), -1, dtype=float)
 
       for i in range(len(refls)):
         expt_idx = all_expts_map[expt_map[refls['id'][i]]]
-        mean_intensity = merged[expt_idx,hkl_idx]
-        diff_sq_[expt_idx] -= (intensity[i] - mean_intensity)**2
+        mean_intensity_modified = merged[expt_idx,hkl_idx]
+        # Handle the case where a single image contains same hkl twice.
+        if diff_sq_[expt_idx] <0:
+          diff_sq_modified = np.sum((intensity-mean_intensity_modified)**2)
+          diff_sq_[expt_idx] = diff_sq_modified - (intensity[i] - mean_intensity_modified)**2
+        else:
+          diff_sq_[expt_idx] -= (intensity[i] - mean_intensity_modified)**2
 
+      mean_intensity_unmodified = np.mean(intensity)
+      diff_sq_unmodified = np.sum((intensity-mean_intensity_unmodified)**2)
+      diff_sq_[diff_sq_<0] = diff_sq_unmodified
       variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1)
 
     # N expts (all ranks) x N bins
