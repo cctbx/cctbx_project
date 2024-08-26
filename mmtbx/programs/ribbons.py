@@ -231,13 +231,25 @@ Output:
         b = that.range.strand
       return a < b
 
+  # If the current point ID is the same as the previous point ID, we retur the shorthand {"} to
+  # indicate this.  To force a new point ID, set self._lastPointID to "" before calling this function.  
   def getPointID(self, point, start, end, interval, nIntervals):
+    if self._lastPointID is None:
+      self._lastPointID = ""
+
     res = start.nextRes
     if self.params.DNA_style and interval <= nIntervals // 2:
       res = start.prevRes   # == first res, for RNA/DNA only
 
     buf = res.atom_groups()[0].resname.strip() + " " + res.parent().id.strip() + " " + res.resseq.strip() + res.icode
-    return buf.lower().strip()
+    res = buf.lower().strip()
+
+    if res == self._lastPointID:
+      res = '"'
+    else:
+      self._lastPointID = res
+
+    return res
 
   def printFancy(self, guides, splines, i, lineBreak = False):
     # Prints a fancy ribbon element with the given guidepoints and splines.
@@ -258,7 +270,7 @@ Output:
     self.crayon.forRibbon(guides[startGuide])
     ret += self.crayon.getKinString()
     ret += " "
-    ret += str(splines[i][0]) + " " + str(splines[i][1]) + " " + str(splines[i][2]) + "\n"
+    ret += "{:.3f} {:.3f} {:.3f}\n".format(splines[i][0], splines[i][1], splines[i][2])
 
     return ret
 
@@ -366,8 +378,8 @@ Output:
 
         self.crayon = normalCrayon
         ret += "@ribbonlist {fancy helix} " + listAlpha + "\n"
+        self._lastPointID = ""
 
-        # @todo The Java code has a "P X " at the start of the first line in the ribbon
         for i in range(ribElement.start, ribElement.end):
           if dot > 0:
             # Flip the normals (for sidedness) by switching the order of these two lines.
@@ -379,6 +391,7 @@ Output:
         ret += self.printFancy(guides, splinepts[0], ribElement.end)  # Angled tip at end of helix
         self.crayon = edgeCrayon
         ret += "@vectorlist {fancy helix edges} width=1 " + listAlpha + " color= deadblack\n"
+        self._lastPointID = ""
         # Black edge, left side
         ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
         for i in range(ribElement.start, ribElement.end):
@@ -443,6 +456,7 @@ Output:
 
         self.crayon = normalCrayon
         ret += "@ribbonlist {fancy sheet} " + listBeta + "\n"
+        self._lastPointID = ""
         for i in range(ribElement.start, ribElement.end - 1):
           # If strands are not "facing" the same way,
           # flip the normals (for sidedness) by switching the order of these two lines, (ARK Spring2010)
@@ -467,6 +481,7 @@ Output:
         # Borders
         self.crayon = edgeCrayon
         ret += "@vectorlist {fancy sheet edges} width=1 " + listBeta + " color= deadblack\n"
+        self._lastPointID = ""
         # Black edge, left side
         ret += self.printFancy(guides, splinepts[0], ribElement.start, True)
         for i in range(ribElement.start, ribElement.end - 1):
@@ -486,11 +501,13 @@ Output:
         if listCoilOutline is not None:
           self.crayon = normalCrayon
           ret += "@vectorlist {fancy coil edges} " + listCoilOutline + "\n"
+          self._lastPointID = ""
           for i in range(ribElement.start, ribElement.end+1):
             ret += self.printFancy(guides, splinepts[0], i)
 
         self.crayon = normalCrayon
         ret += "@vectorlist {fancy coil} " + listCoil + "\n"
+        self._lastPointID = ""
         for i in range(ribElement.start, ribElement.end+1):
           ret += self.printFancy(guides, splinepts[0], i)
 
