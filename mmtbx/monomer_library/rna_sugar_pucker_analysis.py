@@ -28,6 +28,9 @@ master_phil = libtbx.phil.parse("""\
     .type = float
   bond_detection_distance_tolerance = 0.5
     .type = float
+  enable = True
+    .type = bool
+    .style = hidden
 """)
 
 class evaluate(slots_getstate_setstate):

@@ -1299,6 +1299,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (ra1.problems is not None): return
     self.is_rna_dna = True
     if (not ra1.is_rna): return
+    if not params.enable: return
     residue_2_p_atom = None
     if (next_pdb_residue is not None):
       residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
@@ -2726,6 +2727,10 @@ class build_chain_proxies(object):
             self.type_energies[atom.i_seq] = None
             self.type_h_bonds[atom.i_seq] = None
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
+      #
+      if (mm.monomer is None):
+        # try to get restraints from e tu
+        pass
       #
       if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
