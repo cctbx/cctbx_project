@@ -130,7 +130,7 @@ class deltaccint(worker):
 
     # Report
     if self.mpi_helper.rank == 0:
-      sigma_sq_y = total_diff_sq_sum / (all_i_n-1)
+      sigma_sq_y = total_diff_sq_sum / (total_i_n-1)
       sigma_sq_e = total_var_sums / total_i_n
       deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + sigma_sq_e)
 
