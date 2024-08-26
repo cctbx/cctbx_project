@@ -232,7 +232,7 @@ Output:
       return a < b
 
   # If the current point ID is the same as the previous point ID, we retur the shorthand {"} to
-  # indicate this.  To force a new point ID, set self._lastPointID to "" before calling this function.  
+  # indicate this.  To force a new point ID, set self._lastPointID to "" before calling this function.
   def getPointID(self, point, start, end, interval, nIntervals):
     if self._lastPointID is None:
       self._lastPointID = ""
