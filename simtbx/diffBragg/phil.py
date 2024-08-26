@@ -402,6 +402,9 @@ sanity_test_input = True
   .type = bool
   .help = sanity test input
   .expert_level=10
+shots_per_chunk=50
+  .type = int
+  .help = number of experiments saved per composite file
 outdir = None
   .type = str
   .help = output folder
@@ -1292,6 +1295,12 @@ geometry {
 
 predictions_phil = """
 predictions {
+  integrate_phil = None
+    .type = str
+    .help = phil file for stills process specifying integration
+  printout_pix = None
+    .type = ints(size=3)
+    .help = panel id, fast coord, slow coord. If provided, debug stdout will be shown detailing the mstate of the diffBragg model
   use_peak_detection = False
     .type = bool
     .help = If True, then simulations will be converted to refl tables

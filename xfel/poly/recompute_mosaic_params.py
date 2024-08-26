@@ -1,6 +1,8 @@
 from __future__ import absolute_import, division, print_function
 
+import libtbx.utils
 from scitbx.matrix import col, sqr
+from scitbx.array_family import flex
 from serialtbx.mono_simulation import max_like
 import numpy as np
 from scipy import constants
@@ -128,9 +130,14 @@ def extract_mosaic_parameters_using_lambda_spread(experiment, refls, verbose=Tru
       print("compute updated value with per-spot wavelen: %.6f" % delpsi_new)
 
   delpsi_vals = flex.double(all_new_delpsi)
-  out = max_like.minimizer(flex.double(d_i), delpsi_vals, eta_init*np.pi/180., Deff_init)
-  Deff_opt = 2/out.x[0]
-  eta_opt = out.x[1] * 180 / np.pi
+  Deff_opt = eta_opt = None
+  try:
+    out = max_like.minimizer(flex.double(d_i), delpsi_vals, eta_init*np.pi/180., Deff_init)
+    Deff_opt = 2 / out.x[0]
+    eta_opt = out.x[1] * 180 / np.pi
+  except Exception as err:
+    print(str(err))  # the minimization sometimes fails
+    pass
 
   all_spot_wavelen = flex.double(all_spot_wavelen)
   all_spot_energies = flex.double([ENERGY_CONV/wave for wave in all_spot_wavelen])
@@ -142,8 +149,9 @@ def extract_mosaic_parameters_using_lambda_spread(experiment, refls, verbose=Tru
     print("\n<><><><>")
     print("Results:")
     print("<><><><>")
-    print("Deff with per-spot wavelen: %.6f Angstrom." % Deff_opt)
-    print("eta with per-spot wavelen: %.6f deg." % eta_opt)
+    if Deff_opt is not None:
+      print("Deff with per-spot wavelen: %.6f Angstrom." % Deff_opt)
+      print("eta with per-spot wavelen: %.6f deg." % eta_opt)
     print("Per-spot wavelengths: %.4f +- %.4f eV. \n" % (mean_en, sig_en))
 
   poly_data = all_spot_wavelen

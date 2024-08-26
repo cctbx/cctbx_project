@@ -5,6 +5,9 @@ import glob
 from simtbx.diffBragg import utils, hopper_utils
 from dxtbx.model.experiment_list import ExperimentListFactory
 import time
+from xfel.merging.application.input.file_loader import create_experiment_identifier
+from xfel.poly.recompute_mosaic_params import extract_mosaic_parameters_using_lambda_spread
+from dials.algorithms.shoebox import MaskCode
 import sys
 try:
     import pandas
@@ -31,6 +34,7 @@ DETZ_ID = 10
 
 import numpy as np
 np.seterr(invalid='ignore')
+from scipy.stats import pearsonr
 import os
 from libtbx.mpi4py import MPI
 
@@ -43,6 +47,11 @@ from libtbx.phil import parse
 
 from simtbx.diffBragg import utils
 from simtbx.diffBragg.phil import philz
+from simtbx.modeling import predictions
+from dials.model.data import Shoebox
+from dials.array_family import flex
+from simtbx.command_line import integrate
+from dxtbx.model import ExperimentList
 
 import logging
 from simtbx.diffBragg.phil import hopper_phil
@@ -97,6 +106,7 @@ class Script:
         input_lines = None
         best_models = None
         pd_dir = os.path.join(self.params.outdir, "pandas")
+        expt_ref_dir = os.path.join(self.params.outdir, "expers_refls")
         if COMM.rank == 0:
             input_lines = open(self.params.exp_ref_spec_file, "r").readlines()
             if self.params.skip is not None:
@@ -116,6 +126,7 @@ class Script:
                 utils.safe_makedirs(self.params.gathers_dir)
 
             utils.safe_makedirs(pd_dir)
+            utils.safe_makedirs(expt_ref_dir)
 
         COMM.barrier()
         input_lines = COMM.bcast(input_lines)
@@ -133,13 +144,19 @@ class Script:
         exp_gatheredRef_spec = []  # optional list of expt, refls, spectra
         trefs = []
         this_rank_dfs = []  # dataframes storing the modeling results for each shot
+        this_rank_Elints = ExperimentList()
+        this_rank_Rints = None
+        this_rank_Ridxs = None
+        chunk_id = 0
+        shots_per_chunk=self.params.shots_per_chunk
         CHECKER = None
-        #try:
-        #    from simtbx.tests import roi_check
-        #    CHECKER = roi_check.roiCheck(self.params.roi.filter_scores.state_file)
-        #except:
-        #    CHECKER = None
+        try:
+            from simtbx.tests import roi_check
+            CHECKER = roi_check.roiCheck(self.params.roi.filter_scores.state_file)
+        except:
+            CHECKER = None
         for i_shot, line in enumerate(input_lines):
+            time_to_refine = time.time()
             if i_shot == self.params.max_process:
                 break
             if i_shot % COMM.size != COMM.rank:
@@ -313,10 +330,10 @@ class Script:
 
                     # Then repeat minimization, fixing roi fits
                     Modeler.params = self.params
+                    old_P = deepcopy(Modeler.P)
                     Modeler.set_parameters_for_experiment(best)
                     new_x = np.array([1.] * len(Modeler.P))
-                    old_P = deepcopy(Modeler.P)
-                    for name in old_P:
+                    for name in Modeler.P:
                         new_p = Modeler.P[name]
                         old_p = old_P[name]
                         new_x[new_p.xpos] = x[old_p.xpos]
@@ -343,38 +360,148 @@ class Script:
             if self.params.profile:
                 SIM.D.show_timings(COMM.rank)
 
-            #from IPython import embed;embed()
-
-            #new_crystal = hopper_utils.update_crystal_from_x(Modeler, SIM, x)
-            #from copy import deepcopy
-            #new_exp = deepcopy(Modeler.E)
-            #new_exp.crystal = new_crystal
-
-            #try:
-            #    new_exp.beam.set_wavelength(SIM.dxtbx_spec.get_weighted_wavelength())
-            #except Exception: pass
-            ## if we strip the thickness from the detector, then update it here:
-            ##new_exp.detector. shift Z mm
-            #new_det = hopper_utils.update_detector_from_x(Modeler, SIM, x)
-            #new_exp.detector = new_det
-            ## if we are re-scaling the intensity:
-            #Modeler.best_model, best_Jac = hopper_utils.model(x, Modeler, SIM, compute_grad=True, dont_rescale_gradient=True)
-            #Modeler.best_model_includes_background = False
-            #new_refl = hopper_utils.get_new_xycalcs(Modeler, new_exp, x=x, SIM=SIM, Jac=best_Jac)
-            #from IPython import embed;embed()
             dbg = self.params.debug_mode
             if dbg and COMM.rank > 0 and self.params.debug_mode_rank0_only:
                 dbg = False
             shot_df = Modeler.save_up(x, SIM, rank=COMM.rank, i_shot=i_shot,
                             save_fhkl_data=dbg, save_refl=dbg, save_modeler_file=dbg,
                             save_sim_info=dbg, save_pandas=dbg, save_traces=dbg, save_expt=dbg)
-            #from IPython import embed;embed()
-            #from simtbx.modeling import predictions
-            #Rstrong = None
-            #pred = predictions.get_predict(Modeler.E, Rstrong, Modeler.params, dev=self.dev, df=shot_df, filter_dupes=True)
-            # verify the prediction is identical to the best model
 
-            this_rank_dfs.append(shot_df)
+            #if self.params.predictions.integrate_phil is not None:
+            do_integrate = self.params.predictions.integrate_phil is not None
+            Rstrong = None
+            #Modeler.params.predictions.threshold = 10
+            #Modeler.params.predictions.use_peak_detection = True
+            #Modeler.params.predictions.use_diffBragg_mtz = True
+            #pid = Modeler.pids[0]
+            #x1, x2, y1, y2 = Modeler.rois[0]
+            #fast = int((x2 + x1) / 2)
+            #slow = int((y2 + y1) / 2)
+            #Modeler.params.predictions.printout_pix = (pid, fast, slow)
+            if do_integrate:
+                pred_out = predictions.get_predict(Modeler.E,
+                                Rstrong, Modeler.params, dev=self.dev, df=shot_df, filter_dupes=True, return_pix=True)
+                pred = imgs = None
+                if pred_out is None:
+                    Modeler.clean_up(SIM)
+                    continue
+                pred, imgs = pred_out
+
+            pfs = Modeler.pan_fast_slow.as_numpy_array()
+            p, f, s = pfs[0::3], pfs[1::3], pfs[2::3]
+            if do_integrate:
+                predict_model = imgs[p, s, f]
+            predict_subimgs = []
+            hopper_subimgs = []
+
+            ccs = []
+            shoeboxes = []
+            scores = []
+            Ridx = flex.reflection_table()
+            for roi, slc in Modeler.roi_id_slices.items():
+                hopper_pix = Modeler.best_model[slc[0]]
+
+                x1, x2, y1, y2 = Modeler.rois[int(roi)]
+                ydim = y2 - y1
+                xdim = x2 - x1
+
+                hopper_subimg = hopper_pix.reshape((ydim, xdim))
+
+                if do_integrate:
+                    predict_pix = predict_model[slc[0]]
+                    if len(np.unique(predict_pix)) == 1 or len(np.unique(hopper_pix)) == 1:
+                        continue
+                    cc = pearsonr(predict_pix, hopper_pix)[0]
+
+                    predict_subimg = predict_pix.reshape((ydim, xdim))
+
+                hopper_trust = Modeler.all_trusted[slc[0]].reshape((ydim,xdim))
+                if not np.any(hopper_trust):
+                    continue
+
+                hopper_subimgs.append(hopper_subimg)
+                hopper_bg = Modeler.all_background[slc[0]].reshape((ydim, xdim))
+                if do_integrate:
+                    ccs.append(cc)
+                    predict_subimgs.append(predict_subimg)
+
+                    sb = Shoebox((x1, x2, y1, y2, 0, 1))
+                    sb.allocate()
+                    sb.data = flex.float(np.ascontiguousarray(hopper_subimg[None]))
+                    sb.background = flex.float(np.ascontiguousarray(hopper_bg[None]))
+
+                    dials_mask = np.zeros((ydim, xdim)).astype(np.int32)
+                    dials_mask[hopper_trust] = dials_mask[hopper_trust] + MaskCode.Valid
+                    braggMask = (hopper_subimg > 10) & hopper_trust
+                    dials_mask[braggMask] = dials_mask[braggMask] + MaskCode.Strong
+                    bgMask = (hopper_subimg < 1) & hopper_trust
+                    dials_mask[bgMask] = dials_mask[bgMask] + MaskCode.Background
+                    sb.mask = flex.int(np.ascontiguousarray(dials_mask[None]))
+                    shoeboxes.append(sb)
+
+                refl = Modeler.refls[roi:roi+1]
+                Ridx.extend(refl)
+                if CHECKER is not None:
+                    data_subimg = Modeler.all_data[slc[0]].reshape((ydim, xdim))
+                    score = CHECKER.score(data_subimg, hopper_subimg + hopper_bg)
+                    scores.append(score)
+            if len(Ridx) == 0:
+                Modeler.clean_up(SIM)
+                continue
+
+            if scores:
+                Ridx["model_score"] = flex.double(scores)
+            if shoeboxes and 'shoebox' != Ridx:
+                Ridx['shoebox'] = flex.shoebox(shoeboxes)
+            Ridx.set_flags(flex.bool(len(Ridx), True), Ridx.flags.indexed)
+            from IPython import embed;embed()
+
+
+            Elint = ExperimentList()
+            Eref = deepcopy(Modeler.E)
+            Eref.crystal.set_A(shot_df.Amats.values[0])
+            Eref.detector = SIM.detector
+            Elint.append(Eref)
+            if do_integrate:
+                Elint, Rint = integrate.integrate(self.params.predictions.integrate_phil, Elint, Ridx, pred)
+                spot_ev, delpsi_rad, Deff, eta_est = extract_mosaic_parameters_using_lambda_spread(Elint[0], Rint, verbose=False)
+                Rint["spot_ev"] = spot_ev
+                Rint["delpsical.rad"] = delpsi_rad
+                # here is where to do the diffBragg fit of intensity
+
+            if Modeler.E.identifier is not None:
+                ident = Modeler.E.identifier
+            else:
+                ident = create_experiment_identifier(Modeler.E, Modeler.exper_name, Modeler.exper_idx)
+
+            Rint_id = Ridx_id = len(this_rank_Elints)
+            if do_integrate:
+                eid_int = Rint.experiment_identifiers()
+                for k in eid_int.keys():
+                    del eid_int[k]
+                eid_int[Rint_id] = ident
+                Rint['id'] = flex.int(len(Rint), Rint_id)
+
+            eid_idx = Ridx.experiment_identifiers()
+            for k in eid_idx.keys():
+                del eid_idx[k]
+            eid_idx[Ridx_id] = ident
+            Ridx['id'] = flex.int(len(Ridx), Ridx_id)
+
+            Elint[0].identifier = ident
+
+            #ccs = [cc for cc in ccs if not np.isnan(cc)]
+            #if not np.allclose(ccs, 1):
+            #    from IPython import embed;embed()
+            # verify the prediction is identical to the best model
+            shot_df['identifier'] = ident
+            shot_df["hopper_time"] = time.time()-time_to_refine
+            shot_df["hopper_line"] = line  # exp_ref_spec file line for re-running
+            if scores:
+                shot_df["scores"] = np.mean(scores)
+
+            # here is where to re-launch if doing predictions
+
             if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
                 # TODO separate diffBragg logger
                 utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
@@ -384,6 +511,34 @@ class Script:
                 SIM.D.show_timings(COMM.rank)
             Modeler.clean_up(SIM)
             del SIM.D  # TODO: is this necessary ?
+
+            this_rank_dfs.append(shot_df)
+            this_rank_Elints.extend(Elint)
+            if do_integrate:
+                if 'shoebox' in Rint:
+                    del Rint['shoebox']
+                if this_rank_Rints is None:
+                    this_rank_Rints = Rint
+                else:
+                    this_rank_Rints.extend(Rint)
+            #if "shoebox" in Ridx:
+            #    del Ridx['shoebox']
+            #TODO fill in new xyzcal.px column ?
+            if this_rank_Ridxs is None:
+                this_rank_Ridxs = Ridx
+            else:
+                this_rank_Ridxs.extend(Ridx)
+
+
+
+            if len(this_rank_dfs) == shots_per_chunk:
+                save_composite_files(this_rank_dfs, this_rank_Elints, this_rank_Ridxs, this_rank_Rints,
+                                     pd_dir, expt_ref_dir, chunk_id)
+                chunk_id += 1
+                this_rank_dfs = []  # dataframes storing the modeling results for each shot
+                this_rank_Elints = ExperimentList()
+                this_rank_Rints = None
+                this_rank_Ridxs = None
 
         if self.params.dump_gathers and self.params.gathered_output_file is not None:
             exp_gatheredRef_spec = COMM.reduce(exp_gatheredRef_spec)
@@ -396,10 +551,24 @@ class Script:
                         o.write("%s %s\n" % (e,r))
                 o.close()
 
-        if this_rank_dfs:
-            this_rank_dfs = pandas.concat(this_rank_dfs).reset_index(drop=True)
-            df_name = os.path.join(pd_dir, "hopper_results_rank%d.pkl" % COMM.rank)
-            this_rank_dfs.to_pickle(df_name)
+        save_composite_files(this_rank_dfs, this_rank_Elints, this_rank_Ridxs, this_rank_Rints,
+                             pd_dir, expt_ref_dir, chunk_id)
+
+
+def save_composite_files(dfs, expts, refls, refls_int, pd_dir, exp_ref_dir, chunk=0):
+    df_name = os.path.join(pd_dir, "hopper_results_rank%d_chunk%d.pkl" % (COMM.rank, chunk))
+    expt_name = os.path.join(exp_ref_dir, "hopper_rank%d_chunk%d.expt" % (COMM.rank,chunk))
+    int_name = os.path.join(exp_ref_dir, "hopper_rank%d_chunk%d_integrated.refl" % (COMM.rank,chunk))
+    idx_name = os.path.join(exp_ref_dir, "hopper_rank%d_chunk%d.refl" % (COMM.rank,chunk))
+    if dfs:
+        this_rank_dfs = pandas.concat(dfs).reset_index(drop=True)
+        this_rank_dfs.to_pickle(df_name)
+    if expts:
+        expts.as_file(expt_name)
+    if refls:
+        refls.as_file(idx_name)
+    if refls_int:
+        refls_int.as_file(int_name)
 
         #MAIN_LOGGER.info("MPI-Gathering data frames across ranks")
         #all_rank_dfs = COMM.gather(this_rank_dfs)
@@ -434,7 +603,18 @@ if __name__ == '__main__':
 
         with DeviceWrapper(script.dev) as _:
             #with np.errstate(all='raise'):
-            RUN()
+            try:
+                RUN()
+            except Exception as err:
+                err_file = os.path.join(script.params.outdir, "rank%d_hopper_fail.err" % COMM.rank)
+                with open(err_file, "w") as o:
+                    from traceback import format_tb
+                    _, _, tb = sys.exc_info()
+                    tb_s = "".join(format_tb(tb))
+                    #tb_s = tb_s.replace("\n", "\nRANK%04d" % COMM.rank)
+                    err_s = str(err) + "\n" + tb_s
+                    o.write(err_s)
+                raise err
         COMM.barrier()
 
         if lp is not None:

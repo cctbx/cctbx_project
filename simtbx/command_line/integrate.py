@@ -2,38 +2,34 @@ from __future__ import division, print_function
 
 # LIBTBX_SET_DISPATCHER_NAME diffBragg.integrate
 
-import argparse as ap
-parser = ap.ArgumentParser()
-parser.add_argument("predPhil", type=str, help="path to a phil config file for diffbragg prediction")
-parser.add_argument("procPhil", type=str, help="path to a phil config file for stills process (used for spot finding and integration)")
-parser.add_argument("inputGlob", type=str, help="glob of input pandas tables (those that are output by simtbx.diffBragg.hopper or diffBragg.hopper_process")
-parser.add_argument("outdir", type=str, help="path to output refls")
 
-parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
-parser.add_argument("--dialsInteg", action="store_true", help="Integrate new shoeboxes using dials and write *integrated.expt files")
-parser.add_argument("--numdev", type=int, default=1, help="number of GPUs (default=1)")
-parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for pandas pickles (default .pkl)", default=".pkl")
-parser.add_argument("--loud", action="store_true", help="show lots of screen output")
-parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
-parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
-parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
-parser.add_argument("--scanWeakFracs", action="store_true", help="optionally stores a variety of inputs for stage2 based filtering different fractions of weak reflections")
-parser.add_argument("--maxProcess", type=int,default=-1, help="maximum number of shots to process before program termination")
-parser.add_argument("--raiseErrors", action="store_true")
+def get_args():
+    import argparse as ap
+    parser = ap.ArgumentParser()
+    parser.add_argument("predPhil", type=str, help="path to a phil config file for diffbragg prediction")
+    parser.add_argument("procPhil", type=str, help="path to a phil config file for stills process (used for spot finding and integration)")
+    parser.add_argument("inputGlob", type=str, help="glob of input pandas tables (those that are output by simtbx.diffBragg.hopper or diffBragg.hopper_process")
+    parser.add_argument("outdir", type=str, help="path to output refls")
 
-args = parser.parse_args()
+    parser.add_argument("--cmdlinePhil", nargs="+", default=None, type=str, help="command line phil params")
+    parser.add_argument("--dialsInteg", action="store_true", help="Integrate new shoeboxes using dials and write *integrated.expt files")
+    parser.add_argument("--numdev", type=int, default=1, help="number of GPUs (default=1)")
+    parser.add_argument("--pklTag", type=str, help="optional suffix for globbing for pandas pickles (default .pkl)", default=".pkl")
+    parser.add_argument("--loud", action="store_true", help="show lots of screen output")
+    parser.add_argument("--hopInputName", default="preds_for_hopper", type=str, help="write exp_ref_spec file and best_pickle pointing to the preditction models, such that one can run predicted rois through simtbx.diffBragg.hopper (e.g. to fit per-roi scale factors)")
+    parser.add_argument("--filterDupes", action="store_true", help="filter refls with same HKL")
+    parser.add_argument("--keepShoeboxes", action="store_true", help="Optionally keep shoeboxes present in the prediction refl tables (can lead to OOM errors)")
+    parser.add_argument("--scanWeakFracs", action="store_true", help="optionally stores a variety of inputs for stage2 based filtering different fractions of weak reflections")
+    parser.add_argument("--maxProcess", type=int,default=-1, help="maximum number of shots to process before program termination")
+    parser.add_argument("--raiseErrors", action="store_true")
+
+    args = parser.parse_args()
+    return args
 
 from libtbx.mpi4py import MPI
 COMM = MPI.COMM_WORLD
 
 import logging
-if not args.loud:
-    logging.disable(logging.CRITICAL)
-else:
-    if COMM.rank==0:
-        logger = logging.getLogger("diffBragg.main")
-        logger.setLevel(logging.DEBUG)
-
 
 def printR(*args, **kwargs):
     print("RANK %d" % COMM.rank, *args, **kwargs)
@@ -139,7 +135,7 @@ def integrate(phil_file, experiments, indexed, predicted):
     experiments[0].identifier = '0'
 
     params = stills_process_params_from_file(phil_file)
-    indexed,_ = process_reference(indexed)
+    indexed, _ = process_reference(indexed)
     experiments = ProfileModelFactory.create(params, experiments, indexed)
 
     new_experiments = ExperimentList()
@@ -302,6 +298,15 @@ def refls_from_sims(panel_imgs, detector, beam, thresh=0, filter=None, panel_ids
 
 
 if __name__=="__main__":
+
+    args = get_args()
+
+    if not args.loud:
+        logging.disable(logging.CRITICAL)
+    else:
+        if COMM.rank == 0:
+            logger = logging.getLogger("diffBragg.main")
+            logger.setLevel(logging.DEBUG)
 
     if COMM.rank==0:
         if not os.path.exists( args.outdir):

@@ -67,6 +67,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         mtz_col = params.simulator.structure_factors.mtz_column
         from_pdb = params.simulator.structure_factors.from_pdb
         defaultF = 0
+        print(f"Getting MTZ from {mtz_file} {mtz_col}")
     # returns the images and the experiment including any pre-modeling modifications (e.g. thinning out the detector)
     if "num_mosaicity_samples" not in list(df):
         df['num_mosaicity_samples'] = [params.simulator.crystal.num_mosaicity_samples]
@@ -87,6 +88,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
         use_exascale_api=params.predictions.method == "exascale",
         use_db=params.predictions.method == "diffbragg",
         show_timings=params.predictions.verbose,
+        printout_pix=params.predictions.printout_pix,
         quiet=(not params.predictions.verbose),
         perpixel_wavelen=params.predictions.laue_mode,
         det_thicksteps=params.predictions.thicksteps_override,
@@ -136,7 +138,7 @@ def get_predicted_from_pandas(df, params, strong=None, eid='', device_Id=0, spec
     predictions['scatter'] = predictions["intensity.sum.value"] / flex.double(np.array(numpix, np.float64))
 
     if strong is None:
-        return predictions
+        return predictions, panel_images
 
     strong.centroid_px_to_mm(El)
     if params.predictions.laue_mode:
@@ -344,33 +346,37 @@ def filter_weak_reflections(refls, weak_fraction):
     return new_refls
 
 
-def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_shoeboxes=False, return_pix=False):
+def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_shoeboxes=False, return_pix=False,
+                raise_err=False, spectrum_override=None):
     """
     :param data_expt:  Experiment list
     :param Rstrong: Strong spots refl table
     :param params: instance of hopper params with simulator{} and prediction{} params set
     :param filter_dupes: whether to filter duplicate reflections
+    :param return_pix:
+    :param raise_err:
     :return: predicted refl table with is_strong column set
     """
     data_exptList = ExperimentList()
     data_exptList.append(data_expt)
 
     try:
-        spectrum_override = None
-        if params.spectrum_from_imageset:
+        if spectrum_override is None and params.spectrum_from_imageset:
             spectrum_override = hopper_utils.downsamp_spec_from_params(params, data_expt)
-        pred = get_predicted_from_pandas(
+        pred, imgs = get_predicted_from_pandas(
             df, params, strong=None, device_Id=dev, spectrum_override=spectrum_override)
         if filter_dupes:
             pred = filter_refls(pred)
-    except Exception:
+    except Exception as err:
+        if raise_err:
+            raise(err)
         return None
 
     num_panels = len(data_expt.detector)
-    if num_panels > 1:
-        assert params.predictions.label_weak_col == "rlp"
 
     if Rstrong is not None:
+        if num_panels > 1:
+            assert params.predictions.label_weak_col == "rlp"
         Rstrong['id'] = flex.int(len(Rstrong), 0)
         Rstrong.centroid_px_to_mm(data_exptList)
         Rstrong.map_centroids_to_reciprocal_space(data_exptList)
@@ -387,6 +393,6 @@ def get_predict(data_expt, Rstrong, params, dev, df, filter_dupes=True, keep_sho
     if 'shoebox' in list(pred) and not keep_shoeboxes:
         del pred['shoebox']
 
-    if return_imgs:
-        return pred,pan
+    if return_pix:
+        return pred, imgs
     return pred
