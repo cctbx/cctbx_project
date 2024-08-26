@@ -5,11 +5,11 @@ import iotbx.pdb
 import mmtbx.secondary_structure
 from pathlib import Path
 import numpy as np
-from scipy.interpolate import make_interp_spline
 from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present, _FindNamedAtomInResidue
+from mmtbx.kinemage.nrubs import Triple, NRUBS
 from copy import copy
 
 version = "1.0.0"
@@ -87,32 +87,23 @@ Output:
     # Returns a list of interpolated points between the points using a spline interpolation.
     # Based on https://docs.scipy.org/doc/scipy/tutorial/interpolate/1D.html#parametric-spline-curves
     # @param pts: The guidepoints to interpolate between (a list of 3D points with at least 6 points in it).
-    # The first and last points are duplciates to form knots, so are not interpolated between.
+    # The first and last points are duplicates to form knots, so are not interpolated between.
     # @param nIntervals: The number of intervals to interpolate between each pair of guidepoints, skipping the first and last.
     # @return: The list of interpolated points
+
+    nrubs = NRUBS()
+    points = []
+    for pt in pts:
+      points.append( Triple(pt[0], pt[1], pt[2]) )
+    res = nrubs.spline(points, nIntervals)
+    ret = []
+    for r in res:
+      ret.append( np.array((r.x, r.y, r.z)) )
+    return ret
 
     # Adjust the points to match what is expected by the Java code.
     # The Java code expects the first and last points to be duplicates of the second and second-to-last points.
     points = pts[1:-1]
-
-    # Construct the parametric spline for a curve in 3D space.
-    # We stick the end points in like any other points, but we don't use them in the interpolation.
-    u = range(len(points))
-    x = [pt[0] for pt in points]
-    y = [pt[1] for pt in points]
-    z = [pt[2] for pt in points]
-    p = np.stack( (x, y, z) )
-    spl = make_interp_spline(u, p, axis=1)
-
-    # Compute the interpolated points
-    count = (len(points) - 1) * nIntervals + 1
-    uu = np.linspace(0, len(points) - 1, count)
-    xx, yy, zz = spl(uu)
-
-    ret = []
-    for i in range(count):
-      ret.append( np.array((xx[i], yy[i], zz[i])) )
-    return ret
 
 # ------------------------------------------------------------------------------
 
