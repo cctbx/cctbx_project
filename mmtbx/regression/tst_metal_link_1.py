@@ -99,6 +99,7 @@ def run():
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.automatic_linking.link_metals=True
+  params.pdb_interpretation.automatic_linking.metal_coordination_cutoff=3.5
   m = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
