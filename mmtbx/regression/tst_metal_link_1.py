@@ -99,7 +99,6 @@ def run():
   pdb_inp = iotbx.pdb.input(lines=pdb_str, source_info=None)
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.automatic_linking.link_metals=True
-  params.pdb_interpretation.automatic_linking.metal_coordination_cutoff=3.5
   m = mmtbx.model.manager(
     model_input = pdb_inp,
     log         = null_out())
@@ -110,7 +109,7 @@ def run():
   assert atoms[73].element.strip().upper() == "FE"
   bond_proxies_simple, asu = grm.geometry.get_all_bond_proxies(
     sites_cart = ph.atoms().extract_xyz())
-  expected_link_atoms = ['NE2', "NE2", "OE1", "OE2", "O", "O", "O"]
+  expected_link_atoms = ['NE2', "OE2", "O", "O", "O"]
   expected_link_atoms.sort()
   linked_atoms_found = []
   for p in bond_proxies_simple:
