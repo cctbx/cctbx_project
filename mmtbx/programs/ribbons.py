@@ -611,7 +611,7 @@ Output:
 
           if len(contiguous_residue_lists) > 0:
             if groupByModel:
-              outString += "@subgroup {{chain{}}} dominant master= {chain {}}}\n".format(chain.id, chain.id)
+              outString += "@subgroup {{chain{}}} dominant master= {{chain {}}}\n".format(chain.id, chain.id)
             else:
               outString += "@group {{{} {}}} dominant\n".format(self.idCode, chain.id)
             outString += "@subgroup {ribbon}\n"
