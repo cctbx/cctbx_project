@@ -157,5 +157,5 @@ if __name__ == "__main__":
     nrubs = NRUBS()
     result = nrubs.spline(guidePts, 10)
     for point in result:
-        print(f"({point.getX()}, {point.getY()}, {point.getZ()})")
+        print("({}, {}, {})".format(point.getX(), point.getY(), point.getZ()))
 
