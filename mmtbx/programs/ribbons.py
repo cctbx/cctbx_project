@@ -43,6 +43,10 @@ coil_width = 1.0
   .type = float
   .short_caption = Coil width
   .help = Width of the coil part of the ribbon
+selection = None
+  .type = atom_selection
+  .short_caption = Atom selection
+  .help = Atom selection description
 '''
 
 # ------------------------------------------------------------------------------
@@ -111,7 +115,7 @@ Output:
   # the output, re-using the colors specified by model or chain.  It sometimes also specified
   # the RAINBOW crayon, which overwrites the colors with a rainbow color scheme across each chain.
   # For the edges, it specified a constant crayon whose string value is deadblack
-  # and it adds "U " to make it un-pickable. @todo Add unpickable somewhere.
+  # and it adds "U " to make it un-pickable.
   # We pull that logic into here by implementing the forRibbon() and shouldPrint() and
   # getKinString() methods in our own class.
   class Crayon:
@@ -522,14 +526,19 @@ Output:
     self.model = self.data_manager.get_model()
     self.nIntervals = 4
 
+    # Apply a selection to the model if one is provided
+    hierarchy = self.model.get_hierarchy()
+    if self.params.selection is not None:
+      selection = hierarchy.atom_selection_cache().selection(self.params.selection)
+      hierarchy = hierarchy.select(selection)
+
     # Analyze the secondary structure and make a dictionary that maps from residue sequence number to secondary structure type
     # by filling in 'COIL' as a default value for each and then parsing all of the secondary structure records in the
     # model and filling in the relevant values for them.
-    # @todo Can pass it an atom selection cache, so maybe we do this after we have selected the atoms we want to use?
     print('Finding secondary structure:')
-    ss_manager = mmtbx.secondary_structure.manager(self.model.get_hierarchy())
+    ss_manager = mmtbx.secondary_structure.manager(hierarchy)
     self.secondaryStructure = {}
-    for model in self.model.get_hierarchy().models():
+    for model in hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           self.secondaryStructure[int(residue_group.resseq)] = self.Range()
@@ -571,15 +580,14 @@ Output:
     outString += "@onewidth\n"
     
     # Handle multiple models
-    groupByModel = self.model.get_hierarchy().models_size() > 1
-    for model in self.model.get_hierarchy().models():
+    groupByModel = hierarchy.models_size() > 1
+    for model in hierarchy.models():
       modelID = model.id
       if modelID == "":
         modelID = "_"
       print('Processing model', modelID, 'with', len(model.chains()), 'chains')
       if groupByModel:
-        # @todo Test and figure out what to fill in for the "@todo" name based on what the original code produces
-        outString += "@group {{{} {}}} dominant master= {{all models}}\n".format(self.idCode, "@todo")
+        outString += "@group {{{} {}}} dominant master= {{all models}}\n".format(self.idCode, str(modelID).strip())
  
       # Make a list of all the chain names in the model with only one entry per name.
       # Use this to make a dictionary to look up the color that is used for each chain name.
