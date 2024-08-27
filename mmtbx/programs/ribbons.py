@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from turtle import window_width
 from libtbx.program_template import ProgramTemplate
 import iotbx.pdb
 import mmtbx.secondary_structure
@@ -8,9 +7,8 @@ import numpy as np
 from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
-from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, non_CA_atoms_present, _FindNamedAtomInResidue
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue
 from mmtbx.kinemage.nrubs import Triple, NRUBS
-from copy import copy
 
 version = "1.0.0"
 
@@ -61,7 +59,7 @@ within the javadev repository.
 
 How to run:
   mmtbx.ribbons model.pdb
-  
+
 Output:
   If neither output.file_name nor output.filename is specified, it will write
   to a file with the same name as the input model file name but with the
@@ -441,13 +439,13 @@ Output:
                   closeDist = dist
                   curClosest = i
                   prevClosest = j
-              except:
+              except Exception:
                 pass
           kCur = min(self.nIntervals*(curClosest-1), len(splinepts[4]))
           kPrev = min(self.nIntervals*(prevClosest-1), len(splinepts[4]))
           ptCur = splinepts[4][kCur]
           v1Cur = splinepts[3][kCur] - ptCur
-          # VBC Hack to get 1jj2 at least generating ribbons kins.  Doesn't seem to 
+          # VBC Hack to get 1jj2 at least generating ribbons kins.  Doesn't seem to
           # correctly generate beta sides though.  Error is kCur+1 generates an ArrayIndexOutOfBoundsException in splinepts[3]
           if kCur+1 < len(splinepts[3]):
             v2Cur = splinepts[3][kCur+1] - ptCur
@@ -581,7 +579,7 @@ Output:
     # Fill in the header information
     outString += "@kinemage 1\n"
     outString += "@onewidth\n"
-    
+
     # Handle multiple models
     groupByModel = hierarchy.models_size() > 1
     for model in hierarchy.models():
@@ -591,10 +589,10 @@ Output:
       print('Processing model', modelID, 'with', len(model.chains()), 'chains')
       if groupByModel:
         outString += "@group {{{} {}}} animate dominant master= {{all models}}\n".format(self.idCode, str(modelID).strip())
- 
+
       # Make a list of all the chain names in the model with only one entry per name.
       # Use this to make a dictionary to look up the color that is used for each chain name.
-      # This ensures that the chains are colored the same no matter their order or repeat in the file.  
+      # This ensures that the chains are colored the same no matter their order or repeat in the file.
       chainNames = set()
       for chain in model.chains():
         chainNames.add(chain.id)
@@ -660,7 +658,7 @@ Output:
                       "width= 4 fore color= {coil"+chain.id+"} master= {protein} master= {ribbon} master= {coil}",
                       "width= 6 rear color= deadblack master= {protein} master= {ribbon} master= {coil}",
                       self.params.color_by == "rainbow")
-      
+
         if self.params.do_nucleic_acid:
           # Find the contiguous nucleic acid residues by CA distance
           contiguous_residue_lists = find_contiguous_nucleic_acid_residues(chain)

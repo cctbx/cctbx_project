@@ -98,10 +98,10 @@ class NRUBS:
         '''
         B = self.getB(nIntervals)
         out = [Triple() for _ in range(nIntervals * (len(guidePts) - 3) + 1)]
-        
+
         for i in range(len(guidePts) - 3):
             self._spline(guidePts, i, out, i * nIntervals, B)
-        
+
         return out
 
     def _spline(self, guidePts, guideStart, splineOut, splineStart, B):
@@ -113,7 +113,7 @@ class NRUBS:
         P1 = guidePts[guideStart + 1]
         P2 = guidePts[guideStart + 2]
         P3 = guidePts[guideStart + 3]
-        
+
         for i in range(len(B)):
             self.work.setXYZ(0, 0, 0)
             self.work.addMult(B[i][0], P0)
