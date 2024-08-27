@@ -43,7 +43,7 @@ coil_width = 1.0
   .type = float
   .short_caption = Coil width
   .help = Width of the coil part of the ribbon
-selection = None
+selection = (altloc ' ' or altloc '' or altloc a)
   .type = atom_selection
   .short_caption = Atom selection
   .help = Atom selection description
@@ -526,11 +526,14 @@ Output:
     self.model = self.data_manager.get_model()
     self.nIntervals = 4
 
-    # Apply a selection to the model if one is provided
+    # Apply a selection to the model if one is provided.  The default is to select atoms in the
+    # first alternate location.
     hierarchy = self.model.get_hierarchy()
-    if self.params.selection is not None:
-      selection = hierarchy.atom_selection_cache().selection(self.params.selection)
-      hierarchy = hierarchy.select(selection)
+    selection_string = self.params.selection
+    if selection_string is None:
+      selection_string = "(altloc ' ' or altloc '' or altloc a)"
+    selection = hierarchy.atom_selection_cache().selection(selection_string)
+    hierarchy = hierarchy.select(selection)
 
     # Analyze the secondary structure and make a dictionary that maps from residue sequence number to secondary structure type
     # by filling in 'COIL' as a default value for each and then parsing all of the secondary structure records in the
@@ -587,7 +590,7 @@ Output:
         modelID = "_"
       print('Processing model', modelID, 'with', len(model.chains()), 'chains')
       if groupByModel:
-        outString += "@group {{{} {}}} dominant master= {{all models}}\n".format(self.idCode, str(modelID).strip())
+        outString += "@group {{{} {}}} animate dominant master= {{all models}}\n".format(self.idCode, str(modelID).strip())
  
       # Make a list of all the chain names in the model with only one entry per name.
       # Use this to make a dictionary to look up the color that is used for each chain name.
