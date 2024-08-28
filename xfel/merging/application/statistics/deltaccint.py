@@ -90,7 +90,7 @@ class deltaccint(worker):
       mean_intensity_unmodified = np.mean(intensity)
       diff_sq_unmodified = np.sum((intensity-mean_intensity_unmodified)**2)
       diff_sq_[diff_sq_<0] = diff_sq_unmodified
-      variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1)
+      variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1) / n[:,hkl_idx]
 
     # N expts (all ranks) x N bins
     n_bins = resolution_binner.n_bins_used()
@@ -105,9 +105,7 @@ class deltaccint(worker):
       all_i_n     [:,bin_idx] += 1
       all_var_sums[:,bin_idx] += variance[:,hkl_map[hkl]]
 
-    total_var_sums = comm.reduce(all_var_sums, MPI.SUM, 0)
-
-    # Broadcast the average intensities
+    # Broadcast the variances and average intensities
     total_i_sums   = comm.allreduce(all_i_sums, op=MPI.SUM)
     total_i_n      = comm.allreduce(all_i_n,    op=MPI.SUM)
     total_var_sums = comm.reduce(all_var_sums,  op=MPI.SUM)
@@ -130,9 +128,9 @@ class deltaccint(worker):
 
     # Report
     if self.mpi_helper.rank == 0:
-      sigma_sq_y = total_diff_sq_sum / (total_i_n-1)
-      sigma_sq_e = total_var_sums / total_i_n
-      deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + sigma_sq_e)
+      sigma_sq_y = total_diff_sq_sum / (total_i_n-1) # variance of the average intensities   # CHECK
+      sigma_sq_e = 2 * total_var_sums / total_i_n        # average variance of the intensities   # CHECK
+      deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + (0.5 * sigma_sq_e))
 
       data = flex.double(np.mean(deltaccint_st, axis=1)) * 100
       sorted_data = data.select(flex.sort_permutation(data))
