@@ -26,6 +26,7 @@ from libtbx import Auto, group_args, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
+import textwrap
 import time
 import math
 import numpy as np
@@ -215,7 +216,7 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  use_ncs_to_build_restraints = False
+  use_ncs_to_build_restraints = True
     .type = bool
     .short_caption = Look for NCS and use it to speed up building restraints
   show_restraints_histograms = True
@@ -3953,6 +3954,13 @@ class build_all_chain_proxies(linking_mixins):
       self.sites_cart = self.pdb_atoms.extract_xyz()
       # We have to expand the tables using ncs information...
       nrgl.setup_sets()
+      # get copies chain ids and output them:
+      cids = []
+      for g in nrgl:
+        for c in g.copies:
+          cids.append(self.pdb_atoms[c.iselection[0]].parent().parent().parent().id)
+      print("  Restraints were copied for chains:", file=log)
+      print("\n".join(textwrap.wrap(", ".join(cids), initial_indent='    ', subsequent_indent='    ')), file=log)
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
