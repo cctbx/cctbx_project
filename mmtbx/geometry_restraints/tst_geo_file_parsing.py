@@ -1,9 +1,11 @@
 import json
+import re
 from io import StringIO
 from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from geo_file_parsing import GeoParseContainer
+
 
 tst_1_geo = """
 # Geometry restraints
@@ -247,51 +249,260 @@ nonbonded pdb="MG    MGDA1642 "
    1.699 2.170
 """
 
-# Start tests
+def replace_idstr_with_int(text,max_int=100):
+  """
+  Replace id_strs in a geo_file str with integers
+    For testing
+  """
+  index = 0
+  def replacement(match):
+    nonlocal index # allow accessing index
+    original_length = len(match.group(0))
+    replacement_text = f'{index}'.ljust(original_length)
+    index += 1
+    if index>max_int:
+      index = 0
+    return replacement_text
 
+  new_text = re.sub(r'pdb=".*?"', replacement, text)
+  return new_text
+
+
+def extract_results(container,print_result=False):
+  results = {}
+    
+  for entry_name,entries in container.entries.items():
+    results[entry_name] = []
+    idxs = [0,-1]
+    for idx in idxs:
+      entry = entries[idx]
+      value_idxs = [0,1,3,5,7,len(entry.record)] # just take a few values to check
+      for i,(key,value) in enumerate(entry.record.items()):
+        if i in value_idxs:
+          results[entry_name].append(value)
+  if print_result:
+    #Print output to make tests
+    print("expected= {")
+    for key,value in results.items():
+      print(f"'{key}':",value,",")
+    print("}")
+  return results
+
+# Start tests
 dm = DataManager()
 dm.process_model_str("1yjp",pdb_str_1yjp)
 model= dm.get_model()
+model.process(make_restraints=True)
 
 def tst_01():
-  # test for no crashes on id_str geo
-  container = GeoParseContainer()
-  container.parse_str(tst_1_geo)
-  entries = container.entries_list
-  records = container.records_list
-  assert len(entries) == len(records)
-  assert len(entries) ==30
-
+  # Test a 1yjp with YES labels and YES a model
+  # (Can build proxies from label matching to model i_seqs)
+  expected= {
+  'bond': [0, 1, ' CA  GLY A   1 ', 1.507, 0.016, 6, 12, ' N   ASN A   3 ', 1.33, 0.0134] ,
+  'angle': [12, 13, ' N   ASN A   3 ', ' C   ASN A   3 ', 113.48, 47, 48, ' CA  TYR A   7 ', ' O   TYR A   7 ', 120.98] ,
+  'dihedral': [13, 14, 21, ' C   ASN A   3 ', ' CA  GLN A   4 ', 14, 12, 16, ' N   ASN A   3 ', ' CB  ASN A   3 '] ,
+  'chiral': [30, 29, 33, ' N   GLN A   5 ', ' CB  GLN A   5 ', 13, 12, 16, ' N   ASN A   3 ', ' CB  ASN A   3 '] ,
+  'plane': [50, 51, 53, 55, 57, 13, 14, ' CA  ASN A   3 ', ' O   ASN A   3 ', [0.02, 0.02, 0.02]] ,
+  'nonbonded': [57, 62, ' O   HOH A  11 ', 3.04, 0, 38, 51, ' CG  TYR A   7 ', 3.34] ,
+  }
+  grm = model.restraints_manager.geometry
+  
+  buffer = StringIO()
+  site_labels = model.get_xray_structure().scatterers().extract_labels()
+  grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
+  geo_str = buffer.getvalue()
+  geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+  
+  
+  results = extract_results(geo_container)
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   1369
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
 def tst_02():
-  # test for no crashes on i_seq geo
-  container = GeoParseContainer()
-  # replace id_strs with ints as a substitute for i_seqs
-  tst_1_geo_int = container._replace_idstr_with_int(tst_1_geo,max_int=50)
-  container.parse_str(tst_1_geo_int)
-  records = container.records
-  assert len(container.entries_list) == 30
-  entries = container.entries_list
+  # Test a 1yjp with NO labels and YES a model
+  # (i_seqs present in .geo string because no labels, will build proxies)
   
+  expected= {
+  'bond': [0, 1, '1', 1.507, 0.016, 6, 12, '12', 1.33, 0.0134] ,
+  'angle': [12, 13, '12', '14', 113.48, 47, 48, '47', '49', 120.98] ,
+  'dihedral': [13, 14, 21, '14', '21', 14, 12, 16, '12', '16'] ,
+  'chiral': [30, 29, 33, '29', '33', 13, 12, 16, '12', '16'] ,
+  'plane': [50, 51, 53, 55, 57, 13, 14, '13', '15', [0.02, 0.02, 0.02]] ,
+  'nonbonded': [57, 62, '62', 3.04, 0, 38, 51, '51', 3.34] ,
+  }
+  grm = model.restraints_manager.geometry
+  
+  buffer = StringIO()
+  grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
+  geo_str = buffer.getvalue()
+  geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+  
+  
+  results = extract_results(geo_container)
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   1369
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-  # test add model
-  container.model = model
-  records = container.records_list
+def tst_03():
+  # Test a 1yjp with NO labels and NO a model
+  # (i_seqs present in .geo string because no labels, will build proxies)
+  
+  expected= {
+  'bond': [0, 1, '1', 1.507, 0.016, 6, 12, '12', 1.33, 0.0134] ,
+  'angle': [12, 13, '12', '14', 113.48, 47, 48, '47', '49', 120.98] ,
+  'dihedral': [13, 14, 21, '14', '21', 14, 12, 16, '12', '16'] ,
+  'chiral': [30, 29, 33, '29', '33', 13, 12, 16, '12', '16'] ,
+  'plane': [50, 51, 53, 55, 57, 13, 14, '13', '15', [0.02, 0.02, 0.02]] ,
+  'nonbonded': [57, 62, '62', 3.04, 0, 38, 51, '51', 3.34] ,
+  }
+  grm = model.restraints_manager.geometry
+  
+  buffer = StringIO()
+  grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
+  geo_str = buffer.getvalue()
+  geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
+  
+  
+  results = extract_results(geo_container)
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   1369
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-  # test build proxies
-  proxies = container.proxies_list
+def tst_04():
+  # Test a 1yjp with YES labels and NO a model
+  # (i_seqs not present in .geo string and not moel, cannot build proxies)
+  
+  expected= {
+  'bond': [' N   GLY A   1 ', ' CA  GLY A   1 ', 1.507, 0.016, 12.3, ' C   ASN A   2 ', ' N   ASN A   3 ', 1.33, 0.0134, 1.29e-05] ,
+  'angle': [' N   ASN A   3 ', ' CA  ASN A   3 ', 108.9, -4.58, 0.376, ' CA  TYR A   7 ', ' C   TYR A   7 ', 121.0, 0.02, 0.111] ,
+  'dihedral': [' CA  ASN A   3 ', ' C   ASN A   3 ', ' CA  GLN A   4 ', 166.21, '0', ' C   ASN A   3 ', ' N   ASN A   3 ', ' CB  ASN A   3 ', -122.56, '0'] ,
+  'chiral': [' CA  GLN A   5 ', ' N   GLN A   5 ', ' CB  GLN A   5 ', 2.51, 0.12, ' CA  ASN A   3 ', ' N   ASN A   3 ', ' CB  ASN A   3 ', 2.51, '-0.00'] ,
+  'plane': [' CB  TYR A   7 ', ' CG  TYR A   7 ', ' CD2 TYR A   7 ', ' CE2 TYR A   7 ', ' OH  TYR A   7 ', ' CA  ASN A   3 ', ' C   ASN A   3 ', ['0.000', -0.002, 0.001], [2500.0, 2500.0, 2500.0], [0.00997, 0.00997, 0.00997]] ,
+  'nonbonded': [' OH  TYR A   7 ', ' O   HOH A  11 ', 3.04, 0, ' N   ASN A   6 ', ' CG  TYR A   7 ', 3.34] ,
+  }
+  grm = model.restraints_manager.geometry
+  
+  buffer = StringIO()
+  site_labels = model.get_xray_structure().scatterers().extract_labels()
+  grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
+  geo_str = buffer.getvalue()
+  geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
+  
+  
+  results = extract_results(geo_container)
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   1369
+  assert not geo_container.has_proxies
 
-  assert len(entries) ==30
-  assert len(entries) == len(records)
+def tst_05():
+  # Test reading complicated geo file
+  # YES labels and NO model, cannot build proxies
+  
+  expected= {
+  'bond': [' C   KBEDW   1 ', ' N   DPPDW   2 ', 1.498, 0.014, 145.0, ' NG  DPPHW   2 ', ' C   5OHHW   6 ', 1.502, 0.01, 52.3] ,
+  'angle': [' N   GLNC5 122 ', ' CA  GLNC5 122 ', 108.78, -12.47, 1.49, ' C   PHE E  13 ', ' O   PHE E  13 ', 155.0, -14.75, 0.01] ,
+  'dihedral': [' CA  TRPBV 218 ', ' C   TRPBV 218 ', ' CA  HISBV 219 ', -133.25, '0', ' N   UALFW   5 ', ' C   UALFW   5 ', ' CB  UALFW   5 ', 179.97, '0'] ,
+  'chiral': [' CB  VALE5 108 ', ' CA  VALE5 108 ', ' CG2 VALE5 108 ', -2.63, -2.92, ' P     AGA1866 ', ' OP1   AGA1866 ', " O5'   AGA1866 ", 2.41, 2.17] ,
+  'plane': [' N   UALFW   5 ', ' CA  UALFW   5 ', ' CB  UALFW   5 ', [-0.055, -0.042, 0.115, -0.171, 0.153], [2500.0, 2500.0, 2500.0, 2500.0, 2500.0], " C1'   AGA1095 ", ' N9    AGA1095 ', ' N7    AGA1095 ', ' C6    AGA1095 ', ' N1    AGA1095 '] ,
+  'parallelity': [" C1'  DG B  11 ", ' N9   DG B  11 ', ' N7   DG B  11 ', ' C6   DG B  11 ', ' N1   DG B  11 ', " C1'  DC A  10 ", ' N1   DC A  10 ', ' O2   DC A  10 ', ' C4   DC A  10 ', ' C5   DC A  10 '] ,
+  'nonbonded': ['MG    MGAA3098 ', ' O   HOHAA3655 ', 2.17, 'MG    MGDA1642 ', ' O   HOHDA1879 ', 2.17] ,
+  }
+  
+  geo_container = GeoParseContainer.from_geo_str(tst_1_geo)
+  
+  
+  results = extract_results(geo_container)
+  
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   30
+  assert not geo_container.has_proxies
+  
+  origin_ids = [entry.origin_id for entry in geo_container.entries_list]
+  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-  # nonbonded entries are not converted to proxies. Subtract them
-  assert len(records)-len(container.entries["nonbonded"]) == len(proxies), (
-    f"{len(records)}, {len(proxies)}"
-  )
+def tst_06():
+  # Test reading complicated geo file
+  # Use 'dummy' i_seqs and 1yjp to simulate a small model with complex a .geo file
+  # NO labels (so i_seqs) and NO model, will build proxies
+  
+  expected= {
+  'bond': [0, 1, '1', 1.498, 0.014, 12, 13, '13', 1.502, 0.01] ,
+  'angle': [14, 15, '14', '16', 121.25, 26, 27, '26', '28', 169.75] ,
+  'dihedral': [29, 30, 1, '30', '1', 14, 15, 17, '15', '17'] ,
+  'chiral': [18, 19, 21, '19', '21', 22, 23, 25, '23', '25'] ,
+  'plane': [26, 27, 29, '26', '28', 5, 6, 8, 10, 12] ,
+  'parallelity': [16, 18, 22, 26, 30, 17, 19, 23, 27, 0] ,
+  'nonbonded': [7, 8, '8', 2.17, 13, 14, '14', 2.17] ,
+  }
+  
+  tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
+  geo_container = GeoParseContainer.from_geo_str(tst_1_geo_iseqs)
+  
+  results = extract_results(geo_container)
+  
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   30
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  
+  origin_ids = [entry.origin_id for entry in geo_container.entries_list]
+  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
 
 def main():
   tst_01()
   tst_02()
+  tst_03()
+  tst_04()
+  tst_05()
+  tst_06()
   print('OK')
 
 if __name__ == '__main__':
