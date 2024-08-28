@@ -46,12 +46,14 @@ class MolstarController(Controller):
     one (MolstarController) should interact directly with the MolstarGraphics instance.
 
   """
-  def __init__(self,parent=None,view=None):
+  def __init__(self,parent=None,view=None,web_view=None):
     super().__init__(parent=parent,view=view)
-
-    self.graphics = MolstarGraphics(self.view.web_view)
+    self._web_view = web_view
+    
+    self.graphics = MolstarGraphics(self.web_view)
     self.graphics.state = self.state
-    self.graphics_controls = MolstarControlsController(parent=self,view=self.view.viewer_controls)
+    if self.view:
+      self.graphics_controls = MolstarControlsController(parent=self,view=self.view.viewer_controls)
 
 
     self._blocking_commands = True
@@ -86,10 +88,18 @@ class MolstarController(Controller):
     # Start by default
     self.start_viewer()
 
+  @property
+  def web_view(self):
+    if self._web_view:
+      return self._web_view
+    else:
+      return self.view.web_view
+
   def _on_load_started(self):
     self._blocking_commands = True
     self.graphics._blocking_commands = True
-    self.view.parent_explicit.setEnabled(False)
+    if self.view:
+      self.view.parent_explicit.setEnabled(False)
 
   def _on_load_finished_pre_sync(self, ok):
     if ok:
@@ -100,7 +110,8 @@ class MolstarController(Controller):
       self._blocking_commands = True
 
   def _on_load_finished_post_sync(self, ok):
-    self.view.parent_explicit.setEnabled(True) # enable gui
+    if self.view:
+      self.view.parent_explicit.setEnabled(True) # enable gui
     self._blocking_commands = False
     self.graphics._blocking_commands = False
     self._load_all_from_ref()

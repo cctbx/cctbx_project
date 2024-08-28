@@ -71,6 +71,12 @@ class State:
     dm = DataManager()
     return cls(dm)
 
+  @classmethod
+  def from_model_file(cls,file):
+    dm = DataManager()
+    dm.process_model_file(file)
+    return cls(dm)
+
   def __init__(self, data_manager,params=None,log=None,debug=False):
     self._log = log
     self._params = params
@@ -280,7 +286,10 @@ class State:
     if self.active_model_ref is not None:
       return self.active_model_ref.model
 
-
+  @property
+  def first_model(self):
+    model_ref = self.references_model[0]
+    return model_ref.model
 
   #####################################
   # Selections
