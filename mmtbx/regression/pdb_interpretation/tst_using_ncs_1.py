@@ -3,8 +3,8 @@ from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import mmtbx.model
 import libtbx.load_env
-from libtbx.utils import null_out
-
+from libtbx.test_utils import show_diff, assert_lines_in_text
+from six.moves import cStringIO as StringIO
 
 pdb_str = """\
 ATOM      1  N   GLY A   1      12.928   4.612   6.102  1.00 16.77           N
@@ -165,20 +165,31 @@ ATOM    151 HD22 ASN E   2       7.829   5.519   0.352  0.00 11.72           H
 TER
 """
 
-def exercise_01():
-
-
-  pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  m = mmtbx.model.manager(model_input = pdb_inp, log = null_out())
+def get_geometry_stats(lines, use_ncs=True):
+  log_str=StringIO()
+  pdb_inp = iotbx.pdb.input(source_info=None, lines=lines)
+  m = mmtbx.model.manager(model_input = pdb_inp, log = log_str)
   p = m.get_default_pdb_interpretation_params()
-  p.pdb_interpretation.use_ncs_to_build_restraints = True
-  # p.pdb_interpretation.use_ncs_to_build_restraints = False
+  p.pdb_interpretation.use_ncs_to_build_restraints = use_ncs
   m.process(make_restraints=True, pdb_interpretation_params=p)
+  geom=StringIO()
+  g = m.geometry_statistics()
+  g.show(log=geom, exclude_protein_only_stats=True)
+  return geom.getvalue(), log_str.getvalue()
 
+def exercise_01():
+  geom_ncs, log_ncs=get_geometry_stats(pdb_str, True)
+  geom_no_ncs, log_no_ncs=get_geometry_stats(pdb_str, False)
+  assert not show_diff(geom_ncs, geom_no_ncs)
+  # assert not show_diff(log_ncs, log_no_ncs)
+  assert_lines_in_text(log_ncs, """ Restraints were copied for chains:
+    B, C
+""")
+  # print(log_ncs)
 
 if(__name__ == "__main__"):
   if libtbx.env.find_in_repositories(relative_path="chem_data") is None:
-    print("Skipping exercise_02(): chem_data directory not available")
+    print("Skipping exercise_01(): chem_data directory not available")
   else:
     exercise_01()
     print('OK')
