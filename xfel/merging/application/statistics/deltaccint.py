@@ -92,18 +92,16 @@ class deltaccint(worker):
       diff_sq_[diff_sq_<0] = diff_sq_unmodified
       variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1) / n[:,hkl_idx]
 
-    # N expts (all ranks) x N bins
-    n_bins = resolution_binner.n_bins_used()
-    all_i_sums   = np.zeros((len(all_expt_ids), n_bins), float) # sum of the averaged intensities
-    all_i_n      = np.zeros((len(all_expt_ids), n_bins), int)   # count of the averaged intensities
-    all_var_sums = np.zeros((len(all_expt_ids), n_bins), float) # sums of the variances of the intensities
+    # N expts (all ranks)
+    all_i_sums   = np.zeros(len(all_expt_ids), float) # sum of the averaged intensities
+    all_i_n      = np.zeros(len(all_expt_ids), int)   # count of the averaged intensities
+    all_var_sums = np.zeros(len(all_expt_ids), float) # sums of the variances of the intensities
 
     # Sum up and reduce the bins
     for hkl in hkl_set:
-      bin_idx = hkl_resolution_bins[hkl] - 1
-      all_i_sums  [:,bin_idx] += merged[:,hkl_map[hkl]]
-      all_i_n     [:,bin_idx] += 1
-      all_var_sums[:,bin_idx] += variance[:,hkl_map[hkl]]
+      all_i_sums   += merged[:,hkl_map[hkl]]
+      all_i_n      += 1
+      all_var_sums += variance[:,hkl_map[hkl]]
 
     # Broadcast the variances and average intensities
     total_i_sums   = comm.allreduce(all_i_sums, op=MPI.SUM)
@@ -115,24 +113,24 @@ class deltaccint(worker):
     # First, the numerator, the difference between each hkl and the average for that hkl's bin (ommiting each experiment once)
     diff_sq = np.zeros(merged.shape, float)
     for hkl in hkl_set:
-      diff_sq[:,hkl_map[hkl]] = (merged[:,hkl_map[hkl]] - total_i_average[:,hkl_resolution_bins[hkl]-1]) ** 2
+      diff_sq[:,hkl_map[hkl]] = (merged[:,hkl_map[hkl]] - total_i_average) ** 2
 
     # N expts (all ranks) x N bins
     diff_sq_sum = np.zeros(all_i_sums.shape, float)
 
     # Complete the numerator for this rank
     for hkl in hkl_set:
-      diff_sq_sum[:,hkl_resolution_bins[hkl]-1] += diff_sq[:,hkl_map[hkl]]
+      diff_sq_sum += diff_sq[:,hkl_map[hkl]]
 
     total_diff_sq_sum = comm.reduce(diff_sq_sum, MPI.SUM, 0)
 
     # Report
     if self.mpi_helper.rank == 0:
-      sigma_sq_y = total_diff_sq_sum / (total_i_n-1) # variance of the average intensities   # CHECK
-      sigma_sq_e = 2 * total_var_sums / total_i_n        # average variance of the intensities   # CHECK
+      sigma_sq_y = total_diff_sq_sum / (total_i_n-1) # variance of the average intensities
+      sigma_sq_e = 2 * total_var_sums / total_i_n    # average variance of the intensities
       deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + (0.5 * sigma_sq_e))
 
-      data = flex.double(np.mean(deltaccint_st, axis=1)) * 100
+      data = flex.double(deltaccint_st) * 100
       sorted_data = data.select(flex.sort_permutation(data))
 
       mini, q1, med, q3, maxi = five_number_summary(data)
