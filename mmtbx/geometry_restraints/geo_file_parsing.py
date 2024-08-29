@@ -12,15 +12,17 @@ origin_ids = linking_class()
 
 def build_origin_maps():
   """
-  Collect origin id data into to needed dicts. 
+  Collect origin id data and return two dicts. 
 
   
   1. For a given restraint type, get list of possible origin headers
+
       origin_map1 = 
         {restraint_label: concatenated_header_list
         }
       
   2. For a (restraint,header) pair, get the origin label
+  
       origin_map2 = 
         {(restraint_label, header): origin_label}
 
