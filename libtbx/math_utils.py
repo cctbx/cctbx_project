@@ -269,3 +269,48 @@ def percentile_based_spread_with_selection(values, pbs_fraction=0.608,
     else:
       high = working
   return last_value
+
+def mahalanobis_using_sklearn(x=None, data=None, cov=None, verbose=False):
+  if cov is None:
+    cov = covariance_using_sklearn(data, verbose=verbose)
+  mahal_cov = cov.mahalanobis(x)
+  if verbose: print(mahal_cov)
+  return mahal_cov
+
+def covariance_using_sklearn(data=None, values=None, verbose=False):
+  from sklearn.covariance import EmpiricalCovariance, MinCovDet
+  if values:
+    assert 0
+    cov=EmpiricalCovariance()
+    cov.covariance_=values
+    return cov
+  # fit a MCD robust estimator to data
+  robust_cov = MinCovDet().fit(data)
+  # fit a MLE estimator to data
+  emp_cov = EmpiricalCovariance().fit(data)
+  if verbose:
+    print(
+        "Estimated covariance matrix:\nMCD (Robust):\n{}\nMLE:\n{}".format(
+            robust_cov.covariance_, emp_cov.covariance_
+        )
+    )
+  # choose one
+  cov = emp_cov
+  return cov
+
+def mahalanobis_p_values_outlier_indices(x=None, data=None, cov=None):
+  rc = mahalanobis_p_values(x=x, data=data, cov=cov)
+  return list(filter(lambda x: rc[x] <0.01, range(len(rc))))
+
+def mahalanobis_p_values(x=None, data=None, cov=None, verbose=False):
+  from scipy.stats import chi2
+  df=len(x[0])-1
+  if verbose:
+    print(chi2.ppf((1-0.01), df=df))
+    #> 9.21
+  mahal_cov = mahalanobis_using_sklearn(x=x, data=data, cov=cov)
+  if verbose: print(mahal_cov)
+  return(1 - chi2.cdf(mahal_cov, df))
+
+def mahalanobis(x=None, data=None, mu=None, cov=None):
+  return mahalanobis_using_sklearn(x=x, data=data, cov=cov)

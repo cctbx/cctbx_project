@@ -69,3 +69,5 @@ mmtbx/suitename/test/
 mmtbx/suitename/suitename.stderr.log
 mmtbx/suitename/assist/
 mmtbx/suitename/*.show.txt
+
+*sublime*
