@@ -11,6 +11,7 @@ steps:
     sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
     sshKeySecureFile: id_rsa
   displayName: Download SSH key
+  continueOnError: true
 
 - task: DownloadPipelineArtifact@2
   inputs:
