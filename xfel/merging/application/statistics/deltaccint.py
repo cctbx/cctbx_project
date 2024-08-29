@@ -29,7 +29,9 @@ class deltaccint(worker):
       if len(set(refls['id'])) >= min_mult:
         filtered.extend(refls)
 
-    all_expt_ids = sorted(set(itertools.chain.from_iterable(comm.allgather(filtered.experiment_identifiers().values()))))
+    expt_map = filtered.experiment_identifiers()
+
+    all_expt_ids = sorted(set(itertools.chain.from_iterable(comm.allgather(expt_map.values()))))
     all_expts_map = {v: k for k, v in enumerate(all_expt_ids)}
 
     if self.mpi_helper.rank == 0:
@@ -47,8 +49,6 @@ class deltaccint(worker):
     hkl_set = [hkl for hkl in set(filtered['miller_index_asymmetric']) if hkl in hkl_resolution_bins]
     n_hkl = len(hkl_set)
     hkl_map = {v: k for k, v in enumerate(hkl_set)}
-
-    expt_map = filtered.experiment_identifiers()
 
     # N expts (all ranks) x N hkl (this rank)
     sums   = np.zeros((len(all_expt_ids), n_hkl), float)
@@ -140,6 +140,11 @@ class deltaccint(worker):
       self.logger.main_log("% 8.4f%% q3"%q3)
       self.logger.main_log("% 8.4f%% max"%maxi)
       self.logger.main_log("")
+
+      if self.params.statistics.deltaccint.verbose:
+        self.logger.main_log("Showing ΔCC½ for all lattices")
+        for e, identifier in enumerate(all_expt_ids):
+          self.logger.main_log("%s %f"%(identifier, data[e]))
 
       n_worst = min(len(data), 30)
       worst = sorted_data[-n_worst:]

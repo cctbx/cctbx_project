@@ -653,6 +653,9 @@ statistics {
       .help = compute the IQR of these CC½s. Remove all lattices whose contribution degrades CC½ by more than
       .help = IQR * iqr_ratio above the median. You can discover a good IQR by running the program once,
       .help = examining the log file where possible values are listed, and running it again with the best value.
+    verbose = False
+      .type = bool
+      .help = If True, include the ΔCC½ for every lattice in the main log.
   }
   predictions_to_edge {
     apply = False
