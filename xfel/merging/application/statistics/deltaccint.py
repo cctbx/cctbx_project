@@ -41,10 +41,9 @@ class deltaccint(worker):
     # We need to compute
     # 1) variance of the average intensities -> compute averages of all intensities and then compute variance per bin
     # 2) average variance of the intensities -> compute variances of all intensities and then compute average per bin
+    # In reality for 2), we compute the average of the standard error of the mean squared instead of the variance (semsq)
 
-    resolution_binner = self.params.statistics.resolution_binner
     hkl_resolution_bins = self.params.statistics.hkl_resolution_bins
-
     hkl_set = [hkl for hkl in set(filtered['miller_index_asymmetric']) if hkl in hkl_resolution_bins]
     n_hkl = len(hkl_set)
     hkl_map = {v: k for k, v in enumerate(hkl_set)}
@@ -52,10 +51,10 @@ class deltaccint(worker):
     expt_map = filtered.experiment_identifiers()
 
     # N expts (all ranks) x N hkl (this rank)
-    sums     = np.zeros((len(all_expt_ids), n_hkl), float)
-    n        = np.zeros((len(all_expt_ids), n_hkl), int)
-    merged   = np.zeros((len(all_expt_ids), n_hkl), float)
-    variance = np.zeros((len(all_expt_ids), n_hkl), float)
+    sums   = np.zeros((len(all_expt_ids), n_hkl), float)
+    n      = np.zeros((len(all_expt_ids), n_hkl), int)
+    merged = np.zeros((len(all_expt_ids), n_hkl), float)
+    semsq  = np.zeros((len(all_expt_ids), n_hkl), float)
 
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections=filtered):
       hkl = refls['miller_index_asymmetric'][0]
@@ -74,7 +73,7 @@ class deltaccint(worker):
         n   [expt_idx,hkl_idx] -= 1
       merged[:,hkl_idx] = sums[:,hkl_idx]/n[:,hkl_idx]
 
-      # compute variance for each hkl (less the intensity from each experiment)
+      # compute semsq for each hkl (less the intensity from each experiment)
       diff_sq_ = np.full(len(all_expt_ids), -1, dtype=float)
 
       for i in range(len(refls)):
@@ -90,24 +89,24 @@ class deltaccint(worker):
       mean_intensity_unmodified = np.mean(intensity)
       diff_sq_unmodified = np.sum((intensity-mean_intensity_unmodified)**2)
       diff_sq_[diff_sq_<0] = diff_sq_unmodified
-      variance[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1) / n[:,hkl_idx]
+      semsq[:,hkl_idx] = diff_sq_ / (n[:,hkl_idx]-1) / n[:,hkl_idx]
 
     # N expts (all ranks)
-    all_i_sums   = np.zeros(len(all_expt_ids), float) # sum of the averaged intensities
-    all_i_n      = np.zeros(len(all_expt_ids), int)   # count of the averaged intensities
-    all_var_sums = np.zeros(len(all_expt_ids), float) # sums of the variances of the intensities
+    all_i_sums     = np.zeros(len(all_expt_ids), float) # sum of the averaged intensities
+    all_i_n        = np.zeros(len(all_expt_ids), int)   # count of the averaged intensities
+    all_semsq_sums = np.zeros(len(all_expt_ids), float) # sums of the semsq of the intensities
 
     # Sum up and reduce the bins
     for hkl in hkl_set:
-      all_i_sums   += merged[:,hkl_map[hkl]]
-      all_i_n      += 1
-      all_var_sums += variance[:,hkl_map[hkl]]
+      all_i_sums     += merged[:,hkl_map[hkl]]
+      all_i_n        += 1
+      all_semsq_sums += semsq[:,hkl_map[hkl]]
 
-    # Broadcast the variances and average intensities
-    total_i_sums   = comm.allreduce(all_i_sums, op=MPI.SUM)
-    total_i_n      = comm.allreduce(all_i_n,    op=MPI.SUM)
-    total_var_sums = comm.reduce(all_var_sums,  op=MPI.SUM)
-    total_i_average = total_i_sums / total_i_n
+    # Broadcast the semsq and average intensities
+    total_i_sums     = comm.allreduce(all_i_sums, op=MPI.SUM)
+    total_i_n        = comm.allreduce(all_i_n,    op=MPI.SUM)
+    total_semsq_sums = comm.reduce(all_semsq_sums,  op=MPI.SUM)
+    total_i_average  = total_i_sums / total_i_n
 
     # Compute the variance of the average intensities
     # First, the numerator, the difference between each hkl and the average for that hkl's bin (ommiting each experiment once)
@@ -127,7 +126,7 @@ class deltaccint(worker):
     # Report
     if self.mpi_helper.rank == 0:
       sigma_sq_y = total_diff_sq_sum / (total_i_n-1) # variance of the average intensities
-      sigma_sq_e = 2 * total_var_sums / total_i_n    # average variance of the intensities
+      sigma_sq_e = 2 * total_semsq_sums / total_i_n    # average semsq of the intensities
       deltaccint_st = (sigma_sq_y - (0.5 * sigma_sq_e)) / (sigma_sq_y + (0.5 * sigma_sq_e))
 
       data = flex.double(deltaccint_st) * 100
