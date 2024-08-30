@@ -2,11 +2,12 @@ from __future__ import absolute_import, division, print_function
 import math
 import copy
 import mmtbx.model
-from numpy import NaN
 from libtbx.utils import null_out
 from collections import OrderedDict
 from scitbx.array_family import flex
 from mmtbx.secondary_structure.build import ss_idealization as ssb
+
+NaN = float('nan')
 
 def format_HELIX_records_from_AEV(aev_values_dict):
   threshold1 = [2.48, 0.9, 4]
