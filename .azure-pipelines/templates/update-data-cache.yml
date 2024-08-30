@@ -3,6 +3,7 @@
 # is required to prevent Azure Pipelines from deleting the .git directory.
 # when creating the artifact.
 #   - miniforge
+#   - mambaforge
 #   - chem_data
 #   - geostd
 #   - phenix_regression
