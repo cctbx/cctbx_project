@@ -137,7 +137,7 @@ def next_permutation(seq):
   sequences. Permutes the current sequence into the next one of this set.
   Returns true if there are more sequences to generate. If the sequence
   is the largest of the set, the smallest is generated and false returned.
-"""
+  """
   if (len(seq) <= 1): return False
   i = len(seq) - 1
   while True:
@@ -237,8 +237,7 @@ def percentile_based_spread_with_sort(values, pbs_fraction=0.608):
   x_frac = x_low + (frac_delta * (x_high - x_low))
   return x_frac
 
-def percentile_based_spread_with_selection(values, pbs_fraction=0.608,
-   tolerance = 0.0001):
+def percentile_based_spread_with_selection(values, pbs_fraction=0.608, tolerance = 0.0001):
   """
   See Pozharski (2010) Acta. Cryst. D66, 970-978.  The default value of the
   pbs_fraction parameter is for 3D geometries, and should be adjusted as
