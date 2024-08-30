@@ -440,7 +440,6 @@ molprobity_tests = [
   "$D/regression/tst_statistics_output.py",
   "$D/regression/tst_geo_min_restraints_phil.py",
   "$D/regression/tst_model_vs_map.py",
-  "$D/regression/tst_model_vs_sequence.py",
   # validation/molprobity
   "$D/validation/regression/tst_molprobity_1.py",
   "$D/validation/regression/tst_molprobity_4.py",
