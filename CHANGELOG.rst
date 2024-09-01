@@ -1,3 +1,9 @@
+2024.8
+======
+
+* Speed improvements to pdb_interpretation
+* DataManager: add sanity check for specified resolution limits
+
 2024.7
 ======
 
