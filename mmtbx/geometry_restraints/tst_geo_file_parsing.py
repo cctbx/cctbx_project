@@ -312,12 +312,14 @@ def extract_results(container,print_result=False):
   return results
 
 # Start tests
-dm = DataManager()
-dm.process_model_str("1yjp",pdb_str_1yjp)
-model= dm.get_model()
-model.process(make_restraints=True)
+def init_model():
+  dm = DataManager()
+  dm.process_model_str("1yjp",pdb_str_1yjp)
+  model= dm.get_model()
+  model.process(make_restraints=True)
+  return model
 
-def tst_01():
+def tst_01(model):
   # Test a 1yjp with YES labels and YES a model
   # (Can build proxies from label matching to model i_seqs)
   expected= {
@@ -350,7 +352,7 @@ def tst_01():
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_02():
+def tst_02(model):
   # Test a 1yjp with NO labels and YES a model
   # (i_seqs present in .geo string because no labels, will build proxies)
   
@@ -383,7 +385,7 @@ def tst_02():
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_03():
+def tst_03(model):
   # Test a 1yjp with NO labels and NO a model
   # (i_seqs present in .geo string because no labels, will build proxies)
   
@@ -416,7 +418,7 @@ def tst_03():
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_04():
+def tst_04(model):
   # Test a 1yjp with YES labels and NO a model
   # (i_seqs not present in .geo string and not moel, cannot build proxies)
   
@@ -449,7 +451,7 @@ def tst_04():
   assert len(entries) ==   1369
   assert not geo_container.has_proxies
 
-def tst_05():
+def tst_05(model):
   # Test reading complicated geo file
   # YES labels and NO model, cannot build proxies
   
@@ -482,7 +484,7 @@ def tst_05():
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
   assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-def tst_06():
+def tst_06(model):
   # Test reading complicated geo file
   # Use 'dummy' i_seqs and 1yjp to simulate a small model with complex a .geo file
   # NO labels (so i_seqs) and NO model, will build proxies
@@ -518,7 +520,7 @@ def tst_06():
   assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
-def tst_07():
+def tst_07(model):
   # Test reading integer (i_seq) geo file
   
   expected= {
@@ -527,7 +529,7 @@ def tst_07():
   
   geo_container = GeoParseContainer.from_geo_str(tst_2_geo)
   
-  results = extract_results(geo_container,print_result=True)
+  results = extract_results(geo_container)
   
   
   # Check values
@@ -544,13 +546,14 @@ def tst_07():
 
 
 def main():
-  tst_01()
-  tst_02()
-  tst_03()
-  tst_04()
-  tst_05()
-  tst_06()
-  tst_07()
+  model = init_model()
+  tst_01(model)
+  tst_02(model)
+  tst_03(model)
+  tst_04(model)
+  tst_05(model)
+  tst_06(model)
+  tst_07(model)
   print('OK')
 
 if __name__ == '__main__':
