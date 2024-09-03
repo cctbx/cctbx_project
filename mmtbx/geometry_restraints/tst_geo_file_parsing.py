@@ -5,6 +5,7 @@ from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from mmtbx.geometry_restraints.geo_file_parsing import GeoParseContainer
+<<<<<<< HEAD
 
 """
 Example usage:
@@ -44,6 +45,8 @@ entry.record
  'weight': 0.04,
  'residual': 7.6,
  'origin_id': 0}
+=======
+>>>>>>> c13bee9de6 (Rewrite get_label_for_header function to pass all tests)
 
 
 """
