@@ -111,6 +111,25 @@ Look for a key in the list below
       else: assert 0
     else: return info[0]
 
+  def get_label_for_geo_header(geo_header,internals=None):
+    """
+    Given the string found in a geo file origin_id header, get the label
+      From label can use get_origin_id to get the integer origin id.
+    """
+    if not internals:
+      internals = "bonds"
+    internals_all = ["bonds", "angles", "dihedrals", "chirals", "planes","parallelities"]
+    assert internals in internals_all
+    internal_idx = internals_all.index(internals)
+    
+    for origin_label, info in origin_ids.data.items():
+      if len(origins)>=4:
+        header = info[3]
+        if header:
+          if header == geo_header:
+            restraint_label = info.internals[internal_idx]
+            return restraint_label
+
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
