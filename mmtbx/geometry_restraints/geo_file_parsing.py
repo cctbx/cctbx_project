@@ -25,7 +25,6 @@ def build_origin_maps():
   
       origin_map2 = 
         {(restraint_label, header): origin_label}
-
   """
   origin_map1 = {}
   origin_map2 = {}
@@ -574,21 +573,14 @@ class GeoParseContainer:
   ]
 
   @classmethod
-  def from_geo_file(cls,geo_file,model=None,entry_classes=None):
-    """
-    Parse .geo file
-    """
-    with open(geo_file,"r") as f:
-      return cls.from_geo_str(f.read(),model=model,entry_classes=entry_classes)
-
-  @classmethod
   def from_geo_str(cls,geo_str,model=None,entry_classes=None):
     """
     Parse .geo file str
     """
-    return cls(geo_str=geo_str,model=model,entry_classes=entry_classes)
+    geo_lines = geo_str.split("\n")
+    return cls(geo_lines,model=model,entry_classes=entry_classes)
     
-  def __init__(self,geo_str=None,model=None,entry_classes=None):
+  def __init__(self,geo_lines,model=None,entry_classes=None):
     """
      Initialize with a list of Entry subclasses
     """
@@ -597,11 +589,9 @@ class GeoParseContainer:
       entry_classes = self.entry_classes_default
     self.entry_classes = entry_classes
     self._model = model
-    self.geo_str = geo_str
-    assert isinstance(geo_str,str), "Must initialize with a .geo file string."
 
     # Initialize parsing variables
-    self.lines = self.geo_str.split("\n")
+    self.lines = geo_lines
     self.line_labels = []
     self.current_entry_lines = None
     self.current_entry_class = None

@@ -249,6 +249,29 @@ nonbonded pdb="MG    MGDA1642 "
    1.699 2.170
 """
 
+tst_2_geo = """
+# Geometry restraints
+
+Bond restraints: 59
+Sorted by residual:
+bond 0
+     1
+  ideal  model  delta    sigma   weight residual
+  1.451  1.507 -0.056 1.60e-02 3.91e+03 1.23e+01
+bond 21
+     22
+  ideal  model  delta    sigma   weight residual
+  1.522  1.553 -0.030 1.18e-02 7.18e+03 6.53e+00
+bond 20
+     21
+  ideal  model  delta    sigma   weight residual
+  1.460  1.485 -0.025 1.17e-02 7.31e+03 4.40e+00
+bond 5
+     6
+  ideal  model  delta    sigma   weight residual
+  1.524  1.498  0.025 1.26e-02 6.30e+03 4.00e+00
+"""
+
 def replace_idstr_with_int(text,max_int=100):
   """
   Replace id_strs in a geo_file str with integers
@@ -495,6 +518,30 @@ def tst_06():
   assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
+def tst_07():
+  # Test reading integer (i_seq) geo file
+  
+  expected= {
+  'bond': [0, 1, '1', 1.507, 0.016, 5, 6, '6', 1.498, 0.0126] ,
+  }
+  
+  geo_container = GeoParseContainer.from_geo_str(tst_2_geo)
+  
+  results = extract_results(geo_container,print_result=True)
+  
+  
+  # Check values
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   4
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+
+
 
 def main():
   tst_01()
@@ -503,6 +550,7 @@ def main():
   tst_04()
   tst_05()
   tst_06()
+  tst_07()
   print('OK')
 
 if __name__ == '__main__':
