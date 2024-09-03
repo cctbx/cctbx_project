@@ -31,7 +31,6 @@ zz=[(0.23, 61.5, 326),
 def mahalanobis_using_pandas():
   import numpy as np
   import pandas as pd
-  import scipy as stats
   from scipy.stats import chi2
 
   # calculateMahalanobis Function to calculate
@@ -138,81 +137,6 @@ def another_pandas():
   rc=mahalanobis(X, Y)
   print('another_pandas',rc)
 
-def mahalanobis_using_numpy(x, data=None, cov=None, verbose=False):
-  import numpy as np
-  def mahalanobis(x, data, cov=None):
-    x_mean = np.mean(x, 0)
-    if verbose: print('x_mean',x_mean)
-    if cov:
-      Covariance=np.asarray(cov)
-    else:
-      Covariance = np.cov(np.transpose(data))
-    if verbose:
-      print('Covariance')
-      print(Covariance)
-    inv_covmat = np.linalg.inv(Covariance)
-    if verbose:
-      print('inv_covmat')
-      print(inv_covmat)
-    x_minus_mn = x - x_mean
-    if verbose:
-      print('x_minus_mn')
-      print(x_minus_mn)
-    D_square = np.dot(np.dot(x_minus_mn, inv_covmat), np.transpose(x_minus_mn))
-    if verbose:
-      print('D_square')
-      print(D_square)
-      print(D_square.diagonal())
-    return D_square.diagonal()
-
-  if verbose:
-    print(x)
-    print(data)
-  rc = mahalanobis(x, data=data, cov=cov)
-  return rc
-
-def mahalanobis_using_numpy_and_scipy(x=None, data=None, mu=None, cov=None):
-  """
-  Compute the Mahalanobis Distance between each row of x and the data
-    x    : vector or matrix of data with, say, p columns.
-    data : ndarray of the distribution from which Mahalanobis distance of each
-           observation of x is to be computed.
-    cov  : covariance matrix (p x p) of the distribution. If None, will be
-           computed from data.
-  """
-  import numpy as np
-  import scipy as sp
-
-  x=np.array(x)
-  print(x)
-  data=np.array(data)
-  print(data)
-  x_mu = x - np.mean(data)
-  if not cov:
-      cov = np.cov(data.values.T)
-  inv_covmat = np.linalg.inv(cov)
-  left = np.dot(y_mu, inv_covmat)
-  mahal = np.dot(left, y_mu.T)
-  return mahal.diagonal()
-
-  if mu:
-    x_minus_mu = x - mu
-  else:
-    print(x)
-    print(np.mean(data))
-    x_minus_mu = x - np.mean(data)
-    print('x_minus_mu',x_minus_mu)
-    assert 0
-  # x_minus_mu=np.array(x)
-  print('x_minus_mu',x_minus_mu)
-  if not cov: cov = np.cov(data)
-  print(cov)
-  inv_covmat = sp.linalg.inv(cov)
-  print(inv_covmat)
-  left_term = np.dot(x_minus_mu, inv_covmat)
-  mahal = np.dot(left_term, x_minus_mu.T)
-  return mahal.diagonal()
-
 def main():
   from libtbx import math_utils
   import csv
@@ -224,27 +148,13 @@ def main():
     print(i,', '.join(row))
     data.append([float(row[0]), float(row[4]), float(row[6])])
 
-  use_numpy=0
   use_pandas=0
   if use_pandas:
     another_pandas()
 
-  if use_numpy:
-    # another_pandas()
-    # mahalanobis_using_pandas()
-    #np.asarray
-    rc1 = mahalanobis_using_numpy(zz, data, verbose=1)
-    # rc = mahalanobis_using_numpy_and_scipy(zz, data)
-    print('rc1',rc1)
-    rc2 = mahalanobis_using_numpy(zz, cov=[
-      [1.55789474e-03, 3.08947368e-02, 1.42105263e-01],
-      [3.08947368e-02, 3.50038781e+00, 5.25207756e+00],
-      [1.42105263e-01, 5.25207756e+00, 5.39556787e+01]], verbose=1)
-    print('rc2',rc2)
-
   rc=math_utils.mahalanobis(zz, data)
   print(rc)
-  rc=math_utils.mahalanobis_p_values(zz, data, verbose=True)
+  rc=math_utils.mahalanobis_p_values(zz, data, verbose=False)
   print(rc)
   rc=math_utils.mahalanobis_p_values_outlier_indices(zz, data)
   assert rc==[2]
@@ -253,36 +163,39 @@ def main():
     if i in rc:
       outlier='OUTLIER'
     print('  %s %0.4f %s' % (i,p,outlier))
-  cov = math_utils.covariance_using_sklearn(data, verbose=True)
-  rc=math_utils.mahalanobis(zz, cov=cov)
-  print(rc)
-  if use_numpy:
-    print(rc1)
-    print(rc2)
-  rc=math_utils.mahalanobis_p_values(zz, cov=cov, verbose=True)
-  print(rc)
-  rc=math_utils.mahalanobis_p_values_outlier_indices(zz, cov=cov)
+  cov = math_utils.covariance_using_sklearn(data, verbose=False)
+  print('Empirical',cov)
+  mu=[2.60000000e-01, 6.18473684e+01, 3.38789474e+02]
+  cov=[
+      [1.55789474e-03, 3.08947368e-02, 1.42105263e-01],
+      [3.08947368e-02, 3.50038781e+00, 5.25207756e+00],
+      [1.42105263e-01, 5.25207756e+00, 5.39556787e+01]]
+  inv_cov=[
+      [ 9.20610847e+02, -5.25486917e+00, -1.91313813e+00],
+      [-5.25486917e+00,  3.64538468e-01, -2.16444268e-02],
+      [-1.91313813e+00, -2.16444268e-02,  2.56793212e-02]]
+
+  rc1=math_utils.mahalanobis(zz, mu=mu, cov=cov)
+  print(rc1)
+  rc2=math_utils.mahalanobis_p_values(zz, mu=mu, inv_cov=inv_cov)
+  print(rc2)
+  rc=math_utils.mahalanobis_p_values_outlier_indices(zz, mu=mu, cov=cov)
   assert rc==[2]
-  rc=math_utils.mahalanobis_p_values_outlier_indices(zz[:1], cov=cov)
+  rc=math_utils.mahalanobis_p_values_outlier_indices(zz[:1], mu=mu, cov=cov)
   print(rc)
 
-  # values = cov.covariance_.tolist()
-  # cov = math_utils.covariance_using_sklearn(values=values, verbose=True)
-  # assert 0
-  from libtbx import easy_pickle
-  easy_pickle.dump('tst_mahal.pickle', cov)
-  cov=easy_pickle.load('tst_mahal.pickle')
-  # import pickle
-  # pf='tst_mahal.pickle'
-  # f=open(pf, 'w')
-  # pickle.dump(cov, f)
-  # del f
-  # f=open(pf, 'r')
-  # cov=pickle.load(f)
-  # del f
-  rc=math_utils.mahalanobis_p_values_outlier_indices(zz, cov=cov)
+  cov = math_utils.covariance_using_sklearn(data, choice='Robust', verbose=False)
+  print('Robust',cov)
+  rc=math_utils.mahalanobis(zz, mu=mu, cov=cov)
   print(rc)
-  assert rc==[2]
+  rc=math_utils.mahalanobis_p_values_outlier_indices(zz, mu=mu, cov=cov)
+  print(rc)
+  assert rc==[1,2]
+
+  cov = math_utils.covariance_using_numpy(data)
+  print('???',cov)
+  rc=math_utils.mahalanobis(zz, mu=mu, cov=cov)
+  print(rc)
 
 if __name__ == '__main__':
   main()
