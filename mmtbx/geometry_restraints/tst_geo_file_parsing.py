@@ -4,7 +4,7 @@ from io import StringIO
 from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
-from geo_file_parsing import GeoParseContainer
+from mmtbx.geometry_restraints.geo_file_parsing import GeoParseContainer
 
 
 tst_1_geo = """

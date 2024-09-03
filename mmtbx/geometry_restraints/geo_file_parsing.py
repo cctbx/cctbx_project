@@ -281,7 +281,7 @@ class DihedralEntry(Entry):
   entry_trigger = "dihedral"
   n_atoms = 4
   n_values = 7
-  internals = "torsions"
+  internals = "dihedrals"
 
   @property
   def is_harmonic(self):
@@ -685,9 +685,9 @@ class GeoParseContainer:
 
       # Check origin id trigger
       if self.current_entry_class:
-        possible_header = line.split(":")[0]
         internals = self.current_entry_class.internals
-        origin_label= origin_ids.get_label_for_geo_header(possible_header,internals=internals)
+        origin_label= origin_ids.get_label_for_geo_header(line,internals=internals)
+
         if origin_label:
           last_line_label = "origin_trigger"
           origin_id = origin_ids.get_origin_id(origin_label)
