@@ -17,13 +17,15 @@ class Entry:
 
   Roles:
     1. Store restraint-specific parameters for parsing
-    2. Implement interpretation method of raw .geo file lines to common attributes
+    2. Implement interpretation of raw .geo file lines to common attributes
       Accessing the 'entry.record' attribute will return a dict of all available data 
 
     3.
-        Atom labels can appear in two ways:
-        a. atom_1: The raw atom label read in, often atom.id_str()
-        b. i_seq_1: The integer i_seq
+        Atom labels can appear in two lists:
+        a. self.atom_labels: The raw atom label strings,  often atom.id_str()
+        b. self.i_seqs: The integer i_seqs coming from:
+                          a. The .geo file if all atom labels are also ints
+                          b. A model file provided upon initialization and id_str labels
 
     4. Implement a method to convert entry object to cctbx proxy object
   """
@@ -46,11 +48,11 @@ class Entry:
     """
     # Parsing data structures
     self.lines = lines               # raw .geo lines
-    self._i_seqs = None              # a dict of atom i_seqs
-    self._compositional= None        # a dict of unspecified atom labels
+    self.i_seqs = []                 # list of integer i_seqs (if possible)
+    self.atom_labels  = []           # list of string atom label from .geo
     self._numerical = None           # a dict of numerical geo data
-    self._labels_are_i_seqs = None   # boolean, atom labels are i_seqs
-    self._labels_are_id_strs = None  # boolean, atom labels are id_strs
+    self.labels_are_i_seqs = None    # boolean, atom labels are i_seqs
+    self.labels_are_id_strs = None   # boolean, atom labels are id_strs
 
     # Set an origin id (if not provided)
     if not origin_id:                 
@@ -66,34 +68,22 @@ class Entry:
 
     # parse lines
     self._prepare()
+
+    # Check if labels are i_seqs (integers)
+    self.labels_are_i_seqs, self.i_seqs = self._check_labels_are_i_seqs(self.atom_labels)
     
 
   def _prepare(self):
-
-    # Compositional labels
-    stem = "atom"
-    comp_labels =  [f"{stem}_{i+1}" for i in range(len(self.lines[:-2]))]
-    if self.n_atoms:
-      # test labels
-      n_atoms =  len(comp_labels)
-      assert n_atoms == self.n_atoms, (comp_labels,n_atoms,self.n_atoms)
-    comp_labels
-
-    # Compositional values
+    
+    # Parse Atom labels
     values = []
     for ln,line in self.lines[:-2]:
       if not line.startswith(" "):
         line = line.replace(line.split()[0],"") # remove name like 'bond', 'angle'
-      line = line.replace("pdb=","")
+      #line = line.replace("pdb=","")
       values.append(line)
       
-    comp_values = [self._remove_outer_quotes(value.strip()) for value in values]
-    if self.n_atoms:
-      n_atoms =  len(comp_values)
-      assert n_atoms == self.n_atoms, (comp_values,n_atoms,self.n_atoms)
-
-    comp_values
-    self._compositional = dict(zip(comp_labels,comp_values))
+    self.atom_labels = [self._remove_outer_quotes(value.strip()) for value in values]
 
     # Numerical labels
     ln, labels = self.lines[-2]
@@ -112,6 +102,19 @@ class Entry:
     numerical_values = [self._coerce_type(v) for v in numerical_values]
     self._numerical = dict(zip(numerical_labels,numerical_values))
     
+  def _check_labels_are_i_seqs(self,atom_labels):
+    """
+    If all the labels are integers, assume i_seqs
+    """
+    i_seqs = [self._try_int(v) for v in atom_labels]
+    check =   all([isinstance(i_seq,int)  for i_seq in i_seqs])
+    if not check:
+      i_seqs = []
+    return check, i_seqs
+
+  @property
+  def has_i_seqs(self):
+    return len(self.i_seqs)>0
 
   @property
   def record(self):
@@ -119,54 +122,16 @@ class Entry:
     A dictionary representation of an entry
       Atom labels are split up into single atom key:value pairs
     """
-    d = {}
-    if self._i_seqs:
-      d.update(self._i_seqs)
-    d.update(self._compositional)
+    d = {
+      "i_seqs":self.i_seqs,
+      "atom_labels":self.atom_labels,
+      }
     d.update(self._numerical)
     d["origin_id"] = self.origin_id
     return d
 
-  @property
-  def labels_are_i_seqs(self):
-    """
-    If all the labels are integers, assume i_seqs
-    """
-    if not self._labels_are_i_seqs:
-      if all([isinstance(self._try_int(v),int)  for v in self._compositional.values()]):
-        self._labels_are_i_seqs = True
-        self._form_i_seqs(self._compositional)
-      else:
-        self._labels_are_i_seqs = False
-    return self._labels_are_i_seqs
 
-  @labels_are_i_seqs.setter
-  def labels_are_i_seqs(self,value):
-    self._labels_are_i_seqs = value
-    if self._labels_are_i_seqs and self._labels_are_id_strs:
-      raise Sorry("Atom labels cannot be both i_seqs and id_strs")
 
-  @property
-  def labels_are_id_strs(self):
-    return self._labels_are_id_strs
-
-  @labels_are_id_strs.setter
-  def labels_are_id_strs(self,value):
-    self._labels_are_id_strs = value
-    if self._labels_are_i_seqs and self._labels_are_id_strs:
-      raise Sorry("Atom labels cannot be both i_seqs and id_strs")
-
-  @property
-  def i_seqs(self):
-    """
-    Provide the i_seqs as a list
-    """
-    if self._i_seqs:
-      return list(self._i_seqs.values())
-  
-  def _form_i_seqs(self,compositional_dict):
-    self._i_seqs =  {f"i_seq_{i+1}":int(v) for i,v in enumerate(compositional_dict.values())}
-  
   @property
   def ideal(self):
     """
@@ -195,7 +160,7 @@ class Entry:
     """
     Only create a proxy object if necessary, and if so only do it once
     """
-    if not self._proxy:
+    if not self._proxy and self.has_i_seqs:
       self._proxy = self.to_proxy()
     return self._proxy
 
@@ -344,25 +309,22 @@ class PlaneEntry(Entry):
 
 
 
+
   def _prepare(self):
     """
     Interpret lines from a Plane entry.
     """
-    compositional_labels = []
-    compositional_values = []
-
+    
+    atom_labels = []
     nums = [[None]*self.n_values for l in range(len(self.lines)-1)]
     for i,(ln,line) in enumerate(self.lines[1:]):
       line = line.replace(self.name,"")
       parts = shlex.split(line)
       comp_value = parts[0]
-      stem = "atom"
       
-      comp_label = f"{stem}_{i}"
-      comp_value = comp_value.replace("pdb=","")
-      comp_value = self._remove_outer_quotes(comp_value)
-      compositional_labels.append(comp_label)
-      compositional_values.append(comp_value)
+      #comp_value = comp_value.replace("pdb=","")
+      #comp_value = self._remove_outer_quotes(comp_value)
+      atom_labels.append(comp_value)
       for j,p in enumerate(parts[1:]):
         nums[i][j] = p
 
@@ -378,13 +340,12 @@ class PlaneEntry(Entry):
     numerical_values = nums_T
     
     numerical_values = [[self._coerce_type(v) for v in vals] for vals in numerical_values]
-    self._compositional = dict(zip(compositional_labels,compositional_values))
     self._numerical = dict(zip(numerical_labels,numerical_values))
 
   @property
   def n_atoms(self):
     # Override for planes
-    return len(self._compositional)
+    return len(self.atom_labels)
 
 
   @property
@@ -406,6 +367,24 @@ class ParallelityEntry(Entry):
   n_values = None
   internals = "parallelities"
 
+  def __init__(self,*args,**kwargs):
+    self._atom_labels = []
+
+    # add extra fields for 'j' atoms
+    self.j_seqs = []
+    self.atom_labels_i = []
+    self.atom_labels_j = []
+    super().__init__(*args,**kwargs)
+    self.i_seqs, self.j_seqs = self.i_seqs # unpack tuple
+  
+  @property
+  def atom_labels(self):
+    return self.atom_labels_i + self.atom_labels_j
+
+  @atom_labels.setter
+  def atom_labels(self,value):
+    self._atom_labels = value
+    
   def _prepare(self):
     """
     Interpret lines from a Parallelity entry. 
@@ -414,66 +393,47 @@ class ParallelityEntry(Entry):
     ln1,line1 = self.lines[1]
     plane_2_idx = line0.index("plane 2")
 
-    comp_labels = []
-    comp_values = []
     all_parts = []
     for ln,line in self.lines[1:]:
       #parts = [line[:plane_2_idx]]+shlex.split(line[plane_2_idx:])
       parts  = shlex.split(line)
       all_parts.append(parts)
 
-    # Determine label type
-    test_label = all_parts[0][0]
-    stem = "atom"
-
     for i,row in enumerate(all_parts):
-      comp_labels.append(f"{stem}_i_{i}")
-      val = self._remove_outer_quotes(row[0].replace(self.name,"").replace("pdb=",""))
-      comp_values.append(val)
+      #val = self._remove_outer_quotes(row[0].replace(self.name,"").replace("pdb=",""))
+      val = row[0].replace(self.name,"").strip()
+      self.atom_labels_i.append(val)
       
     for j,row in enumerate(all_parts):
       if len(row)>1:
-        comp_labels.append(f"{stem}_j_{j}")
-        val = self._remove_outer_quotes(row[1].replace(self.name,"").replace("pdb=",""))
-        comp_values.append(val)
+        #val = self._remove_outer_quotes(row[1].replace(self.name,"").replace("pdb=",""))
+        val = row[1].replace(self.name,"").strip()
+        self.atom_labels_j.append(val)
 
     num_idx = plane_2_idx+len("plane 2")
     num_labels = shlex.split(line0[num_idx:])
     num_values = all_parts[0][2:]
 
-    self._compositional = dict(zip(comp_labels,comp_values))
     num_values = [self._coerce_type(v) for v in num_values]
     self._numerical = dict(zip(num_labels,num_values))
 
-  @property
-  def i_seqs(self):
+  def _check_labels_are_i_seqs(self,*args):
     """
-    Provide the i_seqs as a list
+    If all the labels are integers, assume i_seqs
     """
-    if self._i_seqs:
-      return [v for k,v in self._i_seqs.items() if "_i_" in k]
-  
-  def _form_i_seqs(self,compositional_dict):
-      self._i_seqs =  {}
-      for k,v in compositional_dict.items():
-        if "_i_" in k:
-          suffix = "_i_"+k.split("_i_")[-1]
-        elif "_j_" in k:
-          suffix = "_j_"+k.split("_j_")[-1]
+    check_func = super()._check_labels_are_i_seqs
+    check_i, i_seqs = check_func(self.atom_labels_i)
+    check_j, j_seqs = check_func(self.atom_labels_j)
+    check = check_i and check_j
+    return check, (i_seqs, j_seqs)
 
-        self._i_seqs[f"i_seq{suffix}"] = int(v)
-
-  @property
-  def j_seqs(self):
-    """
-    Provide the i_seqs as a list
-    """
-    if self._i_seqs:
-      return [int(v) for k,v in self._i_seqs.items() if "_j_" in k]
+    if not check:
+      i_seqs = []
+    return check, i_seqs
 
   @property
   def n_atoms(self):
-    return len(self._compositional)
+    return len(self.atom_labels_i) + len(sel.atom_labels_j)
     
   def to_proxy(self):
     proxy = geometry_restraints.parallelity_proxy(
@@ -501,7 +461,7 @@ class GeoParseContainer:
 
   Usage:
     container = GeoParseContainer()   # Initialize
-    container.parse_file("model.geo") # Parse .geo file
+    container.parse_str(geo_str)      # Parse .geo file string
     entries = container.entries       # Access data as Entry instances
     records = container.records       # Access data as lists of dicts
 
@@ -594,7 +554,7 @@ class GeoParseContainer:
     if not self.labels_are_i_seqs:
       # make i_seq:id_str mapping
       map_iseq_to_idstr = {
-        atom.i_seq:Entry._remove_outer_quotes(atom.id_str().replace("pdb=","")) 
+        atom.i_seq:atom.id_str()#Entry._remove_outer_quotes(atom.id_str().replace("pdb=","")) 
         for atom in model.get_atoms()}
 
       # Reverse
@@ -603,12 +563,12 @@ class GeoParseContainer:
       for entry in self.entries_list:
         # Case where entry was loaded with id_strs, can load i_seqs
         entry.labels_are_id_strs = True
-        for val in entry._compositional.values():
+        for val in entry.atom_labels:
           if val not in map_idstr_to_iseq:
             entry.labels_are_id_strs = False
           
         if entry.labels_are_id_strs:
-          entry._form_i_seqs({k:map_idstr_to_iseq[idstr] for k,idstr in entry._compositional.items()})
+          entry.i_seqs = [map_idstr_to_iseq[idstr] for idstr in entry.atom_labels]
 
   @property
   def entries_list(self):
@@ -629,7 +589,8 @@ class GeoParseContainer:
     """
     Coalesce all proxies into ao single list
     """
-    return list(chain.from_iterable([proxies for name,proxies in self.proxies.items()]))
+    if self.proxies is not None:
+      return list(chain.from_iterable([proxies for name,proxies in self.proxies.items()]))
   
 
   def _parse(self):

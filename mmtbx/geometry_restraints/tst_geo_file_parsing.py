@@ -299,10 +299,11 @@ def extract_results(container,print_result=False):
     idxs = [0,-1]
     for idx in idxs:
       entry = entries[idx]
-      value_idxs = [0,1,3,5,7,len(entry.record)] # just take a few values to check
+      value_idxs = [0,1,2,3] # just take a few values to check
       for i,(key,value) in enumerate(entry.record.items()):
         if i in value_idxs:
           results[entry_name].append(value)
+
   if print_result:
     #Print output to make tests
     print("expected= {")
@@ -323,13 +324,14 @@ def tst_01(model):
   # Test a 1yjp with YES labels and YES a model
   # (Can build proxies from label matching to model i_seqs)
   expected= {
-  'bond': [0, 1, ' CA  GLY A   1 ', 1.507, 0.016, 6, 12, ' N   ASN A   3 ', 1.33, 0.0134] ,
-  'angle': [12, 13, ' N   ASN A   3 ', ' C   ASN A   3 ', 113.48, 47, 48, ' CA  TYR A   7 ', ' O   TYR A   7 ', 120.98] ,
-  'dihedral': [13, 14, 21, ' C   ASN A   3 ', ' CA  GLN A   4 ', 14, 12, 16, ' N   ASN A   3 ', ' CB  ASN A   3 '] ,
-  'chiral': [30, 29, 33, ' N   GLN A   5 ', ' CB  GLN A   5 ', 13, 12, 16, ' N   ASN A   3 ', ' CB  ASN A   3 '] ,
-  'plane': [50, 51, 53, 55, 57, 13, 14, ' CA  ASN A   3 ', ' O   ASN A   3 ', [0.02, 0.02, 0.02]] ,
-  'nonbonded': [57, 62, ' O   HOH A  11 ', 3.04, 0, 38, 51, ' CG  TYR A   7 ', 3.34] ,
+  'bond': [[0, 1], ['pdb=" N   GLY A   1 "', 'pdb=" CA  GLY A   1 "'], 1.451, 1.507, [6, 12], ['pdb=" C   ASN A   2 "', 'pdb=" N   ASN A   3 "'], 1.331, 1.33] ,
+  'angle': [[12, 13, 14], ['pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "'], 108.9, 113.48, [47, 48, 49], ['pdb=" CA  TYR A   7 "', 'pdb=" C   TYR A   7 "', 'pdb=" O   TYR A   7 "'], 121.0, 120.98] ,
+  'dihedral': [[13, 14, 20, 21], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" N   GLN A   4 "', 'pdb=" CA  GLN A   4 "'], 180.0, 166.21, [14, 12, 13, 16], ['pdb=" C   ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" CB  ASN A   3 "'], -122.6, -122.56] ,
+  'chiral': [[30, 29, 31, 33], ['pdb=" CA  GLN A   5 "', 'pdb=" N   GLN A   5 "', 'pdb=" C   GLN A   5 "', 'pdb=" CB  GLN A   5 "'], 'False', 2.51, [13, 12, 14, 16], ['pdb=" CA  ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" CB  ASN A   3 "'], 'False', 2.51] ,
+  'plane': [[], [], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [], [], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
+  'nonbonded': [[57, 62], ['pdb=" OH  TYR A   7 "', 'pdb=" O   HOH A  11 "'], 2.525, 3.04, [38, 51], ['pdb=" N   ASN A   6 "', 'pdb=" CG  TYR A   7 "'], 4.9, 3.34] ,
   }
+
   grm = model.restraints_manager.geometry
   
   buffer = StringIO()
@@ -339,7 +341,7 @@ def tst_01(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
   
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   # Check values
   assert expected==results
@@ -355,14 +357,14 @@ def tst_01(model):
 def tst_02(model):
   # Test a 1yjp with NO labels and YES a model
   # (i_seqs present in .geo string because no labels, will build proxies)
-  
+    
   expected= {
-  'bond': [0, 1, '1', 1.507, 0.016, 6, 12, '12', 1.33, 0.0134] ,
-  'angle': [12, 13, '12', '14', 113.48, 47, 48, '47', '49', 120.98] ,
-  'dihedral': [13, 14, 21, '14', '21', 14, 12, 16, '12', '16'] ,
-  'chiral': [30, 29, 33, '29', '33', 13, 12, 16, '12', '16'] ,
-  'plane': [50, 51, 53, 55, 57, 13, 14, '13', '15', [0.02, 0.02, 0.02]] ,
-  'nonbonded': [57, 62, '62', 3.04, 0, 38, 51, '51', 3.34] ,
+  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [6, 12], ['6', '12'], 1.331, 1.33] ,
+  'angle': [[12, 13, 14], ['12', '13', '14'], 108.9, 113.48, [47, 48, 49], ['47', '48', '49'], 121.0, 120.98] ,
+  'dihedral': [[13, 14, 20, 21], ['13', '14', '20', '21'], 180.0, 166.21, [14, 12, 13, 16], ['14', '12', '13', '16'], -122.6, -122.56] ,
+  'chiral': [[30, 29, 31, 33], ['30', '29', '31', '33'], 'False', 2.51, [13, 12, 14, 16], ['13', '12', '14', '16'], 'False', 2.51] ,
+  'plane': [[], [], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [], [], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
+  'nonbonded': [[57, 62], ['57', '62'], 2.525, 3.04, [38, 51], ['38', '51'], 4.9, 3.34] ,
   }
   grm = model.restraints_manager.geometry
   
@@ -372,7 +374,7 @@ def tst_02(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
   
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   # Check values
   assert expected==results
@@ -390,13 +392,14 @@ def tst_03(model):
   # (i_seqs present in .geo string because no labels, will build proxies)
   
   expected= {
-  'bond': [0, 1, '1', 1.507, 0.016, 6, 12, '12', 1.33, 0.0134] ,
-  'angle': [12, 13, '12', '14', 113.48, 47, 48, '47', '49', 120.98] ,
-  'dihedral': [13, 14, 21, '14', '21', 14, 12, 16, '12', '16'] ,
-  'chiral': [30, 29, 33, '29', '33', 13, 12, 16, '12', '16'] ,
-  'plane': [50, 51, 53, 55, 57, 13, 14, '13', '15', [0.02, 0.02, 0.02]] ,
-  'nonbonded': [57, 62, '62', 3.04, 0, 38, 51, '51', 3.34] ,
+  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [6, 12], ['6', '12'], 1.331, 1.33] ,
+  'angle': [[12, 13, 14], ['12', '13', '14'], 108.9, 113.48, [47, 48, 49], ['47', '48', '49'], 121.0, 120.98] ,
+  'dihedral': [[13, 14, 20, 21], ['13', '14', '20', '21'], 180.0, 166.21, [14, 12, 13, 16], ['14', '12', '13', '16'], -122.6, -122.56] ,
+  'chiral': [[30, 29, 31, 33], ['30', '29', '31', '33'], 'False', 2.51, [13, 12, 14, 16], ['13', '12', '14', '16'], 'False', 2.51] ,
+  'plane': [[], [], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [], [], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
+  'nonbonded': [[57, 62], ['57', '62'], 2.525, 3.04, [38, 51], ['38', '51'], 4.9, 3.34] ,
   }
+
   grm = model.restraints_manager.geometry
   
   buffer = StringIO()
@@ -405,7 +408,7 @@ def tst_03(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
   
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   # Check values
   assert expected==results
@@ -423,13 +426,14 @@ def tst_04(model):
   # (i_seqs not present in .geo string and not moel, cannot build proxies)
   
   expected= {
-  'bond': [' N   GLY A   1 ', ' CA  GLY A   1 ', 1.507, 0.016, 12.3, ' C   ASN A   2 ', ' N   ASN A   3 ', 1.33, 0.0134, 1.29e-05] ,
-  'angle': [' N   ASN A   3 ', ' CA  ASN A   3 ', 108.9, -4.58, 0.376, ' CA  TYR A   7 ', ' C   TYR A   7 ', 121.0, 0.02, 0.111] ,
-  'dihedral': [' CA  ASN A   3 ', ' C   ASN A   3 ', ' CA  GLN A   4 ', 166.21, '0', ' C   ASN A   3 ', ' N   ASN A   3 ', ' CB  ASN A   3 ', -122.56, '0'] ,
-  'chiral': [' CA  GLN A   5 ', ' N   GLN A   5 ', ' CB  GLN A   5 ', 2.51, 0.12, ' CA  ASN A   3 ', ' N   ASN A   3 ', ' CB  ASN A   3 ', 2.51, '-0.00'] ,
-  'plane': [' CB  TYR A   7 ', ' CG  TYR A   7 ', ' CD2 TYR A   7 ', ' CE2 TYR A   7 ', ' OH  TYR A   7 ', ' CA  ASN A   3 ', ' C   ASN A   3 ', ['0.000', -0.002, 0.001], [2500.0, 2500.0, 2500.0], [0.00997, 0.00997, 0.00997]] ,
-  'nonbonded': [' OH  TYR A   7 ', ' O   HOH A  11 ', 3.04, 0, ' N   ASN A   6 ', ' CG  TYR A   7 ', 3.34] ,
+  'bond': [[], ['pdb=" N   GLY A   1 "', 'pdb=" CA  GLY A   1 "'], 1.451, 1.507, [], ['pdb=" C   ASN A   2 "', 'pdb=" N   ASN A   3 "'], 1.331, 1.33] ,
+  'angle': [[], ['pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "'], 108.9, 113.48, [], ['pdb=" CA  TYR A   7 "', 'pdb=" C   TYR A   7 "', 'pdb=" O   TYR A   7 "'], 121.0, 120.98] ,
+  'dihedral': [[], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" N   GLN A   4 "', 'pdb=" CA  GLN A   4 "'], 180.0, 166.21, [], ['pdb=" C   ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" CB  ASN A   3 "'], -122.6, -122.56] ,
+  'chiral': [[], ['pdb=" CA  GLN A   5 "', 'pdb=" N   GLN A   5 "', 'pdb=" C   GLN A   5 "', 'pdb=" CB  GLN A   5 "'], 'False', 2.51, [], ['pdb=" CA  ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" CB  ASN A   3 "'], 'False', 2.51] ,
+  'plane': [[], [], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [], [], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
+  'nonbonded': [[], ['pdb=" OH  TYR A   7 "', 'pdb=" O   HOH A  11 "'], 2.525, 3.04, [], ['pdb=" N   ASN A   6 "', 'pdb=" CG  TYR A   7 "'], 4.9, 3.34] ,
   }
+
   grm = model.restraints_manager.geometry
   
   buffer = StringIO()
@@ -439,7 +443,7 @@ def tst_04(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
   
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   # Check values
   assert expected==results
@@ -456,19 +460,20 @@ def tst_05(model):
   # YES labels and NO model, cannot build proxies
   
   expected= {
-  'bond': [' C   KBEDW   1 ', ' N   DPPDW   2 ', 1.498, 0.014, 145.0, ' NG  DPPHW   2 ', ' C   5OHHW   6 ', 1.502, 0.01, 52.3] ,
-  'angle': [' N   GLNC5 122 ', ' CA  GLNC5 122 ', 108.78, -12.47, 1.49, ' C   PHE E  13 ', ' O   PHE E  13 ', 155.0, -14.75, 0.01] ,
-  'dihedral': [' CA  TRPBV 218 ', ' C   TRPBV 218 ', ' CA  HISBV 219 ', -133.25, '0', ' N   UALFW   5 ', ' C   UALFW   5 ', ' CB  UALFW   5 ', 179.97, '0'] ,
-  'chiral': [' CB  VALE5 108 ', ' CA  VALE5 108 ', ' CG2 VALE5 108 ', -2.63, -2.92, ' P     AGA1866 ', ' OP1   AGA1866 ', " O5'   AGA1866 ", 2.41, 2.17] ,
-  'plane': [' N   UALFW   5 ', ' CA  UALFW   5 ', ' CB  UALFW   5 ', [-0.055, -0.042, 0.115, -0.171, 0.153], [2500.0, 2500.0, 2500.0, 2500.0, 2500.0], " C1'   AGA1095 ", ' N9    AGA1095 ', ' N7    AGA1095 ', ' C6    AGA1095 ', ' N1    AGA1095 '] ,
-  'parallelity': [" C1'  DG B  11 ", ' N9   DG B  11 ', ' N7   DG B  11 ', ' C6   DG B  11 ', ' N1   DG B  11 ', " C1'  DC A  10 ", ' N1   DC A  10 ', ' O2   DC A  10 ', ' C4   DC A  10 ', ' C5   DC A  10 '] ,
-  'nonbonded': ['MG    MGAA3098 ', ' O   HOHAA3655 ', 2.17, 'MG    MGDA1642 ', ' O   HOHDA1879 ', 2.17] ,
+  'bond': [[], ['pdb=" C   KBEDW   1 "', 'pdb=" N   DPPDW   2 "'], 1.329, 1.498, [], ['pdb=" NG  DPPHW   2 "', 'pdb=" C   5OHHW   6 "'], 1.43, 1.502] ,
+  'angle': [[], ['pdb=" N   GLNC5 122 "', 'pdb=" CA  GLNC5 122 "', 'pdb=" C   GLNC5 122 "'], 108.78, 121.25, [], ['pdb=" C   PHE E  13 "', 'pdb=" O   PHE E  13 "', 'pdb=" N   TYR E  17 "'], 155.0, 169.75] ,
+  'dihedral': [[], ['pdb=" CA  TRPBV 218 "', 'pdb=" C   TRPBV 218 "', 'pdb=" N   HISBV 219 "', 'pdb=" CA  HISBV 219 "'], -180.0, -133.25, [], ['pdb=" N   UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" CB  UALFW   5 "'], 122.8, 179.97] ,
+  'chiral': [[], ['pdb=" CB  VALE5 108 "', 'pdb=" CA  VALE5 108 "', 'pdb=" CG1 VALE5 108 "', 'pdb=" CG2 VALE5 108 "'], 'False', -2.63, [], ['pdb=" P     AGA1866 "', 'pdb=" OP1   AGA1866 "', 'pdb=" OP2   AGA1866 "', 'pdb=" O5\'   AGA1866 "'], 'True', 2.41] ,
+  'plane': [[], [], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], [], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
+  'parallelity': [[], ["pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11', "pdb= C1'  DC B  12", 'pdb= N1   DC B  12', 'pdb= C2   DC B  12', 'pdb= O2   DC B  12', 'pdb= N3   DC B  12', 'pdb= C4   DC B  12', 'pdb= N4   DC B  12', 'pdb= C5   DC B  12', 'pdb= C6   DC B  12'], 6.47, 5.5671, [], ["pdb= C1'  DC A  10", 'pdb= N1   DC A  10', 'pdb= C2   DC A  10', 'pdb= O2   DC A  10', 'pdb= N3   DC A  10', 'pdb= C4   DC A  10', 'pdb= N4   DC A  10', 'pdb= C5   DC A  10', 'pdb= C6   DC A  10', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11', "pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11'], 5.4, 6.3101] ,
+  'nonbonded': [[], ['pdb="MG    MGAA3098 "', 'pdb=" O   HOHAA3655 "'], 1.653, 2.17, [], ['pdb="MG    MGDA1642 "', 'pdb=" O   HOHDA1879 "'], 1.699, 2.17] ,
   }
+
   
   geo_container = GeoParseContainer.from_geo_str(tst_1_geo)
   
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   
   # Check values
@@ -490,19 +495,20 @@ def tst_06(model):
   # NO labels (so i_seqs) and NO model, will build proxies
   
   expected= {
-  'bond': [0, 1, '1', 1.498, 0.014, 12, 13, '13', 1.502, 0.01] ,
-  'angle': [14, 15, '14', '16', 121.25, 26, 27, '26', '28', 169.75] ,
-  'dihedral': [29, 30, 1, '30', '1', 14, 15, 17, '15', '17'] ,
-  'chiral': [18, 19, 21, '19', '21', 22, 23, 25, '23', '25'] ,
-  'plane': [26, 27, 29, '26', '28', 5, 6, 8, 10, 12] ,
-  'parallelity': [16, 18, 22, 26, 30, 17, 19, 23, 27, 0] ,
-  'nonbonded': [7, 8, '8', 2.17, 13, 14, '14', 2.17] ,
+  'bond': [[0, 1], ['0', '1'], 1.329, 1.498, [12, 13], ['12', '13'], 1.43, 1.502] ,
+  'angle': [[14, 15, 16], ['14', '15', '16'], 108.78, 121.25, [26, 27, 28], ['26', '27', '28'], 155.0, 169.75] ,
+  'dihedral': [[29, 30, 0, 1], ['29', '30', '0', '1'], -180.0, -133.25, [14, 15, 16, 17], ['14', '15', '16', '17'], 122.8, 179.97] ,
+  'chiral': [[18, 19, 20, 21], ['18', '19', '20', '21'], 'False', -2.63, [22, 23, 24, 25], ['22', '23', '24', '25'], 'True', 2.41] ,
+  'plane': [[], [], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], [], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
+  'parallelity': [[16, 18, 20, 22, 24, 26, 28, 30, 1, 3, 4, 5], ['16', '18', '20', '22', '24', '26', '28', '30', '1', '3', '4', '5', '17', '19', '21', '23', '25', '27', '29', '0', '2'], 6.47, 5.5671, [17, 19, 21, 23, 25, 27, 29, 0, 2, 4, 5, 6], ['17', '19', '21', '23', '25', '27', '29', '0', '2', '4', '5', '6', '18', '20', '22', '24', '26', '28', '30', '1', '3'], 5.4, 6.3101] ,
+  'nonbonded': [[7, 8], ['7', '8'], 1.653, 2.17, [13, 14], ['13', '14'], 1.699, 2.17] ,
   }
+
   
   tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
   geo_container = GeoParseContainer.from_geo_str(tst_1_geo_iseqs)
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   
   # Check values
@@ -524,12 +530,13 @@ def tst_07(model):
   # Test reading integer (i_seq) geo file
   
   expected= {
-  'bond': [0, 1, '1', 1.507, 0.016, 5, 6, '6', 1.498, 0.0126] ,
+  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [5, 6], ['5', '6'], 1.524, 1.498] ,
   }
+
   
   geo_container = GeoParseContainer.from_geo_str(tst_2_geo)
   
-  results = extract_results(geo_container)
+  results = extract_results(geo_container,print_result=False)
   
   
   # Check values
