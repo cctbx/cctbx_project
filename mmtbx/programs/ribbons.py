@@ -7,7 +7,7 @@ import numpy as np
 from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
-from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue, _IsNucleicAcidResidue
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
 version = "1.0.0"
@@ -45,6 +45,10 @@ selection = (altloc ' ' or altloc '' or altloc a)
   .type = atom_selection
   .short_caption = Atom selection
   .help = Atom selection description
+nucleic_acid_as_helix = True
+  .type = bool
+  .short_caption = Draw nucleic acids as helix
+  .help = If true, draw nucleic acids as helix rather than treating as coil because there are not secondary structure records for them
 '''
 
 # ------------------------------------------------------------------------------
@@ -335,7 +339,7 @@ Output:
       if ribElement.type is None:
         ribElement.like(currSS)
 
-      if not ribElement.sameSSE(currSS): # Helix / sheet starting
+      if i == 0 or not ribElement.sameSSE(currSS): # Helix / sheet starting
         if currSS.type == 'HELIX' or currSS.type == 'SHEET':
           ribElement.end = self.nIntervals*i + 1
           ribElement = self.RibbonElement(currSS)
@@ -567,6 +571,13 @@ Output:
         self.secondaryStructure[i] = r
 
     self.ConsolidateSheets()
+
+    # If we are treating nucleic acids as helices, change the record of each nucleic acid residue to be a helix.
+    if self.params.nucleic_acid_as_helix:
+      r = self.Range('HELIX')
+      for res in hierarchy.residue_groups():
+        if _IsNucleicAcidResidue(res.unique_resnames()[0]):
+          self.secondaryStructure[int(res.resseq)] = r
 
     # The name of the structure, which is the root of the input file name (no path, no extension)
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
