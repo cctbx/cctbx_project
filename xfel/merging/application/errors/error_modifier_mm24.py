@@ -146,15 +146,19 @@ class error_modifier_mm24(worker):
   def calculate_intensity_bin_limits(self):
     '''Calculate the intensity bins between the 0.5 and 99.5 percentiles'''
     all_biased_means = self.mpi_helper.gather_variable_length_numpy_arrays(
-      np.array(self.refl_biased_means, dtype=float), root=None, dtype=float
+      np.array(self.refl_biased_means, dtype=float), root=0, dtype=float
       )
-    all_biased_means = np.sort(all_biased_means)
-    lower_percentile = 0.005
-    upper_percentile = 0.995
-    n = all_biased_means.size
-    lower = all_biased_means[int(lower_percentile * n)]
-    upper = all_biased_means[int(upper_percentile * n)]
-    self.intensity_bin_limits = np.linspace(lower, upper, self.number_of_intensity_bins + 1)
+    if self.mpi_helper.rank == 0:
+      all_biased_means = np.sort(all_biased_means)
+      lower_percentile = 0.005
+      upper_percentile = 0.995
+      n = all_biased_means.size
+      lower = all_biased_means[int(lower_percentile * n)]
+      upper = all_biased_means[int(upper_percentile * n)]
+      self.intensity_bin_limits = np.linspace(lower, upper, self.number_of_intensity_bins + 1)
+    else:
+      self.intensity_bin_limits = np.empty(self.number_of_intensity_bins + 1)
+    self.mpi_helper.comm.Bcast(self.intensity_bin_limits, root=0)
 
   def distribute_differences_over_intensity_bins(self):
     self.intensity_bins = [flex.reflection_table() for i in range(self.number_of_intensity_bins)]
