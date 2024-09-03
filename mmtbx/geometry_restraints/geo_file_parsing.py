@@ -9,48 +9,6 @@ from cctbx import geometry_restraints
 from cctbx.geometry_restraints import bond, angle, dihedral, chirality, parallelity, planarity
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
-
-def build_origin_maps():
-  """
-  Collect origin id data and return two dicts. 
-
-  
-  1. For a given restraint type, get list of possible origin headers
-
-      origin_map1 = 
-        {restraint_label: concatenated_header_list
-        }
-      
-  2. For a (restraint,header) pair, get the origin label
-  
-      origin_map2 = 
-        {(restraint_label, header): origin_label}
-  """
-  origin_map1 = {}
-  origin_map2 = {}
-  internals = ["bonds", "angles", "torsions", "planes", "chirals", "parallelities"]
-  
-  for origin_label, origins in origin_ids.data.items():
-    for i in origins.internals:
-      if len(origins) >= 4:
-        header = origins[3]
-        if header:
-          restraint_label = internals[i]
-          valid_headers = [v for v in header if v]
-          
-          if restraint_label in origin_map1:
-            origin_map1[restraint_label].extend(valid_headers)
-          else:
-            origin_map1[restraint_label] = valid_headers.copy()
-          
-          for v in valid_headers:
-            origin_map2[(restraint_label, v)] = origin_label
-  
-  for restraint_label, header_list in origin_map1.items():
-    origin_map1[restraint_label] = list(set(header_list))
-    
-  return origin_map1, origin_map2
-
   
 class Entry:
   """
@@ -78,8 +36,6 @@ class Entry:
   n_values = None             # explicit number of values to expect
   default_origin_id = 0       # default origin_id integer for an entry
   
-  # Only build origin maps once, in class definition
-  origin_map1, origin_map2 = build_origin_maps()
 
   def __init__(self,lines,origin_id=None):
     """
@@ -110,12 +66,6 @@ class Entry:
 
     # parse lines
     self._prepare()
-
-  @classmethod
-  @property
-  def origin_headers(cls):
-    assert cls.internals, "Must define the 'internals' class variable"
-    return cls.origin_map1[cls.internals]
     
 
   def _prepare(self):
@@ -735,12 +685,11 @@ class GeoParseContainer:
 
       # Check origin id trigger
       if self.current_entry_class:
-        origin_headers = self.current_entry_class.origin_headers
-        origin_trigger = self._startswith_plural(line, origin_headers)
-        if origin_trigger:
+        possible_header = line.split(":")[0]
+        internals = self.current_entry_class.internals
+        origin_label= origin_ids.get_label_for_geo_header(possible_header,internals=internals)
+        if origin_label:
           last_line_label = "origin_trigger"
-          internals = self.current_entry_class.internals
-          origin_label = self.current_entry_class.origin_map2[(internals,origin_trigger)]
           origin_id = origin_ids.get_origin_id(origin_label)
           self.current_origin_id = origin_id
           continue
