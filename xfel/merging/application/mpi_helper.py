@@ -112,7 +112,7 @@ class mpi_helper(object):
   def gather_variable_length_numpy_arrays(self, send_arrays, root=0, dtype=float):
     with adaptive_collective(self.comm.gather, self.comm.allgather) as gather:
       lengths = gather(send_arrays.size, root=root)
-    gathered_arrays = np.empty(np.sum(lengths), dtype=dtype) if lengths else None
+    gathered_array = np.empty(np.sum(lengths), dtype=dtype) if lengths else None
     with adaptive_collective(self.comm.Gatherv, self.comm.Allgatherv) as gather_v:
-      gather_v(sendbuf=send_arrays, recvbuf=(gathered_arrays, lengths), root=root)
-    return gathered_arrays
+      gather_v(sendbuf=send_arrays, recvbuf=(gathered_array, lengths), root=root)
+    return gathered_array
