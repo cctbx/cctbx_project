@@ -10,7 +10,7 @@ from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_g
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue, _IsNucleicAcidResidue
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.0.0"
+version = "1.1.0"
 
 master_phil_str = '''
 do_protein = True
