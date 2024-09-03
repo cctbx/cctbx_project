@@ -310,6 +310,7 @@ bond 5
   1.524  1.498  0.025 1.26e-02 6.30e+03 4.00e+00
 """
 
+
 def replace_idstr_with_int(text,max_int=100):
   """
   Replace id_strs in a geo_file str with integers
@@ -358,7 +359,7 @@ def init_model():
   model.process(make_restraints=True)
   return model
 
-def tst_01(model):
+def tst_01(model,printing=False):
   # Test a 1yjp with YES labels and YES a model
   # (Can build proxies from label matching to model i_seqs)
   expected= {
@@ -378,8 +379,9 @@ def tst_01(model):
   geo_str = buffer.getvalue()
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
   
-  
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_01")
+  results = extract_results(geo_container,print_result=printing)
   
   # Check values
   assert expected==results
@@ -392,7 +394,7 @@ def tst_01(model):
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_02(model):
+def tst_02(model,printing=False):
   # Test a 1yjp with NO labels and YES a model
   # (i_seqs present in .geo string because no labels, will build proxies)
     
@@ -411,8 +413,9 @@ def tst_02(model):
   geo_str = buffer.getvalue()
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
   
-  
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_02")
+  results = extract_results(geo_container,print_result=printing)
   
   # Check values
   assert expected==results
@@ -425,7 +428,7 @@ def tst_02(model):
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_03(model):
+def tst_03(model,printing=False):
   # Test a 1yjp with NO labels and NO a model
   # (i_seqs present in .geo string because no labels, will build proxies)
   
@@ -446,7 +449,9 @@ def tst_03(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
   
   
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_03")
+  results = extract_results(geo_container,print_result=printing)
   
   # Check values
   assert expected==results
@@ -459,7 +464,7 @@ def tst_03(model):
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
-def tst_04(model):
+def tst_04(model,printing=False):
   # Test a 1yjp with YES labels and NO a model
   # (i_seqs not present in .geo string and not moel, cannot build proxies)
   
@@ -481,7 +486,9 @@ def tst_04(model):
   geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
   
   
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_04")
+  results = extract_results(geo_container,print_result=printing)
   
   # Check values
   assert expected==results
@@ -493,7 +500,7 @@ def tst_04(model):
   assert len(entries) ==   1369
   assert not geo_container.has_proxies
 
-def tst_05(model):
+def tst_05(model,printing=False):
   # Test reading complicated geo file
   # YES labels and NO model, cannot build proxies
   
@@ -503,7 +510,7 @@ def tst_05(model):
   'dihedral': [[], ['pdb=" CA  TRPBV 218 "', 'pdb=" C   TRPBV 218 "', 'pdb=" N   HISBV 219 "', 'pdb=" CA  HISBV 219 "'], -180.0, -133.25, [], ['pdb=" N   UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" CB  UALFW   5 "'], 122.8, 179.97] ,
   'chiral': [[], ['pdb=" CB  VALE5 108 "', 'pdb=" CA  VALE5 108 "', 'pdb=" CG1 VALE5 108 "', 'pdb=" CG2 VALE5 108 "'], 'False', -2.63, [], ['pdb=" P     AGA1866 "', 'pdb=" OP1   AGA1866 "', 'pdb=" OP2   AGA1866 "', 'pdb=" O5\'   AGA1866 "'], 'True', 2.41] ,
   'plane': [[], [], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], [], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
-  'parallelity': [[], ["pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11', "pdb= C1'  DC B  12", 'pdb= N1   DC B  12', 'pdb= C2   DC B  12', 'pdb= O2   DC B  12', 'pdb= N3   DC B  12', 'pdb= C4   DC B  12', 'pdb= N4   DC B  12', 'pdb= C5   DC B  12', 'pdb= C6   DC B  12'], 6.47, 5.5671, [], ["pdb= C1'  DC A  10", 'pdb= N1   DC A  10', 'pdb= C2   DC A  10', 'pdb= O2   DC A  10', 'pdb= N3   DC A  10', 'pdb= C4   DC A  10', 'pdb= N4   DC A  10', 'pdb= C5   DC A  10', 'pdb= C6   DC A  10', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11', "pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11'], 5.4, 6.3101] ,
+  'parallelity': [[], [], ["pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11'], ["pdb= C1'  DC B  12", 'pdb= N1   DC B  12', 'pdb= C2   DC B  12', 'pdb= O2   DC B  12', 'pdb= N3   DC B  12', 'pdb= C4   DC B  12', 'pdb= N4   DC B  12', 'pdb= C5   DC B  12', 'pdb= C6   DC B  12'], [], [], ["pdb= C1'  DC A  10", 'pdb= N1   DC A  10', 'pdb= C2   DC A  10', 'pdb= O2   DC A  10', 'pdb= N3   DC A  10', 'pdb= C4   DC A  10', 'pdb= N4   DC A  10', 'pdb= C5   DC A  10', 'pdb= C6   DC A  10', 'pdb= N2   DG B  11', 'pdb= N3   DG B  11', 'pdb= C4   DG B  11'], ["pdb= C1'  DG B  11", 'pdb= N9   DG B  11', 'pdb= C8   DG B  11', 'pdb= N7   DG B  11', 'pdb= C5   DG B  11', 'pdb= C6   DG B  11', 'pdb= O6   DG B  11', 'pdb= N1   DG B  11', 'pdb= C2   DG B  11']] ,
   'nonbonded': [[], ['pdb="MG    MGAA3098 "', 'pdb=" O   HOHAA3655 "'], 1.653, 2.17, [], ['pdb="MG    MGDA1642 "', 'pdb=" O   HOHDA1879 "'], 1.699, 2.17] ,
   }
 
@@ -511,7 +518,9 @@ def tst_05(model):
   geo_container = GeoParseContainer.from_geo_str(tst_1_geo)
   
   
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_05")
+  results = extract_results(geo_container,print_result=printing)
   
   
   # Check values
@@ -527,27 +536,30 @@ def tst_05(model):
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
   assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
-def tst_06(model):
+def tst_06(model,printing=False):
   # Test reading complicated geo file
   # Use 'dummy' i_seqs and 1yjp to simulate a small model with complex a .geo file
   # NO labels (so i_seqs) and NO model, will build proxies
   
+  tst_06
   expected= {
   'bond': [[0, 1], ['0', '1'], 1.329, 1.498, [12, 13], ['12', '13'], 1.43, 1.502] ,
   'angle': [[14, 15, 16], ['14', '15', '16'], 108.78, 121.25, [26, 27, 28], ['26', '27', '28'], 155.0, 169.75] ,
   'dihedral': [[29, 30, 0, 1], ['29', '30', '0', '1'], -180.0, -133.25, [14, 15, 16, 17], ['14', '15', '16', '17'], 122.8, 179.97] ,
   'chiral': [[18, 19, 20, 21], ['18', '19', '20', '21'], 'False', -2.63, [22, 23, 24, 25], ['22', '23', '24', '25'], 'True', 2.41] ,
   'plane': [[], [], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], [], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
-  'parallelity': [[16, 18, 20, 22, 24, 26, 28, 30, 1, 3, 4, 5], ['16', '18', '20', '22', '24', '26', '28', '30', '1', '3', '4', '5', '17', '19', '21', '23', '25', '27', '29', '0', '2'], 6.47, 5.5671, [17, 19, 21, 23, 25, 27, 29, 0, 2, 4, 5, 6], ['17', '19', '21', '23', '25', '27', '29', '0', '2', '4', '5', '6', '18', '20', '22', '24', '26', '28', '30', '1', '3'], 5.4, 6.3101] ,
+  'parallelity': [[16, 18, 20, 22, 24, 26, 28, 30, 1, 3, 4, 5], [17, 19, 21, 23, 25, 27, 29, 0, 2], ['16', '18', '20', '22', '24', '26', '28', '30', '1', '3', '4', '5'], ['17', '19', '21', '23', '25', '27', '29', '0', '2'], [17, 19, 21, 23, 25, 27, 29, 0, 2, 4, 5, 6], [18, 20, 22, 24, 26, 28, 30, 1, 3], ['17', '19', '21', '23', '25', '27', '29', '0', '2', '4', '5', '6'], ['18', '20', '22', '24', '26', '28', '30', '1', '3']] ,
   'nonbonded': [[7, 8], ['7', '8'], 1.653, 2.17, [13, 14], ['13', '14'], 1.699, 2.17] ,
   }
+
 
   
   tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
   geo_container = GeoParseContainer.from_geo_str(tst_1_geo_iseqs)
   
-  results = extract_results(geo_container,print_result=False)
-  
+  if printing:
+    print("\n\ntst_06")
+  results = extract_results(geo_container,print_result=printing)
   
   # Check values
   assert expected==results
@@ -564,7 +576,7 @@ def tst_06(model):
   assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 
 
-def tst_07(model):
+def tst_07(model,printing=False):
   # Test reading integer (i_seq) geo file
   
   expected= {
@@ -574,7 +586,9 @@ def tst_07(model):
   
   geo_container = GeoParseContainer.from_geo_str(tst_2_geo)
   
-  results = extract_results(geo_container,print_result=False)
+  if printing:
+    print("\n\ntst_01")
+  results = extract_results(geo_container,print_result=printing)
   
   
   # Check values
@@ -591,14 +605,15 @@ def tst_07(model):
 
 
 def main():
+  printing = False # Print results
   model = init_model()
-  tst_01(model)
-  tst_02(model)
-  tst_03(model)
-  tst_04(model)
-  tst_05(model)
-  tst_06(model)
-  tst_07(model)
+  tst_01(model,printing=printing)
+  tst_02(model,printing=printing)
+  tst_03(model,printing=printing)
+  tst_04(model,printing=printing)
+  tst_05(model,printing=printing)
+  tst_06(model,printing=printing)
+  tst_07(model,printing=printing)
   print('OK')
 
 if __name__ == '__main__':
