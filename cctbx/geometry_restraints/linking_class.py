@@ -112,39 +112,24 @@ Look for a key in the list below
       else: assert 0
     else: return info[0]
 
-  def parse_geo_file_header(self, origin_id_label, subheader=None, internals=None):
-    if not origin_id_label in covalent_headers:
-      assert 0, 'origin_id_label "%s" not in %s' % (origin_id_label, covalent_headers)
-    info = self.data.get(origin_id_label, None)
-    if info:
-      assert 0
-    else:
-      for i, (origin_label, info) in enumerate(self.data.items()):
-        if len(info)==2:
-          if subheader in info:
-            return i, '%s %s' % (origin_id_label, subheader)
-        elif len(info)>=4:
-          header_info = info[3]
-          if isinstance(header_info, list):
-            if subheader in header_info:
-              return i, '%s %s' % (origin_id_label, subheader)
-
-    print(origin_id_label, subheader)
-    assert 0
-
-  def get_origin_label_and_internal(self, query_header, verbose=False):
-    if verbose:
-      for origin_label, info in self.data.items():
-        print('origin_label, info',origin_label,info)
-    tmp = query_header.split('|')
-    if len(tmp)==1:
-      oi = 0 # default
-      rc = 'covalent'
-    else:
-      header=tmp[0].strip()
-      subheader=tmp[1].strip()
-      oi, rc = self.parse_geo_file_header(header, subheader=subheader)
-    return oi, rc
+  def get_label_for_geo_header(geo_header,internals=None):
+    """
+    Given the string found in a geo file origin_id header, get the label
+      From label can use get_origin_id to get the integer origin id.
+    """
+    if not internals:
+      internals = "bonds"
+    internals_all = ["bonds", "angles", "dihedrals", "chirals", "planes","parallelities"]
+    assert internals in internals_all
+    internal_idx = internals_all.index(internals)
+    
+    for origin_label, info in origin_ids.data.items():
+      if len(origins)>=4:
+        header = info[3]
+        if header:
+          if header == geo_header:
+            restraint_label = info.internals[internal_idx]
+            return restraint_label
 
 if __name__=='__main__':
   lc = linking_class()
