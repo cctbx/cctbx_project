@@ -26,7 +26,11 @@ sys.excepthook = system_exception_handler
 
 @contextmanager
 def adaptive_collective(rooted_variant, non_rooted_variant):
-  """Declare and switch from rooted to non-rooted collective if root is None"""
+  """
+  Declare and switch from rooted to non-rooted collective if root is None.
+  Statement `with adaptive_collective(gather, allgather) as gather:` will yield
+  `allgather` if root is None, and gather (with an appropriate root) otherwise.
+  """
   def adaptive_collective_dispatcher(*args, **kwargs):
     collective = non_rooted_variant if kwargs['root'] is None else rooted_variant
     return collective(*args, **kwargs)
