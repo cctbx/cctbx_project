@@ -29,10 +29,10 @@ DNA_style = False
   .type = bool
   .short_caption = DNA style ribbons
   .help = Use the DNA style ribbons instead of the default RNA style ribbons (rotates them by 90 degrees)
-color_by = *rainbow secondary_structure
+color_by = *rainbow secondary_structure solid
   .type = choice(multi=False)
   .short_caption = How to color the ribbons
-  .help = How to color the ribbons
+  .help = How to color the ribbons. Rainbow adjusts the color smoothly along each chain. Solid make each chain a single color. Secondary structure colors every 7th chain by the secondary structure and makes the others solid colors.
 do_plain_coils = False
   .type = bool
   .short_caption = Do plain coils
@@ -625,14 +625,17 @@ Output:
               outString += "@group {{{} {}}} dominant\n".format(self.idCode, chain.id)
             outString += "@subgroup {ribbon}\n"
 
+            # Set the basic colors for the parts of the ribbon, which may be overridden by rainbow coloring on a
+            # per-residue basis.
             bbColor = chainColors[chain.id]
-            if bbColor == "white":
-              # Distinguish between the different types of secondary structure for the first chain
+            if bbColor == "white" and not (self.params.color_by == "solid"):
+              # Distinguish between the different types of secondary structure for the first chain (out of every 7th)
+              # if we're not coloring by solid colors
               outString += "@colorset {{alph{}}} red\n".format(chain.id)
               outString += "@colorset {{beta{}}} lime\n".format(chain.id)
               outString += "@colorset {{coil{}}} white\n".format(chain.id)
             else:
-              # Do all secondary structure in the same color for all but the first chain to clean up the display
+              # Do all secondary structure in the same color for all but the first chain (out of every 7th) to clean up the display
               outString += "@colorset {{alph{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{beta{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{coil{}}} {}\n".format(chain.id, bbColor)
