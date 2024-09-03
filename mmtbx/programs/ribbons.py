@@ -7,10 +7,10 @@ import numpy as np
 from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
-from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue
+from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue, _IsNucleicAcidResidue
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.0.0"
+version = "1.1.0"
 
 master_phil_str = '''
 do_protein = True
@@ -29,10 +29,10 @@ DNA_style = False
   .type = bool
   .short_caption = DNA style ribbons
   .help = Use the DNA style ribbons instead of the default RNA style ribbons (rotates them by 90 degrees)
-color_by = *rainbow secondary_structure
+color_by = *rainbow secondary_structure solid
   .type = choice(multi=False)
   .short_caption = How to color the ribbons
-  .help = How to color the ribbons
+  .help = How to color the ribbons. Rainbow adjusts the color smoothly along each chain. Solid make each chain a single color. Secondary structure colors every 7th chain by the secondary structure and makes the others solid colors.
 do_plain_coils = False
   .type = bool
   .short_caption = Do plain coils
@@ -45,6 +45,10 @@ selection = (altloc ' ' or altloc '' or altloc a)
   .type = atom_selection
   .short_caption = Atom selection
   .help = Atom selection description
+nucleic_acid_as_helix = True
+  .type = bool
+  .short_caption = Draw nucleic acids as helix
+  .help = If true, draw nucleic acids as helix rather than treating as coil because there are not secondary structure records for them
 '''
 
 # ------------------------------------------------------------------------------
@@ -335,7 +339,7 @@ Output:
       if ribElement.type is None:
         ribElement.like(currSS)
 
-      if not ribElement.sameSSE(currSS): # Helix / sheet starting
+      if i == 0 or not ribElement.sameSSE(currSS): # Helix / sheet starting
         if currSS.type == 'HELIX' or currSS.type == 'SHEET':
           ribElement.end = self.nIntervals*i + 1
           ribElement = self.RibbonElement(currSS)
@@ -568,6 +572,13 @@ Output:
 
     self.ConsolidateSheets()
 
+    # If we are treating nucleic acids as helices, change the record of each nucleic acid residue to be a helix.
+    if self.params.nucleic_acid_as_helix:
+      r = self.Range('HELIX')
+      for res in hierarchy.residue_groups():
+        if _IsNucleicAcidResidue(res.unique_resnames()[0]):
+          self.secondaryStructure[int(res.resseq)] = r
+
     # The name of the structure, which is the root of the input file name (no path, no extension)
     self.idCode = self.data_manager.get_default_model_name().split('.')[0]
     if self.idCode is None or self.idCode == "":
@@ -625,14 +636,17 @@ Output:
               outString += "@group {{{} {}}} dominant\n".format(self.idCode, chain.id)
             outString += "@subgroup {ribbon}\n"
 
+            # Set the basic colors for the parts of the ribbon, which may be overridden by rainbow coloring on a
+            # per-residue basis.
             bbColor = chainColors[chain.id]
-            if bbColor == "white":
-              # Distinguish between the different types of secondary structure for the first chain
+            if bbColor == "white" and not (self.params.color_by == "solid"):
+              # Distinguish between the different types of secondary structure for the first chain (out of every 7th)
+              # if we're not coloring by solid colors
               outString += "@colorset {{alph{}}} red\n".format(chain.id)
               outString += "@colorset {{beta{}}} lime\n".format(chain.id)
               outString += "@colorset {{coil{}}} white\n".format(chain.id)
             else:
-              # Do all secondary structure in the same color for all but the first chain to clean up the display
+              # Do all secondary structure in the same color for all but the first chain (out of every 7th) to clean up the display
               outString += "@colorset {{alph{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{beta{}}} {}\n".format(chain.id, bbColor)
               outString += "@colorset {{coil{}}} {}\n".format(chain.id, bbColor)
