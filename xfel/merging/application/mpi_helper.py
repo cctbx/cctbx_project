@@ -3,7 +3,7 @@ from collections import Counter
 from contextlib import contextmanager
 from libtbx.mpi4py import MPI
 import numpy as np
-from dials.array_family import flex
+
 
 import sys
 def system_exception_handler(exception_type, value, traceback):
