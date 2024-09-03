@@ -444,6 +444,22 @@ class ParallelityEntry(Entry):
     )
     return proxy
 
+  @property
+  def record(self):
+    """
+    A dictionary representation of an entry
+      Atom labels are split up into single atom key:value pairs
+    """
+    d = {
+      "i_seqs":self.i_seqs,
+      "j_seqs":self.j_seqs,
+      "atom_labels_i":self.atom_labels_i,
+      "atom_labels_j":self.atom_labels_j,
+      }
+    d.update(self._numerical)
+    d["origin_id"] = self.origin_id
+    return d
+
 class StackingParallelityEntry(ParallelityEntry):
   entry_class_trigger = "Stacking parallelity restraints"
 

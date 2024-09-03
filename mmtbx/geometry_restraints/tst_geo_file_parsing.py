@@ -6,7 +6,45 @@ from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from mmtbx.geometry_restraints.geo_file_parsing import GeoParseContainer
 
+"""
+Example usage:
 
+# Have a processed model
+grm = model.restraints_manager.geometry
+
+# Define the usual atom labels
+site_labels = model.get_xray_structure().scatterers().extract_labels()
+
+# write to geo_string
+buffer = StringIO()
+grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
+geo_str = buffer.getvalue()
+
+# Parse geo str
+geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+
+# access entries
+entry = geo_container.entries["dihedral"][0]
+
+# access entry as a pure dict
+entry.record
+
+{'i_seqs': [13, 14, 20, 21],
+ 'atom_labels': ['pdb=" CA  ASN A   3 "',
+  'pdb=" C   ASN A   3 "',
+  'pdb=" N   GLN A   4 "',
+  'pdb=" CA  GLN A   4 "'],
+ 'ideal': 180.0,
+ 'model': 166.21,
+ 'delta': 13.79,
+ 'harmonic': '0',
+ 'sigma': 5.0,
+ 'weight': 0.04,
+ 'residual': 7.6,
+ 'origin_id': 0}
+
+
+"""
 tst_1_geo = """
 # Geometry restraints
 
