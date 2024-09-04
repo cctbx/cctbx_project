@@ -81,9 +81,9 @@ class Entry:
       if not line.startswith(" "):
         line = line.replace(line.split()[0],"") # remove name like 'bond', 'angle'
       #line = line.replace("pdb=","")
-      values.append(line)
+      values.append(line.strip())
       
-    self.atom_labels = [self._remove_outer_quotes(value.strip()) for value in values]
+    self.atom_labels = values
 
     # Numerical labels
     ln, labels = self.lines[-2]
@@ -315,16 +315,23 @@ class PlaneEntry(Entry):
     Interpret lines from a Plane entry.
     """
     
-    atom_labels = []
+    self.atom_labels = []
     nums = [[None]*self.n_values for l in range(len(self.lines)-1)]
     for i,(ln,line) in enumerate(self.lines[1:]):
       line = line.replace(self.name,"")
-      parts = shlex.split(line)
+      pdb_part = re.search(r'pdb="([^"]*)"', line)
+      if pdb_part:
+        pdb_value = pdb_part.group(0)  # Preserve the whole pdb="..." string
+        remaining_line = line.replace(pdb_value, "")
+
+        parts = shlex.split(remaining_line)
+        parts.insert(0, pdb_value)
+      else:
+        # No pdb="..." part 
+        parts = shlex.split(line)
       comp_value = parts[0]
       
-      #comp_value = comp_value.replace("pdb=","")
-      #comp_value = self._remove_outer_quotes(comp_value)
-      atom_labels.append(comp_value)
+      self.atom_labels.append(comp_value.strip())
       for j,p in enumerate(parts[1:]):
         nums[i][j] = p
 
@@ -395,18 +402,37 @@ class ParallelityEntry(Entry):
 
     all_parts = []
     for ln,line in self.lines[1:]:
-      #parts = [line[:plane_2_idx]]+shlex.split(line[plane_2_idx:])
-      parts  = shlex.split(line)
+      pdb_parts = re.findall(r'pdb="([^"]*)"', line)
+      
+      if len(pdb_parts) >= 1:
+        pdb_value_i = f'pdb="{pdb_parts[0]}"'
+        
+        remaining_line = line.replace(pdb_value_i, "", 1)
+        
+        if len(pdb_parts) == 2:
+          pdb_value_j = f'pdb="{pdb_parts[1]}"'
+          
+          remaining_line = remaining_line.replace(pdb_value_j, "", 1)
+          parts = shlex.split(remaining_line)
+          
+          parts.insert(0, pdb_value_i)
+          parts.insert(1, pdb_value_j)
+        else:
+          # Only one pdb="..." found, handle just pdb_value_i
+          parts = shlex.split(remaining_line)
+          parts.insert(0, pdb_value_i)
+          
+      else:
+        # No pdb="..." part found, just split the line
+        parts = shlex.split(line)
       all_parts.append(parts)
 
     for i,row in enumerate(all_parts):
-      #val = self._remove_outer_quotes(row[0].replace(self.name,"").replace("pdb=",""))
       val = row[0].replace(self.name,"").strip()
       self.atom_labels_i.append(val)
       
     for j,row in enumerate(all_parts):
       if len(row)>1:
-        #val = self._remove_outer_quotes(row[1].replace(self.name,"").replace("pdb=",""))
         val = row[1].replace(self.name,"").strip()
         self.atom_labels_j.append(val)
 
@@ -570,7 +596,7 @@ class GeoParseContainer:
     if not self.labels_are_i_seqs:
       # make i_seq:id_str mapping
       map_iseq_to_idstr = {
-        atom.i_seq:atom.id_str()#Entry._remove_outer_quotes(atom.id_str().replace("pdb=","")) 
+        atom.i_seq:atom.id_str()
         for atom in model.get_atoms()}
 
       # Reverse
