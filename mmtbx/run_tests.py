@@ -150,7 +150,7 @@ general_tests = [
   "$D/regression/tst_altloc_remediate.py",
   "$D/hydrogens/build_hydrogens.py",
   "$D/hydrogens/tst.py",
-  "$D/hydrogens/tst_add_hydrogen.py",
+  "$D/hydrogens/tst_add_hydrogen_1.py",
   "$D/hydrogens/tst_add_hydrogen_2.py",
   "$D/hydrogens/tst_add_hydrogen_3.py",
   #"$D/hydrogens/tst_add_hydrogen_time.py",
