@@ -3,7 +3,7 @@ import time
 import mmtbx.model
 import iotbx.pdb
 from mmtbx.hydrogens import reduce_hydrogen
-from mmtbx.hydrogens.tst_add_hydrogen import compare_models
+from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 from libtbx.utils import null_out
 
 # ------------------------------------------------------------------------------
