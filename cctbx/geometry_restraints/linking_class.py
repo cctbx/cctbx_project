@@ -121,7 +121,7 @@ Look for a key in the list below
     internals_all = ["bonds", "angles", "dihedrals", "chirals", "planes","parallelities"]
     assert internals in internals_all
     internal_idx = internals_all.index(internals)
-    
+
     for origin_label, info in self.data.items():
       if len(info)>=4:
         header_info = info[3]
@@ -130,7 +130,7 @@ Look for a key in the list below
           if header:
             if header.startswith(query_header) or query_header.startswith(header):
               return origin_label
-              
+
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
