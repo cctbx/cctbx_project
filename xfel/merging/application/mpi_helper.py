@@ -32,7 +32,8 @@ def adaptive_collective(rooted_variant, non_rooted_variant):
   `allgather` if root is None, and gather (with an appropriate root) otherwise.
   """
   def adaptive_collective_dispatcher(*args, **kwargs):
-    if (root := kwargs.pop('root', 0)) is None:
+    root = kwargs.pop('root', 0)
+    if root is None:
       collective = non_rooted_variant
     else:  # if root is an integer
       collective = rooted_variant
