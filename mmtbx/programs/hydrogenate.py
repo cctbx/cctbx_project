@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import os
+import os, time
 from libtbx.program_template import ProgramTemplate
 #from libtbx.utils import null_out
 from libtbx import group_args
@@ -55,9 +55,12 @@ Inputs:
   # ----------------------------------------------------------------------------
 
   def run(self):
+    t0 = time.time()
     self.model = self.data_manager.get_model()
-    self.model.set_stop_for_unknowns(False)
-    self.model.process(make_restraints=False)
+    if self.data_manager.has_restraints():
+      self.model.set_stop_for_unknowns(False)
+      self.model.process(make_restraints=False)
+    time_get_model = round(time.time()-t0, 2)
 
     make_sub_header('Add H atoms', out=self.logger)
     hydrogenate_obj = reduce_hydrogen.place_hydrogens(
@@ -73,6 +76,10 @@ Inputs:
     #lp.print_stats()
     self.model = hydrogenate_obj.get_model()
     hydrogenate_obj.show(log = self.logger)
+
+    if self.params.print_time:
+      print("Get model obj in program template:", time_get_model)
+      hydrogenate_obj.print_times()
 
     # Why is this done here and in the class?
     if self.params.add_h_to_water:
