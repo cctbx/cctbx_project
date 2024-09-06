@@ -14,17 +14,10 @@ class beam_statistics(worker):
     self.logger.log_step_time("BEAM_STATISTICS")
     f_wavelengths = flex.double([b.get_wavelength() for b in experiments.beams()])
 
-    flex_all_wavelengths = self.mpi_helper.aggregate_flex(f_wavelengths, flex.double)
-
+    flex_all_wavelengths = self.mpi_helper.aggregate_flex(f_wavelengths, flex.double, root=None)
+    average_wavelength = flex.mean(flex_all_wavelengths)
     if self.mpi_helper.rank == 0:
-      average_wavelength = flex.mean(flex_all_wavelengths)
       self.logger.main_log("Wavelength: %f"%average_wavelength)
-    else:
-      average_wavelength = None
-
-    self.logger.log_step_time("BROADCAST_WAVELENGTH")
-    average_wavelength = self.mpi_helper.comm.bcast(average_wavelength, root = 0)
-    self.logger.log_step_time("BROADCAST_WAVELENGTH", True)
 
     # save the average wavelength to the phil parameters
     if self.mpi_helper.rank == 0:
