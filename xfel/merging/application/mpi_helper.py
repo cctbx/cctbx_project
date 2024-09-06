@@ -1,8 +1,9 @@
 from __future__ import absolute_import, division, print_function
 from collections import Counter
+from contextlib import contextmanager
 from libtbx.mpi4py import MPI
 import numpy as np
-from dials.array_family import flex
+
 
 import sys
 def system_exception_handler(exception_type, value, traceback):
@@ -21,6 +22,24 @@ def system_exception_handler(exception_type, value, traceback):
       sys.stderr.flush()
       raise e
 sys.excepthook = system_exception_handler
+
+
+@contextmanager
+def adaptive_collective(rooted_variant, non_rooted_variant):
+  """
+  Declare and switch from rooted to non-rooted collective if root is None.
+  Statement `with adaptive_collective(gather, allgather) as gather:` will yield
+  `allgather` if root is None, and gather (with an appropriate root) otherwise.
+  """
+  def adaptive_collective_dispatcher(*args, **kwargs):
+    root = kwargs.pop('root', 0)
+    if root is None:
+      collective = non_rooted_variant
+    else:  # if root is an integer
+      collective = rooted_variant
+      kwargs['root'] = root
+    return collective(*args, **kwargs)
+  yield adaptive_collective_dispatcher
 
 
 class mpi_helper(object):
@@ -43,8 +62,9 @@ class mpi_helper(object):
     Example: (a1,a2,a3) + (b1, b2, b3) = (a1+b1, a2+b2, a3+b3)
     """
     flex_type = flex_type if flex_type is not None else type(flex_array)
-    list_of_all_flex_arrays = self.comm.gather(flex_array, root=root)
-    if self.rank != root:
+    with adaptive_collective(self.comm.gather, self.comm.allgather) as gather:
+      list_of_all_flex_arrays = gather(flex_array, root=root)
+    if list_of_all_flex_arrays is None:
       return None
     cumulative = flex_type(flex_array.size(), 0)
     for flex_array in list_of_all_flex_arrays:
@@ -58,8 +78,9 @@ class mpi_helper(object):
     Example: (a1,a2,a3) + (b1, b2, b3) = (a1, a2, a3, b1, b2, b3)
     """
     flex_type = flex_type if flex_type is not None else type(flex_array)
-    list_of_all_flex_arrays = self.comm.gather(flex_array, root=root)
-    if self.rank != root:
+    with adaptive_collective(self.comm.gather, self.comm.allgather) as gather:
+      list_of_all_flex_arrays = gather(flex_array, root=root)
+    if list_of_all_flex_arrays is None:
       return None
     aggregate = flex_type()
     for flex_array in list_of_all_flex_arrays:
@@ -72,15 +93,17 @@ class mpi_helper(object):
     Return total `Counter` of occurrences of each element in data across ranks.
     Example: (a1, a1, a2) + (a1, a2, a3) = {a1: 3, a2: 2, a1: 1}
     """
-    counters = self.comm.gather(Counter(data), root=root)
-    return sum(counters, Counter()) if self.rank == root else None
+    with adaptive_collective(self.comm.gather, self.comm.allgather) as gather:
+      counters = gather(Counter(data), root=root)
+    return sum(counters, Counter()) if counters is not None else None
 
   def sum(self, data, root=0):
     """
     Sum values of data across all ranks.
     Example: a1 + a2 + a3 = a1+a2+a3
     """
-    return self.comm.reduce(data, self.MPI.SUM, root=root)
+    with adaptive_collective(self.comm.reduce, self.comm.allreduce) as reduce:
+      return reduce(data, self.MPI.SUM, root=root)
 
   def set_error(self, description):
     self.error = (self.rank, description)
@@ -96,10 +119,9 @@ class mpi_helper(object):
       self.comm.Abort(1)
 
   def gather_variable_length_numpy_arrays(self, send_arrays, root=0, dtype=float):
-    lengths = self.comm.gather(send_arrays.size, root=root)
-    if self.rank == root:
-      gathered_arrays = np.empty(np.sum(lengths), dtype=dtype)
-    else:
-      gathered_arrays = None
-    self.comm.Gatherv(sendbuf=send_arrays, recvbuf=(gathered_arrays, lengths), root=root)
-    return gathered_arrays
+    with adaptive_collective(self.comm.gather, self.comm.allgather) as gather:
+      lengths = gather(send_arrays.size, root=root)
+    gathered_array = np.empty(np.sum(lengths), dtype=dtype) if lengths else None
+    with adaptive_collective(self.comm.Gatherv, self.comm.Allgatherv) as gather_v:
+      gather_v(sendbuf=send_arrays, recvbuf=(gathered_array, lengths), root=root)
+    return gathered_array
