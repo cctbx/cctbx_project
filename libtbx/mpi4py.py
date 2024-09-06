@@ -60,6 +60,8 @@ class mpiCommEmulator(object):
       counter += count
   def allgather(self, sendobj):
     return [sendobj]
+  def Allgatherv(self, sendbuf, recvbuf):
+    return self.Gatherv(sendbuf, recvbuf)
   def Abort(self,errorcode=0):
     import sys
     sys.exit()
