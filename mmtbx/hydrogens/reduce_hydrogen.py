@@ -196,7 +196,8 @@ class place_hydrogens():
       self.time_remove_isolated    = None
       self.time_riding_manager     = None
       self.time_remove_H_nopara    = None
-      self.time_reset_idealize     = None
+      self.time_reset              = None
+      self.time_idealize           = None
       self.time_remove_H_on_links  = None
 
 # ------------------------------------------------------------------------------
@@ -336,8 +337,10 @@ class place_hydrogens():
     t0 = time.time()
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale)
     self.model.reset_occupancy_for_hydrogens_simple()
+    self.time_reset = round(time.time()-t0, 2)
+    t0 = time.time()
     self.model.idealize_h_riding()
-    self.time_reset_idealize = round(time.time()-t0, 2)
+    self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
     # --------------------------------------------------------------------------
@@ -658,7 +661,8 @@ The following H atoms were not placed because they could not be parameterized
       time_remove_isolated    = self.time_remove_isolated,
       time_riding_manager     = self.time_riding_manager,
       time_remove_H_nopara    = self.time_remove_H_nopara,
-      time_reset_idealize     = self.time_reset_idealize,
+      time_reset              = self.time_reset,
+      time_idealize           = self.time_idealize,
       time_remove_H_on_links  = self.time_remove_H_on_links)
 
 # ------------------------------------------------------------------------------
@@ -667,13 +671,14 @@ The following H atoms were not placed because they could not be parameterized
     print('Detailed timings:')
     print("Rebox model:", self.time_rebox_model)
     print('Remove element X:', self.time_remove_element_X)
-    print("Add_missing_H_atoms_at_bogus_position:", self.time_add_missing_H)
-    print('Add N-terminal propeller', self.time_terminal_propeller)
+    print("Add missing H at bogus position:", self.time_add_missing_H)
+    print('Add N-terminal propeller:', self.time_terminal_propeller)
     print("Get new model obj and grm:", self.time_make_grm )
     print("Remove isolated H:", self.time_remove_isolated)
     print("Setup Riding manager:", self.time_riding_manager)
     print("Remove H that were not parameterized:", self.time_remove_H_nopara)
-    print("Reset adp, occ; idealize H positions:", self.time_reset_idealize)
+    print("Reset adp, occ:", self.time_reset)
+    print("idealize H positions:", self.time_idealize)
     print("Remove H on links:", self.time_remove_H_on_links)
     print()
 
