@@ -40,6 +40,8 @@ class StateSignals(QObject):
   remove_ref = Signal(object) # ref
 
   # Selection signals
+  picking_level = Signal(str) # picking granularity ('atom', 'residue')
+
   select_all = Signal(bool)
   deselect_all = Signal(bool)
   selection_added = Signal(object) # selection ref *

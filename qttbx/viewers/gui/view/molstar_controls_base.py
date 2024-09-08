@@ -26,8 +26,7 @@ from PySide2.QtWidgets import (
     QWidget
 )
 
-from qttbx.viewers.gui.view.widgets.history_line_edit import HistoryLineEdit
-from qttbx.viewers.gui.view.selection_controls import ScrollableHierarchyWidget, SearchSelectDialog
+from qttbx.viewers.gui.view.widgets.toggles import ToggleIconButton
 
 # Enable high DPI scaling
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
@@ -52,24 +51,29 @@ class MolstarControlsBaseView(QWidget):
     self.active_model_label = QLabel()
 
 
-    # Selection Search
-    #####################
-    self.button_search = QPushButton()
-    icon = qta.icon("mdi.magnify")
-    self.button_search.setIcon(icon)
-    self.button_search.setToolTip("Specify a selection")
-    self.button_search.setMaximumWidth(self._all_button_width)    
+
+    # Selection
+
+    # Picking level
+    self.picking_level = QComboBox()
+    self.picking_level.addItem("Atom")
+    self.picking_level.addItem("Residue")
+    self.picking_level.setToolTip("Pick atoms or residues")
+
+
+    # Start manual selection
+    self.selector_toggle = ToggleIconButton(qta.icon("mdi.crosshairs"),qta.icon("mdi.eye"))
+    self.selector_toggle.setToolTip("Toggle selecting")
+    self.selector_toggle.setMaximumWidth(self._all_button_width)
 
     # Clear selection
     self.button_cancel = QPushButton()
     icon = qta.icon("mdi.cancel")
     self.button_cancel.setIcon(icon)
-    self.button_cancel.setToolTip("Specify a selection")
+    self.button_cancel.setToolTip("Clear selection")
     self.button_cancel.setMaximumWidth(self._all_button_width)  
 
-    # search box goes in popup
-    self.selection_edit = HistoryLineEdit()
-
+    
     
     def separator():
       separator = QFrame()
@@ -82,8 +86,9 @@ class MolstarControlsBaseView(QWidget):
       ("",spacer_min())
     ]
     selection_components = [
-      ("Search", self.button_search),
+      ("Select",self.selector_toggle),
       ("Clear", self.button_cancel),
+      ("Picking",self.picking_level),
       ("",spacer_min()),
     ]
     self.settings_vbox = QVBoxLayout()
@@ -126,7 +131,4 @@ class MolstarControlsBaseView(QWidget):
     main_layout.addLayout(self.selection_panel)
     self.settings_vbox.addLayout(main_layout)
     self.setLayout(self.settings_vbox)
-
-    # hierarchy select widgets
-    self.search_select_dialog = None # set by controller
 

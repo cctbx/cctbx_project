@@ -71,6 +71,7 @@ class MolstarController(Controller):
     self.state.signals.model_change.connect(self.load_model_from_ref)
 
     # Selections
+    self.state.signals.picking_level.connect(self.set_picking_level)
     self.state.signals.select_all.connect(self.select_all)
     self.state.signals.selection_activated.connect(self.select_from_ref)
     self.state.signals.deselect_all.connect(self.deselect_all)
@@ -173,6 +174,8 @@ class MolstarController(Controller):
         ref_id=ref.uuid,
       )
 
+  def toggle_selection_mode(self,value):
+    self.graphics._toggle_selection_mode(value)
 
   # Selection
   def sync_selection(self):
@@ -245,7 +248,7 @@ class MolstarController(Controller):
   def close_viewer(self):
     self.graphics.close_viewer()
 
-  def picking_level(self,picking_level):
+  def set_picking_level(self,picking_level):
     if 'atom' in picking_level:
       self.set_granularity("element")
     elif "residue" in picking_level:
@@ -256,4 +259,4 @@ class MolstarController(Controller):
   def set_granularity(self,value="residue"):
     assert value in ['element','residue'], 'Provide one of the implemented picking levels'
     self._picking_granularity = value
-    self.viewer._set_granularity(value=value)
+    self.graphics._set_granularity(value=value)

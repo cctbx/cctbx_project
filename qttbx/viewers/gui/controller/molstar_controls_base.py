@@ -15,10 +15,10 @@ import iotbx
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 from .controller import Controller
-from .selection_controls import ScrollableHierarchyController, SearchSelectDialogController
-from ..view.selection_controls import SearchSelectDialog
-from ..model.ref import Ref, SelectionRef
-from ..model.selection import Selection
+# from .selection_controls import ScrollableHierarchyController, SearchSelectDialogController
+# from ..view.selection_controls import SearchSelectDialog
+from ..model.ref import Ref#, SelectionRef
+#from ..model.selection import Selection
 
 
 class MolstarControlsController(Controller):
@@ -27,27 +27,54 @@ class MolstarControlsController(Controller):
   """
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-    self.last_selection_exec = time.time()
-
-    ## Signals
     
-    # Enable return key to execute selection
-    self.view.selection_edit.returnPressed.connect(self.execute_selection)
-    self.state.signals.model_change.connect(self.active_model_change)
-    self.view.button_search.clicked.connect(self.search_select_dialog)
-    self.view.button_cancel.clicked.connect(self.viewer.deselect_all)
 
-    # Hierarchy Selector
-    self.search_select_dialog_controller = None
-    self.picking_level = "atom"
-  
-  
+    # Picking level
+    self.picking_level = 'atom' # internal state
+    self.view.picking_level.currentTextChanged.connect(self.picking_level_change) # user initiates new level
+    self.state.signals.picking_level.connect(self.picking_level_change) # update view to reflect new level
+
+    # Enable return key to execute selection
+    self.view.selector_toggle.clicked.connect(self.start_selecting)
+    self.view.button_cancel.clicked.connect(self.viewer.deselect_all)
 
 
 
   @property
   def viewer(self):
     return self.parent
+
+
+  @property
+  def picking_level_displayed(self):
+    current_text = self.view.picking_level.currentText().lower()
+    return current_text
+
+  def picking_level_change(self, picking_level):
+    picking_level = picking_level.lower()
+    assert picking_level in ["atom","residue"]
+    if picking_level != self.picking_level: # only do stuff if needed
+      # update internal state
+      self.picking_level = picking_level
+
+      # Update widget, emit signal
+      if picking_level == "residue":
+        self.view.picking_level.setCurrentIndex(1)
+        self.state.signals.picking_level.emit("residue")
+      elif picking_level == "atom":
+        self.view.picking_level.setCurrentIndex(0)
+        self.state.signals.picking_level.emit("atom")
+    
+    assert self.picking_level_displayed == picking_level, f"picking level displayed: {self.picking_level_displayed}, picking level set: {picking_level}"
+    
+
+
+  def start_selecting(self,*args):
+    # selection button was clicked. is_checked is NEW state
+    if self.view.selector_toggle.is_on: # opposite of intuition, 'on'
+      self.viewer.toggle_selection_mode(True)
+    else:
+      self.viewer.toggle_selection_mode(False)
 
   def clear_viewer(self):
     self.parent.clear_viewer("Clearing the viewer.")
@@ -60,73 +87,3 @@ class MolstarControlsController(Controller):
           label = model_ref.data.filename
           self.view.active_model_label.setText(label)
 
-
-  @Slot()
-  def select_active_selection(self):
-    #self.highlight_persist(None,value=True) # set the highlight persist automatically when selecting
-    if self.state.active_selection_ref is None:
-      self.viewer.deselect_all()
-    else:
-      self.viewer.select_from_query(self.state.active_selection_ref.query)
-
-  def clear_selection(self):
-    self.state.active_selection_ref = None
-    self.viewer.deselect_all()
-
-  @Slot()
-  def start_selecting(self,is_checked):
-    # selection button was clicked. is_checked is NEW state
-    if is_checked:
-      self.viewer.toggle_selection_mode(True)
-    else:
-      self.viewer.toggle_selection_mode(False)
-
-  @Slot()
-  def execute_selection(self):
-    """
-    This is a selection from the text box
-    """
-    if time.time()-self.last_selection_exec<5:
-      return
-    text = self.view.selection_edit.text()
-    if text:
-      selection = Selection.from_selection_string(text,model=self.state.active_model)
-      passed, fail_reason = selection.is_validated, selection.fail_reason
-      
-      if not passed:
-        self.warning({"msg":f"Unable to select: {fail_reason}","uuid": Ref._generate_uuid()})
-        self.view.selection_edit.clear()
-        self.view.selection_edit.setPlaceholderText(f"Unsupported selection: {fail_reason}: {text}")
-        return
-      if text.startswith("select"):
-        text = text[7:]
-      elif text.startswith("sel "):
-        text = text[4:]
-      try:
-        selection = Selection.from_selection_string(text,model=self.state.active_model)
-        self.viewer.select_from_selection(selection)
-        self.viewer.focus_selected()
-        self.save_text_to_history()
-        self.view.selection_edit.setPlaceholderText(text)
-      except:
-        #raise
-        self.view.selection_edit.clear()
-        self.view.selection_edit.setPlaceholderText(f"Unsupported selection: syntax not currently supported: {text}")
-  
-
-  def save_text_to_history(self):
-    text = self.view.selection_edit.text()
-    if text:
-      self.view.selection_edit.history.insert(0, text)
-      self.view.selection_edit.index = -1
-      self.view.selection_edit.clear()
-
-
-  def search_select_dialog(self):
-    dialog = SearchSelectDialog(title="Selection search", parent=self.view)
-    self.view.search_select_dialog = dialog
-    self.search_select_dialog_controller = SearchSelectDialogController(parent=self,view=self.view.search_select_dialog)
-    default_width = dialog.width()
-    new_width = default_width * 6
-    dialog.setMinimumWidth(new_width)
-    dialog.exec_()
