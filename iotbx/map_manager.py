@@ -700,7 +700,6 @@ class map_manager(map_reader, write_ccp4_map):
 
     current_end = add_tuples_int(current_origin, self.map_data().all())
     new_end = add_tuples_int(desired_origin, self.map_data().all())
-
     shift_to_apply_cart = self.grid_units_to_cart(shift_to_apply)
 
     shift_info = group_args(
