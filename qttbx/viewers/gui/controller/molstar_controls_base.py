@@ -54,8 +54,11 @@ class MolstarControlsController(Controller):
 
 
   def active_model_change(self,model_ref):
-    label = model_ref.data.filename
-    self.view.active_model_label.setText(label)
+    if model_ref:
+      if model_ref.data:
+        if model_ref.data.filename:
+          label = model_ref.data.filename
+          self.view.active_model_label.setText(label)
 
 
   @Slot()

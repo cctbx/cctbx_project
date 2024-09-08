@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import subprocess
 import sys
-
+import time
 from phenix.program_template import ProgramTemplate
 from libtbx import group_args
 import mmtbx
@@ -32,6 +32,9 @@ class Program(ProgramTemplate):
 
     include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 
+  show_console = False
+    .type = bool
+    .help = "Show the interactive Python console as a tab"
   """
 
   def validate(self):
@@ -78,9 +81,13 @@ class Program(ProgramTemplate):
     
     # Core top level object initialization
     self.state = State(self.data_manager,params=self.params)
-    self.view = MolstarBaseAppView()
+    self.view = MolstarBaseAppView(params=self.params)
     self.controller = MolstarBaseAppController(parent=self.state,view=self.view)
+
+    # Reach into the Console tab to make variables accessible
+    self.view.python_console.jupyter_widget.kernel_manager.kernel.shell.push({'self': self})
 
     # Start
     self.controller.view.show()
+     
     sys.exit(app.exec_())

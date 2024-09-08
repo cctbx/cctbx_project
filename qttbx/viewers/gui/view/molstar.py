@@ -3,7 +3,7 @@ The view for the molstar web app.
 """
 
 from PySide2.QtWebEngineWidgets import QWebEngineView, QWebEnginePage
-from PySide2.QtCore import Signal, QEventLoop, QObject
+from PySide2.QtCore import Signal, QEventLoop, QObject, QUrl
 from PySide2.QtGui import QDragEnterEvent, QDropEvent
 from PySide2.QtWebEngineWidgets import QWebEngineView
 from PySide2.QtWidgets import (
@@ -44,7 +44,9 @@ class MolstarWebEngineView(QWebEngineView):
     def __init__(self,*args,**kwargs):
        super().__init__(*args,**kwargs)
        self.signals = Signals()
-
+    
+    def set_url(self,url):
+        self.setUrl(QUrl(url))
     def dragEnterEvent(self, event: QDragEnterEvent):
         event.ignore()
 

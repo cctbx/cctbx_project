@@ -31,8 +31,8 @@ class MolstarBaseAppController(Controller):
 
     # Finish
     self.state.start()
-    if hasattr(self,"molstar"):
-      self.molstar._update_state_from_remote()
+    # if hasattr(self,"molstar"):
+    #   self.molstar._update_state_from_remote()
 
 
   def update_from_remote(self, json_data):

@@ -3,29 +3,18 @@ The controller for the molstar web app
 """
 import time
 
-from PySide2.QtCore import QTimer
+from PySide2.QtCore import QTimer, QUrl
 from PySide2.QtWidgets import QMessageBox
 
 from .controller import Controller
-from ...molstar.molstar import MolstarGraphics
+#from ...molstar.molstar import MolstarGraphics
+from molstar_adaptbx.phenix.molstar import MolstarGraphics
+from molstar_adaptbx.phenix.utils import get_conda_env_directory
+from molstar_adaptbx.phenix.server_utils import NodeHttpServer
 from .molstar_controls_base import MolstarControlsController
 from ..controller.molstar_controls_base import MolstarControlsController
 from ..model.selection import Selection
 from ..model.ref import ModelRef, SelectionRef
-
-class sync_manager:
-  """
-  Use this class to run commands which require syncronization with the typescript app
-  """
-  def __init__(self, molstar_controller):
-    self.molstar_controller = molstar_controller
-    
-  def __enter__(self):
-    pass
-
-  def __exit__(self, exc_type, exc_val, exc_tb):
-    # Start timer when complete
-    self.molstar_controller.sync_timer.start()
 
 
 class MolstarController(Controller):
@@ -47,7 +36,23 @@ class MolstarController(Controller):
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
 
-    self.graphics = MolstarGraphics(self.view.web_view,dm=self.state.data_manager)
+    # Start server and molstar graphics viewer
+    env_name = "molstar_env"
+    env_dir = get_conda_env_directory(env_name)
+
+
+    env_bin_dir = f"{env_dir}/bin"
+    molstar_install_dir = "/Users/user/software/debug/modules/molstar"
+    server = NodeHttpServer([
+      f"{env_bin_dir}/node",
+      f"{molstar_install_dir}/src/phenix/server.js"
+    ],port=8081,allow_port_change=True)
+
+    self.graphics = MolstarGraphics(
+      web_view = self.view.web_view,
+      dm=self.state.data_manager,
+      server = server,
+    )
     self.graphics.state = self.state
     self.graphics_controls = MolstarControlsController(parent=self,view=self.view.viewer_controls)
 
@@ -55,13 +60,12 @@ class MolstarController(Controller):
     self._blocking_commands = True
     self._picking_granularity = "residue"
     self.references_remote_map = {} # Local ref_id : molstar_ref_id
-    #self.sync_manager = SyncManager(self)
 
 
     # Signals
-    self.graphics.web_view.loadStarted.connect(self._on_load_started)
-    self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
-    self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
+    # self.graphics.web_view.loadStarted.connect(self._on_load_started)
+    # self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
+    # self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
 
     # Maps/Models
     self.state.signals.model_change.connect(self.load_model_from_ref)
@@ -74,42 +78,42 @@ class MolstarController(Controller):
     self.state.signals.selection_focus.connect(self.focus_selected)
 
 
-    #timer for update
-    self.sync_timer = QTimer()
-    self.sync_timer.setInterval(2000)
-    self.sync_timer.timeout.connect(self._update_state_from_remote)
-    self.timer_accumulator = 0
-    self.timer_max_retries = 10
+    # #timer for update
+    # self.sync_timer = QTimer()
+    # self.sync_timer.setInterval(2000)
+    # self.sync_timer.timeout.connect(self._update_state_from_remote)
+    # self.timer_accumulator = 0
+    # self.timer_max_retries = 10
 
     # Start by default
     self.start_viewer()
 
-  def _on_load_started(self):
-    self._blocking_commands = True
-    self.graphics._blocking_commands = True
-    self.view.parent_explicit.setEnabled(False)
+  # def _on_load_started(self):
+  #   self._blocking_commands = True
+  #   self.graphics._blocking_commands = True
+  #   self.view.parent_explicit.setEnabled(False)
 
-  def _on_load_finished_pre_sync(self, ok):
-    if ok:
-      self.log("Page loaded successfully. Waiting for sync")
-      self.sync_timer.start()
-    else:
-      self.log("An error occurred while loading web app.")
-      self._blocking_commands = True
+  # def _on_load_finished_pre_sync(self, ok):
+  #   if ok:
+  #     self.log("Page loaded successfully. Waiting for sync")
+  #     self.sync_timer.start()
+  #   else:
+  #     self.log("An error occurred while loading web app.")
+  #     self._blocking_commands = True
 
-  def _on_load_finished_post_sync(self, ok):
-    self.view.parent_explicit.setEnabled(True) # enable gui
-    self._blocking_commands = False
-    self.graphics._blocking_commands = False
-    self._load_all_from_ref()
+  # def _on_load_finished_post_sync(self, ok):
+  #   self.view.parent_explicit.setEnabled(True) # enable gui
+  #   self._blocking_commands = False
+  #   self.graphics._blocking_commands = False
+  #   self._load_all_from_ref()
 
-  def _update_state_from_remote(self):
-    self.state.molstarState = self.graphics.sync_remote()
-    if self.state.molstarState and self.state.molstarState.has_synced:
-      self.sync_timer.stop()
-    self.timer_accumulator+=1
-    if self.timer_accumulator>self.timer_max_retries:
-      self.sync_timer.stop() # give up
+  # def _update_state_from_remote(self):
+  #   self.state.molstarState = self.graphics.sync_remote()
+  #   if self.state.molstarState and self.state.molstarState.has_synced and self.timer_accumulator>1:
+  #     self.sync_timer.stop()
+  #   self.timer_accumulator+=1
+  #   if self.timer_accumulator>self.timer_max_retries:
+  #     self.sync_timer.stop() # give up
 
   # API
   def start_viewer(self):
@@ -141,11 +145,10 @@ class MolstarController(Controller):
         return
 
       # Ref needs to be loaded
-      with sync_manager(self):
-        self.graphics.load_model(
-          filename=str(ref.data.filepath), # mmtbx model
-          ref_id=ref.uuid,
-        )
+      self.graphics.load_model(
+        filename=str(ref.data.filepath), # mmtbx model
+        ref_id=ref.uuid,
+      )
 
 
   # Selection

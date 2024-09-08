@@ -8,7 +8,7 @@ from PySide2.QtGui import QGuiApplication
 from PySide2.QtWidgets import QMainWindow
 
 from qttbx.viewers.gui.view.molstar import MolstarTabView
-#from ..tabs.console import JupyterTabWidget, JSConsoleTab
+from qttbx.viewers.gui.view.widgets.console import JupyterTabWidget#, JSConsoleTab
 #from ..tabs.selection import SelectionsTabView
 #from ..cif import CifTabView
 #from ..restraint import RestraintTabView
@@ -52,11 +52,18 @@ class MolstarBaseAppView(QMainWindow):
     self.viewer_tab_view.order_index=0
     self.tabs.insertTab(0,self.viewer_tab_view, "Viewer")
 
-    # self.selection_tab_view = SelectionsTabView(parent=self)
-    # self.selection_tab_view.order_index=1
-    # self.tabs.addTab(self.selection_tab_view, "Selections")
-    # #self.tabs.toggle_tab_visible("Selections",show=False)
-   
+    # Consoles
+    self.consoles = GUITabWidget(parent=self)
+    # Python console subtab
+    self.python_console = JupyterTabWidget(parent=self.consoles)
+    self.consoles.addTab(self.python_console, "Python")
+    self.tabs.addTab(self.consoles,"Console")
+
+    # Not visible by default
+    if self.params:
+      if not self.params.show_console:
+        self.tabs.toggle_tab_visible("Console",show=False)
+
 
     # Pop out viewer by default
     #self.tabs.simulate_drag_out(0)
