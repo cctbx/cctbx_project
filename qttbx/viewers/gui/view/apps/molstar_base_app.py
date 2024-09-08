@@ -61,7 +61,7 @@ class MolstarBaseAppView(QMainWindow):
 
     # Not visible by default
     if self.params:
-      if not self.params.show_console:
+      if not self.params.console:
         self.tabs.toggle_tab_visible("Console",show=False)
 
 

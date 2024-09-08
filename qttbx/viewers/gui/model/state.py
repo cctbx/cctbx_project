@@ -15,12 +15,10 @@ from PySide2.QtWidgets import QMessageBox
 from iotbx.data_manager import DataManager
 
 from .base import DataClassBase
-from .molstar import Reference, Structure, Component, Representation
 from .ref import *
 
 from .selection import Selection
 from .data import MolecularModelData
-from .molstar import MolstarState
 
 
 
@@ -83,7 +81,7 @@ class State:
     self.references = {} # dictionary of all 'objects' tracked by the State
 
     # External molstar state
-    self._molstar_state = MolstarState(references={},has_synced=False)
+    self._molstar_state = None
 
 
     # Signals

@@ -32,7 +32,7 @@ class Program(ProgramTemplate):
 
     include scope mmtbx.monomer_library.pdb_interpretation.grand_master_phil_str
 
-  show_console = False
+  console = False
     .type = bool
     .help = "Show the interactive Python console as a tab"
   """

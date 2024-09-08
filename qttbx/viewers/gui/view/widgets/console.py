@@ -31,7 +31,7 @@ class JupyterTabWidget(GUITab):
 
     For example:
       {'self.view':<30} : {'the Qt main window':<30}
-      {'self.controller.molstar.viewer':<30} : {'the python interface for the Mol* viewer':<30}
+      {'self.controller.molstar.graphics':<30} : {'the python interface for the Mol* viewer':<30}
       {'self.state.data_manager':<30} : {'the cctbx data manager':<30}
     """
     kernel_manager.kernel.gui = 'qt'

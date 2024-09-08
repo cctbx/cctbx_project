@@ -7,7 +7,7 @@ from PySide2.QtCore import QTimer, QUrl
 from PySide2.QtWidgets import QMessageBox
 
 from .controller import Controller
-#from ...molstar.molstar import MolstarGraphics
+from molstar_adaptbx.phenix.api import MolstarState
 from molstar_adaptbx.phenix.molstar import MolstarGraphics
 from molstar_adaptbx.phenix.utils import get_conda_env_directory
 from molstar_adaptbx.phenix.server_utils import NodeHttpServer
@@ -63,9 +63,9 @@ class MolstarController(Controller):
 
 
     # Signals
-    # self.graphics.web_view.loadStarted.connect(self._on_load_started)
-    # self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
-    # self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
+    self.graphics.web_view.loadStarted.connect(self._on_load_started)
+    self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
+    self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
 
     # Maps/Models
     self.state.signals.model_change.connect(self.load_model_from_ref)
@@ -78,42 +78,65 @@ class MolstarController(Controller):
     self.state.signals.selection_focus.connect(self.focus_selected)
 
 
-    # #timer for update
-    # self.sync_timer = QTimer()
-    # self.sync_timer.setInterval(2000)
-    # self.sync_timer.timeout.connect(self._update_state_from_remote)
-    # self.timer_accumulator = 0
-    # self.timer_max_retries = 10
+    #timer for update
+    self.sync_timer = QTimer()
+    self.sync_timer.setInterval(2000)
+    self.sync_timer.timeout.connect(self._update_state_from_remote)
+    self.timer_accumulator = 0
+    self.timer_max_retries = 10
 
     # Start by default
     self.start_viewer()
 
-  # def _on_load_started(self):
-  #   self._blocking_commands = True
-  #   self.graphics._blocking_commands = True
-  #   self.view.parent_explicit.setEnabled(False)
+  # Functions used during the initial sync
+  def _on_load_started(self):
+    """
+    Initial sync step 1: The web view window emits
+      a signal 'loadStarted' which calls this function.
+    """
+    self._blocking_commands = True
+    self.graphics._blocking_commands = True
+    self.view.parent_explicit.setEnabled(False)
 
-  # def _on_load_finished_pre_sync(self, ok):
-  #   if ok:
-  #     self.log("Page loaded successfully. Waiting for sync")
-  #     self.sync_timer.start()
-  #   else:
-  #     self.log("An error occurred while loading web app.")
-  #     self._blocking_commands = True
+  def _on_load_finished_pre_sync(self, ok):
+    """
+    Initial sync step 2: The web view window emits
+      a signal 'loadFinished' which calls this function.
 
-  # def _on_load_finished_post_sync(self, ok):
-  #   self.view.parent_explicit.setEnabled(True) # enable gui
-  #   self._blocking_commands = False
-  #   self.graphics._blocking_commands = False
-  #   self._load_all_from_ref()
+      In turn, a timer is started which periodically polls to
+        see if the Molstar web app has loaded (distinct from the web view)
+    """
+    if ok:
+      self.log("Page loaded successfully. Waiting for sync")
+      self.sync_timer.start()
+    else:
+      self.log("An error occurred while loading web app.")
+      self._blocking_commands = True
 
-  # def _update_state_from_remote(self):
-  #   self.state.molstarState = self.graphics.sync_remote()
-  #   if self.state.molstarState and self.state.molstarState.has_synced and self.timer_accumulator>1:
-  #     self.sync_timer.stop()
-  #   self.timer_accumulator+=1
-  #   if self.timer_accumulator>self.timer_max_retries:
-  #     self.sync_timer.stop() # give up
+  def _on_load_finished_post_sync(self, ok):
+    """
+    Initial sync step 3: The timer periodically calls
+    '_update_state_from_remote', which in turn calls 'sync_remote'
+
+    If the results are satisfactory, this function unblocks everything
+      and loads data.
+    """
+    self.view.parent_explicit.setEnabled(True) # enable gui
+    self._blocking_commands = False
+    self.graphics._blocking_commands = False
+    self._load_all_from_ref()
+
+  def _update_state_from_remote(self):
+    molstar_state = self.graphics.sync_remote()
+    if (molstar_state and 
+    isinstance(molstar_state,MolstarState) and 
+    molstar_state.connection_id == self.graphics.connection_id):
+      self.sync_timer.stop()
+      self.state.signals.has_synced.emit(True)
+    else:
+      self.timer_accumulator+=1
+    if self.timer_accumulator>self.timer_max_retries:
+      self.sync_timer.stop() # give up
 
   # API
   def start_viewer(self):
