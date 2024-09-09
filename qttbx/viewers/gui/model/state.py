@@ -14,11 +14,10 @@ from PySide2.QtWidgets import QMessageBox
 
 from iotbx.data_manager import DataManager
 
-from .base import DataClassBase
-from .ref import *
-
-from .selection import Selection
-from .data import MolecularModelData
+from .ref import (
+  Ref,
+  ModelRef,
+)
 
 
 
@@ -157,18 +156,8 @@ class State:
     self.references[ref.uuid] = ref
 
     if isinstance(ref,ModelRef):
-      #self.active_model_ref = ref
-      #self.signals.model_change.emit(ref)
+      self.active_model_ref = ref
 
-      # Add 'all' selection ref
-      selection = Selection.from_selection_string("all",model=ref.data.model)
-      selection_ref = SelectionRef(selection,ref)
-      self.add_ref(selection_ref)
-
-    elif isinstance(ref,SelectionRef):
-      if emit:
-        self.signals.selection_added.emit(ref)
-    
     else:
       raise ValueError(f"ref provided not among those expected: {ref}")
 
@@ -180,21 +169,6 @@ class State:
     if ref.entry:
       ref.entry.remove()
     del self.references[ref.uuid]
-  
-
-  def add_ref_from_phenix_selection_string(self,phenix_string):
-    selection = Selection.from_selection_string(phenix_string)
-    return self.add_ref_from_selection(selection)
-
-  def add_ref_from_selection(self,selection,model_ref=None,show=True,make_active=False):
-    if model_ref is None:
-      model_ref = self.active_model_ref
-    ref = SelectionRef(data=selection,model_ref=model_ref,show=show)
-    self.add_ref(ref)
-    if make_active:
-      self.active_selection_ref = ref
-    return ref
-
 
   def add_ref_from_mmtbx_model(self,model,label=None,filename=None):
     if model.get_number_of_atoms()==0:
@@ -205,8 +179,7 @@ class State:
       filepath = Path(filename).absolute()
 
     # add the model
-    data = MolecularModelData(filepath=filepath,model=model)
-    model_ref = ModelRef(data=data,show=True)
+    model_ref = ModelRef(data=model,show=True)
     self.add_ref(model_ref)
     return model_ref
 
@@ -276,30 +249,3 @@ class State:
     if self.active_model_ref is not None:
       return self.active_model_ref.model
 
-
-
-  #####################################
-  # Selections
-  #####################################
-
-  @property
-  def active_selection_ref(self):
-    return self._active_selection_ref
-
-  @active_selection_ref.setter
-  def active_selection_ref(self,value):
-    """
-    Assigning a SelectionRef to be 'active' emits a signal handled by the graphics controller
-
-    """
-    if value is None:
-      self._active_selection_ref =None
-      self.signals.deselect_all.emit(True)
-    else:
-      assert isinstance(value,Ref), "Set active_model_ref with instance of Ref or subclass"
-      assert value in self.references.values(), "Cannot set active ref before adding to state"
-      self._active_selection_ref = value
-      self.signals.selection_activated.emit(value)
-      self.signals.selection_focus.emit(value)
-
-  

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import subprocess
 import sys
-import time
+from pathlib import Path
 from phenix.program_template import ProgramTemplate
 from libtbx import group_args
 import mmtbx
@@ -10,6 +10,7 @@ from qttbx.viewers.gui.view.apps.molstar_base_app import MolstarBaseAppView
 from qttbx.viewers.gui.controller.apps.molstar_base_app import MolstarBaseAppController
 from qttbx.viewers.gui.model.state import State
 
+from PySide2.QtGui import QIcon
 from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QApplication
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -75,9 +76,10 @@ class Program(ProgramTemplate):
     app = QApplication(sys.argv)
 
     # get icon
-    #icon_path =  Path(__file__).parent / '../view/assets/icons/phenix/icon.icns'
-    #icon = QIcon(str(icon_path))
-    #qapp.setWindowIcon(icon)
+    icon_path =  Path(__file__).parent / '../viewers/gui/view/assets/icons/phenix.icns'
+    print("icon_path",icon_path)
+    icon = QIcon(str(icon_path))
+    app.setWindowIcon(icon)
     
     # Core top level object initialization
     self.state = State(self.data_manager,params=self.params)

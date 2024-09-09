@@ -164,8 +164,20 @@ class ModelRef(Ref):
       return ModelEntryView
 
   @property
+  def filename(self):
+    model = self.model
+    model_input = model.get_model_input()
+    source_info = model_input.source_info()
+    filename = None
+    for line in source_info.split("\n"):
+      if "file" in line:
+        filename = line.split()[1]
+        break
+    return filename
+
+  @property
   def model(self):
-    return self.data.model
+    return self.data
 
   # The optionally composed GeometryRef and RestraintsRef
   @property

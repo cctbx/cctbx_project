@@ -67,10 +67,7 @@ class MolstarController(Controller):
     # Selections
     self.state.signals.picking_level.connect(self.set_picking_level)
     self.state.signals.select_all.connect(self.select_all)
-    self.state.signals.selection_activated.connect(self.select_from_ref)
     self.state.signals.deselect_all.connect(self.deselect_all)
-    self.state.signals.selection_deactivated.connect(self.deselect_from_ref)
-    self.state.signals.selection_focus.connect(self.focus_selected)
 
     #timer for update
     self.sync_timer = QTimer()
@@ -166,7 +163,7 @@ class MolstarController(Controller):
 
       # Ref needs to be loaded
       self.graphics.load_model(
-        filename=str(ref.data.filepath), # mmtbx model
+        filename=ref.filename, # mmtbx model
         ref_id=ref.uuid,
       )
 
