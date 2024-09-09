@@ -7,15 +7,9 @@ from PySide2.QtCore import Signal
 from PySide2.QtGui import QGuiApplication
 from PySide2.QtWidgets import QMainWindow
 
-from qttbx.viewers.gui.view.molstar import MolstarTabView
-from qttbx.viewers.gui.view.widgets.console import JupyterTabWidget#, JSConsoleTab
-#from ..tabs.selection import SelectionsTabView
-#from ..cif import CifTabView
-#from ..restraint import RestraintTabView
+from qttbx.viewers.gui.view.molstar_base import MolstarTabView
+from qttbx.viewers.gui.view.widgets.console import JupyterTabWidget
 from qttbx.viewers.gui.view.widgets.tab import GUITabWidget
-#from ..geometry.top_tab import GeometryTabView
-#from ..restraint_edits.top_tab import EditsTabView
-
 
 class MolstarBaseAppView(QMainWindow):
   signal_close = Signal()

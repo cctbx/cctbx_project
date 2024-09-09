@@ -12,7 +12,7 @@ from PySide2.QtWidgets import (
 )
 
 from qttbx.viewers.gui.view.widgets.tab import GUITab
-from qttbx.viewers.gui.view.molstar_controls_base import MolstarControlsBaseView
+from qttbx.viewers.gui.view.viewer_controls_base import ViewerControlsBaseView
 
 class Signals(QObject):
   sync_signal = Signal()
@@ -108,7 +108,7 @@ class MolstarTabView(GUITab):
 
     #self.selection_controls = SelectionControlsView()
     #self.layout.addWidget(self.selection_controls)
-    self.viewer_controls = MolstarControlsBaseView()
+    self.viewer_controls = ViewerControlsBaseView()
     self.layout.addWidget(self.viewer_controls)
     
 

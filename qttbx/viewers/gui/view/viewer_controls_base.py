@@ -38,7 +38,7 @@ def spacer_max():
 def spacer_min():
   return QSpacerItem(20, 20, QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-class MolstarControlsBaseView(QWidget):
+class ViewerControlsBaseView(QWidget):
   def __init__(self, parent=None):
     super().__init__(parent=parent)
     self._all_button_width = 48

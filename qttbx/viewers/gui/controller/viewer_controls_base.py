@@ -18,7 +18,7 @@ from .controller import Controller
 from ..model.ref import Ref
 
 
-class MolstarControlsController(Controller):
+class ViewerControlsBaseController(Controller):
   """
   A controller which manages the minimum base level controls present in the molstar GUI tab
   """

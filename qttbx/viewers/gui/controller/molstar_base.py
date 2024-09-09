@@ -11,12 +11,11 @@ from molstar_adaptbx.phenix.api import MolstarState
 from molstar_adaptbx.phenix.molstar import MolstarGraphics
 from molstar_adaptbx.phenix.utils import get_conda_env_directory
 from molstar_adaptbx.phenix.server_utils import NodeHttpServer
-from .molstar_controls_base import MolstarControlsController
-from ..controller.molstar_controls_base import MolstarControlsController
-from ..model.ref import ModelRef, SelectionRef
+from qttbx.viewers.gui.controller.viewer_controls_base import ViewerControlsBaseController
+from qttbx.viewers.gui.model.ref import ModelRef, SelectionRef
 
 
-class MolstarController(Controller):
+class MolstarBaseController(Controller):
   """
   A controller which manages external graphics for Molstar. However it does not actually
     produce any JavaScript code. That is delegated to its 'graphics' member variable, and 
@@ -53,7 +52,7 @@ class MolstarController(Controller):
       server = server,
     )
     self.graphics.state = self.state
-    self.graphics_controls = MolstarControlsController(parent=self,view=self.view.viewer_controls)
+    self.graphics_controls = ViewerControlsBaseController(parent=self,view=self.view.viewer_controls)
 
 
     self._blocking_commands = True

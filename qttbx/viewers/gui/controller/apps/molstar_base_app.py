@@ -5,7 +5,7 @@ in a QtWebView with very rudimentary GUI controls.
 from PySide2.QtWidgets import QApplication
 from PySide2.QtCore import QEvent
 
-from qttbx.viewers.gui.controller.molstar import MolstarController
+from qttbx.viewers.gui.controller.molstar_base import MolstarBaseController
 from qttbx.viewers.gui.controller import Controller
 
 
@@ -18,7 +18,7 @@ class MolstarBaseAppController(Controller):
 
 
     # Main Level Components
-    self.molstar = MolstarController(parent=self,view=self.view.viewer_tab_view)
+    self.molstar = MolstarBaseController(parent=self,view=self.view.viewer_tab_view)
 
     # signals
     self.view.signal_close.connect(self.close_event)
