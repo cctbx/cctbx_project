@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import qtawesome as qta
 from PySide2.QtCore import Qt, QSize
 from PySide2.QtGui import QPalette, QPainter
 from PySide2.QtWidgets import (
@@ -43,9 +43,9 @@ class ScrollEntryView(QWidget):
     # Active toggle
     self.active_toggle = None
     if active_toggle:
-      icon_path_checked = Path(__file__).parent / '../assets/icons/material/radio_checked.svg'
-      icon_path_unchecked = Path(__file__).parent / '../assets/icons/material/radio_unchecked.svg'
-      self.active_toggle = ToggleIconLabel(str(icon_path_checked),str(icon_path_unchecked))
+      icon_checked = qta.icon("mdi.radiobox-marked")
+      icon_unchecked = qta.icon("mdi.radiobox-blank")
+      self.active_toggle = ToggleIconLabel(icon_checked,icon_unchecked)
       scale = 0.6
       self.active_toggle.setMaximumSize(QSize(self.height()*scale,self.height()*scale))
       self.active_toggle.setMinimumSize(QSize(self.height()*scale,self.height()*scale))

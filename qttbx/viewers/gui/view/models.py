@@ -1,5 +1,5 @@
 from pathlib import Path
-
+import qtawesome as qta
 from PySide2.QtGui import QIcon
 from PySide2.QtWidgets import (
     QFrame,
@@ -34,9 +34,9 @@ class ModelLikeEntryView(ScrollEntryView):
 
 
      # Visibility
-    on_icon_path = Path(__file__).parent / 'assets/icons/material/eye_open.svg'
-    off_icon_path = Path(__file__).parent / 'assets/icons/material/eye_closed.svg'
-    self.button_viz = ToggleIconButton(on_icon_path, off_icon_path, parent=self)
+    on_icon = qta.icon("mdi.eye")
+    off_icon = qta.icon("mdi.eye-off")
+    self.button_viz = ToggleIconButton(on_icon, off_icon, parent=self)
     self.button_viz.setToolTip("Toggle visibility")
     self.button_viz.setFixedSize(self._all_button_width,self._all_button_height)
     #button_color.setContentsMargins(0,0,0,0)
@@ -50,14 +50,14 @@ class ModelLikeEntryView(ScrollEntryView):
     # self.layout.addWidget(self.button_theme)
 
     # Representations
+    
     self.button_rep = RepresentationSelect(parent=self)
     self.button_rep.button.setFixedSize(self._all_button_width,self._all_button_height)
     self.layout.addWidget(self.button_rep)
 
     # Color picking widget
     self.button_color = QPushButton()
-    icon_path = Path(__file__).parent / 'assets/icons/material/paint_bucket.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.format-color-fill")
     self.button_color.setIcon(icon)
     self.button_color.setToolTip("Color fill")
     self.button_color.setFixedSize(self._all_button_width,self._all_button_height)
@@ -73,8 +73,7 @@ class ModelLikeEntryView(ScrollEntryView):
 
     # Close
     self.button_close = QPushButton()
-    icon_path = Path(__file__).parent / 'assets/icons/material/close.svg'
-    icon = QIcon(str(icon_path))
+    icon = qta.icon("mdi.close")
     self.button_close.setIcon(icon)
     self.button_close.setToolTip("Remove")
     self.button_close.setFixedSize(self._all_button_width,self._all_button_height)
