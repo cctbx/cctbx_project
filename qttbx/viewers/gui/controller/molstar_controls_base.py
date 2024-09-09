@@ -15,10 +15,7 @@ import iotbx
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 from .controller import Controller
-# from .selection_controls import ScrollableHierarchyController, SearchSelectDialogController
-# from ..view.selection_controls import SearchSelectDialog
-from ..model.ref import Ref#, SelectionRef
-#from ..model.selection import Selection
+from ..model.ref import Ref
 
 
 class MolstarControlsController(Controller):

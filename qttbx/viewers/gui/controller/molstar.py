@@ -13,7 +13,6 @@ from molstar_adaptbx.phenix.utils import get_conda_env_directory
 from molstar_adaptbx.phenix.server_utils import NodeHttpServer
 from .molstar_controls_base import MolstarControlsController
 from ..controller.molstar_controls_base import MolstarControlsController
-from ..model.selection import Selection
 from ..model.ref import ModelRef, SelectionRef
 
 
@@ -58,17 +57,12 @@ class MolstarController(Controller):
 
 
     self._blocking_commands = True
-    self._picking_granularity = "residue"
-    self.references_remote_map = {} # Local ref_id : molstar_ref_id
-
+    self._picking_granularity = "atom"
 
     # Signals
     self.graphics.web_view.loadStarted.connect(self._on_load_started)
     self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
     self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
-
-    # Maps/Models
-    self.state.signals.model_change.connect(self.load_model_from_ref)
 
     # Selections
     self.state.signals.picking_level.connect(self.set_picking_level)
@@ -77,7 +71,6 @@ class MolstarController(Controller):
     self.state.signals.deselect_all.connect(self.deselect_all)
     self.state.signals.selection_deactivated.connect(self.deselect_from_ref)
     self.state.signals.selection_focus.connect(self.focus_selected)
-
 
     #timer for update
     self.sync_timer = QTimer()
@@ -128,6 +121,9 @@ class MolstarController(Controller):
     self._load_all_from_ref()
 
   def _update_state_from_remote(self):
+    """
+    The function that decides, at each call, if the viewer has synced.
+    """
     molstar_state = self.graphics.sync_remote()
     if (molstar_state and 
     isinstance(molstar_state,MolstarState) and 
@@ -176,68 +172,6 @@ class MolstarController(Controller):
 
   def toggle_selection_mode(self,value):
     self.graphics._toggle_selection_mode(value)
-
-  # Selection
-  def sync_selection(self):
-    """
-    Poll selection from molstar viewer and set state. 
-    Returns True if it produced a valid non-empty selection
-    """
-    selection = self.poll_selection()
-    if selection.is_empty:
-      self.state.active_selection_ref = None
-      return False
-    else:
-      sel = self.state.active_mol.select_from_selection(selection)
-      if len(sel)>0:
-        sel_ref = SelectionRef(selection,model_ref=self.state.active_model_ref,show=False)
-        self.state.add_ref(sel_ref)
-        self.state.active_selection_ref = sel_ref
-        return True
-      else:
-        self.log("Skipping add selection due to empty selection")
-        return False
-
-  def poll_selection(self):
-    """
-    Poll selection from molstar viewer
-    Returns selection object
-    """
-    return self.graphics.poll_selection()
-
-  def _poll_selection_callback(self,callback,selection_json):
-    assert isinstance(selection_json,str) and len(selection_json.strip())>0, "Failure to recieve selection json"
-    query_atoms = SelectionQuery.from_json(selection_json)
-
-    # get the relevant model ref (to get mol)
-    ref_id = query_atoms.params.refId
-    model_ref = self.state.references[ref_id]
-    query_atoms.params.keymap = self.state.mmcif_column_map
-
-    # select sites
-    sites_sel = model_ref.mol.atom_sites.select_from_query(query_atoms)
-
-    # make condensed query
-    query_condensed = model_ref.mol.atom_sites._convert_sites_to_query(sites_sel)
-    query_condensed.params.refId = ref_id
-
-    query_dict = {ref_id:query_condensed}
-    if callback is not None:
-      callback(query_dict)
-
-  def select_from_ref(self,ref: SelectionRef):
-    return self.select_from_selection(ref.data)
-  def deselect_from_ref(self,ref:SelectionRef):
-    return self.deselect_all()
-    
-  def select_from_selection(self,selection: Selection):
-    return self.graphics.select_from_selection(selection)
-
-  # def select_from_selection_string(self,selection_string: str):
-  #   return self.graphics.select_from_selection_string(selection_string)
-
-  def focus_selected(self):
-    return self.graphics.focus_selected()
 
   def select_all(self):
     self.graphics.select_all()

@@ -34,9 +34,7 @@ class Controller:
     if parent:
       self.log = self.parent.log
     self.notifications = {}
-    # self.state.signals.warning.connect(self.warning)
-    # self.state.signals.notification.connect(self.notification)
-    # self.state.signals.error.connect(self.error)
+
 
   @property
   def params(self):
