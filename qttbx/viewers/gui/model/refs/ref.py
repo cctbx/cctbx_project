@@ -1,17 +1,14 @@
 """
 The fundamental object to interact with the data/model/state of the GUI
 """
-from __future__ import annotations # backwards compat string literal types
 from pathlib import Path
 import uuid
 import hashlib
 import json
-from dataclasses import replace
 from typing import Optional
 
 
 from PySide2.QtCore import QObject, Signal
-from mmtbx.model import manager as ModelManager
 
 
 class Ref:
@@ -26,7 +23,7 @@ class Ref:
   EntryViewClass = None       # Associate an Entry View class (Entry is a widget class to display a Ref)
   EntryControllerClass = None # Associate an Entry Controller class (controller to control the entry view)
 
-  def __init__(self,data: DataClassBase,show: bool = False):
+  def __init__(self,data: object,show: bool = False):
     self._data = data
     self._uuid = self._generate_uuid()
     self._identifiers = {"uuid":self.uuid}
@@ -133,103 +130,6 @@ class Ref:
     return short_uuid
 
 
-# Subclasses of Ref appear below:
-
-class ModelRef(Ref):
-  """
-  A Ref subclass for a molecular model. Specifically, a mmtbx.model.manager instance.
-
-  The ModelRef can compose a GeometryRef and RestraintsRef to associate specific geometry and/or 
-    generic restraints with the model.
-  """
-  _class_label_name = "model"
-  def __init__(self,
-    data: ModelManager, 
-    geometry: Optional[GeometryRef] = None, 
-    restraints: Optional[RestraintsRef] = None, 
-    show=True):
-    super().__init__(data=data,show=show)
-    self._geometry_ref = geometry
-    self._restraints_ref = restraints
-
-
-  @property
-  def EntryControllerClass(self):
-    from ..controller.models import ModelEntryController
-    return ModelEntryController
-
-  @property
-  def EntryViewClass(self):
-      from ..view.models import ModelEntryView
-      return ModelEntryView
-
-  @property
-  def filename(self):
-    model = self.model
-    model_input = model.get_model_input()
-    source_info = model_input.source_info()
-    filename = None
-    for line in source_info.split("\n"):
-      if "file" in line:
-        filename = line.split()[1]
-        break
-    return filename
-
-  @property
-  def model(self):
-    return self.data
-
-  # The optionally composed GeometryRef and RestraintsRef
-  @property
-  def geometry(self):
-    return self._geometry_ref
-
-  @geometry.setter
-  def geometry(self,value):
-    assert isinstance(value,(GeometryRef,type(None)))
-    self._geometry_ref = value
-
-
-  @property
-  def has_geometry(self):
-    return self.geometry is not None
-
-
-  @property
-  def restraints(self):
-    return self._restraints_ref
-
-  @restraints.setter
-  def restraints(self,value):
-    assert isinstance(value,(RestraintsRef,type(None)))
-    self._restraints_ref = value
-
-  @property
-  def has_restraints(self):
-    return self.restraints is not None
-
-
-
-class SelectionRef(Ref):
-  """
-  A Ref subclass to track molecular selections. Selections can be generic, but a SelectionRef enforces
-    an association between a Selection object and a specific molecular model
-  """
-  _class_label_name = 'selection'
-  def __init__(self,data: Selection,model: ModelRef,  show: Optional[bool] = True):
-    assert show is not None, "Be explicit about whether to show selection ref in list of selections or not"
-    assert ModelRef is not None, "Selection Ref cannot exist without reference model"
-    assert data is not None, "Provide a Selection as the data"
-    super().__init__(data=data, show=show)
-
-    self._model_ref = model
-
-  # The 'data' for a SelectionRef is a Selection
-  @property
-  def selection(self):
-    return self.data
-
-  @property
-  def model(self):
-    return self._model_ref
-
+  def adopt_state(self,state):
+    # An opportunity to do things when added to a state
+    pass

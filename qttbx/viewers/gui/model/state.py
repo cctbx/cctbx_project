@@ -14,11 +14,18 @@ from PySide2.QtWidgets import QMessageBox
 
 from iotbx.data_manager import DataManager
 
-from .ref import (
-  Ref,
-  ModelRef,
-)
+from .refs import Ref, DataManagerRef, ModelRef
 
+
+class ActiveEmitDict(dict):
+  def __init__(self,parent_state):
+    self.parent_state = parent_state
+    super().__init__()
+
+  def __setitem__(self, key, value):
+    assert isinstance(value,Ref)
+    super().__setitem__(key, value)
+    self.parent_state.signals.active_change.emit(value)
 
 
 class StateSignals(QObject):
@@ -33,25 +40,16 @@ class StateSignals(QObject):
   notification = Signal(dict) # A notification
   error = Signal(dict) # An error
   tab_change = Signal(str) 
-  model_change = Signal(object) # model ref
-  data_change = Signal() # The data manager has changed
+  active_change = Signal(object) # A ref instance
   has_synced = Signal(bool)
-  remove_ref = Signal(object) # ref
+  add_ref = Signal(Ref)
+  remove_ref = Signal(Ref)
 
   # Selection signals
   picking_level = Signal(str) # picking granularity ('atom', 'residue')
 
   select_all = Signal(bool)
   deselect_all = Signal(bool)
-  selection_added = Signal(object) # selection ref *
-  selection_activated = Signal(object)
-  selection_deactivated = Signal(object)
-
-  selection_hide = Signal(object)
-  selection_show = Signal(object)
-  selection_focus= Signal(object)
-  selection_rep_show = Signal(object,str) # Ref, representation_name
-
 
 
 class State:
@@ -78,27 +76,24 @@ class State:
     self._data_manager = data_manager
     self.debug = debug
 
+    # Signals
+    self.signals = StateSignals()
+    self.signals.remove_ref.connect(self.remove_ref)
+
+    
     # Python GUI state
-    self.references = {} # dictionary of all 'objects' tracked by the State
+    self.refs = {} # dictionary of all 'objects' tracked by the State
+    self.active_refs = ActiveEmitDict(self) # RefClass: Ref instance (max one active ref per class)
+
+    # Build from datamanager
+    dm_ref = DataManagerRef(data=self.data_manager)
+    for ref in dm_ref.get_all_refs(): # includes dm_ref
+      self.add_ref(ref)
+
 
     # External molstar state
     self._molstar_state = None
 
-
-    # Signals
-    self.signals = StateSignals()
-    self.signals.data_change.connect(self._data_manager_changed)
-    self.signals.remove_ref.connect(self.remove_ref)
-
-  def init_from_datamanager(self):
-    # models
-    if hasattr(self.data_manager,"get_model_names"):
-      for name in self.data_manager.get_model_names():
-        model = self.data_manager.get_model(filename=name)
-        self.add_ref_from_mmtbx_model(model,filename=name)
-        # set the first model in dm as active
-        if self.active_model_ref is None:
-          self.active_model_ref = self.references_model[0]
 
 
 
@@ -109,11 +104,6 @@ class State:
   def log(self,*args):
     if self.debug:
       print(*args)
-
-  
-  @property
-  def mmcif_column_map(self):
-    return self.parameters.core_map_to_mmcif
 
   @property
   def molstarState(self):
@@ -128,22 +118,7 @@ class State:
 
   @property
   def external_loaded(self):
-    return {"molstar":[ref.identifiers["molstar"] for ref_id,ref in self.references.items()]}
-
-
-  def update_from_remote_dict(self,remote_state_dict):
-    for ref_id,ref in remote_state_dict["references"].items():
-      if ref_id in self.references:
-        local_ref = self.state.references[ref_id]
-        local_ref.external_ids.update(ref["external_ids"])
-        local_ref.style.update(**ref["style"])
-
-
-  def start(self):
-    # get data out of datamanager
-    self.init_from_datamanager()
-    # Run this after all controllers are initialized
-    self.signals.model_change.emit(self.active_model_ref)
+    return {"molstar":[ref.identifiers["molstar"] for ref_id,ref in self.refs.items()]}
 
 
   def add_ref(self,ref,emit=True):
@@ -151,42 +126,25 @@ class State:
     Add a reference object to the state. 
       If emit=True, a signal will be emitted about the change.
     """
-
-    assert isinstance(ref,Ref), "Must add instance of Ref or subclass"
-    self.references[ref.uuid] = ref
-
-    if isinstance(ref,ModelRef):
-      self.active_model_ref = ref
-
-    else:
-      raise ValueError(f"ref provided not among those expected: {ref}")
-
-
+    self.refs[ref.uuid] = ref
+    ref.adopt_state(self)
 
   def remove_ref(self,ref):
     assert isinstance(ref,Ref), f"Must add instance of Ref or subclass, not {type(ref)}"
     #self.remove_node_and_downstream(ref) #TODO: Deleting refs could lead to dependency issues
     if ref.entry:
       ref.entry.remove()
-    del self.references[ref.uuid]
+    del self.refs[ref.uuid]
 
-  def add_ref_from_mmtbx_model(self,model,label=None,filename=None):
-    if model.get_number_of_atoms()==0:
-      self.log("Model with zero atoms, not added")
-      return
+  def get_refs(self,ref_class=None):
+    if not ref_class:
+      return list(self.refs.values())
+    else:
+      return [value for value in self.refs.values() if isinstance(value,ref_class)]
 
-    if filename is not None:
-      filepath = Path(filename).absolute()
-
-    # add the model
-    model_ref = ModelRef(data=model,show=True)
-    self.add_ref(model_ref)
-    return model_ref
-
-
-  @property
-  def references_model(self):
-    return [value for key,value in self.references.items() if isinstance(value,ModelRef)]
+  def get_active_ref(self,ref_class=ModelRef):
+    if ref_class in self.active_refs:
+      return self.active_refs[ref_class]
 
   @property
   def state(self):
@@ -200,52 +158,3 @@ class State:
   def dm(self):
     # alias
     return self.data_manager
-
-  def _data_manager_changed(self):
-    # Call this to emit a signal the data_manager changed.
-    #
-    # Unless putting signals in data manager, this must
-    # be called explicitly/manually if the data manager changes.
-    #self.signals.data_manager_changed.emit()
-    model_refs = [ref for ref in self.references_model]
-    model_keys = [str(ref.data.filepath) for ref in model_refs]
-    for filename in self.data_manager.get_model_names():
-      if str(filename) not in model_keys:
-        self.log(f"New file found in data manager: {filename} and not found in references: {model_keys}")
-        model = self.data_manager.get_model(filename=filename)
-        ref = self.add_ref_from_mmtbx_model(model,filename=filename)
-
-        self.signals.model_change.emit(self._active_model_ref) # No change, just trigger update
-
-
-  #####################################
-  # Models / Mols
-  #####################################
-
-  @property
-  def active_model_ref(self):
-    return self._active_model_ref
-
-  @active_model_ref.setter
-  def active_model_ref(self,value):
-
-    if value == self._active_model_ref:
-      return # do nothing if already the active ref
-
-    
-    if value is None:
-      self._active_model_ref = None
-    else:
-      assert isinstance(value,ModelRef), "Set active_model_ref with instance of Ref or subclass"
-      assert value in self.references.values(), "Cannot set active ref before adding to state"
-      self._active_model_ref = value
-
-
-      # emit signals
-      self.signals.model_change.emit(self.active_model_ref)
-      
-  @property
-  def active_model(self):
-    if self.active_model_ref is not None:
-      return self.active_model_ref.model
-

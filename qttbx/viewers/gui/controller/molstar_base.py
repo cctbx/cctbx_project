@@ -12,7 +12,7 @@ from molstar_adaptbx.phenix.molstar import MolstarGraphics
 from molstar_adaptbx.phenix.utils import get_conda_env_directory
 from molstar_adaptbx.phenix.server_utils import NodeHttpServer
 from qttbx.viewers.gui.controller.viewer_controls_base import ViewerControlsBaseController
-from qttbx.viewers.gui.model.ref import ModelRef, SelectionRef
+from qttbx.viewers.gui.model.refs import ModelRef
 
 
 class MolstarBaseController(Controller):
@@ -114,7 +114,9 @@ class MolstarBaseController(Controller):
     self.view.parent_explicit.setEnabled(True) # enable gui
     self._blocking_commands = False
     self.graphics._blocking_commands = False
-    self._load_all_from_ref()
+    active_model_ref = self.state.get_active_ref(ref_class=ModelRef)
+    if active_model_ref:
+      self.load_model_from_ref(active_model_ref)
 
   def _update_state_from_remote(self):
     """
@@ -137,12 +139,6 @@ class MolstarBaseController(Controller):
 
   def log_message(self,message):
     self.graphics.log_message(message)
-
-
-  def _load_all_from_ref(self,*args):
-    # Molstar must load inital models here
-    for ref in self.state.references_model:
-      self.load_model_from_ref(ref)
 
 
   def load_model_from_ref(self,ref,label=None,format='pdb'):

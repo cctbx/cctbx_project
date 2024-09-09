@@ -24,8 +24,8 @@ class MolstarBaseAppController(Controller):
     self.view.signal_close.connect(self.close_event)
     self.state.signals.tab_change.connect(self.change_tab_to)
 
-    # Finish
-    self.state.start()
+    # # Finish
+    # self.state.start()
 
 
   def close_application(self):

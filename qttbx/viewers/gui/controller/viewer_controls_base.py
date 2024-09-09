@@ -15,8 +15,6 @@ import iotbx
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
 
 from .controller import Controller
-from ..model.ref import Ref
-
 
 class ViewerControlsBaseController(Controller):
   """
@@ -24,7 +22,8 @@ class ViewerControlsBaseController(Controller):
   """
   def __init__(self,parent=None,view=None):
     super().__init__(parent=parent,view=view)
-    
+
+    self.state.signals.active_change.connect(self.active_model_change)
 
     # Picking level
     self.picking_level = 'atom' # internal state
@@ -34,6 +33,7 @@ class ViewerControlsBaseController(Controller):
     # Enable return key to execute selection
     self.view.selector_toggle.clicked.connect(self.start_selecting)
     self.view.button_cancel.clicked.connect(self.viewer.deselect_all)
+
 
 
 
@@ -77,10 +77,9 @@ class ViewerControlsBaseController(Controller):
     self.parent.clear_viewer("Clearing the viewer.")
 
 
-  def active_model_change(self,model_ref):
-    if model_ref:
-      if model_ref.data:
-        if model_ref.data.filename:
-          label = model_ref.data.filename
-          self.view.active_model_label.setText(label)
+  def active_model_change(self,ref):
+    if ref and isinstance(ref,ModelRef):
+      if model_ref.data.filename:
+        label = model_ref.data.filename
+        self.view.active_model_label.setText(label)
 
