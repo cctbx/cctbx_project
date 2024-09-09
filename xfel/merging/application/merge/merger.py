@@ -44,7 +44,8 @@ class merger(worker):
     even_reflections_merged = rt_util.merge_reflections(
         even_reflections,
         self.params.merging.minimum_multiplicity,
-        thresh=self.params.filter.outlier.mad_thresh
+        thresh=self.params.filter.outlier.mad_thresh,
+        verbose=self.mpi_helper.comm.rank==1
     )
     self.gather_and_output_reflections(even_reflections_merged, 'even')
 
@@ -54,7 +55,8 @@ class merger(worker):
         reflections,
         self.params.merging.minimum_multiplicity,
         nameprefix=name,
-        thresh=self.params.filter.outlier.mad_thresh
+        thresh=self.params.filter.outlier.mad_thresh,
+        verbose=self.mpi_helper.comm.rank==1
     )
     self.gather_and_output_reflections(all_reflections_merged, 'all')
 

@@ -50,7 +50,7 @@ class reflection_table_utils(object):
     return table
 
   @staticmethod
-  def merge_reflections(reflections, min_multiplicity, nameprefix=None, thresh=None):
+  def merge_reflections(reflections, min_multiplicity, nameprefix=None, thresh=None, verbose=False):
     '''Merge intensities of multiply-measured symmetry-reduced HKLs. The input reflection table must be sorted by symmetry-reduced HKLs.'''
     merged_reflections = reflection_table_utils.merged_reflection_table()
     for i_refls,refls in enumerate(reflection_table_utils.get_next_hkl_reflection_table(reflections=reflections)):
@@ -73,8 +73,12 @@ class reflection_table_utils(object):
         if thresh is not None:
           vals = refls["intensity.sum.value"].as_numpy_array()
           good = ~is_outlier(vals, thresh)
+          if verbose:
+              print("Accepting %d / %d reflections according to MAD" % (good.sum(),len(good)))
           good_vals = vals[good]
-          weighted_mean_intensity = np.mean(good_vals)
+          #good_weights = 1 / refls['intensity.sum.variance'].as_numpy_array()[good]
+          weighted_mean_intensity = np.mean(good_vals)#/np.sum(good_weights)
+          #weighted_mean_intensity = np.mean(good_vals)
           vals_var = refls["intensity.sum.variance"].as_numpy_array()
           num_good = good.sum()
           standard_error_of_weighted_mean_intensity = np.sqrt(vals_var[good].sum())/num_good

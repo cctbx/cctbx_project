@@ -763,6 +763,25 @@ class DataModeler:
 
         MAIN_LOGGER.debug("Modeler has %d/ %d trusted pixels" % (self.all_trusted.sum() , self.npix_total))
 
+    def flag_zeroamps_as_untrusted(self, F_map):
+        nmasked = 0
+        nmissing =0
+        for roi in self.roi_id_unique:
+            slc = self.roi_id_slices[roi][0]
+            refl_idx = self.all_refls_idx[slc]
+            refl_idx = np.unique(refl_idx)
+            assert len(refl_idx) == 1
+            refl_idx = refl_idx[0]
+            h, k, l = self.refls[int(refl_idx)]['miller_index']
+            h2,k2,l2 = self.all_nominal_hkl[slc][0]
+            assert h==h2 and k==k2 and l==l2
+            hkl = int(h), int(k), int(l)
+            if hkl in F_map and F_map[hkl] == 0:
+                self.all_trusted[slc] = False
+                nmasked += slc.stop - slc.start
+                nmissing += 1
+        MAIN_LOGGER.debug("Masked %d pixels from %d missing reflections" %(nmasked, nmissing))
+
     def dump_gathered_to_refl(self, output_name, do_xyobs_sanity_check=False):
         """after running GatherFromExperiment, dump the gathered results
         (data, background etc) to a new reflection file which can then be used to run

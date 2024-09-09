@@ -439,7 +439,14 @@ class Script:
                     sb.mask = flex.int(np.ascontiguousarray(dials_mask[None]))
                     shoeboxes.append(sb)
 
-                refl = Modeler.refls[roi:roi+1]
+                # TODO: is this correct indexing of the refls ?
+                refl_idx = Modeler.all_refls_idx[slc[0]]
+                refl_idx = np.unique(refl_idx)
+                assert len(refl_idx) == 1
+                refl_idx = refl_idx[0]
+                refl = Modeler.refls[refl_idx:refl_idx+1]
+                # end TODO
+
                 Ridx.extend(refl)
                 if CHECKER is not None:
                     data_subimg = Modeler.all_data[slc[0]].reshape((ydim, xdim))
@@ -454,8 +461,6 @@ class Script:
             if shoeboxes and 'shoebox' != Ridx:
                 Ridx['shoebox'] = flex.shoebox(shoeboxes)
             Ridx.set_flags(flex.bool(len(Ridx), True), Ridx.flags.indexed)
-            from IPython import embed;embed()
-
 
             Elint = ExperimentList()
             Eref = deepcopy(Modeler.E)
@@ -468,6 +473,121 @@ class Script:
                 Rint["spot_ev"] = spot_ev
                 Rint["delpsical.rad"] = delpsi_rad
                 # here is where to do the diffBragg fit of intensity
+                if self.params.predictions.fit_intensity_using_diffBragg:
+                    old_params = deepcopy(Modeler.params)
+                    Modeler.params.roi.centroid = "cal"
+                    Modeler.GatherFromExperiment(Modeler.E, Rint, remove_duplicate_hkl=True,
+                                                 sg_symbol=Modeler.params.space_group)
+
+                    for fix_name in dir(Modeler.params.fix):
+                        if fix_name.startswith("_"):
+                            continue
+                        setattr(Modeler.params.fix, fix_name, True)
+                    Modeler.params.fix.perRoiScale = False
+
+                    # clean up SIM before making prediction SIM
+                    if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
+                        utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+                    if SIM.D.record_timings:
+                        SIM.D.show_timings(COMM.rank)
+                    Modeler.clean_up(SIM)
+
+                    SIM2 = hopper_utils.get_simulator_for_data_modelers(Modeler)
+                    Modeler.set_parameters_for_experiment(shot_df)
+                    new_x = np.array([1.] * len(Modeler.P))
+                    Modeler.roiScalesPerPix = 1
+                    Fp1 = SIM2.D.Fhkl  # crystal.miller_array
+                    Fp1_map = {h: amp for h, amp in zip(Fp1.indices(), Fp1.data())}
+                    Modeler.flag_zeroamps_as_untrusted(Fp1_map)
+                    x = Modeler.Minimize(new_x, SIM2, i_shot=i_shot)
+                    self.params = old_params
+
+                    Modeler.best_model, opt_Jac = hopper_utils.model(x, Modeler, SIM2, compute_grad=True)
+                    Modeler.best_model_includes_background = False
+                    variance_s = hopper_utils.get_variance_s(Modeler, opt_Jac)
+
+
+                    Nroi = len(Rint)
+                    refl_sel = flex.bool(Nroi, False)
+                    db_I = flex.double(Nroi, 0)
+                    db_varI = flex.double(Nroi,0)
+                    pred_scores = flex.double(Nroi,0)
+                    n_not_in_F = 0
+                    n_zero = 0
+                    n_bad = 0
+                    n_out_bound = 0
+                    for roi in Modeler.roi_id_unique:
+                        slc = Modeler.roi_id_slices[roi]
+
+                        x1,x2,y1,y2 = Modeler.rois[roi]
+                        ydim = y2-y1
+                        xdim = x2-x1
+                        roi_p = Modeler.P["scale_roi%d" % roi]
+                        xval = x[roi_p.xpos]
+                        scale = roi_p.get_val(xval)
+                        test = Modeler.roiScalesPerPix[slc[0]]
+                        test = np.unique(test)
+                        assert len(test)==1
+                        test = test[0]
+                        assert scale == test
+
+                        var_s = variance_s[roi_p.xpos]
+
+                        refl_idx = Modeler.all_refls_idx[slc[0]]
+                        refl_idx = np.unique(refl_idx)
+                        assert len(refl_idx) ==1
+                        refl_idx = refl_idx[0]
+                        h,k,l = Modeler.refls[int(refl_idx)]['miller_index']
+                        assert Modeler.all_nominal_hkl[slc[0]]
+                        hkl = int(h), int(k), int(l)
+                        if hkl not in Fp1_map:
+                            n_not_in_F += 1
+                            continue
+
+                        amp = Fp1_map[hkl]
+                        if amp==0:
+                            n_zero += 1
+                            continue
+                        I_hkl = amp ** 2
+                        var_I = I_hkl ** 2 * var_s
+                        if np.isnan(var_I) or np.isinf(var_I):
+                            n_bad += 1
+                            continue
+                        if var_I <= 1e-6 or var_I > 1e16:
+                            n_out_bound += 1
+                            continue
+
+                        if CHECKER is not None:
+                            data_subimg = Modeler.all_data[slc[0]].reshape((ydim, xdim))
+                            model_subimg = (Modeler.best_model[slc[0]] + Modeler.all_background[slc[0]]).reshape((ydim,xdim))
+                            score = CHECKER.score(data_subimg, model_subimg)
+                            pred_scores[refl_idx] = score
+
+                        assert not refl_sel[refl_idx]
+                        refl_sel[refl_idx] = True
+                        db_I[refl_idx] = I_hkl*scale
+                        db_varI[refl_idx] = var_I
+
+                    nrej = n_zero + n_bad + n_not_in_F + n_out_bound
+                    MAIN_LOGGER.debug("DB Intensity Fit: Nzero=%d, Nbad=%d, Nmissing=%d, Nout=%d (%d/%d total)"
+                                      % (n_zero, n_bad, n_not_in_F, n_out_bound, nrej, len(Modeler.roi_id_unique)))
+                    if CHECKER is not None:
+                        Rint["pred_scores"] = pred_scores
+                    Rint["intensity.diffBragg.value"] = db_I
+                    Rint["intensity.diffBragg.variance"] = db_varI
+                    Rint = Rint.select(refl_sel)
+                    assert not np.any(np.isnan(np.sqrt(Rint['intensity.diffBragg.variance'])))
+                    Modeler.clean_up(SIM2)
+            else:
+                if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
+                    # TODO separate diffBragg logger
+                    utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
+
+                # TODO verify this works:
+                if SIM.D.record_timings:
+                    SIM.D.show_timings(COMM.rank)
+                Modeler.clean_up(SIM)
+                del SIM.D  # TODO: is this necessary ?
 
             if Modeler.E.identifier is not None:
                 ident = Modeler.E.identifier
@@ -490,27 +610,12 @@ class Script:
 
             Elint[0].identifier = ident
 
-            #ccs = [cc for cc in ccs if not np.isnan(cc)]
-            #if not np.allclose(ccs, 1):
-            #    from IPython import embed;embed()
             # verify the prediction is identical to the best model
             shot_df['identifier'] = ident
             shot_df["hopper_time"] = time.time()-time_to_refine
             shot_df["hopper_line"] = line  # exp_ref_spec file line for re-running
             if scores:
                 shot_df["scores"] = np.mean(scores)
-
-            # here is where to re-launch if doing predictions
-
-            if Modeler.params.refiner.debug_pixel_panelfastslow is not None:
-                # TODO separate diffBragg logger
-                utils.show_diffBragg_state(SIM.D, Modeler.params.refiner.debug_pixel_panelfastslow)
-
-            # TODO verify this works:
-            if SIM.D.record_timings:
-                SIM.D.show_timings(COMM.rank)
-            Modeler.clean_up(SIM)
-            del SIM.D  # TODO: is this necessary ?
 
             this_rank_dfs.append(shot_df)
             this_rank_Elints.extend(Elint)
@@ -528,8 +633,6 @@ class Script:
                 this_rank_Ridxs = Ridx
             else:
                 this_rank_Ridxs.extend(Ridx)
-
-
 
             if len(this_rank_dfs) == shots_per_chunk:
                 save_composite_files(this_rank_dfs, this_rank_Elints, this_rank_Ridxs, this_rank_Rints,
@@ -583,7 +686,6 @@ if __name__ == '__main__':
     from dials.util import show_mail_on_error
 
     with show_mail_on_error():
-        print("Starting script")
         script = Script()
         RUN = script.run
         lp = None

@@ -1295,6 +1295,8 @@ geometry {
 
 predictions_phil = """
 predictions {
+  fit_intensity_using_diffBragg = False
+    .type = bool 
   integrate_phil = None
     .type = str
     .help = phil file for stills process specifying integration
