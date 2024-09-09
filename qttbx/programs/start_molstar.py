@@ -46,30 +46,7 @@ class Program(ProgramTemplate):
     return group_args()
 
 
-  def check_program_access(self,programs):
-    inaccessible_programs = []
-
-    for program in programs:
-        try:
-            subprocess.run([program, '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-        except FileNotFoundError:
-            inaccessible_programs.append(program)
-        except subprocess.CalledProcessError:
-            pass
-
-    return inaccessible_programs
-
   def run(self):
-
-
-    # first check that the necessary programs are available
-    programs_to_check = ['npm', 'http-server']
-    inaccessible_programs = self.check_program_access(programs_to_check)
-
-    if inaccessible_programs:
-      print(f"The following required programs are inaccessible or not found: {', '.join(inaccessible_programs)}")
-      sys.exit()
-
 
     # start app
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
@@ -77,7 +54,6 @@ class Program(ProgramTemplate):
 
     # get icon
     icon_path =  Path(__file__).parent / '../viewers/gui/view/assets/icons/phenix.icns'
-    print("icon_path",icon_path)
     icon = QIcon(str(icon_path))
     app.setWindowIcon(icon)
     
