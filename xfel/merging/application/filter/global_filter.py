@@ -92,16 +92,16 @@ class GlobalFilter(worker):
     te = sum(self.expt_filter_reasons.values())
     tr = sum(self.refl_filter_reasons.values())
     self.logger.log(FilterReasons.report_line('TOTAL', te, tr))
+    all_expt_filter_reasons = self.mpi_helper.count(self.expt_filter_reasons)
+    all_refl_filter_reasons = self.mpi_helper.count(self.refl_filter_reasons)
     if self.mpi_helper.rank == 0:
       self.logger.main_log('Experiments/reflections filtered due to:')
-      expt_filter_reasons = self.mpi_helper.count(self.expt_filter_reasons)
-      refl_filter_reasons = self.mpi_helper.count(self.refl_filter_reasons)
-      for r in uniques(expt_filter_reasons, refl_filter_reasons):
-        te = expt_filter_reasons[r]
-        tr = refl_filter_reasons[r]
+      for r in uniques(all_expt_filter_reasons, all_refl_filter_reasons):
+        te = all_expt_filter_reasons[r]
+        tr = all_refl_filter_reasons[r]
         self.logger.main_log(FilterReasons.report_line(r.value, te, tr))
-      te = sum(expt_filter_reasons.values())
-      tr = sum(refl_filter_reasons.values())
+      te = sum(all_expt_filter_reasons.values())
+      tr = sum(all_refl_filter_reasons.values())
       self.logger.main_log(FilterReasons.report_line('TOTAL', te, tr))
 
   def run(self, experiments, reflections):

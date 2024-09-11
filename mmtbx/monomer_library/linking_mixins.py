@@ -9,7 +9,6 @@ from mmtbx.monomer_library import glyco_utils
 from mmtbx.monomer_library import bondlength_defaults
 from libtbx.utils import Sorry
 from functools import cmp_to_key
-from six.moves import range
 
 origin_ids = geometry_restraints.linking_class.linking_class()
 
@@ -230,27 +229,21 @@ def _apply_link_using_proxies(link,
 
 def possible_cyclic_peptide(atom1,
                             atom2,
+                            atoms_in_first_last_rgs,
                             verbose=False,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
-  if atom1.element_is_hydrogen() or atom2.element_is_hydrogen(): return False
-  chain1 = atom1.parent().parent().parent()
-  chain2 = atom1.parent().parent().parent()
-  if not chain1.id == chain2.id:
-    if verbose: print('chain id differs', chain1.id, chain2.id)
-    return False
-  fl = {}
-  rgs = chain1.residue_groups()
-  for i in range(0,-2,-1):
-    for atom in rgs[i].atoms():
-      if atom.quote()==atom1.quote():
-        fl[i]=atom1
-        break
-      elif atom.quote()==atom2.quote():
-        fl[i]=atom2
-        break
-  return len(fl)==2
+  len_fl = 0
+  len_fl += atoms_in_first_last_rgs.get(atom1.i_seq, -1)
+  len_fl += atoms_in_first_last_rgs.get(atom2.i_seq, -1)
+  if len_fl == 1:
+    chain1 = atom1.parent().parent().parent()
+    chain2 = atom2.parent().parent().parent()
+    if chain1.id == chain2.id:
+      return True
+    elif verbose: print('chain id differs', chain1.id, chain2.id)
+  return False
 
 def check_for_peptide_links(atom1,
                             atom2,
@@ -358,9 +351,7 @@ class linking_mixins(object):
     from cctbx import crystal
     from cctbx.array_family import flex
     #
-    def _nonbonded_pair_objects(max_bonded_cutoff=3.,
-                                i_seqs=None,
-                                ):
+    def _nonbonded_pair_objects(max_bonded_cutoff=3., i_seqs=None):
       if i_seqs is None:
         atoms = self.pdb_hierarchy.atoms()
         i_seqs = flex.size_t()
@@ -391,8 +382,6 @@ class linking_mixins(object):
         min_cubicle_edge=5,
         shell_asu_tables=[pair_asu_table])
       return nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, i_seqs
-    #
-
     #
     if(log is not None):
       print("""
@@ -431,8 +420,25 @@ class linking_mixins(object):
     custom_links = {}
     exclude_out_lines = {}
 
-    # main loop
     atom_classes = [linking_utils.get_classes(a) for a in atoms]
+    atoms_in_first_last_rgs = {}
+    for c in self.pdb_hierarchy.chains():
+      for i in [0,-1]:
+        if not c.residue_groups(): continue
+        rg = c.residue_groups()[i]
+        abs_i = abs(i)
+        for a in rg.atoms():
+          atoms_in_first_last_rgs[a.i_seq] = abs_i
+    skip_if_longer = linking_setup.update_skip_if_longer(amino_acid_bond_cutoff,
+                                                        rna_dna_bond_cutoff=3.4,
+                                                        intra_residue_bond_cutoff=inter_residue_bond_cutoff,
+                                                        saccharide_bond_cutoff=carbohydrate_bond_cutoff,
+                                                        metal_coordination_cutoff=metal_coordination_cutoff,
+                                                        sulfur_bond_cutoff=2.5,
+                                                        other_bond_cutoff=2,
+                                                        )
+
+    # main loop
     nonbonded_proxies, sites_cart, pair_asu_table, asu_mappings, nonbonded_i_seqs = \
         _nonbonded_pair_objects(max_bonded_cutoff=max_bonded_cutoff,
           )
@@ -446,6 +452,7 @@ class linking_mixins(object):
       # include & exclude selection
       #
       origin_id = None
+      updated_skip_if_longer = None
       if ( include_selections and
            distance>=max_bonded_cutoff_standard
            ):
@@ -461,6 +468,15 @@ class linking_mixins(object):
             inter_residue_bond_cutoff=bond_cutoff
             saccharide_bond_cutoff=bond_cutoff
             link_residues=True
+            updated_skip_if_longer = linking_setup.update_skip_if_longer(
+                amino_acid_bond_cutoff,
+                rna_dna_bond_cutoff=3.4,
+                intra_residue_bond_cutoff=inter_residue_bond_cutoff,
+                saccharide_bond_cutoff=saccharide_bond_cutoff,
+                metal_coordination_cutoff=metal_coordination_cutoff,
+                sulfur_bond_cutoff=2.5,
+                other_bond_cutoff=2,
+                )
             break
         else:
           continue # exclude this nonbond from consideration
@@ -481,6 +497,8 @@ class linking_mixins(object):
       if bond_asu_table.contains(i_seq, j_seq, 1): continue
       atom1 = atoms[i_seq]
       atom2 = atoms[j_seq]
+      if atom1.element_is_hydrogen() or atom2.element_is_hydrogen():
+        continue
       if exclude_this_nonbonded:
         key = (selection_1,selection_2)
         if key not in exclude_out_lines:
@@ -553,7 +571,7 @@ Residue classes
         # special amino acid linking
         #  - cyclic
         #  - beta, delta ???
-        if possible_cyclic_peptide(atom1, atom2): # first & last peptide
+        if possible_cyclic_peptide(atom1, atom2, atoms_in_first_last_rgs): # first & last peptide
           use_only_bond_cutoff = True
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
@@ -586,31 +604,13 @@ Residue classes
         if atom2.element.strip() in hydrogens:
           done[atom1.id_str()] = atom2.id_str()
       # bond length cutoff & some logic
-      aa_rc = linking_utils.is_atom_pair_linked(
-          atom1,
-          atom2,
-          classes1.important_only,
-          classes2.important_only,
-          distance=distance,
-          max_bonded_cutoff=max_bonded_cutoff,
-          amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          inter_residue_bond_cutoff=inter_residue_bond_cutoff,
-          second_row_buffer=second_row_buffer,
-          saccharide_bond_cutoff=carbohydrate_bond_cutoff,
-          metal_coordination_cutoff=metal_coordination_cutoff,
-          use_only_bond_cutoff=use_only_bond_cutoff,
-          link_metals=link_metals,
-          verbose=verbose,
-          )
       if not linking_utils.is_atom_pair_linked(
           atom1,
           atom2,
           classes1.important_only,
           classes2.important_only,
           distance=distance,
-          max_bonded_cutoff=max_bonded_cutoff,
-          amino_acid_bond_cutoff=amino_acid_bond_cutoff,
-          inter_residue_bond_cutoff=inter_residue_bond_cutoff,
+          skip_if_longer=updated_skip_if_longer if updated_skip_if_longer is not None else skip_if_longer,
           second_row_buffer=second_row_buffer,
           saccharide_bond_cutoff=carbohydrate_bond_cutoff,
           metal_coordination_cutoff=metal_coordination_cutoff,

@@ -3,6 +3,7 @@
 # is required to prevent Azure Pipelines from deleting the .git directory.
 # when creating the artifact.
 #   - miniforge
+#   - mambaforge
 #   - chem_data
 #   - geostd
 #   - phenix_regression
@@ -25,11 +26,6 @@ jobs:
       sshPublicKey: ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA7XgVgdU9GmZuo5yVyW/htrAuxe7ypuq7IowWwfUC0WZw9SPzQ8kOGj63plF3ytx/qpgvUlS1AiywO20rZ83gHmRdAiuvt9laH09KlWEUhIhAQTzesqBG5aUT0MKo01yxijoRl5HC8w/MdOanc0h01e6IxnZvgG0N30RB1i4xVPCtR/VBmXSp4R0T+Q/gJjfQssuBxHVMrrute4V3uUHek58FL2QgUB0+zq6ipETjuCJxTSyYVAFtCYDPYs+0lAYYkWrXALCr9kX9s22jYtkyv5kNw6mEW8nhtA7GbTdJLv4M6/WYtcvQV8TDcNCfltOfl81U3gcZ9zhQDKGVoNaJEw== buildbot@cci.lbl.gov
       sshKeySecureFile: id_rsa
     displayName: Download SSH key
-
-  - task: DownloadSecureFile@1
-    name: ssh_config
-    inputs:
-      secureFile: ssh.config
 
   # miniforge
   - script: |
@@ -66,15 +62,18 @@ jobs:
     continueOnError: true
 
   - script: |
-      export SVN_SSH="ssh -F $(ssh_config.secureFilePath)"
-      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.svn" ]; then
+      if [ ! -d "$(System.DefaultWorkingDirectory)/chem_data/.git" ]; then
         rm -fr $(System.DefaultWorkingDirectory)/chem_data
         cd $(System.DefaultWorkingDirectory)
-        svn co svn+ssh://builder@boa.lbl.gov/chem_data/trunk chem_data
+        git clone https://gitlab.com/phenix_project/chem_data.git
+        git lfs install --local
+        git lfs pull
       fi
       cd $(System.DefaultWorkingDirectory)/chem_data
-      svn relocate svn+ssh://builder@boa.lbl.gov/chem_data/trunk
-      svn update
+      git reset --hard origin/main
+      git lfs install --local
+      git pull --rebase
+      git lfs pull
     displayName: Update chem_data
     continueOnError: true
 

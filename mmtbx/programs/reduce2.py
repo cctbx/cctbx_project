@@ -29,14 +29,14 @@ from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
-from iotbx.pdb import common_residue_names_get_class, amino_acid_codes
+from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
 import copy
 import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.5.0"
+version = "2.6.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -310,16 +310,17 @@ def _DescribeMainchainLink(a0s, a1s, group):
         ret += _AddPosition(a0, 'P', group) + ' ' + _AddPosition(a1, 'L', group, a0) + '\n'
   return ret
 
-def _IsStandardResidue(resname):
-  amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
-  return resname.strip().upper() in amino_acid_resnames
 
+_amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.keys())
+def _IsStandardResidue(resname):
+  return resname.strip().upper() in _amino_acid_resnames
+
+
+_nucleic_acid_resnames = set(nucleic_acid_codes.rna_one_letter_code_dict.keys()).union(
+  set(nucleic_acid_codes.dna_one_letter_code_dict.keys()))
 def _IsNucleicAcidResidue(resname):
-  nucleic_acids = [
-        "A", "C", "G", "T",  # DNA bases
-        "U", "I",            # RNA bases (I for inosine, a modified RNA base)
-  ]
-  return resname.strip().upper() in nucleic_acids
+  return resname.strip().upper() in _nucleic_acid_resnames
+
 
 def _MainChainAtomsWithHydrogen(resname):
   # Find the main chain atoms with hydrogen bonds
@@ -1187,7 +1188,7 @@ NOTES:
     # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
     cs = self.model.crystal_symmetry()
     if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model)
+      self.model = shift_and_box_model(model = self.model, shift_model=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.

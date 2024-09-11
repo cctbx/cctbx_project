@@ -354,6 +354,9 @@ select
     sigma = 0.5
       .type = float
       .help = Remove highest resolution bins such that all accepted bins have <I/sigma> >= sigma
+    d_min = None
+      .type = float
+      .help = Remove the entire lattice if the resolution is not at least this d_min
     }
 }
 """
@@ -635,6 +638,21 @@ statistics {
       .help = For Riso/ CCiso, the array name containing reference structure factors
       .help = As an example, could be intensity from *sf.cif
       .help = Specifically this is a tag searched for in the array name, could be 'tensity' from 'intensity'
+  }
+  deltaccint
+    .help = Parameters used when computing ΔCC½ (aka ΔCC internal), a means of filtering out lattices that
+    .help = degrade the overall CC½. Uses the σ-τ method from Assmann 2016 to avoid splitting the data into
+    .help = odd/even datasets. Enable by adding the deltaccint worker after the group worker.
+  {
+    iqr_ratio = 10
+      .type = float
+      .help = If the ΔCC½ filter is enabled, first compute CC½ when removing every image one at a time, then
+      .help = compute the IQR of these CC½s. Remove all lattices whose contribution degrades CC½ by more than
+      .help = IQR * iqr_ratio above the median. You can discover a good IQR by running the program once,
+      .help = examining the log file where possible values are listed, and running it again with the best value.
+    verbose = False
+      .type = bool
+      .help = If True, include the ΔCC½ for every lattice in the main log.
   }
   predictions_to_edge {
     apply = False

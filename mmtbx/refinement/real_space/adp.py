@@ -298,7 +298,7 @@ class ncs_aware_refinement(object):
         for it in range(1,2):
           x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           lower = flex.double(x.size(), 0)
-          upper = flex.double(x.size(), flex.max(x)*2)
+          upper = flex.double(x.size(), min(999,flex.max(x)*2) )
           calculator = tg(fmodel = fmodel, x = x, restraints_weight = None)
           m = tncs.minimizer(
             potential      = calculator,

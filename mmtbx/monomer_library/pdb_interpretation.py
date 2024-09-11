@@ -26,6 +26,7 @@ from libtbx import Auto, group_args, slots_getstate_setstate
 from six.moves import cStringIO as StringIO
 import string
 import sys, os
+import textwrap
 import time
 import math
 import numpy as np
@@ -215,7 +216,7 @@ master_params_str = """\
   sort_atoms = True
     .type = bool
     .short_caption = Sort atoms in input pdb so they would be in the same order
-  use_ncs_to_build_restraints = False
+  use_ncs_to_build_restraints = True
     .type = bool
     .short_caption = Look for NCS and use it to speed up building restraints
   show_restraints_histograms = True
@@ -305,7 +306,7 @@ master_params_str = """\
     link_small_molecules = False
       .type = bool
       .short_caption = Link small molecules such as SO4, PO4 to protein
-    metal_coordination_cutoff = 3.5
+    metal_coordination_cutoff = 3.0
       .type = float
       .short_caption = Maximum distance for automatic linking of metals
     amino_acid_bond_cutoff = 1.9
@@ -1298,6 +1299,7 @@ class monomer_mapping(slots_getstate_setstate):
     if (ra1.problems is not None): return
     self.is_rna_dna = True
     if (not ra1.is_rna): return
+    if not params.enable: return
     residue_2_p_atom = None
     if (next_pdb_residue is not None):
       residue_2_p_atom = next_pdb_residue.find_atom_by(name=" P  ")
@@ -2727,6 +2729,10 @@ class build_chain_proxies(object):
             raise Sorry('Not able to determine energy type for atom %s' % atom.quote())
       #
       if (mm.monomer is None):
+        # try to get restraints from e tu
+        pass
+      #
+      if (mm.monomer is None):
         def use_scattering_type_if_available_to_define_nonbonded_type():
           if (   residue.atoms_size() != 1
               or len(mm.active_atoms) != 1): return False
@@ -3427,8 +3433,7 @@ class build_all_chain_proxies(linking_mixins):
     if self.params.flip_symmetric_amino_acids:
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
-        print("\n  Symmetric amino acids flipped", file=log)
-        print(info, file=log)
+        print("\n  Symmetric amino acids flipped. %s\n" % info.strip(), file=log)
     if atom_selection_string is not None:
       sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
       temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
@@ -3954,6 +3959,13 @@ class build_all_chain_proxies(linking_mixins):
       self.sites_cart = self.pdb_atoms.extract_xyz()
       # We have to expand the tables using ncs information...
       nrgl.setup_sets()
+      # get copies chain ids and output them:
+      cids = []
+      for g in nrgl:
+        for c in g.copies:
+          cids.append(self.pdb_atoms[c.iselection[0]].parent().parent().parent().id)
+      print("  Restraints were copied for chains:", file=log)
+      print("\n".join(textwrap.wrap(", ".join(cids), initial_indent='    ', subsequent_indent='    ')), file=log)
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
@@ -6059,6 +6071,8 @@ class process(object):
             outl += "      Input volumes are d-peptide like\n"
           elif key=="d-peptide":
             outl += "      Input residue name is d-peptide\n"
+          elif key=='CA---C':
+            outl += "      Input residue is complicated and confusing\n"
           for cb_atom in item:
             outl += "        %s\n"% cb_atom.id_str()
         if outl:

@@ -49,6 +49,11 @@ def get_c_beta_torsion_proxies(pdb_hierarchy,
                 continue
               # check for correct chiral volume
               sites_cart = [N_atom.xyz, C_atom.xyz, CA_atom.xyz, CB_atom.xyz]
+              CAC_dist = C_atom.distance(CA_atom)
+              if CAC_dist>2.:
+                c_beta_residues_skipped.setdefault('CA---C', [])
+                c_beta_residues_skipped['CA---C'].append(CB_atom)
+                continue
               chiral = cctbx.geometry_restraints.chirality(
                 sites_cart,
                 volume_ideal=0.,

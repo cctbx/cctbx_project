@@ -565,13 +565,7 @@ def get_chain_color(index):
                   'lilactint',
                   'bluetint',
                   'greentint']
-  match = False
-  while not match:
-    if index > 6:
-      index = index - 6
-    else:
-      match = True
-  return chain_colors[index]
+  return chain_colors[int(index) % len(chain_colors)]
 
 def get_ions(ion_list):
   ion_txt = "@spherelist {het M} color= gray  radius= 0.5 nobutton master= {hets}\n"

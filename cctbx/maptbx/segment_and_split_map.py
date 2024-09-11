@@ -2500,22 +2500,21 @@ def get_map_object(file_name = None, must_allow_sharpening = None,
     raise Sorry("The map file %s is missing..." %(file_name))
   map_labels = None
   if file_name.endswith(".xplor"):
-    import iotbx.xplor.map
-    m = iotbx.xplor.map.reader(file_name = file_name)
-    m.unit_cell_grid = m.map_data().all() # just so we have something
-    m.space_group_number = 0 # so we have something
-  else:
-    from iotbx import mrcfile
-    m = mrcfile.map_reader(file_name = file_name)
-    print("MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
+    raise Sorry("Unable to read xplor maps with segment_and_split_map")
+  from iotbx.data_manager import DataManager
+  dm = DataManager()
+  m = dm.get_real_map(file_name)
+  m.shift_origin()
+
+  print("MIN MAX MEAN RMS of map: %7.2f %7.2f  %7.2f  %7.2f " %(
       m.header_min, m.header_max, m.header_mean, m.header_rms), file = out)
-    print("grid: ", m.unit_cell_grid, file = out)
-    print("cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
+  print("grid: ", m.unit_cell_grid, file = out)
+  print("cell:  %8.3f %8.3f %8.3f %8.3f %8.3f %8.3f  " %tuple(
        m.unit_cell().parameters()), file = out)
-    print("SG: ", m.unit_cell_crystal_symmetry().space_group_number(), file = out)
-    if must_allow_sharpening and m.cannot_be_sharpened():
+  print("SG: ", m.unit_cell_crystal_symmetry().space_group_number(), file = out)
+  if must_allow_sharpening and m.cannot_be_sharpened():
       raise Sorry("Input map is already modified and should not be sharpened")
-    if get_map_labels:
+  if get_map_labels:
       map_labels = m.labels
   print("ORIGIN: ", m.map_data().origin(), file = out)
   print("EXTENT: ", m.map_data().all(), file = out)
@@ -2523,18 +2522,10 @@ def get_map_object(file_name = None, must_allow_sharpening = None,
 
   map_data = m.data
   acc = map_data.accessor()
-  shift_needed = not \
-     (map_data.focus_size_1d() > 0 and map_data.nd()  ==  3 and
-      map_data.is_0_based())
-  if(shift_needed):
-    map_data = map_data.shift_origin()
-    origin_shift = (
-      m.map_data().origin()[0]/m.map_data().all()[0],
-      m.map_data().origin()[1]/m.map_data().all()[1],
-      m.map_data().origin()[2]/m.map_data().all()[2])
-    origin_frac = origin_shift  # NOTE: fraction of NEW cell
-  else:
-    origin_frac = (0., 0., 0.)
+  origin_frac = (
+     m.origin_shift_grid_units[0]/m.map_data().all()[0],
+     m.origin_shift_grid_units[1]/m.map_data().all()[1],
+     m.origin_shift_grid_units[2]/m.map_data().all()[2])
   # determine if we need to trim off the outer part of the map duplicating inner
   offsets = []
   need_offset = False

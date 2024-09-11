@@ -125,7 +125,7 @@ def get_reduce_pdb_interpretation_params(use_neutron_distances):
   Do this in a function so other programs (reduce2) can use the same parameters
   '''
   p = mmtbx.model.manager.get_default_pdb_interpretation_params()
- #p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
+  p.pdb_interpretation.restraints_library.cdl=False # XXX this triggers a bug !=360
   p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
   p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
   p.pdb_interpretation.use_neutron_distances = use_neutron_distances
@@ -196,7 +196,8 @@ class place_hydrogens():
       self.time_remove_isolated    = None
       self.time_riding_manager     = None
       self.time_remove_H_nopara    = None
-      self.time_reset_idealize     = None
+      self.time_reset              = None
+      self.time_idealize           = None
       self.time_remove_H_on_links  = None
 
 # ------------------------------------------------------------------------------
@@ -288,9 +289,12 @@ class place_hydrogens():
     # (when heavy atom is missing, H needs not to be placed)
     t0 = time.time()
     sel_isolated = self.model.isolated_atoms_selection()
-    self.sel_lone_H = sel_h & sel_isolated
-    if not self.sel_lone_H.all_eq(False):
-      self.model = self.model.select(~self.sel_lone_H)
+    sel_lone_H = sel_h & sel_isolated
+    # As h_parameterization will not include these, they can be removed in the
+    # next step; for book-keeping it is useful to keep track of lone H as a
+    # selection
+    #if not sel_lone_H.all_eq(False):
+    #  self.model = self.model.select(~sel_lone_H)
     self.time_remove_isolated = round(time.time()-t0, 2)
 
     sel_h = self.model.get_hd_selection()
@@ -310,9 +314,12 @@ class place_hydrogens():
     sel_h_in_para = flex.bool(
       [bool(x) for x in riding_h_manager.h_parameterization])
     sel_h_not_in_para = sel_h_in_para.exclusive_or(sel_h)
+    # no need to display lone H atoms in the log, so remove from labels
+    sel_h_not_in_para_but_not_lone = sel_h_not_in_para.exclusive_or(sel_lone_H)
     self.site_labels_no_para = [atom.id_str().replace('pdb=','').replace('"','')
-      for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para)]
-    self.model = self.model.select(~sel_h_not_in_para)
+      for atom in self.model.get_hierarchy().atoms().select(sel_h_not_in_para_but_not_lone)]
+    if not sel_h_not_in_para.all_eq(False):
+      self.model = self.model.select(~sel_h_not_in_para)
     self.time_remove_H_nopara = round(time.time()-t0, 2)
 
   #  f = open("intermediate4.pdb","w")
@@ -330,8 +337,10 @@ class place_hydrogens():
     t0 = time.time()
     self.model.reset_adp_for_hydrogens(scale = self.adp_scale)
     self.model.reset_occupancy_for_hydrogens_simple()
+    self.time_reset = round(time.time()-t0, 2)
+    t0 = time.time()
     self.model.idealize_h_riding()
-    self.time_reset_idealize = round(time.time()-t0, 2)
+    self.time_idealize = round(time.time()-t0, 2)
 
     # Remove H atoms that are involved in links (bonds, metal coordination, etc)
     # --------------------------------------------------------------------------
@@ -652,7 +661,8 @@ The following H atoms were not placed because they could not be parameterized
       time_remove_isolated    = self.time_remove_isolated,
       time_riding_manager     = self.time_riding_manager,
       time_remove_H_nopara    = self.time_remove_H_nopara,
-      time_reset_idealize     = self.time_reset_idealize,
+      time_reset              = self.time_reset,
+      time_idealize           = self.time_idealize,
       time_remove_H_on_links  = self.time_remove_H_on_links)
 
 # ------------------------------------------------------------------------------
@@ -661,13 +671,14 @@ The following H atoms were not placed because they could not be parameterized
     print('Detailed timings:')
     print("Rebox model:", self.time_rebox_model)
     print('Remove element X:', self.time_remove_element_X)
-    print("Add_missing_H_atoms_at_bogus_position:", self.time_add_missing_H)
-    print('Add N-terminal propeller', self.time_terminal_propeller)
+    print("Add missing H at bogus position:", self.time_add_missing_H)
+    print('Add N-terminal propeller:', self.time_terminal_propeller)
     print("Get new model obj and grm:", self.time_make_grm )
     print("Remove isolated H:", self.time_remove_isolated)
     print("Setup Riding manager:", self.time_riding_manager)
     print("Remove H that were not parameterized:", self.time_remove_H_nopara)
-    print("Reset adp, occ; idealize H positions:", self.time_reset_idealize)
+    print("Reset adp, occ:", self.time_reset)
+    print("idealize H positions:", self.time_idealize)
     print("Remove H on links:", self.time_remove_H_on_links)
     print()
 

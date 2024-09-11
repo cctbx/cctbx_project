@@ -1386,6 +1386,129 @@ def local_mean_density(mm, radius):
 
   return local_mean_mm
 
+def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
+                             verbosity=0, log=sys.stdout):
+  """
+  Compute sigmaA values needed to explain agreement of model with map given map errors
+
+  Compulsory arguments:
+  expectE: Emean giving expected E for map
+  dobs:    weighting factor for map coefficient accuracy
+  Ecalc:   calculated E-values for placed model
+  over_sampling_factor: account for oversampling in LLG calculation
+                        relevant here for precision of sigmaA estimate
+  Optional arguments:
+  verbosity: levels greater than default of 0 progressively more verbose
+  log:       destination for printing if any
+  """
+  model_sigmaA = expectE.customized_copy(data=flex.double(expectE.size(),0))
+  xdat = []
+  ydat = []
+  wdat = []
+  if expectE.binner() is None:
+    expectE.setup_binner_d_star_sq_bin_size()
+  if verbosity > 1:
+    print("SigmaA curve for placed model contribution",file=log)
+    print(" # of terms   mean(ssqr)  sigmaA   sigma(sigmaA)")
+  for i_bin in expectE.binner().range_used():
+    sel = expectE.binner().selection(i_bin)
+    eEsel = expectE.select(sel)
+    abseE = eEsel.amplitudes().data()
+    p1 = eEsel.phases().data()
+    Ecalc_sel = Ecalc.select(sel)
+    absEc = Ecalc_sel.amplitudes().data()
+    sigmaP = flex.mean_default(flex.pow2(absEc),0.)
+    absEc /= math.sqrt(sigmaP)
+    Ecalc.data().set_selected(sel,
+                  Ecalc.data().select(sel) / math.sqrt(sigmaP))
+    Ecalc_sel /= math.sqrt(sigmaP)
+    p2 = Ecalc_sel.phases().data()
+    cosdphi = flex.cos(p2 - p1)
+    dobssel = dobs.data().select(sel)
+
+    # Solve for sigmaA yielding 1st derivative of LLG approximately equal to zero (assuming only numerator matters)
+    sum0 = flex.sum(2.*dobssel*abseE*absEc*cosdphi)
+    sum1 = flex.sum(2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))
+    sum2 = flex.sum(2*flex.pow(dobssel,3)*abseE*absEc*cosdphi)
+    sum3 = flex.sum(- 2*flex.pow(dobssel,4))
+    u1 = -2*sum2**3 + 9*sum1*sum2*sum3 - 27*sum0*sum3**2
+    sqrt_arg = u1**2 - 4*(sum2**2 - 3*sum1*sum3)**3
+    if sqrt_arg < 0: # Paranoia: haven't run into this in a wide variety of calculations
+      raise Sorry("Argument of square root in sigmaA calculation is negative")
+    third = 1./3
+    x1 = (u1 + math.sqrt(sqrt_arg))**third
+    sigmaA = ( (2 * 2.**third * sum2**2 - 6 * 2.**third*sum1*sum3
+                - 2*sum2*x1 + 2.**(2*third) * x1**2) /
+              (6 * sum3 * x1) )
+    sigmaA = max(min(sigmaA,0.999),1.E-6)
+    # Now work out approximate e.s.d. of sigmaA estimate from 2nd derivative of LLG at optimal sigmaA
+    denom = flex.pow((1-flex.pow2(dobssel)*sigmaA**2),3)
+    sum0 = flex.sum((2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))/denom)
+    sum1 = flex.sum((12*flex.pow(dobssel,3)*abseE*absEc*cosdphi)/denom)
+    sum2 = flex.sum((-6*flex.pow(dobssel,4)*(flex.pow2(abseE) + flex.pow2(absEc)))/denom)
+    sum3 = flex.sum((4*flex.pow(dobssel,5)*abseE*absEc*cosdphi)/denom)
+    sum4 = flex.sum((-2*flex.pow(dobssel,6))/denom)
+    d2LLGbydsigmaA = sum0 + sum1*sigmaA + sum2*sigmaA**2 + sum3*sigmaA**3 + sum4*sigmaA**4
+    d2LLGbydsigmaA /= over_sampling_factor
+    sigma_sigmaA = 1./math.sqrt(abs(d2LLGbydsigmaA))
+    ssqr = flex.mean_default(eEsel.d_star_sq().data(),0)
+    ndat = dobssel.size()
+    if verbosity > 1:
+      print(ndat,ssqr,sigmaA,sigma_sigmaA,file=log)
+    xdat.append(ssqr)
+    ydat.append(math.log(sigmaA))
+    wdat.append(abs(d2LLGbydsigmaA)) # Inverse variance estimate
+
+  xdat = flex.double(xdat)
+  ydat = flex.double(ydat)
+  wdat = flex.double(wdat)
+  W = flex.sum(wdat)
+  Wx = flex.sum(wdat * xdat)
+  Wy = flex.sum(wdat * ydat)
+  Wxx = flex.sum(wdat * xdat * xdat)
+  Wxy = flex.sum(wdat * xdat * ydat)
+  slope = (W * Wxy - Wx * Wy) / (W * Wxx - Wx * Wx)
+  intercept = (Wy * Wxx - Wx * Wxy) / (W * Wxx - Wx * Wx)
+  frac_complete = math.exp(2.*intercept)
+  if verbosity > 0:
+    print("Slope and intercept of sigmaA plot for placed model contribution: ",slope,intercept,file=log)
+    print("Approximate fraction of scattering: ",frac_complete,file=log)
+  linlogsiga = flex.double()
+  logsiga_combined = flex.double()
+  sigma_linlog = math.log(1.5) # Allow 50% error in linear fit
+  i_bin_used = 0
+  for i_bin in expectE.binner().range_used():
+    sigmaA = math.exp(ydat[i_bin_used])
+    # For complete model, slope should be negative, but can be positive if the
+    # modelled part is much better ordered than the larger unmodelled part
+    linlog = min(math.log(0.999),(intercept + slope*xdat[i_bin_used]))
+    linlogsiga.append(linlog)
+    sigma_sigmaA = 1./math.sqrt(wdat[i_bin_used])
+    sigma_lnsigmaA = math.exp(-ydat[i_bin_used])*sigma_sigmaA
+    combined_logsiga = ((ydat[i_bin_used]/sigma_lnsigmaA**2 + linlog/sigma_linlog**2) /
+                        (1./sigma_lnsigmaA**2 + 1./sigma_linlog**2) )
+    logsiga_combined.append(combined_logsiga)
+    combined_siga = math.exp(combined_logsiga)
+
+    sel = expectE.binner().selection(i_bin)
+    model_sigmaA.data().set_selected(sel, combined_siga)
+    i_bin_used += 1
+
+  if verbosity > 1:
+    import matplotlib.pyplot as plt
+    fig, ax = plt.subplots(2,1)
+    ax[0].plot(xdat,ydat,label="ln(sigmaA)")
+    ax[0].plot(xdat,linlogsiga,label="line fit")
+    ax[0].plot(xdat,logsiga_combined,label="combined")
+    ax[0].legend(loc="upper right")
+    ax[1].plot(xdat,flex.exp(ydat),label="sigmaA")
+    ax[1].plot(xdat,flex.exp(linlogsiga),label="line fit")
+    ax[1].plot(xdat,flex.exp(logsiga_combined),label="combined")
+    ax[1].legend(loc="lower left")
+    plt.show()
+
+  return(model_sigmaA)
+
 def assess_cryoem_errors(
     mmm, d_min,
     determine_ordered_volume=True,
@@ -1894,129 +2017,27 @@ def assess_cryoem_errors(
       # write_mtz(expectE,"expectE.mtz","eE")
       # write_mtz(masked_model_E,"masked_model.mtz","masked_model")
 
-  expectE_mod = expectE.deep_copy() # For temporary kludge where expectE is modified instead of adding fixed contribution in phasertng
   if masked_model_contributes:
-    masked_model_sigmaA = expectE.customized_copy(data=flex.double(expectE.size(),0))
-    xdat = []
-    ydat = []
-    wdat = []
-    expectE.use_binner_of(mc1)
-    if verbosity > 1:
-      print("SigmaA curve for fixed model contribution",file=log)
-      print(" # of terms   mean(ssqr)  sigmaA   sigma(sigmaA)")
-    for i_bin in mc1.binner().range_used():
-      sel = expectE.binner().selection(i_bin)
-      eEsel = expectE.select(sel)
-      abseE = eEsel.amplitudes().data()
-      p1 = eEsel.phases().data()
-      masked_coeffs_sel = masked_model_E.select(sel)
-      absEc = masked_coeffs_sel.amplitudes().data()
-      sigmaP = flex.mean_default(flex.pow2(absEc),0.)
-      absEc /= math.sqrt(sigmaP)
-      masked_model_E.data().set_selected(sel,
-                    masked_model_E.data().select(sel) / math.sqrt(sigmaP))
-      masked_coeffs_sel /= math.sqrt(sigmaP)
-      p2 = masked_coeffs_sel.phases().data()
-      cosdphi = flex.cos(p2 - p1)
-      dobssel = dobs.data().select(sel)
-
-      # Solve for sigmaA yielding 1st derivative of LLG approximately equal to zero (assuming only numerator matters)
-      sum0 = flex.sum(2.*dobssel*abseE*absEc*cosdphi)
-      sum1 = flex.sum(2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))
-      sum2 = flex.sum(2*flex.pow(dobssel,3)*abseE*absEc*cosdphi)
-      sum3 = flex.sum(- 2*flex.pow(dobssel,4))
-      u1 = -2*sum2**3 + 9*sum1*sum2*sum3 - 27*sum0*sum3**2
-      sqrt_arg = u1**2 - 4*(sum2**2 - 3*sum1*sum3)**3
-      if sqrt_arg < 0: # Paranoia: haven't run into this in a wide variety of calculations
-        raise Sorry("Argument of square root in sigmaA calculation is negative")
-      third = 1./3
-      x1 = (u1 + math.sqrt(sqrt_arg))**third
-      sigmaA = ( (2 * 2.**third * sum2**2 - 6 * 2.**third*sum1*sum3
-                  - 2*sum2*x1 + 2.**(2*third) * x1**2) /
-                (6 * sum3 * x1) )
-      sigmaA = max(min(sigmaA,0.999),1.E-6)
-      # Now work out approximate e.s.d. of sigmaA estimate from 2nd derivative of LLG at optimal sigmaA
-      denom = flex.pow((1-flex.pow2(dobssel)*sigmaA**2),3)
-      sum0 = flex.sum((2*flex.pow2(dobssel) * (1. - flex.pow2(abseE) - flex.pow2(absEc)))/denom)
-      sum1 = flex.sum((12*flex.pow(dobssel,3)*abseE*absEc*cosdphi)/denom)
-      sum2 = flex.sum((-6*flex.pow(dobssel,4)*(flex.pow2(abseE) + flex.pow2(absEc)))/denom)
-      sum3 = flex.sum((4*flex.pow(dobssel,5)*abseE*absEc*cosdphi)/denom)
-      sum4 = flex.sum((-2*flex.pow(dobssel,6))/denom)
-      d2LLGbydsigmaA = sum0 + sum1*sigmaA + sum2*sigmaA**2 + sum3*sigmaA**3 + sum4*sigmaA**4
-      d2LLGbydsigmaA /= over_sampling_factor
-      sigma_sigmaA = 1./math.sqrt(abs(d2LLGbydsigmaA))
-      ssqr = flex.mean_default(eEsel.d_star_sq().data(),0)
-      ndat = dobssel.size()
-      if verbosity > 1:
-        print(ndat,ssqr,sigmaA,sigma_sigmaA,file=log)
-      xdat.append(ssqr)
-      ydat.append(math.log(sigmaA))
-      wdat.append(abs(d2LLGbydsigmaA)) # Inverse variance estimate
-
-    xdat = flex.double(xdat)
-    ydat = flex.double(ydat)
-    wdat = flex.double(wdat)
-    W = flex.sum(wdat)
-    Wx = flex.sum(wdat * xdat)
-    Wy = flex.sum(wdat * ydat)
-    Wxx = flex.sum(wdat * xdat * xdat)
-    Wxy = flex.sum(wdat * xdat * ydat)
-    slope = (W * Wxy - Wx * Wy) / (W * Wxx - Wx * Wx)
-    intercept = (Wy * Wxx - Wx * Wxy) / (W * Wxx - Wx * Wx)
-    frac_complete = math.exp(2.*intercept)
-    if verbosity > 0:
-      print("Slope and intercept of sigmaA plot for fixed model contribution: ",slope,intercept,file=log)
-      print("Approximate fraction of scattering: ",frac_complete,file=log)
-    linlogsiga = flex.double()
-    logsiga_combined = flex.double()
-    sigma_linlog = math.log(1.5) # Allow 50% error in linear fit
-    i_bin_used = 0
-    for i_bin in mc1.binner().range_used():
-      sigmaA = math.exp(ydat[i_bin_used])
-      # For complete model, slope should be negative, but can be positive if the
-      # modelled part is much better ordered than the larger unmodelled part
-      linlog = min(math.log(0.999),(intercept + slope*xdat[i_bin_used]))
-      linlogsiga.append(linlog)
-      sigma_sigmaA = 1./math.sqrt(wdat[i_bin_used])
-      sigma_lnsigmaA = math.exp(-ydat[i_bin_used])*sigma_sigmaA
-      combined_logsiga = ((ydat[i_bin_used]/sigma_lnsigmaA**2 + linlog/sigma_linlog**2) /
-                         (1./sigma_lnsigmaA**2 + 1./sigma_linlog**2) )
-      logsiga_combined.append(combined_logsiga)
-      combined_siga = math.exp(combined_logsiga)
-
-      sel = expectE.binner().selection(i_bin)
-      expectE_mod.data().set_selected(sel, expectE_mod.data().select(sel)
-            - math.exp(combined_logsiga)*dobs.data().select(sel)
-              * masked_model_E.data().select(sel) )
-      masked_model_sigmaA.data().set_selected(sel, combined_siga)
-      i_bin_used += 1
-
-    if False:
-      import matplotlib.pyplot as plt
-      fig, ax = plt.subplots(2,1)
-      ax[0].plot(xdat,ydat,label="ln(sigmaA)")
-      ax[0].plot(xdat,linlogsiga,label="line fit")
-      ax[0].plot(xdat,logsiga_combined,label="combined")
-      ax[0].legend(loc="upper right")
-      ax[1].plot(xdat,flex.exp(ydat),label="sigmaA")
-      ax[1].plot(xdat,flex.exp(linlogsiga),label="line fit")
-      ax[1].plot(xdat,flex.exp(logsiga_combined),label="combined")
-      ax[1].legend(loc="lower left")
-      plt.show()
+    masked_model_sigmaA = sigmaA_from_model_in_map(expectE, dobs, masked_model_E, over_sampling_factor, verbosity)
+    # Temporary kludge where expectE is modified instead of adding fixed contribution in phasertng
+    expectE_mod = expectE.customized_copy(data=expectE.data()
+                  - masked_model_sigmaA.data()*dobs.data()*masked_model_E.data())
     # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
+  else:
+    expectE_mod = expectE.deep_copy()
 
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
   resultsdict = dict(
-      n_bins = n_bins,
-      ssqr_bins = ssqr_bins,
-      ssqmin = ssqmin,
-      ssqmax = ssqmax,
-      asqr_scale = asqr_scale,
-      sigmaT_bins = sigmaT_bins,
-      asqr_beta = asqr_beta,
-      a_baniso = a_baniso,
-      mapCC_bins = mapCC_bins)
+    n_bins = n_bins,
+    ssqr_bins = ssqr_bins,
+    ssqmin = ssqmin,
+    ssqmax = ssqmax,
+    asqr_scale = asqr_scale,
+    sigmaT_bins = sigmaT_bins,
+    asqr_beta = asqr_beta,
+    a_baniso = a_baniso,
+    mapCC_bins = mapCC_bins)
   return group_args(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
@@ -2041,7 +2062,11 @@ def run():
 
   Optional command-line arguments (keyworded):
   --protein_mw*: molecular weight expected for protein component of ordered density
+          in full map
   --nucleic_mw*: same for nucleic acid component
+  --sphere_points: number of reflections to be used for averaging in Fourier space
+  --model: PDB file for placed model used to define the centre and radius of
+          the cut-out sphere, used as an alternative to sphere_cent and radius
   --sphere_cent: Centre of sphere defining target map region (3 floats)
           defaults to centre of map
   --radius: radius of sphere (1 float)
@@ -2056,7 +2081,8 @@ def run():
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
-  * NB: At least one of protein_mw or nucleic_mw must be given
+  * NB: At least one of protein_mw or nucleic_mw must be given if sphere
+  parameters are not defined either explicitly or through model
   """
   import argparse
   dm = DataManager()
@@ -2068,17 +2094,23 @@ def run():
   parser.add_argument('map2', help='Map file for half-map 2')
   parser.add_argument('d_min', help='d_min for maps', type=float)
   parser.add_argument('--protein_mw',
-                      help='Molecular weight of protein component of map',
+                      help='Molecular weight of protein component of full map',
                       type=float)
   parser.add_argument('--nucleic_mw',
-                      help='Molecular weight of nucleic acid component of map',
+                      help='Molecular weight of nucleic acid component of full map',
                       type=float)
   parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
                       type=float, default=500.)
-  parser.add_argument('--fixed_model', help='Fixed model')
-  parser.add_argument('--sphere_cent',help='Centre of sphere for docking',
+  parser.add_argument('--model',
+                      help='Optional placed model defining size and position of cut-out sphere')
+  parser.add_argument('--fixed_model',
+                      help='Optional fixed model accounting for explained map features')
+  parser.add_argument('--sphere_cent',
+                      help='Centre of sphere for docking, if no model provided',
                       nargs=3, type=float)
-  parser.add_argument('--radius',help='Radius of sphere for docking', type=float)
+  parser.add_argument('--radius',
+                      help='Radius of sphere for docking, if no model provided',
+                      type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
   parser.add_argument('--no_shift_map_origin', action='store_true')
@@ -2096,25 +2128,26 @@ def run():
   shift_map_origin = not(args.no_shift_map_origin)
   determine_ordered_volume = not(args.no_determine_ordered_volume)
 
+  sphere_points = args.sphere_points
+
   cutout_specified = False
   sphere_cent = None
   radius = None
+
+  model = None
+  if args.model is not None:
+    model_file = args.model
+    model = dm.get_model(model_file)
+    if args.sphere_cent is not None:
+      raise Sorry('Either model or sphere specification may be given but not both')
+    sphere_cent, radius = sphere_enclosing_model(model)
+    radius = radius + d_min # Expand to allow width for density
+    cutout_specified = True
+
   fixed_model = None
   if args.fixed_model is not None:
     model_file = args.fixed_model
     fixed_model = dm.get_model(model_file)
-
-  protein_mw = None
-  nucleic_mw = None
-  if (args.protein_mw is None) and (args.nucleic_mw is None):
-    if determine_ordered_volume:
-      raise Sorry("At least one of protein_mw or nucleic_mw must be given")
-  if args.protein_mw is not None:
-    protein_mw = args.protein_mw
-  if args.nucleic_mw is not None:
-    nucleic_mw = args.nucleic_mw
-
-  sphere_points = args.sphere_points
 
   if args.sphere_cent is not None:
     if args.radius is None:
@@ -2124,6 +2157,18 @@ def run():
     cutout_specified = True
   if (not determine_ordered_volume and not cutout_specified):
     raise Sorry("Must determine ordered volume if cutout not specified")
+
+  protein_mw = None
+  nucleic_mw = None
+  if (args.protein_mw is None) and (args.nucleic_mw is None):
+    if cutout_specified:
+      determine_ordered_volume = False
+    if determine_ordered_volume and not cutout_specified:
+      raise Sorry("At least one of protein_mw or nucleic_mw must be given")
+  if args.protein_mw is not None:
+    protein_mw = args.protein_mw
+  if args.nucleic_mw is not None:
+    nucleic_mw = args.nucleic_mw
 
   # Create map_model_manager containing half-maps
   map1_filename = args.map1

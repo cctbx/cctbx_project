@@ -5,6 +5,11 @@ to_kcal_mol = { 'ev'      : 23.0609,
                 'hartree' : 627.503,
   }
 
+rename = {'pocket+energy-bound': 'Binding Energy',
+          'energy-strain' : 'Unbound Energy',
+          # 'energy' : 'Bound Energy'
+          }
+
 def _print_energy_in_kcal(e, units):
   if units.lower() in to_kcal_mol:
     return '%15.1f %s' % (e*to_kcal_mol[units.lower()], 'kcal/mol')
@@ -18,6 +23,9 @@ def print_energy_in_kcal(ga):
     units=ga.units.lower()
     if d in ['opt', 'bound']: atoms=b
     elif d in ['energy', 'strain']: atoms=l
+    elif d in ['pocket']: atoms=b-l
+    else: assert 0
+    d=rename.get(d,d)
     s.append('%-22s %s (atoms %4d, charge %2d)  ' % (d,
                                           _print_energy_in_kcal(e, units), atoms, c))
   return s
@@ -29,8 +37,14 @@ class energies(list):
   def as_string(self, verbose=False):
     # from libtbx import easy_pickle
     # easy_pickle.dump('ga.pickle', self)
+    plusses = [ ['pocket', 'energy'],
+                # ['pocket', 'strain'],
+      ]
     pairs = [['bound', 'opt'],
              ['bound-opt', 'strain'],
+             ['pocket+energy', 'bound'],
+             # ['pocket+energy-strain', 'bound'],
+             ['energy', 'strain'],
       ]
     s=''
     tmp = {}
@@ -51,6 +65,14 @@ class energies(list):
           for line in rc:
             t += '%s%s\n' % (' '*6, line)
       if verbose: print('macro_cycle %d %s' % (i+1,t))
+
+      for k1, k2 in plusses:
+        if not (t_atoms[i].get(k1, False) and t_atoms[i].get(k2, False)):
+          continue
+        if t_atoms[i][k1]!=t_atoms[i][k2]: continue
+        t_atoms[i]['%s+%s' % (k1,k2)]=b
+        tmp[i]['%s+%s' % (k1,k2)]=tmp[i][k1]+tmp[i][k2]
+
       for k1, k2 in pairs:
         if not (t_atoms[i].get(k1, False) and t_atoms[i].get(k2, False)):
           continue
@@ -58,6 +80,7 @@ class energies(list):
         if k1 in tmp[i] and k2 in tmp[i]:
           e = tmp[i][k1]-tmp[i][k2]
           k3='%s-%s' % (k1,k2)
+          k3=rename.get(k3, k3)
           t+='%s%-22s %s (atoms %4d)\n' % (' '*6,
                              k3,
                              _print_energy_in_kcal(e, units),

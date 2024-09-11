@@ -15,12 +15,12 @@ Utility functions used for reading input data
 def create_experiment_identifier(experiment, experiment_file_path, experiment_id):
   'Create a hashed experiment identifier based on the experiment file path, experiment index in the file, and experiment features'
   import hashlib
-  exp_identifier_str = experiment_file_path + \
+  exp_identifier_str = os.path.basename(experiment_file_path + \
                        str(experiment_id) + \
                        str(experiment.beam) + \
                        str(experiment.crystal) + \
                        str(experiment.detector) + \
-                       ''.join(experiment.imageset.paths())
+                       ''.join([os.path.basename(p) for p in experiment.imageset.paths()]))
   hash_obj = hashlib.md5(exp_identifier_str.encode('utf-8'))
   return hash_obj.hexdigest()
 

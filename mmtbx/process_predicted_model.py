@@ -593,7 +593,7 @@ def get_selection_for_short_segments(ph, minimum_sequential_residues):
     for r in get_indices_as_ranges(residue_list):
       if (minimum_sequential_residues is None) or (
           r.end - r.start + 1 < minimum_sequential_residues):
-        selections.append("(chain %s and resseq %s:%s)" %(
+        selections.append("(chain '%s' and resseq %s:%s)" %(
           chain_id, r.start, r.end))
   selection_string = " or ".join(selections)
   return selection_string
