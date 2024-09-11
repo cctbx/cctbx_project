@@ -612,6 +612,7 @@ class error_modifier_mm24(worker):
         self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)
 
   def plot_diagnostics(self, reflections):
+    import matplotlib.pyplot as plt
     I_scale = 100000
     def get_rankits(n, down_sample, distribution):
       prob_level = (np.arange(1, n+1) - 0.5) / n
