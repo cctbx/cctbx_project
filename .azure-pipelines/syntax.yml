@@ -22,6 +22,8 @@ jobs:
         PYTHON_VERSION: 3.11
       python3.12:
         PYTHON_VERSION: 3.12
+      python3.13:
+        PYTHON_VERSION: 3.13
 
   steps:
 
@@ -34,6 +36,15 @@ jobs:
   - script: |
       conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons
     displayName: Create conda environment
+    condition: ne(variables['PYTHON_VERSION'], '3.13')
+
+  - script: |
+      conda create -y -c conda-forge -c conda-forge/label/python_rc -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future setuptools
+      conda activate py$(PYTHON_VERSION)
+      cd $(Pipeline.Workspace)/modules
+      git clone -b 4.8.1 https://github.com/SCons/scons.git
+    displayName: Create conda environment
+    condition: eq(variables['PYTHON_VERSION'], '3.13')
 
   - script: |
       set -xe
