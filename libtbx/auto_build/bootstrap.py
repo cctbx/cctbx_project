@@ -2029,7 +2029,7 @@ class MOLPROBITYBuilder(Builder):
   ]
   CODEBASES_EXTRA = [
     'molprobity',
-    #'chem_data', #chem_data removed from molprobity builder until accessible outside cci, -CJW
+    'chem_data',
     'reduce',
     'probe'
   ]
