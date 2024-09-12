@@ -91,6 +91,9 @@ master_phil = parse(
     .type = space_group
     .help = Show positions of miller indices from this unit_cell and space \
             group. Not implemented.
+  enforce_single_detector = True
+    .type = bool
+    .help = Require matching detector models for all experiments.
 filter {
   enable = False
     .type = bool
