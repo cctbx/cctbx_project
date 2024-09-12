@@ -75,7 +75,7 @@ class Entry:
     
     # Parse Atom labels
     values = []
-    for ln,line in self.lines[:-2]:
+    for line in self.lines[:-2]:
       if not line.startswith(" "):
         line = line.replace(line.split()[0],"") # remove name like 'bond', 'angle'
       #line = line.replace("pdb=","")
@@ -84,7 +84,7 @@ class Entry:
     self.atom_labels = values
 
     # Numerical labels
-    ln, labels = self.lines[-2]
+    labels = self.lines[-2]
     numerical_labels = labels.split()
     if self.n_values:
       # test labels
@@ -92,7 +92,7 @@ class Entry:
       assert n_values == self.n_values or n_values == self.n_values-1, (numerical_labels,n_values,self.n_values)
     
     # Numerical values
-    ln, values = self.lines[-1]
+    values = self.lines[-1]
     numerical_values =  values.split()
     if self.n_values:
       n_values =  len(numerical_values)
@@ -305,7 +305,7 @@ class PlaneEntry(Entry):
     
     self.atom_labels = []
     nums = [[None]*self.n_values for l in range(len(self.lines)-1)]
-    for i,(ln,line) in enumerate(self.lines[1:]):
+    for i,line in enumerate(self.lines[1:]):
       line = line.replace(self.name,"")
       pdb_part = re.search(r'pdb="([^"]*)"', line)
       if pdb_part:
@@ -323,7 +323,7 @@ class PlaneEntry(Entry):
       for j,p in enumerate(parts[1:]):
         nums[i][j] = p
 
-    ln,line = self.lines[0]
+    line = self.lines[0]
     numerical_labels = line.strip().split()
     
     # fill empty values down columns
@@ -382,12 +382,12 @@ class ParallelityEntry(Entry):
     """
     Interpret lines from a Parallelity entry. 
     """
-    ln0,line0 = self.lines[0]
-    ln1,line1 = self.lines[1]
+    line0 = self.lines[0]
+    line1 = self.lines[1]
     plane_2_idx = line0.index("plane 2")
 
     all_parts = []
-    for ln,line in self.lines[1:]:
+    for line in self.lines[1:]:
       pdb_parts = re.findall(r'pdb="([^"]*)"', line)
       
       if len(pdb_parts) >= 1:
@@ -636,7 +636,7 @@ class GeoParseContainer:
 
       # Check for data
       if self.current_entry_lines and not entry_trigger:
-        self.current_entry_lines.append((i,line))
+        self.current_entry_lines.append(line)
         last_line_label = "data"
         continue
       
