@@ -529,9 +529,6 @@ merging {
       number_of_intensity_bins = 100
         .help = Number of intensity bins
         .type = int
-      n_degrees = 2
-        .help = s_add as a n_degree polynomial of the correlation coefficient
-        .type = int
       tuning_param = 10
         .help = Tuning param for t-dist in maximum log likelihood
         .type = float
