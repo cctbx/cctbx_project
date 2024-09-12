@@ -34,8 +34,6 @@ class Entry:
   name = None                 # Name or label for the class
   entry_class_trigger = None  # Text trigger to identify entry class
   entry_trigger = None        # Text trigger to identify new entry instance
-  n_atoms = None              # explicit number of atoms to expect
-  n_values = None             # explicit number of values to expect
   default_origin_id = 0       # default origin_id integer for an entry
   
 
@@ -200,8 +198,6 @@ class NonBondedEntry(Entry):
   name = "nonbonded"
   entry_class_trigger = "Nonbonded interactions"
   entry_trigger = "nonbonded"
-  n_atoms = 2
-  n_values = 3
   internals = "bonds"
 
   
@@ -209,8 +205,6 @@ class AngleEntry(Entry):
   name = "angle"
   entry_class_trigger = "Bond angle restraints"
   entry_trigger = "angle"
-  n_atoms = 3
-  n_values = 6
   internals = "angles"
 
     
@@ -227,8 +221,6 @@ class BondEntry(Entry):
   name = "bond"
   entry_class_trigger = "Bond restraints"
   entry_trigger = "bond"
-  n_atoms = 2
-  n_values = 6
   internals = "bonds"
   
   def to_proxy(self):
@@ -244,8 +236,6 @@ class DihedralEntry(Entry):
   name = "dihedral"
   entry_class_trigger = "Dihedral angle restraints"
   entry_trigger = "dihedral"
-  n_atoms = 4
-  n_values = 7
   internals = "dihedrals"
 
   @property
@@ -278,8 +268,6 @@ class ChiralityEntry(Entry):
   name = "chiral"
   entry_class_trigger= "Chirality restraints"
   entry_trigger = "chirality"
-  n_atoms = 4
-  n_values = 7
   internals = "chirals"
     
   @property
@@ -370,8 +358,6 @@ class PlaneEntry(Entry):
 class ParallelityEntry(Entry):
   name = "parallelity"
   entry_trigger = "plane 1"
-  n_atoms = None
-  n_values = None
   internals = "parallelities"
 
   def __init__(self,*args,**kwargs):
