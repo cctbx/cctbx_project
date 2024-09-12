@@ -21,7 +21,9 @@ grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descripto
 geo_str = buffer.getvalue()
 
 # Parse geo str
-geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+geo_lines = geo_str.split("\n")
+geo_container = GeoParseContainer(geo_lines,model=model)
+  
 
 # access entries
 entry = geo_container.entries["dihedral"][0]
@@ -377,7 +379,8 @@ def tst_01(model,printing=False):
   site_labels = model.get_xray_structure().scatterers().extract_labels()
   grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
   geo_str = buffer.getvalue()
-  geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
   
   if printing:
     print("\n\ntst_01")
@@ -412,7 +415,9 @@ def tst_02(model,printing=False):
   buffer = StringIO()
   grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
   geo_str = buffer.getvalue()
-  geo_container = GeoParseContainer.from_geo_str(geo_str,model=model)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
+  
   
   if printing:
     print("\n\ntst_02")
@@ -448,7 +453,9 @@ def tst_03(model,printing=False):
   buffer = StringIO()
   grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
   geo_str = buffer.getvalue()
-  geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
+  
   
   
   if printing:
@@ -485,7 +492,9 @@ def tst_04(model,printing=False):
   site_labels = model.get_xray_structure().scatterers().extract_labels()
   grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
   geo_str = buffer.getvalue()
-  geo_container = GeoParseContainer.from_geo_str(geo_str,model=None)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
+  
   
   
   if printing:
@@ -518,7 +527,9 @@ def tst_05(model,printing=False):
 
 
   
-  geo_container = GeoParseContainer.from_geo_str(tst_1_geo)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
+  
   
   
   if printing:
@@ -557,7 +568,8 @@ def tst_06(model,printing=False):
 
   
   tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
-  geo_container = GeoParseContainer.from_geo_str(tst_1_geo_iseqs)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
   
   if printing:
     print("\n\ntst_06")
@@ -586,7 +598,9 @@ def tst_07(model,printing=False):
   }
 
   
-  geo_container = GeoParseContainer.from_geo_str(tst_2_geo)
+  geo_lines = geo_str.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=model)
+  
   
   if printing:
     print("\n\ntst_01")
