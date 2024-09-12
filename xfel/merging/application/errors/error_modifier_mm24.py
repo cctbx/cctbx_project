@@ -22,7 +22,6 @@ class error_modifier_mm24(worker):
     else:
       self.limit_differences = False
 
-    self.n_coefs = self.params.merging.error.mm24.n_degrees + 1
     self.tuning_param = self.params.merging.error.mm24.tuning_param
     self.number_of_intensity_bins = self.params.merging.error.mm24.number_of_intensity_bins
     if self.params.merging.error.mm24.cc_after_pr:
@@ -53,6 +52,7 @@ class error_modifier_mm24(worker):
     # Run LBFGSB minimizer
     #  -- only rank0 does minimization but gradients/functionals are calculated using all rank
     self.run_minimizer()
+
     if self.params.merging.error.mm24.do_diagnostics:
       self.plot_diagnostics(reflections)
     # Finally update the variances of each reflection as per Eq (10) in Brewster et. al (2019)
@@ -252,7 +252,9 @@ class error_modifier_mm24(worker):
       bin_centers = bin_centers[positive_indices]
       mean_differences = mean_differences[positive_indices]
 
-      self.sadd = [0 for i in range(self.n_coefs)]
+      self.sadd = [0, 0.001, 0.001]
+      self.sadd[1] = 0.001
+      self.sadd[2] = 0.001
       if self.expected_sf is None:
         results = scipy.optimize.minimize(
           target_fun_bfgs,
@@ -262,7 +264,7 @@ class error_modifier_mm24(worker):
           method='BFGS'
           )
         self.sfac = abs(float(results.x[0]))
-        self.sadd[0] = abs(float(results.x[1]))
+        self.sadd[0] = math.sqrt(abs(float(results.x[1])))
         fit_curve = fitting_equation(results.x, bin_centers, mean_differences[0], False)
       else:
         results = scipy.optimize.minimize_scalar(
@@ -271,7 +273,7 @@ class error_modifier_mm24(worker):
           args=(bin_centers, mean_differences),
           )
         self.sfac = self.expected_sf
-        self.sadd[0] = abs(float(results.x))
+        self.sadd[0] = math.sqrt(abs(float(results.x)))
 
       if self.params.merging.error.mm24.do_diagnostics:
         import matplotlib.pyplot as plt
@@ -292,7 +294,7 @@ class error_modifier_mm24(worker):
 
     else:
       self.sfac = 0
-      self.sadd = [0 for i in range(self.n_coefs)]
+      self.sadd = [0, 0, 0]
     self.sfac = self.mpi_helper.comm.bcast(self.sfac, root=0)
     self.sadd = self.mpi_helper.comm.bcast(self.sadd, root=0)
 
@@ -311,7 +313,7 @@ class error_modifier_mm24(worker):
       param_offset = 1
       param_shift = 0
       self.x = flex.double([self.sfac, *self.sadd])
-    self.n = self.n_coefs + param_offset
+    self.n = 3 + param_offset
     if self.mpi_helper.rank == 0:
       self.logger.main_log(
         'Initial Parameter Estimates = '
@@ -326,7 +328,7 @@ class error_modifier_mm24(worker):
       l[0] = 2
       if self.x[0] < 2:
         self.x[0] = 2
-    for degree_index in range(self.n_coefs):
+    for degree_index in range(3):
       l[degree_index + param_offset] = -1000
     if self.mpi_helper.rank == 0:
       self.minimizer = lbfgsb.minimizer(
@@ -346,7 +348,7 @@ class error_modifier_mm24(worker):
           self.sfac = self.x[0 + param_shift]
           self.sadd = self.x[1 + param_shift:]
           sfac = f'{self.sfac:0.3f}'
-          sadd = [f'{self.sadd[i]:0.3f}' for i in range(self.n_coefs)]
+          sadd = [f'{self.sadd[i]:0.3f}' for i in range(3)]
           log_out = 'intermediate minimization results = '\
             + f'loss: {self.L:.2f} '\
             + f'sfac: {sfac} '\
@@ -371,7 +373,7 @@ class error_modifier_mm24(worker):
     if self.mpi_helper.rank == 0:
       tuning_param = f'{self.tuning_param:0.3f}'
       sfac = f'{self.sfac:0.3f}'
-      sadd = [f'{self.sadd[i]:0.3f}' for i in range(self.n_coefs)]
+      sadd = [f'{self.sadd[i]:0.3f}' for i in range(3)]
       log_out = 'FINAL mm24 VALUES = '\
         + f'loss: {self.L:.2f} '\
         + f'sfac: {sfac} '\
@@ -392,9 +394,9 @@ class error_modifier_mm24(worker):
     shift = 0.000001
     import copy
     if self.params.merging.error.mm24.tuning_param_opt:
-      self.n = self.n_coefs + 3
+      self.n = 6
     else:
-      self.n = self.n_coefs + 2
+      self.n = 5
 
     self.calculate_functional()
     sfac = copy.copy(self.sfac)
@@ -437,7 +439,7 @@ class error_modifier_mm24(worker):
       print(f'der_wrt_sfac numerical: {check_der_wrt_sfac} analytical {der_wrt_sfac}')
 
     # sadd:
-    for degree_index in range(self.n_coefs):
+    for degree_index in range(3):
       if sadd[degree_index] == 0:
         self.sadd[degree_index] = shift
       else:
@@ -526,21 +528,23 @@ class error_modifier_mm24(worker):
     dL_dv = dL0_dv + dL2_dv + dL3_dv + dL5_dv
     return L, dL_dvar, dL_dv
 
-  def _get_sadd(self, correlation):
-    sadd = flex.double(len(correlation), 0)
-    dsadd_dsaddi = [flex.double(len(correlation), 0) for i in range(self.n_coefs)]
-    for degree_index in range(self.n_coefs):
-      sadd += self.sadd[degree_index] * correlation**degree_index
-      dsadd_dsaddi[degree_index] = correlation**degree_index
-    return sadd, dsadd_dsaddi
+  def _get_sadd2(self, correlation):
+    term1 = flex.exp(-self.sadd[1] * correlation)
+    sadd2 = self.sadd[0]**2 * term1 + self.sadd[2]**2
+    dsadd2_dsaddi = [
+      2 * self.sadd[0] * term1,
+      -correlation * self.sadd[0]**2 * term1,
+      2 * self.sadd[2] * flex.double(len(correlation), 1)
+      ]
+    return sadd2, dsadd2_dsaddi
 
   def _get_var_mm24(self, counting_err, biased_mean, correlation, return_der=False):
-    sadd, dsadd_dsaddi = self._get_sadd(correlation)
-    var = self.sfac**2 * (counting_err + sadd**2 * biased_mean**2)
+    sadd2, dsadd2_dsaddi = self._get_sadd2(correlation)
+    var = self.sfac**2 * (counting_err + sadd2 * biased_mean**2)
     if return_der:
-      dvar_dsfac = 2 * self.sfac * (counting_err + sadd**2 * biased_mean**2)
-      dvar_dsadd = 2 * self.sfac**2 * sadd * biased_mean**2
-      return var, dvar_dsfac, dvar_dsadd, dsadd_dsaddi
+      dvar_dsfac = 2 * self.sfac * (counting_err + sadd2 * biased_mean**2)
+      dvar_dsadd2 = self.sfac**2 * biased_mean**2
+      return var, dvar_dsfac, dvar_dsadd2, dsadd2_dsaddi
     else:
       return var
 
@@ -549,19 +553,19 @@ class error_modifier_mm24(worker):
     MPI = self.mpi_helper.MPI
     L_bin_rank = flex.double(self.number_of_intensity_bins, 0)
     dL_dsfac_bin_rank = flex.double(self.number_of_intensity_bins, 0)
-    dL_dsadd_bin_rank = [flex.double(self.number_of_intensity_bins, 0) for i in range(self.n_coefs)]
+    dL_dsadd_bin_rank = [flex.double(self.number_of_intensity_bins, 0) for i in range(3)]
     if self.params.merging.error.mm24.tuning_param_opt:
       dL_dnu_bin_rank = flex.double(self.number_of_intensity_bins, 0)
 
     for bin_index, differences in enumerate(self.intensity_bins):
       if len(differences) > 0:
-        var_i, dvar_i_dsfac, dvar_i_dsadd, dsadd_i_dsaddi = self._get_var_mm24(
+        var_i, dvar_i_dsfac, dvar_i_dsadd2, dsadd2_i_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_i'],
           differences['biased_mean'],
           differences['correlation_i'],
           return_der=True
           )
-        var_j, dvar_j_dsfac, dvar_j_dsadd, dsadd_j_dsaddi = self._get_var_mm24(
+        var_j, dvar_j_dsfac, dvar_j_dsadd2, dsadd2_j_dsaddi = self._get_var_mm24(
           differences['counting_stats_var_j'],
           differences['biased_mean'],
           differences['correlation_j'],
@@ -585,15 +589,15 @@ class error_modifier_mm24(worker):
 
         L_bin_rank[bin_index] = flex.sum(L_in_bin)
         dL_dsfac_bin_rank[bin_index] = flex.sum(dL_dvar_x * (dvar_i_dsfac + dvar_j_dsfac))
-        for degree_index in range(self.n_coefs):
+        for degree_index in range(3):
           dL_dsadd_bin_rank[degree_index][bin_index] = flex.sum(dL_dvar_x * (
-            dvar_i_dsadd * dsadd_i_dsaddi[degree_index] + dvar_j_dsadd * dsadd_j_dsaddi[degree_index]
+            dvar_i_dsadd2 * dsadd2_i_dsaddi[degree_index] + dvar_j_dsadd2 * dsadd2_j_dsaddi[degree_index]
             ))
 
     L_bin = comm.reduce(L_bin_rank, MPI.SUM, root=0)
     dL_dsfac_bin = comm.reduce(dL_dsfac_bin_rank, MPI.SUM, root=0)
-    dL_dsadd_bin = [None for i in range(self.n_coefs)]
-    for degree_index in range(self.n_coefs):
+    dL_dsadd_bin = [None for i in range(3)]
+    for degree_index in range(3):
       dL_dsadd_bin[degree_index] = comm.reduce(dL_dsadd_bin_rank[degree_index], MPI.SUM, root=0)
     if self.params.merging.error.mm24.tuning_param_opt:
       dL_dnu_bin = comm.reduce(dL_dnu_bin_rank, MPI.SUM, root=0)
@@ -601,13 +605,14 @@ class error_modifier_mm24(worker):
     if self.mpi_helper.rank == 0:
       self.L = flex.sum(self.bin_weighting * L_bin)
       self.dL_dsfac = flex.sum(self.bin_weighting * dL_dsfac_bin)
-      self.dL_dsadd = [0 for i in range(self.n_coefs)]
-      for degree_index in range(self.n_coefs):
+      self.dL_dsadd = [0 for i in range(3)]
+      for degree_index in range(3):
         self.dL_dsadd[degree_index] = flex.sum(self.bin_weighting * dL_dsadd_bin[degree_index])
       if self.params.merging.error.mm24.tuning_param_opt:
         self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)
 
   def plot_diagnostics(self, reflections):
+    import matplotlib.pyplot as plt
     I_scale = 100000
     def get_rankits(n, down_sample, distribution):
       prob_level = (np.arange(1, n+1) - 0.5) / n
@@ -644,26 +649,6 @@ class error_modifier_mm24(worker):
       conversion_factor = None
     conversion_factor = self.mpi_helper.comm.bcast(conversion_factor)
 
-    # Setup for the ENCE calculation
-    variance = self._get_var_mm24(
-      reflections['intensity.sum.variance'],
-      reflections['biased_mean'],
-      reflections[self.cc_key]
-      ).as_numpy_array()
-    variance.sort()
-    lower = self.mpi_helper.comm.gather(variance[int(0.005 * variance.size)])
-    upper = self.mpi_helper.comm.gather(variance[int(0.995 * variance.size)])
-    n_ENCE_bins = 25
-    if self.mpi_helper.rank == 0:
-      ENCE_bins = np.linspace(np.sqrt(10*np.median(lower)), np.sqrt(np.median(upper)), n_ENCE_bins + 1)
-    else:
-      ENCE_bins = np.empty(n_ENCE_bins + 1)
-    self.mpi_helper.comm.Bcast(ENCE_bins, root=0)
-    ENCE_centers = (ENCE_bins[1:] + ENCE_bins[:-1]) / 2
-    ENCE_counts_rank = np.zeros(n_ENCE_bins, dtype=int)
-    ENCE_sum_V_rank = np.zeros(n_ENCE_bins)
-    ENCE_sum_D_rank = np.zeros(n_ENCE_bins)
-
     median_differences = [[] for i in range(self.number_of_intensity_bins)]
     for refls in reflection_table_utils.get_next_hkl_reflection_table(reflections):
       number_of_reflections = refls.size()
@@ -686,44 +671,6 @@ class error_modifier_mm24(worker):
           median_differences[bin_index].append(
             np.median(differences / np.sqrt(variances), axis=1)
             )
-          # Calculations for ENCE
-          triu_indices = np.triu_indices(n=I.size, k=1)
-          differences = differences[triu_indices[0], triu_indices[1]]
-          variances = variances[triu_indices[0], triu_indices[1]]
-          bin_indices = np.searchsorted(ENCE_bins, np.sqrt(variances))
-          in_range = np.logical_and(bin_indices >= 0, bin_indices < n_ENCE_bins)
-          ENCE_counts_rank[bin_indices[in_range]] += 1
-          ENCE_sum_V_rank[bin_indices[in_range]] += variances[in_range]
-          ENCE_sum_D_rank[bin_indices[in_range]] += differences[in_range]**2
-    ENCE_counts = np.empty(n_ENCE_bins, dtype=int)
-    ENCE_sum_V = np.empty(n_ENCE_bins)
-    ENCE_sum_D = np.empty(n_ENCE_bins)
-    self.mpi_helper.comm.Reduce(ENCE_counts_rank, ENCE_counts, op=self.mpi_helper.MPI.SUM, root=0)
-    self.mpi_helper.comm.Reduce(ENCE_sum_V_rank, ENCE_sum_V, op=self.mpi_helper.MPI.SUM, root=0)
-    self.mpi_helper.comm.Reduce(ENCE_sum_D_rank, ENCE_sum_D, op=self.mpi_helper.MPI.SUM, root=0)
-
-    # Reliability plot and ENCE
-    if self.mpi_helper.rank == 0:
-      import matplotlib.pyplot as plt
-      ENCE_RMV = np.sqrt(ENCE_sum_V / ENCE_counts) / I_scale
-      ENCE_RMD = np.sqrt(ENCE_sum_D / ENCE_counts) / I_scale
-      ENCE = np.abs(ENCE_RMV - ENCE_RMD) / ENCE_RMV
-      good_bins = ENCE_counts > 0
-      fig, axes = plt.subplots(2, 1, figsize=(3, 4), sharex=True)
-      lims = [ENCE_RMV[good_bins].min(), ENCE_RMV[good_bins].max()]
-      axes[0].plot(lims, lims, color=[0, 0, 0])
-      axes[0].plot(ENCE_RMV[good_bins], ENCE_RMD[good_bins])
-      axes[1].plot(ENCE_RMV[good_bins], ENCE[good_bins])
-      axes[0].set_title(f'ENCE: {ENCE.mean():0.03f}')
-      axes[0].set_ylabel('Root mean difference\n(x 100,000)')
-      axes[1].set_ylabel('ENCE')
-      axes[1].set_xlabel('Root mean variance\n(x 100,000)')
-      fig.tight_layout()
-      fig.savefig(os.path.join(
-        self.params.output.output_dir,
-        self.params.output.prefix + '_ENCE.png'
-        ))
-      plt.close()
 
     binned_scale = np.zeros(self.number_of_intensity_bins)
     for bin_index in range(self.number_of_intensity_bins):
@@ -850,11 +797,11 @@ class error_modifier_mm24(worker):
 
       hist_color = np.array([0, 49, 60]) / 256
       line_color = np.array([213, 120, 0]) / 256
-      sadd, _ = self._get_sadd(flex.double(centers))
+      sadd2, _ = self._get_sadd2(flex.double(centers))
       fig, axes_hist = plt.subplots(1, 1, figsize=(5, 3))
       axes_sadd = axes_hist.twinx()
       axes_hist.bar(centers, hist_all / 1000, width=dbin, color=hist_color)
-      axes_sadd.plot(centers, (self.sfac * sadd)**2, color=line_color)
+      axes_sadd.plot(centers, self.sfac**2 * sadd2, color=line_color)
       axes_hist.set_xlabel('Correlation Coefficient')
       axes_hist.set_ylabel('Lattices (x1,000)')
       axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
