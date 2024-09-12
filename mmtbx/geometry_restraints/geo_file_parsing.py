@@ -34,10 +34,9 @@ class Entry:
   name = None                 # Name or label for the class
   entry_class_trigger = None  # Text trigger to identify entry class
   entry_trigger = None        # Text trigger to identify new entry instance
-  default_origin_id = 0       # default origin_id integer for an entry
   
 
-  def __init__(self,lines,origin_id=None):
+  def __init__(self,lines,origin_id=0):
     """
     An entry is initialized first, then data is added with entry.lines.append()
 
@@ -51,13 +50,7 @@ class Entry:
     self._numerical = None           # a dict of numerical geo data
     self.labels_are_i_seqs = None    # boolean, atom labels are i_seqs
     self.labels_are_id_strs = None   # boolean, atom labels are id_strs
-
-    # Set an origin id (if not provided)
-    if not origin_id:                 
-      origin_id = self.default_origin_id
-    self.origin_id = origin_id
-    self.origin_label = origin_ids.get_origin_key(origin_id)
-    
+    self.origin_id = origin_id    
 
     # Initialize result data structures
     self._proxy = None  
@@ -138,14 +131,6 @@ class Entry:
     """
     return float(self._numerical["weight"])
 
-  @staticmethod
-  def _remove_outer_quotes(s):
-    """
-    Utility function to clean up quotes when present in .geo text
-    """
-    if (s.startswith('"') and s.endswith('"')) or (s.startswith("'") and s.endswith("'")):
-      return s[1:-1]
-    return s
         
   @property
   def proxy(self):
@@ -515,17 +500,14 @@ class GeoParseContainer:
     if not entry_classes:
       entry_classes = self.entry_classes_default
     self.entry_classes = entry_classes
-    self._model = model
+    self.model = model
 
     # Initialize parsing variables
     self.lines = geo_lines
     self.line_labels = []
     self.current_entry= None
     self.current_entry_class = None
-    self.current_origin_id = None
-
-    # Names of each entry class ('bond','angle', etc)
-    self.entry_names = [entry_class.name for entry_class in self.entry_classes]
+    self.current_origin_id = 0
 
     # Text triggers for start of new entry class in .geo file
     self.entry_class_trigger_dict = {
@@ -551,10 +533,6 @@ class GeoParseContainer:
     if self.model or self.labels_are_i_seqs:
       self._build_proxies()
 
-    
-  @property
-  def model(self):
-    return self._model
 
   @property
   def proxies(self):
@@ -592,14 +570,14 @@ class GeoParseContainer:
     """
     Coalesce all entries (of all restraint entry types) into ao single list
     """
-    return list(chain.from_iterable([entries for name,entries in self.entries.items()]))
+    return list(chain.from_iterable(self.entries.values()))
 
   @property
   def records_list(self):
     """
     Coalesce all records into ao single list
     """
-    return list(chain.from_iterable([records for name,records in self.records.items()]))
+    return list(chain.from_iterable(self.records.values()))
 
   @property
   def proxies_list(self):
@@ -607,7 +585,7 @@ class GeoParseContainer:
     Coalesce all proxies into ao single list
     """
     if self.proxies is not None:
-      return list(chain.from_iterable([proxies for name,proxies in self.proxies.items()]))
+      return list(chain.from_iterable(self.proxies.values()))
   
 
   def _parse(self):
@@ -652,7 +630,7 @@ class GeoParseContainer:
         self._end_entry()
         entry_class = self.entry_class_trigger_dict[entry_class_trigger]
         self.current_entry_class = entry_class
-        self.current_origin_id = None
+        self.current_origin_id = 0
         continue
 
       # Check origin id trigger
@@ -722,7 +700,7 @@ class GeoParseContainer:
       Meaning the only data present will be what was parsed.
     """
     record_dict = {}
-    for entry_name,entries in self.entries.items():
+    for entry_name, entries in self.entries.items():
       if len(entries)>0:
         record_dict[entry_name] = [entry.record for entry in entries]
     return record_dict
@@ -739,7 +717,7 @@ class GeoParseContainer:
     if not self.model and not self.labels_are_i_seqs: 
       raise Sorry("Cannot build proxies without instantiating with a model.")
     self._proxies = defaultdict(list)
-    for entry_name,entries in self.entries.items():
+    for entries in self.entries.values():
       if len(entries)>0:
         entry_class = entries[0].__class__
       if hasattr(entry_class,"to_proxy") and not hasattr(entry_class,"ignore"):
