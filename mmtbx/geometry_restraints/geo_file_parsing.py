@@ -509,14 +509,6 @@ class GeoParseContainer:
     StackingParallelityEntry,
     PlaneEntry,
   ]
-
-  @classmethod
-  def from_geo_str(cls,geo_str,model=None,entry_classes=None):
-    """
-    Parse .geo file str
-    """
-    geo_lines = geo_str.split("\n")
-    return cls(geo_lines,model=model,entry_classes=entry_classes)
     
   def __init__(self,geo_lines,model=None,entry_classes=None):
     """
