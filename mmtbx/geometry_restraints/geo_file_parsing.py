@@ -64,6 +64,7 @@ class Entry:
     self._record = None
 
 
+  def finalize(self):
     # parse lines
     self._prepare()
 
@@ -86,17 +87,10 @@ class Entry:
     # Numerical labels
     labels = self.lines[-2]
     numerical_labels = labels.split()
-    if self.n_values:
-      # test labels
-      n_values =  len(numerical_labels)
-      assert n_values == self.n_values or n_values == self.n_values-1, (numerical_labels,n_values,self.n_values)
-    
+
     # Numerical values
     values = self.lines[-1]
     numerical_values =  values.split()
-    if self.n_values:
-      n_values =  len(numerical_values)
-      assert n_values == self.n_values or n_values == self.n_values-1, (numerical_values,n_values,self.n_values)
     numerical_values = [self._coerce_type(v) for v in numerical_values]
     self._numerical = dict(zip(numerical_labels,numerical_values))
     
@@ -292,7 +286,6 @@ class PlaneEntry(Entry):
   name = "plane"
   entry_class_trigger = "Planarity restraints"
   entry_trigger = "plane"
-  n_values = 5
   internals = "planes"
 
 
@@ -304,7 +297,7 @@ class PlaneEntry(Entry):
     """
     
     self.atom_labels = []
-    nums = [[None]*self.n_values for l in range(len(self.lines)-1)]
+    nums = [[None]*5 for l in range(len(self.lines)-1)] # 5 values
     for i,line in enumerate(self.lines[1:]):
       line = line.replace(self.name,"")
       pdb_part = re.search(r'pdb="([^"]*)"', line)
@@ -368,6 +361,10 @@ class ParallelityEntry(Entry):
     self.atom_labels_i = []
     self.atom_labels_j = []
     super().__init__(*args,**kwargs)
+
+
+  def finalize(self):
+    super().finalize()
     self.i_seqs, self.j_seqs = self.i_seqs # unpack tuple
   
   @property
@@ -523,7 +520,7 @@ class GeoParseContainer:
     # Initialize parsing variables
     self.lines = geo_lines
     self.line_labels = []
-    self.current_entry_lines = None
+    self.current_entry= None
     self.current_entry_class = None
     self.current_origin_id = None
 
@@ -616,7 +613,7 @@ class GeoParseContainer:
   def _parse(self):
     
     last_line_label = "init"    # assign a label to every line
-    for i,line in enumerate(self.lines):
+    for i,line in enumerate(self.lines + ["\n"] ): # add newline to finish up at end
       
       # Line labeling accounting
       assert last_line_label, f"Failed to set a line label at line: {i-1}"
@@ -634,23 +631,17 @@ class GeoParseContainer:
       # Check for start of new entry
       entry_trigger = self._startswith_plural(line, self.entry_triggers,strip=True)
 
-      # Check for data
-      if self.current_entry_lines and not entry_trigger:
-        self.current_entry_lines.append(line)
-        last_line_label = "data"
-        continue
-      
-
       if entry_trigger:
         # Start new entry
         self._end_entry()
         last_line_label = "entry_trigger"
-        self.current_entry_lines = []
+  
+
+        self.current_entry = self.current_entry_class(lines=[],origin_id=self.current_origin_id)
         if self.current_entry_class == PlaneEntry:
           j = i-1 # The prior line
-          self.current_entry_lines.append((j,self.lines[j]))
-        
-        self.current_entry_lines.append((i,line))
+          self.current_entry.lines.append(self.lines[j])
+        self.current_entry.lines.append(line)
         continue
 
       # Check for start of new entry section
@@ -672,9 +663,17 @@ class GeoParseContainer:
         if origin_label:
           last_line_label = "origin_trigger"
           origin_id = origin_ids.get_origin_id(origin_label)
+          #print(f"line: {i},origin_trigger: ",origin_label,origin_id)
           self.current_origin_id = origin_id
           continue
 
+
+      # Check for data
+      if self.current_entry:
+        self.current_entry.lines.append(line)
+        last_line_label = "data"
+        continue
+      
       # Catch all
       last_line_label = "unknown"
 
@@ -687,15 +686,12 @@ class GeoParseContainer:
     Called at the end of an entry when parsing line-by-line
       Adds the entry to the container
     """
-    if self.current_entry_lines:
+    if self.current_entry:
       if self.current_entry_class == PlaneEntry:
-        self.current_entry_lines = self.current_entry_lines[:-1]
-      new_entry = self.current_entry_class(
-        lines=self.current_entry_lines,
-        origin_id=self.current_origin_id
-      )
-      self.entries[self.current_entry_class.name].append(new_entry)
-      self.current_entry_lines = None
+        self.current_entry.lines = self.current_entry.lines[:-1]
+      self.current_entry.finalize()
+      self.entries[self.current_entry_class.name].append(self.current_entry)
+      self.current_entry = None
 
   def _startswith_plural(self,text, labels, strip=False):
     """

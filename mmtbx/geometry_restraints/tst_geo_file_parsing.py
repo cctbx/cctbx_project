@@ -263,11 +263,6 @@ Sorted by residual:
                            pdb=" C4   DG B  11 "
 
 
-# some random noise text
-$$jasfdlksadf4#23454wr4t4t43t
-a43tew\"'d.
-da43409q38798790980p98pfbond"
-asdfdsaangle"ade44deChirality restraints:
 
 Nonbonded interactions: 5594317
 Sorted by model distance:
@@ -493,7 +488,7 @@ def tst_04(model,printing=False):
   grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
   geo_str = buffer.getvalue()
   geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
+  geo_container = GeoParseContainer(geo_lines,model=None)
   
   
   
@@ -527,8 +522,8 @@ def tst_05(model,printing=False):
 
 
   
-  geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
+  geo_lines = tst_1_geo.split("\n")
+  geo_container = GeoParseContainer(geo_lines,model=None)
   
   
   
@@ -568,7 +563,7 @@ def tst_06(model,printing=False):
 
   
   tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
-  geo_lines = geo_str.split("\n")
+  geo_lines = tst_1_geo_iseqs.split("\n")
   geo_container = GeoParseContainer(geo_lines,model=model)
   
   if printing:
@@ -598,7 +593,7 @@ def tst_07(model,printing=False):
   }
 
   
-  geo_lines = geo_str.split("\n")
+  geo_lines = tst_2_geo.split("\n")
   geo_container = GeoParseContainer(geo_lines,model=model)
   
   
@@ -619,6 +614,47 @@ def tst_07(model,printing=False):
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
 
+def tst_08(model,printing=False):
+  # Test reading without whitespace between sections
+
+
+  expected= {
+  'bond': [[], ['pdb=" C   KBEDW   1 "', 'pdb=" N   DPPDW   2 "'], 1.329, 1.498, [], ['pdb=" NG  DPPHW   2 "', 'pdb=" C   5OHHW   6 "'], 1.43, 1.502] ,
+  'angle': [[], ['pdb=" N   GLNC5 122 "', 'pdb=" CA  GLNC5 122 "', 'pdb=" C   GLNC5 122 "'], 108.78, 121.25, [], ['pdb=" C   PHE E  13 "', 'pdb=" O   PHE E  13 "', 'pdb=" N   TYR E  17 "'], 155.0, 169.75] ,
+  'dihedral': [[], ['pdb=" CA  TRPBV 218 "', 'pdb=" C   TRPBV 218 "', 'pdb=" N   HISBV 219 "', 'pdb=" CA  HISBV 219 "'], -180.0, -133.25, [], ['pdb=" N   UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" CB  UALFW   5 "'], 122.8, 179.97] ,
+  'chiral': [[], ['pdb=" CB  VALE5 108 "', 'pdb=" CA  VALE5 108 "', 'pdb=" CG1 VALE5 108 "', 'pdb=" CG2 VALE5 108 "'], 'False', -2.63, [], ['pdb=" P     AGA1866 "', 'pdb=" OP1   AGA1866 "', 'pdb=" OP2   AGA1866 "', 'pdb=" O5\'   AGA1866 "'], 'True', 2.41] ,
+  'plane': [[], ['pdb=" N   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CB  UALFW   5 "', 'pdb=" N1  UALFW   5 "'], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], ['pdb=" C1\'   AGA1095 "', 'pdb=" N9    AGA1095 "', 'pdb=" C8    AGA1095 "', 'pdb=" N7    AGA1095 "', 'pdb=" C5    AGA1095 "', 'pdb=" C6    AGA1095 "', 'pdb=" N6    AGA1095 "', 'pdb=" N1    AGA1095 "', 'pdb=" C2    AGA1095 "', 'pdb=" N3    AGA1095 "'], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
+  'parallelity': [[], [], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DC B  12 "', 'pdb=" N1   DC B  12 "', 'pdb=" C2   DC B  12 "', 'pdb=" O2   DC B  12 "', 'pdb=" N3   DC B  12 "', 'pdb=" C4   DC B  12 "', 'pdb=" N4   DC B  12 "', 'pdb=" C5   DC B  12 "', 'pdb=" C6   DC B  12 "'], [], [], ['pdb=" C1\'  DC A  10 "', 'pdb=" N1   DC A  10 "', 'pdb=" C2   DC A  10 "', 'pdb=" O2   DC A  10 "', 'pdb=" N3   DC A  10 "', 'pdb=" C4   DC A  10 "', 'pdb=" N4   DC A  10 "', 'pdb=" C5   DC A  10 "', 'pdb=" C6   DC A  10 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "']] ,
+  'nonbonded': [[], ['pdb="MG    MGAA3098 "', 'pdb=" O   HOHAA3655 "'], 1.653, 2.17, [], ['pdb="MG    MGDA1642 "', 'pdb=" O   HOHDA1879 "'], 1.699, 2.17] ,
+  }
+
+
+
+  geo_lines = tst_1_geo.split("\n")
+  geo_lines = [line for line in geo_lines if len(line.strip().replace("\n",""))>0]
+  geo_container = GeoParseContainer(geo_lines,model=model)
+
+  
+  
+  if printing:
+    print("\n\ntst_08")
+  results = extract_results(geo_container,print_result=printing)
+  
+
+  assert expected==results
+  
+  # Check numbers
+  records = geo_container.records_list
+  entries = geo_container.entries_list
+  assert len(records) == len(entries)
+  assert len(entries) ==   30
+  assert geo_container.has_proxies
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  
+  origin_ids = [entry.origin_id for entry in geo_container.entries_list]
+  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+
 
 def main():
   printing = False # Print results
@@ -630,6 +666,7 @@ def main():
   tst_05(model,printing=printing)
   tst_06(model,printing=printing)
   tst_07(model,printing=printing)
+  tst_08(model,printing=printing)
   print('OK')
 
 if __name__ == '__main__':
