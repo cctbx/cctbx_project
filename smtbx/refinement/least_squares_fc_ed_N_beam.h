@@ -131,7 +131,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
     }
 
-    void build_width_cache();
+    void build_width_cache(bool rebuild = false);
+
+    af::shared<FloatType> compute_dynI(const af::shared<miller::index<> > &indices);
 
     void set_width_cache(const beam_width_cache<FloatType>& width_cache) {
       this->width_cache = width_cache;
@@ -211,6 +213,17 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       beam_group = fi->second;
       this->h = h;
       this->compute_grad = compute_grad;
+      computed = true;
+    }
+
+    void setup_compute(
+      const miller::index<> & h,
+      const BeamGroup<FloatType>* beam_group)
+    {
+      SMTBX_ASSERT(beam_group != 0);
+      this->beam_group = beam_group;
+      this->h = h;
+      this->compute_grad = false;
       computed = true;
     }
 
@@ -467,14 +480,15 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     const BeamGroup<FloatType>& beam_group;
     f_calc_function_ptr_t f_calc_function;
     cache_t cache;
-
   };
 
   template <typename FloatType>
-  void N_beam_shared_data<FloatType>::build_width_cache() {
+  void N_beam_shared_data<FloatType>::build_width_cache(bool rebuild) {
     typedef beam_width_thread<FloatType> builder_t;
     typedef typename boost::shared_ptr<builder_t> build_bw_t;
-
+    if (!rebuild && width_cache.cache.size() > 0) {
+      return;
+    }
     if (thread_n < 0) {
       thread_n = builder_base<FloatType>::get_available_threads();
     }
@@ -499,5 +513,84 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
       start += thread_n;
     }
+  }
+
+  template <typename FloatType>
+  struct dynI_thread {
+    ED_UTIL_TYPEDEFS;
+    typedef f_calc_function_ed_N_beam<FloatType> f_calc_function_t;
+    typedef typename boost::shared_ptr<f_calc_function_t> f_calc_function_ptr_t;
+    typedef std::map<miller::index<>, FloatType> cache_t;
+
+    dynI_thread(const af::shared<miller::index<> >& indices,
+      size_t start, size_t end,
+      const std::map<miller::index<>, BeamGroup<FloatType>*>& lookup,
+      const f_calc_function_t& f_calc_function)
+      : indices(indices),
+      start(start), end(end),
+      lookup(lookup),
+      f_calc_function(f_calc_function.raw_fork())
+    {
+      Is.reserve(end - start);
+    }
+
+    void operator ()() {
+      for (size_t i = start; i < end; i++) {
+        const miller::index<>& h = indices[i];
+        typename std::map<miller::index<>, BeamGroup<FloatType>*>::const_iterator fi =
+          lookup.find(h);
+        SMTBX_ASSERT(fi != lookup.end());
+        BeamGroup<FloatType>* beam_group = fi->second;
+
+        f_calc_function->setup_compute(h, fi->second);
+        FloatType I = f_calc_function->get_observable_N();
+        Is.push_back(I);
+      }
+    }
+    const af::shared<miller::index<> >& indices;
+    size_t start, end;
+    const std::map<miller::index<>, BeamGroup<FloatType>*>& lookup;
+    f_calc_function_ptr_t f_calc_function;
+    std::vector<FloatType> Is;
+  };
+
+  template <typename FloatType>
+  af::shared<FloatType> N_beam_shared_data<FloatType>::compute_dynI(
+    const af::shared<miller::index<> >& indices)
+  {
+    typedef dynI_thread<FloatType> thread_t;
+    typedef typename boost::shared_ptr<thread_t> build_bw_t;
+    if (thread_n < 0) {
+      thread_n = builder_base<FloatType>::get_available_threads();
+    }
+    std::map<miller::index<>, BeamGroup<FloatType>*> lookup;
+    for (size_t i = 0; i < beam_groups.size(); i++) {
+      af::shared<miller::index<> > g_indices =
+        af::select(beam_groups[i].indices.const_ref(),
+          beam_groups[i].strong_measured_beams.const_ref());
+      for (size_t j = 0; j < g_indices.size(); j++) {
+        lookup.insert(std::make_pair(g_indices[j], &beam_groups[i]));
+      }
+    }
+    boost::thread_group pool;
+    f_calc_function_ed_N_beam<FloatType> calc_func(*this);
+    size_t t_cnt = (indices.size() + thread_n - 1) / thread_n;
+    std::vector<build_bw_t> accumulators;
+    for (size_t i = 0; i < indices.size(); i += t_cnt) {
+      build_bw_t pf(
+        new thread_t(indices, i, std::min(i + t_cnt, indices.size()), lookup, calc_func)
+      );
+      accumulators.push_back(pf);
+      pool.create_thread(boost::ref(*pf));
+    }
+    pool.join_all();
+    af::shared<FloatType> rv(indices.size());
+    size_t st = 0;
+    for (size_t i = 0; i < accumulators.size(); i++) {
+      memcpy(&rv[st], &accumulators[i]->Is[0],
+        accumulators[i]->Is.size() * sizeof(FloatType));
+      st += accumulators[i]->Is.size();
+    }
+    return rv;
   }
 }}}
