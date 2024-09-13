@@ -254,7 +254,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
                 arg("params"), arg("compute_grad"), arg("build") = true)))
           .def("build", &wt::build)
           .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
-          .def("build_width_cache", &wt::build_width_cache)
+          .def("build_width_cache", &wt::build_width_cache,
+            (arg("rebuild")=false))
+          .def("compute_dynI", &wt::compute_dynI)
           .add_property("width_cache", make_getter(&wt::width_cache, rbv), &wt::set_width_cache)
           ;
       }
