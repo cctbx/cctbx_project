@@ -2,9 +2,11 @@
 #define CCTBX_XRAY_SCATTERER_H
 
 #include <cctbx/xray/scatterer_flags.h>
+#include <cctbx/xray/scatterer_id.h>
 #include <cctbx/sgtbx/site_symmetry.h>
 #include <cctbx/adptbx.h>
 #include <cctbx/anharmonic.h>
+#include <cctbx/eltbx/tiny_pse.h>
 
 // XXX backward compatibility 2009-12-12
 #define CCTBX_XRAY_SCATTERER_ANISOTROPIC_FLAG_REMOVED
@@ -493,9 +495,29 @@ namespace xray {
         return result;
       }
 
+      const eltbx::tiny_pse::table& element_info() const {
+        if (element_info_ == 0) {
+          element_info_.reset(
+            new eltbx::tiny_pse::table(scattering_type.empty() ? label : scattering_type));
+          if (!element_info_->is_valid()) {
+            element_info_.reset();
+            CCTBX_ERROR("Could not locate given element label/symbol");
+          }
+        }
+        return *element_info_;
+      }
+
+      int get_atomic_number() const { return element_info().atomic_number(); }
+      std::string get_element_name() const { return std::string(element_info().name()); }
+      float get_element_weight() const { return element_info().weight(); }
+
+      scatterer_id<FloatType> get_id() const {
+        return scatterer_id<FloatType>(element_info().atomic_number(), site, 1000);
+      }
     protected:
       int multiplicity_;
       FloatType weight_without_occupancy_;
+      mutable boost::shared_ptr<eltbx::tiny_pse::table> element_info_;
   };
 
   template <typename FloatType,
