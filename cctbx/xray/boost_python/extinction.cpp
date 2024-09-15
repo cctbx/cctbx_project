@@ -59,6 +59,7 @@ namespace {
                arg("value"))))
         .def_readwrite("value", &wt::value)
         .def_readwrite("grad_index", &wt::grad_index)
+        .add_property("grad_value", make_getter(&wt::grad_value))
         ;
     }
   };
