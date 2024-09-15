@@ -29,7 +29,7 @@ namespace cctbx {
       bool grad;
     };
 
-    // dummy fc correcction implementation
+    // dummy fc correction implementation
     template <typename FloatType>
     struct dummy_fc_correction : public fc_correction<FloatType> {
       typedef fc_correction<FloatType> fc_correction_t;

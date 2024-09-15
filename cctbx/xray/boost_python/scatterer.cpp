@@ -146,17 +146,35 @@ namespace {
         .def("report_details", &w_t::report_details, (
           arg("unit_cell"),
           arg("prefix")))
+        .add_property("atomic_number", &w_t::get_atomic_number)
+        .add_property("element_name", &w_t::get_element_name)
+        .add_property("element_weight", &w_t::get_element_weight)
+        .def("get_id", &w_t::get_id)
       ;
+    }
+
+    template <typename FloatType>
+    static void wrap_id() {
+      using namespace boost::python;
+      typedef scatterer_id<FloatType> wt;
+      class_<wt, std::auto_ptr<wt> >("scatterer_id", no_init)
+        .def(init<const wt&>((arg("source"))))
+        .def(init<uint64_t>((arg("id"))))
+        .def("get_z", &wt::get_z)
+        .def("get_crd", &wt::get_crd)
+        ;
+
     }
   };
 
-} // namespace <anoymous>
+} // namespace <anonymous>
 
   void wrap_scatterer()
   {
     using namespace boost::python;
 
     scatterer_wrappers::wrap();
+    scatterer_wrappers::wrap_id<double>();
 
     def("is_positive_definite_u",
       (af::shared<bool>(*)(

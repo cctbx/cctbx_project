@@ -1976,15 +1976,15 @@ def exercise_extinction_correction():
   p = 0.001*pow(wavelength,3)*fc_sq/uc.sin_two_theta(h, wavelength)
   c_v = pow(1+extinction_val*p,-0.5)
   c_g = -0.5*fc_sq*p*pow(1+p*extinction_val,-1.5)
-  assert approx_equal(c[0], c_v)
-  assert approx_equal(c[1], c_g)
+  assert approx_equal(c, c_v)
+  assert approx_equal(ec.grad_value, c_g)
   #now try numerical differentiation and compare
   step = 1e-8
-  c_g_n = -ec.compute(h, fc_sq, False)[0]
+  c_g_n = -ec.compute(h, fc_sq, False)
   ec.value += step
-  c_g_n += ec.compute(h, fc_sq, False)[0]
+  c_g_n += ec.compute(h, fc_sq, False)
   c_g_n = c_g_n*fc_sq/step
-  assert approx_equal(c[1], c_g_n)
+  assert approx_equal(ec.grad_value, c_g_n)
 
 def exercise_r_factor():
   f_obs  = flex.double([1,2,3,4,5,6,7,8,9])
@@ -2000,7 +2000,21 @@ def exercise_r_factor():
   assert approx_equal(r.scale_ls(), 0.1)
   assert approx_equal(r.scale_ls(), 0.1)
 
+def exercise_scatterer_id():
+  import random
+  num = 100
+  base = 1000.0
+  for i in range(num):
+    a = float(random.randint(-1000, 1000))/base
+    b = float(random.randint(-1000, 1000))/base
+    c = float(random.randint(-1000, 1000))/base
+    x = xray.scatterer("C", site=(a, b, c))
+    id  = x.get_id()
+    assert approx_equal(x.site, id.get_crd(), 100)
+    assert(id.get_z() == x.atomic_number)
+
 def run():
+  exercise_scatterer_id()
   exercise_scattering_type_registry_1()
   exercise_r_factor()
   exercise_extinction_correction()
