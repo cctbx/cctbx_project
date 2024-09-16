@@ -820,7 +820,7 @@ def sphere_enclosing_model(model):
 
 def mask_fixed_model_region(mmm, d_min,
                                  fixed_model=None,
-                                 ordered_mask_id='ordered_volume_mask',
+                                 ordered_mask_id=None,
                                  fixed_mask_id='mask_around_atoms'):
   # Flatten the region of the ordered volume mask covered by the fixed model
   # and keep the mask for the fixed model.
@@ -834,11 +834,13 @@ def mask_fixed_model_region(mmm, d_min,
     radius = max(radius, d_min)
   mmm.create_mask_around_atoms(model=fixed_model, mask_atoms_atom_radius=radius, mask_id=fixed_mask_id)
   fixed_model_mask = mmm.get_map_manager_by_id(map_id=fixed_mask_id)
-  # Invert fixed_model_mask before flattening
-  fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
-  mmm.apply_mask_to_map(map_id=ordered_mask_id, mask_id=fixed_mask_id)
-  # Invert back so we can use to assess fraction of fixed model in masked sphere
-  fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
+
+  if ordered_mask_id is not None:
+    # Invert fixed_model_mask before flattening
+    fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
+    mmm.apply_mask_to_map(map_id=ordered_mask_id, mask_id=fixed_mask_id)
+    # Invert back so we can use to assess fraction of fixed model in masked sphere
+    fixed_model_mask.set_map_data(map_data = 1. - fixed_model_mask.map_data())
 
 def add_local_squared_deviation_map(
     mmm, coeffs_in, radius, d_min, map_id_out):
@@ -943,7 +945,7 @@ def auto_sharpen_isotropic(mc1, mc2):
 
 def add_ordered_volume_mask(
     mmm, d_min, rad_factor=2, protein_mw=None, nucleic_mw=None,
-    map_id_out='ordered_volume_mask'):
+    ordered_mask_id='ordered_volume_mask'):
   """
   Add map defining mask covering the volume of most ordered density required
   to contain the specified content of protein and nucleic acid, judged by
@@ -958,7 +960,7 @@ def add_ordered_volume_mask(
     sphere, defaults to 2
   protein_mw*: molecular weight of protein expected in map, if any
   nucleic_mw*: molecular weight of nucleic acid expected in map
-  map_id_out: identifier of output map, defaults to ordered_volume_mask
+  ordered_mask_id: identifier of output map, defaults to ordered_volume_mask
 
   * Note that at least one of protein_mw and nucleic_mw must be specified,
     and that the map must be complete
@@ -1033,7 +1035,7 @@ def add_ordered_volume_mask(
 
   # Clean up temporary map, then add ordered volume mask
   mmm.remove_map_manager_by_id('map_variance')
-  mmm.add_map_manager_by_id(new_mm,map_id=map_id_out)
+  mmm.add_map_manager_by_id(new_mm,map_id=ordered_mask_id)
 
 def get_grid_spacings(unit_cell, unit_cell_grid):
   if unit_cell.parameters()[3:] != (90,90,90):
@@ -1512,8 +1514,8 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
 def assess_cryoem_errors(
     mmm, d_min,
     determine_ordered_volume=True,
-    ordered_mask_id='ordered_volume_mask', sphere_points=500,
-    sphere_cent=None, radius=None,
+    ordered_mask_id=None, fixed_mask_id=None,
+    sphere_points=500, sphere_cent=None, radius=None,
     verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
@@ -1562,12 +1564,12 @@ def assess_cryoem_errors(
   spacings = get_grid_spacings(unit_cell,unit_cell_grid)
   ucpars = unit_cell.parameters()
   # Determine voxel count for fixed model mask
-  mm_model_mask = mmm.get_map_manager_by_id('mask_around_atoms')
-  voxels_in_model = 0
+  mm_model_mask = mmm.get_map_manager_by_id(fixed_mask_id)
+  voxels_in_fixed_model = 0
   if mm_model_mask is not None:
     model_mask_data = mm_model_mask.map_data()
     mask_sel = model_mask_data > 0
-    voxels_in_model = mask_sel.count(True)
+    voxels_in_fixed_model = mask_sel.count(True)
 
   # Keep track of shifted origin
   origin_shift = mmm.map_manager().origin_shift_grid_units
@@ -1672,9 +1674,9 @@ def assess_cryoem_errors(
     weighted_masked_volume = box_volume * mask_info.mean
 
     voxels_in_masked_model = 0
-    if voxels_in_model > 0:
-      mask_info = working_mmm.mask_info(mask_id='mask_around_atoms')
-      mm_model_mask = working_mmm.get_map_manager_by_id('mask_around_atoms')
+    if voxels_in_fixed_model > 0:
+      mask_info = working_mmm.mask_info(mask_id=fixed_mask_id)
+      mm_model_mask = working_mmm.get_map_manager_by_id(fixed_mask_id)
       model_mask_data = mm_model_mask.map_data()
       voxels_in_masked_model = working_map_size * mask_info.mean
 
@@ -1974,18 +1976,6 @@ def assess_cryoem_errors(
     print("Weighted map noise: ",weighted_map_noise, file=log)
     sys.stdout.flush()
 
-  # Return a map_model_manager with the weighted map
-  wEmean = dobs*expectE
-  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
-  sigmaA = 0.9 # Default for likelihood-weighted map
-  dosa = sigmaA*dobs.data()
-  lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
-  wEmean2 = lweight*expectE
-  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
-  # working_mmm.write_map(map_id='map_manager_wtd',file_name='prepmap.map')
-  working_mmm.remove_map_manager_by_id('map_manager_1')
-  working_mmm.remove_map_manager_by_id('map_manager_2')
-
   # If there is a fixed model and it occupies a significant part of the sphere,
   # compute the structure factors corresponding to the cutout density for the fixed
   # model.
@@ -2003,6 +1993,25 @@ def assess_cryoem_errors(
     # mm_masked_model.write_map('masked_model.map')
     masked_model_E = mm_masked_model.map_as_fourier_coefficients(d_min=d_min,d_max=d_max)
 
+  if masked_model_contributes:
+    masked_model_sigmaA = sigmaA_from_model_in_map(expectE, dobs, masked_model_E, over_sampling_factor, verbosity)
+    # Possibly temporary choice: modify expectE instead of adding fixed contribution in phasertng
+    expectE_mod = expectE.customized_copy(data=expectE.data()
+                  - masked_model_sigmaA.data()*masked_model_E.data())
+  else:
+    expectE_mod = expectE.deep_copy()
+
+  # Return map_model_managers with weighted maps
+  wEmean = dobs*expectE_mod
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean, map_id='map_manager_wtd')
+  sigmaA = 0.9 # Default for likelihood-weighted map
+  dosa = sigmaA*dobs.data()
+  lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
+  wEmean2 = lweight*expectE_mod
+  working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
+  working_mmm.remove_map_manager_by_id('map_manager_1')
+  working_mmm.remove_map_manager_by_id('map_manager_2')
+
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
     ucwork = expectE.crystal_symmetry().unit_cell()
@@ -2012,19 +2021,12 @@ def assess_cryoem_errors(
     shift_frac = ucwork.fractionalize(shift_cart)
     shift_frac = tuple(-flex.double(shift_frac))
     expectE = expectE.translational_shift(shift_frac)
+    expectE_mod = expectE_mod.translational_shift(shift_frac)
     if masked_model_contributes:
       masked_model_E = masked_model_E.translational_shift(shift_frac)
       # write_mtz(expectE,"expectE.mtz","eE")
+      # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
       # write_mtz(masked_model_E,"masked_model.mtz","masked_model")
-
-  if masked_model_contributes:
-    masked_model_sigmaA = sigmaA_from_model_in_map(expectE, dobs, masked_model_E, over_sampling_factor, verbosity)
-    # Temporary kludge where expectE is modified instead of adding fixed contribution in phasertng
-    expectE_mod = expectE.customized_copy(data=expectE.data()
-                  - masked_model_sigmaA.data()*dobs.data()*masked_model_E.data())
-    # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
-  else:
-    expectE_mod = expectE.deep_copy()
 
   ssqmin = flex.min(mc1.d_star_sq().data())
   ssqmax = flex.max(mc1.d_star_sq().data())
@@ -2078,6 +2080,7 @@ def run():
   --no_determine_ordered_volume: don't determine ordered volume
           default False
   --file_root: root name for output files
+  --write_maps: write sharpened and likelihood-weighted maps
   --mute (or -m): mute output
   --verbose (or -v): verbose output
   --testing: extra verbose output for debugging
@@ -2102,7 +2105,9 @@ def run():
   parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
                       type=float, default=500.)
   parser.add_argument('--model',
-                      help='Optional placed model defining size and position of cut-out sphere')
+                      help='''Optional roughly-placed model defining size and
+                              position of cut-out sphere for docking.
+                              Orientation of model is ignored.''')
   parser.add_argument('--fixed_model',
                       help='Optional fixed model accounting for explained map features')
   parser.add_argument('--sphere_cent',
@@ -2113,12 +2118,14 @@ def run():
                       type=float)
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
+  parser.add_argument('--write_maps', help = 'Write sharpened and likelihood-weighted maps',
+                      action = 'store_true')
   parser.add_argument('--no_shift_map_origin', action='store_true')
   parser.add_argument('--no_determine_ordered_volume', action='store_true')
   parser.add_argument('-m', '--mute', help = 'Mute output', action = 'store_true')
   parser.add_argument('-v', '--verbose', help = 'Set output as verbose',
                       action = 'store_true')
-  parser.add_argument('--testing', help='Set output as testing', action='store_true')
+  parser.add_argument('--testing', help='Set output as testing level', action='store_true')
   args = parser.parse_args()
   d_min = args.d_min
   verbosity = 1
@@ -2181,20 +2188,27 @@ def run():
     mmm.add_model_by_id(model=fixed_model, model_id='fixed_model')
     mmm.generate_map(model=fixed_model, d_min=d_min, map_id='fixed_atom_map')
 
+  ordered_mask_id = None
   if determine_ordered_volume:
-    mask_id = 'ordered_volume_mask'
+    ordered_mask_id = 'ordered_volume_mask'
     add_ordered_volume_mask(mmm, d_min,
         protein_mw=protein_mw, nucleic_mw=nucleic_mw,
-        map_id_out=mask_id)
-    if fixed_model:
-      mask_fixed_model_region(mmm, d_min, fixed_model=fixed_model)
+        ordered_mask_id=ordered_mask_id)
     if verbosity>1:
-      ordered_mm = mmm.get_map_manager_by_id(map_id=mask_id)
+      ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
       if args.file_root is not None:
         map_file_name = args.file_root + "_ordered_volume_mask.map"
       else:
         map_file_name = "ordered_volume_mask.map"
       ordered_mm.write_map(map_file_name)
+
+  fixed_mask_id = None
+  if fixed_model:
+    fixed_mask_id = 'mask_around_atoms'
+    mask_fixed_model_region(mmm, d_min,
+                            fixed_model=fixed_model,
+                            ordered_mask_id=ordered_mask_id,
+                            fixed_mask_id=fixed_mask_id)
 
   # Default to sphere containing most of ordered volume
   if not cutout_specified:
@@ -2202,14 +2216,15 @@ def run():
     sphere_cent = (ucpars[0]/2,ucpars[1]/2,ucpars[2]/2)
     if determine_ordered_volume:
       target_completeness = 0.98
-      radius = get_mask_radius(mmm.get_map_manager_by_id(mask_id),target_completeness)
+      radius = get_mask_radius(mmm.get_map_manager_by_id(ordered_mask_id),target_completeness)
     else:
       radius = min(ucpars[0],ucpars[1],ucpars[2])/4.
 
   # Refine to get scale and error parameters for docking region
   results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
     determine_ordered_volume=determine_ordered_volume, verbosity=verbosity,
-    sphere_cent=sphere_cent, radius=radius, shift_map_origin=shift_map_origin)
+    sphere_cent=sphere_cent, radius=radius, shift_map_origin=shift_map_origin,
+    ordered_mask_id=ordered_mask_id, fixed_mask_id=fixed_mask_id)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
@@ -2220,13 +2235,23 @@ def run():
 
   if args.file_root is not None:
     mtzout_file_name = args.file_root + ".mtz"
+    mapout1_file_name = args.file_root + "_weighted.map"
+    mapout2_file_name = args.file_root + "_likelihood_weighted.map"
   else:
     mtzout_file_name = "weighted_map_data.mtz"
-  print ("Writing mtz for docking as",mtzout_file_name)
+    mapout1_file_name = "weighted.map"
+    mapout2_file_name = "likelihood_weighted.map"
+  print ("Writing mtz for docking as", mtzout_file_name)
   if not shift_map_origin:
     shift_cart = results.shift_cart
     print ("Origin of full map relative to mtz:", shift_cart)
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
+  if args.write_maps:
+    print ("Writing weighted map as", mapout1_file_name)
+    print ("Writing likelihood-weighted map as", mapout2_file_name)
+    new_mmm = results.new_mmm
+    new_mmm.write_map(map_id='map_manager_wtd', file_name = mapout1_file_name)
+    new_mmm.write_map(map_id='map_manager_lwtd', file_name = mapout2_file_name)
   over_sampling_factor = results.over_sampling_factor
   fraction_scattering = results.fraction_scattering
   print ("Over-sampling factor for Fourier terms:",over_sampling_factor)
