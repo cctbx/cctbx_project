@@ -9,6 +9,8 @@
 #include <boost/python/args.hpp>
 #include <boost/python/return_value_policy.hpp>
 #include <boost/python/return_by_value.hpp>
+#include <boost/python/return_internal_reference.hpp>
+#include <boost/python/copy_const_reference.hpp>
 
 namespace cctbx { namespace xray { namespace boost_python {
 
@@ -25,6 +27,7 @@ namespace {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
       typedef default_call_policies dcp;
+      return_value_policy<copy_const_reference> ccr;
       class_<w_t>("scatterer", no_init)
         .def(init<w_t const&>(arg("other")))
         .def(init<std::string const&,
@@ -149,21 +152,67 @@ namespace {
         .add_property("atomic_number", &w_t::get_atomic_number)
         .add_property("element_name", &w_t::get_element_name)
         .add_property("element_weight", &w_t::get_element_weight)
-        .def("get_id", &w_t::get_id)
-      ;
+        .def("get_id_2_16", &w_t::get_id_2_16, ((arg("data")=0)))
+        .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0)))
+        .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0)))
+        .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0)))
+        .def("element_info", &w_t::element_info, ccr)
+        ;
     }
 
-    template <typename FloatType>
-    static void wrap_id() {
+    template <typename FloatType, class mask_info, uint64_t m>
+    static void wrap_id(const char* name) {
       using namespace boost::python;
-      typedef scatterer_id<FloatType> wt;
-      class_<wt, std::auto_ptr<wt> >("scatterer_id", no_init)
+      typedef scatterer_id_base<FloatType, mask_info, m> wt;
+      class_<wt, std::auto_ptr<wt> >(name, no_init)
         .def(init<const wt&>((arg("source"))))
         .def(init<uint64_t>((arg("id"))))
         .def("get_z", &wt::get_z)
         .def("get_crd", &wt::get_crd)
+        .def("get_data", &wt::get_data)
+        .add_property("id", &wt::id)
         ;
+    }
 
+    template <typename FloatType, class mask_info, uint64_t cell_m>
+    struct scatterer_lookup {
+      typedef scatterer<> scatterer_t;
+
+      std::map<uint64_t, const scatterer_t*> map;
+      scatterer_lookup() {}
+
+      scatterer_lookup(const af::shared<scatterer_t>& scatterers) {
+        for (size_t i = 0; i < scatterers.size(); i++) {
+          map.insert(
+            std::make_pair(
+              scatterers[i].get_id<mask_info, cell_m>().id,
+              &scatterers[i]));
+        }
+      }
+
+      const scatterer_t& find(uint64_t id) const {
+        typename std::map<uint64_t, const scatterer_t*>::const_iterator si =
+          map.find(id);
+        CCTBX_ASSERT(si != map.end());
+        return *si->second;
+      }
+
+      uint64_t get_id(int z, const fractional<> &site, short data=0) const {
+        return scatterer_id_base<FloatType, mask_info, cell_m>(z, site, data).id;
+      }
+    };
+
+    template <typename FloatType, class mask_info, uint64_t cell_m>
+    static void wrap_lookup(const char* name) {
+      using namespace boost::python;
+      typedef scatterer_lookup<FloatType, mask_info, cell_m> wt;
+      return_internal_reference<> rir;
+
+      class_<wt, std::auto_ptr<wt> >(name, no_init)
+        .def(init < const af::shared<scatterer<> > &> ((arg("scatterers"))))
+        .def("find", &wt::find, rir)
+        .def("get_id", &wt::get_id, (arg("z"), arg("site"), arg("data")=0))
+        ;
     }
   };
 
@@ -174,7 +223,14 @@ namespace {
     using namespace boost::python;
 
     scatterer_wrappers::wrap();
-    scatterer_wrappers::wrap_id<double>();
+    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d2, 16>("scatterer_id_2_16");
+    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d2, 1>("scatterer_id_2_1");
+    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d5, 16>("scatterer_id_5_16");
+    scatterer_wrappers::wrap_id<double, scatterer_id_masks_d5, 1>("scatterer_id_5_1");
+    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d2, 16>("scatterer_lookup_2_16");
+    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
+    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");
+    scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 1>("scatterer_lookup_5_1");
 
     def("is_positive_definite_u",
       (af::shared<bool>(*)(
