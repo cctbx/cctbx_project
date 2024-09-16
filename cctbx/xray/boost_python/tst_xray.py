@@ -2002,18 +2002,71 @@ def exercise_r_factor():
 
 def exercise_scatterer_id():
   import random
-  num = 100
-  base = 1000.0
+  # must import this for x.element_info() to work!!!
+  from cctbx.eltbx import tiny_pse
+  from cctbx.xray import ext
+  num = 200
+  base_id_16, range_16 = 100.0, 1600
+  base_id_1, range_1 = 1000.0, 1000
   for i in range(num):
-    a = float(random.randint(-1000, 1000))/base
-    b = float(random.randint(-1000, 1000))/base
-    c = float(random.randint(-1000, 1000))/base
+    a = float(random.randint(-range_16, range_16))/base_id_16
+    b = float(random.randint(-range_16, range_16))/base_id_16
+    c = float(random.randint(-range_16, range_16))/base_id_16
     x = xray.scatterer("C", site=(a, b, c))
-    id  = x.get_id()
-    assert approx_equal(x.site, id.get_crd(), 100)
+    data = random.randint(0, 3)
+    id  = ext.scatterer_id_2_16(x.get_id_2_16(data))
+    assert(id.get_data() == data)
     assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.0025)
+
+    a = float(random.randint(-range_1, range_1))/base_id_1
+    b = float(random.randint(-range_1, range_1))/base_id_1
+    c = float(random.randint(-range_1, range_1))/base_id_1
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 3)
+    id  = ext.scatterer_id_2_1(x.get_id_2_1(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.0000077)
+
+    a = float(random.randint(-range_16, range_16))/base_id_16
+    b = float(random.randint(-range_16, range_16))/base_id_16
+    c = float(random.randint(-range_16, range_16))/base_id_16
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 31)
+    id  = ext.scatterer_id_5_16(x.get_id_5_16(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.004)
+
+    a = float(random.randint(-range_1, range_1))/base_id_1
+    b = float(random.randint(-range_1, range_1))/base_id_1
+    c = float(random.randint(-range_1, range_1))/base_id_1
+    x = xray.scatterer("C", site=(a, b, c))
+    data = random.randint(0, 31)
+    id  = ext.scatterer_id_5_1(x.get_id_5_1(data))
+    assert(id.get_data() == data)
+    assert(id.get_z() == x.atomic_number)
+    assert(id.get_z() == x.element_info().atomic_number())
+    assert approx_equal(x.site, id.get_crd(), 0.00002)
+
+def exercise_scatterer_lookup():
+  from smtbx import development
+  xray_structure = development.sucrose()
+  scatterers = xray_structure.scatterers()
+  names = ["2_16", "2_1", "5_16", "5_1"]
+  for name in names:
+    sl = xray_structure.get_scatterers_lookup(name)
+    for sc in scatterers:
+      id = sl.get_id(sc.atomic_number, sc.site)
+      sc = sl.find(id) # this will assert on failure
+      #sc.show(unit_cell=xray_structure.unit_cell())
 
 def run():
+  exercise_scatterer_lookup()
   exercise_scatterer_id()
   exercise_scattering_type_registry_1()
   exercise_r_factor()

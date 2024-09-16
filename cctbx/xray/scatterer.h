@@ -436,11 +436,11 @@ namespace xray {
         const char* where_file_name,
         long where_line_number) const
       {
-        char buf[512];
-        std::snprintf(buf, sizeof(buf),
+        std::vector<char> buf(512);
+        std::snprintf(&buf[0], buf.size(),
           "Negative u_iso: scatterer label=%s, u_iso=%.6g (%s, line %ld)",
           label.c_str(), u_iso, where_file_name, where_line_number);
-        return std::string(buf);
+        return std::string(&buf[0]);
       }
 
       //! Details for exception messages.
@@ -450,47 +450,49 @@ namespace xray {
         const char* prefix) const
       {
         std::string result;
-        char buf[512];
-        std::snprintf(buf, sizeof(buf), "%sscatterer label: %s\n",
+        std::vector<char> buf_(512);
+        char* buf = &buf_[0];
+        size_t sz = buf_.size();
+        std::snprintf(buf, sz, "%sscatterer label: %s\n",
           prefix, label.c_str()); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sscattering type: %s\n",
+        std::snprintf(buf, sz, "%sscattering type: %s\n",
           prefix, scattering_type.c_str()); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sfractional coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sz, "%sfractional coordinates: %.6f %.6f %.6f\n",
           prefix, site[0], site[1], site[2]); result += buf;
         cctbx::cartesian<FloatType> cart = unit_cell.orthogonalize(site);
-        std::snprintf(buf, sizeof(buf), "%scartesian coordinates: %.6f %.6f %.6f\n",
+        std::snprintf(buf, sz, "%scartesian coordinates: %.6f %.6f %.6f\n",
           prefix, cart[0], cart[1], cart[2]); result += buf;
         if (flags.use_u_iso()) {
-          std::snprintf(buf, sizeof(buf), "%su_iso: %.6g\n",
+          std::snprintf(buf, sz, "%su_iso: %.6g\n",
             prefix, u_iso); result += buf;
-          std::snprintf(buf, sizeof(buf), "%sb_iso: %.6g\n",
+          std::snprintf(buf, sz, "%sb_iso: %.6g\n",
             prefix, adptbx::u_as_b(u_iso)); result += buf;
         }
         if (flags.use_u_aniso()) {
           scitbx::sym_mat3<FloatType> u = u_star;
-          std::snprintf(buf, sizeof(buf), "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%su_star: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
           u = adptbx::u_star_as_u_cart(unit_cell, u_star);
-          std::snprintf(buf, sizeof(buf), "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%su_cart: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, u[0], u[1], u[2], u[3], u[4], u[5]); result += buf;
         }
         if (flags.use_u_aniso() && anharmonic_adp) {
-          std::sprintf(buf, "%sanharmonic ADP: order %d\n",
+          std::snprintf(buf, sz, "%sanharmonic ADP: order %d\n",
             prefix, anharmonic_adp->order); result += buf;
-          std::sprintf(buf, "%sC: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%sC: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, anharmonic_adp->C[0], anharmonic_adp->C[1],
             anharmonic_adp->C[2], anharmonic_adp->C[3],
             anharmonic_adp->C[4], anharmonic_adp->C[5]); result += buf;
-          std::sprintf(buf, "%sD: %.6g %.6g %.6g %.6g %.6g %.6g\n",
+          std::snprintf(buf, sz, "%sD: %.6g %.6g %.6g %.6g %.6g %.6g\n",
             prefix, anharmonic_adp->D[0], anharmonic_adp->D[1],
             anharmonic_adp->D[2], anharmonic_adp->D[3],
             anharmonic_adp->D[4], anharmonic_adp->D[5]); result += buf;
         }
-        std::sprintf(buf, "%soccupancy: %.6g\n",
+        std::snprintf(buf, sz, "%soccupancy: %.6g\n",
           prefix, occupancy); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sf-prime: %.6g\n",
+        std::snprintf(buf, sz, "%sf-prime: %.6g\n",
           prefix, fp); result += buf;
-        std::snprintf(buf, sizeof(buf), "%sf-double-prime: %.6g",
+        std::snprintf(buf, sz, "%sf-double-prime: %.6g",
           prefix, fdp); result += buf;
         return result;
       }
@@ -510,9 +512,27 @@ namespace xray {
       int get_atomic_number() const { return element_info().atomic_number(); }
       std::string get_element_name() const { return std::string(element_info().name()); }
       float get_element_weight() const { return element_info().weight(); }
+      // for use witin (-16..16)
+      uint64_t get_id_2_16(short data=0) const {
+        return scatterer_id_2<FloatType, 16>(element_info().atomic_number(), site, data).id;
+      }
+      // for use within (-1..1)
+      uint64_t get_id_2_1(short data = 0) const {
+        return scatterer_id_2<FloatType, 1>(element_info().atomic_number(), site, data).id;
+      }
+      // for use witin (-16..16)
+      uint64_t get_id_5_16(short data = 0) const {
+        return scatterer_id_5<FloatType, 16>(element_info().atomic_number(), site, data).id;
+      }
+      // for use within (-1..1)
+      uint64_t get_id_5_1(short data = 0) const {
+        return scatterer_id_5<FloatType, 1>(element_info().atomic_number(), site, data).id;
+      }
 
-      scatterer_id<FloatType> get_id() const {
-        return scatterer_id<FloatType>(element_info().atomic_number(), site, 1000);
+      template <class mask_info, uint64_t cell_m> 
+      scatterer_id_base<FloatType, mask_info, cell_m> get_id(short data = 0) const {
+        return scatterer_id_base<FloatType, mask_info, cell_m>(
+          element_info().atomic_number(), site, data);
       }
     protected:
       int multiplicity_;

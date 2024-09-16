@@ -170,6 +170,18 @@ class structure(crystal.special_position_settings):
     """
     return self._scatterers
 
+  def get_scatterers_lookup(self, lookup_type="2_16"):
+    from cctbx.xray import ext
+    if lookup_type == "2_16":
+      return ext.scatterer_lookup_2_16(self.scatterers())
+    if lookup_type == "2_1":
+      return ext.scatterer_lookup_2_1(self.scatterers())
+    if lookup_type == "5_16":
+      return ext.scatterer_lookup_5_16(self.scatterers())
+    if lookup_type == "5_1":
+      return ext.scatterer_lookup_5_1(self.scatterers())
+    raise Exception("Unknown lookup type")
+
   def non_unit_occupancy_implies_min_distance_sym_equiv_zero(self):
     return self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
 
@@ -2414,7 +2426,6 @@ class conservative_pair_proxies(object):
       angle_pair_asu_table = bond_pair_asu_table.angle_pair_asu_table()
       self.angle = geometry_restraints.bond_sorted_asu_proxies(
         pair_asu_table=angle_pair_asu_table)
-
 
 class meaningful_site_cart_differences(object):
   """ Differences between the Cartesian coordinates of corresponding sites
