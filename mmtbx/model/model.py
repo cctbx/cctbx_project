@@ -1090,11 +1090,7 @@ class manager(object):
     return self._site_symmetry_table
 
   def altlocs_present(self):
-    conformer_indices = \
-      self.get_hierarchy().get_conformer_indices().conformer_indices
-    if(len(list(set(list(conformer_indices))))>1):
-      result = True
-    return False
+    return self.get_hierarchy().altlocs_present()
 
   def aa_residues_with_bound_sidechains(self):
     """
