@@ -513,26 +513,31 @@ namespace xray {
       std::string get_element_name() const { return std::string(element_info().name()); }
       float get_element_weight() const { return element_info().weight(); }
       // for use witin (-16..16)
-      uint64_t get_id_2_16(short data=0) const {
-        return scatterer_id_2<FloatType, 16>(element_info().atomic_number(), site, data).id;
+      uint64_t get_id_2_16(short data=0, FloatType multiplier = 1) const {
+        return scatterer_id_2<FloatType, 16>(
+          element_info().atomic_number(), site, data, multiplier).id;
       }
       // for use within (-1..1)
-      uint64_t get_id_2_1(short data = 0) const {
-        return scatterer_id_2<FloatType, 1>(element_info().atomic_number(), site, data).id;
+      uint64_t get_id_2_1(short data = 0, FloatType multiplier = 1) const {
+        return scatterer_id_2<FloatType, 1>(
+          element_info().atomic_number(), site, data, multiplier).id;
       }
       // for use witin (-16..16)
-      uint64_t get_id_5_16(short data = 0) const {
+      uint64_t get_id_5_16(short data = 0, FloatType multiplier = 1) const {
         return scatterer_id_5<FloatType, 16>(element_info().atomic_number(), site, data).id;
       }
       // for use within (-1..1)
-      uint64_t get_id_5_1(short data = 0) const {
-        return scatterer_id_5<FloatType, 1>(element_info().atomic_number(), site, data).id;
+      uint64_t get_id_5_1(short data = 0, FloatType multiplier = 1) const {
+        return scatterer_id_5<FloatType, 1>(
+          element_info().atomic_number(), site, data, multiplier).id;
       }
 
       template <class mask_info, uint64_t cell_m> 
-      scatterer_id_base<FloatType, mask_info, cell_m> get_id(short data = 0) const {
+      scatterer_id_base<FloatType, mask_info, cell_m>
+        get_id(short data = 0, FloatType multiplier=1) const
+      {
         return scatterer_id_base<FloatType, mask_info, cell_m>(
-          element_info().atomic_number(), site, data);
+          element_info().atomic_number(), site, data, multiplier);
       }
     protected:
       int multiplicity_;

@@ -22,7 +22,7 @@ namespace {
     typedef w_t::float_type flt_t;
 
     static void
-    wrap()
+      wrap()
     {
       using namespace boost::python;
       typedef return_value_policy<return_by_value> rbv;
@@ -31,54 +31,54 @@ namespace {
       class_<w_t>("scatterer", no_init)
         .def(init<w_t const&>(arg("other")))
         .def(init<std::string const&,
-                  fractional<flt_t> const&,
-                  flt_t const&,
-                  flt_t const&,
-                  std::string const&,
-                  flt_t const&,
-                  flt_t const&>((
-          arg("label"),
-          arg("site"),
-          arg("u_iso"),
-          arg("occupancy"),
-          arg("scattering_type"),
-          arg("fp"),
-          arg("fdp"))))
+          fractional<flt_t> const&,
+          flt_t const&,
+          flt_t const&,
+          std::string const&,
+          flt_t const&,
+          flt_t const&>((
+            arg("label"),
+            arg("site"),
+            arg("u_iso"),
+            arg("occupancy"),
+            arg("scattering_type"),
+            arg("fp"),
+            arg("fdp"))))
         .def(init<std::string const&,
-                  fractional<flt_t> const&,
-                  scitbx::sym_mat3<flt_t> const&,
-                  flt_t const&,
-                  std::string const&,
-                  flt_t const&,
-                  flt_t const&>((
-          arg("label"),
-          arg("site"),
-          arg("u_star"),
-          arg("occupancy"),
-          arg("scattering_type"),
-          arg("fp"),
-          arg("fdp"))))
+          fractional<flt_t> const&,
+          scitbx::sym_mat3<flt_t> const&,
+          flt_t const&,
+          std::string const&,
+          flt_t const&,
+          flt_t const&>((
+            arg("label"),
+            arg("site"),
+            arg("u_star"),
+            arg("occupancy"),
+            arg("scattering_type"),
+            arg("fp"),
+            arg("fdp"))))
         .add_property("label", make_getter(&w_t::label, rbv()),
-                               make_setter(&w_t::label, dcp()))
+          make_setter(&w_t::label, dcp()))
         .add_property("scattering_type",
           make_getter(&w_t::scattering_type, rbv()),
           make_setter(&w_t::scattering_type, dcp()))
         .add_property("fp", make_getter(&w_t::fp, rbv()),
-                            make_setter(&w_t::fp, dcp()))
+          make_setter(&w_t::fp, dcp()))
         .add_property("fdp", make_getter(&w_t::fdp, rbv()),
-                             make_setter(&w_t::fdp, dcp()))
+          make_setter(&w_t::fdp, dcp()))
         .add_property("site", make_getter(&w_t::site, rbv()),
-                              make_setter(&w_t::site, dcp()))
+          make_setter(&w_t::site, dcp()))
         .add_property("occupancy", make_getter(&w_t::occupancy, rbv()),
-                                   make_setter(&w_t::occupancy, dcp()))
+          make_setter(&w_t::occupancy, dcp()))
         .add_property("u_iso", make_getter(&w_t::u_iso, rbv()),
-                               make_setter(&w_t::u_iso, dcp()))
+          make_setter(&w_t::u_iso, dcp()))
         .add_property("u_star", make_getter(&w_t::u_star, rbv()),
-                                make_setter(&w_t::u_star, dcp()))
+          make_setter(&w_t::u_star, dcp()))
         .add_property("anharmonic_adp", make_getter(&w_t::anharmonic_adp, rbv()),
-                                        make_setter(&w_t::anharmonic_adp, dcp()))
+          make_setter(&w_t::anharmonic_adp, dcp()))
         .def_readwrite("flags", &w_t::flags)
-        .def("set_use_u", &w_t::set_use_u, (arg("iso"),arg("aniso")))
+        .def("set_use_u", &w_t::set_use_u, (arg("iso"), arg("aniso")))
         .def("set_use_u_iso_only", &w_t::set_use_u_iso_only)
         .def("set_use_u_aniso_only", &w_t::set_use_u_aniso_only)
         .def("convert_to_isotropic", &w_t::convert_to_isotropic, (
@@ -87,13 +87,13 @@ namespace {
           arg("unit_cell")))
         .def("is_positive_definite_u",
           (bool(w_t::*)(uctbx::unit_cell const&) const)
-            &w_t::is_positive_definite_u, (
-          arg("unit_cell")))
+          & w_t::is_positive_definite_u, (
+            arg("unit_cell")))
         .def("is_positive_definite_u",
           (bool(w_t::*)(uctbx::unit_cell const&, double const&) const)
-            &w_t::is_positive_definite_u, (
-          arg("unit_cell"),
-          arg("u_cart_tolerance")))
+          & w_t::is_positive_definite_u, (
+            arg("unit_cell"),
+            arg("u_cart_tolerance")))
         .def("is_anharmonic_adp", &w_t::is_anharmonic_adp)
         .def("u_iso_or_equiv", &w_t::u_iso_or_equiv, (arg("unit_cell")))
         .def("b_iso", &w_t::b_iso)
@@ -104,45 +104,45 @@ namespace {
             sgtbx::site_symmetry_ops const&,
             double const&,
             double const&,
-            double const&)) &w_t::tidy_u, (
-          arg("unit_cell"),
-          arg("site_symmetry_ops"),
-          arg("u_min"),
-          arg("u_max"),
-          arg("anisotropy_min")))
+            double const&)) & w_t::tidy_u, (
+              arg("unit_cell"),
+              arg("site_symmetry_ops"),
+              arg("u_min"),
+              arg("u_max"),
+              arg("anisotropy_min")))
         .def("shift_u",
           (void(w_t::*)(
             uctbx::unit_cell const&,
-            double const&)) &w_t::shift_u, (
-          arg("unit_cell"),
-          arg("u_shift")))
+            double const&)) & w_t::shift_u, (
+              arg("unit_cell"),
+              arg("u_shift")))
         .def("shift_occupancy",
           (void(w_t::*)(
-            double const&)) &w_t::shift_occupancy, (
-          arg("q_shift")))
+            double const&)) & w_t::shift_occupancy, (
+              arg("q_shift")))
         .def("apply_symmetry",
           (sgtbx::site_symmetry(w_t::*)(
             uctbx::unit_cell const&,
             sgtbx::space_group const&,
             double const&,
             double const&,
-            bool)) &w_t::apply_symmetry, (
+            bool)) & w_t::apply_symmetry, (
               arg("unit_cell"),
               arg("space_group"),
-              arg("min_distance_sym_equiv")=0.5,
-              arg("u_star_tolerance")=0,
-              arg("assert_min_distance_sym_equiv")=true))
+              arg("min_distance_sym_equiv") = 0.5,
+              arg("u_star_tolerance") = 0,
+              arg("assert_min_distance_sym_equiv") = true))
         .def("apply_symmetry",
           (void(w_t::*)(
             sgtbx::site_symmetry_ops const&,
-            double const&)) &w_t::apply_symmetry, (
+            double const&)) & w_t::apply_symmetry, (
               arg("site_symmetry_ops"),
-              arg("u_star_tolerance")=0))
+              arg("u_star_tolerance") = 0))
         .def("apply_symmetry_site", &w_t::apply_symmetry_site, (
           arg("site_symmetry_ops")))
         .def("apply_symmetry_u_star", &w_t::apply_symmetry_u_star, (
           arg("site_symmetry_ops"),
-          arg("u_star_tolerance")=0))
+          arg("u_star_tolerance") = 0))
         .def("multiplicity", &w_t::multiplicity)
         .def("weight_without_occupancy", &w_t::weight_without_occupancy)
         .def("weight", &w_t::weight)
@@ -152,10 +152,10 @@ namespace {
         .add_property("atomic_number", &w_t::get_atomic_number)
         .add_property("element_name", &w_t::get_element_name)
         .add_property("element_weight", &w_t::get_element_weight)
-        .def("get_id_2_16", &w_t::get_id_2_16, ((arg("data")=0)))
-        .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0)))
-        .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0)))
-        .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0)))
+        .def("get_id_2_16", &w_t::get_id_2_16, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_id_2_1", &w_t::get_id_2_1, ((arg("data") = 0), arg("multiplier") = 1))
+        .def("get_id_5_16", &w_t::get_id_5_16, ((arg("data") = 0, arg("multiplier") = 1)))
+        .def("get_id_5_1", &w_t::get_id_5_1, ((arg("data") = 0, arg("multiplier") = 1)))
         .def("element_info", &w_t::element_info, ccr)
         ;
     }
@@ -169,9 +169,9 @@ namespace {
         .def(init<uint64_t>((arg("id"))))
         .def("get_z", &wt::get_z)
         .def("get_crd", &wt::get_crd)
-        .def("get_data", &wt::get_data)
-        .add_property("id", &wt::id)
-        ;
+          .def("get_data", &wt::get_data)
+          .add_property("id", &wt::id)
+          ;
     }
 
     template <typename FloatType, class mask_info, uint64_t cell_m>
@@ -181,11 +181,26 @@ namespace {
       std::map<uint64_t, const scatterer_t*> map;
       scatterer_lookup() {}
 
-      scatterer_lookup(const af::shared<scatterer_t>& scatterers) {
+      scatterer_lookup(const af::shared<scatterer_t>& scatterers,
+        FloatType multiplier = 1)
+      {
         for (size_t i = 0; i < scatterers.size(); i++) {
           map.insert(
             std::make_pair(
-              scatterers[i].get_id<mask_info, cell_m>().id,
+              scatterers[i].get_id<mask_info, cell_m>(0, multiplier).id,
+              &scatterers[i]));
+        }
+      }
+
+      scatterer_lookup(const af::shared<scatterer_t>& scatterers,
+        const af::shared<int>& data, FloatType multiplier)
+      {
+        CCTBX_ASSERT(data.size() == 0 || scatterers.size() == data.size());
+        for (size_t i = 0; i < scatterers.size(); i++) {
+          map.insert(
+            std::make_pair(
+              scatterers[i].get_id<mask_info, cell_m>(
+                data.size() == 0 ? 0 : data[i], multiplier).id,
               &scatterers[i]));
         }
       }
@@ -197,7 +212,9 @@ namespace {
         return *si->second;
       }
 
-      uint64_t get_id(int z, const fractional<> &site, short data=0) const {
+      uint64_t get_id(int z, const fractional<>& site,
+        short data = 0, FloatType multiplier=1) const
+      {
         return scatterer_id_base<FloatType, mask_info, cell_m>(z, site, data).id;
       }
     };
@@ -209,9 +226,133 @@ namespace {
       return_internal_reference<> rir;
 
       class_<wt, std::auto_ptr<wt> >(name, no_init)
-        .def(init < const af::shared<scatterer<> > &> ((arg("scatterers"))))
+        .def(init <const af::shared<scatterer<> > &, FloatType>(
+          (arg("scatterers"), arg("multiplier") = 1)))
+        .def(init <const af::shared<scatterer<> > &, const af::shared<int>&, FloatType>(
+          (arg("scatterers"), arg("data"), arg("multiplier") = 1)))
         .def("find", &wt::find, rir)
-        .def("get_id", &wt::get_id, (arg("z"), arg("site"), arg("data")=0))
+        .def("get_id", &wt::get_id, (
+          arg("z"), arg("site"), arg("data") = 0, arg("multiplier") = 1))
+        ;
+    }
+
+    template <typename FloatType>
+    struct scatterer_cart_lookup {
+      typedef scatterer<> scatterer_t;
+      const uctbx::unit_cell& u_cell;
+      typedef scitbx::vec3<FloatType> cart_t;
+      typedef std::pair<FloatType, size_t> pair_t;
+      af::shared<scatterer_t> scatterers;
+      af::shared<int> data;
+      std::vector<cart_t> crds;
+
+      std::vector<pair_t> map;
+      scatterer_cart_lookup() {}
+
+      scatterer_cart_lookup(const uctbx::unit_cell& u_cell,
+        const af::shared<scatterer_t>& scatterers)
+        : u_cell(u_cell),
+        scatterers(scatterers)
+      {
+        crds.reserve(scatterers.size());
+        map.reserve(scatterers.size());
+        for (size_t i = 0; i < scatterers.size(); i++) {
+          crds.push_back(u_cell.orthogonalize(scatterers[i].site));
+          map.push_back(std::make_pair(crds[i].length(), i));
+        }
+        std::sort(map.begin(), map.end(), &sort_qd);
+      }
+
+      scatterer_cart_lookup(const uctbx::unit_cell& u_cell,
+        const af::shared<scatterer_t>& scatterers,
+        const af::shared<int>& data)
+        : u_cell(u_cell),
+        scatterers(scatterers),
+        data(data)
+      {
+        crds.reserve(scatterers.size());
+        map.reserve(scatterers.size());
+        for (size_t i = 0; i < scatterers.size(); i++) {
+          crds.push_back(u_cell.orthogonalize(scatterers[i].site));
+          map.push_back(std::make_pair(crds[i].length(), i));
+        }
+        std::sort(map.begin(), map.end(), &sort_qd);
+      }
+
+      const scatterer_t& find(const cart_t& crd_, int Z, int sdata=0,
+        FloatType eps = 1e-3) const
+      {
+        typedef typename std::vector<pair_t>::const_iterator itr_t;
+        cart_t crd = u_cell.orthogonalize(crd_);
+        FloatType sql = crd.length();
+        FloatType eps_qd = sql * eps;
+        itr_t itr = std::upper_bound(
+          map.begin(), map.end(),
+          std::make_pair(sql, size_t(~0)), less_qd());
+        CCTBX_ASSERT(itr != map.end());
+        itr_t itr1 = itr;
+        FloatType diff = std::abs((*itr).first - sql);
+        while (diff < eps_qd && itr != map.end()) {
+          size_t idx = (*itr).second;
+          const scatterer_t& s = scatterers[idx];
+          FloatType qd = (crd - crds[idx]).length();
+          if (s.get_atomic_number() == Z && qd < eps) {
+            if (data.size() == 0 || data[idx] == sdata) {
+              return s;
+            }
+          }
+          itr++;
+          if (itr != map.end()) {
+            diff = std::abs((*itr).first - sql);
+          }
+        }
+        itr = itr1;
+        CCTBX_ASSERT(itr != map.begin());
+        itr--;
+        diff = std::abs((*itr).first - sql);
+        while (diff < eps_qd) {
+          size_t idx = (*itr).second;
+          const scatterer_t& s = scatterers[idx];
+          FloatType qd = (crd - crds[idx]).length();
+          if (s.get_atomic_number() == Z && qd < eps) {
+            if (data.size() == 0 || data[idx] == sdata) {
+              return s;
+            }
+          }
+          if (itr == map.begin()) {
+            break;
+          }
+          itr--;
+          diff = std::abs((*itr).first - sql);
+        }
+        throw CCTBX_ERROR("Could not locate scatterer at the given coordinate");
+      }
+
+      static bool sort_qd(const pair_t& a, const pair_t& b) {
+        return a.first < b.first;
+      }
+
+      struct less_qd {
+        bool operator()(const pair_t& a, const pair_t& b) const {
+          return sort_qd(a, b);
+        }
+      };
+    };
+
+    template <typename FloatType>
+    static void wrap_cart_lookup() {
+      using namespace boost::python;
+      typedef scatterer_cart_lookup<FloatType> wt;
+      return_internal_reference<> rir;
+
+      class_<wt, std::auto_ptr<wt> >("scatterer_lookup_cart", no_init)
+        .def(init<const uctbx::unit_cell&, const af::shared<scatterer<> > &>(
+          (arg("unit_cell"), arg("scatterers"))))
+        .def(init<const uctbx::unit_cell&,
+          const af::shared<scatterer<> > &,
+          const af::shared<int>&>(
+          (arg("unit_cell"), arg("scatterers"), arg("data"))))
+        .def("find", &wt::find, (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
         ;
     }
   };
@@ -231,6 +372,7 @@ namespace {
     scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d2, 1>("scatterer_lookup_2_1");
     scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 16>("scatterer_lookup_5_16");
     scatterer_wrappers::wrap_lookup<double, scatterer_id_masks_d5, 1>("scatterer_lookup_5_1");
+    scatterer_wrappers::wrap_cart_lookup<double>();
 
     def("is_positive_definite_u",
       (af::shared<bool>(*)(

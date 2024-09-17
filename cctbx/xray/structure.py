@@ -170,17 +170,40 @@ class structure(crystal.special_position_settings):
     """
     return self._scatterers
 
-  def get_scatterers_lookup(self, lookup_type="2_16"):
+  def get_scatterer_lookup(self, lookup_type="2_16", data=[], multplier=1):
+    """ Scatterer sites and types plus extra data (like disorder part) can be
+     encoded into a single 64bit number. Current implementations provide 16 and
+    17bit per fractional coordinate (id_5 and id_2) with that they can carry
+    either 5 bit ([0..31]) or 2 bit [0..3] extra data. The two ids _16 and _1
+    refer to the encoded range - 16 or 1 units cells across.
+    This function provides ways to get those lookup objects, which in their
+     order, give functionality (.get_id(data=0)) to get the required ids.
+    Multiplier parameter allows to round the provided fractional coordinates
+     to some range like “100” will make 0.95 to be 1.
+
+    """
     from cctbx.xray import ext
     if lookup_type == "2_16":
-      return ext.scatterer_lookup_2_16(self.scatterers())
+      return ext.scatterer_lookup_2_16(self.scatterers(), data, multplier=1)
     if lookup_type == "2_1":
-      return ext.scatterer_lookup_2_1(self.scatterers())
+      return ext.scatterer_lookup_2_1(self.scatterers(), data, multplier=1)
     if lookup_type == "5_16":
-      return ext.scatterer_lookup_5_16(self.scatterers())
+      return ext.scatterer_lookup_5_16(self.scatterers(), data, multplier=1)
     if lookup_type == "5_1":
-      return ext.scatterer_lookup_5_1(self.scatterers())
+      return ext.scatterer_lookup_5_1(self.scatterers(),data, multplier=1)
     raise Exception("Unknown lookup type")
+
+  def get_scatterer_lookup_cart(self, data=[]):
+    """This is a different kind of lookup that tries to locate a scatterer at a
+     given position within some epsilon and possibly data. Some positions may
+      change slightly during the refinement and although the scatterer lookup
+      can deal with them to some degree with rounding – this could be a more
+     reliable way. The lookup’s find function expects Z, site (fractional),
+     extra data(0) and the acceptable deviation (1e-3)
+    """
+    from cctbx.xray import ext
+    return ext.scatterer_lookup_cart(self.unit_cell(), self.scatterers(), data)
+
 
   def non_unit_occupancy_implies_min_distance_sym_equiv_zero(self):
     return self._non_unit_occupancy_implies_min_distance_sym_equiv_zero
