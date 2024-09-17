@@ -5,7 +5,7 @@ from scitbx.array_family import flex
 from scitbx import matrix
 import mmtbx.ncs.ncs_utils as nu
 import scitbx.rigid_body
-from libtbx.utils import Sorry
+from libtbx.utils import null_out, Sorry
 from libtbx.test_utils import approx_equal
 import iotbx.cif.model
 from six.moves import zip
@@ -28,7 +28,7 @@ class NCS_copy():
     self.rmsd = rmsd
 
   def __eq__(self, other):
-    return approx_equal(self.r, other.r) and approx_equal(self.t, other.t)
+    return approx_equal(self.r, other.r, out=null_out()) and approx_equal(self.t, other.t, out=null_out())
 
   def deep_copy(self):
     res = NCS_copy(
