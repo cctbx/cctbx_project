@@ -2059,13 +2059,40 @@ def exercise_scatterer_lookup():
   scatterers = xray_structure.scatterers()
   names = ["2_16", "2_1", "5_16", "5_1"]
   for name in names:
-    sl = xray_structure.get_scatterers_lookup(name)
+    sl = xray_structure.get_scatterer_lookup(name)
     for sc in scatterers:
       id = sl.get_id(sc.atomic_number, sc.site)
       sc = sl.find(id) # this will assert on failure
       #sc.show(unit_cell=xray_structure.unit_cell())
 
+def exercise_scatterer_lookup_cart():
+  from smtbx import development
+  from cctbx.xray import ext
+  import random
+  xray_structure = development.sucrose()
+  unit_cell = xray_structure.unit_cell()
+  scatterers = xray_structure.scatterers()
+  lookup = xray_structure.get_scatterer_lookup_cart()
+  for sc in scatterers:
+    id = ext.scatterer_id_5_16(sc.get_id_5_16())
+    #print("Searching for: " + sc.label)
+    sc1 = lookup.find(id.get_crd(), id.get_z(), eps=0.01)
+    ##print("Found: " + sc1.label)
+
+  sdata = []
+  for sc in scatterers:
+    data = random.randint(0, 31)
+    sdata.append(data)
+
+  lookup = xray_structure.get_scatterer_lookup_cart(sdata)
+  for i, sc in enumerate(scatterers):
+    id = ext.scatterer_id_5_16(sc.get_id_5_16(sdata[i]))
+    #print("Searching for: " + sc.label)
+    sc1 = lookup.find(id.get_crd(), id.get_z(), sdata[i], eps=0.01)
+    #print("Found: " + sc1.label)
+
 def run():
+  exercise_scatterer_lookup_cart()
   exercise_scatterer_lookup()
   exercise_scatterer_id()
   exercise_scattering_type_registry_1()

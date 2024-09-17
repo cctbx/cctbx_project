@@ -22,7 +22,7 @@ namespace cctbx {
         id = ((uint64_t)z) & mask_info::z_mask;
         static const int64_t k = mask_info::mask_m / cell_m;
         int64_t x = multiplier == 1 ? (int64_t)(crd[0] * k)
-          : ((int64_t)(crd[0] * multiplier)) / multiplier * k;
+          : ((int64_t)round(crd[0] * multiplier)) / multiplier * k;
         if (x < 0) {
           id |= mask_info::a_sig;
           id |= (((-x) << 8) & mask_info::a_mask);
@@ -31,7 +31,7 @@ namespace cctbx {
           id |= ((std::abs(x) << 8) & mask_info::a_mask);
         }
         x = multiplier == 1 ? (int64_t)(crd[1] * k)
-          : ((int64_t)(crd[1] * multiplier)) / multiplier * k;
+          : ((int64_t)round(crd[1] * multiplier)) / multiplier * k;
         if (x < 0) {
           id |= mask_info::b_sig;
           id |= (((-x) << (8 + mask_info::a_shift)) & mask_info::b_mask);
@@ -40,7 +40,7 @@ namespace cctbx {
           id |= ((x << (8 + mask_info::a_shift)) & mask_info::b_mask);
         }
         x = multiplier == 1 ? (int64_t)(crd[2] * k)
-          : ((int64_t)(crd[2] * multiplier)) / multiplier * k;
+          : ((int64_t)round(crd[2] * multiplier)) / multiplier * k;
         if (x < 0) {
           id |= mask_info::c_sig;
           id |= (((-x) << (8 + mask_info::a_shift * 2)) & mask_info::c_mask);
