@@ -2562,10 +2562,12 @@ class _():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
           for i_gr1, atom_group_1 in enumerate(residue_group.atom_groups()):
-            elements_group1 = atom_group_1.atoms().extract_element()
+            elements_group1 = [
+              e.strip() for e in atom_group_1.atoms().extract_element()]
             non_H_atoms_group1 = list(set(elements_group1) - set(['H','D']))
             for i_gr2, atom_group_2 in enumerate(residue_group.atom_groups()):
-              elements_group2 = atom_group_2.atoms().extract_element()
+              elements_group2 = [
+                e.strip() for e in atom_group_2.atoms().extract_element()]
               non_H_atoms_group2 = list(set(elements_group2) - set(['H','D']))
               if non_H_atoms_group1 and non_H_atoms_group2: continue
               if(atom_group_1.altloc != atom_group_2.altloc and i_gr2 > i_gr1):
