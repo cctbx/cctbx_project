@@ -1093,6 +1093,9 @@ class manager(object):
     return self.get_hierarchy().altlocs_present()
 
   def altlocs_present_only_hd(self):
+    """ True when model has H/D exchangeable sites and does not have
+    other alternative conformations. False otherwise.
+    """
     noh_selection = self.selection("not (element H or element D)")
     hierarchy_no_hd = self.get_hierarchy().select(noh_selection)
     altlocs = hierarchy_no_hd.altlocs_present()
