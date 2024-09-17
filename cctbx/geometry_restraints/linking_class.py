@@ -97,6 +97,8 @@ Look for a key in the list below
     return self._get_origin_id_labels(internals='parallelity')
 
   def get_geo_file_header(self, origin_id_label, internals=None):
+    print(origin_id_label,internals)
+    print(self.data.keys())
     info = self.data.get(origin_id_label, None)
     assert info
     if len(info)>=4:
@@ -123,6 +125,7 @@ Look for a key in the list below
     internal_idx = internals_all.index(internals)
 
     for origin_label, info in self.data.items():
+      print('origin_label, info',origin_label,info)
       if len(info)>=4:
         header_info = info[3]
         if isinstance(header_info,list) and len(header_info)>internal_idx:
@@ -131,6 +134,26 @@ Look for a key in the list below
             if header.startswith(query_header) or query_header.startswith(header):
               return origin_label
 
+  def get_origin_label_and_internal(self, query_header):
+    for origin_label, info in self.data.items():
+      print('origin_label, info',origin_label,info)
+    tmp = query_header.split('|')
+    print(tmp)
+    if len(tmp)==1:
+      oi = 0 # default
+      rc = 'covalent'
+    else:
+      print(tmp)
+      header='%s %s' % (tmp[0].strip(), tmp[2].strip())
+      rc = self.get_geo_file_header(header)
+      print(rc)
+      assert 0
+    return oi, rc
+
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
+  for line in ['Bond restraints',
+               'Bond | Misc. | restraints',
+    ]:
+    print('.........',line, lc.get_origin_label_and_internal(line))

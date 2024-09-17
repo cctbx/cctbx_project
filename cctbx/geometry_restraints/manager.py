@@ -1631,6 +1631,8 @@ class manager(Base_geometry):
         sites_cart=None,
         site_labels=None,
         f=None):
+    from cctbx.geometry_restraints.auto_linking_types import covalent_headers
+    from cctbx.geometry_restraints.auto_linking_types import internal_labels
     default_origin_id = origin_ids.get_origin_id('covalent geometry')
     if (f is None): f = sys.stdout
     pair_proxies = self.pair_proxies(flags=flags, sites_cart=sites_cart)
@@ -1638,18 +1640,26 @@ class manager(Base_geometry):
       sites_cart = self._sites_cart_used_for_pair_proxies
 
     if pair_proxies.bond_proxies is not None:
+      #
       # write covalent bonds
+      #
+      label=covalent_headers[0]
+      tempbuffer = StringIO()
       pair_proxies.bond_proxies.show_sorted(
           by_value="residual",
           sites_cart=sites_cart,
           site_labels=site_labels,
-          f=f,
+          f=tempbuffer,
           origin_id=default_origin_id)
-      print(file=f)
+      if tempbuffer.getvalue().find(': 0')==-1:
+        print(label, tempbuffer.getvalue()[5:], file=f)
+      #
+      # write bonds with other origin_id
+      #
       for key in origin_ids.get_bond_origin_id_labels():
         origin_id=origin_ids.get_origin_id(key)
         if origin_id==default_origin_id: continue
-        label=origin_ids.get_geo_file_header(key)
+        t_label=origin_ids.get_geo_file_header(key)
         tempbuffer = StringIO()
         pair_proxies.bond_proxies.show_sorted(
             by_value="residual",
@@ -1658,41 +1668,42 @@ class manager(Base_geometry):
             f=tempbuffer,
             prefix="",
             origin_id=origin_id)
+        print('='*80)
+        print(tempbuffer.getvalue())
         if tempbuffer.getvalue().find(': 0')==-1:
-          print(label, tempbuffer.getvalue()[5:], file=f)
-
-    for p_label, proxies, internals, i_label, keys, start in [
-      ("Bond angle",
+          print('%s | %s |' % (label, t_label), tempbuffer.getvalue()[5:], file=f)
+    #
+    # write of the other internals for each origin_id
+    #
+    for i, (proxies, i_label, keys, start) in enumerate([
+      (
        self.angle_proxies, # self.get_all_angle_proxies(),
-       'angles',
        '',
        origin_ids.get_angle_origin_id_labels(),
-       5),
-      ("Dihedral angle",
+       11),
+      (
        self.dihedral_proxies, # self.get_dihedral_proxies(),
-       'dihedrals',
        'torsion',
        origin_ids.get_dihedral_origin_id_labels(),
-       9),
-      ("Chirality",
+       15),
+      (
        self.chirality_proxies,
-       'chirals',
        '',
        origin_ids.get_chiral_origin_id_labels(),
-       0),
-      ("Planes",
+       10),
+      (
        self.planarity_proxies,
-       'planes',
        '',
        origin_ids.get_plane_origin_id_labels(),
        10),
-      ("Parallelity",
+      (
        self.parallelity_proxies,
-       'parallelities',
        '',
        origin_ids.get_parallelity_origin_id_labels(),
        12),
-      ]:
+      ]):
+      p_label=covalent_headers[i+1]
+      internals=internal_labels[i+1]
       if (proxies is not None):
         if p_label not in ['Parallelity']: # not default origin for parallelity
           proxies.show_sorted(
@@ -1707,6 +1718,8 @@ class manager(Base_geometry):
           if origin_id==default_origin_id: continue
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
+          print('p_label',p_label,'label',label,'i_label',i_label)
+          # label = '%s - %s' % (p_label, label)
           if i_label: label = '%s %s' % (label, i_label)
           tempbuffer = StringIO()
           proxies.show_sorted(
@@ -1716,8 +1729,13 @@ class manager(Base_geometry):
               f=tempbuffer,
               prefix="",
               origin_id=origin_id)
+          print('-'*80)
+          print(tempbuffer.getvalue())
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print(label, tempbuffer.getvalue()[start:], file=f)
+            print('-'*80)
+            print('~> ',p_label,label,origin_id)
+            print(tempbuffer.getvalue())
+            print('%s | %s |' % (p_label, label), tempbuffer.getvalue()[start:], file=f)
 
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),

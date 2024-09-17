@@ -25,6 +25,22 @@ class origins(list):
   def __repr__(self):
     return list.__repr__(self) + ' is %s' % self.internals
 
+covalent_headers = ['Bond',
+                    "Bond angle",
+                    "Dihedral angle",
+                    "Chirality",
+                    "Plane",
+                    "Parallelity",
+                    ]
+
+internal_labels = ['bonds',
+                   'angles',
+                   'dihedrals',
+                   'chirals',
+                   'planes',
+                   'parallelities',
+                   ]
+
 starting_id = 0
 for link_info in [
     ['covalent geometry', [0,1,2,3,4,5]], # 0
