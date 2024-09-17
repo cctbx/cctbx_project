@@ -1092,6 +1092,14 @@ class manager(object):
   def altlocs_present(self):
     return self.get_hierarchy().altlocs_present()
 
+  def altlocs_present_only_hd(self):
+    noh_selection = self.selection("not (element H or element D)")
+    hierarchy_no_hd = self.get_hierarchy().select(noh_selection)
+    altlocs = hierarchy_no_hd.altlocs_present()
+    hd = self.get_hierarchy().exchangeable_hd_selections()
+    if not altlocs and len(hd)>0: return True
+    return False
+
   def aa_residues_with_bound_sidechains(self):
     """
     Return array of i_seqs of residue side chain atoms that are involved into
