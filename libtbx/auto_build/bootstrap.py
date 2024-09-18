@@ -2754,7 +2754,7 @@ class QRBuilder(PhenixBuilder):
     # XXX Do not get JPype1 as it fails. This makes QR work only with
     # XXX fast_interaction=True (=False won't work)
     #
-    pip_installs = ['ase', 'pymongo']
+    pip_installs = ['ase==3.22.1',]
     instructions = []
     # versioning
     cmd = [os.path.join('..', self.python_base),
