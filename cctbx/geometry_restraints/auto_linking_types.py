@@ -111,18 +111,18 @@ for link_info in [
     # ['Trans Peptide']*3+[None],
     # [0,1,2,4]
     # ]
-    ['Misc. bond',
+    ['Misc. bond', # 9
      'Bond created based on atom type and distance.',
      '',
      ['Misc.']*5,
      [0,1,2,3,4]
-    ], # 9
-    ['User supplied cif_link',
+    ],
+    ['User supplied cif_link', # 10
      'Internal coordinates supplied by the user in cif_link format',
      '',
      ['User cif_link']*5,
      [0,1,2,3,4]
-    ], # 10
+    ],
     ]:
   for oi in origin_ids:
     assert starting_id not in oi
