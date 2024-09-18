@@ -1,11 +1,10 @@
 from __future__ import absolute_import, division, print_function
-import scitbx.array_family.flex
+from scitbx.array_family import flex
 
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("scitbx_lbfgsb_ext")
 from scitbx_lbfgsb_ext import *
 
-from scitbx.array_family import flex
 
 class minimizer(ext.minimizer):
 
@@ -33,3 +32,36 @@ class minimizer(ext.minimizer):
     if (iprint is None): iprint = -1
     ext.minimizer.__init__(self,
       n, m, l, u, nbd, enable_stp_init, factr, pgtol, iprint)
+
+
+def run(target_evaluator,
+               use_bounds,
+               lower_bound,
+               upper_bound,
+               n,
+               max_iterations = None):
+  nbd = flex.int(n, use_bounds)
+  lbfgsb_minimizer = minimizer(
+    n   = n,
+    l   = lower_bound,
+    u   = upper_bound,
+    nbd = nbd) # flag to apply both bounds
+  lbfgsb_minimizer.error = None
+  try:
+    icall = 0
+    while 1:
+      icall += 1
+      x, f, g = target_evaluator.compute_functional_and_gradients()
+      have_request = lbfgsb_minimizer.process(x, f, g)
+      if(have_request):
+        requests_f_and_g = lbfgsb_minimizer.requests_f_and_g()
+        continue
+      assert not lbfgsb_minimizer.requests_f_and_g()
+      if(lbfgsb_minimizer.is_terminated()): break
+      if(max_iterations is not None and icall>max_iterations): break
+  except RuntimeError as e:
+    lbfgsb_minimizer.error = str(e)
+  lbfgsb_minimizer.n_calls = icall
+  if(lbfgsb_minimizer.error is not None):
+    print("lbfgs-b: an error occured: %s"%lbfgsb_minimizer.error)
+  return lbfgsb_minimizer
