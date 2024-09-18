@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.geometry_restraints.auto_linking_types import origin_ids
+from cctbx.geometry_restraints.auto_linking_types import covalent_headers
 
 class linking_class(dict):
   def __init__(self):
@@ -97,8 +98,6 @@ Look for a key in the list below
     return self._get_origin_id_labels(internals='parallelity')
 
   def get_geo_file_header(self, origin_id_label, internals=None):
-    print(origin_id_label,internals)
-    print(self.data.keys())
     info = self.data.get(origin_id_label, None)
     assert info
     if len(info)>=4:
@@ -113,47 +112,61 @@ Look for a key in the list below
       else: assert 0
     else: return info[0]
 
-  def get_label_for_geo_header(self,query_header,internals=None):
-    """
-    Given the string found in a geo file origin_id header, get the label
-      From label can use get_origin_id to get the integer origin id.
-    """
-    if not internals:
-      internals = "bonds"
-    internals_all = ["bonds", "angles", "dihedrals", "chirals", "planes","parallelities"]
-    assert internals in internals_all
-    internal_idx = internals_all.index(internals)
+  def parse_geo_file_header(self, origin_id_label, subheader=None, internals=None):
+    if not origin_id_label in covalent_headers:
+      assert 0, 'origin_id_label "%s" not in %s' % (origin_id_label, covalent_headers)
+    info = self.data.get(origin_id_label, None)
+    if info:
+      assert 0
+    else:
+      for i, (origin_label, info) in enumerate(self.data.items()):
+        if len(info)==2:
+          if subheader in info:
+            return i, '%s %s' % (origin_id_label, subheader)
+        elif len(info)>=4:
+          header_info = info[3]
+          if isinstance(header_info, list):
+            if subheader in header_info:
+              return i, '%s %s' % (origin_id_label, subheader)
 
-    for origin_label, info in self.data.items():
-      print('origin_label, info',origin_label,info)
-      if len(info)>=4:
-        header_info = info[3]
-        if isinstance(header_info,list) and len(header_info)>internal_idx:
-          header = header_info[internal_idx]
-          if header:
-            if header.startswith(query_header) or query_header.startswith(header):
-              return origin_label
+    print(origin_id_label, subheader)
+    assert 0
 
-  def get_origin_label_and_internal(self, query_header):
-    for origin_label, info in self.data.items():
-      print('origin_label, info',origin_label,info)
+  def get_origin_label_and_internal(self, query_header, verbose=False):
+    if verbose:
+      for origin_label, info in self.data.items():
+        print('origin_label, info',origin_label,info)
     tmp = query_header.split('|')
-    print(tmp)
     if len(tmp)==1:
       oi = 0 # default
       rc = 'covalent'
     else:
-      print(tmp)
-      header='%s %s' % (tmp[0].strip(), tmp[2].strip())
-      rc = self.get_geo_file_header(header)
-      print(rc)
-      assert 0
+      header=tmp[0].strip()
+      subheader=tmp[1].strip()
+      oi, rc = self.parse_geo_file_header(header, subheader=subheader)
     return oi, rc
 
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
-  for line in ['Bond restraints',
-               'Bond | Misc. | restraints',
+  for line in [ 'Bond restraints',
+                'Bond | Misc. | restraints',
+                'Bond | link_BETA1-4 | restraints',
+                'Bond | link_TRANS | restraints',
+                'Bond angle restraints',
+                'Bond angle | link_BETA1-4 | restraints',
+                'Bond angle | link_TRANS | restraints',
+                'Dihedral angle restraints',
+                'Dihedral angle | C-Beta improper | restraints',
+                'Dihedral angle | link_TRANS | restraints',
+                'Chirality restraints',
+                'Chirality | link_BETA1-4 | restraints',
+                'Planarity restraints',
+                'Plane | link_TRANS | restraints',
+
+                "Bond | Bond-like | restraints",
+                "Bond angle | Secondary Structure restraints around h-bond | restraints",
+                "Parallelity | Stacking parallelity | restraints",
+                "Parallelity | Basepair parallelity | restraints",
     ]:
     print('.........',line, lc.get_origin_label_and_internal(line))

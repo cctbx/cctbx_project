@@ -1668,8 +1668,6 @@ class manager(Base_geometry):
             f=tempbuffer,
             prefix="",
             origin_id=origin_id)
-        print('='*80)
-        print(tempbuffer.getvalue())
         if tempbuffer.getvalue().find(': 0')==-1:
           print('%s | %s |' % (label, t_label), tempbuffer.getvalue()[5:], file=f)
     #
@@ -1683,7 +1681,7 @@ class manager(Base_geometry):
        11),
       (
        self.dihedral_proxies, # self.get_dihedral_proxies(),
-       'torsion',
+       '', #'torsion',
        origin_ids.get_dihedral_origin_id_labels(),
        15),
       (
@@ -1718,7 +1716,6 @@ class manager(Base_geometry):
           if origin_id==default_origin_id: continue
           label=origin_ids.get_geo_file_header(key, internals=internals)
           if label is None: continue
-          print('p_label',p_label,'label',label,'i_label',i_label)
           # label = '%s - %s' % (p_label, label)
           if i_label: label = '%s %s' % (label, i_label)
           tempbuffer = StringIO()
@@ -1729,14 +1726,13 @@ class manager(Base_geometry):
               f=tempbuffer,
               prefix="",
               origin_id=origin_id)
-          print('-'*80)
-          print(tempbuffer.getvalue())
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
-            print('-'*80)
-            print('~> ',p_label,label,origin_id)
-            print(tempbuffer.getvalue())
-            print('%s | %s |' % (p_label, label), tempbuffer.getvalue()[start:], file=f)
+            print('%s | %s | %s' % (p_label, label, tempbuffer.getvalue()[start:]),
+                  file=f)
 
+    #
+    # not parsed for geo viewer
+    #
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
         ("NCS torsion angle", self.ncs_dihedral_manager),
