@@ -1729,7 +1729,6 @@ class manager(Base_geometry):
           if len(tempbuffer.getvalue()) and tempbuffer.getvalue().find(': 0')==-1:
             print('%s | %s | %s' % (p_label, label, tempbuffer.getvalue()[start:]),
                   file=f)
-
     #
     # not parsed for geo viewer
     #
