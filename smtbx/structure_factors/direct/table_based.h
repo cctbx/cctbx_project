@@ -7,6 +7,7 @@
 #include <boost/shared_ptr.hpp>
 #include <smtbx/structure_factors/direct/standard_xray.h>
 #include <cctbx/miller/lookup_utils.h>
+#include <cctbx/xray/scatterer_lookup.h>
 #include <fstream>
 
 namespace smtbx { namespace structure_factors { namespace table_based {
@@ -56,17 +57,19 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     typedef std::complex<float_type> complex_type;
   private:
     typedef table_data<FloatType> parent_t;
+    const uctbx::unit_cell& u_cell;
 
-    void read(af::shared<xray::scatterer<float_type> > const &scatterers,
+    void read(af::shared<xray::scatterer<float_type> > const& scatterers,
       const std::string &file_name)
     {
       using namespace std;
+      typedef cctbx::xray::scatterer_id_5<FloatType, 16> scatterer_id_t;
       ifstream in_file(file_name.c_str());
       string line;
       vector<std::string> toks;
       size_t lc = 0;
       vector<size_t> sc_indices(scatterers.size());
-      bool header_read = false;
+      bool header_read = false, ids_read = false;
       while (std::getline(in_file, line)) {
         lc++;
         boost::trim(line);
@@ -80,7 +83,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
           if (toks.size() < 2) {
             continue;
           }
-          if (boost::iequals(toks[0], "scatterers")) {
+          if (boost::iequals(toks[0], "scatterers") && !ids_read) {
             std::vector<std::string> stoks;
             boost::trim(toks[1]);
             boost::split(stoks, toks[1], boost::is_any_of(" "));
@@ -95,6 +98,24 @@ namespace smtbx { namespace structure_factors { namespace table_based {
               SMTBX_ASSERT(fsci != sc_map.end());
               sc_indices[sci] = fsci->second;
             }
+          }
+          else if (boost::iequals(toks[0], "scatterer_ids")) {
+            std::vector<std::string> stoks;
+            cctbx::xray::scatterer_cart_lookup<FloatType> scatter_lookup(u_cell, scatterers);
+            boost::trim(toks[1]);
+            boost::split(stoks, toks[1], boost::is_any_of(" "));
+            SMTBX_ASSERT(stoks.size() == scatterers.size());
+            for (size_t sci = 0; sci < scatterers.size(); sci++) {
+              std::stringstream ss;
+              ss << std::hex << stoks[sci];
+              uint64_t id_val;
+              ss >> id_val;
+              scatterer_id_t sc_id(id_val);
+              size_t idx = scatter_lookup.index_of_fractional(sc_id.get_crd(), sc_id.get_z(), 0, 1e-2);
+              SMTBX_ASSERT(idx != ~0);
+              sc_indices[sci] = idx;
+            }
+            ids_read = true;
           }
           else if (boost::iequals(toks[0], "AD")) {
             boost::trim(toks[1]);
@@ -157,6 +178,7 @@ namespace smtbx { namespace structure_factors { namespace table_based {
         }
       }
     }
+    
     void read_binary(af::shared<xray::scatterer<float_type> > const &scatterers,
       const std::string &file_name)
     {
@@ -171,14 +193,12 @@ namespace smtbx { namespace structure_factors { namespace table_based {
       //If the size is not according to double type the binary will not be readable
       SMTBX_ASSERT(complex_doublesize == complex_type_size);
       tsc_file.read((char*)&head, intsize);
-      char* header;
       const int nr_scat = scatterers.size();
       string header_str;
       if (head[0] != 0) {
-        header = new char[head[0]];
-        tsc_file.read(header, head[0] * charsize);
-        header_str = header;
-        free(header);
+        vector<char> header(head[0]);
+        tsc_file.read(&header[0], head[0] * charsize);
+        header_str = header.data();
       }
       //read scatterer labels and map onto scattterers list
       int sc_len[1] = {0};
@@ -224,8 +244,10 @@ namespace smtbx { namespace structure_factors { namespace table_based {
     }
 
   public:
-    table_reader(af::shared<xray::scatterer<float_type> > const &scatterers,
+    table_reader(const uctbx::unit_cell& u_cell,
+      af::shared<xray::scatterer<float_type> > const &scatterers,
       const std::string &file_name)
+      : u_cell(u_cell)
     {
       if(file_name.find(".tscb")!=std::string::npos){
         read_binary(scatterers, file_name);
@@ -537,12 +559,13 @@ namespace smtbx { namespace structure_factors { namespace table_based {
   struct builder {
     static direct::one_scatterer_one_h::scatterer_contribution<FloatType> *
       build(
+        const uctbx::unit_cell& u_cell,
         af::shared< xray::scatterer<FloatType> > const &scatterers,
         std::string const &file_name,
         sgtbx::space_group const &space_group,
         bool anomalous_flag)
     {
-      table_reader<FloatType> data(scatterers, file_name);
+      table_reader<FloatType> data(u_cell, scatterers, file_name);
       if(!data.use_AD()){
         anomalous_flag = false;
       }

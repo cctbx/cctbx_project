@@ -1,6 +1,7 @@
 #include <cctbx/boost_python/flex_fwd.h>
 
 #include <cctbx/xray/scatterer_utils.h>
+#include <cctbx/xray/scatterer_lookup.h>
 #include <cctbx/crystal/direct_space_asu.h>
 #include <cctbx/eltbx/henke.h>
 #include <cctbx/eltbx/sasaki.h>
@@ -175,51 +176,6 @@ namespace {
     }
 
     template <typename FloatType, class mask_info, uint64_t cell_m>
-    struct scatterer_lookup {
-      typedef scatterer<> scatterer_t;
-
-      std::map<uint64_t, const scatterer_t*> map;
-      scatterer_lookup() {}
-
-      scatterer_lookup(const af::shared<scatterer_t>& scatterers,
-        FloatType multiplier = 1)
-      {
-        for (size_t i = 0; i < scatterers.size(); i++) {
-          map.insert(
-            std::make_pair(
-              scatterers[i].get_id<mask_info, cell_m>(0, multiplier).id,
-              &scatterers[i]));
-        }
-      }
-
-      scatterer_lookup(const af::shared<scatterer_t>& scatterers,
-        const af::shared<int>& data, FloatType multiplier)
-      {
-        CCTBX_ASSERT(data.size() == 0 || scatterers.size() == data.size());
-        for (size_t i = 0; i < scatterers.size(); i++) {
-          map.insert(
-            std::make_pair(
-              scatterers[i].get_id<mask_info, cell_m>(
-                data.size() == 0 ? 0 : data[i], multiplier).id,
-              &scatterers[i]));
-        }
-      }
-
-      const scatterer_t& find(uint64_t id) const {
-        typename std::map<uint64_t, const scatterer_t*>::const_iterator si =
-          map.find(id);
-        CCTBX_ASSERT(si != map.end());
-        return *si->second;
-      }
-
-      uint64_t get_id(int z, const fractional<>& site,
-        short data = 0, FloatType multiplier=1) const
-      {
-        return scatterer_id_base<FloatType, mask_info, cell_m>(z, site, data).id;
-      }
-    };
-
-    template <typename FloatType, class mask_info, uint64_t cell_m>
     static void wrap_lookup(const char* name) {
       using namespace boost::python;
       typedef scatterer_lookup<FloatType, mask_info, cell_m> wt;
@@ -231,113 +187,12 @@ namespace {
         .def(init <const af::shared<scatterer<> > &, const af::shared<int>&, FloatType>(
           (arg("scatterers"), arg("data"), arg("multiplier") = 1)))
         .def("find", &wt::find, rir)
+        .def("init", &wt::init)
+        .def("init_with_data", &wt::init_with_data)
         .def("get_id", &wt::get_id, (
           arg("z"), arg("site"), arg("data") = 0, arg("multiplier") = 1))
         ;
     }
-
-    template <typename FloatType>
-    struct scatterer_cart_lookup {
-      typedef scatterer<> scatterer_t;
-      const uctbx::unit_cell& u_cell;
-      typedef scitbx::vec3<FloatType> cart_t;
-      typedef std::pair<FloatType, size_t> pair_t;
-      af::shared<scatterer_t> scatterers;
-      af::shared<int> data;
-      std::vector<cart_t> crds;
-
-      std::vector<pair_t> map;
-      scatterer_cart_lookup() {}
-
-      scatterer_cart_lookup(const uctbx::unit_cell& u_cell,
-        const af::shared<scatterer_t>& scatterers)
-        : u_cell(u_cell),
-        scatterers(scatterers)
-      {
-        crds.reserve(scatterers.size());
-        map.reserve(scatterers.size());
-        for (size_t i = 0; i < scatterers.size(); i++) {
-          crds.push_back(u_cell.orthogonalize(scatterers[i].site));
-          map.push_back(std::make_pair(crds[i].length(), i));
-        }
-        std::sort(map.begin(), map.end(), &sort_qd);
-      }
-
-      scatterer_cart_lookup(const uctbx::unit_cell& u_cell,
-        const af::shared<scatterer_t>& scatterers,
-        const af::shared<int>& data)
-        : u_cell(u_cell),
-        scatterers(scatterers),
-        data(data)
-      {
-        crds.reserve(scatterers.size());
-        map.reserve(scatterers.size());
-        for (size_t i = 0; i < scatterers.size(); i++) {
-          crds.push_back(u_cell.orthogonalize(scatterers[i].site));
-          map.push_back(std::make_pair(crds[i].length(), i));
-        }
-        std::sort(map.begin(), map.end(), &sort_qd);
-      }
-
-      const scatterer_t& find(const cart_t& crd_, int Z, int sdata=0,
-        FloatType eps = 1e-3) const
-      {
-        typedef typename std::vector<pair_t>::const_iterator itr_t;
-        cart_t crd = u_cell.orthogonalize(crd_);
-        FloatType sql = crd.length();
-        FloatType eps_qd = sql * eps;
-        itr_t itr = std::upper_bound(
-          map.begin(), map.end(),
-          std::make_pair(sql, size_t(~0)), less_qd());
-        CCTBX_ASSERT(itr != map.end());
-        itr_t itr1 = itr;
-        FloatType diff = std::abs((*itr).first - sql);
-        while (diff < eps_qd && itr != map.end()) {
-          size_t idx = (*itr).second;
-          const scatterer_t& s = scatterers[idx];
-          FloatType qd = (crd - crds[idx]).length();
-          if (s.get_atomic_number() == Z && qd < eps) {
-            if (data.size() == 0 || data[idx] == sdata) {
-              return s;
-            }
-          }
-          itr++;
-          if (itr != map.end()) {
-            diff = std::abs((*itr).first - sql);
-          }
-        }
-        itr = itr1;
-        CCTBX_ASSERT(itr != map.begin());
-        itr--;
-        diff = std::abs((*itr).first - sql);
-        while (diff < eps_qd) {
-          size_t idx = (*itr).second;
-          const scatterer_t& s = scatterers[idx];
-          FloatType qd = (crd - crds[idx]).length();
-          if (s.get_atomic_number() == Z && qd < eps) {
-            if (data.size() == 0 || data[idx] == sdata) {
-              return s;
-            }
-          }
-          if (itr == map.begin()) {
-            break;
-          }
-          itr--;
-          diff = std::abs((*itr).first - sql);
-        }
-        throw CCTBX_ERROR("Could not locate scatterer at the given coordinate");
-      }
-
-      static bool sort_qd(const pair_t& a, const pair_t& b) {
-        return a.first < b.first;
-      }
-
-      struct less_qd {
-        bool operator()(const pair_t& a, const pair_t& b) const {
-          return sort_qd(a, b);
-        }
-      };
-    };
 
     template <typename FloatType>
     static void wrap_cart_lookup() {
@@ -352,7 +207,14 @@ namespace {
           const af::shared<scatterer<> > &,
           const af::shared<int>&>(
           (arg("unit_cell"), arg("scatterers"), arg("data"))))
-        .def("find", &wt::find, (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
+        .def("find_fractional", &wt::find_fractional,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
+        .def("find_cartisian", &wt::find_cartesian,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3), rir)
+        .def("index_of_fractional", &wt::index_of_fractional,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
+        .def("index_of_cartisian", &wt::index_of_cartesian,
+          (arg("site"), arg("Z"), arg("sdata") = 0, arg("eps") = 1e-3))
         ;
     }
   };
