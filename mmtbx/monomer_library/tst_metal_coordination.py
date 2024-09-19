@@ -138,7 +138,7 @@ def run_and_test(cmd, pdb, i):
   lines = f.readlines()
   f.close()
   for line in lines:
-    if line.find("Metal coordination restraints:")>-1:
+    if line.find("Bond | Metal coordination | restraints")>-1:
       bonds = int(line.split()[-1])
       break
   else:
