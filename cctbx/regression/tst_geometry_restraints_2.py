@@ -602,10 +602,15 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
       "Bond angle restraints: 130", "Dihedral angle restraints: 33",
       "Chirality restraints: 15",
       "Planarity restraints: 4"]
-  ss_geo_portions = ["Bond-like restraints: 6",
-      'Secondary Structure restraints around h-bond angle restraints: 12',
-      "Stacking parallelity restraints: 2",
-      'Basepair parallelity restraints: 2',
+  ss_geo_portions = [
+      # "Bond-like restraints: 6",
+      "Bond | Bond-like | restraints: 6",
+      # 'Secondary Structure restraints around h-bond angle restraints: 12',
+      'Bond angle | Secondary Structure restraints around h-bond | restraints: 12',
+      # "Stacking parallelity restraints: 2",
+      # 'Basepair parallelity restraints: 2',
+      'Parallelity | Stacking parallelity | restraints: 2',
+      'Parallelity | Basepair parallelity | restraints: 2',
       "Nonbonded interactions: 504"]
   non_ss_geo_portions = [
       #"Bond-like restraints: 0",
@@ -622,9 +627,10 @@ ATOM    263  C6   DC B  12       8.502  -0.825  21.311  1.00  6.80           C
   v_geo_out_noss = geo_out1.getvalue()
   v_geo_out_ss = geo_out2.getvalue()
   for portion in geo_identical_portions+ss_geo_portions:
-    assert v_geo_out_ss.find(portion) >= 0, 'did not find %s\n in \n%s' % (
+    assert v_geo_out_ss.find(portion) >= 0, 'did not find %s\n in \n%s\n%s\n' % (
       portion,
-      v_geo_out_ss)
+      v_geo_out_ss,
+      portion)
   for portion in geo_identical_portions+non_ss_geo_portions:
     assert v_geo_out_noss.find(portion) >= 0, 'did not find %s\n in \n%s' % (
       portion,
