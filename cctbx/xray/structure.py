@@ -170,7 +170,7 @@ class structure(crystal.special_position_settings):
     """
     return self._scatterers
 
-  def get_scatterer_lookup(self, lookup_type="2_16", data=[], multplier=1):
+  def get_scatterer_lookup(self, lookup_type="2_16", data=[], multiplier=1):
     """ Scatterer sites and types plus extra data (like disorder part) can be
      encoded into a single 64bit number. Current implementations provide 16 and
     17bit per fractional coordinate (id_5 and id_2) with that they can carry
@@ -184,13 +184,13 @@ class structure(crystal.special_position_settings):
     """
     from cctbx.xray import ext
     if lookup_type == "2_16":
-      return ext.scatterer_lookup_2_16(self.scatterers(), data, multplier=1)
+      return ext.scatterer_lookup_2_16(self.scatterers(), data, multiplier=multiplier)
     if lookup_type == "2_1":
-      return ext.scatterer_lookup_2_1(self.scatterers(), data, multplier=1)
+      return ext.scatterer_lookup_2_1(self.scatterers(), data, multiplier=multiplier)
     if lookup_type == "5_16":
-      return ext.scatterer_lookup_5_16(self.scatterers(), data, multplier=1)
+      return ext.scatterer_lookup_5_16(self.scatterers(), data, multiplier=multiplier)
     if lookup_type == "5_1":
-      return ext.scatterer_lookup_5_1(self.scatterers(),data, multplier=1)
+      return ext.scatterer_lookup_5_1(self.scatterers(),data, multiplier=multiplier)
     raise Exception("Unknown lookup type")
 
   def get_scatterer_lookup_cart(self, data=[]):

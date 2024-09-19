@@ -2076,7 +2076,7 @@ def exercise_scatterer_lookup_cart():
   for sc in scatterers:
     id = ext.scatterer_id_5_16(sc.get_id_5_16())
     #print("Searching for: " + sc.label)
-    sc1 = lookup.find(id.get_crd(), id.get_z(), eps=0.01)
+    sc1 = lookup.find_fractional(id.get_crd(), id.get_z(), eps=0.01)
     ##print("Found: " + sc1.label)
 
   sdata = []
@@ -2088,7 +2088,7 @@ def exercise_scatterer_lookup_cart():
   for i, sc in enumerate(scatterers):
     id = ext.scatterer_id_5_16(sc.get_id_5_16(sdata[i]))
     #print("Searching for: " + sc.label)
-    sc1 = lookup.find(id.get_crd(), id.get_z(), sdata[i], eps=0.01)
+    sc1 = lookup.find_fractional(id.get_crd(), id.get_z(), sdata[i], eps=0.01)
     #print("Found: " + sc1.label)
 
 def run():
