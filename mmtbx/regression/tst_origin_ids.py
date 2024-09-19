@@ -10,7 +10,8 @@ count_1yjp = {
               '  sinusoidal': 15,
               'Planarity restraints': 13,
               'Chirality restraints': 6,
-              'C-Beta improper torsion angle restraints': 12,
+              # 'C-Beta improper torsion angle restraints': 12,
+              'Dihedral angle | C-Beta improper | restraints': 12,
               # 'Parallelity restraints': 0,
               #'User supplied restraints': 0,
               #'User supplied torsion angle restraints': 0,
@@ -24,6 +25,8 @@ count_1yjp = {
               #'Disulphide bridge angle restraints': 0,
               #'Disulphide bridge restraints': 0,
               'Nonbonded interactions': 990,
+              #
+              # 'Bond | User supplied | restraints': -1,
               }
 count_1yjp_with_waters = count_1yjp.copy()
 count_1yjp_with_waters['Nonbonded interactions'] = 1178
@@ -54,6 +57,8 @@ def check_geo(geo_lines):
 def check_diff(d1,d2):
   outl = 'diff\n%s\n%s\n' % (d1,d2)
   for key in d1:
+    print(d1)
+    print(d2)
     if d1[key]!=d2[key]:
       outl += '%s : %d %d\n' % (key, d1[key], d2[key])
   return outl
@@ -86,7 +91,8 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
+  # current['User supplied restraints'] = 1
+  current['Bond | User supplied | restraints'] = 1
   current['Nonbonded interactions']   = 1176
   assert rc == current, check_diff(rc, current)
 
@@ -101,8 +107,8 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
-  current['User supplied angle restraints'] = 1
+  current['Bond | User supplied | restraints'] = 1
+  current['Bond angle | User supplied | restraints'] = 1
   current['Nonbonded interactions']   = 1176
   assert rc == current, check_diff(rc, current)
 
@@ -119,9 +125,9 @@ def main():
   rc = model.restraints_as_geo(force=True)
   rc = check_geo(rc)
   current = count_1yjp_with_waters.copy()
-  current['User supplied restraints'] = 1
-  current['User supplied angle restraints'] = 1
-  current['User supplied torsion angle restraints'] = 1
+  current['Bond | User supplied | restraints'] = 1
+  current['Bond angle | User supplied | restraints'] = 1
+  current['Dihedral angle | User supplied | restraints'] = 1
   #current['  sinusoidal'] = 16
   current['Nonbonded interactions']   = 1176
   assert rc == current, check_diff(rc, current)
