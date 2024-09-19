@@ -115,7 +115,7 @@ def exercise_user_edits(mon_lib_srv, ener_lib):
   with open(geo_fname, 'r') as f:
     user_suppl_count = 0
     for l in f.readlines():
-      if l.startswith("User supplied"):
+      if l.find("| User supplied |")>-1:
         user_suppl_count += 1
     # Right now user-supplied planarity is missing from the .geo file.
     assert user_suppl_count == 5, "Expected 5 user-supplied restraints, got %i in the .geo" % user_suppl_count
@@ -240,7 +240,7 @@ refinement.geometry_restraints.edits {
   geo_file = open(pdb_file.name+'.geo', "r")
   # geo_file = open(pdb_file.name.replace(".pdb", '_minimized.geo'), "r")
   geo_file_str = geo_file.read()
-  assert '''User supplied angle restraints: 1
+  assert '''| User supplied | restraints: 1
 Sorted by residual:
 angle pdb=" N   ALA A   2 " segid="A   "
       pdb=" CA  ALA A   2 " segid="A   "
