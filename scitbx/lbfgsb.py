@@ -39,7 +39,7 @@ def run(target_evaluator,
                upper_bound,
                n,
                max_iterations = None):
-    """
+  """
     Run the L-BFGS-B minimization algorithm using the provided target
     evaluator and bounds.
 
@@ -94,7 +94,7 @@ def run(target_evaluator,
       occurs.
     - If bounds are specified, the optimization is constrained within the
       provided lower and upper bounds.
-    """
+  """
   #
   nbd = flex.int(n, use_bounds)
   lbfgsb_minimizer = minimizer(
