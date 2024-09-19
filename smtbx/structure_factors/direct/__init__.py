@@ -30,6 +30,7 @@ class constructed_with_xray_structure(object):
           reflections.indices())
       else:
         self.scatterer_contribution = ext.table_based_scatterer_contribution.build(
+          xs.unit_cell(),
           xs.scatterers(),
           table_file_name,
           xs.space_group(),
@@ -94,9 +95,13 @@ def generate_isc_table_file(file_name,
     xs.scattering_type_registry())
   with open(file_name, "w") as out:
     out.write("Title: generated from isotropic AFF")
+    out.write("\nScatterer_ids:")
+    for sc in xs.scatterers():
+      out.write(" %X" %sc.get_id_5_16())
     out.write("\nScatterers:")
     for sc in xs.scatterers():
       out.write(" %s" %sc.label)
+
     out.write("\nSymm: expanded")
     sg = xs.space_group()
     ml = list(sg.smx())

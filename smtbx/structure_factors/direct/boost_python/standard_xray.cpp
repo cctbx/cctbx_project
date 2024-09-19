@@ -201,7 +201,8 @@ namespace smtbx { namespace structure_factors { namespace direct {
         using namespace boost::python;
         class_<wt, boost::noncopyable>("table_based_scatterer_contribution", no_init)
           .def("build", &wt::build,
-            (arg("scatterers"),
+            (arg("unit_cell"),
+              arg("scatterers"),
               arg("file_name"),
               arg("space_group"),
               arg("anomalous_flag")),
