@@ -244,13 +244,67 @@ class newton_more_thuente_1994(object):
 
 
 class minimizer_lbfgs_general(object):
+  """
+    A general L-BFGS and L-BFGS-B minimizer class.
+
+    This class implements a minimizer for solving optimization problems using
+    either the Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) or
+    L-BFGS with Box constraints (L-BFGS-B) algorithms.
+    The behavior is determined by the selected mode, and it interacts with
+    provided calculator object to compute function values, gradients, and
+    curvatures.
+
+    Parameters
+    ----------
+    mode : str
+        The minimization mode, either 'lbfgs' for L-BFGS or 'lbfgsb' for
+        L-BFGS-B.
+    calculator : object
+        An object that provides methods to compute the target function value,
+        gradients, and optionally curvatures. It must have `x`,
+        `initial_values`, `target()`, `gradients()`, and `curvatures()`
+        methods.
+    max_iterations : int, optional
+        Maximum number of iterations for the minimization. Defaults to None,
+        allowing unlimited iterations.
+    diag_mode : str, optional
+        If specified, controls the frequency of diagonal updates for curvature
+        approximation. Must be either 'once' or 'always'. Defaults to None.
+
+    Attributes
+    ----------
+    x : flex.double
+        The current values of the variables being optimized.
+    minimizer : object
+        The underlying L-BFGS or L-BFGS-B minimizer object, depending on the
+        selected mode.
+
+    Notes
+    -----
+    - The class selects between L-BFGS and L-BFGS-B based on
+      the value of `mode`. For L-BFGS-B, it also uses bounds specified by the
+      `calculator` object.
+    - The `diag_mode` controls if curvature are used during optimization.
+
+    Methods
+    -------
+    compute_functional_and_gradients()
+        Computes the target function value and gradients for the current
+        values of the variables.
+    compute_functional_gradients_diag()
+        Computes the target function value, gradients, and curvatures
+        (diagonal) for the current values of the variables (only applicable
+        in modes where curvature is needed).
+  """
 
   def __init__(self,
                mode,
                calculator,
                max_iterations = None,
                diag_mode = None):
-
+    """
+    Initialize the minimizer with the selected mode and calculator object.
+    """
     adopt_init_args(self, locals())
     assert mode in ['lbfgs', 'lbfgsb']
     # necessary? also done in run_c_plus_plus
@@ -282,6 +336,12 @@ class minimizer_lbfgs_general(object):
         n                = self.x.size())
 
   def compute_functional_and_gradients(self):
+    """
+    Compute the target function value and gradients.
+
+    Updates the calculator with the current values of the variables `x`,
+    then computes the target function value and gradients.
+    """
     self.calculator.update(x = self.x)
     t = self.calculator.target()
     g = self.calculator.gradients()
@@ -291,6 +351,13 @@ class minimizer_lbfgs_general(object):
       return self.x,t,g
 
   def compute_functional_gradients_diag(self):
+    """
+    Compute the target function value, gradients, and diagonal curvatures.
+
+    Updates the calculator with the current values of the variables `x`,
+    then computes the target function value, gradients, and curvatures
+    (diagonal elements).
+    """
     self.calculator.update(x = self.x)
     t = self.calculator.target()
     g = self.calculator.gradients()
