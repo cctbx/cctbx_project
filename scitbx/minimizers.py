@@ -1,9 +1,10 @@
 from __future__ import absolute_import, division, print_function
+import sys
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import lbfgsb as lbfgsb_core
 import scitbx.lbfgs as lbfgs_core
-import sys
+from libtbx import adopt_init_args
 
 floating_point_epsilon_double = scitbx.math.floating_point_epsilon_double_get()
 
@@ -240,6 +241,63 @@ class newton_more_thuente_1994(object):
         self.number_of_cholesky_decompositions)
     print("  line_search_info:", \
         self.line_search_info)
+
+
+class minimizer_lbfgs_general(object):
+
+  def __init__(self,
+               mode,
+               calculator,
+               max_iterations = None,
+               diag_mode = None):
+
+    adopt_init_args(self, locals())
+    assert mode in ['lbfgs', 'lbfgsb']
+    # necessary? also done in run_c_plus_plus
+    if diag_mode is not None: assert diag_mode in ['once', 'always']
+    if self.mode == 'lbfgs':
+      self.x = self.calculator.x
+      # TODO: How to best expose all the params of these classes?
+      lbfgs_core_params = lbfgs_core.core_parameters()
+      termination_params = lbfgs_core.termination_parameters(
+          max_iterations=max_iterations)
+      exception_handling_params = lbfgs_core.exception_handling_parameters()
+      self.minimizer = lbfgs_core.run_c_plus_plus(
+        target_evaluator          = self,
+        termination_params        = termination_params,
+        core_params               = lbfgs_core_params,
+        exception_handling_params = exception_handling_params,
+        log                       = None,
+        gradient_only             = False,
+        line_search               = False
+        )
+    if self.mode == 'lbfgsb':
+      self.x = self.calculator.initial_values
+      self.minimizer = lbfgsb_core.run(
+        target_evaluator = self,
+        max_iterations   = max_iterations,
+        use_bounds       = self.calculator.n_bounds,
+        lower_bound      = self.calculator.lower_bound,
+        upper_bound      = self.calculator.upper_bound,
+        n                = self.x.size())
+
+  def compute_functional_and_gradients(self):
+    self.calculator.update(x = self.x)
+    t = self.calculator.target()
+    g = self.calculator.gradients()
+    if self.mode == 'lbfgs':
+      return t,g
+    if self.mode == 'lbfgsb':
+      return self.x,t,g
+
+  def compute_functional_gradients_diag(self):
+    self.calculator.update(x = self.x)
+    t = self.calculator.target()
+    g = self.calculator.gradients()
+    d = self.calculator.curvatures()
+    return t,g,d
+
+
 
 class lbfgsb(object):
   """
