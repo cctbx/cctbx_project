@@ -2424,22 +2424,26 @@ def run_and_test(cmd, pdb, i, skip_links=False):
   f.close()
   if pdb=='linking_test_cyclic_main_chain.pdb':
     if i==1:
-      assert lines.find('link_TRANS restraints: 1')>-1
+      assert lines.find('link_TRANS | restraints: 1')>-1
   bonds = 0
   for line in lines.splitlines():
     for bond_like in ["Bond restraints:",
                       'Bond-like restraints:',
-                      'Metal coordination restraints:',
-                      #
-                      'Disulphide bridge restraints:',
-                      'User supplied restraints:',
-                      'Standard Glycosidic restraints:',
-                      'Custom Glycosidic restraints:',
-                      'Misc. restraints:',
-                      #
-                      'link_'
+                      'Bond | Metal coordination | restraints',
+                      'Bond | User supplied | restraints',
+                      'Bond | Custom Glycosidic | restraints',
+                      'Bond | link_BETA1-6 | restraints',
+                      'Bond | link_NAG-ASN | restraints',
+                      'Bond | link_BETA1-3 | restraints',
+                      'Bond | link_BETA1-4 | restraints',
+                      'Bond | link_ALPHA2-6 | restraints',
+                      'Bond | Misc. | restraints',
+                      'Bond | Disulphide bridge | restraints',
+                      'Bond | link_TRANS | restraints',
                       ]:
       if line.find(bond_like)>-1:
+        print('line',line)
+        print('bond_like',bond_like)
         print('Adding %s for "%s"' % (int(line.split()[-1]), line))
         bonds += int(line.split()[-1])
     if line.find('Bond angle')>-1: break
@@ -2537,9 +2541,11 @@ def run(only_i=None):
           cmd += " secondary_structure.enabled=1"
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
-      print("test number:",j)
+      print('='*80)
+      print("test number: %s (%s)" % (j,i))
+      print('='*80)
       print(cmd)
-      run_and_test(cmd, pdb,i)
+      run_and_test(cmd, pdb, i)
 
   for pdb in sorted(pdbs):
     if pdb not in longer_tests: continue
