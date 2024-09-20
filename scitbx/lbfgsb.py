@@ -44,7 +44,7 @@ def run(target_evaluator,
     evaluator and bounds.
 
     This function minimizes a target function using the Limited-memory
-    Broyden–Fletcher–Goldfarb–Shanno with Box constraints (L-BFGS-B)
+    Broyden-Fletcher-Goldfarb-Shanno with Box constraints (L-BFGS-B)
     algorithm. It iteratively calls the target evaluator to compute the
     function value and gradients, and processes them with the L-BFGS-B
     minimizer.

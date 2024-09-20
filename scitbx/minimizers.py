@@ -248,7 +248,7 @@ class minimizer_lbfgs_general(object):
     A general L-BFGS and L-BFGS-B minimizer class.
 
     This class implements a minimizer for solving optimization problems using
-    either the Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) or
+    either the Limited-memory Broyden-Fletcher-Goldfarb-Shanno (L-BFGS) or
     L-BFGS with Box constraints (L-BFGS-B) algorithms.
     The behavior is determined by the selected mode, and it interacts with
     provided calculator object to compute function values, gradients, and
