@@ -337,11 +337,21 @@ def is_atom_metal_coordinated(lookup,
 def _get_cis_trans():
   return 'TRANS'
 
+def allow_cis_trans_important(class_important_1, class_important_2):
+  peptides = ['common_amino_acid', 'd_amino_acid', 'uncommon_amino_acid']
+  if class_important_1 in peptides and class_important_2 in peptides:
+    return True
+  return False
+
+def allow_cis_trans(classes1, classes2):
+  return allow_cis_trans_important(classes1.important_only, classes2.important_only)
+
 def is_atom_pair_linked_tuple(atom1,
                               atom2,
                               class_important_1,
                               class_important_2):
-  if class_important_1=='common_amino_acid' and class_important_2==class_important_1:
+  # if class_important_1=='common_amino_acid' and class_important_2==class_important_1:
+  if allow_cis_trans_important(class_important_1, class_important_2):
     if atom1.name==' N  ' and atom2.name==' C  ':
       return _get_cis_trans(), False, '?'
     elif atom1.name==' C  ' and atom2.name==' N  ':

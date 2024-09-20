@@ -290,7 +290,7 @@ master_params_str = """\
       .style = noauto
     link_metals = Auto
       .type = bool
-    link_residues = False
+    link_residues = True
       .type = bool
       .short_caption = Link amino acids in "special" ways such as cyclic and \
         side-chain to side-chain links
@@ -3827,7 +3827,8 @@ class build_all_chain_proxies(linking_mixins):
             apply.was_used = True
             def raise_if_corrupt(link_resolution):
               counters = link_resolution.counters
-              if (counters.corrupt_monomer_library_definitions != 0):
+              if (counters.corrupt_monomer_library_definitions != 0 or
+                  getattr(link_resolution, 'broken_bond_i_seq_pairs', False)):
                 raise Sorry(
                   "Error processing %s:\n" % counters.label
                   + "  data_link: %s\n" % show_string(apply.data_link)

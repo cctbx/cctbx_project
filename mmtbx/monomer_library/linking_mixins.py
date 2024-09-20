@@ -565,7 +565,7 @@ Residue classes
       if (not link_small_molecules and
           (classes1.common_small_molecule or classes2.common_small_molecule)): continue
       # is_proxy_set between any of the atoms ????????
-      if classes1.common_amino_acid and classes2.common_amino_acid:
+      if linking_utils.allow_cis_trans(classes1, classes2):
         if not link_residues:
           continue
         # special amino acid linking
@@ -651,7 +651,8 @@ Residue classes
       if not link_residues:
         if class_key in [
             ("common_amino_acid", "common_amino_acid"),
-            #("common_amino_acid", "other"),
+            ("common_amino_acid", "d_amino_acid"),
+            ("common_amino_acid", "uncommon_amino_acid"),
            ]:
           continue
       #else:
