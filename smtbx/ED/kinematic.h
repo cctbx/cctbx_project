@@ -32,28 +32,38 @@ namespace smtbx {
         compute_grad(compute_grad)
       {}
 
-      void operator ()() const {
-        for (size_t i = from; i < to; i++) {
-          f_calc_function->compute(indices[i], boost::none, 0, compute_grad);
-          Fcs_kin[i] = f_calc_function->get_f_calc() * Fc2Ug;
-          if (compute_grad && f_calc_function->get_grad_f_calc().size() > 0) {
-            size_t col_n = D_kin.accessor().n_columns();
-            if (f_calc_function->raw_gradients()) {
-              af::shared<complex_t> grads =
-                Jt_matching_grad_fc * f_calc_function->get_grad_f_calc();
-              for (size_t j = 0; j < col_n; j++) {
-                D_kin(i, j) = grads[j] * Fc2Ug;
+      void operator ()() {
+        try {
+          for (size_t i = from; i < to; i++) {
+            f_calc_function->compute(indices[i], boost::none, 0, compute_grad);
+            Fcs_kin[i] = f_calc_function->get_f_calc() * Fc2Ug;
+            if (compute_grad && f_calc_function->get_grad_f_calc().size() > 0) {
+              size_t col_n = D_kin.accessor().n_columns();
+              if (f_calc_function->raw_gradients()) {
+                af::shared<complex_t> grads =
+                  Jt_matching_grad_fc * f_calc_function->get_grad_f_calc();
+                for (size_t j = 0; j < col_n; j++) {
+                  D_kin(i, j) = grads[j] * Fc2Ug;
+                }
               }
-            }
-            else {
-              af::const_ref<complex_t> grads = f_calc_function->get_grad_f_calc();
-              for (size_t j = 0; j < col_n; j++) {
-                D_kin(i, j) = grads[j] * Fc2Ug;
+              else {
+                af::const_ref<complex_t> grads = f_calc_function->get_grad_f_calc();
+                for (size_t j = 0; j < col_n; j++) {
+                  D_kin(i, j) = grads[j] * Fc2Ug;
+                }
               }
             }
           }
         }
+        catch (smtbx::error const& e) {
+          exception_.reset(new smtbx::error(e));
+        }
+        catch (std::exception const& e) {
+          exception_.reset(new smtbx::error(e.what()));
+        }
       }
+
+      boost::scoped_ptr<smtbx::error> exception_;
       const scitbx::sparse::matrix<FloatType>& Jt_matching_grad_fc;
       FloatType Fc2Ug;
       f_calc_function_base_ptr_t f_calc_function;
@@ -96,6 +106,11 @@ namespace smtbx {
         pool.create_thread(boost::ref(*pf));
       }
       pool.join_all();
+      for (size_t i = 0; i < accumulators.size(); i++) {
+        if (accumulators[i]->exception_) {
+          throw* accumulators[i]->exception_.get();
+        }
+      }
     }
   }
 }
