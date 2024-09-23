@@ -655,6 +655,8 @@ Residue classes
             ("common_amino_acid", "uncommon_amino_acid"),
            ]:
           continue
+      else:
+        if len(key)>2: continue
       #else:
       #  atoms_must_be.setdefault(("common_amino_acid",
       #                            "common_amino_acid"),["C", "N"])
