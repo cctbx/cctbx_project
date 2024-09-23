@@ -356,8 +356,8 @@ def is_atom_pair_linked_tuple(atom1,
       return _get_cis_trans(), False, '?'
     elif atom1.name==' C  ' and atom2.name==' N  ':
       return _get_cis_trans(), True, '?'
-    else:
-      print('amino acid link not found',atom1.quote(),atom2.quote())
+    # else:
+    #   print('amino acid link not found',atom1.quote(),atom2.quote())
   return None, None, None
 
 def is_atom_pair_linked(atom1,
