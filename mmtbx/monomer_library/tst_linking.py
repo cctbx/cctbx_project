@@ -2588,11 +2588,10 @@ def run(only_i=None):
       cmd = "phenix.geometry_minimization %s write_geo_file=True" % pdb
       cmd += " link_all=%d link_carbohydrate=%d %s" % (i, i, cifs)
       cmd += " link_ligand=%d" % i
-      if pdb in [
-        "linking_test_ccp4_other.pdb",
-        ]:
-        if i:
-          cmd += " secondary_structure.enabled=1"
+      if pdb in ["linking_test_ccp4_other.pdb"]:
+        if i: cmd += " secondary_structure.enabled=1"
+      if pdb in ['linking_test_cyclic_d_amino_acid.pdb']:
+        if not i: cmd += ' link_residues=False'
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
       print('='*80)
