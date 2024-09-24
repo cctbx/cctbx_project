@@ -91,7 +91,7 @@ def chain_has_DNA(chain):
       return True
   return False
 
-def change_has_RNA(chain):
+def chain_has_RNA(chain):
   '''Return True if the chain contains any RNA residues.
   :param chain: PDB chain to be searched for RNA residues.
   '''
