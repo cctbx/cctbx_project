@@ -938,6 +938,12 @@ class phenix_pathwalker_module(SourceModule):
   module = 'phenix_pathwalker'
   anonymous = ['git', 'git@github.com:phenix-project/phenix_pathwalker.git']
 
+class alphafold_module(SourceModule):
+  module = 'alphafold'
+  anonymous = ['git',
+               'git@github.com:google-deepmind/alphafold.git',
+               'https://github.com/google-deepmind/alphafold.git']
+
 # Phaser repositories
 class phaser_module(SourceModule):
   module = 'phaser'
