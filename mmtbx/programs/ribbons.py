@@ -8,9 +8,10 @@ from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue, _IsNucleicAcidResidue
+from mmtbx.kinemage.ribbons import chain_has_DNA, chain_has_RNA
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.1.0"
+version = "1.2.0"
 
 master_phil_str = '''
 do_protein = True
@@ -619,6 +620,15 @@ Output:
         chainColors[name] = c
         chainCount += 1
 
+      # Determine whether DNA, RNA, or both are present in the model
+      hasDNA = False
+      hasRNA = False
+      for chain in model.chains():
+        if chain_has_DNA(chain):
+          hasDNA = True
+        if chain_has_RNA(chain):
+          hasRNA = True
+
       # Cycle over all chains in the model and make a group or subgroup for each chain
       # depending on whether we are grouping by model or not.
       for chain in model.chains():
@@ -699,7 +709,10 @@ Output:
               if self.params.untwist_ribbons:
                 print('  Untwisted ribbon')
                 untwist_ribbon(guidepoints)
-              if self.params.DNA_style:
+              # If the model has both DNA and RNA, and if this chain is DNA, swap the edge and face so that
+              # we can distinguish between them in the same model.  Also, if the DNA_style parameter has been
+              # set, then always make this style.
+              if self.params.DNA_style or (hasDNA and hasRNA and chain_has_DNA(chain)):
                 print('  Swapped edge and face (DNA style)')
                 swap_edge_and_face(guidepoints)
               else:
