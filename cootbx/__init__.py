@@ -34,13 +34,11 @@ def create_refinement_view_script(
   print("import coot", file=f)
   print("import os", file=f)
   write_disable_nomenclature_errors(f)
-  load_script = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/cootbx/view_refinement.py",
+  load_script = libtbx.env.under_dist("cootbx", "view_refinement.py",
     test=os.path.isfile)
   assert (load_script is not None)
   concatenate_python_script(out=f, file_name=load_script)
-  zoom_ligand_script = libtbx.env.find_in_repositories(
-    relative_path="cctbx_project/cootbx/simple_zoom_list.py",
+  zoom_ligand_script = libtbx.env.under_dist("cootbx", "simple_zoom_list.py",
     test=os.path.isfile)
   concatenate_python_script(out=f, file_name=zoom_ligand_script)
   if (work_dir is not None):
