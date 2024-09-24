@@ -15,8 +15,3 @@ dependencies:
   - libtiff
   - pint
   - pybind11
-
-  # dxtbx testing
-  - dials-data
-  - pytest-mock
-  - pytest-xdist
