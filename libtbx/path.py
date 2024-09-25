@@ -283,9 +283,9 @@ class path_mixin(object):
     assert not self.exists()
 
   def remove_tree(self):
-    from distutils.dir_util import remove_tree
+    from shutil import rmtree
     if self.isdir():
-      remove_tree(abs(self))
+      rmtree(abs(self))
     else:
       self.remove()
 
