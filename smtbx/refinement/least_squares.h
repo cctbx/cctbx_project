@@ -50,7 +50,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
   template <typename FloatType>
   class builder_base {
   public:
-    builder_base() {}
+    builder_base()
+      : interrupted(false)
+    {}
     virtual ~builder_base() {}
     virtual af::versa<FloatType, af::c_grid<2> > const& design_matrix() const = 0;
     virtual bool has_design_matrix() const = 0;
@@ -83,16 +85,17 @@ namespace smtbx { namespace refinement { namespace least_squares {
       return false;
     }
     bool OnProgress(size_t max, size_t pos) const {
+      if (interrupted) {
+        return false;
+      }
       ProgressListener l = GetRefinementProgressListener();
       if (l != 0) {
-        bool res = (*l)(max, pos);
-        if (!res) {
-          throw smtbx::error("external_interrupt");
-        }
+        interrupted = !(*l)(max, pos);
       }
-      return true;
+      return !interrupted;
     }
   private:
+    mutable bool interrupted;
     static int& available_threads_var() {
       static int available = -1;
       return available;
@@ -228,7 +231,15 @@ namespace smtbx { namespace refinement { namespace least_squares {
             fc_cr, objective_only,
             f_calc_.ref(), observables_.ref(), weights_.ref(),
             design_matrix_, max_memory);
-          job();
+          boost::thread th(boost::ref(job));
+          //job();
+          while (job.running) {
+            boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+            if (!this->OnProgress(~0, ~0)) {
+              th.join();
+              throw SMTBX_ERROR("external_interrupt");
+            }
+          }
           if (job.exception_) {
             throw* job.exception_.get();
           }
@@ -262,7 +273,26 @@ namespace smtbx { namespace refinement { namespace least_squares {
           accumulators.push_back(accumulator);
           pool.create_thread(boost::ref(*accumulator));
         }
-        pool.join_all();
+        //pool.join_all();
+        while (true) {
+          bool running = false;
+          for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
+            if (accumulators[thread_idx]->running) {
+              running = true;
+              break;
+            }
+          }
+
+          if (!running) {
+            break;
+          }
+          boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
+          if (!this->OnProgress(~0, ~0)) {
+            pool.join_all();
+            throw SMTBX_ERROR("external_interrupt");
+          }
+        }
+
         if (!build_design_matrix) {
           for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
             if (accumulators[thread_idx]->exception_) {
@@ -373,6 +403,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
       af::ref<FloatType> observables;
       af::ref<FloatType> weights;
       af::versa<FloatType, af::c_grid<2> > &design_matrix;
+      bool running;
       accumulate_reflection_chunk(
         builder_base<FloatType>& parent,
         Scheduler& scheduler,
@@ -402,10 +433,12 @@ namespace smtbx { namespace refinement { namespace least_squares {
         fc_cr(fc_cr),
         objective_only(objective_only), compute_grad(!objective_only),
         f_calc(f_calc), observables(observables), weights(weights),
-        design_matrix(design_matrix)
+        design_matrix(design_matrix),
+        running(true)
       {}
 
       void operator()() {
+        running = true;
         try {
           af::shared<FloatType> gradients;
           int n_params = jacobian_transpose_matching_grad_fc.n_rows();
@@ -494,6 +527,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         catch (std::exception const &e) {
           exception_.reset(new smtbx::error(e.what()));
         }
+        running = false;
       }
     };
 
