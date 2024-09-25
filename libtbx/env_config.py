@@ -2066,89 +2066,6 @@ selfx:
     command.run()
     return dist.install_scripts
 
-  def regenerate_entry_point_console_scripts(self, verbose=True):
-    '''
-    Creates all console_scripts entry point scripts from scratch and overwrites existing ones.
-    This is intended to be used by installers to relocate the entry point script paths.
-    '''
-    try:
-      import distutils.dist
-      import libtbx.fastentrypoints # monkeypatches setuptools
-      import pkg_resources
-      import setuptools.command.easy_install
-    except ImportError:
-      return
-
-    # Prepare generic script generator
-    distribution = distutils.dist.Distribution({'name': 'setuptools'})
-    command = setuptools.command.easy_install.easy_install(distribution)
-    command.args = ['wheel']  # dummy argument
-    command.finalize_options()
-
-    # Force regeneration of all known console_scripts
-    for pkg_resources_dist in pkg_resources.working_set:
-      console_scripts = pkg_resources_dist.get_entry_map().get('console_scripts')
-      if console_scripts:
-        if verbose:
-          print("Regenerating commands for %s: %s" % (
-              pkg_resources_dist,
-              list(console_scripts),
-          ))
-        command.install_wrapper_scripts(pkg_resources_dist)
-
-  def generate_entry_point_dispatchers(self):
-    '''
-    Write indirect dispatcher scripts for all console_scripts entry points
-    that have existing dispatcher scripts in the base/bin directory, but
-    add a 'libtbx.' prefix.
-    Generate dispatchers for any libtbx.dispatcher.script entry points.
-    These can be arbitrary non-python scripts defined by modules.
-    '''
-    try:
-      import pkg_resources
-    except ImportError:
-      return
-    if self.build_options.use_conda and os.name != "nt":
-      paths = {
-        os.path.normpath(os.path.join(sys.prefix, "bin")),
-        os.path.normpath(os.path.join(get_conda_prefix(), "bin")),
-      }
-    else:
-      try:
-        paths = {self.get_setuptools_script_dir()}
-      except ImportError:
-        return
-
-    for bin_directory in paths:
-      if not os.path.isdir(bin_directory):
-        continue # do not create console_scripts dispatchers, only point to them
-
-      base_bin_dispatchers = os.listdir(bin_directory)
-      if os.name == "nt":
-        base_bin_dispatchers = [os.path.splitext(f)[0] if os.path.splitext(
-            f)[1] in ['.bat', '.exe'] else f for f in base_bin_dispatchers]
-      base_bin_dispatchers = set(base_bin_dispatchers)
-      existing_dispatchers = filter(lambda f: f.startswith(
-          'libtbx.'), self.bin_path.listdir())
-      existing_dispatchers = set([f[7:] for f in existing_dispatchers])
-      entry_point_candidates = base_bin_dispatchers - existing_dispatchers
-
-      entry_points = pkg_resources.iter_entry_points('console_scripts')
-      entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
-      for ep in entry_points:
-        self.write_dispatcher(
-            source_file=os.path.join(bin_directory, ep.name),
-            target_file=os.path.join('bin', 'libtbx.' + ep.name),
-        )
-
-      entry_points = pkg_resources.iter_entry_points('libtbx.dispatcher.script')
-      entry_points = filter(lambda ep: ep.name in entry_point_candidates, entry_points)
-      for ep in entry_points:
-        self.write_dispatcher(
-            source_file=os.path.join(bin_directory, ep.module_name),
-            target_file=os.path.join('bin', ep.name),
-        )
-
   def write_command_version_duplicates(self):
     if (self.command_version_suffix is None): return
     suffix = "_" + self.command_version_suffix
@@ -2283,7 +2200,6 @@ selfx:
           os.environ.pop('SETUPTOOLS_ENABLE_FEATURES')
 
       self.write_python_and_show_path_duplicates()
-      self.generate_entry_point_dispatchers()
       self.process_exe()
       self.write_command_version_duplicates()
       if (os.name != "nt"):     # LD_LIBRARY_PATH for dependencies
