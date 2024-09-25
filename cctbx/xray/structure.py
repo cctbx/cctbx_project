@@ -197,8 +197,8 @@ class structure(crystal.special_position_settings):
     """This is a different kind of lookup that tries to locate a scatterer at a
      given position within some epsilon and possibly data. Some positions may
       change slightly during the refinement and although the scatterer lookup
-      can deal with them to some degree with rounding – this could be a more
-     reliable way. The lookup’s find function expects Z, site (fractional),
+      can deal with them to some degree with rounding - this could be a more
+     reliable way. The lookup's find function expects Z, site (fractional),
      extra data(0) and the acceptable deviation (1e-3)
     """
     from cctbx.xray import ext
