@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import distutils.dir_util
+from shutil import rmtree
 import sys, os
 
 def run():
@@ -7,7 +7,7 @@ def run():
     if (os.path.isfile(arg)):
       os.remove(arg)
     elif (os.path.isdir(arg)):
-      distutils.dir_util.remove_tree(arg)
+      rmtree(arg)
 
 if (__name__ == "__main__"):
   run()

@@ -1,9 +1,9 @@
 from __future__ import absolute_import, division, print_function
-from distutils.dir_util import remove_tree
 import random
 import stat
 import os
 import os.path as op
+from shutil import rmtree
 from six.moves import range
 
 def make_paths_writable_if_possible(paths):
@@ -34,7 +34,7 @@ def remove_directories_if_possible(paths):
   for path in paths:
     if (op.isdir(path)):
       try:
-        remove_tree(path)
+        rmtree(path, ignore_errors=True)
       except KeyboardInterrupt: raise
       except Exception:
         pass
