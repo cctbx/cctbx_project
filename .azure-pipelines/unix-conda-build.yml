@@ -84,7 +84,7 @@ steps:
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    mamba update --all -y -n base
+    conda update --all -y -n base
   displayName: Update miniforge
 
 # create conda environment
