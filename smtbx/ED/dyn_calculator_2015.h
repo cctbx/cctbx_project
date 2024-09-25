@@ -65,6 +65,9 @@ namespace smtbx { namespace ED
       return res;
     }
 
+    /* to compute d(exp(tA))/dp using approach as described here
+    Bernoulli 9(5), 2003, 895–919
+    */
     virtual af::shared<complex_t> calc_amps_ext(
       af::shared<cmat_t> const& Ds_kin,
       bool grad_thickness,
