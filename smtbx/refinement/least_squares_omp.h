@@ -28,6 +28,7 @@ struct accumulate_reflection_chunk_omp {
   af::ref<FloatType> weights;
   af::versa<FloatType, af::c_grid<2> >& design_matrix;
   int max_memory;
+  bool running;
 
   accumulate_reflection_chunk_omp(
     builder_base<FloatType>& parent,
@@ -57,11 +58,13 @@ struct accumulate_reflection_chunk_omp {
     fc_cr(fc_cr),
     objective_only(objective_only), compute_grad(!objective_only),
     f_calc(f_calc), observables(observables), weights(weights),
-    design_matrix(design_matrix), max_memory(max_memory)
+    design_matrix(design_matrix), max_memory(max_memory),
+    running(true)
   {}
 
   void operator()() {
     try {
+      running = true;
       const int n = reflections.size();
       const int n_rows = jacobian_transpose_matching_grad_fc.n_rows();
       const int threads = parent_t::get_available_threads();
@@ -240,6 +243,7 @@ struct accumulate_reflection_chunk_omp {
     catch (std::exception const& e) {
       exception_.reset(new smtbx::error(e.what()));
     }
+    running = false;
   }
 
 };
