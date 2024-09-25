@@ -48,10 +48,9 @@ steps:
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda install -y -c conda-forge mamba
-    mamba env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
-    mamba install -y -c conda-forge --no-deps -n psana_env junit-xml
-    mamba install -y -c conda-forge cmake pandas distro -n psana_env
+    conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
+    conda install -y -c conda-forge --no-deps -n psana_env junit-xml
+    conda install -y -c conda-forge cmake pandas distro -n psana_env
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 
