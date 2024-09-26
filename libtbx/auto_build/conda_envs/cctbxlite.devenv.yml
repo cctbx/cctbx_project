@@ -9,8 +9,10 @@ dependencies:
   # cctbx-base
   # host
   - future
+  - libboost-devel
+  - libboost-python-devel
   - numpy
-  - python ={{ get_env("PY_VER", default="3.8") }}
+  - python ={{ get_env("PY_VER", default="3.9") }}
   - python.app  # [osx]
   - scons
   - setuptools
