@@ -41,6 +41,7 @@ jobs:
       set -xe
       ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
       cd $(Pipeline.Workspace)/modules/cctbx_project
+      git checkout master
       git remote add gitlab git@gitlab.com:cctbx/cctbx_project.git
       git fetch gitlab
       git push -u gitlab master
