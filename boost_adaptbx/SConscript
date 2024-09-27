@@ -88,6 +88,7 @@ if (not env_etc.no_boost_python):
   # boost_adaptbx/meta_ext.cpp
   if (libtbx.env.build_options.use_conda):
     env_etc.cxxflags_bpl_defines_base.append("-DUSE_CONDA")
+    env_etc.cxxflags_bpl_defines_base.append("-DBOOST_TIMER_ENABLE_DEPRECATED")
   env_no_includes_boost_python_ext = env_base.Clone(
     SHLINKFLAGS=env_etc.shlinkflags_bpl,
     SHLIBPREFIX="")
