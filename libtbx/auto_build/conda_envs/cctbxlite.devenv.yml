@@ -33,6 +33,7 @@ dependencies:
   - ipython
   - pyside2
   - pyzmq
+  - qt-webengine
   - websockets
   - wxpython
 
