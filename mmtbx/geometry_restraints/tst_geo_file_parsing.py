@@ -1,10 +1,12 @@
+from __future__ import division
 import json
 import re
+from collections import defaultdict
 from io import StringIO
 from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
-from mmtbx.geometry_restraints.geo_file_parsing import GeoParseContainer
+from mmtbx.geometry_restraints.geo_file_parsing import GeoParser
 
 """
 Example usage:
@@ -22,8 +24,8 @@ geo_str = buffer.getvalue()
 
 # Parse geo str
 geo_lines = geo_str.split("\n")
-geo_container = GeoParseContainer(geo_lines,model=model)
-  
+geo_container = GeoParser(geo_lines,model=model)
+
 
 # access entries
 entry = geo_container.entries["dihedral"][0]
@@ -50,158 +52,308 @@ entry.record
 tst_1_geo = """
 # Geometry restraints
 
-Bond restraints: 637113
+
+Bond restraints: 26
 Sorted by residual:
-bond pdb=" C   KBEDW   1 "
-     pdb=" N   DPPDW   2 "
+bond pdb=" C1' C     643 " segid="D16S"
+     pdb=" N1  C     643 " segid="D16S"
   ideal  model  delta    sigma   weight residual
-  1.329  1.498 -0.169 1.40e-02 5.10e+03 1.45e+02
-bond pdb=" C   KBEHW   1 "
-     pdb=" N   DPPHW   2 "
-  ideal  model  delta    sigma   weight residual
-  1.329  1.493 -0.164 1.40e-02 5.10e+03 1.37e+02
-bond pdb=" C   DPPBW   2 "
-     pdb=" N   SERBW   3 "
-  ideal  model  delta    sigma   weight residual
-  1.329  1.492 -0.163 1.40e-02 5.10e+03 1.35e+02
+  1.480  1.481 -0.001 1.50e-02 4.44e+03 8.32e-03
 
-Metal coordination restraints: 16
+Bond | Misc. | restraints: 1
 Sorted by residual:
-bond pdb=" SG  CYSA4  11 "
-     pdb="ZN    ZNA4 102 "
+bond pdb=" OP1 C     643 " segid="D16S"
+     pdb=" N   SER   115 " segid="DS08"
   ideal  model  delta    sigma   weight residual
-  2.318  1.877  0.441 2.70e-02 1.37e+03 2.66e+02
-bond pdb=" SG  CYSE4  14 "
-     pdb="ZN    ZNE4 101 "
-  ideal  model  delta    sigma   weight residual
-  2.318  1.878  0.440 2.70e-02 1.37e+03 2.66e+02
+  1.297  1.297 -0.000 1.00e-02 1.00e+04 2.18e-14
 
-
-Misc. restraints: 4
+Bond | link_ALPHA2-6 | restraints: 1
 Sorted by residual:
-bond pdb=" NG  DPPBW   2 "
-     pdb=" C   5OHBW   6 "
+bond pdb=" O6  BMA B1954 "
+     pdb=" C2  MAN B1957 "
   ideal  model  delta    sigma   weight residual
-  1.430  1.512 -0.082 1.00e-02 1.00e+04 6.67e+01
-bond pdb=" NG  DPPHW   2 "
-     pdb=" C   5OHHW   6 "
-  ideal  model  delta    sigma   weight residual
-  1.430  1.502 -0.072 1.00e-02 1.00e+04 5.23e+01
+  1.439  1.439 -0.000 2.00e-02 2.50e+03 2.41e-15
 
-
-Bond angle restraints: 949535
+Bond | Disulphide bridge | restraints: 1
 Sorted by residual:
-angle pdb=" N   GLNC5 122 "
-      pdb=" CA  GLNC5 122 "
-      pdb=" C   GLNC5 122 "
+bond pdb=" SG  CYS A  27 "
+     pdb=" SG  CYS A 123 "
+  ideal  model  delta    sigma   weight residual
+  2.031  2.031  0.000 2.00e-02 2.50e+03 8.59e-17
+
+Bond | link_NAG-ASN | restraints: 1
+Sorted by residual:
+bond pdb=" ND2 ASN A 303 "
+     pdb=" C1  NAG B1349 "
+  ideal  model  delta    sigma   weight residual
+  1.439  1.441 -0.002 2.00e-02 2.50e+03 8.66e-03
+
+Bond | Bond-like | restraints: 6
+Sorted by residual:
+bond pdb=" O2   DC A  10 "
+     pdb=" N2   DG B  11 "
+  ideal  model  delta    sigma   weight residual
+  2.780  2.873 -0.093 1.00e-01 1.00e+02 8.58e-01
+
+Bond | Metal coordination | restraints: 6
+Sorted by residual:
+bond pdb="MG   MG  A   1 " segid="A   "
+     pdb=" O   HOH A   2 " segid="A   "
+  ideal  model  delta    sigma   weight residual
+  2.070  2.070  0.000 5.00e-02 4.00e+02 1.18e-17
+
+Bond | link_TRANS | restraints: 1
+Sorted by residual:
+bond pdb=" N   SER A   1 "
+     pdb=" C   GLY A  34 "
+  ideal  model  delta    sigma   weight residual
+  1.329  1.329 -0.000 1.40e-02 5.10e+03 3.00e-05
+
+Bond | Custom Glycosidic | restraints: 1
+Sorted by residual:
+bond pdb=" O6  NAG D1584 "
+     pdb=" C1  FU4 D1588 "
+  ideal  model  delta    sigma   weight residual
+  1.439  1.439 -0.000 2.00e-02 2.50e+03 1.04e-10
+
+Bond | link_BETA1-6 | restraints: 1
+Sorted by residual:
+bond pdb=" O6  NAG A 294 "
+     pdb=" C1  FUC A 299 "
+  ideal  model  delta    sigma   weight residual
+  1.439  1.443 -0.004 2.00e-02 2.50e+03 3.32e-02
+
+Bond | link_BETA1-3 | restraints: 1
+Sorted by residual:
+bond pdb=" O3  BGC B 401 "
+     pdb=" C1  BGC B 402 "
+  ideal  model  delta    sigma   weight residual
+  1.439  1.439  0.000 2.00e-02 2.50e+03 3.54e-16
+
+Bond | User supplied | restraints: 1
+Sorted by residual:
+bond pdb=" SG  CYS A 470 "
+     pdb="FE   HEM A 601 "
+  ideal  model  delta    sigma   weight residual
+  2.330  2.330  0.000 2.00e-02 2.50e+03 3.62e-12
+
+Bond | link_BETA1-4 | restraints: 1
+Sorted by residual:
+bond pdb=" O4  NAG A 361 "
+     pdb=" C1  NAG A 362 "
+  ideal  model  delta    sigma   weight residual
+  1.439  1.442 -0.003 2.00e-02 2.50e+03 2.84e-02
+
+Bond angle restraints: 35
+Sorted by residual:
+angle pdb=" C2' C     643 " segid="D16S"
+      pdb=" C1' C     643 " segid="D16S"
+      pdb=" N1  C     643 " segid="D16S"
     ideal   model   delta    sigma   weight residual
-   108.78  121.25  -12.47 8.20e-01 1.49e+00 2.31e+02
-angle pdb=" C   THRAD 151 "
-      pdb=" N   PROAD 152 "
-      pdb=" CA  PROAD 152 "
-    ideal   model   delta    sigma   weight residual
-   119.19  103.99   15.20 1.06e+00 8.90e-01 2.06e+02
+   112.00  112.26   -0.26 1.50e+00 4.44e-01 3.04e-02
 
-Secondary Structure restraints around h-bond angle restraints: 36
+Bond angle | link_ALPHA2-6 | restraints: 2
 Sorted by residual:
-angle pdb=" C   PHE A  13 "
-      pdb=" O   PHE A  13 "
-      pdb=" N   TYR A  17 "
+angle pdb=" O6  BMA B1954 "
+      pdb=" C2  MAN B1957 "
+      pdb=" C1  MAN B1957 "
     ideal   model   delta    sigma   weight residual
-   155.00  172.15  -17.15 1.00e+01 1.00e-02 2.94e+00
-angle pdb=" C   SER G  14 "
-      pdb=" O   SER G  14 "
-      pdb=" N   CYS G  18 "
-    ideal   model   delta    sigma   weight residual
-   155.00  163.04   -8.04 5.00e+00 4.00e-02 2.58e+00
-angle pdb=" C   PHE E  13 "
-      pdb=" O   PHE E  13 "
-      pdb=" N   TYR E  17 "
-    ideal   model   delta    sigma   weight residual
-   155.00  169.75  -14.75 1.00e+01 1.00e-02 2.17e+00
+   112.30  112.30    0.00 3.00e+00 1.11e-01 8.81e-13
 
-Dihedral angle restraints: 360110
-  sinusoidal: 334059
-    harmonic: 26051
+Bond angle | Disulphide bridge | restraints: 2
 Sorted by residual:
-dihedral pdb=" CA  TRPBV 218 "
-         pdb=" C   TRPBV 218 "
-         pdb=" N   HISBV 219 "
-         pdb=" CA  HISBV 219 "
-    ideal   model   delta  harmonic     sigma   weight residual
-  -180.00 -133.25  -46.75     0      5.00e+00 4.00e-02 8.74e+01
-dihedral pdb=" O4'   UCA1174 "
-         pdb=" C1'   UCA1174 "
-         pdb=" N1    UCA1174 "
-         pdb=" C2    UCA1174 "
+angle pdb=" SG  CYS A  27 "
+      pdb=" SG  CYS A 123 "
+      pdb=" CB  CYS A 123 "
+    ideal   model   delta    sigma   weight residual
+   104.20  104.20    0.00 2.10e+00 2.27e-01 1.59e-15
+
+Bond angle | link_NAG-ASN | restraints: 3
+Sorted by residual:
+angle pdb=" ND2 ASN A 303 "
+      pdb=" C1  NAG B1349 "
+      pdb=" O5  NAG B1349 "
+    ideal   model   delta    sigma   weight residual
+   112.30  111.42    0.88 3.00e+00 1.11e-01 8.70e-02
+
+Bond angle | Secondary Structure restraints around h-bond | restraints: 12
+Sorted by residual:
+angle pdb=" C4   DC A  10 "
+      pdb=" N4   DC A  10 "
+      pdb=" O6   DG B  11 "
+    ideal   model   delta    sigma   weight residual
+   117.30  120.06   -2.76 2.86e+00 1.22e-01 9.34e-01
+
+Bond angle | link_TRANS | restraints: 3
+Sorted by residual:
+angle pdb=" CA  SER A   1 "
+      pdb=" N   SER A   1 "
+      pdb=" C   GLY A  34 "
+    ideal   model   delta    sigma   weight residual
+   121.70  121.74   -0.04 1.80e+00 3.09e-01 5.23e-04
+
+Bond angle | Custom Glycosidic | restraints: 3
+Sorted by residual:
+angle pdb=" O6  NAG D1584 "
+      pdb=" C1  FU4 D1588 "
+      pdb=" C2  FU4 D1588 "
+    ideal   model   delta    sigma   weight residual
+   109.47  109.47   -0.00 3.00e+00 1.11e-01 2.59e-10
+
+Bond angle | link_BETA1-6 | restraints: 3
+Sorted by residual:
+angle pdb=" O6  NAG A 294 "
+      pdb=" C1  FUC A 299 "
+      pdb=" O5  FUC A 299 "
+    ideal   model   delta    sigma   weight residual
+   112.30  110.82    1.48 3.00e+00 1.11e-01 2.43e-01
+
+Bond angle | link_BETA1-3 | restraints: 3
+Sorted by residual:
+angle pdb=" O3  BGC B 401 "
+      pdb=" C1  BGC B 402 "
+      pdb=" O5  BGC B 402 "
+    ideal   model   delta    sigma   weight residual
+   112.30  112.30    0.00 3.00e+00 1.11e-01 2.31e-14
+
+Bond angle | link_BETA1-4 | restraints: 3
+Sorted by residual:
+angle pdb=" O4  NAG A 361 "
+      pdb=" C1  NAG A 362 "
+      pdb=" O5  NAG A 362 "
+    ideal   model   delta    sigma   weight residual
+   112.30  111.17    1.13 3.00e+00 1.11e-01 1.41e-01
+
+Dihedral angle restraints: 13
+  sinusoidal: 13
+    harmonic: 0
+Sorted by residual:
+dihedral pdb=" C1' C     643 " segid="D16S"
+         pdb=" N1  C     643 " segid="D16S"
+         pdb=" C6  C     643 " segid="D16S"
+         pdb=" C5  C     643 " segid="D16S"
     ideal   model   delta sinusoidal    sigma   weight residual
-   200.00   22.28  177.72     1      1.50e+01 4.44e-03 8.53e+01
-dihedral pdb=" O4'   UAA 546 "
-         pdb=" C1'   UAA 546 "
-         pdb=" N1    UAA 546 "
-         pdb=" C2    UAA 546 "
+  -106.54 -179.87   73.33     2      3.00e+01 1.11e-03 4.89e+00
+
+Dihedral angle | C-Beta improper | restraints: 2
+Sorted by residual:
+dihedral pdb=" C   SER   115 " segid="DS08"
+         pdb=" N   SER   115 " segid="DS08"
+         pdb=" CA  SER   115 " segid="DS08"
+         pdb=" CB  SER   115 " segid="DS08"
+    ideal   model   delta  harmonic     sigma   weight residual
+  -122.60 -122.55   -0.05     0      2.50e+00 1.60e-01 4.55e-04
+
+Dihedral angle | Side chain | restraints: 1
+Sorted by residual:
+dihedral pdb=" N   SER   115 " segid="DS08"
+         pdb=" CA  SER   115 " segid="DS08"
+         pdb=" CB  SER   115 " segid="DS08"
+         pdb=" OG  SER   115 " segid="DS08"
+    ideal   model   delta  harmonic     sigma   weight residual
+   -63.99  -63.99   -0.00     0      1.00e+01 1.00e-02 4.15e-11
+
+Dihedral angle | link_TRANS | restraints: 3
+Sorted by residual:
+dihedral pdb=" N   SER A   1 "
+         pdb=" CA  GLY A  34 "
+         pdb=" C   GLY A  34 "
+         pdb=" N   GLY A  34 "
     ideal   model   delta sinusoidal    sigma   weight residual
-   200.00   28.25  171.75     1      1.50e+01 4.44e-03 8.49e+01
+  -160.00 -145.03  -14.97     2      3.00e+01 1.11e-03 3.56e-01
 
-
-C-Beta improper torsion angle restraints: 47272
+Chirality restraints: 6
 Sorted by residual:
-dihedral pdb=" C   UALFW   5 "
-         pdb=" N   UALFW   5 "
-         pdb=" CA  UALFW   5 "
-         pdb=" CB  UALFW   5 "
-    ideal   model   delta  harmonic     sigma   weight residual
-  -122.60 -179.97   57.37     0      2.50e+00 1.60e-01 5.27e+02
-dihedral pdb=" N   UALFW   5 "
-         pdb=" C   UALFW   5 "
-         pdb=" CA  UALFW   5 "
-         pdb=" CB  UALFW   5 "
-    ideal   model   delta  harmonic     sigma   weight residual
-   122.80  179.97  -57.17     0      2.50e+00 1.60e-01 5.23e+02
-
-Chirality restraints: 120781
-Sorted by residual:
-chirality pdb=" CB  VALE5 108 "
-          pdb=" CA  VALE5 108 "
-          pdb=" CG1 VALE5 108 "
-          pdb=" CG2 VALE5 108 "
+chirality pdb=" C1' C     643 " segid="D16S"
+          pdb=" O4' C     643 " segid="D16S"
+          pdb=" C2' C     643 " segid="D16S"
+          pdb=" N1  C     643 " segid="D16S"
   both_signs  ideal   model   delta    sigma   weight residual
-    False     -2.63    0.29   -2.92 2.00e-01 2.50e+01 2.13e+02
-chirality pdb=" P     AGA1866 "
-          pdb=" OP1   AGA1866 "
-          pdb=" OP2   AGA1866 "
-          pdb=" O5'   AGA1866 "
-  both_signs  ideal   model   delta    sigma   weight residual
-    True       2.41    0.24    2.17 2.00e-01 2.50e+01 1.18e+02
+    False      2.47    2.45    0.01 2.00e-01 2.50e+01 4.38e-03
 
-Planarity restraints: 53425
+Chirality | link_ALPHA2-6 | restraints: 1
+Sorted by residual:
+chirality pdb=" C2  MAN B1957 "
+          pdb=" O6  BMA B1954 "
+          pdb=" C1  MAN B1957 "
+          pdb=" C1  MAN B1957 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    False     -2.40   -0.00   -2.40 2.00e-02 2.50e+03 1.44e+04
+
+Chirality | link_NAG-ASN | restraints: 1
+Sorted by residual:
+chirality pdb=" C1  NAG B1349 "
+          pdb=" ND2 ASN A 303 "
+          pdb=" C2  NAG B1349 "
+          pdb=" O5  NAG B1349 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    False     -2.40   -2.28   -0.12 2.00e-01 2.50e+01 3.45e-01
+
+Chirality | link_BETA1-6 | restraints: 1
+Sorted by residual:
+chirality pdb=" C1  FUC A 299 "
+          pdb=" O6  NAG A 294 "
+          pdb=" C2  FUC A 299 "
+          pdb=" O5  FUC A 299 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    False     -2.40   -2.40   -0.00 2.00e-02 2.50e+03 1.20e-02
+
+Chirality | link_BETA1-3 | restraints: 1
+Sorted by residual:
+chirality pdb=" C1  BGC B 402 "
+          pdb=" O3  BGC B 401 "
+          pdb=" C2  BGC B 402 "
+          pdb=" O5  BGC B 402 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    False     -2.40   -2.40   -0.00 2.00e-02 2.50e+03 2.55e-18
+
+Chirality | link_BETA1-4 | restraints: 1
+Sorted by residual:
+chirality pdb=" C1  NAG A 362 "
+          pdb=" O4  NAG A 361 "
+          pdb=" C2  NAG A 362 "
+          pdb=" O5  NAG A 362 "
+  both_signs  ideal   model   delta    sigma   weight residual
+    False     -2.40   -2.40   -0.00 2.00e-02 2.50e+03 7.20e-03
+
+Planarity restraints: 1
+Sorted by residual:
+                                            delta    sigma   weight rms_deltas residual
+plane pdb=" C1' C     643 " segid="D16S"   -0.001 2.00e-02 2.50e+03   6.70e-04 1.01e-02
+      pdb=" N1  C     643 " segid="D16S"    0.002 2.00e-02 2.50e+03
+      pdb=" C2  C     643 " segid="D16S"    0.000 2.00e-02 2.50e+03
+      pdb=" O2  C     643 " segid="D16S"   -0.000 2.00e-02 2.50e+03
+      pdb=" N3  C     643 " segid="D16S"    0.000 2.00e-02 2.50e+03
+      pdb=" C4  C     643 " segid="D16S"    0.000 2.00e-02 2.50e+03
+      pdb=" N4  C     643 " segid="D16S"    0.000 2.00e-02 2.50e+03
+      pdb=" C5  C     643 " segid="D16S"   -0.001 2.00e-02 2.50e+03
+      pdb=" C6  C     643 " segid="D16S"   -0.000 2.00e-02 2.50e+03
+
+Plane | link_NAG-ASN | restraints: 1
 Sorted by residual:
                                delta    sigma   weight rms_deltas residual
-plane pdb=" N   UALFW   5 "   -0.055 2.00e-02 2.50e+03   1.19e-01 1.76e+02
-      pdb=" CA  UALFW   5 "   -0.042 2.00e-02 2.50e+03
-      pdb=" C   UALFW   5 "    0.115 2.00e-02 2.50e+03
-      pdb=" CB  UALFW   5 "   -0.171 2.00e-02 2.50e+03
-      pdb=" N1  UALFW   5 "    0.153 2.00e-02 2.50e+03
-                               delta    sigma   weight rms_deltas residual
-plane pdb=" N   UALDW   5 "   -0.024 2.00e-02 2.50e+03   6.39e-02 5.11e+01
-      pdb=" CA  UALDW   5 "   -0.027 2.00e-02 2.50e+03
-      pdb=" C   UALDW   5 "    0.063 2.00e-02 2.50e+03
-      pdb=" CB  UALDW   5 "   -0.093 2.00e-02 2.50e+03
-      pdb=" N1  UALDW   5 "    0.080 2.00e-02 2.50e+03
-                               delta    sigma   weight rms_deltas residual
-plane pdb=" C1'   AGA1095 "    0.035 2.00e-02 2.50e+03   2.83e-02 2.20e+01
-      pdb=" N9    AGA1095 "   -0.078 2.00e-02 2.50e+03
-      pdb=" C8    AGA1095 "    0.003 2.00e-02 2.50e+03
-      pdb=" N7    AGA1095 "    0.001 2.00e-02 2.50e+03
-      pdb=" C5    AGA1095 "    0.022 2.00e-02 2.50e+03
-      pdb=" C6    AGA1095 "    0.015 2.00e-02 2.50e+03
-      pdb=" N6    AGA1095 "   -0.008 2.00e-02 2.50e+03
-      pdb=" N1    AGA1095 "   -0.009 2.00e-02 2.50e+03
-      pdb=" C2    AGA1095 "   -0.004 2.00e-02 2.50e+03
-      pdb=" N3    AGA1095 "   -0.001 2.00e-02 2.50e+03
-      pdb=" C4    AGA1095 "    0.024 2.00e-02 2.50e+03
+plane pdb=" CB  ASN A 303 "    0.000 2.00e-02 2.50e+03   4.37e-10 2.39e-15
+      pdb=" CG  ASN A 303 "   -0.000 2.00e-02 2.50e+03
+      pdb=" OD1 ASN A 303 "   -0.000 2.00e-02 2.50e+03
+      pdb=" ND2 ASN A 303 "   -0.000 2.00e-02 2.50e+03
+      pdb=" C1  NAG B1349 "    0.000 2.00e-02 2.50e+03
 
-Stacking parallelity restraints: 2
+Plane | link_TRANS | restraints: 1
+Sorted by residual:
+                               delta    sigma   weight rms_deltas residual
+plane pdb=" N   SER A   1 "   -0.000 2.00e-02 2.50e+03   6.43e-04 4.14e-03
+      pdb=" CA  GLY A  34 "   -0.000 2.00e-02 2.50e+03
+      pdb=" C   GLY A  34 "    0.001 2.00e-02 2.50e+03
+      pdb=" O   GLY A  34 "   -0.000 2.00e-02 2.50e+03
+
+Nonbonded interactions: 89
+Sorted by model distance:
+nonbonded pdb=" O4' C     643 " segid="D16S"
+          pdb=" C6  C     643 " segid="D16S"
+   model   vdw
+   2.683 2.672
+
+Parallelity | Stacking parallelity | restraints: 2
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DG B  11 "  pdb=" C1'  DC B  12 "  6.47e+00   5.5671    0.0270
@@ -213,26 +365,11 @@ Sorted by residual:
     pdb=" O6   DG B  11 "  pdb=" N4   DC B  12 "
     pdb=" N1   DG B  11 "  pdb=" C5   DC B  12 "
     pdb=" C2   DG B  11 "  pdb=" C6   DC B  12 "
-    pdb=" N2   DG B  11 "  
-    pdb=" N3   DG B  11 "  
-    pdb=" C4   DG B  11 "  
+    pdb=" N2   DG B  11 "
+    pdb=" N3   DG B  11 "
+    pdb=" C4   DG B  11 "
 
-    plane 1                plane 2                residual  delta(deg) sigma
-    pdb=" C1'  DG A   9 "  pdb=" C1'  DC A  10 "  6.00e+00   5.3613    0.0270
-    pdb=" N9   DG A   9 "  pdb=" N1   DC A  10 "
-    pdb=" C8   DG A   9 "  pdb=" C2   DC A  10 "
-    pdb=" N7   DG A   9 "  pdb=" O2   DC A  10 "
-    pdb=" C5   DG A   9 "  pdb=" N3   DC A  10 "
-    pdb=" C6   DG A   9 "  pdb=" C4   DC A  10 "
-    pdb=" O6   DG A   9 "  pdb=" N4   DC A  10 "
-    pdb=" N1   DG A   9 "  pdb=" C5   DC A  10 "
-    pdb=" C2   DG A   9 "  pdb=" C6   DC A  10 "
-    pdb=" N2   DG A   9 "  
-    pdb=" N3   DG A   9 "  
-    pdb=" C4   DG A   9 "  
-
-
-Basepair parallelity restraints: 2
+Parallelity | Basepair parallelity | restraints: 2
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DG A   9 "  pdb=" C1'  DC B  12 "  2.26e+01  12.9202    0.0335
@@ -244,44 +381,10 @@ Sorted by residual:
     pdb=" O6   DG A   9 "  pdb=" N4   DC B  12 "
     pdb=" N1   DG A   9 "  pdb=" C5   DC B  12 "
     pdb=" C2   DG A   9 "  pdb=" C6   DC B  12 "
-    pdb=" N2   DG A   9 "  
-    pdb=" N3   DG A   9 "  
-    pdb=" C4   DG A   9 "  
+    pdb=" N2   DG A   9 "
+    pdb=" N3   DG A   9 "
+    pdb=" C4   DG A   9 "
 
-    plane 1                plane 2                residual  delta(deg) sigma
-    pdb=" C1'  DC A  10 "  pdb=" C1'  DG B  11 "  5.40e+00   6.3101    0.0335
-    pdb=" N1   DC A  10 "  pdb=" N9   DG B  11 "
-    pdb=" C2   DC A  10 "  pdb=" C8   DG B  11 "
-    pdb=" O2   DC A  10 "  pdb=" N7   DG B  11 "
-    pdb=" N3   DC A  10 "  pdb=" C5   DG B  11 "
-    pdb=" C4   DC A  10 "  pdb=" C6   DG B  11 "
-    pdb=" N4   DC A  10 "  pdb=" O6   DG B  11 "
-    pdb=" C5   DC A  10 "  pdb=" N1   DG B  11 "
-    pdb=" C6   DC A  10 "  pdb=" C2   DG B  11 "
-                           pdb=" N2   DG B  11 "
-                           pdb=" N3   DG B  11 "
-                           pdb=" C4   DG B  11 "
-
-
-
-Nonbonded interactions: 5594317
-Sorted by model distance:
-nonbonded pdb="MG    MGAA3098 "
-          pdb=" O   HOHAA3655 "
-   model   vdw
-   1.653 2.170
-nonbonded pdb="MG    MGEA3013 "
-          pdb=" O   HOHEA3263 "
-   model   vdw
-   1.659 2.170
-nonbonded pdb="MG    MGAA3029 "
-          pdb=" O   HOHAA3329 "
-   model   vdw
-   1.675 2.170
-nonbonded pdb="MG    MGDA1642 "
-          pdb=" O   HOHDA1879 "
-   model   vdw
-   1.699 2.170
 """
 
 tst_2_geo = """
@@ -306,8 +409,994 @@ bond 5
   ideal  model  delta    sigma   weight residual
   1.524  1.498  0.025 1.26e-02 6.30e+03 4.00e+00
 """
+# RESULT STRINGS
+# Json strings that represent entry records.
+# This is the structured data we expect to parse from the .geo text
 
-
+# 1yjp .geo text (with labels), write the first entry of each type to json
+result_json_1 = """
+{
+  "bond": [
+    {
+      "i_seqs": [
+        0,
+        1
+      ],
+      "atom_labels": [
+        "pdb=\\\" N   GLY A   1 \\\"",
+        "pdb=\\\" CA  GLY A   1 \\\""
+      ],
+      "ideal": 1.451,
+      "model": 1.507,
+      "delta": -0.056,
+      "sigma": 0.016,
+      "weight": 3910.0,
+      "residual": 12.3,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "angle": [
+    {
+      "i_seqs": [
+        12,
+        13,
+        14
+      ],
+      "atom_labels": [
+        "pdb=\\\" N   ASN A   3 \\\"",
+        "pdb=\\\" CA  ASN A   3 \\\"",
+        "pdb=\\\" C   ASN A   3 \\\""
+      ],
+      "ideal": 108.9,
+      "model": 113.48,
+      "delta": -4.58,
+      "sigma": 1.63,
+      "weight": 0.376,
+      "residual": 7.9,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "dihedral": [
+    {
+      "i_seqs": [
+        13,
+        14,
+        20,
+        21
+      ],
+      "atom_labels": [
+        "pdb=\\\" CA  ASN A   3 \\\"",
+        "pdb=\\\" C   ASN A   3 \\\"",
+        "pdb=\\\" N   GLN A   4 \\\"",
+        "pdb=\\\" CA  GLN A   4 \\\""
+      ],
+      "ideal": 180.0,
+      "model": 166.21,
+      "delta": 13.79,
+      "harmonic": "0",
+      "sigma": 5.0,
+      "weight": 0.04,
+      "residual": 7.6,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "chiral": [
+    {
+      "i_seqs": [
+        30,
+        29,
+        31,
+        33
+      ],
+      "atom_labels": [
+        "pdb=\\\" CA  GLN A   5 \\\"",
+        "pdb=\\\" N   GLN A   5 \\\"",
+        "pdb=\\\" C   GLN A   5 \\\"",
+        "pdb=\\\" CB  GLN A   5 \\\""
+      ],
+      "both_signs": "False",
+      "ideal": 2.51,
+      "model": 2.39,
+      "delta": 0.12,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.348,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "plane": [
+    {
+      "i_seqs": [
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "atom_labels": [
+        "pdb=\\\" CB  TYR A   7 \\\"",
+        "pdb=\\\" CG  TYR A   7 \\\"",
+        "pdb=\\\" CD1 TYR A   7 \\\"",
+        "pdb=\\\" CD2 TYR A   7 \\\"",
+        "pdb=\\\" CE1 TYR A   7 \\\"",
+        "pdb=\\\" CE2 TYR A   7 \\\"",
+        "pdb=\\\" CZ  TYR A   7 \\\"",
+        "pdb=\\\" OH  TYR A   7 \\\""
+      ],
+      "delta": [
+        -0.006,
+        0.022,
+        -0.008,
+        -0.004,
+        0.002,
+        -0.001,
+        -0.011,
+        0.006
+      ],
+      "sigma": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02
+      ],
+      "weight": [
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0
+      ],
+      "rms_deltas": [
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966
+      ],
+      "residual": [
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87
+      ],
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "nonbonded": [
+    {
+      "i_seqs": [
+        57,
+        62
+      ],
+      "atom_labels": [
+        "pdb=\\\" OH  TYR A   7 \\\"",
+        "pdb=\\\" O   HOH A  11 \\\""
+      ],
+      "model": 2.525,
+      "vdw": 3.04,
+      "sym.op.": "-x+1,y-1/2,-z+1",
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ]
+}
+"""
+# 1yjp .geo text (without labels), write the first entry of each type to json
+result_json_2 = """
+{
+  "bond": [
+    {
+      "i_seqs": [
+        0,
+        1
+      ],
+      "atom_labels": [
+        "0",
+        "1"
+      ],
+      "ideal": 1.451,
+      "model": 1.507,
+      "delta": -0.056,
+      "sigma": 0.016,
+      "weight": 3910.0,
+      "residual": 12.3,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "angle": [
+    {
+      "i_seqs": [
+        12,
+        13,
+        14
+      ],
+      "atom_labels": [
+        "12",
+        "13",
+        "14"
+      ],
+      "ideal": 108.9,
+      "model": 113.48,
+      "delta": -4.58,
+      "sigma": 1.63,
+      "weight": 0.376,
+      "residual": 7.9,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "dihedral": [
+    {
+      "i_seqs": [
+        13,
+        14,
+        20,
+        21
+      ],
+      "atom_labels": [
+        "13",
+        "14",
+        "20",
+        "21"
+      ],
+      "ideal": 180.0,
+      "model": 166.21,
+      "delta": 13.79,
+      "harmonic": "0",
+      "sigma": 5.0,
+      "weight": 0.04,
+      "residual": 7.6,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "chiral": [
+    {
+      "i_seqs": [
+        30,
+        29,
+        31,
+        33
+      ],
+      "atom_labels": [
+        "30",
+        "29",
+        "31",
+        "33"
+      ],
+      "both_signs": "False",
+      "ideal": 2.51,
+      "model": 2.39,
+      "delta": 0.12,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.348,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "plane": [
+    {
+      "i_seqs": [
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57
+      ],
+      "atom_labels": [
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57"
+      ],
+      "delta": [
+        -0.006,
+        0.022,
+        -0.008,
+        -0.004,
+        0.002,
+        -0.001,
+        -0.011,
+        0.006
+      ],
+      "sigma": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02
+      ],
+      "weight": [
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0
+      ],
+      "rms_deltas": [
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966
+      ],
+      "residual": [
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87
+      ],
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "nonbonded": [
+    {
+      "i_seqs": [
+        57,
+        62
+      ],
+      "atom_labels": [
+        "57",
+        "62"
+      ],
+      "model": 2.525,
+      "vdw": 3.04,
+      "sym.op.": "-x+1,y-1/2,-z+1",
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ]
+}
+"""
+# 1yjp .geo text (with labels but no model), So no i_seqs possible
+result_json_3 = """
+{
+  "bond": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" N   GLY A   1 \\\"",
+        "pdb=\\\" CA  GLY A   1 \\\""
+      ],
+      "ideal": 1.451,
+      "model": 1.507,
+      "delta": -0.056,
+      "sigma": 0.016,
+      "weight": 3910.0,
+      "residual": 12.3,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "angle": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" N   ASN A   3 \\\"",
+        "pdb=\\\" CA  ASN A   3 \\\"",
+        "pdb=\\\" C   ASN A   3 \\\""
+      ],
+      "ideal": 108.9,
+      "model": 113.48,
+      "delta": -4.58,
+      "sigma": 1.63,
+      "weight": 0.376,
+      "residual": 7.9,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "dihedral": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" CA  ASN A   3 \\\"",
+        "pdb=\\\" C   ASN A   3 \\\"",
+        "pdb=\\\" N   GLN A   4 \\\"",
+        "pdb=\\\" CA  GLN A   4 \\\""
+      ],
+      "ideal": 180.0,
+      "model": 166.21,
+      "delta": 13.79,
+      "harmonic": "0",
+      "sigma": 5.0,
+      "weight": 0.04,
+      "residual": 7.6,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "chiral": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" CA  GLN A   5 \\\"",
+        "pdb=\\\" N   GLN A   5 \\\"",
+        "pdb=\\\" C   GLN A   5 \\\"",
+        "pdb=\\\" CB  GLN A   5 \\\""
+      ],
+      "both_signs": "False",
+      "ideal": 2.51,
+      "model": 2.39,
+      "delta": 0.12,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.348,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "plane": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" CB  TYR A   7 \\\"",
+        "pdb=\\\" CG  TYR A   7 \\\"",
+        "pdb=\\\" CD1 TYR A   7 \\\"",
+        "pdb=\\\" CD2 TYR A   7 \\\"",
+        "pdb=\\\" CE1 TYR A   7 \\\"",
+        "pdb=\\\" CE2 TYR A   7 \\\"",
+        "pdb=\\\" CZ  TYR A   7 \\\"",
+        "pdb=\\\" OH  TYR A   7 \\\""
+      ],
+      "delta": [
+        -0.006,
+        0.022,
+        -0.008,
+        -0.004,
+        0.002,
+        -0.001,
+        -0.011,
+        0.006
+      ],
+      "sigma": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02
+      ],
+      "weight": [
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0
+      ],
+      "rms_deltas": [
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966,
+        0.00966
+      ],
+      "residual": [
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87,
+        1.87
+      ],
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "nonbonded": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" OH  TYR A   7 \\\"",
+        "pdb=\\\" O   HOH A  11 \\\""
+      ],
+      "model": 2.525,
+      "vdw": 3.04,
+      "sym.op.": "-x+1,y-1/2,-z+1",
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ]
+}
+"""
+# tst_1_geo parsed (testing multiple types of origin ids), the first entry for each entry type.
+result_json_4 = """
+{
+  "bond": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" C1' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" N1  C     643 \\\" segid=\\\"D16S\\\""
+      ],
+      "ideal": 1.48,
+      "model": 1.481,
+      "delta": -0.001,
+      "sigma": 0.015,
+      "weight": 4440.0,
+      "residual": 0.00832,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "angle": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" C2' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" C1' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" N1  C     643 \\\" segid=\\\"D16S\\\""
+      ],
+      "ideal": 112.0,
+      "model": 112.26,
+      "delta": -0.26,
+      "sigma": 1.5,
+      "weight": 0.444,
+      "residual": 0.0304,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "dihedral": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" C1' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" N1  C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" C6  C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" C5  C     643 \\\" segid=\\\"D16S\\\""
+      ],
+      "ideal": -106.54,
+      "model": -179.87,
+      "delta": 73.33,
+      "sinusoidal": 2,
+      "sigma": 30.0,
+      "weight": 0.00111,
+      "residual": 4.89,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "chiral": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" C1' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" O4' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" C2' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" N1  C     643 \\\" segid=\\\"D16S\\\""
+      ],
+      "both_signs": "False",
+      "ideal": 2.47,
+      "model": 2.45,
+      "delta": 0.01,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.00438,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "plane": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" C1' C     643 \\\" segid=D16S",
+        "pdb=\\\" N1  C     643 \\\" segid=D16S",
+        "pdb=\\\" C2  C     643 \\\" segid=D16S",
+        "pdb=\\\" O2  C     643 \\\" segid=D16S",
+        "pdb=\\\" N3  C     643 \\\" segid=D16S",
+        "pdb=\\\" C4  C     643 \\\" segid=D16S",
+        "pdb=\\\" N4  C     643 \\\" segid=D16S",
+        "pdb=\\\" C5  C     643 \\\" segid=D16S"
+      ],
+      "delta": [
+        -0.001,
+        0.002,
+        "0.000",
+        "-0.000",
+        "0.000",
+        "0.000",
+        "0.000",
+        -0.001
+      ],
+      "sigma": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02
+      ],
+      "weight": [
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0
+      ],
+      "rms_deltas": [
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067
+      ],
+      "residual": [
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101
+      ],
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "nonbonded": [
+    {
+      "i_seqs": [],
+      "atom_labels": [
+        "pdb=\\\" O4' C     643 \\\" segid=\\\"D16S\\\"",
+        "pdb=\\\" C6  C     643 \\\" segid=\\\"D16S\\\""
+      ],
+      "model": 2.683,
+      "vdw": 2.672,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "parallelity": [
+    {
+      "i_seqs": [],
+      "j_seqs": [],
+      "atom_labels_i": [
+        "pdb=\\\" C1'  DG B  11 \\\"",
+        "pdb=\\\" N9   DG B  11 \\\"",
+        "pdb=\\\" C8   DG B  11 \\\"",
+        "pdb=\\\" N7   DG B  11 \\\"",
+        "pdb=\\\" C5   DG B  11 \\\"",
+        "pdb=\\\" C6   DG B  11 \\\"",
+        "pdb=\\\" O6   DG B  11 \\\"",
+        "pdb=\\\" N1   DG B  11 \\\"",
+        "pdb=\\\" C2   DG B  11 \\\"",
+        "pdb=\\\" N2   DG B  11 \\\"",
+        "pdb=\\\" N3   DG B  11 \\\"",
+        "pdb=\\\" C4   DG B  11 \\\""
+      ],
+      "atom_labels_j": [
+        "pdb=\\\" C1'  DC B  12 \\\"",
+        "pdb=\\\" N1   DC B  12 \\\"",
+        "pdb=\\\" C2   DC B  12 \\\"",
+        "pdb=\\\" O2   DC B  12 \\\"",
+        "pdb=\\\" N3   DC B  12 \\\"",
+        "pdb=\\\" C4   DC B  12 \\\"",
+        "pdb=\\\" N4   DC B  12 \\\"",
+        "pdb=\\\" C5   DC B  12 \\\"",
+        "pdb=\\\" C6   DC B  12 \\\""
+      ],
+      "residual": 6.47,
+      "delta(deg)": 5.5671,
+      "sigma": 0.027,
+      "origin_id": 6
+    }
+  ]
+}
+"""
+# tst_1_geo but the descriptive labels replaced with artifical i_seqs.
+# Tests ability to read atom labels in varied forms (id_str, i_seq)
+result_json_5 = """
+{
+  "bond": [
+    {
+      "i_seqs": [
+        0,
+        1
+      ],
+      "atom_labels": [
+        "0",
+        "1"
+      ],
+      "ideal": 1.48,
+      "model": 1.481,
+      "delta": -0.001,
+      "sigma": 0.015,
+      "weight": 4440.0,
+      "residual": 0.00832,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "angle": [
+    {
+      "i_seqs": [
+        26,
+        27,
+        28
+      ],
+      "atom_labels": [
+        "26",
+        "27",
+        "28"
+      ],
+      "ideal": 112.0,
+      "model": 112.26,
+      "delta": -0.26,
+      "sigma": 1.5,
+      "weight": 0.444,
+      "residual": 0.0304,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "dihedral": [
+    {
+      "i_seqs": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "atom_labels": [
+        "25",
+        "26",
+        "27",
+        "28"
+      ],
+      "ideal": -106.54,
+      "model": -179.87,
+      "delta": 73.33,
+      "sinusoidal": 2,
+      "sigma": 30.0,
+      "weight": 0.00111,
+      "residual": 4.89,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "chiral": [
+    {
+      "i_seqs": [
+        10,
+        11,
+        12,
+        13
+      ],
+      "atom_labels": [
+        "10",
+        "11",
+        "12",
+        "13"
+      ],
+      "both_signs": "False",
+      "ideal": 2.47,
+      "model": 2.45,
+      "delta": 0.01,
+      "sigma": 0.2,
+      "weight": 25.0,
+      "residual": 0.00438,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "plane": [
+    {
+      "i_seqs": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ],
+      "atom_labels": [
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "delta": [
+        -0.001,
+        0.002,
+        "0.000",
+        "-0.000",
+        "0.000",
+        "0.000",
+        "0.000",
+        -0.001
+      ],
+      "sigma": [
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.02
+      ],
+      "weight": [
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0,
+        2500.0
+      ],
+      "rms_deltas": [
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067,
+        0.00067
+      ],
+      "residual": [
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101,
+        0.0101
+      ],
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "nonbonded": [
+    {
+      "i_seqs": [
+        21,
+        22
+      ],
+      "atom_labels": [
+        "21",
+        "22"
+      ],
+      "model": 2.683,
+      "vdw": 2.672,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ],
+  "parallelity": [
+    {
+      "i_seqs": [
+        23,
+        25,
+        27,
+        29,
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        11,
+        12
+      ],
+      "j_seqs": [
+        24,
+        26,
+        28,
+        30,
+        1,
+        3,
+        5,
+        7,
+        9
+      ],
+      "atom_labels_i": [
+        "23",
+        "25",
+        "27",
+        "29",
+        "0",
+        "2",
+        "4",
+        "6",
+        "8",
+        "10",
+        "11",
+        "12"
+      ],
+      "atom_labels_j": [
+        "24",
+        "26",
+        "28",
+        "30",
+        "1",
+        "3",
+        "5",
+        "7",
+        "9"
+      ],
+      "residual": 6.47,
+      "delta(deg)": 5.5671,
+      "sigma": 0.027,
+      "origin_id": 6
+    }
+  ]
+}
+"""
 def replace_idstr_with_int(text,max_int=100):
   """
   Replace id_strs in a geo_file str with integers
@@ -324,28 +1413,21 @@ def replace_idstr_with_int(text,max_int=100):
     return replacement_text
 
   new_text = re.sub(r'pdb=".*?"', replacement, text)
+  new_text = re.sub(r'segid=".*?"', "", new_text)
   return new_text
 
 
 def extract_results(container,print_result=False):
-  results = {}
-    
+  results = defaultdict(list)
   for entry_name,entries in container.entries.items():
-    results[entry_name] = []
-    idxs = [0,-1]
-    for idx in idxs:
-      entry = entries[idx]
-      value_idxs = [0,1,2,3] # just take a few values to check
-      for i,(key,value) in enumerate(entry.record.items()):
-        if i in value_idxs:
-          results[entry_name].append(value)
+    entry = entries[0]
+    results[entry_name].append(entry.record)
 
   if print_result:
     #Print output to make tests
-    print("expected= {")
-    for key,value in results.items():
-      print(f"'{key}':",value,",")
-    print("}")
+    js = json.dumps(results,indent=2)
+    js = js.replace('\\\"','\\\\\\"')
+    print(js)
   return results
 
 # Start tests
@@ -359,31 +1441,24 @@ def init_model():
 def tst_01(model,printing=False):
   # Test a 1yjp with YES labels and YES a model
   # (Can build proxies from label matching to model i_seqs)
-  expected= {
-  'bond': [[0, 1], ['pdb=" N   GLY A   1 "', 'pdb=" CA  GLY A   1 "'], 1.451, 1.507, [6, 12], ['pdb=" C   ASN A   2 "', 'pdb=" N   ASN A   3 "'], 1.331, 1.33] ,
-  'angle': [[12, 13, 14], ['pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "'], 108.9, 113.48, [47, 48, 49], ['pdb=" CA  TYR A   7 "', 'pdb=" C   TYR A   7 "', 'pdb=" O   TYR A   7 "'], 121.0, 120.98] ,
-  'dihedral': [[13, 14, 20, 21], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" N   GLN A   4 "', 'pdb=" CA  GLN A   4 "'], 180.0, 166.21, [14, 12, 13, 16], ['pdb=" C   ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" CB  ASN A   3 "'], -122.6, -122.56] ,
-  'chiral': [[30, 29, 31, 33], ['pdb=" CA  GLN A   5 "', 'pdb=" N   GLN A   5 "', 'pdb=" C   GLN A   5 "', 'pdb=" CB  GLN A   5 "'], 'False', 2.51, [13, 12, 14, 16], ['pdb=" CA  ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" CB  ASN A   3 "'], 'False', 2.51] ,
-  'plane': [[50, 51, 52, 53, 54, 55, 56, 57], ['pdb=" CB  TYR A   7 "', 'pdb=" CG  TYR A   7 "', 'pdb=" CD1 TYR A   7 "', 'pdb=" CD2 TYR A   7 "', 'pdb=" CE1 TYR A   7 "', 'pdb=" CE2 TYR A   7 "', 'pdb=" CZ  TYR A   7 "', 'pdb=" OH  TYR A   7 "'], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [13, 14, 15], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" O   ASN A   3 "'], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
-  'nonbonded': [[57, 62], ['pdb=" OH  TYR A   7 "', 'pdb=" O   HOH A  11 "'], 2.525, 3.04, [38, 51], ['pdb=" N   ASN A   6 "', 'pdb=" CG  TYR A   7 "'], 4.9, 3.34] ,
-  }
+  expected= json.loads(result_json_1)
 
   grm = model.restraints_manager.geometry
-  
+
   buffer = StringIO()
   site_labels = model.get_xray_structure().scatterers().extract_labels()
   grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
   geo_str = buffer.getvalue()
   geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
-  
+  geo_container = GeoParser(geo_lines,model=model)
+
   if printing:
     print("\n\ntst_01")
   results = extract_results(geo_container,print_result=printing)
-  
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
@@ -395,32 +1470,25 @@ def tst_01(model,printing=False):
 def tst_02(model,printing=False):
   # Test a 1yjp with NO labels and YES a model
   # (i_seqs present in .geo string because no labels, will build proxies)
-    
-  expected= {
-  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [6, 12], ['6', '12'], 1.331, 1.33] ,
-  'angle': [[12, 13, 14], ['12', '13', '14'], 108.9, 113.48, [47, 48, 49], ['47', '48', '49'], 121.0, 120.98] ,
-  'dihedral': [[13, 14, 20, 21], ['13', '14', '20', '21'], 180.0, 166.21, [14, 12, 13, 16], ['14', '12', '13', '16'], -122.6, -122.56] ,
-  'chiral': [[30, 29, 31, 33], ['30', '29', '31', '33'], 'False', 2.51, [13, 12, 14, 16], ['13', '12', '14', '16'], 'False', 2.51] ,
-  'plane': [[50, 51, 52, 53, 54, 55, 56, 57], ['50', '51', '52', '53', '54', '55', '56', '57'], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [13, 14, 15], ['13', '14', '15'], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
-  'nonbonded': [[57, 62], ['57', '62'], 2.525, 3.04, [38, 51], ['38', '51'], 4.9, 3.34] ,
-  }
+
+  expected= json.loads(result_json_2)
 
   grm = model.restraints_manager.geometry
-  
+
   buffer = StringIO()
   grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
   geo_str = buffer.getvalue()
   geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
-  
-  
+  geo_container = GeoParser(geo_lines,model=model)
+
+
   if printing:
     print("\n\ntst_02")
   results = extract_results(geo_container,print_result=printing)
-  
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
@@ -432,34 +1500,26 @@ def tst_02(model,printing=False):
 def tst_03(model,printing=False):
   # Test a 1yjp with NO labels and NO a model
   # (i_seqs present in .geo string because no labels, will build proxies)
-  
-  expected= {
-  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [6, 12], ['6', '12'], 1.331, 1.33] ,
-  'angle': [[12, 13, 14], ['12', '13', '14'], 108.9, 113.48, [47, 48, 49], ['47', '48', '49'], 121.0, 120.98] ,
-  'dihedral': [[13, 14, 20, 21], ['13', '14', '20', '21'], 180.0, 166.21, [14, 12, 13, 16], ['14', '12', '13', '16'], -122.6, -122.56] ,
-  'chiral': [[30, 29, 31, 33], ['30', '29', '31', '33'], 'False', 2.51, [13, 12, 14, 16], ['13', '12', '14', '16'], 'False', 2.51] ,
-  'plane': [[50, 51, 52, 53, 54, 55, 56, 57], ['50', '51', '52', '53', '54', '55', '56', '57'], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [13, 14, 15], ['13', '14', '15'], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
-  'nonbonded': [[57, 62], ['57', '62'], 2.525, 3.04, [38, 51], ['38', '51'], 4.9, 3.34] ,
-  }
 
+  expected= json.loads(result_json_2)
 
   grm = model.restraints_manager.geometry
-  
+
   buffer = StringIO()
   grm.write_geo_file(model.get_sites_cart(),site_labels=None,file_descriptor=buffer)
   geo_str = buffer.getvalue()
   geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
-  
-  
-  
+  geo_container = GeoParser(geo_lines,model=model)
+
+
+
   if printing:
     print("\n\ntst_03")
   results = extract_results(geo_container,print_result=printing)
-  
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
@@ -471,34 +1531,27 @@ def tst_03(model,printing=False):
 def tst_04(model,printing=False):
   # Test a 1yjp with YES labels and NO a model
   # (i_seqs not present in .geo string and not moel, cannot build proxies)
-    
-  expected= {
-  'bond': [[], ['pdb=" N   GLY A   1 "', 'pdb=" CA  GLY A   1 "'], 1.451, 1.507, [], ['pdb=" C   ASN A   2 "', 'pdb=" N   ASN A   3 "'], 1.331, 1.33] ,
-  'angle': [[], ['pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "'], 108.9, 113.48, [], ['pdb=" CA  TYR A   7 "', 'pdb=" C   TYR A   7 "', 'pdb=" O   TYR A   7 "'], 121.0, 120.98] ,
-  'dihedral': [[], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" N   GLN A   4 "', 'pdb=" CA  GLN A   4 "'], 180.0, 166.21, [], ['pdb=" C   ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" CA  ASN A   3 "', 'pdb=" CB  ASN A   3 "'], -122.6, -122.56] ,
-  'chiral': [[], ['pdb=" CA  GLN A   5 "', 'pdb=" N   GLN A   5 "', 'pdb=" C   GLN A   5 "', 'pdb=" CB  GLN A   5 "'], 'False', 2.51, [], ['pdb=" CA  ASN A   3 "', 'pdb=" N   ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" CB  ASN A   3 "'], 'False', 2.51] ,
-  'plane': [[], ['pdb=" CB  TYR A   7 "', 'pdb=" CG  TYR A   7 "', 'pdb=" CD1 TYR A   7 "', 'pdb=" CD2 TYR A   7 "', 'pdb=" CE1 TYR A   7 "', 'pdb=" CE2 TYR A   7 "', 'pdb=" CZ  TYR A   7 "', 'pdb=" OH  TYR A   7 "'], [-0.006, 0.022, -0.008, -0.004, 0.002, -0.001, -0.011, 0.006], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02], [], ['pdb=" CA  ASN A   3 "', 'pdb=" C   ASN A   3 "', 'pdb=" O   ASN A   3 "'], ['0.000', -0.002, 0.001], [0.02, 0.02, 0.02]] ,
-  'nonbonded': [[], ['pdb=" OH  TYR A   7 "', 'pdb=" O   HOH A  11 "'], 2.525, 3.04, [], ['pdb=" N   ASN A   6 "', 'pdb=" CG  TYR A   7 "'], 4.9, 3.34] ,
-  }
+
+  expected= json.loads(result_json_3)
 
   grm = model.restraints_manager.geometry
-  
+
   buffer = StringIO()
   site_labels = model.get_xray_structure().scatterers().extract_labels()
   grm.write_geo_file(model.get_sites_cart(),site_labels=site_labels,file_descriptor=buffer)
   geo_str = buffer.getvalue()
   geo_lines = geo_str.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=None)
-  
-  
-  
+  geo_container = GeoParser(geo_lines,model=None)
+
+
+
   if printing:
     print("\n\ntst_04")
   results = extract_results(geo_container,print_result=printing)
-  
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
@@ -509,102 +1562,104 @@ def tst_04(model,printing=False):
 def tst_05(model,printing=False):
   # Test reading complicated geo file
   # YES labels and NO model, cannot build proxies
-  
-  expected= {
-  'bond': [[], ['pdb=" C   KBEDW   1 "', 'pdb=" N   DPPDW   2 "'], 1.329, 1.498, [], ['pdb=" NG  DPPHW   2 "', 'pdb=" C   5OHHW   6 "'], 1.43, 1.502] ,
-  'angle': [[], ['pdb=" N   GLNC5 122 "', 'pdb=" CA  GLNC5 122 "', 'pdb=" C   GLNC5 122 "'], 108.78, 121.25, [], ['pdb=" C   PHE E  13 "', 'pdb=" O   PHE E  13 "', 'pdb=" N   TYR E  17 "'], 155.0, 169.75] ,
-  'dihedral': [[], ['pdb=" CA  TRPBV 218 "', 'pdb=" C   TRPBV 218 "', 'pdb=" N   HISBV 219 "', 'pdb=" CA  HISBV 219 "'], -180.0, -133.25, [], ['pdb=" N   UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" CB  UALFW   5 "'], 122.8, 179.97] ,
-  'chiral': [[], ['pdb=" CB  VALE5 108 "', 'pdb=" CA  VALE5 108 "', 'pdb=" CG1 VALE5 108 "', 'pdb=" CG2 VALE5 108 "'], 'False', -2.63, [], ['pdb=" P     AGA1866 "', 'pdb=" OP1   AGA1866 "', 'pdb=" OP2   AGA1866 "', 'pdb=" O5\'   AGA1866 "'], 'True', 2.41] ,
-  'plane': [[], ['pdb=" N   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CB  UALFW   5 "', 'pdb=" N1  UALFW   5 "'], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], ['pdb=" C1\'   AGA1095 "', 'pdb=" N9    AGA1095 "', 'pdb=" C8    AGA1095 "', 'pdb=" N7    AGA1095 "', 'pdb=" C5    AGA1095 "', 'pdb=" C6    AGA1095 "', 'pdb=" N6    AGA1095 "', 'pdb=" N1    AGA1095 "', 'pdb=" C2    AGA1095 "', 'pdb=" N3    AGA1095 "'], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
-  'parallelity': [[], [], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DC B  12 "', 'pdb=" N1   DC B  12 "', 'pdb=" C2   DC B  12 "', 'pdb=" O2   DC B  12 "', 'pdb=" N3   DC B  12 "', 'pdb=" C4   DC B  12 "', 'pdb=" N4   DC B  12 "', 'pdb=" C5   DC B  12 "', 'pdb=" C6   DC B  12 "'], [], [], ['pdb=" C1\'  DC A  10 "', 'pdb=" N1   DC A  10 "', 'pdb=" C2   DC A  10 "', 'pdb=" O2   DC A  10 "', 'pdb=" N3   DC A  10 "', 'pdb=" C4   DC A  10 "', 'pdb=" N4   DC A  10 "', 'pdb=" C5   DC A  10 "', 'pdb=" C6   DC A  10 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "']] ,
-  'nonbonded': [[], ['pdb="MG    MGAA3098 "', 'pdb=" O   HOHAA3655 "'], 1.653, 2.17, [], ['pdb="MG    MGDA1642 "', 'pdb=" O   HOHDA1879 "'], 1.699, 2.17] ,
-  }
 
+  expected= json.loads(result_json_4)
 
-  
   geo_lines = tst_1_geo.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=None)
-  
-  
-  
+  geo_container = GeoParser(geo_lines,model=None)
+
+
+
   if printing:
     print("\n\ntst_05")
   results = extract_results(geo_container,print_result=printing)
-  
-  
+
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
   assert len(records) == len(entries)
-  assert len(entries) ==   30
+  assert len(entries) ==   39
   assert not geo_container.has_proxies
-  
+
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], f"Got: {origin_ids}"
 
 def tst_06(model,printing=False):
   # Test reading complicated geo file
   # Use 'dummy' i_seqs and 1yjp to simulate a small model with complex a .geo file
   # NO labels (so i_seqs) and NO model, will build proxies
-  
-  expected= {
-  'bond': [[0, 1], ['0', '1'], 1.329, 1.498, [12, 13], ['12', '13'], 1.43, 1.502] ,
-  'angle': [[14, 15, 16], ['14', '15', '16'], 108.78, 121.25, [26, 27, 28], ['26', '27', '28'], 155.0, 169.75] ,
-  'dihedral': [[29, 30, 0, 1], ['29', '30', '0', '1'], -180.0, -133.25, [14, 15, 16, 17], ['14', '15', '16', '17'], 122.8, 179.97] ,
-  'chiral': [[18, 19, 20, 21], ['18', '19', '20', '21'], 'False', -2.63, [22, 23, 24, 25], ['22', '23', '24', '25'], 'True', 2.41] ,
-  'plane': [[26, 27, 28, 29, 30], ['26', '27', '28', '29', '30'], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [5, 6, 7, 8, 9, 10, 11, 12, 13, 14], ['5', '6', '7', '8', '9', '10', '11', '12', '13', '14'], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
-  'parallelity': [[16, 18, 20, 22, 24, 26, 28, 30, 1, 3, 4, 5], [17, 19, 21, 23, 25, 27, 29, 0, 2], ['16', '18', '20', '22', '24', '26', '28', '30', '1', '3', '4', '5'], ['17', '19', '21', '23', '25', '27', '29', '0', '2'], [17, 19, 21, 23, 25, 27, 29, 0, 2, 4, 5, 6], [18, 20, 22, 24, 26, 28, 30, 1, 3], ['17', '19', '21', '23', '25', '27', '29', '0', '2', '4', '5', '6'], ['18', '20', '22', '24', '26', '28', '30', '1', '3']] ,
-  'nonbonded': [[7, 8], ['7', '8'], 1.653, 2.17, [13, 14], ['13', '14'], 1.699, 2.17] ,
-  }
+
+  expected= json.loads(result_json_5)
 
 
-  
   tst_1_geo_iseqs = replace_idstr_with_int(tst_1_geo,max_int=30)
   geo_lines = tst_1_geo_iseqs.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
-  
+  geo_container = GeoParser(geo_lines,model=model)
+
   if printing:
     print("\n\ntst_06")
   results = extract_results(geo_container,print_result=printing)
-  
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
   assert len(records) == len(entries)
-  assert len(entries) ==   30
+  assert len(entries) ==   39
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
-  
+
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], f"Got: {origin_ids}"
 
 
 def tst_07(model,printing=False):
-  # Test reading integer (i_seq) geo file
-  
-  expected= {
-  'bond': [[0, 1], ['0', '1'], 1.451, 1.507, [5, 6], ['5', '6'], 1.524, 1.498] ,
-  }
+  # Test reading integer (i_seq) geo file.
 
-  
+  result_js = """
+ {
+  "bond": [
+    {
+      "i_seqs": [
+        0,
+        1
+      ],
+      "atom_labels": [
+        "0",
+        "1"
+      ],
+      "ideal": 1.451,
+      "model": 1.507,
+      "delta": -0.056,
+      "sigma": 0.016,
+      "weight": 3910.0,
+      "residual": 12.3,
+      "origin_id": 0,
+      "origin_label": "covalent"
+    }
+  ]
+}
+  """
+  expected = json.loads(result_js)
+
   geo_lines = tst_2_geo.split("\n")
-  geo_container = GeoParseContainer(geo_lines,model=model)
-  
-  
+  geo_container = GeoParser(geo_lines,model=model)
+
+
   if printing:
     print("\n\ntst_01")
   results = extract_results(geo_container,print_result=printing)
-  
-  
+
+
   # Check values
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
@@ -617,42 +1672,32 @@ def tst_07(model,printing=False):
 def tst_08(model,printing=False):
   # Test reading without whitespace between sections
 
-
-  expected= {
-  'bond': [[], ['pdb=" C   KBEDW   1 "', 'pdb=" N   DPPDW   2 "'], 1.329, 1.498, [], ['pdb=" NG  DPPHW   2 "', 'pdb=" C   5OHHW   6 "'], 1.43, 1.502] ,
-  'angle': [[], ['pdb=" N   GLNC5 122 "', 'pdb=" CA  GLNC5 122 "', 'pdb=" C   GLNC5 122 "'], 108.78, 121.25, [], ['pdb=" C   PHE E  13 "', 'pdb=" O   PHE E  13 "', 'pdb=" N   TYR E  17 "'], 155.0, 169.75] ,
-  'dihedral': [[], ['pdb=" CA  TRPBV 218 "', 'pdb=" C   TRPBV 218 "', 'pdb=" N   HISBV 219 "', 'pdb=" CA  HISBV 219 "'], -180.0, -133.25, [], ['pdb=" N   UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" CB  UALFW   5 "'], 122.8, 179.97] ,
-  'chiral': [[], ['pdb=" CB  VALE5 108 "', 'pdb=" CA  VALE5 108 "', 'pdb=" CG1 VALE5 108 "', 'pdb=" CG2 VALE5 108 "'], 'False', -2.63, [], ['pdb=" P     AGA1866 "', 'pdb=" OP1   AGA1866 "', 'pdb=" OP2   AGA1866 "', 'pdb=" O5\'   AGA1866 "'], 'True', 2.41] ,
-  'plane': [[], ['pdb=" N   UALFW   5 "', 'pdb=" CA  UALFW   5 "', 'pdb=" C   UALFW   5 "', 'pdb=" CB  UALFW   5 "', 'pdb=" N1  UALFW   5 "'], [-0.055, -0.042, 0.115, -0.171, 0.153], [0.02, 0.02, 0.02, 0.02, 0.02], [], ['pdb=" C1\'   AGA1095 "', 'pdb=" N9    AGA1095 "', 'pdb=" C8    AGA1095 "', 'pdb=" N7    AGA1095 "', 'pdb=" C5    AGA1095 "', 'pdb=" C6    AGA1095 "', 'pdb=" N6    AGA1095 "', 'pdb=" N1    AGA1095 "', 'pdb=" C2    AGA1095 "', 'pdb=" N3    AGA1095 "'], [0.035, -0.078, 0.003, 0.001, 0.022, 0.015, -0.008, -0.009, -0.004, -0.001], [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]] ,
-  'parallelity': [[], [], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DC B  12 "', 'pdb=" N1   DC B  12 "', 'pdb=" C2   DC B  12 "', 'pdb=" O2   DC B  12 "', 'pdb=" N3   DC B  12 "', 'pdb=" C4   DC B  12 "', 'pdb=" N4   DC B  12 "', 'pdb=" C5   DC B  12 "', 'pdb=" C6   DC B  12 "'], [], [], ['pdb=" C1\'  DC A  10 "', 'pdb=" N1   DC A  10 "', 'pdb=" C2   DC A  10 "', 'pdb=" O2   DC A  10 "', 'pdb=" N3   DC A  10 "', 'pdb=" C4   DC A  10 "', 'pdb=" N4   DC A  10 "', 'pdb=" C5   DC A  10 "', 'pdb=" C6   DC A  10 "', 'pdb=" N2   DG B  11 "', 'pdb=" N3   DG B  11 "', 'pdb=" C4   DG B  11 "'], ['pdb=" C1\'  DG B  11 "', 'pdb=" N9   DG B  11 "', 'pdb=" C8   DG B  11 "', 'pdb=" N7   DG B  11 "', 'pdb=" C5   DG B  11 "', 'pdb=" C6   DG B  11 "', 'pdb=" O6   DG B  11 "', 'pdb=" N1   DG B  11 "', 'pdb=" C2   DG B  11 "']] ,
-  'nonbonded': [[], ['pdb="MG    MGAA3098 "', 'pdb=" O   HOHAA3655 "'], 1.653, 2.17, [], ['pdb="MG    MGDA1642 "', 'pdb=" O   HOHDA1879 "'], 1.699, 2.17] ,
-  }
-
+  expected= json.loads(result_json_4)
 
 
   geo_lines = tst_1_geo.split("\n")
   geo_lines = [line for line in geo_lines if len(line.strip().replace("\n",""))>0]
-  geo_container = GeoParseContainer(geo_lines,model=model)
+  geo_container = GeoParser(geo_lines,model=model)
 
-  
-  
+
+
   if printing:
     print("\n\ntst_08")
   results = extract_results(geo_container,print_result=printing)
-  
+
 
   assert expected==results
-  
+
   # Check numbers
   records = geo_container.records_list
   entries = geo_container.entries_list
   assert len(records) == len(entries)
-  assert len(entries) ==   30
+  assert len(entries) ==   39
   assert geo_container.has_proxies
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
-  
+
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids == [0, 0, 0, 3, 3, 9, 9, 0, 0, 2, 2, 2, 0, 0, 0, 11, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], f"Got: {origin_ids}"
 
 
 

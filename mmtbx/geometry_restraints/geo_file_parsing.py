@@ -1,15 +1,13 @@
+from __future__ import division
 from collections import defaultdict
-from pathlib import Path
 from itertools import chain
 import shlex
 import re
-from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
-from cctbx.geometry_restraints import bond, angle, dihedral, chirality, parallelity, planarity
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
-  
+
 class Entry:
   """
   Base class for an 'entry' in a geo file. Analogous to both a proxy and restraint
@@ -18,7 +16,7 @@ class Entry:
   Roles:
     1. Store restraint-specific parameters for parsing
     2. Implement interpretation of raw .geo file lines to common attributes
-      Accessing the 'entry.record' attribute will return a dict of all available data 
+      Accessing the 'entry.record' attribute will return a dict of all available data
 
     3.
         Atom labels can appear in two lists:
@@ -29,14 +27,9 @@ class Entry:
 
     4. Implement a method to convert entry object to cctbx proxy object
   """
-
-  # Implement these attriutes in subbclasses
   name = None                 # Name or label for the class
-  entry_class_trigger = None  # Text trigger to identify entry class
-  entry_trigger = None        # Text trigger to identify new entry instance
-  
 
-  def __init__(self,lines,origin_id=0):
+  def __init__(self,lines,line_idx=None,origin_id=0,origin_label='covalent'):
     """
     An entry is initialized first, then data is added with entry.lines.append()
 
@@ -45,15 +38,17 @@ class Entry:
     """
     # Parsing data structures
     self.lines = lines               # raw .geo lines
+    self.line_idxs =[line_idx]
     self.i_seqs = []                 # list of integer i_seqs (if possible)
     self.atom_labels  = []           # list of string atom label from .geo
     self._numerical = None           # a dict of numerical geo data
     self.labels_are_i_seqs = None    # boolean, atom labels are i_seqs
     self.labels_are_id_strs = None   # boolean, atom labels are id_strs
-    self.origin_id = origin_id    
+    self.origin_id = origin_id
+    self.origin_label = origin_label
 
     # Initialize result data structures
-    self._proxy = None  
+    self._proxy = None
     self._record = None
 
 
@@ -63,18 +58,18 @@ class Entry:
 
     # Check if labels are i_seqs (integers)
     self.labels_are_i_seqs, self.i_seqs = self._check_labels_are_i_seqs(self.atom_labels)
-    
+
 
   def _prepare(self):
-    
     # Parse Atom labels
     values = []
     for line in self.lines[:-2]:
       if not line.startswith(" "):
         line = line.replace(line.split()[0],"") # remove name like 'bond', 'angle'
       #line = line.replace("pdb=","")
-      values.append(line.strip())
-      
+      value = line.strip()
+      values.append(value)
+
     self.atom_labels = values
 
     # Numerical labels
@@ -86,7 +81,7 @@ class Entry:
     numerical_values =  values.split()
     numerical_values = [self._coerce_type(v) for v in numerical_values]
     self._numerical = dict(zip(numerical_labels,numerical_values))
-    
+
   def _check_labels_are_i_seqs(self,atom_labels):
     """
     If all the labels are integers, assume i_seqs
@@ -107,13 +102,16 @@ class Entry:
     A dictionary representation of an entry
       Atom labels are split up into single atom key:value pairs
     """
-    d = {
-      "i_seqs":self.i_seqs,
-      "atom_labels":self.atom_labels,
-      }
-    d.update(self._numerical)
-    d["origin_id"] = self.origin_id
-    return d
+    if not self._record:
+      d = {
+        "i_seqs":self.i_seqs,
+        "atom_labels":self.atom_labels,
+        }
+      d.update(self._numerical)
+      d["origin_id"] = self.origin_id
+      d["origin_label"] = self.origin_label
+      self._record = d
+    return self._record
 
 
 
@@ -131,7 +129,7 @@ class Entry:
     """
     return float(self._numerical["weight"])
 
-        
+
   @property
   def proxy(self):
     """
@@ -142,18 +140,17 @@ class Entry:
     return self._proxy
 
 
-  def _try_int(self,val):
+  def _try_int(self, val):
     try:
       return int(val)
-    except:
+    except (ValueError, TypeError):
       return None
 
-  def _try_float(self,val):
+  def _try_float(self, val):
     try:
       return float(val)
-    except:
+    except (ValueError, TypeError):
       return None
-
 
   def _try_numeric(self,val):
     out = self._try_int(val)
@@ -175,18 +172,10 @@ class Entry:
 
 class NonBondedEntry(Entry):
   name = "nonbonded"
-  entry_class_trigger = "Nonbonded interactions"
-  entry_trigger = "nonbonded"
-  internals = "bonds"
 
-  
 class AngleEntry(Entry):
   name = "angle"
-  entry_class_trigger = "Bond angle restraints"
-  entry_trigger = "angle"
-  internals = "angles"
 
-    
   def to_proxy(self):
     proxy = geometry_restraints.angle_proxy(
     i_seqs=self.i_seqs,
@@ -198,10 +187,7 @@ class AngleEntry(Entry):
 
 class BondEntry(Entry):
   name = "bond"
-  entry_class_trigger = "Bond restraints"
-  entry_trigger = "bond"
-  internals = "bonds"
-  
+
   def to_proxy(self):
     proxy = geometry_restraints.bond_simple_proxy(
             i_seqs=self.i_seqs,
@@ -213,14 +199,10 @@ class BondEntry(Entry):
 
 class DihedralEntry(Entry):
   name = "dihedral"
-  entry_class_trigger = "Dihedral angle restraints"
-  entry_trigger = "dihedral"
-  internals = "dihedrals"
-
   @property
   def is_harmonic(self):
     return "harmonic" in self._numerical.keys()
-  
+
   @property
   def is_sinusoidal(self):
     return "sinusoidal" in self._numerical.keys()
@@ -231,7 +213,7 @@ class DihedralEntry(Entry):
       return int(self._numerical["harmonic"])
     else:
       return int(self._numerical["sinusoidal"])
-    
+
   def to_proxy(self):
     proxy = geometry_restraints.dihedral_proxy(
       i_seqs=self.i_seqs,
@@ -245,14 +227,11 @@ class DihedralEntry(Entry):
 
 class ChiralityEntry(Entry):
   name = "chiral"
-  entry_class_trigger= "Chirality restraints"
-  entry_trigger = "chirality"
-  internals = "chirals"
-    
+
   @property
   def both_signs(self):
     return bool(self._numerical["both_signs"])
-    
+
   def to_proxy(self):
     proxy = geometry_restraints.chirality_proxy(
       i_seqs=self.i_seqs,
@@ -269,18 +248,13 @@ class PlaneEntry(Entry):
     Most methods must be overridden
   """
   name = "plane"
-  entry_class_trigger = "Planarity restraints"
-  entry_trigger = "plane"
-  internals = "planes"
-
-
 
 
   def _prepare(self):
     """
     Interpret lines from a Plane entry.
     """
-    
+
     self.atom_labels = []
     nums = [[None]*5 for l in range(len(self.lines)-1)] # 5 values
     for i,line in enumerate(self.lines[1:]):
@@ -292,18 +266,23 @@ class PlaneEntry(Entry):
 
         parts = shlex.split(remaining_line)
         parts.insert(0, pdb_value)
+        # check seg id
+        if len(parts)>1:
+          if "segid=" in parts[1]:
+            parts = [" ".join(parts[0:2])] + parts[2:]
+
       else:
-        # No pdb="..." part 
+        # No pdb="..." part
         parts = shlex.split(line)
       comp_value = parts[0]
-      
+
       self.atom_labels.append(comp_value.strip())
       for j,p in enumerate(parts[1:]):
         nums[i][j] = p
 
     line = self.lines[0]
     numerical_labels = line.strip().split()
-    
+
     # fill empty values down columns
     for i,row in enumerate(nums):
       if i>0:
@@ -311,7 +290,7 @@ class PlaneEntry(Entry):
         nums[i][-1] = nums[0][-1]
     nums_T = list(map(list, zip(*nums))) # transpose
     numerical_values = nums_T
-    
+
     numerical_values = [[self._coerce_type(v) for v in vals] for vals in numerical_values]
     self._numerical = dict(zip(numerical_labels,numerical_values))
 
@@ -324,7 +303,7 @@ class PlaneEntry(Entry):
   @property
   def weights(self):
     return [float(w) for w in self._numerical["weight"]]
-    
+
   def to_proxy(self):
     proxy = geometry_restraints.planarity_proxy(
         i_seqs=self.i_seqs,
@@ -335,8 +314,6 @@ class PlaneEntry(Entry):
 
 class ParallelityEntry(Entry):
   name = "parallelity"
-  entry_trigger = "plane 1"
-  internals = "parallelities"
 
   def __init__(self,*args,**kwargs):
     self._atom_labels = []
@@ -351,7 +328,7 @@ class ParallelityEntry(Entry):
   def finalize(self):
     super().finalize()
     self.i_seqs, self.j_seqs = self.i_seqs # unpack tuple
-  
+
   @property
   def atom_labels(self):
     return self.atom_labels_i + self.atom_labels_j
@@ -359,10 +336,10 @@ class ParallelityEntry(Entry):
   @atom_labels.setter
   def atom_labels(self,value):
     self._atom_labels = value
-    
+
   def _prepare(self):
     """
-    Interpret lines from a Parallelity entry. 
+    Interpret lines from a Parallelity entry.
     """
     line0 = self.lines[0]
     line1 = self.lines[1]
@@ -371,25 +348,25 @@ class ParallelityEntry(Entry):
     all_parts = []
     for line in self.lines[1:]:
       pdb_parts = re.findall(r'pdb="([^"]*)"', line)
-      
+
       if len(pdb_parts) >= 1:
         pdb_value_i = f'pdb="{pdb_parts[0]}"'
-        
+
         remaining_line = line.replace(pdb_value_i, "", 1)
-        
+
         if len(pdb_parts) == 2:
           pdb_value_j = f'pdb="{pdb_parts[1]}"'
-          
+
           remaining_line = remaining_line.replace(pdb_value_j, "", 1)
           parts = shlex.split(remaining_line)
-          
+
           parts.insert(0, pdb_value_i)
           parts.insert(1, pdb_value_j)
         else:
           # Only one pdb="..." found, handle just pdb_value_i
           parts = shlex.split(remaining_line)
           parts.insert(0, pdb_value_i)
-          
+
       else:
         # No pdb="..." part found, just split the line
         parts = shlex.split(line)
@@ -398,7 +375,7 @@ class ParallelityEntry(Entry):
     for i,row in enumerate(all_parts):
       val = row[0].replace(self.name,"").strip()
       self.atom_labels_i.append(val)
-      
+
     for j,row in enumerate(all_parts):
       if len(row)>1:
         val = row[1].replace(self.name,"").strip()
@@ -428,7 +405,7 @@ class ParallelityEntry(Entry):
   @property
   def n_atoms(self):
     return len(self.atom_labels_i) + len(sel.atom_labels_j)
-    
+
   def to_proxy(self):
     proxy = geometry_restraints.parallelity_proxy(
         i_seqs=self.i_seqs,
@@ -454,68 +431,65 @@ class ParallelityEntry(Entry):
     d["origin_id"] = self.origin_id
     return d
 
-class StackingParallelityEntry(ParallelityEntry):
-  entry_class_trigger = "Stacking parallelity restraints"
-
-class BasepairParallelityEntry(ParallelityEntry):
-  entry_class_trigger = "Basepair parallelity restraints"
-
 ### End Entry classes
 
+entry_class_config_default = (
+  # (Entry subclass, Entry title, entry trigger)
+  #
+  # Entry title: A value returned by origin_ids.get_origin_label_and_internal, determines Entry subclass
+  # Entry trigger: a text field in a .geo file which indicates the start of a new entry section
+  # Note that order matters, 'plane 1' must be checked before 'plane'
+  (NonBondedEntry,"Nonbonded",'nonbonded'),
+  (AngleEntry,"Bond angle","angle"),
+  (BondEntry,"Bond","bond"),
+  (DihedralEntry, "Dihedral angle",'dihedral'),
+  (ChiralityEntry,"Chirality",'chirality'),
+  (ParallelityEntry,"Parallelity",'plane 1'),
+  (PlaneEntry,"Planarity","plane"),
+  (PlaneEntry,"Plane","plane"),
+  )
 
-class GeoParseContainer:
+
+class GeoParser:
   """
   A container class to hold parsed geometry entries, and to implement
     the parsing functions. The full functionality is to go:
     .geo text file ==> cctbx proxy objects
 
   Usage:
-    container = GeoParseContainer()   # Initialize
-    container.parse_str(geo_str)      # Parse .geo file string
+    parser = GeoParser(geo_lines)     # Initialize
     entries = container.entries       # Access data as Entry instances
     records = container.records       # Access data as lists of dicts
 
-                                      # Associate a model
-    container.model = model           # Not neccessary if i_seqs in .geo
 
-    proxies = container.proxies       # Access data as lists of proxies
+    proxies = container.proxies       # Access data as lists of proxies, if possible
   """
 
-  entry_classes_default = [
-    NonBondedEntry,
-    AngleEntry,
-    BondEntry,
-    DihedralEntry,
-    ChiralityEntry,
-    BasepairParallelityEntry,
-    StackingParallelityEntry,
-    PlaneEntry,
-  ]
-    
-  def __init__(self,geo_lines,model=None,entry_classes=None):
+
+  def __init__(self,geo_lines,model=None,entry_class_config=None,debug=False):
     """
      Initialize with a list of Entry subclasses
     """
+
     # Set initial arguments
-    if not entry_classes:
-      entry_classes = self.entry_classes_default
-    self.entry_classes = entry_classes
+    self.debug = debug
+    if not entry_class_config:
+      entry_class_config = entry_class_config_default
+    self.entry_class_config = entry_class_config
+    self.entry_trigger_dict = {value[2]:value[0] for value in self.entry_class_config}
+    self.entry_class_trigger_dict = {value[1]:value[0] for value in self.entry_class_config}
     self.model = model
 
     # Initialize parsing variables
-    self.lines = geo_lines
+    self.lines = geo_lines + ["\n"]
     self.line_labels = []
+    self.line_entry_classes = []
+    self.origin_ids = []
     self.current_entry= None
     self.current_entry_class = None
     self.current_origin_id = 0
+    self.current_origin_label = 'covalent'
 
-    # Text triggers for start of new entry class in .geo file
-    self.entry_class_trigger_dict = {
-      entry_class.entry_class_trigger:entry_class for entry_class in self.entry_classes
-    }
-    # text triggers for start of new entry class instance in .geo file
-    self.entry_triggers = [entry_class.entry_trigger for entry_class in self.entry_classes]
-    
 
 
     # Initialize result variables
@@ -525,6 +499,8 @@ class GeoParseContainer:
 
     # Parse the file
     self._parse()
+    if self.debug:
+      self._debug_print()
 
     # If model present, add i_seqs
     if self.model:
@@ -532,6 +508,7 @@ class GeoParseContainer:
 
     if self.model or self.labels_are_i_seqs:
       self._build_proxies()
+
 
 
   @property
@@ -561,7 +538,7 @@ class GeoParseContainer:
         for val in entry.atom_labels:
           if val not in map_idstr_to_iseq:
             entry.labels_are_id_strs = False
-          
+
         if entry.labels_are_id_strs:
           entry.i_seqs = [map_idstr_to_iseq[idstr] for idstr in entry.atom_labels]
 
@@ -586,72 +563,119 @@ class GeoParseContainer:
     """
     if self.proxies is not None:
       return list(chain.from_iterable(self.proxies.values()))
-  
+
+  def _check_change_origin_id(self,line):
+    """
+    The origin id is declared once for a block of entries. So we have to detect a change
+    in origin id, and then save the state as 'current_origin_id'.
+
+    Also, the origin id line contains information about the identity of upcoming entries.
+    This is saved as 'current_entry_class'
+
+    Finally, the presence of an origin id specifier line means that any open entry has ended.
+    """
+    origin_id, origin_label = origin_ids.get_origin_label_and_internal(line,verbose=False)
+    if origin_id and origin_label:
+
+      entry_class_trigger  = self._startswith_plural(line.split("|")[0],self.entry_class_trigger_dict.keys())
+      assert entry_class_trigger
+      self._end_entry()
+      self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
+      self.current_origin_id = origin_id
+      self.current_origin_label = origin_label
+      return True
+
+  def _check_change_entry_class(self,line):
+    """
+    Checking origin id on a 'default' restraint section header will just return that it is covalent.
+    This function determines what the identity of the upcoming entries will be, and stores it as
+    'current_entry_class'
+
+    Additionally, it resets 'current_origin_id' to 0 (covalent).
+    Note that 'origin_ids.get_origin_label_and_internal' will return covalent for any unrecognized
+    input. This function ensures that we are only switching back to covalent origin ids when a
+    new section of entries is upcoming.
+
+    Finally, the presence of a new upcoming entry class means that any open entry has ended.
+    """
+    entry_class_trigger  = self._startswith_plural(line,self.entry_class_trigger_dict.keys())
+    if entry_class_trigger:
+      self._end_entry()
+      self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
+      self.current_origin_id = 0
+      self.current_origin_label = 'covalent'
+      return True
+
+
+  def _check_line_is_entry(self,line):
+    """
+    Entries are triggered by keywords, 'bond', 'dihedral', etc
+
+    These are mapped to a specific Entry subclass via 'self.entry_trigger_dict'
+    """
+    entry_trigger = self._startswith_plural(line,self.entry_trigger_dict.keys(),strip=True)
+    if entry_trigger in self.entry_trigger_dict:
+      if entry_trigger == "plane 1":
+        if "plane 2" not in line:
+          entry_trigger = "plane"
+      self._end_entry()
+      entry_class = self.entry_trigger_dict[entry_trigger]
+      self.current_entry_class = entry_class
+      return True
 
   def _parse(self):
-    
     last_line_label = "init"    # assign a label to every line
     for i,line in enumerate(self.lines + ["\n"] ): # add newline to finish up at end
-      
-      # Line labeling accounting
+      if self.debug:
+        print(line)
+      # Line labeling accounting. Every line must be classified into some category
       assert last_line_label, f"Failed to set a line label at line: {i-1}"
       if i>0:
         self.line_labels.append(last_line_label)
+        self.line_entry_classes.append(self.current_entry_class)
+        self.origin_ids.append(self.current_origin_id)
       last_line_label = None
 
       # check blank
       line_strip = line.strip()
       if len(line_strip)==0:
         last_line_label = "blank"
+
         self._end_entry()
         continue
 
       # Check for start of new entry
-      entry_trigger = self._startswith_plural(line, self.entry_triggers,strip=True)
-
-      if entry_trigger:
+      if self._check_line_is_entry(line):
         # Start new entry
         self._end_entry()
         last_line_label = "entry_trigger"
-  
 
-        self.current_entry = self.current_entry_class(lines=[],origin_id=self.current_origin_id)
+        self.current_entry = self.current_entry_class(line_idx=i,lines=[],origin_id=self.current_origin_id,origin_label=self.current_origin_label)
         if self.current_entry_class == PlaneEntry:
           j = i-1 # The prior line
           self.current_entry.lines.append(self.lines[j])
         self.current_entry.lines.append(line)
         continue
 
-      # Check for start of new entry section
-      entry_class_trigger = self._startswith_plural(line, self.entry_class_trigger_dict.keys())
-      if entry_class_trigger:
-        # Start a new entry class
-        last_line_label = "entry_class_trigger"
-        self._end_entry()
-        entry_class = self.entry_class_trigger_dict[entry_class_trigger]
-        self.current_entry_class = entry_class
-        self.current_origin_id = 0
+      # Check change in origin id
+      if self._check_change_origin_id(line):
+        last_line_label = "origin_trigger"
         continue
 
-      # Check origin id trigger
-      if self.current_entry_class:
-        internals = self.current_entry_class.internals
-        origin_label= origin_ids.get_label_for_geo_header(line,internals=internals)
 
-        if origin_label:
-          last_line_label = "origin_trigger"
-          origin_id = origin_ids.get_origin_id(origin_label)
-          #print(f"line: {i},origin_trigger: ",origin_label,origin_id)
-          self.current_origin_id = origin_id
-          continue
+      # Check change in entry class
+      if self._check_change_entry_class(line):
+        last_line_label = "entry_class_trigger"
+        continue
 
 
       # Check for data
       if self.current_entry:
         self.current_entry.lines.append(line)
+        self.current_entry.line_idxs.append(i)
         last_line_label = "data"
         continue
-      
+
       # Catch all
       last_line_label = "unknown"
 
@@ -667,13 +691,18 @@ class GeoParseContainer:
     if self.current_entry:
       if self.current_entry_class == PlaneEntry:
         self.current_entry.lines = self.current_entry.lines[:-1]
-      self.current_entry.finalize()
-      self.entries[self.current_entry_class.name].append(self.current_entry)
+      try:
+        self.current_entry.finalize()
+        self.entries[self.current_entry_class.name].append(self.current_entry)
+      except (TypeError, ValueError):
+        if self.debug:
+          raise
+
       self.current_entry = None
 
   def _startswith_plural(self,text, labels, strip=False):
     """
-    Utility function to compare a list of labels with a text stringn.
+    Utility function to compare a list of labels with a text string.
       Returns the first matched label.
     """
     if strip:
@@ -689,7 +718,11 @@ class GeoParseContainer:
     for i in range(start,stop):
       line = self.lines[i]
       label = self.line_labels[i]
-      print(i,label,line)
+      clas = self.line_entry_classes[i]
+      oid = self.origin_ids[i]
+      if clas:
+        clas = clas.__name__
+      print(str(i).ljust(6),label.ljust(15),str(clas).ljust(15),str(oid).ljust(3),line)
 
 
   @property
@@ -699,11 +732,13 @@ class GeoParseContainer:
       This ONLY uses the entry object, not the proxies/grm.
       Meaning the only data present will be what was parsed.
     """
-    record_dict = {}
-    for entry_name, entries in self.entries.items():
-      if len(entries)>0:
-        record_dict[entry_name] = [entry.record for entry in entries]
-    return record_dict
+    if not self._records:
+      record_dict = {}
+      for entry_name, entries in self.entries.items():
+        if len(entries)>0:
+          record_dict[entry_name] = [entry.record for entry in entries]
+      self._records =  record_dict
+    return self._records
 
   @property
   def labels_are_i_seqs(self):
@@ -711,10 +746,10 @@ class GeoParseContainer:
 
   def _build_proxies(self):
     """
-    Convert the entry objects to cctbx proxy objects. 
+    Convert the entry objects to cctbx proxy objects.
       Collect into a dict of lists of proxies.
     """
-    if not self.model and not self.labels_are_i_seqs: 
+    if not self.model and not self.labels_are_i_seqs:
       raise Sorry("Cannot build proxies without instantiating with a model.")
     self._proxies = defaultdict(list)
     for entries in self.entries.values():
@@ -722,4 +757,3 @@ class GeoParseContainer:
         entry_class = entries[0].__class__
       if hasattr(entry_class,"to_proxy") and not hasattr(entry_class,"ignore"):
         self._proxies[entry_class.name] = [entry.proxy for entry in entries]
-
