@@ -626,8 +626,10 @@ def RefineBCR(dens,dist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes):
       lbound = []
       ubound = []
       for b in bcrbounds:
-        lbound.append(b[0])
-        ubound.append(b[1])
+        b0,b1=b[0],b[1]
+        assert b0 is not None and b1 is not None
+        lbound.append(b0)
+        ubound.append(b1)
       res = minimizer_bound(
         calculator  = CALC,
         use_bounds  = 2,
