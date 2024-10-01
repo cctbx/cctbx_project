@@ -36,7 +36,7 @@ def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignor
                )
       rc.append(xyz)
       if not ignore_question_mark and '?' in xyz[-1]: return None
-  print(rc)
+  # print(rc)
   return rc
 
 def read_chemical_component_filename(filename):
@@ -72,13 +72,11 @@ def read_chemical_component_filename(filename):
     # if atom is None: continue
     conformer = Chem.Conformer(atom.n_rows())
     for j, tmp in enumerate(atom.iterrows()):
-      #print(tmp)
       new = Chem.Atom(tmp.get('_chem_comp_atom.type_symbol').capitalize())
       new.SetFormalCharge(int(tmp.get('_chem_comp_atom.charge')))
       for prop in ['atom_id', 'type_symbol']:
         new.SetProp(prop, tmp.get('_chem_comp_atom.%s' % prop, '?'))
       rdatom = rwmol.AddAtom(new)
-      print(xyzs[j])
       if xyzs[j][0] in ['?']:
         pass
       else:
@@ -94,7 +92,6 @@ def read_chemical_component_filename(filename):
         atom2 = lookup.get(atom2)
         order = tmp.get('_chem_comp_bond.value_order')
         order = bond_order_ccd[order]
-        #print('---')
         rwmol.AddBond(atom1, atom2, order)
   rwmol.AddConformer(conformer)
   # Chem.SanitizeMol(rwmol)
