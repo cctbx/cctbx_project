@@ -2222,7 +2222,7 @@ class run_reduce_with_timeout(easy_run.fully_buffered):
     if file_name is not None:
       assert os.path.isfile(file_name), 'no file_name : %s' % file_name
       size_bytes = os.path.getsize(file_name)
-      command_to_run += file_name + " "
+      command_to_run += '"%s"' % file_name + " "
     command_to_run += parameters
     size_in_mb = size_bytes / 1024 / 1024
 
