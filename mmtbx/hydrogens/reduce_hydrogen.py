@@ -38,9 +38,9 @@ def get_h_restraints(resname, strict=True):
     three_letter_code=cc.three_letter_code,
     name=cc.name,
     group=cc.type,
-    # number_atoms_all=cc.number_atoms_all,
-    # number_atoms_nh=cc.number_atoms_nh,
-    desc_level="")
+    number_atoms_all=0, #cc.number_atoms_all,
+    number_atoms_nh=0, #cc.number_atoms_nh,
+    desc_level=".")
   comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   lookup = {}
   for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
@@ -112,10 +112,19 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   md, ani = mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
     residue_name=residue.resname,
     atom_names=residue.atoms().extract_name())
+  cif_object=None
   if md is None:
     md = get_h_restraints(residue.resname)
     # md.show()
-  return md
+    from six.moves import cStringIO as StringIO
+    input_string='data_comp_list\n'
+    input_string+=str(md.chem_comp.as_cif_loop())
+    f=StringIO()
+    md.show(f=f)
+    input_string += '\ndata_comp_1PZ\n'
+    input_string += '\n%s' % f.getvalue()
+    cif_object = iotbx.cif.reader(input_string=input_string).model()
+  return md, cif_object
 
 # ==============================================================================
 
@@ -272,7 +281,8 @@ class place_hydrogens():
       crystal_symmetry  = self.model.crystal_symmetry(),
       restraint_objects = ro,
       log               = null_out())
-    self.model.process(pdb_interpretation_params=p, make_restraints=True)
+    self.model.process(pdb_interpretation_params=p,
+                       make_restraints=True)
     #self.model.idealize_h_minimization()
     #STOP()
     self.time_make_grm = round(time.time()-t0, 2)
@@ -422,10 +432,15 @@ class place_hydrogens():
             if(get_class(name=ag.resname) == "common_water"): continue
             actual = [a.name.strip().upper() for a in ag.atoms()]
             #
-            mlq = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
+            mlq, cif_object = mon_lib_query(residue=ag, mon_lib_srv=mon_lib_srv)
             if mlq is None:
               self.no_H_placed_mlq.append(ag.resname)
               continue
+
+            if cif_object:
+              ro = self.model.get_restraint_objects()
+              ro.append(('auto_%s' % ag.resname, cif_object))
+              self.model.set_restraint_objects(ro)
 
             expected_h = []
             #expected_ha = []
