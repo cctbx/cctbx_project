@@ -115,8 +115,10 @@ jobs:
 
   # call %CONDA%\condabin\conda.bat create -y -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\modules\cctbx_project\libtbx\auto_build\conda_envs\cctbx_%PYTHON_VERSION%_%OS%.txt
   - script: |
-      call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
-      if %errorlevel% neq 0 exit /b %errorlevel%
+      if exist %CONDA%\envs\$(PYTHON_VERSION) (
+        call %CONDA%\condabin\conda.bat remove -y --all -n $(PYTHON_VERSION)
+        if %errorlevel% neq 0 exit /b %errorlevel%
+      )
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
       if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp pytest

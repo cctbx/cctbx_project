@@ -127,7 +127,9 @@ steps:
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda remove  -y --all -n $(PYTHON_VERSION)
+    if [ -d $(Pipeline.Workspace)/miniforge/envs/$(PYTHON_VERSION) ]; then
+      conda remove  -y --all -n $(PYTHON_VERSION)
+    fi
     conda create -y --offline -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)/channel/env.txt
     conda activate $(PYTHON_VERSION)
     pip install junit-xml
