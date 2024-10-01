@@ -2590,7 +2590,10 @@ def run(only_i=None):
       cmd += " link_ligand=%d" % i
       if pdb in ["linking_test_ccp4_other.pdb"]:
         if i: cmd += " secondary_structure.enabled=1"
-      if pdb in ['linking_test_cyclic_d_amino_acid.pdb']:
+      if pdb in ['linking_test_cyclic_d_amino_acid.pdb',
+                 'linking_test_cyclic_main_chain.pdb',
+                 'linking_test_cyclic_side_chain.pdb',
+                 ]:
         if not i: cmd += ' link_residues=False'
       if pdb.replace(".pdb", ".params") in pdbs:
         cmd += " %s" % pdb.replace(".pdb", ".params")
