@@ -234,6 +234,10 @@ def possible_cyclic_peptide(atom1,
                             ):
   if verbose:
     print(atom1.quote(),atom2.quote())
+  names=[atom1.name, atom2.name]
+  names.sort()
+  if verbose: print('names',names)
+  if names!=[' C  ', ' N  ']: return False
   len_fl = 0
   len_fl += atoms_in_first_last_rgs.get(atom1.i_seq, -1)
   len_fl += atoms_in_first_last_rgs.get(atom2.i_seq, -1)
@@ -572,6 +576,7 @@ Residue classes
         #  - cyclic
         #  - beta, delta ???
         if possible_cyclic_peptide(atom1, atom2, atoms_in_first_last_rgs): # first & last peptide
+          if verbose: print('possible_cyclic_peptide')
           use_only_bond_cutoff = True
       if sym_op:
         if classes1.common_amino_acid and classes2.common_saccharide: continue
