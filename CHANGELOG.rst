@@ -1,3 +1,10 @@
+2024.9
+======
+
+* Added general minimizer class for LBFGS and LBFGS-B minimizers
+* Enabled linking of modified amino acids for cyclic peptides
+* Added functions for parsing .geo files
+
 2024.8
 ======
 
