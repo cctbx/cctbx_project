@@ -44,7 +44,6 @@ def get_clashes_result(raw_records, sel=None):
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.allow_polymer_cross_special_position=True
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-  params.pdb_interpretation.automatic_linking.link_residues=False
   pdb_inp = iotbx.pdb.input(lines=raw_records.split("\n"), source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
