@@ -636,10 +636,13 @@ class test_nonbonded_overlaps(unittest.TestCase):
     '''
     Test that working correctly when atom is removed
     '''
+    if 0:
+      f=open('raw_records3.pdb', 'w')
+      f.write(raw_records3)
+      del f
     outstring = '{0} , expected {1:.2f}, actual {2:.2f}'
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params.pdb_interpretation.automatic_linking.link_residues=False
     pdb_inp = iotbx.pdb.input(lines=raw_records3.split("\n"), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
@@ -680,7 +683,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     '''
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params.pdb_interpretation.automatic_linking.link_residues=False
     pdb_inp = iotbx.pdb.input(lines=raw_records3.split('\n'), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
@@ -715,7 +717,6 @@ class test_nonbonded_overlaps(unittest.TestCase):
     pdb_str = model.model_as_pdb()
     params = mmtbx.model.manager.get_default_pdb_interpretation_params()
     params.pdb_interpretation.allow_polymer_cross_special_position=True
-    params.pdb_interpretation.automatic_linking.link_residues=False
     pdb_inp = iotbx.pdb.input(lines=pdb_str.split('\n'), source_info=None)
     model = mmtbx.model.manager(
       model_input = pdb_inp,
@@ -1083,7 +1084,6 @@ def process_raw_records(
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
   params.pdb_interpretation.allow_polymer_cross_special_position=True
   params.pdb_interpretation.clash_guard.nonbonded_distance_threshold = None
-  params.pdb_interpretation.automatic_linking.link_residues=False
   pdb_inp = iotbx.pdb.input(lines=records, source_info=None)
   model = mmtbx.model.manager(
     model_input = pdb_inp,
