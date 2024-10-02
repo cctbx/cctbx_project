@@ -112,27 +112,6 @@ Look for a key in the list below
       else: assert 0
     else: return info[0]
 
-<<<<<<< Updated upstream
-  def get_label_for_geo_header(geo_header,internals=None):
-    """
-    Given the string found in a geo file origin_id header, get the label
-      From label can use get_origin_id to get the integer origin id.
-    """
-    if not internals:
-      internals = "bonds"
-    internals_all = ["bonds", "angles", "dihedrals", "chirals", "planes","parallelities"]
-    assert internals in internals_all
-    internal_idx = internals_all.index(internals)
-    
-    for origin_label, info in origin_ids.data.items():
-      if len(origins)>=4:
-        header = info[3]
-        if header:
-          if header == geo_header:
-            restraint_label = info.internals[internal_idx]
-            return restraint_label
-
-=======
   def parse_geo_file_header(self, origin_id_label, subheader=None, internals=None):
     if not origin_id_label in covalent_headers:
       assert 0, 'origin_id_label "%s" not in %s' % (origin_id_label, covalent_headers)
@@ -149,7 +128,6 @@ Look for a key in the list below
           if isinstance(header_info, list):
             if subheader in header_info:
               return i, '%s %s' % (origin_id_label, subheader)
->>>>>>> Stashed changes
 
     print(origin_id_label, subheader)
     assert 0

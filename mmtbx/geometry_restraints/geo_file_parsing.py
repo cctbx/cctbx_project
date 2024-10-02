@@ -8,6 +8,8 @@ from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 
+from libtbx import group_args
+
 class Entry:
   """
   Base class for an 'entry' in a geo file. Analogous to both a proxy and restraint
@@ -38,14 +40,14 @@ class Entry:
     """
     # Parsing data structures
     self.lines = lines               # raw .geo lines
-    self.line_idxs =[line_idx]
+    # self.line_idxs =[line_idx]
     self.i_seqs = []                 # list of integer i_seqs (if possible)
     self.atom_labels  = []           # list of string atom label from .geo
     self._numerical = None           # a dict of numerical geo data
     self.labels_are_i_seqs = None    # boolean, atom labels are i_seqs
     self.labels_are_id_strs = None   # boolean, atom labels are id_strs
     self.origin_id = origin_id
-    self.origin_label = origin_label
+    # self.origin_label = origin_label
 
     # Initialize result data structures
     self._proxy = None
@@ -109,7 +111,7 @@ class Entry:
         }
       d.update(self._numerical)
       d["origin_id"] = self.origin_id
-      d["origin_label"] = self.origin_label
+      # d["origin_label"] = self.origin_label
       self._record = d
     return self._record
 
@@ -482,9 +484,9 @@ class GeoParser:
 
     # Initialize parsing variables
     self.lines = geo_lines + ["\n"]
-    self.line_labels = []
-    self.line_entry_classes = []
-    self.origin_ids = []
+    # self.line_labels = []
+    # self.line_entry_classes = []
+    # self.origin_ids = []
     self.current_entry= None
     self.current_entry_class = None
     self.current_origin_id = 0
@@ -506,8 +508,8 @@ class GeoParser:
     if self.model:
       self._fill_labels_from_model(self.model)
 
-    if self.model or self.labels_are_i_seqs:
-      self._build_proxies()
+    # if self.model or self.labels_are_i_seqs:
+    #   self._build_proxies()
 
 
 
@@ -519,7 +521,7 @@ class GeoParser:
   def has_proxies(self):
     return self.proxies is not None
 
-  def _fill_labels_from_model(self,model):
+  def _fill_labels_from_model(self, model):
     """
     Add i_seq attributes for each atom on each entry
     """
@@ -564,141 +566,204 @@ class GeoParser:
     if self.proxies is not None:
       return list(chain.from_iterable(self.proxies.values()))
 
-  def _check_change_origin_id(self,line):
-    """
-    The origin id is declared once for a block of entries. So we have to detect a change
-    in origin id, and then save the state as 'current_origin_id'.
+  # def _check_change_origin_id(self,line):
+  #   """
+  #   The origin id is declared once for a block of entries. So we have to detect a change
+  #   in origin id, and then save the state as 'current_origin_id'.
 
-    Also, the origin id line contains information about the identity of upcoming entries.
-    This is saved as 'current_entry_class'
+  #   Also, the origin id line contains information about the identity of upcoming entries.
+  #   This is saved as 'current_entry_class'
 
-    Finally, the presence of an origin id specifier line means that any open entry has ended.
-    """
-    origin_id, origin_label = origin_ids.get_origin_label_and_internal(line,verbose=False)
-    if origin_id and origin_label:
+  #   Finally, the presence of an origin id specifier line means that any open entry has ended.
+  #   """
+  #   origin_id, origin_label = origin_ids.get_origin_label_and_internal(line,verbose=False)
+  #   if origin_id and origin_label:
 
-      entry_class_trigger  = self._startswith_plural(line.split("|")[0],self.entry_class_trigger_dict.keys())
-      assert entry_class_trigger
-      self._end_entry()
-      self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
-      self.current_origin_id = origin_id
-      self.current_origin_label = origin_label
-      return True
+  #     entry_class_trigger  = self._startswith_plural(line.split("|")[0],self.entry_class_trigger_dict.keys())
+  #     assert entry_class_trigger
+  #     self._end_entry()
+  #     self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
+  #     self.current_origin_id = origin_id
+  #     self.current_origin_label = origin_label
+  #     return True
 
-  def _check_change_entry_class(self,line):
-    """
-    Checking origin id on a 'default' restraint section header will just return that it is covalent.
-    This function determines what the identity of the upcoming entries will be, and stores it as
-    'current_entry_class'
+  # def _check_change_entry_class(self,line):
+  #   """
+  #   Checking origin id on a 'default' restraint section header will just return that it is covalent.
+  #   This function determines what the identity of the upcoming entries will be, and stores it as
+  #   'current_entry_class'
 
-    Additionally, it resets 'current_origin_id' to 0 (covalent).
-    Note that 'origin_ids.get_origin_label_and_internal' will return covalent for any unrecognized
-    input. This function ensures that we are only switching back to covalent origin ids when a
-    new section of entries is upcoming.
+  #   Additionally, it resets 'current_origin_id' to 0 (covalent).
+  #   Note that 'origin_ids.get_origin_label_and_internal' will return covalent for any unrecognized
+  #   input. This function ensures that we are only switching back to covalent origin ids when a
+  #   new section of entries is upcoming.
 
-    Finally, the presence of a new upcoming entry class means that any open entry has ended.
-    """
-    entry_class_trigger  = self._startswith_plural(line,self.entry_class_trigger_dict.keys())
+  #   Finally, the presence of a new upcoming entry class means that any open entry has ended.
+  #   """
+  #   entry_class_trigger  = self._startswith_plural(line,self.entry_class_trigger_dict.keys())
+  #   if entry_class_trigger:
+  #     self._end_entry()
+  #     self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
+  #     self.current_origin_id = 0
+  #     self.current_origin_label = 'covalent'
+  #     return True
+
+
+  # def _check_line_is_entry(self,line):
+  #   """
+  #   Entries are triggered by keywords, 'bond', 'dihedral', etc
+
+  #   These are mapped to a specific Entry subclass via 'self.entry_trigger_dict'
+  #   """
+  #   entry_trigger = self._startswith_plural(line,self.entry_trigger_dict.keys(),strip=True)
+  #   if entry_trigger in self.entry_trigger_dict:
+  #     if entry_trigger == "plane 1":
+  #       if "plane 2" not in line:
+  #         entry_trigger = "plane"
+  #     self._end_entry()
+  #     entry_class = self.entry_trigger_dict[entry_trigger]
+  #     self.current_entry_class = entry_class
+  #     return True
+
+  # def _parse(self):
+  #   # last_line_label = "init"    # assign a label to every line
+  #   for i,line in enumerate(self.lines + ["\n"] ): # add newline to finish up at end
+  #     # if self.debug:
+  #     #   print(line)
+  #     # # Line labeling accounting. Every line must be classified into some category
+  #     # assert last_line_label, f"Failed to set a line label at line: {i-1}"
+  #     # if i>0:
+  #     #   self.line_labels.append(last_line_label)
+  #     #   self.line_entry_classes.append(self.current_entry_class)
+  #     #   self.origin_ids.append(self.current_origin_id)
+  #     # last_line_label = None
+
+  #     # check blank
+  #     line_strip = line.strip()
+  #     if len(line_strip)==0:
+  #       # last_line_label = "blank"
+  #       self._end_entry()
+  #       continue
+
+  #     # Check for start of new entry
+  #     if self._check_line_is_entry(line):
+  #       # Start new entry
+  #       self._end_entry()
+  #       # last_line_label = "entry_trigger"
+
+  #       self.current_entry = self.current_entry_class(
+  #           line_idx=i,
+  #           lines=[],
+  #           origin_id=self.current_origin_id,
+  #           origin_label=self.current_origin_label)
+  #       if self.current_entry_class == PlaneEntry:
+  #         j = i-1 # The prior line
+  #         self.current_entry.lines.append(self.lines[j])
+  #       self.current_entry.lines.append(line)
+  #       continue
+
+  #     # Check change in origin id
+  #     if self._check_change_origin_id(line):
+  #       # last_line_label = "origin_trigger"
+  #       continue
+
+
+  #     # Check change in entry class
+  #     if self._check_change_entry_class(line):
+  #       # last_line_label = "entry_class_trigger"
+  #       continue
+
+
+  #     # Check for data
+  #     if self.current_entry:
+  #       self.current_entry.lines.append(line)
+  #       # self.current_entry.line_idxs.append(i)
+  #       # last_line_label = "data"
+  #       continue
+
+  #     # # Catch all
+  #     # last_line_label = "unknown"
+
+  #   # # End of function
+  #   # self.line_labels.append(last_line_label)
+
+
+  # def _end_entry(self):
+  #   """
+  #   Called at the end of an entry when parsing line-by-line
+  #     Adds the entry to the container
+  #   """
+  #   if self.current_entry:
+  #     if self.current_entry_class == PlaneEntry:
+  #       self.current_entry.lines = self.current_entry.lines[:-1]
+  #     try:
+  #       self.current_entry.finalize()
+  #       self.entries[self.current_entry_class.name].append(self.current_entry)
+  #     except (TypeError, ValueError):
+  #       if self.debug:
+  #         raise
+
+  #     self.current_entry = None
+
+
+  # 567-728
+
+
+  def _parse_geo_file_header_full(self, line):
+    class_trigger_to_entry = {value[1]:value[2] for value in self.entry_class_config}
+    answer = None
+    # print("line:", line)
+    entry_class_trigger  = self._startswith_plural(line.split("|")[0],self.entry_class_trigger_dict.keys())
     if entry_class_trigger:
-      self._end_entry()
-      self.current_entry_class = self.entry_class_trigger_dict[entry_class_trigger]
-      self.current_origin_id = 0
-      self.current_origin_label = 'covalent'
-      return True
+      origin_id, _ = origin_ids.get_origin_label_and_internal(line)
+      restraint_type = self.entry_class_trigger_dict[entry_class_trigger]
+      answer = group_args(
+          entry_type = restraint_type,
+          origin_id = origin_id,
+          entry_type_start_word = class_trigger_to_entry[entry_class_trigger])
+    # print('answer:', answer)
+    return answer
 
-
-  def _check_line_is_entry(self,line):
-    """
-    Entries are triggered by keywords, 'bond', 'dihedral', etc
-
-    These are mapped to a specific Entry subclass via 'self.entry_trigger_dict'
-    """
-    entry_trigger = self._startswith_plural(line,self.entry_trigger_dict.keys(),strip=True)
-    if entry_trigger in self.entry_trigger_dict:
-      if entry_trigger == "plane 1":
-        if "plane 2" not in line:
-          entry_trigger = "plane"
-      self._end_entry()
-      entry_class = self.entry_trigger_dict[entry_trigger]
-      self.current_entry_class = entry_class
-      return True
+  def _end_entry(self, entry_start_line_number, i, entries_info):
+    # check that this is not the first line of the block
+    if entry_start_line_number != -1:
+      # Create an entry
+      if entries_info.entry_type_start_word == 'plane':
+        lines_for_entry = self.lines[entry_start_line_number-1:i-1]
+      else:
+        lines_for_entry = self.lines[entry_start_line_number:i]
+      # print('lines for entry:')
+      # print("".join(lines_for_entry))
+      new_entry = entries_info.entry_type(
+          lines=lines_for_entry,
+          origin_id=entries_info.origin_id)
+      new_entry.finalize()
+      # add new_entry to somewhere
+      self.entries[entries_info.entry_type_start_word].append(new_entry)
+    return i
 
   def _parse(self):
-    last_line_label = "init"    # assign a label to every line
-    for i,line in enumerate(self.lines + ["\n"] ): # add newline to finish up at end
-      if self.debug:
-        print(line)
-      # Line labeling accounting. Every line must be classified into some category
-      assert last_line_label, f"Failed to set a line label at line: {i-1}"
-      if i>0:
-        self.line_labels.append(last_line_label)
-        self.line_entry_classes.append(self.current_entry_class)
-        self.origin_ids.append(self.current_origin_id)
-      last_line_label = None
+    entries_info=None # entries_info = group_args(origin_id, entry_type, entry_type_start_word)
+    entry_start_line_number = -1
 
-      # check blank
-      line_strip = line.strip()
-      if len(line_strip)==0:
-        last_line_label = "blank"
+    for i, l in enumerate(self.lines + ["\n"]):
+      if entries_info is None:
+        # new block starts because we don't know entries_info
+        entries_info = self._parse_geo_file_header_full(l) # "get_origin_label_and_internal"
+        entry_start_line_number = -1
+      elif l.startswith("Sorted by"):
+        pass
+      elif l.strip() == "":
+        # block ends
+        entry_start_line_number = self._end_entry(entry_start_line_number, i, entries_info)
+        entries_info=None
+      elif l.strip().startswith(entries_info.entry_type_start_word):
+        # entry ends, the next is coming
+        entry_start_line_number = self._end_entry(entry_start_line_number, i, entries_info)
+      else:
+        # entry continues, do nothing
+        pass
 
-        self._end_entry()
-        continue
-
-      # Check for start of new entry
-      if self._check_line_is_entry(line):
-        # Start new entry
-        self._end_entry()
-        last_line_label = "entry_trigger"
-
-        self.current_entry = self.current_entry_class(line_idx=i,lines=[],origin_id=self.current_origin_id,origin_label=self.current_origin_label)
-        if self.current_entry_class == PlaneEntry:
-          j = i-1 # The prior line
-          self.current_entry.lines.append(self.lines[j])
-        self.current_entry.lines.append(line)
-        continue
-
-      # Check change in origin id
-      if self._check_change_origin_id(line):
-        last_line_label = "origin_trigger"
-        continue
-
-
-      # Check change in entry class
-      if self._check_change_entry_class(line):
-        last_line_label = "entry_class_trigger"
-        continue
-
-
-      # Check for data
-      if self.current_entry:
-        self.current_entry.lines.append(line)
-        self.current_entry.line_idxs.append(i)
-        last_line_label = "data"
-        continue
-
-      # Catch all
-      last_line_label = "unknown"
-
-    # End of function
-    self.line_labels.append(last_line_label)
-
-
-  def _end_entry(self):
-    """
-    Called at the end of an entry when parsing line-by-line
-      Adds the entry to the container
-    """
-    if self.current_entry:
-      if self.current_entry_class == PlaneEntry:
-        self.current_entry.lines = self.current_entry.lines[:-1]
-      try:
-        self.current_entry.finalize()
-        self.entries[self.current_entry_class.name].append(self.current_entry)
-      except (TypeError, ValueError):
-        if self.debug:
-          raise
-
-      self.current_entry = None
 
   def _startswith_plural(self,text, labels, strip=False):
     """

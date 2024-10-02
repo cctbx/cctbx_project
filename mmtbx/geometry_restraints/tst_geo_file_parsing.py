@@ -7,6 +7,7 @@ from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from mmtbx.geometry_restraints.geo_file_parsing import GeoParser
+from libtbx.test_utils import approx_equal, show_diff
 
 """
 Example usage:
@@ -1423,12 +1424,12 @@ def extract_results(container,print_result=False):
     entry = entries[0]
     results[entry_name].append(entry.record)
 
+  #Print output to make tests
+  js = json.dumps(results,indent=2)
+  js = js.replace('\\\"','\\\\\\"')
   if print_result:
-    #Print output to make tests
-    js = json.dumps(results,indent=2)
-    js = js.replace('\\\"','\\\\\\"')
     print(js)
-  return results
+  return results, js
 
 # Start tests
 def init_model():
@@ -1454,10 +1455,12 @@ def tst_01(model,printing=False):
 
   if printing:
     print("\n\ntst_01")
-  results = extract_results(geo_container,print_result=printing)
+  results, str_results = extract_results(geo_container,print_result=printing)
 
   # Check values
-  assert expected==results
+  assert not show_diff(str_results, result_json_1.replace('\\\"','\\\\\\"'))
+  # assert expected==results
+
 
   # Check numbers
   records = geo_container.records_list
