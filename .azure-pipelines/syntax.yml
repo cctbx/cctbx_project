@@ -46,7 +46,7 @@ jobs:
       git fetch gitlab
       git push -u gitlab master
     displayName: Update GitLab mirror
-    condition: and(eq(variables['PYTHON_VERSION'], '3.9'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+    condition: eq(variables['PYTHON_VERSION'], '3.9')
     continueOnError: true
 
   - script: echo "##vso[task.prependpath]$CONDA/bin"
@@ -55,6 +55,12 @@ jobs:
   - script: |
       conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons
     displayName: Create conda environment
+    condition: ne(variables['PYTHON_VERSION'], '3.13')
+
+  - script: |
+      conda create -y -c conda-forge -c conda-forge/label/python_rc -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
+    displayName: Create conda environment
+    condition: eq(variables['PYTHON_VERSION'], '3.13')
 
   - script: |
       set -xe
