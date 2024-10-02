@@ -127,7 +127,7 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
     input_string+=str(md.chem_comp.as_cif_loop())
     f=StringIO()
     md.show(f=f)
-    input_string += '\ndata_comp_1PZ\n'
+    input_string += '\ndata_comp_%s\n' % residue.resname
     input_string += '\n%s' % f.getvalue()
     cif_object = iotbx.cif.reader(input_string=input_string).model()
   return md, cif_object
