@@ -277,14 +277,16 @@ def get_selection_from_chain_dict(chain_dict, minimum_segment_length = None,
         if minimum_segment_length and minimum_segment_length > 1:
           continue # too short
         i = resseq_encode(c).replace(" ","")
-        selection_list.append(" ( chain %s and resseq %s:%s) " %(chain_id, i,i))
+        selection_list.append(" ( chain '%s' and resseq %s:%s) " %(
+          chain_id, i,i))
       else:
         if minimum_segment_length and \
            minimum_segment_length > (c[1] - c[0]) + 1:
           continue # too short
         i = resseq_encode(c[0]).replace(" ","")
         j = resseq_encode(c[1]).replace(" ","")
-        selection_list.append(" (chain %s and resseq %s:%s) " %(chain_id, i,j))
+        selection_list.append(" (chain '%s' and resseq %s:%s) " %(
+          chain_id, i,j))
       if return_as_dict:
         info_dict[chain_id].append([c[0],c[1]])
   if return_as_dict:
