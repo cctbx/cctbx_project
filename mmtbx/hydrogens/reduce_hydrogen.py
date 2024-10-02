@@ -74,9 +74,12 @@ def get_h_restraints(resname, strict=True):
 
   from mmtbx.ligands.rdkit_utils import enumerate_angles
   for angle in enumerate_angles(molecule):
-    if angle[0] in hsi or angle[2] in hsi:
+    if strict:
+      if angle[0] in hsi or angle[2] in hsi:
+        av = rdMolTransforms.GetAngleDeg(conf, angle[0], angle[1], angle[2])
+      else: continue
+    else:
       av = rdMolTransforms.GetAngleDeg(conf, angle[0], angle[1], angle[2])
-    else: continue
     comp_comp_id.angle_list.append(cif_types.chem_comp_angle(
       atom_id_1=lookup[angle[0]],
       atom_id_2=lookup[angle[1]],
@@ -86,9 +89,12 @@ def get_h_restraints(resname, strict=True):
 
   from mmtbx.ligands.rdkit_utils import enumerate_torsions
   for i, angle in enumerate(enumerate_torsions(molecule)):
-    if angle[0] in hsi or angle[3] in hsi:
+    if strict:
+      if angle[0] in hsi or angle[3] in hsi:
+        av = rdMolTransforms.GetDihedralDeg(conf, angle[0], angle[1], angle[2], angle[3])
+      else: continue
+    else:
       av = rdMolTransforms.GetDihedralDeg(conf, angle[0], angle[1], angle[2], angle[3])
-    else: continue
     comp_comp_id.tor_list.append(cif_types.chem_comp_tor(
       id='Var_%03d' % i,
       atom_id_1=lookup[angle[0]],
@@ -114,7 +120,7 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
     atom_names=residue.atoms().extract_name())
   cif_object=None
   if md is None:
-    md = get_h_restraints(residue.resname)
+    md = get_h_restraints(residue.resname, strict=False)
     # md.show()
     from six.moves import cStringIO as StringIO
     input_string='data_comp_list\n'
