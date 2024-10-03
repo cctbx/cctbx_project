@@ -132,6 +132,14 @@ Example:
       .short_caption = LJ distance yielding zero
       .help = Distance at which modified Lennard-Jones potential crosses zero
 
+    const_shrink_donor_acceptor = 0
+      .type = float
+      .help = Allow contacts closer by const_shrink_donor_acceptor from \
+                normal target for H-bonding atoms. NOTE: matches \
+                behavior of Phenix pre-2024.
+      .short_caption = Shrink donor acceptor distance
+
+
     softPnna_params {
       y0 = 1
       .type = float
@@ -199,6 +207,7 @@ Example:
      cbetadev_sigma = self.params.cbetadev_sigma,
      clashscore_ideal_dist = self.params.clashscore_ideal_dist,
      lj_dist_that_yields_zero = self.params.lj_dist_that_yields_zero,
+     const_shrink_donor_acceptor = self.params.const_shrink_donor_acceptor,
      softPnna_params = self.params.softPnna_params,
       log =self.logger)
 

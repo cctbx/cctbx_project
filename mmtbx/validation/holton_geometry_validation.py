@@ -86,6 +86,7 @@ def holton_geometry_validation(dm = None,
      cbetadev_sigma = 0.05,  # Sigma for CB position
      clashscore_ideal_dist = 3,  # Ideal distance in LJ for clashscore result
      lj_dist_that_yields_zero = 6, # Distance for modified LJ to cross zero
+     const_shrink_donor_acceptor = 0, # 0.6 reinstates value prior to  2024
      n_random = 20,
      sd_to_use = 3,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
@@ -991,7 +992,8 @@ def get_model(info):
   # Allow polymer to cross special positions if necessary
   p = info.model.get_current_pdb_interpretation_params()
   p.pdb_interpretation.allow_polymer_cross_special_position=True
-  # p.pdb_interpretation.const_shrink_donor_acceptor=0.6 # REINSTATES ORIGINAL
+  p.pdb_interpretation.const_shrink_donor_acceptor=\
+      info.const_shrink_donor_acceptor
   info.model.process(make_restraints=True,
      pdb_interpretation_params = p)
   info.model.setup_riding_h_manager(idealize=True)
