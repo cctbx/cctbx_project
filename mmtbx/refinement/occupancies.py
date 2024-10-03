@@ -478,6 +478,20 @@ def occupancy_selections(
         result__.append(flex.size_t(sel))
       result_.append(result__)
     result = result_
+  #
+  # Make sure remove_selection is really applied!!!
+  #
+  if(remove_selection is not None):
+    sel_rm = get_atom_selections(
+      model               = model,
+      selection_strings   = remove_selection,
+      iselection          = True,
+      one_selection_array = True)
+    result = mmtbx.utils.remove_selections(
+      selection = result,
+      other = sel_rm,
+      size = model.get_number_of_atoms())
+  #
   return result
 
 def occupancy_regroupping(pdb_hierarchy, cgs):
