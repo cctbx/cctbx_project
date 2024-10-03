@@ -1675,15 +1675,15 @@ def tst_07(model,printing=False):
 
 
 def main():
-  printing = True # Print results
+  printing = False # Print results
   model = init_model()
   tst_01(model,printing=printing)
   tst_02(model,printing=printing)
   tst_03(model,printing=printing)
   tst_04(model,printing=printing)
   tst_05(model,printing=printing)
-  #tst_06(model,printing=printing)
-  #tst_07(model,printing=printing)
+  tst_06(model,printing=printing)
+  tst_07(model,printing=printing)
   print('OK')
 
 if __name__ == '__main__':
