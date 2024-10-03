@@ -228,7 +228,7 @@ class DihedralEntry(Entry):
 
 
 class ChiralityEntry(Entry):
-  name = "chiral"
+  name = "chirality"
 
   @property
   def both_signs(self):
@@ -440,14 +440,13 @@ entry_class_config_default = (
   #
   # Entry title: A value returned by origin_ids.get_origin_label_and_internal, determines Entry subclass
   # Entry trigger: a text field in a .geo file which indicates the start of a new entry section
-  # Note that order matters, 'plane 1' must be checked before 'plane'
   (NonBondedEntry,"Nonbonded",'nonbonded'),
   (AngleEntry,"Bond angle","angle"),
   (BondEntry,"Bond","bond"),
   (DihedralEntry, "Dihedral angle",'dihedral'),
   (ChiralityEntry,"Chirality",'chirality'),
-  (ParallelityEntry,"Parallelity", "              delta"),
-  (PlaneEntry,"Planarity","plane"),
+  (ParallelityEntry,"Parallelity", "plane 1"),
+  (PlaneEntry,"Planarity", "delta"),
   (PlaneEntry,"Plane","plane"),
   )
 
@@ -592,13 +591,12 @@ class GeoParser:
           origin_id=entries_info.origin_id)
       new_entry.finalize()
       # add new_entry to somewhere
-      self.entries[entries_info.entry_type_start_word].append(new_entry)
+      self.entries[entries_info.entry_type.name].append(new_entry)
     return i
 
   def _parse(self):
     entries_info=None # entries_info = group_args(origin_id, entry_type, entry_type_start_word)
     entry_start_line_number = -1
-
     for i, l in enumerate(self.lines + ["\n"]):
       if entries_info is None:
         # new block starts because we don't know entries_info
@@ -617,7 +615,6 @@ class GeoParser:
         # entry continues, do nothing
         pass
 
-
   def _startswith_plural(self,text, labels, strip=False):
     """
     Utility function to compare a list of labels with a text string.
@@ -629,19 +626,6 @@ class GeoParser:
       if text.startswith(label):
         return label
     return None
-
-  def _debug_print(self,start=0,stop=-1):
-    if stop == -1:
-      stop = len(self.lines)
-    for i in range(start,stop):
-      line = self.lines[i]
-      label = self.line_labels[i]
-      clas = self.line_entry_classes[i]
-      oid = self.origin_ids[i]
-      if clas:
-        clas = clas.__name__
-      print(str(i).ljust(6),label.ljust(15),str(clas).ljust(15),str(oid).ljust(3),line)
-
 
   @property
   def records(self):
