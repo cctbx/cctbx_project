@@ -445,10 +445,9 @@ def occupancy_selections(
         selection_strings   = remove_selection,
         iselection          = True,
         one_selection_array = True)
-      print(sel_rm, sel_rm.size())
-    if water_selection is not None:
-      water_selection = flex.size_t(
-        list(set(water_selection).difference(sel_rm)))
+      if water_selection is not None:
+        water_selection = flex.size_t(
+          list(set(water_selection).difference(sel_rm)))
     if water_selection.size()>0:
       def flatten(lst):
         flat_list = []
