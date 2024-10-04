@@ -160,6 +160,7 @@ class fmodel_mixins(object):
                  scattering_table = None,
                  mask_params = None,
                  free_r_flags_scope = 'miller_array.labels.name',
+                 model_filename = None,
                  ):
     """
     Create mmtbx.fmodel.manager object using atomic model and diffraction data.
@@ -181,8 +182,11 @@ class fmodel_mixins(object):
         assert isinstance(crystal_symmetry, libtbx.phil.scope_extract)
     # Gather models of appropriate type
     models = []
-    for filename in self.get_model_names(model_type=array_type):
-      models.append(self.get_model(filename, model_type=array_type))
+    if model_filename:
+      models.append(self.get_model(model_filename,model_type=array_type)) 
+    else:
+      for filename in self.get_model_names(model_type=array_type):
+        models.append(self.get_model(filename, model_type=array_type))
     if(len(models) == 0):
       raise Sorry("No model of '%s' type found to make fmodel."%array_type)
     if(len(models) > 1):
