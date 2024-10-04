@@ -1420,7 +1420,7 @@ _chem_comp_angle.value_angle_esd   3.000
   geo_file = open(pdb_file.name+".geo", "r")
   geo_file_str = geo_file.read()
   geo_file.close()
-  assert "Bond angle restraints: 1" in geo_file_str
+  assert "Bond angle | covalent geometry | restraints: 1" in geo_file_str
 
 def exercise_do_not_link(mon_lib_srv, ener_lib):
   """
