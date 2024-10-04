@@ -531,9 +531,9 @@ def contains_lines(lines, expected):
   return contains_substring(
     actual=lines, expected=expected, failure_prefix="contains_lines() ")
 
-def assert_lines_in_text(text, lines,
+def assert_lines_text(text, lines, present=True,
     remove_white_spaces=True, remove_newline=True):
-  """Tests if lines present in the text.
+  """Tests if lines present or absent in the text.
 
   Args:
       text (str): source text
@@ -550,8 +550,41 @@ def assert_lines_in_text(text, lines,
   if remove_newline:
     text = text.replace(os.linesep,"")
     filtered_lines = filtered_lines.replace(os.linesep,"")
-  assert text.find(filtered_lines) >= 0, \
-      "Lines:\n %s\n are not found" % (lines)
+  if present:
+    assert text.find(filtered_lines) >= 0, \
+        "Lines:\n %s\n are not found" % (lines)
+  else:
+    assert text.find(filtered_lines) < 0, \
+        "Lines:\n %s\n are found, but they should not be there." % (lines)
+
+
+def assert_lines_in_text(text, lines,
+    remove_white_spaces=True, remove_newline=True):
+  """Tests if lines present in the text.
+
+  Args:
+      text (str): source text
+      lines (str): lines to search for
+      remove_white_spaces (bool, optional): Remove whitespaces for more robust search.
+          Defaults to True.
+      remove_newline (bool, optional): Remove newlines for more robust search.
+          Defaults to True.
+  """
+  assert_lines_text(text, lines, True, remove_white_spaces, remove_newline)
+
+def assert_lines_not_in_text(text, lines,
+    remove_white_spaces=True, remove_newline=True):
+  """Ensures that lines are NOT present in the text.
+
+  Args:
+      text (str): source text
+      lines (str): lines to search for
+      remove_white_spaces (bool, optional): Remove whitespaces for more robust search.
+          Defaults to True.
+      remove_newline (bool, optional): Remove newlines for more robust search.
+          Defaults to True.
+  """
+  assert_lines_text(text, lines, False, remove_white_spaces, remove_newline)
 
 def assert_lines_in_file(file_name, lines,
     remove_white_spaces=True, remove_newline=True):
@@ -563,6 +596,17 @@ def assert_lines_in_file(file_name, lines,
   f.close()
   assert_lines_in_text(f_lines, lines=lines,
       remove_white_spaces=remove_white_spaces, remove_newline=remove_newline)
+
+def assert_lines_not_in_file(file_name, lines,
+    remove_white_spaces=True, remove_newline=True):
+  """
+  lines here is a text, not a list of lines.
+  """
+  with open(file_name,'r') as f:
+    f_lines = f.read()
+    assert_lines_not_in_text(f_lines, lines=lines,
+        remove_white_spaces=remove_white_spaces, remove_newline=remove_newline)
+
 
 class RunCommandError(RuntimeError): pass
 
