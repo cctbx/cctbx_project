@@ -94,6 +94,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
       }
       return !interrupted;
     }
+    void interrupt() {
+      interrupted = true;
+    }
   private:
     mutable bool interrupted;
     static int& available_threads_var() {
@@ -236,6 +239,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           while (job.running) {
             boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
             if (!this->OnProgress(~0, ~0)) {
+              this->interrupt();
               th.join();
               throw SMTBX_ERROR("external_interrupt");
             }
@@ -273,7 +277,6 @@ namespace smtbx { namespace refinement { namespace least_squares {
           accumulators.push_back(accumulator);
           pool.create_thread(boost::ref(*accumulator));
         }
-        //pool.join_all();
         while (true) {
           bool running = false;
           for (int thread_idx = 0; thread_idx < thread_count; thread_idx++) {
@@ -288,6 +291,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
           }
           boost::this_thread::sleep_for(boost::chrono::milliseconds(100));
           if (!this->OnProgress(~0, ~0)) {
+            this->interrupt();
             pool.join_all();
             throw SMTBX_ERROR("external_interrupt");
           }
