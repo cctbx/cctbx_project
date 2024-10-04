@@ -183,7 +183,7 @@ class fmodel_mixins(object):
     # Gather models of appropriate type
     models = []
     if model_filename:
-      models.append(self.get_model(model_filename,model_type=array_type)) 
+      models.append(self.get_model(model_filename,model_type=array_type))
     else:
       for filename in self.get_model_names(model_type=array_type):
         models.append(self.get_model(filename, model_type=array_type))
