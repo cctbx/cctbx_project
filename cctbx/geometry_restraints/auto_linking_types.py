@@ -29,7 +29,7 @@ covalent_headers = ['Bond',
                     "Bond angle",
                     "Dihedral angle",
                     "Chirality",
-                    "Plane",
+                    "Planarity",
                     "Parallelity",
                     ]
 
@@ -43,7 +43,7 @@ internal_labels = ['bonds',
 
 starting_id = 0
 for link_info in [
-    ['covalent geometry', [0,1,2,3,4,5]], # 0
+    ['covalent geometry', 'covalent geometry', [0,1,2,3,4,5]], # 0
     ['SS BOND', # short desc.
      # complete desc.
      'Disulphide bond for CYS-like sulphur atoms within 3A (default) using '

@@ -704,7 +704,7 @@ def test_geo(result, opposite=False):
 
 def main():
   write_and_run(large_pdb)
-  result = '''Plane | Basepair planarity | restraints: 5
+  result = '''Planarity | Basepair planarity | restraints: 5
 Sorted by residual:
                                delta    sigma   weight rms_deltas residual
 plane pdb=" C1'  DC C   7 "   -0.366 1.76e-01 3.23e+01   1.84e-01 2.28e+01
