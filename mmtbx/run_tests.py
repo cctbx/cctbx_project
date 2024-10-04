@@ -428,6 +428,7 @@ molprobity_tests = [
   "$D/validation/regression/tst_rama_z_02.py",
   "$D/regression/pdb_interpretation/tst_edits.py",
   "$D/regression/pdb_interpretation/tst_edits_actions.py",
+  "$D/regression/pdb_interpretation/tst_tardy_geo.py",
   "$D/regression/pdb_interpretation/tst_using_ncs_1.py",
   "$D/regression/pdb_interpretation/tst_using_ncs_2.py",
   "$D/regression/tst_add_arrows_on_plot.py",
