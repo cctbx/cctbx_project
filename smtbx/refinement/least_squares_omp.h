@@ -97,9 +97,6 @@ struct accumulate_reflection_chunk_omp {
         gradients.resize(size * n_rows, 0);
       }
       for (int i_h = 0; i_h * size < n; i_h++) {
-        if (!parent.OnProgress(n, i_h)) {
-          return;
-        }
         const int start = i_h * size;
         //check whether last chunk is smaller
         if (start + size >= n) {
@@ -121,6 +118,9 @@ struct accumulate_reflection_chunk_omp {
               continue;
             }
             const int refl_i = start + run;
+            if (!parent.OnProgress(n, refl_i)) {
+              continue;
+            }
             miller::index<> const& h = reflections.index(refl_i);
             const twin_fraction<FloatType>* fraction = reflections.fraction(refl_i);
             try {
@@ -194,6 +194,9 @@ struct accumulate_reflection_chunk_omp {
                 gradient.size() * sizeof(FloatType));
             }
           }
+        }
+        if (!parent.OnProgress(0, 0)) {
+          return;
         }
         if (!error_flag) {
           if (objective_only) {
