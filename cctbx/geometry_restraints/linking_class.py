@@ -113,7 +113,10 @@ Look for a key in the list below
     else: return info[0]
 
   def parse_geo_file_header(self, origin_id_label, subheader=None, internals=None):
-    if not origin_id_label in covalent_headers:
+    if origin_id_label in ['Nonbonded']:
+      # special case for Nonbonded
+      return 0, origin_id_label
+    elif not origin_id_label in covalent_headers:
       assert 0, 'origin_id_label "%s" not in %s' % (origin_id_label, covalent_headers)
     info = self.data.get(origin_id_label, None)
     if info:
@@ -136,37 +139,54 @@ Look for a key in the list below
     if verbose:
       for origin_label, info in self.data.items():
         print('origin_label, info',origin_label,info)
+    if query_header.find('|')==-1: return None
     tmp = query_header.split('|')
-    if len(tmp)==1:
-      oi = 0 # default
-      rc = 'covalent'
-    else:
-      header=tmp[0].strip()
-      subheader=tmp[1].strip()
-      oi, rc = self.parse_geo_file_header(header, subheader=subheader)
-    return oi, rc
+    header=tmp[0].strip()
+    subheader=tmp[1].strip()
+    oi, rc = self.parse_geo_file_header(header, subheader=subheader)
+    tmp = query_header.split(':')
+    num = int(tmp[-1])
+    return oi, rc, num
 
 if __name__=='__main__':
   lc = linking_class()
   print(lc)
-  for line in [ 'Bond restraints',
-                'Bond | Misc. | restraints',
-                'Bond | link_BETA1-4 | restraints',
-                'Bond | link_TRANS | restraints',
-                'Bond angle restraints',
-                'Bond angle | link_BETA1-4 | restraints',
-                'Bond angle | link_TRANS | restraints',
-                'Dihedral angle restraints',
-                'Dihedral angle | C-Beta improper | restraints',
-                'Dihedral angle | link_TRANS | restraints',
-                'Chirality restraints',
-                'Chirality | link_BETA1-4 | restraints',
-                'Planarity restraints',
-                'Plane | link_TRANS | restraints',
+  for line in [ 'Bond | covalent geometry | restraints: -1',
+                'Bond | Misc. | restraints: -1',
+                'Bond | link_BETA1-4 | restraints: -1',
+                'Bond | link_TRANS | restraints: -1',
+                'Bond angle | covalent geometry | restraints: -1',
+                'Bond angle | link_BETA1-4 | restraints: -1',
+                'Bond angle | link_TRANS | restraints: -1',
+                'Dihedral angle | covalent geometry | restraints: -1',
+                'Dihedral angle | C-Beta improper | restraints: -1',
+                'Dihedral angle | link_TRANS | restraints: -1',
+                'Chirality | covalent geometry | restraints: -1',
+                'Chirality | link_BETA1-4 | restraints: -1',
+                'Planarity | covalent geometry | restraints: -1',
+                'Planarity | link_TRANS | restraints: -1',
 
-                "Bond | Bond-like | restraints",
-                "Bond angle | Secondary Structure restraints around h-bond | restraints",
-                "Parallelity | Stacking parallelity | restraints",
-                "Parallelity | Basepair parallelity | restraints",
+                "Bond | Bond-like | restraints: -1",
+                "Bond angle | Secondary Structure restraints around h-bond | restraints: -1",
+                "Parallelity | Stacking parallelity | restraints: -1",
+                "Parallelity | Basepair parallelity | restraints: -1",
+                'random line',
+
+                #148L
+                'Bond | covalent geometry | restraints: 1390',
+                'Bond | Misc. | restraints: 4',
+                'Bond | link_BETA1-4 | restraints: 1',
+                'Bond | link_TRANS | restraints: 1',
+                'Bond angle | covalent geometry | restraints: 1868',
+                'Bond angle | link_BETA1-4 | restraints: 3',
+                'Bond angle | link_TRANS | restraints: 3',
+                'Dihedral angle | covalent geometry | restraints: 563',
+                'Dihedral angle | C-Beta improper | restraints: 308',
+                'Dihedral angle | link_TRANS | restraints: 3',
+                'Chirality | covalent geometry | restraints: 210',
+                'Chirality | link_BETA1-4 | restraints: 1',
+                'Planarity | covalent geometry | restraints: 238',
+                'Planarity | link_TRANS | restraints: 1',
+                'Nonbonded | unspecified | interactions: 15086',
     ]:
     print('.........',line, lc.get_origin_label_and_internal(line))
