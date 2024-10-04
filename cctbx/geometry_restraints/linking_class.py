@@ -144,9 +144,10 @@ Look for a key in the list below
     header=tmp[0].strip()
     subheader=tmp[1].strip()
     oi, rc = self.parse_geo_file_header(header, subheader=subheader)
+    rc = rc.replace(header, '').strip()
     tmp = query_header.split(':')
     num = int(tmp[-1])
-    return oi, rc, num
+    return oi, header, rc, num
 
 if __name__=='__main__':
   lc = linking_class()
