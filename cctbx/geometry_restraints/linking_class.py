@@ -136,6 +136,18 @@ Look for a key in the list below
     assert 0
 
   def get_origin_label_and_internal(self, query_header, verbose=False):
+    '''
+    Input:
+      Line from a .geo file
+    Returns:
+      None if not a header line
+      If heasder:
+        Origin_id :
+        Bond type : Bond, Bond angle, ...
+        Subtype   : A string related mostly to the cif_link used but also
+                    origin_id
+
+    '''
     if verbose:
       for origin_label, info in self.data.items():
         print('origin_label, info',origin_label,info)
