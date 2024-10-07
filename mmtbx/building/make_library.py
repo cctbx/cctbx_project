@@ -82,14 +82,20 @@ def load_pdb_models(pdb_ids, fault_tolerant=False, log=null_out()):
   unknown atoms).
   """
   import iotbx.pdb.fetch
+  import iotbx.pdb
   iotbx.pdb.fetch.validate_pdb_ids(pdb_ids)
   ids_and_hierarchies = []
   for pdb_id in pdb_ids :
     try :
-      pdb_hierarchy, xray_structure = iotbx.pdb.fetch.load_pdb_structure(
-        id=pdb_id,
-        allow_unknowns=True,
-        local_cache=os.getcwd())
+      data = iotbx.pdb.fetch.fetch(id=pdb_id, format=format, log=null_out(), local_cache=os.getcwd())
+      pdb_in = iotbx.pdb.input(source_info=None, lines=libtbx.utils.to_str(data.read()))
+      pdb_hierarchy = pdb_in.construct_hierarchy()
+      pdb_hierarchy.atoms().reset_i_seq()
+      # XXX enable_scattering_type_unknown can be modified here because the PDB
+      # (unfortunately) contains many unknowns which would crash this
+      xray_structure = pdb_in.xray_structure_simple(
+        enable_scattering_type_unknown=allow_unknowns)
+      return hierarchy, xray_structure
     except Exception as e :
       if (not fault_tolerant):
         raise

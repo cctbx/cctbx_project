@@ -14,6 +14,7 @@ from __future__ import absolute_import, division, print_function
 import libtbx.phil
 from libtbx.utils import Sorry, Usage
 from libtbx import easy_run
+from iotbx.pdb.fetch import get_pdb
 import sys
 import os
 
@@ -109,7 +110,6 @@ Command-line options:
   --mtz   Download structure factors and PDB file, and generate MTZ
   -q      suppress printed output
 """)
-  from iotbx.pdb.fetch import get_pdb
   quiet = False
   convert_to_mtz  = False
   data_type = "pdb"
