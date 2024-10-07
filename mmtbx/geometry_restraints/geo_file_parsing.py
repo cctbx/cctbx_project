@@ -197,6 +197,7 @@ class BondEntry(Entry):
 
 class DihedralEntry(Entry):
   name = "dihedral"
+
   @property
   def is_harmonic(self):
     return "harmonic" in self._numerical.keys()
@@ -346,12 +347,12 @@ class ParallelityEntry(Entry):
       pdb_parts = re.findall(r'pdb="([^"]*)"', line)
 
       if len(pdb_parts) >= 1:
-        pdb_value_i = f'pdb="{pdb_parts[0]}"'
+        pdb_value_i = 'pdb="{}"'.format(pdb_parts[0])
 
         remaining_line = line.replace(pdb_value_i, "", 1)
 
         if len(pdb_parts) == 2:
-          pdb_value_j = f'pdb="{pdb_parts[1]}"'
+          pdb_value_i = 'pdb="{}"'.format(pdb_parts[0])
 
           remaining_line = remaining_line.replace(pdb_value_j, "", 1)
           parts = shlex.split(remaining_line)
@@ -441,7 +442,7 @@ entry_class_config_default = (
   (ChiralityEntry,"Chirality",'chirality'),
   (ParallelityEntry,"Parallelity", "plane 1"),
   (PlaneEntry,"Planarity", "delta"),
-  (PlaneEntry,"Plane","delta"),
+  #(PlaneEntry,"Plane","delta"),
   )
 
 
@@ -565,15 +566,18 @@ class GeoParser:
     """
     class_trigger_to_entry = {value[1]:value[2] for value in self.entry_class_config}
     answer = None
-    entry_class_trigger  = self._startswith_plural(line.split("|")[0],self.entry_class_trigger_dict.keys())
-    if entry_class_trigger:
-      origin_id, _ = origin_ids.get_origin_label_and_internal(line)
+    result = origin_ids.get_origin_label_and_internal(line)
+    if result:
+      origin_id, header, rc, num = result
+      entry_class_trigger = header
       restraint_type = self.entry_class_trigger_dict[entry_class_trigger]
       answer = group_args(
           entry_type = restraint_type,
           origin_id = origin_id,
-          entry_type_start_word = class_trigger_to_entry[entry_class_trigger])
-    return answer
+          entry_type_start_word = class_trigger_to_entry[entry_class_trigger],
+          number = num,
+      )
+      return answer
 
   def _end_entry(self, entry_start_line_number, i, entries_info):
     # check that this is not the first line of the block
