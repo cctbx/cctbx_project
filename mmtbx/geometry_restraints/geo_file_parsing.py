@@ -53,14 +53,10 @@ class Entry:
     self._proxy = None
     self._record = None
 
-
-  def finalize(self):
-    # parse lines
     self._prepare()
 
     # Check if labels are i_seqs (integers)
     self.labels_are_i_seqs, self.i_seqs = self._check_labels_are_i_seqs(self.atom_labels)
-
 
   def _prepare(self):
     # Parse Atom labels
@@ -325,11 +321,9 @@ class ParallelityEntry(Entry):
     self.atom_labels_i = []
     self.atom_labels_j = []
     super().__init__(*args,**kwargs)
-
-
-  def finalize(self):
-    super().finalize()
+    self.labels_are_i_seqs, self.i_seqs = self._check_labels_are_i_seqs(self.atom_labels)
     self.i_seqs, self.j_seqs = self.i_seqs # unpack tuple
+    
 
   @property
   def atom_labels(self):
@@ -589,7 +583,6 @@ class GeoParser:
       new_entry = entries_info.entry_type(
           lines=lines_for_entry,
           origin_id=entries_info.origin_id)
-      new_entry.finalize()
       # add new_entry to somewhere
       self.entries[entries_info.entry_type.name].append(new_entry)
     return i
