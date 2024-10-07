@@ -11,7 +11,7 @@ def exercise_01(prefix="tst_tardy_geo"):
     f.write(model_1yjp)
   cmd = "mmtbx.pdb_interpretation %s write_geo_files=True write_tardy_geo_files=True" % fname
   assert not easy_run.call(cmd)
-  assert_lines_in_file(file_name="%s.pdb.geo" % prefix, lines="Bond restraints: 59")
+  assert_lines_in_file(file_name="%s.pdb.geo" % prefix, lines="Bond | covalent geometry | restraints: 59")
   assert_lines_not_in_file(file_name="%s.pdb.tardy.geo" % prefix, lines="Bond restraints")
 
 if(__name__ == "__main__"):
