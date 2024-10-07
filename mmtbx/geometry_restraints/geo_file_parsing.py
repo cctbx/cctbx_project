@@ -13,22 +13,19 @@ from libtbx import group_args
 
 class Entry:
   """
-  Base class for an 'entry' in a geo file. Analogous to both a proxy and restraint
-    Subclass Entry for each type of entry that may be encountered during geo file parsing.
+  1. Base class for an 'entry' in a geo file. Analogous to both a proxy and restraint
+    Entry is subclasses for each type of entry that may be encountered during geo file parsing.
+    The functions for parsing and value type conversion are implemented on the subclasses
 
-  Roles:
-    1. Store restraint-specific parameters for parsing
-    2. Implement interpretation of raw .geo file lines to common attributes
-      Accessing the 'entry.record' attribute will return a dict of all available data
+  2. Accessing the 'entry.record' attribute will return a plain dict with all relevant data
 
-    3.
-        Atom labels can appear in two lists:
-        a. self.atom_labels: The raw atom label strings,  often atom.id_str()
-        b. self.i_seqs: The integer i_seqs coming from:
-                          a. The .geo file if all atom labels are also ints
-                          b. A model file provided upon initialization and id_str labels
+  3. Atom labels can appear in two lists:
+    a. self.atom_labels: The raw atom label strings,  often atom.id_str()
+    b. self.i_seqs: The integer i_seqs coming from:
+                      a. The .geo file if all atom labels are also ints
+                      b. A model file provided upon initialization and id_str labels
 
-    4. Implement a method to convert entry object to cctbx proxy object
+  4. Implement a method to convert entry object to cctbx proxy object (self.to_proxy())
   """
   name = None                 # Name or label for the class
 
@@ -486,6 +483,12 @@ class GeoParser:
   def __init__(self,geo_lines,model=None,entry_config=None,strict_counts=True):
     """
      Initialize with a list of Entry subclasses
+
+     Params:
+       geo_lines (list):             List of line strings from .geo file
+       model (mmtbx.model.manager):  Optional model file, a source of atom_label: i_seq matching.
+       entry_config (dict):          Configuration dict
+       strict_counts (bool):         Whether or not to enforce # of entries consistent with .geo header
     """
 
     # Set initial arguments
