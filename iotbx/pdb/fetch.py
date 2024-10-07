@@ -23,6 +23,7 @@
 # https://pdb-redo.eu/db/1aba/1aba_final.cif
 
 from __future__ import absolute_import, division, print_function
+from collections import defaultdict
 from libtbx.utils import Sorry, null_out
 from libtbx import smart_open
 from libtbx import Auto
@@ -62,7 +63,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
 
   :returns: a filehandle-like object (with read() method)
   """
-  assert data_type in ["pdb", "xray", "fasta", "seq"]
+  assert data_type in ["pdb", "xray", "fasta"]
   assert format in ["cif", "pdb", "xml", "cif_or_pdb"]
   assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
   validate_pdb_id(id)
@@ -141,7 +142,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     elif (data_type == "xray"):
       compressed = True
       url = url_base + "structure_factors/%s/r%ssf.ent.gz" % (id[1:3], id)
-    elif (data_type in ["fasta", "seq"]):
+    elif (data_type =="fasta"):
       url = "https://pdbj.org/rest/downloadPDBfile?format=fasta&id=%s" % id
     if (url is None) and (data_type != "fasta"):
       raise Sorry("Can't determine PDBj download URL for this data/format "+
@@ -159,7 +160,7 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
         url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
     elif (data_type == 'xray'):
       url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
-  if (data_type in ["fasta", "seq"]):
+  if (data_type == "fasta"):
     if (url is None) : # TODO PDBe equivalent doesn't exist?
       # Seems that this url should be working:
       url = "https://www.rcsb.org/fasta/entry/%s" % id
@@ -207,24 +208,11 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
       return gzip.GzipFile(fileobj=StringIO(data.read()))
   return data
 
-def load_pdb_structure(id, format="pdb", allow_unknowns=False,
-    local_cache=None):
-  """
-  Simple utility method to load the PDB hierarchy and xray structure objects
-  directly (without intermediate files).
-  """
-  data = fetch(id=id, format=format, log=null_out(), local_cache=local_cache)
-  import iotbx.pdb
-  pdb_in = iotbx.pdb.input(source_info=None, lines=libtbx.utils.to_str(data.read()))
-  hierarchy = pdb_in.construct_hierarchy()
-  hierarchy.atoms().reset_i_seq()
-  # XXX enable_scattering_type_unknown can be modified here because the PDB
-  # (unfortunately) contains many unknowns which would crash this
-  xray_structure = pdb_in.xray_structure_simple(
-    enable_scattering_type_unknown=allow_unknowns)
-  return hierarchy, xray_structure
+def write_data_to_disc(fname, data):
+    with open(fname, "wb") as f:
+      f.write(data.read())
 
-def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
+def get_pdb(id, data_type, mirror, log, format="pdb"):
   """
   Frontend for fetch(...), writes resulting data to disk.
   """
@@ -232,25 +220,17 @@ def get_pdb(id, data_type, mirror, log, quiet=False, format="pdb"):
     data = fetch(id, data_type, mirror=mirror, format=format, log=log)
   except RuntimeError as e :
     raise Sorry(str(e))
-  file_name = None
-  if data_type == "xray" :
-    file_name = os.path.join(os.getcwd(), "%s-sf.cif" % id)
-    with open(file_name, "wb") as f:
-      f.write(data.read())
-    if not quiet :
-      print("Structure factors saved to %s" % file_name, file=log)
-  elif (data_type in ["fasta", "seq"]):
-    file_name = os.path.join(os.getcwd(), "%s.fa" % id)
-    with open(file_name, "wb") as f:
-      f.write(data.read())
-    if not quiet :
-      print("Sequence saved to %s" % file_name, file=log)
-  else :
-    file_name = os.path.join(os.getcwd(), "%s.%s" %(id, format))
-    with open(file_name, "wb") as f:
-      f.write(data.read())
-    if not quiet :
-      print("Model saved to %s" % file_name, file=log)
+
+  default_value = (os.path.join(os.getcwd(), f"{id}.{format}"), "Model")
+  file_names_titles = defaultdict(lambda: default_value, {
+      "xray":  (os.path.join(os.getcwd(), f"{id}-sf.cif"), "Structure factors"),
+      "fasta": (os.path.join(os.getcwd(), f"{id}.fa"), "Sequence"),
+  })
+
+  file_name, title = file_names_titles[data_type]
+  write_data_to_disc(file_name, data)
+  print("%s saved to %s" % (title, file_name), file=log)
+
   return file_name
 
 def get_chemical_components_cif(code, return_none_if_already_present=False):
@@ -283,11 +263,3 @@ def get_chemical_components_cif(code, return_none_if_already_present=False):
     return chem_comp_cif
   return None
 
-# TODO backwards compatibility, remove ASAP
-def get_ncbi_pdb_blast(*args, **kwds):
-  import iotbx.bioinformatics.structure
-  return iotbx.bioinformatics.structure.get_ncbi_pdb_blast(*args, **kwds)
-
-def get_ebi_pdb_wublast(*args, **kwds):
-  import iotbx.bioinformatics.structure
-  return iotbx.bioinformatics.structure.get_ebi_pdb_wublast(*args, **kwds)
