@@ -441,7 +441,7 @@ entry_class_config_default = (
   (ChiralityEntry,"Chirality",'chirality'),
   (ParallelityEntry,"Parallelity", "plane 1"),
   (PlaneEntry,"Planarity", "delta"),
-  (PlaneEntry,"Plane","plane"),
+  (PlaneEntry,"Plane","delta"),
   )
 
 
@@ -492,6 +492,9 @@ class GeoParser:
     # If model present, add i_seqs
     if self.model:
       self._fill_labels_from_model(self.model)
+
+    # Debug
+    print(self.entries_list[-1].record)
 
   @property
   def proxies(self):
@@ -576,10 +579,7 @@ class GeoParser:
     # check that this is not the first line of the block
     if entry_start_line_number != -1:
       # Create an entry
-      if entries_info.entry_type_start_word == 'plane':
-        lines_for_entry = self.lines[entry_start_line_number-1:i-1]
-      else:
-        lines_for_entry = self.lines[entry_start_line_number:i]
+      lines_for_entry = self.lines[entry_start_line_number:i]
       new_entry = entries_info.entry_type(
           lines=lines_for_entry,
           origin_id=entries_info.origin_id)
