@@ -3,6 +3,7 @@ from collections import defaultdict
 from itertools import chain
 import shlex
 import re
+import json
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
@@ -352,7 +353,7 @@ class ParallelityEntry(Entry):
         remaining_line = line.replace(pdb_value_i, "", 1)
 
         if len(pdb_parts) == 2:
-          pdb_value_i = 'pdb="{}"'.format(pdb_parts[0])
+          pdb_value_j = 'pdb="{}"'.format(pdb_parts[1])
 
           remaining_line = remaining_line.replace(pdb_value_j, "", 1)
           parts = shlex.split(remaining_line)
@@ -430,20 +431,40 @@ class ParallelityEntry(Entry):
 
 ### End Entry classes
 
-entry_class_config_default = (
-  # (Entry subclass, Entry title, entry trigger)
+entry_config_default = {
+  # Keys: The name of the restraint class in the geo header
   #
-  # Entry title: A value returned by origin_ids.get_origin_label_and_internal, determines Entry subclass
-  # Entry trigger: a text field in a .geo file which indicates the start of a new entry section
-  (NonBondedEntry,"Nonbonded",'nonbonded'),
-  (AngleEntry,"Bond angle","angle"),
-  (BondEntry,"Bond","bond"),
-  (DihedralEntry, "Dihedral angle",'dihedral'),
-  (ChiralityEntry,"Chirality",'chirality'),
-  (ParallelityEntry,"Parallelity", "plane 1"),
-  (PlaneEntry,"Planarity", "delta"),
-  #(PlaneEntry,"Plane","delta"),
-  )
+  # entry_class: An Entry subclass, defines parsing function and handles value type conversion
+  # entry_trigger: a unique text field in a .geo file which indicates the start of a new entry
+  "Nonbonded": {
+    "entry_class": NonBondedEntry,
+    "entry_trigger": "nonbonded"
+  },
+  "Bond angle": {
+    "entry_class": AngleEntry,
+    "entry_trigger": "angle"
+  },
+  "Bond": {
+    "entry_class": BondEntry,
+    "entry_trigger": "bond"
+  },
+  "Dihedral angle": {
+    "entry_class": DihedralEntry,
+    "entry_trigger": "dihedral"
+  },
+  "Chirality": {
+    "entry_class": ChiralityEntry,
+    "entry_trigger": "chirality"
+  },
+  "Parallelity": {
+    "entry_class": ParallelityEntry,
+    "entry_trigger": "plane 1"
+  },
+  "Planarity": {
+    "entry_class": PlaneEntry,
+    "entry_trigger": "delta"
+  }
+}
 
 
 class GeoParser:
@@ -462,18 +483,15 @@ class GeoParser:
   """
 
 
-  def __init__(self,geo_lines,model=None,entry_class_config=None):
+  def __init__(self,geo_lines,model=None,entry_config=None,strict_counts=True):
     """
      Initialize with a list of Entry subclasses
     """
 
     # Set initial arguments
-    if not entry_class_config:
-      entry_class_config = entry_class_config_default
-    self.entry_class_config = entry_class_config
-    self.entry_trigger_dict = {value[2]:value[0] for value in self.entry_class_config}
-    self.entry_class_trigger_dict = {value[1]:value[0] for value in self.entry_class_config}
+    self.entry_config = (entry_config if entry_config else entry_config_default)
     self.model = model
+    self.strict_counts = strict_counts
 
     # Initialize parsing variables
     self.lines = geo_lines + ["\n"]
@@ -481,6 +499,8 @@ class GeoParser:
     self.current_entry_class = None
     self.current_origin_id = 0
     self.current_origin_label = 'covalent'
+    self.expected_counts = defaultdict(int)
+    self.actual_counts = defaultdict(int)
 
     # Initialize result variables
     self.entries = defaultdict(list) # Entry instances
@@ -489,13 +509,12 @@ class GeoParser:
 
     # Parse the file
     self._parse()
+    if self.strict_counts:
+      self._validate_counts()
 
     # If model present, add i_seqs
     if self.model:
       self._fill_labels_from_model(self.model)
-
-    # Debug
-    print(self.entries_list[-1].record)
 
   @property
   def proxies(self):
@@ -550,45 +569,16 @@ class GeoParser:
     if self.proxies is not None:
       return list(chain.from_iterable(self.proxies.values()))
 
-  def _parse_geo_file_header_full(self, line):
-    """
-    TODO: Move to linking class
-
-    Collect three items:
-      1. Entry type: ('Bond', 'Angle', etc... The class of restraint)
-      2. Origin ID: (Integer id for Secondary Structure, Metal coordination, etc)
-      3. entry_type_start_word: ('bond', 'angle', etc... indication of a new entry)
-
-    The primary functionality here is 'origin_ids.get_origin_label_and_internal()',
-    but it returns 'covalent' for all unrecognized inputs.
-    So in order to 'trust' the result as a real switch back to covalent, we need to know
-    which lines are headers. This is done using indentifying strings in entry_class_trigger_dict
-    """
-    class_trigger_to_entry = {value[1]:value[2] for value in self.entry_class_config}
-    answer = None
-    result = origin_ids.get_origin_label_and_internal(line)
-    if result:
-      origin_id, header, rc, num = result
-      entry_class_trigger = header
-      restraint_type = self.entry_class_trigger_dict[entry_class_trigger]
-      answer = group_args(
-          entry_type = restraint_type,
-          origin_id = origin_id,
-          entry_type_start_word = class_trigger_to_entry[entry_class_trigger],
-          number = num,
-      )
-      return answer
-
   def _end_entry(self, entry_start_line_number, i, entries_info):
     # check that this is not the first line of the block
     if entry_start_line_number != -1:
       # Create an entry
       lines_for_entry = self.lines[entry_start_line_number:i]
-      new_entry = entries_info.entry_type(
+      new_entry = entries_info.entry_class(
           lines=lines_for_entry,
           origin_id=entries_info.origin_id)
       # add new_entry to somewhere
-      self.entries[entries_info.entry_type.name].append(new_entry)
+      self.entries[entries_info.entry_class.name].append(new_entry)
     return i
 
   def _parse(self):
@@ -597,20 +587,54 @@ class GeoParser:
     for i, l in enumerate(self.lines + ["\n"]):
       if entries_info is None:
         # new block starts because we don't know entries_info
-        entries_info = self._parse_geo_file_header_full(l) # "get_origin_label_and_internal"
-        entry_start_line_number = -1
+
+        # Query linking class with line
+        result = origin_ids.get_origin_label_and_internal(l)
+        if result:
+          # if recognized as header, unpack result, store in entries_info
+          origin_id, header, restraint_class, num = result
+          entry_class = self.entry_config[header]["entry_class"]
+          entry_trigger = self.entry_config[header]["entry_trigger"]
+          entries_info = group_args(
+              entry_class = entry_class,
+              origin_id = origin_id,
+              entry_trigger = entry_trigger,
+              )
+          info_key = str((entry_class.name,origin_id))
+          self.expected_counts[info_key]+=num
+          entry_start_line_number = -1
+
       elif l.startswith("Sorted by"):
         pass
       elif l.strip() == "":
         # block ends
         entry_start_line_number = self._end_entry(entry_start_line_number, i, entries_info)
         entries_info=None
-      elif l.strip().startswith(entries_info.entry_type_start_word):
+      elif l.strip().startswith(entries_info.entry_trigger):
         # entry ends, the next is coming
         entry_start_line_number = self._end_entry(entry_start_line_number, i, entries_info)
       else:
         # entry continues, do nothing
         pass
+
+  def _validate_counts(self):
+    # Call after parsing, verify numbers match .geo headers
+
+    # Populate actual counts
+    for header_name,entries in self.entries.items():
+      for entry in entries:
+        info_key = str((header_name, entry.origin_id))
+        self.actual_counts[info_key]+=1
+    
+    if not self.expected_counts == self.actual_counts:
+      print("Validate counts error:")
+      print()
+      print("Expected counts:")
+      print(json.dumps(self.expected_counts,indent=2))
+      print()
+      print("Actual counts:")
+      print(json.dumps(self.actual_counts,indent=2))
+      assert False, "Expected and actual counts for (restraint header name, origin_id) pairs do not match."
 
   def _startswith_plural(self,text, labels, strip=False):
     """

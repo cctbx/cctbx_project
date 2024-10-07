@@ -54,7 +54,7 @@ tst_1_geo = """
 # Geometry restraints
 
 
-Bond | covalent | restraints: 26
+Bond | covalent geometry | restraints: 1
 Sorted by residual:
 bond pdb=" C1' C     643 " segid="D16S"
      pdb=" N1  C     643 " segid="D16S"
@@ -89,14 +89,14 @@ bond pdb=" ND2 ASN A 303 "
   ideal  model  delta    sigma   weight residual
   1.439  1.441 -0.002 2.00e-02 2.50e+03 8.66e-03
 
-Bond | Bond-like | restraints: 6
+Bond | Bond-like | restraints: 1
 Sorted by residual:
 bond pdb=" O2   DC A  10 "
      pdb=" N2   DG B  11 "
   ideal  model  delta    sigma   weight residual
   2.780  2.873 -0.093 1.00e-01 1.00e+02 8.58e-01
 
-Bond | Metal coordination | restraints: 6
+Bond | Metal coordination | restraints: 1
 Sorted by residual:
 bond pdb="MG   MG  A   1 " segid="A   "
      pdb=" O   HOH A   2 " segid="A   "
@@ -145,7 +145,7 @@ bond pdb=" O4  NAG A 361 "
   ideal  model  delta    sigma   weight residual
   1.439  1.442 -0.003 2.00e-02 2.50e+03 2.84e-02
 
-Bond angle | covalent | restraints: 35
+Bond angle | covalent geometry | restraints: 1
 Sorted by residual:
 angle pdb=" C2' C     643 " segid="D16S"
       pdb=" C1' C     643 " segid="D16S"
@@ -153,7 +153,7 @@ angle pdb=" C2' C     643 " segid="D16S"
     ideal   model   delta    sigma   weight residual
    112.00  112.26   -0.26 1.50e+00 4.44e-01 3.04e-02
 
-Bond angle | link_ALPHA2-6 | restraints: 2
+Bond angle | link_ALPHA2-6 | restraints: 1
 Sorted by residual:
 angle pdb=" O6  BMA B1954 "
       pdb=" C2  MAN B1957 "
@@ -161,7 +161,7 @@ angle pdb=" O6  BMA B1954 "
     ideal   model   delta    sigma   weight residual
    112.30  112.30    0.00 3.00e+00 1.11e-01 8.81e-13
 
-Bond angle | Disulphide bridge | restraints: 2
+Bond angle | Disulphide bridge | restraints: 1
 Sorted by residual:
 angle pdb=" SG  CYS A  27 "
       pdb=" SG  CYS A 123 "
@@ -169,7 +169,7 @@ angle pdb=" SG  CYS A  27 "
     ideal   model   delta    sigma   weight residual
    104.20  104.20    0.00 2.10e+00 2.27e-01 1.59e-15
 
-Bond angle | link_NAG-ASN | restraints: 3
+Bond angle | link_NAG-ASN | restraints: 1
 Sorted by residual:
 angle pdb=" ND2 ASN A 303 "
       pdb=" C1  NAG B1349 "
@@ -177,7 +177,7 @@ angle pdb=" ND2 ASN A 303 "
     ideal   model   delta    sigma   weight residual
    112.30  111.42    0.88 3.00e+00 1.11e-01 8.70e-02
 
-Bond angle | Secondary Structure restraints around h-bond | restraints: 12
+Bond angle | Secondary Structure restraints around h-bond | restraints: 1
 Sorted by residual:
 angle pdb=" C4   DC A  10 "
       pdb=" N4   DC A  10 "
@@ -185,7 +185,7 @@ angle pdb=" C4   DC A  10 "
     ideal   model   delta    sigma   weight residual
    117.30  120.06   -2.76 2.86e+00 1.22e-01 9.34e-01
 
-Bond angle | link_TRANS | restraints: 3
+Bond angle | link_TRANS | restraints: 1
 Sorted by residual:
 angle pdb=" CA  SER A   1 "
       pdb=" N   SER A   1 "
@@ -193,7 +193,7 @@ angle pdb=" CA  SER A   1 "
     ideal   model   delta    sigma   weight residual
    121.70  121.74   -0.04 1.80e+00 3.09e-01 5.23e-04
 
-Bond angle | Custom Glycosidic | restraints: 3
+Bond angle | Custom Glycosidic | restraints: 1
 Sorted by residual:
 angle pdb=" O6  NAG D1584 "
       pdb=" C1  FU4 D1588 "
@@ -201,7 +201,7 @@ angle pdb=" O6  NAG D1584 "
     ideal   model   delta    sigma   weight residual
    109.47  109.47   -0.00 3.00e+00 1.11e-01 2.59e-10
 
-Bond angle | link_BETA1-6 | restraints: 3
+Bond angle | link_BETA1-6 | restraints: 1
 Sorted by residual:
 angle pdb=" O6  NAG A 294 "
       pdb=" C1  FUC A 299 "
@@ -209,7 +209,7 @@ angle pdb=" O6  NAG A 294 "
     ideal   model   delta    sigma   weight residual
    112.30  110.82    1.48 3.00e+00 1.11e-01 2.43e-01
 
-Bond angle | link_BETA1-3 | restraints: 3
+Bond angle | link_BETA1-3 | restraints: 1
 Sorted by residual:
 angle pdb=" O3  BGC B 401 "
       pdb=" C1  BGC B 402 "
@@ -217,7 +217,7 @@ angle pdb=" O3  BGC B 401 "
     ideal   model   delta    sigma   weight residual
    112.30  112.30    0.00 3.00e+00 1.11e-01 2.31e-14
 
-Bond angle | link_BETA1-4 | restraints: 3
+Bond angle | link_BETA1-4 | restraints: 1
 Sorted by residual:
 angle pdb=" O4  NAG A 361 "
       pdb=" C1  NAG A 362 "
@@ -225,7 +225,7 @@ angle pdb=" O4  NAG A 361 "
     ideal   model   delta    sigma   weight residual
    112.30  111.17    1.13 3.00e+00 1.11e-01 1.41e-01
 
-Dihedral angle | covalent | restraints: 13
+Dihedral angle | covalent geometry | restraints: 1
   sinusoidal: 13
     harmonic: 0
 Sorted by residual:
@@ -236,7 +236,7 @@ dihedral pdb=" C1' C     643 " segid="D16S"
     ideal   model   delta sinusoidal    sigma   weight residual
   -106.54 -179.87   73.33     2      3.00e+01 1.11e-03 4.89e+00
 
-Dihedral angle | C-Beta improper | restraints: 2
+Dihedral angle | C-Beta improper | restraints: 1
 Sorted by residual:
 dihedral pdb=" C   SER   115 " segid="DS08"
          pdb=" N   SER   115 " segid="DS08"
@@ -254,7 +254,7 @@ dihedral pdb=" N   SER   115 " segid="DS08"
     ideal   model   delta  harmonic     sigma   weight residual
    -63.99  -63.99   -0.00     0      1.00e+01 1.00e-02 4.15e-11
 
-Dihedral angle | link_TRANS | restraints: 3
+Dihedral angle | link_TRANS | restraints: 1
 Sorted by residual:
 dihedral pdb=" N   SER A   1 "
          pdb=" CA  GLY A  34 "
@@ -263,7 +263,7 @@ dihedral pdb=" N   SER A   1 "
     ideal   model   delta sinusoidal    sigma   weight residual
   -160.00 -145.03  -14.97     2      3.00e+01 1.11e-03 3.56e-01
 
-Chirality | covalent | restraints: 6
+Chirality | covalent geometry | restraints: 1
 Sorted by residual:
 chirality pdb=" C1' C     643 " segid="D16S"
           pdb=" O4' C     643 " segid="D16S"
@@ -317,7 +317,7 @@ chirality pdb=" C1  NAG A 362 "
   both_signs  ideal   model   delta    sigma   weight residual
     False     -2.40   -2.40   -0.00 2.00e-02 2.50e+03 7.20e-03
 
-Planarity | covalent | restraints: 1
+Planarity | covalent geometry | restraints: 1
 Sorted by residual:
                                             delta    sigma   weight rms_deltas residual
 plane pdb=" C1' C     643 " segid="D16S"   -0.001 2.00e-02 2.50e+03   6.70e-04 1.01e-02
@@ -347,14 +347,14 @@ plane pdb=" N   SER A   1 "   -0.000 2.00e-02 2.50e+03   6.43e-04 4.14e-03
       pdb=" C   GLY A  34 "    0.001 2.00e-02 2.50e+03
       pdb=" O   GLY A  34 "   -0.000 2.00e-02 2.50e+03
 
-Nonbonded | unspecified | interactions: 89
+Nonbonded | unspecified | interactions: 1
 Sorted by model distance:
 nonbonded pdb=" O4' C     643 " segid="D16S"
           pdb=" C6  C     643 " segid="D16S"
    model   vdw
    2.683 2.672
 
-Parallelity | Stacking parallelity | restraints: 2
+Parallelity | Stacking parallelity | restraints: 1
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DG B  11 "  pdb=" C1'  DC B  12 "  6.47e+00   5.5671    0.0270
@@ -370,7 +370,7 @@ Sorted by residual:
     pdb=" N3   DG B  11 "
     pdb=" C4   DG B  11 "
 
-Parallelity | Basepair parallelity | restraints: 2
+Parallelity | Basepair parallelity | restraints: 1
 Sorted by residual:
     plane 1                plane 2                residual  delta(deg) sigma
     pdb=" C1'  DG A   9 "  pdb=" C1'  DC B  12 "  2.26e+01  12.9202    0.0335
@@ -391,7 +391,7 @@ Sorted by residual:
 tst_2_geo = """
 # Geometry restraints
 
-Bond restraints: 59
+Bond | covalent geometry | restraints: 4
 Sorted by residual:
 bond 0
      1
@@ -1682,8 +1682,8 @@ def main():
   tst_03(model,printing=printing)
   tst_04(model,printing=printing)
   tst_05(model,printing=printing)
-  #tst_06(model,printing=printing)
-  #tst_07(model,printing=printing)
+  tst_06(model,printing=printing)
+  tst_07(model,printing=printing)
   print('OK')
 
 if __name__ == '__main__':
