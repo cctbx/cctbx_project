@@ -1020,6 +1020,38 @@ HETATM   20  O   UNK B   6      35.068  19.167 155.349  1.00 15.97       B   O
   print(cmd2)
   run_command(command=cmd2)
 
+def exercise_average_alt_confs(prefix='tst_pdbtools_average_alt_confs'):
+  pdb_in = """\
+ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM     60  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM     63  CB ALYS A  32       9.197   8.686  12.246  0.29 14.71           C
+ATOM     64  CB BLYS A  32       9.193   8.732  12.170  0.71 12.23           C
+ATOM     74  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM     77  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM     18  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM     19  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
+"""
+  with open("%s.pdb" % prefix, "w") as f:
+    f.write(pdb_in)
+  cmd = "phenix.pdbtools %s.pdb average_alt_confs=True" % prefix
+  print(cmd)
+  run_command(command=cmd, verbose=False)
+
+  with open("%s_modified.pdb" % prefix) as f:
+    pdb_new = f.read()
+  assert (pdb_new == '''\
+ATOM      1  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
+ATOM      2  CA  LYS A  32      10.574   8.177  11.768  1.00 11.49           C
+ATOM      3  CB ALYS A  32       9.195   8.709  12.208  0.29 14.71           C
+ATOM      4  CB BLYS A  32       9.195   8.709  12.208  0.71 12.23           C
+ATOM      5  CA  VAL A  33      11.708   5.617  14.332  1.00 11.42           C
+ATOM      6  CB  VAL A  33      11.101   4.227  14.591  1.00 11.47           C
+ATOM      7  O   HOH A   3       1.132   5.963   7.065  1.00 15.00           O
+ATOM      8  O  BHOH A   4       4.132   9.963   7.800  0.50 15.00           O
+TER
+END
+''')
+
 def exercise_remove_alt_confs():
   pdb_in = """\
 ATOM     16  O  AHOH A   2       5.131   5.251   5.823  0.60 10.00           O
@@ -1340,6 +1372,7 @@ END
 """
 
 def exercise(args):
+  exercise_average_alt_confs()
   exercise_flip_symmetric_amino_acids()
   exercise_switch_rotamers()
   exercise_mmcif_support_2()

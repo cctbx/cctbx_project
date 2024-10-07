@@ -2000,6 +2000,51 @@ class _():
       new_occ = flex.double(atoms.size(), 1.0)
       atoms.set_occ(new_occ)
 
+  def pinch_alt_confs(self, pinch_limit=1.):
+    def average(xyz1, xyz2):
+      a=[]
+      for i in range(3):
+        a.append((xyz1[i]+xyz2[i])/2)
+      return tuple(a)
+    def dist2(xyz1, xyz2):
+      d2 = 0
+      for i in range(3):
+        d2 += (xyz1[i]-xyz2[i])**2
+      return d2
+
+    pinch_limit*=pinch_limit
+
+    hierarchy = self
+    for model in hierarchy.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          atom_groups = residue_group.atom_groups()
+          assert (len(atom_groups) > 0)
+          if (len(atom_groups) == 1): continue
+
+          done=[]
+          for atom in residue_group.atoms():
+            if atom.name in done: continue
+            done.append(atom.name)
+            atoms=[]
+            for atom_group in atom_groups:
+              # if atom.parent().altloc=='': continue
+              atom_alt_conf = atom_group.get_atom(atom.name.strip())
+              if atom_alt_conf is None: continue
+              atoms.append(atom_group.get_atom(atom.name.strip()))
+            inputs = []
+            for atom in atoms:
+              inputs.append(atom.xyz)
+            if len(inputs)==1: continue
+            elif len(inputs)>2:
+              raise Sorry('more than two alt confs not supported')
+            d2=dist2(*inputs)
+            # print('d2',d2,atom.quote())
+            if d2<pinch_limit:
+              ave = average(*inputs)
+              for atom in atoms:
+                atom.xyz=ave
+
   def rename_chain_id(self, old_id, new_id):
     for model in self.models():
       for chain in model.chains():
