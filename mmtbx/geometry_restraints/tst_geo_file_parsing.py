@@ -7,7 +7,7 @@ from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from mmtbx.geometry_restraints.geo_file_parsing import GeoParser
-from libtbx.test_utils import approx_equal, show_diff
+from libtbx.test_utils import show_diff
 
 """
 Example usage:
@@ -1444,7 +1444,7 @@ def tst_01(model,printing=False):
   if not expected==results:
     # show_diff can fail even if expected == results due to string formatting
     # Only show if the dict comparison fails
-    assert not show_diff(str_results, result_json_1.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_1.replace('\\\"','\\\\\\"'))
 
 
   # Check numbers
@@ -1478,7 +1478,7 @@ def tst_02(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1512,7 +1512,7 @@ def tst_03(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1547,7 +1547,7 @@ def tst_04(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1574,7 +1574,7 @@ def tst_05(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1604,7 +1604,7 @@ def tst_06(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1659,7 +1659,7 @@ def tst_07(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"')) 
+    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
 
 
   # Check numbers

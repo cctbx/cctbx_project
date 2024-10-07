@@ -323,7 +323,7 @@ class ParallelityEntry(Entry):
     super().__init__(*args,**kwargs)
     self.labels_are_i_seqs, self.i_seqs = self._check_labels_are_i_seqs(self.atom_labels)
     self.i_seqs, self.j_seqs = self.i_seqs # unpack tuple
-    
+
 
   @property
   def atom_labels(self):
@@ -552,14 +552,14 @@ class GeoParser:
   def _parse_geo_file_header_full(self, line):
     """
     TODO: Move to linking class
-    
+
     Collect three items:
       1. Entry type: ('Bond', 'Angle', etc... The class of restraint)
       2. Origin ID: (Integer id for Secondary Structure, Metal coordination, etc)
       3. entry_type_start_word: ('bond', 'angle', etc... indication of a new entry)
 
     The primary functionality here is 'origin_ids.get_origin_label_and_internal()',
-    but it returns 'covalent' for all unrecognized inputs. 
+    but it returns 'covalent' for all unrecognized inputs.
     So in order to 'trust' the result as a real switch back to covalent, we need to know
     which lines are headers. This is done using indentifying strings in entry_class_trigger_dict
     """
