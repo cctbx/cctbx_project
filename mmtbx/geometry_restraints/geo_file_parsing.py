@@ -38,7 +38,6 @@ class Entry:
     """
     # Parsing data structures
     self.lines = lines               # raw .geo lines
-    # self.line_idxs =[line_idx]
     self.i_seqs = []                 # list of integer i_seqs (if possible)
     self.atom_labels  = []           # list of string atom label from .geo
     self._numerical = None           # a dict of numerical geo data
@@ -134,18 +133,28 @@ class Entry:
 
 
   def _try_int(self, val):
+    """
+    Try to convert to int
+    """
     try:
       return int(val)
     except (ValueError, TypeError):
       return None
 
   def _try_float(self, val):
+    """
+    Try to convert to flaot
+    """
     try:
       return float(val)
     except (ValueError, TypeError):
       return None
 
   def _try_numeric(self,val):
+    """
+    Try to convert input to 1) int, 2) float
+    Otherwise return None
+    """
     out = self._try_int(val)
     if out:
       return out
@@ -155,6 +164,10 @@ class Entry:
     return None
 
   def _coerce_type(self,val):
+    """
+    If input can be numeric, convert it
+    Else return unmodified
+    """
     out = self._try_numeric(val)
     if out:
       return out
@@ -309,6 +322,10 @@ class ParallelityEntry(Entry):
   name = "parallelity"
 
   def __init__(self,*args,**kwargs):
+    """
+    Parallelity is special because there are two sets of atoms for each plane i, j
+    Here, self.i_seqs is only the first plane, not all atoms as in other entries.
+    """
     self._atom_labels = []
 
     # add extra fields for 'j' atoms
@@ -581,7 +598,7 @@ class GeoParser:
     return i
 
   def _parse(self):
-    entries_info=None # entries_info = group_args(origin_id, entry_type, entry_type_start_word)
+    entries_info=None # entries_info = group_args(entry_class, origin_id, entry_trigger)
     entry_start_line_number = -1
     for i, l in enumerate(self.lines + ["\n"]):
       if entries_info is None:
@@ -617,7 +634,11 @@ class GeoParser:
         pass
 
   def _validate_counts(self):
-    # Call after parsing, verify numbers match .geo headers
+    """
+    Verify numbers match .geo headers, fail assertion otherwise.
+
+    I failed, will print expected and actual counts.
+    """
 
     # Populate actual counts
     for header_name,entries in self.entries.items():
@@ -634,18 +655,6 @@ class GeoParser:
       print("Actual counts:")
       print(json.dumps(self.actual_counts,indent=2))
       assert False, "Expected and actual counts for (restraint header name, origin_id) pairs do not match."
-
-  def _startswith_plural(self,text, labels, strip=False):
-    """
-    Utility function to compare a list of labels with a text string.
-      Returns the first matched label.
-    """
-    if strip:
-      text = text.strip()
-    for label in labels:
-      if text.startswith(label):
-        return label
-    return None
 
   @property
   def records(self):
