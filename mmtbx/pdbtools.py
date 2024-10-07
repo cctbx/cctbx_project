@@ -185,6 +185,11 @@ altloc_to_keep = None
             to keep in addition to blank is this one (instead of 'A'). \
             Silent if remove_alt_confs is False.
   .short_caption = Conformer to keep
+average_alt_confs = False
+  .type = bool
+  .help = Averages the coordinates of altloc atoms with 1.0 angstrom.
+  .short_caption = Average alternate conformers
+  .style = noauto
 set_chemical_element_simple_if_necessary = None
   .type = bool
   .short_caption = Guess element field if necessary
@@ -308,6 +313,7 @@ class modify(object):
        self.params.truncate_to_polyala or
        self.params.truncate_to_polygly or
        self.params.remove_alt_confs or
+       self.params.average_alt_confs or
        self.params.move_waters_last or
        self.params.remove_fraction or
        self.params.keep or
@@ -322,6 +328,7 @@ class modify(object):
       self._truncate_to_poly_ala()
       self._truncate_to_poly_gly()
       self._remove_alt_confs()
+      self._average_alt_confs()
       self._move_waters()
       self._remove_atoms()
       self._apply_keep_remove()
@@ -402,6 +409,11 @@ class modify(object):
         always_keep_one_conformer = self.params.always_keep_one_conformer,
         altloc_to_keep = self.params.altloc_to_keep,
         keep_occupancy = self.params.keep_occupancy)
+
+  def _average_alt_confs(self):
+    if(self.params.average_alt_confs):
+      print("Average altlocs", file=self.log)
+      self.pdb_hierarchy.pinch_alt_confs()
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polygly):
