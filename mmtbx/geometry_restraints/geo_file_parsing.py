@@ -4,12 +4,12 @@ from itertools import chain
 import shlex
 import re
 import json
+from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 
-from libtbx import group_args
 
 class Entry:
   """
