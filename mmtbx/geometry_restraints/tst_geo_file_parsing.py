@@ -1617,7 +1617,7 @@ def tst_06(model,printing=False):
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
 
   origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], f"Got: {origin_ids}"
+  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], "Got: "+ str(origin_ids)
 
 
 def tst_07(model,printing=False):
