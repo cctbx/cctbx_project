@@ -624,7 +624,7 @@ class GeoParser:
       for entry in entries:
         info_key = str((header_name, entry.origin_id))
         self.actual_counts[info_key]+=1
-    
+
     if not self.expected_counts == self.actual_counts:
       print("Validate counts error:")
       print()
