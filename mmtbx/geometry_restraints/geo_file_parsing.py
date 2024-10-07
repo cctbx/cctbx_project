@@ -45,7 +45,6 @@ class Entry:
     self.labels_are_i_seqs = None    # boolean, atom labels are i_seqs
     self.labels_are_id_strs = None   # boolean, atom labels are id_strs
     self.origin_id = origin_id
-    # self.origin_label = origin_label
 
     # Initialize result data structures
     self._proxy = None
@@ -62,7 +61,6 @@ class Entry:
     for line in self.lines[:-2]:
       if not line.startswith(" "):
         line = line.replace(line.split()[0],"") # remove name like 'bond', 'angle'
-      #line = line.replace("pdb=","")
       value = line.strip()
       values.append(value)
 
@@ -105,7 +103,6 @@ class Entry:
         }
       d.update(self._numerical)
       d["origin_id"] = self.origin_id
-      # d["origin_label"] = self.origin_label
       self._record = d
     return self._record
 
@@ -164,7 +161,6 @@ class Entry:
     return val # input (probably string)
 
 ### Start of Entry subclasses
-
 
 class NonBondedEntry(Entry):
   name = "nonbonded"
@@ -473,10 +469,10 @@ class GeoParser:
   Usage:
     parser = GeoParser(geo_lines)     # Initialize
     entries = container.entries       # Access data as Entry instances
-    records = container.records       # Access data as lists of dicts
+    records = container.records       # Access data as plain dictionaries
 
 
-    proxies = container.proxies       # Access data as lists of proxies, if possible
+    proxies = container.proxies       # Access data as proxy objects, if possible
   """
 
 
