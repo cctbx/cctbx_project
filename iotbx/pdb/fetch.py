@@ -221,10 +221,10 @@ def get_pdb(id, data_type, mirror, log, format="pdb"):
   except RuntimeError as e :
     raise Sorry(str(e))
 
-  default_value = (os.path.join(os.getcwd(), f"{id}.{format}"), "Model")
+  default_value = (os.path.join(os.getcwd(), "{}.{}".format(id, format)), "Model")
   file_names_titles = defaultdict(lambda: default_value, {
-      "xray":  (os.path.join(os.getcwd(), f"{id}-sf.cif"), "Structure factors"),
-      "fasta": (os.path.join(os.getcwd(), f"{id}.fa"), "Sequence"),
+      "xray":  (os.path.join(os.getcwd(), "{}-sf.cif".format(id)), "Structure factors"),
+      "fasta": (os.path.join(os.getcwd(), "{}.fa".format(id)), "Sequence"),
   })
 
   file_name, title = file_names_titles[data_type]
