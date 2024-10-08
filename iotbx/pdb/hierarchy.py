@@ -2000,7 +2000,7 @@ class _():
       new_occ = flex.double(atoms.size(), 1.0)
       atoms.set_occ(new_occ)
 
-  def pinch_alt_confs(self, pinch_limit=1.):
+  def average_alt_confs(self, pinch_limit=1.):
     def average(xyz1, xyz2):
       a=[]
       for i in range(3):
@@ -2015,6 +2015,7 @@ class _():
     pinch_limit*=pinch_limit
 
     hierarchy = self
+    asel=flex.size_t()
     for model in hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -2044,6 +2045,8 @@ class _():
               ave = average(*inputs)
               for atom in atoms:
                 atom.xyz=ave
+                asel.append(atom.i_seq)
+    return asel
 
   def rename_chain_id(self, old_id, new_id):
     for model in self.models():
