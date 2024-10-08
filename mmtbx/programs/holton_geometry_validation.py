@@ -139,6 +139,11 @@ Example:
                 behavior of Phenix pre-2024.
       .short_caption = Shrink donor acceptor distance
 
+    remove_waters = None
+      .type = bool
+      .help = Remove waters before analysis
+      .short_caption = Remove waters
+
 
     softPnna_params {
       y0 = 1
@@ -208,6 +213,7 @@ Example:
      clashscore_ideal_dist = self.params.clashscore_ideal_dist,
      lj_dist_that_yields_zero = self.params.lj_dist_that_yields_zero,
      const_shrink_donor_acceptor = self.params.const_shrink_donor_acceptor,
+     remove_waters = self.params.remove_waters,
      softPnna_params = self.params.softPnna_params,
       log =self.logger)
 

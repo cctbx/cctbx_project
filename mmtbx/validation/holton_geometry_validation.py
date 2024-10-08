@@ -87,6 +87,7 @@ def holton_geometry_validation(dm = None,
      clashscore_ideal_dist = 3,  # Ideal distance in LJ for clashscore result
      lj_dist_that_yields_zero = 6, # Distance for modified LJ to cross zero
      const_shrink_donor_acceptor = 0, # 0.6 reinstates value prior to  2024
+     remove_waters = None, # remove waters before scoring
      n_random = 20,
      sd_to_use = 3,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
@@ -980,6 +981,9 @@ def get_model(info):
   info.model.set_log(null_out())
   for m in list(info.model.get_hierarchy().models())[1:]:
      info.model.get_hierarchy().remove_model(m)
+  if (info.remove_waters):
+    info.model.add_crystal_symmetry_if_necessary()
+    info.model = info.model.apply_selection_string("not water")
   if (not info.keep_hydrogens):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
