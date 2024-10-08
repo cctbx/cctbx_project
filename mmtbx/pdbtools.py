@@ -413,7 +413,7 @@ class modify(object):
   def _average_alt_confs(self):
     if(self.params.average_alt_confs):
       print("Average altlocs", file=self.log)
-      self.pdb_hierarchy.pinch_alt_confs()
+      self.pdb_hierarchy.average_alt_confs()
 
   def _truncate_to_poly_gly(self):
     if(self.params.truncate_to_polygly):
