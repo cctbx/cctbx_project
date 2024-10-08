@@ -268,6 +268,10 @@ master_params_str = """\
       .type = float
     top_out = False
       .type = bool
+    reference_is_average_alt_confs = False
+      .type = bool
+      .help = Sets the reference coordinate to the average of two alt. confs. \
+              Ignores selection option.
   }
   automatic_linking
     .style = box auto_align noauto
@@ -6090,10 +6094,12 @@ class process(object):
                 all_chain_proxies=self.all_chain_proxies,
                 # pdb_hierarchy=self.all_chain_proxies.pdb_hierarchy,
                 selection=rcr.selection,
+                reference_is_average_alt_confs=rcr.reference_is_average_alt_confs,
                 exclude_outliers=rcr.exclude_outliers,
                 sigma=rcr.sigma,
                 limit=rcr.limit,
-                top_out=rcr.top_out)
+                top_out=rcr.top_out,
+                )
         n_rcr = self._geometry_restraints_manager.\
             get_n_reference_coordinate_proxies()
         print("  Number of reference coordinate restraints generated:",\

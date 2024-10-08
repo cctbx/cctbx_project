@@ -595,7 +595,9 @@ class manager(Base_geometry):
       sigma=0.2,
       limit=1.0,
       top_out=False,
-      n_atoms_in_target_model=None):
+      n_atoms_in_target_model=None,
+      reference_is_average_alt_confs=None,
+      ):
     assert [all_chain_proxies, pdb_hierarchy].count(None) == 1
     assert [all_chain_proxies, n_atoms_in_target_model].count(None) == 1
     if all_chain_proxies is None:
@@ -607,9 +609,15 @@ class manager(Base_geometry):
       isel = selection
       bsel = flex.bool(n_atoms_in_target_model, isel)
       sites_cart=pdb_hierarchy.atoms().extract_xyz()
+      assert not reference_is_average_alt_confs
     else:
       # should be deleted if all_chain_proxies won't be used
-      sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
+      if reference_is_average_alt_confs:
+        hierarchy = all_chain_proxies.pdb_hierarchy.as_forward_compatible_hierarchy()
+        asel = hierarchy.average_alt_confs()
+        sites_cart = hierarchy.atoms().extract_xyz()
+      else:
+        sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
       new_selection = flex.bool(sites_cart.size(), True)
       if selection is not None:
         new_selection = all_chain_proxies.selection(selection)
@@ -624,6 +632,8 @@ class manager(Base_geometry):
           pdb_hierarchy=pdb_hierarchy if pdb_hierarchy is not None else all_chain_proxies.pdb_hierarchy,
           restraints_selection=new_selection if all_chain_proxies is not None else bsel)
       isel = new_selection.iselection()
+    if reference_is_average_alt_confs:
+      isel = asel
     proxies = add_coordinate_restraints(
         sites_cart=sites_cart.select(isel) if n_atoms_in_target_model is None else sites_cart,
         selection=isel,
@@ -1739,16 +1749,39 @@ class manager(Base_geometry):
     #
     for p_label, proxies in [
         ("Reference torsion angle", self.reference_dihedral_manager),
-        ("NCS torsion angle", self.ncs_dihedral_manager),
-        ("", self.ramachandran_manager),
+        ("NCS torsion angle",       self.ncs_dihedral_manager),
+        ("",                        self.ramachandran_manager),
+        ('Reference coordinate',    self.reference_coordinate_proxies),
         ]:
       if proxies is not None:
-        proxies.show_sorted(
-            by_value="residual",
-            sites_cart=sites_cart,
-            site_labels=site_labels,
-            proxy_label=p_label,
-            f=f)
+        if hasattr(pair_proxies, 'show_sorted'):
+          proxies.show_sorted(
+              by_value="residual",
+              sites_cart=sites_cart,
+              site_labels=site_labels,
+              proxy_label=p_label,
+              f=f)
+        else:
+          def dist2(xyz1, xyz2):
+            d2=0
+            for i in range(3):
+              d2+=(xyz1[i]-xyz2[i])**2
+            return d2
+          print('Harmonic | Reference coordinate | restraints :%d' % (len(proxies)),
+                file=f)
+          for proxy in proxies:
+            i_seq=proxy.i_seqs[0]
+            d2=dist2(proxy.ref_sites, sites_cart[i_seq])
+            print('bond %s, d2=%6.3fA, sigma=%7.3f, weight=%7.3f' % (
+              site_labels[i_seq],
+              d2,
+              # '(%9.5f, %9.5f, %9.5f)' % tuple(proxy.ref_sites),
+              1/proxy.weight**0.5,
+              proxy.weight,
+              ),
+              file=f,
+              )
+        print(file=f)
     #
     # Here should be showing DEN manager...
     #
