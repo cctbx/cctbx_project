@@ -141,12 +141,13 @@ Look for a key in the list below
       Line from a .geo file
     Returns:
       None if not a header line
-      If heasder:
+      If header:
+      tuple of:
         Origin_id :
         Bond type : Bond, Bond angle, ...
         Subtype   : A string related mostly to the cif_link used but also
                     origin_id
-
+        Number of restraints: int - number from the header.
     '''
     if verbose:
       for origin_label, info in self.data.items():
