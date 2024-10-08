@@ -614,7 +614,7 @@ class manager(Base_geometry):
       # should be deleted if all_chain_proxies won't be used
       if reference_is_average_alt_confs:
         hierarchy = all_chain_proxies.pdb_hierarchy.as_forward_compatible_hierarchy()
-        asel = hierarchy.average_alt_confs()
+        asel = hierarchy.average_alt_confs(pinch_limit=limit)
         sites_cart = hierarchy.atoms().extract_xyz()
       else:
         sites_cart = all_chain_proxies.pdb_hierarchy.atoms().extract_xyz()
