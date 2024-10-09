@@ -23,6 +23,36 @@ from cctbx.geometry_restraints.linking_class import linking_class
 origin_ids = linking_class()
 from cctbx.geometry_restraints.base_geometry import Base_geometry
 
+def create_side_chain_restraints(hierarchy, grm, log=None):
+  proxies=[]
+  for rg in hierarchy.residue_groups():
+    ags=rg.atom_groups()
+    names = []
+    for atom in rg.atoms():
+      if atom.element_is_hydrogen(): continue
+      if atom.name not in names:
+        names.append(atom.name)
+    pairs=[[],[]]
+    for name in names:
+      if name in [' CA ', ' N  ', ' C  ', ' O  ']: continue
+      for i, ag in enumerate(ags):
+        if not ag.altloc: continue
+        pairs[i].append(ag.get_atom(name.strip()).i_seq)
+    sigma=.2
+    if not pairs[0] or not pairs[1]: continue
+    if len(pairs[0])<3 or len(pairs[1])<3: continue
+    proxy=geometry_restraints.parallelity_proxy(
+              i_seqs=flex.size_t(pairs[0]),
+              j_seqs=flex.size_t(pairs[1]),
+              weight=1/(sigma**2),
+              target_angle_deg=0,
+              slack=0,
+              top_out=False,
+              limit=1,
+              origin_id=origin_ids.get_origin_id('side-chain parallelity'))
+    proxies.append(proxy)
+  return proxies
+
 class manager(Base_geometry):
 # This class is documented in
 # http://www.phenix-online.org/papers/iucrcompcomm_aug2004.pdf
@@ -872,6 +902,12 @@ class manager(Base_geometry):
     # requires modification of pair_proxies and as complicated as addition
     # of bond restraint.
     raise NotImplementedError
+
+  def add_parallelity_proxies_for_side_chain(self, hierarchy, log):
+    parallelity_proxies = create_side_chain_restraints( hierarchy=hierarchy,
+                                                        grm=self,
+                                                        log=log)
+    self.add_parallelities_in_place(parallelity_proxies)
 
   def set_external_energy_function(self, energy_function):
     self.external_energy_function = energy_function
@@ -1754,7 +1790,7 @@ class manager(Base_geometry):
         ('Reference coordinate',    self.reference_coordinate_proxies),
         ]:
       if proxies is not None:
-        if hasattr(pair_proxies, 'show_sorted'):
+        if hasattr(proxies, 'show_sorted'):
           proxies.show_sorted(
               by_value="residual",
               sites_cart=sites_cart,

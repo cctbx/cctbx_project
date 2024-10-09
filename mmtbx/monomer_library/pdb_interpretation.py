@@ -273,6 +273,11 @@ master_params_str = """\
       .help = Sets the reference coordinate to the average of two alt. confs. \
               Ignores selection option.
   }
+  automatic_restraints
+  {
+    side_chain_parallelity = False
+      .type = bool
+  }
   automatic_linking
     .style = box auto_align noauto
     .short_caption = Automatic covalent linking
@@ -6104,6 +6109,11 @@ class process(object):
             get_n_reference_coordinate_proxies()
         print("  Number of reference coordinate restraints generated:",\
            n_rcr, file=self.log)
+
+      if self.all_chain_proxies.params.automatic_restraints.side_chain_parallelity:
+        self._geometry_restraints_manager.\
+            add_parallelity_proxies_for_side_chain(self.all_chain_proxies.pdb_hierarchy,
+                                                   log=self.log)
 
       # DEN manager
       self._geometry_restraints_manager.adopt_den_manager(den_manager)
