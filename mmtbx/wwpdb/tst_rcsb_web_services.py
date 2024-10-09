@@ -92,6 +92,12 @@ def exercise_3():
   r = rcsb_web_services.post_query(sort_by_resolution=True)
   assert len(r) > 1
 
+def exercise_get_emdb_id():
+  emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('8wcc')
+  assert emdb_ids == ['EMD-37438']
+  emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1yjp')
+  assert emdb_ids == None
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   # check if internet and rcsb are available
@@ -105,6 +111,7 @@ if (__name__ == "__main__"):
     exercise()
     exercise_2()
     exercise_3()
+    exercise_get_emdb_id()
     print("OK")
   else:
     print("OK but skipped.")

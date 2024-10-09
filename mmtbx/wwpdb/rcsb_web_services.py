@@ -394,3 +394,34 @@ def get_ligand_info_for_structures(pdb_ids):
         c_id = str(chain_id)
         result.append([pdb_id, c_id, lig_id, lig_mw, lig_formula, lig_name, smiles])
   return result
+
+def get_emdb_id_for_pdb_id(pdb_id):
+  """ Find out EMDB ID given PDB ID by quering RCSB portal.
+
+  Args:
+      pdb_id (str): pdb id
+  Returns:
+    list of emdb ids, e.g. ['EMD-37438'] or None if X-ray or not defined
+  """
+
+  graphql_query = '''
+query
+{
+  entry(entry_id:"%s") {
+    exptl {
+      method
+    }
+    rcsb_entry_container_identifiers {
+      emdb_ids
+    }
+  }
+}
+''' % pdb_id
+  r = requests.post(report_base_url, json={"query":graphql_query})
+  data_entry = r.json()['data']['entry']
+  if data_entry['exptl'][0]['method'] != 'ELECTRON MICROSCOPY':
+    return None
+  emdb_ids = data_entry['rcsb_entry_container_identifiers']['emdb_ids']
+  if len(emdb_ids)==0:
+    return None
+  return emdb_ids
