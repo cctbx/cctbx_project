@@ -9,7 +9,8 @@ import libtbx.utils
 from libtbx.utils import Sorry
 
 pdb_url_base = "https://search.rcsb.org/rcsbsearch/v2/query?json="
-graphql_base = "http://data.rcsb.org/graphql?query="
+graphql_base = "https://data.rcsb.org/graphql?query="
+emdb_base = "https://ftp.ebi.ac.uk/pub/databases/emdb/structures/"
 
 master_phil_str = '''
 pdb_code = None
@@ -70,9 +71,27 @@ query
       % self.params.pdb_code, file=self.logger)
     for emdb_id in emdb_ids:
       print(emdb_id, file=self.logger)
+    self.emdb_ids = emdb_ids
+
+  # ---------------------------------------------------------------------------
+
+  def download_pdb_file(self):
+    pdb_url = 'https://files.rcsb.org/download/%s.pdb' % self.params.pdb_code
+    pdb_fn = '%s.pdb' % self.params.pdb_code
+    urllib.request.urlretrieve(pdb_url, pdb_fn)
+
+  def download_maps(self):
+    for emdb_id in self.emdb_ids:
+      emdb_id_numeral = emdb_id.split('-')[1]
+      emdb_url = emdb_base + 'EMD-%s/map/emd_%s.map.gz' % (
+        emdb_id_numeral, emdb_id_numeral)
+      map_fn = '%s_%s.map' % (self.params.pdb_code, emdb_id_numeral)
+      urllib.request.urlretrieve(emdb_url, map_fn)
 
   # ---------------------------------------------------------------------------
 
   def run(self):
-    print('running')
+    self.emdb_ids = []
     self.api_query()
+    self.download_pdb_file()
+    self.download_maps()
