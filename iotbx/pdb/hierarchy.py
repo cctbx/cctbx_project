@@ -2025,11 +2025,11 @@ class _():
 
           done=[]
           for atom in residue_group.atoms():
+            if atom.element_is_hydrogen(): continue
             if atom.name in done: continue
             done.append(atom.name)
             atoms=[]
             for atom_group in atom_groups:
-              # if atom.parent().altloc=='': continue
               atom_alt_conf = atom_group.get_atom(atom.name.strip())
               if atom_alt_conf is None: continue
               atoms.append(atom_group.get_atom(atom.name.strip()))
