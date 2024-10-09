@@ -48,12 +48,12 @@ class restraint(atoms):
     atom_info_list = []
     for atom_inf in self.atoms_info:
       atom_slots_list = [s for s in atom_inf.__slots__]
-      atom_slots_as_dict = ({s: getattr(atom_inf, s) for s in atom_slots_list if s != 'xyz' })
+      atom_slots_as_dict = ({s: getattr(atom_inf, s) for s in atom_slots_list })
       atom_info_list.append(atom_slots_as_dict)
 
     serializable_slots = [s for s in self.__slots__ if s != 'markup' and s != 'atoms_info' and hasattr(self, s)]
     slots_as_dict = ({s: getattr(self, s) for s in serializable_slots})
-    slots_as_dict["xyz"] = slots_as_dict["xyz"].elems
+    #slots_as_dict["xyz"] = slots_as_dict["xyz"].elems
     if callable(getattr(self, "outlier_type", None)):
       slots_as_dict["outlier_type"] = self.outlier_type()
     slots_as_dict["atoms_info"] = atom_info_list
@@ -695,7 +695,8 @@ def get_mean_xyz(atoms):
   sum = col(atoms[0].xyz)
   for atom in atoms[1:] :
     sum += col(atom.xyz)
-  return sum / len(atoms)
+  mean = sum / len(atoms)
+  return mean.elems
 
 def _get_sorted(O,
         unit_cell,
