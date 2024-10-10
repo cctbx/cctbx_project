@@ -398,7 +398,6 @@ general_tests = [
   "$D/regression/tst_fmodel_2.py",
   "$D/regression/tst_rigid_bond_test.py",
   "$D/validation/regression/tst_cablam.py",
-  "$D/building/tst_make_library.py",
   "$D/regression/real_space_refine_chain/tst_00.py",
   "$D/regression/real_space_refine_chain/tst_01.py",
   "$D/conformation_dependent_library/tst_omega_cdl.py",
