@@ -395,6 +395,11 @@ Usage examples:
             break
       log_file = open(log_filename, 'w')
       self.logger.register('logfile', log_file)
+    print('''
+    Running mmtbx.quantum
+      excutable: %s
+      arguments: %s
+          ''' % (sys.executable, ' '.join(sys.argv[1:])))
     model = self.data_manager.get_model()
     self.restraint_filenames = []
     rc = self.data_manager.get_restraint_names()
