@@ -1,6 +1,6 @@
 
 from __future__ import absolute_import, division, print_function
-from libtbx import group_args, adopt_init_args
+from libtbx import group_args
 import sys
 import mmtbx.refinement.real_space
 from six.moves import zip
@@ -235,7 +235,6 @@ def generate_sidechain_clusters(residue, mon_lib_srv):
   """
   Extract Chi angle indices (including rotation axis) from the atom_group
   """
-  from mmtbx.refinement.real_space import fit_residue
   from mmtbx.utils import rotatable_bonds
   from scitbx.array_family import flex
   atoms = residue.atoms()
