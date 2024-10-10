@@ -38,9 +38,9 @@ fetch_pdb
     .type = choice
     .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
     .style = bold
-  site = *rcsb pdbe pdbj pdb-redo
+  site = *rcsb pdbe pdbj
     .type = choice
-    .caption = RCSB PDBe PDBj PDB-REDO
+    .caption = RCSB PDBe PDBj
     .short_caption = Mirror site
     .style = bold
 }""")

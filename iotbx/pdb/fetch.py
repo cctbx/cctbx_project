@@ -25,8 +25,6 @@
 from __future__ import absolute_import, division, print_function
 from collections import defaultdict
 from libtbx.utils import Sorry, null_out
-from libtbx import smart_open
-from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
 from six.moves.urllib.error import HTTPError
@@ -68,7 +66,6 @@ def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
       #     'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
       #     },
   }
-
 
   assert mirror in ['rcsb', 'pdbe', 'pdbj']
   assert file_type in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']
