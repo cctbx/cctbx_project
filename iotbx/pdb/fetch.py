@@ -31,8 +31,60 @@ import libtbx.utils
 import libtbx.load_env
 from six.moves import cStringIO as StringIO
 from six.moves.urllib.error import HTTPError
+import gzip
 import re
 import os
+
+
+def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
+
+  all_links_dict = {
+      'rcsb': {
+          'model_pdb': 'https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+          'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+          'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+          'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
+          'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          },
+      'pdbe': {
+          'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+          'model_cif': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+          'sequence': 'https://www.ebi.ac.uk/pdbe/entry/pdb/{pdb_id}/fasta',
+          'sf': 'https://www.ebi.ac.uk/pdbe/entry-files/download/r{pdb_id}sf.ent',
+          'map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          },
+      'pdbj': {
+          'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+          'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+          'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
+          'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
+          'map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          },
+      'pdb-redo': {
+          'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
+          'model_cif': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif',
+          # these are from RCSB because PDB-redo does not have them
+          'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+          'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif',
+          'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          },
+  }
+
+
+  assert mirror in ['rcsb', 'pdbe', 'pdbj', 'pdb-redo']
+  assert file_type in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']
+  if file_type == 'map':
+    assert emdb_number
+  else:
+    assert pdb_id
+
+  validate_pdb_id(pdb_id)
+  mid_pdb_id = pdb_id[1:3]
+  return all_links_dict[mirror][file_type].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
+
+
+
+
 
 def looks_like_pdb_id(id):
   return (len(id) == 4) and (re.match("[1-9]{1}[a-zA-Z0-9]{3}", id))
@@ -48,6 +100,22 @@ def validate_pdb_ids(id_list):
       validate_pdb_id(id)
     except RuntimeError as e :
       raise Sorry(str(e))
+
+def get_file_type_from_params(data_type, format):
+  """ Temporary, during refactoring. """
+  conversion_dict = {
+      "pdb":'model',
+      "xray": 'sf',
+      "fasta": 'sequence',
+      "map": 'map',
+      }
+  result = conversion_dict[data_type]
+  if result == 'model':
+    if format == 'pdb':
+      result = 'model_pdb'
+    else:
+      result = 'model_cif'
+  return result
 
 def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
     force_download=False,
@@ -118,94 +186,21 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
           print("  " + file_name, file=log)
           f = smart_open.for_reading(file_name)
           return f
+
   # No mirror found (or out of date), default to HTTP download
-  url = None
-  compressed = False
-  if (mirror == "rcsb"):
-    url_base = 'https://files.rcsb.org/download/'
-    pdb_ext = ".pdb"
-    sf_prefix = ""
-    sf_ext = "-sf.cif"
-  elif (mirror == "pdbe"):
-    url_base = "https://www.ebi.ac.uk/pdbe-srv/view/files/"
-    pdb_ext = ".ent"
-    sf_prefix = "r"
-    sf_ext = "sf.ent"
-  elif (mirror == "pdbj"):
-    url_base = "ftp://ftp.pdbj.org/pub/pdb/data/structures/divided/"
-    if (data_type == "pdb"):
-      compressed = True
-      if (format == "pdb"):
-        url = url_base + "pdb/%s/pdb%s.ent.gz" % (id[1:3], id)
-      elif (format in ["cif", "cif_or_pdb"]):
-        url = url_base + "mmCIF/%s/%s.cif.gz" % (id[1:3], id)
-    elif (data_type == "xray"):
-      compressed = True
-      url = url_base + "structure_factors/%s/r%ssf.ent.gz" % (id[1:3], id)
-    elif (data_type =="fasta"):
-      url = "https://pdbj.org/rest/downloadPDBfile?format=fasta&id=%s" % id
-    if (url is None) and (data_type != "fasta"):
-      raise Sorry("Can't determine PDBj download URL for this data/format "+
-        "combination.")
-  elif mirror == "pdb-redo":
-    url_base = "https://pdb-redo.eu/db/"
-    pdb_ext = "_final.pdb"
-    cif_ext = "_final.cif"
-    sf_prefix = ""
-    sf_ext = "_final.mtz"
-    if (data_type == 'pdb'):
-      if (format == 'pdb'):
-        url = url_base + "{id}/{id}{format}".format(id=id, format=pdb_ext)
-      elif (format in ['cif', 'cif_or_pdb']):
-        url = url_base + "{id}/{id}{format}".format(id=id, format=cif_ext)
-    elif (data_type == 'xray'):
-      url = url_base + "{id}/{id}{format}".format(id=id, format=sf_ext)
-  if (data_type == "fasta"):
-    if (url is None) : # TODO PDBe equivalent doesn't exist?
-      # Seems that this url should be working:
-      url = "https://www.rcsb.org/fasta/entry/%s" % id
-    try :
-      data = libtbx.utils.urlopen(url)
-    except HTTPError as e :
-      if e.getcode() == 404 :
-        raise RuntimeError("Couldn't download sequence for %s." % id)
-      else :
-        raise
-  elif data_type == "xray" :
-    if (url is None):
-      url = url_base + sf_prefix + id + sf_ext
-    try :
-      data = libtbx.utils.urlopen(url)
-    except HTTPError as e :
-      if e.getcode() == 404 :
-        raise RuntimeError("Couldn't download structure factors for %s." % id)
-      else :
-        raise
-  else :
-    if (url is None):
-      if format == "pdb" :
-        url = url_base + id + pdb_ext
-      elif format == "cif_or_pdb" :
-        url = url_base + id + "." + "cif"
-      else :
-        url = url_base + id + "." + format
-    try :
-      data = libtbx.utils.urlopen(url)
-    except HTTPError as e :
-      if e.getcode() == 404 :
-        raise RuntimeError("Couldn't download model for %s." % id)
-      else :
-        raise
-  if (compressed):
-    try :
-      import gzip
-    except ImportError :
-      raise Sorry("gzip module not available - please use an uncompressed "+
-        "source of PDB data.")
+  file_type = get_file_type_from_params(data_type, format)
+  url = get_link(mirror, file_type, pdb_id=id, emdb_number=None)
+  need_to_decompress = url.split('.')[-1] == 'gz' and file_type != 'map'
+
+  try :
+    data = libtbx.utils.urlopen(url)
+  except HTTPError as e :
+    if e.getcode() == 404 :
+      raise RuntimeError("Couldn't download %s for %s at %s." % (file_type, id, url))
     else :
-      # XXX due to a bug in urllib2, we can't pass the supposedly file-like
-      # object directly, so we read the data into a StringIO object instead
-      return gzip.GzipFile(fileobj=StringIO(data.read()))
+      raise
+  if need_to_decompress:
+    return gzip.GzipFile(fileobj=data)
   return data
 
 def write_data_to_disc(fname, data):
