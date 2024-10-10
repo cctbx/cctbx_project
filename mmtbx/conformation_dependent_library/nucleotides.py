@@ -34,7 +34,7 @@ def update_restraints(hierarchy,
                       geometry, # restraints_manager,
                       use_phenix_esd=True,
                       csd_factor=1.,
-                      use_cofsky_esd=True,
+                      use_cofsky_esd=False,
                       log=None,
                       verbose=False,
                       ):
@@ -42,7 +42,7 @@ def update_restraints(hierarchy,
     print('  RestraintLib not installed\n', file=log)
     return False
   if use_cofsky_esd:
-    assert use_phenix_esd
+    assert 0, 'use_cofsky_esd not implemented'
   restraint_groups = launcher.load_restraints_lib()
   printer = TuplePrinter(override_sigma=use_phenix_esd) # use_phenix_esd not really needed here
   rc = analyze_pdb_hierarhy(hierarchy, restraint_groups, restraint_groups, printer)
@@ -67,8 +67,6 @@ def update_restraints(hierarchy,
               ideal,
               esd,
               ))
-    if use_cofsky_esd:
-      assert 0
     if len(i_seqs)==2:
       bond_restraints.append([i_seqs, ideal, esd])
     elif len(i_seqs)==3:
