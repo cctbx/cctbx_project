@@ -29,7 +29,6 @@ from libtbx import smart_open
 from libtbx import Auto
 import libtbx.utils
 import libtbx.load_env
-from six.moves import cStringIO as StringIO
 from six.moves.urllib.error import HTTPError
 import gzip
 import re
