@@ -13,6 +13,7 @@ def show_chain_resseq_ranges(residues, out=sys.stdout, prefix=""):
   Given a list of residues (either residue_group or atom_group objects),
   print a summary of the chains and residue ranges present.
   """
+  assert 0
   ranges = {}
   prev_chain = prev_resseq = None
   for i_res, residue in enumerate(residues):
@@ -174,6 +175,7 @@ class local_density_quality(object):
       atom_selection=None,
       xray_structure=None,
       radius=2.5):
+    assert 0
     from cctbx import maptbx
     from scitbx.array_family import flex
     assert ((len(fofc_map) == len(two_fofc_map)) and
@@ -383,6 +385,7 @@ class box_build_refine_base(object):
       target_map_rsr=None,
       geometry_restraints_manager=None,
       debug=False):
+    assert 0
     adopt_init_args(self, locals())
     import mmtbx.restraints
     import mmtbx.utils
@@ -737,6 +740,7 @@ def run_real_space_annealing(
   """
   from mmtbx.dynamics import simulated_annealing
   import iotbx.phil
+  assert 0
   if (params is None):
     params = iotbx.phil.parse(simulated_annealing.master_params_str).extract()
   box = box_build_refine_base(
