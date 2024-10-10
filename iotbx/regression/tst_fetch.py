@@ -14,6 +14,24 @@ ATOM      2  CA  GLY A   1      -9.052   4.207   4.651  1.00 16.57           C
 ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
 """)
 
+def exercise_2():
+  string_1yjp_sf = fetch(id = "1yjp", data_type='xray').read().decode()
+  # print("%s" % string_1yjp_sf)
+  assert_lines_in_text(string_1yjp_sf, """\
+loop_
+_refln.crystal_id
+_refln.wavelength_id
+_refln.scale_group_code
+_refln.index_h
+_refln.index_k
+_refln.index_l
+_refln.status
+_refln.F_meas_au
+_refln.F_meas_sigma_au
+1 1 1  -12    0    2 o     3.49   2.34
+1 1 1  -12    0    3 o     3.31   2.43
+1 1 1  -12    0    4 o     7.32   4.25 """)
+
 def exercise_get_link():
   r = []
   for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']:
@@ -35,6 +53,7 @@ if (__name__ == "__main__"):
     exception_occured = True
   if not exception_occured and r.ok and len(r.text) > 100:
     exercise_1()
+    exercise_2()
     print("OK")
   else:
     print("OK but skipped.")

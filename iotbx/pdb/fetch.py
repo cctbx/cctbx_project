@@ -59,46 +59,28 @@ def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
           'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
           'map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
           },
-      'pdb-redo': {
-          'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
-          'model_cif': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif',
-          # these are from RCSB because PDB-redo does not have them
-          'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
-          'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif',
-          'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-          },
+      # 'pdb-redo': {
+      #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
+      #     'model_cif': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif',
+      #     # these are from RCSB because PDB-redo does not have them
+      #     'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+      #     'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif',
+      #     'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+      #     },
   }
 
 
-  assert mirror in ['rcsb', 'pdbe', 'pdbj', 'pdb-redo']
+  assert mirror in ['rcsb', 'pdbe', 'pdbj']
   assert file_type in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']
   if file_type == 'map':
     assert emdb_number
   else:
     assert pdb_id
-
-  validate_pdb_id(pdb_id)
   mid_pdb_id = pdb_id[1:3]
   return all_links_dict[mirror][file_type].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
 
-
-
-
-
-def looks_like_pdb_id(id):
-  return (len(id) == 4) and (re.match("[1-9]{1}[a-zA-Z0-9]{3}", id))
-
-def validate_pdb_id(id):
-  if (not looks_like_pdb_id(id)):
-    raise RuntimeError(("Invalid PDB ID '%s'.  IDs must be exactly four "+
-      "alphanumeric characters, starting with a number from 1-9.") % id)
-
-def validate_pdb_ids(id_list):
-  for id in id_list :
-    try :
-      validate_pdb_id(id)
-    except RuntimeError as e :
-      raise Sorry(str(e))
+def valid_pdb_id(id):
+  return len(id) == 4 and re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)
 
 def get_file_type_from_params(data_type, format):
   """ Temporary, during refactoring. """
@@ -116,9 +98,7 @@ def get_file_type_from_params(data_type, format):
       result = 'model_cif'
   return result
 
-def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
-    force_download=False,
-    local_cache=None):
+def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None):
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
@@ -133,60 +113,11 @@ def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None,
   assert data_type in ["pdb", "xray", "fasta"]
   assert format in ["cif", "pdb", "xml", "cif_or_pdb"]
   assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
-  validate_pdb_id(id)
+  id = id.lower()
+  if not valid_pdb_id(id):
+    raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % pdb_id)
   if (log is None) : log = null_out()
 
-  id = id.lower()
-  if (not force_download):
-    if (local_cache is not None) and (data_type == "pdb"):
-      from iotbx.file_reader import guess_file_type
-      if (local_cache is Auto):
-        local_cache = os.getcwd()
-      cache_files = os.listdir(local_cache)
-      for file_name in cache_files :
-        if (len(file_name) > 4):
-          file_id = re.sub("^pdb", "", file_name)[0:4]
-          if (file_id.lower() == id):
-            if (guess_file_type(file_name) == "pdb"):
-              file_name = os.path.join(local_cache, file_name)
-              print("Reading from cache directory:", file=log)
-              print("  " + file_name, file=log)
-              f = smart_open.for_reading(file_name)
-              return f
-    # try local mirror for PDB and X-ray data files first, if it exists
-    if (data_type == "pdb") and (format in ["pdb", "cif_or_pdb"]) and \
-           ("PDB_MIRROR_PDB" in os.environ):
-      subdir = os.path.join(os.environ["PDB_MIRROR_PDB"], id[1:3])
-      if (os.path.isdir(subdir)):
-        file_name = os.path.join(subdir, "pdb%s.ent.gz" % id)
-        if (os.path.isfile(file_name)):
-          print("Reading from local mirror:", file=log)
-          print("  " + file_name, file=log)
-          f = smart_open.for_reading(file_name)
-          return f
-    if (data_type == "pdb") and (format in ["cif", "cif_or_pdb"]) and \
-           ("PDB_MIRROR_MMCIF" in os.environ):
-      subdir = os.path.join(os.environ["PDB_MIRROR_MMCIF"], id[1:3])
-      if (os.path.isdir(subdir)):
-        file_name = os.path.join(subdir, "%s.cif.gz" % id)
-        if (os.path.isfile(file_name)):
-          print("Reading from local mirror:", file=log)
-          print("  " + file_name, file=log)
-          f = smart_open.for_reading(file_name)
-          return f
-    if ((data_type == "xray") and
-        ("PDB_MIRROR_STRUCTURE_FACTORS" in os.environ)):
-      sf_dir = os.environ["PDB_MIRROR_STRUCTURE_FACTORS"]
-      subdir = os.path.join(sf_dir, id[1:3])
-      if (os.path.isdir(subdir)):
-        file_name = os.path.join(subdir, "r%ssf.ent.gz" % id)
-        if (os.path.isfile(file_name)):
-          print("Reading from local mirror:", file=log)
-          print("  " + file_name, file=log)
-          f = smart_open.for_reading(file_name)
-          return f
-
-  # No mirror found (or out of date), default to HTTP download
   file_type = get_file_type_from_params(data_type, format)
   url = get_link(mirror, file_type, pdb_id=id, emdb_number=None)
   need_to_decompress = url.split('.')[-1] == 'gz' and file_type != 'map'
@@ -214,17 +145,14 @@ def get_pdb(id, data_type, mirror, log, format="pdb"):
     data = fetch(id, data_type, mirror=mirror, format=format, log=log)
   except RuntimeError as e :
     raise Sorry(str(e))
-
   default_value = (os.path.join(os.getcwd(), "{}.{}".format(id, format)), "Model")
   file_names_titles = defaultdict(lambda: default_value, {
       "xray":  (os.path.join(os.getcwd(), "{}-sf.cif".format(id)), "Structure factors"),
       "fasta": (os.path.join(os.getcwd(), "{}.fa".format(id)), "Sequence"),
   })
-
   file_name, title = file_names_titles[data_type]
   write_data_to_disc(file_name, data)
   print("%s saved to %s" % (title, file_name), file=log)
-
   return file_name
 
 def get_chemical_components_cif(code, return_none_if_already_present=False):
