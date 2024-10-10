@@ -4,6 +4,7 @@ from libtbx.utils import format_cpu_times
 import requests
 from iotbx.pdb.fetch import fetch, get_link
 from libtbx.test_utils import assert_lines_in_text
+import sys
 
 def exercise_1():
   string_1yjp = fetch(id = "1yjp").read().decode()
@@ -45,16 +46,17 @@ def exercise_get_link():
 
 if (__name__ == "__main__"):
   exercise_get_link()
-  exception_occured = False
-  try:
-    r = requests.get('https://search.rcsb.org/')
-  except Exception:
-    print("OK but exception.")
-    exception_occured = True
-  if not exception_occured and r.ok and len(r.text) > 100:
-    exercise_1()
-    exercise_2()
-    print("OK")
-  else:
-    print("OK but skipped.")
+  if sys.version_info.major >= 3:
+    exception_occured = False
+    try:
+      r = requests.get('https://search.rcsb.org/')
+    except Exception:
+      print("OK but exception.")
+      exception_occured = True
+    if not exception_occured and r.ok and len(r.text) > 100:
+      exercise_1()
+      exercise_2()
+      print("OK")
+    else:
+      print("OK but skipped.")
   print(format_cpu_times())
