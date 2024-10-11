@@ -76,16 +76,6 @@ def is_pdb_mmcif_file(file_name):
   except Exception as e:
     return False
 
-def ent_path_local_mirror(pdb_id, environ_key="PDB_MIRROR_PDB"):
-  if (len(pdb_id) != 4):
-    raise RuntimeError("Invalid PDB ID: %s (must be four characters)" % pdb_id)
-  pdb_id = pdb_id.lower()
-  pdb_mirror = os.environ[environ_key]
-  result = op.join(pdb_mirror, pdb_id[1:3], "pdb%s.ent.gz" % pdb_id)
-  if (not op.isfile(result)):
-    raise RuntimeError("No file with PDB ID %s (%s)" % (pdb_id, result))
-  return result
-
 def systematic_chain_ids():
   import string
   u, l, d = string.ascii_uppercase, string.ascii_lowercase, string.digits
@@ -669,7 +659,6 @@ class pdb_input_from_any(object):
                file_name=None,
                source_info=Please_pass_string_or_None,
                lines=None,
-               pdb_id=None,
                raise_sorry_if_format_error=False):
     self.file_format = None
     content = None
@@ -686,7 +675,6 @@ class pdb_input_from_any(object):
           file_name=file_name,
           source_info=source_info,
           lines=lines,
-          pdb_id=pdb_id,
           raise_sorry_if_format_error=raise_sorry_if_format_error)
       except Exception as e:
         # store the first error encountered and re-raise later if can't
@@ -740,11 +728,7 @@ def pdb_input(
     file_name=None,
     source_info=Please_pass_string_or_None,
     lines=None,
-    pdb_id=None,
     raise_sorry_if_format_error=False):
-  if (pdb_id is not None):
-    assert file_name is None
-    file_name = ent_path_local_mirror(pdb_id=pdb_id)
   if (file_name is not None):
     try :
       with smart_open.for_reading(file_name, gzip_mode='rt') as f:
@@ -774,7 +758,6 @@ def input(
     file_name=None,
     source_info=Please_pass_string_or_None,
     lines=None,
-    pdb_id=None,
     raise_sorry_if_format_error=False):
   """
   Main input method for both PDB and mmCIF files; will automatically determine
@@ -785,7 +768,6 @@ def input(
   file_name: path to PDB or mmCIF file
   source_info: string describing source of input (e.g. file name)
   lines: flex.std_string array of input lines
-  pdb_id: PDB ID to automatically retrieve from local mirror
   raise_sorry_if_format_error: re-raise any low-level parser errors as a
     libtbx.utils.Sorry exception instance for clean user feedback
 
@@ -799,7 +781,6 @@ def input(
     file_name=file_name,
     source_info=source_info,
     lines=lines,
-    pdb_id=pdb_id,
     raise_sorry_if_format_error=raise_sorry_if_format_error).file_content()
 
 default_atom_names_scattering_type_const = ["PEAK", "SITE"]

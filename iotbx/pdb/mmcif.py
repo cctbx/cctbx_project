@@ -361,11 +361,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
                cif_object=None,
                source_info=iotbx.pdb.Please_pass_string_or_None,
                lines=None,
-               pdb_id=None,
                raise_sorry_if_format_error=False):
-    if (pdb_id is not None):
-      assert file_name is None
-      file_name = iotbx.pdb.ent_path_local_mirror(pdb_id=pdb_id)
     if file_name is not None:
       reader = iotbx.cif.reader(file_path=file_name)
       self.cif_model = reader.model()
