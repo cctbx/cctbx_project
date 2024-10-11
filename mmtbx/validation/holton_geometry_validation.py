@@ -988,7 +988,7 @@ def get_model(info):
   if (info.remove_waters):
     info.model.add_crystal_symmetry_if_necessary()
     info.model = info.model.apply_selection_string("not water")
-  if (info.score_this_altloc_only and ( info.score_this_altloc_only in 
+  if (info.score_this_altloc_only and ( info.score_this_altloc_only in
        info.model.get_hierarchy().altlocs_present())):
     ph = info.model.get_hierarchy()
     ph.remove_alt_confs(always_keep_one_conformer = True,
