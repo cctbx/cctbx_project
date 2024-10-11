@@ -53,14 +53,8 @@ jobs:
     displayName: Add conda to PATH
 
   - script: |
-      conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons
+      conda create -y -c conda-forge -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
     displayName: Create conda environment
-    condition: ne(variables['PYTHON_VERSION'], '3.13')
-
-  - script: |
-      conda create -y -c conda-forge -c conda-forge/label/python_rc -n py$(PYTHON_VERSION) python=$(PYTHON_VERSION) six future scons setuptools
-    displayName: Create conda environment
-    condition: eq(variables['PYTHON_VERSION'], '3.13')
 
   - script: |
       set -xe
