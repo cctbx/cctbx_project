@@ -29,7 +29,7 @@ geo_container = GeoParser(geo_lines,model=model)
 
 
 # access entries
-entry = geo_container.entries["dihedral"][0]
+entry = geo_container.entries["Dihedral angle"][0]
 
 # access entry as a pure dict
 entry.record
@@ -417,7 +417,7 @@ bond 5
 # 1yjp .geo text (with labels), write the first entry of each type to json
 result_json_1 = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [
         0,
@@ -436,7 +436,7 @@ result_json_1 = """
       "origin_id": 0
     }
   ],
-  "angle": [
+  "Bond angle": [
     {
       "i_seqs": [
         12,
@@ -457,7 +457,7 @@ result_json_1 = """
       "origin_id": 0
     }
   ],
-  "dihedral": [
+  "Dihedral angle": [
     {
       "i_seqs": [
         13,
@@ -481,7 +481,7 @@ result_json_1 = """
       "origin_id": 0
     }
   ],
-  "chirality": [
+  "Chirality": [
     {
       "i_seqs": [
         30,
@@ -505,7 +505,7 @@ result_json_1 = """
       "origin_id": 0
     }
   ],
-  "plane": [
+  "Planarity": [
     {
       "i_seqs": [
         50,
@@ -580,7 +580,7 @@ result_json_1 = """
       "origin_id": 0
     }
   ],
-  "nonbonded": [
+  "Nonbonded": [
     {
       "i_seqs": [
         57,
@@ -601,16 +601,13 @@ result_json_1 = """
 # 1yjp .geo text (without labels), write the first entry of each type to json
 result_json_2 = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [
         0,
         1
       ],
-      "atom_labels": [
-        "0",
-        "1"
-      ],
+      "atom_labels": [],
       "ideal": 1.451,
       "model": 1.507,
       "delta": -0.056,
@@ -620,18 +617,14 @@ result_json_2 = """
       "origin_id": 0
     }
   ],
-  "angle": [
+  "Bond angle": [
     {
       "i_seqs": [
         12,
         13,
         14
       ],
-      "atom_labels": [
-        "12",
-        "13",
-        "14"
-      ],
+      "atom_labels": [],
       "ideal": 108.9,
       "model": 113.48,
       "delta": -4.58,
@@ -641,7 +634,7 @@ result_json_2 = """
       "origin_id": 0
     }
   ],
-  "dihedral": [
+  "Dihedral angle": [
     {
       "i_seqs": [
         13,
@@ -649,12 +642,7 @@ result_json_2 = """
         20,
         21
       ],
-      "atom_labels": [
-        "13",
-        "14",
-        "20",
-        "21"
-      ],
+      "atom_labels": [],
       "ideal": 180.0,
       "model": 166.21,
       "delta": 13.79,
@@ -665,7 +653,7 @@ result_json_2 = """
       "origin_id": 0
     }
   ],
-  "chirality": [
+  "Chirality": [
     {
       "i_seqs": [
         30,
@@ -673,12 +661,7 @@ result_json_2 = """
         31,
         33
       ],
-      "atom_labels": [
-        "30",
-        "29",
-        "31",
-        "33"
-      ],
+      "atom_labels": [],
       "both_signs": "False",
       "ideal": 2.51,
       "model": 2.39,
@@ -689,7 +672,7 @@ result_json_2 = """
       "origin_id": 0
     }
   ],
-  "plane": [
+  "Planarity": [
     {
       "i_seqs": [
         50,
@@ -701,16 +684,7 @@ result_json_2 = """
         56,
         57
       ],
-      "atom_labels": [
-        "50",
-        "51",
-        "52",
-        "53",
-        "54",
-        "55",
-        "56",
-        "57"
-      ],
+      "atom_labels": [],
       "delta": [
         -0.006,
         0.022,
@@ -764,16 +738,13 @@ result_json_2 = """
       "origin_id": 0
     }
   ],
-  "nonbonded": [
+  "Nonbonded": [
     {
       "i_seqs": [
         57,
         62
       ],
-      "atom_labels": [
-        "57",
-        "62"
-      ],
+      "atom_labels": [],
       "model": 2.525,
       "vdw": 3.04,
       "sym.op.": "-x+1,y-1/2,-z+1",
@@ -785,7 +756,7 @@ result_json_2 = """
 # 1yjp .geo text (with labels but no model), So no i_seqs possible
 result_json_3 = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -801,7 +772,7 @@ result_json_3 = """
       "origin_id": 0
     }
   ],
-  "angle": [
+  "Bond angle": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -818,7 +789,7 @@ result_json_3 = """
       "origin_id": 0
     }
   ],
-  "dihedral": [
+  "Dihedral angle": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -837,7 +808,7 @@ result_json_3 = """
       "origin_id": 0
     }
   ],
-  "chirality": [
+  "Chirality": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -856,7 +827,7 @@ result_json_3 = """
       "origin_id": 0
     }
   ],
-  "plane": [
+  "Planarity": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -922,7 +893,7 @@ result_json_3 = """
       "origin_id": 0
     }
   ],
-  "nonbonded": [
+  "Nonbonded": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -940,7 +911,7 @@ result_json_3 = """
 # tst_1_geo parsed (testing multiple types of origin ids), the first entry for each entry type.
 result_json_4 = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -956,7 +927,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "angle": [
+  "Bond angle": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -973,7 +944,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "dihedral": [
+  "Dihedral angle": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -992,7 +963,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "chirality": [
+  "Chirality": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -1011,7 +982,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "plane": [
+  "Planarity": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -1083,7 +1054,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "nonbonded": [
+  "Nonbonded": [
     {
       "i_seqs": [],
       "atom_labels": [
@@ -1095,7 +1066,7 @@ result_json_4 = """
       "origin_id": 0
     }
   ],
-  "parallelity": [
+  "Parallelity": [
     {
       "i_seqs": [],
       "j_seqs": [],
@@ -1136,16 +1107,13 @@ result_json_4 = """
 # Tests ability to read atom labels in varied forms (id_str, i_seq)
 result_json_5 = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [
         0,
         1
       ],
-      "atom_labels": [
-        "0",
-        "1"
-      ],
+      "atom_labels": [],
       "ideal": 1.48,
       "model": 1.481,
       "delta": -0.001,
@@ -1155,18 +1123,14 @@ result_json_5 = """
       "origin_id": 0
     }
   ],
-  "angle": [
+  "Bond angle": [
     {
       "i_seqs": [
         26,
         27,
         28
       ],
-      "atom_labels": [
-        "26",
-        "27",
-        "28"
-      ],
+      "atom_labels": [],
       "ideal": 112.0,
       "model": 112.26,
       "delta": -0.26,
@@ -1176,7 +1140,7 @@ result_json_5 = """
       "origin_id": 0
     }
   ],
-  "dihedral": [
+  "Dihedral angle": [
     {
       "i_seqs": [
         25,
@@ -1184,12 +1148,7 @@ result_json_5 = """
         27,
         28
       ],
-      "atom_labels": [
-        "25",
-        "26",
-        "27",
-        "28"
-      ],
+      "atom_labels": [],
       "ideal": -106.54,
       "model": -179.87,
       "delta": 73.33,
@@ -1200,7 +1159,7 @@ result_json_5 = """
       "origin_id": 0
     }
   ],
-  "chirality": [
+  "Chirality": [
     {
       "i_seqs": [
         10,
@@ -1208,12 +1167,7 @@ result_json_5 = """
         12,
         13
       ],
-      "atom_labels": [
-        "10",
-        "11",
-        "12",
-        "13"
-      ],
+      "atom_labels": [],
       "both_signs": "False",
       "ideal": 2.47,
       "model": 2.45,
@@ -1224,7 +1178,7 @@ result_json_5 = """
       "origin_id": 0
     }
   ],
-  "plane": [
+  "Planarity": [
     {
       "i_seqs": [
         3,
@@ -1237,17 +1191,7 @@ result_json_5 = """
         10,
         11
       ],
-      "atom_labels": [
-        "3",
-        "4",
-        "5",
-        "6",
-        "7",
-        "8",
-        "9",
-        "10",
-        "11"
-      ],
+      "atom_labels": [],
       "delta": [
         -0.001,
         0.002,
@@ -1306,22 +1250,19 @@ result_json_5 = """
       "origin_id": 0
     }
   ],
-  "nonbonded": [
+  "Nonbonded": [
     {
       "i_seqs": [
         21,
         22
       ],
-      "atom_labels": [
-        "21",
-        "22"
-      ],
+      "atom_labels": [],
       "model": 2.683,
       "vdw": 2.672,
       "origin_id": 0
     }
   ],
-  "parallelity": [
+  "Parallelity": [
     {
       "i_seqs": [
         23,
@@ -1348,31 +1289,8 @@ result_json_5 = """
         7,
         9
       ],
-      "atom_labels_i": [
-        "23",
-        "25",
-        "27",
-        "29",
-        "0",
-        "2",
-        "4",
-        "6",
-        "8",
-        "10",
-        "11",
-        "12"
-      ],
-      "atom_labels_j": [
-        "24",
-        "26",
-        "28",
-        "30",
-        "1",
-        "3",
-        "5",
-        "7",
-        "9"
-      ],
+      "atom_labels_i": [],
+      "atom_labels_j": [],
       "residual": 6.47,
       "delta(deg)": 5.5671,
       "sigma": 0.027,
@@ -1455,7 +1373,7 @@ def tst_01(model,printing=False):
   if not geo_container.has_proxies:
     geo_container.build_proxies()
   assert geo_container.has_proxies
-  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_02(model,printing=False):
   # Test a 1yjp with NO labels and YES a model
@@ -1488,7 +1406,7 @@ def tst_02(model,printing=False):
   if not geo_container.has_proxies:
     geo_container.build_proxies()
   assert geo_container.has_proxies
-  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_03(model,printing=False):
   # Test a 1yjp with NO labels and NO a model
@@ -1522,7 +1440,7 @@ def tst_03(model,printing=False):
   if not geo_container.has_proxies:
     geo_container.build_proxies()
   assert geo_container.has_proxies
-  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_04(model,printing=False):
   # Test a 1yjp with YES labels and NO a model
@@ -1583,8 +1501,9 @@ def tst_05(model,printing=False):
   assert len(entries) ==   39
   assert not geo_container.has_proxies
 
-  origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], "Got:" + str(origin_ids)
+  origins = [entry.origin_label for entry in geo_container.entries_list]
+  expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
+  assert origins ==expected_origins, "Got:" + str(origins)
 
 def tst_06(model,printing=False):
   # Test reading complicated geo file
@@ -1614,10 +1533,11 @@ def tst_06(model,printing=False):
   if not geo_container.has_proxies:
     geo_container.build_proxies()
   assert geo_container.has_proxies
-  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
-  origin_ids = [entry.origin_id for entry in geo_container.entries_list]
-  assert origin_ids ==[0, 9, 18, 1, 53, 2, 3, 73, 5, 22, 20, 4, 21, 0, 18, 1, 53, 2, 73, 5, 22, 20, 21, 0, 81, 82, 73, 0, 18, 53, 22, 20, 21, 0, 53, 73, 0, 6, 7], "Got: "+ str(origin_ids)
+  origins = [entry.origin_label for entry in geo_container.entries_list]
+  expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
+  assert origins == expected_origins, "Got: "+ str(origins)
 
 
 def tst_07(model,printing=False):
@@ -1625,15 +1545,13 @@ def tst_07(model,printing=False):
 
   result_js = """
 {
-  "bond": [
+  "Bond": [
     {
       "i_seqs": [
         0,
         1
       ],
       "atom_labels": [
-        "0",
-        "1"
       ],
       "ideal": 1.451,
       "model": 1.507,
@@ -1670,7 +1588,7 @@ def tst_07(model,printing=False):
   if not geo_container.has_proxies:
     geo_container.build_proxies()
   assert geo_container.has_proxies
-  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["nonbonded"])
+  assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 
 
