@@ -191,7 +191,6 @@ https://conda.anaconda.org/cctbx202211/osx-64/liblapack-3.9.0-16_osx64_openblas.
 https://conda.anaconda.org/cctbx202211/osx-64/libnetcdf-4.8.1-nompi_hc61b76e_106.tar.bz2#502e31e4a400216854da4e9933fb21c2
 https://conda.anaconda.org/cctbx202211/osx-64/pybind11-2.10.1-py310ha23aa8a_0.tar.bz2#6be356f0c6777e1670381562c4a69067
 https://conda.anaconda.org/cctbx202211/osx-64/pycairo-1.21.0-py310h8cdeff8_2.tar.bz2#c5e988dbe2dc61fc8784296800be453d
-https://conda.anaconda.org/cctbx202211/noarch/pytest-7.2.0-pyhd8ed1ab_2.tar.bz2#ac82c7aebc282e6ac0450fca012ca78c
 https://conda.anaconda.org/cctbx202211/osx-64/reportlab-3.5.68-py310h3301372_1.tar.bz2#94b83fcaee99492f9a002610af0db158
 https://conda.anaconda.org/cctbx202211/osx-64/sqlalchemy-1.4.44-py310h90acd4f_0.tar.bz2#bd03c0e1d23262344715199180e7d36d
 https://conda.anaconda.org/cctbx202211/noarch/stack_data-0.6.1-pyhd8ed1ab_0.tar.bz2#e4ee26ff6c1abceaf5d6fecb6612a689
@@ -207,8 +206,6 @@ https://conda.anaconda.org/cctbx202211/osx-64/netcdf-fortran-4.5.4-nompi_h96bf37
 https://conda.anaconda.org/cctbx202211/osx-64/numpy-1.23.4-py310h1b7c290_1.tar.bz2#83930a7444dab73641a2dd927f3c6a0d
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
 https://conda.anaconda.org/cctbx202211/noarch/pyopenssl-22.1.0-pyhd8ed1ab_0.tar.bz2#fbfa0a180d48c800f922a10a114a8632
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.0.2-pyhd8ed1ab_0.tar.bz2#18bdfe034d1187a34d860ed8e6fec788
 https://conda.anaconda.org/phenix-project/osx-64/amber_phenix-1.5-py310h21fdc47_2.tar.bz2#685129d03482f72fca39ea02ad6fd4c1
 https://conda.anaconda.org/cctbx202211/osx-64/biopython-1.79-py310h90acd4f_3.tar.bz2#dd427a8ac5ce3a90599942ab4f070528
 https://conda.anaconda.org/cctbx202211/osx-64/boost-1.74.0-py310h509978a_5.tar.bz2#aac23d28bb5944481d2f4519e0f91681

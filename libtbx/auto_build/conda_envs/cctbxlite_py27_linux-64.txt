@@ -145,6 +145,5 @@ https://conda.anaconda.org/cctbx202008/noarch/prompt_toolkit-1.0.15-py_1.tar.bz2
 https://conda.anaconda.org/cctbx202008/noarch/requests-2.24.0-pyh9f0ad1d_0.tar.bz2#786ef230ca5cf2536e9dee910fdf4f9f
 https://conda.anaconda.org/cctbx202008/linux-64/gtk2-2.24.32-h586f36d_1.tar.bz2#668a114003b0c8696cd11ddc0232b6b5
 https://conda.anaconda.org/cctbx202008/linux-64/ipython-5.8.0-py27_1.tar.bz2#b95b11ff25dde76c6fa0c5620a8e90ad
-https://conda.anaconda.org/cctbx202008/linux-64/pytest-4.6.4-py27_0.tar.bz2#c180cba761a561441baf8fdea75d580e
 https://conda.anaconda.org/cctbx202008/linux-64/sphinx-1.8.5-py27_0.tar.bz2#a5285f9fa7a1e8b18f4666a376d325bc
 https://conda.anaconda.org/cctbx202008/noarch/numpydoc-1.1.0-pyh9f0ad1d_0.tar.bz2#96c9d4d0fe254de4b0961d3f8dbe2a2e

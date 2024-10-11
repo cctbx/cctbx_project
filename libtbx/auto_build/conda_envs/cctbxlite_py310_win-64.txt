@@ -175,7 +175,6 @@ https://conda.anaconda.org/cctbx202211/win-64/mopac-22.0.5-h3bcc891_0.tar.bz2#18
 https://conda.anaconda.org/cctbx202211/win-64/numpy-1.23.4-py310h4a8f9c9_1.tar.bz2#3e912fdde0f115791cb783fd35d41ad8
 https://conda.anaconda.org/cctbx202211/win-64/pillow-9.2.0-py310hd4fb230_3.tar.bz2#96a1ddd65392fb64636dd8311f862e14
 https://conda.anaconda.org/cctbx202211/win-64/pybind11-2.10.1-py310h232114e_0.tar.bz2#fe894faf043830ced1982587c416fd9e
-https://conda.anaconda.org/cctbx202211/noarch/pytest-7.2.0-pyhd8ed1ab_2.tar.bz2#ac82c7aebc282e6ac0450fca012ca78c
 https://conda.anaconda.org/cctbx202211/win-64/sqlalchemy-1.4.44-py310h8d17308_0.tar.bz2#ce79929f5bdea9e026611858677d1a26
 https://conda.anaconda.org/cctbx202211/noarch/stack_data-0.6.1-pyhd8ed1ab_0.tar.bz2#e4ee26ff6c1abceaf5d6fecb6612a689
 https://conda.anaconda.org/cctbx202211/noarch/wcwidth-0.2.5-pyh9f0ad1d_2.tar.bz2#5266fcd697043c59621fda522b3d78ee
@@ -192,8 +191,6 @@ https://conda.anaconda.org/cctbx202211/win-64/pandas-1.5.1-py310h1c4a608_1.tar.b
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
 https://conda.anaconda.org/cctbx202211/win-64/pycairo-1.21.0-py310h42c1a3e_2.tar.bz2#47b931f8b5e4a1e5549b89dc8dd7d769
 https://conda.anaconda.org/cctbx202211/noarch/pyopenssl-22.1.0-pyhd8ed1ab_0.tar.bz2#fbfa0a180d48c800f922a10a114a8632
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.0.2-pyhd8ed1ab_0.tar.bz2#18bdfe034d1187a34d860ed8e6fec788
 https://conda.anaconda.org/cctbx202211/win-64/reportlab-3.5.68-py310h0e7cf82_1.tar.bz2#39b1ba96895bf56c96605c15f7128070
 https://conda.anaconda.org/cctbx202211/win-64/scipy-1.9.3-py310h578b7cb_2.tar.bz2#dd00a0a254b250f6cc7546be6e79e396
 https://conda.anaconda.org/cctbx202211/win-64/gst-plugins-base-1.20.3-h001b923_2.tar.bz2#86d27bed1422db2e98540a9945079b36

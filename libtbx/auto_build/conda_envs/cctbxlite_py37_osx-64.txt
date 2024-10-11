@@ -215,15 +215,12 @@ https://conda.anaconda.org/cctbx202211/osx-64/hdf5plugin-3.3.1-py37h2fc2464_1.ta
 https://conda.anaconda.org/phenix-project/noarch/libsvm-official-3.25.0-pyhb8e05e6_0.tar.bz2#e39a94aca9c3b04a51a80d6bc9432712
 https://conda.anaconda.org/cctbx202211/noarch/networkx-2.7-pyhd8ed1ab_0.tar.bz2#9d430f94458637bbb2f5e78526324412
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
-https://conda.anaconda.org/cctbx202211/osx-64/pytest-7.2.0-py37hf985489_0.tar.bz2#e26d95efe84901a52eb7ccfd1bbf3712
 https://conda.anaconda.org/cctbx202211/osx-64/qt-webengine-5.15.4-h72ca1e5_3.tar.bz2#6908ff3dee8cf6164c2a9900337f85b2
 https://conda.anaconda.org/cctbx202211/osx-64/rdkit-2022.09.1-py37h277db03_0.tar.bz2#df2120348ab79c2a3a6be532a348b676
 https://conda.anaconda.org/cctbx202211/osx-64/scikit-learn-1.0.2-py37h572704e_0.tar.bz2#798c014197113c421e3b7df54434f4a1
 https://conda.anaconda.org/cctbx202211/noarch/urllib3-1.26.11-pyhd8ed1ab_0.tar.bz2#0738978569b10669bdef41c671252dd1
 https://conda.anaconda.org/cctbx202211/osx-64/ipython-7.33.0-py37hf985489_0.tar.bz2#5290a8018447303c34674bfa57696559
 https://conda.anaconda.org/cctbx202211/osx-64/pyside2-5.15.6-py37h8675123_2.tar.bz2#0d99f3cbf39076ce3a37db3a5f5fbd5e
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.0.2-pyhd8ed1ab_0.tar.bz2#18bdfe034d1187a34d860ed8e6fec788
 https://conda.anaconda.org/cctbx202211/noarch/requests-2.28.1-pyhd8ed1ab_1.tar.bz2#089382ee0e2dc2eae33a04cc3c2bddb0
 https://conda.anaconda.org/cctbx202211/noarch/restraintlib-2022.8.1-pyhd8ed1ab_0.tar.bz2#e7a3685f2e3516d53798b8a72584a405
 https://conda.anaconda.org/cctbx202211/noarch/dials-data-2.4.42-pyhd8ed1ab_0.tar.bz2#e05e14e258e5a33cd4561fb9504ae150
