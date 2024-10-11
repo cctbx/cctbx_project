@@ -309,7 +309,7 @@ def get_classes(atom, verbose=False):
   if (classes.other):
     setattr(classes, _filter_for_uncommon_amino_acid(atom, rc), True)
   if verbose:
-    print classes
+    print(classes)
   return classes
 
 def is_atom_group_pair_linked(atom_group1,
