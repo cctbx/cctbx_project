@@ -88,6 +88,7 @@ def holton_geometry_validation(dm = None,
      lj_dist_that_yields_zero = 6, # Distance for modified LJ to cross zero
      const_shrink_donor_acceptor = 0, # 0.6 reinstates value prior to  2024
      remove_waters = None, # remove waters before scoring
+     score_this_altloc_only = None, # Only score this altloc
      n_random = 20,
      sd_to_use = 3,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
@@ -97,6 +98,7 @@ def holton_geometry_validation(dm = None,
        a0 = 1.12482,
        mx = 0.21805,
        my = 0.736621),
+     include_random = True,
      verbose = False,
      log = sys.stdout,
     ):
@@ -369,6 +371,8 @@ def labels_contain(labels, chain_id = None, resseq = None):
   return False
 
 def analyze_geometry_values_random(info):
+  if not info.include_random:
+    return # nothing to do
   keys = list(info.geometry_results.keys())
   original_result_dict = {}
   average_dict = {}
@@ -984,6 +988,11 @@ def get_model(info):
   if (info.remove_waters):
     info.model.add_crystal_symmetry_if_necessary()
     info.model = info.model.apply_selection_string("not water")
+  if (info.score_this_altloc_only and ( info.score_this_altloc_only in 
+       info.model.get_hierarchy().altlocs_present())):
+    ph = info.model.get_hierarchy()
+    ph.remove_alt_confs(always_keep_one_conformer = True,
+          altloc_to_keep = info.score_this_altloc_only)
   if (not info.keep_hydrogens):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
@@ -1000,7 +1009,8 @@ def get_model(info):
       info.const_shrink_donor_acceptor
   info.model.process(make_restraints=True,
      pdb_interpretation_params = p)
-  info.model.setup_riding_h_manager(idealize=True)
+  if not info.model.riding_h_manager:
+    info.model.setup_riding_h_manager(idealize=True)
   info.chain_dict = {}
   for chain_id in info.model.chain_ids(unique_only = True):
     entry = group_args(group_args_type = 'chain entry', )
