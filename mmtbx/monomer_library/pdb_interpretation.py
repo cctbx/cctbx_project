@@ -159,6 +159,8 @@ restraints_library_str = """
       .help = Use Conformation Dependent Library (CDL) \
         for geometry restraints
       .style = bold
+    include_modified_amino_acid_in_cdl = False
+      .type = bool
     mcl = True
       .type = bool
       .short_caption = Use Metal Coordination Library (MCL)
@@ -5717,6 +5719,7 @@ class build_all_chain_proxies(linking_mixins):
         cdl_proxies=cdl_proxies,
         cis_pro_eh99=cis_pro_eh99,
         cdl_svl=self.params.restraints_library.cdl_svl,
+        include_non_standard_peptides=self.params.restraints_library.include_modified_amino_acid_in_cdl,
         log=log,
         verbose=True,
         )
