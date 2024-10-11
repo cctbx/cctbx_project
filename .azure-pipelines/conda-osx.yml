@@ -23,16 +23,6 @@ jobs:
         OS: osx-64
         PYTHON_VERSION: py27
         MODULES: ${{ parameters.modules }}
-      python3.7:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
-      python3.8:
-        CONDA: MacOSX
-        OS: osx-64
-        PYTHON_VERSION: py38
-        MODULES: ${{ parameters.modules }}
       python3.9:
         CONDA: MacOSX
         OS: osx-64
@@ -42,6 +32,21 @@ jobs:
         CONDA: MacOSX
         OS: osx-64
         PYTHON_VERSION: py310
+        MODULES: ${{ parameters.modules }}
+      python3.11:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py311
+        MODULES: ${{ parameters.modules }}
+      python3.12:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py312
+        MODULES: ${{ parameters.modules }}
+      python3.13:
+        CONDA: MacOSX
+        OS: osx-64
+        PYTHON_VERSION: py313
         MODULES: ${{ parameters.modules }}
 
   variables:
