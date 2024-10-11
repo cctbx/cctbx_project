@@ -144,6 +144,10 @@ Example:
       .help = Remove waters before analysis
       .short_caption = Remove waters
 
+    score_this_altloc_only = None
+      .type = str
+      .help = Score only this altloc if specified
+      .short_caption = Score this altloc only
 
     softPnna_params {
       y0 = 1
@@ -214,6 +218,7 @@ Example:
      lj_dist_that_yields_zero = self.params.lj_dist_that_yields_zero,
      const_shrink_donor_acceptor = self.params.const_shrink_donor_acceptor,
      remove_waters = self.params.remove_waters,
+     score_this_altloc_only = self.params.score_this_altloc_only,
      softPnna_params = self.params.softPnna_params,
       log =self.logger)
 
