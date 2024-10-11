@@ -22,16 +22,6 @@ jobs:
         OS: linux-64
         PYTHON_VERSION: py27
         MODULES: ${{ parameters.modules }}
-      python3.7:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
-      python3.8:
-        CONDA: Linux
-        OS: linux-64
-        PYTHON_VERSION: py38
-        MODULES: ${{ parameters.modules }}
       python3.9:
         CONDA: Linux
         OS: linux-64
@@ -41,6 +31,21 @@ jobs:
         CONDA: Linux
         OS: linux-64
         PYTHON_VERSION: py310
+        MODULES: ${{ parameters.modules }}
+      python3.11:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py311
+        MODULES: ${{ parameters.modules }}
+      python3.12:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py312
+        MODULES: ${{ parameters.modules }}
+      python3.13:
+        CONDA: Linux
+        OS: linux-64
+        PYTHON_VERSION: py313
         MODULES: ${{ parameters.modules }}
 
   container:

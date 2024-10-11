@@ -16,14 +16,6 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.7:
-        OS: win-64
-        PYTHON_VERSION: py37
-        MODULES: ${{ parameters.modules }}
-      python3.8:
-        OS: win-64
-        PYTHON_VERSION: py38
-        MODULES: ${{ parameters.modules }}
       python3.9:
         OS: win-64
         PYTHON_VERSION: py39
@@ -31,6 +23,18 @@ jobs:
       python3.10:
         OS: win-64
         PYTHON_VERSION: py310
+        MODULES: ${{ parameters.modules }}
+      python3.11:
+        OS: win-64
+        PYTHON_VERSION: py311
+        MODULES: ${{ parameters.modules }}
+      python3.12:
+        OS: win-64
+        PYTHON_VERSION: py312
+        MODULES: ${{ parameters.modules }}
+      python3.13:
+        OS: win-64
+        PYTHON_VERSION: py313
         MODULES: ${{ parameters.modules }}
 
   variables:
@@ -70,6 +74,12 @@ jobs:
       tar -xf modules.tar
       del modules.tar
     displayName: Extract modules tarball
+
+  - script: |
+      cd $(Pipeline.Workspace)\modules
+      rmdir /S /Q boost
+    displayName: Remove subset of Boost sources
+    condition: ne(variables['PYTHON_VERSION'], 'py27')
 
   - script: |
       cd $(Pipeline.Workspace)
@@ -121,10 +131,8 @@ jobs:
       )
       call %CONDA%\condabin\conda.bat create -y --offline -c $(Pipeline.Workspace)\channel\ --override-channels -n $(PYTHON_VERSION) --file $(Pipeline.Workspace)\channel\env.txt
       if %errorlevel% neq 0 exit /b %errorlevel%
-      call %CONDA%\condabin\conda.bat remove -y -n $(PYTHON_VERSION) --force boost boost-cpp pytest
-      if %errorlevel% neq 0 exit /b %errorlevel%
       call %CONDA%\condabin\activate.bat %PYTHON_VERSION%
-      pip install junit-xml pytest==7.0.1
+      pip install junit-xml
       if %errorlevel% neq 0 exit /b %errorlevel%
     displayName: Create conda environment
     retryCountOnTaskFailure: 3
@@ -188,6 +196,7 @@ jobs:
       python bootstrap.py build ^
         --builder=cctbx ^
         --use-conda=%CONDA_PREFIX% ^
+        --config-flags="--cxxstd=c++14" ^
         --nproc=4
       call .\build\setpaths.bat
       call libtbx.configure ^

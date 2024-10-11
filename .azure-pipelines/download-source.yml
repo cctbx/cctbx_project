@@ -36,8 +36,14 @@ jobs:
   - script: |
       set -xe
       cd $(Pipeline.Workspace)/modules/boost
-      git checkout 1.74
-    displayName: Select Boost 1.74
+      git checkout 1.86
+    displayName: Select Boost 1.86
+
+  - script: |
+      set -xe
+      cd $(Pipeline.Workspace)/modules/dxtbx
+      git checkout dials-3.21
+    displayName: Select dxtbx 3.21 branch
 
   # change optimization level (linux, macOS)
   - script: |

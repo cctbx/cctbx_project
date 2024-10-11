@@ -39,6 +39,13 @@ steps:
 
 - script: |
     set -xe
+    cd $(Pipeline.Workspace)/modules
+    rm -fr boost
+  displayName: Remove subset of Boost sources
+  condition: ne(variables['PYTHON_VERSION'], 'py27')
+
+- script: |
+    set -xe
     cd $(Pipeline.Workspace)/modules/dxtbx
     git remote set-url origin https://github.com/dials/dxtbx.git
     git fetch origin
@@ -145,6 +152,7 @@ steps:
     python bootstrap.py build \
       --builder=cctbx \
       --use-conda=${CONDA_PREFIX} \
+      --config-flags="--cxxstd=c++14" \
       --nproc=4
     cd build
     source setpaths.sh
