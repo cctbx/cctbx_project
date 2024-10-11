@@ -144,7 +144,7 @@ def generate_residue_tuples(hierarchy,
     elif length==5: LinkedResidues = FiveProteinResidues
     else: LinkedResidues = FiveProteinResidues
     residue_lookup = ['common_amino_acid']
-    if include_non_standard_residues or 1:
+    if include_non_standard_residues:
       residue_lookup.append('modified_amino_acid')
     if include_d_amino_acids:
       residue_lookup.append('d_amino_acid')
