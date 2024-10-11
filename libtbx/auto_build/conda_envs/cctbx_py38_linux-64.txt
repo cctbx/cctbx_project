@@ -243,7 +243,6 @@ https://conda.anaconda.org/cctbx202211/linux-64/netcdf-fortran-4.5.4-nompi_hc402
 https://conda.anaconda.org/cctbx202211/linux-64/pandas-1.5.1-py38h8f669ce_1.tar.bz2#75f37fc81d6513ba5db1e05301671a2e
 https://conda.anaconda.org/cctbx202211/linux-64/pango-1.50.11-h382ae3d_0.tar.bz2#509e3f89508398070d3bf7769d9e8b03
 https://conda.anaconda.org/cctbx202211/linux-64/pybind11-2.10.1-py38h43d8883_0.tar.bz2#692e430dd28fee346ca7b52adf602f6f
-https://conda.anaconda.org/cctbx202211/noarch/pytest-7.2.0-pyhd8ed1ab_2.tar.bz2#ac82c7aebc282e6ac0450fca012ca78c
 https://conda.anaconda.org/cctbx202211/linux-64/reportlab-3.5.68-py38hadf75a6_1.tar.bz2#34fbd764a04718acf1d3f13f42050ae4
 https://conda.anaconda.org/cctbx202211/linux-64/scipy-1.9.3-py38h8ce737c_2.tar.bz2#dfd81898f0c6e9ee0c22305da6aa443e
 https://conda.anaconda.org/cctbx202211/linux-64/sqlalchemy-1.4.44-py38h0a891b7_0.tar.bz2#95c56b5f7c203b3954c2d9c88f49ae11
@@ -259,8 +258,6 @@ https://conda.anaconda.org/phenix-project/noarch/libsvm-official-3.25.0-pyhb8e05
 https://conda.anaconda.org/cctbx202211/linux-64/matplotlib-base-3.6.2-py38hb021067_0.tar.bz2#72422499195d8aded0dfd461c6e3e86f
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
 https://conda.anaconda.org/cctbx202211/noarch/pyopenssl-22.1.0-pyhd8ed1ab_0.tar.bz2#fbfa0a180d48c800f922a10a114a8632
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.0.2-pyhd8ed1ab_0.tar.bz2#18bdfe034d1187a34d860ed8e6fec788
 https://conda.anaconda.org/cctbx202211/linux-64/qt-main-5.15.6-hc525480_0.tar.bz2#abd0f27f5e84cd0d5ae14d22b08795d7
 https://conda.anaconda.org/cctbx202211/linux-64/scikit-learn-1.0.2-py38h1561384_0.tar.bz2#4a15e111a49087a5a36fc342904cf80b
 https://conda.anaconda.org/cctbx202211/noarch/ipython-8.6.0-pyh41d4057_1.tar.bz2#1450d70c7a31f515354f47d8d8faae78

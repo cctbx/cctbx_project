@@ -102,6 +102,5 @@ https://conda.anaconda.org/cctbx202008/noarch/pluggy-0.12.0-py_0.tar.bz2#4f6bebc
 https://conda.anaconda.org/cctbx202008/noarch/prompt_toolkit-1.0.15-py_1.tar.bz2#f5bea0930b268df84653cb32c8d1542f
 https://conda.anaconda.org/cctbx202008/noarch/requests-2.24.0-pyh9f0ad1d_0.tar.bz2#786ef230ca5cf2536e9dee910fdf4f9f
 https://conda.anaconda.org/cctbx202008/win-64/ipython-5.8.0-py27_1.tar.bz2#6aa40630be9ddae85b09fdb3f51ff8d6
-https://conda.anaconda.org/cctbx202008/win-64/pytest-4.6.4-py27_0.tar.bz2#0db6164603e1f0e879e766e070ba6362
 https://conda.anaconda.org/cctbx202008/win-64/sphinx-1.8.5-py27_0.tar.bz2#19b13982794e4d41187a1a4d4d2d5956
 https://conda.anaconda.org/cctbx202008/noarch/numpydoc-1.1.0-pyh9f0ad1d_0.tar.bz2#96c9d4d0fe254de4b0961d3f8dbe2a2e

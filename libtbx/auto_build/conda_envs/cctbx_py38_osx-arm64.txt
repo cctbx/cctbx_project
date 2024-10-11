@@ -176,7 +176,6 @@ https://conda.anaconda.org/cctbx202211/noarch/pip-22.3.1-pyhd8ed1ab_0.tar.bz2#da
 https://conda.anaconda.org/cctbx202211/osx-arm64/pybind11-2.10.1-py38h9dc3d6a_0.tar.bz2#e10d7adb2bc9447811f5252a92d6f286
 https://conda.anaconda.org/cctbx202211/noarch/pygments-2.13.0-pyhd8ed1ab_0.tar.bz2#9f478e8eedd301008b5f395bad0caaed
 https://conda.anaconda.org/cctbx202211/noarch/pyrtf-0.45-py_2.tar.bz2#1a3dc98b49ac259a69f9fe16f6a22d39
-https://conda.anaconda.org/cctbx202211/noarch/pytest-7.2.0-pyhd8ed1ab_2.tar.bz2#ac82c7aebc282e6ac0450fca012ca78c
 https://conda.anaconda.org/cctbx202211/noarch/python-dateutil-2.8.2-pyhd8ed1ab_0.tar.bz2#dd999d1cc9f79e67dbb855c8924c7984
 https://conda.anaconda.org/cctbx202211/osx-arm64/sqlalchemy-1.4.45-py38hb991d35_0.conda#87d6913ad858cf8902b480b69d74f9da
 https://conda.anaconda.org/cctbx202211/noarch/tqdm-4.64.1-pyhd8ed1ab_0.tar.bz2#5526ff3f88f9db87bb0924b9ce575345
@@ -191,8 +190,6 @@ https://conda.anaconda.org/cctbx202211/osx-arm64/libclang-15.0.6-default_h9e54d9
 https://conda.anaconda.org/cctbx202211/osx-arm64/liblapack-3.9.0-16_osxarm64_openblas.tar.bz2#52d270c579bfca986d6cdd81eb5ed6e7
 https://conda.anaconda.org/cctbx202211/osx-arm64/libnetcdf-4.8.1-nompi_h2510be2_106.tar.bz2#c5d2afa0f2bc4eca5be78c438a41de2e
 https://conda.anaconda.org/cctbx202211/osx-arm64/pycairo-1.23.0-py38hc3ff511_0.conda#895c8fb6da4d2fd23be5030d31fff1bf
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.1.0-pyhd8ed1ab_0.conda#e82f8fb903d7c4a59c77954759c341f9
 https://conda.anaconda.org/cctbx202211/osx-arm64/reportlab-3.5.68-py38h1ca7581_1.tar.bz2#94a60abfa324e68556525b4275a38537
 https://conda.anaconda.org/cctbx202211/noarch/stack_data-0.6.2-pyhd8ed1ab_0.conda#e7df0fdd404616638df5ece6e69ba7af
 https://conda.anaconda.org/cctbx202211/noarch/wcwidth-0.2.5-pyh9f0ad1d_2.tar.bz2#5266fcd697043c59621fda522b3d78ee

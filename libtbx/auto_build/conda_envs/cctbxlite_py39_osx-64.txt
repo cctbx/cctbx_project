@@ -198,7 +198,6 @@ https://conda.anaconda.org/cctbx202211/osx-64/mopac-22.0.5-h5bf119a_0.tar.bz2#3e
 https://conda.anaconda.org/cctbx202211/osx-64/netcdf-fortran-4.5.4-nompi_h96bf37d_102.tar.bz2#8f0cd88f3dd507b2ceda9b61e0a8a409
 https://conda.anaconda.org/cctbx202211/osx-64/numpy-1.23.4-py39hdfa1d0c_1.tar.bz2#b3006af08cbaea37b4d8ee814e643adb
 https://conda.anaconda.org/cctbx202211/osx-64/pybind11-2.10.1-py39h92daf61_0.tar.bz2#bceec45d922236d4e362cb157621f033
-https://conda.anaconda.org/cctbx202211/noarch/pytest-7.2.0-pyhd8ed1ab_2.tar.bz2#ac82c7aebc282e6ac0450fca012ca78c
 https://conda.anaconda.org/cctbx202211/osx-64/reportlab-3.5.68-py39hf37cc50_1.tar.bz2#cca7a8d41827dada475fe1b3d08004a8
 https://conda.anaconda.org/cctbx202211/osx-64/sqlalchemy-1.4.44-py39ha30fb19_0.tar.bz2#d45cf92b1e2e86b911dafe08bc950ee9
 https://conda.anaconda.org/cctbx202211/noarch/stack_data-0.6.1-pyhd8ed1ab_0.tar.bz2#e4ee26ff6c1abceaf5d6fecb6612a689
@@ -215,8 +214,6 @@ https://conda.anaconda.org/cctbx202211/noarch/mrcfile-1.4.3-pyhd8ed1ab_0.tar.bz2
 https://conda.anaconda.org/cctbx202211/osx-64/pandas-1.5.1-py39hecff1ad_1.tar.bz2#4acbce5ece29ee80ac558b6ef54de21f
 https://conda.anaconda.org/cctbx202211/noarch/prompt-toolkit-3.0.32-pyha770c72_0.tar.bz2#3e9740adeebfdffcfb3f1df1564c357c
 https://conda.anaconda.org/cctbx202211/noarch/pyopenssl-22.1.0-pyhd8ed1ab_0.tar.bz2#fbfa0a180d48c800f922a10a114a8632
-https://conda.anaconda.org/cctbx202211/noarch/pytest-mock-3.10.0-pyhd8ed1ab_0.tar.bz2#db93caa9fe182f0cd20291aeb22f57ac
-https://conda.anaconda.org/cctbx202211/noarch/pytest-xdist-3.0.2-pyhd8ed1ab_0.tar.bz2#18bdfe034d1187a34d860ed8e6fec788
 https://conda.anaconda.org/cctbx202211/osx-64/qt-main-5.15.6-he04cef1_0.tar.bz2#755f8e23af412db60c4282f3f41847c1
 https://conda.anaconda.org/cctbx202211/osx-64/scipy-1.9.3-py39h8a15683_2.tar.bz2#15265a968475ed446bb063660fd4d176
 https://conda.anaconda.org/cctbx202211/osx-64/hdf5plugin-3.3.1-py39ha96eaf9_2.tar.bz2#349956af1f5e2a8eb3cabb02145059e5
