@@ -3,7 +3,6 @@ from collections import defaultdict
 from itertools import chain
 import shlex
 import re
-import json
 from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
@@ -61,7 +60,7 @@ class Entry:
   @property
   def i_seqs_are_available(self):
     return len(self.i_seqs)>0
-    
+
   def _prepare(self):
     # Parse Atom labels
     values = []
@@ -543,7 +542,7 @@ class GeoParser:
       lines_for_entry = self.lines[entry_start_line_number:i]
       new_entry = entries_info.entry_class(
           lines=lines_for_entry,
-          origin_id=entries_info.origin_id, 
+          origin_id=entries_info.origin_id,
           origin_label=entries_info.origin_label,
           )
       # add new_entry to somewhere
