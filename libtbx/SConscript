@@ -453,9 +453,9 @@ libtbx.scons: Warning: compiling with /MDd:
     if sys.version_info.major == 3 and sys.version_info.minor <= 8:
       env_etc.ccflags_base.append('/DHAVE_SNPRINTF')
       env_etc.cxxflags_base.append('/DHAVE_SNPRINTF')
-    # needed for latest versions of Visual Studio 2022 so that type
+    # needed for latest versions of Visual Studio 2019 and C++14 so that type
     # limits are available
-    if env_etc.msvc_version == 17:
+    if env_etc.msvc_version >= 16:
       env_etc.ccflags_base.append('/D__STDC_LIMIT_MACROS')
       env_etc.cxxflags_base.append('/D__STDC_LIMIT_MACROS')
   elif (env_etc.compiler == "win32_icc"):
