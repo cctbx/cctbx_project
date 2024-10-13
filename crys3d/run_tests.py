@@ -15,7 +15,12 @@ other_tests = [
   "$D/regression/tst_HKLviewerQtGuiSliceK-9.py",
   "$D/regression/tst_HKLviewerQtGuiBinFSigF.py",
 ]
-if sys.platform == "darwin" or sys.platform == "win32":
+try:
+  import PySide2  # special import
+  pyside2_available = True
+except ImportError:
+  pyside2_available = False
+if (sys.platform == "darwin" or sys.platform == "win32") and pyside2_available:
   tst_list.extend(other_tests)
 else: # no DISPLAY environment on Azure VMs running linux so tests fail by default
   tst_list_expected_unstable.extend(other_tests)
