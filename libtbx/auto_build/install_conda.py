@@ -438,6 +438,8 @@ common compilers provided by conda. Please update your version with
       # use python.app for GUI applications
       conda_python = os.path.join(conda_env, 'python.app', 'Contents', 'MacOS',
                                   'python')
+      if not os.path.isfile(conda_python):
+        conda_python = os.path.join(conda_env, 'bin', 'python')
     else:
       conda_python = os.path.join(conda_env, 'bin', 'python')
 

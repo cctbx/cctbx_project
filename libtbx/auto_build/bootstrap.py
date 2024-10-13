@@ -1671,6 +1671,8 @@ class Builder(object):
         elif self.isPlatformMacOSX():
           m_conda_python = os.path.join('python.app', 'Contents',
                                         'MacOS', 'python')
+          if not os.path.isfile(m_conda_python):
+            m_conda_python = os.path.join('bin', 'python')
         return m_conda_python
       # -----------------------------------------------------------------------
 
