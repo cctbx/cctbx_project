@@ -402,6 +402,8 @@ class installer(object):
       if 'darwin' in sys.platform:
         base_python = os.path.join(self.base_dir, 'python.app', 'Contents',
                                    'MacOS', 'python')
+        if not os.path.isfile(base_python):
+          base_python = os.path.join(self.base_dir, 'bin', 'python')
       elif 'win32' in sys.platform:
         base_python = os.path.join(self.base_dir, 'python.exe')
 
