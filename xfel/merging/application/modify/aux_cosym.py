@@ -309,6 +309,7 @@ cosym.single_cb_op_to_minimum is not True')
         ]
 
         # opportunity here to subclass as defined above, instead of the dials-implemented version
+        self.params.min_reflections = 0 # avoid any further filtering implemented in https://github.com/dials/dials/pull/2741
         self.cosym_analysis = CosymAnalysis(
             datasets,
             self.params,
@@ -319,14 +320,6 @@ cosym.single_cb_op_to_minimum is not True')
             output_dir=output_dir,
             cb_op=cb_ops[0]
             )
-        # update the uuid cache if some datasets were removed in the cosym class
-        # by the min_reflections filter
-        set_ids = set(self.cosym_analysis.dataset_ids)
-        if len(self.experiments) != len(set_ids):
-          self.uuid_cache = [
-              x for i, x in enumerate(self.uuid_cache)
-              if i in set_ids
-          ]
 
     def _filter_min_reflections(self, experiments, reflections, uuid_cache_in):
         identifiers = []
