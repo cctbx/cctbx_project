@@ -388,8 +388,6 @@ def update_restraints(hierarchy,
         restraint_values = get_restraint_values(threes, interpolate=interpolate)
         # print('CDL %s %s' % (threes, restraint_values))
 
-    print(threes)
-    print(restraint_values)
     if restraint_values is None: continue
 
     if restraint_values[0]=="I":
