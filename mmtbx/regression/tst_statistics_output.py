@@ -1226,7 +1226,11 @@ MAX DEVIATION FROM PLANES:
 """
   val = [l.strip() for l in val.splitlines() if l.strip() != '']
   exp = [l.strip() for l in exp.splitlines() if l.strip() != '']
-  assert val == exp
+  if val!=exp:
+    for a,b in zip(val,exp):
+      if a!=b:
+        print('------\n%s\n%s\n======' % (a,b))
+  assert val == exp, '%s\n NOT EQUAL\n%s' % (val, exp)
 
 if __name__ == '__main__':
   test_1()
