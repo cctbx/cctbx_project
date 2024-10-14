@@ -10,7 +10,7 @@ import cctbx.geometry_restraints
 from six.moves import cStringIO as StringIO
 import sys
 
-def test_manager():
+def exercise_manager():
   xray_structure = smtbx.development.sucrose()
   xray_structure.scatterers()[10].set_use_u_iso_only()
   asu_mappings = xray_structure.asu_mappings(buffer_thickness=3.5)
@@ -161,3 +161,7 @@ scatterer O3
 ... (remaining 21 not shown)
 
 """
+
+if __name__ == '__main__':
+  exercise_manager()
+  print('OK')

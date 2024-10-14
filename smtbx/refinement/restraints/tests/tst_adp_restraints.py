@@ -15,7 +15,7 @@ def get_pair_sym_table(xray_structure):
     scattering_types, exclude_scattering_types=flex.std_string(("H","D")))
   return pair_asu_table.extract_pair_sym_table()
 
-def test_adp_similarity():
+def exercise_adp_similarity():
   xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -56,7 +56,7 @@ def test_adp_similarity():
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
-def test_rigid_bond():
+def exercise_rigid_bond():
   xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -99,7 +99,7 @@ def test_rigid_bond():
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
-def test_isotropic_adp():
+def exercise_isotropic_adp():
   xray_structure = development.sucrose()
   xray_structure.scatterers()[10].set_use_u_iso_only()
   pair_sym_table = get_pair_sym_table(xray_structure)
@@ -137,7 +137,7 @@ def test_isotropic_adp():
       assert approx_equal(proxies[i].i_seqs[0], expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
 
-def test_rigu():
+def exercise_rigu():
   xray_structure = development.sucrose()
   pair_sym_table = get_pair_sym_table(xray_structure)
   for table in (None,pair_sym_table):
@@ -179,3 +179,10 @@ def test_rigu():
     for i in range(proxies.size()):
       assert approx_equal(proxies[i].i_seqs, expected_i_seqs[i])
       assert approx_equal(proxies[i].weight, expected_weights[i])
+
+if __name__ == '__main__':
+  exercise_isotropic_adp()
+  exercise_rigid_bond()
+  exercise_adp_similarity()
+  exercise_rigu()
+  print('OK')

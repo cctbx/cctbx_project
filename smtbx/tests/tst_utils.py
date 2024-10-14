@@ -4,7 +4,7 @@ from cctbx import sgtbx
 from libtbx.test_utils import approx_equal
 from smtbx import development, utils
 
-def test_connectivity_table():
+def exercise_connectivity_table():
   xs = development.sucrose()
   connectivity = utils.connectivity_table(xs)
   pair_counts = [
@@ -21,3 +21,7 @@ def test_connectivity_table():
   connectivity.remove_bond(0, 1)
   connectivity.remove_bond(5,5, rt_mx_ji=sgtbx.rt_mx("x+1,y,z"))
   assert approx_equal(connectivity.pair_asu_table.pair_counts(), pair_counts)
+
+if __name__ == '__main__':
+  exercise_connectivity_table()
+  print('OK')

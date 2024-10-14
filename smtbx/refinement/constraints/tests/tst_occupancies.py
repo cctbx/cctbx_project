@@ -101,7 +101,7 @@ digraph dependencies {
 }
 """
 
-def test_simple_disorder():
+def exercise_simple_disorder():
   ins = fnames.thpp_ins
   model = smtbx.refinement.model.from_shelx(ins)
   ls = model.least_squares()
@@ -113,3 +113,7 @@ def test_simple_disorder():
                       covann.variance_of('C7A.occ'))
   assert approx_equal(covann.variance_of('C3.occ'),
                       covann.variance_of('N3.occ'))
+
+if __name__ == '__main__':
+  exercise_simple_disorder()
+  print('OK')
