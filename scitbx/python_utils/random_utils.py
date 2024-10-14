@@ -19,26 +19,6 @@ def random_subset(set, n):
     del set[random.randrange(len(set))]
   return set
 
-def random_selection(n_candidates, n_keep):
-  assert n_keep >= 0 and n_keep <= n_candidates
-  n_discard = n_candidates - n_keep
-  if (n_keep > n_discard):
-    selection = flex.bool(n_candidates, True)
-    if (n_discard > 0):
-      _random_selection_core(selection, n_keep, False)
-  else:
-    selection = flex.bool(n_candidates, False)
-    if (n_keep > 0):
-      _random_selection_core(selection, n_discard, True)
-  return selection
-
-def _random_selection_core(selection, target_set_size, flag):
-   set = list(range(len(selection)))
-   while (len(set) > target_set_size):
-     i = random.randrange(len(set))
-     selection[set[i]] = flag
-     del set[i]
-
 class weighted_choice(object):
 
   def __init__(self, weights):
@@ -61,16 +41,6 @@ if (__name__ == "__main__"):
   print(random_subset(range(5), 5))
   print(random_subset(range(5), 2))
   print(random_subset(range(5), 3))
-  for i in range(10):
-    assert random_selection(0, 0).size() == 0
-    assert random_selection(5, 0).size() == 5
-    assert random_selection(3, 0).count(True) == 0
-    assert random_selection(3, 3).size() == 3
-    assert random_selection(5, 5).count(True) == 5
-    assert random_selection(6, 2).size() == 6
-    assert random_selection(6, 2).count(True) == 2
-    assert random_selection(4, 3).size() == 4
-    assert random_selection(4, 3).count(True) == 3
   for weights in ([5,5], [4,3,2,1]):
     r = weighted_choice(weights)
     hist = [0 for i in range(len(weights))]
