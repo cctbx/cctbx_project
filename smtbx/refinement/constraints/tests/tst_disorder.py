@@ -1,7 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
 from six.moves import zip
-
 from six.moves import cStringIO as StringIO
 
 disordered = """
@@ -67,7 +66,7 @@ PART 0
 HKLF 4
 """
 
-def test_with_disorder():
+def exercise_with_disorder():
   from iotbx import shelx
   from smtbx import refinement
   import smtbx.refinement.constraints as core
@@ -100,3 +99,7 @@ def test_with_disorder():
     assert isinstance(params.site, expected_type)
     assert ([sc1.label for sc1 in params.site.argument(0).scatterers] ==
             [expected_pivot])
+
+if __name__ == '__main__':
+  exercise_with_disorder()
+  print('OK')

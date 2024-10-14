@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 
-def test_direction():
+def exercise_direction():
   from cctbx.array_family import flex
   from cctbx import uctbx, xray, crystal
   from smtbx.refinement import constraints
@@ -44,3 +44,7 @@ def test_direction():
   nc = row(v01).cross(row(v21)).normalize()
   assert approx_equal(n, n1, eps=1e-15)
   assert approx_equal(n, nc, eps=1e-15)
+
+if __name__ == '__main__':
+  exercise_direction()
+  print('OK')

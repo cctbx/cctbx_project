@@ -9,7 +9,7 @@ from libtbx.test_utils import approx_equal
 import os
 from smtbx.regression.test_data import fnames
 
-def test_basics():
+def exercise_basics():
   # construct a simple structure whose sites and u_iso's are to be refined
   xs = xray.structure(
     crystal_symmetry=crystal.symmetry(
@@ -87,7 +87,7 @@ def test_basics():
                      jacobian_transpose_matching_grad_fc,
                      sc_params)
 
-def test_real_life_structure():
+def exercise_real_life_structure():
   working_dir = os.path.dirname(__file__)
   res = fnames.sucrose_p1_res
   xs = xray.structure.from_shelx(filename=res)
@@ -98,3 +98,8 @@ def test_real_life_structure():
   ls = m.least_squares()
   ls.build_up()
   # wip
+
+if __name__ == '__main__':
+  exercise_basics()
+  exercise_real_life_structure()
+  print('OK')
