@@ -718,9 +718,6 @@ ATOM     12  OH  TYR    22      -1.452   2.696  -2.817  1.00 10.00           O
     assert line1 == line2
 
 def exercise_remove_atoms():
-  import random
-  random.seed(1)
-  flex.set_random_seed(1)
   pdb_str = """
 ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
 ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
@@ -773,24 +770,18 @@ ATOM      8  CE BMET B  39       8.775   5.000  10.645  1.00 10.00           C
 TER
 END
   """
-  pi = iotbx.pdb.input(source_info=None, lines=pdb_str)
-  ph_in = pi.construct_hierarchy()
-  s1 = ph_in.atoms_size()
-  pi.write_pdb_file(file_name="exercise_remove_atoms.pdb")
+  # Initial size - 48 atoms
+  with open("exercise_remove_atoms.pdb", 'w') as f:
+    f.write(pdb_str)
   cmd = " ".join([
     "phenix.pdbtools",
     "exercise_remove_atoms.pdb",
     "remove_fraction=0.1"])
   print(cmd)
   run_command(command=cmd, verbose=False)
-  pi = iotbx.pdb.input(file_name="exercise_remove_atoms_modified.pdb")
-  ph_in = pi.construct_hierarchy()
-  s2 = ph_in.atoms_size()
-  f = s2*100./s1
-  #
-  # UNSTABLE 3x
-  #
-  assert f>77 and f<100, f # was getting 79.16, 70.8333 on anaconda t96,
+  inp = iotbx.pdb.input(file_name="exercise_remove_atoms_modified.pdb")
+  # removed 5 atoms (~10%).
+  assert inp.atoms().size() == 43, inp.atoms().size()
 
 def exercise_change_of_basis():
   with open("tmp_pdbtools_cb_op.pdb", "w") as f:
