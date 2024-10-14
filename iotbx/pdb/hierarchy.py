@@ -2056,7 +2056,8 @@ class _():
 
   def remove_atoms(self, fraction):
     assert fraction>0 and fraction<1.
-    sel_keep = flex.random_bool(self.atoms_size(), 1-fraction)
+    n_atoms_to_keep = int(self.atoms_size() * (1-fraction))
+    sel_keep = flex.random_selection(self.atoms_size(), n_atoms_to_keep)
     return self.select(sel_keep)
 
   def set_atomic_charge(self, iselection, charge):
