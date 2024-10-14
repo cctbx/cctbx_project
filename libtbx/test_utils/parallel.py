@@ -137,9 +137,6 @@ def reconstruct_test_name(command):
   if hasattr(command, 'test_class') and hasattr(command, 'test_name'):
     return command.test_class, command.test_name
 
-  if "-m pytest" in command:
-    m = re.search('-m pytest ([^:]*)::(.*)$', command)
-    command = 'libtbx.python "%s" %s' % (m.group(1), m.group(2))
   pattern = '^[^"]*"([^"]*)"([^"]*)$'
   m = re.search(pattern, command)
   # command =  libtbx.python "/file.py" 90000
@@ -421,17 +418,6 @@ class run_command_list(object):
       test_ok = (result.stderr_lines[-1].strip().startswith("OK"))
       if test_ok:
         result.stderr_lines = []
-    if "-m pytest" in result.command:
-      # pytest does not write to stderr. Attempt to find relevant snippet in
-      # stdout and add it to stderr.
-      add_to_stderr = False
-      for line in result.stdout_lines:
-        if line.startswith('===='):
-          add_to_stderr = False
-        if add_to_stderr:
-          result.stderr_lines.append(line)
-        if line.startswith('____'):
-          add_to_stderr = True
     self.results.append(result)
     kw = {}
     kw['out'] = self.out
