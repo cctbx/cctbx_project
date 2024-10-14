@@ -6996,8 +6996,6 @@ END
   assert (ph.atoms()[0].charge == '1-')
 
 def exercise_remove_atoms():
-  random.seed(1)
-  flex.set_random_seed(1)
   pdb_str = """
 ATOM      1  N  AMET B  37       7.525   5.296   6.399  1.00 10.00           N
 ATOM      2  CA AMET B  37       6.533   6.338   6.634  1.00 10.00           C
@@ -7052,11 +7050,9 @@ END
   """
   pi = pdb.input(source_info=None, lines=pdb_str)
   ph_in = pi.construct_hierarchy()
-  s1 = ph_in.atoms_size()
+  assert ph_in.atoms_size() == 48
   ph = ph_in.remove_atoms(fraction=0.1)
-  s2 = ph.atoms_size()
-  f = s2*100./s1
-  assert f>90 and f<100
+  assert ph.atoms_size() == 43
 
 def exercise_set_atomic_charge():
   pdb_str = """
