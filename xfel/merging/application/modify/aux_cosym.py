@@ -309,6 +309,7 @@ cosym.single_cb_op_to_minimum is not True')
         ]
 
         # opportunity here to subclass as defined above, instead of the dials-implemented version
+        self.params.min_reflections = 0 # avoid any further filtering implemented in https://github.com/dials/dials/pull/2741
         self.cosym_analysis = CosymAnalysis(
             datasets,
             self.params,
