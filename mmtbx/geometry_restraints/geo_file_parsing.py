@@ -26,7 +26,6 @@ class Entry:
 
   4. Implement a method to convert entry object to cctbx proxy object (self.to_proxy())
   """
-  name = None                 # Name or label for the class
 
   def __init__(self,lines,origin_id=0,origin_label="covalent"):
     """
@@ -54,10 +53,9 @@ class Entry:
     if labels_are_i_seqs:
       self.atom_labels = []
 
-  @property
   def labels_are_available(self):
     return len(self.atom_labels)>0
-  @property
+
   def i_seqs_are_available(self):
     return len(self.i_seqs)>0
 
@@ -130,17 +128,16 @@ class Entry:
     """
     Only create a proxy object if necessary, and if so only do it once
     """
-    if not self._proxy and self.i_seqs_are_available:
+    if not self._proxy and self.i_seqs_are_available():
       self._proxy = self.to_proxy()
     return self._proxy
 
 ### Start of Entry subclasses
 
 class NonBondedEntry(Entry):
-  name = "nonbonded"
+  pass
 
 class AngleEntry(Entry):
-  name = "angle"
 
   def to_proxy(self):
     proxy = geometry_restraints.angle_proxy(
@@ -152,7 +149,6 @@ class AngleEntry(Entry):
 
 
 class BondEntry(Entry):
-  name = "bond"
 
   def to_proxy(self):
     proxy = geometry_restraints.bond_simple_proxy(
@@ -164,19 +160,16 @@ class BondEntry(Entry):
     return proxy
 
 class DihedralEntry(Entry):
-  name = "dihedral"
 
-  @property
   def is_harmonic(self):
     return "harmonic" in self._numerical.keys()
 
-  @property
   def is_sinusoidal(self):
     return "sinusoidal" in self._numerical.keys()
 
   @property
   def periodicity(self):
-    if self.is_harmonic:
+    if self.is_harmonic():
       return int(self._numerical["harmonic"])
     else:
       return int(self._numerical["sinusoidal"])
@@ -193,7 +186,6 @@ class DihedralEntry(Entry):
 
 
 class ChiralityEntry(Entry):
-  name = "chirality"
 
   @property
   def both_signs(self):
@@ -225,7 +217,7 @@ class PlaneEntry(Entry):
     self.atom_labels = []
     nums = [[None]*5 for l in range(len(self.lines)-1)] # 5 values
     for i,line in enumerate(self.lines[1:]):
-      line = line.replace(self.name,"")
+      line = line.replace("plane","")
       pdb_part = re.search(r'pdb="([^"]*)"', line)
       if pdb_part:
         pdb_value = pdb_part.group(0)  # Preserve the whole pdb="..." string
@@ -280,7 +272,6 @@ class PlaneEntry(Entry):
     return proxy
 
 class ParallelityEntry(Entry):
-  name = "parallelity"
 
   def __init__(self,*args,**kwargs):
     """
@@ -345,12 +336,12 @@ class ParallelityEntry(Entry):
       all_parts.append(parts)
 
     for i,row in enumerate(all_parts):
-      val = row[0].replace(self.name,"").strip()
+      val = row[0].replace("parallelity","").strip()
       self.atom_labels_i.append(val)
 
     for j,row in enumerate(all_parts):
       if len(row)>1:
-        val = row[1].replace(self.name,"").strip()
+        val = row[1].replace("parallelity","").strip()
         self.atom_labels_j.append(val)
 
     num_idx = plane_2_idx+len("plane 2")
@@ -486,19 +477,17 @@ class GeoParser:
   def proxies(self):
     return self._proxies
 
-  @property
   def has_proxies(self):
     return self.proxies is not None
 
-  @property
   def i_seqs_are_available(self):
-    return all([entry.i_seqs_are_available for entry in self.entries_list])
+    return all([entry.i_seqs_are_available() for entry in self.entries_list])
 
   def _fill_labels_from_model(self, model):
     """
     Add i_seq attributes for each atom on each entry
     """
-    if not self.i_seqs_are_available:
+    if not self.i_seqs_are_available():
       # make i_seq:id_str mapping
       map_idstr_to_iseq = {
         atom.id_str():atom.i_seq for atom in model.get_atoms()}
@@ -550,7 +539,7 @@ class GeoParser:
     return i
 
   def _parse(self):
-    entries_info=None # entries_info = group_args(entry_class, origin_id, entry_trigger)
+    entries_info=None
     entry_start_line_number = -1
     for i, l in enumerate(self.lines):
       if entries_info is None:
@@ -606,7 +595,7 @@ class GeoParser:
     Convert the entry objects to cctbx proxy objects.
       Collect into a dict of lists of proxies.
     """
-    if not self.model and not self.i_seqs_are_available:
+    if not self.model and not self.i_seqs_are_available():
       raise Sorry("Cannot build proxies without instantiating with a model.")
     self._proxies = defaultdict(list)
     for entries in self.entries.values():
