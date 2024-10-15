@@ -5,7 +5,7 @@ import numpy
 from mmtbx.tls.utils import *
 from scitbx.array_family import flex
 from libtbx.test_utils import approx_equal, not_approx_equal
-from pytest import raises
+from libtbx.test_utils import raises
 from six.moves import zip
 from six.moves import range
 

@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 ## Peter Zwart July 5, 2005
-from pytest import raises
+from libtbx.test_utils import raises
 
 from cctbx.array_family import flex
 from cctbx import crystal
