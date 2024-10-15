@@ -232,6 +232,15 @@ class rotalyze(validation):
       assert abs(self.percent_favored+self.percent_allowed+
                  self.percent_outliers-100.) < 1.e-6
 
+  def get_rotamer_count(self):
+    rotamer_count = {'total': {}}
+    for residue in self.results:
+      if residue.is_outlier(): continue
+      current = rotamer_count['total'].setdefault(residue.resname, {})
+      current.setdefault(residue.rotamer_name, 0)
+      current[residue.rotamer_name]+=1
+    return rotamer_count
+
   def evaluateScore(self, value, model_id=""):
     if value >= ALLOWED_THRESHOLD :
       self.n_favored += 1
