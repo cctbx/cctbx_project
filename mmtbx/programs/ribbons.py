@@ -538,11 +538,20 @@ Output:
     selection = hierarchy.atom_selection_cache().selection(selection_string)
     hierarchy = hierarchy.select(selection)
 
+    # See if the model file has secondary structure records.
+    # This should return None if there are no secondary structure records in the model.
+    sec_str_from_pdb_file = self.model.get_ss_annotation()
+
     # Analyze the secondary structure and make a dictionary that maps from residue sequence number to secondary structure type
     # by filling in 'COIL' as a default value for each and then parsing all of the secondary structure records in the
     # model and filling in the relevant values for them.
     print('Finding secondary structure:')
-    ss_manager = mmtbx.secondary_structure.manager(hierarchy)
+    params = mmtbx.secondary_structure.manager.get_default_ss_params()
+    params.secondary_structure.protein.search_method="ksdssp"
+    params = params.secondary_structure
+    ss_manager = mmtbx.secondary_structure.manager(hierarchy,
+                                                   params=params,
+                                                   sec_str_from_pdb_file=sec_str_from_pdb_file)
     self.secondaryStructure = {}
     for model in hierarchy.models():
       for chain in model.chains():
