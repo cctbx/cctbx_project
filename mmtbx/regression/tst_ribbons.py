@@ -18,7 +18,7 @@
 
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import format_cpu_times
-import os, subprocess, tempfile, platform
+import os, subprocess, tempfile
 import mmtbx
 from mmtbx.programs import ribbons
 import libtbx.load_env
