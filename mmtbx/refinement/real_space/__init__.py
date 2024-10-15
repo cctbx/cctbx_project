@@ -335,7 +335,7 @@ class side_chain_fit_evaluator(object):
                 atoms.extract_i_seq(), True)
               self.cntr_poormap+=1
     #
-    fmt = "%-d residues out of total %-d non-(ALA, GLY, PRO) need fitting."
+    fmt = "%-d residues out of total %-d (non-[ALA,GLY,PRO]) need to be fit."
     self.mes.append(
       fmt%(self.cntr_poormap+self.cntr_outliers, self.cntr_residues))
     self.mes.append("  rotamer outliers: %d"%self.cntr_outliers)
