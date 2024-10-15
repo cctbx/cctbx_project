@@ -4,6 +4,10 @@ from libtbx.utils import Sorry
 from libtbx.str_utils import show_string
 from libtbx import easy_run
 from libtbx import introspection
+try:
+  from contextlib import AbstractContextManager
+except ImportError:
+  AbstractContextManager = object
 import difflib
 import libtbx.load_env
 import math
@@ -62,6 +66,23 @@ class pickle_detector(object):
 
 Exception_expected = RuntimeError("Exception expected.")
 Exception_not_expected = RuntimeError("Exception not expected.")
+
+class raises(AbstractContextManager):
+  def __init__(self, expected_exception):
+    self.expected_exception = expected_exception
+    self.type = None
+    self.value = None
+    self.traceback = None
+
+  def __enter__(self):  # this is only needed for Python 2
+    return self
+
+  def __exit__(self, exc_type, exc_value, traceback):
+    self.type = exc_type
+    self.value = exc_value
+    self.traceback = traceback
+    if isinstance(self.type(), self.expected_exception):
+      return self
 
 class Default: pass
 
@@ -973,6 +994,32 @@ loop_
   A
 """.strip()
 
+def tst_raises():
+  # check passing behavior
+  with raises(AssertionError) as e:
+    raise AssertionError('abc')
+  assert str(e.value) == 'abc'
+
+  # check failing behavior
+  try:
+    with raises(RuntimeError) as e:
+      raise AssertionError('def')
+  except AssertionError as e:
+    assert str(e) == 'def'
+
+  # catch subclass
+  with raises(Exception) as e:
+    raise AssertionError('ghi')
+  assert str(e.value) == 'ghi'
+
+  # reject parent class
+  try:
+    with raises(ValueError) as e:
+      raise Exception('jkl')
+  except Exception as e:
+    assert str(e) == 'jkl'
+
 if (__name__ == "__main__"):
   tst_convert()
+  tst_raises()
   exercise()
