@@ -139,7 +139,7 @@ namespace random {
         return result;
       }
 
-      //! Return bool array where random "threshold" share is true
+      //! Returns integer selection to select a random sample of requested size.
       af::shared<std::size_t>
       random_selection(std::size_t population_size, double sample_size)
       {
