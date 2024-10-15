@@ -1370,9 +1370,9 @@ def tst_01(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   1369
-  if not geo_container.has_proxies:
+  if not geo_container.has_proxies():
     geo_container.build_proxies()
-  assert geo_container.has_proxies
+  assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_02(model,printing=False):
@@ -1403,9 +1403,9 @@ def tst_02(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   1369
-  if not geo_container.has_proxies:
+  if not geo_container.has_proxies():
     geo_container.build_proxies()
-  assert geo_container.has_proxies
+  assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_03(model,printing=False):
@@ -1437,9 +1437,9 @@ def tst_03(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   1369
-  if not geo_container.has_proxies:
+  if not geo_container.has_proxies():
     geo_container.build_proxies()
-  assert geo_container.has_proxies
+  assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 def tst_04(model,printing=False):
@@ -1472,7 +1472,7 @@ def tst_04(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   1369
-  assert not geo_container.has_proxies
+  assert not geo_container.has_proxies()
 
 def tst_05(model,printing=False):
   # Test reading complicated geo file
@@ -1499,7 +1499,7 @@ def tst_05(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   39
-  assert not geo_container.has_proxies
+  assert not geo_container.has_proxies()
 
   origins = [entry.origin_label for entry in geo_container.entries_list]
   expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
@@ -1530,9 +1530,9 @@ def tst_06(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   39
-  if not geo_container.has_proxies:
+  if not geo_container.has_proxies():
     geo_container.build_proxies()
-  assert geo_container.has_proxies
+  assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
   origins = [entry.origin_label for entry in geo_container.entries_list]
@@ -1585,9 +1585,9 @@ def tst_07(model,printing=False):
   entries = geo_container.entries_list
   assert len(records) == len(entries)
   assert len(entries) ==   4
-  if not geo_container.has_proxies:
+  if not geo_container.has_proxies():
     geo_container.build_proxies()
-  assert geo_container.has_proxies
+  assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
 
 
