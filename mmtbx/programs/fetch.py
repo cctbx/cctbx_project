@@ -27,7 +27,7 @@ fetch
     .type = choice
     .caption = Download_model_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
     .style = bold
-  entity = *model_pdb model_cif sf em_map sequence
+  entity = *model_pdb model_cif sf em_map em_half_map_1 em_half_map_2 sequence
     .type = choice(multi=True)
     .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
     .style = bold
@@ -60,7 +60,7 @@ class Program(ProgramTemplate):
       if self.params.fetch.action == 'model_only':
         self.params.fetch.entity = ['model_pdb', 'model_cif']
       elif self.params.fetch.action == 'all' or self.params.fetch.action == 'all_plus_mtz':
-        self.params.fetch.entity = ['model_pdb', 'model_cif', 'sf', 'em_map', 'sequence']
+        self.params.fetch.entity = ['model_pdb', 'model_cif', 'sf', 'em_map', 'em_half_map_1', 'em_half_map_2', 'sequence']
       if self.params.fetch.action == 'all_and_mtz':
         self.params.fetch.convert_to_mtz=True
 
@@ -68,7 +68,7 @@ class Program(ProgramTemplate):
     for pdb_id in self.params.fetch.pdb_ids:
       for e in self.params.fetch.entity:
         emdb_number = None
-        if e == 'em_map':
+        if e.find('map') > 0:
           emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id(pdb_id)
           if emdb_ids is not None:
             emdb_number = int(emdb_ids[0].split('-')[1])

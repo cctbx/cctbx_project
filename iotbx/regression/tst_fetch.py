@@ -1,10 +1,11 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import format_cpu_times
+from libtbx import easy_run
 import requests
 from iotbx.pdb.fetch import fetch, get_link
 from libtbx.test_utils import assert_lines_in_text
-import sys
+import sys, os
 
 def exercise_1():
   string_1yjp = fetch(id = "1yjp").read().decode()
@@ -33,6 +34,23 @@ _refln.F_meas_sigma_au
 1 1 1  -12    0    3 o     3.31   2.43
 1 1 1  -12    0    4 o     7.32   4.25 """)
 
+def exercise_3():
+  """
+  pdb: 6yvd
+  EMD-10944
+  maps are only 2.8 Mb and has half-maps
+  """
+  cmd = "iotbx.fetch_pdb 6yvd action=all"
+  assert not easy_run.call(cmd)
+  for fn in [ "6yvd.pdb",
+              "6yvd.cif",
+              "emd_10944.map.gz",
+              "emd_10944_half_map_1.map.gz",
+              "emd_10944_half_map_2.map.gz",
+              "6yvd.fa",
+              ]:
+    assert os.path.isfile(fn), "File %s not found" % fn
+
 def exercise_get_link():
   r = []
   for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']:
@@ -56,6 +74,7 @@ if (__name__ == "__main__"):
     if not exception_occured and r.ok and len(r.text) > 100:
       exercise_1()
       exercise_2()
+      exercise_3()
       print("OK")
     else:
       print("OK but skipped.")
