@@ -33,7 +33,7 @@ import re
 import os
 
 
-def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
+def get_link(mirror, entity, pdb_id=None, emdb_number=None):
 
   all_links_dict = {
       'rcsb': {
@@ -41,21 +41,21 @@ def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
           'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
           'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
           'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
-          'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
           },
       'pdbe': {
           'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
           'model_cif': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
           'sequence': 'https://www.ebi.ac.uk/pdbe/entry/pdb/{pdb_id}/fasta',
           'sf': 'https://www.ebi.ac.uk/pdbe/entry-files/download/r{pdb_id}sf.ent',
-          'map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
           },
       'pdbj': {
           'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
           'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
           'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
           'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
-          'map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
           },
       # 'pdb-redo': {
       #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
@@ -68,62 +68,42 @@ def get_link(mirror, file_type, pdb_id=None, emdb_number=None):
   }
 
   assert mirror in ['rcsb', 'pdbe', 'pdbj']
-  assert file_type in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']
-  if file_type == 'map':
+  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']
+  if entity == 'map':
     assert emdb_number
   else:
     assert pdb_id
   mid_pdb_id = pdb_id[1:3]
-  return all_links_dict[mirror][file_type].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
+  return all_links_dict[mirror][entity].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
 
 def valid_pdb_id(id):
   return len(id) == 4 and re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)
 
-def get_file_type_from_params(data_type, format):
-  """ Temporary, during refactoring. """
-  conversion_dict = {
-      "pdb":'model',
-      "xray": 'sf',
-      "fasta": 'sequence',
-      "map": 'map',
-      }
-  result = conversion_dict[data_type]
-  if result == 'model':
-    if format == 'pdb':
-      result = 'model_pdb'
-    else:
-      result = 'model_cif'
-  return result
-
-def fetch(id, data_type="pdb", format="pdb", mirror="rcsb", log=None):
+def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None):
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
 
   :param id: 4-character PDB ID (e.g. '1hbb')
-  :param data_type: type of content to download: pdb, xray, or fasta
-  :param format: format of data: cif, pdb, or xml (or cif_or_pdb)
+  :param entity - one of 'model_pdb', 'model_cif', 'sequence', 'sf', 'em_map'
   :param mirror: remote site to use, either rcsb, pdbe, pdbj or pdb-redo
 
   :returns: a filehandle-like object (with read() method)
   """
-  assert data_type in ["pdb", "xray", "fasta"]
-  assert format in ["cif", "pdb", "xml", "cif_or_pdb"]
-  assert mirror in ["rcsb", "pdbe", "pdbj", "pdb-redo"]
+  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']
+  assert mirror in ["rcsb", "pdbe", "pdbj"]
   id = id.lower()
   if not valid_pdb_id(id):
     raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % pdb_id)
-  if (log is None) : log = null_out()
 
-  file_type = get_file_type_from_params(data_type, format)
-  url = get_link(mirror, file_type, pdb_id=id, emdb_number=None)
-  need_to_decompress = url.split('.')[-1] == 'gz' and file_type != 'map'
+  url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number)
+  need_to_decompress = url.split('.')[-1] == 'gz' and entity != 'em_map'
 
   try :
     data = libtbx.utils.urlopen(url)
   except HTTPError as e :
     if e.getcode() == 404 :
-      raise RuntimeError("Couldn't download %s for %s at %s." % (file_type, id, url))
+      raise RuntimeError("Couldn't download %s for %s at %s." % (entity, id, url))
     else :
       raise
   if need_to_decompress:
@@ -134,20 +114,25 @@ def write_data_to_disc(fname, data):
     with open(fname, "wb") as f:
       f.write(data.read())
 
-def get_pdb(id, data_type, mirror, log, format="pdb"):
+def fetch_and_write(id, entity='model_pdb', mirror='rcsb', emdb_number=None, log=None):
   """
   Frontend for fetch(...), writes resulting data to disk.
   """
   try :
-    data = fetch(id, data_type, mirror=mirror, format=format, log=log)
+    data = fetch(id, entity, mirror=mirror, emdb_number=emdb_number)
   except RuntimeError as e :
-    raise Sorry(str(e))
+    print(str(e),file=log)
+    return None
+  if (log is None) : log = null_out()
   default_value = (os.path.join(os.getcwd(), "{}.{}".format(id, format)), "Model")
   file_names_titles = defaultdict(lambda: default_value, {
-      "xray":  (os.path.join(os.getcwd(), "{}-sf.cif".format(id)), "Structure factors"),
-      "fasta": (os.path.join(os.getcwd(), "{}.fa".format(id)), "Sequence"),
+      "model_pdb":  (os.path.join(os.getcwd(), "{}.pdb".format(id)), "Model in PDB format"),
+      "model_cif":  (os.path.join(os.getcwd(), "{}.cif".format(id)), "Model in mmCIF format"),
+      "sf":  (os.path.join(os.getcwd(), "{}-sf.cif".format(id)), "Structure factors"),
+      "sequence": (os.path.join(os.getcwd(), "{}.fa".format(id)), "Sequence"),
+      "em_map": (os.path.join(os.getcwd(), "emd_{}.tar.gz".format(emdb_number)), "Cryo-EM map"),
   })
-  file_name, title = file_names_titles[data_type]
+  file_name, title = file_names_titles[entity]
   write_data_to_disc(file_name, data)
   print("%s saved to %s" % (title, file_name), file=log)
   return file_name

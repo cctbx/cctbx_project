@@ -9,7 +9,7 @@ from __future__ import absolute_import, division, print_function
 import os
 from six.moves import range
 from libtbx.utils import Sorry
-from iotbx.pdb.fetch import valid_pdb_id, get_pdb
+from iotbx.pdb.fetch import valid_pdb_id, fetch_and_write
 
 def run(args):
   if len(args) == 0:
@@ -25,8 +25,8 @@ def run(args):
       # download pdbx/mmcif file from the PDB
       pdb_id = arg
       mirror = "pdbe"
-      mmcif_file = get_pdb(
-        pdb_id, data_type="pdb", mirror=mirror, log=sys.stdout, format="cif")
+      mmcif_file = fetch_and_write(
+        pdb_id, entity="model_cif", mirror=mirror, log=sys.stdout)
 
     # read the cif file and get an iotbx.cif object
     import iotbx.cif
