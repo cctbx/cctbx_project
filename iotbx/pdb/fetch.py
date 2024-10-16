@@ -74,7 +74,8 @@ def get_link(mirror, entity, pdb_id=None, emdb_number=None):
   }
 
   assert mirror in ['rcsb', 'pdbe', 'pdbj']
-  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']
+  if entity not in all_links_dict[mirror].keys():
+    return None
   if entity == 'map':
     assert emdb_number
   else:
@@ -96,14 +97,14 @@ def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None):
 
   :returns: a filehandle-like object (with read() method)
   """
-  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']
+  assert entity in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map', 'em_half_map_1', 'em_half_map_2']
   assert mirror in ["rcsb", "pdbe", "pdbj"]
   id = id.lower()
   if not valid_pdb_id(id):
     raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % id)
 
   url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number)
-  need_to_decompress = url.split('.')[-1] == 'gz' and entity != 'em_map'
+  need_to_decompress = url.split('.')[-1] == 'gz' and entity.find('map') < 0
 
   try :
     data = libtbx.utils.urlopen(url)
@@ -136,7 +137,9 @@ def fetch_and_write(id, entity='model_pdb', mirror='rcsb', emdb_number=None, log
       "model_cif":  (os.path.join(os.getcwd(), "{}.cif".format(id)), "Model in mmCIF format"),
       "sf":  (os.path.join(os.getcwd(), "{}-sf.cif".format(id)), "Structure factors"),
       "sequence": (os.path.join(os.getcwd(), "{}.fa".format(id)), "Sequence"),
-      "em_map": (os.path.join(os.getcwd(), "emd_{}.tar.gz".format(emdb_number)), "Cryo-EM map"),
+      "em_map": (os.path.join(os.getcwd(), "emd_{}.map.gz".format(emdb_number)), "Cryo-EM map"),
+      "em_half_map_1": (os.path.join(os.getcwd(), "emd_{}_half_map_1.map.gz".format(emdb_number)), "Cryo-EM half map 1"),
+      "em_half_map_2": (os.path.join(os.getcwd(), "emd_{}_half_map_2.map.gz".format(emdb_number)), "Cryo-EM half map 2"),
   })
   file_name, title = file_names_titles[entity]
   write_data_to_disc(file_name, data)
