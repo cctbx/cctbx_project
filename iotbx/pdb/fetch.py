@@ -42,6 +42,8 @@ def get_link(mirror, entity, pdb_id=None, emdb_number=None):
           'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
           'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
           'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_half_map_1': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+          'em_half_map_2': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
           },
       'pdbe': {
           'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
@@ -49,6 +51,8 @@ def get_link(mirror, entity, pdb_id=None, emdb_number=None):
           'sequence': 'https://www.ebi.ac.uk/pdbe/entry/pdb/{pdb_id}/fasta',
           'sf': 'https://www.ebi.ac.uk/pdbe/entry-files/download/r{pdb_id}sf.ent',
           'em_map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_half_map_1': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+          'em_half_map_2': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
           },
       'pdbj': {
           'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
@@ -56,6 +60,8 @@ def get_link(mirror, entity, pdb_id=None, emdb_number=None):
           'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
           'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
           'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+          'em_half_map_1': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+          'em_half_map_2': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
           },
       # 'pdb-redo': {
       #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
@@ -94,7 +100,7 @@ def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None):
   assert mirror in ["rcsb", "pdbe", "pdbj"]
   id = id.lower()
   if not valid_pdb_id(id):
-    raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % pdb_id)
+    raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % id)
 
   url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number)
   need_to_decompress = url.split('.')[-1] == 'gz' and entity != 'em_map'
