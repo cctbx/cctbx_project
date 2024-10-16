@@ -821,36 +821,6 @@ class pdb_input_mixin(object):
             result = "%s-%s-%s"%(str(date.yyyy), m, dd)
     return result
 
-  # MARKED_FOR_DELETION_OLEG
-  # REASON: moved to mmtbx.model.manager. Only used in
-  # mmtbx/regression/ncs/tst_minimization_ncs_constraints.py
-  def _expand_hierarchy_helper(self,
-      mtrix_biomt_container,
-      h=None,
-      sort_atoms=True):
-    present = mtrix_biomt_container.validate()
-    if(h is None):
-      h = self.construct_hierarchy(sort_atoms=sort_atoms)
-    if(len(mtrix_biomt_container.r)==0 or present): return h
-    if(len(mtrix_biomt_container.r)==1):
-      r,t = mtrix_biomt_container.r[0], mtrix_biomt_container.t[0]
-      if(r.is_r3_identity_matrix() and t.is_col_zero()): return h
-    return h.apply_rotation_translation(
-      rot_matrices = mtrix_biomt_container.r,
-      trans_vectors = mtrix_biomt_container.t)
-
-  def construct_hierarchy_MTRIX_expanded(self, sort_atoms=True):
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_MTRIX_records(),
-      sort_atoms = sort_atoms)
-
-  def construct_hierarchy_BIOMT_expanded(self, sort_atoms=True):
-    return self._expand_hierarchy_helper(
-      mtrix_biomt_container = self.process_BIOMT_records(),
-      sort_atoms = sort_atoms)
-  # END_MARKED_FOR_DELETION_OLEG
-
-
   def special_position_settings(self,
         special_position_settings=None,
         weak_symmetry=False,
