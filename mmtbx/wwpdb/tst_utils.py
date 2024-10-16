@@ -3,6 +3,9 @@ from __future__ import absolute_import, division, print_function
 from libtbx.utils import null_out
 import os.path
 
+# XXX MARKED_FOR_DELETION_OLEG
+# Reason: testing outdated unused code.
+
 def exercise():
   from mmtbx.wwpdb import utils as wwpdb_utils
   for fn in ["3qgg.pdb", "3gqq.mtz", "3gqq-sf.cif"] :

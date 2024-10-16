@@ -4,6 +4,10 @@ Utilities for re-refining (or otherwise working with) structures downloaded
 directly from the PDB.
 """
 
+# XXX MARKED_FOR_DELETION_OLEG
+# Reason: outdated unused code.
+
+
 from __future__ import absolute_import, division, print_function
 from libtbx import easy_run
 from libtbx.utils import null_out, Sorry
@@ -11,6 +15,7 @@ import os
 import sys
 
 def get_program(pdb_file):
+  assert 0
   from iotbx.pdb import remark_3_interpretation
   with open(pdb_file) as f:
     lines = f.readlines()
@@ -35,6 +40,7 @@ def fetch_pdb_data(
   Copy data from local repository if defined and available, or download it
   from the PDB, and run cif_as_mtz.
   """
+  assert 0
   from mmtbx.command_line import fetch_pdb
   from mmtbx.command_line import cif_as_mtz
   if (log is None):
@@ -64,6 +70,7 @@ def find_data_arrays(mtz_file, log=None, merge_anomalous=False,
   Guess an appropriate data array to use for refinement, plus optional
   Hendrickson-Lattman coefficients and R-free flags if present.
   """
+  assert 0
   from iotbx import reflection_file_utils
   from iotbx.file_reader import any_file
   if (log is None) : log = sys.stdout
@@ -137,6 +144,7 @@ def combine_split_structure(
   preserving the original file name.  Return value is a list of IDs which
   were added to the current model (or None).
   """
+  assert 0
   from mmtbx.command_line import fetch_pdb
   from iotbx import pdb
   if (log is None) : log = sys.stdout
@@ -189,6 +197,7 @@ class filter_pdb_file(object):
                 quiet=False,
                 set_se_occ=True,
                 remove_atoms_with_zero_occupancy=False):
+    assert 0
     import iotbx.pdb
     if (log is None):
       log = null_out()
@@ -246,3 +255,5 @@ class filter_pdb_file(object):
         crystal_symmetry=pdb_in.crystal_symmetry()), file=f)
       print(hierarchy_filtered.as_pdb_string(), file=f)
       f.close()
+
+# XXX END_MARKED_FOR_DELETION_OLEG
