@@ -8,6 +8,7 @@ from libtbx.utils import null_out
 import mmtbx.ncs.ncs_utils as nu
 import iotbx.ncs as ncs
 import mmtbx.f_model
+import mmtbx.model
 import mmtbx.utils
 import iotbx.pdb
 import mmtbx.model
@@ -16,6 +17,7 @@ import os
 import iotbx.ncs
 from cctbx import adptbx
 from six.moves import range
+
 
 __author__ = 'Youval'
 
@@ -44,7 +46,8 @@ def step_1(file_name, crystal_symmetry, write_name):
   pdb_inp = iotbx.pdb.input(file_name=file_name)
   ph2 = pdb_inp.construct_hierarchy()
   pdb_inp = iotbx.pdb.input(file_name=file_name)
-  ph = pdb_inp.construct_hierarchy_MTRIX_expanded()
+  model = mmtbx.model.manager(model_input=pdb_inp)
+  ph = model.get_hierarchy()
   ph.reset_atom_i_seqs()
   xrs_asu = ph.extract_xray_structure(crystal_symmetry=crystal_symmetry)
   ph.write_pdb_file(file_name=write_name, crystal_symmetry=crystal_symmetry)
