@@ -1,9 +1,9 @@
 from __future__ import division
 
+import iotbx
 from mmtbx.ligands.hierarchy_utils import _new_atom
 
 def get_as_hierarchy(filename):
-  import iotbx
   model = iotbx.cif.reader(filename).model()
   for key,block in model.items():
     if key=='comp_list':
@@ -26,9 +26,10 @@ def get_as_hierarchy(filename):
                        20.,
                        True,
                        )
+      # atom.set_serial(j+1)
       ag.append_atom(atom)
   rg = iotbx.pdb.hierarchy.residue_group()
-  rg.resseq='1'
+  rg.resseq='   1'
   rg.append_atom_group(ag)
   chain = iotbx.pdb.hierarchy.chain()
   chain.id='A'
@@ -39,3 +40,7 @@ def get_as_hierarchy(filename):
   ph.append_model(model)
   ph.reset_atom_i_seqs()
   return ph
+
+def as_cif_object(filename):
+  model = iotbx.cif.reader(filename).model()
+  return model
