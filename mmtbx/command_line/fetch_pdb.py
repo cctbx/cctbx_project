@@ -27,7 +27,7 @@ def run(args):
     custom_process_arguments = custom_args_proc,
     logger=logger)
 
-  namespace = parser.parse_args(sys.argv[1:])
+  namespace = parser.parse_args(args)
 
   print('Starting job', file=logger)
   print('='*79, file=logger)
