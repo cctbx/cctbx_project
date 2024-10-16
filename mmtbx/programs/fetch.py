@@ -23,14 +23,9 @@ fetch
     .short_caption = PDB ID(s)
     .input_size = 400
     .style = bold
-  action = model_only all all_and_mtz
-    .type = choice
-    .caption = Download_model_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
-    .style = bold
-  entity = *model_pdb model_cif sf em_map em_half_map_1 em_half_map_2 sequence
+  action = *model data sequence half_maps all
     .type = choice(multi=True)
-    .caption = Download_PDB_file(s) Download_all_data Download_all_data_and_convert_CIF_to_MTZ
-    .style = bold
+    .caption = model_file(s) data_file(s) sequence half_maps
   convert_to_mtz = False
     .type = bool
     .caption = Try to convert X-ray data to mtz format
@@ -45,6 +40,13 @@ fetch
 class Program(ProgramTemplate):
   description = """
   Fetch model, data, sequence files. Optionally convert to sf data to mtz format.
+  Usage:
+  Get only model:
+    iotbx.fetch_pdb 1yjp
+  Get model and data(xray or cryo-em):
+    iotbx.fetch_pdb 1yjp action=model+data
+  Get everything:
+    iotbx.fetch_pdb 1yjp action=all
 """
   datatypes = ['phil']
   master_phil_str = master_phil_str
@@ -56,17 +58,28 @@ class Program(ProgramTemplate):
     for pdb_id in self.params.fetch.pdb_ids:
       if not valid_pdb_id(pdb_id):
         raise Sorry("Invalid PDB code: %s" % pdb_id)
-    if self.params.fetch.action is not None:
-      if self.params.fetch.action == 'model_only':
-        self.params.fetch.entity = ['model_pdb', 'model_cif']
-      elif self.params.fetch.action == 'all' or self.params.fetch.action == 'all_plus_mtz':
-        self.params.fetch.entity = ['model_pdb', 'model_cif', 'sf', 'em_map', 'em_half_map_1', 'em_half_map_2', 'sequence']
-      if self.params.fetch.action == 'all_and_mtz':
-        self.params.fetch.convert_to_mtz=True
+    for a in self.params.fetch.action:
+      if a not in ['model', 'data', 'sequence', 'half_maps', 'all']:
+        raise Sorry("Unsupported action %s" % a)
 
   def run(self):
+    entities_to_fetch = []
+    if 'model' in self.params.fetch.action:
+      entities_to_fetch += ['model_pdb', 'model_cif']
+    if 'data' in self.params.fetch.action:
+      entities_to_fetch += ['sf', 'em_map']
+    if 'sequence' in self.params.fetch.action:
+      entities_to_fetch += ['sequence']
+    if 'half_maps' in self.params.fetch.action:
+      entities_to_fetch += ['em_half_map_1', 'em_half_map_2']
+    if 'all' in self.params.fetch.action:
+      entities_to_fetch = [
+          'model_pdb', 'model_cif',
+          'sf', 'em_map',
+          'em_half_map_1', 'em_half_map_2', 'sequence']
+
     for pdb_id in self.params.fetch.pdb_ids:
-      for e in self.params.fetch.entity:
+      for e in entities_to_fetch:
         emdb_number = None
         if e.find('map') > 0:
           emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id(pdb_id)
