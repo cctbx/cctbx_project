@@ -16,8 +16,8 @@ ATOM      3  C   GLY A   1      -8.015   3.140   4.419  1.00 16.16           C
 """)
 
 def exercise_2():
-  string_1yjp_sf = fetch(id = "1yjp", data_type='xray').read().decode()
-  # print("%s" % string_1yjp_sf)
+  string_1yjp_sf = fetch(id = "1yjp", entity='sf').read().decode()
+  print("%s" % string_1yjp_sf)
   assert_lines_in_text(string_1yjp_sf, """\
 loop_
 _refln.crystal_id
@@ -35,7 +35,7 @@ _refln.F_meas_sigma_au
 
 def exercise_get_link():
   r = []
-  for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'map']:
+  for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']:
     r.append(get_link('rcsb', ft, '1ab2', emdb_number="1111"))
   # print (r)
   assert r == ['https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/ab/pdb1ab2.ent.gz',
