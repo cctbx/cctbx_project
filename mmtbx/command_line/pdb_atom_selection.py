@@ -69,7 +69,7 @@ def run(args):
       help="write selected atoms to new PDB file",
       default=None)
 
-  namespace = parser.parse_args(sys.argv[1:])
+  namespace = parser.parse_args(args)
 
   # start program
   print('Starting job', file=logger)
