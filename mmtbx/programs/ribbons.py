@@ -11,7 +11,7 @@ from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindName
 from mmtbx.kinemage.ribbons import chain_has_DNA, chain_has_RNA
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.2.0"
+version = "1.2.1"
 
 master_phil_str = '''
 do_protein = True
