@@ -112,6 +112,7 @@ steps:
     project: '$(resources.pipeline.build_cache.projectID)'
     pipeline: '$(resources.pipeline.build_cache.pipelineID)'
     allowPartiallySucceededBuilds: true
+    allowFailedBuilds: true
     artifact: $(PYTHON_VERSION)_$(OS)
     path: $(Pipeline.Workspace)/channel
   displayName: Download cached conda packages
