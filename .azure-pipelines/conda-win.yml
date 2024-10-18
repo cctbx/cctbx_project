@@ -181,6 +181,13 @@ jobs:
 
   - script: |
       cd $(Pipeline.Workspace)
+      del /S /Q .\build\lib\_pycbf.pyd
+    displayName: Fix broken cache on Windows
+    continueOnError: true
+    failOnStderr: false
+
+  - script: |
+      cd $(Pipeline.Workspace)
       dir
     displayName: Check disk space
 
