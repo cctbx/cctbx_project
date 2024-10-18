@@ -21,6 +21,16 @@ Usage examples:
       restraints = None
         .type = path
       }
+    action {
+      use_hydrogens = True
+        .type = bool
+    }
+    output {
+      write_pdb = None
+        .type = path
+      write_geo = None
+        .type = path
+    }
   }
 """
 
@@ -52,7 +62,9 @@ Usage examples:
     # hierarchy.show()
     starting_atoms=hierarchy.atoms()
     starting_xyz=starting_atoms.extract_xyz()
-    if 0: hierarchy.write_pdb_file('test.pdb')
+    params = self.params.ligand_restraints_validation
+    if params.output.write_pdb:
+      hierarchy.write_pdb_file(params.output.write_pdb)
     #
     from mmtbx.model.model import manager
     m = manager(pdb_hierarchy=hierarchy,
@@ -64,6 +76,8 @@ Usage examples:
     # geom min
     #
     from mmtbx.refinement import geometry_minimization
+    from six.moves import StringIO
+    sio=StringIO()
     m.process(make_restraints=True)
     geometry_minimization.run2(
       restraints_manager = m.get_restraints_manager(),
@@ -76,26 +90,35 @@ Usage examples:
       chirality   = True,
       planarity   = True,
       parallelity = True,
+      log         = sio,
       )
     # m.set_sites_cart_from_hierarchy()
     # for atom in m.get_hierarchy().atoms(): print(atom.format_atom_record())
     h=m.get_hierarchy()
     if 0: h.write_pdb_file('test.pdb')
     ending_xyz=h.atoms().extract_xyz()
-    self.results={}
+
+    result={}
     rc = starting_xyz.rms_difference(ending_xyz)
-    print('\n  RMSD of starting and ending coordinates : %5.2f' % rc)
-    self.results['RMSD']=rc
-    es = self.get_energies_sites(m, use_hydrogens=True)
+    print('\n  RMSD of starting and ending coordinates : %5.2f' % rc, file=self.logger)
+    result['RMSD']=rc
+    es = self.get_energies_sites(m, use_hydrogens=params.action.use_hydrogens)
     # es.show()
-    self.results['energies_sites']=es
-    rc = m.restraints_as_geo()
-    print(rc[:1000])
-    # print(rc)
+    result['energies_sites']=es
+    print('\nGeometry Min. result')
+    es.show(f=self.logger)
+    if params.output.write_geo:
+      gs = m.restraints_as_geo()
+      f=open(params.output.write_geo, 'w')
+      f.write(gs)
+      del f
+    return result
 
   def run(self, log=None):
+    self.results={}
     for filename in self.data_manager.get_restraint_names():
-      self.processed_ligand_restaints(filename)
+      rc = self.processed_ligand_restaints(filename)
+      self.results[filename]=rc
 
   # ---------------------------------------------------------------------------
   def get_results(self):
