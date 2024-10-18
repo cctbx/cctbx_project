@@ -417,6 +417,10 @@ class bonds(restraint_validation):
        rt_mx) = restraint_info
       bond_atoms = get_atoms_info(pdb_atoms, iselection=i_seqs,
         use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
+      model_id = bond_atoms[0].model_id
+      if model_id not in self.n_outliers_by_model:
+        # initialize dicts.  covers cases where some structures don't have certain outliers
+        self.n_outliers_by_model[model_id] = 0
       if sym_op_j:
         import scitbx
         m3 = rt_mx.r().as_double()
@@ -439,11 +443,7 @@ class bonds(restraint_validation):
         xyz=get_mean_xyz(bond_atoms))
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
-        model_id = bond_atoms[0].model_id
-        if model_id not in self.n_outliers_by_model:
-          self.n_outliers_by_model[model_id] = 1
-        else:
-          self.n_outliers_by_model[model_id] += 1
+        self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
@@ -479,6 +479,10 @@ class angles(restraint_validation):
       use_segids_in_place_of_chainids=use_segids_in_place_of_chainids)
     outliers = []
     for proxy, proxy_atoms in sorted :
+      model_id = proxy_atoms[0].model_id
+      if model_id not in self.n_outliers_by_model:
+        # initialize dicts.  covers cases where some structures don't have certain outliers
+        self.n_outliers_by_model[model_id] = 0
       restraint = cctbx.geometry_restraints.angle(
         unit_cell=unit_cell,
         proxy=proxy,
@@ -494,11 +498,7 @@ class angles(restraint_validation):
         xyz=proxy_atoms[1].xyz)
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
-        model_id = proxy_atoms[0].model_id
-        if model_id not in self.n_outliers_by_model:
-          self.n_outliers_by_model[model_id] = 1
-        else:
-          self.n_outliers_by_model[model_id] += 1
+        self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
@@ -519,6 +519,9 @@ class dihedrals(restraint_validation):
       pdb_atoms=pdb_atoms)
     outliers = []
     for proxy, proxy_atoms in sorted :
+      model_id = proxy_atoms[0].model_id
+      if model_id not in self.n_outliers_by_model:
+        self.n_outliers_by_model[model_id] = 0
       restraint = cctbx.geometry_restraints.dihedral(
         unit_cell=unit_cell,
         proxy=proxy,
@@ -534,11 +537,7 @@ class dihedrals(restraint_validation):
         outlier=True)
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
-        model_id = proxy_atoms[0].model_id
-        if model_id not in self.n_outliers_by_model:
-          self.n_outliers_by_model[model_id] = 1
-        else:
-          self.n_outliers_by_model[model_id] += 1
+        self.n_outliers_by_model[model_id] += 1
       elif (not outliers_only):
         outlier.outlier=False
         outliers.append(outlier)
@@ -666,6 +665,9 @@ class planarities(restraint_validation):
       if (outlier.score > sigma_cutoff):
         outliers.append(outlier)
         model_id = plane_atoms_[0].model_id
+        if model_id not in self.n_outliers_by_model:
+          # initialize dicts.  covers cases where some structures don't have certain outliers
+          self.n_outliers_by_model[model_id] = 0
         if model_id not in self.n_outliers_by_model:
           self.n_outliers_by_model[model_id] = 1
         else:
