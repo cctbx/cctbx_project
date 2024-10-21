@@ -4635,11 +4635,16 @@ class array(set):
                                          mandatory_factors=None,
                                          max_prime=5,
                                          assert_shannon_sampling=True,
-                                         f_000=None):
+                                         f_000=None,
+                                         include_000=False):
     # Based on local_standard_deviation_map above
     assert self.crystal_symmetry().unit_cell().is_similar_to(
         other.crystal_symmetry().unit_cell())
     complete_set = self.complete_set()
+    if(include_000 or f_000 is not None):
+      indices = complete_set.indices()
+      indices.append((0,0,0))
+      complete_set = complete_set.customized_copy(indices = indices)
     sphere_reciprocal = self.g_function(R=radius, s=1./complete_set.d_spacings().data())
     if d_min is None:
       d_min=self.d_min()
