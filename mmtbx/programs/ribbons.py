@@ -8,9 +8,10 @@ from mmtbx.kinemage.validation import get_chain_color
 from mmtbx.kinemage.ribbons import find_contiguous_protein_residues, find_contiguous_nucleic_acid_residues
 from mmtbx.kinemage.ribbons import make_protein_guidepoints, make_nucleic_acid_guidepoints
 from mmtbx.kinemage.ribbons import untwist_ribbon, swap_edge_and_face, _FindNamedAtomInResidue, _IsNucleicAcidResidue
+from mmtbx.kinemage.ribbons import chain_has_DNA, chain_has_RNA
 from mmtbx.kinemage.nrubs import Triple, NRUBS
 
-version = "1.1.0"
+version = "1.2.1"
 
 master_phil_str = '''
 do_protein = True
@@ -65,7 +66,7 @@ How to run:
   mmtbx.ribbons model.pdb
 
 Output:
-  If neither output.file_name nor output.filename is specified, it will write
+  If output.filename is not specified, it will write
   to a file with the same name as the input model file name but with the
   extension replaced with with '.kin'.
 
@@ -85,7 +86,7 @@ Output:
       inName = self.data_manager.get_default_model_name()
       p = Path(inName)
       self.params.output.filename = str(p.with_suffix(suffix))
-      print('Setting output.filename Phil parameter to',self.params.output.filename)
+      print('Setting output.filename Phil parameter to',self.params.output.filename, file=self.logger)
 
 # ------------------------------------------------------------------------------
 
@@ -537,11 +538,21 @@ Output:
     selection = hierarchy.atom_selection_cache().selection(selection_string)
     hierarchy = hierarchy.select(selection)
 
+    # See if the model file has secondary structure records.
+    # This should return None if there are no secondary structure records in the model.
+    sec_str_from_pdb_file = self.model.get_ss_annotation()
+
     # Analyze the secondary structure and make a dictionary that maps from residue sequence number to secondary structure type
     # by filling in 'COIL' as a default value for each and then parsing all of the secondary structure records in the
     # model and filling in the relevant values for them.
-    print('Finding secondary structure:')
-    ss_manager = mmtbx.secondary_structure.manager(hierarchy)
+    print('Finding secondary structure:', file=self.logger)
+    params = mmtbx.secondary_structure.manager.get_default_ss_params()
+    params.secondary_structure.protein.search_method="ksdssp"
+    params = params.secondary_structure
+    ss_manager = mmtbx.secondary_structure.manager(hierarchy,
+                                                   params=params,
+                                                   sec_str_from_pdb_file=sec_str_from_pdb_file,
+                                                   log=self.logger)
     self.secondaryStructure = {}
     for model in hierarchy.models():
       for chain in model.chains():
@@ -597,7 +608,7 @@ Output:
       modelID = model.id
       if modelID == "":
         modelID = "_"
-      print('Processing model', modelID, 'with', len(model.chains()), 'chains')
+      print('Processing model', modelID, 'with', len(model.chains()), 'chains', file=self.logger)
       if groupByModel:
         outString += "@group {{{} {}}} animate dominant master= {{all models}}\n".format(self.idCode, str(modelID).strip())
 
@@ -619,15 +630,24 @@ Output:
         chainColors[name] = c
         chainCount += 1
 
+      # Determine whether DNA, RNA, or both are present in the model
+      hasDNA = False
+      hasRNA = False
+      for chain in model.chains():
+        if chain_has_DNA(chain):
+          hasDNA = True
+        if chain_has_RNA(chain):
+          hasRNA = True
+
       # Cycle over all chains in the model and make a group or subgroup for each chain
       # depending on whether we are grouping by model or not.
       for chain in model.chains():
-        print('Processing chain',chain.id)
+        print('Processing chain',chain.id, file=self.logger)
 
         if self.params.do_protein:
           # Find the contiguous protein residues by CA distance
           contiguous_residue_lists = find_contiguous_protein_residues(chain)
-          print('Found {} contiguous protein residue lists'.format(len(contiguous_residue_lists)))
+          print('Found {} contiguous protein residue lists'.format(len(contiguous_residue_lists)), file=self.logger)
 
           if len(contiguous_residue_lists) > 0:
             if groupByModel:
@@ -653,9 +673,9 @@ Output:
 
             for contig in contiguous_residue_lists:
               guidepoints = make_protein_guidepoints(contig)
-              print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)))
+              print(' Made {} protein guidepoints for {} residues'.format(len(guidepoints),len(contig)), file=self.logger)
               if self.params.untwist_ribbons:
-                print('  Untwisted ribbon')
+                print('  Untwisted ribbon', file=self.logger)
                 untwist_ribbon(guidepoints)
               # There is always secondary structure looked up for protein residues, so we skip the case from the Java code
               # where it can be missing.
@@ -676,7 +696,7 @@ Output:
         if self.params.do_nucleic_acid:
           # Find the contiguous nucleic acid residues by CA distance
           contiguous_residue_lists = find_contiguous_nucleic_acid_residues(chain)
-          print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residue_lists)))
+          print('Found {} contiguous nucleic acid residue lists'.format(len(contiguous_residue_lists)), file=self.logger)
 
           if len(contiguous_residue_lists) > 0:
             if groupByModel:
@@ -695,15 +715,18 @@ Output:
 
             for contig in contiguous_residue_lists:
               guidepoints = make_nucleic_acid_guidepoints(contig)
-              print(' Made {} NA guidepoints for {} residues'.format(len(guidepoints),len(contig)))
+              print(' Made {} NA guidepoints for {} residues'.format(len(guidepoints),len(contig)), file=self.logger)
               if self.params.untwist_ribbons:
-                print('  Untwisted ribbon')
+                print('  Untwisted ribbon', file=self.logger)
                 untwist_ribbon(guidepoints)
-              if self.params.DNA_style:
-                print('  Swapped edge and face (DNA style)')
+              # If the model has both DNA and RNA, and if this chain is DNA, swap the edge and face so that
+              # we can distinguish between them in the same model.  Also, if the DNA_style parameter has been
+              # set, then always make this style.
+              if self.params.DNA_style or (hasDNA and hasRNA and chain_has_DNA(chain)):
+                print('  Swapped edge and face (DNA style)', file=self.logger)
                 swap_edge_and_face(guidepoints)
               else:
-                print('  Using RNA style ribbons')
+                print('  Using RNA style ribbons', file=self.logger)
 
               outString += self.printFancyRibbon(guidepoints, 3.0, 3.0,
                     "color= {nucl"+chain.id+"} master= {nucleic acid} master= {ribbon} master= {RNA helix?}",

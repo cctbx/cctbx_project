@@ -274,6 +274,7 @@ general_tests = [
   # validation/molprobity
   "$D/regression/tst_probe.py",
   "$D/regression/tst_reduce.py",
+  "$D/regression/tst_ribbons.py",
   "$D/validation/regression/tst_molprobity_arguments.py",
   "$D/validation/regression/tst_chiral_validation.py",
   "$D/validation/regression/tst_waters.py",
