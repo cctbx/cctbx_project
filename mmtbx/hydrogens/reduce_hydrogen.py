@@ -1,6 +1,7 @@
 from __future__ import absolute_import, division, print_function
 import six
 import os, sys, time
+from libtbx.utils import Sorry
 import mmtbx.model
 import iotbx.pdb
 import boost_adaptbx.boost.python as bp
@@ -122,6 +123,8 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   if md is None:
     md = get_h_restraints(residue.resname, strict=False)
     # md.show()
+    if md is None:
+      raise Sorry('Entity "%s" not found in CCD (or GeoStd). Please supply restraints.' % residue.resname)
     from six.moves import cStringIO as StringIO
     input_string='data_comp_list\n'
     input_string+=str(md.chem_comp.as_cif_loop())
