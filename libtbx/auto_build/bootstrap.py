@@ -1993,6 +1993,7 @@ class CCIBuilder(Builder):
     'clipper',
     'eigen',
     'reduce',
+    'ksdssp',
   ]
   CODEBASES_EXTRA = []
   # Copy these sources from cci.lbl.gov
@@ -2014,6 +2015,7 @@ class CCIBuilder(Builder):
     'smtbx',
     'gltbx',
     'wxtbx',
+    'ksdssp',
   ]
   LIBTBX_EXTRA = []
 
@@ -2380,7 +2382,6 @@ class PhenixBuilder(CCIBuilder):
     'elbow',
     'amber_adaptbx',
     'amber_library',
-    'ksdssp',
     'pulchra',
     'solve_resolve',
     'reel',

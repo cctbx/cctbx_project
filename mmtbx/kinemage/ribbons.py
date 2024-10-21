@@ -6,8 +6,10 @@ _amino_acid_resnames = sorted(amino_acid_codes.one_letter_given_three_letter.key
 def _IsStandardResidue(resname):
   return resname.strip().upper() in _amino_acid_resnames
 
-_nucleic_acid_resnames = set(nucleic_acid_codes.rna_one_letter_code_dict.keys()).union(
-  set(nucleic_acid_codes.dna_one_letter_code_dict.keys()))
+# Find the RNA and DNA residue sets. Remove the RNA names from the DNA set to get only definitely DNA names.
+_rna_resnames = set(nucleic_acid_codes.rna_one_letter_code_dict.keys())
+_dna_resnames = set(nucleic_acid_codes.dna_one_letter_code_dict.keys()) - _rna_resnames
+_nucleic_acid_resnames = _dna_resnames.union(_rna_resnames)
 def _IsNucleicAcidResidue(resname):
   return resname.strip().upper() in _nucleic_acid_resnames
 
@@ -78,6 +80,26 @@ def _FindContiguousResiduesByAtomDistances(chain, type_function, desired_atoms, 
     contiguous_residues.append(current_contig_residues)
 
   return contiguous_residues
+
+# ------------------------------------------------------------------------------
+
+def chain_has_DNA(chain):
+  '''Return True if the chain contains any DNA residues.
+  :param chain: PDB chain to be searched for DNA residues.
+  '''
+  for residue_group in chain.residue_groups():
+    if residue_group.unique_resnames()[0].strip().upper() in _dna_resnames:
+      return True
+  return False
+
+def chain_has_RNA(chain):
+  '''Return True if the chain contains any RNA residues.
+  :param chain: PDB chain to be searched for RNA residues.
+  '''
+  for residue_group in chain.residue_groups():
+    if residue_group.unique_resnames()[0].strip().upper() in _rna_resnames:
+      return True
+  return False
 
 # ------------------------------------------------------------------------------
 
