@@ -51,6 +51,93 @@ def exercise_3():
               ]:
     assert os.path.isfile(fn), "File %s not found" % fn
 
+def exercise_4():
+    """
+    pdb: 6yvd
+    EMD-10944
+    Testing with action=model
+    """
+    # Remove relevant files before running the command
+    files_to_remove = [
+        "6yvd.pdb",
+        "6yvd.cif",
+        "emd_10944.map.gz",
+        "emd_10944_half_map_1.map.gz",
+        "emd_10944_half_map_2.map.gz",
+        "6yvd.fa",
+    ]
+    for file in files_to_remove:
+        if os.path.exists(file):
+            os.remove(file)
+    cmd = "iotbx.fetch_pdb 6yvd action=model"
+    assert not easy_run.call(cmd)
+    # Files that should be present with action=model
+    expected_files = [
+        "6yvd.pdb",
+        "6yvd.cif",
+    ]
+    # Files that should not be present with action=model
+    unexpected_files = [
+        "emd_10944.map.gz",
+        "emd_10944_half_map_1.map.gz",
+        "emd_10944_half_map_2.map.gz",
+        "6yvd.fa",
+    ]
+    for fn in expected_files:
+      assert os.path.isfile(fn), f"File {fn} not found, but it should be present with action=model"
+
+    for fn in unexpected_files:
+      assert not os.path.isfile(fn), f"File {fn} found, but it should not be present with action=model"
+
+def exercise_5():
+    """
+    Testing all possible actions in fetch_pdb
+    """
+    actions = ['model', 'data', 'half_maps', 'sequence', 'all']
+    pdb_id = '6yvd'
+    files_to_remove = [
+        "%s.pdb" % pdb_id,
+        "%s.cif" % pdb_id,
+        "emd_10944.map.gz",
+        "emd_10944_half_map_1.map.gz",
+        "emd_10944_half_map_2.map.gz",
+        "%s.fa" % pdb_id,
+    ]
+    for action in actions:
+      # Remove relevant files before running the command
+      for file in files_to_remove:
+        if os.path.exists(file):
+          os.remove(file)
+      cmd = "iotbx.fetch_pdb %s action=%s" % (pdb_id, action)
+      assert not easy_run.call(cmd)
+      if action == 'model':
+        assert os.path.isfile("%s.pdb" % pdb_id)
+        assert os.path.isfile("%s.cif" % pdb_id)
+        assert not os.path.isfile("emd_10944.map.gz")
+        assert not os.path.isfile("%s.fa" % pdb_id)
+        assert not os.path.isfile("emd_10944_half_map_1.map.gz")
+        assert not os.path.isfile("emd_10944_half_map_2.map.gz")
+      elif action == 'data':
+        assert os.path.isfile("emd_10944.map.gz")
+        assert not os.path.isfile("%s.pdb" % pdb_id)
+        assert not os.path.isfile("%s.cif" % pdb_id)
+        assert not os.path.isfile("emd_10944_half_map_1.map.gz")
+        assert not os.path.isfile("emd_10944_half_map_2.map.gz")
+      elif action == 'sequence':
+        assert os.path.isfile("%s.fa" % pdb_id)
+        assert not os.path.isfile("%s.pdb" % pdb_id)
+        assert not os.path.isfile("%s.cif" % pdb_id)
+        assert not os.path.isfile("emd_10944.map.gz")
+        assert not os.path.isfile("emd_10944_half_map_1.map.gz")
+        assert not os.path.isfile("emd_10944_half_map_2.map.gz")
+      elif action == 'all':
+        assert os.path.isfile("%s.pdb" % pdb_id)
+        assert os.path.isfile("%s.cif" % pdb_id)
+        assert os.path.isfile("emd_10944.map.gz")
+        assert os.path.isfile("emd_10944_half_map_1.map.gz")
+        assert os.path.isfile("emd_10944_half_map_2.map.gz")
+        assert os.path.isfile("%s.fa" % pdb_id)
+
 def exercise_get_link():
   r = []
   for ft in ['model_pdb', 'model_cif', 'sequence', 'sf', 'em_map']:
@@ -75,6 +162,8 @@ if (__name__ == "__main__"):
       exercise_1()
       exercise_2()
       exercise_3()
+      exercise_4()
+      exercise_5()
       print("OK")
     else:
       print("OK but skipped.")
