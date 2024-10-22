@@ -84,10 +84,9 @@ def exercise_4():
         "6yvd.fa",
     ]
     for fn in expected_files:
-      assert os.path.isfile(fn), f"File {fn} not found, but it should be present with action=model"
-
+      assert os.path.isfile(fn), "File {0} not found, but it should be present with action=model".format(fn)
     for fn in unexpected_files:
-      assert not os.path.isfile(fn), f"File {fn} found, but it should not be present with action=model"
+      assert not os.path.isfile(fn), "File {0} found, but it should not be present with action=model".format(fn)
 
 def exercise_5():
     """
