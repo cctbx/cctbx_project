@@ -21,15 +21,9 @@ get_class = iotbx.pdb.common_residue_names_get_class
 def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
   from mmtbx.chemical_components import get_cif_dictionary
-  from mmtbx.chemical_components import get_cif_filename
-  from mmtbx.ligands.rdkit_utils import read_chemical_component_filename
-  filename = get_cif_filename(resname)
-  if not os.path.exists(filename): return None
-  try:
-    molecule = read_chemical_component_filename(filename)
-  except Exception as e:
-    print(e)
-    return None
+  from mmtbx.ligands.rdkit_utils import get_molecule_from_resname
+  molecule = get_molecule_from_resname(resname)
+  if molecule is None: return None
   cc_cif = get_cif_dictionary(resname)
   cc = cc_cif['_chem_comp'][0]
   hs = []

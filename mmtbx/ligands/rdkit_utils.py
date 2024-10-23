@@ -112,6 +112,18 @@ def read_chemical_component_filename(filename):
   # print(dir(rwmol))
   return molecule
 
+def get_molecule_from_resname(resname):
+  import os
+  from mmtbx.chemical_components import get_cif_filename
+  filename = get_cif_filename(resname)
+  if not os.path.exists(filename): return None
+  try:
+    molecule = read_chemical_component_filename(filename)
+  except Exception as e:
+    print(e)
+    return None
+  return molecule
+
 def mol_from_chemical_component(code):
   from mmtbx.chemical_components import get_cif_filename
   rc = get_cif_filename(code)
