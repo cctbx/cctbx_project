@@ -1,6 +1,6 @@
 from __future__ import absolute_import, division, print_function
 import six
-import os, sys, time
+import sys, time
 from libtbx.utils import Sorry
 import mmtbx.model
 import iotbx.pdb
