@@ -5,7 +5,10 @@ from libtbx.phil import parse
 from dials.util import Sorry
 import os, sys
 import re
-import fcntl
+try:
+  import fcntl
+except ImportError:
+  fcntl = None
 
 
 help_message = """
@@ -80,11 +83,12 @@ class Locker:
       self.fp = open(os.path.expanduser('~/.upload_mtz.lock'), 'wb')
     except FileNotFoundError:
       self.fp = None
-    if self.fp is not None:
+    if fcntl and self.fp is not None:
       fcntl.flock(self.fp.fileno(), fcntl.LOCK_EX)
   def __exit__(self, *args, **kwargs):
     if self.fp is not None:
-      fcntl.flock(self.fp.fileno(), fcntl.LOCK_UN)
+      if fcntl:
+        fcntl.flock(self.fp.fileno(), fcntl.LOCK_UN)
       self.fp.close()
 
 class pydrive2_interface:
