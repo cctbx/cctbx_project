@@ -18,6 +18,10 @@ Functions:
   match_mol_indices: Match atom indices of different mols
 """
 
+def get_prop_safe(rd_obj, prop):
+  if prop not in rd_obj.GetPropNames(): return False
+  return rd_obj.GetProp(prop)
+
 def get_cc_cartesian_coordinates(cc_cif, label='pdbx_model_Cartn_x_ideal', ignore_question_mark=False):
   rc = []
   for i, (code, monomer) in enumerate(cc_cif.items()):
@@ -323,6 +327,28 @@ def match_mol_indices(mol_list):
   smarts_mol = Chem.MolFromSmarts(mcs_SMARTS.smartsString)
   match_list = [x.GetSubstructMatch(smarts_mol) for x in mol_list]
   return list(zip(*match_list))
+
+def is_amino_acid(molecule):
+  atom_names = ['N', 'CA', 'C', 'O']
+  bond_names = [['CA', 'N'],
+                ['C', 'O'],
+                ['C', 'CA'],
+               ]
+  acount=0
+  for atom in molecule.GetAtoms():
+    if get_prop_safe(atom, 'atom_id') in atom_names:
+      acount+=1
+  bcount=0
+  for bond in molecule.GetBonds():
+    names = [get_prop_safe(bond.GetBeginAtom(), 'atom_id'),
+             get_prop_safe(bond.GetEndAtom(), 'atom_id'),
+            ]
+    names.sort()
+    if names in bond_names:
+      bcount+=1
+  if acount==4 and bcount==3:
+    return True
+  return False
 
 if __name__ == '__main__':
   import sys

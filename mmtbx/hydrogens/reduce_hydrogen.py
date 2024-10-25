@@ -22,8 +22,15 @@ def get_h_restraints(resname, strict=True):
   from mmtbx.monomer_library import cif_types
   from mmtbx.chemical_components import get_cif_dictionary
   from mmtbx.ligands.rdkit_utils import get_molecule_from_resname
+  from mmtbx.ligands.rdkit_utils import is_amino_acid
   molecule = get_molecule_from_resname(resname)
   if molecule is None: return None
+  iaa=False
+  if ( is_amino_acid(molecule) or
+        get_class(resname) in [ 'common_amino_acid',
+                                'modified_amino_acid',
+                              ]):
+    iaa=True
   cc_cif = get_cif_dictionary(resname)
   cc = cc_cif['_chem_comp'][0]
   hs = []
@@ -36,9 +43,11 @@ def get_h_restraints(resname, strict=True):
     number_atoms_all=0, #cc.number_atoms_all,
     number_atoms_nh=0, #cc.number_atoms_nh,
     desc_level=".")
+  iaa_skip_atom_names = ['H2', 'HXT']
   comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   lookup = {}
   for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
+    if iaa and a.atom_id in iaa_skip_atom_names: continue
     lookup[a.atom_id]=i
     lookup[i]=a.atom_id
     if a.type_symbol in ['H', 'D']:
@@ -57,6 +66,8 @@ def get_h_restraints(resname, strict=True):
     if strict:
       if (b.atom_id_1 not in hs and
           b.atom_id_2 not in hs): continue
+    if ( b.atom_id_1 not in lookup or
+         b.atom_id_2 not in lookup): continue
     atom_idx1=lookup[b.atom_id_1]
     atom_idx2=lookup[b.atom_id_2]
     bl = rdMolTransforms.GetBondLength(conf, atom_idx1, atom_idx2)
@@ -75,6 +86,8 @@ def get_h_restraints(resname, strict=True):
       else: continue
     else:
       av = rdMolTransforms.GetAngleDeg(conf, angle[0], angle[1], angle[2])
+    if ( angle[0] not in lookup or
+         angle[2] not in lookup): continue
     comp_comp_id.angle_list.append(cif_types.chem_comp_angle(
       atom_id_1=lookup[angle[0]],
       atom_id_2=lookup[angle[1]],
@@ -90,6 +103,8 @@ def get_h_restraints(resname, strict=True):
       else: continue
     else:
       av = rdMolTransforms.GetDihedralDeg(conf, angle[0], angle[1], angle[2], angle[3])
+    if ( angle[0] not in lookup or
+         angle[3] not in lookup): continue
     comp_comp_id.tor_list.append(cif_types.chem_comp_tor(
       id='Var_%03d' % i,
       atom_id_1=lookup[angle[0]],
