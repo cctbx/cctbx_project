@@ -9,7 +9,7 @@ import math
 
 mp_phil_str = '''
   mp {
-    method = local *lsf sge pbs slurm shifter htcondor custom
+    method = local *lsf sge pbs slurm shifter sfapi htcondor custom
       .type = choice
       .help = Computing environment
     use_mpi = True
