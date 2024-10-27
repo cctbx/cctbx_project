@@ -1,4 +1,4 @@
-from sfapi_client         import Client
+from sfapi_client         import Client, SfApiError
 from sfapi_client.compute import Machine
 
 from pathlib import Path
@@ -209,31 +209,35 @@ class OpenSFAPI:
         LOGGER.debug("DONE")
 
 
-# class OsBackend:
-#     @staticmethod
-#     def open(
-#         file,
-#         mode='r', buffering=-1, encoding=None, errors=None, newline=None,
-#         closefd=True, opener=None
-#     ):
-#         return open(
-#             file, mode, buffering, encoding, errors, newline, closefd, opener
-#         )
-# 
-#     @staticmethod
-#     def mkdir(path, mode=0o777, *, dir_fd=None): 
-#         return os.mkdir(path, mode, dir_fd)
-# 
-#     @staticmethod
-#     def stat(fd):
-#         return os.stat(fd)
-# 
-#     @staticmethod
-#     def chmod(path, mode, *, dir_fd=None, follow_symlinks=True):
-#         os.chmod(path, mode, dir_fd, follow_symlinks)
+class PathSFAPI:
+    @staticmethod
+    def exists(path):
+        km = KeyManager()
+        target = path.replace("~/", km.home)
+
+        with Client(key=km.key) as client:
+            LOGGER.info(f"Attempting to `ls` '{target}'")
+            compute = client.compute(Machine.perlmutter)
+            LOGGER.debug(f"The machine is: {compute.status}")
+            try:
+                compute.ls(target)
+                LOGGER.debug("Remote `ls` was succesful!")
+                target_exists = True
+            except SfApiError as e:
+                LOGGER.debug(f"Remote `ls` failed with: '{e}'")
+                target_exists = False
+
+        return target_exists
+
+
+    def __getattr__(self, name):
+        return getattr(os.path, name)
 
 
 class OsSFAPI:
+    def __init__(self):
+        self.path = PathSFAPI()
+
     @staticmethod
     def open(
         file,
