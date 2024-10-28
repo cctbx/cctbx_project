@@ -193,6 +193,13 @@ class get_submit_command(object):
     self.options = []
     self.args = []
 
+    # Wrap the `os` module if running in sfapi mode
+    if params.method == "sfapi":
+      from xfel.util.sfapi_connector import OsWrapper, OsSFAPI
+      self.os = OsWrapper(backend=OsSFAPI())
+    else:
+      self.os = os
+
   def customize_for_method(self):
     pass
 
@@ -213,12 +220,12 @@ class get_submit_command(object):
 
   def make_executable(self, file):
     import stat
-    st = os.stat(file)
-    os.chmod(file, st.st_mode | stat.S_IXUSR)
+    st = self.os.stat(file)
+    self.os.chmod(file, st.st_mode | stat.S_IXUSR)
 
   def write_script(self):
     command_str = " ".join([self.command] + self.args)
-    with open(self.submit_path, 'w') as f:
+    with self.os.open(self.submit_path, 'w') as f:
       f.write("#! %s\n" % self.shell_path)
       for line in self.options_inside_submit_script:
         f.write("%s\n" % line)
@@ -232,9 +239,9 @@ class get_submit_command(object):
     return " ".join([self.submit_head] + self.options + [self.submit_path])
 
   def encapsulate_submit(self):
-    path, ext = os.path.splitext(self.submit_path)
+    path, ext = self.os.path.splitext(self.submit_path)
     encapsulate_path = path + "_submit" + ext
-    with open(encapsulate_path, 'w') as f:
+    with self.os.open(encapsulate_path, 'w') as f:
       f.write("#! /bin/%s\n\n" % ext[1:])
       f.write(self.generate_submit_command())
       f.write("\n")
@@ -550,6 +557,11 @@ class get_slurm_submit_command(get_submit_command):
         arg = arg.replace('<output_dir>', image_average_output_dir)
       self.args.append(arg)
 
+class get_sfapi_submit_command(get_slurm_submit_command):
+    # No need for constructor -- the interited constructor is just fine for sfapi
+  def generate_submit_command(self):
+    # For SFAPI, only return the path of the generated jobscript
+    return self.submit_path
 
 class get_shifter_submit_command(get_submit_command):
 
@@ -857,6 +869,8 @@ def get_submit_command_chooser(command, submit_path, stdoutdir, params,
     choice = get_slurm_submit_command
   elif params.method == "shifter":
     choice = get_shifter_submit_command
+  elif params.method == "sfapi":
+    choice = get_sfapi_submit_command
   elif params.method == "htcondor":
     choice = get_htcondor_submit_command
   elif params.method == "custom":

@@ -261,6 +261,20 @@ class OsSFAPI:
             LOGGER.debug(f"Result: {out}")
 
     @staticmethod
+    def makedirs(name, mode=0o777, exist_ok=False):
+        km = KeyManager()
+        target = name.replace("~/", km.home)
+
+        with Client(key=km.key) as client:
+            compute = client.compute(Machine.perlmutter)
+            arg = f"{json.dumps(target)}, mode={mode}, exist_ok={exist_ok}"
+            cmd = json.dumps(f"import os; os.makedirs({arg})")
+
+            LOGGER.info(f"Running: {cmd} on '{compute.name}'")
+            out = compute.run(f"python3 -c {cmd}")
+            LOGGER.debug(f"Result: {out}")
+
+    @staticmethod
     def stat(fd):
         km = KeyManager()
         target = fd.replace("~/", km.home)

@@ -169,8 +169,8 @@ class SettingsDialog(BaseDialog):
     self.lcls_api_protocol = gctr.ChoiceCtrl(self,
                                              name='lcls_api_protocol',
                                              label='LCLS API Protocol',
-                                             label_size=(150, -1),
-                                             ctrl_size=(180, -1),
+                                             label_size=(50, -1),
+                                             ctrl_size=(80, -1),
                                              label_style='bold',
                                              choices=choices)
     try:
