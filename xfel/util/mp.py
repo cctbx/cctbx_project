@@ -195,7 +195,9 @@ class get_submit_command(object):
 
     # Wrap the `os` module if running in sfapi mode
     if params.method == "sfapi":
-      from xfel.util.sfapi_connector import OsWrapper, OsSFAPI
+      import logging
+      from xfel.util.sfapi_connector import OsWrapper, OsSFAPI, LOGGER
+      LOGGER.setLevel(logging.DEBUG)
       self.os = OsWrapper(backend=OsSFAPI())
     else:
       self.os = os

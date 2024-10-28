@@ -126,14 +126,14 @@ class SFAPIFile(io.StringIO):
     def set_data(self, data):
         old_data = self.back_to_start()
         self.write(data)
-        self.seek(0)
+        # self.seek(0)
         return old_data
 
 
 class OpenSFAPI:
     def __init__(self, path, mode, mk_target_dir=False):
 
-        valid_mode_chars = set("rwb")
+        valid_mode_chars = set("rwab")
         input_mode_chars = set(mode)
 
         # If we have duplicate raise exception
@@ -154,24 +154,30 @@ class OpenSFAPI:
         self.compute = self.client.compute(Machine.perlmutter)
         self.buffer  = SFAPIFile(path.replace("~/", self._km.home))
 
-        if "w" in input_mode_chars:
+        if "w" in input_mode_chars or "a" in input_mode_chars:
             self.write_mode = True
         else:
             self.write_mode = False
 
-        if "r" in input_mode_chars:
+        if "r" in input_mode_chars or "a" in input_mode_chars:
             self.read_mode = True
 
             LOGGER.debug(f"Getting remote path handle to: {self.buffer.path}")
-            [dir] = self.compute.ls(self.buffer.dirname, directory=False)
+            try:
+                [file] = self.compute.ls(self.buffer.path, directory=False)
+            except SfApiError:
+                file = None
 
-            LOGGER.info(f"Downloading data from: {self.buffer.path}")
-            binary = "b" in input_mode_chars
-            data   = dir.download(binary).read()
-            if binary:
-                self.buffer.set_data(data.decode("utf8"))
-            else:
-                self.buffer.set_data(data)
+            if file is not None:
+                LOGGER.info(f"Downloading data from: {self.buffer.path}")
+                binary = "b" in input_mode_chars
+                data   = file.download(binary).read()
+                if binary:
+                    self.buffer.set_data(data.decode("utf8"))
+                else:
+                    self.buffer.set_data(data)
+                if "a" not in input_mode_chars:
+                    self.buffer.seek(0)
         else:
             self.read_mode = False
 

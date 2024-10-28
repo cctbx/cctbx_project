@@ -168,7 +168,7 @@ class SettingsDialog(BaseDialog):
     choices = ["http", "https"]
     self.lcls_api_protocol = gctr.ChoiceCtrl(self,
                                              name='lcls_api_protocol',
-                                             label='LCLS API Protocol',
+                                             label='Protocol',
                                              label_size=(50, -1),
                                              ctrl_size=(80, -1),
                                              label_style='bold',
