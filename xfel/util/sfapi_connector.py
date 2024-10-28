@@ -187,12 +187,11 @@ class OpenSFAPI:
         ))
 
         self.mk_target_dir = False if "r" in input_mode_chars else mk_target_dir
-            
 
     def __enter__(self):
         return self.buffer
 
-    def __exit__(self, type, value, traceback):
+    def close(self):
         if not self.write_mode:
             self.client.close()
             LOGGER.debug("File not opened for writing => skipping upload")
@@ -214,6 +213,9 @@ class OpenSFAPI:
         self.client.close()
         LOGGER.debug("DONE")
 
+    def __exit__(self, type, value, traceback):
+        self.close()
+
 
 class PathSFAPI:
     @staticmethod
@@ -234,7 +236,6 @@ class PathSFAPI:
                 target_exists = False
 
         return target_exists
-
 
     def __getattr__(self, name):
         return getattr(os.path, name)

@@ -165,37 +165,37 @@ def copy_config(config, dest_dir, root_name, params, target_num):
   # Also copy and re-write included phil files, while updating the config file to
   # the new paths
   # Note, some legacy rewrites done by cxi.lsf are not included here.
-  f = os.open(config_path, 'w')
-  for line in open(config).readlines():
-    if "[pyana]" in line:
-      raise Sorry("Pyana not supported. Check your config file.")
-    if "RUN_NO" in line:
-      line = line.replace("RUN_NO", str(params.input.run_num))
-    if "RUN_STR" in line:
-      line = line.replace("RUN_STR", "r%04d"%(params.input.run_num))
-    if "trial_id" in line:
-      key, val = line.split("=")
-      line = "%s= %d\n"%(key,params.input.trial)
-    if "rungroup_id" in line:
-      key, val = line.split("=")
-      line = "%s= %s\n"%(key,params.input.rungroup) # None ok
-    elif "_dirname" in line:
-      key, val = line.split("=")
-      val = os.path.join(dest_dir, os.path.basename(val.strip()))
-      if not os.path.exists(val):
-        os.mkdir(val)
-      line = "%s= %s\n"%(key,val)
-    elif "xtal_target" in line:
-      key, val = line.split("=")
-      val = val.strip()
-      if not os.path.exists(val):
-        raise Sorry("One of the xtal_target files in the cfg file doesn't exist: %s"%val)
-      new_target = "params_%d"%target_num
-      copy_target(val, dest_dir, new_target)
-      target_num += 1
-      line = "%s= %s.phil\n"%(key,os.path.join(dest_dir, new_target))
-    f.write(line)
-  f.close()
+  with os.open(config_path, 'w') as f:
+    for line in open(config).readlines():
+      if "[pyana]" in line:
+        raise Sorry("Pyana not supported. Check your config file.")
+      if "RUN_NO" in line:
+        line = line.replace("RUN_NO", str(params.input.run_num))
+      if "RUN_STR" in line:
+        line = line.replace("RUN_STR", "r%04d"%(params.input.run_num))
+      if "trial_id" in line:
+        key, val = line.split("=")
+        line = "%s= %d\n"%(key,params.input.trial)
+      if "rungroup_id" in line:
+        key, val = line.split("=")
+        line = "%s= %s\n"%(key,params.input.rungroup) # None ok
+      elif "_dirname" in line:
+        key, val = line.split("=")
+        val = os.path.join(dest_dir, os.path.basename(val.strip()))
+        if not os.path.exists(val):
+          os.mkdir(val)
+        line = "%s= %s\n"%(key,val)
+      elif "xtal_target" in line:
+        key, val = line.split("=")
+        val = val.strip()
+        if not os.path.exists(val):
+          raise Sorry("One of the xtal_target files in the cfg file doesn't exist: %s"%val)
+        new_target = "params_%d"%target_num
+        copy_target(val, dest_dir, new_target)
+        target_num += 1
+        line = "%s= %s.phil\n"%(key,os.path.join(dest_dir, new_target))
+      f.write(line)
+  # f.close()
   return target_num
 
 def copy_target(target, dest_dir, root_name):
@@ -214,18 +214,18 @@ def copy_target(target, dest_dir, root_name):
   # Each included phil file will be named root_name_N.phil where N is this number,
   # incremented for each included phil file
   num_sub_targets = 1
-  f = os.open(os.path.join(dest_dir, root_name + ".phil"), 'w')
-  for line in open(target).readlines():
-    if "include" in line:
-      inc_str, include_type, sub_target = line.strip().split() # Example: include file cxi-8.2.phil
-      if include_type != 'file':
-        raise Sorry("Include isn't a file") # FIXME look up what other values are possible here
-      sub_target_root_name = "%s_%d"%(root_name, num_sub_targets)
-      line = " ".join([inc_str, include_type, sub_target_root_name  + ".phil\n"])
-      # recursive call to check for other included files
-      copy_target(os.path.join(os.path.dirname(target), sub_target), dest_dir, sub_target_root_name)
-      num_sub_targets += 1
-    f.write(line)
+  with os.open(os.path.join(dest_dir, root_name + ".phil"), 'w') as f:
+    for line in open(target).readlines():
+      if "include" in line:
+        inc_str, include_type, sub_target = line.strip().split() # Example: include file cxi-8.2.phil
+        if include_type != 'file':
+          raise Sorry("Include isn't a file") # FIXME look up what other values are possible here
+        sub_target_root_name = "%s_%d"%(root_name, num_sub_targets)
+        line = " ".join([inc_str, include_type, sub_target_root_name  + ".phil\n"])
+        # recursive call to check for other included files
+        copy_target(os.path.join(os.path.dirname(target), sub_target), dest_dir, sub_target_root_name)
+        num_sub_targets += 1
+      f.write(line)
 
 def get_trialdir(output_dir, run_num, trial = None, rungroup = None, task = None):
     # OsWrapper is a signleton => as long as it is constructed by Script() first,
@@ -300,6 +300,7 @@ def get_submission_id(result, method):
     return result.stdout_lines[0].split()[-1].strip()
   elif method == 'sfapi':
     submission_id = str(result)
+    print(f"{submission_id=}")
   elif method == 'htcondor':
     return result.stdout_lines[-1].split()[-1].rstrip('.')
   elif method == 'sge':
@@ -320,6 +321,7 @@ def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", er
                                               err_name=err_name,
                                               job_name=job_name,
                                               )
+  print("Entering 'do_submit'")
   if mp_params.method in ['lsf', 'sge', 'pbs']:
     parts = submit_command.split(" ")
     script = open(parts.pop(-1), "rb")
@@ -344,9 +346,9 @@ def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", er
   elif mp_params.method == 'sfapi':
     job_stript_path = submit_command # the SFAPI submit command is the location of the job script
 
-    from sfapi_client         import Client
-    from sfapi_client.compute import Machine
-    from sfapi_connector      import KeyManager, LOGGER
+    from sfapi_client              import Client
+    from sfapi_client.compute      import Machine
+    from xfel.util.sfapi_connector import KeyManager, LOGGER
 
     km = KeyManager()
     with Client(key=km.key) as client:
@@ -413,8 +415,10 @@ class Script(object):
       from xfel.util.sfapi_connector import OsWrapper, OsSFAPI, LOGGER
       LOGGER.setLevel(logging.DEBUG)
       self.os = OsWrapper(backend=OsSFAPI())
+      print(f"Using SFAPI: {self.os.backend}")
     else:
       self.os = os
+      print("Using System")
 
     assert params.input.run_num is not None
     if params.input.dispatcher in ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
@@ -426,6 +430,8 @@ class Script(object):
     trial, trialdir = get_trialdir(params.output.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
     params.input.trial = trial
     print("Using trial", params.input.trial)
+
+    print("HO")
 
     # log file will live here
     stdoutdir = self.os.path.join(trialdir, "stdout")
@@ -439,11 +445,17 @@ class Script(object):
         for i in range(params.mp.nproc):
           error_files = self.os.path.join(stdoutdir,"error_rank%04d.out"%i)
           log_files = self.os.path.join(stdoutdir,"log_rank%04d.out"%i)
+          print("1")
           self.os.open(log_files,'a').close()
+          print("2")
           self.os.open(error_files,'a').close()
+          print("3")
         logging_str = "output.logging_dir=%s"%stdoutdir
     else:
       logging_str = ""
+
+
+    print("HI")
 
     # Copy any config or phil files specified
     target_num = 1
@@ -477,7 +489,8 @@ class Script(object):
 
     # If additional phil params are provided, copy them over too
     if params.input.target is not None:
-      if not self.os.path.exists(params.input.target):
+      # don't use self.os => need to to check host
+      if not os.path.exists(params.input.target):
         raise Sorry("Target file doesn't exist: %s"%params.input.target)
       copy_target(params.input.target, trialdir, "params_%d"%target_num)
       params.input.target = self.os.path.join(trialdir, "params_%d.phil"%target_num)

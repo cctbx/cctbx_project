@@ -199,7 +199,9 @@ class get_submit_command(object):
       from xfel.util.sfapi_connector import OsWrapper, OsSFAPI, LOGGER
       LOGGER.setLevel(logging.DEBUG)
       self.os = OsWrapper(backend=OsSFAPI())
+      print("Using SFAPI OsWrapper")
     else:
+      print("Using System OsWrapper")
       self.os = os
 
   def customize_for_method(self):
@@ -491,6 +493,9 @@ class get_pbs_submit_command(get_submit_command):
 
 class get_slurm_submit_command(get_submit_command):
 
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
   def customize_for_method(self):
     self.submit_head = "sbatch"
     if self.params.use_mpi:
@@ -560,7 +565,10 @@ class get_slurm_submit_command(get_submit_command):
       self.args.append(arg)
 
 class get_sfapi_submit_command(get_slurm_submit_command):
-    # No need for constructor -- the interited constructor is just fine for sfapi
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+
+  # No need for constructor -- the interited constructor is just fine for sfapi
   def generate_submit_command(self):
     # For SFAPI, only return the path of the generated jobscript
     return self.submit_path
