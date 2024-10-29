@@ -350,6 +350,30 @@ def is_amino_acid(molecule):
     return True
   return False
 
+def is_nucleic_acid(molecule):
+  atom_names = ['P', "'O5'", 'OP1', 'OP2',
+                "O3'", "C3'"]
+  bond_names = [["O5'", 'P'],
+                ['OP1', 'P'],
+                ['OP2', 'P'],
+                ["C3'", "O3'"],
+               ]
+  acount=0
+  for atom in molecule.GetAtoms():
+    if get_prop_safe(atom, 'atom_id') in atom_names:
+      acount+=1
+  bcount=0
+  for bond in molecule.GetBonds():
+    names = [get_prop_safe(bond.GetBeginAtom(), 'atom_id'),
+             get_prop_safe(bond.GetEndAtom(), 'atom_id'),
+            ]
+    names.sort()
+    if names in bond_names:
+      bcount+=1
+  if acount==5 and bcount==4:
+    return True
+  return False
+
 if __name__ == '__main__':
   import sys
   if sys.argv[1:]:
