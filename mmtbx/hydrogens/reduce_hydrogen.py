@@ -23,14 +23,26 @@ def get_h_restraints(resname, strict=True):
   from mmtbx.chemical_components import get_cif_dictionary
   from mmtbx.ligands.rdkit_utils import get_molecule_from_resname
   from mmtbx.ligands.rdkit_utils import is_amino_acid
+  from mmtbx.ligands.rdkit_utils import is_nucleic_acid
   molecule = get_molecule_from_resname(resname)
   if molecule is None: return None
+  #
+  # remove polymer H atoms
+  #
   iaa=False
-  if ( is_amino_acid(molecule) or
-        get_class(resname) in [ 'common_amino_acid',
-                                'modified_amino_acid',
-                              ]):
+  ina=False
+  if (get_class(resname) in [ 'common_amino_acid',
+                              'modified_amino_acid',
+                            ] or
+      is_amino_acid(molecule)):
     iaa=True
+  if (get_class(resname) in [ 'common_rna_dna',
+                              'modified_rna_dna',
+                            ] or
+      is_nucleic_acid(molecule)):
+    ina=True
+  iaa_skip_atom_names = ['H2', 'HXT']
+  ina_skip_atom_names = ["HO3'", 'HOP2']
   cc_cif = get_cif_dictionary(resname)
   cc = cc_cif['_chem_comp'][0]
   hs = []
@@ -43,11 +55,11 @@ def get_h_restraints(resname, strict=True):
     number_atoms_all=0, #cc.number_atoms_all,
     number_atoms_nh=0, #cc.number_atoms_nh,
     desc_level=".")
-  iaa_skip_atom_names = ['H2', 'HXT']
   comp_comp_id = cif_types.comp_comp_id(source_info=None, chem_comp=chem_comp)
   lookup = {}
   for i, a in enumerate(cc_cif.get('_chem_comp_atom',[])):
     if iaa and a.atom_id in iaa_skip_atom_names: continue
+    if ina and a.atom_id in ina_skip_atom_names: continue
     lookup[a.atom_id]=i
     lookup[i]=a.atom_id
     if a.type_symbol in ['H', 'D']:
@@ -468,6 +480,19 @@ class place_hydrogens():
             expected_h = []
             #expected_ha = []
             atom_dict = mlq.atom_dict()
+            def _remove_atoms(atom_dict, names):
+              remove=[]
+              for k,v in atom_dict.items():
+                if k in names:
+                  remove.append(k)
+              if remove:
+                for r in remove:
+                  del atom_dict[r]
+              return atom_dict
+            if mlq.test_for_peptide(atom_dict):
+              atom_dict = _remove_atoms(atom_dict, ['H2', 'HXT'])
+            elif mlq.test_for_rna_dna(atom_dict):
+              atom_dict = _remove_atoms(atom_dict, ["HO3'", 'HO3*'])
             for k, v in six.iteritems(atom_dict):
               if(v.type_symbol=="H"):
                 expected_h.append(k)

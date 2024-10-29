@@ -44,3 +44,30 @@ def get_as_hierarchy(filename):
 def as_cif_object(filename):
   model = iotbx.cif.reader(filename).model()
   return model
+
+def remove_atoms(cif_object, names):
+  for s, b in cif_object.items():
+    if s=='comp_list': continue
+    for loop in b.iterloops():
+      remove=[]
+      for i, row in enumerate(loop.iterrows()):
+        for key, item in row.items():
+          if key.find('atom_id')>-1:
+            if item in names:
+              remove.append(i)
+              break
+      if remove:
+        remove.reverse()
+        for r in remove:
+          loop.delete_row(r)
+
+def remove_atoms_for_reduce(cif_object):
+  for s, b in cif_object.items():
+    for key, item in b.items():
+      if key=='_chem_comp.group':
+        assert len(item)==1
+        if item[0] in ['RNA', 'DNA']:
+          remove_atoms(cif_object, ["HO3'", 'HOP2'])
+          return True
+    assert 0
+
