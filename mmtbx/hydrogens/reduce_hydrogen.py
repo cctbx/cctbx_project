@@ -453,6 +453,7 @@ class place_hydrogens():
 
             if cif_object:
               ro = self.model.get_restraint_objects()
+              if ro is None: ro=[]
               ro.append(('auto_%s' % ag.resname, cif_object))
               self.model.set_restraint_objects(ro)
 
