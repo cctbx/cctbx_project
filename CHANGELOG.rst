@@ -1,3 +1,11 @@
+2024.10
+=======
+
+* Added support for Python 3.13
+* Improved tools for alternate conformations
+* Added option to download maps from the EMDB to iotbx.fetch_pdb
+* Fix random selection of atoms to consistently select the same number of atoms
+
 2024.9
 ======
 
