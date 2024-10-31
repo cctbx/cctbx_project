@@ -127,8 +127,7 @@ def test_all_elements_electron(make_plot=False):
   #
   for i in range(0, n_runs):
     for el in e_scattering.ito_vol_c_2011_table_4_3_2_2_elements():
-      #if el in ['Cm', 'Bk', 'Cf']:
-      #  continue
+      #if el in ['Cm', 'Bk', 'Cf']: continue
       score, max_diff = check_element_in_cctbx_and_dyscamb(
         element = el,
         table   = 'electron')
@@ -143,6 +142,9 @@ def test_all_elements_electron(make_plot=False):
   v_electron = np.array(plot_vals, dtype = dtype1)
   make_histogram(data = v_electron['score'],
                  ptype = 'score',
+                 table='electron')
+  make_histogram(data = v_electron['max_diff'],
+                 ptype = 'max_diff',
                  table='electron')
 
 def check_element_in_cctbx_and_dyscamb(element, table=None):
@@ -225,9 +227,9 @@ def make_histogram(data, ptype, table):
     binwidth = 0.000002
     label = 'Score'
 #    maxlim = assertion_values[table]['score_max']
-#  if ptype=='max_diff':
-#    binwidth = 0.0002
-#    label = 'Maximum difference'
+  if ptype=='max_diff':
+    binwidth = 0.000002
+    label = 'Maximum difference'
 #    maxlim = assertion_values[table]['max_diff_max']
   fig,ax = plt.subplots()
   bins = np.arange(min(data), max(data) + binwidth, binwidth)
