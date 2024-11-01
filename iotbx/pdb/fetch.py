@@ -75,7 +75,7 @@ def get_link(mirror, entity, pdb_id=None, emdb_number=None, link_templates=all_l
   assert mirror in link_templates.keys()
   if entity not in link_templates[mirror].keys():
     return None
-  if entity == 'map':
+  if entity.find('map') > 0:
     assert emdb_number
   else:
     assert pdb_id
