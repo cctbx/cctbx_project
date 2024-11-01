@@ -6,8 +6,14 @@ from libtbx import adopt_init_args
 from cctbx.array_family import flex
 from mmtbx.ncs import tncs
 
-# Adopted by Pavel Afonine. This is a verbatim copy of the original code
-# supplied by A. Urzhumtsev on 11/5/21, 08:19.
+# Adapted by Pavel Afonine. This is a verbatim copy of the original code
+# supplied by A. Urzhumtsev on September 12, 2024; dec3D, version 7.6
+
+# the modification are :
+#- removing data-iinput routines
+#- including first line till 'PreciseData'
+#- modification of the minimizer's call in 'RefineBCR'
+#- inserted that all prints are under condition : 'nfmes is not None'
 
 ######################################################
 #
@@ -42,16 +48,16 @@ def chi(B, R, r, b_iso):
 
 class calculator(object):
 
-  def __init__(self, npeak,dens,yc,dist,nfmes, x):
+  def __init__(self, npeak,dens,yc,dist,nfmes, x, mdist,edist):
     adopt_init_args(self, locals())
     self.x = flex.double(x)
 
   def target_and_gradients(self, x):
     self.x = x
     target = FuncFit(self.x, self.npeak, self.dens, self.yc, self.dist,
-      self.nfmes)
+      self.mdist,self.edist, self.nfmes)
     gradients = GradFit(self.x, self.npeak, self.dens, self.yc, self.dist,
-      self.nfmes)
+      self.mdist,self.edist, self.nfmes)
     return target, flex.double(gradients)
 
 class minimizer_bound(object):
@@ -84,62 +90,253 @@ class minimizer_bound(object):
     self.g = g
     return self.x, self.f, self.g
 
-#-------------------------------------------------------------------------------
+#============================
+def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfmes=None):
+    print("dmax,mxp,epsc,epsp,edist,kpres,kprot,nfmes:",dmax,mxp,epsc,epsp,edist,kpres,kprot,nfmes)
 
-def PreciseData(kpres,epsc,peak,dstep,nfmes):
+#    dens   - array of the curve values,
+#             in in creasing order of the argument starting from 0
+#    dist   - array of the argument values ; normally this is a regular grid
+#    dmax   - maximal distance value till which the curve will be approximated
+#    mxp    - maximal number of terms ; except special cases, it is recommended
+#             to choose a large value (e.g., 1000) and limit the number of terms
+#             rather referring to the parameter epsc below
+#    epsc   - precision with which the decomposition will be constructed;
+#             A KEY PARAMETER ;
+#             the value recommended is 0.001; at least for atomic images, this gives
+#             an accurate approximation with a single term per a local peak for most of
+#             atomic images at conventional resolution
+#    epsp   - part of the value of the local peak defining the peak limits;
+#             use values in the ragne 0.0 - 0.005
+#    edist  - value at which the atomic contribution considered as negligibly small;
+#             1.0E-13 ie recommended;
+#    kpres  - defines if the precision is given in absolute values (=1) or as a part of
+#             peak in the origin, dens[0]
+#    kprot  - type of the peak analysis processing; kprot = 3 is recommended
+#             1 - only one iteration; refinement at the end
+#             2 - only one iteration; refinement of each term instantly
+#             3 - several iterations allowed; refinement at the end of each iteration
+#             4 - several iterations allowed; refinement at the end of each iteration
+#                 except for the first peak (supposed to be that in the origin)
+#             5 - several iterations allowed; refinement of each term instantly
 
-#   ceps - defines accuracy in absolute values
-#   bmin - defines sharpest drop < 10**(-ndrop) of the 3D-exponential
+    if (nfmes is not None) :
+       print('',file=nfmes)
+       print(30*'=',' NEW CURVE IN PROCESS ',30*'=',file=nfmes)
+
+       print('')
+       print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
+
+    bpeak  = [ 0 for i in range(2*mxp+2) ]
+    cpeak  = [ 0 for i in range(2*mxp+2) ]
+    rpeak  = [ 0 for i in range(2*mxp+2) ]
+
+#   definition / estimations of the internal parameters
+
+    ceps,bmin,cmin,rmin,edist,mdist = PreciseData(kpres,epsc,epsp,edist,
+                                                  dmax,dens[0],dist,nfmes)
+#--------------------------------------
+#
+#   starting point to search for the peaks;
+#   number of terms found previously
+
+    kpeak = 0
+    npeak = -1
+    curres,curve,epsres =  CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
+
+#--------------------------------------
+
+#   main cycle over peaks including the residual one in the origin
+
+    while (epsres >= ceps) and (npeak < mxp) :
+
+#       find next group of peaks
+
+        kpeak,kneg,curres = NextPeak(curres,mdist,kpeak,nfmes,ceps)
+
+        if kpeak >= 0 and kpeak <= mdist :
+
+           bpeak,cpeak,rpeak,npeak,kdist,kpeak = PeakBCR(curres,dist,mdist,ceps,kneg,kpeak,
+                                            bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp,nfmes)
+
+           if npeak == mxp or kprot == 2 or kprot == 5 or (kprot == 4 and npeak == 0):
+
+#             if the last (mxp) peak found or
+#             if the accurate accurate search protocol applied :
+#             refine parameters in the extended interval
+#                    and remove contribution
+
+              bpeak,cpeak,rpeak =        \
+                    RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
+
+              curres,curve,epsres = \
+                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
+        else :
+
+#          no more peaks ; the whole interval has been analysed
+#          refine estimated parameters in the required interval
+#          remove the contribution of the modeled peaks and update start search point
+
+           if kprot == 1 or kprot == 3 or kprot == 4 :
+
+              bpeak,cpeak,rpeak =        \
+                    RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
+
+              curres,curve,epsres = \
+                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp)
+
+           if kprot == 1 or kprot == 2 :
+              break
+           elif kprot == 5 :
+              kprot = 3
+
+           kpeak = 0
+#
+#   end of the main cycle ;
+#
+#   filter out weak terms if possible
+
+    bpeak,cpeak,rpeak,mpeak,curve,curres,epsres = FilterWeak(dens,curve,curres,dist,mdist, \
+                       edist,epsres,bpeak,cpeak,rpeak,npeak,mxp,bmin,cmin,rmin,nfmes,ceps)
+
+    return bpeak,cpeak,rpeak,mpeak,curve,curres,epsres
+
+#============================
+def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes):
+
+    ndist = len(dist) - 1
+
+    xc        = [ 0 for i in range(3*(npeak+1)) ]
+    yc        = [ 0 for i in range(ndist+1) ]
+    bcrbounds = [ (None,None) for i in range(3*(npeak+1)) ]
+
+    sp = ' '
+
+#   define bounds
+#   cmin is the bound for |c| and not for c itself
+
+#!!!!!!!!!!!!!! inserted by P.Afonine instead of the original call of "minimize"
+
+    for i in range(npeak+1):
+        i3 = i*3
+        xc[i3]   = bpeak[i]
+        xc[i3+1] = cpeak[i]
+        xc[i3+2] = rpeak[i]
+        bcrbounds[i3]   = (bmin,1000.)
+        bcrbounds[i3+2] = (rmin,dist[ndist]*1.2)
+        if cpeak[i] > 0.0 :
+           bcrbounds[i3+1] = (cmin,1000.)
+        else :
+           bcrbounds[i3+1] = (-1000.,-cmin)
+
+#   minimization
+
+    for it in range(1,3):
+      if it > 1:
+        xc = res.x
+      CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist)
+      lbound = []
+      ubound = []
+      for b in bcrbounds:
+        lbound.append(b[0])
+        ubound.append(b[1])
+      res = minimizer_bound(
+        calculator  = CALC,
+        use_bounds  = 2,
+        lower_bound = lbound,
+        upper_bound = ubound,
+        max_iterations = 500).run().calculator
+    res.x = list(res.x)
+
+    if 0: # SciPy analogue. Works with Python 3 only.
+      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,nfmes),
+                 method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
+
+#!!!!!!!!!!! end of the insertion
+
+#   recover refined values
+
+    if (nfmes is not None) :
+       print('',file=nfmes)
+       print(' parameters before and after their refinement:'     ,file=nfmes)
+       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+                      'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',file=nfmes)
+
+       print('')
+       print(' parameters before and after their refinement:')
+       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+                       'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ')
+
+    for i in range(npeak+1):
+        i3 = i*3
+        b0 , c0, r0 = res.x[i3] , res.x[i3+1] , res.x[i3+2]
+
+        if (nfmes is not None) :
+           print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+                 f'{r0:16.10f}{b0:16.10f}{c0:11.5f}',file=nfmes)
+
+           print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+                 f'{r0:16.10f}{b0:16.10f}{c0:11.5f}')
+
+        bpeak[i] , cpeak[i] , rpeak[i] = b0 , c0 , r0
+
+    return bpeak,cpeak,rpeak
+
+#============================
+def PreciseData(kpres,epsc,epsp,edist,dmax,peak,dist,nfmes):
+
+#   ceps  - defines accuracy in absolute values
+#   bmin  - defines sharpest drop < 10**(-ndrop) of the 3D-exponential
 #            at a distance = grid step
-#   cmin - defines minimal peak height (64 majorates (4*pi)**1.5 )
-#   epsp - drop when approximating internal peaks
+#   cmin  - defines minimal peak height (64 majorates (4*pi)**1.5 )
+#   epsp  - drop when approximating internal peaks
+#   edist - limit of the term contribution
 
-    epsp = 0.001
+    ndist = len(dist) -1
+
+#   precision constants
 
     if kpres > 0:
-      ceps=epsc
+      ceps  = epsc
     else:
-      ceps=peak*epsc
+      ceps  = abs(peak) * epsc
+      edist = abs(peak) * edist
 
-    ndrop = 2
+#   find the point in 'dist' for the required distance limit
+
+    mdist = ndist
+    if dist[ndist] < dmax :
+       print('*** warning : curve interval is defined for x <= ',dist[ndist])
+       print('              shrter that the required distance  ',dmax)
+    else :
+       for ix in range(ndist+1) :
+           if dist[ix] > dmax :
+              mdist = ix - 1
+              break
+
+#   estimates for a regular grid with step = dist(1) - dist(0)
+
+    dstep = dist[1]
+    ndrop = 2.
     bmin  = 16.*dstep*dstep/ndrop
     cmin  = ceps*(bmin**1.5)/64.
     rmin  = 0.0
 
-    if(nfmes is not None):
-      print ('',file=nfmes)
-      print ('estimated accuracy parameters :',file=nfmes)
-      print ('   absolute max allowed error',ceps,file=nfmes)
-      print ('   bmin, cmin :              ',bmin,cmin,file=nfmes)
-      print ('---------------------------',file=nfmes)
-      print ('',file=nfmes)
+    print ('',file=nfmes)
+    print (' INTERNAL DECOMPOSITION PARAMETERS ',file=nfmes)
+    print ('',file=nfmes)
+    print (' absolute max allowed error     ',f'{ceps:13.5e}' ,file=nfmes)
+    print (' drop to estimate the peak width',f'{epsp:13.5e}' ,file=nfmes)
+    if edist > 0.0 :
+       print (' term extension limit           ',f'{edist:13.5e}',file=nfmes)
+    else :
+       print (' term extension limit :            no limit applied',file=nfmes)
+    print (' estimated accuracy parameters :',file=nfmes)
+    print ('    bmin                        ',f'{bmin:13.5e}' ,file=nfmes)
+    print ('    cmin                        ',f'{cmin:13.5e}' ,file=nfmes)
+    print ('---------------------------',file=nfmes)
 
-    return ceps,bmin,cmin,rmin,epsp
-
-#============================
-def PeakOrigin(dens,dist,epsp,bmin,cmin,nfmes):
-
-    ndist = len(dist) - 1
-
-#   invert the curve if negative peak
-
-    d0 = dens[0]
-    if d0 > 0.0:
-      kneg=0
-    else:
-      kneg=1
-      dens,d0 = CurveInvert(dens,d0)
-
-#   parameters of the Gaussian peak in the origin
-
-    b0,c0 = GaussBC(dist,epsp,bmin,cmin,dens,nfmes)
-
-#   invert curve back if necessary
-
-    if kneg >0 :
-      dens,d0 = CurveInvert(dens,d0)
-
-    return b0,c0
+    return ceps,bmin,cmin,rmin,edist,mdist
 
 #============================
 def CurveInvert(dens,d0):
@@ -154,123 +351,136 @@ def CurveInvert(dens,d0):
     return dens,d0
 
 #============================
-def GaussBC(dist,epsp,bmin,cmin,curres,nfmes):
+def GaussBC(curres,dist,epsp,bmin,cmin,nfmes):
 
     ndist = len(dist) -1
 
     cpi   = math.pi
-    pisq4 = 4.*cpi*cpi
 
 #   inflection point and approximate curve till this point
 
     kpeak = 0
-    minf = NumInflRight(curres,kpeak,epsp,nfmes)
+    r0    = dist[kpeak]
+
+    minf = NumInflRight(curres,kpeak,epsp)
     if minf == 0:
-       b0 = bmin
-       c0 = curres[kpeak] * (b0/4.0*math.pi)**1.5
+       b0 = 2.0*bmin
+       c0 = curres[kpeak] * (b0/(4.0*cpi))**1.5
     else:
-       ug,vg = uvFitGauss(dist,curres,minf)
-       b0 = pisq4/vg
-       c0 = ug*(cpi/vg)**1.5
-       if b0 < bmin:
-          b0 = bmin
+       ug,vg = uvFitGaussR(curres,dist,r0,kpeak,minf)
+       b0 = 4.0 * cpi**2 / vg
+       c0 = ug  * (cpi/vg)**1.5
+       if b0 < 2.0*bmin:
+          b0 = 2.0*bmin
 
-    if c0 < cmin:
-       c0 = cmin
+    if c0 < 2.0*cmin:
+       c0 = 2.0*cmin
 
-    return b0,c0
+    return b0,c0,r0,minf
 
 #============================
-def RippleBCR(dist,kpeak,epsp,bmin,cmin,rmin,curres,nfmes):
+def RippleBCR(curres,dist,mdist,kpeak,epsp,bmin,cmin,rmin,nfmes):
 
 #   inflection point and approximate curve till this point
 
     ndist = len(dist) -1
+    cpi   = math.pi
 
-    minfr = NumInflRight(curres,kpeak,epsp,nfmes)
-    minfl = NumInflLeft(curres,kpeak,epsp,nfmes)
-    if minfr-kpeak > kpeak-minfl:
-      kref = minfr
+    minfr = NumInflRight(curres,kpeak,epsp)
+    minfl = NumInflLeft(curres,kpeak,epsp)
+
+    if minfr-minfl <= 1:
+       b0 = 2.0*bmin
+       c0 = curres[kpeak] * math.sqrt(4.0*cpi*b0) * dist[kpeak]**2
     else:
-      kref = minfl
+       ug,vg = uvFitGaussR(curres,dist,dist[kpeak],minfl,minfr)
+       b0    = 4.0 * cpi * cpi / vg
+       if b0 < 2.0*bmin:
+          b0 = 2.0*bmin
+       c0    = ug * math.sqrt(b0)
 
-    if kref == kpeak:
-       b0 = bmin
-       c0 = curres[kpeak] * math.sqrt(4.0*math.pi*b0) * dist[kpeak]**2
-       if c0 < cmin:
-          c0 = cmin
+    if c0 < 2.0*cmin:
+       c0 = 2.0*cmin
+    r0 = dist[kpeak]
 
-    b0,c0,r0 = FitBCR(dist,kpeak,kref,epsp,bmin,cmin,rmin,curres,nfmes)
+    kdist = minfr
 
-    return b0,c0,r0
+    return b0,c0,r0,kdist
 
 #============================
-def TailBCR(dist,epsp,bmin,cmin,rmin,curres,nfmes):
+def TailBCR(curres,dist,mdist,epsp,bmin,cmin,rmin,nfmes):
 
 #   inflection point for the peak at the upper interval bound
 
     ndist = len(dist) -1
 
-    kref = NumInflLeft(curres,ndist,epsp,nfmes)
+#   the peak at the upper bound of the required interval
 
-#   parameters for this peak
+    kpeak = mdist
+    if mdist < ndist :
+       kpeak = NumPeakRight(curres,mdist)
 
-    b0,c0,r0 = FitBCR(dist,ndist,kref,epsp,bmin,cmin,rmin,curres,nfmes)
+    if kpeak < ndist :
 
-    return b0,c0,r0
+#      an internal peak in the extended interval
 
-#============================
-def FitBCR(dist,kpeak,kref,epsp,bmin,cmin,rmin,curres,nfmes):
-
-    ndist = len(dist) - 1
-
-#   BCR parameters for an internal ripple
-
-    pi4   = 4.  * math.pi
-    pisq4 = pi4 * math.pi
-
-#   scorr is an artificial correcting factor against B overestimation
-#   when r0 is taken without correction B/(8*peak*pi**2)
-
-    scorr=1.5
-
-    if kref == kpeak :
-       q0, r0  = curres[kpeak] , dist[kpeak]
-       b0 = bmin
+       b0, c0, r0, kdist = RippleBCR(curres,dist,mdist,kpeak,epsp,bmin,cmin,rmin,nfmes)
 
     else :
 
-       q2, r2 = curres[kpeak] , dist[kpeak]
-       q1, r1 = curres[kref]  , dist[kref]
+#      otherwise find the inflection point to the left
+#      and approximate the curve till this point
 
-       arg = (q2*r2) / (q1*r1)
-       b2  = pisq4 * (r1-r2)**2 /math.log(arg)
-       if b2 < bmin:
-          b2 = bmin
+       b0, c0, r0, kdist = border(dist,mdist,epsp,bmin,cmin,rmin,curres,nfmes)
 
-#   correction of the peak center
-
-       r2c = r2 + b2/(scorr*2.*pisq4*r2)
-       q0, r0  = curres[ndist] , dist[ndist]
-
-       for k in range(kpeak,ndist+1):
-           if dist[k] >= r2c or curres[k] <= q1:
-              q0, r0 = curres[k-1] , dist[k-1]
-              break
-
-       arg = (q0*r0) / (q1*r1)
-       b0  = pisq4 * (r1-r0)**2 / math.log(arg)
-       if b0 < bmin:
-          b0 = bmin
-
-    c0 = q0 * math.sqrt(pi4*b0) * r0**2
-    if c0 < cmin:
-       c0 = cmin
-
-    return b0,c0,r0
+    return b0, c0, r0, kdist
 
 #============================
-def NumInflRight(curres,kpeak,epsp,nfmes):
+def border(dist,kpeak,epsp,bmin,cmin,rmin,curres,nfmes):
+
+    ndist = len(dist) - 1
+
+    kdist = ndist
+    r0    = dist[ndist]
+    kref = NumInflLeft(curres,ndist,epsp)
+
+    if kref == ndist :
+          b0 = 2.0*bmin
+          c0 = curres[ndist] * math.sqrt(4*math.pi*b0) * r0**2
+    elif kref == ndist-1 :
+          b0 = 4.0*bmin
+          c0 = curres[ndist] * math.sqrt(4*math.pi*b0) * r0**2
+    else :
+       ug,vg = uvFitGaussR(curres,dist,r0,kref,ndist)
+       b0    = 4.0 * math.pi**2 / vg
+       if b0 < 2.0*bmin:
+          b0 = 2.0*bmin
+       c0    = ug * math.sqrt(b0)
+
+    if c0 < 2.0*cmin:
+       c0 = 2.0*cmin
+
+    return b0,c0,r0,kdist
+
+#============================
+def NumPeakRight(curres,npeak):
+
+#   peak in the interval npeak <= ndist
+#   (if nreak is on the upper bound of the search interval)
+
+    ndist = len(curres) - 1
+
+    npeakr = npeak
+    if npeak < ndist :
+       for i in range (npeak+1,ndist+1) :
+           if curres[i] < curres[i-1] :
+              npeakr = i - 1
+              break
+
+    return npeakr
+
+#============================
+def NumInflRight(curres,kpeak,epsp):
 
 #   right inflection point ; always 0 <= kpeak < ndist
 
@@ -291,7 +501,7 @@ def NumInflRight(curres,kpeak,epsp,nfmes):
        return ndist-1
 
 #============================
-def NumInflLeft(curres,kpeak,epsp,nfmes):
+def NumInflLeft(curres,kpeak,epsp):
 
 #   left inflection point; always 0 < kpeak <= ndist ;
 #   return 0 (r=0) is forbidden giving 0 in fitBCR
@@ -310,24 +520,31 @@ def NumInflLeft(curres,kpeak,epsp,nfmes):
     return k
 
 #============================
-def uvFitGauss(dist,curres,minf):
+def uvFitGaussR(curres,dist,d0,minx,maxx):
 
 #   used below : w = ln(u)
 
     sumr2, sumr4, sumdl, sumrdl = 0.0 , 0.0 , 0.0 , 0.0
+    sumx                        = maxx - minx + 1
 
-    for i in range(minf+1):
-      curvei = math.log(curres[i])
-      ri2    = dist[i] * dist[i]
-      ri4    = ri2     * ri2
+    if d0 > 0.0 :
+       scalf = d0 * d0 * math.sqrt(4.0 * math.pi)
+    else :
+       scalf = 1.0
+
+    for i in range(minx,maxx+1):
+      curvei = math.log(curres[i] * scalf)
+      dr = dist[i] - d0
+      ri2    = dr * dr
+      ri4    = ri2    * ri2
       sumr2  = sumr2  + ri2
       sumr4  = sumr4  + ri4
       sumdl  = sumdl  + curvei
       sumrdl = sumrdl + curvei * ri2
 
-    det  = -(minf+1) * sumr4  + sumr2 * sumr2
-    detw =    -sumdl * sumr4  + sumrdl*sumr2
-    detv =  (minf+1) * sumrdl - sumr2 * sumdl
+    det  =  -sumx * sumr4  + sumr2 * sumr2
+    detw = -sumdl * sumr4  + sumrdl*sumr2
+    detv =   sumx * sumrdl - sumr2 * sumdl
 
     wg = detw / det
     vg = detv / det
@@ -336,11 +553,11 @@ def uvFitGauss(dist,curres,minf):
     return ug,vg
 
 #============================
-def CurveDiff(dens,dist,nfmes,bpeak,cpeak,rpeak,npeak):
+def CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp):
 
     ndist = len(dist) - 1
 
-    curve  = [ [ 0 for j in range(npeak+1)] for i in range(ndist+1) ]
+    curve  = [ [ 0 for j in range(mxp+1)] for i in range(ndist+1) ]
     curres = [ dens[i] for i in range(ndist+1) ]
 
 #   cycle over components
@@ -355,183 +572,209 @@ def CurveDiff(dens,dist,nfmes,bpeak,cpeak,rpeak,npeak):
 #         ripple in point r0 or Gaussian in the origin
 
       if r0 > 0.0 :
-        tcurve = CurveRipple(dist,b0,c0,r0)
+        tcurve = CurveRipple(dist,edist,b0,c0,r0)
       else:
-        tcurve = CurveGauss(dist,b0,c0)
+        tcurve = CurveGauss(dist,edist,b0,c0)
 
 #     remove contribution
 
-      for ix in range(ndist):
+      for ix in range(ndist+1):
         curve [ix][ipeak] = tcurve[ix]
-        curres[ix]        = curres[ix]-tcurve[ix]
+        curres[ix]        = curres[ix] - tcurve[ix]
 
-#   end of cycle over components; residual error
+#   end of cycle over components; residual errors
 
-    epsres=0.0
-    for ix in range (ndist):
-      curabs=abs(curres[ix])
+    epsres = 0.0
+    for ix in range (mdist+1):
+      curabs = abs(curres[ix])
       if curabs > epsres:
          epsres = curabs
 
-    if(nfmes is not None):
-      print('',file=nfmes)
-      #print(f'with {npeak+1:4} peaks modeled max residual peak is {epsres:12.7f}',
-      #      file=nfmes)
+    totres = epsres
+    if ndist > mdist :
+       for ix in range (mdist+1,ndist+1):
+         curabs = abs(curres[ix])
+         if curabs > totres:
+            totres = curabs
+
+    if (nfmes is not None) :
+       space = 23*' '
+       print('',file=nfmes)
+       print(f' with {npeak+1:4} terms max residual peaks are',file=nfmes)
+       print(space,' inside the interval of modeling',f'{epsres:12.7f}',file=nfmes)
+       print(space,' in the whole range of distances',f'{totres:12.7f}',file=nfmes)
+
+       print('')
+       print(f' with {npeak+1:4} terms max residual peaks are')
+       print(space,' inside the interval of modeling',f'{epsres:12.7f}')
+       print(space,' in the whole range of distances',f'{totres:12.7f}')
 
     return curres,curve,epsres
 
 #============================
-def CurveGauss(dist,b0,c0):
+def CurveGauss(dist,edist,b0,c0):
 
     ndist = len(dist) -1
-
-    argmax = 30.
 
 #   curve for a Gaussian in the origin
 
     curve = [ 0.0 for i in range(ndist+1) ]
 
-    cpi   = math.pi
-    pisq4 = 4.*cpi*cpi
+    cpi  = math.pi
+    pi4b = 4. * cpi / b0
+    vg   = pi4b * cpi
+    ug   = c0 * pi4b**1.5
 
-    vg = pisq4 / b0
-    ug = c0 * (vg/cpi)**1.5
+    if edist > 0.0 :
+       distmx = math.sqrt(-math.log(edist/abs(ug)) / vg)
+    else :
+       distmx = dist[ndist]
 
     for ix in range(ndist+1):
-      arg = vg * dist[ix]**2
-      if arg < argmax :
-        curve[ix] = ug * math.exp(-arg)
+      distx = dist[ix]
+      if distx <= distmx :
+         arg = vg * distx**2
+         curve[ix] = ug * math.exp(-arg)
+      else :
+         break
 
     return curve
 
 #============================
-def CurveRipple(dist,b0,c0,r0):
+def CurveRipple(dist,edist,b0,c0,r0):
 
     ndist = len(dist) -1
-
-    argmax = 30.
 
 #   curve for a rippe in point r0
 
     curve = [ 0.0 for i in range(ndist+1) ]
 
     cpi   = math.pi
-    pi4   = 4.*cpi
-    pisq4 = pi4*cpi
+    pi4   = 4.0 * cpi
+    pisq4 = pi4 * cpi
+    ur    = c0  * (pi4/b0)**1.5
+    vr    = pisq4 / b0
+    vr2   = 2.0 * vr
 
     scaler = c0 / (r0*math.sqrt(pi4*b0))
-    coef   = pisq4 / b0
+    if edist > 0.0 :
+       arg0mx = -math.log(edist/abs(ur))
+    else :
+       arg0mx = vr * dist[ndist]**2
 
-    arg0 = coef * r0**2
-    if arg0 < argmax :
-      curve[0] = c0 * math.exp(-arg0) * (pi4/b0)**1.5
+    arg0 = vr * r0**2
+    if arg0 < arg0mx :
+       curve[0] = c0 * math.exp(-arg0) * (pi4/b0)**1.5
 
-    for ix in range(1,ndist+1):
-      r = dist[ix]
-      argm, argp = coef * (r-r0)**2 , coef * (r+r0)**2
+#   find the distance point for r0
 
-      if argm < argmax :
-        eargm = math.exp(-argm)
-      else:
-        eargm = 0.0
+    ir = 0
+    for ix in range(1,ndist+1) :
+        if dist[ix] > r0 :
+           ir = ix
+           break
+    if ir == 0 :
+       ir = ndist
+    else :
+       ir = ir - 1
 
-      if argp < argmax :
-        eargp = math.exp(-argp)
-      else:
-        eargp = 0.0
+#   left part of the curve
 
-      curve[ix] = scaler * (eargm-eargp) / r
+    if ir > 0 :
+       for ix in range(ir,0,-1) :
+           rx         = dist[ix]
+           argm, argp = vr * (rx-r0)**2 , vr * (rx+r0)**2
+           curvex     = scaler * (math.exp(-argm) - math.exp(-argp)) / rx
+           if abs(curvex) >= edist :
+              curve[ix]   = curvex
+           else :
+              break
+
+#   right part of the curve
+
+    if ir < ndist :
+       for ix in range(ir+1,ndist+1) :
+           rx         = dist[ix]
+           argm, argp = vr * (rx-r0)**2 , vr * (rx+r0)**2
+           curvex     = scaler * (math.exp(-argm) - math.exp(-argp)) / rx
+           if abs(curvex) >= edist :
+              curve[ix]   = curvex
+           else :
+              break
 
     return curve
 
 #============================
-def OutCurves(dens,dist,curres,curve,filres):
+def OutCurves(dens,dist,curres,curve,filecurve):
 
-    nfcurv = open(filres, 'w')
+    if filecurve == 'none' :
+       return
+
+    nfcurv = open(filecurve, 'w')
 
     ndist = len(dist) - 1
 
-    #if(nfmes is not None):
-    #  print(f'    dist       curve         modeled         resid',file=nfcurv)
-    for i in range(ndist):
+#    print(f'   dist   curve   modeled   resid    cmp=  0',
+#          ''.join(f'{ip:9}' for ip in range(1,npeak+1)),file=nfcurv)
+#    for i in range(ndist+1):
+#        densum = dens[i]-curres[i]
+#        print(f'{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',
+#              ''.join(f'{curve[i][ip]:9.5f}' for ip in range(npeak+1)),file=nfcurv)
+
+    print(f'    dist       curve         modeled         resid        max.error',file=nfcurv)
+
+    resmax = 0.0
+    for i in range(ndist+1):
+        curabs = abs(curres[i])
+        if curabs > resmax:
+           resmax = curabs
         densum = dens[i]-curres[i]
-        #if(nfmes is not None):
-        #  print(f'{dist[i]:8.3f}{dens[i]:15.8f}{densum:15.8f}{curres[i]:15.8f}',file=nfcurv)
-
+        print(f'{dist[i]:8.3f}{dens[i]:15.8f}{densum:15.8f}{curres[i]:15.8f}{resmax:15.8f}',
+                                                                                 file=nfcurv)
     return
 
 #============================
-def OutCoefficients(bpeak,cpeak,rpeak,npeak,nfmes):
-    if(nfmes is None): return
-    space=' '
-
-    print(' final parameter values:',file=nfmes)
-    print(' Npeak     Bpeak',space*13,'Cpeak',space*13,'Rpeak',file=nfmes)
-    #for ipeak in range(npeak+1):
-    #   print(f'{ipeak:6}{bpeak[ipeak]:20.14f}{cpeak[ipeak]:20.14f}{rpeak[ipeak]:20.14f}',
-    #         file=nfmes)
-
-    return
-
-#============================
-def MorePeaks(curres,dist,nfmes,ceps,bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp):
-
-#   first iteration: the peak in the origin has been already treated
-#   get starting point in the curve for further search
-
-    if npeak == 0:
-       kpeak=1
-    else:
-       kpeak=0
+def PeakBCR(curres,dist,mdist,ceps,kneg,kpeak,bpeak,cpeak,rpeak,npeak,       \
+              epsp,bmin,cmin,rmin,mxp,nfmes):
 
     ndist = len(dist) - 1
+    kdist = mdist
 
-#   cycle over peaks
+    if kpeak == 0:
 
-    for ipeak in range(npeak+1,mxp+1):
+#      peak in the origin - model it by a Gaussian
 
-#       next maximal residual peak if yet significant
+       b0, c0, r0, minf = GaussBC(curres,dist,epsp,bmin,cmin,nfmes)
+       kpeak = minf
 
-        kpeak,kneg = NextPeak(curres,kpeak,nfmes,ceps)
+    elif kpeak < mdist:
 
-#       no more significant peak found
+#      internal peak
 
-        if kpeak < 0:
-           break
+       b0, c0, r0, kdist = \
+                   RippleBCR(curres,dist,mdist,kpeak,epsp,bmin,cmin,rmin,nfmes)
+       kpeak = kdist
 
-#       peak in the origin - model it by a Gaussian
+#      peak at the right border of the interval
 
-        elif kpeak == 0:
-           b0 , c0 = GaussBC(dist,epsp,bmin,cmin,curres,nfmes)
-           r0 = 0.0
-
-#       internal peak
-
-        elif kpeak < ndist:
-          b0, c0, r0 = RippleBCR(dist,kpeak,epsp,bmin,cmin,rmin,curres,nfmes)
-
-#       peak at the right border of the interval
-
-        else:
-          b0, c0, r0 = TailBCR(dist,epsp,bmin,cmin,rmin,curres,nfmes)
-
-        if kneg > 0:
-          curres, c0 = CurveInvert(curres,c0)
-
-        bpeak[ipeak] , cpeak[ipeak] , rpeak[ipeak] = b0 , c0, r0
-        kpeak = kpeak+1
-
-    if kpeak < 0:
-       npeak = ipeak - 1
     else:
-       npeak = ipeak
+       b0, c0, r0, kdist = TailBCR(curres,dist,mdist,epsp,bmin,cmin,rmin,nfmes)
+       kpeak = mdist
 
-    return bpeak,cpeak,rpeak,npeak
+    if kneg > 0:
+       curres, c0 = CurveInvert(curres,c0)
+
+    kpeak = kpeak+1
+    npeak = npeak+1
+    bpeak[npeak] , cpeak[npeak] , rpeak[npeak] = b0 , c0, r0
+
+    return bpeak,cpeak,rpeak,npeak,kdist,kpeak
 
 #============================
-def NextPeak(curres,kpeak,nfmes,ceps):
+def NextPeak(curres,mdist,kpeak,nfmes,ceps):
 
-    ndist = len(curres) -1
+    kfound = 0
+    kneg   = 0
 
 #   check the peak in the origin
 
@@ -545,7 +788,8 @@ def NextPeak(curres,kpeak,nfmes,ceps):
          i = i+1
 
       if cx*(curres[i]-cx) < 0.0 and abs(cx) > ceps:
-         ix = 0
+         ix     = 0
+         kfound = 1
 
 #     there is no peak in the origin; check next points
 
@@ -554,142 +798,68 @@ def NextPeak(curres,kpeak,nfmes,ceps):
 
 #   (we cannot use 'else' below since kpeak may change after its previous check)
 
-    if kpeak > 0:
+    if kfound == 0 and kpeak < mdist:
 
-#     already checked the whole interval and no significant peak found
+#        search for an internal peak
 
-      if kpeak >= ndist:
-         ix = -1
-         cx = 0.0
-
-#     search for an internal peak
-
-      else:
-         kfound = 0
-         for ix in range(kpeak,ndist):
+         for ix in range(kpeak,mdist):
              cx   = curres[ix]
              delm = cx-curres[ix-1]
              delp = curres[ix+1]-cx
              if delm*delp <= 0. and delp*cx < 0. and abs(cx) > ceps:
-                kfound = 1
+                kfound = 2
                 break
 
-#       no internal peak found ; check the upper interval bound
+#        no internal peak found ; check the upper interval bound
 
-         if kfound == 0 and abs(curres[ndist]) > ceps:
-            ix = ndist
-            cx = curres[ndist]
+         if kfound == 0 :
+            cx = curres[mdist]
+            if (cx-curres[mdist-1])*cx > 0 and abs(cx) > ceps :
+               ix = mdist
+               kfound = 3
 
 #   flip the curve temporarily if the peak is negative
 
-    kpeak = ix
-    if cx >= 0.0:
-       kneg = 0
-    else:
-       kneg = 1
-       curres,cx = CurveInvert(curres,cx)
+    if kfound == 0 :
+       kpeak = -1
+    else :
+       kpeak = ix
+       if cx < 0.0 :
+          kneg = 1
+          curres,cx = CurveInvert(curres,cx)
 
-    return kpeak,kneg
-
-#============================
-def RefineBCR(dens,dist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes):
-
-    ndist = len(dist) - 1
-
-    xc        = [ 0 for i in range(3*(npeak+1)) ]
-    yc        = [ 0 for i in range(ndist+1) ]
-    bcrbounds = [ (None,None) for i in range(3*(npeak+1)) ]
-
-    sp = ' '
-
-#   define bounds
-#   cmin is the bound for |c| and not for c itself
-
-    for i in range(npeak+1):
-        i3 = i*3
-        xc[i3]   = bpeak[i]
-        xc[i3+1] = cpeak[i]
-        xc[i3+2] = rpeak[i]
-        bcrbounds[i3]   = (bmin,1000.)
-        if cpeak[i] > 0.0 :
-           bcrbounds[i3+1] = (cmin,1000.)
-        else :
-           bcrbounds[i3+1] = (-1000.,-cmin)
-        bcrbounds[i3+2] = (rmin,dist[ndist]*1.2)
-
-#   minimization
-
-    for it in range(1,3):
-      if it > 1:
-        xc = res.x
-      CALC = calculator(npeak,dens,yc,dist,nfmes, xc)
-      lbound = []
-      ubound = []
-      for b in bcrbounds:
-        b0,b1=b[0],b[1]
-        assert b0 is not None and b1 is not None
-        lbound.append(b0)
-        ubound.append(b1)
-      res = minimizer_bound(
-        calculator  = CALC,
-        use_bounds  = 2,
-        lower_bound = lbound,
-        upper_bound = ubound,
-        max_iterations = 500).run().calculator
-    res.x = list(res.x)
-
-    if 0: # SciPy analogue. Works with Python 3 only.
-      res = minimize(FuncFit,xc,args=(npeak,dens,yc,dist,ndist,nfmes),
-                 method='L-BFGS-B',jac=GradFit, bounds = bcrbounds)
-
-#   recover refined values
-    if(nfmes is not None):
-      print(' parameters before and after their refinement:',file=nfmes)
-      print(' Npeak   Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',sp*6,
-                     'Bpeak',sp*9,'Cpeak',sp*9,'Rpeak',file=nfmes)
-
-    for i in range(npeak+1):
-        i3 = i*3
-        b0 , c0, r0 = res.x[i3] , res.x[i3+1] , res.x[i3+2]
-
-        #if(nfmes is not None):
-        #  print(f'{i:6}{bpeak[i]:16.10f}{cpeak[i]:16.10f}{rpeak[i]:10.5f}   ',
-        #        f'{b0:16.10f}{c0:16.10f}{r0:10.5f}',file=nfmes)
-
-        bpeak[i] , cpeak[i] , rpeak[i] = b0 , c0 , r0
-
-    return bpeak,cpeak,rpeak
+    return kpeak,kneg,curres
 
 #============================
-def FuncFit(xc,npeak,y0,yc,dist,nfmes):
+def FuncFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
 
 #   calculate model curve
 
-    yc = CurveCalc(xc,npeak,yc,dist,nfmes)
+    yc = CurveCalc(xc,npeak,yc,dist,mdist,edist,nfmes)
 
 #   comparer model and control curves
 
-    fvalue = LSFunc(yc,y0)
+    fvalue = LSFunc(yc,y0,mdist)
 
     return fvalue
 
 #============================
-def GradFit(xc,npeak,y0,yc,dist,nfmes):
+def GradFit(xc,npeak,y0,yc,dist,mdist,edist,nfmes):
 
 #   calculate the gradient with respect to the curve yc
 
-    gy = GradCurve(yc,y0)
+    gy = GradCurve(yc,y0,mdist)
 
 #   calculate the gradient with respect to the parameters
 
-    gx = GradX(xc,npeak,yc,gy,dist,nfmes)
+    gx = GradX(xc,npeak,yc,gy,dist,mdist,edist,nfmes)
 
     return gx
 
 #============================
-def CurveCalc(xc,npeak,yc,dist,nfmes):
+def CurveCalc(xc,npeak,yc,dist,mdist,edist,nfmes):
 
-    ndist = len(dist) - 1
+    ndist = mdist
 
     for ix in range(ndist+1):
         yc[ix] = 0.0
@@ -701,20 +871,20 @@ def CurveCalc(xc,npeak,yc,dist,nfmes):
 #       contribution from a ripple or from a Gaussian in the origin
 
         if r0 > 0.0 :
-           tcurve = CurveRipple(dist,b0,c0,r0)
+           tcurve = CurveRipple(dist,edist,b0,c0,r0)
         else:
-           tcurve = CurveGauss(dist,b0,c0)
+           tcurve = CurveGauss(dist,edist,b0,c0)
 
-        for ix in range(ndist):
+        for ix in range(ndist+1):
             yc[ix] = yc[ix] + tcurve[ix]
 
     return yc
 
 #============================
-def LSFunc(yc,y0):
+def LSFunc(yc,y0,mdist):
 
     fvalue = 0.0
-    ndist = len(yc) -1
+    ndist = mdist
 
     for i in range(ndist+1):
         fvalue = fvalue + (yc[i]-y0[i])**2
@@ -724,18 +894,16 @@ def LSFunc(yc,y0):
     return fvalue
 
 #============================
-def GradCurve(yc,y0):
+def GradCurve(yc,y0,mdist):
 
-    ndist = len(yc) -1
+    ndist = mdist
 
     gy = [ yc[i]-y0[i] for i in range(ndist+1) ]
 
     return gy
 
 #============================
-def GradX(xc,npeak,yc,gy,dist,nfmes):
-
-    ndist = len(dist) -1
+def GradX(xc,npeak,yc,gy,dist,mdist,edist,nfmes):
 
     gx = [ 0 for i in range(3*(npeak+1)) ]
 
@@ -744,25 +912,36 @@ def GradX(xc,npeak,yc,gy,dist,nfmes):
        b0 , c0, r0 = xc[i3] , xc[i3+1] , xc[i3+2]
 
        if r0 > 0.0:
-          gb, gc, gr = GradRipple(yc,gy,dist,b0,c0,r0)
+          gb, gc, gr = GradRipple(yc,gy,dist,mdist,edist,b0,c0,r0)
        else:
-          gb, gc = GradGauss(yc,gy,dist,b0,c0)
+          gb, gc = GradGauss(yc,gy,dist,mdist,edist,b0,c0)
           gr    = 0.0
 
        gx[i3] , gx[i3+1] , gx[i3+2]  = gb , gc , gr
 
+#    exit()
+
     return gx
 
 #============================
-def GradRipple(yc,gy,dist,b0,c0,r0):
+def GradRipple(yc,gy,dist,mdist,edist,b0,c0,r0):
 
-    ndist = len(dist) -1
-
-    argmax = 30.
+    ndist = mdist
 
     cpi    = math.pi
-    pisq4b = 4.0 * cpi * cpi/b0
-    pisq8r = pisq4b * 2.0 * r0
+    pi4    = 4.0 * cpi
+    pisq4  = pi4 * cpi
+    vr     = pisq4 / b0
+    vr2    = 2.0 * vr
+    pisq8r = vr2 * r0
+
+    scaler = c0 / (r0 * math.sqrt(pi4*b0))
+    ur     = c0 * (pi4/b0)**1.5
+
+    if edist > 0.0 :
+       arg0mx = -math.log(edist/abs(ur))
+    else :
+       arg0mx = vr * dist[ndist]**2
 
     scc   = 1. / (2.0*r0*math.sqrt(b0*cpi))
     c0r0 , c0b0 = c0/r0 , c0/b0
@@ -770,110 +949,165 @@ def GradRipple(yc,gy,dist,b0,c0,r0):
 
 #   gradient in the origin, x = 0
 
-    arg0 = pisq4b * r0*r0
-    if arg0 < argmax:
-       gadd = 8.0 * math.exp(-arg0) * gy[0] * (cpi/b0)**1.5
+    arg0 = vr * r0**2
+    if arg0 < arg0mx :
+       gadd          = 8.0 * math.exp(-arg0) * gy[0] * (cpi/b0)**1.5
        gb , gc , gr  =  gadd * c0b0 * (arg0 - 1.5) , gadd , -gadd * c0 * pisq8r
     else:
-       gb , gc , gr = 0.0 , 0.0 , 0.0
+       gb , gc , gr  = 0.0 , 0.0 , 0.0
 
-#   gradient in internal points
+#   find the distance point for r0
 
-    for ix in range (1,ndist):
-        rx   = dist[ix]
-        sccx = scc/rx
-        gi   = gy[ix]
+    ir = 0
+    for ix in range(1,ndist+1) :
+        if dist[ix] > r0 :
+           ir = ix
+           break
+    if ir == 0 :
+       ir = ndist
+    else :
+       ir = ir - 1
 
-        xm   = rx - r0
-        argm = pisq4b * xm*xm
-        if argm < argmax:
-           gadd = math.exp(-argm) * gi * sccx
-           gb   = gb + gadd * c0b02 * (2.0*argm-1.0)
-           gc   = gc + gadd
-           gr   = gr + gadd * c0r0 * (pisq8r*xm-1.0)
+#   left part of the curve
 
-        xp   = rx + r0
-        argp = pisq4b * xp*xp
-        if argp < argmax:
-           gadd = math.exp(-argp) * gi * sccx
-           gb   = gb - gadd * c0b02 * (2.0*argp -1.0)
-           gc   = gc - gadd
-           gr   = gr + gadd * c0r0  * (pisq8r*xp+1.0)
+    if ir > 0 :
+       for ix in range(ir,0,-1) :
+           rx           = dist[ix]
+           xm   , xp    = rx - r0         , rx + r0
+           argm , argp  = vr * xm*xm      , vr * xp*xp
+           gaddm, gaddp = math.exp(-argm) , math.exp(-argp)
+           delmp        = gaddm-gaddp
+           curvex       = scaler * (math.exp(-argm) - math.exp(-argp)) / rx
+           if abs(curvex) >= edist :
+              sccx = scc * gy[ix] / rx
+              gc   = gc + sccx * delmp
+              gb   = gb + sccx * c0b02 * ((gaddm*(2.0*argm - 1.0) - gaddp*(2.0*argp - 1.0)))
+##              gb   = gb + sccx * c0b02 * (2.0 * (gaddm*argm - gaddp*argp) - delmp)
+              gr   = gr + sccx * c0r0 * (gaddm*(pisq8r*xm-1.0) + gaddp*(pisq8r*xp+1.0))
+##              gr   = gr + sccx * c0r0 * (pisq8r * (gaddm*xm + gaddp*xp) - delmp)
+           else :
+              break
+
+#   right part of the curve
+
+    if ir < ndist :
+       for ix in range(ir+1,ndist+1) :
+           rx           = dist[ix]
+           xm   , xp    = rx - r0         , rx + r0
+           argm , argp  = vr * xm*xm      , vr * xp*xp
+           gaddm, gaddp = math.exp(-argm) , math.exp(-argp)
+           delmp        = gaddm - gaddp
+           curvex       = scaler * delmp / rx
+           if abs(curvex) >= edist :
+              sccx = scc * gy[ix] / rx
+              gc   = gc + sccx * delmp
+              gb   = gb + sccx * c0b02 * ((gaddm*(2.0*argm - 1.0) - gaddp*(2.0*argp - 1.0)))
+##              gb   = gb + sccx * c0b02 * (2.0 * (gaddm*argm - gaddp*argp) - delmp)
+              gr   = gr + sccx * c0r0 * (gaddm*(pisq8r*xm-1.0) + gaddp*(pisq8r*xp+1.0))
+##              gr   = gr + sccx * c0r0 * (pisq8r * (gaddm*xm + gaddp*xp) - delmp)
+           else :
+              break
 
     return gb,gc,gr
 
 #============================
-def GradGauss(yc,gy,dist,b0,c0):
+def GradGauss(yc,gy,dist,mdist,edist,b0,c0):
 
-    ndist = len(dist) -1
+    ndist = mdist
 
-    argmax = 30.
-
-    cpi = math.pi
-
-    vg     = 4.0 * cpi / b0
-    ugc    = vg**1.5
-    ugb    = ugc * c0/b0
-    pisq4b = vg  * cpi
+    cpi  = math.pi
+    pi4b = 4.0  * cpi / b0
+    vg   = pi4b * cpi
+    ugc  = pi4b**1.5
+    ug   = ugc * c0
+    ugb  = ug  / b0
 
     gb , gc = 0.0 , 0.0
 
+    if edist > 0.0 :
+       distmx = math.sqrt(-math.log(edist/abs(ug)) / vg)
+    else :
+       distmx = dist[ndist]
+
     for ix in range(ndist+1):
-        xsq = dist[ix]**2
-        arg = pisq4b * xsq
-        if arg < argmax:
+        distx = dist[ix]
+        if distx <= distmx :
+           arg = vg * distx**2
            gadd = math.exp(-arg) * gy[ix]
            gb   = gb + ugb*gadd*(arg-1.5)
            gc   = gc + ugc*gadd
+        else :
+           break
 
     return gb,gc
 
+#================================
+def CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes):
+
+    pi4    = 4.0 * math.pi
+    pisq16 = pi4 * pi4
+
+    bpeakc, cpeakc, rpeakc = [], [], []
+
+    if (nfmes is not None) :
+
+       print('',file=nfmes)
+       print(' Check term values in the points r = r0 :',file=nfmes)
+       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value',file=nfmes)
+
+       print('')
+       print(' Check term values in the points r = r0 :')
+       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value')
+
+    for ip in range (npeak+1):
+        b0 = bpeak[ip]
+        c0 = cpeak[ip]
+        r0 = rpeak[ip]
+        if r0 == 0.0 :
+           fval = c0 * (pi4/b0)**1.5
+        else :
+           fval = c0 * (1.0 - math.exp(-pisq16*r0**2/b0)) / (math.sqrt(pi4*b0) * r0**2)
+
+        if (nfmes is not None) :
+           print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}',file=nfmes)
+           print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}')
+
+        if abs(fval) >= ceps :
+           bpeakc.append(b0)
+           cpeakc.append(c0)
+           rpeakc.append(r0)
+
+    return bpeakc, cpeakc, rpeakc
+
 #============================
-def get_BCR(dens,dist,mxp,epsc,kpres,nfmes=None):
+def FilterWeak(dens,curve,curres,dist,mdist,edist,epsres,bpeak,cpeak,rpeak,npeak,mxp,  \
+                                 bmin,cmin,rmin,nfmes,ceps):
 
-    bpeak  = [ 0 for i in range(mxp+1) ]
-    cpeak  = [ 0 for i in range(mxp+1) ]
-    rpeak  = [ 0 for i in range(mxp+1) ]
+    bpeakc,cpeakc,rpeakc = CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes)
 
-#
-#   definition / estimations of the internal parameters
-#
-    ceps,bmin,cmin,rmin,epsp = PreciseData(kpres,epsc,dens[0],dist[1],nfmes)
+    mpeak = len(bpeakc) - 1
 
-#--------------------------------------
-#
-#   treat the principal peak in the origin - model it by a Gaussian
-#   and remove its contribution
-#
+    if mpeak < npeak :
 
-    bpeak[0],cpeak[0] = PeakOrigin(dens,dist,epsp,bmin,cmin,nfmes)
+#      small contributions found; check the result after removing these terms
 
-#   calculate residual curve
+       bpeakc,cpeakc,rpeakc =        \
+                    RefineBCR(dens,dist,mdist,edist,bpeakc,cpeakc,rpeakc,mpeak,bmin,cmin,rmin,nfmes)
 
-    npeak = 0
-    curres,curve,epsres = CurveDiff(dens,dist,nfmes,bpeak,cpeak,rpeak,npeak)
+       curres,curve,epsres = \
+                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
 
-#--------------------------------------
-#
-#   main cycle over peaks including the residual one in the origin
+#      removing small contributions makes the residual error above the limit;
+#      include these terms back
 
-    while epsres >= ceps and npeak < mxp:
+       if epsres > ceps :
 
-#       find next group of peaks
+          mpeak  = npeak
+          bpeakc = [ bpeak[ip] for ip in range(npeak+1)]
+          cpeakc = [ cpeak[ip] for ip in range(npeak+1)]
+          rpeakc = [ rpeak[ip] for ip in range(npeak+1)]
 
-        bpeak,cpeak,rpeak,npeak = MorePeaks(curres,dist,nfmes,ceps,
-                                            bpeak,cpeak,rpeak,npeak,epsp,bmin,cmin,rmin,mxp)
+          curres,curve,epsres = \
+                               CurveDiff(dens,dist,mdist,edist,nfmes,bpeakc,cpeakc,rpeakc,mpeak,mxp)
 
-#       refine estimated parameters
-
-        bpeak,cpeak,rpeak = RefineBCR(dens,dist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes)
-
-#       remove the contribution of the modeled peaks
-
-        curres,curve,epsres = CurveDiff(dens,dist,nfmes,bpeak,cpeak,rpeak,npeak)
-
-#   output final coefficients
-
-    OutCoefficients(bpeak,cpeak,rpeak,npeak,nfmes)
-
-    return bpeak,cpeak,rpeak,npeak,curve,curres
+    return bpeakc,cpeakc,rpeakc,mpeak,curve,curres,epsres
