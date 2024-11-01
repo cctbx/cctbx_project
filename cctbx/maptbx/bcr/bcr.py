@@ -92,7 +92,6 @@ class minimizer_bound(object):
 
 #============================
 def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfmes=None):
-    print("dmax,mxp,epsc,epsp,edist,kpres,kprot,nfmes:",dmax,mxp,epsc,epsp,edist,kpres,kprot,nfmes)
 
 #    dens   - array of the curve values,
 #             in in creasing order of the argument starting from 0
@@ -120,12 +119,12 @@ def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfm
 #                 except for the first peak (supposed to be that in the origin)
 #             5 - several iterations allowed; refinement of each term instantly
 
-    if (nfmes is not None) :
-       print('',file=nfmes)
-       print(30*'=',' NEW CURVE IN PROCESS ',30*'=',file=nfmes)
-
-       print('')
-       print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
+    #if (nfmes is not None) :
+    #   print('',file=nfmes)
+    #   print(30*'=',' NEW CURVE IN PROCESS ',30*'=',file=nfmes)
+    #
+    #   print('')
+    #   print(30*'=',' NEW CURVE IN PROCESS ',30*'=')
 
     bpeak  = [ 0 for i in range(2*mxp+2) ]
     cpeak  = [ 0 for i in range(2*mxp+2) ]
@@ -256,27 +255,27 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
 
 #   recover refined values
 
-    if (nfmes is not None) :
-       print('',file=nfmes)
-       print(' parameters before and after their refinement:'     ,file=nfmes)
-       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
-                      'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',file=nfmes)
-
-       print('')
-       print(' parameters before and after their refinement:')
-       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
-                       'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ')
+    #if (nfmes is not None) :
+    #   print('',file=nfmes)
+    #   print(' parameters before and after their refinement:'     ,file=nfmes)
+    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+    #                  'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',file=nfmes)
+    #
+    #   print('')
+    #   print(' parameters before and after their refinement:')
+    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',5*' ',
+    #                   'R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ')
 
     for i in range(npeak+1):
         i3 = i*3
         b0 , c0, r0 = res.x[i3] , res.x[i3+1] , res.x[i3+2]
 
-        if (nfmes is not None) :
-           print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
-                 f'{r0:16.10f}{b0:16.10f}{c0:11.5f}',file=nfmes)
-
-           print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
-                 f'{r0:16.10f}{b0:16.10f}{c0:11.5f}')
+        #if (nfmes is not None) :
+        #   print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+        #         f'{r0:16.10f}{b0:16.10f}{c0:11.5f}',file=nfmes)
+        #
+        #   print(f'{i+1:6}{rpeak[i]:16.10f}{bpeak[i]:16.10f}{cpeak[i]:11.5f}   ',
+        #         f'{r0:16.10f}{b0:16.10f}{c0:11.5f}')
 
         bpeak[i] , cpeak[i] , rpeak[i] = b0 , c0 , r0
 
@@ -322,19 +321,19 @@ def PreciseData(kpres,epsc,epsp,edist,dmax,peak,dist,nfmes):
     cmin  = ceps*(bmin**1.5)/64.
     rmin  = 0.0
 
-    print ('',file=nfmes)
-    print (' INTERNAL DECOMPOSITION PARAMETERS ',file=nfmes)
-    print ('',file=nfmes)
-    print (' absolute max allowed error     ',f'{ceps:13.5e}' ,file=nfmes)
-    print (' drop to estimate the peak width',f'{epsp:13.5e}' ,file=nfmes)
-    if edist > 0.0 :
-       print (' term extension limit           ',f'{edist:13.5e}',file=nfmes)
-    else :
-       print (' term extension limit :            no limit applied',file=nfmes)
-    print (' estimated accuracy parameters :',file=nfmes)
-    print ('    bmin                        ',f'{bmin:13.5e}' ,file=nfmes)
-    print ('    cmin                        ',f'{cmin:13.5e}' ,file=nfmes)
-    print ('---------------------------',file=nfmes)
+    #print ('',file=nfmes)
+    #print (' INTERNAL DECOMPOSITION PARAMETERS ',file=nfmes)
+    #print ('',file=nfmes)
+    #print (' absolute max allowed error     ',f'{ceps:13.5e}' ,file=nfmes)
+    #print (' drop to estimate the peak width',f'{epsp:13.5e}' ,file=nfmes)
+    #if edist > 0.0 :
+    #   print (' term extension limit           ',f'{edist:13.5e}',file=nfmes)
+    #else :
+    #   print (' term extension limit :            no limit applied',file=nfmes)
+    #print (' estimated accuracy parameters :',file=nfmes)
+    #print ('    bmin                        ',f'{bmin:13.5e}' ,file=nfmes)
+    #print ('    cmin                        ',f'{cmin:13.5e}' ,file=nfmes)
+    #print ('---------------------------',file=nfmes)
 
     return ceps,bmin,cmin,rmin,edist,mdist
 
@@ -597,17 +596,17 @@ def CurveDiff(dens,dist,mdist,edist,nfmes,bpeak,cpeak,rpeak,npeak,mxp):
          if curabs > totres:
             totres = curabs
 
-    if (nfmes is not None) :
-       space = 23*' '
-       print('',file=nfmes)
-       print(f' with {npeak+1:4} terms max residual peaks are',file=nfmes)
-       print(space,' inside the interval of modeling',f'{epsres:12.7f}',file=nfmes)
-       print(space,' in the whole range of distances',f'{totres:12.7f}',file=nfmes)
-
-       print('')
-       print(f' with {npeak+1:4} terms max residual peaks are')
-       print(space,' inside the interval of modeling',f'{epsres:12.7f}')
-       print(space,' in the whole range of distances',f'{totres:12.7f}')
+    #if (nfmes is not None) :
+    #   space = 23*' '
+    #   print('',file=nfmes)
+    #   print(f' with {npeak+1:4} terms max residual peaks are',file=nfmes)
+    #   print(space,' inside the interval of modeling',f'{epsres:12.7f}',file=nfmes)
+    #   print(space,' in the whole range of distances',f'{totres:12.7f}',file=nfmes)
+    #
+    #   print('')
+    #   print(f' with {npeak+1:4} terms max residual peaks are')
+    #   print(space,' inside the interval of modeling',f'{epsres:12.7f}')
+    #   print(space,' in the whole range of distances',f'{totres:12.7f}')
 
     return curres,curve,epsres
 
@@ -721,7 +720,7 @@ def OutCurves(dens,dist,curres,curve,filecurve):
 #        print(f'{dist[i]:7.3f}{dens[i]:9.5f}{densum:9.5f}{curres[i]:9.5f}',
 #              ''.join(f'{curve[i][ip]:9.5f}' for ip in range(npeak+1)),file=nfcurv)
 
-    print(f'    dist       curve         modeled         resid        max.error',file=nfcurv)
+    #print(f'    dist       curve         modeled         resid        max.error',file=nfcurv)
 
     resmax = 0.0
     for i in range(ndist+1):
@@ -729,8 +728,8 @@ def OutCurves(dens,dist,curres,curve,filecurve):
         if curabs > resmax:
            resmax = curabs
         densum = dens[i]-curres[i]
-        print(f'{dist[i]:8.3f}{dens[i]:15.8f}{densum:15.8f}{curres[i]:15.8f}{resmax:15.8f}',
-                                                                                 file=nfcurv)
+        #print(f'{dist[i]:8.3f}{dens[i]:15.8f}{densum:15.8f}{curres[i]:15.8f}{resmax:15.8f}',
+        #                                                                         file=nfcurv)
     return
 
 #============================
@@ -1049,15 +1048,15 @@ def CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes):
 
     bpeakc, cpeakc, rpeakc = [], [], []
 
-    if (nfmes is not None) :
-
-       print('',file=nfmes)
-       print(' Check term values in the points r = r0 :',file=nfmes)
-       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value',file=nfmes)
-
-       print('')
-       print(' Check term values in the points r = r0 :')
-       print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value')
+    #if (nfmes is not None) :
+    #
+    #   print('',file=nfmes)
+    #   print(' Check term values in the points r = r0 :',file=nfmes)
+    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value',file=nfmes)
+    #
+    #   print('')
+    #   print(' Check term values in the points r = r0 :')
+    #   print(' Nterm    R (M)   ',6*' ','B (N)   ',6*' ','C (K)   ',7*' ','value')
 
     for ip in range (npeak+1):
         b0 = bpeak[ip]
@@ -1068,9 +1067,9 @@ def CheckLow(bpeak,cpeak,rpeak,npeak,ceps,nfmes):
         else :
            fval = c0 * (1.0 - math.exp(-pisq16*r0**2/b0)) / (math.sqrt(pi4*b0) * r0**2)
 
-        if (nfmes is not None) :
-           print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}',file=nfmes)
-           print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}')
+        #if (nfmes is not None) :
+        #   print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}',file=nfmes)
+        #   print(f'{ip+1:6}{r0:16.10f}{b0:16.10f}{c0:11.5f}   {fval:12.7f}')
 
         if abs(fval) >= ceps :
            bpeakc.append(b0)
