@@ -33,60 +33,59 @@ import re
 import os
 
 
-def get_link(mirror, entity, pdb_id=None, emdb_number=None):
+all_links_dict = {
+    'rcsb': {
+        'model_pdb': 'https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+        'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
+        'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+        'em_half_map_1': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+        'em_half_map_2': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        },
+    'pdbe': {
+        'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        'model_cif': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'sequence': 'https://www.ebi.ac.uk/pdbe/entry/pdb/{pdb_id}/fasta',
+        'sf': 'https://www.ebi.ac.uk/pdbe/entry-files/download/r{pdb_id}sf.ent',
+        'em_map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+        'em_half_map_1': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+        'em_half_map_2': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        },
+    'pdbj': {
+        'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
+        'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
+        'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
+        'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
+        'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+        'em_half_map_1': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
+        'em_half_map_2': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
+        },
+    # 'pdb-redo': {
+    #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
+    #     'model_cif': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif',
+    #     # these are from RCSB because PDB-redo does not have them
+    #     'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
+    #     'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif',
+    #     'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
+    #     },
+}
 
-  all_links_dict = {
-      'rcsb': {
-          'model_pdb': 'https://files.rcsb.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-          'model_cif': 'https://files.rcsb.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
-          'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
-          'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif.gz',
-          'em_map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-          'em_half_map_1': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
-          'em_half_map_2': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
-          },
-      'pdbe': {
-          'model_pdb': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-          'model_cif': 'https://ftp.ebi.ac.uk/pub/databases/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
-          'sequence': 'https://www.ebi.ac.uk/pdbe/entry/pdb/{pdb_id}/fasta',
-          'sf': 'https://www.ebi.ac.uk/pdbe/entry-files/download/r{pdb_id}sf.ent',
-          'em_map': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-          'em_half_map_1': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
-          'em_half_map_2': 'https://ftp.ebi.ac.uk/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
-          },
-      'pdbj': {
-          'model_pdb': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/pdb/{mid_id}/pdb{pdb_id}.ent.gz',
-          'model_cif': 'https://ftp.pdbj.org/pub/pdb/data/structures/divided/mmCIF/{mid_id}/{pdb_id}.cif.gz',
-          'sequence': 'https://pdbj.org/rest/newweb/fetch/file?cat=pdb&type=fasta&id={pdb_id}',
-          'sf': 'https://data.pdbjpw1.pdbj.org/pub/pdb/data/structures/divided/structure_factors/{mid_id}/r{pdb_id}sf.ent.gz',
-          'em_map': 'https://ftp.pdbj.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-          'em_half_map_1': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_1.map.gz',
-          'em_half_map_2': 'https://ftp.pdbj.org/pub/databases/emdb/structures/EMD-{emdb_number}/other/emd_{emdb_number}_half_map_2.map.gz',
-          },
-      # 'pdb-redo': {
-      #     'model_pdb': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.pdb',
-      #     'model_cif': 'https://pdb-redo.eu/db/{pdb_id}/{pdb_id}_final.cif',
-      #     # these are from RCSB because PDB-redo does not have them
-      #     'sequence': 'https://www.rcsb.org/fasta/entry/{pdb_id}',
-      #     'sf': 'https://files.rcsb.org/download/{pdb_id}-sf.cif',
-      #     'map': 'https://files.rcsb.org/pub/emdb/structures/EMD-{emdb_number}/map/emd_{emdb_number}.map.gz',
-      #     },
-  }
-
-  assert mirror in ['rcsb', 'pdbe', 'pdbj']
-  if entity not in all_links_dict[mirror].keys():
+def get_link(mirror, entity, pdb_id=None, emdb_number=None, link_templates=all_links_dict):
+  assert mirror in link_templates.keys()
+  if entity not in link_templates[mirror].keys():
     return None
   if entity == 'map':
     assert emdb_number
   else:
     assert pdb_id
   mid_pdb_id = pdb_id[1:3]
-  return all_links_dict[mirror][entity].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
+  return link_templates[mirror][entity].format(mid_id=mid_pdb_id, pdb_id=pdb_id, emdb_number=emdb_number)
 
 def valid_pdb_id(id):
   return len(id) == 4 and re.match("[1-9]{1}[a-zA-Z0-9]{3}", id)
 
-def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None):
+def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None, link_templates=all_links_dict):
   """
   Locate and open a data file for the specified PDB ID and format, either in a
   local mirror or online.
@@ -103,7 +102,7 @@ def fetch(id, entity='model_pdb', mirror="rcsb", emdb_number=None):
   if not valid_pdb_id(id):
     raise Sorry("Invalid pdb id %s. Must be 4 characters, 1st is a number 1-9." % id)
 
-  url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number)
+  url = get_link(mirror, entity, pdb_id=id, emdb_number=emdb_number, link_templates=link_templates)
   need_to_decompress = url.split('.')[-1] == 'gz' and entity.find('map') < 0
 
   try :
@@ -121,12 +120,12 @@ def write_data_to_disc(fname, data):
     with open(fname, "wb") as f:
       f.write(data.read())
 
-def fetch_and_write(id, entity='model_pdb', mirror='rcsb', emdb_number=None, log=None):
+def fetch_and_write(id, entity='model_pdb', mirror='rcsb', emdb_number=None, link_templates=all_links_dict, log=None):
   """
   Frontend for fetch(...), writes resulting data to disk.
   """
   try :
-    data = fetch(id, entity, mirror=mirror, emdb_number=emdb_number)
+    data = fetch(id, entity, mirror=mirror, emdb_number=emdb_number, link_templates=link_templates)
   except RuntimeError as e :
     print(str(e),file=log)
     return None
