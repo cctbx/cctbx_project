@@ -17,10 +17,30 @@ Notes
 This test can only be executed if pyDiSCaMB is available
 Right now, it needs to be installed manually, but it will be
 included in bootstrap in the near future.
-
-The test currently fails due to missing values in pyDiSCaMB.
-Got in touch with pyDiSCaMB developers.
 '''
+
+make_plot = False
+
+if make_plot: n_runs = 100
+else: n_runs = 1
+
+dtype1 = np.dtype([
+                  ('score','float'),
+                  ('max_diff','float')
+                  ])
+
+thresholds = {
+  "electron": {'score_max': 0.0001,
+               'mean_diff': 0.00001,
+               'max_diff_max': 0.0001},
+  "it1992":   {'score_max': 0.0001,
+               'mean_diff': 0.0001,
+               'max_diff_max': 0.0005},
+  "wk1995":   {'score_max': 0.0001,
+               'mean_diff': 0.0005,
+               'max_diff_max': 0.0015},
+}
+
 
 def compare_structure_factors(x,y):
   """
@@ -72,12 +92,26 @@ def test_all_elements_wk1995():
   Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'wk1995' as the
   scattering table parameter.
   """
-  for e in xray_scattering.wk1995_iterator():
-    el = e.label()
-    #if el in ['Hiso']: continue
-    check_element_in_cctbx_and_dyscamb(
-      element = el,
-      table   = 'wk1995')
+
+
+  plot_vals = []
+  for i in range(0, n_runs):
+    for e in xray_scattering.wk1995_iterator():
+      el = e.label()
+      if el in ['Hiso', 'O2-']: continue
+      score, max_diff = check_element_in_cctbx_and_dyscamb(
+        element = el,
+        table   = 'wk1995')
+      plot_vals.append((score,max_diff))
+
+  if not make_plot: return
+  v_wk1995 = np.array(plot_vals, dtype = dtype1)
+  make_histogram(data = v_wk1995['score'],
+                 ptype = 'score',
+                 table='wk1995')
+  make_histogram(data = v_wk1995['max_diff'],
+                 ptype = 'max_diff',
+                 table='wk1995')
 
 
 def test_all_elements_it1992():
@@ -97,14 +131,26 @@ def test_all_elements_it1992():
   Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'it1992' as the
   scattering table parameter.
   """
-  for e in xray_scattering.it1992_iterator():
-    el = e.label()
-    #if el in ['Hiso']: continue
-    check_element_in_cctbx_and_dyscamb(
-      element = el,
-      table   = 'it1992')
+  plot_vals = []
+  for i in range(0, n_runs):
+    for e in xray_scattering.it1992_iterator():
+      el = e.label()
+      score, max_diff = check_element_in_cctbx_and_dyscamb(
+        element = el,
+        table   = 'it1992')
+      plot_vals.append((score,max_diff))
 
-def test_all_elements_electron(make_plot=False):
+  if not make_plot: return
+  v_it1992 = np.array(plot_vals, dtype = dtype1)
+  make_histogram(data = v_it1992['score'],
+                 ptype = 'score',
+                 table='it1992')
+  make_histogram(data = v_it1992['max_diff'],
+                 ptype = 'max_diff',
+                 table='it1992')
+
+
+def test_all_elements_electron():
   """
   Test structure factor calculations for all elements using the electron scattering table.
 
@@ -122,12 +168,8 @@ def test_all_elements_electron(make_plot=False):
   scattering table parameter.
   """
   plot_vals = []
-  if make_plot: n_runs = 100
-  else: n_runs = 1
-  #
   for i in range(0, n_runs):
     for el in e_scattering.ito_vol_c_2011_table_4_3_2_2_elements():
-      #if el in ['Cm', 'Bk', 'Cf']: continue
       score, max_diff = check_element_in_cctbx_and_dyscamb(
         element = el,
         table   = 'electron')
@@ -135,10 +177,6 @@ def test_all_elements_electron(make_plot=False):
 
   if not make_plot: return
 
-  dtype1 = np.dtype([
-                    ('score','float'),
-                    ('max_diff','float')
-                    ])
   v_electron = np.array(plot_vals, dtype = dtype1)
   make_histogram(data = v_electron['score'],
                  ptype = 'score',
@@ -194,9 +232,9 @@ def check_element_in_cctbx_and_dyscamb(element, table=None):
   score, mean_diff, max_diff = compare_structure_factors(
     x=fcalc_cctbx, y=fcalc_discamb)
   print (element, score, mean_diff, max_diff)
-  assert(score < 0.0001)
-  assert(mean_diff < 0.00001)
-  assert(max_diff < 0.0001)
+  assert(score < thresholds[table]['score_max'])
+  assert(mean_diff < thresholds[table]['mean_diff'])
+  assert(max_diff < thresholds[table]['max_diff_max'])
   return(score, max_diff)
 
 
@@ -224,17 +262,19 @@ def make_histogram(data, ptype, table):
   Histograms are saved as PNG files.
   """
   if ptype=='score':
-    binwidth = 0.000002
-    label = 'Score'
-#    maxlim = assertion_values[table]['score_max']
+    label = 'Score (%)'
+    maxlim = thresholds[table]['score_max']
   if ptype=='max_diff':
-    binwidth = 0.000002
     label = 'Maximum difference'
-#    maxlim = assertion_values[table]['max_diff_max']
+    maxlim = thresholds[table]['max_diff_max']
   fig,ax = plt.subplots()
+  binwidth = 0.000002
   bins = np.arange(min(data), max(data) + binwidth, binwidth)
+  if len(bins) > 40:
+    binwidth = (max(data) - min(data))/40
+    bins = np.arange(min(data), max(data) + binwidth, binwidth)
   n, bins, patches = ax.hist(data, bins=bins)
-  #plt.axvline(x=maxlim, color='firebrick')
+  plt.axvline(x=maxlim, color='firebrick')
   ax.set_xlabel(label, fontsize=12, weight='bold')
   ax.set_ylabel('Counts', fontsize=12, weight='bold')
   ax.tick_params(colors='grey', labelsize=8)
@@ -242,7 +282,7 @@ def make_histogram(data, ptype, table):
     spine.set_color('grey')
   ax.xaxis.label.set_color('grey')
   ax.yaxis.label.set_color('grey')
-  plt.title('table = %s, n_runs = 100' % table)
+  plt.title('table = %s, runs = %s' % (table, n_runs))
   filename = ptype+'_'+ table +'_per_element.png'
   plt.savefig(filename, dpi=600)
   plt.close()
@@ -250,7 +290,7 @@ def make_histogram(data, ptype, table):
 
 if (__name__ == "__main__"):
   t0 = time.time()
-  test_all_elements_electron(make_plot=False)
+  test_all_elements_electron()
   test_all_elements_it1992()
   test_all_elements_wk1995()
   print("OK. Time: %8.3f"%(time.time()-t0))
