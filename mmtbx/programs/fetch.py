@@ -62,32 +62,37 @@ class Program(ProgramTemplate):
       if a not in ['model', 'data', 'sequence', 'half_maps', 'all']:
         raise Sorry("Unsupported action %s" % a)
 
-  def run(self):
+  def define_entities_to_fetch(self, emdb_number):
     entities_to_fetch = []
     if 'model' in self.params.fetch.action:
       entities_to_fetch += ['model_pdb', 'model_cif']
     if 'data' in self.params.fetch.action:
-      entities_to_fetch += ['sf', 'em_map']
+      if emdb_number is None:
+        entities_to_fetch += ['sf']
+      else:
+        entities_to_fetch += ['em_map']
     if 'sequence' in self.params.fetch.action:
       entities_to_fetch += ['sequence']
-    if 'half_maps' in self.params.fetch.action:
+    if 'half_maps' in self.params.fetch.action and emdb_number:
       entities_to_fetch += ['em_half_map_1', 'em_half_map_2']
-    if 'all' in self.params.fetch.action:
-      entities_to_fetch = [
-          'model_pdb', 'model_cif',
-          'sf', 'em_map',
-          'em_half_map_1', 'em_half_map_2', 'sequence']
 
+    if 'all' in self.params.fetch.action:
+      entities_to_fetch = ['model_pdb', 'model_cif', 'sequence']
+      if emdb_number is not None:
+        entities_to_fetch += ['em_map','em_half_map_1', 'em_half_map_2']
+      else:
+        entities_to_fetch += ['sf']
+    return entities_to_fetch
+
+  def run(self):
     for pdb_id in self.params.fetch.pdb_ids:
+      emdb_number = None
+      emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id(pdb_id)
+      if emdb_ids is not None:
+        emdb_number = int(emdb_ids[0].split('-')[1])
+      print("Fetching: PDB ID: %s, EMDB ID: %s" % (pdb_id, emdb_number), file=self.logger)
+      entities_to_fetch = self.define_entities_to_fetch(emdb_number)
       for e in entities_to_fetch:
-        emdb_number = None
-        if e.find('map') > 0:
-          emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id(pdb_id)
-          if emdb_ids is not None:
-            emdb_number = int(emdb_ids[0].split('-')[1])
-          else:
-            print("Could not find EMDB ID for %s" % pdb_id,file=self.logger)
-            continue
         fn = fetch_and_write(
             id=pdb_id,
             entity=e,
