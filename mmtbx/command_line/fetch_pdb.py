@@ -13,7 +13,10 @@ def custom_args_proc(cli_parser):
   if len(cli_parser.namespace.unknown) > 0:
     # print("What is unknown: %s" % cli_parser.namespace.unknown)
     # print("Curr selection: '%s'" % wf.fetch.pdb_ids)
-    wf.fetch.pdb_ids = cli_parser.namespace.unknown
+    res = []
+    for unk in cli_parser.namespace.unknown:
+      res += unk.replace(',',' ').split()
+    wf.fetch.pdb_ids = res
     cli_parser.namespace.unknown = []
   cli_parser.working_phil = cli_parser.master_phil.format(python_object=wf)
 
