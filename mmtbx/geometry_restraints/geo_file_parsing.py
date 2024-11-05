@@ -557,7 +557,6 @@ class GeoParser:
 
         # Query linking class with line
         result = origin_ids.get_origin_label_and_internal(l)
-        print(i,l,result)
         if result:
           # if recognized as header, unpack result, store in entries_info
           origin_id, header, label, num = result
