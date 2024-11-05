@@ -150,13 +150,23 @@ class AngleEntry(Entry):
 
 class BondEntry(Entry):
 
+  @property
+  def has_sym_op(self):
+    if "sym.op." in self._numerical.keys() and self._numerical["sym.op."] not in ["",None]:
+      return True
+    else:
+      return False
+
   def to_proxy(self):
-    proxy = geometry_restraints.bond_simple_proxy(
-            i_seqs=self.i_seqs,
-            distance_ideal=self.ideal,
-            weight=self.weight,
-            origin_id=self.origin_id,
-            )
+    if self.has_sym_op:
+      proxy = None
+    else:
+      proxy = geometry_restraints.bond_simple_proxy(
+              i_seqs=self.i_seqs,
+              distance_ideal=self.ideal,
+              weight=self.weight,
+              origin_id=self.origin_id,
+              )
     return proxy
 
 class DihedralEntry(Entry):
@@ -547,6 +557,7 @@ class GeoParser:
 
         # Query linking class with line
         result = origin_ids.get_origin_label_and_internal(l)
+        print(i,l,result)
         if result:
           # if recognized as header, unpack result, store in entries_info
           origin_id, header, label, num = result
