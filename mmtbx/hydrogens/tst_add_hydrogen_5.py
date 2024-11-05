@@ -1,6 +1,5 @@
 from __future__ import absolute_import, division, print_function
 import time
-import mmtbx.model
 from mmtbx.hydrogens.tst_add_hydrogen_1 import compare_models
 
 
