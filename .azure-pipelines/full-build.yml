@@ -38,7 +38,7 @@ jobs:
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [14]
+      vmImage: [15]
       xcode_version: [16, 0]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
