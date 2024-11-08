@@ -3669,13 +3669,14 @@ class manager(object):
     out.flush()
     time_model_show += timer.elapsed()
 
-  def remove_alternative_conformations(self, always_keep_one_conformer):
+  def remove_alternative_conformations(self, always_keep_one_conformer, altloc_to_keep=None):
     # XXX This is not working correctly when something was deleted.
     # Need to figure out a way to update everything so GRM
     # construction will not fail.
     self.geometry_restraints = None
     self._pdb_hierarchy.remove_alt_confs(
-        always_keep_one_conformer=always_keep_one_conformer)
+        always_keep_one_conformer=always_keep_one_conformer,
+        altloc_to_keep=altloc_to_keep)
     self._pdb_hierarchy.sort_atoms_in_place()
     self._pdb_hierarchy.atoms_reset_serial()
     self.update_xrs()

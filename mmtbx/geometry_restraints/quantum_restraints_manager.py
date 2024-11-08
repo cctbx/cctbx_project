@@ -185,7 +185,7 @@ def select_and_reindex(model,
       atoms[ra[i_seq]].tmp=i_seq
     if verbose:
       for atom in mod.get_atoms():
-        print(atom.quote(), atom.i_seq, atom.tmp)
+        print('...',atom.quote(), atom.i_seq, atom.tmp)
     return mod
   assert (selection_array, selection_str).count(None)==1
   if selection_str:
@@ -394,8 +394,17 @@ def get_ligand_buffer_models(model, qmr, verbose=False, write_steps=False, log=N
   if debug: print('buffer_selection_string',buffer_selection_string)
   buffer_model = select_and_reindex(model, buffer_selection_string)
   if write_steps: write_pdb_file(buffer_model, 'pre_remove_altloc.pdb', None)
-  if 0: retain_only_one_alternative_conformation(buffer_model, 'B')
-  buffer_model.remove_alternative_conformations(always_keep_one_conformer=True)
+  altloc=None
+  if qmr.selection.find('altloc')>-1:
+    tmp = qmr.selection.split()
+    i = tmp.index('altloc')
+    altloc=tmp[i+1]
+    altloc=altloc.replace(')','')
+    altloc=altloc.replace('"','')
+    altloc=altloc.replace("'",'')
+  if 0: retain_only_one_alternative_conformation(buffer_model, altloc)
+  buffer_model.remove_alternative_conformations(always_keep_one_conformer=True,
+                                                altloc_to_keep=altloc)
   if write_steps: write_pdb_file(buffer_model, 'post_remove_altloc.pdb', None)
   validate_ligand_buffer_models(ligand_model, buffer_model, qmr, log=log)
   if write_steps: write_pdb_file(buffer_model, 'pre_super_cell.pdb', None)
@@ -525,9 +534,11 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
   else:
     assert 0, 'program_goal %s not in list' % program_goal
   specific_atom_charges = qmr.specific_atom_charges
+  specific_atom_multiplicities = qmr.specific_atom_multiplicities
   total_charge = quantum_interface.electrons(
     electron_model,
     specific_atom_charges=specific_atom_charges,
+    specific_atom_multiplicities=specific_atom_multiplicities,
     log=log)
   if total_charge!=qmr.package.charge:
     print(u'  Update charge for "%s" cluster : %s ~> %s' % (qmr.selection,
@@ -535,6 +546,13 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
                                                             total_charge),
           file=log)
     qmr.package.charge=total_charge
+  total_multiplicity = quantum_interface.get_total_multiplicity(qmr)
+  if total_multiplicity!=qmr.package.multiplicity:
+    print(u'  Update multiplicity for "%s" cluster : %s ~> %s' % (qmr.selection,
+                                                                  qmr.package.multiplicity,
+                                                                  total_multiplicity),
+          file=log)
+    qmr.package.multiplicity=total_multiplicity
   qmm = qmm(electron_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
