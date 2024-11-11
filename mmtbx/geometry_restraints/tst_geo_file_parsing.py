@@ -1500,7 +1500,7 @@ def tst_05(model,printing=False):
   assert len(records) == len(entries)
   assert len(entries) ==   39
   assert not geo_container.has_proxies()
-  assert "sym.op." in records[6] and records[6]["sym.op."].strip() == '-x-1/2,y+1/2,-z+3/4', f"Failure to parse symmetry op, {records[6]['sym.op.'].strip()}"
+  assert "sym.op." in records[6] and records[6]["sym.op."].strip() == '-x-1/2,y+1/2,-z+3/4', "Failure to parse symmetry op, "+str(records[6]['sym.op.'].strip())
 
   origins = [entry.origin_label for entry in geo_container.entries_list]
   expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
