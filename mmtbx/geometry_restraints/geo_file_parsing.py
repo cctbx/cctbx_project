@@ -7,6 +7,10 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 from cctbx import geometry_restraints
 from cctbx.geometry_restraints.linking_class import linking_class
+from cctbx.array_family import flex
+from cctbx import crystal
+from cctbx.crystal import direct_space_asu
+
 origin_ids = linking_class()
 
 
@@ -37,6 +41,7 @@ class Entry:
     # Parsing data structures
     self.lines = lines               # raw .geo lines
     self.i_seqs = []                 # list of integer i_seqs (if possible)
+    self.sites_cart = None           # Flex vec3 array, coord for each i_seq if available
     self.atom_labels  = []           # list of string atom label from .geo
     self._numerical = None           # a dict of numerical geo data
     self.origin_id = origin_id
@@ -159,7 +164,19 @@ class BondEntry(Entry):
 
   def to_proxy(self):
     if self.has_sym_op:
-      proxy = None
+      asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
+      sites_cart=self.sites_cart)
+      pair_generator = crystal.neighbors_fast_pair_generator(
+      asu_mappings=asu_mappings,
+      distance_cutoff=5)
+      pair = geometry_restraints.bond_asu_proxy(
+        pair=next(pair_generator),
+        distance_ideal=self.ideal,
+        weight=self.weight,
+        origin_id=self.origin_id)
+      proxy = geometry_restraints.bond_asu_proxy(pair=pair, params=pair)
+      return proxy
+
     else:
       proxy = geometry_restraints.bond_simple_proxy(
               i_seqs=self.i_seqs,
@@ -482,6 +499,7 @@ class GeoParser:
     # If model present, add i_seqs
     if self.model:
       self._fill_labels_from_model(self.model)
+      self._fill_sites_cart_from_model(self.model)
 
   @property
   def proxies(self):
@@ -492,6 +510,16 @@ class GeoParser:
 
   def i_seqs_are_available(self):
     return all([entry.i_seqs_are_available() for entry in self.entries_list])
+
+  def _fill_sites_cart_from_model(self,model):
+    # Verify iseqs
+    if not self.i_seqs_are_available():
+      self._fill_labels_from_model(model)
+    # get sites cart
+    sites_cart = model.get_sites_cart()
+    for entry in self.entries_list:
+      entry.sites_cart = sites_cart.select(flex.size_t(entry.i_seqs))
+
 
   def _fill_labels_from_model(self, model):
     """
