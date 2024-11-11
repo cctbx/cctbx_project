@@ -7,6 +7,7 @@ from itertools import chain
 from iotbx.data_manager import DataManager
 from cctbx.crystal.tst_super_cell import pdb_str_1yjp
 from mmtbx.geometry_restraints.geo_file_parsing import GeoParser
+from cctbx import geometry_restraints
 from libtbx.test_utils import show_diff
 
 """
@@ -1534,6 +1535,9 @@ def tst_06(model,printing=False):
     geo_container.build_proxies()
   assert geo_container.has_proxies()
   assert len(geo_container.proxies_list) == len(entries)-len(geo_container.entries["Nonbonded"])
+  # Check for successful build of the single asu text proxy
+  proxy_class_list = [type(p) for p in geo_container.proxies_list]
+  assert geometry_restraints.bond_asu_proxy in proxy_class_list
 
   origins = [entry.origin_label for entry in geo_container.entries_list]
   expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
