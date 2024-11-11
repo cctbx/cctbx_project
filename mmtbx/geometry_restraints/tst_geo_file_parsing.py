@@ -42,7 +42,7 @@ entry.record
  'ideal': 180.0,
  'model': 166.21,
  'delta': 13.79,
- 'harmonic': '0',
+ 'harmonic': 0,
  'sigma': 5.0,
  'weight': 0.04,
  'residual': 7.6,
@@ -474,7 +474,7 @@ result_json_1 = """
       "ideal": 180.0,
       "model": 166.21,
       "delta": 13.79,
-      "harmonic": "0",
+      "harmonic": 0,
       "sigma": 5.0,
       "weight": 0.04,
       "residual": 7.6,
@@ -646,7 +646,7 @@ result_json_2 = """
       "ideal": 180.0,
       "model": 166.21,
       "delta": 13.79,
-      "harmonic": "0",
+      "harmonic": 0,
       "sigma": 5.0,
       "weight": 0.04,
       "residual": 7.6,
@@ -801,7 +801,7 @@ result_json_3 = """
       "ideal": 180.0,
       "model": 166.21,
       "delta": 13.79,
-      "harmonic": "0",
+      "harmonic": 0,
       "sigma": 5.0,
       "weight": 0.04,
       "residual": 7.6,
@@ -999,13 +999,13 @@ result_json_4 = """
       "delta": [
         -0.001,
         0.002,
-        "0.000",
-        "-0.000",
-        "0.000",
-        "0.000",
-        "0.000",
+        0.0,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
         -0.001,
-        "-0.000"
+        -0.0
       ],
       "sigma": [
         0.02,
@@ -1195,13 +1195,13 @@ result_json_5 = """
       "delta": [
         -0.001,
         0.002,
-        "0.000",
-        "-0.000",
-        "0.000",
-        "0.000",
-        "0.000",
+        0.000,
+        -0.0,
+        0.0,
+        0.0,
+        0.0,
         -0.001,
-        "-0.000"
+        -0.0
       ],
       "sigma": [
         0.02,
@@ -1465,7 +1465,7 @@ def tst_04(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
+    assert not show_diff(str_results, result_json_3.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1489,10 +1489,9 @@ def tst_05(model,printing=False):
     print("\n\ntst_05")
   results, str_results = extract_results(geo_container,print_result=printing)
 
-
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
+    assert not show_diff(str_results, result_json_4.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1500,7 +1499,7 @@ def tst_05(model,printing=False):
   assert len(records) == len(entries)
   assert len(entries) ==   39
   assert not geo_container.has_proxies()
-  assert "sym.op." in records[6] and records[6]["sym.op."].strip() == '-x-1/2,y+1/2,-z+3/4', "Failure to parse symmetry op, {}".format(records[6]['sym.op.'].strip())
+  assert "sym.op." in records[6] and records[6]["sym.op."].strip() == '-x-1/2,y+1/2,-z+3/4', f"Failure to parse symmetry op, {records[6]['sym.op.'].strip()}"
 
   origins = [entry.origin_label for entry in geo_container.entries_list]
   expected_origins = ['covalent geometry', 'Misc.', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', '-like', 'Metal coordination', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'User supplied', 'link_BETA1-4', 'covalent geometry', 'link_ALPHA2-6', 'Disulphide bridge', 'link_NAG-ASN', 'Secondary Structure restraints around h-bond', 'link_TRANS', 'Custom Glycosidic', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'C-Beta improper', 'Side chain', 'link_TRANS', 'covalent geometry', 'link_ALPHA2-6', 'link_NAG-ASN', 'link_BETA1-6', 'link_BETA1-3', 'link_BETA1-4', 'covalent geometry', 'link_NAG-ASN', 'link_TRANS', '', 'Stacking parallelity', 'Basepair parallelity']
@@ -1524,7 +1523,7 @@ def tst_06(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
+    assert not show_diff(str_results, result_json_5.replace('\\\"','\\\\\\"'))
 
   # Check numbers
   records = geo_container.records_list
@@ -1578,7 +1577,7 @@ def tst_07(model,printing=False):
 
   # Check values
   if not expected==results:
-    assert not show_diff(str_results, result_json_2.replace('\\\"','\\\\\\"'))
+    assert not show_diff(str_results, result_js.replace('\\\"','\\\\\\"'))
 
 
   # Check numbers
