@@ -100,10 +100,10 @@ class QueueInterrogator(object):
         from sfapi_client         import Client
         from sfapi_client.compute import Machine
         from sfapi_client.jobs    import JobState
-        from sfapi_connector      import KeyManager
+        from xfel.util.sfapi_connector import KeyManager
         km = KeyManager()
         with Client(key=km.key) as client:
-          machine = client.compute(Machines.perlmutter) # TODO: this could be a setting
+          machine = client.compute(Machine.perlmutter) # TODO: this could be a setting
           job = machine.job(submission_id)
           status = job.state.name
 

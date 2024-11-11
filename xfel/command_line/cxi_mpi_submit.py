@@ -300,7 +300,7 @@ def get_submission_id(result, method):
     return result.stdout_lines[0].split()[-1].strip()
   elif method == 'sfapi':
     submission_id = str(result)
-    print(f"{submission_id=}")
+    return submission_id
   elif method == 'htcondor':
     return result.stdout_lines[-1].split()[-1].rstrip('.')
   elif method == 'sge':
@@ -321,7 +321,6 @@ def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", er
                                               err_name=err_name,
                                               job_name=job_name,
                                               )
-  print("Entering 'do_submit'")
   if mp_params.method in ['lsf', 'sge', 'pbs']:
     parts = submit_command.split(" ")
     script = open(parts.pop(-1), "rb")
@@ -368,8 +367,7 @@ def do_submit(command, submit_path, stdoutdir, mp_params, log_name="log.out", er
     except Exception as e:
       if not "Warning: job being submitted without an AFS token." in str(e):
         raise e
-
-    return get_submission_id(result, mp_params.method)
+  return get_submission_id(result, mp_params.method)
 
 class Script(object):
   """ Script to submit XFEL data for processing"""
@@ -415,10 +413,8 @@ class Script(object):
       from xfel.util.sfapi_connector import OsWrapper, OsSFAPI, LOGGER
       LOGGER.setLevel(logging.DEBUG)
       self.os = OsWrapper(backend=OsSFAPI())
-      print(f"Using SFAPI: {self.os.backend}")
     else:
       self.os = os
-      print("Using System")
 
     assert params.input.run_num is not None
     if params.input.dispatcher in ["cxi.xtc_process", "cctbx.xfel.xtc_process"]:
@@ -430,8 +426,6 @@ class Script(object):
     trial, trialdir = get_trialdir(params.output.output_dir, params.input.run_num, params.input.trial, params.input.rungroup, params.input.task)
     params.input.trial = trial
     print("Using trial", params.input.trial)
-
-    print("HO")
 
     # log file will live here
     stdoutdir = self.os.path.join(trialdir, "stdout")
@@ -445,17 +439,11 @@ class Script(object):
         for i in range(params.mp.nproc):
           error_files = self.os.path.join(stdoutdir,"error_rank%04d.out"%i)
           log_files = self.os.path.join(stdoutdir,"log_rank%04d.out"%i)
-          print("1")
           self.os.open(log_files,'a').close()
-          print("2")
           self.os.open(error_files,'a').close()
-          print("3")
         logging_str = "output.logging_dir=%s"%stdoutdir
     else:
       logging_str = ""
-
-
-    print("HI")
 
     # Copy any config or phil files specified
     target_num = 1

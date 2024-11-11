@@ -199,9 +199,7 @@ class get_submit_command(object):
       from xfel.util.sfapi_connector import OsWrapper, OsSFAPI, LOGGER
       LOGGER.setLevel(logging.DEBUG)
       self.os = OsWrapper(backend=OsSFAPI())
-      print("Using SFAPI OsWrapper")
     else:
-      print("Using System OsWrapper")
       self.os = os
 
   def customize_for_method(self):
