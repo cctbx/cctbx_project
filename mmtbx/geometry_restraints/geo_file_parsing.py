@@ -155,7 +155,6 @@ class AngleEntry(Entry):
 
 class BondEntry(Entry):
 
-  @property
   def has_sym_op(self):
     if "sym.op." in self._numerical.keys() and self._numerical["sym.op."] not in ["",None]:
       return True
@@ -163,7 +162,7 @@ class BondEntry(Entry):
       return False
 
   def to_proxy(self):
-    if self.has_sym_op:
+    if self.has_sym_op():
       asu_mappings = direct_space_asu.non_crystallographic_asu_mappings(
       sites_cart=self.sites_cart)
       pair_generator = crystal.neighbors_fast_pair_generator(
