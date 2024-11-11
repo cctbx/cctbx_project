@@ -177,7 +177,7 @@ class LogReader(object):
     self.queueing_system = queueing_system
     if self.queueing_system in ["mpi", "lsf", "pbs", "local", "sge"]:
       self.command = "tail -23 %s | head -1"
-    elif self.queueing_system in ["slurm", "shifter", "htcondor"]:
+    elif self.queueing_system in ["slurm", "shifter", "htcondor", "sfapi"]:
       pass # no log reader used
     else:
       raise NotImplementedError(
@@ -283,6 +283,9 @@ class TrackerFactory(object):
       # The current implementation of the shifter mp method assumes that we're
       # running on NERSC's systems => jobs should be tracked using the _slurm_
       # submission tracker.
+      return SlurmSubmissionTracker(params)
+    elif params.mp.method == 'sfapi':
+      # The SFAPI queue plugin pretends to be slurm
       return SlurmSubmissionTracker(params)
     elif params.mp.method == 'htcondor':
       return HTCondorSubmissionTracker(params)
