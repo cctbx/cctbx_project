@@ -640,10 +640,10 @@ def try_numeric(val):
   Otherwise return None
   """
   out = try_int(val)
-  if out:
+  if out is not None:
     return out
   out = try_float(val)
-  if out:
+  if out is not None:
     return out
   return None
 
@@ -653,6 +653,6 @@ def coerce_type(val):
   Else return unmodified
   """
   out = try_numeric(val)
-  if out:
+  if out is not None:
     return out
   return val # input (probably string)
