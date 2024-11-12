@@ -1,6 +1,9 @@
 from __future__ import absolute_import, division, print_function
+import sys
 from phenix.program_template import ProgramTemplate
 from libtbx.utils import Sorry
+from iotbx.data_manager import DataManager
+import mmtbx.maps.xtrapol8 as xtrapol8
 
 master_phil_str = '''
 include scope libtbx.phil.interface.tracking_params
@@ -49,5 +52,18 @@ Run xtrapol8.
     print('Using reflection file(s):', self.data_manager.get_miller_array_names(),
       file=self.logger)
 
+    model_reference = self.data_manager.get_model()
     hkls = self.data_manager.get_miller_array_names()
-    model = self.data_manager.get_model()
+    # hack until data_manager.fmodel supports this
+    fn_reference = hkls[0]
+    fn_triggered = hkls[1]
+    f_obs_reference = self.data_manager.get_miller_arrays(['FOBS'], fn_reference)[0]
+    f_obs_triggered = self.data_manager.get_miller_arrays(['FOBS'], fn_triggered)[0]
+
+    xtr = xtrapol8.manager(
+      model_reference = model_reference,
+      f_obs_reference = f_obs_reference,
+      f_obs_triggered = f_obs_triggered,
+      log             = sys.stdout)
+    xtr.run()
+
