@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import sys, inspect
+import inspect
 from libtbx import adopt_init_args
 from libtbx.utils import user_plus_sys_time
 
