@@ -127,7 +127,6 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
   #     ad_hoc_single_atom_residues=True)
   if md is None:
     md = get_h_restraints(residue.resname, strict=False)
-    # md.show()
     if md is None:
       raise Sorry('Entity "%s" not found in CCD (or GeoStd). Please supply restraints.' % residue.resname)
     from six.moves import cStringIO as StringIO
@@ -135,7 +134,8 @@ def mon_lib_query(residue, mon_lib_srv, construct_h_restraints=True):
     input_string+=str(md.chem_comp.as_cif_loop())
     f=StringIO()
     md.show(f=f)
-    input_string += '\ndata_comp_%s\n' % residue.resname
+    # use strip in case 3-letter code has only 2 letters (e.g. DI)
+    input_string += '\ndata_comp_%s\n' % residue.resname.strip()
     input_string += '\n%s' % f.getvalue()
     cif_object = iotbx.cif.reader(input_string=input_string).model()
   return md, cif_object
