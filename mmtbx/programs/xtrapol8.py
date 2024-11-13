@@ -2,7 +2,6 @@ from __future__ import absolute_import, division, print_function
 import sys
 from phenix.program_template import ProgramTemplate
 from libtbx.utils import Sorry
-from iotbx.data_manager import DataManager
 import mmtbx.maps.xtrapol8 as xtrapol8
 
 master_phil_str = '''
