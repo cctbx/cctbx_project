@@ -2441,8 +2441,8 @@ links = {
   "linking_test_CD_GHE_A_B.pdb" : [0,0],             #4],
   "linking_test_XYP_XYP.pdb" : [18,19],
   "linking_test_ALY_MCM.pdb" : [11,12], # links AA with quasi-AA
-  # cross link not working
-  "linking_test_cyclic_side_chain.pdb" : [67,67], # side chain cross link
+  # cross link not working - DL: I think it works now
+  "linking_test_cyclic_side_chain.pdb" : [67,68], # side chain cross link
   "linking_test_cyclic_main_chain.pdb" : [34,35], # main chain cyclic
   "linking_test_over_valence.pdb" : [6,6],
   "linking_test_c2_c6.pdb" : [21,22],
