@@ -495,6 +495,11 @@ Send details to help@phenix-online.org
   if class1=="common_amino_acid" and class2=="common_amino_acid":
     if verbose:
       print("AMINO ACIDS",atom1.quote(), atom2.quote())
+    el1 = atom1.element.strip().upper()
+    el2 = atom2.element.strip().upper()
+    if ( (el1=='N' and el2=='C') or (el1=='C' and el2=='N')):
+      return True
+
   #
   # D-peptide special case...
   #
