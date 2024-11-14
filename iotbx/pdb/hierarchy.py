@@ -2638,7 +2638,6 @@ class _():
     """
     atoms = self.atoms()
     # Get exchanged sites
-
     hd_group_selections = self.exchangeable_hd_selections()
     hd_site_d_iseqs, hd_site_h_iseqs = [], []
     for gsel in hd_group_selections:
@@ -2665,9 +2664,6 @@ class _():
               if(get_class(name = resname) == "common_water"):
                 if a.element.strip().upper() == 'O':
                   a.parent().resname = 'HOH'
-                if a.element_is_hydrogen():
-                  ag.remove_atom(a)
-                  continue
               # reset occ and altloc for H at exchanged sites
               if a.element.strip().upper() == 'H' and i in hd_site_h_iseqs:
                 a.occ = 1.0

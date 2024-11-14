@@ -113,7 +113,7 @@ def exercise_05(verbose):
   atoms = ph.atoms()
   assert(atoms.extract_element().count('D') == 0)
   #print(model.get_hd_selection().count(True))
-  assert(model.get_hd_selection().count(True) == 35)
+  assert(model.get_hd_selection().count(True) == 44)
   assert(model.selection('resname DOD').count(True) == 0)
   #ph.write_pdb_file(file_name="test.pdb")
 
