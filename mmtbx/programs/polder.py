@@ -323,11 +323,13 @@ Optional output:
       msg = 'The polder map is likely to show the omitted atoms.'
     elif (cc13 >= 0.7 and cc13 < 0.8):
       if (cc23 < 0.7*cc13):
-        msg = """The polder map is more likely to show the omitted atoms than bulk solvent.
-  It is recommended to carefully inspect the maps to confirm."""
+        msg = """\
+The polder map is more likely to show the omitted atoms than bulk solvent.
+It is recommended to carefully inspect the maps to confirm."""
       else:
-        msg = """The polder map is more likely to show bulk-solvent or noise
-  instead of the omitted atoms. But it is recommended to inspect the maps to confirm."""
+        msg = """\
+The polder map is more likely to show bulk-solvent or noise instead of the
+omitted atoms. But it is recommended to inspect the maps to confirm."""
     return msg
 
   # ---------------------------------------------------------------------------
