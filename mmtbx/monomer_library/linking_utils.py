@@ -319,18 +319,13 @@ def is_atom_group_pair_linked(atom_group1,
   #
   # look in link list for atom group links
   #
-  simple_key = "%s-%s" % (
-    atom_group1.resname,
-    atom_group2.resname,
-    )
-  if simple_key in mon_lib_srv.link_link_id_dict:
-    return mon_lib_srv.link_link_id_dict[simple_key], False, simple_key
-  simple_key = "%s-%s" % (
-    atom_group2.resname,
-    atom_group1.resname,
-    )
-  if simple_key in mon_lib_srv.link_link_id_dict:
-    return mon_lib_srv.link_link_id_dict[simple_key], True, simple_key
+  key_data = [
+    ["%s-%s" % (atom_group1.resname, atom_group2.resname), False],
+    ["%s-%s" % (atom_group2.resname, atom_group1.resname), True],
+    ]
+  for i, (simple_key, swap) in enumerate(key_data):
+    if simple_key in mon_lib_srv.link_link_id_dict:
+      return mon_lib_srv.link_link_id_dict[simple_key], swap, simple_key
   return None, None, None
 
 def is_atom_metal_coordinated(lookup,
@@ -363,15 +358,32 @@ def allow_cis_trans(classes1, classes2):
 def is_atom_pair_linked_tuple(atom1,
                               atom2,
                               class_important_1,
-                              class_important_2):
-  # if class_important_1=='common_amino_acid' and class_important_2==class_important_1:
+                              class_important_2,
+                              mon_lib_srv,
+                              ):
+  #
+  # atom name specific links
+  #
   if allow_cis_trans_important(class_important_1, class_important_2):
     if atom1.name==' N  ' and atom2.name==' C  ':
       return _get_cis_trans(), False, '?'
     elif atom1.name==' C  ' and atom2.name==' N  ':
       return _get_cis_trans(), True, '?'
-    # else:
-    #   print('amino acid link not found',atom1.quote(),atom2.quote())
+  atom_group1 = atom1.parent()
+  atom_group2 = atom2.parent()
+  key_data = [
+    # ['%s_%s-%s_%s' % (atom_group1.resname, atom1.name.strip(),
+    #                   atom_group2.resname, atom2.name.strip()), False],
+    # ['%s_%s-%s_%s' % (atom_group2.resname, atom2.name.strip(),
+    #                   atom_group1.resname, atom1.name.strip()), True],
+    ['%s_%s-%s_%s' % (atom_group1.resname, atom1.name.strip(),
+                      'ANY', atom2.name.strip()), False],
+    ['%s_%s-%s_%s' % (atom_group2.resname, atom2.name.strip(),
+                      'ANY', atom1.name.strip()), True],
+    ]
+  for i, (simple_key, swap) in enumerate(key_data):
+    if simple_key in mon_lib_srv.link_link_id_dict:
+      return mon_lib_srv.link_link_id_dict[simple_key], swap, simple_key
   return None, None, None
 
 def is_atom_pair_linked(atom1,

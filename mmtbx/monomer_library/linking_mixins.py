@@ -261,6 +261,9 @@ def check_for_peptide_links(atom1,
       other = atom_group2
     else:
       other = atom_group1
+    #
+    # only for AA to other
+    #
     if linking_utils.get_class(other.resname) not in ["other"]:
       return None
     # sulfur bridge
@@ -758,6 +761,7 @@ Residue classes
                                                                   atom2,
                                                                   classes1.important_only,
                                                                   classes2.important_only,
+                                                                  self.mon_lib_srv,
                                                                   )
         if link=='TRANS':
           key=link
@@ -783,6 +787,7 @@ Residue classes
                                              return_none_if_absent=True,
                                              )
         if verbose: print('apply standard link', key, origin_id)
+        assert origin_id
         if origin_id is None:
           # user defined links should not be applied here
           continue
