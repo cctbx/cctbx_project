@@ -7,6 +7,7 @@ import iotbx.pdb
 import boost_adaptbx.boost.python as bp
 from libtbx.utils import null_out
 from libtbx import group_args
+from scitbx import matrix
 from cctbx.array_family import flex
 from mmtbx.ligands.ready_set_utils import add_n_terminal_hydrogens_to_residue_group
 from cctbx.geometry_restraints.linking_class import linking_class
@@ -565,9 +566,10 @@ class place_hydrogens():
     sel_remove = flex.size_t()
 
     # Find H atoms bound to linked atoms
-    removed_dict = dict()
-    parent_dict = dict()
-    bonds = dict()
+    removed_dict = {}
+    parent_dict = {}
+    bonds = {}
+    bond_lengths = {}
     for proxy in all_proxies:
       if(  isinstance(proxy, ext.bond_simple_proxy)): i,j=proxy.i_seqs
       elif(isinstance(proxy, ext.bond_asu_proxy)):    i,j=proxy.i_seq,proxy.j_seq
@@ -584,11 +586,13 @@ class place_hydrogens():
       if(elements[i] in ["H","D"] and j in exclusion_iseqs):
         if i not in sel_remove:
           sel_remove.append(i)
+          bond_lengths[i] = proxy.distance_ideal
           removed_dict[i] = exclusion_dict[j]
           parent_dict[i]=j
       if(elements[j] in ["H","D"] and i in exclusion_iseqs):
         if j not in sel_remove:
           sel_remove.append(j)
+          bond_lengths[j] = proxy.distance_ideal
           removed_dict[j] = exclusion_dict[i]
           parent_dict[j]=i
     # remove H atoms NOT to remove - double negative!
@@ -610,6 +614,40 @@ class place_hydrogens():
       else:
         bonds[j_seq].remove(i_seq)
         bonds[i_seq].remove(j_seq)
+
+    #print(remove_from_sel_remove)
+    fsc0=grm.geometry.shell_sym_tables[0].full_simple_connectivity()
+    fsc1=grm.geometry.shell_sym_tables[1].full_simple_connectivity()
+    #fsc2=grm.geometry.shell_sym_tables[2].full_simple_connectivity()
+    for _i in remove_from_sel_remove:
+      #print(list(fsc0[_i]))
+      parent = fsc0[_i][0]
+      #print('origin_id', exclusion_dict[parent], origin_ids.get_origin_key(exclusion_dict[parent]))
+      first_neighbors = fsc1[_i]
+      fn_filtered = [item for item in first_neighbors if item not in sel_remove]
+      #print(list(first_neighbors), list(sel_remove), fn_filtered )
+      # now improve geometry of the H being kept
+      # TODO make sure all atoms are in same conformer
+      # TODO check that neighbor atoms are all non H
+      # TODO what about two tetrahedral geometry?
+      if len(fn_filtered) == 3:
+        #print('tetrahedral geometry')
+        coord1 = matrix.col(atoms[fn_filtered[0]].xyz)
+        coord2 = matrix.col(atoms[fn_filtered[1]].xyz)
+        coord3 = matrix.col(atoms[fn_filtered[2]].xyz)
+        coordp = matrix.col(atoms[parent].xyz)
+        orth = (coord2-coord1).cross(coord3-coord1).normalize()
+        vol = orth.dot(coordp-coord1)
+        if vol > 0: orth = -orth
+        atoms[_i].xyz = coordp - orth*bond_lengths[_i]
+      if len(fn_filtered) == 2:
+        #print('flat geometry')
+        coord1 = matrix.col(atoms[fn_filtered[0]].xyz)
+        coord2 = matrix.col(atoms[fn_filtered[1]].xyz)
+        coordp = matrix.col(atoms[parent].xyz)
+        half = ((coord1 - coordp).normalize() + (coord2 - coordp).normalize())
+        atoms[_i].xyz = coordp-half.normalize()*bond_lengths[_i]
+
     if remove_from_sel_remove:
       sel_remove=list(sel_remove)
       for r in remove_from_sel_remove:
