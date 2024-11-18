@@ -159,7 +159,7 @@ class MolstarBaseController(Controller):
       # Ref needs to be loaded
       self.graphics.load_model(
         filename=ref.filename, # mmtbx model
-        ref_id=ref.uuid,
+        #ref_id=ref.uuid,
       )
 
   def toggle_selection_mode(self,value):
