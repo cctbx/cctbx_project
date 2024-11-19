@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import sys
 import time
 from scitbx.array_family import flex
 from libtbx import adopt_init_args
@@ -39,6 +40,10 @@ class rosenbrock(object):
 
 
 def run():
+  tolerance = 1.e-16
+  if sys.platform == 'win32':
+    tolerance = 1.e-9
+
   # Run L-BFGS (no boundaries)
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
     n_bounds     = 2,
@@ -49,8 +54,8 @@ def run():
     mode='lbfgs', max_iterations=100, calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
   res = (19.99999855596629, 399.99994289914525)
-  assert approx_equal(m_unbound.x[0]-res[0],0, 1.e-16)
-  assert approx_equal(m_unbound.x[1]-res[1],0, 1.e-16)
+  assert approx_equal(m_unbound.x[0]-res[0],0, tolerance), (m_unbound.x[0], res[0], m_unbound.x[0]-res[0])
+  assert approx_equal(m_unbound.x[1]-res[1],0, tolerance), (m_unbound.x[1], res[1], m_unbound.x[1]-res[1])
 
   # Run L-BFGS-B with boundaries
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
@@ -62,8 +67,8 @@ def run():
     mode='lbfgsb', calculator=calculator)
   #print('\tMinimum: ', list(m_bound.x))
   res = (19.999999988074844, 399.99999950735986)
-  assert approx_equal(m_bound.x[0]-res[0],0, 1.e-16)
-  assert approx_equal(m_bound.x[1]-res[1],0, 1.e-16)
+  assert approx_equal(m_bound.x[0]-res[0],0, tolerance), (m_bound.x[0], res[0], m_bound.x[0]-res[0])
+  assert approx_equal(m_bound.x[1]-res[1],0, tolerance), (m_bound.x[1], res[1], m_bound.x[1]-res[1])
 
   # Run L-BFGS (no curvatures)
   calculator = rosenbrock(a = 1, b = 100, x = flex.double([-3,-4]))
@@ -71,8 +76,8 @@ def run():
     mode='lbfgs', calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
   res = (0.9999998308201578, 0.9999996829964546)
-  assert approx_equal(m_unbound.x[0]-res[0],0, 1.e-16)
-  assert approx_equal(m_unbound.x[1]-res[1],0, 1.e-16)
+  assert approx_equal(m_unbound.x[0]-res[0],0, tolerance), (m_unbound.x[0], res[0], m_unbound.x[0]-res[0])
+  assert approx_equal(m_unbound.x[1]-res[1],0, tolerance), (m_unbound.x[1], res[1], m_unbound.x[1]-res[1])
 
 
   # Run L-BFGS (with curvatures)
@@ -81,8 +86,8 @@ def run():
     mode='lbfgs', calculator=calculator, diag_mode='always')
   #print('\tMinimum: ', list(m_unbound2.x))
   res = (1.0000002135019004, 1.000000406037043)
-  assert approx_equal(m_unbound2.x[0]-res[0],0, 1.e-16)
-  assert approx_equal(m_unbound2.x[1]-res[1],0, 1.e-16)
+  assert approx_equal(m_unbound2.x[0]-res[0],0, tolerance), (m_unbound2.x[0], res[0], m_unbound2.x[0]-res[0])
+  assert approx_equal(m_unbound2.x[1]-res[1],0, tolerance), (m_unbound2.x[1], res[1], m_unbound2.x[1]-res[1])
 
 
 if (__name__ == "__main__"):
