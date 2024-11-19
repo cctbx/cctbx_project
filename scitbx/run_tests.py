@@ -133,6 +133,7 @@ tst_list = [
   "$D/tests/simplex.py",
   "$D/tests/differential_evolution.py",
   "$D/tests/golden_section_search.py",
+  "$D/tests/tst_minimizer_lbfgs_general.py",
   "$D/tests/direct_search_simulated_annealing.py",
   "$D/random/tests/tst_random.py",
   "$D/lstbx/tests/tst_normal_equations.py",
