@@ -58,9 +58,10 @@ class unrestrained_qbr_fsr(object):
           selection  = selection,
           q_min      = q_min,
           q_max      = q_max).calculator()
-        minimized = minimizers.lbfgsb(
+        minimized = minimizers.lbfgs(
             calculator     = calculator,
-            max_iterations = max_iterations)
+            max_iterations = max_iterations,
+            mode           = 'lbfgsb')
         if log is not None:
           print("occ: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -72,9 +73,10 @@ class unrestrained_qbr_fsr(object):
           selection  = selection,
           u_min      = adptbx.b_as_u(b_min),
           u_max      = adptbx.b_as_u(b_max)).calculator()
-        minimized = minimizers.lbfgsb(
+        minimized = minimizers.lbfgs(
             calculator     = calculator,
-            max_iterations = max_iterations)
+            max_iterations = max_iterations,
+            mode           = 'lbfgsb')
         if log is not None:
           print("adp: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -85,9 +87,10 @@ class unrestrained_qbr_fsr(object):
           restraints = restraints,
           selection  = selection,
           max_shift  = max_xyz_shift).calculator()
-        minimized = minimizers.lbfgsb(
+        minimized = minimizers.lbfgs(
           calculator     = calculator,
-          max_iterations = max_iterations)
+          max_iterations = max_iterations,
+          mode           = 'lbfgsb')
         if log is not None:
           print("xyz: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -209,9 +212,10 @@ class simple_fsr(object):
       restraints_weight = weights.w,
       restraints        = self.restraints,
       max_shift         = self.max_xyz_shift).calculator()
-    minimized = minimizers.lbfgsb(
+    minimized = minimizers.lbfgs(
       calculator     = calculator,
-      max_iterations = self.max_iterations)
+      max_iterations = self.max_iterations,
+      mode           = "lbfgsb")
 
   def _refine_adp(self):
     if not self.refine_adp: return
@@ -224,6 +228,7 @@ class simple_fsr(object):
       restraints        = self.restraints,
       u_min             = adptbx.b_as_u(self.b_min),
       u_max             = adptbx.b_as_u(self.b_max)).calculator()
-    minimized = minimizers.lbfgsb(
+    minimized = minimizers.lbfgs(
       calculator     = calculator,
-      max_iterations = self.max_iterations)
+      max_iterations = self.max_iterations,
+      mode           = "lbfgsb")

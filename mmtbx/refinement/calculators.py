@@ -26,6 +26,10 @@ class individual(object):
     f, g = self.target_and_gradients()
     return self.x, f, g
 
+  def target(self): return self.t
+
+  def gradients(self): return self.g
+
   def update(self, x):
     self.data.update(x = x)
     self.x = x

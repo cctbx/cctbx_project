@@ -1,5 +1,4 @@
 from __future__ import absolute_import, division, print_function
-import sys
 import scitbx.math
 from scitbx.array_family import flex
 from scitbx import lbfgsb as lbfgsb_core
@@ -243,7 +242,7 @@ class newton_more_thuente_1994(object):
         self.line_search_info)
 
 
-class minimizer_lbfgs_general(object):
+class lbfgs(object):
   """
     A general L-BFGS and L-BFGS-B minimizer class.
 
@@ -300,37 +299,41 @@ class minimizer_lbfgs_general(object):
   def __init__(self,
                mode,
                calculator,
+               core_params = None,
+               exception_handling_params = None,
                max_iterations = None,
-               diag_mode = None):
+               min_iterations = 0,
+               diag_mode = None,
+               gradient_only = False):
     """
     Initialize the minimizer with the selected mode and calculator object.
     """
     adopt_init_args(self, locals())
     assert mode in ['lbfgs', 'lbfgsb']
+    self.x = self.calculator.x
     # necessary? also done in run_c_plus_plus
     if diag_mode is not None: assert diag_mode in ['once', 'always']
     if self.mode == 'lbfgs':
-      self.x = self.calculator.x
       # TODO: How to best expose all the params of these classes?
-      lbfgs_core_params = lbfgs_core.core_parameters()
+      if core_params is None: core_params = lbfgs_core.core_parameters()
       termination_params = lbfgs_core.termination_parameters(
-          max_iterations=max_iterations)
-      exception_handling_params = lbfgs_core.exception_handling_parameters()
+        max_iterations = max_iterations, min_iterations = min_iterations)
+      if exception_handling_params is None:
+        exception_handling_params = lbfgs_core.exception_handling_parameters()
       self.minimizer = lbfgs_core.run_c_plus_plus(
         target_evaluator          = self,
         termination_params        = termination_params,
-        core_params               = lbfgs_core_params,
+        core_params               = core_params,
         exception_handling_params = exception_handling_params,
         log                       = None,
-        gradient_only             = False,
-        line_search               = False
+        gradient_only             = gradient_only,
+        line_search               = True
         )
     if self.mode == 'lbfgsb':
-      self.x = self.calculator.initial_values
       self.minimizer = lbfgsb_core.run(
         target_evaluator = self,
         max_iterations   = max_iterations,
-        use_bounds       = self.calculator.n_bounds,
+        bound_flags      = self.calculator.bound_flags,
         lower_bound      = self.calculator.lower_bound,
         upper_bound      = self.calculator.upper_bound,
         n                = self.x.size())
@@ -363,81 +366,3 @@ class minimizer_lbfgs_general(object):
     g = self.calculator.gradients()
     d = self.calculator.curvatures()
     return t,g,d
-
-
-
-class lbfgsb(object):
-  """
-  Wrapper for LBGFGS-B minimizer with simplified interface. See lbfgsb_core for
-  more settings.
-  Vector of varibales calculator.x is changed in-place.
-  """
-
-  def __init__(self, calculator, max_iterations=None):
-    M = lbfgsb_core.minimizer(
-      n   = calculator.n,
-      l   = calculator.lower_bound,
-      u   = calculator.upper_bound,
-      nbd = calculator.bound_flags)
-    M.error = None
-    f_start = None
-    f = None
-    try:
-      icall = 0
-      while 1:
-        icall += 1
-        x, f, g = calculator() # x will be changed in place
-        if(icall==1): f_start = f
-        have_request = M.process(x, f, g)
-        if(have_request):
-          requests_f_and_g = M.requests_f_and_g()
-          continue
-        assert not M.requests_f_and_g()
-        if(M.is_terminated()): break
-        if(max_iterations is not None and icall>max_iterations): break
-    except Exception as e:
-      M.error = str(e)
-    M.n_calls = icall
-    if(M.error is not None):
-      print("lbfgsb: an error occured: %s"%M.error)
-    # items to store
-    self.M          = M
-    self.f_start    = f_start
-    self.f          = f
-    self.nfev       = self.M.n_calls
-    self.calculator = calculator
-
-  def show(self, log=None, prefix=""):
-    if(log is None): log = sys.stdout
-    m="%sLBFGS-B: function start/end, n_calls:"%prefix
-    print(m, "%12.6g %12.6g"%(self.f_start, self.f), self.nfev, file=log)
-
-class lbfgs(object):
-  """
-  Wrapper for LBGFGS minimizer with simplified interface. See lbfgs_core for
-  more settings.
-  Vector of varibales calculator.x is changed in-place.
-  """
-
-  def __init__(self, calculator, stpmax, max_iterations, gradient_only):
-    core_params = lbfgs_core.core_parameters(stpmax = stpmax)
-    termination_params = lbfgs_core.termination_parameters(
-      max_iterations = max_iterations)
-    M = lbfgs_core.run(
-      core_params               = core_params,
-      termination_params        = termination_params,
-      exception_handling_params = None,
-      target_evaluator          = calculator,
-      gradient_only             = gradient_only,
-      line_search               = True,
-      log                       = None)
-    # items to store
-    self.M          = M
-    self.calculator = calculator
-    self.nfev       = self.M.nfun()
-
-  def show(self, log=None, prefix=""):
-    if(log is None): log = sys.stdout
-    m="%sLBFGS: function start/end, n_calls: %.6f %.6f %d"
-    print(m%(prefix, self.calculator.f_start, self.calculator.f, self.M.nfun()),
-      file=log)
