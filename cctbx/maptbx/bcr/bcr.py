@@ -4,7 +4,7 @@ from scipy.optimize import minimize
 from libtbx import adopt_init_args
 
 from cctbx.array_family import flex
-from mmtbx.ncs import tncs
+import scitbx.minimizers
 
 # Adapted by Pavel Afonine. This is a verbatim copy of the original code
 # supplied by A. Urzhumtsev on September 12, 2024; dec3D, version 7.6
@@ -48,47 +48,21 @@ def chi(B, R, r, b_iso):
 
 class calculator(object):
 
-  def __init__(self, npeak,dens,yc,dist,nfmes, x, mdist,edist):
+  def __init__(self, npeak,dens,yc,dist,nfmes, x, mdist,edist,
+               bound_flags, lower_bound, upper_bound):
     adopt_init_args(self, locals())
     self.x = flex.double(x)
 
-  def target_and_gradients(self, x):
+  def update(self, x):
     self.x = x
-    target = FuncFit(self.x, self.npeak, self.dens, self.yc, self.dist,
+
+  def gradients(self):
+    return flex.double(GradFit(self.x, self.npeak, self.dens, self.yc, self.dist,
+      self.mdist,self.edist, self.nfmes))
+
+  def target(self):
+    return FuncFit(self.x, self.npeak, self.dens, self.yc, self.dist,
       self.mdist,self.edist, self.nfmes)
-    gradients = GradFit(self.x, self.npeak, self.dens, self.yc, self.dist,
-      self.mdist,self.edist, self.nfmes)
-    return target, flex.double(gradients)
-
-class minimizer_bound(object):
-  def __init__(self,
-               calculator,
-               use_bounds,
-               lower_bound,
-               upper_bound,
-               max_iterations):
-    adopt_init_args(self, locals())
-    self.x = self.calculator.x
-    self.n = self.x.size()
-    self.n_func_evaluations = 0
-    self.max_iterations = max_iterations
-
-  def run(self):
-    self.minimizer = tncs.lbfgs_run(
-      target_evaluator = self,
-      use_bounds       = self.use_bounds,
-      lower_bound      = self.lower_bound,
-      upper_bound      = self.upper_bound,
-      max_iterations   = self.max_iterations)
-    self()
-    return self
-
-  def __call__(self):
-    self.n_func_evaluations += 1
-    f, g = self.calculator.target_and_gradients(x = self.x)
-    self.f = f
-    self.g = g
-    return self.x, self.f, self.g
 
 #============================
 def get_BCR(dens,dist,dmax,mxp,epsc,epsp=0.000,edist=1.0E-13,kpres=1,kprot=3,nfmes=None):
@@ -233,18 +207,20 @@ def RefineBCR(dens,dist,mdist,edist,bpeak,cpeak,rpeak,npeak,bmin,cmin,rmin,nfmes
     for it in range(1,3):
       if it > 1:
         xc = res.x
-      CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist)
       lbound = []
       ubound = []
       for b in bcrbounds:
         lbound.append(b[0])
         ubound.append(b[1])
-      res = minimizer_bound(
-        calculator  = CALC,
-        use_bounds  = 2,
+
+      CALC = calculator(npeak,dens,yc,dist,nfmes, xc, mdist,edist,
+        bound_flags = flex.int(len(xc), 2),
         lower_bound = lbound,
-        upper_bound = ubound,
-        max_iterations = 500).run().calculator
+        upper_bound = ubound)
+
+      res = scitbx.minimizers.lbfgs(
+           mode='lbfgsb', max_iterations=500, calculator=CALC)
+
     res.x = list(res.x)
 
     if 0: # SciPy analogue. Works with Python 3 only.

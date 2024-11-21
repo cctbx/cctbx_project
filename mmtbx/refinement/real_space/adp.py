@@ -11,8 +11,8 @@ from cctbx import crystal
 from mmtbx.refinement import adp_refinement
 from cctbx import adp_restraints
 from libtbx import group_args
-from mmtbx.ncs import tncs
 from libtbx.str_utils import format_value
+import scitbx.minimizers
 
 import boost_adaptbx.boost.python as bp
 cctbx_maptbx_ext = bp.import_ext("cctbx_maptbx_ext")
@@ -75,7 +75,11 @@ def get_plain_pair_sym_table(crystal_symmetry, sites_frac, plain_pairs_radius=5)
   return pair_asu_table.extract_pair_sym_table()
 
 class tg(object):
-  def __init__(self, fmodel, x, restraints_weight):
+  def __init__(self, fmodel, x, restraints_weight, bound_flags,
+               lower_bound, upper_bound):
+    self.bound_flags = bound_flags
+    self.lower_bound = lower_bound
+    self.upper_bound = upper_bound
     self.restraints_weight = restraints_weight
     self.fmodel = fmodel
     self.plain_pair_sym_table = None
@@ -261,17 +265,17 @@ class ncs_aware_refinement(object):
           lower = flex.double(x.size(), 0)
           upper = flex.double(x.size(), flex.max(x)*2)
           calculator = tg(
-            fmodel = fmodel, x = x, restraints_weight = rw)
+            fmodel            = fmodel,
+            x                 = x,
+            restraints_weight = rw,
+            bound_flags       = flex.int(x.size(), 2),
+            lower_bound       = lower,
+            upper_bound       = upper)
           rw_prev = rw
           b_isos_prev = b_isos
           rms_b_prev = model.rms_b_iso_or_b_equiv()
-          m = tncs.minimizer(
-            potential      = calculator,
-            use_bounds     = 2,
-            lower_bound    = lower,
-            upper_bound    = upper,
-            max_iterations = 100,
-            initial_values = x).run()
+          m = scitbx.minimizers.lbfgs(
+            mode='lbfgsb', max_iterations=100, calculator=calculator)
           b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           model.set_b_iso(values = b_isos)
           if(rms_b_prev is not None):
@@ -299,14 +303,15 @@ class ncs_aware_refinement(object):
           x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           lower = flex.double(x.size(), 0)
           upper = flex.double(x.size(), min(999,flex.max(x)*2) )
-          calculator = tg(fmodel = fmodel, x = x, restraints_weight = None)
-          m = tncs.minimizer(
-            potential      = calculator,
-            use_bounds     = 2,
-            lower_bound    = lower,
-            upper_bound    = upper,
-            max_iterations = 100,
-            initial_values = x).run()
+          calculator = tg(
+            fmodel            = fmodel,
+            x                 = x,
+            restraints_weight = None,
+            bound_flags       = flex.int(x.size(), 2),
+            lower_bound       = lower,
+            upper_bound       = upper)
+          m = scitbx.minimizers.lbfgs(
+            mode='lbfgsb', max_iterations=100, calculator=calculator)
           b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
           model.set_b_iso(values = b_isos)
           if(log is not None):

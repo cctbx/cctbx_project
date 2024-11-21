@@ -34,7 +34,7 @@ class minimizer(ext.minimizer):
 
 
 def run(target_evaluator,
-               use_bounds,
+               bound_flags,
                lower_bound,
                upper_bound,
                n,
@@ -96,21 +96,21 @@ def run(target_evaluator,
       provided lower and upper bounds.
   """
   #
-  nbd = flex.int(n, use_bounds)
   lbfgsb_minimizer = minimizer(
     n   = n,
     l   = lower_bound,
     u   = upper_bound,
-    nbd = nbd) # flag to apply both bounds
+    nbd = bound_flags) # flag to apply both bounds
   lbfgsb_minimizer.error = None
+  x, f, g = target_evaluator.compute_functional_and_gradients()
   try:
     icall = 0
     while 1:
       icall += 1
-      x, f, g = target_evaluator.compute_functional_and_gradients()
       have_request = lbfgsb_minimizer.process(x, f, g)
       if(have_request):
         requests_f_and_g = lbfgsb_minimizer.requests_f_and_g()
+        x, f, g = target_evaluator.compute_functional_and_gradients()
         continue
       assert not lbfgsb_minimizer.requests_f_and_g()
       if(lbfgsb_minimizer.is_terminated()): break

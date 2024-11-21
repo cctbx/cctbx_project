@@ -11,7 +11,6 @@ import boost_adaptbx.boost.python as bp
 asu_map_ext = bp.import_ext("cctbx_asymmetric_map_ext")
 from libtbx import group_args
 from mmtbx import bulk_solvent
-from mmtbx.ncs import tncs
 from collections import OrderedDict
 import mmtbx.f_model
 import sys
@@ -23,6 +22,8 @@ from mmtbx import masks
 from cctbx.masks import vdw_radii_from_xray_structure
 ext = bp.import_ext("mmtbx_masks_ext")
 mosaic_ext = bp.import_ext("mmtbx_mosaic_ext")
+
+from scitbx import minimizers
 
 APPLY_SCALE_K1_TO_FOBS = False
 
@@ -39,29 +40,6 @@ def moving_average(x, n):
   return r
 
 # Utilities used by algorithm 2 ------------------------------------------------
-
-class minimizer(object):
-  def __init__(self, max_iterations, calculator):
-    adopt_init_args(self, locals())
-    self.x = self.calculator.x
-    self.cntr=0
-    exception_handling_params = scitbx.lbfgs.exception_handling_parameters(
-      ignore_line_search_failed_step_at_lower_bound=True,
-      )
-    self.minimizer = scitbx.lbfgs.run(
-      target_evaluator=self,
-      exception_handling_params=exception_handling_params,
-      termination_params=scitbx.lbfgs.termination_parameters(
-        max_iterations=max_iterations))
-
-  def compute_functional_and_gradients(self):
-    self.cntr+=1
-    self.calculator.update_target_and_grads(x=self.x)
-    t = self.calculator.target()
-    g = self.calculator.gradients()
-    #print "step: %4d"%self.cntr, "target:", t, "params:", \
-    #  " ".join(["%10.6f"%i for i in self.x]), math.log(t)
-    return t,g
 
 class minimizer2(object):
 
@@ -101,13 +79,17 @@ class minimizer2(object):
     return self.x, self.f, self.g, self.d
 
 class tg(object):
-  def __init__(self, x, i_obs, F, use_curvatures):
+  def __init__(self, x, i_obs, F, use_curvatures,
+               bound_flags=None, lower_bound=None, upper_bound=None):
     self.x = x
     self.i_obs = i_obs
     self.F = F
     self.t = None
     self.g = None
     self.d = None
+    self.bound_flags=bound_flags
+    self.lower_bound=lower_bound
+    self.upper_bound=upper_bound
     # Needed to do sums from small to large to prefent loss
     s = flex.sort_permutation(self.i_obs.data())
     self.i_obs = self.i_obs.select(s)
@@ -1094,15 +1076,11 @@ def algorithm_2(i_obs, F, x, use_curvatures, use_lbfgsb, macro_cycles=10,
     elif(use_curvatures is False): # No curvatures at all
       calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False)
       if(use_lbfgsb is True):
-        m = tncs.minimizer(
-          potential       = calculator,
-          use_bounds      = 2,
-          lower_bound     = lower,
-          upper_bound     = upper,
-          max_iterations  = max_iterations,
-          initial_values  = x).run()
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgsb', max_iterations=max_iterations, calculator=calculator)
       else:
-        m = minimizer(max_iterations=max_iterations, calculator=calculator)
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgs', max_iterations=max_iterations, calculator=calculator)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
     elif(use_curvatures is None):
@@ -1111,39 +1089,16 @@ def algorithm_2(i_obs, F, x, use_curvatures, use_lbfgsb, macro_cycles=10,
         max_iterations=max_iterations, calculator=calculator).run(use_curvatures=True)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
-      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False)
+      calculator = tg(i_obs = i_obs, F=F, x = x, use_curvatures=False,
+        bound_flags=flex.int(x.size(),2), lower_bound=lower, upper_bound=upper)
       if(use_lbfgsb is True):
-        m = tncs.minimizer(
-          potential       = calculator,
-          use_bounds      = 2,
-          lower_bound     = lower,
-          upper_bound     = upper,
-          max_iterations  = max_iterations,
-          initial_values  = x).run()
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgsb', max_iterations=max_iterations, calculator=calculator)
       else:
-        m = minimizer(max_iterations=max_iterations, calculator=calculator)
+        m = scitbx.minimizers.lbfgs(
+           mode='lbfgs', max_iterations=max_iterations, calculator=calculator)
       x = m.x
       x = x.set_selected(x<0,1.e-6)
-
-#  calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=True)
-#  m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-#
-#  calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=False)
-#  m = tncs.minimizer(
-#        potential       = calculator,
-#        use_bounds      = 2,
-#        lower_bound     = lower,
-#        upper_bound     = upper,
-#        max_iterations  = 100,
-#        initial_values  = calculator.x).run()
-
-  #if(use_curvatures):
-  #  for it in range(10):
-  #    m = minimizer(max_iterations=100, calculator=calculator)
-  #    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
-  #    m.x = m.x.set_selected(m.x<0,1.e-3)
-  #    m = minimizer2(max_iterations=100, calculator=calculator).run(use_curvatures=True)
-  #    calculator = tg(i_obs = i_obs, F=F, x = m.x, use_curvatures=use_curvatures)
   return m.x
 
 def algorithm_3(i_obs, fc, f_masks):
