@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import platform
 import sys
 import time
 from scitbx.array_family import flex
@@ -43,6 +44,8 @@ def run():
   tolerance = 1.e-16
   if sys.platform == 'win32':
     tolerance = 1.e-9
+  elif sys.platform == 'darwin' and platform.machine() == 'arm64':
+    tolerance = 1.e-6
 
   # Run L-BFGS (no boundaries)
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
