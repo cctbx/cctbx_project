@@ -11,7 +11,7 @@ from libtbx.test_utils import approx_equal
 
 class rosenbrock(object):
   def __init__(self, a, b, x,         # lbfgs and lbfgsb minimizer
-               n_bounds       = None, # only lbfgsb
+               bound_flags    = None, # only lbfgsb
                lower_bound    = None, # only lbfgsb
                upper_bound    = None, # only lbfgsb
                initial_values = None  # only lbfgsb
@@ -49,11 +49,11 @@ def run():
 
   # Run L-BFGS (no boundaries)
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
-    n_bounds     = 2,
+    bound_flags  = flex.int(2,2),
     lower_bound  = flex.double([-10000,-10000]),
     upper_bound  = flex.double([10000,10000]),
     initial_values = flex.double([0,0]))
-  m_unbound = scitbx.minimizers.minimizer_lbfgs_general(
+  m_unbound = scitbx.minimizers.lbfgs(
     mode='lbfgs', max_iterations=100, calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
   res = (19.99999855596629, 399.99994289914525)
@@ -62,11 +62,11 @@ def run():
 
   # Run L-BFGS-B with boundaries
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
-    n_bounds     = 2,
+    bound_flags  = flex.int(2,2),
     lower_bound  = flex.double([-10000,-10000]),
     upper_bound  = flex.double([10000,10000]),
     initial_values = flex.double([0,0]))
-  m_bound = scitbx.minimizers.minimizer_lbfgs_general(
+  m_bound = scitbx.minimizers.lbfgs(
     mode='lbfgsb', calculator=calculator)
   #print('\tMinimum: ', list(m_bound.x))
   res = (19.999999988074844, 399.99999950735986)
@@ -75,7 +75,7 @@ def run():
 
   # Run L-BFGS (no curvatures)
   calculator = rosenbrock(a = 1, b = 100, x = flex.double([-3,-4]))
-  m_unbound = scitbx.minimizers.minimizer_lbfgs_general(
+  m_unbound = scitbx.minimizers.lbfgs(
     mode='lbfgs', calculator=calculator)
   #print('\tMinimum: ', list(m_unbound.x))
   res = (0.9999998308201578, 0.9999996829964546)
@@ -85,7 +85,7 @@ def run():
 
   # Run L-BFGS (with curvatures)
   calculator = rosenbrock(a = 1, b = 100, x = flex.double([-3,-4]))
-  m_unbound2 = scitbx.minimizers.minimizer_lbfgs_general(
+  m_unbound2 = scitbx.minimizers.lbfgs(
     mode='lbfgs', calculator=calculator, diag_mode='always')
   #print('\tMinimum: ', list(m_unbound2.x))
   res = (1.0000002135019004, 1.000000406037043)
