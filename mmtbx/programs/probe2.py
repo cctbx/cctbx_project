@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.3.0"
+version = "4.4.0"
 
 master_phil_str = '''
 profile = False
@@ -712,10 +712,14 @@ Note:
       :param a: Atom whose class is to be specified
       :return: If our parameters have been set to color and sort by NA base,
       then it returns the appropriate base name.  Otherwise, it returns the
-      element of the atom.
+      element of the atom with any second letter in the element name lower-case
+      to match the values in the _allAtomClasses list.
     '''
     if not self.params.output.color_by_na_base:
-      return a.element
+      val = a.element
+      if len(val) > 1:
+        val = val[0] + val[1:].lower()
+      return val
     else:
       resName = a.parent().resname
       cl = common_residue_names_get_class(name = resName)
