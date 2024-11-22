@@ -257,17 +257,6 @@ class GUITabWidget(DraggableTabWidget):
     if self.debug:
       print(*args)
 
-  def set_focus_on(self,*args):
-    self.set_visible_on()
-    name = self.parent_explicit.tabs.findNameByTab(self)
-    i = self.parent_explicit.tabs.findIndexByName(name)
-    self.parent_explicit.tabs.setCurrentIndex(i)
-
-  def set_visible_on(self,*args):
-    # This differs from toggle_tab_visible in that this makes self
-    # visible, toggle_tab_visible operates on child tabs
-    name = self.parent_explicit.tabs.findNameByTab(self)
-    self.parent_explicit.tabs.toggle_tab_visible(name,show=True)
 
   def on_tab_changed(self,index):
     current_tab_widget = self.widget(index)
@@ -311,6 +300,9 @@ class GUITabWidget(DraggableTabWidget):
   def findNameByTab(self,tab_widget):
     d = {v:k for k,v in self.tabDict().items()}
     return d[tab_widget]
+
+  def findNameByIndex(self,tab_index):
+    return self.findNameByTab(self.widget(tab_index))
 
   @property
   def widgets(self):

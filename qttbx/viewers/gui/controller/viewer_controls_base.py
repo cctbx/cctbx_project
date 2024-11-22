@@ -2,6 +2,7 @@ from pathlib import Path
 import platform
 import subprocess
 import time
+from functools import partial
 
 from PySide2.QtCore import Slot
 from PySide2.QtCore import Qt
@@ -13,8 +14,8 @@ from PySide2.QtWidgets import (
 
 import iotbx
 from mmtbx.monomer_library.pdb_interpretation import grand_master_phil_str
-
-from .controller import Controller
+from qttbx.viewers.gui.controller import Controller
+from qttbx.viewers.gui.model.refs import ModelRef
 
 class ViewerControlsBaseController(Controller):
   """
@@ -24,62 +25,36 @@ class ViewerControlsBaseController(Controller):
     super().__init__(parent=parent,view=view)
 
     self.state.signals.active_change.connect(self.active_model_change)
-
-    # Picking level
-    self.picking_level = 'atom' # internal state
-    self.view.picking_level.currentTextChanged.connect(self.picking_level_change) # user initiates new level
-    self.state.signals.picking_level.connect(self.picking_level_change) # update view to reflect new level
-
-    # Enable return key to execute selection
-    self.view.selector_toggle.clicked.connect(self.start_selecting)
-    self.view.button_cancel.clicked.connect(self.viewer.deselect_all)
-
-
-
+    self.representation_toggles = {'ball-and-stick':False,"cartoon":False}
+    for key,action in self.view.button_rep.actions.items():
+      action.triggered.connect(partial(self.representation_selected, action))
 
   @property
   def viewer(self):
     return self.parent
 
-
-  @property
-  def picking_level_displayed(self):
-    current_text = self.view.picking_level.currentText().lower()
-    return current_text
-
-  def picking_level_change(self, picking_level):
-    picking_level = picking_level.lower()
-    assert picking_level in ["atom","residue"]
-    if picking_level != self.picking_level: # only do stuff if needed
-      # update internal state
-      self.picking_level = picking_level
-
-      # Update widget, emit signal
-      if picking_level == "residue":
-        self.view.picking_level.setCurrentIndex(1)
-        self.state.signals.picking_level.emit("residue")
-      elif picking_level == "atom":
-        self.view.picking_level.setCurrentIndex(0)
-        self.state.signals.picking_level.emit("atom")
-    
-    assert self.picking_level_displayed == picking_level, f"picking level displayed: {self.picking_level_displayed}, picking level set: {picking_level}"
-    
-
-
-  def start_selecting(self,*args):
-    # selection button was clicked. is_checked is NEW state
-    if self.view.selector_toggle.is_on: # opposite of intuition, 'on'
-      self.viewer.toggle_selection_mode(True)
-    else:
-      self.viewer.toggle_selection_mode(False)
-
   def clear_viewer(self):
     self.parent.clear_viewer("Clearing the viewer.")
 
+  def representation_selected(self,action):
+
+    if action:
+      key = action.text()
+      if key.startswith("Ball"):
+        key = 'ball-and-stick'
+      else:
+        key = 'cartoon'
+      self.representation_toggles[key] = not self.representation_toggles[key]
+      show = self.representation_toggles[key]
+      print("Need to change representation. Temporarily disabled...")
+      self.parent.select_all()
+      self.parent.graphics.add_representation(key)
+      
 
   def active_model_change(self,ref):
     if ref and isinstance(ref,ModelRef):
-      if model_ref.data.filename:
-        label = model_ref.data.filename
-        self.view.active_model_label.setText(label)
-
+      if ref.filename:
+        label = Path(ref.filename).name
+        index = self.view.active_model_label.findText(label)
+        if index == -1:
+          self.view.active_model_label.addItem(label)

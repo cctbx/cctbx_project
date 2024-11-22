@@ -40,7 +40,7 @@ class MolstarBaseController(Controller):
 
 
     env_bin_dir = f"{env_dir}/bin"
-    molstar_install_dir = "/Users/user/software/debug/modules/molstar"
+    molstar_install_dir = "/Users/user/software/phenix/modules/molstar"
     server = NodeHttpServer([
       f"{env_bin_dir}/node",
       f"{molstar_install_dir}/src/phenix/server.js"
@@ -52,6 +52,8 @@ class MolstarBaseController(Controller):
       server = server,
     )
     self.graphics.state = self.state
+
+
     self.graphics_controls = ViewerControlsBaseController(parent=self,view=self.view.viewer_controls)
 
 
@@ -63,11 +65,6 @@ class MolstarBaseController(Controller):
     self.graphics.web_view.loadFinished.connect(self._on_load_finished_pre_sync)
     self.state.signals.has_synced.connect(self._on_load_finished_post_sync)
 
-    # Selections
-    self.state.signals.picking_level.connect(self.set_picking_level)
-    self.state.signals.select_all.connect(self.select_all)
-    self.state.signals.deselect_all.connect(self.deselect_all)
-
     #timer for update
     self.sync_timer = QTimer()
     self.sync_timer.setInterval(2000)
@@ -78,6 +75,15 @@ class MolstarBaseController(Controller):
     # Start by default
     self.start_viewer()
 
+
+
+
+  def select_all(self):
+    self.graphics.select_all()
+
+  def select_none(self):
+    self.graphics.select_none()
+    
   # Functions used during the initial sync
   def _on_load_started(self):
     """
@@ -157,32 +163,17 @@ class MolstarBaseController(Controller):
         return
 
       # Ref needs to be loaded
+
       self.graphics.load_model(
         filename=ref.filename, # mmtbx model
         #ref_id=ref.uuid,
       )
 
-  def toggle_selection_mode(self,value):
-    self.graphics._toggle_selection_mode(value)
+    self.state.active_model_ref = ref
 
-  def select_all(self):
-    self.graphics.select_all()
-
-  def deselect_all(self):
-    self.graphics.deselect_all()
 
   def close_viewer(self):
     self.graphics.close_viewer()
 
-  def set_picking_level(self,picking_level):
-    if 'atom' in picking_level:
-      self.set_granularity("element")
-    elif "residue" in picking_level:
-      self.set_granularity("residue")
-    else:
-      pass
 
-  def set_granularity(self,value="residue"):
-    assert value in ['element','residue'], 'Provide one of the implemented picking levels'
-    self._picking_granularity = value
-    self.graphics._set_granularity(value=value)
+  

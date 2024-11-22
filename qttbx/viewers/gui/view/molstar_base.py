@@ -106,12 +106,9 @@ class MolstarTabView(GUITab):
     self.web_view.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     self.layout.addWidget(self.web_view)
 
-    #self.selection_controls = SelectionControlsView()
-    #self.layout.addWidget(self.selection_controls)
     self.viewer_controls = ViewerControlsBaseView()
-    self.layout.addWidget(self.viewer_controls)
-    
-
 
     # Set the layout for the whole viewer
     self.setLayout(self.layout)
+
+

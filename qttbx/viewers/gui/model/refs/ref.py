@@ -46,18 +46,18 @@ class Ref:
   # Only one reference of a given type can be active at a time in the state. It is the implied
   #   subject for functions who don't get directly called, and need to ask the state who to operate on.
   #  
-  @property
-  def active(self):
-    return self._active
+  # @property
+  # def active(self):
+  #   return self._active
 
-  @active.setter
-  def active(self,value):
+  # @active.setter
+  # def active(self,value):
 
-    # toggle entry as active
-    if self.entry:
-      self.entry.active = value
+  #   # toggle entry as active
+  #   if self.entry:
+  #     self.entry.active = value
 
-    self._active = value
+  #   self._active = value
 
   # The show flag dictates whether a ref is presented in the GUI or not. 
   #   The controllers will use this to determine whether to load a ref into a gui widget or not

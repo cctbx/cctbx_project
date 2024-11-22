@@ -45,11 +45,6 @@ class StateSignals(QObject):
   add_ref = Signal(Ref)
   remove_ref = Signal(Ref)
 
-  # Selection signals
-  picking_level = Signal(str) # picking granularity ('atom', 'residue')
-
-  select_all = Signal(bool)
-  deselect_all = Signal(bool)
 
 
 class State:
@@ -73,6 +68,7 @@ class State:
     self._params = params
     self._active_model_ref = None
     self._active_selection_ref = None
+    self.active_selection = None
     self._data_manager = data_manager
     self.debug = debug
 
@@ -119,6 +115,20 @@ class State:
   @property
   def external_loaded(self):
     return {"molstar":[ref.identifiers["molstar"] for ref_id,ref in self.refs.items()]}
+
+  @property
+  def active_model_ref(self):
+    return self._active_model_ref
+
+  @active_model_ref.setter
+  def active_model_ref(self,value):
+    assert isinstance(value,(Ref,type(None)))
+    self._active_model_ref = value
+    self.signals.active_change.emit(value)
+
+  @property
+  def active_model(self):
+    return self.active_model_ref.model
 
 
   def add_ref(self,ref,emit=True):

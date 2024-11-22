@@ -16,16 +16,8 @@ from PySide2.QtWidgets import QApplication
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 # =============================================================================
 
-class Program(ProgramTemplate):
 
-  description = """
-  Demo program to visualize models in a QT gui connected to either Molstar or ChimeraX
-  """
-
-  datatypes = ['phil','model']
-
-
-  master_phil_str = """
+master_phil_str = """
 
   rest_server_port = 5000
     .type = int
@@ -36,7 +28,19 @@ class Program(ProgramTemplate):
   console = False
     .type = bool
     .help = "Show the interactive Python console as a tab"
+
+"""
+  
+class MolstarBaseProgram(ProgramTemplate):
+
+  description = """
+  Demo program to visualize models in a QT gui connected to either Molstar or ChimeraX
   """
+
+  datatypes = ['phil','model']
+
+
+  master_phil_str = master_phil_str
 
   def validate(self):
     pass

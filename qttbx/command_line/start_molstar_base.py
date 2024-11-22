@@ -3,7 +3,7 @@
 from __future__ import absolute_import, division, print_function
 
 from iotbx.cli_parser import run_program, CCTBXParser
-from qttbx.programs import start_molstar_base
+from qttbx.programs.start_molstar_base import MolstarBaseProgram
 
 class MolstarParser(CCTBXParser):
   """
@@ -18,4 +18,4 @@ class MolstarParser(CCTBXParser):
 
 
 if __name__ == '__main__':
-  run_program(program_class=start_molstar_base.Program,parser_class=MolstarParser)
+  run_program(program_class=MolstarBaseProgram,parser_class=MolstarParser)
