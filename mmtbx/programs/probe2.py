@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.2.0"
+version = "4.3.0"
 
 master_phil_str = '''
 profile = False
@@ -1845,11 +1845,17 @@ Note:
     # Get the bonding information we'll need to exclude our bonded neighbors.
     allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
+
+    self.model.set_stop_for_unknowns(False)
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    # We need to turn this on because without it the interpretation is
+    # renaming atoms to be more correct.  Unfortunately, this causes the
+    # dot names to no longer match the input file.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
     try:
       self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
       geometry = self.model.get_restraints_manager().geometry
