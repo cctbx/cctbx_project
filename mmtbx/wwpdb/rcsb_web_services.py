@@ -419,6 +419,8 @@ query
 ''' % pdb_id
   r = requests.post(report_base_url, json={"query":graphql_query})
   data_entry = r.json()['data']['entry']
+  if not data_entry:
+    return None
   if data_entry['exptl'][0]['method'] != 'ELECTRON MICROSCOPY':
     return None
   emdb_ids = data_entry['rcsb_entry_container_identifiers']['emdb_ids']
