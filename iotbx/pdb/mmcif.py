@@ -6,8 +6,10 @@ from libtbx import group_args
 from libtbx.utils import Sorry
 from libtbx.str_utils import format_value
 import iotbx.pdb
+import cctbx.crystal
 from iotbx.pdb import hierarchy
 from iotbx.pdb import hy36encode
+from iotbx.pdb import cryst1_interpretation
 from iotbx.pdb.experiment_type import experiment_type
 from iotbx.pdb.remark_3_interpretation import \
      refmac_range_to_phenix_string_selection, tls
@@ -426,9 +428,7 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystal_symmetry(self,
                        crystal_symmetry=None,
                        weak_symmetry=False):
-    if self.hierarchy is None:
-      self.construct_hierarchy()
-    self_symmetry = self.builder.crystal_symmetry
+    self_symmetry = self.crystal_symmetry_from_cryst1()
     if (crystal_symmetry is None):
       return self_symmetry
     if (self_symmetry is None):
@@ -440,7 +440,18 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
   def crystal_symmetry_from_cryst1(self):
     if self.hierarchy is None:
       self.construct_hierarchy()
-    return self.builder.crystal_symmetry
+    builder_cs = self.builder.crystal_symmetry
+    # check for dummy one
+    if (builder_cs.unit_cell() is not None and
+        cryst1_interpretation.dummy_unit_cell(
+            abc = builder_cs.unit_cell().parameters()[:3],
+            abg = builder_cs.unit_cell().parameters()[3:],
+            sg_symbol=str(builder_cs.space_group_info()))):
+      return cctbx.crystal.symmetry(
+        unit_cell=None,
+        space_group_info=None)
+    return builder_cs
+
 
   def extract_cryst1_z_columns(self):
     return self.cif_model.values()[0].get("_cell.Z_PDB")
