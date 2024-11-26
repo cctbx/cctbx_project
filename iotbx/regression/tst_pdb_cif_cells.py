@@ -1,11 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import sys
-from mmtbx.monomer_library import server
-from mmtbx.monomer_library import pdb_interpretation
 import iotbx.pdb
-from iotbx.pdb.mmcif import cif_input
-import inspect
-import six
 
 #
 # Example from PDB ID 7c9c
