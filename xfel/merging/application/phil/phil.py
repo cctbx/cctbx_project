@@ -129,14 +129,18 @@ filter
   .help = The filter section defines criteria to accept or reject whole experiments
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
+  .help = only unit_cell, resolution, and n_obs are implemented
   {
   algorithm = n_obs reindex resolution unit_cell report
-    .type = choice
+    .type = strings
     .multiple = True
   n_obs {
-    min = 15
+    min = None
       .type = int
       .help = Minimum number of observations for subsequent processing
+    max = None
+      .type = int
+      .help = Maximum number of observations for subsequent processing
   }
   reindex {
     data_reindex_op = h,k,l
