@@ -1,3 +1,9 @@
+2024.11
+=======
+
+* Added generalized interface for LBFGS minimizer
+* Improved adding of hydrogens near links in Reduce2
+
 2024.10
 =======
 
