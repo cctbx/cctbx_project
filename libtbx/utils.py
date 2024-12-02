@@ -2567,6 +2567,7 @@ def display_context(text, file_name = 'file name', n_context = 5,
     if lines[i].find(search_word)>-1  and (
        not lines[i].strip().startswith("#")):
       text_block = ""
+      text_block_continuation = ""
       first_line_number = max(0,i-n_context)
       last_line_number = min(len(lines), i+n_context+1)
       for ll in lines[first_line_number: last_line_number]:
@@ -2574,15 +2575,19 @@ def display_context(text, file_name = 'file name', n_context = 5,
           text_block += "  ** %s\n" %(ll)
         else:
           text_block += "     %s\n" %(ll)
+        if ll.endswith("\\"):
+          text_block_continuation += "%s" %(ll[:-1].strip())
+        else:
+          text_block_continuation += "%s\n" %(ll.strip())
       skip = False
       for x in excluded_words + always_excluded_words:
-        if text_block.find(x) > -1:
+        if text_block_continuation.find(x) > -1:
           skip = True
         if working_lines_text.find(x) > -1: # allow backwards further
           skip = True
       if skip:
         continue
-      if required_word and  (text_block.find(required_word) < 0):
+      if required_word and  (text_block_continuation.find(required_word) < 0):
         continue
 
       if not quiet:
