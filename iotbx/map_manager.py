@@ -1866,6 +1866,44 @@ class map_manager(map_reader, write_ccp4_map):
     #   map (shift of origin is opposite of shift applied)
     model.set_shift_cart(self.shift_cart())
 
+  def check_consistency(self, stop_on_errors = True, print_errors = True,
+        absolute_angle_tolerance = None,
+        absolute_length_tolerance = None,
+        shift_tol = None):
+    """
+
+    Used for overall consistency checks in map_model_manager
+    Note: the stop_on_errors, print_errors, and 3 tolerance kw are used in
+      map_model_manager when checking consistency there
+    """
+
+    if absolute_angle_tolerance is None:
+      absolute_angle_tolerance = 0.01
+    if absolute_length_tolerance is None:
+      absolute_length_tolerance = 0.01
+    if shift_tol is None:
+      shift_tol = 0.001
+
+    # Check crystal_symmetry, unit_cell_crystal_symmetry, shift_cart
+    # For now, only shift_cart and only ncs_object are relevant
+
+    ok = True
+    if self.ncs_object():
+      if (not self.is_compatible_ncs_object(self.ncs_object(),
+         tol = shift_tol)):
+        ok = False
+        text = "NCS object does not have same shift_cart as map_manager" +\
+          " %s vs %s" %(self.ncs_object().shift_cart(),
+           self.shift_cart())
+
+    if (not ok):
+      if print_errors:
+         print("** Mismatch in model object\n%s" %(text))
+      if stop_on_errors:
+        raise AssertionError(text)
+
+    return ok
+
   def is_compatible_ncs_object(self, ncs_object, tol = 0.001):
     '''
       ncs_object is compatible with this map_manager if shift_cart is

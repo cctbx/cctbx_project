@@ -109,11 +109,13 @@ class map_model_manager(object):
                wrapping         = None,  # Overwrite wrapping for all maps
                absolute_angle_tolerance = 0.01,  # angle tolerance for symmetry
                absolute_length_tolerance = 0.01,  # length tolerance
+               shift_tol = 0.001,  # shift_cart tolerance
                log              = None,
                stop_file = None,  # if present in working directory, stop
                make_cell_slightly_different_in_abc  = False,
                name = 'map_model_manager',
                verbose = False):
+
 
     # Checks
     if extra_model_list is None: extra_model_list = []
@@ -145,6 +147,9 @@ class map_model_manager(object):
     self._info = group_args(
       group_args_type = 'Information about this map_model_manager',
       )
+    self._absolute_angle_tolerance = absolute_angle_tolerance
+    self._absolute_length_tolerance = absolute_length_tolerance
+    self._shift_tol = shift_tol
 
     # If no map_manager now, do not do anything and make sure there
     #    was nothing else supplied except possibly a model
@@ -8727,6 +8732,66 @@ class map_model_manager(object):
     for model in self.models():
       self.get_any_map_manager().shift_model_to_match_map(model)
 
+  def check_consistency(self, stop_on_errors = True, print_errors = True,
+        absolute_angle_tolerance = None,
+        absolute_length_tolerance = None,
+        shift_tol = None):
+    ''' Check that all component objects have the same crystal_symmetry,
+      unit_cell_crystal_symmetry, and shift_cart (if these are part of the
+      objects).'''
+
+    if absolute_angle_tolerance is None:
+      absolute_angle_tolerance = self._absolute_angle_tolerance
+    if absolute_length_tolerance is None:
+      absolute_length_tolerance = self._absolute_length_tolerance
+    if shift_tol is None:
+      shift_tol = self._shift_tol
+
+    object_list = self.models() + self.map_managers()
+    if self.ncs_object():
+      object_list.append(self.ncs_object())
+
+    # Check for consistency among all objects
+
+    ok = all_objects_have_same_symmetry_and_shift_cart(object_list,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        shift_tol = shift_tol,
+        print_errors = False)
+
+    target = self.map_manager()
+    if target:
+      for mm in self.map_managers():
+        if (not mm.is_similar(target)):
+          ok = False
+          text = "Map managers %s and %s are not compatible" %(mm, target)
+
+    if (not ok):
+      text = "Consistency check failure in map_model_manager '%s'" %(
+           self.name)
+      if print_errors:
+        self._print(text)
+        all_objects_have_same_symmetry_and_shift_cart(object_list,
+          absolute_angle_tolerance = absolute_angle_tolerance,
+          absolute_length_tolerance = absolute_length_tolerance,
+          shift_tol = shift_tol,
+          print_errors = True)
+      if (stop_on_errors):
+        raise AssertionError(text)
+
+    # Check for consistency inside each object that has a check_consistency()
+    #   method
+
+    for object in object_list:
+      if hasattr(object, 'check_consistency'):
+        object.check_consistency(stop_on_errors = stop_on_errors,
+          print_errors = print_errors,
+          absolute_angle_tolerance = absolute_angle_tolerance,
+          absolute_length_tolerance = absolute_length_tolerance,
+          shift_tol = shift_tol)
+
+    return ok
+
   def model_building(self,
      nproc = None,
      soft_zero_boundary_mask = True,
@@ -9214,6 +9279,70 @@ class match_map_model_ncs(object):
     return mam
 
 #   Misc methods
+
+def all_objects_have_same_symmetry_and_shift_cart(object_list,
+        absolute_angle_tolerance = 0.01,
+        absolute_length_tolerance = 0.01,
+        shift_tol = 0.001,
+        print_errors = False):
+
+  '''  Return True if all the objects have same crystal_symmetry(),
+    unit_cell_crystal_symmetry(), and shift_cart() if attributes are present.
+
+    Note: For model, map_model_manager, and map_manager, all of these
+    attributes are present; for ncs_object, only shift_cart'''
+
+  attribute_list = [
+     'crystal_symmetry',
+     'unit_cell_crystal_symmetry',
+     'shift_cart']
+
+  for key in attribute_list:
+
+    value_list = []  # all the values must match
+    for object in object_list:
+      if hasattr(object, key):  # only include values for attributes present
+        value_list.append(getattr(object,key)())
+
+    if None in value_list:  # all must be None or all must be not None
+      if value_list.count(None) != len(value_list):
+        return False  # values do not all match
+
+    target = value_list[0]
+    for other in value_list[1:]:
+      if key in ['crystal_symmetry','unit_cell_crystal_symmetry']:
+        if (not target.is_similar_symmetry(other,
+          absolute_angle_tolerance = absolute_angle_tolerance,
+          absolute_length_tolerance = absolute_length_tolerance,
+            )):
+          if print_errors:
+            print("\nThe attribute '%s' does not match between \n%s and \n%s" %(
+              key, target, other))
+          return False
+
+      elif key in ['shift_cart']:
+        if (not is_same_shift_cart(target, other, tol = shift_tol)):
+          if print_errors:
+            print("\nThe attribute '%s' does not match between \n%s and \n%s" %(
+              key, target, other))
+          return False
+      else:
+        raise AssertionError(
+         "Missing key in all_objects_have_same_symmetry_and_shift_cart")
+  return True
+
+def is_same_shift_cart(shift, other_shift, tol = 0.001):
+    ''' compare shift to other_shift'''
+
+    this_shift=flex.double(shift)
+    other_shift=flex.double(other_shift)
+    delta=this_shift - other_shift
+    mmm=delta.min_max_mean()
+    if mmm.min < -tol or mmm.max > tol: # shifts do not match
+      return False
+    else:
+      return True
+
 
 def convert_tlso_group_info_to_lists(tlso_group_info):
       #tlso_group_info.tlso_selection_list,
