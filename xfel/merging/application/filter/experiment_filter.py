@@ -137,7 +137,7 @@ class experiment_filter(worker):
     data_counter(self.params).count(new_experiments, new_reflections)
     return new_experiments, new_reflections
 
-  def filter_by_unit_cell(self, experiments, reflections):
+  def run_filter_by_unit_cell(self, experiments, reflections):
     experiment_ids_to_remove = []
     removed_for_unit_cell = 0
     removed_for_space_group = 0
