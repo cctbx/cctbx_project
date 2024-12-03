@@ -8751,9 +8751,10 @@ class map_model_manager(object):
     if self.ncs_object():
       object_list.append(self.ncs_object())
 
-    # Check for consistency among all objects
+    object_list_with_self = object_list + [self]
+    # Check for consistency among all objects and also include self here
 
-    ok = all_objects_have_same_symmetry_and_shift_cart(object_list,
+    ok = all_objects_have_same_symmetry_and_shift_cart(object_list_with_self,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         shift_tol = shift_tol,
@@ -8771,7 +8772,7 @@ class map_model_manager(object):
            self.name)
       if print_errors:
         self._print(text)
-        all_objects_have_same_symmetry_and_shift_cart(object_list,
+        all_objects_have_same_symmetry_and_shift_cart(object_list_with_self,
           absolute_angle_tolerance = absolute_angle_tolerance,
           absolute_length_tolerance = absolute_length_tolerance,
           shift_tol = shift_tol,
