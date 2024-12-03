@@ -680,7 +680,10 @@ class manager(object):
   #  params.pdb_interpretation.nonbonded_weight = value
   #  self.set_pdb_interpretation_params(params = params)
 
-  def check_consistency(self):
+  def check_consistency(self, stop_on_errors = True, print_errors = True,
+        absolute_angle_tolerance = None,
+        absolute_length_tolerance = None,
+        shift_tol = None):
     """
     Primarilly for debugging
     """
