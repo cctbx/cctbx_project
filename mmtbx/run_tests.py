@@ -264,6 +264,7 @@ general_tests = [
   "$D/regression/tst_anomalous_substructure.py",
   #
   "$D/regression/tst_fmodel_no_cryst1.py",
+  "$D/regression/tst_fmodel_and_dm.py",
   "$D/regression/tst_fmodel_misc.py",
   "$D/regression/tst_isomorphous_difference_misc.py",
   "$D/regression/tst_dynamics_cli.py",
