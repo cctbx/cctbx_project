@@ -181,10 +181,10 @@ here are some alternatives:
     str = ph.as_pdb_string()
     print("Doing something with a string %s" %str)
 
-  Use instead model.as_pdb_or_mmcif_string() which will give you a PDB or
+  Use instead ph.as_pdb_or_mmcif_string() which will give you a PDB or
      mmcif string as appropriate:
 
-    str = model.as_pdb_or_mmcif_string(
+    str = ph.as_pdb_or_mmcif_string(
         target_format = params.output.target_output_format)
     print("Doing something with a string %s" %str)
 
