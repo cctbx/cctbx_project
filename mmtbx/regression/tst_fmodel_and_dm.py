@@ -61,8 +61,8 @@ def run():
   r = get_r(fc_1, fc_2)
   assert r<1.e-6
   #
-  pdb_fn = 'model.pdb'
-  mtz_fn = 'data.mtz'
+  pdb_fn = 'tst_fmodel_and_dm.pdb'
+  mtz_fn = 'tst_fmodel_and_dm.mtz'
   label_fobs = 'FOBS'
   label_flag = 'R-free-flags'
   with open(pdb_fn,"w") as fo:
