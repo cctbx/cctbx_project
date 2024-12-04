@@ -111,7 +111,7 @@ def mark_problems_in_file(text, path, all_problems,
     if (not next_ending):
        next_ending = " ".join(sw)
     new_text = " # XXX CHECK PDB: %s" %(next_ending)
-    for i in range(p.line_number, p.line_number + n_context):
+    for i in range(p.line_number-1, p.line_number + n_context - 1):
       line = lines[i]
       if (not line.endswith("\\")) and (not line.find("XXX CHECK PDB") > -1):
         line = line.rstrip()
