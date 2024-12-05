@@ -397,8 +397,13 @@ class cif_input(iotbx.pdb.pdb_input_mixin):
       if (set_atom_i_seq):
         self.hierarchy.reset_atom_i_seqs()
       self.hierarchy.atoms_reset_serial()
-
     return self.hierarchy
+
+  def label_to_auth_asym_id_dictionary(self):
+    auth_asym = self.cif_block.get('_atom_site.auth_asym_id')
+    label_asym = self.cif_block.get('_atom_site.label_asym_id')
+    assert len(label_asym) == len(auth_asym)
+    return dict(zip(label_asym, auth_asym))
 
   def source_info(self):
     return self._source_info
