@@ -3677,6 +3677,7 @@ class manager(object):
     # Need to figure out a way to update everything so GRM
     # construction will not fail.
     self.geometry_restraints = None
+    n_old_atoms = self.get_number_of_atoms()
     self._pdb_hierarchy.remove_alt_confs(
         always_keep_one_conformer=always_keep_one_conformer,
         altloc_to_keep=altloc_to_keep)
@@ -3684,7 +3685,6 @@ class manager(object):
     self._pdb_hierarchy.atoms_reset_serial()
     self.update_xrs()
     self._atom_selection_cache = None
-    n_old_atoms = self.get_number_of_atoms()
     n_new_atoms = self.get_number_of_atoms()
     return n_old_atoms - n_new_atoms
 
