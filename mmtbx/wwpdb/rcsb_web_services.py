@@ -143,6 +143,7 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
   # print('r.status_code', r.status_code)
   if r.status_code == 200:
     r_json = r.json()
+    # print(json.dumps(r_json, indent=4))
     for res in r_json["result_set"]:
       res_ids.append(str(res["identifier"].replace('_', ':')))
   return res_ids
@@ -199,6 +200,52 @@ def sequence_search(
   sqr = sequence_query % (e_value_cutoff, identity_cutoff/100, target, sequence)
   jsq = json.loads(sqr)
   return post_query(query_json=jsq, **kwds)
+
+
+def reference_chain_search(sequence, identity_cutoff=0.9, include_csm=False, **kwds):
+  """ Searches sequence optionally include computed models,
+  returns pdb_id with chain id that matches.
+
+  Args:
+      sequence (str): _description_
+      identity_cutoff (float, optional): _description_. Defaults to 0.9.
+  """
+  model_choice = '"experimental"'
+  if include_csm:
+    model_choice += ', "computational"'
+
+  # "sort_by": "score",
+
+  query= """
+{
+  "query": {
+    "type": "terminal",
+    "service": "sequence",
+    "parameters": {
+      "evalue_cutoff": 0.1,
+      "identity_cutoff": %s,
+      "sequence_type": "protein",
+      "value": "%s"
+    }
+  },
+  "return_type": "polymer_instance",
+  "request_options": {
+    "return_all_hits": true,
+    "results_content_type": [ %s ],
+    "scoring_strategy": "combined",
+    "sort": [
+      {
+        "sort_by": "reflns.d_resolution_high",
+        "direction": "desc"
+      }
+    ]
+  }
+}
+"""
+  sqr = query % (identity_cutoff, sequence, model_choice)
+  # print(sqr)
+  jsq = json.loads(sqr)
+  return post_query(query_json=jsq, xray_only=False, **kwds)
 
 
 def chemical_id_search(resname, **kwds):
