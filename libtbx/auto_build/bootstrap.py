@@ -805,9 +805,9 @@ class boost_module(SourceModule):
 class cbflib_module(SourceModule):
   module = 'cbflib'
   anonymous = ['git',
-               'git@github.com:yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib.git',
-               'https://github.com/yayahjb/cbflib/archive/main.zip']
+               'git@github.com:dials/cbflib.git',
+               'https://github.com/dials/cbflib.git',
+               'https://github.com/dials/cbflib/archive/main.zip']
 
 class ccp4io_adaptbx(SourceModule):
   module = 'ccp4io_adaptbx'
