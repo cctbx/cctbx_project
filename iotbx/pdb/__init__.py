@@ -801,6 +801,11 @@ input_sections = (
 
 class pdb_input_mixin(object):
 
+  def label_to_auth_asym_id_dictionary(self):
+    """ Only avaliable for cif_input
+    """
+    return None
+
   def deposition_date(self, us_style=True):
     """
     Placeholder to match mmCIF functionality. Probably could parse
