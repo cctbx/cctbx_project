@@ -309,6 +309,8 @@ class lbfgs(object):
     Initialize the minimizer with the selected mode and calculator object.
     """
     adopt_init_args(self, locals())
+    self.callback_after_step = getattr(
+      self.calculator, "callback_after_step", None)
     assert mode in ['lbfgs', 'lbfgsb']
     self.x = self.calculator.x
     # necessary? also done in run_c_plus_plus

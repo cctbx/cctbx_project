@@ -95,7 +95,7 @@ def run(target_evaluator,
     - If bounds are specified, the optimization is constrained within the
       provided lower and upper bounds.
   """
-  #
+  callback_after_step = getattr(target_evaluator, "callback_after_step", None)
   lbfgsb_minimizer = minimizer(
     n   = n,
     l   = lower_bound,
@@ -106,15 +106,19 @@ def run(target_evaluator,
   try:
     icall = 0
     while 1:
-      icall += 1
       have_request = lbfgsb_minimizer.process(x, f, g)
       if(have_request):
         requests_f_and_g = lbfgsb_minimizer.requests_f_and_g()
         x, f, g = target_evaluator.compute_functional_and_gradients()
+        icall += 1
         continue
       assert not lbfgsb_minimizer.requests_f_and_g()
       if(lbfgsb_minimizer.is_terminated()): break
       if(max_iterations is not None and icall>max_iterations): break
+      if(callback_after_step is not None):
+        if(callback_after_step(minimizer) is True):
+          print("lbfgs minimizer stop: callback_after_step is True")
+          break
   except RuntimeError as e:
     lbfgsb_minimizer.error = str(e)
   lbfgsb_minimizer.n_calls = icall
