@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.4.0"
+version = "4.5.0"
 
 master_phil_str = '''
 profile = False
@@ -1138,7 +1138,7 @@ Note:
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          ret += "{:>2s}{:>4s}{}{:>3s} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1150,7 +1150,7 @@ Note:
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
             alt = t.parent().altloc
-            ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
+            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
@@ -1318,7 +1318,7 @@ Note:
           else:
             ptmast = " '{}' ".format(node.ptmaster)
 
-          pointid = "{}{:1s}{} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
+          pointid = "{}{:1s}{:>3s} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
           if pointid != lastPointID:
