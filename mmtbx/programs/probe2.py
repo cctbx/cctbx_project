@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.6.0"
+version = "4.7.0"
 
 master_phil_str = '''
 profile = False
@@ -1154,8 +1154,8 @@ Note:
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
-            sl = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length()
-            gap = sl - (r1 + r2)
+            sl = (node.loc-node.spike).length()
+            gap = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length() - (r1 + r2)
             dtgp = node.gap
             score = 0.0
 
