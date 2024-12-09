@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.5.0"
+version = "4.6.0"
 
 master_phil_str = '''
 profile = False
@@ -1178,12 +1178,12 @@ Note:
               node.spike[0], node.spike[1], node.spike[2], sl, score/density)
 
           try:
-            tName = t.element
+            tName = self._atomClasses[t]
             tBVal = "{:.2f}".format(t.b)
           except Exception:
             tName = ""
             tBVal = ""
-          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(a.element, tName,
+          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
             node.loc[0], node.loc[1], node.loc[2])
 
           ret += ":{:.2f}:{}\n".format(a.b, tBVal)
