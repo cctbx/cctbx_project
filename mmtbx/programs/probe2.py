@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.2.0"
+version = "4.7.0"
 
 master_phil_str = '''
 profile = False
@@ -712,10 +712,14 @@ Note:
       :param a: Atom whose class is to be specified
       :return: If our parameters have been set to color and sort by NA base,
       then it returns the appropriate base name.  Otherwise, it returns the
-      element of the atom.
+      element of the atom with any second letter in the element name lower-case
+      to match the values in the _allAtomClasses list.
     '''
     if not self.params.output.color_by_na_base:
-      return a.element
+      val = a.element
+      if len(val) > 1:
+        val = val[0] + val[1:].lower()
+      return val
     else:
       resName = a.parent().resname
       cl = common_residue_names_get_class(name = resName)
@@ -1134,7 +1138,7 @@ Note:
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          ret += "{:>2s}{:>4s}{}{:>3s} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1146,12 +1150,12 @@ Note:
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
             alt = t.parent().altloc
-            ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
+            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
-            sl = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length()
-            gap = sl - (r1 + r2)
+            sl = (node.loc-node.spike).length()
+            gap = (Helpers.rvec3(a.xyz)-Helpers.rvec3(t.xyz)).length() - (r1 + r2)
             dtgp = node.gap
             score = 0.0
 
@@ -1174,12 +1178,12 @@ Note:
               node.spike[0], node.spike[1], node.spike[2], sl, score/density)
 
           try:
-            tName = t.element
+            tName = self._atomClasses[t]
             tBVal = "{:.2f}".format(t.b)
           except Exception:
             tName = ""
             tBVal = ""
-          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(a.element, tName,
+          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
             node.loc[0], node.loc[1], node.loc[2])
 
           ret += ":{:.2f}:{}\n".format(a.b, tBVal)
@@ -1314,7 +1318,7 @@ Note:
           else:
             ptmast = " '{}' ".format(node.ptmaster)
 
-          pointid = "{}{:1s}{} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
+          pointid = "{}{:1s}{:>3s} {:>3d} {:1s}{}".format(a.name, a.parent().altloc, a.parent().resname,
             a.parent().parent().resseq_as_int(), a.parent().parent().icode,
             a.parent().parent().parent().id)
           if pointid != lastPointID:
@@ -1845,11 +1849,17 @@ Note:
     # Get the bonding information we'll need to exclude our bonded neighbors.
     allAtoms = self.model.get_atoms()
     make_sub_header('Compute neighbor lists', out=self.logger)
+
+    self.model.set_stop_for_unknowns(False)
     p = mmtbx.model.manager.get_default_pdb_interpretation_params()
     p.pdb_interpretation.use_neutron_distances = self.params.use_neutron_distances
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    # We need to turn this on because without it the interpretation is
+    # renaming atoms to be more correct.  Unfortunately, this causes the
+    # dot names to no longer match the input file.
+    p.pdb_interpretation.flip_symmetric_amino_acids=False
     try:
       self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
       geometry = self.model.get_restraints_manager().geometry
