@@ -1009,6 +1009,7 @@ def run(pdb_filename=None,
         raw_records=None,
         return_formal_charges=False,
         verbose=False,
+        cif_objects=None,
         ):
   # legacy from Q|R...
   if pdb_filename:
@@ -1028,6 +1029,7 @@ def run(pdb_filename=None,
   working_params.pdb_interpretation.automatic_linking.link_metals=True
   model = mmtbx.model.manager(
     model_input = inp,
+    restraint_objects=cif_objects,
     log = log,
   )
   model.process(make_restraints=True,
