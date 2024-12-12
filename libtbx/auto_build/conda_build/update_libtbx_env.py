@@ -163,6 +163,10 @@ def update_libtbx_env(default_dir=None):
           new_paths[0] = None
           new_paths[1] = env.as_relocatable_path(new_path + '_' + module.mate_suffix)
           break
+        if module.name == 'phaser_voyager' and os.path.isdir(os.path.join(path, 'New_Voyager')):
+          new_paths[0] = env.as_relocatable_path(os.path.join(path, 'New_Voyager'))
+          new_paths[1] = None
+          break
     dist_paths = module.dist_paths
     for i, path in enumerate(dist_paths):
       if path is not None:
