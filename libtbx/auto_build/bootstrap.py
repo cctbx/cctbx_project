@@ -782,6 +782,13 @@ class qrefine_module(SourceModule):
                'https://github.com/qrefine/qrefine.git',
                ]
 
+class pydiscamb_module(SourceModule):
+  module = 'pyDiSCaMB'
+  anonymous = ['git',
+               'git@github.com:viljarjf/pyDiSCaMB.git',
+               'https://github.com/viljarjf/pyDiSCaMB.git',
+               ]
+
 class mon_lib_module(SourceModule):
   module = 'mon_lib'
   anonymous = ['curl', 'http://boa.lbl.gov/repositories/mon_lib.gz']
@@ -2434,7 +2441,10 @@ class PhenixBuilder(CCIBuilder):
     super(PhenixBuilder, self)._add_git(module, parameters, destination)
     if module == 'boost':
       workdir = ['modules', module]
-      self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
+      if self.category == 'phenix_discamb':
+        self.add_step(self.shell(command=['git', 'checkout', '1.86'], workdir=workdir))
+      else:
+        self.add_step(self.shell(command=['git', 'checkout', '1.74'], workdir=workdir))
     elif (module == 'dials' or module == 'dxtbx' or module == 'xia2') and self.python3:
       workdir = ['modules', module]
       if module == 'dxtbx':
@@ -2580,6 +2590,26 @@ in your path. """)
         run_dials_tests=False
     if run_dials_tests:
       self.add_test_parallel('dials', flunkOnFailure=False, warnOnFailure=True)
+
+class PhenixDiscambBuilder(PhenixBuilder):
+  CODEBASES_EXTRA = PhenixBuilder.CODEBASES_EXTRA + ['pyDiSCaMB']
+
+  def get_libtbx_configure(self):
+    configlst = super(PhenixDiscambBuilder, self).get_libtbx_configure()
+    # switch to C++14 for new environments
+    if '--cxxstd=c++14' not in configlst:
+      configlst.append('--cxxstd=c++14')
+    return configlst
+
+  def add_make(self):
+    super(PhenixDiscambBuilder, self).add_make()
+    # install pyDiSCaMB
+    python = os.path.normpath(os.path.join(os.getcwd(), 'build', self.python_base))
+    self.add_step(self.shell(
+      command=[python, '-m', 'pip', 'install', '.'],
+        workdir=['modules', 'pyDiSCaMB'],
+        description='pip installing pyDiSCaMB',
+      ))
 
 class PhenixExternalRegression(PhenixBuilder):
   EXTERNAL_CODEBASES = [
@@ -2851,7 +2881,9 @@ def set_builder_defaults(options):
       # restore default for CentOS 7
       if sys.platform.startswith('linux') and '.el7.' in platform.platform():
         options.no_boost_src = False
-  if options.builder == 'phenix_voyager' or options.builder == 'phenix' \
+  if options.builder == 'phenix' \
+    or options.builder == 'phenix_discamb' \
+    or options.builder == 'phenix_voyager' \
     or options.builder == 'molprobity':
     # Apple Silicon uses Boost 1.78 in environment, Python 3.9
     if platform.mac_ver()[-1] == 'arm64':
@@ -2863,6 +2895,8 @@ def set_builder_defaults(options):
         options.no_boost_src = False
     if options.use_conda is None:
       options.use_conda = ''
+    if options.builder == 'phenix_discamb':
+      options.python = '39'
 
   return options
 
@@ -2871,6 +2905,7 @@ def run(root=None):
     'cctbxlite': CCTBXLiteBuilder,
     'cctbx': CCTBXBuilder,
     'phenix': PhenixBuilder,
+    'phenix_discamb': PhenixDiscambBuilder,
     'phenix_voyager': PhenixBuilder,
     'phenix_release': PhenixReleaseBuilder,
     'xfellegacy': XFELLegacyBuilder,
