@@ -60,12 +60,17 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         for (size_t i = 0; i < beam_groups.size(); i++) {
           BeamGroup<FloatType>& beam_group = beam_groups[i];
           beam_groups_map.insert(std::make_pair(beam_group.id, &beam_group));
-          af::shared<miller::index<> > indices =
+          for (size_t hi = 0; hi < beam_group.strong_beams.size(); hi++) {
+            const miller::index<>& h = beam_group.indices[beam_group.strong_beams[hi]];
+            all_indices.push_back(h);
+            all_indices.push_back(-h);
+          }
+          lookup_ptr_t mi_l(new lookup_t(
             af::select(beam_group.indices.const_ref(),
-              beam_group.strong_measured_beams.const_ref());
-          lookup_ptr_t mi_l(new lookup_t(indices.const_ref(), P1, true));
-          beam_group_lookups.insert(std::make_pair(beam_group.id, mi_l));
-          all_indices.extend(indices.begin(), indices.end());
+              beam_group.strong_measured_beams.const_ref()).const_ref(),
+            P1,
+            true));
+          beam_group_lookups.insert(std::make_pair(beam_groups[i].id, mi_l));
         }
       }
       else {
@@ -267,7 +272,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
       mat3_t da_rm = beam_group->geometry->get_RM(da);
       cart_t da_n = da_rm.transpose() * beam_group->geometry->get_normal();
-      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
+      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
         data.params.getMatrixType(),
         *beam_group, data.K, data.thickness.value,
         data.params.useNBeamSg(), data.params.getNBeamWght());
@@ -379,7 +384,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
       mat3_t da_rm = group.geometry->get_RM(da);
       cart_t da_n = da_rm.transpose() * group.geometry->get_normal();
-      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN(),
+      dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
         data.params.getMatrixType(),
         group, data.K, data.thickness.value,
         data.params.useNBeamSg(), data.params.getNBeamWght());
