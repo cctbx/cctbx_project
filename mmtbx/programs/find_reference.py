@@ -9,6 +9,7 @@ from scitbx.array_family import flex
 
 from mmtbx.wwpdb.rcsb_web_services import reference_chain_search
 from iotbx.pdb.fetch import fetch
+from iotbx.bioinformatics.pdb_info import get_experimental_pdb_info
 
 from libtbx.utils import Sorry
 from libtbx import Auto
@@ -74,6 +75,13 @@ Usage examples:
 
   # ---------------------------------------------------------------------------
 
+  def write_homologue_summary(self, list_of_results, first_n=10):
+    pdb_ids = [x.split('.')[0] for x in list_of_results]
+    exp_list, exp_dict = get_experimental_pdb_info(pdb_ids)
+    print("  pdb id, resolution, rwork, rfree, first %d items" % first_n, file=self.logger)
+    for item in exp_list[:first_n]:
+      print("  %s: %s" % (item[0], item[1:]), file=self.logger)
+
   def run(self):
     self.result = []
     model = self.data_manager.get_model()
@@ -88,6 +96,7 @@ Usage examples:
                              include_csm=self.params.include_computed_models)
       print('  Chain sequence:', seq)
       print('  Reference search results:',ref_search_result, file=self.logger)
+      self.write_homologue_summary(ref_search_result)
       if ref_search_result:
         ref_model_id, ref_label_id = ref_search_result[0].split('.')
         ref_m = fetch_model(ref_model_id)
