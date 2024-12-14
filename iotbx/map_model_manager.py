@@ -948,7 +948,8 @@ class map_model_manager(object):
 
     if model and \
       self.map_manager() and (
-         not self.map_manager().is_compatible_model(model)):
+         not self.map_manager().is_compatible_model(model,
+          require_match_unit_cell_crystal_symmetry=True)):
       # needs shifting
       self.shift_any_model_to_match(model,
          set_unit_cell_crystal_symmetry = True)
@@ -7894,7 +7895,8 @@ class map_model_manager(object):
      "There is no map with id='%s' available for density_at_model_sites" %(
          map_id))
 
-    assert self.map_manager().is_compatible_model(model) # model must match
+    assert self.map_manager().is_compatible_model(model,
+       require_match_unit_cell_crystal_symmetry=True) # model must match
 
     if selection_string:
       sel = model.selection(selection_string)
@@ -7938,7 +7940,8 @@ class map_model_manager(object):
          map_id))
 
 
-    if not self.map_manager().is_compatible_model(model): # model must match
+    if not self.map_manager().is_compatible_model(model,
+        require_match_unit_cell_crystal_symmetry=True): # model must match
       print("Setting model crystal symmetry to match map", file = self.log)
       model = model.deep_copy()
       model.set_crystal_symmetry(self.map_manager().crystal_symmetry())
@@ -8632,7 +8635,8 @@ class map_model_manager(object):
         log = null_out())
 
     if have_map_manager:  #  make sure model matches
-      if not self.map_manager().is_compatible_model(model):
+      if not self.map_manager().is_compatible_model(model,
+          require_match_unit_cell_crystal_symmetry=True):
          self.shift_any_model_to_match(model,
          set_unit_cell_crystal_symmetry = True)
 
