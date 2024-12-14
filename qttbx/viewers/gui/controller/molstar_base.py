@@ -12,7 +12,7 @@ from molstar_adaptbx.phenix.molstar import MolstarGraphics
 from molstar_adaptbx.phenix.utils import get_conda_env_directory
 from molstar_adaptbx.phenix.server_utils import NodeHttpServer
 from qttbx.viewers.gui.controller.viewer_controls_base import ViewerControlsBaseController
-from qttbx.viewers.gui.model.refs import ModelRef
+from qttbx.viewers.gui.model.refs import ModelRef, SelectionRef
 
 
 class MolstarBaseController(Controller):
