@@ -79,7 +79,8 @@ class with_bounds(object):
     assert self._map_manager.map_data().accessor().origin()  ==  (0, 0, 0)
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.is_compatible_model(model)
+      assert map_manager.is_compatible_model(model,
+        require_match_unit_cell_crystal_symmetry=True)
 
     self._force_wrapping = wrapping
     if wrapping is None:
@@ -629,7 +630,8 @@ class around_unique(with_bounds):
     assert resolution is not None
     if model is not None:
       assert isinstance(model, mmtbx.model.manager)
-      assert map_manager.is_compatible_model(model)
+      assert map_manager.is_compatible_model(model,
+        require_match_unit_cell_crystal_symmetry=True)
     if self.map_manager().wrapping():  # map must be entire unit cell
       assert map_manager.unit_cell_grid == map_manager.map_data().all()
 

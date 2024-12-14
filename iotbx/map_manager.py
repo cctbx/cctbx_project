@@ -1926,7 +1926,7 @@ class map_manager(map_reader, write_ccp4_map):
     return ok
 
   def is_compatible_model(self, model,
-       require_match_unit_cell_crystal_symmetry=True,
+       require_match_unit_cell_crystal_symmetry = False,
         absolute_angle_tolerance = 0.01,
         absolute_length_tolerance = 0.01,
         shift_tol = 0.001):
@@ -1940,13 +1940,12 @@ class map_manager(map_reader, write_ccp4_map):
         2. model current symmetry does not match map original or current
         3. model has a shift_cart (shift applied) different than map shift_cart
 
-      NOTE: a True result does not mean that the model crystal_symmetry matches
-      the map crystal_symmetry.  It does mean that it is reasonable to set the
-      model crystal_symmetry to match the map ones.
-
       If require_match_unit_cell_crystal_symmetry is True, then they are
-      different if anything is different. If it is False, allow original
-       symmetries do not have to match
+      incompatible if anything is different.
+
+      If require_match_unit_cell_crystal_symmetry is False, original
+       symmetries do not have to match.  Model crystal_symmetry can match
+       the unit_cell_crystal_symmetry or crystal_symmetry of the map.
     '''
 
     ok=None
@@ -1983,6 +1982,8 @@ class map_manager(map_reader, write_ccp4_map):
     text_map_uc=str(map_uc).replace("\n"," ")
     text_map=str(map_sym).replace("\n"," ")
 
+    assert map_sym # map_sym should always should be there. model_sym could be missing
+
     if require_match_unit_cell_crystal_symmetry and map_uc and (
       not model_uc) and (
        not map_sym.is_similar_symmetry(map_uc,
@@ -1998,7 +1999,7 @@ class map_manager(map_reader, write_ccp4_map):
         "\n%s\n. Current map symmetry is: \n%s\n " %(
          text_map_uc,text_map)
 
-    elif  model_uc and map_uc and (
+    elif model_sym and model_uc and map_uc and (
         (not map_uc.is_similar_symmetry(map_sym,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,))
@@ -2014,13 +2015,13 @@ class map_manager(map_reader, write_ccp4_map):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
          ) ) ):
-       ok=False# model and map_manager symmetries present and do not match
+       ok=False # model and map_manager uc present and some symmetries do not match
        text="Model original symmetry: \n%s\n and current symmetry :\n%s\n" %(
           text_model_uc,text_model)+\
           "do not match map unit_cell symmetry:"+\
          " \n%s\n and map current symmetry: \n%s\n symmetry" %(
            text_map_uc,text_map)
-    elif model_sym and map_uc and (not model_sym.is_similar_symmetry(map_uc,
+    elif map_uc and model_sym and (not model_sym.is_similar_symmetry(map_uc,
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         )) and (not
@@ -2028,17 +2029,27 @@ class map_manager(map_reader, write_ccp4_map):
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         )):
-       ok=False# model does not match either map symmetry
+       ok=False # model does not match either map symmetry
        text="Model current symmetry: \n%s\n" %(
           text_model)+\
           " does not match map unit_cell symmetry:"+\
            " \n%s\n or map current symmetry: \n%s\n" %(
            text_map_uc,text_map)
+    elif model_sym and (not model_uc) and (not map_uc) and (
+           not model_sym.is_similar_symmetry(map_sym,
+        absolute_angle_tolerance = absolute_angle_tolerance,
+        absolute_length_tolerance = absolute_length_tolerance,
+        )):
+       ok=False # model has no uc and model symmetry does not match map symmetry
+       text="Model current symmetry: \n%s\n" %(
+          text_model)+\
+          " does not match map symmetry: \n%s\n" %( text_map)
 
     elif require_match_unit_cell_crystal_symmetry and (
         not model_sym) and (not model_uc):
        ok=False # model does not have any symmetry so it does not match
        text="Model has no symmetry and cannot match any map"
+
     elif (not model_sym) and (not model_uc):
        ok=True # model does not have any symmetry so anything is ok
        text="Model has no symmetry and can match any map symmetry"
