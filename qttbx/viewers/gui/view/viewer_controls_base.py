@@ -75,6 +75,7 @@ def form_panel(components, component_text):
 class ViewerControlsBaseView(QWidget):
   def __init__(self, parent=None):
     super().__init__(parent=parent)
+    print("Init ViewerControlsBaseView")
     self._all_button_width = 48
     self._all_button_height = 48
     self._all_icon_size = 16
