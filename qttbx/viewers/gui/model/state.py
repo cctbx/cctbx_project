@@ -14,7 +14,7 @@ from PySide2.QtWidgets import QMessageBox
 
 from iotbx.data_manager import DataManager
 
-from .refs import Ref, DataManagerRef, ModelRef
+from .refs import Ref, DataManagerRef, ModelRef, SelectionRef
 
 
 class ActiveEmitDict(dict):
@@ -46,6 +46,12 @@ class StateSignals(QObject):
   remove_ref = Signal(Ref)
 
 
+  # Selection signals
+  picking_level = Signal(str) # picking granularity ('atom', 'residue')
+  selection_added = Signal(SelectionRef)
+  selection_activated = Signal(object)
+  select_all = Signal()
+  select_none = Signal()
 
 class State:
   """
@@ -130,6 +136,17 @@ class State:
   def active_model(self):
     return self.active_model_ref.model
 
+  @property
+  def active_selection_ref(self):
+    return self._active_selection_ref
+
+  @active_selection_ref.setter
+  def active_selection_ref(self,value):
+    assert isinstance(value,(Ref,type(None)))
+    self._active_selection_ref = value
+    self.signals.active_change.emit(value)
+    if value is None:
+      self.signals.select_none.emit()
 
   def add_ref(self,ref,emit=True):
     """
@@ -168,3 +185,7 @@ class State:
   def dm(self):
     # alias
     return self.data_manager
+
+  @property
+  def references_selection(self):
+    return [ref for ref_id,ref in self.refs.items() if isinstance(ref,SelectionRef)]
