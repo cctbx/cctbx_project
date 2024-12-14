@@ -236,7 +236,7 @@ def reference_chain_search(sequence, identity_cutoff=0.9, include_csm=False, **k
     "sort": [
       {
         "sort_by": "reflns.d_resolution_high",
-        "direction": "desc"
+        "direction": "asc"
       }
     ]
   }
