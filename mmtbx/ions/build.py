@@ -369,7 +369,8 @@ def clean_up_ions(fmodel, model, params, log=None, verbose=True):
     segids=[ "ION" for atom in ion_atoms ],
     refine_occupancies=params.refine_ion_occupancies,
     refine_adp="isotropic",
-    reset_labels=True)
+    reset_labels=True,
+    conformer_indices=None)
   n_sites_end = new_model.get_number_of_atoms()
   new_hierarchy = new_model.get_hierarchy()
   n_sites_pdb = new_hierarchy.atoms_size()
