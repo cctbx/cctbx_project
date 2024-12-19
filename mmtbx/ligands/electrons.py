@@ -303,7 +303,8 @@ class electron_distribution(dict):
   def _has_metal(self, atom1, atom2):
     is_metal_count = [0,1][self.properties.is_metal(atom1.element)]
     is_metal_count+= [0,1][self.properties.is_metal(atom2.element)]
-    if is_metal_count==2: assert 0
+    if is_metal_count==2:
+      print('\nMore than one metal in a bond can lead to issues. CHECK!', file=self.logger)
     return is_metal_count
 
   def is_metal_bond(self, key):

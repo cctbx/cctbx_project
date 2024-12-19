@@ -1163,6 +1163,7 @@ def update_restraints(model,
     try:
       model.process(make_restraints=True)
     except Sorry as e:
+      print(model.log.getvalue())
       raise e
   if quantum_interface.is_quantum_interface_active_this_macro_cycle(params,
                                                                     macro_cycle,
