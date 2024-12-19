@@ -8,16 +8,16 @@ import iotbx.phil
 from scitbx.array_family import flex
 
 from mmtbx.wwpdb.rcsb_web_services import reference_chain_search
+from mmtbx.wwpdb.rcsb_entry_request import get_info
 from iotbx.pdb.fetch import fetch
-from iotbx.bioinformatics.pdb_info import get_experimental_pdb_info
 
-from libtbx.utils import Sorry
+from libtbx.utils import Sorry, urlopen
 from libtbx import Auto
 import os
 
 # =============================================================================
 
-def fetch_model(model_id):
+def fetch_model(model_id, model_info):
   """presently only experimental ones
 
   Args:
@@ -27,10 +27,14 @@ def fetch_model(model_id):
       Sorry: _description_
 
   Returns:
-      _type_: _description_
+      _type_: _description
   """
   try:
-    m_data = fetch(id=model_id, entity='model_cif')
+    if model_info.is_computational():
+      url = model_info.get_source_url()
+      m_data = urlopen(url)
+    else:
+      m_data = fetch(id=model_id, entity='model_cif')
   except RuntimeError as e:
     if str(e).find("Couldn't download") >= 0:
       pass
@@ -75,12 +79,31 @@ Usage examples:
 
   # ---------------------------------------------------------------------------
 
-  def write_homologue_summary(self, list_of_results, first_n=10):
-    pdb_ids = [x.split('.')[0] for x in list_of_results]
-    exp_list, exp_dict = get_experimental_pdb_info(pdb_ids)
-    print("  pdb id, resolution, rwork, rfree, first %d items" % first_n, file=self.logger)
-    for item in exp_list[:first_n]:
-      print("  %s: %s" % (item[0], item[1:]), file=self.logger)
+  def write_homologue_summary(self, model_infos, first_n=10):
+    print("    pdb id, resolution, rwork, rfree, first %d items" % first_n, file=self.logger)
+    print("    pdb id, pLDDT, first %d items" % first_n, file=self.logger)
+    for mi in model_infos[:first_n]:
+      if not mi.is_computational():
+        print("    %s: %s, %s, %s" % (
+            mi.get_pdb_id(),
+            mi.get_resolution(),
+            mi.get_rwork(),
+            mi.get_rfree()), file=self.logger)
+      else:
+        print("    %s: %.2f" % (
+            mi.get_pdb_id(),
+            mi.get_plddt()), file=self.logger)
+
+  def pick_homologue(self, search_results):
+    """pick the best homologue
+    """
+    model_infos = get_info([a.split('.')[0].replace(":", "_") for a in search_results])
+    self.write_homologue_summary(model_infos, first_n=10)
+    # try to return first computational instead:
+    # for sr, mi in zip(search_results, model_infos):
+    #   if mi.is_computational():
+    #     return sr, mi
+    return search_results[0], model_infos[0]
 
   def run(self):
     self.result = []
@@ -96,13 +119,15 @@ Usage examples:
                              include_csm=self.params.include_computed_models)
       print('  Chain sequence:', seq)
       print('  Reference search results:',ref_search_result, file=self.logger)
-      self.write_homologue_summary(ref_search_result)
-      if ref_search_result:
-        ref_model_id, ref_label_id = ref_search_result[0].split('.')
-        ref_m = fetch_model(ref_model_id)
+      homology_model, model_info = self.pick_homologue(ref_search_result)
+      print('  Picked homology model: %s' % homology_model, file=self.logger)
+      if homology_model:
+        ref_model_id, ref_label_id = homology_model.split('.')
+        ref_m = fetch_model(ref_model_id, model_info)
+        ref_m.add_crystal_symmetry_if_necessary()
         label_auth_dict = ref_m.get_model_input().label_to_auth_asym_id_dictionary()
         ref_chain_id = label_auth_dict.get(ref_label_id, ref_label_id)
-        print("  ref label --> chain: '%s' --> '%s' " % (ref_label_id, ref_chain_id), file=self.logger)
+        # print("  ref label --> chain: '%s' --> '%s' " % (ref_label_id, ref_chain_id), file=self.logger)
         # print('  ref_m atom size: ', ref_m.get_hierarchy().atoms_size())
         selection = ref_m.selection("chain %s and protein" % ref_chain_id)
         cutted_ref_m = ref_m.select(selection)
