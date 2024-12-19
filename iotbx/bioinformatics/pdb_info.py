@@ -29,6 +29,9 @@ def get_experimental_pdb_info(pdbids, site="rcsb"):
   """
   returns list of tuples (pdb_id, resolution, rwork, rfree) and dict
   pdbid: (resolution, rwork, rfree)
+
+
+  OBSOLETED. New functionality is mmtbx.wwpdb.rcsb_entry_request.get_info
   """
   rlist = []
   rdict = {}
