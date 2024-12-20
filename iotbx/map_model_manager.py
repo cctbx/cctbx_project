@@ -1185,7 +1185,6 @@ class map_model_manager(object):
     if extract_box and model: # make sure everything is deep_copy
       model = model.deep_copy()
 
-
     if soft_mask_around_edges: # make the cushion bigger
       pass # Here we fix the bounds based on what is requested
 
@@ -1205,7 +1204,8 @@ class map_model_manager(object):
     # Now box is a copy of map_manager and model that is boxed
 
     # Now apply boxing to other maps and models and then insert them into
-    #  either this map_model_manager object, replacing what is there (extract_box=False)
+    #  either this map_model_manager object, replacing what is there
+    #  (extract_box=False)
     #  or create and return a new map_model_manager object (extract_box=True)
     return self._finish_boxing(box = box, model_info = model_info,
       map_info = map_info,
@@ -9850,24 +9850,53 @@ def get_split_maps_and_models(
   else:
     lower_bounds_list = box_info.lower_bounds_list
     upper_bounds_list = box_info.upper_bounds_list
+
+  # Make a copy of model that does not have grm and use it for
+  #   masking outside model if necessary
+  # Select original model atoms to use before doing boxing
+
+  original_model = map_model_manager.model()
+  if original_model and box_info.mask_around_unselected_atoms:
+    model_no_grm = map_model_manager.model().deep_copy()
+    model_no_grm.unset_restraints_manager()
+  else:
+    model_no_grm = None
+
   for lower_bounds, upper_bounds, selection in zip(
        lower_bounds_list,
        upper_bounds_list,
        box_info.selection_list,):
+    if original_model:
+      working_model = original_model.select(selection)
+      # Just use the good part here, restore just below
+      map_model_manager.set_model(working_model)
+
+      if model_no_grm:
+        # Add in the model_no_grm to carry along and shift
+        map_model_manager.add_model_by_id(
+         model_id='model_no_grm', model = model_no_grm)
 
     mmm=map_model_manager.extract_all_maps_with_bounds(
      lower_bounds, upper_bounds,
      model_can_be_outside_bounds = True)
 
-    if mmm.model():
-      model_to_keep = mmm.model().select(selection)
-    else:
-      model_to_keep = None
-    if box_info.mask_around_unselected_atoms:  # mask everything we didn't keep
+    shifted_model_no_grm_not_used = None
+    if original_model:
+      # Restore original model
+      map_model_manager.set_model(original_model)
+
+      if model_no_grm:
+        # Collect and remove the shifted model_no_grm
+        shifted_model_no_grm = mmm.get_model_by_id(model_id='model_no_grm')
+        map_model_manager.remove_model_by_id(model_id='model_no_grm')
+        mmm.remove_model_by_id(model_id='model_no_grm')
+        shifted_model_no_grm_not_used = shifted_model_no_grm.select(~selection)
+
+    if shifted_model_no_grm_not_used and \
+       box_info.mask_around_unselected_atoms:  # mask everything we didn't keep
       # NOTE: only applies mask to map_manager, not any other map_managers
-      remaining_model=mmm.model().select(~selection)
       nnn=mmm.deep_copy()
-      nnn.set_model(remaining_model)
+      nnn.set_model(shifted_model_no_grm_not_used)
       nnn.remove_model_outside_map(boundary=box_info.mask_radius)
       if nnn.model().get_sites_cart().size() > 0: # do something
         nnn.create_mask_around_atoms(
@@ -9878,11 +9907,9 @@ def get_split_maps_and_models(
         mmm.map_manager().map_data().set_selected(s,box_info.masked_value)
     elif box_info.mask_all_maps_around_edges:  # mask around edges
       mmm.mask_all_maps_around_edges()
-
-    if model_to_keep:
-      mmm.set_model(model_to_keep)
     mmm_list.append(mmm)
   box_info.mmm_list = mmm_list
+
   return box_info
 
 def get_selections_and_boxes_to_split_model(
