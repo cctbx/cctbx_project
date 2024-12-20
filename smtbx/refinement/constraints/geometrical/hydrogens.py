@@ -261,11 +261,17 @@ class terminal_planar_xh2_sites(hydrogens):
         if j == k: continue
         reparametrisation.fixed_angles.setdefault(
           (j, self.pivot, k), 120.0)
+    uc = reparametrisation.structure.unit_cell()
+    x_s = col(pivot_site)
+    d_s = sorted(
+        (uc.distance(s.value, x_s), i)
+        for i, s in enumerate(pivot_neighbour_substituent_site_params)
+    )
     return reparametrisation.add(
       _.terminal_planar_xh2_sites,
       pivot=pivot_site_param,
       pivot_neighbour=pivot_neighbour_site_params[0],
-      pivot_neighbour_substituent=pivot_neighbour_substituent_site_params[0],
+      pivot_neighbour_substituent=pivot_neighbour_substituent_site_params[d_s[0][1]],
       length=bond_length,
       hydrogen_0=hydrogens[0],
       hydrogen_1=hydrogens[1])
