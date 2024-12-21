@@ -157,14 +157,16 @@ class tg(object):
 
 class ncs_aware_refinement(object):
   def __init__(self, map_model_manager, d_min, atom_radius, nproc=1,
-               log = None, individual = True, restraints_weight = 1):
-    self.mmm         = map_model_manager
-    self.nproc       = nproc
-    self.d_min       = d_min
-    self.atom_radius = atom_radius
-    self.log         = log
-    self.individual  = individual
+               log = None, individual = True, restraints_weight = 1,
+               group_mode = None):
+    self.mmm               = map_model_manager
+    self.nproc             = nproc
+    self.d_min             = d_min
+    self.atom_radius       = atom_radius
+    self.log               = log
+    self.individual        = individual
     self.restraints_weight = restraints_weight
+    self.group_mode        = group_mode
     #
     ncs_groups = self.mmm.model().get_ncs_groups()
     if(ncs_groups is None or len(ncs_groups)==0):
@@ -224,8 +226,15 @@ class ncs_aware_refinement(object):
     ph_box = model.get_hierarchy()
     ph_box.atoms().reset_i_seq()
     group_adp_sel = []
-    for rg in ph_box.residue_groups():
-      group_adp_sel.append(rg.atoms().extract_i_seq())
+    if(self.group_mode=="one_per_residue"):
+      for rg in ph_box.residue_groups():
+        group_adp_sel.append(rg.atoms().extract_i_seq())
+    elif(self.group_mode=="one_per_chain"):
+      for chain in ph_box.chains():
+        group_adp_sel.append(chain.atoms().extract_i_seq())
+    else:
+      raise RuntimeError(
+        "Invalid group_mode (adp.group.mode): %s"%str(self.group_mode))
     #
     b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
     if(flex.max(b_isos)<1.e-2):
