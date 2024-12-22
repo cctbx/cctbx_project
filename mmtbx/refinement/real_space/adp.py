@@ -233,33 +233,33 @@ class ncs_aware_refinement(object):
       for chain in ph_box.chains():
         group_adp_sel.append(chain.atoms().extract_i_seq())
     else:
-      raise RuntimeError(
-        "Invalid group_mode (adp.group.mode): %s"%str(self.group_mode))
-    #
-    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-    if(flex.max(b_isos)<1.e-2):
-      b_isos = flex.random_double(model.size())*10
+      assert self.group_mode is None
+    if self.group_mode is not None:
+      #
+      b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+      if(flex.max(b_isos)<1.e-2):
+        b_isos = flex.random_double(model.size())*10
+        model.set_b_iso(values = b_isos)
+        fmodel.xray_structure.set_b_iso(values = b_isos)
+        fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
+          update_f_calc = True)
+      #
+      number_of_macro_cycles = 3
+      if(self.individual): number_of_macro_cycles = 1
+      group_b_manager = mmtbx.refinement.group.manager(
+        fmodel                   = fmodel,
+        selections               = group_adp_sel,
+        convergence_test         = False,
+        max_number_of_iterations = 50,
+        number_of_macro_cycles   = number_of_macro_cycles,
+        run_finite_differences_test = False,
+        use_restraints           = True,
+        refine_adp               = True,
+        log                      = log)
+      fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
+        remove_outliers=False)
+      b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
       model.set_b_iso(values = b_isos)
-      fmodel.xray_structure.set_b_iso(values = b_isos)
-      fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
-        update_f_calc = True)
-    #
-    number_of_macro_cycles = 3
-    if(self.individual): number_of_macro_cycles = 1
-    group_b_manager = mmtbx.refinement.group.manager(
-      fmodel                   = fmodel,
-      selections               = group_adp_sel,
-      convergence_test         = False,
-      max_number_of_iterations = 50,
-      number_of_macro_cycles   = number_of_macro_cycles,
-      run_finite_differences_test = False,
-      use_restraints           = True,
-      refine_adp               = True,
-      log                      = log)
-    fmodel.update_all_scales(update_f_part1=False, apply_back_trace=True,
-      remove_outliers=False)
-    b_isos = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
-    model.set_b_iso(values = b_isos)
     #
     if(self.individual):
       if(log is not None):
