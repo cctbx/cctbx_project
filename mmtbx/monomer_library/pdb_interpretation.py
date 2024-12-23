@@ -30,6 +30,7 @@ import textwrap
 import time
 import math
 import numpy as np
+from copy import deepcopy
 
 from cctbx.geometry_restraints.linking_class import linking_class
 from six.moves import zip, range
@@ -2660,6 +2661,11 @@ class build_chain_proxies(object):
     prev_mm = None
     prev_prev_mm = None
     pdb_residues = conformer.residues()
+    #
+    # Deep copy is needed in case of altlocs
+    #
+    apply_restraints_specifications_dc = deepcopy(apply_restraints_specifications)
+    #
     for i_residue,residue in enumerate(pdb_residues):
       def _get_next_residue():
         j = i_residue + 1
@@ -2667,13 +2673,13 @@ class build_chain_proxies(object):
         return pdb_residues[j]
       # specific_residue_restraints
       specific_residue_restraints = None
-      if apply_restraints_specifications:
+      if apply_restraints_specifications_dc:
         atoms = residue.atoms()
         alt_locs = {}
         for atom in atoms: alt_locs.setdefault(atom.parent().altloc, 0)
         residue_i_seqs=atoms.extract_i_seq()
         min_i_seq, max_i_seq = min(residue_i_seqs), max(residue_i_seqs)
-        for selection, item in apply_restraints_specifications.items():
+        for selection, item in apply_restraints_specifications_dc.items():
           #print min_i_seq,max_i_seq,list(selection)
           if min_i_seq in selection and max_i_seq in selection:
             if selection.all_eq(residue_i_seqs):
@@ -2688,7 +2694,7 @@ class build_chain_proxies(object):
                   ' '*10), file=log)
                 continue
               specific_residue_restraints=item[1]
-              apply_restraints_specifications[selection]="OK"
+              apply_restraints_specifications_dc[selection]="OK"
               break
       #
       mm = monomer_mapping(
