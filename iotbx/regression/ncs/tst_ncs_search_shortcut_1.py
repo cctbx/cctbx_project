@@ -2,8 +2,9 @@ from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.ncs as ncs
 from iotbx import pdb
+from libtbx.test_utils import show_diff
 
-pdb_str_1="""\
+pdb_str_00="""\
 CRYST1   34.917   22.246   44.017  90.00  90.00  90.00 P 1
 SCALE1      0.028639  0.000000  0.000000        0.00000
 SCALE2      0.000000  0.044952  0.000000        0.00000
@@ -220,9 +221,152 @@ ATOM      5  CB  ALA B  21      10.799  11.332  12.178  1.00 50.00           C
 TER
 """
 
+pdb_str_01 = """\
+CRYST1   40.408   25.281   31.173  90.00  90.00  90.00 P 1
+ATOM      1  N   GLY A   1       5.043   9.706  12.193  1.00  1.00           N
+ATOM      2  CA  GLY A   1       5.000   9.301  10.742  1.00  1.00           C
+ATOM      3  C   GLY A   1       6.037   8.234  10.510  1.00  1.00           C
+ATOM      4  O   GLY A   1       6.529   7.615  11.472  1.00  1.00           O
+ATOM      5  N   ASN A   2       6.396   8.017   9.246  1.00  1.00           N
+ATOM      6  CA  ASN A   2       7.530   7.132   8.922  1.00  1.00           C
+ATOM      7  C   ASN A   2       8.811   7.631   9.518  1.00  1.00           C
+ATOM      8  O   ASN A   2       9.074   8.836   9.517  1.00  1.00           O
+ATOM      9  CB  ASN A   2       7.706   6.975   7.432  1.00  1.00           C
+ATOM     10  CG  ASN A   2       6.468   6.436   6.783  1.00  1.00           C
+ATOM     11  OD1 ASN A   2       6.027   5.321   7.107  1.00  1.00           O
+ATOM     12  ND2 ASN A   2       5.848   7.249   5.922  1.00  1.00           N
+ATOM     13  N   ASN A   3       9.614   6.684   9.996  1.00  1.00           N
+ATOM     14  CA  ASN A   3      10.859   6.998  10.680  1.00  1.00           C
+ATOM     15  C   ASN A   3      12.097   6.426   9.986  1.00  1.00           C
+ATOM     16  O   ASN A   3      12.180   5.213   9.739  1.00  1.00           O
+ATOM     17  CB  ASN A   3      10.793   6.472  12.133  1.00  1.00           C
+ATOM     18  CG  ASN A   3      12.046   6.833  12.952  1.00  1.00           C
+ATOM     19  OD1 ASN A   3      12.350   8.019  13.163  1.00  1.00           O
+ATOM     20  ND2 ASN A   3      12.781   5.809  13.397  1.00  1.00           N
+ATOM     21  N  AGLN A   4      13.047   7.322   9.689  0.50  1.00           N
+ATOM     22  CA AGLN A   4      14.436   6.982   9.290  0.50  1.00           C
+ATOM     23  C  AGLN A   4      15.487   7.700  10.179  0.50  1.00           C
+ATOM     24  O  AGLN A   4      15.599   8.937  10.206  0.50  1.00           O
+ATOM     25  CB AGLN A   4      14.708   7.242   7.802  0.50  1.00           C
+ATOM     26  CG AGLN A   4      15.996   6.552   7.304  0.50  1.00           C
+ATOM     27  CD AGLN A   4      16.556   7.138   6.002  0.50  1.00           C
+ATOM     28  OE1AGLN A   4      16.796   8.362   5.901  0.50  1.00           O
+ATOM     29  NE2AGLN A   4      16.802   6.255   5.000  0.50  1.00           N
+ATOM     30  N  BGLN A   4      13.147   7.322   9.689  0.50  1.00           N
+ATOM     31  CA BGLN A   4      14.536   6.982   9.290  0.50  1.00           C
+ATOM     32  C  BGLN A   4      15.587   7.700  10.179  0.50  1.00           C
+ATOM     33  O  BGLN A   4      15.699   8.937  10.206  0.50  1.00           O
+ATOM     34  CB BGLN A   4      14.808   7.242   7.802  0.50  1.00           C
+ATOM     35  CG BGLN A   4      14.009   6.298   6.878  0.50  1.00           C
+ATOM     36  CD BGLN A   4      14.201   6.577   5.382  0.50  1.00           C
+ATOM     37  OE1BGLN A   4      14.536   7.714   4.980  0.50  1.00           O
+ATOM     38  NE2BGLN A   4      14.021   5.524   4.544  0.50  1.00           N
+ATOM     39  N   GLN A   5      16.206   6.915  10.962  1.00  1.00           N
+ATOM     40  CA  GLN A   5      17.322   7.455  11.731  1.00  1.00           C
+ATOM     41  C   GLN A   5      18.646   6.862  11.263  1.00  1.00           C
+ATOM     42  O   GLN A   5      18.820   5.640  11.145  1.00  1.00           O
+ATOM     43  CB  GLN A   5      17.108   7.277  13.238  1.00  1.00           C
+ATOM     44  CG  GLN A   5      15.881   8.044  13.738  1.00  1.00           C
+ATOM     45  CD  GLN A   5      15.396   7.508  15.045  1.00  1.00           C
+ATOM     46  OE1 GLN A   5      14.826   6.419  15.093  1.00  1.00           O
+ATOM     47  NE2 GLN A   5      15.601   8.281  16.130  1.00  1.00           N
+ATOM     48  N   ASN A   6      19.566   7.758  10.947  1.00  1.00           N
+ATOM     49  CA  ASN A   6      20.883   7.404  10.409  1.00  1.00           C
+ATOM     50  C   ASN A   6      21.906   7.855  11.415  1.00  1.00           C
+ATOM     51  O   ASN A   6      22.271   9.037  11.465  1.00  1.00           O
+ATOM     52  CB  ASN A   6      21.117   8.110   9.084  1.00  1.00           C
+ATOM     53  CG  ASN A   6      20.013   7.829   8.094  1.00  1.00           C
+ATOM     54  OD1 ASN A   6      19.850   6.698   7.642  1.00  1.00           O
+ATOM     55  ND2 ASN A   6      19.247   8.841   7.770  1.00  1.00           N
+ATOM     56  N   TYR A   7      22.344   6.911  12.238  1.00  1.00           N
+ATOM     57  CA  TYR A   7      23.211   7.238  13.390  1.00  1.00           C
+ATOM     58  C   TYR A   7      24.655   7.425  12.976  1.00  1.00           C
+ATOM     59  O   TYR A   7      25.093   6.905  11.946  1.00  1.00           O
+ATOM     60  CB  TYR A   7      23.113   6.159  14.460  1.00  1.00           C
+ATOM     61  CG  TYR A   7      21.717   6.023  14.993  1.00  1.00           C
+ATOM     62  CD1 TYR A   7      20.823   5.115  14.418  1.00  1.00           C
+ATOM     63  CD2 TYR A   7      21.262   6.850  16.011  1.00  1.00           C
+ATOM     64  CE1 TYR A   7      19.532   5.000  14.887  1.00  1.00           C
+ATOM     65  CE2 TYR A   7      19.956   6.743  16.507  1.00  1.00           C
+ATOM     66  CZ  TYR A   7      19.099   5.823  15.922  1.00  1.00           C
+ATOM     67  OH  TYR A   7      17.818   5.683  16.382  1.00  1.00           O
+ATOM     68  OXT TYR A   7      25.410   8.093  13.703  1.00  1.00           O
+TER      69      TYR A   7
+ATOM     70  N   GLY B   1      15.117  17.344  24.100  1.00  2.00           N
+ATOM     71  CA  GLY B   1      14.893  17.193  22.618  1.00  2.00           C
+ATOM     72  C   GLY B   1      16.041  16.412  22.035  1.00  2.00           C
+ATOM     73  O   GLY B   1      16.791  15.749  22.776  1.00  2.00           O
+ATOM     74  N   ASN B   2      16.207  16.491  20.716  1.00  2.00           N
+ATOM     75  CA  ASN B   2      17.402  15.920  20.067  1.00  2.00           C
+ATOM     76  C   ASN B   2      18.662  16.557  20.568  1.00  2.00           C
+ATOM     77  O   ASN B   2      18.711  17.772  20.773  1.00  2.00           O
+ATOM     78  CB  ASN B   2      17.340  16.059  18.566  1.00  2.00           C
+ATOM     79  CG  ASN B   2      16.119  15.401  18.000  1.00  2.00           C
+ATOM     80  OD1 ASN B   2      15.938  14.182  18.151  1.00  2.00           O
+ATOM     81  ND2 ASN B   2      15.229  16.208  17.414  1.00  2.00           N
+ATOM     82  N   ASN B   3      19.686  15.722  20.731  1.00  2.00           N
+ATOM     83  CA  ASN B   3      20.958  16.158  21.285  1.00  2.00           C
+ATOM     84  C   ASN B   3      22.136  15.974  20.326  1.00  2.00           C
+ATOM     85  O   ASN B   3      22.381  14.862  19.832  1.00  2.00           O
+ATOM     86  CB  ASN B   3      21.237  15.389  22.598  1.00  2.00           C
+ATOM     87  CG  ASN B   3      22.532  15.849  23.291  1.00  2.00           C
+ATOM     88  OD1 ASN B   3      22.661  17.018  23.692  1.00  2.00           O
+ATOM     89  ND2 ASN B   3      23.498  14.932  23.416  1.00  2.00           N
+ATOM     90  N  AGLN B   4      22.853  17.079  20.087  0.50  2.00           N
+ATOM     91  CA AGLN B   4      24.189  17.098  19.439  0.50  2.00           C
+ATOM     92  C  AGLN B   4      25.240  17.850  20.300  0.50  2.00           C
+ATOM     93  O  AGLN B   4      25.142  19.061  20.559  0.50  2.00           O
+ATOM     94  CB AGLN B   4      24.150  17.658  18.011  0.50  2.00           C
+ATOM     95  CG AGLN B   4      25.431  17.336  17.211  0.50  2.00           C
+ATOM     96  CD AGLN B   4      25.647  18.237  15.989  0.50  2.00           C
+ATOM     97  OE1AGLN B   4      25.653  19.483  16.103  0.50  2.00           O
+ATOM     98  NE2AGLN B   4      25.863  17.606  14.806  0.50  2.00           N
+ATOM     99  N  BGLN B   4      22.953  17.079  20.087  0.50  2.00           N
+ATOM    100  CA BGLN B   4      24.289  17.098  19.439  0.50  2.00           C
+ATOM    101  C  BGLN B   4      25.340  17.850  20.300  0.50  2.00           C
+ATOM    102  O  BGLN B   4      25.242  19.061  20.559  0.50  2.00           O
+ATOM    103  CB BGLN B   4      24.250  17.658  18.011  0.50  2.00           C
+ATOM    104  CG BGLN B   4      23.476  16.745  17.035  0.50  2.00           C
+ATOM    105  CD BGLN B   4      23.355  17.310  15.615  0.50  2.00           C
+ATOM    106  OE1BGLN B   4      23.416  18.542  15.406  0.50  2.00           O
+ATOM    107  NE2BGLN B   4      23.215  16.401  14.615  0.50  2.00           N
+ATOM    108  N   GLN B   5      26.207  17.103  20.803  1.00  2.00           N
+ATOM    109  CA  GLN B   5      27.331  17.717  21.503  1.00  2.00           C
+ATOM    110  C   GLN B   5      28.635  17.490  20.747  1.00  2.00           C
+ATOM    111  O   GLN B   5      28.992  16.367  20.363  1.00  2.00           O
+ATOM    112  CB  GLN B   5      27.415  17.244  22.958  1.00  2.00           C
+ATOM    113  CG  GLN B   5      26.181  17.652  23.767  1.00  2.00           C
+ATOM    114  CD  GLN B   5      26.029  16.814  24.994  1.00  2.00           C
+ATOM    115  OE1 GLN B   5      25.671  15.641  24.900  1.00  2.00           O
+ATOM    116  NE2 GLN B   5      26.284  17.416  26.173  1.00  2.00           N
+ATOM    117  N   ASN B   6      29.319  18.593  20.493  1.00  2.00           N
+ATOM    118  CA  ASN B   6      30.564  18.608  19.718  1.00  2.00           C
+ATOM    119  C   ASN B   6      31.653  19.076  20.643  1.00  2.00           C
+ATOM    120  O   ASN B   6      31.814  20.281  20.878  1.00  2.00           O
+ATOM    121  CB  ASN B   6      30.440  19.563  18.542  1.00  2.00           C
+ATOM    122  CG  ASN B   6      29.245  19.239  17.678  1.00  2.00           C
+ATOM    123  OD1 ASN B   6      29.202  18.193  17.036  1.00  2.00           O
+ATOM    124  ND2 ASN B   6      28.273  20.117  17.673  1.00  2.00           N
+ATOM    125  N   TYR B   7      32.383  18.113  21.191  1.00  2.00           N
+ATOM    126  CA  TYR B   7      33.367  18.405  22.254  1.00  2.00           C
+ATOM    127  C   TYR B   7      34.664  18.946  21.690  1.00  2.00           C
+ATOM    128  O   TYR B   7      34.999  18.709  20.526  1.00  2.00           O
+ATOM    129  CB  TYR B   7      33.643  17.162  23.089  1.00  2.00           C
+ATOM    130  CG  TYR B   7      32.405  16.659  23.771  1.00  2.00           C
+ATOM    131  CD1 TYR B   7      31.593  15.703  23.155  1.00  2.00           C
+ATOM    132  CD2 TYR B   7      31.999  17.192  24.987  1.00  2.00           C
+ATOM    133  CE1 TYR B   7      30.442  15.252  23.765  1.00  2.00           C
+ATOM    134  CE2 TYR B   7      30.837  16.742  25.628  1.00  2.00           C
+ATOM    135  CZ  TYR B   7      30.061  15.782  24.994  1.00  2.00           C
+ATOM    136  OH  TYR B   7      28.923  15.311  25.589  1.00  2.00           O
+ATOM    137  OXT TYR B   7      35.408  19.618  22.425  1.00  2.00           O
+TER     138      TYR B   7
+END
+"""
+
 def exercise_00():
   """ Verify that shortcut1 is not failing"""
-  pdb_inp = iotbx.pdb.input(lines=pdb_str_1,source_info=None)
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_00,source_info=None)
   hierarchy = pdb_inp.construct_hierarchy()
   ncs_params = iotbx.ncs.input.get_default_params()
   ncs_params.ncs_search.try_shortcuts = True
@@ -237,7 +381,35 @@ def exercise_00():
   assert len(ncs_groups[0].copies) == 1, len(ncs_groups[0].copies)
   assert ncs_groups[0].master_iselection.size() == 103, ncs_groups[0].master_iselection.size() # all chain
   assert ncs_groups[0].copies[0].iselection.size() == 103, ncs_groups[0].copies[0].iselection.size() # all chain
-  print("OK")
+
+def exercise_01():
+  """ Alternative conformations should remain.
+  """
+  pdb_inp = iotbx.pdb.input(lines=pdb_str_01,source_info=None)
+  hierarchy = pdb_inp.construct_hierarchy()
+  # print('n_atoms:', hierarchy.atoms_size())
+  ncs_params = iotbx.ncs.input.get_default_params()
+  ncs_params.ncs_search.try_shortcuts = True
+  ncs_params.ncs_search.exclude_selection="water"
+
+  ncs_inp = iotbx.ncs.input(
+      hierarchy = hierarchy,
+      params = ncs_params.ncs_search)
+  ncs_groups = ncs_inp.get_ncs_restraints_group_list()
+  ncs_phil_str = ncs_inp.show(format='phil')
+  assert not show_diff(ncs_phil_str, """
+NCS phil parameters:
+-----------------------
+ncs_group {
+  reference = chain 'A'
+  selection = chain 'B'
+}""")
+  assert len(ncs_groups) == 1
+  assert len(ncs_groups[0].copies) == 1, len(ncs_groups[0].copies)
+  assert ncs_groups[0].master_iselection.size() == 68, ncs_groups[0].master_iselection.size() # all chain
+  assert ncs_groups[0].copies[0].iselection.size() == 68, ncs_groups[0].copies[0].iselection.size() # all chain
 
 if(__name__=='__main__'):
   exercise_00()
+  exercise_01()
+  print("OK")
