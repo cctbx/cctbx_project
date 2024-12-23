@@ -2664,7 +2664,8 @@ class build_chain_proxies(object):
     #
     # Deep copy is needed in case of altlocs
     #
-    apply_restraints_specifications_dc = deepcopy(apply_restraints_specifications)
+    #apply_restraints_specifications_dc = deepcopy(apply_restraints_specifications)
+    apply_restraints_specifications_dc = apply_restraints_specifications
     #
     for i_residue,residue in enumerate(pdb_residues):
       def _get_next_residue():
