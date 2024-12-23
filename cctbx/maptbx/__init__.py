@@ -2228,7 +2228,9 @@ def map_values_along_line_connecting_two_points(map_data, points_cart, step,
     xp = x1+alp*(x2-x1)
     yp = y1+alp*(y2-y1)
     zp = z1+alp*(z2-z1)
-    dist.append(alp)
+    rp = unit_cell.fractionalize([xp,yp,zp])
+    d = unit_cell.distance(points_frac[0], rp)
+    dist.append(d)
     pf = unit_cell.fractionalize([xp,yp,zp])
     if(interpolation=="eight_point"):
       mv = map_data.eight_point_interpolation(pf)
