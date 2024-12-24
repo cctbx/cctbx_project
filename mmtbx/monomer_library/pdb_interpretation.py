@@ -2676,21 +2676,18 @@ class build_chain_proxies(object):
         residue_i_seqs=atoms.extract_i_seq()
         min_i_seq, max_i_seq = min(residue_i_seqs), max(residue_i_seqs)
         for selection, item in apply_restraints_specifications.items():
-          #print min_i_seq,max_i_seq,list(selection)
           if min_i_seq in selection and max_i_seq in selection:
             if selection.all_eq(residue_i_seqs):
-              print('%sResidue %s was targeted for' % (' '*8,
-                                                               residue.id_str(),
-                ), file=log)
-              print('%srestraints from file: "%s"' % (' '*10,
-                                                              item[1],
-                ), file=log)
+              print('%sResidue %s was targeted for' % (' '*8, residue.id_str()),
+                    file=log)
+              print('%srestraints from file: "%s"' % (' '*10, item[1]),
+                    file=log)
               if len(alt_locs)!=1:
                 print('%sbut ignored because residue has complex alt. loc.' % (
                   ' '*10), file=log)
                 continue
               specific_residue_restraints=item[1]
-              apply_restraints_specifications[selection]="OK"
+              apply_restraints_specifications[selection][2]="OK"
               break
       #
       mm = monomer_mapping(
@@ -3499,12 +3496,13 @@ class build_all_chain_proxies(linking_mixins):
       apply_restraints_specifications[t_selection]=[
         acf.residue_selection,
         acf.restraints_file_name,
+        None,
         ]
     if apply_restraints_specifications:
       print("  Apply specific restraints filenames to specific monomers", file=log)
       for acf in self.params.apply_cif_restraints:
         print('    "%s" - %s' % (acf.residue_selection,
-                                         acf.restraints_file_name,
+                                 acf.restraints_file_name,
           ), file=log)
     self.special_position_settings = None
     self._site_symmetry_table = None
@@ -3750,13 +3748,9 @@ class build_all_chain_proxies(linking_mixins):
           flush_log(log)
       if apply_restraints_specifications:
         for selection, item in apply_restraints_specifications.items():
-          if item=="OK": continue
-          print("%sRestraints for '%s'" % (' '*6,
-                                                   item[0],
-            ), file=log)
-          print('%swere not modified by "%s"' % (' '*8,
-                                                         item[1],
-            ), file=log)
+          if item[2]=="OK": continue
+          print("%sRestraints for '%s'" % (' '*6, item[0]), file=log)
+          print('%swere not modified by "%s"' % (' '*8,item[1]), file=log)
       #
       # Identify disulfide bond exclusions BEGIN
       self.disulfide_bond_exclusions_selection = flex.size_t()
