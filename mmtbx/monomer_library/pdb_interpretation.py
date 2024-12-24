@@ -2662,11 +2662,6 @@ class build_chain_proxies(object):
     prev_prev_mm = None
     pdb_residues = conformer.residues()
     #
-    # Deep copy is needed in case of altlocs
-    #
-    #apply_restraints_specifications_dc = deepcopy(apply_restraints_specifications)
-    apply_restraints_specifications_dc = apply_restraints_specifications
-    #
     for i_residue,residue in enumerate(pdb_residues):
       def _get_next_residue():
         j = i_residue + 1
@@ -2674,13 +2669,13 @@ class build_chain_proxies(object):
         return pdb_residues[j]
       # specific_residue_restraints
       specific_residue_restraints = None
-      if apply_restraints_specifications_dc:
+      if apply_restraints_specifications:
         atoms = residue.atoms()
         alt_locs = {}
         for atom in atoms: alt_locs.setdefault(atom.parent().altloc, 0)
         residue_i_seqs=atoms.extract_i_seq()
         min_i_seq, max_i_seq = min(residue_i_seqs), max(residue_i_seqs)
-        for selection, item in apply_restraints_specifications_dc.items():
+        for selection, item in apply_restraints_specifications.items():
           #print min_i_seq,max_i_seq,list(selection)
           if min_i_seq in selection and max_i_seq in selection:
             if selection.all_eq(residue_i_seqs):
@@ -2695,7 +2690,7 @@ class build_chain_proxies(object):
                   ' '*10), file=log)
                 continue
               specific_residue_restraints=item[1]
-              apply_restraints_specifications_dc[selection]="OK"
+              apply_restraints_specifications[selection]="OK"
               break
       #
       mm = monomer_mapping(
