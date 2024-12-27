@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.7.0"
+version = "4.8.0"
 
 master_phil_str = '''
 profile = False
@@ -125,7 +125,7 @@ output
     .short_caption = Dump file name
     .help = Dump file name for regression testing atom characteristics (-DUMPATOMS in probe)
 
-  format = *kinemage raw oneline
+  format = *kinemage raw oneline json
     .type = choice
     .short_caption = Output format
     .help = Type of output to write (-oneline -unformated -kinemage in probe)
@@ -257,7 +257,6 @@ citation {
 }
 ''')
 
-
 ################################################################################
 # List of all of the keys for atom classes, including all elements and all
 # nucleic acid types.  These are in the order that the original Probe reported
@@ -370,7 +369,7 @@ def _color_for_atom_class(c):
 
 def _condense(dotInfoList, condense):
   '''
-    Condensing the list of dots for use in raw output, sorting and removing
+    Condensing the list of dots for use in raw or JSON output, sorting and removing
     duplicates.
     :param dotInfoList: List of DotInfo structures to sort and perhaps condense.
     :param condense: Boolean telling whether to condense the output, removing duplicates.
@@ -448,7 +447,7 @@ class DotInfo:
     self.gap = gap                  # Gap between the atoms
     self.ptmaster = ptmaster        # Main/side chain interaction type
     self.angle = angle              # Angle associated with the bump
-    self.dotCount = 1               # Used by _condense and raw output to count dots on the same source + target
+    self.dotCount = 1               # Used by _condense and raw/JSON output to count dots on the same source + target
 
   def _makeName(self, atom):
       # Make the name for an atom, which includes its chain and residue information
@@ -464,7 +463,8 @@ class DotInfo:
         atom.xyz[0], atom.xyz[1], atom.xyz[2])
 
   def __lt__(self, other):
-      # Sort dots based on characteristics of their source and target atoms, then their gap.
+      # Sort dots based on characteristics of their source and target atoms, then their gap
+      # (smallest/most negative gap to largest).
       # We include the XYZ position in the sort so that we get the same order and grouping each
       # time even though the phantom H? atoms are otherwise identical.
       # There may be no target atoms specified (may be Python None value), which will
@@ -565,7 +565,7 @@ This program replaces the original "probe" program from the Richarson lab
 at Duke University and was developed by them as part of a supplemental award.
 
 It computes the MolProbity Probe score for a file, or a subset of the file,
-producing summaries or lists of all contacts, in Kinemage or raw format, depending
+producing summaries or lists of all contacts, in Kinemage/raw/JSON format, depending
 on the Phil parameters.
 
 By default, it compares all atoms in all alternates that meet an occupancy
@@ -585,7 +585,7 @@ Output:
 
   If neither output.file_name nor output.filename is specified, it will write
   to a file with the same name as the input model file name but with the
-  extension replaced with with either '.kin' or '.txt' depending on the
+  extension replaced with with '.kin', '.txt', or '.json' depending on the
   parameters (.kin when output.format == kinemage and output.count_dots == False).
 
   In addition to writing files, this is derived from the Program Template object
@@ -1100,15 +1100,19 @@ Note:
 
 # ------------------------------------------------------------------------------
 
-  def _writeRawOutput(self, groupName, masterName):
+  def _writeRawOutput(self, groupName, masterName, writeJSON = False):
     '''
       Describe raw summary counts for data of various kinds.
       :param groupName: Name to give to the group.
       :param masterName: Name for the beginning of each line.
+      :param writeJSON: If True, write the output in JSON format.  Otherwise, write one raw entry per line.
       :return: String to be added to the output.
     '''
 
-    ret = ''
+    if writeJSON:
+      ret = '['
+    else:
+      ret = ''
 
     # Provide a short name for each interaction type
     mast = {}
@@ -1122,6 +1126,7 @@ Note:
     hydrogen_bond_weight = self.params.probe.hydrogen_bond_weight
 
     # Go through all atom types and contact types and report the contacts.
+    first_line = True
     for atomClass in _allAtomClasses:
       for interactionType in _interactionTypes:
 
@@ -1129,7 +1134,15 @@ Note:
         condensed = _condense(self._results[atomClass][interactionType], self.params.output.condensed)
         for node in condensed:
 
-          ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
+          if writeJSON:
+            if first_line:
+              first_line = False
+            else:
+              ret += ','
+            ret += '\n'
+            ret += '{{"master": "{}", "group": "{}", "type": "{}"'.format(masterName, groupName, mast[interactionType])
+          else:
+            ret += "{}:{}:{}:".format(masterName, groupName, mast[interactionType])
 
           # Describe the source atom
           a = node.src
@@ -1138,19 +1151,26 @@ Note:
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
           alt = a.parent().altloc
-          ret += "{:>2s}{:>4s}{}{:>3s} {}{:1s}:".format(chainID, resID, iCode, resName, a.name, alt)
+          if writeJSON:
+            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, a.name, alt)
+          else:
+            ret += "{:>2s}{:>4s}{}{:>3s} {}{:1s}:".format(chainID, resID, iCode.strip(), resName.strip(), a.name.strip(), alt)
 
           # Describe the target atom, if it exists
           t = node.target
           if t is None:
-            ret += ":::::::"
+            if not writeJSON:
+              ret += ":::::::"
           else:
             resName = t.parent().resname.strip().upper()
             resID = str(t.parent().parent().resseq_as_int())
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
             alt = t.parent().altloc
-            ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode, resName, t.name, alt)
+            if writeJSON:
+              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, t.name, alt)
+            else:
+              ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode.strip(), resName.strip(), t.name.strip(), alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
@@ -1172,10 +1192,17 @@ Note:
               score = hydrogen_bond_weight * sl
 
             if self.params.output.condensed:
-              ret += "{}:".format(node.dotCount)
+              if writeJSON:
+                ret += ', "dotCount": {}'.format(node.dotCount)
+              else:
+                ret += "{}:".format(node.dotCount)
 
-            ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
-              node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+            if writeJSON:
+              ret += ', "gap": {:.3f}, "dtgp": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreDensity": {:.4f}'.format(
+                gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+            else:
+              ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
+                node.spike[0], node.spike[1], node.spike[2], sl, score/density)
 
           try:
             tName = self._atomClasses[t]
@@ -1183,11 +1210,21 @@ Note:
           except Exception:
             tName = ""
             tBVal = ""
-          ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
-            node.loc[0], node.loc[1], node.loc[2])
 
-          ret += ":{:.2f}:{}\n".format(a.b, tBVal)
+          if writeJSON:
+            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+          else:
+            ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
+              node.loc[0], node.loc[1], node.loc[2])
 
+          if writeJSON:
+            ret += ', "srcBFactor": {:.2f}, "targetBFactor": {}}}'.format(a.b, tBVal)
+          else:
+            ret += ":{:.2f}:{}\n".format(a.b, tBVal)
+
+    if writeJSON:
+      ret += '\n]\n'
     return ret
 
 # ------------------------------------------------------------------------------
@@ -1726,7 +1763,10 @@ Note:
       # Check for various output format types.
       # We're not implementing O format or XV format, but we still allow raw and oneline
       if self.params.output.format == 'raw':
-        ret += self._writeRawOutput(comparisonString,groupLabel)
+        ret += self._writeRawOutput(comparisonString,groupLabel, False)
+
+      elif self.params.output.format == 'json':
+        ret += self._writeRawOutput(comparisonString,groupLabel, True)
 
       elif self.params.output.format == 'oneline':
         ret += self._count_summary(intersectionName)
@@ -1790,9 +1830,11 @@ Note:
     if self.params.output.filename is None:
       # If the output file name is not specified, use the same root as the
       # input file and replace the suffix with .kin for Kinemage output or
-      # .txt for others.
+      # .txt for raw or .json for JSON.
       suffix = '.kin'
-      if self.params.output.format != 'kinemage' or self.params.output.count_dots:
+      if self.params.output.format == 'json':
+        suffix = '.json'
+      elif self.params.output.format != 'kinemage' or self.params.output.count_dots:
         suffix = '.txt'
       inName = self.data_manager.get_default_model_name()
       p = Path(inName)
@@ -2265,7 +2307,7 @@ Note:
 
       ################################################################################
       # Find our group label
-      if self.params.output.format == 'raw':
+      if self.params.output.format in ['raw','json']:
         groupLabel = ""
       else:
         groupLabel = "dots"
