@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.8.0"
+version = "4.9.0"
 
 master_phil_str = '''
 profile = False
@@ -1898,12 +1898,13 @@ Note:
     p.pdb_interpretation.allow_polymer_cross_special_position=True
     p.pdb_interpretation.clash_guard.nonbonded_distance_threshold=None
     p.pdb_interpretation.proceed_with_excessive_length_bonds=True
+    p.pdb_interpretation.disable_uc_volume_vs_n_atoms_check=True
     # We need to turn this on because without it the interpretation is
     # renaming atoms to be more correct.  Unfortunately, this causes the
     # dot names to no longer match the input file.
     p.pdb_interpretation.flip_symmetric_amino_acids=False
     try:
-      self.model.process(make_restraints=True, pdb_interpretation_params=p, logger=self.logger) # make restraints
+      self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
       geometry = self.model.get_restraints_manager().geometry
       sites_cart = self.model.get_sites_cart() # cartesian coordinates
       bondProxies, asu = \
