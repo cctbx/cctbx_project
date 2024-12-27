@@ -2046,7 +2046,7 @@ class manager(object):
     # Reason: contents of model and _model_input can get out of sync any time.
     self._model_input = None
     self._processed_pdb_file = None
-    # Order of calling this matetrs!
+    # Order of calling this matters!
     self.link_records_in_pdb_format = link_record_output(acp)
 
   def has_atoms_in_special_positions(self, selection, log=None):
