@@ -30,7 +30,6 @@ import textwrap
 import time
 import math
 import numpy as np
-from copy import deepcopy
 
 from cctbx.geometry_restraints.linking_class import linking_class
 from six.moves import zip, range

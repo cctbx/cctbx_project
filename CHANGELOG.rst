@@ -1,3 +1,9 @@
+2024.12
+=======
+
+* Added consistency checks for map_model_manager
+* Added tool for finding reference models based on sequence identity
+
 2024.11
 =======
 
