@@ -36,7 +36,7 @@ import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.6.0"
+version = "2.7.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1186,9 +1186,7 @@ NOTES:
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
-    cs = self.model.crystal_symmetry()
-    if (cs is None) or (cs.unit_cell() is None):
-      self.model = shift_and_box_model(model = self.model, shift_model=False)
+    self.model = shift_and_box_model(model = self.model, shift_model=False)
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
