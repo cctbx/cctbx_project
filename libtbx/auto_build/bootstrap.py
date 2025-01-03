@@ -2157,7 +2157,16 @@ class PhaserTNGBuilder(PhaserBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(PhaserTNGBuilder, self).get_libtbx_configure()
-    configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst:
+      configlst.remove('--enable_cxx11')
+    set_std = ['cxxstd' in conf for conf in configlst]
+    if set_std.count(True) == 0:
+      if platform.mac_ver()[-1] == 'arm64':
+        configlst.append('--cxxstd=c++14')
+      else:
+        configlst.append('--cxxstd=c++11')
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
   def get_codebases(self):
