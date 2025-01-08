@@ -9,6 +9,26 @@ class experiment_filter(worker):
   def __init__(self, params, mpi_helper=None, mpi_logger=None):
     super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
+  def validate(self):
+    filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm[0]
+    filter_by_n_obs = 'n_obs' in self.params.filter.algorithm[0]
+    filter_by_resolution = 'resolution' in self.params.filter.algorithm[0]
+    if filter_by_unit_cell:
+      assert self.params.filter.unit_cell.value.target_space_group is not None, \
+        'Space group is required for unit cell filtering'
+    if filter_by_n_obs:
+      check0 = self.params.filter.n_obs.min is not None
+      check1 = self.params.filter.n_obs.max is not None
+      assert check0 or check1, \
+        'Either min or max is required for n_obs filtering'
+      if check0 and check1:
+        assert self.params.filter.n_obs.min < self.params.filter.n_obs.max, \
+        'filter.n_obs.min must be less than filter.n_obs.max'
+    if filter_by_resolution:
+      assert self.params.filter.resolution.d_min is not None, \
+        'd_min is required for resolution filtering'
+    return filter_by_unit_cell, filter_by_n_obs, filter_by_resolution
+
   def __repr__(self):
     return 'Filter experiments'
 
@@ -60,24 +80,10 @@ class experiment_filter(worker):
     return m_distance < self.params.filter.unit_cell.cluster.covariance.mahalanobis
 
   def run(self, experiments, reflections):
-    filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm[0]
-    filter_by_n_obs = 'n_obs' in self.params.filter.algorithm[0]
-    filter_by_resolution = 'resolution' in self.params.filter.algorithm[0]
+    filter_by_unit_cell, filter_by_n_obs, filter_by_resolution = self.validate()
     # only "unit_cell" "n_obs" and "resolution" algorithms are supported
     if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution):
       return experiments, reflections
-    if filter_by_unit_cell:
-      assert self.params.filter.unit_cell.value.target_space_group is not None, \
-        'Space group is required for unit cell filtering'
-    if filter_by_n_obs:
-      check0 = self.params.filter.n_obs.min is not None
-      check1 = self.params.filter.n_obs.max is not None
-      assert check0 or check1, \
-        'Either min or max is required for n_obs filtering'
-    if filter_by_resolution:
-      assert self.params.filter.resolution.d_min is not None, \
-        'd_min is required for resolution filtering'
-
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
     # BEGIN BY-VALUE FILTER
@@ -105,7 +111,7 @@ class experiment_filter(worker):
     new_experiments, new_reflections = experiment_filter.remove_experiments(experiments, reflections, experiment_ids_to_remove)
 
     removed_reflections = input_len_refls - len(new_reflections)
-    #assert removed_for_space_group + removed_for_unit_cell == input_len_expts - len(new_experiments)
+    assert len(experiment_ids_to_remove) == input_len_expts - len(new_experiments)
 
     self.logger.log("Experiments rejected because of unit cell dimensions: %d"%removed_for_unit_cell)
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)
