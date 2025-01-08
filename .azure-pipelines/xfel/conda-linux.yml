@@ -17,11 +17,11 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.9:
+      python3.10:
         CONDA: Linux
         OS: linux
-        PYTHON_VERSION: py39
-        PYTHON_FULL_VERSION: 3.9
+        PYTHON_VERSION: py310
+        PYTHON_FULL_VERSION: 3.10
         MODULES: ${{ parameters.modules }}
 
   container:
