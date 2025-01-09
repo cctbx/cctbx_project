@@ -10,9 +10,9 @@ class experiment_filter(worker):
     super(experiment_filter, self).__init__(params=params, mpi_helper=mpi_helper, mpi_logger=mpi_logger)
 
   def validate(self):
-    filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm[0]
-    filter_by_n_obs = 'n_obs' in self.params.filter.algorithm[0]
-    filter_by_resolution = 'resolution' in self.params.filter.algorithm[0]
+    filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm
+    filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
+    filter_by_resolution = 'resolution' in self.params.filter.algorithm
     if filter_by_unit_cell:
       assert self.params.filter.unit_cell.value.target_space_group is not None, \
         'Space group is required for unit cell filtering'
@@ -27,7 +27,6 @@ class experiment_filter(worker):
     if filter_by_resolution:
       assert self.params.filter.resolution.d_min is not None, \
         'd_min is required for resolution filtering'
-    return filter_by_unit_cell, filter_by_n_obs, filter_by_resolution
 
   def __repr__(self):
     return 'Filter experiments'
@@ -80,7 +79,9 @@ class experiment_filter(worker):
     return m_distance < self.params.filter.unit_cell.cluster.covariance.mahalanobis
 
   def run(self, experiments, reflections):
-    filter_by_unit_cell, filter_by_n_obs, filter_by_resolution = self.validate()
+    filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm
+    filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
+    filter_by_resolution = 'resolution' in self.params.filter.algorithm
     # only "unit_cell" "n_obs" and "resolution" algorithms are supported
     if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution):
       return experiments, reflections

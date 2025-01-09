@@ -131,8 +131,7 @@ filter
   .help = refer to the select section for filtering of individual reflections
   {
   algorithm = n_obs resolution unit_cell
-    .type = strings
-    .multiple = True
+    .type = choice(multi=True)
   n_obs {
     min = None
       .type = int
@@ -541,6 +540,10 @@ merging {
         .help = If True - use correlation coefficient determined after post-refinement.\
                 If False - use correlation coefficient determined before. \
                 If post-refinement is not performed, must be False.
+      constant_sadd = False
+        .type = bool
+        .help = If False, parameterize sadd with the correlation coefficient.\
+                If True, use a constant sadd.
       do_diagnostics = False
         .type = bool
         .help = Make diagnostic plots.
