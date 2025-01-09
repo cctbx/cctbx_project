@@ -3,7 +3,7 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux, macos
-#   PYTHON_VERSION: py39
+#   PYTHON_VERSION: py310
 
 steps:
 

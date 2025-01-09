@@ -3,7 +3,7 @@
 # Variables:
 #   CONDA: Linux, MacOSX
 #   OS: linux, macos
-#   PYTHON_VERSION: py39
+#   PYTHON_VERSION: py310
 
 steps:
 
@@ -48,7 +48,7 @@ steps:
 - script: |
     set -xe
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml
+    conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
     conda install -y -c conda-forge cmake pandas distro -n psana_env
   displayName: Create conda environment
