@@ -54,7 +54,7 @@ namespace smtbx { namespace ED
       // heev replaces A with column-wise eigenvectors
       lapack_int info = heev(LAPACK_ROW_MAJOR, 'V', LAPACK_UPPER, n_beams,
         this->A.begin(), n_beams, ev.begin());
-      SMTBX_ASSERT(!info)(info);
+      SMTBX_ASSERT(!info)(info)(indices[idx].as_string());
       const complex_t exp_k(0, scitbx::constants::pi * this->thickness / Kn);
 
       complex_t res;

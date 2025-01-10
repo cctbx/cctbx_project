@@ -472,16 +472,26 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     {}
     
     void operator ()() {
-      af::shared<miller::index<> > indices =
-        af::select(beam_group.indices.const_ref(),
-          beam_group.strong_measured_beams.const_ref());
-      FloatType Sg_span = f_calc_function->get_data().params.getIntProfileSpan_Sg();
-      size_t pts_N = f_calc_function->get_data().params.getIntProfilePoints();
-      for (size_t i = 0; i < indices.size(); i++) {
-        FloatType width = f_calc_function->compute_width(indices[i], beam_group, Sg_span, pts_N);
-        cache.insert(std::make_pair(indices[i], width));
+      try {
+        af::shared<miller::index<> > indices =
+          af::select(beam_group.indices.const_ref(),
+            beam_group.strong_measured_beams.const_ref());
+        FloatType Sg_span = f_calc_function->get_data().params.getIntProfileSpan_Sg();
+        size_t pts_N = f_calc_function->get_data().params.getIntProfilePoints();
+        for (size_t i = 0; i < indices.size(); i++) {
+          FloatType width = f_calc_function->compute_width(indices[i], beam_group, Sg_span, pts_N);
+          cache.insert(std::make_pair(indices[i], width));
+        }
+      }
+      catch (smtbx::error const& e) {
+        exception_.reset(new smtbx::error(e));
+      }
+      catch (std::exception const& e) {
+        exception_.reset(new smtbx::error(e.what()));
       }
     }
+
+    boost::scoped_ptr<smtbx::error> exception_;
     const BeamGroup<FloatType>& beam_group;
     f_calc_function_ptr_t f_calc_function;
     cache_t cache;
@@ -512,6 +522,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
       pool.join_all();
       for (size_t th = 0; th < end; th++) {
+        if (accumulators[th]->exception_) {
+          throw* accumulators[th]->exception_.get();
+        }
         width_cache.cache.insert(
           accumulators[th]->cache.begin(),
           accumulators[th]->cache.end());
@@ -540,18 +553,27 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     void operator ()() {
-      for (size_t i = start; i < end; i++) {
-        const miller::index<>& h = indices[i];
-        typename std::map<miller::index<>, BeamGroup<FloatType>*>::const_iterator fi =
-          lookup.find(h);
-        SMTBX_ASSERT(fi != lookup.end());
-        BeamGroup<FloatType>* beam_group = fi->second;
+      try {
+        for (size_t i = start; i < end; i++) {
+          const miller::index<>& h = indices[i];
+          typename std::map<miller::index<>, BeamGroup<FloatType>*>::const_iterator fi =
+            lookup.find(h);
+          SMTBX_ASSERT(fi != lookup.end());
+          BeamGroup<FloatType>* beam_group = fi->second;
 
-        f_calc_function->setup_compute(h, fi->second);
-        FloatType I = f_calc_function->get_observable_N();
-        Is.push_back(I);
+          f_calc_function->setup_compute(h, fi->second);
+          FloatType I = f_calc_function->get_observable_N();
+          Is.push_back(I);
+        }
+      }
+      catch (smtbx::error const& e) {
+        exception_.reset(new smtbx::error(e));
+      }
+      catch (std::exception const& e) {
+        exception_.reset(new smtbx::error(e.what()));
       }
     }
+    boost::scoped_ptr<smtbx::error> exception_;
     const af::shared<miller::index<> >& indices;
     size_t start, end;
     const std::map<miller::index<>, BeamGroup<FloatType>*>& lookup;
@@ -592,6 +614,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     af::shared<FloatType> rv(indices.size());
     size_t st = 0;
     for (size_t i = 0; i < accumulators.size(); i++) {
+      if (accumulators[i]->exception_) {
+        throw* accumulators[i]->exception_.get();
+      }
       memcpy(&rv[st], &accumulators[i]->Is[0],
         accumulators[i]->Is.size() * sizeof(FloatType));
       st += accumulators[i]->Is.size();
