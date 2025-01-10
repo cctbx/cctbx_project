@@ -41,6 +41,8 @@ jobs:
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
       git clone https://github.com/lanl/lunus.git
+      cd dials
+      git checkout py39_for_psana
     displayName: Download sources
 
   - script: |
