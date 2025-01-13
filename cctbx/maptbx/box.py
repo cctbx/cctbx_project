@@ -1334,9 +1334,10 @@ def shift_and_box_model(model = None,
     sites_cart=sites_cart-col(sites_cart.min())+col(
       (box_cushion,box_cushion,box_cushion))
 
+  box_start=col(sites_cart.min())-col((box_cushion,box_cushion,box_cushion))
   box_end=col(sites_cart.max())+col((box_cushion,box_cushion,box_cushion))
   if not crystal_symmetry:
-    a,b,c=box_end
+    a,b,c = box_end - box_start
     crystal_symmetry=crystal.symmetry((a,b,c, 90,90,90),1)
   phc = ph.deep_copy()
   phc.atoms().set_xyz(sites_cart)
