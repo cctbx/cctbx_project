@@ -1154,7 +1154,8 @@ Note:
             iCode = " "
           alt = a.parent().altloc
           if writeJSON:
-            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, a.name, alt)
+            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+              chainID, resID, iCode.strip(), resName, a.name, alt.strip())
           else:
             ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
 
@@ -1172,7 +1173,8 @@ Note:
               iCode = " "
             alt = t.parent().altloc
             if writeJSON:
-              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, t.name, alt)
+              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+                chainID, resID, iCode.strip(), resName, t.name, alt.strip())
             else:
               ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
 
@@ -1202,8 +1204,12 @@ Note:
                 ret += "{}:".format(node.dotCount)
 
             if writeJSON:
-              ret += ', "gap": {:.3f}, "dtgp": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreDensity": {:.4f}'.format(
-                gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+              if self.params.output.condensed:
+                # Don't write elements that are not needed for condensed output
+                ret += ', "gap": {:.3f}'.format(gap)
+              else:
+                ret += ', "gap": {:.3f}, "dotGap": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreOverDensity": {:.4f}'.format(
+                  gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
             else:
               ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
                 node.spike[0], node.spike[1], node.spike[2], sl, score/density)
@@ -1216,8 +1222,12 @@ Note:
             tBVal = ""
 
           if writeJSON:
-            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
-              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+            if self.params.output.condensed:
+              # Don't write elements that are not needed for condensed output
+              ret += ', "srcClass": "{}", "targetClass": "{}"]'.format(self._atomClasses[a], tName)
+            else:
+              ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+                self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
           else:
             ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
               node.loc[0], node.loc[1], node.loc[2])
