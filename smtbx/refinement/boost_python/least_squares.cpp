@@ -281,6 +281,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
         class_<wt, std::auto_ptr<wt> >("beam_width_cache", no_init)
           .def(init<beam_width_cache<FloatType> const&>(
             (arg("cache"))))
+          .def("find_width", &wt::find_width)
           ;
       }
 

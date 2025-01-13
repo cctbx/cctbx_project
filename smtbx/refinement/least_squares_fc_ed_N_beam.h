@@ -16,6 +16,12 @@ namespace smtbx {  namespace refinement  { namespace least_squares
   struct beam_width_cache {
     typedef std::map<miller::index<>, FloatType> cache_t;
     cache_t cache;
+
+    FloatType find_width(const miller::index<> &h) const {
+      typename std::map<miller::index<>, FloatType>::const_iterator
+        width_itr = cache.find(h);
+      return width_itr != cache.end() ? width_itr->second : 0;
+    }
   };
 
   template <typename FloatType>
