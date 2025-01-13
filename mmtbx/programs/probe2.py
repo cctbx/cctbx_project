@@ -1110,7 +1110,7 @@ Note:
     '''
 
     if writeJSON:
-      ret = '['
+      ret = '{ "flat_results" : ['
     else:
       ret = ''
 
@@ -1150,11 +1150,14 @@ Note:
           resID = str(a.parent().parent().resseq_as_int())
           chainID = a.parent().parent().parent().id
           iCode = a.parent().parent().icode
+          if iCode == "":
+            iCode = " "
           alt = a.parent().altloc
           if writeJSON:
-            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, a.name, alt)
+            ret += ', "src": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+              chainID, resID, iCode.strip(), resName, a.name, alt.strip())
           else:
-            ret += "{:>2s}{:>4s}{}{:>3s} {}{:1s}:".format(chainID, resID, iCode.strip(), resName.strip(), a.name.strip(), alt)
+            ret += "{:>2s}{:>4s}{}{} {}{:1s}:".format(chainID, resID, iCode, resName.strip(), a.name, alt)
 
           # Describe the target atom, if it exists
           t = node.target
@@ -1166,11 +1169,14 @@ Note:
             resID = str(t.parent().parent().resseq_as_int())
             chainID = t.parent().parent().parent().id
             iCode = t.parent().parent().icode
+            if iCode == "":
+              iCode = " "
             alt = t.parent().altloc
             if writeJSON:
-              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(chainID, resID, iCode, resName, t.name, alt)
+              ret += ', "target": {{"chainID": "{}", "resID": {}, "iCode": "{}", "resName": "{}", "atomName": "{}", "alt": "{}"}}'.format(
+                chainID, resID, iCode.strip(), resName, t.name, alt.strip())
             else:
-              ret += "{:>2s}{:>4s}{}{:>3s} {:<3s}{:1s}:".format(chainID, resID, iCode.strip(), resName.strip(), t.name.strip(), alt)
+              ret += "{:>2s}{:>4s}{}{} {:<3s}{:1s}:".format(chainID, resID, iCode, resName.strip(), t.name, alt)
 
             r1 = self._extraAtomInfo.getMappingFor(a).vdwRadius
             r2 = self._extraAtomInfo.getMappingFor(t).vdwRadius
@@ -1198,8 +1204,12 @@ Note:
                 ret += "{}:".format(node.dotCount)
 
             if writeJSON:
-              ret += ', "gap": {:.3f}, "dtgp": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreDensity": {:.4f}'.format(
-                gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
+              if self.params.output.condensed:
+                # Don't write elements that are not needed for condensed output
+                ret += ', "gap": {:.3f}'.format(gap)
+              else:
+                ret += ', "gap": {:.3f}, "dotGap": {:.3f}, "spike": [{:.3f},{:.3f},{:.3f}], "spikeLen": {:.3f}, "scoreOverDensity": {:.4f}'.format(
+                  gap, dtgp, node.spike[0], node.spike[1], node.spike[2], sl, score/density)
             else:
               ret += "{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.3f}:{:.4f}".format(gap, dtgp,
                 node.spike[0], node.spike[1], node.spike[2], sl, score/density)
@@ -1212,8 +1222,12 @@ Note:
             tBVal = ""
 
           if writeJSON:
-            ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
-              self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
+            if self.params.output.condensed:
+              # Don't write elements that are not needed for condensed output
+              ret += ', "srcClass": "{}", "targetClass": "{}"'.format(self._atomClasses[a], tName)
+            else:
+              ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
+                self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
           else:
             ret += ":{}:{}:{:.3f}:{:.3f}:{:.3f}".format(self._atomClasses[a], tName,
               node.loc[0], node.loc[1], node.loc[2])
@@ -1224,7 +1238,7 @@ Note:
             ret += ":{:.2f}:{}\n".format(a.b, tBVal)
 
     if writeJSON:
-      ret += '\n]\n'
+      ret += '\n] }\n'
     return ret
 
 # ------------------------------------------------------------------------------
