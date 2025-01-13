@@ -1110,7 +1110,7 @@ Note:
     '''
 
     if writeJSON:
-      ret = '['
+      ret = '{ "flat_results" : ['
     else:
       ret = ''
 
@@ -1224,7 +1224,7 @@ Note:
           if writeJSON:
             if self.params.output.condensed:
               # Don't write elements that are not needed for condensed output
-              ret += ', "srcClass": "{}", "targetClass": "{}"]'.format(self._atomClasses[a], tName)
+              ret += ', "srcClass": "{}", "targetClass": "{}"'.format(self._atomClasses[a], tName)
             else:
               ret += ', "srcClass": "{}", "targetClass": "{}", "loc": [{:.3f},{:.3f},{:.3f}]'.format(
                 self._atomClasses[a], tName, node.loc[0], node.loc[1], node.loc[2])
@@ -1238,7 +1238,7 @@ Note:
             ret += ":{:.2f}:{}\n".format(a.b, tBVal)
 
     if writeJSON:
-      ret += '\n]\n'
+      ret += '\n] }\n'
     return ret
 
 # ------------------------------------------------------------------------------
