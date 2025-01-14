@@ -9,6 +9,7 @@ from scitbx.array_family import flex
 
 from mmtbx.wwpdb.rcsb_web_services import reference_chain_search
 from mmtbx.wwpdb.rcsb_entry_request import get_info
+from mmtbx.alignment import align
 from iotbx.pdb.fetch import fetch
 
 from libtbx.utils import Sorry, urlopen
@@ -79,31 +80,70 @@ Usage examples:
 
   # ---------------------------------------------------------------------------
 
-  def write_homologue_summary(self, model_infos, first_n=10):
-    print("    pdb id, resolution, rwork, rfree, first %d items" % first_n, file=self.logger)
-    print("    pdb id, pLDDT, first %d items" % first_n, file=self.logger)
-    for mi in model_infos[:first_n]:
+  def write_homologue_summary(self, model_infos, calculated_infos, first_n=10):
+    print("    pdb id, resolution, rwork, rfree; seq_sim; first %d items" % first_n, file=self.logger)
+    print("    pdb id, pLDDT; seq_sim; first %d items" % first_n, file=self.logger)
+    for i, mi in enumerate(model_infos[:first_n]):
       if not mi.is_computational():
-        print("    %s: %s, %s, %s" % (
+        print("    %s: %s, %s, %s; %s" % (
             mi.get_pdb_id(),
             mi.get_resolution(),
             mi.get_rwork(),
-            mi.get_rfree()), file=self.logger)
+            mi.get_rfree(),
+            calculated_infos[i]['seq_identity']), file=self.logger)
       else:
-        print("    %s: %.2f" % (
+        print("    %s: %.2f; %.3f" % (
             mi.get_pdb_id(),
-            mi.get_plddt()), file=self.logger)
+            mi.get_plddt(),
+            calculated_infos[i]['seq_identity']), file=self.logger)
 
-  def pick_homologue(self, search_results):
+  def pick_homologue(self, chain, search_results):
     """pick the best homologue
     """
     model_infos = get_info([a.split('.')[0].replace(":", "_") for a in search_results])
-    self.write_homologue_summary(model_infos, first_n=10)
+    calculated_infos = [{} for m in search_results]
+    model_seq = chain.as_padded_sequence()
+    for i, (sr, mi) in enumerate(zip(search_results, model_infos)):
+      m, ref_chain_id = self.get_and_prepare_homology_model(sr, mi)
+      ref_chain = m.get_hierarchy().models()[0].only_chain()
+
+      # Sequence similarity calculation:
+      ref_seq = ref_chain.as_padded_sequence()
+      a = align(model_seq, ref_seq).extract_alignment()
+      seq_identity = a.calculate_sequence_identity()
+      print("  Sequence similarity for %s: %s" % (sr, seq_identity), file=self.logger)
+      calculated_infos[i]['seq_identity'] = seq_identity
+
+      # xyz RMSD calculation:
+      fixed_hierarchy = chian.as_new_hierarchy()
+      moving_hierarchy = ref_chain.as_new_hierarchy()
+
+
+      # torsion RMSD calculation:
+
+    self.write_homologue_summary(model_infos, calculated_infos, first_n=10)
     # try to return first computational instead:
     # for sr, mi in zip(search_results, model_infos):
     #   if mi.is_computational():
     #     return sr, mi
     return search_results[0], model_infos[0]
+
+  def get_and_prepare_homology_model(self, model_id, model_info):
+    """get and prepare homology model
+    """
+    ref_model_id, ref_label_id = model_id.split('.')
+    ref_m = fetch_model(ref_model_id, model_info)
+    ref_m.add_crystal_symmetry_if_necessary()
+    label_auth_dict = ref_m.get_model_input().label_to_auth_asym_id_dictionary()
+    ref_chain_id = label_auth_dict.get(ref_label_id, ref_label_id)
+    # print("  ref label --> chain: '%s' --> '%s' " % (ref_label_id, ref_chain_id), file=self.logger)
+    # print('  ref_m atom size: ', ref_m.get_hierarchy().atoms_size())
+    selection = ref_m.selection("chain %s and protein" % ref_chain_id)
+    cutted_ref_m = ref_m.select(selection)
+    atoms_removed = cutted_ref_m.remove_alternative_conformations(always_keep_one_conformer=True)
+    # print('  alt conf atoms_removed', atoms_removed)
+    cutted_ref_m = cutted_ref_m.remove_hydrogens()
+    return cutted_ref_m, ref_chain_id
 
   def run(self):
     self.result = []
@@ -118,24 +158,14 @@ Usage examples:
                              identity_cutoff=self.params.identity_cutoff,
                              include_csm=self.params.include_computed_models)
       print('  Chain sequence:', seq)
-      print('  Reference search results:',ref_search_result, file=self.logger)
-      homology_model, model_info = self.pick_homologue(ref_search_result)
+      print('  Reference search results (%d): %s' % (len(ref_search_result),ref_search_result), file=self.logger)
+      homology_model, model_info = self.pick_homologue(chain, ref_search_result)
       print('  Picked homology model: %s' % homology_model, file=self.logger)
       if homology_model:
-        ref_model_id, ref_label_id = homology_model.split('.')
-        ref_m = fetch_model(ref_model_id, model_info)
-        ref_m.add_crystal_symmetry_if_necessary()
-        label_auth_dict = ref_m.get_model_input().label_to_auth_asym_id_dictionary()
-        ref_chain_id = label_auth_dict.get(ref_label_id, ref_label_id)
-        # print("  ref label --> chain: '%s' --> '%s' " % (ref_label_id, ref_chain_id), file=self.logger)
-        # print('  ref_m atom size: ', ref_m.get_hierarchy().atoms_size())
-        selection = ref_m.selection("chain %s and protein" % ref_chain_id)
-        cutted_ref_m = ref_m.select(selection)
-        atoms_removed = cutted_ref_m.remove_alternative_conformations(always_keep_one_conformer=True)
-        # print('  alt conf atoms_removed', atoms_removed)
-        cutted_ref_m = cutted_ref_m.remove_hydrogens()
+        cutted_ref_m, ref_chain_id = self.get_and_prepare_homology_model(homology_model, model_info)
+
         print('  Final atom size of reference chain: ', cutted_ref_m.get_hierarchy().atoms_size(), file=self.logger)
-        fname = 'reference_for_chain_%s_%s.%s' % (chain.id, ref_model_id, ref_chain_id)
+        fname = 'reference_for_chain_%s_%s' % (chain.id, model_info.get_pdb_id())
         ref_fname = self.data_manager.write_model_file(
             model_str=cutted_ref_m,
             filename=fname,
