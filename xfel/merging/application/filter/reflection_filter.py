@@ -81,11 +81,8 @@ class reflection_filter(worker):
 
     n_reflections_initial = len(reflections)
     n_experiments_initial = len(experiments)
-<<<<<<< HEAD
     if self.params.select.reflection_filter.do_diagnostics:
       self.plot_reflections(experiments, reflections, 'Initial')
-=======
->>>>>>> Consolidated removed refl/expt counts
     if filter_by_significance:
       experiments, reflections = self.apply_significance_filter(experiments, reflections)
       removed_reflections_significance_rank = n_reflections_initial - len(reflections)
@@ -101,7 +98,6 @@ class reflection_filter(worker):
       if self.mpi_helper.rank == 0:
         self.logger.main_log(f"Total reflections rejected because of significant: {removed_reflections_significance}")
         self.logger.main_log(f"Total experiments rejected because of significant: {removed_experiments_significance}")
-<<<<<<< HEAD
       if self.params.select.reflection_filter.do_diagnostics:
         self.plot_reflections(experiments, reflections, 'After Significance Filter')
     if filter_by_isolation_forest:
@@ -111,16 +107,6 @@ class reflection_filter(worker):
         self.plot_reflections(experiments, reflections, 'After Isolation Forest')
 
     if filter_by_isolation_forest:
-=======
-    if filter_by_isolation_forest:
-      experiments, reflections = self.apply_isolation_forest(experiments, reflections)
-      filter_type = 'Isolation Forest'
-    elif filter_by_local_outlier_factor:
-      experiments, reflections = self.apply_local_outlier_factor(experiments, reflections)
-      filter_type = 'Local Outlier Factor'
-
-    if filter_by_isolation_forest or filter_by_local_outlier_factor:
->>>>>>> Consolidated removed refl/expt counts
       removed_reflections_filter_rank = n_reflections_initial - len(reflections)
       removed_experiments_filter_rank = n_experiments_initial - len(experiments)
       if filter_by_significance:
