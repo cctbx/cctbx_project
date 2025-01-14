@@ -68,6 +68,9 @@ steps:
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
+    pushd modules/xfel_regression/test/util
+    sed -i 's/mpirun/mpiexec/' tst_mpi_abort.py
+    popd
     source ./build/setpaths.sh
     mkdir tests
     cd tests
