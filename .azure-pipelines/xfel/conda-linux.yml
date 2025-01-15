@@ -73,6 +73,11 @@ jobs:
     displayName: Install dependencies for CentOS
     condition: eq('${{ parameters.distribution }}', 'centos')
 
+  - script: |
+      yum install -y ucx
+    displayName: Add libucx for Rocky Linux
+    condition: eq('${{ parameters.distribution }}', 'rockylinux')
+
   - bash: |
       echo "##vso[task.setvariable variable=LC_ALL]C.utf8"
     displayName: Setup locale for CentOS 8
