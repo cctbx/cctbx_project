@@ -51,6 +51,7 @@ steps:
     conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
     conda install -y -c conda-forge cmake pandas distro -n psana_env
+    conda list -n psana_env
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 
