@@ -41,8 +41,6 @@ steps:
 - script: |
     set -xe
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
-    # psana1 needs some discontinued packages
-    echo "restore_free_channel: true" > $(Pipeline.Workspace)/miniforge/.condarc
   displayName: Install miniforge
 
 - script: |
