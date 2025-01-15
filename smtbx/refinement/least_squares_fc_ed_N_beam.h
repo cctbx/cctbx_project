@@ -298,9 +298,10 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       size_t coln = data.design_matrix_kin.accessor().n_columns() +
         (data.thickness.grad ? 1 : 0);
       af::shared<FloatType> grads_sum(coln),
-        grads1;
+        grads1, first_grads;
 
-      FloatType I1 = -1, g1 = -1, I_sum = 0;
+      FloatType I1 = -1, g1 = -1, I_sum = 0, step_sum = 0,
+        first_I = 0, I = 0;
       std::pair<mat3_t, cart_t> r;
       r.second = beam_group->geometry->get_normal();
       for (size_t ai = 0; ai < angles.size(); ai++) {
@@ -310,8 +311,6 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         cart_t g = r.first * cart_t(h[0], h[1], h[2]);
         cart_t K_g = g + data.K;
         FloatType K_g_l = K_g.length();
-
-        FloatType I;
         if (compute_grad) {
           if (data.params.isNBeamFloating()) {
             n_beam_dc.init(h, r.first, data.Fcs_kin, data.mi_lookup);
@@ -331,16 +330,34 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         if (g1 >= 0) {
           FloatType d = std::abs(K_g_l - g1) / 2;
           I_sum += (I + I1) * d;
+          step_sum += d;
           if (compute_grad) {
             for (size_t i = 0; i < coln; i++) {
               grads_sum[i] += (grads1[i] + D_dyn(0, i)) * d;
             }
           }
         }
+        else {
+          first_I = I;
+          if (compute_grad) {
+            first_grads = af::shared<FloatType>(&D_dyn(0, 0), &D_dyn(0, n_param));
+          }
+        }
         I1 = I;
         g1 = K_g_l;
         if (compute_grad) {
           grads1 = af::shared<FloatType>(&D_dyn(0, 0), &D_dyn(0, n_param));
+        }
+      }
+      // add the edges with mean step
+      {
+        FloatType d = step_sum / (angles.size()-1);
+        d /= 2;
+        I_sum += (I + first_I)* d;
+        if (compute_grad) {
+          for (size_t i = 0; i < coln; i++) {
+            grads_sum[i] += (grads1[i] + first_grads[i]) * d;
+          }
         }
       }
       if (compute_grad) {
@@ -418,10 +435,9 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         }
         amps[ai] = I;
       }
-      const FloatType I_th = data.params.getIntProfileStartTh(),
-        I_range = maxI - minI;
+      const FloatType I_th = maxI * data.params.getIntProfileStartTh();
       for (size_t i = 0; i < amps.size(); i++) {
-        if ((amps[i] - minI) >= I_th * I_range) {
+        if ((amps[i] - minI) >= I_th) {
           if (start_idx == ~0) {
             start_idx = (i == 0 ? i : i - 1);
             if (end_idx != ~0) {
@@ -429,7 +445,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
             }
           }
         }
-        if ((amps[amps.size() - i - 1] - minI) >= I_th * I_range) {
+        if ((amps[amps.size() - i - 1] - minI) >= I_th) {
           if (end_idx == ~0) {
             end_idx = (i > 0 ? amps.size() - i : amps.size() - 1);
             if (start_idx != ~0) {
