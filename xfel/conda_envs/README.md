@@ -67,6 +67,12 @@ $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base \
   --nproc=10 --python=39 --no-boost-src build
 ```
 
+## MPI support
+
+MPI functionality can be sensitive to the details of the system configuration. In one minimal setup (Azure CI on Rocky Linux)
+we had to add `ucx` via either YUM or Conda for full MPI function. For a particular cluster environment you may have to consult
+a local expert.
+
 ## LCLS environment
 
 For LCLS data, when not on the main LCLS servers, additional environment variables are needed so psana can find the XTC streams are stored. Given a folder named `$WORKING`, the XTC streams should be in `$WORKING/<endstation>/<experiment>/xtc`. If the data is older than run 21 (spring 2022), `$WORKING/lcls/ExpNameDb` should exist, with the file `experiment-db.dat`. That file will have entries like `280 CXI cxi78513` to map the numbers in the XTC streams to experiment names. Newer data doesn't need this. Given this folder structure, export these environment variables:
