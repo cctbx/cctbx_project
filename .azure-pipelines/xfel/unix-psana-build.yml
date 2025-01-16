@@ -41,6 +41,8 @@ steps:
 - script: |
     set -xe
     bash $(Pipeline.Workspace)/miniforge/Miniforge3-$(CONDA)-x86_64.sh -b -u -p $(Pipeline.Workspace)/miniforge
+    # psana1 needs some discontinued packages
+    echo "restore_free_channel: true" > $(Pipeline.Workspace)/miniforge/.condarc
   displayName: Install miniforge
 
 - script: |
@@ -49,7 +51,6 @@ steps:
     conda env create -f $(Pipeline.Workspace)/modules/cctbx_project/xfel/conda_envs/psana_environment.yml python=$(PYTHON_FULL_VERSION)
     conda install -y -c conda-forge --no-deps -n psana_env junit-xml
     conda install -y -c conda-forge cmake pandas distro -n psana_env
-    conda list -n psana_env
   displayName: Create conda environment
   retryCountOnTaskFailure: 3
 
@@ -67,9 +68,6 @@ steps:
     source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
     conda activate psana_env
     cd $(Pipeline.Workspace)
-    pushd modules/xfel_regression/test/util
-    sed -i 's/mpirun/mpiexec/' tst_mpi_abort.py
-    popd
     source ./build/setpaths.sh
     mkdir tests
     cd tests
