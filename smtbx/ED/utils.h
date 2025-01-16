@@ -31,6 +31,11 @@ namespace smtbx { namespace ED
       mat3_t get_RMf(const mat3_t &rm) const {
         return rm * UB;
       }
+      const mat3_t& get_UB() const {
+        return UB;
+      }
+      virtual FloatType get_diffraction_angle(
+        const miller::index<> &h, const cart_t& K) const = 0;
     };
 
     class PETS_geometry : public a_geometry {
@@ -67,6 +72,19 @@ namespace smtbx { namespace ED
         }
         return rxa;
       }
+      FloatType get_diffraction_angle(
+        const miller::index<>&h, const cart_t &K) const
+      {
+        cart_t g = this->get_UB() * cart_t(h[0], h[1], h[2]);
+        if (beta != 0) {
+          g = ryb * g;
+        }
+        FloatType a = g[2], b = g[1];
+        FloatType p = g.length_sq() / (-2 * K[2]);
+        FloatType d = sqrt(a * a * b * b + b * b * b * b - b * b * p * p);
+        FloatType r1 = atan2((-a * d + p * b * b) / (b * a * a + b * b * b), (p * a + d) / (a * a + b * b));
+        return r1;
+      }
     };
 
     class CAP_geometry : public a_geometry {
@@ -81,6 +99,17 @@ namespace smtbx { namespace ED
       mat3_t get_RM(FloatType angle) const {
         FloatType ca = std::cos(angle), sa = std::sin(angle);
         return mat3_t(ca, sa, 0, -sa, ca, 0, 0, 0, 1);
+      }
+      FloatType get_diffraction_angle(
+        const miller::index<>&h, const cart_t& K) const
+      {
+        cart_t g = this->get_UB() * cart_t(h[0], h[1], h[2]);
+        FloatType a = g[0], b = g[1];
+        FloatType p = g.length_sq() / (-2 * K[0]);
+        FloatType d = sqrt(a * a * b * b + b * b * b * b - b * b * p * p);
+        FloatType r1 = atan2((-a * d + p * b * b) / (b * a * a + b * b * b), (p * a + d) / (a * a + b * b));
+        //FloatType r2 = atan2((a * d + p * b * b) / (b * a * a + b * b * b), (p * a - d) / (a * a + b * b));
+        return r1;
       }
     };
 

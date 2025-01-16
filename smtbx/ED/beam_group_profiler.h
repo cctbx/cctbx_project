@@ -251,7 +251,7 @@ namespace smtbx { namespace ED {
       boost::scoped_ptr<smtbx::error> exception_;
     };
 
-    af::shared<PeakProfilePoint<FloatType> > build_profile(
+    af::shared<PeakProfilePoint<FloatType> > build_group_profile(
       const af::shared<FloatType>& angles, bool inc_incident)
     {
       af::shared<PeakProfilePoint<FloatType> > rv(
@@ -277,6 +277,27 @@ namespace smtbx { namespace ED {
           FloatType Sg = utils<FloatType>::calc_Sg(g, K);
           rv.push_back(PeakProfilePoint<FloatType>(Is[i], Sg, ang, (K + g).length()));
         }
+      }
+      return rv;
+    }
+
+    af::shared<PeakProfilePoint<FloatType> > build_reflection_profile(
+      const miller::index<> &h,
+      const af::shared<FloatType>& angles)
+    {
+      af::shared<PeakProfilePoint<FloatType> > rv(af::reserve(angles.size()));
+      process_beam_group_profile fp(*this, beam_group);
+      af::shared<FloatType> Is = fp.process(h, angles);
+      if (fp.exception_) {
+        throw* fp.exception_.get();
+      }
+      cart_t h_c(h[0], h[1], h[2]);
+      for (size_t ai = 0; ai < angles.size(); ai++) {
+        FloatType ang = angles[ai];
+        std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(ang);
+        cart_t g = r.first * h_c;
+        FloatType Sg = utils<FloatType>::calc_Sg(g, K);
+        rv.push_back(PeakProfilePoint<FloatType>(Is[ai], Sg, ang, (K + g).length()));
       }
       return rv;
     }

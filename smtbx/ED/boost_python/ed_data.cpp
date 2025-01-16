@@ -50,6 +50,7 @@ namespace boost_python {
         .add_property("strong_measured_beams", make_getter(&wt::strong_measured_beams, rbv))
         .add_property("weak_beams", make_getter(&wt::weak_beams, rbv))
         .add_property("weak_measured_beams", make_getter(&wt::weak_measured_beams, rbv))
+        .add_property("geometry", make_getter(&wt::geometry, rbv))
         .def("is_excited_index", &wt::is_excited_index)
         .def("is_excited_beam", &wt::is_excited_beam)
         .def("is_fully_covered", &wt::is_excited_beam)
@@ -127,7 +128,8 @@ namespace boost_python {
               arg("space_group"), arg("anomalous_flag"),
               arg("thickness"),
               arg("params"))))
-        .def("build_profile", &wt::build_profile)
+        .def("build_group_profile", &wt::build_group_profile)
+        .def("build_reflection_profile", &wt::build_reflection_profile)
         .def("build_incident_profile", &wt::build_incident_profile)
         .add_property("mi_lookup", make_getter(&wt::mi_lookup, rir))
         .add_property("Fcs_k", make_getter(&wt::Fcs_k, rbv))
@@ -331,6 +333,7 @@ namespace boost_python {
         .def("get_RMf", (get_RMf_1)&wt::get_RMf, rbv)
         .def("get_RMf", (get_RMf_2)&wt::get_RMf, rbv)
         .def("Kl_as_K", &wt::Kl_as_K, rbv)
+        .def("get_diffraction_angle", &wt::get_diffraction_angle)
         ;
     }
 

@@ -77,46 +77,31 @@ namespace smtbx { namespace ED
     FloatType get_diffraction_angle(const miller::index<>& h,
       const cart_t& K) const
     {
-      //return Sg_to_angle(0, h, K);
-      FloatType ang = Sg_to_angle(0, h, K);
-      mat3_t m = geometry->get_RMf(ang);
-      std::pair<FloatType, FloatType> k = Sg_to_angle_k(m, ang, h, K, 0.3);
-      ang = ang - k.first / k.second;
-      m = geometry->get_RMf(ang);
-      k = Sg_to_angle_k(m, ang, h, K, 0.1);
-      return ang - k.first / k.second;
+      return geometry->get_diffraction_angle(h, K);
+      //FloatType ang = Sg_to_angle(0, h, K);
+      //mat3_t m = geometry->get_RMf(ang);
+      //std::pair<FloatType, FloatType> k = Sg_to_angle_k(m, ang, h, K, 0.3);
+      //ang = ang - k.first / k.second;
+      //m = geometry->get_RMf(ang);
+      //k = Sg_to_angle_k(m, ang, h, K, 0.1);
+      //return ang - k.first / k.second;
     }
 
     /* returns angle in rads at which the excitation error is Sg as
-    angle = angle + (Sg-rv.first)/rv.second
+    angle = rv.first + Sg/rv.second
     */
     std::pair<FloatType, FloatType> Sg_to_angle_k(
       const miller::index<>& h,
       const cart_t& K, FloatType sweep_angle = 0.5) const
     {
-      FloatType Sg1 = utils<FloatType>::calc_Sg(RMf * h, K);
+      FloatType da = geometry->get_diffraction_angle(h, K);
       FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      mat3_t m = geometry->get_RMf(angle + ang_diff);
+      mat3_t m = geometry->get_RMf(da + ang_diff);
       FloatType Sg2 = utils<FloatType>::calc_Sg(m * h, K);
-      FloatType k = (Sg2 - Sg1) / ang_diff;
+      FloatType k = Sg2 / ang_diff;
       //FloatType a = Sg1 - k*angle;
       //return (Sg - a) / k = (Sg + k*angle - sg1)/k = angle + (Sg - Sg1)/k;
-      return std::make_pair(Sg1, k);
-    }
-
-    std::pair<FloatType, FloatType> Sg_to_angle_k(
-      const mat3_t &m, FloatType ang,
-      const miller::index<>& h,
-      const cart_t& K, FloatType sweep_angle = 0.5) const
-    {
-      FloatType Sg1 = utils<FloatType>::calc_Sg(m * h, K);
-      FloatType ang_diff = scitbx::deg_as_rad(sweep_angle);
-      mat3_t rmf = geometry->get_RMf(ang + ang_diff);
-      FloatType Sg2 = utils<FloatType>::calc_Sg(rmf * h, K);
-      FloatType k = (Sg2 - Sg1) / ang_diff;
-      //FloatType a = Sg1 - k*angle;
-      //return (Sg - a) / k = (Sg + k*angle - sg1)/k = angle + (Sg - Sg1)/k;
-      return std::make_pair(Sg1, k);
+      return std::make_pair(da, k);
     }
 
     /* returns angle in rads at which the excitation error is Sg */
@@ -124,14 +109,14 @@ namespace smtbx { namespace ED
       const cart_t& K) const
     {
       std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
-      return angle + (Sg - k.first) / k.second;
+      return k.first + Sg / k.second;
     }
 
     FloatType angle_to_Sg(FloatType ang, const miller::index<>& h,
       const cart_t& K, FloatType sweep_angle = 0.5) const
     {
-      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
-      return k.second*(ang - angle) + k.first;
+      std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K, sweep_angle);
+      return k.second*(ang - k.first);
     }
 
     FloatType PL_correctionROD(const miller::index<>& h) const {
@@ -436,7 +421,7 @@ namespace smtbx { namespace ED
     std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
     af::shared<FloatType> rv(af::reserve(std::abs(Sg_span * 2 / Sg_step) + 1));
     for (FloatType Sg = -Sg_span; Sg <= Sg_span; Sg += Sg_step) {
-      FloatType ang = angle + (Sg - k.first) / k.second;
+      FloatType ang = k.first + Sg / k.second;
       rv.push_back(ang);
     }
     return rv;

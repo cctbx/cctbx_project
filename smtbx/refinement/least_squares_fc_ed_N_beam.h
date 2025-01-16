@@ -248,7 +248,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
     }
 
     FloatType get_observable_N() const {
-      FloatType da = beam_group->get_diffraction_angle(h, data.K);
+      FloatType da = beam_group->geometry->get_diffraction_angle(h, data.K);
       af::shared<FloatType> angles;
 
       FloatType width_Sg = 0;
@@ -400,7 +400,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       const BeamGroup<FloatType>& group,
       FloatType test_span, size_t test_points) const
     {
-      FloatType da = group.get_diffraction_angle(index, data.K);
+      FloatType da = group.geometry->get_diffraction_angle(index, data.K);
       af::shared<FloatType> angles = group.get_angles_Sg(index, data.K,
         test_span,
         test_span / test_points);
@@ -459,8 +459,8 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
       else {
         std::pair<FloatType, FloatType> k = group.Sg_to_angle_k(index, data.K);
-        FloatType s = k.second * (angles[start_idx] - group.angle) + k.first;
-        FloatType e = k.second * (angles[end_idx] - group.angle) + k.first;
+        FloatType s = k.second * (angles[start_idx] - k.first);
+        FloatType e = k.second * (angles[end_idx] - k.first);
         return std::max(std::abs(s), std::abs(e));
       }
     }
