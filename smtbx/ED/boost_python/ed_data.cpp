@@ -43,7 +43,7 @@ namespace boost_python {
         .def_readwrite("tag", &wt::tag)
         .add_property("RMf", make_getter(&wt::RMf, rbv))
         .add_property("angle", &wt::angle)
-        .add_property("scale", &wt::scale)
+        .def_readwrite("scale", &wt::scale)
         .add_property("indices", make_getter(&wt::indices, rbv))
         .add_property("beams", make_getter(&wt::beams, rbv))
         .add_property("strong_beams", make_getter(&wt::strong_beams, rbv))
@@ -71,6 +71,8 @@ namespace boost_python {
         .def("get_diffraction_angle", &wt::get_diffraction_angle,
           (arg("h"), arg("K"), arg("sweep_angle")=3.0))
         .def("compute_RMf_N", &wt::compute_RMf_N)
+        .def("link_groups", &wt::link_groups)
+        .staticmethod("link_groups")
         ;
       scitbx::af::boost_python::shared_wrapper<wt, rir_t>::wrap("shared_beam_group_info");
     }

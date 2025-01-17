@@ -60,7 +60,7 @@ namespace smtbx { namespace ED
       FloatType angle, FloatType scale)
       : id(id), tag(-1), geometry(geometry),
       angle(angle), scale(scale),
-      offset(~0)
+      offset(~0), next(0), prev(0)
     {
       mat3_t rm = geometry->get_RM(angle);
       RMf = geometry->get_RMf(rm);
@@ -117,6 +117,13 @@ namespace smtbx { namespace ED
     {
       std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K, sweep_angle);
       return k.second*(ang - k.first);
+    }
+    
+    FloatType calc_Sg(const miller::index<> &h,
+      const cart_t& K) const
+    {
+      return utils<FloatType>::calc_Sg(
+        RMf*cart_t(h[0], h[1], h[2]), K);
     }
 
     FloatType PL_correctionROD(const miller::index<>& h) const {
@@ -182,12 +189,28 @@ namespace smtbx { namespace ED
     af::shared<FloatType> get_angles_Sg_for_angles(const miller::index<>& h,
       const cart_t& K, FloatType start_ang, FloatType end_ang, size_t N) const;
 
+    static bool sort_groups(const BeamGroup& a, const BeamGroup& b)
+    {
+      return (a.angle < b.angle);
+    }
+
+    static void link_groups(const af::shared<BeamGroup> &groups_) {
+      af::shared<BeamGroup> groups = groups_;
+      std::sort(groups.begin(), groups.end(), sort_groups);
+      for (size_t i = 1; i < groups.size(); i++) {
+        groups[i - 1].next = &groups[i];
+        groups[i].prev = &groups[i-1];
+      }
+    }
+
     int id, tag;
     cart_t original_normal;
     boost::shared_ptr<geometry_t> geometry;
     mat3_t RMf;
     FloatType angle, scale;
     size_t offset; // for internal bookeeping
+    BeamGroup* next, * prev;
+
     // experimental data
     af::shared<BeamInfo<FloatType> > beams;
     // populated by analyse_strength
