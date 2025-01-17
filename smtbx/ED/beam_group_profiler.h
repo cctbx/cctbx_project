@@ -100,8 +100,8 @@ namespace smtbx { namespace ED {
       // N-Beam specific
       af::shared<FloatType> process(const miller::index<> &h, const af::shared<FloatType> &angles) {
         SMTBX_ASSERT(parent.use_n_beam && parent.params.getBeamN() > 2);
+        af::shared<FloatType> rv(angles.size());
         try {
-          af::shared<FloatType> rv(angles.size());
           bool floating = parent.params.isNBeamFloating();
           dyn_calculator_n_beam<FloatType> n_beam_dc(parent.params.getBeamN(),
             parent.mat_type,
@@ -118,7 +118,6 @@ namespace smtbx { namespace ED {
             }
             rv[ai] = std::norm(n_beam_dc.calc_amp(r));
           }
-          return rv;
         }
         catch (smtbx::error const& e) {
           exception_.reset(new smtbx::error(e));
@@ -126,6 +125,7 @@ namespace smtbx { namespace ED {
         catch (std::exception const& e) {
           exception_.reset(new smtbx::error(e.what()));
         }
+        return rv;
       }
 
       af::shared<FloatType> process(const mat3_t& RMf, const cart_t& N) {
