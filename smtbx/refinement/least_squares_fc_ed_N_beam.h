@@ -57,6 +57,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       compute_grad(compute_grad),
       thread_n(params.getThreadN())
     {
+      BeamGroup<FloatType>::link_groups(beam_groups);
       K = beam_groups[0].geometry->Kl_as_K(Kl);
       // build lookups for each beam_group + collect all indices and they diffs
       af::shared<miller::index<> > all_indices;
@@ -362,6 +363,38 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       }
       if (compute_grad) {
         grads = grads_sum;
+      }
+      // linear scale if possible
+      {
+        FloatType scale = 1;
+        if (beam_group->next != 0) {
+          if (da > beam_group->angle && da < beam_group->next->angle) {
+            FloatType Sg1 = std::abs(beam_group->calc_Sg(h, data.K));
+            FloatType Sg2 = std::abs(beam_group->next->calc_Sg(h, data.K));
+            FloatType Sgr = Sg1 + Sg2;
+            scale = (Sg2 * beam_group->scale
+              + Sg1 * beam_group->next->scale);
+            scale /= Sgr * beam_group->scale;
+          }
+        }
+        if (beam_group->prev != 0) {
+          if (da < beam_group->angle && da > beam_group->prev->angle) {
+            FloatType Sg1 = std::abs(beam_group->calc_Sg(h, data.K));
+            FloatType Sg2 = std::abs(beam_group->prev->calc_Sg(h, data.K));
+            FloatType Sgr = Sg1 + Sg2;
+            scale = (Sg2 * beam_group->scale
+              + Sg1 * beam_group->prev->scale);
+            scale /= Sgr * beam_group->scale;
+          }
+        }
+        if (scale != 1) {
+          I_sum *= scale;
+          if (compute_grad) {
+            for (size_t i = 0; i < grads.size(); i++) {
+              grads[i] *= scale;
+            }
+          }
+        }
       }
       return I_sum;
     }
