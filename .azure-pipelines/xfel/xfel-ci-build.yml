@@ -15,8 +15,8 @@ jobs:
       prefix: xfel_psana_
   - template: ./conda-osx.yml
     parameters:
-      vmImage: [12]
-      xcode_version: [14, 2]
+      vmImage: [13]
+      xcode_version: [14, 3, 1]
       modules: xfel_modules
       template: ./unix-conda-build.yml
       prefix: xfel_
