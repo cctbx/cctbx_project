@@ -2208,26 +2208,57 @@ def is_periodic(map_data,
     else:
         return None # Really do not know
 
-def map_values_along_line_connecting_two_points(map_data, points_cart, step,
-      unit_cell, interpolation):
+def map_values_along_line_connecting_two_points(map_data, points_cart,
+      unit_cell, interpolation, step=None, n_steps=None):
   """
   Calculate interpolated map values along the line connecting two points in
   space.
   """
   assert interpolation in ["eight_point", "tricubic"]
+  assert [step, n_steps].count(None)==1
   points_frac = unit_cell.fractionalize(points_cart)
   dist = unit_cell.distance(points_frac[0], points_frac[1])
-  assert step<dist, "step cannot be greater than the distance between two points"
   #
-  alp = 0
+  def get_points(start, end, step=None, n_steps=None):
+    assert [step, n_steps].count(None)==1
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+    dz = end[2] - start[2]
+    direction = (dx, dy, dz)
+    length = math.sqrt(direction[0]**2 + direction[1]**2 + direction[2]**2)
+    direction_unit = (direction[0] / length, direction[1] / length, direction[2] / length)
+    if n_steps is None:
+      n_steps = int(max(abs(dx), abs(dy), abs(dz), length) / step)
+    if step is None:
+      step = length/n_steps
+    points = []
+    for i in range(n_steps + 1):
+      point = (
+        start[0] + i * step * direction_unit[0],
+        start[1] + i * step * direction_unit[1],
+        start[2] + i * step * direction_unit[2])
+      points.append(point)
+    # check end point
+    end_ = points[-1]
+    d = math.sqrt(
+      (end_[0] - start[0])**2 + 
+      (end_[1] - start[1])**2 + 
+      (end_[2] - start[2])**2)
+    if d<length: points.append(end)
+    #
+    return points
+  #
+  points = get_points(start=points_cart[0], end=points_cart[1], step=step,
+    n_steps=n_steps)
+  
   dist = flex.double()
   vals = flex.double()
-  while alp <= 1.0+1.e-6:
-    x1,y1,z1 = points_cart[0]
-    x2,y2,z2 = points_cart[1]
-    xp = x1+alp*(x2-x1)
-    yp = y1+alp*(y2-y1)
-    zp = z1+alp*(z2-z1)
+  mv_max = None
+  point_max = None
+  for p in points:
+    xp = p[0]
+    yp = p[1]
+    zp = p[2]
     rp = unit_cell.fractionalize([xp,yp,zp])
     d = unit_cell.distance(points_frac[0], rp)
     dist.append(d)
@@ -2236,6 +2267,12 @@ def map_values_along_line_connecting_two_points(map_data, points_cart, step,
       mv = map_data.eight_point_interpolation(pf)
     else:
       mv = map_data.tricubic_interpolation(pf)
+    if mv_max is None: 
+      mv_max = mv
+      point_max = p[:]
+    else:
+      if mv > mv_max: 
+        mv_max = mv
+        point_max = p[:]
     vals.append(mv)
-    alp += step
-  return group_args(dist = dist, vals = vals)
+  return group_args(dist = dist, vals = vals, point_max = point_max)
