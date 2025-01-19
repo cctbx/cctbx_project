@@ -41,10 +41,10 @@ thresholds = {
                'max_diff_max': 0.0015},
 }
 
-
 def compare_structure_factors(x,y):
   """
-  Compute the relative mean and maximum differences between two sets of structure factors.
+  Compute the relative mean and maximum differences between two sets of
+  structure factors.
 
   Parameters
   ----------
@@ -65,7 +65,8 @@ def compare_structure_factors(x,y):
   Notes
   -----
   The function computes a scaling factor between `x` and `y`, then calculates
-  the relative difference using both absolute sums and element-wise absolute differences.
+  the relative difference using both absolute sums and element-wise absolute
+  differences.
   """
   x = flex.abs(x)
   y = flex.abs(y)
@@ -77,11 +78,12 @@ def compare_structure_factors(x,y):
 
 def test_all_elements_wk1995():
   """
-  Test structure factor calculations for all elements using the WK1995 scattering table.
+  Test structure factor calculations for all elements using the WK1995
+  scattering table.
 
   This function iterates over all elements in the cctbx WK1995 scattering table,
-  computes structure factors with cctbx and DiSCaMB, and checks the differences using
-  the `compare_structure_factors` function.
+  computes structure factors with cctbx and DiSCaMB, and checks the differences
+  using the `compare_structure_factors` function.
 
   Returns
   -------
@@ -89,10 +91,9 @@ def test_all_elements_wk1995():
 
   Notes
   -----
-  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'wk1995' as the
-  scattering table parameter.
+  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'wk1995' as
+  the scattering table parameter.
   """
-
 
   plot_vals = []
   for i in range(0, n_runs):
@@ -103,7 +104,6 @@ def test_all_elements_wk1995():
         element = el,
         table   = 'wk1995')
       plot_vals.append((score,max_diff))
-
   if not make_plot: return
   v_wk1995 = np.array(plot_vals, dtype = dtype1)
   make_histogram(data = v_wk1995['score'],
@@ -113,14 +113,14 @@ def test_all_elements_wk1995():
                  ptype = 'max_diff',
                  table='wk1995')
 
-
 def test_all_elements_it1992():
   """
-  Test structure factor calculations for all elements using the IT1992 scattering table.
+  Test structure factor calculations for all elements using the IT1992
+  scattering table.
 
   This function iterates over all elements in the cctbx IT1992 scattering table,
-  computes structure factors with cctbx and DiSCaMB, and checks the differences using
-  the `compare_structure_factors` function.
+  computes structure factors with cctbx and DiSCaMB, and checks the differences
+  using the `compare_structure_factors` function.
 
   Returns
   -------
@@ -128,8 +128,8 @@ def test_all_elements_it1992():
 
   Notes
   -----
-  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'it1992' as the
-  scattering table parameter.
+  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'it1992' as
+  the scattering table parameter.
   """
   plot_vals = []
   for i in range(0, n_runs):
@@ -139,7 +139,6 @@ def test_all_elements_it1992():
         element = el,
         table   = 'it1992')
       plot_vals.append((score,max_diff))
-
   if not make_plot: return
   v_it1992 = np.array(plot_vals, dtype = dtype1)
   make_histogram(data = v_it1992['score'],
@@ -149,14 +148,15 @@ def test_all_elements_it1992():
                  ptype = 'max_diff',
                  table='it1992')
 
-
 def test_all_elements_electron():
   """
-  Test structure factor calculations for all elements using the electron scattering table.
+  Test structure factor calculations for all elements using the electron
+  scattering table.
 
-  This function iterates over all elements in the cctbx electron scattering table,
-  generates random crystal structures, calculates structure factors using both cctbx
-  and DiSCaMB, and compares the results using the `compare_structure_factors` function.
+  This function iterates over all elements in the cctbx electron scattering
+  table, generates random crystal structures, calculates structure factors using
+  both cctbx and DiSCaMB, and compares the results using the
+  `compare_structure_factors` function.
 
   Returns
   -------
@@ -164,8 +164,8 @@ def test_all_elements_electron():
 
   Notes
   -----
-  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'electron' as the
-  scattering table parameter.
+  Calls `check_element_in_cctbx_and_dyscamb` for each element, using 'electron'
+  as the scattering table parameter.
   """
   plot_vals = []
   for i in range(0, n_runs):
@@ -174,9 +174,7 @@ def test_all_elements_electron():
         element = el,
         table   = 'electron')
       plot_vals.append((score,max_diff))
-
   if not make_plot: return
-
   v_electron = np.array(plot_vals, dtype = dtype1)
   make_histogram(data = v_electron['score'],
                  ptype = 'score',
@@ -187,7 +185,8 @@ def test_all_elements_electron():
 
 def check_element_in_cctbx_and_dyscamb(element, table=None):
   """
-  Compute and compare structure factors for a given element using specified scattering tables.
+  Compute and compare structure factors for a given element using specified
+  scattering tables.
 
   Parameters
   ----------
@@ -204,13 +203,14 @@ def check_element_in_cctbx_and_dyscamb(element, table=None):
   Raises
   ------
   AssertionError
-      If the relative difference score or absolute differences exceed predefined thresholds.
+      If the relative difference score or absolute differences exceed predefined
+      thresholds.
 
   Notes
   -----
-  Computes structure factors using both cctbx and DiSCaMB and compares the results
-  using `compare_structure_factors`. Assertions ensure differences remain within
-  acceptable limits.
+  Computes structure factors using both cctbx and DiSCaMB and compares the
+  results using `compare_structure_factors`. Assertions ensure differences
+  remain within acceptable limits.
   """
   assert table is not None
   group = space_group_info(19)
@@ -236,7 +236,6 @@ def check_element_in_cctbx_and_dyscamb(element, table=None):
   assert(mean_diff < thresholds[table]['mean_diff'])
   assert(max_diff < thresholds[table]['max_diff_max'])
   return(score, max_diff)
-
 
 def make_histogram(data, ptype, table):
   """
@@ -286,7 +285,6 @@ def make_histogram(data, ptype, table):
   filename = ptype+'_'+ table +'_per_element.png'
   plt.savefig(filename, dpi=600)
   plt.close()
-
 
 if (__name__ == "__main__"):
   t0 = time.time()

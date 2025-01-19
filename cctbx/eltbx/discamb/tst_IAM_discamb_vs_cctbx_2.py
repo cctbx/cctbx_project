@@ -27,9 +27,10 @@ def test_all_spacegroups():
   """
   Test structure factor calculations for all space groups.
 
-  This function iterates over all 230 space groups, generates random crystal structures
-  with a set of common elements, isotropic atomic displacement parameters, and occupancies,
-  and compares structure factors calculated with cctbx and DiSCaMB.
+  This function iterates over all 230 space groups, generates random crystal
+  structures with a set of common elements, isotropic atomic displacement
+  parameters, and occupancies, and compares structure factors calculated with
+  cctbx and DiSCaMB.
 
   Returns
   -------
@@ -38,7 +39,8 @@ def test_all_spacegroups():
   Raises
   ------
   AssertionError
-      If the relative difference score or absolute differences exceed predefined thresholds.
+      If the relative difference score or absolute differences exceed predefined
+      thresholds.
 
   Notes
   -----
@@ -47,8 +49,8 @@ def test_all_spacegroups():
   - Optionally applies random perturbations to fp or fdp.
   - Computes structure factors with cctbx and DiSCaMB
   - resolution limit is random between 2 and 5 A
-  - Asserts that the difference between cctbx and DiSCaMB structure factors remains
-    within acceptable limits.
+  - Asserts that the difference between cctbx and DiSCaMB structure factors
+    remains within acceptable limits.
   """
   for sg_number in range(1,231):
     sgi = space_group_info(sg_number)
@@ -77,13 +79,11 @@ def test_all_spacegroups():
     # Calculate structure factors with DiSCaMB
     fcalc_discamb = flex.complex_double(
       pydiscamb.calculate_structure_factors_IAM(xrs, d_min))
-
     assert fcalc_discamb.size() == fcalc_cctbx.size()
     # compute the difference between the structure factors
     score, mean_diff, max_diff = compare_structure_factors(
       x=fcalc_cctbx, y=fcalc_discamb)
     #print (sgi, score, mean_diff, max_diff)
-
     # Check if the differences are within the specified tolerance
     assert(score < 0.0003)
     assert(mean_diff < 0.0015)

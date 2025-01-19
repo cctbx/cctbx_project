@@ -11,7 +11,6 @@ matplotlib.use('Agg') # Must be before importing matplotlib.pyplot or pylab!
 from matplotlib import pyplot as plt
 import numpy as np
 
-
 assertion_values = {
   "electron": {'score_max': 0.00015,
                'max_diff_max': 0.003},

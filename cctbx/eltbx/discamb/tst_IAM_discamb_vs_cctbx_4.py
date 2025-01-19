@@ -62,7 +62,6 @@ def compute_vals(table):
       d_min=d_min, algorithm="direct").f_calc().data()
     fcalc_discamb = flex.complex_double(
       pydiscamb.calculate_structure_factors_IAM(xrs, d_min))
-
     assert fcalc_discamb.size() == fcalc_cctbx.size()
     score, mean_diff, max_diff = compare_structure_factors(
       x=fcalc_cctbx, y=fcalc_discamb)
@@ -92,7 +91,6 @@ def run(make_plots):
     #print('wk1995')
     plot_vals = compute_vals(table = "wk1995")
     plot_data_wk1995.extend(plot_vals)
-
   #
   if make_plots:
     dtype1 = np.dtype([
@@ -103,7 +101,6 @@ def run(make_plots):
     v_electron = np.array(plot_data_electron, dtype = dtype1)
     v_it1992 = np.array(plot_data_it1992, dtype = dtype1)
     v_wk1995 = np.array(plot_data_wk1995, dtype = dtype1)
-
     print('Making plots...')
     for _table, _data in zip(['electron','it1992','wk1995'],
                              [v_electron, v_it1992, v_wk1995]):
