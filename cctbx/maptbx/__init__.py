@@ -2241,8 +2241,8 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
     # check end point
     end_ = points[-1]
     d = math.sqrt(
-      (end_[0] - start[0])**2 + 
-      (end_[1] - start[1])**2 + 
+      (end_[0] - start[0])**2 +
+      (end_[1] - start[1])**2 +
       (end_[2] - start[2])**2)
     if d<length: points.append(end)
     #
@@ -2250,7 +2250,7 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
   #
   points = get_points(start=points_cart[0], end=points_cart[1], step=step,
     n_steps=n_steps)
-  
+
   dist = flex.double()
   vals = flex.double()
   mv_max = None
@@ -2267,11 +2267,11 @@ def map_values_along_line_connecting_two_points(map_data, points_cart,
       mv = map_data.eight_point_interpolation(pf)
     else:
       mv = map_data.tricubic_interpolation(pf)
-    if mv_max is None: 
+    if mv_max is None:
       mv_max = mv
       point_max = p[:]
     else:
-      if mv > mv_max: 
+      if mv > mv_max:
         mv_max = mv
         point_max = p[:]
     vals.append(mv)

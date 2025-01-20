@@ -7,11 +7,13 @@ from __future__ import absolute_import, division, print_function
 
 from crys3d import wx_tools
 from crys3d.model import model_data
+# pyopengl GLU imports may change location of gltbx imports (e.g. quadrics),
+# so place these first
+from gltbx.gl import *
+from gltbx.glu import *
 from gltbx.wx_viewer import wxGLWindow
 import gltbx.util
 from gltbx import viewer_utils, quadrics
-from gltbx.gl import *
-from gltbx.glu import *
 import gltbx
 import libtbx.phil
 from libtbx.introspection import method_debug_log

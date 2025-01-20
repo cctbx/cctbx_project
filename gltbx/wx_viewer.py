@@ -1021,7 +1021,7 @@ class App(wx.App):
       " Keyboard shortcut: a")
 
     self.toggle_spin_id = wx.NewId()
-    tb.AddCheckTool(self.toggle_spin_id,
+    tb.AddCheckTool(self.toggle_spin_id, 'label',
       images.spin_img.as_wx_Bitmap(),
       shortHelp="Spin on/off",
       longHelp="Turns auto-spin on/off. Keyboard shortcut: s")
