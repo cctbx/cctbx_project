@@ -62,6 +62,92 @@ def get_prob_less_than_z_n_tries(z,n,n_direct=10):
    an,bn=get_an_bn(n)
    return cdf_of_x(z,an,bn)
 
+class sample_extreme_z:
+  """Return samples from extreme probability distribution for Gaussian
+     variable z (mean 0, variance 1)  with n = n_tries
+
+    Call with number of tries (n_tries) and optional random seed.
+    Then sample with the sample() function to return individual samples
+      from the extreme probability distribution
+
+    Optionally use the sample_extreme_from_gaussian() function to directly
+      sample (much slower).
+
+    For values of n_tries under n_direct, uses the sample_extreme_from_gaussian
+      function always. (Gumbel function very inaccurate for small n_tries,
+      pretty ok with n_tries 10 or greater, use 100 as this is fast anyhow)
+
+"""
+
+  def __init__(self, n_tries, random_seed = 1779147, n_direct = 100):
+    from scitbx.array_family import flex
+    import random
+    self.n_tries = n_tries
+    self.random_seed = random_seed
+    self.n_direct = max(1, n_direct)
+    flex.set_random_seed(self.random_seed)
+    random.seed(self.random_seed)
+    import numpy as np
+    np.random.seed(self.random_seed)
+
+    # Get Gumbel parameters: an is scale (beta), bn is location (mu)
+    self.an,self.bn=get_an_bn(self.n_tries)
+
+  def sample(self, n_sample = 1):
+    """ Return n_sample samples from the extreme probability distribution
+        of z with n = n_tries.
+      This will yield samples that have a distribution that is similar to
+      sample_extreme_from_gaussian (but is much faster).
+
+      If n_sample == 1, return a float, otherwise a flex.double array
+
+    """
+    from scitbx.array_family import flex
+
+    if self.n_tries<= self.n_direct:
+      values = flex.double()
+      for i in range(n_sample):
+        values.append(self.sample_extreme_from_gaussian())
+      if n_sample == 1:
+        return values[0]
+      else:
+        return values
+
+    else:
+      import numpy as np
+      values = np.random.gumbel(loc=self.bn, scale=self.an, size=n_sample)
+      return flex.double(values)
+
+  def sample_extreme_from_gaussian(self):
+    """ Return extreme value of z for n_tries by direct sampling"""
+    from scitbx.array_family import flex
+    import random
+    values = flex.double()
+    for i in range(self.n_tries):
+      values.append(random.gauss(0,1))
+    return values.min_max_mean().max
+
+def exercise_sample(random_seed = 1779147):
+  for n in (1,10, 20, 30, 40, 50, 100, 1000, 10000):
+    s = sample_extreme_z(n, random_seed = random_seed)
+    from scitbx.array_family import flex
+    gumbel= s.sample(n_sample = 100)
+    sample_extreme = flex.double()
+    for k in range(100):
+      sample_extreme.append(s.sample_extreme_from_gaussian())
+
+    print("N: %s  Gumbel %.2f +/- %.2f  Sample: %.2f +/- %.2f " %(
+      n,
+      gumbel.min_max_mean().mean,
+      gumbel.standard_deviation_of_the_sample(),
+      sample_extreme.min_max_mean().mean,
+      sample_extreme.standard_deviation_of_the_sample(),))
+    d1 = abs(gumbel.min_max_mean().mean - sample_extreme.min_max_mean().mean)
+    d2 = abs(gumbel.standard_deviation_of_the_sample() -
+         sample_extreme.standard_deviation_of_the_sample())
+    assert d1 < 0.2
+    assert d2 < 0.2
+
 def exercise():
   from libtbx.test_utils import approx_equal
   for n in [10,100,1000,10000,]:
@@ -119,5 +205,8 @@ if __name__=="__main__":
   if 'exercise' in args:
     exercise()
     exercise_1()
-  else:
+    exercise_sample()
+  elif len(args) == 2:
     run(args)
+  elif len(args) == 1:
+    exercise_sample(random_seed=int(args[0]))
