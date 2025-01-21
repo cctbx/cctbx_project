@@ -4,16 +4,16 @@ The conda build environment psana_environment.yml is suitable
 for general use and contains the usual CCTBX dependencies plus psana and its
 dependencies.
 
-The build steps below were tested on Oct 19, 2022. They should be done in a clean environment: start
+The build steps below were tested on Jan 21, 2025. They should be done in a clean environment: start
 a new shell before proceeding.
 
 Note, reading HDF5 data and general crystallographic data is supported with these instructions. Reading XTC data from LCLS requires additional [environment variables](#LCLS-environment).
 
-## Prerequisite: Install Miniconda3 and add mamba
+## Note on Conda environments
 
-If needed, visit: https://docs.conda.io/en/latest/miniconda.html and install the correct Miniconda
-for your platform. Activate your `base` environment and do: `conda install mamba -c conda-forge`.
-Mamba is a much faster C++ implementation of conda.
+Modern versions of Conda (>= 23.11) include the fast `libmamba` solver. To avoid attempting a laborious
+update of your base environment, we recommend creating a separate Miniconda installation for the cctbx build.
+Separately installing `mamba` is no longer required. These steps are covered in the build instructions.
 
 ## General build
 
@@ -24,38 +24,24 @@ bootstrap.py step you should adjust nproc to suit your environment.
 $ mkdir cctbx; cd cctbx
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
 $ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ mamba env create -f psana_environment.yml -p $PWD/conda_base
+$ wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+$ bash Miniconda3-latest-Linux-x86_64.sh -b -p $PWD/mc3
+$ source mc3/etc/profile.d/conda.sh
+$ conda env create -f psana_environment.yml -p $PWD/conda_base
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
-    --python=39 --no-boost-src hot update build
+    --no-boost-src hot update
+$ # Temporary 1/21/25: Checkout a dials snapshot for psana compatibility.
+$ pushd modules/dials; git checkout py39_for_psana; popd
+$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
+    --no-boost-src build
 $ echo $PWD/build/conda_setpaths.sh
 ```
 To activate the cctbx environment, `source` the script that was printed in the final step.
 
 ## LCLS build
 
-Since the `psana` compute nodes do not have internet access, we use `psexport` for everything except `build`.
-```
-dwpaley@pslogin02:~
-$ ssh psexport
-[...]
-$ cd /reg/d/psdm/<experiment>/scratch/dwpaley
-$ mkdir cctbx; cd cctbx
-$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/libtbx/auto_build/bootstrap.py
-$ wget https://raw.githubusercontent.com/cctbx/cctbx_project/master/xfel/conda_envs/psana_environment.yml
-$ mamba env create -f psana_environment.yml -p $PWD/conda_base
-$ conda activate $PWD/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
-    --python=39 --no-boost-src hot update
-$ exit
-$ ssh psana
-[...]
-$ cd /reg/d/psdm/<experiment>/scratch/dwpaley/cctbx
-$ conda activate $PWD/conda_base
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=12 \
-    --python=39 --no-boost-src build
-$ echo $PWD/build/conda_setpaths.sh
-```
+This section is removed because the new LCLS facilities do not have the limitations of the old psana cluster.
 
 ## Build with conda compilers
 
@@ -64,7 +50,7 @@ with standardized compilers from conda instead. Replace the step `python bootstr
 ```
 $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base \
   --config-flags="--compiler=conda" --config-flags="--use_environment_flags" \
-  --nproc=10 --python=39 --no-boost-src build
+  --nproc=10 --no-boost-src build
 ```
 
 ## MPI support
