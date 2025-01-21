@@ -2546,6 +2546,7 @@ class manager(object):
       self._xray_structure.set_inelastic_form_factors(
           photon=iff_wavelength,
           table=set_inelastic_form_factors)
+    self._xray_structure.scattering_type_registry_params.table = scattering_table
     return self.xray_scattering_dict, self.neutron_scattering_dict
 
   def get_searched_tls_selections(self, nproc, log):
