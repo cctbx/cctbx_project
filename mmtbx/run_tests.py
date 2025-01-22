@@ -409,8 +409,10 @@ general_tests = [
   "$D/regression/fix_cablam/tst_single_outliers_surroundings.py",
   "$D/regression/fix_cablam/tst_one_resid_rotation.py",
   "$D/regression/fix_cablam/tst_insertion_codes.py",
-  #
+  # Tests involving scattering table
   "$D/regression/tst_scattering_type_registry.py",
+  "$D/regression/tst_scattering_table.py",
+  #
   "$D/atomic_environment_vectors/tst.py",
   #
   "$D/building/ligands/tst_00.py",
