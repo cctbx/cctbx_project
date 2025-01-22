@@ -580,6 +580,11 @@ class structure(crystal.special_position_settings):
                    .n_independent_params()] += 1
     return result
 
+  def get_scattering_table(self):
+    if not self.scattering_type_registry_params:
+        return None
+    return self.scattering_type_registry_params.table
+
   def guess_scattering_type_neutron(self):
     ac,bc,cc = 0,0,0
     result = False
