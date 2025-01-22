@@ -1405,13 +1405,13 @@ citation {
 
 citation {
   article_id = phenix.mosaic
-  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev A
+  authors = Afonine PV, Adams PD, Sobolev OV, Urzhumtsev AG
   title = Accounting for nonuniformity of bulk-solvent: a mosaic model
-  journal = None
-  volume = None
+  journal = Protein Science
+  volume = 33
   pages = None
-  year = 2030
-  doi_id = None
+  year = 2024
+  doi_id = 10.1002/pro.4909
 }
 
 citation {
