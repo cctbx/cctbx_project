@@ -2,10 +2,6 @@
 """
 Module for querying the RCSB web server using the REST API, as described here:
 https://search.rcsb.org/index.html#search-api
-
-There is some overlap with iotbx.pdb.fetch, which really should have gone here
-instead, but this module is intended to be used in higher-level automation
-pipelines.
 """
 
 from __future__ import absolute_import, division, print_function
@@ -136,6 +132,8 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
       query_json["request_options"]["sort"] = []
     query_json["request_options"]["sort"].append(sort_by_res)
     print("  will sort by resolution", file=log)
+  if "results_verbosity" not in query_json["request_options"].keys():
+    query_json["request_options"]["results_verbosity"] = "compact"
   print("  executing HTTP request...", file=log)
   # print(json.dumps(query_json, indent=4))
   r = requests.post(search_base_url, json=query_json)
@@ -144,8 +142,7 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
   if r.status_code == 200:
     r_json = r.json()
     # print(json.dumps(r_json, indent=4))
-    for res in r_json["result_set"]:
-      res_ids.append(str(res["identifier"].replace('_', ':')))
+    res_ids = r_json["result_set"]
   return res_ids
 
 def sequence_search(
@@ -272,23 +269,11 @@ def chemical_id_search(resname, **kwds):
     "nodes": [
       {
         "type": "terminal",
-        "service": "text_chem",
-        "parameters": {
-          "attribute": "rcsb_chem_comp_container_identifiers.comp_id",
-          "operator": "in",
-          "negation": false,
-          "value": [
-            "%s"
-          ]
-        }
-      },
-      {
-        "type": "terminal",
         "service": "text",
         "parameters": {
-          "attribute": "rcsb_nonpolymer_instance_feature_summary.count",
-          "value": 0,
-          "operator": "greater_or_equal"
+          "attribute": "rcsb_nonpolymer_entity_container_identifiers.nonpolymer_comp_id",
+          "operator": "exact_match",
+          "value": "%s"
         }
       }
     ]
@@ -310,8 +295,6 @@ def chemical_id_search(resname, **kwds):
   sqr = chem_comp_query % (resname)
   jsq = json.loads(sqr)
   return post_query(query_json=jsq, **kwds)
-
-
 
 def get_high_resolution_for_structures(pdb_ids):
   with_res_count = get_high_resolution_and_residue_count_for_structures(pdb_ids)

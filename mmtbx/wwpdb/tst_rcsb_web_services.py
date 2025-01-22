@@ -36,11 +36,11 @@ def exercise():
   homologs = rcsb_web_services.sequence_search(lysozyme, d_max=2.0)
   assert (len(homologs) > 500)
   atp_binding = rcsb_web_services.chemical_id_search("ATP", protein_only=True)
-  # print("len(atp_binding)", len(atp_binding)) # 1314
-  assert (len(atp_binding) > 650)
+  # print("len(atp_binding)", len(atp_binding), atp_binding) # 1389
+  assert (len(atp_binding) > 1000)
   atp_binding = rcsb_web_services.chemical_id_search("ATP", xray_only=True, protein_only=True)
-  # print("len(atp_binding)", len(atp_binding)) # 1314
-  assert (len(atp_binding) > 650)
+  # print("len(atp_binding)", len(atp_binding)) # 1389
+  assert (len(atp_binding) > 1000)
   report = rcsb_web_services.get_high_resolution_for_structures(atp_binding)
   assert (len(report) == len(atp_binding)) and (len(report[0]) == 2)
   # print (report)
