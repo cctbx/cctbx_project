@@ -130,8 +130,14 @@ filter
   .help = or to modify the entire experiment by a reindexing operator
   .help = refer to the select section for filtering of individual reflections
   {
-  algorithm = n_obs resolution unit_cell
+  algorithm = n_obs resolution unit_cell wavelength
     .type = choice(multi=True)
+  wavelength {
+    min_wavelength = None
+      .type = float
+    max_wavelength = None
+      .type = float
+  }
   n_obs {
     min = None
       .type = int

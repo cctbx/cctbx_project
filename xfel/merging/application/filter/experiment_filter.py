@@ -31,6 +31,12 @@ class experiment_filter(worker):
   def __repr__(self):
     return 'Filter experiments'
 
+  def check_wavelength(self, experiment):
+    wav_min = self.params.filter.wavelength.min_wavelength
+    wav_max = self.params.filter.wavelength.max_wavelength
+    wav = experiment.beam.get_wavelength()
+    return wav_min < wav < wav_max
+
   def check_unit_cell(self, experiment):
     experiment_unit_cell = experiment.crystal.get_unit_cell()
     is_ok = experiment_unit_cell.is_similar_to(self.params.filter.unit_cell.value.target_unit_cell,
@@ -82,8 +88,9 @@ class experiment_filter(worker):
     filter_by_unit_cell = 'unit_cell' in self.params.filter.algorithm
     filter_by_n_obs = 'n_obs' in self.params.filter.algorithm
     filter_by_resolution = 'resolution' in self.params.filter.algorithm
+    filter_by_wavelength = 'wavelength' in self.params.filter.algorithm
     # only "unit_cell" "n_obs" and "resolution" algorithms are supported
-    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution):
+    if (not filter_by_unit_cell) and (not filter_by_n_obs) and (not filter_by_resolution) and (not filter_by_wavelength):
       return experiments, reflections
     self.logger.log_step_time("FILTER_EXPERIMENTS")
 
@@ -105,6 +112,11 @@ class experiment_filter(worker):
       experiment_ids_to_remove += experiment_ids_to_remove_resolution
     else:
       removed_for_resolution = 0
+    if filter_by_wavelength:
+      experiment_ids_to_remove_wavelength, removed_for_wavelength = self.run_filter_by_wavelength(experiments, reflections)
+      experiment_ids_to_remove += experiment_ids_to_remove_wavelength
+    else:
+      removed_for_wavelength = 0
     experiment_ids_to_remove = list(set(experiment_ids_to_remove))
 
     input_len_expts = len(experiments)
@@ -118,6 +130,7 @@ class experiment_filter(worker):
     self.logger.log("Experiments rejected because of space group %d"%removed_for_space_group)
     self.logger.log("Experiments rejected because of n_obs %d"%removed_for_n_obs)
     self.logger.log("Experiments rejected because of resolution %d"%removed_for_resolution)
+    self.logger.log("Experiments rejected because of wavelength %d"%removed_for_wavelength)
     self.logger.log("Reflections rejected because of rejected experiments: %d"%removed_reflections)
 
     # MPI-reduce total counts
@@ -127,6 +140,7 @@ class experiment_filter(worker):
     total_removed_for_space_group = comm.reduce(removed_for_space_group, MPI.SUM, 0)
     total_removed_for_n_obs = comm.reduce(removed_for_n_obs, MPI.SUM, 0)
     total_removed_for_resolution = comm.reduce(removed_for_resolution, MPI.SUM, 0)
+    total_removed_for_wavelength = comm.reduce(removed_for_wavelength, MPI.SUM, 0)
     total_reflections_removed = comm.reduce(removed_reflections, MPI.SUM, 0)
 
     # rank 0: log total counts
@@ -135,6 +149,7 @@ class experiment_filter(worker):
       self.logger.main_log("Total experiments rejected because of space group %d"%total_removed_for_space_group)
       self.logger.main_log("Total experiments rejected because of n_obs %d"%total_removed_for_n_obs)
       self.logger.main_log("Total experiments rejected because of resolution %d"%total_removed_for_resolution)
+      self.logger.main_log("Total experiments rejected because of wavelength %d"%total_removed_for_wavelength)
       self.logger.main_log("Total reflections rejected because of rejected experiments %d"%total_reflections_removed)
 
     self.logger.log_step_time("FILTER_EXPERIMENTS", True)
@@ -205,6 +220,18 @@ class experiment_filter(worker):
           removed_for_unit_cell += 1
     # END OF COVARIANCE FILTER
     return experiment_ids_to_remove, removed_for_unit_cell, removed_for_space_group
+
+  def run_filter_by_wavelength(self, experiments, reflections):
+    experiment_ids_to_remove = []
+    removed_for_wavelength = 0
+    for expt in experiments:
+      if not self.check_wavelength(expt):
+        experiment_ids_to_remove.append(expt.identifier)
+        removed_for_wavelength += 1
+    return experiment_ids_to_remove, removed_for_wavelength
+
+
+
 
   def run_filter_by_n_obs(self, experiments, reflections):
     experiment_ids_to_remove = []
