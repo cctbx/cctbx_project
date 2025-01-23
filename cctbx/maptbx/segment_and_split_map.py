@@ -2707,6 +2707,10 @@ def get_f_phases_from_map(
       origin_frac = None,
         out = sys.stdout):
 
+    """ Calculate structure factors from a map.  Returns map coefficients
+        in space group P1 always (regardless of crystal_symmetry).
+    """
+
     if d_min is not None:
       d_min_use = d_min
       if d_min_ratio is not None:
