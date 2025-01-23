@@ -187,7 +187,9 @@ def apply_rigid_body_shift(xray_structure, params):
     if(l > 0.1):
       break
     run_away_counter += 1
-    assert run_away_counter < 100
+    print("run_away_counter", run_away_counter, l)
+    
+  assert run_away_counter < 100
   transl = transl_no_cont_sh * (params.translation_length/l)
   sites_cart = xray_structure.sites_cart()
   cm = xray_structure.center_of_mass()
@@ -321,9 +323,10 @@ def loop_2(params, xray_structure, pdb_hierarchy, restraints_manager, root):
     xrs_sh = apply_tls(xray_structure = xrs_sh, params = amp.tls)
   if([amp.rigid_body_shift.rotation_angle,
       amp.rigid_body_shift.translation_length].count(None)==0):
-    xrs_sh = apply_rigid_body_shift(xray_structure = xrs_sh,
-      params = amp.rigid_body_shift)
-    show(xrs = xrs_sh, xrs_start = xrs, grm = grm, prefix = "rb:   ")
+    if xrs.crystal_symmetry().space_group().type().number()!=1:
+      xrs_sh = apply_rigid_body_shift(xray_structure = xrs_sh,
+        params = amp.rigid_body_shift)
+      show(xrs = xrs_sh, xrs_start = xrs, grm = grm, prefix = "rb:   ")
   #
   h = pdb_hierarchy.deep_copy()
   h.atoms().reset_i_seq() # XXX
