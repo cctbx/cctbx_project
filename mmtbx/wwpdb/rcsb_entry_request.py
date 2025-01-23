@@ -470,44 +470,41 @@ class rcsb_entry_info(object):
   def __init__(self, json_data):
     self.data = json_data
 
-  def get_pdb_id(self):
-    return self.data['rcsb_id']
-  def get_experimental_method(self):
+  def _get_value(self, path, convert_type=None):
+    """Helper function to safely get nested dictionary values.
+
+    Args:
+        path (list): List of keys/indices to traverse the data structure
+        convert_type (type, optional): Type to convert the value to (e.g., float)
+
+    Returns:
+        The value if found and successfully converted, None otherwise
+    """
     try:
-      return self.data['exptl'][0]['method']
-    except TypeError:
-      return None
-  def get_resolution(self):
-    try:
-      return float(self.data["refine"][0]["ls_d_res_high"])
-    except (TypeError, ValueError):
-      return None
-  def get_rwork(self):
-    try:
-      return float(self.data["refine"][0]["ls_R_factor_R_work"])
-    except (TypeError, ValueError):
-      return None
-  def get_rfree(self):
-    try:
-      return float(self.data["refine"][0]["ls_R_factor_R_free"])
-    except (TypeError, ValueError):
-      return None
-  def get_rama_outliers(self):
-    try:
-      return float(self.data["pdbx_vrpt_summary_geometry"][0]["percent_ramachandran_outliers"])
-    except (TypeError, ValueError):
-      return None
-  def get_rota_outliers(self):
-    try:
-      return float(self.data["pdbx_vrpt_summary_geometry"][0]["percent_rotamer_outliers"])
-    except (TypeError, ValueError):
-      return None
-  def get_clashscore(self):
-    try:
-      return float(self.data["pdbx_vrpt_summary_geometry"][0]["clashscore"])
-    except (TypeError, ValueError):
+      value = self.data
+      for key in path:
+        value = value[key]
+      return convert_type(value) if convert_type else value
+    except (TypeError, ValueError, KeyError, IndexError):
       return None
 
+  def get_pdb_id(self):
+    return self.data['rcsb_id']
+
+  def get_experimental_method(self):
+    return self._get_value(['exptl', 0, 'method'])
+  def get_resolution(self):
+    return self._get_value(['refine', 0, 'ls_d_res_high'], float)
+  def get_rwork(self):
+    return self._get_value(['refine', 0, 'ls_R_factor_R_work'], float)
+  def get_rfree(self):
+    return self._get_value(['refine', 0, 'ls_R_factor_R_free'], float)
+  def get_rama_outliers(self):
+    return self._get_value(['pdbx_vrpt_summary_geometry', 0, 'percent_ramachandran_outliers'], float)
+  def get_rota_outliers(self):
+    return self._get_value(['pdbx_vrpt_summary_geometry', 0, 'percent_rotamer_outliers'], float)
+  def get_clashscore(self):
+    return self._get_value(['pdbx_vrpt_summary_geometry', 0, 'clashscore'], float)
 
   #=============================================================================
   def is_computational(self):
@@ -520,15 +517,9 @@ class rcsb_entry_info(object):
     except TypeError:
       return None
   def get_source_url(self):
-    try:
-      return self.data['rcsb_comp_model_provenance']['source_url']
-    except TypeError:
-      return None
+    return self._get_value(['rcsb_comp_model_provenance', 'source_url'])
   def get_source_pae_url(self):
-    try:
-      return self.data['rcsb_comp_model_provenance']['source_pae_url']
-    except TypeError:
-      return None
+    return self._get_value(['rcsb_comp_model_provenance', 'source_pae_url'])
 
 
 def get_info(pdb_ids):
