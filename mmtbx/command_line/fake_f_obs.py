@@ -188,7 +188,7 @@ def apply_rigid_body_shift(xray_structure, params):
       break
     run_away_counter += 1
     print("run_away_counter", run_away_counter, l)
-    
+
   assert run_away_counter < 100
   transl = transl_no_cont_sh * (params.translation_length/l)
   sites_cart = xray_structure.sites_cart()
