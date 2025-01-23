@@ -155,6 +155,11 @@ full_page_request = '''
       ls_R_factor_R_free
       ls_R_factor_obs
     }
+    pdbx_vrpt_summary_geometry {
+      percent_ramachandran_outliers
+      percent_rotamer_outliers
+      clashscore
+    }
     pdbx_nmr_ensemble {
       conformers_calculated_total_number
       conformers_submitted_total_number
@@ -487,6 +492,22 @@ class rcsb_entry_info(object):
       return float(self.data["refine"][0]["ls_R_factor_R_free"])
     except (TypeError, ValueError):
       return None
+  def get_rama_outliers(self):
+    try:
+      return float(self.data["pdbx_vrpt_summary_geometry"][0]["percent_ramachandran_outliers"])
+    except (TypeError, ValueError):
+      return None
+  def get_rota_outliers(self):
+    try:
+      return float(self.data["pdbx_vrpt_summary_geometry"][0]["percent_rotamer_outliers"])
+    except (TypeError, ValueError):
+      return None
+  def get_clashscore(self):
+    try:
+      return float(self.data["pdbx_vrpt_summary_geometry"][0]["clashscore"])
+    except (TypeError, ValueError):
+      return None
+
 
   #=============================================================================
   def is_computational(self):

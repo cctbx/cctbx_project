@@ -8,9 +8,12 @@ def exercise_1():
   """
   Exercise 1, experimental:
   """
-  info = rcsb_entry_request.get_info(pdb_ids=['1yjp'])
+  info = rcsb_entry_request.get_info(pdb_ids=['1ucs'])
   assert len(info) == 1
-  assert info[0].get_rwork() == 0.18086, info[0].get_rwork()
+  assert info[0].get_rwork() == 0.133, info[0].get_rwork()
+  assert info[0].get_rama_outliers() == 0
+  assert info[0].get_rota_outliers() == 1.82
+  assert info[0].get_clashscore() == 19.44
   assert not info[0].is_computational()
 
 def exercise_2():
