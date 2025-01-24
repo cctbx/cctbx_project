@@ -151,20 +151,45 @@ Inputs: Model file (PDB, mmCIF)
     self.processed_model_file_name = None
     self.processed_model_file_name_list = []
 
+    # Split by chain ID. Normally only one chain ID but run separately if more
+    working_model_list = self.model.as_model_manager_each_chain()
     from mmtbx.process_predicted_model import process_predicted_model
-    info = process_predicted_model(model = self.model,
-     distance_model = self.distance_model,
-     params = self.params,
-     pae_matrix = self.pae_matrix,
-     log = self.logger,
+
+    processed_model_list = []
+    remainder_sequence_str_list = []
+    for model in working_model_list:
+      # Run on each unique chain ID
+      info = process_predicted_model(model = model,
+       distance_model = self.distance_model,
+       params = self.params,
+       pae_matrix = self.pae_matrix,
+       log = self.logger,
        )
 
-    if not info:
-      print("Unable to process predicted model", file = self.logger)
-      return
+      if not info:
+        print("Unable to process predicted model", file = self.logger)
+        return
 
-    self.model_list = info.model_list
-    self.processed_model = info.model
+      self.model_list += info.model_list
+      processed_model_list.append(info.model)
+      remainder_sequence_str_list.append(info.remainder_sequence_str)
+
+
+    if len(processed_model_list) > 1:
+      # rename chains to match orig and merge. Limited functionality here
+      for m, orig_m in zip(processed_model_list, working_model_list):
+        chain_id = orig_m.first_chain_id()
+        for model_m in m.get_hierarchy().models()[:1]:
+          for chain in model_m.chains():
+            chain.id = chain_id
+
+      from iotbx.pdb.utils import add_model
+      self.processed_model = processed_model_list[0]
+      for m in processed_model_list[1:]:
+        self.processed_model = add_model(self.processed_model, m)
+    else: # usual
+      self.processed_model = processed_model_list[0]
+
     self.dock_and_rebuild = group_args(
       group_args_type = 'dummy dock_and_rebuild for summary',
       processed_model = self.processed_model)
@@ -182,15 +207,16 @@ Inputs: Model file (PDB, mmCIF)
       prefix = "%s_processed" %(prefix)
       prefix = os.path.basename(prefix)
     self.processed_model_file_name = "%s.pdb" %(prefix)
-    if not info.model or info.model.overall_counts().n_residues < 1:
+    if not self.processed_model or \
+         self.processed_model.overall_counts().n_residues < 1:
       print("No residues obtained after processing...", file = self.logger)
       return None
     if (self.params.output_files.maximum_output_b is not None) and (
-       info.model.get_b_iso().min_max_mean().max >
+       self.processed_model.get_b_iso().min_max_mean().max >
        self.params.output_files.maximum_output_b):
       print("Limiting output B values to %.0f" %(
         self.params.output_files.maximum_output_b), file = self.logger)
-    mm = limit_output_b(info.model,
+    mm = limit_output_b(self.processed_model,
          maximum_output_b = self.params.output_files.maximum_output_b)
 
     if self.params.output_files.single_letter_chain_ids:
@@ -238,7 +264,8 @@ Inputs: Model file (PDB, mmCIF)
 
 
     # Write out seq file for remainder (unused part) of model
-    if info.remainder_sequence_str:
+    if remainder_sequence_str_list:
+      remainder_sequence_str = "\n".join(remainder_sequence_str_list)
       if self.params.output_files.remainder_seq_file_prefix:
         prefix = self.params.output_files.remainder_seq_file_prefix
       else:
@@ -247,7 +274,7 @@ Inputs: Model file (PDB, mmCIF)
         prefix = os.path.basename(prefix)
       self.remainder_sequence_file_name = os.path.join(
         os.getcwd(), "%s.seq" %(prefix))
-      sequence_str = info.remainder_sequence_str
+      sequence_str = remainder_sequence_str
       self.data_manager.write_sequence_file(sequence_str,
         filename = self.remainder_sequence_file_name)
 
@@ -363,9 +390,13 @@ Inputs: Model file (PDB, mmCIF)
     else:
       self.pae_matrix = None
 
-    if len(self.model.chain_ids()) != 1:
-      raise Sorry("Input model should have exactly one chain id. (Found: %s)" %(
-        " ".join(self.model.chain_ids())))
+    if len(self.model.chain_ids()) > 1:
+      if self.distance_model:
+        raise Sorry(
+          "The distance model cannot currently be used for multiple chains")
+      if self.pae_matrix:
+        raise Sorry(
+          "The PAE matrix cannot currently be used for multiple chains")
 
   def validate(self):  # make sure we have files
     return True
