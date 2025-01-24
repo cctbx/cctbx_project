@@ -318,7 +318,6 @@ def tst_04(log = sys.stdout):
 
   pp = run_program(program_class=run.Program,args=args)
   assert pp.processed_model.overall_counts().n_residues == 172
-  print(pp.processed_model.chain_ids())
   assert pp.processed_model.chain_ids() == ['B1','B2']
 
 if __name__ == "__main__":
