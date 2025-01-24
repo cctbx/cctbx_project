@@ -30,11 +30,7 @@ $ source mc3/etc/profile.d/conda.sh
 $ conda env create -f psana_environment.yml -p $PWD/conda_base
 $ conda activate `pwd`/conda_base
 $ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
-    --no-boost-src hot update
-$ # Temporary 1/21/25: Checkout a dials snapshot for psana compatibility.
-$ pushd modules/dials; git checkout py39_for_psana; popd
-$ python bootstrap.py --builder=xfel --use-conda=$PWD/conda_base --nproc=48 \
-    --no-boost-src build
+    --no-boost-src hot update build
 $ echo $PWD/build/conda_setpaths.sh
 ```
 To activate the cctbx environment, `source` the script that was printed in the final step.
