@@ -26,6 +26,7 @@ master_phil = iotbx.phil.parse(master_phil_str)
 params = master_phil.extract()
 
 
+two_chains_model_file=os.path.join(data_dir,'two_chains.pdb')
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.pdb')
 pae_model_file=os.path.join(data_dir,'pae_model.pdb')
 pae_file=os.path.join(pae_data_dir,'pae.json')
@@ -293,11 +294,39 @@ def tst_03():
   print(list(a))
   assert list(a) == [False, False, False, True, True, True, True, True, True, True, True, True, True, False, False]
 
+def tst_04(log = sys.stdout):
+
+
+  # Run on model with multiple chain IDs
+  print("\nModel with multiple chain IDs",
+    file = log)
+
+  # two_chains_model_file
+
+  # Check splitting model into domains
+  print("\nSplitting model with 2 chains into domains", file = log)
+
+  try:
+    from iotbx.cli_parser import run_program
+    from mmtbx.programs import process_predicted_model as run
+  except Exception as e:
+    print("process_predicted_model not available...skipping")
+    return
+
+  args = "%s" %(two_chains_model_file)
+  args = args.split()
+
+  pp = run_program(program_class=run.Program,args=args)
+  assert pp.processed_model.overall_counts().n_residues == 172
+  print(pp.processed_model.chain_ids())
+  assert pp.processed_model.chain_ids() == ['B1','B2']
+
 if __name__ == "__main__":
 
   t0 = time.time()
   tst_01()
   tst_02()
   tst_03()
+  tst_04()
   print ("Time:", time.time()-t0)
   print ("OK")
