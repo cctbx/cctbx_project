@@ -79,6 +79,14 @@ class FormatXTCRayonixSingleEvent(FormatXTCSingleEvent, FormatXTCRayonix):
         bin_size = params.rayonix.bin_size
     self._pixel_size = rayonix_tbx.get_rayonix_pixel_size(bin_size)
     self._image_size = rayonix_tbx.get_rayonix_detector_dimensions(run.env())
+    self._detz_encoder = None
+    try:
+        self._detz_encoder = psana.Detector(params.rayonix.detz_encoder)
+    except KeyError:
+        pass
+    self._distance_mm = 100
+    self._center_mm = params.rayonix.cent_mm
+
 
 class SimpleScript(DSPScript):
   """ Override dials.stills_process Script class to use its load_reference_geometry function """
