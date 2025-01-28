@@ -51,6 +51,8 @@ def tst000():
     assert (xrs.scattering_type_registry_params.table == table)
     assert (xrs.get_scattering_table() == table)
 
+# ------------------------------------------------------------------------------
+
 def tst001():
   """
   Test the scattering table consistency between what is supplied in the data
@@ -122,12 +124,57 @@ def tst001():
     fmodel = dm.get_fmodel(scattering_table=table)
     #print(fmodel.r_work())
     xrs = fmodel.xray_structure
+    #print(xrs.get_scattering_table())
+    #print(table)
     assert (xrs.get_scattering_table() == table)
     assert (xrs.scattering_type_registry_params.table == table)
   os.remove(pdb_fn)
   os.remove(mtz_fn)
 
+# ------------------------------------------------------------------------------
+
 def tst002():
+  """
+  Test scattering table consistency after selections.
+
+  This function sets up an atomic model from a PDB string and assigns
+  different scattering tables ("n_gaussian", "wk1995", "it1992", "electron").
+  It then verifies that the scattering tables are consistent after xrs.select().
+
+  Returns
+  -------
+  None
+
+  Raises
+  ------
+  AssertionError
+      If the scattering table retrieved after applying selections do not match
+      the expected table.
+  """
+  for table in ["n_gaussian", "wk1995", "it1992", "electron"]:
+    pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
+    model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
+    # get a selection
+    sel = model.selection('name N or name CA or name C or name O')
+    # copy model
+    m1 = model.deep_copy()
+    # -----
+    # Test 1: check that table is consistent after applying xrs.select()
+    # -----
+    # set the scattering table via model object
+    m1.setup_scattering_dictionaries(scattering_table=table)
+    # check that this table is consistent with what can be accessed with xrs
+    xrs1 = m1.get_xray_structure()
+    assert (xrs1.scattering_type_registry_params.table == table)
+    assert (xrs1.get_scattering_table() == table)
+    # Check that xrs remembers scattering table after selection
+    xrs_selected = xrs1.select(sel)
+    assert (xrs_selected.scattering_type_registry_params.table == table)
+    assert (xrs_selected.get_scattering_table() == table)
+
+# ------------------------------------------------------------------------------
+
+def tst003():
   cs = crystal.symmetry((10, 20, 30, 90, 90, 90), "P 1")
   sp = crystal.special_position_settings(cs)
   scatterers = flex.xray_scatterer((
@@ -141,6 +188,8 @@ def tst002():
   xrs.scattering_type_registry(table = 'electron')
   print(xrs.get_scattering_table())
 
+# ------------------------------------------------------------------------------
+
 if(__name__ == "__main__"):
   """
   Run the scattering table tests.
@@ -149,7 +198,8 @@ if(__name__ == "__main__"):
   - `tst000()`: Ensures cconsistency between model object and xray_structure.
   - `tst001()`: consistency between what is supplied in the data manager and
      the xray_structure retrieved from the fmodel object
-  - `tst002()`: toy example
+  - `tst002()`: Ensure consistency after xrs.select()
+  - `tst003()`: toy example
 
   Returns
   -------
@@ -158,5 +208,6 @@ if(__name__ == "__main__"):
   t0 = time.time()
   tst000()
   tst001()
-  #tst002()
+  tst002()
+  #tst003() # toy example
   print("OK. Time: %8.3f"%(time.time()-t0))
