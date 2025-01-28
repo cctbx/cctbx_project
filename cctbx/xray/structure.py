@@ -1258,7 +1258,6 @@ class structure(crystal.special_position_settings):
     assert self.scatterers() is not None
     if (negate): selection = ~selection
     strp = self.scattering_type_registry_params
-    #table = self._scattering_table
     selected_xrs = structure(
       special_position_settings=self,
       scatterers=self._scatterers.select(selection),

@@ -124,8 +124,6 @@ def tst001():
     fmodel = dm.get_fmodel(scattering_table=table)
     #print(fmodel.r_work())
     xrs = fmodel.xray_structure
-    #print(xrs.get_scattering_table())
-    #print(table)
     assert (xrs.get_scattering_table() == table)
     assert (xrs.scattering_type_registry_params.table == table)
   os.remove(pdb_fn)
