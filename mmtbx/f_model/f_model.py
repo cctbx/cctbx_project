@@ -359,7 +359,17 @@ class manager(manager_mixin):
          n_resolution_bins_output     = None,
          scale_method="combo",
          origin=None,
-         data_type=None):
+         data_type=None,
+         discamb_mode = None):
+
+    self.discamb_mode = discamb_mode             # XXX discamb
+    self.pydiscamb =None                         # XXX discamb
+    self.discamb_wrapper = None                  # XXX discamb
+    assert discamb_mode in [None, "iam", "taam"] # XXX discamb
+    if self.discamb_mode is not None:            # XXX discamb
+      import pydiscamb                           # XXX discamb
+      self.pydiscamb = pydiscamb                 # XXX discamb
+
     self._origin = origin
     self._data_type = data_type
     self.russ = None
@@ -532,6 +542,21 @@ class manager(manager_mixin):
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
+
+    if self.discamb_mode is not None:                       # XXX discamb
+      import pydiscamb                                      # XXX discamb
+      if self.pydiscamb is None:                            # XXX discamb
+         import pydiscamb                                   # XXX discamb
+         self.pydiscamb=pydiscamb                           # XXX discamb
+      if self.discamb_mode=="iam":                          # XXX discamb
+        self.discamb_wrapper = self.pydiscamb.DiscambWrapper(xrs) # XXX discamb
+      elif self.discamb_mode=="taam":                       # XXX discamb
+        self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
+          xrs, method = self.pydiscamb.FCalcMethod.TAAM)  # XXX discamb
+      self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
+      data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
+      return self.f_obs().array(data = data)                    # XXX discamb
+
     manager = miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
       algorithm                    = p.algorithm,

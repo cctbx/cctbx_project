@@ -77,13 +77,30 @@ class fs(object):
       return self.tg.gradients_wrt_atomic_parameters().packed()
       assert 0
     else:
-      if not self.sites_cart:
-        g = self.tg.gradients_wrt_atomic_parameters().packed()
-        result = flex.double(self.size, 0)
-        result.set_selected(self.selection, g)
-        return result
-      else:
-        g = self.tg.d_target_d_site_cart()
-        result = flex.vec3_double(self.size, [0,0,0])
-        result.set_selected(self.selection, g)
-        return result.as_double()
+      if self.fmodel.discamb_wrapper is None: # XXX discamb
+        if not self.sites_cart:
+          g = self.tg.gradients_wrt_atomic_parameters().packed()
+          result = flex.double(self.size, 0)
+          result.set_selected(self.selection, g)
+          return result
+        else:
+          g = self.tg.d_target_d_site_cart()
+          result = flex.vec3_double(self.size, [0,0,0])
+          result.set_selected(self.selection, g)
+          return result.as_double()
+      else:                                                                 # XXX discamb
+        d_target_d_fcalc = self.tg.d_target_d_f_calc_work()                 # XXX discamb
+        self.fmodel.discamb_wrapper.set_indices(d_target_d_fcalc.indices()) # XXX discamb
+        gradients = self.fmodel.discamb_wrapper.d_target_d_params(          # XXX discamb
+          list(d_target_d_fcalc.data()))                                    # XXX discamb
+        if self.sites_cart:                                                            # XXX discamb
+          return flex.vec3_double([g.site_derivatives for g in gradients]).as_double() # XXX discamb
+        elif self.u_iso:                                                               # XXX discamb
+          g = flex.double([g.adp_derivatives[0] for g in gradients])                   # XXX discamb
+          result = flex.double(self.size, 0)                                           # XXX discamb
+          result.set_selected(self.selection, g)                                       # XXX discamb
+          return result.as_double()                                                    # XXX discamb
+        elif self.occupancy:                                                           # XXX discamb
+          assert 0                                                                     # XXX discamb
+          #return flex.double([g.occupancy_derivatives for g in gradients])            # XXX discamb
+        else: assert 0                                                                 # XXX discamb
