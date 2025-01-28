@@ -144,7 +144,6 @@ class simple_fsr(object):
       self._call(
         msg="Refining sites %d out of %d"%(i,n), func=None)
       self._call(msg="set sites ", func=self._set_sites_cart, args=sites_cart)
-      self._call(msg="weights   ", func=self._compute_weights)
       self._macrocycle()
       self.results.append(
         group_args(
@@ -157,6 +156,7 @@ class simple_fsr(object):
 
   def _macrocycle(self):
     for mc in range(self.macro_cycles):
+      self._call(msg="weights   ", func=self._compute_weights)
       self._call(msg="refine xyz", func=self._refine_xyz)
       self._call(msg="refine adp", func=self._refine_adp)
 
