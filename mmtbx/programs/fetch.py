@@ -51,6 +51,11 @@ class Program(ProgramTemplate):
   datatypes = ['phil']
   master_phil_str = master_phil_str
 
+  def custom_init(self):
+    # store output filenames and error messages
+    self.output_filenames = []
+    self.errors = []
+
   def validate(self):
     print('Validating inputs:\n', file=self.logger)
     if self.params.fetch.pdb_ids is  None:
@@ -105,8 +110,14 @@ class Program(ProgramTemplate):
           cmd = "phenix.cif_as_mtz %s --merge --map_to_asu --extend_flags --ignore_bad_sigmas" % fn
           easy_run.call(cmd)
           if os.path.isfile("%s-sf.mtz" % pdb_id):
-            os.rename("%s-sf.mtz" % pdb_id, "%s.mtz" % pdb_id)
+            new_filename = "%s.mtz" % pdb_id
+            os.rename("%s-sf.mtz" % pdb_id, new_filename)
             print("Converted structure factors saved to %s.mtz" % pdb_id, file=self.logger)
+            self.output_filenames.append(new_filename)
           if (not os.path.isfile("%s.mtz" % pdb_id)):
-            print("MTZ conversion failed - try running phenix.cif_as_mtz "+
-              "manually (and check %s-sf.cif for format errors)." % pdb_id, file=self.logger)
+            error_msg = "MTZ conversion failed - try running phenix.cif_as_mtz " \
+              + "manually (and check %s-sf.cif for format errors)." % pdb_id
+            print(error_msg, file=self.logger)
+            self.errors.append(error_msg)
+        elif fn is not None:
+          self.output_filenames.append(fn)
