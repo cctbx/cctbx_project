@@ -581,6 +581,8 @@ class structure(crystal.special_position_settings):
     return result
 
   def get_scattering_table(self):
+    if not self._scattering_type_registry:
+      return None
     return self._scattering_type_registry.last_table()
 
   def guess_scattering_type_neutron(self):

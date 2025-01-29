@@ -183,12 +183,15 @@ def tst003():
     xray.scatterer("o", (0.5, 0, 0)),
     xray.scatterer("c", (0, 0, 0))))
   xrs = xray.structure(sp, scatterers)
-  print(xrs.get_scattering_table())
-  fc = xrs.structure_factors(d_min=1).f_calc()
+  # we have not set any scattering table yet, so it should be None
+  assert (xrs.get_scattering_table() is None)
+  #fc = xrs.structure_factors(d_min=1).f_calc()
+  # here we create a default, which is n_gaussian
   xrs.scattering_type_registry()
-  print(xrs.get_scattering_table())
+  assert (xrs.get_scattering_table() == 'n_gaussian')
+  # Now we set it explicitly
   xrs.scattering_type_registry(table = 'electron')
-  print(xrs.get_scattering_table())
+  assert (xrs.get_scattering_table() == 'electron')
 
 # ------------------------------------------------------------------------------
 
@@ -201,7 +204,7 @@ if(__name__ == "__main__"):
   - `tst001()`: consistency between what is supplied in the data manager and
      the xray_structure retrieved from the fmodel object
   - `tst002()`: Ensure consistency after xrs.select()
-  - `tst003()`: toy example
+  - `tst003()`: illustrate toy example
 
   Returns
   -------
@@ -211,5 +214,5 @@ if(__name__ == "__main__"):
   tst000()
   tst001()
   tst002()
-  #tst003() # toy example
+  tst003() # toy example
   print("OK. Time: %8.3f"%(time.time()-t0))
