@@ -167,8 +167,12 @@ def tst002():
     assert (xrs1.get_scattering_table() == table)
     # Check that xrs remembers scattering table after selection
     xrs_selected = xrs1.select(sel)
-    assert (xrs_selected.scattering_type_registry_params.table == table)
     assert (xrs_selected.get_scattering_table() == table)
+    # -----
+    # Test 2: check that table is consistent after deep_copy()
+    # -----
+    xrs_copy = xrs1.deep_copy_scatterers()
+    assert (xrs_copy.get_scattering_table() == table)
 
 # ------------------------------------------------------------------------------
 

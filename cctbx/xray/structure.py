@@ -581,9 +581,7 @@ class structure(crystal.special_position_settings):
     return result
 
   def get_scattering_table(self):
-    if not self.scattering_type_registry_params:
-        return None
-    return self.scattering_type_registry_params.table
+    return self._scattering_type_registry.last_table()
 
   def guess_scattering_type_neutron(self):
     ac,bc,cc = 0,0,0
@@ -1257,15 +1255,12 @@ class structure(crystal.special_position_settings):
   def select(self, selection, negate=False):
     assert self.scatterers() is not None
     if (negate): selection = ~selection
-    strp = self.scattering_type_registry_params
-    selected_xrs = structure(
+    return structure(
       special_position_settings=self,
       scatterers=self._scatterers.select(selection),
       site_symmetry_table=self._site_symmetry_table.select(selection),
       scattering_type_registry=self._scattering_type_registry,
       wavelength=self.wavelength)
-    selected_xrs.scattering_type_registry_params = strp
-    return selected_xrs
 
   def select_inplace(self, selection):
     assert self.scatterers() is not None
