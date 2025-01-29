@@ -195,11 +195,16 @@ def add_rotamer_results(info):
     name = 'ROTA',
     value_list = [])
   info.geometry_results[rotamer_result.name] = rotamer_result
-  args = [info.filename]
-  from iotbx.cli_parser import run_program
-  from mmtbx.programs import rotalyze
-  result = run_program(program_class=rotalyze.Program,args=args,
-     logger = null_out())
+
+  from mmtbx.validation.rotalyze import rotalyze as run_rotalyze
+  result = run_rotalyze(
+      pdb_hierarchy=info.model.get_hierarchy(),
+      data_version="8000",#was 'params.data_version', no options currently
+      show_errors=False,
+      outliers_only=False,
+      use_parent=False,
+      out=null_out(),
+      quiet=False)
 
   for r in result.results:
     if info.round_numbers:
@@ -231,11 +236,15 @@ def add_rama_results(info):
     name = 'RAMA',
     value_list = [])
   info.geometry_results[rama_result.name] = rama_result
-  args = [info.filename]
-  from iotbx.cli_parser import run_program
-  from mmtbx.programs import ramalyze
-  result = run_program(program_class=ramalyze.Program,args=args,
-     logger = null_out())
+
+  from mmtbx.validation.ramalyze import ramalyze as run_ramalyze
+  result = run_ramalyze(
+      pdb_hierarchy = info.model.get_hierarchy(),
+      show_errors   = None,
+      outliers_only = False,
+      out           = null_out(),   
+      quiet         = False)
+
   for r in result.results:
     if info.round_numbers:
       prob = float("%.2f" %(r.score))/100
@@ -265,11 +274,17 @@ def add_cbetadev_results(info):
     name = 'CBETADEV',
     value_list = [])
   info.geometry_results[cbetadev_result.name] = cbetadev_result
-  args = [info.filename]
-  from iotbx.cli_parser import run_program
-  from mmtbx.programs import cbetadev
-  result = run_program(program_class=cbetadev.Program,args=args,
-     logger = null_out())
+  from mmtbx.validation.cbetadev import cbetadev as run_cbetadev
+  result = run_cbetadev(
+      pdb_hierarchy=info.model.get_hierarchy(),
+      outliers_only=False,
+      apply_phi_psi_correction=False,
+      display_phi_psi_correction=False,
+      exclude_d_peptides=False,
+      out=null_out(),
+      quiet=False)
+
+
   for r in result.results:
     if info.round_numbers:
       delta = float("%.3f" %(r.deviation))
@@ -620,7 +635,7 @@ def analyze_geometry_values(info, randomize = False):
       pbs_fraction = info.pbs_included) / info.sd_to_use
 
 def randomize_result(info, result):
-  if result.name == 'CLASH':
+  if result.name == 'CLASH':  # just get about nres/1000 clashes
     randomize_clash(info, result)
   else: # usual
     for v in result.value_list:
@@ -633,22 +648,29 @@ def randomize_result(info, result):
   result.worst_residual = result.value_list[0].residual \
      if result.value_list else None
 
-def randomize_clash(info, result):
+def randomize_clash(info, result, max_ratio_of_tries = 10):
+  # Get random number of clashes with probability of 0.001 per site
   r = flex.double(
-  poisson.rvs(0.001, size=info.model.get_sites_cart().size()))
+     poisson.rvs(0.001, size=info.model.get_sites_cart().size()))
   sel =  (r > 0)
   nn = sel.count(True)
   result.value_list = []
-  for i in range(nn):
-    clash_overlap = -0.4
-    delta = clash_overlap
-    dist = info.clashscore_ideal_dist + delta
-    energy = lj(dist, info.clashscore_ideal_dist,
+  clash_overlap = -0.4
+  delta = clash_overlap
+  dist = info.clashscore_ideal_dist + delta
+  base_energy = lj(dist, info.clashscore_ideal_dist,
        dist_that_yields_zero = info.lj_dist_that_yields_zero,
        round_numbers = info.round_numbers)
-    value = group_args(group_args_type = 'dummy value',
-      residual=energy, as_string="None")
-    result.value_list.append(value)
+  # Find nn clashes with energy >= base_energy
+  for i in range(nn * max_ratio_of_tries):  # make nn clashes, overlap <=-0.4
+     x = random.gauss(0,1)
+     r = x**2
+     if r >= base_energy:
+       value = group_args(group_args_type = 'dummy value',
+        residual=r,  as_string="None")
+       result.value_list.append(value)
+     if len(result.value_list) >= nn: break
+  return 
 
 def sort_geometry_results(info):
   keys = list(info.geometry_results.keys())
@@ -971,10 +993,8 @@ def get_geometry_results(info):
     geometry_results[key].name = name_dict[key]
 
 def get_model(info):
-  if not info.filename:
-    raise Sorry("Please supply a filename even if a model object is supplied")
   if not info.model:
-    if not os.path.isfile(info.filename):
+    if not info.filename or (not os.path.isfile(info.filename)):
       raise Sorry("The filename %s is missing" %(info.filename))
   if not info.dm:
     from iotbx.data_manager import DataManager
@@ -982,6 +1002,8 @@ def get_model(info):
     info.dm.set_overwrite(True)
   if not info.model:
     info.model = info.dm.get_model(info.filename)
+  if not info.filename:
+    info.filename = info.model.info().file_name
   info.model.set_log(null_out())
   for m in list(info.model.get_hierarchy().models())[1:]:
      info.model.get_hierarchy().remove_model(m)
@@ -997,10 +1019,6 @@ def get_model(info):
     info.model.add_crystal_symmetry_if_necessary()
     if info.model.has_hd():
       info.model.get_hierarchy().remove_hd(reset_i_seq=True)
-  if (not os.path.isfile(info.filename)) or \
-       (not open(info.filename).read().strip()):
-    # write to it
-    info.dm.write_model_file(info.model, info.filename)
   info.model.set_stop_for_unknowns(False)
   # Allow polymer to cross special positions if necessary
   p = info.model.get_current_pdb_interpretation_params()

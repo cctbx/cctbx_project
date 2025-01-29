@@ -171,6 +171,16 @@ Example:
      }
 
 
+    include_random = True
+      .type = bool
+      .help = Estimate expected value for structure with normal errors
+      .short_caption = Estimate expected value
+
+    n_random = 20
+      .type = int
+      .help = Number of samples for estimation of expected values
+      .short_caption = Number of samples for estimates 
+
 """
 
 
@@ -192,8 +202,7 @@ Example:
 
     self.results = holton_geometry_validation(
       dm = self.data_manager,
-      filename = self.params.model,
-      model = self.model,
+     model = self.model,
      get_individual_residue_scores = self.params.get_individual_residue_scores,
      round_numbers = self.params.round_numbers,
      worst_clash_is_one_plus_n_times_worst_clash =
@@ -220,6 +229,8 @@ Example:
      remove_waters = self.params.remove_waters,
      score_this_altloc_only = self.params.score_this_altloc_only,
      softPnna_params = self.params.softPnna_params,
+     include_random = self.params.include_random,
+     n_random = self.params.n_random,
       log =self.logger)
 
   def get_results(self):
