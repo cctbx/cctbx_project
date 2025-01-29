@@ -242,7 +242,7 @@ def add_rama_results(info):
       pdb_hierarchy = info.model.get_hierarchy(),
       show_errors   = None,
       outliers_only = False,
-      out           = null_out(),   
+      out           = null_out(),
       quiet         = False)
 
   for r in result.results:
@@ -670,7 +670,7 @@ def randomize_clash(info, result, max_ratio_of_tries = 10):
         residual=r,  as_string="None")
        result.value_list.append(value)
      if len(result.value_list) >= nn: break
-  return 
+  return
 
 def sort_geometry_results(info):
   keys = list(info.geometry_results.keys())
