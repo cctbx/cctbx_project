@@ -20,7 +20,7 @@ def test_all_coefficients_electron():
   Raises
   ------
   AssertionError
-    If any coefficient (a, b, or c) differs between cctbx and DiSCaMB data.
+    If any coefficient (a, b, or c) differs between cctbx and DiSCaMB.
   """
   elements = e_scattering.ito_vol_c_2011_table_4_3_2_2_elements()
   table_discamb = pydiscamb.get_table('electron')
@@ -50,7 +50,7 @@ def test_all_coefficients_it1992():
   Raises
   ------
   AssertionError
-      If any coefficient (a, b, or c) differs between cctbx and DiSCaMB data.
+      If any coefficient (a, b, or c) differs between cctbx and DiSCaMB.
   """
   table_discamb = pydiscamb.get_table('it1992')
   for it in xray_scattering.it1992_iterator():
@@ -80,28 +80,12 @@ def test_all_coefficients_wk1995():
   Raises
   ------
   AssertionError
-      If any coefficient (a, b, or c) differs between cctbx and DiSCaMB data.
-
-  Notes
-  -----
-  Elements 'Hiso' and 'O2-' are skipped because they are not in the DiSCaMB table.
-
-  There are currently differences for 'I' and 'Rh'.
-
-  Element I coefficient a2
-  6.736593 in cctbx vs
-  6.7364593 in discamb
-
-  Element Rh coefficient c
-  0.995452 in cctbx vs
-  0.9954252 in discamb
-
+      If any coefficient (a, b, or c) differs between cctbx and DiSCaMB.
   """
   table_discamb = pydiscamb.get_table('wk')
   for it in xray_scattering.wk1995_iterator():
     el = it.label()
     if el in ['Hiso', 'O2-']: continue
-    if el in ['I', 'Rh']: continue
     entry = it.fetch()
     entry_disc = table_discamb[el]
     #print(entry.array_of_a(), entry.array_of_b(), entry.c())
