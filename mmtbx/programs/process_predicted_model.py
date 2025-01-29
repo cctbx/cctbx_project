@@ -363,6 +363,10 @@ Inputs: Model file (PDB, mmCIF)
 
     self.model.add_crystal_symmetry_if_necessary()
 
+    # Remove waters and hetero atoms (ligands)
+    self.model = self.model.apply_selection_string(
+       "(not hetero) and (not water)")
+
     # Remove hydrogens and apply user selection
     selections = []
     if self.params.output_files.remove_hydrogen:
