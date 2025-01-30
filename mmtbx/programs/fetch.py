@@ -121,3 +121,6 @@ class Program(ProgramTemplate):
             self.errors.append(error_msg)
         elif fn is not None:
           self.output_filenames.append(fn)
+
+  def get_results(self):
+    return self.output_filenames, self.errors
