@@ -179,7 +179,7 @@ Example:
     n_random = 20
       .type = int
       .help = Number of samples for estimation of expected values
-      .short_caption = Number of samples for estimates 
+      .short_caption = Number of samples for estimates
 
 """
 

@@ -224,6 +224,23 @@ steps:
                    ne('${{ parameters.version[0] }}', 9)))))
   retryCountOnTaskFailure: 3
 
+# run pyDiSCaMB tests
+- script: |
+    set -xe
+    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+    conda activate $(PYTHON_VERSION)
+    cd $(Pipeline.Workspace)
+    source ./build/setpaths.sh
+    cd ./modules/pyDiSCaMB
+    libtbx.python -m pip install .
+    cd ../cctbx_project/cctbx/eltbx/discamb
+    for t in `/bin/ls tst*.py`; do
+      libtbx.python ${t}
+    done
+  displayName: Run pyDiSCaMB tests
+  condition: and(ne(variables['PYTHON_VERSION'], 'py27'), eq(variables['OS'], 'linux-64'))
+  retryCountOnTaskFailure: 3
+
 # store tests directory as an artifact
 - script: |
     set -xe
