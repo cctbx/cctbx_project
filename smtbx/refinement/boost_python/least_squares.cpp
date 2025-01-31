@@ -256,7 +256,13 @@ namespace smtbx { namespace refinement { namespace least_squares {
           .add_property("beam_groups", make_getter(&wt::beam_groups, rbv))
           .def("build_width_cache", &wt::build_width_cache,
             (arg("rebuild")=false))
-          .def("compute_dynI", &wt::compute_dynI)
+          .def("compute_dynI", &wt::compute_dynI,
+            (arg("indices")))
+          .def("compute_OSF", &wt::compute_OSF)
+          .def("optimise_linear_scales", &wt::optimise_linear_scales,
+            (arg("weighting_scheme"), arg("OSF"), arg("compute_wR2")))
+          .def("optimise_flat_scales", &wt::optimise_flat_scales,
+            (arg("weighting_scheme"), arg("OSF"), arg("compute_wR2")))
           .add_property("width_cache", make_getter(&wt::width_cache, rbv), &wt::set_width_cache)
           ;
       }

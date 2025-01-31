@@ -9,11 +9,24 @@
 
 namespace smtbx { namespace refinement { namespace least_squares {
 
+  template<typename T>
+  class IWeightingScheme {
+  public:
+    virtual ~IWeightingScheme() {}
+    virtual T compute(T fo_sq, T sigma, T fc_sq,
+      boost::optional<T> scale_factor) const = 0;
+
+    T operator()(T fo_sq, T sigma, T fc_sq,
+      boost::optional<T> scale_factor) const
+    {
+      return compute(fo_sq, sigma, fc_sq, scale_factor);
+    }
+  };
   /// Given the list of computed and measured structure factors, with
   /// their e.s.d., and the scale factor K (fo_sq ~ K fc_sq),
   /// return the list of weights.
-  template<typename T, class WeightingScheme>
-  af::shared<T> weights(WeightingScheme const &weighting_scheme,
+  template<typename T>
+  af::shared<T> weights(IWeightingScheme<T> const &weighting_scheme,
                         af::const_ref<T> const &fo_sq,
                         af::const_ref<T> const &sigmas,
                         af::const_ref<T> const &fc_sq,
@@ -30,10 +43,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
   /// Pureley statistical weighting scheme
   /** i.e. The weight for a datum is \f$1/\sigma^2\f$ */
   template <typename T>
-  struct sigma_weighting
-  {
-    T operator()(T fo_sq, T sigma, T fc_sq,
-                 boost::optional<T> scale_factor) const
+  struct sigma_weighting : public IWeightingScheme<T> {
+    T compute(T fo_sq, T sigma, T fc_sq,
+      boost::optional<T> scale_factor) const
     {
       SMTBX_ASSERT(sigma > 0);
       return std::pow(sigma, -2);
@@ -42,10 +54,9 @@ namespace smtbx { namespace refinement { namespace least_squares {
 
   /// Weights uniformly equal to 1
   template <typename T>
-  struct unit_weighting
-  {
-    T operator()(T fo_sq, T sigma, T fc_sq,
-                 boost::optional<T> scale_factor) const
+  struct unit_weighting : public IWeightingScheme<T> {
+    T compute(T fo_sq, T sigma, T fc_sq,
+      boost::optional<T> scale_factor) const
     {
       return 1.;
     }
@@ -69,21 +80,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
          = w (F_o^2 - K F_c^2)^2 \f]
    */
   template <typename T>
-  struct mainstream_shelx_weighting
-  {
+  struct mainstream_shelx_weighting : public IWeightingScheme<T> {
     T a, b;
 
     mainstream_shelx_weighting(T a=0.1, T b=0)
       : a(a), b(b)
     {}
 
-    T operator()(T fo_sq, T sigma, T fc_sq,
-                 boost::optional<T> scale_factor) const
+    T compute(T fo_sq, T sigma, T fc_sq,
+      boost::optional<T> scale_factor) const
     {
       SMTBX_ASSERT(scale_factor);
       T k = *scale_factor;
-      T p = (std::max(fo_sq, 0.) + 2*k*fc_sq)/3.;
-      return 1./(sigma*sigma + std::pow(a*p, 2) + b*k*p);
+      T p = (std::max(fo_sq, 0.) + 2 * k * fc_sq) / 3.;
+      return 1. / (sigma * sigma + std::pow(a * p, 2) + b * k * p);
     }
   };
 
