@@ -1,3 +1,10 @@
+2025.1
+======
+
+* Improvements to probe2
+* Fix bug where the scattering table was not kept after selecting in xray_structure
+* Update for changes in RCSB web API
+
 2024.12
 =======
 
