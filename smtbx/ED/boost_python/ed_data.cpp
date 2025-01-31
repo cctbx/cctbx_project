@@ -66,6 +66,7 @@ namespace boost_python {
         .def("get_int_angles", &wt::get_int_angles)
         .def("get_angles", &wt::get_angles)
         .def("get_angles_Sg", &wt::get_angles_Sg)
+        .def("get_angles_Sg_N", &wt::get_angles_Sg_N)
         .staticmethod("get_angles")
         .def("PL_correctionROD", &wt::PL_correctionROD)
         .def("get_diffraction_angle", &wt::get_diffraction_angle,
@@ -163,6 +164,7 @@ namespace boost_python {
         .add_property("int_profile_start_th", &wt::getIntProfileStartTh)
         .add_property("int_profile_span_sg", &wt::getIntProfileSpan_Sg)
         .add_property("int_profile_points", &wt::getIntProfilePoints)
+        .add_property("use_flat_scales", &wt::useFlatScales)
         ;
     }
 

@@ -5,13 +5,15 @@
 
 namespace smtbx { namespace refinement { namespace least_squares {
   namespace boost_python {
-
+  
   template<template<typename FloatType> class WeightingScheme>
   struct weighting_scheme_class
-    : boost::python::class_< WeightingScheme<double> >
+    : boost::python::class_<WeightingScheme<double>,
+        boost::python::bases<IWeightingScheme<double> > >
   {
     typedef WeightingScheme<double> wt;
-    typedef boost::python::class_<wt> base_t;
+    typedef boost::python::class_<wt,
+      boost::python::bases<IWeightingScheme<double> > > base_t;
 
     static af::shared<double> weights(wt const &weighting_scheme,
                                       af::const_ref<double> const &fo_sq,
@@ -29,8 +31,20 @@ namespace smtbx { namespace refinement { namespace least_squares {
       using namespace boost::python;
       this->def("__call__", &wt::operator(),
           (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor")));
+      this->def("compute", &wt::compute,
+        (arg("fo_sq"), arg("sigma"), arg("fc_sq"), arg("scale_factor")));
       this->def("__call__", weights,
           (arg("fo_sq"), arg("sigmas"), arg("fc_sq"), arg("scale_factor")));
+    }
+  };
+
+  struct iweighting_scheme_wrapper {
+    static void wrap() {
+      using namespace boost::python;
+      typedef IWeightingScheme<double> wt;
+      class_<wt, boost::noncopyable>("weighting_scheme", no_init)
+        .def("compute", &wt::compute)
+        ;
     }
   };
 
@@ -68,6 +82,7 @@ namespace smtbx { namespace refinement { namespace least_squares {
   };
 
   void wrap_weighting_schemes() {
+    iweighting_scheme_wrapper::wrap();
     mainstream_shelx_weighting_wrapper::wrap();
     unit_weighting_wrapper::wrap();
     sigma_weighting_wrapper::wrap();

@@ -186,6 +186,8 @@ namespace smtbx { namespace ED
       FloatType span, FloatType step);
     af::shared<FloatType> get_angles_Sg(const miller::index<> &h,
       const cart_t& K, FloatType Sg_span, FloatType Sg_step) const;
+    af::shared<FloatType> get_angles_Sg_N(const miller::index<>& h,
+      const cart_t& K, FloatType Sg_span, size_t N) const;
     af::shared<FloatType> get_angles_Sg_for_angles(const miller::index<>& h,
       const cart_t& K, FloatType start_ang, FloatType end_ang, size_t N) const;
 
@@ -451,6 +453,30 @@ namespace smtbx { namespace ED
   }
 
   template <typename FloatType>
+  af::shared<FloatType> BeamGroup<FloatType>::get_angles_Sg_N(
+    const miller::index<>& h,
+    const cart_t& K, FloatType Sg_span, size_t N) const
+  {
+    std::pair<FloatType, FloatType> k = Sg_to_angle_k(h, K);
+    af::shared<FloatType> rv(af::reserve(2*N+2));
+    FloatType sg_step = Sg_span / (N - 1), ang;
+
+    for (size_t i = N - 1; i >= 2; i--) {
+      ang = k.first - sg_step*i / k.second;
+      rv.push_back(ang);
+    }
+    for (int i = -2; i <= 2; i++) {
+      ang = k.first + 0.5*sg_step * i / k.second;
+      rv.push_back(ang);
+    }
+    for (size_t i = 2; i < N; i++) {
+      ang = k.first + sg_step * i / k.second;
+      rv.push_back(ang);
+    }
+    return rv;
+  }
+
+  template <typename FloatType>
   af::shared<FloatType> BeamGroup<FloatType>::get_angles_Sg_for_angles(
     const miller::index<>& h,
     const cart_t& K, FloatType start_ang, FloatType end_ang, size_t N) const
@@ -570,7 +596,7 @@ namespace smtbx { namespace ED
     RefinementParams(const af::shared<FloatType> &values)
       : values(values)
     {
-      SMTBX_ASSERT(values.size() >= 16);
+      SMTBX_ASSERT(values.size() > 17);
     }
     RefinementParams(const RefinementParams &params)
       : values(params.values)
@@ -599,6 +625,10 @@ namespace smtbx { namespace ED
     FloatType getIntProfileStartTh() const { return values[14]; }
     FloatType getIntProfileSpan_Sg() const { return values[15]; }
     size_t getIntProfilePoints() const { return static_cast<size_t>(values[16]); }
+    /* if scales ar not flat - neigbouring scales mixed through Sg to scale any
+    particular intensity after the integration
+    */
+    bool useFlatScales() const { return static_cast<size_t>(values[17]); }
   };
 
 }}

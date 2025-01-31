@@ -8,6 +8,19 @@ class adp_similarity_restraints(object):
                i_seqs=None, sigma=0.04, sigma_terminal=None,
                buffer_thickness=3.5, connectivity=None):
     assert [xray_structure, pair_sym_table].count(None) == 1
+    scatterers = None
+    if xray_structure is not None:
+      scatterers = xray_structure.scatterers()
+
+    def is_suitable(idx):
+      if scatterers is not None and\
+          scatterers[idx].flags.use_u_iso() and scatterers[idx].flags.grad_u_iso():
+        return True
+      if scatterers is not None and\
+          scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso():
+        return True
+      return False
+
     if i_seqs is not None and len(i_seqs) == 0: i_seqs = None
     if sigma_terminal is None: sigma_terminal = 2 * sigma
     if proxies is None:
@@ -23,8 +36,10 @@ class adp_similarity_restraints(object):
 
     for i_seq, j_seq_dict in enumerate(pair_sym_table):
       if i_seqs is not None and i_seq not in i_seqs: continue
+      if not is_suitable(i_seq): continue
       for j_seq, sym_ops in j_seq_dict.items():
         if i_seqs is not None and j_seq not in i_seqs: continue
+        if not is_suitable(j_seq): continue
         for sym_op in sym_ops:
           if sym_op.is_unit_mx():
             i_is_terminal = (connectivity[i_seq].size() <= 1)
@@ -46,6 +61,11 @@ def build_proxies(proxies, proxy_type, sigma_12, sigma_13,
   scatterers = None
   if xray_structure is not None:
     scatterers = xray_structure.scatterers()
+
+  def is_suitable(idx):
+    return scatterers is not None and\
+        scatterers[idx].flags.use_u_aniso() and scatterers[idx].flags.grad_u_aniso()
+
   if pair_sym_table is None:
     asu_mappings = xray_structure.asu_mappings(buffer_thickness=buffer_thickness)
     pair_asu_table = crystal.pair_asu_table(asu_mappings=asu_mappings)
@@ -57,10 +77,10 @@ def build_proxies(proxies, proxy_type, sigma_12, sigma_13,
   ij_seqs = set()
   for i_seq, j_seq_dict in enumerate(pair_sym_table):
     if i_seqs is not None and i_seq not in i_seqs: continue
-    if scatterers and not scatterers[i_seq].flags.use_u_aniso(): continue
+    if not is_suitable(i_seq): continue
     for j_seq in connectivity[i_seq]:
       if i_seqs is not None and j_seq not in i_seqs: continue
-      if scatterers and not scatterers[j_seq].flags.use_u_aniso(): continue
+      if not is_suitable(j_seq): continue
       if i_seq < j_seq:
         j_sym_ops = pair_sym_table[i_seq][j_seq]
       else:
@@ -77,7 +97,7 @@ def build_proxies(proxies, proxy_type, sigma_12, sigma_13,
       if connectivity[j_seq].size() > 1:
         for k_seq in connectivity[j_seq]:
           if i_seqs is not None and k_seq not in i_seqs: continue
-          if scatterers and not scatterers[k_seq].flags.use_u_aniso(): continue
+          if not is_suitable(k_seq): continue
           if k_seq != i_seq:
             for sym_op in j_sym_ops:
               if sym_op.is_unit_mx():
