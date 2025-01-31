@@ -1129,7 +1129,7 @@ def run_molprobity_program(program_class=None, custom_process_arguments=None,
     print('\nJSON output')
     print('-'*79, file=logger)
     print('  Writing results in JSON format to %s.' % filename, file=logger)
-    parser.data_manager._write_text(None, filename, json_text,
+    parser.data_manager._write_text(None, json_text, filename=filename,
                                     overwrite=namespace.overwrite)
 
   # stop timer
