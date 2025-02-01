@@ -165,15 +165,15 @@ def attribute_water_to_chains(model):
   dic = {}
   for aw in wh.atoms():
     d_min    = 1.e9
-    b_iso    = None
+    #b_iso    = None # This un-does ADP refinement!!!
     chain_id = None
     for ap in nonwa:
       d = aw.distance(ap)
       if(d<d_min):
         d_min = d
-        b_iso    = ap.b
+        #b_iso    = ap.b
         chain_id = ap.parent().parent().parent().id
-    aw.set_b(b_iso)
+    #aw.set_b(b_iso)
     dic.setdefault(chain_id, []).append(aw)
   #
   pdb_model = nonw.only_model()
@@ -357,7 +357,8 @@ class run_one(object):
       self._call(self._filter_by_sphericity, "Filter peaks by sphericity")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
     if(self.cc_mask_filter and
-       self.model.solvent_selection().iselection().size()>0):
+       (self.model.solvent_selection().iselection().size()>0 or
+        self.xrs_water is not None and self.xrs_water.scatterers().size()>0)):
       self._call(self._refine_water_adp     , "Refine ADP")
       self._call(self._filter_by_map_model_cc, "Filter peaks by CC_mask")
       self._call(self._filter_by_distance  , "Filter peaks by distance")
@@ -643,6 +644,7 @@ class run_one(object):
     self.map_model_manager.set_model(self.model)
     self.ma.add("  B (min/max/mean) final: %8.3f %8.3f %8.3f"%
       m_w.get_b_iso().min_max_mean().as_tuple())
+    self.xrs_water.set_b_iso(values=m_w.get_b_iso())
 
   def _append_to_model(self):
     #
@@ -657,6 +659,9 @@ class run_one(object):
         if(not solvent_chain in chain_ids_taken):
           break
     self.ma.add("  new water chain ID: '%s'"%solvent_chain)
+    bisos = self.xrs_water.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1)
+    self.ma.add("  B (min/max/mean): %8.3f %8.3f %8.3f"%
+      bisos.min_max_mean().as_tuple())
     #
     self.model.add_solvent(
       solvent_xray_structure = self.xrs_water,
