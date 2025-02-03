@@ -225,6 +225,9 @@ output {
         pass
       self.data_manager.set_program(self)
 
+    # import other modules
+    self.imports()
+
     # optional initialization
     self.custom_init()
 
@@ -240,6 +243,20 @@ output {
     Parameters
     ----------
     None
+    '''
+    pass
+
+  # ---------------------------------------------------------------------------
+  def imports(self):
+    '''
+    Optional place to import modules in constructor
+
+    To increase command-line responsiveness, this can hold imports of
+    large modules.
+
+    Parameters
+    ----------
+     None
     '''
     pass
 
