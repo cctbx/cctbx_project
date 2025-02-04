@@ -297,6 +297,37 @@ class binner(ext.binner):
 AnomalousProbabilityPlotResult = namedtuple("AnomalousProbabilityPlotResult", [
   "slope", "intercept", "n_pairs", "expected_delta"])
 
+def bins_mixed(d_spacings_sorted, bin_width_max=0.005):
+  """
+  d_spacings_sorted: d spacings data sorted from lowest to hightest resolution (
+  from largest to smallerst d).
+  Return bins as list of pairs, each pair is start:end indices to access data.
+  """
+  size=d_spacings_sorted.size()
+  cntr=0
+  i_seqs = flex.int()
+  n_left = size
+  reached_end = False
+  bins = []
+  for i, d in enumerate(d_spacings_sorted):
+    i_seqs.append(i)
+    cntr+=1
+    n_left-=1
+    if cntr==1:           dl    = d
+    if   dl > 10:         n_min = 100
+    elif dl<=10 and dl>5: n_min = 250
+    else:                 n_min = 500
+    if cntr<n_min and not (n_left<n_min): continue
+    if cntr>n_min or abs(dl-d)>0.005:
+      if n_left<n_min:
+        i_seqs.append(size-1)
+        cntr+=n_left
+        reached_end=True
+      bins.append([flex.min(i_seqs), 1+flex.max(i_seqs)])
+      i_seqs = flex.int()
+      cntr=0
+    if reached_end: break
+  return bins
 
 class binned_data(object):
 
@@ -4292,7 +4323,7 @@ class array(set):
         print(prefix + str(h), d, s, file=f)
     return self
 
-  def fsc(self, other, bin_width=1000):
+  def fsc(self, other):
     """
     Compute Fourier Shell Correlation (FSC)
     """
@@ -4306,32 +4337,41 @@ class array(set):
     ds = ds.select(s)
     d1 = d1.select(s)
     d2 = d2.select(s)
-    r = maptbx.fsc(f1=d1, f2=d2, d_spacings=ds, step=bin_width)
-    fsc = r.fsc()
-    d = r.d()
-    d_inv = r.d_inv()
+    # Get bins
+    bins = bins_mixed(d_spacings_sorted=ds)
+    # Compute FSC
+    fsc = flex.double()
+    d   = flex.double()
+    for bin in bins:
+      x = d1[bin[0]:bin[1]]
+      y = d2[bin[0]:bin[1]]
+      z = ds[bin[0]:bin[1]]
+      fsc.append(maptbx.cc_complex_complex(f_1 = x, f_2 = y))
+      d.append(flex.mean(z))
+    d_inv = 1/d
     # Smooth FSC curve
-    half_window=50
-    ratio=d_inv.size()/half_window
-    if(ratio<10):
-      half_window = int(half_window/10)
+    last = 10
+    d_const   = d[-last:]
+    d_var     = d[:-last]
+    fsc_const = fsc[-last:]
+    fsc_var   = fsc[:-last]
+    half_window=10
     from scitbx import smoothing
-    d_inv, fsc = smoothing.savitzky_golay_filter(
-      x=d_inv,  y=fsc,  half_window=half_window, degree=2)
+    _, fsc_var = smoothing.savitzky_golay_filter(
+      x=d_var,  y=fsc_var,  half_window=half_window, degree=2)
+    fsc_var.extend(fsc_const)
+    assert fsc_var.size()==fsc.size()
     s = flex.sort_permutation(d_inv)
-    if fsc.size() != d.size(): # happens if bin width too big
-      return None
-    return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
+    return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc_var.select(s))
 
-  def d_min_from_fsc(self, other=None, fsc_curve=None, bin_width=1000,
-                           fsc_cutoff=0.143):
+  def d_min_from_fsc(self, other=None, fsc_curve=None, fsc_cutoff=0.143):
     """
     Compute Fourier Shell Correlation (FSC) and derive resolution based on
     specified cutoff.
     """
     if(fsc_curve is None):
       assert other is not None
-      fsc_curve = self.fsc(other=other, bin_width=bin_width)
+      fsc_curve = self.fsc(other=other)
       if not fsc_curve: return group_args(fsc=None, d_min=None)
     else:
       assert other is None
@@ -4383,6 +4423,8 @@ class array(set):
     return group_args(fsc=fsc_curve, d_min=d_min)
 
   def map_correlation(self, other):
+    # Can be replace with a faster version:
+    #   return maptbx.cc_complex_complex(f_1 = x, f_2 = y)
     d1 = flex.abs(self.data())
     d2 = flex.abs(other.data())
     p1 = self.phases().data()
