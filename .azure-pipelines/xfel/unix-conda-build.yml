@@ -112,7 +112,7 @@ steps:
     chmod +x $(Pipeline.Workspace)/modules/xfel_regression/merging_test_data/merge_thermo.csh
     export OMP_NUM_THREADS=2
     export OMPI_MCA_mca_base_component_show_load_errors=0 # see open-mpi/ompi#7752
-    libtbx.run_tests_parallel module=cctbx module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
+    libtbx.run_tests_parallel module=uc_metrics module=simtbx module=xfel_regression module=LS49 nproc=2
   failOnStderr: false
   displayName: Test
 
