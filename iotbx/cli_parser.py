@@ -438,7 +438,7 @@ Also, specifying this flag implies that --json is also specified.'''
     for name in phil_names:
       phil = self.data_manager.get_phil(name)
       if hasattr(phil.extract(), 'data_manager'):
-        self.data_manager.load_phil_scope(phil)
+        self.data_manager.load_phil_scope(phil, process_files=not self.namespace.diff_params)
 
     if not printed_something:
       print('  No files found', file=self.logger)
@@ -467,7 +467,7 @@ Also, specifying this flag implies that --json is also specified.'''
       error_message += wordwrap('PHIL parameters in files should be fully specified (e.g. "output.overwrite" instead of just "overwrite")', max_chars=self.text_width) + '\n'
       if advice:
         error_message += wordwrap(advice, max_chars=self.text_width) + '\n'
-      if self.unused_phil_raises_sorry:
+      if self.unused_phil_raises_sorry and not self.namespace.diff_params:
         raise Sorry(error_message)
 
   # ---------------------------------------------------------------------------
@@ -646,7 +646,7 @@ Also, specifying this flag implies that --json is also specified.'''
         sources=data_manager_data_sources + data_manager_sources, track_unused_definitions=True)
       self.unused_phil.extend(more_unused_phil)
       # load remaining files and final fmodel parameters
-      self.data_manager.load_phil_scope(diff_phil)
+      self.data_manager.load_phil_scope(diff_phil, process_files=not self.namespace.diff_params)
 
     # show unrecognized parameters and abort
     self.raise_Sorry_for_unused_phil()

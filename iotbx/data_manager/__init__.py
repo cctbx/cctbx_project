@@ -341,7 +341,7 @@ data_manager
     return working_phil
 
   # ---------------------------------------------------------------------------
-  def load_phil_scope(self, phil):
+  def load_phil_scope(self, phil, process_files=True):
     '''
     Function for loading information from a PHIL scope. This will append files
     to the existing ones and will NOT override the current default file
@@ -361,14 +361,15 @@ data_manager
     # append files, default file is not overridden
     for datatype in self.datatypes:
       if hasattr(self, self.load_custom_phil_extract % datatype):
-        getattr(self, self.load_custom_phil_extract % datatype)(phil_extract)
+        getattr(self, self.load_custom_phil_extract % datatype)(phil_extract, process_files=process_files)
       else:
         filenames = getattr(phil_extract.data_manager, '%s_files' % datatype,
                             None)
         for filename in filenames:
           # call type-specific function (e.g. self.process_model_file())
           # checks if file is already in DataManager
-          getattr(self, 'process_%s_file' % datatype)(filename)
+          if process_files:
+            getattr(self, 'process_%s_file' % datatype)(filename)
 
     # other options
     self._default_output_filename = getattr(
