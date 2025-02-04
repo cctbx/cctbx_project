@@ -4323,7 +4323,7 @@ class array(set):
         print(prefix + str(h), d, s, file=f)
     return self
 
-  def fsc(self, other):
+  def fsc(self, other, smooth=False):
     """
     Compute Fourier Shell Correlation (FSC)
     """
@@ -4350,19 +4350,32 @@ class array(set):
       d.append(flex.mean(z))
     d_inv = 1/d
     # Smooth FSC curve
-    last = 10
-    d_const   = d[-last:]
-    d_var     = d[:-last]
-    fsc_const = fsc[-last:]
-    fsc_var   = fsc[:-last]
-    half_window=10
-    from scitbx import smoothing
-    _, fsc_var = smoothing.savitzky_golay_filter(
-      x=d_var,  y=fsc_var,  half_window=half_window, degree=2)
-    fsc_var.extend(fsc_const)
-    assert fsc_var.size()==fsc.size()
+    # Smoothing can change the input array size causing an assertion crash!
+    sel = d>15.
+    d_const = None
+
+    if d.size() > 10:
+      print("1:", d.size(), d_inv.size(), fsc.size())
+
+      if sel.count(True)>0:
+        d_const   = d    .select(sel)
+        fsc_const = fsc  .select(sel)
+        d         = d    .select(~sel)
+        fsc       = fsc  .select(~sel)
+      half_window=10
+      from scitbx import smoothing
+      d, fsc = smoothing.savitzky_golay_filter(
+        x=d,  y=fsc, half_window=half_window, degree=2)
+      if d_const is not None:
+        d  .extend(d_const)
+        fsc.extend(fsc_const)
+      d_inv = 1./d
+
+      print("2:", d.size(), d_inv.size(), fsc.size())
+
     s = flex.sort_permutation(d_inv)
-    return group_args(d=d.select(s), d_inv=d_inv.select(s), fsc=fsc_var.select(s))
+    return group_args(
+      d=d.select(s), d_inv=d_inv.select(s), fsc=fsc.select(s))
 
   def d_min_from_fsc(self, other=None, fsc_curve=None, fsc_cutoff=0.143):
     """

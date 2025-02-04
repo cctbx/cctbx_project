@@ -7801,7 +7801,7 @@ class map_model_manager(object):
 
     # Get the FSC between map1 and map2
     fsc_curve = f_map_1.d_min_from_fsc(
-        other = f_map_2, bin_width = bin_width, fsc_cutoff = fsc_cutoff)
+        other = f_map_2, fsc_cutoff = fsc_cutoff)
 
     return fsc_curve
 

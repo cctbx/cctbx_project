@@ -1660,8 +1660,7 @@ def sharpen2(map, xray_structure, resolution, file_name_prefix):
   #
   fc = fo.structure_factors_from_scatterers(
     xray_structure = xray_structure).f_calc()
-  d_fsc_model = fc.d_min_from_fsc(
-        other = fo, bin_width = 100, fsc_cutoff = 0.).d_min
+  d_fsc_model = fc.d_min_from_fsc(other = fo, fsc_cutoff = 0.).d_min
   print("d_fsc_model:", d_fsc_model)
   #resolution = min(resolution, d_fsc_model)
   #resolution = d_fsc_model
@@ -1797,8 +1796,7 @@ def loc_res(map_model_manager,
     if(method == "d99"):
       d_min = d99(f_map=fo).result.d99
     elif(method == "fsc"):
-      d_min = fc.d_min_from_fsc(other = fo, bin_width = 100,
-        fsc_cutoff = fsc_cutoff).d_min
+      d_min = fc.d_min_from_fsc(other = fo, fsc_cutoff = fsc_cutoff).d_min
     elif(method == "rscc"):
       d_min, cc = cc_complex_complex(
         f_1        = fo.data(),

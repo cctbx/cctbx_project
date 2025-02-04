@@ -660,8 +660,9 @@ class run_one(object):
           break
     self.ma.add("  new water chain ID: '%s'"%solvent_chain)
     bisos = self.xrs_water.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1)
-    self.ma.add("  B (min/max/mean): %8.3f %8.3f %8.3f"%
-      bisos.min_max_mean().as_tuple())
+    if bisos.size()>0:
+      self.ma.add("  B (min/max/mean): %8.3f %8.3f %8.3f"%
+        bisos.min_max_mean().as_tuple())
     #
     self.model.add_solvent(
       solvent_xray_structure = self.xrs_water,
