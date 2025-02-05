@@ -369,13 +369,6 @@ class manager(manager_mixin):
     if self.discamb_mode is not None:                           # XXX discamb
       import pydiscamb                                          # XXX discamb
       self.pydiscamb = pydiscamb                                # XXX discamb
-    if self.discamb_mode=="iam":                                # XXX discamb
-      self.discamb_wrapper = self.pydiscamb.DiscambWrapper(
-        xray_structure)                                         # XXX discamb
-    elif self.discamb_mode=="taam":                             # XXX discamb
-      self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
-        xray_structure,
-        method = self.pydiscamb.FCalcMethod.TAAM)               # XXX discamb
 
     self._origin = origin
     self._data_type = data_type
@@ -550,7 +543,19 @@ class manager(manager_mixin):
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
 
-    if self.discamb_wrapper is not None:                        # XXX discamb
+    if self.discamb_mode is not None:                           # XXX discamb
+      assert xrs is not None
+      assert xrs.get_scattering_table() is not None
+      if self.pydiscamb is None:
+        import pydiscamb                                          # XXX discamb
+        self.pydiscamb = pydiscamb
+      if self.discamb_mode=="iam":                                # XXX discamb
+        self.discamb_wrapper = self.pydiscamb.DiscambWrapper(
+          xrs)                                                    # XXX discamb
+      elif self.discamb_mode=="taam":                             # XXX discamb
+        self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
+          xrs,
+          method = self.pydiscamb.FCalcMethod.TAAM)             # XXX discamb
       self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
       data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
       return self.f_obs().array(data = data)                    # XXX discamb
