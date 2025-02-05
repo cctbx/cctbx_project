@@ -144,6 +144,9 @@ class CCTBXParser(ParserBase):
     # terminal width
     self.text_width = 79
 
+    # DataManager diff
+    self.data_manager_diff = None
+
     # print header
     border = '-' * self.text_width
     description = border + program_class.description + border
@@ -647,6 +650,7 @@ Also, specifying this flag implies that --json is also specified.'''
       self.unused_phil.extend(more_unused_phil)
       # load remaining files and final fmodel parameters
       self.data_manager.load_phil_scope(diff_phil, process_files=not self.namespace.diff_params)
+      self.data_manager_diff = diff_phil
 
     # show unrecognized parameters and abort
     self.raise_Sorry_for_unused_phil()
@@ -731,6 +735,9 @@ Also, specifying this flag implies that --json is also specified.'''
     try:
       data_diff = self.data_manager.master_phil.fetch_diff(
         self.data_manager.export_phil_scope())
+      # keep original DataManager scope when using --diff-params
+      if self.namespace.diff_params and self.data_manager_diff is not None:
+        data_diff = self.data_manager_diff
     except RuntimeError as err:
       raise Sorry(err)
     try:

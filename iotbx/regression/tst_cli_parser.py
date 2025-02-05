@@ -430,6 +430,8 @@ class testProgram(ProgramTemplate):
   master_phil_str = '''
 diff_test_parameter = None
 .type = str
+another_parameter = None
+.type = str
 '''
   def run():
     pass
@@ -480,8 +482,103 @@ def test_diff_params():
     assert text.count('1yjp.pdb') == 2, text
     assert 'diff_test_parameter' in text.strip(), text
 
+  # phil file
+  test_phil = '''\
+data_manager {
+  model {
+    file = not_a_real_filename.pdb
+  }
+}
+diff_test_parameter = abc
+another_parameter = def
+'''
+  with open('phil_file.eff', 'w') as f:
+    f.write(test_phil)
+  args = ['--quiet', '--diff-params', 'phil_file.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = def' in text
+
+  # multiple phil files with different orders
+  test_phil_a = '''\
+another_parameter = ghi
+'''
+  test_phil_b = '''\
+diff_test_parameter = jkl
+'''
+  test_phil_c = '''\
+data_manager {
+  model {
+    file = possibly_a_real_filename.pdb
+  }
+}
+'''
+  with open('a.eff', 'w') as f:
+    f.write(test_phil_a)
+  with open('b.eff', 'w') as f:
+    f.write(test_phil_b)
+  with open('c.eff', 'w') as f:
+    f.write(test_phil_c)
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = ghi' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'b.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = def' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = ghi' in text
+
+  args = ['--quiet', '--diff-params', 'a.eff', 'b.eff', 'phil_file.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = abc' in text
+    assert 'another_parameter = def' in text
+
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff', 'c.eff']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert text.count('possibly_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = ghi' in text
+
+  # modify settings in file with command-line argument
+  args = ['--quiet', '--diff-params', 'phil_file.eff', 'a.eff', 'b.eff', 'c.eff', 'another_parameter=mno']
+  run_function_in_process(args)
+  with open(expected_filename, 'r') as f:
+    text = f.read()
+    assert text.count('not_a_real_filename.pdb') == 1, text
+    assert text.count('possibly_a_real_filename.pdb') == 1, text
+    assert 'diff_test_parameter = jkl' in text
+    assert 'another_parameter = mno' in text
+
   if os.path.exists(expected_filename):
     os.remove(expected_filename)
+    os.remove('phil_file.eff')
+    os.remove('a.eff')
+    os.remove('b.eff')
+    os.remove('c.eff')
 
 # =============================================================================
 if __name__ == '__main__':
