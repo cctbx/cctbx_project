@@ -199,7 +199,7 @@ def sequence_search(
   return post_query(query_json=jsq, **kwds)
 
 
-def reference_chain_search(sequence, identity_cutoff=0.9, include_csm=False, **kwds):
+def reference_chain_search(sequence, identity_cutoff=0.9, include_xray=True, include_csm=False, **kwds):
   """ Searches sequence optionally include computed models,
   returns pdb_id with chain id that matches.
 
@@ -207,11 +207,13 @@ def reference_chain_search(sequence, identity_cutoff=0.9, include_csm=False, **k
       sequence (str): _description_
       identity_cutoff (float, optional): _description_. Defaults to 0.9.
   """
-  model_choice = '"experimental"'
-  if include_csm:
+  model_choice = ""
+  if include_xray:
+    model_choice = '"experimental"'
+  if include_csm and include_xray:
     model_choice += ', "computational"'
-
-  # "sort_by": "score",
+  if include_csm and not include_xray:
+    model_choice = '"computational"'
 
   query= """
 {

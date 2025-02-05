@@ -493,6 +493,8 @@ class rcsb_entry_info(object):
 
   def get_experimental_method(self):
     return self._get_value(['exptl', 0, 'method'])
+  def is_xray(self):
+    return self.get_experimental_method() == "X-RAY DIFFRACTION"
   def get_resolution(self):
     return self._get_value(['refine', 0, 'ls_d_res_high'], float)
   def get_rwork(self):
