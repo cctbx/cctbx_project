@@ -443,6 +443,7 @@ class reflection_filter(worker):
         )
       model_lower.fit(lower_tail)
       model_upper = IsolationForest(
+        n_estimators=self.params.select.reflection_filter.n_estimators,
         contamination=self.params.select.reflection_filter.contamination_upper,
         max_features=2,
         max_samples=int(sampling_fraction*upper_tail.shape[0]),
