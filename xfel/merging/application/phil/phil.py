@@ -312,7 +312,7 @@ select
   .help = The select section accepts or rejects specified reflections
   .help = refer to the filter section for filtering of whole experiments
   {
-  algorithm = panel cspad_sensor significance_filter isolation_forest local_outlier_factor
+  algorithm = panel cspad_sensor significance_filter isolation_forest
     .type = choice(multi=True)
   cspad_sensor {
     number = None
@@ -375,19 +375,15 @@ select
     contamination_upper = 0.0001
       .type = float
       .help = Fraction of upper tail reflections that are outliers
-    local_outlier_factor {
-      n_neighbors = 200
-        .type = int
-        .help = Number of neighbors used to determine local density.
-      }
-    isolation_forest {
-      sampling_fraction = 0.05
-        .type = float
-        .help = Fraction of total dataset subsampled to train each decision tree.
-      random_seed = 0
-        .type = int
-        .help = seed for the random forest model
-      }
+    n_estimators = 1000
+      .type = int
+      .help = Number of decision trees in random forest model
+    sampling_fraction = 0.1
+      .type = float
+      .help = Fraction of total dataset subsampled to train each decision tree.
+    random_seed = 0
+      .type = int
+      .help = seed for the random forest model
     }
 }
 """
