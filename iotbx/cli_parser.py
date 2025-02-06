@@ -268,6 +268,13 @@ the .json extension will be added automatically if it does not already exist.
 Also, specifying this flag implies that --json is also specified.'''
     )
 
+    # --check-current-dir
+    # if a file does exist in the path specified in the PHIL, check the current directory
+    self.add_argument(
+      '--check-current-dir', '--check_current_dir', action='store_true',
+      help='check current directory for a file if the file path specified in a PHIL file does not work'
+    )
+
     # --overwrite
     # switch for overwriting files, takes precedence over PHIL definition
     self.add_argument(
@@ -441,6 +448,7 @@ Also, specifying this flag implies that --json is also specified.'''
     for name in phil_names:
       phil = self.data_manager.get_phil(name)
       if hasattr(phil.extract(), 'data_manager'):
+        phil = self._update_phil_paths_to_cwd(phil)
         self.data_manager.load_phil_scope(phil, process_files=not self.namespace.diff_params)
 
     if not printed_something:
@@ -649,6 +657,7 @@ Also, specifying this flag implies that --json is also specified.'''
         sources=data_manager_data_sources + data_manager_sources, track_unused_definitions=True)
       self.unused_phil.extend(more_unused_phil)
       # load remaining files and final fmodel parameters
+      diff_phil = self._update_phil_paths_to_cwd(diff_phil)
       self.data_manager.load_phil_scope(diff_phil, process_files=not self.namespace.diff_params)
       self.data_manager_diff = diff_phil
 
@@ -661,6 +670,7 @@ Also, specifying this flag implies that --json is also specified.'''
     # as a command-line argument. This is mostly for finding data files
     # defined by PHIL parameters that should be added to the DataManager
     diff_phil = self.master_phil.fetch_diff(self.working_phil)
+    diff_phil = self._update_phil_paths_to_cwd(diff_phil)
     paths = self.check_phil_for_paths(diff_phil)
     if len(paths) > 0:
       files = set()
@@ -705,6 +715,23 @@ Also, specifying this flag implies that --json is also specified.'''
       for phil_object in phil_scope.objects:
         paths.extend(self.check_phil_for_paths(phil_object))
     return paths
+
+  # ---------------------------------------------------------------------------
+  def _update_phil_paths_to_cwd(self, phil=None):
+    '''
+    Convenience function for modifying a phil scope so that file paths
+    are reset to use the current working directory if the filename exists.
+    '''
+    if self.namespace.check_current_dir:
+      diff_phil = self.data_manager.master_phil.fetch_diff(phil)
+      paths = self.check_phil_for_paths(diff_phil)
+      phil_str = diff_phil.as_str()
+      for path in paths:
+        new_path = os.path.join(os.getcwd(), os.path.basename(path))
+        if not os.path.isfile(path) and os.path.isfile(new_path):
+          phil_str = phil_str.replace(path, new_path)
+      phil = iotbx.phil.parse(phil_str, process_includes=True)
+    return phil
 
   # ---------------------------------------------------------------------------
   def post_process(self):
@@ -996,18 +1023,18 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
 # =============================================================================
 def get_program_params(run):
-    """Tool to get parameters object for a program that runs with
-      the program template.
-    params: run:  the program template object
-    returns: parameters for this program as set up by the program template
-    Get the run something like this way:
-     from phenix.programs import map_to_model as run
-    """
+  """Tool to get parameters object for a program that runs with
+     the program template.
+  params: run:  the program template object
+  returns: parameters for this program as set up by the program template
+  Get the run something like this way:
+    from phenix.programs import map_to_model as run
+  """
 
-    parser = CCTBXParser(program_class=run.Program,
-                         logger=null_out())
-    _ = parser.parse_args([], skip_help = True)
-    return parser.working_phil.extract()
+  parser = CCTBXParser(program_class=run.Program,
+                       logger=null_out())
+  _ = parser.parse_args([], skip_help = True)
+  return parser.working_phil.extract()
 
 # =============================================================================
 # end

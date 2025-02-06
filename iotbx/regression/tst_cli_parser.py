@@ -573,12 +573,60 @@ data_manager {
     assert 'diff_test_parameter = jkl' in text
     assert 'another_parameter = mno' in text
 
-  if os.path.exists(expected_filename):
-    os.remove(expected_filename)
-    os.remove('phil_file.eff')
-    os.remove('a.eff')
-    os.remove('b.eff')
-    os.remove('c.eff')
+  for filename in [expected_filename, 'phil_file.eff', 'a.eff', 'b.eff',
+                  'c.eff']:
+    if os.path.isfile(filename):
+      os.remove(filename)
+
+# -----------------------------------------------------------------------------
+def test_check_current_dir():
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+
+  test_filename = 'check_current_dir_model.pdb'
+  with open(model_1yjp, 'r') as fread:
+    model_text = fread.read()
+    with open(test_filename, 'w') as fwrite:
+      fwrite.write(model_text)
+
+  original_phil = '''\
+data_manager {
+  model {
+    file = %s
+  }
+}
+''' % os.path.join(data_dir, test_filename)
+  phil_filename = 'check_current_dir.eff'
+  with open(phil_filename, 'w') as f:
+    f.write(original_phil)
+
+  class testProgram(ProgramTemplate):
+    program_name = 'tst_cli_parser'
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager.get_model_names()
+
+  # check for missing file
+  try:
+    run_program(program_class=testProgram, args=[phil_filename, '--quiet'])
+  except Sorry as s:
+    assert "Couldn't find the file" in str(s)
+
+  # check --check-current-dir
+  result = run_program(program_class=testProgram,
+                       args=[phil_filename, '--check-current-dir', '--quiet'])
+  expected_filename = os.path.join(os.getcwd(), test_filename)
+  assert expected_filename in result, result
+
+  for filename in [test_filename, phil_filename]:
+    if os.path.isfile(filename):
+      os.remove(filename)
 
 # =============================================================================
 if __name__ == '__main__':
@@ -588,5 +636,6 @@ if __name__ == '__main__':
   test_user_selected_labels()
   test_json()
   test_diff_params()
+  test_check_current_dir()
 
   print("OK")
