@@ -97,12 +97,20 @@ filter {
     .help = Instead of counts, plot the likelihood that a d-spacing is observed \
             together with a reference peak identified by filter.d_max and \
             filter.d_min.
-  d_max = None
-    .type = float
-    .help = Max resolution of the peak to filter on
-  d_min = None
-    .type = float
-    .help = Min resolution of the peak to filter on
+  d_vals = None
+    .type = floats
+    .help = Resolution ranges (pairs dmax, dmin) to filter on
+  select_mode = *any all
+    .type = choice
+    .help = Any: select frames where any of the given d-spacings is present. \
+            All: select frames where all of the given d-spacings are present.
+  plot_mode = *ratio simple
+    .type = choice
+    .help = Ratio: y-value is the "correlation" between the reference d-vals \
+            and the given d-val. \
+            Simple: Plot a powder pattern conditioned on the presence of the \
+            reference peak(s).
+
 }
 output {
   log = dials.powder_from_spots.log
