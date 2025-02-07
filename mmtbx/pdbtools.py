@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 import iotbx.phil
 from cctbx import crystal
 from mmtbx.refinement import rigid_body
+from iotbx.pdb import resseq_encode
 from cctbx.array_family import flex
 from libtbx.utils import Sorry
 import random
@@ -472,13 +473,13 @@ class modify(object):
           if (renumber_from is None):
             counter = 1
             for rg in chain.residue_groups():
-              rg.resseq=counter
+              rg.resseq=resseq_encode(counter)
               counter += 1
           else :
             for rg in chain.residue_groups():
               resseq = rg.resseq_as_int()
               resseq += renumber_from
-              rg.resseq = "%4d" % resseq
+              rg.resseq = resseq_encode(resseq)
 
   def _rename_chain_id(self):
     if([self.params.rename_chain_id.old_id,
