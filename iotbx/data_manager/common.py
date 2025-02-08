@@ -159,6 +159,7 @@ class fmodel_mixins(object):
                  experimental_phases_params = None,# XXX Need to be part of 'parameters'
                  scattering_table = None,
                  mask_params = None,
+                 sf_accuracy_params = None,
                  free_r_flags_scope = 'miller_array.labels.name',
                  model_filename = None,
                  ):
@@ -272,6 +273,7 @@ class fmodel_mixins(object):
       xray_structure      = model.get_xray_structure(),
       twin_law            = twin_law,
       mask_params         = mask_params,
+      sf_accuracy_params  = sf_accuracy_params,
       ignore_r_free_flags = parameters.r_free_flags.ignore_r_free_flags,
       mtz_object          = data.mtz_object,
       data_type           = array_type)

@@ -620,6 +620,7 @@ def fmodel_manager2(
   twin_law,
   ignore_r_free_flags,
   mask_params,
+  sf_accuracy_params,
   mtz_object=None,
   data_type=None):
   """
@@ -635,6 +636,7 @@ def fmodel_manager2(
       r_free_flags   = r_free_flags,
       abcd           = abcd,
       mask_params    = mask_params,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       xray_structure = xray_structure,
       origin         = mtz_object,
       data_type      = data_type)
@@ -650,6 +652,7 @@ def fmodel_manager2(
       twin_law_str   = twin_law,
       detwin_mode    = twin_params.detwin.mode,
       map_types      = twin_params.detwin.map_types,
+      sf_and_grads_accuracy_params = sf_accuracy_params,
       origin         = mtz_object,
       mask_params    = mask_params,
       data_type      = data_type)
