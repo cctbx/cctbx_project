@@ -103,7 +103,18 @@ class manager(object):
     return self._bound_flags
 
   def update(self, x):
-    assert 0
+    if self._use_xyz:
+      self.model.set_sites_cart(flex.vec3_double(x))
+      self._restraints = self.model.restraints_manager_energies_sites(
+        compute_gradients=True)
+    elif self._use_adp:
+      b_iso = x*adptbx.u_as_b(1.)
+      self.model.set_b_iso(values = b_iso)
+      self._restraints = self.model.energies_adp(
+        iso_restraints    = None,
+        use_hd            = self.model.is_neutron(),
+        compute_gradients = True)
+
 
   def target(self):
     if self._restraints is None: return None
