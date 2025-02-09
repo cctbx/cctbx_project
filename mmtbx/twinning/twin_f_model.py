@@ -620,7 +620,11 @@ the percentage of R-free reflections).
       x = flex.abs( self.bulk_solvent_mask().data - manager.bulk_solvent_mask().data )
       print("Bit wise diff mask ", flex.sum( x ), file=self.out)
 
-
+  def is_taam(self):
+    """
+    Not implemented.
+    """
+    return False
 
   def deep_copy(self):
     new_object = twin_model_manager(

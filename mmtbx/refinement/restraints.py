@@ -6,9 +6,14 @@ from cctbx import adptbx
 class manager(object):
   """
   Refinement restraints: restraints manager + refinable parameter limits
+
+  XXX LIMITED. Restraint targets not used. Selection is not used or used
+      incorrectly.
+
   """
   def __init__(self,
-               model):
+               model,
+               use_target=False):
     adopt_init_args(self, locals())
     self._restraints = None
     self._lower_bound = None
@@ -48,8 +53,9 @@ class manager(object):
     self._lower_bound = self._lower_bound.as_double()
     self._upper_bound = self._upper_bound.as_double()
     self._bound_flags = flex.int(x.size()*3, 2)
-    self._restraints = self.model.restraints_manager_energies_sites(
-      compute_gradients=True)
+    if self.use_target:
+      self._restraints = self.model.restraints_manager_energies_sites(
+        compute_gradients=True)
 
   def get_x(self):
     self.check_flags()
@@ -73,10 +79,11 @@ class manager(object):
       self._lower_bound = flex.double(x.size(), u_min)
       self._upper_bound = flex.double(x.size(), u_max)
     self._bound_flags = flex.int(x.size(), 2)
-    self._restraints = self.model.energies_adp(
-      iso_restraints    = None,
-      use_hd            = self.model.is_neutron(),
-      compute_gradients = True)
+    if self.use_target:
+      self._restraints = self.model.energies_adp(
+        iso_restraints    = None,
+        use_hd            = self.model.is_neutron(),
+        compute_gradients = True)
 
   def set_use_occ(self, selection=None, q_min=0.004, q_max=1.0):
     self.set_flags(use_occ=True)
@@ -103,6 +110,7 @@ class manager(object):
     return self._bound_flags
 
   def update(self, x):
+    if not self.use_target: return
     if self._use_xyz:
       self.model.set_sites_cart(flex.vec3_double(x))
       self._restraints = self.model.restraints_manager_energies_sites(

@@ -37,7 +37,8 @@ class unrestrained_qbr_fsr(object):
                log   = None):
     adopt_init_args(self, locals())
     data = mmtbx.refinement.data.fs(fmodel = fmodel)
-    restraints = mmtbx.refinement.restraints.manager(model = model)
+    restraints = mmtbx.refinement.restraints.manager(
+      model = model, use_target=False)
     #
     rt_old = model.get_refinement_flags()
     rf = mmtbx.refinement.refinement_flags.manager( # This is ugly!!
@@ -59,9 +60,9 @@ class unrestrained_qbr_fsr(object):
           q_min      = q_min,
           q_max      = q_max).calculator()
         minimized = minimizers.lbfgs(
-            calculator     = calculator,
-            max_iterations = max_iterations,
-            mode           = 'lbfgsb')
+          calculator     = calculator,
+          max_iterations = max_iterations,
+          mode           = 'lbfgsb')
         if log is not None:
           print("occ: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
@@ -74,9 +75,9 @@ class unrestrained_qbr_fsr(object):
           u_min      = adptbx.b_as_u(b_min),
           u_max      = adptbx.b_as_u(b_max)).calculator()
         minimized = minimizers.lbfgs(
-            calculator     = calculator,
-            max_iterations = max_iterations,
-            mode           = 'lbfgsb')
+          calculator     = calculator,
+          max_iterations = max_iterations,
+          mode           = 'lbfgsb')
         if log is not None:
           print("adp: r_work=%6.4f r_free=%6.4f"%(
             fmodel.r_work(), fmodel.r_free()), file = log)
