@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function
 
 from libtbx.utils import Sorry
 from libtbx.version import get_version
+from scitbx.array_family import flex
 
 __version__ = get_version()
 
@@ -302,11 +303,22 @@ class fmodels(object):
         self.target_work_xray_weighted = self.target_work_xray * wx
         self.gradient_xray = None
         if(compute_gradients):
-          if(occupancy):
-            sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
+          # XXX discamb
+          if self.fmodels.fmodel_xray().is_taam():
+            f0 = self.fmodels.fmodel_xray().xray_structure.scatterers()[0].flags
+            gs = tfx_r.gradients_wrt_atomic_parameters()
+            if   f0.grad_site():
+              sf = flex.vec3_double([g.site_derivatives for g in gs]).as_double()
+            elif f0.grad_u_iso():
+              sf = flex.double([g.adp_derivatives[0] for g in gs])
+          # XXX discamb
           else:
-            sf = tfx_r.gradients_wrt_atomic_parameters(
-              u_iso_refinable_params = u_iso_refinable_params).packed()
+            if(occupancy):
+              sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
+            else:
+              sf = tfx_r.gradients_wrt_atomic_parameters(
+                u_iso_refinable_params = u_iso_refinable_params).packed()
+
           self.gradient_xray = sf
           self.gradient_xray_weighted = sf * wx
         if(fmodels.fmodel_neutron() is not None):
