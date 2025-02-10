@@ -263,6 +263,27 @@ jobs:
     displayName: Test
     retryCountOnTaskFailure: 3
 
+  # run pyDiSCaMB tests
+  - script: |
+      cd $(Pipeline.Workspace)
+      if exist "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      if exist "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" (
+        call "C:\Program Files\Microsoft Visual Studio\${{ parameters.vs }}\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+      )
+      call .\build\setpaths.bat
+      cd .\modules\pyDiSCaMB
+      call libtbx.python -m pip install .
+      cd ..\cctbx_project\cctbx\eltbx\discamb
+      call libtbx.python tst_IAM_discamb_vs_cctbx_1.py
+      call libtbx.python tst_IAM_discamb_vs_cctbx_2.py
+      call libtbx.python tst_IAM_discamb_vs_cctbx_3.py
+      call libtbx.python tst_IAM_discamb_vs_cctbx_4.py
+      call libtbx.python tst_IAM_discamb_vs_cctbx_5.py
+    displayName: Run pyDiSCaMB tests
+    retryCountOnTaskFailure: 3
+
   # store tests directory as an artifact
   - script: |
       cd $(Pipeline.Workspace)
