@@ -1662,6 +1662,14 @@ class _():
     #
     return h_cif_block
 
+  def remove_segid(self):
+    for model in self.models():
+      for chain in model.chains():
+        for residue_group in chain.residue_groups():
+          for atom_group in residue_group.atom_groups():
+            for atom in atom_group.atoms():
+              atom.set_segid('    ')
+
   def remove_hetero(self):
     for model in self.models():
       for chain in model.chains():
