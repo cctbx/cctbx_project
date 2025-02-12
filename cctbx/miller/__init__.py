@@ -4355,7 +4355,6 @@ class array(set):
     d_const = None
 
     if d.size() > 10:
-      print("1:", d.size(), d_inv.size(), fsc.size())
 
       if sel.count(True)>0:
         d_const   = d    .select(sel)
@@ -4370,8 +4369,6 @@ class array(set):
         d  .extend(d_const)
         fsc.extend(fsc_const)
       d_inv = 1./d
-
-      print("2:", d.size(), d_inv.size(), fsc.size())
 
     s = flex.sort_permutation(d_inv)
     return group_args(
