@@ -1865,7 +1865,7 @@ def run(args, command_name = "phenix.ensemble_refinement", out=None,
         always_keep_one_conformer=True)
 
   if n_removed_atoms > 0:
-    pdb_file_removed_alt_confs = pdb_file[0:-4]+'_removed_alt_confs.pdb'
+    pdb_file_removed_alt_confs = os.path.basename(pdb_file)[0:-4]+'_removed_alt_confs.pdb'
     print("\nRemoving alternative conformations", file=log)
     print("All occupancies reset to 1.0", file=log)
     print("New PDB : ", pdb_file_removed_alt_confs, "\n", file=log)
