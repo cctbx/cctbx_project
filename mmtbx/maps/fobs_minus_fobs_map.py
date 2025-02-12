@@ -123,6 +123,12 @@ peak_search
 {
 include scope mmtbx.find_peaks.master_params
 }
+structure_factors_accuracy
+  .short_caption = Structure factors accuracy
+  .style = auto_align box
+{
+  include scope mmtbx.f_model.sf_and_grads_accuracy_master_params
+}
 """
 def fo_minus_fo_master_params():
   return iotbx.phil.parse(fo_minus_fo_master_params_str, process_includes=True)
@@ -131,6 +137,7 @@ class compute_fo_minus_fo_map(object):
   def __init__(self,
       data_arrays,
       xray_structure,
+      sf_accuracy_params=None,
       log=None,
       silent=False,
       output_file=None,
@@ -159,6 +166,7 @@ class compute_fo_minus_fo_map(object):
         xray_structure = xray_structure,
         r_free_flags   = r_free_flags,
         target_name    = "ls_wunit_k1",
+        sf_and_grads_accuracy_params = sf_accuracy_params,
         f_obs          = d)
       fmodel.update_all_scales(log=None)
       if(not silent):
@@ -514,6 +522,7 @@ high_res=2.0 sigma_cutoff=2 scattering_table=neutron"""
   output_files = compute_fo_minus_fo_map(
     data_arrays = f_obss,
     xray_structure = xray_structure,
+    sf_accuracy_params = params.structure_factors_accuracy,
     log = log,
     silent = command_line.options.silent,
     output_file = output_file_name,
