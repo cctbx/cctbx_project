@@ -178,6 +178,18 @@ namespace {
         .def(init<uctbx::unit_cell const&,
              af::const_ref<double, af::c_grid_padded<3> > const&,
              af::const_ref<scitbx::vec3<double> > const&,
+             double const&,
+             af::const_ref<bool> const&,
+             af::const_ref<double> const& >((
+                                    arg("unit_cell"),
+                                    arg("map_target"),
+                                    arg("sites_cart"),
+                                    arg("delta"),
+                                    arg("selection"),
+                                    arg("rsr_weight"))))
+        .def(init<uctbx::unit_cell const&,
+             af::const_ref<double, af::c_grid_padded<3> > const&,
+             af::const_ref<scitbx::vec3<double> > const&,
              af::const_ref<bool> const&,
              std::string const& >((
                                     arg("unit_cell"),

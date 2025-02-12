@@ -11,7 +11,7 @@ import random
 import sys
 from six.moves import zip
 
-def exercise_lbfgs(test_case, use_geo, out, d_min=2):
+def exercise_lbfgs(test_case, use_geo, out, rsr_weight=1,d_min=2):
   sites_cart, geo_manager = cctbx.geometry_restraints.manager.\
     construct_non_crystallographic_conserving_bonds_and_angles(
       sites_cart=flex.vec3_double(test_case.sites),
@@ -41,7 +41,7 @@ def exercise_lbfgs(test_case, use_geo, out, d_min=2):
       density_map=fft_map.real_map(),
       geometry_restraints_manager=geo_manager,
       gradients_method="fd",
-      real_space_target_weight=1,
+      real_space_target_weight=rsr_weight,
       real_space_gradients_delta=d_min/3)
     geo_manager.energies_sites(sites_cart=minimized.sites_cart).show(f=out)
   else:

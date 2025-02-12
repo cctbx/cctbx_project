@@ -2,6 +2,7 @@
 #define CCTBX_MAPTBX_TARGET_AND_GRADIENTS_H
 
 #include <cctbx/maptbx/interpolation.h>
+#include <iostream>
 
 namespace cctbx {
   namespace maptbx {
@@ -17,6 +18,8 @@ public:
     double const& step,
     af::const_ref<scitbx::vec3<double> > const& sites_frac)
   {
+    std::cout << "compute 1" << std::endl;
+
     int nx = static_cast<int>(map_target.accessor().focus()[0]);
     int ny = static_cast<int>(map_target.accessor().focus()[1]);
     int nz = static_cast<int>(map_target.accessor().focus()[2]);
@@ -268,6 +271,7 @@ public:
 template <typename FloatType=double>
 class compute
 {
+
 public:
 
   compute(
@@ -277,6 +281,8 @@ public:
     FloatType delta,
     af::const_ref<bool> const& selection)
   {
+    //std::cout << "compute 2" << std::endl;
+
     gradients_.resize(sites_cart.size(), scitbx::vec3<FloatType>(0,0,0));
     target_ = 0;
     scitbx::vec3<FloatType>* res = gradients_.begin();
@@ -298,6 +304,56 @@ public:
           }
           piv_d[i_axis] = piv[i_axis];
           (*res)[i_axis] = (densities[0] - densities[1]) / (2 * delta);
+        }
+      }
+    }
+  }
+
+compute( // this version weights each atom's contribution to target and gradients
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<FloatType, af::c_grid_padded<3> > const& map_data,
+    af::const_ref<scitbx::vec3<FloatType> > const& sites_cart,
+    FloatType delta,
+    af::const_ref<bool> const& selection,
+    af::const_ref<double> const& rsr_weight)
+  {
+    
+    // Ensure rsr_weights size matches sites_cart size
+    CCTBX_ASSERT(sites_cart.size() == rsr_weight.size());
+
+    // Initialize gradients and target
+    gradients_.resize(sites_cart.size(), scitbx::vec3<FloatType>(0, 0, 0));
+    target_ = 0;
+
+    // Iterator for gradients
+    scitbx::vec3<FloatType>* res = gradients_.begin();
+
+    for (std::size_t i_site = 0; i_site < sites_cart.size(); i_site++, res++) {
+      if (selection[i_site]) {
+        // Apply rsr_weights to the target value
+        FloatType weighted_target = -rsr_weight[i_site] * eight_point_interpolation(
+          map_data, unit_cell.fractionalize(sites_cart[i_site])
+        );
+        target_ += weighted_target;
+
+        // Compute weighted gradients
+        scitbx::vec3<FloatType> piv = sites_cart[i_site];
+        scitbx::vec3<FloatType> piv_d = piv;
+
+        for (unsigned i_axis = 0; i_axis < 3; i_axis++) {
+          FloatType densities[2];
+
+          for (unsigned i_sign = 0; i_sign < 2; i_sign++) {
+            piv_d[i_axis] = (i_sign == 0 ? piv[i_axis] + delta
+                                        : piv[i_axis] - delta);
+            fractional<FloatType> site_frac = unit_cell.fractionalize(piv_d);
+            densities[i_sign] = eight_point_interpolation(map_data, site_frac);
+          }
+
+          piv_d[i_axis] = piv[i_axis];
+
+          // Apply rsr_weights to gradients
+          (*res)[i_axis] = -rsr_weight[i_site] * (densities[0] - densities[1]) / (2 * delta);
         }
       }
     }
