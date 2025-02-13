@@ -6,7 +6,6 @@ from cctbx import maptbx
 import mmtbx.model
 import iotbx.pdb
 from libtbx.utils import Sorry
-from libtbx.test_utils import approx_equal
 
 import boost_adaptbx.boost.python as bp
 from six.moves import range
@@ -347,10 +346,11 @@ class map_manager(object):
     self.size = self.fmodel.xray_structure.scatterers().size()
 
   def update_omit_map(self, omit_selection):
-    sel_keep = ~flex.bool(self.size, omit_selection)
     fmodel = self.fmodel.deep_copy()
+    xrs = fmodel.xray_structure
+    xrs.set_occupancies(value=0, selection = omit_selection)
     fmodel.update_xray_structure(
-      xray_structure = fmodel.xray_structure.select(sel_keep),
+      xray_structure = xrs,
       update_f_calc  = True,
       update_f_mask  = False)
     mc = fmodel.electron_density_map().map_coefficients(
