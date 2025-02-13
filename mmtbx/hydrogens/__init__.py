@@ -5,7 +5,8 @@ from cctbx.array_family import flex
 from cctbx import maptbx
 import mmtbx.model
 import iotbx.pdb
-#from libtbx.utils import null_out
+from libtbx.utils import Sorry
+from libtbx.test_utils import approx_equal
 
 import boost_adaptbx.boost.python as bp
 from six.moves import range
@@ -358,6 +359,7 @@ class map_manager(object):
       exclude_free_r_reflections = True)
     fft_map = mc.fft_map(crystal_gridding = self.crystal_gridding)
     fft_map.apply_sigma_scaling()
+    #fft_map.apply_volume_scaling()
     self.omit_map = fft_map.real_map_unpadded()
 
   def score(self, sites_cart):
@@ -366,7 +368,27 @@ class map_manager(object):
       density_map = self.omit_map,
       sites_cart  = sites_cart)
 
-def fit_rotatable2(model, fmodel, use_electron_xh=True):
+def map_statistics(model, fmodel):
+  result = flex.double()
+  mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
+  for m in model.get_hierarchy().models():
+    for c in m.chains():
+      for rg in c.residue_groups():
+        h_sel      = flex.size_t()
+        sites_cart = flex.vec3_double()
+        for atom in rg.atoms():
+          if not atom.element_is_hydrogen(): continue
+          h_sel.append(atom.i_seq)
+          sites_cart.append(atom.xyz)
+        if h_sel.size()==0: continue
+        mm.update_omit_map(omit_selection = h_sel)
+        for site_cart in sites_cart:
+          score = mm.score(sites_cart = flex.vec3_double([site_cart]))
+          score = min(3.5, max(0, score))
+          result.append(score)
+  return result
+
+def fit_rotatable2(model, fmodel):
   """
   Slow, OMIT map based fitting of rotatable H.
   """
@@ -376,11 +398,22 @@ def fit_rotatable2(model, fmodel, use_electron_xh=True):
   if(mpih):
     mask_params.ignore_hydrogens=False
     fmodel.update(mask_params=mask_params)
-    fmodel.update_all_scales()
-  # Set X-H bonds to shorter (electron) distances
-  model.set_hydrogen_bond_length(use_neutron_distances = False)
+  # Set X-H lengths based on data type
+  scattering_table = model.get_scattering_table()
+  if scattering_table is None:
+    raise Sorry("scattering_table must be set.")
+  use_neutron_distances = False
+  if scattering_table in ["neutron", "electron"]:
+    use_neutron_distances = True
+  model.set_hydrogen_bond_length(use_neutron_distances = use_neutron_distances)
+  model.idealize_h_riding()
   #
+  fmodel.update_xray_structure(
+    xray_structure = model.get_xray_structure(),
+    update_f_calc  = True,
+    update_f_mask  = True)
   fmodel.update_all_scales()
+  #
   # FIT
   mm = map_manager(fmodel = fmodel, map_type = "mFobs-DFmodel")
   get_class = iotbx.pdb.common_residue_names_get_class
@@ -437,10 +470,6 @@ def fit_rotatable2(model, fmodel, use_electron_xh=True):
             if sites_cart_best is not None:
               sites_cart = sites_cart.set_selected(sel_to_rotate, sites_cart_best)
   model.set_sites_cart(sites_cart)
-  # Reset X-H bonds
-  if not use_electron_xh:
-    model.set_hydrogen_bond_length(use_neutron_distances = True)
-  # Update fmodel with new sites_cart
   fmodel.xray_structure.set_sites_cart(model.get_sites_cart())
   if(mpih):
     mask_params.ignore_hydrogens=False

@@ -479,6 +479,9 @@ class manager(object):
       result.append(dbest)
     return result
 
+  def get_scattering_table(self):
+    return self.get_xray_structure().get_scattering_table()
+
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
