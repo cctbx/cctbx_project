@@ -325,7 +325,8 @@ def sort_hetatms(
   for chain in new_hetatm_chains :
     for residue_group in chain.residue_groups():
       residue_group.link_to_previous = True # suppress BREAK records
-    new_model.append_chain(chain)
+    if len(chain.atoms()) > 0:  # Skip empty chains
+      new_model.append_chain(chain)
   if (len(loose_residues.residue_groups()) > 0):
     new_model.append_chain(loose_residues)
   n_atoms_new = len(new_hierarchy.atoms())

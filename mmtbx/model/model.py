@@ -1710,7 +1710,7 @@ class manager(object):
 
   def as_pdb_or_mmcif_string(self,
        target_format = None,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        remark_section = None,
        **kw):
     '''
@@ -1720,7 +1720,7 @@ class manager(object):
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
@@ -1742,7 +1742,7 @@ class manager(object):
   def pdb_or_mmcif_string_info(self,
       target_filename = None,
       target_format = None,
-      segid_as_auth_segid = True,
+      segid_as_auth_segid = False,
       write_file = False,
       data_manager = None,
       overwrite = True,
@@ -1756,7 +1756,7 @@ class manager(object):
 
     #  If you need a pdb string, normally use as_pdb_or_mmcif_string
     #   instead of this general function
-    #  Note default of segid_as_auth_segid = True, different from
+    #  Note default of segid_as_auth_segid = False, same as in
     #     as_mmcif_string()
 
     if target_format in ['None',None]:  # set the default format here
@@ -1774,7 +1774,8 @@ class manager(object):
           segid_as_auth_segid = segid_as_auth_segid,**kw)
         is_mmcif = True
     else:
-      pdb_str = self.model_as_mmcif(segid_as_auth_segid = segid_as_auth_segid,**kw)
+      pdb_str = self.model_as_mmcif(
+          segid_as_auth_segid = segid_as_auth_segid,**kw)
       is_mmcif = True
     if target_filename:
       import os

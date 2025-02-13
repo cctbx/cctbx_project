@@ -751,7 +751,7 @@ class _():
 
   def as_pdb_or_mmcif_string(self,
        target_format = None,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        remark_section = None,
        **kw):
     '''
@@ -761,7 +761,7 @@ class _():
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param segid_as_auth_segid: use the segid in hierarchy as the auth_segid
@@ -785,7 +785,7 @@ class _():
        target_format = None,
        data_manager = None,
        overwrite = True,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        remark_section = None,
        **kw):
     '''
@@ -795,7 +795,7 @@ class _():
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param target_filename: desired output file name, to be modified to
@@ -825,7 +825,7 @@ class _():
        target_format = None, target_filename = None,
        data_manager = None,
        overwrite = True,
-       segid_as_auth_segid = True,
+       segid_as_auth_segid = False,
        write_file = False,
        remark_section = None,
        **kw):
@@ -835,7 +835,7 @@ class _():
 
      Method to allow shifting from general writing as pdb to
      writing as mmcif, with the change in two places (here and model.py)
-     Use default of segid_as_auth_segid=True here (different than
+     Use default of segid_as_auth_segid=False here (same as in
        as_mmcif_string())
      :param target_format: desired output format, pdb or mmcif
      :param target_filename: desired output file name, to be modified to
