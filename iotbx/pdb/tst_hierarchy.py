@@ -6054,6 +6054,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert pdb_hierarchy.only_model().only_chain().is_protein()
+  assert not pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
 
@@ -6072,6 +6073,7 @@ HETATM   48  O   HOH A  14       8.000   4.000   7.299  1.00 15.18           O
 HETATM   48  O   HOH A  15      10.000   0.000   7.299  1.00 15.18           O
 """).construct_hierarchy()
   assert not pdb_hierarchy.only_model().only_chain().is_protein()
+  assert pdb_hierarchy.only_model().only_chain().is_water()
   assert not pdb_hierarchy.only_model().only_chain().is_protein(
     ignore_water=False)
   pdb_hierarchy = pdb.input(source_info=None, lines="""\

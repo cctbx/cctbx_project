@@ -3089,6 +3089,11 @@ class _():
       resnames.append(residue_group.unique_resnames()[0])
     return resnames
 
+  def is_water(self):
+    for rg in self.residue_groups():
+      if common_residue_names_get_class(rg.atom_groups()[0].resname) != "common_water":
+        return False
+    return True
 
   def is_protein(self, min_content=0.8, ignore_water=True):
     """
