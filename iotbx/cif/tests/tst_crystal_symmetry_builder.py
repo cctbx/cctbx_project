@@ -1,6 +1,4 @@
 from __future__ import absolute_import, division, print_function
-from libtbx.utils import Sorry
-from libtbx.test_utils import show_diff
 from iotbx.pdb.mmcif import cif_input
 
 def tst_bad_symmetry_1():
