@@ -37,6 +37,7 @@ tst_list_base = [
   "$D/regression/tst_poscar.py",
   "$D/kriber/tst_strudat.py",
   "$D/cif/tests/tst_geometry.py",
+  "$D/cif/tests/tst_crystal_symmetry_builder.py",
   "$D/cif/tests/tst_lex_parse_build.py",
   "$D/cif/tests/tst_model.py",
   "$D/cif/tests/tst_restraints.py",
