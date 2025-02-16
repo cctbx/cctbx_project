@@ -2,7 +2,7 @@ from dials.util import Sorry
 from dials.util.options import ArgumentParser, reflections_and_experiments_from_files
 from dials.util import show_mail_handle_errors
 from dials.array_family import flex
-from libtbx.phil import parse
+from iotbx.phil import parse
 import numpy as np
 from dxtbx.model import ExperimentList
 from sklearn.cluster import DBSCAN, HDBSCAN
@@ -10,8 +10,16 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as tick
 import numpy as np
 from matplotlib.widgets import SpanSelector
+from matplotlib.widgets import RectangleSelector
 from sklearn.mixture import GaussianMixture
 from scipy.optimize import minimize
+import hashlib
+import pickle
+from cctbx.crystal import symmetry
+from cctbx import sgtbx
+import math
+from dxtbx import flumpy
+
 
 # Top-level phil scope
 phil_scope = parse("""
@@ -33,8 +41,17 @@ triplets {
 }
 initialization {
   triangle_finding {
+    mahalanobis_threshold = 2.5
+      .type = float
+      .help = Distance cutoff for triangle spec matching
     method = interactive clustering *box
       .type = choice
+    save_clusters = None
+      .type = str
+      .help = Save clusters to pickle file
+    load_clusters = None
+      .type = str
+      .help = Load clusters from pickle file
     interactive {
       min_points = 100
         .type = int
@@ -84,20 +101,237 @@ output {
   reflections = aligned_reflections.refl
     .type = path
 }
+debug {
+  unit_cell = None
+    .type = unit_cell
+    .help = sldkfj
+}
 """)
 
 help_message = """
 Nobody knows what this does or why it was created
 """
 
+class ReconstructionManager:
+  def __init__(self, experiments, reflections, triplets, params):
+    self.reconstructions = []
+    self.relationships = {}
+    self.experiments = experiments
+    self.reflections = reflections
+    self.triplets = triplets
+    self.params = params
+
+  def initialize(self, cluster_results):
+    """Interactive selection of initial reconstruction."""
+    candidates = []
+    for cluster in cluster_results:
+      # Create left-handed reconstruction
+      spec = TriangleSpec.from_cluster(cluster, self.params, hand=-1)
+      lr_left = spec.reconstruct(self.triplets, self.experiments, self.reflections)
+      candidates.append(lr_left)
+
+      # Create right-handed reconstruction
+      spec = TriangleSpec.from_cluster(cluster, self.params, hand=1)
+      lr_right = spec.reconstruct(self.triplets, self.experiments, self.reflections)
+      candidates.append(lr_right)
+
+    current_id = 0
+    while current_id < len(candidates):
+      print(f"\nCandidate {current_id}: {len(candidates[current_id].reflections)} reflections")
+
+      result = self.plot_2d_radial(
+        reconstruction=candidates[current_id],
+        mode='screen',
+        navigation_info={
+          'current_id': current_id,
+          'total': len(candidates),
+          'candidates': candidates
+        }
+      )
+
+      if result['accepted']:
+        self.reconstructions.append(candidates[current_id])
+        return
+
+      if result['next_id'] is not None:
+        current_id = result['next_id']
+
+
+  def plot_2d_radial(self, reconstruction=None, reconstruction_id=None, mode='view',
+                     navigation_info=None):
+    """Plot 2D radial view of a reconstruction with mode-specific interactions.
+
+    Args:
+      reconstruction: LatticeReconstruction to plot (for viewing candidates)
+      reconstruction_id: Index in self.reconstructions (for viewing stored reconstructions)
+      mode: Interaction mode
+      navigation_info: Optional dict with:
+        'current_id': Current position in sequence
+        'total': Total number of items
+        'candidates': List of reconstructions (if navigating through candidates)
+    """
+    if (reconstruction is None) == (reconstruction_id is None):
+      raise Sorry("Must provide exactly one of reconstruction or reconstruction_id")
+
+    if reconstruction is None:
+      reconstruction = self.reconstructions[reconstruction_id]
+
+    # Initialize result dictionary
+    result = {
+      'next_id': None,
+      'accepted': None,    # for screen mode
+      'boxes': [],         # for augment mode
+      'points': []         # for select mode
+    }
+    # Set up single plot
+    fig, ax = plt.subplots(figsize=(10,8))
+
+    # Plot points
+    for i_exp in range(len(reconstruction.experiments)):
+      exp_sel = reconstruction.reflections['id'] == i_exp
+      exp_refs = reconstruction.reflections.select(exp_sel)
+      q_vecs = exp_refs['q.aligned']
+      x, y = q_vecs.parts()[0], q_vecs.parts()[1]
+
+      # Calculate theta using arctan2(y,x) to match theta_refine
+      theta = np.rad2deg(np.arctan2(y, x))
+      q_mags = np.sqrt(q_vecs.parts()[0]**2 +
+                      q_vecs.parts()[1]**2 +
+                      q_vecs.parts()[2]**2)
+
+      # Plot spots
+      ax.scatter(theta, q_mags, alpha=0.2, s=3, c='blue')
+
+      # Plot reference spots
+      i1, i2 = reconstruction.reference_spots[i_exp]
+      ref_theta = np.rad2deg(np.arctan2([y[i1], y[i2]], [x[i1], x[i2]]))
+      ref_q = q_mags[[i1, i2]]
+      ax.scatter(ref_theta, ref_q, c=['red', 'green'], s=50)
+
+    # Configure axis
+    ax.set_xlim(-180, 180)
+    ax.yaxis.set_major_formatter(tick.FuncFormatter(
+      lambda q, _: f"{1/q:.1f}" if q > 0 else ""
+    ))
+    ax.grid(True, linestyle=':')
+    ax.set_xlabel('Azimuthal angle θ (degrees)')
+    ax.set_ylabel('Resolution d (Å)')
+
+    # Mode-specific title
+    title = "Left-handed" if reconstruction.hand == -1 else "Right-handed"
+    ax.set_title(title)
+
+    # Basic plotting code...
+
+    def on_key(event):
+      if event.key == 'j':  # Previous reconstruction
+        if navigation_info is not None:
+          if navigation_info['current_id'] > 0:
+            result['next_id'] = navigation_info['current_id'] - 1
+            plt.close(fig)
+        elif reconstruction_id is not None and reconstruction_id > 0:
+          result['next_id'] = reconstruction_id - 1
+          plt.close(fig)
+
+      elif event.key == 'k':  # Next reconstruction
+        if navigation_info is not None:
+          if navigation_info['current_id'] < navigation_info['total'] - 1:
+            result['next_id'] = navigation_info['current_id'] + 1
+            plt.close(fig)
+        elif reconstruction_id is not None and reconstruction_id < len(self.reconstructions) - 1:
+          result['next_id'] = reconstruction_id + 1
+          plt.close(fig)
+
+      else:
+        # Mode-specific key handling
+        if mode == 'screen':
+          if event.key in ['y', 'n']:
+            result['accepted'] = (event.key == 'y')
+            plt.close(fig)
+
+        elif mode == 'augment':
+          if event.key == 'd':  # Done selecting
+            plt.close(fig)
+
+        elif mode == 'select':
+          if event.key == 'd':  # Done selecting
+            plt.close(fig)
+
+    # Mode-specific mouse handling
+    if mode == 'augment':
+      def on_select(eclick, erelease):
+        # Handle box selection...
+        pass
+
+    elif mode == 'select':
+      def on_click(event):
+        # Handle point selection...
+        pass
+
+    # Connect event handlers
+    fig.canvas.mpl_connect('key_press_event', on_key)
+    if mode == 'augment':
+      rect_selector = RectangleSelector(...)
+    elif mode == 'select':
+      fig.canvas.mpl_connect('button_press_event', on_click)
+
+    plt.show()
+    return result
+
+
+  def augment(self):
+    """Allow selection of boxes to create new reconstruction."""
+    # Show menu
+    print("\nCurrent reconstructions:")
+    for i, recon in enumerate(self.reconstructions):
+      print(f"{i}: {len(recon.reflections)} reflections")
+
+    cmd = input("\nEnter reconstruction number (or q to finish): ")
+    if cmd == 'q':
+      return True
+
+    try:
+      recon_id = int(cmd)
+      if self.select_boxes(recon_id):
+        return False  # Continue augmenting
+    except ValueError:
+      print("Invalid input")
+
+    return False
+
+  def select_boxes(self, recon_id):
+    """Allow selection of two boxes and create new reconstruction."""
+    recon = self.reconstructions[recon_id]
+    # Modified plot_2d_radial to allow box selection
+    boxes = recon.plot_2d_radial(select_boxes=True)
+    if len(boxes) != 2:
+      return False
+
+    # Determine hand of selected points
+    hand = self.determine_hand(boxes[0], boxes[1])
+    # Create TriangleSpec with opposite hand
+    spec = TriangleSpec.from_boxes(boxes[0], boxes[1], hand=-hand)
+
+    # Create new reconstruction
+    new_recon = spec.reconstruct(self.triplets, self.experiments, self.reflections)
+    self.reconstructions.append(new_recon)
+    self.relationships[(recon_id, len(self.reconstructions)-1)] = {
+      'parent_boxes': boxes,
+      'hand': -hand
+    }
+    return True
+
+
 class LatticeReconstruction:
-  def __init__(self):
+  def __init__(self, params):
     self.experiments = ExperimentList()
     self.reflections = flex.reflection_table()
     self.orientations = {}
     self.used_triangles = []  # List of (d1,d2,theta) tuples
     self.clusters = None      # Will store cluster analysis results
     self.reference_spots = {}
+    self.params = params
+    self.hand = None # Will be set to -1 or 1
     
   def add(self, expt, refl, i1, i2, xyz1=None, xyz2=None):
     """Add transformed reflections from one experiment
@@ -119,13 +353,15 @@ class LatticeReconstruction:
     k1 = np.linalg.norm(q1)
     k2 = np.linalg.norm(q2)
 
-    # Set up target vectors if not provided
-    if xyz1 is None:
-      xyz1 = np.array([0, 0, k1])
-    if xyz2 is None:
+    if xyz1 is None or xyz2 is None:
+      # Get magnitudes
       cos_theta = np.dot(q1, q2)/(k1*k2)
       theta = np.arccos(min(1.0, max(-1.0, cos_theta)))
-      xyz2 = np.array([0, k2*np.sin(theta), k2*np.cos(theta)])
+
+      # Set xyz2 along x-axis
+      xyz2 = np.array([k2, 0, 0])
+      # Set xyz1 in x-y plane at angle theta from xyz2
+      xyz1 = np.array([k1*np.cos(theta), k1*np.sin(theta), 0])
 
     # Find rotation matrix
     # First align q1 to xyz1
@@ -144,16 +380,7 @@ class LatticeReconstruction:
                     [rot1_axis[2], 0, -rot1_axis[0]],
                     [-rot1_axis[1], rot1_axis[0], 0]])
       rot1 = np.eye(3) + np.sin(alpha)*K + (1-np.cos(alpha))*K.dot(K)
-    
-    # Now rotate q2 around xyz1 to get as close as possible to xyz2
-    q2_rot = rot1.dot(q2)
-    # Project q2_rot onto plane perpendicular to xyz1
-    n1 = xyz1/np.linalg.norm(xyz1)
-    q2_proj = q2_rot - np.dot(q2_rot, n1)*n1
-    t2_proj = xyz2 - np.dot(xyz2, n1)*n1
-    # Find angle between projections
-    cos_beta = np.dot(q2_proj, t2_proj)/(np.linalg.norm(q2_proj)*np.linalg.norm(t2_proj))
-    beta = np.arccos(min(1.0, max(-1.0, cos_beta)))
+
     # Now rotate q2 around xyz1 to get as close as possible to xyz2
     q2_rot = rot1.dot(q2)
     # Project q2_rot onto plane perpendicular to xyz1
@@ -189,6 +416,10 @@ class LatticeReconstruction:
     # Apply to all vectors
     q_vectors_transformed = np.array([rot.dot(q) for q in q_vectors])
 
+    # Determine handedness from transformed beam direction
+    s0_transformed = rot.dot(s0)
+    hand = int(s0_transformed[2] > 0)  # 1 if beam points in +z, 0 if -z
+
     # Add experiment and reflections to reconstruction
     new_id = len(self.experiments)
     self.experiments.append(expt)
@@ -196,6 +427,21 @@ class LatticeReconstruction:
     # Copy reflection table and add transformed coordinates
     new_refl = refl.copy()
     new_refl['transformed_xyz'] = flex.vec3_double(q_vectors_transformed)
+    new_refl['q.aligned'] = flex.vec3_double(q_vectors_transformed)
+    new_refl['hand'] = flex.int(len(refl), hand)
+
+#    # Create detector-aligned coordinates (xyzobs.aligned)
+#    # Project q-vectors onto plane perpendicular to beam
+#    beam_dir = s0_transformed/np.linalg.norm(s0_transformed)
+#    detector_coords = []
+#    for q in q_vectors_transformed:
+#      # Project out beam direction
+#      q_proj = q - np.dot(q, beam_dir)*beam_dir
+#      detector_coords.append([q_proj[0], q_proj[1], q_proj[2]])
+#    new_refl['xyzobs.aligned'] = flex.vec3_double(detector_coords)
+
+    new_refl['hand'] = flex.int(len(refl), hand)
+
     new_refl['id'] = flex.int(len(refl), new_id)
 
     if len(self.reflections) == 0:
@@ -207,40 +453,911 @@ class LatticeReconstruction:
     self.orientations[new_id] = rot
     self.reference_spots[new_id] = (i1, i2)
 
+  def add_2d(self, expt, refl, i1, i2):
+    """Add experiment with initial alignment based on detector coordinates
+
+    Args:
+      expt: experiment to add
+      refl: reflection table
+      i1, i2: indices of reference reflections (i2 should be longer vector)
+    """
+    # Get detector coordinates
+    xyz = refl['xyzobs.mm.value']
+    beam_x, beam_y = expt.detector[0].get_beam_centre(expt.beam.get_s0())
+
+    # Get coordinates relative to beam center
+    x = xyz.parts()[0] - beam_x
+    y = xyz.parts()[1] - beam_y
+
+    # Get reference spot coordinates
+    x1, y1 = x[i1], y[i1]
+    x2, y2 = x[i2], y[i2]
+
+    # Align second spot (i2) to 3:00 position
+    phi = -np.arctan2(y2, x2)
+
+    # Apply rotation to all spots
+    cos_phi = np.cos(phi)
+    sin_phi = np.sin(phi)
+    x_aligned = x * cos_phi - y * sin_phi
+    y_aligned = x * sin_phi + y * cos_phi
+
+    # Store aligned coordinates
+    aligned_xyz = flex.vec3_double(
+      x_aligned, y_aligned, xyz.parts()[2]
+    )
+    refl['xyzobs.aligned'] = aligned_xyz
+
+    # Apply same rotation to s1 vectors
+    s1_vectors = refl['s1'].as_numpy_array()
+    # Create rotation matrix around beam direction
+    s0 = expt.beam.get_s0()
+    beam_axis = s0/np.linalg.norm(s0)
+    K = np.array([[0, -beam_axis[2], beam_axis[1]],
+                  [beam_axis[2], 0, -beam_axis[0]],
+                  [-beam_axis[1], beam_axis[0], 0]])
+    rot = np.eye(3) + np.sin(phi)*K + (1-np.cos(phi))*K.dot(K)
+
+    # Apply rotation to s1 vectors
+    s1_aligned = flex.vec3_double([rot.dot(s1) for s1 in s1_vectors])
+    refl['s1.aligned'] = s1_aligned
+
+    # Determine and store handedness
+    hand = flex.int(len(refl), int(y_aligned[i1] > 0))
+    refl['hand'] = hand
+
+    # Store experiment and reflections
+    new_id = len(self.experiments)
+    self.experiments.append(expt)
+    refl['id'] = flex.int(len(refl), new_id)
+
+    if len(self.reflections) == 0:
+      self.reflections = refl
+    else:
+      self.reflections.extend(refl)
+
+    # Store reference spots
+    self.reference_spots[new_id] = (i1, i2)
+
+  def plot_2d_radial_disabled(self):
+    """Plot aligned detector coordinates in radial format.
+
+    Transforms (x,y) detector coordinates into (θ,q) coordinates where:
+    - θ is the azimuthal angle from the y-axis (horizontal axis)
+    - q is the distance from beam center (vertical axis)
+    - q axis is labeled in d-spacing units
+    """
+    fig, axes = plt.subplots(1,2, figsize=(16,8))
+
+    for i_exp in range(len(self.experiments)):
+      exp_sel = self.reflections['id'] == i_exp
+      exp_refs = self.reflections.select(exp_sel)
+      xyz = exp_refs['xyzobs.aligned']
+      x, y = xyz.parts()[0], xyz.parts()[1]
+      hand = exp_refs['hand'][0]  # All spots in experiment have same hand
+      ax = axes[hand]
+
+      # Calculate q vectors
+      #q_vectors = exp_refs['s1'].as_numpy_array() - self.experiments[i_exp].beam.get_s0()
+      q_vectors = exp_refs['q.aligned'].as_numpy_array()
+      q_mags = np.sqrt(np.sum(q_vectors**2, axis=1))
+
+      # Calculate theta with 0 at y-axis, increasing clockwise
+      theta = np.rad2deg(np.arctan2(x, y))  # arctan2(x,y) gives angle from y-axis
+
+      # Plot spots with different colors for different hands
+      color = 'blue' if hand else 'red'
+      ax.scatter(theta, q_mags, alpha=0.5, s=1, c=color)
+
+      # Plot reference spots
+      i1, i2 = self.reference_spots[i_exp]
+      ref_theta = np.rad2deg(np.arctan2([x[i1], x[i2]], [y[i1], y[i2]]))
+      ref_q = q_mags[[i1, i2]]
+      ax.scatter(ref_theta, ref_q, c=['red', 'green'], s=50)
+
+    # Configure axes
+    for ax in axes:
+      # Set theta limits from -180 to +180
+      ax.set_xlim(-180, 180)
+
+      # Format q-axis as d-spacing
+      ax.yaxis.set_major_formatter(tick.FuncFormatter(
+        lambda q, _: f"{1/q:.3f}" if q > 0 else ""
+      ))
+
+      # Add grid
+      ax.grid(True, linestyle=':')
+
+      # Labels
+      ax.set_xlabel('Azimuthal angle θ (degrees)')
+      ax.set_ylabel('Resolution d (Å)')
+
+    # Titles
+    axes[0].set_title('Left-handed')
+    axes[1].set_title('Right-handed')
+
+    plt.tight_layout()
+    plt.show()
+
+  def update_reflection_indices(self):
+    """Update the i_refl column to match current table positions."""
+    self.reflections['i_refl'] = flex.size_t(range(len(self.reflections)))
+
+  def remove_poorly_sampled_experiments(self):
+    """Remove experiments that have reflections in fewer than 3 selected groups."""
+    # Count groups per experiment
+    group_counts = {}
+    for i_exp in range(len(self.experiments)):
+      exp_sel = self.reflections['id'] == i_exp
+      exp_refs = self.reflections.select(exp_sel)
+      groups = set(exp_refs['refinement_group']) - {0}  # Exclude unselected
+      group_counts[i_exp] = len(groups)
+
+    # Identify experiments to remove
+    to_remove = [i_exp for i_exp, count in group_counts.items() if count < 3]
+    if not to_remove:
+      return
+
+    print(f"Removing {len(to_remove)} experiments with < 3 groups")
+
+    # Create new experiment list excluding removed experiments
+    new_experiments = ExperimentList([
+      expt for i, expt in enumerate(self.experiments)
+      if i not in to_remove
+    ])
+
+    # Create lookup for new experiment indices
+    old_to_new = {}
+    new_id = 0
+    for old_id in range(len(self.experiments)):
+      if old_id not in to_remove:
+        old_to_new[old_id] = new_id
+        new_id += 1
+
+    # Select reflections to keep and update their experiment IDs
+    keep_sel = flex.bool(len(self.reflections), False)
+    new_ids = flex.int(len(self.reflections), 0)
+    for i in range(len(self.reflections)):
+      old_id = self.reflections['id'][i]
+      if old_id not in to_remove:
+        keep_sel[i] = True
+        new_ids[i] = old_to_new[old_id]
+
+    # Update reflection table
+    self.reflections = self.reflections.select(keep_sel)
+    self.reflections['id'] = new_ids.select(keep_sel)
+
+    # Update experiment list
+    self.experiments = new_experiments
+
+    # Update reference_spots dictionary
+    new_reference_spots = {}
+    for old_id, (i1, i2) in self.reference_spots.items():
+      if old_id not in to_remove:
+        new_reference_spots[old_to_new[old_id]] = (i1, i2)
+    self.reference_spots = new_reference_spots
+
+    # Update i_refl column to match new table positions
+    self.update_reflection_indices()
+
+  def theta_refine(self):
+    """Refine experiment orientations by minimizing theta spread of selected groups.
+
+    For each hand (left/right), simultaneously optimize rotations of all experiments
+    to minimize the spread of theta values within reflection groups.
+    """
+    for hand in [0, 1]:
+      # Get experiments for this hand
+      expts_this_hand = []
+      for i_exp in range(len(self.experiments)):
+        exp_sel = self.reflections['id'] == i_exp
+        if len(self.reflections.select(exp_sel)) > 0:  # Make sure experiment has reflections
+          if self.reflections.select(exp_sel)['hand'][0] == hand:
+            expts_this_hand.append(i_exp)
+
+      if not expts_this_hand:
+        continue
+
+      print(f"\nRefining {'left' if hand==0 else 'right'}-handed experiments")
+
+      def rotate_expt(i_exp, dphi):
+        """Apply rotation to an experiment's aligned q-vectors"""
+        exp_sel = self.reflections['id'] == i_exp
+        q_vecs = self.reflections['q.aligned'].select(exp_sel)
+
+        # Debug: print a vector before and after rotation
+        if len(q_vecs) > 0:
+          q0 = q_vecs[0]
+          theta_before = np.rad2deg(np.arctan2(q0[1], q0[0]))
+
+          # Create rotation matrix around z
+          phi_rad = np.deg2rad(dphi)
+          rot = np.array([[np.cos(phi_rad), -np.sin(phi_rad), 0],
+                         [np.sin(phi_rad), np.cos(phi_rad), 0],
+                         [0, 0, 1]])
+          # Apply rotation
+          q_new = flex.vec3_double([rot.dot(q) for q in q_vecs])
+
+          q0_new = q_new[0]
+          theta_after = np.rad2deg(np.arctan2(q0_new[1], q0_new[0]))
+
+          self.reflections['q.aligned'].set_selected(exp_sel, q_new)
+
+      def get_experiment_stats(i_exp):
+        """Compute alignment statistics for an experiment"""
+        exp_sel = self.reflections['id'] == i_exp
+        exp_refs = self.reflections.select(exp_sel)
+        q_vecs = exp_refs['q.aligned']
+        # Get angles in xy plane
+        exp_thetas = np.rad2deg(np.arctan2(q_vecs.parts()[1], q_vecs.parts()[0]))
+
+        stats = {'n_refs': 0, 'rmsd': 0}
+        # For each group this experiment contributes to
+        for group in set(exp_refs['refinement_group']) - {0}:
+          # Get all thetas for this group (from all experiments)
+          group_sel = self.reflections['refinement_group'] == group
+          group_refs = self.reflections.select(group_sel)
+          group_q = group_refs['q.aligned']
+          group_thetas = np.rad2deg(np.arctan2(
+            group_q.parts()[1], group_q.parts()[0]))
+
+          # Map all angles to [-180,180] before computing mean
+          group_thetas = (group_thetas + 180) % 360 - 180
+          group_mean = np.mean(group_thetas)
+
+          # Get this experiment's contributions
+          exp_group_sel = exp_refs['refinement_group'] == group
+          exp_group_thetas = exp_thetas[exp_group_sel]
+          exp_group_thetas = (exp_group_thetas + 180) % 360 - 180
+
+          # Add to statistics
+          diffs = exp_group_thetas - group_mean
+          diffs = (diffs + 180) % 360 - 180  # Map differences to [-180,180]
+          stats['n_refs'] += len(exp_group_thetas)
+          stats['rmsd'] += np.sum(diffs**2)
+
+        if stats['n_refs'] > 0:
+          stats['rmsd'] = np.sqrt(stats['rmsd'] / stats['n_refs'])
+        return stats
+
+      def target_and_gradient(params):
+        """Compute target function and gradient for current state"""
+        # Apply rotations for this set of parameters
+        for i_exp, dphi in zip(expts_this_hand, params):
+          rotate_expt(i_exp, dphi)
+
+        # Get groups for this hand
+        sign = -1 if hand == 0 else 1
+        groups = [g for g in set(self.reflections['refinement_group'])
+                 if g * sign > 0]  # Filter for this hand's groups
+
+        residual = 0
+        gradient = np.zeros_like(params)
+
+        # For each group
+        for group in groups:
+          group_sel = self.reflections['refinement_group'] == group
+          group_refs = self.reflections.select(group_sel)
+
+          # Get theta values and print some diagnostics
+          q_vecs = group_refs['q.aligned']
+          thetas_raw = np.rad2deg(np.arctan2(q_vecs.parts()[1], q_vecs.parts()[0]))
+          #print(f"\nGroup {group}:")
+          #print(f"Raw theta range: {min(thetas_raw):.1f}° to {max(thetas_raw):.1f}°")
+
+          thetas = (thetas_raw + 180) % 360 - 180  # Map to [-180,180]
+          #print(f"Mapped theta range: {min(thetas):.1f}° to {max(thetas):.1f}°")
+
+          # Also look at some example vectors
+          #print("Example q-vectors and their angles:")
+          for i in range(min(5, len(q_vecs))):
+            q = q_vecs[i]
+            theta_raw = np.rad2deg(np.arctan2(q[1], q[0]))
+            theta_mapped = (theta_raw + 180) % 360 - 180
+            #print(f"q = [{q[0]:.3f}, {q[1]:.3f}, {q[2]:.3f}], "
+                  #f"theta = {theta_raw:.1f}° -> {theta_mapped:.1f}°")
 
 
-#    q1_final = q_vectors_transformed[i1]
-#    q2_final = q_vectors_transformed[i2]
-#
-#    # Debug output
-#    print("\n\n===============alignment results=================")
-#    print("\nInitial vectors")
-#    print(f"q1: {q_vectors[i1]}")
-#    print(f"q2: {q_vectors[i2]}")
-#    print("\nAlignment results:")
-#    print(f"Target 1: {xyz1}")
-#    print(f"Final q1:  {q1_final}")
-#    print(f"Target 2: {xyz2}")
-#    print(f"Final q2:  {q2_final}")
-#
-#    print("\nVector lengths:")
-#    print(f"Target 1: {np.linalg.norm(xyz1):.6f}")
-#    print(f"Final q1: {np.linalg.norm(q1_final):.6f}")
-#    print(f"Target 2: {np.linalg.norm(xyz2):.6f}")
-#    print(f"Final q2: {np.linalg.norm(q2_final):.6f}")
-#
-#    print("\nAlignment measures:")
-#    angle1 = np.rad2deg(np.arccos(np.dot(q1_final, xyz1)/(np.linalg.norm(q1_final)*np.linalg.norm(xyz1))))
-#    angle2 = np.rad2deg(np.arccos(np.dot(q2_final, xyz2)/(np.linalg.norm(q2_final)*np.linalg.norm(xyz2))))
-#    dist1 = np.linalg.norm(q1_final - xyz1)
-#    dist2 = np.linalg.norm(q2_final - xyz2)
-#    print(f"Angle between q1 and target: {angle1:.3f} degrees")
-#    print(f"Angle between q2 and target: {angle2:.3f} degrees")
-#    print(f"Distance q1 to target: {dist1:.6f}")
-#    print(f"Distance q2 to target: {dist2:.6f}")
+          # For each reflection in group
+          for i, theta in enumerate(thetas):
+            # Get experiment index in params array
+            i_exp = group_refs['id'][i]
+            param_idx = expts_this_hand.index(i_exp)
 
-    # TODO: store results
+            # Compute differences with all other reflections in group
+            diffs = thetas - theta
+            diffs = (diffs + 180) % 360 - 180  # Map differences to [-180,180]
 
+            # Add to residual (sum of absolute differences)
+            residual += np.sum(np.abs(diffs))
+
+            # For gradient, sum the differences (larger angles contribute more)
+            gradient[param_idx] += np.sum(diffs) / len(thetas)
+
+        # Undo the rotations for the next iteration
+        for i_exp, dphi in zip(expts_this_hand, params):
+          rotate_expt(i_exp, -dphi)
+
+        return residual, gradient
+
+      # Initial parameters (zero rotation for each experiment)
+      x0 = np.zeros(len(expts_this_hand))
+
+      # Optimize
+      from scipy.optimize import minimize
+      result = minimize(
+        lambda x: target_and_gradient(x)[0],
+        x0,
+        jac=lambda x: target_and_gradient(x)[1],
+        method='L-BFGS-B',
+        options={'maxiter': 100, 'disp': True}  # Add disp=True
+      )
+
+      if result.success:
+        print(f"Optimization succeeded after {result.nit} iterations")
+        print(f"Final residual: {result.fun:.1f}")
+        # Apply final rotations and print statistics
+        print("\nExperiment statistics:")
+        for i_exp, phi in zip(expts_this_hand, result.x):
+          rotate_expt(i_exp, phi)
+          stats = get_experiment_stats(i_exp)
+          print(f"  Experiment {i_exp:3d}: rotation = {phi:6.2f}°, "
+                f"RMSD = {stats['rmsd']:5.2f}° from {stats['n_refs']:3d} reflections")
+      else:
+        print(f"Optimization failed: {result.message}")
+
+
+
+
+  def plot_2d_radial(self):
+    """Plot aligned detector coordinates in radial format with selection capability."""
+
+    # Initialize or reset refinement_group column
+    self.reflections['refinement_group'] = flex.int(len(self.reflections), 0)  # Reset all to zero
+
+    # Ensure we have reflection indices
+    if 'i_refl' not in self.reflections:
+      self.reflections['i_refl'] = flex.size_t(range(len(self.reflections)))
+
+    fig, axes = plt.subplots(1,2, figsize=(16,8))
+
+    # Store additional experiment info in plot_data
+    plot_data = {
+      0: {'theta': [], 'q': [], 'i_refl': [], 'exp_id': [], 'scatter_plots': {}},  # left-handed
+      1: {'theta': [], 'q': [], 'i_refl': [], 'exp_id': [], 'scatter_plots': {}}   # right-handed
+    }
+    print(f"Total number of experiments: {len(self.experiments)}")
+
+    # Plot points and collect data
+    for i_exp in range(len(self.experiments)):
+      exp_sel = self.reflections['id'] == i_exp
+      exp_refs = self.reflections.select(exp_sel)
+      q_vecs = exp_refs['q.aligned']
+      x, y = q_vecs.parts()[0], q_vecs.parts()[1]  # Get x,y components
+      hand = exp_refs['hand'][0]
+      ax = axes[hand]
+
+      # Calculate theta using arctan2(y,x) to match theta_refine
+      theta = np.rad2deg(np.arctan2(y, x))
+      q_mags = np.sqrt(q_vecs.parts()[0]**2 + q_vecs.parts()[1]**2 + q_vecs.parts()[2]**2)
+
+      # Plot spots
+      color = 'blue' if hand else 'red'
+      scatter = ax.scatter(theta, q_mags, alpha=0.2, s=3, c=color)
+      plot_data[hand]['scatter_plots'][i_exp] = scatter  # This line is crucial!
+
+      # Plot reference spots
+      i1, i2 = self.reference_spots[i_exp]
+      ref_theta = np.rad2deg(np.arctan2([y[i1], y[i2]], [x[i1], x[i2]]))
+      ref_q = q_mags[[i1, i2]]
+      ax.scatter(ref_theta, ref_q, c=['red', 'green'], s=50)
+
+      # Store data for selections
+      plot_data[hand]['theta'].extend(theta)
+      plot_data[hand]['q'].extend(q_mags)
+      plot_data[hand]['i_refl'].extend(exp_refs['i_refl'])
+      plot_data[hand]['exp_id'].extend([i_exp] * len(exp_refs))
+
+    # Convert lists to arrays for easier indexing
+    for hand in [0, 1]:
+      plot_data[hand]['theta'] = np.array(plot_data[hand]['theta'])
+      plot_data[hand]['q'] = np.array(plot_data[hand]['q'])
+      plot_data[hand]['i_refl'] = np.array(plot_data[hand]['i_refl'])
+
+    # Configure axes
+    for ax in axes:
+      ax.set_xlim(-180, 180)
+      ax.set_ylim(.1, .5)
+      ax.yaxis.set_major_formatter(tick.FuncFormatter(
+        lambda q, _: f"{1/q:.3f}" if q > 0 else ""
+      ))
+      ax.grid(True, linestyle=':')
+      ax.set_xlabel('Azimuthal angle θ (degrees)')
+      ax.set_ylabel('Resolution d (Å)')
+
+    axes[0].set_title('Left-handed')
+    axes[1].set_title('Right-handed')
+
+    # Selection handling
+    next_group = [1, 1]  # [left_hand, right_hand] group counters
+    selections = []
+
+    def on_select(eclick, erelease):
+      ax = eclick.inaxes
+      if ax not in axes:
+        return
+
+      hand = 0 if ax == axes[0] else 1
+      sign = -1 if hand == 0 else 1
+
+      # Get selection bounds
+      x1, y1 = eclick.xdata, eclick.ydata
+      x2, y2 = erelease.xdata, erelease.ydata
+      xmin, xmax = min(x1, x2), max(x1, x2)
+      ymin, ymax = min(y1, y2), max(y1, y2)
+
+      # Find points in selection
+      data = plot_data[hand]
+      mask = ((data['theta'] >= xmin) & (data['theta'] <= xmax) &
+              (data['q'] >= ymin) & (data['q'] <= ymax))
+
+      if np.any(mask):
+        # Assign group number to selected reflections
+        group_num = sign * next_group[hand]
+        selected_indices = np.array(data['i_refl'])[mask]
+        self.reflections['refinement_group'].set_selected(
+          flex.size_t(selected_indices),
+          flex.int(len(selected_indices), group_num)
+        )
+
+#        # Color all points from experiments that have selected reflections
+        selected_exp_ids = set(np.array(data['exp_id'])[mask])
+#        for exp_id in selected_exp_ids:
+#          plot_data[hand]['scatter_plots'][exp_id].set_color('red')
+
+        # Highlight selection
+        rect = plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin,
+                            fill=False, color='green')
+        ax.add_patch(rect)
+        selections.append((rect, selected_exp_ids, hand))  # Store exp_ids with selection
+
+        next_group[hand] += 1
+        fig.canvas.draw_idle()
+
+    def on_key(event):
+      if event.key == 'u' and selections:  # Undo last selection
+        rect, exp_ids, hand = selections.pop()
+        rect.remove()
+        # Reset colors for experiments if they're not in any remaining selections
+        remaining_exp_ids = set()
+        for _, exp_ids_sel, hand_sel in selections:
+          if hand_sel == hand:  # Only consider selections in same hand
+            remaining_exp_ids.update(exp_ids_sel)
+        for exp_id in exp_ids:
+          if exp_id not in remaining_exp_ids:
+            plot_data[hand]['scatter_plots'][exp_id].set_color('black')
+        fig.canvas.draw_idle()
+      elif event.key == 'r':  # Reset all selections
+        self.reflections['refinement_group'] = flex.int(len(self.reflections), 0)
+        for rect, _, _ in selections:
+          rect.remove()
+        selections.clear()
+        # Reset all colors to black
+        for hand in [0, 1]:
+          for scatter in plot_data[hand]['scatter_plots'].values():
+            scatter.set_color('black')
+        next_group[0] = next_group[1] = 1
+        fig.canvas.draw_idle()
+
+    # Connect event handlers
+    rect_selector = RectangleSelector(
+      axes[0], on_select, interactive=False,
+      useblit=True,
+      props=dict(facecolor='none', edgecolor='green', alpha=0.5)
+    )
+    rect_selector2 = RectangleSelector(
+      axes[1], on_select, interactive=False,
+      useblit=True,
+      props=dict(facecolor='none', edgecolor='green', alpha=0.5)
+    )
+    fig.canvas.mpl_connect('key_press_event', on_key)
+
+    plt.tight_layout()
+    print("\nSelection controls:")
+    print("- Click and drag to select reflections")
+    print("- Press 'u' to undo last selection")
+    print("- Press 'r' to reset all selections")
+    plt.show()
+
+  def select_group_dspacings(self):
+    """For each refinement group, plot d-spacing histogram and collect user selections."""
+    group_nums = sorted(set(self.reflections['refinement_group']) - {0})
+    group_info = {}
+
+    for group_num in group_nums:
+      # Get reflections for this group
+      group_sel = self.reflections['refinement_group'] == group_num
+      group_refs = self.reflections.select(group_sel)
+
+      # Get q-vectors and compute d-spacings
+      q_vectors = group_refs['q.aligned'].as_numpy_array()
+      q_mags = np.sqrt(np.sum(q_vectors**2, axis=1))
+      d_spacings = 1/q_mags
+
+      # Print diagnostic information
+      print(f"\nGroup {group_num}:")
+      print(f"Number of reflections: {len(group_refs)}")
+      print(f"d-spacing range: {min(d_spacings):.2f} - {max(d_spacings):.2f} Å")
+      print(f"Contributing experiments: {sorted(set(group_refs['id']))}")
+
+      # Check for outliers (more than 3 sigma from mean)
+      mean_d = np.mean(d_spacings)
+      std_d = np.std(d_spacings)
+      std_q = np.std(q_mags)
+      outliers = np.abs(d_spacings - mean_d) > 3*std_d
+      if np.any(outliers):
+        print(f"WARNING: {np.sum(outliers)} outlier d-spacings:")
+        print(f"Outlier values: {d_spacings[outliers]}")
+
+      # Create histogram
+      fig, ax = plt.subplots()
+      hist, edges, _ = ax.hist(d_spacings, bins=100)
+      ax.set_xlabel('d-spacing (Å)')
+      ax.set_ylabel('Count')
+      ax.set_title(f'Group {group_num}: Click on peak or press q to skip')
+
+      # Add mean and std lines
+      ax.axvline(mean_d, color='r', linestyle='--', label=f'Mean: {mean_d:.2f} Å')
+      ax.axvline(mean_d + std_d, color='g', linestyle=':', label='+1σ')
+      ax.axvline(mean_d - std_d, color='g', linestyle=':', label='-1σ')
+      ax.legend()
+
+      # Store data for callback
+      click_data = {'d_selected': None}
+
+      def on_click(event):
+        if event.inaxes == ax:
+          click_data['d_selected'] = event.xdata
+          plt.close(fig)
+
+      def on_key(event):
+        if event.key == 'q':
+          plt.close(fig)
+
+      # Connect event handlers
+      fig.canvas.mpl_connect('button_press_event', on_click)
+      fig.canvas.mpl_connect('key_press_event', on_key)
+
+      plt.show()
+
+      if click_data['d_selected'] is not None:
+        # Store group information
+        q_mean = np.mean(q_vectors, axis=0)
+        group_info[group_num] = {
+          'd_spacing': click_data['d_selected'],
+          'q_vector': q_mean,  # Store mean q-vector for later use
+          'hand': -1 if group_num < 0 else 1,
+          'std_q': std_q
+        }
+
+    self.group_info = group_info
+    print(f"\nCollected d-spacings for {len(group_info)} groups")
+
+  def analyze_group_angles(self, triplets):
+    """Analyze angles between pairs of groups using full dataset."""
+    if not hasattr(self, 'group_info'):
+      raise Sorry("No group information available. Run select_group_dspacings first.")
+
+    groups = sorted(self.group_info.keys())
+    n_groups = len(groups)
+    dot_products = np.zeros((n_groups, n_groups))
+
+    # Process all pairs
+    for i, group1 in enumerate(groups):
+      for j, group2 in enumerate(groups[:i+1]):
+        if i == j:
+          continue
+
+        info1 = self.group_info[group1]
+        info2 = self.group_info[group2]
+
+        # Get q magnitudes for search and ensure d1 > d2 order
+        q1 = 1/info1['d_spacing']
+        q2 = 1/info2['d_spacing']
+        if q1 > q2:  # d1 < d2, need to swap
+          q1, q2 = q2, q1
+          info1, info2 = info2, info1
+
+        # Get observed angle between groups
+        v1 = info1['q_vector']
+        v2 = info2['q_vector']
+        obs_angle = np.rad2deg(np.arccos(np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))))
+
+        print(f"\nAnalyzing groups {group1} and {group2}")
+        print(f"d-spacings: {info1['d_spacing']:.2f}Å, {info2['d_spacing']:.2f}Å")
+        print(f"Observed angle: {obs_angle:.1f}°")
+
+        # Find matching pairs in full dataset using stored standard deviations
+        q1_matches = np.abs(1/triplets.triplets[:,1] - q1) < info1['std_q']
+        q2_matches = np.abs(1/triplets.triplets[:,2] - q2) < info2['std_q']
+        pair_matches = q1_matches & q2_matches
+
+        if not np.any(pair_matches):
+          print("No matching pairs found in dataset")
+          continue
+
+        # Get angles for matching pairs and create mirrored set
+        angles = triplets.triplets[pair_matches, 3]
+        mirrored_angles = 180 - angles  # Mirror across 90°
+        all_angles = np.concatenate([angles, mirrored_angles])
+        print(f"Found {len(angles)} matching pairs ({len(all_angles)} with mirrors)")
+
+        # Plot histogram with observed angle marked
+        fig, ax = plt.subplots()
+        hist, edges, _ = ax.hist(all_angles, bins=180, range=(0, 180))
+        ax.axvline(obs_angle, color='r', linestyle='--',
+                  label=f'Observed: {obs_angle:.1f}°')
+
+        # If unit cell is provided, compute theoretical angles
+        if self.params.debug.unit_cell is not None:
+          uc = self.params.debug.unit_cell
+          # Get d-spacing ranges
+          d1_range = (1/(q1 + 1*info1['std_q']), 1/(q1 - 1*info1['std_q']))
+          d2_range = (1/(q2 + 1*info2['std_q']), 1/(q2 - 1*info2['std_q']))
+
+          # Generate Miller indices within these ranges
+          from cctbx import miller
+          cs = symmetry(unit_cell=uc, space_group=sgtbx.space_group('P1'))
+          ms = miller.build_set(
+            crystal_symmetry=cs,
+            anomalous_flag=True,
+            d_min=min(d1_range[0], d2_range[0])
+          )
+          indices = ms.indices()
+          d_spacings = uc.d(indices)
+
+          # Find pairs within ranges
+          mask1 = (d_spacings >= d1_range[0]) & (d_spacings <= d1_range[1])
+          mask2 = (d_spacings >= d2_range[0]) & (d_spacings <= d2_range[1])
+          indices1 = indices.select(mask1)
+          indices2 = indices.select(mask2)
+
+          # Compute angles between all pairs
+          theory_angles = []
+          for h1 in indices1:
+            for h2 in indices2:
+              # Skip if same reflection
+              if h1 == h2:
+                continue
+              v1 = uc.reciprocal_space_vector(h1)
+              v2 = uc.reciprocal_space_vector(h2)
+              try:
+                angle = math.degrees(math.acos(np.dot(v1, v2)/np.linalg.norm(v1)/np.linalg.norm(v2)))
+                #angle = uc.angle(h1, h2)
+                theory_angles.append(float(angle))
+                theory_angles.append(180 - float(angle))  # Add mirror
+              except Exception:
+                print('math domain error for ', h1, h2)
+                continue
+
+
+          # Plot theoretical angles
+          ymax = ax.get_ylim()[1]
+          for angle in theory_angles:
+            ax.plot([angle, angle], [-ymax*.1, 0], 'r-', linewidth=1)
+
+        ax.set_xlabel('Angle (degrees)')
+        ax.set_ylabel('Count')
+        ax.set_title(f'Groups {group1} and {group2}\nClick on peak or press q to skip')
+        ax.legend()
+
+        # Store data for callback
+        click_data = {'angle_selected': None}
+
+        def on_click(event):
+          if event.inaxes == ax:
+            click_data['angle_selected'] = event.xdata
+            plt.close(fig)
+
+        def on_key(event):
+          if event.key == 'q':
+            plt.close(fig)
+
+        # Connect event handlers
+        fig.canvas.mpl_connect('button_press_event', on_click)
+        fig.canvas.mpl_connect('key_press_event', on_key)
+
+        plt.show()
+
+
+  def refine_group_vectors(self):
+    """Refine positions of group vectors using dot product data."""
+    if not hasattr(self, 'dot_products'):
+      raise Sorry("No dot product data. Run analyze_group_angles first.")
+
+    groups = self.dot_product_groups
+    n_groups = len(groups)
+
+    # Initialize parameters: 2 angles per vector
+    x0 = []
+    q_mags = []  # Store magnitudes for conversion
+    for group in groups:
+      v = self.group_info[group]['q_vector']
+      q_mag = np.linalg.norm(v)
+      q_mags.append(q_mag)
+      # Convert to spherical coordinates
+      theta = np.arccos(v[2]/q_mag)
+      phi = np.arctan2(v[1], v[0])
+      x0.extend([theta, phi])
+
+    def target(params):
+      """Compute residual from current parameters"""
+      # Convert parameters to vectors
+      vectors = []
+      for i in range(n_groups):
+        theta, phi = params[2*i:2*i+2]
+        sin_theta = np.sin(theta)
+        v = q_mags[i] * np.array([
+          sin_theta * np.cos(phi),
+          sin_theta * np.sin(phi),
+          np.cos(theta)
+        ])
+        vectors.append(v)
+
+      # Compute residual from dot products
+      residual = 0
+      for i in range(n_groups):
+        for j in range(i+1):
+          target_dot = self.dot_products[i,j]
+          if target_dot != 0:  # Skip unobserved pairs
+            calc_dot = np.dot(vectors[i], vectors[j])
+            residual += (calc_dot - target_dot)**2
+
+      return residual
+
+    # Minimize
+    result = minimize(
+      target, x0,
+      method='L-BFGS-B',
+      options={'maxiter': 100, 'disp': True}
+    )
+
+    if result.success:
+      print(f"Refinement succeeded after {result.nit} iterations")
+      print(f"Final residual: {result.fun:.6f}")
+
+      # Store refined vectors
+      refined_vectors = {}
+      for i, group in enumerate(groups):
+        theta, phi = result.x[2*i:2*i+2]
+        sin_theta = np.sin(theta)
+        v = q_mags[i] * np.array([
+          sin_theta * np.cos(phi),
+          sin_theta * np.sin(phi),
+          np.cos(theta)
+        ])
+        refined_vectors[group] = v
+
+      self.refined_vectors = refined_vectors
+
+      # Print angle matrices
+      print("\nInitial angles:")
+      for i, group1 in enumerate(groups):
+        angles = []
+        v1 = self.group_info[group1]['q_vector']
+        for group2 in groups:
+          v2 = self.group_info[group2]['q_vector']
+          angle = np.rad2deg(np.arccos(np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))))
+          angles.append(f"{angle:6.1f}")
+        print(f"Group {group1:3d}: {' '.join(angles)}")
+
+      print("\nTarget angles (from dot products):")
+      for i, group1 in enumerate(groups):
+        angles = []
+        for j, group2 in enumerate(groups):
+          if i == j:
+            angle = 0
+          else:
+            dot = self.dot_products[i,j]
+            q1 = 1/self.group_info[group1]['d_spacing']
+            q2 = 1/self.group_info[group2]['d_spacing']
+            angle = np.rad2deg(np.arccos(dot/(q1*q2)))
+          angles.append(f"{angle:6.1f}")
+        print(f"Group {group1:3d}: {' '.join(angles)}")
+
+      print("\nFinal angles:")
+      for i, group1 in enumerate(groups):
+        angles = []
+        v1 = refined_vectors[group1]
+        for group2 in groups:
+          v2 = refined_vectors[group2]
+          angle = np.rad2deg(np.arccos(np.dot(v1, v2)/(np.linalg.norm(v1)*np.linalg.norm(v2))))
+          angles.append(f"{angle:6.1f}")
+        print(f"Group {group1:3d}: {' '.join(angles)}")
+    else:
+      print(f"Refinement failed: {result.message}")
+
+  def plot_vectors(self):
+    """3D scatter plot comparing original and refined q-vectors with full dataset."""
+
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot all aligned vectors from dataset
+#    s1_vectors = self.reflections['s1.aligned'].as_numpy_array()
+#    s0 = np.array([expt.beam.get_s0() for expt in self.experiments])
+#    exp_ids = self.reflections['id']
+#    q_vectors = s1_vectors - s0[exp_ids]
+    q_vectors = self.reflections['q.aligned'].as_numpy_array()
+
+    ax.scatter(q_vectors[:,0], q_vectors[:,1], q_vectors[:,2],
+              c='gray', alpha=0.1, s=1, label='Dataset')
+
+    # Plot original group vectors
+    if hasattr(self, 'dot_product_groups'):
+      orig_x, orig_y, orig_z = [], [], []
+      for group in self.dot_product_groups:
+        v = self.group_info[group]['q_vector']
+        orig_x.append(v[0])
+        orig_y.append(v[1])
+        orig_z.append(v[2])
+      ax.scatter(orig_x, orig_y, orig_z, c='blue', s=100, label='Original')
+
+    if hasattr(self, 'refined_vectors'):
+      # Plot refined vectors
+      ref_x, ref_y, ref_z = [], [], []
+      for group in self.dot_product_groups:
+        v = self.refined_vectors[group]
+        ref_x.append(v[0])
+        ref_y.append(v[1])
+        ref_z.append(v[2])
+      ax.scatter(ref_x, ref_y, ref_z, c='red', s=100, label='Refined')
+
+      # Draw lines connecting original to refined positions
+      for i in range(len(self.dot_product_groups)):
+        ax.plot([orig_x[i], ref_x[i]],
+                [orig_y[i], ref_y[i]],
+                [orig_z[i], ref_z[i]], 'k-', alpha=0.3)
+
+    ax.set_xlabel('qx')
+    ax.set_ylabel('qy')
+    ax.set_zlabel('qz')
+    ax.legend()
+    plt.show()
+
+
+
+  def plot_2d(self):
+    """Plot all aligned detector coordinates"""
+    fig, axes = plt.subplots(1,2)
+    fig.set_figwidth(16)
+    fig.set_figheight(8)
+
+    for i_exp in range(len(self.experiments)):
+      exp_sel = self.reflections['id'] == i_exp
+      exp_refs = self.reflections.select(exp_sel)
+      xyz = exp_refs['q.aligned']
+      x, y = xyz.parts()[0], xyz.parts()[1]
+      hand = exp_refs['hand'][0]  # All spots in experiment have same hand
+      ax = axes[hand]
+
+      # Plot spots with different colors for different hands
+      color = 'blue' if hand else 'red'
+      ax.scatter(x, y, alpha=0.5, s=1, c=color)
+
+      # Plot reference spots
+      i1, i2 = self.reference_spots[i_exp]
+      ax.scatter([x[i1], x[i2]], [y[i1], y[i2]],
+                  c=['red', 'green'], s=50)
+
+    plt.axhline(y=0, color='k', linestyle=':')
+    plt.axvline(x=0, color='k', linestyle=':')
+    plt.axis('equal')
+    plt.title('Aligned detector coordinates')
+#    for ax in axes:
+#      ax.set_xlim((-75,75))
+#      ax.set_ylim((-75,75))
+    plt.show()
   def refine_orientations(self, max_angle_rad=np.pi/36):
     """Refine orientation matrices to improve cluster agreement"""
     if self.clusters is None:
@@ -379,6 +1496,79 @@ class LatticeReconstruction:
 
     self.reflections['transformed_xyz'] = flex.vec3_double(np.vstack(new_xyz))
     self.clusters = None  # Force recomputation of clusters
+
+  def plot_polar(self):
+    """Plot reconstructed spots in polar coordinates"""
+    # Get reciprocal space vectors
+    xyz = self.reflections['transformed_xyz'].as_numpy_array()
+
+    # Convert to q, phi, theta
+    q = np.sqrt(np.sum(xyz**2, axis=1))
+    phi = np.arctan2(xyz[:,1], xyz[:,0])  # -pi to pi
+    theta = np.arccos(xyz[:,2]/q)         # 0 to pi
+
+    # First make powder pattern
+    fig1 = plt.figure(figsize=(12,4))
+    ax1 = plt.gca()
+
+    hist, edges = np.histogram(q, bins=2000)
+    ax1.plot(edges[:-1], hist)
+
+    # Format x-axis as d-spacing
+    ax1.get_xaxis().set_major_formatter(tick.FuncFormatter(
+      lambda x, _: "{:.3f}".format(1/x)))
+    ax1.set_xlabel('d-spacing (Å)')
+    ax1.set_ylabel('Counts')
+    ax1.set_title('Select up to 9 ranges, press q when done')
+
+    # Allow interactive range selection
+    spans = []
+    q_ranges = []
+    selection_done = False
+
+    def on_select(qmin, qmax):
+      if len(q_ranges) >= 9:
+        return
+      q_ranges.append(tuple(sorted([qmin, qmax])))
+      span = ax1.axvspan(qmin, qmax, color='red', alpha=0.2)
+      spans.append(span)
+      fig1.canvas.draw_idle()
+
+    def on_key(event):
+      nonlocal selection_done
+      if event.key == 'q':
+        selection_done = True
+        plt.close(fig1)
+
+    selector = SpanSelector(
+      ax1, on_select, 'horizontal',
+      props=dict(alpha=0.3, facecolor='red'),
+      interactive=False,
+      drag_from_anywhere=True
+    )
+
+    fig1.canvas.mpl_connect('key_press_event', on_key)
+    plt.show()
+
+    if not q_ranges:
+      return
+
+    # Create grid of angular plots
+    fig2 = plt.figure(figsize=(15,15))
+    for i, (qmin, qmax) in enumerate(q_ranges[:9]):
+      ax = fig2.add_subplot(3, 3, i+1)
+
+      mask = (q >= qmin) & (q <= qmax)
+      phi_deg = np.rad2deg(phi[mask])
+      theta_deg = np.rad2deg(theta[mask])
+
+      ax.scatter(phi_deg, theta_deg, alpha=0.5, s=1)
+      ax.set_xlabel('φ (degrees)')
+      ax.set_ylabel('θ (degrees)')
+      ax.set_title(f'd: {1/qmax:.2f}-{1/qmin:.2f}Å')
+
+    plt.tight_layout()
+    plt.show()
 
   def plot_debug(self, title=None):
     """Simple 3D scatter plot of all transformed reflections"""
@@ -596,7 +1786,7 @@ class TripletData:
     """Compute all d1,d2,theta triplets from input data
 
     Fills triplets array with columns:
-      (frame_id, d1, d2, theta, spot1_idx, spot2_idx)
+      (frame_id, d1, d2, theta, spot1_idx, spot2_idx, hand)
     """
     if self.triplets is not None:
       return
@@ -613,6 +1803,12 @@ class TripletData:
       sel = flex.bool(self.reflections['id'] == i_expt)
       frame_refls = self.reflections.select(sel)
 
+      # Get detector coordinates relative to beam center
+      xyz = frame_refls['xyzobs.mm.value']
+      beam_x, beam_y = expt.detector[0].get_beam_centre(expt.beam.get_s0())
+      x = xyz.parts()[0] - beam_x
+      y = xyz.parts()[1] - beam_y
+
       # Compute d-spacings and filter
       s0 = expt.beam.get_s0()
       s1_vectors = frame_refls['s1'].as_numpy_array()
@@ -625,6 +1821,9 @@ class TripletData:
       d_spacings = d_spacings[valid_spots]
       s1_vectors = s1_vectors[valid_spots]
       spot_indices = np.arange(len(frame_refls))[valid_spots]
+      flex_valid_spots = flumpy.from_numpy(valid_spots)
+      x = x.select(flex_valid_spots)
+      y = y.select(flex_valid_spots)
 
       # Compute all pairs
       n_spots = len(d_spacings)
@@ -636,19 +1835,29 @@ class TripletData:
           cos_angle = np.dot(vec_a, vec_b) / (np.linalg.norm(vec_a) * np.linalg.norm(vec_b))
           angle = np.rad2deg(np.arccos(min(1.0, max(-1.0, cos_angle))))
 
-          # Make sure d1 > d2
+          # Make sure d1 > d2 and track coordinates
           if d_spacings[i] > d_spacings[j]: # correct order
             d1 = d_spacings[i]
             d2 = d_spacings[j]
             i1 = spot_indices[i]
             i2 = spot_indices[j]
+            x1, y1 = x[i], y[i]
+            x2, y2 = x[j], y[j]
           else: # Switch them
             d1 = d_spacings[j]
             d2 = d_spacings[i]
             i1 = spot_indices[j]
             i2 = spot_indices[i]
+            x1, y1 = x[j], y[j]
+            x2, y2 = x[i], y[i]
 
-          triplets.append((i_expt, d1, d2, angle, i1, i2))
+          # Determine handedness from cross product z-component
+          # For d1 > d2:
+          # cross_z > 0 means counterclockwise rotation from 1 to 2 (left-handed)
+          cross_z = x1*y2 - y1*x2
+          hand = -1 if cross_z > 0 else 1
+
+          triplets.append((i_expt, d1, d2, angle, i1, i2, hand))
 
     self.triplets = np.array(triplets)
 
@@ -656,23 +1865,32 @@ class TripletData:
     print(f"Average triplets per frame: {len(self.triplets)/len(self.experiments):.1f}")
 
     self.save_triplets()
+
     
-  def find_matches(self, triangle_spec):
+  def find_matches(self, spec):
     """Find frames containing triplets that match the specification
     
     Args:
-      triangle_spec: TriangleSpec object
+      spec: TriangleSpec object
     
     Returns:
       dict mapping frame_ids to lists of (spot1_idx, spot2_idx) pairs
     """
+    print(f"\nSearching triplets in ranges:")
+    print(f"  d1: {1/spec.q1:.2f}Å")
+    print(f"  d2: {1/spec.q2:.2f}Å")
+    print(f"  theta: {spec.theta:.1f}°")
     if self.triplets is None:
       self.compute()
       
     # Test all triplets against specification
-    matches = triangle_spec.test(self.triplets[:,1],  # d1
+    matches = spec.test(self.triplets[:,1],  # d1
                                self.triplets[:,2],  # d2
                                self.triplets[:,3])  # theta
+    # Filter by hand if specified
+    if spec.hand is not None:
+      matches &= self.triplets[:,6] == spec.hand
+    print(f"Found {np.sum(matches)} matching triplets")
     
     # Organize matching triplets by frame
     result = {}
@@ -822,7 +2040,7 @@ class TripletData:
       # Use all points (no sampling)
       self.sampled_indices = np.arange(len(self.triplets))
 
-      return cluster_results
+      self.cluster_results = cluster_results
 
 
   def _select_clusters_for_ranges(self, q1_range, q2_range, max_range):
@@ -947,12 +2165,13 @@ class TripletData:
         circle.remove()
 
       # Draw confidence ellipses
+      threshold = self.params.initialization.triangle_finding.mahalanobis_threshold
       from matplotlib.patches import Ellipse
       for mean, sigma in zip(means, sigmas):
         ellipse = Ellipse(
           xy=mean,
-          width=4*sigma[0],
-          height=4*sigma[1],
+          width=2*sigma[0]*threshold,
+          height=2*sigma[1]*threshold,
           fill=False, color='red'
         )
         ax.add_artist(ellipse)
@@ -1047,6 +2266,8 @@ class TripletData:
         init_params = []
         bounds = []
         for tmin, tmax in theta_ranges:
+          mean_ = (tmin+tmax)/2
+          std_ = (tmax-tmin)/4
           init_params.extend([
             (tmin + tmax) / 2,  # mean
             (tmax - tmin) / 4,  # std
@@ -1054,7 +2275,7 @@ class TripletData:
           ])
           bounds.extend([
             (None, None),      # mean can be any value
-            (0.1, None),       # std must be positive
+            (std_-1e-5,std_+1e-5),       # std must be positive
             (0.1, None)        # scale must be positive
           ])
 
@@ -1523,14 +2744,80 @@ class TripletData:
     plt.show()
     print('showed')
 
+  def cluster(self):
+    """Run clustering based on method in params"""
+    method = self.params.initialization.triangle_finding.method
+    if method == 'interactive':
+      return self.interactive_clustering()
+    elif method == 'clustering':
+      return self.automatic_clustering()
+    elif method == 'box':
+      return self.box_clustering()
+    else:
+      raise Sorry(f"Unknown clustering method: {method}")
+
+
+  # Some methods to allow checkpointing after interactive run...
+  def compute_checksum(self):
+    """Compute checksum of triplets array for validation"""
+    return hashlib.sha256(self.triplets.tobytes()).hexdigest()
+
+  def save_clusters(self, filename):
+    """Save clustering results and metadata"""
+    data = {
+      'cluster_data': self.cluster_data,
+      'cluster_centers': self.cluster_centers,
+      'cluster_results': self.cluster_results,
+      'sampled_indices': self.sampled_indices,
+      'triplets_checksum': self.compute_checksum()
+    }
+    with open(filename, 'wb') as f:
+      pickle.dump(data, f)
+
+  def load_clusters(self, filename):
+    """Load and validate clustering results"""
+    with open(filename, 'rb') as f:
+      data = pickle.load(f)
+    if data['triplets_checksum'] != self.compute_checksum():
+      raise Sorry("Triplets data does not match saved results")
+    self.cluster_data = data['cluster_data']
+    self.cluster_centers = data['cluster_centers']
+    self.cluster_results = data['cluster_results']
+    self.sampled_indices = data['sampled_indices']
+
+
 
 class TriangleSpec:
   """Base class for triangle specification and matching
   """
-  def __init__(self, d1, d2, theta):
-    self.d1 = d1
-    self.d2 = d2
+  def __init__(self, q1, q2, theta, hand=None):
+    self.q1 = q1
+    self.q2 = q2
     self.theta = theta
+    self.hand = hand # -1 for left-handed, 1 for right-handed, None for either
+
+  @classmethod
+  def from_cluster(cls, cluster, params, hand=None):
+    """Factory method to create appropriate TriangleSpec from cluster data"""
+    if 'covariance' in cluster:
+      # For error propagation: σ_d = σ_q * (d^2)
+      q1, q2 = cluster['q1_center'], cluster['q2_center']
+      d1, d2 = 1/q1, 1/q2
+      sigma_d1 = cluster['q1_sigma'] * (d1**2)
+      sigma_d2 = cluster['q2_sigma'] * (d2**2)
+
+      print(f"Creating GaussianTriangleSpec with:")
+      print(f"  center: ({d1:.2f}Å, {d2:.2f}Å, {cluster['theta_center']:.1f}°)")
+      print(f"  sigmas (q-space): ({cluster['q1_sigma']:.5f}, {cluster['q2_sigma']:.5f}, {cluster['theta_sigma']:.1f})")
+      print(f"  sigmas (d-space): ({sigma_d1:.3f}Å, {sigma_d2:.3f}Å, {cluster['theta_sigma']:.1f}°)")
+
+      return GaussianTriangleSpec(
+        center=[q1, q2, cluster['theta_center']],
+        covariance=cluster['covariance'],
+        params=params,
+        hand=hand if hand is not None else cluster.get('hand')
+      )
+    # ... other specializations based on cluster properties
 
   def test(self, d1, d2, theta):
     """
@@ -1545,11 +2832,46 @@ class TriangleSpec:
     """
     raise NotImplementedError()
 
+  def reconstruct(self, triplet_data, experiments, reflections):
+    """Create LatticeReconstruction from spots matching this triangle spec
+
+    Args:
+      triplet_data: TripletData object containing matching information
+      experiments: dxtbx experiment list
+      reflections: reflection table
+
+    Returns:
+      LatticeReconstruction object
+    """
+    # Find matching frames using this spec
+    matches = triplet_data.find_matches(self)
+    print(f"\nFound {len(matches)} frames with matching triangles:")
+    print("Frame IDs:", sorted(matches.keys()))
+
+    # Create reconstruction
+    reconstruction = LatticeReconstruction(self.params)
+    reconstruction.hand = self.hand
+
+    # Add each matching frame
+    for frame_id, spot_pairs in matches.items():
+      expt = experiments[frame_id]
+      sel = flex.bool(reflections['id'] == frame_id)
+      refl = reflections.select(sel)
+
+      # For now, just use first matching triangle from each frame
+      i1, i2 = spot_pairs[0]
+      #reconstruction.add_2d(expt, refl, i1, i2)
+      for i1, i2 in spot_pairs:
+        reconstruction.add(expt, refl, i1, i2)
+
+    return reconstruction
+
+
 
 class BoxTriangleSpec(TriangleSpec):
   """Triangle specification using box ranges
   """
-  def __init__(self, d1_range, d2_range, theta_range):
+  def __init__(self, d1_range, d2_range, theta_range, params):
     self.d1_min, self.d1_max = sorted(d1_range)
     self.d2_min, self.d2_max = sorted(d2_range)
     self.theta_min, self.theta_max = sorted(theta_range)
@@ -1578,18 +2900,27 @@ class BoxTriangleSpec(TriangleSpec):
 class GaussianTriangleSpec(TriangleSpec):
   """Triangle specification using Mahalanobis distance
   """
-  def __init__(self, center, covariance):
+  def __init__(self, center, covariance, params, hand=None):
     super().__init__(*center)
     self.covariance = covariance
     self._inv_cov = np.linalg.inv(covariance)
+    self.params = params
+    self.threshold = params.initialization.triangle_finding.mahalanobis_threshold
 
   def test(self, d1, d2, theta):
     """
     Returns array of bool for points within Mahalanobis distance threshold
     """
-    x = np.vstack([d1, d2, theta]).T - np.array([self.d1, self.d2, self.theta])
+    q1, q2 = 1/d1, 1/d2
+    x = np.vstack([q1, q2, theta]).T - np.array([self.q1, self.q2, self.theta])
     dist = np.sqrt(np.sum(x.dot(self._inv_cov) * x, axis=1))
-    return dist < self.threshold
+    min_dist = np.min(dist)
+    print(f"Minimum Mahalanobis distance: {min_dist:.3f}")
+    matches = dist < self.threshold
+    if not np.any(matches):
+      print("WARNING: No points within threshold!")
+    return matches
+
 
 
 def find_triangle_spec(experiments, reflections, params):
@@ -1696,9 +3027,32 @@ def run(args=None, phil=phil_scope):
     raise Sorry("No experiments or reflections found in input.")
       
   triplets = TripletData(experiments, reflections, params)
-  triplets.interactive_clustering()
-  triplets.plot(plot_clusters=True)
-  exit()
+  plc = params.initialization.triangle_finding.load_clusters 
+  psc = params.initialization.triangle_finding.save_clusters 
+  if plc is not None:
+    triplets.load_clusters(plc)
+  else:
+    assert psc is not None
+    triplets.cluster()
+    triplets.save_clusters(psc)
+
+  manager = ReconstructionManager(experiments, reflections, triplets, params)
+  manager.initialize(triplets.cluster_results)
+  augment_done = False
+  while not augment_done:
+    done = manager.augment()
+  manager.select_points()
+  manager.select_angles()
+  manager.refine()
+  manager.plot_3d()
+#  partial_lattices = []
+#  reconstruction = LatticeReconstruction(params)
+#  for cluster in triplets.cluster_results:
+#    spec = TriangleSpec.from_cluster(cluster, params)
+#    lr = spec.reconstruct(triplets, experiments, reflections)
+#    partial_lattices.append(lr)
+#  import IPython;IPython.embed()
+#  exit()
 
   triplets.cluster_triplets(dmax=5.03,dmin=4.88)
   triplets.plot(plot_clusters=True)
