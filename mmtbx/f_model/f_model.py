@@ -1464,7 +1464,7 @@ class manager(manager_mixin):
         fill         = True)
 
   def k_sol_b_sol_from_k_mask(self):
-    sel = self.f_obs().d_spacings().data()>=3.5
+    sel = self.f_obs().d_spacings().data()>=4.0
     k_mask = self.k_masks()[0].select(sel)
     ss = self.ss.select(sel)
     r = scitbx.math.gaussian_fit_1d_analytical(x=flex.sqrt(ss), y=k_mask)
