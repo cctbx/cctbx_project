@@ -128,19 +128,20 @@ class ReconstructionManager:
       # Create left-handed reconstruction
       spec = TriangleSpec.from_cluster(cluster, self.params, hand=-1)
       lr_left = spec.reconstruct(self.triplets, self.experiments, self.reflections)
-      candidates.append(lr_left)
+      candidates.append((lr_left, spec))
 
       # Create right-handed reconstruction
       spec = TriangleSpec.from_cluster(cluster, self.params, hand=1)
       lr_right = spec.reconstruct(self.triplets, self.experiments, self.reflections)
-      candidates.append(lr_right)
+      candidates.append((lr_right, spec))
 
     current_id = 0
     while current_id < len(candidates):
-      print(f"\nCandidate {current_id}: {len(candidates[current_id].reflections)} reflections")
+      reconstruction, spec = candidates[current_id]
+      print(f"\nCandidate {current_id}: {len(reconstruction.reflections)} reflections")
 
       result = self.plot_2d_radial(
-        reconstruction=candidates[current_id],
+        reconstruction=reconstruction,
         mode='screen',
         navigation_info={
           'current_id': current_id,
@@ -150,7 +151,26 @@ class ReconstructionManager:
       )
 
       if result['accepted']:
-        self.reconstructions.append(candidates[current_id])
+        # Determine target coordinates using standard alignment convention
+        q1_mag = spec.q1
+        q2_mag = spec.q2
+        theta = spec.theta
+
+        # Standard alignment: q1 along z, q2 in yz plane
+        q1_target = np.array([0, 0, q1_mag])
+        q2_target = np.array([0, q2_mag*np.sin(np.deg2rad(theta)),
+                            q2_mag*np.cos(np.deg2rad(theta))])
+
+        # Create reconstruction using these target coordinates
+        box_data = {
+          'q_vecs_0': [q1_target],  # Format as array of vectors
+          'q_vecs_1': [q2_target],
+          'q_specs': [(q1_mag, spec.q1_sigma), (q2_mag, spec.q2_sigma)],
+          'theta_spec': (theta, spec.theta_sigma),
+          'target_hand': reconstruction.hand
+        }
+
+        self.create_new_reconstruction(box_data)
         return
 
       if result['next_id'] is not None:
@@ -159,17 +179,7 @@ class ReconstructionManager:
 
   def plot_2d_radial(self, reconstruction=None, reconstruction_id=None, mode='view',
                      navigation_info=None):
-    """Plot 2D radial view of a reconstruction with mode-specific interactions.
-
-    Args:
-      reconstruction: LatticeReconstruction to plot (for viewing candidates)
-      reconstruction_id: Index in self.reconstructions (for viewing stored reconstructions)
-      mode: Interaction mode
-      navigation_info: Optional dict with:
-        'current_id': Current position in sequence
-        'total': Total number of items
-        'candidates': List of reconstructions (if navigating through candidates)
-    """
+    """Plot 2D radial view of a reconstruction with mode-specific interactions."""
     if (reconstruction is None) == (reconstruction_id is None):
       raise Sorry("Must provide exactly one of reconstruction or reconstruction_id")
 
@@ -186,30 +196,49 @@ class ReconstructionManager:
     # Set up single plot
     fig, ax = plt.subplots(figsize=(10,8))
 
-    # Plot points
-    for i_exp in range(len(reconstruction.experiments)):
-      exp_sel = reconstruction.reflections['id'] == i_exp
-      exp_refs = reconstruction.reflections.select(exp_sel)
-      q_vecs = exp_refs['q.aligned']
-      x, y = q_vecs.parts()[0], q_vecs.parts()[1]
+    # Get all points from reconstruction and project onto beam-normal plane
+    q_vecs = reconstruction.reflections['q.aligned']
+    q_array = q_vecs.as_numpy_array()
+    beam_dir = reconstruction.beam_direction
 
-      # Calculate theta using arctan2(y,x) to match theta_refine
-      theta = np.rad2deg(np.arctan2(y, x))
-      q_mags = np.sqrt(q_vecs.parts()[0]**2 +
-                      q_vecs.parts()[1]**2 +
-                      q_vecs.parts()[2]**2)
+    # Project [1,0,0] onto beam-normal plane to define theta=0 direction
+    ref_dir = np.array([1., 0., 0.])
+    ref_proj = ref_dir - np.dot(ref_dir, beam_dir) * beam_dir
+    ref_proj = ref_proj / np.linalg.norm(ref_proj)
 
-      # Plot spots
-      ax.scatter(theta, q_mags, alpha=0.2, s=3, c='blue')
+    # Create orthonormal basis in beam-normal plane
+    # ref_proj is our x-axis
+    # y-axis is beam × x-axis
+    y_axis = np.cross(beam_dir, ref_proj)
 
-      # Plot reference spots
-      i1, i2 = reconstruction.reference_spots[i_exp]
-      ref_theta = np.rad2deg(np.arctan2([y[i1], y[i2]], [x[i1], x[i2]]))
-      ref_q = q_mags[[i1, i2]]
-      ax.scatter(ref_theta, ref_q, c=['red', 'green'], s=50)
+#    # Project all q-vectors onto this basis
+#    def project_and_get_theta(q):
+#      # Remove component parallel to beam
+#      q_proj = q - np.dot(q, beam_dir) * beam_dir
+#      if np.linalg.norm(q_proj) < 1e-8:
+#        return 0  # or handle this case differently
+#      q_proj = q_proj / np.linalg.norm(q_proj)
+#      # Get angle from reference direction
+#      cos_theta = np.dot(q_proj, ref_proj)
+#      sin_theta = np.dot(q_proj, y_axis)
+#      return np.rad2deg(np.arctan2(sin_theta, cos_theta))
+#
+    theta = np.array([self.project_and_get_theta(reconstruction.beam_direction, q)
+                      for q in q_array])
+    q_mags = np.sqrt(np.sum(q_array**2, axis=1))
+
+    # Plot spots
+    ax.scatter(theta, q_mags, alpha=0.2, s=3, c='blue')
+
+#      # Plot reference spots
+#      i1, i2 = reconstruction.reference_spots[i_exp]
+#      ref_theta = np.rad2deg(np.arctan2([y[i1], y[i2]], [x[i1], x[i2]]))
+#      ref_q = q_mags[[i1, i2]]
+#      ax.scatter(ref_theta, ref_q, c=['red', 'green'], s=50)
 
     # Configure axis
     ax.set_xlim(-180, 180)
+    ax.set_ylim(.1, .5)
     ax.yaxis.set_major_formatter(tick.FuncFormatter(
       lambda q, _: f"{1/q:.1f}" if q > 0 else ""
     ))
@@ -259,9 +288,268 @@ class ReconstructionManager:
 
     # Mode-specific mouse handling
     if mode == 'augment':
-      def on_select(eclick, erelease):
-        # Handle box selection...
-        pass
+      # Store box selections and analysis results
+      box_data = {
+        'boxes': [],           # Store RectangleSelector results
+        'd_specs': [],         # Store (center, sigma) for each d-spacing
+        'theta_spec': None,    # Store (center, sigma) for angle
+        'q_vectors': []        # Store selected q-vectors for angle calculation
+      }
+
+      def on_box_select(eclick, erelease):
+        if len(box_data['boxes']) >= 2:
+          return
+
+        xmin, xmax = sorted([eclick.xdata, erelease.xdata])
+        ymin, ymax = sorted([eclick.ydata, erelease.ydata])
+        box_data['boxes'].append((xmin, xmax, ymin, ymax))
+
+        if len(box_data['boxes']) == 2:
+          # Both boxes selected, analyze d-spacings
+          analyze_box_selections()
+
+      def analyze_box_selections():
+        print(f"Analyzing {len(box_data['boxes'])} boxes...")
+
+        def process_next_box(box_index=0):
+          if box_index >= len(box_data['boxes']):
+            print("Both d-spacings selected, analyzing angles...")
+            analyze_angles()
+            return
+
+          box = box_data['boxes'][box_index]
+          xmin, xmax, ymin, ymax = box
+          print(f"\nAnalyzing box {box_index+1}")
+
+          # Get all points from reconstruction and convert to numpy arrays
+          q_vecs = reconstruction.reflections['q.aligned']
+          x = q_vecs.parts()[0].as_numpy_array()
+          y = q_vecs.parts()[1].as_numpy_array()
+          z = q_vecs.parts()[2].as_numpy_array()
+
+          theta = np.rad2deg(np.arctan2(y, x))
+          q_mags = np.sqrt(x**2 + y**2 + z**2)
+
+          # Get points in box
+          box_mask = ((theta >= xmin) & (theta <= xmax) &
+                     (q_mags >= ymin) & (q_mags <= ymax))
+          box_thetas = theta[box_mask]
+          box_q_mags = q_mags[box_mask]
+          print(f"Found {np.sum(box_mask)} points in box")
+
+          # Set reasonable d-spacing range for histogram
+          d_spacings = 1/box_q_mags
+          d_mean = np.mean(d_spacings)
+          d_std = np.std(d_spacings)
+          import IPython;IPython.embed()
+          d_range = (max(0, d_mean - 3*d_std), d_mean + 3*d_std)
+
+          # Plot d-spacing histogram
+          fig_d, ax_d = plt.subplots()
+          hist, edges, _ = ax_d.hist(d_spacings, bins=100, range=d_range)
+          ax_d.set_xlabel('d-spacing (Å)')
+          ax_d.set_ylabel('Count')
+          ax_d.set_title(f'Select d-spacing range for box {box_index+1}')
+          ax_d.set_xlim(d_range)
+
+          def on_d_select(xmin, xmax):
+            print(f"Selected range for box {box_index+1}: {xmin:.2f} - {xmax:.2f} Å")
+            center = (xmin + xmax)/2
+            sigma = (xmax - xmin)/4
+            box_data['d_specs'].append((center, sigma))
+            plt.close(fig_d)
+            # Process next box
+            process_next_box(box_index + 1)
+
+          span_d = SpanSelector(ax_d, on_d_select, 'horizontal')
+          plt.show()
+
+        # Start processing boxes
+        process_next_box()
+
+
+
+      def analyze_angles():
+        """Analyze angles between selected d-spacing ranges and create new reconstruction."""
+        # Get points matching both d-spacing selections
+        d1_center, d1_sigma = box_data['d_specs'][0]
+        d2_center, d2_sigma = box_data['d_specs'][1]
+
+        q1_mask = np.abs(1/q_mags - d1_center) < 2*d1_sigma
+        q2_mask = np.abs(1/q_mags - d2_center) < 2*d2_sigma
+
+        # Get centers of selected boxes
+        box1_center = np.mean(theta[q1_mask])
+        box2_center = np.mean(theta[q2_mask])
+
+        # Determine handedness
+        # First ensure d1 > d2
+        if d1_center > d2_center:
+          theta1, theta2 = box1_center, box2_center
+        else:
+          theta1, theta2 = box2_center, box1_center
+          d1_center, d2_center = d2_center, d1_center
+          d1_sigma, d2_sigma = d2_sigma, d1_sigma
+
+        # Compute rotation direction
+        # Map angles to [-180,180] for consistent comparison
+        theta1 = (theta1 + 180) % 360 - 180
+        theta2 = (theta2 + 180) % 360 - 180
+        # Left-handed if rotation is counterclockwise
+        selected_hand = -1 if (theta2 - theta1 + 180) % 360 - 180 > 0 else 1
+        target_hand = -selected_hand
+
+        print(f"\nSelected points:")
+        print(f"d1 = {d1_center:.2f}Å (σ = {d1_sigma:.2f}Å)")
+        print(f"d2 = {d2_center:.2f}Å (σ = {d2_sigma:.2f}Å)")
+        print(f"θ1 = {theta1:.1f}°")
+        print(f"θ2 = {theta2:.1f}°")
+        print(f"Hand = {selected_hand:+d}")
+        print(f"Creating new reconstruction with hand = {target_hand:+d}")
+
+        # Get angle between selected points
+        obs_angle = abs(theta2 - theta1)
+
+        # Search triplets for matching d-spacings
+        q1 = 1/d1_center
+        q2 = 1/d2_center
+        triplet_q1_matches = np.abs(1/self.triplets.triplets[:,1] - q1) < 2*d1_sigma
+        triplet_q2_matches = np.abs(1/self.triplets.triplets[:,2] - q2) < 2*d2_sigma
+        pair_matches = triplet_q1_matches & triplet_q2_matches
+
+        if not np.any(pair_matches):
+          print("No matching pairs found in dataset")
+          return
+
+        # Get angles for matching pairs
+        angles = self.triplets.triplets[pair_matches, 3]
+        print(f"Found {len(angles)} matching pairs")
+
+        # Plot angle histogram
+        fig_theta, ax_theta = plt.subplots()
+        hist, edges, _ = ax_theta.hist(angles, bins=180, range=(0,180))
+        ax_theta.axvline(obs_angle, color='r', linestyle='--',
+                        label=f'Observed: {obs_angle:.1f}°')
+        ax_theta.set_xlabel('Angle (degrees)')
+        ax_theta.set_ylabel('Count')
+        ax_theta.set_title('Select angle range')
+        ax_theta.legend()
+
+        def on_theta_select(xmin, xmax):
+          center = (xmin + xmax)/2
+          sigma = (xmax - xmin)/4
+          box_data['theta_spec'] = (center, sigma)
+          plt.close(fig_theta)
+
+          # Create new reconstruction
+          self.create_new_reconstruction(box_data)
+          result['created_reconstruction'] = True
+          plt.close(fig)
+
+        span_theta = SpanSelector(ax_theta, on_theta_select, 'horizontal')
+        plt.show()
+
+#      def create_new_reconstruction(box_data):
+#        """Create new reconstruction from selected parameters.
+#
+#        Args:
+#          box_data: Dict containing selection parameters:
+#            'd_specs': List of (center, sigma) tuples for d-spacings
+#            'theta_spec': (center, sigma) tuple for angle
+#            'target_hand': Handedness for new reconstruction
+#        """
+#        d1_center, d1_sigma = box_data['d_specs'][0]
+#        d2_center, d2_sigma = box_data['d_specs'][1]
+#        theta_center, theta_sigma = box_data['theta_spec']
+#        target_hand = box_data['target_hand']  # Set in analyze_angles()
+#
+#        # Get centers of selected point groups
+#        q1_center = np.mean(box_data['q_vecs_0'].as_numpy_array(), axis=0)
+#        q2_center = np.mean(box_data['q_vecs_1'].as_numpy_array(), axis=0)
+#
+##        # Convert d-spacings to q-magnitudes
+##        q1 = 1/d1_center
+##        q2 = 1/d2_center
+#
+#        # Create covariance matrix
+#        # Diagonal elements are variances
+#        q1_var = (q1**2 * d1_sigma/d1_center)**2  # Error propagation from d to q
+#        q2_var = (q2**2 * d2_sigma/d2_center)**2
+#        theta_var = theta_sigma**2
+#        covariance = np.diag([q1_var, q2_var, theta_var])
+#
+#        # Create spec and reconstruction
+#        spec = GaussianTriangleSpec(
+#          center=[q1, q2, theta_center],
+#          covariance=covariance,
+#          params=self.params,
+#          hand=target_hand
+#        )
+#
+#        new_recon = spec.reconstruct(
+#          self.triplets,
+#          self.experiments,
+#          self.reflections,
+#          q1_target=q1_center,
+#          q2_target=q2_center
+#        )
+#        self.reconstructions.append(new_recon)
+#
+#        # Store relationship information
+#        q1_center = np.mean(box_data['q_vecs_0'].as_numpy_array(), axis=0)
+#        q2_center = np.mean(box_data['q_vecs_1'].as_numpy_array(), axis=0)
+#
+#        # Get angles in parent's coordinate system
+#        theta1_parent = project_and_get_theta(reconstruction.beam_direction, q1_center)
+#        theta2_parent = project_and_get_theta(reconstruction.beam_direction, q2_center)
+#
+#        # Get angles in child's coordinate system
+#        theta1_child = project_and_get_theta(new_recon.beam_direction, q1_center)
+#        theta2_child = project_and_get_theta(new_recon.beam_direction, q2_center)
+#
+#        # Store relationship
+#        parent_id = reconstruction_id if reconstruction_id is not None else -1
+#        child_id = len(self.reconstructions) - 1
+#        self.relationships[(parent_id, child_id)] = {
+#            'parent_view': {
+#                'q1_center': q1_center,  # Center of first selected group in parent's coordinates
+#                'q2_center': q2_center,  # Center of second group
+#                'd1': d1_center,
+#                'd2': d2_center,
+#                'theta1': theta1,
+#                'theta2': theta2
+#            },
+#            'child_view': {
+#                'q1_center': transformed_q1,  # Same points in child's coordinate system
+#                'q2_center': transformed_q2,
+#                'd1': d1_center,  # These stay the same
+#                'd2': d2_center,
+#                'theta1': new_theta1,
+#                'theta2': new_theta2
+#            },
+#            'hand': target_hand,
+#            'box_data': box_data  # Keep original selection data if needed
+#        }
+#
+#        # Validation
+#        q_diff1 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q1_center'] -
+#                                self.relationships[(parent_id, child_id)]['child_view']['q1_center'])
+#        q_diff2 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q2_center'] -
+#                                self.relationships[(parent_id, child_id)]['child_view']['q2_center'])
+#        if q_diff1 > 1e-6 or q_diff2 > 1e-6:
+#            print("Warning: q-vectors differ between parent and child views")
+#            print(f"Differences: {q_diff1:.2e}, {q_diff2:.2e}")
+#
+#        print(f"\nCreated new reconstruction {child_id}:")
+#        print(f"d1 = {d1_center:.2f}Å (σ = {d1_sigma:.2f}Å)")
+#        print(f"d2 = {d2_center:.2f}Å (σ = {d2_sigma:.2f}Å)")
+#        print(f"θ = {theta_center:.1f}° (σ = {theta_sigma:.1f}°)")
+#        print(f"hand = {target_hand:+d}")
+#        print(f"{len(new_recon.reflections)} reflections")
+#
+#        result['created_reconstruction'] = True
+#        plt.close(fig)
+
 
     elif mode == 'select':
       def on_click(event):
@@ -271,33 +559,190 @@ class ReconstructionManager:
     # Connect event handlers
     fig.canvas.mpl_connect('key_press_event', on_key)
     if mode == 'augment':
-      rect_selector = RectangleSelector(...)
+      rect_selector = RectangleSelector(
+        ax, on_box_select,
+        interactive=False,
+        useblit=True,
+        props=dict(facecolor='none', edgecolor='green', alpha=0.5)
+      )
+      print("\nControls:")
+      print("- j/k: Previous/next reconstruction")
+      print("- Click and drag to select boxes")
+      print("- q: Quit augmentation")
     elif mode == 'select':
       fig.canvas.mpl_connect('button_press_event', on_click)
 
     plt.show()
     return result
 
+  def project_and_get_theta(self, beam_dir, q):
+    """Project q-vector onto plane normal to beam and get angle from reference direction.
+    
+    Args:
+      beam_dir: Normalized beam direction
+      q: q-vector to project
+      
+    Returns:
+      float: Angle in degrees from reference direction ([1,0,0] projected to plane)
+    """
+    # Project [1,0,0] onto beam-normal plane to define theta=0 direction
+    ref_dir = np.array([1., 0., 0.])
+    ref_proj = ref_dir - np.dot(ref_dir, beam_dir) * beam_dir
+    ref_proj = ref_proj / np.linalg.norm(ref_proj)
+
+    # Create orthonormal basis in beam-normal plane
+    # ref_proj is our x-axis
+    # y-axis is beam × x-axis
+    y_axis = np.cross(beam_dir, ref_proj)
+
+    # Project q-vector onto this basis
+    q_proj = q - np.dot(q, beam_dir) * beam_dir
+    if np.linalg.norm(q_proj) < 1e-8:
+      return 0  # or handle this case differently
+    q_proj = q_proj / np.linalg.norm(q_proj)
+    
+    # Get angle from reference direction
+    cos_theta = np.dot(q_proj, ref_proj)
+    sin_theta = np.dot(q_proj, y_axis)
+    return np.rad2deg(np.arctan2(sin_theta, cos_theta))
+
+  def create_new_reconstruction(self, box_data, reconstruction_id=None):
+    """Create new reconstruction from selected parameters.
+
+    Args:
+      box_data: Dict containing selection parameters:
+        'd_specs': List of (center, sigma) tuples for d-spacings
+        'theta_spec': (center, sigma) tuple for angle
+        'target_hand': Handedness for new reconstruction
+      reconstruction_id: ID of parent reconstruction (None for initial reconstruction)
+    """
+    # Get parameters from box_data
+    q1_mag, q1_sigma = box_data['q_specs'][0]
+    q2_mag, q2_sigma = box_data['q_specs'][1]
+    theta_center, theta_sigma = box_data['theta_spec']
+    target_hand = box_data['target_hand']
+
+    # Get centers of selected point groups
+    q1_center = np.mean(box_data['q_vecs_0'], axis=0)
+    q2_center = np.mean(box_data['q_vecs_1'], axis=0)
+
+    # Create covariance matrix
+    # Diagonal elements are variances
+    q1_var = q1_sigma**2
+    q2_var = q2_sigma**2
+    theta_var = theta_sigma**2
+    covariance = np.diag([q1_var, q2_var, theta_var])
+
+    # Create spec and reconstruction
+    spec = GaussianTriangleSpec(
+      center=[q1_mag, q2_mag, theta_center],  # Use magnitudes here
+      covariance=covariance,
+      params=self.params,
+      hand=target_hand
+    )
+
+    new_recon = spec.reconstruct(
+      self.triplets,
+      self.experiments,
+      self.reflections,
+      q1_target=q1_center,
+      q2_target=q2_center
+    )
+    self.reconstructions.append(new_recon)
+
+    # Get angles in parent's and child's coordinate systems
+    if reconstruction_id is not None:
+      parent_recon = self.reconstructions[reconstruction_id]
+      theta1_parent = self.project_and_get_theta(parent_recon.beam_direction, q1_center)
+      theta2_parent = self.project_and_get_theta(parent_recon.beam_direction, q2_center)
+    else:
+      theta1_parent = None
+      theta2_parent = None
+
+    theta1_child = self.project_and_get_theta(new_recon.beam_direction, q1_center)
+    theta2_child = self.project_and_get_theta(new_recon.beam_direction, q2_center)
+
+    # Store relationship
+    parent_id = reconstruction_id if reconstruction_id is not None else -1
+    child_id = len(self.reconstructions) - 1
+    self.relationships[(parent_id, child_id)] = {
+        'parent_view': {
+            'q1_center': q1_center,
+            'q2_center': q2_center,
+            'theta1': theta1_parent,
+            'theta2': theta2_parent
+        },
+        'child_view': {
+            'q1_center': q1_center,  # Same vectors in universal coordinates
+            'q2_center': q2_center,
+            'theta1': theta1_child,
+            'theta2': theta2_child
+        },
+        'hand': target_hand,
+        'box_data': box_data
+    }
+
+    # Validation
+    q_diff1 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q1_center'] -
+                            self.relationships[(parent_id, child_id)]['child_view']['q1_center'])
+    q_diff2 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q2_center'] -
+                            self.relationships[(parent_id, child_id)]['child_view']['q2_center'])
+    if q_diff1 > 1e-6 or q_diff2 > 1e-6:
+        print("Warning: q-vectors differ between parent and child views")
+        print(f"Differences: {q_diff1:.2e}, {q_diff2:.2e}")
+
+    # Convert q, sigma_q to d, sigma_d for display
+    d1 = 1/q1_mag
+    d2 = 1/q2_mag
+    sigma_d1 = q1_sigma * d1**2  # Error propagation
+    sigma_d2 = q2_sigma * d2**2
+
+    print(f"\nCreated new reconstruction {child_id}:")
+    print(f"d1 = {d1:.3f}Å (σ = {sigma_d1:.3f}Å)")
+    print(f"d2 = {d2:.3f}Å (σ = {sigma_d2:.3f}Å)")
+    print(f"θ = {theta_center:.1f}° (σ = {theta_sigma:.1f}°)")
+    print(f"hand = {target_hand:+d}")
+    print(f"{len(new_recon.reflections)} reflections")
+
+    return new_recon
 
   def augment(self):
-    """Allow selection of boxes to create new reconstruction."""
-    # Show menu
-    print("\nCurrent reconstructions:")
-    for i, recon in enumerate(self.reconstructions):
-      print(f"{i}: {len(recon.reflections)} reflections")
+    """Interactive augmentation phase.
 
-    cmd = input("\nEnter reconstruction number (or q to finish): ")
-    if cmd == 'q':
+    Pages through existing reconstructions, allowing creation of new ones
+    via box selection. Returns True when user is done augmenting.
+    """
+    if not self.reconstructions:
+      print("No reconstructions to augment")
       return True
 
-    try:
-      recon_id = int(cmd)
-      if self.select_boxes(recon_id):
-        return False  # Continue augmenting
-    except ValueError:
-      print("Invalid input")
+    current_id = 0
+    while True:
+      print(f"\nViewing reconstruction {current_id} ({len(self.reconstructions[current_id].reflections)} reflections)")
+      result = self.plot_2d_radial(
+        reconstruction_id=current_id,
+        mode='augment',
+        navigation_info={
+          'current_id': current_id,
+          'total': len(self.reconstructions)
+        }
+      )
 
-    return False
+      if result.get('created_reconstruction'):
+        print("Created new reconstruction")
+        # Stay on current reconstruction to allow multiple augmentations
+        continue
+
+      if result.get('next_id') is not None:
+        current_id = result['next_id']
+        continue
+
+      if result.get('done'):  # User pressed 'q' to quit
+        return True
+
+      # If we get here, window was closed without any action
+      return False
+
 
   def select_boxes(self, recon_id):
     """Allow selection of two boxes and create new reconstruction."""
@@ -332,6 +777,8 @@ class LatticeReconstruction:
     self.reference_spots = {}
     self.params = params
     self.hand = None # Will be set to -1 or 1
+    self.beam_directions = [] # Will store aligned beam directions
+    self.beam_direction = None  # Will store validated average beam direction
     
   def add(self, expt, refl, i1, i2, xyz1=None, xyz2=None):
     """Add transformed reflections from one experiment
@@ -418,6 +865,7 @@ class LatticeReconstruction:
 
     # Determine handedness from transformed beam direction
     s0_transformed = rot.dot(s0)
+    self.beam_directions.append(s0_transformed)
     hand = int(s0_transformed[2] > 0)  # 1 if beam points in +z, 0 if -z
 
     # Add experiment and reflections to reconstruction
@@ -452,6 +900,45 @@ class LatticeReconstruction:
     # Store rotation matrix
     self.orientations[new_id] = rot
     self.reference_spots[new_id] = (i1, i2)
+
+  def finish(self, tolerance=1.0):
+    """Validate and finalize reconstruction.
+    
+    Checks that all beam directions are consistent and stores their average.
+    
+    Args:
+      tolerance: Maximum allowed angle (degrees) between any two beam directions
+    
+    Raises:
+      Sorry if beam directions are inconsistent
+    """
+    if not self.beam_directions:
+      raise Sorry("No beam directions stored")
+      
+    # Normalize all vectors
+    beams = np.array([b/np.linalg.norm(b) for b in self.beam_directions])
+    
+    # Check consistency
+    max_angle = 0
+    problem_pair = None
+    for i in range(len(beams)):
+      for j in range(i+1, len(beams)):
+        angle = np.rad2deg(np.arccos(np.clip(np.dot(beams[i], beams[j]), -1, 1)))
+        if angle > max_angle:
+          max_angle = angle
+          problem_pair = (i, j)
+    
+    if max_angle > tolerance:
+      i, j = problem_pair
+      raise Sorry(
+        f"Beam directions differ by {max_angle:.1f}° (tolerance: {tolerance}°)\n"
+        f"Experiment {i}: {self.beam_directions[i]}\n"
+        f"Experiment {j}: {self.beam_directions[j]}"
+      )
+    
+    # Store average beam direction
+    mean_beam = np.mean(beams, axis=0)
+    self.beam_direction = mean_beam / np.linalg.norm(mean_beam)
 
   def add_2d(self, expt, refl, i1, i2):
     """Add experiment with initial alignment based on detector coordinates
@@ -2832,7 +3319,7 @@ class TriangleSpec:
     """
     raise NotImplementedError()
 
-  def reconstruct(self, triplet_data, experiments, reflections):
+  def reconstruct(self, triplet_data, experiments, reflections, q1_target=None, q2_target=None):
     """Create LatticeReconstruction from spots matching this triangle spec
 
     Args:
@@ -2846,7 +3333,6 @@ class TriangleSpec:
     # Find matching frames using this spec
     matches = triplet_data.find_matches(self)
     print(f"\nFound {len(matches)} frames with matching triangles:")
-    print("Frame IDs:", sorted(matches.keys()))
 
     # Create reconstruction
     reconstruction = LatticeReconstruction(self.params)
@@ -2858,12 +3344,12 @@ class TriangleSpec:
       sel = flex.bool(reflections['id'] == frame_id)
       refl = reflections.select(sel)
 
-      # For now, just use first matching triangle from each frame
-      i1, i2 = spot_pairs[0]
-      #reconstruction.add_2d(expt, refl, i1, i2)
+      # All pairs
       for i1, i2 in spot_pairs:
-        reconstruction.add(expt, refl, i1, i2)
+        reconstruction.add(expt, refl, i1, i2,
+                           xyz1=q1_target, xyz2=q2_target)
 
+    reconstruction.finish()
     return reconstruction
 
 
@@ -2901,11 +3387,14 @@ class GaussianTriangleSpec(TriangleSpec):
   """Triangle specification using Mahalanobis distance
   """
   def __init__(self, center, covariance, params, hand=None):
-    super().__init__(*center)
+    super().__init__(*center, hand)
     self.covariance = covariance
     self._inv_cov = np.linalg.inv(covariance)
     self.params = params
     self.threshold = params.initialization.triangle_finding.mahalanobis_threshold
+    self.q1_sigma = np.sqrt(covariance[0,0])  # Extract sigmas from covariance matrix
+    self.q2_sigma = np.sqrt(covariance[1,1])
+    self.theta_sigma = np.sqrt(covariance[2,2])
 
   def test(self, d1, d2, theta):
     """

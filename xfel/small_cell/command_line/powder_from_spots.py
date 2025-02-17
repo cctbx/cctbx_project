@@ -91,6 +91,9 @@ master_phil = parse(
     .type = space_group
     .help = Show positions of miller indices from this unit_cell and space \
             group. Not implemented.
+  n_max = None
+    .type = int
+    .help = Stop plotting after this many experiments.
 filter {
   enable = False
     .type = bool
@@ -111,6 +114,17 @@ filter {
             Simple: Plot a powder pattern conditioned on the presence of the \
             reference peak(s).
 
+}
+angle_histogram {
+  enable = False
+    .type = bool
+    .help = Plot a histogram of angles between two spots.
+  range1 = None
+    .type = floats
+  range2 = None
+    .type = floats
+  range3 = None
+    .type = floats
 }
 output {
   log = dials.powder_from_spots.log
