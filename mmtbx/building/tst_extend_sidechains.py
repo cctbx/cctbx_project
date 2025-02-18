@@ -113,15 +113,15 @@ def exercise_cmdline_cif():
   #print(h_in.as_sequence())
   #print(h_in_mod.as_sequence())
 
-  pdb_file = "tst_extend_sidechains_2.pdb"
-  h_in_mod.write_pdb_file(pdb_file)
+  pdb_file = "tst_extend_sidechains_2.cif"
+  h_in_mod.write_pdb_or_mmcif_file(pdb_file)
 
   dm = DataManager()
   m4 = dm.get_model(pdb_file)
   ma = dm.get_miller_arrays(filename = mtz_file)
   fmo4 = dm.get_fmodel(scattering_table="n_gaussian")
 
-  pdb_out = "tst_extend_sidechains_out2.pdb"
+  pdb_out = "tst_extend_sidechains_out2.cif"
   prefix=os.path.splitext(os.path.basename(pdb_out))[0]
 
   mmtbx.building.extend_sidechains.extend_and_refine(
