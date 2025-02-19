@@ -51,15 +51,6 @@ class map_manager(map_reader, write_ccp4_map):
    the method set_original_origin_and_gridding() or supply the value when
    initializing the map_manager.
 
-   NOTE on shift_cart:
-
-    position of origin of boxed map:
-     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
-     shift_cart = self.shift_cart() == - origin_position
-    If you have coordinates xyz for an atom relative to the boxed map,
-    the absolute coordinates are:
-      coords_abs =  col(xyz) + col(origin_position)
-      coords_abs =  col(xyz) - col(self.shift_cart())
    You can also create a map_manager with a map_data object (3D flex.double()
    array) along with the meta-data below.
 
@@ -2448,6 +2439,33 @@ class map_manager(map_reader, write_ccp4_map):
       n_real.append(int(target_n + 0.999))
     return n_real
 
+  def sites_cart_to_sites_cart_absolute(self, sites_cart):
+    """ Shift sites_cart that are relative to the boxed map to
+        make them relative to the point (0,0,0) in absolute coordinates
+   NOTE: sites_cart is a flex.vec3_double array
+   NOTE: This is the opposite of sites_cart_absolute_to_sites_cart
+
+   NOTE on shift_cart:
+
+    Position of origin of boxed map:
+     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
+     shift_cart = self.shift_cart() == - origin_position
+
+    If you have cartesian coordinates xyz for an atom relative to the boxed map,
+    the absolute coordinates are:
+      coords_abs =  col(xyz) + col(origin_position)
+      coords_abs =  col(xyz) - col(self.shift_cart())
+
+    """
+    return  sites_cart - col(self.shift_cart())
+
+  def sites_cart_absolute_to_sites_cart(self, sites_cart_absolute):
+    """ Shift sites_cart that are in absolute coordinates to make them
+        relative to the boxed map.
+       NOTE: This is the opposite of sites_cart_to_sites_cart_absolute
+       NOTE: sites_cart is a flex.vec3_double array
+    """
+    return  sites_cart_absolute + col(self.shift_cart())
 
   def peak_search(self,
       peak_search_level = 3,
@@ -2504,7 +2522,7 @@ class map_manager(map_reader, write_ccp4_map):
       parameters = peak_search_parameters,
       map        = map_data).all(max_clusters = 99999999)
     sites_cart = self.crystal_symmetry().unit_cell().orthogonalize(psr.sites())
-    sites_cart_absolute = sites_cart - col(self.shift_cart())
+    sites_cart_absolute = self.sites_cart_to_sites_cart_absolute(sites_cart)
     result = group_args(group_args_type = 'peak search result',
       full_result = psr,
       heights = psr.heights(),

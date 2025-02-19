@@ -312,7 +312,13 @@ def test_01():
   new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
-
+  sc = model.get_sites_cart()
+  from scitbx.matrix import col
+  sc_absolute = sc - col(model.shift_cart())
+  assert approx_equal(new_mm.sites_cart_to_sites_cart_absolute(sc),
+     sc_absolute)
+  assert approx_equal(new_mm.sites_cart_absolute_to_sites_cart(sc_absolute),
+     sc)
   assert new_mm.is_compatible_ncs_object(ncs_obj)
   ncs_obj.set_shift_cart((0,0,0))
   assert not new_mm.is_compatible_ncs_object(ncs_obj)
