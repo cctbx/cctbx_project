@@ -37,6 +37,11 @@ Example:
       .optional = False
       .help = '''input PDB file'''
 
+    other_models = None
+      .type = path
+      .help = "Models to compare with model"
+      .multiple = True
+
     get_individual_residue_scores = None
       .type = bool
       .short_caption = Residue scores
@@ -181,6 +186,38 @@ Example:
       .help = Number of samples for estimation of expected values
       .short_caption = Number of samples for estimates
 
+    random_seed = 171927
+      .type = int
+      .help = Random seed
+      .short_caption = Random seed
+
+    variable_params {
+      clashscore_ideal_dist_values = 2.5 3 3 3 3.5
+         .type = floats
+         .help = Values to try for variables that are uncertain in comparison \
+               between models
+      lj_dist_that_yields_zero_values = 5 6 6 6 7
+         .type = floats
+      omega_angle_sigma_values = 4 5 6 7 8 9 10
+         .type = floats
+      cbetadev_sigma_values = .04  .05  .06
+         .type = floats
+      worst_clash_is_one_plus_n_times_worst_clash_values = 0 1
+          .type = floats
+      clash_energy_add_n_values = 0 1
+          .type = floats
+      minimum_nonbond_score_to_be_worst_values = -0.1  0.0
+         .type = floats
+      minimum_nonbond_score_to_be_included_in_average_values = 0 0 0 0  -1.1
+         .type = floats
+      include_full_nonbond_score_values = 0 1
+         .type = floats
+      ignore_arg_h_nonbond_values = 0 1
+         .type = floats
+      rotalyze_ramalyze_max_energy_values = 20  99 99 99  1000
+         .type = floats
+    }
+
 """
 
 
@@ -198,7 +235,19 @@ Example:
     self.model = self.data_manager.get_model(self.params.model)
     print("\nModel read from %s" %(self.params.model), file = self.logger)
 
+    # decide if there are other models
+    if not self.params.other_models:
+      self.params.other_models = []
+      for fn in self.data_manager.get_model_names():
+        if fn != self.params.model:
+          self.params.other_models.append(fn)
+    if self.params.other_models:
+      print("Other models to compare: %s" %(" ".join(self.params.other_models)),
+        file = self.logger)
+
   def run(self):
+    if self.params.other_models:  # Run comparison analysis
+      return self.run_comparison()
 
     self.results = holton_geometry_validation(
       dm = self.data_manager,
@@ -238,6 +287,72 @@ Example:
 
   def get_results_as_JSON(self):
     return self.results.as_JSON(self.info_json)
+
+  def run_comparison(self):
+    """ Analyze model and other models with various values of parameters and
+     determine which are convincingly better"""
+
+    all_model_list = [self.model]
+    for fn in self.params.other_models:
+      all_model_list.append(self.data_manager.get_model(fn))
+    self.params.other_models = []
+    from copy import deepcopy
+    base_params = deepcopy(self.params)
+
+    base_params.include_random = False # skip this
+
+    variable_params = {}
+    for x in dir(self.params.variable_params):
+      if x.startswith("__"): continue
+      xx = x.replace("_values","")
+      current_value = getattr(self.params,xx, None)
+      value_list = getattr(self.params.variable_params, x)
+      if current_value is None: continue
+      elif current_value in [True, False]: # bool
+        new_value_list = []
+        for v in value_list:
+          new_value_list.append(True if v==1 else False)
+        value_list = new_value_list
+      variable_params[xx] = value_list
+
+    import random
+    random.seed(self.params.random_seed)
+    next_seed = random.randint(0,10000000)
+    all_result_dict = {}
+    for i in range(self.params.n_random):
+      random.seed(next_seed)
+      self.params = deepcopy(base_params)
+      for key in list(variable_params.keys()):
+        value_list = variable_params[key]
+        n = len(value_list)
+        k = random.randint(0,n-1)
+        value = value_list[k]
+        setattr(self.params,key,value)
+      next_seed = random.randint(0,10000000)
+      self.params.random_seed = next_seed
+      next_seed = random.randint(0,10000000)
+
+      # Ready to run on all the models
+      all_result_dict[i] = []
+      for model in all_model_list:
+        self.model = model
+        self.run()
+        r = self.get_results()
+        all_result_dict[i].append(r)
+        print("RESULT:",self.params.omega_angle_sigma,r.sum_energy,model.info().file_name)
+    value_list_dict = {}
+    from scitbx.array_family import flex
+    for k in range(len(all_model_list)):
+      value_list = flex.double()
+      for i in range(self.params.n_random):
+        value_list.append(all_result_dict[i][k].sum_energy)
+      value_list_dict[k] = value_list
+      delta_list = value_list - value_list_dict[0]
+      mean_delta = delta_list.min_max_mean().mean
+      sd_delta = delta_list.standard_deviation_of_the_sample()
+      print("Model %s:  delta: %.2f  SD %.2f" %(
+        all_model_list[k].info().file_name, mean_delta, sd_delta),
+         file = self.logger)
 
 # =============================================================================
 # for reference documentation keywords

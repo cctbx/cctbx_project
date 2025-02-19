@@ -90,6 +90,7 @@ def holton_geometry_validation(dm = None,
      remove_waters = None, # remove waters before scoring
      score_this_altloc_only = None, # Only score this altloc
      n_random = 20,
+     random_seed = 171927,
      sd_to_use = 3,
      softPnna_params = group_args(group_args_type = 'softPnna_params',
        y0= 1,
@@ -107,6 +108,9 @@ def holton_geometry_validation(dm = None,
   O = group_args(group_args_type = 'info')
   adopt_init_args(O,locals())
   info = O
+
+  import random
+  random.seed(info.random_seed)
 
   # Read in model and get sequence
   get_model(info)
