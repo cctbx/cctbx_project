@@ -1,10 +1,6 @@
 from __future__ import division
-from iotbx import reflection_file_reader
-from cctbx import french_wilson
-from libtbx.utils import null_out
 import iotbx.pdb
 import mmtbx.model
-from cctbx import maptbx
 from scitbx.array_family import flex
 
 pdb_str = """

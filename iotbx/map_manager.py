@@ -2453,12 +2453,12 @@ class map_manager(map_reader, write_ccp4_map):
 
     """ Run peak search on this map.
      returns group_args with:
-        sites (fractional) 
+        sites (fractional)
         sites_cart (orthogonal)
         heights
         full_result (original peak_search_result object)
 
-     Note: normally supply at least max_peaks or peak_cutoff 
+     Note: normally supply at least max_peaks or peak_cutoff
     """
     if peak_cutoff is None and max_peaks is None: # give them 1000
       max_peaks = 1000
@@ -2466,8 +2466,8 @@ class map_manager(map_reader, write_ccp4_map):
       min_cross_distance = 0.5 * mm.resolution()
     if peak_search_level is None:  # this is how finely to search 1 to 3
       peak_searchlevel = 3
-       
-     
+
+
     map_data = mm.map_data()
     cg = maptbx.crystal_gridding(
       space_group_info = mm.crystal_symmetry().space_group_info(),
@@ -2495,8 +2495,8 @@ class map_manager(map_reader, write_ccp4_map):
       sites = psr.sites(),
       sites_cart = mm.crystal_symmetry().unit_cell().orthogonalize(psr.sites()),
      )
-  
-    return result 
+
+    return result
 
   def find_n_highest_grid_points_as_sites_cart(self, n = 0,
     n_tolerance = 0, max_tries = 100):
