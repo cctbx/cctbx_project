@@ -35,7 +35,7 @@ def tst_01():
   assert (sc_found_2 - sc_found).rms_length() < 0.001
 
   sc_found_absolute = result.sites_cart_absolute
-  assert (sc_found_absolute - 
+  assert (sc_found_absolute -
       (sc_found - col(mm.shift_cart()))).rms_length() < 0.001
 
   # List peaks with their heights and match to expected

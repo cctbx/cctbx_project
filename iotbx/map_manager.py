@@ -55,7 +55,7 @@ class map_manager(map_reader, write_ccp4_map):
 
     position of origin of boxed map:
      origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
-     shift_cart = self.shift_cart() == - origin_position 
+     shift_cart = self.shift_cart() == - origin_position
     If you have coordinates xyz for an atom relative to the boxed map,
     the absolute coordinates are:
       coords_abs =  col(xyz) + col(origin_position)
