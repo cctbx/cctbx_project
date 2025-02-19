@@ -1,6 +1,7 @@
 from __future__ import division
 import iotbx.pdb
 import mmtbx.model
+from scitbx.matrix import col
 from scitbx.array_family import flex
 
 pdb_str = """
@@ -32,6 +33,10 @@ def tst_01():
   sites_frac_found = flex.vec3_double(result.sites)
   sc_found_2= mm.crystal_symmetry().unit_cell().orthogonalize(sites_frac_found)
   assert (sc_found_2 - sc_found).rms_length() < 0.001
+
+  sc_found_absolute = result.sites_cart_absolute
+  assert (sc_found_absolute - 
+      (sc_found - col(mm.shift_cart()))).rms_length() < 0.001
 
   # List peaks with their heights and match to expected
   for site_cart, height in zip( result.sites_cart, result.heights):

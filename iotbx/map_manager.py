@@ -7,7 +7,6 @@ import io
 from cctbx import miller
 from iotbx.mrcfile import map_reader, write_ccp4_map
 from scitbx.array_family import flex
-from scitbx.matrix import col
 from cctbx import maptbx
 from cctbx import miller
 import mmtbx.ncs.ncs
@@ -52,6 +51,15 @@ class map_manager(map_reader, write_ccp4_map):
    the method set_original_origin_and_gridding() or supply the value when
    initializing the map_manager.
 
+   NOTE on shift_cart:
+
+    position of origin of boxed map:
+     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
+     shift_cart = self.shift_cart() == - origin_position 
+    If you have coordinates xyz for an atom relative to the boxed map,
+    the absolute coordinates are:
+      coords_abs =  col(xyz) + col(origin_position)
+      coords_abs =  col(xyz) - col(self.shift_cart())
    You can also create a map_manager with a map_data object (3D flex.double()
    array) along with the meta-data below.
 
@@ -2441,7 +2449,7 @@ class map_manager(map_reader, write_ccp4_map):
     return n_real
 
 
-  def peak_search(mm,
+  def peak_search(self,
       peak_search_level = 3,
       max_peaks = None,
       peak_cutoff            = None,
@@ -2455,24 +2463,30 @@ class map_manager(map_reader, write_ccp4_map):
      returns group_args with:
         sites (fractional)
         sites_cart (orthogonal)
+        sites_cart_absolute (orthogonal, with shift_cart applied)
         heights
         full_result (original peak_search_result object)
 
      Note: normally supply at least max_peaks or peak_cutoff
+
+    position of origin of boxed map:
+     origin_position = self.grid_units_to_cart(self.origin_shift_grid_units)
+     shift_cart = self.shift_cart() == - origin_position
+
     """
     if peak_cutoff is None and max_peaks is None: # give them 1000
       max_peaks = 1000
     if min_cross_distance is None: # use half resolution
-      min_cross_distance = 0.5 * mm.resolution()
+      min_cross_distance = 0.5 * self.resolution()
     if peak_search_level is None:  # this is how finely to search 1 to 3
       peak_searchlevel = 3
 
 
-    map_data = mm.map_data()
+    map_data = self.map_data()
     cg = maptbx.crystal_gridding(
-      space_group_info = mm.crystal_symmetry().space_group_info(),
+      space_group_info = self.crystal_symmetry().space_group_info(),
       symmetry_flags   = maptbx.use_space_group_symmetry,
-      unit_cell        = mm.crystal_symmetry().unit_cell(),
+      unit_cell        = self.crystal_symmetry().unit_cell(),
       pre_determined_n_real = map_data.all())
 
     # Set parameters for peak peaking and find peaks
@@ -2489,11 +2503,14 @@ class map_manager(map_reader, write_ccp4_map):
     psr = cgt.peak_search(
       parameters = peak_search_parameters,
       map        = map_data).all(max_clusters = 99999999)
+    sites_cart = self.crystal_symmetry().unit_cell().orthogonalize(psr.sites())
+    sites_cart_absolute = sites_cart - col(self.shift_cart())
     result = group_args(group_args_type = 'peak search result',
       full_result = psr,
       heights = psr.heights(),
       sites = psr.sites(),
-      sites_cart = mm.crystal_symmetry().unit_cell().orthogonalize(psr.sites()),
+      sites_cart = sites_cart,
+      sites_cart_absolute = sites_cart_absolute,
      )
 
     return result
