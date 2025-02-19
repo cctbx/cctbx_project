@@ -2440,6 +2440,64 @@ class map_manager(map_reader, write_ccp4_map):
       n_real.append(int(target_n + 0.999))
     return n_real
 
+
+  def peak_search(mm,
+      peak_search_level = 3,
+      max_peaks = None,
+      peak_cutoff            = None,
+      interpolate            = True,
+      min_distance_sym_equiv = 0,
+      general_positions_only = False,
+      min_cross_distance     = None,
+      min_cubicle_edge       = 5):
+
+    """ Run peak search on this map.
+     returns group_args with:
+        sites (fractional) 
+        sites_cart (orthogonal)
+        heights
+        full_result (original peak_search_result object)
+
+     Note: normally supply at least max_peaks or peak_cutoff 
+    """
+    if peak_cutoff is None and max_peaks is None: # give them 1000
+      max_peaks = 1000
+    if min_cross_distance is None: # use half resolution
+      min_cross_distance = 0.5 * mm.resolution()
+    if peak_search_level is None:  # this is how finely to search 1 to 3
+      peak_searchlevel = 3
+       
+     
+    map_data = mm.map_data()
+    cg = maptbx.crystal_gridding(
+      space_group_info = mm.crystal_symmetry().space_group_info(),
+      symmetry_flags   = maptbx.use_space_group_symmetry,
+      unit_cell        = mm.crystal_symmetry().unit_cell(),
+      pre_determined_n_real = map_data.all())
+
+    # Set parameters for peak peaking and find peaks
+    cgt = maptbx.crystal_gridding_tags(gridding = cg)
+    peak_search_parameters = maptbx.peak_search_parameters(
+      peak_search_level = peak_search_level,
+      max_peaks = max_peaks,
+      peak_cutoff = peak_cutoff,
+      interpolate            = interpolate,
+      min_distance_sym_equiv = min_distance_sym_equiv,
+      general_positions_only = general_positions_only,
+      min_cross_distance     = min_cross_distance,
+      min_cubicle_edge       = min_cubicle_edge)
+    psr = cgt.peak_search(
+      parameters = peak_search_parameters,
+      map        = map_data).all(max_clusters = 99999999)
+    result = group_args(group_args_type = 'peak search result',
+      full_result = psr,
+      heights = psr.heights(),
+      sites = psr.sites(),
+      sites_cart = mm.crystal_symmetry().unit_cell().orthogonalize(psr.sites()),
+     )
+  
+    return result 
+
   def find_n_highest_grid_points_as_sites_cart(self, n = 0,
     n_tolerance = 0, max_tries = 100):
     '''
