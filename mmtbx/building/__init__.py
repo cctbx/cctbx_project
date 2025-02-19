@@ -21,7 +21,8 @@ def reprocess_pdb(pdb_hierarchy, crystal_symmetry, cif_objects, out):
   return pdb_interpretation.process(
     mon_lib_srv=mon_lib_srv,
     ener_lib=ener_lib,
-    raw_records=pdb_hierarchy.as_pdb_string(crystal_symmetry=crystal_symmetry),
+    raw_records=pdb_hierarchy.as_pdb_or_mmcif_string(
+      target_format='pdb',crystal_symmetry=crystal_symmetry),
     crystal_symmetry=crystal_symmetry,
     log=out)
 
