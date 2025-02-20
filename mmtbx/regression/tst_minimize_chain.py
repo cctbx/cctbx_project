@@ -637,8 +637,13 @@ def tst_02(args,prefix=None):
 
 if (__name__ == "__main__"):
   t0=time.time()
+
+  # NOTE: RUNS both regular and mmCIF versions of this test
+  # RUN WITH skip_mmcif or mmcif_only TO ONLY RUN REGULAR OR mmCIF TEST
+
   from libtbx.test_utils import iterate_tests_without_and_with_mmCIF_conversion
   for mmcif in iterate_tests_without_and_with_mmCIF_conversion():
+
     if mmcif:
       from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
       convert_pdb_to_cif_for_pdb_str(locals())
