@@ -23,6 +23,8 @@ import sys
 import mmtbx.model
 from six.moves import zip
 from iotbx import extract_xtal_data
+from cctbx import maptbx
+from mmtbx import bulk_solvent
 
 fo_minus_fo_master_params_str = """\
 f_obs_1_file_name = None
@@ -163,15 +165,20 @@ class compute_fo_minus_fo_map(object):
       else :
         r_free_flags = d.array(data = flex.bool(d.data().size(), False))
       fmodel = mmtbx.f_model.manager(
-        xray_structure = xray_structure,
+        xray_structure = xray_structure.deep_copy_scatterers(),
         r_free_flags   = r_free_flags,
         target_name    = "ls_wunit_k1",
         sf_and_grads_accuracy_params = sf_accuracy_params,
         f_obs          = d)
       fmodel.update_all_scales(log=None)
+
+      #fmodel.export( out=open("taam_%d.mtz"%i_seq,"w") )
+
       if(not silent):
         fmodel.info().show_rfactors_targets_scales_overall(out=log)
         print(file=log)
+      fmodel.show(show_header=False, show_approx=False, log=log)
+
       fmodels.append(fmodel)
     self.fmodel = fmodels[0]
     # prepare Fobs for map calculation (apply scaling):
@@ -190,6 +197,19 @@ class compute_fo_minus_fo_map(object):
     self.f_model = f_model
     assert fobs_2.indices().all_eq(fobs_1.indices())
     assert f_model.indices().all_eq(fobs_1.indices())
+
+
+
+    ss = 1./flex.pow2(fobs_1.d_spacings().data()) / 4.
+    o = bulk_solvent.f_kb_scaled(
+      f1 = fobs_1.data(),
+      f2 = fobs_2.data(),
+      b_range = flex.double(range(-1000,1000,1)),
+      ss = ss)
+    print(o.k(), o.b())
+    fobs_2 = fobs_2.array(data = fobs_2.data()*o.k()*flex.exp(-o.b()*ss))
+
+
     # scale again
     scale_k1 = 1
     den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
@@ -197,13 +217,22 @@ class compute_fo_minus_fo_map(object):
       scale_k1 = flex.sum(flex.abs(fobs_1.data())*flex.abs(fobs_2.data())) / den
     #
     fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
+
+    ss = 1./flex.pow2(fobs_1.d_spacings().data()) / 4.
+    o = bulk_solvent.f_kb_scaled(
+      f1 = fobs_1.data(),
+      f2 = fobs_2.data(),
+      b_range = flex.double(range(-1000,1000,1)),
+      ss = ss)
+    print(o.k(), o.b())
+
     if multiscale:
-      fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=250)
+      fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=50)
     if(not silent):
       print("", file=log)
       print("Fobs1_vs_Fobs2 statistics:", file=log)
       print("Bin# Resolution range  Compl.  No.of refl. CC   R-factor", file=log)
-      fobs_1.setup_binner(reflections_per_bin = min(500, fobs_1.data().size()))
+      fobs_1.setup_binner(reflections_per_bin = min(50, fobs_1.data().size()))
       fobs_2.use_binning_of(fobs_1)
       for i_bin in fobs_1.binner().range_used():
         sel = fobs_1.binner().selection(i_bin)
