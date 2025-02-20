@@ -723,14 +723,10 @@ def search_ncs_relations(ph=None,
     for j in range(i+1,n_chains):
       c_ch_id = sorted_ch[j]
       copy_n_res = len(chains_info[c_ch_id].res_names)
+      # This is quick sequence similarity check
       frac_d = min(copy_n_res,master_n_res)/max(copy_n_res,master_n_res)
       if frac_d < chain_similarity_threshold:
-        if (chain_similarity_threshold == 1):
-          msg = 'NCS copies are not identical'
-          break
-        else:
-          # print "Strange exit"
-          continue
+        continue
       seq_c = chains_info[c_ch_id].res_names
       # get residue lists for copy
       res_sel_m, res_sel_c, similarity = mmtbx_res_alignment(
@@ -758,9 +754,6 @@ def search_ncs_relations(ph=None,
   # loop over all chains
   if msg:
     print(msg, file=log)
-  if (chain_similarity_threshold == 1) and msg:
-    # must be identical
-    raise Sorry('NCS copies are not identical')
   return match_dict
 
 def mmtbx_res_alignment(seq_a, seq_b,
@@ -813,7 +806,7 @@ def mmtbx_res_alignment(seq_a, seq_b,
 
   if sim1 < min_percent:
     # chains are too different, return empty arrays
-    return flex.size_t([]), flex.size_t([]), 0
+    return flex.size_t([]), flex.size_t([]), sim1
   return al_a, al_b, sim1
 
 
