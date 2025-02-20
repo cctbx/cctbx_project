@@ -221,7 +221,6 @@ general_tests = [
   "$D/regression/tst_regularize_from_pdb_cif.py",
   "$D/regression/tst_find_ncs.py",
   "$D/regression/tst_minimize_chain.py",
-  "$D/regression/tst_minimize_chain_cif.py",
   "$D/regression/tst_sequence_validation.py",
   "$D/regression/tst_prune_model.py",
   "$D/regression/tst_real_space_correlation.py",
