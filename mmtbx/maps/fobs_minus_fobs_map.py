@@ -23,7 +23,6 @@ import sys
 import mmtbx.model
 from six.moves import zip
 from iotbx import extract_xtal_data
-from cctbx import maptbx
 from mmtbx import bulk_solvent
 
 fo_minus_fo_master_params_str = """\
