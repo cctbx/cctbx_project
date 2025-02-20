@@ -3706,10 +3706,16 @@ class array(set):
       from mmtbx import bulk_solvent
       ss = 1./flex.pow2(self.d_spacings().data()) / 4.
       b_range = flex.double(range(-1000,1000,1))
+      if isinstance(self.data(), flex.complex_double):
+        scaler_func = bulk_solvent.complex_f_kb_scaled
+      else:
+        scaler_func = bulk_solvent.f_kb_scaled
     if(reflections_per_bin is None):
       reflections_per_bin = other.indices().size()
     assert self.indices().all_eq(other.indices())
     assert self.is_similar_symmetry(other)
+    assert type(self.data()) == type(other.data())
+
     self.setup_binner(reflections_per_bin = reflections_per_bin)
     other.use_binning_of(self)
     other_data = other.data()*0
@@ -3725,7 +3731,7 @@ class array(set):
         other_data.set_selected(sel, f2.data()*scale_)
       else:
         ss_ = ss.select(sel)
-        o = bulk_solvent.f_kb_scaled(
+        o = scaler_func(
           f1      = f1.data(),
           f2      = f2.data(),
           b_range = b_range,

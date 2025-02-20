@@ -2116,6 +2116,13 @@ def exercise_multiscale():
   f2 = f2.array(data = f2.data()*10*flex.exp(-50*ss))
   f2 = f1.multiscale(other=f2, use_exp_scale=True)
   assert approx_equal(f1.data(), f2.data())
+  # Now complex arrays!
+  f1 = xrs.structure_factors(d_min=1).f_calc()
+  ss = 1./flex.pow2(f1.d_spacings().data()) / 4.
+  f2 = f1.deep_copy()
+  f2 = f2.array(data = f2.data()*10*flex.exp(-50*ss))
+  f2 = f1.multiscale(other=f2, use_exp_scale=True)
+  assert approx_equal(f1.data(), f2.data())
 
 def exercise_symmetry_agreement_factor():
   from cmath import phase as arg
