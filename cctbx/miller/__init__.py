@@ -684,6 +684,8 @@ class set(crystal.symmetry):
     """
     Generate a double Miller array containing the resolution d of each
     index.
+    Note: if f000 term is present, the resolution of that term will be -1
+     and not infinity.
     """
     return array(
       self, self.unit_cell().d(self.indices()))
