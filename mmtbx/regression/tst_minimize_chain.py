@@ -665,5 +665,3 @@ if (__name__ == "__main__"):
     print("Time: %6.4f"%(time.time()-t0))
     print("OK")
     print("RMSD %7.2f "%rmsd)
-
-
