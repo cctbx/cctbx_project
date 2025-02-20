@@ -913,6 +913,35 @@ ERROR: is_above_limit(value=None, limit=3, eps=1)
   assert precision_approx_equal(0.799999,0.800004,precision=18)==False
   print("OK")
 
+def iterate_tests_without_and_with_mmCIF_conversion():
+  """ Return a simple iterator that first does nothing and returns False,
+      then converts all pdb_str_xxxx locals to mmCIF-only format
+      and prints a notice and returns True.
+
+      Behavior can be modified by specifying "skip_mmcif" or "mmcif_only"
+       in sys.argv or by setting the value of the environmental
+      variable REGRESSION_SKIP_CIF ( mmcif_only, skip_mmcif,
+       blank or missing is run both)
+  """
+  skip_string = os.environ.get("REGRESSION_SKIP_CIF",None)
+  if skip_string is None:
+    if 'mmcif_only' in sys.argv:
+      skip_string = 'mmcif_only'
+    elif 'skip_mmcif' in sys.argv:
+      skip_string = 'skip_mmcif'
+
+  if skip_string in [None, '']:
+    run_list = [False, True]
+  elif skip_string == 'mmcif_only':
+    run_list = [True]
+  elif skip_string == 'skip_mmcif':
+    run_list = [False]
+  else:
+    raise Sorry(
+      "Unrecognized value of REGRESSION_SKIP_CIF: '%s'" %(skip_string))
+
+  return run_list
+
 def convert_pdb_to_cif_for_pdb_str(locals, chain_addition = "ZXLONG",
    key_str="pdb_str", hetatm_name_addition = "ZY", print_new_string = True):
   #  Converts all the strings that start with "pdb_str" from PDB to mmcif

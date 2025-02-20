@@ -636,32 +636,35 @@ def tst_02(args,prefix=None):
   return rmsd
 
 if (__name__ == "__main__"):
-  for mmcif in [False, True]:
+  t0=time.time()
+  from libtbx.test_utils import iterate_tests_without_and_with_mmCIF_conversion
+  for mmcif in iterate_tests_without_and_with_mmCIF_conversion():
     if mmcif:
       from libtbx.test_utils import convert_pdb_to_cif_for_pdb_str
       convert_pdb_to_cif_for_pdb_str(locals())
       print(80*"-")
       print("RERUNNING WITH MMCIF")
       print(80*"-")
-    t0=time.time()
+
     print("\nRunning merge_models alone")
+    t0a=time.time()
     rmsd=tst_01()
-    print("Time: %6.4f"%(time.time()-t0))
+    print("Time: %6.4f"%(time.time()-t0a))
     print("OK")
 
     args=["number_of_build_cycles=2","number_of_macro_cycles=1","number_of_trials=2","random_seed=77141"]
-    t0=time.time()
+    t0a=time.time()
     print("Running standard minimize_chain")
     extra_args=['merge_models=False','pdb_out=std.pdb']
     rmsd=tst_02(args+extra_args,prefix='tst_02')
-    print("Time: %6.4f"%(time.time()-t0))
-    print("OK")
     print("RMSD %7.2f "%rmsd)
+    print("Time: %6.4f"%(time.time()-t0a))
 
-    t0=time.time()
+    t0a=time.time()
     print("\nRunning standard minimize_chain plus merge_models")
     extra_args=['merge_models=True','pdb_out=merged.pdb']
     rmsd=tst_02(args+extra_args,prefix='tst_03')
-    print("Time: %6.4f"%(time.time()-t0))
-    print("OK")
     print("RMSD %7.2f "%rmsd)
+    print("Time: %6.4f"%(time.time()-t0a))
+  print("Total Time: %6.4f"%(time.time()-t0))
+  print("OK")
