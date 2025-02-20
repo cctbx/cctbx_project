@@ -2590,7 +2590,7 @@ class manager(manager_mixin):
     file_name = None
     if (out is None):
       out = sys.stdout
-    elif (hasattr(out, "name")):
+    elif (hasattr(out, "name") and file_name is None):
       file_name = libtbx.path.canonical_path(file_name=out.name)
     if(format == "mtz"):
       assert file_name is not None
