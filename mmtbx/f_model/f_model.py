@@ -1723,6 +1723,14 @@ class manager(manager_mixin):
     else:
       return self.arrays.hl_coeffs
 
+  def f_obs_scaled(self, include_fom=False):
+    scale = 1.0 / self.k_total()
+    if include_fom:
+      scale = scale * self.figures_of_merit()
+    return miller.array(
+      miller_set = self.f_obs(),
+      data       = self.f_obs().data()*scale)
+
   def f_obs(self):
     if(self.arrays is not None):
       return self.arrays.f_obs

@@ -183,11 +183,7 @@ class compute_fo_minus_fo_map(object):
     # prepare Fobs for map calculation (apply scaling):
     f_obss = []
     for fmodel in fmodels:
-      obs = fmodel.f_obs()
-      f_obs_scale   = 1.0 / fmodel.k_anisotropic() / fmodel.k_isotropic()
-      obs = miller.array(miller_set = fmodel.f_model(),
-                         data       = obs.data()*f_obs_scale)
-      f_obss.append(obs)
+      f_obss.append(fmodel.f_obs_scaled(include_fom=True))
     # given two Fobs sets, make them one-to-one matching, get phases and map coefficients
     # Note: f_calc below is just f_calc from atoms (no bulk solvent etc applied)
     fobs_1, f_model = f_obss[0].common_sets(other = fmodels[1].f_model())
@@ -197,18 +193,6 @@ class compute_fo_minus_fo_map(object):
     assert fobs_2.indices().all_eq(fobs_1.indices())
     assert f_model.indices().all_eq(fobs_1.indices())
 
-
-
-    ss = 1./flex.pow2(fobs_1.d_spacings().data()) / 4.
-    o = bulk_solvent.f_kb_scaled(
-      f1 = fobs_1.data(),
-      f2 = fobs_2.data(),
-      b_range = flex.double(range(-1000,1000,1)),
-      ss = ss)
-    print(o.k(), o.b())
-    fobs_2 = fobs_2.array(data = fobs_2.data()*o.k()*flex.exp(-o.b()*ss))
-
-
     # scale again
     scale_k1 = 1
     den = flex.sum(flex.abs(fobs_2.data())*flex.abs(fobs_2.data()))
@@ -217,16 +201,10 @@ class compute_fo_minus_fo_map(object):
     #
     fobs_2 = fobs_2.array(data = fobs_2.data()*scale_k1)
 
-    ss = 1./flex.pow2(fobs_1.d_spacings().data()) / 4.
-    o = bulk_solvent.f_kb_scaled(
-      f1 = fobs_1.data(),
-      f2 = fobs_2.data(),
-      b_range = flex.double(range(-1000,1000,1)),
-      ss = ss)
-    print(o.k(), o.b())
-
     if multiscale:
-      fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=50)
+      #fobs_1 = fobs_2.multiscale(other = fobs_1, reflections_per_bin=50)
+      fobs_1 = fobs_2.multiscale(
+        other = fobs_1, reflections_per_bin=250, use_exp_scale=True)
     if(not silent):
       print("", file=log)
       print("Fobs1_vs_Fobs2 statistics:", file=log)
