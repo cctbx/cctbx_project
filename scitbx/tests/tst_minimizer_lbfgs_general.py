@@ -46,6 +46,9 @@ def run():
     tolerance = 1.e-9
   elif sys.platform == 'darwin' and platform.machine() == 'arm64':
     tolerance = 1.e-6
+  elif sys.platform.startswith('linux') \
+    and ('arm64' in platform.machine() or 'arch64' in platform.machine()):
+    tolerance = 1.e-9
 
   # Run L-BFGS (no boundaries)
   calculator = rosenbrock(a = 20, b = 10, x = flex.double([0,0]),
