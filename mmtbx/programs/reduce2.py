@@ -1034,10 +1034,10 @@ NOTES:
         bad += "," + res
       raise Sorry("Insufficient restraints were found for the following atoms:"+bad)
 
+    self.model = reduce_add_h_obj.get_model()
+
     if not self.model.has_hd():
       raise Sorry("It was not possible to place any H atoms. Is this a single atom model?")
-
-    self.model = reduce_add_h_obj.get_model()
 
 # ------------------------------------------------------------------------------
 
