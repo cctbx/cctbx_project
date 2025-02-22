@@ -20,4 +20,4 @@ jobs:
           docker buildx build -t fable-dock .
 
       - name: Run example
-        run: docker run -i -w $(pwd) --volume=$(pwd):$(pwd):rw -t fable-dock --example
+        run: docker run -w $(pwd) --volume=$(pwd):$(pwd):rw fable-dock --example
