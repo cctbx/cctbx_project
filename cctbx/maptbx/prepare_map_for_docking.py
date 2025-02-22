@@ -1711,7 +1711,7 @@ def assess_cryoem_errors(
   success = False
   while guess_d_min and not success:
     # Check whether signal goes to higher resolution than initial guess
-    d_min_from_fsc = mc1.d_min_from_fsc(other=mc2, bin_width=1000, fsc_cutoff=0.05).d_min
+    d_min_from_fsc = mc1.d_min_from_fsc(other=mc2, fsc_cutoff=0.05).d_min
     # d_min_from_fsc returns None if the fsc_cutoff has not been passed by resolution limit
     if d_min_from_fsc is not None:
       d_min = max(d_min_from_fsc,minimum_possible_d_min)
