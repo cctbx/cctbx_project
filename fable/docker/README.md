@@ -1,28 +1,39 @@
 
 docker to run fable FORTRAN converter
 
-# build
-docker buildx build -t fable-dock --build-arg=BUILD_PARENT_DOCKPATH=python:3.9-slim .
+# build fable docker
+```
+docker buildx build -t fable-dock .
+```
 
-# run bash, overriding entrypoint
+# run bash in fable docker
+# overriding entrypoint
+```
 docker run -i --entrypoint /usr/bin/env -t fable-dock bash
+```
 
-# run fable
-distro.sh run
+# run fable, see help
+```
 docker run -it fable-dock
+```
 
 # run fable --example to current dir
 # fable.cout and fable_cout.cpp are created
+```
 docker run -i -w $(pwd) --volume=$(pwd):$(pwd):rw -t fable-dock --example
+```
 
 # run fable on local files
+# send cout to cpp file
+```
 declare -ar cmda=(
     docker run -i -w $(pwd)
     --volume=$(pwd):$(pwd):rw
     -t fable-dock
-    fort1.for
-    fort2.for
-    --namespace calcs
+     <user fortran file>
+     <user fortran file>
+    --namespace <user namespace>
 )
 
-${cmda[@]} > calcs.cpp
+${cmda[@]} > <user cpp file>
+```
