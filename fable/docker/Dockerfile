@@ -13,6 +13,8 @@ set -exo pipefail
 apt-get -y update
 apt-get -y upgrade
 
+apt-get -y install libencode-perl
+
 # install cctbx
 declare -ar pkgs=(
     # this is huge, qt, hdf...
