@@ -485,12 +485,10 @@ class manager(object):
   def get_xray_structure(self):
     if(self._xray_structure is None):
       cs = self.crystal_symmetry()
-      assert cs is not None
-      assert cs.unit_cell() is not None
-      assert cs.space_group() is not None
+      if cs is None or cs.unit_cell() is None or cs.space_group() is None:
+        return None
       self._xray_structure = self.get_hierarchy().extract_xray_structure(
         crystal_symmetry = cs)
-      cs = self.crystal_symmetry()
     return self._xray_structure
 
   def set_sites_cart(self, sites_cart, selection=None):
@@ -2076,8 +2074,13 @@ class manager(object):
     return self._has_hd
 
   def _update_has_hd(self):
-    sctr_keys = self.get_xray_structure().scattering_type_registry().type_count_dict()
-    self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    if self.get_xray_structure() is not None:
+      sctr_keys = self.get_xray_structure(
+        ).scattering_type_registry().type_count_dict()
+      self._has_hd = "H" in sctr_keys or "D" in sctr_keys
+    else:
+      sel = self.selection(string="element H or element D")
+      self._has_hd = sel.count(True)>0
     if not self._has_hd:
       self.unset_riding_h_manager()
     if self._has_hd:
