@@ -227,8 +227,16 @@ steps:
 # run pyDiSCaMB tests
 - script: |
     set -xe
-    source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
-    conda activate $(PYTHON_VERSION)
+
+    if [[ "$(OS)" == "osx"* ]]; then
+      source $(Pipeline.Workspace)/miniforge/etc/profile.d/conda.sh
+      if [ -d $(Pipeline.Workspace)/miniforge/envs/compiler ]; then
+        conda remove  -y --all -n compiler
+      fi
+      conda create -y -n compiler cxx-compiler
+      conda activate compiler
+    fi
+
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
     cd ./modules/pyDiSCaMB
@@ -238,7 +246,7 @@ steps:
       libtbx.python ${t}
     done
   displayName: Run pyDiSCaMB tests
-  condition: and(ne(variables['PYTHON_VERSION'], 'py27'), eq(variables['OS'], 'linux-64'))
+  condition: ne(variables['PYTHON_VERSION'], 'py27')
   retryCountOnTaskFailure: 3
 
 # store tests directory as an artifact
