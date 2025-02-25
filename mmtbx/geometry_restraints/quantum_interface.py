@@ -264,10 +264,10 @@ def populate_qmr_defaults(qmr):
       qmr.package.basis_set=''
     if qmr.package.solvent_model is Auto:
       qmr.package.solvent_model=''
-    if qmr.package.multiplicity is Auto:
-      qmr.package.multiplicity=1
-    if qmr.package.charge is Auto:
-      qmr.package.charge=0
+    # if qmr.package.multiplicity is Auto:
+    #   qmr.package.multiplicity=1
+    # if qmr.package.charge is Auto:
+    #   qmr.package.charge=0
   program = qmr.package.program
   if program=='test':
     pass

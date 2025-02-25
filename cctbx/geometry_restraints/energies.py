@@ -270,10 +270,10 @@ class energies(scitbx.restraints.energies):
       else:
         return 0,0,0
 
-  def bond_deviations(self):
+  def bond_deviations(self, origin_id=0):
     if(self.n_bond_proxies is not None):
       bond_deltas = self.bond_proxies.deltas(
-          sites_cart=self.sites_cart, origin_id=0)
+          sites_cart=self.sites_cart, origin_id=origin_id)
       if len(bond_deltas) >0:
         b_sq  = bond_deltas * bond_deltas
         b_ave = math.sqrt(flex.mean_default(b_sq, 0))

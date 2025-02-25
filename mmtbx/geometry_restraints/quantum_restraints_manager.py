@@ -540,19 +540,35 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
     specific_atom_charges=specific_atom_charges,
     specific_atom_multiplicities=specific_atom_multiplicities,
     log=log)
-  if total_charge!=qmr.package.charge:
+  if qmr.package.charge is Auto: #total_charge!=qmr.package.charge:
+
     print(u'  Update charge for "%s" cluster : %s ~> %s' % (qmr.selection,
                                                             qmr.package.charge,
                                                             total_charge),
           file=log)
     qmr.package.charge=total_charge
+  else:
+    print(u'  Setting charge for "%s" cluster : %s (not calculated %s)' % (
+                                                             qmr.selection,
+                                                             qmr.package.charge,
+                                                             total_charge),
+          file=log)
+  #######
+  # MULTI
+  #######
   total_multiplicity = quantum_interface.get_total_multiplicity(qmr)
-  if total_multiplicity!=qmr.package.multiplicity:
+  if qmr.package.multiplicity is Auto: #total_multiplicity!=qmr.package.multiplicity:
     print(u'  Update multiplicity for "%s" cluster : %s ~> %s' % (qmr.selection,
                                                                   qmr.package.multiplicity,
                                                                   total_multiplicity),
           file=log)
     qmr.package.multiplicity=total_multiplicity
+  else:
+    print(u'  Setting multiplicity for "%s" cluster : %s (not calculated %s)' % (
+                                                                  qmr.selection,
+                                                                  qmr.package.multiplicity,
+                                                                  total_multiplicity),
+          file=log)
   qmm = qmm(electron_model.get_atoms(),
             qmr.package.method,
             qmr.package.basis_set,
