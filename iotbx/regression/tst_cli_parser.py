@@ -343,6 +343,45 @@ other_file = %s
     assert 'duplicate user_selected_labels' in str(s)
 
 # -----------------------------------------------------------------------------
+def test_update_all_defaults():
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  class testProgram(ProgramTemplate):
+
+    datatypes = ['model', 'miller_array', 'phil']
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz]
+  )
+  dm.update_all_defaults('neutron')
+  assert 'neutron' in dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in dm.get_model_type(model_1yjp)
+
+  # check that all default types are updated even with label selection
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.update_all_defaults('electron')
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    assert 'electron' in dm.get_miller_array_type(data_mtz, label)
+    assert 'x_ray' not in dm.get_miller_array_type(data_mtz, label)
+
+# -----------------------------------------------------------------------------
 def test_json():
   class testProgram(ProgramTemplate):
     program_name = 'tst_cli_parser'
@@ -634,6 +673,7 @@ if __name__ == '__main__':
   test_label_parsing()
   test_model_type_parsing()
   test_user_selected_labels()
+  test_update_all_defaults()
   test_json()
   test_diff_params()
   test_check_current_dir()
