@@ -175,7 +175,7 @@ class compute_fo_minus_fo_map(object):
       if(not silent):
         fmodel.info().show_rfactors_targets_scales_overall(out=log)
         print(file=log)
-      fmodel.show(show_header=False, show_approx=False, log=log)
+        fmodel.show(show_header=False, show_approx=False, log=log)
 
       fmodels.append(fmodel)
     self.fmodel = fmodels[0]
