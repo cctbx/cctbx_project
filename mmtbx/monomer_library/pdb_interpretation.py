@@ -2600,7 +2600,6 @@ class build_chain_proxies(object):
         nonbonded_energy_type_registry,
         geometry_proxy_registries,
         cystein_sulphur_i_seqs,
-        cystein_monomer_mappings,
         is_unique_model,
         i_model,
         i_conformer,
@@ -2966,7 +2965,6 @@ class build_chain_proxies(object):
           if (sulphur_atom is not None
               and sulphur_atom.i_seq not in cystein_sulphur_i_seqs):
             cystein_sulphur_i_seqs.append(sulphur_atom.i_seq)
-            cystein_monomer_mappings.append(mm)
       if (conformation_dependent_restraints.is_available):
         cdr = conformation_dependent_restraints \
                 .build_conformation_dependent_angle_proxies(
@@ -3618,7 +3616,6 @@ class build_all_chain_proxies(linking_mixins):
       n_seq=self.pdb_atoms.size(),
       strict_conflict_handling=strict_conflict_handling)
     self.cystein_sulphur_i_seqs = flex.size_t()
-    self.cystein_monomer_mappings = []
     n_unique_models = 0
 
     use_ncs_for_interpretation = False
@@ -3722,7 +3719,6 @@ class build_all_chain_proxies(linking_mixins):
             nonbonded_energy_type_registry=self.nonbonded_energy_type_registry,
             geometry_proxy_registries=self.geometry_proxy_registries,
             cystein_sulphur_i_seqs=self.cystein_sulphur_i_seqs,
-            cystein_monomer_mappings=self.cystein_monomer_mappings,
             is_unique_model=is_unique_model,
             i_model=i_model,
             i_conformer=i_conformer,
@@ -3976,6 +3972,14 @@ class build_all_chain_proxies(linking_mixins):
       self.scattering_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.nonbonded_energy_type_registry.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
       self.geometry_proxy_registries.expand_with_ncs(nrgl, self.pdb_hierarchy.atoms_size())
+      # Expand cystein_sulphur_i_seqs
+      new_cystein_sulphur_i_seqs = list(self.cystein_sulphur_i_seqs)
+      for master_c_iseq in self.cystein_sulphur_i_seqs:
+        copy_iseqs = nrgl.get_copy_iseqs([master_c_iseq])
+        flatten_copies = [item for sublist in copy_iseqs for item in sublist]
+        new_cystein_sulphur_i_seqs.extend(flatten_copies)
+      self.cystein_sulphur_i_seqs = flex.size_t(new_cystein_sulphur_i_seqs)
+
       # self.scattering_type_registry._show()
     # STOP()
 
