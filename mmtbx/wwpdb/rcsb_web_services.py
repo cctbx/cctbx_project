@@ -33,6 +33,19 @@ data_only_filter = {
   }
 }
 
+def clashscore_filter(operator, value):
+  assert operator in ["greater", "less", "less_or_equal", "greater_or_equal"]
+  filt = {
+    "type": "terminal",
+    "service": "text",
+    "parameters": {
+      "attribute": "pdbx_vrpt_summary_geometry.clashscore"
+    }
+  }
+  filt["parameters"]["operator"] = operator
+  filt["parameters"]["value"] = value
+  return filt
+
 def resolution_filter(operator, value):
   assert operator in ["greater", "less", "less_or_equal", "greater_or_equal"]
   filt = {
@@ -75,7 +88,7 @@ def add_nodes_to_query_if_needed_in_place(query_json):
 
 def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, log=None,
-    sort_by_resolution=False):
+    sort_by_resolution=False, clashscore_range=None):
   """  Make request to RCSB search API and return list of PDB ids, optionally with
   chain IDs. If query_json is not supplied, generic one will be used which
   searches for everything in PDB. It will be enhanced according to other parameters.
@@ -90,6 +103,7 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
       data_only (bool, optional): Return only entries with experimental data. Defaults to False.
       log (_type_, optional): Handler for log. Defaults to None.
       sort_by_resolution (bool, optional): Sort by entry resolution. Defaults to False.
+      clashscore_range (tuple): tuple of min and max clashscore, e.g. (0,10) or None
 
   Returns:
       list: PDB ids
@@ -124,6 +138,10 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
   if d_min is not None:
     add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(resolution_filter("greater", d_min))
+  if clashscore_range is not None:
+    add_nodes_to_query_if_needed_in_place(query_json)
+    query_json["query"]["nodes"].append(clashscore_filter("greater", clashscore_range[0]))
+    query_json["query"]["nodes"].append(clashscore_filter("less", clashscore_range[1]))
   if (protein_only):
     add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(polymeric_type_filter("Protein (only)"))

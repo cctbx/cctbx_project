@@ -90,7 +90,9 @@ def exercise_3():
   r = rcsb_web_services.post_query(d_min=5)
   assert len(r) > 1
   r = rcsb_web_services.post_query(sort_by_resolution=True)
-  assert len(r) > 1
+  assert len(r) > 180000
+  r = rcsb_web_services.post_query(clashscore_range=(1,5))
+  assert len(r) > 80000
 
 def exercise_get_emdb_id():
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('8wcc')
