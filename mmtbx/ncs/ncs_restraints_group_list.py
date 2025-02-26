@@ -268,8 +268,7 @@ class class_ncs_restraints_group_list(list):
           for i, c in enumerate(gr.copies):
             result[i].append(c.iselection[iseq_idex])
         return result
-
-
+    return result
 
   def get_n_groups(self):
     return len(self)
