@@ -1080,14 +1080,15 @@ class _():
     n_not_shown = correct_id_proxies - n_outputted
     return sorted_table, n_not_shown
 
-  def get_outliers(self, sites_cart, sigma_threshold):
+  def get_outliers(self, sites_cart, sigma_threshold, origin_id=None):
     result = []
     from cctbx.geometry_restraints.linking_class import linking_class
     origin_ids = linking_class()
+    if origin_id is None: origin_id=origin_ids.get_origin_id('covalent geometry')
     vals = self.get_sorted(
         by_value="delta",
         sites_cart=sites_cart,
-        origin_id=origin_ids.get_origin_id('covalent geometry'))[0]
+        origin_id=origin_id)[0]
     if(vals is None): return result
     for it in vals:
       i,j = it[0],it[1]
@@ -1539,9 +1540,11 @@ class _():
         site_labels=site_labels, max_items=max_items,
         get_restraints_only=False, origin_id=origin_id)
 
-  def get_outliers(self, sites_cart, sigma_threshold):
+  def get_outliers(self, sites_cart, sigma_threshold, origin_id=0):
     result = []
-    vals = self.get_sorted(by_value="delta", sites_cart=sites_cart)[0]
+    vals = self.get_sorted(by_value="delta",
+                           origin_id=origin_id,
+                           sites_cart=sites_cart)[0]
     if(vals is None): return result
     for it in vals:
       i,j,k = [int(i) for i in it[0]]

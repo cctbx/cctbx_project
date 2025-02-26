@@ -195,11 +195,11 @@ class energies(scitbx.restraints.energies):
     self.finalize_target_and_gradients()
 
   # Not used anymore? -- used in model_statistics.py
-  def get_filtered_n_bond_proxies(self):
-    return self.bond_proxies.simple.proxy_select(origin_id=0).size()
+  def get_filtered_n_bond_proxies(self, origin_id=0):
+    return self.bond_proxies.simple.proxy_select(origin_id=origin_id).size()
 
-  def get_filtered_n_angle_proxies(self):
-    return self.angle_proxies.proxy_select(origin_id=0).size()
+  def get_filtered_n_angle_proxies(self, origin_id=0):
+    return self.angle_proxies.proxy_select(origin_id=origin_id).size()
 
   def get_filtered_n_dihedral_proxies(self):
     return self.dihedral_proxies.proxy_select(origin_id=0).size()
@@ -207,13 +207,17 @@ class energies(scitbx.restraints.energies):
   def get_filtered_n_planarity_proxies(self):
     return self.planarity_proxies.proxy_select(origin_id=0).size()
 
-  def get_angle_outliers(self, sites_cart, sigma_threshold=4):
+  def get_angle_outliers(self, sites_cart, sigma_threshold=4, origin_id=0):
     return self.angle_proxies.get_outliers(sites_cart=sites_cart,
-                                           sigma_threshold=sigma_threshold)
+                                           sigma_threshold=sigma_threshold,
+                                           origin_id=origin_id,
+                                           )
 
-  def get_bond_outliers(self, sites_cart, sigma_threshold=4):
-    return self.bond_proxies.get_outliers(sites_cart=sites_cart,
-                                           sigma_threshold=sigma_threshold)
+  def get_bond_outliers(self, sites_cart, sigma_threshold=4, origin_id=0):
+    return self.bond_proxies.get_outliers( sites_cart=sites_cart,
+                                           sigma_threshold=sigma_threshold,
+                                           origin_id=origin_id,
+                                           )
 
   def get_dihedral_outliers(self, sites_cart, sigma_threshold=4):
     return self.dihedral_proxies.get_outliers(sites_cart=sites_cart,
@@ -333,9 +337,9 @@ class energies(scitbx.restraints.energies):
       else:
         return 0,0,0
 
-  def angle_deviations(self):
+  def angle_deviations(self, origin_id=0):
     if(self.n_angle_proxies is not None):
-      angle_deltas = self.angle_proxies.proxy_select(origin_id=0).deltas(
+      angle_deltas = self.angle_proxies.proxy_select(origin_id=origin_id).deltas(
           sites_cart=self.sites_cart)
       if len(angle_deltas) > 0:
         a_sq  = angle_deltas * angle_deltas

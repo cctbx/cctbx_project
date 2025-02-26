@@ -69,32 +69,36 @@ class geometry(object):
         self.from_restraints.den_residual_sum+
         self.from_restraints.ramachandran_residual_sum)
 
-  def angle(self, return_rmsZ=False):
+  def angle(self, origin_id=0, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
         mi,ma,me = self.from_restraints.angle_deviations_z()
       else:
-        mi,ma,me = self.from_restraints.angle_deviations()
-      n = self.from_restraints.get_filtered_n_angle_proxies()
+        mi,ma,me = self.from_restraints.angle_deviations(origin_id=origin_id)
+      n = self.from_restraints.get_filtered_n_angle_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-        sigma_threshold=4)
+        sigma_threshold=4,
+        origin_id=origin_id,
+        )
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def bond(self, return_rmsZ=False):
+  def bond(self, origin_id=0, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
         mi,ma,me = self.from_restraints.bond_deviations_z()
       else:
-        mi,ma,me = self.from_restraints.bond_deviations()
-      n = self.from_restraints.get_filtered_n_bond_proxies()
+        mi,ma,me = self.from_restraints.bond_deviations(origin_id=origin_id)
+      n = self.from_restraints.get_filtered_n_bond_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
-        sigma_threshold=4)
+        sigma_threshold=4,
+        origin_id=origin_id,
+        )
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
   def chirality(self):
@@ -311,7 +315,10 @@ class geometry(object):
     bonds = self.bond()
     return bonds.n
 
-  def show(self, log=None, prefix="", exclude_protein_only_stats=False, uppercase=True):
+  def show(self, log=None, prefix="",
+           exclude_protein_only_stats=False,
+           include_rmsd_details=False,
+           uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
       if f1 is None  : return '   -       -       -  '
@@ -413,6 +420,19 @@ class geometry(object):
     if( uppercase ):
       result = result.upper()
     print(result, file=log)
+
+    if include_rmsd_details:
+      from cctbx.geometry_restraints.linking_class import linking_class
+      origin_ids = linking_class()
+      print('Details of bonding type rmsd', file=log)
+      for key, i in origin_ids.items():
+        bond_rc=self.bond(origin_id=i)
+        angle_rc=self.angle(origin_id=i)
+        if bond_rc.n:
+          print(f'  {key:20s} : bond  {bond_rc.mean:12.5f} ({bond_rc.n:5d})', file=log)
+        if angle_rc.n:
+          print(f'  {key:20s} : angle {angle_rc.mean:12.3f} ({angle_rc.n:5d})', file=log)
+
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
     if cif_block is None:
