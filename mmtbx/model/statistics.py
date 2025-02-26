@@ -424,14 +424,22 @@ class geometry(object):
     if include_rmsd_details:
       from cctbx.geometry_restraints.linking_class import linking_class
       origin_ids = linking_class()
-      print('Details of bonding type rmsd', file=log)
+      print('%sDetails of bonding type rmsd' % prefix, file=log)
       for key, i in origin_ids.items():
         bond_rc=self.bond(origin_id=i)
         angle_rc=self.angle(origin_id=i)
         if bond_rc.n:
-          print(f'  {key:20s} : bond  {bond_rc.mean:12.5f} ({bond_rc.n:5d})', file=log)
+          # print(f'{prefix}  {key:20s} : bond  {bond_rc.mean:12.5f} ({bond_rc.n:5d})', file=log)
+          print('%s  %-20s : bond   %12.5f (%5d)' % (prefix,
+                                                     key,
+                                                     bond_rc.mean,
+                                                     bond_rc.n), file=log)
         if angle_rc.n:
-          print(f'  {key:20s} : angle {angle_rc.mean:12.3f} ({angle_rc.n:5d})', file=log)
+          # print(f'{prefix}  {key:20s} : angle {angle_rc.mean:12.3f} ({angle_rc.n:5d})', file=log)
+          print('%s  %-20s : angle  %12.5f (%5d)' % (prefix,
+                                                     key,
+                                                     angle_rc.mean,
+                                                     angle_rc.n), file=log)
 
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
