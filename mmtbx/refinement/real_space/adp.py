@@ -310,8 +310,10 @@ class ncs_aware_refinement(object):
       else:
         for it in range(1,2):
           x = fmodel.xray_structure.extract_u_iso_or_u_equiv()*adptbx.u_as_b(1.)
+          ma = min(999,flex.max(x)*2)
+          if ma<1: ma = 100
           lower = flex.double(x.size(), 0)
-          upper = flex.double(x.size(), min(999,flex.max(x)*2) )
+          upper = flex.double(x.size(), ma )
           calculator = tg(
             fmodel            = fmodel,
             x                 = x,
