@@ -12,66 +12,47 @@ import requests
 search_base_url = "https://search.rcsb.org/rcsbsearch/v2/query?json="
 report_base_url = "https://data.rcsb.org/graphql"
 
-xray_only_filter = {
-  "type": "terminal",
-  "service": "text",
-  "parameters": {
-    "operator": "exact_match",
-    "value": "X-RAY DIFFRACTION",
-    "attribute": "exptl.method"
-  }
-}
-
-data_only_filter = {
-  "type": "terminal",
-  "service": "text",
-  "parameters": {
-    "operator": "exact_match",
-    "negation": False,
-    "value": "Y",
-    "attribute": "rcsb_accession_info.has_released_experimental_data"
-  }
-}
-
-def clashscore_filter(operator, value):
-  assert operator in ["greater", "less", "less_or_equal", "greater_or_equal"]
+def value_attribute_filter(attribute_name, operator, value):
+  assert operator in ["greater", "less", "less_or_equal", "greater_or_equal", "exact_match"]
   filt = {
     "type": "terminal",
     "service": "text",
     "parameters": {
-      "attribute": "pdbx_vrpt_summary_geometry.clashscore"
+      "attribute": attribute_name,
+      "operator": operator,
+      "value" : value
     }
   }
-  filt["parameters"]["operator"] = operator
-  filt["parameters"]["value"] = value
   return filt
 
-def resolution_filter(operator, value):
-  assert operator in ["greater", "less", "less_or_equal", "greater_or_equal"]
-  filt = {
-    "type": "terminal",
-    "service": "text",
-    "parameters": {
-      "attribute": "rcsb_entry_info.diffrn_resolution_high.value"
-    }
-  }
-  filt["parameters"]["operator"] = operator
-  filt["parameters"]["value"] = value
-  return filt
+def data_only_filter():
+  return value_attribute_filter(
+      "rcsb_accession_info.has_released_experimental_data", "exact_match", "Y")
+
+def xray_only_filter():
+  return value_attribute_filter(
+      "exptl.method", "exact_match", "X-RAY DIFFRACTION")
 
 def polymeric_type_filter(value="Protein (only)"):
   assert value in ["Protein (only)", "Protein/NA", "Nucleic acid (only)", "Other"]
-  filt = {
-    "type": "terminal",
-    "service": "text",
-    "parameters": {
-      "operator": "exact_match",
-      "negation": False,
-      "attribute": "rcsb_entry_info.selected_polymer_entity_types"
-    }
-  }
-  filt["parameters"]["value"] = value
-  return filt
+  return value_attribute_filter(
+      "rcsb_entry_info.selected_polymer_entity_types", "exact_match", value)
+
+def clashscore_filter(operator, value):
+  return value_attribute_filter(
+      "pdbx_vrpt_summary_geometry.clashscore", operator, value)
+
+def rama_outliers_filter(operator, value):
+  return value_attribute_filter(
+      "pdbx_vrpt_summary_geometry.percent_ramachandran_outliers", operator, value)
+
+def rota_outliers_filter(operator, value):
+  return value_attribute_filter(
+      "pdbx_vrpt_summary_geometry.percent_rotamer_outliers", operator, value)
+
+def resolution_filter(operator, value):
+  return value_attribute_filter(
+      "rcsb_entry_info.diffrn_resolution_high.value", operator, value)
 
 sort_by_res = \
     {
@@ -88,7 +69,8 @@ def add_nodes_to_query_if_needed_in_place(query_json):
 
 def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     protein_only=False, data_only=False, log=None,
-    sort_by_resolution=False, clashscore_range=None):
+    sort_by_resolution=False, clashscore_range=None,
+    rama_outliers_range=None, rota_outliers_range=None):
   """  Make request to RCSB search API and return list of PDB ids, optionally with
   chain IDs. If query_json is not supplied, generic one will be used which
   searches for everything in PDB. It will be enhanced according to other parameters.
@@ -128,10 +110,10 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
   if (xray_only):
     print("  limiting to X-ray structures", file=log)
     add_nodes_to_query_if_needed_in_place(query_json)
-    query_json["query"]["nodes"].append(xray_only_filter)
+    query_json["query"]["nodes"].append(xray_only_filter())
     if (data_only):
       add_nodes_to_query_if_needed_in_place(query_json)
-      query_json["query"]["nodes"].append(data_only_filter)
+      query_json["query"]["nodes"].append(data_only_filter())
   if d_max is not None:
     add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(resolution_filter("less", d_max))
@@ -142,6 +124,14 @@ def post_query(query_json=None, xray_only=True, d_max=None, d_min=None,
     add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(clashscore_filter("greater", clashscore_range[0]))
     query_json["query"]["nodes"].append(clashscore_filter("less", clashscore_range[1]))
+  if rama_outliers_range is not None:
+    add_nodes_to_query_if_needed_in_place(query_json)
+    query_json["query"]["nodes"].append(rama_outliers_filter("greater", rama_outliers_range[0]))
+    query_json["query"]["nodes"].append(rama_outliers_filter("less", rama_outliers_range[1]))
+  if rota_outliers_range is not None:
+    add_nodes_to_query_if_needed_in_place(query_json)
+    query_json["query"]["nodes"].append(rota_outliers_filter("greater", rota_outliers_range[0]))
+    query_json["query"]["nodes"].append(rota_outliers_filter("less", rota_outliers_range[1]))
   if (protein_only):
     add_nodes_to_query_if_needed_in_place(query_json)
     query_json["query"]["nodes"].append(polymeric_type_filter("Protein (only)"))
