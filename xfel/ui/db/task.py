@@ -3,7 +3,7 @@ from xfel.ui.db import db_proxy
 from xfel.ui import load_phil_scope_from_dispatcher
 
 task_types = ["indexing", "ensemble_refinement", "scaling", "merging", "phenix"]
-task_dispatchers = [None, "cctbx.xfel.stripe_experiment", "cctbx.xfel.merge", "cctbx.xfel.merge", None]
+task_dispatchers = [None, "cctbx.xfel.time_varying_refinement", "cctbx.xfel.merge", "cctbx.xfel.merge", None]
 task_scope = ["local", "local", "local", "global", "global"]
 
 class Task(db_proxy):
