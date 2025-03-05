@@ -286,7 +286,6 @@ class ManualClusterer:
 
 # Example usage:
 if __name__ == "__main__":
-    # Generate some sample data
     # Janky format
     data = np.load(sys.argv[1])['triplets'][:,1:4]
     data[:,0] = 1/data[:,0]
