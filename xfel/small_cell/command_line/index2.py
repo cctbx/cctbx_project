@@ -23,16 +23,6 @@ class SpotPair:
         v2 = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
         return abs(np.cross(v1, v2))
 
-    
-
-#class GeneratedSpotPair(SpotPair):
-#    def __init__(self, q1, q2, theta, hkl1, hkl2):
-#        super().__init__(q1, q2, theta, preserve_order=True)
-#        self.hkl1 = hkl1 
-#        self.hkl2 = hkl2
-#    def fom(self, other):
-#        pass
-
 @dataclass
 class GeneratedSpotPair():
     hkl1: np.ndarray
@@ -96,14 +86,6 @@ class IndexedSpotPair2d(SpotPair):
                 np.linalg.norm(q2_obs_rot - q2_calc))
 
 
-class SublatticeOneVectorSpotPair(SpotPair):
-    #TODO: stop being a dataclass
-    indexed_vector: np.ndarray
-    indexed_indices: np.ndarray
-
-class UnindexedSpotPair(SpotPair):
-    pass
-
 class VectorPairMatch:
   @classmethod
   def from_pairs(cls, gen_pair, obs_pair):
@@ -117,8 +99,6 @@ class PairMatch2d(VectorPairMatch):
         self.q2 = q2
         self.theta_rad = theta_rad
 
-class FullPairMatch3d(VectorPairMatch):
-    pass
 class OneVectorMatch(VectorPairMatch):
     """
     q1 is the indexed vector and hkl1 is the corresponding indices in the sublattice.
@@ -128,8 +108,7 @@ class OneVectorMatch(VectorPairMatch):
         self.q1 = q1
         self.q2 = q2
         self.theta_rad = theta_rad
-class RationalMatch(VectorPairMatch):
-  pass
+
 
 # A couple helper functions
 
@@ -137,7 +116,6 @@ def angle_between(v1, v2):
     v1_u = v1/np.linalg.norm(v1)
     v2_u = v2/np.linalg.norm(v2)
     return np.degrees(np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0)))
-
 
 def third_vector(q, v1, v2, theta1, theta2):
     """
@@ -563,22 +541,6 @@ class Basis:
         self.hkl2_values = unique_hkl2s
 
         # Create pairs
-#        self.pairs = [
-#            GeneratedSpotPair(
-#                q1=q1,
-#                q2=q2,
-#                theta=theta,
-#                hkl1=indices[i],
-#                hkl2=indices[j]
-#            )
-#            for i, j, q1, q2, theta in zip(
-#                unique_i, unique_j, unique_q1s, unique_q2s, unique_thetas
-#            )
-#        ]
-#        self.q1_values = np.array([gen_pair.q1 for gen_pair in self.pairs])
-#        self.q2_values = np.array([gen_pair.q2 for gen_pair in self.pairs])
-#        self.theta_values = np.array([gen_pair.theta for gen_pair in self.pairs])
-
         
         
 class Basis2d(Basis):
@@ -632,9 +594,9 @@ class Basis2d(Basis):
             np.dot(self.vectors[0], self.vectors[1]) / (a * b)))
         
         return f"a={a:.5f}, b={b:.5f}, gamma={gamma:.2f}°"
+
     def area(self):
         return abs(np.cross(*self.vectors))
-
 
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
                          q_weight: float = 1.0, theta_weight: float = 1.0) -> float:
@@ -701,7 +663,6 @@ class Basis2d(Basis):
         
         # Regenerate points and pairs with new basis
         self.generate_points_and_pairs_fast()
-
 
 
 class Basis3d(Basis):
@@ -771,6 +732,7 @@ class Basis3d(Basis):
             'beta': beta,
             'gamma': gamma
         }
+
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using vectorized operations."""
         
@@ -974,11 +936,6 @@ class Basis3d(Basis):
             print(f"Reciprocal volume: {refined_vols:.6f} Å⁻³")
             print(f"Direct cell volume: {1/refined_vols:.1f} Å³")
 
-
-        
-    
-
-
         
 class LatticeReconstruction:
     def __init__(self, qmax: float, q_tolerance: float = 0.001, 
@@ -1052,8 +1009,6 @@ class LatticeReconstruction:
         """Set up initial 2D sublattice from first pair using least oblique cell."""
         self.sub_basis = Basis.from_params(pair.q1, pair.q2, pair.theta)
         self.sl_from_pair = pair
-
-
         
     def summarize_half_indexed_pairs(self) -> str:
         """Create summary table of half-indexed pairs."""
@@ -1176,7 +1131,6 @@ class LatticeReconstruction:
         print(result)
         return result
 
-
     def print_status(self, verbose=False) -> None:
         """Print current status of reconstruction."""
         print(f"\nCurrent minimum sublattice: {self.sub_basis}")
@@ -1210,7 +1164,6 @@ class LatticeReconstruction:
                     # Skip if no solution exists
                     #print(f"{i}) {i1:2d}  {i2:2d}   No valid solution")
                     pass
-
 
 # Grid search stuff, temporary
 
