@@ -114,7 +114,7 @@ Nobody knows what this does or why it was created
 
 class ReconstructionManager:
   def __init__(self, experiments, reflections, triplets, params):
-    self.reconstructions = []
+    self.trees = []
     self.relationships = {}
     self.experiments = experiments
     self.reflections = reflections
@@ -122,6 +122,57 @@ class ReconstructionManager:
     self.params = params
 
   def initialize(self, cluster_results):
+    """Create initial reconstructions from clusters.
+
+    Each cluster spawns a tree with left and right-handed reconstructions.
+    """
+    for i, cluster in enumerate(cluster_results):
+      tree_reconstructions = []
+
+      # Create left-handed reconstruction
+      spec = TriangleSpec.from_cluster(cluster, self.params, hand=-1)
+      lr_left = spec.reconstruct(self.triplets, self.experiments, self.reflections)
+
+      # Create right-handed reconstruction
+      spec = TriangleSpec.from_cluster(cluster, self.params, hand=1)
+      lr_right = spec.reconstruct(self.triplets, self.experiments, self.reflections)
+
+      # Get wavelength from first experiment
+      wavelength = self.experiments[0].beam.get_wavelength()
+
+      # Create initial alignment targets
+      for lr in (lr_left, lr_right):
+        q1_mag = spec.q1
+        q2_mag = spec.q2
+        theta = spec.theta
+
+        alpha1 = np.arcsin(q1_mag * wavelength/2)
+        q1_target = q1_mag * np.array([np.sin(alpha1), 0, 1 - np.cos(alpha1)])
+
+        alpha2 = np.arcsin(q2_mag * wavelength/2)
+        phi = np.deg2rad(theta)
+        q2_target = q2_mag * np.array([
+          np.sin(alpha2)*np.cos(phi),
+          np.sin(alpha2)*np.sin(phi),
+          1 - np.cos(alpha2)
+        ])
+
+        box_data = {
+          'q_vecs_0': [q1_target],
+          'q_vecs_1': [q2_target],
+          'q_specs': [(q1_mag, spec.q1_sigma), (q2_mag, spec.q2_sigma)],
+          'theta_spec': (theta, spec.theta_sigma),
+          'target_hand': lr.hand
+        }
+
+        self.create_new_reconstruction(box_data)
+        tree_reconstructions.append(lr)
+
+      self.trees.append(tree_reconstructions)
+
+    print(f"Created {len(self.trees)} trees")
+
+  def initialize_old(self, cluster_results):
     """Interactive selection of initial reconstruction."""
     candidates = []
     for cluster in cluster_results:
@@ -175,8 +226,180 @@ class ReconstructionManager:
 
       if result['next_id'] is not None:
         current_id = result['next_id']
+  def main(self):
+    """Main interactive interface for reconstruction management."""
+    if not self.trees:
+      raise Sorry("No reconstruction trees to manage")
+    
+    current_tree = 0
+    current_id = 0
+    selected_boxes = []
 
-  def plot_2d_radial(self, reconstruction=None, reconstruction_id=None, mode='view',
+    # Create and maintain single figure
+    fig, ax = plt.subplots(figsize=(10,8))
+
+    while True:
+      reconstruction = self.trees[current_tree][current_id]
+      print(f"\nViewing tree {current_tree}, reconstruction {current_id} "
+            f"({len(reconstruction.reflections)} reflections)")
+
+
+      # Clear axis for new plot
+      ax.clear()
+
+      # Plot current view
+      self.plot_2d_radial(
+        reconstruction,
+        (current_tree, current_id),
+        ax,
+        selected_boxes
+      )
+
+      def on_key(event):
+        nonlocal current_tree, current_id
+        if event.key == 'h':  # Previous tree
+          if current_tree > 0:
+            current_tree -= 1
+            current_id = 0
+            selected_boxes.clear()
+            ax.clear()
+            self.plot_2d_radial(self.trees[current_tree][current_id],
+                               (current_tree, current_id), ax, selected_boxes)
+            fig.canvas.draw_idle()
+
+        elif event.key == 'l':  # Next tree
+          if current_tree < len(self.trees) - 1:
+            current_tree += 1
+            current_id = 0
+            selected_boxes.clear()
+            ax.clear()
+            self.plot_2d_radial(self.trees[current_tree][current_id],
+                               (current_tree, current_id), ax, selected_boxes)
+            fig.canvas.draw_idle()
+
+        elif event.key == 'j':  # Previous reconstruction in tree
+          if current_id > 0:
+            current_id -= 1
+            selected_boxes.clear()
+            ax.clear()
+            self.plot_2d_radial(self.trees[current_tree][current_id],
+                               (current_tree, current_id), ax, selected_boxes)
+            fig.canvas.draw_idle()
+
+        elif event.key == 'k':  # Next reconstruction in tree
+          if current_id < len(self.trees[current_tree]) - 1:
+            current_id += 1
+            selected_boxes.clear()
+            ax.clear()
+            self.plot_2d_radial(self.trees[current_tree][current_id],
+                               (current_tree, current_id), ax, selected_boxes)
+            fig.canvas.draw_idle()
+
+        elif event.key == '3':  # 3D plot
+          self.plot_3d(current_tree)
+
+        elif event.key == 't':  # Theta refine
+          if selected_boxes:
+            self.trees[current_tree][current_id].theta_refine(selected_boxes)
+            ax.clear()
+            self.plot_2d_radial(self.trees[current_tree][current_id],
+                               (current_tree, current_id), ax, selected_boxes)
+            fig.canvas.draw_idle()
+
+        elif event.key == 'c':  # Clear selections
+          selected_boxes.clear()
+          ax.clear()
+          self.plot_2d_radial(self.trees[current_tree][current_id],
+                             (current_tree, current_id), ax, selected_boxes)
+          fig.canvas.draw_idle()
+
+        elif event.key == 'q':  # Quit
+          plt.close(fig)
+
+      def on_box_select(eclick, erelease):
+        xmin, xmax = sorted([eclick.xdata, erelease.xdata])
+        ymin, ymax = sorted([eclick.ydata, erelease.ydata])
+        selected_boxes.append((xmin, xmax, ymin, ymax))
+        # Draw new box
+        rect = plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin,
+                           fill=False, color='green', alpha=0.5)
+        ax.add_patch(rect)
+        fig.canvas.draw_idle()
+
+      # Connect event handlers
+      fig.canvas.mpl_connect('key_press_event', on_key)
+      rect_selector = RectangleSelector(
+        ax, on_box_select,
+        interactive=False,
+        useblit=True,
+        props=dict(facecolor='none', edgecolor='green', alpha=0.5)
+      )
+
+      plt.show()
+      return  # Exit when figure is closed
+
+
+  def plot_2d_radial(self, reconstruction, reconstruction_id, ax, selected_boxes):
+    """Plot 2D radial view on given axis.
+
+    Args:
+      reconstruction: LatticeReconstruction to plot
+      reconstruction_id: Tuple of (tree_id, recon_id)
+      ax: matplotlib axis to plot on
+      selected_boxes: List of currently selected boxes
+    """
+    # Get data to plot
+    q_vecs = reconstruction.reflections['q.aligned']
+    q_array = q_vecs.as_numpy_array()
+    
+    # Calculate theta and q_mags
+    theta = np.array([self.project_and_get_theta(reconstruction.beam_direction, q)
+                     for q in q_array])
+    q_mags = np.sqrt(np.sum(q_array**2, axis=1))
+
+    # Basic plotting
+    ax.scatter(theta, q_mags, alpha=0.2, s=3, c='blue')
+    
+    # Draw relationship lines
+    if hasattr(self, 'relationships'):
+      tree_id, recon_id = reconstruction_id
+      for (parent_key, child_key), rel_info in self.relationships.items():
+        if parent_key == (tree_id, recon_id):
+          # This reconstruction is the parent - draw child reference lines
+          theta1 = rel_info['parent_view']['theta1']
+          theta2 = rel_info['parent_view']['theta2']
+          q1 = np.linalg.norm(rel_info['parent_view']['q1_center'])
+          q2 = np.linalg.norm(rel_info['parent_view']['q2_center'])
+          ax.plot([theta1, theta2], [q1, q2], 'g-', linewidth=2, alpha=0.7)
+        elif child_key == (tree_id, recon_id):
+          # This reconstruction is the child - draw parent reference line
+          theta1 = rel_info['child_view']['theta1']
+          theta2 = rel_info['child_view']['theta2']
+          q1 = np.linalg.norm(rel_info['child_view']['q1_center'])
+          q2 = np.linalg.norm(rel_info['child_view']['q2_center'])
+          ax.plot([theta1, theta2], [q1, q2], 'r-', linewidth=2, alpha=0.7)
+    
+    # Draw existing box selections
+    for xmin, xmax, ymin, ymax in selected_boxes:
+      rect = plt.Rectangle((xmin, ymin), xmax-xmin, ymax-ymin,
+                         fill=False, color='green', alpha=0.5)
+      ax.add_patch(rect)
+    
+    # Configure axis
+    ax.set_xlim(-180, 180)
+    ax.set_ylim(.1, .5)
+    ax.yaxis.set_major_formatter(tick.FuncFormatter(
+      lambda q, _: f"{1/q:.1f}" if q > 0 else ""
+    ))
+    ax.grid(True, linestyle=':')
+    ax.set_xlabel('Azimuthal angle θ (degrees)')
+    ax.set_ylabel('Resolution d (Å)')
+    
+    # Set title
+    title = "Left-handed" if reconstruction.hand == -1 else "Right-handed"
+    ax.set_title(title)
+
+  def plot_2d_radial_old(self, reconstruction=None, reconstruction_id=None, mode='view',
                      navigation_info=None):
     """Plot 2D radial view of a reconstruction with mode-specific interactions."""
     if (reconstruction is None) == (reconstruction_id is None):
@@ -188,9 +411,9 @@ class ReconstructionManager:
     # Initialize result dictionary
     result = {
       'next_id': None,
-      'accepted': None,    # for screen mode
-      'boxes': [],         # for augment mode
-      'points': []         # for select mode
+      'action': None,
+      'boxes': [],
+      'points': []
     }
     
     # Set up plot
@@ -207,6 +430,26 @@ class ReconstructionManager:
 
     # Plot spots
     ax.scatter(theta, q_mags, alpha=0.2, s=3, c='blue')
+
+    # Draw lines between reference groups
+    for (parent_id, child_id), rel_info in self.relationships.items():
+      if parent_id == reconstruction_id:
+        # This reconstruction is the parent - draw child reference lines
+        theta1 = rel_info['parent_view']['theta1']
+        theta2 = rel_info['parent_view']['theta2']
+        q1 = np.linalg.norm(rel_info['parent_view']['q1_center'])
+        q2 = np.linalg.norm(rel_info['parent_view']['q2_center'])
+        ax.plot([theta1, theta2], [q1, q2], 'g-', linewidth=2, alpha=0.7,
+               label='Child reference' if parent_id == reconstruction_id else None)
+      elif child_id == reconstruction_id:
+        # This reconstruction is the child - draw parent reference line
+        theta1 = rel_info['child_view']['theta1']
+        theta2 = rel_info['child_view']['theta2']
+        q1 = np.linalg.norm(rel_info['child_view']['q1_center'])
+        q2 = np.linalg.norm(rel_info['child_view']['q2_center'])
+        ax.plot([theta1, theta2], [q1, q2], 'r-', linewidth=2, alpha=0.7,
+               label='Parent reference' if child_id == reconstruction_id else None)
+
 
     # Configure axis
     ax.set_xlim(-180, 180)
@@ -241,12 +484,20 @@ class ReconstructionManager:
           result['next_id'] = reconstruction_id + 1
           plt.close(fig)
 
+      elif event.key == '3':  # Show 3D plot
+        self.plot_3d()
+
+      elif event.key == 'q':  # Quit
+        result['done'] = True
+        plt.close(fig)
       else:
         # Mode-specific key handling
         if mode == 'screen':
           if event.key in ['y', 'n']:
             result['accepted'] = (event.key == 'y')
             plt.close(fig)
+
+
 
     # Mode-specific mouse handling
     if mode == 'augment':
@@ -390,13 +641,35 @@ class ReconstructionManager:
       q1_center, q2_center = q2_center, q1_center
       q1_sigma, q2_sigma = q2_sigma, q1_sigma
 
-    # Compute rotation direction
-    # Map angles to [-180,180] for consistent comparison
-    theta1 = (theta1 + 180) % 360 - 180
-    theta2 = (theta2 + 180) % 360 - 180
-    # Left-handed if rotation is counterclockwise
-    selected_hand = -1 if (theta2 - theta1 + 180) % 360 - 180 > 0 else 1
+    # Get mean q-vectors for each selection
+    q1_mean = np.mean(box_data['q_vecs_0'], axis=0)
+    q2_mean = np.mean(box_data['q_vecs_1'], axis=0)
+    beam_dir = reconstruction.beam_direction
+
+    # Ensure q1 is the longer d-spacing (smaller q)
+    if np.linalg.norm(q1_mean) > np.linalg.norm(q2_mean):
+        q1_mean, q2_mean = q2_mean, q1_mean
+
+    # Project both vectors onto plane normal to beam
+    def project_to_beam_normal(v):
+        return v - np.dot(v, beam_dir) * beam_dir
+
+    q1_proj = project_to_beam_normal(q1_mean)
+    q2_proj = project_to_beam_normal(q2_mean)
+
+    # Normalize projections
+    q1_proj = q1_proj / np.linalg.norm(q1_proj)
+    q2_proj = q2_proj / np.linalg.norm(q2_proj)
+
+    # Cross product determines rotation direction
+    # If (q1 × q2)·beam > 0, rotation is counterclockwise around beam
+    cross_prod = np.cross(q1_proj, q2_proj)
+    selected_hand = -1 if np.dot(cross_prod, beam_dir) > 0 else 1
     target_hand = -selected_hand
+    ###################### HACK #####################
+    # I think the original hand determination in TripletData was backwards. We
+    # can fix later but for now we just invert it here.
+    target_hand *= -1
     box_data['target_hand'] = target_hand
 
     # Convert to d-spacings for display
@@ -467,6 +740,30 @@ class ReconstructionManager:
     span_d = SpanSelector(ax_theta, on_theta_select, 'horizontal')
     plt.show()
  
+  def plot_3d(self, tree_id):
+    """Plot all reconstructions' q-vectors in 3D space."""
+    reconstructions = self.trees[tree_id]
+    fig = plt.figure(figsize=(10,10))
+    ax = fig.add_subplot(111, projection='3d')
+    
+    # Plot each reconstruction in a different color
+    colors = plt.cm.rainbow(np.linspace(0, 1, len(reconstructions)))
+    for i, recon in enumerate(reconstructions):
+      q_vecs = recon.reflections['q.aligned'].as_numpy_array()
+      #mask = np.random.random(len(q_vecs)) < 0.1
+      #q_vecs = q_vecs[mask]
+      ax.scatter(q_vecs[:,0], q_vecs[:,1], q_vecs[:,2], 
+                c=[colors[i]], alpha=0.2, s=1,
+                label=f'Reconstruction {i}')
+    
+    ax.set_xlim((-.5, .5))
+    ax.set_ylim((-.5, .5))
+    ax.set_zlim((-.5, .5))
+    ax.set_xlabel('qx (Å⁻¹)')
+    ax.set_ylabel('qy (Å⁻¹)')
+    ax.set_zlabel('qz (Å⁻¹)')
+    
+    plt.show()
 
 
   def project_and_get_theta(self, beam_dir, q):
@@ -505,10 +802,10 @@ class ReconstructionManager:
 
     Args:
       box_data: Dict containing selection parameters:
-        'd_specs': List of (center, sigma) tuples for d-spacings
+        'q_specs': List of (center, sigma) tuples for q-magnitudes
         'theta_spec': (center, sigma) tuple for angle
         'target_hand': Handedness for new reconstruction
-      reconstruction_id: ID of parent reconstruction (None for initial reconstruction)
+      reconstruction_id: Tuple of (tree_id, recon_id) for parent reconstruction
     """
     # Get parameters from box_data
     q1_mag, q1_sigma = box_data['q_specs'][0]
@@ -542,7 +839,6 @@ class ReconstructionManager:
       q1_target=q1_center,
       q2_target=q2_center
     )
-    self.reconstructions.append(new_recon)
 
     # Get angles in parent's and child's coordinate systems
     if reconstruction_id is not None:
@@ -556,47 +852,33 @@ class ReconstructionManager:
     theta1_child = self.project_and_get_theta(new_recon.beam_direction, q1_center)
     theta2_child = self.project_and_get_theta(new_recon.beam_direction, q2_center)
 
-    # Store relationship
-    parent_id = reconstruction_id if reconstruction_id is not None else -1
-    child_id = len(self.reconstructions) - 1
-    self.relationships[(parent_id, child_id)] = {
+    # Store relationship information
+    if reconstruction_id is not None:
+      tree_id, recon_id = reconstruction_id
+      parent_key = (tree_id, recon_id)
+      child_key = (tree_id, len(self.trees[tree_id]))  # New reconstruction goes in same tree
+      self.relationships[(parent_key, child_key)] = {
         'parent_view': {
-            'q1_center': q1_center,
-            'q2_center': q2_center,
-            'theta1': theta1_parent,
-            'theta2': theta2_parent
+          'q1_center': q1_center,
+          'q2_center': q2_center,
+          'theta1': theta1_parent,
+          'theta2': theta2_parent
         },
         'child_view': {
-            'q1_center': q1_center,  # Same vectors in universal coordinates
-            'q2_center': q2_center,
-            'theta1': theta1_child,
-            'theta2': theta2_child
+          'q1_center': q1_center,
+          'q2_center': q2_center,
+          'theta1': theta1_child,
+          'theta2': theta2_child
         },
-        'hand': target_hand,
-        'box_data': box_data
-    }
+        'hand': target_hand
+      }
 
-    # Validation
-    q_diff1 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q1_center'] -
-                            self.relationships[(parent_id, child_id)]['child_view']['q1_center'])
-    q_diff2 = np.linalg.norm(self.relationships[(parent_id, child_id)]['parent_view']['q2_center'] -
-                            self.relationships[(parent_id, child_id)]['child_view']['q2_center'])
-    if q_diff1 > 1e-6 or q_diff2 > 1e-6:
-        print("Warning: q-vectors differ between parent and child views")
-        print(f"Differences: {q_diff1:.2e}, {q_diff2:.2e}")
-
-    # Convert q, sigma_q to d, sigma_d for display
-    d1 = 1/q1_mag
-    d2 = 1/q2_mag
-    sigma_d1 = q1_sigma * d1**2  # Error propagation
-    sigma_d2 = q2_sigma * d2**2
-
-    print(f"\nCreated new reconstruction {child_id}:")
-    print(f"d1 = {d1:.3f}Å (σ = {sigma_d1:.3f}Å)")
-    print(f"d2 = {d2:.3f}Å (σ = {sigma_d2:.3f}Å)")
-    print(f"θ = {theta_center:.1f}° (σ = {theta_sigma:.1f}°)")
-    print(f"hand = {target_hand:+d}")
-    print(f"{len(new_recon.reflections)} reflections")
+    # Add to appropriate tree
+    if reconstruction_id is not None:
+      self.trees[tree_id].append(new_recon)
+    else:
+      # This is a root reconstruction - should have been handled in initialize()
+      pass
 
     return new_recon
 
@@ -800,45 +1082,108 @@ class LatticeReconstruction:
     # Store rotation matrix
     self.orientations[new_id] = rot
     self.reference_spots[new_id] = (i1, i2)
+  def delete_experiments(self, exp_ids):
+    """Remove experiments from reconstruction.
+    
+    Args:
+      exp_ids: List of experiment indices to remove
+    """
+    # Convert to set for faster lookups
+    to_remove = set(exp_ids)
+    
+    # Create new experiment list excluding removed experiments
+    new_experiments = ExperimentList([
+      expt for i, expt in enumerate(self.experiments)
+      if i not in to_remove
+    ])
+    
+    # Create lookup for new experiment indices
+    old_to_new = {}
+    new_id = 0
+    for old_id in range(len(self.experiments)):
+      if old_id not in to_remove:
+        old_to_new[old_id] = new_id
+        new_id += 1
+    
+    # Select reflections to keep and update their experiment IDs
+    keep_sel = flex.bool(len(self.reflections), False)
+    for i in range(len(self.reflections)):
+      old_id = self.reflections['id'][i]
+      if old_id not in to_remove:
+        keep_sel[i] = True
+
+    # Update reflection table
+    self.reflections = self.reflections.select(keep_sel)
+    # Create new_ids array of correct size
+    new_ids = flex.int(len(self.reflections))
+    for i in range(len(self.reflections)):
+      old_id = self.reflections['id'][i]
+      new_ids[i] = old_to_new[old_id]
+    self.reflections['id'] = new_ids
+    
+    # Update experiment list
+    self.experiments = new_experiments
+    
+    # Update beam directions
+    self.beam_directions = [
+      b for i, b in enumerate(self.beam_directions)
+      if i not in to_remove
+    ]
+    
+    # Update reference spots
+    new_reference_spots = {}
+    for old_id, (i1, i2) in self.reference_spots.items():
+      if old_id not in to_remove:
+        new_reference_spots[old_to_new[old_id]] = (i1, i2)
+    self.reference_spots = new_reference_spots
+    
+    # Update orientations
+    new_orientations = {}
+    for old_id, rot in self.orientations.items():
+      if old_id not in to_remove:
+        new_orientations[old_to_new[old_id]] = rot
+    self.orientations = new_orientations
+    
+    print(f"Removed {len(to_remove)} experiments")
 
   def finish(self, tolerance=5.0):
     """Validate and finalize reconstruction.
-    
+
     Checks that all beam directions are consistent and stores their average.
-    
+    Removes experiments with beam directions that differ from consensus by
+    more than the tolerance.
+
     Args:
-      tolerance: Maximum allowed angle (degrees) between any two beam directions
-    
-    Raises:
-      Sorry if beam directions are inconsistent
+      tolerance: Maximum allowed angle (degrees) between any beam direction
+                and the mean direction
     """
     if not self.beam_directions:
       raise Sorry("No beam directions stored")
-      
+
     # Normalize all vectors
     beams = np.array([b/np.linalg.norm(b) for b in self.beam_directions])
-    
-    # Check consistency
-    max_angle = 0
-    problem_pair = None
-    for i in range(len(beams)):
-      for j in range(i+1, len(beams)):
-        angle = np.rad2deg(np.arccos(np.clip(np.dot(beams[i], beams[j]), -1, 1)))
-        if angle > max_angle:
-          max_angle = angle
-          problem_pair = (i, j)
-    
-    if max_angle > tolerance:
-      i, j = problem_pair
-      raise Sorry(
-        f"Beam directions differ by {max_angle:.1f}° (tolerance: {tolerance}°)\n"
-        f"Experiment {i}: {self.beam_directions[i]}\n"
-        f"Experiment {j}: {self.beam_directions[j]}"
-      )
-    
-    # Store average beam direction
+
+    # Compute mean beam direction
     mean_beam = np.mean(beams, axis=0)
-    self.beam_direction = mean_beam / np.linalg.norm(mean_beam)
+    mean_beam = mean_beam / np.linalg.norm(mean_beam)
+
+    # Find experiments that differ too much from mean
+    to_remove = []
+    for i, beam in enumerate(beams):
+      angle = np.rad2deg(np.arccos(np.clip(np.dot(beam, mean_beam), -1, 1)))
+      if angle > tolerance:
+        print(f"Experiment {i} beam differs from mean by {angle:.1f}°")
+        to_remove.append(i)
+
+    if to_remove:
+      print(f"Removing {len(to_remove)} experiments with divergent beam directions")
+      self.delete_experiments(to_remove)
+      # Recompute mean beam from remaining experiments
+      beams = np.array([b/np.linalg.norm(b) for b in self.beam_directions])
+      mean_beam = np.mean(beams, axis=0)
+      mean_beam = mean_beam / np.linalg.norm(mean_beam)
+
+    self.beam_direction = mean_beam
 
   def add_2d(self, expt, refl, i1, i2):
     """Add experiment with initial alignment based on detector coordinates
@@ -2123,6 +2468,9 @@ class TripletData:
 
     triplets = []
 
+    if 's1' not in self.reflections.keys():
+      self.reflections.centroid_px_to_mm(self.experiments)
+      self.reflections.map_centroids_to_reciprocal_space(self.experiments)
     for i_expt, expt in enumerate(self.experiments):
       if i_expt % 1000 == 0:
         print(f"Processing frame {i_expt}")
@@ -3378,6 +3726,8 @@ def run(args=None, phil=phil_scope):
 
   manager = ReconstructionManager(experiments, reflections, triplets, params)
   manager.initialize(triplets.cluster_results)
+  manager.main()
+  import IPython;IPython.embed()
   augment_done = False
   while not augment_done:
     done = manager.augment()
@@ -3418,7 +3768,7 @@ if __name__ == "__main__":
   run()
 
 
-
+def junk():
 #def plot_2d_radial_old(self, reconstruction=None, reconstruction_id=None, mode='view',
 #                   navigation_info=None):
 #  """Plot 2D radial view of a reconstruction with mode-specific interactions."""
@@ -3903,3 +4253,4 @@ if __name__ == "__main__":
 #
 #    plt.tight_layout()
 #    plt.show()
+  pass
