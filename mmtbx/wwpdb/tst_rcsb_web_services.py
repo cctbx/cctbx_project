@@ -107,6 +107,31 @@ def exercise_get_emdb_id():
   emdb_ids = rcsb_web_services.get_emdb_id_for_pdb_id('1yjp')
   assert emdb_ids == None
 
+def exercise_sequence_search():
+  lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
+  r = rcsb_web_services.sequence_search(sequence=lysozyme)
+  print(len(r))
+  assert len(r) > 1200
+  r = rcsb_web_services.sequence_search(sequence=lysozyme, clashscore_range=(0,20))
+  print(len(r))
+  assert len(r) > 1100
+  assert len(r) < 1200
+  r = rcsb_web_services.sequence_search(sequence=lysozyme, rama_outliers_range=(0,1))
+  print(len(r))
+  assert len(r) > 100
+  assert len(r) < 150
+
+def exercise_reference_chain_search():
+  lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme)
+  print(len(r))
+  # This is not going to work at all:
+  # probably because geometry filters are not applicable when we request
+  # "return_type": "polymer_instance", instead of "polymer_entity" in sequence_search.
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, clashscore_range=(0,20))
+  print(len(r))
+  assert len(r) == 0
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   # check if internet and rcsb are available
@@ -121,6 +146,8 @@ if (__name__ == "__main__"):
     exercise_2()
     exercise_3()
     exercise_get_emdb_id()
+    exercise_sequence_search()
+    exercise_reference_chain_search()
     print("OK")
   else:
     print("OK but skipped.")
