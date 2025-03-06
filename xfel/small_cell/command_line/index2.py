@@ -7,16 +7,15 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 
 class SpotPair:
-    
+
     def __init__(self, q1: float, q2: float, theta: float, preserve_order=False):
         # Ensure q1 <= q2
         if not preserve_order and q1 > q2:
-            print('swap')
             q1, q2 = q2, q1
         self.q1 = q1
         self.q2 = q2
         self.theta = theta
-        
+
     def area(self) -> float:
         """Calculate twice the area of the triangle formed by the vectors."""
         v1 = np.array([self.q1, 0.0])
@@ -37,23 +36,23 @@ class IndexedSpotPair2d(SpotPair):
         # Get calculated vectors
         q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
         q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
-        
+
         # Compute angle of q1_calc from x-axis
         phi_calc = np.arctan2(q1_calc[1], q1_calc[0])
-        
+
         # Our observed q1 is along x-axis, so this is our basic rotation
         self.init_phi = phi_calc
-        
+
         # Check if we need to flip orientation by comparing second vector
         q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
         R = np.array([[np.cos(self.init_phi), -np.sin(self.init_phi)],
                       [np.sin(self.init_phi), np.cos(self.init_phi)]])
         q2_obs_rot = R @ q2_obs
-        
+
         # If distance is large, try flipping
         if np.linalg.norm(q2_obs_rot - q2_calc) > np.linalg.norm(q2_obs_rot + q2_calc):
             self.init_phi += np.pi
-        
+
         # Optional: small local optimization to refine this initial guess
         from scipy.optimize import minimize_scalar
         result = minimize_scalar(
@@ -68,20 +67,20 @@ class IndexedSpotPair2d(SpotPair):
         # Compute vectors from indices (fixed)
         q1_calc = self.indices1[0]*basis_vectors[0] + self.indices1[1]*basis_vectors[1]
         q2_calc = self.indices2[0]*basis_vectors[0] + self.indices2[1]*basis_vectors[1]
-        
+
         # Create observed vectors in standard orientation (q1 along x)
         q1_obs = np.array([self.q1, 0.0])
         q2_obs = self.q2 * np.array([np.cos(self.theta), np.sin(self.theta)])
-        
+
         # Total rotation to apply to observed vectors
         total_phi = self.init_phi + delta_phi
         R = np.array([[np.cos(total_phi), -np.sin(total_phi)],
                      [np.sin(total_phi), np.cos(total_phi)]])
-        
+
         # Rotate observed vectors to match calculated
         q1_obs_rot = R @ q1_obs
         q2_obs_rot = R @ q2_obs
-        
+
         return (np.linalg.norm(q1_obs_rot - q1_calc) + 
                 np.linalg.norm(q2_obs_rot - q2_calc))
 
@@ -269,13 +268,60 @@ class Basis:
         self.indexed_pairs = []
 
     @classmethod
-    def from_vectors(cls, vectors: np.ndarray, qmax:float = 0.5, q_tol: float = 0.001,
+    def from_vectors(cls, vectors: np.ndarray, reduce=False, qmax:float = 0.5, q_tol: float = 0.001,
                      theta_tol_deg: float = 1.0):
         assert vectors.shape in ((2,2), (3,3))
         if vectors.shape == (2,2):
-            return Basis2d(vectors, qmax, q_tol, theta_tol_deg)
+            temp_basis = Basis2d(vectors, qmax, q_tol, theta_tol_deg)
+
+            if not reduce: # Short circuit
+                return temp_basis
+
+            temp_basis.generate_points_and_pairs_fast()
+            points = temp_basis.points
+
+            reduced_vectors = []
+            distances = np.linalg.norm(points, axis=1)
+            sort_idx = np.argsort(distances)
+            for i in sort_idx:
+                p = points[i]
+                if len(reduced_vectors) == 0 and np.linalg.norm(p) > 1e-6:
+                    reduced_vectors.append(p)
+                elif len(reduced_vectors) == 1:
+                    cross_prod = np.cross(reduced_vectors[0], p)
+                    if abs(cross_prod) > 1e-6:
+                        reduced_vectors.append(p)
+                        break
+            reduced_vectors = np.vstack(reduced_vectors)
+            return Basis2d(reduced_vectors, qmax, q_tol, theta_tol_deg)
+
         elif vectors.shape == (3,3):
-            return Basis3d(vectors, qmax, q_tol, theta_tol_deg)
+            temp_basis = Basis3d(vectors, qmax, q_tol, theta_tol_deg)
+
+            if not reduce: # Short circuit
+                return temp_basis
+            temp_basis.generate_points_and_pairs_fast()
+            points = temp_basis.points
+            reduced_vectors = []
+            distances = np.linalg.norm(points, axis=1)
+            sort_idx = np.argsort(distances)
+
+            for i in sort_idx:
+                p = points[i]
+                if len(reduced_vectors) == 0 and np.linalg.norm(p) > 1e-6:
+                    reduced_vectors.append(p)
+                elif len(reduced_vectors) == 1:
+                    cross_prod = np.cross(reduced_vectors[0], p)
+                    if np.linalg.norm(cross_prod) > 1e-6:
+                        reduced_vectors.append(p)
+                elif len(reduced_vectors) == 2:
+                    v1, v2 = reduced_vectors
+                    det = np.dot(np.cross(v1, v2), p)
+                    if abs(det) > 1e-6:
+                        reduced_vectors.append(p)
+                        break
+            reduced_vectors = np.vstack(reduced_vectors)
+            return Basis3d(reduced_vectors, qmax, q_tol, theta_tol_deg)
 
     @classmethod
     def from_params(cls, *params, reduce=True, **init_kwargs):
@@ -368,7 +414,7 @@ class Basis:
                 vectors = np.vstack(basis_vectors)
 
         return cls.from_vectors(vectors, **init_kwargs)
-            
+
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Try to match a SpotPair against this basis's generated pairs.
 
@@ -392,13 +438,12 @@ class Basis:
               dtheta < self.theta_tolerance
               ):
               match_candidates.append(gen_pair)
-                
+
 
         # Try one-vector matching
         for point, indices in zip(self.points, self.point_indices):
           q = np.linalg.norm(point)
           if abs(q - pair.q1) < self.q_tolerance:
-            #import IPython;IPython.embed()
             return ({
               'vector': point,
               'indices': indices,
@@ -428,19 +473,19 @@ class Basis:
         mesh = np.meshgrid(*ranges)
         indices = np.column_stack([m.flatten() for m in mesh])
         points = indices @ self.vectors
-        
+
         # Filter by magnitude
         magnitudes = np.linalg.norm(points, axis=1)
         mask = magnitudes <= self.qmax
         self.points = points[mask]
         self.point_indices = indices[mask]
-        
+
         # Remove origin
         non_zero_mask = ~np.all(self.points == 0, axis=1)
         points = self.points[non_zero_mask]
         indices = self.point_indices[non_zero_mask]
         magnitudes = np.linalg.norm(points, axis=1)
-        
+
         # Generate unique pairs
         pairs = []
         seen_pairs = set()
@@ -449,7 +494,7 @@ class Basis:
             for j in range(len(points)):
                 if i==j: continue
                 p2, idx2, q2 = points[j], indices[j], magnitudes[j]
-                
+
                 # Try all four combinations: (p1,p2), (p1,-p2), (-p1,p2), (-p1,-p2)
                 # but only keep those where first vector magnitude <= second
                 pairs_to_check = []
@@ -462,7 +507,104 @@ class Basis:
                             q1=q1, q2=q2, theta=theta, hkl1=idx1, hkl2=idx2))
         self.pairs = pairs
 
-    def generate_points_and_pairs_fast(self) -> None:
+    def generate_points_and_pairs_fast(self):
+        """Generate unique lattice point pairs using matrix operations for efficiency."""
+        # Generate points
+        max_indices = np.ceil(self.qmax / np.linalg.norm(self.vectors, axis=1))
+        ranges = [np.arange(-n, n+1) for n in max_indices.astype(int)]
+
+        # For 2D case
+        if len(ranges) == 2:
+            # Only use positive h values (for non-zero h)
+            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
+            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
+        else:  # 3D case
+            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
+            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
+            l_range = np.arange(-max_indices[2], max_indices[2] + 1)
+
+        # Mesh grid for indices
+        if len(ranges) == 2:
+            H, K = np.meshgrid(h_range, k_range, indexing='ij')
+            indices = np.column_stack((H.flatten(), K.flatten()))
+        else:  # 3D
+            H, K, L = np.meshgrid(h_range, k_range, l_range, indexing='ij')
+            indices = np.column_stack((H.flatten(), K.flatten(), L.flatten()))
+
+        # Generate points
+        points = indices @ self.vectors
+        self.points = points
+
+        # Filter by magnitude
+        magnitudes = np.linalg.norm(points, axis=1)
+        mask = (magnitudes <= self.qmax) & (magnitudes > 0)  # Exclude origin
+
+        # Keep only points within qmax
+        filtered_points = points[mask]
+        filtered_indices = indices[mask]
+        filtered_magnitudes = magnitudes[mask]
+
+        self.points = filtered_points
+        self.point_indices = filtered_indices
+
+        # Sort by magnitude
+        sort_idx = np.argsort(filtered_magnitudes)
+        sorted_points = filtered_points[sort_idx]
+        sorted_indices = filtered_indices[sort_idx]
+        sorted_magnitudes = filtered_magnitudes[sort_idx]
+
+        # Create normalized vectors for dot product
+        normalized_points = sorted_points / sorted_magnitudes[:, np.newaxis]
+
+        # Calculate all pairwise dot products (for normal points)
+        n_points = len(sorted_points)
+        dot_products = np.dot(normalized_points, normalized_points.T)
+
+        # Create inverted indices (-h,-k,...)
+        inverted_indices = -sorted_indices
+        inverted_points = inverted_indices @ self.vectors
+
+        # Normalize inverted points
+        inverted_magnitudes = np.linalg.norm(inverted_points, axis=1)
+        normalized_inverted = inverted_points / inverted_magnitudes[:, np.newaxis]
+
+        # Calculate dot products between normal and inverted points
+        mixed_dot_products = np.dot(normalized_points, normalized_inverted.T)
+
+        # Get upper triangle indices (excluding diagonal)
+        rows, cols = np.triu_indices(n_points, k=1)
+
+        # Normal pairs
+        q1_normal = sorted_magnitudes[rows]
+        q2_normal = sorted_magnitudes[cols]
+        hkl1_normal = sorted_indices[rows]
+        hkl2_normal = sorted_indices[cols]
+        theta_normal = np.arccos(np.clip(dot_products[rows, cols], -1, 1))
+
+        # Inverted pairs
+        q1_inverted = sorted_magnitudes[rows]
+        q2_inverted = sorted_magnitudes[cols]  # Magnitude is the same for ±hkl
+        hkl1_inverted = sorted_indices[rows]
+        hkl2_inverted = inverted_indices[cols]
+        theta_inverted = np.arccos(np.clip(mixed_dot_products[rows, cols], -1, 1))
+
+        # Stack normal and inverted pairs
+        self.q1_values = np.concatenate([q1_normal, q1_inverted])
+        self.q2_values = np.concatenate([q2_normal, q2_inverted])
+        self.theta_values = np.concatenate([theta_normal, theta_inverted])
+        self.hkl1_values = np.vstack([hkl1_normal, hkl1_inverted])
+        self.hkl2_values = np.vstack([hkl2_normal, hkl2_inverted])
+
+        # Ensure q1 <= q2
+        swap_mask = self.q1_values > self.q2_values
+        if np.any(swap_mask):
+            # Swap q values
+            self.q1_values[swap_mask], self.q2_values[swap_mask] = self.q2_values[swap_mask], self.q1_values[swap_mask].copy()
+
+            # Swap hkl values
+            self.hkl1_values[swap_mask], self.hkl2_values[swap_mask] = self.hkl2_values[swap_mask], self.hkl1_values[swap_mask].copy()
+
+    def generate_points_and_pairs_fast_old(self) -> None:
         """Generate all unique lattice point pairs within qmax, using vectorized operations."""
         # Generate points - this part is already well-vectorized
         max_indices = np.ceil(self.qmax / np.linalg.norm(self.vectors, axis=1))
@@ -515,20 +657,7 @@ class Basis:
         import pandas as pd
         df = pd.DataFrame(triplets)
         unique_mask = df.drop_duplicates().index.tolist()
-#        unique_mask = np.ones(len(triplets), dtype=bool)
-#
-#        # This is still not fully vectorized, but much more efficient
-#        seen = set()
-#        for idx, (q1, q2, theta) in enumerate(triplets):
-#            key = (q1, q2, theta)
-#            if key in seen:
-#                unique_mask[idx] = False
-#            else:
-#                seen.add(key)
 
-        # Keep only unique pairs
-#        unique_i = i_indices[unique_mask]
-#        unique_j = j_indices[unique_mask]
         unique_q1s = q1s[unique_mask]
         unique_q2s = q2s[unique_mask]
         unique_thetas = thetas[unique_mask]
@@ -540,10 +669,52 @@ class Basis:
         self.hkl1_values = unique_hkl1s
         self.hkl2_values = unique_hkl2s
 
-        # Create pairs
-        
-        
+
+
 class Basis2d(Basis):
+    def fom_1d(self, pairs, delta=.001):
+        """Calculate figure of merit as percentage of observed q-values within threshold of lattice points.
+
+    Args:
+        pairs: List of SpotPair objects with observed q-values
+        delta: Tolerance threshold in Å-1
+
+    Returns:
+        Percentage (0-100) of observed q-values that match lattice points
+    """
+        if not hasattr(self, 'points') or self.points is None:
+            self.generate_points_and_pairs_fast()
+
+        # Extract all observed q-values
+        q_obs = []
+        for p in pairs: 
+            q_obs.extend([p.q1, p.q2])
+        q_obs = np.array(q_obs)
+
+        # Calculate all q-values from lattice points
+        q_calc = np.linalg.norm(self.points, axis=1)
+
+        # Reshape for broadcasting
+        q_obs_col = q_obs.reshape(-1, 1)  # shape: (n_obs, 1)
+        q_calc_row = q_calc.reshape(1, -1)  # shape: (1, n_calc)
+
+        # Compute differences between all pairs
+        diffs = np.abs(q_obs_col - q_calc_row)  # shape: (n_obs, n_calc)
+
+        has_match = np.any(diffs < delta, axis=1)
+
+        # Compute percentage
+        pct_matched = 100.0 * np.sum(has_match) / len(q_obs)
+
+        return pct_matched
+
+    def fom_2d(self, pairs):
+        hits = 0
+        for p in pairs:
+            result = self.match(p)
+            if result[1]=='indexed_2d':
+                hits += 1
+        return 100 * hits/len(pairs)
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
 
         if not hasattr(self, 'q1_values'):
@@ -553,16 +724,16 @@ class Basis2d(Basis):
         dq1 = np.abs(self.q1_values - pair.q1)
         dq2 = np.abs(self.q2_values - pair.q2)
         dtheta = np.abs(self.theta_values - pair.theta)
-        
+
         # Create mask for matches within tolerance
         matches = (dq1 < self.q_tolerance) & (dq2 < self.q_tolerance) & (dtheta < self.theta_tolerance)
-        
+
         if np.any(matches):
             # Get the first match (or could find best one later)
             idx = np.where(matches)[0][0]
             hkl1 = self.hkl1_values[idx]
             hkl2 = self.hkl2_values[idx]
-            
+
             result = PairMatch2d(hkl1, pair.q1, hkl2, pair.q2, pair.theta)
             return result, 'indexed_2d'
 
@@ -585,6 +756,15 @@ class Basis2d(Basis):
 
 
 
+    def astar(self):
+        return(np.linalg.norm(self.vectors[0]))
+    def bstar(self):
+        return(np.linalg.norm(self.vectors[1]))
+    def gammastar(self):
+        result = np.degrees(np.arccos(
+            np.dot(self.vectors[0], self.vectors[1]) / (a * b)))
+        return result
+
     def __str__(self):
         """Format 2D sublattice parameters."""
         # Calculate a, b, gamma from basis vectors
@@ -592,7 +772,7 @@ class Basis2d(Basis):
         b = np.linalg.norm(self.vectors[1])
         gamma = np.degrees(np.arccos(
             np.dot(self.vectors[0], self.vectors[1]) / (a * b)))
-        
+
         return f"a={a:.5f}, b={b:.5f}, gamma={gamma:.2f}°"
 
     def area(self):
@@ -604,29 +784,29 @@ class Basis2d(Basis):
         # Compute q-vectors from Miller indices
         q1_calc = pair.hkl1[0]*basis_vectors[0] + pair.hkl1[1]*basis_vectors[1]
         q2_calc = pair.hkl2[0]*basis_vectors[0] + pair.hkl2[1]*basis_vectors[1]
-        
+
         # Compare magnitudes
         q1_calc_mag = np.linalg.norm(q1_calc)
         q2_calc_mag = np.linalg.norm(q2_calc)
         q_error = (abs(q1_calc_mag - pair.q1) + 
                   abs(q2_calc_mag - pair.q2))
-        
+
         # Compare angle
         cos_theta_calc = np.dot(q1_calc, q2_calc) / (q1_calc_mag * q2_calc_mag)
         theta_calc = np.arccos(np.clip(cos_theta_calc, -1, 1))
         theta_error = abs(theta_calc - pair.theta_rad)
-        
+
         return q_weight * q_error + theta_weight * theta_error
 
     def cost(self, params, pairs, q_weight=1000, theta_weight=1.0):
         """Total cost for given lattice parameters."""
         a_star, b_star, gamma_star = params
-        
+
         # Basis vectors in standard orientation
         v1 = np.array([a_star, 0.0])
         v2 = b_star * np.array([np.cos(gamma_star), np.sin(gamma_star)])
         basis_vectors = np.vstack([v1, v2])
-        
+
         # Sum costs from all pairs
         return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
                   for pair in pairs)
@@ -634,7 +814,7 @@ class Basis2d(Basis):
     def refine(self, pairs, q_weight: float = 1000.0, theta_weight: float = 1.0) -> None:
         """Refine lattice parameters in place."""
         from scipy.optimize import minimize
-        
+
         # Initial parameter vector
         a_star = np.linalg.norm(self.vectors[0])
         b_star = np.linalg.norm(self.vectors[1])
@@ -642,7 +822,7 @@ class Basis2d(Basis):
                               (a_star * b_star))
         initial_params = np.array([a_star, b_star, gamma_star])
         ip = copy.deepcopy(initial_params)
-        
+
         # Run optimization
         result = minimize(
             lambda p: self.cost(p, pairs, q_weight, theta_weight),
@@ -650,17 +830,17 @@ class Basis2d(Basis):
             method='BFGS',
             #options={'gtol': 1e-8}
         )
-        
+
         if not result.success:
             print(result.message)
-            
+
         # Extract refined parameters and update basis
         a_star, b_star, gamma_star = result.x
         if gamma_star < np.pi/2: gamma_star = np.pi - gamma_star
         self.vectors = np.array([[a_star, 0.0],
                                [b_star * np.cos(gamma_star), 
                                 b_star * np.sin(gamma_star)]])
-        
+
         # Regenerate points and pairs with new basis
         self.generate_points_and_pairs_fast()
 
@@ -669,7 +849,7 @@ class Basis3d(Basis):
 
     def volume(self) -> float:
         """Calculate the volume of the reciprocal space unit cell.
-        
+
         Returns:
             Volume in Å⁻³
         """
@@ -680,17 +860,17 @@ class Basis3d(Basis):
         a_star = np.linalg.norm(self.vectors[0])
         b_star = np.linalg.norm(self.vectors[1])
         c_star = np.linalg.norm(self.vectors[2])
-        
+
         alpha_star = np.degrees(np.arccos(
             np.dot(self.vectors[1], self.vectors[2]) / (b_star * c_star)))
         beta_star = np.degrees(np.arccos(
             np.dot(self.vectors[0], self.vectors[2]) / (a_star * c_star)))
         gamma_star = np.degrees(np.arccos(
             np.dot(self.vectors[0], self.vectors[1]) / (a_star * b_star)))
-            
+
         # Direct cell parameters
         direct = self.compute_direct_cell_params(self.vectors)
-        
+
         return (
             f"Reciprocal cell:\n"
             f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n"
@@ -733,9 +913,53 @@ class Basis3d(Basis):
             'gamma': gamma
         }
 
+    def match_new(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
+        """Find a matching pair in the lattice using binary search on sorted values."""
+
+        if not hasattr(self, 'q1_values'):
+            self.generate_points_and_pairs_fast()
+
+        # Use binary search to find range of indices where q1 is within tolerance
+        q1_min = pair.q1 - self.q_tolerance
+        q1_max = pair.q1 + self.q_tolerance
+
+        # Find indices where q1_values are in range [q1_min, q1_max]
+        left_idx = np.searchsorted(self.q1_values, q1_min, side='left')
+        right_idx = np.searchsorted(self.q1_values, q1_max, side='right')
+
+        # If no values in range, return unindexed
+        if left_idx >= right_idx:
+            return None, 'unindexed'
+
+        # Get the subset of potential matches
+        subset_slice = slice(left_idx, right_idx)
+        q2_subset = self.q2_values[subset_slice]
+        theta_subset = self.theta_values[subset_slice]
+
+        # Check q2 and theta matches in the smaller subset
+        match_dq2 = (q2_subset > pair.q2 - self.q_tolerance) & \
+                    (q2_subset < pair.q2 + self.q_tolerance)
+        match_theta = (theta_subset > pair.theta - self.theta_tolerance) & \
+                     (theta_subset < pair.theta + self.theta_tolerance)
+
+        matches = match_dq2 & match_theta
+
+        if np.any(matches):
+            # Get the first match
+            match_idx = np.where(matches)[0][0]
+            full_idx = left_idx + match_idx  # Adjust back to original array index
+
+            hkl1 = self.hkl1_values[full_idx]
+            hkl2 = self.hkl2_values[full_idx]
+
+            result = PairMatch2d(hkl1, pair.q1, hkl2, pair.q2, pair.theta)
+            return result, 'indexed_3d'
+
+        return None, 'unindexed'
+
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using vectorized operations."""
-        
+
         if not hasattr(self, 'q1_values'):
             self.generate_points_and_pairs_fast()
 
@@ -743,7 +967,7 @@ class Basis3d(Basis):
         dq1 = np.abs(self.q1_values - pair.q1)
         dq2 = np.abs(self.q2_values - pair.q2)
         dtheta = np.abs(self.theta_values - pair.theta)
-        
+
         # Create mask for matches within tolerance
         match_dq1 = (self.q1_values > pair.q1-self.q_tolerance) & \
             (self.q1_values < pair.q1+self.q_tolerance)
@@ -753,16 +977,16 @@ class Basis3d(Basis):
             (self.theta_values < pair.theta+self.theta_tolerance)
         matches = match_dq1 & match_dq2 & match_theta
         #matches = (dq1 < self.q_tolerance) & (dq2 < self.q_tolerance) & (dtheta < self.theta_tolerance)
-        
+
         if np.any(matches):
             # Get the first match (or could find best one later)
             idx = np.where(matches)[0][0]
             hkl1 = self.hkl1_values[idx]
             hkl2 = self.hkl2_values[idx]
-            
+
             result = PairMatch2d(hkl1, pair.q1, hkl2, pair.q2, pair.theta)
             return result, 'indexed_3d'
-            
+
         return None, 'unindexed'
 
     def match_multiple(self, pairs: List[SpotPair]) -> List[Tuple[Optional[dict], str]]:
@@ -936,21 +1160,21 @@ class Basis3d(Basis):
             print(f"Reciprocal volume: {refined_vols:.6f} Å⁻³")
             print(f"Direct cell volume: {1/refined_vols:.1f} Å³")
 
-        
+
 class LatticeReconstruction:
     def __init__(self, qmax: float, q_tolerance: float = 0.001, 
                  theta_tol_degrees: float = 1):
         self.qmax = qmax
         self.q_tolerance = q_tolerance
         self.theta_tol_degrees = theta_tol_degrees
-        
+
         self.all_pairs = []
         self.sublattice_indexed = []
         self.sublattice_1vector = []
         self.unindexed = []
         self.current_basis = None
         self.sub_basis = None
-        
+
     def calculate_sublattice_area(self) -> float:
         """Calculate area of current sublattice"""
         if self.sub_basis is None:
@@ -962,10 +1186,29 @@ class LatticeReconstruction:
         pair = SpotPair(q1, q2, np.radians(theta))  # assume input theta in degrees
         self.all_pairs.append(pair)
         self.update()
-        
+
+    def store_triplet(self, q1, q2, theta):
+        pair = SpotPair(q1, q2, np.radians(theta))
+        self.all_pairs.append(pair)
+
+    def generate_2d_bases(self, scan_pts=21, scan_range=2, max_axis=75):
+        scan_range=np.radians(scan_range)
+        self.basis_candidates_2d = []
+        for pair in self.all_pairs:
+            deltas = np.linspace(-scan_range, scan_range, scan_pts)
+            for d in deltas:
+                b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
+                if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
+                    self.basis_candidates_2d.append(b)
+#            bases = [
+#                Basis.from_params(pair.q1, pair.q2, pair.theta+d)
+#                for d in deltas
+#            ]
+#            self.basis_candidates_2d.extend(bases)
+
+
     def update(self) -> None:
         """Main update method implementing the algorithm."""
-        #import IPython;IPython.embed()
         pair = self.all_pairs[-1] # Most recently read
 
         # Initialize first sublattice
@@ -995,21 +1238,25 @@ class LatticeReconstruction:
                 self.print_status()
                 return
 
-                
+
         # Finally, try matching in the current sublattice
         else:
 
             # Process new pair
             result, status = self.sub_basis.match(pair)
             self._store_result(result, status)
-                
+
         self.print_status()
-        
+
     def _initialize_first_sublattice(self, pair: SpotPair) -> None:
         """Set up initial 2D sublattice from first pair using least oblique cell."""
         self.sub_basis = Basis.from_params(pair.q1, pair.q2, pair.theta)
         self.sl_from_pair = pair
-        
+
+    def set_sub_basis(self, basis):
+        self.sub_basis = basis
+        self.reprocess_all_pairs()
+
     def summarize_half_indexed_pairs(self) -> str:
         """Create summary table of half-indexed pairs."""
         if not self.sublattice_1vector:
@@ -1035,11 +1282,10 @@ class LatticeReconstruction:
         result = "\n".join(lines)
 
         return result
-        #import IPython;IPython.embed()
 
     def find_matching_pairs(self) -> List[Tuple[int, int, float]]:
         """Find pairs of half-indexed vectors with matching unindexed q values.
-        
+
         Returns:
           List of (i1, i2, q) tuples where:
             i1, i2: indices into sublattice_1vector
@@ -1047,25 +1293,25 @@ class LatticeReconstruction:
         """
         matches = []
         n = len(self.sublattice_1vector)
-        
+
         for i in range(n):
           pair_i = self.sublattice_1vector[i]
           # Get unindexed q value
           q_i_uni = pair_i.q2 # The unindexed vector
           q_i_idx = pair_i.q1 # The indexed vector
           #q_i = pair_i.q2 if np.array_equal(pair_i.indexed_vector, pair_i.v1) else pair_i.q1
-          
+
           for j in range(i+1, n):
             pair_j = self.sublattice_1vector[j]
             # Get unindexed q value
             q_j_uni = pair_j.q2
             q_j_idx = pair_j.q1
-            
+
             if abs(q_i_uni - q_j_uni) < self.q_tolerance and abs(q_i_idx - q_j_idx) > self.q_tolerance:
               # Use average q value for the match
               q_match = (q_i_uni + q_j_uni) / 2
               matches.append((i, j, q_match))
-        
+
         return matches
 
     def reprocess_all_pairs(self) -> None:
@@ -1077,7 +1323,7 @@ class LatticeReconstruction:
         for old_pair in stored_pairs:
             result, status = self.sub_basis.match(old_pair)
             self._store_result(result, status)
-            
+
     def _store_result(self, result: SpotPair, status: str) -> None:
         """Store a processed pair in appropriate category."""
         if status == 'indexed_2d':
@@ -1089,7 +1335,7 @@ class LatticeReconstruction:
             self.sublattice_1vector.append(result)
         else:  # unindexed
             self.unindexed.append(result)
-            
+
     def generate_3d_basis(self, pair1_idx, pair2_idx, delta_theta_1=None, delta_theta_2=None, inv=False):
         """Generate a 3D basis from two matching one-vector pairs."""
         pair1 = self.sublattice_1vector[pair1_idx]
@@ -1134,17 +1380,16 @@ class LatticeReconstruction:
     def print_status(self, verbose=False) -> None:
         """Print current status of reconstruction."""
         print(f"\nCurrent minimum sublattice: {self.sub_basis}")
-        print(f"From pair {self.sl_from_pair.q1}, {self.sl_from_pair.q2}, {np.degrees(self.sl_from_pair.theta)}")
         if hasattr(self, 'full_basis'):
             print(f"Current full lattice:\n{self.full_basis}")
         else:
             print("No full lattice determined yet.")
-        
+
         print("\n---")
         if not verbose: return
         print(self.summarize_half_indexed_pairs())
         return
-        
+
         # If we have matching pairs, show possible 3D cells
         matches = self.find_matching_pairs()
         if matches:
@@ -1173,7 +1418,7 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
     # Create grid of delta theta values
     delta_values = np.linspace(delta_range[0], delta_range[1], steps)
     grid_shape = (steps, steps)
-    indexing_percent = np.zeros(grid_shape)
+    fom = np.zeros(grid_shape)
 
     # Total number of pairs
     total_pairs = len(recon.all_pairs)
@@ -1182,6 +1427,8 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
     for i, delta1 in enumerate(delta_values):
         for j, delta2 in enumerate(delta_values):
             try:
+                print()
+                print(delta1, delta2, inv)
                 # Generate 3D basis with current deltas
                 basis3d = recon.generate_3d_basis(
                     pair1_idx, pair2_idx,
@@ -1192,19 +1439,20 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
 
                 # Count indexed pairs
                 hits = 0
-                if basis3d.volume() > .0004: # skip if cell unreasonable
+                vol = basis3d.volume()
+                if .00075 > vol > .00065: # HACK
                     for p in recon.all_pairs:
                         if basis3d.match(p)[1] != 'unindexed':
                             hits += 1
 
                 # Compute percentage
-                indexing_percent[i, j] = 100 * hits / total_pairs
+                fom[i, j] = 100*hits / total_pairs 
 
             except Exception as e:
                 # Failed to generate basis (e.g., no valid solution)
-                indexing_percent[i, j] = 0
+                fom[i, j] = 0
 
-    return delta_values, indexing_percent
+    return delta_values, fom
 
 # Run grid search for both inv=False and inv=True
 def run_both_grid_searches(recon, pair1_idx, pair2_idx,
@@ -1300,29 +1548,31 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
             'delta_theta_1': delta1_normal,
             'delta_theta_2': delta2_normal,
             'inv': False,
-            'indexing_pct': max_normal
+            'fom': max_normal
         }
     else:
         best_params = {
             'delta_theta_1': delta1_inv,
             'delta_theta_2': delta2_inv,
             'inv': True,
-            'indexing_pct': max_inv
+            'fom': max_inv
         }
 
-    print("\nBest parameters:")
-    print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
-    print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
-    print(f"inv = {best_params['inv']}")
-    print(f"Indexing percentage = {best_params['indexing_pct']:.1f}%")
-
-    # Generate and return the best basis
+    # Generate the best basis
     best_basis = recon.generate_3d_basis(
         pair1_idx, pair2_idx,
         delta_theta_1=best_params['delta_theta_1'],
         delta_theta_2=best_params['delta_theta_2'],
         inv=best_params['inv']
     )
+
+    idx_pct = best_params['fom']#/best_basis.volume()
+    print("\nBest parameters:")
+    print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
+    print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
+    print(f"inv = {best_params['inv']}")
+    print(f"Indexing percentage = {idx_pct:.1f}%")
+
 
     return best_basis, best_params, fig
 
@@ -1332,11 +1582,36 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
 def run():
     recon = LatticeReconstruction(qmax=.5)
     for l in open(sys.argv[1]):
-        recon.read_triplet(*[float(x) for x in l.split()])
+        recon.store_triplet(*[float(x) for x in l.split()])
+    print('generate')
+    recon.generate_2d_bases()
+    print('fom1')
+    basis_fom = [
+        (b, b.fom_1d(recon.all_pairs) )
+        for b in recon.basis_candidates_2d
+    ]
+    basis_fom.sort(key=lambda x:x[1], reverse=True)
+    top_1d = basis_fom[:50]
+    print('fom2')
+    basis_fom1_fom2 = [
+        (b, f, b.fom_2d(recon.all_pairs))
+        for b, f in top_1d
+    ]
+    basis_fom1_fom2.sort(key=lambda x:x[2], reverse=True)
+    best_sb = basis_fom1_fom2[0]
+    print('using 2d basis: ', best_sb[0], round(best_sb[1],2), round(best_sb[2],2))
+    recon.set_sub_basis(best_sb[0])
     for _ in range(2):
         recon.sub_basis.refine(recon.sublattice_indexed)
         recon.reprocess_all_pairs()
+
+
     import IPython;IPython.embed()
+    exit()
+        #recon.read_triplet(*[float(x) for x in l.split()])
+    for _ in range(2):
+        recon.sub_basis.refine(recon.sublattice_indexed)
+        recon.reprocess_all_pairs()
 
 if __name__=="__main__":
     run()
