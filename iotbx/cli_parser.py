@@ -523,9 +523,9 @@ Also, specifying this flag implies that --json is also specified.'''
     # processed in given order
     if len(phil_list) > 0:
       interpreter = self.master_phil.command_line_argument_interpreter(
-        assume_when_ambiguous=self.program_class.assume_when_ambiguous)
+        assume_when_ambiguous=False)
       data_manager_interpreter = self.data_manager.master_phil.command_line_argument_interpreter(
-        assume_when_ambiguous=self.program_class.assume_when_ambiguous)
+        assume_when_ambiguous=False)
       print('  Adding command-line PHIL:', file=self.logger)
       print('  -------------------------', file=self.logger)
       for phil in phil_list:
