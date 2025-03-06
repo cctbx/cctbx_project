@@ -696,6 +696,75 @@ data_manager {
     if os.path.isfile(filename):
       os.remove(filename)
 
+# -----------------------------------------------------------------------------
+def test_scattering_table():
+
+  class TestScatteringTableProgram(ProgramTemplate):
+
+    datatypes = ['model', 'phil']
+
+    use_scattering_table_for_default_type = 'a.b.c.d.efgh'
+
+    master_phil_str = """\
+a {
+  b {
+    c {
+      d {
+        efgh = electron
+          .type = str
+      }
+    }
+  }
+}
+"""
+
+    def validate(self):
+      pass
+
+    def run(self):
+      pass
+
+    def get_results(self):
+      return self.data_manager
+
+  data_dir = os.path.dirname(os.path.abspath(__file__))
+  model_1yjp = os.path.join(data_dir, 'data', '1yjp.pdb')
+  data_mtz = os.path.join(data_dir, 'data', 'phaser_1.mtz')
+
+  # check that both model and miller_array are required
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'use_scattering_table_for_default_type' in str(s)
+
+  TestScatteringTableProgram.datatypes = ['miller_array', 'model', 'phil']
+
+  # check default PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
+
+  # check modified PHIL
+  dm = run_program(TestScatteringTableProgram,
+                   args=['--quiet', 'efgh=neutron', model_1yjp, data_mtz])
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'neutron' in model_type
+  assert 'reference' not in model_type
+
+  # check wrong input
+  try:
+    dm = run_program(TestScatteringTableProgram,
+                    args=['--quiet', 'efgh=not_a_type', model_1yjp, data_mtz])
+  except Sorry as s:
+    assert 'not_a_type' in str(s)
+
 # =============================================================================
 if __name__ == '__main__':
   test_dry_run()
@@ -706,5 +775,6 @@ if __name__ == '__main__':
   test_json()
   test_diff_params()
   test_check_current_dir()
+  test_scattering_table()
 
   print("OK")
