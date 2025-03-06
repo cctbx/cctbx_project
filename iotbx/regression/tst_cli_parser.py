@@ -367,8 +367,16 @@ def test_update_all_defaults():
     args=['--quiet', '--overwrite', model_1yjp, data_mtz]
   )
   dm.update_all_defaults('neutron')
-  assert 'neutron' in dm.get_model_type(model_1yjp)
-  assert 'x_ray' not in dm.get_model_type(model_1yjp)
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' not in model_type
+  for label in dm.get_miller_array_all_labels(data_mtz):
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'neutron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'electron' not in array_type
 
   # check that all default types are updated even with label selection
   dm = run_program(
@@ -377,9 +385,30 @@ def test_update_all_defaults():
           'user_selected=FWT,PHIFWT']
   )
   dm.update_all_defaults('electron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'electron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'neutron' not in model_type
+  assert 'reference' not in model_type
   for label in dm.get_miller_array_all_labels(data_mtz):
-    assert 'electron' in dm.get_miller_array_type(data_mtz, label)
-    assert 'x_ray' not in dm.get_miller_array_type(data_mtz, label)
+    array_type = dm.get_miller_array_type(data_mtz, label)
+    assert 'electron' in array_type
+    assert 'x_ray' not in array_type
+    assert 'neutron' not in array_type
+
+  # check that reference type is kept
+  dm = run_program(
+    program_class=testProgram,
+    args=['--quiet', '--overwrite', model_1yjp, data_mtz,
+          'user_selected=FWT,PHIFWT']
+  )
+  dm.set_model_type(model_1yjp, ['reference'])
+  dm.update_all_defaults('neutron')
+  model_type = dm.get_model_type(model_1yjp)
+  assert 'neutron' in model_type
+  assert 'x_ray' not in model_type
+  assert 'electron' not in model_type
+  assert 'reference' in model_type
 
 # -----------------------------------------------------------------------------
 def test_json():

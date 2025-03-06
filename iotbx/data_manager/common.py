@@ -95,7 +95,10 @@ class fmodel_mixins(object):
     self._is_valid_model_type(model_type)
     self.set_default_model_type(model_type)
     for filename in self.get_model_names():
-      self.set_model_type(filename, model_type)
+      if 'reference' in self.get_model_type(filename):
+        self.set_model_type(filename, [checked_type, 'reference'])
+      else:
+        self.set_model_type(filename, model_type)
 
     # miller_array
     array_type = [checked_type]
