@@ -268,7 +268,7 @@ class Basis:
         self.indexed_pairs = []
 
     @classmethod
-    def from_vectors(cls, vectors: np.ndarray, reduce=False, qmax:float = 0.5, q_tol: float = 0.001,
+    def from_vectors(cls, vectors: np.ndarray, reduce=True, qmax:float = 0.5, q_tol: float = 0.001,
                      theta_tol_deg: float = 1.0):
         assert vectors.shape in ((2,2), (3,3))
         if vectors.shape == (2,2):
@@ -418,7 +418,7 @@ class Basis:
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         raise NotImplementedError
 
-    def generate_points_and_pairs_fast(self):
+    def generate_points_and_pairs_fast_old(self):
         """Generate unique lattice point pairs using matrix operations for efficiency."""
         # Generate points
         max_indices = np.ceil(self.qmax / np.linalg.norm(self.vectors, axis=1))
@@ -509,11 +509,156 @@ class Basis:
         # Ensure q1 <= q2
         swap_mask = self.q1_values > self.q2_values
         if np.any(swap_mask):
+            raise RuntimeError
             # Swap q values
             self.q1_values[swap_mask], self.q2_values[swap_mask] = self.q2_values[swap_mask], self.q1_values[swap_mask].copy()
 
             # Swap hkl values
             self.hkl1_values[swap_mask], self.hkl2_values[swap_mask] = self.hkl2_values[swap_mask], self.hkl1_values[swap_mask].copy()
+
+    def generate_points_and_pairs_fast(self):
+        """Generate unique lattice point pairs preserving q1 ordering."""
+        # Generate points
+        max_indices = np.ceil(self.qmax / np.linalg.norm(self.vectors, axis=1))
+        ranges = [np.arange(-n, n+1) for n in max_indices.astype(int)]
+
+        # Generate mesh grid based on dimension
+        if len(ranges) == 2:  # 2D
+            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
+            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
+            H, K = np.meshgrid(h_range, k_range, indexing='ij')
+            indices = np.column_stack((H.flatten(), K.flatten()))
+        else:  # 3D
+            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
+            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
+            l_range = np.arange(-max_indices[2], max_indices[2] + 1)
+            H, K, L = np.meshgrid(h_range, k_range, l_range, indexing='ij')
+            indices = np.column_stack((H.flatten(), K.flatten(), L.flatten()))
+
+        # Generate points
+        points = indices @ self.vectors
+
+        # Filter by magnitude
+        magnitudes = np.linalg.norm(points, axis=1)
+        mask = (magnitudes <= self.qmax) & (magnitudes > 0)  # Exclude origin
+
+        # Keep only points within qmax
+        filtered_points = points[mask]
+        filtered_indices = indices[mask]
+        filtered_magnitudes = magnitudes[mask]
+        self.points = filtered_points
+        self.point_indices = filtered_indices
+
+        # Sort by magnitude (this will make q1_values naturally sorted)
+        sort_idx = np.argsort(filtered_magnitudes)
+        sorted_points = filtered_points[sort_idx]
+        sorted_indices = filtered_indices[sort_idx]
+        sorted_magnitudes = filtered_magnitudes[sort_idx]
+
+        # Create inverted versions
+        inverted_indices = -sorted_indices
+        inverted_points = inverted_indices @ self.vectors
+
+        # Create normalized vectors for dot products
+        n_points = len(sorted_points)
+        normalized_points = sorted_points / sorted_magnitudes[:, np.newaxis]
+        inverted_normalized = inverted_points / np.linalg.norm(inverted_points, axis=1)[:, np.newaxis]
+
+        # Create full matrices with NaN padding outside upper triangle
+
+        # 1. First create mask for upper triangle (excluding diagonal)
+        triu_mask = np.triu(np.ones((n_points, n_points)), k=1)
+        nan_mask = ~triu_mask.astype(bool)
+
+        # 2. Create q matrices (sorted by construction)
+        q1_matrix = np.broadcast_to(sorted_magnitudes[:, np.newaxis], (n_points, n_points))
+        q2_matrix = np.broadcast_to(sorted_magnitudes[np.newaxis, :], (n_points, n_points))
+
+        # 3. Calculate theta matrices
+        dot_products_normal = np.dot(normalized_points, normalized_points.T)
+        theta_matrix_normal = np.arccos(np.clip(dot_products_normal, -1, 1))
+
+        dot_products_inverted = np.dot(normalized_points, inverted_normalized.T)
+        theta_matrix_inverted = np.arccos(np.clip(dot_products_inverted, -1, 1))
+
+        # 4. Create hkl matrices
+        # For normal pairs
+        hkl1_shape = (n_points, n_points, sorted_indices.shape[1])
+        hkl1_matrix_normal = np.broadcast_to(sorted_indices[:, np.newaxis, :], hkl1_shape)
+        hkl2_matrix_normal = np.broadcast_to(sorted_indices[np.newaxis, :, :], hkl1_shape)
+
+        # For inverted pairs
+        hkl1_matrix_inverted = hkl1_matrix_normal.copy()
+        hkl2_matrix_inverted = np.broadcast_to(inverted_indices[np.newaxis, :, :], hkl1_shape)
+
+        # 5. Apply NaN mask to matrices
+        q1_matrix_normal = q1_matrix.copy()
+        q1_matrix_normal[nan_mask] = np.nan
+
+        q2_matrix_normal = q2_matrix.copy()
+        q2_matrix_normal[nan_mask] = np.nan
+
+        theta_matrix_normal[nan_mask] = np.nan
+
+        q1_matrix_inverted = q1_matrix.copy()
+        q1_matrix_inverted[nan_mask] = np.nan
+
+        q2_matrix_inverted = q2_matrix.copy()
+        q2_matrix_inverted[nan_mask] = np.nan
+
+        theta_matrix_inverted[nan_mask] = np.nan
+
+        # 6. Stack normal and inverted matrices horizontally
+        q1_stacked = np.hstack([q1_matrix_normal, q1_matrix_inverted])
+        q2_stacked = np.hstack([q2_matrix_normal, q2_matrix_inverted])
+        theta_stacked = np.hstack([theta_matrix_normal, theta_matrix_inverted])
+
+        # 7. Flatten stacked matrices
+        q1_flat = q1_stacked.flatten()
+        q2_flat = q2_stacked.flatten()
+        theta_flat = theta_stacked.flatten()
+
+        # 8. Remove NaN values
+        valid_mask = ~np.isnan(q1_flat)
+        self.q1_values = q1_flat[valid_mask]
+        self.q2_values = q2_flat[valid_mask]
+        self.theta_values = theta_flat[valid_mask]
+
+        # Handle hkl values (more complex due to extra dimension)
+        hkl_dim = sorted_indices.shape[1]
+
+        # Apply NaN mask to hkl matrices via boolean indexing
+        # Create "is NaN" array matching hkl shape
+        nan_mask_expanded = np.broadcast_to(nan_mask[:, :, np.newaxis],
+                                            (n_points, n_points, hkl_dim))
+
+        # Set invalid hkls to a dummy value (will be filtered out later)
+        hkl1_matrix_normal = np.where(nan_mask_expanded, -999, hkl1_matrix_normal)
+        hkl2_matrix_normal = np.where(nan_mask_expanded, -999, hkl2_matrix_normal)
+        hkl1_matrix_inverted = np.where(nan_mask_expanded, -999, hkl1_matrix_inverted)
+        hkl2_matrix_inverted = np.where(nan_mask_expanded, -999, hkl2_matrix_inverted)
+
+        # Stack hkl matrices horizontally
+        hkl1_stacked = np.hstack([hkl1_matrix_normal.reshape(n_points, -1),
+                                 hkl1_matrix_inverted.reshape(n_points, -1)])
+        hkl2_stacked = np.hstack([hkl2_matrix_normal.reshape(n_points, -1),
+                                 hkl2_matrix_inverted.reshape(n_points, -1)])
+
+        # Reshape to get original structure back
+        hkl1_flat = hkl1_stacked.reshape(-1, hkl_dim)
+        hkl2_flat = hkl2_stacked.reshape(-1, hkl_dim)
+
+        # Apply same valid mask as for q values
+        self.hkl1_values = hkl1_flat[valid_mask]
+        self.hkl2_values = hkl2_flat[valid_mask]
+
+        # Ensure q1 <= q2 (swap if needed)
+        swap_mask = self.q1_values > self.q2_values
+        if np.any(swap_mask):
+            print('swap')
+            self.q1_values[swap_mask], self.q2_values[swap_mask] = self.q2_values[swap_mask], self.q1_values[swap_mask].copy()
+            self.hkl1_values[swap_mask], self.hkl2_values[swap_mask] = self.hkl2_values[swap_mask], self.hkl1_values[swap_mask].copy()
+
 
 
 
@@ -759,7 +904,7 @@ class Basis3d(Basis):
             'gamma': gamma
         }
 
-    def match_new(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
+    def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using binary search on sorted values."""
 
         if not hasattr(self, 'q1_values'):
@@ -803,7 +948,7 @@ class Basis3d(Basis):
 
         return None, 'unindexed'
 
-    def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
+    def match_old(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using vectorized operations."""
 
         if not hasattr(self, 'q1_values'):
@@ -1286,13 +1431,13 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
                 # Count indexed pairs
                 hits = 0
                 vol = basis3d.volume()
-                if .00075 > vol > .00065: # HACK
+                if vol > .0002:
                     for p in recon.all_pairs:
                         if basis3d.match(p)[1] != 'unindexed':
                             hits += 1
 
                 # Compute percentage
-                fom[i, j] = 100*hits / total_pairs 
+                fom[i, j] = 100*hits / total_pairs * vol
 
             except Exception as e:
                 # Failed to generate basis (e.g., no valid solution)
@@ -1412,7 +1557,7 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
         inv=best_params['inv']
     )
 
-    idx_pct = best_params['fom']#/best_basis.volume()
+    idx_pct = best_params['fom']/best_basis.volume()
     print("\nBest parameters:")
     print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
     print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
@@ -1450,6 +1595,7 @@ def run():
     for _ in range(2):
         recon.sub_basis.refine(recon.sublattice_indexed)
         recon.reprocess_all_pairs()
+    recon.print_status(verbose=True)
 
 
     import IPython;IPython.embed()
