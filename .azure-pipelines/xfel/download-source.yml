@@ -36,7 +36,7 @@ jobs:
       source $(CONDA)/etc/profile.d/conda.sh
       conda activate git
       cd $(Pipeline.Workspace)
-      python bootstrap.py hot update --builder=xfel --python=310 --no-boost-src
+      python bootstrap.py hot update --builder=xfel --python=311 --no-boost-src
       cd modules
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
