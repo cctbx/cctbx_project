@@ -1088,7 +1088,10 @@ b:
   # test 3
   with raises(AssertionError) as e:
     approx_equal({'a':1, 'b':2}, {'a':1, 'b':2, 'c':3}, out=out)
-  assert str(e.value) == """approx_equal ERROR: a1.keys() != a2.keys(): dict_keys(['a', 'b']) != dict_keys(['a', 'b', 'c'])"""
+  expected_error = """approx_equal ERROR: a1.keys() != a2.keys(): dict_keys(['a', 'b']) != dict_keys(['a', 'b', 'c'])"""
+  if sys.version_info.major == 2:
+    expected_error = """approx_equal ERROR: a1.keys() != a2.keys(): ['a', 'b'] != ['a', 'c', 'b']"""
+  assert str(e.value) == expected_error
 
 if (__name__ == "__main__"):
   tst_convert()
