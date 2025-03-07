@@ -17,6 +17,7 @@ import time
 import types
 
 import six
+from six.moves import cStringIO as StringIO
 from six.moves import range
 try:
   import threading
@@ -258,7 +259,22 @@ def iter_tests_cmd(co, build_dir, dist_dir, tst_list):
 def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
   if isinstance(a1, (six.text_type, six.binary_type)):
     return a1 == a2
-  if hasattr(a1, "__len__"): # traverse list
+
+  # Dictionaries
+  if isinstance(a1, dict) and isinstance(a2, dict):
+    # Check if dictionaries have the same keys
+    if set(a1.keys()) != set(a2.keys()):
+      raise AssertionError(
+        "approx_equal ERROR: a1.keys() != a2.keys(): %s != %s" % (a1.keys(), a2.keys()))
+    # Compare each key-value pair
+    for key in a1:
+      if not approx_equal_core(
+        a1[key], a2[key], eps, multiplier, out, prefix + str(key) + ": "):
+        return False
+    return True
+
+  # List-like objects
+  if hasattr(a1, "__len__"):
     if (len(a1) != len(a2)):
       raise AssertionError(
         "approx_equal ERROR: len(a1) != len(a2): %d != %d" % (
@@ -268,6 +284,8 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
                 a1[i], a2[i], eps, multiplier, out, prefix+"  "):
         return False
     return True
+
+  # Complex numbers
   is_complex_1 = isinstance(a1, complex)
   is_complex_2 = isinstance(a2, complex)
   if (is_complex_1 and is_complex_2): # complex & complex
@@ -294,6 +312,8 @@ def approx_equal_core(a1, a2, eps, multiplier, out, prefix):
               0, a2.imag, eps, multiplier, out, prefix+"imag "):
       return False
     return True
+
+  # Regular numbers
   ok = True
   d = a1 - a2
   if (abs(d) > eps):
@@ -758,7 +778,6 @@ directly from within the same Python process running the unit tests.
   return cmd_result
 
 def exercise():
-  from six.moves import cStringIO as StringIO
   assert approx_equal(1, 1)
   out = StringIO()
   assert not approx_equal(1, 0, out=out)
@@ -1048,7 +1067,31 @@ def tst_raises():
   except Exception as e:
     assert str(e) == 'jkl'
 
+def exercise_dict():
+  # test 1
+  assert approx_equal({'a':1, 'b':2}, {'a':1, 'b':2})
+
+  # test 2
+  out = StringIO()
+  assert not approx_equal({'a':1, 'b':2}, {'a':2, 'b':1}, out=out)
+  assert not show_diff(out.getvalue().replace("1e-006", "1e-06"), """\
+approx_equal eps: 1e-06
+approx_equal multiplier: 10000000000.0
+a: 1 approx_equal ERROR
+a: 2 approx_equal ERROR
+a:
+b: 2 approx_equal ERROR
+b: 1 approx_equal ERROR
+b:
+""")
+
+  # test 3
+  with raises(AssertionError) as e:
+    approx_equal({'a':1, 'b':2}, {'a':1, 'b':2, 'c':3}, out=out)
+  assert str(e.value) == """approx_equal ERROR: a1.keys() != a2.keys(): dict_keys(['a', 'b']) != dict_keys(['a', 'b', 'c'])"""
+
 if (__name__ == "__main__"):
   tst_convert()
   tst_raises()
   exercise()
+  exercise_dict()
