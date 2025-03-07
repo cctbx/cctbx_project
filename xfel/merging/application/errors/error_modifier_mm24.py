@@ -324,7 +324,7 @@ class error_modifier_mm24(worker):
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
     size = self.mpi_helper.size
-    
+
 
     if self.params.merging.error.mm24.tuning_param_opt:
       param_shift = 1
