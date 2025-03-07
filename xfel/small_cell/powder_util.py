@@ -335,8 +335,8 @@ class Spotfinder_radial_average:
     if params.augment:
       plt.plot(*augment(self.experiments, self.reflections, params.d_min, params.d_max))
     ax.set_xlim(d_max_inv, d_min_inv)
-    ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
-      lambda x, _: "{:.3f}".format(1/x)))
+#    ax.get_xaxis().set_major_formatter(tick.FuncFormatter(
+#      lambda x, _: "{:.3f}".format(1/x)))
 
     if params.output.xy_file:
       with open(params.output.xy_file, 'w') as f:

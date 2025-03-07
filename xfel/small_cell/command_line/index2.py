@@ -418,6 +418,42 @@ class Basis:
     def match(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         raise NotImplementedError
 
+    def fom_1d(self, pairs, delta=.001):
+        """Calculate figure of merit as percentage of observed q-values within threshold of lattice points.
+
+    Args:
+        pairs: List of SpotPair objects with observed q-values
+        delta: Tolerance threshold in Å-1
+
+    Returns:
+        Percentage (0-100) of observed q-values that match lattice points
+    """
+        if not hasattr(self, 'points') or self.points is None:
+            self.generate_points_and_pairs_fast()
+
+        # Extract all observed q-values
+        q_obs = []
+        for p in pairs: 
+            q_obs.extend([p.q1, p.q2])
+        q_obs = np.array(q_obs)
+
+        # Calculate all q-values from lattice points
+        q_calc = np.linalg.norm(self.points, axis=1)
+
+        # Reshape for broadcasting
+        q_obs_col = q_obs.reshape(-1, 1)  # shape: (n_obs, 1)
+        q_calc_row = q_calc.reshape(1, -1)  # shape: (1, n_calc)
+
+        # Compute differences between all pairs
+        diffs = np.abs(q_obs_col - q_calc_row)  # shape: (n_obs, n_calc)
+
+        has_match = np.any(diffs < delta, axis=1)
+
+        # Compute percentage
+        pct_matched = 100.0 * np.sum(has_match) / len(q_obs)
+
+        return pct_matched
+
     def generate_points_and_pairs_fast_old(self):
         """Generate unique lattice point pairs using matrix operations for efficiency."""
         # Generate points
@@ -663,41 +699,6 @@ class Basis:
 
 
 class Basis2d(Basis):
-    def fom_1d(self, pairs, delta=.001):
-        """Calculate figure of merit as percentage of observed q-values within threshold of lattice points.
-
-    Args:
-        pairs: List of SpotPair objects with observed q-values
-        delta: Tolerance threshold in Å-1
-
-    Returns:
-        Percentage (0-100) of observed q-values that match lattice points
-    """
-        if not hasattr(self, 'points') or self.points is None:
-            self.generate_points_and_pairs_fast()
-
-        # Extract all observed q-values
-        q_obs = []
-        for p in pairs: 
-            q_obs.extend([p.q1, p.q2])
-        q_obs = np.array(q_obs)
-
-        # Calculate all q-values from lattice points
-        q_calc = np.linalg.norm(self.points, axis=1)
-
-        # Reshape for broadcasting
-        q_obs_col = q_obs.reshape(-1, 1)  # shape: (n_obs, 1)
-        q_calc_row = q_calc.reshape(1, -1)  # shape: (1, n_calc)
-
-        # Compute differences between all pairs
-        diffs = np.abs(q_obs_col - q_calc_row)  # shape: (n_obs, n_calc)
-
-        has_match = np.any(diffs < delta, axis=1)
-
-        # Compute percentage
-        pct_matched = 100.0 * np.sum(has_match) / len(q_obs)
-
-        return pct_matched
 
     def fom_2d(self, pairs):
         hits = 0
@@ -862,14 +863,15 @@ class Basis3d(Basis):
         # Direct cell parameters
         direct = self.compute_direct_cell_params(self.vectors)
 
-        return (
-            f"Reciprocal cell:\n"
-            f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n"
-            f"  α*={alpha_star:.2f}°, β*={beta_star:.2f}°, γ*={gamma_star:.2f}°\n"
-            f"Direct cell:\n"
-            f"  a={direct['a']:.3f}, b={direct['b']:.3f}, c={direct['c']:.3f} Å\n"
-            f"  α={direct['alpha']:.2f}°, β={direct['beta']:.2f}°, γ={direct['gamma']:.2f}°"
-        )
+        return \
+            f"Reciprocal cell:\n" + \
+            f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n" + \
+            f"  α*={alpha_star:.2f}°, β*={beta_star:.2f}°, γ*={gamma_star:.2f}°\n" + \
+            f"Direct cell:\n" + \
+            f"  a={direct['a']:.3f}, b={direct['b']:.3f}, c={direct['c']:.3f} Å\n" + \
+            f"  α={direct['alpha']:.2f}°, β={direct['beta']:.2f}°, γ={direct['gamma']:.2f}°\n" + \
+            ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] )
+
 
     def compute_direct_cell_params(self, recip_basis: np.ndarray) -> dict:
         """Compute direct cell parameters from reciprocal space basis vectors.
@@ -947,6 +949,69 @@ class Basis3d(Basis):
             return result, 'indexed_3d'
 
         return None, 'unindexed'
+
+    def doubled_cells(self) -> list:
+        """Generate 6 cell-doubled variants of the current basis.
+
+        Returns:
+            List of 6 Basis3d objects with doubled cells:
+            [0] Double a: a'=2a, b'=b, c'=c
+            [1] Double b: a'=a, b'=2b, c'=c
+            [2] Double c: a'=a, b'=b, c'=2c
+            [3] Double ab plane: a'=a+b, b'=a-b, c'=c
+            [4] Double ac plane: a'=a+c, b'=b, c'=a-c
+            [5] Double bc plane: a'=a, b'=b+c, c'=b-c
+        """
+        # Get current reciprocal basis vectors
+        a_star = self.vectors[0].copy()
+        b_star = self.vectors[1].copy()
+        c_star = self.vectors[2].copy()
+
+        # Create transformation matrices in reciprocal space
+        # When we double a direct space vector, the corresponding reciprocal vector is halved
+
+        # 1. Double a: a*' = a*/2, b*' = b*, c*' = c*
+        basis1 = self.vectors.copy()
+        basis1[0] = a_star / 2
+
+        # 2. Double b: a*' = a*, b*' = b*/2, c*' = c*
+        basis2 = self.vectors.copy()
+        basis2[1] = b_star / 2
+
+        # 3. Double c: a*' = a*, b*' = b*, c*' = c*/2
+        basis3 = self.vectors.copy()
+        basis3[2] = c_star / 2
+
+        # 4. Double ab plane: a'=a+b, b'=a-b in direct space
+        # In reciprocal space: a*' = (a*+b*)/2, b*' = (a*-b*)/2, c*' = c*
+        basis4 = self.vectors.copy()
+        basis4[0] = (a_star + b_star) / 2
+        basis4[1] = (a_star - b_star) / 2
+
+        # 5. Double ac plane: a'=a+c, b'=b, c'=a-c in direct space
+        # In reciprocal space: a*' = (a*+c*)/2, b*' = b*, c*' = (a*-c*)/2
+        basis5 = self.vectors.copy()
+        basis5[0] = (a_star + c_star) / 2
+        basis5[2] = (a_star - c_star) / 2
+
+        # 6. Double bc plane: a'=a, b'=b+c, c'=b-c in direct space
+        # In reciprocal space: a*' = a*, b*' = (b*+c*)/2, c*' = (b*-c*)/2
+        basis6 = self.vectors.copy()
+        basis6[1] = (b_star + c_star) / 2
+        basis6[2] = (b_star - c_star) / 2
+
+        # Create new Basis3d objects
+        result = []
+        for basis in [basis1, basis2, basis3, basis4, basis5, basis6]:
+            new_basis = type(self).from_vectors(
+                basis, 
+                qmax=self.qmax,
+                q_tol=self.q_tolerance,
+                theta_tol_deg=np.degrees(self.theta_tolerance)
+            )
+            result.append(new_basis)
+
+        return result
 
     def match_old(self, pair: SpotPair) -> Tuple[Optional[dict], str]:
         """Find a matching pair in the lattice using vectorized operations."""
