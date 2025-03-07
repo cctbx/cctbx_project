@@ -69,6 +69,7 @@ jobs:
       fi
       cd $(Pipeline.Workspace)/modules/xfel_regression
       git reset --hard origin/main
+      git checkout stripe_rename
       git lfs install --local
       git pull --rebase
       git lfs pull
