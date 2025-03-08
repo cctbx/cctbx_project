@@ -317,7 +317,7 @@ class geometry(object):
 
   def show(self, log=None, prefix="",
            exclude_protein_only_stats=False,
-           include_rmsd_details=False,
+           include_rmsd_details=True,
            uppercase=True):
     if(log is None): log = sys.stdout
     def fmt(f1,f2,d1,z1=None):
@@ -416,31 +416,28 @@ class geometry(object):
           format_value("%7.3f", pp.max_dev),
           format_value("%7.3f", pp.mean_dev),
           pp.id)
-    #
-    if( uppercase ):
-      result = result.upper()
-    print(result, file=log)
 
     if include_rmsd_details:
       from cctbx.geometry_restraints.linking_class import linking_class
       origin_ids = linking_class()
-      print('%sDetails of bonding type rmsd' % prefix, file=log)
+      result += '%s\n%s\n%sDetails of bonding type rmsd' % (prefix, prefix, prefix)
       for key, i in origin_ids.items():
         bond_rc=self.bond(origin_id=i)
         angle_rc=self.angle(origin_id=i)
         if bond_rc.n:
-          # print(f'{prefix}  {key:20s} : bond  {bond_rc.mean:12.5f} ({bond_rc.n:5d})', file=log)
-          print('%s  %-20s : bond   %12.5f (%5d)' % (prefix,
-                                                     key,
-                                                     bond_rc.mean,
-                                                     bond_rc.n), file=log)
+          result += '\n%s  %-20s : bond   %12.5f (%5d)' % (prefix,
+                                                           key,
+                                                           bond_rc.mean,
+                                                           bond_rc.n)
         if angle_rc.n:
-          # print(f'{prefix}  {key:20s} : angle {angle_rc.mean:12.3f} ({angle_rc.n:5d})', file=log)
-          print('%s  %-20s : angle  %12.5f (%5d)' % (prefix,
-                                                     key,
-                                                     angle_rc.mean,
-                                                     angle_rc.n), file=log)
-
+          result += '\n%s  %-20s : angle  %12.5f (%5d)' % (prefix,
+                                                           key,
+                                                           angle_rc.mean,
+                                                           angle_rc.n)
+    #
+    if( uppercase ):
+      result = result.upper()
+    print(result, file=log)
 
   def as_cif_block(self, cif_block=None, pdbx_refine_id=''):
     if cif_block is None:
