@@ -124,12 +124,16 @@ def exercise_sequence_search():
 def exercise_reference_chain_search():
   lysozyme = """KVFGRCELAAAMKRHGLDNYRGYSLGNWVCAAKFESNFNTQATNRNTDGSTDYGILQINSR"""
   r = rcsb_web_services.reference_chain_search(sequence=lysozyme)
-  print(len(r))
+  # print(len(r))
+
   # This is not going to work at all:
   # probably because geometry filters are not applicable when we request
   # "return_type": "polymer_instance", instead of "polymer_entity" in sequence_search.
   r = rcsb_web_services.reference_chain_search(sequence=lysozyme, clashscore_range=(0,20))
-  print(len(r))
+  # print(len(r))
+  assert len(r) == 0
+  r = rcsb_web_services.reference_chain_search(sequence=lysozyme, d_max=2)
+  # print(len(r))
   assert len(r) == 0
 
 if (__name__ == "__main__"):
