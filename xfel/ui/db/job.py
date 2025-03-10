@@ -614,7 +614,7 @@ class EnsembleRefinementJob(Job):
       "combine_t%03d_rg%03d_chunk000.out"%(self.trial.trial, self.rungroup.id)) # XXX there can be multiple chunks or multiple clusters
 
   def submit(self, previous_job = None):
-    from xfel.command_line.striping import Script
+    from xfel.command_line.time_varying_refinement import Script
     from xfel.command_line.cxi_mpi_submit import get_submission_id
     from libtbx import easy_run
     configs_dir = os.path.join(settings_dir, "cfgs")
@@ -648,15 +648,15 @@ class EnsembleRefinementJob(Job):
     mp.shifter.reservation={}
     mp.shifter.constraint={}
     mp.shifter.staging={}
-    striping.results_dir={}
-    striping.trial={}
-    striping.rungroup={}
-    striping.run={}
+    time_varying_refinement.results_dir={}
+    time_varying_refinement.trial={}
+    time_varying_refinement.rungroup={}
+    time_varying_refinement.run={}
     {}
-    striping.chunk_size=256
-    striping.stripe=False
-    striping.dry_run=True
-    striping.output_folder={}
+    time_varying_refinement.chunk_size=256
+    time_varying_refinement.stripe=False
+    time_varying_refinement.dry_run=True
+    time_varying_refinement.output_folder={}
     reintegration.integration.lookup.mask={}
     mp.local.include_mp_in_command=False
     """.format(self.app.params.mp.queue if len(self.app.params.mp.queue) > 0 else None,
