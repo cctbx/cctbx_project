@@ -461,7 +461,7 @@ class class_ncs_restraints_group_list(list):
     """
     For debugging
     """
-    print("debugging output of ncs_restraints_group_list")
+    #print("debugging output of ncs_restraints_group_list")
     for group in self:
       print("Master str selection:", group.master_str_selection)
       if not brief:
@@ -477,7 +477,7 @@ class class_ncs_restraints_group_list(list):
         if hierarchy is not None:
           print(hierarchy.select(c.iselection).as_pdb_string())
       print("="*30)
-    print("end debugging output of ncs_restraints_group_list")
+    #print("end debugging output of ncs_restraints_group_list")
 
 
   def get_ncs_groups_centers(self, sites_cart):
