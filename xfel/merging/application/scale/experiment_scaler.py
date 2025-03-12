@@ -97,6 +97,54 @@ class experiment_scaler(worker):
 
     new_reflections.reset_ids()
     rejected_experiments = len(experiments) - len(new_experiments)
+
+    import matplotlib.pyplot as plt
+    import os
+    mosaicity = []
+    domain_size = []
+    correlation = []
+    rmsd = []
+
+    for expt_index, expt in enumerate(new_experiments):
+      mosaicity.append(expt.crystal.get_half_mosaicity_deg())
+      domain_size.append(expt.crystal.get_domain_size_ang())
+      refls = new_reflections.select(new_reflections['id'] == expt_index)
+      correlation.append(refls['correlation'][0])
+      xyzcalc_mm = refls['xyzcal.mm'].as_numpy_array()
+      xyzobs_mm = refls['xyzobs.mm.value'].as_numpy_array()
+      xyzerr_mm = np.linalg.norm(xyzcalc_mm - xyzobs_mm, axis=1)
+      rmsd.append(np.mean(xyzerr_mm * 1000))
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3), sharex=True)
+    axes[0].plot(correlation, mosaicity, linestyle='none', marker='.', markersize=1, alpha=0.5)
+    axes[1].plot(correlation, domain_size, linestyle='none', marker='.', markersize=1, alpha=0.5)
+    axes[2].plot(correlation, rmsd, linestyle='none', marker='.', markersize=1, alpha=0.5)
+    axes[0].set_ylabel('Mosaicity (deg)')
+    axes[1].set_ylabel('Domain Size (ang)')
+    axes[2].set_ylabel('Mean RMSD (um)')
+    for i in range(3):
+      axes[i].set_xlabel('Correlation')
+    fig.tight_layout()
+    fig.savefig(os.path.join(
+      self.params.output.output_dir,
+      self.params.output.prefix + '_correlation_correlations.png'
+      ))
+    plt.close()
+
+    fig, axes = plt.subplots(1, 3, figsize=(10, 3))
+    axes[0].hist(mosaicity, bins=50)
+    axes[1].hist(domain_size, bins=50)
+    axes[2].hist(rmsd, bins=50)
+    axes[0].set_xlabel('Mosaicity (deg)')
+    axes[1].set_xlabel('Domain Size (ang)')
+    axes[2].set_xlabel('Mean RMSD (um)')
+    axes[0].set_ylabel('# experiments')
+    fig.tight_layout()
+    fig.savefig(os.path.join(
+      self.params.output.output_dir,
+      self.params.output.prefix + '_correlation_histograms.png'
+      ))
+    plt.close()
+
     assert rejected_experiments == experiments_rejected_because_of_low_signal + \
                                     experiments_rejected_because_of_low_correlation_with_reference
 
