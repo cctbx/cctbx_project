@@ -546,13 +546,14 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
                                                             qmr.package.charge,
                                                             total_charge),
           file=log)
-    qmr.package.charge=total_charge
+    # qmr.package.charge=total_charge
   else:
     print(u'  Setting charge for "%s" cluster : %s (not calculated %s)' % (
                                                              qmr.selection,
                                                              qmr.package.charge,
                                                              total_charge),
           file=log)
+    total_charge=qmr.package.charge
   #######
   # MULTI
   #######
@@ -573,7 +574,7 @@ def get_qm_manager(ligand_model, buffer_model, qmr, program_goal, log=StringIO()
             qmr.package.method,
             qmr.package.basis_set,
             solvent_model,
-            qmr.package.charge,
+            total_charge, #qmr.package.charge,
             qmr.package.multiplicity,
             qmr.package.nproc,
             # preamble='%02d' % (i+1),
