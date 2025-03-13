@@ -18,9 +18,10 @@ namespace {
       cctbx::sgtbx::space_group const& space_group,
       bool anomalous_flag,
       scitbx::af::const_ref<cctbx::miller::index<> > const& fo_sq_indices,
-      scitbx::af::const_ref<FloatType> const& fc_sqs)
+      scitbx::af::const_ref<FloatType> const& fc_sqs, bool complete)
     {
-      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs);
+      return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs,
+        complete);
     }
 
     static obst customized_detwin(obst const& self,
@@ -30,10 +31,10 @@ namespace {
       scitbx::af::const_ref<FloatType> const& fc_sqs,
       scitbx::af::shared<
       cctbx::xray::twin_component<FloatType>*> const&
-        merohedral_components)
+        merohedral_components, bool complete)
     {
       return self.detwin(space_group, anomalous_flag, fo_sq_indices, fc_sqs,
-        merohedral_components);
+        merohedral_components, complete);
     }
 
     static obst twin(obst const& self,

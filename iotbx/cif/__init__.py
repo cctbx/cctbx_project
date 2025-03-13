@@ -554,6 +554,10 @@ class miller_arrays_as_cif_block():
           ('.A_' in column_names[0] and '.B_' in column_names[1])):
         data = [flex.real(array.data()).as_string(),
                  flex.imag(array.data()).as_string()]
+      elif (('_F_squared_calc' in column_names[0] and 'phase_calc' in column_names[1]) or
+            ('_F_squared_calc' in column_names[1] and 'phase_calc' in column_names[0])):
+        data = [flex.norm(array.data()).as_string(),
+                 array.phases(deg=True).data().as_string()]
       else:
         data = [flex.abs(array.data()).as_string(),
                  array.phases(deg=True).data().as_string()]
