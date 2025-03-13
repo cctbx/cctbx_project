@@ -55,11 +55,12 @@ class version(object):
 
   def __init__(self):
     from gltbx import gl
+    from libtbx.utils import to_str
     import re
     self.__dict__ = self._shared_state
     if not self._shared_state:
       vers_pat = re.compile(r"^((\d+)\.(\d+))(?:\.(\d+))?(?: (.*))?$")
-      m = vers_pat.search(gl.glGetString(gl.GL_VERSION))
+      m = vers_pat.search(to_str(gl.glGetString(gl.GL_VERSION)))
       self.__dict__.update(dict(zip(
         ["principal", "major_number", "minor_number", "release_number",
          "vendor_info"], m.groups())))
