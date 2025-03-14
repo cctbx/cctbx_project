@@ -36,6 +36,23 @@ def exercise_3():
   else:
     raise Exception_expected
 
+def exercise_4():
+  """
+  Exercise 1 + 2 (mix)
+  """
+
+  info = rcsb_entry_request.get_info(pdb_ids=['1ucs', 'AF_AFP12102F1'])
+  assert len(info) == 2
+  assert info[0].get_rwork() == 0.133, info[0].get_rwork()
+  assert info[0].get_rama_outliers() == 0
+  assert info[0].get_rota_outliers() == 1.82
+  assert info[0].get_clashscore() == 19.44
+  assert not info[0].is_computational()
+
+  assert info[1].is_computational()
+  assert info[1].get_plddt() == 97.37, info[1].get_plddt()
+  assert info[1].get_rwork() == None, info[1].get_rwork()
+
 if (__name__ == "__main__"):
   # thorough_exercise()
   # check if internet and rcsb are available
@@ -49,6 +66,7 @@ if (__name__ == "__main__"):
     exercise_1()
     exercise_2()
     exercise_3()
+    exercise_4()
     print("OK")
   else:
     print("OK but skipped.")
