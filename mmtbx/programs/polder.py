@@ -105,6 +105,7 @@ Optional output:
 
   master_phil_str = master_phil_str
   known_article_ids = ['phenix.polder']
+  use_scattering_table_for_default_type = 'scattering_table'
 
   # ---------------------------------------------------------------------------
 
@@ -305,6 +306,8 @@ Optional output:
     #
     print ('*'*79, file=self.logger)
     message = self.result_message(cc12 = vr.cc12, cc13 = vr.cc13, cc23 = vr.cc23)
+    if self.params.scattering_table=='electron':
+      message=''
     print(message, file=self.logger)
     return message
 
