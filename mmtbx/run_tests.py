@@ -361,6 +361,7 @@ general_tests = [
   "$D/regression/tst_polder_1.py",
   "$D/regression/tst_polder_2.py",
   "$D/regression/tst_polder_3.py",
+  "$D/regression/tst_polder_4.py",
   "$D/regression/tst_polder_box.py",
   "$D/regression/tst_polder_ccs.py",
   "$D/regression/tst_map_model_cc.py",
