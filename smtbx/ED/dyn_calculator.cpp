@@ -35,17 +35,17 @@ boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factor
 template <typename FloatType>
 boost::shared_ptr<a_dyn_calculator<FloatType> > smtbx::ED::dyn_calculator_factory<FloatType>::make(
   const af::shared<miller::index<> >& indices,
-  const cart_t& K,
+  const cart_t& K, const cart_t& N,
   FloatType thickness) const
 {
   typedef boost::shared_ptr<a_dyn_calculator<FloatType> > ptr_t;
   switch (type) {
   case DYN_CALCULATOR_DEFAULT:
-    return ptr_t(new dyn_calculator_def<FloatType>(indices, K, thickness));
+    return ptr_t(new dyn_calculator_def<FloatType>(indices, K, N, thickness));
   case DYN_CALCULATOR_2013:
-    return ptr_t(new dyn_calculator_2013<FloatType>(indices, K, thickness));
+    return ptr_t(new dyn_calculator_2013<FloatType>(indices, K, N, thickness));
   case DYN_CALCULATOR_2015:
-    return ptr_t(new dyn_calculator_2015<FloatType>(indices, K, thickness));
+    return ptr_t(new dyn_calculator_2015<FloatType>(indices, K, N, thickness));
   }
   SMTBX_ERROR("Unknown DYN_CALCULATOR request");
   return ptr_t();

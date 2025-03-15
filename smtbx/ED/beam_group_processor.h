@@ -33,26 +33,26 @@ namespace smtbx {  namespace ED
     {
       strong_indices = af::select(beam_group.indices.const_ref(),
         beam_group.strong_beams.const_ref());
-      dyn_calculator = dc_f.make(strong_indices, K, thickness.value);
+      dyn_calculator = dc_f.make(strong_indices, K, beam_group.get_N(), thickness.value);
     }
 
     virtual ~beam_group_processor() {}
 
     void operator()() {
-      process(beam_group.RMf, beam_group.geometry.get_normal());
+      process(beam_group.RMf);
     }
 
-    void process(const mat3_t& RM, const cart_t& N) {
+    void process(const mat3_t& RM) {
       try {
         size_t beam_n = beam_group.strong_measured_beams.size();
         if (calc_grad) {
-          CIs = dyn_calculator->reset(Ugs, RM, N).calc_amps_ext(Ds_kin,
+          CIs = dyn_calculator->reset(Ugs, RM).calc_amps_ext(Ds_kin,
             thickness.grad,
             D_dyn,
             beam_n);
         }
         else {
-          CIs = dyn_calculator->reset(Ugs, RM, N)
+          CIs = dyn_calculator->reset(Ugs, RM)
             .calc_amps(beam_n);
         }
       }
@@ -64,18 +64,18 @@ namespace smtbx {  namespace ED
       }
     }
 
-    void process_1(size_t idx, const mat3_t& RM, const cart_t& N) {
+    void process_1(size_t idx, const mat3_t& RM) {
       try {
         if (calc_grad) {
           CIs.resize(1);
-          CIs[0] = dyn_calculator->reset(Ugs, RM, N).calc_amps_ext_1(Ds_kin,
+          CIs[0] = dyn_calculator->reset(Ugs, RM).calc_amps_ext_1(Ds_kin,
             thickness.grad,
             D_dyn,
             idx);
         }
         else {
           CIs.resize(1);
-          CIs[0] = dyn_calculator->reset(Ugs, RM, N).calc_amps_1(idx);
+          CIs[0] = dyn_calculator->reset(Ugs, RM).calc_amps_1(idx);
         }
       }
       catch (smtbx::error const& e) {
@@ -86,8 +86,12 @@ namespace smtbx {  namespace ED
       }
     }
 
-    const cart_t& getK() const {
+    const cart_t& get_K() const {
       return dyn_calculator->K;
+    }
+
+    const cart_t& get_N() const {
+      return dyn_calculator->N;
     }
   private:
     dyn_calculator_ptr_t dyn_calculator;

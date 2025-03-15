@@ -62,15 +62,17 @@ namespace smtbx { namespace ED
       angle(angle), scale(scale),
       offset(~0), next(0), prev(0)
     {
-      mat3_t rm = geometry->get_RM(angle);
-      RMf = geometry->get_RMf(rm);
-      original_normal = rm.transpose() * geometry->get_normal();
+      RMf = geometry->get_RMf(angle);
     }
 
-    std::pair<mat3_t, cart_t> compute_RMf_N(FloatType ang) const {
-      mat3_t rm = geometry->get_RM(ang);
-      return std::make_pair(geometry->get_RMf(rm),
-        rm * original_normal);
+    // convenience method
+    mat3_t get_R(FloatType ang) const {
+      return geometry->get_RMf(ang);
+    }
+
+    // convenience method
+    const cart_t &get_N() const {
+      return geometry->get_normal();
     }
 
     // returns angle in rads at which the excitation error is 0
@@ -206,7 +208,6 @@ namespace smtbx { namespace ED
     }
 
     int id, tag;
-    cart_t original_normal;
     boost::shared_ptr<geometry_t> geometry;
     mat3_t RMf;
     FloatType angle, scale;
@@ -299,7 +300,7 @@ namespace smtbx { namespace ED
     af::shared<mat3_t> RMfs(af::reserve(beams.size()));
     for (size_t i = 0; i < beams.size(); i++) {
       FloatType da = this->get_diffraction_angle(beams[i].index, K);
-      RMfs.push_back(this->compute_RMf_N(da).first);
+      RMfs.push_back(this->get_R(da));
     }
     ebeams = utils<FloatType>::generate_index_set(RMfs, K, min_d,
       MaxSg, unit_cell);
@@ -337,7 +338,7 @@ namespace smtbx { namespace ED
     af::shared<mat3_t> RMfs(af::reserve(beams.size()));
     for (size_t i = 0; i < beams.size(); i++) {
       FloatType da = this->get_diffraction_angle(beams[i].index, K);
-      RMfs.push_back(this->compute_RMf_N(da).first);
+      RMfs.push_back(this->get_R(da));
     }
     ebeams = utils<FloatType>::generate_index_set_N(RMfs, K, min_d,
       MaxSg, unit_cell);
