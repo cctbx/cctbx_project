@@ -23,9 +23,9 @@ namespace smtbx { namespace ED
     {}
 
     dyn_calculator_2013(const af::shared<miller::index<> >& indices,
-      const cart_t& K,
+      const cart_t& K, const cart_t& N,
       FloatType thickness)
-      : parent_t(indices, K, thickness)
+      : parent_t(indices, K, N, thickness)
     {}
 
     virtual af::shared<complex_t> calc_amps(size_t num, bool include_incident) {

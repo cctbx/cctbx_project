@@ -151,13 +151,13 @@ namespace least_squares {
               
               FloatType da = beam_group.get_diffraction_angle(h, parent.Kl);
               if (beam_n > 2) {
-                std::pair<mat3_t, cart_t> FI = beam_group.compute_RMf_N(da);
+                mat3_t R = beam_group.get_R(da);
                 indices = utils<FloatType>::build_Ug_matrix_N(A,
                   Fcs_k, parent.mi_lookup,
-                  strong_indices, K, h, FI.first, beam_n,
+                  strong_indices, K, h, R, beam_n,
                   parent.params.useNBeamSg(), parent.params.getNBeamWght());
                 dc = dyn_calculator_factory<FloatType>(parent.mat_type)
-                  .make(indices, K, thickness);
+                  .make(indices, K, beam_group.get_N(), thickness);
               }
               else {
                 int ii = parent.mi_lookup.find_hkl(h);
@@ -165,16 +165,15 @@ namespace least_squares {
               }
 
               for (size_t ai = 0; ai < angles.size(); ai++) {
-                std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(angles[ai]);
-                cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
+                mat3_t R = beam_group.get_R(angles[ai]);
+                cart_t K_g = R * cart_t(h[0], h[1], h[2]) + K;
                 FloatType I;
                 if (beam_n == 2) {
                   I = std::norm(utils<FloatType>::calc_amp_2beam(
-                    h, Fc, thickness, K,
-                    r.first, r.second));
+                    h, Fc, thickness, K, R, beam_group.get_N()));
                 }
                 else {
-                  I = std::norm(dc->reset(A, r.first, r.second).calc_amps_1(0));
+                  I = std::norm(dc->reset(A, R).calc_amps_1(0));
                 }
                 FloatType g = K_g.length();
                 if (g1 > 0) {
@@ -235,7 +234,7 @@ namespace least_squares {
           );
           boost::shared_ptr<a_dyn_calculator<FloatType> > dc =
             dyn_calculator_factory<FloatType>(parent.mat_type)
-            .make(strong_indices, K, thickness);
+            .make(strong_indices, K, beam_group.get_N(), thickness);
           af::shared<FloatType> angles =
             beam_group.get_int_angles(parent.Kl, parent.params.getIntSpan(),
               parent.params.getIntStep(),
@@ -249,9 +248,9 @@ namespace least_squares {
             FloatType I1 = -1, g1 = -1;
             FloatType da = beam_group.get_diffraction_angle(h, parent.Kl);
             for (size_t ai = 0; ai < angles.size(); ai++) {
-              std::pair<mat3_t, cart_t> r = beam_group.compute_RMf_N(angles[ai]);
-              cart_t K_g = r.first * cart_t(h[0], h[1], h[2]) + K;
-              FloatType I = std::norm(dc->reset(A, r.first, r.second).calc_amps_1(i));
+              mat3_t R = beam_group.get_R(angles[ai]);
+              cart_t K_g = R * cart_t(h[0], h[1], h[2]) + K;
+              FloatType I = std::norm(dc->reset(A, R).calc_amps_1(i));
               FloatType g = K_g.length();
               if (g1 >= 0) {
                 Is[offset + i] += (I + I1) * std::abs(g - g1) / 2;

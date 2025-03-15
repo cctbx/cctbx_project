@@ -303,9 +303,7 @@ namespace smtbx {  namespace refinement  { namespace least_squares
             data.params.getIntStep());
         }
       }
-
       mat3_t da_rm = beam_group->geometry->get_RM(da);
-      cart_t da_n = da_rm.transpose() * beam_group->geometry->get_normal();
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
         data.params.getMatrixType(),
         *beam_group, data.K, data.thickness.value,
@@ -330,30 +328,26 @@ namespace smtbx {  namespace refinement  { namespace least_squares
 
       FloatType I1 = -1, g1 = -1, I_sum = 0, step_sum = 0,
         I = 0;
-      std::pair<mat3_t, cart_t> r;
-      r.second = beam_group->geometry->get_normal();
       for (size_t ai = 0; ai < angles.size(); ai++) {
-        mat3_t rm = beam_group->geometry->get_RM(angles[ai]);
-        r.first = beam_group->geometry->get_RMf(rm);
-        //r.second = rm * da_n;
-        cart_t g = r.first * cart_t(h[0], h[1], h[2]);
+        mat3_t R = beam_group->get_R(angles[ai]);
+        cart_t g = R * cart_t(h[0], h[1], h[2]);
         cart_t K_g = g + data.K;
         FloatType K_g_l = K_g.length();
         if (compute_grad) {
           if (data.params.isNBeamFloating()) {
-            n_beam_dc.init(h, r.first, data.Fcs_kin, data.mi_lookup);
+            n_beam_dc.init(h, R, data.Fcs_kin, data.mi_lookup);
             utils<FloatType>::build_D_matrices(data.mi_lookup, n_beam_dc.indices,
               data.design_matrix_kin, Ds_kin);
           }
           I = std::norm(
-            n_beam_dc.calc_amp_ext(r, Ds_kin, data.thickness.grad, D_dyn)
+            n_beam_dc.calc_amp_ext(R, Ds_kin, data.thickness.grad, D_dyn)
           );
         }
         else {
           if (data.params.isNBeamFloating()) {
-            n_beam_dc.init(h, r.first, data.Fcs_kin, data.mi_lookup);
+            n_beam_dc.init(h, R, data.Fcs_kin, data.mi_lookup);
           }
-          I = std::norm(n_beam_dc.calc_amp(r));
+          I = std::norm(n_beam_dc.calc_amp(R));
         }
         if (g1 >= 0) {
           FloatType d = std::abs(K_g_l - g1) / 2;
@@ -457,7 +451,6 @@ namespace smtbx {  namespace refinement  { namespace least_squares
         test_span / test_points);
 
       mat3_t da_rm = group.geometry->get_RM(da);
-      cart_t da_n = da_rm.transpose() * group.geometry->get_normal();
       dyn_calculator_n_beam<FloatType> n_beam_dc(data.params.getBeamN()-1,
         data.params.getMatrixType(),
         group, data.K, data.thickness.value,
@@ -470,14 +463,11 @@ namespace smtbx {  namespace refinement  { namespace least_squares
       af::shared<FloatType> amps(angles.size());
       FloatType maxI = 0, minI = 1e6;
       for (size_t ai = 0; ai < angles.size(); ai++) {
-        std::pair<mat3_t, cart_t> r;
-        mat3_t rm = group.geometry->get_RM(angles[ai]);
-        r.first = group.geometry->get_RMf(rm);
-        r.second = rm * da_n;
+        mat3_t R = group.get_R(angles[ai]);
         if (data.params.isNBeamFloating()) {
-          n_beam_dc.init(index, r.first, data.Fcs_kin, data.mi_lookup);
+          n_beam_dc.init(index, R, data.Fcs_kin, data.mi_lookup);
         }
-        FloatType I = std::norm(n_beam_dc.calc_amp(r));
+        FloatType I = std::norm(n_beam_dc.calc_amp(R));
         if (I > maxI) {
           maxI = I;
         }

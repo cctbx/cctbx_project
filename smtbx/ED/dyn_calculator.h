@@ -24,35 +24,29 @@ namespace smtbx { namespace ED
 
     a_dyn_calculator(const af::shared<miller::index<> >& indices,
       const cart_t& K,
+      const cart_t& N,
       FloatType thickness)
       : indices(indices),
-      K(K),
+      K(K), N(N),
       thickness(thickness)
     {}
 
     virtual ~a_dyn_calculator() {}
 
     // mat_Ug will be NOT be affected - deep copied
-    a_dyn_calculator& reset(const cmat_t& m, const mat3_t& RMf, const cart_t& N) {
+    a_dyn_calculator& reset(const cmat_t& m, const mat3_t& RMf) {
       A = m.deep_copy();
       this->RMf = RMf;
-      this->N = N;
       return build();
     }
 
     // mat_Ug will be NOT be affected - deep copied
-    a_dyn_calculator& reset(const cmat_t& m, const std::pair <mat3_t, cart_t> &fi) {
-      return reset(m, fi.first, fi.second);
-    }
-
-    // mat_Ug will be NOT be affected - deep copied
     a_dyn_calculator& reset(const af::shared<miller::index<> > &indices_,
-      const cmat_t& m, const mat3_t& RMf, const cart_t& N)
+      const cmat_t& m, const mat3_t& RMf)
     {
       A = m.deep_copy();
       indices = indices_;
       this->RMf = RMf;
-      this->N = N;
       return build();
     }
 
@@ -76,7 +70,7 @@ namespace smtbx { namespace ED
 
     // recomputes the Eigen matrix
     virtual a_dyn_calculator& build() = 0;
-    const cart_t K;
+    const cart_t K, N;
     const cmat_t& get_matrix() const {
       return A;
     }
@@ -84,7 +78,6 @@ namespace smtbx { namespace ED
     af::shared<miller::index<> > indices;
     cmat_t A;
     mat3_t RMf;
-    cart_t N;
     FloatType thickness;
   };
 
@@ -111,7 +104,7 @@ namespace smtbx { namespace ED
 
     boost::shared_ptr<a_dyn_calculator<FloatType> > make(
       const af::shared<miller::index<> >& indices,
-      const cart_t& K,
+      const cart_t& K, const cart_t& N,
       FloatType thickness) const;
   private:
     int type;

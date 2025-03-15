@@ -19,9 +19,9 @@ namespace smtbx { namespace ED
     {}
 
     dyn_calculator_2015(const af::shared<miller::index<> >& indices,
-      const cart_t& K,
+      const cart_t& K, const cart_t& N,
       FloatType thickness)
-      : parent_t(indices, K, thickness)
+      : parent_t(indices, K, N, thickness)
     {}
 
     virtual af::shared<complex_t> calc_amps(size_t num, bool include_incident) {
@@ -254,7 +254,7 @@ namespace smtbx { namespace ED
         miller::index<> h = this->indices[i - 1];
         cart_t g = this->RMf * cart_t(h[0], h[1], h[2]);
         gs[i] = g;
-        dens[i] = std::sqrt(1. / (1 + g * this->N / Kn));
+        dens[i] = std::sqrt(1. / (1 + std::abs(g * this->N / Kn)));
       }
       for (size_t i = 1; i < n_beams; i++) {
         FloatType s_2k = (Kl * Kl - (this->K + gs[i]).length_sq());

@@ -71,7 +71,8 @@ namespace boost_python {
         .def("PL_correctionROD", &wt::PL_correctionROD)
         .def("get_diffraction_angle", &wt::get_diffraction_angle,
           (arg("h"), arg("K"), arg("sweep_angle")=3.0))
-        .def("compute_RMf_N", &wt::compute_RMf_N)
+        .def("get_R", &wt::get_R)
+        .def("get_N", &wt::get_N, rbv)
         .def("link_groups", &wt::link_groups)
         .staticmethod("link_groups")
         ;
@@ -240,19 +241,16 @@ namespace boost_python {
     static void wrap_base() {
       using namespace boost::python;
       typedef a_dyn_calculator<FloatType> wt;
-      typedef wt& (wt::*reset_t1)(const cmat_t&, const mat3_t&, const cart_t&);
-      typedef wt& (wt::*reset_t2)(const cmat_t&, const std::pair<mat3_t, cart_t>&);
+      typedef wt& (wt::*reset_t1)(const cmat_t&, const mat3_t&);
       typedef wt& (wt::*reset_t3)(const af::shared<miller::index<> >&,
-        const cmat_t&, const mat3_t&, const cart_t&);
+        const cmat_t&, const mat3_t&);
       return_value_policy<reference_existing_object> reo;
       return_value_policy<return_by_value> rbv;
       class_<wt, boost::noncopyable>("a_dyn_calculator", no_init)
         .def("reset", (reset_t1)&wt::reset, (
-          arg("m"), arg("RMf"), arg("N")), reo)
-        .def("reset", (reset_t2) &wt::reset, (
-          arg("m"), arg("fi")), reo)
+          arg("m"), arg("RMf")), reo)
         .def("reset", (reset_t3) &wt::reset, (
-          arg("indices"), arg("m"), arg("RMf"), arg("N")),
+          arg("indices"), arg("m"), arg("RMf")),
           reo)
         .def("calc_amps", &wt::calc_amps)
         .def("calc_amps_ext", &wt::calc_amps_ext)
@@ -271,7 +269,7 @@ namespace boost_python {
         const cart_t&, FloatType) const;
       typedef boost::shared_ptr<a_dyn_calculator<FloatType> >(wt::*make_t2)(
         const af::shared<miller::index<> >&,
-        const cart_t&, FloatType) const;
+        const cart_t&, const cart_t&, FloatType) const;
 
       class_<wt, boost::shared_ptr<wt>,
         boost::noncopyable>("dyn_calculator_factory", no_init)
@@ -280,7 +278,7 @@ namespace boost_python {
           (arg("indices"), arg("mat_Ug"), arg("K"), arg("RMf"), arg("N"),
             arg("thickness")))
         .def("make", (make_t2) &wt::make,
-          (arg("indices"), arg("K"), arg("thickness")))
+          (arg("indices"), arg("K"), arg("N"), arg("thickness")))
         ;
     }
 
