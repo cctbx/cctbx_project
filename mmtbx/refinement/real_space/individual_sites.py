@@ -39,6 +39,7 @@ class easy(object):
     self.rmsd_bonds_start  = es.bond_deviations()[2]
     self.w = w
     if(self.max_iterations > 0):
+      self.w = None
       if(self.w is None):
         import mmtbx.refinement.real_space.weight
         self.weight = mmtbx.refinement.real_space.weight.run(
@@ -50,6 +51,21 @@ class easy(object):
           rms_angles_limit            = rms_angles_limit,
           gradients_method            = gradients_method)
         self.w = self.weight.weight
+      # DEBUG: adjust per atom rsr weights
+      print("$"*100)
+      natoms = len(self.pdb_hierarchy.atoms())
+      weights = [self.w]*natoms
+      cut = int(natoms*0.7)
+      for i in range(natoms):
+        if i < cut:
+          weights[i] = self.w
+        else:
+          weights[i] = self.w+100
+      self.w = weights
+      print("weights:",self.w)
+      print("*"*100)
+      print(gradients_method)
+
       if(selection is None):
         selection = flex.bool(self.xray_structure.scatterers().size(), True)
       refine_object = simple(

@@ -136,9 +136,18 @@ class lbfgs(object):
       selection_variable_real_space = flex.bool(sites_cart.size(), True)
 
     # Check for individual rsr weights
-    O.real_space_target_weight_vector = None
-    if hasattr(real_space_target_weight,"size"):
-      O.real_space_target_weight_vector = real_space_target_weight
+    
+    if isinstance(real_space_target_weight,(int,float)):
+      # using constant weight
+      O.real_space_target_weight_is_vector = False
+    elif hasattr(real_space_target_weight,"size") or hasattr(real_space_target_weight,"__len__"):
+      O.real_space_target_weight_is_vector = True
+      real_space_target_weight = flex.double(real_space_target_weight)
+      gradients_method = "fd" # not implemented for others
+      
+    else:
+      assert False, "real space target weight unknown type: "+str(type(real_space_target_weight))
+ 
 
     O.lbfgs_core_params = lbfgs_core_params
     O.gradients_method = gradients_method
@@ -169,6 +178,8 @@ class lbfgs(object):
     else:
       O.sites_cart = sites_cart.deep_copy()
       O.x = sites_cart.select(O.selection_variable).as_double()
+      if O.real_space_target_weight_is_vector:
+        O.real_space_target_weight_current = O.real_space_target_weight.select(O.selection_variable).as_double()
     O.number_of_function_evaluations = -1
     O.f_start, O.g_start = O.compute_functional_and_gradients()
     O.minimizer = scitbx.lbfgs.run(
@@ -197,21 +208,42 @@ class lbfgs(object):
       O.x_previous = x_current.deep_copy()
     #
     O.sites_cart_variable = flex.vec3_double(x_current)
-    if not O.real_space_target_weight_vector and (O.real_space_target_weight == 0):
+    if not O.real_space_target_weight_is_vector and (O.real_space_target_weight == 0):
       rs_f = 0.
       rs_g = flex.vec3_double(O.sites_cart_variable.size(), (0,0,0))
     else:
       if (O.local_standard_deviations_radius is None):
         if(O.gradients_method=="fd"):
-          if O.real_space_target_weight_vector:
+
+          if O.real_space_target_weight_is_vector:
+            print("%"*100)
+            print("calc 1")
             o = maptbx.target_and_gradients_simple(
               unit_cell   = O.unit_cell,
               map_target  = O.density_map,
               sites_cart  = O.sites_cart_variable,
               delta       = O.real_space_gradients_delta,
               selection   = O.selection_variable_real_space,
-              rsr_weight = O.real_space_target_weight_vector)
+              rsr_weight = O.real_space_target_weight_current)
+            rs_f = o.target()
+            rs_g = o.gradients()
+            # o2 = maptbx.target_and_gradients_simple(
+            #     unit_cell   = O.unit_cell,
+            #     map_target  = O.density_map,
+            #     sites_cart  = O.sites_cart_variable,
+            #     delta       = O.real_space_gradients_delta,
+            #     selection   = O.selection_variable_real_space)
+            # rs_f2 = o2.target()
+            # rs_g2 = o2.gradients()
+            # rs_f2 *= -O.real_space_target_weight_vector[0]
+            # rs_g2 *= -O.real_space_target_weight_vector[0]
+            # import numpy as np
+            # assert np.isclose(rs_f,rs_f2), "not matching;"+str(rs_f)+","+str(rs_f2)
+
+
           else:
+            #print("%"*100)
+            #print("calc 2")
             o = maptbx.target_and_gradients_simple(
                 unit_cell   = O.unit_cell,
                 map_target  = O.density_map,
@@ -219,6 +251,8 @@ class lbfgs(object):
                 delta       = O.real_space_gradients_delta,
                 selection   = O.selection_variable_real_space)
         else:
+          #print("%"*100)
+          #print("calc 3")
           o = maptbx.target_and_gradients_simple(
             unit_cell     = O.unit_cell,
             map_target    = O.density_map,
@@ -228,6 +262,8 @@ class lbfgs(object):
         rs_f = o.target()
         rs_g = o.gradients()
       else:
+        #print("%"*100)
+        #print("calc ")
         rs_f = local_standard_deviations_target(
           unit_cell=O.unit_cell,
           density_map=O.density_map,
@@ -243,7 +279,7 @@ class lbfgs(object):
           sites_cart=O.sites_cart_variable,
           site_radii=O.site_radii,
           delta=O.real_space_gradients_delta)
-      if not O.real_space_target_weight_vector: # weighting done in extension
+      if not O.real_space_target_weight_is_vector: # otherwise weighting done in extension
         rs_f *= -O.real_space_target_weight
         rs_g *= -O.real_space_target_weight
     if (O.geometry_restraints_manager is None):
