@@ -216,8 +216,6 @@ class lbfgs(object):
         if(O.gradients_method=="fd"):
 
           if O.real_space_target_weight_is_vector:
-            print("%"*100)
-            print("calc 1")
             o = maptbx.target_and_gradients_simple(
               unit_cell   = O.unit_cell,
               map_target  = O.density_map,
@@ -227,23 +225,7 @@ class lbfgs(object):
               rsr_weight = O.real_space_target_weight_current)
             rs_f = o.target()
             rs_g = o.gradients()
-            # o2 = maptbx.target_and_gradients_simple(
-            #     unit_cell   = O.unit_cell,
-            #     map_target  = O.density_map,
-            #     sites_cart  = O.sites_cart_variable,
-            #     delta       = O.real_space_gradients_delta,
-            #     selection   = O.selection_variable_real_space)
-            # rs_f2 = o2.target()
-            # rs_g2 = o2.gradients()
-            # rs_f2 *= -O.real_space_target_weight_vector[0]
-            # rs_g2 *= -O.real_space_target_weight_vector[0]
-            # import numpy as np
-            # assert np.isclose(rs_f,rs_f2), "not matching;"+str(rs_f)+","+str(rs_f2)
-
-
           else:
-            #print("%"*100)
-            #print("calc 2")
             o = maptbx.target_and_gradients_simple(
                 unit_cell   = O.unit_cell,
                 map_target  = O.density_map,
@@ -251,8 +233,6 @@ class lbfgs(object):
                 delta       = O.real_space_gradients_delta,
                 selection   = O.selection_variable_real_space)
         else:
-          #print("%"*100)
-          #print("calc 3")
           o = maptbx.target_and_gradients_simple(
             unit_cell     = O.unit_cell,
             map_target    = O.density_map,
@@ -262,8 +242,6 @@ class lbfgs(object):
         rs_f = o.target()
         rs_g = o.gradients()
       else:
-        #print("%"*100)
-        #print("calc ")
         rs_f = local_standard_deviations_target(
           unit_cell=O.unit_cell,
           density_map=O.density_map,
