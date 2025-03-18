@@ -32,6 +32,13 @@ params = master_phil.extract()
 #   used in this test) rounds to 5 digits.  Happens to make a difference
 #  in this test.
 
+# For these tests, use defaults from original version of process_predicted_model
+params.process_predicted_model.minimum_domain_length = 10
+params.process_predicted_model.minimum_sequential_residues = 5
+params.process_predicted_model.pae_power = 1
+params.process_predicted_model.pae_cutoff = 5
+params.process_predicted_model.pae_graph_resolution = 0.5
+
 model_file=os.path.join(data_dir,'fibronectin_af_ca_1358_1537.cif')
 pae_model_file=os.path.join(data_dir,'pae_model.cif')
 pae_file=os.path.join(pae_data_dir,'pae.json')
