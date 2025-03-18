@@ -561,15 +561,12 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
       rc[0], rc[1], rc[2],
       model, proj, view,
       winx, winy, winz)
-    objx = []
-    objy = []
-    objz = []
     win_height = max(1, self.w)
-    assert gluUnProject(
+    objx, objy, objz = gluUnProject(
       winx[0], winy[0]+0.5*win_height, winz[0],
       model, proj, view,
-      objx, objy, objz)
-    dist = v3distsq((objx[0],objy[0],objz[0]), rc)**0.5
+    )
+    dist = v3distsq((objx, objy, objz), rc)**0.5
     scale = abs(dist / (0.5 * win_height))
     x,y = event.GetX(), event.GetY()
     gltbx.util.translate_object(scale, x, y, self.xmouse, self.ymouse)
@@ -584,17 +581,15 @@ class wxGLWindow(wx.glcanvas.GLCanvas):
     view = gltbx.util.get_gl_viewport()
     self.pick_points = []
     for winz in [0.0, 1.0]:
-      objx = []
-      objy = []
-      objz = []
-      ok = gluUnProject(
+      objx, objy, objz = gluUnProject(
         mouse_xy[0], self.h-mouse_xy[1], winz,
         model, proj, view,
-        objx, objy, objz)
-      if (not ok):
+      )
+      if objx and objy and objz:
+        self.pick_points.append((objx, objy, objz))
+      else:
         self.pick_points = None
         break
-      self.pick_points.append((objx[0], objy[0], objz[0]))
 
   def OnPaint(self, event=None):
     wx.PaintDC(self)
