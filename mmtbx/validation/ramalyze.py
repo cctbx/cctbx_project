@@ -224,7 +224,7 @@ class ramalyze(validation):
         if (main_residue.resname[0:3] == "GLY"):
           res_type = RAMA_GLYCINE
         elif (main_residue.resname[0:3] == "PRO"):
-          is_cis = is_cis_peptide(three)
+          is_cis = is_cislike_peptide(three)
           if is_cis:
             res_type = RAMA_CISPRO
           else:
@@ -609,13 +609,30 @@ def get_omega_atoms(three):
   omega_atoms = [ca1, c, n, ca2]
   return omega_atoms
 
-def is_cis_peptide(three):
+def is_cis_peptide(three): #Depricated in favor of is_cislike_peptide below
   omega_atoms = get_omega_atoms(three)
   omega = get_dihedral(omega_atoms)
   if omega is None:
     return False
   if(omega > -30 and omega < 30):
     return True
+  else:
+    return False
+
+def is_cislike_peptide(three):
+  omega_atoms = get_omega_atoms(three)
+  omega = get_dihedral(omega_atoms)
+  if omega is None:
+    return False
+  if(omega > -90 and omega < 90):
+    return True
+    #Splitting omega at 90 accounts for twisted peptides and placed them in the cis/trans
+    #  category closest to their modeled angle
+    #This split is currently only relevant for twisted Proline, since cis nonPro is extremely rare
+    #  and we do not define a separate Rama category for it
+    #Users are advised to inspect every twisted Proline manually, since twisted peptides are higly
+    #  unusual and should not be assumed to be close to correct. But they have to go somewhere on
+    #  the Ramachandran plot
   else:
     return False
 
