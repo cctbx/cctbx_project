@@ -71,7 +71,7 @@ master_phil_str = """
                least maximum_domains.
       .short_caption = Adjust domain size
 
-    minimum_domain_length = 10
+    minimum_domain_length = 20
       .type = float
       .help = Minimum length of a domain to keep (reject at end if smaller).
       .short_caption = Minimum domain length (residues)
@@ -82,7 +82,7 @@ master_phil_str = """
               before merging them
       .short_caption = Maximum fraction close
 
-    minimum_sequential_residues = 5
+    minimum_sequential_residues = 10
       .type = int
       .help = Minimum length of a short segment to keep (reject at end ).
       .short_caption = Minimum sequential_residues
@@ -138,7 +138,7 @@ master_phil_str = """
           out the final files.  Does not affect the cutoff for removing low-\
            confidence residues.
 
-     pae_power = 1
+     pae_power = 2
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             each edge in the graph will be weighted proportional to \
@@ -146,14 +146,14 @@ master_phil_str = """
               that you want (try 1, 0.5, 1.5, 2)
        .short_caption = PAE power (if PAE matrix supplied)
 
-     pae_cutoff = 5
+     pae_cutoff = 4
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             graph edges will only be created for residue pairs with \
             pae<pae_cutoff
        .short_caption = PAE cutoff (if PAE matrix supplied)
 
-     pae_graph_resolution = 0.5
+     pae_graph_resolution = 4
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             pae_graph_resolution regulates how aggressively the clustering \
