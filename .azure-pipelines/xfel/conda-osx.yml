@@ -18,11 +18,11 @@ jobs:
   strategy:
     maxParallel: 2
     matrix:
-      python3.10:
+      python3.11:
         CONDA: MacOSX
         OS: macos
-        PYTHON_VERSION: py310
-        PYTHON_FULL_VERSION: 3.10
+        PYTHON_VERSION: py311
+        PYTHON_FULL_VERSION: 3.11
         MODULES: ${{ parameters.modules }}
 
   variables:
