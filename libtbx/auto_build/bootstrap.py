@@ -2291,9 +2291,8 @@ class DIALSBuilder(CCIBuilder):
 
   def get_libtbx_configure(self):
     configlst = super(DIALSBuilder, self).get_libtbx_configure()
-    if self.python != "27":
-      # Do not enable C++11 for Python 2.7 builds, cf. https://github.com/cctbx/cctbx_project/pull/497
-      configlst.append('--enable_cxx11')
+    if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
+    configlst.append('--cxxstd=c++14')
     return configlst
 
 class LABELITBuilder(CCIBuilder):
