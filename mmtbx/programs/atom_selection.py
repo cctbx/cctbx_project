@@ -1,12 +1,9 @@
 from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate
-from libtbx.str_utils import show_string
 from libtbx.utils import plural_s
 from cctbx.array_family import flex
 from cctbx import crystal, uctbx, xray
-import mmtbx.model
-import iotbx.pdb
 from libtbx.utils import Sorry
 from cctbx.maptbx.box import shift_and_box_model
 
