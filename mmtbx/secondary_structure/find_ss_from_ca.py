@@ -260,14 +260,23 @@ master_params = master_phil
 ######## Methods for getting selection strings from a model ############
 
 def get_selection_from_chain_dict(chain_dict, minimum_segment_length = None,
-   return_as_dict = False):
+   return_as_dict = False, skip_chain_id = False):
   ''' Create a selection based on a dict of residues present in each chain.
-   If minimum_segment_length is set, remove segments shorter than this'''
+   If minimum_segment_length is set, remove segments shorter than this.
+  if skip_chain_id, ignore chain ID values'''
 
   from iotbx.pdb import resseq_encode
   int_type = type(1)
   selection_list = []
   if return_as_dict: info_dict = {}
+  if skip_chain_id:
+    all_chain_list = []
+    for chain_id in list(chain_dict.keys()):
+      all_chain_list += chain_dict[chain_id]
+    new_chain_dict = {}
+    for chain_id in list(chain_dict.keys()):
+      new_chain_dict[chain_id] = all_chain_list
+    chain_dict = new_chain_dict
   for chain_id in list(chain_dict.keys()):
     residues_to_keep = chain_dict[chain_id]
     if return_as_dict:
@@ -277,16 +286,24 @@ def get_selection_from_chain_dict(chain_dict, minimum_segment_length = None,
         if minimum_segment_length and minimum_segment_length > 1:
           continue # too short
         i = resseq_encode(c).replace(" ","")
-        selection_list.append(" ( chain '%s' and resseq %s:%s) " %(
-          chain_id, i,i))
+        if skip_chain_id:
+          selection_list.append(" ( resseq %s:%s) " %(
+            i,i))
+        else:  # usual
+          selection_list.append(" ( chain '%s' and resseq %s:%s) " %(
+            chain_id, i,i))
       else:
         if minimum_segment_length and \
            minimum_segment_length > (c[1] - c[0]) + 1:
           continue # too short
         i = resseq_encode(c[0]).replace(" ","")
         j = resseq_encode(c[1]).replace(" ","")
-        selection_list.append(" (chain '%s' and resseq %s:%s) " %(
-          chain_id, i,j))
+        if skip_chain_id:
+          selection_list.append(" (resseq %s:%s) " %(
+            i,j))
+        else: # usual
+          selection_list.append(" (chain '%s' and resseq %s:%s) " %(
+            chain_id, i,j))
       if return_as_dict:
         info_dict[chain_id].append([c[0],c[1]])
   if return_as_dict:
@@ -299,14 +316,15 @@ def get_residue_ranges_from_model(model = None):
   return get_selection_from_chain_dict(chain_dict, return_as_dict = True)
 
 def get_selection_string_from_model(model = None,
-   hierarchy = None, minimum_segment_length = None):
+   hierarchy = None, minimum_segment_length = None, skip_chain_id = False):
    ''' Get selection string based on the residues present in selected_model
     If minimum_segment_length is set, remove segments shorter than this '''
    if not hierarchy:
      hierarchy = model.get_hierarchy()
    chain_dict = get_chain_dict(hierarchy)
    return get_selection_from_chain_dict(chain_dict,
-     minimum_segment_length = minimum_segment_length)
+     minimum_segment_length = minimum_segment_length,
+     skip_chain_id = skip_chain_id)
 
 def get_chain_dict(ph):
     ''' Get dict of chains and all residue numbers in the chains'''
@@ -4038,16 +4056,6 @@ class find_secondary_structure: # class to look for secondary structure
          out=out)
       self.h_bond_text=self.helix_strand_segments.h_bond_text
       working_annotation=self.helix_strand_segments.get_annotation()
-      # Remove bad if it was introduced here
-      if 0 and params.find_ss_structure.remove_missing_atom_annotation:
-        print("ZZ REMOVING BAD")
-        working_annotation=remove_bad_annotation(
-          working_annotation,
-          hierarchy=hierarchy,
-          max_h_bond_length=params.find_ss_structure.max_h_bond_length,
-          remove_overlaps=False, # XXX Required to prevent recursion
-          out=out)
-        print("ZZ work",working_annotation.as_mmcif_str())
 
     elif self.user_helix_strand_segments and secondary_structure_input and \
         not params.find_ss_structure.combine_annotations:
