@@ -1,10 +1,9 @@
-from libtbx.utils import Sorry
+from __future__ import absolute_import, division, print_function
 from iotbx.map_model_manager import map_model_manager
 from iotbx.data_manager import DataManager
 from cctbx.maptbx.prepare_map_for_docking import mask_fixed_model_region
 from cctbx.maptbx.prepare_map_for_docking import assess_cryoem_errors
 from cctbx.maptbx.prepare_map_for_docking import sphere_enclosing_model
-import sys
 dm = DataManager()
 dm.set_overwrite(True)
 
