@@ -275,18 +275,33 @@ def chemical_id_search(resname, **kwds):
 {
   "query": {
     "type": "group",
-    "logical_operator": "and",
     "nodes": [
       {
-        "type": "terminal",
-        "service": "text",
-        "parameters": {
-          "attribute": "rcsb_nonpolymer_entity_container_identifiers.nonpolymer_comp_id",
-          "operator": "exact_match",
-          "value": "%s"
-        }
+        "type": "group",
+        "logical_operator": "or",
+        "nodes": [
+          {
+            "type": "terminal",
+            "service": "text",
+            "parameters": {
+              "attribute": "rcsb_nonpolymer_entity_container_identifiers.nonpolymer_comp_id",
+              "operator": "exact_match",
+              "value": "%s"
+            }
+          },
+          {
+            "type": "terminal",
+            "service": "text",
+            "parameters": {
+              "attribute": "rcsb_polymer_entity_container_identifiers.chem_comp_monomers",
+              "operator": "exact_match",
+              "value": "%s"
+            }
+          }
+        ]
       }
-    ]
+    ],
+    "logical_operator": "and"
   },
   "return_type": "entry",
   "request_options": {
@@ -302,7 +317,7 @@ def chemical_id_search(resname, **kwds):
 }
 """
   assert (1 <= len(resname) <= 3)
-  sqr = chem_comp_query % (resname)
+  sqr = chem_comp_query % (resname, resname)
   jsq = json.loads(sqr)
   return post_query(query_json=jsq, **kwds)
 
