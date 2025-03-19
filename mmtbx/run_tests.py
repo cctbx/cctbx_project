@@ -287,6 +287,7 @@ general_tests = [
   "$D/validation/regression/tst_rotalyze.py",
   "$D/validation/regression/tst_ramalyze.py",
   "$D/validation/regression/tst_ramalyze2.py",
+  "$D/validation/regression/tst_ramalyze_rare.py",
   "$D/validation/regression/tst_clashscore.py",
   "$D/validation/regression/tst_clashscore_2.py",
   "$D/validation/regression/tst_restraints.py",
