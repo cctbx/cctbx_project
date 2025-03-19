@@ -1190,7 +1190,10 @@ NOTES:
 
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
     # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
-    self.model = shift_and_box_model(model = self.model, shift_model=False)
+    # Use model function to set crystal symmetry if necessary 2025-03-19 TT
+    #self.model = shift_and_box_model(model = self.model, shift_model=False)
+    self.model.add_crystal_symmetry_if_necessary()
+
 
     # If we've been asked to only to a single model index from the file, strip the model down to
     # only that index.
