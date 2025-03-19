@@ -343,8 +343,8 @@ def best_match(sites1,sites2,crystal_symmetry=None,
 
 def select_atom_lines(hierarchy):
   lines=[]
-  for line in hierarchy.as_pdb_string().splitlines():
-    if line.startswith("ATOM "): # XXX NOTE USING PDB FORMAT HERE
+  for line in hierarchy.as_pdb_string().splitlines(): # PDB OK converted above
+    if line.startswith("ATOM "):
       line=line.strip()
       lines.append(line)
   return lines
@@ -1105,7 +1105,7 @@ def select_segments_that_match(params=None,
     model_list.append(ga.model)
   new_model=merge_hierarchies_from_models(models=model_list,resid_offset=5)
   ff=open(params.output_files.match_pdb_file,'w')
-  print(new_model.hierarchy.as_pdb_string(), file=ff)
+  print(new_model.hierarchy.as_pdb_string(), file=ff) # PDB OK (converted above)
   ff.close()
   print("Wrote %s %s chains with %s residues to %s" %(
     len(models_to_keep),params.crystal_info.chain_type,
