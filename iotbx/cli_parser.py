@@ -185,6 +185,18 @@ class CCTBXParser(ParserBase):
     self.master_phil.adopt_scope(required_output_phil)
     self.working_phil = None
 
+    # add master PHIL to description
+    extra_description = '\n\nPHIL arguments:\n'
+    phil_str = ''
+    if self.program_class.show_data_manager_scope_by_default:
+      phil_str += self.data_manager.master_phil.as_str(
+        prefix='  ', expert_level=3, attributes_level=0)
+    phil_str += self.master_phil.as_str(
+      prefix='  ', expert_level=3, attributes_level=0)
+    if len(phil_str) > 0:
+      extra_description += phil_str
+      self.description += extra_description
+
     self.add_default_options()
 
   # ---------------------------------------------------------------------------
@@ -195,8 +207,8 @@ class CCTBXParser(ParserBase):
     # --show-defaults=n sets it to n and it can only be {0, 1, 2, 3}
     self.add_argument(
       '--show-defaults', '--show_defaults',
-      nargs='?', const=0, type=int, choices=range(0,4),
-      help='show default parameters with expert level (default=0)'
+      nargs='?', const=3, type=int, choices=range(0,4),
+      help='show default parameters with expert level (default=3)'
     )
 
     # --attributes-level by itself is set to 0
