@@ -173,56 +173,22 @@ class error_modifier_mm24(worker):
     self.logger.log(f"Number of work reflections selected: {number_of_reflections}")
     return reflections
 
-  def calculate_intensity_bin_limits(self):
-    '''Calculate the intensity bins between the 0.5 and 99.5 percentiles'''
-    all_biased_means = self.mpi_helper.gather_variable_length_numpy_arrays(
-      np.array(self.refl_biased_means, dtype=float), root=0, dtype=float
-      )
+  def initialize_mm24_params(self):
+    upper = self.mpi_helper.comm.reduce(
+        max(self.refl_biased_means), op=self.mpi_helper.MPI.MAX, root=0
+        )
+    n_bins = 100
     if self.mpi_helper.rank == 0:
-      all_biased_means = np.sort(all_biased_means)
-      lower_percentile = 0.005
-      upper_percentile = 0.995
-      n = all_biased_means.size
-      lower = all_biased_means[int(lower_percentile * n)]
-      upper = all_biased_means[int(upper_percentile * n)]
-      self.intensity_bin_limits = np.linspace(lower, upper, self.number_of_intensity_bins + 1)
+      intensity_bins = np.linspace(0, 0.1*upper, n_bins + 1)
+      bin_centers = (intensity_bins[1:] + intensity_bins[:-1]) / 2
     else:
-      self.intensity_bin_limits = np.empty(self.number_of_intensity_bins + 1)
-    self.mpi_helper.comm.Bcast(self.intensity_bin_limits, root=0)
-
-  def distribute_differences_over_intensity_bins(self):
-    self.intensity_bins = [flex.reflection_table() for i in range(self.number_of_intensity_bins)]
-    self.n_differences_in_bin = flex.double(self.number_of_intensity_bins, 0)
-    self.n_refls_in_bin = flex.double(self.number_of_intensity_bins, 0)
-    self.bin_weighting = flex.double(self.number_of_intensity_bins, 0)
-    count = self.work_table.size()
-    for bin_index in range(self.number_of_intensity_bins):
-      subset_work_table = self.work_table.select(
-        (self.work_table['biased_mean'] >= self.intensity_bin_limits[bin_index])
-        & (self.work_table['biased_mean'] < self.intensity_bin_limits[bin_index + 1])
-        )
-      self.intensity_bins[bin_index].extend(subset_work_table)
-      self.n_differences_in_bin[bin_index] = self.mpi_helper.comm.allreduce(
-        len(subset_work_table), self.mpi_helper.MPI.SUM
-        )
-
-      subset_biased_mean = self.biased_mean_count.select(
-        (self.biased_mean_count >= self.intensity_bin_limits[bin_index])
-        & (self.biased_mean_count < self.intensity_bin_limits[bin_index + 1])
-        )
-      self.n_refls_in_bin[bin_index] = self.mpi_helper.comm.allreduce(
-        len(subset_biased_mean), self.mpi_helper.MPI.SUM
-        )
-      if self.n_differences_in_bin[bin_index] > 0:
-        self.bin_weighting[bin_index] = math.sqrt(self.n_refls_in_bin[bin_index]) / self.n_differences_in_bin[bin_index]
-
-    # for debugging
-    number_of_differences_distributed = 0
-    for intensity_bin in self.intensity_bins:
-      number_of_differences_distributed += intensity_bin.size()
-    self.logger.log(
-      "Distributed over intensity bins %d out of %d differences"
-      % (number_of_differences_distributed, count)
+      intensity_bins = np.zeros(n_bins + 1)
+    self.mpi_helper.comm.Bcast(intensity_bins, root=0)
+    pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
+    summation_rank, _ = np.histogram(
+      pairwise_differences_rank,
+      bins=intensity_bins,
+      weights=pairwise_differences_rank
       )
 
   def initialize_mm24_params(self):
