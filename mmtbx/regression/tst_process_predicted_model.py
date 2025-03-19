@@ -110,7 +110,6 @@ def tst_01(log = sys.stdout):
   models = model_info.model_list
   for mm,vrms,target_vrms,n1,n2 in zip(models,model_info.vrms_list,[1.1855925413499029,1.1855925413499029],[85,87],[95,93]):
     model_occ_values = mm.get_hierarchy().atoms().extract_occ()
-    print("ZZAA",model_occ_values.size(),model_occ_values.count(1),model_occ_values.count(0))
     assert model_occ_values.count(1) == n1
     assert model_occ_values.count(0) == n2
     assert approx_equal(vrms, target_vrms, eps=0.01)
