@@ -31,9 +31,14 @@ END
     "scattering_table=electron",
     "> %s.zlog"%prefix
     ])
-  print(cmd)
+  #print(cmd)
   assert not easy_run.call(cmd)
   assert os.path.isfile("tst_phenix_regression_maps_polder_polder_map_coeffs.mtz")
+
+  os.remove('tst_phenix_regression_maps_polder.mtz')
+  os.remove('tst_phenix_regression_maps_polder.pdb')
+  os.remove('tst_phenix_regression_maps_polder.zlog')
+  os.remove('tst_phenix_regression_maps_polder_polder_map_coeffs.mtz')
 
 if (__name__ == "__main__"):
   t0 = time.time()
