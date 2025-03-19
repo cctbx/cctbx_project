@@ -105,13 +105,12 @@ Usage examples:
              (loop_sel, "loop")]:
           selected_model = model.select(sel)
           if self.params.write_HSL_models:
-            pdb_str = selected_model.model_as_pdb()
             fn = "%s" % self.get_default_output_filename(
                 prefix='%s_' % self.inp_fn,
                 suffix=label,
                 serial=Auto)
             print("Writing out partial model: %s" % fn, file=self.logger)
-            self.data_manager.write_model_file(selected_model, filename=fn)
+            written_fn = self.data_manager.write_model_file(selected_model, filename=fn)
           self._write_plots_if_needed(selected_model, label, type_of_plot='HSL')
     self.result = self.get_results()
     # This brings 0 value to the user. Per-residue numbers

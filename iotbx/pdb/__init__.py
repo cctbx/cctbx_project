@@ -56,7 +56,7 @@ def is_pdb_file(file_name):
       if (cryst1.ucparams is not None and cryst1.sgroup is not None):
         return True
     elif (   pdb_str.startswith("ATOM  ")
-          or pdb_str.startswith("HETATM")):
+          or pdb_str.startswith("HETATM")): # PDB OK
       try: pdb_inp = ext.input(
         source_info=None, lines=flex.std_string([pdb_str]))
       except KeyboardInterrupt: raise
