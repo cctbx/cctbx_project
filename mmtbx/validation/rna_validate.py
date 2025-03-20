@@ -620,7 +620,7 @@ ATOM    195  C4    A A  23      17.924   9.737   1.988  1.00 13.37           C
       mon_lib_srv=mon_lib_srv,
       ener_lib=ener_lib,
       file_name=None,
-      raw_records=self.sample_bases)
+      raw_records=self.sample_bases) #PDB OK | reference coordinates in this file
     self.geometry = self.processed_pdb_file.geometry_restraints_manager()
     #confirm puckers are correct
     if test_pucker:
