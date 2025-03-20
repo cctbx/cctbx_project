@@ -972,11 +972,14 @@ def split_model_with_pae(
 
   from mmtbx.secondary_structure.find_ss_from_ca import \
      get_selection_string_from_model
-  selection_for_full_model = get_selection_string_from_model(model = m)
-  print("\nSelection string for final model: %s" %(selection_for_full_model),
-    file = log)
-  print("Total residues in final model: %s" %(
+  if m:
+    selection_for_full_model = get_selection_string_from_model(model = m)
+    print("\nSelection string for final model: %s" %(selection_for_full_model),
+      file = log)
+    print("Total residues in final model: %s" %(
      m.overall_counts().n_residues), file = log)
+  else:
+    print("No model obtained...", file = log)
 
 
   # All done
