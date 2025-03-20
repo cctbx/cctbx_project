@@ -421,7 +421,7 @@ class MetallicButton(WxCtrl):
 
     if width < self.GetSize()[0] : #self._size[0] :
       width = self.GetSize()[0]
-    best = wx.Size(width, height)
+    best = wx.Size(int(width), int(height))
     self.CacheBestSize(best)
     return best
 
