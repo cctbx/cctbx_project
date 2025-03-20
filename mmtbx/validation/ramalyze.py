@@ -203,7 +203,6 @@ class ramalyze(validation):
     ##      chain_id = chain.id
     for three in generate_protein_threes(hierarchy=pdb_hierarchy, geometry=None):
       main_residue = three[1]
-      # print main_residue.id_str()
       phi_psi_atoms = three.get_phi_psi_atoms()
       if phi_psi_atoms is None:
         continue
@@ -654,34 +653,26 @@ def get_cas_from_three(three):
   ##return cas
 
 def get_altloc_from_three(three):
-  #in conformer world, where threes come from, altlocs are most accurately
-  #  stored at the atom level, in the .id_str()
   #look at all atoms in the main residues, plus the atoms used in calculations
   #  from adjacent residues to find if any have altlocs
   ##mc_atoms = (" N  ", " CA ", " C  ", " O  ")
   for atom in three[1].atoms():
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   for atom in three[0].atoms():
     if atom.name != ' C  ':
       continue
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   for atom in three[2].atoms():
     if atom.name != ' N  ':
       continue
-    altchar = get_altloc_from_id_str(atom.id_str())
-    if altchar != ' ':
+    altchar = atom.parent().altloc
+    if altchar != '':
       return altchar
   return ''
-
-def get_altloc_from_id_str(id_str):
-  # checks to see if the atom id_str contains model info, and adjusts if needed.
-  if id_str.startswith("model"):
-    id_str = id_str.partition("pdb=")[1]+id_str.partition("pdb=")[2]
-  return id_str[9:10]
 
 def construct_complete_residues(res_group):
   if (res_group is not None):
