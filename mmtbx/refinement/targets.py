@@ -308,9 +308,10 @@ class target_result_mixin(object):
     else:
       # XXX discamb
       if manager.is_taam(): # XXX discamb
-        manager.discamb_wrapper.set_indices(d_target_d_f_calc.indices())
-        result = manager.discamb_wrapper.d_target_d_params(
-          list(d_target_d_f_calc.data()))
+        #manager.discamb_wrapper.set_indices(d_target_d_f_calc.indices())
+        #result = manager.discamb_wrapper.d_target_d_params(
+        #  list(d_target_d_f_calc.data()))
+         result = manager.discamb_wrapper.d_target_d_params(d_target_d_f_calc)
       # XXX discamb
       else:
         result = manager.structure_factor_gradients_w(
