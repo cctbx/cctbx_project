@@ -616,8 +616,10 @@ def create_cif_file_using_ready_set(
     print(msg, file=log)
     return [False,False]
   if not file_name:
-    file_name = 'input_pdb_file_for_ready_set.pdb'
-    open(file_name,'w').write(pdb_hierarchy.as_pdb_string(cryst_sym))
+    file_name = pdb_hierarchy.write_pdb_or_mmcif_file(
+        target_format = 'pdb',
+        crystal_symmetry=cryst_sym,
+        target_filename = 'input_pdb_file_for_ready_set.pdb')
   cmd = "phenix.ready_set {} --silent".format(file_name)
   out = easy_run.fully_buffered(cmd)
   if (out.return_code != 0):
