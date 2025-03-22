@@ -71,9 +71,11 @@ master_phil_str = """
                least maximum_domains.
       .short_caption = Adjust domain size
 
-    minimum_domain_length = 20
+    minimum_domain_length = None
       .type = float
-      .help = Minimum length of a domain to keep (reject at end if smaller).
+      .help = Minimum length of a domain to keep (reject at end if smaller).\
+              Default is 10 if no pae matrix or alt_pae_params=False and \
+                20 for pae_matrix with alt_pae_params=True
       .short_caption = Minimum domain length (residues)
 
     maximum_fraction_close = 0.3
@@ -82,9 +84,11 @@ master_phil_str = """
               before merging them
       .short_caption = Maximum fraction close
 
-    minimum_sequential_residues = 10
+    minimum_sequential_residues = None
       .type = int
-      .help = Minimum length of a short segment to keep (reject at end ).
+      .help = Minimum length of a short segment to keep (reject at end ). \
+              Default is 5 if no pae matrix or alt_pae_params=False and \
+                4 for pae_matrix with alt_pae_params=True
       .short_caption = Minimum sequential_residues
 
     minimum_remainder_sequence_length = 15
@@ -138,29 +142,39 @@ master_phil_str = """
           out the final files.  Does not affect the cutoff for removing low-\
            confidence residues.
 
-     pae_power = 2
+     pae_power = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             each edge in the graph will be weighted proportional to \
               (1/pae**pae_power). Use this to try and get the number of domains\
-              that you want (try 1, 0.5, 1.5, 2)
+              that you want (try 1, 0.5, 1.5, 2). \
+             Default is 1 alt_pae_params=False and 2 for alt_pae_params=True
        .short_caption = PAE power (if PAE matrix supplied)
 
-     pae_cutoff = 4
+     pae_cutoff = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             graph edges will only be created for residue pairs with \
-            pae<pae_cutoff
+            pae<pae_cutoff. \
+          Default is 5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE cutoff (if PAE matrix supplied)
 
-     pae_graph_resolution = 4
+     pae_graph_resolution = None
        .type = float
        .help = If PAE matrix (predicted alignment error matrix) is supplied,\
             pae_graph_resolution regulates how aggressively the clustering \
             algorithm is. Smaller values lead to larger clusters. Value \
             should be larger than zero, and values larger than 5 are \
-            unlikely to be useful
+            unlikely to be useful, \
+          Default is 0.5 alt_pae_params=False and 4 for alt_pae_params=True
        .short_caption = PAE graph resolution (if PAE matrix supplied)
+
+     alt_pae_params = True
+       .type = bool
+       .help = If PAE matrix is supplied, use alternative set of defaults \
+           (minimum_domain_length=20 minimum_sequential_residues=10 \
+            pae_power=2 pae_cutoff=4 pae_graph_resolution=4)
+       .short_caption = Use PAE defaults for pae_power=2
 
      weight_by_ca_ca_distance = False
        .type = bool
@@ -359,6 +373,38 @@ def process_predicted_model(
 
   # Decide what to do
   p = params.process_predicted_model
+
+  # Set defaults for some parameters that depend on inputs
+  if p.minimum_domain_length is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_domain_length = 20
+    else:
+      p.minimum_domain_length = 10
+    print("Minimum_domain_length=%s" %(p.minimum_domain_length))
+  if p.minimum_sequential_residues is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_sequential_residues = 10
+    else:
+      p.minimum_sequential_residues = 5
+    print("Minimum_sequential_residues=%s" %(p.minimum_sequential_residues))
+  if p.pae_power is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_power = 2
+    else:
+      p.pae_power = 1
+    print("pae_power=%s" %(p.pae_power))
+  if p.pae_cutoff is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_cutoff = 4
+    else:
+      p.pae_cutoff = 5
+    print("pae_cutoff=%s" %(p.pae_cutoff))
+  if p.pae_graph_resolution is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_graph_resolution = 4
+    else:
+      p.pae_graph_resolution = 0.5
+    print("pae_graph_resolution=%s" %(p.pae_graph_resolution))
 
   # Determine if input plddt is fractional and get b values
 
