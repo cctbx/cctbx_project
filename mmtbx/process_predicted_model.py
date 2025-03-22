@@ -173,7 +173,10 @@ master_phil_str = """
        .type = bool
        .help = If PAE matrix is supplied, use alternative set of defaults \
            (minimum_domain_length=20 minimum_sequential_residues=10 \
-            pae_power=2 pae_cutoff=4 pae_graph_resolution=4)
+            pae_power=2 pae_cutoff=4 pae_graph_resolution=4). \
+           Standard parameters (alt_pae_params=False) are: \
+           (minimum_domain_length=10 minimum_sequential_residues=5 \
+            pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5).
        .short_caption = Use PAE defaults for pae_power=2
 
      weight_by_ca_ca_distance = False
