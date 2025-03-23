@@ -340,6 +340,16 @@ def process_predicted_model(
          domain identification using split_model_by_compact_regions without
          pae_matrix
 
+    alt_pae_params: Use alternative set of defaults for pae params if pae_matrix
+        is present. Two possibilities are:
+          Alternative if pae_matrix:
+           (minimum_domain_length=20 minimum_sequential_residues=10 \
+            pae_power=2 pae_cutoff=4 pae_graph_resolution=4).
+           Standard parameters (alt_pae_params=False or no pae_matrix) are:
+           (minimum_domain_length=10 minimum_sequential_residues=5
+            pae_power=1 pae_cutoff=5 pae_graph_resolution=0.5).
+
+
   Output:
     processed_model_info: group_args object containing:
       processed_model:  single model with regions identified in chainid field
@@ -354,6 +364,8 @@ def process_predicted_model(
 
     master_phil = iotbx.phil.parse(master_phil_str)
     params = master_phil.extract()
+    from mmtbx.process_predicted_model import set_defaults
+    set_defaults(params, pae_matrix = pae_matrix)
 
     The default values are set in the master_phil_str string above.
     You can then set values of params:
@@ -376,38 +388,8 @@ def process_predicted_model(
 
   # Decide what to do
   p = params.process_predicted_model
+  set_defaults(p, pae_matrix = pae_matrix)
 
-  # Set defaults for some parameters that depend on inputs
-  if p.minimum_domain_length is None:
-    if (pae_matrix is not None) and p.alt_pae_params:
-      p.minimum_domain_length = 20
-    else:
-      p.minimum_domain_length = 10
-    print("Minimum_domain_length=%s" %(p.minimum_domain_length))
-  if p.minimum_sequential_residues is None:
-    if (pae_matrix is not None) and p.alt_pae_params:
-      p.minimum_sequential_residues = 10
-    else:
-      p.minimum_sequential_residues = 5
-    print("Minimum_sequential_residues=%s" %(p.minimum_sequential_residues))
-  if p.pae_power is None:
-    if (pae_matrix is not None) and p.alt_pae_params:
-      p.pae_power = 2
-    else:
-      p.pae_power = 1
-    print("pae_power=%s" %(p.pae_power))
-  if p.pae_cutoff is None:
-    if (pae_matrix is not None) and p.alt_pae_params:
-      p.pae_cutoff = 4
-    else:
-      p.pae_cutoff = 5
-    print("pae_cutoff=%s" %(p.pae_cutoff))
-  if p.pae_graph_resolution is None:
-    if (pae_matrix is not None) and p.alt_pae_params:
-      p.pae_graph_resolution = 4
-    else:
-      p.pae_graph_resolution = 0.5
-    print("pae_graph_resolution=%s" %(p.pae_graph_resolution))
 
   # Determine if input plddt is fractional and get b values
 
@@ -613,6 +595,42 @@ def process_predicted_model(
     b_values = b_values,
     vrms_list = vrms_list,
     )
+
+def set_defaults(p, pae_matrix = None, log = sys.stdout):
+  # Set defaults for some parameters that depend on inputs
+  if p.minimum_domain_length is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_domain_length = 20
+    else:
+      p.minimum_domain_length = 10
+    print("Minimum_domain_length=%s" %(p.minimum_domain_length), file = log)
+  if p.minimum_sequential_residues is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.minimum_sequential_residues = 10
+    else:
+      p.minimum_sequential_residues = 5
+    print("Minimum_sequential_residues=%s" %(p.minimum_sequential_residues),
+      file = log)
+  if p.pae_power is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_power = 2
+    else:
+      p.pae_power = 1
+    print("pae_power=%s" %(p.pae_power), file = log)
+  if p.pae_cutoff is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_cutoff = 4
+    else:
+      p.pae_cutoff = 5
+    print("pae_cutoff=%s" %(p.pae_cutoff), file = log)
+  if p.pae_graph_resolution is None:
+    if (pae_matrix is not None) and p.alt_pae_params:
+      p.pae_graph_resolution = 4
+    else:
+      p.pae_graph_resolution = 0.5
+    print("pae_graph_resolution=%s" %(p.pae_graph_resolution), file = log)
+
+
 
 def restore_true_except_at_ends(sel1):
   ''' Set all values that are not at ends of sel1 to False (any number
