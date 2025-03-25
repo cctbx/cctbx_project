@@ -2021,8 +2021,11 @@ END
 
   # Write debugging output if we've been asked to
   if dumpAtoms:
-    f = open("deleteme.pdb","w")
-    f.write(model.model_as_pdb())
+    fn = "deleteme.pdb"
+    fn = model.get_hierarchy().write_pdb_or_mmcif_file(
+        target_format = 'pdb',
+        target_filename = fn)
+    print("Wrote model to '%s'" %fn)
     f = open("atomDump.pdb","w")
     f.write(opt.getAtomDump())
 
