@@ -23,6 +23,23 @@ class error_modifier_mm24(worker):
       self.limit_differences = False
 
     self.tuning_param = self.params.merging.error.mm24.tuning_param
+
+    # Currently the use of intensity bins is in evaluation. Historically this algorithm has used
+    # 100 intensity bins solely because Phil Evans did in the Evans 2011 paper. Recent evaluations
+    # showed that removing binning does not harm the data processing. If anything, it might lead to
+    # a tiny improvement.
+    # To use the method without binning, set params.merging.error.mm24.number_of_intensity_bins = 0
+    # In the future, if binning is decided to be removed, delete the methods:
+    #   self.calculate_functional_binning
+    #   self.calculate_intensity_bin_limits()
+    #   self.distribute_differences_over_intensity_bins()
+    # To keep the binning, delete the methods:
+    #   self.calculate_functional_no_bining
+    self.number_of_intensity_bins = self.params.merging.error.mm24.number_of_intensity_bins
+    if self.number_of_intensity_bins > 0:
+      self.calculate_functional = self.calculate_functional_binning
+    else:
+      self.calculate_functional = self.calculate_functional_no_bining
     if self.params.merging.error.mm24.constant_sadd:
       self.cc_key = None
     else:
@@ -46,6 +63,11 @@ class error_modifier_mm24(worker):
   def modify_errors(self, reflections):
     # First set up a reflection table to do work downstream.
     reflections = self.setup_work_arrays(reflections)
+    # Now moving to intensities, find the bin limits using global min/max of the means of each reflection
+    # Once bin limits are determined, assign intensities on each rank to appropriate bin limits
+    if self.number_of_intensity_bins > 0:
+      self.calculate_intensity_bin_limits()
+      self.distribute_differences_over_intensity_bins()
     # Intialize the s_fac and s_add parameters
     self.initialize_mm24_params()
     # Run LBFGSB minimizer
@@ -151,6 +173,58 @@ class error_modifier_mm24(worker):
     self.logger.log(f"Number of work reflections selected: {number_of_reflections}")
     return reflections
 
+  def calculate_intensity_bin_limits(self):
+    '''Calculate the intensity bins between the 0.5 and 99.5 percentiles'''
+    all_biased_means = self.mpi_helper.gather_variable_length_numpy_arrays(
+      np.array(self.refl_biased_means, dtype=float), root=0, dtype=float
+      )
+    if self.mpi_helper.rank == 0:
+      all_biased_means = np.sort(all_biased_means)
+      lower_percentile = 0.005
+      upper_percentile = 0.995
+      n = all_biased_means.size
+      lower = all_biased_means[int(lower_percentile * n)]
+      upper = all_biased_means[int(upper_percentile * n)]
+      self.intensity_bin_limits = np.linspace(lower, upper, self.number_of_intensity_bins + 1)
+    else:
+      self.intensity_bin_limits = np.empty(self.number_of_intensity_bins + 1)
+    self.mpi_helper.comm.Bcast(self.intensity_bin_limits, root=0)
+
+  def distribute_differences_over_intensity_bins(self):
+    self.intensity_bins = [flex.reflection_table() for i in range(self.number_of_intensity_bins)]
+    self.n_differences_in_bin = flex.double(self.number_of_intensity_bins, 0)
+    self.n_refls_in_bin = flex.double(self.number_of_intensity_bins, 0)
+    self.bin_weighting = flex.double(self.number_of_intensity_bins, 0)
+    count = self.work_table.size()
+    for bin_index in range(self.number_of_intensity_bins):
+      subset_work_table = self.work_table.select(
+        (self.work_table['biased_mean'] >= self.intensity_bin_limits[bin_index])
+        & (self.work_table['biased_mean'] < self.intensity_bin_limits[bin_index + 1])
+        )
+      self.intensity_bins[bin_index].extend(subset_work_table)
+      self.n_differences_in_bin[bin_index] = self.mpi_helper.comm.allreduce(
+        len(subset_work_table), self.mpi_helper.MPI.SUM
+        )
+
+      subset_biased_mean = self.biased_mean_count.select(
+        (self.biased_mean_count >= self.intensity_bin_limits[bin_index])
+        & (self.biased_mean_count < self.intensity_bin_limits[bin_index + 1])
+        )
+      self.n_refls_in_bin[bin_index] = self.mpi_helper.comm.allreduce(
+        len(subset_biased_mean), self.mpi_helper.MPI.SUM
+        )
+      if self.n_differences_in_bin[bin_index] > 0:
+        self.bin_weighting[bin_index] = math.sqrt(self.n_refls_in_bin[bin_index]) / self.n_differences_in_bin[bin_index]
+
+    # for debugging
+    number_of_differences_distributed = 0
+    for intensity_bin in self.intensity_bins:
+      number_of_differences_distributed += intensity_bin.size()
+    self.logger.log(
+      "Distributed over intensity bins %d out of %d differences"
+      % (number_of_differences_distributed, count)
+      )
+
   def initialize_mm24_params(self):
     upper = self.mpi_helper.comm.reduce(
         max(self.refl_biased_means), op=self.mpi_helper.MPI.MAX, root=0
@@ -162,14 +236,15 @@ class error_modifier_mm24(worker):
     else:
       intensity_bins = np.zeros(n_bins + 1)
     self.mpi_helper.comm.Bcast(intensity_bins, root=0)
+    biased_mean_rank = self.work_table['biased_mean'].as_numpy_array()
     pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
     summation_rank, _ = np.histogram(
-      pairwise_differences_rank,
+      biased_mean_rank,
       bins=intensity_bins,
       weights=pairwise_differences_rank
       )
     counts_rank, _ = np.histogram(
-      pairwise_differences_rank,
+      biased_mean_rank,
       bins=intensity_bins
       )
     summation = np.zeros(n_bins)
@@ -211,6 +286,16 @@ class error_modifier_mm24(worker):
       good_indices = counts > 0
       mean_differences = summation[good_indices] / counts[good_indices]
       bin_centers = bin_centers[good_indices]
+      #print(summation_rank)
+      #print(counts_rank)
+      #print(summation)
+      #print(counts)
+      #print(good_indices)
+      #print(mean_differences)
+      #print(bin_centers)
+      #print(upper)
+      #print(biased_mean_rank)
+      #print(biased_mean_rank.min(), biased_mean_rank.max(), upper)
 
       if self.cc_key:
         self.sadd = [0, 0.001, 0.001]
@@ -506,7 +591,9 @@ class error_modifier_mm24(worker):
     else:
       return var
 
-  def calculate_functional(self):
+  def calculate_functional_no_bining(self):
+    if self.mpi_helper.rank == 0:
+      print(f'In NO binning {len(self.work_table)}')
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
 
@@ -558,6 +645,71 @@ class error_modifier_mm24(worker):
       self.dL_dsadd[degree_index] = comm.reduce(dL_dsadd_rank[degree_index], MPI.SUM, root=0)
     if self.params.merging.error.mm24.tuning_param_opt:
       self.dL_dnu = comm.reduce(dL_dnu_rank, MPI.SUM, root=0)
+
+  def calculate_functional_binning(self):
+    if self.mpi_helper.rank == 0:
+      print(f'In binning {len(self.intensity_bins)}')
+    comm = self.mpi_helper.comm
+    MPI = self.mpi_helper.MPI
+    L_bin_rank = flex.double(self.number_of_intensity_bins, 0)
+    dL_dsfac_bin_rank = flex.double(self.number_of_intensity_bins, 0)
+    dL_dsadd_bin_rank = [flex.double(self.number_of_intensity_bins, 0) for i in range(3)]
+    if self.params.merging.error.mm24.tuning_param_opt:
+      dL_dnu_bin_rank = flex.double(self.number_of_intensity_bins, 0)
+
+    for bin_index, differences in enumerate(self.intensity_bins):
+      if len(differences) > 0:
+        var_i, dvar_i_dsfac, dvar_i_dsadd2, dsadd2_i_dsaddi = self._get_var_mm24(
+          differences['counting_stats_var_i'],
+          differences['biased_mean'],
+          differences['correlation_i'],
+          return_der=True
+          )
+        var_j, dvar_j_dsfac, dvar_j_dsadd2, dsadd2_j_dsaddi = self._get_var_mm24(
+          differences['counting_stats_var_j'],
+          differences['biased_mean'],
+          differences['correlation_j'],
+          return_der=True
+          )
+
+        if self.params.merging.error.mm24.likelihood == 'normal':
+          L_in_bin, dL_dvar_x = self._loss_function_normal(
+            differences['pairwise_differences'], var_i, var_j
+            )
+        elif self.params.merging.error.mm24.likelihood == 't-dist':
+          if self.params.merging.error.mm24.tuning_param_opt:
+            L_in_bin, dL_dvar_x, dL_dnu = self._loss_function_t_v_opt(
+              differences['pairwise_differences'], var_i, var_j
+              )
+            dL_dnu_bin_rank[bin_index] = flex.sum(dL_dnu)
+          else:
+            L_in_bin, dL_dvar_x = self._loss_function_t(
+              differences['pairwise_differences'], var_i, var_j
+              )
+
+        L_bin_rank[bin_index] = flex.sum(L_in_bin)
+        dL_dsfac_bin_rank[bin_index] = flex.sum(dL_dvar_x * (dvar_i_dsfac + dvar_j_dsfac))
+        for degree_index in range(3):
+          dL_dsadd_bin_rank[degree_index][bin_index] = flex.sum(dL_dvar_x * (
+            dvar_i_dsadd2 * dsadd2_i_dsaddi[degree_index] + dvar_j_dsadd2 * dsadd2_j_dsaddi[degree_index]
+            ))
+
+    L_bin = comm.reduce(L_bin_rank, MPI.SUM, root=0)
+    dL_dsfac_bin = comm.reduce(dL_dsfac_bin_rank, MPI.SUM, root=0)
+    dL_dsadd_bin = [None for i in range(3)]
+    for degree_index in range(3):
+      dL_dsadd_bin[degree_index] = comm.reduce(dL_dsadd_bin_rank[degree_index], MPI.SUM, root=0)
+    if self.params.merging.error.mm24.tuning_param_opt:
+      dL_dnu_bin = comm.reduce(dL_dnu_bin_rank, MPI.SUM, root=0)
+
+    if self.mpi_helper.rank == 0:
+      self.L = flex.sum(self.bin_weighting * L_bin)
+      self.dL_dsfac = flex.sum(self.bin_weighting * dL_dsfac_bin)
+      self.dL_dsadd = [0 for i in range(3)]
+      for degree_index in range(3):
+        self.dL_dsadd[degree_index] = flex.sum(self.bin_weighting * dL_dsadd_bin[degree_index])
+      if self.params.merging.error.mm24.tuning_param_opt:
+        self.dL_dnu = flex.sum(self.bin_weighting * dL_dnu_bin)
 
   def plot_diagnostics(self, reflections):
     def get_rankits(n, down_sample, distribution):
