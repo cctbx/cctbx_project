@@ -553,6 +553,9 @@ merging {
         .help = Expected gain used for s_fac initialization.\
                 If None, initialize s_fac using routine.
         .type = float
+      number_of_intensity_bins = 100
+        .help = Number of intensity bins
+        .type = int
       tuning_param = 10
         .help = Tuning param for t-dist in maximum log likelihood
         .type = float
