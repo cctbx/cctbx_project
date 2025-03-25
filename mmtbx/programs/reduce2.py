@@ -24,8 +24,6 @@ from libtbx.utils import Sorry, null_out
 import mmtbx
 from mmtbx.probe import Helpers
 from iotbx import pdb, cli_parser
-# @todo See if we can remove the shift and box once reduce_hydrogen is complete
-from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from scitbx.array_family import flex
