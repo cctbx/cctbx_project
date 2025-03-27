@@ -99,6 +99,7 @@ general_tests = [
   "$D/regression/tst_utils.py",
   "$D/regression/tst_alignment.py",
   ["$D/regression/tst_fmodel_fd.py", "P31"],
+  "$D/regression/tst_fmodel_fd_discamb.py",
   "$D/maps/tst_composite_omit_map.py",
   "$D/maps/tst_composite_omit_map_2.py",
   "$D/maps/tst_composite_omit_map_3.py",
