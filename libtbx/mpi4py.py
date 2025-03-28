@@ -1,4 +1,5 @@
 from __future__ import absolute_import, division, print_function
+import numpy as np
 import time
 import sys
 
@@ -38,6 +39,16 @@ class mpiCommEmulator(object):
       return sendobj
     else:
       assert False, "Unsupported MPI reduce operation %s"%(op)
+  def Reduce(self, sendbuf, recvbuf, op=mpiEmulator.SUM, root=0):
+    if isinstance(sendbuf, np.ndarray):  # numpy array
+      recvbuf[:] = sendbuf[:]
+    else:
+      # Handle scalar values or other types
+      if isinstance(recvbuf, list):
+        for i, value in enumerate(sendbuf):
+          recvbuf[i] = value
+      else:
+        assert False, "Unsupported MPI emulator data type."
   def allreduce(self, sendobj, op=mpiEmulator.SUM):
     return self.reduce(sendobj, op, 0)
   def alltoall(self, sendobj):
