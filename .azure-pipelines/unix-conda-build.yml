@@ -250,10 +250,12 @@ steps:
     set -xe
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
-    cd ./modules/cctbx_project/cctbx/eltbx/discamb
+    cd ./modules/cctbx_project/mmtbx/regression/discamb
     for t in `/bin/ls tst*.py`; do
       echo ${t}
+      echo "============================================================"
       libtbx.python ${t}
+      echo
     done
   displayName: Run pyDiSCaMB tests
   condition: ne(variables['PYTHON_VERSION'], 'py27')

@@ -282,10 +282,12 @@ jobs:
   - script: |
       cd $(Pipeline.Workspace)
       call .\build\setpaths.bat
-      cd .\modules\cctbx_project\cctbx\eltbx\discamb
+      cd .\modules\cctbx_project\mmtbx\regression\discamb
       for %%t in (tst*.py) do (
         echo %%t
+        echo "============================================================"
         call libtbx.python %%t
+        echo ""
       )
     displayName: Run pyDiSCaMB tests
     retryCountOnTaskFailure: 3
