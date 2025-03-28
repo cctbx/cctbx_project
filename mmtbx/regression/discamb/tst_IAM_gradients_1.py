@@ -33,11 +33,9 @@ data_manager {
 }'''
 
 def run():
-  #pdb_fn = '7n2l.pdb'
   pdb_fn = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/pdbs/7n2l.pdb",
     test=os.path.isfile)
-  #mtz_fn = '7n2l.mtz'
   mtz_fn = libtbx.env.find_in_repositories(
     relative_path="mmtbx/regression/mtz/7n2l.mtz",
     test=os.path.isfile)
@@ -50,6 +48,10 @@ def run():
   # get fmodel from data manager
   fmodel = dm.get_fmodel(scattering_table="electron")
   fmodel.update_all_scales()
+
+  m = dm.get_model()
+  isel_iso = m.selection('element H').iselection()
+  isel_aniso = m.selection('not element H').iselection()
 
   #print("r_work=%6.4f r_free=%6.4f" % (fmodel.r_work(), fmodel.r_free()))
   #fmodel.show_short(show_k_mask=True, log=None, prefix="")
@@ -81,9 +83,19 @@ def run():
 
   # isotropic ADP
   scatterers.flags_set_grads(state=False)
-  scatterers.flags_set_grad_u_iso(iselection=iselection)
+  scatterers.flags_set_grad_u_iso(iselection=isel_iso)
   expected = target.gradients_wrt_atomic_parameters().packed()
-  actual = np.array([res.adp_derivatives for res in discamb_result]).flatten()
+  #actual = np.array([res.adp_derivatives for res in discamb_result]).flatten()
+  _actual = [res.adp_derivatives for res in discamb_result]
+  actual = np.array([_actual[i] for i in isel_iso]).flatten()
+  assert(approx_equal(expected,actual, eps=1e-6))
+
+  # anisotropic ADP
+  scatterers.flags_set_grads(state=False)
+  scatterers.flags_set_grad_u_aniso(iselection=isel_aniso)
+  expected = target.gradients_wrt_atomic_parameters().packed()
+  _actual = [res.adp_derivatives for res in discamb_result]
+  actual = np.array([_actual[i] for i in isel_aniso]).flatten()
   assert(approx_equal(expected,actual, eps=1e-6))
 
   # Occupancy
