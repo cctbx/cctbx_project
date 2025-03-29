@@ -248,7 +248,7 @@ steps:
 # delete currently failing test
 - script: |
     cd $(Pipeline.Workspace)
-    cd .\modules\cctbx_project\mmtbx\regression\discamb
+    cd ./modules/cctbx_project/mmtbx/regression/discamb
     rm -f tst_fmodel_fd_discamb_taam.py
   displayName: Delete failing test
 
