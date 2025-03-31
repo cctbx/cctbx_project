@@ -6205,6 +6205,8 @@ class fft_map(maptbx.crystal_gridding):
     """
     from iotbx import mrcfile
     map_data = self.real_map(direct_access=False)
+    if (gridding_first is None) and (gridding_last is None):
+      labels.append("wrapping_outside_cell")
     if gridding_first is None :
       gridding_first = (0,0,0)
     if gridding_last is None :
