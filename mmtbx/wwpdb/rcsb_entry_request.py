@@ -469,7 +469,10 @@ class rcsb_entry_info(object):
   RCSB and provide parts of it in convenient form."""
   def __init__(self, json_data):
     self.data = json_data
-
+  def __str__(self):
+    return "rcsb_entry_info(%s)" % self.data['rcsb_id']
+  def __repr__(self):
+    return "rcsb_entry_info(%s)" % self.data['rcsb_id']
   def _get_value(self, path, convert_type=None):
     """Helper function to safely get nested dictionary values.
 
