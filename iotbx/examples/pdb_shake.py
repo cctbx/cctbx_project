@@ -38,7 +38,7 @@ def run(args):
   # update model manager with this xray structure
   model.set_xray_structure(xrs)
   # output result in PDB format to the screen
-  print(model.model_as_pdb())
+  print(model.as_pdb_or_mmcif_string())
   print("END")
 
 if (__name__ == "__main__"):

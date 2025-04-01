@@ -115,8 +115,8 @@ def run(args):
     #
     print("""
     # Format entire hierarchy as pdb string and pdb file.""")
-    print(hierarchy.as_pdb_string(append_end=True))
-    hierarchy.write_pdb_file(file_name="junk.pdb")
+    print(hierarchy.as_pdb_or_mmcif_string(append_end=True))
+    fname = hierarchy.write_pdb_or_mmcif_file(target_filename="junk.pdb", append_end=True)
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
