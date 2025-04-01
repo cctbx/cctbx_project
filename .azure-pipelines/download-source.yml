@@ -44,6 +44,8 @@ jobs:
       cd $(Pipeline.Workspace)/modules
       git clone https://github.com/viljarjf/pyDiSCaMB.git
       cd pyDiSCaMB
+      sed -i 's/:/\//g' .gitmodules
+      sed -i 's/git@/https:\/\//g' .gitmodules
       git submodule init
       git submodule update
     displayName: Download pyDiSCaMB
