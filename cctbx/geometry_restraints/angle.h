@@ -430,6 +430,16 @@ namespace cctbx { namespace geometry_restraints {
     return detail::generic_deltas<angle_proxy, angle>::get(
       sites_cart, proxies);
   }
+  inline
+  af::shared<double>
+  angle_deltas(
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<angle_proxy> const& proxies,
+    unsigned char origin_id)
+  {
+    return detail::generic_deltas<angle_proxy, angle>::get(
+      sites_cart, proxies, origin_id);
+  }
 
   /*! Fast computation of angle::delta given an array of angle proxies.
       taking into account proxy.sym_ops.
@@ -443,6 +453,17 @@ namespace cctbx { namespace geometry_restraints {
   {
     return detail::generic_deltas<angle_proxy, angle>::get(
       unit_cell, sites_cart, proxies);
+  }
+  inline
+  af::shared<double>
+  angle_deltas(
+    uctbx::unit_cell const& unit_cell,
+    af::const_ref<scitbx::vec3<double> > const& sites_cart,
+    af::const_ref<angle_proxy> const& proxies,
+    unsigned char origin_id)
+  {
+    return detail::generic_deltas<angle_proxy, angle>::get(
+      unit_cell, sites_cart, proxies, origin_id);
   }
 
   /*! Fast computation of angle::residual() given an array of angle proxies,
