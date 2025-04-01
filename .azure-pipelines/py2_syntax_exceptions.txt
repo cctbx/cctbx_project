@@ -22,4 +22,4 @@ xfel/merging/application/filter/reflection_filter.py
 xfel/util/preference.py
 cctbx/maptbx/qscore.py
 cctbx/maptbx/tst_qscore.py
-/xfel/merging/application/merge/merger.py
+xfel/merging/application/merge/merger.py
