@@ -8,6 +8,7 @@ import os
 from six.moves import cStringIO as StringIO
 import numpy as np
 from scitbx.array_family import flex
+from dials.util.version import dials_version
 
 class merger(worker):
   """
