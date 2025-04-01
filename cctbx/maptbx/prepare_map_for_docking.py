@@ -1768,6 +1768,7 @@ def assess_cryoem_errors(
   sumwy = 0.
   sumwx2 = 0.
   sumwxy = 0.
+  nkept = 0
   for i_bin in sumfsqr.binner().range_used():
     sel = sumfsqr.binner().selection(i_bin)
     mc1sel = mc1.select(sel)
@@ -1783,20 +1784,24 @@ def assess_cryoem_errors(
     ssqr_bins.append(x)  # Save for later
     target_power = default_target_spectrum(x) # Could have a different target
     target_spectrum.append(target_power)
-    if mapCC < 0.143 and i_bin > 3: # Only fit initial signal estimate where clear overall
+    if mapCC < 0.143 and nkept > 3: # Only fit initial signal estimate where clear overall
       continue
     signal = meanfsq * mapCC / target_power
     if signal <= 0.:
       continue
     y = math.log(signal)
     w = mc1sel.size()
+    nkept += 1
     sumw += w
     sumwx += w * x
     sumwy += w * y
     sumwx2 += w * x**2
     sumwxy += w * x * y
 
-  slope = (sumw * sumwxy - (sumwx * sumwy)) / (sumw * sumwx2 - sumwx**2)
+  denominator = sumw * sumwx2 - sumwx**2
+  if denominator == 0.:
+    raise Sorry("Problem with fitting signal to mapCC curve")
+  slope = (sumw * sumwxy - (sumwx * sumwy)) / denominator
   intercept = (sumwy - slope * sumwx) / sumw
   wilson_scale_signal = math.exp(intercept)
   wilson_b_signal = -4 * slope
