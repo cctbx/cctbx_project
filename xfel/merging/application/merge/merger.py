@@ -8,7 +8,6 @@ import os
 from six.moves import cStringIO as StringIO
 import numpy as np
 from scitbx.array_family import flex
-from dials.util.version import dials_version
 
 class merger(worker):
   """
@@ -141,6 +140,7 @@ class merger(worker):
         date_str += time.strftime("  (%Y-%m-%d at %H:%M:%S GMT)", time.gmtime())
 
     # Add history record with version and timestamp
+    from dials.util.version import dials_version
     mtz_obj.add_history(f"From DIALS xfel merging {dials_version()}, run on {date_str}")
 
     mtz_obj.write(mtz_file)
