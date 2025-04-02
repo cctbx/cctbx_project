@@ -83,19 +83,11 @@ def split_models(hierarchy,
     else :
       model_id = model.id.strip()
     output_file = "%s_%s.pdb" % (output_base, model_id)
-    f = open(output_file, "w")
-    if (crystal_symmetry is not None):
-      print(iotbx.pdb.format_cryst1_and_scale_records(
-        crystal_symmetry=crystal_symmetry,
-        write_scale_records=True), file=f)
-    print("REMARK Model %d of %d" % (k, n_models), file=f)
-    if (original_file is not None):
-      print("REMARK Original file:", file=f)
-      print("REMARK   %s" % original_file, file=f)
-    f.write(new_hierarchy.as_pdb_string())
-    f.close()
-    file_names.append(output_file)
-    print("Wrote %s" % output_file, file=log)
+    final_fname = new_hierarchy.write_pdb_or_mmcif_file(
+        target_filename=output_file,
+        crystal_symmetry=crystal_symmetry)
+    file_names.append(final_fname)
+    print("Wrote %s" % final_fname, file=log)
   return file_names
 
 def validate_params(params):
