@@ -305,16 +305,6 @@ class error_modifier_mm24(worker):
       good_indices = counts > 0
       mean_differences = summation[good_indices] / counts[good_indices]
       bin_centers = bin_centers[good_indices]
-      #print(summation_rank)
-      #print(counts_rank)
-      #print(summation)
-      #print(counts)
-      #print(good_indices)
-      #print(mean_differences)
-      #print(bin_centers)
-      #print(upper)
-      #print(biased_mean_rank)
-      #print(biased_mean_rank.min(), biased_mean_rank.max(), upper)
 
       if self.cc_key:
         self.sadd = [0, 0.001, 0.001]
