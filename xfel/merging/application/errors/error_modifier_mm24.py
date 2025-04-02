@@ -601,8 +601,6 @@ class error_modifier_mm24(worker):
       return var
 
   def calculate_functional_no_bining(self):
-    if self.mpi_helper.rank == 0:
-      print(f'In NO binning {len(self.work_table)}')
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
 
