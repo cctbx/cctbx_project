@@ -76,8 +76,10 @@ def run(args):
   r = get_best_homologues(model)
   print(r)
   for chain, model in six.iteritems(r):
-    with open("chain_%s.pdb" % chain, 'w') as f:
-      f.write(model.model_as_pdb())
+    model.pdb_or_mmcif_string_info(
+        target_format='pdb',
+        target_filename="chain_%s.pdb" % chain,
+        write_file=True)
 
 
 if __name__ == '__main__':

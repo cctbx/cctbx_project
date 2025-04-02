@@ -5900,7 +5900,7 @@ class process(object):
         ener_lib,
         params=None,
         file_name=None,
-        raw_records=None,
+        raw_records=None, # PDB OK
         pdb_inp=None,
         pdb_hierarchy=None,
         atom_selection_string=None,

@@ -379,7 +379,7 @@ class manager(object):
           "structures that cannot fit in PDB format. Switching to from_ca."]), file=self.log)
       self.params.secondary_structure.protein.search_method = "from_ca"
     if self.params.secondary_structure.protein.search_method == "ksdssp":
-      pdb_str = pdb_hierarchy.as_pdb_string()
+      pdb_str = pdb_hierarchy.as_pdb_string() # PDB OK
       print("  running ksdssp...", file=self.log)
       (records, stderr) = run_ksdssp_direct(pdb_str)
       return iotbx.pdb.secondary_structure.annotation.from_records(
