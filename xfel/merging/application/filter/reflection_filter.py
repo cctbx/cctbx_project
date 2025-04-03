@@ -59,7 +59,7 @@ class reflection_filter(worker):
       axes.scatter(q2, intensity, s=1, color=[0, 0, 0], marker='.')
       axes.set_ylabel('Intensity')
       axes.set_title(tag)
-      axes.set_xlabel('Resolution ($\mathrm{\AA}$)')
+      axes.set_xlabel(r'Resolution ($\mathrm{\AA}$)')
       xticks = axes.get_xticks()
       xticks = xticks[xticks > 0]
       xticklabels = [f'{l:0.2f}' for l in 1 / np.sqrt(xticks)]
@@ -375,7 +375,7 @@ class reflection_filter(worker):
       handles, labels = axes.get_legend_handles_labels()
       handles += contour_handle
       labels += ['Decision Boundary']
-      axes.set_xlabel('Resolution ($\mathrm{\AA}$)')
+      axes.set_xlabel(r'Resolution ($\mathrm{\AA}$)')
       xticks = axes.get_xticks()
       xticks = xticks[xticks > 0]
       xticklabels = [f'{l:0.2f}' for l in 1 / np.sqrt(xticks)]
@@ -417,7 +417,7 @@ class reflection_filter(worker):
         lower_tail[:, 1], lower_tail[:, 0],
         s=1, color=[0, 0, 0], marker='.', alpha=0.5
         )
-      axes[2].set_xlabel('$q^2$ = 1/$d^2$ (1/$\mathrm{\AA^2}$)')
+      axes[2].set_xlabel(r'$q^2$ = 1/$d^2$ (1/$\mathrm{\AA^2}$)')
       for i in range(3):
         axes[i].set_ylabel('Normalized Intensity')
       fig.tight_layout()
