@@ -100,7 +100,7 @@ def darwin_shlinkcom(env_etc, env, lo, dylib):
     else:
       opt_m = " -m"
     shlinkcom = [
-      "ld -dynamic%s -headerpad_max_install_names -r -d -bind_at_load -o %s $SOURCES" %
+      "ld -dynamic%s -headerpad_max_install_names -r -bind_at_load -o %s $SOURCES" %
         (opt_m, lo),
       "$SHLINK -nostartfiles -undefined dynamic_lookup -Wl,-dylib"
         " %s -o %s %s" % (dylib1, dylib, lo)]
