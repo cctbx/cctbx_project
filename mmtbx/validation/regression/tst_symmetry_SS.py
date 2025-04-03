@@ -63,7 +63,7 @@ class TestMPGeo(unittest.TestCase):
     cmd+= "out_file=try.geo kinemage=True"
     er = easy_run.call(command=cmd)
     #er.show_stderr()
-    assert er == 0
+    assert er == 0, 'command "%s" failed' % cmd
 
   def tearDown(self):
     """ delete files created in during testing"""

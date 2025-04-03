@@ -939,7 +939,7 @@ class manager(Base_geometry):
     if pair_proxies is not None:
       if pair_proxies.bond_proxies is not None:
         return (pair_proxies.bond_proxies.simple,
-        pair_proxies.bond_proxies.asu)
+                pair_proxies.bond_proxies.asu)
 
   def get_covalent_angle_proxies(self):
     specific_origin_id = origin_ids.get_origin_id('covalent geometry')
