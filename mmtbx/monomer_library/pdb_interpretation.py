@@ -3390,7 +3390,6 @@ class build_all_chain_proxies(linking_mixins):
         params=None,
         pdb_inp=None,
         pdb_hierarchy=None,
-        atom_selection_string=None,
         special_position_settings=None,
         crystal_symmetry=None,
         force_symmetry=False,
@@ -3441,13 +3440,6 @@ class build_all_chain_proxies(linking_mixins):
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
         print("\n  Symmetric amino acids flipped. %s\n" % info.strip(), file=log)
-    if atom_selection_string is not None:
-      sel = self.pdb_hierarchy.atom_selection_cache().selection(atom_selection_string)
-      temp_string = self.pdb_hierarchy.select(sel).as_pdb_string()
-      self.pdb_inp = pdb.input(source_info=None, lines=temp_string)
-      self.pdb_hierarchy = self.pdb_inp.construct_hierarchy(sort_atoms=self.params.sort_atoms)
-      if self.params.flip_symmetric_amino_acids:
-        self.pdb_hierarchy.flip_symmetric_amino_acids()
     self.pdb_hierarchy.merge_atoms_at_end_to_residues()
     self.pdb_hierarchy.format_correction_for_H()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
@@ -5903,7 +5895,6 @@ class process(object):
         raw_records=None, # PDB OK
         pdb_inp=None,
         pdb_hierarchy=None,
-        atom_selection_string=None,
         strict_conflict_handling=False,
         special_position_settings=None,
         crystal_symmetry=None,
@@ -5943,7 +5934,6 @@ class process(object):
       params=params,
       pdb_inp=pdb_inp,
       pdb_hierarchy=pdb_hierarchy,
-      atom_selection_string=atom_selection_string,
       special_position_settings=special_position_settings,
       crystal_symmetry=crystal_symmetry,
       force_symmetry=force_symmetry,
