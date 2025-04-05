@@ -89,6 +89,7 @@ class map_reader:
      verbose=None,
      out=sys.stdout):
 
+    '''Read a map file with the MRC file reader'''
     # Check for file
 
     if not file_name:
@@ -245,7 +246,7 @@ class map_reader:
 
   def set_legacy_parameters(self):
 
-    # Set legacy unit_cell_parameters. Do not use these now.
+    '''Set legacy unit_cell_parameters. Do not use these now.'''
     if self.unit_cell_crystal_symmetry():
       self.unit_cell_parameters=self.unit_cell().parameters()
       self.space_group_number=self.unit_cell_crystal_symmetry(
@@ -292,6 +293,7 @@ class map_reader:
   # Code to check for specific text in map labels limiting the use of the map
 
   def cannot_be_sharpened(self):
+    '''Determine whether map has limitations that prevent sharpening'''
     if self.is_in_limitations("extract_unique"):
       return True
     if self.is_in_limitations("map_is_sharpened"):
@@ -299,6 +301,7 @@ class map_reader:
     return False
 
   def wrapping_from_input_file(self):
+    '''Guess wrapping of map from limitations in input file'''
     if self.is_in_limitations("no_wrapping_outside_cell"):
       return False # cannot wrap outside cell
     elif self.is_in_limitations("wrapping_outside_cell"):
@@ -308,6 +311,7 @@ class map_reader:
 
 
   def remove_limitation(self,text):
+    '''Remove specified limitations'''
     limitations=self.get_limitations()
     new_labels=[]
     if not self.labels:
@@ -324,6 +328,7 @@ class map_reader:
     return new_labels
 
   def is_in_limitations(self,text):
+    '''Check whether a limitation is in limitations of this map'''
     limitations=self.get_limitations()
     if not limitations:
       return False
@@ -333,10 +338,11 @@ class map_reader:
       return False
 
   def get_labels(self):
+    '''Get the labels for this map'''
     return self.labels
 
   def get_additional_labels(self):
-    # get all labels that are not limitations
+    '''Get all labels that are not limitations'''
     limitations=self.get_limitations()
     if not limitations:
       return self.labels
@@ -348,6 +354,7 @@ class map_reader:
     return additional_labels
 
   def get_limitations(self):
+    '''Get all limitations of this map'''
     limitations=[]
     limitation_messages=[]
     if self.labels:
@@ -363,9 +370,11 @@ class map_reader:
       )
 
   def get_limitation(self,label):
+    '''Get limitation corresponding to this label'''
     return STANDARD_LIMITATIONS_DICT.get(label,None)
 
   def show_summary(self, out=sys.stdout, prefix=""):
+    '''Summarize map information'''
     data=self.map_data()
 
     if hasattr(self,'header_min'):
@@ -414,7 +423,7 @@ class map_reader:
             file=out)
 
   def pixel_sizes(self):
-    # Return tuple with pixel size in each direction (normally all the same)
+    '''Return tuple with pixel size in each direction (normally all the same)'''
     data=self.map_data()
     if not data:
       return None
@@ -451,10 +460,12 @@ class map_reader:
 
 
   def statistics(self):
+    '''Calculate statistics for this map'''
     from cctbx import maptbx
     return maptbx.statistics(self.map_data())
 
   def get_origin(self):
+    '''Return the origin of this map'''
     data=self.map_data()
     if data:
       return data.origin()
@@ -471,12 +482,14 @@ class map_reader:
     return self.data
 
   def high_resolution(self):
+    '''Return high resolution limit, if specified'''
     if hasattr(self,'_high_resolution'):
       return self._high_resolution
     else:
       return None
 
   def is_similar_map(self, other):
+    '''Check whether this map is similar (crystal symmetry, size) to another'''
     f1 = self.crystal_symmetry().is_similar_symmetry(other.crystal_symmetry())
     s = self.map_data()
     o = other.map_data()

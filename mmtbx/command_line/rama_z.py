@@ -6,4 +6,5 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.programs import rama_z
 from iotbx.cli_parser import run_program
 
-result = run_program(rama_z.Program)
+if __name__ == "__main__":
+  result = run_program(rama_z.Program)

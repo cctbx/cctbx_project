@@ -8532,7 +8532,7 @@ class map_model_manager(object):
       f_obs_array = None,
       resolution_factor = None,
      ):
-    '''
+    """
       Simple interface to cctbx.development.generate_map allowing only
       a small subset of keywords. Useful for quick generation of models, map
       coefficients, and maps
@@ -8541,8 +8541,7 @@ class map_model_manager(object):
       cctbx.development.generate_map_coeffs, and
       cctbx.development.generate_map
 
-      Summary:
-      --------
+      Summary
 
       If no map_manager is present, use supplied or existing model to
          generate map_manager and model.
@@ -8557,7 +8556,6 @@ class map_model_manager(object):
       include (default=10).
 
       Parameters:
-      -----------
 
       model (model.manager object, None):    model to use (as is)
       file_name (path , None):    file containing coordinates to use (instead
@@ -8580,7 +8578,7 @@ class map_model_manager(object):
            be more than 1.
       map_id:  ID of map_manager to be created with model-map information (only
                  applies if there is an existing map_manager)
-    '''
+    """
 
     # See if we have a map_manager
     if (not self.map_manager()) or (
@@ -9672,7 +9670,7 @@ def get_pointer_to_old_dv_id_dict(working_dv_list = None, dv_list = None,
   dv_list. Only use each dv_list member once unless allow_multiple_use.
   ID by abs(dot product)
   allow_multiple_use is for matching any to dv_list, False is for
-  #  rearranging only
+  rearranging only
   '''
   dot_dict={}
   pointer_to_old_dv_id_dict = {}
