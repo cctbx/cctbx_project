@@ -1,4 +1,4 @@
-""" Interface cctbx with the FullProf progamm suite.
+""" Interface cctbx with the FullProf program suite.
 
 FullProf can be obtained from http://www.ill.eu/sites/fullprof/
 """
