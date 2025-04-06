@@ -1,3 +1,7 @@
+"""
+Low-level tools to read and write maps (supersedes ccp4_map routines)
+"""
+
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex as flex# import dependency
 import os,time,sys

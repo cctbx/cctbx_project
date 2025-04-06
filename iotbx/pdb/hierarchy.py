@@ -1,3 +1,7 @@
+"""
+Tools for manipulation of hierarchy objects
+"""
+
 from __future__ import absolute_import, division, print_function
 import boost_adaptbx.boost.python as bp
 ext = bp.import_ext("iotbx_pdb_hierarchy_ext")
@@ -48,6 +52,7 @@ def _show_residue_group(rg, out, prefix):
       show_atom(atoms[-1])
 
 class overall_counts(object):
+  """Count the number of residues, chains, atoms and other attributes of a hierarchy"""
 
   def __init__(self):
     self._errors = None
@@ -60,6 +65,7 @@ class overall_counts(object):
         flag_warnings=True,
         residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
+    """Summarize information about this hierarchy"""
     if (out is None): out = sys.stdout
     self._errors = []
     self._warnings = []
@@ -201,6 +207,7 @@ class overall_counts(object):
         prefix="",
         residue_groups_max_show=10,
         duplicate_atom_labels_max_show=10):
+    """Return summary as string"""
     out = StringIO()
     self.show(
       out=out,
@@ -210,10 +217,12 @@ class overall_counts(object):
     return out.getvalue()
 
   def errors(self):
+    """Return errors in overall_counts"""
     if (self._errors is None): self.show(out=null_out())
     return self._errors
 
   def get_n_residues_of_classes(self, classes):
+    """Get residues in each class (common_amino_acid,common_rna_dna) """
     result = 0
     for resname, count in self.resnames.items():
       if common_residue_names_get_class(resname) in classes:
@@ -221,13 +230,16 @@ class overall_counts(object):
     return result
 
   def warnings(self):
+    """Get warnings in overall_counts"""
     if (self._warnings is None): self.show(out=null_out())
     return self._warnings
 
   def errors_and_warnings(self):
+    """Get errors and warnings in overall_counts"""
     return self.errors() + self.warnings()
 
   def show_improper_alt_conf(self, out=None, prefix=""):
+    """Identify improper alt_conformations in overall_counts"""
     if (self.n_alt_conf_improper == 0): return
     if (out is None): out = sys.stdout
     for residue_group,label in [(self.alt_conf_proper, "proper"),
@@ -240,6 +252,7 @@ class overall_counts(object):
             replace_floats_with=".*."), file=out)
 
   def raise_improper_alt_conf_if_necessary(self):
+    """Stop if improper alt_conformations present"""
     sio = StringIO()
     self.show_improper_alt_conf(out=sio)
     msg = sio.getvalue()
@@ -248,6 +261,7 @@ class overall_counts(object):
   def show_chains_with_mix_of_proper_and_improper_alt_conf(self,
         out=None,
         prefix=""):
+    """Show chains with mix of proper and improper alt_conformations """
     if (out is None): out = sys.stdout
     n = self.n_chains_with_mix_of_proper_and_improper_alt_conf
     print(prefix+"chains with mix of proper and improper alt. conf.:", n, file=out)
@@ -255,6 +269,7 @@ class overall_counts(object):
     self.show_improper_alt_conf(out=out, prefix=prefix)
 
   def raise_chains_with_mix_of_proper_and_improper_alt_conf_if_necessary(self):
+    """Stop if chains with mix of proper and improper alt_conformations """
     if (self.n_chains_with_mix_of_proper_and_improper_alt_conf == 0):
       return
     sio = StringIO()
@@ -265,6 +280,7 @@ class overall_counts(object):
         out=None,
         prefix="",
         max_show=10):
+    """Show consecutive residue groups with same resid"""
     cons = self.consecutive_residue_groups_with_same_resid
     if (len(cons) == 0): return
     if (out is None): out = sys.stdout
@@ -292,6 +308,7 @@ class overall_counts(object):
         out=None,
         prefix="",
         max_show=10):
+    """Show residue groups with multiple resnames using same altloc"""
     rgs = self.residue_groups_with_multiple_resnames_using_same_altloc
     if (len(rgs) == 0): return
     print(prefix+"residue groups with multiple resnames using" \
@@ -308,6 +325,7 @@ class overall_counts(object):
   def \
     raise_residue_groups_with_multiple_resnames_using_same_altloc_if_necessary(
         self, max_show=10):
+    """Stop if residue groups with multiple resnames using same altloc"""
     sio = StringIO()
     self.show_residue_groups_with_multiple_resnames_using_same_altloc(
       out=sio, max_show=max_show)
@@ -315,6 +333,7 @@ class overall_counts(object):
     if (len(msg) != 0): raise Sorry(msg.rstrip())
 
   def show_duplicate_atom_labels(self, out=None, prefix="", max_show=10):
+    """Show duplicate atom labels"""
     dup = self.duplicate_atom_labels
     if (len(dup) == 0): return
     if (out is None): out = sys.stdout
@@ -338,6 +357,7 @@ class overall_counts(object):
         plural_s(len(dup)-max_show), file=out)
 
   def raise_duplicate_atom_labels_if_necessary(self, max_show=10):
+    """Stop if duplicate atom labels"""
     sio = StringIO()
     self.show_duplicate_atom_labels(out=sio, max_show=max_show)
     msg = sio.getvalue()
@@ -3665,6 +3685,7 @@ class input(input_hierarchy_pair):
 # GUI app: Combine PDB files
 # CL app: iotbx.pdb.join_fragment_files
 def suffixes_for_chain_ids(suffixes=Auto):
+  """Return suitable suffixes for chain_ids. Deprecated"""
   if (suffixes is Auto):
     suffixes="123456789" \
              "ABCDEFGHIJKLMNOPQRSTUVWXYZ" \
@@ -3672,6 +3693,7 @@ def suffixes_for_chain_ids(suffixes=Auto):
   return suffixes
 
 def append_chain_id_suffixes(roots, suffixes=Auto):
+  """Append chain ID suffixes. Deprecated"""
   suffixes = suffixes_for_chain_ids(suffixes=suffixes)
   assert len(roots) <= len(suffixes)
   for root,suffix in zip(roots, suffixes):
@@ -3682,7 +3704,7 @@ def append_chain_id_suffixes(roots, suffixes=Auto):
 
 def join_roots(roots, chain_id_suffixes=Auto):
   """
-  Combine two root objects.
+  Combine two root objects. Deprecated
   """
   if (chain_id_suffixes is not None):
     append_chain_id_suffixes(roots=roots, suffixes=chain_id_suffixes)
@@ -3736,6 +3758,7 @@ def find_and_replace_chains(original_hierarchy, partial_hierarchy,
           i += 1
 
 def get_contiguous_ranges(hierarchy):
+  """Get continuous ranges within a hierarchy"""
   assert (len(hierarchy.models()) == 1)
   chain_clauses = []
   for chain in hierarchy.models()[0].chains():
@@ -3771,6 +3794,7 @@ def get_contiguous_ranges(hierarchy):
 
 # used for reporting build results in phenix
 def get_residue_and_fragment_count(pdb_file=None, pdb_hierarchy=None):
+  """Count residues and fragments in a hierarchy"""
   from libtbx import smart_open
   if (pdb_file is not None):
     raw_records = flex.std_string()

@@ -1,3 +1,5 @@
+"""Routines to read and write mtz formatted files
+"""
 from __future__ import absolute_import, division, print_function
 import cctbx.array_family.flex
 

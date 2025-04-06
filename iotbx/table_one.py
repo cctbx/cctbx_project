@@ -1,7 +1,4 @@
-
 """
-WARNING: IN DEVELOPMENT AND INCOMPLETE.
-
 Tools for formatting the standard "Table 1" in MX papers.  Relies on other
 methods (phenix.refine, phenix.model_vs_data, phenix.merging_statistics, etc.)
 to extract statistics for display.

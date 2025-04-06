@@ -1,3 +1,6 @@
+"""
+Methods for reading and writing 3D maps and functions to operate on maps
+"""
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str, null_out, Sorry
 from libtbx import group_args, Auto
@@ -13,10 +16,11 @@ import mmtbx.ncs.ncs
 from copy import deepcopy
 from scitbx.matrix import col
 
-class map_manager(map_reader, write_ccp4_map):
 
+class map_manager(map_reader, write_ccp4_map):
   '''
-   map_manager, includes map_reader and write_ccp4_map
+   map_manager, includes map_reader and write_ccp4_map and functions to
+   operate on a 3D map object.
 
    This class is intended to be the principal mechanism for reading
    and writing map information.  It is intended to be used by the
@@ -1903,8 +1907,7 @@ class map_manager(map_reader, write_ccp4_map):
         absolute_length_tolerance = None,
         shift_tol = None):
     """
-
-    Used for overall consistency checks in map_model_manager
+    Carry out overall consistency checks. Used in map_model_manager
     Note: the stop_on_errors, print_errors, and 3 tolerance kw are used in
       map_model_manager when checking consistency there
     """

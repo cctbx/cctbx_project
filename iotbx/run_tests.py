@@ -1,3 +1,7 @@
+"""
+List of tests to run in regression tests
+"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import sys

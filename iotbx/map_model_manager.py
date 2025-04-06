@@ -1,4 +1,9 @@
+"""
+Class for grouping and analyzing 3D maps and models of macromolecules.
+"""
+
 from __future__ import absolute_import, division, print_function
+
 import sys, os
 from libtbx.utils import Sorry, Abort
 from cctbx import maptbx
@@ -39,6 +44,7 @@ map_model {
     .short_caption = Model
 }
 '''
+
 
 class map_model_manager(object):
 
@@ -497,23 +503,28 @@ class map_model_manager(object):
   # Methods to get and set info object (any information about this object)
 
   def set_info(self, info):
+    ''' Set the information about this object'''
     self._info = info
 
   def info(self):
+    ''' Get the information about this object'''
     return self.get_info()
 
   def get_info(self, item_name = None):
+    ''' Get information about an item in this object'''
     if not item_name:
       return self._info
     else:
       return self._info.get(item_name)
 
   def add_to_info(self, item_name = None, item = None):
+    ''' Add an item to information'''
     setattr(self._info,item_name, item)
 
   # Methods for job control
 
   def check_stop_file(self):
+    '''Check for a stop_file'''
     if self._stop_file and os.path.isfile(self._stop_file):
       raise Abort("Stopping as the stop_file %s is present" %(
         os.path.abspath(self._stop_file)))
@@ -711,6 +722,8 @@ class map_model_manager(object):
     return self.ncs_object()
 
   def ncs_cc(self):
+    ''' Return the NCS (symmetry) correlation of the map, if present
+    '''
     if hasattr(self,'_ncs_cc'):
        return self._ncs_cc
 
@@ -724,18 +737,31 @@ class map_model_manager(object):
       self.map_manager().set_ncs_object(ncs_object)
 
   def ncs_object(self):
+    '''
+    Get the ncs object of map_manager
+    '''
     if self.map_manager():
       return self.map_manager().ncs_object()
     else:
       return None
 
   def experiment_type(self):
+    '''
+    Return the experiment_type (xray cryo_em neutron)
+    '''
     if self.map_manager():
       return self.map_manager().experiment_type()
     else:
       return None
 
   def scattering_table(self):
+    '''Return the scattering table (type of scattering)
+       electron:  cryo_em
+       n_gaussian x-ray (standard)
+       wk1995:    x-ray (alternative)
+       it1992:    x-ray (alternative)
+       neutron:   neutron scattering
+    '''
     if self._scattering_table:
       return self._scattering_table
     elif self.map_manager():
@@ -755,6 +781,7 @@ class map_model_manager(object):
     return self._minimum_resolution
 
   def nproc(self):
+    ''' Return value of nproc (number of processors to use)'''
     return self._nproc
 
   def resolution(self,
@@ -763,6 +790,9 @@ class map_model_manager(object):
     map_id_2 = 'map_manager_2',
     fsc_cutoff = 0.143,
      ):
+    '''Return resolution of map.  If not already calculated,
+    use map-map or map-model FSC or value from map_manager'''
+
     if self._resolution: # have it already
       return self._resolution
 
@@ -1016,6 +1046,8 @@ class map_model_manager(object):
 
   def write_map(self, file_name,
        map_id='map_manager'):
+    '''Write out map defined by map_id (default is 'map_manager')'''
+
     if not self._map_dict.get(map_id):
       self._print ("No map to write out with id='%s'" %(map_id))
     elif not file_name:
@@ -1030,7 +1062,8 @@ class map_model_manager(object):
      data_manager = None,
      format = None,
      ):
-
+    ''' Write a model object specified by model_id (default is 'model')
+    '''
     if not model:
       if not model_id:
         model_id = 'model'
@@ -3439,6 +3472,7 @@ class map_model_manager(object):
       )
 
   def duplicate_id(self,dd):
+    '''Return first id in dict dd that is a duplicate'''
     id_list = []
     for key in dd.keys():
       if dd[key]:
@@ -8359,6 +8393,7 @@ class map_model_manager(object):
     return self._warning_message
 
   def show_summary(self, log = sys.stdout):
+    '''Show short summary of this map_model_manager'''
     text = self.__repr__()
     print (text, file = log)
 
@@ -8366,37 +8401,45 @@ class map_model_manager(object):
   #  Perhaps remove all these
 
   def map_data(self):
+    '''Return map_data from map_manager'''
     if self.map_manager() and (not self.map_manager().is_dummy_map_manager()):
       return self.map_manager().map_data()
 
   def map_data_1(self):
+    '''Return map_data from map_manager_1'''
     if self.map_manager_1() and (
        not self.map_manager_1().is_dummy_map_manager()):
       return self.map_manager_1().map_data()
 
   def map_data_2(self):
+    '''Return map_data from map_manager_2'''
     if self.map_manager_2() and (
        not self.map_manager_2().is_dummy_map_manager()):
       return self.map_manager_2().map_data()
 
   def map_data_list(self):
+    '''Return list of map_data, one from from each map_manager'''
     map_data_list = []
     for mm in self.map_managers():
       map_data_list.append(mm.map_data())
     return map_data_list
 
   def xray_structure(self):
+    '''Return xray_structure from working model'''
     if(self.model() is not None):
       return self.model().get_xray_structure()
     else:
       return None
 
-  def hierarchy(self): return self.model().get_hierarchy()
+  def hierarchy(self):
+    '''Return the hierarchy from working model'''
+    return self.model().get_hierarchy()
 
 
   # Methods to be removed
 
   def get_counts_and_histograms(self):
+    '''Calculate summary information about maps and histograms of values'''
     self._counts = get_map_counts(
       map_data         = self.map_data(),
       crystal_symmetry = self.crystal_symmetry())
@@ -8407,6 +8450,7 @@ class map_model_manager(object):
         data_2  = self.map_data_2())
 
   def counts(self):
+    '''Return summary information about maps and histograms of values'''
     if not hasattr(self, '_counts'):
       self.get_counts_and_histograms()
     return self._counts
@@ -9509,6 +9553,7 @@ def get_tlso_group_info_from_model(model, nproc = 1, log = sys.stdout):
 
 def get_tlso_resid(T,L,S,cm,u_cart,xyz):
 
+    '''Get residual between tlso (TLS object) and target'''
     tlso_value = tlso( t = tuple(T), l = tuple(L),
          s = tuple(S), origin = tuple(cm),)
 
@@ -9528,6 +9573,8 @@ def get_tlso_resid(T,L,S,cm,u_cart,xyz):
     return rms
 
 def create_fine_spacing_array(unit_cell, cell_ratio = 10):
+  '''Create an array with spacing of about cell_ratio in P1 with this unit cell
+  '''
   new_params= 10*flex.double(unit_cell.parameters()[:3])
   new_params.extend(flex.double(unit_cell.parameters()[3:]))
   new_params=tuple(new_params)
@@ -9539,6 +9586,8 @@ def create_fine_spacing_array(unit_cell, cell_ratio = 10):
   return miller.array(miller.set(xs,mi))
 
 def cutoff_values(inside = True):
+  '''Return a pre-defined value depending on whether inside is True
+     or False'''
   inside_dict = {
       True: group_args(
         cutoff_low = 0.9,
@@ -9554,6 +9603,7 @@ def cutoff_values(inside = True):
 
 def is_inside_mask(mask_map_manager, site_frac = None,
     inside = True):
+  '''Return True if site_frac (fractional coords) is inside the mask'''
   if inside not in [True, False, None]:
     return True
   cutoff_low = cutoff_values(inside).cutoff_low
@@ -9595,16 +9645,8 @@ def apply_ncs_to_dv_results(
     xyz = None,
     scaling_group_info = None,
     ncs_object = None):
+  '''Apply NCS (symmetry) to direction-vector results.
 
-  assert ((direction_vectors is None) or
-     (list(direction_vectors) == list(scaling_group_info.direction_vectors))
-     )
-
-  # work on one location (xyz) with one value ( one scaling_group_info object)
-
-  # Produce a set of xyz and a set of scaling_group_info objects
-
-  """
     scaling_group_info group_args object:
       direction_vectors: direction vectors dv for anisotropy calculations
       overall_si
@@ -9616,7 +9658,16 @@ def apply_ncs_to_dv_results(
                   si.low_res_cc # low-res average
       ss_b_cart_as_u_cart: anisotropic part of overall correction factor
       overall_scale: radial part of overall correction factor
-  """
+  '''
+
+  assert ((direction_vectors is None) or
+     (list(direction_vectors) == list(scaling_group_info.direction_vectors))
+     )
+
+  # work on one location (xyz) with one value ( one scaling_group_info object)
+
+  # Produce a set of xyz and a set of scaling_group_info objects
+
 
   # If direction vectors are None then NCS operation just multiplies all the
   #   entries without changing them
@@ -10217,6 +10268,7 @@ def get_selection_inside_box(
   return ~s
 
 def get_skip_waters_and_hetero_lines(skip_waters = True, skip_hetero = True):
+  '''Return selection string for skipping waters or hetero atoms'''
   if skip_waters and skip_hetero:
     no_water_or_het = "( (not hetero ) and (not water)) "
   elif skip_waters:
@@ -10338,6 +10390,7 @@ def get_map_histograms(data, n_slots = 20, data_1 = None, data_2 = None):
     _data_min = data_min, half_map_histogram_cc = hmhcc)
 
 def get_map_counts(map_data, crystal_symmetry = None):
+  '''Summarize information about map as group_args'''
   a = map_data.accessor()
   map_counts = group_args(
     origin       = a.origin(),
@@ -10350,6 +10403,7 @@ def get_map_counts(map_data, crystal_symmetry = None):
   return map_counts
 
 class run_anisotropic_scaling_as_class:
+  '''Helper class for anisotropic scaling'''
   def __init__(self, map_model_manager=None,
       direction_vectors = None,
       scale_factor_info= None,
@@ -10495,6 +10549,7 @@ class run_anisotropic_scaling_as_class:
     return result
 
 class run_fsc_as_class:
+  '''Helper class to run FSC calculation'''
   def __init__(self, map_model_manager=None, run_list=None,
       box_info = None):
     self.map_model_manager = map_model_manager

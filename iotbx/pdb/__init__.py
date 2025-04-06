@@ -1,3 +1,7 @@
+"""
+Tools for reading, writing, and manipulating PDB-formatted files and
+for managing their data as a PDB hierarchy.
+"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
