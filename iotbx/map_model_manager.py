@@ -292,12 +292,12 @@ class map_model_manager(object):
             m.warning_message())+
             "\nTry 'ignore_symmetry_conflicts=True'")
 
-    # Now make sure all models match symmetry using match_map_model_ncs
+    # Now make sure all models match symmetry using _match_map_model_ncs
 
-    # Make a match_map_model_ncs and check unit_cell and
+    # Make a _match_map_model_ncs and check unit_cell and
     #   working crystal symmetry
     #  and shift_cart for model, map, and ncs_object (if present)
-    mmmn = match_map_model_ncs(
+    mmmn = _match_map_model_ncs(
         absolute_angle_tolerance = absolute_angle_tolerance,
         absolute_length_tolerance = absolute_length_tolerance,
         ignore_symmetry_conflicts = ignore_symmetry_conflicts)
@@ -8852,16 +8852,19 @@ class map_model_manager(object):
     return self
 
 
-  def as_match_map_model_ncs(self):
+  def as__match_map_model_ncs(self):
     '''
-      Return this object as a match_map_model_ncs
+      Return this object as a _match_map_model_ncs
 
       Includes only the map_manager and model and ncs object, ignores all
-      other maps and models (match_map_model_ncs takes only one of each).
+      other maps and models (_match_map_model_ncs takes only one of each).
+
+      Note two underscores because the module it is returning is
+      _match_map_model_ncs.
 
     '''
-    from iotbx.map_model_manager import match_map_model_ncs
-    mmmn = match_map_model_ncs()
+    from iotbx.map_model_manager import _match_map_model_ncs
+    mmmn = _match_map_model_ncs()
     if self.map_manager():
       mmmn.add_map_manager(self.map_manager())
     if self.model():
@@ -8871,9 +8874,9 @@ class map_model_manager(object):
     return mmmn
 
 
-class match_map_model_ncs(object):
+class _match_map_model_ncs(object):
   '''
-   match_map_model_ncs
+   _match_map_model_ncs
 
    Use: Container to hold map, model, ncs object and check
    consistency and shift origin
@@ -8933,7 +8936,7 @@ class match_map_model_ncs(object):
       self.log = sys.stdout
 
   def deep_copy(self):
-    new_mmmn = match_map_model_ncs()
+    new_mmmn = _match_map_model_ncs()
     if self._model:
       new_mmmn.add_model(self._model.deep_copy())
     if self._map_manager:
