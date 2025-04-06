@@ -43,8 +43,17 @@ map_model {
 class map_model_manager(object):
 
   '''
-    Class for shifting origin of map(s) and model to (0, 0, 0) and keeping
-    track of the shifts.
+    Class for analyzing 3D maps and models of macromolecules.
+
+    Core functionality is the ability to shift the origin of map(s)
+    and models to (0, 0, 0) and keeping track of the shifts.
+
+    Accessory functions allow extraction of boxed maps and models,
+    masking, sharpening, calculation of map-model correlations,
+    and other operations.
+
+    Uses the model manager to hold models and the map_manager to hold maps.
+
 
     Typical use:
     mam = map_model_manager(
