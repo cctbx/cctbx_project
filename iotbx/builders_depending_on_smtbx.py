@@ -1,6 +1,6 @@
-from __future__ import absolute_import, division, print_function
 """Tools for creating builders using smtbx
 """
+from __future__ import absolute_import, division, print_function
 
 from smtbx.refinement import constraints, least_squares
 import smtbx.refinement.constraints.adp
