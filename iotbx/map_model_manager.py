@@ -1,5 +1,5 @@
 """
-Class for grouping and analyzing 3D maps and models of macromolecules.
+High-level manager for grouping and analyzing 3D maps and models of macromolecules. This is the class to use for most map and model operations.
 """
 
 from __future__ import absolute_import, division, print_function

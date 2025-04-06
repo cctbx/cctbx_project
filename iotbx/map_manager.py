@@ -1,5 +1,5 @@
 """
-Methods for reading and writing 3D maps and functions to operate on maps
+High-level manager for reading and writing 3D maps and functions to operate on maps.  This is the class to use for most map operations.
 """
 from __future__ import absolute_import, division, print_function
 from libtbx.utils import to_str, null_out, Sorry
