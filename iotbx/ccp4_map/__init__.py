@@ -1,4 +1,5 @@
-"""Outdated Low-level methods for reading ccp4 map files. (Use mrcfile instead)
+"""Outdated Low-level methods for reading ccp4 map files. (Use map_manager
+instead).
 """
 
 from __future__ import absolute_import, division, print_function

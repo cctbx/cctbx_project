@@ -1,5 +1,6 @@
 """
-Low-level tools to read and write maps (supersedes ccp4_map routines)
+Low-level tools to read and write maps (supersedes ccp4_map routines).
+Normally use map_manager instead.
 """
 
 from __future__ import absolute_import, division, print_function
