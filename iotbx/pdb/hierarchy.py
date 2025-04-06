@@ -1,5 +1,7 @@
 """
-Tools for manipulation of hierarchy objects
+Classes representing hierarchy objects and tools for manipulation.
+Note: contains boosted C++ code; view source code for methods
+and documentation.
 """
 
 from __future__ import absolute_import, division, print_function
