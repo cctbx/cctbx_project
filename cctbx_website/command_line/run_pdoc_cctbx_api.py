@@ -16,6 +16,7 @@ hierarchical APIs.
 
 .. include:: ./documentation.md
 """
+import importlib
 import inspect
 import os
 import os.path as path
