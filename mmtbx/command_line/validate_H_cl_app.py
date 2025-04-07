@@ -224,7 +224,7 @@ Usage:
 
     #results.pdb_hierarchy_curated.write_pdb_file(file_name="%s.pdb" % 'bla2')
 if __name__ == "__main__":
-  
+
   t0 = time.time()
   validate_H_app = cl_validate_H(
     cl_args=sys.argv[1:])

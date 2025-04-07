@@ -6,7 +6,7 @@ try:
   from mmtbx.cablam import cablam_training
 except Exception as e:
   print("cablam_training does not exist in mmtbx.cablam")
-  
+
 
 if __name__ == "__main__":
   cablam_training.run(sys.argv[1:])

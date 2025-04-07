@@ -38,4 +38,4 @@ echo "Ready with cctbx_project_api in cctbx_project_api.tgz"
 ls -tlr cctbx_project_api.tgz
 echo "ALL DONE"
 
-finish: 
+finish:

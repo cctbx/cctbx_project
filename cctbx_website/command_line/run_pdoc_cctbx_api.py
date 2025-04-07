@@ -16,10 +16,6 @@ hierarchical APIs.
 
 .. include:: ./documentation.md
 """
-import ast
-import enum
-import importlib.machinery
-import importlib.util
 import inspect
 import os
 import os.path as path
@@ -28,19 +24,15 @@ import sys
 import typing
 from contextlib import contextmanager
 from copy import copy
-from functools import lru_cache, reduce, partial, wraps
-from itertools import tee, groupby
+from functools import lru_cache
 from types import ModuleType
 from typing import (  # noqa: F401
     cast, Any, Callable, Dict, Generator, Iterable, List, Literal, Mapping, NewType,
     Optional, Set, Tuple, Type, TypeVar, Union,
 )
-from unittest.mock import Mock
 from warnings import warn
 
 from mako.lookup import TemplateLookup
-from mako.exceptions import TopLevelLookupException
-from mako.template import Template
 
 try:
     from pdoc._version import version as __version__  # noqa: F401
@@ -111,7 +103,7 @@ def import_module(module: Union[str, ModuleType],
             except Exception as e:
                 print("FAILED TO IMPORT ",original_module,module_path,"::",str(e),"::")
                 from copy import deepcopy
-                module = deepcopy(dummy_module) # skipping it and marking 
+                module = deepcopy(dummy_module) # skipping it and marking
                 module.__name__= "%s_dummy_module" %(original_module)
                 print("FAILED_TO_IMPORT_MODULE:",original_module)
                 failed_file = 'pdoc.failed'
@@ -522,10 +514,10 @@ def run(args, top_level = None):
   failed_file = 'pdoc.failed'
   if os.path.isfile (failed_file):
      os.remove(failed_file)
-  
+
   modules = args
   context = Context()
- 
+
   new_modules = []
   for mod in modules:
     x = Module(mod, context=context, skip_errors = True)
@@ -536,13 +528,13 @@ def run(args, top_level = None):
     return
 
   link_inheritance(context)
- 
+
   def recursive_htmls(mod):
-      yield mod, mod.name, mod.html() 
+      yield mod, mod.name, mod.html()
       for submod in mod.submodules():
           yield from recursive_htmls(submod)
   def top_level_recursive_htmls(mod):
-      yield mod, mod.name, mod.html() 
+      yield mod, mod.name, mod.html()
       for submod in mod.submodules():
           yield submod, submod.name, submod.html()
 
@@ -553,8 +545,8 @@ def run(args, top_level = None):
     get_htmls = recursive_htmls
     print("\nUsing all levels")
 
-  ok_modules = [] 
-  failed_modules = [] 
+  ok_modules = []
+  failed_modules = []
 
   for mod in modules:
       for m,  module_name, html in get_htmls(mod):
@@ -583,7 +575,7 @@ def run(args, top_level = None):
     for x in open(failed_file).read().split():
       if not x in failed_modules:
         failed_modules.append(x)
-  
+
   print("List of failed modules:")
   for m in failed_modules:
     print(m)
