@@ -20,7 +20,7 @@ def run(args):
 
 def add_super_module_text(text):
   """
-   Find the text: 
+   Find the text:
    "<li><h3><a href="#header-submodules">Sub-modules</a></h3>"
 
    and replace it with:
