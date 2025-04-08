@@ -6,6 +6,7 @@ if (! -d $PHENIX/modules)then
   goto finish
 endif
 
+
 setenv base $PHENIX/modules/cctbx_project/cctbx_website/command_line
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx sphinx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx dox.sphinx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
@@ -17,6 +18,13 @@ foreach x ($module_list)
 phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
 wait
+
+# Edit all the files to simplify and add a base link
+foreach f (*/index.html */*/index.html */*/*/index.html */*/*/*/index.html)
+  phenix.python $base/edit_html.py $f &
+end
+wait
+
 echo ""
 echo "Results by module:"
 grep failed *.log | grep -v List
