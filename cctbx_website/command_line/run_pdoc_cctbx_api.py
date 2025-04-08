@@ -514,7 +514,10 @@ def run(args, top_level = None):
   # Catch failed imports in 'pdoc.failed'
   failed_file = 'pdoc.failed'
   if os.path.isfile (failed_file):
-     os.remove(failed_file)
+     try:
+       os.remove(failed_file)
+     except Exception as e:
+       pass # another job removed it...
 
   modules = args
   context = Context()
