@@ -462,7 +462,7 @@ class idealize_helix(object):
                           pdb_hierarchy_template=sel_h,
                           rotamer_manager=self.model.get_rotamer_manager())
     except Sorry as e:
-      if e.args[0].startswith("C, CA or N"):
+      if e.args[0].startswith("C, CA or N"): # PDB OK
         return 'Not enough atoms'
       else:
         raise e
@@ -813,10 +813,10 @@ class substitute_ss(object):
     # to avoid clashes.
     if self.processed_params.fix_rotamer_outliers:
       print("Fixing/checking rotamers...", file=self.log)
-      # pre_result_h.write_pdb_file(file_name="before_rotamers.pdb")
-      br_txt = self.model.model_as_pdb()
-      with open("before_rotamers.pdb", 'w') as f:
-        f.write(br_txt)
+      _ = self.model.pdb_or_mmcif_string_info(
+          target_format='pdb',
+          target_filename="before_rotamers.pdb",
+          write_file=True)
       if(self.reference_map is None):
         backbone_sample=False
       else:
@@ -888,10 +888,11 @@ class substitute_ss(object):
           hierarchy=self.model.get_hierarchy())
       print("Outputting model before regularization %s" % self.processed_params.file_name_before_regularization, file=self.log)
 
-      m_txt = self.model.model_as_pdb()
       g_txt = self.model.restraints_as_geo()
-      with open(self.processed_params.file_name_before_regularization, 'w') as f:
-        f.write(m_txt)
+      _ = self.model.pdb_or_mmcif_string_info(
+          target_format='pdb',
+          target_filename=self.processed_params.file_name_before_regularization,
+          write_file=True)
 
       geo_fname = self.processed_params.file_name_before_regularization[:-4]+'.geo'
       print("Outputting geo file for regularization %s" % geo_fname, file=self.log)
@@ -959,7 +960,7 @@ def beta():
 def alpha_310():
   pdb_hierarchy = secondary_structure_from_sequence(a310_helix_str,
       "ACEDGFIHKMLNQPSRTWVY")
-  pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb")
+  pdb_hierarchy.write_pdb_file(file_name = "o_helix310_seq.pdb") # PDB OK
 
 def alpha_pi():
   pdb_hierarchy = secondary_structure_from_sequence(pi_helix_str,

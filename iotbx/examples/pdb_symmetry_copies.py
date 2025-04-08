@@ -32,9 +32,8 @@ REMARK input file name: %s
 REMARK original space group: %s
 REMARK using two-character chain ids""" % (args[0], str(cs.space_group_info())), file=open(output_file_name, "w"))
   from cctbx import sgtbx
-  combined_pdb_hierarchies.write_pdb_file(
-    file_name=output_file_name,
-    open_append=True,
+  combined_pdb_hierarchies.write_pdb_or_mmcif_file(
+    target_filename=output_file_name,
     crystal_symmetry=cs.customized_copy(
       space_group_info=sgtbx.space_group_info(symbol="P1")),
     append_end=True)

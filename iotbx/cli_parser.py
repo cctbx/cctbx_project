@@ -902,7 +902,7 @@ or with pip run
 # =============================================================================
 def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arguments=None,
                 unused_phil_raises_sorry=True, args=None, json=False, logger=None,
-                hide_parsing_output=False):
+                hide_parsing_output=False, allow_default_args=False):
   '''
   Function for running programs using CCTBXParser and the program template
 
@@ -934,6 +934,8 @@ def run_program(program_class=None, parser_class=CCTBXParser, custom_process_arg
 
   if args is None:
     args = sys.argv[1:]
+  elif allow_default_args and type(args) in [list, tuple]:
+    args = sys.argv[1:] + args
 
   # start profiling
   pr = None

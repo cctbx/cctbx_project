@@ -4,4 +4,5 @@ from __future__ import absolute_import, division, print_function
 from mmtbx.programs import ss_validation
 from iotbx.cli_parser import run_program
 
-run_program(ss_validation.Program)
+if __name__ == "__main__":
+  run_program(ss_validation.Program)

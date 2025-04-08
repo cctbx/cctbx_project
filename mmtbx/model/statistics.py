@@ -17,6 +17,7 @@ from mmtbx.validation import omegalyze
 from mmtbx.validation import cablam
 from cctbx import adptbx
 import six
+from libtbx import Auto
 
 class geometry(object):
   def __init__(self,
@@ -69,15 +70,15 @@ class geometry(object):
         self.from_restraints.den_residual_sum+
         self.from_restraints.ramachandran_residual_sum)
 
-  def angle(self, origin_id=0, return_rmsZ=False):
+  def angle(self, origin_id=Auto, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
-        mi,ma,me = self.from_restraints.angle_deviations_z()
+        mi,ma,me,n = self.from_restraints.angle_deviations_z(origin_id=origin_id)
       else:
-        mi,ma,me = self.from_restraints.angle_deviations(origin_id=origin_id)
-      n = self.from_restraints.get_filtered_n_angle_proxies(origin_id=origin_id)
+        mi,ma,me,n = self.from_restraints.angle_deviations(origin_id=origin_id)
+      # n = self.from_restraints.get_filtered_n_angle_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_angle_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4,
@@ -85,15 +86,15 @@ class geometry(object):
         )
     return group_args(min = mi, max = ma, mean = me, n = n, outliers = outliers)
 
-  def bond(self, origin_id=0, return_rmsZ=False):
+  def bond(self, origin_id=Auto, return_rmsZ=False):
     mi,ma,me,n = 0,0,0,0
     outliers = 0
     if(self.from_restraints is not None):
       if return_rmsZ:
-        mi,ma,me = self.from_restraints.bond_deviations_z()
+        mi,ma,me,n = self.from_restraints.bond_deviations_z(origin_id=origin_id)
       else:
-        mi,ma,me = self.from_restraints.bond_deviations(origin_id=origin_id)
-      n = self.from_restraints.get_filtered_n_bond_proxies(origin_id=origin_id)
+        mi,ma,me,n = self.from_restraints.bond_deviations(origin_id=origin_id)
+      # n = self.from_restraints.get_filtered_n_bond_proxies(origin_id=origin_id)
       outliers = self.from_restraints.get_bond_outliers(
         sites_cart = self.pdb_hierarchy.atoms().extract_xyz(),
         sigma_threshold=4,
@@ -248,6 +249,7 @@ class geometry(object):
       rama_fav   = self.ramachandran().favored)
 
   def result(self, slim=False):
+    from libtbx import Auto
     if(self.cached_result is None):
       self.cached_result = group_args(
          angle            = self.angle(),
@@ -335,6 +337,8 @@ class geometry(object):
     a,b,c,d,p,n = res.angle, res.bond, res.chirality, res.dihedral, \
       res.planarity, res.nonbonded
     az, bz = res.angle_z, res.bond_z
+    assert b.n>=bz.n, 'rmsd.n != rmsZ.n %s %s' % (b.n, bz.n)
+    assert a.n==az.n
     result = """%s
 %sGeometry Restraints Library: %s
 %sDeviations from Ideal Values - rmsd, rmsZ for bonds and angles.
@@ -422,8 +426,8 @@ class geometry(object):
       origin_ids = linking_class()
       result += '%s\n%s\n%sDetails of bonding type rmsd' % (prefix, prefix, prefix)
       for key, i in origin_ids.items():
-        bond_rc=self.bond(origin_id=i)
-        angle_rc=self.angle(origin_id=i)
+        bond_rc=self.bond(origin_id=-i)
+        angle_rc=self.angle(origin_id=-i)
         if bond_rc.n:
           result += '\n%s  %-20s : bond   %12.5f (%5d)' % (prefix,
                                                            key,

@@ -1,3 +1,10 @@
+2025.3
+======
+
+* Improved mmCIF compatibility across programs
+* Added more intrinsic functions to fable
+* CCTBXParser: show PHIL parameters in default help output
+
 2025.2
 ======
 

@@ -1,11 +1,9 @@
-from __future__ import absolute_import, division, print_function
-from cctbx.eltbx import wavelengths
-
-""" The purpose of this module is to interface cctbx with the FullProf progamm
-suite.
+""" Interface cctbx with the FullProf program suite.
 
 FullProf can be obtained from http://www.ill.eu/sites/fullprof/
 """
+from __future__ import absolute_import, division, print_function
+from cctbx.eltbx import wavelengths
 
 def rietveld_refine_structure(crystalstructure,
                       wavelength=wavelengths.characteristic("CU").as_angstrom(),

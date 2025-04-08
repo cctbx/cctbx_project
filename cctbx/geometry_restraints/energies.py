@@ -6,6 +6,7 @@ import scitbx.restraints
 import math
 import sys
 from six.moves import zip
+from libtbx import Auto
 
 class energies(scitbx.restraints.energies):
 
@@ -227,7 +228,47 @@ class energies(scitbx.restraints.energies):
     return self.chirality_proxies.get_outliers(sites_cart=sites_cart,
                                               sigma_threshold=sigma_threshold)
 
-  def bond_deviations_z(self):
+  def _get_deltas(self, proxies, origin_id=Auto):
+    if type(origin_id)==type(1) and origin_id<=0:
+      origin_id=abs(origin_id)
+    else:
+      assert origin_id, 'origin_id is %s' % origin_id
+    from cctbx.geometry_restraints.auto_linking_types import iterate_covalent
+    if origin_id is Auto:
+      deltas = flex.double()
+      for oi in iterate_covalent():
+        tmp = proxies.deltas(sites_cart=self.sites_cart, origin_id=oi)
+        if tmp: deltas.extend(tmp)
+    else:
+      deltas = proxies.deltas(sites_cart=self.sites_cart, origin_id=origin_id)
+    return deltas
+
+  def _get_bond_deltas(self, origin_id=Auto):
+    return self._get_deltas(self.bond_proxies, origin_id=origin_id)
+
+  def _get_angle_deltas(self, origin_id=Auto):
+    return self._get_deltas(self.angle_proxies, origin_id=origin_id)
+
+  def _sigmas(self, self_proxies, origin_id=Auto):
+    from cctbx.geometry_restraints.auto_linking_types import iterate_covalent
+    if origin_id is Auto:
+      proxies = self_proxies.proxy_select(origin_id=0)
+      for oi in iterate_covalent():
+        if not oi: continue
+        tmp = self_proxies.proxy_select(origin_id=oi)
+        if tmp: proxies.extend(tmp)
+    else:
+      assert 0
+    sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in proxies]
+    return sigmas
+
+  def bond_sigmas(self, origin_id=Auto):
+    return self._sigmas(self.bond_proxies.simple, origin_id=origin_id)
+
+  def angle_sigmas(self, origin_id=Auto):
+    return self._sigmas(self.angle_proxies, origin_id=origin_id)
+
+  def bond_deviations_z(self, origin_id=Auto):
     '''
     Calculate rmsz of bond deviations
 
@@ -247,22 +288,23 @@ class energies(scitbx.restraints.energies):
     b_z_min/max: min/max abolute values of z-scors
     '''
     if(self.n_bond_proxies is not None):
-      bond_deltas = self.bond_proxies.deltas(
-          sites_cart=self.sites_cart, origin_id=0)
+      bond_deltas=self._get_bond_deltas(origin_id=origin_id)
       if len(bond_deltas) >0:
-        sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple]
+        sigmas = self.bond_sigmas(origin_id=origin_id)
+        assert len(bond_deltas)>=len(sigmas), 'bond_deltas!=sigmas %s %s' % (len(bond_deltas), len(sigmas))
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
         b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         b_z_max = flex.max_default(flex.abs(z_scores), 0)
         b_z_min = flex.min_default(flex.abs(z_scores), 0)
-        return b_z_min, b_z_max, b_rmsz
+        return b_z_min, b_z_max, b_rmsz, len(sigmas)
       else:
-        return 0,0,0
+        return 0,0,0,0
 
-  def bond_deviations_weighted(self):
+  def bond_deviations_weighted(self, origin_id=Auto):
+    assert 0
     if(self.n_bond_proxies is not None):
       bond_deltas = self.bond_proxies.deltas(
-          sites_cart=self.sites_cart, origin_id=0)
+          sites_cart=self.sites_cart, origin_id=origin_id)
       if len(bond_deltas) >0:
         sigmas = flex.double([geometry_restraints.weight_as_sigma(x.weight) for x in self.bond_proxies.simple])
         sigma_mean = flex.mean_default(sigmas, 0)
@@ -274,20 +316,19 @@ class energies(scitbx.restraints.energies):
       else:
         return 0,0,0
 
-  def bond_deviations(self, origin_id=0):
+  def bond_deviations(self, origin_id=Auto):
     if(self.n_bond_proxies is not None):
-      bond_deltas = self.bond_proxies.deltas(
-          sites_cart=self.sites_cart, origin_id=origin_id)
+      bond_deltas=self._get_bond_deltas(origin_id=origin_id)
       if len(bond_deltas) >0:
         b_sq  = bond_deltas * bond_deltas
         b_ave = math.sqrt(flex.mean_default(b_sq, 0))
         b_max = math.sqrt(flex.max_default(b_sq, 0))
         b_min = math.sqrt(flex.min_default(b_sq, 0))
-        return b_min, b_max, b_ave
+        return b_min, b_max, b_ave, len(bond_deltas)
       else:
-        return 0,0,0
+        return 0,0,0,0
 
-  def angle_deviations_z(self):
+  def angle_deviations_z(self, origin_id=Auto):
     '''
     Calculate rmsz of angles deviations
 
@@ -310,24 +351,25 @@ class energies(scitbx.restraints.energies):
     a_z_min/max: min/max values of z-scors
     '''
     if(self.n_angle_proxies is not None):
-      angle_deltas = self.angle_proxies.proxy_select(origin_id=0).deltas(
-          sites_cart=self.sites_cart)
+      angle_deltas = self._get_angle_deltas(origin_id=origin_id)
       if len(angle_deltas) > 0:
-        sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies]
+        sigmas = self.angle_sigmas(origin_id=origin_id)
+        assert len(sigmas)==len(angle_deltas)
         z_scores = flex.double([(angle_delta/sigma) for angle_delta,sigma in zip(angle_deltas,sigmas)])
         a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         a_z_max = flex.max_default(flex.abs(z_scores), 0)
         a_z_min = flex.min_default(flex.abs(z_scores), 0)
-        return a_z_min, a_z_max, a_rmsz
+        return a_z_min, a_z_max, a_rmsz, len(sigmas)
       else:
-        return 0,0,0
+        return 0,0,0,0
 
   def angle_deviations_weighted(self):
+    assert 0
     if(self.n_angle_proxies is not None):
       angle_deltas = self.angle_proxies.proxy_select(origin_id=0).deltas(
           sites_cart=self.sites_cart)
       if len(angle_deltas) > 0:
-        sigmas = flex.double([geometry_restraints.weight_as_sigma(x.weight) for x in self.angle_proxies])
+        sigmas = self.angle_proxies(origin_id=origin_id)
         sigma_mean = flex.mean_default(sigmas, 0)
         z_scores = flex.double([(angle_delta/sigma*sigma_mean) for angle_delta,sigma in zip(angle_deltas,sigmas)])
         a_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
@@ -337,18 +379,18 @@ class energies(scitbx.restraints.energies):
       else:
         return 0,0,0
 
-  def angle_deviations(self, origin_id=0):
+  def angle_deviations(self, origin_id=Auto):
     if(self.n_angle_proxies is not None):
-      angle_deltas = self.angle_proxies.proxy_select(origin_id=origin_id).deltas(
-          sites_cart=self.sites_cart)
+      angle_deltas = self._get_angle_deltas(origin_id=origin_id)
+      # print('angle',origin_id,len(angle_deltas),list(angle_deltas[:10]))
       if len(angle_deltas) > 0:
         a_sq  = angle_deltas * angle_deltas
         a_ave = math.sqrt(flex.mean_default(a_sq, 0))
         a_max = math.sqrt(flex.max_default(a_sq, 0))
         a_min = math.sqrt(flex.min_default(a_sq, 0))
-        return a_min, a_max, a_ave
+        return a_min, a_max, a_ave, len(angle_deltas)
       else:
-        return 0,0,0
+        return 0,0,0,0
 
   def nonbonded_distances(self):
     return geometry_restraints.nonbonded_deltas(

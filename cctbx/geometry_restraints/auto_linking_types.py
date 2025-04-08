@@ -162,11 +162,22 @@ for scl in standard_cif_links:
   origin_ids[0][starting_id] = origins(scl, internals=[0,1,2,3,4,5])
   starting_id+=1
 
-# for oi in origin_ids:
-#   print '-'*80
-#   for key, item in oi.items():
-#     print key
-#     print item
+not_covalent = [
+  # not really necessary as there are no bonds, angles but added for completeness
+  'basepair stacking',
+  'basepair parallelity',
+  'side-chain parallelity',
+  'basepair planarity',
+  'link_gap',
+  # necessary
+  'hydrogen bonds',
+  ]
+
+def iterate_covalent():
+  for key, item in origin_ids[0].items():
+    if item[0] in not_covalent: continue
+    # print('YIELD "%s" "%s"' % (key, item))
+    yield key
 
 if __name__=="__main__":
   print('-'*80)

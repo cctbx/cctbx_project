@@ -53,6 +53,14 @@ conda install -c conda-forge cctbx-base
 ```
 The `python` package with a specific version can be added to change the version of `python` that is already installed in the active environment.
 
+### Monomer library
+
+Some programs in cctbx require information about geometric restraints for molecules. This information is available in the `chem_data` conda package from our [releases](https://github.com/cctbx/cctbx_project/releases). Download the `chem_data` conda package and install in your active environment with
+```
+conda install <chem_data package>
+```
+The `chem_data` package is built from the [`chem_data`](https://gitlab.com/phenix_project/chem_data) and [`geostd`](https://github.com/phenix-project/geostd) repositories.
+
 <a name="developmentversion"/>
 
 ## Building a development version

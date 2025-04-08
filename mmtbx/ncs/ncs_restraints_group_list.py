@@ -467,7 +467,7 @@ class class_ncs_restraints_group_list(list):
       if not brief:
         print(list(group.master_iselection))
       if hierarchy is not None:
-        print(hierarchy.select(group.master_iselection).as_pdb_string())
+        print(hierarchy.select(group.master_iselection).as_pdb_string()) # PDB OK - debugging output
       for c in group.copies:
         print("Copy str selection:", c.str_selection)
         if not brief:
@@ -475,7 +475,7 @@ class class_ncs_restraints_group_list(list):
         # print "rot", list(c.r)
         # print "tran", list(c.t)
         if hierarchy is not None:
-          print(hierarchy.select(c.iselection).as_pdb_string())
+          print(hierarchy.select(c.iselection).as_pdb_string()) # PDB OK - debugging output
       print("="*30)
     #print("end debugging output of ncs_restraints_group_list")
 

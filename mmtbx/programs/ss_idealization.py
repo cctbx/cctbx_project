@@ -54,7 +54,7 @@ include scope mmtbx.secondary_structure.build.ss_idealization.ss_idealization_ma
                 prefix='%s_' % inp_fn,
                 suffix='ss_idealized',
                 serial=Auto)
-    self.data_manager.write_model_file(self.model, filename=fn)
+    actual_fn = self.data_manager.write_model_file(self.model, filename=fn)
 
   # ---------------------------------------------------------------------------
   def get_results(self):

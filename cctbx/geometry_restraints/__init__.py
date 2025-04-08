@@ -1455,12 +1455,17 @@ class _():
       i += 1
     return result
 
-  def deltas(self, sites_cart, unit_cell=None):
+  def deltas(self, sites_cart, unit_cell=None, origin_id=None):
     if unit_cell is None:
-      return angle_deltas(sites_cart=sites_cart, proxies=self)
+      if origin_id is None:
+        return angle_deltas(sites_cart=sites_cart, proxies=self)
+      return angle_deltas(sites_cart=sites_cart, proxies=self, origin_id=origin_id)
     else:
+      if origin_id is None:
+        return angle_deltas(
+          unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
       return angle_deltas(
-        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self)
+        unit_cell=unit_cell, sites_cart=sites_cart, proxies=self, origin_id=origin_id)
 
   def residuals(self, sites_cart, unit_cell=None):
     if unit_cell is None:

@@ -1,3 +1,5 @@
+"""Tools for creating crystal_symmetry, x-ray structure, twinning objects
+"""
 from __future__ import absolute_import, division, print_function
 
 import libtbx

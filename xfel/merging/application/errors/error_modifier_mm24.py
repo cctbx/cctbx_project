@@ -286,16 +286,6 @@ class error_modifier_mm24(worker):
       good_indices = counts > 0
       mean_differences = summation[good_indices] / counts[good_indices]
       bin_centers = bin_centers[good_indices]
-      #print(summation_rank)
-      #print(counts_rank)
-      #print(summation)
-      #print(counts)
-      #print(good_indices)
-      #print(mean_differences)
-      #print(bin_centers)
-      #print(upper)
-      #print(biased_mean_rank)
-      #print(biased_mean_rank.min(), biased_mean_rank.max(), upper)
 
       if self.cc_key:
         self.sadd = [0, 0.001, 0.001]
@@ -592,8 +582,6 @@ class error_modifier_mm24(worker):
       return var
 
   def calculate_functional_no_bining(self):
-    if self.mpi_helper.rank == 0:
-      print(f'In NO binning {len(self.work_table)}')
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
 
@@ -647,8 +635,6 @@ class error_modifier_mm24(worker):
       self.dL_dnu = comm.reduce(dL_dnu_rank, MPI.SUM, root=0)
 
   def calculate_functional_binning(self):
-    if self.mpi_helper.rank == 0:
-      print(f'In binning {len(self.intensity_bins)}')
     comm = self.mpi_helper.comm
     MPI = self.mpi_helper.MPI
     L_bin_rank = flex.double(self.number_of_intensity_bins, 0)
@@ -764,7 +750,7 @@ class error_modifier_mm24(worker):
       fig, axes = plt.subplots(1, 2, figsize=(6, 3))
       axes[0].bar(
         pairwise_differences_centers, pairwise_differences_hist,
-        width=pairwise_differences_db, label='$\omega_{hkl}$'
+        width=pairwise_differences_db, label=r'$\omega_{hkl}$'
         )
       axes[0].plot(
         pairwise_differences_centers,
@@ -775,12 +761,12 @@ class error_modifier_mm24(worker):
         axes[0].plot(
           pairwise_differences_centers,
           2*scipy.stats.t.pdf(pairwise_differences_centers, df=self.tuning_param),
-          color=grey2, label=f't-dist\n$\\nu: ${self.tuning_param:0.1f}'
+          color=grey2, label=r't-dist $\nu$: ' + f'{self.tuning_param:0.1f}'
           )
 
       axes[0].legend(frameon=False, fontsize=8, handlelength=1)
-      axes[0].set_ylabel('Distribution of $\omega_{hbk}$')
-      axes[0].set_xlabel('Normalized PD ($\omega_{hbk}$)')
+      axes[0].set_ylabel(r'Distribution of $\omega_{hbk}$')
+      axes[0].set_xlabel(r'Normalized PD ($\omega_{hbk}$)')
       axes[0].set_xlim([0, 4.5])
       axes[0].set_xticks([0, 1, 2, 3, 4])
 
@@ -799,7 +785,7 @@ class error_modifier_mm24(worker):
 
       axes[1].set_ylim([0, lim])
       axes[1].set_ylabel('Rankits')
-      axes[1].set_xlabel('Sorted Normalized PD ($\omega_{hbk}$)')
+      axes[1].set_xlabel(r'Sorted Normalized PD ($\omega_{hbk}$)')
       axes[1].set_box_aspect(1)
       axes[1].set_xticks([0, 1, 2, 3, 4])
       axes[1].set_yticks([0, 1, 2, 3, 4])
@@ -833,7 +819,7 @@ class error_modifier_mm24(worker):
         axes_sadd.plot(centers, self.sfac**2 * sadd2, color=line_color)
         axes_hist.set_xlabel('Correlation Coefficient')
         axes_hist.set_ylabel('Lattices (x1,000)')
-        axes_sadd.set_ylabel('$s_{\mathrm{fac}}^2 \\times s_{\mathrm{add}}^2$')
+        axes_sadd.set_ylabel(r'$s_{\mathrm{fac}}^2 \times s_{\mathrm{add}}^2$')
         fig.tight_layout()
         fig.savefig(os.path.join(
           self.params.output.output_dir,

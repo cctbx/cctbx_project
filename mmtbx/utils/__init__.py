@@ -1595,7 +1595,9 @@ class shift_origin(object):
 
   def write_model_file(self, file_name):
     assert self.pdb_hierarchy is not None
-    self.pdb_hierarchy.write_pdb_file(file_name=file_name,
+    self.pdb_hierarchy.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename=file_name,
       crystal_symmetry=self.crystal_symmetry)
 
   def write_map_file(self, file_name):
@@ -1947,8 +1949,9 @@ class states(object):
     if([crystal_symmetry,self.xray_structure].count(None)==0):
       assert crystal_symmetry.is_similar_symmetry(
         self.xray_structure.crystal_symmetry())
-    self.root.write_pdb_file(
-      file_name        = file_name,
+    self.root.write_pdb_or_mmcif_file(
+      target_format='pdb',
+      target_filename = file_name,
       crystal_symmetry = crystal_symmetry)
 
 class f_000(object):

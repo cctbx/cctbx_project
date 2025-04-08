@@ -1,4 +1,6 @@
 """
+Tools for reading and writing mmCIF files.
+
 R. J. Gildea, L. J. Bourhis, O. V. Dolomanov, R. W. Grosse-Kunstleve,
 H. Puschmann, P. D. Adams and J. A. K. Howard:
 iotbx.cif: a comprehensive CIF toolbox.

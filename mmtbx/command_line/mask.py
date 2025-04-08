@@ -4,5 +4,6 @@ from __future__ import absolute_import, division, print_function
 from iotbx.cli_parser import run_program
 from mmtbx.programs import mask
 
-run_program(mask.Program)
+if __name__ == "__main__":
+  run_program(mask.Program)
 

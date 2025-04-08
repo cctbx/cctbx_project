@@ -1,3 +1,6 @@
+"""
+Tools for bioinformatics (reading/writing/comparison of sequence files.)
+"""
 from __future__ import absolute_import, division, print_function
 from operator import itemgetter
 from libtbx.utils import Abort

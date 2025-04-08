@@ -1,3 +1,7 @@
+"""
+Tools for reading, writing, and manipulating PDB-formatted files and
+for managing their data as a PDB hierarchy.
+"""
 from __future__ import absolute_import, division, print_function
 from cctbx.array_family import flex
 
@@ -1408,32 +1412,6 @@ class _():
 
   def used_amber_restraints(self):
     return self._used_what_restraints('Amber')
-
-class rewrite_normalized(object):
-
-  def __init__(self,
-        input_file_name,
-        output_file_name,
-        keep_original_crystallographic_section=False,
-        keep_original_atom_serial=False):
-    self.input = input(file_name=input_file_name)
-    if (keep_original_crystallographic_section):
-      with open(output_file_name, "w") as f:
-        print("\n".join(self.input.crystallographic_section()), file=f)
-      crystal_symmetry = None
-    else:
-      crystal_symmetry = self.input.crystal_symmetry()
-    self.hierarchy = self.input.construct_hierarchy()
-    if (keep_original_atom_serial):
-      atoms_reset_serial_first_value = None
-    else:
-      atoms_reset_serial_first_value = 1
-    self.hierarchy.write_pdb_file(
-      file_name=output_file_name,
-      open_append=keep_original_crystallographic_section,
-      crystal_symmetry=crystal_symmetry,
-      append_end=True,
-      atoms_reset_serial_first_value=atoms_reset_serial_first_value)
 
 # Table of structures split into multiple PDB files.
 # Assembled manually.

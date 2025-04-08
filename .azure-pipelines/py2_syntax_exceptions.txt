@@ -1,3 +1,4 @@
+cctbx_website/command_line/run_pdoc_cctbx_api.py
 crys3d/hklviewer/webbrowser_messenger_py3.py
 crys3d/hklviewer/xtriage_runner.py
 crys3d/regression/tst_websocket.py

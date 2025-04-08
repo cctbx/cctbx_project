@@ -1,3 +1,5 @@
+"""Low-level tools for manipulation of reflection data files
+"""
 from __future__ import absolute_import, division, print_function
 import iotbx.mtz
 import iotbx.cns.miller_array
