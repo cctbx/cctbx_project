@@ -51,7 +51,7 @@ def get_letter_section(word):
     first = word[0].lower()
     return first if first.isalpha() else "other"
 
-def build_word_index(html_dir, stop_words, exclude_pattern):
+def build_word_index(html_dir, stop_words, exclude_pattern, index_dir):
     """
     Walk the HTML directory and build a word index {word -> set of file paths (up to 5)}
     """
@@ -60,6 +60,7 @@ def build_word_index(html_dir, stop_words, exclude_pattern):
         for file in files:
             if file.endswith(".html"):
                 filepath = os.path.abspath(os.path.join(root, file))
+                if filepath.find(index_dir) > -1: continue # skip indexing dirs
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         html_content = f.read()
@@ -86,7 +87,7 @@ def build_word_index(html_dir, stop_words, exclude_pattern):
                     print(f"⚠️ Skipped {filepath}: {e}")
     return word_index
 
-def generate_html_pages(word_index, index_title = "Word Index"):
+def generate_html_pages(word_index, index_title, index_dir):
     """
     Generate alphabetically sectioned HTML index files with navigation.
     """
@@ -97,9 +98,9 @@ def generate_html_pages(word_index, index_title = "Word Index"):
         sectioned_words[section].append((word, paths))
 
     sections_sorted = sorted(sectioned_words.keys())
-
+    overall_file = None
     for section, word_list in sectioned_words.items():
-        section_file = f"word_index_{section}.html"
+        section_file = os.path.join(index_dir, f"word_index_{section}.html")
         current_index = sections_sorted.index(section)
         prev_section = sections_sorted[current_index - 1] if current_index > 0 else None
         next_section = sections_sorted[current_index + 1] if current_index + 1 < len(sections_sorted) else None
@@ -107,7 +108,7 @@ def generate_html_pages(word_index, index_title = "Word Index"):
         lines = [
             "<!DOCTYPE html>",
             "<html><head><meta charset='utf-8'>",
-            f"<title>{index_title}: - {section.upper()}</title>",
+            f"<title>{index_title} Index: - {section.upper()}</title>",
             "<style>",
             "body { font-family: sans-serif; padding: 20px; }",
             "h1 { color: #333; margin-top: 0; }",
@@ -119,13 +120,12 @@ def generate_html_pages(word_index, index_title = "Word Index"):
             "h2 { margin-top: 30px; border-bottom: 1px solid #ccc; }",
             "</style>",
             "</head><body>",
-            f"<h1>{index_title}: {section.upper()}</h1>",
+            f"<h1>{index_title} Index: {section.upper()}</h1>",
             "<div class='nav'>",
         ]
 
-        # Navigation: back to A, previous/next
-        if section != "a":
-            lines.append("<a href='word_index_a.html'>&larr; Back to Main Index</a>")
+        # Navigation: back to index.html one directory up, previous/next
+        lines.append("<a href='../index.html'>&larr; Back to %s Documentation</a>" %(index_title))
         if prev_section:
             lines.append(f"<a href='word_index_{prev_section}.html'>&larr; Previous ({prev_section.upper()})</a>")
         if next_section:
@@ -157,41 +157,49 @@ def generate_html_pages(word_index, index_title = "Word Index"):
 
         # Copy section A to index.html for default entry point
         if section == "a":
-            with open("index.html", "w", encoding="utf-8") as f:
+            overall_file = os.path.join(index_dir, "index.html")
+            with open(overall_file,
+                 "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
 
         print(f"✅ Created section: {section_file}")
 
-    print("✅ Main index written to word_index_a.html")
+    print("✅ Main index written to '%s'" %(overall_file))
 
 def run(args):
     """
     Entry point: index HTML files in a directory and generate navigable A–Z word index.
-    Expects 1 arg with path to directory containing html files, and
-    optional second arg with title
+    Expects path to directory containing html files, path for index files
+    (normally same as path to html files + /index_files/ and
+    optional third arg with title
 
     """
     try:
       html_dir = args[0]
       assert os.path.isdir(html_dir)
+      index_dir = args[1]
+      if not os.path.isdir(index_dir):
+        os.mkdir(index_dir)
+      print("HTML to be read from '%s'" %(html_dir))
+      print("Indexing HTML to be written to '%s'" %(index_dir))
     except Exception as e:
       print(
         "Please run with path to directory containing html files as 1st arg")
       return
-    if len(args) > 1:
-      index_title = args[1]
+    if len(args) > 2:
+      index_title = args[2]
       print("Title to use: '%s'" %(index_title))
     else:
-      index_title = "Word Index"
+      index_title = "Word"
 
     download_stopwords()
-    html_dir = args[0]
     stop_words = set(stopwords.words('english'))
     exclude_pattern = re.compile(r'^[a-zA-Z][0-9_]')
 
-    word_index = build_word_index(html_dir, stop_words, exclude_pattern)
+    word_index = build_word_index(html_dir, stop_words, exclude_pattern,
+      index_dir)
     print(f"\n📚 Indexed {len(word_index)} unique words.")
-    generate_html_pages(word_index, index_title)
+    generate_html_pages(word_index, index_title, index_dir)
 
 if __name__ == "__main__":
   if OK:
