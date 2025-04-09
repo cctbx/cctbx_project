@@ -6,6 +6,11 @@ OK = True
 try:
   from word_index_generator import get_visible_text, tokenize, build_word_index
   from collections import defaultdict
+  from bs4 import BeautifulSoup, Comment
+  from collections import defaultdict
+  from nltk.corpus import stopwords
+  import nltk
+  test = (BeautifulSoup, stopwords, nltk)
 except Exception as e:
   OK = False
 
