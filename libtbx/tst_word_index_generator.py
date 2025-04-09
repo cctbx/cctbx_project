@@ -1,3 +1,10 @@
+from __future__ import division
+
+"""
+Unit tests for word_index_generator (generate an index from html directories)
+
+"""
+
 import unittest
 import os
 import re

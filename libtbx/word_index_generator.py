@@ -1,4 +1,9 @@
+from __future__ import division
+
 """
+
+word_index_generator (generate an index from html directories)
+
 Generate a multi-page alphabetical HTML word index from a directory tree of HTML files.
 Only visible, non-trivial words (excluding stopwords and filtered tokens) are indexed.
 Each section page contains navigable links and structured grouping by word prefix.
@@ -159,12 +164,18 @@ def generate_html_pages(word_index):
 
     print("✅ Main index written to word_index_a.html")
 
-def run():
+def run(args):
     """
     Entry point: index HTML files in a directory and generate navigable A–Z word index.
+    Expects 1 arg with path to directory containing html files
+
     """
+    if len(args) != 1:
+      print("Please run with path to directory containing html files")
+      return
+
     download_stopwords()
-    html_dir = "/Users/terwill/Downloads/test4/cctbx_project_api"
+    html_dir = args[0]
     stop_words = set(stopwords.words('english'))
     exclude_pattern = re.compile(r'^[a-zA-Z][0-9_]')
 
@@ -174,7 +185,8 @@ def run():
 
 if __name__ == "__main__":
   if OK:
-    run()
+    import sys
+    run(sys.argv[1:])
   else:
     print("Cannot run word_index_generator without nltk beautifulsoup4 whoosh")
 
