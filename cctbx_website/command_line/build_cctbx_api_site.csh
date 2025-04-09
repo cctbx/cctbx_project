@@ -40,6 +40,10 @@ cp $base/cctbx_api_site_index.html cctbx_project_api/index.html
 foreach x ($module_list)
   if (-d working/$x) mv working/$x cctbx_project_api/$x
 end
+
+# Add an index in cctbx_project_api/index_files
+phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX"
+
 tar czf - cctbx_project_api > cctbx_project_api.tgz
 ls -tlr cctbx_project_api
 echo "Ready with cctbx_project_api in cctbx_project_api.tgz"
