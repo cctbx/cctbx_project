@@ -1,8 +1,14 @@
 import unittest
 import os
 import re
-from word_index_generator import get_visible_text, tokenize, build_word_index
-from collections import defaultdict
+
+OK = True
+try:
+  from word_index_generator import get_visible_text, tokenize, build_word_index
+  from collections import defaultdict
+except Exception as e:
+  OK = False
+
 
 class TestWordIndexGenerator(unittest.TestCase):
     """
@@ -90,4 +96,7 @@ class TestWordIndexGenerator(unittest.TestCase):
         os.rmdir(sample_dir)
 
 if __name__ == '__main__':
+  if OK:
     unittest.main()
+  else:
+    print("Skipping unit tests (requires nltk beautifulsoup4 whoosh)")

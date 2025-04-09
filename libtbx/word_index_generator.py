@@ -7,10 +7,15 @@ Each section page contains navigable links and structured grouping by word prefi
 import os
 import re
 import html
-from bs4 import BeautifulSoup, Comment
-from collections import defaultdict
-from nltk.corpus import stopwords
-import nltk
+
+OK = True
+try:
+  from bs4 import BeautifulSoup, Comment
+  from collections import defaultdict
+  from nltk.corpus import stopwords
+  import nltk
+except Exception as e:
+  OK = False
 
 def download_stopwords():
     """Ensure stopwords are available."""
@@ -168,5 +173,8 @@ def run():
     generate_html_pages(word_index)
 
 if __name__ == "__main__":
+  if OK:
     run()
+  else:
+    print("Cannot run word_index_generator without nltk beautifulsoup4 whoosh")
 
