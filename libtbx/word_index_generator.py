@@ -86,7 +86,7 @@ def build_word_index(html_dir, stop_words, exclude_pattern):
                     print(f"⚠️ Skipped {filepath}: {e}")
     return word_index
 
-def generate_html_pages(word_index):
+def generate_html_pages(word_index, index_title = "Word Index"):
     """
     Generate alphabetically sectioned HTML index files with navigation.
     """
@@ -107,7 +107,7 @@ def generate_html_pages(word_index):
         lines = [
             "<!DOCTYPE html>",
             "<html><head><meta charset='utf-8'>",
-            f"<title>Word Index - {section.upper()}</title>",
+            f"<title>{index_title}: - {section.upper()}</title>",
             "<style>",
             "body { font-family: sans-serif; padding: 20px; }",
             "h1 { color: #333; margin-top: 0; }",
@@ -119,7 +119,7 @@ def generate_html_pages(word_index):
             "h2 { margin-top: 30px; border-bottom: 1px solid #ccc; }",
             "</style>",
             "</head><body>",
-            f"<h1>Word Index: {section.upper()}</h1>",
+            f"<h1>{index_title}: {section.upper()}</h1>",
             "<div class='nav'>",
         ]
 
@@ -167,12 +167,22 @@ def generate_html_pages(word_index):
 def run(args):
     """
     Entry point: index HTML files in a directory and generate navigable A–Z word index.
-    Expects 1 arg with path to directory containing html files
+    Expects 1 arg with path to directory containing html files, and
+    optional second arg with title
 
     """
-    if len(args) != 1:
-      print("Please run with path to directory containing html files")
+    try:
+      html_dir = args[0]
+      assert os.path.isdir(html_dir)
+    except Exception as e:
+      print(
+        "Please run with path to directory containing html files as 1st arg")
       return
+    if len(args) > 1:
+      index_title = args[1]
+      print("Title to use: '%s'" %(index_title))
+    else:
+      index_title = "Word Index"
 
     download_stopwords()
     html_dir = args[0]
@@ -181,7 +191,7 @@ def run(args):
 
     word_index = build_word_index(html_dir, stop_words, exclude_pattern)
     print(f"\n📚 Indexed {len(word_index)} unique words.")
-    generate_html_pages(word_index)
+    generate_html_pages(word_index, index_title)
 
 if __name__ == "__main__":
   if OK:
