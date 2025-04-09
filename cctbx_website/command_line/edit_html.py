@@ -2,29 +2,43 @@
 Edit index.html files to simplify the path for display
 """
 from __future__ import absolute_import, division, print_function
+import os
 
 def run(args):
-  assert len(args) == 1
+  """
+  Expect path to file and name of indexing directory relative to top level
+  """
+  assert len(args) == 2
   fn = args[0]
+  indexing_dir = args[1]
   text = open(fn).read()
   text_to_find = get_text_to_replace(text)
   if text_to_find:
     print("Text to find: '%s'" %(text_to_find))
     text = text.replace(text_to_find,"")
-  text = add_super_module_text(text)
+
+  # Figure out path to top level from file name
+  spl = fn.split(os.path.sep)
+  paths_to_top_level = []
+  for i in range(len(spl) - 1):
+    paths_to_top_level.append("..")
+  path_to_index = os.path.join(os.path.sep.join(paths_to_top_level),indexing_dir,"index.html")
+  text = add_super_module_text(text, path_to_index)
 
   f = open(fn,'w')
   print(text, file = f)
   f.close()
   print("Wrote edited text to %s" %(fn))
 
-def add_super_module_text(text):
+def add_super_module_text(text, path_to_index):
   """
    Find the text:
    "<li><h3><a href="#header-submodules">Sub-modules</a></h3>"
 
    and replace it with:
    '''
+<h3><a href="../../index_files/index.html">Index</a></h3>
+
 <li><h3><a href="#header-supermodules">Super-module</a></h3>
 <li><code><a title="cctbx_project" href="../index.html">cctbx_project</a></code></li>
 </ul>
@@ -32,17 +46,35 @@ def add_super_module_text(text):
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
    '''
+
+  If Super-module is already present just add index above it
   """
 
   text1 = """<li><h3><a href="#header-submodules">Sub-modules</a></h3>"""
-  text2 = """<li><h3><a href="#header-supermodules">Super-module</a></h3>
+  text1a = """<li><h3>Super-module</h3>"""
+
+  text2 = """
+<h3><a href="%s ">Index</a></h3>
+
+<li><h3><a href="#header-supermodules">Super-module</a></h3>
 <li><code><a title="cctbx_project" href="../index.html">cctbx_project</a></code></li>
 </ul>
 
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
-"""
-  if text.find(text1) > -1:
+""" %(path_to_index)
+
+  text2a = """
+<h3><a href="%s ">Index</a></h3>
+
+<li><h3>Super-module</h3>
+
+""" %(path_to_index)
+
+
+  if text.find(text1a) > -1:
+     text = text.replace(text1a, text2a)
+  elif text.find(text1) > -1:
      text = text.replace(text1, text2)
   return text
 

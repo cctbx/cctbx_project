@@ -21,7 +21,8 @@ wait
 
 # Edit all the files to simplify and add a base link
 foreach f (*/index.html */*/index.html */*/*/index.html */*/*/*/index.html)
-  phenix.python $base/edit_html.py $f &
+  echo "EDITING $f"
+  phenix.python $base/edit_html.py $f index_files &
 end
 wait
 
