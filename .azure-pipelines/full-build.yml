@@ -14,13 +14,13 @@ jobs:
       modules: ${{ parameters.modules }}
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
+      distribution: cctbx/rockylinux
       version: [9]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-linux.yml
     parameters:
-      distribution: rockylinux
+      distribution: cctbx/rockylinux
       version: [8]
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
@@ -28,12 +28,6 @@ jobs:
     parameters:
       distribution: ubuntu
       version: ['22', '04']
-      modules: ${{ parameters.modules }}
-      template: ./unix-conda-build.yml
-  - template: ./conda-linux.yml
-    parameters:
-      distribution: ubuntu
-      version: ['20', '04']
       modules: ${{ parameters.modules }}
       template: ./unix-conda-build.yml
   - template: ./conda-osx.yml
