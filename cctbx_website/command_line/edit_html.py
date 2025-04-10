@@ -14,8 +14,16 @@ def run(args):
   text = open(fn).read()
   text_to_find = get_text_to_replace(text)
   if text_to_find:
-    print("Text to find: '%s'" %(text_to_find))
-    text = text.replace(text_to_find,"")
+    ct = len(text)
+    lines = text.splitlines()
+    new_lines = []
+    for line in lines:
+      if line.find("<code") > -1:  # edit lines with code marking (not pre)
+        line = line.replace(text_to_find,"")
+      new_lines.append(line.rstrip())
+    text = "\n".join(new_lines) 
+    new_ct = len(text)
+    print("Text to find: '%s' (%s chars removed)" %(text_to_find, ct - new_ct))
 
   # Figure out path to top level from file name
   spl = fn.split(os.path.sep)

@@ -9,7 +9,7 @@ endif
 
 setenv base $PHENIX/modules/cctbx_project/cctbx_website/command_line
 
-setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx sphinx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx dox.sphinx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
+setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
 rm -fr working
 mkdir working
 cd working
@@ -19,8 +19,10 @@ phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
 wait
 
+# Add the base html index.html
+cp $base/cctbx_api_site_index.html index.html
 # Edit all the files to simplify and add a base link
-foreach f (*/index.html */*/index.html */*/*/index.html */*/*/*/index.html)
+foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
   echo "EDITING $f"
   phenix.python $base/edit_html.py $f index_files &
 end
@@ -37,7 +39,7 @@ echo "Making directory cctbx_project_api with html"
 
 if (-d cctbx_project_api) rm -rf cctbx_project_api
 mkdir cctbx_project_api
-cp $base/cctbx_api_site_index.html cctbx_project_api/index.html
+mv working/index.html cctbx_project_api/index.html
 foreach x ($module_list)
   if (-d working/$x) mv working/$x cctbx_project_api/$x
 end

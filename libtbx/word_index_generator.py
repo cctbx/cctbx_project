@@ -60,6 +60,9 @@ def build_word_index(html_dir, stop_words, exclude_pattern, index_dir):
         for file in files:
             if file.endswith(".html"):
                 filepath = os.path.abspath(os.path.join(root, file))
+                # index_dir must be single level path inside html_dir
+                rel_filepath = os.path.join("..",os.path.relpath(
+                   filepath,os.path.abspath(html_dir)))
                 if filepath.find(index_dir) > -1: continue # skip indexing dirs
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
@@ -82,7 +85,7 @@ def build_word_index(html_dir, stop_words, exclude_pattern, index_dir):
                                 word.isascii()
                             ):
                                 if len(word_index[word]) < 5:
-                                    word_index[word].add(filepath)
+                                    word_index[word].add(rel_filepath)
                 except Exception as e:
                     print(f"⚠️ Skipped {filepath}: {e}")
     return word_index
@@ -145,7 +148,7 @@ def generate_html_pages(word_index, index_title, index_dir):
                 current_prefix = prefix
 
             word_html = f"<strong>{html.escape(word)}</strong>: " + ", ".join(
-                f"<a href='file://{html.escape(path)}' target='_blank'>{os.path.basename(path)}</a>"
+                f"<a href='{html.escape(path)}' target='_blank'>{os.path.basename(path)}</a>"
                 for path in sorted(paths)
             )
             lines.append(f"<li>{word_html}</li>")
@@ -178,13 +181,16 @@ def run(args):
       html_dir = args[0]
       assert os.path.isdir(html_dir)
       index_dir = args[1]
+      assert os.path.relpath(index_dir, html_dir).find(os.path.sep) < 0 # must be single level
       if not os.path.isdir(index_dir):
         os.mkdir(index_dir)
       print("HTML to be read from '%s'" %(html_dir))
       print("Indexing HTML to be written to '%s'" %(index_dir))
     except Exception as e:
       print(
-        "Please run with path to directory containing html files as 1st arg")
+        "Please run with path to directory containing html files as 1st arg"+
+         " and path to directory inside that for index files (index_files"+
+         " usually)")
       return
     if len(args) > 2:
       index_title = args[2]
