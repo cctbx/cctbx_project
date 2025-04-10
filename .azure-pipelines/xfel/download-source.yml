@@ -41,6 +41,9 @@ jobs:
       git clone https://github.com/nksauter/LS49.git
       git clone https://gitlab.com/cctbx/ls49_big_data.git
       git clone https://github.com/lanl/lunus.git
+      pushd cbflib
+      git checkout 098_into_main
+      popd
     displayName: Download sources
 
   - script: |
