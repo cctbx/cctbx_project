@@ -21,7 +21,7 @@ def run(args):
       if line.find("<code") > -1:  # edit lines with code marking (not pre)
         line = line.replace(text_to_find,"")
       new_lines.append(line.rstrip())
-    text = "\n".join(new_lines) 
+    text = "\n".join(new_lines)
     new_ct = len(text)
     print("Text to find: '%s' (%s chars removed)" %(text_to_find, ct - new_ct))
 
