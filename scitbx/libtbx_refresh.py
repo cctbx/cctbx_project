@@ -1,8 +1,13 @@
+"""
+Rebuild dependencies
+
+"""
+
 from __future__ import absolute_import, division, print_function
 import os
 op = os.path
 
-if (self.env.is_ready_for_build()):
+if (__name__ == "__main__" and self.env.is_ready_for_build()):
   from scitbx.source_generators.array_family import generate_all
   target_dir = self.env.under_build("include/scitbx/array_family/detail")
   if (not op.isdir(target_dir)):

@@ -18,8 +18,11 @@ import os
 
 def get_boost_names(text):
   """find code blocks like:
-     @bp.inject_into(ext.root)
-  and save "root"
+
+@bp.inject_into(ext.root)
+class _():
+
+and save "root"
   """
 
   key_text = "@bp.inject_into(ext."
@@ -38,8 +41,16 @@ def edit_boost_code_blocks(text, boost_names):
 @bp.inject_into(ext.%s)
 class _():""" %(boost_name, boost_name)
 
+    search_text2 = """@bp.inject_into(ext.%s)
+class _():""" %(boost_name)
+
     replacement_text ="class %s:" %(boost_name)
+    start_text = str(text)
     text = text.replace(search_text, replacement_text)
+
+    if text == start_text: # try alternate version
+      text = text.replace(search_text2, replacement_text)
+
   return text
 
 
