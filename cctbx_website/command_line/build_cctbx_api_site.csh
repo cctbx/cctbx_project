@@ -1,5 +1,7 @@
 #!/bin/csh -f
 echo "Building documentation API for cctbx_project"
+echo "WARNING: This version temporarily edits files in cctbx_project directory"
+echo "Do not do anything in cctbx_project while this is running"
 
 if (! -d $PHENIX/modules)then
   echo "This script needs PHENIX to be defined"
@@ -8,6 +10,20 @@ endif
 
 
 setenv base $PHENIX/modules/cctbx_project/cctbx_website/command_line
+setenv cctbx_project $PHENIX/modules/cctbx_project
+
+setenv files_to_edit "iotbx/pdb/hierarchy.py"
+
+# Save original version of files to edit
+foreach f ($files_to_edit)
+  if (! -f $cctbx_project/$f)then
+    echo "The file $cctbx_project/$f is missing"
+    goto finish
+  endif
+  cp -p $cctbx_project/$f $cctbx_project/$f.original_version
+  # Edit this file
+  phenix.python $base/edit_for_boost.py $cctbx_project/$f 
+end
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
 rm -fr working
@@ -18,6 +34,11 @@ foreach x ($module_list)
 phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
 wait
+
+#Restore original files
+foreach f ($files_to_edit)
+  mv $cctbx_project/$f.original_version $cctbx_project/$f
+end
 
 # Add the base html index.html
 cp $base/cctbx_api_site_index.html index.html
