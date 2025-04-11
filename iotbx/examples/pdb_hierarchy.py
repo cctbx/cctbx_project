@@ -18,7 +18,6 @@ def run(args):
       Secondary (read-only): model, chain, residue_group, atom_group, atom
 
       Special case: if there are no alt. conf. you can eliminate one
-
       level of the hierarchy: model, chain, residue, atom
 
       Third view: model, chain, residue_group, conformer, residue, atom
