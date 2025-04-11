@@ -1,9 +1,27 @@
+"""
+Examples of the structure and use of the PDB hierarchy object
+
+
+"""
+
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 import random
 import sys
 
 def run(args):
+  """
+    Views of the hierarchy:
+      Primary:  model, chain, residue_group, atom_group, atom
+      Secondary (read-only): model, chain, residue_group, atom_group, atom
+      Special case: if there are no alt. conf. you can eliminate one
+      level of the hierarchy: model, chain, residue, atom
+      Third view: model, chain, residue_group, conformer, residue, atom
+
+    Adding and removing elements of the hierarchy
+    Printing the hierarchy
+
+  """
   for file_name in args:
     pdb_inp = iotbx.pdb.input(file_name=file_name)
     #

@@ -28,7 +28,7 @@ def get_boost_names(text):
     if line.rstrip().startswith(key_text):
       boost_names.append(line.replace(key_text,"").replace(")",""))
   return boost_names
-    
+
 
 def edit_boost_code_blocks(text, boost_names):
   """Edit the boost code blocks"""
@@ -42,7 +42,7 @@ class _():""" %(boost_name, boost_name)
     text = text.replace(search_text, replacement_text)
   return text
 
-    
+
 def run(args):
   """
   Expect path to file

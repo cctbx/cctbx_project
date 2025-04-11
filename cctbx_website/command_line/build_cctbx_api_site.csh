@@ -22,7 +22,7 @@ foreach f ($files_to_edit)
   endif
   cp -p $cctbx_project/$f $cctbx_project/$f.original_version
   # Edit this file
-  phenix.python $base/edit_for_boost.py $cctbx_project/$f 
+  phenix.python $base/edit_for_boost.py $cctbx_project/$f
 end
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
