@@ -33,18 +33,28 @@ cd working
 foreach x ($module_list)
 phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
+
+echo ""
+echo "WARNING: This version temporarily edits files in cctbx_project directory"
+echo "Do not do anything in cctbx_project while this is running"
+echo ""
 wait
 
 #Restore original files
 foreach f ($files_to_edit)
   mv $cctbx_project/$f.original_version $cctbx_project/$f
-end
+enda
+
+echo ""
+echo "Original files in cctbx_project restored" 
+echo ""
 
 # Add the base html index.html
+echo "Editing html files to simplify and add a base link"
+
 cp $base/cctbx_api_site_index.html index.html
 # Edit all the files to simplify and add a base link
 foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
-  echo "EDITING $f"
   phenix.python $base/edit_html.py $f index_files &
 end
 wait
@@ -66,8 +76,9 @@ foreach x ($module_list)
 end
 
 # Add an index in cctbx_project_api/index_files
-phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX"
+phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX" > api_index.log
 
+echo "Packaging up files..."
 tar czf - cctbx_project_api > cctbx_project_api.tgz
 ls -tlr cctbx_project_api
 echo "Ready with cctbx_project_api in cctbx_project_api.tgz"
