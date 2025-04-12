@@ -20,9 +20,9 @@ foreach f ($files_to_edit)
     echo "The file $cctbx_project/$f is missing"
     goto finish
   endif
-  cp -p $cctbx_project/$f $cctbx_project/$f.original_version
+  cp -p $cctbx_project/${f} $cctbx_project/${f}.original_version
   # Edit this file
-  phenix.python $base/edit_for_boost.py $cctbx_project/$f
+  phenix.python $base/edit_for_boost.py $cctbx_project/${f}
 end
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
@@ -42,8 +42,8 @@ wait
 
 #Restore original files
 foreach f ($files_to_edit)
-  mv $cctbx_project/$f.original_version $cctbx_project/$f
-enda
+  mv $cctbx_project/${f}.original_version $cctbx_project/${f}
+end
 
 echo ""
 echo "Original files in cctbx_project restored"
