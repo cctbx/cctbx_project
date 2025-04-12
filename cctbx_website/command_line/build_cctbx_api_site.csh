@@ -35,7 +35,7 @@ phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
 
 echo ""
-echo "WARNING: This version is temporarily these files: $files_to_edit"
+echo "WARNING: This version is temporarily editing these files: $files_to_edit"
 echo "Do not do anything in cctbx_project while this is running"
 echo ""
 wait
