@@ -35,7 +35,7 @@ phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
 end
 
 echo ""
-echo "WARNING: This version temporarily edits files in cctbx_project directory"
+echo "WARNING: This version is temporarily these files: $files_to_edit"
 echo "Do not do anything in cctbx_project while this is running"
 echo ""
 wait
@@ -46,7 +46,7 @@ foreach f ($files_to_edit)
 end
 
 echo ""
-echo "Original files in cctbx_project restored"
+echo "Original versions of the files $files_to_edit in cctbx_project restored"
 echo ""
 
 # Add the base html index.html
