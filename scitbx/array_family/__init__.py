@@ -6,6 +6,3 @@ Numpy arrays.
 """
 
 from __future__ import division
-
-
-

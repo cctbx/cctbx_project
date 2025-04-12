@@ -14,7 +14,6 @@ class root:
 
 """
 from __future__ import absolute_import, division, print_function
-import os
 
 def get_boost_names(text):
   """find code blocks like:

@@ -12,7 +12,7 @@ endif
 setenv base $PHENIX/modules/cctbx_project/cctbx_website/command_line
 setenv cctbx_project $PHENIX/modules/cctbx_project
 
-setenv files_to_edit "iotbx/pdb/hierarchy.py"
+setenv files_to_edit "iotbx/pdb/hierarchy.py scitbx/array_family/flex.py"
 
 # Save original version of files to edit
 foreach f ($files_to_edit)
@@ -46,7 +46,7 @@ foreach f ($files_to_edit)
 enda
 
 echo ""
-echo "Original files in cctbx_project restored" 
+echo "Original files in cctbx_project restored"
 echo ""
 
 # Add the base html index.html
