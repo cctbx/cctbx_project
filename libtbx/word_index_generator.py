@@ -242,4 +242,3 @@ if __name__ == "__main__":
         run(sys.argv[1:])
     else:
         print("Cannot run word_index_generator without nltk beautifulsoup4")
-

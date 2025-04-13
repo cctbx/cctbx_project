@@ -116,4 +116,3 @@ if __name__ == '__main__':
     unittest.main()
   else:
     print("Skipping unit tests (requires nltk beautifulsoup4)")
-
