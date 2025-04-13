@@ -76,7 +76,7 @@ foreach x ($module_list)
 end
 
 # Add an index in cctbx_project_api/index_files
-phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX" > api_index.log
+phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX API" > api_index.log
 
 echo "Packaging up files..."
 tar czf - cctbx_project_api > cctbx_project_api.tgz

@@ -45,7 +45,7 @@ def add_super_module_text(text, path_to_index):
 
    and replace it with:
    '''
-<h3><a href="../../index_files/index.html">Index</a></h3>
+<h3><a href="../../index_files/index.html">CCTBX API Index</a></h3>
 
 <li><h3><a href="#header-supermodules">Super-module</a></h3>
 <li><code><a title="cctbx_project" href="../index.html">cctbx_project</a></code></li>
@@ -62,7 +62,7 @@ def add_super_module_text(text, path_to_index):
   text1a = """<li><h3>Super-module</h3>"""
 
   text2 = """
-<h3><a href="%s ">Index</a></h3>
+<h3><a href="%s ">CCTBX API Index</a></h3>
 
 <li><h3><a href="#header-supermodules">Super-module</a></h3>
 <li><code><a title="cctbx_project" href="../index.html">cctbx_project</a></code></li>
@@ -73,7 +73,7 @@ def add_super_module_text(text, path_to_index):
 """ %(path_to_index)
 
   text2a = """
-<h3><a href="%s ">Index</a></h3>
+<h3><a href="%s ">CCTBX API Index</a></h3>
 
 <li><h3>Super-module</h3>
 
