@@ -1,12 +1,12 @@
 from __future__ import division
 
 """
-
 word_index_generator (generate an index from html directories)
 
 Generate a multi-page alphabetical HTML word index from a directory tree of HTML files.
 Only visible, non-trivial words (excluding stopwords and filtered tokens) are indexed.
 Each section page contains navigable links and structured grouping by word prefix.
+Formatted to match pdoc3-style HTML structure.
 """
 
 import os
@@ -60,10 +60,9 @@ def build_word_index(html_dir, stop_words, exclude_pattern, index_dir):
         for file in files:
             if file.endswith(".html"):
                 filepath = os.path.abspath(os.path.join(root, file))
-                # index_dir must be single level path inside html_dir
-                rel_filepath = os.path.join("..",os.path.relpath(
-                   filepath,os.path.abspath(html_dir)))
-                if filepath.find(index_dir) > -1: continue # skip indexing dirs
+                rel_filepath = os.path.join("..", os.path.relpath(filepath, os.path.abspath(html_dir)))
+                if filepath.find(index_dir) > -1:
+                    continue
                 try:
                     with open(filepath, "r", encoding="utf-8") as f:
                         html_content = f.read()
@@ -92,7 +91,7 @@ def build_word_index(html_dir, stop_words, exclude_pattern, index_dir):
 
 def generate_html_pages(word_index, index_title, index_dir):
     """
-    Generate alphabetically sectioned HTML index files with navigation.
+    Generate alphabetically sectioned HTML index files with navigation and pdoc3-style layout.
     """
     sorted_words = sorted(word_index.items())
     sectioned_words = defaultdict(list)
@@ -109,108 +108,138 @@ def generate_html_pages(word_index, index_title, index_dir):
         next_section = sections_sorted[current_index + 1] if current_index + 1 < len(sections_sorted) else None
 
         lines = [
-            "<!DOCTYPE html>",
-            "<html><head><meta charset='utf-8'>",
-            f"<title>{index_title} Index: - {section.upper()}</title>",
+            "<!doctype html>",
+            "<html lang=\"en\">",
+            "<head>",
+            "<meta charset=\"utf-8\">",
+            f"<title>{index_title} Index: {section.upper()}</title>",
+            "<meta name='viewport' content='width=device-width, initial-scale=1'>",
+            "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css\">",
+            "<link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css\">",
             "<style>",
-            "body { font-family: sans-serif; padding: 20px; }",
-            "h1 { color: #333; margin-top: 0; }",
-            ".nav { position: sticky; top: 0; background: white; padding: 10px 0; }",
-            ".nav a { margin-right: 15px; text-decoration: none; font-weight: bold; color: #1a0dab; }",
-            "ul { columns: 2; -webkit-columns: 2; -moz-columns: 2; list-style-type: none; padding-left: 0; }",
-            "li { margin-bottom: 8px; }",
-            "a.wordlink { color: #1a0dab; text-decoration: none; }",
-            "h2 { margin-top: 30px; border-bottom: 1px solid #ccc; }",
+            "body { font-family: system-ui, sans-serif; background-color: #fff; color: #222; line-height: 1.6; margin: 0; }",
+            "main { display: flex; flex-direction: row; flex-wrap: wrap; }",
+            "#sidebar { width: 15%; min-width: 160px; padding: 1.5em; background-color: #f9f9f9; border-right: 1px solid #ddd; position: sticky; top: 0; height: 100vh; overflow-y: auto; }",
+            "article#content { flex: 1; min-width: 300px; padding: 3em 4em; }",
+            "#jump-list { column-count: 2; -webkit-column-count: 2; -moz-column-count: 2; padding-left: 0; list-style: none; }",
+            "article ul { column-count: 3; -webkit-column-count: 3; -moz-column-count: 3; padding-left: 0; list-style: none; }",
+            "li { margin-bottom: .5em; }",
+            "h1, h2, h3 { font-weight: 300; color: #111; }",
+            "code { font-family: 'DejaVu Sans Mono', monospace; background-color: #f3f3f3; padding: 1px 4px; border-radius: 3px; }",
+            ".nav-links { margin-bottom: 1em; font-size: 0.9em; }",
+            "footer { font-size: 0.75em; padding: 1em; text-align: right; color: #999; }",
+            "@media (max-width: 768px) { #sidebar { position: relative; height: auto; } article#content { padding: 1em; } }",
+
+            "a { color: #336699; /* softer blue-gray tint */ text-decoration: none; }",
+            "a:hover { color: #224466; /* darker shade on hover */ }",
+
             "</style>",
-            "</head><body>",
-            f"<h1>{index_title} Index: {section.upper()}</h1>",
-            "<div class='nav'>",
+            "</head>",
+            "<body>",
+            "<main>",
+            "<nav id=\"sidebar\">",
+            "<ul id=\"index\">",
+            f"<li><a href=\"../index.html\">{index_title}</a></li>",
+            "</ul></li>",
+            "<li><h3>Jump to</h3>",
+            "<ul id=\"jump-list\">",
         ]
 
-        # Navigation: back to index.html one directory up, previous/next
-        lines.append("<a href='../index.html'>&larr; Back to %s Documentation</a>" %(index_title))
+        for sec in sections_sorted:
+            lines.append(f"<li><a href='word_index_{sec}.html'>{sec.upper()}</a></li>")
+
+        lines += [
+            "</ul></li>",
+            "</ul>",
+            "</nav>",
+            "<article id=\"content\">",
+            f"<h1>{index_title} Index: {section.upper()}</h1>",
+            "<div class=\"nav-links\">",
+        ]
+
         if prev_section:
             lines.append(f"<a href='word_index_{prev_section}.html'>&larr; Previous ({prev_section.upper()})</a>")
         if next_section:
-            lines.append(f"<a href='word_index_{next_section}.html'>Next ({next_section.upper()}) &rarr;</a>")
+            lines.append(f" | <a href='word_index_{next_section}.html'>Next ({next_section.upper()}) &rarr;</a>")
 
         lines.append("</div>")
-        lines.append("<div class='nav'><strong>Jump to:</strong><br>")
-        for sec in sections_sorted:
-            lines.append(f"<a href='word_index_{sec}.html'>{sec.upper()}</a>")
-        lines.append("</div><ul>")
+
+        lines.append("<div class='nav-links'><strong>Subsections:</strong> ")
+        subsection_prefixes = sorted(set(word[:2].lower() for word, _ in word_list))
+        for prefix in subsection_prefixes:
+            lines.append(f"<a href='#{prefix}'>{prefix}</a> ")
+        lines.append("</div>")
 
         current_prefix = ""
+        first_prefix = True
+
         for word, paths in word_list:
             prefix = word[:2].lower()
             if prefix != current_prefix:
-                lines.append(f"</ul><h2>{prefix}</h2><ul>")
+                if not first_prefix:
+                    lines.append("</ul>")
+                lines.append(f"<h3 id='{prefix}'>{prefix}</h3><ul>")
                 current_prefix = prefix
+                first_prefix = False
 
-            word_html = f"<strong>{html.escape(word)}</strong>: " + ", ".join(
+            word_html = f"<strong><code>{html.escape(word)}</code></strong>: " + ", ".join(
                 f"<a href='{html.escape(path)}' target='_blank'>{os.path.basename(path)}</a>"
                 for path in sorted(paths)
             )
             lines.append(f"<li>{word_html}</li>")
 
-        lines += ["</ul></body></html>"]
+        lines.append("</ul>")
+        lines.append("</article></main>")
+        lines.append("<footer id=\"footer\"><p>Generated by word_index_generator</p></footer>")
+        lines.append("</body></html>")
 
         with open(section_file, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
 
-        # Copy section A to index.html for default entry point
         if section == "a":
             overall_file = os.path.join(index_dir, "index.html")
-            with open(overall_file,
-                 "w", encoding="utf-8") as f:
+            with open(overall_file, "w", encoding="utf-8") as f:
                 f.write("\n".join(lines))
 
         print(f"✅ Created section: {section_file}")
 
-    print("✅ Main index written to '%s'" %(overall_file))
+    print(f"✅ Main index written to '{overall_file}'")
 
 def run(args):
     """
     Entry point: index HTML files in a directory and generate navigable A–Z word index.
     Expects path to directory containing html files, path for index files
     (normally same as path to html files + /index_files/ and
-    optional third arg with title
-
+    optional third arg with title.
     """
     try:
-      html_dir = args[0]
-      assert os.path.isdir(html_dir)
-      index_dir = args[1]
-      assert os.path.relpath(index_dir, html_dir).find(os.path.sep) < 0 # must be single level
-      if not os.path.isdir(index_dir):
-        os.mkdir(index_dir)
-      print("HTML to be read from '%s'" %(html_dir))
-      print("Indexing HTML to be written to '%s'" %(index_dir))
+        html_dir = args[0]
+        assert os.path.isdir(html_dir)
+        index_dir = args[1]
+        assert os.path.relpath(index_dir, html_dir).find(os.path.sep) < 0
+        if not os.path.isdir(index_dir):
+            os.mkdir(index_dir)
+        print(f"HTML to be read from '{html_dir}'")
+        print(f"Indexing HTML to be written to '{index_dir}'")
     except Exception as e:
-      print(
-        "Please run with path to directory containing html files as 1st arg"+
-         " and path to directory inside that for index files (index_files"+
-         " usually)")
-      return
-    if len(args) > 2:
-      index_title = args[2]
-      print("Title to use: '%s'" %(index_title))
-    else:
-      index_title = "Word"
+        print("Please run with path to directory containing html files as 1st arg and path to directory inside that for index files (index_files usually)")
+        return
+
+    index_title = args[2] if len(args) > 2 else "Word"
+    print(f"Title to use: '{index_title}'")
 
     download_stopwords()
     stop_words = set(stopwords.words('english'))
     exclude_pattern = re.compile(r'^[a-zA-Z][0-9_]')
 
-    word_index = build_word_index(html_dir, stop_words, exclude_pattern,
-      index_dir)
+    word_index = build_word_index(html_dir, stop_words, exclude_pattern, index_dir)
     print(f"\n📚 Indexed {len(word_index)} unique words.")
     generate_html_pages(word_index, index_title, index_dir)
 
 if __name__ == "__main__":
-  if OK:
-    import sys
-    run(sys.argv[1:])
-  else:
-    print("Cannot run word_index_generator without nltk beautifulsoup4 whoosh")
+    if OK:
+        import sys
+        run(sys.argv[1:])
+    else:
+        print("Cannot run word_index_generator without nltk beautifulsoup4")
 

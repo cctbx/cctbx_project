@@ -1,8 +1,8 @@
 from __future__ import division
 
 """
-Unit tests for word_index_generator (generate an index from html directories)
-
+Unit tests for word_index_generator (generate an index from html directories).
+This module tests visible text extraction, word tokenization, filtering, and index building.
 """
 
 import unittest
@@ -14,7 +14,6 @@ try:
   from word_index_generator import get_visible_text, tokenize, build_word_index
   from collections import defaultdict
   from bs4 import BeautifulSoup
-  from collections import defaultdict
   from nltk.corpus import stopwords
   import nltk
   test = (BeautifulSoup, stopwords, nltk)
@@ -25,12 +24,17 @@ except Exception as e:
 class TestWordIndexGenerator(unittest.TestCase):
     """
     Unit tests for the word index generator script.
-    These tests validate text extraction, tokenization, filtering, and index building.
+
+    These tests verify the behavior of:
+    - get_visible_text(): Ensuring hidden content is removed and visible content retained.
+    - tokenize(): Splitting input strings into normalized words.
+    - stopword and pattern filtering: Ignoring trivial or unwanted words.
+    - Integration: Index generation from actual file content.
     """
 
     def test_visible_text_extraction(self):
         """
-        Test that get_visible_text() extracts only visible content,
+        Ensure get_visible_text() extracts only visible content,
         excluding scripts, styles, comments, and hidden elements.
         """
         html = '''<!DOCTYPE html>
@@ -49,7 +53,8 @@ class TestWordIndexGenerator(unittest.TestCase):
 
     def test_tokenize_words(self):
         """
-        Test that tokenize() splits text into lowercase alphanumeric words.
+        Ensure tokenize() splits text into lowercase words,
+        stripping out punctuation and handling alphanumerics.
         """
         text = "This is a test: only_words-123 _should be tokenized."
         tokens = tokenize(text)
@@ -60,8 +65,8 @@ class TestWordIndexGenerator(unittest.TestCase):
 
     def test_exclusion_filtering(self):
         """
-        Test that stopwords, numeric starters, underscores,
-        and exclude_pattern matches are properly filtered.
+        Ensure filtering logic excludes stopwords, underscores,
+        digits, and excluded patterns.
         """
         stop_words = {"this", "is", "a"}
         exclude_pattern = re.compile(r'^[a-zA-Z][0-9_]')
@@ -87,8 +92,7 @@ class TestWordIndexGenerator(unittest.TestCase):
 
     def test_build_word_index_from_sample_html(self):
         """
-        Test building a word index from a real sample HTML file
-        to ensure integration between file reading and parsing.
+        Full integration test: index a small HTML file and validate words and filtering.
         """
         sample_dir = "test_html"
         os.makedirs(sample_dir, exist_ok=True)
@@ -98,7 +102,7 @@ class TestWordIndexGenerator(unittest.TestCase):
 
         stop_words = {"from"}
         exclude_pattern = re.compile(r'^[a-zA-Z][0-9_]')
-        word_index = build_word_index(sample_dir, stop_words, exclude_pattern)
+        word_index = build_word_index(sample_dir, stop_words, exclude_pattern, index_dir="index_files")
 
         self.assertIn("hello", word_index)
         self.assertIn("world", word_index)
@@ -111,4 +115,5 @@ if __name__ == '__main__':
   if OK:
     unittest.main()
   else:
-    print("Skipping unit tests (requires nltk beautifulsoup4 whoosh)")
+    print("Skipping unit tests (requires nltk beautifulsoup4)")
+
