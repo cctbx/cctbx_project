@@ -680,7 +680,7 @@ format(builder=builder, builders=', '.join(sorted(self.env_locations.keys()))))
       filename = os.path.join(
         self.root_dir, 'modules', self.env_locations[builder])
       if python is not None:
-        if python not in ['27', '37', '38', '39', '310']:
+        if python not in ['27', '37', '38', '39', '310', '311', '312', '313']:
           raise RuntimeError(
             """Only Python 2.7, 3.7, 3.8, 3.9, and 3.10 are currently supported.""")
         filename = filename.replace('PYTHON_VERSION', python)
@@ -984,8 +984,8 @@ Example usage:
   {prog} --install_conda --builder=<builder>
     Install conda and default environment for <builder>
 
-  {prog} --install_conda --builder=<builder> --python=36
-    Install conda and default Python 3.6 environment for <builder>
+  {prog} --install_conda --builder=<builder> --python=37
+    Install conda and default Python 3.7 environment for <builder>
 
   {prog} --conda_base=<path> --builder=<builder>
     Install default environment for <builder> with known conda installation
@@ -1006,8 +1006,8 @@ Example usage:
     help="""Install the default environment for a builder. The choices are the
       same as the ones for bootstrap.py. The default builder is "cctbx." """)
   parser.add_argument(
-    '--python', default='27', type=str, nargs='?', const='27',
-    choices=['27', '37', '38', '39', '310'],
+    '--python', default='37', type=str, nargs='?', const='37',
+    choices=['27', '37', '38', '39', '310', '311', '312', '313'],
     help="""When set, a specific Python version of the environment will be used.
     This only affects environments selected with the --builder flag.""")
   parser.add_argument(
