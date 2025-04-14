@@ -30,7 +30,6 @@ from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
 import copy
-import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
