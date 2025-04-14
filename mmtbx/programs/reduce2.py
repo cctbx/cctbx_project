@@ -30,11 +30,10 @@ from scitbx.array_family import flex
 from iotbx.pdb import common_residue_names_get_class, amino_acid_codes, nucleic_acid_codes
 from mmtbx.programs import probe2
 import copy
-import tempfile
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.7.0"
+version = "2.8.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -105,6 +104,10 @@ stop_on_any_missing_hydrogen = False
 output
   .style = menu_item auto_align
 {
+  write_files = True
+    .type = bool
+    .short_caption = Write the output files
+    .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
   description_file_name = None
     .type = str
     .short_caption = Description output file name
@@ -972,7 +975,7 @@ NOTES:
   # Create a parser for Probe2 PHIL parameters, overriding specific defaults.
   # Use it to parse the parameters we need to change and return the parser so we
   # can extract values from it.
-  def _MakeProbePhilParser(self, movers_to_check, temp_output_file_name, extraArgs = []):
+  def _MakeProbePhilParser(self, movers_to_check, extraArgs = []):
 
     # Determine the source and target selections based on the Movers
     # that we are checking being tested against everything else.
@@ -997,7 +1000,7 @@ NOTES:
       "minimum_water_hydrogen_occupancy=0.66",
       "maximum_water_hydrogen_b=40.0",
       "minimum_occupancy=0.01",
-      "output.filename='{}'".format(temp_output_file_name),
+      "output.write_files=False",
       "ignore_lack_of_explicit_hydrogens=True",
       "output.add_group_line=False"
     ]
@@ -1262,20 +1265,23 @@ NOTES:
 
     make_sub_header('Writing output', out=self.logger)
 
-    # Write the description output to the specified file.
-    self.data_manager._write_text("description", outString,
-      self.params.output.description_file_name)
+    # Skip writing the main output file and description output file if output.write_files is False.
+    # This enables a program to harness Reduce2 and not have to deal with handling output files.
+    if self.params.output.write_files:
+      # Write the description output to the specified file.
+      self.data_manager._write_text("description", outString,
+        self.params.output.description_file_name)
 
-    # Determine whether to write a PDB or CIF file and write the appropriate text output.
-    suffix = os.path.splitext(self.params.output.filename)[1]
-    if suffix.lower() == ".pdb":
-      txt = self.model.model_as_pdb()
-    else:
-      txt = self.model.model_as_mmcif()
-    self.data_manager._write_text("model", txt, self.params.output.filename)
+      # Determine whether to write a PDB or CIF file and write the appropriate text output.
+      suffix = os.path.splitext(self.params.output.filename)[1]
+      if suffix.lower() == ".pdb":
+        txt = self.model.model_as_pdb()
+      else:
+        txt = self.model.model_as_mmcif()
+      self.data_manager._write_text("model", txt, self.params.output.filename)
 
-    print('Wrote', self.params.output.filename,'and',
-      self.params.output.description_file_name, file = self.logger)
+      print('Wrote', self.params.output.filename,'and',
+        self.params.output.description_file_name, file = self.logger)
 
     # If we've been asked to do a comparison with another program's output, do it.
     if self.params.comparison_file is not None:
@@ -1307,7 +1313,6 @@ NOTES:
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
         source = [ m ]
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1315,7 +1320,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1335,7 +1340,6 @@ NOTES:
         myScore = sum(values)
 
         print('My values for Mover', str(m), 'are', values, 'sum is', myScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Find the score for the comparison file.
@@ -1347,7 +1351,6 @@ NOTES:
 
         # Make the Probe2 Phil parameters, then overwrite the ones that were
         # filled in with values that we want for our summaries.
-        tempName = tempfile.mktemp()
         extraArgs = [
           "approach=once",
           "output.format=raw",
@@ -1355,7 +1358,7 @@ NOTES:
           "output.condensed=True",
           "output.count_dots=True"
           ]
-        probeParser = self._MakeProbePhilParser(source, tempName, extraArgs)
+        probeParser = self._MakeProbePhilParser(source, extraArgs)
 
         # Run Probe2
         p2 = probe2.Program(self.data_manager, probeParser.working_phil.extract(),
@@ -1375,7 +1378,6 @@ NOTES:
         otherScore = sum(values)
 
         print('Other values for Mover', str(m), 'are', values, 'sum is', otherScore, file=self.logger)
-        os.unlink(tempName)
 
         #============================================================
         # Add the line to the table, indicating if the other is better.
@@ -1521,10 +1523,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(amides, tempName)
+          probeParser = self._MakeProbePhilParser(amides)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1534,7 +1533,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-flipnq.kin", "w") as f:
@@ -1645,10 +1643,7 @@ NOTES:
 
           # Modify the parameters that are passed to include the ones for
           # the harnessed program, including the source and target atom selections.
-          # Specify a temporary file for the output of Probe2, which we'll
-          # delete after running.
-          tempName = tempfile.mktemp()
-          probeParser = self._MakeProbePhilParser(hists, tempName)
+          probeParser = self._MakeProbePhilParser(hists)
 
           # Run the program and append its Kinemage output to ours, deleting
           # the temporary file that it produced.
@@ -1657,7 +1652,6 @@ NOTES:
           p2.overrideModel(self.model)
           dots, kinString = p2.run()
           flipkinText += kinString
-          os.unlink(tempName)
 
         # Write the accumulated Flipkin string to the output file.
         with open(flipkinBase+"-fliphis.kin", "w") as f:
