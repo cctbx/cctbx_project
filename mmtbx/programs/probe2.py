@@ -29,7 +29,7 @@ from iotbx.pdb import common_residue_names_get_class
 # @todo See if we can remove the shift and box once reduce_hydrogen is complete
 from cctbx.maptbx.box import shift_and_box_model
 
-version = "4.9.0"
+version = "4.10.0"
 
 master_phil_str = '''
 profile = False
@@ -115,6 +115,11 @@ ignore_lack_of_explicit_hydrogens = False
 output
   .style = menu_item auto_align
 {
+  write_files = True
+    .type = bool
+    .short_caption = Write the output files
+    .help = Write the output files(s) when this is True (default). Set to False when harnessing the program.
+
   file_name = None
     .type = str
     .short_caption = Output file name
@@ -2538,12 +2543,13 @@ Note:
             raise ValueError("Unrecognized output format: "+self.params.output.format+" (internal error)")
 
     # Write the output to the specified file.
-    self.data_manager._write_text("Text", outString, self.params.output.filename)
+    if self.params.output.write_files:
+      self.data_manager._write_text("Text", outString, self.params.output.filename)
 
     # If we have a dump file specified, write the atom information into it.
     # We write it at the end because the extra atom info may have been adjusted
     # during the code that handles hydrogen adjustements.
-    if self.params.output.dump_file_name is not None:
+    if self.params.output.write_files and self.params.output.dump_file_name is not None:
       atomDump = Helpers.writeAtomInfoToString(allAtoms, self._extraAtomInfo)
       with open(self.params.output.dump_file_name,"w") as df:
         df.write(atomDump)
