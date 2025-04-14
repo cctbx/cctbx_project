@@ -1,5 +1,6 @@
 from __future__ import absolute_import, division, print_function
 from cctbx.xray.structure_factors.misc import quality_factor_from_any
+from cctbx.xray.structure_factors.algorithm import algorithms
 from cctbx.xray import ext
 from cctbx import maptbx
 from cctbx import crystal
@@ -251,7 +252,7 @@ class managed_calculation_base(object):
     if (manager is not None):
       assert xray_structure.unit_cell().is_similar_to(manager.unit_cell())
       assert xray_structure.space_group() == manager.space_group()
-    assert algorithm in ["direct", "fft"]
+    assert algorithm in algorithms.keys()
 
   def manager(self):
     return self._manager
@@ -265,6 +266,4 @@ class managed_calculation_base(object):
   def algorithm(self, verbose=False):
     if (not verbose):
       return self._algorithm
-    if (self._algorithm == "direct"):
-      return "Direct Summation"
-    return "FFT Approximation"
+    return algorithms[self._algorithm].desc
