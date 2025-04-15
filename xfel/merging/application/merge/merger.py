@@ -139,7 +139,7 @@ class merger(worker):
 
     # Add history record with version and timestamp
     from dials.util.version import dials_version
-    print(f"From cctbx.xfel.merge {dials_version()}, {date_str}")
+    mtz_obj.add_history(f"From cctbx.xfel.merge {dials_version()}, {date_str}")
 
     mtz_obj.write(mtz_file)
     self.logger.main_log("Output anomalous and mean data:\n    %s" %os.path.abspath(mtz_file))
