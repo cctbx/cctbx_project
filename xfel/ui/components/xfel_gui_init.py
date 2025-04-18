@@ -3040,7 +3040,20 @@ class RunStatsTab(SpotfinderTab):
     all_stats = tab.main.runstats_sentinel.stats
     if not all_stats:
       return
-    x = round(event.xdata)
+
+    if 'strong' in event.inaxes.get_ylabel():
+      twod_data = np.concatenate([event.inaxes.collections[0].get_offsets().data, event.inaxes.collections[1].get_offsets().data])
+    elif 'high res' in event.inaxes.get_ylabel():
+      twod_data = event.inaxes.collections[0].get_offsets().data
+    else:
+      return
+    twod_picture = event.inaxes.transData.transform(twod_data)
+    evt_xy_picture = event.inaxes.transData.transform((event.xdata, event.ydata))
+    diffs = twod_picture - (evt_xy_picture)
+    diffs = np.linalg.norm(diffs, axis=1)
+    mindiff = np.argmin(diffs)
+    x = round(twod_data[mindiff][0])
+
     run_numbers = tab.main.runstats_sentinel.run_numbers
     found_it = False
     for run_number, stats in zip(run_numbers, all_stats):
