@@ -2368,6 +2368,8 @@ class XFELBuilder(CCIBuilder):
     configlst = super(XFELBuilder, self).get_libtbx_configure()
     if '--enable_cxx11' in configlst: configlst.remove('--enable_cxx11')
     configlst.append('--cxxstd=c++14')
+    if not self.isPlatformMacOSX():
+      configlst.append("--enable_openmp_if_possible=True")
     return configlst
 
   def add_tests(self):
