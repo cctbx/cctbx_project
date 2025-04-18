@@ -1506,6 +1506,7 @@ class MainWindow(wx.Frame):
     info.AddDeveloper('Derek A. Mendez')
     info.AddDeveloper('Johannes Blaschke')
     info.AddDeveloper('Robert Bolotovsky')
+    info.AddDeveloper('Vanessa Oklejas')
     info.AddDeveloper('Axel Brunger')
     info.AddDeveloper('Nicholas Sauter')
     wx.adv.AboutBox(info)
