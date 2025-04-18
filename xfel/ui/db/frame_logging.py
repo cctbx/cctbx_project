@@ -9,6 +9,7 @@ class DialsProcessorWithLogging(Processor):
   '''Overrides for steps of dials processing of stills with XFEL GUI database logging.'''
 
   def __init__(self, params, composite_tag = None, rank = 0):
+    self.debug_file_handle = None
     super(DialsProcessorWithLogging, self).__init__(params, composite_tag, rank)
     self.tt_low = None
     self.tt_high = None
