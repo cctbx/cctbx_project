@@ -68,7 +68,7 @@ def run(args):
   for run_no, rungroup_id in sorted(zip(runs, rungroups), key=lambda x: x[0]):
     if params.rungroup and params.rungroup != rungroup_id: continue
     try:
-      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min, params.i_sigi_cutoff)()
+      timestamps, two_theta_low, two_theta_high, n_strong, average_i_sigi, n_lattices, wavelengths = HitrateStats(app, run_no, params.trial, rungroup_id, params.d_min, params.i_sigi_cutoff)()
     except Exception as e:
       print("Couldn't get run", run_no)
       continue

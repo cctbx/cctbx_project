@@ -272,6 +272,27 @@ class initialize(initialize_base):
         cursor.execute(query)
         query = "ALTER TABLE `%s_job` MODIFY COLUMN submission_id TEXT NULL"%self.params.experiment_tag
         cursor.execute(query)
+
+      # Maintain backwards compatibility with SQL tables v5.5: 03/10/25
+      query = "SHOW columns FROM `%s_experiment`"%self.params.experiment_tag
+      cursor = self.dbobj.cursor()
+      cursor.execute(query)
+      columns = cursor.fetchall()
+      if any(['PRI' in row and 'crystal_id' in row for row in columns]):
+        print("Upgrading to version 5.5 of mysql database schema")
+        query = "ALTER TABLE `%s_experiment` MODIFY COLUMN id INT"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_experiment` DROP PRIMARY KEY"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_experiment` ADD PRIMARY KEY (`id`, `beam_id`, `imageset_id`, `detector_id`)"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_experiment` MODIFY COLUMN id INT AUTO_INCREMENT"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_experiment` MODIFY COLUMN crystal_id INT"%self.params.experiment_tag
+        cursor.execute(query)
+        query = "ALTER TABLE `%s_experiment` MODIFY COLUMN crystal_cell_id INT"%self.params.experiment_tag
+        cursor.execute(query)
+
     return tables_ok
 
   def set_up_columns_dict(self, app):

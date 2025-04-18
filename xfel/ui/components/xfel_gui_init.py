@@ -3057,7 +3057,7 @@ class RunStatsTab(SpotfinderTab):
     run_numbers = tab.main.runstats_sentinel.run_numbers
     found_it = False
     for run_number, stats in zip(run_numbers, all_stats):
-      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices = stats
+      timestamps, two_theta_low, two_theta_high, n_strong, resolutions, n_lattices, wavelengths = stats
       if x < len(timestamps):
         found_it = True
         break
