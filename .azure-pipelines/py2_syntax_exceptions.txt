@@ -25,3 +25,4 @@ xfel/util/preference.py
 cctbx/maptbx/qscore.py
 cctbx/maptbx/tst_qscore.py
 xfel/merging/application/merge/merger.py
+xfel/command_line/auto_submit.py

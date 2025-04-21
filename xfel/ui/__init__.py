@@ -166,17 +166,24 @@ def load_phil_scope_from_dispatcher(dispatcher):
   phil_scope = module.phil_scope
   return phil_scope
 
-def load_cached_settings():
+def load_cached_settings(scope=None, extract=True):
+  if scope is None:
+    scope = master_phil_scope
   if os.path.exists(settings_file):
     user_phil = parse(file_name = settings_file)
-    params, unused = master_phil_scope.fetch(source = user_phil, track_unused_definitions=True)
-    params = params.extract()
+    scope, unused = scope.fetch(source = user_phil, track_unused_definitions=True)
+    if not extract:
+      return scope
+    params = scope.extract()
     if len(unused) > 0:
       from .phil_patch import sync_phil
       sync_phil(params, unused)
     return params
   else:
-    return master_phil_scope.extract()
+    if extract:
+      return scope.extract()
+    else:
+      return scope
 
 def save_cached_settings(params):
   if not os.path.exists(settings_dir):
