@@ -187,6 +187,9 @@ class postrefinement_rs(worker):
         I_weight = flex.double(len(result_observations.sigmas()), 1.)
         I_weight.set_selected(I_invalid, 0.)
         SWC_after_post = simple_weighted_correlation(I_weight, I_reference, I_observed)
+        dcl = self.params.postrefinement.delta_corr_limit
+        if dcl is not None and SWC_after_post.corr - SWC.corr < -(dcl):
+          raise ValueError("CC decreased by > {} in postrefinement".format(dcl))
       except (AssertionError, ValueError, RuntimeError) as e:
         error_detected = True
         reason = repr(e)

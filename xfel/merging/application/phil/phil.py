@@ -510,6 +510,10 @@ postrefinement {
     .type = bool
     .help = each-image trumpet plot showing before-after plot. Spot color warmth indicates I/sigma
     .help = Spot radius for lower plot reflects partiality. Only implemented for rs_hybrid
+  delta_corr_limit = 0.1
+    .type = float(allow_none=True)
+    .help = Experimental: Reject experiments where correlation to reference decreases by more \
+        than this value in postrefinement.
 }
 """
 merging_phil = """
