@@ -35,6 +35,7 @@ class Spotfinder_radial_average:
     d_min_inv = 1/self.params.d_min
     res_inv = 1 / panel.get_resolution_at_pixel(s0, xy)
     res = 1/res_inv
+    self.dvals.append(res)
     if self.params.filter.enable:
       for i, (dmax, dmin) in enumerate(zip(self.d_max_vals, self.d_min_vals)):
         if dmax > res > dmin:
@@ -73,6 +74,7 @@ class Spotfinder_radial_average:
     unit_wt = (params.peak_weighting == "unit")
     refls = self.reflections
     expts = self.experiments
+    self.dvals = []
 
     #apply beam center correction to expts
     detector = expts[0].detector
@@ -155,6 +157,7 @@ class Spotfinder_radial_average:
         for i in range(len(self.panelsums)):
           self.antifiltered_panelsums[i] = \
               self.antifiltered_panelsums[i] + self.current_panelsums[i]
+    self.dvals = np.array(self.dvals)
 
 
   def plot(self):
@@ -231,15 +234,24 @@ Currently supported options: %s""" %backend_list
             ax.figure.canvas.draw()
         def onclick(event):
           if fig.canvas.toolbar.mode: return
+          self.d1 = 1/event.xdata
           vertical_line.set_visible(True)
         def onrelease(event):
           if fig.canvas.toolbar.mode: return
+          self.d2 = 1/event.xdata
           vertical_line.set_visible(False)
+          left = max(self.d1, self.d2)
+          right = min(self.d1, self.d2)
+          if left==right:
+            peak = left
+          else:
+            matching_dvals = self.dvals[
+                np.logical_and(self.dvals<left, self.dvals>right)
+            ]
+            peak = np.median(matching_dvals)
           ax.figure.canvas.draw()
-          peak = self._nearest_peak(event.xdata,xvalues,yvalues)
-          if peak is not None:
-            print('Selected x=%f, nearest local maximum=%f, writing to %s.' % (1/event.xdata, peak, params.output.peak_file))
-            f.write(str(peak)+"\n")
+          print('Median=%f, writing to %s.' % (peak, params.output.peak_file))
+          f.write(str(peak)+"\n")
 
         mmv = fig.canvas.mpl_connect('motion_notify_event', onmove)
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
