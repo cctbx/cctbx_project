@@ -280,6 +280,12 @@ modify
           individually, but if the options twin_axis and twin_rotation are \
           used, the transformation has to be the same for every lattice. \
           Forcing this is probably harmless but has not been tested extensively.
+    voting_method = *consensus majority
+      .type = choice
+      .multiple = False
+      .help = Each lattice is tested 3 times. For consensus, all three results \
+          must agree or the lattice is rejected. For majority, no lattices are \
+          rejected.
     plot
       {
       do_plot = True

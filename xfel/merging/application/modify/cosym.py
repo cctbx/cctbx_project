@@ -223,7 +223,8 @@ class cosym(worker):
     if self.mpi_helper.rank == 0:
         from xfel.merging.application.modify.df_cosym import reconcile_cosym_reports
         REC = reconcile_cosym_reports(reports)
-        results = REC.composite_tranch_merge(voting_method="consensus")
+        results = REC.composite_tranch_merge(
+            voting_method=self.params.modify.cosym.voting_method)
 
         # at this point we have the opportunity to reconcile the results with an anchor
         # recycle the data structures for anchor determination

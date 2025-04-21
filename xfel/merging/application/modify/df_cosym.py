@@ -179,7 +179,7 @@ class reconcile_cosym_reports:
 
     # merge everything together into experiments plus votes
     experiment_lookup = dict()
-    for idx in range(1, len(reports_as_lists)):
+    for idx in range(0, len(reports_as_lists)):
       for icoset in range(len(reports_as_lists[idx])):
         for uuid_expt in reports_as_lists[idx][icoset]:
           experiment_lookup[uuid_expt] = experiment_lookup.get( uuid_expt, len(experiment_lookup) )
