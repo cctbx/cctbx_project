@@ -162,6 +162,7 @@ class conda_manager(object):
     'cctbx': default_file,
     'phenix': phenix_env,
     'phenix_discamb': phenix_env + '2',
+    'phenix_molstar': phenix_env,
     'phenix_voyager': phenix_env,
     'phenix_release': phenix_env,
     'xfellegacy': default_file,
