@@ -306,21 +306,13 @@ class target_result_mixin(object):
         miller_set=d_target_d_f_calc,
         algorithm=manager.sfg_params.algorithm).d_target_d_occupancy()
     else:
-      # XXX discamb
-      if manager.is_taam(): # XXX discamb
-        #manager.discamb_wrapper.set_indices(d_target_d_f_calc.indices())
-        #result = manager.discamb_wrapper.d_target_d_params(
-        #  list(d_target_d_f_calc.data()))
-         result = manager.discamb_wrapper.d_target_d_params(d_target_d_f_calc)
-      # XXX discamb
-      else:
-        result = manager.structure_factor_gradients_w(
-          u_iso_refinable_params=u_iso_refinable_params,
-          d_target_d_f_calc=d_target_d_f_calc.data(),
-          xray_structure=xray_structure,
-          n_parameters=xray_structure.n_parameters(),
-          miller_set=d_target_d_f_calc,
-          algorithm=manager.sfg_params.algorithm)
+      result = manager.structure_factor_gradients_w(
+        u_iso_refinable_params=u_iso_refinable_params,
+        d_target_d_f_calc=d_target_d_f_calc.data(),
+        xray_structure=xray_structure,
+        n_parameters=xray_structure.n_parameters(),
+        miller_set=d_target_d_f_calc,
+        algorithm=manager.sfg_params.algorithm)
     time_gradients_wrt_atomic_parameters += timer.elapsed()
     return result
 
