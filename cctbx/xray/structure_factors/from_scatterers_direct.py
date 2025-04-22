@@ -14,7 +14,8 @@ class from_scatterers_direct(managed_calculation_base):
                      miller_set,
                      manager=None,
                      cos_sin_table=False,
-                     algorithm="direct"):
+                     algorithm="direct",
+                     extra_params=None):
     """Evaluate structure factors via direct calculations
 
     :type xray_structure: cctbx.xray.structure
