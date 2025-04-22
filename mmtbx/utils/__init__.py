@@ -1250,7 +1250,8 @@ class fmodel_from_xray_structure(object):
          u_base                       = sfga.u_base,
          b_base                       = sfga.b_base,
          wing_cutoff                  = sfga.wing_cutoff,
-         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size
+         exp_table_one_over_step_size = sfga.exp_table_one_over_step_size,
+         extra_params                 = sfga.taam
          ).f_calc()
       lr = None
       try: lr = params.low_resolution

@@ -146,7 +146,7 @@ class manager_mixin(object):
       .gradients_wrt_atomic_parameters(**keyword_args)
 
 sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
-  algorithm = *fft direct
+  algorithm = *fft direct taam
     .type = choice
   cos_sin_table = False
     .type = bool
@@ -162,10 +162,19 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
     .type = float
   exp_table_one_over_step_size = None
     .type = float
-  taam = False
-    .type = bool
-    .help = Use aspherical form-factors (TAAM=Transferable Aspherical Atom Model)
+  taam
+    .help = Transferrable Aspherical Atom Model (TAAM)-specific parameters
+  {
+  }
 """)
+
+if cctbx.xray.structure_factors.pydiscamb_is_installed:
+  sf_and_grads_accuracy_master_params.adopt_scope(
+    iotbx.phil.parse(
+      "taam  { include scope pydiscamb.cctbx_interface.taam_master_params }", 
+      process_includes=True,
+    )
+  )
 
 alpha_beta_master_params = iotbx.phil.parse("""\
   include scope mmtbx.max_lik.maxlik.alpha_beta_params
@@ -512,7 +521,8 @@ class manager(manager_mixin):
          b_base                       = self.sfg_params.b_base,
          wing_cutoff                  = self.sfg_params.wing_cutoff,
          exp_table_one_over_step_size =
-                                  self.sfg_params.exp_table_one_over_step_size)
+                                  self.sfg_params.exp_table_one_over_step_size,
+         extra_params=self.sfg_params.taam)
     return self._structure_factor_gradients_w
 
   structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
@@ -552,10 +562,6 @@ class manager(manager_mixin):
     p = self.sfg_params
     if(miller_array.indices().size()==0):
       raise RuntimeError("Empty miller_array.")
-
-    if self.sfg_params.taam:                                         # XXX discamb
-      return self._set_taam_and_compute_f_calc(xray_structure = xrs) # XXX discamb
-
     manager = miller_array.structure_factors_from_scatterers(
       xray_structure               = xrs,
       algorithm                    = p.algorithm,
@@ -565,7 +571,9 @@ class manager(manager_mixin):
       u_base                       = p.u_base,
       b_base                       = p.b_base,
       wing_cutoff                  = p.wing_cutoff,
-      exp_table_one_over_step_size = p.exp_table_one_over_step_size)
+      exp_table_one_over_step_size = p.exp_table_one_over_step_size,
+      extra_params = p.taam
+      )
     m = manager.manager()
     return manager.f_calc()
 
