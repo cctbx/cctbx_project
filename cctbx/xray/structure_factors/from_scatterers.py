@@ -8,7 +8,8 @@ class from_scatterers(manager):
 
   def __call__(self, xray_structure,
                      miller_set,
-                     algorithm=None):
+                     algorithm=None,
+                     extra_params=None):
     """Evaluate structure factors and return the result
 
     :type xray_structure: cctbx.xray.structure
@@ -47,4 +48,5 @@ class from_scatterers(manager):
       manager=self,
       xray_structure=xray_structure,
       miller_set=miller_set,
-      algorithm=algorithm) # passing algorithm allows f to decide on CPU/GPU implementation
+      algorithm=algorithm, # passing algorithm allows f to decide on CPU/GPU implementation
+      extra_params=extra_params)

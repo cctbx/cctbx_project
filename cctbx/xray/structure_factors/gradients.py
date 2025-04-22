@@ -10,7 +10,8 @@ class gradients(manager):
                      miller_set,
                      d_target_d_f_calc,
                      n_parameters,
-                     algorithm=None):
+                     algorithm=None,
+                     extra_params=None):
     """
     Evaluate structure factors derivatives and return the result
 
@@ -60,4 +61,5 @@ class gradients(manager):
       u_iso_refinable_params=u_iso_refinable_params,
       miller_set=miller_set,
       d_target_d_f_calc=d_target_d_f_calc,
-      n_parameters=n_parameters)
+      n_parameters=n_parameters,
+      extra_params=extra_params)
