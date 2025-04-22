@@ -9,7 +9,7 @@ from cctbx.xray.structure_factors.gradients_direct \
   import gradients_direct
 from cctbx.xray.structure_factors.gradients_fft \
   import gradients_fft
-
+from cctbx.xray.structure_factors.misc import pydiscamb_is_installed
 
 Algorithm = namedtuple(
     "Algorithm",
@@ -32,14 +32,11 @@ algorithms = {
     )
 }
 
-# discamb
-try:
-    from pydiscamb.cctbx_interface import from_scatterers_taam, gradients_taam
-    algorithms["taam"] = Algorithm(
-        "taam",
-        "Transferrable Aspherical Atom Model",
-        from_scatterers_taam,
-        gradients_taam
-    )
-except ImportError:
-    pass
+if pydiscamb_is_installed:
+  from pydiscamb.cctbx_interface import from_scatterers_taam, gradients_taam
+  algorithms["taam"] = Algorithm(
+    "taam",
+    "Transferrable Aspherical Atom Model",
+    from_scatterers_taam,
+    gradients_taam
+  )
