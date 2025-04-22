@@ -372,8 +372,6 @@ class manager(manager_mixin):
          scale_method="combo",
          origin=None,
          data_type=None):
-    self.pydiscamb = None       # XXX discamb
-    self.discamb_wrapper = None # XXX discamb
     self._origin = origin
     self._data_type = data_type
     self.russ = None
@@ -539,21 +537,6 @@ class manager(manager_mixin):
         indices = twin_mi,
         crystal_symmetry = miller_array.crystal_symmetry())
     return result
-
-  def _set_taam_and_compute_f_calc(self, xray_structure):     # XXX discamb
-    assert xray_structure is not None                         # XXX discamb
-    if self.pydiscamb is None:                                # XXX discamb
-      import pydiscamb                                        # XXX discamb
-      self.pydiscamb = pydiscamb                              # XXX discamb
-    self.discamb_wrapper =  self.pydiscamb.DiscambWrapper(
-      xray_structure,
-      method = self.pydiscamb.FCalcMethod.TAAM)               # XXX discamb
-    self.discamb_wrapper.set_indices(self.f_obs().indices())  # XXX discamb
-    data = flex.complex_double(self.discamb_wrapper.f_calc()) # XXX discamb
-    return self.f_obs().array(data = data)                    # XXX discamb
-
-  def is_taam(self):            # XXX discamb
-    return self.sfg_params.taam # XXX discamb
 
   def compute_f_calc(self, miller_array = None, xray_structure=None):
     xrs = xray_structure
