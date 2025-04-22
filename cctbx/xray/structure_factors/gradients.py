@@ -40,7 +40,7 @@ class gradients(manager):
         gradients as C{e.packed()}
 
     """
-    assert algorithm in algorithms.items() or algorithm is None
+    assert algorithm in algorithms.keys() or algorithm is None
     if (algorithm is None):
       algorithm = "fft"
       n_scatterers = xray_structure.scatterers().size()
