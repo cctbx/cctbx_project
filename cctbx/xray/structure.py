@@ -1381,7 +1381,8 @@ class structure(crystal.special_position_settings):
                               quality_factor=None,
                               u_base=None,
                               b_base=None,
-                              wing_cutoff=None):
+                              wing_cutoff=None,
+                              extra_params=None):
     """
     Calculate structure factors for the current scatterers using either direct
     summation or FFT method; by default the appropriate method will be guessed
@@ -1410,6 +1411,8 @@ class structure(crystal.special_position_settings):
     :param wing_cutoff: is how far away from atomic center you sample density
       around atom
     :type wing_cutoff: float
+    :param extra_params: Additional parameters passed to the structure factor calculation algorithm
+    :type extra_params: libtbx.phil.scope_extract
 
     :returns: a custom Python object (exact type depends on method used), from
       which f_calc() may be called
@@ -1436,7 +1439,8 @@ class structure(crystal.special_position_settings):
       wing_cutoff=wing_cutoff)(
         xray_structure=self,
         miller_set=miller_set,
-        algorithm=algorithm)
+        algorithm=algorithm,
+        extra_params=extra_params)
 
   def as_py_code(self, indent=""):
     """eval(self.as_py_code()) is similar (but sometimes not identical)
