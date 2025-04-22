@@ -39,9 +39,9 @@ def prepare_map_for_refinement(map1_filename, map2_filename, d_min,
                             fixed_mask_id=fixed_mask_id)
 
   # Refine to get scale and error parameters for docking region
-  results = assess_cryoem_errors(mmm, d_min,
+  results = assess_cryoem_errors(mmm=mmm, d_min=d_min,
     determine_ordered_volume=False, verbosity=verbosity,
-    sphere_cent=sphere_cent, radius=radius,
+    sphere_cent=sphere_cent, radius=radius, double_map_box=True,
     ordered_mask_id=ordered_mask_id, fixed_mask_id=fixed_mask_id)
 
   return results
@@ -97,11 +97,15 @@ def run():
             working_model_filename, fixed_model_filename=fixed_model_filename,
             verbosity=verbosity)
 
+  # After working with a cell that is twice as wide as the sphere, cut this down
+  # to keep only the unique data
   expectE = results.expectE
-  mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
+  expectE_cb, cb_op = expectE.apply_change_of_basis(change_of_basis='H/2,K/2,L/2')
+  mtz_dataset = expectE_cb.as_mtz_dataset(column_root_label='Emean')
   dobs = results.dobs
+  dobs_cb, cb_op = dobs.apply_change_of_basis(change_of_basis='H/2,K/2,L/2')
   mtz_dataset.add_miller_array(
-      dobs,column_root_label='Dobs',column_types='W')
+      dobs_cb,column_root_label='Dobs',column_types='W')
   mtz_object=mtz_dataset.mtz_object()
 
   if args.file_root is not None:

@@ -1515,7 +1515,7 @@ def assess_cryoem_errors(
     mmm, d_min,
     determine_ordered_volume=True,
     ordered_mask_id=None, fixed_mask_id=None,
-    sphere_points=500, sphere_cent=None, radius=None,
+    sphere_points=500, sphere_cent=None, radius=None, double_map_box = False,
     verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
@@ -1666,6 +1666,17 @@ def assess_cryoem_errors(
       soft_mask_radius=soft_mask_radius,
       boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
     working_mmm.apply_mask_to_maps()
+    if double_map_box:
+      delta_cushion = 2*radius - cushion[0]
+      delta_cushion_grid = int(math.ceil(delta_cushion/spacings[0]))
+      # Note that extract_all_maps_with_bounds works in terms of the lower
+      # and upper ranges of the map being operated on. Here we are padding the
+      # map out with zeroes on all sides.
+      new_lower_bounds = tuple(-flex.int(3,delta_cushion_grid))
+      new_upper_bounds = tuple(flex.int(upper_bounds) - flex.int(lower_bounds) + flex.int(3,delta_cushion_grid))
+      working_mmm = working_mmm.extract_all_maps_with_bounds(
+          lower_bounds=new_lower_bounds, upper_bounds=new_upper_bounds,
+          stay_inside_current_map = False)
     mask_info = working_mmm.mask_info()
 
     working_map_size = working_mmm.map_data().size()
@@ -2121,6 +2132,9 @@ def run():
   parser.add_argument('--radius',
                       help='Radius of sphere for docking, if no model provided',
                       type=float)
+  parser.add_argument('--double_map_box',
+                      help='Make map box twice as wide as sphere',
+                      action = 'store_true')
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
   parser.add_argument('--write_maps', help = 'Write sharpened and likelihood-weighted maps',
@@ -2145,6 +2159,7 @@ def run():
   cutout_specified = False
   sphere_cent = None
   radius = None
+  double_map_box = args.double_map_box
 
   model = None
   if args.model is not None:
@@ -2226,10 +2241,11 @@ def run():
       radius = min(ucpars[0],ucpars[1],ucpars[2])/4.
 
   # Refine to get scale and error parameters for docking region
-  results = assess_cryoem_errors(mmm, d_min, sphere_points=sphere_points,
+  results = assess_cryoem_errors(mmm=mmm, d_min=d_min, sphere_points=sphere_points,
     determine_ordered_volume=determine_ordered_volume, verbosity=verbosity,
-    sphere_cent=sphere_cent, radius=radius, shift_map_origin=shift_map_origin,
-    ordered_mask_id=ordered_mask_id, fixed_mask_id=fixed_mask_id)
+    sphere_cent=sphere_cent, radius=radius, double_map_box=double_map_box,
+    shift_map_origin=shift_map_origin, ordered_mask_id=ordered_mask_id,
+    fixed_mask_id=fixed_mask_id)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
