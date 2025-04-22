@@ -1585,7 +1585,8 @@ class set(crystal.symmetry):
                                         u_base=None,
                                         b_base=None,
                                         wing_cutoff=None,
-                                        exp_table_one_over_step_size=None):
+                                        exp_table_one_over_step_size=None,
+                                        extra_params=None):
     """
     Calculate structure factors for an :py:class:`cctbx.xray.structure` object
     corresponding to the current set of Miller indices.  Can use either FFT
@@ -1613,7 +1614,8 @@ class set(crystal.symmetry):
       exp_table_one_over_step_size=exp_table_one_over_step_size)(
         xray_structure=xray_structure,
         miller_set=self,
-        algorithm=algorithm)
+        algorithm=algorithm,
+        extra_params=extra_params)
 
   def amplitude_normalisations(self, asu_contents, wilson_plot):
     """ A miller.array whose data N(h) are the normalisations to convert
@@ -1648,7 +1650,8 @@ class set(crystal.symmetry):
         u_base=None,
         b_base=None,
         wing_cutoff=None,
-        exp_table_one_over_step_size=None):
+        exp_table_one_over_step_size=None,
+        extra_params=None):
     return self.f_obs_minus_f_calc(
       f_obs_factor=f_obs_factor,
       f_calc=self.structure_factors_from_scatterers(
@@ -1659,7 +1662,8 @@ class set(crystal.symmetry):
         u_base=u_base,
         b_base=b_base,
         wing_cutoff=wing_cutoff,
-        exp_table_one_over_step_size=exp_table_one_over_step_size).f_calc())
+        exp_table_one_over_step_size=exp_table_one_over_step_size,
+        extra_params=extra_params).f_calc())
 
   def setup_binner(self, d_max=0, d_min=0,
                    auto_binning=False,
