@@ -305,35 +305,11 @@ class fmodels(object):
         self.target_work_xray_weighted = self.target_work_xray * wx
         self.gradient_xray = None
         if(compute_gradients):
-          # XXX discamb
-          if self.fmodels.fmodel_xray().is_taam():
-            #f0 = self.fmodels.fmodel_xray().xray_structure.scatterers()[0].flags
-            #if f0.grad_occupancy():
-            #gs = tfx_r.gradients_wrt_atomic_parameters()
-            #if   f0.grad_site():
-            #  sf = flex.vec3_double([g.site_derivatives for g in gs]).as_double()
-            #elif f0.grad_u_iso():
-            #  sf = flex.double([g.adp_derivatives[0] for g in gs])
-            if occupancy:
-              sel = flex.size_t()
-              scs = self.fmodels.fmodel_xray().xray_structure.scatterers()
-              sz = scs.size()
-              sf_ = flex.double(sz,0)
-              for i_seq, s in enumerate(scs):
-                if s.flags.grad_occupancy():
-                  sel.append(i_seq)
-              sf = tfx_r.gradients_wrt_atomic_parameters()
-              sf_ = sf_.set_selected(sel, sf)
-              sf = sf_
-            else:
-              sf = tfx_r.gradients_wrt_atomic_parameters()
-          # XXX discamb
+          if(occupancy):
+            sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
           else:
-            if(occupancy):
-              sf = tfx_r.gradients_wrt_atomic_parameters(occupancy = occupancy)
-            else:
-              sf = tfx_r.gradients_wrt_atomic_parameters(
-                u_iso_refinable_params = u_iso_refinable_params).packed()
+            sf = tfx_r.gradients_wrt_atomic_parameters(
+              u_iso_refinable_params = u_iso_refinable_params).packed()
 
           self.gradient_xray = sf
           self.gradient_xray_weighted = sf * wx
