@@ -99,11 +99,14 @@ def run():
 
   # After working with a cell that is twice as wide as the sphere, cut this down
   # to keep only the unique data
+  from io import StringIO # Needed to stop printing within apply_change_of_basis
   expectE = results.expectE
-  expectE_cb, cb_op = expectE.apply_change_of_basis(change_of_basis='H/2,K/2,L/2')
+  expectE_cb, cb_op = expectE.apply_change_of_basis(change_of_basis='H/2,K/2,L/2',
+                      out=StringIO())
   mtz_dataset = expectE_cb.as_mtz_dataset(column_root_label='Emean')
   dobs = results.dobs
-  dobs_cb, cb_op = dobs.apply_change_of_basis(change_of_basis='H/2,K/2,L/2')
+  dobs_cb, cb_op = dobs.apply_change_of_basis(change_of_basis='H/2,K/2,L/2',
+                   out=StringIO())
   mtz_dataset.add_miller_array(
       dobs_cb,column_root_label='Dobs',column_types='W')
   mtz_object=mtz_dataset.mtz_object()
@@ -114,9 +117,10 @@ def run():
   else:
     mtzout_file_name = "weighted_map_data.mtz"
     mapout_file_name = "likelihood_weighted.map"
-  print ("Writing mtz for refinement as", mtzout_file_name)
+  if verbosity > 1:
+    print ("Writing mtz for refinement as", mtzout_file_name)
+    print ("Writing likelihood-weighted map as", mapout_file_name)
   dm.write_miller_array_file(mtz_object, filename=mtzout_file_name)
-  print ("Writing likelihood-weighted map as", mapout_file_name)
   new_mmm = results.new_mmm
   new_mmm.write_map(map_id='map_manager_lwtd', file_name = mapout_file_name)
 
