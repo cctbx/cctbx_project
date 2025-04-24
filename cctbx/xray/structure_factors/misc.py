@@ -32,4 +32,3 @@ try:
   del __pydiscamb
 except ImportError:
   pydiscamb_is_installed = False
-pydiscamb_is_installed = True

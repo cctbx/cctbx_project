@@ -171,7 +171,7 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
 if cctbx.xray.structure_factors.pydiscamb_is_installed:
   sf_and_grads_accuracy_master_params.adopt_scope(
     iotbx.phil.parse(
-      "taam  { include scope pydiscamb.cctbx_interface.taam_master_params }", 
+      "taam  { include scope pydiscamb.cctbx_interface.taam_master_params }",
       process_includes=True,
     )
   )
