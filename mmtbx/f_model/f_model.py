@@ -163,8 +163,8 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
     .type = float
   exp_table_one_over_step_size = None
     .type = float
-  taam
-    .help = Transferrable Aspherical Atom Model (TAAM)-specific parameters
+  extra
+    .help = Extra parameters for additional algorithms, e.g. TAAM using DiSCaMB
   {
   }
 """)
@@ -172,7 +172,7 @@ sf_and_grads_accuracy_master_params = iotbx.phil.parse("""\
 if cctbx.xray.structure_factors.pydiscamb_is_installed:
   sf_and_grads_accuracy_master_params.adopt_scope(
     iotbx.phil.parse(
-      "taam  { include scope pydiscamb.cctbx_interface.taam_master_params }",
+      "extra  { discamb { include scope pydiscamb.cctbx_interface.pydiscamb_master_params } }",
       process_includes=True,
     )
   )
@@ -520,8 +520,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
          b_base                       = self.sfg_params.b_base,
          wing_cutoff                  = self.sfg_params.wing_cutoff,
          exp_table_one_over_step_size =
-                                  self.sfg_params.exp_table_one_over_step_size,
-         extra_params=self.sfg_params.taam)
+                                  self.sfg_params.exp_table_one_over_step_size)
     return self._structure_factor_gradients_w
 
   structure_factor_gradients_w = property(_get_structure_factor_gradients_w)
@@ -556,7 +555,7 @@ class manager(manager_mixin, metaclass=libtbx.utils.Tracker):
       b_base                       = p.b_base,
       wing_cutoff                  = p.wing_cutoff,
       exp_table_one_over_step_size = p.exp_table_one_over_step_size,
-      extra_params = p.taam
+      extra_params = p.extra
       )
     m = manager.manager()
     return manager.f_calc()
