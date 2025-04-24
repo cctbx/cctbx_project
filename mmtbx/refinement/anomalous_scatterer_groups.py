@@ -75,7 +75,8 @@ class minimizer(object):
       xray_structure=fmodel.xray_structure,
       n_parameters=0,
       miller_set=d_target_d_f_calc,
-      algorithm=fmodel.sfg_params.algorithm)
+      algorithm=fmodel.sfg_params.algorithm,
+      extra_params=fmodel.sfg_params.extra)
     d_t_d_fp = sfg.d_target_d_fp()
     d_t_d_fdp = sfg.d_target_d_fdp()
     del sfg
