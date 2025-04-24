@@ -77,24 +77,27 @@ def get_ebeam(evt):
     # pyana
     ebeam = evt.getEBeam()
   except AttributeError:
-    from psana import Source, Bld
-    src = Source('BldInfo(EBeam)')
-    ebeam = evt.get(Bld.BldDataEBeamV6, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV5, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV4, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV3, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV2, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV1, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeamV0, src)
-    if ebeam is None:
-      ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
-
+    try:
+      from psana import Source, Bld
+      src = Source('BldInfo(EBeam)')
+      ebeam = evt.get(Bld.BldDataEBeamV6, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV5, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV4, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV3, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV2, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV1, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeamV0, src)
+      if ebeam is None:
+        ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
+    except ImportError:
+      # psana2
+      ebeam = evt.run().Detector('ebeamh').raw.ebeamPhotonEnergy(evt)
   return ebeam
 
 def evt_wavelength(evt, delta_k=0):
