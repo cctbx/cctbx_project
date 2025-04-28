@@ -623,7 +623,10 @@ class manager(object):
       occ = 0.
     else:
       b_solv = 20
-      occ = 0.004
+      if self.params.refine_occupancies:
+        occ = 0.004
+      else:
+        occ = 1.
 
     if(self.params.new_solvent == "isotropic"):
       new_scatterers = flex.xray_scatterer(
@@ -704,13 +707,15 @@ class manager(object):
       print("  ADP+occupancy (water only), OAT, final r_work=%6.4f r_free=%6.4f"%(
         self.fmodel.r_work(), self.fmodel.r_free()), file=self.log)
       #
-    if(self.params.refine_adp and self.params.refine_occupancies and
+    if([self.params.refine_adp , self.params.refine_occupancies].count(True)>0 and
        self.new_solvent_selection.count(True)>0):
       from mmtbx.refinement import wrappers
       o = wrappers.unrestrained_qbr_fsr(
         fmodel     = self.fmodel,
         model      = self.model,
         refine_xyz = False,
+        refine_q   = self.params.refine_occupancies,
+        refine_b   = self.params.refine_adp,
         selection  = self.new_solvent_selection,
         q_min      = 0.004,
         b_max      = 60,
