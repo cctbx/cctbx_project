@@ -26,8 +26,6 @@ import mmtbx_probe_ext as probeExt
 from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
-# @todo See if we can remove the shift and box once reduce_hydrogen is complete
-from cctbx.maptbx.box import shift_and_box_model
 
 version = "4.10.0"
 
@@ -1931,9 +1929,7 @@ Note:
     except Exception as e:
       try:
         # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-        cs = self.model.crystal_symmetry()
-        if (cs is None) or (cs.unit_cell() is None):
-          self.model = shift_and_box_model(model = self.model, shift_model=False)
+        self.model.add_crystal_symmetry_if_necessary()
 
         # Retry with the adjusted model
         self.model.process(make_restraints=True, pdb_interpretation_params=p) # make restraints
