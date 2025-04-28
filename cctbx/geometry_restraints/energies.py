@@ -268,7 +268,7 @@ class energies(scitbx.restraints.energies):
   def angle_sigmas(self, origin_id=Auto):
     return self._sigmas(self.angle_proxies, origin_id=origin_id)
 
-  def bond_deviations_z(self, origin_id=Auto):
+  def bond_deviations_z(self, origin_id=0):
     '''
     Calculate rmsz of bond deviations
 
@@ -291,7 +291,7 @@ class energies(scitbx.restraints.energies):
       bond_deltas=self._get_bond_deltas(origin_id=origin_id)
       if len(bond_deltas) >0:
         sigmas = self.bond_sigmas(origin_id=origin_id)
-        assert len(bond_deltas)>=len(sigmas), 'bond_deltas!=sigmas %s %s' % (len(bond_deltas), len(sigmas))
+        assert len(bond_deltas)==len(sigmas), 'bond_deltas!=sigmas %s %s' % (len(bond_deltas), len(sigmas))
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
         b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         b_z_max = flex.max_default(flex.abs(z_scores), 0)
@@ -328,7 +328,7 @@ class energies(scitbx.restraints.energies):
       else:
         return 0,0,0,0
 
-  def angle_deviations_z(self, origin_id=Auto):
+  def angle_deviations_z(self, origin_id=0):
     '''
     Calculate rmsz of angles deviations
 
