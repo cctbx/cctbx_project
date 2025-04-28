@@ -7,7 +7,6 @@ external reduce and probe programs.
 
 from __future__ import absolute_import, division, print_function
 from mmtbx.validation.clashscore import clash
-from cctbx.maptbx.box import shift_and_box_model
 from mmtbx.hydrogens import reduce_hydrogen
 from mmtbx.reduce import Optimizers
 from mmtbx.programs import probe2
@@ -88,10 +87,7 @@ class clashscore2(validation):
 
     data_manager_model = data_manager.get_model()
     # Fix up bogus unit cell when it occurs by checking crystal symmetry.
-    # @todo reduce_hydrogens.py:run() says: TODO temporary fix until the code is moved to model class
-    cs = data_manager_model.crystal_symmetry()
-    if (cs is None) or (cs.unit_cell() is None):
-      data_manager_model = shift_and_box_model(model = data_manager_model)
+    data_manager_model.add_crystal_symmetry_if_necessary()
 
     # If we've been asked to, add hydrogens to all of the models in the PDB hierarchy
     # associated with our data_manager_model.
