@@ -22,7 +22,7 @@ export PATH={bin_dir}:$PATH
 csh_template = '''\
 #!/usr/bin/env csh
 
-setenv {program}={prefix}
+setenv {program} {prefix}
 setenv {program}_PREFIX {prefix}
 setenv {program}_VERSION {version}
 setenv PATH {bin_dir}:$PATH
