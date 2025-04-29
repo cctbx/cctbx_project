@@ -216,7 +216,7 @@ class loop_idealization():
       # dumping and reloading hierarchy to do proper rounding of coordinates
       resulting_pdb_h = iotbx.pdb.input(
           source_info=None,
-          lines=self.model.get_hierarchy().as_pdb_string()).construct_hierarchy()
+          lines=self.model.get_hierarchy().as_pdb_or_mmcif_string()).construct_hierarchy()
       self.model.set_sites_cart(resulting_pdb_h.atoms().extract_xyz())
 
       berkeley_count = utils.list_rama_outliers_h(resulting_pdb_h).count("\n")
@@ -228,13 +228,13 @@ class loop_idealization():
         self.ref_exclusion_selection = self.ref_exclusion_selection[:-3]
 
       duke_count = ram.get_outliers_count_and_fraction()[0]
-      if berkeley_count != duke_count:
-        print("Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count, file=self.log)
-        self.model.get_hierarchy().write_pdb_file(file_name="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix))
-      if self.params.debug:
-        self.model.get_hierarchy().write_pdb_file(
-            file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
-                self.params.output_prefix))
+      if self.params.debug or berkeley_count != duke_count:
+        if berkeley_count != duke_count:
+          print("Discrepancy between berkeley and duke after ccd:", berkeley_count, duke_count, file=self.log)
+        self.model.pdb_or_mmcif_string_info(
+          target_filename="%d%s_discrepancy.pdb" % (self.number_of_ccd_trials, self.params.output_prefix),
+          write_file=True)
+
       if self.verbose:
         print("self.params.minimize_whole", self.params.minimize_whole)
       if self.params.minimize_whole:
@@ -261,9 +261,9 @@ class loop_idealization():
           model.set_sites_cart(
               sites_cart = result.pdb_hierarchy.atoms().extract_xyz())
         if self.params.debug:
-          self.model.get_hierarchy().write_pdb_file(
-              file_name="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,
-                  self.params.output_prefix))
+          self.model.pdb_or_mmcif_string_info(
+            target_filename="%d%s_all_not_minized.pdb" % (self.number_of_ccd_trials,self.params.output_prefix),
+            write_file=True)
         if self.reference_map is None:
           minimize_wrapper_for_ramachandran(
               model = self.model,
@@ -277,9 +277,9 @@ class loop_idealization():
               number_of_cycles=1,
               log=self.log)
       if self.params.debug:
-        self.model.get_hierarchy().write_pdb_file(
-            file_name="%d%s_all_minized.pdb" % (self.number_of_ccd_trials,
-                self.params.output_prefix))
+        self.model.pdb_or_mmcif_string_info(
+          target_filename="%d%s_all_minized.pdb" % (self.number_of_ccd_trials,self.params.output_prefix),
+          write_file=True)
       ram = ramalyze.ramalyze(pdb_hierarchy=self.model.get_hierarchy())
       self.p_after_minimiaztion_rama_outliers = ram.out_percent
       berkeley_count = utils.list_rama_outliers_h(
@@ -627,7 +627,7 @@ class loop_idealization():
             # some reason.
             print("Model_%d_angles_%s.pdb" % (i, comb), end=' ')
             print("got ", utils.n_bad_omegas(moving_h_set[-1]), "bad omegas")
-            moving_h_set[-1].write_pdb_file("Model_%d_angles_%s.pdb" % (i, comb))
+            moving_h_set[-1].write_pdb_or_mmcif_file(target_filename="Model_%d_angles_%s.pdb" % (i, comb))
             utils.list_omega(moving_h_set[-1], self.log)
             continue
             # assert 0
@@ -668,7 +668,7 @@ class loop_idealization():
 
           if self.params.save_states:
             states = ccd_obj.states
-            states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num_list[0], ccd_radius, change_all, change_radius, i))
+            states.write(file_name="%s%s_%d_%s_%d_%i_states.pdb" % (chain_id, out_res_num_list[0], ccd_radius, change_all, change_radius, i)) # PDB OK
         map_target = 0
         if self.reference_map is not None:
           map_target = maptbx.real_space_target_simple(
@@ -1037,7 +1037,7 @@ def get_fixed_moving_parts(pdb_hierarchy, out_res_num_list, n_following, n_previ
     if intersect.size() > 0:
       intersect_h = pdb_hierarchy.select(intersect)
       print("Hitting SS element", file=log)
-      print(intersect_h.as_pdb_string(), file=log)
+      print(intersect_h.as_pdb_or_mmcif_string(), file=log)
       contains_ss_element = False
       assert intersect_h.atoms_size() > 0, "Wrong atom count in SS intersection"
       # assert 0, "hitting SS element!"

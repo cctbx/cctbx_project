@@ -159,8 +159,9 @@ class cablam_idealization(object):
       self._rotate_cablam(chain_around, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if self.params.save_intermediates:
-        with open("out_%s_%d.pdb" % (curresid.strip(), i),'w') as f:
-          f.write(self.model.model_as_pdb())
+        self.model.pdb_or_mmcif_string_info(
+            target_filename="out_%s_%d.pdb" % (curresid.strip(), i),
+            write_file=True)
       scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, 30*(i+1)))
     print("angle, rama outliers, cablam outliers, hbonds (type, length, angle)", file=self.log)
     for s in scores:

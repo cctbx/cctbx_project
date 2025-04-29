@@ -278,9 +278,9 @@ class model_idealization():
       self.shift_vector = box.shift_vector
 
     if self.shift_vector is not None and self.params.debug:
-      txt = self.model.model_as_pdb()
-      with open("%s_boxed.pdb" % self.params.output_prefix, 'w') as f:
-        f.write(txt)
+      self.model.pdb_or_mmcif_string_info(
+        target_filename="%s_boxed.pdb" % self.params.output_prefix,
+        write_file=True)
 
     if self.params.trim_alternative_conformations:
       self.model.remove_alternative_conformations(always_keep_one_conformer=True)
@@ -621,7 +621,6 @@ class model_idealization():
             fname_suffix="all_idealized_h")
 
       self.final_model_statistics = self.get_statistics(self.model)
-      # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_end.pdb")
       self.time_for_run = time() - t_0
       if self.params.output_pkl:
         easy_pickle.dump(
@@ -667,11 +666,10 @@ class model_idealization():
       #     ncs_restraints_group_list=self.filtered_ncs_restr_group_list,
       #     excl_string_selection=negate_selection,
       #     reference_map=self.reference_map)
-      # self.original_boxed_hierarchy.write_pdb_file(file_name="original_boxed_h_1.pdb")
     else:
       if self.params.debug:
         self.params.ss_idealization.file_name_before_regularization = \
-            "%s_ss_before_reg.pdb" % self.params.output_prefix
+            "%s_ss_before_reg.pdb" % self.params.output_prefix # PDB OK
       self.params.ss_idealization.skip_good_ss_elements = True
       ssb.substitute_ss(
           model = self.model,
@@ -756,7 +754,7 @@ class model_idealization():
     self.time_for_run = time() - t_0
     if self.params.output_pkl or self.params.debug:
       easy_pickle.dump(
-          file_name="%s.pkl" % self.params.output_prefix,
+          file_name="%s.pkl" % self.params.output_prefix, # PDB OK
           obj = self.get_stats_obj())
 
   def minimize(self,
@@ -797,15 +795,14 @@ class model_idealization():
         self._update_model_h()
 
   def shift_and_write_result(self, model, fname_suffix=""):
-    pdb_str = model.model_as_pdb()
-    fname = "%s_%s.pdb" % (self.params.output_prefix, fname_suffix)
-    with open(fname, 'w') as f:
-      f.write(pdb_str)
+    model.pdb_or_mmcif_string_info(
+      target_filename="%s_%s.pdb" % (self.params.output_prefix, fname_suffix),
+      write_file=True)
     if self.params.debug:
-      fname = "%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix)
-      pdb_str = model.model_as_pdb(do_not_shift_back=True)
-      with open(fname, 'w') as f:
-        f.write(pdb_str)
+      model.pdb_or_mmcif_string_info(
+        target_filename="%s_%s_nosh.pdb" % (self.params.output_prefix, fname_suffix),
+        write_file=True,
+        do_not_shift_back=True)
 
   def get_rmsd_from_start(self):
     if self.rmsd_from_start is not None:
@@ -1085,7 +1082,7 @@ def run(args):
       shift_cart=shift_manager.shift_cart)
     # model.get_hierarchy().write_pdb_file("junk_shift.pdb")
 
-  hkl_content = input_objects.get_file(work_params.hkl_file_name)
+  hkl_content = input_objects.get_file(work_params.hkl_file_name) # PDB OK
   if hkl_content is not None:
     map_data, map_cs = get_map_from_hkl(
         hkl_content,
