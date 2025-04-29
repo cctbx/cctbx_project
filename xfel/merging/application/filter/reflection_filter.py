@@ -41,13 +41,17 @@ class reflection_filter(worker):
         'sampling_fraction must be between 0 and 1'
 
   def plot_reflections(self, experiments, reflections, tag):
-    correct_info = 'miller_index' in reflections.keys()
-    if correct_info == False:
-      reflections['miller_index'] = reflections['miller_index_asymmetric']
-    q2_rank = 1 / reflections.compute_d(experiments).as_numpy_array()**2
-    if correct_info == False:
-      del reflections['miller_index']
-    intensity_rank = reflections['intensity.sum.value'].as_numpy_array()
+    if reflections:
+      correct_info = 'miller_index' in reflections.keys()
+      if correct_info == False:
+        reflections['miller_index'] = reflections['miller_index_asymmetric']
+      q2_rank = 1 / reflections.compute_d(experiments).as_numpy_array()**2
+      if correct_info == False:
+        del reflections['miller_index']
+      intensity_rank = reflections['intensity.sum.value'].as_numpy_array()
+    else:
+      q2_rank = np.zeros(0)
+      intensity_rank = np.zeros(0)
     q2 = self.mpi_helper.comm.gather(q2_rank, root=0)
     intensity = self.mpi_helper.comm.gather(intensity_rank, root=0)
     if self.mpi_helper.rank == 0:
@@ -69,7 +73,7 @@ class reflection_filter(worker):
       fig.savefig(os.path.join(
         self.params.output.output_dir,
         self.params.output.prefix + f'_Iobs_{tag}.png'
-        ))
+        ).replace(' ', '_'))
       plt.close()
 
   def run(self, experiments, reflections):
@@ -234,20 +238,24 @@ class reflection_filter(worker):
     return new_experiments, new_reflections
 
   def _common_initial(self, experiments, reflections):
-    correct_info = 'miller_index' in reflections.keys()
-    if correct_info == False:
-      reflections['miller_index'] = reflections['miller_index_asymmetric']
-    resolution = reflections.compute_d(experiments)
-    if correct_info == False:
-      del reflections['miller_index']
-    reflections['q2'] = 1 / resolution**2
-    q2_rank = reflections['q2'].as_numpy_array()
-    intensity_rank = reflections['intensity.sum.value'].as_numpy_array()
+    if reflections:
+      correct_info = 'miller_index' in reflections.keys()
+      if correct_info == False:
+        reflections['miller_index'] = reflections['miller_index_asymmetric']
+      resolution = reflections.compute_d(experiments)
+      if correct_info == False:
+        del reflections['miller_index']
+      reflections['q2'] = 1 / resolution**2
+      q2_rank = reflections['q2'].as_numpy_array()
+      intensity_rank = reflections['intensity.sum.value'].as_numpy_array()
+    else:
+      q2_rank = np.zeros(0)
+      intensity_rank = np.zeros(0)
 
     # get bin edges in q2
     n_bins = self.params.select.reflection_filter.n_bins
-    q2_min = self.mpi_helper.comm.reduce(q2_rank.min(), op=self.mpi_helper.MPI.MIN, root=0)
-    q2_max = self.mpi_helper.comm.reduce(q2_rank.max(), op=self.mpi_helper.MPI.MIN, root=0)
+    q2_min = self.mpi_helper.comm.reduce(q2_rank.min() if reflections else np.inf, op=self.mpi_helper.MPI.MIN, root=0)
+    q2_max = self.mpi_helper.comm.reduce(q2_rank.max() if reflections else -np.inf, op=self.mpi_helper.MPI.MAX, root=0)
     if self.mpi_helper.rank == 0:
       q2_bins = np.linspace(q2_min, q2_max, n_bins + 1)
     else:
@@ -391,13 +399,13 @@ class reflection_filter(worker):
       fig.savefig(os.path.join(
         self.params.output.output_dir,
         self.params.output.prefix + f'_model_pred_{tag}.png'
-        ))
+        ).replace(' ', '_'))
       plt.close()
 
     intensity_normalized = self.mpi_helper.comm.gather(
       reflections['intensity_normalized'].as_numpy_array(), root=0
       )
-    q2 = self.mpi_helper.comm.gather(reflections['q2'].as_numpy_array(), root=0)
+    q2 = self.mpi_helper.comm.gather(reflections['q2'].as_numpy_array() if reflections else np.zeros(0), root=0)
     if self.mpi_helper.rank == 0:
       import matplotlib.pyplot as plt
       import os
@@ -424,7 +432,7 @@ class reflection_filter(worker):
       fig.savefig(os.path.join(
         self.params.output.output_dir,
         self.params.output.prefix + '_normalized_I.png'
-        ))
+        ).replace(' ', '_'))
       plt.close()
 
   def apply_isolation_forest(self, experiments, reflections):
@@ -466,6 +474,8 @@ class reflection_filter(worker):
     model_lower = self.mpi_helper.comm.bcast(model_lower, root=0)
     model_upper = self.mpi_helper.comm.bcast(model_upper, root=0)
 
+    if not reflections: return experiments, reflections
+
     lower_tail_indices = reflections['lower_tail_flag'].as_numpy_array()
     upper_tail_indices = reflections['upper_tail_flag'].as_numpy_array()
     lower_tail_reflections = reflections.select(reflections['lower_tail_flag'])
@@ -473,11 +483,11 @@ class reflection_filter(worker):
     lower_outliers = model_lower.predict(np.column_stack((
       lower_tail_reflections['intensity_normalized'].as_numpy_array(),
       lower_tail_reflections['q2'].as_numpy_array()
-      )))
+      ))) if lower_tail_reflections else np.zeros(0)
     upper_outliers = model_upper.predict(np.column_stack((
       upper_tail_reflections['intensity_normalized'].as_numpy_array(),
       upper_tail_reflections['q2'].as_numpy_array()
-      )))
+      ))) if upper_tail_reflections else np.zeros(0)
 
     inlier = np.ones(len(reflections), dtype=bool)
     if self.params.select.reflection_filter.apply_lower:
