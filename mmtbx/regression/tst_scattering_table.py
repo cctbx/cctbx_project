@@ -81,11 +81,11 @@ def tst001():
   phil_str = '''
   data_manager {
       model {
-        file = model.pdb
+        file = tst_scattering_table_tst_001_model.pdb
         type = %s
       }
       miller_array {
-        file = data.mtz
+        file = tst_scattering_table_tst_001_data.mtz
         labels {
           name = FOBS
           type = %s
@@ -98,8 +98,8 @@ def tst001():
   }'''
   pdb_inp = iotbx.pdb.input(source_info=None, lines=pdb_str)
   model = mmtbx.model.manager(model_input=pdb_inp, log=null_out())
-  pdb_fn = 'model.pdb'
-  mtz_fn = 'data.mtz'
+  pdb_fn = 'tst_scattering_table_tst_001_model.pdb'
+  mtz_fn = 'tst_scattering_table_tst_001_data.mtz'
   label_fobs = 'FOBS'
   label_flag = 'R-free-flags'
   with open(pdb_fn,"w") as fo:
