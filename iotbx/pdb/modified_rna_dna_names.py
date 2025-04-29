@@ -7,7 +7,7 @@ procedure:
   phenix.python elbow/elbow/scripts/process_amino_acid_parentage_from_chemical_componts.py
 
 This file is intended to be generated monthly.
-The date of file generation: Fri Aug 30 11:46:00 2024
+The date of file generation: Mon Apr 28 12:18:50 2025
 """
 from __future__ import absolute_import, division, print_function
 
@@ -36,6 +36,8 @@ lookup = {
   "8AZ" : "?",
   "8RJ" : "?",
   "9V9" : "?",
+  "A1ELZ" : "?",
+  "A1IY6" : "?",
   "A7C" : "?",
   "ADX" : "?",
   "B8N" : "?",
@@ -57,6 +59,8 @@ lookup = {
   "FMU" : "?",
   "G4P" : "?",
   "GMX" : "?",
+  "HHU" : "?",
+  "HHX" : "?",
   "I" : "?",
   "I2T" : "?",
   "IKS" : "?",
@@ -154,6 +158,8 @@ lookup = {
   "92F" : "?",
   "93D" : "?",
   "9O4" : "?",
+  "A1A0L" : "?",
+  "A1BBA" : "?",
   "A1P" : "?",
   "AAB" : "?",
   "ABT" : "?",
@@ -208,6 +214,7 @@ lookup = {
   "HOL" : "?",
   "J4T" : "?",
   "JSP" : "?",
+  "KBC" : "?",
   "LCH" : "?",
   "LHO" : "?",
   "LR6" : "?",
@@ -284,6 +291,8 @@ lookup = {
   "8AN" : "A",
   "9SI" : "A",
   "9SY" : "A",
+  "A1ID5" : "A",
+  "A1IEA" : "A",
   "A23" : "A",
   "A2L" : "A",
   "A2M" : "A",
@@ -594,6 +603,7 @@ lookup = {
   "6HT" : "DT",
   "84E" : "DT",
   "94O" : "DT",
+  "A1AAZ" : "DT",
   "ATD" : "DT",
   "ATM" : "DT",
   "CTG" : "DT",
@@ -763,6 +773,8 @@ lookup = {
   "75B" : "U",
   "85Y" : "U",
   "9QV" : "U",
+  "A1IC1" : "U",
+  "A1LZ3" : "U",
   "A6U" : "U",
   "B8H" : "U",
   "CNU" : "U",
