@@ -251,14 +251,12 @@ class energies(scitbx.restraints.energies):
 
   def _sigmas(self, self_proxies, origin_id=Auto):
     from cctbx.geometry_restraints.auto_linking_types import iterate_covalent
+    proxies = self_proxies.proxy_select(origin_id=0)
     if origin_id is Auto:
-      proxies = self_proxies.proxy_select(origin_id=0)
       for oi in iterate_covalent():
         if not oi: continue
         tmp = self_proxies.proxy_select(origin_id=oi)
         if tmp: proxies.extend(tmp)
-    else:
-      assert 0
     sigmas = [geometry_restraints.weight_as_sigma(x.weight) for x in proxies]
     return sigmas
 
