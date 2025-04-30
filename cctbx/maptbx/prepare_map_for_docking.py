@@ -1511,93 +1511,40 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
 
   return(model_sigmaA)
 
-def assess_cryoem_errors(
-    mmm, d_min,
+def assess_halfmap_errors(
+    working_mmm, d_min,
     determine_ordered_volume=True,
-    ordered_mask_id=None, fixed_mask_id=None,
-    sphere_points=500, sphere_cent=None, radius=None, double_map_box = False,
-    verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
+    sphere_points=500, verbosity=1, log=sys.stdout):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
-  Assume (but check) that half-maps come from full cell, not boxed.
-  Origin can be arbitrary, as long as full cell is given.
 
   Compulsory arguments:
-  mmm: map_model_manager object containing two half-maps from reconstruction
+  working_mmm: map_model_manager object containing two half-maps from reconstruction
   d_min: target resolution, either best resolution for map or resolution for
-    target region
+    target region. Determined automatically if None.
 
   Optional arguments:
   determine_ordered_volume: flag for whether ordered volume should be assessed
-  ordered_mask_id: identifier for mask defining ordered volume
-  sphere_cent: center of sphere defining target region for analysis
-    default is center of map
-  radius: radius of sphere
-    default (when sphere center not defined either) is 1/3 narrowest map width
   sphere_points: number of reflections to use for local spherical average
-  shift_map_origin: should map coefficients be shifted to correspond to
-    original origin, rather than the origin being the corner of the box,
-    default True
-  define_ordered_volume: should ordered volume over full map be evaluated, to
-    compare with cutout volume,
-    default True
-  keep_full_map: don't mask or box the input map
-    default False, use with caution
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
   """
 
-  from libtbx import group_args
-
-  if verbosity > 0:
-    print("\nPrepare map for docking by analysing signal and errors", file=log)
-
-  # Start from two half-maps and ordered volume mask in map_model_manager
-  # Determine ordered volume in whole reconstruction and fraction that will be in sphere
-  unit_cell = mmm.map_manager().unit_cell()
-  unit_cell_grid = mmm.map_manager().unit_cell_grid
-  map_grid = mmm.map_manager().map_data().all()
-  if (not mmm.map_manager().is_full_size()):
-    print("\nERROR: Unit cell grid does not match map dimensions:")
-    print("Unit cell grid: ", unit_cell_grid)
-    print("Map dimensions: ", map_grid)
-    raise Sorry("Provided maps must be full-size")
-  spacings = get_grid_spacings(unit_cell,unit_cell_grid)
-  ucpars = unit_cell.parameters()
-  # Determine voxel count for fixed model mask
-  mm_model_mask = mmm.get_map_manager_by_id(fixed_mask_id)
-  voxels_in_fixed_model = 0
-  if mm_model_mask is not None:
-    model_mask_data = mm_model_mask.map_data()
-    mask_sel = model_mask_data > 0
-    voxels_in_fixed_model = mask_sel.count(True)
-
-  # Keep track of shifted origin
-  origin_shift = mmm.map_manager().origin_shift_grid_units
-  if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
-    shifted_origin = True
-  else:
-    shifted_origin = False
-  if sphere_cent is None:
-    # Default to sphere in center of cell extending 2/3 distance to nearest edge
-    # sphere_cent_grid and sphere_cent_map are relative to map origin
-    sphere_cent_grid = [round(n/2) for n in unit_cell_grid]
-    sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
-    if radius is None:
-      radius = min(ucpars[0], ucpars[1], ucpars[2])/3.
-  else:
-    if radius is None:
-      raise Sorry("Radius must be provided if sphere_cent is defined")
-    # Force sphere center to be on a map grid point for easier comparison of different spheres
-    # Account for origin shift if present in input maps
-    sphere_cent_frac = unit_cell.fractionalize(sphere_cent)
-    sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
-    if shifted_origin:
-      sphere_cent_grid = [(c - o) for c,o in zip(sphere_cent_grid, origin_shift)]
-  for i in range(3):
-    if sphere_cent_grid[i] > map_grid[i] or sphere_cent_grid[i] < 0:
-      raise Sorry("Sphere centre is outside map grid")
-  sphere_cent_map = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
-  sphere_cent_map = flex.double(sphere_cent_map)
+  # Compute local averages needed for initial covariance terms
+  # Do these calculations at extended resolution to avoid edge effects up to
+  # desired resolution
+  wuc = working_mmm.crystal_symmetry().unit_cell()
+  unit_cell_grid = working_mmm.map_manager().unit_cell_grid
+  ucpars = wuc.parameters()
+  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
+  work_mm = working_mmm.map_manager()
+  v_star = 1./wuc.volume()
+  r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
+  spacings = get_grid_spacings(wuc,unit_cell_grid)
+  minimum_possible_d_min = 2.*max(spacings)
+  d_min = max(d_min, minimum_possible_d_min)
+  d_min_extended = 1./(1./d_min + r_star)
+  mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
+  mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
   # Set first guess of d_min if no value provided
   # The majority of cryo-EM deposits have a ratio of nominal resolution to pixel
@@ -1609,116 +1556,6 @@ def assess_cryoem_errors(
     d_min = 2.5 * max(spacings)
   else:
     guess_d_min = False
-
-  if determine_ordered_volume:
-    ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
-    total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
-    ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent_map, radius)
-    fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
-  else:
-    fraction_scattering = None
-
-  # Get map coefficients for maps after spherical masking
-  # Define box big enough to hold sphere plus soft masking
-  # Warn if sphere too near edge of full map for soft mask to reach zero
-  # or if less than about 85% of sphere would be within full map
-  # (outside by >= half-radius)
-  boundary_to_smoothing_ratio = 2
-  soft_mask_radius = d_min
-  padding = soft_mask_radius * boundary_to_smoothing_ratio
-  cushion = flex.double(3,radius+padding)
-  cart_min = flex.double(sphere_cent_map) - cushion
-  cart_max = flex.double(sphere_cent_map) + cushion
-  max_outside = 0.
-  for i in range(3):
-    if cart_min[i] < 0:
-      max_outside = max(max_outside, -cart_min[i])
-    if cart_max[i] > ucpars[i]-spacings[i]:
-      max_outside = max(max_outside, cart_max[i]-(ucpars[i]-spacings[i]))
-  if max_outside > padding + radius/2:
-    print("\nWARNING: substantial fraction of sphere is outside map volume", file=log)
-  elif max_outside > padding:
-    print("\nWARNING: sphere is partially outside map volume", file=log)
-  elif max_outside > 0:
-    print("\nWARNING: sphere too near map edge to allow full extent of smooth masking", file=log)
-
-  cs = mmm.crystal_symmetry()
-  uc = cs.unit_cell()
-
-  # Set some parameters that will be overwritten if masked and cut out
-  over_sampling_factor = 1.
-  box_volume = uc.volume()
-  weighted_masked_volume = box_volume
-
-  if keep_full_map: # Rearrange later so this choice comes first?
-    working_mmm = mmm.deep_copy()
-  else:
-    # Box the map within xyz bounds, converted to map grid units
-    lower_frac = uc.fractionalize(tuple(cart_min))
-    upper_frac = uc.fractionalize(tuple(cart_max))
-    all_orig = mmm.map_data().all()
-    lower_bounds = [int(math.floor(f * n)) for f, n in zip(lower_frac, all_orig)]
-    upper_bounds = [int(math.ceil( f * n)) for f, n in zip(upper_frac, all_orig)]
-    working_mmm = mmm.extract_all_maps_with_bounds(
-        lower_bounds=lower_bounds, upper_bounds=upper_bounds)
-    # Make and apply spherical mask
-    working_mmm.create_spherical_mask(
-      soft_mask_radius=soft_mask_radius,
-      boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
-    working_mmm.apply_mask_to_maps()
-    if double_map_box:
-      delta_cushion = 2*radius - cushion[0]
-      delta_cushion_grid = int(math.ceil(delta_cushion/spacings[0]))
-      # Note that extract_all_maps_with_bounds works in terms of the lower
-      # and upper ranges of the map being operated on. Here we are padding the
-      # map out with zeroes on all sides.
-      new_lower_bounds = tuple(-flex.int(3,delta_cushion_grid))
-      new_upper_bounds = tuple(flex.int(upper_bounds) - flex.int(lower_bounds) + flex.int(3,delta_cushion_grid))
-      working_mmm = working_mmm.extract_all_maps_with_bounds(
-          lower_bounds=new_lower_bounds, upper_bounds=new_upper_bounds,
-          stay_inside_current_map = False)
-    mask_info = working_mmm.mask_info()
-
-    working_map_size = working_mmm.map_data().size()
-    box_volume = uc.volume() * (
-        working_map_size/mmm.map_data().size())
-    weighted_masked_volume = box_volume * mask_info.mean
-
-    voxels_in_masked_model = 0
-    if voxels_in_fixed_model > 0:
-      mask_info = working_mmm.mask_info(mask_id=fixed_mask_id)
-      mm_model_mask = working_mmm.get_map_manager_by_id(fixed_mask_id)
-      model_mask_data = mm_model_mask.map_data()
-      voxels_in_masked_model = working_map_size * mask_info.mean
-
-    # Calculate an oversampling ratio defined as the ratio between the size of
-    # the cut-out cube and the size of a cube that could contain a sphere
-    # big enough to hold the volume of ordered density. Because the ratio of
-    # the size of a cube to the sphere inscribed in it is about 1.9 (which is
-    # close to the factor of two between typical protein volume and unit cell
-    # volume in a crystal), this should yield likelihood scores on a similar
-    # scale to crystallographic ones.
-    if determine_ordered_volume:
-      assert(ordered_volume_in_sphere > 0.)
-      over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
-    else:
-      over_sampling_factor = 4. # Guess!
-
-  # Compute local averages needed for initial covariance terms
-  # Do these calculations at extended resolution to avoid edge effects up to
-  # desired resolution
-  wuc = working_mmm.crystal_symmetry().unit_cell()
-  ucpars = wuc.parameters()
-  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
-  work_mm = working_mmm.map_manager()
-  v_star = 1./wuc.volume()
-  r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
-  minimum_possible_d_min = 2.*max(spacings)
-  d_min = max(d_min, minimum_possible_d_min)
-  d_min_extended = 1./(1./d_min + r_star)
-  mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
-  mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
-
   success = False
   while guess_d_min and not success:
     # Check whether signal goes to higher resolution than initial guess
@@ -1897,7 +1734,6 @@ def assess_cryoem_errors(
     sigmaS = expectE.customized_copy(data=flex.double(expectE.size(),0))
     sigmaE = expectE.customized_copy(data=flex.double(expectE.size(),0))
   i_bin_used = 0 # Keep track in case full range of bins not used
-  weighted_map_noise = 0.
   if verbosity > 0:
     print("MapCC before and after rescaling as a function of resolution", file=log)
     print("Bin   <ssqr>   Nterms   mapCC_before   mapCC_after", file=log)
@@ -1941,8 +1777,6 @@ def assess_cryoem_errors(
       sigmaS.data().set_selected(sel, sigmaS_terms)
       sigmaE.data().set_selected(sel, sigmaE_terms)
 
-    weighted_map_noise += flex.sum(sigmaE_terms/(sigmaE_terms + 2*sigmaS_terms))
-
     # Apply corrections to mc1 and mc2 to compute mapCC after rescaling
     # SigmaE variance is twice as large for half-maps before averaging
     scale_terms_12 = 1./flex.sqrt(sigmaS_terms + sigmaE_terms)
@@ -1980,17 +1814,198 @@ def assess_cryoem_errors(
     coeffs_as_map = results.mm_data # map_manager with intensities
     coeffs_as_map.write_map("Dobs.map")
 
-  # At this point, weighted_map_noise is the sum of the noise variance for a
-  # weighted half-map. In the following, this sum could be multiplied by two
-  # for Friedel symmetry, but then divided by two for effects of averaging.
-  weighted_map_noise = math.sqrt(weighted_map_noise) / weighted_masked_volume
+  return group_args( working_mmm=working_mmm, expectE=expectE, dobs=dobs)
+
+def assess_cryoem_errors(
+    mmm, d_min,
+    determine_ordered_volume=True,
+    ordered_mask_id=None, fixed_mask_id=None,
+    sphere_points=500, sphere_cent=None, radius=None, double_map_box=False,
+    verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
+  """
+  Determine error parameters from half-maps (preferred) or full map, and make
+  weighted map coeffs for region.
+
+  Compulsory arguments:
+  mmm: map_model_manager object containing map or half-maps from reconstruction
+    and optionally fixed model plus fixed model mask
+  d_min: target resolution, either best resolution for map or resolution for
+    target region
+
+  Optional arguments:
+  determine_ordered_volume: flag for whether ordered volume should be assessed
+    (only applicable for half-maps)
+  ordered_mask_id: identifier for mask defining ordered volume
+  sphere_cent: center of sphere defining target region for analysis
+    default is center of map
+  radius: radius of sphere
+    default (when sphere center not defined either) is 1/3 narrowest map width
+  sphere_points: number of reflections to use for local spherical average
+  shift_map_origin: should map coefficients be shifted to correspond to
+    original origin, rather than the origin being the corner of the box,
+    default True
+  define_ordered_volume: should ordered volume over full map be evaluated, to
+    compare with cutout volume,
+    default True
+  keep_full_map: don't mask or box the input map
+    default False, use with caution
+  verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
+  """
+
+  if verbosity > 0:
+    print("\nPrepare map for docking by assessing signal and errors", file=log)
+
+  # Start from two half-maps and ordered volume mask in map_model_manager
+  # Determine ordered volume in whole reconstruction and fraction that will be in sphere
+  unit_cell = mmm.map_manager().unit_cell()
+  unit_cell_grid = mmm.map_manager().unit_cell_grid
+  map_grid = mmm.map_manager().map_data().all()
+  if (not mmm.map_manager().is_full_size()):
+    print("\nERROR: Unit cell grid does not match map dimensions:")
+    print("Unit cell grid: ", unit_cell_grid)
+    print("Map dimensions: ", map_grid)
+    raise Sorry("Provided maps must be full-size")
+  spacings = get_grid_spacings(unit_cell,unit_cell_grid)
+  ucpars = unit_cell.parameters()
+  # Determine voxel count for fixed model mask
+  mm_model_mask = mmm.get_map_manager_by_id(fixed_mask_id)
+  voxels_in_fixed_model = 0
+  if mm_model_mask is not None:
+    model_mask_data = mm_model_mask.map_data()
+    mask_sel = model_mask_data > 0
+    voxels_in_fixed_model = mask_sel.count(True)
+
+  # Keep track of shifted origin
+  origin_shift = mmm.map_manager().origin_shift_grid_units
+  if flex.sum(flex.abs(flex.double(origin_shift))) > 0:
+    shifted_origin = True
+  else:
+    shifted_origin = False
+  if sphere_cent is None:
+    # Default to sphere in center of cell extending 2/3 distance to nearest edge
+    # sphere_cent_grid and sphere_cent_map are relative to map origin
+    sphere_cent_grid = [round(n/2) for n in unit_cell_grid]
+    sphere_cent = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
+    if radius is None:
+      radius = min(ucpars[0], ucpars[1], ucpars[2])/3.
+  else:
+    if radius is None:
+      raise Sorry("Radius must be provided if sphere_cent is defined")
+    # Force sphere center to be on a map grid point for easier comparison of different spheres
+    # Account for origin shift if present in input maps
+    sphere_cent_frac = unit_cell.fractionalize(sphere_cent)
+    sphere_cent_grid = [round(n * f) for n,f in zip(unit_cell_grid, sphere_cent_frac)]
+    if shifted_origin:
+      sphere_cent_grid = [(c - o) for c,o in zip(sphere_cent_grid, origin_shift)]
+  for i in range(3):
+    if sphere_cent_grid[i] > map_grid[i] or sphere_cent_grid[i] < 0:
+      raise Sorry("Sphere centre is outside map grid")
+  sphere_cent_map = [(g * s) for g,s in zip(sphere_cent_grid, spacings)]
+  sphere_cent_map = flex.double(sphere_cent_map)
+
+  if determine_ordered_volume:
+    ordered_mm = mmm.get_map_manager_by_id(map_id=ordered_mask_id)
+    total_ordered_volume = flex.mean(ordered_mm.map_data()) * unit_cell.volume()
+    ordered_volume_in_sphere = get_ordered_volume_exact(ordered_mm, sphere_cent_map, radius)
+    fraction_scattering = ordered_volume_in_sphere / total_ordered_volume
+  else:
+    fraction_scattering = None
+
+  # Get map coefficients for maps after spherical masking
+  # Define box big enough to hold sphere plus soft masking
+  # Warn if sphere too near edge of full map for soft mask to reach zero
+  # or if less than about 85% of sphere would be within full map
+  # (outside by >= half-radius)
+  boundary_to_smoothing_ratio = 2
+  soft_mask_radius = d_min
+  padding = soft_mask_radius * boundary_to_smoothing_ratio
+  cushion = flex.double(3,radius+padding)
+  cart_min = flex.double(sphere_cent_map) - cushion
+  cart_max = flex.double(sphere_cent_map) + cushion
+  max_outside = 0.
+  for i in range(3):
+    if cart_min[i] < 0:
+      max_outside = max(max_outside, -cart_min[i])
+    if cart_max[i] > ucpars[i]-spacings[i]:
+      max_outside = max(max_outside, cart_max[i]-(ucpars[i]-spacings[i]))
+  if max_outside > padding + radius/2:
+    print("\nWARNING: substantial fraction of sphere is outside map volume", file=log)
+  elif max_outside > padding:
+    print("\nWARNING: sphere is partially outside map volume", file=log)
+  elif max_outside > 0:
+    print("\nWARNING: sphere too near map edge to allow full extent of smooth masking", file=log)
+
+  cs = mmm.crystal_symmetry()
+  uc = cs.unit_cell()
+
+  # Set some parameters that will be overwritten if masked and cut out
+  over_sampling_factor = 1.
+  box_volume = uc.volume()
+
+  if keep_full_map: # Rearrange later so this choice comes first?
+    working_mmm = mmm.deep_copy()
+  else:
+    # Box the map within xyz bounds, converted to map grid units
+    lower_frac = uc.fractionalize(tuple(cart_min))
+    upper_frac = uc.fractionalize(tuple(cart_max))
+    all_orig = mmm.map_data().all()
+    lower_bounds = [int(math.floor(f * n)) for f, n in zip(lower_frac, all_orig)]
+    upper_bounds = [int(math.ceil( f * n)) for f, n in zip(upper_frac, all_orig)]
+    working_mmm = mmm.extract_all_maps_with_bounds(
+        lower_bounds=lower_bounds, upper_bounds=upper_bounds)
+    # Make and apply spherical mask
+    working_mmm.create_spherical_mask(
+      soft_mask_radius=soft_mask_radius,
+      boundary_to_smoothing_ratio=boundary_to_smoothing_ratio)
+    working_mmm.apply_mask_to_maps()
+    if double_map_box:
+      delta_cushion = 2*radius - cushion[0]
+      delta_cushion_grid = int(math.ceil(delta_cushion/spacings[0]))
+      # Note that extract_all_maps_with_bounds works in terms of the lower
+      # and upper ranges of the map being operated on. Here we are padding the
+      # map out with zeroes on all sides.
+      new_lower_bounds = tuple(-flex.int(3,delta_cushion_grid))
+      new_upper_bounds = tuple(flex.int(upper_bounds) - flex.int(lower_bounds) + flex.int(3,delta_cushion_grid))
+      working_mmm = working_mmm.extract_all_maps_with_bounds(
+          lower_bounds=new_lower_bounds, upper_bounds=new_upper_bounds,
+          stay_inside_current_map = False)
+    mask_info = working_mmm.mask_info()
+
+    working_map_size = working_mmm.map_data().size()
+    box_volume = uc.volume() * (
+        working_map_size/mmm.map_data().size())
+
+    voxels_in_masked_model = 0
+    if voxels_in_fixed_model > 0:
+      mask_info = working_mmm.mask_info(mask_id=fixed_mask_id)
+      mm_model_mask = working_mmm.get_map_manager_by_id(fixed_mask_id)
+      model_mask_data = mm_model_mask.map_data()
+      voxels_in_masked_model = working_map_size * mask_info.mean
+
+    # Calculate an oversampling ratio defined as the ratio between the size of
+    # the cut-out cube and the size of a cube that could contain a sphere
+    # big enough to hold the volume of ordered density. Because the ratio of
+    # the size of a cube to the sphere inscribed in it is about 1.9 (which is
+    # close to the factor of two between typical protein volume and unit cell
+    # volume in a crystal), this should yield likelihood scores on a similar
+    # scale to crystallographic ones.
+    if determine_ordered_volume:
+      assert(ordered_volume_in_sphere > 0.)
+      over_sampling_factor = box_volume / (ordered_volume_in_sphere * 6./math.pi)
+    else:
+      over_sampling_factor = 4. # Guess!
 
   if verbosity > 0:
     if determine_ordered_volume:
       print("Fraction of full map scattering: ",fraction_scattering, file=log)
     print("Over-sampling factor: ",over_sampling_factor, file=log)
-    print("Weighted map noise: ",weighted_map_noise, file=log)
     sys.stdout.flush()
+
+  results = assess_halfmap_errors(working_mmm, d_min, determine_ordered_volume,
+                                  sphere_points, verbosity)
+  working_mmm = results.working_mmm
+  expectE = results.expectE
+  dobs = results.dobs
 
   # If there is a fixed model and it occupies a significant part of the sphere,
   # compute the structure factors corresponding to the cutout density for the fixed
@@ -2044,18 +2059,19 @@ def assess_cryoem_errors(
       # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
       # write_mtz(masked_model_E,"masked_model.mtz","masked_model")
 
-  ssqmin = flex.min(mc1.d_star_sq().data())
-  ssqmax = flex.max(mc1.d_star_sq().data())
-  resultsdict = dict(
-    n_bins = n_bins,
-    ssqr_bins = ssqr_bins,
-    ssqmin = ssqmin,
-    ssqmax = ssqmax,
-    asqr_scale = asqr_scale,
-    sigmaT_bins = sigmaT_bins,
-    asqr_beta = asqr_beta,
-    a_baniso = a_baniso,
-    mapCC_bins = mapCC_bins)
+  # resultsdict could possibly be saved to re-use parameters as starting point
+  # ssqmin = flex.min(mc1.d_star_sq().data())
+  # ssqmax = flex.max(mc1.d_star_sq().data())
+  # resultsdict = dict(
+  #   n_bins = n_bins,
+  #   ssqr_bins = ssqr_bins,
+  #   ssqmin = ssqmin,
+  #   ssqmax = ssqmax,
+  #   asqr_scale = asqr_scale,
+  #   sigmaT_bins = sigmaT_bins,
+  #   asqr_beta = asqr_beta,
+  #   a_baniso = a_baniso,
+  #   mapCC_bins = mapCC_bins)
   return group_args(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
@@ -2064,9 +2080,7 @@ def assess_cryoem_errors(
     # expectE = expectE, dobs = dobs,
     masked_model_E = masked_model_E, masked_model_sigmaA = masked_model_sigmaA,
     over_sampling_factor = over_sampling_factor,
-    fraction_scattering = fraction_scattering,
-    weighted_map_noise = weighted_map_noise,
-    resultsdict = resultsdict)
+    fraction_scattering = fraction_scattering)
 
 # Command-line interface using argparse
 def run():
