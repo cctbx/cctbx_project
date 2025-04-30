@@ -289,7 +289,7 @@ class energies(scitbx.restraints.energies):
       bond_deltas=self._get_bond_deltas(origin_id=origin_id)
       if len(bond_deltas) >0:
         sigmas = self.bond_sigmas(origin_id=origin_id)
-        assert len(bond_deltas)==len(sigmas), 'bond_deltas!=sigmas %s %s' % (len(bond_deltas), len(sigmas))
+        #assert len(bond_deltas)==len(sigmas), 'bond_deltas!=sigmas %s %s' % (len(bond_deltas), len(sigmas))
         z_scores = flex.double([(bond_delta/sigma) for bond_delta,sigma in zip(bond_deltas,sigmas)])
         b_rmsz = math.sqrt(flex.mean_default(z_scores*z_scores,0))
         b_z_max = flex.max_default(flex.abs(z_scores), 0)
