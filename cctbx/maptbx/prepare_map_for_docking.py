@@ -2066,8 +2066,9 @@ def assess_cryoem_errors(
   expectE = results.expectE
   dobs = results.dobs
   # d_min may have been evaluated from half-maps
-  d_min = flex.min(expectE.d_spacings().data())
-  d_max = flex.max(expectE.d_spacings().data())
+  eps = 1.E-6 # Add a little slop for rare rounding errors leading to mismatch of limits
+  d_min = flex.min(expectE.d_spacings().data()) - eps
+  d_max = flex.max(expectE.d_spacings().data()) + eps
 
   # If there is a fixed model and it occupies a significant part of the sphere,
   # compute the structure factors corresponding to the cutout density for the fixed
