@@ -1388,7 +1388,7 @@ def local_mean_density(mm, radius):
 
   return local_mean_mm
 
-def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
+def sigmaA_from_model_in_map(expectE, dobs, Fcalc, over_sampling_factor,
                              verbosity=0, log=sys.stdout):
   """
   Compute sigmaA values needed to explain agreement of model with map given map errors
@@ -1396,7 +1396,7 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
   Compulsory arguments:
   expectE: Emean giving expected E for map
   dobs:    weighting factor for map coefficient accuracy
-  Ecalc:   calculated E-values for placed model
+  Fcalc:   calculated structure factors for placed model
   over_sampling_factor: account for oversampling in LLG calculation
                         relevant here for precision of sigmaA estimate
   Optional arguments:
@@ -1404,6 +1404,7 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
   log:       destination for printing if any
   """
   model_sigmaA = expectE.customized_copy(data=flex.double(expectE.size(),0))
+  Ecalc = Fcalc.customized_copy(data=Fcalc.data())
   xdat = []
   ydat = []
   wdat = []
@@ -1417,14 +1418,13 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
     eEsel = expectE.select(sel)
     abseE = eEsel.amplitudes().data()
     p1 = eEsel.phases().data()
-    Ecalc_sel = Ecalc.select(sel)
-    absEc = Ecalc_sel.amplitudes().data()
-    sigmaP = flex.mean_default(flex.pow2(absEc),0.)
-    absEc /= math.sqrt(sigmaP)
+    Fcalc_sel = Fcalc.select(sel)
+    absFc = Fcalc_sel.amplitudes().data()
+    sigmaP = flex.mean_default(flex.pow2(absFc),0.)
+    absEc = absFc/math.sqrt(sigmaP)
     Ecalc.data().set_selected(sel,
-                  Ecalc.data().select(sel) / math.sqrt(sigmaP))
-    Ecalc_sel /= math.sqrt(sigmaP)
-    p2 = Ecalc_sel.phases().data()
+                  Fcalc.data().select(sel) / math.sqrt(sigmaP))
+    p2 = Fcalc_sel.phases().data()
     cosdphi = flex.cos(p2 - p1)
     dobssel = dobs.data().select(sel)
 
@@ -1507,14 +1507,12 @@ def sigmaA_from_model_in_map(expectE, dobs, Ecalc, over_sampling_factor,
     ax[1].plot(xdat,flex.exp(linlogsiga),label="line fit")
     ax[1].plot(xdat,flex.exp(logsiga_combined),label="combined")
     ax[1].legend(loc="lower left")
-    plt.show()
+    plt.savefig("fixed_model_sigmaA_plot.png")
 
-  return(model_sigmaA)
+  return(group_args(model_sigmaA=model_sigmaA, Ecalc=Ecalc))
 
 def assess_halfmap_errors(
-    working_mmm, d_min,
-    determine_ordered_volume=True,
-    sphere_points=500, verbosity=1, log=sys.stdout):
+          working_mmm, d_min, sphere_points=500, verbosity=1, log=sys.stdout):
   """
   Refine error parameters from half-maps, make weighted map coeffs for region.
 
@@ -1524,9 +1522,9 @@ def assess_halfmap_errors(
     target region. Determined automatically if None.
 
   Optional arguments:
-  determine_ordered_volume: flag for whether ordered volume should be assessed
   sphere_points: number of reflections to use for local spherical average
   verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
+  log: destination for standard output
   """
 
   # Compute local averages needed for initial covariance terms
@@ -1535,40 +1533,43 @@ def assess_halfmap_errors(
   wuc = working_mmm.crystal_symmetry().unit_cell()
   unit_cell_grid = working_mmm.map_manager().unit_cell_grid
   ucpars = wuc.parameters()
-  d_max = max(ucpars[0], ucpars[1], ucpars[2]) + d_min
+  d_max = max(ucpars[0], ucpars[1], ucpars[2])
   work_mm = working_mmm.map_manager()
   v_star = 1./wuc.volume()
   r_star = math.pow(3*sphere_points*v_star/(4*math.pi),1./3.)
   spacings = get_grid_spacings(wuc,unit_cell_grid)
+
+  # Check and potentially re-evaluate d_min
+  guess_d_min = False
   minimum_possible_d_min = 2.*max(spacings)
-  d_min = max(d_min, minimum_possible_d_min)
+  if d_min is None or d_min <= 0.:
+    # Set first guess of d_min if no value provided
+    # The majority of cryo-EM deposits have a ratio of nominal resolution to pixel
+    # size between 2.5 and 3.5.
+    guess_d_min = True
+    d_min = 2.5 * max(spacings)
+  elif d_min < minimum_possible_d_min:
+    d_min = minimum_possible_d_min
+    guess_d_min = True
+
+  # Compute map coefficients from half-maps, then either proceed or evaluate
+  # sensible d_min from different choices
   d_min_extended = 1./(1./d_min + r_star)
   mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
   mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
 
-  # Set first guess of d_min if no value provided
-  # The majority of cryo-EM deposits have a ratio of nominal resolution to pixel
-  # size between 2.5 and 3.5. If the correct ratio is higher than the 2.5 used
-  # here, this will waste some time, but if the ratio is lower the highest
-  # resolution consistent with Shannon sampling (ratio of 2) will be tested below.
-  if d_min is None or d_min <= 0.:
-    guess_d_min = True
-    d_min = 2.5 * max(spacings)
-  else:
-    guess_d_min = False
-  success = False
-  while guess_d_min and not success:
+  while guess_d_min:
     # Check whether signal goes to higher resolution than initial guess
     d_min_from_fsc = mc1.d_min_from_fsc(other=mc2, fsc_cutoff=0.05).d_min
     # d_min_from_fsc returns None if the fsc_cutoff has not been passed by resolution limit
     if d_min_from_fsc is not None:
       d_min = max(d_min_from_fsc,minimum_possible_d_min)
-      success = True
+      guess_d_min = False
     else:
       if d_min > minimum_possible_d_min: # Set d_min to highest possible value and repeat
         d_min = minimum_possible_d_min
       else:
-        success = True # d_min is already highest possible value
+        guess_d_min = False # d_min is already highest possible value
     d_min_extended = 1./(1./d_min + r_star)
     mc1 = working_mmm.map_manager_1().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
     mc2 = working_mmm.map_manager_2().map_as_fourier_coefficients(d_min=d_min_extended, d_max=d_max)
@@ -1814,14 +1815,56 @@ def assess_halfmap_errors(
     coeffs_as_map = results.mm_data # map_manager with intensities
     coeffs_as_map.write_map("Dobs.map")
 
-  return group_args( working_mmm=working_mmm, expectE=expectE, dobs=dobs)
+  return group_args(expectE=expectE, dobs=dobs)
+
+def map_errors_from_d_min(working_mmm, d_min, verbosity=1, log=sys.stdout):
+  """
+  Use generic relationship between d_min and shape of FSC curve to compute
+  radially-symmetry Dobs and Emean values from a single full map.
+  Make weighted map coeffs for region.
+
+  Compulsory arguments:
+  working_mmm: map_model_manager object containing single map from reconstruction
+  d_min: target resolution, either best resolution for map or resolution for
+    target region. Legal value must be provided
+
+  Optional arguments:
+  verbosity: 0/1/2/3/4 for mute/log/verbose/debug/testing
+  log: destination for standard output
+  """
+
+  wuc = working_mmm.crystal_symmetry().unit_cell()
+  ucpars = wuc.parameters()
+  d_max = max(ucpars[0], ucpars[1], ucpars[2])
+  map_coeffs = working_mmm.map_as_fourier_coefficients(d_min=d_min, d_max=d_max)
+  e_array = map_coeffs.amplitudes()
+  e_array.setup_binner(auto_binning = True)
+  e_array = e_array.quasi_normalize_structure_factors()
+  expectE = e_array.phase_transfer(phase_source = map_coeffs.phases(deg=False), deg = False)
+  # The signal_ratio and deltaB are computed from a database investigation of nearly
+  # 500 EMDB entries, to match the FSC curves associated with different limits
+  signal_ratio_0 = 34.468*math.exp(3.00533/d_min + 4.27895/d_min**2)
+  deltaB = 21.3225*d_min**2 + 12.0213*d_min+17.1158
+  signal_ratio = expectE.customized_copy(data=flex.double(expectE.size(), signal_ratio_0))
+  signal_ratio = signal_ratio.apply_debye_waller_factors(b_iso=deltaB)
+  dobs = expectE.customized_copy(data=signal_ratio.data()/(1.+signal_ratio.data()))
+  return group_args(expectE=expectE, dobs=dobs)
 
 def assess_cryoem_errors(
-    mmm, d_min,
-    determine_ordered_volume=True,
-    ordered_mask_id=None, fixed_mask_id=None,
-    sphere_points=500, sphere_cent=None, radius=None, double_map_box=False,
-    verbosity=1, shift_map_origin=True, keep_full_map=False, log=sys.stdout):
+        mmm=None,
+        d_min=None,
+        half_maps_provided=False,
+        determine_ordered_volume=True,
+        sphere_cent=None,
+        radius=None,
+        double_map_box=False,
+        sphere_points=500,
+        shift_map_origin=True,
+        ordered_mask_id=None,
+        fixed_mask_id=None,
+        verbosity=1,
+        keep_full_map=False,
+        log=sys.stdout):
   """
   Determine error parameters from half-maps (preferred) or full map, and make
   weighted map coeffs for region.
@@ -1917,7 +1960,17 @@ def assess_cryoem_errors(
   # or if less than about 85% of sphere would be within full map
   # (outside by >= half-radius)
   boundary_to_smoothing_ratio = 2
-  soft_mask_radius = d_min
+  # d_min may be waiting to be evaluated, if there are half-maps
+  sensible_d_min = 2.5*max(spacings) # Lower end of typical range from EMDB
+  minimum_possible_d_min = 2.*max(spacings)
+  if d_min is None or d_min < minimum_possible_d_min:
+    if not half_maps_provided:
+      print("Given map spacing, minimum possible value for d_min is ",
+            minimum_possible_d_min)
+      raise Sorry("Sensible value for d_min must be given for single map")
+    soft_mask_radius = sensible_d_min
+  else:
+    soft_mask_radius = d_min
   padding = soft_mask_radius * boundary_to_smoothing_ratio
   cushion = flex.double(3,radius+padding)
   cart_min = flex.double(sphere_cent_map) - cushion
@@ -2001,11 +2054,20 @@ def assess_cryoem_errors(
     print("Over-sampling factor: ",over_sampling_factor, file=log)
     sys.stdout.flush()
 
-  results = assess_halfmap_errors(working_mmm, d_min, determine_ordered_volume,
-                                  sphere_points, verbosity)
-  working_mmm = results.working_mmm
+  if half_maps_provided:
+    results = assess_halfmap_errors(working_mmm, d_min,
+                                    sphere_points=sphere_points,
+                                    verbosity=verbosity,
+                                    log=log)
+  else:
+    results = map_errors_from_d_min(working_mmm, d_min,
+                                    verbosity=verbosity,
+                                    log=log)
   expectE = results.expectE
   dobs = results.dobs
+  # d_min may have been evaluated from half-maps
+  d_min = flex.min(expectE.d_spacings().data())
+  d_max = flex.max(expectE.d_spacings().data())
 
   # If there is a fixed model and it occupies a significant part of the sphere,
   # compute the structure factors corresponding to the cutout density for the fixed
@@ -2022,11 +2084,12 @@ def assess_cryoem_errors(
     masked_model_contributes = True
     mm_masked_model = working_mmm.get_map_manager_by_id(map_id='fixed_atom_map')
     # mm_masked_model.write_map('masked_model.map')
-    d_max = flex.max(expectE.d_spacings().data())
-    masked_model_E = mm_masked_model.map_as_fourier_coefficients(d_min=d_min,d_max=d_max)
+    masked_model_F = mm_masked_model.map_as_fourier_coefficients(d_min=d_min,d_max=d_max)
 
   if masked_model_contributes:
-    masked_model_sigmaA = sigmaA_from_model_in_map(expectE, dobs, masked_model_E, over_sampling_factor, verbosity)
+    results = sigmaA_from_model_in_map(expectE, dobs, masked_model_F, over_sampling_factor, verbosity)
+    masked_model_sigmaA = results.model_sigmaA
+    masked_model_E = results.Ecalc
     # Possibly temporary choice: modify expectE instead of adding fixed contribution in phasertng
     expectE_mod = expectE.customized_copy(data=expectE.data()
                   - masked_model_sigmaA.data()*masked_model_E.data())
@@ -2041,8 +2104,9 @@ def assess_cryoem_errors(
   lweight = dobs.customized_copy(data=(2*dosa)/(1.-flex.pow2(dosa)))
   wEmean2 = lweight*expectE_mod
   working_mmm.add_map_from_fourier_coefficients(map_coeffs=wEmean2, map_id='map_manager_lwtd')
-  working_mmm.remove_map_manager_by_id('map_manager_1')
-  working_mmm.remove_map_manager_by_id('map_manager_2')
+  if half_maps_provided:
+    working_mmm.remove_map_manager_by_id('map_manager_1')
+    working_mmm.remove_map_manager_by_id('map_manager_2')
 
   shift_cart = working_mmm.shift_cart()
   if shift_map_origin:
@@ -2060,19 +2124,6 @@ def assess_cryoem_errors(
       # write_mtz(expectE_mod,"expectE_mod.mtz","expectEmod")
       # write_mtz(masked_model_E,"masked_model.mtz","masked_model")
 
-  # resultsdict could possibly be saved to re-use parameters as starting point
-  # ssqmin = flex.min(mc1.d_star_sq().data())
-  # ssqmax = flex.max(mc1.d_star_sq().data())
-  # resultsdict = dict(
-  #   n_bins = n_bins,
-  #   ssqr_bins = ssqr_bins,
-  #   ssqmin = ssqmin,
-  #   ssqmax = ssqmax,
-  #   asqr_scale = asqr_scale,
-  #   sigmaT_bins = sigmaT_bins,
-  #   asqr_beta = asqr_beta,
-  #   a_baniso = a_baniso,
-  #   mapCC_bins = mapCC_bins)
   return group_args(
     new_mmm = working_mmm,
     shift_cart = shift_cart,
@@ -2088,35 +2139,51 @@ def run():
   """
   Prepare cryo-EM map for docking by preparing weighted MTZ file.
 
-  Obligatory command-line arguments (no keywords):
-  half_map_1: name of file containing the first half-map from a reconstruction
-  half_map_2: name of file containing the second half-map
-  d_min: desired resolution, either best for whole map or for local region
+  Command-line arguments (keyworded):
+  Either two half-maps or a single full map must be provided
+    --map:   name of file containing the full final reconstructed map
+    --map1: name of file containing the first half-map from a reconstruction
+    --map2: name of file containing the second half-map
 
-  Optional command-line arguments (keyworded):
-  --protein_mw*: molecular weight expected for protein component of ordered density
+    --d_min: desired resolution, either best for whole map or for local region
+
+  Content of full reconstruction should be provided and is compulsory if the sphere
+  parameters are not defined, either explicitly or in the form of a model
+    --protein_mw: molecular weight expected for protein component of ordered density
           in full map
-  --nucleic_mw*: same for nucleic acid component
-  --sphere_points: number of reflections to be used for averaging in Fourier space
-  --model: PDB file for placed model used to define the centre and radius of
+    --nucleic_mw: same for nucleic acid component
+
+  Optional parameters specifying centre and radius of cut-out sphere
+    --model: PDB file for placed model used to define the centre and radius of
           the cut-out sphere, used as an alternative to sphere_cent and radius
-  --sphere_cent: Centre of sphere defining target map region (3 floats)
+    --sphere_cent: Centre of sphere defining target map region (3 floats)
           defaults to centre of map
-  --radius: radius of sphere (1 float)
+    --radius: radius of sphere (1 float)
           must be given if sphere_cent defined, otherwise
           defaults to either radius enclosing 98% of ordered volume (if determined)
           or narrowest extent of input map divided by 4
-  --no_shift_map_origin: don't shift output mtz file to match input map on its origin
+
+  Option to create output map box twice as wide as sphere, oversampling the
+  transform of the sphere so that only alternate hkl terms are needed in likelihood
+    --double_map_box: make box with double diameter of sphere
           default False
-  --no_determine_ordered_volume: don't determine ordered volume
+
+  Optional fixed model, contribution of which is removed from output data
+    --fixed_model: PDB file for fixed background model
+
+  Optional parameters with sensible defaults
+    --sphere_points: number of reflections to be used for averaging in Fourier space
+          default 500
+    --no_shift_map_origin: don't shift output mtz file to match input map on its origin
           default False
-  --file_root: root name for output files
-  --write_maps: write sharpened and likelihood-weighted maps
-  --mute (or -m): mute output
-  --verbose (or -v): verbose output
-  --testing: extra verbose output for debugging
-  * NB: At least one of protein_mw or nucleic_mw must be given if sphere
-  parameters are not defined either explicitly or through model
+    --no_determine_ordered_volume: don't determine ordered volume
+          default False
+    --file_root: root name for output files
+    --write_maps: write sharpened and likelihood-weighted maps
+  Control level of output. Default is logfile level of output
+    --mute (or -m): mute output
+    --verbose (or -v): verbose output
+    --testing: extra verbose output for debugging
   """
   import argparse
   dm = DataManager()
@@ -2124,23 +2191,21 @@ def run():
 
   parser = argparse.ArgumentParser(
           description='Prepare cryo-EM map for docking')
-  parser.add_argument('map1', help='Map file for half-map 1')
-  parser.add_argument('map2', help='Map file for half-map 2')
-  parser.add_argument('d_min', help='d_min for maps', type=float)
+  parser.add_argument('--map',
+                      help='Map file for final reconstruction, instead of half-maps')
+  parser.add_argument('--map1', help='Map file for half-map 1')
+  parser.add_argument('--map2', help='Map file for half-map 2')
+  parser.add_argument('--d_min', help='d_min for maps', type=float)
   parser.add_argument('--protein_mw',
                       help='Molecular weight of protein component of full map',
                       type=float)
   parser.add_argument('--nucleic_mw',
                       help='Molecular weight of nucleic acid component of full map',
                       type=float)
-  parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
-                      type=float, default=500.)
   parser.add_argument('--model',
                       help='''Optional roughly-placed model defining size and
                               position of cut-out sphere for docking.
                               Orientation of model is ignored.''')
-  parser.add_argument('--fixed_model',
-                      help='Optional fixed model accounting for explained map features')
   parser.add_argument('--sphere_cent',
                       help='Centre of sphere for docking, if no model provided',
                       nargs=3, type=float)
@@ -2150,12 +2215,16 @@ def run():
   parser.add_argument('--double_map_box',
                       help='Make map box twice as wide as sphere',
                       action = 'store_true')
+  parser.add_argument('--fixed_model',
+                      help='Optional fixed model accounting for explained map features')
+  parser.add_argument('--sphere_points',help='Target nrefs in averaging sphere',
+                      type=float, default=500.)
+  parser.add_argument('--no_shift_map_origin', action='store_true')
+  parser.add_argument('--no_determine_ordered_volume', action='store_true')
   parser.add_argument('--file_root',
                       help='Root of filenames for output')
   parser.add_argument('--write_maps', help = 'Write sharpened and likelihood-weighted maps',
                       action = 'store_true')
-  parser.add_argument('--no_shift_map_origin', action='store_true')
-  parser.add_argument('--no_determine_ordered_volume', action='store_true')
   parser.add_argument('-m', '--mute', help = 'Mute output', action = 'store_true')
   parser.add_argument('-v', '--verbose', help = 'Set output as verbose',
                       action = 'store_true')
@@ -2212,12 +2281,23 @@ def run():
   if args.nucleic_mw is not None:
     nucleic_mw = args.nucleic_mw
 
-  # Create map_model_manager containing half-maps
-  map1_filename = args.map1
-  mm1 = dm.get_real_map(map1_filename)
-  map2_filename = args.map2
-  mm2 = dm.get_real_map(map2_filename)
-  mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2)
+  # Create map_model_manager containing half-maps, or full map if no half-maps
+  half_maps_provided = True
+  if args.map1 is not None:
+    if args.map2 is None:
+      raise Sorry("Half-maps must be provided in a pair")
+    map1_filename = args.map1
+    mm1 = dm.get_real_map(map1_filename)
+    map2_filename = args.map2
+    mm2 = dm.get_real_map(map2_filename)
+    mmm = map_model_manager(map_manager_1=mm1, map_manager_2=mm2)
+  else:
+    if args.map is None:
+      raise Sorry("Either half-maps or full map must be provided")
+    half_maps_provided = False
+    map_filename = args.map
+    mm = dm.get_real_map(map_filename)
+    mmm = map_model_manager(map_manager=mm)
 
   if (fixed_model):
     mmm.add_model_by_id(model=fixed_model, model_id='fixed_model')
@@ -2256,11 +2336,19 @@ def run():
       radius = min(ucpars[0],ucpars[1],ucpars[2])/4.
 
   # Refine to get scale and error parameters for docking region
-  results = assess_cryoem_errors(mmm=mmm, d_min=d_min, sphere_points=sphere_points,
-    determine_ordered_volume=determine_ordered_volume, verbosity=verbosity,
-    sphere_cent=sphere_cent, radius=radius, double_map_box=double_map_box,
-    shift_map_origin=shift_map_origin, ordered_mask_id=ordered_mask_id,
-    fixed_mask_id=fixed_mask_id)
+  results = assess_cryoem_errors(
+                        mmm=mmm,
+                        d_min=d_min,
+                        half_maps_provided=half_maps_provided,
+                        determine_ordered_volume=determine_ordered_volume,
+                        sphere_cent=sphere_cent,
+                        radius=radius,
+                        double_map_box=double_map_box,
+                        sphere_points=sphere_points,
+                        shift_map_origin=shift_map_origin,
+                        ordered_mask_id=ordered_mask_id,
+                        fixed_mask_id=fixed_mask_id,
+                        verbosity=verbosity)
 
   expectE = results.expectE
   mtz_dataset = expectE.as_mtz_dataset(column_root_label='Emean')
