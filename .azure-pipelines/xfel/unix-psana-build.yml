@@ -69,8 +69,6 @@ steps:
     conda activate psana_env
     cd $(Pipeline.Workspace)
     source ./build/setpaths.sh
-    pip install -e `libtbx.find_in_repositories dxtbx` # temporary workaround
-    pip install -e `libtbx.find_in_repositories dials` # temporary workaround
     mkdir tests
     cd tests
     libtbx.configure xfel_regression
