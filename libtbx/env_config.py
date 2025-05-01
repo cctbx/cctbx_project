@@ -2185,19 +2185,8 @@ selfx:
       for path in self.pythonpath:
         sys.path.insert(0, abs(path))
 
-      # Some libtbx_refresh scripts do a `pip install --editable`. The default
-      # behavior was changed in setuptools 64 and currently we expect the old
-      # behavior. See: https://github.com/pypa/setuptools/pull/3265
-      sef_previous = os.environ.get('SETUPTOOLS_ENABLE_FEATURES')
-      os.environ['SETUPTOOLS_ENABLE_FEATURES'] = 'legacy_editable'
-
       for module in self.module_list:
         module.process_libtbx_refresh_py()
-
-      if sef_previous is not None:
-          os.environ['SETUPTOOLS_ENABLE_FEATURES'] = sef_previous
-      else:
-          os.environ.pop('SETUPTOOLS_ENABLE_FEATURES')
 
       self.write_python_and_show_path_duplicates()
       self.process_exe()
