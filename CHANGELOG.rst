@@ -1,3 +1,10 @@
+2025.4
+======
+
+* Improved mmCIF compatibility across programs
+* Updated amino acid residue parentage
+* Updated map preparation so both half-maps and full-maps can be used
+
 2025.3
 ======
 
