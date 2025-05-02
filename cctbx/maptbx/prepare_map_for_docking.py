@@ -1847,7 +1847,8 @@ def map_errors_from_d_min(working_mmm, d_min, verbosity=1, log=sys.stdout):
   deltaB = 21.3225*d_min**2 + 12.0213*d_min+17.1158
   signal_ratio = expectE.customized_copy(data=flex.double(expectE.size(), signal_ratio_0))
   signal_ratio = signal_ratio.apply_debye_waller_factors(b_iso=deltaB)
-  dobs = expectE.customized_copy(data=signal_ratio.data()/(1.+signal_ratio.data()))
+  dobs = expectE.customized_copy(data=signal_ratio.data()/(1.+signal_ratio.data())) # FSC
+  dobs = dobs.customized_copy(data=flex.sqrt(2*dobs.data()/(1.+dobs.data()))) # FSC to Dobs
   return group_args(expectE=expectE, dobs=dobs)
 
 def assess_cryoem_errors(
