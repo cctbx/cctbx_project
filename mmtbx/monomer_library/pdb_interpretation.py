@@ -207,6 +207,16 @@ restraints_library_str = """
     hpdl = False
       .type = bool
       .style = hidden
+    user_supplied
+      .short_caption = Directory to load user supplied restraints
+    {
+      path = None
+        .type = path
+        .help = Root directory of user supplied restraints
+      action = *pre post
+        .type = choice(multi=False)
+        .help = Choice to look here before GeoStd or, the default, after
+    }
   }
 """
 ideal_ligands = ['SF4', 'F3S', 'DVT']
@@ -1214,7 +1224,9 @@ class monomer_mapping(slots_getstate_setstate):
         pdb_residue,
         next_pdb_residue,
         chainid,
-        specific_residue_restraints=None):
+        specific_residue_restraints=None,
+        user_supplied_restraints_directory=None,
+        user_supplied_pre_post=None):
     self.chainid = chainid
     self.pdb_atoms = pdb_atoms
     self.mon_lib_srv = mon_lib_srv
@@ -1231,7 +1243,10 @@ class monomer_mapping(slots_getstate_setstate):
           atom_names=self.atom_names_given,
           translate_cns_dna_rna_residue_names
             =translate_cns_dna_rna_residue_names,
-          specific_residue_restraints=specific_residue_restraints)
+          specific_residue_restraints=specific_residue_restraints,
+          user_supplied_restraints_directory=user_supplied_restraints_directory,
+          user_supplied_pre_post=user_supplied_pre_post,
+          )
     if (self.atom_name_interpretation is None):
       self.mon_lib_names = None
     else:
@@ -1958,6 +1973,8 @@ def get_restraints_loading_flags(params):
   rc = {}
   if params:
     rc["use_neutron_distances"] = params.use_neutron_distances
+    rc['user_supplied_restraints_directory']=params.restraints_library.user_supplied.path
+    rc['user_supplied_pre_post']=params.restraints_library.user_supplied.action
   return rc
 
 def special_dispensation(proxy_label, m_i, m_j, i_seqs):
@@ -2703,7 +2720,9 @@ class build_chain_proxies(object):
         pdb_residue=residue,
         next_pdb_residue=_get_next_residue(),
         chainid=residue.parent().parent().id,
-        specific_residue_restraints=specific_residue_restraints)
+        specific_residue_restraints=specific_residue_restraints,
+        user_supplied_restraints_directory=restraints_loading_flags.get('user_supplied_restraints_directory', None),
+        user_supplied_pre_post=restraints_loading_flags.get('user_supplied_pre_post', None))
       if mm.monomer and mm.monomer.cif_object:
         self._cif.chem_comps.append(mm.monomer.chem_comp)
         if specific_residue_restraints:
@@ -3440,6 +3459,7 @@ class build_all_chain_proxies(linking_mixins):
       info = self.pdb_hierarchy.flip_symmetric_amino_acids()
       if info and log is not None:
         print("\n  Symmetric amino acids flipped. %s\n" % info.strip(), file=log)
+    user_supplied_restraints=self.params.restraints_library.user_supplied
     self.pdb_hierarchy.merge_atoms_at_end_to_residues()
     self.pdb_hierarchy.format_correction_for_H()
     self.pdb_atoms = self.pdb_hierarchy.atoms()
@@ -3452,6 +3472,10 @@ class build_all_chain_proxies(linking_mixins):
     if (log is not None):
       print("  Monomer Library directory:", file=log)
       print("   ", show_string(mon_lib_srv.root_path), file=log)
+      if user_supplied_restraints.path:
+        print('  User supplied directory: (%sprocessing)' % user_supplied_restraints.action, file=log)
+        print('   ', show_string(user_supplied_restraints.path), file=log)
+
       print("  Total number of atoms:", self.pdb_atoms.size(), file=log)
     selection_cache = self.pdb_hierarchy.atom_selection_cache()
     # cis-trans specifications
