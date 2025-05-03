@@ -2541,6 +2541,7 @@ class TripletData:
     print(f"Average triplets per frame: {len(self.triplets)/len(self.experiments):.1f}")
 
     self.save_triplets()
+    exit()
 
     
   def find_matches(self, spec):

@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional
 import copy
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
+from tqdm import tqdm
 
 class SpotPair:
 
@@ -97,6 +98,7 @@ class PairMatch2d(VectorPairMatch):
         self.q1 = q1
         self.q2 = q2
         self.theta_rad = theta_rad
+        self.is_outlier = False
 
 class OneVectorMatch(VectorPairMatch):
     """
@@ -771,8 +773,9 @@ class Basis2d(Basis):
         return abs(np.cross(*self.vectors))
 
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
-                         q_weight: float = 1.0, theta_weight: float = 1.0) -> float:
+                         q_weight: float = 1.0, theta_weight: float = 1.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
+        if pair.is_outlier and not use_outliers: return 0
         # Compute q-vectors from Miller indices
         q1_calc = pair.hkl1[0]*basis_vectors[0] + pair.hkl1[1]*basis_vectors[1]
         q2_calc = pair.hkl2[0]*basis_vectors[0] + pair.hkl2[1]*basis_vectors[1]
@@ -803,6 +806,20 @@ class Basis2d(Basis):
         return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
                   for pair in pairs)
 
+    def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=1.0):
+
+        #copied from refine, sue me
+        a_star = np.linalg.norm(self.vectors[0])
+        b_star = np.linalg.norm(self.vectors[1])
+        gamma_star = np.arccos(np.dot(self.vectors[0], self.vectors[1]) / 
+                              (a_star * b_star))
+        v1 = np.array([a_star, 0.0])
+        v2 = b_star * np.array([np.cos(gamma_star), np.sin(gamma_star)])
+        basis_vectors = np.vstack([v1, v2])
+
+        costs = [self.compute_pair_cost(basis_vectors, p, q_weight, theta_weight) for p in pairs]
+        plt.hist(costs, bins=100)
+        plt.show()
     def refine(self, pairs, q_weight: float = 1000.0, theta_weight: float = 1.0) -> None:
         """Refine lattice parameters in place."""
         from scipy.optimize import minimize
@@ -1000,9 +1017,14 @@ class Basis3d(Basis):
         basis6[1] = (b_star + c_star) / 2
         basis6[2] = (b_star - c_star) / 2
 
+        # 7. Body-centered (I-centered)
+        # In reciprocal space: a*'=a*, b*'=b*, c*'=a*/2+b*/2+c*/2
+        basis7 = self.vectors.copy()
+        basis7[2] = (a_star + b_star + c_star) / 2
+
         # Create new Basis3d objects
         result = []
-        for basis in [basis1, basis2, basis3, basis4, basis5, basis6]:
+        for basis in [basis1, basis2, basis3, basis4, basis5, basis6, basis7]:
             new_basis = type(self).from_vectors(
                 basis, 
                 qmax=self.qmax,
@@ -1098,8 +1120,9 @@ class Basis3d(Basis):
         return results
 
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
-                         q_weight: float = 1.0, theta_weight: float = 1.0) -> float:
+                         q_weight: float = 1.0, theta_weight: float = 1.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
+        if not use_outliers and pair.is_outlier: return 0
         # Compute q-vectors from Miller indices
         q1_calc = pair.hkl1[0]*basis_vectors[0] + pair.hkl1[1]*basis_vectors[1] + pair.hkl1[2]*basis_vectors[2]
         q2_calc = pair.hkl2[0]*basis_vectors[0] + pair.hkl2[1]*basis_vectors[1] + pair.hkl2[2]*basis_vectors[2]
@@ -1157,6 +1180,27 @@ class Basis3d(Basis):
         # Sum costs from all pairs
         return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
                   for pair in pairs)
+
+    def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=1.0):
+
+        #copied from refine, sue me
+        a_star = np.linalg.norm(self.vectors[0])
+        b_star = np.linalg.norm(self.vectors[1])
+        c_star = np.linalg.norm(self.vectors[2])
+
+        alpha_star = np.arccos(np.dot(self.vectors[1], self.vectors[2]) /
+                              (b_star * c_star))
+        beta_star = np.arccos(np.dot(self.vectors[0], self.vectors[2]) /
+                             (a_star * c_star))
+        gamma_star = np.arccos(np.dot(self.vectors[0], self.vectors[1]) /
+                              (a_star * b_star))
+
+        current_params = np.array([a_star, b_star, c_star,
+                                  alpha_star, beta_star, gamma_star])
+        current_vectors = self.vectors_from_params(current_params)
+        costs = [self.compute_pair_cost(current_params, p, q_weight, theta_weight) for p in pairs]
+        plt.hist(costs, bins=100)
+        plt.show()
 
     def refine(self, pairs, q_weight: float = 1000.0, theta_weight: float = 1.0) -> None:
         """Refine lattice parameters in place."""
@@ -1247,7 +1291,7 @@ class LatticeReconstruction:
         pair = SpotPair(q1, q2, np.radians(theta))
         self.all_pairs.append(pair)
 
-    def generate_2d_bases(self, scan_pts=21, scan_range=2, max_axis=75):
+    def generate_2d_bases(self, scan_pts=21, scan_range=1, max_axis=25):
         scan_range=np.radians(scan_range)
         self.basis_candidates_2d = []
         for pair in self.all_pairs:
@@ -1256,11 +1300,6 @@ class LatticeReconstruction:
                 b = Basis.from_params(pair.q1, pair.q2, pair.theta+d)
                 if 1/b.astar() < max_axis and 1/b.bstar() < max_axis:
                     self.basis_candidates_2d.append(b)
-#            bases = [
-#                Basis.from_params(pair.q1, pair.q2, pair.theta+d)
-#                for d in deltas
-#            ]
-#            self.basis_candidates_2d.extend(bases)
 
 
     def update(self) -> None:
@@ -1333,8 +1372,12 @@ class LatticeReconstruction:
           #lines.append(f"{i:2d}   {q_uni:.4f}    {q_idx:.4f}    {np.degrees(pair.theta_rad):.1f}   {err:.4f}")
           entries.append((i, q_uni, q_idx, pair.theta_rad, err))
 
-        for i, q_uni, q_idx, theta_rad, err in sorted(entries, key=lambda x:x[1]):
-            lines.append(f"{i:2d}   {q_uni:.4f}    {q_idx:.4f}    {np.degrees(theta_rad):.1f}   {err:.4f}")
+        for i, q_uni, q_idx, theta_rad, err in sorted(
+            entries, 
+            #key=lambda x:(round(x[1], 3), x[4])
+            key=lambda x:(round(x[4], 4), round(x[1], 3))
+            )[:50]:
+            lines.append(f"{i:2d}\t{q_uni:.4f}\t{q_idx:.4f}\t{np.degrees(theta_rad):.1f}\t{err:.4f}")
         result = "\n".join(lines)
 
         return result
@@ -1370,6 +1413,26 @@ class LatticeReconstruction:
 
         return matches
 
+    def flag_outliers_2d(self, multiplier=2, q_weight=1000, theta_weight=1):
+        costs = []
+        for p in self.sublattice_indexed:
+            costs.append(self.sub_basis.compute_pair_cost(
+              self.sub_basis.vectors, p, q_weight, theta_weight))
+        for p, c in zip(self.sublattice_indexed, costs):
+            p.is_outlier = c > multiplier*np.median(costs)
+    def plot_costs_2d(self, q_weight=1000, theta_weight=1):
+        costs = []
+        for p in self.sublattice_indexed:
+            costs.append(self.sub_basis.compute_pair_cost(
+              self.sub_basis.vectors, p, q_weight, theta_weight, use_outliers=True))
+        costs_inlier = [c for c,p in zip(costs, self.sublattice_indexed) if not p.is_outlier]
+        costs_outlier = [c for c,p in zip(costs, self.sublattice_indexed) if p.is_outlier]
+        bins = np.linspace(0, max(costs), 50)
+        plt.hist(costs_inlier, bins=bins)
+        plt.hist(costs_outlier, bins=bins, color='red')
+        plt.show()
+        
+        
     def reprocess_all_pairs(self) -> None:
         """Clear all categorizations and reprocess all pairs except the last."""
         stored_pairs = self.all_pairs # [:-1]
@@ -1392,10 +1455,13 @@ class LatticeReconstruction:
         else:  # unindexed
             self.unindexed.append(result)
 
-    def generate_3d_basis(self, pair1_idx, pair2_idx, delta_theta_1=None, delta_theta_2=None, inv=False):
-        """Generate a 3D basis from two matching one-vector pairs."""
+    def generate_3d_basis_indices(self, pair1_idx, pair2_idx, delta_theta_1=None, delta_theta_2=None, inv=False):
         pair1 = self.sublattice_1vector[pair1_idx]
         pair2 = self.sublattice_1vector[pair2_idx]
+        return generate_3d_basis_pairs(pair1, pair2, delta_theta_1, delta_theta_2, inv)
+
+    def generate_3d_basis_pairs(self, pair1, pair2, delta_theta_1=None, delta_theta_2=None, inv=False):
+        """Generate a 3D basis from two matching one-vector pairs."""
 
         # Get indexed vectors from sublattice (2D)
         v1 = np.hstack((pair1.hkl1 @ self.sub_basis.vectors, 0))
@@ -1430,7 +1496,6 @@ class LatticeReconstruction:
             q_tol=self.sub_basis.q_tolerance,
             theta_tol_deg=np.degrees(self.sub_basis.theta_tolerance)
         )
-        print(result)
         return result
 
     def print_status(self, verbose=False) -> None:
@@ -1453,7 +1518,7 @@ class LatticeReconstruction:
             print("entry | i1 | i2 | cell | vol (Å³) | % idx")
             for i, (i1, i2, q) in enumerate(matches):
                 try:
-                    basis3d = self.generate_3d_basis(i1, i2)
+                    basis3d = self.generate_3d_basis_indices(i1, i2)
                     # Calculate metrics
                     volume = np.abs(np.linalg.det(basis3d.vectors))
                     n_indexed = len([p for p in self.all_pairs
@@ -1480,13 +1545,11 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
     total_pairs = len(recon.all_pairs)
 
     # Grid search
-    for i, delta1 in enumerate(delta_values):
-        for j, delta2 in enumerate(delta_values):
+    for i, delta1 in tqdm(enumerate(delta_values)):
+        for j, delta2 in tqdm(enumerate(delta_values), leave=False):
             try:
-                print()
-                print(delta1, delta2, inv)
                 # Generate 3D basis with current deltas
-                basis3d = recon.generate_3d_basis(
+                basis3d = recon.generate_3d_basis_pairs(
                     pair1_idx, pair2_idx,
                     delta_theta_1=delta1,
                     delta_theta_2=delta2,
@@ -1615,7 +1678,7 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
         }
 
     # Generate the best basis
-    best_basis = recon.generate_3d_basis(
+    best_basis = recon.generate_3d_basis_pairs(
         pair1_idx, pair2_idx,
         delta_theta_1=best_params['delta_theta_1'],
         delta_theta_2=best_params['delta_theta_2'],
@@ -1654,16 +1717,53 @@ def run():
         for b, f in top_1d
     ]
     basis_fom1_fom2.sort(key=lambda x:x[2], reverse=True)
-    best_sb = basis_fom1_fom2[0]
+    for i, b in enumerate(basis_fom1_fom2[:20]):
+        print(i, b[0], round(b[1], 1), round(b[2], 1))
+    i_sb = int(input('use what sub-basis?'))
+    best_sb = basis_fom1_fom2[i_sb]
     print('using 2d basis: ', best_sb[0], round(best_sb[1],2), round(best_sb[2],2))
     recon.set_sub_basis(best_sb[0])
+    import IPython;IPython.embed()
     for _ in range(2):
         recon.sub_basis.refine(recon.sublattice_indexed)
         recon.reprocess_all_pairs()
+
     recon.print_status(verbose=True)
 
+    from cluster2 import ManualClusterer
+    fn2 = sys.argv[2]
+    data = np.load(fn2)['triplets'][:,1:4]
+    data[:,0] = 1/data[:,0]
+    data[:,1] = 1/data[:,1]
+    data2 = np.vstack((data[:,1], data[:,0], data[:,2])).transpose()
+    data = np.vstack((data, data2))
+    sublattice_qvals = np.linalg.norm(recon.sub_basis.points, axis=1)
+    accept = False
+    while not accept:
+        cl = ManualClusterer(data, n_maxima=0, mark_qvals=sublattice_qvals)
+        triplets = cl.select_triplets()
+        assert len(triplets)==2
+        pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
+        match_results = [recon.sub_basis.match(p) for p in pairs]
+        matches_1v = []
+        for m in match_results:
+            assert m[1] == 'one_vector'
+            matches_1v.append(m[0])
+        best_basis, best_params, fig = find_best_3d_basis(recon, *matches_1v, delta_range=(-2.0, 2.0), steps=11)
+        matches = []
+        hits = 0
+        for p in recon.all_pairs:
+            result = best_basis.match(p)
+            if result[1]=='indexed_3d':
+                hits += 1
+                matches.append(result[0])
 
-    import IPython;IPython.embed()
+
+        import IPython;IPython.embed()
+
+
+
+
     exit()
         #recon.read_triplet(*[float(x) for x in l.split()])
     for _ in range(2):

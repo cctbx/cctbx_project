@@ -7,61 +7,100 @@ from scipy.ndimage import maximum_filter
 from scipy.ndimage import generate_binary_structure
 from sklearn.neighbors import KernelDensity
 import sys
+from scipy.optimize import minimize
 
 
 counter = 0
 
 class ManualClusterer:
-    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500):
+    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500, mark_qvals=None):
         self.data = data
+        self.bandwidths = np.array(bandwidths)
+        self.n_maxima = n_maxima
+        self.mark_qvals = mark_qvals
+
         self.current_selection = None
         self.final_selection = None
         self.means = None
         self.span_patch = None
         self.rect_patch = None
-        self.bandwidths = np.array(bandwidths)
-        self.n_maxima = n_maxima
+        self.selected_triplets = []
         
         # Compute KDE maxima
-        self.compute_kde_maxima()
+        if n_maxima > 0:
+            self.compute_kde_maxima()
         
+#        # Create the three windows with specific sizes
+#        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16, 3))
+#        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16, 3))
+#        self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection', 
+#                                                                    figsize=(16, 3))
+#
+#        # Set fixed subplot sizes
+#        self.fig3.set_tight_layout(False)
+##        for i, ax in enumerate([self.ax3a, self.ax3b, self.ax3c]):
+##            ax.set_aspect('equal', adjustable='datalim')
+##            # Set a fixed position and size for each subplot
+##            box = ax.get_position()
+##            ax.set_position([0.1 + i*0.3, 0.1, 0.25, 0.25])  # [left, bottom, width, height]
+#
+#        # Initialize the first window
+#        self.show_histogram()
+#
+##        # Arrange windows vertically
+##        self.fig1.canvas.manager.window.move(0, 0)
+##        self.fig2.canvas.manager.window.move(0, 300)
+##        self.fig3.canvas.manager.window.move(0, 600)
+#
+#        plt.show()
+
+    def select_triplets(self):
+        """Run the interactive selection process and return the selected triplets."""
         # Create the three windows with specific sizes
-        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16, 3))
-        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16, 3))
+        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,3))
+        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16,3))
         self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection', 
-                                                                    figsize=(16, 3))
+                                                                    figsize=(16,3))
         
         # Set fixed subplot sizes
         self.fig3.set_tight_layout(False)
 #        for i, ax in enumerate([self.ax3a, self.ax3b, self.ax3c]):
-#            ax.set_aspect('equal', adjustable='datalim')
-#            # Set a fixed position and size for each subplot
-#            box = ax.get_position()
-#            ax.set_position([0.1 + i*0.3, 0.1, 0.25, 0.25])  # [left, bottom, width, height]
+#            ax.set_position([0.1 + i*0.3, 0.1, 0.25, 0.25])
         
         # Initialize the first window
         self.show_histogram()
         
-#        # Arrange windows vertically
-#        self.fig1.canvas.manager.window.move(0, 0)
-#        self.fig2.canvas.manager.window.move(0, 300)
-#        self.fig3.canvas.manager.window.move(0, 600)
+        # Set up the done button
+        done_ax = self.fig3.add_axes([0.9, 0.01, 0.09, 0.05])
+        self.done_button = plt.Button(done_ax, 'Done')
+        self.done_button.on_clicked(self.on_done)
         
-        plt.show()
-
+        # Flag to track when selection is complete
+        self.selection_done = False
+        
+        # Show plots and wait for user interaction
+        plt.show(block=True)
+        
+        # Close all figures
+        plt.close(self.fig1)
+        plt.close(self.fig2)
+        plt.close(self.fig3)
+        
+        # Return the selected triplets
+        return self.selected_triplets
 
     def compute_kde_maxima(self):
         # Normalize data by bandwidths for anisotropic KDE
         normalized_data = self.data / self.bandwidths[np.newaxis, :]
 
         # Create KernelDensity object
-        kde = KernelDensity(bandwidth=1.0, kernel='epanechnikov')
+        kde = KernelDensity(bandwidth=1, kernel='cosine')
         print('fit')
         kde.fit(normalized_data)
         print('done fit')
 
         # Take a random subsample (5%) for evaluation
-        n_sample = max(int(len(normalized_data) * 0.05), 1000)  # At least 1000 points
+        n_sample = max(int(len(normalized_data) * 0.05), 100000)  # At least 1000 points
         n_sample = min(n_sample, len(normalized_data))  # Can't sample more than we have
 
         # Random sampling without replacement
@@ -82,90 +121,66 @@ class ManualClusterer:
 
         # Initialize list to store maxima
         maxima_indices = []
+        maxima_points = []
+        maxima_densities = []
+
+        # Function to be minimized (negative density)
+        def negative_density(x):
+            return -np.exp(kde.score_samples([x])[0])
 
         # Process points in order of decreasing density
-        for idx in sorted_indices:
-            if len(maxima_indices) >= self.n_maxima:
+        for i, idx in enumerate(sorted_indices):
+            if i%1000==0:
+                print('processed', i, ', kept', len(maxima_points))
+            if len(maxima_points) >= self.n_maxima:
                 break
 
-            point = sample_data[idx]
+            initial_point = sample_data[idx]
+            q1, q2, th = initial_point
+            if np.abs(q1-q2) < 2: continue
+            if th<8 or th>160: continue
+
+            optimized_point = initial_point
+            optimized_density = 1
+#            # Run optimization to find true maximum
+#            result = minimize(
+#                negative_density,
+#                initial_point,
+#                method='BFGS',
+#                #options={'gtol': 1e-5}  # Gradient tolerance for convergence
+#            )
+#
+#            if result.success:
+#                optimized_point = result.x
+#                optimized_density = -result.fun  # Negate back to get positive density
+
 
             # Check if this point is far enough from all accepted maxima
             too_close = False
-            for accepted_idx in maxima_indices:
-                accepted_point = sample_data[accepted_idx]
-                dist = np.linalg.norm(point - accepted_point)
+            for accepted_point in maxima_points:
+                dist = np.linalg.norm(optimized_point - accepted_point)
                 if dist < 5:
                     too_close = True
                     break
 
             sus = False
-            q1,q2,th = point
+            q1,q2,th = optimized_point
             if np.abs(q1-q2) < 2: sus = True
             if th < 5 or th > 160: sus = True
 
             if not too_close and not sus:
-                maxima_indices.append(idx)
+              maxima_points.append(optimized_point)
+              maxima_densities.append(optimized_density)
 
         # Store the maxima and their density values
-        self.kde_maxima = sample_data[maxima_indices] * self.bandwidths[np.newaxis, :]
-        self.kde_values = sample_densities[maxima_indices]
-        for x in self.kde_maxima[:10]:
-            print(round(x[0], 4), round(x[1], 4), round(x[2], 2))
+        self.kde_maxima = np.array(maxima_points) * self.bandwidths[np.newaxis, :]
+        self.kde_values = np.array(maxima_densities)
+        with open('autopeaks.txt', 'w') as f:
+            for x in self.kde_maxima:
+                print(round(x[0], 4), round(x[1], 4), round(x[2], 2), file=f)
 
 
         print(f"Found {len(self.kde_maxima)} KDE maxima from {n_sample} sampled points")
-#    def compute_kde_maxima(self):
-#        # Normalize data by bandwidths for anisotropic KDE
-#        normalized_data = self.data / self.bandwidths[np.newaxis, :]
-#
-#        # Create KernelDensity object
-#        kde = KernelDensity(bandwidth=1.0, kernel='epanechnikov')
-#        print('fit')
-#        kde.fit(normalized_data)
-#        print('done fit')
-#
-#        # Create grid for searching maxima
-#        grid_points = 50  # balance between accuracy and performance
-#        grid_ranges = []
-#        for dim in range(3):
-#            min_val, max_val = normalized_data[:, dim].min(), normalized_data[:, dim].max()
-#            grid_ranges.append(np.linspace(min_val, max_val, grid_points))
-#
-#        # Create meshgrid
-#        X, Y, Z = np.meshgrid(*grid_ranges, indexing='ij')
-#        positions = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
-#        positions = self.data
-#
-#        #import IPython;IPython.embed()
-#        # Evaluate KDE
-#        print('score')
-#        densities = np.exp(kde.score_samples(positions)).reshape(X.shape)
-#        print('done score')
-#
-#        # Find local maxima
-#        neighborhood = generate_binary_structure(3, 2)  # 3D, connectivity 2
-#        local_max = maximum_filter(densities, footprint=neighborhood) == densities
-#
-#        # Get coordinates and values of local maxima
-#        local_max_indices = np.where(local_max)
-#        local_max_values = densities[local_max]
-#
-#        # Sort by density value
-#        sorted_indices = np.argsort(local_max_values)[::-1][:self.n_maxima]
-#
-#        # Extract coordinates
-#        maxima_coords = np.zeros((len(sorted_indices), 3))
-#        for i, idx in enumerate(sorted_indices):
-#            maxima_coords[i, 0] = grid_ranges[0][local_max_indices[0][idx]]
-#            maxima_coords[i, 1] = grid_ranges[1][local_max_indices[1][idx]]
-#            maxima_coords[i, 2] = grid_ranges[2][local_max_indices[2][idx]]
-#
-#        # Scale back to original coordinates
-#        self.kde_maxima = maxima_coords * self.bandwidths[np.newaxis, :]
-#        self.kde_values = local_max_values[sorted_indices]
-#
-#        print(f"Found {len(self.kde_maxima)} KDE maxima")
 
     def show_histogram(self):
         self.ax1.clear()
@@ -173,9 +188,16 @@ class ManualClusterer:
         self.ax1.plot(edges[:-1], hist)
         self.ax1.set_title('Select range in histogram')
         
-        # Add tick marks for KDE maxima
-        self.ax1.plot(self.kde_maxima[:, 0], np.zeros_like(self.kde_maxima[:, 0]), 
-                     '|', color='red', markersize=20)
+        # Add tick marks for KDE maxima if available
+        if hasattr(self, 'kde_maxima'):
+            self.ax1.plot(self.kde_maxima[:, 0], np.zeros_like(self.kde_maxima[:, 0]),
+                         '|', color='green', markersize=20)
+
+        # Add tick marks for specified q-values
+        if self.mark_qvals is not None:
+            self.ax1.plot(self.mark_qvals, np.zeros_like(self.mark_qvals),
+                         '|', color='blue', markersize=25, markeredgewidth=2)
+
 
         self.span = SpanSelector(
             self.ax1,
@@ -204,8 +226,9 @@ class ManualClusterer:
         self.current_selection = self.data[mask]
         
         # Select KDE maxima within the span
-        kde_mask = (self.kde_maxima[:, 0] >= xmin) & (self.kde_maxima[:, 0] <= xmax)
-        self.current_kde_selection = self.kde_maxima[kde_mask]
+        if hasattr(self, 'kde_maxima'):
+            kde_mask = (self.kde_maxima[:, 0] >= xmin) & (self.kde_maxima[:, 0] <= xmax)
+            self.current_kde_selection = self.kde_maxima[kde_mask]
         
         # Show the second window
         self.show_scatter_2d()
@@ -224,11 +247,19 @@ class ManualClusterer:
                 s=2, alpha=.2)
             self.ax2.set_title(f'Draw box to select points (n={len(self.current_selection)})')
 
-            # Plot KDE maxima
+            # Plot KDE maxima if available
             if hasattr(self, 'current_kde_selection') and len(self.current_kde_selection) > 0:
-                self.ax2.scatter(self.current_kde_selection[:, 1], self.current_kde_selection[:, 2], 
-                               color='red', marker='x', s=50, label='KDE maxima')
+                self.ax2.scatter(self.current_kde_selection[:, 1], self.current_kde_selection[:, 2],
+                               color='green', marker='x', s=50, label='KDE maxima')
+
             
+            # Add vertical lines for q-values (second dimension)
+            if self.mark_qvals is not None:
+                ylim = self.ax2.get_ylim()
+                for q in self.mark_qvals:
+                    if q >= self.current_selection[:, 1].min() and q <= self.current_selection[:, 1].max():
+                        self.ax2.axvline(q, color='blue', linestyle='--', alpha=0.5)
+
             # Create RectangleSelector only if it doesn't exist already
             if not hasattr(self, 'rect') or self.rect is None:
                 self.rect = RectangleSelector(
@@ -448,16 +479,24 @@ class ManualClusterer:
         self.means = np.mean(self.final_selection, axis=0)
 
     def on_key_press(self, event):
-        global counter
-        # note counter is a global variable
         if event.key == 'a':
-            # Append means to file
-            counter += 1
+            # Add mean to selected triplets
+            triplet = [self.means[0], self.means[1], self.means[2]]
+            self.selected_triplets.append(triplet)
+
+            print(f"Selected point {self.means[0]:.6f} {self.means[1]:.6f} {self.means[2]:.6f}. "
+                  f"Total triplets: {len(self.selected_triplets)}")
+
+            # Also append to file if desired
             with open('cluster_means.txt', 'a') as f:
                 np.savetxt(f, [self.means], fmt='%.6f')
-            
-            print(f"Selected point {self.means[0]:.6f} {self.means[1]:.6f} {self.means[2]:.6f}. "
-                  f"{counter} lines have been written.")
+
+    def on_done(self, event):
+        """Called when the Done button is clicked."""
+        self.selection_done = True
+        plt.close('all')  # Close all open figures
+        import gc;gc.collect()
+
 
 # Example usage:
 if __name__ == "__main__":
@@ -476,4 +515,5 @@ if __name__ == "__main__":
     bandwidths = [0.001, 0.001, 1.0]
     
     clusterer = ManualClusterer(alldata, bandwidths=bandwidths, n_maxima=500)
+    clusterer.select_triplets()
 
