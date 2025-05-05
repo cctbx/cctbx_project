@@ -27,7 +27,7 @@ from mmtbx.probe import Helpers
 from iotbx import pdb
 from iotbx.pdb import common_residue_names_get_class
 
-version = "4.10.0"
+version = "4.11.0"
 
 master_phil_str = '''
 profile = False
