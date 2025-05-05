@@ -28,10 +28,6 @@ from __future__ import print_function, nested_scopes, generators, division
 from __future__ import absolute_import, unicode_literals
 import sys
 
-import boost_adaptbx.boost.python as bp
-bp.import_ext("mmtbx_probe_ext")
-import mmtbx_probe_ext as probe
-
 ##################################################################################
 # Helper functions.
 
