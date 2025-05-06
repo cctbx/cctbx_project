@@ -396,77 +396,6 @@ class Optimizer(object):
         self._deleteMes = set()
 
         ################################################################################
-        # Get the list of Movers using the _PlaceMovers private function.
-        # The list of rotatable hydrogens comes from the global model, not just the current
-        # model index.  However, we only place on atoms that are also in self._atoms, which
-        # only includes those from the current model index.
-        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
-                           addFlipMovers)
-        self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
-        self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
-        self._infoString += _ReportTiming(self._verbosity, "place movers")
-
-        ################################################################################
-        # Add the atoms that were unconditionally marked for deletion during placement
-        # to the set of atoms to delete.
-        self._deleteMes = self._deleteMes.union(deleteAtoms)
-
-        ################################################################################
-        # Initialize the Movers to their starting coarse positions.
-        for m in self._movers:
-          pr = m.CoarsePositions()
-          self._setMoverState(pr, 0)
-        self._infoString += _ReportTiming(self._verbosity, "initialize Movers")
-
-        ################################################################################
-        # Compute the interaction graph, of which each connected component is a Clique.
-        # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
-        # of the singletons and the groups.
-        self._interactionGraph, self._atomMoverLists = InteractionGraph.InteractionGraphAllPairs(self._movers,
-          self._extraAtomInfo, probeRadius=self._probeRadius)
-        components = cca.connected_components( graph = self._interactionGraph )
-        maxLen = 0
-        singletonCliques = []   # Each entry is a list of integer indices into models with one entry
-        groupCliques = []       # Each entry is a list of integer indices into models with >1 entry
-        for c in components:
-          if len(c) == 1:
-            singletonCliques.append(c)
-          else:
-            groupCliques.append(c)
-          if len(c) > maxLen:
-            maxLen = len(c)
-        self._infoString += _VerboseCheck(self._verbosity, 1,"Found "+str(len(components))+" Cliques ("+
-            str(len(singletonCliques))+" are singletons); largest Clique size = "+
-            str(maxLen)+"\n")
-        self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
-
-        # If we've been asked to write an interaction graph file, do so.
-        if self._cliqueOutlineFileName:
-          with open(self._cliqueOutlineFileName, 'w') as f:
-            f.write(self._InteractionKinemage(groupCliques))
-
-        ################################################################################
-        # Determine excluded atoms to a specified hop count for each atom that will
-        # be moved.  Make a dictionary of lists that includes all atoms in all Movers.
-
-        # Get the set of all atoms that can be returned from all conformations of all Movers.
-        moverAtoms = set()
-        for m in self._movers:
-          for a in m.CoarsePositions().atoms:
-            moverAtoms.add(a)
-          for a in m.FixUp(0).atoms:
-            moverAtoms.add(a)
-
-        # Get the excluded list for each atom in the set, making a dictionary.
-        # We go at most 3 hops unless one end of the chain has a hydrogen.
-        # Look up excluded atoms by i_seq.
-        self._excludeDict = {}
-        for a in moverAtoms:
-          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
-            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
-        self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
-
-        ################################################################################
         # Placement of water phantom Hydrogens, including adding them to our 'atoms' list
         # and the spatial query but not adding them to the hierarchy.  This must be done after
         # the bond proxies are constructed and the Movers have been placed so that these
@@ -549,6 +478,79 @@ class Optimizer(object):
         # Phantom Hydrogens.
         Helpers.fixupExplicitDonors(self._atoms, bondedNeighborLists, self._extraAtomInfo)
         self._infoString += _ReportTiming(self._verbosity, "fixup explicit doners")
+
+        ################################################################################
+        # Get the list of Movers using the _PlaceMovers private function.
+        # The list of rotatable hydrogens comes from the global model, not just the current
+        # model index.  However, we only place on atoms that are also in self._atoms, which
+        # only includes those from the current model index.
+        # NOTE: We must do this after fixupExplicitDonors() so that the Hydrogens are properly
+        # marked as donors.
+        deleteAtoms = self._PlaceMovers(self._atoms, rotatableHydrogens, bondedNeighborLists, h_parameterization,
+                           addFlipMovers)
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Inserted "+str(len(self._movers))+" Movers\n")
+        self._infoString += _VerboseCheck(self._verbosity, 1,'Marked '+str(len(deleteAtoms))+' atoms for deletion\n')
+        self._infoString += _ReportTiming(self._verbosity, "place movers")
+
+        ################################################################################
+        # Add the atoms that were unconditionally marked for deletion during placement
+        # to the set of atoms to delete.
+        self._deleteMes = self._deleteMes.union(deleteAtoms)
+
+        ################################################################################
+        # Initialize the Movers to their starting coarse positions.
+        for m in self._movers:
+          pr = m.CoarsePositions()
+          self._setMoverState(pr, 0)
+        self._infoString += _ReportTiming(self._verbosity, "initialize Movers")
+
+        ################################################################################
+        # Compute the interaction graph, of which each connected component is a Clique.
+        # Get a list of singleton Cliques and a list of other Cliques.  Keep separate lists
+        # of the singletons and the groups.
+        self._interactionGraph, self._atomMoverLists = InteractionGraph.InteractionGraphAllPairs(self._movers,
+          self._extraAtomInfo, probeRadius=self._probeRadius)
+        components = cca.connected_components( graph = self._interactionGraph )
+        maxLen = 0
+        singletonCliques = []   # Each entry is a list of integer indices into models with one entry
+        groupCliques = []       # Each entry is a list of integer indices into models with >1 entry
+        for c in components:
+          if len(c) == 1:
+            singletonCliques.append(c)
+          else:
+            groupCliques.append(c)
+          if len(c) > maxLen:
+            maxLen = len(c)
+        self._infoString += _VerboseCheck(self._verbosity, 1,"Found "+str(len(components))+" Cliques ("+
+            str(len(singletonCliques))+" are singletons); largest Clique size = "+
+            str(maxLen)+"\n")
+        self._infoString += _ReportTiming(self._verbosity, "compute interaction graph")
+
+        # If we've been asked to write an interaction graph file, do so.
+        if self._cliqueOutlineFileName:
+          with open(self._cliqueOutlineFileName, 'w') as f:
+            f.write(self._InteractionKinemage(groupCliques))
+
+        ################################################################################
+        # Determine excluded atoms to a specified hop count for each atom that will
+        # be moved.  Make a dictionary of lists that includes all atoms in all Movers.
+
+        # Get the set of all atoms that can be returned from all conformations of all Movers.
+        moverAtoms = set()
+        for m in self._movers:
+          for a in m.CoarsePositions().atoms:
+            moverAtoms.add(a)
+          for a in m.FixUp(0).atoms:
+            moverAtoms.add(a)
+
+        # Get the excluded list for each atom in the set, making a dictionary.
+        # We go at most 3 hops unless one end of the chain has a hydrogen.
+        # Look up excluded atoms by i_seq.
+        self._excludeDict = {}
+        for a in moverAtoms:
+          self._excludeDict[a.i_seq] = mmtbx.probe.Helpers.getAtomsWithinNBonds(a,
+            bondedNeighborLists, self._extraAtomInfo, self._probeRadius, self._bondedNeighborDepth, 3)
+        self._infoString += _ReportTiming(self._verbosity, "determine excluded atoms")
 
         ################################################################################
         # Construct dot-sphere cache.
@@ -648,7 +650,7 @@ class Optimizer(object):
 
           # If the Mover is a flip of some kind, then the substring "lipped " will be present
           # in the description.
-          # When that happens, we check the final state and the other flip state
+          # When that happens, we check the final state and the other flip
           # state (which is half of the coarse states away) to see if both have clashes or
           # if they are close in energy. If so, then we annotate the output.
           # We add the same number of words to the output string in all cases to make things
@@ -1771,7 +1773,7 @@ END
   # Check a clique with multiple elements to be sure that it was properly
   # globally optimized. This is a set of ACT residues that are offset
   # such that they want to line up the same way.  A carbon is placed to
-  # force the orientaion away from the initial solution.
+  # force the oriention away from the initial solution.
   pdb_multi_act = (
 """
 CRYST1   93.586  127.886  251.681  90.00  90.00  90.00 I 2 2 2

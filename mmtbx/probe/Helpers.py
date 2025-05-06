@@ -914,7 +914,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # Name, vdwRadius, isAcceptor, isDonor, isDummyHydrogen, isIon, charge, altLoc
     ["CU",  0.72, False, False, False,  True, 0, ''],
     ["N",   1.55, False,  True, False, False, 0, ''],
-    ["ND1", 1.55, False,  True, False, False, 0, 'A'],
+    ["ND1", 1.55, True,   True, False, False, 0, 'A'],
     ["C",   1.65, False, False, False, False, 0, ''],
     ["CB",  1.7,  False, False, False, False, 0, ''],
     ["O",   1.4,  True,  False, False, False, 0, ''],
@@ -924,7 +924,7 @@ ATOM      0  H6    C B  26      23.369  16.009   0.556  1.00 10.02           H  
     # Name, vdwRadius, isAcceptor, isDummyHydrogen, isDonor, isIon, charge, altLoc
     ["CU",  0.72, False, False, False,  True, 0, ''],
     ["N",   1.55, False,  True, False, False, 0, ''],
-    ["ND1", 1.55, False,  True, False, False, 0, 'A'],
+    ["ND1", 1.55, True,   True, False, False, 0, 'A'],
     ["C",   1.65, False, False, False, False, 0, ''],
     ["CB",  1.7,  False, False, False, False, 0, ''],
     ["O",   1.4,  True,  False, False, False, 0, ''],

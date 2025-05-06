@@ -33,7 +33,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.8.0"
+version = "2.9.0"
 
 master_phil_str = '''
 approach = *add remove
