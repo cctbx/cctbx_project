@@ -1263,7 +1263,7 @@ def _ParseFlipStates(fs):
   if fs is not None:
     for state in fs.split(','):
       words = state.split()
-      if len(words) == 7:
+      if len(words) == 6 or len(words) == 7:
         modelId = int(words[0]) + 1
         altId = words[1].lower()
         if altId == '.':
@@ -1276,7 +1276,9 @@ def _ParseFlipStates(fs):
           t = 'AmideFlip'
         resIdWithICode = words[4]
         flipped = words[5] == 'Flipped'
-        fixedUp = words[6] == 'AnglesAdjusted'
+        fixedUp = False
+        if len(words) == 7:
+          fixedUp = words[6] == 'AnglesAdjusted'
         ret.append(FlipMoverState(t, modelId, altId, chain, resName, resIdWithICode, flipped, fixedUp))
   return ret
 
