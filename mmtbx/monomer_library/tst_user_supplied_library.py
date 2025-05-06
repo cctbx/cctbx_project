@@ -1,4 +1,5 @@
-import os, sys
+from __future__ import absolute_import, division, print_function
+import os
 from libtbx import easy_run
 
 water = '''CRYST1   21.937    4.866   23.477  90.00 107.08  90.00 P 1 21 1
