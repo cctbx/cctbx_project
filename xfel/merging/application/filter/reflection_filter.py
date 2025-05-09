@@ -471,8 +471,13 @@ class reflection_filter(worker):
     return new_experiments, new_reflections
 
   def _common_final(self, experiments, reflections, model_lower, model_upper, filter_type):
-    model_lower = self.mpi_helper.comm.bcast(model_lower, root=0)
-    model_upper = self.mpi_helper.comm.bcast(model_upper, root=0)
+    if self.mpi_helper.rank == 0:
+        for dest_rank in range(1, self.mpi_helper.size):
+            self.mpi_helper.comm.send(model_lower, dest=dest_rank)
+            self.mpi_helper.comm.send(model_upper, dest=dest_rank)
+    else:
+        model_lower = self.mpi_helper.comm.recv(source=0)
+        model_upper = self.mpi_helper.comm.recv(source=0)
 
     if not reflections: return experiments, reflections
 
