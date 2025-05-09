@@ -226,8 +226,14 @@ class error_modifier_mm24(worker):
       )
 
   def initialize_mm24_params(self):
+    if len(self.refl_biased_means) == 0:
+      maximum_intensity = 0
+    else:
+      maximum_intensity = max(self.refl_biased_means)
     upper = self.mpi_helper.comm.reduce(
-        max(self.refl_biased_means), op=self.mpi_helper.MPI.MAX, root=0
+        maximum_intensity,
+        op=self.mpi_helper.MPI.MAX,
+        root=0
         )
     n_bins = 100
     if self.mpi_helper.rank == 0:
@@ -236,16 +242,20 @@ class error_modifier_mm24(worker):
     else:
       intensity_bins = np.zeros(n_bins + 1)
     self.mpi_helper.comm.Bcast(intensity_bins, root=0)
-    biased_mean_rank = self.work_table['biased_mean'].as_numpy_array()
-    pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
-    summation_rank, _ = np.histogram(
-      biased_mean_rank,
-      bins=intensity_bins,
-      weights=pairwise_differences_rank
+    if len(self.refl_biased_means) == 0:
+      summation_rank = np.zeros(n_bins)
+      counts_rank = np.zeros(n_bins)
+    else:
+      biased_mean_rank = self.work_table['biased_mean'].as_numpy_array()
+      pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
+      summation_rank, _ = np.histogram(
+        biased_mean_rank,
+        bins=intensity_bins,
+        weights=pairwise_differences_rank
       )
-    counts_rank, _ = np.histogram(
-      biased_mean_rank,
-      bins=intensity_bins
+      counts_rank, _ = np.histogram(
+        biased_mean_rank,
+        bins=intensity_bins
       )
     summation = np.zeros(n_bins)
     counts = np.zeros(n_bins, dtype=int)
