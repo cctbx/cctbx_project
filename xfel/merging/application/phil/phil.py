@@ -375,7 +375,7 @@ select
     contamination_upper = 0.0001
       .type = float
       .help = Fraction of upper tail reflections that are outliers
-    n_estimators = 1000
+    n_estimators = 100
       .type = int
       .help = Number of decision trees in random forest model
     sampling_fraction = 0.1
