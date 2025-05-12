@@ -3,7 +3,7 @@ from __future__ import absolute_import, division, print_function, with_statement
 import subprocess
 
 from libtbx.queuing_system_utils.processing import errors
-
+from libtbx.utils import to_bytes, to_str
 
 class Submission(object):
   """
@@ -131,7 +131,7 @@ class AsynchronousCmdLine(Submission):
     ( process, outfile, errfile ) = self.create( name = name )
 
     ( out, err ) = process.communicate(
-      input = self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd )
+      input = to_bytes(self.handler.script( include = include, executable = executable, script = script, cwd = self.cwd ))
       )
 
     if process.poll():
@@ -371,7 +371,7 @@ def condor_jobid_extract(output):
 
 def slurm_jobid_extract(output):
 
-  match = SLURM_JOBID_EXTRACT_REGEX().search( output )
+  match = SLURM_JOBID_EXTRACT_REGEX().search( to_str(output) )
 
   if not match:
     raise errors.ExtractionError("Unexpected response from Slurm: %r" % output)
