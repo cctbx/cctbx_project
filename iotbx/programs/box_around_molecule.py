@@ -7,6 +7,9 @@ master_phil_str = '''
 buffer_layer = 5.0
   .type = float
   .help = buffer around atoms, in Angstrom
+shift_model = True
+  .type = bool
+  .help = shift model closer to the origin
 output {
   suffix = _box
     .type = str
@@ -65,7 +68,8 @@ Usage examples:
         self.params.output.format = 'cif'
 
     self.model = shift_and_box_model(model = self.model,
-                                     box_cushion = self.params.buffer_layer)
+                                     box_cushion = self.params.buffer_layer,
+                                     shift_model=self.params.shift_model)
 
     # Get output filename if not provided
     fn = self.data_manager.get_default_model_name()
