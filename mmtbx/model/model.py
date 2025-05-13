@@ -3598,7 +3598,9 @@ class manager(object):
 
     if new_riding_h_manager is not None:
       new.riding_h_manager = new_riding_h_manager
-    new.get_xray_structure().scattering_type_registry()
+    new_xrs = new.get_xray_structure()
+    if new_xrs is not None:
+      new_xrs.scattering_type_registry()
     new.set_refinement_flags(new_refinement_flags)
     new.scattering_dict_info = sdi
     new._update_has_hd()
