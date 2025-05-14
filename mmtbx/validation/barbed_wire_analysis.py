@@ -112,6 +112,10 @@ class alphafold_chunk():
   def end(self):
     return self.members[-1]
 
+  @property
+  def chain(self):
+    return self.start.split(',')[0]
+
   def as_selection_string(self):
     # resid is "chain,resseq"
     chain = self.start.split(',')[0]
@@ -131,6 +135,11 @@ class alphafold_chunk():
   def remove_from_end(self):
     return self.members.pop(-1)
 
+  def change_prediction_type(self, new_prediction_type):
+    self.prediction_type = new_prediction_type
+    for r in self.members:
+      r.feedback = new_prediction_type
+
 class predicted_residue():
   def __init__(self, rg):
     self.chain = rg.parent().id
@@ -142,9 +151,12 @@ class predicted_residue():
     self.out_rama = None
     self.rama_high_psi = None
     self.rama_high_phi = None
-    self.out_omega = None
+    self.out_omega = None #This is a signature outlier
+    self.cis_pro = None #This is suspicious, but could occur in near-predictive
     self.out_geom = None
+    self.out_geom_cnca = None #This is a signature outlier
     self.out_cablam = None
+    self.out_ca_geom = None
     self.ss_type = None  # "helix","sheet", or None for coil
     self.ss_index = None  # index of helix or sheet, used to tell if residues are part of same element
     self.packing_hb = []
@@ -152,8 +164,11 @@ class predicted_residue():
     self.packing_bo = []
     self.severe_clashes = 0  # cutoff set in add_contacts, this may indicate knots/interpenetration
     self.packing_quality = None
+    self.barbed_wire_signature = None
+    self.high_outlier_density = None
     self.feedback = ''
-    self.text_code = '      '
+    #self.text_code = '      '
+    self.text_code = ['','','','','',''] #is this okay
 
   def find_ca_plddt(self, rg):
     for atom in rg.atoms():
@@ -181,11 +196,19 @@ class predicted_residue():
   def as_text(self):
     return (' '.join([self.chain, self.resseq, self.text_code, self.feedback]))
 
+  #I might make a detailed_dict version that also includes self.rama_high_psi etc
+  def as_dict(self):
+    return {"chain":self.chain,
+            "resseq":self.resseq,
+            "category":self.feedback,
+            "text_code":self.text_code,
+            "plddt":self.plddt,
+            "ca_xyz":self.caxyz}
 
 class barbed_wire_analysis():
   def __init__(self, model):
     self.res_dict = {}  # keyed for easy lookup
-    self.res_list = []  # ordered for finding sequence-related residues
+    self.res_list = {}  # separated by chain, ordered for finding sequence-related residues
     self.chunk_list = []
 
     hierarchy = model.get_hierarchy()
@@ -206,10 +229,11 @@ class barbed_wire_analysis():
 
   def load_residues(self, hierarchy):
     for chain in hierarchy.chains():
+      self.res_list[chain.id] = [] #chain.id is already whitespace stripped
       for rg in chain.residue_groups():
         r = predicted_residue(rg)
         self.res_dict[r.resid] = r
-        self.res_list.append(r)
+        self.res_list[chain.id].append(r)
 
   def add_secondary_structure(self, model, hierarchy):
     from mmtbx.secondary_structure import sec_str_master_phil_str
@@ -217,7 +241,7 @@ class barbed_wire_analysis():
     asc = model.get_atom_selection_cache()
     sec_str_master_phil = iotbx.phil.parse(sec_str_master_phil_str)
     ss_params = sec_str_master_phil.fetch().extract()
-    ss_params.secondary_structure.protein.search_method = "ksdssp"
+    ss_params.secondary_structure.protein.search_method = "from_ca"
     ssm = ss_manager(hierarchy,
                      atom_selection_cache=asc,
                      geometry_restraints_manager=None,
@@ -237,8 +261,8 @@ class barbed_wire_analysis():
       start_resseq = helix.start_resseq
       start_resid = ','.join([start_chain_id, start_resseq])
       r = self.res_dict[start_resid]
-      i = self.res_list.index(r)
-      res_range = self.res_list[i: i + helix.length]
+      i = self.res_list[start_chain_id].index(r)
+      res_range = self.res_list[start_chain_id][i: i + helix.length]
       for r in res_range:
         r.ss_type = "helix"
         r.ss_index = helix_id
@@ -252,9 +276,9 @@ class barbed_wire_analysis():
         end_resseq = strand.end_resseq
         start_resid = ','.join([start_chain_id, start_resseq])
         r = self.res_dict[start_resid]
-        i = self.res_list.index(r)
+        i = self.res_list[start_chain_id].index(r)
         strand_length = int(end_resseq.strip()) - int(start_resseq.strip()) + 1
-        res_range = self.res_list[i: i + strand_length]
+        res_range = self.res_list[start_chain_id][i: i + strand_length]
         for r in res_range:
           r.ss_type = "sheet"
           r.ss_index = sheet_id
@@ -282,9 +306,9 @@ class barbed_wire_analysis():
       resid = ','.join([result.chain_id, result.resseq])
       if result.is_outlier():
         self.res_dict[resid].out_rama = True
-      if 80.0 < result.psi < 170.0:
+      if 60.0 < result.psi < 170.0:
         self.res_dict[resid].rama_high_psi = True
-      if 20.0 < result.phi < 130.0:  # this region is indicative of general-case residue types
+      if -15.0 < result.phi < 170.0:  # this region is indicative of general-case residue types
         self.res_dict[resid].rama_high_phi = True
 
   def add_omegalyze(self, hierarchy):
@@ -294,8 +318,10 @@ class barbed_wire_analysis():
     for result in omega_results.results:
       resid = ','.join([result.chain_id, result.resseq])
       if result.resname == "PRO":
-        if result.omegalyze_type == "Twisted":  # (cis Pro is okay by default)
+        if result.omegalyze_type() == "Twisted":  # (cis Pro is okay by default)
           self.res_dict[resid].out_omega = True
+        else:
+          self.res_dict[resid].cis_pro = True
       else:
         if result.is_outlier():  # should always be true with nontrans_only=True run
           self.res_dict[resid].out_omega = True
@@ -323,35 +349,36 @@ class barbed_wire_analysis():
         r.packing_vdw.append([c.contactId])
 
   def analyze_contacts(self):
-    i, j = 0, 5  # window of 5 res
-    while j < len(self.res_list):
-      res_slice = self.res_list[i:j]
-      total_packing = sum([r.packing_contact_count() for r in res_slice])
-      total_heavy_atoms = sum([r.heavy_atom_count for r in res_slice])
-      packing_ratio = total_packing / total_heavy_atoms
-      r = res_slice[2]
-      if r.ss_type == "sheet":
-        if packing_ratio <= 0.1:
-          r.packing_quality = 0
-        elif packing_ratio <= 0.35:  # different for sheet
-          r.packing_quality = 1
-        elif packing_ratio <= 1:
-          r.packing_quality = 2
-        else:
-          r.packing_quality = 3
-      else:  # helix and coil
-        if packing_ratio <= 0.1:
-          r.packing_quality = 0
-        elif packing_ratio <= 0.6:  # general case (helix/coil)
-          r.packing_quality = 1
-        elif packing_ratio <= 1:
-          r.packing_quality = 2
-        else:
-          r.packing_quality = 3
-        pass
-      # print(res_slice[2].resseq, res_slice[2].ss_type, res_slice[2].ss_index, "%.3f" % (total_packing/total_heavy_atoms))#, res_slice[2].packing_vdw)
-      i += 1
-      j += 1
+    for chain in self.res_list:
+      i, j = 0, 5  # window of 5 res
+      while j < len(self.res_list[chain]):
+        res_slice = self.res_list[chain][i:j]
+        total_packing = sum([r.packing_contact_count() for r in res_slice])
+        total_heavy_atoms = sum([r.heavy_atom_count for r in res_slice])
+        packing_ratio = total_packing / total_heavy_atoms
+        r = res_slice[2]
+        if r.ss_type == "sheet":
+          if packing_ratio <= 0.1:
+            r.packing_quality = 0
+          elif packing_ratio <= 0.35:  # different for sheet
+            r.packing_quality = 1
+          elif packing_ratio <= 1:
+            r.packing_quality = 2
+          else:
+            r.packing_quality = 3
+        else:  # helix and coil
+          if packing_ratio <= 0.1:
+            r.packing_quality = 0
+          elif packing_ratio <= 0.6:  # general case (helix/coil)
+            r.packing_quality = 1
+          elif packing_ratio <= 1:
+            r.packing_quality = 2
+          else:
+            r.packing_quality = 3
+          pass
+        # print(res_slice[2].resseq, res_slice[2].ss_type, res_slice[2].ss_index, "%.3f" % (total_packing/total_heavy_atoms))#, res_slice[2].packing_vdw)
+        i += 1
+        j += 1
 
   def add_covalent_geometry(self, model):
     from mmtbx.validation.mp_validate_bonds import mp_angles
@@ -381,6 +408,11 @@ class barbed_wire_analysis():
       if atomnames[1] not in mc_atoms: continue
       if atomnames[2] not in mc_atoms: continue
       self.res_dict[resid].out_geom = True
+      #Outliers in the C-N-CA angle across the incoming peptide bond are a signature of barbed wire
+      #This outlier alone is sufficient to identify barbed wire
+      #Maybe useful to start flagging these at 3 sigma, but would require a non-outliers_only run
+      if atomnames == [" C  ", " N  ", " CA "]:
+        self.res_dict[resid].out_geom_cnca = True
 
   def add_cablam(self, hierarchy):
     from mmtbx.validation import cablam
@@ -390,11 +422,81 @@ class barbed_wire_analysis():
                                         quiet=True)
     for result in cablam_results.results:
       resid = ','.join([result.chain_id.strip(), result.resseq])
-      if result.feedback.cablam_outlier or result.feedback.c_alpha_geom_outlier:  # ignore cablam_disfavored
+      if result.feedback.cablam_outlier:  # ignore cablam_disfavored
         self.res_dict[resid].out_cablam = True
+      if result.feedback.c_alpha_geom_outlier:
+        self.res_dict[resid].out_ca_geom = True
+
+  def categorize_outliers(self, res_slice):
+    #Certain outliers are signatures of barbed wire
+    #  c-n-ca, cis-nonPro and all twisted, top right rama
+    r0 = res_slice[0]
+    r1 = res_slice[1]
+    r1.text_code = ['-'] * 6  # Lproag
+    if r1.out_omega:
+      r1.barbed_wire_signature = True
+      r0.barbed_wire_signature = True
+      r0.text_code[3] = 'o'
+      r1.text_code[3] = 'o'
+    if r1.out_geom_cnca:
+      r1.barbed_wire_signature = True
+      r0.barbed_wire_signature = True
+      r0.text_code[5] = 'g'
+      r1.text_code[5] = 'g'
+    if r1.out_rama and r1.rama_high_phi and r1.rama_high_psi:
+      #top right Ramachandran and outlier
+      r1.barbed_wire_signature = True
+      r1.text_code[2] = 'r'
+
+    #add check for None packing quality
+    #certain outliers are highly suspicious, but must be allowed in predictive regions
+    if r1.packing_quality < 1 and r1.plddt < 70:
+      if r1.cis_pro:
+        #cisPro is assumed to be barbed wire if it occurs in unpacked low pLDDT
+        r1.barbed_wire_signature = True
+        r0.barbed_wire_signature = True
+        r0.text_code[3] = 'o'
+        r1.text_code[3] = 'o'
+      if r1.out_ca_geom:
+        #CaBLAM's ca_geom_outlier is assumed to be barbed wire if it occurs in unpacked low pLDDT
+        r1.barbed_wire_signature = True
+        r1.text_code[4] = 'c'
+
+    #Look at a window of 3 residues. If the local density of backbone outliers is high,
+    #  center residue is assumed barbed-wire-like
+    rama = 0
+    omega = 0
+    cablam = 0
+    geom = 0
+    psi = 0
+    for r in res_slice:
+      if r.out_rama: rama += 1
+      if r.out_cablam: cablam += 1
+      if r.out_omega: omega += 1
+      if r.out_geom: geom += 1
+      if r.rama_high_psi: psi += 1
+    score = 0
+    if rama >= 1 and psi == 3:  # all in high-psi region, plus at least 1 outlier
+      score += 1
+      r1.text_code[2] = 'r'
+    if omega >= 2:
+      score += 1
+      r1.text_code[3] = 'o'
+    if cablam >= 2:
+      score += 1
+      r1.text_code[4] = 'c'
+    if geom >= 2:
+      score += 1
+      r1.text_code[5] = 'g'
+    if score >= 2:
+      r1.high_outlier_density = True
+      #is_barbed_like = True
+    else:
+      r1.high_outlier_density = False
 
   def has_barbed_wire_errors(self, res_slice):
-    text_code = ['-'] * 6  # Lproag
+    #Look at a window of 3 residues. If the local density of backbone outliers is high,
+    #  center residue is assumed barbed-wire-like
     rama = 0
     omega = 0
     cablam = 0
@@ -426,63 +528,111 @@ class barbed_wire_analysis():
     return is_barbed_like, text_code
 
   def predictalyze(self):
-    i, j = 0, 3  # window of 3 res
-    while j < len(self.res_list):
-      res_slice = self.res_list[i:j]
-      r = res_slice[1]
-      if r.packing_quality is None:
-        i += 1
-        j += 1
-        continue
-      is_barbed_like, text_code = self.has_barbed_wire_errors(res_slice)
+    for chain in self.res_list:
+      i, j = 0, 3  # window of 3 res
+      while j < len(self.res_list[chain]):
+        res_slice = self.res_list[chain][i:j]
+        r = res_slice[1]
+        if r.packing_quality is None:
+          i += 1; j += 1
+          continue
+        self.categorize_outliers(res_slice)
+        i += 1; j += 1
 
-      if r.plddt >= 70:
-        if r.packing_quality >= 1:
-          r.feedback = "Predictive"
-        else:
-          text_code[1] = 'p'
-          r.feedback = "Unpacked high pLDDT"
-      else:  # plddt should get subdivided based on further analysis
-        text_code[0] = 'L'
-        if r.packing_quality >= 1:
-          if is_barbed_like:
-            r.feedback = "Unphysical"
+      for r in self.res_list[chain][1:-1]: #First and last residues not fully assessable
+        if r.packing_quality is None:
+          continue
+        if r.plddt >= 70:
+          if r.packing_quality >= 1:
+            r.feedback = "Predictive"
           else:
-            r.feedback = "Near-predictive"
-        else:  # poor packing
-          text_code[1] = 'p'
-          if is_barbed_like:
-            r.feedback = "Barbed wire"
-          else:
-            r.feedback = "Unpacked possible"
-      r.text_code = ''.join(text_code)
-      i += 1
-      j += 1
+            r.text_code[1] = 'p'
+            r.feedback = "Unpacked high pLDDT"
+        else:  # plddt should get subdivided based on further analysis
+          r.text_code[0] = 'L'
+          if r.packing_quality >= 1:
+            if r.barbed_wire_signature or r.high_outlier_density:
+              r.feedback = "Unphysical" #this rare category catches chain intersections
+            else:
+              r.feedback = "Near-predictive"
+          else:  # poor packing
+            r.text_code[1] = 'p'
+            if r.barbed_wire_signature or r.high_outlier_density:
+              r.feedback = "Barbed wire"
+            else:
+              #r.feedback = "Unpacked possible"
+              r.feedback = "Pseudostructure" #name changed
+        r.text_code = ''.join(r.text_code)
 
   def merge_analyses(self):
     chunk_list = []
-    prev_r = None
-    current_chunk = []
-    for r in self.res_list:
-      if prev_r is None:
-        current_chunk.append(r.resid)
+    for chain in self.res_list:
+      prev_r = None
+      current_chunk = []
+      for r in self.res_list[chain]:
+        if prev_r is None:
+          current_chunk.append(r.resid)
+          prev_r = r
+          continue
+
+        if r.feedback == prev_r.feedback:
+          # if same type, extend current chunk
+          current_chunk.append(r.resid)
+        else:
+          # if different, end this chunk and start a new one with this residue
+          chunk_list.append(alphafold_chunk(current_chunk, prev_r.feedback))
+          current_chunk = [r.resid]
         prev_r = r
-        continue
-
-      # TODO: also start new chunk if chain is new
-
-      if r.feedback == prev_r.feedback:
-        # if same type, extend current chunk
-        current_chunk.append(r.resid)
-      else:
-        # if different, end this chunk and start a new one with this residue
-        chunk_list.append(alphafold_chunk(current_chunk, prev_r.feedback))
-        current_chunk = [r.resid]
-      prev_r = r
-    chunk_list.append(alphafold_chunk(current_chunk, r.feedback))
-    self.chunk_list = chunk_list
+      chunk_list.append(alphafold_chunk(current_chunk, r.feedback))
+      self.chunk_list = chunk_list
 
   def merge_small_chunks(self):
+    #for smoother presentation short segments (1 or 2 residues) that are surrounded by another type
+    #  are merged into that type
+    #This is primarily for clean presentation, reducing visual fragmentation
+    #  Though 2 residues of pseudo in the middle of lots of barbed isn't very believable
+    #As the least defined behavior, merging pseudostructure into barbed wire ot near-predictive takes
+    #  priority. Afterwards, stray barbed wire is merged into pseudostructure.
+    #Barbed-wire is never promoted to near-predictive, and near-predictive is never demoted.
+    i, j = 0, 3  # window of 3 chunks
+    while j < len(self.chunk_list):
+      c = self.chunk_list[i:j]
+      if len(c[1].members) > 2:
+        i += 1; j += 1
+        continue
+      if c[1].prediction_type == "Pseudostructure":
+        if c[0].prediction_type == "Barbed wire" and c[2].prediction_type == "Barbed wire":
+          c[1].prediction_type = "Barbed wire"
+          for resid in c[1].members:
+            self.res_dict[resid].feedback = "Barbed wire"
+        elif c[0].prediction_type == "Near-predictive" and c[2].prediction_type == "Near-predictive":
+          c[1].prediction_type = "Near-predictive"
+          for resid in c[1].members:
+            self.res_dict[resid].feedback = "Near-predictive"
+      elif c[0].prediction_type == "Unphysical" and c[2].prediction_type == "Unphysical":
+        #Unphysical (intersection) regions should not be interrupted by near-predictive
+          c[1].prediction_type = "Unphysical"
+          for resid in c[1].members:
+            self.res_dict[resid].feedback = "Unphysical"
+      i += 1; j += 1
+    #Barbed wire if merged in a separate pass so that barbed wire "wins" in regions that alternate
+    #  between short segments of barbed wire and pseudostructure
+    i, j = 0, 3  # window of 3 chunks
+    while j < len(self.chunk_list):
+      c = self.chunk_list[i:j]
+      if len(c[1].members) > 2:
+        i += 1; j += 1
+        continue
+      if c[1].prediction_type == "Barbed wire":
+        if c[0].prediction_type == "Pseudostructure" and c[2].prediction_type == "Pseudostructure":
+          c[1].prediction_type = "Pseudostructure"
+          for resid in c[1].members:
+            self.res_dict[resid].feedback = "Pseudostructure"
+      i += 1; j += 1
+    self.merge_similar_chunks()
+    self.remove_empty_chunks()
+
+  def old_merge_small_chunks(self):
     i = 0
     while i < len(self.chunk_list):
       c = self.chunk_list[i]
@@ -491,7 +641,7 @@ class barbed_wire_analysis():
         continue
       prev_c = self.chunk_list[i - 1]
       next_c = self.chunk_list[i + 1]
-      if len(c.members) > 2 or c.prediction_type != "Unpacked possible":
+      if len(c.members) > 2 or c.prediction_type != "Pseudostructure":#"Unpacked possible":
         i += 1
         continue
       if prev_c.prediction_type == "Barbed wire":
@@ -506,13 +656,13 @@ class barbed_wire_analysis():
       else:
         if next_c.prediction_type == "Barbed wire":
           for r in reversed(c.members):
-            if self.res_dict[r].has_any_validation_errors():
+            if self.res_dict[r].has_any_validation_errors(): #This step has not been added to the new version yet
               next_c.add_to_start(c.remove_from_end())
             else:
               break
       i += 1
     self.remove_empty_chunks()
-    self.merge_similar_chunks()
+    self.old_merge_similar_chunks()
     self.remove_empty_chunks()
 
   def remove_empty_chunks(self):
@@ -523,7 +673,25 @@ class barbed_wire_analysis():
         self.chunk_list.pop(i)
       i -= 1
 
+  def old_merge_similar_chunks(self):
+    i = 0
+    while True:
+      if i+1 >= len(self.chunk_list):
+        #len changes if there's a pop, so fully check it each time
+        break
+      c = self.chunk_list[i]
+      next_c = self.chunk_list[i+1]
+      if c.prediction_type == next_c.prediction_type:
+        c.members = prev_c.members + c.members + next_c.members
+        self.chunk_list.pop(i+1)
+      else: #only iterate if the next chunk doesn't match
+        i+1
+
   def merge_similar_chunks(self):
+    #Adjacent chunks with the same prediction type are collapsed into a single
+    #  chunk.
+    #This case arises after merge_small_chunks reassigns some chunks'
+    #  prediction types for smoothing
     i = 0
     while i < len(self.chunk_list):
       c = self.chunk_list[i]
@@ -531,21 +699,144 @@ class barbed_wire_analysis():
         i += 1
         continue
       prev_c = self.chunk_list[i - 1]
+      if c.chain != prev_c.chain:
+        i += 1
+        continue
       if c.prediction_type == prev_c.prediction_type:
         c.members = prev_c.members + c.members
         prev_c.members = []
       i += 1
 
+  def count_assessed(self):
+    #residues near chain termini are not assessed
+    count = 0
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        if r.feedback:
+          count += 1
+    return count
+
+  def count_assessed_in_chain(self, chain):
+    count = 0
+    for c in self.res_list:
+      if not c == chain:
+        continue
+      for r in self.res_list[chain]:
+        if r.feedback:
+          count += 1
+    return count
+
+  def count_by_type(self, prediction_type):
+    count = 0
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        if r.feedback == prediction_type:
+          count += 1
+    return count
+
+  def count_by_type_in_chain(self, prediction_type, chain):
+    count = 0
+    for c in self.res_list:
+      if not c == chain:
+        continue
+      for r in self.res_list[chain]:
+        if r.feedback == prediction_type:
+          count += 1
+    return count
+
   # ----------------------OUTPUT---------------------
   def as_text_residues(self, out=sys.stdout):
-    for r in self.res_list:
-      print(r.as_text(), file=out)
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        print(r.as_text(), file=out)
 
   def as_text_chunks(self, out=sys.stdout):
     for c in self.chunk_list:
       print(c.start, "to", c.end, c.prediction_type, len(c.members), file=out)
 
+  def as_json(self, out=sys.stdout):
+    import json
+    j = {"flat_results":[],
+         "chunks":[],
+         "residues_by_category":{},
+         "summary":{}}
+    total_residues = 0
+    #---flat results---
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        j["flat_results"].append(r.as_dict())
+        total_residues += 1
+    #---chunks---
+    for c in self.chunk_list:
+      j["chunks"].append({"chain":c.start.split(",")[0],
+                          "start":c.start.split(",")[1],
+                          "end":c.end.split(",")[1],
+                          "category":c.prediction_type,
+                          "length":len(c.members)})
+    #---residues_by_category---
+    for prediction_type in ["Predictive", "Unpacked high pLDDT", "Near-predictive",
+                            "Pseudostructure", "Barbed wire", "Unphysical"]:
+      j["residues_by_category"][prediction_type] = []
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        if r.feedback:
+          j["residues_by_category"][r.feedback].append(r.resid)
+    #---summary---
+    j["summary"]["count_by_type"] = {}
+    j["summary"]["count_by_type"]["total"] = total_residues
+    assessed = self.count_assessed()
+    j["summary"]["count_by_type"]["assessed"] = assessed
+    j["summary"]["percent_by_type"] = {}
+    for prediction_type in ["Predictive", "Unpacked high pLDDT", "Near-predictive",
+                            "Pseudostructure", "Barbed wire", "Unphysical"]:
+      count = self.count_by_type(prediction_type)
+      if assessed == 0:
+        pct = 0
+      else:
+        pct = count/assessed*100.0
+      j["summary"]["count_by_type"][prediction_type] = count
+      j["summary"]["percent_by_type"][prediction_type] = pct
+
+    print(json.dumps(j, indent='  '), file=out)
+
   def as_kinemage(self, out=sys.stdout):
+    # colored ball at each CA, color based on current synthesis
+    # label with bc--go- style text showing components of decision
+    prediction_types = ["Predictive", "Unpacked high pLDDT", "Near-predictive",
+                            "Pseudostructure", "Barbed wire", "Unphysical"]
+    colors = {"Predictive":"sky",
+              "Unpacked high pLDDT":"gray",
+              "Near-predictive":"green",
+              "Pseudostructure":"gold",
+              "Barbed wire":"hotpink",
+              "Unphysical":"purple"}
+    balls = {}
+    labels = {}
+    for prediction_type in prediction_types:
+      balls[prediction_type] = []
+      labels[prediction_type] = []
+    for chain in self.res_list:
+      for r in self.res_list[chain]:
+        if not r.feedback:
+          continue
+        ballline = "{%s %s %s} %.3f %.3f %.3f" % (r.resid, r.feedback, r.text_code, r.caxyz[0], r.caxyz[1], r.caxyz[2])
+        #print(ballline, file=sys.stderr)
+        labelline = "{  %s} %.3f %.3f %.3f" % (r.text_code, r.caxyz[0], r.caxyz[1], r.caxyz[2])
+        balls[r.feedback].append(ballline)
+        labels[r.feedback].append(labelline)
+      print("@group {bwa markup} collapsible", file=out)
+    for prediction_type in prediction_types:
+      if not balls[prediction_type]:
+        continue
+      print("@subgroup{%s}" % prediction_type, file=out)
+      print("@balllist{balls} radius= 0.6 color= %s master= {bwa_balls}" % colors[prediction_type], file=out)
+      for kinline in balls[prediction_type]:
+        print(kinline, file=out)
+      print("@labellist{labels} color= %s master= {bwa_labels}" % colors[prediction_type], file=out)
+      for kinline in labels[prediction_type]:
+        print(kinline, file=out)
+
+  def old_as_kinemage(self, out=sys.stdout):
     # colored ball at each CA, color based on current synthesis
     # label with bc--go- style text showing components of decision
     balls = []
@@ -560,7 +851,7 @@ class barbed_wire_analysis():
         ball_color = "purple"
       elif r.feedback == "Barbed wire":
         ball_color = "hotpink"
-      elif r.feedback == "Unpacked possible":
+      elif r.feedback == "Pseudostructure": #"Unpacked possible":
         ball_color = "gold"
       elif r.feedback == "Near-predictive":
         ball_color = 'green'
@@ -568,7 +859,7 @@ class barbed_wire_analysis():
         ball_color = 'gray'
       else:
         ball_color = 'brown'
-      ballline = "{%s %s}%s %.3f %.3f %.3f" % (r.resid, r.text_code, ball_color, r.caxyz[0], r.caxyz[1], r.caxyz[2])
+      ballline = "{%s %s %s}%s %.3f %.3f %.3f" % (r.resid, r.feedback, r.text_code, ball_color, r.caxyz[0], r.caxyz[1], r.caxyz[2])
       labelline = "{  %s}%s %.3f %.3f %.3f" % (r.text_code, ball_color, r.caxyz[0], r.caxyz[1], r.caxyz[2])
       balls.append(ballline)
       labels.append(labelline)
@@ -580,17 +871,33 @@ class barbed_wire_analysis():
     for line in labels:
       print(line, file=out)
 
-  def as_selection_string(self):
+  def as_selection_string(self, modes="13"):
+    #Return the selection syntax string for residues matching selected prediction modes
+    mode_dict = {"1":"Predictive",
+                 "2":"Unpacked high pLDDT",
+                 "3":"Near-predictive",
+                 "4":"Pseudostructure",
+                 "5":"Barbed wire",
+                 "6":"Unphysical"}
+    modes_to_print = []
+    for mode_key in mode_dict:
+      if mode_key in modes:
+        modes_to_print.append(mode_dict[mode_key])
     selection_list = []
     for c in self.chunk_list:
-      if c.prediction_type in ["Predictive","Near-predictive"]:
+      if c.prediction_type in modes_to_print:
         selection_list.append(c.as_selection_string())
     return " or ".join(selection_list)
 
-  def as_selection_file(self, model, out=sys.stdout):
+  def as_selection_file(self, model, out=sys.stdout, modes="13", extension=".cif"):
+    #Print a model file, mmcif or pdb based on input format, containing residues matching
+    #  selected prediction modes
     hierarchy = model.get_hierarchy()
-    atom_selection = self.as_selection_string()
+    atom_selection = self.as_selection_string(modes)
     sele = hierarchy.apply_atom_selection(atom_selection)
-    print(sele.as_pdb_string(), file=out)
+    if extension == ".cif":
+      print(sele.as_mmcif_string(), file=out)
+    else:
+      print(sele.as_pdb_string(), file=out) #PDB OK
 
   # ----------------------END OUTPUT---------------------
