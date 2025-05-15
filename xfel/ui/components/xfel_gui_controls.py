@@ -711,7 +711,7 @@ class RunBlock(CtrlBase):
                       content_style=content_style)
 
     self.sizer = wx.FlexGridSizer(1, 2, 0, 5)
-    self.new_runblock = RunBlockButton(self, size=(200, 30), block=block)
+    self.new_runblock = RunBlockButton(self, size=(225, 30), block=block)
 
     self.sizer.Add(self.new_runblock)
 

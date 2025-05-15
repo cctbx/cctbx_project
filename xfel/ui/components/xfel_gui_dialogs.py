@@ -798,7 +798,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                label='Total number of processors:',
                                label_size=(240, -1),
                                label_style='normal',
-                               ctrl_size=(100, -1),
+                               ctrl_size=(150, -1),
                                ctrl_value='%d'%params.mp.nproc,
                                ctrl_min=1,
                                ctrl_max=1000)
@@ -807,7 +807,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nnodes = gctr.SpinCtrl(self,
                                 name='nnodes',
                                 label='Total number of nodes:',
-                                label_size=(240, -1),
+                                label_size=(150, -1),
                                 label_style='normal',
                                 ctrl_size=(100, -1),
                                 ctrl_value='%d'%params.mp.nnodes,
@@ -822,7 +822,7 @@ class AdvancedSettingsDialog(BaseDialog):
     self.nproc_per_node = gctr.SpinCtrl(self.nppn_box,
                                         name='nproc_per_node',
                                         ctrl_value='%d'%params.mp.nproc_per_node if params.mp.nproc_per_node else 1,
-                                        ctrl_min = 1, ctrl_max = 1000, label_size=(-1,-1))
+                                        ctrl_min = 1, ctrl_max = 1000, label_size=(-1,-1), ctrl_size=(150,-1))
     if not params.mp.nproc_per_node: self.nproc_per_node.Disable()
 
     nppn_sizer = wx.FlexGridSizer(1, 3, 0, 10)
@@ -837,7 +837,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                    label='Max Walltime (mins):',
                                    label_size=(240, -1),
                                    label_style='normal',
-                                   ctrl_size=(100, -1),
+                                   ctrl_size=(150, -1),
                                    ctrl_value='%d'%params.mp.wall_time if params.mp.wall_time is not None else 1,
                                    ctrl_min=1,
                                    ctrl_max=2880)
@@ -901,7 +901,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Indexing:',
                                       label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(60, -1),
+                                      ctrl_size=(150, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_index or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -912,7 +912,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='TDER:',
                                       label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(60, -1),
+                                      ctrl_size=(150, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_tder or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -924,7 +924,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Scaling:',
                                       label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(60, -1),
+                                      ctrl_size=(150, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_scale or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -935,7 +935,7 @@ class AdvancedSettingsDialog(BaseDialog):
                                       label='Merging:',
                                       label_size=(60, -1),
                                       label_style='normal',
-                                      ctrl_size=(60, -1),
+                                      ctrl_size=(150, -1),
                                       ctrl_value='%d'%(params.mp.nnodes_merge or 1),
                                       ctrl_min=1,
                                       ctrl_max=1000)
@@ -1602,6 +1602,7 @@ class AveragingDialog(BaseDialog):
                                    label_size=(150, -1),
                                    ctrl_value=0,
                                    ctrl_min=0,
+                                   ctrl_size=(150, -1),
                                    ctrl_max=None)
     self.num_images_type = gctr.RadioCtrl(self,
                                    name='Use All Images',
@@ -1617,6 +1618,7 @@ class AveragingDialog(BaseDialog):
                                    label_size=(150, -1),
                                    ctrl_value=0,
                                    ctrl_min=0,
+                                   ctrl_size=(150, -1),
                                    ctrl_max=None)
     self.main_sizer.Add(self.skip_images, flag=wx.EXPAND | wx.ALL, border=10)
     self.main_sizer.Add(self.num_images_type, flag=wx.EXPAND | wx.ALL, border=10)
@@ -2188,7 +2190,7 @@ class RunBlockDialog(BaseDialog):
                                  ctr_value=str(block.extra_format_str))
       self.format_sizer.Add(self.format, 1, flag=wx.EXPAND | wx.ALL, border=10)
 
-    self.start_stop_sizer = wx.FlexGridSizer(1, 3, 60, 20)
+    self.start_stop_sizer = wx.FlexGridSizer(2, 2, 20, 20)
 
     self.runblocks_start = gctr.SpinCtrl(self.runblock_panel,
                                    label='Start run:',
@@ -2196,14 +2198,8 @@ class RunBlockDialog(BaseDialog):
                                    label_size=(100, -1),
                                    ctrl_value=(self.first_run or self.last_avail),
                                    ctrl_min=self.first_avail,
-                                   ctrl_max=self.last_avail)
-    self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
-                                   label='End run:',
-                                   label_style='bold',
-                                   label_size=(100, -1),
-                                   ctrl_value=(self.last_run or self.last_avail),
-                                   ctrl_min=self.first_avail,
-                                   ctrl_max=self.last_avail)
+                                   ctrl_max=self.last_avail,
+                                   ctrl_size=(150,-1))
     self.end_type = gctr.RadioCtrl(self.runblock_panel,
                                    name='rg_end_type',
                                    label='',
@@ -2212,9 +2208,19 @@ class RunBlockDialog(BaseDialog):
                                    direction='vertical',
                                    items={'auto':'Auto add runs',
                                           'specify':'Specify end run'})
-    self.start_stop_sizer.AddMany([(self.runblocks_start),
-                                   (self.runblocks_end),
-                                   (self.end_type)])
+    self.runblocks_end = gctr.SpinCtrl(self.runblock_panel,
+                                   label='End run:',
+                                   label_style='bold',
+                                   label_size=(100, -1),
+                                   ctrl_value=(self.last_run or self.last_avail),
+                                   ctrl_min=self.first_avail,
+                                   ctrl_max=self.last_avail,
+                                   ctrl_size=(150,-1))
+
+    self.start_stop_sizer.AddMany([self.runblocks_start,
+                                   wx.StaticText(self.runblock_panel, -1, ''),
+                                   self.runblocks_end,
+                                   self.end_type])
     self.runblock_sizer.Add(self.start_stop_sizer, flag=wx.EXPAND | wx.ALL, border=10)
 
     if self.is_lcls:
@@ -2728,7 +2734,7 @@ class TrialDialog(BaseDialog):
                                   label='Percent events processed:',
                                   label_size=(180, -1),
                                   label_style='bold',
-                                  ctrl_size=(80, -1),
+                                  ctrl_size=(150, -1),
                                   ctrl_value='100',
                                   ctrl_min=1,
                                   ctrl_max=100)
@@ -2737,7 +2743,7 @@ class TrialDialog(BaseDialog):
                                   label='Number of bins:',
                                   label_size=(180, -1),
                                   label_style='bold',
-                                  ctrl_size=(80, -1),
+                                  ctrl_size=(150, -1),
                                   ctrl_value='20',
                                   ctrl_min=1,
                                   ctrl_max=100,
@@ -2748,7 +2754,7 @@ class TrialDialog(BaseDialog):
                                ''.format(u'\N{ANGSTROM SIGN}'.encode('utf-8')),
                                label_size=(180, -1),
                                label_style='bold',
-                               ctrl_size=(80, -1),
+                               ctrl_size=(150, -1),
                                ctrl_value=str(d_min),
                                ctrl_min=0.1,
                                ctrl_max=100,
