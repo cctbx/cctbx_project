@@ -91,7 +91,7 @@ async def closing_time():
 
 
 async def startserver(port):
-  async with websockets.serve(handler, "localhost", port):
+  async with websockets.legacy.server.serve(handler, "localhost", port):
     print("in startserver")
     #await asyncio.Future()
     #await asyncio.sleep(10)
@@ -104,7 +104,7 @@ if __name__ == '__main__':
   print("Websockets server on localhost port %s waiting for browser connection." %port)
   tasks = asyncio.gather(
     #startserver(port),
-    websockets.serve(handler, "localhost", port),
+    websockets.legacy.server.serve(handler, "localhost", port),
     closing_time()
   )
   evl = asyncio.get_event_loop()
