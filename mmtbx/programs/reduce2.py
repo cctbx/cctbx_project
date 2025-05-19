@@ -33,7 +33,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.10.0"
+version = "2.11.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -1005,8 +1005,15 @@ NOTES:
       "output.add_group_line=False"
     ]
     args.extend(extraArgs)
-    parser.parse_args(args)
 
+    # Add the probe parameters from the command line to the parser
+    for arg in sys.argv:
+      if arg.startswith("probe."):
+        # Remove the leading "probe." and add it to the parser
+        arg = arg[6:]
+        args.append(arg)
+
+    parser.parse_args(args)
     return parser
 
 # ------------------------------------------------------------------------------
