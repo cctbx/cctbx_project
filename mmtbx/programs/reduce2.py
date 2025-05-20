@@ -33,7 +33,7 @@ import copy
 from iotbx.data_manager import DataManager
 import csv
 
-version = "2.11.0"
+version = "2.12.0"
 
 master_phil_str = '''
 approach = *add remove
@@ -125,7 +125,10 @@ output
     .short_caption = Print extra atom info
     .help = Print extra atom info
 }
-''' + Helpers.probe_phil_parameters
+''' + Helpers.probe_phil_parameters.replace("probe_radius = 0.25", "probe_radius = 0.0")
+# @todo We replace the default probe radius of 0.25 with 0.0 to avoid the issue described in
+# https://github.com/cctbx/cctbx_project/issues/1072 until we can figure out the appropriate
+# fix.
 
 program_citations = phil.parse('''
 citation {
