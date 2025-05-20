@@ -1164,6 +1164,12 @@ NOTES:
       self.params.output.filename = base + suffix
       print('Writing model output to', self.params.output.filename, file=self.logger)
 
+    if os.environ.get('PHENIX_OVERWRITE_ALL', False):
+      self.data_manager.set_overwrite(True)
+    if not self.params.output.overwrite:
+      if os.path.exists(self.params.output.filename):
+        print('\n\tOutput filename exists. Use overwrite=True to continue.')
+
     self.data_manager.has_models(raise_sorry=True)
     if self.params.output.description_file_name is None:
       self.params.output.description_file_name=self.params.output.filename.replace('.pdb',

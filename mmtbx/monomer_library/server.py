@@ -12,6 +12,7 @@ import six
 
 class MonomerLibraryServerError(RuntimeError): pass
 
+# CLIBD_MON no longer supported because of the cascade to GeoStd
 mon_lib_env_vars = ["MMTBX_CCP4_MONOMER_LIB", "CLIBD_MON"]
 
 def load_mon_lib_file(mon_lib_path,
@@ -26,8 +27,9 @@ def load_mon_lib_file(mon_lib_path,
 def find_mon_lib_file(env_vars=mon_lib_env_vars,
                       relative_path_components=[],
                       ):
+  redirect_dir=os.environ.get(env_vars[0], None)
   result = load_mon_lib_file(
-    mon_lib_path=os.environ.get(env_vars[0], None),
+    mon_lib_path=redirect_dir,
     relative_path_components=relative_path_components)
   if (result is not None): return result
   relative_paths = [
@@ -40,6 +42,7 @@ def find_mon_lib_file(env_vars=mon_lib_env_vars,
       # or 'ener_lib.cif' in relative_path_components
       ):
     relative_paths.reverse()
+  if redirect_dir and 'geostd_list.cif' in relative_path_components: return None
   for relative_path in relative_paths:
     result = load_mon_lib_file(
       mon_lib_path=libtbx.env.find_in_repositories(
