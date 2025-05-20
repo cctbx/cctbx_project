@@ -215,7 +215,7 @@ restraints_library_str = """
         .help = Root directory of user supplied restraints
       action = *pre post
         .type = choice(multi=False)
-        .help = Choice to look here before GeoStd or, the default, after
+        .help = Choice to look here before GeoStd, the default, or after
     }
   }
 """
