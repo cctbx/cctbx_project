@@ -1241,8 +1241,7 @@ class monomer_mapping(slots_getstate_setstate):
       = self.mon_lib_srv.get_comp_comp_id_and_atom_name_interpretation(
           residue_name=self.residue_name,
           atom_names=self.atom_names_given,
-          translate_cns_dna_rna_residue_names
-            =translate_cns_dna_rna_residue_names,
+          translate_cns_dna_rna_residue_names=translate_cns_dna_rna_residue_names,
           specific_residue_restraints=specific_residue_restraints,
           user_supplied_restraints_directory=user_supplied_restraints_directory,
           user_supplied_pre_post=user_supplied_pre_post,
@@ -2057,6 +2056,10 @@ class add_bond_proxies(object):
             and bond.atom_id_2.replace("'", "*") in m_j.monomer_atom_dict):
           bond.atom_id_1 = bond.atom_id_1.replace("'", "*")
           bond.atom_id_2 = bond.atom_id_2.replace("'", "*")
+        elif (    bond.atom_id_1.replace("*", "'") in m_i.monomer_atom_dict
+              and bond.atom_id_2.replace("*", "'") in m_j.monomer_atom_dict):
+          bond.atom_id_1 = bond.atom_id_1.replace("*", "'")
+          bond.atom_id_2 = bond.atom_id_2.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2128,6 +2131,12 @@ class add_angle_proxies(object):
           angle.atom_id_1 = angle.atom_id_1.replace("'", "*")
           angle.atom_id_2 = angle.atom_id_2.replace("'", "*")
           angle.atom_id_3 = angle.atom_id_3.replace("'", "*")
+        elif (    angle.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and angle.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and angle.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict):
+          angle.atom_id_1 = angle.atom_id_1.replace("*", "'")
+          angle.atom_id_2 = angle.atom_id_2.replace("*", "'")
+          angle.atom_id_3 = angle.atom_id_3.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2208,6 +2217,14 @@ class add_dihedral_proxies(object):
           tor.atom_id_2 = tor.atom_id_2.replace("'", "*")
           tor.atom_id_3 = tor.atom_id_3.replace("'", "*")
           tor.atom_id_4 = tor.atom_id_4.replace("'", "*")
+        elif (    tor.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and tor.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and tor.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict
+              and tor.atom_id_4.replace("*", "'") in m_4.monomer_atom_dict):
+          tor.atom_id_1 = tor.atom_id_1.replace("*", "'")
+          tor.atom_id_2 = tor.atom_id_2.replace("*", "'")
+          tor.atom_id_3 = tor.atom_id_3.replace("*", "'")
+          tor.atom_id_4 = tor.atom_id_4.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2352,6 +2369,14 @@ class add_chirality_proxies(object):
           chir.atom_id_2 = chir.atom_id_2.replace("'", "*")
           chir.atom_id_3 = chir.atom_id_3.replace("'", "*")
           chir.atom_id_centre = chir.atom_id_centre.replace("'", "*")
+        elif (    chir.atom_id_1.replace("*", "'") in m_1.monomer_atom_dict
+              and chir.atom_id_2.replace("*", "'") in m_2.monomer_atom_dict
+              and chir.atom_id_3.replace("*", "'") in m_3.monomer_atom_dict
+              and chir.atom_id_centre.replace("*", "'") in m_c.monomer_atom_dict):
+          chir.atom_id_1 = chir.atom_id_1.replace("*", "'")
+          chir.atom_id_2 = chir.atom_id_2.replace("*", "'")
+          chir.atom_id_3 = chir.atom_id_3.replace("*", "'")
+          chir.atom_id_centre = chir.atom_id_centre.replace("*", "'")
         else:
           counters.corrupt_monomer_library_definitions += 1
           continue
@@ -2428,6 +2453,8 @@ class add_planarity_proxies(object):
         if (plane_atom.atom_id not in m_x.monomer_atom_dict):
           if (   plane_atom.atom_id.replace("'", "*") in m_x.monomer_atom_dict):
             plane_atom.atom_id = plane_atom.atom_id.replace("'", "*")
+          elif (   plane_atom.atom_id.replace("*", "'") in m_x.monomer_atom_dict):
+            plane_atom.atom_id = plane_atom.atom_id.replace("*", "'")
           else:
             counters.corrupt_monomer_library_definitions += 1
             continue
