@@ -78,6 +78,30 @@ TER
 END
 """
 
+# CO is on special position, 3 copies around. Links to NE2 and HOH
+raw_records2 = """\
+CRYST1   81.430   81.430   33.750  90.00  90.00 120.00 H 3          18
+ORIGX1      1.000000  0.000000  0.000000        0.00000
+ORIGX2      0.000000  1.000000  0.000000        0.00000
+ORIGX3      0.000000  0.000000  1.000000        0.00000
+SCALE1      0.012280  0.007090  0.000000        0.00000
+SCALE2      0.000000  0.014180  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.029630        0.00000
+ATOM      1  N   HIS D  10      -0.063   5.481  -5.607  1.00 10.05           N
+ATOM      2  CA  HIS D  10       1.347   5.653  -5.385  1.00  9.54           C
+ATOM      3  C   HIS D  10       1.835   7.103  -5.261  1.00  8.81           C
+ATOM      4  O   HIS D  10       2.731   7.418  -4.480  1.00  8.89           O
+ATOM      5  CB  HIS D  10       2.061   4.958  -6.530  1.00 10.08           C
+ATOM      6  CG  HIS D  10       1.686   3.518  -6.637  1.00 10.90           C
+ATOM      7  ND1 HIS D  10       1.964   2.609  -5.629  1.00 11.69           N
+ATOM      8  CD2 HIS D  10       0.995   2.864  -7.574  1.00 11.16           C
+ATOM      9  CE1 HIS D  10       1.490   1.429  -5.986  1.00 12.82           C
+ATOM     10  NE2 HIS D  10       0.918   1.565  -7.171  1.00 10.61           N
+HETATM   11 CO    CO D 101      -0.002   0.003  -8.336  0.33 12.86          CO
+HETATM   12  O   HOH D 208      -0.901   1.609  -9.921  1.00 16.66           O
+END
+"""
+
 raw_records4 = """\
 CRYST1   15.775   12.565   13.187  90.00  90.00  90.00 P 1
 ATOM      1  N   MET A   1       9.821   6.568   5.000  1.00 66.07           N
@@ -619,7 +643,7 @@ bond pdb=" SG  CYS A   2 "
   # with open("exercise_bond_with_self_after.geo", 'w') as f:
   #   f.write(after_geo_str)
   diff_out = StringIO()
-  show_diff(initial_geo_str, after_geo_str, out=diff_out)
+  show_diff(after_geo_str, initial_geo_str, out=diff_out)
   diff_gv = diff_out.getvalue()
   # print("*"*80)
   # print(diff_gv)
@@ -627,65 +651,216 @@ bond pdb=" SG  CYS A   2 "
   assert not show_diff(diff_gv,"""\
 ---
 +++
-@@ -92,6 +92,13 @@
+@@ -92,13 +92,6 @@
       pdb=" CB  CYS A   2 "
    ideal  model  delta    sigma   weight residual
    1.531  1.531  0.000 3.28e-02 9.30e+02 6.44e-08
-+
-+Bond | Disulphide bridge | restraints: 1
-+Sorted by residual:
-+bond pdb=" SG  CYS A   2 "
-+     pdb=" SG  CYS A   2 "
-+  ideal  model  delta    sigma   weight residual sym.op.
-+  2.031  2.028  0.003 2.00e-02 2.50e+03 2.48e-02 -x-1,z,y
+-
+-Bond | Disulphide bridge | restraints: 1
+-Sorted by residual:
+-bond pdb=" SG  CYS A   2 "
+-     pdb=" SG  CYS A   2 "
+-  ideal  model  delta    sigma   weight residual sym.op.
+-  2.031  2.028  0.003 2.00e-02 2.50e+03 2.48e-02 -x-1,z,y
 
  Bond angle | covalent geometry | restraints: 29
  Sorted by residual:
-@@ -390,24 +397,12 @@
+@@ -397,12 +390,24 @@
        pdb=" O   LYS A   3 "    0.000 2.00e-02 2.50e+03
        pdb=" OXT LYS A   3 "    0.000 2.00e-02 2.50e+03
 
--Nonbonded | unspecified | interactions: 83
-+Nonbonded | unspecified | interactions: 80
+-Nonbonded | unspecified | interactions: 80
++Nonbonded | unspecified | interactions: 83
  Sorted by model distance:
--nonbonded pdb=" SG  CYS A   2 "
--          pdb=" SG  CYS A   2 "
--   model   vdw sym.op.
--   2.028 3.760 -x-1,z,y
++nonbonded pdb=" SG  CYS A   2 "
++          pdb=" SG  CYS A   2 "
++   model   vdw sym.op.
++   2.028 3.760 -x-1,z,y
  nonbonded pdb=" N   LYS A   3 "
            pdb=" O   LYS A   3 "
     model   vdw
     2.691 2.496
--nonbonded pdb=" CB  CYS A   2 "
--          pdb=" SG  CYS A   2 "
--   model   vdw sym.op.
--   2.753 3.800 -x-1,z,y
--nonbonded pdb=" SG  CYS A   2 "
--          pdb=" CB  CYS A   2 "
--   model   vdw sym.op.
--   2.753 3.800 -x-1,z,y
++nonbonded pdb=" CB  CYS A   2 "
++          pdb=" SG  CYS A   2 "
++   model   vdw sym.op.
++   2.753 3.800 -x-1,z,y
++nonbonded pdb=" SG  CYS A   2 "
++          pdb=" CB  CYS A   2 "
++   model   vdw sym.op.
++   2.753 3.800 -x-1,z,y
  nonbonded pdb=" O   CYS A   2 "
            pdb=" CA  LYS A   3 "
     model   vdw
-@@ -467,15 +462,15 @@
+@@ -462,15 +467,15 @@
  nonbonded pdb=" SG  CYS A   2 "
            pdb=" CA  CYS A   2 "
     model   vdw sym.op.
--   3.205 3.830 -x-1,z,y
-+   3.205 3.064 -x-1,z,y
+-   3.205 3.064 -x-1,z,y
++   3.205 3.830 -x-1,z,y
  nonbonded pdb=" CA  CYS A   2 "
            pdb=" SG  CYS A   2 "
     model   vdw sym.op.
--   3.205 3.830 -x-1,z,y
-+   3.205 3.064 -x-1,z,y
+-   3.205 3.064 -x-1,z,y
++   3.205 3.830 -x-1,z,y
  nonbonded pdb=" CB  CYS A   2 "
            pdb=" CB  CYS A   2 "
     model   vdw sym.op.
--   3.334 3.840 -x-1,z,y
-+   3.334 3.072 -x-1,z,y
+-   3.334 3.072 -x-1,z,y
++   3.334 3.840 -x-1,z,y
  nonbonded pdb=" O   LYS A   3 "
            pdb=" CB  LYS A   3 "
     model   vdw
+
+""", strip_trailing_whitespace=True)
+
+def exercise_on_special_position(mon_lib_srv, ener_lib):
+  """
+  Looks like special position is not different from no symmetry case.
+  """
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.automatic_linking.link_all=True
+  grm, xrs = make_grm_via_model(mon_lib_srv, ener_lib, raw_records2, params)
+  sites_cart = xrs.sites_cart()
+  initial_geo_str = show_sorted_geometry_str(grm, xrs)
+  # with open("exercise_bond_with_self_initial.geo", 'w') as f:
+  #   f.write(initial_geo_str)
+  # print(initial_geo_str)
+  simple, asu = grm.get_all_bond_proxies()
+  assert (simple.size(), asu.size()) == (12, 0), (simple.size(), asu.size())
+  assert grm.is_bonded_atoms(9,10)
+  assert grm.is_bonded_atoms(10,11)
+  grm.remove_bond_restraints_in_place(bonded_pairs=[(9,10), (10,11)], sites_cart=sites_cart)
+  assert not grm.is_bonded_atoms(9,10)
+  assert not grm.is_bonded_atoms(10,11)
+  after_geo_str = show_sorted_geometry_str(grm, xrs)
+  # print(final_geo_str)
+  diff_out = StringIO()
+  show_diff(after_geo_str, initial_geo_str, out=diff_out)
+  diff_gv = diff_out.getvalue()
+  # print("*"*80)
+  # print(diff_gv)
+  # STOP()
+  assert not show_diff(diff_gv,"""\
+---
++++
+@@ -40,17 +40,6 @@
+      pdb=" CE1 HIS D  10 "
+   ideal  model  delta    sigma   weight residual
+   1.321  1.321  0.000 1.00e-02 1.00e+04 3.82e-04
+-
+-Bond | Metal coordination | restraints: 2
+-Sorted by residual:
+-bond pdb="CO    CO D 101 "
+-     pdb=" O   HOH D 208 "
+-  ideal  model  delta    sigma   weight residual
+-  2.090  2.429 -0.339 1.00e-01 1.00e+02 1.15e+01
+-bond pdb=" NE2 HIS D  10 "
+-     pdb="CO    CO D 101 "
+-  ideal  model  delta    sigma   weight residual
+-  2.140  2.155 -0.015 1.00e-01 1.00e+02 2.21e-02
+
+ Bond angle | covalent geometry | restraints: 12
+ Sorted by residual:
+@@ -166,7 +155,7 @@
+       pdb=" CE1 HIS D  10 "   -0.005 2.00e-02 2.50e+03
+       pdb=" NE2 HIS D  10 "    0.009 2.00e-02 2.50e+03
+
+-Nonbonded | unspecified | interactions: 81
++Nonbonded | unspecified | interactions: 86
+ Sorted by model distance:
+ nonbonded pdb=" NE2 HIS D  10 "
+           pdb="CO    CO D 101 "
+@@ -176,6 +165,10 @@
+           pdb=" NE2 HIS D  10 "
+    model   vdw sym.op.
+    2.154 2.300 -y,x-y,z
++nonbonded pdb=" NE2 HIS D  10 "
++          pdb="CO    CO D 101 "
++   model   vdw
++   2.155 2.300
+ nonbonded pdb="CO    CO D 101 "
+           pdb=" NE2 HIS D  10 "
+    model   vdw sym.op.
+@@ -184,6 +177,10 @@
+           pdb="CO    CO D 101 "
+    model   vdw sym.op.
+    2.159 2.300 -y,x-y,z
++nonbonded pdb="CO    CO D 101 "
++          pdb=" O   HOH D 208 "
++   model   vdw
++   2.429 2.220
+ nonbonded pdb="CO    CO D 101 "
+           pdb=" O   HOH D 208 "
+    model   vdw sym.op.
+@@ -210,6 +207,10 @@
+    3.115 2.840
+ nonbonded pdb=" CD2 HIS D  10 "
+           pdb="CO    CO D 101 "
++   model   vdw
++   3.124 2.440
++nonbonded pdb=" CD2 HIS D  10 "
++          pdb="CO    CO D 101 "
+    model   vdw sym.op.
+    3.125 2.440 -x+y,-x,z
+ nonbonded pdb="CO    CO D 101 "
+@@ -224,6 +225,10 @@
+           pdb="CO    CO D 101 "
+    model   vdw sym.op.
+    3.126 2.440 -x+y,-x,z
++nonbonded pdb=" CE1 HIS D  10 "
++          pdb="CO    CO D 101 "
++   model   vdw
++   3.128 2.440
+ nonbonded pdb=" CD2 HIS D  10 "
+           pdb="CO    CO D 101 "
+    model   vdw sym.op.
+@@ -259,7 +264,7 @@
+ nonbonded pdb=" CD2 HIS D  10 "
+           pdb=" O   HOH D 208 "
+    model   vdw
+-   3.268 2.608
++   3.268 3.260
+ nonbonded pdb=" O   HIS D  10 "
+           pdb=" CB  HIS D  10 "
+    model   vdw
+@@ -272,6 +277,10 @@
+           pdb=" NE2 HIS D  10 "
+    model   vdw sym.op.
+    3.286 3.340 -x+y,-x,z
++nonbonded pdb=" NE2 HIS D  10 "
++          pdb=" O   HOH D 208 "
++   model   vdw
++   3.297 3.120
+ nonbonded pdb=" NE2 HIS D  10 "
+           pdb=" O   HOH D 208 "
+    model   vdw sym.op.
+@@ -367,7 +376,7 @@
+ nonbonded pdb=" ND1 HIS D  10 "
+           pdb="CO    CO D 101 "
+    model   vdw
+-   4.241 1.840
++   4.241 2.300
+ nonbonded pdb=" ND1 HIS D  10 "
+           pdb="CO    CO D 101 "
+    model   vdw sym.op.
+@@ -379,7 +388,7 @@
+ nonbonded pdb=" CG  HIS D  10 "
+           pdb="CO    CO D 101 "
+    model   vdw
+-   4.253 1.952
++   4.253 2.440
+ nonbonded pdb=" CG  HIS D  10 "
+           pdb="CO    CO D 101 "
+    model   vdw sym.op.
+@@ -459,7 +468,7 @@
+ nonbonded pdb=" CE1 HIS D  10 "
+           pdb=" O   HOH D 208 "
+    model   vdw
+-   4.608 2.608
++   4.608 3.260
+ nonbonded pdb=" CG  HIS D  10 "
+           pdb=" CE1 HIS D  10 "
+    model   vdw sym.op.
 
 """, strip_trailing_whitespace=True)
 
@@ -704,6 +879,7 @@ def exercise():
     exercise_bond_in_symmetry_grm(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
     exercise_bond_with_self(mon_lib_srv, ener_lib)
+    exercise_on_special_position(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

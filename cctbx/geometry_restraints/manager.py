@@ -1282,35 +1282,16 @@ class manager(Base_geometry):
     def _show_bpt(bpt):
       print('bpt size:', bpt.size())
       for i_seq in range(bpt.size()):
-        # print(dir(d))
         print('i_seq', i_seq)
         d = bpt[i_seq]
         for k in d.keys():
-          # print(dir(d[k]))
           print('  j_seq: %d, %f' % (k, d[k].distance_ideal))
 
     # print("1-2,"*30)
     # print('BEGIN shell_sym_tables[0]')
     # self.shell_sym_tables[0].show()
-
-    # print("1-3,"*30)
-    # print('BEGIN shell_sym_tables[1]')
-    # self.shell_sym_tables[1].show()
-    # print("1-4,"*30)
-    # print('BEGIN shell_sym_tables[2]')
-    # self.shell_sym_tables[2].show()
-    # STOP()
-    # STOP()
-
     filtered_bonded_pairs = [sorted(x) for x in bonded_pairs if self.is_bonded_atoms(x[0], x[1])]
-    # print("Filtered bonded pairs:", filtered_bonded_pairs )
-
     # print("Original BPT")
-    # _show_bpt(self.bond_params_table)
-
-    # for i, j in filtered_bonded_pairs:
-    #   del self.bond_params_table[i][j]
-    # print("New BPT")
     # _show_bpt(self.bond_params_table)
 
     # Removing bonds from self.shell_sym_tables
@@ -1324,18 +1305,6 @@ class manager(Base_geometry):
     for i, j in filtered_bonded_pairs:
       del self.shell_sym_tables[0][i][j]
     pair_asu_table.add_pair_sym_table(self.shell_sym_tables[0])
-    # print('-- pair asu table 2')
-    # pair_asu_table.show()
-
-    # pst = pair_asu_table.extract_pair_sym_table()
-    # print('pst')
-    # pst.show()
-    # print('\pst')
-
-    # self.shell_sym_tables = crystal.coordination_sequences.shell_sym_tables(
-    #   full_pair_sym_table=pst,
-    #   site_symmetry_table=self.site_symmetry_table,
-    #   max_shell=3)
     shell_asu_tables = crystal.coordination_sequences.shell_asu_tables(
       pair_asu_table=pair_asu_table,
       max_shell=3)
@@ -1344,23 +1313,6 @@ class manager(Base_geometry):
 
     self.reset_internals()
     self.pair_proxies(sites_cart=sites_cart)
-    # self.shell_sym_tables[0].show()
-    # print("1-2,"*30)
-    # print('END shell_sym_tables[0]')
-    # self.shell_sym_tables[0].show()
-
-    # print("1-3,"*30)
-    # print('END shell_sym_tables[1]')
-    # self.shell_sym_tables[1].show()
-    # print("1-4,"*30)
-    # print('END shell_sym_tables[2]')
-    # self.shell_sym_tables[2].show()
-
-    # print(self.shell_sym_tables[1][26])
-    # for k, v in self.shell_sym_tables[0][24].items():
-    #   print(k,v)
-    # STOP()
-
 
   def is_bonded_atoms(self, i_seq, j_seq):
     i_s = i_seq
