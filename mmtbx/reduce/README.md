@@ -8,7 +8,16 @@ uses the modules in this directory, along with those in mmtbx/hydrogens and mmtb
 and optimize Hydrogens on a model.
 
 **Notes:**
-* Reduce2 uses the Probe2 module, which requires the chem_data modules from Phenix.
+* Reduce2 uses the Probe2 module, which requires the chem_data module.
+
+**Installing and running:** *Reduce2* is part of the mmtbx module, which is part of the CCTBX
+distribution. It can be built and run as part of the CCTBX build process. The CCTBX build process
+is described in the CCTBX documentation at https://cctbx.github.io/ and is also described in the
+README.md file in the root of the CCTBX distribution at
+https://github.com/cctbx/cctbx_project/blob/master/README.md. Once the system has been built
+and the environment configured (perhaps using one of the setpath scripts in the build directory),
+the Reduce2 program can be run from the command line as `mmtbx.reduce2`, and the --help or
+--show-defaults options used to see the available options.
 
 # C++ Classes
 
