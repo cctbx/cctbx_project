@@ -60,6 +60,35 @@ namespace smtbx {
         typedef typename cctbx::xray::twin_fraction<FloatType> twf_t;
         typedef typename cctbx::xray::observations<FloatType>::index_twin_component twc_t;
         typedef std::complex<FloatType> complex_type;
+      protected:
+        void update_component_grads(const twf_t* fraction,
+          af::shared<FloatType>& gradients,
+          FloatType obs) const
+        {
+          if (fraction == 0) {
+            const scitbx::af::shared<twin_component<FloatType>*>& tcs =
+              reflections.merohedral_components();
+            for (size_t i = 0; i < tcs.size(); i++) {
+              if (tcs[i]->grad) {
+                SMTBX_ASSERT(tcs[i]->grad_index >= 0 && tcs[i]->grad_index < gradients.size());
+                gradients[tcs[i]->grad_index] -= obs;
+              }
+            }
+            const scitbx::af::shared<twin_fraction<FloatType>*>& twf =
+              reflections.twin_fractions();
+            for (size_t i = 0; i < twf.size(); i++) {
+              if (twf[i]->grad) {
+                SMTBX_ASSERT(twf[i]->grad_index >= 0 && twf[i]->grad_index < gradients.size());
+                gradients[twf[i]->grad_index] -= obs;
+              }
+            }
+          }
+          else if (fraction->grad) {
+            SMTBX_ASSERT(fraction->grad_index >= 0 && fraction->grad_index < gradients.size());
+            gradients[fraction->grad_index] += obs;
+          }
+        }
+      public:
         
         twinning_processor(
           cctbx::xray::observations<FloatType> const& reflections,
@@ -78,28 +107,22 @@ namespace smtbx {
           af::shared<FloatType>& gradients) const
         {
           FloatType obs = f_calc_function.get_observable();
-          // this is the same for all components - not much useful with real twinning
-          const twin_fraction<FloatType>* fraction = reflections.fraction(i_h);
           if (reflections.has_twin_components()) {
-            itr_t itr = reflections.iterate(i_h);
-            FloatType measured_part = obs,
-              identity_part = 0,
-              obs_scale = reflections.scale(i_h);
-            obs *= obs_scale;
             const twf_t* measured_fraction = reflections.fraction(i_h);
+            itr_t itr = reflections.iterate(i_h);
+            FloatType obs_scale = reflections.scale(i_h);
             if (compute_grad) {
               gradients *= obs_scale;
-              if (measured_fraction == 0) {
-                identity_part = measured_part;
-              }
+              update_component_grads(measured_fraction, gradients, obs);
             }
+            obs *= obs_scale;
             while (itr.has_next()) {
               twc_t twc = itr.next();
               boost::optional<complex_type> f_mask = boost::none;
               if (f_mask_data.size() > 0) {
                 f_mask = f_mask_data.find(twc.h);
               }
-              f_calc_function.compute(twc.h, f_mask, fraction, compute_grad);
+              f_calc_function.compute(twc.h, f_mask, measured_fraction, compute_grad);
               obs += twc.scale() * f_calc_function.get_observable();
               if (compute_grad) {
                 if (f_calc_function.raw_gradients()) {
@@ -113,32 +136,7 @@ namespace smtbx {
                     f_calc_function.get_grad_observable().end());
                   gradients += twc.scale() * tmp_gradients;
                 }
-                if (twc.fraction != 0) {
-                  if (twc.fraction->grad) {
-                    SMTBX_ASSERT(!(twc.fraction->grad_index < 0 ||
-                      twc.fraction->grad_index >= gradients.size()));
-                    gradients[twc.fraction->grad_index] += f_calc_function.get_observable();
-                  }
-                }
-                else {
-                  identity_part += f_calc_function.get_observable();
-                }
-              }
-            }
-            if (compute_grad) {
-              // consider multiple reflections with the 'prime' scale
-              itr.reset();
-              while (itr.has_next()) {
-                twc_t twc = itr.next();
-                if (twc.fraction != 0 && twc.fraction->grad) {
-                  gradients[twc.fraction->grad_index] -= identity_part;
-                }
-              }
-              if (measured_fraction != 0 && measured_fraction->grad) {
-                SMTBX_ASSERT(!(measured_fraction->grad_index < 0 ||
-                  measured_fraction->grad_index >= gradients.size()));
-                gradients[measured_fraction->grad_index] +=
-                  measured_part - identity_part;
+                update_component_grads(twc.fraction, gradients, f_calc_function.get_observable());
               }
             }
           }
