@@ -1263,6 +1263,12 @@ class map_manager(map_reader, write_ccp4_map):
     self.set_map_data(map_data = new_mm.map_data())  # replace map data
 
 
+  def scale_map(self, scale = None):
+    '''
+      Multiply values in map by scale.
+    '''
+    self.set_map_data(map_data = scale * self.map_data())  # replace map data
+
   def resolution_filter(self, d_min = None, d_max = None):
     '''
       High- or low-pass filter the map in map_manager.

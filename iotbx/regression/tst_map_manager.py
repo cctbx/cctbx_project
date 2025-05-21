@@ -354,11 +354,16 @@ def test_01():
   binary=mm.deep_copy()
   binary.binary_filter(threshold=0.5)
 
+  scaled=mm.deep_copy()
+  scaled.scale_map(10)
+
   assert approx_equal(
      (mm.map_data().as_1d()[1073],low_pass_filtered.map_data().as_1d()[1073],
        high_pass_filtered.map_data().as_1d()[1073],
-       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073]),
-      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0))
+       gaussian.map_data().as_1d()[1073],binary.map_data().as_1d()[1073],
+       scaled.map_data().as_1d()[1073]),
+      (0.0171344596893,0.0227163900537,-0.0072717454565,0.0149086679298,0.0,
+        0.171344596893))
 
   info=mm.get_density_along_line((5,5,5),(10,10,10))
   assert approx_equal([info.along_density_values[4]]+list(info.along_sites[4]),
