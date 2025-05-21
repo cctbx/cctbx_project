@@ -45,6 +45,39 @@ def show_sorted_geometry_str(geometry, xrs):
       f=sio)
   return sio.getvalue()
 
+# SS-bridge with self!
+raw_records1 = """\
+CRYST1  108.910  108.910  108.910  90.00  90.00  90.00 I 4 3 2
+SCALE1      0.009182  0.000000  0.000000        0.00000
+SCALE2      0.000000  0.009182  0.000000        0.00000
+SCALE3      0.000000  0.000000  0.009182        0.00000
+ATOM      1  N   PRO A   1     -50.110 -12.340  -8.990  1.00 87.52           N
+ATOM      2  CA  PRO A   1     -49.518 -12.918 -10.200  1.00 88.41           C
+ATOM      3  C   PRO A   1     -50.549 -13.676 -11.025  1.00 97.43           C
+ATOM      4  O   PRO A   1     -51.129 -14.656 -10.556  1.00 93.89           O
+ATOM      5  CB  PRO A   1     -48.446 -13.865  -9.649  1.00 78.46           C
+ATOM      6  CG  PRO A   1     -48.110 -13.314  -8.317  1.00 80.77           C
+ATOM      7  CD  PRO A   1     -49.402 -12.783  -7.777  1.00 92.02           C
+ATOM      8  N   CYS A   2     -50.777 -13.205 -12.246  1.00 95.50           N
+ATOM      9  CA  CYS A   2     -51.774 -13.797 -13.124  1.00103.68           C
+ATOM     10  C   CYS A   2     -51.135 -14.327 -14.399  1.00101.77           C
+ATOM     11  O   CYS A   2     -50.987 -13.597 -15.382  1.00106.09           O
+ATOM     12  CB  CYS A   2     -52.861 -12.775 -13.466  1.00103.91           C
+ATOM     13  SG  CYS A   2     -54.064 -13.357 -14.680  1.00106.39           S
+ATOM     14  N   LYS A   3     -50.756 -15.600 -14.375  1.00105.98           N
+ATOM     15  CA  LYS A   3     -50.135 -16.230 -15.528  1.00115.21           C
+ATOM     16  C   LYS A   3     -50.110 -17.740 -15.357  1.00105.26           C
+ATOM     17  O   LYS A   3     -50.331 -18.255 -14.264  1.00118.65           O
+ATOM     18  CB  LYS A   3     -48.714 -15.704 -15.737  1.00110.03           C
+ATOM     19  CG  LYS A   3     -47.784 -15.954 -14.563  1.00100.14           C
+ATOM     20  CD  LYS A   3     -46.379 -15.452 -14.853  1.00101.77           C
+ATOM     21  CE  LYS A   3     -45.456 -15.678 -13.663  1.00112.21           C
+ATOM     22  NZ  LYS A   3     -44.063 -15.229 -13.941  1.00110.68           N
+ATOM     23  OXT LYS A   3     -49.867 -18.479 -16.312  1.00 30.00           O
+TER
+END
+"""
+
 raw_records4 = """\
 CRYST1   15.775   12.565   13.187  90.00  90.00  90.00 P 1
 ATOM      1  N   MET A   1       9.821   6.568   5.000  1.00 66.07           N
@@ -531,7 +564,7 @@ def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
   initial_geo_str = show_sorted_geometry_str(grm, xrs)
   simple, asu = grm.get_all_bond_proxies()
   assert (simple.size(), asu.size()) == (10, 2), (simple.size(), asu.size())
-  print('before', simple.size(), asu.size())
+  # print('before', simple.size(), asu.size())
   sites_cart = xrs.sites_cart()
 
   # Now we are removing the bonds one by one
@@ -543,7 +576,7 @@ def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
 
   # print('after', simple.size(), asu.size())
   after_geo_str = show_sorted_geometry_str(grm, xrs)
-  print(after_geo_str)
+  # print(after_geo_str)
 
   # Here we creating GRM without the Zn -- NE2 bond
   params = mmtbx.model.manager.get_default_pdb_interpretation_params()
@@ -554,6 +587,107 @@ def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
   nobond_geo_str = show_sorted_geometry_str(nobond_grm, xrs)
   assert not show_diff(after_geo_str, nobond_geo_str)
 
+def exercise_bond_with_self(mon_lib_srv, ener_lib):
+  """Shell_sym_table has the following in this case:
+i_seq: 12
+  j_seq: 12
+    -x-1,z,y
+  """
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  grm, xrs = make_grm_via_model(mon_lib_srv, ener_lib, raw_records1, params)
+  sites_cart = xrs.sites_cart()
+  initial_geo_str = show_sorted_geometry_str(grm, xrs)
+  # with open("exercise_bond_with_self_initial.geo", 'w') as f:
+  #   f.write(initial_geo_str)
+  # print(initial_geo_str)
+  assert_lines_in_text(initial_geo_str,"""\
+Bond | Disulphide bridge | restraints: 1
+Sorted by residual:
+bond pdb=" SG  CYS A   2 "
+     pdb=" SG  CYS A   2 "
+  ideal  model  delta    sigma   weight residual sym.op.
+  2.031  2.028  0.003 2.00e-02 2.50e+03 2.48e-02 -x-1,z,y
+""")
+  simple, asu = grm.get_all_bond_proxies()
+  assert (simple.size(), asu.size()) == (23, 1), (simple.size(), asu.size())
+  assert grm.is_bonded_atoms(12,12)
+  grm.remove_bond_restraints_in_place(bonded_pairs=[(12,12)], sites_cart=sites_cart)
+  assert not grm.is_bonded_atoms(12,12)
+  simple, asu = grm.get_all_bond_proxies()
+  assert (simple.size(), asu.size()) == (23, 0), (simple.size(), asu.size())
+  after_geo_str = show_sorted_geometry_str(grm, xrs)
+  # with open("exercise_bond_with_self_after.geo", 'w') as f:
+  #   f.write(after_geo_str)
+  diff_out = StringIO()
+  show_diff(initial_geo_str, after_geo_str, out=diff_out)
+  diff_gv = diff_out.getvalue()
+  # print("*"*80)
+  # print(diff_gv)
+  # STOP()
+  assert not show_diff(diff_gv,"""\
+---
++++
+@@ -92,6 +92,13 @@
+      pdb=" CB  CYS A   2 "
+   ideal  model  delta    sigma   weight residual
+   1.531  1.531  0.000 3.28e-02 9.30e+02 6.44e-08
++
++Bond | Disulphide bridge | restraints: 1
++Sorted by residual:
++bond pdb=" SG  CYS A   2 "
++     pdb=" SG  CYS A   2 "
++  ideal  model  delta    sigma   weight residual sym.op.
++  2.031  2.028  0.003 2.00e-02 2.50e+03 2.48e-02 -x-1,z,y
+
+ Bond angle | covalent geometry | restraints: 29
+ Sorted by residual:
+@@ -390,24 +397,12 @@
+       pdb=" O   LYS A   3 "    0.000 2.00e-02 2.50e+03
+       pdb=" OXT LYS A   3 "    0.000 2.00e-02 2.50e+03
+
+-Nonbonded | unspecified | interactions: 83
++Nonbonded | unspecified | interactions: 80
+ Sorted by model distance:
+-nonbonded pdb=" SG  CYS A   2 "
+-          pdb=" SG  CYS A   2 "
+-   model   vdw sym.op.
+-   2.028 3.760 -x-1,z,y
+ nonbonded pdb=" N   LYS A   3 "
+           pdb=" O   LYS A   3 "
+    model   vdw
+    2.691 2.496
+-nonbonded pdb=" CB  CYS A   2 "
+-          pdb=" SG  CYS A   2 "
+-   model   vdw sym.op.
+-   2.753 3.800 -x-1,z,y
+-nonbonded pdb=" SG  CYS A   2 "
+-          pdb=" CB  CYS A   2 "
+-   model   vdw sym.op.
+-   2.753 3.800 -x-1,z,y
+ nonbonded pdb=" O   CYS A   2 "
+           pdb=" CA  LYS A   3 "
+    model   vdw
+@@ -467,15 +462,15 @@
+ nonbonded pdb=" SG  CYS A   2 "
+           pdb=" CA  CYS A   2 "
+    model   vdw sym.op.
+-   3.205 3.830 -x-1,z,y
++   3.205 3.064 -x-1,z,y
+ nonbonded pdb=" CA  CYS A   2 "
+           pdb=" SG  CYS A   2 "
+    model   vdw sym.op.
+-   3.205 3.830 -x-1,z,y
++   3.205 3.064 -x-1,z,y
+ nonbonded pdb=" CB  CYS A   2 "
+           pdb=" CB  CYS A   2 "
+    model   vdw sym.op.
+-   3.334 3.840 -x-1,z,y
++   3.334 3.072 -x-1,z,y
+ nonbonded pdb=" O   LYS A   3 "
+           pdb=" CB  LYS A   3 "
+    model   vdw
+
+""", strip_trailing_whitespace=True)
 
 def exercise():
   mon_lib_srv = None
@@ -569,6 +703,7 @@ def exercise():
     exercise_remove_two_bond_restraints_in_place(mon_lib_srv, ener_lib)
     exercise_bond_in_symmetry_grm(mon_lib_srv, ener_lib)
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
+    exercise_bond_with_self(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()
