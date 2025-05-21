@@ -93,7 +93,7 @@ class manager(dict):
       lr = ligand_result(
         model = self.model,
         fmodel = self.fmodel,
-        readyset_model = self.readyset_model,
+        #readyset_model = self.readyset_model,
         two_fofc_map = self.two_fofc_map,
         fofc_map = self.fofc_map,
         fmodel_map = self.fmodel_map,
@@ -129,7 +129,7 @@ class manager(dict):
 
 
   def run(self):
-    self.get_readyset_model_with_grm()
+    #self.get_readyset_model_with_grm()
     args = []
     def _generate_ligand_isel():
       #done = []
@@ -155,34 +155,31 @@ class manager(dict):
       ligand_dict[altloc] = lr
 
 
-  def get_readyset_model_with_grm(self):
-    '''
-    Run ready set by default (to get ligand cif and/or add H atoms)
-    TODO: Once it it refactored, make running it optional
-          Complicated case is when cif is input for one ligand, but missing
-          for another ligand
-    '''
-    self.readyset_model = None
-    #if not self.model.has_hd():
-    if (self.params.place_hydrogens):
-      params=["add_h_to_water=False",
-               "optimise_final_geometry_of_hydrogens=False",
-               "--silent"]
-    else:
-      params=["add_h_to_water=False",
-              "hydrogens=False",
-              "optimise_final_geometry_of_hydrogens=False",
-              "--silent"]
-    assert (libtbx.env.has_module(name="reduce"))
-    assert (libtbx.env.has_module(name="elbow"))
-    # runs reduce internally
-    self.readyset_model = ready_set_model_interface(
-        model  = self.model,
-        params = params)
-    self.readyset_model.set_log(null_out())
-
-
-
+#  def get_readyset_model_with_grm(self):
+#    '''
+#    Run ready set by default (to get ligand cif and/or add H atoms)
+#    TODO: Once it it refactored, make running it optional
+#          Complicated case is when cif is input for one ligand, but missing
+#          for another ligand
+#    '''
+#    self.readyset_model = None
+#    #if not self.model.has_hd():
+#    if (self.params.place_hydrogens):
+#      params=["add_h_to_water=False",
+#               "optimise_final_geometry_of_hydrogens=False",
+#               "--silent"]
+#    else:
+#      params=["add_h_to_water=False",
+#              "hydrogens=False",
+#              "optimise_final_geometry_of_hydrogens=False",
+#              "--silent"]
+#    assert (libtbx.env.has_module(name="reduce"))
+#    assert (libtbx.env.has_module(name="elbow"))
+#    # runs reduce internally
+#    self.readyset_model = ready_set_model_interface(
+#        model  = self.model,
+#        params = params)
+#    self.readyset_model.set_log(null_out())
 
   def get_ligands(self, ph):
     '''
@@ -202,6 +199,7 @@ class manager(dict):
               iselection = rg.atoms().extract_i_seq()
               id_tuple = (model.id, chain.id, rg.resseq)
               ligand_isel_dict[id_tuple] = iselection
+              #print('here', list(iselection))
     return ligand_isel_dict
 
 
@@ -209,7 +207,7 @@ class manager(dict):
     make_sub_header(' Ligands in input model ', out=self.log)
     for id_tuple, ligand_dict in self.items():
       for altloc, lr in ligand_dict.items():
-        print(lr.id_str)
+        print(lr.id_str, file=self.log)
 
 
   def show_adps(self):
@@ -287,7 +285,7 @@ class ligand_result(object):
   def __init__(self,
                model,
                fmodel,
-               readyset_model,
+               #readyset_model,
                two_fofc_map,
                fofc_map,
                fmodel_map,
@@ -296,7 +294,7 @@ class ligand_result(object):
     self.model = model
     self.fmodel = fmodel
     self.isel = isel
-    self.readyset_model = readyset_model
+    #self.readyset_model = readyset_model
     self.two_fofc_map = two_fofc_map
     self.fofc_map = fofc_map
     self.fmodel_map = fmodel_map
@@ -483,7 +481,8 @@ class ligand_result(object):
     Obtain overlaps involving ligands
     '''
     # A model with H atoms is necessary to process overlaps
-    if not self.readyset_model.has_hd():
+    #if not self.readyset_model.has_hd():
+    if not self.model.has_hd():
       return None
     elif self._overlaps is None:
       # sel_within could be done in __init__?
@@ -491,10 +490,10 @@ class ligand_result(object):
       # TODO clashes with other ligands?
       sel_within_str = '%s or (residues_within (%s, %s)) and (protein or water)' \
         % (self.sel_str, within_radius, self.sel_str)
-      sel_within = self.readyset_model.selection(sel_within_str)
-      isel_ligand_within = self.readyset_model.select(sel_within).iselection(self.sel_str)
+      sel_within = self.model.selection(sel_within_str)
+      isel_ligand_within = self.model.select(sel_within).iselection(self.sel_str)
       #sel = flex.bool([True]*len(sel_within))
-      model_within = self.readyset_model.select(sel_within)
+      model_within = self.model.select(sel_within)
 
       processed_nbps = pnp.manager(model = model_within)
       clashes = processed_nbps.get_clashes()
