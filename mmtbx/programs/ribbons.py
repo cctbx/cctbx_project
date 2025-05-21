@@ -557,7 +557,7 @@ Output:
     for model in hierarchy.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
-          self.secondaryStructure[int(residue_group.resseq)] = self.Range()
+          self.secondaryStructure[residue_group.resseq_as_int()] = self.Range()
     for line in ss_manager.records_for_pdb_file().splitlines():
       r = self.Range(line[0:5].strip())
       if r.type == 'HELIX':

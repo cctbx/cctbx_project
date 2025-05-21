@@ -284,8 +284,8 @@ class ramalyze(validation):
           i_seqs = main_residue.atoms().extract_i_seq()
           assert (not i_seqs.all_eq(0))
           self._outlier_i_seqs.extend(i_seqs)
-    #self.results.sort(key=lambda r: (r.model_id,r. chain_id, int(r.resseq), r.icode, r.altloc))
-    self.results.sort(key=lambda r: (r.model_id,r. chain_id, int(hy36decode(len(r.resseq), r.resseq)), r.icode, r.altloc))
+    #self.results.sort(key=lambda r: (r.model_id,r. chain_id, r.resseq_as_int(), r.icode, r.altloc))
+    self.results.sort(key=lambda r: (r.model_id,r. chain_id, r.resseq_as_int(), r.icode, r.altloc))
     out_count, out_percent = self.get_outliers_count_and_fraction()
     fav_count, fav_percent = self.get_favored_count_and_fraction()
     self.out_percent = out_percent * 100.0

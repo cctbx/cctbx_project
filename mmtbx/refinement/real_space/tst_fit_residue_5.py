@@ -84,7 +84,7 @@ def exercise(pdb_poor_str, i_pdb = 0, d_min = 1.0, resolution_factor = 0.25):
     for chain in model.chains():
       for residue in chain.only_conformer().residues():
         if(get_class(residue.resname) == "common_amino_acid" and
-           int(residue.resseq)==9): # take TYR9
+           residue.resseq_as_int()==9): # take TYR9
           t0 = time.time()
           grm = t.model_poor.get_restraints_manager().geometry
           ro = mmtbx.refinement.real_space.fit_residue.run_with_minimization(

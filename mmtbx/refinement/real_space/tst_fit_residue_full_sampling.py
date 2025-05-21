@@ -184,7 +184,7 @@ def main(use_mask):
   for m in h_poor.models():
     for c in m.chains():
       for r in c.residues():
-        if int(r.resseq)==192:
+        if r.resseq_as_int()==192:
           residue = r
           selection = r.atoms().extract_i_seq()
           break
