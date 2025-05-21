@@ -316,7 +316,7 @@ def chemical_id_search(resname, **kwds):
   }
 }
 """
-  assert (1 <= len(resname) <= 3)
+  assert (1 <= len(resname) <= 3) or (len(resname)==5)
   sqr = chem_comp_query % (resname, resname)
   jsq = json.loads(sqr)
   return post_query(query_json=jsq, **kwds)

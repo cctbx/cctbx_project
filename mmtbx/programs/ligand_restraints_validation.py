@@ -30,6 +30,8 @@ Usage examples:
         .type = path
       write_geo = None
         .type = path
+      write_input_pdb = None
+        .type = path
     }
   }
 """
@@ -63,8 +65,8 @@ Usage examples:
     starting_atoms=hierarchy.atoms()
     starting_xyz=starting_atoms.extract_xyz()
     params = self.params.ligand_restraints_validation
-    if params.output.write_pdb:
-      hierarchy.write_pdb_file(params.output.write_pdb)
+    if params.output.write_input_pdb:
+      hierarchy.write_pdb_file(params.output.write_input_pdb)
     #
     from mmtbx.model.model import manager
     m = manager(pdb_hierarchy=hierarchy,
@@ -96,12 +98,15 @@ Usage examples:
     # for atom in m.get_hierarchy().atoms(): print(atom.format_atom_record())
     h=m.get_hierarchy()
     if 0: h.write_pdb_file('test.pdb')
+    if params.output.write_pdb:
+      h.write_pdb_file(params.output.write_pdb)
     ending_xyz=h.atoms().extract_xyz()
 
     result={}
     rc = starting_xyz.rms_difference(ending_xyz)
     print('\n  RMSD of starting and ending coordinates : %5.2f' % rc, file=self.logger)
     result['RMSD']=rc
+    result['atoms']=len(ending_xyz)
     es = self.get_energies_sites(m, use_hydrogens=params.action.use_hydrogens)
     # es.show()
     result['energies_sites']=es
