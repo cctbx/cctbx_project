@@ -1039,11 +1039,13 @@ def exercise_dna_cns_cy5_th6():
   monomer_library.pdb_interpretation.run(args=file_paths, params=params, log=log)
   assert not block_show_diff(log.getvalue(), """\
         Number of residues, atoms: 12, 244
+          Unusual residues: %s
           Classifications: %s
           Modifications used: {'5*END': 1}
           Link IDs: %s
 """ % (
-  str({'DNA': 12}),
+  str({'CY5': 1, 'TH6': 1}),
+  str({'DNA': 10, 'DNA_mixed' : 2}),
   str({'rna3p': 11})))
 
 def exercise_sym_excl_indices(mon_lib_srv, ener_lib):
