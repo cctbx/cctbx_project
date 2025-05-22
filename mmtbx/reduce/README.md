@@ -11,13 +11,19 @@ and optimize Hydrogens on a model.
 * Reduce2 uses the Probe2 module, which requires the chem_data module.
 
 **Installing and running:** *Reduce2* is part of the mmtbx module, which is part of the CCTBX
-distribution. It can be built and run as part of the CCTBX build process. The CCTBX build process
-is described in the CCTBX documentation at https://cctbx.github.io/ and is also described in the
-README.md file in the root of the CCTBX distribution at
-https://github.com/cctbx/cctbx_project/blob/master/README.md. Once the system has been built
-and the environment configured (perhaps using one of the setpath scripts in the build directory),
+distribution. It can be built and run as part of the CCTBX build process. The CCTBX install and
+build processes are described in the README.md file in the root of the CCTBX distribution at
+https://github.com/cctbx/cctbx_project/blob/master/README.md. Reduce2 does require the Monomer
+library described at https://github.com/cctbx/cctbx_project?tab=readme-ov-file#monomer-library
+to be installed. You can download a .conda package from the linked-to releases page and then
+after activating your conda environment, run `conda install -c cctbx cctbx_monomer_library` to install it.
+
+Once the system has been installed and the environment configured,
 the Reduce2 program can be run from the command line as `mmtbx.reduce2`, and the --help or
---show-defaults options used to see the available options.
+--show-defaults options used to see the available options.  Older versions of the program
+require you to set output.description_file_name to specify where descriptive text output
+will be written, current versions set this by default to add a .txt extension rather than
+a .cif or .pdb extension to the output file name.
 
 # C++ Classes
 
