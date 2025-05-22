@@ -14,7 +14,6 @@ import mmtbx.rotamer
 from mmtbx.rotamer import ramachandran_eval
 from mmtbx.validation.fav_lists import fav_tables
 from six.moves import range
-from iotbx.pdb.hybrid_36 import hy36decode
 import json
 
 # XXX Use these constants internally, never strings!
