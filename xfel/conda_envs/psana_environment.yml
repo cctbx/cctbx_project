@@ -65,6 +65,7 @@ dependencies:
  - pint
  - nxmx
  - gemmi
+ - hatchling
 
  # xia2
  - tabulate
