@@ -742,8 +742,27 @@ class map_manager(map_reader, write_ccp4_map):
       external_origin = flex.double((0.,0.,0.))
     if flex.sum(flex.abs(external_origin)) > 0:
       import math
-      origin_shift = tuple([round(o/s) for o,s in zip(external_origin, spacings)])
-      origin_check = [(g*s) for g,s in zip(origin_shift, spacings)]
+      # external_origin is the location of the external origin in xyz coords
+      # origin_shift is the location in gridding space of the external_origin
+      # we are hoping that it will fall on an integer grid point in this space
+      # The gridding coordinate system is the unit_cell, with one unit
+      #  in each direction corresponding to the spacings in that
+      #   direction (e.g., a/grid_points_along_a along the x axis)
+
+      # use unit_cell.fractionalize(origin_shift) to get fractional coords
+      fractional_external_origin = unit_cell.fractionalize(col(external_origin))
+
+      # origin_shift in grid units is fractional_external_origin multiplied
+      #   by the number of grid units along the 3 axes, rounded
+      origin_shift = tuple(
+         [round(f * s) for f,s in zip(
+            fractional_external_origin, unit_cell_grid)])
+
+      # origin_check is position of external_origin calculated from
+      #   origin_shift and the unit_cell_grid
+      origin_check = unit_cell.orthogonalize(col( tuple(
+        [os / a for os, a in zip(origin_shift, unit_cell_grid)])))
+
       origin_distance_to_grid = math.sqrt(flex.sum(
             flex.pow2(flex.double(external_origin)-flex.double(origin_check))))
       if origin_distance_to_grid > 0.001:
@@ -2159,28 +2178,29 @@ class map_manager(map_reader, write_ccp4_map):
      If place_on_grid_point then guess the end by whether the center ends
        on a grid point
      If use_unit_cell_grid just find center of full unit cell
+
     '''
+
     if use_unit_cell_grid:  # Find center of unit cell
-      return tuple([a*0.5 for a in
-        self.unit_cell_crystal_symmetry().unit_cell().parameters()[:3] ])
+      return self.unit_cell_crystal_symmetry().unit_cell().orthogonalize(
+        (0.5, 0.5, 0.5))
 
     elif place_on_grid_point:
-      return tuple([a*(int (0.5*n)/n + o/n)  - sc for a,n,o,sc in zip(
-        self.crystal_symmetry().unit_cell().parameters()[:3],
-        self.map_data().all(),
-        self.map_data().origin(),
-        self.shift_cart())])
+      return tuple(col(self.crystal_symmetry().unit_cell().orthogonalize(
+        tuple(col([int (0.5*n)/n + o/n for n,o in zip(
+          self.map_data().all(),
+          self.map_data().origin())])))) - col(self.shift_cart()))
 
     else:
       if use_assumed_end:
         n_end = 0
       else:
         n_end = 1
-      return tuple([a*(0.5*(n-n_end)/n + o/n)  - sc for a,n,o,sc in zip(
-        self.crystal_symmetry().unit_cell().parameters()[:3],
-        self.map_data().all(),
-        self.map_data().origin(),
-        self.shift_cart())])
+      return tuple(col(self.crystal_symmetry().unit_cell().orthogonalize(
+        tuple(col([int (0.5*(n-n_end))/n + o/n for n,o in zip(
+          self.map_data().all(),
+          self.map_data().origin())])))) - col(self.shift_cart()))
+
 
   def map_map_cc(self, other_map_manager):
    ''' Return simple map correlation to other map_manager'''
