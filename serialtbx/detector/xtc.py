@@ -97,7 +97,11 @@ def get_ebeam(evt):
         ebeam = evt.get(Bld.BldDataEBeam, src) # recent version of psana will return a V7 event or higher if this type is asked for
     except ImportError:
       # psana2
-      ebeam = evt.run().Detector('ebeamh').raw.ebeamPhotonEnergy(evt)
+      try:
+        ebeam = evt.run().Detector('ebeamh') #.raw.ebeamPhotonEnergy(evt)
+      except KeyError:
+        # UED
+        beam = None
   return ebeam
 
 def evt_wavelength(evt, delta_k=0):
@@ -113,9 +117,12 @@ def evt_wavelength(evt, delta_k=0):
   @param delta_k Optional K-value correction
   @return        Wavelength, in Ångström
   """
-
   if evt is not None:
-    ebeam = get_ebeam(evt)
+    try:
+      ebeam = get_ebeam(evt)
+    except:
+      # UED
+      return 12398.4187 / 3.12e6 # hard-code UED electron energy to 3.12 MeV
 
     if hasattr(ebeam, 'fEbeamPhotonEnergy') and ebeam.fEbeamPhotonEnergy > 0:
       # pyana
@@ -130,6 +137,9 @@ def evt_wavelength(evt, delta_k=0):
     elif hasattr(ebeam, 'ebeamL3Energy') and ebeam.ebeamL3Energy() > 0:
       # psana
       gamma = ebeam.ebeamL3Energy() / 0.510998910
+    elif hasattr(ebeam, 'raw'):
+      # psana2
+      return 12398.4187 / ebeam.raw.ebeamPhotonEnergy(evt)
     else:
       return None
     K = 3.5 + delta_k
