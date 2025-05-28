@@ -144,7 +144,7 @@ class HitrateStats(object):
     if len(high_res_bin_ids) > 0:
 
       # Get the stats in one query.
-      query = """SELECT event.timestamp, event.n_strong, MIN(bin.d_min), event.two_theta_low, event.two_theta_high, COUNT(DISTINCT crystal.id), beam.wavelength
+      query = """SELECT event.timestamp, event.n_strong, MIN(bin.d_min), event.two_theta_low, event.two_theta_high, COUNT(DISTINCT crystal.id), AVG(beam.wavelength)
                  FROM `%s_event` event
                  JOIN `%s_imageset_event` is_e ON is_e.event_id = event.id
                  JOIN `%s_imageset` imgset ON imgset.id = is_e.imageset_id
