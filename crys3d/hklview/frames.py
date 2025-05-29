@@ -244,7 +244,7 @@ class settings_window (wxtbx.utils.SettingsPanel) :
     box_szr = wx.StaticBoxSizer(box, wx.VERTICAL)
     self.panel_sizer.Add((1,10))
     self.panel_sizer.Add(box_szr, 0, wx.EXPAND|wx.ALL)
-    grid_szr = wx.FlexGridSizer(rows=3, cols=2)
+    grid_szr = wx.FlexGridSizer(3, 2, 0, 0)
     box_szr.Add(grid_szr, 0, wx.EXPAND|wx.ALL)
     grid_szr.Add(wx.StaticText(self.panel, -1, "Clicked:"), 0,
       wx.ALL|wx.ALIGN_CENTER_VERTICAL, 5)
@@ -774,6 +774,10 @@ class HKLViewFrame (wx.Frame) :
     if (self.parent is not None) :
       self.parent.view_3d = None
     event.Skip()
+
+  def Destroy(self):
+    self.Hide()
+    return True
 
 class settings_window_2d (settings_window) :
   is_3d_view = False
