@@ -1,3 +1,4 @@
+"""Read any reflection file"""
 from __future__ import absolute_import, division, print_function
 from iotbx import reflection_file_reader
 import sys

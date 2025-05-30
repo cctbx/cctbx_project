@@ -1,3 +1,4 @@
+"""Read a CNS reflection file"""
 from __future__ import absolute_import, division, print_function
 from iotbx.cns import reflection_reader
 import sys

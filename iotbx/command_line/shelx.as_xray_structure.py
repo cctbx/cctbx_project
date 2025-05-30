@@ -1,3 +1,4 @@
+"""Create xray_structure from a SHELX file and dump as pickle"""
 from __future__ import absolute_import, division, print_function
 from cctbx import xray
 from libtbx import easy_pickle

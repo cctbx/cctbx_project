@@ -1,3 +1,4 @@
+"""Save SHELX xray_structure as python code"""
 from __future__ import absolute_import, division, print_function
 from cctbx import xray
 
