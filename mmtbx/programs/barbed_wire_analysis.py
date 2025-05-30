@@ -26,10 +26,10 @@ output
     .type = str
     .short_caption = Output file name
     .help = Output file name, optional spelling
-  selections = 13
-    .type = str
-    .short_caption = Choose types for selection string or file
-    .help = Choose types for selection string or file, subset of 123456
+  modes = *1 2 *3 4 5 6
+    .type = choice(multi=True)
+    .short_caption = Choose modes for selection string or file
+    .help = Choose modes for selection string or file, subset of 123456, joined by +, eg 1+3
 }
 ''' #+ Helpers.probe_phil_parameters
 
@@ -43,20 +43,21 @@ output.type = *text kin selection_string selection_file json
 output.file_name= (optional, prints to sys.stdout by default)
 
 pdb or mmcif of residues matching selected behaviors can be printed with output.type=selection_file
-output.selection = may be used to choose the printed behaviors with a string of numbers
+output.modes = may be used to choose the printed behaviors with a string of numbers joined by +
 1 = Predictive
 2 = Unpacked high pLDDT
 3 = Near-predictive
 4 = Pseudostructure
 5 = Barbed wire
 6 = Unphysical
-output.selection=13 is the default, and prints predictive + near-predictive
+output.modes=1+3 is the default, and prints predictive + near-predictive
 
 Examples:
 phenix.barbed_wire_analysis your_prediction.pdb
+phenix.barbed_wire_analysis your_prediction.pdb output.type=json output.filename=your_prediction_annotation.json
 phenix.barbed_wire_analysis your_prediction.pdb output.type=kin output.file_name=your_prediction_markup.kin
 phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file output.file_name=your_prediction_useful_parts.pdb
-phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file selections=456 output.file_name=your_prediction_nonpredictive_only.pdb
+phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file modes=4+5+6 output.file_name=your_prediction_nonpredictive_only.pdb
 '''
   datatypes = ['model', 'restraint', 'phil']
   master_phil_str = master_phil_str
@@ -81,10 +82,10 @@ phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file selec
     elif self.params.output.type == "kin":
       bwa.as_kinemage(out)
     elif self.params.output.type == "selection_string":
-      print(bwa.as_selection_string(modes=self.params.output.selections), file=out)
+      print(bwa.as_selection_string(modes=self.params.output.modes), file=out)
     elif self.params.output.type == "selection_file":
       import os
-      #Extension detection taken from mmtbx.pdbtools
+      #Extension detection taken from mmtbx.pdbtools - output matches input
       input_file_name_base = os.path.basename(
         self.data_manager.get_default_model_name())[:-4]
       if(  model.input_model_format_cif()) or (
@@ -94,4 +95,4 @@ phenix.barbed_wire_analysis your_prediction.pdb output.type=selection_file selec
       else:
         assert model.input_model_format_pdb() or \
           model.input_model_format_cif()
-      bwa.as_selection_file(model, out, modes=self.params.output.selections, extension=extension)
+      bwa.as_selection_file(model, out, modes=self.params.output.modes, extension=extension)

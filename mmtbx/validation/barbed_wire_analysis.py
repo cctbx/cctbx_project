@@ -12,6 +12,8 @@ def loadModel(filename):  # from suitename/suites.py
   model = dm.get_model(filename)
   return model
 
+#TODO: update to Probe2. Unformatted output parsing (used below) is not mmCIF compatible,
+#  so Probe2 should be parsed directly from python objects.
 class single_contact():
   def __init__(self, probe_line):
     x = probe_line.split(':')
@@ -66,7 +68,7 @@ class single_contact():
     self.trgResid = ','.join([self.trgChain.strip(), self.trgNumStr])
     self.contactId = ",".join([self.srcAtomid, self.trgAtomid])
 
-
+#TODO update to Reduce2 and Probe2 - clashscore2 will be likely template
 def do_probe(model):
   from libtbx import easy_run
 
@@ -871,7 +873,7 @@ class barbed_wire_analysis():
     for line in labels:
       print(line, file=out)
 
-  def as_selection_string(self, modes="13"):
+  def as_selection_string(self, modes=['1', '3']):
     #Return the selection syntax string for residues matching selected prediction modes
     mode_dict = {"1":"Predictive",
                  "2":"Unpacked high pLDDT",
@@ -889,7 +891,7 @@ class barbed_wire_analysis():
         selection_list.append(c.as_selection_string())
     return " or ".join(selection_list)
 
-  def as_selection_file(self, model, out=sys.stdout, modes="13", extension=".cif"):
+  def as_selection_file(self, model, out=sys.stdout, modes=['1', '3'], extension=".cif"):
     #Print a model file, mmcif or pdb based on input format, containing residues matching
     #  selected prediction modes
     hierarchy = model.get_hierarchy()
