@@ -1,3 +1,5 @@
+"""Information on PDB to CIF conversion process"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_cif_conversion
 

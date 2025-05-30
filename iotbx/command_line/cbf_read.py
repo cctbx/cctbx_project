@@ -1,3 +1,5 @@
+"""Read a CBF file"""
+
 from __future__ import absolute_import, division, print_function
 import iotbx.cif
 import iotbx.cif.validation

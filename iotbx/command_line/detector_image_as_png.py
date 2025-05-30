@@ -1,3 +1,4 @@
+"""Convert dectector image to png image"""
 # LIBTBX_SET_DISPATCHER_NAME labelit.png
 
 from __future__ import absolute_import, division, print_function

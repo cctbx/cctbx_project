@@ -1,3 +1,4 @@
+"""Compare labels in two models"""
 from __future__ import absolute_import, division, print_function
 def run(args):
   if (len(args) != 2):

@@ -1,3 +1,6 @@
+""" Reindex the contents of an MTZ file
+    using a given change-of-basis operator
+"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.reindex
 

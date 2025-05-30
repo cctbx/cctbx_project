@@ -1,3 +1,4 @@
+"""Flip symmetric amino acids in a model"""
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.flip_symmetric_amino_acids
 
 from __future__ import absolute_import, division, print_function

@@ -1,3 +1,4 @@
+"""Convert reflection_csv_file to mtz"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.csv_as_mtz
 

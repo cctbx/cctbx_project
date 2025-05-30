@@ -1,3 +1,3 @@
-"""Command-line tools for reading and writing files.
+"""Command-line tools for reading, writing and analyzing files.
 """
 from __future__ import division

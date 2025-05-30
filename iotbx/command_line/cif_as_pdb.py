@@ -1,3 +1,5 @@
+"""Try to convert an mmCIF formatted model file to PDB format"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.cif_as_pdb
 # LIBTBX_SET_DISPATCHER_NAME iotbx.cif_as_pdb

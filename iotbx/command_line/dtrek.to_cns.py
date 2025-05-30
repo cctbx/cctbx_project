@@ -1,3 +1,4 @@
+"""Convert DTREK to CNS format"""
 from __future__ import absolute_import, division, print_function
 def iobs_as_fobs(iobs, isigma):
   import math

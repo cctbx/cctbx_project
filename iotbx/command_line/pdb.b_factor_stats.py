@@ -1,3 +1,5 @@
+"""Summarize B-factor statistics from a model"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb.b_factor_stats
 

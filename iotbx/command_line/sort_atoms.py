@@ -1,3 +1,4 @@
+"""Sort atoms in residues so they will be in the same order in all residues"""
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.sort_atoms
 
 from __future__ import absolute_import, division, print_function

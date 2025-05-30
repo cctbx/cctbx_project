@@ -1,3 +1,5 @@
+"""Convert between version 2.3 and version 3.2 of the PDB format"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb_remediator
 

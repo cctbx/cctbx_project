@@ -1,3 +1,6 @@
+""" Analyze non-bonded contacts in a model in strudat file
+"""
+
 from __future__ import absolute_import, division, print_function
 def run(args, distance_cutoff=3.5):
   from iotbx.option_parser import option_parser

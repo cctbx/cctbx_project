@@ -1,3 +1,9 @@
+"""separate a multi-model PDB file (such as an \
+    NMR ensemble) into individual files for each model.  The output files \
+    will be named similarly to the input file but ending in _1.pdb, _2.pdb, \
+    etc.
+"""
+
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME iotbx.pdb.split_models
 
