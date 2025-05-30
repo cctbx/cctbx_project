@@ -9,20 +9,19 @@ if (! -d $PHENIX/modules)then
 endif
 
 
-setenv base $PHENIX/modules/cctbx_project/cctbx_website/command_line
-setenv cctbx_project $PHENIX/modules/cctbx_project
-
-setenv files_to_edit "iotbx/pdb/hierarchy.py scitbx/array_family/flex.py"
-
 # Save original version of files to edit
+setenv base `libtbx.find_in_repositories cctbx_website`/command_line
+setenv cctbx_project `libtbx.find_in_repositories cctbx_project`
+setenv files_to_edit "`libtbx.find_in_repositories iotbx`/pdb/hierarchy.py `libtbx.find_in_repositories scitbx`/array_family/flex.py"
+
 foreach f ($files_to_edit)
-  if (! -f $cctbx_project/$f)then
-    echo "The file $cctbx_project/$f is missing"
+  if (! -f $f)then
+    echo "The file $f is missing"
     goto finish
   endif
-  cp -p $cctbx_project/${f} $cctbx_project/${f}.original_version
+  cp -p ${f} ${f}.original_version
   # Edit this file
-  phenix.python $base/edit_for_boost.py $cctbx_project/${f}
+  phenix.python $base/edit_for_boost.py ${f}
 end
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
@@ -42,7 +41,7 @@ wait
 
 #Restore original files
 foreach f ($files_to_edit)
-  mv $cctbx_project/${f}.original_version $cctbx_project/${f}
+  mv ${f}.original_version ${f}
 end
 
 echo ""
