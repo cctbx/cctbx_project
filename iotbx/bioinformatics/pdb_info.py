@@ -1,3 +1,5 @@
+"""Get experimental information summary for PDB IDS from the PDB"""
+
 from __future__ import absolute_import, division, print_function
 
 import sys

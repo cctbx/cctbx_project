@@ -1,3 +1,5 @@
+"""BLAST search and fetch models"""
+
 from __future__ import absolute_import, division, print_function
 
 import mmtbx.model
