@@ -2197,7 +2197,7 @@ class map_manager(map_reader, write_ccp4_map):
       else:
         n_end = 1
       return tuple(col(self.crystal_symmetry().unit_cell().orthogonalize(
-        tuple(col([int (0.5*(n-n_end))/n + o/n for n,o in zip(
+        tuple(col([0.5*(n-n_end)/n + o/n for n,o in zip(
           self.map_data().all(),
           self.map_data().origin())])))) - col(self.shift_cart()))
 
