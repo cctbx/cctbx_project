@@ -1,7 +1,5 @@
 """
 Examples of the structure and use of the PDB hierarchy object
-
-
 """
 
 from __future__ import absolute_import, division, print_function

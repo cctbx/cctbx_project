@@ -1,3 +1,4 @@
+"""Example of how to split a model by chains into new models"""
 from __future__ import absolute_import, division, print_function
 
 import libtbx.phil

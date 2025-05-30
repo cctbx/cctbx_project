@@ -1,6 +1,5 @@
-
 """
-Simple script to read in an MTZ file produced by phenix.refine, extract the
+Read in an MTZ file produced by phenix.refine, extract the
 F-obs-filtered, F-model, and R-free-flags arrays, and calculate R-factors both
 for the entire dataset and for resolution shells.  This serves as an example
 both for processing MTZ files, and for cctbx.miller functionality.

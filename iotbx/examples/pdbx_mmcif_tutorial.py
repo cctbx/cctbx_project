@@ -1,3 +1,4 @@
+"""Examples of how to work with PDB and mmCIF files"""
 from __future__ import absolute_import, division, print_function
 #
 # Command to run this example:

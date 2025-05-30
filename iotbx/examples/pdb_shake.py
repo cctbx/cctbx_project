@@ -1,3 +1,4 @@
+"""Example of how to shake (randomize) a model"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx.array_family import flex
