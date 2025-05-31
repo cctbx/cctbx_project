@@ -1,4 +1,3 @@
-"""Download a file from storage on a server"""
 from __future__ import absolute_import, division, print_function
 
 # Storage methods

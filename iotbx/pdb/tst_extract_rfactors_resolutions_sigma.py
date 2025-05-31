@@ -1,4 +1,3 @@
-"""Test extract_rfactors_resolutions_sigma"""
 from __future__ import absolute_import, division, print_function
 from iotbx.pdb import extract_rfactors_resolutions_sigma
 from libtbx.test_utils import approx_equal

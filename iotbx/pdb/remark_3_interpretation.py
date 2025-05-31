@@ -1,4 +1,3 @@
-"""Extract TLS from REMARK 3 records"""
 from __future__ import absolute_import, division, print_function
 import os
 from libtbx import group_args

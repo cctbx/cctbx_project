@@ -1,4 +1,3 @@
-"""Misc utilities for working with models"""
 from __future__ import absolute_import, division, print_function
 import string
 from itertools import product

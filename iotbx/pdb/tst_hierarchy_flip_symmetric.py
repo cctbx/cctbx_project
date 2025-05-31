@@ -1,4 +1,3 @@
-"""Test flipping symmetric residues"""
 from __future__ import absolute_import, division, print_function
 import sys
 from six.moves import cStringIO as StringIO

@@ -1,4 +1,3 @@
-"""Test reading MTRIX records from mmCIF files"""
 from __future__ import absolute_import, division, print_function
 import iotbx.ncs
 import iotbx.pdb

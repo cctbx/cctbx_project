@@ -1,4 +1,3 @@
-"""Test working with mmCIF, calculating fmodel, reading headers"""
 from __future__ import absolute_import, division, print_function
 import iotbx.cif
 from iotbx.pdb import mmcif

@@ -1,3 +1,4 @@
+
 """
 Tools for creating atom selection arrays (flex.bool or flex.size_t) based on
 a simple keyword syntax and boolean operators.

@@ -1,4 +1,3 @@
-"""One and three-letter RNA and DNA codes"""
 from __future__ import absolute_import, division, print_function
 
 rna_one_letter_code_dict = {

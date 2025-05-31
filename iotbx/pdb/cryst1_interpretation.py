@@ -1,4 +1,3 @@
-"""Interpretation of CRYST1 records from PDB"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb
 from cctbx import crystal

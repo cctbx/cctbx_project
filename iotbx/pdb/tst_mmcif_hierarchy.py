@@ -1,4 +1,3 @@
-"""Test working with mmCIF read into a hierarchy"""
 from __future__ import absolute_import, division, print_function
 from six.moves import cStringIO as StringIO
 

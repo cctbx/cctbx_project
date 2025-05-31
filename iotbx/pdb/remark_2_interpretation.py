@@ -1,4 +1,3 @@
-"""Extract information on resolution from REMARK 2 records"""
 from __future__ import absolute_import, division, print_function
 def get_resolution(st):
   result = None

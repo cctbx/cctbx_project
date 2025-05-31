@@ -1,4 +1,3 @@
-"""Test model utilities"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb.utils
 

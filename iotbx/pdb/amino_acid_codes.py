@@ -1,4 +1,3 @@
-"""One-letter and three-letter protein codes"""
 from __future__ import absolute_import, division, print_function
 one_letter_given_three_letter = {
 "ALA": "A",

@@ -1,4 +1,3 @@
-"""Test the use of atom selections"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 from cctbx.array_family import flex

@@ -1,4 +1,3 @@
-"""Extract extract rfactors resolutions sigma from reflection file"""
 from __future__ import absolute_import, division, print_function
 import sys
 from libtbx.str_utils import format_value
