@@ -1,3 +1,10 @@
+2025.5
+======
+
+* Added parameter for user restraints to pdb_interpretation
+* Improved barbed wire analysis, including JSON output
+* Improved consistency of handling models with hybrid36
+
 2025.4
 ======
 
