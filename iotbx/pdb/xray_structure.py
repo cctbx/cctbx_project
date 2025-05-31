@@ -1,3 +1,4 @@
+"""Convert an xray_structure to PDB file format"""
 from __future__ import absolute_import, division, print_function
 import iotbx.pdb.hierarchy
 from cctbx import adptbx

@@ -1,3 +1,4 @@
+"""Extensive tests for working with models"""
 from __future__ import absolute_import, division, print_function
 from iotbx import pdb
 import iotbx.pdb.cryst1_interpretation

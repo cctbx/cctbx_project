@@ -1,3 +1,4 @@
+"""Test secondary structure analysis"""
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import sys

@@ -1,3 +1,4 @@
+"""Obsolete method to store and output custom links"""
 # MARKED_FOR_DELETION_OLEG
 # Reason: sub-optimal approach to store and output custom links.
 # Proposal: use origin_id in bond proxies. Write a class capable of

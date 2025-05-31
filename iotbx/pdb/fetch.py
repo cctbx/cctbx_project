@@ -1,3 +1,4 @@
+"""Fetch data from PDB"""
 # TODO other PDB sites?
 #
 # See RCSB documentation at:
