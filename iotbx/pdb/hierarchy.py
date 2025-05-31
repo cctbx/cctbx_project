@@ -1934,6 +1934,7 @@ class _():
     atoms.reset_i_seq()
 
   def remove_ter_or_break(self):
+    """Remove TER and BREAK by setting residue_group.link_to_previous=True"""
     import iotbx.pdb.hierarchy
     new_ph = iotbx.pdb.hierarchy.root()
     # Sort by chain ID first
@@ -1976,7 +1977,7 @@ class _():
 
   def remove_incomplete_main_chain_protein(self,
        required_atom_names=['CA','N','C','O']):
-    # Remove each residue_group that does not contain CA N C O of protein
+    """Remove each residue_group that does not contain CA N C O of protein"""
     hierarchy = self
     for model in hierarchy.models():
       for chain in model.chains():
@@ -1996,6 +1997,7 @@ class _():
           model.remove_chain(chain=chain)
 
   def altlocs_present(self, skip_blank = True):
+    """Return True if any altlocs (alternative conformations) are present"""
     hierarchy = self
     altlocs_present = []
     for model in hierarchy.models():
@@ -2010,6 +2012,8 @@ class _():
 
   def remove_alt_confs(self, always_keep_one_conformer, altloc_to_keep = None,
                              keep_occupancy = False):
+    """Remove all alternative conformations.  Required parameter is
+     always_keep_one_conformer (recommended: True)"""
     hierarchy = self
     for model in hierarchy.models():
       for chain in model.chains():
@@ -2069,6 +2073,7 @@ class _():
       atoms.set_occ(new_occ)
 
   def average_alt_confs(self, pinch_limit=1.):
+    """Average coordinates from alternative conformations"""
     def average(xyz1, xyz2):
       a=[]
       for i in range(3):
@@ -2117,18 +2122,21 @@ class _():
     return asel
 
   def rename_chain_id(self, old_id, new_id):
+    """Replace old_id chain ID with new_id"""
     for model in self.models():
       for chain in model.chains():
         if(chain.id == old_id):
           chain.id = new_id
 
   def remove_atoms(self, fraction):
+    """Return hierarchy with random fraction of atoms removed"""
     assert fraction>0 and fraction<1.
     n_atoms_to_keep = int(self.atoms_size() * (1-fraction))
     sel_keep = flex.random_selection(self.atoms_size(), n_atoms_to_keep)
     return self.select(sel_keep)
 
   def set_atomic_charge(self, iselection, charge):
+    """Set atomic charge for indices marked with iselection"""
     assert isinstance(charge, int)
     if(iselection is None):
       raise Sorry("Specify an atom selection to apply a charge to.")
@@ -2148,6 +2156,7 @@ class _():
       atom.set_charge(charge)
 
   def truncate_to_poly(self, atom_names_set=set()):
+    """Truncate all residues to atom names in atom_names_set (protein only)"""
     pdb_atoms = self.atoms()
     pdb_atoms.reset_i_seq()
     aa_resnames = one_letter_given_three_letter
@@ -2166,14 +2175,17 @@ class _():
                   ag.remove_atom(atom=atom)
 
   def truncate_to_poly_gly(self):
+    """Truncate all residues to gly (protein only)"""
     self.truncate_to_poly(
         atom_names_set=set([" N  ", " CA ", " C  ", " O  "]))
 
   def truncate_to_poly_ala(self):
+    """Truncate all residues to ala (protein only)"""
     self.truncate_to_poly(
         atom_names_set=set([" N  ", " CA ", " C  ", " O  ", " CB "]))
 
   def convert_semet_to_met(self):
+    """Convert all SeMet to MET"""
     for model in self.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -2188,6 +2200,7 @@ class _():
                   atom.element = " S"
 
   def convert_met_to_semet(self):
+    """Convert all MET to SeMET"""
     for model in self.models():
       for chain in model.chains():
         for residue_group in chain.residue_groups():
@@ -2202,6 +2215,7 @@ class _():
                   atom.element = "SE"
 
   def transfer_chains_from_other(self, other):
+    """Transfer chains from other into this hierarchy"""
     i_model = 0
     other_models = other.models()
     for md,other_md in zip(self.models(), other_models):
@@ -2217,6 +2231,7 @@ class _():
         self.append_model(model=md)
 
   def atom_selection_cache(self, special_position_settings=None):
+    """Return the atom_selection cache"""
     from iotbx.pdb.atom_selection import cache
     return cache(root=self,
       special_position_settings=special_position_settings)
@@ -2280,6 +2295,7 @@ class _():
           h_atoms.select(flex.size_t(g)).set_occ(flex.double([round_occs[i]]*len(g)))
 
   def chunk_selections(self, residues_per_chunk):
+    """Get a set of selections for residues_per_chunk at a time"""
     result = []
     if(residues_per_chunk<1): return result
     for model in self.models():
@@ -2329,6 +2345,7 @@ class _():
           residues[key] = ag
 
   def is_hierarchy_altloc_consistent(self, verbose=False):
+    """Return True if altlocs are consistent"""
     altlocs = {}
     for residue_group in self.residue_groups():
       if not residue_group.have_conformers(): continue
@@ -2348,6 +2365,7 @@ class _():
     return True
 
   def format_correction_for_H(self, verbose=False): # remove 1-JUL-2024
+    """Deprecated.  Format a correction for H atoms"""
     for atom in self.atoms():
       if atom.element_is_hydrogen():
         if len(atom.name.strip())<4:
@@ -2357,6 +2375,7 @@ class _():
             if verbose: print('corrected PDB format of %s' % atom.quote())
 
   def flip_symmetric_amino_acids(self):
+    """Swap atom names in symmetric or chiral amino acids"""
     import time
     from scitbx.math import dihedral_angle
     def chirality_delta(sites, volume_ideal, both_signs):
@@ -2485,6 +2504,8 @@ class _():
   def distance_based_simple_two_way_bond_sets(self,
         fallback_expected_bond_length=1.4,
         fallback_search_max_distance=2.5):
+    """Return result of 
+       crystal.distance_based_connectivity.build_simple_two_way_bond_sets"""
     from cctbx.crystal import distance_based_connectivity
     atoms = self.atoms().deep_copy() # XXX potential bottleneck
     atoms.set_chemical_element_simple_if_necessary()
@@ -2499,6 +2520,7 @@ class _():
       fallback_search_max_distance=fallback_search_max_distance)
 
   def reset_i_seq_if_necessary(self):
+    """Reset the indices of all atoms if necessary"""
     atoms = self.atoms()
     i_seqs = atoms.extract_i_seq()
     if (i_seqs.all_eq(0)):
