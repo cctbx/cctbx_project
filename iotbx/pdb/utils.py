@@ -6,7 +6,7 @@ from six.moves import range
 import sys
 
 class generate_n_char_string:
-  """ Iterator to generate strings of length n_chars, using upper-case,
+  r""" Iterator to generate strings of length n_chars, using upper-case,
     lower-case and numbers as desired.
     Allows specialty sets of characters as well
 
@@ -28,6 +28,7 @@ class generate_n_char_string:
   Tested in iotbx/regression/tst_generate_n_char_string.py
 
   """
+  # The doc string must be a raw string because of the special characters
   def __init__(self, n_chars = 1,
       include_upper = True,
       include_lower = True,

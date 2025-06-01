@@ -2504,7 +2504,7 @@ class _():
   def distance_based_simple_two_way_bond_sets(self,
         fallback_expected_bond_length=1.4,
         fallback_search_max_distance=2.5):
-    """Return result of 
+    """Return result of
        crystal.distance_based_connectivity.build_simple_two_way_bond_sets"""
     from cctbx.crystal import distance_based_connectivity
     atoms = self.atoms().deep_copy() # XXX potential bottleneck
