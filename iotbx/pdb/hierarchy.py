@@ -2889,6 +2889,7 @@ class _():
     return self.only_atom_group().only_atom()
 
   def residues(self):
+    return self.only_conformer().residues()
     """Return the residues in the unique conformer in this chain"""
 
   def occupancy_groups_simple(self, common_residue_name_class_only=None,
