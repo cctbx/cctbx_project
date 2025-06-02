@@ -1,3 +1,4 @@
+"""Tools for map analysis and manipulation"""
 from __future__ import absolute_import, division, print_function
 import cctbx.sgtbx
 
