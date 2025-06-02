@@ -1244,6 +1244,7 @@ class pdb_info_object:
     self.init_asctime = time.asctime()
 
   def show_summary(self, out = sys.stdout):
+    """Summarize pdb_info_object"""
     print("PDB file:%s" %(self.file_name), end = ' ', file = out)
     if self.n_residues:
       print("   Residues: %d" %(self.n_residues), file = out)
@@ -1263,6 +1264,7 @@ class seq_info_object:
     self.init_asctime = time.asctime()
 
   def show_summary(self, out = sys.stdout):
+    """Summarize seq_info_object"""
     if self.file_name:
       print("Sequence file:%s" %(self.file_name), end = ' ', file = out)
     if self.n_residues:
@@ -1290,19 +1292,23 @@ class ncs_info_object:
     self._has_updated_operators = False
 
   def show_summary(self, out = sys.stdout):
+    """Summarize ncs_info_object"""
     print("NCS file:%s   Operators: %d" %(self.file_name,
       self.number_of_operators), file = out)
     if self.is_helical_symmetry:
       print("Helical symmetry is present", file = out)
 
   def has_updated_operators(self):
+    """Return True if operators have been updated"""
     return self._has_updated_operators
 
   def update_number_of_operators(self, number_of_operators = None):
+    """Update number of operators in ncs_info_object"""
     self.number_of_operators = number_of_operators
     self._has_updated_operators = True
 
   def update_is_helical_symmetry(self, is_helical_symmetry = None):
+    """Update is_helical_symmetry in ncs_info_object"""
     self.is_helical_symmetry = is_helical_symmetry
     self._has_updated_operators = True
 
@@ -1326,6 +1332,7 @@ class map_info_object:
     self.init_asctime = time.asctime()
 
   def show_summary(self, out = sys.stdout):
+    """Summarize map_info_object"""
     if self.is_map:
       print("Map file:%s" %(self.file_name), end = ' ', file = out)
     else:
@@ -1346,6 +1353,7 @@ class map_info_object:
         self.crystal_symmetry.unit_cell().parameters()), file = out)
 
   def lower_upper_bounds(self):
+    """Return lower and upper bounds of this map_info_object"""
     lower_bounds = self.origin
     upper_bounds = []
     for a, b in zip(self.origin, self.all):
@@ -1420,6 +1428,7 @@ class info_object:
        box_mask_ncs_au_map_data = None,
        box_map_ncs_au_half_map_data_list = None,
        box_map_ncs_au_crystal_symmetry = None):
+    """Set box_map_ncs information"""
     self.box_map_ncs_au_map_data = box_map_ncs_au_map_data.deep_copy()
     self.box_mask_ncs_au_map_data = box_mask_ncs_au_map_data.deep_copy()
     self.box_map_ncs_au_half_map_data_list = []
@@ -1447,6 +1456,7 @@ class info_object:
 
   def shift_map_back(self, map_data = None,
       crystal_symmetry = None, shift_cart = None):
+    """Shift map back to original location"""
     from scitbx.matrix import col
     new_origin = self.origin_shift_grid_units(crystal_symmetry = crystal_symmetry,
       map_data = map_data, shift_cart = shift_cart, reverse = True)
@@ -1457,7 +1467,7 @@ class info_object:
 
   def origin_shift_grid_units(self, crystal_symmetry = None, map_data = None,
        shift_cart = None, reverse = False):
-    # Get origin shift in grid units from shift_cart
+    """Get origin shift in grid units from shift_cart"""
     from scitbx.matrix import col
     cell = crystal_symmetry.unit_cell().parameters()[:3]
     origin_shift_grid = []
@@ -1474,26 +1484,32 @@ class info_object:
 
 
   def is_segmentation_info_object(self):
+    """Return True, this is a segmentation_info_object"""
     return True
 
   def set_params(self, params):
+    """Set self.params from params"""
     self.params = deepcopy(params)
 
   def set_input_seq_info(self, file_name = None, sequence = None, n_residues = None):
+    """Set input sequence information"""
     self.input_seq_info = seq_info_object(file_name = file_name,
        sequence = sequence,
        n_residues = n_residues)
 
   def set_input_pdb_info(self, file_name = None, n_residues = None):
+    """Set input PDB information"""
     self.input_pdb_info = pdb_info_object(file_name = file_name,
      n_residues = n_residues)
 
   def set_input_ncs_info(self, file_name = None, number_of_operators = None):
+    """Set input NCS information"""
     self.input_ncs_info = ncs_info_object(file_name = file_name,
       number_of_operators = number_of_operators)
 
   def update_ncs_info(self, number_of_operators = None, is_helical_symmetry = None,
       shifted = False):
+    """Update NCS information"""
     if shifted:
       ncs_info = self.shifted_ncs_info
     else:
@@ -1507,10 +1523,12 @@ class info_object:
         is_helical_symmetry = is_helical_symmetry)
 
   def set_sharpening_info(self, sharpening_info_obj = None):
+     """Set sharpening information """
      self.sharpening_info_obj = sharpening_info_obj
 
   def set_input_map_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None):
+    """Create map_info object and use it to set input_map info"""
     self.input_map_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1518,36 +1536,45 @@ class info_object:
       is_map = True)
 
   def set_ncs_obj(self, ncs_obj = None):
+    """Set NCS object"""
     self.ncs_obj = ncs_obj
 
   def set_origin_shift(self, origin_shift = None):
+    """Set origin shift"""
     if not origin_shift: origin_shift = (0, 0, 0)
     self.origin_shift = tuple(origin_shift)
 
   def set_crystal_symmetry(self, crystal_symmetry):
+    """Set crystal_symmetry"""
     self.crystal_symmetry = deepcopy(crystal_symmetry)
 
   def set_original_crystal_symmetry(self, crystal_symmetry):
+    """Set original_crystal_symmetry"""
     self.original_crystal_symmetry = deepcopy(crystal_symmetry)
 
   def set_full_crystal_symmetry(self, crystal_symmetry):
+    """Set full_crystal_symmetry"""
     self.full_crystal_symmetry = deepcopy(crystal_symmetry)
 
   def set_full_unit_cell_grid(self, unit_cell_grid):
+    """Set full unit cell grid"""
     self.full_unit_cell_grid = deepcopy(unit_cell_grid)
 
   def set_box_map_bounds_first_last(self, box_map_bounds_first,
       box_map_bounds_last):
+    """Set box map_bounds first and last"""
     self.box_map_bounds_first = box_map_bounds_first
     self.box_map_bounds_last = []
     for l in box_map_bounds_last:
       self.box_map_bounds_last.append(l+1)  # it is one bigger...
 
   def set_accessor(self, acc):
+    """Set accessor"""
     self.acc = acc
 
   def set_shifted_map_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None, b_sharpen = None):
+    """Create map_info object and use it to set shifted map_info"""
     self.shifted_map_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1556,29 +1583,35 @@ class info_object:
       is_map = True)
 
   def set_shifted_pdb_info(self, file_name = None, n_residues = None):
+    """Set shifted_pdb info"""
     self.shifted_pdb_info = pdb_info_object(file_name = file_name,
      n_residues = n_residues)
 
   def set_shifted_ncs_info(self, file_name = None, number_of_operators = None,
        is_helical_symmetry = None):
+    """Set shifted_ncs info"""
     self.shifted_ncs_info = ncs_info_object(file_name = file_name,
       number_of_operators = number_of_operators,
       is_helical_symmetry = is_helical_symmetry)
 
   def set_shifted_used_ncs_info(self, file_name = None, number_of_operators = None,
        is_helical_symmetry = None):
+    """Create ncs_info object and use it to set shifted_used_ncs_info"""
     self.shifted_used_ncs_info = ncs_info_object(file_name = file_name,
       number_of_operators = number_of_operators,
       is_helical_symmetry = is_helical_symmetry)
 
   def set_solvent_fraction(self, solvent_fraction):
+    """Set the solvent fraction"""
     self.solvent_fraction = solvent_fraction
 
   def set_n_residues(self, n_residues): # may not be the same as seq file
+    """Set the number of residues"""
     self.n_residues = n_residues
 
   def set_output_ncs_au_map_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None):
+    """Create map_info object and set output_ncs_au_map_info"""
     self.output_ncs_au_map_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1587,6 +1620,7 @@ class info_object:
 
   def set_output_ncs_au_mask_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None):
+    """Create map_info object and set output_ncs_au_mask_info"""
     self.output_ncs_au_mask_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1594,11 +1628,13 @@ class info_object:
       is_map = False)
 
   def set_output_ncs_au_pdb_info(self, file_name = None, n_residues = None):
+    """Create pdb_info object and use it to set output_ncs_au_pdb_info"""
     self.output_ncs_au_pdb_info = pdb_info_object(file_name = file_name,
      n_residues = n_residues)
 
   def set_output_box_map_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None):
+    """Create map_info object and set output_ncs_box_map_info"""
     self.output_box_map_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1607,6 +1643,7 @@ class info_object:
 
   def set_output_box_mask_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None):
+    """Create map_info object and set output_ncs_box_mask_info"""
     self.output_box_mask_info = map_info_object(file_name = file_name,
       crystal_symmetry = crystal_symmetry,
       origin = origin,
@@ -1615,6 +1652,7 @@ class info_object:
 
   def add_output_region_map_info(self, file_name = None, crystal_symmetry = None,
     origin = None, all = None, map_id = None):
+    """Create map_info object and set output_region_map_info"""
     self.output_region_map_info_list.append(map_info_object(
       file_name = file_name,
       crystal_symmetry = crystal_symmetry,
@@ -1626,6 +1664,7 @@ class info_object:
      )
 
   def add_output_region_pdb_info(self, file_name = None, n_residues = None):
+    """Create pdb_info_object and append to output_region_pdb_info_list"""
     self.output_region_pdb_info_list.append(pdb_info_object(
       file_name = file_name,
       n_residues = n_residues)
@@ -1633,6 +1672,7 @@ class info_object:
 
 
   def show_summary(self, out = sys.stdout):
+    """Summarize this info_object"""
     print("\n ==========  Summary of %s:  ======== \n" %(self.object_type), file = out)
     print("Created: %s" %(self.init_asctime), file = out)
     print("\nInput files used:\n", file = out)
@@ -1730,15 +1770,20 @@ class make_ccp4_map: # just a holder so map_to_structure_factors will run
     self.unit_cell_grid = map.all()
 
   def unit_cell(self):
+    """Return the unit_cell of this map"""
     return self.crystal_symmetry().unit_cell()
 
   def unit_cell_crystal_symmetry(self):
+    """Return the unit_cell_crystal_symmetry of this map.
+       Same as crystal_symmetry"""
     return self.crystal_symmetry()
 
   def map_data(self):
+    """Return the map_data for this map"""
     return self.data
 
   def crystal_symmetry(self):
+    """Return the crystal_symmetry for this map"""
     return crystal.symmetry(self.unit_cell_parameters,
         self.space_group_number)
 
@@ -1780,8 +1825,8 @@ class box_sharpening_info:
       self.wrapping = tracking_data.params.crystal_info.use_sg_symmetry
 
   def get_gaussian_weighting(self, out = sys.stdout):
-    # return a gaussian function centered on center of the map, fall-off
-    #   based on smoothing_radius
+    """Return a gaussian function centered on center of the map, fall-off
+     based on smoothing_radius"""
 
     # Calculate weight map, max near location of centers_ncs_cart
     # U = rmsd**2
@@ -1824,8 +1869,8 @@ class box_sharpening_info:
 
 
   def remove_buffer_from_bounds(self, minimum = 1):
-    # back off by n_buffer in each direction, leave at
-    # least minimum grid on either side of center
+    """Back off by n_buffer in each direction, leave at
+      least minimum grid on either side of center"""
 
     adjusted_lower_bounds, adjusted_upper_bounds = [], []
     delta_lower_bounds, delta_upper_bounds = [], []
@@ -1846,7 +1891,7 @@ class box_sharpening_info:
 
 
   def merge_into_overall_map(self, overall_map = None):
-    # Smoothly fill out edges of the small map with overall_map
+    """Smoothly fill out edges of the small map with overall_map"""
 
     assert self.smoothed_box_mask_data is not None
     assert self.original_box_map_data is not None
@@ -1855,7 +1900,7 @@ class box_sharpening_info:
        (self.original_box_map_data * (1-self.smoothed_box_mask_data))
 
   def remove_buffer(self, out = sys.stdout):
-    # remove the buffer from this box
+    """Remove the buffer from this box"""
 
     new_lower_bounds, new_upper_bounds, delta_lower, delta_upper = \
        self.remove_buffer_from_bounds()
@@ -2012,12 +2057,15 @@ class sharpening_info:
         self.sharpening_target = 'model'
 
   def get_d_cut(self):
+    """Get a reasonable valuen of d_cut from input_d_cut and resolution"""
     if self.input_d_cut is not None:
        return self.input_d_cut
     else:
        return self.resolution
 
   def get_target_b_iso(self):
+    """Get a reasonable target_b_iso
+       from self.target_b_iso_ratio*self.resolution**2"""
     if self.target_b_iso_ratio is None:
       return None
     if self.resolution is None:
@@ -2025,14 +2073,16 @@ class sharpening_info:
     return self.target_b_iso_ratio*self.resolution**2
 
   def set_resolution_dependent_b(self,
-    resolution_dependent_b = None,
-    sharpening_method = 'resolution_dependent'):
+      resolution_dependent_b = None,
+      sharpening_method = 'resolution_dependent'):
+    """Set the value of resolution_dependent_b and sharpening_method"""
     if resolution_dependent_b:
       self.resolution_dependent_b = resolution_dependent_b
     if sharpening_method:
       self.sharpening_method = sharpening_method
 
   def sharpening_is_defined(self):
+    """Return True if sharpening is defined"""
     if self.sharpening_method is None:
       return False
 
@@ -2051,6 +2101,7 @@ class sharpening_info:
     return False
 
   def update_with_box_sharpening_info(self, box_sharpening_info_obj = None):
+      """Update stored information using info in box_sharpening_info_obj"""
       if not box_sharpening_info_obj:
         return self
       self.crystal_symmetry = box_sharpening_info_obj.crystal_symmetry
@@ -2060,6 +2111,7 @@ class sharpening_info:
       return self
 
   def update_with_tracking_data(self, tracking_data = None):
+      """Update stored information using info in tracking_data"""
       self.update_with_params(params = tracking_data.params,
          crystal_symmetry = tracking_data.crystal_symmetry,
          solvent_fraction = tracking_data.solvent_fraction,
@@ -2076,6 +2128,7 @@ class sharpening_info:
      pdb_hierarchy = None,
      half_map_data_list = None,
      n_residues = None, ncs_copies = None):
+      """Update stored information using info in params"""
       self.crystal_symmetry = crystal_symmetry
       self.is_crystal = is_crystal
       self.solvent_fraction = solvent_fraction
@@ -2220,6 +2273,7 @@ class sharpening_info:
 
   def show_summary(self, verbose = False, list_scale_factors = True,
       out = sys.stdout):
+    """Summarize this sharpening_info object"""
     method_summary_dict = {
        'b_iso':"Overall b_iso sharpening",
        'b_iso_to_d_cut':"b_iso sharpening to high_resolution cutoff",
