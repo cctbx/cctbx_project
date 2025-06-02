@@ -1411,6 +1411,7 @@ def sites_and_seq_from_hierarchy(hierarchy):
   return sites,sequence,start_resno,end_resno
 
 class model_info: # mostly just a holder
+  """Holder for information about a segment"""
   def __init__(self,hierarchy=None,id=0,info={},
       find_alpha=None,find_beta=None,find_other=None,
       find_three_ten=None,find_pi=None):
@@ -1424,6 +1425,7 @@ class model_info: # mostly just a holder
     self.find_other=find_other
 
   def show_summary(self,out=sys.stdout):
+    """Summarize this model_info object"""
     keys=list(self.info.keys())
     keys.sort()
     print("\nModel %d" %(self.id), file=out)
@@ -1431,22 +1433,27 @@ class model_info: # mostly just a holder
       print("%s: %s" %(key,str(self.info[key])), file=out)
 
   def has_n(self):
+    """Return True if the hierarchy contains an N atom"""
     return has_atom(self.hierarchy,name="N")
 
   def has_o(self):
+    """Return True if the hierarchy contains an O atom"""
     return has_atom(self.hierarchy,name="O")
 
   def first_residue(self):
+    """Return the first residue number (resseq_as_int()))"""
     return self.hierarchy.first_resseq_as_int()
 
   def last_residue(self):
+    """Return the last residue number (resseq_as_int()))"""
     return self.hierarchy.last_resseq_as_int()
 
   def length(self):
+    """Return the length of this chain"""
     return self.last_residue()-self.first_residue()+1
 
   def set_chain_type(self): # XXX specific for atom names N O2'/O2*
-    # set the chain type if not already set
+    """Set the chain type if not already set"""
     if self.info and self.info.get('chain_type'): return
     if not self.info: self.info={}
     if has_atom(self.hierarchy,name="N") or has_atom(self.hierarchy,name="CA"):
@@ -1458,7 +1465,8 @@ class model_info: # mostly just a holder
       else:
         self.info['chain_type']="DNA"
 
-class segment:  # object for holding a helix or a strand or other
+class segment:
+  """Object for holding a helix or a strand or other"""
 
   def setup(self,sites=None,start_resno=None,hierarchy=None,
      segment_class=None,
@@ -1477,6 +1485,7 @@ class segment:  # object for holding a helix or a strand or other
      verbose=None,
      out=sys.stdout):
 
+    """Set up this segment_object"""
     self.segment_class=segment_class
     self.out=out
     self.verbose=verbose
@@ -1521,9 +1530,11 @@ class segment:  # object for holding a helix or a strand or other
       self.start_resno=start_resno
 
   def summary(self):
+    """Return summary of this segment_object"""
     return self.show_summary()
 
   def show_summary(self,return_text=False):
+    """Return or print summary of this segment_object"""
     text="Class: %6s  Length: %d  Start: %d  End: %d" %(
      self.segment_type,self.length(),self.get_start_resno(),
       self.get_start_resno()+self.length()-1)
@@ -1533,20 +1544,21 @@ class segment:  # object for holding a helix or a strand or other
       print(text, file=self.out)
 
   def get_diffs_and_norms_3(self):
-    # report distances between i and i+3
+    """Report distances between i and i+3"""
     sites_offset_3=self.sites[3:]
     diffs=sites_offset_3-self.sites[:-3]
     return diffs.norms()
 
   def get_min_diff_i_i3(self):
+    """Report minimum distance between i and i+3"""
     norms=self.get_diffs_and_norms_3()
     if norms is None: return
     mm=norms.min_max_mean()
     return mm.min
 
   def trim_ends(self,start_pos=None,end_pos=None):
-    # trim back from start_pos to end_pos (not residue number, position in
-    #   existing segment
+    """Trim back from start_pos to end_pos (not residue number, position in
+      existing segment"""
     start_res=self.get_start_resno()+start_pos
     end_res=self.get_start_resno()+end_pos
     if start_pos==0 and end_pos==self.length()-1:
@@ -1561,6 +1573,8 @@ class segment:  # object for holding a helix or a strand or other
       self.optimal_delta_length=0 # we no longer know how long it should be
 
   def contains_ends(self,first_resno_of_chain=None,last_resno_of_chain=None):
+     """Return whether first resno in chain is present, last resno in
+     chain is present"""
      if first_resno_of_chain>=self.get_start_resno() and \
         first_resno_of_chain<=self.get_end_resno():
        contains_left_end_of_chain=True
@@ -1574,6 +1588,7 @@ class segment:  # object for holding a helix or a strand or other
      return contains_left_end_of_chain,contains_right_end_of_chain
 
   def get_sites_from_hierarchy(self):
+    """Get sites from CA atoms in a hierarchy"""
     atom_selection="name ca"
     sele=self.hierarchy.apply_atom_selection(atom_selection)
     if sele.overall_counts().n_residues==0:
@@ -1589,34 +1604,40 @@ class segment:  # object for holding a helix or a strand or other
       self.sites=sele.atoms().extract_xyz()
 
   def get_start_resno(self):
+    """Return starting resno in segment"""
     return self.start_resno
 
   def get_end_resno(self):
+    """Return ending resno in segment"""
     return self.start_resno+self.length()-1
 
   def length(self):
+    """Return length of segment"""
     return self.sites.size()
 
   def optimal_delta_length(self):
+    """Return value of self.optimal_delta_length"""
     return self.optimal_delta_length
 
   def get_norms(self):
+    """Report norms of distances between i and average of i+3,i+4."""
     diffs,norms=self.get_diffs_and_norms()
     return self.norms
 
   def get_rise(self):
-    # report mean distance from i to i+span-1
+    """Report mean distance from i to i+span-1"""
     if not self.span: return 0.
     return self.get_norms().min_max_mean().mean/self.span
 
   def segment_average_direction(self):
+    """Get average direction of this segment"""
     diffs,norms=self.get_diffs_and_norms()
     if not diffs: return 0.
     return get_average_direction(diffs=diffs)
 
   def get_cosine(self):
+    """Report mean normalized dot product of diffs with mean direction"""
     self.mean_dot_single=None
-    # report mean normalized dot product of diffs with mean direction
     diffs,norms=self.get_diffs_and_norms()
     if not diffs: return 0.
     average_direction=get_average_direction(diffs=diffs)
@@ -1637,6 +1658,7 @@ class segment:  # object for holding a helix or a strand or other
     return mean_dot
 
   def get_diffs_single(self):
+    """Get diffs between i+1 and i"""
     if self.diffs_single:
       return self.diffs_single
     else:
@@ -1648,9 +1670,10 @@ class segment:  # object for holding a helix or a strand or other
     return self.diffs_single
 
   def get_orientation_points(self,start_res=None,end_res=None): # for strand
-    # get 2 points along strand axis and two point at a CA position at end
-    #    These can be used to superimpose strands
-    #   do not depend on the details of the strands
+    """Get 2 points along strand axis and two point at a CA position at end
+    These can be used to superimpose strands
+    do not depend on the details of the strands"""
+
     n=self.length()
     if n < self.minimum_length: return None
     if start_res is None: start_res=self.get_start_resno()
@@ -1675,6 +1698,7 @@ class segment:  # object for holding a helix or a strand or other
     return orientation_points
 
   def get_targets(self):
+    """Set parameters for tolerances"""
     target=self.target_rise*self.span
     tol=self.rise_tolerance
     dot_min=self.dot_min
@@ -1687,6 +1711,7 @@ class segment:  # object for holding a helix or a strand or other
 
   def is_ok(self,check_sub_segments=False,sub_segment_length=8):
 
+    """Return True if this segment is ok"""
     ##########################################
     # Option to check sub-segments instead of the whole thing (not used)
     if check_sub_segments and len(self.sites) > sub_segment_length:
@@ -1727,14 +1752,14 @@ class segment:  # object for holding a helix or a strand or other
       return True
 
   def get_lsq_fit(self,other=None,start_res=None,end_res=None):
-    # superimpose other segment (sucha as a helix ) on this one using
-    #  orientation points
-    # start_res,end_res are start end in other to match
-    # The lengths do not have to match
+    """Superimpose other segment (sucha as a helix ) on this one using
+     points. start_res,end_res are start end in other to match
+    The lengths do not have to match.
 
-    # the orientation points for helix are center of
-    #  N-term of helix, center of C-term of
-    #  helix, and CA of first and last residues in the helix.
+    the orientation points for helix are center of
+    N-term of helix, center of C-term of
+    helix, and CA of first and last residues in the helix.
+    """
 
     self_orientation_points=self.get_orientation_points()
     other_orientation_points=other.get_orientation_points(
@@ -1765,6 +1790,7 @@ class segment:  # object for holding a helix or a strand or other
 
   def apply_lsq_fit(self,lsq_fit_obj=None,hierarchy=None,
      start_res=None,end_res=None):
+    """Apply lsq_fit obj to a hierarchy"""
     atom_selection="resid %s through %s" %(resseq_encode(start_res),
        resseq_encode(end_res))
 
@@ -1779,10 +1805,12 @@ class segment:  # object for holding a helix or a strand or other
     return new_ph
 
   def get_site(self,resno=None):
+    """Get coordinates for site (CA) of resno'th residue starting with 0"""
     first_residue=self.get_start_resno()
     return self.sites[resno-first_residue]
 
   def get_sites(self,start_res=None,end_res=None):
+    """Get sites for residues from start_res to end_res"""
     if start_res is None or end_res is None:
       return self.sites
     else:
@@ -1790,13 +1818,14 @@ class segment:  # object for holding a helix or a strand or other
       return self.sites[start_res-first_residue:end_res-first_residue+1]
 
   def get_centroid(self,start_res=None,end_res=None):
-    # get centroid of residues from start_res to end_res
+    """Get centroid of residues from start_res to end_res"""
     sites=self.get_sites(start_res=start_res,end_res=end_res)
     if sites.size() < 1:
       return None
     return sites.mean()
 
-class helix(segment): # Methods specific to helices
+class helix(segment):
+  """Methods specific to helices"""
 
   def __init__(self,params=None,sites=None,start_resno=None,hierarchy=None,
      is_n_terminus=None,
@@ -1831,7 +1860,9 @@ class helix(segment): # Methods specific to helices
      out=out)
 
   def get_diffs_and_norms(self):
-    # report distances between i and average of i+3,i+4
+    """Report distances between i and average of i+3,i+4 (diffs),
+      and norms() of these diffs.
+     """
     if not hasattr(self,'diffs'):
       sites_offset_3=self.sites[3:-1]
       sites_offset_4=self.sites[4:]
@@ -1850,9 +1881,10 @@ class helix(segment): # Methods specific to helices
 
 
   def get_orientation_points(self,start_res=None,end_res=None):
-    # get 3 points along helix axis, two CA at ends
-    #   These can be used to superimpose helices and
-    #   do not depend on the details of the helix
+    """Get 3 points along helix axis, two CA at ends
+    These can be used to superimpose helices and
+    do not depend on the details of the helix"""
+
     n=self.length()
     if n < self.minimum_length: return None
     if start_res is None: start_res=self.get_start_resno()
@@ -1880,7 +1912,7 @@ class helix(segment): # Methods specific to helices
 
 class strand(segment):
 
-  # Methods specific to strands
+  """Methods specific to strands"""
 
   def __init__(self,params=None,sites=None,start_resno=None,hierarchy=None,
      is_n_terminus=None,
@@ -1915,7 +1947,7 @@ class strand(segment):
       out=out)
 
   def get_diffs_and_norms(self):
-    # report distances between i and i+2
+    """Report distances between i and i+2"""
     assert self.span==2
     if not hasattr(self,'diffs'):
       sites_offset_2=self.sites[2:]
@@ -1928,9 +1960,9 @@ class strand(segment):
     return self.diffs,self.norms
 
   def get_orientation_points(self,start_res=None,end_res=None): # for strand
-    # get 2 points along strand axis and two point at a CA position at end
-    #    These can be used to superimpose strands
-    #   do not depend on the details of the strands
+    """Get 2 points along strand axis and two point at a CA position at end
+    These can be used to superimpose strands
+    do not depend on the details of the strands """
     n=self.length()
     if n < self.minimum_length: return None
     if start_res is None: start_res=self.get_start_resno()
@@ -1958,7 +1990,8 @@ class strand(segment):
 
 class other(segment):
 
-  # Methods specific to other (not strand, not helix). Looks like strand mostly
+  """Methods specific to other (not strand, not helix).
+     Looks like strand mostly"""
 
   def __init__(self,params=None,sites=None,start_resno=None,hierarchy=None,
      is_n_terminus=None,
@@ -1993,12 +2026,13 @@ class other(segment):
       out=out)
 
   def get_diffs_and_norms(self):
+    """No diffs and norms for this class"""
     self.diffs=None
     self.norms=None
     return self.diffs,self.norms
 
   def get_orientation_points(self,start_res=None,end_res=None): # for other
-    # just use all points
+    """Just use all points for orientation for this class"""
     if not self.orientation_points or \
         not start_res==self.orientation_points_start or \
         not end_res==self.orientation_points_end: # calculate it
@@ -2013,7 +2047,8 @@ class other(segment):
         self.orientation_points_end=end_res
     return self.orientation_points
 
-class find_segment: # class to look for a type of segment
+class find_segment:
+  """Look for a type of segment (e.g., helices or strands) in a chain"""
 
   def setup(self,params=None,model=None,segment_type='helix',
       extract_segments_from_pdb=None,
@@ -2023,8 +2058,10 @@ class find_segment: # class to look for a type of segment
       model_as_segment=None, # take the whole model as a segment
       verbose=None,
       out=sys.stdout):
-    # Assumes model is just 1 chain of sequential residues
-    #   obtained with split_model
+
+    """ Set up to find a type of segment
+    Assumes model is just 1 chain of sequential residues
+    obtained with split_model"""
 
     self.out=out
     self.extract_segments_from_pdb=extract_segments_from_pdb
@@ -2134,6 +2171,7 @@ class find_segment: # class to look for a type of segment
           del self.segment_start_end_dict[start_res_use]
 
   def show_summary(self,out=None):
+    """Summarize this find_segment object"""
     if not out: out=self.out
     for h in self.segments:
       print("Class: %12s  N: %d Start: %d End: %d " %(
@@ -2143,7 +2181,7 @@ class find_segment: # class to look for a type of segment
           h.get_rise(),h.get_cosine()), file=out)
 
   def get_used_residues_list(self,end_buffer=1):
-    # just return a list of used residues
+    """Just return a list of used residues in this find_segment object"""
     used_residues=[]
     if hasattr(self,'segment_dict'):
       for i in self.segment_start_end_dict.keys():
@@ -2157,7 +2195,8 @@ class find_segment: # class to look for a type of segment
 
   def extract_segment(self,params=None,start_res=None,end_res=None,sites=None,
        optimal_delta_length=None):
-
+      """Extract coordinates of atoms and secondary structure
+         information for a segment of secondary structure"""
       start_res_with_buffer=start_res  # -self.buffer_residues
       end_res_with_buffer=end_res   #  +self.buffer_residues
 
@@ -2205,6 +2244,7 @@ class find_segment: # class to look for a type of segment
         return False
 
   def get_sites(self):
+    """Get CA sites from hierarchy"""
     atom_selection="name ca"
     sele=self.model.hierarchy.apply_atom_selection(atom_selection)
     if not sele.overall_counts().n_residues:
@@ -2216,11 +2256,13 @@ class find_segment: # class to look for a type of segment
       return sites
 
   def get_segments(self):
+    """Return segments of secondary structure in this find_segments object"""
     return self.segments
 
   def find_segments(self,params=None,sites=None): # helix/strand
-    # set up segment class for this kind of segment
-    # for example, helix(sites=sites)
+    """Set up segment class for this kind of segment
+    for example, helix(sites=sites)"""
+
     h=self.segment_class(params=params,sites=sites)
 
     # get difference vectors i to i+2 (strands) or i to avg of i+3/i+4 (helix)
@@ -2290,7 +2332,7 @@ class find_segment: # class to look for a type of segment
 
 
   def try_to_extend_segments(self,params=None,segment_dict=None,sites=None):
-    # try to extend segments if they do not overlap
+    """Try to extend segments if they do not overlap"""
     found=True
     n_cycles=0
     while found and n_cycles <=len(segment_dict):
@@ -2328,7 +2370,8 @@ class find_segment: # class to look for a type of segment
 
   def merge_segments(self,params=None,segment_dict=None,sites=None):
 
-    # merge any segments that can be combined
+    """Merge any segments that can be combined"""
+
     found=True
     n_cycles=0
     while found and n_cycles <=len(segment_dict):
@@ -2352,6 +2395,7 @@ class find_segment: # class to look for a type of segment
 
   def remove_bad_residues(self,segment_dict=None,diffs=None,dot_min=None,
     minimum_length=None):
+    """Remove bad residues from segments"""
     still_changing=True
     n_cycles=0
     max_cycles=2
@@ -2382,6 +2426,9 @@ class find_segment: # class to look for a type of segment
     return segment_dict
 
   def trim_short_linkages(self,params=None,segment_dict=None,sites=None):
+    """Trim ends of any segments that are connected by fewer than n_link_min=3
+    residues and that go in opposite directions (connected by tight turns)."""
+
     found=True
     n_cycles=0
     while found and n_cycles <=len(segment_dict):
@@ -2433,6 +2480,7 @@ class find_segment: # class to look for a type of segment
 
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
+    """Figure out how many residues really should be in these segments"""
 
     keys=list(segment_dict.keys())
     keys.sort()
@@ -2464,7 +2512,7 @@ class find_segment: # class to look for a type of segment
     return optimal_delta_length_dict,norm_dict
 
 class find_helix(find_segment):
-
+  """Look for helices in a chain"""
   def __init__(self,params=None,model=None,verbose=None,
     extract_segments_from_pdb=None,
     make_unique=None,
@@ -2490,7 +2538,7 @@ class find_helix(find_segment):
      minimum_h_bonds=None,
      maximum_poor_h_bonds=None,
      allow_ca_only_model=None,out=sys.stdout): # helix
-
+    """Construct pdb records for segments in this find_helix object"""
     records=[]
     number_of_good_h_bonds=0
     number_of_poor_h_bonds=0
@@ -2538,6 +2586,7 @@ class find_helix(find_segment):
      force_secondary_structure_input=None,
      allow_ca_only_model=None,out=sys.stdout):
 
+    """List H-bonds in this find_helix object"""
     helix_class=secondary_structure.pdb_helix.helix_class_to_int(
            helix_type) # 1=alpha 3=pi  5=3_10
 
@@ -2600,6 +2649,7 @@ class find_helix(find_segment):
     return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
 class find_beta_strand(find_segment):
+  """Look for beta_strands in a chain"""
 
   def __init__(self,params=None,model=None,verbose=None,
       extract_segments_from_pdb=None,
@@ -2623,7 +2673,7 @@ class find_beta_strand(find_segment):
 
   def get_pdb_strand(self,sheet_id=None,strand_id=1,segment=None,
      sense=0,start_index=None,end_index=None):
-
+    """Return a secondary_structure.pdb_strand object for strand_id"""
     if start_index is None:
       start=get_first_residue(segment.hierarchy)
     else:
@@ -2651,6 +2701,7 @@ class find_beta_strand(find_segment):
     return pdb_strand
 
   def get_required_start_end(self,sheet=None,info_dict=None):
+      """Return start_dict and end_dict for this sheet"""
       start_dict={}
       end_dict={}
       for i in sheet:
@@ -2683,12 +2734,13 @@ class find_beta_strand(find_segment):
      maximum_poor_h_bonds=None,
      out=sys.stdout):
 
-    # sheet_list is list of sheets. Each sheet is a list of strands (the index
-    #  of the strand in segment_list). Info_dict has the relationship between
-    #  pairs of strands, indexed with the key "%d:%d:" %(i,j) where i and j are
-    #  the indices of the two strands. The dictionary returns
-    #  [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
-    #    for the two strands
+    """Construct pdb records for segments in this find_sheet object.
+    sheet_list is list of sheets. Each sheet is a list of strands (the index
+    of the strand in segment_list). Info_dict has the relationship between
+    pairs of strands, indexed with the key "%d:%d:" %(i,j) where i and j are
+    the indices of the two strands. The dictionary returns
+    [first_ca_1,last_ca_1,first_ca_2,last_ca_2,is_parallel,i_index,j_index]
+    for the two strands"""
 
     records=[]
     number_of_good_h_bonds=0
@@ -2791,12 +2843,14 @@ class find_beta_strand(find_segment):
 
 
   def is_even(self,i):
+    """Return True if i is even"""
     if 2*(i//2)==i: return True
     return False
 
   def get_pdb_strand_register(self,segment=None,previous_segment=None,
      first_last_1_and_2=None,allow_ca_only_model=None,
      all_h_bonds=None):
+    """Return a pdb_strand_register object for the first H-bond that is OK"""
     for h_bond in all_h_bonds: # choose first that is ok
       if not h_bond.is_ok():
         continue
@@ -2821,6 +2875,7 @@ class find_beta_strand(find_segment):
      force_secondary_structure_input=None,
      first_last_1_and_2=None,allow_ca_only_model=None,out=sys.stdout):
 
+    """List H-bonds in this find_beta_trand object"""
     #  Looking down a strand in direction from N to C...
     #    the CA go up-down-up-down.
     #    The ones that are up have their O pointing to the right
@@ -2948,7 +3003,8 @@ class find_beta_strand(find_segment):
         all_h_bonds.append(new_h_bond)
     return all_h_bonds,number_of_good_h_bonds,number_of_poor_h_bonds
 
-class h_bond:  # holder for a pair of atoms
+class h_bond:
+  """Holder for a pair of atoms involved in an H-bond"""
   def __init__(self,
              prev_atom=None,
              prev_resname=None,
@@ -2966,6 +3022,7 @@ class h_bond:  # holder for a pair of atoms
     adopt_init_args(self, locals())
 
   def is_ok(self):
+    """Return True if this object is ok"""
     if self.anything_is_ok:
       return True
     if self.dist is None:  # was CA-only so no information
@@ -2976,6 +3033,7 @@ class h_bond:  # holder for a pair of atoms
       return False
 
   def show_summary(self,show_non_existent=False,out=sys.stdout):
+    """Summarize this h_bond object"""
     if self.dist is not None:
       print(" %4s%4s%4s%5s%s : %4s%4s%4s%5s%s :: %5.2f   %s" %(
              self.prev_atom,
@@ -3005,7 +3063,7 @@ class h_bond:  # holder for a pair of atoms
 
 
 class find_other_structure(find_segment):
-
+  """Look for other_structure in a chain"""
   def __init__(self,previously_used_residues=None,
       params=None,model=None,
       extract_segments_from_pdb=None,
@@ -3024,10 +3082,11 @@ class find_other_structure(find_segment):
       verbose=verbose,out=out)
 
   def pdb_records(self,last_id=0,out=sys.stdout):   #other (nothing)
+    """No pdb records for this type of secondary structure"""
     return []
 
   def get_optimal_lengths(self,segment_dict=None,norms=None):
-    # always zero
+    """Always zero for other_structure"""
     optimal_delta_length_dict={}
     norm_dict={}
     for key in segment_dict:
@@ -3038,6 +3097,7 @@ class find_other_structure(find_segment):
   def add_start_end_to_segment_dict(self,
        params,n=None,n_buf=None,segment_start=None,
        segment_end=None,segment_dict=None):
+    """Add a start and end to segment dict for this other_structure"""
     if self.make_unique:
       nn=0
     else:
@@ -3052,8 +3112,8 @@ class find_other_structure(find_segment):
     return segment_dict
 
   def find_segments(self,params=None,sites=None): # other
-    # find everything that is not alpha and not beta, put buffer_residues
-    #  buffer on the end of each one.
+    """Find everything that is not alpha and not beta, put buffer_residues
+    buffer on the end of each one."""
 
     # set up segment class for this kind of segment SPECIFIC FOR OTHER
     # for example, helix(sites=sites)
@@ -3098,6 +3158,7 @@ class find_other_structure(find_segment):
     return None,None,segment_dict
 
 class helix_strand_segments:
+  """Holder for all helices and strands in a model"""
   def __init__(self):
     self.h_bond_text=""
     self.all_strands=[]
@@ -3116,9 +3177,12 @@ class helix_strand_segments:
     self._have_annotations = False
 
   def have_annotations(self):
+    """Return True if annotations are present"""
     return self._have_annotations
 
   def add_from_model(self,model):
+      """Add in strands, helices from a local model object that has
+        find_beta, find_alpha etc already present"""
       if model.find_beta:
         self.all_strands+=model.find_beta.segments
       if model.find_alpha:
@@ -3132,6 +3196,7 @@ class helix_strand_segments:
      max_sheet_ca_ca_dist=6.,
      min_sheet_length=4,
      include_single_strands=None):
+    """Find sheets from previously-identified strands"""
     if not self.all_strands: return
     print("\nFinding sheets from %d strands" %(len(
         self.all_strands)), file=out)
@@ -3187,6 +3252,7 @@ class helix_strand_segments:
     #   self.info_dict
 
   def get_existing_pairs_in_sheets(self=None):
+    """Get existing pairs of sheets in sheet_list"""
     existing_pairs=[]
     for sheet in self.sheet_list:
       for i,j in zip(sheet[:-1],sheet[1:]):
@@ -3195,6 +3261,7 @@ class helix_strand_segments:
     return existing_pairs
 
   def get_sheets_from_edges(self,pair_strands=None):
+    """Find sheets from paired strands"""
     sheet_list=[]
     for i in pair_strands:
       if i in self.used_strands:continue
@@ -3213,14 +3280,16 @@ class helix_strand_segments:
 
 
   def get_available_strand(self,current_strand=None,strand_list=None):
+    """Find a strand that is not used and not in strand_list"""
     for i in self.pair_dict.get(current_strand,[]):
       if not i in self.used_strands and not i in strand_list:
          return i
     return None
 
   def get_strands_by_pairs(self,pairs=None):
+    """Collect strands in groups of n=pairs"""
     strand_list=[]
-    while 1:  # get all single strands
+    while 1:  # get all strands in groups of n=pairs
       i=self.get_unused_strand(n=len(self.all_strands),
          used_strands=self.used_strands,pairs=pairs)
       if i is None: break
@@ -3229,6 +3298,8 @@ class helix_strand_segments:
     return strand_list
 
   def get_unused_strand(self,n=None,used_strands=None,pairs=None):
+    """Find an unused strand that can be part of a sheet with n=pairs
+     strands"""
     for i in range(n):
       if i in used_strands: continue
       if pairs is None or len(self.pair_dict.get(i,[]))==pairs:
@@ -3236,6 +3307,8 @@ class helix_strand_segments:
     return None
 
   def get_strand_pairs(self,tol=None,min_sheet_length=None):
+    """Get pairs of strands and save in self.pair_dict where
+     self.pair_dict[i] contains j if strands i and j could be paired"""
     self.info_dict={}
     self.pair_dict={}
     for i in range(len(self.all_strands)):
@@ -3281,6 +3354,10 @@ class helix_strand_segments:
       registration=None,force_secondary_structure_input=None,
       sense=None):
 
+    """
+    Identify residues i_index,j_index that are next to each other in two
+     adjacent strands of a sheet
+    """
     if switch_i_j:
       xx=i
       i=j
@@ -3424,7 +3501,7 @@ class helix_strand_segments:
 
   def align_strands(self,s1,s2,tol=None,
      min_sheet_length=None):
-    # figure out best alignment and directions. Require at least 2 residues
+    """Figure out best alignment and directions. Require at least 2 residues"""
     sites1=s1.get_sites()
     sites2=s2.get_sites()
     sites2_reversed=sites2.deep_copy().reversed()
@@ -3486,7 +3563,7 @@ class helix_strand_segments:
 
   def get_residue_pairs_in_sheet(self,sites1,sites2,
      center1=None,center2=None,tol=None):
-    # figure out pairs that are within tol. Center pairs are center1-center2
+    """Figure out pairs that are within tol. Center pairs are center1-center2"""
     dd=(col(sites1[center1])-col(sites2[center2])).norm_sq()
     keep1_list=[]
     keep2_list=[]
@@ -3513,6 +3590,8 @@ class helix_strand_segments:
 
   def ca_pair_is_close(self,s1,s2,tol=None,
       dist_per_residue=3.5,jump=4):
+    """Return True if CA pair is close enough to consider for H-bonding
+    """
     best_dist_sq=None
     self.ca1=None
     self.ca2=None
@@ -3546,8 +3625,9 @@ class helix_strand_segments:
     maximum_poor_h_bonds=None,
     models=None,out=sys.stdout):
 
-    # skip any secondary structure elements that have fewer than minimum_h_bonds
-    #   if require_h_bonds is True
+    """Set up PDB records for all helices and strands.
+    Skip any secondary structure elements that have fewer than minimum_h_bonds.
+    if require_h_bonds is True"""
 
     number_of_good_h_bonds=0
     number_of_poor_h_bonds=0
@@ -3568,6 +3648,7 @@ class helix_strand_segments:
     print("H-bonds not included in HELIX/SHEET records marked 'Not included'", file=f)
     print("\n      ATOM 1               ATOM 2           Dist (A)\n", file=f)
     def get_fa(find_what='find_alpha',models=None):
+       """Method to find something (like alpha)"""
        for model in models:
         if getattr(model,find_what):
           return getattr(model,find_what)
@@ -3632,6 +3713,7 @@ class helix_strand_segments:
     return number_of_good_h_bonds,number_of_poor_h_bonds
 
   def get_annotation(self):
+    """Get annotation object for this analysis"""
     all_helices = []
     all_sheets = []
     self._have_annotations = False
@@ -3660,22 +3742,27 @@ class helix_strand_segments:
     return all_annotations
 
   def get_pdb_alpha_helix_list(self):
+    """Get annotations for alpha helix"""
     if hasattr(self,'pdb_alpha_helix_list'):
       return self.pdb_alpha_helix_list
 
   def get_pdb_three_ten_helix_list(self):
+    """Get annotations for three_ten helix"""
     if hasattr(self,'pdb_three_ten_helix_list'):
       return self.pdb_three_ten_helix_list
 
   def get_pdb_pi_helix_list(self):
+    """Get annotations for pi helix"""
     if hasattr(self,'pdb_pi_helix_list'):
       return self.pdb_pi_helix_list
 
   def get_pdb_sheet_list(self):
+    """Get annotations for sheets"""
     if hasattr(self,'pdb_sheet_list'):
       return self.pdb_sheet_list
 
   def get_all_selection_records(self):
+    """Get selections for secondary structure"""
     if not hasattr(self,'all_selection_records'):
        return
     text='"'
@@ -3689,7 +3776,7 @@ class helix_strand_segments:
     return text
 
 class fss_result_object:
-  # A holder for results of find_secondary_structure
+  """A holder for results of find_secondary_structure"""
   def __init__(self,
       id=None,
       chain_id=None,
@@ -3714,6 +3801,7 @@ class fss_result_object:
       self.chain_id_list.append(self.chain_id)
 
   def show_summary(self,out=sys.stdout):
+    """Summarize fss_result_object object"""
     print("\nSummary of find_secondary_structure object %s" %(self.id), end=' ', file=out)
     print("for sequence: %s_%s::%s\n" %(self.start_resno,self.end_resno,
        self.sequence), file=out)
@@ -3725,6 +3813,7 @@ class fss_result_object:
     print("Annotation:\n%s" %(self.get_annotation()), file=out)
 
   def add_chain_id(self,chain_id=None):
+    """Add a chain_id to this fss_result_object"""
     if chain_id is not None:
       self.chain_id_list.append(chain_id)
 
@@ -3734,6 +3823,7 @@ class fss_result_object:
       number_of_poor_h_bonds=None,
       h_bond_text=None,
       annotation=None,):
+    """Add info to this fss_result_object"""
     if chain_id is not None:
       self.chain_id_list.append(chain_id)
     if number_of_good_h_bonds is not None:
@@ -3746,12 +3836,15 @@ class fss_result_object:
       self.annotation=annotation
 
   def get_annotation(self):
+    """Return annotation for this fss_result_object"""
     return self.annotation
 
   def get_chain_id_list(self):
+    """Return list of chain IDs in this fss_result_object"""
     return self.chain_id_list
 
   def is_similar_fss_result(self,other):
+    """Return True if this fss_result_object is similar to other"""
     if self.sequence != other.sequence:
        return False
     if not sites_are_similar(self.sites,other.sites,max_rmsd=self.max_rmsd):
@@ -3763,8 +3856,8 @@ class fss_result_object:
     return True
 
 class conformation_group:
-  # A group of fss_results with the same sequence but different
-  #  conformations
+  """A group of fss_results with the same sequence but different
+  conformations"""
   def __init__(self,
     fss_result=None,
     ):
@@ -3784,22 +3877,27 @@ class conformation_group:
     return text
 
   def get_fss_result_list(self):
+    """Return all find_secondary_structure results"""
     return self.fss_results
 
   def add_fss_result(self,fss_result=None):
+    """Add a find_secondary_structure result"""
     if fss_result:
        self.last_id+=1
        fss_result.id=self.last_id
        self.fss_results.append(fss_result)
 
   def get_similar_fss_result(self,fss_result=None):
+    """Return an fss_result from this group that is similar to supplied
+       fss_result, if any"""
     for fss_r in self.fss_results:
       if fss_r.is_similar_fss_result(fss_result):
         return fss_r
     return None
 
 
-class find_secondary_structure: # class to look for secondary structure
+class find_secondary_structure:
+  """Class to look for secondary structure"""
 
   def __init__(self,params=None,args=None,hierarchy=None,models=None,
       user_annotation_text=None,max_h_bond_length=None,
@@ -4124,8 +4222,8 @@ class find_secondary_structure: # class to look for secondary structure
   def need_to_run_in_parts(self,
      min_residues_for_parts=None,
      min_average_chain_length=None,):
-    # run in parts if lots of ncs or big chains.
-    # Don't if lots of little fragments or model objects are supplied.
+    """Run in parts if lots of ncs or big chains.
+    Don't if lots of little fragments or model objects are supplied."""
     if not self.params.find_ss_structure.ss_by_chain:
       return # not going to do this at all
     if not self.hierarchy:
@@ -4149,11 +4247,11 @@ class find_secondary_structure: # class to look for secondary structure
     return True
 
   def run_in_parts(self):
+    """Just run through all the chains and get their ss.  If duplicate chains
+    #   and use_representative_chains, copy results"""
     print("\nRunning on full chains (no "+\
         "intra-chain secondary structure)", file=self.out)
 
-    # Just run through all the chains and get their ss.  If duplicate chains
-    #   and use_representative_chains, copy results
     local_params=deepcopy(self.params)
     local_params.find_ss_structure.ss_by_chain=False
     if self.params.control.verbose:
@@ -4259,7 +4357,7 @@ class find_secondary_structure: # class to look for secondary structure
 
 
   def show_summary(self,verbose=None,pdb_records_file=None,out=sys.stdout):
-
+    """Summarize find_secondary_structure object"""
     for model in self.models:
       if verbose:
         print("\nModel %d  N: %d  Start: %d End: %d" %(
@@ -4298,15 +4396,17 @@ class find_secondary_structure: # class to look for secondary structure
          pdb_records_file), file=out)
 
   def get_results(self):
+    """Return annotation for this find_secondary_structure result"""
     return self.get_annotation()
 
   def get_annotation(self):
+    """Return annotation for this find_secondary_structure result"""
     if hasattr(self,'annotation'):
       return self.annotation
 
   def get_user_ss(self,params=None,hierarchy=None,
      user_annotation_text=None,out=sys.stdout):
-
+    """Return user-supplied annotation"""
     if not user_annotation_text:
       file_name=params.input_files.secondary_structure_input
       if file_name and not os.path.isfile(file_name):
@@ -4509,7 +4609,7 @@ class find_secondary_structure: # class to look for secondary structure
       return edited_annotation
 
   def find_ss_in_model(self,params=None,model=None,out=sys.stdout):
-
+    """Find secondary structure in model"""
     previously_used_residues=[]
     if params.find_ss_structure.find_alpha:
       model.find_alpha=find_helix(params=params.alpha,
@@ -4576,10 +4676,10 @@ class find_secondary_structure: # class to look for secondary structure
         out=out)
 
   def make_unique(self,model):
-    # iteratively work down residues in this model starting with helix, then
-    #  strand, then anything left
-    # trim in from end if overlapping with previous, delete to nearest end
-    # if a used residue in the middle
+    """Iteratively work down residues in this model starting with helix, then
+    strand, then anything left
+    trim in from end if overlapping with previous, delete to nearest end
+    if a used residue in the middle."""
 
     is_used_list=model.length()*[None]
     first_res=model.first_residue()
@@ -4617,7 +4717,8 @@ class find_secondary_structure: # class to look for secondary structure
 
 
   def get_start_end(self,already_used=None):
-    # goes from first available to end of available (not necessarily optimal)
+    """Goes from first available to end of
+       available (not necessarily optimal)"""
     new_start=None
     new_end=None
     for i in range(len(already_used)):
@@ -4635,6 +4736,7 @@ class find_secondary_structure: # class to look for secondary structure
     return new_start,new_end
 
   def get_params(self,args,out=sys.stdout):
+    """Get params from args"""
     command_line = iotbx.phil.process_command_line_with_files(
       args=args,
       master_phil=master_phil,
