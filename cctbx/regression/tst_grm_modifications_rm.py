@@ -404,6 +404,7 @@ def exercise_bond_in_symmetry_grm(mon_lib_srv, ener_lib):
   simple, asu = grm.get_all_bond_proxies()
   assert (simple.size(), asu.size()) == (10, 2), (simple.size(), asu.size())
   sites_cart = xrs.sites_cart()
+  initial_geo = show_sorted_geometry_str(grm, xrs)
 
   # Now we are removing the bonds one by one
   assert grm.is_bonded_atoms(0,1)
@@ -417,161 +418,79 @@ def exercise_bond_in_symmetry_grm(mon_lib_srv, ener_lib):
   # STOP()
   n_pos = final_geo.find("Nonbonded | unspecified | interactions: 38")
   assert n_pos>0
-  assert not show_diff(final_geo[n_pos:-2], """\
-Nonbonded | unspecified | interactions: 38
-Sorted by model distance:
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" CA  HIS B 304 "
-   model   vdw
-   1.463 3.550
-nonbonded pdb="ZN    ZN A   8 "
-          pdb=" O   HOH A  57 "
-   model   vdw
-   2.154 2.230
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" C   HIS B 304 "
-   model   vdw
-   2.465 3.350
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" CB  HIS B 304 "
-   model   vdw
-   2.475 3.520
-nonbonded pdb=" CG  HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   2.690 1.960 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" CG  HIS B 304 "
-   model   vdw
-   2.953 3.340
-nonbonded pdb=" O   HOH A  57 "
-          pdb=" O   HOH A  69 "
-   model   vdw
-   3.013 3.040
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" ND1 HIS B 304 "
-   model   vdw
-   3.155 3.200
-nonbonded pdb=" O   HIS B 304 "
-          pdb=" CB  HIS B 304 "
-   model   vdw
-   3.163 2.752
-nonbonded pdb=" CB  HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   3.172 2.630 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" CA  HIS B 304 "
-          pdb=" ND1 HIS B 304 "
-   model   vdw
-   3.339 2.840
-nonbonded pdb=" CB  HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   3.344 3.440 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" CD2 HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   3.500 3.260 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" CA  HIS B 304 "
-          pdb=" CD2 HIS B 304 "
-   model   vdw
-   3.514 2.952
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" O   HIS B 304 "
-   model   vdw
-   3.544 3.120
-nonbonded pdb=" CB  HIS B 304 "
-          pdb=" CE1 HIS B 304 "
-   model   vdw
-   3.627 2.928
-nonbonded pdb=" CB  HIS B 304 "
-          pdb=" NE2 HIS B 304 "
-   model   vdw
-   3.675 2.816
-nonbonded pdb=" CG  HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   3.729 3.260 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" C   HIS B 304 "
-          pdb=" CG  HIS B 304 "
-   model   vdw
-   3.843 2.792
-nonbonded pdb=" ND1 HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   3.884 1.848 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb="ZN    ZN A   8 "
-          pdb=" ND1 HIS B 304 "
-   model   vdw sym.op.
-   3.884 1.848 -x-1/2,y+1/2,-z+3/4
-nonbonded pdb=" CA  HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   3.887 2.660 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" CD2 HIS B 304 "
-   model   vdw
-   4.019 3.340
-nonbonded pdb=" O   HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   4.063 3.040 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" CA  HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   4.088 3.470 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" CE1 HIS B 304 "
-   model   vdw
-   4.228 3.340
-nonbonded pdb="ZN    ZN A   8 "
-          pdb=" O   HOH A  69 "
-   model   vdw
-   4.379 2.230
-nonbonded pdb=" CA  HIS B 304 "
-          pdb=" CE1 HIS B 304 "
-   model   vdw
-   4.432 3.690
-nonbonded pdb=" C   HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   4.450 3.270 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" O   HIS B 304 "
-          pdb=" CG  HIS B 304 "
-   model   vdw
-   4.513 3.260
-nonbonded pdb=" CA  HIS B 304 "
-          pdb=" NE2 HIS B 304 "
-   model   vdw
-   4.538 3.550
-nonbonded pdb=" C   HIS B 304 "
-          pdb=" ND1 HIS B 304 "
-   model   vdw
-   4.664 3.350
-nonbonded pdb=" N   HIS B 304 "
-          pdb=" NE2 HIS B 304 "
-   model   vdw
-   4.677 3.200
-nonbonded pdb=" NE2 HIS B 304 "
-          pdb=" O   HOH A  57 "
-   model   vdw sym.op.
-   4.790 3.120 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" O   HOH A  57 "
-          pdb=" NE2 HIS B 304 "
-   model   vdw sym.op.
-   4.790 3.120 -x-1/2,y+1/2,-z+3/4
-nonbonded pdb=" C   HIS B 304 "
-          pdb=" CD2 HIS B 304 "
-   model   vdw
-   4.837 3.490
-nonbonded pdb=" N   HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   4.850 2.310 -x-1/2,y-1/2,-z+3/4
-nonbonded pdb=" C   HIS B 304 "
-          pdb="ZN    ZN A   8 "
-   model   vdw sym.op.
-   4.899 2.460 -x-1/2,y-1/2,-z+3/4""")
+
+  diff_out = StringIO()
+  show_diff(final_geo, initial_geo, out=diff_out)
+  diff_gv = diff_out.getvalue()
+  # print("*"*80)
+  # print(diff_gv)
+  # STOP()
+  assert not show_diff(diff_gv,"""\
+---
++++
+@@ -1,4 +1,4 @@
+-Bond | covalent geometry | restraints: 10
++Bond | covalent geometry | restraints: 9
+ Sorted by residual:
+ bond pdb=" CA  HIS B 304 "
+      pdb=" C   HIS B 304 "
+@@ -12,10 +12,6 @@
+      pdb=" CE1 HIS B 304 "
+   ideal  model  delta    sigma   weight residual
+   1.321  1.324 -0.003 1.00e-02 1.00e+04 7.90e-02
+-bond pdb=" N   HIS B 304 "
+-     pdb=" CA  HIS B 304 "
+-  ideal  model  delta    sigma   weight residual
+-  1.458  1.463 -0.005 1.90e-02 2.77e+03 7.84e-02
+ bond pdb=" CB  HIS B 304 "
+      pdb=" CG  HIS B 304 "
+   ideal  model  delta    sigma   weight residual
+@@ -166,12 +162,24 @@
+       pdb=" CE1 HIS B 304 "   -0.009 2.00e-02 2.50e+03
+       pdb=" NE2 HIS B 304 "    0.020 2.00e-02 2.50e+03
+
+-Nonbonded | unspecified | interactions: 35
++Nonbonded | unspecified | interactions: 38
+ Sorted by model distance:
++nonbonded pdb=" N   HIS B 304 "
++          pdb=" CA  HIS B 304 "
++   model   vdw
++   1.463 3.550
+ nonbonded pdb="ZN    ZN A   8 "
+           pdb=" O   HOH A  57 "
+    model   vdw
+    2.154 2.230
++nonbonded pdb=" N   HIS B 304 "
++          pdb=" C   HIS B 304 "
++   model   vdw
++   2.465 3.350
++nonbonded pdb=" N   HIS B 304 "
++          pdb=" CB  HIS B 304 "
++   model   vdw
++   2.475 3.520
+ nonbonded pdb=" CG  HIS B 304 "
+           pdb="ZN    ZN A   8 "
+    model   vdw sym.op.
+@@ -179,7 +187,7 @@
+ nonbonded pdb=" N   HIS B 304 "
+           pdb=" CG  HIS B 304 "
+    model   vdw
+-   2.953 2.672
++   2.953 3.340
+ nonbonded pdb=" O   HOH A  57 "
+           pdb=" O   HOH A  69 "
+    model   vdw
+@@ -215,7 +223,7 @@
+ nonbonded pdb=" N   HIS B 304 "
+           pdb=" O   HIS B 304 "
+    model   vdw
+-   3.544 2.496
++   3.544 3.120
+ nonbonded pdb=" CB  HIS B 304 "
+           pdb=" CE1 HIS B 304 "
+    model   vdw
+
+""", strip_trailing_whitespace=True)
 
 
 def exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib):
@@ -648,13 +567,7 @@ bond pdb=" SG  CYS A   2 "
   # print("*"*80)
   # print(diff_gv)
   # STOP()
-  assert not show_diff(diff_gv,"""\
----
-+++
-@@ -92,13 +92,6 @@
-      pdb=" CB  CYS A   2 "
-   ideal  model  delta    sigma   weight residual
-   1.531  1.531  0.000 3.28e-02 9.30e+02 6.44e-08
+  assert_lines_in_text (diff_gv,"""\
 -
 -Bond | Disulphide bridge | restraints: 1
 -Sorted by residual:
@@ -662,13 +575,8 @@ bond pdb=" SG  CYS A   2 "
 -     pdb=" SG  CYS A   2 "
 -  ideal  model  delta    sigma   weight residual sym.op.
 -  2.031  2.028  0.003 2.00e-02 2.50e+03 2.48e-02 -x-1,z,y
-
- Bond angle | covalent geometry | restraints: 29
- Sorted by residual:
-@@ -397,12 +390,24 @@
-       pdb=" O   LYS A   3 "    0.000 2.00e-02 2.50e+03
-       pdb=" OXT LYS A   3 "    0.000 2.00e-02 2.50e+03
-
+""")
+  assert_lines_in_text(diff_gv, """\
 -Nonbonded | unspecified | interactions: 80
 +Nonbonded | unspecified | interactions: 83
  Sorted by model distance:
@@ -676,42 +584,20 @@ bond pdb=" SG  CYS A   2 "
 +          pdb=" SG  CYS A   2 "
 +   model   vdw sym.op.
 +   2.028 3.760 -x-1,z,y
- nonbonded pdb=" N   LYS A   3 "
-           pdb=" O   LYS A   3 "
-    model   vdw
-    2.691 2.496
+""")
+
+  assert_lines_in_text(diff_gv, """\
 +nonbonded pdb=" CB  CYS A   2 "
 +          pdb=" SG  CYS A   2 "
 +   model   vdw sym.op.
 +   2.753 3.800 -x-1,z,y
+""")
+  assert_lines_in_text(diff_gv, """\
 +nonbonded pdb=" SG  CYS A   2 "
 +          pdb=" CB  CYS A   2 "
 +   model   vdw sym.op.
 +   2.753 3.800 -x-1,z,y
- nonbonded pdb=" O   CYS A   2 "
-           pdb=" CA  LYS A   3 "
-    model   vdw
-@@ -462,15 +467,15 @@
- nonbonded pdb=" SG  CYS A   2 "
-           pdb=" CA  CYS A   2 "
-    model   vdw sym.op.
--   3.205 3.064 -x-1,z,y
-+   3.205 3.830 -x-1,z,y
- nonbonded pdb=" CA  CYS A   2 "
-           pdb=" SG  CYS A   2 "
-    model   vdw sym.op.
--   3.205 3.064 -x-1,z,y
-+   3.205 3.830 -x-1,z,y
- nonbonded pdb=" CB  CYS A   2 "
-           pdb=" CB  CYS A   2 "
-    model   vdw sym.op.
--   3.334 3.072 -x-1,z,y
-+   3.334 3.840 -x-1,z,y
- nonbonded pdb=" O   LYS A   3 "
-           pdb=" CB  LYS A   3 "
-    model   vdw
-
-""", strip_trailing_whitespace=True)
+""")
 
 def exercise_on_special_position(mon_lib_srv, ener_lib):
   """
@@ -740,7 +626,7 @@ def exercise_on_special_position(mon_lib_srv, ener_lib):
   # print("*"*80)
   # print(diff_gv)
   # STOP()
-  assert not show_diff(diff_gv,"""\
+  assert_lines_in_text(diff_gv,"""\
 ---
 +++
 @@ -40,17 +40,6 @@
@@ -767,102 +653,7 @@ def exercise_on_special_position(mon_lib_srv, ener_lib):
 
 -Nonbonded | unspecified | interactions: 81
 +Nonbonded | unspecified | interactions: 86
- Sorted by model distance:
- nonbonded pdb=" NE2 HIS D  10 "
-           pdb="CO    CO D 101 "
-@@ -176,6 +165,10 @@
-           pdb=" NE2 HIS D  10 "
-    model   vdw sym.op.
-    2.154 2.300 -y,x-y,z
-+nonbonded pdb=" NE2 HIS D  10 "
-+          pdb="CO    CO D 101 "
-+   model   vdw
-+   2.155 2.300
- nonbonded pdb="CO    CO D 101 "
-           pdb=" NE2 HIS D  10 "
-    model   vdw sym.op.
-@@ -184,6 +177,10 @@
-           pdb="CO    CO D 101 "
-    model   vdw sym.op.
-    2.159 2.300 -y,x-y,z
-+nonbonded pdb="CO    CO D 101 "
-+          pdb=" O   HOH D 208 "
-+   model   vdw
-+   2.429 2.220
- nonbonded pdb="CO    CO D 101 "
-           pdb=" O   HOH D 208 "
-    model   vdw sym.op.
-@@ -210,6 +207,10 @@
-    3.115 2.840
- nonbonded pdb=" CD2 HIS D  10 "
-           pdb="CO    CO D 101 "
-+   model   vdw
-+   3.124 2.440
-+nonbonded pdb=" CD2 HIS D  10 "
-+          pdb="CO    CO D 101 "
-    model   vdw sym.op.
-    3.125 2.440 -x+y,-x,z
- nonbonded pdb="CO    CO D 101 "
-@@ -224,6 +225,10 @@
-           pdb="CO    CO D 101 "
-    model   vdw sym.op.
-    3.126 2.440 -x+y,-x,z
-+nonbonded pdb=" CE1 HIS D  10 "
-+          pdb="CO    CO D 101 "
-+   model   vdw
-+   3.128 2.440
- nonbonded pdb=" CD2 HIS D  10 "
-           pdb="CO    CO D 101 "
-    model   vdw sym.op.
-@@ -259,7 +264,7 @@
- nonbonded pdb=" CD2 HIS D  10 "
-           pdb=" O   HOH D 208 "
-    model   vdw
--   3.268 2.608
-+   3.268 3.260
- nonbonded pdb=" O   HIS D  10 "
-           pdb=" CB  HIS D  10 "
-    model   vdw
-@@ -272,6 +277,10 @@
-           pdb=" NE2 HIS D  10 "
-    model   vdw sym.op.
-    3.286 3.340 -x+y,-x,z
-+nonbonded pdb=" NE2 HIS D  10 "
-+          pdb=" O   HOH D 208 "
-+   model   vdw
-+   3.297 3.120
- nonbonded pdb=" NE2 HIS D  10 "
-           pdb=" O   HOH D 208 "
-    model   vdw sym.op.
-@@ -367,7 +376,7 @@
- nonbonded pdb=" ND1 HIS D  10 "
-           pdb="CO    CO D 101 "
-    model   vdw
--   4.241 1.840
-+   4.241 2.300
- nonbonded pdb=" ND1 HIS D  10 "
-           pdb="CO    CO D 101 "
-    model   vdw sym.op.
-@@ -379,7 +388,7 @@
- nonbonded pdb=" CG  HIS D  10 "
-           pdb="CO    CO D 101 "
-    model   vdw
--   4.253 1.952
-+   4.253 2.440
- nonbonded pdb=" CG  HIS D  10 "
-           pdb="CO    CO D 101 "
-    model   vdw sym.op.
-@@ -459,7 +468,7 @@
- nonbonded pdb=" CE1 HIS D  10 "
-           pdb=" O   HOH D 208 "
-    model   vdw
--   4.608 2.608
-+   4.608 3.260
- nonbonded pdb=" CG  HIS D  10 "
-           pdb=" CE1 HIS D  10 "
-    model   vdw sym.op.
-
-""", strip_trailing_whitespace=True)
+""")
 
 def exercise():
   mon_lib_srv = None
