@@ -17,7 +17,18 @@ def run(args):
       cif_input = iotbx.pdb.mmcif.cif_input(file_name=file_name)
       m = mmtbx.model.manager(model_input=cif_input)
       basename = os.path.splitext(os.path.basename(file_name))[0]
-      pdb_text = m.model_as_pdb()
+      if (not m.can_be_output_as_pdb()):
+        # Convert the hierarchy to forward_compatible:
+        from iotbx.pdb.forward_compatible_pdb_cif_conversion import \
+           hierarchy_as_forward_compatible_pdb_string
+        pdb_text =  \
+              hierarchy_as_forward_compatible_pdb_string(m.get_hierarchy())
+        print("***Warning: the file %s does not fit in standard PDB format." %(
+         file_name) + \
+         "\nConverting to forward_compatible PDB, potentially changing \nsome "+
+         "chain ID and residue names")
+      else:
+        pdb_text = m.model_as_pdb()
       print("Writing %s" % (basename+".pdb"))
       with open(basename+".pdb", 'w') as f:
         f.write(pdb_text)
