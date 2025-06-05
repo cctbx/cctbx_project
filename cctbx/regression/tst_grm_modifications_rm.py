@@ -1,11 +1,8 @@
 from __future__ import absolute_import, division, print_function
 from mmtbx import monomer_library
-import mmtbx.monomer_library.server
-import mmtbx.monomer_library.pdb_interpretation
 import mmtbx.model
 from six.moves import cStringIO as StringIO
 #import libtbx.load_env
-from cctbx import geometry_restraints
 from libtbx.test_utils import show_diff, assert_lines_in_text
 from libtbx.utils import null_out
 import iotbx
