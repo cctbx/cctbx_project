@@ -91,7 +91,7 @@ class cablam_idealization(object):
           geometry_restraints_manager=self.model.get_restraints_manager().geometry,
           sec_str_from_pdb_file=None,
           params=None,
-          mon_lib_srv=self.model.get_mon_lib_srv,
+          mon_lib_srv=self.model.get_mon_lib_srv(),
           verbose=-1,
           log=self.log)
       self.model.get_restraints_manager().geometry.set_secondary_structure_restraints(
