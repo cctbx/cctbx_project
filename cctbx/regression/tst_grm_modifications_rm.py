@@ -5,7 +5,9 @@ from six.moves import cStringIO as StringIO
 #import libtbx.load_env
 from libtbx.test_utils import show_diff, assert_lines_in_text
 from libtbx.utils import null_out
+import libtbx.load_env
 import iotbx
+import os
 
 # from tst_grm_modifications import raw_records4, raw_records9
 from tst_grm_modifications import make_initial_grm, show_sorted_geometry
@@ -652,6 +654,42 @@ def exercise_on_special_position(mon_lib_srv, ener_lib):
 +Nonbonded | unspecified | interactions: 86
 """)
 
+def exercise_remove_ss(mon_lib_srv, ener_lib):
+  file_path = libtbx.env.find_in_repositories(
+    relative_path="phenix_regression/pdb/10mh_helix_sheet_na.pdb",
+    test=os.path.isfile)
+  if (file_path is None):
+    print("Skipping exercise_remove_ss: input file not available")
+    return
+  with open(file_path, 'r') as f:
+    raw_records=f.readlines()
+
+  params = mmtbx.model.manager.get_default_pdb_interpretation_params()
+  params.pdb_interpretation.secondary_structure.enabled=True
+  params.pdb_interpretation.secondary_structure.nucleic_acid.base_pair[0].restrain_planarity=True
+  grm, xrs = make_grm_via_model(mon_lib_srv, ener_lib, raw_records, params)
+  sites_cart = xrs.sites_cart()
+  initial_geo_str = show_sorted_geometry_str(grm, xrs)
+  with open('start_exercise_remove_ss.geo', 'w') as f:
+    f.write(initial_geo_str)
+  assert_lines_in_text(initial_geo_str, "Bond | Bond-like | restraints: 90")
+  assert_lines_in_text(initial_geo_str, "Bond angle | Secondary Structure restraints around h-bond | restraints: 190")
+  assert_lines_in_text(initial_geo_str, "Parallelity | Stacking parallelity | restraints: 16")
+  assert_lines_in_text(initial_geo_str, "Planarity | Basepair planarity | restraints: 10")
+
+  grm.remove_secondary_structure_restraints(sites_cart=sites_cart)
+  end_geo_str = show_sorted_geometry_str(grm, xrs)
+  with open('end_exercise_remove_ss.geo', 'w') as f:
+    f.write(end_geo_str)
+  diff_out = StringIO()
+  show_diff(end_geo_str, initial_geo_str, out=diff_out)
+  diff_gv = diff_out.getvalue()
+  assert_lines_in_text(diff_gv, "-Bond | Bond-like | restraints: 90")
+  assert_lines_in_text(diff_gv, "-Bond angle | Secondary Structure restraints around h-bond | restraints: 190")
+  assert_lines_in_text(diff_gv, "-Parallelity | Stacking parallelity | restraints: 16")
+  assert_lines_in_text(diff_gv, "-Planarity | Basepair planarity | restraints: 10")
+
+
 def exercise():
   mon_lib_srv = None
   ener_lib = None
@@ -668,6 +706,7 @@ def exercise():
     exercise_bond_over_symmetry_2(mon_lib_srv, ener_lib)
     exercise_bond_with_self(mon_lib_srv, ener_lib)
     exercise_on_special_position(mon_lib_srv, ener_lib)
+    exercise_remove_ss(mon_lib_srv, ener_lib)
 
 if (__name__ == "__main__"):
   exercise()

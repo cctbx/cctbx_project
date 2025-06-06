@@ -897,11 +897,29 @@ class manager(Base_geometry):
     self.add_planarities_in_place(planarity_proxies)
     self.add_parallelities_in_place(parallelity_proxies)
 
-  def remove_secondary_structure_restraints(self):
-    # Not implemented. The problem here is to remove hbond restraints, which
-    # requires modification of pair_proxies and as complicated as addition
-    # of bond restraint.
-    raise NotImplementedError
+  def remove_secondary_structure_restraints(self, sites_cart):
+    bp_origin_id = origin_ids.get_origin_id('hydrogen bonds')
+    bonds_to_remove = []
+    for proxy_type in self.get_all_bond_proxies():
+      for proxy in proxy_type:
+        if proxy.origin_id == bp_origin_id:
+          bonds_to_remove.append(proxy.i_seqs)
+    self.remove_bond_restraints_in_place(
+        bonded_pairs=bonds_to_remove,
+        sites_cart=sites_cart)
+    if self.angle_proxies is not None:
+      self.angle_proxies = self.angle_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('hydrogen bonds'))
+    if self.planarity_proxies is not None:
+      self.planarity_proxies = self.planarity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair planarity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair parallelity'))
+    if self.parallelity_proxies is not None:
+      self.parallelity_proxies = self.parallelity_proxies.proxy_remove(
+          origin_id=origin_ids.get_origin_id('basepair stacking'))
+    return None
 
   def add_parallelity_proxies_for_side_chain(self, hierarchy, log):
     parallelity_proxies = create_side_chain_restraints( hierarchy=hierarchy,
