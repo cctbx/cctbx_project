@@ -2677,7 +2677,7 @@ class map_manager(map_reader, write_ccp4_map):
           n = n_atoms)
 
   def map_as_fourier_coefficients(self, d_min = None, d_max = None, box=True,
-     resolution_factor=1./3):
+     resolution_factor=1./3, include_000 = True):
     '''
        Convert a map to Fourier coefficients to a resolution of d_min,
        if d_min is provided, otherwise box full of map coefficients
@@ -2721,7 +2721,7 @@ class map_manager(map_reader, write_ccp4_map):
       self.crystal_symmetry().unit_cell().parameters(), 1)
     ma = miller.structure_factor_box_from_map(
       crystal_symmetry = crystal_symmetry,
-      include_000      = True,
+      include_000      = include_000,
       map              = self.map_data(),
       d_min            = d_min)
     if(d_max is not None):
