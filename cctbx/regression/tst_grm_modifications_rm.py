@@ -670,8 +670,8 @@ def exercise_remove_ss(mon_lib_srv, ener_lib):
   grm, xrs = make_grm_via_model(mon_lib_srv, ener_lib, raw_records, params)
   sites_cart = xrs.sites_cart()
   initial_geo_str = show_sorted_geometry_str(grm, xrs)
-  with open('start_exercise_remove_ss.geo', 'w') as f:
-    f.write(initial_geo_str)
+  # with open('start_exercise_remove_ss.geo', 'w') as f:
+  #   f.write(initial_geo_str)
   assert_lines_in_text(initial_geo_str, "Bond | Bond-like | restraints: 90")
   assert_lines_in_text(initial_geo_str, "Bond angle | Secondary Structure restraints around h-bond | restraints: 190")
   assert_lines_in_text(initial_geo_str, "Parallelity | Stacking parallelity | restraints: 16")
@@ -679,8 +679,8 @@ def exercise_remove_ss(mon_lib_srv, ener_lib):
 
   grm.remove_secondary_structure_restraints(sites_cart=sites_cart)
   end_geo_str = show_sorted_geometry_str(grm, xrs)
-  with open('end_exercise_remove_ss.geo', 'w') as f:
-    f.write(end_geo_str)
+  # with open('end_exercise_remove_ss.geo', 'w') as f:
+  #   f.write(end_geo_str)
   diff_out = StringIO()
   show_diff(end_geo_str, initial_geo_str, out=diff_out)
   diff_gv = diff_out.getvalue()
