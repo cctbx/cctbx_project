@@ -84,7 +84,7 @@ os.spawnv(os.P_NOWAIT, "%s", ["%s"])
   f = open("setup.cfg", "w")
   f.write("""\
 [py2app]
-argv-emulation=0""")
+""")
   f.close()
   script_name = re.sub(".pyc$", ".py", py2app.script_py2applet.__file__)
   import subprocess
