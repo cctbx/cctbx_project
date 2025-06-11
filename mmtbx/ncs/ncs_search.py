@@ -487,7 +487,6 @@ def make_flips_if_necessary_torsion(const_h, flip_h):
   ch_f = ch_flip[0]
   const_h.reset_atom_i_seqs()
   flip_h.reset_atom_i_seqs()
-  # for ch_c, ch_f in zip(ch_const, ch_flip):
   for residue, res_flip in zip(ch_c.residues(), ch_f.residues()):
     if (residue.resname in flippable_sidechains
         and should_be_flipped(residue, res_flip)):
@@ -667,7 +666,7 @@ def remove_far_atoms(list_a, list_b,
       res_list_b_new.append(res_list_b[i])
     else:
       pass
-      # print "removing poorly matching residue:",i,max_d - min_d
+      # print ("removing poorly matching residue:",i,max_d - min_d)
   return sel_a,sel_b,res_list_a_new,res_list_b_new,ref_sites_new,other_sites_new
 
 def search_ncs_relations(ph=None,
@@ -935,46 +934,56 @@ def get_chains_info(ph, selection_list=None):
   model  = ph.models()[0]
   # build chains_info from hierarchy
   # print "in get_chains_info"
-  for ch in model.chains():
+  for chain in model.chains():
     # print "ch_id", ch.id
     gr = True
-    if ch.id not in chains_info:
-      chains_info[ch.id] = Chains_info()
+    if chain.id not in chains_info:
+      chains_info[chain.id] = Chains_info()
       gr = False
       # This is very time-consuming
       # ph_sel = ph.select(asc.selection("chain '%s'" % ch.id))
       # coc = flex.vec3_double([ph_sel.atoms().extract_xyz().mean()])
       # chains_info[ch.id].center_of_coordinates = coc
-      chains_info[ch.id].center_of_coordinates = None
-    chains_info[ch.id].flat_atom_selection.extend(ch.atoms().extract_i_seq())
-    chains_info[ch.id].chains_atom_number += ch.atoms_size()
-    conf = ch.conformers()[0]
-    len_conf = len(ch.conformers())
-    # Warning devs: the following assert fails when there is no main conf
-    # in a residue
-    # assert len(ch.residue_groups()) == len(conf.residues())
-    for rg, res in zip(ch.residue_groups(), conf.residues()):
-      chains_info[ch.id].resid.append(rg.resid())
-      chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
-      # atoms = res.atoms()
-      atoms = rg.atom_groups()[0].atoms()
-      # print "rg.atom_groups_size()", rg.atom_groups_size()
-      if rg.atom_groups_size() > 1:
-        present_anames = [a.name for a in atoms]
-        for add_rgs in rg.atom_groups()[1:]:
-          for a in add_rgs.atoms():
-            # print "       getting atom '%s'" % a.name, a.name not in present_anames
-            if a.name not in present_anames:
-              atoms.append(a)
-              present_anames.append(a.name)
-      chains_info[ch.id].atom_names.append(atoms.extract_name())
-      chains_info[ch.id].atom_selection.append(atoms.extract_i_seq())
-      chains_info[ch.id].no_altloc.append(not rg.have_conformers() or len_conf==1)
-      chains_info[ch.id].gap_residue.append(gr)
-      # print "  ", rg.id_str(), rg.have_conformers(), not res.is_pure_main_conf, "|noaltloc:", (not rg.have_conformers() or len_conf==1), "size:", atoms.size(), "gr:", gr
-      # for a in atoms:
-      #   print "    ", a.id_str()
-      gr = False
+      chains_info[chain.id].center_of_coordinates = None
+      # put the rest of the chain into it
+      ch = chain.detached_copy()
+      first = True
+      for c in model.chains():
+        if c.id == ch.id and first:
+          first = False
+        elif c.id == ch.id:
+          for rg in c.residue_groups():
+            ch.append_residue_group(rg.detached_copy())
+      # Done putting the rest of the chain
+      chains_info[ch.id].flat_atom_selection.extend(ch.atoms().extract_i_seq())
+      chains_info[ch.id].chains_atom_number += ch.atoms_size()
+      conf = ch.conformers()[0]
+      len_conf = len(ch.conformers())
+      # Warning devs: the following assert fails when there is no main conf
+      # in a residue
+      # assert len(ch.residue_groups()) == len(conf.residues())
+      for rg, res in zip(ch.residue_groups(), conf.residues()):
+        chains_info[ch.id].resid.append(rg.resid())
+        chains_info[ch.id].res_names.append(rg.atom_groups()[0].resname)
+        # atoms = res.atoms()
+        atoms = rg.atom_groups()[0].atoms()
+        # print "rg.atom_groups_size()", rg.atom_groups_size()
+        if rg.atom_groups_size() > 1:
+          present_anames = [a.name for a in atoms]
+          for add_rgs in rg.atom_groups()[1:]:
+            for a in add_rgs.atoms():
+              # print "       getting atom '%s'" % a.name, a.name not in present_anames
+              if a.name not in present_anames:
+                atoms.append(a)
+                present_anames.append(a.name)
+        chains_info[ch.id].atom_names.append(atoms.extract_name())
+        chains_info[ch.id].atom_selection.append(atoms.extract_i_seq())
+        chains_info[ch.id].no_altloc.append(not rg.have_conformers() or len_conf==1)
+        chains_info[ch.id].gap_residue.append(gr)
+        # print ("  ", rg.id_str(), rg.have_conformers(), not res.is_pure_main_conf, "|noaltloc:", (not rg.have_conformers() or len_conf==1), "size:", atoms.size(), "gr:", gr)
+        # for a in atoms:
+        #   print ("    ", a.id_str())
+        gr = False
   return chains_info
 
 def my_get_rot_trans(
