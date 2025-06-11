@@ -28,6 +28,12 @@ cablam_idealization {
   nproc = 1
     .type = int
     .help = Parallelization is not implemented
+  rotation_angle = 30
+    .type = int
+    .help = angle to rotate the oxygen while searching for better conformation
+  require_h_bond = True
+    .type = bool
+    .help = require presence of (new) h-bond after rotation
   do_gm = False
     .type = bool
     .help = Run geometry minimization after rotation
@@ -72,7 +78,10 @@ class cablam_idealization(object):
       raise Sorry("Multi-model files are not supported")
 
     self.model.search_for_ncs()
-    print(self.model.get_ncs_obj().show_phil_format(), file=self.log)
+    ncs_obj = self.model.get_ncs_obj()
+    nrgl = ncs_obj.get_ncs_restraints_group_list()
+    if nrgl.get_n_groups() > 0:
+      print(self.model.get_ncs_obj().show_phil_format(), file=self.log)
 
     self.outliers_by_chain = self.identify_outliers()
 
@@ -148,9 +157,11 @@ class cablam_idealization(object):
     chain_around = self.model.select(self.model.selection(around_str_sel))
     assert chain_around.get_number_of_atoms() > 0
     self.atoms_around_cutted = self.atoms_around.deep_copy()
-    for i in range(12):
+    # angle = 30
+    angle = self.params.rotation_angle
+
+    for i in range(int(360/angle)):
       # rotation
-      angle = 30
       O_atom, N_atom, C_atom = self._rotate_cablam(self.model, chain,
           prevresid, curresid, a1, a2, angle=angle)
       if [O_atom, N_atom, C_atom].count(None) > 0:
@@ -162,7 +173,9 @@ class cablam_idealization(object):
         self.model.pdb_or_mmcif_string_info(
             target_filename="out_%s_%d.pdb" % (curresid.strip(), i),
             write_file=True)
-      scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, 30*(i+1)))
+      # Score contains tuple of :
+      # angle, N Rama outliers, N Cablam outliers, hbonds
+      scores.append(self._score_conformation(O_atom, C_atom, N_atom, chain_around, angle*(i+1)))
     print("angle, rama outliers, cablam outliers, hbonds (type, length, angle)", file=self.log)
     for s in scores:
       print(s[0], s[1], s[2], end=' ', file=self.log)
@@ -170,7 +183,7 @@ class cablam_idealization(object):
         for e in s[3]:
           print("| %s, %.2f, %.2f|" % (e[0], e[1], e[2]), end=' ', file=self.log)
       print(file=self.log)
-    rot_angle = self._pick_rotation_angle(scores)
+    rot_angle = self._pick_rotation_angle(scores, self.params.require_h_bond)
     # rotate
     if rot_angle != 360:
       self.n_rotated_residues += 1
@@ -210,18 +223,37 @@ class cablam_idealization(object):
         return O_atom, N_atom, C_atom
 
 
-  def _pick_rotation_angle(self, scores):
+  def _pick_rotation_angle(self, scores, require_h_bond=True):
     # I want to pick the rotation with H-bond, less Rama outliers and less
     # cablam outliers.
     best = scores[-1] # last, no rotation
     for s in scores[:-1]:
       # [angle, rama, cablam, hbond]
-      if (len(s[3]) > 0 and # hbond present
-           ((s[1] <= best[1] and s[2] < best[2])
-        # or  (s[1] + s[2] < best[1] + best[2]) # No tolerance to increasing Rama outliers
-        )):
-        best = s
-    return best[0]
+      if require_h_bond and len(s[3]) > 0:
+        # rama better or same, and cablam outliers decreased:
+        if s[1] <= best[1] and s[2] < best[2]:
+          best = s
+      else:
+        # same as above, but preserve or increase number of hbonds
+        if len(s[3]) >= len(best[3]) and s[1] <= best[1] and s[2] < best[2]:
+          best = s
+    # check for the claster and try to return the middle one if the case.
+    best_position = scores.index(best)
+    i = best_position
+    while (i < len(scores) and
+           scores[i][1] == scores[best_position][1] and
+           scores[i][2] == scores[best_position][2] and
+           len(scores[i][3]) == len(scores[best_position][3])):
+      i += 1
+    # If we went past the end, step back one position.
+    # if i == len(scores):
+    # Backtrack because the condition was broken:
+    i -= 1
+    middle_pos = (best_position + i) // 2
+    # print('lenlenlen', len(scores))
+    print('cluster positions:', best_position, i, middle_pos)
+    print('cluster angles:', scores[best_position][0], scores[i][0], scores[middle_pos][0])
+    return scores[middle_pos][0]
 
   def _minimize(self):
     m1 = self.model.deep_copy()
