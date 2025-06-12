@@ -287,11 +287,11 @@ def test_01():
 
   # Reset crystal_symmetry of map with ncs object
   another_mm.set_unit_cell_crystal_symmetry(
-     crystal_symmetry=another_mm.unit_cell_crystal_symmetry())
+     unit_cell_crystal_symmetry=another_mm.unit_cell_crystal_symmetry())
   assert not new_cs.is_similar_symmetry(
     another_mm.unit_cell_crystal_symmetry())
   shift_cart =  another_mm.shift_cart()
-  another_mm.set_unit_cell_crystal_symmetry(crystal_symmetry=new_cs)
+  another_mm.set_unit_cell_crystal_symmetry(unit_cell_crystal_symmetry=new_cs)
   assert shift_cart !=  another_mm.shift_cart()
   assert approx_equal(another_mm.ncs_object().shift_cart(), another_mm.shift_cart())
 

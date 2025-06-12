@@ -430,15 +430,36 @@ class map_manager(map_reader, write_ccp4_map):
         not self.log.closed):
       print(m, file = self.log)
 
-  def set_unit_cell_crystal_symmetry(self, crystal_symmetry):
+  def set_unit_cell_crystal_symmetry(self, unit_cell_crystal_symmetry):
     '''
-      Specify the dimensions and space group of unit cell.  This also changes
-      the crystal_symmetry of the part that is present and the grid spacing.
-      Also resets crystal_symmetry of ncs object
+      Specify the dimensions and space group of the full unit cell for this
+      map.  This also changes the crystal_symmetry of the part that is
+      present and the grid spacing. Also resets crystal_symmetry of ncs object
 
       Purpose is to redefine the dimensions of the map without changing values
-      of the map.  Normally used to correct the dimensions of a map
-      where something was defined incorrectly.
+      of the map.
+
+      Can be used to correct the dimensions of a map where something was
+      defined incorrectly.
+
+      Can also be used to redefine the dimensions of a map after re-estimating
+      the magnification of the map.
+
+      **********************************************************************
+      NOTE: Be careful using this function if the map is boxed.  If a map is
+      boxed then it has a unit_cell_crystal_symmetry which describes the
+      symmetry and cell dimensions of the original (full) map, and it also
+      has a (different) crystal_symmetry that describes the symmetry and
+      cell dimensions of the current boxed version of the map.
+
+      This function operates on the current map to change its
+      unit_cell_crystal_symmetry to the value that is supplied. This
+      automatically also changes the crystal_symmetry.
+
+      If the map is boxed, you need to supply the new value of the
+      unit_cell_crystal_symmetry, NOT the new value of crystal_symmetry.
+      **********************************************************************
+
 
       Does not change self.unit_cell_grid or self.origin_shift_grid_units
 
@@ -452,8 +473,8 @@ class map_manager(map_reader, write_ccp4_map):
     '''
 
     from cctbx import crystal
-    assert isinstance(crystal_symmetry, crystal.symmetry)
-    self._unit_cell_crystal_symmetry = crystal_symmetry
+    assert isinstance(unit_cell_crystal_symmetry, crystal.symmetry)
+    self._unit_cell_crystal_symmetry = unit_cell_crystal_symmetry
 
     # Always follow a set of _unit_cell_crystal_symmetry with this:
     self.set_crystal_symmetry_of_partial_map()
