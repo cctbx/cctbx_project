@@ -598,7 +598,6 @@ class map_manager(map_reader, write_ccp4_map):
 
   def shift_origin(self, desired_origin = (0, 0, 0),
      apply_external_origin_if_present = True,):
-
     '''
     Shift the origin of the map to desired_origin
       (normally desired_origin is (0, 0, 0), so just update
@@ -632,6 +631,10 @@ class map_manager(map_reader, write_ccp4_map):
 
     '''
     if(self.map_data() is None): return
+
+    # Don't do anything and stop here if required origin is the same as in self
+    alleq = all(a == b for a, b in zip(self.map_data().origin(), desired_origin))
+    if alleq or apply_external_origin_if_present is False: return
 
     # Figure out what the shifts are (in grid units)
     shift_info = self._get_shift_info(desired_origin = desired_origin,
