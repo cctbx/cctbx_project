@@ -157,6 +157,7 @@ class refine_mz(object):
         masking_atom_radius=5,
         max_iterations=50,
         macro_cycles=1,
+        use_one_zone=False,
         prefix="",
         log=None):
     adopt_init_args(self, locals())
@@ -176,7 +177,10 @@ class refine_mz(object):
       d_min            = self.d_min)
     self.cc_start = self._get_cc()
     self._show_and_track(d_min = self.d_min)
-    self.d_mins = self._get_mz_resolution_limits()
+    if not use_one_zone:
+      self.d_mins = self._get_mz_resolution_limits()
+    else:
+      self.d_mins = [d_min, ]
     for macro_cycle in range(self.macro_cycles):
       self._refine()
     self.xray_structure.set_sites_cart(self.sites_cart_best)
