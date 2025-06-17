@@ -1582,14 +1582,16 @@ class manager(object):
      origin ends up at 0,0,0 then this will write out the crystal_symmetry
      and not unit_cell_crystal_symmetry.  In that case it would be necessary
      to specify the crystal_symmetry to be written.
+
+     XXX Temporarily use original choice, use unit_cell_crystal_symmetry only
+     if self._shift_cart is None
     """
     if not output_cs:
       return None
     if do_not_shift_back:
       return self._crystal_symmetry
     else:
-      if (self._shift_cart is not None) and (
-            tuple(self._shift_cart) != (0,0,0)):
+      if (self._shift_cart is not None):
         return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
