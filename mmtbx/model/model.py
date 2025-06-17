@@ -1569,29 +1569,23 @@ class manager(object):
      any boxing), and it may have a crystal_symmetry (the working
      crystal_symmetry for the model that matches the coordinates.)
 
-     If output_cs ("write out crystal_symmetry") is False, use None
-     Otherwise (normal results):
-       If do_not_shift_back (write out the coordinates where they are,
-        using crystal_symmetry of box if present): use self._crystal_symmetry
-       If self._shift_cart is set (not None and not (0,0,0)): write out
-         unit_cell_crystal_symmetry (because this is a shifted map, the
-         full-size crystal symmetry is normally the one that is relevant)
-       Otherwise: use self._crystal_symmetry
+     The basic rule is:  write out the unit_cell_crystal_symmetry.
 
-     Note: this system is slightly inconsistent: if a map is boxed but its
-     origin ends up at 0,0,0 then this will write out the crystal_symmetry
-     and not unit_cell_crystal_symmetry.  In that case it would be necessary
-     to specify the crystal_symmetry to be written.
+     However, if output_cs False, return None.
+     Also, if do_not_shift_back is True, return self.crystal_symmetry()
 
-     XXX Temporarily use original choice, use unit_cell_crystal_symmetry only
-     if self._shift_cart is None
+     In a special case (unit_cell_crystal_symmetry = None), the model has
+     not had unit_cell_crystal_symmetry set, so write out crystal_symmetry
+     instead. (Note: this used to be chosen by self._shift_cart == None)
+
     """
+
     if not output_cs:
       return None
     if do_not_shift_back:
       return self._crystal_symmetry
     else:
-      if (self._shift_cart is not None):
+      if (self.unit_cell_crystal_symmetry() is not None):
         return self.unit_cell_crystal_symmetry()
       else:
         return self.crystal_symmetry()
