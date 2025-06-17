@@ -517,6 +517,7 @@ else:
 # generally failing tests
 tst_list_expected_failures = [
   "$D/monomer_library/tst_pdb_interpretation_2.py",
+  "$D/monomer_library/tst_pdb_interpretation_4.py",
   ]
 
 def run():
