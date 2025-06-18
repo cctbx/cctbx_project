@@ -1,3 +1,18 @@
+"""Tools to hold and manipulate local (NCS) symmetry
+ There can be any number of ncs groups in a ncs symmetry object.
+   Each group has a set of NCS operators and centers and may apply
+      to a part of the structure.
+  for group in ncs.ncs_groups(): returns list of groups
+  id=group.chain_and_residue_id() returns id of where it applies
+  for center in group.centers(): returns list of centers of ncs regions in group
+  for rota_matr in group.rota_matrices(): returns rota matrices
+  for trans_orth in group.translations_orth(): returns translation matrices
+
+ NOTE: symmetry operators map NCS position i on to NCS position 0 (they are
+  inverses of the operators mapping position 0 on to i).
+
+"""
+
 from __future__ import absolute_import, division, print_function
 # from mmtbx.ncs.ncs_utils import convert_phil_format
 import sys, os, string
@@ -8,17 +23,6 @@ import scitbx.rigid_body
 from six.moves import zip
 from six.moves import range
 from copy import deepcopy
- # hierarchy:  there can be any number of ncs groups.
- #   each group has a set of NCS operators and centers and may apply
- #      to a part of the structure.
- #  for group in ncs.ncs_groups(): returns list of groups
- #  id=group.chain_and_residue_id() returns id of where it applies
- #  for center in group.centers(): returns list of centers of ncs regions in group
- #  for rota_matr in group.rota_matrices(): returns rota matrices
- #  for trans_orth in group.translations_orth(): returns translation matrices
-
- # NOTE: symmetry operators map NCS position i on to NCS position 0 (they are
- #  inverses of the operators mapping position 0 on to i).
 
 # Defaults for tolerances:
 # Set 2017-12-23 to match values in find_ncs.py; these are very relaxed...
@@ -30,15 +34,17 @@ default_abs_tol_t=2.0
 default_rel_tol_t=0.05
 
 def abs(aa):
+  """Return absolute value of aa"""
   if aa>=0:return aa
   return -aa
 
 def is_in_range(z,z_min,z_max):
+    """Return True if z is >= z_min and <= z_max"""
     if z<z_min or z>z_max: return False
     return True
 
 def remove_quotes_from_chain_id(chain_residue_id):
-  # remove the quotes from the chain names in group:
+  """Remove the quotes from the chain names in group"""
   if chain_residue_id is None:
      return
 
@@ -49,7 +55,7 @@ def remove_quotes_from_chain_id(chain_residue_id):
   return [new_group,list_of_resseq_list]
 
 def remove_single_quotes(text):
-  # Remove single quotes from ends of a string if they occur on both ends.
+  """Remove single quotes from ends of a string if they occur on both ends."""
   if not text: return text
   if not type(text)==type("abc"): return text
   if text.startswith("'") and text.endswith("'"):
@@ -58,6 +64,7 @@ def remove_single_quotes(text):
 
 
 def is_identity(r,t,tol=1.e-2):
+  """Return True if r, t is the identity"""
   identity_r=[1,0,0,0,1,0,0,0,1]
   identity_t=[0,0,0]
   for i in range(9):
@@ -70,7 +77,7 @@ def is_same_transform(r1,t1,r2,t2,
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t):
-
+    """Return True if r1, t1 is the same as r2, t2 within tolerance"""
     # require everything to be very similar
     for i in range(9):
       if abs(r1[i]-r2[i])>tol_r: return False
@@ -82,7 +89,7 @@ def is_same_transform(r1,t1,r2,t2,
     return True
 def crystal_symmetry_to_ncs(crystal_symmetry=None):
 
-  # convert r,t fractional to r_orth,t_orth  orthogonal
+  """Convert r,t fractional to r_orth,t_orth  orthogonal"""
   #  r x + t = x'
   #   x_orth=Ax   A = orthogonalization_matrix
   #  r_orth  (Ax) + t_orth = Ax'
@@ -136,13 +143,14 @@ def crystal_symmetry_to_ncs(crystal_symmetry=None):
   return ncs_obj
 
 def offset_inside_zero_one(x):
+    """Place x inside [0,1] by adding integers"""
     if x >=0.0:
       return -1.0*int(x)  # 2.1 gives -2 to place inside (0,1)
     else:
       return 1.0-int(x)   # -2.1 gives + 3 to place inside (0,1)
 
 def offset_inside_cell(center,unit_cell,orthogonalize=True):
-    # put the center inside (0,1)
+    """Put the center inside (0,1)"""
     from scitbx.math import  matrix
     c=matrix.col(center)
     if orthogonalize:
@@ -159,6 +167,8 @@ def offset_inside_cell(center,unit_cell,orthogonalize=True):
 
 def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
     rotate_about_y=None,rotate_about_new_y=None,ncs_name=None,out=sys.stdout):
+  """Read a text file containing ncs information and get an ncs object.
+   Allow rotation about y, z, and new_y"""
   from mmtbx.ncs.ncs import ncs
   import iotbx.pdb
   ncs_object=ncs()
@@ -182,6 +192,7 @@ def get_ncs_from_text(text=None,text_is_ncs_spec=None,rotate_about_z=None,
 
 def get_helical_symmetry(helical_rot_deg=None,
      helical_trans_z_angstrom=None,max_ops=None):
+  """Get helical symmetry object from rotation and translation along z"""
 
   from scitbx import matrix
   rot=get_rot_z(rot_deg=helical_rot_deg)
@@ -214,10 +225,12 @@ def get_helical_symmetry(helical_rot_deg=None,
   return ncs_object
 
 def get_d_symmetry(n=None,two_fold_along_x=True,ncs_name=None):
+  """Get ncs object for D symmetry"""
   return get_c_symmetry(n=n,is_d=True,two_fold_along_x=two_fold_along_x,
      ncs_name=ncs_name)
 
 def get_rot_z(rot_deg=None):
+  """Get rotation about z for rot_deg"""
   import math
   theta=rot_deg*3.14159/180.
   cc=math.cos(theta)
@@ -226,6 +239,7 @@ def get_rot_z(rot_deg=None):
   return matrix.sqr((cc,ss,0,-ss,cc,0,0,0,1,))
 
 def get_rot_y(rot_deg=None):
+  """Get rotation about y for rot_deg"""
   import math
   theta=rot_deg*3.14159/180.
   cc=math.cos(theta)
@@ -237,7 +251,7 @@ def get_rot_y(rot_deg=None):
                      ))
 
 def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
-  # generate n-fold C symmetry
+  """Generate n-fold C symmetry"""
   oper=get_rot_z(rot_deg=360./n)
   oper_inv=oper.inverse()
   rots=[]
@@ -273,6 +287,7 @@ def get_c_symmetry(n=None,is_d=False,two_fold_along_x=None,ncs_name=None):
   return ncs_object
 
 def remove_extra(text):
+  """Keep text that is not alphabetical lower case or parentheses"""
   new_text=""
   for t in text:
     if not t.lower() in "()abcdefghijklmnopqrstuvwxyz":
@@ -280,6 +295,7 @@ def remove_extra(text):
   return new_text
 
 def value(str):
+  """Get the integer value of the numbers in str"""
   try:
     return int(remove_extra(str[1:]))
   except Exception as e:
@@ -296,8 +312,8 @@ def generate_ncs_ops(symmetry=None,
    max_helical_ops_to_check=None,
    require_helical_or_point_group_symmetry=None,
    out=sys.stdout):
-  # Generate ncs objects corresponding to common point-group symmetries in
-  #  conventional orientations such as C2 D7 etc.
+  """Generate ncs objects corresponding to common point-group symmetries in
+  conventional orientations such as C2 D7 etc."""
 
   ncs_list=[]
   all=False
@@ -2223,7 +2239,8 @@ center_orth    0.0000    0.0000    0.0000
 """
 
 
-class ncs_group:  # one group of NCS operators and center and where it applies
+class ncs_group:
+  """NCS group: one group of NCS operators and center and where it applies"""
   def __init__(self, ncs_rota_matr=None, center_orth=None, trans_orth=None,
       chain_residue_id=None,source_of_ncs_info=None,rmsd_list=None,
       ncs_domain_pdb=None,
@@ -2251,12 +2268,14 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._have_point_group_symmetry=False
 
   def __repr__(self):
+    """Return string representation of this NCS group"""
     return "NCS group with %s ops" %(self._n_ncs_oper)
 
   def apply_cob_to_vector(self,vector=None,
          change_of_basis_operator=None,
          coordinate_offset=None,
          unit_cell=None,new_unit_cell=None):
+    """Apply change of basis to vector"""
     if coordinate_offset is not None:
       from scitbx.math import  matrix
       new_vector=matrix.col(vector)+matrix.col(coordinate_offset)
@@ -2272,7 +2291,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       coordinate_offset=None,
       scale_factor=None,
       unit_cell=None,new_unit_cell=None):
-    # if change_of_basis_operator is None, then return copy of what we have
+    """Copy a list of matrices and translations, applying change of
+    basis operator.  If change_of_basis_operator is None, then return copy
+    of what we have"""
     from scitbx.math import  matrix
     new_list_of_matrices=[]
     new_list_of_translations=[]
@@ -2352,6 +2373,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       coordinate_offset=None,
       scale_factor=None,
          unit_cell=None,new_unit_cell=None):
+    """Copy a list of vectors, optionally applying a change of basis,
+       coordinate offset, scale factor"""
     from scitbx.math import  matrix
     new_vector_list=[]
     for vector in list_of_vectors:
@@ -2374,6 +2397,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       extract_point_group_symmetry=None,
       ops_to_keep=None,
       hierarchy_to_match_order=None):  # make full copy;
+    """Make a deep copy of this NCS group"""
     # optionally apply change-of-basis operator (requires old, new unit cells)
     # optionally apply coordinate_offset (adding coordinate_offset to coords)
     # optionally sort operators to match order in hierarchy
@@ -2428,7 +2452,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return new
 
   def deep_copy_ops_to_keep(self,ops_to_keep=None):
-    # keep only ops_to_keep operators
+    """Deep copy, but keep only ops_to_keep operators"""
     assert ops_to_keep is not None
 
     new=self.deep_copy() # exact copy.  Now remove all except ops_to_keep
@@ -2472,6 +2496,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return new
 
   def get_order_dict(self,hierarchy_to_match_order=None):
+    """Set up dicts for chain_id_from_index and index_from_chain_id"""
     self.chain_id_from_index={}
     self.index_from_chain_id={}
     i=0
@@ -2483,7 +2508,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
         i+=1
 
   def get_new_group(self,hierarchy_to_match_order=None):
-    # change the order of the operators to match hierarchy
+    """Get a new group. Change the order of the operators to match hierarchy"""
     self.get_order_dict(hierarchy_to_match_order=hierarchy_to_match_order)
 
     # figure out what is the new order of groups
@@ -2509,7 +2534,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     assert first_op is not None
     return new_group,first_op
 
-  def deep_copy_order(self,hierarchy_to_match_order=None):  # make full copy;
+  def deep_copy_order(self,hierarchy_to_match_order=None):
+    """Make a full copy; reorder to match hierarchy"""
     assert self._chain_residue_id is not None
 
     # Get the new order of chain IDs
@@ -2592,6 +2618,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
 
   def display_summary(self,verbose=None):
+    """Summarize this NCS group"""
     text=""
     text+="\nSummary of NCS group with "+str(self.n_ncs_oper())+" operators:"
     i=0
@@ -2629,6 +2656,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return text
 
   def format_group_specification(self):
+    """Write out NCS group as text file with ncs_spec format"""
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
 
@@ -2694,6 +2722,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return text
 
   def format_for_phenix_refine(self, prefix="pdb_interpretation.ncs_group"):
+    """Write out NCS group formatted for phenix refine"""
     if not self._chain_residue_id or len(self._chain_residue_id)<2:
       return ""
     exclude=""
@@ -2726,6 +2755,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def format_for_biomt(self,crystal_number=None,skip_identity_if_first=False,
        ncs_domain_pdb=True):
+    """Write out NCS group formatted for PDB BIOMT records"""
 
     serial_number=0
     from iotbx.mtrix_biomt import container
@@ -2740,6 +2770,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def format_for_resolve(self,crystal_number=None,skip_identity_if_first=False,
        ncs_domain_pdb=True):
+    """Write out NCS group as text file for resolve"""
     text="new_ncs_group"
     if ncs_domain_pdb and self._ncs_domain_pdb is not None:
         text+="\nncs_domain_pdb "+str(self._ncs_domain_pdb)+"\n"
@@ -2761,65 +2792,83 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return text
 
   def n_ncs_oper(self):
+    """Return number of NCS operators"""
     return self._n_ncs_oper
 
   def chain_residue_id(self):
+    """Return chain_residue_id dict"""
     return self._chain_residue_id
 
   def rmsd_list(self):
+    """Return list of RMSD between NCS copies"""
     return self._rmsd_list
 
   def cc(self):
+    """Return overall NCS CC if available"""
     return self._cc
 
   def note(self):
+    """Return overall note if available"""
     return self._note
 
   def add_rmsd_list(self,rmsd_list):
+    """Set the rmsd_list"""
     self._rmsd_list=rmsd_list
 
   def add_cc(self,cc):
+    """Set the overall CC"""
     self._cc=cc
 
   def add_note(self,note):
+    """Set the overall note"""
     self._note=note
 
   def residues_in_common_list(self):
+    """Return the residues_in_common_list"""
     return self._residues_in_common_list
 
   def add_residues_in_common_list(self,residues_in_common_list):
+    """Set the residues_in_common_list"""
     self._residues_in_common_list=residues_in_common_list
 
   def add_chain_residue_id(self,chain_residue_id):
+    """Set the chain_residue_id"""
     self._chain_residue_id=chain_residue_id
 
 
   def centers(self):
+    """Return the centers for the NCS groups"""
     return self._centers
 
   def translations_orth(self):
+    """Return the orthogonal translations"""
     return self._translations_orth
 
   def rota_matrices(self):
+    """Return the rotation matrices"""
     return self._rota_matrices
 
   def translations_orth_inv(self):
+    """Return inverses of orthogonal translations"""
     if not hasattr(self,"_translations_orth_inv"):
       self.get_inverses()
     return self._translations_orth_inv
 
   def rota_matrices_inv(self):
+    """Return inverses of the rotation matrices"""
     if not hasattr(self,"_rota_matrices_inv"):
       self.get_inverses()
     return self._rota_matrices_inv
 
   def delete_inv(self):
+    """Remove inverses of rotation and translation matrices"""
     if hasattr(self,"_rota_matrices_inv"):
       del self._rota_matrices_inv
     if hasattr(self,"_translations_orth_inv"):
       del self._translations_orth_inv
 
   def adjust_magnification(self,magnification=None):
+    """Set the magnification"""
     if not magnification or magnification==1:
       return # nothing to do
 
@@ -2831,6 +2880,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.get_inverses()
 
   def invert_matrices(self):
+    """Not used"""
     self.get_inverses()
     # move the inverses to std
     self._translations_orth=deepcopy(self._translations_orth_inv)
@@ -2838,6 +2888,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.get_inverses()
 
   def rotate_matrices(self,rot=None):
+    """Rotate all matrices by rot"""
     translations_orth_rot=deepcopy(self._translations_orth)
     rota_matrices_rot=deepcopy(self._rota_matrices)
 
@@ -2859,6 +2910,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.get_inverses()
 
   def get_inverses(self):
+    """Set up inverses of matrices and translations"""
     self._translations_orth_inv=[]
     self._rota_matrices_inv=[]
     for r,t in zip(self.rota_matrices(),self.translations_orth()):
@@ -2868,7 +2920,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       self._translations_orth_inv.append(t_inv)
 
   def rotations_translations_forward_euler(self):
-    # note usual rt is from molecule j to molecule 1. Here it is opposite.
+    """Get rotations_forward_euler,translations_forward_euler.
+    Note usual rt is from molecule j to molecule 1. Here it is opposite."""
     from scitbx.math import euler_angles
     rotations_forward_euler=[]
     translations_forward_euler=[]
@@ -2881,18 +2934,22 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return rotations_forward_euler,translations_forward_euler
 
   def source_of_ncs_info(self):
+    """Return the source of ncs information"""
     return self._source_of_ncs_info
 
   def ncs_domain_pdb(self):
+    """Return name of file with NCS domains"""
     return self._ncs_domain_pdb
 
   def print_list(self,list_of_real):
+    """Print list of real numbers"""
     text=""
     for number in list_of_real:
      text+="  "+str(self.round(number,2))
     return text
 
   def round(self,value,n_digit):  # round off value to n_digit digits
+    """Round value to n_digit"""
     if type(value) == type(1):
        return self.round(float(value),n_digit)
     if type(value) != type(1.0):
@@ -2914,8 +2971,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    tol_r=None,
    abs_tol_t=None,
    rel_tol_t=None):
-    # sequentially remove operators until pg symmetry is achieved or none
-    # are left
+   """Sequentially remove operators until pg symmetry is achieved or none
+    are left"""
    ops_to_keep=[self.identity_op_id()]
    n_ops=len(self.rota_matrices_inv())
    for test_op in range(n_ops):
@@ -2945,7 +3002,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    rel_tol_t=default_rel_tol_t,
    allow_self_contained_in_other = True):
     '''
-     return True if all operations of self match one of other
+     Return True if all operations of self match one of other
     '''
 
     if (not allow_self_contained_in_other) and \
@@ -2972,9 +3029,9 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t,
    symmetry_to_match=None):
-    # return True if any 2 sequential operations is a member of the
-    #  set.  Test by sequentially applying all pairs of
-    # operators and verifying that the result is a member of the set
+    """Return True if any 2 sequential operations is a member of the
+    set.  Test by sequentially applying all pairs of
+    operators and verifying that the result is a member of the set"""
 
     # Allow checking self operators vs some other symmetry object if desired:
 
@@ -3005,6 +3062,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def sort_by_z_translation(self,tol_z=0.01,
        allow_negative_z_translation = False):
+    """Sort rotation matrices and translations by z-translation"""
     n=len(self.rota_matrices_inv())
     z_translations=[]
     sort_z_translations=[]
@@ -3056,9 +3114,11 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return sorted_indices
 
   def get_trans_along_z(self,t0,t1):
+    """Get translation along z between t0 and t1"""
     return t1[2]-t0[2]
 
   def get_theta_along_z(self,m0,m1):
+    """Get theta along z for m0, m1"""
     import math
     cost=m0[0]
     sint=m0[1]
@@ -3077,11 +3137,12 @@ class ncs_group:  # one group of NCS operators and center and where it applies
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t):
-    # This assumes the operators are in order, but allow special case
-    #   where the identity operator is placed at the beginning but belongs
-    #   at the end
-    # Also assumes the axis of helical symmetry is parallel to the Z-axis.
-    #   and returns False if not
+    """Return True if this is helical symmetry along z.
+    This assumes the operators are in order, but allow special case
+    where the identity operator is placed at the beginning but belongs
+    at the end.
+    Also assumes the axis of helical symmetry is parallel to the Z-axis
+    and returns False if not."""
 
     # For helical symmetry sequential application of operators moves up or
     #  down the list by an index depending on the indices of the operators.
@@ -3151,8 +3212,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
       return False
 
   def get_forwards_reverse_helix(self,r1=None,t1=None,r2=None,t2=None):
-    # get the forwards and reverse transforms, deciding which is which based
-    # on the order of operators supplied for r1 t1 and r2 t2
+    """Get the forwards and reverse transforms, deciding which is which based
+    on the order of operators supplied for r1 t1 and r2 t2"""
     assert self._have_helical_symmetry
     for dir in ['forwards','reverse']:
       if dir=='forwards':
@@ -3175,6 +3236,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
      "Unable to find forward and reverse operators for this helical symmetry")
 
   def get_helix_parameters(self,tol_z=default_tol_z):
+    """Get helix parameters from z-translation and theta"""
     from libtbx import group_args
     helix_z_translation=self.get_helix_z_translation()
     helix_theta=self.get_helix_theta()
@@ -3184,8 +3246,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
   def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
+    """Extend the operators to go from -z_range to z_range"""
     assert self._have_helical_symmetry
-    # extend the operators to go from -z_range to z_range
     rota_matrices_inv_sav=deepcopy(self.rota_matrices_inv())
     translations_orth_inv_sav=deepcopy(self.translations_orth_inv())
     # only apply centers if some existing ones are not zero
@@ -3292,20 +3354,22 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self.sort_by_z_translation(tol_z=tol_z)
 
   def get_helix_z_translation(self):
+    """Return the helix z translation"""
     assert self._have_helical_symmetry
     if hasattr(self,'_helix_z_translation'):
       return self._helix_z_translation
     return None
 
   def get_helix_theta(self):
+    """Return the helix theta"""
     assert self._have_helical_symmetry
     if hasattr(self,'_helix_theta'):
       return self._helix_theta
     return None
 
   def helix_rt_reverse(self):
+    """Return r and t for moving one reverse in a helix"""
     assert self._have_helical_symmetry
-    # Return r and t for moving one reverse in a helix
     if not hasattr(self,'helix_oper_reverse') or not self.helix_oper_reverse:
       if not hasattr(self,'helix_oper_forwards') or \
          not self.helix_oper_forwards: # no info, quit
@@ -3322,8 +3386,8 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return r1,t1
 
   def helix_rt_forwards(self):
+    """Return r and t for moving one forwards in a helix"""
     assert self._have_helical_symmetry
-    # Return r and t for moving one forwards in a helix
     if not hasattr(self,'helix_oper_forwards') or not self.helix_oper_forwards:
       if not hasattr(self,'helix_oper_reverse') or \
          not self.helix_oper_reverse: # no info, quit
@@ -3340,7 +3404,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return r1,t1
 
   def oper_adds_offset(self,i1,tol_r=None,abs_tol_t=None,rel_tol_t=None):
-    # figure out what operator is created from operator i1 + any other one
+    """Figure out what operator is created from operator i1 + any other one"""
     n=len(self.rota_matrices_inv())
     r1=self.rota_matrices_inv()[i1]
     t1=self.translations_orth_inv()[i1]
@@ -3372,7 +3436,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
 
 
   def identity_op_id(self):
-    # return id of identity operator
+    """Return id of identity operator"""
     id=0
     for center,trans_orth,ncs_rota_matr in zip (
        self._centers, self._translations_orth,self._rota_matrices):
@@ -3382,7 +3446,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     return None
 
   def map_inside_unit_cell(self,unit_cell=None):
-    # map all the operators inside the unit cell.  Must be supplied
+    """Map all the operators inside the unit cell.  Must be supplied"""
     assert unit_cell is not None
     if len(self._centers)==0: return
 
@@ -3414,6 +3478,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._translations_orth=new_translations_orth
 
   def add_identity_op(self):
+    """Add identity op to group if not present"""
     if self.identity_op_id() is not None:
        return # nothing to do
 
@@ -3426,6 +3491,7 @@ class ncs_group:  # one group of NCS operators and center and where it applies
     self._n_ncs_oper+=1
 
 class ncs:
+  """Class to hold any number of local symmetry (NCS) groups"""
   def __init__(self,exclude_h=None,exclude_d=None):
     self._ncs_groups=[]  # each group is an ncs_group object
     self.source_info=None
@@ -3437,6 +3503,7 @@ class ncs:
     self._shift_cart = (0,0,0)  # shift to place object in original location
 
   def __repr__(self):
+    """Text representation of an NCS object containing some number of NCS groups"""
     text = "NCS object with %s groups: " %(len(self._ncs_groups))
     for g in self._ncs_groups:
       text+=str(g)
@@ -3449,9 +3516,9 @@ class ncs:
       ops_to_keep=None,
       extract_point_group_symmetry=None,
       hierarchy_to_match_order=None):  # make a copy
+    """Make new ncs object with same overall params as this one:"""
     from mmtbx.ncs.ncs import ncs
 
-    # make new ncs object with same overall params as this one:
     new=ncs(exclude_h=self._exclude_h,exclude_d=self._exclude_d)
     new.source_info=self.source_info
     new._ncs_name=self._ncs_name
@@ -3476,6 +3543,7 @@ class ncs:
 
   def change_of_basis(self,change_of_basis_operator=None,unit_cell=None,
       new_unit_cell=None):
+    """Apply change of basis to all groups"""
     if change_of_basis_operator is None or unit_cell is None or\
         new_unit_cell is None:
        raise Sorry("For change of basis unit_cell, "+
@@ -3484,56 +3552,64 @@ class ncs:
       unit_cell=unit_cell,new_unit_cell=new_unit_cell)
 
   def magnification(self,scale_factor=None):
+    """Apply magnification to all groups"""
     if scale_factor is None:
        raise Sorry("For magnification a scale factor is required.")
     return self.deep_copy(scale_factor=scale_factor)
 
   def set_shift_cart(self,shift_cart):
+    """Set the shift_cart (origin offset)"""
     self._shift_cart=shift_cart
 
   def shift_cart(self):
+    """Return the shirt_cart (origin offset)"""
     return self._shift_cart
 
   def coordinate_offset(self,coordinate_offset=None,unit_cell=None,
       new_unit_cell=None):
-    # NOTE: Returns new object, self is unchanged.
+    """Offset coordinates by coordinate_offset.
+    NOTE: Returns new object, self is unchanged."""
     if coordinate_offset is None:
        raise Sorry("For coordinate_offset an offset is required.")
     return self.deep_copy(coordinate_offset=coordinate_offset)
 
   def map_inside_unit_cell(self,unit_cell=None):
-    # map all the operators inside the unit cell.  Must be supplied and the
-    # centers for the operators must exist and not be zero
+    """Map all the operators inside the unit cell.  Must be supplied and the
+    centers for the operators must exist and not be zero"""
     for ncs_group in self._ncs_groups:
       ncs_group.map_inside_unit_cell(unit_cell=unit_cell)
 
   def ncs_read(self):
+    """Return True if NCS has been read in"""
     return self._ncs_read
 
   def ncs_groups(self):
+    """Return the NCS groups in this NCS object"""
     return self._ncs_groups
 
-  def identity_op_id_in_first_group(self): # identity operartor in first (usually main) NCS group
+  def identity_op_id_in_first_group(self):
+    """Return True if identity operator is in first (usually main) NCS group"""
     if self._ncs_groups:
       return self._ncs_groups[0].identity_op_id()
     else:
       return None
 
-  def ncs_oper_in_first_group(self): # copies in first (usually main) NCS group
+  def ncs_oper_in_first_group(self):
+    """Return number of copies in first (usually main) NCS group"""
     if self._ncs_groups:
       return self._ncs_groups[0].n_ncs_oper()
     else:
       return None
 
   def rotate_about_z(self,rot_deg=None,invert_matrices=True):
-    # Rotate all the ops by rot_deg about z
+    """Rotate all the ops by rot_deg about z"""
     if invert_matrices:
       rot_deg=-rot_deg
     oper=get_rot_z(rot_deg=rot_deg)
     self.rotate_matrices(rot=oper)
 
   def rotate_about_y(self,rot_deg=None,invert_matrices=True):
-    # Rotate all the ops by rot_deg about y
+    """Rotate all the ops by rot_deg about y"""
     if invert_matrices:
       rot_deg=-rot_deg
     oper=get_rot_y(rot_deg=rot_deg)
@@ -3541,6 +3617,7 @@ class ncs:
 
   def ncs_from_pdb_input_BIOMT(self,pdb_inp=None,log=None,quiet=False,
      invert_matrices=True):
+    """Obtain NCS object from BIOMT records in PDB file"""
     p=pdb_inp.process_BIOMT_records()
     if not p:
       print("No BIOMT records available", file=log)
@@ -3549,6 +3626,7 @@ class ncs:
     self.ncs_from_import(rot_list=p.r,trans_list=p.t,invert_matrices=invert_matrices)
 
   def ncs_from_import(self,rot_list=None,trans_list=None,invert_matrices=True):
+    """Obtain NCS object from a list of rotations, translations"""
 
     self.init_ncs_group()
 
@@ -3567,18 +3645,19 @@ class ncs:
 
 
   def select_first_ncs_group(self):
-    # just keep the first ncs group and remove others:
+    """Just keep the first ncs group and remove others"""
     self._ncs_groups=self._ncs_groups[:1]
     return self
 
   def select_first_ncs_operator(self):
-    # just keep the first ncs operator in the first group and remove others:
+    """Just keep the first ncs operator in the first group and remove others"""
     self.select_first_ncs_group()
     if self._ncs_groups:
       self._ncs_groups=[self._ncs_groups[0].deep_copy(ops_to_keep=[0])] #  keep first only
     return self
 
-  def set_unit_ncs(self):  # just make a single ncs operator
+  def set_unit_ncs(self):
+    """Just make a single ncs operator"""
 
     self.init_ncs_group()
 
@@ -3590,7 +3669,9 @@ class ncs:
     self.save_existing_group_info()
     self._ncs_read=True
 
-  def read_ncs(self,file_name=None,lines=[],source_info="",log=None,quiet=False):
+  def read_ncs(self,file_name=None,lines=[],source_info="",
+       log=None,quiet=False):
+    """Read NCS from a file"""
     if not log: log=sys.stdout
     if not quiet:
       if file_name:
@@ -3667,6 +3748,7 @@ class ncs:
         pass
 
   def save_existing_group_info(self):
+        """Save current group information"""
 
         self.save_oper()
         if self._n_ncs_oper > 0:  # save last-read ncs group.
@@ -3674,6 +3756,7 @@ class ncs:
 
 
   def get_res_range_after_key(self,line):
+    """Get residue range after ':' in text string"""
     spl = line.replace(':', ' ').split()
     if  len(spl)<3:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
@@ -3686,6 +3769,7 @@ class ncs:
     return [start,end]
 
   def get_1_char_after_key(self,line):
+    """Get 1 (or more) characters in second word in line"""
     spl=line.split()
     if  len(spl)<2:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
@@ -3697,6 +3781,7 @@ class ncs:
     return char
 
   def get_1_value_after_key(self,line):
+    """Get one value in second word in line"""
     spl=line.split()
     if  len(spl)<2:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
@@ -3708,6 +3793,7 @@ class ncs:
     return cc
 
   def get_3_values_after_key(self,line):
+    """Get 3 values starting with 2nd word in line"""
     spl=line.split()
     if  len(spl)<4:
       raise Sorry("Cannot interpret this NCS file"+"\n"+str(line))
@@ -3720,6 +3806,7 @@ class ncs:
     return set
 
   def init_ncs_group(self):
+     """Set up an NCS group"""
      self._n_ncs_oper=0
      self._ncs_trans_orth=[]
      self._ncs_rota_matr=[]
@@ -3736,6 +3823,7 @@ class ncs:
      self._group=[]
 
   def init_oper(self):
+     """Initialize operators"""
      self._rota_matrix=[]
      self._trans=None
      self._center=None
@@ -3745,6 +3833,7 @@ class ncs:
      self._chain=None
 
   def save_oper(self):
+     """Save operators"""
      # decide if there is anything to save:
 
      have_oper=True
@@ -3788,6 +3877,7 @@ class ncs:
        source_of_ncs_info=None,
        ncs_group_object=None):
 
+     """Import an NCS group"""
      if not ncs_group_object:
        list_length=None
        if center_orth is None and trans_orth:
@@ -3818,6 +3908,7 @@ class ncs:
      self._ncs_groups.append(ncs_group_object)
 
   def save_ncs_group(self):
+     """Save an NCS group"""
      # check that there is something  here:
      have_something=False
      for lst in [self._ncs_trans_orth,
@@ -3848,9 +3939,11 @@ class ncs:
      self.init_ncs_group()
 
   def show_summary(self, verbose=True, log = None):
+    """Summarize NCS groups"""
     return self.display_all(verbose=verbose, log = log)
 
   def display_all(self,verbose=True,log=None):
+    """Long summary"""
     if log==None:
       log=sys.stdout
     count=0
@@ -3867,17 +3960,19 @@ class ncs:
     return text
 
   def shift_cart(self):
+    """Return the shift_cart (offset) value"""
     if self._shift_cart:
       return self._shift_cart
     else:
       return (0,0,0)
 
   def shift_back_cart(self):
+    """Return inverse of shift_cart"""
     return tuple([-a for a in self.shift_cart()])
 
   def as_ncs_spec_string(self, format = 'ncs_spec'):
     '''
-     shifts to original location and returns text string
+     Shifts to original location and returns text string
     '''
     assert format in ['ncs_spec','phil']
     shifted_ncs=self.coordinate_offset(coordinate_offset=self.shift_back_cart())
@@ -3891,6 +3986,7 @@ class ncs:
 
   def format_all_for_group_specification(self,log=None,quiet=True,out=None,
        file_name=None):
+    """Return ncs_spec format of entire NCS object"""
     if file_name is not None:
        out=open(file_name,'w')
     if out==None:
@@ -3920,6 +4016,7 @@ class ncs:
     return all_text
 
   def format_all_for_biomt(self,log=None,quiet=False,out=None,):
+    """Return BIOMT records for NCS operators in first NCS group"""
     if out==None:
        out=sys.stdout
     if log==None:
@@ -3939,6 +4036,7 @@ class ncs:
 
   def format_all_for_resolve(self,log=None,quiet=False,out=None,
       crystal_number=None,skip_identity_if_first=False,ncs_domain_pdb=True):
+    """Format NCS object for resolve"""
     if out==None:
        out=sys.stdout
     if log==None:
@@ -4013,24 +4111,29 @@ class ncs:
     return phil_str
 
   def set_ncs_name(self,ncs_name):
+    """Set the ncs name"""
     self._ncs_name=ncs_name
 
   def get_ncs_name(self):
+    """Return the ncs name"""
     return self._ncs_name
 
   def add_source_info(self,source_info):
+    """Add source information"""
     if self.source_info is None:
        self.source_info=str(source_info)
     else:
        self.source_info+=str(source_info)
 
   def add_cc_list(self,cc_list):
-   if len(self._ncs_groups) != len(cc_list):
-     raise Sorry("Number of NCS groups does not match length of cc_list...")
-   for ncs_group,cc in zip(self._ncs_groups,cc_list):
-    ncs_group.add_cc(cc)
+    """Add list of CC values for each NCS group"""
+    if len(self._ncs_groups) != len(cc_list):
+      raise Sorry("Number of NCS groups does not match length of cc_list...")
+    for ncs_group,cc in zip(self._ncs_groups,cc_list):
+      ncs_group.add_cc(cc)
 
   def overall_note(self):
+    """Add an overall note"""
     overall_note=""
     for ncs_group in self._ncs_groups:
       if ncs_group._note is not None:
@@ -4038,6 +4141,7 @@ class ncs:
     return overall_note
 
   def overall_cc(self):
+    """Calculate overall cc from cc_list"""
     cc_all=0.
     n=0
     for ncs_group in self._ncs_groups:
@@ -4051,6 +4155,7 @@ class ncs:
     return cc_all
 
   def overall_rmsd(self):
+    """Calculate overall rmsd from rmsd_list"""
     rmsd_all=0.
     n=0
     for ncs_group in self._ncs_groups:
@@ -4066,6 +4171,7 @@ class ncs:
     return rmsd_all
 
   def max_operators(self):
+    """Return number of operators in NCS group with the most operators"""
     n_max=0
     for ncs_group in self._ncs_groups:
       if ncs_group and ncs_group.n_ncs_oper()>n_max:
@@ -4078,7 +4184,7 @@ class ncs:
    rel_tol_t=default_rel_tol_t,
    allow_self_contained_in_other = True):
     '''
-      Determine if self and other are similar ncs objects
+      Determine if self and other are similar ncs objects.
       ncs groups do not have to be in same order
     '''
     if not self._ncs_groups and not other._ncs_groups:
@@ -4108,6 +4214,7 @@ class ncs:
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t):
+    """Return True if this NCS group has point symmetry"""
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups[:1]:
@@ -4117,6 +4224,7 @@ class ncs:
     return True
 
   def adjust_magnification(self,magnification=None):
+    """Set magnification of each NCS group"""
     if not self._ncs_groups:
       return self
     for ncs_group in self._ncs_groups:
@@ -4124,18 +4232,21 @@ class ncs:
     return self
 
   def rotate_matrices(self,rot=None):
+    """Rotate all matrices in all groups by rot"""
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
       ncs_group.rotate_matrices(rot=rot)
 
   def invert_matrices(self):
+    """Invert matrices in all groups"""
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
       ncs_group.invert_matrices()
 
   def sort_by_z_translation(self,tol_z=default_tol_z):
+    """Sort by z translation in all groups"""
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
@@ -4143,6 +4254,7 @@ class ncs:
 
   def extend_helix_operators(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
+    """Extend helix operators in all groups"""
     if not self._ncs_groups:
       return
     for ncs_group in self._ncs_groups:
@@ -4151,6 +4263,7 @@ class ncs:
 
   def get_helix_parameters(self,z_range=None,tol_z=default_tol_z,
       max_operators=None):
+    """Get helix parameters in all groups"""
     if not self._ncs_groups:
       return
     # return values for group 0
@@ -4160,6 +4273,7 @@ class ncs:
    tol_r=default_tol_r,
    abs_tol_t=default_abs_tol_t,
    rel_tol_t=default_rel_tol_t):
+    """Return True if all groups are helical symmetry along z"""
     if not self._ncs_groups:
       return False
     for ncs_group in self._ncs_groups:
@@ -4169,6 +4283,7 @@ class ncs:
     return True
 
   def add_identity_op(self):
+    """Add identity operator to all groups"""
     for ncs_group in self._ncs_groups:
       if ncs_group.identity_op_id() is None:
         ncs_group.add_identity_op()
@@ -4176,6 +4291,7 @@ class ncs:
 
   def apply_ncs_to_sites(self, sites_cart=None,ncs_obj=None,
       exclude_identity=False,ncs_id=None):
+    """Apply NCS to sites_cart"""
 
     if type(sites_cart) == type((1,2,3)): # it was a single site
       from scitbx.array_family import flex
@@ -4298,8 +4414,8 @@ tran_orth   -23.0000  147.0000    0.0000
 center_orth   0.0000    0.0000    0.0000
 """
 def euler_frac_to_rot_trans(euler_values,frac,unit_cell):
-    # TT get RT in cctbx form from euler angles and fractional translation as
-    #   used in phaser. Note: Specific for phaser EULER FRAC
+    """Get RT in cctbx form from euler angles and fractional translation as
+    used in phaser. Note: Specific for phaser EULER FRAC"""
 
     ncs_rota_matr_inv=scitbx.rigid_body.euler(
       euler_values[2],euler_values[1],euler_values[0],"zyz").rot_mat()
