@@ -1,3 +1,5 @@
+"""Generate a list of ATOM-to-ATOM distances calculated from a model file"""
+
 from __future__ import absolute_import, division, print_function
 import sys
 import numpy

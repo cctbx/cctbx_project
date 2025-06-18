@@ -1,3 +1,5 @@
+"""Specify tests to be run in this and sub-directories"""
+
 from __future__ import absolute_import, division, print_function
 from libtbx import test_utils
 import libtbx.load_env

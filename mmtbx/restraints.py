@@ -1,4 +1,3 @@
-
 """
 Wrapper module for computing targets and gradients for restraints (or other
 energy functions) on coordinates and B-factors; used in phenix.refine.

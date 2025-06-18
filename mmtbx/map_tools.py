@@ -1,4 +1,3 @@
-
 """
 This module contains a variety of functions related to map calculation, many
 of which are access via the mmtbx.f_model.manager API.  It has some overlap

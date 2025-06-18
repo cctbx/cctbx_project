@@ -1,4 +1,3 @@
-
 """
 Create a simple table of crystal symmetry in structures deposited in the PDB.
 This can be used for comparison with "novel" datasets, possibly indicating

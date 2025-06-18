@@ -1,3 +1,5 @@
+"""Compute map correlation coefficient given input PDB model and reflection data
+"""
 
 from __future__ import absolute_import, division, print_function
 import mmtbx.utils

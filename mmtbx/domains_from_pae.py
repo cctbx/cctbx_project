@@ -1,3 +1,4 @@
+"""Tools for identification of domains from a PAE file"""
 from __future__ import division, print_function
 import sys
 from scitbx.array_family import flex

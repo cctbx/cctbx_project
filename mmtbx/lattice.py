@@ -1,4 +1,3 @@
-
 """
 Utility functions for analyzing lattice contacts.  Used in:
 

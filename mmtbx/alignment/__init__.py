@@ -1,3 +1,7 @@
+"""algorithms for aligning two protein
+sequences, where each sequence is represented as a string of one-letter
+amino-acid codes"""
+
 from __future__ import absolute_import, division, print_function
 import scitbx.array_family.flex
 from scitbx.array_family import flex

@@ -1,3 +1,8 @@
+"""
+   process_predicted_model: tools to update B-values used in some
+    model predictions as an error estimate indicator and to split up model
+    into domains that contain the more confident predictions
+"""
 from __future__ import division, print_function
 import sys
 
@@ -5,11 +10,6 @@ import sys
 #################### TOOLS FOR PROCESSING A PREDICTED MODEL ####################
 ################################################################################
 
-"""
-   process_predicted_model: tools to update B-values used in some
-    model predictions as an error estimate indicator and to split up model
-    into domains that contain the more confident predictions
-"""
 
 from scitbx.array_family import flex
 from libtbx.utils import Sorry
