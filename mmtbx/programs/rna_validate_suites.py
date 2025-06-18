@@ -1,3 +1,4 @@
+"""Analyze and validate suites in RNA"""
 from __future__ import absolute_import, division, print_function
 
 import os

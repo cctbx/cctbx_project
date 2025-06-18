@@ -1,3 +1,5 @@
+"""Replace values in B-factor field with estimated B values.
+Optionally remove low-confidence residues and split into domains."""
 # -*- coding: utf-8 -*-
 
 from __future__ import division, print_function

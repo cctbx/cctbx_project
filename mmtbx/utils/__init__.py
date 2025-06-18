@@ -1,4 +1,3 @@
-
 """
 Library of convenience functions for working with models and reflection data.
 This contains a number of routines used in phenix.refine and related programs,

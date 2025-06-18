@@ -1,3 +1,5 @@
+"""Calculate the expected Matthews coefficient given the crystal symmetry and
+crystallized molecule(s)"""
 from __future__ import absolute_import, division, print_function
 try:
   from phenix.program_template import ProgramTemplate

@@ -1,3 +1,6 @@
+"""Calculates ideal CB atom position based on mainchain geometry,
+then displays deviation of modeled CB from that ideal positon.
+"""
 from __future__ import absolute_import, division, print_function
 
 import os

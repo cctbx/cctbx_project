@@ -1,3 +1,4 @@
+"""Tool to calculate Rama-Z score. Validation of Ramachandran plot"""
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function
 

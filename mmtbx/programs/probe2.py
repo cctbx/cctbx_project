@@ -1,3 +1,4 @@
+"""Run molprobity. version 2"""
 ##################################################################################
 # Copyright(c) 2021-2023, Richardson Lab at Duke
 # Licensed under the Apache 2 license

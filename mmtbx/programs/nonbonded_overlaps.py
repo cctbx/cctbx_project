@@ -1,3 +1,4 @@
+"""List non-bonded overlaps"""
 from __future__ import division, print_function
 try:
   from phenix.program_template import ProgramTemplate

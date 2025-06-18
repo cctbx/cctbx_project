@@ -1,3 +1,5 @@
+"""Automatically retrieve data from the PDB via the RCSB \
+    web server"""
 from __future__ import absolute_import, division, print_function
 
 from libtbx.program_template import ProgramTemplate

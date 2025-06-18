@@ -1,3 +1,4 @@
+"""Identify unlikely waters in a model based on clashes"""
 from __future__ import absolute_import, division, print_function
 
 import os

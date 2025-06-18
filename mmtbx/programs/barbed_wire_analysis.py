@@ -1,3 +1,4 @@
+"""Tool for identifying barbed wire, near-folded, and other behaviors within AlphaFold2 predicted models"""
 from __future__ import absolute_import, division, print_function
 import sys
 from libtbx.program_template import ProgramTemplate

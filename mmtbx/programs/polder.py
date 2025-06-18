@@ -1,3 +1,5 @@
+"""Computes omit maps by excluding the bulk solvent in the area around a
+selection."""
 from __future__ import absolute_import, division, print_function
 from six.moves import zip
 try:
