@@ -710,21 +710,22 @@ class _():
         a hierarchy (or string from it).  Convert the hierarchy and the
         cmd_text, run the method, convert the results back:
 
-     # Convert the hierarchy to forward compatible
+     Convert the hierarchy to forward compatible:
      ph_fc = ph.as_forward_compatible_hierarchy()
 
-     # Convert any commands. Can be done one word at a time also
+     Convert any commands. Can be done one word at a time also:
      cmd_text_fc = ph_fc.convert_multi_word_text_to_forward_compatible(cmd_text)
 
-     # Run the method with converted hierarchy and commands
+     Run the method with converted hierarchy and commands:
      result = do_something(ph = ph_fc, command_text = cmd_text_fc)
 
-     # Convert back any resulting hierarchy
+     Convert back any resulting hierarchy:
      new_ph = result.ph.forward_compatible_hierarchy_as_standard(
               conversion_info = ph_fc.conversion_info())
 
-     # Convert back any words in the results that referred to converted
-     #  items. Keys are chain_id and resname
+     Convert back any words in the results that referred to converted
+     items. Keys are chain_id and resname:
+
      new_result_items = []
      for result_item,key in zip(results.text_words, results.text_keys):
        new_result_item = ph_fc.conversion_info().\
