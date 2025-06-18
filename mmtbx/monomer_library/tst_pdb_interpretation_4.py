@@ -25,6 +25,8 @@ def exercise_long_vdw(mon_lib_srv, ener_lib):
   cctbx_project/cctbx/geometry_restraints/nonbonded.h from
     find_max_vdw_distance in the same file, no charges passed and
     make_nonbonded_asu_proxy in nonbonded_sorted.h, with charges.
+
+  Example is from 7eax.
   """
 
   raw_records = """\
