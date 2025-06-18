@@ -52,6 +52,12 @@ class _():
 
 def smooth_map(map, crystal_symmetry, rad_smooth, method = "exp",
      non_negative = True):
+  """Smooth a map with radius rad_smooth, using one of these
+   methods:  "exp" (Gaussian smoothing), "box_average" (local box average),
+   "top_hat" (Top-hat smoothing, spherical average done in reciprocal
+   space)
+  """
+
   from cctbx import miller
   assert method in ["exp", "box_average", "top_hat"]
   map_smooth = None
