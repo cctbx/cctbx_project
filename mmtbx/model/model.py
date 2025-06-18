@@ -1605,19 +1605,15 @@ class manager(object):
   def model_as_pdb(self,
       output_cs = True,
       atoms_reset_serial_first_value=None,
-      do_not_shift_back = False,
-      crystal_symmetry = None):
+      do_not_shift_back = False):
     """
     move all the writing here later.
     """
 
     if do_not_shift_back and self._shift_cart is None:
       do_not_shift_back = False
-    if crystal_symmetry is None:
-      cs_to_output = self._figure_out_cs_to_output(
-          do_not_shift_back=do_not_shift_back, output_cs=output_cs)
-    else:
-      cs_to_output = crystal_symmetry
+    cs_to_output = self._figure_out_cs_to_output(
+        do_not_shift_back=do_not_shift_back, output_cs=output_cs)
 
     result = StringIO()
     # outputting HELIX/SHEET records
