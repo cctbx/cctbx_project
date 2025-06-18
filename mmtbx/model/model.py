@@ -899,7 +899,7 @@ class manager(object):
       Set the unit_cell_crystal_symmetry (original crystal symmetry)
 
       Only used to reset original crystal symmetry of model
-      Requires that there is no shift_cart for this model in
+      Requires that there is no shift_cart for this model
     '''
     assert crystal_symmetry is not None
 
@@ -910,18 +910,43 @@ class manager(object):
 
     self._unit_cell_crystal_symmetry = crystal_symmetry
 
-  def set_crystal_symmetry(self, crystal_symmetry):
+  def set_crystal_symmetry(self, crystal_symmetry,
+     unit_cell_crystal_symmetry = None):
     '''
-      Set the crystal_symmetry, keeping sites_cart the same
+      Set the crystal_symmetry, keeping sites_cart the same.
 
-      NOTE: Normally instead use
-        shift_model_and_set_crystal_symmetry(shift_cart=shift_cart) and
-      shift_model_back() to shift the coordinates of the model.
+      Optionally set unit_cell_crystal_symmetry as well.
+      Setting unit_cell_crystal_symmetry requires that shift_cart is None.
+
+      Uses:
+       1. You can set crystal_symmetry (the working symmetry) for the
+       model, keeping unit_cell_crystal_symmetry (the original symmetry before
+       any boxing) the same.  This is what is used in boxing a model and map.
+
+       2. You can set both crystal_symmetry and unit_cell_crystal_symmetry.
+       This is what you would use if you are creating a new model.
+
+      NOTE 1: If you set crystal_symmetry but not unit_cell_crystal_symmetry,
+      the current value of unit_cell_crystal_symmetry will remain. Be sure
+      that is what you intend.
+
+      NOTE 2: When a model is written out, the symmetry written is normally
+      the unit_cell_crystal_symmetry, so be sure this is set appropriately.
+
+      NOTE 3: If your goal is to shift the coordinates of a model, normally
+      instead use shift_model_and_set_crystal_symmetry(shift_cart=shift_cart)
+      along with shift_model_back().
+
+      NOTE 4: If this model is part of a map_model_manager, normally
+      use that manager to make changes in symmetry, because otherwise your
+      maps and this model will be out of sync.
 
       Uses set_crystal_symmetry_and_sites_cart because sites_cart have to
       be replaced in either case.
     '''
     self.set_crystal_symmetry_and_sites_cart(crystal_symmetry,None)
+    if unit_cell_crystal_symmetry:
+      self.set_unit_cell_crystal_symmetry(unit_cell_crystal_symmetry)
 
   def set_crystal_symmetry_and_sites_cart(self, crystal_symmetry, sites_cart):
 
