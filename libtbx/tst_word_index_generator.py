@@ -1,10 +1,9 @@
-from __future__ import division
-
 """
 Unit tests for word_index_generator (generate an index from html directories).
 This module tests visible text extraction, word tokenization, filtering, and index building.
 """
 
+from __future__ import division
 import unittest
 import os
 import re

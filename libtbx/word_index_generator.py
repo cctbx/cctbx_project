@@ -1,5 +1,3 @@
-from __future__ import division
-
 """
 word_index_generator (generate an index from html directories)
 
@@ -8,6 +6,7 @@ Only visible, non-trivial words (excluding stopwords and filtered tokens) are in
 Each section page contains navigable links and structured grouping by word prefix.
 Formatted to match pdoc3-style HTML structure.
 """
+from __future__ import division
 
 import os
 import re
