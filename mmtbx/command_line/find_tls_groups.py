@@ -63,6 +63,28 @@ def consequtive_permutations(iterable, r=None):
     else:
       return
 
+#def ordered_partitions(seq):
+#    """
+#    Recursively generate all ordered partitions of a list.
+#    Each partition is a list of lists, preserving order.
+#    """
+#    if not seq:
+#        return [[]]
+#
+#    result = []
+#    for i in range(1, len(seq)+1):
+#        first = seq[:i]
+#        for rest in ordered_partitions(seq[i:]):
+#            result.append([first] + rest)
+#    return result
+#
+#def generate_partitions(N):
+#    """
+#    Generate all ordered partitions for list [0, 1, ..., N-1].
+#    """
+#    return ordered_partitions(list(range(N)))
+
+
 def all_permutations(N):
   unique_set = list(range(N))
   array = [[i] for i in unique_set]
