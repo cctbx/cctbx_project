@@ -232,6 +232,9 @@ class ncs_aware_refinement(object):
     elif(self.group_mode=="one_per_chain"):
       for chain in ph_box.chains():
         group_adp_sel.append(chain.atoms().extract_i_seq())
+    elif(self.group_mode=="two_per_residue"):
+      group_adp_sel = \
+        mmtbx.refinement.utils.two_group_selections_per_residue(model)
     else:
       assert self.group_mode is None
     if self.group_mode is not None:
@@ -244,7 +247,7 @@ class ncs_aware_refinement(object):
         fmodel.update_xray_structure(xray_structure = fmodel.xray_structure,
           update_f_calc = True)
       #
-      number_of_macro_cycles = 3
+      number_of_macro_cycles = 5
       if(self.individual): number_of_macro_cycles = 1
       group_b_manager = mmtbx.refinement.group.manager(
         fmodel                   = fmodel,
