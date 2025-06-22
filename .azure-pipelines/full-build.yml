@@ -4,11 +4,6 @@
 jobs:
   - template: ./conda-win.yml
     parameters:
-      vmImage: windows-2019
-      vs: 2019
-      modules: ${{ parameters.modules }}
-  - template: ./conda-win.yml
-    parameters:
       vmImage: windows-2022
       vs: 2022
       modules: ${{ parameters.modules }}

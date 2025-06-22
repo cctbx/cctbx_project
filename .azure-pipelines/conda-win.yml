@@ -4,8 +4,8 @@
 # https://github.com/actions/virtual-environments/blob/main/images/win/Windows2022-Readme.md
 #
 # Parameters:
-#   vmImage: windows-2019
-#   vs: 2019
+#   vmImage: windows-2022
+#   vs: 2022
 #   modules: <modules artifact name>
 
 jobs:
