@@ -3561,6 +3561,17 @@ class ncs:
     """Set the shift_cart (origin offset)"""
     self._shift_cart=shift_cart
 
+  def shifted(self, eps=1.e-3):
+    ''' Return True if this ncs_object has been shifted from its original
+     location (e.g., by boxing a map and model and this ncs object).
+    '''
+
+    r = self.shift_cart()
+    if(r is None): return False
+    from scitbx.array_family import flex
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
+
   def shift_cart(self):
     """Return the shirt_cart (origin offset)"""
     return self._shift_cart

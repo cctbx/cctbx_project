@@ -56,6 +56,8 @@ def test_01():
     resolution = 5)
   assert mmm_from_model.map_manager() is not None
 
+  assert not mmm_from_model.shifted()
+
   # Make sure we can add an ncs object that is either shifted or not
   mmmn_dcdc=mmmn.deep_copy()
   new_mmmn = _match_map_model_ncs()
@@ -85,12 +87,16 @@ def test_01():
   new_ncs=mmmn.ncs_object()
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
 
-  mmmn.write_model('s.pdb')
-  mmmn.write_map('s.mrc')
-
   shifted_ncs=mmmn.ncs_object()
   assert approx_equal((-153.758, -74.044, -127.487),
       tuple(shifted_ncs.ncs_groups()[0].translations_orth()[-1]),eps=0.1)
+
+  # Make sure ncs reports on shifted
+  assert shifted_ncs.shifted()
+  ncs_dc = ncs.deep_copy()
+  assert not ncs_dc.shifted()
+  ncs_dc.set_shift_cart((1,1,1))
+  assert ncs_dc.shifted()
 
 
   # Shift a model and shift it back
@@ -151,6 +157,7 @@ def test_01():
 
   # Set crystal_symmetry and unit_cell_crystal_symmetry and shift_cart
   # Box and shift the map_model_manager so we have new coordinate system
+  assert not mmm_sites.shifted()
   mmm_sites.box_all_maps_around_model_and_shift_origin(box_cushion=4.5)
   new_model = mmm_sites.get_model_by_id('new_model')
   assert approx_equal((3., 4., 5.0),
@@ -230,6 +237,12 @@ def test_01():
   mmm.generate_map(model=mmm.model())
   mm=mmm.map_manager()
   mmm.show_summary()
+
+  # Make sure shifted() reports on shift_cart() properly
+  assert not mmm.shifted()
+  mmm.box_all_maps_around_model_and_shift_origin()
+  assert mmm.shifted()
+
 
   # check get_map_model_manager function
   dm = DataManager(['model'])

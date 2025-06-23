@@ -560,6 +560,14 @@ class map_model_manager(object):
     ''' Get the unit_cell_crystal_symmetry (full or original symmetry)'''
     return self.map_manager().unit_cell_crystal_symmetry()
 
+  def shifted(self):
+    ''' Determine if the maps and models in this manager are shifted relative
+    to their original positions (e.g., whether the map has been boxed).
+    Return True if self.map_manager() has been shifted from its
+    original origin.
+    '''
+    return self.map_manager().shifted()
+
   def shift_cart(self):
     ''' get the shift_cart (shift since original location)'''
     return self.map_manager().shift_cart()

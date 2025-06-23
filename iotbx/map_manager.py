@@ -1841,6 +1841,17 @@ class map_manager(map_reader, write_ccp4_map):
     return self.unit_cell().orthogonalize(tuple((x, y, z)))
 
 
+  def shifted(self, eps=1.e-3):
+    ''' Return True if this map has been shifted from its original
+     location (e.g., by boxing the map).
+     Checks self.shift_cart() to determine if map has been shifted.
+    '''
+
+    r = self.shift_cart()
+    if(r is None): return False
+    if(flex.max(flex.abs(flex.double(r)))<=eps): return False
+    return True
+
   def shift_cart(self):
     '''
      Return the shift_cart of this map from its original location.

@@ -1053,6 +1053,10 @@ class manager(object):
       return None
 
   def shifted(self, eps=1.e-3):
+    ''' Return True if this model has been shifted from its original
+     location (e.g., by boxing a map and this model).
+    '''
+
     r = self.shift_cart()
     if(r is None): return False
     if(flex.max(flex.abs(flex.double(r)))<=eps): return False

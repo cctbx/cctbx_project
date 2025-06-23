@@ -27,9 +27,11 @@ def test_01():
   print (mm.map_data().origin())
   assert mm.map_data().origin() == (100,100,100)
   assert mm.origin_shift_grid_units == (0,0,0)
+  assert not mm.shifted()
   mm.shift_origin()
   assert mm.map_data().origin() == (0,0,0)
   assert mm.origin_shift_grid_units == (100,100,100)
+  assert mm.shifted()
   mm.show_summary()
 
   # test cc_to_other_map
@@ -309,7 +311,9 @@ def test_01():
 
   # Adjust model and ncs symmetry to match this map
   assert model.shift_cart()  is None
+  assert not model.shifted()
   new_mm.set_model_symmetries_and_shift_cart_to_match_map(model)
+  assert model.shifted()
   assert approx_equal (model.shift_cart() ,
        (-0.888888888888889, -0.8888888888888891, -0.888888888888889))
   sc = model.get_sites_cart()
