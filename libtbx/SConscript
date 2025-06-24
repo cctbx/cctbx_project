@@ -428,7 +428,7 @@ libtbx.scons: Warning: compiling with /MDd:
       "/GR",
       "/EHsc"]
     if (libtbx.env.build_options.optimization):
-      opts = ["/DNDEBUG", "/O2"]
+      opts = ["/DNDEBUG", "/O1"]
       if (    libtbx.env.build_options.msvc_arch_flag is not None
           and not is_64bit_architecture):
         opts.append("/arch:%s" %libtbx.env.build_options.msvc_arch_flag)
