@@ -1,5 +1,12 @@
 #!/bin/csh -f
-echo "Building documentation API for cctbx_project"
+
+if ($#argv > 0)then
+  setenv NPROC $argv[1]
+else
+  setenv NPROC 4
+endif
+
+echo "Building documentation API for cctbx_project using $NPROC processors"
 echo "WARNING: This version temporarily edits files in cctbx_project directory"
 echo "Do not do anything in cctbx_project while this is running"
 
@@ -8,6 +15,12 @@ if (! -d $PHENIX/modules)then
   goto finish
 endif
 
+phenix.python -m pdoc --help > /dev/null
+if ($status) then
+  echo "This script needs pdoc3. Install with:"
+  echo "phenix.python -m pip install pdoc3"
+  goto finish
+endif
 
 # Save original version of files to edit
 setenv base `libtbx.find_in_repositories cctbx_website`/command_line
@@ -29,8 +42,15 @@ rm -fr working
 mkdir working
 cd working
 
+@ i = 0
 foreach x ($module_list)
+@ i = $i + 1
 phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
+if ($i >= $NPROC) then
+ @ i = 0
+ wait
+endif
+
 end
 
 echo ""
@@ -54,7 +74,7 @@ echo "Editing html files to simplify and add a base link"
 cp $base/cctbx_api_site_index.html index.html
 # Edit all the files to simplify and add a base link
 foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
-  phenix.python $base/edit_html.py $f index_files &
+  phenix.python $base/edit_html.py $f index_files  >& /dev/null
 end
 wait
 
