@@ -34,8 +34,6 @@ echo "Base index.html will be from $INDEX_FILE"
 echo "WARNING: This version temporarily edits files in cctbx_project directory"
 echo "Do not do anything in cctbx_project while this is running"
 
-setenv module_list cma_es # XXX
-
 echo "Module list: $module_list"
 
 phenix.python -m pdoc --help > /dev/null
