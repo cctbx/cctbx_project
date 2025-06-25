@@ -1,19 +1,40 @@
 #!/bin/csh -f
 
+# Supply either no arguments (runs cctbx API) 
+#   or NPROC, PREFIX, INDEX_FILE, extra module list
+
+setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
+
+setenv base `libtbx.find_in_repositories cctbx_website`/command_line
+
 if ($#argv > 0)then
   setenv NPROC $argv[1]
 else
   setenv NPROC 4
 endif
 
-echo "Building documentation API for cctbx_project using $NPROC processors"
+if ($#argv > 1) then
+  setenv PREFIX $argv[2]
+else
+  setenv PREFIX cctbx_project
+endif
+
+if ($#argv > 2) then
+  setenv INDEX_FILE $argv[3]
+else
+  setenv INDEX_FILE $base/cctbx_api_site_index.html
+endif
+
+if ($#argv > 3) then
+    setenv module_list "$module_list $argv[4-$#argv]"
+endif
+
+echo "Building documentation API for $PREFIX using $NPROC processors"
+echo "Base index.html will be from $INDEX_FILE"
 echo "WARNING: This version temporarily edits files in cctbx_project directory"
 echo "Do not do anything in cctbx_project while this is running"
 
-if (! -d $PHENIX/modules)then
-  echo "This script needs PHENIX to be defined"
-  goto finish
-endif
+echo "Module list: $module_list"
 
 phenix.python -m pdoc --help > /dev/null
 if ($status) then
@@ -23,7 +44,6 @@ if ($status) then
 endif
 
 # Save original version of files to edit
-setenv base `libtbx.find_in_repositories cctbx_website`/command_line
 setenv cctbx_project `libtbx.find_in_repositories cctbx_project`
 setenv files_to_edit "`libtbx.find_in_repositories iotbx`/pdb/hierarchy.py `libtbx.find_in_repositories scitbx`/array_family/flex.py"
 
@@ -37,7 +57,6 @@ foreach f ($files_to_edit)
   phenix.python $base/edit_for_boost.py ${f}
 end
 
-setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"
 rm -fr working
 mkdir working
 cd working
@@ -71,7 +90,8 @@ echo ""
 # Add the base html index.html
 echo "Editing html files to simplify and add a base link"
 
-cp $base/cctbx_api_site_index.html index.html
+cp $INDEX_FILE index.html
+
 # Edit all the files to simplify and add a base link
 foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
   phenix.python $base/edit_html.py $f index_files  >& /dev/null
@@ -84,24 +104,26 @@ grep failed *.log | grep -v List
 
 cd ..
 
+setenv API_DIR ${PREFIX}_api
 echo ""
-echo "Making directory cctbx_project_api with html"
+echo "Making directory $API_DIR with html"
 
-if (-d cctbx_project_api) rm -rf cctbx_project_api
-mkdir cctbx_project_api
-mv working/index.html cctbx_project_api/index.html
+if (-d $API_DIR) rm -rf $API_DIR
+mkdir $API_DIR
+mv working/index.html $API_DIR/index.html
 foreach x ($module_list)
-  if (-d working/$x) mv working/$x cctbx_project_api/$x
+  if (-d working/$x) mv working/$x $API_DIR/$x
 end
 
-# Add an index in cctbx_project_api/index_files
-phenix.python $PHENIX/modules/cctbx_project/libtbx/word_index_generator.py cctbx_project_api cctbx_project_api/index_files "CCTBX API" > api_index.log
+# Add an index in $API_DIR/index_files
+phenix.python $cctbx_project/libtbx/word_index_generator.py $API_DIR $API_DIR/index_files "$PREFIX API" > api_index.log
 
-echo "Packaging up files..."
-tar czf - cctbx_project_api > cctbx_project_api.tgz
-ls -tlr cctbx_project_api
-echo "Ready with cctbx_project_api in cctbx_project_api.tgz"
-ls -tlr cctbx_project_api.tgz
+echo "Removing temporary files..."
+if (-d working) rm -rf working
+if (-f api_index.log ) rm -f api_index.log
+
+ls -tlr $API_DIR
+echo "Ready with $API_DIR"
 echo "ALL DONE"
 
 finish:
