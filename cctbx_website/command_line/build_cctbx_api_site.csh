@@ -34,12 +34,14 @@ echo "Base index.html will be from $INDEX_FILE"
 echo "WARNING: This version temporarily edits files in cctbx_project directory"
 echo "Do not do anything in cctbx_project while this is running"
 
+setenv module_list cma_es # XXX
+
 echo "Module list: $module_list"
 
 phenix.python -m pdoc --help > /dev/null
 if ($status) then
-  echo "This script needs pdoc3. Install with:"
-  echo "phenix.python -m pip install pdoc3"
+  echo "This script needs pdoc3  nltk beautifulsoup4 . Install with:"
+  echo "phenix.python -m pip install pdoc3 nltk beautifulsoup4"
   goto finish
 endif
 
@@ -94,7 +96,7 @@ cp $INDEX_FILE index.html
 
 # Edit all the files to simplify and add a base link
 foreach f (index.html */*.html */*/*.html */*/*/*.html */*/*/*/*.html)
-  phenix.python $base/edit_html.py $f index_files  >& /dev/null
+  phenix.python $base/edit_html.py $f index_files $PREFIX >& /dev/null
 end
 wait
 

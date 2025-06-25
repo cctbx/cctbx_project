@@ -8,9 +8,11 @@ def run(args):
   """
   Expect path to file and name of indexing directory relative to top level
   """
-  assert len(args) == 2
+  assert len(args) == 3
   fn = args[0]
   indexing_dir = args[1]
+  prefix = args[2]
+
   text = open(fn).read()
   text_to_find = get_text_to_replace(text)
   if text_to_find:
@@ -31,14 +33,14 @@ def run(args):
   for i in range(len(spl) - 1):
     paths_to_top_level.append("..")
   path_to_index = os.path.join(os.path.sep.join(paths_to_top_level),indexing_dir,"index.html")
-  text = add_super_module_text(text, path_to_index)
+  text = add_super_module_text(text, path_to_index, prefix)
 
   f = open(fn,'w')
   print(text, file = f)
   f.close()
   print("Wrote edited text to %s" %(fn))
 
-def add_super_module_text(text, path_to_index):
+def add_super_module_text(text, path_to_index, prefix):
   """
    Find the text:
    "<li><h3><a href="#header-submodules">Sub-modules</a></h3>"
@@ -62,7 +64,7 @@ def add_super_module_text(text, path_to_index):
   text1a = """<li><h3>Super-module</h3>"""
 
   text2 = """
-<h3><a href="%s ">CCTBX API Index</a></h3>
+<h3><a href="%s ">%s API Index</a></h3>
 
 <li><h3><a href="#header-supermodules">Super-module</a></h3>
 <li><code><a title="cctbx_project" href="../index.html">cctbx_project</a></code></li>
@@ -70,14 +72,14 @@ def add_super_module_text(text, path_to_index):
 
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
-""" %(path_to_index)
+""" %(path_to_index, prefix)
 
   text2a = """
-<h3><a href="%s ">CCTBX API Index</a></h3>
+<h3><a href="%s ">%s API Index</a></h3>
 
 <li><h3>Super-module</h3>
 
-""" %(path_to_index)
+""" %(path_to_index, prefix)
 
 
   if text.find(text1a) > -1:
