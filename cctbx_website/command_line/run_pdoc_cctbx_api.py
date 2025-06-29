@@ -6,6 +6,8 @@ from pdoc import _is_whitelisted, _is_blacklisted, _is_function, Class
 from pdoc import Function, link_inheritance, External, _render_template
 from pdoc import Variable, _filter_type
 
+from pathlib import Path
+
 ################# MODIFIED CODE FROM pdoc3/__init__.py #################
 """
 Python package `pdoc` provides types, functions, and a command-line
@@ -74,7 +76,8 @@ if os.getenv("XDG_CONFIG_HOME"):
 
 
 def import_module(module: Union[str, ModuleType],
-                  *, reload: bool = False) -> ModuleType:
+                  *, reload: bool = False,
+                   convert_comments_to_docstring: bool = True) -> ModuleType:
     """
     Return module object matching `module` specification (either a python
     module path or a filesystem path to file/directory).
@@ -99,9 +102,22 @@ def import_module(module: Union[str, ModuleType],
     if isinstance(module, str):
         with _module_path(module) as module_path:
             original_module = module
-            try:
+            got_it = False
+            if convert_comments_to_docstring:
+              # Convert comments at top of classes and methods to docstrings
+              #   if no docstrings present
+              try:
+                # module = importlib.import_module(module_path)
+                fn = Path(module)
+                module = import_and_edit(module_path, fn)
+                got_it = True
+              except Exception as e:
+                got_it = False
+
+            if not got_it: # try without editing
+              try:
                 module = importlib.import_module(module_path)
-            except Exception as e:
+              except Exception as e:
                 print("FAILED TO IMPORT ",original_module,module_path,"::",str(e),"::")
                 from copy import deepcopy
                 module = deepcopy(dummy_module) # skipping it and marking
@@ -143,7 +159,8 @@ class Module(Doc):
                  docfilter: Optional[Callable[[Doc], bool]] = None,
                  supermodule: Optional['Module'] = None,
                  context: Optional[Context] = None,
-                 skip_errors: bool = False):
+                 skip_errors: bool = False,
+                 convert_comments_to_docstring: bool = True):
         """
         Creates a `Module` documentation object given the actual
         module Python object.
@@ -164,7 +181,8 @@ class Module(Doc):
         if isinstance(module, str):
           original_module = module
           try:
-            module = import_module(module)
+            module = import_module(module,
+              convert_comments_to_docstring = convert_comments_to_docstring)
           except Exception as e:
             from copy import deepcopy
             module = deepcopy(dummy_module) # skipping it and marking name
@@ -285,9 +303,13 @@ class Module(Doc):
                 assert self.refname == self.name
                 fullname = f"{self.name}.{root}"
                 try:
-                    m = Module(import_module(fullname),
+                    m = Module(import_module(fullname,
+                                 convert_comments_to_docstring =
+                                   convert_comments_to_docstring),
                                docfilter=docfilter, supermodule=self,
-                               context=self._context, skip_errors=skip_errors)
+                               context=self._context, skip_errors=skip_errors,
+                               convert_comments_to_docstring =
+                              convert_comments_to_docstring)
                 except Exception as ex:
                     if skip_errors:
                         warn(str(ex), Module.ImportWarning)
@@ -519,12 +541,22 @@ def run(args, top_level = None):
      except Exception as e:
        pass # another job removed it...
 
+  # Choose whether to preprocess all files and convert
+  #  comments to docstrings where docstrings are missing
+
+  if 'convert_comments_to_docstring' in args:
+    convert_comments_to_docstring = True
+    args.remove('convert_comments_to_docstring')
+  else:
+    convert_comments_to_docstring = False
+
   modules = args
   context = Context()
 
   new_modules = []
   for mod in modules:
-    x = Module(mod, context=context, skip_errors = True)
+    x = Module(mod, context=context, skip_errors = True,
+      convert_comments_to_docstring = convert_comments_to_docstring)
     new_modules.append(x)
   modules = new_modules
   if not modules:
@@ -548,6 +580,10 @@ def run(args, top_level = None):
   else:
     get_htmls = recursive_htmls
     print("\nUsing all levels")
+
+  if convert_comments_to_docstring:
+    print("Converting comments at top of classes and functions to doc strings")
+
 
   ok_modules = []
   failed_modules = []
@@ -585,6 +621,57 @@ def run(args, top_level = None):
     print(m)
   print("\nTotal of %s ok modules and %s failed modules" %(
       len(ok_modules), len(failed_modules)))
+
+
+def import_and_edit(module_name: str, file_path: Path):
+    """
+    Loads a module from a file path, modifying its source code before execution.
+
+    Args:
+        module_name: The name for the new module (e.g., 'file').
+        file_path: A Path object pointing to the Python source file.
+
+    Returns:
+        The newly loaded module object.
+    """
+    import importlib.util
+
+    # Step 1: Get the module's "specification" from the file path.
+    # This spec contains metadata but doesn't execute the module.
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+
+    if not spec or not spec.loader:
+      spec = importlib.util.find_spec(module_name)
+
+    if not spec or not spec.loader:
+        raise ImportError(f"Could not load spec for module {module_name} at {file_path}")
+
+    # Step 2: Get the source code from the spec's loader.
+    source_code = spec.loader.get_source(module_name)
+    if source_code is None:
+        raise ImportError(f"Could not get source for module {module_name}")
+
+    # Step 3: Modify the source code in memory.
+    # For this example, we will change the MESSAGE variable and the greet function.
+    from cctbx_website.command_line.comment_to_docstring import convert_comments_to_docstrings
+    modified_source = convert_comments_to_docstrings(source_code)
+
+    # Step 4: Create a new module object based on the original spec.
+    # This ensures __name__, __file__, __spec__, etc., are set correctly.
+    module = importlib.util.module_from_spec(spec)
+
+    # Step 5: Compile and execute the *modified* source code.
+    # The second argument to compile() is the filename, used for tracebacks.
+    # We use spec.origin (the original file path) to make tracebacks accurate.
+    code_obj = compile(modified_source, spec.origin, 'exec')
+    exec(code_obj, module.__dict__)
+
+    # Step 6: Add the new module to sys.modules to make it "officially" imported.
+    # This allows this module to be imported by other parts of the program.
+    sys.modules[module_name] = module
+
+    return module
+
 if __name__=="__main__":
   import sys
   args = sys.argv[1:]

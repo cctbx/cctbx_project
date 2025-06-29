@@ -64,7 +64,9 @@ cd working
 @ i = 0
 foreach x ($module_list)
 @ i = $i + 1
-phenix.python $base/run_pdoc_cctbx_api.py $x >& $x.log &
+#  Get HTML from python file, converting comments at top of functions and
+#   classes to docstrings if no doc strings are present
+phenix.python $base/run_pdoc_cctbx_api.py $x convert_comments_to_docstring >& $x.log &
 if ($i >= $NPROC) then
  @ i = 0
  wait
