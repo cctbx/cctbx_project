@@ -74,9 +74,20 @@ def find_local_comment_block(lines: List[str], start_index: int, end_index: int,
     content_list = [lines[i].strip().lstrip('#').strip() for i in range(first_comment_line, last_comment_line + 1) if lines[i].strip().startswith('#')]
     return " ".join(content_list), first_comment_line, last_comment_line
 
-def convert_comments_to_docstrings(source_code: str) -> str:
+def convert_comments_to_docstrings(source_code: str,
+      remove_commented_import: bool = True) -> str:
     """Main conversion function to process source code and convert comments to docstrings."""
     source_code = source_code.replace('\u00A0', ' ')
+
+    if remove_commented_import:
+      """Replace any comment lines that start with '#' in column 1 and contain
+      the word "import " with blank lines.  These are not interesting and
+      otherwise show up as doc strings. """
+      lines = source_code.splitlines()
+      for i in range(len(lines)):
+        if lines[i].startswith("#") and lines[i].find("import ") > -1:
+          lines[i] = ""
+      source_code = "\n".join(lines)
 
     try:
         tree = ast.parse(source_code)
