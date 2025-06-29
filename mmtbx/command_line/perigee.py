@@ -1,3 +1,4 @@
+"""Interaction finder"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.perigee
 import os, sys
@@ -368,3 +369,4 @@ if __name__=="__main__":
   args = sys.argv[1:]
   del sys.argv[1:]
   run(args)
+

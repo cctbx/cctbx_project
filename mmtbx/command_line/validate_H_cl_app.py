@@ -1,3 +1,4 @@
+"""validate hydrogens"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.validate_H
 import sys, time
@@ -230,3 +231,4 @@ if __name__ == "__main__":
     cl_args=sys.argv[1:])
   validate_H_app.run()
   print("Finished. Time: %8.3f"%(time.time()-t0))
+

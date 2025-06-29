@@ -1,3 +1,4 @@
+"""Validate puckers in RNA"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.rna_validate_puckers
 # LIBTBX_SET_DISPATCHER_NAME molprobity.rna_validate_puckers
 
@@ -41,4 +42,5 @@ def old_run(args, out=sys.stdout, quiet=False):
 if (__name__ == "__main__"):
   #run(sys.argv[1:])
   run_program(program_class=rna_validate_puckers.Program, hide_parsing_output=True)
+
 

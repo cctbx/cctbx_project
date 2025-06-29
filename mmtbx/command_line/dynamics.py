@@ -1,3 +1,4 @@
+"""Shake up structure with simple molecular dynamics"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.dynamics
 
 from __future__ import absolute_import, division, print_function
@@ -125,3 +126,4 @@ if(__name__ == "__main__"):
   tt = timer.elapsed()
   print("Overall runtime: %-8.3f" % tt, file=o.log)
   assert abs(tt-o.total_time) < 0.1 # guard against unaccounted times
+

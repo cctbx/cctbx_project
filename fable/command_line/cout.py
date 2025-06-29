@@ -1,3 +1,4 @@
+"""Convert Fortran sources to C++"""
 from __future__ import absolute_import, division, print_function
 import fable.cout
 
@@ -154,3 +155,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

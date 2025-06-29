@@ -1,3 +1,4 @@
+"""Validate protein backbone Ramachandran dihedral angles"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.ramalyze
 # LIBTBX_SET_DISPATCHER_NAME molprobity.ramalyze
@@ -46,4 +47,5 @@ def old_run(args):
 if __name__ == '__main__':
   #run(sys.argv[1:])
   run_program(program_class=ramalyze.Program, hide_parsing_output=True)
+
 

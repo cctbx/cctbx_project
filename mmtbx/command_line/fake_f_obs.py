@@ -1,3 +1,4 @@
+"""Developers tool to simulate Fobs data"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.fake_f_obs
 
@@ -406,3 +407,4 @@ def run(args, log = sys.stdout):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

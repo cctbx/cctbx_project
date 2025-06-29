@@ -1,3 +1,4 @@
+"""Read PDB file and build restraints for refinement (useful for trouble-shooting)"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.pdb_interpretation
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.pdb_interpretation
 from __future__ import absolute_import, division, print_function
@@ -116,3 +117,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

@@ -1,3 +1,4 @@
+"""Compute rank-scaled (histogram equalized) map"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.rank_scale_map
 
@@ -58,3 +59,4 @@ if (__name__ == "__main__"):
   run(sys.argv[1:])
   print("Time: %-8.3f"%(time.time()-t0))
   print("All done.")
+

@@ -1,3 +1,4 @@
+"""Show Fortran call graph"""
 from __future__ import absolute_import, division, print_function
 import optparse
 import sys
@@ -73,3 +74,4 @@ def run(args):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

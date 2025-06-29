@@ -1,3 +1,4 @@
+"""View pseudo-precession planes through a dataset"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.data_viewer
 # LIBTBX_SET_DISPATCHER_NAME cctbx.data_viewer
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -51,3 +52,4 @@ def run (args) :
 
 if (__name__ == "__main__") :
   run(sys.argv[1:])
+

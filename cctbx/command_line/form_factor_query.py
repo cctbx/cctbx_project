@@ -1,3 +1,4 @@
+"""f' and f" table lookup given element and wavelength"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.form_factor_query
 
@@ -81,3 +82,4 @@ def run(args, command_name="phenix.form_factor_query"):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

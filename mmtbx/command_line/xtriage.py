@@ -1,3 +1,4 @@
+"""Analyze data files for quality and unusual conditions"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.xtriage
 # LIBTBX_SET_DISPATCHER_NAME mmtbx.xtriage
 
@@ -7,3 +8,4 @@ import sys
 
 if (__name__ == "__main__"):
   xtriage.run(args=sys.argv[1:])
+

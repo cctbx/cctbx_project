@@ -3,6 +3,40 @@ import io
 import sys
 from typing import List, Tuple, Optional
 
+def find_description_in_text(source_code):
+    import ast
+    import sys
+
+    try:
+        tree = ast.parse(source_code)
+    except SyntaxError as e:
+        return ""
+
+    # Visitor class to traverse the Abstract Syntax Tree
+    class DescriptionVisitor(ast.NodeVisitor):
+        def __init__(self):
+            self.descriptions_found = []
+
+        def visit_Assign(self, node):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == 'description':
+                    # For Python 3.8+, string literals are ast.Constant
+                    if isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
+                        self.descriptions_found.append(node.value.value)
+                    # For Python 3.0-3.7, they are ast.Str
+                    elif isinstance(node.value, ast.Str):
+                        self.descriptions_found.append(node.value.s)
+            # Continue traversing to find all instances in the file
+            self.generic_visit(node)
+
+    # Create an instance of the visitor and run it on the AST
+    visitor = DescriptionVisitor()
+    visitor.visit(tree)
+
+    # Join the collected descriptions into a single string
+    return "\n".join(visitor.descriptions_found)
+
+
 def is_special_comment(line: str) -> bool:
     """Checks if a line is a special comment (shebang or coding) that should be ignored."""
     stripped_line = line.strip()
@@ -74,20 +108,52 @@ def find_local_comment_block(lines: List[str], start_index: int, end_index: int,
     content_list = [lines[i].strip().lstrip('#').strip() for i in range(first_comment_line, last_comment_line + 1) if lines[i].strip().startswith('#')]
     return " ".join(content_list), first_comment_line, last_comment_line
 
+def remove_commented_imports(source_code):
+      """Replace any comment lines that start with '#' in column 1 and contain
+      the word "import " or other indications of non-useful information
+      with blank lines.  These are not interesting and
+      otherwise show up as doc strings. """
+      non_useful_text = ["import ", "LIBTBX_","BOOST_ADAPTBX_","=========",
+         "-----------","__________"]
+      lines = source_code.splitlines()
+      for i in range(len(lines)):
+        if lines[i].startswith("#"):
+          for x in non_useful_text:
+            if lines[i].find(x) > -1:
+              lines[i] = ""
+              break
+      source_code = "\n".join(lines)
+      return source_code
+
+def add_description_if_available(source_code):
+  """ If a description variable is set with text in the source code,
+  and no docstring is present for the file as a whole,
+  put in a docstring equal to that description at the top"""
+
+  if not source_code:
+    return source_code
+
+  ss = source_code.strip()
+  if ss.startswith('"""') or ss.startswith("'''"):
+    return source_code
+  desc = find_description_in_text(source_code)
+  if desc:
+    source_code = '"""%s"""\n%s' %(desc, source_code)
+  return source_code
+
+
 def convert_comments_to_docstrings(source_code: str,
       remove_commented_import: bool = True) -> str:
-    """Main conversion function to process source code and convert comments to docstrings."""
+    """Main conversion function to process source code and
+        convert comments to docstrings."""
+
+    # Clean up to start
     source_code = source_code.replace('\u00A0', ' ')
 
     if remove_commented_import:
-      """Replace any comment lines that start with '#' in column 1 and contain
-      the word "import " with blank lines.  These are not interesting and
-      otherwise show up as doc strings. """
-      lines = source_code.splitlines()
-      for i in range(len(lines)):
-        if lines[i].startswith("#") and lines[i].find("import ") > -1:
-          lines[i] = ""
-      source_code = "\n".join(lines)
+      source_code = remove_commented_imports(source_code)
+      source_code = add_description_if_available(source_code)
+
 
     try:
         tree = ast.parse(source_code)

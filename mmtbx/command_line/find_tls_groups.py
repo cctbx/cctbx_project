@@ -1,3 +1,4 @@
+"""Automatic identification of appropriate TLS groups in model"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.find_tls_groups
 
@@ -928,3 +929,4 @@ if (__name__ == "__main__"):
   t0 = time.time()
   run(args=sys.argv[1:])
   print("Time: %10.3f"%(time.time()-t0))
+

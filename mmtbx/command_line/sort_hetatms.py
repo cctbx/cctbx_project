@@ -1,3 +1,4 @@
+"""Rearrange non-macromolecular heteroatom"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.sort_hetatms
 
 # TODO sort waters by distance from macromolecule
@@ -473,3 +474,4 @@ class launcher(runtime_utils.target_with_save_result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

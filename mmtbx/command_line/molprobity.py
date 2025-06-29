@@ -1,3 +1,4 @@
+"""Run molprobity"""
 # LIBTBX_SET_DISPATCHER_NAME phenix.molprobity
 # LIBTBX_SET_DISPATCHER_NAME molprobity.molprobity
 # LIBTBX_PRE_DISPATCHER_INCLUDE_SH export PHENIX_GUI_ENVIRONMENT=1
@@ -327,3 +328,4 @@ class result(program_result):
 
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+

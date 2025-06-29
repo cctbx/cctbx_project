@@ -1,3 +1,4 @@
+"""Create maps from PDB and MTZ files"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.maps
 
@@ -436,3 +437,4 @@ def finish_job(results):
 
 if (__name__ == "__main__"):
   run(args=sys.argv[1:])
+

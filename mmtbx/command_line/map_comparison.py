@@ -1,3 +1,4 @@
+"""Map comparison and statistics"""
 from __future__ import absolute_import, division, print_function
 # LIBTBX_SET_DISPATCHER_NAME phenix.map_comparison
 
@@ -456,3 +457,4 @@ class launcher(runtime_utils.target_with_save_result):
 # =============================================================================
 if (__name__ == "__main__"):
   run(sys.argv[1:])
+
