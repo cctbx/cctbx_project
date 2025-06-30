@@ -13,7 +13,8 @@ class from_scatterers_fft(managed_calculation_base):
   def __init__(self, manager,
                      xray_structure,
                      miller_set,
-                     algorithm="fft"):
+                     algorithm="fft",
+                     extra_params=None):
     scattering_type_registry = xray_structure.scattering_type_registry()
     if (len(scattering_type_registry.unassigned_types()) > 0):
       self.show_unknown_scatterers(registry = scattering_type_registry)
