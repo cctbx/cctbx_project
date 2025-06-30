@@ -244,7 +244,7 @@ class error_modifier_mm24(worker):
     self.mpi_helper.comm.Bcast(intensity_bins, root=0)
     if len(self.refl_biased_means) == 0:
       summation_rank = np.zeros(n_bins)
-      counts_rank = np.zeros(n_bins)
+      counts_rank = np.zeros(n_bins, dtype=int)
     else:
       biased_mean_rank = self.work_table['biased_mean'].as_numpy_array()
       pairwise_differences_rank = self.work_table['pairwise_differences'].as_numpy_array()
