@@ -13,11 +13,12 @@ from scipy.optimize import minimize
 counter = 0
 
 class ManualClusterer:
-    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500, mark_qvals=None):
+    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500, qvals_1=None, qvals_2=None):
         self.data = data
         self.bandwidths = np.array(bandwidths)
         self.n_maxima = n_maxima
-        self.mark_qvals = mark_qvals
+        self.qvals_1 = qvals_1
+        self.qvals_2 = qvals_2
 
         self.current_selection = None
         self.final_selection = None
@@ -194,9 +195,12 @@ class ManualClusterer:
                          '|', color='green', markersize=20)
 
         # Add tick marks for specified q-values
-        if self.mark_qvals is not None:
-            self.ax1.plot(self.mark_qvals, np.zeros_like(self.mark_qvals),
+        if self.qvals_1 is not None:
+            self.ax1.plot(self.qvals_1, np.zeros_like(self.qvals_1),
                          '|', color='blue', markersize=25, markeredgewidth=2)
+        if self.qvals_2 is not None:
+            self.ax1.plot(self.qvals_2, np.zeros_like(self.qvals_2),
+                         '|', color='red', markersize=25, markeredgewidth=2)
 
 
         self.span = SpanSelector(
@@ -254,11 +258,15 @@ class ManualClusterer:
 
             
             # Add vertical lines for q-values (second dimension)
-            if self.mark_qvals is not None:
+            if self.qvals_2 is not None:
                 ylim = self.ax2.get_ylim()
-                for q in self.mark_qvals:
+                for q in self.qvals_2:
                     if q >= self.current_selection[:, 1].min() and q <= self.current_selection[:, 1].max():
                         self.ax2.axvline(q, color='blue', linestyle='--', alpha=0.5)
+            if self.qvals_1 is not None:
+                for q in self.qvals_1:
+                    if q >= self.current_selection[:, 1].min() and q <= self.current_selection[:, 1].max():
+                        self.ax2.axvline(q, color='red', linestyle='--', alpha=0.5)
 
             # Create RectangleSelector only if it doesn't exist already
             if not hasattr(self, 'rect') or self.rect is None:
