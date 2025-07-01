@@ -1,3 +1,10 @@
+2025.6
+======
+
+* Added ability to remove bonds in geometry restraints manager
+* Added forward compatible PDB format for iotbx.cif_as_pdb
+* Improved tool for fixing CaBLAM outliers
+
 2025.5
 ======
 
