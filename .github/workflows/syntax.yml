@@ -1,0 +1,83 @@
+# Basic syntax checks
+
+name: clutter_and_syntax
+on: [push, workflow_dispatch]
+
+jobs:
+  check_clutter:
+
+    name: Check for clutter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cctbx/cctbx_project
+          path: ./modules/cctbx_project
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: test
+          miniforge-version: latest
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          conda install -y -c conda-forge six future scons setuptools
+          python --version
+
+      - name: Compile Python files
+        run: |
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+          source setpaths.sh
+          cd ../modules/cctbx_project
+          libtbx.find_clutter --verbose
+
+  check_syntax:
+
+    strategy:
+      continue-on-error: true
+      fail-fast: false
+      matrix:
+        python_version: [3.9, "3.10", 3.11, 3.12, 3.13]
+
+    name: Compiling (Python ${{ matrix.python_version }})
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: cctbx/cctbx_project
+          path: ./modules/cctbx_project
+
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          activate-environment: test
+          miniforge-version: latest
+          python-version: ${{ matrix.python_version }}
+
+      - name: Base environment info
+        run: |
+          conda info
+          conda list
+
+      - name: Create conda environment
+        run: |
+          conda create -y -c conda-forge -n test six future scons setuptools
+          python --version
+
+      - name: Compile Python files
+        run: |
+          conda activate syntax
+          mkdir build
+          cd build
+          python ../modules/cctbx_project/libtbx/configure.py libtbx
+          make
+          source setpaths.sh
+          cd ../modules/cctbx_project
+          libtbx.py_compile_all -v .
