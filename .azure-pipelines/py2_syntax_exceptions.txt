@@ -1,4 +1,5 @@
 cctbx/maptbx/fsc_curve.py
+cctbx_website/command_line/comment_to_docstring.py
 cctbx_website/command_line/run_pdoc_cctbx_api.py
 crys3d/hklviewer/webbrowser_messenger_py3.py
 crys3d/hklviewer/xtriage_runner.py
