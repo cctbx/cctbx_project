@@ -1,6 +1,6 @@
 #!/bin/csh -f
 
-# Supply either no arguments (runs cctbx API) 
+# Supply either no arguments (runs cctbx API)
 #   or NPROC, PREFIX, INDEX_FILE, extra module list
 
 setenv module_list  "fftw3tbx scitbx gltbx serialtbx chiltbx iota clipper_adaptbx iotbx simtbx cma_es kokkostbx smtbx cootbx libtbx crys3d mmtbx spotfinder boost cudatbx tbxx boost_adaptbx dox omptbx ucif cbflib_adaptbx prime wxtbx cctbx fable qttbx xfel fast_linalg rstbx"

@@ -42,5 +42,3 @@ def old_run(args, out=sys.stdout, quiet=False):
 if (__name__ == "__main__"):
   #run(sys.argv[1:])
   run_program(program_class=rna_validate_puckers.Program, hide_parsing_output=True)
-
-

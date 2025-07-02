@@ -8,5 +8,3 @@ from crys3d.programs import HKLinfo
 
 if __name__ == '__main__':
   run_program(program_class=HKLinfo.Program)
-
-

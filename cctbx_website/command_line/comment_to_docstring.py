@@ -1,5 +1,5 @@
+from __future__ import absolute_import, division, print_function
 import ast
-import io
 import sys
 from typing import List, Tuple, Optional
 
@@ -254,4 +254,3 @@ if __name__ == '__main__':
   modified_code = convert_comments_to_docstrings(original_code)
   if not dry_run:
     print(modified_code)
-

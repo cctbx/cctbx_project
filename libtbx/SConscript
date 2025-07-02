@@ -1416,7 +1416,7 @@ def enable_cuda_if_possible():
         break
 
     major = None
-    cuda_version = re.findall('release [0-9]+\.*[0-9]+', line)
+    cuda_version = re.findall(r'release [0-9]+\.*[0-9]+', line)
     if cuda_version:
       try:
         assert( len(cuda_version)==1)
