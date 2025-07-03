@@ -270,6 +270,7 @@ def generate_chemical_components_codes(sort_reverse_by_smiles=False,
 def get_header(code):
   filename=get_cif_filename(code)
   if not filename: return ""
+  if not os.path.exists(filename): return ''
   f=open(filename)
   lines=f.readlines()
   f.close()
@@ -327,7 +328,7 @@ def get_group(code, split_rna_dna=False, split_l_d=False, verbose=False):
     return t.lower()
   elif t in ['OTHER']:
     return t.lower()
-  print(t)
+  print('get_type for "%s" "%s"' % (code, t))
   assert 0
 
 def get_restraints_group(code, split_rna_dna=True, split_l_d=True):
@@ -425,6 +426,21 @@ def get_as_hierarchy(code):
   ph.append_model(model)
   ph.reset_atom_i_seqs()
   return ph
+
+def get_obsolete_status_from_chemical_components(code):
+  # _chem_comp.pdbx_release_status                   OBS
+  # _chem_comp.pdbx_replaced_by                      PCA
+  header = get_header(code)
+  pdbx_release_status = None
+  pdbx_replaced_by = None
+  if header is None: return None, None
+  for line in header.split("\n"):
+    tmp = line.split()
+    if line.find("pdbx_release_status")>-1:
+      pdbx_release_status = tmp[1]
+    if line.find("pdbx_replaced_by")>-1:
+      pdbx_replaced_by = tmp[1]
+  return pdbx_release_status, pdbx_replaced_by
 
 if __name__=="__main__":
   print('\nSMILES')
