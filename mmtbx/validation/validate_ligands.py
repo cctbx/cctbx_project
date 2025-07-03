@@ -1,25 +1,16 @@
 from __future__ import absolute_import, division, print_function
-
 import time
+from six.moves import zip
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
-#import mmtbx.model
-
-import libtbx.load_env
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
 from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
 from libtbx.str_utils import make_sub_header
-from libtbx.utils import null_out
-#from libtbx import easy_run
-#from cctbx import miller
-#from mmtbx import monomer_library
 from mmtbx import real_space_correlation
-#from mmtbx import map_tools
-from elbow.command_line.ready_set import model_interface as ready_set_model_interface
-from six.moves import zip
+
 
 
 master_params_str = """
@@ -129,7 +120,6 @@ class manager(dict):
 
 
   def run(self):
-    #self.get_readyset_model_with_grm()
     args = []
     def _generate_ligand_isel():
       #done = []
@@ -154,33 +144,6 @@ class manager(dict):
       ligand_dict = self.setdefault(id_tuple, {})
       ligand_dict[altloc] = lr
 
-
-#  def get_readyset_model_with_grm(self):
-#    '''
-#    Run ready set by default (to get ligand cif and/or add H atoms)
-#    TODO: Once it it refactored, make running it optional
-#          Complicated case is when cif is input for one ligand, but missing
-#          for another ligand
-#    '''
-#    self.readyset_model = None
-#    #if not self.model.has_hd():
-#    if (self.params.place_hydrogens):
-#      params=["add_h_to_water=False",
-#               "optimise_final_geometry_of_hydrogens=False",
-#               "--silent"]
-#    else:
-#      params=["add_h_to_water=False",
-#              "hydrogens=False",
-#              "optimise_final_geometry_of_hydrogens=False",
-#              "--silent"]
-#    assert (libtbx.env.has_module(name="reduce"))
-#    assert (libtbx.env.has_module(name="elbow"))
-#    # runs reduce internally
-#    self.readyset_model = ready_set_model_interface(
-#        model  = self.model,
-#        params = params)
-#    self.readyset_model.set_log(null_out())
-
   def get_ligands(self, ph):
     '''
     Store ligands as list of iselections --> better way? Careful if H will be
@@ -199,7 +162,6 @@ class manager(dict):
               iselection = rg.atoms().extract_i_seq()
               id_tuple = (model.id, chain.id, rg.resseq)
               ligand_isel_dict[id_tuple] = iselection
-              #print('here', list(iselection))
     return ligand_isel_dict
 
 
@@ -302,8 +264,9 @@ class ligand_result(object):
     # results
     self._result_attrs = {'_occupancies' : 'get_occupancies',
                           '_adps'        : 'get_adps',
-                          '_overlaps' : 'get_overlaps',
-                          '_ccs'         : 'get_ccs'
+                          '_overlaps'    : 'get_overlaps',
+                          '_ccs'         : 'get_ccs',
+                          '_owab'        : 'get_owab',
     }
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
@@ -474,6 +437,20 @@ class ligand_result(object):
       )
 
     return self._occupancies
+
+
+  def get_owab(self):
+    if self._owab is not None: return
+    occ = self._atoms.extract_occ()
+    b_isos  = self._xrs_ligand.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+    owab = 0.
+    sum_b = 0.
+    for _o, _b in zip(occ, b_isos):
+      owab = owab + _o * _b
+      sum_b = sum_b + _b
+    owab = owab/sum_b
+    self._owab = owab
+    return self._owab
 
 
   def get_overlaps(self):

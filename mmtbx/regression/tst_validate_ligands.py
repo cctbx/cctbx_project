@@ -1,5 +1,5 @@
 from __future__ import absolute_import, division, print_function
-import time, os.path
+import time, os
 from six.moves import zip
 from libtbx.utils import null_out
 import libtbx.load_env
@@ -12,6 +12,10 @@ from mmtbx.programs import validate_ligands as val_lig
 def run():
   run_test1()
   run_test2()
+  os.remove('one_chain_ligand_water_newH.cif')
+  os.remove('one_chain_ligand_water_newH.txt')
+  os.remove('two_chains_ligand_water_newH.cif')
+  os.remove('two_chains_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
 

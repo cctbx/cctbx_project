@@ -22,6 +22,8 @@ scattering_table = *n_gaussian wk1995 it1992 neutron electron
   .type = choice
   .short_caption = Scattering table
   .help = Scattering table for structure factors calculations
+run_reduce2 = True
+  .type = bool
 verbose = False
   .type = bool
 """
@@ -75,18 +77,13 @@ electron density values/CC.
 
   # ---------------------------------------------------------------------------
 
-  def run(self):
-    has_data = False
-    fmodel = None
-    model_fn = self.data_manager.get_default_model_name()
-    data_fn = self.data_manager.get_default_miller_array_name()
-    print('Using model file:', model_fn, file=self.logger)
-    if data_fn is not None:
-      print('Using reflection file:', data_fn, file=self.logger)
-      has_data = True
-
-    # Place H atoms with reduce2
+  def add_hydrogens(self):
+    '''
+    Place H atoms with reduce2
+    '''
     make_sub_header(' Placing H with reduce2 ', out=self.logger)
+    model_reduce2 = None
+    model_fn = self.data_manager.get_default_model_name()
     basename = os.path.splitext(os.path.basename(model_fn))[0]
     model_fn_reduce2 = "%s_newH.cif" % basename
     from iotbx.cli_parser import run_program
@@ -105,15 +102,37 @@ electron density values/CC.
       self.success   = False
       self.write_log(step = 'Reduce2', msg  = msg)
       print('Reduce2 failed.\n' + msg, file=self.logger)
-      return
+    self.data_manager.add_model(model_fn_reduce2, model_reduce2)
+    self.working_model_fn = model_fn_reduce2
+    self.working_model = model_reduce2
+
+
+  # ---------------------------------------------------------------------------
+
+  def run(self):
+    has_data = False
+    fmodel = None
+    model_fn = self.data_manager.get_default_model_name()
+    data_fn = self.data_manager.get_default_miller_array_name()
+    print('Using model file:', model_fn, file=self.logger)
+    if data_fn is not None:
+      print('Using reflection file:', data_fn, file=self.logger)
+      has_data = True
+
+    if self.params.run_reduce2:
+      self.add_hydrogens()
+    else:
+      self.working_model_fn = model_fn
+      m = self.data_manager.get_model()
+      m.process(make_restraints=True)
+      self.working_model = m
 
     # get fmodel object
     if has_data:
       make_sub_header(' Creating fmodel object ', out=self.logger)
-      self.data_manager.add_model(model_fn_reduce2, model_reduce2)
       fmodel = self.data_manager.get_fmodel(
         scattering_table = self.params.scattering_table,
-        model_filename   = model_fn_reduce2)
+        model_filename   = self.working_model_fn)
       print('\n', file = self.logger)
       fmodel.update_all_scales()
       fmodel.show(log=self.logger, show_header=False)
@@ -126,7 +145,7 @@ electron density values/CC.
 
     #t0 = time.time()
     ligand_manager = validate_ligands.manager(
-      model = model_reduce2,
+      model = self.working_model,
       fmodel = fmodel,
       params = self.params.validate_ligands,
       log   = self.logger)
