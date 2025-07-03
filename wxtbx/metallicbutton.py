@@ -64,8 +64,8 @@ class MetallicButton(WxCtrl):
                 button_margin=2,
                 disable_after_click=0,
                 bmp2=None,
-                dark_start_color=(85, 85, 85),
-                dark_highlight_color=(100, 100, 100)):
+                dark_start_color=(50, 50, 50),
+                dark_highlight_color=(65, 65, 65)):
 
     WxCtrl.__init__(self, parent, id_, pos, size, wx.NO_BORDER, name=name)
     self.InheritAttributes()
@@ -343,6 +343,10 @@ class MetallicButton(WxCtrl):
       end_color = start_color
       end_hcolor = start_hcolor
       end_pcolor = start_pcolor
+    if wx.SystemSettings().GetAppearance().IsDark():
+      htxt = wx.Colour(255,255,255)
+    else:
+      htxt = wx.Colour(0,0,0)
     colors = dict(default=True,
                   gradient_start=start_color,
                   gradient_end=end_color,
@@ -350,7 +354,7 @@ class MetallicButton(WxCtrl):
                   hlight_end=end_hcolor,
                   press_start=start_pcolor,
                   press_end=end_pcolor,
-                  htxt=wx.Colour(0,0,0))
+                  htxt=htxt)
     # BestLabelColour(self.GetForegroundColour()))
     return colors
 
