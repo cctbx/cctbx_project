@@ -37,6 +37,18 @@ jobs:
     condition: eq(variables['PYTHON_VERSION'], '3.9')
     continueOnError: true
 
+  - script: |
+      set -xe
+
+      git config user.name "Billy K. Poon"
+      git config user.email "bkpoon@lbl.gov"
+
+      cd $(Pipeline.Workspace)/modules/cctbx_project
+      git revert c16316c4bde588979dc8eb07441f2d1822362bec
+    displayName: Fix for Python 2
+    condition: eq(variables['PYTHON_VERSION'], '2.7')
+    continueOnError: True
+
   - script: echo "##vso[task.prependpath]$CONDA/bin"
     displayName: Add conda to PATH
 
