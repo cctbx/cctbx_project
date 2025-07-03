@@ -63,7 +63,9 @@ class MetallicButton(WxCtrl):
                 caption_size=CAPTION_SIZE,
                 button_margin=2,
                 disable_after_click=0,
-                bmp2=None):
+                bmp2=None,
+                dark_start_color=(85, 85, 85),
+                dark_highlight_color=(100, 100, 100)):
 
     WxCtrl.__init__(self, parent, id_, pos, size, wx.NO_BORDER, name=name)
     self.InheritAttributes()
@@ -102,8 +104,12 @@ class MetallicButton(WxCtrl):
     self._style = style
     #self._size = tuple(size)
     self._state = dict(pre=GRADIENT_NORMAL, cur=GRADIENT_NORMAL)
-    self._color = self.__InitColors(start_color, highlight_color,
-      gradient_percent)
+    self.start_color = start_color
+    self.dark_start_color = dark_start_color
+    self.highlight_color = highlight_color
+    self.dark_highlight_color = dark_highlight_color
+    self.gradient_percent = gradient_percent
+    self.OnChangeSysColor(evt=None)  # initialize button based on system theme
     self._caption_lines = None
     self._disable_after_click = disable_after_click
 
@@ -126,6 +132,23 @@ class MetallicButton(WxCtrl):
     # Other events
     self.Bind(wx.EVT_KEY_UP, self.OnKeyUp)
     self.Bind(wx.EVT_CONTEXT_MENU, self.OnContextMenu)
+    self.Bind(wx.EVT_SYS_COLOUR_CHANGED, self.OnChangeSysColor)
+
+  def OnChangeSysColor(self, evt):
+    '''
+    Handle dark/light mode changes
+    '''
+    if wx.SystemSettings().GetAppearance().IsDark():
+      self._color = self.__InitColors(self.dark_start_color, self.dark_highlight_color,
+        self.gradient_percent)
+    else:
+      self._color = self.__InitColors(self.start_color, self.highlight_color,
+        self.gradient_percent)
+
+    self.__DrawButton()
+
+    if evt:
+      evt.Skip()
 
   def OnPaint(self, event):
     self.__DrawButton()
