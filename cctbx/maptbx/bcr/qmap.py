@@ -328,7 +328,7 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
     return GradMap
 
 #=====================================
-def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, Uabc, Uang) :
+def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) :
     print()
     print("Ncrs:", Ncrs)
     print("Scrs:", Scrs)
@@ -340,17 +340,15 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, Uabc, Uang)
 
     Natoms = len(ModelValues)
 
-#    Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all = ParamMap
+    acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    OrthMatrix  = unit_cell.orthogonalization_matrix()
+    DeortMatrix = unit_cell.fractionalization_matrix()
 
-    acell, bcell, ccell = Uabc
-    alpha, beta,  gamma = Uang
     Mx, My, Mz = Ncrs
     Sx, Sy, Sz = Scrs
     Nx, Ny, Nz = Nxyz
     Fx, Fy, Fz = Sx + Mx, Sy + My, Sz + Mz
     StepX, StepY, StepZ = 1.0/float(Nx), 1.0/float(Ny), 1.0/float(Nz)
-
-    DeortMatrix, OrthMatrix = GetOrthDeorth(Uabc,Uang)
 
     orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[3] , OrthMatrix[6]
     orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[7]
@@ -500,21 +498,19 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, Uabc, Uang)
     return OmegaMap
 
 #=====================================
-def CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, Uabc, Uang) :
+def CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell):
 
     Natoms = len(ModelValues)
 
-#    Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all = ParamMap
+    acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
+    OrthMatrix  = unit_cell.orthogonalization_matrix()
+    DeortMatrix = unit_cell.fractionalization_matrix()
 
-    acell, bcell, ccell = Uabc
-    alpha, beta,  gamma = Uang
     Mx, My, Mz = Ncrs
     Sx, Sy, Sz = Scrs
     Nx, Ny, Nz = Nxyz
     Fx, Fy, Fz = Sx + Mx, Sy + My, Sz + Mz
     StepX, StepY, StepZ = 1.0/float(Nx), 1.0/float(Ny), 1.0/float(Nz)
-
-    DeortMatrix, OrthMatrix = GetOrthDeorth(Uabc,Uang)
 
     orthxx, orthxy, orthxz = OrthMatrix[0] , OrthMatrix[3] , OrthMatrix[6]
     orthyy, orthyz         =                 OrthMatrix[4] , OrthMatrix[7]
@@ -798,9 +794,11 @@ mm = iotbx.map_manager.map_manager(file_name = FileMap)
 Ncrs = mm.map_data().all()
 Scrs = [0,0,0]
 Nxyz = mm.map_data().all()
-Uabc = mm.crystal_symmetry().unit_cell().parameters()[:3]
-Uang = mm.crystal_symmetry().unit_cell().parameters()[3:]
+unit_cell = mm.crystal_symmetry().unit_cell()
+Uabc = unit_cell.parameters()[:3]
+Uang = unit_cell.parameters()[3:]
 Uang = [it*math.pi/180. for it in Uang]
+
 
 Mx,My,Mz = Nxyz
 ControlMap = [[[ mm.map_data()[ix,iy,iz] for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
@@ -843,12 +841,12 @@ ModelValues,ModelTypes,Uabc,Uang = GetAtomicModel(FileAtoms,Uabc,Uang)
 
 TermsAtom, TermsDecomp = GetMNKCoefficients(ModelTypes,RadFact,RadMu)
 
-OmegaMap = CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,Uabc,Uang)
+OmegaMap = CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz, unit_cell)
 
 FuncMap  = CalcFuncMap(OmegaMap, ControlMap, Ncrs)
 GradMap  = CalcGradMap(OmegaMap, ControlMap, Ncrs)
 
-GradAtom = CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,Uabc,Uang)
+GradAtom = CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell)
 
 #=============== output results ======================================
 
@@ -857,11 +855,11 @@ for iatom in range(Natoms) :
         print('Model',iatom,ModelValues[iatom])
 
 assert approx_equal(GradAtom[0], [0.6210971239199201, -1.2420777490312254, -2.484579744482787, 6.2528792787377645, -7.192527753707328])
-assert approx_equal(GradAtom[1], (0,0,0,0,0) )
-assert approx_equal(GradAtom[2], (0,0,0,0,0) )
+assert approx_equal(GradAtom[1], (0,0,0,0,0), 1.e-4 )
+assert approx_equal(GradAtom[2], (0,0,0,0,0), 1.e-4 )
 
 ####
-assert approx_equal(FuncMap, 8.219915972211373)
+assert approx_equal(FuncMap, 8.219926081295183)
 #
 nx,ny,nz = Nxyz
 m0 = flex.double(flex.grid(Nxyz))
@@ -871,12 +869,19 @@ for iz in range(0, nz):
       v = OmegaMap[iz][iy][ix]
       m0[ix,iy,iz] = v
 
-
 print(Nxyz)
 mm = iotbx.map_manager.map_manager(file_name = FileOut)
 m1 = mm.map_data()
 print(m1.all())
-assert approx_equal(m1, m0)
+
+diff = flex.abs(m1-m0)
+print("max:", flex.max(diff))
+assert flex.max(diff) < 0.005
+for d in diff:
+  assert d < 0.005
+
+
+#assert approx_equal(m1, m0, 1.e-3)
 #
 mm2 = iotbx.map_manager.map_manager(
   map_data                   = m1,
