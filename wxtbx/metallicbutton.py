@@ -145,9 +145,8 @@ class MetallicButton(WxCtrl):
       self._color = self.__InitColors(self.start_color, self.highlight_color,
         self.gradient_percent)
 
-    self.__DrawButton()
-
     if evt:
+      self.__DrawButton()
       evt.Skip()
 
   def OnPaint(self, event):
