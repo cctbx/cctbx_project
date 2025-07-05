@@ -234,10 +234,11 @@ class ligand_result(object):
       '_occupancies' : 'get_occupancies',
       '_adps'        : 'get_adps',
       '_owab'        : 'get_owab',
+      '_overlaps'    : 'get_overlaps',
     }
     # self._result_attrs = {
     #
-    #                       '_overlaps'    : 'get_overlaps',
+    #
     #                       '_ccs'         : 'get_ccs',
     # }
     for attr, func in self._result_attrs.items():
@@ -345,8 +346,14 @@ class ligand_result(object):
     #rg_ligand = self._ph.select(self.ligand_isel).only_residue_group()
     #resname = ",".join(rg_ligand.unique_resnames())
     _id_str = self._atoms_ligand[0].id_str()
-    _id_str =_id_str.split('"')[1].strip()
-    _id_str = _id_str.split(' ')
+    _id_str =_id_str.split('"')[1]
+    altloc = _id_str[4]
+    resseq = _id_str[10:14]
+    chain  = _id_str[8:10]
+    self.sel_str = " ".join(['chain', chain, 'and resseq', resseq])
+    if (altloc != ' '):
+      self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
+    _id_str = _id_str.strip().split(' ')
     self.id_str = " ".join(_id_str[1:]).strip()
 
   # ----------------------------------------------------------------------------
@@ -476,4 +483,4 @@ class ligand_result(object):
       clashes_str    = string_io.getvalue(),
       clashes_dict   = clashes._clashes_dict)
 
-  return self._overlaps
+    return self._overlaps

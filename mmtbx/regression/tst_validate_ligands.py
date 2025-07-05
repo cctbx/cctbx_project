@@ -47,11 +47,10 @@ def run_test1():
 
 #  tst_get_overlaps(vl_manager = vl_manager)
 # or
-  # for id_tuple, ligand_dict in vl_manager.items():
-  #   for altloc, lr in ligand_dict.items():
-  #     clashes_result = lr.get_overlaps()
-  #     assert(clashes_result.n_clashes == 5)
-  #     assert approx_equal(clashes_result.clashscore, 29.2, eps=1.0)
+  for lr in vl_manager:
+    clashes_result = lr.get_overlaps()
+    assert(clashes_result.n_clashes == 5)
+    assert approx_equal(clashes_result.clashscore, 29.2, eps=1.0)
 
 # ------------------------------------------------------------------------------
 
