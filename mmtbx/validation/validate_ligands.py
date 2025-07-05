@@ -244,13 +244,8 @@ class ligand_result(object):
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
       assert hasattr(self, func)
-    # used internally
-    self._ph = self.model.get_hierarchy()
-    self._atoms_ligand = self._ph.select(self.ligand_isel).atoms()
-    self._xrs = self.model.get_xray_structure()
-    self._xrs_ligand = \
-      self.model.select(self.ligand_isel).get_xray_structure()
-    self._get_id_str()
+
+    self._set_internals()
 
   # ----------------------------------------------------------------------------
 
@@ -287,34 +282,43 @@ class ligand_result(object):
   def get_adps(self):
     if self._adps is not None:
       return self._adps
-    b_isos  = self._xrs_ligand.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
-    n_iso   = self._xrs_ligand.use_u_iso().count(True)
-    n_aniso = self._xrs_ligand.use_u_aniso().count(True)
+    b_isos  = self._xrs_ligand_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+    n_iso   = self._xrs_ligand_noH.use_u_iso().count(True)
+    n_aniso = self._xrs_ligand_noH.use_u_aniso().count(True)
     n_zero  = (b_isos < 0.01).count(True)
     #n_above_100 = (b_isos > 100).count(True)
     #isel_above_100 = (b_isos > 100).iselection()
     b_min, b_max, b_mean = b_isos.min_max_mean().as_tuple()
 
-    #if this selection is used somewhere else, it might be better to do it outside
-    #within_radius = 3.0 #TODO should this be a parameter?
-    #sel_within_str = '(within (%s, %s)) and (protein or water)' % (within_radius, self.sel_str)
-    #isel_within = self.model.iselection(sel_within_str)
-    #xrs_within = self._xrs.select(isel_within)
-    #b_isos_within = xrs_within.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
-    #b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
+    within_radius = 3.0 #TODO should this be a parameter?
+    # if ligand has alternative conformation, ignore it
+    #if 'altloc' in self.sel_str:
+    #  import re
+    #  s = re.sub(r'altloc \w\s*(and\s*)?', '', self.sel_str)
+    #  _sel_str = s.strip()
+    #else:
+    #  _sel_str = self.sel_str
+    _sel_str = self.sel_str
+
+    sel_within_str_noH = '(residues_within (%s, %s)) and protein and not water \
+    and not (element H or element D) and not (%s)' % \
+    (within_radius, self.sel_str, _sel_str)
+    #print(sel_within_str_noH)
+    isel_within_noH = self.model.iselection(sel_within_str_noH)
+    xrs_within_noH = self._xrs.select(isel_within_noH)
+    b_isos_within = xrs_within_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+    b_min_within, b_max_within, b_mean_within = b_isos_within.min_max_mean().as_tuple()
 
     self._adps = group_args(
       n_iso          = n_iso,
       n_aniso        = n_aniso,
       n_zero         = n_zero,
-      #n_above_100    = n_above_100,
-      #isel_above_100 = isel_above_100,
       b_min          = b_min,
       b_max          = b_max,
       b_mean         = b_mean,
-      #b_min_within   = b_min_within,
-      #b_max_within   = b_max_within,
-      #b_mean_within  = b_mean_within
+      b_min_within   = b_min_within,
+      b_max_within   = b_max_within,
+      b_mean_within  = b_mean_within
       )
 
     return self._adps
@@ -342,7 +346,13 @@ class ligand_result(object):
 
   # ----------------------------------------------------------------------------
 
-  def _get_id_str(self):
+  def _set_internals(self):
+    self._ph = self.model.get_hierarchy()
+    self._atoms_ligand = self._ph.select(self.ligand_isel).atoms()
+    self._xrs = self.model.get_xray_structure()
+    self._xrs_ligand = \
+      self.model.select(self.ligand_isel).get_xray_structure()
+    #
     #rg_ligand = self._ph.select(self.ligand_isel).only_residue_group()
     #resname = ",".join(rg_ligand.unique_resnames())
     _id_str = self._atoms_ligand[0].id_str()
@@ -355,6 +365,16 @@ class ligand_result(object):
       self.sel_str = " ".join(['altloc', altloc, 'and', self.sel_str])
     _id_str = _id_str.strip().split(' ')
     self.id_str = " ".join(_id_str[1:]).strip()
+    #
+    _noH = ' and not (element H or element D)'
+    #print(self.sel_str + _noH)
+    ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
+
+    self._xrs_ligand_noH = \
+      self.model.select(ligand_isel_noH).get_xray_structure()
+
+
+
 
   # ----------------------------------------------------------------------------
 

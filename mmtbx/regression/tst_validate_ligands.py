@@ -12,9 +12,9 @@ from mmtbx.programs import validate_ligands as val_lig
 def run():
   run_test1()
   run_test2()
-  os.remove('one_chain_ligand_water_newH.cif')
+  #os.remove('one_chain_ligand_water_newH.cif')
   os.remove('one_chain_ligand_water_newH.txt')
-  os.remove('two_chains_ligand_water_newH.cif')
+  #os.remove('two_chains_ligand_water_newH.cif')
   os.remove('two_chains_ligand_water_newH.txt')
 
 # ------------------------------------------------------------------------------
@@ -102,55 +102,41 @@ def tst_adps(vl_manager):
   '''
   Test ADPs of ligands and surrounding atoms
   '''
-  n_iso_answer = (0,0,0,0,0)
-  n_aniso_answer = (9,9,5,5,6)
-  #for id_tuple, ligand_dict in vl_manager.items():
   for lr in vl_manager:
     occs = lr.get_occupancies()
     id_str = lr.id_str
-    #for altloc, lr in ligand_dict.items():
     adps = lr.get_adps()
-    if (id_str == 'ABEN A   2'):
-      assert(adps.n_iso == 5)
+    if (id_str == 'ABEN B   2'):
+     #print([adps.b_min_within, adps.b_max_within, adps.b_mean_within])
+      assert(adps.n_iso == 0)
       assert(adps.n_aniso == 9)
-      #assert(adps.n_above_100 == 0)
+      assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [4.7, 8.1, 6.3], eps=0.1)
-      # assert(approx_equal(
-      #   [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
-      #   [6.1,12.9,7.9], eps=0.1))
-    if (id_str.strip() == 'BBEN A   2'):
-      assert(adps.n_iso == 5)
+        [4.7, 8.1, 6.0], eps=0.1)
+    if (id_str.strip() == 'BBEN B   2'):
+      assert(adps.n_iso == 0)
       assert(adps.n_aniso == 9)
-      #assert(adps.n_above_100 == 0)
+      assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [5.1, 8.2, 6.6], eps=0.1)
-    #   assert(approx_equal(
-    #     [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
-    #     [6.1,12.9,7.9], eps=0.1))
-    if (id_str.strip() == 'SO4 A   3'):
+        [5.1, 8.2, 6.4], eps=0.1)
+    if (id_str.strip() == 'SO4 B   3'):
       assert(adps.n_iso == 5)
       assert(adps.n_aniso == 0)
-      #assert(adps.n_above_100 == 0)
+      assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
         [7.4,13.1,10.2], eps=0.1)
-    #   assert(approx_equal(
-    #     [adps.b_min_within, adps.b_max_within, adps.b_mean_within],
-    #     [6.3, 11.1, 7.5], eps=0.1))
-    if (id_str.strip() == 'SO4 A   4'):
+    if (id_str.strip() == 'SO4 B   4'):
       assert(adps.n_iso == 0)
       assert(adps.n_aniso == 5)
-      #assert(adps.b_min_within is None)
-      #assert(adps.n_above_100 == 0)
+      assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
         [10.3,14.6,12.3], eps=0.1)
-    if (id_str.strip() == 'GOL A   5'):
-      assert(adps.n_iso == 14)
+    if (id_str.strip() == 'GOL B   5'):
+      assert(adps.n_iso == 6)
       assert(adps.n_aniso == 0)
-      #assert(adps.b_min_within is None)
-      #assert(adps.n_above_100 == 7)
+      assert(adps.b_min_within is None)
       assert approx_equal([adps.b_min, adps.b_max, adps.b_mean],
-        [58.7,114.9,95.2], eps=0.1)
+        [58.7,114.9,96.9], eps=0.1)
     #   #print(adps.n_iso)
     #   #print(adps.n_aniso)
     #   #print(adps.n_above_100)
