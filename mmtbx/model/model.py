@@ -80,6 +80,7 @@ import sys
 import math
 
 from mmtbx.monomer_library import pdb_interpretation
+import libtbx.utils
 
 time_model_show = 0.0
 
@@ -176,7 +177,7 @@ class xh_connectivity_table2(object):
         if("H" in h and not o.all_eq(o[0])):
           self.table.setdefault(ih).append(p.i_seqs)
 
-class manager(object):
+class manager(object, metaclass=libtbx.utils.Tracker):
   """
   Wrapper class for storing and manipulating an iotbx.pdb.hierarchy object and
   a cctbx.xray.structure object, plus optional restraints-related objects.
@@ -3670,6 +3671,7 @@ class manager(object):
     if hasattr(self, '_type_h_bonds') and len(self._type_h_bonds)==len(selection):
       new._type_energies = self._type_energies.select(selection)
       new._type_h_bonds = self._type_h_bonds.select(selection)
+    new._call_stats = self._call_stats # tracking!!
     return new
 
   def number_of_ordered_solvent_molecules(self):
