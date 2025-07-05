@@ -1,7 +1,8 @@
 import math
-import struct
 import time
-import sys
+from scitbx.array_family import flex
+import iotbx.map_manager
+from libtbx.test_utils import approx_equal
 
 ######################################################
 #
@@ -80,6 +81,8 @@ def InputData(nflog) :
 #=====================================
 def GetAtomicModel(FileAtoms,Uabc,Uang) :
 
+    print("LOOK FileAtoms", FileAtoms)
+
     nfatom = open(FileAtoms, 'r')
 
     ModelValues = []
@@ -125,6 +128,10 @@ def GetAtomicModel(FileAtoms,Uabc,Uang) :
         ModelTypes.append([tat, rat])
 
     nfatom.close( )
+
+    print("LOOK ModelValues:",ModelValues)
+    print("LOOK ModelTypes:",ModelTypes)
+    print("LOOK Uabc,Uang:",Uabc,Uang)
 
     return ModelValues,ModelTypes,Uabc,Uang
 
@@ -322,6 +329,14 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
 
 #=====================================
 def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, Uabc, Uang) :
+    print()
+    print("Ncrs:", Ncrs)
+    print("Scrs:", Scrs)
+    print("Nxyz:", Nxyz)
+    print("Uabc:", Uabc)
+    print("Uang:", Uang)
+    print()
+
 
     Natoms = len(ModelValues)
 
@@ -764,303 +779,6 @@ def GetOrthDeorth(Uabc,Uang) :
 
     return DeortMatrix, OrthMatrix
 
-#=====================================
-def Get3DMapMRC(FileMap,Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,nflog) :
-
-    if FileMap == 'none' :
-
-       ControlMap = []
-
-    else :
-
-       nfmap  = open(FileMap, 'rb')
-
-       Nxyz,Ncrs,Scrs,Mcrs,Uabc,Uang,symm,cont_all = InputMRCTitle(nfmap,nflog)
-
-#      read map itself ; simplest version :
-#        X (fast, new column), Y (middle, new row), Z (slow, new section)
-
-       ControlMap = InpMRCxyz(nfmap,Ncrs,nflog)
-
-       Uang[0] = Uang[0] * math.pi/180.0
-       Uang[1] = Uang[1] * math.pi/180.0
-       Uang[2] = Uang[2] * math.pi/180.0
-
-       nfmap.close()
-
-    return Ncrs, Scrs, Nxyz, Uabc, Uang, cont_all, ControlMap
-
-#-------------------------------------------
-def InputMRCTitle(nfmap,nflog) :
-
-#   read 1024 bytes and unpack them
-#   reminder : in python index starts from 0
-
-    nheadbt = 1024
-    line = nfmap.read(nheadbt)
-
-    print('',file=nflog)
-    print('DATA EXTRACTED FROM THE TITLE RECORD :',file=nflog)
-    print('')
-    print('DATA EXTRACTED FROM THE TITLE RECORD :')
-
-#   first extract and check machine stamp (word 54 of the title)
-
-    frm_53  = '@208s 4s 4s 808s'
-    cont_stamp = struct.unpack(frm_53, line[0:1024])
-
-    if cont_stamp[1] != b'MAP ' :
-       print('the map KeyWord (word 53)) is different from MAP',cont_stamp[1])
-       exit()
-
-    frm_stamp = '@s s s s'
-    stamp = struct.unpack(frm_stamp, cont_stamp[2])
-
-    if   stamp[0] == b'\x44' and stamp[1] == b'\x41':
-         print('little-endian input file; stamp = ',stamp)
-         kstamp = 0
-    elif stamp[0] == b'\x11' and stamp[1] == b'\x11':
-         print('big-endian input file; stamp = ',stamp)
-         kstamp = 1
-    else :
-         print('*** machine stamp of the input file is not recognized ***',file=nflog)
-         print(stamp,file=nflog)
-         print('*** machine stamp of the input file is not recognized ***')
-         print(stamp)
-         exit()
-
-#   unpack the title
-
-    if kstamp == 0 :
-       frm_all = '<10i 6f 3i 3f 3i 12f 15f 4s 4s f i 80s80s80s80s80s80s80s80s80s80s'
-    else :
-       frm_all = '>10i 6f 3i 3f 3i 12f 15f 4s 4s f i 80s80s80s80s80s80s80s80s80s80s'
-
-    cont_all = struct.unpack(frm_all, line)
-
-#   extract all values from the unpacked array
-
-    SkewMat = [0.0 for i in range(9)]
-    SkewVec = [0.0 for i in range(3)]
-
-    Ncol    , Nrow    , Nsec    = cont_all[0]  , cont_all[1]  , cont_all[2]
-    Mode                        = cont_all[3]
-    NCstart , NRstart , NSstart = cont_all[4]  , cont_all[5]  , cont_all[6]
-    Nx      , Ny      , Nz      = cont_all[7]  , cont_all[8]  , cont_all[9]
-    Xlength , Ylength , Zlength = cont_all[10] , cont_all[11] , cont_all[12]
-    Alpha   , Beta    , Gamma   = cont_all[13] , cont_all[14] , cont_all[15]
-    MapC    , MapR    , MapS    = cont_all[16] , cont_all[17] , cont_all[18]
-    Amin    , Amax    , Amean   = cont_all[19] , cont_all[20] , cont_all[21]
-    NumSpGr , BytesSG , FlagSkw = cont_all[22] , cont_all[23] , cont_all[24]
-    Xorigin , Yorigin , Zorigin = cont_all[49] , cont_all[50] , cont_all[51]
-    Cmap    , Cstamp  , Arms    = cont_all[52] , cont_all[53] , cont_all[54]
-    Ntitles                     = cont_all[55]
-
-    for i in range(9) :
-        SkewMat[i] = cont_all[25+i]
-    for i in range(3) :
-        SkewVec[i] = cont_all[34+i]
-
-    print('52       : Map code :',24*' ',Cmap,file=nflog)
-    print('53       : Machine stamp of the input file    ',Cstamp,file=nflog)
-    print('52       : Map code :',24*' ',Cmap)
-    print('53       : Machine stamp of the input file    ',Cstamp)
-
-    if Mode == 0 :
-       print('04       : type of data signed bytes from -128 to 127 ; mode = ',Mode,file=nflog)
-       print('04       : type of data signed bytes from -128 to 127 ; mode = ',Mode)
-    elif Mode == 1 :
-       print('04       : type of data integer*2, mode =     ',Mode,file=nflog)
-       print('04       : type of data integer*2, mode =     ',Mode)
-    elif Mode == 2 :
-       print('04       : type of data real*4, mode =        ',Mode,file=nflog)
-       print('04       : type of data real*4, mode =        ',Mode)
-    elif Mode == 3 :
-       print('04       : type of data complex int*2, mode = ',Mode,file=nflog)
-       print('04       : type of data complex int*2, mode = ',Mode)
-    elif Mode == 4 :
-       print('04       : type of data complex real, mode =  ',Mode,file=nflog)
-       print('04       : type of data complex real, mode =  ',Mode)
-    elif Mode == 5 :
-       print('04       : type of data 0 everywhere, mode =  ',Mode,file=nflog)
-       print('04       : type of data 0 everywhere, mode =  ',Mode)
-    else :
-       print('04       : unrecognized type of data, mode =  ',Mode,file=nflog)
-       print('04       : unrecognized type of data, mode =  ',Mode)
-       exit()
-
-    print('08-10    : grid numbers                       ',Nx,     Ny,     Nz,file=nflog)
-    print('01-03    : number of columns, rows, sections  ',Ncol,   Nrow,   Nsec,file=nflog)
-    print('05-07    : index of the first grid node       ',NCstart,NRstart,NSstart,file=nflog)
-    print('17-19    : columns,rows,sections (x,y,z=1,2,3)',MapC,   MapR,   MapS,file=nflog)
-    print('11-13    : unit cell size (in A)           ',
-                             f'{Xlength:10.3f}{Ylength:10.3f}{Zlength:10.3f}',file=nflog)
-    print('14-16    : unit cell angles (in degrees)   ',
-                             f'{Alpha:10.3f}{Beta:10.3f}{Gamma:10.3f}',file=nflog)
-    print('20-22,55 : map values min, max, mean, rms   ',
-                             f'{Amin:12.3e}{Amax:12.3e}{Amean:12.3e}{Arms:12.3e}',file=nflog)
-    print('23       : space group number                 ',NumSpGr,file=nflog)
-    print('24       : number of bytes for symmetries     ',BytesSG,file=nflog)
-    print('25       : flag for skewing (0 means none)    ',FlagSkw,file=nflog)
-
-    print('08-10    : grid numbers                       ',Nx,     Ny,     Nz)
-    print('01-03    : number of columns, rows, sections  ',Ncol,   Nrow,   Nsec)
-    print('05-07    : index of the first grid node       ',NCstart,NRstart,NSstart)
-    print('17-19    : columns,rows,sections (x,y,z=1,2,3)',MapC,   MapR,   MapS)
-    print('11-13    : unit cell size (in A)           ',
-                             f'{Xlength:10.3f}{Ylength:10.3f}{Zlength:10.3f}')
-    print('14-16    : unit cell angles (in degrees)   ',
-                             f'{Alpha:10.3f}{Beta:10.3f}{Gamma:10.3f}')
-    print('20-22,55 : map values min, max, mean, rms   ',
-                             f'{Amin:12.3e}{Amax:12.3e}{Amean:12.3e}{Arms:12.3e}')
-    print('23       : space group number                 ',NumSpGr)
-    print('24       : number of bytes for symmetries     ',BytesSG)
-    print('25       : flag for skewing (0 means none)    ',FlagSkw)
-
-    if FlagSkw != 0 :
-       print('26-37    : skew transformation matrix and vector are ')
-       print(8*' ',f'{SkewMat[0]:10.5f}{SkewMat[1]:10.5f}{SkewMat[2]:10.5f}     {SkewVec[0]:10.5f}',
-                   file=nflog)
-       print(8*' ',f'{SkewMat[3]:10.5f}{SkewMat[4]:10.5f}{SkewMat[5]:10.5f}     {SkewVec[1]:10.5f}',
-                   file=nflog)
-       print(8*' ',f'{SkewMat[6]:10.5f}{SkewMat[7]:10.5f}{SkewMat[8]:10.5f}     {SkewVec[2]:10.5f}',
-                   file=nflog)
-       print('26-37    : skew transformation matrix and vector are ',file=nflog)
-       print(8*' ',f'{SkewMat[0]:10.5f}{SkewMat[1]:10.5f}{SkewMat[2]:10.5f}     {SkewVec[0]:10.5f}')
-       print(8*' ',f'{SkewMat[3]:10.5f}{SkewMat[4]:10.5f}{SkewMat[5]:10.5f}     {SkewVec[1]:10.5f}')
-       print(8*' ',f'{SkewMat[6]:10.5f}{SkewMat[7]:10.5f}{SkewMat[8]:10.5f}     {SkewVec[2]:10.5f}')
-
-    print('50-52    : origin (for MRC format)            ',Xorigin , Yorigin , Zorigin,file=nflog)
-    print('55       : number of title records used       ',Ntitles,file=nflog)
-
-    print('50-52    : origin (for MRC format)            ',Xorigin , Yorigin , Zorigin)
-    print('55       : number of title records used       ',Ntitles)
-
-    if Ntitles <= 0 :
-        print('titles missed',file=nflog)
-        print('titles missed')
-
-    for it in range (Ntitles) :
-        print('title',f'{it+1:2} :',cont_all[56+it],file=nflog)
-        print('title',f'{it+1:2} :',cont_all[56+it])
-
-    Nxyz = [Nx     ,Ny      ,Nz]
-    Ncrs = [Ncol   , Nrow   , Nsec]
-    Mcrs = [MapC   , MapR   , MapS]
-    Scrs = [NCstart, NRstart, NSstart]
-    Uabc = [Xlength, Ylength, Zlength]
-    Uang = [Alpha  , Beta   , Gamma]
-
-#   skip symmetry records
-
-    if BytesSG > 0 :
-       symm = nfmap.read(BytesSG)
-    else           :
-       symm = []
-
-    return Nxyz,Ncrs,Scrs,Mcrs,Uabc,Uang,symm,cont_all
-
-#-------------------------------------------
-def InpMRCxyz(nfmap,Ncrs,nflog) :
-
-    Mx, My, Mz = Ncrs
-
-    ControlMap = [[[ 0.0 for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
-
-    ncolbt = Mx * 4
-    frm_column = '@' + str(Mx) + 'f'
-
-    for iz in range(Mz) :
-       if int(iz/20) * 20 == iz :
-           print('  section',f'{iz:4} from',f'{Mz}')
-
-       for iy in range(My) :
-          Line = nfmap.read(ncolbt)
-          LineCont = struct.unpack(frm_column, Line)
-
-          for ix in range(Mx) :
-              ControlMap[iz][iy][ix] = LineCont[ix]
-
-    return ControlMap
-
-#==========================
-def OutMapMrc(FileOut,OmegaMap,Ncrs, Scrs, Nxyz, Uabc, Uang, cont_all,nflog) :
-
-    nfout = open(FileOut, 'wb')
-
-#    Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all = ParamMap
-    Mx,My,Mz = Ncrs
-
-#   prepare packing format
-
-    stamp_char = sys.byteorder
-
-    if   stamp_char == 'little' :
-         stamp = b'\x44'b'\x41'b'\x00'b'\x00'
-         frm_all = '<10i 6f 3i 3f 3i 12f 15f 4s 4s f i 80s80s80s80s80s80s80s80s80s80s'
-    elif stamp_char == 'big'    :
-         stamp = b'\x11'b'\x11'b'\x00'b'\x00'
-         frm_all = '>10i 6f 3i 3f 3i 12f 15f 4s 4s f i 80s80s80s80s80s80s80s80s80s80s'
-    else :
-       print('*** unknown byteorder code',stamp_char)
-       print('*** unknown byteorder code',stamp_char,fiel=nflog)
-       exit()
-
-#   get statistics for the title record
-
-    Omega000 = OmegaMap[0][0][0]
-    Dmin, Dmax, Dmean, Dmean2 = Omega000, Omega000, 0.0, 0.0
-    for iz in range(Mz) :
-        for iy in range(My) :
-            for ix in range(Mx) :
-                MapValue = OmegaMap[iz][iy][ix]
-                if MapValue < Dmin : Dmin = MapValue
-                if MapValue > Dmax : Dmax = MapValue
-                Dmean                    += MapValue
-                Dmean2                   += MapValue * MapValue
-
-    NMap  = float(Mx * My * Mz)
-    Dmean = Dmean / NMap
-    Rmsd  = math.sqrt(Dmean2 / NMap - Dmean * Dmean)
-
-    print('Dmin, Dmax, Dmean, Rmsd',Dmin, Dmax, Dmean, Rmsd)
-
-#   start preparting output title record
-
-    Uang[0] = Uang[0] * 180.0/math.pi
-    Uang[1] = Uang[1] * 180.0/math.pi
-    Uang[2] = Uang[2] * 180.0/math.pi
-
-    cont_new = [cont_all[icon] for icon in range(66)]
-    cont_new[10], cont_new[11], cont_new[12] = Uabc[0], Uabc[1], Uabc[2]
-    cont_new[13], cont_new[14], cont_new[15] = Uang[0], Uang[1], Uang[2]
-    cont_new[19], cont_new[20], cont_new[21], cont_new[54] = Dmin, Dmax, Dmean, Rmsd
-
-#   form title record and write
-
-    LineTitle = struct.pack(frm_all, *cont_new)
-
-    nfout.write(LineTitle)
-
-#   now write the calculated map itself
-
-    ncolbt = Mx * 4
-    frm_column = '@' + str(Mx) + 'f'
-
-    MapColumn = [0.0 for ix in range(Mx)]
-
-#   start writing
-
-    for iz in range(Mz) :
-        if int(iz/20) * 20 == iz : print('write mrc map section',f'{iz:4} from total ',Mz)
-        for iy in range(My) :
-            for ix in range(Mx) :
-                MapColumn[ix] = OmegaMap[iz][iy][ix]
-
-            LineMap = struct.pack(frm_column, *MapColumn)
-            nfout.write(LineMap)
-
-    return
 
 ####################################################
 #
@@ -1076,7 +794,17 @@ RadFact,RadMu,Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,FileMap,FileAtoms,FileOut = Inpu
 
 print('Read control / experimental map...')
 
-Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,ControlMap = Get3DMapMRC(FileMap,Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,nflog)
+mm = iotbx.map_manager.map_manager(file_name = FileMap)
+Ncrs = mm.map_data().all()
+Scrs = [0,0,0]
+Nxyz = mm.map_data().all()
+Uabc = mm.crystal_symmetry().unit_cell().parameters()[:3]
+Uang = mm.crystal_symmetry().unit_cell().parameters()[3:]
+Uang = [it*math.pi/180. for it in Uang]
+
+Mx,My,Mz = Nxyz
+ControlMap = [[[ mm.map_data()[ix,iy,iz] for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
+
 
 print('Read atomic model...')
 
@@ -1127,14 +855,35 @@ GradAtom = CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz
 Natoms = len(GradAtom)
 for iatom in range(Natoms) :
         print('Model',iatom,ModelValues[iatom])
-        print('Model',iatom,ModelValues[iatom],file=nflog)
-print('Target value',FuncMap)
-print('Target value',FuncMap,file=nflog)
-for iatom in range(Natoms) :
-        print('Gradient',iatom,GradAtom[iatom])
-        print('Gradient',iatom,GradAtom[iatom],file=nflog)
 
-OutMapMrc(FileOut,OmegaMap,Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,nflog)
+assert approx_equal(GradAtom[0], [0.6210971239199201, -1.2420777490312254, -2.484579744482787, 6.2528792787377645, -7.192527753707328])
+assert approx_equal(GradAtom[1], (0,0,0,0,0) )
+assert approx_equal(GradAtom[2], (0,0,0,0,0) )
+
+####
+assert approx_equal(FuncMap, 8.219915972211373)
+#
+nx,ny,nz = Nxyz
+m0 = flex.double(flex.grid(Nxyz))
+for iz in range(0, nz):
+  for iy in range(0, ny):
+    for ix in range(0, nx):
+      v = OmegaMap[iz][iy][ix]
+      m0[ix,iy,iz] = v
+
+
+print(Nxyz)
+mm = iotbx.map_manager.map_manager(file_name = FileOut)
+m1 = mm.map_data()
+print(m1.all())
+assert approx_equal(m1, m0)
+#
+mm2 = iotbx.map_manager.map_manager(
+  map_data                   = m1,
+  unit_cell_grid             = m1.all(),
+  unit_cell_crystal_symmetry = mm.crystal_symmetry(),
+  wrapping                   = True)
+
 
 time_t08 = time.time()
 
