@@ -150,11 +150,11 @@ electron density values/CC.
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
-    ligand_manager.show_ligand_counts()
-    ligand_manager.show_ligand_occupancies()
-    ligand_manager.show_adps()
-    ligand_manager.show_ccs()
-    ligand_manager.show_nonbonded_overlaps()
+    # ligand_manager.show_ligand_counts()
+    # ligand_manager.show_ligand_occupancies()
+    # ligand_manager.show_adps()
+    # ligand_manager.show_ccs()
+    # ligand_manager.show_nonbonded_overlaps()
 
     self.ligand_manager = ligand_manager
     #print('time running manager: ', time.time()-t0)
