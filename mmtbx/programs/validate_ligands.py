@@ -124,6 +124,7 @@ electron density values/CC.
     else:
       self.working_model_fn = model_fn
       m = self.data_manager.get_model()
+      m.set_log(log = null_out())
       m.process(make_restraints=True)
       self.working_model = m
 
@@ -150,7 +151,7 @@ electron density values/CC.
       params = self.params.validate_ligands,
       log   = self.logger)
     ligand_manager.run()
-    # ligand_manager.show_ligand_counts()
+    ligand_manager.show_ligand_counts()
     # ligand_manager.show_ligand_occupancies()
     # ligand_manager.show_adps()
     # ligand_manager.show_ccs()

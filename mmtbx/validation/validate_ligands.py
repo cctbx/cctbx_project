@@ -15,10 +15,6 @@ from mmtbx import real_space_correlation
 master_params_str = """
 validate_ligands {
 
-place_hydrogens = True
-  .type = bool
-  .help = Add H atoms with ready_set.
-
 nproc = 1
   .type = int
 
@@ -44,6 +40,8 @@ class manager(list):
     self.log   = log
     self.fmodel = fmodel
 
+  # ----------------------------------------------------------------------------
+
   def parallel_populate(self, args):
     from libtbx import easy_mp
     def _run(lr, func):
@@ -54,8 +52,6 @@ class manager(list):
     ligand_results = []
     inputs = []
     for ligand_isel in args:
-  #     id_list = list(id_tuple)
-  #     id_list.append(altloc)
       lr = ligand_result(
         model = self.model,
         fmodel = self.fmodel,
@@ -64,7 +60,6 @@ class manager(list):
       for attr, func in lr._result_attrs.items():
         funcs.append([lr, func])
         inputs.append(func)
-        #inputs.append([id_tuple, altloc, func])
 
     results = []
     t0=time.time()
@@ -89,40 +84,22 @@ class manager(list):
         i+=1
     return ligand_results
 
+  # ----------------------------------------------------------------------------
 
   def run(self):
     args = []
-    #def _generate_ligand_isel():
-    #  #done = []
-    #  ph = self.model.get_hierarchy()
-
-      # ligand_isel_dict = self.get_ligands(ph = ph)
-      # for id_tuple, isel in ligand_isel_dict.items():
-      #   for rg in ph.select(isel).residue_groups():
-      #     ligand_dict = {}
-      #     for conformer in rg.conformers():
-      #       altloc = conformer.altloc
-      #       conformer_isel = conformer.atoms().extract_i_seq()
-      #       yield id_tuple, rg, altloc, conformer_isel
-    #for id_tuple, rg, altloc, conformer_isel in _generate_ligand_isel():
-    #  args.append([id_tuple, rg, altloc, conformer_isel])
     for ligand_isel in self.generate_ligand_iselections():
       args.append(ligand_isel)
     results = self.parallel_populate(args)
     for r in results:
       self.append(r)
-    # for lr, (id_tuple, rg, altloc, conformer_isel) in zip(results,
-    #                                                       _generate_ligand_isel()):
-    #   ligand_dict = self.setdefault(id_tuple, {})
-    #   ligand_dict[altloc] = lr
+
+  # ----------------------------------------------------------------------------
 
   def generate_ligand_iselections(self):
     '''
-    Store ligands as list of iselections --> better way? Careful if H will be
-    added at some point!
+    Get iselections for each ligand
     '''
-    #ligand_isel_dict = {}
-    #ligand_iselections = []
     ph = self.model.get_hierarchy()
     get_class = iotbx.pdb.common_residue_names_get_class
     exclude = ["common_amino_acid", "modified_amino_acid", "common_rna_dna",
@@ -136,19 +113,15 @@ class manager(list):
               for conformer in rg.conformers():
                 iselection = conformer.atoms().extract_i_seq()
                 yield iselection
-                #ligand_iselections.append(iselection)
-              #id_tuple = (model.id, chain.id, rg.resseq)
-              #ligand_isel_dict[id_tuple] = iselection
-    #return ligand_iselections
 
+  # ----------------------------------------------------------------------------
 
-  # def show_ligand_counts(self):
-  #   make_sub_header(' Ligands in input model ', out=self.log)
-  #   for id_tuple, ligand_dict in self.items():
-  #     print(id_tuple, ligand_dict)
-  #     for altloc, lr in ligand_dict.items():
-  #       print(lr.id_str, file=self.log)
-  #   STOP()
+  def show_ligand_counts(self):
+    make_sub_header(' Ligands in input model ', out=self.log)
+    for ligand_result in self:
+      print(ligand_result.id_str, file=self.log)
+
+  # ----------------------------------------------------------------------------
 
 
   # def show_adps(self):
@@ -235,12 +208,9 @@ class ligand_result(object):
       '_adps'        : 'get_adps',
       '_owab'        : 'get_owab',
       '_overlaps'    : 'get_overlaps',
+      #'_ccs'         : 'get_ccs',
     }
-    # self._result_attrs = {
-    #
-    #
-    #                       '_ccs'         : 'get_ccs',
-    # }
+
     for attr, func in self._result_attrs.items():
       setattr(self, attr, None)
       assert hasattr(self, func)
@@ -367,17 +337,12 @@ class ligand_result(object):
     self.id_str = " ".join(_id_str[1:]).strip()
     #
     _noH = ' and not (element H or element D)'
-    #print(self.sel_str + _noH)
     ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
 
     self._xrs_ligand_noH = \
       self.model.select(ligand_isel_noH).get_xray_structure()
 
-
-
-
   # ----------------------------------------------------------------------------
-
 
 #   def get_ccs(self):
 #     # still a stub
