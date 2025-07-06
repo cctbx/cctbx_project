@@ -143,7 +143,8 @@ def add_description_if_available(source_code):
 
 
 def convert_comments_to_docstrings(source_code: str,
-      remove_commented_import: bool = True) -> str:
+      remove_commented_import: bool = True,
+      raise_on_errors: bool = False) -> str:
     """Main conversion function to process source code and
         convert comments to docstrings."""
 
@@ -159,7 +160,10 @@ def convert_comments_to_docstrings(source_code: str,
         tree = ast.parse(source_code)
     except SyntaxError as e:
         print(f"Error: Could not parse source. Invalid syntax on line {e.lineno}.", file=sys.stderr)
-        return source_code
+        if raise_on_errors:
+          raise AssertionError("Failed to parse source")
+        else: # usual
+          return source_code
 
     lines = source_code.splitlines()
     original_had_trailing_newline = source_code.endswith('\n') or source_code.endswith('\r\n')
