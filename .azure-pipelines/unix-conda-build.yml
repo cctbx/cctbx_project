@@ -36,6 +36,7 @@ steps:
     git config user.name "Billy K. Poon"
     git config user.email "bkpoon@lbl.gov"
 
+    git revert 451e713a1d1d76b4f42673f65b1626e618975dfe
     git revert c16316c4bde588979dc8eb07441f2d1822362bec
   displayName: Fix for Python 2
   condition: eq(variables['PYTHON_VERSION'], 'py27')
