@@ -142,7 +142,6 @@ electron density values/CC.
       fmodel.update_all_scales()
       fmodel.show(log=self.logger, show_header=False)
 
-#
 #    cs = self.get_crystal_symmetry(model_fn, data_fn)
 #    model = self.data_manager.get_model()
 #    print('\nWorking crystal symmetry after inspecting all inputs:', file=self.logger)
@@ -156,6 +155,7 @@ electron density values/CC.
       log   = self.logger)
     ligand_manager.run()
     ligand_manager.show_ligand_counts()
+    ligand_manager.show_table()
     # ligand_manager.show_ligand_occupancies()
     # ligand_manager.show_adps()
     # ligand_manager.show_ccs()

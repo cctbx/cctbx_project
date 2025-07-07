@@ -127,6 +127,40 @@ class manager(list):
 
   # ----------------------------------------------------------------------------
 
+  def show_table(self):
+      '''
+      Print summary table
+      '''
+      lab_row1 =  ['','','CC','','', 'ADPs', 'occupancies']
+      lab_row2 =  ['ligand', 'suspicious', '2Fo-Fc','clashes','H-bonds',\
+        'min   max   mean', 'min   max   mean']
+      lab1_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^21}|{:^21}|'
+      lab2_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^21}|{:^21}|'
+      #table_str = '{:>16}|{:^16.2f}|{:^5.2}|{:^15}|'
+      #table_str = '{:^14}|{:^12}|{:^9.2f}|{:^9}|{:^7}{:^7}{:^7}|'
+      print('\n' + lab1_str.format(*lab_row1), file=self.log)
+      print(lab2_str.format(*lab_row2), file=self.log)
+      print('-'*100, file=self.log)
+      for lr in self:
+        ccs     = lr.get_ccs()
+        clashes = lr.get_overlaps()
+        adps    = lr.get_adps()
+        occs    = lr.get_occupancies()
+        is_suspicious = lr.check_if_suspicious()
+        if is_suspicious: check='***'
+        else:             check =''
+
+        #line = [lr.id_str,check, ccs.cc_2fofc, clashes.n_clashes,
+        #  round(adps.b_min,1), round(adps.b_max,1), round(adps.b_mean,1)]
+        #print(table_str.format(*line), file=self.log)
+
+        value3 = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
+        value5 = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
+        row = f"{lr.id_str:^14}|{check:^12}|{value3}|{clashes.n_clashes:^9}|\
+{value5:^9}|\
+{round(adps.b_min,1):^7}{round(adps.b_max,1):^7}{round(adps.b_mean,1):^7}|\
+{round(occs.occ_min,1):^7}{round(occs.occ_max,1):^7}{round(occs.occ_mean,1):^7}|"
+        print(row, file=self.log)
 
   # def show_adps(self):
   #   '''
@@ -214,6 +248,7 @@ class ligand_result(object):
       '_overlaps'    : 'get_overlaps',
       #'_polder_ccs'  : 'get_polder_ccs',
       '_ccs'         : 'get_ccs',
+      '_is_suspicious' : 'check_if_suspicious',
     }
 
     for attr, func in self._result_attrs.items():
@@ -229,6 +264,18 @@ class ligand_result(object):
     for attr in self._result_attrs:
       outl += '  %s : %s\n' % (attr, getattr(self, attr))
     return outl
+
+  # ----------------------------------------------------------------------------
+
+  def check_if_suspicious(self):
+    if self._is_suspicious is not None:
+      return self._is_suspicious
+    self._is_suspicious = False
+    if self.fmodel is not None:
+      ccs = self.get_ccs()
+      if ccs.cc_2fofc < 0.5:
+        self._is_suspicious = True
+    return self._is_suspicious
 
   # ----------------------------------------------------------------------------
 
@@ -446,9 +493,12 @@ class ligand_result(object):
 
     processed_nbps = pnp.manager(model = model_within)
     clashes = processed_nbps.get_clashes()
-    clashes_dict   = clashes._clashes_dict
+    hbonds = processed_nbps.get_hbonds()
 
-    ligand_clashes_dict = dict()
+    clashes_dict   = clashes._clashes_dict
+    hbonds_dict = hbonds._hbonds_dict
+
+    ligand_clashes_dict = {}
     for iseq_tuple, record in clashes_dict.items():
       if (iseq_tuple[0] in isel_ligand_within or
           iseq_tuple[1] in isel_ligand_within):
@@ -458,8 +508,20 @@ class ligand_result(object):
                     clashes_dict = ligand_clashes_dict,
                     model        = model_within)
 
-    string_io = StringIO()
-    ligand_clashes.show(log=string_io, show_clashscore=False)
+    ligand_hbonds_dict = {}
+    for iseq_tuple, record in hbonds_dict.items():
+      if (iseq_tuple[0] in isel_ligand_within or
+          iseq_tuple[1] in isel_ligand_within):
+        ligand_hbonds_dict[iseq_tuple] = record
+
+    ligand_hbonds = pnp.hbonds(
+                    hbonds_dict  = ligand_hbonds_dict,
+                    model        = model_within)
+
+    results_hbonds = ligand_hbonds.get_results()
+
+    #string_io = StringIO()
+    #ligand_clashes.show(log=string_io, show_clashscore=False)
     results = ligand_clashes.get_results()
 
     self._overlaps = group_args(
@@ -468,6 +530,7 @@ class ligand_result(object):
       n_clashes_sym  = results.n_clashes_sym,
       #clashscore_sym = results.clashscore_sym,
       #clashes_str    = string_io.getvalue(),
-      clashes_dict   = clashes._clashes_dict)
+      #clashes_dict   = clashes._clashes_dict,
+      n_hbonds = results_hbonds.n_hbonds)
 
     return self._overlaps
