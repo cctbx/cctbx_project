@@ -133,9 +133,9 @@ class manager(list):
       '''
       lab_row1 =  ['','','CC','','', 'ADPs', 'occupancies']
       lab_row2 =  ['ligand', 'suspicious', '2Fo-Fc','clashes','H-bonds',\
-        'min   max   mean', 'min   max   mean']
-      lab1_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^21}|{:^21}|'
-      lab2_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^21}|{:^21}|'
+        'min   max   mean   owab', 'min   max   mean']
+      lab1_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^28}|{:^21}|'
+      lab2_str = '{:^14}|{:^12}|{:^9}|{:^9}|{:^9}|{:^28}|{:^21}|'
       #table_str = '{:>16}|{:^16.2f}|{:^5.2}|{:^15}|'
       #table_str = '{:^14}|{:^12}|{:^9.2f}|{:^9}|{:^7}{:^7}{:^7}|'
       print('\n' + lab1_str.format(*lab_row1), file=self.log)
@@ -145,6 +145,7 @@ class manager(list):
         ccs     = lr.get_ccs()
         clashes = lr.get_overlaps()
         adps    = lr.get_adps()
+        owab    = lr.get_owab()
         occs    = lr.get_occupancies()
         is_suspicious = lr.check_if_suspicious()
         if is_suspicious: check='***'
@@ -155,11 +156,15 @@ class manager(list):
         #print(table_str.format(*line), file=self.log)
 
         value3 = f"{ccs.cc_2fofc:^9.2f}" if ccs is not None else f"{'':^9}"
+        val_clash = f"{clashes.n_clashes:^9}" if clashes.n_clashes != 0 else f"{'-':^9}"
         value5 = f"{clashes.n_hbonds:^9}" if clashes.n_hbonds != 0 else f"{'-':^9}"
-        row = f"{lr.id_str:^14}|{check:^12}|{value3}|{clashes.n_clashes:^9}|\
-{value5:^9}|\
-{round(adps.b_min,1):^7}{round(adps.b_max,1):^7}{round(adps.b_mean,1):^7}|\
-{round(occs.occ_min,1):^7}{round(occs.occ_max,1):^7}{round(occs.occ_mean,1):^7}|"
+        val_o_min = f"{round(occs.occ_min,1):^7}" if occs.occ_min != occs.occ_mean else f"{'':^7}"
+        val_o_max = f"{round(occs.occ_max,1):^7}" if occs.occ_max != occs.occ_mean else f"{'':^7}"
+
+        row = f"{lr.id_str:^14}|{check:^12}|{value3}|{val_clash:^9}|{value5:^9}|\
+{round(adps.b_min,1):^7}{round(adps.b_max,1):^7}{round(adps.b_mean,1):^7}\
+{round(owab,1):^7}|\
+{val_o_min:^7}{val_o_max:^7}{round(occs.occ_mean,1):^7}|"
         print(row, file=self.log)
 
   # def show_adps(self):
@@ -354,14 +359,17 @@ class ligand_result(object):
     if self._owab is not None:
       return self._owab
 
-    occ = self._atoms_ligand.extract_occ()
-    b_isos  = self._xrs_ligand.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
+    occ = self._atoms_ligand_noH.extract_occ()
+    b_isos  = self._xrs_ligand_noH.extract_u_iso_or_u_equiv() * adptbx.u_as_b(1.)
     owab = 0.
-    sum_b = 0.
+    sum_occ = 0.
+    #print(list(occ))
+    #print(list(b_isos))
     for _o, _b in zip(occ, b_isos):
       owab = owab + _o * _b
-      sum_b = sum_b + _b
-    owab = owab/sum_b
+      sum_occ = sum_occ + _o
+    owab = owab/sum_occ
+    #print(owab)
     self._owab = owab
 
     return self._owab
@@ -393,6 +401,7 @@ class ligand_result(object):
 
     self._xrs_ligand_noH = \
       self.model.select(self.ligand_isel_noH).get_xray_structure()
+    self._atoms_ligand_noH = self._ph.select(self.ligand_isel_noH).atoms()
 
   # ----------------------------------------------------------------------------
 
