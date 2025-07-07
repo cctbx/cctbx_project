@@ -131,6 +131,10 @@ electron density values/CC.
     # get fmodel object
     if has_data:
       make_sub_header(' Creating fmodel object ', out=self.logger)
+      fmodel_params = self.data_manager.get_fmodel_params()
+      fmodel_params.xray_data.r_free_flags.required = False
+      fmodel_params.xray_data.r_free_flags.ignore_r_free_flags = True
+      self.data_manager.set_fmodel_params(fmodel_params)
       fmodel = self.data_manager.get_fmodel(
         scattering_table = self.params.scattering_table,
         model_filename   = self.working_model_fn)

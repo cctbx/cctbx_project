@@ -3,14 +3,18 @@ import time
 from six.moves import zip
 from six.moves import cStringIO as StringIO
 import iotbx.pdb
+from mmtbx import map_tools
+from cctbx import maptbx
 import cctbx.geometry_restraints.process_nonbonded_proxies as pnp
 from cctbx import adptbx
 from iotbx import phil
 from cctbx.array_family import flex
 from libtbx import group_args
+from cctbx import miller
 from libtbx.str_utils import make_sub_header
-from mmtbx import real_space_correlation
-
+import mmtbx.maps.polder
+import mmtbx.maps.correlation
+from mmtbx.maps import mtriage
 
 master_params_str = """
 validate_ligands {
@@ -208,7 +212,8 @@ class ligand_result(object):
       '_adps'        : 'get_adps',
       '_owab'        : 'get_owab',
       '_overlaps'    : 'get_overlaps',
-      #'_ccs'         : 'get_ccs',
+      #'_polder_ccs'  : 'get_polder_ccs',
+      '_ccs'         : 'get_ccs',
     }
 
     for attr, func in self._result_attrs.items():
@@ -337,90 +342,87 @@ class ligand_result(object):
     self.id_str = " ".join(_id_str[1:]).strip()
     #
     _noH = ' and not (element H or element D)'
-    ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
+    self.ligand_isel_noH = self.model.iselection(self.sel_str + _noH)
 
     self._xrs_ligand_noH = \
-      self.model.select(ligand_isel_noH).get_xray_structure()
+      self.model.select(self.ligand_isel_noH).get_xray_structure()
 
   # ----------------------------------------------------------------------------
 
-#   def get_ccs(self):
-#     # still a stub
-#     if self.fmodel is None: return
-#     manager = real_space_correlation.selection_map_statistics_manager(
-#       atom_selection    = self.isel,
-#       xray_structure    = self._xrs,
-#       fft_m_real        = self.two_fofc_map.all(),
-#       fft_n_real        = self.two_fofc_map.focus(),
-#       exclude_hydrogens = True)
-#     stats_two_fofc = manager.analyze_map(
-#       map       = self.two_fofc_map,
-#       model_map = self.fmodel_map,
-#       min       = 1.5)
-#     stats_fofc = manager.analyze_map(
-#       map       = self.fofc_map,
-#       model_map = self.fmodel_map,
-#       min       = -3.0)
+  def get_polder_ccs(self):
+    if self._polder_ccs is not None:
+      return self._polder_ccs
 
-# #    params = real_space_correlation.master_params().extract()
-# #
-# #    results = real_space_correlation.simple(
-# #      fmodel        = self.fmodel,
-# #      pdb_hierarchy = self._ph.select(self.isel),
-# #      params        = None,
-# #      show_results  = True,
-# #      log           = None)
-# #    params.map_2.type = 'mFobs-DFc'
-# #    sel_bool = self._ph.atom_selection_cache().selection(
-# #      string = self.sel_str)
-# #    self.fmodel.update_xray_structure(
-# #      xray_structure      = self._xrs.select(~sel_bool),
-# #      update_f_calc       = True,
-# #      update_f_mask       = True,
-# #      force_update_f_mask = True)
-# #    fmodel = mmtbx.f_model.manager(
-# #     f_obs          = self.fmodel.f_obs(),
-# #     r_free_flags   = self.fmodel.r_free_flags(),
-# #     xray_structure = self._xrs.select(~sel_bool))
-# #
-# #    fmodel.update_all_scales()
-# #    results_fofc = real_space_correlation.simple(
-# #      fmodel        = fmodel,
-# #      pdb_hierarchy = self._ph.select(self.isel),
-# #      params        = params,
-# #      show_results  = True,
-# #      log           = None)
+    from mmtbx.maps.polder import master_params_str as polder_params_str
+    _params = iotbx.phil.parse(
+      input_string=polder_params_str, process_includes=True).extract()
 
-# #    mc_diff = map_tools.electron_density_map(
-# #      fmodel = self.fmodel).map_coefficients(
-# #        map_type         = "mFo-DFc",
-# #        isotropize       = True,
-# #        fill_missing     = False)
-# #    crystal_gridding =
-# #    fft_map = miller.fft_map(
-# #      crystal_gridding     = crystal_gridding,
-# #      fourier_coefficients = mc_diff)
-# #    fft_map.apply_sigma_scaling()
-# #    map_data = fft_map.real_map_unpadded()
-# #    box = mmtbx.utils.extract_box_around_model_and_map(
-# #      xray_structure = self._xrs.select(self.isel),
-# #      map_data       = map_data,
-# #      box_cushion    = 2.1)
+    polder_object = mmtbx.maps.polder.compute_polder_map(
+      f_obs            = self.fmodel.f_obs(),
+      r_free_flags     = self.fmodel.r_free_flags(),
+      model            = self.model,
+      params           = _params.polder,
+      selection_string = self.sel_str )
 
-#     self._ccs = group_args(
-#       cc_two_fofc = stats_two_fofc.cc,
-#       cc_fofc = stats_fofc.cc,
-#       two_fofc_min = stats_two_fofc.min,
-#       two_fofc_max = stats_two_fofc.max,
-#       two_fofc_mean = stats_two_fofc.mean,
-#       fofc_min = stats_fofc.min,
-#       fofc_max = stats_fofc.max,
-#       fofc_mean = stats_fofc.mean,
-#       n_below_two_fofc_cutoff = stats_two_fofc.n_below_min,
-#       n_below_fofc_cutoff = stats_fofc.n_below_min
-#       )
-#     return self._ccs
+    polder_object.validate()
+    polder_object.run()
+    r = polder_object.get_results()
+    vr = r.validation_results
+    print('Map 1: calculated Fobs with ligand')
+    print('Map 2: calculated Fobs without ligand')
+    print('Map 3: real Fobs data')
+    print('CC(1,2): %6.4f' % vr.cc12)
+    print('CC(1,3): %6.4f' % vr.cc13)
+    print('CC(2,3): %6.4f' % vr.cc23)
 
+    self._polder_ccs = group_args(
+      cc12 = vr.cc12,
+      cc13 = vr.cc13,
+      cc23 = vr.cc23
+      )
+
+    return self._polder_ccs
+
+  # ----------------------------------------------------------------------------
+
+  def get_ccs(self):
+    if self.fmodel is None:
+      return
+    if self._ccs is not None:
+      return self._ccs
+   # get map coefficients
+    mc = map_tools.electron_density_map(
+      fmodel = self.fmodel).map_coefficients(
+        map_type         = "2mFo-DFc",
+        isotropize       = True,
+        fill_missing     = False)
+    d_min = self.fmodel.f_obs().d_min()
+    cg = self.fmodel.f_obs().crystal_gridding(
+      d_min             = d_min,
+      symmetry_flags    = maptbx.use_space_group_symmetry,
+      resolution_factor = 0.25)
+    map_2fo = miller.fft_map(
+        crystal_gridding     = cg,
+        fourier_coefficients = mc)
+    map_2fo.apply_sigma_scaling()
+    map_2fo_data = map_2fo.real_map_unpadded()
+
+    cc_calculator = mmtbx.maps.correlation.from_map_and_xray_structure_or_fmodel(
+      xray_structure = self._xrs,
+      map_data       = map_2fo_data,
+      d_min          = d_min)
+    # Atom radius
+    atom_radius = mtriage.get_atom_radius(
+      xray_structure = self._xrs,
+      resolution     = d_min)
+    cc = cc_calculator.cc(selection = self.ligand_isel_noH, atom_radius = atom_radius)
+
+    self._ccs = group_args(
+      cc_2fofc = cc,
+       )
+    return self._ccs
+
+  # ----------------------------------------------------------------------------
 
   def get_overlaps(self):
     '''
@@ -464,8 +466,8 @@ class ligand_result(object):
       n_clashes      = results.n_clashes,
       clashscore     = results.clashscore,
       n_clashes_sym  = results.n_clashes_sym,
-      clashscore_sym = results.clashscore_sym,
-      clashes_str    = string_io.getvalue(),
+      #clashscore_sym = results.clashscore_sym,
+      #clashes_str    = string_io.getvalue(),
       clashes_dict   = clashes._clashes_dict)
 
     return self._overlaps
