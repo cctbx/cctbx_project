@@ -1504,7 +1504,7 @@ Fourier image of specified resolution, etc.
                  d_min,
                  radius_max,
                  radius_step,
-                 mxp=5, epsc=0.001, kpres=0 # BCR params
+                 mxp=5, epsc=0.001, kpres=1, kprot=3 # BCR params
                  ):
     b_iso = 0 # Must always be 0! All image vals below are for b_iso=0 !!!
     from cctbx.maptbx.bcr import bcr
