@@ -4,6 +4,8 @@ import time
 from scitbx.array_family import flex
 import iotbx.map_manager
 from libtbx.test_utils import approx_equal
+import iotbx.pdb
+from cctbx import adptbx
 
 ######################################################
 #
@@ -12,131 +14,8 @@ from libtbx.test_utils import approx_equal
 #
 ######################################################
 
-def InputData(nflog) :
-
-#   come from the FileData
-
-    FileAtoms = 'Atom2_Orth.pdb'
-    FileMap   = 'Map_Orth_d25_B40.mrc'
-
-#    FileMap   = 'none'
-#    FileAtoms = 'Atom2_Orth_init.pdb'
-
-    FileOut   = 'NewMap.mrc'
-
-    RadFact = 2.0
-    RadAdd  = 0.5
-    Ngridx, Ngridy, Ngridz = 32,   40,   48
-
-#   default values of the parameters
-
-    acell,  bcell,  ccell  = 0.0, 0.0, 0.0
-    alpha,  beta ,  gamma  = 0.0, 0.0, 0.0
-    Mcol,   Mrow,   Msec   = 1,      2,      3
-    Startx, Starty, Startz = 0,      0,      0
-    Mmapx,  Mmapy,  Mmapz  = Ngridx, Ngridy, Ngridz
-    Dmin, Dmax, Dmean, Rmsd   = 0.0, 0.0, 0.0, 0.0
-    NumSpGr, BytesSG, FlagSkw = 0, 0, 0
-    stamp                     = b'DA\x00\x00'
-
-    cont_all = [0.0 for icon in range(66)]
-
-    Ncrs = [Mmapx , Mmapy , Mmapz]
-    Scrs = [Startx, Starty, Startz]
-    Nxyz = [Ngridx, Ngridy, Ngridz]
-    Mcrs = [Mcol,   Mrow,   Msec]
-    Uabc = [acell,  bcell,  ccell]
-    Uang = [alpha,  beta,   gamma]
-    symm = []
-
-    title = b' '*80
-
-    cont_all[0] , cont_all[1] , cont_all[2]  = Ncrs
-    cont_all[3]                              = 2
-    cont_all[4] , cont_all[5] , cont_all[6]  = Scrs
-    cont_all[7] , cont_all[8] , cont_all[9]  = Nxyz
-    cont_all[10], cont_all[11], cont_all[12] = Uabc
-    cont_all[13], cont_all[14], cont_all[15] = Uang
-    cont_all[16], cont_all[17], cont_all[18] = Mcrs
-    cont_all[19], cont_all[20], cont_all[21] = Dmin, Dmax, Dmean
-    cont_all[22], cont_all[23], cont_all[24] = NumSpGr, BytesSG, FlagSkw
-    cont_all[52]                             = b'MAP '
-    cont_all[53]                             = stamp
-    cont_all[54]                             = Rmsd
-    cont_all[55]                             = 0
-
-    for icon in range(56,66): cont_all[icon] = title
-
-#   calculated internal parameters
-
-    RadMu   = RadFact + RadAdd
-
-    Uang[0] = Uang[0] * math.pi/180.0
-    Uang[1] = Uang[1] * math.pi/180.0
-    Uang[2] = Uang[2] * math.pi/180.0
-
-#   save parameters
-
-    return RadFact, RadMu, Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all, FileMap, FileAtoms, FileOut
 
 #=====================================
-def GetAtomicModel(FileAtoms,Uabc,Uang) :
-
-    print("LOOK FileAtoms", FileAtoms)
-
-    nfatom = open(FileAtoms, 'r')
-
-    ModelValues = []
-    ModelTypes  = []
-
-    ScaleB = 1.0 / (8.0 * math.pi**2)
-
-#   read title
-
-    Line = nfatom.readline()
-    LineCut  = Line.rstrip('\n')
-    LineCont = LineCut.split()
-    acell, bcell, ccell = float(LineCont[1]), float(LineCont[2]), float(LineCont[3])
-    alpha, beta , gamma = float(LineCont[4]), float(LineCont[5]), float(LineCont[6])
-
-    if Uabc[0] == 0.0 :
-       Uabc    = [acell, bcell, ccell]
-       Uang[0] = alpha * math.pi/180.0
-       Uang[1] = beta  * math.pi/180.0
-       Uang[2] = gamma * math.pi/180.0
-
-    while (True) :
-        Line = nfatom.readline()
-        if not Line : break
-
-        LineCut  = Line.rstrip('\n')
-        LineCont = LineCut.split()
-        if len(LineCont) == 0 : break
-
-        xat = float(LineCont[6])
-        yat = float(LineCont[7])
-        zat = float(LineCont[8])
-        cat = float(LineCont[9])
-        bat = float(LineCont[10])
-        rat = float(LineCont[11])
-        tat =       LineCont[12]
-#
-        nat = bat * ScaleB
-
-#       save current line content
-
-        ModelValues.append([xat, yat, zat, cat, nat])
-        ModelTypes.append([tat, rat])
-
-    nfatom.close( )
-
-    print("LOOK ModelValues:",ModelValues)
-    print("LOOK ModelTypes:",ModelTypes)
-    print("LOOK Uabc,Uang:",Uabc,Uang)
-
-    return ModelValues,ModelTypes,Uabc,Uang
-
-#============================
 def GetMNKCoefficients(ModelTypes,RadFact,RadMu) :
 
 #   Array ModelTypes consists of a line per atom.
@@ -200,6 +79,11 @@ def FindTypes(ModelTypes) :
 #============================
 def GetDecomposition(Types,ResMin,ResMax) :
 
+    print(Types)
+    print(ResMin)
+    print(ResMax)
+    #STOP()
+
     Ntypes = len(Types)
 
     ScaleB = 1.0 / (8.0 * math.pi**2)
@@ -244,6 +128,7 @@ def GetDecomposition(Types,ResMin,ResMax) :
            else :
               if TakeLine :
                  mu, sigma, kappa = float(LineCont[1]), float(LineCont[2]), float(LineCont[3])
+                 print("mu, sigma, kappa", mu, sigma, kappa)
                  nu    = sigma * ScaleB
                  musq  = mu * mu
                  kappi = kappa / math.pi**1.5
@@ -251,6 +136,7 @@ def GetDecomposition(Types,ResMin,ResMax) :
                  iterm = iterm + 1
 
         nfterms.close()
+
 
     return TermsDecomp, TypeStart, ResTerms, PosTerms
 
@@ -329,17 +215,14 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
     return GradMap
 
 #=====================================
-def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) :
-    print()
-    print("Ncrs:", Ncrs)
-    print("Scrs:", Scrs)
-    print("Nxyz:", Nxyz)
-    print("Uabc:", Uabc)
-    print("Uang:", Uang)
-    print()
+def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, Scrs, Nxyz, unit_cell) :
 
-
-    Natoms = len(ModelValues)
+    print(len(TermsDecomp))
+    for it in TermsDecomp:
+      print("TermsDecomp", it)
+    print()
+    print("TermsAtom  ", TermsAtom)
+    print()
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
     OrthMatrix  = unit_cell.orthogonalization_matrix()
@@ -378,7 +261,7 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) 
 
     OmegaMap = [[[ 0.0 for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
 
-    for iatom in range(Natoms) :
+    for iatom in range(sites_cart.size()) :
 
         RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
         RadAtom2  = RadAtom   * RadAtom
@@ -386,7 +269,9 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) 
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        xat, yat, zat, cat, bat = ModelValues[iatom]
+        r = sites_cart[iatom]
+        xat, yat, zat = r[0], r[1], r[2]
+        cat, bat = occupancy[iatom], adp_as_u[iatom]
 
 #       get parameters of the box around the atom
 
@@ -457,6 +342,7 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) 
 
         for iterm in range(Nterms1, Nterms2) :
             mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
+            print("mu, nu, kappa, musq, kappi", mu, nu, kappa, musq, kappi,"RadAtom", RadAtom)
             nuatom  = nu + bat
             nuatom2 = nuatom + nuatom
             fact1   = kappi / nuatom2**1.5
@@ -485,7 +371,7 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) 
                    argg  = (rzyx-mu)**2 / nuatom2
                    fact2 = math.exp(-argg) * (1.0 - math.exp(-tterm)) / tterm
                    GridValues[ig] = GridValues[ig] + fact1 * fact2
-
+        print()
 #       unpack values array
 
         for ig in range(Ngrids) :
@@ -499,7 +385,7 @@ def CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell) 
     return OmegaMap
 
 #=====================================
-def CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell):
+def CalcGradAtom(GradMap, sites_cart, adp_as_u, occupancy,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell):
 
     Natoms = len(ModelValues)
 
@@ -548,7 +434,9 @@ def CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, uni
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        xat, yat, zat, cat, bat = ModelValues[iatom]
+        r = sites_cart[iatom]
+        xat, yat, zat = r[0], r[1], r[2]
+        cat, bat = occupancy[iatom], adp_as_u[iatom]
 
 #       get parameters of the box around the atom
 
@@ -712,69 +600,6 @@ def AtomBox(xfrac,yfrac,zfrac,RadAtomX,RadAtomY,RadAtomZ,StepX,StepY,StepZ,Sx,Sy
 
     return Kx1,Kx2,Ky1,Ky2,Kz1,Kz2,dxf,dyf,dzf
 
-#=====================================
-def Deorth(xat,yat,zat,DeortMatrix) :
-
-    xfrac = xat * DeortMatrix[0] + yat * DeortMatrix[3] + zat * DeortMatrix[6]
-    yfrac = xat * DeortMatrix[1] + yat * DeortMatrix[4] + zat * DeortMatrix[7]
-    zfrac = xat * DeortMatrix[2] + yat * DeortMatrix[5] + zat * DeortMatrix[8]
-
-    return xfrac, yfrac, zfrac
-
-#=====================================
-def GetOrthDeorth(Uabc,Uang) :
-
-    DeortMatrix = [0.0 for i in range(9)]
-    OrthMatrix  = [0.0 for i in range(9)]
-
-    acell, bcell, ccell = Uabc
-    alpr,  betr,  gamr  = Uang
-
-#   deorthogonalization matrix (Angstroms -> fract.coord)
-
-    calr = math.cos(alpr)
-    salr = math.sin(alpr)
-    cber = math.cos(betr)
-    sber = math.sin(betr)
-    cgar = math.cos(gamr)
-    sgar = math.sin(gamr)
-
-    cha = (calr-cber*cgar) / (sber*sgar)
-    if cha >  1.0 : cha=  1.0
-    if cha < -1.0 : cha= -1.0
-    sha = math.sqrt(1.0 - cha*cha)
-
-    chb =(cber-calr*cgar) /( salr*sgar)
-    if chb >  1.0 : chb =  1.0
-    if chb < -1.0 : chb = -1.0
-    shb = math.sqrt(1.0 - chb*chb)
-
-    chg = (cgar-calr*cber) / (sgar*sber)
-    if chg >  1.0 : chg =  1.0
-    if chg< -1.0  : chg = -1.0
-    shg = math.sqrt(1.0 - chg*chg)
-
-#   calcualtion of the matrices
-
-    acelli, bcelli, ccelli = 1.0/acell , 1.0/bcell , 1.0/ccell
-
-    DeortMatrix[0] =  acelli
-    DeortMatrix[3] = -acelli * cgar       /  sgar
-    DeortMatrix[4] =  bcelli              /  sgar
-    DeortMatrix[6] = -acelli * salr * chb / (sgar * sber * sha)
-    DeortMatrix[7] = -bcelli * cha        / (sgar * sha)
-    DeortMatrix[8] =  ccelli              / (sber * sha)
-
-#   orthogonalization matrix (fract.coord -> angstroms)
-
-    OrthMatrix[0] = acell
-    OrthMatrix[3] = bcell * cgar
-    OrthMatrix[4] = bcell * sgar
-    OrthMatrix[6] = ccell * cber
-    OrthMatrix[7] = ccell * sber * cha
-    OrthMatrix[8] = ccell * sber * sha
-
-    return DeortMatrix, OrthMatrix
 
 
 ####################################################
@@ -787,7 +612,11 @@ time_t01 = time.time()
 
 nflog = open('omega_refine.log', 'w')
 
-RadFact,RadMu,Ncrs,Scrs,Nxyz,Uabc,Uang,cont_all,FileMap,FileAtoms,FileOut = InputData(nflog)
+FileMap   = 'Map_Orth_d25_B40.mrc'
+RadFact = 2.0
+RadAdd  = 0.5
+RadMu   = RadFact + RadAdd
+FileOut   = 'NewMap.mrc'
 
 print('Read control / experimental map...')
 
@@ -800,14 +629,24 @@ Uabc = unit_cell.parameters()[:3]
 Uang = unit_cell.parameters()[3:]
 Uang = [it*math.pi/180. for it in Uang]
 
-
 Mx,My,Mz = Nxyz
 ControlMap = [[[ mm.map_data()[ix,iy,iz] for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
 
+atoms = iotbx.pdb.input(file_name = "Atom2_orth.pdb").construct_hierarchy().atoms()
+sites_cart = atoms.extract_xyz()
+adp_as_u = atoms.extract_b()*adptbx.b_as_u(1.)
+occupancy= atoms.extract_occ()
 
 print('Read atomic model...')
 
-ModelValues,ModelTypes,Uabc,Uang = GetAtomicModel(FileAtoms,Uabc,Uang)
+
+ModelValues = []
+ModelTypes = []
+for s, b, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
+  ModelValues.append([s, b, o])
+  ModelTypes.append([e.upper().strip(), 2.5])
+  print(e)
+
 
 #=============== principal part ==========
 
@@ -842,12 +681,16 @@ ModelValues,ModelTypes,Uabc,Uang = GetAtomicModel(FileAtoms,Uabc,Uang)
 
 TermsAtom, TermsDecomp = GetMNKCoefficients(ModelTypes,RadFact,RadMu)
 
-OmegaMap = CalcOmegaMap(ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz, unit_cell)
+
+
+
+
+OmegaMap = CalcOmegaMap(sites_cart, adp_as_u, occupancy,  TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz, unit_cell)
 
 FuncMap  = CalcFuncMap(OmegaMap, ControlMap, Ncrs)
 GradMap  = CalcGradMap(OmegaMap, ControlMap, Ncrs)
 
-GradAtom = CalcGradAtom(GradMap,ModelValues,TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell)
+GradAtom = CalcGradAtom(GradMap,  sites_cart, adp_as_u, occupancy,  TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell)
 
 #=============== output results ======================================
 
