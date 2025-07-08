@@ -9,6 +9,9 @@ from sklearn.neighbors import KernelDensity
 import sys
 from scipy.optimize import minimize
 
+import matplotlib
+matplotlib.use('TkAgg')
+
 
 counter = 0
 
@@ -54,39 +57,50 @@ class ManualClusterer:
 ##        self.fig3.canvas.manager.window.move(0, 600)
 #
 #        plt.show()
-
     def select_triplets(self):
         """Run the interactive selection process and return the selected triplets."""
         # Create the three windows with specific sizes
-        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,3))
-        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16,3))
-        self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection', 
-                                                                    figsize=(16,3))
-        
+        self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,2.5))
+        self.fig2, self.ax2 = plt.subplots(num='Step 2: 2D Selection', figsize=(16,2.5))
+        self.fig3, (self.ax3a, self.ax3b, self.ax3c) = plt.subplots(1, 3, num='Step 3: Final Selection',
+                                                                    figsize=(16,2.5))
+
+        # Set window positions to stack them vertically
+        backend = plt.get_backend()
+        assert 'Tk' in backend
+        manager1 = self.fig1.canvas.manager
+        manager2 = self.fig2.canvas.manager
+        manager3 = self.fig3.canvas.manager
+        dpi = self.fig1.dpi
+        height1 = int(2.5 * dpi)  # 3 inches * dpi
+
+        # Position windows with some spacing
+        self.fig1.canvas.manager.window.wm_geometry("+100+50")
+        self.fig2.canvas.manager.window.wm_geometry(f"+100+{50 + height1 + 40}")
+        self.fig3.canvas.manager.window.wm_geometry(f"+100+{50 + 2*height1 + 80}")
+
         # Set fixed subplot sizes
         self.fig3.set_tight_layout(False)
-#        for i, ax in enumerate([self.ax3a, self.ax3b, self.ax3c]):
-#            ax.set_position([0.1 + i*0.3, 0.1, 0.25, 0.25])
-        
+
         # Initialize the first window
         self.show_histogram()
-        
+
         # Set up the done button
         done_ax = self.fig3.add_axes([0.9, 0.01, 0.09, 0.05])
         self.done_button = plt.Button(done_ax, 'Done')
         self.done_button.on_clicked(self.on_done)
-        
+
         # Flag to track when selection is complete
         self.selection_done = False
-        
+
         # Show plots and wait for user interaction
         plt.show(block=True)
-        
+
         # Close all figures
         plt.close(self.fig1)
         plt.close(self.fig2)
         plt.close(self.fig3)
-        
+
         # Return the selected triplets
         return self.selected_triplets
 

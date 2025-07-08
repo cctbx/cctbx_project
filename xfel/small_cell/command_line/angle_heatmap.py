@@ -1,5 +1,4 @@
 
-# LIBTBX_SET_DISPATCHER_NAME cctbx.xfel.powder_from_spots
 from __future__ import division
 import logging
 from iotbx.phil import parse
