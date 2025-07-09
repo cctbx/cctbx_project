@@ -209,15 +209,18 @@ namespace boost_python {
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 1> >();
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 2> >();
       tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 3> >();
+      tuple_mapping_fixed_size<af::tiny<asu_parameter::scatterer_type *, 6> >();
       tuple_mapping_variable_capacity<af::shared<site_parameter *> >();
     }
     //                                    #H  #staggered?
     terminal_tetrahedral_xhn_sites_wrapper<1, false>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<2, false>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<3, false>::wrap();
+    terminal_tetrahedral_xhn_sites_wrapper<6, false>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<1, true>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<2, true>::wrap();
     terminal_tetrahedral_xhn_sites_wrapper<3, true>::wrap();
+    terminal_tetrahedral_xhn_sites_wrapper<6, true>::wrap();
 
     angle_parameter_wrapper::wrap();
     secondary_xh2_sites_wrapper::wrap();
