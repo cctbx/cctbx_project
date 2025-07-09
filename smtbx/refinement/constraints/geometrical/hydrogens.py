@@ -136,6 +136,12 @@ class terminal_tetrahedral_xh3_sites(terminal_tetrahedral_xhn_site):
                                    'N' : 0.89,
                                    }
 
+class terminal_tetrahedral_xh6_sites(terminal_tetrahedral_xhn_site):
+  n_constrained_sites = 6
+  room_temperature_bond_length = { 'C' : 0.96,
+                                   'N' : 0.89,
+                                   }
+
 
 class tertiary_xh_site(hydrogens):
 
