@@ -87,6 +87,9 @@ def test_01():
   new_ncs=mmmn.ncs_object()
   assert tuple(mmmn._map_manager.origin_shift_grid_units) == (100,100,100)
 
+  mmmn.write_model('s.pdb')
+  mmmn.write_map('s.mrc')
+
   shifted_ncs=mmmn.ncs_object()
   assert approx_equal((-153.758, -74.044, -127.487),
       tuple(shifted_ncs.ncs_groups()[0].translations_orth()[-1]),eps=0.1)
