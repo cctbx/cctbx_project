@@ -634,7 +634,11 @@ class map_manager(map_reader, write_ccp4_map):
 
     # Don't do anything and stop here if required origin is the same as in self
     alleq = all(a == b for a, b in zip(self.map_data().origin(), desired_origin))
-    if alleq or apply_external_origin_if_present is False: return
+    if alleq:
+      if (not apply_external_origin_if_present):
+        return
+      elif tuple(self.external_origin) == (0, 0, 0):
+        return
 
     # Figure out what the shifts are (in grid units)
     shift_info = self._get_shift_info(desired_origin = desired_origin,
