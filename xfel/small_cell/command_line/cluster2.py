@@ -57,7 +57,151 @@ class ManualClusterer:
 ##        self.fig3.canvas.manager.window.move(0, 600)
 #
 #        plt.show()
-    def select_triplets(self):
+
+    def select_qvals(self, title="Select q-value ranges"):
+        """
+        Simple q-value selection mode using 1D histogram on dimension 0.
+        
+        Parameters:
+        -----------
+        title : str
+            Title for the histogram window
+        
+        Returns:
+        --------
+        list : Selected q-values (medians of selected ranges)
+        """
+        # Create figure for histogram
+        self.fig_qval, self.ax_qval = plt.subplots(num='Q-value Selection', figsize=(16, 4))
+        
+        # Initialize list to store selected q-values
+        self.selected_qvals = []
+        self.qval_spans = []  # Store span patches for visualization
+        
+        # Plot histogram
+        self._plot_qval_histogram(title)
+        
+        # Set up span selector
+        self.qval_span = SpanSelector(
+            self.ax_qval,
+            self._on_qval_span_select,
+            'horizontal',
+            useblit=True,
+            props=dict(alpha=0.5, facecolor='blue')
+        )
+        
+        # Add done button
+        done_ax = self.fig_qval.add_axes([0.9, 0.01, 0.09, 0.05])
+        self.qval_done_button = plt.Button(done_ax, 'Done')
+        self.qval_done_button.on_clicked(self._on_qval_done)
+        
+        # Add clear button
+        clear_ax = self.fig_qval.add_axes([0.8, 0.01, 0.09, 0.05])
+        self.qval_clear_button = plt.Button(clear_ax, 'Clear Last')
+        self.qval_clear_button.on_clicked(self._on_qval_clear_last)
+        
+        # Connect key press events
+        self.fig_qval.canvas.mpl_connect('key_press_event', self._on_qval_key_press)
+        
+        # Show plot and wait for user interaction
+        plt.show(block=True)
+        
+        # Close figure
+        plt.close(self.fig_qval)
+        
+        return self.selected_qvals
+
+    def _plot_qval_histogram(self, title):
+        """Plot histogram for q-value selection."""
+        self.ax_qval.clear()
+        
+        # Create histogram
+        hist, edges = np.histogram(self.data[:, 0], bins=2000, range=(.1, .5))
+        self.ax_qval.plot(edges[:-1], hist)
+        self.ax_qval.set_title(title)
+        self.ax_qval.set_xlabel('q-value')
+        self.ax_qval.set_ylabel('Count')
+        
+        # Add tick marks for previously selected q-values
+        if self.qvals_1 is not None:
+            self.ax_qval.plot(self.qvals_1, np.zeros_like(self.qvals_1),
+                             '|', color='blue', markersize=25, markeredgewidth=2, label='qvals_1')
+        if self.qvals_2 is not None:
+            self.ax_qval.plot(self.qvals_2, np.zeros_like(self.qvals_2),
+                             '|', color='red', markersize=25, markeredgewidth=2, label='qvals_2')
+        
+        # Plot already selected q-values from this session
+        if self.selected_qvals:
+            self.ax_qval.plot(self.selected_qvals, np.zeros_like(self.selected_qvals),
+                             'o', color='purple', markersize=10, label='Selected')
+        
+        # Redraw span patches
+        for patch in self.qval_spans:
+            self.ax_qval.add_patch(patch)
+        
+        if any([self.qvals_1 is not None, self.qvals_2 is not None, self.selected_qvals]):
+            self.ax_qval.legend()
+        
+        self.fig_qval.canvas.draw_idle()
+
+    def _on_qval_span_select(self, xmin, xmax):
+        """Handle span selection for q-values."""
+        # Select data within the span
+        mask = (self.data[:, 0] >= xmin) & (self.data[:, 0] <= xmax)
+        selected_data = self.data[mask, 0]
+        
+        if len(selected_data) > 0:
+            # Calculate median of selected range
+            median_qval = np.median(selected_data)
+            
+            # Add to selected q-values
+            self.selected_qvals.append(median_qval)
+            
+            # Create span patch for visualization
+            ylims = self.ax_qval.get_ylim()
+            span_patch = Rectangle((xmin, ylims[0]), xmax-xmin, ylims[1]-ylims[0],
+                                  alpha=0.2, color='purple')
+            self.qval_spans.append(span_patch)
+            
+            # Update plot
+            self._plot_qval_histogram(self.ax_qval.get_title())
+            
+            print(f"Selected q-value: {median_qval:.6f} (from {len(selected_data)} points in range [{xmin:.6f}, {xmax:.6f}])")
+            
+            # Save to file
+            with open('selected_qvals.txt', 'a') as f:
+                f.write(f"{median_qval:.6f}\n")
+
+    def _on_qval_clear_last(self, event):
+        """Remove the last selected q-value."""
+        if self.selected_qvals:
+            removed = self.selected_qvals.pop()
+            if self.qval_spans:
+                self.qval_spans.pop()
+            print(f"Removed q-value: {removed:.6f}")
+            
+            # Update plot
+            self._plot_qval_histogram(self.ax_qval.get_title())
+
+    def _on_qval_key_press(self, event):
+        """Handle key press events for q-value selection."""
+        if event.key == 'c':
+            # Clear last selection (same as button)
+            self._on_qval_clear_last(None)
+        elif event.key == 'd' or event.key == 'enter':
+            # Done selecting (same as button)
+            self._on_qval_done(None)
+        elif event.key == 'escape':
+            # Cancel and close without saving
+            self.selected_qvals = []
+            plt.close(self.fig_qval)
+
+    def _on_qval_done(self, event):
+        """Called when Done button is clicked for q-value selection."""
+        print(f"Selected {len(self.selected_qvals)} q-values: {self.selected_qvals}")
+        plt.close(self.fig_qval)
+
+    def select_triplets(self, title=None):
         """Run the interactive selection process and return the selected triplets."""
         # Create the three windows with specific sizes
         self.fig1, self.ax1 = plt.subplots(num='Step 1: Histogram Selection', figsize=(16,2.5))
@@ -83,7 +227,7 @@ class ManualClusterer:
         self.fig3.set_tight_layout(False)
 
         # Initialize the first window
-        self.show_histogram()
+        self.show_histogram(title=title)
 
         # Set up the done button
         done_ax = self.fig3.add_axes([0.9, 0.01, 0.09, 0.05])
@@ -197,11 +341,13 @@ class ManualClusterer:
 
         print(f"Found {len(self.kde_maxima)} KDE maxima from {n_sample} sampled points")
 
-    def show_histogram(self):
+    def show_histogram(self, title=None):
         self.ax1.clear()
         hist, edges = np.histogram(self.data[:,0], bins=2000, range=(.1,.5))
         self.ax1.plot(edges[:-1], hist)
-        self.ax1.set_title('Select range in histogram')
+        if title is None:
+            title = "Select range in histogram"
+        self.ax1.set_title(title)
         
         # Add tick marks for KDE maxima if available
         if hasattr(self, 'kde_maxima'):

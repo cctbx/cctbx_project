@@ -10,6 +10,7 @@ from tqdm import tqdm
 class SpotPair:
 
     def __init__(self, q1: float, q2: float, theta: float, preserve_order=False):
+        """Just q1, q2, theta. Theta is in radians."""
         # Ensure q1 <= q2
         if not preserve_order and q1 > q2:
             q1, q2 = q2, q1
@@ -296,7 +297,8 @@ def find_best_third_vector(v3_candidates: Tuple[np.ndarray, np.ndarray],
 
 class Basis:
     def __init__(self, vectors: np.ndarray, qmax: float, 
-                 q_tolerance: float = 0.001, theta_tol_degrees: float = 1.0):
+                 q_tolerance: float = 0.001, theta_tol_degrees: float = 1.0,
+                 symmetry=None, centering=None):
         self.vectors = vectors
         self.qmax = qmax
         self.q_tolerance = q_tolerance
@@ -305,10 +307,12 @@ class Basis:
         self.point_indices = None
         self.pairs = None
         self.indexed_pairs = []
+        self.symmetry = symmetry
+        self.centering = centering
 
     @classmethod
     def from_vectors(cls, vectors: np.ndarray, reduce=True, qmax:float = 0.5, q_tol: float = 0.001,
-                     theta_tol_deg: float = 1.0):
+                     theta_tol_deg: float = 1.0, symmetry=None, centering=None):
         assert vectors.shape in ((2,2), (3,3))
         if vectors.shape == (2,2):
             temp_basis = Basis2d(vectors, qmax, q_tol, theta_tol_deg)
@@ -335,7 +339,7 @@ class Basis:
             return Basis2d(reduced_vectors, qmax, q_tol, theta_tol_deg)
 
         elif vectors.shape == (3,3):
-            temp_basis = Basis3d(vectors, qmax, q_tol, theta_tol_deg)
+            temp_basis = Basis3d(vectors, qmax, q_tol, theta_tol_deg, symmetry, centering)
 
             if not reduce: # Short circuit
                 return temp_basis
@@ -360,8 +364,40 @@ class Basis:
                         reduced_vectors.append(p)
                         break
             reduced_vectors = np.vstack(reduced_vectors)
-            return Basis3d(reduced_vectors, qmax, q_tol, theta_tol_deg)
+            return Basis3d(reduced_vectors, qmax, q_tol, theta_tol_deg, symmetry, centering)
 
+    @classmethod
+    def from_crystal_symmetry(cls, cs, **init_kwargs):
+        # Make cell vectors in conventional orientation
+        q1, q2, q3, alpha_star, beta_star, gamma_star = cs.unit_cell().reciprocal_parameters()
+        alpha_star_rad = np.radians(alpha_star)
+        beta_star_rad = np.radians(beta_star)
+        gamma_star_rad = np.radians(gamma_star)
+        # Create basis vectors using crystallographic conventions
+        # First vector along x
+        v1 = np.array([q1, 0.0, 0.0])
+
+        # Second vector in xy plane
+        v2 = q2 * np.array([np.cos(gamma_star_rad),
+                           np.sin(gamma_star_rad),
+                           0.0])
+
+        # Third vector using all angles
+        cx = np.cos(beta_star_rad)
+        cy = (np.cos(alpha_star_rad) -
+             np.cos(beta_star_rad)*np.cos(gamma_star_rad))/np.sin(gamma_star_rad)
+        cz = np.sqrt(1.0 - cx*cx - cy*cy)
+        v3 = q3 * np.array([cx, cy, cz])
+
+        vectors = np.vstack([v1, v2, v3])
+        cr_system = cs.space_group().crystal_system()
+        centering = cs.space_group_info().symbol_and_number()[0]
+        result = cls.from_vectors(vectors, reduce=False, symmetry=cr_system,
+                                  centering=centering, **init_kwargs)
+        return result
+
+
+        
     @classmethod
     def from_params(cls, *params, reduce=True, **init_kwargs):
         """
@@ -493,103 +529,6 @@ class Basis:
 
         return pct_matched
 
-    def generate_points_and_pairs_fast_old(self):
-        """Generate unique lattice point pairs using matrix operations for efficiency."""
-        # Generate points
-        max_indices = np.ceil(self.qmax / np.linalg.norm(self.vectors, axis=1))
-        ranges = [np.arange(-n, n+1) for n in max_indices.astype(int)]
-
-        # For 2D case
-        if len(ranges) == 2:
-            # Only use positive h values (for non-zero h)
-            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
-            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
-        else:  # 3D case
-            h_range = np.concatenate([[0], np.arange(1, max_indices[0] + 1)])
-            k_range = np.arange(-max_indices[1], max_indices[1] + 1)
-            l_range = np.arange(-max_indices[2], max_indices[2] + 1)
-
-        # Mesh grid for indices
-        if len(ranges) == 2:
-            H, K = np.meshgrid(h_range, k_range, indexing='ij')
-            indices = np.column_stack((H.flatten(), K.flatten()))
-        else:  # 3D
-            H, K, L = np.meshgrid(h_range, k_range, l_range, indexing='ij')
-            indices = np.column_stack((H.flatten(), K.flatten(), L.flatten()))
-
-        # Generate points
-        points = indices @ self.vectors
-        self.points = points
-
-        # Filter by magnitude
-        magnitudes = np.linalg.norm(points, axis=1)
-        mask = (magnitudes <= self.qmax) & (magnitudes > 0)  # Exclude origin
-
-        # Keep only points within qmax
-        filtered_points = points[mask]
-        filtered_indices = indices[mask]
-        filtered_magnitudes = magnitudes[mask]
-
-        self.points = filtered_points
-        self.point_indices = filtered_indices
-
-        # Sort by magnitude
-        sort_idx = np.argsort(filtered_magnitudes)
-        sorted_points = filtered_points[sort_idx]
-        sorted_indices = filtered_indices[sort_idx]
-        sorted_magnitudes = filtered_magnitudes[sort_idx]
-
-        # Create normalized vectors for dot product
-        normalized_points = sorted_points / sorted_magnitudes[:, np.newaxis]
-
-        # Calculate all pairwise dot products (for normal points)
-        n_points = len(sorted_points)
-        dot_products = np.dot(normalized_points, normalized_points.T)
-
-        # Create inverted indices (-h,-k,...)
-        inverted_indices = -sorted_indices
-        inverted_points = inverted_indices @ self.vectors
-
-        # Normalize inverted points
-        inverted_magnitudes = np.linalg.norm(inverted_points, axis=1)
-        normalized_inverted = inverted_points / inverted_magnitudes[:, np.newaxis]
-
-        # Calculate dot products between normal and inverted points
-        mixed_dot_products = np.dot(normalized_points, normalized_inverted.T)
-
-        # Get upper triangle indices (excluding diagonal)
-        rows, cols = np.triu_indices(n_points, k=1)
-
-        # Normal pairs
-        q1_normal = sorted_magnitudes[rows]
-        q2_normal = sorted_magnitudes[cols]
-        hkl1_normal = sorted_indices[rows]
-        hkl2_normal = sorted_indices[cols]
-        theta_normal = np.arccos(np.clip(dot_products[rows, cols], -1, 1))
-
-        # Inverted pairs
-        q1_inverted = sorted_magnitudes[rows]
-        q2_inverted = sorted_magnitudes[cols]  # Magnitude is the same for ±hkl
-        hkl1_inverted = sorted_indices[rows]
-        hkl2_inverted = inverted_indices[cols]
-        theta_inverted = np.arccos(np.clip(mixed_dot_products[rows, cols], -1, 1))
-
-        # Stack normal and inverted pairs
-        self.q1_values = np.concatenate([q1_normal, q1_inverted])
-        self.q2_values = np.concatenate([q2_normal, q2_inverted])
-        self.theta_values = np.concatenate([theta_normal, theta_inverted])
-        self.hkl1_values = np.vstack([hkl1_normal, hkl1_inverted])
-        self.hkl2_values = np.vstack([hkl2_normal, hkl2_inverted])
-
-        # Ensure q1 <= q2
-        swap_mask = self.q1_values > self.q2_values
-        if np.any(swap_mask):
-            raise RuntimeError
-            # Swap q values
-            self.q1_values[swap_mask], self.q2_values[swap_mask] = self.q2_values[swap_mask], self.q1_values[swap_mask].copy()
-
-            # Swap hkl values
-            self.hkl1_values[swap_mask], self.hkl2_values[swap_mask] = self.hkl2_values[swap_mask], self.hkl1_values[swap_mask].copy()
 
     def generate_points_and_pairs_fast(self):
         """Generate unique lattice point pairs preserving q1 ordering."""
@@ -609,6 +548,23 @@ class Basis:
             l_range = np.arange(-max_indices[2], max_indices[2] + 1)
             H, K, L = np.meshgrid(h_range, k_range, l_range, indexing='ij')
             indices = np.column_stack((H.flatten(), K.flatten(), L.flatten()))
+
+        # Filter indices by centering type
+
+        lattice_condition_dict = {
+            None: lambda x: True,
+            'P': lambda x: True,
+            'A': lambda x: (x[1] + x[2]) % 2 == 0,
+            'B': lambda x: (x[0] + x[2]) % 2 == 0,
+            'C': lambda x: (x[0] + x[1]) % 2 == 0,
+            'I': lambda x: (x[0] + x[1] + x[2]) % 2 == 0,
+            'F': lambda x: x[0]%2 == x[1]%2 == x[2]%2,
+            'hR': lambda x: (-x[0] + x[1] + x[2]) % 3 == 0
+        }
+        lattice_condition = lattice_condition_dict[self.centering]
+        lattice_mask = np.array([lattice_condition(row) for row in indices])
+        indices = indices[lattice_mask]
+
 
         # Generate points
         points = indices @ self.vectors
@@ -803,7 +759,7 @@ class Basis2d(Basis):
             return OneVectorMatch(self.point_indices[i_best], q1, q2, pair.theta), 'one_vector'
         return None, 'unindexed'
 
-    def flag_outliers(self, multiplier=2, q_weight=1000, theta_weight=1):
+    def flag_outliers(self, multiplier=2, q_weight=1000, theta_weight=111):
         self.pairs_costs = []
         for p in self.all_pairs:
             if p[2]=='indexed_2d':
@@ -814,7 +770,7 @@ class Basis2d(Basis):
         max_delta = np.median([pc[1] for pc in self.pairs_costs]) * multiplier
         for p, c in self.pairs_costs:
             p[1].is_outlier = c > max_delta
-    def plot_costs(self, q_weight=1000, theta_weight=1):
+    def plot_costs(self, q_weight=1000, theta_weight=111, cost_max=2):
         costs = [pc[1] for pc in self.pairs_costs]
         costs_inlier = [pc[1] for pc in self.pairs_costs if not pc[0][1].is_outlier]
         costs_outlier = [pc[1] for pc in self.pairs_costs if pc[0][1].is_outlier]
@@ -823,7 +779,7 @@ class Basis2d(Basis):
 #              self.sub_basis.vectors, p, q_weight, theta_weight, use_outliers=True))
 #        costs_inlier = [c for c,p in zip(costs, self.sublattice_indexed) if not p.is_outlier]
 #        costs_outlier = [c for c,p in zip(costs, self.sublattice_indexed) if p.is_outlier]
-        bins = np.linspace(0, 2, 50)
+        bins = np.linspace(0, cost_max, 50)
         plt.hist(costs_inlier, bins=bins)
         plt.hist(costs_outlier, bins=bins, color='red')
         plt.show()
@@ -853,7 +809,7 @@ class Basis2d(Basis):
         return abs(np.cross(*self.vectors))
 
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
-                         q_weight: float = 1.0, theta_weight: float = 1.0, use_outliers=False) -> float:
+                         q_weight: float = 1.0, theta_weight: float = 111.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
         if pair.is_outlier and not use_outliers: return 0
         # Compute q-vectors from Miller indices
@@ -873,7 +829,7 @@ class Basis2d(Basis):
 
         return q_weight * q_error + theta_weight * theta_error
 
-    def cost(self, params, pairs, q_weight=1000, theta_weight=1.0):
+    def cost(self, params, pairs, q_weight=1000, theta_weight=111.0):
         """Total cost for given lattice parameters."""
         a_star, b_star, gamma_star = params
 
@@ -886,7 +842,7 @@ class Basis2d(Basis):
         return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
                   for pair in pairs)
 
-    def plot_cost_histogram(self, pairs=None, q_weight=1000, theta_weight=1.0):
+    def plot_cost_histogram(self, pairs=None, q_weight=1000, theta_weight=111.0):
 
         if pairs is None:
             pairs = [p[1] for p in self.all_pairs if p[2]=='indexed_2d']
@@ -902,7 +858,8 @@ class Basis2d(Basis):
         costs = [self.compute_pair_cost(basis_vectors, p, q_weight, theta_weight) for p in pairs]
         plt.hist(costs, bins=100)
         plt.show()
-    def refine(self, pairs=None, q_weight: float = 1000.0, theta_weight: float = 1.0) -> None:
+
+    def refine(self, pairs=None, q_weight: float = 1000.0, theta_weight: float = 111.0) -> None:
         """Refine lattice parameters in place."""
 
         if pairs is None:
@@ -1029,7 +986,7 @@ class Basis3d(Basis):
                 hits += 1
         return hits/all
 
-    def flag_outliers(self, multiplier=2, q_weight=1000, theta_weight=1):
+    def flag_outliers(self, multiplier=2, q_weight=1000, theta_weight=111):
         self.pairs_costs = []
         for p in self.all_pairs:
             if p[2]=='indexed_3d':
@@ -1040,7 +997,8 @@ class Basis3d(Basis):
         max_delta = np.median([pc[1] for pc in self.pairs_costs]) * multiplier
         for p, c in self.pairs_costs:
             p[1].is_outlier = c > max_delta
-    def plot_costs(self, q_weight=1000, theta_weight=1):
+
+    def plot_costs(self, q_weight=1000, theta_weight=111):
         costs = [pc[1] for pc in self.pairs_costs]
         costs_inlier = [pc[1] for pc in self.pairs_costs if not pc[0][1].is_outlier]
         costs_outlier = [pc[1] for pc in self.pairs_costs if pc[0][1].is_outlier]
@@ -1053,6 +1011,25 @@ class Basis3d(Basis):
         plt.hist(costs_inlier, bins=bins)
         plt.hist(costs_outlier, bins=bins, color='red')
         plt.show()
+
+    def plot_costs_components(self, q_weight=1000, theta_weight=111):
+        theta_costs, q_costs = [],[]
+        for p in self.all_pairs:
+            if p[2]=='indexed_3d':
+                theta_costs.append(
+                    self.compute_pair_cost(self.vectors, p[1], q_weight=0, theta_weight=theta_weight)
+                )
+                q_costs.append(
+                    self.compute_pair_cost(self.vectors, p[1], q_weight, theta_weight=0)
+                )
+        bins = np.linspace(0, 2, 50)
+        fig, (ax1, ax2) = plt.subplots(2,1)
+        plt.title('Costs (theta first)')
+        ax1.hist(theta_costs, bins=bins)
+        ax2.hist(q_costs, bins=bins)
+        plt.show()
+
+
     def volume(self) -> float:
         """Calculate the volume of the reciprocal space unit cell.
 
@@ -1078,13 +1055,13 @@ class Basis3d(Basis):
         direct = self.compute_direct_cell_params(self.vectors)
 
         return \
-            f"Reciprocal cell:\n" + \
-            f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n" + \
-            f"  α*={alpha_star:.2f}°, β*={beta_star:.2f}°, γ*={gamma_star:.2f}°\n" + \
             f"Direct cell:\n" + \
             f"  a={direct['a']:.3f}, b={direct['b']:.3f}, c={direct['c']:.3f} Å\n" + \
             f"  α={direct['alpha']:.2f}°, β={direct['beta']:.2f}°, γ={direct['gamma']:.2f}°\n" + \
             ','.join( [str(round(direct[x], 3)) for x in ['a','b','c','alpha','beta','gamma']] )
+            #f"Reciprocal cell:\n" + \
+            #f"  a*={a_star:.3f}, b*={b_star:.3f}, c*={c_star:.3f} Å⁻¹\n" + \
+            #f"  α*={alpha_star:.2f}°, β*={beta_star:.2f}°, γ*={gamma_star:.2f}°\n" + \
 
 
     def compute_direct_cell_params(self, recip_basis: np.ndarray) -> dict:
@@ -1317,7 +1294,7 @@ class Basis3d(Basis):
         return results
 
     def compute_pair_cost(self, basis_vectors: np.ndarray, pair: PairMatch2d,
-                         q_weight: float = 1.0, theta_weight: float = 1.0, use_outliers=False) -> float:
+                         q_weight: float = 1.0, theta_weight: float = 111.0, use_outliers=False) -> float:
         """Compute cost for a single indexed pair using Miller indices."""
         if not use_outliers and pair.is_outlier: return 0
         # Compute q-vectors from Miller indices
@@ -1365,7 +1342,7 @@ class Basis3d(Basis):
 
         return np.vstack([v1, v2, v3])
 
-    def cost(self, params, pairs, q_weight=1000, theta_weight=1.0):
+    def cost(self, params, pairs, q_weight=1000, theta_weight=111.0):
         """Total cost for given lattice parameters."""
         # Generate basis vectors from parameters
         basis_vectors = self.vectors_from_params(params)
@@ -1378,7 +1355,7 @@ class Basis3d(Basis):
         return sum(self.compute_pair_cost(basis_vectors, pair, q_weight, theta_weight)
                   for pair in pairs)
 
-    def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=1.0):
+    def plot_cost_histogram(self, pairs, q_weight=1000, theta_weight=111.0):
 
         #copied from refine, sue me
         a_star = np.linalg.norm(self.vectors[0])
@@ -1399,12 +1376,12 @@ class Basis3d(Basis):
         plt.hist(costs, bins=100)
         plt.show()
 
-    def refine(self, pairs=None, q_weight: float = 1000.0, theta_weight: float = 1.0) -> None:
+    def refine(self, pairs=None, q_weight: float = 1000.0, theta_weight: float = 111.0, constrained=False) -> None:
         """Refine lattice parameters in place."""
+
         if pairs is None:
             pairs = [p[1] for p in self.all_pairs if p[2]=='indexed_3d']
         from scipy.optimize import minimize
-        import copy
 
         # Initial parameter vector from current basis
         a_star = np.linalg.norm(self.vectors[0])
@@ -1418,22 +1395,83 @@ class Basis3d(Basis):
         gamma_star = np.arccos(np.dot(self.vectors[0], self.vectors[1]) /
                               (a_star * b_star))
 
-        initial_params = np.array([a_star, b_star, c_star,
-                                  alpha_star, beta_star, gamma_star])
+        if constrained:
+            assert self.symmetry in ['Triclinic', 'Monoclinic', 'Orthorhombic',
+                                     'Tetragonal', 'Trigonal', 'Hexagonal', 'Cubic']
 
-        # Define bounds to prevent unphysical values
-        bounds = [
-            (0.01, None),    # a_star > 0
-            (0.01, None),    # b_star > 0
-            (0.01, None),    # c_star > 0
-            (0.1, np.pi-0.1),  # alpha_star in (0, pi)
-            (0.1, np.pi-0.1),  # beta_star in (0, pi)
-            (0.1, np.pi-0.1)   # gamma_star in (0, pi)
-        ]
+        if not constrained or self.symmetry=='Triclinic':
+            initial_params = np.array([a_star, b_star, c_star,
+                                      alpha_star, beta_star, gamma_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+                (0.01, None),    # b_star > 0
+                (0.01, None),    # c_star > 0
+                (0.1, np.pi-0.1),  # alpha_star in (0, pi)
+                (0.1, np.pi-0.1),  # beta_star in (0, pi)
+                (0.1, np.pi-0.1)   # gamma_star in (0, pi)
+            ]
+            def params_to_full(p):
+                return p
+
+        elif self.symmetry == 'Monoclinic':
+            initial_params = np.array([a_star, b_star, c_star, alpha_star, gamma_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+                (0.01, None),    # b_star > 0
+                (0.01, None),    # c_star > 0
+                (0.1, np.pi-0.1),  # alpha_star in (0, pi)
+                (0.1, np.pi-0.1)   # gamma_star in (0, pi)
+            ]
+            def params_to_full(p):
+                a_star, b_star, c_star, alpha_star, gamma_star = p
+                return np.array([a_star, b_star, c_star, alpha_star, np.pi/2, gamma_star])
+
+        elif self.symmetry == 'Orthorhombic':
+            initial_params = np.array([a_star, b_star, c_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+                (0.01, None),    # b_star > 0
+                (0.01, None),    # c_star > 0
+            ]
+            def params_to_full(p):
+                a_star, b_star, c_star = p
+                return np.array([a_star, b_star, c_star, np.pi/2, np.pi/2, np.pi/2])
+        elif self.symmetry == 'Tetragonal':
+            initial_params = np.array([a_star, c_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+                (0.01, None),    # b_star > 0
+            ]
+            def params_to_full(p):
+                a_star, c_star = p
+                return np.array([a_star, a_star, c_star, np.pi/2, np.pi/2, np.pi/2])
+        elif self.symmetry in ['Trigonal', 'Hexagonal']:
+            initial_params = np.array([a_star, c_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+                (0.01, None),    # b_star > 0
+            ]
+            def params_to_full(p):
+                a_star, c_star = p
+                return np.array([a_star, a_star, c_star, np.pi/2, np.pi/2, np.pi/3])
+        elif self.symmetry == 'Cubic':
+            initial_params = np.array([a_star])
+            bounds = [
+                (0.01, None),    # a_star > 0
+            ]
+            def params_to_full(p):
+                a_star = p[0]
+                return np.array([a_star, a_star, a_star, np.pi/2, np.pi/2, np.pi/2])
+        else:
+            raise RuntimeError('Unknown crystal system')
+
+        def cost_wrapper(reduced_params):
+            full_params = params_to_full(reduced_params)
+            return self.cost(full_params, pairs, q_weight, theta_weight)
 
         # Run optimization
         result = minimize(
-            lambda p: self.cost(p, pairs, q_weight, theta_weight),
+            cost_wrapper,
             initial_params,
             method='L-BFGS-B',  # Use bounded optimization
             bounds=bounds,
@@ -1444,7 +1482,7 @@ class Basis3d(Basis):
             print(f"Refinement warning: {result.message}")
 
         # Extract refined parameters and update basis
-        refined_params = result.x
+        refined_params = params_to_full(result.x)
         refined_vectors = self.vectors_from_params(refined_params)
 
         if refined_vectors is not None:
@@ -1455,9 +1493,10 @@ class Basis3d(Basis):
 
             # Print refinement results
             refined_vols = self.volume()
-            print(f"Refinement complete. Final cost: {result.fun:.6f}")
-            print(f"Reciprocal volume: {refined_vols:.6f} Å⁻³")
-            print(f"Direct cell volume: {1/refined_vols:.1f} Å³")
+            #print(f"Refinement complete. Final cost: {result.fun:.6f}")
+            #print(f"Reciprocal volume: {refined_vols:.6f} Å⁻³")
+            #print(f"Direct cell volume: {1/refined_vols:.1f} Å³")
+            print(f"Refine done: {self}")
 
 
 class LatticeReconstruction:
@@ -1612,14 +1651,14 @@ class LatticeReconstruction:
 
         return matches
 
-    def flag_outliers_2d(self, multiplier=2, q_weight=1000, theta_weight=1):
+    def flag_outliers_2d(self, multiplier=2, q_weight=1000, theta_weight=111):
         costs = []
         for p in self.sublattice_indexed:
             costs.append(self.sub_basis.compute_pair_cost(
               self.sub_basis.vectors, p, q_weight, theta_weight))
         for p, c in zip(self.sublattice_indexed, costs):
             p.is_outlier = c > multiplier*np.median(costs)
-    def plot_costs_2d(self, q_weight=1000, theta_weight=1):
+    def plot_costs_2d(self, q_weight=1000, theta_weight=111):
         costs = []
         for p in self.sublattice_indexed:
             costs.append(self.sub_basis.compute_pair_cost(
@@ -1764,7 +1803,7 @@ def grid_search_3d_basis(recon, pair1_idx, pair2_idx,
                             hits += 1
 
                 # Compute percentage
-                fom[i, j] = 100*hits / total_pairs * vol
+                fom[i, j] = 100*hits / total_pairs * vol**(1/2)
 
             except Exception as e:
                 # Failed to generate basis (e.g., no valid solution)
@@ -1841,6 +1880,7 @@ def plot_grid_search_results(delta_values, results_normal, results_inv):
 # Function to run everything and return the best parameters
 def find_best_3d_basis(recon, pair1_idx, pair2_idx,
                        delta_range=(-2.0, 2.0), steps=21):
+    """pair1_idx and pair2_idx are actually pairs"""
     # Run grid searches
     delta_values, results_normal, results_inv = run_both_grid_searches(
         recon, pair1_idx, pair2_idx, delta_range, steps
@@ -1884,7 +1924,7 @@ def find_best_3d_basis(recon, pair1_idx, pair2_idx,
         inv=best_params['inv']
     )
 
-    idx_pct = best_params['fom']/best_basis.volume()
+    idx_pct = best_params['fom']/best_basis.volume()**(1/2)
     print("\nBest parameters:")
     print(f"delta_theta_1 = {best_params['delta_theta_1']:.2f} degrees")
     print(f"delta_theta_2 = {best_params['delta_theta_2']:.2f} degrees")
@@ -2107,9 +2147,10 @@ def run():
     data = np.vstack((data, data2))
 
     # Manual select 2d sub bases
-    cl1 = ManualClusterer(data, n_maxima=0)
-    triplets = cl1.select_triplets()
-    #triplets = [[0.125118,0.153401,40.374522]]
+    #cl1 = ManualClusterer(data, n_maxima=0)
+    #title = "select first sub-basis"
+    #triplets = cl1.select_triplets(title)
+    triplets = [[0.143404,0.171542,57.271193]]
     assert len(triplets) == 1
     triplets[0][2] = np.radians(triplets[0][2])
     sb1 = Basis.from_params(*triplets[0])
@@ -2117,19 +2158,77 @@ def run():
     for _ in range(5):
         sb1.reindex_pairs()
         sb1.flag_outliers()
-        sb1.plot_costs()
         sb1.refine()
+        #sb1.plot_costs()
     print('manual selection start')
     qvals_1 = np.linalg.norm(sb1.points, axis=1)
 
-    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1)
-    triplets = cl2.select_triplets()
-    #triplets = [[0.125043,0.143875,28.668988]]
+    #cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1)
+    #triplets = cl2.select_triplets(title="select second subbasis")
+    triplets = [[0.188297,0.153116,71.261422],
+                [0.188085,0.171400,56.750789]]
+    assert len(triplets) == 2
+    pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
+    matches = [sb1.match(p) for p in pairs]
+    indexed_pairs = []
+    for m in matches:
+        assert m[1] == 'one_vector'
+        indexed_pairs.append(m[0])
+    recon.sub_basis = sb1
+    best_basis, best_params, fig = find_best_3d_basis(recon, *indexed_pairs, delta_range=(-2,2), steps=11)
+    plt.show()
+
+    best_basis.match_pairs(recon.all_pairs)
+    for _ in range(3):
+        best_basis.reindex_pairs()
+        best_basis.flag_outliers()
+        best_basis.refine()
+        #best_basis.plot_costs()
+    doubled_cells = best_basis.doubled_cells()
+    all_cells = [best_basis] + doubled_cells
+    print('Cell doubling selection:')
+    print('i \t%idx')
+    for i, c in enumerate(all_cells):
+        c.match_pairs(recon.all_pairs)
+        print(i, '\t', c.index_percent())
+    i_cell = int(input('Cell? '))
+    best_basis = all_cells[i_cell]
+    for _ in range(3):
+        best_basis.reindex_pairs()
+        best_basis.flag_outliers()
+        best_basis.refine()
+        #best_basis.plot_costs_components()
+
+    from cctbx import uctbx, crystal
+    from cctbx.sgtbx.lattice_symmetry import metric_subgroups
+    cell_vals = list(best_basis.compute_direct_cell_params(best_basis.vectors).values())
+    uc = uctbx.unit_cell(cell_vals)
+    cs = crystal.symmetry(unit_cell=uc, space_group='P1')
+    subgroups = metric_subgroups(cs, max_delta=3)
+    subsyms = [x['best_subsym'] for x in subgroups.result_groups]
+
+    symmetrized_bases = []
+    subsym = subsyms[2]
+    constr_basis = Basis.from_crystal_symmetry(subsym)
+#    for subsym in subsyms:
+#        constr_basis = Basis.from_params(*best0.unit_cell().reciprocal_parameters())
+    for i, subsym in enumerate(subsyms):
+        print(f"\n======= Test symmetry {i}/{len(subsyms)} =======")
+        constr_basis = Basis.from_crystal_symmetry(subsym)
+        constr_basis.match_pairs(recon.all_pairs)
+        for _ in range(3):
+            constr_basis.reindex_pairs()
+            constr_basis.flag_outliers()
+            constr_basis.refine(constrained=True)
+        symmetrized_bases.append((constr_basis, constr_basis.index_percent()))
+            
+    import IPython;IPython.embed()
     assert len(triplets) == 1
     triplets[0][2] = np.radians(triplets[0][2])
     sb2 = Basis.from_params(*triplets[0])
     sb2.match_pairs(recon.all_pairs)
-    for _ in range(5):
+    import IPython;IPython.embed()
+    for _ in range(3):
         sb2.reindex_pairs()
         sb2.flag_outliers()
         sb2.plot_costs()
@@ -2141,7 +2240,7 @@ def run():
     qvals_1 = np.linalg.norm(sb1.points, axis=1)
     qvals_2 = np.linalg.norm(sb2.points, axis=1)
     cl = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1, qvals_2=qvals_2)
-    triplets = cl.select_triplets()
+    triplets = cl.select_triplets("select a-b pairs")
     print(triplets)
     #triplets = [[0.15333570792827658, 0.13718166412632835, 114.6026808444415], [0.1532716587572158, 0.143893922376171, 32.211055684990406], [0.15329187415603598, 0.1836433785315679, 77.80422388061861], [0.1533567548034525, 0.25795800966128574, 50.959598431305984], [0.1667772122979944, 0.1415369213997462, 65.44425336483228], [0.1668435395895667, 0.14401664386592716, 57.66669217209992], [0.16672231651340277, 0.25795198264263536, 30.3907182392463], [0.20049139390604614, 0.1415445237130603, 25.921552407884032], [0.22693602221707057, 0.2580249296609254, 108.14834482578436], [0.27737438425400857, 0.14161107283719673, 52.546032607023136], [0.2774193570666868, 0.14393247301009263, 44.26189630562257], [0.27722723290187934, 0.28328068977243553, 52.552673251938415], [0.3069234169084582, 0.14153689240822068, 89.97024400009249], [0.30674731494727275, 0.14385171337570893, 75.9191414162387], [0.3067820484586015, 0.2578167873779439, 54.49355516464851]]
     for t in triplets:
