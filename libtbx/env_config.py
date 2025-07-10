@@ -3092,6 +3092,16 @@ def get_installed_path():
     installed_path = os.path.join(sys.prefix, 'Library', 'share', 'cctbx')
   else:
     installed_path = os.path.join(get_conda_prefix(), 'share', 'cctbx')
+  if not os.path.isdir(installed_path):
+    # try libtbx/core
+    import sysconfig
+    paths = sysconfig.get_paths()
+    for key in ['purelib', 'platlib']:
+      site_packages = paths[key]
+      test_path = os.path.join(site_packages, 'libtbx', 'core', 'share', 'cctbx')
+      if os.path.isdir(test_path):
+        installed_path = test_path
+      break
   return installed_path
 
 def _get_env(build_path, env_name='libtbx_env'):
