@@ -281,8 +281,9 @@ def PreciseData(kpres,epsc,epsp,edist,dmax,peak,dist,nfmes):
 
     mdist = ndist
     if dist[ndist] < dmax :
-       print('*** warning : curve interval is defined for x <= ',dist[ndist])
-       print('              shrter that the required distance  ',dmax)
+       if nfmes is not None:
+         print('*** warning : curve interval is defined for x <= ',dist[ndist])
+         print('              shrter that the required distance  ',dmax)
     else :
        for ix in range(ndist+1) :
            if dist[ix] > dmax :

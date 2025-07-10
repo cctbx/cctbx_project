@@ -22,11 +22,66 @@ namespace cctbx { namespace maptbx { namespace boost_python {
       self.R);
   }
 
+boost::python::tuple
+  getinitargs_bcr_scatterer(bcr_scatterer<> const& self)
+  {
+    return boost::python::make_tuple(
+      self.site_cart,
+      self.u_iso,
+      self.occ,
+      self.radius,
+      self.resolution,
+      self.mu,
+      self.kappa,
+      self.nu,
+      self.musq,
+      self.kappi);
+  }
+
 namespace {
 
   void init_module()
   {
     using namespace boost::python;
+
+   {
+      typedef return_value_policy<return_by_value> rbv;
+      class_<bcr_scatterer<> >("bcr_scatterer")
+        .def(init<cctbx::cartesian<> const&,
+                  double const&,
+                  double const&,
+                  double const&,
+                  double const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const&,
+                  af::shared<double> const& >((arg("site_cart"),
+                                               arg("u_iso"),
+                                               arg("occ"),
+                                               arg("radius"),
+                                               arg("resolution"),
+                                               arg("mu"),
+                                               arg("kappa"),
+                                               arg("nu"),
+                                               arg("musq"),
+                                               arg("kappi"))))
+        .add_property("site_cart",  make_getter(&bcr_scatterer<>::site_cart,  rbv()))
+        .add_property("u_iso",      make_getter(&bcr_scatterer<>::u_iso,      rbv()))
+        .add_property("occ",        make_getter(&bcr_scatterer<>::occ,        rbv()))
+        .add_property("radius",     make_getter(&bcr_scatterer<>::radius,     rbv()))
+        .add_property("resolution", make_getter(&bcr_scatterer<>::resolution, rbv()))
+        .add_property("mu",         make_getter(&bcr_scatterer<>::mu,         rbv()))
+        .add_property("kappa",      make_getter(&bcr_scatterer<>::kappa,      rbv()))
+        .add_property("nu",         make_getter(&bcr_scatterer<>::nu,         rbv()))
+        .add_property("musq",       make_getter(&bcr_scatterer<>::musq,       rbv()))
+        .add_property("kappi",      make_getter(&bcr_scatterer<>::kappi,      rbv()))
+        .enable_pickling()
+        .def("__getinitargs__", getinitargs_bcr_scatterer)
+      ;
+    }
+
+
 
     {
       typedef return_value_policy<return_by_value> rbv;

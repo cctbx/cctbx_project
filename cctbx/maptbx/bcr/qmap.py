@@ -7,6 +7,58 @@ from libtbx.test_utils import approx_equal
 import iotbx.pdb
 from cctbx import adptbx
 
+import boost_adaptbx.boost.python as bp
+ext = bp.import_ext("cctbx_maptbx_bcr_bcr_ext")
+
+# N, Res=2.5
+R = [   # mu
+  0.000000000000000,
+  2.137901575982925,
+  3.573558167112186,
+  4.910453205604299,
+  6.197723641551286,
+  7.463266240825266,
+  8.722743932451982,
+  9.985192083454228,
+ 11.231510113425726,
+ 12.526176570560663]
+B = [ #sigma
+  72.054181932630286,
+  35.262725859069029,
+  20.965775916519476,
+  14.404958530433785,
+  11.340349195234730,
+   9.713633940197088,
+   8.449135265753416,
+   8.350351017987917,
+   8.441267229500561,
+   8.246840051545909]
+C = [ # kappa
+   20.108947809148834,
+  -19.705151510498212,
+   11.106663690650764,
+   -8.298529895167423,
+    7.221275369283975,
+   -6.725763928844316,
+    6.354013560352876,
+   -6.330524081979416,
+    6.317387204802556,
+   -6.358094541306267]
+_X_mu     = R
+_X_kappa  = C
+ScaleB = 1.0 / (8.0 * math.pi**2)
+_X_nu     = list(flex.double(B)  * ScaleB)
+_X_musq   = list(flex.double(R)*flex.double(R))
+_X_kappi  = flex.double(C)/(math.pi**1.5)
+
+# three atoms
+X_mu    = [_X_mu    , _X_mu    , _X_mu    ]
+X_kappa = [_X_kappa , _X_kappa , _X_kappa ]
+X_nu    = [_X_nu    , _X_nu    , _X_nu    ]
+X_musq  = [_X_musq  , _X_musq  , _X_musq  ]
+X_kappi = [_X_kappi , _X_kappi , _X_kappi ]
+
+
 ######################################################
 #
 #    Calculating Q-Map from an atomic model with local resolution
@@ -73,7 +125,6 @@ def FindTypes(ModelTypes) :
            ResMax.append(ResAtom)
            TermsAtom[iat][1] = Ntypes
            Ntypes            = Ntypes + 1
-
     return Types,ResMin,ResMax, TermsAtom
 
 #============================
@@ -215,14 +266,8 @@ def CalcGradMap(OmegaMap ,ControlMap, Ncrs) :
     return GradMap
 
 #=====================================
-def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, Scrs, Nxyz, unit_cell) :
-
-    print(len(TermsDecomp))
-    for it in TermsDecomp:
-      print("TermsDecomp", it)
-    print()
-    print("TermsAtom  ", TermsAtom)
-    print()
+def CalcOmegaMap(TermsAtom, Ncrs,
+                 Scrs, Nxyz, unit_cell, bcr_scatterers) :
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
     OrthMatrix  = unit_cell.orthogonalization_matrix()
@@ -261,17 +306,22 @@ def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, S
 
     OmegaMap = [[[ 0.0 for ix in range(Mx) ] for iy in range(My)] for iz in range(Mz)]
 
-    for iatom in range(sites_cart.size()) :
+    for iatom in range(len(bcr_scatterers)) :
+        bcr_scatterer = bcr_scatterers[iatom]
 
-        RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
+        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
+        _, Nterms1, Nterms2 = TermsAtom[iatom]
+        RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        r = sites_cart[iatom]
+        #print("RadAtom", RadAtom, bcr_scatterer.radius)
+
+        r = bcr_scatterer.site_cart
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = occupancy[iatom], adp_as_u[iatom]
+        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
 
 #       get parameters of the box around the atom
 
@@ -340,9 +390,15 @@ def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, S
         GridValues = [0.0 for i in range(Ngrids)]
         GridValue0 = 0.0
 
+        print("LOOK", Nterms1, Nterms2, bcr_scatterer.mu.size())
         for iterm in range(Nterms1, Nterms2) :
-            mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
-            print("mu, nu, kappa, musq, kappi", mu, nu, kappa, musq, kappi,"RadAtom", RadAtom)
+            #mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
+            #print("mu, nu, kappa, musq, kappi", mu, nu, kappa, musq, kappi,"RadAtom", RadAtom)
+            mu    = bcr_scatterer.mu[iterm]
+            nu    = bcr_scatterer.nu[iterm]
+            musq  = bcr_scatterer.musq[iterm]
+            kappi = bcr_scatterer.kappi[iterm]
+
             nuatom  = nu + bat
             nuatom2 = nuatom + nuatom
             fact1   = kappi / nuatom2**1.5
@@ -371,7 +427,6 @@ def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, S
                    argg  = (rzyx-mu)**2 / nuatom2
                    fact2 = math.exp(-argg) * (1.0 - math.exp(-tterm)) / tterm
                    GridValues[ig] = GridValues[ig] + fact1 * fact2
-        print()
 #       unpack values array
 
         for ig in range(Ngrids) :
@@ -385,9 +440,10 @@ def CalcOmegaMap(sites_cart, adp_as_u, occupancy, TermsDecomp,TermsAtom, Ncrs, S
     return OmegaMap
 
 #=====================================
-def CalcGradAtom(GradMap, sites_cart, adp_as_u, occupancy,TermsDecomp,TermsAtom,Ncrs, Scrs, Nxyz, unit_cell):
+def CalcGradAtom(GradMap,TermsDecomp,TermsAtom,
+                 Ncrs, Scrs, Nxyz, unit_cell, bcr_scatterers):
 
-    Natoms = len(ModelValues)
+    Natoms = len(bcr_scatterers)
 
     acell, bcell, ccell, alpha, beta,  gamma = unit_cell.parameters()
     OrthMatrix  = unit_cell.orthogonalization_matrix()
@@ -426,17 +482,20 @@ def CalcGradAtom(GradMap, sites_cart, adp_as_u, occupancy,TermsDecomp,TermsAtom,
 
     GradAtom = [[0.0, 0.0, 0.0, 0.0, 0.0] for iat in range(Natoms)]
 
-    for iatom in range(Natoms) :
+    for iatom in range(len(bcr_scatterers)) :
+        bcr_scatterer = bcr_scatterers[iatom]
 
-        RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
+        #RadAtom, Nterms1, Nterms2 = TermsAtom[iatom]
+        _, Nterms1, Nterms2 = TermsAtom[iatom]
+        RadAtom = bcr_scatterer.radius
         RadAtom2  = RadAtom   * RadAtom
         RadAtomX  = RadAtom   * RprojX
         RadAtomY  = RadAtom   * RprojY
         RadAtomZ  = RadAtom   * RprojZ
 
-        r = sites_cart[iatom]
+        r = bcr_scatterer.site_cart
         xat, yat, zat = r[0], r[1], r[2]
-        cat, bat = occupancy[iatom], adp_as_u[iatom]
+        cat, bat = bcr_scatterer.occ, bcr_scatterer.u_iso
 
 #       get parameters of the box around the atom
 
@@ -512,7 +571,11 @@ def CalcGradAtom(GradMap, sites_cart, adp_as_u, occupancy,TermsDecomp,TermsAtom,
 #        Nterms1, Nterms2 = TermsAtom[iatom]
 
         for iterm in range(Nterms1, Nterms2) :
-            mu, nu, kappa, musq, kappi = TermsDecomp[iterm]
+            mu    = bcr_scatterer.mu[iterm]
+            nu    = bcr_scatterer.nu[iterm]
+            musq  = bcr_scatterer.musq[iterm]
+            kappi = bcr_scatterer.kappi[iterm]
+
             nuatom  = nu + bat
             nuatom2 = nuatom + nuatom
             munuat  = mu / nuatom
@@ -642,10 +705,25 @@ print('Read atomic model...')
 
 ModelValues = []
 ModelTypes = []
-for s, b, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
-  ModelValues.append([s, b, o])
+bcr_scatterers = []
+for s, u, o, e in zip(sites_cart, adp_as_u, occupancy, atoms.extract_element()):
+  ModelValues.append([s, u, o])
   ModelTypes.append([e.upper().strip(), 2.5])
   print(e)
+  bcr_scatterer = ext.bcr_scatterer(
+     site_cart = s,
+     u_iso     = u,
+     occ       = o,
+     radius    = 5,
+     resolution=2.5,
+     mu        = _X_mu,
+     kappa     = _X_kappa,
+     nu        = _X_nu,
+     musq      = _X_musq,
+     kappi     = _X_kappi)
+  bcr_scatterers.append(bcr_scatterer)
+
+#STOP()
 
 
 #=============== principal part ==========
@@ -685,12 +763,14 @@ TermsAtom, TermsDecomp = GetMNKCoefficients(ModelTypes,RadFact,RadMu)
 
 
 
-OmegaMap = CalcOmegaMap(sites_cart, adp_as_u, occupancy,  TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz, unit_cell)
+OmegaMap = CalcOmegaMap(TermsAtom,
+                        Ncrs,Scrs,Nxyz, unit_cell, bcr_scatterers)
 
 FuncMap  = CalcFuncMap(OmegaMap, ControlMap, Ncrs)
 GradMap  = CalcGradMap(OmegaMap, ControlMap, Ncrs)
 
-GradAtom = CalcGradAtom(GradMap,  sites_cart, adp_as_u, occupancy,  TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell)
+GradAtom = CalcGradAtom(GradMap,
+                        TermsDecomp,TermsAtom,Ncrs,Scrs,Nxyz,unit_cell, bcr_scatterers)
 
 #=============== output results ======================================
 
