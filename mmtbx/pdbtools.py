@@ -270,6 +270,8 @@ class modify(object):
     self.params = params
     self.model = model
     self._neutralize_scatterers()
+    model_was_processed = self.model.processed()
+    had_restraints = self.model.restraints_manager_available()
     if not model.crystal_symmetry() or not model.crystal_symmetry().unit_cell():
       # Make it up
       from cctbx.maptbx.box import shift_and_box_model
@@ -341,20 +343,14 @@ class modify(object):
       self._renumber_and_move_waters()
       self._remove_atoms()
       self._apply_keep_remove()
-      # Here goes really nasty hack. Never repeat it.
-      # It is here because I don't have clear idea about how to handle
-      # such dramatic changes in number of atoms etc that just was performed
-      # for hierarchy.
+      # Here we basically unset everything and reprocess if
+      # model was processed in the beginning.
       self.pdb_hierarchy.reset_atom_i_seqs()
       self.pdb_hierarchy.atoms_reset_serial()
       self.model._pdb_hierarchy = self.pdb_hierarchy
-      self.model._xray_structure = self.pdb_hierarchy.extract_xray_structure(
-          crystal_symmetry=self.model.crystal_symmetry())
-      self.model._update_atom_selection_cache()
-      self.model._update_has_hd()
-      self.model.get_hierarchy().atoms().reset_i_seq()
-
-
+      self.model.reset_after_changing_hierarchy()
+      if model_was_processed:
+        self.model.process(make_restraints=had_restraints)
 
   def _apply_keep_remove(self):
     cn = [self.params.remove, self.params.keep].count(None)
@@ -366,7 +362,7 @@ class modify(object):
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
       sel = ~asc.selection(self.params.remove)
-      self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
+      self.pdb_hierarchy = self.pdb_hierarchy.select(sel, copy_atoms=True)
       s2 = self.pdb_hierarchy.atoms_size()
       print("Size before:", s1, "size after:", s2, file=self.log)
     if(self.params.keep is not None):
@@ -374,7 +370,7 @@ class modify(object):
         special_position_settings=crystal.special_position_settings(
             crystal_symmetry = self.crystal_symmetry))
       sel = asc.selection(self.params.keep)
-      self.pdb_hierarchy = self.pdb_hierarchy.select(sel)
+      self.pdb_hierarchy = self.pdb_hierarchy.select(sel, copy_atoms=True)
       s2 = self.pdb_hierarchy.atoms_size()
       print("Size before:", s1, "size after:", s2, file=self.log)
 
@@ -451,8 +447,8 @@ class modify(object):
         print("No waters found, skipping", file=self.log)
       else :
         print("%d atoms will be moved." % n_waters, file=self.log)
-        hierarchy_water = self.pdb_hierarchy.select(water_sel)
-        hierarchy_non_water = self.pdb_hierarchy.select(~water_sel)
+        hierarchy_water = self.pdb_hierarchy.select(water_sel, copy_atoms=True)
+        hierarchy_non_water = self.pdb_hierarchy.select(~water_sel, copy_atoms=True)
         for chain in hierarchy_water.only_model().chains():
           hierarchy_non_water.only_model().append_chain(chain.detached_copy())
         self.pdb_hierarchy = hierarchy_non_water # does this work?

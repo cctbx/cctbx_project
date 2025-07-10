@@ -1107,7 +1107,7 @@ class manager(object, metaclass=libtbx.utils.Tracker):
     return self.refinement_flags
 
   def get_number_of_atoms(self):
-    return self.get_hierarchy().atoms().size()
+    return self.get_hierarchy().atoms_size()
 
   def size(self):
     return self.get_number_of_atoms()
