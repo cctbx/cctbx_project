@@ -359,8 +359,8 @@ def test6():
   #print("new_ph_auth_segid_as_string\n",new_ph_auth_segid_as_string)
   #print("new_ph_no_auth_segid_as_string\n",new_ph_no_auth_segid_as_string)
   assert ph_as_string.find(" UNK  C")>-1
-  assert ph_as_mmcif_string_auth_segid.find("1  1  UNK") > -1
-  assert ph_as_mmcif_string_no_auth_segid.find("0  1  UNK") < 0
+  assert ph_as_mmcif_string_auth_segid.find("1  CA  1  UNK") > -1
+  assert ph_as_mmcif_string_no_auth_segid.find("0  CA  1  UNK") < 0
   assert ph_as_mmcif_string_no_auth_segid.find(" UNK ") > -1
   assert ph_as_string == new_ph_auth_segid_as_string
 

@@ -1513,7 +1513,7 @@ class _():
       '_atom_site.label_entity_id',
       '_atom_site.label_seq_id',
       #'_atom_site.auth_comp_id',
-      #'_atom_site.auth_atom_id',
+      '_atom_site.auth_atom_id',
       '_atom_site.pdbx_PDB_model_num',
      ]
     if segid_as_auth_segid:
@@ -1547,6 +1547,7 @@ class _():
     atom_site_group_PDB = atom_site_loop['_atom_site.group_PDB']
     atom_site_id = atom_site_loop['_atom_site.id']
     atom_site_label_atom_id = atom_site_loop['_atom_site.label_atom_id']
+    atom_site_auth_atom_id = atom_site_loop['_atom_site.auth_atom_id']
     atom_site_label_alt_id = atom_site_loop['_atom_site.label_alt_id']
     atom_site_label_comp_id = atom_site_loop['_atom_site.label_comp_id']
     atom_site_auth_asym_id = atom_site_loop['_atom_site.auth_asym_id']
@@ -1567,7 +1568,6 @@ class _():
     atom_site_label_entity_id = atom_site_loop['_atom_site.label_entity_id']
     atom_site_label_seq_id = atom_site_loop['_atom_site.label_seq_id']
     #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
-    #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
     atom_site_pdbx_PDB_model_num = atom_site_loop['_atom_site.pdbx_PDB_model_num']
     if segid_as_auth_segid:
       atom_site_auth_segid = atom_site_loop['_atom_site.auth_segid']
@@ -1647,6 +1647,7 @@ class _():
               atom_site_group_PDB.append(group_pdb)
               atom_site_id.append(str(hy36decode(width=5, s=atom.serial)))
               atom_site_label_atom_id.append(atom.name.strip())
+              atom_site_auth_atom_id.append(atom.name.strip())
               if atom.name.strip() not in chem_comp_atom_ids:
                 chem_comp_atom_ids.append(atom.name.strip())
               atom_site_label_alt_id.append(self.get_label_alt_id_atom(atom))
@@ -1670,7 +1671,6 @@ class _():
               atom_site_label_entity_id.append(entity_id)
               atom_site_label_seq_id.append(self.get_label_seq_id(atom_group))
               #atom_site_loop['_atom_site.auth_comp_id'].append(comp_id)
-              #atom_site_loop['_atom_site.auth_atom_id'].append(atom.name.strip())
               atom_site_pdbx_PDB_model_num.append(model_id.strip())
               if segid_as_auth_segid:
                 atom_site_auth_segid.append(atom.segid)

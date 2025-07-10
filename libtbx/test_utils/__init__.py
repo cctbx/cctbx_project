@@ -1009,6 +1009,7 @@ def tst_convert():
   text = """
 ATOM      1  N   VAL A   1      -5.111   0.049  13.245  1.00  9.36           N
 """
+  # print(convert_string_to_cif_long(text))
   assert convert_string_to_cif_long(text).strip() == """
 data_phenix
 loop_
@@ -1030,8 +1031,9 @@ loop_
   _atom_site.label_asym_id
   _atom_site.label_entity_id
   _atom_site.label_seq_id
+  _atom_site.auth_atom_id
   _atom_site.pdbx_PDB_model_num
-  ATOM  1  N  .  VAL  AZXLONG  1  ?  -5.11100  0.04900  13.24500  1.000  9.36000  N  ?  A  ?  1  1
+  ATOM  1  N  .  VAL  AZXLONG  1  ?  -5.11100  0.04900  13.24500  1.000  9.36000  N  ?  A  ?  1  N  1
 
 loop_
   _chem_comp.id
