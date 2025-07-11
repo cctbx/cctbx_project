@@ -1497,6 +1497,7 @@ class Basis3d(Basis):
             #print(f"Reciprocal volume: {refined_vols:.6f} Å⁻³")
             #print(f"Direct cell volume: {1/refined_vols:.1f} Å³")
             print(f"Refine done: {self}")
+            print(f"Volume: {1/refined_vols:.2f}")
 
 
 class LatticeReconstruction:
@@ -2101,6 +2102,32 @@ def merge_bases_brute(b1, b2, common_axes, angle_deg):
                   theta_tol_degrees=max(np.degrees(b1.theta_tolerance),
                                        np.degrees(b2.theta_tolerance)))
 
+def sb1_callback(triplet, recon):
+    """
+    Analyze a selected triplet and return q-values to display.
+    """
+    q1, q2, theta_degrees = triplet
+    # Convert theta to radians
+    theta_rad = np.radians(theta_degrees)
+
+    # Create basis from the triplet
+    sb1 = Basis.from_params(q1, q2, theta_rad)
+    sb1.match_pairs(recon.all_pairs)
+
+    # Refine the basis
+    for _ in range(5):
+        sb1.reindex_pairs()
+        sb1.flag_outliers()
+        sb1.refine()
+
+    # Compute q-values (norms of the basis points)
+    qvals = np.linalg.norm(sb1.points, axis=1)
+
+    # Filter to reasonable range for display
+    qvals = qvals[(qvals > 0.1) & (qvals < 0.5)]
+
+    return qvals
+
 
 
 
@@ -2147,11 +2174,12 @@ def run():
     data = np.vstack((data, data2))
 
     # Manual select 2d sub bases
-    #cl1 = ManualClusterer(data, n_maxima=0)
-    #title = "select first sub-basis"
-    #triplets = cl1.select_triplets(title)
-    triplets = [[0.143404,0.171542,57.271193]]
-    assert len(triplets) == 1
+    cl1 = ManualClusterer(data, n_maxima=0, sb1_callback=sb1_callback, recon=recon)
+    title = "select first sub-basis"
+    triplets = cl1.select_triplets(title)
+    #triplets = [[0.143404,0.171542,57.271193]]
+    #assert len(triplets) == 1
+    triplets = triplets[-1:] # keep the last one
     triplets[0][2] = np.radians(triplets[0][2])
     sb1 = Basis.from_params(*triplets[0])
     sb1.match_pairs(recon.all_pairs)
@@ -2163,10 +2191,10 @@ def run():
     print('manual selection start')
     qvals_1 = np.linalg.norm(sb1.points, axis=1)
 
-    #cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1)
-    #triplets = cl2.select_triplets(title="select second subbasis")
-    triplets = [[0.188297,0.153116,71.261422],
-                [0.188085,0.171400,56.750789]]
+    cl2 = ManualClusterer(data, n_maxima=0, qvals_1=qvals_1)
+    triplets = cl2.select_triplets(title="select second subbasis")
+    #triplets = [[0.188297,0.153116,71.261422],
+    #            [0.188085,0.171400,56.750789]]
     assert len(triplets) == 2
     pairs = [SpotPair(q1,q2,np.radians(th)) for q1,q2,th in triplets]
     matches = [sb1.match(p) for p in pairs]
@@ -2208,8 +2236,6 @@ def run():
     subsyms = [x['best_subsym'] for x in subgroups.result_groups]
 
     symmetrized_bases = []
-    subsym = subsyms[2]
-    constr_basis = Basis.from_crystal_symmetry(subsym)
 #    for subsym in subsyms:
 #        constr_basis = Basis.from_params(*best0.unit_cell().reciprocal_parameters())
     for i, subsym in enumerate(subsyms):

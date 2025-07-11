@@ -16,12 +16,14 @@ matplotlib.use('TkAgg')
 counter = 0
 
 class ManualClusterer:
-    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500, qvals_1=None, qvals_2=None):
+    def __init__(self, data, bandwidths=[0.001, 0.001, 1.0], n_maxima=500,
+                 qvals_1=None, qvals_2=None, sb1_callback=None, recon=None):
         self.data = data
         self.bandwidths = np.array(bandwidths)
         self.n_maxima = n_maxima
         self.qvals_1 = qvals_1
         self.qvals_2 = qvals_2
+        self.sb1_qvals = None
 
         self.current_selection = None
         self.final_selection = None
@@ -29,6 +31,9 @@ class ManualClusterer:
         self.span_patch = None
         self.rect_patch = None
         self.selected_triplets = []
+
+        self.sb1_callback = sb1_callback
+        self.recon = recon
         
         # Compute KDE maxima
         if n_maxima > 0:
@@ -362,6 +367,10 @@ class ManualClusterer:
             self.ax1.plot(self.qvals_2, np.zeros_like(self.qvals_2),
                          '|', color='red', markersize=25, markeredgewidth=2)
 
+        if self.sb1_qvals is not None:
+            self.ax1.plot(self.sb1_qvals, np.zeros_like(self.sb1_qvals),
+                         '|', color='green', markersize=25, markeredgewidth=2)
+
 
         self.span = SpanSelector(
             self.ax1,
@@ -377,7 +386,11 @@ class ManualClusterer:
     def on_span_select(self, xmin, xmax):
         # Remove previous span patch if it exists
         if self.span_patch is not None:
-            self.span_patch.remove()
+            try:
+                self.span_patch.remove()
+            except NotImplementedError:
+                pass
+            self.span_patch = None
         
         # Create new span patch
         ylims = self.ax1.get_ylim()
@@ -658,6 +671,10 @@ class ManualClusterer:
             # Also append to file if desired
             with open('cluster_means.txt', 'a') as f:
                 np.savetxt(f, [self.means], fmt='%.6f')
+
+            if self.sb1_callback is not None:
+                self.sb1_qvals = self.sb1_callback(triplet, self.recon)
+                self.show_histogram(title=self.ax1.get_title())
 
     def on_done(self, event):
         """Called when the Done button is clicked."""
